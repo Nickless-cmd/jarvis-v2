@@ -107,6 +107,10 @@ export function FileTreePanel({ apiBaseUrl, projectRoot, onClose }: Props) {
     async (path: string) => {
       setSelectedPath(path)
       setFileContent(null)
+      // Cross-app: also surface in the right preview pane if it's open
+      window.dispatchEvent(
+        new CustomEvent('jarvisx:preview-file', { detail: { path } }),
+      )
       try {
         const url = `${apiBaseUrl.replace(
           /\/$/,

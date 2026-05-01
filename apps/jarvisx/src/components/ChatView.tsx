@@ -8,6 +8,7 @@ import {
   Bot,
   Wrench,
   Terminal as TerminalIcon,
+  FileText,
 } from 'lucide-react'
 import { Composer } from '@ui/components/chat/Composer.jsx'
 import { ProjectAnchor } from './ProjectAnchor'
@@ -28,6 +29,7 @@ import { ToolInventoryModal } from './ToolInventoryModal'
 import { VoiceButton } from './VoiceButton'
 import { TerminalDrawer } from './native/TerminalDrawer'
 import { DiffReviewPanel } from './native/DiffReviewPanel'
+import { FilePreviewPane } from './native/FilePreviewPane'
 import { ConnectionPill } from './ConnectionPill'
 import { PendingPlansStrip } from './PendingPlansStrip'
 
@@ -139,6 +141,32 @@ export function ChatView({
     localStorage.setItem('jarvisx:terminal-open', terminalOpen ? '1' : '0')
   }, [terminalOpen])
   const [showDiffReview, setShowDiffReview] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState<boolean>(() => {
+    return localStorage.getItem('jarvisx:preview-open') === '1'
+  })
+  const [previewPath, setPreviewPath] = useState<string>(() => {
+    return localStorage.getItem('jarvisx:preview-path') || ''
+  })
+  useEffect(() => {
+    localStorage.setItem('jarvisx:preview-open', previewOpen ? '1' : '0')
+  }, [previewOpen])
+  useEffect(() => {
+    if (previewPath) localStorage.setItem('jarvisx:preview-path', previewPath)
+  }, [previewPath])
+
+  // Cross-app file preview channel — any component can dispatch
+  // jarvisx:preview-file with { detail: { path } } and the right pane
+  // updates without prop drilling
+  useEffect(() => {
+    const onPreview = (e: Event) => {
+      const detail = (e as CustomEvent<{ path?: string }>).detail
+      if (!detail?.path) return
+      setPreviewPath(detail.path)
+      setPreviewOpen(true)
+    }
+    window.addEventListener('jarvisx:preview-file', onPreview)
+    return () => window.removeEventListener('jarvisx:preview-file', onPreview)
+  }, [])
   const [planMode, setPlanMode] = useState(false)
   const [draft, setDraft] = useState('')
   const [queuedMessage, setQueuedMessage] = useState<{
@@ -374,6 +402,18 @@ export function ChatView({
             <SearchIcon size={12} />
           </button>
           <button
+            onClick={() => setPreviewOpen((v) => !v)}
+            title={previewOpen ? 'Skjul file preview' : 'Vis file preview'}
+            className={[
+              'flex h-6 w-6 items-center justify-center rounded transition-colors',
+              previewOpen
+                ? 'bg-accent/15 text-accent ring-1 ring-accent/30'
+                : 'text-fg3 hover:bg-bg2 hover:text-fg',
+            ].join(' ')}
+          >
+            <FileText size={12} />
+          </button>
+          <button
             onClick={() => setTerminalOpen((v) => !v)}
             title={terminalOpen ? 'Skjul terminal (Ctrl+J)' : 'Vis terminal (Ctrl+J)'}
             className={[
@@ -582,6 +622,13 @@ export function ChatView({
             onClose={() => setShowAgents(false)}
           />
         )}
+        <FilePreviewPane
+          apiBaseUrl={apiBaseUrl}
+          projectRoot={projectRoot}
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          previewPath={previewPath}
+        />
       </div>
 
       {showCapture && (

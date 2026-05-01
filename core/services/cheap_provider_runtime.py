@@ -1588,12 +1588,45 @@ def _execute_openai_codex_chat(
     }
 
 
+def _convert_tools_to_responses_format(tools: list[dict] | None) -> list[dict] | None:
+    """Convert Chat-Completions tool defs to Responses API format.
+
+    Chat Completions:   {"type":"function", "function":{"name", "description", "parameters"}}
+    Responses API:      {"type":"function", "name", "description", "parameters"}
+
+    The Responses API flattens the function fields onto the tool object
+    instead of nesting them. Both formats use type="function" but the
+    location of name/description/parameters differs.
+    """
+    if not tools:
+        return None
+    out: list[dict] = []
+    for t in tools:
+        if not isinstance(t, dict):
+            continue
+        # Already Responses-shaped
+        if "name" in t and "function" not in t:
+            out.append(t)
+            continue
+        fn = t.get("function") or {}
+        if not fn:
+            continue
+        out.append({
+            "type": "function",
+            "name": str(fn.get("name") or ""),
+            "description": str(fn.get("description") or ""),
+            "parameters": fn.get("parameters") or {"type": "object", "properties": {}},
+        })
+    return out or None
+
+
 def _iter_openai_codex_chat_events(
     *,
     model: str,
     auth_profile: str,
     base_url: str,
     message: str,
+    tools: list[dict] | None = None,
 ):
     """Stream raw SSE events from the OpenAI Codex Responses API.
 
@@ -1634,12 +1667,27 @@ def _iter_openai_codex_chat_events(
         "store": False,
         "stream": True,
     }
+    responses_tools = _convert_tools_to_responses_format(tools)
+    if responses_tools:
+        payload["tools"] = responses_tools
+        # tool_choice: 'auto' lets the model decide; we keep it implicit
+        # which Responses API treats as auto when tools are present.
     url = f"{root}/codex/responses"
 
     text_parts: list[str] = []
     input_tokens = 0
     output_tokens = 0
     model_used = model
+
+    # Tool-call accumulation. Responses API streams a function_call as:
+    #   1. response.output_item.added with item.type=='function_call'
+    #      → records id + name (arguments may be empty initially)
+    #   2. zero or more response.function_call_arguments.delta events
+    #      → arguments accumulate as a JSON string
+    #   3. response.output_item.done with the same item
+    #      → final commit; we yield the tool_call event then
+    # We key by item_id (Responses uses a stable id per output item).
+    pending_tool_calls: dict[str, dict] = {}
 
     try:
         with httpx.stream(
@@ -1705,6 +1753,50 @@ def _iter_openai_codex_chat_events(
                         # Server didn't emit deltas, only a single done
                         text_parts.append(full_text)
                         yield {"kind": "delta", "text": full_text}
+                elif event_type == "response.output_item.added":
+                    # New output item — could be a function_call. Record
+                    # the id+name so subsequent argument deltas can find it.
+                    item = event.get("item") or {}
+                    if isinstance(item, dict) and str(item.get("type") or "") == "function_call":
+                        item_id = str(item.get("id") or item.get("call_id") or "")
+                        name = str(item.get("name") or "")
+                        call_id = str(item.get("call_id") or item_id)
+                        if item_id and name:
+                            pending_tool_calls[item_id] = {
+                                "id": call_id,
+                                "name": name,
+                                "arguments": str(item.get("arguments") or ""),
+                            }
+                            yield {
+                                "kind": "tool_call_start",
+                                "id": call_id,
+                                "name": name,
+                            }
+                elif event_type == "response.function_call_arguments.delta":
+                    item_id = str(event.get("item_id") or "")
+                    delta = str(event.get("delta") or "")
+                    if item_id in pending_tool_calls and delta:
+                        pending_tool_calls[item_id]["arguments"] += delta
+                elif event_type == "response.function_call_arguments.done":
+                    # Final aggregate — overrides accumulated args if provided
+                    item_id = str(event.get("item_id") or "")
+                    final_args = str(event.get("arguments") or "")
+                    if item_id in pending_tool_calls and final_args:
+                        pending_tool_calls[item_id]["arguments"] = final_args
+                elif event_type == "response.output_item.done":
+                    item = event.get("item") or {}
+                    if isinstance(item, dict) and str(item.get("type") or "") == "function_call":
+                        item_id = str(item.get("id") or item.get("call_id") or "")
+                        if item_id in pending_tool_calls:
+                            tc = pending_tool_calls.pop(item_id)
+                            # Some servers include the final arguments here too
+                            final_args = str(item.get("arguments") or "") or tc["arguments"]
+                            yield {
+                                "kind": "tool_call",
+                                "id": tc["id"],
+                                "name": tc["name"],
+                                "arguments": final_args,
+                            }
                 elif event_type == "response.completed":
                     response_obj = event.get("response") or event.get("result") or {}
                     usage = response_obj.get("usage") or {}

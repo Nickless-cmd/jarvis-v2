@@ -27,6 +27,7 @@ import { AgentsPanel } from './AgentsPanel'
 import { ToolInventoryModal } from './ToolInventoryModal'
 import { VoiceButton } from './VoiceButton'
 import { TerminalDrawer } from './native/TerminalDrawer'
+import { DiffReviewPanel } from './native/DiffReviewPanel'
 
 // Cap how many messages we render at once. The active prod session has
 // 1674 messages — rendering all of them blows up every keystroke because
@@ -135,6 +136,7 @@ export function ChatView({
   useEffect(() => {
     localStorage.setItem('jarvisx:terminal-open', terminalOpen ? '1' : '0')
   }, [terminalOpen])
+  const [showDiffReview, setShowDiffReview] = useState(false)
   const [planMode, setPlanMode] = useState(false)
   const [draft, setDraft] = useState('')
   const [queuedMessage, setQueuedMessage] = useState<{
@@ -422,6 +424,7 @@ export function ChatView({
       <StagedEditsStrip
         apiBaseUrl={apiBaseUrl}
         sessionId={(shell.activeSessionId ?? null) as string | null}
+        onReview={() => setShowDiffReview(true)}
       />
       <PinnedStrip />
       {planMode && (
@@ -438,7 +441,17 @@ export function ChatView({
 
       {/* Chat surface + optional right-side file tree panel */}
       <div className="flex h-full min-h-0 flex-1 overflow-hidden">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+          {/* Diff review overlay — absolute fills this column when open
+              so chat list + composer get fully replaced by the review
+              experience (focused activity), but sidebar + toolbar stay
+              visible so context isn't lost. */}
+          <DiffReviewPanel
+            open={showDiffReview}
+            onClose={() => setShowDiffReview(false)}
+            apiBaseUrl={apiBaseUrl}
+            sessionId={(shell.activeSessionId ?? null) as string | null}
+          />
           {/* Per-session header: title + rename/delete */}
           {shell.activeSession && (
             <ChatHeader

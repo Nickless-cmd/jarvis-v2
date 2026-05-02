@@ -17,6 +17,7 @@ import { CouncilTab } from '../components/mission-control/CouncilTab'
 import { RelationshipTab } from '../components/mission-control/RelationshipTab'
 import { ProprioceptionTab } from '../components/mission-control/ProprioceptionTab'
 import { ThreadsTab } from '../components/mission-control/ThreadsTab'
+import { CheapBalancerTab } from '../components/mission-control/CheapBalancerTab'
 import { formatFreshness, mcUpdateModeLabel } from '../components/mission-control/meta'
 import { useMissionControlPhaseA } from './useMissionControlPhaseA'
 import { AmbientPresence } from '../components/AmbientPresence'
@@ -240,6 +241,7 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
           {activeTab === 'relationship' ? <RelationshipTab /> : null}
           {activeTab === 'proprioception' ? <ProprioceptionTab /> : null}
 {activeTab === 'threads' ? <ThreadsTab /> : null}
+          {activeTab === 'balancer' ? <CheapBalancerTab /> : null}
         </div>
 
       <DetailDrawer

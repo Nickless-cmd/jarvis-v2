@@ -1,4 +1,4 @@
-import { Activity, Eye, Bot, Brain, Database, Package, Lock, FlaskConical, Heart, Crown, Anchor, Network, ShieldCheck } from 'lucide-react'
+import { Activity, Eye, Bot, Brain, Database, Package, Lock, FlaskConical, Heart, Crown, Anchor, Network, ShieldCheck, Zap } from 'lucide-react'
 import { s, T } from '../../shared/theme/tokens'
 
 const ALL_TABS = [
@@ -13,6 +13,7 @@ const ALL_TABS = [
   { id: 'relationship', label: 'Relationship', icon: Heart },
   { id: 'reflection', label: 'Reflection', icon: Eye },
   { id: 'skills', label: 'Skills', icon: Package },
+  { id: 'balancer', label: 'Balancer', icon: Zap },
   { id: 'hardening', label: 'Hardening', icon: Lock },
   { id: 'lab', label: 'Lab', icon: FlaskConical },
 ]

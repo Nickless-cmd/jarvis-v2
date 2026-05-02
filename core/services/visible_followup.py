@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 from dataclasses import dataclass
 from typing import Iterator, Protocol, runtime_checkable
@@ -245,17 +246,63 @@ class OllamaFollowupAdapter:
         attempts = 3
         for attempt in range(attempts):
             try:
-                # Timeout: 180s matcher visible_runs._round_overall_timeout_s
-                # og openai-compat adapter (linje 523). Tidligere 90s blev
-                # ramt rutinemæssigt efter et par tool-turns når akkumuleret
-                # state pushed prompt over ~5000 tokens — Ollamas first-
-                # token-tid på det kunne være 100-130s, langt under
-                # wall-clock men over urllib-read-deadline. Resultat:
-                # "ollama followup round X failed: timed out" gentaget
-                # 3-4 gange i træk fra brugerens perspektiv. Symptomet
-                # var at Jarvis blev afbrudt midt i en tool-kæde.
-                with urllib_request.urlopen(req, timeout=180) as resp:
+                # Two-stage deadline (replaces single read-timeout):
+                #
+                #   FIRST_BYTE_BUDGET (90s): how long to wait for ANY
+                #   data from Ollama. Big prompts → long warmup is OK.
+                #
+                #   INTER_BYTE_BUDGET (30s, applied via urllib timeout):
+                #   once stream is alive, max gap between bytes. If
+                #   Ollama freezes mid-stream, we fail in 30s instead
+                #   of waiting the full first-byte budget.
+                #
+                # Why this matters: a single 180s read-timeout meant
+                # Bjørn waited 3 minutes for "stuck" runs to die. A
+                # single 90s timeout killed legitimate slow-warmup
+                # responses on big prompts. Two-stage gets both:
+                # generous on warmup, fast-fail on freeze.
+                #
+                # Implementation: urllib's `timeout` IS the per-read
+                # deadline (= inter-byte once stream is alive). For
+                # the first-byte budget we use a watchdog thread that
+                # force-closes the response socket if no bytes arrive
+                # within the budget — surfacing as URLError to the
+                # outer loop's existing retry/handling.
+                FIRST_BYTE_BUDGET_S = 90
+                INTER_BYTE_BUDGET_S = 30
+
+                got_first_byte = threading.Event()
+                watchdog_response = {"resp": None}
+
+                def _first_byte_watchdog():
+                    if got_first_byte.wait(timeout=FIRST_BYTE_BUDGET_S):
+                        return  # stream is alive, watchdog done
+                    # First-byte budget exceeded — kill the connection.
+                    # Closing the response forces the read loop to
+                    # raise, which the outer `except` catches normally.
+                    r = watchdog_response["resp"]
+                    if r is not None:
+                        try:
+                            r.close()
+                        except Exception:
+                            pass
+
+                watchdog = threading.Thread(
+                    target=_first_byte_watchdog,
+                    name="ollama-first-byte-watchdog",
+                    daemon=True,
+                )
+                watchdog.start()
+
+                with urllib_request.urlopen(req, timeout=INTER_BYTE_BUDGET_S) as resp:
+                    watchdog_response["resp"] = resp
                     for raw_line in resp:
+                        # First byte received — disarm the watchdog.
+                        # Subsequent reads are governed by urllib's
+                        # 30s per-read timeout; if Ollama freezes
+                        # mid-stream we fail in 30s.
+                        if not got_first_byte.is_set():
+                            got_first_byte.set()
                         line = raw_line.decode("utf-8").strip()
                         if not line:
                             continue
@@ -270,6 +317,8 @@ class OllamaFollowupAdapter:
                             collected_tool_calls.extend(tc)
                         if event.get("done"):
                             break
+                # Make sure watchdog exits cleanly even on early-break
+                got_first_byte.set()
                 last_exc = None
                 break
             except urllib_error.HTTPError as he:

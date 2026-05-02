@@ -113,7 +113,9 @@ class GridBot:
                 asset_balance = 0.0
 
         total_value = round(usdt_balance + (asset_balance * price), 2)
-        starting_value = self.state.starting_value_usdt or total_value
+        if self.state.starting_value_usdt == 0:
+            self.state.starting_value_usdt = total_value
+        starting_value = self.state.starting_value_usdt
 
         # Drawdown
         if starting_value > 0:

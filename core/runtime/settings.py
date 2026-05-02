@@ -80,6 +80,25 @@ class RuntimeSettings:
     context_run_compact_threshold_tokens: int = 240_000
     context_keep_recent: int = 20
     context_keep_recent_pairs: int = 4
+    # Jarvis Brain — kurateret vidensjournal (sektion 8.3 i spec).
+    # When False, recall paths no-op and remember_this rejects with
+    # "feature disabled". On-disk entries are preserved.
+    jarvis_brain_enabled: bool = True
+    # Token budget for always-on summary section in prompt_contract.
+    jarvis_brain_summary_token_budget: int = 350
+    # Number of fakta auto-injected per turn.
+    jarvis_brain_auto_inject_top_k: int = 3
+    # Combined cosine+salience threshold below which auto-inject skips.
+    jarvis_brain_auto_inject_threshold: float = 0.55
+    # remember_this rate caps (per-turn / per-day).
+    jarvis_brain_remember_per_turn_cap: int = 5
+    jarvis_brain_remember_per_day_cap: int = 20
+    # Auto-archive: effective_salience < threshold for >= days → archived.
+    jarvis_brain_auto_archive_salience_threshold: float = 0.05
+    jarvis_brain_auto_archive_days: int = 90
+    # Theme consolidation (phase 3) on/off. Auto-pauses after 3 consecutive
+    # rejections regardless of this flag (separate state file).
+    jarvis_brain_theme_consolidation_enabled: bool = True
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -109,6 +128,15 @@ class RuntimeSettings:
             "context_run_compact_threshold_tokens": self.context_run_compact_threshold_tokens,
             "context_keep_recent": self.context_keep_recent,
             "context_keep_recent_pairs": self.context_keep_recent_pairs,
+            "jarvis_brain_enabled": self.jarvis_brain_enabled,
+            "jarvis_brain_summary_token_budget": self.jarvis_brain_summary_token_budget,
+            "jarvis_brain_auto_inject_top_k": self.jarvis_brain_auto_inject_top_k,
+            "jarvis_brain_auto_inject_threshold": self.jarvis_brain_auto_inject_threshold,
+            "jarvis_brain_remember_per_turn_cap": self.jarvis_brain_remember_per_turn_cap,
+            "jarvis_brain_remember_per_day_cap": self.jarvis_brain_remember_per_day_cap,
+            "jarvis_brain_auto_archive_salience_threshold": self.jarvis_brain_auto_archive_salience_threshold,
+            "jarvis_brain_auto_archive_days": self.jarvis_brain_auto_archive_days,
+            "jarvis_brain_theme_consolidation_enabled": self.jarvis_brain_theme_consolidation_enabled,
         }
         return {**self.extra, **typed}
 
@@ -232,6 +260,15 @@ def load_settings() -> RuntimeSettings:
         context_run_compact_threshold_tokens=int(data.get("context_run_compact_threshold_tokens", defaults.context_run_compact_threshold_tokens)),
         context_keep_recent=int(data.get("context_keep_recent", defaults.context_keep_recent)),
         context_keep_recent_pairs=int(data.get("context_keep_recent_pairs", defaults.context_keep_recent_pairs)),
+        jarvis_brain_enabled=bool(data.get("jarvis_brain_enabled", defaults.jarvis_brain_enabled)),
+        jarvis_brain_summary_token_budget=int(data.get("jarvis_brain_summary_token_budget", defaults.jarvis_brain_summary_token_budget)),
+        jarvis_brain_auto_inject_top_k=int(data.get("jarvis_brain_auto_inject_top_k", defaults.jarvis_brain_auto_inject_top_k)),
+        jarvis_brain_auto_inject_threshold=float(data.get("jarvis_brain_auto_inject_threshold", defaults.jarvis_brain_auto_inject_threshold)),
+        jarvis_brain_remember_per_turn_cap=int(data.get("jarvis_brain_remember_per_turn_cap", defaults.jarvis_brain_remember_per_turn_cap)),
+        jarvis_brain_remember_per_day_cap=int(data.get("jarvis_brain_remember_per_day_cap", defaults.jarvis_brain_remember_per_day_cap)),
+        jarvis_brain_auto_archive_salience_threshold=float(data.get("jarvis_brain_auto_archive_salience_threshold", defaults.jarvis_brain_auto_archive_salience_threshold)),
+        jarvis_brain_auto_archive_days=int(data.get("jarvis_brain_auto_archive_days", defaults.jarvis_brain_auto_archive_days)),
+        jarvis_brain_theme_consolidation_enabled=bool(data.get("jarvis_brain_theme_consolidation_enabled", defaults.jarvis_brain_theme_consolidation_enabled)),
         extra={key: value for key, value in data.items() if key not in KNOWN_FIELDS},
     )
 

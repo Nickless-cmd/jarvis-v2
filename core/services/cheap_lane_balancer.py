@@ -511,7 +511,9 @@ def call_balanced(
             _append_recent_call(slot.slot_id, daemon_name, "error", latency_ms,
                                 error=type(exc).__name__)
 
-    _save_state_debounced(states)
+    # Pool-exhaustion is rare + important enough to persist immediately
+    # (skip debounce so breaker state survives restart of caller / runtime).
+    _save_state(states)
     try:
         from core.eventbus.events import emit  # type: ignore
         emit("cheap_balancer.pool_exhausted", {

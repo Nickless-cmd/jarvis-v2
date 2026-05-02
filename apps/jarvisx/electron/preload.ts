@@ -20,7 +20,7 @@ contextBridge.exposeInMainWorld('jarvisx', {
       ipcRenderer.removeListener('backend-status', listener)
     }
   },
-  // Auto-updater
+  // Auto-updater (electron-updater — release-based, dormant for now)
   updaterCheck: () => ipcRenderer.invoke('jarvisx:updater-check'),
   updaterDownload: () => ipcRenderer.invoke('jarvisx:updater-download'),
   updaterInstall: () => ipcRenderer.invoke('jarvisx:updater-install'),
@@ -30,6 +30,17 @@ contextBridge.exposeInMainWorld('jarvisx', {
     ipcRenderer.on('updater-status', listener)
     return () => {
       ipcRenderer.removeListener('updater-status', listener)
+    }
+  },
+  // Git-based updater (run-from-source — what Bjørn actually uses)
+  gitUpdateCheck: () => ipcRenderer.invoke('jarvisx:git-update-check'),
+  gitUpdateStatus: () => ipcRenderer.invoke('jarvisx:git-update-status'),
+  gitUpdatePullAndRebuild: () => ipcRenderer.invoke('jarvisx:git-update-pull-and-rebuild'),
+  onGitUpdateStatus: (cb: (status: unknown) => void) => {
+    const listener = (_evt: unknown, status: unknown) => cb(status)
+    ipcRenderer.on('git-update-status', listener)
+    return () => {
+      ipcRenderer.removeListener('git-update-status', listener)
     }
   },
 })

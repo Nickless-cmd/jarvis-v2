@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=JarvisX
+GenericName=Jarvis Desktop
+Comment=Personal AI runtime — Bjørn's Jarvis V2 in a native shell
+Exec=__JARVISX_LAUNCH__
+Icon=__JARVISX_ICON__
+Terminal=false
+Categories=Office;Utility;Development;
+StartupWMClass=JarvisX
+Keywords=jarvis;ai;assistant;chat;

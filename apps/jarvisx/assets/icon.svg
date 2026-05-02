@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    JarvisX app icon. Matches the brand-block in the sidebar:
+    a rounded square with the accent → accent2 gradient and a
+    monogram "J". Designed to read at 32px so it survives the
+    Linux taskbar without becoming a blob.
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#28b1a3"/>
+      <stop offset="100%" stop-color="#68a3ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
+      <feOffset dx="0" dy="6" result="shadow"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="32" y="32" width="448" height="448" rx="96" ry="96" fill="url(#bg)"/>
+  <g filter="url(#shadow)">
+    <text
+      x="256" y="320"
+      text-anchor="middle"
+      font-family="-apple-system, 'SF Pro Display', 'Inter', system-ui, sans-serif"
+      font-size="280"
+      font-weight="700"
+      fill="#0d1117"
+      letter-spacing="-12">J</text>
+  </g>
+</svg>

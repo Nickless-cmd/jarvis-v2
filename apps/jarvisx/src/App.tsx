@@ -13,6 +13,7 @@ import { SettingsView } from './components/SettingsView'
 import { KeyboardShortcutsOverlay } from './components/KeyboardShortcutsOverlay'
 import { OnboardingModal } from './components/OnboardingModal'
 import { UpdateBanner } from './components/UpdateBanner'
+import { GitUpdateBanner } from './components/GitUpdateBanner'
 import { cachedFetch } from './lib/apiCache'
 import { matchShortcut, isTypingTarget } from './lib/shortcuts'
 
@@ -165,6 +166,7 @@ export default function App() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <UpdateBanner />
+      <GitUpdateBanner />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {!sidebarHidden && (
           <Sidebar

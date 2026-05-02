@@ -151,16 +151,28 @@ def _daemon_llm_call_impl(
 
             result = execute_public_safe_cheap_lane(message=prompt)
         else:
-            from core.services.non_visible_lane_execution import (
-                execute_cheap_lane,
-            )
+            # Cheap-lane balancer: spread daemon traffic across all
+            # eligible (provider, model) slots via weighted random.
+            # Falls back to task_kind="background" if disabled.
+            from core.runtime.settings import load_settings as _ls
 
-            # Daemons are inner-layer noise — relevance scoring, mood
-            # introspection, dream distillation, etc. They run on every
-            # heartbeat tick. Send them through the public-proxy tier so
-            # they don't drain Groq/NVIDIA/Gemini quotas that the visible
-            # lane and council deliberation actually need.
-            result = execute_cheap_lane(message=prompt, task_kind="background")
+            if getattr(_ls(), "daemon_balancer_enabled", True):
+                from core.services.cheap_lane_balancer import call_balanced
+
+                result = call_balanced(prompt=prompt, daemon_name=daemon_name)
+            else:
+                from core.services.non_visible_lane_execution import (
+                    execute_cheap_lane,
+                )
+
+                # Daemons are inner-layer noise — relevance scoring, mood
+                # introspection, dream distillation, etc. They run on every
+                # heartbeat tick. Send them through the public-proxy tier
+                # so they don't drain Groq/NVIDIA/Gemini quotas that the
+                # visible lane and council deliberation actually need.
+                result = execute_cheap_lane(
+                    message=prompt, task_kind="background",
+                )
         text = str(result.get("text") or "").strip()
         provider = str(
             result.get("provider") or ("public-safe" if public_safe else "cheap")

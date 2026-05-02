@@ -532,6 +532,25 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Jarvis Brain — always-on summary af hans egen vidensjournal.
+    # Priority 6 = lige efter identity. Repræsenterer "hvad jeg ved nu",
+    # er på identitets-tier (persistent selvviden, ikke situational kontekst).
+    # Silent skip hvis fil mangler/tom eller feature er disabled.
+    try:
+        from core.runtime.settings import load_settings as _ls_brain
+        _bs = _ls_brain()
+        if getattr(_bs, "jarvis_brain_enabled", True):
+            from core.services.prompt_sections.jarvis_brain import (
+                build_jarvis_brain_section,
+            )
+            _brain_text = build_jarvis_brain_section(
+                token_budget=getattr(_bs, "jarvis_brain_summary_token_budget", 350),
+            )
+            if _brain_text:
+                _awareness_add(6, "jarvis brain summary", _brain_text)
+    except Exception:
+        pass
+
     # Output style hint — comes from JarvisX preferences. Concise =
     # short, dense replies; detailed = longer explanations; technical =
     # more code/structure, less prose.

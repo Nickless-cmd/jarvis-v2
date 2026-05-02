@@ -123,10 +123,17 @@ def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat()
 
 
-def _parse_iso(s: Optional[str]) -> Optional[datetime]:
+def _parse_iso(s) -> Optional[datetime]:
+    """Parse ISO timestamp from string or pass-through if already datetime.
+
+    PyYAML parses ISO timestamps directly as datetime objects, so we accept
+    either form for round-trip robustness.
+    """
     if s is None:
         return None
-    return datetime.fromisoformat(s)
+    if isinstance(s, datetime):
+        return s if s.tzinfo else s.replace(tzinfo=timezone.utc)
+    return datetime.fromisoformat(str(s))
 
 
 def render_entry_markdown(entry: BrainEntry) -> str:
@@ -553,3 +560,147 @@ def bump_salience(entry_id: str, now: datetime | None = None) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle: archive, supersede, rebuild_index
+# ---------------------------------------------------------------------------
+
+
+def archive_entry(
+    entry_id: str, *, reason: str = "manual", now: datetime | None = None,
+) -> None:
+    """Mark entry as archived and move file to _archive/<kind>/."""
+    now = now or datetime.now(timezone.utc)
+    entry = read_entry(entry_id)
+    entry.status = "archived"
+    entry.updated_at = now
+
+    old_path = _workspace_root() / _index_path_for(entry_id)
+    new_dir = brain_dir() / "_archive" / entry.kind
+    new_path = new_dir / old_path.name
+    md = render_entry_markdown(entry)
+    _atomic_write(new_path, md)
+    if old_path.exists():
+        old_path.unlink()
+
+    rel = str(new_path.relative_to(_workspace_root()))
+    fhash = _file_hash(md)
+    conn = connect_index()
+    try:
+        conn.execute(
+            "UPDATE brain_index SET status='archived', path=?, file_hash=?, "
+            "updated_at=?, indexed_at=? WHERE id=?",
+            (rel, fhash, _iso(now), _iso(now), entry_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def supersede(
+    *, old_ids: list[str], new_id: str, now: datetime | None = None,
+) -> None:
+    """Mark old entries as superseded by new_id (keeps files in place)."""
+    now = now or datetime.now(timezone.utc)
+    for old_id in old_ids:
+        e = read_entry(old_id)
+        e.status = "superseded"
+        e.superseded_by = new_id
+        e.updated_at = now
+        md = render_entry_markdown(e)
+        path = _workspace_root() / _index_path_for(old_id)
+        _atomic_write(path, md)
+        fhash = _file_hash(md)
+        conn = connect_index()
+        try:
+            conn.execute(
+                "UPDATE brain_index SET status='superseded', superseded_by=?, "
+                "file_hash=?, updated_at=?, indexed_at=? WHERE id=?",
+                (new_id, fhash, _iso(now), _iso(now), old_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def rebuild_index_from_files() -> int:
+    """Scan brain_dir() for .md files; new/changed hash → update index.
+
+    Returnerer antal rækker der blev tilføjet eller opdateret denne kørsel.
+    Idempotent — anden kørsel uden ændringer returnerer 0.
+    """
+    root = brain_dir()
+    if not root.exists():
+        return 0
+    changes = 0
+    now = datetime.now(timezone.utc)
+    conn = connect_index()
+    try:
+        for kind_dir in root.iterdir():
+            if not kind_dir.is_dir() or kind_dir.name.startswith("_"):
+                continue
+            kind = kind_dir.name
+            if kind not in _VALID_KINDS:
+                continue
+            for md_path in kind_dir.glob("*.md"):
+                try:
+                    fm, _body = parse_frontmatter(md_path)
+                except Exception:
+                    continue
+                text = md_path.read_text(encoding="utf-8")
+                fhash = _file_hash(text)
+                row = conn.execute(
+                    "SELECT file_hash FROM brain_index WHERE id = ?",
+                    (fm["id"],),
+                ).fetchone()
+                rel = str(md_path.relative_to(_workspace_root()))
+                if row is None:
+                    conn.execute(
+                        """INSERT INTO brain_index
+                           (id, path, kind, visibility, domain, title,
+                            created_at, updated_at, last_used_at,
+                            salience_base, salience_bumps, status,
+                            superseded_by, file_hash, embedding,
+                            embedding_dim, indexed_at)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?)""",
+                        (
+                            fm["id"], rel, kind, fm["visibility"], fm["domain"],
+                            fm["title"], fm["created_at"],
+                            fm.get("updated_at", fm["created_at"]),
+                            fm.get("last_used_at"),
+                            fm.get("salience_base", 1.0),
+                            fm.get("salience_bumps", 0),
+                            fm.get("status", "active"),
+                            fm.get("superseded_by"),
+                            fhash,
+                            _iso(now),
+                        ),
+                    )
+                    changes += 1
+                elif row[0] != fhash:
+                    conn.execute(
+                        """UPDATE brain_index
+                           SET path=?, kind=?, visibility=?, domain=?, title=?,
+                               updated_at=?, last_used_at=?, salience_base=?,
+                               salience_bumps=?, status=?, superseded_by=?,
+                               file_hash=?, embedding=NULL, embedding_dim=NULL,
+                               indexed_at=?
+                           WHERE id=?""",
+                        (
+                            rel, kind, fm["visibility"], fm["domain"], fm["title"],
+                            fm.get("updated_at"), fm.get("last_used_at"),
+                            fm.get("salience_base", 1.0),
+                            fm.get("salience_bumps", 0),
+                            fm.get("status", "active"),
+                            fm.get("superseded_by"),
+                            fhash,
+                            _iso(now),
+                            fm["id"],
+                        ),
+                    )
+                    changes += 1
+        conn.commit()
+    finally:
+        conn.close()
+    return changes

@@ -563,3 +563,54 @@ def test_refresh_pool_returns_current_slot_count(monkeypatch):
     res = clb.refresh_pool()
     assert res["status"] == "ok"
     assert res["pool_size"] == 7
+
+
+# --- Task 8: Snapshot for Mission Control ---
+
+
+def test_snapshot_returns_pool_metadata(monkeypatch, tmp_path):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    monkeypatch.setattr(
+        clb, "build_slot_pool",
+        lambda: [
+            _slot(provider="groq", model="m1", rpm=30, daily=10000),
+            _slot(provider="ollamafreeapi", model="x", proxy=True),
+        ],
+    )
+    snap = clb.balancer_snapshot()
+    assert snap["pool_size"] == 2
+    assert "eligible_now" in snap
+    assert "saved_at" in snap
+    assert isinstance(snap["slots"], list)
+    assert len(snap["slots"]) == 2
+    slot_ids = {s["slot_id"] for s in snap["slots"]}
+    assert "groq::m1" in slot_ids
+    assert "ollamafreeapi::x" in slot_ids
+
+
+def test_snapshot_marks_blocked_slots(monkeypatch, tmp_path):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    monkeypatch.setattr(
+        clb, "build_slot_pool",
+        lambda: [_slot(provider="groq", model="m")],
+    )
+    state = clb.SlotState(slot_id="groq::m", cooldown_until=_time.time() + 600)
+    clb._save_state({"groq::m": state})
+    snap = clb.balancer_snapshot()
+    assert snap["blocked_now"] == 1
+    assert snap["eligible_now"] == 0
+
+
+def test_snapshot_includes_recent_calls(monkeypatch, tmp_path):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    monkeypatch.setattr(clb, "build_slot_pool", lambda: [])
+    clb._RECENT_CALLS.clear()
+    clb._append_recent_call("groq::m", "curiosity", "ok", 412)
+    clb._append_recent_call("groq::m", "thought_stream", "ok", 156)
+    snap = clb.balancer_snapshot()
+    assert len(snap["recent_calls"]) == 2
+    # Newest first
+    assert snap["recent_calls"][0]["daemon"] == "thought_stream"

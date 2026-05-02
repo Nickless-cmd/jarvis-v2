@@ -585,3 +585,82 @@ def refresh_pool() -> dict:
     """Re-build the slot pool from provider_router.json. Returns current size."""
     pool = build_slot_pool()
     return {"status": "ok", "pool_size": len(pool)}
+
+
+# ---------------------------------------------------------------------------
+# Snapshot for Mission Control telemetry
+# ---------------------------------------------------------------------------
+
+
+def _is_enabled() -> bool:
+    """Check RuntimeSettings.daemon_balancer_enabled. Default True."""
+    try:
+        from core.runtime.settings import load_settings
+        return bool(getattr(load_settings(), "daemon_balancer_enabled", True))
+    except Exception:
+        return True
+
+
+def balancer_snapshot() -> dict:
+    """Return full state surface for Mission Control telemetry."""
+    states = _load_state()
+    pool = build_slot_pool()
+    now = _time.time()
+
+    eligible = 0
+    blocked = 0
+    slot_payloads: list[dict] = []
+    for slot in pool:
+        state = _ensure_state(states, slot.slot_id)
+        weight = _compute_weight(slot, state, now)
+        if weight > 0:
+            eligible += 1
+        else:
+            blocked += 1
+
+        headroom_pct = 100.0
+        if slot.daily_limit and state.daily_window_start == _today_iso(now):
+            headroom_pct = max(0.0, 100.0 * (1.0 - state.daily_use_count / slot.daily_limit))
+
+        slot_payloads.append({
+            "slot_id": slot.slot_id,
+            "provider": slot.provider,
+            "model": slot.model,
+            "is_public_proxy": slot.is_public_proxy,
+            "rpm_limit": slot.rpm_limit,
+            "daily_limit": slot.daily_limit,
+            "rpm_used_now": _count_recent_calls(state.recent_call_timestamps, now, 60),
+            "daily_used_today": state.daily_use_count,
+            "headroom_pct": round(headroom_pct, 2),
+            "current_weight": round(weight, 4),
+            "cooldown_until": (
+                datetime.fromtimestamp(state.cooldown_until, tz=timezone.utc).isoformat()
+                if state.cooldown_until else None
+            ),
+            "cooldown_reason": state.cooldown_reason,
+            "breaker_level": state.breaker_level,
+            "consecutive_failures": state.consecutive_failures,
+            "manually_disabled": state.manually_disabled,
+            "total_calls": state.total_calls,
+            "total_failures": state.total_failures,
+            "success_rate": (
+                (state.total_calls - state.total_failures) / state.total_calls
+                if state.total_calls > 0 else None
+            ),
+            "last_success_at": (
+                datetime.fromtimestamp(state.last_success_at, tz=timezone.utc).isoformat()
+                if state.last_success_at else None
+            ),
+        })
+
+    slot_payloads.sort(key=lambda s: s["current_weight"] or 0, reverse=True)
+
+    return {
+        "enabled": _is_enabled(),
+        "pool_size": len(pool),
+        "eligible_now": eligible,
+        "blocked_now": blocked,
+        "saved_at": datetime.now(timezone.utc).isoformat(),
+        "slots": slot_payloads,
+        "recent_calls": recent_calls(),
+    }

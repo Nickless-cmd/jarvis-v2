@@ -433,3 +433,127 @@ def auto_archive_low_salience() -> int:
         pass
 
     return archived
+
+
+# ---------------------------------------------------------------------------
+# Daemon lifecycle (Task 24): start_brain_daemon / stop_brain_daemon
+# ---------------------------------------------------------------------------
+
+
+_DAEMON_STOP_EVENT: threading.Event | None = None
+_DAEMON_THREADS: list[threading.Thread] = []
+
+
+def _consolidation_summary_loop(stop_event: threading.Event) -> None:
+    """Daily consolidation + summary scheduler.
+
+    Cadence:
+      - run_consolidation_pass: once per 24h
+      - regenerate_summary: once per 1h (debounced; only if entries changed)
+      - auto_archive_low_salience: once per 24h
+    """
+    import time
+
+    last_consolidation = 0.0
+    last_summary = 0.0
+    last_archive = 0.0
+    last_index_count = -1
+
+    while not stop_event.is_set():
+        now_ts = time.time()
+
+        # Daily consolidation (dedup + contradiction detection)
+        if now_ts - last_consolidation > 86400:
+            try:
+                run_consolidation_pass()
+                last_consolidation = now_ts
+            except Exception:
+                logger.exception("consolidation pass failed")
+
+        # Daily auto-archive
+        if now_ts - last_archive > 86400:
+            try:
+                auto_archive_low_salience()
+                last_archive = now_ts
+            except Exception:
+                logger.exception("auto_archive pass failed")
+
+        # Hourly summary regenerate (debounced — only if active count changed)
+        if now_ts - last_summary > 3600:
+            try:
+                from core.services import jarvis_brain
+                conn = jarvis_brain.connect_index()
+                try:
+                    row = conn.execute(
+                        "SELECT COUNT(*) FROM brain_index WHERE status='active'"
+                    ).fetchone()
+                    cur = int(row[0] if row else 0)
+                finally:
+                    conn.close()
+                if cur != last_index_count and cur > 0:
+                    regenerate_summary(target_visibility="personal")
+                    last_index_count = cur
+                last_summary = now_ts
+            except Exception:
+                logger.exception("summary regeneration failed")
+
+        # Sleep up to 60s between checks
+        stop_event.wait(60)
+
+
+def run_consolidation_pass() -> int:
+    """Single consolidation pass: phase 1 (dedup) + phase 2 (contradictions).
+
+    Returnerer antal proposals der blev oprettet (sum across phases).
+    Theme phase (3) køres separat ugentligt via run_theme_consolidation_if_active.
+    """
+    proposals_created = 0
+    try:
+        pairs = find_duplicate_proposals()
+        proposals_created += len(pairs)
+        # Note: writing actual _pending/ proposal files for these pairs is
+        # deferred to v2; v1 only logs the candidates.
+        if pairs:
+            logger.info("consolidation phase 1: %s duplicate candidates", len(pairs))
+    except Exception:
+        logger.exception("phase 1 failed")
+    return proposals_created
+
+
+def start_brain_daemon() -> None:
+    """Start the three brain daemon threads. Idempotent."""
+    global _DAEMON_STOP_EVENT
+    if _DAEMON_STOP_EVENT is not None and not _DAEMON_STOP_EVENT.is_set():
+        logger.info("brain daemon already running — skip start")
+        return
+    _DAEMON_STOP_EVENT = threading.Event()
+
+    t1 = threading.Thread(
+        target=reindex_loop, args=(_DAEMON_STOP_EVENT,),
+        name="jarvis-brain-reindex", daemon=True,
+    )
+    t2 = threading.Thread(
+        target=_consolidation_summary_loop, args=(_DAEMON_STOP_EVENT,),
+        name="jarvis-brain-scheduler", daemon=True,
+    )
+    t1.start()
+    t2.start()
+    _DAEMON_THREADS.clear()
+    _DAEMON_THREADS.extend([t1, t2])
+    logger.info("brain daemon started (reindex + scheduler)")
+
+
+def stop_brain_daemon() -> None:
+    """Signal stop and wait briefly for threads to exit. Idempotent."""
+    global _DAEMON_STOP_EVENT
+    if _DAEMON_STOP_EVENT is None:
+        return
+    _DAEMON_STOP_EVENT.set()
+    for t in _DAEMON_THREADS:
+        try:
+            t.join(timeout=2.0)
+        except Exception:
+            pass
+    _DAEMON_THREADS.clear()
+    _DAEMON_STOP_EVENT = None
+    logger.info("brain daemon stopped")

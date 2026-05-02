@@ -342,3 +342,80 @@ def test_search_brain_filters_kind(populated_brain):
     )
     ids = [h.id for h in hits]
     assert populated_brain["c"] not in ids
+
+
+# --- Task 6: archive + supersede + rebuild_index ---
+
+
+def test_archive_entry_moves_file_and_updates_status(tmp_path, monkeypatch):
+    from core.services import jarvis_brain
+    monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path / "state")
+    eid = jarvis_brain.write_entry(
+        kind="observation", title="O", content="c",
+        visibility="personal", domain="d",
+    )
+    jarvis_brain.archive_entry(eid, reason="test")
+    e = jarvis_brain.read_entry(eid)
+    assert e.status == "archived"
+    # File is moved to _archive
+    expected = tmp_path / "ws" / "default" / "jarvis_brain" / "_archive" / "observation"
+    assert any(expected.glob("*.md"))
+
+
+def test_supersede_links_old_to_new(tmp_path, monkeypatch):
+    from core.services import jarvis_brain
+    monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path / "state")
+    old1 = jarvis_brain.write_entry(kind="fakta", title="Old1", content="x",
+                                     visibility="personal", domain="d")
+    old2 = jarvis_brain.write_entry(kind="fakta", title="Old2", content="y",
+                                     visibility="personal", domain="d")
+    new = jarvis_brain.write_entry(kind="fakta", title="Merged", content="z",
+                                    visibility="personal", domain="d",
+                                    trigger="adopted_proposal")
+    jarvis_brain.supersede(old_ids=[old1, old2], new_id=new)
+    e1 = jarvis_brain.read_entry(old1)
+    e2 = jarvis_brain.read_entry(old2)
+    assert e1.status == "superseded" and e1.superseded_by == new
+    assert e2.status == "superseded" and e2.superseded_by == new
+
+
+def test_rebuild_index_idempotent(tmp_path, monkeypatch):
+    from core.services import jarvis_brain
+    monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path / "state")
+    jarvis_brain.write_entry(kind="fakta", title="A", content="a",
+                              visibility="personal", domain="d")
+    jarvis_brain.write_entry(kind="fakta", title="B", content="b",
+                              visibility="personal", domain="d")
+    # First pass: 0 changes (write_entry already inserted)
+    n1 = jarvis_brain.rebuild_index_from_files()
+    assert n1 == 0
+    # Second pass: still 0
+    n2 = jarvis_brain.rebuild_index_from_files()
+    assert n2 == 0
+
+
+def test_rebuild_index_picks_up_manual_file(tmp_path, monkeypatch):
+    from core.services import jarvis_brain
+    monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path / "state")
+    fakta_dir = jarvis_brain.brain_dir() / "fakta"
+    fakta_dir.mkdir(parents=True, exist_ok=True)
+    eid = jarvis_brain.new_brain_id()
+    md = (
+        "---\n"
+        f"id: {eid}\n"
+        "kind: fakta\nvisibility: personal\ndomain: d\n"
+        "title: Manual\ncreated_at: 2026-05-02T10:00:00+00:00\n"
+        "updated_at: 2026-05-02T10:00:00+00:00\n"
+        "salience_base: 1.0\nsalience_bumps: 0\nstatus: active\n"
+        "trigger: spontaneous\n"
+        "---\n\nbody\n"
+    )
+    (fakta_dir / "manual.md").write_text(md, encoding="utf-8")
+    n = jarvis_brain.rebuild_index_from_files()
+    assert n == 1
+    e = jarvis_brain.read_entry(eid)
+    assert e.title == "Manual"

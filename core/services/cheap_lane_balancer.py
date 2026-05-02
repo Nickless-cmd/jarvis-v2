@@ -72,7 +72,8 @@ def _provider_router_path() -> Path:
 
 
 def _router_enabled_models() -> list[dict]:
-    """Return list of dicts {provider, model, enabled, ...} from provider_router.json.
+    """Return list of dicts {provider, model, enabled, auth_profile, lane}
+    from provider_router.json with auth_profile resolved from providers[].
 
     Returns empty list if file missing or malformed (best-effort).
     """
@@ -83,7 +84,21 @@ def _router_enabled_models() -> list[dict]:
         data = json.loads(p.read_text(encoding="utf-8"))
     except Exception:
         return []
-    return list(data.get("models") or [])
+    # Index providers[] by name for auth_profile lookup
+    provider_entries = {
+        str(item.get("provider") or "").strip(): item
+        for item in (data.get("providers") or [])
+        if bool(item.get("enabled", True))
+    }
+    out: list[dict] = []
+    for entry in data.get("models") or []:
+        provider = str(entry.get("provider") or "").strip()
+        # Inherit auth_profile from providers[] if missing on the model entry
+        if "auth_profile" not in entry or not entry.get("auth_profile"):
+            pe = provider_entries.get(provider, {})
+            entry = {**entry, "auth_profile": pe.get("auth_profile") or ""}
+        out.append(entry)
+    return out
 
 
 def _credentials_ready(provider: str, auth_profile: str) -> bool:
@@ -523,9 +538,15 @@ def build_slot_pool() -> list[BalancerSlot]:
     for entry in _router_enabled_models():
         if not entry.get("enabled"):
             continue
+        # Filter by lane: only "cheap" or unset (legacy) — skip "local",
+        # "coding", or other non-cheap lanes since those are reserved for
+        # other purposes (visible/coding lanes).
+        lane = str(entry.get("lane") or "").strip()
+        if lane and lane != "cheap":
+            continue
         provider = str(entry.get("provider") or "").strip()
         model = str(entry.get("model") or "").strip()
-        auth_profile = str(entry.get("auth_profile") or "default").strip()
+        auth_profile = str(entry.get("auth_profile") or "").strip()
         if not provider or not model:
             continue
         if provider in _EXCLUDED_PROVIDERS:

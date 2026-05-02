@@ -4922,16 +4922,41 @@ def _validate_heartbeat_decision(
                         "action_artifact": "",
                     }
                 from core.services.chat_sessions import get_chat_session
+                from core.identity.owner_resolver import is_owner_session
 
+                # Heartbeat pings are Bjørn's autonomous "I had a
+                # thought" messages. They must NEVER land in a
+                # member's DM (e.g. Mikkel's). Per-session DM
+                # isolation lives in is_owner_session() — we walk
+                # every active Discord session and only send into
+                # one that's verified owner-owned. The legacy
+                # title-only match ("Discord DM") was the leak vector
+                # because it didn't distinguish whose DM that title
+                # described — Mikkel's per-user DM session is also
+                # a "Discord DM" semantically.
                 sent_ch_id: int | None = None
                 with _discord_sessions_lock:
                     sessions_snapshot = dict(_discord_sessions)
                 for session_id, ch_id in sessions_snapshot.items():
                     s = get_chat_session(session_id)
-                    if s and s.get("title") == "Discord DM":
-                        send_discord_message(ch_id, msg)
-                        sent_ch_id = ch_id
-                        break
+                    if not s:
+                        continue
+                    title = str(s.get("title") or "")
+                    if not title.startswith("Discord DM"):
+                        continue
+                    if not is_owner_session(s):
+                        # Skip member sessions silently. Logging at
+                        # info level so we can grep for it if a
+                        # heartbeat ever goes "missing" from owner.
+                        logger.info(
+                            "heartbeat: skipping non-owner Discord session %s "
+                            "(title=%s) — refusing autonomous leak",
+                            session_id, title,
+                        )
+                        continue
+                    send_discord_message(ch_id, msg)
+                    sent_ch_id = ch_id
+                    break
                 if sent_ch_id is not None:
                     return {
                         "tick_id": tick_id,

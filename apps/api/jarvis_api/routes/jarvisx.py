@@ -1577,3 +1577,100 @@ def spawn_managed_process(payload: _SpawnPayload) -> dict[str, Any]:
     if out.get("status") == "error":
         raise HTTPException(status_code=400, detail=out.get("error") or "spawn failed")
     return out
+
+
+# ── Trading dashboard (read-only) ─────────────────────────────────
+# Read-only window into the grid bot's state. Jarvis writes the
+# state file from his trading code at his own pace; this endpoint
+# just exposes whatever's there to the JarvisX TradingView.
+#
+# Contract: ~/.jarvis-v2/state/trading_state.json
+#
+#   {
+#     "status": "inactive" | "active" | "paused" | "stopped" | "error",
+#     "mode": "paper" | "simulation" | "testnet" | "live",
+#     "symbol": "BTCUSDT",
+#     "config": {
+#       "grid_levels": int, "grid_spacing_pct": float,
+#       "order_size_usdt": float, "stop_loss_pct": float
+#     },
+#     "capital": {
+#       "usdt": float, "asset": float, "asset_symbol": "BTC",
+#       "total_value_usdt": float, "starting_value_usdt": float
+#     },
+#     "pnl": {
+#       "realized_today": float, "realized_total": float,
+#       "unrealized": float, "fees_today": float, "fees_total": float
+#     },
+#     "drawdown": {
+#       "current_pct": float, "max_pct_today": float, "cap_pct": float
+#     },
+#     "trades_today": int,
+#     "open_orders": [{"id", "side", "price", "quantity", "placed_at"}],
+#     "recent_trades": [{"type", "price", "qty", "profit_usdt?", "timestamp"}],
+#     "last_price": float,
+#     "last_updated": ISO timestamp,
+#     "last_error": str?  # set when status == 'error'
+#   }
+#
+# When the file doesn't exist or is unparsable, we return a synthetic
+# "inactive" record so the UI has something to render. No 500s.
+
+
+@router.get("/trading/state")
+def trading_state() -> dict[str, Any]:
+    """Read the current trading-bot state. Read-only.
+
+    Public read (no _require_owner) on the assumption that the running
+    bot's PnL is part of what JarvisX members may want to see — same
+    privacy posture as MoodPill / PresencePill. If you want this gated,
+    flip the call site.
+    """
+    import json as _json
+    from core.runtime.config import STATE_DIR
+    state_file = Path(STATE_DIR) / "trading_state.json"
+    if not state_file.is_file():
+        return _trading_inactive_default("no state file written yet")
+    try:
+        raw = state_file.read_text(encoding="utf-8")
+        data = _json.loads(raw)
+    except _json.JSONDecodeError as exc:
+        return _trading_inactive_default(f"state file malformed: {exc}")
+    except Exception as exc:
+        return _trading_inactive_default(f"state read failed: {exc}")
+    if not isinstance(data, dict):
+        return _trading_inactive_default("state file is not a dict")
+    # Don't validate the full schema — the bot's contract may evolve.
+    # The UI tolerates missing fields. Just stamp last_seen for the UI
+    # so it can show "data is N seconds old".
+    try:
+        mtime = state_file.stat().st_mtime
+        data["_state_file_mtime"] = mtime
+    except Exception:
+        pass
+    return data
+
+
+def _trading_inactive_default(reason: str) -> dict[str, Any]:
+    """Synthetic 'inactive' state so UI always has something to render."""
+    return {
+        "status": "inactive",
+        "mode": "paper",
+        "symbol": "",
+        "config": {},
+        "capital": {
+            "usdt": 0.0, "asset": 0.0, "asset_symbol": "",
+            "total_value_usdt": 0.0, "starting_value_usdt": 0.0,
+        },
+        "pnl": {
+            "realized_today": 0.0, "realized_total": 0.0,
+            "unrealized": 0.0, "fees_today": 0.0, "fees_total": 0.0,
+        },
+        "drawdown": {"current_pct": 0.0, "max_pct_today": 0.0, "cap_pct": 5.0},
+        "trades_today": 0,
+        "open_orders": [],
+        "recent_trades": [],
+        "last_price": 0.0,
+        "last_updated": None,
+        "_inactive_reason": reason,
+    }

@@ -58,3 +58,66 @@ def test_reindex_embeds_pending(isolated, monkeypatch):
     assert row[0] is not None
     assert row[1] == 3
     conn.close()
+
+
+# --- Task 12: duplicate detection (consolidation phase 1) ---
+
+
+def test_dedup_detects_high_similarity(isolated, monkeypatch):
+    import numpy as np
+    from core.services.jarvis_brain_daemon import find_duplicate_proposals
+
+    def fake(text):
+        if "alpha" in text.lower():
+            return np.array([1.0, 0.0, 0.0], dtype=np.float32)
+        if "beta" in text.lower():
+            return np.array([0.99, 0.05, 0.0], dtype=np.float32)  # cos~0.997
+        return np.array([0.0, 0.0, 1.0], dtype=np.float32)
+
+    monkeypatch.setattr(isolated, "_embed_text", fake)
+    a = isolated.write_entry(kind="fakta", title="Alpha", content="alpha details",
+                              visibility="personal", domain="d")
+    b = isolated.write_entry(kind="fakta", title="Beta", content="beta details",
+                              visibility="personal", domain="d")
+    isolated.embed_pending_entries()
+    pairs = find_duplicate_proposals(threshold=0.92)
+    assert len(pairs) == 1
+    assert {pairs[0][0], pairs[0][1]} == {a, b}
+
+
+def test_dedup_skips_low_similarity(isolated, monkeypatch):
+    import numpy as np
+    from core.services.jarvis_brain_daemon import find_duplicate_proposals
+
+    def fake(text):
+        if "alpha" in text.lower():
+            return np.array([1.0, 0.0, 0.0], dtype=np.float32)
+        return np.array([0.0, 1.0, 0.0], dtype=np.float32)
+
+    monkeypatch.setattr(isolated, "_embed_text", fake)
+    isolated.write_entry(kind="fakta", title="Alpha", content="alpha",
+                          visibility="personal", domain="d")
+    isolated.write_entry(kind="fakta", title="Beta", content="beta",
+                          visibility="personal", domain="d")
+    isolated.embed_pending_entries()
+    pairs = find_duplicate_proposals(threshold=0.92)
+    assert pairs == []
+
+
+def test_dedup_only_compares_within_target_kinds(isolated, monkeypatch):
+    """Indsigt + reference er for individuelle — kun fakta og observation som default."""
+    import numpy as np
+    from core.services.jarvis_brain_daemon import find_duplicate_proposals
+
+    def fake(text):
+        return np.array([1.0, 0.0, 0.0], dtype=np.float32)
+
+    monkeypatch.setattr(isolated, "_embed_text", fake)
+    # Two indsigter — should NOT be flagged as dupes by default
+    isolated.write_entry(kind="indsigt", title="A", content="a",
+                          visibility="personal", domain="d")
+    isolated.write_entry(kind="indsigt", title="B", content="b",
+                          visibility="personal", domain="d")
+    isolated.embed_pending_entries()
+    pairs = find_duplicate_proposals(threshold=0.5)
+    assert pairs == []

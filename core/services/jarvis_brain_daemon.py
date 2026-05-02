@@ -194,3 +194,98 @@ def _llm_contradiction_check(a, b) -> dict | None:
     if max_lvl == 0:
         return _call_ollamafreeapi(prompt)
     return _call_local_ollama(prompt)
+
+
+# ---------------------------------------------------------------------------
+# Consolidation Phase 3: theme consolidation + kill-switch (Task 14)
+# ---------------------------------------------------------------------------
+
+
+_THEME_REJECT_THRESHOLD = 3
+
+
+def _state_path():
+    """Override target in tests via monkeypatch."""
+    from core.services import jarvis_brain
+    from pathlib import Path
+    return Path(jarvis_brain._state_root()) / "brain_daemon_state.json"
+
+
+def _read_state() -> dict:
+    import json
+    p = _state_path()
+    if not p.exists():
+        return {"theme_rejection_streak": 0, "theme_paused": False}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {"theme_rejection_streak": 0, "theme_paused": False}
+
+
+def _write_state(state: dict) -> None:
+    import json
+    p = _state_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(state), encoding="utf-8")
+    tmp.replace(p)
+
+
+def record_proposal_rejection(phase: str, *, proposal_id: str) -> None:
+    """Track rejection. After 3 in a row for 'theme' phase, auto-pause."""
+    if phase != "theme":
+        return  # only theme phase has streak-tracking in v1
+    state = _read_state()
+    state["theme_rejection_streak"] = state.get("theme_rejection_streak", 0) + 1
+    if state["theme_rejection_streak"] >= _THEME_REJECT_THRESHOLD:
+        state["theme_paused"] = True
+        try:
+            from core.eventbus.events import emit  # type: ignore
+            emit(
+                "jarvis_brain.theme_consolidation_paused",
+                {
+                    "reason": f"{_THEME_REJECT_THRESHOLD} consecutive rejections",
+                    "last_rejected_id": proposal_id,
+                },
+            )
+        except Exception:
+            pass
+    _write_state(state)
+
+
+def record_proposal_acceptance(phase: str, *, proposal_id: str) -> None:
+    """Reset rejection streak on acceptance."""
+    if phase != "theme":
+        return
+    state = _read_state()
+    state["theme_rejection_streak"] = 0
+    _write_state(state)
+
+
+def is_theme_consolidation_paused() -> bool:
+    return bool(_read_state().get("theme_paused", False))
+
+
+def resume_theme_consolidation() -> None:
+    """Manuel reaktivering. Nulstiller streak + paused flag."""
+    state = _read_state()
+    state["theme_paused"] = False
+    state["theme_rejection_streak"] = 0
+    _write_state(state)
+
+
+def _run_theme_consolidation_pass() -> int:
+    """Søndags-pass: group observations efter domain, find temaer.
+
+    Stub i v1: returner 0. Faktisk implementering tilføjes senere når vi har
+    nok data til at træne prompten.
+    """
+    return 0
+
+
+def run_theme_consolidation_if_active() -> int:
+    """Kør tema-pass hvis ikke paused. Returnerer antal forslag genereret."""
+    if is_theme_consolidation_paused():
+        logger.info("theme consolidation paused — skipping")
+        return 0
+    return _run_theme_consolidation_pass()

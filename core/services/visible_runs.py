@@ -244,9 +244,27 @@ _PENDING_APPROVALS: dict[str, dict] = dict(_load_approvals_state(_APPROVALS_STAT
 
 def _persist_pending_approvals() -> None:
     _save_approvals_state(_APPROVALS_STATE_KEY, _PENDING_APPROVALS)
-_VISIBLE_RUN_CONTROL_PREFIX = "visible_runs.control."
-_VISIBLE_RUN_ACTIVE_KEY = "visible_runs.active_run"
-_VISIBLE_RUN_APPROVAL_PREFIX = "visible_runs.approval."
+# Run control state — udskilt til visible_runs_sections/run_control_state.py
+# (Boy Scout før jarvis-brain-auto-inject tilføjes nedenfor). Re-eksporteret
+# herfra så eksisterende monkeypatches i tests/test_visible_runs_approval_resolution.py
+# (visible_runs._set_visible_approval_state, etc.) fortsat virker.
+from core.services.visible_runs_sections.run_control_state import (  # noqa: E402
+    _VISIBLE_RUN_ACTIVE_KEY,
+    _VISIBLE_RUN_APPROVAL_PREFIX,
+    _VISIBLE_RUN_CONTROL_PREFIX,
+    _get_active_visible_run_state,
+    _get_visible_approval_state,
+    _get_visible_run_control,
+    _mark_visible_run_cancelled,
+    _set_active_visible_run,
+    _set_visible_approval_state,
+    _set_visible_run_control,
+    _visible_run_approval_key,
+    _visible_run_cancelled,
+    _visible_run_control_key,
+    append_visible_run_steer,
+    consume_visible_run_steers,
+)
 
 
 @dataclass(slots=True)
@@ -300,97 +318,7 @@ _LAST_VISIBLE_CAPABILITY_USE: dict[str, object] | None = None
 _LAST_VISIBLE_EXECUTION_TRACE: dict[str, object] | None = None
 
 
-def _visible_run_control_key(run_id: str) -> str:
-    return f"{_VISIBLE_RUN_CONTROL_PREFIX}{run_id}"
-
-
-def _visible_run_approval_key(approval_id: str) -> str:
-    return f"{_VISIBLE_RUN_APPROVAL_PREFIX}{approval_id}"
-
-
-def _set_visible_run_control(run_id: str, payload: dict[str, object]) -> None:
-    set_runtime_state_value(_visible_run_control_key(run_id), payload)
-
-
-def _get_visible_run_control(run_id: str) -> dict[str, object]:
-    payload = get_runtime_state_value(_visible_run_control_key(run_id), default={})
-    return payload if isinstance(payload, dict) else {}
-
-
-def _set_active_visible_run(payload: dict[str, object] | None) -> None:
-    set_runtime_state_value(_VISIBLE_RUN_ACTIVE_KEY, payload or {})
-
-
-def _get_active_visible_run_state() -> dict[str, object]:
-    payload = get_runtime_state_value(_VISIBLE_RUN_ACTIVE_KEY, default={})
-    return payload if isinstance(payload, dict) else {}
-
-
-def _visible_run_cancelled(run_id: str) -> bool:
-    return bool(_get_visible_run_control(run_id).get("cancelled"))
-
-
-def _mark_visible_run_cancelled(run_id: str, *, cancelled: bool = True) -> None:
-    state = _get_visible_run_control(run_id)
-    if not state:
-        return
-    state["cancelled"] = cancelled
-    state["updated_at"] = datetime.now(UTC).isoformat()
-    _set_visible_run_control(run_id, state)
-
-
-def append_visible_run_steer(run_id: str, content: str) -> bool:
-    """Append a mid-flight 'steer' message that the agentic loop will pick
-    up between rounds. Cross-worker safe (state lives in DB).
-
-    Used by POST /chat/runs/{run_id}/steer so the user can interject mid
-    tool-loop without cancelling — Jarvis sees the steer at the next round
-    boundary and either redirects, acknowledges, or stops."""
-    state = _get_visible_run_control(run_id)
-    if not state:
-        return False
-    queue = state.get("steers")
-    if not isinstance(queue, list):
-        queue = []
-    queue.append({
-        "content": str(content or "").strip(),
-        "at": datetime.now(UTC).isoformat(),
-        "consumed": False,
-    })
-    state["steers"] = queue
-    state["updated_at"] = datetime.now(UTC).isoformat()
-    _set_visible_run_control(run_id, state)
-    return True
-
-
-def consume_visible_run_steers(run_id: str) -> list[dict[str, object]]:
-    """Pop unread steers for this run. Marks them consumed in shared state
-    so they aren't re-consumed if the loop re-checks."""
-    state = _get_visible_run_control(run_id)
-    if not state:
-        return []
-    queue = state.get("steers")
-    if not isinstance(queue, list):
-        return []
-    fresh = [s for s in queue if isinstance(s, dict) and not s.get("consumed")]
-    if not fresh:
-        return []
-    for s in queue:
-        if isinstance(s, dict) and not s.get("consumed"):
-            s["consumed"] = True
-    state["steers"] = queue
-    state["updated_at"] = datetime.now(UTC).isoformat()
-    _set_visible_run_control(run_id, state)
-    return fresh
-
-
-def _set_visible_approval_state(approval_id: str, payload: dict[str, object]) -> None:
-    set_runtime_state_value(_visible_run_approval_key(approval_id), payload)
-
-
-def _get_visible_approval_state(approval_id: str) -> dict[str, object]:
-    payload = get_runtime_state_value(_visible_run_approval_key(approval_id), default={})
-    return payload if isinstance(payload, dict) else {}
+# Run control state functions: re-exported above from visible_runs_sections.run_control_state
 
 
 def _classify_visible_run_interruption(error_message: str) -> dict[str, str]:

@@ -125,6 +125,12 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("process_watcher start failed: %s", _exc)
             try:
+                from core.services.jarvis_brain_daemon import start_brain_daemon
+                start_brain_daemon()
+                logger.info("jarvis_brain daemon started")
+            except Exception as _exc:
+                logger.warning("jarvis_brain daemon start failed: %s", _exc)
+            try:
                 from core.services.agent_runtime import recover_crashed_agents
                 recovery = recover_crashed_agents()
                 if recovery["recovered"]:
@@ -165,6 +171,11 @@ def create_app() -> FastAPI:
             try:
                 from core.services.process_watcher import stop_watcher_daemon
                 stop_watcher_daemon()
+            except Exception:
+                pass
+            try:
+                from core.services.jarvis_brain_daemon import stop_brain_daemon
+                stop_brain_daemon()
             except Exception:
                 pass
             stop_global_workspace_listener()

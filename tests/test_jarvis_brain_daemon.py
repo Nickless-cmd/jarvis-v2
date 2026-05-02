@@ -380,3 +380,24 @@ def test_auto_archive_skips_recent_entries(isolated, monkeypatch):
                         lambda e, now: 0.01)
     n = auto_archive_low_salience()
     assert n == 0
+
+
+# --- Task 24: daemon lifecycle ---
+
+
+def test_start_and_stop_brain_daemon_is_idempotent():
+    from core.services.jarvis_brain_daemon import (
+        start_brain_daemon, stop_brain_daemon,
+    )
+    # Should not raise even when called twice
+    start_brain_daemon()
+    start_brain_daemon()  # second call is a no-op
+    stop_brain_daemon()
+    stop_brain_daemon()  # second stop also no-op
+
+
+def test_run_consolidation_pass_returns_int():
+    from core.services.jarvis_brain_daemon import run_consolidation_pass
+    n = run_consolidation_pass()
+    assert isinstance(n, int)
+    assert n >= 0

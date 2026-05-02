@@ -1710,29 +1710,13 @@ def _inner_visible_support_prompt_line(signal: dict[str, object]) -> str | None:
     )
 
 
-def _workspace_file_section(
-    path: Path,
-    *,
-    label: str,
-    max_lines: int,
-    max_chars: int,
-) -> str | None:
-    if not path.exists():
-        return None
-    lines: list[str] = []
-    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        normalized = " ".join(line.split())
-        if len(normalized) > max_chars:
-            normalized = normalized[: max_chars - 1].rstrip() + "…"
-        lines.append(f"- {normalized}")
-        if len(lines) >= max_lines:
-            break
-    if not lines:
-        return None
-    return "\n".join([f"{label}:", *lines])
+# Workspace file section helpers — udskilt til core/services/prompt_sections/workspace_files.py
+# (Boy Scout-udtrækning før jarvis-brain-section tilføjes nedenfor).
+# Re-eksporteret her så eksisterende call-sites + tests' monkeypatch på
+# prompt_contract._workspace_file_section fortsat virker.
+from core.services.prompt_sections.workspace_files import (  # noqa: E402
+    _workspace_file_section,
+)
 
 
 def _self_mutation_lineage_section() -> str | None:
@@ -1821,39 +1805,12 @@ def _channel_context_section(session_id: str | None) -> str | None:
     return "\n".join(lines)
 
 
-def _workspace_guidance_section(
-    path: Path,
-    *,
-    label: str,
-    max_lines: int,
-    max_chars: int,
-) -> str | None:
-    section = _workspace_file_section(
-        path,
-        label=label,
-        max_lines=max_lines,
-        max_chars=max_chars,
-    )
-    return section
-
-
-def _workspace_optional_file_section(
-    path: Path,
-    *,
-    fallback_path: Path | None,
-    label: str,
-    max_lines: int,
-    max_chars: int,
-) -> str | None:
-    source = path if path.exists() else fallback_path
-    if source is None or not source.exists():
-        return None
-    return _workspace_file_section(
-        source,
-        label=label,
-        max_lines=max_lines,
-        max_chars=max_chars,
-    )
+# Re-eksport (også fra prompt_sections.workspace_files — udskilt sammen med
+# _workspace_file_section ovenfor).
+from core.services.prompt_sections.workspace_files import (  # noqa: E402
+    _workspace_guidance_section,
+    _workspace_optional_file_section,
+)
 
 
 def _workspace_memory_section(

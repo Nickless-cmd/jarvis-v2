@@ -373,30 +373,8 @@ def bootstrap_all() -> dict[str, Any]:
         result["warmup_job"] = ensure_warmup_job()
     except Exception as exc:
         result["warmup_error"] = str(exc)
-    try:
-        from core.services.skyoffice_council_viz import subscribe_council_visualization
-        subscribe_council_visualization()
-        result["skyoffice_viz_subscribed"] = True
-    except Exception as exc:
-        result["skyoffice_viz_error"] = str(exc)
-    try:
-        from core.services.skyoffice_residency import start_residency
-        start_residency()
-        result["skyoffice_residency_started"] = True
-    except Exception as exc:
-        result["skyoffice_residency_error"] = str(exc)
-    try:
-        from core.services.skyoffice_walk import start_walker
-        start_walker()
-        result["skyoffice_walker_started"] = True
-    except Exception as exc:
-        result["skyoffice_walker_error"] = str(exc)
-    try:
-        from core.services.skyoffice_activity import start_activity
-        start_activity()
-        result["skyoffice_activity_started"] = True
-    except Exception as exc:
-        result["skyoffice_activity_error"] = str(exc)
+    # SkyOffice — lagt på hylden (Bjørn, 2026-05-02). Ikke start ved boot.
+    result["skyoffice_skipped"] = True
     try:
         from core.services.verification_gate_telemetry import subscribe as r2_subscribe
         r2_subscribe()

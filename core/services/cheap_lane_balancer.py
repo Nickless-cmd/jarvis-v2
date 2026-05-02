@@ -341,6 +341,177 @@ def _select_slot(
     return eligible[-1][0]
 
 
+# ---------------------------------------------------------------------------
+# call_balanced — public entry point with retry-on-failure
+# ---------------------------------------------------------------------------
+
+
+import logging
+import time as _time
+
+logger = logging.getLogger("cheap_lane_balancer")
+
+
+def _call_provider_chat(
+    *,
+    provider: str,
+    model: str,
+    auth_profile: str,
+    base_url: str,
+    message: str,
+) -> dict:
+    """Wrapper around cheap_provider_runtime._execute_provider_chat.
+
+    Override in tests via monkeypatch.
+    """
+    from core.services.cheap_provider_runtime import _execute_provider_chat
+    return _execute_provider_chat(
+        provider=provider, model=model,
+        auth_profile=auth_profile, base_url=base_url,
+        message=message,
+    )
+
+
+# Recent calls ring buffer (in-memory, 75 max)
+_RECENT_CALLS: list[dict] = []
+_RECENT_CALLS_MAX = 75
+
+
+def _append_recent_call(
+    slot_id: str, daemon: str, status: str, latency_ms: int,
+    *, error: str = "",
+) -> None:
+    entry = {
+        "at": datetime.now(timezone.utc).isoformat(),
+        "slot_id": slot_id,
+        "daemon": daemon,
+        "status": status,
+        "latency_ms": latency_ms,
+    }
+    if error:
+        entry["error"] = error
+    _RECENT_CALLS.append(entry)
+    while len(_RECENT_CALLS) > _RECENT_CALLS_MAX:
+        _RECENT_CALLS.pop(0)
+
+
+def recent_calls() -> list[dict]:
+    """Returns ring-buffer of last 75 calls (newest first)."""
+    return list(reversed(_RECENT_CALLS))
+
+
+def call_balanced(
+    *,
+    prompt: str,
+    daemon_name: str = "",
+    max_retries: int = 3,
+) -> dict:
+    """Pick a slot via weighted-random; execute; on failure retry next slot.
+
+    Returns: {status, text, provider, model, attempts, ...}
+    Raises RuntimeError when all eligible slots exhausted.
+    """
+    from core.services.cheap_provider_runtime import CheapProviderError
+
+    states = _load_state()
+    pool = build_slot_pool()
+    if not pool:
+        raise RuntimeError("cheap_lane_balancer: empty pool (no eligible slots)")
+
+    tried_slot_ids: set[str] = set()
+    last_error: Exception | None = None
+    attempts = 0
+
+    while attempts < max_retries:
+        eligible_pool = [s for s in pool if s.slot_id not in tried_slot_ids]
+        if not eligible_pool:
+            break
+
+        now = _time.time()
+        slot = _select_slot(states, eligible_pool, now)
+        if slot is None:
+            break
+
+        tried_slot_ids.add(slot.slot_id)
+        attempts += 1
+        state = _ensure_state(states, slot.slot_id)
+        call_started = _time.time()
+
+        try:
+            result = _call_provider_chat(
+                provider=slot.provider,
+                model=slot.model,
+                auth_profile=slot.auth_profile,
+                base_url=slot.base_url,
+                message=prompt,
+            )
+            _register_success(state, now=_time.time())
+            _save_state_debounced(states)
+            latency_ms = int((_time.time() - call_started) * 1000)
+            try:
+                from core.eventbus.events import emit  # type: ignore
+                emit("cheap_balancer.call_succeeded", {
+                    "slot_id": slot.slot_id,
+                    "daemon": daemon_name,
+                    "latency_ms": latency_ms,
+                    "attempt": attempts,
+                })
+            except Exception:
+                pass
+            _append_recent_call(slot.slot_id, daemon_name, "ok", latency_ms)
+            return {
+                "status": "ok",
+                "lane": "cheap-balanced",
+                "provider": slot.provider,
+                "model": slot.model,
+                "attempts": attempts,
+                "text": str(result.get("text") or ""),
+                "output_tokens": result.get("output_tokens"),
+            }
+        except CheapProviderError as exc:
+            last_error = exc
+            _register_failure(
+                state,
+                exc.code,
+                retry_after_s=getattr(exc, "retry_after_seconds", 0),
+                now=_time.time(),
+            )
+            latency_ms = int((_time.time() - call_started) * 1000)
+            _append_recent_call(slot.slot_id, daemon_name, "error", latency_ms,
+                                error=exc.code)
+            try:
+                from core.eventbus.events import emit  # type: ignore
+                emit("cheap_balancer.call_failed", {
+                    "slot_id": slot.slot_id,
+                    "daemon": daemon_name,
+                    "error_kind": exc.code,
+                    "retry_after": getattr(exc, "retry_after_seconds", 0),
+                })
+            except Exception:
+                pass
+        except Exception as exc:
+            last_error = exc
+            _register_failure(state, "unknown", retry_after_s=0, now=_time.time())
+            latency_ms = int((_time.time() - call_started) * 1000)
+            _append_recent_call(slot.slot_id, daemon_name, "error", latency_ms,
+                                error=type(exc).__name__)
+
+    _save_state_debounced(states)
+    try:
+        from core.eventbus.events import emit  # type: ignore
+        emit("cheap_balancer.pool_exhausted", {
+            "tried_slots": list(tried_slot_ids),
+            "daemon": daemon_name,
+            "last_error": str(last_error) if last_error else None,
+        })
+    except Exception:
+        pass
+    raise RuntimeError(
+        f"cheap_lane_balancer exhausted {len(tried_slot_ids)} slots; "
+        f"last error: {last_error}"
+    )
+
+
 def build_slot_pool() -> list[BalancerSlot]:
     """Build daemon-eligible slot pool from provider_router × CHEAP_PROVIDER_DEFAULTS.
 

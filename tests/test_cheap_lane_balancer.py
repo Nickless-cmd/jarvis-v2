@@ -390,3 +390,105 @@ def test_register_success_appends_to_rpm_deque():
     _register_success(state, now=1000.0)
     _register_success(state, now=1010.0)
     assert len(state.recent_call_timestamps) == 2
+
+
+# --- Task 6: call_balanced retry-flow ---
+
+
+def test_call_balanced_succeeds_on_first_slot(monkeypatch, tmp_path):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    monkeypatch.setattr(
+        clb, "build_slot_pool",
+        lambda: [_slot(provider="ollamafreeapi", model="m", proxy=True)],
+    )
+
+    def fake_executor(*, provider, model, auth_profile, base_url, message):
+        return {"text": f"reply from {provider}", "output_tokens": 10}
+
+    monkeypatch.setattr(clb, "_call_provider_chat", fake_executor)
+
+    res = clb.call_balanced(prompt="hi", daemon_name="test")
+    assert res["status"] == "ok"
+    assert res["text"] == "reply from ollamafreeapi"
+    assert res["provider"] == "ollamafreeapi"
+    assert res["attempts"] == 1
+
+
+def test_call_balanced_retries_on_failure_until_success(monkeypatch, tmp_path):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    pool = [
+        _slot(provider="p1", model="m", proxy=False),
+        _slot(provider="p2", model="m", proxy=False),
+    ]
+    monkeypatch.setattr(clb, "build_slot_pool", lambda: pool)
+
+    # Force p1 first by replacing _select_slot with pool-order picker
+    def deterministic_select(states, current_pool, now):
+        return current_pool[0] if current_pool else None
+    monkeypatch.setattr(clb, "_select_slot", deterministic_select)
+
+    call_log = []
+
+    def fake_executor(*, provider, model, **kw):
+        call_log.append(provider)
+        if provider == "p1":
+            from core.services.cheap_provider_runtime import CheapProviderError
+            raise CheapProviderError(
+                provider=provider, code="http-error:503",
+                message="bad gateway",
+            )
+        return {"text": "ok"}
+
+    monkeypatch.setattr(clb, "_call_provider_chat", fake_executor)
+
+    res = clb.call_balanced(prompt="hi", daemon_name="test")
+    assert res["status"] == "ok"
+    assert res["provider"] == "p2"
+    assert res["attempts"] == 2
+    assert len(call_log) == 2
+    assert call_log == ["p1", "p2"]
+
+
+def test_call_balanced_raises_when_all_slots_exhausted(monkeypatch, tmp_path):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    monkeypatch.setattr(
+        clb, "build_slot_pool",
+        lambda: [_slot(provider=f"p{i}", model="m") for i in range(3)],
+    )
+
+    def always_fail(*, provider, **kw):
+        from core.services.cheap_provider_runtime import CheapProviderError
+        raise CheapProviderError(
+            provider=provider, code="http-error:503",
+            message="dead",
+        )
+
+    monkeypatch.setattr(clb, "_call_provider_chat", always_fail)
+
+    with pytest.raises(RuntimeError, match="exhausted"):
+        clb.call_balanced(prompt="hi", daemon_name="test", max_retries=3)
+
+
+def test_call_balanced_does_not_retry_same_slot_twice(monkeypatch, tmp_path):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    pool = [_slot(provider="only", model="m")]
+    monkeypatch.setattr(clb, "build_slot_pool", lambda: pool)
+
+    call_count = {"n": 0}
+
+    def fake_executor(*, provider, **kw):
+        call_count["n"] += 1
+        from core.services.cheap_provider_runtime import CheapProviderError
+        raise CheapProviderError(
+            provider=provider, code="http-error:503", message="x",
+        )
+
+    monkeypatch.setattr(clb, "_call_provider_chat", fake_executor)
+
+    with pytest.raises(RuntimeError):
+        clb.call_balanced(prompt="hi", daemon_name="test", max_retries=5)
+    assert call_count["n"] == 1

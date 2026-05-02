@@ -89,27 +89,17 @@ def dispatch_due_wakeups() -> dict[str, Any]:
         if prompt.strip():
             try:
                 from core.services.visible_runs import start_autonomous_run
-                from core.services.notification_bridge import get_pinned_session_id
-                from core.services.chat_sessions import (
-                    get_chat_session,
-                    list_chat_sessions,
-                )
+                from core.identity.owner_resolver import resolve_owner_target_session
 
-                # Resolve the same session the A-step delivered to so the
-                # autonomous reply lands in the user's view, not in a hidden
-                # autonomous-only session.
-                target_session = get_pinned_session_id() or ""
-                if not target_session:
-                    for s in list_chat_sessions():
-                        sid = str((s or {}).get("id") or "").strip()
-                        if not sid:
-                            continue
-                        full = get_chat_session(sid)
-                        if full and any(
-                            m.get("role") == "user" for m in (full.get("messages") or [])
-                        ):
-                            target_session = sid
-                            break
+                # Self-wakeups are always Bjørn's events (he's the only
+                # role that can schedule them for himself). The target
+                # session MUST be owner-owned — we can't dump a
+                # "you asked yourself to..." message into Mikkel's DM
+                # because his session happened to be pinned last.
+                # resolve_owner_target_session() refuses non-owner
+                # sessions even if they're pinned. Empty string means
+                # no owner session yet — autonomous_run will create one.
+                target_session = resolve_owner_target_session()
 
                 self_directive = (
                     f"[SELF-WAKEUP FIRED — wakeup_id={wid}]\n"

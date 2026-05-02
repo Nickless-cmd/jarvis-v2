@@ -157,25 +157,18 @@ def _fire_due_tasks() -> None:
                     if focus.strip():
                         try:
                             from core.services.visible_runs import start_autonomous_run
-                            from core.services.notification_bridge import get_pinned_session_id
-                            from core.services.chat_sessions import (
-                                get_chat_session,
-                                list_chat_sessions,
+                            from core.identity.owner_resolver import (
+                                resolve_owner_target_session,
                             )
 
-                            target_session = get_pinned_session_id() or ""
-                            if not target_session:
-                                for s in list_chat_sessions():
-                                    sid = str((s or {}).get("id") or "").strip()
-                                    if not sid:
-                                        continue
-                                    full = get_chat_session(sid)
-                                    if full and any(
-                                        m.get("role") == "user"
-                                        for m in (full.get("messages") or [])
-                                    ):
-                                        target_session = sid
-                                        break
+                            # Scheduled reminders are Bjørn's. They must
+                            # never land in a member's session (e.g.
+                            # Mikkel's DM whose session got pinned last).
+                            # resolve_owner_target_session refuses
+                            # non-owner sessions; empty string falls
+                            # through to autonomous_run creating a fresh
+                            # owner-owned session.
+                            target_session = resolve_owner_target_session()
 
                             self_directive = (
                                 f"[SCHEDULED REMINDER FIRED — task_id={task_id}]\n"

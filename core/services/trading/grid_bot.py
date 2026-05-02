@@ -170,7 +170,18 @@ class GridBot:
                 }
                 for o in self.state.open_orders
             ],
-            "timestamp": datetime.now().isoformat(),
+            "last_price": price,
+            "recent_trades": [
+                {
+                    "type": t.get("type", "?"),
+                    "price": t.get("price", 0),
+                    "qty": t.get("qty", 0),
+                    "profit_usdt": t.get("profit_usdt", 0),
+                    "timestamp": t.get("timestamp", ""),
+                }
+                for t in (self.sim_trades[-20:] if self.simulation else self.state.open_orders[-20:])
+            ],
+            "last_updated": datetime.now().isoformat(),
         }
 
         # Atomic write: tmp → replace

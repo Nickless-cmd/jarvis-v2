@@ -119,6 +119,12 @@ def create_app() -> FastAPI:
             start_telegram_gateway()
             start_voice_daemon()
             try:
+                from core.services.process_watcher import start_watcher_daemon
+                start_watcher_daemon()
+                logger.info("process_watcher daemon started")
+            except Exception as _exc:
+                logger.warning("process_watcher start failed: %s", _exc)
+            try:
                 from core.services.agent_runtime import recover_crashed_agents
                 recovery = recover_crashed_agents()
                 if recovery["recovered"]:
@@ -156,6 +162,11 @@ def create_app() -> FastAPI:
             stop_discord_gateway()
             stop_telegram_gateway()
             stop_voice_daemon()
+            try:
+                from core.services.process_watcher import stop_watcher_daemon
+                stop_watcher_daemon()
+            except Exception:
+                pass
             stop_global_workspace_listener()
             stop_emotion_concept_listener()
             stop_mood_listener()

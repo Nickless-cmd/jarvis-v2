@@ -299,11 +299,32 @@ def run_pressure_accumulator_tick() -> dict[str, Any]:
     # 6. Persist snapshot
     snap = snapshot()
     try:
+        import json as _json
+        import secrets as _secrets
+        from datetime import datetime as _dt, timezone as _tz
+        _dom_top = snap.get("dominant") or []
+        _focus = (
+            f"{_dom_top[0].get('direction', 'unknown')}/{_dom_top[0].get('topic', '')}"
+            if _dom_top
+            else "no_dominant"
+        )
+        _summary = (
+            f"{snap.get('total_vectors', 0)} pressures tracked, "
+            f"{len(_dom_top)} dominant"
+        )
         insert_private_brain_record(
+            record_id=f"pressure_{_secrets.token_hex(8)}",
             record_type="pressure_snapshot",
-            content=snap,
-            modality="inner",
-            metadata={"source": "signal_pressure_accumulator", "tick": True},
+            layer="inner",
+            session_id="",
+            run_id="",
+            focus=_focus,
+            summary=_summary,
+            detail=_json.dumps(snap, default=str),
+            source_signals="signal_pressure_accumulator.tick",
+            confidence="1.0",
+            created_at=_dt.now(_tz.utc).isoformat(),
+            domain="self",
         )
     except Exception as e:
         logger.warning(f"Failed to persist pressure snapshot: {e}")

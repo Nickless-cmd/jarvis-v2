@@ -251,11 +251,31 @@ def run_threshold_gate_tick() -> dict[str, Any]:
     # 3. Persist
     snap = snapshot()
     try:
+        import json as _json
+        import secrets as _secrets
+        from datetime import datetime as _dt, timezone as _tz
+        _focus = (
+            f"{len(new_impulses)}_new_impulses"
+            if new_impulses
+            else "no_new_impulses"
+        )
+        _summary = (
+            f"{len(pressures)} pressures evaluated, "
+            f"{len(new_impulses)} new impulses fired"
+        )
         insert_private_brain_record(
+            record_id=f"thresh_{_secrets.token_hex(8)}",
             record_type="threshold_gate_snapshot",
-            content=snap,
-            modality="inner",
-            metadata={"source": "pressure_threshold_gate", "tick": True},
+            layer="inner",
+            session_id="",
+            run_id="",
+            focus=_focus,
+            summary=_summary,
+            detail=_json.dumps(snap, default=str),
+            source_signals="pressure_threshold_gate.tick",
+            confidence="1.0",
+            created_at=_dt.now(_tz.utc).isoformat(),
+            domain="self",
         )
     except Exception as e:
         logger.warning(f"Failed to persist threshold gate snapshot: {e}")

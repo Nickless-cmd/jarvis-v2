@@ -194,3 +194,59 @@ def test_contradiction_personal_pair_also_routes_local(monkeypatch):
     dmn._llm_contradiction_check(a, b)
     assert free_called["n"] == 0
     assert local_called["n"] == 1
+
+
+# --- Task 14: theme consolidation kill-switch ---
+
+
+def test_theme_consolidation_pauses_after_3_rejections(isolated, monkeypatch):
+    from core.services import jarvis_brain_daemon as dmn
+    monkeypatch.setattr(
+        dmn, "_state_path",
+        lambda: isolated._state_root() / "brain_daemon_state.json",
+    )
+    for i in range(3):
+        dmn.record_proposal_rejection("theme", proposal_id=f"p{i}")
+    assert dmn.is_theme_consolidation_paused() is True
+
+
+def test_theme_consolidation_resets_on_acceptance(isolated, monkeypatch):
+    from core.services import jarvis_brain_daemon as dmn
+    monkeypatch.setattr(
+        dmn, "_state_path",
+        lambda: isolated._state_root() / "brain_daemon_state.json",
+    )
+    dmn.record_proposal_rejection("theme", proposal_id="p1")
+    dmn.record_proposal_rejection("theme", proposal_id="p2")
+    dmn.record_proposal_acceptance("theme", proposal_id="p3")
+    dmn.record_proposal_rejection("theme", proposal_id="p4")
+    assert dmn.is_theme_consolidation_paused() is False
+
+
+def test_theme_consolidation_skipped_when_paused(isolated, monkeypatch):
+    from core.services import jarvis_brain_daemon as dmn
+    monkeypatch.setattr(
+        dmn, "_state_path",
+        lambda: isolated._state_root() / "brain_daemon_state.json",
+    )
+    monkeypatch.setattr(dmn, "is_theme_consolidation_paused", lambda: True)
+    called = {"n": 0}
+    monkeypatch.setattr(
+        dmn, "_run_theme_consolidation_pass",
+        lambda: called.update(n=called["n"] + 1) or 0,
+    )
+    dmn.run_theme_consolidation_if_active()
+    assert called["n"] == 0
+
+
+def test_resume_theme_consolidation_clears_state(isolated, monkeypatch):
+    from core.services import jarvis_brain_daemon as dmn
+    monkeypatch.setattr(
+        dmn, "_state_path",
+        lambda: isolated._state_root() / "brain_daemon_state.json",
+    )
+    for i in range(3):
+        dmn.record_proposal_rejection("theme", proposal_id=f"p{i}")
+    assert dmn.is_theme_consolidation_paused() is True
+    dmn.resume_theme_consolidation()
+    assert dmn.is_theme_consolidation_paused() is False

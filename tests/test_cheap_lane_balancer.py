@@ -108,3 +108,73 @@ def test_pool_skips_disabled_models(monkeypatch):
     models = {s.model for s in pool}
     assert "old-model" not in models
     assert "new-model" in models
+
+
+# --- Task 3: State persistence ---
+
+
+import json as _json
+
+
+def test_state_round_trip(tmp_path, monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "state.json")
+
+    states = {
+        "groq::m1": clb.SlotState(
+            slot_id="groq::m1",
+            consecutive_failures=2,
+            breaker_level=1,
+            cooldown_until=1714680000.0,
+            cooldown_reason="429",
+            daily_use_count=42,
+            daily_window_start="2026-05-02",
+            total_calls=100,
+            total_failures=5,
+            last_success_at=1714680123.45,
+        ),
+    }
+    clb._save_state(states)
+
+    loaded = clb._load_state()
+    assert "groq::m1" in loaded
+    assert loaded["groq::m1"].consecutive_failures == 2
+    assert loaded["groq::m1"].breaker_level == 1
+    assert loaded["groq::m1"].daily_use_count == 42
+
+
+def test_load_state_returns_empty_when_file_missing(tmp_path, monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "missing.json")
+    states = clb._load_state()
+    assert states == {}
+
+
+def test_load_state_returns_empty_on_corrupt_json(tmp_path, monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    p = tmp_path / "corrupt.json"
+    p.write_text("not valid json {{{", encoding="utf-8")
+    monkeypatch.setattr(clb, "_state_path", lambda: p)
+    states = clb._load_state()
+    assert states == {}
+
+
+def test_save_state_atomic_write(tmp_path, monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    p = tmp_path / "out.json"
+    monkeypatch.setattr(clb, "_state_path", lambda: p)
+    clb._save_state({"x::y": clb.SlotState(slot_id="x::y", total_calls=7)})
+    assert p.exists()
+    assert not (tmp_path / "out.json.tmp").exists()
+    data = _json.loads(p.read_text(encoding="utf-8"))
+    assert data["slots"]["x::y"]["total_calls"] == 7
+
+
+def test_get_or_create_state_for_unknown_slot():
+    from core.services.cheap_lane_balancer import _ensure_state
+    states = {}
+    s = _ensure_state(states, "new::slot")
+    assert s.slot_id == "new::slot"
+    assert s.consecutive_failures == 0
+    s2 = _ensure_state(states, "new::slot")
+    assert s is s2

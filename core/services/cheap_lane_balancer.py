@@ -208,6 +208,86 @@ def _ensure_state(states: dict[str, SlotState], slot_id: str) -> SlotState:
     return states[slot_id]
 
 
+# ---------------------------------------------------------------------------
+# Selection algorithm — weighted random by headroom × health × proxy_boost
+# ---------------------------------------------------------------------------
+
+
+import random
+
+
+_PROXY_BOOST = 1.5
+_BREAKER_HEALTH = {0: 1.0, 1: 0.5, 2: 0.2, 3: 0.05}
+
+
+def _today_iso(now: float | None = None) -> str:
+    """Returns UTC date string. Override hookable via module-level _datetime_for_today."""
+    dt_mod = globals().get("_datetime_for_today", datetime)
+    return dt_mod.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def _count_recent_calls(timestamps, now: float, window_seconds: int) -> int:
+    """Count timestamps falling within [now - window, now]."""
+    threshold = now - window_seconds
+    return sum(1 for t in timestamps if t >= threshold)
+
+
+def _compute_weight(slot: BalancerSlot, state: SlotState, now: float) -> float:
+    """Returns non-negative weight; 0 means slot is ineligible right now.
+
+    weight = headroom_factor × health_multiplier × proxy_boost
+    """
+    if state.manually_disabled:
+        return 0.0
+    if state.cooldown_until and now < state.cooldown_until:
+        return 0.0
+
+    base = 1.0
+    if slot.rpm_limit:
+        rpm_used = _count_recent_calls(state.recent_call_timestamps, now, 60)
+        rpm_headroom = max(0.0, 1.0 - rpm_used / slot.rpm_limit)
+        base *= rpm_headroom
+    if slot.daily_limit:
+        today = _today_iso(now)
+        if state.daily_window_start != today:
+            state.daily_use_count = 0
+            state.daily_window_start = today
+        daily_headroom = max(0.0, 1.0 - state.daily_use_count / slot.daily_limit)
+        base *= daily_headroom
+
+    health = _BREAKER_HEALTH.get(state.breaker_level, 0.05)
+    preference = _PROXY_BOOST if slot.is_public_proxy else 1.0
+
+    return max(0.0, base * health * preference)
+
+
+def _select_slot(
+    states: dict[str, SlotState],
+    pool: list[BalancerSlot],
+    now: float,
+) -> BalancerSlot | None:
+    """Pick a slot via weighted-random; returns None if all blocked."""
+    eligible: list[tuple[BalancerSlot, float]] = []
+    for slot in pool:
+        state = _ensure_state(states, slot.slot_id)
+        w = _compute_weight(slot, state, now)
+        if w > 0:
+            eligible.append((slot, w))
+    if not eligible:
+        return None
+
+    total = sum(w for _, w in eligible)
+    if total <= 0:
+        return None
+    pick = random.random() * total
+    cumulative = 0.0
+    for slot, w in eligible:
+        cumulative += w
+        if pick < cumulative:
+            return slot
+    return eligible[-1][0]
+
+
 def build_slot_pool() -> list[BalancerSlot]:
     """Build daemon-eligible slot pool from provider_router × CHEAP_PROVIDER_DEFAULTS.
 

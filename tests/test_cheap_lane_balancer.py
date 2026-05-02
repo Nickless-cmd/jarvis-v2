@@ -36,3 +36,75 @@ def test_slot_state_defaults():
     assert st.total_failures == 0
     assert isinstance(st.recent_call_timestamps, deque)
     assert st.manually_disabled is False
+
+
+# --- Task 2: build_slot_pool ---
+
+
+def test_pool_excludes_local_ollama_and_codex(monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+
+    def fake_router_models():
+        return [
+            {"provider": "ollama", "model": "qwen3.5:9b", "enabled": True},
+            {"provider": "openai-codex", "model": "gpt-5.4", "enabled": True},
+            {"provider": "codex-cli", "model": "x", "enabled": True},
+            {"provider": "groq", "model": "llama-3.1-8b-instant", "enabled": True},
+        ]
+    monkeypatch.setattr(clb, "_router_enabled_models", fake_router_models)
+    monkeypatch.setattr(clb, "_credentials_ready", lambda p, a: True)
+
+    pool = clb.build_slot_pool()
+    providers = {s.provider for s in pool}
+    assert "ollama" not in providers
+    assert "openai-codex" not in providers
+    assert "codex-cli" not in providers
+    assert "groq" in providers
+
+
+def test_pool_skips_providers_without_credentials(monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_router_enabled_models", lambda: [
+        {"provider": "groq", "model": "llama-3.1-8b-instant", "enabled": True},
+        {"provider": "mistral", "model": "mistral-small-latest", "enabled": True},
+    ])
+    monkeypatch.setattr(
+        clb, "_credentials_ready",
+        lambda p, a: p == "groq",  # mistral has no creds
+    )
+
+    pool = clb.build_slot_pool()
+    providers = {s.provider for s in pool}
+    assert "groq" in providers
+    assert "mistral" not in providers
+
+
+def test_pool_marks_public_proxies_correctly(monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_router_enabled_models", lambda: [
+        {"provider": "groq", "model": "llama-3.1-8b-instant", "enabled": True},
+        {"provider": "ollamafreeapi", "model": "gpt-oss:20b", "enabled": True},
+        {"provider": "opencode", "model": "minimax-m2.5-free", "enabled": True},
+        {"provider": "arko", "model": "jarvis-cheap-lane", "enabled": True},
+    ])
+    monkeypatch.setattr(clb, "_credentials_ready", lambda p, a: True)
+
+    pool = clb.build_slot_pool()
+    by_id = {s.slot_id: s for s in pool}
+    assert by_id["ollamafreeapi::gpt-oss:20b"].is_public_proxy is True
+    assert by_id["opencode::minimax-m2.5-free"].is_public_proxy is True
+    assert by_id["arko::jarvis-cheap-lane"].is_public_proxy is True
+    assert by_id["groq::llama-3.1-8b-instant"].is_public_proxy is False
+
+
+def test_pool_skips_disabled_models(monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_router_enabled_models", lambda: [
+        {"provider": "groq", "model": "old-model", "enabled": False},
+        {"provider": "groq", "model": "new-model", "enabled": True},
+    ])
+    monkeypatch.setattr(clb, "_credentials_ready", lambda p, a: True)
+    pool = clb.build_slot_pool()
+    models = {s.model for s in pool}
+    assert "old-model" not in models
+    assert "new-model" in models

@@ -16,7 +16,7 @@
  * We deliberately do NOT spawn one in Phase 0 — it would corrupt the
  * shared SQLite db on Bjørn's box.
  */
-import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, Menu, session } from 'electron'
+import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, Menu, MenuItem, session } from 'electron'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, resolve as pathResolve } from 'node:path'
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
@@ -591,6 +591,72 @@ async function createWindow(): Promise<void> {
       } else {
         mainWindow?.webContents.openDevTools({ mode: 'detach' })
       }
+    }
+  })
+
+  // Right-click context menu — Electron has none by default.
+  // Build it dynamically based on what's under the cursor:
+  //   - Selected text → Copy
+  //   - Editable input/textarea → Cut/Copy/Paste/Select All
+  //   - Link → Copy Link
+  //   - Image → Save Image
+  //   - Always (in dev) → Inspect Element
+  mainWindow.webContents.on('context-menu', (_event, params) => {
+    const menu = new Menu()
+    const wc = mainWindow?.webContents
+    const flags = params.editFlags
+
+    // Misspelling suggestions (only on inputs/textareas with spell-check)
+    if (params.misspelledWord && params.dictionarySuggestions.length > 0) {
+      for (const suggestion of params.dictionarySuggestions.slice(0, 5)) {
+        menu.append(new MenuItem({
+          label: suggestion,
+          click: () => wc?.replaceMisspelling(suggestion),
+        }))
+      }
+      menu.append(new MenuItem({ type: 'separator' }))
+    }
+
+    if (params.linkURL) {
+      menu.append(new MenuItem({
+        label: 'Kopiér link',
+        click: () => {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          require('electron').clipboard.writeText(params.linkURL)
+        },
+      }))
+      menu.append(new MenuItem({ type: 'separator' }))
+    }
+
+    if (params.hasImageContents) {
+      menu.append(new MenuItem({
+        label: 'Kopiér billede',
+        click: () => wc?.copyImageAt(params.x, params.y),
+      }))
+      menu.append(new MenuItem({ type: 'separator' }))
+    }
+
+    // Standard edit actions — visibility driven by editFlags so we
+    // don't show "Paste" on read-only content etc.
+    if (flags.canCut) menu.append(new MenuItem({ role: 'cut', label: 'Klip' }))
+    if (flags.canCopy) menu.append(new MenuItem({ role: 'copy', label: 'Kopiér' }))
+    if (flags.canPaste) menu.append(new MenuItem({ role: 'paste', label: 'Indsæt' }))
+    if (flags.canSelectAll) {
+      menu.append(new MenuItem({ role: 'selectAll', label: 'Markér alt' }))
+    }
+
+    if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+      if (menu.items.length > 0) {
+        menu.append(new MenuItem({ type: 'separator' }))
+      }
+      menu.append(new MenuItem({
+        label: 'Inspect Element',
+        click: () => wc?.inspectElement(params.x, params.y),
+      }))
+    }
+
+    if (menu.items.length > 0 && mainWindow) {
+      menu.popup({ window: mainWindow })
     }
   })
 

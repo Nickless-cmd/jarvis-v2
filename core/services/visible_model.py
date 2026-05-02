@@ -1219,11 +1219,44 @@ def _stream_ollama_model(
     eval_count = 0
     collected_tool_calls: list[dict] = []
 
+    # Two-stage deadline (same pattern as visible_followup.py):
+    #   FIRST_BYTE_BUDGET (90s):  warmup + first-token. Big prompts
+    #     legitimately need this. Watchdog thread force-closes the
+    #     socket if exceeded → URLError → caller handles.
+    #   INTER_BYTE_BUDGET (30s):  per-read deadline once stream is
+    #     alive. Mid-stream freeze fails fast instead of waiting full
+    #     180s like the previous single-stage timeout did.
+    import threading as _threading
+    FIRST_BYTE_BUDGET_S = 90
+    INTER_BYTE_BUDGET_S = 30
+    got_first_byte = _threading.Event()
+    watchdog_response: dict[str, object] = {"resp": None}
+
+    def _first_byte_watchdog() -> None:
+        if got_first_byte.wait(timeout=FIRST_BYTE_BUDGET_S):
+            return
+        r = watchdog_response.get("resp")
+        if r is not None:
+            try:
+                r.close()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+
+    watchdog = _threading.Thread(
+        target=_first_byte_watchdog,
+        name="ollama-first-byte-watchdog",
+        daemon=True,
+    )
+    watchdog.start()
+
     try:
-        with urllib_request.urlopen(req, timeout=180) as response:
+        with urllib_request.urlopen(req, timeout=INTER_BYTE_BUDGET_S) as response:
+            watchdog_response["resp"] = response
             if controller is not None:
                 controller.attach_stream(response)
             for raw_line in response:
+                if not got_first_byte.is_set():
+                    got_first_byte.set()
                 line = raw_line.decode("utf-8").strip()
                 if not line:
                     continue
@@ -1248,7 +1281,9 @@ def _stream_ollama_model(
                     )
                     eval_count = int(event.get("eval_count") or eval_count)
                     break
+        got_first_byte.set()  # let watchdog exit on early-break
     except Exception:
+        got_first_byte.set()  # always release watchdog
         if controller is not None and controller.is_cancelled():
             raise VisibleModelStreamCancelled("visible-run-cancelled")
         raise

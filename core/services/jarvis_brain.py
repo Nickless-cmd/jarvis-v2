@@ -10,7 +10,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+import hashlib
+import os
+import re
 import secrets
+import sqlite3
 import time
 
 import yaml
@@ -169,3 +173,177 @@ def entry_from_frontmatter(fm: dict, body: str) -> BrainEntry:
         source_chronicle=fm.get("source_chronicle"),
         source_url=fm.get("source_url"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Paths + SQLite index
+# ---------------------------------------------------------------------------
+
+
+_INDEX_SCHEMA = """
+CREATE TABLE IF NOT EXISTS brain_index (
+    id              TEXT PRIMARY KEY,
+    path            TEXT NOT NULL UNIQUE,
+    kind            TEXT NOT NULL,
+    visibility      TEXT NOT NULL,
+    domain          TEXT NOT NULL,
+    title           TEXT NOT NULL,
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL,
+    last_used_at    TEXT,
+    salience_base   REAL NOT NULL DEFAULT 1.0,
+    salience_bumps  INTEGER NOT NULL DEFAULT 0,
+    status          TEXT NOT NULL DEFAULT 'active',
+    superseded_by   TEXT,
+    file_hash       TEXT NOT NULL,
+    embedding       BLOB,
+    embedding_dim   INTEGER,
+    indexed_at      TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS brain_relations (
+    from_id TEXT NOT NULL,
+    to_id   TEXT NOT NULL,
+    PRIMARY KEY (from_id, to_id)
+);
+
+CREATE TABLE IF NOT EXISTS brain_proposals (
+    id           TEXT PRIMARY KEY,
+    path         TEXT NOT NULL,
+    reason       TEXT NOT NULL,
+    consolidates TEXT,
+    created_at   TEXT NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'pending',
+    adopted_at   TEXT,
+    adopted_by   TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_brain_kind_status   ON brain_index(kind, status);
+CREATE INDEX IF NOT EXISTS idx_brain_visibility    ON brain_index(visibility);
+CREATE INDEX IF NOT EXISTS idx_brain_last_used     ON brain_index(last_used_at DESC);
+CREATE INDEX IF NOT EXISTS idx_brain_relations_to  ON brain_relations(to_id);
+"""
+
+
+def _workspace_root() -> Path:
+    """Override target in tests via monkeypatch."""
+    return Path(
+        os.environ.get("JARVIS_WORKSPACES_ROOT")
+        or Path.home() / ".jarvis-v2" / "workspaces"
+    )
+
+
+def _state_root() -> Path:
+    return Path(
+        os.environ.get("JARVIS_STATE_ROOT")
+        or Path.home() / ".jarvis-v2" / "state"
+    )
+
+
+def brain_dir() -> Path:
+    return _workspace_root() / "default" / "jarvis_brain"
+
+
+def index_db_path() -> Path:
+    return _state_root() / "jarvis_brain_index.sqlite"
+
+
+def connect_index() -> sqlite3.Connection:
+    p = index_db_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(p))
+    conn.executescript(_INDEX_SCHEMA)
+    conn.commit()
+    return conn
+
+
+def _slugify(s: str, max_len: int = 40) -> str:
+    s = s.lower().strip()
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    s = s.strip("-")
+    return s[:max_len] or "untitled"
+
+
+def _file_hash(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def write_entry(
+    *,
+    kind: str,
+    title: str,
+    content: str,
+    visibility: str,
+    domain: str,
+    trigger: str = "spontaneous",
+    related: list[str] | None = None,
+    source_url: str | None = None,
+    source_chronicle: str | None = None,
+    now: datetime | None = None,
+) -> str:
+    """Skriver en ny brain-entry til disk og indexerer den (uden embedding endnu).
+
+    Returnerer den nye entry's id.
+    """
+    now = now or datetime.now(timezone.utc)
+    new_id = new_brain_id()
+    related = related or []
+
+    entry = BrainEntry(
+        id=new_id, kind=kind, visibility=visibility, domain=domain,
+        title=title, content=content,
+        created_at=now, updated_at=now, last_used_at=None,
+        salience_base=1.0, salience_bumps=0, related=related,
+        trigger=trigger, status="active", superseded_by=None,
+        source_chronicle=source_chronicle, source_url=source_url,
+    )
+
+    md = render_entry_markdown(entry)
+    date = now.strftime("%Y-%m-%d")
+    slug = _slugify(title)
+    id_short = new_id[-8:]
+    fname = f"{date}-{slug}-{id_short}.md"
+    fpath = brain_dir() / kind / fname
+    _atomic_write(fpath, md)
+
+    rel_path = str(fpath.relative_to(_workspace_root()))
+    fhash = _file_hash(md)
+
+    conn = connect_index()
+    try:
+        conn.execute(
+            """INSERT INTO brain_index
+               (id, path, kind, visibility, domain, title, created_at, updated_at,
+                last_used_at, salience_base, salience_bumps, status,
+                superseded_by, file_hash, embedding, embedding_dim, indexed_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 1.0, 0, 'active',
+                       NULL, ?, NULL, NULL, ?)""",
+            (new_id, rel_path, kind, visibility, domain, title,
+             _iso(now), _iso(now), fhash, _iso(now)),
+        )
+        for to_id in related:
+            conn.execute(
+                "INSERT OR IGNORE INTO brain_relations(from_id, to_id) VALUES (?, ?)",
+                (new_id, to_id),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return new_id
+
+
+def read_entry(entry_id: str) -> BrainEntry:
+    """Read a BrainEntry by id (loads from disk via index lookup)."""
+    conn = connect_index()
+    try:
+        row = conn.execute(
+            "SELECT path FROM brain_index WHERE id = ?", (entry_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        raise KeyError(f"no brain entry with id {entry_id}")
+    path = _workspace_root() / row[0]
+    fm, body = parse_frontmatter(path)
+    return entry_from_frontmatter(fm, body)

@@ -132,3 +132,73 @@ def test_render_frontmatter_round_trips(tmp_path):
     assert e2.id == e.id
     assert e2.related == ["brn_OTHER"]
     assert e2.content.strip() == "The content body."
+
+
+# --- Task 3: SQLite schema + write_entry/read_entry ---
+
+
+def test_brain_paths_resolves_from_workspace(tmp_path, monkeypatch):
+    from core.services import jarvis_brain
+    monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path)
+    p = jarvis_brain.brain_dir()
+    assert p == tmp_path / "default" / "jarvis_brain"
+
+
+def test_ensure_index_creates_tables(tmp_path, monkeypatch):
+    from core.services import jarvis_brain
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path)
+    conn = jarvis_brain.connect_index()
+    rows = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+    ).fetchall()
+    names = {r[0] for r in rows}
+    assert "brain_index" in names
+    assert "brain_relations" in names
+    assert "brain_proposals" in names
+    conn.close()
+
+
+def test_write_and_read_entry_roundtrip(tmp_path, monkeypatch):
+    from core.services import jarvis_brain
+    monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path / "state")
+    new_id = jarvis_brain.write_entry(
+        kind="fakta",
+        title="Test fakta",
+        content="En kort fakta.",
+        visibility="personal",
+        domain="engineering",
+        trigger="spontaneous",
+        related=[],
+        source_url=None,
+    )
+    assert new_id.startswith("brn_")
+
+    e = jarvis_brain.read_entry(new_id)
+    assert e.title == "Test fakta"
+    assert e.kind == "fakta"
+    assert e.visibility == "personal"
+    # File on disk in expected location
+    p = tmp_path / "ws" / "default" / "jarvis_brain" / "fakta"
+    md_files = list(p.glob("*.md"))
+    assert len(md_files) == 1
+    assert new_id[-8:] in md_files[0].name  # id_short in filename
+
+
+def test_write_entry_inserts_relations(tmp_path, monkeypatch):
+    from core.services import jarvis_brain
+    monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path / "state")
+    a = jarvis_brain.write_entry(
+        kind="fakta", title="A", content="a", visibility="personal", domain="d",
+    )
+    b = jarvis_brain.write_entry(
+        kind="fakta", title="B", content="b", visibility="personal", domain="d",
+        related=[a],
+    )
+    conn = jarvis_brain.connect_index()
+    rows = conn.execute(
+        "SELECT from_id, to_id FROM brain_relations"
+    ).fetchall()
+    conn.close()
+    assert (b, a) in rows

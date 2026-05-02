@@ -13,6 +13,23 @@ export type UpdaterStatus =
   | { kind: 'downloaded'; info: { version: string; releaseDate?: string; releaseName?: string } }
   | { kind: 'error'; error: string }
 
+export interface GitCommit {
+  sha: string
+  short: string
+  subject: string
+  author: string
+  date: string
+}
+
+export type GitUpdateStatus =
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'up-to-date'; head: string; checkedAt: string }
+  | { kind: 'behind'; commits: GitCommit[]; head: string; checkedAt: string }
+  | { kind: 'updating'; phase: string; output: string }
+  | { kind: 'updated'; head: string }
+  | { kind: 'error'; error: string }
+
 export interface JarvisXBridge {
   getConfig: () => Promise<{
     apiBaseUrl: string
@@ -50,12 +67,17 @@ export interface JarvisXBridge {
     | { error: string }
   >
   onBackendStatus: (cb: (status: { up: boolean; latencyMs?: number }) => void) => () => void
-  // Auto-updater
+  // Auto-updater (electron-updater — release-based, dormant for now)
   updaterCheck: () => Promise<{ ok: boolean; version?: string; error?: string }>
   updaterDownload: () => Promise<{ ok: boolean; error?: string }>
   updaterInstall: () => Promise<{ ok: boolean }>
   updaterStatus: () => Promise<UpdaterStatus>
   onUpdaterStatus: (cb: (status: UpdaterStatus) => void) => () => void
+  // Git-based updater (run-from-source)
+  gitUpdateCheck: () => Promise<GitUpdateStatus>
+  gitUpdateStatus: () => Promise<GitUpdateStatus>
+  gitUpdatePullAndRebuild: () => Promise<{ ok: boolean; error?: string }>
+  onGitUpdateStatus: (cb: (status: GitUpdateStatus) => void) => () => void
 }
 
 declare global {

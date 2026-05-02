@@ -18,8 +18,9 @@
  */
 import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, Menu, session } from 'electron'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve as pathResolve } from 'node:path'
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { spawn, execFile } from 'node:child_process'
 
 // electron-updater is CommonJS — import via createRequire pattern so
 // it works under our type:module package.json without breaking dev.
@@ -212,6 +213,230 @@ function setupAutoUpdater(): void {
     return { ok: true }
   })
   ipcMain.handle('jarvisx:updater-status', () => updaterStatus)
+}
+
+// ── Git-based updater ────────────────────────────────────────────
+// Run-from-source update flow: poll origin/main, surface "X commits
+// behind", let the user pull + rebuild + restart from the UI.
+//
+// Why this instead of electron-updater: Bjørn's actual workflow is
+// "I push to main, my desktop should pick it up" — not "I tag a
+// release, CI builds an installer". For solo desktop use the git-
+// poll approach matches reality.
+//
+// Repo root resolution: __dirname is dist-electron/, parent paths
+// climb to the repo root.
+
+type GitUpdateState =
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'up-to-date'; head: string; checkedAt: string }
+  | { kind: 'behind'; commits: GitCommit[]; head: string; checkedAt: string }
+  | { kind: 'updating'; phase: string; output: string }
+  | { kind: 'updated'; head: string }
+  | { kind: 'error'; error: string }
+
+interface GitCommit {
+  sha: string
+  short: string
+  subject: string
+  author: string
+  date: string
+}
+
+let gitUpdateState: GitUpdateState = { kind: 'idle' }
+let gitPollTimer: NodeJS.Timeout | null = null
+
+function repoRoot(): string {
+  // dist-electron/ is two levels under apps/jarvisx/, three under repo root.
+  return pathResolve(__dirname, '..', '..', '..')
+}
+
+function emitGitUpdateState(s: GitUpdateState): void {
+  gitUpdateState = s
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('git-update-status', s)
+  }
+}
+
+function runGit(args: string[], cwd: string, timeoutMs = 15_000): Promise<{ ok: boolean; stdout: string; stderr: string }> {
+  return new Promise((resolve) => {
+    execFile('git', args, { cwd, timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
+      resolve({
+        ok: !err,
+        stdout: String(stdout || '').trimEnd(),
+        stderr: String(stderr || '').trimEnd(),
+      })
+    })
+  })
+}
+
+async function checkGitUpdates(): Promise<void> {
+  const root = repoRoot()
+  if (!existsSync(join(root, '.git'))) {
+    // No repo here — installed pkg, not run-from-source. Stay idle.
+    return
+  }
+  emitGitUpdateState({ kind: 'checking' })
+  // Determine the upstream branch we should track. Default to origin/main
+  // but respect whatever the current branch tracks if configured.
+  const branchInfo = await runGit(['rev-parse', '--abbrev-ref', 'HEAD'], root)
+  const branch = branchInfo.ok ? branchInfo.stdout.trim() || 'main' : 'main'
+  const upstream = `origin/${branch}`
+  // Fetch quietly. Network failure here = "checking" → "error" with a
+  // message so the UI can show the user.
+  const fetchRes = await runGit(['fetch', 'origin', branch, '--quiet'], root, 30_000)
+  if (!fetchRes.ok) {
+    emitGitUpdateState({
+      kind: 'error',
+      error: `git fetch failed: ${fetchRes.stderr || 'unknown error'}`,
+    })
+    return
+  }
+  // Count commits behind
+  const countRes = await runGit(['rev-list', '--count', `HEAD..${upstream}`], root)
+  if (!countRes.ok) {
+    emitGitUpdateState({ kind: 'error', error: `rev-list failed: ${countRes.stderr}` })
+    return
+  }
+  const count = parseInt(countRes.stdout, 10) || 0
+  const headRes = await runGit(['rev-parse', '--short', 'HEAD'], root)
+  const head = headRes.ok ? headRes.stdout : '?'
+  if (count === 0) {
+    emitGitUpdateState({
+      kind: 'up-to-date', head, checkedAt: new Date().toISOString(),
+    })
+    return
+  }
+  // Pull commit summaries — most recent first, capped so a long-
+  // sleeping repo doesn't dump 500 entries to the renderer.
+  const logRes = await runGit(
+    ['log', `HEAD..${upstream}`, '--pretty=format:%H%x09%h%x09%an%x09%aI%x09%s', '-n', '20'],
+    root,
+  )
+  const commits: GitCommit[] = []
+  if (logRes.ok && logRes.stdout) {
+    for (const line of logRes.stdout.split('\n')) {
+      const [sha, short, author, date, ...subj] = line.split('\t')
+      if (!sha) continue
+      commits.push({
+        sha, short, author, date,
+        subject: subj.join('\t'),
+      })
+    }
+  }
+  emitGitUpdateState({
+    kind: 'behind',
+    commits,
+    head,
+    checkedAt: new Date().toISOString(),
+  })
+}
+
+function startGitPollLoop(): void {
+  if (gitPollTimer) clearInterval(gitPollTimer)
+  // First check 8s after window-ready so it doesn't compete with first paint.
+  setTimeout(() => { void checkGitUpdates() }, 8_000)
+  // Then every 5 minutes — git fetch is cheap, network is the only cost.
+  gitPollTimer = setInterval(() => { void checkGitUpdates() }, 5 * 60 * 1000)
+}
+
+function setupGitUpdater(): void {
+  const root = repoRoot()
+  if (!existsSync(join(root, '.git'))) {
+    // Not a git checkout — no-op (packaged install). UpdateBanner
+    // will see kind='idle' forever and stay hidden.
+    return
+  }
+  startGitPollLoop()
+
+  ipcMain.handle('jarvisx:git-update-check', async () => {
+    await checkGitUpdates()
+    return gitUpdateState
+  })
+  ipcMain.handle('jarvisx:git-update-status', () => gitUpdateState)
+  ipcMain.handle('jarvisx:git-update-pull-and-rebuild', async () => {
+    return runPullAndRebuild()
+  })
+}
+
+async function runPullAndRebuild(): Promise<{ ok: boolean; error?: string }> {
+  const root = repoRoot()
+  const jarvisxDir = pathResolve(__dirname, '..', '..')  // apps/jarvisx
+  // Phase 1: git pull
+  emitGitUpdateState({ kind: 'updating', phase: 'pull', output: '' })
+  const pull = await runGit(['pull', '--ff-only'], root, 60_000)
+  if (!pull.ok) {
+    emitGitUpdateState({
+      kind: 'error',
+      error: `git pull failed: ${pull.stderr || pull.stdout || 'unknown'}`,
+    })
+    return { ok: false, error: pull.stderr || pull.stdout }
+  }
+  emitGitUpdateState({ kind: 'updating', phase: 'pulled', output: pull.stdout })
+
+  // Phase 2: npm install + build (streamed). We accept that this may
+  // take 30–90s; the renderer shows the live tail of stdout.
+  const ok = await runShellStreaming(
+    'sh',
+    ['-c', 'npm install --silent && npm run build'],
+    jarvisxDir,
+    'install + build',
+  )
+  if (!ok) {
+    return { ok: false, error: 'install/build failed — see banner output' }
+  }
+
+  // Phase 3: restart
+  const headRes = await runGit(['rev-parse', '--short', 'HEAD'], root)
+  emitGitUpdateState({
+    kind: 'updated',
+    head: headRes.ok ? headRes.stdout : '?',
+  })
+  // Give the renderer 1.5s to show the success state, then relaunch.
+  setTimeout(() => {
+    app.relaunch()
+    app.exit(0)
+  }, 1500)
+  return { ok: true }
+}
+
+function runShellStreaming(
+  cmd: string,
+  args: string[],
+  cwd: string,
+  phase: string,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, { cwd, env: process.env })
+    let buf = ''
+    const onChunk = (data: Buffer) => {
+      buf += data.toString('utf8')
+      // Cap buffer to last 4KB so we don't accumulate gigabytes
+      if (buf.length > 4096) buf = buf.slice(-4096)
+      emitGitUpdateState({ kind: 'updating', phase, output: buf })
+    }
+    child.stdout.on('data', onChunk)
+    child.stderr.on('data', onChunk)
+    child.on('error', (err) => {
+      emitGitUpdateState({
+        kind: 'error',
+        error: `${phase} spawn failed: ${err.message}`,
+      })
+      resolve(false)
+    })
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve(true)
+      } else {
+        emitGitUpdateState({
+          kind: 'error',
+          error: `${phase} exited with code ${code}\n\n${buf}`,
+        })
+        resolve(false)
+      }
+    })
+  })
 }
 
 // API paths that must be redirected to the Jarvis backend in packaged
@@ -438,6 +663,7 @@ app.whenReady().then(async () => {
 
   await createWindow()
   setupAutoUpdater()
+  setupGitUpdater()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) void createWindow()

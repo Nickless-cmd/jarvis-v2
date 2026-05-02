@@ -165,3 +165,82 @@ def test_read_brain_entry_returns_not_found(isolated_brain):
     out = read_brain_entry("brn_DOES_NOT_EXIST")
     assert out["status"] == "error"
     assert out["error"] == "not_found"
+
+
+# --- Task 10: archive + adopt/discard proposal tools ---
+
+
+def test_archive_brain_entry_via_tool(isolated_brain):
+    from core.tools.jarvis_brain_tools import remember_this, archive_brain_entry
+    r = remember_this(kind="observation", title="O", content="c",
+                      visibility="personal", domain="d",
+                      session_id="s", turn_id="t1")
+    res = archive_brain_entry(r["id"], reason="not relevant anymore")
+    assert res["status"] == "ok"
+
+
+def test_archive_brain_entry_returns_not_found(isolated_brain):
+    from core.tools.jarvis_brain_tools import archive_brain_entry
+    res = archive_brain_entry("brn_NONE", reason="x")
+    assert res["status"] == "error"
+    assert res["error"] == "not_found"
+
+
+def _make_pending_proposal(jb, kind="fakta", visibility="personal", domain="d",
+                            title="Proposal", content="Proposed body."):
+    """Helper: write a pending proposal file + index row, return id."""
+    pending_dir = jb.brain_dir() / "_pending"
+    pending_dir.mkdir(parents=True, exist_ok=True)
+    eid = jb.new_brain_id()
+    e = jb.BrainEntry(
+        id=eid, kind=kind, visibility=visibility, domain=domain,
+        title=title, content=content,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        last_used_at=None, salience_base=1.0, salience_bumps=0,
+        related=[], trigger="adopted_proposal", status="active",
+        superseded_by=None, source_chronicle=None, source_url=None,
+    )
+    md = jb.render_entry_markdown(e)
+    pending_path = pending_dir / f"{eid[-8:]}.md"
+    pending_path.write_text(md, encoding="utf-8")
+    conn = jb.connect_index()
+    conn.execute(
+        "INSERT INTO brain_proposals(id, path, reason, created_at, status) "
+        "VALUES (?, ?, ?, ?, 'pending')",
+        (eid, str(pending_path.relative_to(jb._workspace_root())),
+         "test proposal", datetime.now(timezone.utc).isoformat()),
+    )
+    conn.commit()
+    conn.close()
+    return eid, pending_path
+
+
+def test_adopt_brain_proposal_moves_file(isolated_brain):
+    from core.tools.jarvis_brain_tools import adopt_brain_proposal
+    eid, pending_path = _make_pending_proposal(isolated_brain)
+
+    res = adopt_brain_proposal(eid)
+    assert res["status"] == "ok", res
+    # File is moved to fakta/-mappe
+    assert not pending_path.exists()
+    assert any((isolated_brain.brain_dir() / "fakta").glob("*.md"))
+
+
+def test_adopt_brain_proposal_already_adopted_rejects(isolated_brain):
+    from core.tools.jarvis_brain_tools import adopt_brain_proposal
+    eid, _ = _make_pending_proposal(isolated_brain)
+    first = adopt_brain_proposal(eid)
+    assert first["status"] == "ok"
+    second = adopt_brain_proposal(eid)
+    assert second["status"] == "error"
+    assert second["error"] == "not_pending"
+
+
+def test_discard_brain_proposal(isolated_brain):
+    from core.tools.jarvis_brain_tools import discard_brain_proposal
+    eid, pending_path = _make_pending_proposal(isolated_brain)
+
+    res = discard_brain_proposal(eid, reason="not useful")
+    assert res["status"] == "ok"
+    assert not pending_path.exists()

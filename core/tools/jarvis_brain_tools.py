@@ -205,3 +205,120 @@ def read_brain_entry(entry_id: str) -> dict[str, Any]:
             "superseded_by": e.superseded_by,
         },
     }
+
+
+def archive_brain_entry(entry_id: str, *, reason: str = "manual") -> dict[str, Any]:
+    """Mark entry as archived and move file to _archive/<kind>/."""
+    from core.services import jarvis_brain
+    try:
+        jarvis_brain.archive_entry(entry_id, reason=reason)
+    except KeyError:
+        return {"status": "error", "error": "not_found"}
+    except Exception as exc:
+        return {"status": "error", "error": "archive_failed", "details": str(exc)}
+    return {"status": "ok"}
+
+
+def adopt_brain_proposal(
+    proposal_id: str, edits: dict | None = None,
+) -> dict[str, Any]:
+    """Flyt en pending proposal til den rigtige kind/-mappe og stempel som visible_jarvis.
+
+    Pending proposal file → kind/<filename>.md
+    proposal status: pending → adopted
+    Inserts new active row in brain_index.
+    """
+    from core.services import jarvis_brain
+
+    conn = jarvis_brain.connect_index()
+    try:
+        row = conn.execute(
+            "SELECT path, status FROM brain_proposals WHERE id = ?",
+            (proposal_id,),
+        ).fetchone()
+        if row is None:
+            return {"status": "error", "error": "not_found"}
+        if row[1] != "pending":
+            return {
+                "status": "error",
+                "error": "not_pending",
+                "details": f"current status: {row[1]}",
+            }
+        rel_path = row[0]
+    finally:
+        conn.close()
+
+    pending_path = jarvis_brain._workspace_root() / rel_path
+    fm, body = jarvis_brain.parse_frontmatter(pending_path)
+    edits = edits or {}
+    fm.update(edits)
+    fm["trigger"] = "adopted_proposal"
+    fm["created_by"] = "visible_jarvis"
+    now = _now()
+    fm["updated_at"] = now.isoformat()
+
+    e = jarvis_brain.entry_from_frontmatter(fm, body)
+    md = jarvis_brain.render_entry_markdown(e)
+    new_path = jarvis_brain.brain_dir() / e.kind / pending_path.name
+    jarvis_brain._atomic_write(new_path, md)
+    if pending_path.exists():
+        pending_path.unlink()
+
+    new_rel = str(new_path.relative_to(jarvis_brain._workspace_root()))
+    fhash = jarvis_brain._file_hash(md)
+    conn = jarvis_brain.connect_index()
+    try:
+        # Insert as active brain entry
+        conn.execute(
+            """INSERT OR REPLACE INTO brain_index
+               (id, path, kind, visibility, domain, title,
+                created_at, updated_at, last_used_at,
+                salience_base, salience_bumps, status,
+                superseded_by, file_hash, embedding, embedding_dim, indexed_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,'active',?,?,NULL,NULL,?)""",
+            (
+                e.id, new_rel, e.kind, e.visibility, e.domain, e.title,
+                jarvis_brain._iso(e.created_at), jarvis_brain._iso(now), None,
+                e.salience_base, e.salience_bumps, e.superseded_by,
+                fhash, jarvis_brain._iso(now),
+            ),
+        )
+        conn.execute(
+            "UPDATE brain_proposals SET status='adopted', adopted_at=?, "
+            "adopted_by='visible_jarvis' WHERE id=?",
+            (jarvis_brain._iso(now), proposal_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return {"status": "ok", "id": e.id, "path": new_rel}
+
+
+def discard_brain_proposal(
+    proposal_id: str, *, reason: str = "",
+) -> dict[str, Any]:
+    """Slet en pending proposal og log reason."""
+    from core.services import jarvis_brain
+
+    conn = jarvis_brain.connect_index()
+    try:
+        row = conn.execute(
+            "SELECT path FROM brain_proposals WHERE id = ?",
+            (proposal_id,),
+        ).fetchone()
+        if row is None:
+            return {"status": "error", "error": "not_found"}
+        rel_path = row[0]
+        pending_path = jarvis_brain._workspace_root() / rel_path
+        if pending_path.exists():
+            pending_path.unlink()
+        conn.execute(
+            "UPDATE brain_proposals SET status='discarded', adopted_at=?, "
+            "adopted_by='visible_jarvis' WHERE id=?",
+            (_now().isoformat(), proposal_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return {"status": "ok", "reason_logged": reason}

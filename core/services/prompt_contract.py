@@ -3109,7 +3109,10 @@ def _recent_transcript_section(
         "Tool lines are internal Jarvis-only observations, not user-visible chat.",
     ]
     window = history[-limit:]
-    expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=4)
+    # recent_count=6 keeps the last 6 tool calls in expanded form
+    # (full payload up to 1600 chars). 256K context window has plenty
+    # of headroom for richer tool-context.
+    expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=6)
     for index, item in enumerate(window):
         raw_role = item["role"]
         if raw_role == "user":
@@ -3172,7 +3175,10 @@ def _build_structured_transcript_messages(
     # Phase 1: Merge consecutive tool messages into the preceding assistant turn.
     # Tool results become a short "[tool_name: status/summary]" annotation.
     window = history[-limit:]
-    expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=4)
+    # recent_count=6 keeps the last 6 tool calls in expanded form
+    # (full payload up to 1600 chars). 256K context window has plenty
+    # of headroom for richer tool-context.
+    expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=6)
     merged: list[dict[str, str]] = []
     for index, item in enumerate(window):
         raw_role = str(item.get("role") or "")
@@ -3187,7 +3193,7 @@ def _build_structured_transcript_messages(
             content = render_tool_result_for_prompt(
                 raw_content,
                 expand=index in expanded_tool_indexes,
-                max_chars=1200 if index in expanded_tool_indexes else 240,
+                max_chars=1600 if index in expanded_tool_indexes else 360,
             )
         else:
             content = " ".join(raw_content.split()).strip()
@@ -3196,7 +3202,7 @@ def _build_structured_transcript_messages(
 
         if raw_role == "tool":
             # Compress tool result into a short annotation
-            tool_summary = content[:1200] if index in expanded_tool_indexes else content[:200]
+            tool_summary = content[:1600] if index in expanded_tool_indexes else content[:300]
             if merged and merged[-1]["role"] == "assistant":
                 # Append as annotation to previous assistant message
                 merged[-1]["content"] += f"\n({tool_summary})"
@@ -3206,9 +3212,11 @@ def _build_structured_transcript_messages(
             continue
 
         if raw_role == "user":
-            # Truncate user messages
-            if len(content) > 1600:
-                content = content[:1597].rstrip() + "…"
+            # Truncate user messages. 2400 chars (~600 tokens) per message
+            # gives Bjørn room to write multi-paragraph briefs without
+            # silent chopping — context window is 256K, we have headroom.
+            if len(content) > 2400:
+                content = content[:2397].rstrip() + "…"
             # Multi-user awareness: when a user_id is recorded for the message,
             # resolve to display name and prefix the content. Without this, in a
             # shared channel (Discord public, multi-member workspace) the model
@@ -3221,9 +3229,10 @@ def _build_structured_transcript_messages(
                     content = f"{speaker}: {content}"
             merged.append({"role": "user", "content": content})
         else:
-            # assistant — use higher truncation limit
-            if len(content) > 1600:
-                content = content[:1597].rstrip() + "…"
+            # assistant — symmetric 2400-char cap so Jarvis' own past replies
+            # don't get truncated mid-sentence in his own working memory.
+            if len(content) > 2400:
+                content = content[:2397].rstrip() + "…"
             merged.append({"role": "assistant", "content": content})
 
     # Phase 2: Ensure alternating user/assistant turns (required by some models).

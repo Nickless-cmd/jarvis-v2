@@ -309,3 +309,84 @@ def test_weighted_random_distribution_respects_weights():
 
     high_pct = picks["high"] / 2000
     assert 0.55 < high_pct < 0.65  # 60% ± 5
+
+
+# --- Task 5: Failure/success handling ---
+
+
+def test_429_with_retry_after_uses_header_value():
+    from core.services.cheap_lane_balancer import (
+        _register_failure, SlotState,
+    )
+    state = SlotState(slot_id="x::y")
+    now = 1000.0
+    _register_failure(state, "http-error:429:rate", retry_after_s=300, now=now)
+    assert state.cooldown_until == now + 300
+    assert "429" in state.cooldown_reason
+    assert state.breaker_level == 0
+
+
+def test_429_without_retry_after_defaults_to_1h():
+    from core.services.cheap_lane_balancer import (
+        _register_failure, SlotState,
+    )
+    state = SlotState(slot_id="x::y")
+    now = 1000.0
+    _register_failure(state, "http-error:429:rate", retry_after_s=0, now=now)
+    assert state.cooldown_until == now + 3600
+
+
+def test_breaker_escalates_after_3_consecutive_5xx():
+    from core.services.cheap_lane_balancer import (
+        _register_failure, SlotState,
+    )
+    state = SlotState(slot_id="x::y")
+    for _ in range(3):
+        _register_failure(state, "http-error:503", retry_after_s=0, now=1000.0)
+    assert state.breaker_level == 1
+    assert state.cooldown_until == 1000.0 + 300
+
+
+def test_breaker_caps_at_level_3():
+    from core.services.cheap_lane_balancer import (
+        _register_failure, SlotState,
+    )
+    state = SlotState(slot_id="x::y", breaker_level=3, consecutive_failures=15)
+    _register_failure(state, "http-error:503", retry_after_s=0, now=1000.0)
+    assert state.breaker_level == 3
+
+
+def test_register_success_resets_streak_and_decays_breaker():
+    from core.services.cheap_lane_balancer import (
+        _register_success, SlotState,
+    )
+    state = SlotState(
+        slot_id="x::y",
+        consecutive_failures=2,
+        breaker_level=2,
+        cooldown_until=9999.0,
+    )
+    _register_success(state, now=1000.0)
+    assert state.consecutive_failures == 0
+    assert state.cooldown_until is None
+    assert state.last_success_at == 1000.0
+    assert state.breaker_level == 1
+
+
+def test_register_success_increments_total_calls():
+    from core.services.cheap_lane_balancer import (
+        _register_success, SlotState,
+    )
+    state = SlotState(slot_id="x::y", total_calls=5)
+    _register_success(state, now=1000.0)
+    assert state.total_calls == 6
+
+
+def test_register_success_appends_to_rpm_deque():
+    from core.services.cheap_lane_balancer import (
+        _register_success, SlotState,
+    )
+    state = SlotState(slot_id="x::y")
+    _register_success(state, now=1000.0)
+    _register_success(state, now=1010.0)
+    assert len(state.recent_call_timestamps) == 2

@@ -261,6 +261,59 @@ def _compute_weight(slot: BalancerSlot, state: SlotState, now: float) -> float:
     return max(0.0, base * health * preference)
 
 
+# ---------------------------------------------------------------------------
+# Failure / success handling — circuit breaker
+# ---------------------------------------------------------------------------
+
+
+_BREAKER_COOLDOWN_SECONDS = {0: 0, 1: 300, 2: 900, 3: 3600}  # 5min/15min/1h
+_CONSECUTIVE_FAILURE_THRESHOLD = 3
+_DEFAULT_429_COOLDOWN_SECONDS = 3600
+
+
+def _register_failure(
+    state: SlotState,
+    error_kind: str,
+    *,
+    retry_after_s: int = 0,
+    now: float,
+) -> None:
+    """Update state after a failed call.
+
+    429 with retry-after → use header verbatim, don't escalate breaker.
+    429 without retry-after → 1h default cooldown.
+    Other errors → escalate breaker after 3 consecutive failures.
+    """
+    state.consecutive_failures += 1
+    state.last_failure_at = now
+    state.total_failures += 1
+    state.cooldown_reason = error_kind
+
+    if "429" in error_kind:
+        if retry_after_s > 0:
+            state.cooldown_until = now + retry_after_s
+        else:
+            state.cooldown_until = now + _DEFAULT_429_COOLDOWN_SECONDS
+        return
+
+    if state.consecutive_failures >= _CONSECUTIVE_FAILURE_THRESHOLD:
+        state.breaker_level = min(state.breaker_level + 1, 3)
+    cooldown = _BREAKER_COOLDOWN_SECONDS.get(state.breaker_level, 0)
+    if cooldown > 0:
+        state.cooldown_until = now + cooldown
+
+
+def _register_success(state: SlotState, now: float) -> None:
+    """Update state after a successful call."""
+    state.recent_call_timestamps.append(now)
+    state.total_calls += 1
+    state.last_success_at = now
+    state.consecutive_failures = 0
+    state.cooldown_until = None
+    if state.breaker_level > 0:
+        state.breaker_level = max(0, state.breaker_level - 1)
+
+
 def _select_slot(
     states: dict[str, SlotState],
     pool: list[BalancerSlot],

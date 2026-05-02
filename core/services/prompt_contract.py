@@ -563,6 +563,21 @@ def build_visible_chat_prompt_assembly(
             )
             if _facts_text:
                 _awareness_add(8, "jarvis brain facts (auto-inject)", _facts_text)
+
+            # Post-web-search nudge — if last tool message had URL content,
+            # encourage remember_this. Heuristic; max one per turn since we
+            # only inspect the most recent tool message.
+            try:
+                from core.services.chat_sessions import recent_chat_tool_messages
+                from core.services.prompt_sections.jarvis_brain_nudge import (
+                    build_brain_post_web_nudge,
+                )
+                _recent_tools = recent_chat_tool_messages(session_id, limit=1) if session_id else []
+                _nudge = build_brain_post_web_nudge(recent_tool_messages=_recent_tools)
+                if _nudge:
+                    _awareness_add(45, "post-web-search brain nudge", _nudge)
+            except Exception:
+                pass
     except Exception:
         pass
 

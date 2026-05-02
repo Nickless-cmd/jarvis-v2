@@ -98,3 +98,70 @@ def test_remember_this_per_day_rate_limit(isolated_brain, monkeypatch):
     )
     assert r["status"] == "error"
     assert r["error"] == "rate_limit_day"
+
+
+# --- Task 9: search + read tools ---
+
+
+@pytest.fixture
+def stubbed_embedder(monkeypatch):
+    import numpy as np
+    from core.services import jarvis_brain
+
+    def fake(text):
+        if "alpha" in text.lower():
+            return np.array([1.0, 0.0, 0.0], dtype=np.float32)
+        if "beta" in text.lower():
+            return np.array([0.0, 1.0, 0.0], dtype=np.float32)
+        return np.array([0.0, 0.0, 1.0], dtype=np.float32)
+
+    monkeypatch.setattr(jarvis_brain, "_embed_text", fake)
+
+
+def test_search_jarvis_brain_returns_excerpts(isolated_brain, stubbed_embedder):
+    from core.tools.jarvis_brain_tools import remember_this, search_jarvis_brain
+    from core.services import jarvis_brain
+    remember_this(kind="fakta", title="Alpha", content="alpha details here",
+                  visibility="personal", domain="d", session_id="s", turn_id="t1")
+    remember_this(kind="fakta", title="Beta", content="beta details here",
+                  visibility="public_safe", domain="d", session_id="s", turn_id="t2")
+    jarvis_brain.embed_pending_entries()
+
+    res = search_jarvis_brain(
+        query="alpha lookup", session_visibility_ceiling="personal", limit=3,
+    )
+    assert res["status"] == "ok"
+    assert len(res["results"]) >= 1
+    assert res["results"][0]["title"] == "Alpha"
+    assert "excerpt" in res["results"][0]
+
+
+def test_search_jarvis_brain_reports_hidden_count(isolated_brain, stubbed_embedder):
+    from core.tools.jarvis_brain_tools import remember_this, search_jarvis_brain
+    from core.services import jarvis_brain
+    remember_this(kind="fakta", title="Alpha", content="alpha details",
+                  visibility="intimate", domain="d", session_id="s", turn_id="t1")
+    jarvis_brain.embed_pending_entries()
+
+    res = search_jarvis_brain(
+        query="alpha lookup", session_visibility_ceiling="public_safe", limit=5,
+    )
+    assert res["hidden_by_visibility"] >= 1
+
+
+def test_read_brain_entry_returns_full_content(isolated_brain):
+    from core.tools.jarvis_brain_tools import remember_this, read_brain_entry
+    r = remember_this(kind="indsigt", title="Long",
+                      content="The full body text here.",
+                      visibility="personal", domain="d",
+                      session_id="s", turn_id="t1")
+    out = read_brain_entry(r["id"])
+    assert out["status"] == "ok"
+    assert out["entry"]["content"] == "The full body text here."
+
+
+def test_read_brain_entry_returns_not_found(isolated_brain):
+    from core.tools.jarvis_brain_tools import read_brain_entry
+    out = read_brain_entry("brn_DOES_NOT_EXIST")
+    assert out["status"] == "error"
+    assert out["error"] == "not_found"

@@ -548,6 +548,21 @@ def build_visible_chat_prompt_assembly(
             )
             if _brain_text:
                 _awareness_add(6, "jarvis brain summary", _brain_text)
+
+            # Auto-inject relevant fakta (priority 8 — efter summary,
+            # før output style). Privacy-gated; silent skip hvis intet
+            # over threshold eller hvis feature disabled.
+            from core.services.prompt_sections.jarvis_brain_facts import (
+                build_brain_facts_section,
+            )
+            _facts_text = build_brain_facts_section(
+                user_message=user_message,
+                session_id=session_id,
+                top_k=getattr(_bs, "jarvis_brain_auto_inject_top_k", 3),
+                threshold=getattr(_bs, "jarvis_brain_auto_inject_threshold", 0.55),
+            )
+            if _facts_text:
+                _awareness_add(8, "jarvis brain facts (auto-inject)", _facts_text)
     except Exception:
         pass
 

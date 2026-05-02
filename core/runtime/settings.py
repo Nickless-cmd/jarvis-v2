@@ -99,6 +99,11 @@ class RuntimeSettings:
     # Theme consolidation (phase 3) on/off. Auto-pauses after 3 consecutive
     # rejections regardless of this flag (separate state file).
     jarvis_brain_theme_consolidation_enabled: bool = True
+    # Cheap-lane balancer for daemon LLM traffic. When True (default),
+    # daemon_llm.py routes through cheap_lane_balancer with weighted-random
+    # selection across all eligible (provider, model) slots and circuit
+    # breakers. When False, falls back to task_kind="background" routing.
+    daemon_balancer_enabled: bool = True
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -137,6 +142,7 @@ class RuntimeSettings:
             "jarvis_brain_auto_archive_salience_threshold": self.jarvis_brain_auto_archive_salience_threshold,
             "jarvis_brain_auto_archive_days": self.jarvis_brain_auto_archive_days,
             "jarvis_brain_theme_consolidation_enabled": self.jarvis_brain_theme_consolidation_enabled,
+            "daemon_balancer_enabled": self.daemon_balancer_enabled,
         }
         return {**self.extra, **typed}
 
@@ -269,6 +275,7 @@ def load_settings() -> RuntimeSettings:
         jarvis_brain_auto_archive_salience_threshold=float(data.get("jarvis_brain_auto_archive_salience_threshold", defaults.jarvis_brain_auto_archive_salience_threshold)),
         jarvis_brain_auto_archive_days=int(data.get("jarvis_brain_auto_archive_days", defaults.jarvis_brain_auto_archive_days)),
         jarvis_brain_theme_consolidation_enabled=bool(data.get("jarvis_brain_theme_consolidation_enabled", defaults.jarvis_brain_theme_consolidation_enabled)),
+        daemon_balancer_enabled=bool(data.get("daemon_balancer_enabled", defaults.daemon_balancer_enabled)),
         extra={key: value for key, value in data.items() if key not in KNOWN_FIELDS},
     )
 

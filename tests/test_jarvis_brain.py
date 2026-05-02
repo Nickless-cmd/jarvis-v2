@@ -1,6 +1,6 @@
 """Tests for core/services/jarvis_brain.py — kerne CRUD-laget."""
 from __future__ import annotations
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import pytest
 
 
@@ -202,3 +202,76 @@ def test_write_entry_inserts_relations(tmp_path, monkeypatch):
     ).fetchall()
     conn.close()
     assert (b, a) in rows
+
+
+# --- Task 4: decay formula + bump_salience ---
+
+
+def _make_entry(kind="fakta", bumps=0, base=1.0, last_used_days_ago=None):
+    from core.services.jarvis_brain import BrainEntry
+    now = datetime(2026, 5, 2, tzinfo=timezone.utc)
+    last = (
+        None
+        if last_used_days_ago is None
+        else now - timedelta(days=last_used_days_ago)
+    )
+    created = now - timedelta(days=last_used_days_ago or 0)
+    return BrainEntry(
+        id="brn_T", kind=kind, visibility="personal", domain="x",
+        title="t", content="c",
+        created_at=created, updated_at=now, last_used_at=last,
+        salience_base=base, salience_bumps=bumps, related=[],
+        trigger="spontaneous", status="active", superseded_by=None,
+        source_chronicle=None, source_url=None,
+    )
+
+
+def test_effective_salience_no_decay_for_reference():
+    from core.services.jarvis_brain import compute_effective_salience
+    e = _make_entry(kind="reference", last_used_days_ago=3650)
+    now = datetime(2026, 5, 2, tzinfo=timezone.utc)
+    s = compute_effective_salience(e, now)
+    assert s == pytest.approx(1.0, abs=0.01)
+
+
+def test_effective_salience_observation_decays_by_e_at_14_days():
+    from core.services.jarvis_brain import compute_effective_salience
+    e = _make_entry(kind="observation", last_used_days_ago=14)
+    now = datetime(2026, 5, 2, tzinfo=timezone.utc)
+    s = compute_effective_salience(e, now)
+    # exp(-14/14) = 1/e ≈ 0.368
+    assert s == pytest.approx(0.368, abs=0.01)
+
+
+def test_effective_salience_floor_never_below_002():
+    from core.services.jarvis_brain import compute_effective_salience
+    e = _make_entry(kind="observation", last_used_days_ago=10000)
+    now = datetime(2026, 5, 2, tzinfo=timezone.utc)
+    s = compute_effective_salience(e, now)
+    assert s >= 0.02
+
+
+def test_effective_salience_bumps_amplify_modestly():
+    from core.services.jarvis_brain import compute_effective_salience
+    now = datetime(2026, 5, 2, tzinfo=timezone.utc)
+    e0 = _make_entry(kind="fakta", bumps=0, last_used_days_ago=0)
+    e3 = _make_entry(kind="fakta", bumps=3, last_used_days_ago=0)
+    s0 = compute_effective_salience(e0, now)
+    s3 = compute_effective_salience(e3, now)
+    # 3 bumps: 1 + 0.3*log2(4) = 1 + 0.6 = 1.6
+    assert s3 / s0 == pytest.approx(1.6, abs=0.05)
+
+
+def test_bump_salience_updates_index_and_file(tmp_path, monkeypatch):
+    from core.services import jarvis_brain
+    monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path / "state")
+    new_id = jarvis_brain.write_entry(
+        kind="fakta", title="X", content="y", visibility="personal",
+        domain="d", trigger="spontaneous",
+    )
+    now = datetime(2026, 5, 2, 13, 0, tzinfo=timezone.utc)
+    jarvis_brain.bump_salience(new_id, now=now)
+    e = jarvis_brain.read_entry(new_id)
+    assert e.salience_bumps == 1
+    assert e.last_used_at is not None

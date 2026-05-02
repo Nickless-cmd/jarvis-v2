@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 import hashlib
+import math
 import os
 import re
 import secrets
@@ -347,3 +348,84 @@ def read_entry(entry_id: str) -> BrainEntry:
     path = _workspace_root() / row[0]
     fm, body = parse_frontmatter(path)
     return entry_from_frontmatter(fm, body)
+
+
+def _index_path_for(entry_id: str) -> str:
+    """Returns the relative path stored in brain_index for entry_id."""
+    conn = connect_index()
+    try:
+        row = conn.execute(
+            "SELECT path FROM brain_index WHERE id = ?", (entry_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        raise KeyError(entry_id)
+    return row[0]
+
+
+# ---------------------------------------------------------------------------
+# Decay + salience
+# ---------------------------------------------------------------------------
+
+
+_HALFLIFE_DAYS = {
+    "observation": 14.0,
+    "fakta": 180.0,
+    "indsigt": 365.0,
+    "reference": float("inf"),
+}
+_SALIENCE_FLOOR = 0.02
+
+
+def compute_effective_salience(entry: BrainEntry, now: datetime) -> float:
+    """Compute time-decayed salience with bump amplification.
+
+    Formula:
+        effective = max(floor, base * exp(-days/halflife) * (1 + 0.3*log2(1+bumps)))
+
+    references never decay (halflife = inf).
+    """
+    last = entry.last_used_at or entry.created_at
+    days = max(0.0, (now - last).total_seconds() / 86400.0)
+    halflife = _HALFLIFE_DAYS[entry.kind]
+    if math.isinf(halflife):
+        decay = 1.0
+    else:
+        decay = math.exp(-days / halflife)
+    bumps_factor = math.log2(1 + entry.salience_bumps) if entry.salience_bumps > 0 else 0.0
+    raw = entry.salience_base * decay * (1.0 + 0.3 * bumps_factor)
+    return max(_SALIENCE_FLOOR, raw)
+
+
+def bump_salience(entry_id: str, now: datetime | None = None) -> None:
+    """Increments salience_bumps + opdaterer last_used_at i index OG fil.
+
+    Filen er sandhed; index opdateres synkront. Hvis fil-update fejler,
+    rejeses exception (caller-decides). Reindex-loop'et fanger evt. drift.
+    """
+    now = now or datetime.now(timezone.utc)
+    entry = read_entry(entry_id)
+    entry.salience_bumps += 1
+    entry.last_used_at = now
+    entry.updated_at = now
+
+    # Re-render fil med opdateret frontmatter
+    md = render_entry_markdown(entry)
+    fpath = _workspace_root() / _index_path_for(entry_id)
+    _atomic_write(fpath, md)
+
+    # Update index
+    fhash = _file_hash(md)
+    conn = connect_index()
+    try:
+        conn.execute(
+            """UPDATE brain_index
+               SET salience_bumps = ?, last_used_at = ?, updated_at = ?,
+                   file_hash = ?, indexed_at = ?
+               WHERE id = ?""",
+            (entry.salience_bumps, _iso(now), _iso(now), fhash, _iso(now), entry_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()

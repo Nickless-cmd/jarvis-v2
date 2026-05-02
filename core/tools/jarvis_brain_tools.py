@@ -107,3 +107,101 @@ def remember_this(
     _day_counts[day_key] += 1
 
     return {"status": "ok", "id": new_id}
+
+
+def search_jarvis_brain(
+    *,
+    query: str,
+    session_visibility_ceiling: str = "personal",
+    kinds: list[str] | None = None,
+    limit: int = 5,
+    domain: str | None = None,
+    include_archived: bool = False,
+) -> dict[str, Any]:
+    """Søg Jarvis' egen hjerne. Returnerer excerpts; brug read_brain_entry for fuld content.
+
+    Filtrér automatisk på visibility ceiling.
+    Bumper salience for hver returneret entry.
+    Inkluderer hidden_by_visibility-count så Jarvis ved at noget blev skjult.
+    """
+    from core.services import jarvis_brain
+    try:
+        results = jarvis_brain.search_brain(
+            query_text=query,
+            kinds=kinds,
+            visibility_ceiling=session_visibility_ceiling,
+            limit=limit,
+            domain=domain,
+            include_archived=include_archived,
+        )
+    except Exception as exc:
+        return {"status": "error", "error": "search_failed", "details": str(exc)}
+
+    # Bump salience for hver returneret entry (best-effort)
+    now = _now()
+    for e in results:
+        try:
+            jarvis_brain.bump_salience(e.id, now=now)
+        except Exception:
+            pass
+
+    # Tæl hidden — kør samme query med ceiling=intimate og diff
+    hidden_count = 0
+    if session_visibility_ceiling != "intimate":
+        try:
+            full = jarvis_brain.search_brain(
+                query_text=query,
+                kinds=kinds,
+                visibility_ceiling="intimate",
+                limit=max(limit * 3, 15),
+                domain=domain,
+                include_archived=include_archived,
+            )
+            full_ids = {e.id for e in full}
+            visible_ids = {e.id for e in results}
+            hidden_count = max(0, len(full_ids - visible_ids))
+        except Exception:
+            pass
+
+    out = []
+    for e in results:
+        out.append({
+            "id": e.id,
+            "kind": e.kind,
+            "title": e.title,
+            "domain": e.domain,
+            "created_at": e.created_at.isoformat(),
+            "excerpt": e.content[:200] + ("…" if len(e.content) > 200 else ""),
+        })
+    return {
+        "status": "ok",
+        "results": out,
+        "hidden_by_visibility": hidden_count,
+    }
+
+
+def read_brain_entry(entry_id: str) -> dict[str, Any]:
+    """Hent fuld content for én brain entry."""
+    from core.services import jarvis_brain
+    try:
+        e = jarvis_brain.read_entry(entry_id)
+    except KeyError:
+        return {"status": "error", "error": "not_found"}
+    except Exception as exc:
+        return {"status": "error", "error": "read_failed", "details": str(exc)}
+    return {
+        "status": "ok",
+        "entry": {
+            "id": e.id,
+            "kind": e.kind,
+            "title": e.title,
+            "content": e.content,
+            "visibility": e.visibility,
+            "domain": e.domain,
+            "created_at": e.created_at.isoformat(),
+            "salience_bumps": e.salience_bumps,
+            "related": e.related,
+            "status_field": e.status,
+            "superseded_by": e.superseded_by,
+        },
+    }

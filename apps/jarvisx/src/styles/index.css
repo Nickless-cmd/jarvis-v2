@@ -18,6 +18,19 @@ iframe {
   -webkit-user-select: auto;
   user-select: auto;
 }
+/* Re-enable selection on actual content surfaces. Body stays
+   non-selectable so sidebar/header/buttons feel like native chrome,
+   but anything the user might want to copy gets explicit opt-in. */
+.message-content,
+.message-content *,
+pre, code,
+textarea, input,
+.diff-add, .diff-del, .diff-context, .diff-hunk,
+[data-selectable="true"],
+[data-selectable="true"] * {
+  -webkit-user-select: text;
+  user-select: text;
+}
 
 /* Custom scrollbar — slim and dark to match the shell */
 ::-webkit-scrollbar { width: 8px; height: 8px; }

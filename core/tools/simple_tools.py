@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import html
 import json
+import logging
 import os
 import re
 import shlex
@@ -34,6 +35,8 @@ from core.tools.browser_tools import (
     _exec_browser_find_tabs,
     _exec_browser_switch_tab,
 )
+
+logger = logging.getLogger(__name__)
 from core.tools.comfyui_tools import (
     COMFYUI_TOOL_DEFINITIONS,
     _exec_comfyui_status,

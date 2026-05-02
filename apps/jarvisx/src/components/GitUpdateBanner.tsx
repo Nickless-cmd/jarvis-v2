@@ -9,6 +9,7 @@ import {
   RotateCw,
   ChevronDown,
   ChevronUp,
+  Power,
 } from 'lucide-react'
 import type { GitUpdateStatus } from '../types'
 
@@ -155,12 +156,23 @@ export function GitUpdateBanner() {
   }
 
   if (status.kind === 'updated') {
+    // Build artifacts are on disk but the renderer is still running
+    // the OLD bundle. We do NOT auto-restart — Bjørn is explicit
+    // that mid-conversation yanks are not OK. User clicks "Restart
+    // now" when they're at a natural break.
     return (
       <div className="flex flex-shrink-0 items-center gap-3 border-b border-ok/30 bg-ok/10 px-4 py-1.5 text-[11px] text-ok">
         <CheckCircle2 size={12} />
-        <span className="font-semibold">
-          Opdateret til <span className="font-mono">{status.head}</span> — genstarter…
+        <span className="flex-1 font-semibold">
+          Build færdig på <span className="font-mono">{status.head}</span> —
+          klar til genstart når du er klar
         </span>
+        <button
+          onClick={() => window.jarvisx?.gitUpdateRestartNow()}
+          className="flex items-center gap-1.5 rounded bg-ok px-3 py-1 text-[11px] font-semibold text-bg0 hover:bg-ok/90"
+        >
+          <Power size={11} /> Genstart nu
+        </button>
       </div>
     )
   }

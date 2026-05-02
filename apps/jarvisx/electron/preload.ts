@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('jarvisx', {
   gitUpdateCheck: () => ipcRenderer.invoke('jarvisx:git-update-check'),
   gitUpdateStatus: () => ipcRenderer.invoke('jarvisx:git-update-status'),
   gitUpdatePullAndRebuild: () => ipcRenderer.invoke('jarvisx:git-update-pull-and-rebuild'),
+  gitUpdateRestartNow: () => ipcRenderer.invoke('jarvisx:git-update-restart-now'),
   onGitUpdateStatus: (cb: (status: unknown) => void) => {
     const listener = (_evt: unknown, status: unknown) => cb(status)
     ipcRenderer.on('git-update-status', listener)

@@ -121,3 +121,76 @@ def test_dedup_only_compares_within_target_kinds(isolated, monkeypatch):
     isolated.embed_pending_entries()
     pairs = find_duplicate_proposals(threshold=0.5)
     assert pairs == []
+
+
+# --- Task 13: contradiction detection (privacy-routed LLM) ---
+
+
+class _Stub:
+    def __init__(self, visibility, title="t", content="c"):
+        self.visibility = visibility
+        self.title = title
+        self.content = content
+
+
+def test_contradiction_pair_routes_to_local_for_intimate(monkeypatch):
+    """If ANY entry is personal or intimate, free API MUST NOT be called."""
+    from core.services import jarvis_brain_daemon as dmn
+    free_called = {"n": 0}
+    local_called = {"n": 0}
+
+    def fake_free(prompt):
+        free_called["n"] += 1
+        return {"contradicts": False, "reason": "x"}
+
+    def fake_local(prompt):
+        local_called["n"] += 1
+        return {"contradicts": False, "reason": "x"}
+
+    monkeypatch.setattr(dmn, "_call_ollamafreeapi", fake_free)
+    monkeypatch.setattr(dmn, "_call_local_ollama", fake_local)
+
+    a = _Stub(visibility="intimate", content="a")
+    b = _Stub(visibility="public_safe", content="b")
+    dmn._llm_contradiction_check(a, b)
+    assert free_called["n"] == 0
+    assert local_called["n"] == 1
+
+
+def test_contradiction_pair_uses_free_for_both_public(monkeypatch):
+    from core.services import jarvis_brain_daemon as dmn
+    free_called = {"n": 0}
+    local_called = {"n": 0}
+
+    def fake_free(prompt):
+        free_called["n"] += 1
+        return {"contradicts": False, "reason": "x"}
+
+    def fake_local(prompt):
+        local_called["n"] += 1
+        return None
+
+    monkeypatch.setattr(dmn, "_call_ollamafreeapi", fake_free)
+    monkeypatch.setattr(dmn, "_call_local_ollama", fake_local)
+
+    a = _Stub(visibility="public_safe", content="a")
+    b = _Stub(visibility="public_safe", content="b")
+    dmn._llm_contradiction_check(a, b)
+    assert free_called["n"] == 1
+    assert local_called["n"] == 0
+
+
+def test_contradiction_personal_pair_also_routes_local(monkeypatch):
+    from core.services import jarvis_brain_daemon as dmn
+    free_called = {"n": 0}
+    local_called = {"n": 0}
+    monkeypatch.setattr(dmn, "_call_ollamafreeapi",
+                        lambda p: free_called.update(n=free_called["n"] + 1))
+    monkeypatch.setattr(dmn, "_call_local_ollama",
+                        lambda p: local_called.update(n=local_called["n"] + 1))
+
+    a = _Stub(visibility="personal", content="a")
+    b = _Stub(visibility="public_safe", content="b")
+    dmn._llm_contradiction_check(a, b)
+    assert free_called["n"] == 0
+    assert local_called["n"] == 1

@@ -492,3 +492,74 @@ def test_call_balanced_does_not_retry_same_slot_twice(monkeypatch, tmp_path):
     with pytest.raises(RuntimeError):
         clb.call_balanced(prompt="hi", daemon_name="test", max_retries=5)
     assert call_count["n"] == 1
+
+
+# --- Task 7: Manual controls ---
+
+
+def test_reset_slot_clears_breaker_and_cooldown(tmp_path, monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+
+    states = {"groq::m": clb.SlotState(
+        slot_id="groq::m",
+        consecutive_failures=5,
+        breaker_level=2,
+        cooldown_until=9999.0,
+    )}
+    clb._save_state(states)
+
+    res = clb.reset_slot("groq::m")
+    assert res["status"] == "ok"
+
+    loaded = clb._load_state()
+    assert loaded["groq::m"].consecutive_failures == 0
+    assert loaded["groq::m"].breaker_level == 0
+    assert loaded["groq::m"].cooldown_until is None
+
+
+def test_reset_slot_returns_ok_for_unknown(tmp_path, monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    res = clb.reset_slot("nonexistent::slot")
+    assert res["status"] == "ok"
+
+
+def test_disable_slot_forces_weight_zero(tmp_path, monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    s = _slot(provider="groq", model="m")
+    state = clb.SlotState(slot_id=s.slot_id)
+    clb._save_state({s.slot_id: state})
+
+    res = clb.disable_slot(s.slot_id)
+    assert res["status"] == "ok"
+
+    loaded = clb._load_state()
+    assert loaded[s.slot_id].manually_disabled is True
+    weight = clb._compute_weight(s, loaded[s.slot_id], _time.time())
+    assert weight == 0.0
+
+
+def test_enable_slot_restores_eligibility(tmp_path, monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    state = clb.SlotState(slot_id="groq::m", manually_disabled=True)
+    clb._save_state({"groq::m": state})
+
+    res = clb.enable_slot("groq::m")
+    assert res["status"] == "ok"
+
+    loaded = clb._load_state()
+    assert loaded["groq::m"].manually_disabled is False
+
+
+def test_refresh_pool_returns_current_slot_count(monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(
+        clb, "build_slot_pool",
+        lambda: [_slot(provider=f"p{i}", model="m") for i in range(7)],
+    )
+    res = clb.refresh_pool()
+    assert res["status"] == "ok"
+    assert res["pool_size"] == 7

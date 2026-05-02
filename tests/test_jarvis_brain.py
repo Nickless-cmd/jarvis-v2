@@ -275,3 +275,70 @@ def test_bump_salience_updates_index_and_file(tmp_path, monkeypatch):
     e = jarvis_brain.read_entry(new_id)
     assert e.salience_bumps == 1
     assert e.last_used_at is not None
+
+
+# --- Task 5: embedding-based search ---
+
+
+@pytest.fixture
+def populated_brain(tmp_path, monkeypatch):
+    """3 entries with deterministic stub embeddings (3-dim)."""
+    import numpy as np
+    from core.services import jarvis_brain
+    monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path / "state")
+
+    def fake_embed(text: str) -> np.ndarray:
+        if "alpha" in text.lower():
+            return np.array([1.0, 0.0, 0.0], dtype=np.float32)
+        if "beta" in text.lower():
+            return np.array([0.0, 1.0, 0.0], dtype=np.float32)
+        return np.array([0.0, 0.0, 1.0], dtype=np.float32)
+    monkeypatch.setattr(jarvis_brain, "_embed_text", fake_embed)
+
+    a = jarvis_brain.write_entry(kind="fakta", title="Alpha thing",
+                                  content="alpha details", visibility="personal", domain="x")
+    b = jarvis_brain.write_entry(kind="fakta", title="Beta thing",
+                                  content="beta details", visibility="public_safe", domain="x")
+    c = jarvis_brain.write_entry(kind="indsigt", title="Gamma insight",
+                                  content="gamma reflections", visibility="personal", domain="x")
+    jarvis_brain.embed_pending_entries()
+    return {"a": a, "b": b, "c": c}
+
+
+def test_search_brain_returns_top_match_by_similarity(populated_brain):
+    from core.services import jarvis_brain
+    hits = jarvis_brain.search_brain(
+        query_text="alpha lookup",
+        kinds=["fakta"],
+        visibility_ceiling="personal",
+        limit=2,
+    )
+    assert len(hits) >= 1
+    assert hits[0].id == populated_brain["a"]
+
+
+def test_search_brain_filters_visibility(populated_brain):
+    from core.services import jarvis_brain
+    hits = jarvis_brain.search_brain(
+        query_text="alpha lookup",
+        kinds=["fakta"],
+        visibility_ceiling="public_safe",
+        limit=5,
+    )
+    # Alpha is personal → must NOT be in results
+    ids = [h.id for h in hits]
+    assert populated_brain["a"] not in ids
+    assert populated_brain["b"] in ids
+
+
+def test_search_brain_filters_kind(populated_brain):
+    from core.services import jarvis_brain
+    hits = jarvis_brain.search_brain(
+        query_text="gamma",
+        kinds=["fakta"],   # excludes indsigt
+        visibility_ceiling="intimate",
+        limit=5,
+    )
+    ids = [h.id for h in hits]
+    assert populated_brain["c"] not in ids

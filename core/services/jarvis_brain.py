@@ -18,6 +18,7 @@ import secrets
 import sqlite3
 import time
 
+import numpy as np
 import yaml
 
 # Prøv python-ulid først, fallback til lokal Crockford b32 generator.
@@ -396,6 +397,129 @@ def compute_effective_salience(entry: BrainEntry, now: datetime) -> float:
     bumps_factor = math.log2(1 + entry.salience_bumps) if entry.salience_bumps > 0 else 0.0
     raw = entry.salience_base * decay * (1.0 + 0.3 * bumps_factor)
     return max(_SALIENCE_FLOOR, raw)
+
+
+# ---------------------------------------------------------------------------
+# Embedding + search
+# ---------------------------------------------------------------------------
+
+
+def _embed_text(text: str) -> np.ndarray:
+    """Wrapper around eksisterende embedder. Override in tests via monkeypatch.
+
+    Uses semantic_memory's nomic-embed-text via Ollama (768-dim float32).
+    """
+    from core.services.semantic_memory import _embed_ollama
+    v = _embed_ollama(text)
+    if v is None:
+        # Fallback: zero vector (will sort to end of any cosine ranking)
+        return np.zeros(768, dtype=np.float32)
+    if not isinstance(v, np.ndarray):
+        v = np.asarray(v, dtype=np.float32)
+    return v.astype(np.float32, copy=False)
+
+
+def _embedding_to_blob(v: np.ndarray) -> bytes:
+    return v.astype(np.float32, copy=False).tobytes()
+
+
+def _embedding_from_blob(blob: bytes, dim: int) -> np.ndarray:
+    return np.frombuffer(blob, dtype=np.float32).reshape(dim)
+
+
+def embed_pending_entries() -> int:
+    """Embed alle entries i index'et der mangler embedding. Returnerer antal."""
+    conn = connect_index()
+    count = 0
+    try:
+        rows = conn.execute(
+            "SELECT id, title, path FROM brain_index "
+            "WHERE embedding IS NULL AND status = 'active'"
+        ).fetchall()
+        for entry_id, title, rel_path in rows:
+            full = _workspace_root() / rel_path
+            try:
+                _, body = parse_frontmatter(full)
+            except Exception:
+                continue
+            text = f"{title}\n\n{body}"
+            v = _embed_text(text)
+            conn.execute(
+                "UPDATE brain_index SET embedding = ?, embedding_dim = ? WHERE id = ?",
+                (_embedding_to_blob(v), len(v), entry_id),
+            )
+            count += 1
+        conn.commit()
+    finally:
+        conn.close()
+    return count
+
+
+_VIS_LEVEL = {"public_safe": 0, "personal": 1, "intimate": 2}
+
+
+def search_brain(
+    *,
+    query_text: str,
+    kinds: list[str] | None = None,
+    visibility_ceiling: str = "personal",
+    limit: int = 5,
+    domain: str | None = None,
+    include_archived: bool = False,
+    now: datetime | None = None,
+) -> list[BrainEntry]:
+    """Hybrid embedding search: 0.7*cosine + 0.3*effective_salience.
+
+    visibility_ceiling filtrerer ud poster med højere visibility-niveau.
+    """
+    now = now or datetime.now(timezone.utc)
+    qv = _embed_text(query_text)
+    ceiling_lvl = _VIS_LEVEL[visibility_ceiling]
+
+    sql = """SELECT id, kind, visibility, salience_base, salience_bumps,
+                    last_used_at, embedding, embedding_dim, created_at
+             FROM brain_index
+             WHERE embedding IS NOT NULL"""
+    params: list = []
+    if not include_archived:
+        sql += " AND status = 'active'"
+    if kinds:
+        ph = ",".join("?" * len(kinds))
+        sql += f" AND kind IN ({ph})"
+        params.extend(kinds)
+    if domain:
+        sql += " AND domain = ?"
+        params.append(domain)
+
+    conn = connect_index()
+    try:
+        rows = conn.execute(sql, params).fetchall()
+    finally:
+        conn.close()
+
+    scored: list[tuple[float, str]] = []
+    for (entry_id, kind, vis, sal_base, bumps,
+         last_used, emb_blob, emb_dim, created_at) in rows:
+        if _VIS_LEVEL[vis] > ceiling_lvl:
+            continue
+        v = _embedding_from_blob(emb_blob, emb_dim)
+        denom = float(np.linalg.norm(qv) * np.linalg.norm(v)) or 1e-9
+        cos = float(np.dot(qv, v) / denom)
+
+        # Effektiv salience uden at læse fil (genberegnet inline)
+        last = _parse_iso(last_used) if last_used else _parse_iso(created_at)
+        days = max(0.0, (now - last).total_seconds() / 86400.0)
+        halflife = _HALFLIFE_DAYS[kind]
+        decay = 1.0 if math.isinf(halflife) else math.exp(-days / halflife)
+        bumps_factor = math.log2(1 + bumps) if bumps > 0 else 0.0
+        eff = max(_SALIENCE_FLOOR, sal_base * decay * (1.0 + 0.3 * bumps_factor))
+
+        score = 0.7 * cos + 0.3 * eff
+        scored.append((score, entry_id))
+
+    scored.sort(reverse=True)
+    top = scored[:limit]
+    return [read_entry(eid) for _, eid in top]
 
 
 def bump_salience(entry_id: str, now: datetime | None = None) -> None:

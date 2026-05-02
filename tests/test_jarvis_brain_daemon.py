@@ -250,3 +250,81 @@ def test_resume_theme_consolidation_clears_state(isolated, monkeypatch):
     assert dmn.is_theme_consolidation_paused() is True
     dmn.resume_theme_consolidation()
     assert dmn.is_theme_consolidation_paused() is False
+
+
+# --- Task 15: summary regeneration ---
+
+
+def test_regenerate_summary_creates_file(isolated, monkeypatch):
+    from core.services.jarvis_brain_daemon import regenerate_summary
+    # Stub LLMs so the test is deterministic
+    monkeypatch.setattr(
+        "core.services.jarvis_brain_daemon._call_local_ollama",
+        lambda prompt: {"summary": "**Engineering:** Jeg ved noget.\n"},
+    )
+    monkeypatch.setattr(
+        "core.services.jarvis_brain_daemon._call_ollamafreeapi",
+        lambda prompt: {"summary": "**Engineering:** Public version.\n"},
+    )
+    isolated.write_entry(kind="fakta", title="X", content="y",
+                          visibility="personal", domain="engineering")
+    n = regenerate_summary(target_visibility="personal")
+    assert n >= 1
+    out = isolated._state_root() / "jarvis_brain_summary.md"
+    assert out.exists()
+    assert "Engineering" in out.read_text(encoding="utf-8")
+
+
+def test_summary_skipped_when_no_active_entries(isolated, monkeypatch):
+    from core.services.jarvis_brain_daemon import regenerate_summary
+    monkeypatch.setattr(
+        "core.services.jarvis_brain_daemon._call_local_ollama",
+        lambda prompt: pytest.fail("should not be called"),
+    )
+    n = regenerate_summary(target_visibility="personal")
+    assert n == 0  # No entries → skip
+
+
+def test_summary_routes_personal_to_local_ollama(isolated, monkeypatch):
+    """personal target_visibility → local LLM only (privacy)."""
+    from core.services.jarvis_brain_daemon import regenerate_summary
+    free_called = {"n": 0}
+    local_called = {"n": 0}
+    monkeypatch.setattr(
+        "core.services.jarvis_brain_daemon._call_local_ollama",
+        lambda p: local_called.update(n=local_called["n"] + 1) or
+                  {"summary": "**X:** y\n"},
+    )
+    monkeypatch.setattr(
+        "core.services.jarvis_brain_daemon._call_ollamafreeapi",
+        lambda p: free_called.update(n=free_called["n"] + 1) or
+                  {"summary": "**X:** y\n"},
+    )
+    isolated.write_entry(kind="fakta", title="X", content="y",
+                          visibility="personal", domain="d")
+    regenerate_summary(target_visibility="personal")
+    assert local_called["n"] == 1
+    assert free_called["n"] == 0
+
+
+def test_summary_filters_above_target_visibility(isolated, monkeypatch):
+    """Intimate entries must NOT be in personal-targeted summary."""
+    from core.services.jarvis_brain_daemon import regenerate_summary
+    captured_prompts = []
+    monkeypatch.setattr(
+        "core.services.jarvis_brain_daemon._call_local_ollama",
+        lambda p: captured_prompts.append(p) or {"summary": "x"},
+    )
+    monkeypatch.setattr(
+        "core.services.jarvis_brain_daemon._call_ollamafreeapi",
+        lambda p: {"summary": "x"},
+    )
+    isolated.write_entry(kind="fakta", title="public_thing", content="x",
+                          visibility="public_safe", domain="d")
+    isolated.write_entry(kind="fakta", title="intimate_thing", content="y",
+                          visibility="intimate", domain="d")
+    regenerate_summary(target_visibility="personal")
+    assert len(captured_prompts) == 1
+    prompt_text = captured_prompts[0]
+    assert "public_thing" in prompt_text
+    assert "intimate_thing" not in prompt_text

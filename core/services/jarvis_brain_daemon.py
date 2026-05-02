@@ -289,3 +289,81 @@ def run_theme_consolidation_if_active() -> int:
         logger.info("theme consolidation paused — skipping")
         return 0
     return _run_theme_consolidation_pass()
+
+
+# ---------------------------------------------------------------------------
+# Summary regeneration (Task 15)
+# ---------------------------------------------------------------------------
+
+
+_SUMMARY_PROMPT = """\
+Du genererer en kompakt opsummering af Jarvis' egen vidensjournal.
+Den vises i toppen af hans bevidsthed som "ting jeg ved nu".
+
+Krav:
+- Maks 300 tokens
+- Inddel i sektioner med fed: **Engineering:**, **Selv:**, **Relationer:**, **Verden:**
+- Brug 1.-person ("Jeg har lært...", "Jeg ved...")
+- Spring sektioner over hvis der ikke er noget at sige
+- Vær konkret men kompakt
+
+Aktive poster:
+{entries_summary}
+
+Returnér JSON: {{"summary": "<markdown-prosa>"}}
+"""
+
+
+def regenerate_summary(*, target_visibility: str = "personal") -> int:
+    """Regenererer state/jarvis_brain_summary.md.
+
+    Kun entries med visibility ≤ target_visibility tæller med.
+    Privacy-routing: target_visibility == "public_safe" → free API ok;
+    ellers lokal Ollama (intet personal/intimate til ekstern API).
+    Returnerer antal entries summeret over (0 hvis intet eller fejl).
+    """
+    from datetime import datetime, timezone
+    from core.services import jarvis_brain
+    from core.services.jarvis_brain_visibility import LEVEL
+
+    ceiling = LEVEL[target_visibility]
+
+    conn = jarvis_brain.connect_index()
+    try:
+        rows = conn.execute(
+            "SELECT title, kind, domain, visibility FROM brain_index "
+            "WHERE status='active' ORDER BY domain, kind"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    eligible = [r for r in rows if LEVEL[r[3]] <= ceiling]
+    if not eligible:
+        return 0
+
+    bullet_lines = "\n".join(
+        f"- [{kind}/{domain}] {title}" for title, kind, domain, _ in eligible
+    )
+    prompt = _SUMMARY_PROMPT.format(entries_summary=bullet_lines)
+
+    # Privacy routing
+    if target_visibility == "public_safe":
+        result = _call_ollamafreeapi(prompt)
+    else:
+        result = _call_local_ollama(prompt)
+
+    if not result or "summary" not in result:
+        logger.warning("summary regeneration failed (no LLM result)")
+        return 0
+
+    now = datetime.now(timezone.utc)
+    summary_md = (
+        f"# Hvad jeg ved nu — opdateret {now.strftime('%Y-%m-%d %H:%M')}\n\n"
+        + str(result["summary"])
+    )
+    out_path = jarvis_brain._state_root() / "jarvis_brain_summary.md"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out_path.with_suffix(".tmp")
+    tmp.write_text(summary_md, encoding="utf-8")
+    tmp.replace(out_path)
+    return len(eligible)

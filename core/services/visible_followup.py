@@ -245,7 +245,16 @@ class OllamaFollowupAdapter:
         attempts = 3
         for attempt in range(attempts):
             try:
-                with urllib_request.urlopen(req, timeout=90) as resp:
+                # Timeout: 180s matcher visible_runs._round_overall_timeout_s
+                # og openai-compat adapter (linje 523). Tidligere 90s blev
+                # ramt rutinemæssigt efter et par tool-turns når akkumuleret
+                # state pushed prompt over ~5000 tokens — Ollamas first-
+                # token-tid på det kunne være 100-130s, langt under
+                # wall-clock men over urllib-read-deadline. Resultat:
+                # "ollama followup round X failed: timed out" gentaget
+                # 3-4 gange i træk fra brugerens perspektiv. Symptomet
+                # var at Jarvis blev afbrudt midt i en tool-kæde.
+                with urllib_request.urlopen(req, timeout=180) as resp:
                     for raw_line in resp:
                         line = raw_line.decode("utf-8").strip()
                         if not line:

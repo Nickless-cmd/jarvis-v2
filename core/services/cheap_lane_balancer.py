@@ -544,3 +544,44 @@ def build_slot_pool() -> list[BalancerSlot]:
         )
         slots.append(slot)
     return slots
+
+
+# ---------------------------------------------------------------------------
+# Manual controls (Mission Control)
+# ---------------------------------------------------------------------------
+
+
+def reset_slot(slot_id: str) -> dict:
+    """Clear breaker, cooldown, and consecutive-failure streak for a slot."""
+    states = _load_state()
+    state = _ensure_state(states, slot_id)
+    state.consecutive_failures = 0
+    state.breaker_level = 0
+    state.cooldown_until = None
+    state.cooldown_reason = ""
+    _save_state(states)
+    return {"status": "ok", "slot_id": slot_id}
+
+
+def disable_slot(slot_id: str) -> dict:
+    """Force a slot's weight to 0 until enable_slot is called."""
+    states = _load_state()
+    state = _ensure_state(states, slot_id)
+    state.manually_disabled = True
+    _save_state(states)
+    return {"status": "ok", "slot_id": slot_id, "manually_disabled": True}
+
+
+def enable_slot(slot_id: str) -> dict:
+    """Re-enable a manually-disabled slot."""
+    states = _load_state()
+    state = _ensure_state(states, slot_id)
+    state.manually_disabled = False
+    _save_state(states)
+    return {"status": "ok", "slot_id": slot_id, "manually_disabled": False}
+
+
+def refresh_pool() -> dict:
+    """Re-build the slot pool from provider_router.json. Returns current size."""
+    pool = build_slot_pool()
+    return {"status": "ok", "pool_size": len(pool)}

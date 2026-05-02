@@ -178,3 +178,134 @@ def test_get_or_create_state_for_unknown_slot():
     assert s.consecutive_failures == 0
     s2 = _ensure_state(states, "new::slot")
     assert s is s2
+
+
+# --- Task 4: Selection algorithm ---
+
+
+import time as _time
+from collections import Counter
+
+
+def _slot(provider="groq", model="m", rpm=None, daily=None, proxy=False):
+    from core.services.cheap_lane_balancer import BalancerSlot
+    return BalancerSlot(
+        provider=provider, model=model, auth_profile="default",
+        base_url="", rpm_limit=rpm, daily_limit=daily,
+        is_public_proxy=proxy,
+    )
+
+
+def test_weight_zero_during_cooldown():
+    from core.services.cheap_lane_balancer import (
+        _compute_weight, SlotState,
+    )
+    s = _slot(rpm=30, daily=10000)
+    state = SlotState(slot_id=s.slot_id, cooldown_until=_time.time() + 60)
+    assert _compute_weight(s, state, _time.time()) == 0.0
+
+
+def test_weight_zero_when_manually_disabled():
+    from core.services.cheap_lane_balancer import (
+        _compute_weight, SlotState,
+    )
+    s = _slot(rpm=30, daily=10000)
+    state = SlotState(slot_id=s.slot_id, manually_disabled=True)
+    assert _compute_weight(s, state, _time.time()) == 0.0
+
+
+def test_weight_decreases_with_daily_usage():
+    from core.services.cheap_lane_balancer import (
+        _compute_weight, SlotState, _today_iso,
+    )
+    s = _slot(rpm=30, daily=100)
+    today = _today_iso(_time.time())
+    state_low = SlotState(slot_id=s.slot_id, daily_use_count=0,
+                           daily_window_start=today)
+    state_high = SlotState(slot_id=s.slot_id, daily_use_count=80,
+                            daily_window_start=today)
+    now = _time.time()
+    w_low = _compute_weight(s, state_low, now)
+    w_high = _compute_weight(s, state_high, now)
+    assert w_low > w_high
+
+
+def test_public_proxy_boost_applied():
+    from core.services.cheap_lane_balancer import (
+        _compute_weight, SlotState,
+    )
+    paid = _slot(provider="groq", rpm=None, daily=None, proxy=False)
+    free = _slot(provider="ollamafreeapi", rpm=None, daily=None, proxy=True)
+    state_paid = SlotState(slot_id=paid.slot_id)
+    state_free = SlotState(slot_id=free.slot_id)
+    now = _time.time()
+    w_paid = _compute_weight(paid, state_paid, now)
+    w_free = _compute_weight(free, state_free, now)
+    # free has unlimited (base=1.0) × proxy_boost(1.5) = 1.5
+    # paid has unlimited (base=1.0) × no_boost(1.0) = 1.0
+    assert w_free > w_paid
+    assert abs(w_free - 1.5) < 0.05
+    assert abs(w_paid - 1.0) < 0.05
+
+
+def test_breaker_level_reduces_weight():
+    from core.services.cheap_lane_balancer import (
+        _compute_weight, SlotState,
+    )
+    s = _slot(rpm=None, daily=None, proxy=False)
+    state_healthy = SlotState(slot_id=s.slot_id, breaker_level=0)
+    state_breaker = SlotState(slot_id=s.slot_id, breaker_level=2)
+    now = _time.time()
+    w_healthy = _compute_weight(s, state_healthy, now)
+    w_breaker = _compute_weight(s, state_breaker, now)
+    assert w_healthy > w_breaker
+
+
+def test_select_slot_returns_none_when_all_blocked():
+    from core.services.cheap_lane_balancer import (
+        _select_slot, SlotState,
+    )
+    pool = [_slot()]
+    states = {pool[0].slot_id: SlotState(
+        slot_id=pool[0].slot_id, cooldown_until=_time.time() + 60,
+    )}
+    result = _select_slot(states, pool, _time.time())
+    assert result is None
+
+
+def test_select_slot_picks_only_eligible():
+    """When 9 slots blocked and 1 healthy, the healthy one must be picked."""
+    from core.services.cheap_lane_balancer import (
+        _select_slot, SlotState,
+    )
+    pool = [_slot(provider=f"p{i}", model=f"m{i}") for i in range(10)]
+    states = {}
+    for i, sl in enumerate(pool):
+        states[sl.slot_id] = SlotState(
+            slot_id=sl.slot_id,
+            cooldown_until=(_time.time() + 60) if i != 7 else None,
+        )
+    chosen = _select_slot(states, pool, _time.time())
+    assert chosen is not None
+    assert chosen.slot_id == "p7::m7"
+
+
+def test_weighted_random_distribution_respects_weights():
+    """Statistical: with 2000 picks and weights 1.5:1.0, ratio ~60/40."""
+    import random
+    from core.services.cheap_lane_balancer import (
+        _select_slot, SlotState,
+    )
+    high = _slot(provider="high", model="m", rpm=None, daily=None, proxy=True)
+    low = _slot(provider="low", model="m", rpm=None, daily=None, proxy=False)
+    pool = [high, low]
+    states = {sl.slot_id: SlotState(slot_id=sl.slot_id) for sl in pool}
+
+    random.seed(42)
+    picks = Counter()
+    for _ in range(2000):
+        s = _select_slot(states, pool, _time.time())
+        picks[s.provider] += 1
+
+    high_pct = picks["high"] / 2000
+    assert 0.55 < high_pct < 0.65  # 60% ± 5

@@ -358,6 +358,10 @@ function setupGitUpdater(): void {
   ipcMain.handle('jarvisx:git-update-pull-and-rebuild', async () => {
     return runPullAndRebuild()
   })
+  ipcMain.handle('jarvisx:git-update-restart-now', () => {
+    manualRelaunch()
+    return { ok: true }
+  })
 }
 
 async function runPullAndRebuild(): Promise<{ ok: boolean; error?: string }> {
@@ -387,18 +391,25 @@ async function runPullAndRebuild(): Promise<{ ok: boolean; error?: string }> {
     return { ok: false, error: 'install/build failed — see banner output' }
   }
 
-  // Phase 3: restart
+  // Phase 3: signal complete — but DO NOT auto-restart.
+  // Bjørn is explicit: never restart Jarvis without his go-ahead.
+  // Build artifacts are now on disk; the renderer is still running
+  // the OLD bundle until the user clicks "Restart now". This is
+  // important because mid-conversation work shouldn't be yanked.
   const headRes = await runGit(['rev-parse', '--short', 'HEAD'], root)
   emitGitUpdateState({
     kind: 'updated',
     head: headRes.ok ? headRes.stdout : '?',
   })
-  // Give the renderer 1.5s to show the success state, then relaunch.
-  setTimeout(() => {
-    app.relaunch()
-    app.exit(0)
-  }, 1500)
   return { ok: true }
+}
+
+// Manual relaunch — only fires when the user clicks "Restart now"
+// in the GitUpdateBanner. Separate from the update flow so the
+// build phase and the restart phase have explicit consent boundaries.
+function manualRelaunch(): void {
+  app.relaunch()
+  app.exit(0)
 }
 
 function runShellStreaming(

@@ -77,6 +77,7 @@ export interface JarvisXBridge {
   gitUpdateCheck: () => Promise<GitUpdateStatus>
   gitUpdateStatus: () => Promise<GitUpdateStatus>
   gitUpdatePullAndRebuild: () => Promise<{ ok: boolean; error?: string }>
+  gitUpdateRestartNow: () => Promise<{ ok: boolean }>
   onGitUpdateStatus: (cb: (status: GitUpdateStatus) => void) => () => void
 }
 

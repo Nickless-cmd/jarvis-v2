@@ -18,6 +18,11 @@ from core.services.open_loop_closure_proposal_tracking import (
     build_runtime_open_loop_closure_proposal_surface,
 )
 from core.services.decision_weight import classify_decision_weight
+from core.services.emotional_controls import (
+    apply_emotional_controls,
+    format_gate_message,
+    read_emotional_snapshot,
+)
 from core.services.runtime_action_registry import get_runtime_action_spec
 from core.services.runtime_operational_memory import (
     build_operational_memory_snapshot,
@@ -37,6 +42,37 @@ from core.tools.workspace_capabilities import (
 
 ExecutionStatus = Literal["executed", "proposed", "blocked", "failed", "skipped"]
 
+# ── Affective Executive Gate v0: action risk classification ──────────────────
+# Low-risk actions always execute, even under simplify_plan.
+# Medium-risk actions get verify_first under simplify_plan.
+# High-risk actions get blocked under escalate_user, verify_first otherwise.
+
+_LOW_RISK_ACTIONS = frozenset({
+    "refresh_memory_context",
+    "review_recent_conversations",
+    "write_internal_work_note",
+    "bounded_self_check",
+})
+_HIGH_RISK_ACTIONS = frozenset({
+    "inspect_repo_context",
+    "follow_open_loop",
+    "promote_initiative_to_visible_lane",
+})
+
+
+def _classify_action_risk(action: str) -> str:
+    """Classify runtime action risk for emotional gating.
+
+    Returns "low", "medium", or "high".
+    Known actions are explicitly classified; unknowns default to "high".
+    """
+    if action in _LOW_RISK_ACTIONS:
+        return "low"
+    if action in _HIGH_RISK_ACTIONS:
+        return "high"
+    # Unknown actions: gate conservatively
+    return "high"
+
 
 @dataclass(slots=True)
 class RuntimeExecutionResult:
@@ -48,6 +84,33 @@ class RuntimeExecutionResult:
     error: str = ""
 
 
+def _publish_gate_event(
+    *,
+    input_action: str,
+    gated_action: str,
+    gate_reason: str | None,
+    snapshot: Any,
+    risk: str,
+) -> None:
+    """Emit emotional gate decision to eventbus for telemetry."""
+    event_bus.publish(
+        "runtime.emotional_gate",
+        {
+            "input_action": input_action,
+            "decision": gated_action,
+            "reason": gate_reason,
+            "risk": risk,
+            "snapshot": {
+                "frustration": snapshot.frustration,
+                "confidence": snapshot.confidence,
+                "fatigue": snapshot.fatigue,
+                "primary_mood": snapshot.primary_mood,
+                "intensity": snapshot.intensity,
+            },
+        },
+    )
+
+
 def execute_runtime_action(
     *,
     action_id: str,
@@ -56,6 +119,94 @@ def execute_runtime_action(
     action = str(action_id or "").strip()
     action_spec = get_runtime_action_spec(action)
     weight = classify_decision_weight(action.replace("_", " "))
+
+    # ── Affective Executive Gate v0 ─────────────────────────────────────
+    # Before dispatch: check emotional state and gate if needed.
+    risk = _classify_action_risk(action)
+    snapshot = read_emotional_snapshot()
+    gated_action, gate_reason = apply_emotional_controls(
+        kernel_action="execute", snapshot=snapshot,
+    )
+
+    if gated_action == "escalate_user":
+        _publish_gate_event(
+            input_action=action, gated_action=gated_action,
+            gate_reason=gate_reason, snapshot=snapshot, risk=risk,
+        )
+        return RuntimeExecutionResult(
+            status="blocked",
+            action_id=action,
+            summary=format_gate_message(gated_action, gate_reason, tool_name=action),
+            details={
+                "gate": "emotional_controls",
+                "gate_reason": gate_reason,
+                "emotional_gate": {
+                    "input_action": action,
+                    "decision": gated_action,
+                    "reason": gate_reason,
+                    "risk": risk,
+                    "snapshot": {
+                        "frustration": snapshot.frustration,
+                        "confidence": snapshot.confidence,
+                        "fatigue": snapshot.fatigue,
+                        "primary_mood": snapshot.primary_mood,
+                        "intensity": snapshot.intensity,
+                    },
+                },
+            },
+            side_effects=["emotional-gate-blocked"],
+            error=gate_reason or "emotional-gate",
+        )
+
+    if gated_action == "verify_first" and risk in ("high", "medium"):
+        _publish_gate_event(
+            input_action=action, gated_action=gated_action,
+            gate_reason=gate_reason, snapshot=snapshot, risk=risk,
+        )
+        return RuntimeExecutionResult(
+            status="blocked",
+            action_id=action,
+            summary=format_gate_message(gated_action, gate_reason, tool_name=action),
+            details={
+                "gate": "emotional_controls",
+                "gate_reason": gate_reason,
+                "emotional_gate": {
+                    "input_action": action,
+                    "decision": gated_action,
+                    "reason": gate_reason,
+                    "risk": risk,
+                },
+            },
+            side_effects=["emotional-gate-verify-first"],
+            error=gate_reason or "emotional-gate",
+        )
+
+    if gated_action == "simplify_plan" and risk == "high":
+        _publish_gate_event(
+            input_action=action, gated_action=gated_action,
+            gate_reason=gate_reason, snapshot=snapshot, risk=risk,
+        )
+        return RuntimeExecutionResult(
+            status="blocked",
+            action_id=action,
+            summary=format_gate_message(gated_action, gate_reason, tool_name=action),
+            details={
+                "gate": "emotional_controls",
+                "gate_reason": gate_reason,
+                "emotional_gate": {
+                    "input_action": action,
+                    "decision": gated_action,
+                    "reason": gate_reason,
+                    "risk": risk,
+                },
+            },
+            side_effects=["emotional-gate-simplified"],
+            error=gate_reason or "emotional-gate",
+        )
+
+    # Gate passed or action is low-risk under simplify_plan → proceed
+    # ────────────────────────────────────────────────────────────────────
+
     if action == "refresh_memory_context":
         result = execute_refresh_memory_context(payload)
     elif action == "follow_open_loop":

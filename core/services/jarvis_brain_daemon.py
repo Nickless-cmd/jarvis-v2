@@ -367,3 +367,69 @@ def regenerate_summary(*, target_visibility: str = "personal") -> int:
     tmp.write_text(summary_md, encoding="utf-8")
     tmp.replace(out_path)
     return len(eligible)
+
+
+# ---------------------------------------------------------------------------
+# Auto-archive low-salience entries (Task 16)
+# ---------------------------------------------------------------------------
+
+
+_AUTO_ARCHIVE_THRESHOLD = 0.05
+_AUTO_ARCHIVE_MIN_DAYS = 90
+
+
+def auto_archive_low_salience() -> int:
+    """Arkivér entries hvis effective_salience < 0.05 i ≥ 90 dage.
+
+    Skip references (de er ankre — arkiveres aldrig automatisk).
+    Emits 'jarvis_brain.auto_archive_pass' event with telemetry.
+    Returnerer antal arkiverede.
+    """
+    from datetime import datetime, timezone
+    from core.services import jarvis_brain
+
+    now = datetime.now(timezone.utc)
+    conn = jarvis_brain.connect_index()
+    try:
+        rows = conn.execute(
+            "SELECT id, kind FROM brain_index WHERE status='active'"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    archived = 0
+    total_active = len(rows)
+    for entry_id, kind in rows:
+        if kind == "reference":
+            continue  # references arkiveres aldrig automatisk
+        try:
+            entry = jarvis_brain.read_entry(entry_id)
+        except Exception:
+            continue
+        eff = jarvis_brain.compute_effective_salience(entry, now)
+        if eff >= _AUTO_ARCHIVE_THRESHOLD:
+            continue
+        last = entry.last_used_at or entry.created_at
+        days_low = (now - last).days
+        if days_low < _AUTO_ARCHIVE_MIN_DAYS:
+            continue
+        try:
+            jarvis_brain.archive_entry(entry_id, reason="auto: low salience 90+ days")
+            archived += 1
+        except Exception as exc:
+            logger.warning("auto-archive failed for %s: %s", entry_id, exc)
+
+    # Telemetri til eventbus
+    try:
+        from core.eventbus.events import emit  # type: ignore
+        emit(
+            "jarvis_brain.auto_archive_pass",
+            {
+                "archived_count": archived,
+                "total_active_before": total_active,
+            },
+        )
+    except Exception:
+        pass
+
+    return archived

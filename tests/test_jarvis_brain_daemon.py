@@ -328,3 +328,55 @@ def test_summary_filters_above_target_visibility(isolated, monkeypatch):
     prompt_text = captured_prompts[0]
     assert "public_thing" in prompt_text
     assert "intimate_thing" not in prompt_text
+
+
+# --- Task 16: auto-archive + telemetry ---
+
+
+def test_auto_archive_archives_old_low_salience(isolated, monkeypatch):
+    from core.services.jarvis_brain_daemon import auto_archive_low_salience
+    eid = isolated.write_entry(kind="observation", title="O", content="c",
+                                visibility="personal", domain="d")
+    # Patch compute_effective_salience → very low
+    monkeypatch.setattr(isolated, "compute_effective_salience",
+                        lambda e, now: 0.01)
+    # Force last_used_at far back so days_low ≥ 90
+    conn = isolated.connect_index()
+    conn.execute(
+        "UPDATE brain_index SET last_used_at = ? WHERE id = ?",
+        ((datetime.now(timezone.utc) - timedelta(days=120)).isoformat(), eid),
+    )
+    conn.commit()
+    conn.close()
+    # And also set last_used_at in the file itself (read_entry uses file)
+    e = isolated.read_entry(eid)
+    e.last_used_at = datetime.now(timezone.utc) - timedelta(days=120)
+    md = isolated.render_entry_markdown(e)
+    fpath = isolated._workspace_root() / isolated._index_path_for(eid)
+    isolated._atomic_write(fpath, md)
+
+    n = auto_archive_low_salience()
+    assert n == 1
+    e2 = isolated.read_entry(eid)
+    assert e2.status == "archived"
+
+
+def test_auto_archive_skips_references(isolated, monkeypatch):
+    from core.services.jarvis_brain_daemon import auto_archive_low_salience
+    isolated.write_entry(kind="reference", title="R", content="c",
+                          visibility="personal", domain="d")
+    monkeypatch.setattr(isolated, "compute_effective_salience",
+                        lambda e, now: 0.001)
+    n = auto_archive_low_salience()
+    assert n == 0
+
+
+def test_auto_archive_skips_recent_entries(isolated, monkeypatch):
+    from core.services.jarvis_brain_daemon import auto_archive_low_salience
+    isolated.write_entry(kind="observation", title="O", content="c",
+                          visibility="personal", domain="d")
+    # Low salience but recent (created today) → days_low < 90 → skip
+    monkeypatch.setattr(isolated, "compute_effective_salience",
+                        lambda e, now: 0.01)
+    n = auto_archive_low_salience()
+    assert n == 0

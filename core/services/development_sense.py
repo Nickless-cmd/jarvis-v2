@@ -319,4 +319,4 @@ def development_sense_section() -> str | None:
 
     if not lines:
         return None
-    return "Udviklingsfornemmelse:\n" + "\n".join(lines)
+    return "Udviklingsfornemmelse — " + " | ".join(lines)

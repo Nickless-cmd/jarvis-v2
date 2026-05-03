@@ -2293,10 +2293,17 @@ def _open_questions_section(*, limit: int = 5) -> str | None:
         return None
     if not questions:
         return None
-    bullets = "\n".join(f"- {q}" for q in questions)
+    # Compact: show count + first question only; full list via search_memory
+    if len(questions) <= 2:
+        bullets = "\n".join(f"- {q}" for q in questions)
+        return (
+            "Åbne spørgsmål du bærer med dig (brug search_memory for mere):\n"
+            f"{bullets}"
+        )
+    first = questions[0]
     return (
-        "Åbne spørgsmål du har båret med dig (kan tages op hvis relevant for nu):\n"
-        f"{bullets}"
+        f"Åbne spørgsmål: {len(questions)} uløste (første: \"{first[:80]}\"). "
+        "Brug search_memory for fuld liste."
     )
 
 

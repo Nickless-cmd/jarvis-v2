@@ -726,12 +726,16 @@ def build_visible_chat_prompt_assembly(
         pass
     try:
         from core.services.pushback import (
-            doubt_signal_section, disagreement_invite_section, direction_confirm_section,
+            affective_pushback_section,
+            doubt_signal_section,
+            disagreement_invite_section,
+            direction_confirm_section,
         )
         from core.services.reasoning_classifier import classify_reasoning_tier
         _ptier = str(classify_reasoning_tier(user_message).get("tier") or "fast")
         _awareness_add(75, "doubt signal", doubt_signal_section(user_message))
         _awareness_add(70, "disagreement invite", disagreement_invite_section())
+        _awareness_add(72, "affective pushback", affective_pushback_section(user_message))
         _awareness_add(85, "direction confirm gate",
                        direction_confirm_section(
                            user_message=user_message, reasoning_tier=_ptier,
@@ -2333,9 +2337,11 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
     lines = [
         "Runtime tool calling:",
         "- You have tools available via native function calling. Use them directly.",
+        "- Core tools include read_file, write_file, edit_file, search, find_files, bash, web_fetch, and web_search.",
         "- CRITICAL: ALWAYS use the actual tool call mechanism. NEVER simulate tool usage in text.",
         "- When you need to write a file, CALL write_file. Do NOT say 'I will write' — just call the tool.",
         "- When you need to run a command, CALL bash. Do NOT describe the command — call it.",
+        "- Safe workspace paths are auto-approved by runtime; blocked or risky paths require user approval or return error.",
         "- The runtime handles all permissions and approvals automatically. You never need to ask the user.",
         "- If you need information, use tools proactively. Do not guess from fragments.",
         "- If a task needs multiple reads, call multiple tools. Continue autonomously instead of asking permission.",

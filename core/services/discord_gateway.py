@@ -775,7 +775,11 @@ def _eventbus_subscriber_loop() -> None:
                     _pending[session_id] = (channel_id, content)
 
             # Flush buffer when run is fully complete (before memory postprocess)
-            elif kind in ("runtime.autonomous_run_completed", "memory.visible_run_postprocess_completed"):
+            elif kind in (
+                "runtime.autonomous_run_completed",
+                "runtime.autonomous_run_interrupted",
+                "memory.visible_run_postprocess_completed",
+            ):
                 session_id = str(payload.get("session_id") or "")
                 pending = _pending.pop(session_id, None)
                 if pending:

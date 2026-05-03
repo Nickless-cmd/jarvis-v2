@@ -441,6 +441,26 @@ def start_autonomous_run(message: str, session_id: str | None = None) -> None:
             )
         finally:
             if not failed:
+                outcome = get_last_visible_run_outcome() or {}
+                interrupted = (
+                    str(outcome.get("run_id") or "") == run.run_id
+                    and str(outcome.get("status") or "") == "interrupted"
+                )
+                if interrupted:
+                    event_bus.publish(
+                        "runtime.autonomous_run_interrupted",
+                        {
+                            "run_id": run.run_id,
+                            "session_id": resolved_session,
+                            "provider": run.provider,
+                            "model": run.model,
+                            "focus": run.user_message[:200],
+                            "error": str(outcome.get("error") or "")[:500],
+                            "consumed_frames": consumed_frames,
+                        },
+                    )
+                    loop.close()
+                    return
                 event_bus.publish(
                     "runtime.autonomous_run_completed",
                     {
@@ -599,6 +619,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     _step_counter = 0
     result = None
     visible_output_text = ""
+    _final_run_status = "completed"
+    _final_run_error: str | None = None
     markup_buffer = _CapabilityMarkupBuffer()
     _collected_native_tool_calls: list[dict] = []
     try:
@@ -792,6 +814,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 force=run.autonomous,
                 run_id=run.run_id,
                 session_id=run.session_id,
+                user_message=run.user_message,
             )
 
             if simple_results:
@@ -917,6 +940,25 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             _resolved_result_texts[_idx] = _resolved
                             yield _sse("capability", {"type": "tool_result", "tool": sr["tool_name"], "status": "ok"})
                         continue
+                    # ── Gate-blocked tools (veto gate or decision gate) ──
+                    if sr["status"] == "gate_blocked":
+                        _gate_type = str(sr.get("result", {}).get("gate_type", "unknown"))
+                        _gate_msg = str(sr.get("result", {}).get("message", ""))
+                        _resolved_result_texts[_idx] = f"[{_gate_type}] {_gate_msg}"
+                        yield _sse("capability", {
+                            "type": "gate_blocked",
+                            "gate_type": _gate_type,
+                            "tool": sr["tool_name"],
+                            "message": _gate_msg,
+                        })
+                        yield _sse("working_step", {
+                            "type": "working_step",
+                            "run_id": run.run_id,
+                            "action": sr["tool_name"],
+                            "step": _step_counter - len(simple_results) + _idx + 1,
+                            "status": "done",
+                        })
+                        continue
                     _resolved_result_texts[_idx] = sr["result_text"]
                     yield _sse("capability", {
                         "type": "tool_result",
@@ -935,7 +977,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 if run.session_id:
                     for _idx, sr in enumerate(simple_results):
                         result_text = _resolved_result_texts.get(_idx, sr.get("result_text", ""))
-                        if result_text and sr.get("status") != "duplicate_suppressed":
+                        if result_text and sr.get("status") not in ("duplicate_suppressed", "gate_blocked"):
                             append_chat_message(
                                 session_id=run.session_id,
                                 role="tool",
@@ -1229,6 +1271,17 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
                     if _a_failure:
                         _failure_summary = str(_a_failure.get("summary") or "agentic-round-provider-error")
+                        _interruption = {
+                            "run_id": run.run_id,
+                            "lane": run.lane,
+                            "provider": run.provider,
+                            "model": run.model,
+                            "phase": "agentic-round",
+                            "round": int(_a_failure.get("round") or (_agentic_round + 1)),
+                            **_classify_visible_run_interruption(str(_a_failure.get("error") or _failure_summary)),
+                            "error": str(_a_failure.get("error") or ""),
+                            "summary": _failure_summary,
+                        }
                         _update_visible_execution_trace(
                             run,
                             {
@@ -1242,18 +1295,21 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         )
                         event_bus.publish(
                             "runtime.visible_run_interrupted",
-                            {
-                                "run_id": run.run_id,
-                                "lane": run.lane,
-                                "provider": run.provider,
-                                "model": run.model,
-                                "phase": "agentic-round",
-                                "round": int(_a_failure.get("round") or (_agentic_round + 1)),
-                                **_classify_visible_run_interruption(str(_a_failure.get("error") or _failure_summary)),
-                                "error": str(_a_failure.get("error") or ""),
-                                "summary": _failure_summary,
-                            },
+                            _interruption,
                         )
+                        try:
+                            from core.services.in_flight_runs import mark_interrupted
+                            mark_interrupted(
+                                run.run_id,
+                                reason=str(_interruption.get("interruption_reason") or "provider-error"),
+                                summary=_failure_summary,
+                            )
+                        except Exception:
+                            pass
+                        _final_run_status = "interrupted"
+                        _final_run_error = str(_interruption.get("error") or _failure_summary)
+                        _agentic_loop_exit_reason = f"interrupted:{_failure_summary}"
+                        break
 
                     if not _a_tool_calls:
                         # No more tool calls — this round produced the final response.
@@ -1356,6 +1412,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         force=run.autonomous,
                         run_id=run.run_id,
                         session_id=run.session_id,
+                        user_message=run.user_message,
                     )
                     logger.info(
                         "agentic-tools-execute-end run_id=%s round=%d duration_ms=%d results=%d",
@@ -1460,6 +1517,18 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                     "status": "ok",
                                 })
                             continue
+                        # Gate-blocked (veto gate or decision gate)
+                        if _a_sr["status"] == "gate_blocked":
+                            _a_gt = str(_a_sr.get("result", {}).get("gate_type", "unknown"))
+                            _a_gm = str(_a_sr.get("result", {}).get("message", ""))
+                            _a_resolved[_a_idx] = f"[{_a_gt}] {_a_gm}"
+                            yield _sse("capability", {
+                                "type": "gate_blocked",
+                                "gate_type": _a_gt,
+                                "tool": _a_sr["tool_name"],
+                                "message": _a_gm,
+                            })
+                            continue
                         _a_resolved[_a_idx] = _a_sr["result_text"]
                         yield _sse("capability", {
                             "type": "tool_result",
@@ -1478,7 +1547,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     if run.session_id:
                         for _a_idx, _a_sr in enumerate(_a_results):
                             _a_rt = _a_resolved.get(_a_idx, _a_sr.get("result_text", ""))
-                            if _a_rt and _a_sr.get("status") != "duplicate_suppressed":
+                            if _a_rt and _a_sr.get("status") not in ("duplicate_suppressed", "gate_blocked"):
                                 append_chat_message(
                                     session_id=run.session_id,
                                     role="tool",
@@ -1565,9 +1634,25 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     # declines to persist. NEVER emit synthetic internal
                     # markers like "[Completed: ...]" to the user.
                     followup_text = (getattr(result, "text", "") or "").strip()
+                if _final_run_status == "interrupted":
+                    _resume_note = (
+                        "\n\n⚠ Jeg blev afbrudt i agentic loopet "
+                        f"({_final_run_error or 'ukendt årsag'}). "
+                        "Næste besked kan fortsætte herfra i stedet for at starte forfra."
+                    )
+                    if _resume_note.strip() not in followup_text:
+                        followup_text = (followup_text + _resume_note).strip()
 
                 total_input_tokens = result.input_tokens * 2
                 total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)
+                visible_output_text = followup_text
+
+                set_last_visible_run_outcome(
+                    run,
+                    status=_final_run_status,
+                    text_preview=followup_text[:140],
+                    error=_final_run_error,
+                )
 
                 # Persist the assistant message BEFORE done so loadSession()
                 # finds it immediately (avoids "message disappears" race).
@@ -1598,6 +1683,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 yield _sse("done", {
                     "type": "done",
                     "run_id": run.run_id,
+                    "status": _final_run_status,
                     "input_tokens": total_input_tokens,
                     "output_tokens": total_output_tokens,
                 })
@@ -1606,15 +1692,11 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 _run_ref = run
                 _tokens = (total_input_tokens, total_output_tokens)
                 _followup_text = followup_text
-                _followup_preview = followup_text[:140]
+                _outcome_status = _final_run_status
                 import threading as _threading
 
                 def _persist_tool_result() -> None:
                     try:
-                        set_last_visible_run_outcome(
-                            _run_ref, status="completed",
-                            text_preview=_followup_preview,
-                        )
                         record_cost(
                             provider=_run_ref.provider,
                             model=_run_ref.model,
@@ -1625,21 +1707,22 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             lane="visible",
                         )
                         finished_at = datetime.now(UTC).isoformat()
-                        event_bus.publish(
-                            "runtime.visible_run_completed",
-                            {
-                                "run_id": _run_ref.run_id,
-                                "lane": _run_ref.lane,
-                                "provider": _run_ref.provider,
-                                "model": _run_ref.model,
-                                "status": "completed",
-                                "finished_at": finished_at,
-                                "input_tokens": _tokens[0],
-                                "output_tokens": _tokens[1],
-                                "cost_usd": 0.0,
-                                "native_tool_path": True,
-                            },
-                        )
+                        if _outcome_status == "completed":
+                            event_bus.publish(
+                                "runtime.visible_run_completed",
+                                {
+                                    "run_id": _run_ref.run_id,
+                                    "lane": _run_ref.lane,
+                                    "provider": _run_ref.provider,
+                                    "model": _run_ref.model,
+                                    "status": "completed",
+                                    "finished_at": finished_at,
+                                    "input_tokens": _tokens[0],
+                                    "output_tokens": _tokens[1],
+                                    "cost_usd": 0.0,
+                                    "native_tool_path": True,
+                                },
+                            )
                         _run_memory_postprocess(_run_ref, _followup_text)
                     except Exception:
                         pass
@@ -1949,7 +2032,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             try:
                 set_last_visible_run_outcome(
                     run,
-                    status="completed",
+                    status=_final_run_status,
+                    error=_final_run_error,
                     text_preview=_preview_text(visible_output_text),
                 )
                 _track_runtime_candidates(run, visible_output_text)
@@ -1969,8 +2053,20 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         # equally "no longer hanging", so the next prompt build won't
         # surface a stale "you were interrupted" notice.
         try:
-            from core.services.in_flight_runs import mark_completed as _mark_run_completed
-            _mark_run_completed(run.run_id)
+            if _final_run_status == "interrupted":
+                from core.services.in_flight_runs import mark_interrupted as _mark_run_interrupted
+                _mark_run_interrupted(
+                    run.run_id,
+                    reason=_final_run_error or "interrupted",
+                    summary=_final_run_error or "interrupted",
+                )
+            else:
+                from core.services.in_flight_runs import (
+                    clear_session as _clear_interrupted_session,
+                    mark_completed as _mark_run_completed,
+                )
+                _mark_run_completed(run.run_id)
+                _clear_interrupted_session(run.session_id)
         except Exception:
             pass
 
@@ -2691,11 +2787,16 @@ def _execute_simple_tool_calls(
     force: bool = False,
     run_id: str | None = None,
     session_id: str | None = None,
+    user_message: str = "",
 ) -> list[dict[str, object]]:
     """Execute native tool_calls directly via simple_tools. Returns results.
 
     When *force* is True (autonomous runs), use ``execute_tool_force`` which
     bypasses the approval gate (blocked commands are still blocked).
+
+    Pre-execution gates (veto + decision) run BEFORE each tool call.
+    If either gate blocks, the tool is replaced with a gate-blocked result
+    that surfaces the conflict to the user for confirmation.
     """
     from core.tools.simple_tools import execute_tool, execute_tool_force, format_tool_result_for_model
 
@@ -2719,6 +2820,11 @@ def _execute_simple_tool_calls(
             arguments = {}
         if not name:
             continue
+        try:
+            from core.services.in_flight_runs import mark_tool
+            mark_tool(run_id or "", name)
+        except Exception:
+            pass
         arguments = dict(arguments)
         if session_id:
             arguments["_runtime_session_id"] = session_id
@@ -2744,6 +2850,63 @@ def _execute_simple_tool_calls(
                 "status": "duplicate_suppressed",
             })
             continue
+
+        # ── Pre-execution gates ──────────────────────────────────────
+        # 1. Veto gate: affective pushback with evidence blocks execution
+        _veto_blocked = False
+        _veto_reason = None
+        try:
+            from core.services.veto_gate import check_veto
+            _veto_allowed, _veto_reason = check_veto(
+                name,
+                user_message=user_message,
+                session_id=session_id,
+            )
+            if not _veto_allowed:
+                _veto_blocked = True
+        except Exception:
+            pass  # gate failure → allow (fail-open)
+
+        # 2. Decision gate: active decisions conflict blocks execution
+        _decision_blocked = False
+        _decision_reason = None
+        try:
+            from core.services.decision_gate import check_decision_gate
+            _decision_allowed, _decision_reason = check_decision_gate(
+                name,
+                tool_args=arguments,
+                user_message=user_message,
+            )
+            if not _decision_allowed:
+                _decision_blocked = True
+        except Exception:
+            pass  # gate failure → allow (fail-open)
+
+        if _veto_blocked or _decision_blocked:
+            _gate_reason = _veto_reason or _decision_reason or "Ukendt gate-blokering"
+            _gate_type = "veto_gate" if _veto_blocked else "decision_gate"
+            results.append({
+                "tool_name": name,
+                "arguments": arguments,
+                "result": {
+                    "status": "gate_blocked",
+                    "gate_type": _gate_type,
+                    "message": _gate_reason,
+                },
+                "result_text": f"[{_gate_type}] {_gate_reason}",
+                "status": "gate_blocked",
+            })
+            # Emit telemetry
+            try:
+                event_bus.publish(f"{_gate_type}.blocked", {
+                    "tool_name": name,
+                    "reason": _gate_reason[:500],
+                    "run_id": run_id,
+                })
+            except Exception:
+                pass
+            continue
+
         result = _exec(name, arguments)
         result_text = format_tool_result_for_model(name, result)
         # Only mark as "seen" if the call genuinely succeeded. Including

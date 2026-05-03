@@ -57,3 +57,56 @@ def test_start_autonomous_run_publishes_persistent_audit_events(
 
     assert "runtime.autonomous_run_started" in kinds
     assert "runtime.autonomous_run_completed" in kinds
+
+
+def test_start_autonomous_run_publishes_interrupted_instead_of_completed(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    visible_runs = __import__(
+        "core.services.visible_runs",
+        fromlist=["start_autonomous_run"],
+    )
+
+    monkeypatch.setattr(
+        visible_runs,
+        "load_settings",
+        lambda: SimpleNamespace(
+            primary_model_lane="visible",
+            visible_model_provider="test-provider",
+            visible_model_name="test-model",
+        ),
+    )
+
+    async def _fake_stream(run):
+        visible_runs.set_last_visible_run_outcome(
+            run,
+            status="interrupted",
+            error="timed out",
+            text_preview="partial work",
+        )
+        yield "one-frame"
+
+    monkeypatch.setattr(visible_runs, "_stream_visible_run", _fake_stream)
+
+    visible_runs.start_autonomous_run(
+        "Inspect interrupted autonomous audit",
+        session_id="session-autonomous-interrupted-test",
+    )
+
+    deadline = time.time() + 2.0
+    matching: list[str] = []
+    while time.time() < deadline:
+        matching = [
+            str(event.get("kind") or "")
+            for event in event_bus.recent(limit=30)
+            if str((event.get("payload") or {}).get("session_id") or "")
+            == "session-autonomous-interrupted-test"
+        ]
+        if "runtime.autonomous_run_interrupted" in matching:
+            break
+        time.sleep(0.05)
+
+    assert "runtime.autonomous_run_started" in matching
+    assert "runtime.autonomous_run_interrupted" in matching
+    assert "runtime.autonomous_run_completed" not in matching

@@ -65,11 +65,13 @@ def mark_started(*, run_id: str, session_id: str | None, user_message: str) -> N
             rid for rid, rec in records.items()
             if rec.get("session_id") == sid and rid != str(run_id)
         ]
-        for rid in stale_run_ids:
+    for rid in stale_run_ids:
+        if str(records.get(rid, {}).get("status") or "running") != "interrupted":
             records.pop(rid, None)
     records[str(run_id)] = {
         "run_id": str(run_id),
         "session_id": sid,
+        "status": "running",
         "excerpt": (user_message or "")[:_EXCERPT_LIMIT],
         "started_at": datetime.now(UTC).isoformat(),
         "last_tool": "",
@@ -100,6 +102,21 @@ def mark_completed(run_id: str) -> None:
         _save(records)
 
 
+def mark_interrupted(run_id: str, *, reason: str = "", summary: str = "") -> None:
+    """Keep an in-flight record as a resumable interrupted run."""
+    if not run_id:
+        return
+    records = _load()
+    rec = records.get(str(run_id))
+    if rec is None:
+        return
+    rec["status"] = "interrupted"
+    rec["interruption_reason"] = str(reason or "")[:120]
+    rec["interruption_summary"] = str(summary or "")[:240]
+    rec["interrupted_at"] = datetime.now(UTC).isoformat()
+    _save(records)
+
+
 def interrupted_for_session(session_id: str | None) -> dict[str, Any] | None:
     """Return the most recent in-flight record for this session, or None.
 
@@ -111,7 +128,11 @@ def interrupted_for_session(session_id: str | None) -> dict[str, Any] | None:
         return None
     sid = str(session_id)
     records = _load()
-    candidates = [r for r in records.values() if r.get("session_id") == sid]
+    candidates = [
+        r for r in records.values()
+        if r.get("session_id") == sid
+        and str(r.get("status") or "interrupted") == "interrupted"
+    ]
     if not candidates:
         return None
     candidates.sort(key=lambda r: str(r.get("started_at", "")), reverse=True)
@@ -157,12 +178,16 @@ def interruption_prompt_section(session_id: str | None) -> str | None:
             pass
     excerpt = str(rec.get("excerpt") or "(intet uddrag)")
     last_tool = str(rec.get("last_tool") or "")
+    reason = str(rec.get("interruption_reason") or "")
     started_at = started_iso[11:19] if started_iso else ""
     tool_clause = f" — sidste tool var {last_tool}" if last_tool else ""
+    reason_clause = f" Årsag: {reason}." if reason else ""
     return (
         "Du blev afbrudt midt i en opgave (startet "
         f"{started_at}{tool_clause}):\n"
         f"  \"{excerpt}\"\n"
-        "Spørg brugeren om du skal fortsætte derfra eller starte forfra, "
-        "FØR du gør noget. Brug ikke tool calls før der er afklaring."
+        f"{reason_clause}\n"
+        "Hvis brugerens nye besked tydeligt betyder 'fortsæt/prøv igen', "
+        "så fortsæt fra denne tilstand i stedet for at starte forfra. "
+        "Hvis intent er uklart, spørg om du skal fortsætte derfra eller starte forfra."
     )

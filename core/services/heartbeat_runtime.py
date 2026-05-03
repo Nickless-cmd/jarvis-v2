@@ -3950,7 +3950,10 @@ def _build_heartbeat_liveness_signal(
 
 
 def _select_heartbeat_target(policy: dict | None = None) -> dict[str, str | bool]:  # noqa: ARG001
-    supported_providers = {"phase1-runtime", "openai", "openrouter", "ollama", "groq"}
+    supported_providers = {
+        "phase1-runtime", "openai", "openrouter", "ollama", "groq",
+        "opencode", "sambanova", "mistral", "nvidia-nim",
+    }
     settings = load_settings()
     heartbeat_provider = str(
         getattr(settings, "heartbeat_model_provider", "") or ""
@@ -4204,7 +4207,7 @@ def _execute_heartbeat_model(
         return _execute_openrouter_prompt(prompt=prompt, target=target)
     if provider == "groq":
         return _execute_groq_prompt(prompt=prompt, target=target)
-    if provider in {"sambanova", "mistral", "nvidia-nim"}:
+    if provider in {"sambanova", "mistral", "nvidia-nim", "opencode"}:
         from core.services.heartbeat_provider_fallback import (
             execute_openai_compat_heartbeat_prompt,
         )

@@ -418,6 +418,8 @@ def init_db() -> None:
                 session_id TEXT NOT NULL,
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
+                user_id TEXT NOT NULL DEFAULT '',
+                workspace_name TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL
             )
             """
@@ -760,6 +762,7 @@ def init_db() -> None:
             ON heartbeat_runtime_ticks(id DESC)
             """
         )
+        _ensure_chat_messages_columns(conn)
         _ensure_heartbeat_runtime_state_columns(conn)
         _ensure_heartbeat_runtime_tick_columns(conn)
         _ensure_runtime_development_focus_table(conn)

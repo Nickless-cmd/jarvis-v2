@@ -32,6 +32,7 @@ _PROVIDER_BASE_URLS: dict[str, str] = {
     "mistral": "https://api.mistral.ai/v1",
     "nvidia-nim": "https://integrate.api.nvidia.com/v1",
     "openrouter": "https://openrouter.ai/api/v1",
+    "opencode": "https://opencode.ai/zen/v1",
 }
 
 

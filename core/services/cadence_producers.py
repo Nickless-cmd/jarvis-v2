@@ -575,10 +575,14 @@ def detect_decision_in_message(
 ) -> dict[str, object] | None:
     """Detect decisions in conversation and log them."""
     msg_lower = user_message.lower()
+    # Tightened 2026-05-03: previous list was too broad — generic
+    # phrases like "lad os" / "skal vi" / "i stedet for" triggered on
+    # every productive conversation, polluting cognitive_decisions
+    # with chat noise (and previously poisoning adherence metrics).
+    # Now we require explicit commitment-language only.
     decision_markers = [
         "vi vælger", "lad os bruge", "beslutningen er", "vi går med",
-        "vi tager", "lad os", "skal vi", "i stedet for", "frem for",
-        "vi bør", "decided", "let's use", "going with",
+        "decided", "let's use", "going with",
     ]
     if not any(m in msg_lower for m in decision_markers):
         return None

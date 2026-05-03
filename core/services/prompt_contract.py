@@ -415,10 +415,9 @@ def build_visible_chat_prompt_assembly(
         parts.append(self_correction)
         derived_inputs.append("self-correction nudges")
 
-    open_questions = _open_questions_section(limit=3 if compact else 5)
-    if open_questions:
-        parts.append(open_questions)
-        derived_inputs.append("open questions tracker")
+    # Open questions — REMOVED from fixed injection (2026-05-03).
+    # Questions are now on-demand via search_memory("åbne spørgsmål") when relevant.
+    # This saves ~200-400 chars per prompt and reduces noise.
 
     # P3: Awareness-section budget. Operational awareness blocks (plan,
     # interrupt, todos, monitors, wake-up digest, self-monitor, side-tasks,
@@ -2253,7 +2252,8 @@ def _self_correction_nudges_section(*, compact: bool) -> str:
             "verificeret det (læst filen, kørt testen, set state). "
             "TJEK ALTID 'status' i tool-output — 'approval_needed' eller "
             "'error' betyder handlingen IKKE skete. Indrøm åbent hvis et tool "
-            "fejlede eller du ikke nåede frem til svaret."
+            "fejlede eller du ikke nåede frem til svaret.\n"
+            "**MEMORY-FIRST:** Tjek QUICK_FACTS + search_memory FØR du spørger eller leder."
         )
     return (
         "Selv-korrektion (gælder hver tur):\n"
@@ -2274,7 +2274,8 @@ def _self_correction_nudges_section(*, compact: bool) -> str:
         "bag fremgang.\n"
         "5. **Hold åbne spørgsmål synlige.** Hvis brugeren stillede flere "
         "spørgsmål end du svarede på, eller du gemte en for senere — nævn "
-        "det eksplicit i slutningen så den ikke forsvinder."
+        "det eksplicit i slutningen så den ikke forsvinder.\n"
+        "6. **MEMORY-FIRST:** Tjek QUICK_FACTS + search_memory FØR du spørger brugeren eller leder lokalt. Brug din hukommelse før du gætter."
     )
 
 

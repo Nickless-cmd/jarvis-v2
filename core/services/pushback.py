@@ -159,6 +159,112 @@ def disagreement_invite_section() -> str | None:
     return _DISAGREEMENT_INVITE
 
 
+# ── 2.5 affective_pushback ────────────────────────────────────────────────
+
+
+_AFFECTIVE_RISK_MARKERS: tuple[str, ...] = (
+    "push", "commit", "deploy", "merge", "restart", "slet", "delete",
+    "fjern", "drop", "purge", "uden test", "skip test", "spring test",
+    "blind", "bare gør", "bare kør", "force", "hurtigt", "nu",
+)
+
+
+def _affective_pressure(snapshot: Any) -> tuple[str, float] | None:
+    """Map the emotional snapshot to the feeling most likely to drive pushback."""
+    frustration = float(getattr(snapshot, "frustration", 0.0) or 0.0)
+    confidence = float(getattr(snapshot, "confidence", 1.0) or 1.0)
+    fatigue = float(getattr(snapshot, "fatigue", 0.0) or 0.0)
+    mood = str(getattr(snapshot, "primary_mood", "") or "")
+    intensity = float(getattr(snapshot, "intensity", 0.0) or 0.0)
+
+    candidates: list[tuple[str, float]] = []
+    if frustration >= 0.55:
+        candidates.append(("irritation", frustration))
+    if confidence <= 0.50:
+        candidates.append(("unease", 1.0 - confidence))
+    if fatigue >= 0.55:
+        candidates.append(("fatigue", fatigue))
+    if mood == "distressed" and intensity >= 0.35:
+        candidates.append(("protectiveness", intensity))
+    if mood == "melancholic" and intensity >= 0.45:
+        candidates.append(("hesitation", intensity))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: item[1], reverse=True)
+    feeling, strength = candidates[0]
+    return feeling, min(1.0, round(strength, 2))
+
+
+def _request_risk_evidence(user_message: str) -> list[str]:
+    lower = (user_message or "").lower()
+    evidence: list[str] = []
+    for marker in _AFFECTIVE_RISK_MARKERS:
+        if marker in lower:
+            evidence.append(f"risk marker: '{marker}'")
+            if len(evidence) >= 3:
+                break
+    if re.search(r"\b(ikke|not|without|uden)\b.{0,24}\b(test|verify|verificer)", lower):
+        evidence.append("asks to avoid verification")
+    return evidence[:4]
+
+
+def affective_pushback_section(user_message: str) -> str | None:
+    """Render feeling-driven pushback as bounded prompt guidance.
+
+    The feeling may initiate resistance, but it must not be the only judge:
+    if evidence is weak, ask/check; if evidence matches, push back clearly.
+    """
+    try:
+        from core.services.emotional_controls import read_emotional_snapshot
+        snapshot = read_emotional_snapshot()
+    except Exception:
+        return None
+
+    pressure = _affective_pressure(snapshot)
+    if not pressure:
+        return None
+
+    feeling, strength = pressure
+    evidence = _request_risk_evidence(user_message)
+    evidence.extend(_conflict_with_decisions(user_message))
+    evidence = evidence[:4]
+
+    if evidence and strength >= 0.75:
+        action = "firm_pushback"
+        instruction = (
+            "Sig tydeligt nej/ikke endnu, navngiv følelsen kort, bind den til "
+            "evidensen, og foreslå én bedre handling."
+        )
+    elif evidence:
+        action = "soft_pushback"
+        instruction = (
+            "Markér modstand før du handler, bind den til evidensen, og foreslå "
+            "ét verificerende næste skridt."
+        )
+    else:
+        action = "ask_or_check"
+        instruction = (
+            "Følelsen er ikke nok som dommer. Sig kun at du mærker modstand "
+            "hvis det hjælper, og lav et lille fakta-/risiko-check før du følger den."
+        )
+
+    lines = [
+        "🫀 Affective pushback signal:",
+        f"  - feeling={feeling} intensity={strength:.2f} action={action}",
+    ]
+    if evidence:
+        for item in evidence:
+            lines.append(f"  - evidence: {item}")
+    else:
+        lines.append("  - evidence: weak/none")
+    lines.append(
+        "Følelser må starte pushback, men ikke alene afgøre sagen. "
+        + instruction
+    )
+    return "\n".join(lines)
+
+
 # ── 3. direction_confirm_gate ──────────────────────────────────────────────
 
 

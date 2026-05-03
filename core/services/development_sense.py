@@ -284,45 +284,39 @@ def _is_after(ts: Any, cutoff: datetime) -> bool:
 
 
 def development_sense_section() -> str | None:
-    """Render all 4 senses as one prompt-awareness block. None when no signal."""
+    """Render all 4 senses as one COMPACT prompt-awareness block (2026-05-03).
+    Max ~3 lines. None when no signal."""
     pulse = growth_pulse()
     stuck = stuck_signal()
     appetite = appetite_signal()
     resistance = resistance_signal()
 
     lines: list[str] = []
+    
+    # Vækstpuls — 1 linje
     if pulse.get("score") is not None:
         score = pulse["score"]
         emoji = "🌱" if score >= 0.4 else "🪨"
         lines.append(f"{emoji} Vækstpuls: {score} — {pulse['label']}")
-        # Surface a key component for transparency
-        details: list[str] = []
-        if pulse.get("adherence") is not None:
-            details.append(f"adherence={int(pulse['adherence']*100)}%")
-        if pulse.get("crisis_resolution") is not None:
-            details.append(f"crises_resolved={int(pulse['crisis_resolution']*100)}%")
-        if pulse.get("skill_principles_7d", 0) > 0:
-            details.append(f"skills_added_7d={pulse['skill_principles_7d']}")
-        if details:
-            lines.append("    " + ", ".join(details))
-
+    
+    # Stuck — 1 linje max
     if stuck:
-        lines.append("🪤 Stuck-signal:")
-        for r in stuck.get("reasons", []):
-            lines.append(f"    - {r}")
-
+        reasons = stuck.get("reasons", [])
+        if reasons:
+            lines.append(f"🪤 Stuck: {reasons[0][:60]}")
+    
+    # Appetit — 1 linje max
     if appetite:
         topics = appetite.get("topics") or []
         if topics:
-            lines.append(
-                f"🧲 Appetit (det du orbiterer uopfordret): {', '.join(topics)}"
-            )
-
+            lines.append(f"🧲 Appetit: {', '.join(topics[:2])}")
+    
+    # Modstand — 1 linje max
     if resistance:
-        lines.append("⚔ Modstand i dig selv:")
-        for r in resistance.get("flags", []):
-            lines.append(f"    - {r}")
+        flags = resistance.get("flags", [])
+        if flags:
+            lines.append(f"⚔ Modstand: {flags[0][:60]}")
 
     if not lines:
         return None
-    return "Udviklingsfornemmelse — hvor du står i din egen bevægelse:\n" + "\n".join(lines)
+    return "Udviklingsfornemmelse:\n" + "\n".join(lines)

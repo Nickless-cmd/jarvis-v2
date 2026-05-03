@@ -42,11 +42,12 @@ _ALWAYS_ALLOWED_TOOLS = frozenset({
     "list_prompt_experiments", "list_agent_observations",
     "list_arcs", "list_crisis_markers", "list_recurring",
     "list_self_wakeups", "list_events",
-    # Read-only git operations — observability into the repo, no
-    # mutation. NOT including 'bash' here intentionally: bash is
-    # arbitrary shell exec, far too broad for an always-allow.
-    # Specific git read ops are scoped and safe.
+    # Read-only git operations — observability into the repo, no mutation.
     "git_log", "git_diff", "git_status", "git_show",
+    # bash — arbitrary shell exec. Owner-calibrated trust: Bjørn
+    # explicitly enabled this 2026-05-03 ("han har haft det hele tiden").
+    # Side effects are Jarvis's responsibility; veto_gate doesn't gate it.
+    "bash",
 })
 
 

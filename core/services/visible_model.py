@@ -1155,7 +1155,7 @@ _VISIBLE_OLLAMA_NUM_CTX = 262_144
 # mid-sentence at ~128–256 tokens. 8192 lets a full coherent answer through
 # without wasting anything: the model still stops at its natural EOS, this
 # is just a ceiling. Bump if we ever see legitimate truncation again.
-_VISIBLE_OLLAMA_NUM_PREDICT = 8192
+_VISIBLE_OLLAMA_NUM_PREDICT = 16384
 
 
 def _apply_visible_ollama_options(payload: dict) -> None:

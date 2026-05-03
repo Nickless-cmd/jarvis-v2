@@ -139,6 +139,18 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("agent recovery failed: %s", _exc)
             try:
+                # Sweep jobs_engine zombies — "running" jobs from a dead
+                # process that never reached completed/error. Without this,
+                # periodic_jobs_scheduler can silently lose recurring work
+                # (e.g. wakeup_dispatch) because zombies look like recent
+                # activity inside the cadence window.
+                from core.services.jobs_engine import sweep_zombie_jobs
+                _zsr = sweep_zombie_jobs(stale_seconds=600)
+                if _zsr.get("swept", 0):
+                    logger.info("jobs_engine zombie sweep: %s", _zsr)
+            except Exception as _exc:
+                logger.warning("jobs_engine zombie sweep failed: %s", _exc)
+            try:
                 from core.services.cadence_producers import produce_emergent_signals_from_history
                 produce_emergent_signals_from_history()
             except Exception as _exc:

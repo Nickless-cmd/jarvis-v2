@@ -248,6 +248,51 @@ def cancel_job(job_id: str) -> bool:
     return False
 
 
+def sweep_zombie_jobs(stale_seconds: int = 600) -> dict[str, int]:
+    """Mark 'running' jobs older than stale_seconds as error.
+
+    Background: when jarvis-runtime restarts, jobs that were 'running' in
+    the previous process are orphaned — their handler thread died with
+    the process but the queue file still shows them as running. Without
+    this sweep, periodic_jobs_scheduler eventually skips re-enqueueing
+    that job_type because it sees activity (the zombie's started_at)
+    inside the cadence window. Net effect: silent loss of recurring
+    work like wakeup_dispatch.
+
+    Call this from app startup (lifespan) so a fresh process never
+    inherits "running" zombies from a dead one.
+
+    Returns: {"swept": N, "remaining_running": M}
+    """
+    items = _load()
+    now = datetime.now(UTC)
+    threshold = now.timestamp() - stale_seconds
+    swept = 0
+    still_running = 0
+    for j in items:
+        if j.get("status") != "running":
+            continue
+        started_iso = str(j.get("started_at") or j.get("enqueued_at") or "")
+        try:
+            started_ts = datetime.fromisoformat(started_iso).timestamp()
+        except Exception:
+            started_ts = 0  # treat unparseable as ancient → sweep
+        if started_ts < threshold:
+            j["status"] = "error"
+            j["completed_at"] = now.isoformat()
+            j["error"] = (
+                f"zombie sweep — process died across restart "
+                f"(age {int(now.timestamp() - started_ts)}s)"
+            )
+            swept += 1
+        else:
+            still_running += 1
+    if swept > 0:
+        _save(items)
+        logger.info("jobs_engine: swept %d zombie running jobs", swept)
+    return {"swept": swept, "remaining_running": still_running}
+
+
 def list_jobs(*, status: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
     items = _load()
     if status:

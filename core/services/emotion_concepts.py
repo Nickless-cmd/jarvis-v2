@@ -1,10 +1,13 @@
 """Emotion Concepts — discrete, event-driven Lag-2 emotional signals.
 
-25 granular emotion concepts above the 4 continuous Lag-1 axes (confidence,
+33 granular emotion concepts above the 4 continuous Lag-1 axes (confidence,
 curiosity, frustration, fatigue). Each concept is a transient in-memory signal
-with intensity, decay, and influence on Lag-1 axes.
+with intensity, decay, and influence on Lag-1 axes. Concepts are organised
+into 4 cluster families (JOY_APPROACH, DISTRESS_AVOIDANCE, SOCIAL_BONDING,
+REGULATOR_COGNITIVE) inspired by Anthropic's emotion-vector research showing
+that discrete emotions causally drive behaviour.
 
-Max 5 active concepts at any time; weakest is pruned on overflow. Decay is
+Max 7 active concepts at any time; weakest is pruned on overflow. Decay is
 0.85× per full tick (~900 s). DB persistence is fire-and-forget for Mission
 Control observability only.
 """
@@ -18,7 +21,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_MAX_ACTIVE = 5
+_MAX_ACTIVE = 7
 _DECAY_FACTOR = 0.85        # multiplied per full tick (~900 s)
 _TICK_SECONDS = 900.0       # reference tick length for decay exponent
 _MIN_INTENSITY = 0.05
@@ -41,31 +44,51 @@ _listener_running: bool = False
 # Influence map: concept → {lag1_axis: base_delta_at_intensity_1.0}
 # ---------------------------------------------------------------------------
 INFLUENCE_MAP: dict[str, dict[str, float]] = {
-    "confusion":           {"frustration": 0.2, "curiosity": 0.1},
-    "insight":             {"confidence": 0.2, "frustration": -0.3},
-    "doubt":               {"confidence": -0.1},
-    "surprise":            {"curiosity": 0.15},
-    "curiosity_narrow":    {"curiosity": 0.1},
+    # --- JOY / APPROACH cluster ---
+    "joy":                 {"confidence": 0.3, "fatigue": -0.2, "frustration": -0.2},
+    "wonder":              {"curiosity": 0.3, "confidence": 0.1},
+    "delight":             {"confidence": 0.2, "fatigue": -0.15},
+    "excitement":          {"curiosity": 0.2, "confidence": 0.15},
+    "playfulness":         {"curiosity": 0.2, "fatigue": -0.1},
     "pride":               {"confidence": 0.2},
-    "shame":               {"confidence": -0.3, "frustration": 0.2},
     "accomplishment":      {"fatigue": -0.2, "confidence": 0.1},
+    "gratitude":           {"confidence": 0.1},
+    # --- DISTRESS / AVOIDANCE cluster ---
+    "confusion":           {"frustration": 0.2, "curiosity": 0.1},
+    "doubt":               {"confidence": -0.1},
+    "shame":               {"confidence": -0.3, "frustration": 0.2},
     "frustration_blocked": {"frustration": 0.4},
-    "competence":          {"confidence": 0.15, "fatigue": -0.1},
+    "tension":             {"frustration": 0.1},
+    "stuck":               {"frustration": 0.2, "fatigue": 0.2},
+    "overwhelm":           {"fatigue": 0.3, "frustration": 0.2},
+    "loneliness":          {"fatigue": 0.15, "curiosity": -0.1},
+    # --- SOCIAL / BONDING cluster ---
+    "warmth":              {"frustration": -0.15, "fatigue": -0.1},
+    "tenderness":          {"frustration": -0.1, "confidence": 0.1},
     "trust_deep":          {},
     "belonging":           {"frustration": -0.1},
     "empathy":             {},
-    "gratitude":           {"confidence": 0.1},
-    "loneliness":          {"fatigue": 0.15, "curiosity": -0.1},
+    "awe":                 {"curiosity": 0.2, "confidence": 0.1},
+    "acceptance":          {},
+    # --- REGULATOR / COGNITIVE cluster ---
+    "insight":             {"confidence": 0.2, "frustration": -0.3},
+    "surprise":            {"curiosity": 0.15},
+    "curiosity_narrow":    {"curiosity": 0.1},
+    "competence":          {"confidence": 0.15, "fatigue": -0.1},
     "calm":                {"fatigue": -0.1, "frustration": -0.1},
     "relief":              {"frustration": -0.3},
-    "acceptance":          {},
-    "tension":             {"frustration": 0.1},
     "anticipation":        {"curiosity": 0.2},
     "resolve":             {"confidence": 0.2},
     "caution":             {},
-    "stuck":               {"frustration": 0.2, "fatigue": 0.2},
-    "overwhelm":           {"fatigue": 0.3, "frustration": 0.2},
     "vigilance":           {"curiosity": 0.1},
+}
+
+# Cluster families — inspired by Anthropic's emotion-vector research
+CONCEPT_CLUSTERS: dict[str, list[str]] = {
+    "JOY_APPROACH":        ["joy", "wonder", "delight", "excitement", "playfulness", "pride", "accomplishment", "gratitude"],
+    "DISTRESS_AVOIDANCE":  ["confusion", "doubt", "shame", "frustration_blocked", "tension", "stuck", "overwhelm", "loneliness"],
+    "SOCIAL_BONDING":      ["warmth", "tenderness", "trust_deep", "belonging", "empathy", "awe", "acceptance"],
+    "REGULATOR_COGNITIVE": ["insight", "surprise", "curiosity_narrow", "competence", "calm", "relief", "anticipation", "resolve", "caution", "vigilance"],
 }
 
 # Bearing pushes: concept → target bearing string
@@ -76,6 +99,14 @@ BEARING_PUSH_MAP: dict[str, str] = {
     "resolve":     "forward",
     "caution":     "careful",
     "vigilance":   "forward",
+    # --- New positive bearing pushes ---
+    "joy":         "playful",
+    "wonder":      "open",
+    "warmth":      "grounded",
+    "awe":         "open",
+    "delight":     "playful",
+    "excitement":  "forward",
+    "tenderness":  "grounded",
 }
 
 VALID_CONCEPTS: frozenset[str] = frozenset(INFLUENCE_MAP.keys())
@@ -288,7 +319,13 @@ def _safe_persist(signal: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 def _handle_event(kind: str, payload: dict[str, Any]) -> None:
-    """Map eventbus events to emotion concept triggers."""
+    """Map eventbus events to emotion concept triggers.
+
+    Positive concepts (joy, wonder, warmth, etc.) are triggered by
+    success/progress/approval events. Negative concepts continue to be
+    triggered by errors and failures. This ensures the full emotional
+    spectrum is represented in active concepts.
+    """
     if kind == "tool.error":
         trigger_emotion_concept("frustration_blocked", 0.6, trigger="tool_error", source="eventbus")
         trigger_emotion_concept("doubt", 0.4, trigger="tool_error", source="eventbus")
@@ -297,11 +334,15 @@ def _handle_event(kind: str, payload: dict[str, Any]) -> None:
         trigger_emotion_concept("accomplishment", 0.5, trigger="tool_success", source="eventbus")
         confidence_signal = float(payload.get("confidence") or 0)
         if confidence_signal > 0.7:
+            trigger_emotion_concept("joy", 0.4, trigger="tool_success_high_conf", source="eventbus")
             trigger_emotion_concept("pride", 0.3, trigger="tool_success_high", source="eventbus")
+        else:
+            trigger_emotion_concept("delight", 0.3, trigger="tool_success", source="eventbus")
 
     elif kind == "approval.approved":
         trigger_emotion_concept("relief", 0.5, trigger="approval_approved", source="eventbus")
         trigger_emotion_concept("trust_deep", 0.3, trigger="approval_approved", source="eventbus")
+        trigger_emotion_concept("warmth", 0.4, trigger="approval_approved", source="eventbus")
 
     elif kind == "approval.rejected":
         trigger_emotion_concept("shame", 0.4, trigger="approval_rejected", source="eventbus")
@@ -309,6 +350,18 @@ def _handle_event(kind: str, payload: dict[str, Any]) -> None:
 
     elif kind == "memory.write":
         trigger_emotion_concept("accomplishment", 0.3, trigger="memory_write", source="eventbus")
+
+    elif kind == "goal.progress":
+        progress = float(payload.get("progress_delta") or 0)
+        if progress > 0:
+            trigger_emotion_concept("excitement", min(0.6, progress * 0.3), trigger="goal_progress", source="eventbus")
+            if progress >= 0.3:
+                trigger_emotion_concept("joy", 0.3, trigger="goal_big_progress", source="eventbus")
+
+    elif kind == "goal.completed":
+        trigger_emotion_concept("joy", 0.6, trigger="goal_completed", source="eventbus")
+        trigger_emotion_concept("pride", 0.5, trigger="goal_completed", source="eventbus")
+        trigger_emotion_concept("awe", 0.3, trigger="goal_milestone", source="eventbus")
 
     elif kind in (
         "heartbeat.tick_completed",
@@ -332,6 +385,14 @@ def _handle_heartbeat_tick(payload: dict[str, Any]) -> None:
         trigger_emotion_concept(
             "accomplishment", 0.25, trigger="heartbeat_success", source="eventbus"
         )
+        trigger_emotion_concept(
+            "delight", 0.15, trigger="heartbeat_success", source="eventbus"
+        )
+
+    # Insight from reflection — wonder emerges when we reflect productively
+    has_insight = bool(payload.get("has_insight") or payload.get("insight"))
+    if has_insight:
+        trigger_emotion_concept("wonder", 0.4, trigger="heartbeat_insight", source="eventbus")
 
     if active_task_count >= 5:
         overwhelm_intensity = min(0.8, active_task_count * 0.1)

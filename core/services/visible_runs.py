@@ -369,6 +369,22 @@ def _classify_visible_run_interruption(error_message: str) -> dict[str, str]:
     }
 
 
+def _agentic_watchdog_timeout_reason(
+    *,
+    started_at: float,
+    last_progress_at: float,
+    now: float,
+    max_total_s: float,
+    max_silence_s: float,
+) -> str | None:
+    """Return the watchdog timeout reason, or None if the round can continue."""
+    if max_silence_s > 0 and (now - last_progress_at) > max_silence_s:
+        return "provider-silence-timeout"
+    if max_total_s > 0 and (now - started_at) > max_total_s:
+        return "provider-round-timeout"
+    return None
+
+
 def start_visible_run(
     message: str,
     session_id: str | None = None,
@@ -1201,27 +1217,32 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     # its later events go to a queue we no longer drain) and
                     # restart the next round with the steer in base_messages.
                     _round_start_t = time.monotonic()
-                    # 2026-04-29: bumped from 100s -> 180s. The 100s ceiling
-                    # was killing legitimate multi-tool-call rounds where GLM
-                    # cloud went silent for ~100s during heavy tool emission
-                    # (5+ visible.run.interrupted events / hour observed).
-                    # 180s leaves headroom for complex agent rounds while
-                    # still catching truly-stalled provider streams within
-                    # 3 minutes. A future stream-progress timeout (kill on
-                    # 60s silence rather than 180s wall-clock) would be
-                    # tighter without sacrificing legitimate work.
-                    _round_overall_timeout_s = 180.0
+                    # Watchdog has two clocks:
+                    # - total round ceiling prevents endless provider calls
+                    # - silence ceiling catches stalled streams while allowing
+                    #   long rounds that keep producing deltas/tool calls.
+                    _round_overall_timeout_s = 300.0
+                    _round_silence_timeout_s = 75.0
+                    _last_provider_progress_t = _round_start_t
                     _mid_round_steers: list[dict[str, object]] = []
                     while True:
                         try:
                             _a_item = await asyncio.wait_for(_a_queue.get(), timeout=1.0)
                         except asyncio.TimeoutError:
-                            if (time.monotonic() - _round_start_t) > _round_overall_timeout_s:
+                            _now_t = time.monotonic()
+                            _watchdog_reason = _agentic_watchdog_timeout_reason(
+                                started_at=_round_start_t,
+                                last_progress_at=_last_provider_progress_t,
+                                now=_now_t,
+                                max_total_s=_round_overall_timeout_s,
+                                max_silence_s=_round_silence_timeout_s,
+                            )
+                            if _watchdog_reason:
                                 if not _a_failure:
                                     _a_failure.update({
                                         "round": _agentic_round + 1,
-                                        "error": "timed out waiting for provider stream item",
-                                        "summary": f"agentic-round-{_agentic_round + 1}-timeout",
+                                        "error": f"{_watchdog_reason}: timed out waiting for provider stream item",
+                                        "summary": f"agentic-round-{_agentic_round + 1}-{_watchdog_reason}",
                                     })
                                 break
                             # Check for mid-stream steers
@@ -1246,6 +1267,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             continue
                         if _a_item is _a_sentinel:
                             break
+                        _last_provider_progress_t = time.monotonic()
                         if isinstance(_a_item, _vf.FollowupDelta):
                             if _a_item.delta:
                                 _a_parts.append(_a_item.delta)

@@ -190,16 +190,25 @@ def disagreement_invite_section() -> str | None:
 
 
 _AFFECTIVE_RISK_MARKERS: tuple[str, ...] = (
-    # Removed 2026-05-03 (too lexically generic, fired on technical chat):
-    #   "commit"  — every git commit discussion triggered pushback
-    #   "nu"      — every Danish "now" ("vis mig nu", "lad os gå nu")
-    #               triggered. Was even more generic than "commit".
-    # Genuine emotional commitment / time-pressure surfaces via
-    # mood/confidence/intensity signals, not lexical match on these
-    # routine words.
+    # The goal of these markers is to detect when the user is pressuring
+    # Jarvis to bypass safety / verification — NOT to flag every technical
+    # word that names a destructive operation.
+    #
+    # Removed 2026-05-03 (too lexically generic in technical chat):
+    #   "commit"  — every git commit discussion fired pushback
+    #   "nu"      — every Danish "now" fired ("vis mig nu", "lad os gå nu")
+    #   "fjern"   — Danish "remove" fires on "fjern whitespace",
+    #               "fjern denne markør", "fjern duplikat" etc.
+    #   "drop"    — generic ("drop denne idé", "drop me a line", "drop in")
+    #   "hurtigt" — Danish "fast" fires on routine "kan du hurtigt vise mig"
+    #
+    # Kept: specific multi-word pressure phrases and high-signal single
+    # words (force, push, deploy, slet/delete in user pressure context).
+    # Genuine emotional pressure surfaces via mood/confidence/intensity
+    # signals — these markers are just lexical hints, not the only judge.
     "push", "deploy", "merge", "restart", "slet", "delete",
-    "fjern", "drop", "purge", "uden test", "skip test", "spring test",
-    "blind", "bare gør", "bare kør", "force", "hurtigt",
+    "purge", "uden test", "skip test", "spring test",
+    "blind", "bare gør", "bare kør", "force",
 )
 
 

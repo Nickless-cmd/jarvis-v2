@@ -153,12 +153,18 @@ def _get_caps() -> tuple[int, int]:
 
 def _exec_remember_this(args: dict[str, Any]) -> dict[str, Any]:
     """Executor for remember_this tool."""
-    session_id = ""
-    try:
-        from core.services.chat_sessions import get_active_session_id  # type: ignore
-        session_id = get_active_session_id() or ""
-    except Exception:
-        pass
+    session_id = str(args.get("_runtime_session_id") or args.get("session_id") or "").strip()
+    turn_id = str(args.get("_runtime_turn_id") or args.get("turn_id") or "").strip()
+    if not session_id or not turn_id:
+        return {
+            "status": "error",
+            "error": "context_missing",
+            "details": (
+                "remember_this requires runtime session_id and turn_id. "
+                "No memory was written."
+            ),
+            "written": False,
+        }
     return remember_this(
         kind=args["kind"],
         title=args["title"],
@@ -166,7 +172,7 @@ def _exec_remember_this(args: dict[str, Any]) -> dict[str, Any]:
         visibility=args["visibility"],
         domain=args["domain"],
         session_id=session_id,
-        turn_id=f"{session_id}:{_now().isoformat()}",
+        turn_id=turn_id,
         related=args.get("related"),
         source_url=args.get("source_url"),
         source_chronicle=args.get("source_chronicle"),
@@ -247,6 +253,9 @@ def remember_this(
     if not title.strip():
         return {"status": "error", "error": "validation_failed",
                 "details": "empty title"}
+    if not content.strip():
+        return {"status": "error", "error": "validation_failed",
+                "details": "empty content"}
     if len(content) > 4096:
         return {"status": "error", "error": "validation_failed",
                 "details": "content too long (max 4096 bytes)"}

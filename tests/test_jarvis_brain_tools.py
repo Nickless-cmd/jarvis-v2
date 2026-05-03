@@ -27,6 +27,43 @@ def test_remember_this_creates_entry(isolated_brain):
     assert res["id"].startswith("brn_")
 
 
+def test_exec_remember_this_requires_runtime_context(isolated_brain):
+    from core.tools.jarvis_brain_tools import _exec_remember_this
+
+    res = _exec_remember_this({
+        "kind": "fakta",
+        "title": "X",
+        "content": "Y",
+        "visibility": "personal",
+        "domain": "engineering",
+    })
+
+    assert res["status"] == "error"
+    assert res["error"] == "context_missing"
+    assert res["written"] is False
+
+
+def test_exec_remember_this_uses_stable_runtime_turn_for_rate_limit(isolated_brain):
+    from core.tools.jarvis_brain_tools import _exec_remember_this
+
+    base_args = {
+        "kind": "fakta",
+        "content": "Y",
+        "visibility": "personal",
+        "domain": "engineering",
+        "_runtime_session_id": "chat-1",
+        "_runtime_turn_id": "run-1",
+    }
+    for i in range(5):
+        res = _exec_remember_this({**base_args, "title": f"X{i}"})
+        assert res["status"] == "ok"
+
+    overflow = _exec_remember_this({**base_args, "title": "X6"})
+
+    assert overflow["status"] == "error"
+    assert overflow["error"] == "rate_limit_turn"
+
+
 def test_remember_this_rejects_invalid_kind(isolated_brain):
     from core.tools.jarvis_brain_tools import remember_this
     res = remember_this(kind="WRONG", title="X", content="Y",
@@ -50,6 +87,15 @@ def test_remember_this_rejects_empty_title(isolated_brain):
                         visibility="personal", domain="d",
                         session_id="s1", turn_id="t1")
     assert res["status"] == "error"
+
+
+def test_remember_this_rejects_empty_content(isolated_brain):
+    from core.tools.jarvis_brain_tools import remember_this
+    res = remember_this(kind="fakta", title="X", content="   ",
+                        visibility="personal", domain="d",
+                        session_id="s1", turn_id="t1")
+    assert res["status"] == "error"
+    assert "content" in res.get("details", "")
 
 
 def test_remember_this_rejects_oversize_content(isolated_brain):

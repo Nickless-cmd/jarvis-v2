@@ -182,11 +182,18 @@ def interruption_prompt_section(session_id: str | None) -> str | None:
     started_at = started_iso[11:19] if started_iso else ""
     tool_clause = f" — sidste tool var {last_tool}" if last_tool else ""
     reason_clause = f" Årsag: {reason}." if reason else ""
+    checkpoint = ""
+    try:
+        from core.services.agentic_checkpoints import checkpoint_prompt_section
+        checkpoint = checkpoint_prompt_section(session_id) or ""
+    except Exception:
+        checkpoint = ""
     return (
         "Du blev afbrudt midt i en opgave (startet "
         f"{started_at}{tool_clause}):\n"
         f"  \"{excerpt}\"\n"
         f"{reason_clause}\n"
+        f"{checkpoint + chr(10) if checkpoint else ''}"
         "Hvis brugerens nye besked tydeligt betyder 'fortsæt/prøv igen', "
         "så fortsæt fra denne tilstand i stedet for at starte forfra. "
         "Hvis intent er uklart, spørg om du skal fortsætte derfra eller starte forfra."

@@ -4504,6 +4504,20 @@ def _heartbeat_prompt_text(base_text: str) -> str:
             history_lines.append(f"  - {line[:160]}")
         history_section = "\n".join(history_lines)
 
+    # Last ping text — inject the most recent ping so heartbeat knows what it sent
+    last_ping_section = ""
+    try:
+        last_pings = _recent_ping_history(limit=1)
+        if last_pings:
+            last_ping_text = str(last_pings[0]).strip()[:300]
+            if last_ping_text:
+                last_ping_section = (
+                    f"Last ping you sent to Bjørn:\n  \"{last_ping_text}\"\n"
+                    "Do NOT repeat or paraphrase this. If you have nothing new to add, choose noop."
+                )
+    except Exception:
+        pass
+
     parts = [
         base_text.strip(),
     ]
@@ -4512,6 +4526,8 @@ def _heartbeat_prompt_text(base_text: str) -> str:
     parts.append(language_directive)
     if history_section:
         parts.append(history_section)
+    if last_ping_section:
+        parts.append(last_ping_section)
     parts.extend(
         [
             "Heartbeat response contract:",
@@ -4757,6 +4773,25 @@ def _validate_heartbeat_decision(
             "action_artifact": str(action_result["artifact"]),
         }
     if decision_type == "ping":
+        # ── Session activity gate: block ping when user is actively chatting ──
+        try:
+            continuity = visible_session_continuity()
+            if bool(continuity.get("active")):
+                latest_status = str(continuity.get("latest_status") or "")
+                if latest_status not in {"completed", "failed", "cancelled"}:
+                    return {
+                        "tick_id": tick_id,
+                        "blocked_reason": "session-active",
+                        "ping_eligible": False,
+                        "ping_result": "throttled-by-active-session",
+                        "action_status": "blocked",
+                        "action_summary": "User is actively chatting — ping suppressed to avoid interruption.",
+                        "action_type": "",
+                        "action_artifact": "",
+                    }
+        except Exception:
+            pass  # If continuity check fails, allow the ping through
+
         if not bool(policy["allow_ping"]):
             return {
                 "tick_id": tick_id,

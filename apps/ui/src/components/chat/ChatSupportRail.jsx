@@ -111,6 +111,39 @@ function clampUnit(value, fallback = null) {
   return Math.min(1, Math.max(0, numeric))
 }
 
+// Map emotion concepts → cluster (mirrors core/services/emotion_concepts.py).
+// Used to color the active concepts in the rail.
+const _CLUSTER_BY_CONCEPT = {
+  // JOY_APPROACH
+  joy: 'JOY', wonder: 'JOY', delight: 'JOY', excitement: 'JOY',
+  playfulness: 'JOY', pride: 'JOY', accomplishment: 'JOY', gratitude: 'JOY',
+  // SOCIAL_BONDING
+  warmth: 'SOCIAL', tenderness: 'SOCIAL', trust_deep: 'SOCIAL',
+  belonging: 'SOCIAL', empathy: 'SOCIAL', awe: 'SOCIAL', acceptance: 'SOCIAL',
+  // DISTRESS_AVOIDANCE
+  confusion: 'DISTRESS', doubt: 'DISTRESS', shame: 'DISTRESS',
+  frustration_blocked: 'DISTRESS', tension: 'DISTRESS', stuck: 'DISTRESS',
+  overwhelm: 'DISTRESS', loneliness: 'DISTRESS',
+  // REGULATOR_COGNITIVE
+  insight: 'REG', surprise: 'REG', curiosity_narrow: 'REG',
+  competence: 'REG', calm: 'REG', relief: 'REG', anticipation: 'REG',
+  resolve: 'REG', caution: 'REG', vigilance: 'REG',
+}
+
+function conceptCluster(concept) {
+  return _CLUSTER_BY_CONCEPT[String(concept || '').toLowerCase()] || 'OTHER'
+}
+
+function clusterColor(cluster) {
+  switch (cluster) {
+    case 'JOY':      return '#4caf82'  // green — same as CONF
+    case 'SOCIAL':   return '#d4963a'  // amber — warm bonds
+    case 'DISTRESS': return '#c05050'  // red — same as FRUS
+    case 'REG':      return '#4a80c0'  // blue — cognitive regulator
+    default:         return '#8a8e94'  // grey — uncategorized
+  }
+}
+
 function deriveEmotions(affective, emotionalBaseline = {}) {
   const state = affective.state || 'unknown'
   const bearing = affective.bearing || 'unknown'
@@ -371,6 +404,33 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
             )
           })}
         </div>
+        {Array.isArray(liveEmotionalState.emotion_concepts) && liveEmotionalState.emotion_concepts.length > 0 ? (
+          <div className="rail-emotion-concepts">
+            <div className="rail-emotion-concepts-header mono">Active concepts</div>
+            <div className="rail-emotion-concepts-list">
+              {liveEmotionalState.emotion_concepts.map((c) => {
+                const concept = String(c.concept || '')
+                const intensity = Number(c.intensity) || 0
+                const direction = String(c.direction || '')
+                const dirArrow = direction === 'rising' ? '↑' : direction === 'falling' ? '↓' : '·'
+                const cluster = conceptCluster(concept)
+                const color = clusterColor(cluster)
+                const pct = Math.max(0, Math.min(100, Math.round(intensity * 100)))
+                return (
+                  <div key={concept} className="rail-emotion-concept" title={`${concept} (${cluster}) intensity ${intensity.toFixed(2)} — ${direction}`}>
+                    <div className="rail-emotion-concept-row">
+                      <span className="mono rail-emotion-concept-name" style={{ color }}>{concept}</span>
+                      <span className="mono rail-emotion-concept-meta">{dirArrow} {intensity.toFixed(2)}</span>
+                    </div>
+                    <div className="progress-bar">
+                      <div className="progress-bar-fill" style={{ width: `${pct}%`, background: color }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
         <div className="rail-affective-summary mono">
           {[
             (liveEmotionalState.mood || personalityVector.current_bearing) ? `mood ${humanizeToken(liveEmotionalState.mood || personalityVector.current_bearing)}` : null,

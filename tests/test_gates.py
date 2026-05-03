@@ -127,6 +127,23 @@ class TestAffectModulation:
         # Just verify it doesn't crash
         assert section is None or isinstance(section, str)
 
+    @patch("core.services.emotional_controls.read_emotional_snapshot")
+    def test_agentic_budget_tightens_under_fatigue(self, mock_snapshot):
+        from core.services.affect_modulation import compute_agentic_loop_budget
+        mock_snapshot.return_value = EmotionalSnapshot(
+            frustration=0.1,
+            confidence=0.3,
+            fatigue=0.85,
+            primary_mood="tired",
+            intensity=0.8,
+        )
+
+        budget = compute_agentic_loop_budget(resume_context=True)
+
+        assert budget["max_rounds"] <= 12
+        assert budget["max_tool_only_rounds"] <= 3
+        assert budget["round_silence_timeout_s"] <= 45.0
+
 
 # ── Integration: _execute_simple_tool_calls gate pipeline ──────────────
 

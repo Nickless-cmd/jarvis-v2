@@ -788,7 +788,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     })
 
             simple_results = _execute_simple_tool_calls(
-                _collected_native_tool_calls, force=run.autonomous, run_id=run.run_id,
+                _collected_native_tool_calls,
+                force=run.autonomous,
+                run_id=run.run_id,
+                session_id=run.session_id,
             )
 
             if simple_results:
@@ -1287,7 +1290,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                          for tc in _a_tool_calls][:6],
                     )
                     _a_results = _execute_simple_tool_calls(
-                        _a_tool_calls, force=run.autonomous, run_id=run.run_id,
+                        _a_tool_calls,
+                        force=run.autonomous,
+                        run_id=run.run_id,
+                        session_id=run.session_id,
                     )
                     logger.info(
                         "agentic-tools-execute-end run_id=%s round=%d duration_ms=%d results=%d",
@@ -2622,6 +2628,7 @@ def _execute_simple_tool_calls(
     *,
     force: bool = False,
     run_id: str | None = None,
+    session_id: str | None = None,
 ) -> list[dict[str, object]]:
     """Execute native tool_calls directly via simple_tools. Returns results.
 
@@ -2650,6 +2657,11 @@ def _execute_simple_tool_calls(
             arguments = {}
         if not name:
             continue
+        arguments = dict(arguments)
+        if session_id:
+            arguments["_runtime_session_id"] = session_id
+        if run_id:
+            arguments["_runtime_turn_id"] = run_id
         signature = json.dumps(
             {
                 "tool_name": name,

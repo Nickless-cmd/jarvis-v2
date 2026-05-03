@@ -2959,6 +2959,26 @@ def _execute_simple_tool_calls(
             })
             continue
 
+        try:
+            from core.services.agentic_tool_cache import get_cached_result
+            _cached = get_cached_result(name, arguments)
+        except Exception:
+            _cached = None
+        if _cached:
+            results.append({
+                "tool_name": name,
+                "arguments": arguments,
+                "result": {
+                    "status": "ok",
+                    "cached": True,
+                    "stored_at": _cached.get("stored_at"),
+                },
+                "result_text": str(_cached.get("result_text") or ""),
+                "status": "ok",
+                "cached": True,
+            })
+            continue
+
         # ── Pre-execution gates ──────────────────────────────────────
         # 1. Veto gate: affective pushback with evidence blocks execution
         _veto_blocked = False
@@ -3028,6 +3048,16 @@ def _execute_simple_tool_calls(
         # likewise MUST stay retryable.
         if controller and result.get("status") == "ok":
             controller.seen_simple_tool_call_signatures.add(signature)
+        try:
+            from core.services.agentic_tool_cache import store_result
+            store_result(
+                tool_name=name,
+                arguments=arguments,
+                result_text=result_text,
+                status=str(result.get("status", "ok")),
+            )
+        except Exception:
+            pass
         results.append({
             "tool_name": name,
             "arguments": arguments,

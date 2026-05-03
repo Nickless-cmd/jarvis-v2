@@ -65,3 +65,24 @@ def test_affective_pushback_omits_when_no_affective_pressure(monkeypatch):
     )
 
     assert pushback.affective_pushback_section("deploy nu") is None
+
+
+def test_conflict_with_decisions_detects_conflict():
+    """Integration test: _conflict_with_decisions should find conflicts
+    against active behavioral decisions without being mocked away."""
+    from core.services import pushback
+    from core.runtime.db_decisions import create_decision, set_status
+
+    # Create an active decision with a short target that appears in user msg
+    d = create_decision(
+        directive="undgå at slette filer",
+        rationale="Backup-first policy",
+    )
+    set_status(d["decision_id"], "active")
+
+    try:
+        flags = pushback._conflict_with_decisions("slette filer nu")
+        assert len(flags) >= 1, f"Expected conflict flag, got: {flags}"
+        assert "forpligtelse" in flags[0]
+    finally:
+        set_status(d["decision_id"], "revoked")

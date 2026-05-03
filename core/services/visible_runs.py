@@ -1056,6 +1056,21 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         ),
                     )
                 ]
+                try:
+                    from core.services.agentic_checkpoints import save_checkpoint as _save_agentic_checkpoint
+                    _save_agentic_checkpoint(
+                        run_id=run.run_id,
+                        session_id=run.session_id,
+                        user_message=run.user_message,
+                        provider=run.provider,
+                        model=run.model,
+                        round_index=0,
+                        phase="first-pass-tools-complete",
+                        exchanges=_followup_exchanges,
+                        partial_text="".join(_all_followup_parts),
+                    )
+                except Exception:
+                    pass
                 _supported_followup_providers = set(_vf.supported_followup_providers())
                 _provider_supports_followup = (
                     (run.provider or "").strip().lower() in _supported_followup_providers
@@ -1265,6 +1280,21 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 tool_calls=[], results=[],
                             )
                         )
+                        try:
+                            _save_agentic_checkpoint(
+                                run_id=run.run_id,
+                                session_id=run.session_id,
+                                user_message=run.user_message,
+                                provider=run.provider,
+                                model=run.model,
+                                round_index=_agentic_round + 1,
+                                phase="mid-round-steer",
+                                exchanges=_followup_exchanges,
+                                partial_text="".join(_all_followup_parts),
+                                exit_reason=_agentic_loop_exit_reason,
+                            )
+                        except Exception:
+                            pass
                         if _agentic_loop_exit_reason == "user-steer-stop-mid-stream":
                             break
                         continue  # re-enter for-loop next round
@@ -1309,6 +1339,21 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         _final_run_status = "interrupted"
                         _final_run_error = str(_interruption.get("error") or _failure_summary)
                         _agentic_loop_exit_reason = f"interrupted:{_failure_summary}"
+                        try:
+                            _save_agentic_checkpoint(
+                                run_id=run.run_id,
+                                session_id=run.session_id,
+                                user_message=run.user_message,
+                                provider=run.provider,
+                                model=run.model,
+                                round_index=_agentic_round + 1,
+                                phase="interrupted",
+                                exchanges=_followup_exchanges,
+                                partial_text="".join(_all_followup_parts),
+                                exit_reason=_failure_summary,
+                            )
+                        except Exception:
+                            pass
                         break
 
                     if not _a_tool_calls:
@@ -1567,6 +1612,21 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             ),
                         )
                     )
+                    try:
+                        _save_agentic_checkpoint(
+                            run_id=run.run_id,
+                            session_id=run.session_id,
+                            user_message=run.user_message,
+                            provider=run.provider,
+                            model=run.model,
+                            round_index=_agentic_round + 1,
+                            phase="round-complete",
+                            exchanges=_followup_exchanges,
+                            partial_text="".join(_all_followup_parts),
+                            exit_reason=_agentic_loop_exit_reason,
+                        )
+                    except Exception:
+                        pass
                     logger.info(
                         "agentic-round-end run_id=%s round=%d text_chars=%d "
                         "tool_calls=%d resolved=%d",
@@ -1653,6 +1713,12 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     text_preview=followup_text[:140],
                     error=_final_run_error,
                 )
+                if _final_run_status == "completed":
+                    try:
+                        from core.services.agentic_checkpoints import clear_run as _clear_agentic_checkpoint
+                        _clear_agentic_checkpoint(run.run_id)
+                    except Exception:
+                        pass
 
                 # Persist the assistant message BEFORE done so loadSession()
                 # finds it immediately (avoids "message disappears" race).

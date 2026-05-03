@@ -190,7 +190,15 @@ def disagreement_invite_section() -> str | None:
 
 
 _AFFECTIVE_RISK_MARKERS: tuple[str, ...] = (
-    "push", "commit", "deploy", "merge", "restart", "slet", "delete",
+    # Removed "commit" 2026-05-03: too generic — fired on every git commit
+    # discussion in technical conversations, blocking read-only tools
+    # (git_log, git_diff) via the affective pushback path. The other
+    # markers below remain because they tend to indicate genuine pressure
+    # toward an action (push, deploy, merge, force) rather than naming
+    # routine operations. If a real "I'm committed to ..." emotional
+    # context arises, it'll be caught by mood/confidence signals, not
+    # this lexical match.
+    "push", "deploy", "merge", "restart", "slet", "delete",
     "fjern", "drop", "purge", "uden test", "skip test", "spring test",
     "blind", "bare gør", "bare kør", "force", "hurtigt", "nu",
 )

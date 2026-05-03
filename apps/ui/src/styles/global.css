@@ -642,6 +642,27 @@ button { cursor: pointer; }
 .emotion-card-value { font-size: 14px; color: #e4e6ed; margin-bottom: 4px; }
 .emotion-card .progress-bar { height: 2px; }
 
+/* Active emotion concepts (joy, wonder, warmth, etc.) — sit below the
+   4 baseline cards to show what specifically is firing right now. */
+.rail-emotion-concepts { margin-top: 8px; }
+.rail-emotion-concepts-header {
+  font-size: 8px; color: #4e5262; letter-spacing: 0.08em; margin-bottom: 4px;
+}
+.rail-emotion-concepts-list {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.rail-emotion-concept {
+  padding: 4px 6px; background: rgba(14,22,32,.6);
+  border: 1px solid rgba(40,177,163,.06); border-radius: 4px;
+}
+.rail-emotion-concept-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 2px;
+}
+.rail-emotion-concept-name { font-size: 10px; font-weight: 600; }
+.rail-emotion-concept-meta { font-size: 9px; color: #6a6f7a; }
+.rail-emotion-concept .progress-bar { height: 2px; }
+
 /* Affective state grid (2x2) */
 .rail-affective-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .rail-affective-card {

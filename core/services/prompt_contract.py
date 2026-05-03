@@ -415,6 +415,10 @@ def build_visible_chat_prompt_assembly(
         parts.append(self_correction)
         derived_inputs.append("self-correction nudges")
 
+    # MEMORY-FIRST: always check QUICK_FACTS + search_memory before asking or searching.
+    parts.append("Tjek QUICK_FACTS + search_memory FØR du spørger eller leder.")
+    derived_inputs.append("memory-first nudge")
+
     # Open questions — REMOVED from fixed injection (2026-05-03).
     # Questions are now on-demand via search_memory("åbne spørgsmål") when relevant.
     # This saves ~200-400 chars per prompt and reduces noise.

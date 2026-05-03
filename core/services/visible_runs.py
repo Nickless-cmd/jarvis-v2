@@ -1044,7 +1044,15 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 #   investigations. Runaway-loop protection is preserved by
                 #   _MAX_EMPTY_TEXT_ROUNDS — no text for 8 rounds in a row
                 #   still kills text-empty spirals.
-                _AGENTIC_MAX_ROUNDS = 50
+                try:
+                    from core.services.affect_modulation import compute_agentic_loop_budget
+                    from core.services.in_flight_runs import interrupted_for_session as _interrupted_for_session
+                    _agentic_budget = compute_agentic_loop_budget(
+                        resume_context=bool(_interrupted_for_session(run.session_id)),
+                    )
+                except Exception:
+                    _agentic_budget = {}
+                _AGENTIC_MAX_ROUNDS = int(_agentic_budget.get("max_rounds") or 50)
                 _agentic_tools = _get_tool_defs()
                 _all_followup_parts: list[str] = []
                 _a_parts: list[str] = []
@@ -1126,7 +1134,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 # for autonomous work while still catching the actual runaway
                 # pattern (big-pickle 30+ tool-spam still gets caught long
                 # before it balloons the prompt past 200k chars).
-                _MAX_EMPTY_TEXT_ROUNDS = 12
+                _MAX_EMPTY_TEXT_ROUNDS = int(_agentic_budget.get("max_empty_text_rounds") or 12)
                 # ── Tool-only loop guard (2026-05-03) ──
                 # Counts consecutive agentic rounds that produced tool calls
                 # but emitted less than _TOOL_ONLY_TEXT_THRESHOLD chars of
@@ -1139,7 +1147,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 # counter. The threshold chars are deliberately low to only
                 # suppress truly tool-only rounds, not rounds with real prose.
                 _consecutive_tool_only_rounds = 0
-                _MAX_TOOL_ONLY_ROUNDS = 8
+                _MAX_TOOL_ONLY_ROUNDS = int(_agentic_budget.get("max_tool_only_rounds") or 8)
                 _TOOL_ONLY_TEXT_THRESHOLD = 80  # chars
                 _agentic_loop_exit_reason = "completed"
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
@@ -1221,8 +1229,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     # - total round ceiling prevents endless provider calls
                     # - silence ceiling catches stalled streams while allowing
                     #   long rounds that keep producing deltas/tool calls.
-                    _round_overall_timeout_s = 300.0
-                    _round_silence_timeout_s = 75.0
+                    _round_overall_timeout_s = float(_agentic_budget.get("round_total_timeout_s") or 300.0)
+                    _round_silence_timeout_s = float(_agentic_budget.get("round_silence_timeout_s") or 75.0)
                     _last_provider_progress_t = _round_start_t
                     _mid_round_steers: list[dict[str, object]] = []
                     while True:

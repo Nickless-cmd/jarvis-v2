@@ -138,3 +138,30 @@ def test_classify_visible_run_interruption_distinguishes_timeout_disconnect_and_
         "interruption_reason": "runtime-crash",
         "interruption_source": "runtime-process",
     }
+
+
+def test_agentic_watchdog_prefers_silence_over_total_timeout(isolated_runtime) -> None:
+    visible_runs = importlib.import_module("core.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+
+    assert visible_runs._agentic_watchdog_timeout_reason(
+        started_at=0.0,
+        last_progress_at=200.0,
+        now=260.0,
+        max_total_s=300.0,
+        max_silence_s=75.0,
+    ) is None
+    assert visible_runs._agentic_watchdog_timeout_reason(
+        started_at=0.0,
+        last_progress_at=10.0,
+        now=90.1,
+        max_total_s=300.0,
+        max_silence_s=75.0,
+    ) == "provider-silence-timeout"
+    assert visible_runs._agentic_watchdog_timeout_reason(
+        started_at=0.0,
+        last_progress_at=290.0,
+        now=305.0,
+        max_total_s=300.0,
+        max_silence_s=75.0,
+    ) == "provider-round-timeout"

@@ -329,6 +329,73 @@ def _register_success(state: SlotState, now: float) -> None:
         state.breaker_level = max(0, state.breaker_level - 1)
 
 
+# Provider-wide cooldown when DNS / connection-level failure detected.
+# DNS issues affect ALL slots from the same provider, so circuit-break the
+# whole provider rather than burn retries on every slot.
+_PROVIDER_WIDE_DNS_COOLDOWN_SECONDS = 600  # 10 min
+
+
+def _is_dns_or_connection_error(error_kind: str, exc: Exception | None = None) -> bool:
+    """True if error indicates network-level (provider-wide) issue, not slot-specific."""
+    kind = (error_kind or "").lower()
+    if "connection-error" in kind:
+        return True
+    if "dns" in kind or "gaierror" in kind or "getaddrinfo" in kind:
+        return True
+    if "name resolution" in kind or "nodename nor servname" in kind:
+        return True
+    if exc is not None:
+        msg = str(exc).lower()
+        if any(s in msg for s in ("getaddrinfo", "name or service not known",
+                                    "nodename nor servname", "name resolution",
+                                    "temporary failure in name resolution")):
+            return True
+    return False
+
+
+def _register_provider_wide_failure(
+    states: dict[str, SlotState],
+    pool: list[BalancerSlot],
+    provider: str,
+    now: float,
+    *,
+    reason: str,
+    cooldown_s: int = _PROVIDER_WIDE_DNS_COOLDOWN_SECONDS,
+) -> int:
+    """Apply cooldown to ALL slots from `provider`. Returns number of slots affected.
+
+    Used when a provider-level issue (DNS down, connection refused, etc.) is
+    detected — saves us from retrying every slot on a dead provider.
+    """
+    affected = 0
+    for slot in pool:
+        if slot.provider != provider:
+            continue
+        s = _ensure_state(states, slot.slot_id)
+        # Don't override an already-longer cooldown
+        if s.cooldown_until is None or s.cooldown_until < now + cooldown_s:
+            s.cooldown_until = now + cooldown_s
+            s.cooldown_reason = f"provider-wide:{reason}"
+        affected += 1
+    if affected > 0:
+        logger.warning(
+            "cheap_balancer: provider-wide cooldown applied to %s "
+            "(%s slots, %ss) reason=%s",
+            provider, affected, cooldown_s, reason,
+        )
+        try:
+            from core.eventbus.events import emit  # type: ignore
+            emit("cheap_balancer.provider_wide_cooldown", {
+                "provider": provider,
+                "slots_affected": affected,
+                "cooldown_seconds": cooldown_s,
+                "reason": reason,
+            })
+        except Exception:
+            pass
+    return affected
+
+
 def _select_slot(
     states: dict[str, SlotState],
     pool: list[BalancerSlot],
@@ -491,6 +558,19 @@ def call_balanced(
                 retry_after_s=getattr(exc, "retry_after_seconds", 0),
                 now=_time.time(),
             )
+            # If this is a DNS / connection-level error, all slots from the
+            # same provider are affected — apply provider-wide cooldown so
+            # we don't burn retries on the other dead slots.
+            if _is_dns_or_connection_error(exc.code, exc):
+                _register_provider_wide_failure(
+                    states, pool, slot.provider, _time.time(),
+                    reason=exc.code,
+                )
+                # Add all that provider's slot_ids to tried set so next
+                # iteration's eligible_pool excludes them too.
+                for s in pool:
+                    if s.provider == slot.provider:
+                        tried_slot_ids.add(s.slot_id)
             latency_ms = int((_time.time() - call_started) * 1000)
             _append_recent_call(slot.slot_id, daemon_name, "error", latency_ms,
                                 error=exc.code)
@@ -507,6 +587,15 @@ def call_balanced(
         except Exception as exc:
             last_error = exc
             _register_failure(state, "unknown", retry_after_s=0, now=_time.time())
+            # Same DNS/connection check for non-CheapProviderError exceptions
+            if _is_dns_or_connection_error("", exc):
+                _register_provider_wide_failure(
+                    states, pool, slot.provider, _time.time(),
+                    reason=f"unknown:{type(exc).__name__}",
+                )
+                for s in pool:
+                    if s.provider == slot.provider:
+                        tried_slot_ids.add(s.slot_id)
             latency_ms = int((_time.time() - call_started) * 1000)
             _append_recent_call(slot.slot_id, daemon_name, "error", latency_ms,
                                 error=type(exc).__name__)

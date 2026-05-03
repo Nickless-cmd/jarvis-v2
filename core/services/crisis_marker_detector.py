@@ -252,18 +252,21 @@ def list_crisis_markers(*, days_back: int = 90, limit: int = 50) -> list[dict[st
 
 
 def crisis_marker_section() -> str | None:
-    """Awareness section showing recent crisis markers (last 7 days)."""
-    markers = list_crisis_markers(days_back=7, limit=4)
+    """Awareness section showing recent crisis markers (last 7 days).
+    
+    Compact format: one-line summary with kinds and count.
+    Full details available via list_crisis_markers tool.
+    """
+    markers = list_crisis_markers(days_back=7, limit=5)
     if not markers:
         return None
-    lines = [f"📍 Crisis markers (sidste 7 dage): {len(markers)}"]
-    for m in markers[:3]:
-        kind = str(m.get("kind", ""))
-        summary = str(m.get("summary", ""))[:120]
-        date = str(m.get("recorded_at", ""))[:10]
-        intensity = m.get("intensity", 0)
-        lines.append(f"  • [{date}] {kind} (intensity {intensity:.1f}): {summary}")
-    return "\n".join(lines)
+    # Compact: just count and kind distribution — no summaries
+    kinds = [str(m.get("kind", "")) for m in markers]
+    kind_counts: dict[str, int] = {}
+    for k in kinds:
+        kind_counts[k] = kind_counts.get(k, 0) + 1
+    parts = [f"{k}×{c}" for k, c in sorted(kind_counts.items(), key=lambda x: -x[1])]
+    return f"📍 Crisis markers (7d): {len(markers)} — " + ", ".join(parts)
 
 
 def _exec_scan_crisis_markers(args: dict[str, Any]) -> dict[str, Any]:

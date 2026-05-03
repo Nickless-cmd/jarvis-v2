@@ -184,39 +184,56 @@ def stale_goals_section() -> str | None:
 
 
 def decision_adherence_summary() -> dict[str, Any]:
-    """Run decision_review heuristic on recent decisions. Returns score."""
-    try:
-        from core.runtime.db import list_cognitive_decisions
-        decisions = list_cognitive_decisions(limit=20) or []
-    except Exception:
-        return {"status": "ok", "score": None, "note": "no decisions table or list_decisions API"}
-    if not decisions:
-        return {"status": "ok", "score": None, "note": "no decisions to review"}
+    """Compute adherence over ACTIVE behavioral decisions (the curated kind).
 
-    # Heuristic: a decision is "adhered to" if:
-    # - status != revoked
-    # - status == applied OR has at least one referencing event
-    adhered = 0
-    revoked = 0
-    pending = 0
+    Reads from `behavioral_decisions` (the deliberate action-commitments
+    table created via decision-API), NOT from `cognitive_decisions` (which
+    is auto-populated by marker-detection on conversation chatter and has
+    no status field — using it gave us 0% adherence on phantom decisions).
+
+    A decision's adherence is its rolling adherence_score field. Aggregate
+    score = mean across active decisions. Flag = mean < 60%.
+    """
+    try:
+        from core.runtime.db_decisions import list_decisions
+        decisions = list_decisions(status="active", limit=50) or []
+    except Exception:
+        return {"status": "ok", "score": None, "note": "no behavioral_decisions table or list API"}
+    if not decisions:
+        return {"status": "ok", "score": None, "note": "no active behavioral decisions"}
+
+    scores: list[float] = []
+    unreviewed = 0
     for d in decisions:
-        status = str(d.get("status", ""))
-        if status == "revoked":
-            revoked += 1
-        elif status in ("applied", "approved", "executed"):
-            adhered += 1
-        else:
-            pending += 1
-    total = max(1, len(decisions))
-    score = round((adhered / total) * 100, 1)
-    flag = score < 60
+        s = d.get("adherence_score")
+        if s is None:
+            unreviewed += 1
+            continue
+        try:
+            scores.append(float(s))
+        except (TypeError, ValueError):
+            unreviewed += 1
+    total = len(decisions)
+
+    if not scores:
+        return {
+            "status": "ok",
+            "score": None,
+            "total": total,
+            "unreviewed": unreviewed,
+            "note": "no decisions have been reviewed yet — no adherence data",
+        }
+
+    mean = sum(scores) / len(scores)
+    score = round(mean * 100, 1)
+    flag = "under 60% — review and either revoke or strengthen" if score < 60 else None
     return {
         "status": "ok",
         "score": score,
-        "adhered": adhered,
-        "revoked": revoked,
-        "pending": pending,
+        "adherence_rate": f"{score}%",
         "total": total,
+        "reviewed": len(scores),
+        "unreviewed": unreviewed,
         "flag": flag,
     }
 

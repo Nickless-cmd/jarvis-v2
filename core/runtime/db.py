@@ -713,6 +713,7 @@ def init_db() -> None:
                 budget_status TEXT NOT NULL DEFAULT '',
                 last_ping_eligible INTEGER NOT NULL DEFAULT 0,
                 last_ping_result TEXT NOT NULL DEFAULT '',
+                last_successful_ping_at TEXT NOT NULL DEFAULT '',
                 last_action_type TEXT NOT NULL DEFAULT '',
                 last_action_status TEXT NOT NULL DEFAULT '',
                 last_action_summary TEXT NOT NULL DEFAULT '',
@@ -24586,6 +24587,7 @@ def upsert_heartbeat_runtime_state(
     last_action_summary: str,
     last_action_artifact: str,
     updated_at: str,
+    last_successful_ping_at: str = "",
 ) -> dict[str, object]:
     with connect() as conn:
         conn.execute(
@@ -24620,13 +24622,14 @@ def upsert_heartbeat_runtime_state(
                 budget_status,
                 last_ping_eligible,
                 last_ping_result,
+                last_successful_ping_at,
                 last_action_type,
                 last_action_status,
                 last_action_summary,
                 last_action_artifact,
                 updated_at
             )
-            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 state_id = excluded.state_id,
                 last_tick_id = excluded.last_tick_id,
@@ -24656,6 +24659,7 @@ def upsert_heartbeat_runtime_state(
                 budget_status = excluded.budget_status,
                 last_ping_eligible = excluded.last_ping_eligible,
                 last_ping_result = excluded.last_ping_result,
+                last_successful_ping_at = excluded.last_successful_ping_at,
                 last_action_type = excluded.last_action_type,
                 last_action_status = excluded.last_action_status,
                 last_action_summary = excluded.last_action_summary,
@@ -24691,6 +24695,7 @@ def upsert_heartbeat_runtime_state(
                 budget_status,
                 1 if last_ping_eligible else 0,
                 last_ping_result,
+                last_successful_ping_at,
                 last_action_type,
                 last_action_status,
                 last_action_summary,
@@ -25140,6 +25145,7 @@ def _heartbeat_runtime_state_from_row(row: sqlite3.Row) -> dict[str, object]:
         "budget_status": row["budget_status"],
         "last_ping_eligible": bool(row["last_ping_eligible"]),
         "last_ping_result": row["last_ping_result"],
+        "last_successful_ping_at": row["last_successful_ping_at"] if "last_successful_ping_at" in row.keys() else "",
         "last_action_type": row["last_action_type"],
         "last_action_status": row["last_action_status"],
         "last_action_summary": row["last_action_summary"],
@@ -25315,6 +25321,13 @@ def _ensure_heartbeat_runtime_state_columns(conn: sqlite3.Connection) -> None:
             """
             ALTER TABLE heartbeat_runtime_state
             ADD COLUMN parse_status TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "last_successful_ping_at" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN last_successful_ping_at TEXT NOT NULL DEFAULT ''
             """
         )
 

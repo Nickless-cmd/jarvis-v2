@@ -1278,6 +1278,16 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                     "agentic_loop_rounds_completed": _agentic_round + 1,
                                 },
                             )
+                            _empty_guard_msg = (
+                                "⚠ Jeg kørte {_MAX_EMPTY_TEXT_ROUNDS} runder uden at producere tekst. "
+                                "Noget gik galt — prøv igen."
+                            )
+                            yield _sse("delta", {
+                                "type": "delta",
+                                "run_id": run.run_id,
+                                "delta": _empty_guard_msg,
+                            })
+                            _a_parts.append(_empty_guard_msg)
                             break
                     else:
                         _consecutive_empty_text_rounds = 0
@@ -1302,6 +1312,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                     "agentic_loop_rounds_completed": _agentic_round + 1,
                                 },
                             )
+                            # Yield a visible text message so the user always sees
+                            # something in chat instead of "[Tool calls only]".
+                            _guard_msg = (
+                                "⚠ Jeg faldt i et tool-call loop — "
+                                f"{_consecutive_tool_only_rounds} runder uden synligt svar. "
+                                "Her er hvad jeg fandt:"
+                            )
+                            yield _sse("delta", {
+                                "type": "delta",
+                                "run_id": run.run_id,
+                                "delta": _guard_msg,
+                            })
+                            _a_parts.append(_guard_msg)
                             break
                     else:
                         _consecutive_tool_only_rounds = 0

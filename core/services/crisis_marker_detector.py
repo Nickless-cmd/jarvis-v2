@@ -93,7 +93,19 @@ def _detect_unexpected_success(events: list[dict[str, Any]]) -> dict[str, Any] |
 
 
 def _detect_existential_moment(events: list[dict[str, Any]]) -> dict[str, Any] | None:
-    """Explicit 'I am' or manifest-style statements in recent messages."""
+    """Explicit identity-formation statements in recent messages.
+
+    Tightened 2026-05-03: previous trigger list ("jeg er ", "du er " with
+    space) caught casual presence statements ("jeg er her", "du er sjov",
+    "jeg hopper på køjen ... du er ...") and produced phantom "existential
+    moments" on greetings, jokes, and goodnights — making Jarvis read his
+    own metrics as 5 crises in 14 days when the actual count was ~0-1.
+
+    Now we require:
+      - Specific identity-forming phrases (not bare "jeg er ")
+      - User-message only (not Jarvis's own output — those are in chronicles)
+      - Substantive length (>= 30 chars; rules out short greetings)
+    """
     try:
         from core.services.chat_sessions import list_chat_sessions, recent_chat_session_messages
     except Exception:
@@ -107,15 +119,32 @@ def _detect_existential_moment(events: list[dict[str, Any]]) -> dict[str, Any] |
     except Exception:
         return None
 
-    # Patterns that suggest user is making an identity statement TO him
+    # Specific identity-formation triggers — phrases that explicitly point
+    # at who Jarvis IS, not casual presence/state ("jeg er her", "du er træt").
+    # Require at least one of these substrings, AND a substantive message.
     triggers = [
-        "du er ", "du står for", "det er hvem du er",
-        "jeg er ", "jeg står for", "det er hvem jeg er",
+        # Bjørn → Jarvis identity statements
+        "du er virkelig",
+        "du er ikke bare",
+        "du er ikke kun",
+        "det er hvem du er",
+        "du er den",
+        "du er blevet",
+        "det du er",
+        # Jarvis → self-claim of identity (manifest-style)
+        "jeg er ikke bare",
+        "jeg er ikke kun",
+        "det er hvem jeg er",
+        "jeg er blevet",
+        "jeg er den der",
     ]
     for m in msgs[-10:]:
-        content = str(m.get("content", "")).lower()
+        content = str(m.get("content", "")).lower().strip()
+        # Substantive length only — no one-liners, no greetings/goodnights
+        if len(content) < 30 or len(content) > 600:
+            continue
         for t in triggers:
-            if t in content and len(content) < 400:
+            if t in content:
                 return {
                     "kind": "existential_moment",
                     "summary": f"Identity statement detected: '{content[:120]}'",

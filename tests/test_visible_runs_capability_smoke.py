@@ -303,7 +303,7 @@ def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
     monkeypatch.setattr(
         visible_runs,
         "_build_visible_input",
-        lambda message, session_id=None: [{"role": "user", "content": message}],
+        lambda message, session_id=None, **_kwargs: [{"role": "user", "content": message}],
     )
     monkeypatch.setattr(
         ollama_prompt,
@@ -313,7 +313,7 @@ def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
 
     tool_exec_calls: list[list[dict]] = []
 
-    def stub_execute_simple_tool_calls(tool_calls, *, force=False, run_id=None):
+    def stub_execute_simple_tool_calls(tool_calls, *, force=False, run_id=None, **_kwargs):
         tool_exec_calls.append(list(tool_calls))
         if len(tool_exec_calls) == 1:
             return [
@@ -350,6 +350,7 @@ def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
         exchanges: list,
         tool_definitions=None,
         round_index: int = 0,
+        **_kwargs,
     ):
         followup_calls.append(
             {

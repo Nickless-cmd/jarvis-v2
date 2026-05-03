@@ -735,11 +735,19 @@ def build_visible_chat_prompt_assembly(
         _ptier = str(classify_reasoning_tier(user_message).get("tier") or "fast")
         _awareness_add(75, "doubt signal", doubt_signal_section(user_message))
         _awareness_add(70, "disagreement invite", disagreement_invite_section())
-        _awareness_add(72, "affective pushback", affective_pushback_section(user_message))
+        _awareness_add(78, "affective pushback", affective_pushback_section(user_message))
         _awareness_add(85, "direction confirm gate",
                        direction_confirm_section(
                            user_message=user_message, reasoning_tier=_ptier,
                        ))
+        # Affect-modulated runtime parameters — emotions gate behavior
+        try:
+            from core.services.affect_modulation import affect_modulation_section as _affect_mod
+            _affect_mod_section = _affect_mod()
+            if _affect_mod_section:
+                _awareness_add(80, "affect modulation", _affect_mod_section)
+        except Exception:
+            pass
     except Exception:
         pass
     try:

@@ -29,6 +29,28 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+# ── Telemetry ──────────────────────────────────────────────────────────────
+
+def _emit_pushback_telemetry(
+    section: str, *, triggered: bool, reason: str | None = None, **fields: Any
+) -> None:
+    """Log pushback section generation to eventbus for observability.
+
+    This lets us measure whether pushback sections are actually being
+    generated and which action tiers fire most often — without waiting
+    for a future iteration to add telemetry.
+    """
+    payload = {"section": section, "triggered": triggered, **fields}
+    if reason:
+        payload["reason"] = reason
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("pushback.telemetry", payload)
+    except Exception:
+        pass
+    logger.debug("pushback telemetry: %s", payload)
+
+
 # ── 1. doubt_signal ────────────────────────────────────────────────────────
 
 
@@ -139,7 +161,12 @@ def doubt_signal_section(user_message: str) -> str | None:
         "konflikter med en aktiv forpligtelse, NAVNGIV tvivlen og spørg "
         "Bjørn om bekræftelse i stedet for at gætte."
     )
-    return "\n".join(lines)
+    result = "\n".join(lines)
+    _emit_pushback_telemetry("doubt_signal", triggered=True,
+                             ambiguity_score=round(score, 2),
+                             conflict_count=len(conflict_reasons),
+                             total_reasons=len(total_reasons))
+    return result
 
 
 # ── 2. disagreement_invite ─────────────────────────────────────────────────
@@ -219,10 +246,12 @@ def affective_pushback_section(user_message: str) -> str | None:
         from core.services.emotional_controls import read_emotional_snapshot
         snapshot = read_emotional_snapshot()
     except Exception:
+        _emit_pushback_telemetry("affective_pushback", triggered=False, reason="no_snapshot")
         return None
 
     pressure = _affective_pressure(snapshot)
     if not pressure:
+        _emit_pushback_telemetry("affective_pushback", triggered=False, reason="no_pressure")
         return None
 
     feeling, strength = pressure
@@ -262,7 +291,11 @@ def affective_pushback_section(user_message: str) -> str | None:
         "Følelser må starte pushback, men ikke alene afgøre sagen. "
         + instruction
     )
-    return "\n".join(lines)
+    result = "\n".join(lines)
+    _emit_pushback_telemetry("affective_pushback", triggered=True,
+                             feeling=feeling, strength=round(strength, 2),
+                             action=action, evidence_count=len(evidence))
+    return result
 
 
 # ── 3. direction_confirm_gate ──────────────────────────────────────────────

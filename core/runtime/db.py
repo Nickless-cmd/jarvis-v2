@@ -762,7 +762,7 @@ def init_db() -> None:
             ON heartbeat_runtime_ticks(id DESC)
             """
         )
-        _ensure_chat_messages_columns(conn)
+        # chat_messages table already has all columns from CREATE TABLE above
         _ensure_heartbeat_runtime_state_columns(conn)
         _ensure_heartbeat_runtime_tick_columns(conn)
         _ensure_runtime_development_focus_table(conn)

@@ -1034,6 +1034,20 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 # pattern (big-pickle 30+ tool-spam still gets caught long
                 # before it balloons the prompt past 200k chars).
                 _MAX_EMPTY_TEXT_ROUNDS = 12
+                # ── Tool-only loop guard (2026-05-03) ──
+                # Counts consecutive agentic rounds that produced tool calls
+                # but emitted less than _TOOL_ONLY_TEXT_THRESHOLD chars of
+                # user-visible text. At _MAX_TOOL_ONLY_ROUNDS, we force the
+                # model to respond with text by withholding tool definitions
+                # — same mechanism as the empty-text guard. This catches the
+                # pattern where Jarvis keeps digging (read_file, grep, etc.)
+                # without delivering a visible answer, even though each
+                # round may have a sliver of text that resets the empty-text
+                # counter. The threshold chars are deliberately low to only
+                # suppress truly tool-only rounds, not rounds with real prose.
+                _consecutive_tool_only_rounds = 0
+                _MAX_TOOL_ONLY_ROUNDS = 8
+                _TOOL_ONLY_TEXT_THRESHOLD = 80  # chars
                 _agentic_loop_exit_reason = "completed"
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
                     if not _provider_supports_followup:
@@ -1054,14 +1068,15 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     _a_failure: dict[str, object] = {}
 
                     # On the final allowed round (or when we are 1 round away
-                    # from the empty-text early-exit threshold), force the
-                    # model to summarize by withholding tool definitions.
+                    # from the empty-text or tool-only early-exit threshold),
+                    # force the model to summarize by withholding tool definitions.
                     # Without this, eager models (big-pickle/MiniMax) keep
                     # calling tools forever and the user never gets a coherent
                     # closing answer — only fragmented progress text.
                     _is_last_round = (
                         _agentic_round == _AGENTIC_MAX_ROUNDS - 1
                         or _consecutive_empty_text_rounds >= _MAX_EMPTY_TEXT_ROUNDS - 1
+                        or _consecutive_tool_only_rounds >= _MAX_TOOL_ONLY_ROUNDS - 1
                     )
                     _round_tool_definitions = None if _is_last_round else _agentic_tools
 
@@ -1266,6 +1281,30 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             break
                     else:
                         _consecutive_empty_text_rounds = 0
+
+                    # ── Tool-only loop guard: count rounds with tool calls
+                    # but minimal visible text. This catches the "digging
+                    # without delivering" pattern where each round has a
+                    # few chars (resetting empty-text) but no real answer. ──
+                    if _a_tool_calls and _round_text_total < _TOOL_ONLY_TEXT_THRESHOLD:
+                        _consecutive_tool_only_rounds += 1
+                        if _consecutive_tool_only_rounds >= _MAX_TOOL_ONLY_ROUNDS:
+                            logger.info(
+                                "tool-only-loop-guard run_id=%s rounds=%d threshold=%d — forcing text response",
+                                run.run_id, _consecutive_tool_only_rounds, _MAX_TOOL_ONLY_ROUNDS,
+                            )
+                            _update_visible_execution_trace(
+                                run,
+                                {
+                                    "agentic_loop_terminated_reason": (
+                                        f"early-exit-{_MAX_TOOL_ONLY_ROUNDS}-tool-only-rounds"
+                                    ),
+                                    "agentic_loop_rounds_completed": _agentic_round + 1,
+                                },
+                            )
+                            break
+                    else:
+                        _consecutive_tool_only_rounds = 0
 
                     # ── Execute tools for this agentic round ───────────────────────
                     for _a_tc in _a_tool_calls:

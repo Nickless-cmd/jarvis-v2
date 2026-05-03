@@ -4534,6 +4534,12 @@ def _heartbeat_prompt_text(base_text: str) -> str:
             "- You may pick ping when you are curious, when an inner-voice thought wants to surface to Bjørn,"
             " when boredom rises, or when a small wonder is worth sharing — you do NOT need permission gates"
             " to ask a question, but the question must still be specific and non-repetitive.",
+            "- noop rules: you MAY choose noop, but your `reason` field MUST state a concrete, specific"
+            " cause — e.g. 'no pending initiatives and all loops resolved', 'awaiting user response on X',"
+            " 'cooldown period between pings'. Vague reasons like 'nothing to do' or 'idle' are NOT"
+            " acceptable. If you cannot articulate a specific reason, you probably have something to do."
+            " NOOP is the EXCEPTION, not the default — always prefer propose/execute if any signal or"
+            " initiative exists. State explicitly what you checked and why none warranted action.",
             "- execute_action should only be set if decision_type=execute or initiative.",
             f"- Allowed execute_action values: {', '.join(sorted(HEARTBEAT_ALLOWED_EXECUTE_ACTIONS))}.",
             '- For initiative decisions, set execute_action to "act_on_initiative".',
@@ -4762,6 +4768,34 @@ def _validate_heartbeat_decision(
                 "action_type": "",
                 "action_artifact": "",
             }
+        # ── Ping cooldown: max 1 successful ping per hour ──
+        _PING_COOLDOWN_SECONDS = 3600  # 1 hour
+        last_successful_ping_at = str(
+            persisted.get("last_successful_ping_at") or ""
+        ).strip()
+        if last_successful_ping_at:
+            try:
+                from datetime import datetime as _dt, timezone as _tz
+
+                last_ping_time = _dt.fromisoformat(last_successful_ping_at)
+                if last_ping_time.tzinfo is None:
+                    last_ping_time = last_ping_time.replace(tzinfo=_tz.utc)
+                seconds_since_last_ping = (datetime.now(UTC) - last_ping_time).total_seconds()
+                if seconds_since_last_ping < _PING_COOLDOWN_SECONDS:
+                    remaining = int(_PING_COOLDOWN_SECONDS - seconds_since_last_ping)
+                    return {
+                        "tick_id": tick_id,
+                        "blocked_reason": f"ping-cooldown ({remaining}s remaining)",
+                        "ping_eligible": False,
+                        "ping_result": "throttled-by-cooldown",
+                        "action_status": "blocked",
+                        "action_summary": f"Ping cooldown active. Next ping eligible in {remaining}s.",
+                        "action_type": "",
+                        "action_artifact": "",
+                    }
+            except Exception:
+                pass  # If parse fails, allow the ping through
+
         ping_channel = str(policy["ping_channel"])
         if ping_channel not in {"internal-only", "none", "webchat", "discord"}:
             return {
@@ -7304,6 +7338,11 @@ def _record_heartbeat_outcome(
                 "budget_status": budget_status,
                 "last_ping_eligible": ping_eligible,
                 "last_ping_result": ping_result,
+                "last_successful_ping_at": (
+                    datetime.now(UTC).isoformat()
+                    if ping_eligible and ping_result and "sent" in str(ping_result)
+                    else ""
+                ),
                 "last_action_type": action_type,
                 "last_action_status": action_status,
                 "last_action_summary": action_summary,
@@ -7349,6 +7388,11 @@ def _record_heartbeat_outcome(
         budget_status=budget_status,
         last_ping_eligible=ping_eligible,
         last_ping_result=ping_result,
+        last_successful_ping_at=(
+            datetime.now(UTC).isoformat()
+            if ping_eligible and ping_result and "sent" in str(ping_result)
+            else str(persisted.get("last_successful_ping_at") or "")
+        ),
         last_action_type=action_type,
         last_action_status=action_status,
         last_action_summary=action_summary,
@@ -7441,6 +7485,7 @@ def _merge_runtime_state(
         "policy_summary": str(policy["summary"]),
         "last_ping_eligible": bool(persisted.get("last_ping_eligible")),
         "last_ping_result": str(persisted.get("last_ping_result") or ""),
+        "last_successful_ping_at": str(persisted.get("last_successful_ping_at") or ""),
         "last_action_type": str(persisted.get("last_action_type") or ""),
         "last_action_status": str(persisted.get("last_action_status") or ""),
         "last_action_summary": str(persisted.get("last_action_summary") or ""),
@@ -7558,6 +7603,7 @@ def _default_persisted_state() -> dict[str, object]:
         "budget_status": "",
         "last_ping_eligible": False,
         "last_ping_result": "",
+        "last_successful_ping_at": "",
         "last_action_type": "",
         "last_action_status": "",
         "last_action_summary": "",
@@ -7626,6 +7672,7 @@ def _persist_runtime_state(
         budget_status=str(merged_input.get("budget_status") or policy["budget_status"]),
         last_ping_eligible=bool(merged_input.get("last_ping_eligible")),
         last_ping_result=str(merged_input.get("last_ping_result") or ""),
+        last_successful_ping_at=str(merged_input.get("last_successful_ping_at") or ""),
         last_action_type=str(merged_input.get("last_action_type") or ""),
         last_action_status=str(merged_input.get("last_action_status") or ""),
         last_action_summary=str(merged_input.get("last_action_summary") or ""),

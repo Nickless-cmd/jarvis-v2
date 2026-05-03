@@ -614,3 +614,89 @@ def test_snapshot_includes_recent_calls(monkeypatch, tmp_path):
     assert len(snap["recent_calls"]) == 2
     # Newest first
     assert snap["recent_calls"][0]["daemon"] == "thought_stream"
+
+
+# --- Provider-wide DNS / connection circuit breaker ---
+
+
+def test_dns_error_detection():
+    from core.services.cheap_lane_balancer import _is_dns_or_connection_error
+    assert _is_dns_or_connection_error("connection-error") is True
+    assert _is_dns_or_connection_error("dns-failure") is True
+    assert _is_dns_or_connection_error("http-error:503") is False
+    assert _is_dns_or_connection_error("http-error:429") is False
+
+    class FakeExc(Exception):
+        pass
+
+    assert _is_dns_or_connection_error("", FakeExc("getaddrinfo failed")) is True
+    assert _is_dns_or_connection_error("", FakeExc("name or service not known")) is True
+    assert _is_dns_or_connection_error("", FakeExc("normal error message")) is False
+
+
+def test_register_provider_wide_failure_cools_all_provider_slots(tmp_path, monkeypatch):
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    pool = [
+        _slot(provider="ollamafreeapi", model="m1", proxy=True),
+        _slot(provider="ollamafreeapi", model="m2", proxy=True),
+        _slot(provider="ollamafreeapi", model="m3", proxy=True),
+        _slot(provider="groq", model="g1", proxy=False),
+    ]
+    states = {}
+    affected = clb._register_provider_wide_failure(
+        states, pool, "ollamafreeapi", now=1000.0, reason="dns-down",
+    )
+    assert affected == 3
+    # All 3 ollamafreeapi slots have cooldown
+    for sid in ("ollamafreeapi::m1", "ollamafreeapi::m2", "ollamafreeapi::m3"):
+        st = states[sid]
+        assert st.cooldown_until == 1000.0 + 600  # default cooldown
+        assert "provider-wide" in st.cooldown_reason
+        assert "dns-down" in st.cooldown_reason
+    # groq is NOT touched
+    assert "groq::g1" not in states or states["groq::g1"].cooldown_until is None
+
+
+def test_call_balanced_dns_failure_excludes_whole_provider(monkeypatch, tmp_path):
+    """If first attempt fails with connection-error, balancer should NOT try
+    other slots from the same provider — only different providers."""
+    from core.services import cheap_lane_balancer as clb
+    monkeypatch.setattr(clb, "_state_path", lambda: tmp_path / "s.json")
+    pool = [
+        _slot(provider="ollamafreeapi", model="m1", proxy=True),
+        _slot(provider="ollamafreeapi", model="m2", proxy=True),
+        _slot(provider="ollamafreeapi", model="m3", proxy=True),
+        _slot(provider="groq", model="alive", proxy=False),
+    ]
+    monkeypatch.setattr(clb, "build_slot_pool", lambda: pool)
+
+    # Deterministic selection: pick first slot in eligible_pool list order.
+    # That guarantees ollamafreeapi is tried first (it appears earlier in pool).
+    def deterministic_select(states, current_pool, now):
+        return current_pool[0] if current_pool else None
+    monkeypatch.setattr(clb, "_select_slot", deterministic_select)
+
+    call_log = []
+
+    def fake_executor(*, provider, model, **kw):
+        call_log.append((provider, model))
+        if provider == "ollamafreeapi":
+            from core.services.cheap_provider_runtime import CheapProviderError
+            raise CheapProviderError(
+                provider="ollamafreeapi", code="connection-error",
+                message="DNS down",
+            )
+        return {"text": "ok from groq"}
+
+    monkeypatch.setattr(clb, "_call_provider_chat", fake_executor)
+
+    res = clb.call_balanced(prompt="hi", daemon_name="test", max_retries=5)
+    assert res["status"] == "ok"
+    assert res["provider"] == "groq"
+    # Should have hit ollamafreeapi exactly ONCE (not 3 times) before
+    # provider-wide cooldown excluded the rest, then groq succeeded.
+    ofa_calls = [p for p, _ in call_log if p == "ollamafreeapi"]
+    groq_calls = [p for p, _ in call_log if p == "groq"]
+    assert len(ofa_calls) == 1, f"expected 1 ofa call, got {len(ofa_calls)}: {call_log}"
+    assert len(groq_calls) == 1

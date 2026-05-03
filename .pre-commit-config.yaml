@@ -1,3 +1,5 @@
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
@@ -13,3 +15,18 @@ repos:
               |.*\.ipynb
               |.*/__pycache__/.*
           )$
+
+  # Pre-push only: runs jarvis-runtime startup path (lifespan) without
+  # serving traffic. Catches the class of bugs that put the systemd
+  # service in a restart loop — kwarg drift between caller and function
+  # signature, missing DB columns, init-order issues, import failures.
+  # ~4s on a warm system. See scripts/smoke_test_startup.py.
+  - repo: local
+    hooks:
+      - id: jarvis-runtime-startup-smoke
+        name: Jarvis runtime startup smoke test
+        entry: /opt/conda/envs/ai/bin/python scripts/smoke_test_startup.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

@@ -30,6 +30,14 @@ _EXCERPT_LIMIT = 240
 # positive where the next user message races the previous run's finally
 # block.
 _MIN_AGE_TO_SURFACE_SECONDS = 90
+_RESUME_WORDS = (
+    "fortsæt", "fortsaet", "prøv igen", "prov igen", "igen", "go on",
+    "continue", "resume", "samle op", "kør videre", "kor videre",
+)
+_RESTART_WORDS = (
+    "start forfra", "ny opgave", "glem den", "drop den", "restart",
+    "start over", "ignore previous", "glem det",
+)
 
 
 def _load() -> dict[str, dict[str, Any]]:
@@ -154,7 +162,22 @@ def clear_session(session_id: str | None) -> int:
     return len(to_drop)
 
 
-def interruption_prompt_section(session_id: str | None) -> str | None:
+def classify_resume_intent(user_message: str) -> str:
+    """Classify whether a user message should resume an interrupted run."""
+    normalized = " ".join(str(user_message or "").strip().lower().split())
+    if not normalized:
+        return "unclear"
+    if any(word in normalized for word in _RESTART_WORDS):
+        return "restart"
+    if any(word in normalized for word in _RESUME_WORDS):
+        return "resume"
+    return "unclear"
+
+
+def interruption_prompt_section(
+    session_id: str | None,
+    user_message: str = "",
+) -> str | None:
     """Format an interrupted record as a system-prompt block, or None.
 
     Race-aware: only surfaces if the in_flight record is older than
@@ -166,6 +189,9 @@ def interruption_prompt_section(session_id: str | None) -> str | None:
     """
     rec = interrupted_for_session(session_id)
     if not rec:
+        return None
+    intent = classify_resume_intent(user_message)
+    if intent == "restart":
         return None
     started_iso = str(rec.get("started_at") or "")
     if started_iso:
@@ -188,13 +214,20 @@ def interruption_prompt_section(session_id: str | None) -> str | None:
         checkpoint = checkpoint_prompt_section(session_id) or ""
     except Exception:
         checkpoint = ""
+    if intent == "resume":
+        policy = (
+            "AUTO-RESUME: Brugerens besked betyder fortsæt/prøv igen. "
+            "Fortsæt fra checkpointet uden at spørge først, og undgå at gentage allerede udførte tools medmindre inputfilerne er ændret."
+        )
+    else:
+        policy = (
+            "Intent er ikke tydelig resume. Spørg kort om du skal fortsætte fra checkpointet eller starte forfra, før du bruger mere tool-budget."
+        )
     return (
         "Du blev afbrudt midt i en opgave (startet "
         f"{started_at}{tool_clause}):\n"
         f"  \"{excerpt}\"\n"
         f"{reason_clause}\n"
         f"{checkpoint + chr(10) if checkpoint else ''}"
-        "Hvis brugerens nye besked tydeligt betyder 'fortsæt/prøv igen', "
-        "så fortsæt fra denne tilstand i stedet for at starte forfra. "
-        "Hvis intent er uklart, spørg om du skal fortsætte derfra eller starte forfra."
+        f"{policy}"
     )

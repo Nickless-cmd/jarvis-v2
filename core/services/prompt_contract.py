@@ -647,7 +647,11 @@ def build_visible_chat_prompt_assembly(
         pass
     try:
         from core.services.in_flight_runs import interruption_prompt_section
-        _awareness_add(10, "resume-after-interrupt notice", interruption_prompt_section(session_id))
+        _awareness_add(
+            10,
+            "resume-after-interrupt notice",
+            interruption_prompt_section(session_id, user_message=user_message),
+        )
     except Exception:
         pass
     try:

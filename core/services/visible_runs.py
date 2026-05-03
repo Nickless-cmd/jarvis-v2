@@ -328,6 +328,21 @@ def _classify_visible_run_interruption(error_message: str) -> dict[str, str]:
             "interruption_reason": "unknown",
             "interruption_source": "unknown",
         }
+    if "approval" in normalized and ("timeout" in normalized or "timed out" in normalized):
+        return {
+            "interruption_reason": "approval-wait-timeout",
+            "interruption_source": "runtime-approval",
+        }
+    if "restart" in normalized or "process exited" in normalized or "worker died" in normalized:
+        return {
+            "interruption_reason": "process-restart",
+            "interruption_source": "runtime-process",
+        }
+    if "crash" in normalized or "traceback" in normalized or "unhandled" in normalized:
+        return {
+            "interruption_reason": "runtime-crash",
+            "interruption_source": "runtime-process",
+        }
     if "timed out" in normalized or "timeout" in normalized:
         return {
             "interruption_reason": "provider-timeout",
@@ -340,7 +355,12 @@ def _classify_visible_run_interruption(error_message: str) -> dict[str, str]:
         }
     if "cancel" in normalized:
         return {
-            "interruption_reason": "cancelled",
+            "interruption_reason": "user-interrupted",
+            "interruption_source": "runtime-control",
+        }
+    if "stop" in normalized or "afbryd" in normalized or "abort" in normalized:
+        return {
+            "interruption_reason": "user-interrupted",
             "interruption_source": "runtime-control",
         }
     return {

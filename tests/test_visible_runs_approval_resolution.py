@@ -123,6 +123,18 @@ def test_classify_visible_run_interruption_distinguishes_timeout_disconnect_and_
         "interruption_source": "client-stream",
     }
     assert visible_runs._classify_visible_run_interruption("user-cancelled") == {
-        "interruption_reason": "cancelled",
+        "interruption_reason": "user-interrupted",
         "interruption_source": "runtime-control",
+    }
+    assert visible_runs._classify_visible_run_interruption("approval wait timeout") == {
+        "interruption_reason": "approval-wait-timeout",
+        "interruption_source": "runtime-approval",
+    }
+    assert visible_runs._classify_visible_run_interruption("worker died during process restart") == {
+        "interruption_reason": "process-restart",
+        "interruption_source": "runtime-process",
+    }
+    assert visible_runs._classify_visible_run_interruption("unhandled traceback crash") == {
+        "interruption_reason": "runtime-crash",
+        "interruption_source": "runtime-process",
     }

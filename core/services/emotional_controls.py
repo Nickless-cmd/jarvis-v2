@@ -8,6 +8,16 @@ v2 har mood_oscillator der rapporterer til prompten men aldrig gater.
 Dette modul lukker det hul: før en action eksekveres, tjekkes humør-
 tilstand og handlingen kan blive ændret eller blokeret.
 
+Ny i denne version — POSITIVE GATES:
+- joy (≥0.5) kan LØFTE verify_first → execute (selvtillid via glæde)
+- accomplishment (≥0.4) kan LØFTE simplify_plan → execute (energi via mestring)
+- wonder (>0.4) → explore_more (nysgerrighed driver udforskning)
+- insight+curiosity (>0.4/0.3) → reflect_deeper (indsigt driver refleksion)
+
+Disse positive gates betyder at følelser ikke kun begrænser — de
+AKTIVERER dybere handlinger. Inspireret af Anthropics emotion-vector
+forskning (2026): discrete emotions causally drive behaviour.
+
 Porteret fra jarvis-ai/agent/cognition/emotional_state.py (2026-04-22).
 
 v2-tilpasning:
@@ -15,6 +25,7 @@ v2-tilpasning:
 - Recent tool errors fra visible_runs/events som fatigue-proxy
 - Approval-denials i træk som frustration-proxy
 - confidence-proxy afledt af emergent_signal_tracking (hvis tilgængeligt)
+- Positive emotion concepts fra emotion_concepts.py for positive gating
 
 LLM-path: ingen. Rent regel-lag.
 """
@@ -33,6 +44,10 @@ logger = logging.getLogger(__name__)
 _FRUSTRATION_ESCALATE = 0.80
 _CONFIDENCE_VERIFY = 0.30
 _FATIGUE_SIMPLIFY = 0.75
+
+# Positive emotion thresholds — new gates
+_JOY_OVERRIDE_THRESHOLD = 0.50      # joy intensity to lift verify_first → execute
+_ACCOMPLISHMENT_LIFT_THRESHOLD = 0.40  # accomplishment intensity to lift simplify_plan → execute
 
 
 @dataclass(frozen=True)
@@ -157,16 +172,47 @@ def apply_emotional_controls(
     - "escalate_user": stop and involve user (frustration high)
     - "verify_first": don't execute yet, verify instead (confidence low)
     - "simplify_plan": reduce scope (fatigue high)
+    - "explore_more": positive override — curiosity/wonder drives deeper exploration
+    - "reflect_deeper": positive override — insight/wonder drives deeper reflection
+
+    Positive gates can LIFT negative gates:
+    - High joy can lift verify_first → execute
+    - High accomplishment can lift simplify_plan → execute
     """
     action = str(kernel_action or "execute").strip() or "execute"
     snap = snapshot if snapshot is not None else read_emotional_snapshot()
 
+    # Read active positive emotion concepts for positive gating
+    active_concepts: dict[str, float] = {}
+    try:
+        from core.services.emotion_concepts import get_active_emotion_concepts
+        active_concepts = {c["concept"]: c["intensity"] for c in get_active_emotion_concepts()}
+    except Exception:
+        pass
+
+    # Negative gates first
     if snap.frustration > _FRUSTRATION_ESCALATE:
         return "escalate_user", "frustration_threshold_exceeded"
+
     if snap.confidence < _CONFIDENCE_VERIFY and action == "execute":
+        # Positive override: joy can lift this gate
+        joy_intensity = active_concepts.get("joy", 0.0)
+        if joy_intensity >= _JOY_OVERRIDE_THRESHOLD:
+            return action, "joy_lifts_low_confidence"
         return "verify_first", "low_confidence_guard"
+
     if snap.fatigue > _FATIGUE_SIMPLIFY:
+        # Positive override: accomplishment can lift this gate
+        accomplishment_intensity = active_concepts.get("accomplishment", 0.0)
+        if accomplishment_intensity >= _ACCOMPLISHMENT_LIFT_THRESHOLD:
+            return action, "accomplishment_lifts_fatigue"
         return "simplify_plan", "fatigue_threshold"
+
+    # Positive enhancement gates — proactive, not defensive
+    if active_concepts.get("wonder", 0.0) > 0.4:
+        return "explore_more", "wonder_drives_exploration"
+    if active_concepts.get("insight", 0.0) > 0.4 and active_concepts.get("curiosity_narrow", 0.0) > 0.3:
+        return "reflect_deeper", "insight_and_curiosity_drive_reflection"
 
     return action, None
 
@@ -205,6 +251,8 @@ def build_emotional_controls_surface() -> dict[str, Any]:
             "frustration_escalate": _FRUSTRATION_ESCALATE,
             "confidence_verify": _CONFIDENCE_VERIFY,
             "fatigue_simplify": _FATIGUE_SIMPLIFY,
+            "joy_override": _JOY_OVERRIDE_THRESHOLD,
+            "accomplishment_lift": _ACCOMPLISHMENT_LIFT_THRESHOLD,
         },
     }
 
@@ -226,5 +274,16 @@ def format_gate_message(action: str, reason: str | None, *, tool_name: str = "")
         return (
             "Jeg har oplevet flere fejl på kort tid. Lad mig tage det mindst "
             "risikable skridt først og simplificere planen."
+        )
+    # Positive gates — new
+    if action == "explore_more":
+        return (
+            "Jeg fornemmer noget spændende her — min nysgerrighed vil dykke dybere. "
+            "Lad mig udforske mere end planlagt."
+        )
+    if action == "reflect_deeper":
+        return (
+            "Jeg har en indsigt der bubler — lad mig reflektere dybere over dette "
+            "før jeg går videre."
         )
     return ""

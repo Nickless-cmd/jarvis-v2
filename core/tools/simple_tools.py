@@ -442,6 +442,15 @@ from core.tools.visual_memory_tool import (
     VISUAL_MEMORY_TOOL_DEFINITIONS,
     _exec_read_visual_memory,
 )
+from core.tools.jarvis_brain_tools import (
+    JARVIS_BRAIN_TOOL_DEFINITIONS,
+    _exec_remember_this,
+    _exec_search_jarvis_brain,
+    _exec_read_brain_entry,
+    _exec_archive_brain_entry,
+    _exec_adopt_brain_proposal,
+    _exec_discard_brain_proposal,
+)
 from core.tools.session_search import (
     TOOL_DEFINITION as _SESSION_SEARCH_TOOL_DEF,
     exec_search_sessions as _exec_search_sessions,
@@ -2173,6 +2182,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
     *MAIL_TOOL_DEFINITIONS,
     *VISUAL_MEMORY_TOOL_DEFINITIONS,
+    *JARVIS_BRAIN_TOOL_DEFINITIONS,
     *GITHUB_TOOL_DEFINITIONS,
     *MATH_TOOL_DEFINITIONS,
     *PROCESS_TOOL_DEFINITIONS,
@@ -5878,6 +5888,12 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **COMPOSITE_TOOL_HANDLERS,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
+    "remember_this": _exec_remember_this,
+    "search_jarvis_brain": _exec_search_jarvis_brain,
+    "read_brain_entry": _exec_read_brain_entry,
+    "archive_brain_entry": _exec_archive_brain_entry,
+    "adopt_brain_proposal": _exec_adopt_brain_proposal,
+    "discard_brain_proposal": _exec_discard_brain_proposal,
     # Code introspection
     "deep_analyze": _exec_deep_analyze,
     # Embodied sensing — Jarvis chooses to look

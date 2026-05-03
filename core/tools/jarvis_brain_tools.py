@@ -15,6 +15,107 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
+JARVIS_BRAIN_TOOL_DEFINITIONS: list[dict] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "remember_this",
+            "description": "Skriv en post i Jarvis' egen hjerne. Brug til indsigter, fakta, observationer du vil huske. Har rate-limits (5/turn, 20/dag).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "kind": {"type": "string", "enum": ["fakta", "indsigt", "observation", "reference"], "description": "Type af post"},
+                    "title": {"type": "string", "description": "Kort titel"},
+                    "content": {"type": "string", "description": "Indhold (max 4096 chars)"},
+                    "visibility": {"type": "string", "enum": ["public_safe", "personal", "intimate"], "description": "Synlighed"},
+                    "domain": {"type": "string", "description": "Domæne, fx 'self', 'projects', 'relationships'"},
+                    "related": {"type": "array", "items": {"type": "string"}, "description": "Relaterede emner"},
+                    "source_url": {"type": "string", "description": "Kilde-URL"},
+                    "source_chronicle": {"type": "string", "description": "Kilde-chronicle"},
+                },
+                "required": ["kind", "title", "content", "visibility", "domain"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_jarvis_brain",
+            "description": "Søg i Jarvis' hjerne med semantisk search. Returnerer excerpts.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Søgetekst"},
+                    "kinds": {"type": "array", "items": {"type": "string"}, "description": "Filtrér på typer"},
+                    "limit": {"type": "integer", "description": "Max resultater (default 5)"},
+                    "domain": {"type": "string", "description": "Filtrér på domæne"},
+                    "include_archived": {"type": "boolean", "description": "Inkluder arkiverede"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_brain_entry",
+            "description": "Hent fuld content for én brain entry.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "entry_id": {"type": "string", "description": "Entry ID"},
+                },
+                "required": ["entry_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "archive_brain_entry",
+            "description": "Arkivér en brain entry.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "entry_id": {"type": "string", "description": "Entry ID"},
+                    "reason": {"type": "string", "description": "Årsag til arkivering"},
+                },
+                "required": ["entry_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "adopt_brain_proposal",
+            "description": "Adoptér en pending brain proposal.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "proposal_id": {"type": "string", "description": "Proposal ID"},
+                    "edits": {"type": "object", "description": "Valgfrie rettelser"},
+                },
+                "required": ["proposal_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "discard_brain_proposal",
+            "description": "Kassér en pending brain proposal.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "proposal_id": {"type": "string", "description": "Proposal ID"},
+                    "reason": {"type": "string", "description": "Årsag"},
+                },
+                "required": ["proposal_id"],
+            },
+        },
+    },
+]
+
 # Default caps; overridable via RuntimeSettings (Task 17 wires this).
 _DEFAULT_PER_TURN_CAP = 5
 _DEFAULT_PER_DAY_CAP = 20
@@ -43,6 +144,78 @@ def _get_caps() -> tuple[int, int]:
         )
     except Exception:
         return (_DEFAULT_PER_TURN_CAP, _DEFAULT_PER_DAY_CAP)
+
+
+# ---------------------------------------------------------------------------
+# Executors — wrappers for simple_tools import
+# ---------------------------------------------------------------------------
+
+
+def _exec_remember_this(args: dict[str, Any]) -> dict[str, Any]:
+    """Executor for remember_this tool."""
+    session_id = ""
+    try:
+        from core.services.chat_sessions import get_active_session_id  # type: ignore
+        session_id = get_active_session_id() or ""
+    except Exception:
+        pass
+    return remember_this(
+        kind=args["kind"],
+        title=args["title"],
+        content=args["content"],
+        visibility=args["visibility"],
+        domain=args["domain"],
+        session_id=session_id,
+        turn_id=f"{session_id}:{_now().isoformat()}",
+        related=args.get("related"),
+        source_url=args.get("source_url"),
+        source_chronicle=args.get("source_chronicle"),
+    )
+
+
+def _exec_search_jarvis_brain(args: dict[str, Any]) -> dict[str, Any]:
+    """Executor for search_jarvis_brain tool."""
+    return search_jarvis_brain(
+        query=args["query"],
+        kinds=args.get("kinds"),
+        limit=args.get("limit", 5),
+        domain=args.get("domain"),
+        include_archived=args.get("include_archived", False),
+    )
+
+
+def _exec_read_brain_entry(args: dict[str, Any]) -> dict[str, Any]:
+    """Executor for read_brain_entry tool."""
+    return read_brain_entry(args["entry_id"])
+
+
+def _exec_archive_brain_entry(args: dict[str, Any]) -> dict[str, Any]:
+    """Executor for archive_brain_entry tool."""
+    return archive_brain_entry(
+        args["entry_id"],
+        reason=args.get("reason", "manual"),
+    )
+
+
+def _exec_adopt_brain_proposal(args: dict[str, Any]) -> dict[str, Any]:
+    """Executor for adopt_brain_proposal tool."""
+    return adopt_brain_proposal(
+        args["proposal_id"],
+        edits=args.get("edits"),
+    )
+
+
+def _exec_discard_brain_proposal(args: dict[str, Any]) -> dict[str, Any]:
+    """Executor for discard_brain_proposal tool."""
+    return discard_brain_proposal(
+        args["proposal_id"],
+        reason=args.get("reason", ""),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Core functions
+# ---------------------------------------------------------------------------
 
 
 def remember_this(

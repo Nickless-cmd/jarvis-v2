@@ -1677,6 +1677,31 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         )
                     except Exception:
                         pass
+                    try:
+                        from core.services.agentic_working_conclusions import (
+                            build_round_observation as _build_working_observation,
+                            update_working_conclusion as _update_working_conclusion,
+                        )
+                        _update_working_conclusion(
+                            run_id=run.run_id,
+                            session_id=run.session_id,
+                            user_message=run.user_message,
+                            round_index=_agentic_round + 1,
+                            observation=_build_working_observation(
+                                text="".join(_a_parts),
+                                tool_names=[
+                                    str((tc.get("function") or {}).get("name") or tc.get("name") or "")
+                                    for tc in _a_tool_calls
+                                ],
+                                result_texts=[
+                                    str(_a_resolved.get(i, sr.get("result_text", "")) or "")
+                                    for i, sr in enumerate(_a_results)
+                                ],
+                            ),
+                            next_step="Fortsæt med næste agentic followup round og brug checkpointets tool-resultater.",
+                        )
+                    except Exception:
+                        pass
                     logger.info(
                         "agentic-round-end run_id=%s round=%d text_chars=%d "
                         "tool_calls=%d resolved=%d",
@@ -1767,6 +1792,11 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     try:
                         from core.services.agentic_checkpoints import clear_run as _clear_agentic_checkpoint
                         _clear_agentic_checkpoint(run.run_id)
+                    except Exception:
+                        pass
+                    try:
+                        from core.services.agentic_working_conclusions import clear_run as _clear_working_conclusion
+                        _clear_working_conclusion(run.run_id)
                     except Exception:
                         pass
 

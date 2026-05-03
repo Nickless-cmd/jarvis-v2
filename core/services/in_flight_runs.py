@@ -214,6 +214,12 @@ def interruption_prompt_section(
         checkpoint = checkpoint_prompt_section(session_id) or ""
     except Exception:
         checkpoint = ""
+    conclusion = ""
+    try:
+        from core.services.agentic_working_conclusions import working_conclusion_prompt_section
+        conclusion = working_conclusion_prompt_section(session_id) or ""
+    except Exception:
+        conclusion = ""
     if intent == "resume":
         policy = (
             "AUTO-RESUME: Brugerens besked betyder fortsæt/prøv igen. "
@@ -229,5 +235,6 @@ def interruption_prompt_section(
         f"  \"{excerpt}\"\n"
         f"{reason_clause}\n"
         f"{checkpoint + chr(10) if checkpoint else ''}"
+        f"{conclusion + chr(10) if conclusion else ''}"
         f"{policy}"
     )

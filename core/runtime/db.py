@@ -33510,3 +33510,13 @@ def list_channel_attachments(
         (session_id, limit),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+# --- Emotional memory anchors (split into db_emotional_memory.py per boy scout rule) ---
+from core.runtime.db_emotional_memory import (  # noqa: E402,F401
+    insert_emotional_memory_anchor,
+    get_emotional_memory_anchor,
+    list_emotional_memory_anchors,
+    update_emotional_memory_outcome,
+    delete_emotional_memory_anchor,
+)

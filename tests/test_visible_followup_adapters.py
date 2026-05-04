@@ -278,6 +278,49 @@ def test_ollama_adapter_second_round_uses_continue_seed(
     last_tool = [m for m in body["messages"] if m["role"] == "tool"][-1]
     assert last_tool["content"] == "r2"
     # Confirm the legacy "Continue." seed is gone.
+
+
+def test_ollama_adapter_bounds_followup_exchange_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from core.runtime import provider_router
+
+    monkeypatch.setattr(
+        provider_router,
+        "resolve_provider_router_target",
+        lambda *, lane: {"base_url": "http://ollama.test:11434"},
+    )
+
+    exchanges = [
+        vf.ToolExchange(
+            text=f"round-{idx}",
+            tool_calls=[],
+            results=[vf.ToolResult("", "read_file", "x" * 3000)],
+        )
+        for idx in range(12)
+    ]
+    with _patched_urlopen(
+        monkeypatch, [(json.dumps({"done": True}) + "\n").encode("utf-8")]
+    ) as captured:
+        list(
+            vf.stream_visible_followup(
+                provider="ollama",
+                model="m",
+                base_messages=[],
+                exchanges=exchanges,
+                round_index=12,
+            )
+        )
+
+    body = captured["body"]
+    assistant_messages = [m for m in body["messages"] if m["role"] == "assistant"]
+    tool_messages = [m for m in body["messages"] if m["role"] == "tool"]
+
+    assert len(assistant_messages) == 10
+    assert assistant_messages[0]["content"] == "round-2"
+    assert len(tool_messages) == 10
+    assert len(str(tool_messages[-1]["content"])) < 2700
+    assert "truncated for follow-up context" in str(tool_messages[-1]["content"])
     assert all(
         "Continue." not in str(m.get("content", "")) for m in body["messages"]
     )

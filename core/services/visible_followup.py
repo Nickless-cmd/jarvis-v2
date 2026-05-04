@@ -291,10 +291,13 @@ class OllamaFollowupAdapter:
                 #   FIRST_BYTE_BUDGET (90s): how long to wait for ANY
                 #   data from Ollama. Big prompts → long warmup is OK.
                 #
-                #   INTER_BYTE_BUDGET (30s, applied via urllib timeout):
+                #   INTER_BYTE_BUDGET (90s, applied via urllib timeout):
                 #   once stream is alive, max gap between bytes. If
-                #   Ollama freezes mid-stream, we fail in 30s instead
-                #   of waiting the full first-byte budget.
+                #   Ollama freezes mid-stream, the outer visible-run
+                #   watchdog still marks the run interrupted. Keep this
+                #   at least as generous as the outer 75s silence budget
+                #   so the adapter does not preempt productive slow
+                #   follow-up rounds.
                 #
                 # Why this matters: a single 180s read-timeout meant
                 # Bjørn waited 3 minutes for "stuck" runs to die. A
@@ -309,7 +312,7 @@ class OllamaFollowupAdapter:
                 # within the budget — surfacing as URLError to the
                 # outer loop's existing retry/handling.
                 FIRST_BYTE_BUDGET_S = 90
-                INTER_BYTE_BUDGET_S = 30
+                INTER_BYTE_BUDGET_S = 90
 
                 got_first_byte = threading.Event()
                 watchdog_response = {"resp": None}
@@ -339,8 +342,9 @@ class OllamaFollowupAdapter:
                     for raw_line in resp:
                         # First byte received — disarm the watchdog.
                         # Subsequent reads are governed by urllib's
-                        # 30s per-read timeout; if Ollama freezes
-                        # mid-stream we fail in 30s.
+                        # per-read timeout; the outer visible-run
+                        # watchdog is responsible for classifying a
+                        # truly silent follow-up round.
                         if not got_first_byte.is_set():
                             got_first_byte.set()
                         line = raw_line.decode("utf-8").strip()

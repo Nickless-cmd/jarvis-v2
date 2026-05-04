@@ -165,6 +165,8 @@ def record_perceptual_event(
 def build_perception_surface(*, limit: int = 6, scan: bool = True) -> dict[str, object]:
     if scan:
         observe_recent_changes()
+    else:
+        return _build_perception_surface_uncached(limit=limit)
     return get_timed_runtime_surface(
         "perceptual_event_surface",
         10.0,

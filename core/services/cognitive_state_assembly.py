@@ -829,6 +829,15 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     except Exception:
         pass
 
+    try:
+        from core.services.drive_arbitration_engine import build_drive_arbitration_prompt_section
+        drive_line = build_drive_arbitration_prompt_section()
+        if drive_line:
+            parts.append(drive_line.replace("\n", " | "))
+            sources_used.append("drive_arbitration")
+    except Exception:
+        pass
+
     if not parts:
         return None
 

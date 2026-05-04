@@ -80,6 +80,14 @@ def record_runtime_episode(
         simulate_from_latest_episode()
     except Exception:
         pass
+    try:
+        from core.services.drive_arbitration_engine import arbitrate_drives
+        arbitrate_drives(
+            user_message=user_message,
+            context={"outcome_status": outcome_status, "summary": fields["summary"]},
+        )
+    except Exception:
+        pass
     return {**result, **fields}
 
 

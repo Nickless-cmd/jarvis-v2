@@ -93,6 +93,11 @@ def record_runtime_episode(
         update_temporal_continuity_from_latest_episode()
     except Exception:
         pass
+    try:
+        from core.services.curiosity_hypothesis_debt import maybe_register_from_text
+        maybe_register_from_text(text=f"{user_message} {fields['summary']}", source="cognitive-episode")
+    except Exception:
+        pass
     return {**result, **fields}
 
 

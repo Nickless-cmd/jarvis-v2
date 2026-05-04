@@ -70,6 +70,11 @@ def record_runtime_episode(
             "policy": fields["policy"].get("next_behavior", ""),
         },
     )
+    try:
+        from core.services.learning_policy_engine import update_learning_policies_from_episode
+        update_learning_policies_from_episode(source_run_id=source_run_id)
+    except Exception:
+        pass
     return {**result, **fields}
 
 

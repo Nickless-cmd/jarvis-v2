@@ -417,6 +417,7 @@ def build_cognitive_frame(
         cognitive_core_experiments = _safe_cognitive_core_experiments()
         cognitive_episode = _safe_cognitive_episode_surface()
         theory_of_mind = _safe_theory_of_mind_surface()
+        learning_policy = _safe_learning_policy_surface()
 
         # --- Extract summaries ---
         brain_excerpts = brain_context.get("excerpts") or []
@@ -542,6 +543,18 @@ def build_cognitive_frame(
                 salient = [salient[0], tom_item, *salient[1:]][:_MAX_SALIENT_ITEMS]
             else:
                 salient = [tom_item, *salient][:_MAX_SALIENT_ITEMS]
+    if learning_policy.get("active"):
+        learning_summary = str(learning_policy.get("summary") or "")[:_MAX_SLICE_CHARS]
+        if learning_summary:
+            learning_item = {
+                "source": "learning-policy",
+                "summary": learning_summary,
+                "temporal": "carried-across-sessions",
+            }
+            if salient and salient[0].get("source") in {"cognitive-episode", "theory-of-mind"}:
+                salient = [salient[0], learning_item, *salient[1:]][:_MAX_SALIENT_ITEMS]
+            else:
+                salient = [learning_item, *salient][:_MAX_SALIENT_ITEMS]
 
     affordances = _select_affordances(
         active_capabilities=active_capabilities,
@@ -612,6 +625,7 @@ def build_cognitive_frame(
         "cognitive_experiment_carry": experiment_carry,
         "cognitive_episode_carry": cognitive_episode if cognitive_episode.get("active") else {},
         "theory_of_mind_carry": theory_of_mind if theory_of_mind.get("active") else {},
+        "learning_policy_carry": learning_policy if learning_policy.get("active") else {},
         "experiential_support": experiential_support if experiential_support.get("support_posture") else {},
         "active_constraints": constraints_summary,
         "counts": {
@@ -625,6 +639,7 @@ def build_cognitive_frame(
             "cognitive_experiment_salience": len(experiment_carry.get("salient_items") or []),
             "cognitive_episode_carry": 1 if cognitive_episode.get("active") else 0,
             "theory_of_mind_carry": 1 if theory_of_mind.get("active") else 0,
+            "learning_policy_carry": 1 if learning_policy.get("active") else 0,
             "integrated_signal_inputs": (
                 len(relation_items)
                 + len(world_items)
@@ -639,6 +654,7 @@ def build_cognitive_frame(
                 + len(experiment_carry.get("salient_items") or [])
                 + (1 if cognitive_episode.get("active") else 0)
                 + (1 if theory_of_mind.get("active") else 0)
+                + (1 if learning_policy.get("active") else 0)
             ),
         },
         "summary": _build_frame_summary(
@@ -701,6 +717,7 @@ def build_cognitive_frame_prompt_section() -> str | None:
     experiment_carry = frame.get("cognitive_experiment_carry") or {}
     episode_carry = frame.get("cognitive_episode_carry") or {}
     theory_of_mind = frame.get("theory_of_mind_carry") or {}
+    learning_policy = frame.get("learning_policy_carry") or {}
 
     experiential_support = frame.get("experiential_support") or {}
 
@@ -738,6 +755,11 @@ def build_cognitive_frame_prompt_section() -> str | None:
             lines.append(f"- Theory-of-mind mode: {policy['response_mode']}")
         if policy.get("directive"):
             lines.append(f"- Theory-of-mind directive: {str(policy['directive'])[:70]}")
+
+    if learning_policy.get("active"):
+        directive = str(learning_policy.get("directive") or "").strip()
+        if directive:
+            lines.append(f"- Learned policy: {directive[:90]}")
 
     if salient:
         for item in salient[:3]:
@@ -1014,6 +1036,14 @@ def _safe_theory_of_mind_surface() -> dict[str, object]:
         return build_theory_of_mind_surface()
     except Exception:
         return {"active": False, "summary": "", "hypotheses": [], "response_policy": {}}
+
+
+def _safe_learning_policy_surface() -> dict[str, object]:
+    try:
+        from core.services.learning_policy_engine import build_learning_policy_surface
+        return build_learning_policy_surface(limit=3)
+    except Exception:
+        return {"active": False, "summary": "", "rules": [], "directive": ""}
 
 
 def _safe_relation_continuity() -> dict[str, object]:

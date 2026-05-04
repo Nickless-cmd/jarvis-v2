@@ -218,6 +218,40 @@ def capture_emotional_anchor(
 
 
 def prune_aged_anchors() -> int:
-    """Stub — fully implemented in Task 5. Returning 0 lets capture's
-    probabilistic prune call be a no-op until the real implementation lands."""
-    return 0
+    """Delete anchors older than the aging threshold unless they are significant.
+
+    Significance criteria (any one keeps the row):
+      - intensity >= settings.emotional_memory_significance_intensity
+      - outcome_score <= settings.emotional_memory_significance_outcome (clearly bad)
+
+    Returns the number of rows deleted.
+    """
+    from datetime import timedelta
+    from core.runtime.db import connect
+    from core.runtime.settings import load_settings
+
+    try:
+        settings = load_settings()
+        aging_days = int(getattr(settings, "emotional_memory_retention_aging_days", 180))
+        sig_intensity = float(getattr(settings, "emotional_memory_significance_intensity", 0.7))
+        sig_outcome = float(getattr(settings, "emotional_memory_significance_outcome", -0.3))
+    except Exception:
+        aging_days, sig_intensity, sig_outcome = (180, 0.7, -0.3)
+
+    cutoff = (datetime.now(UTC) - timedelta(days=aging_days)).isoformat()
+
+    try:
+        with connect() as conn:
+            cur = conn.execute(
+                """
+                DELETE FROM emotional_memory_anchors
+                WHERE captured_at < ?
+                  AND COALESCE(intensity, 0.0) < ?
+                  AND (outcome_score IS NULL OR outcome_score > ?)
+                """,
+                (cutoff, sig_intensity, sig_outcome),
+            )
+            return int(cur.rowcount or 0)
+    except Exception as exc:
+        logger.warning("emotional_memory: prune failed: %s", exc)
+        return 0

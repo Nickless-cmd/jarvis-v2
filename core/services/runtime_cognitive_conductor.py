@@ -416,6 +416,7 @@ def build_cognitive_frame(
         dream = _safe_dream_family()
         cognitive_core_experiments = _safe_cognitive_core_experiments()
         cognitive_episode = _safe_cognitive_episode_surface()
+        theory_of_mind = _safe_theory_of_mind_surface()
 
         # --- Extract summaries ---
         brain_excerpts = brain_context.get("excerpts") or []
@@ -529,6 +530,18 @@ def build_cognitive_frame(
                 },
                 *salient,
             ][:_MAX_SALIENT_ITEMS]
+    if theory_of_mind.get("active"):
+        tom_summary = str(theory_of_mind.get("summary") or "")[:_MAX_SLICE_CHARS]
+        if tom_summary:
+            tom_item = {
+                "source": "theory-of-mind",
+                "summary": tom_summary,
+                "temporal": "current-session",
+            }
+            if salient and salient[0].get("source") == "cognitive-episode":
+                salient = [salient[0], tom_item, *salient[1:]][:_MAX_SALIENT_ITEMS]
+            else:
+                salient = [tom_item, *salient][:_MAX_SALIENT_ITEMS]
 
     affordances = _select_affordances(
         active_capabilities=active_capabilities,
@@ -598,6 +611,7 @@ def build_cognitive_frame(
         "continuity_mode": continuity_mode,
         "cognitive_experiment_carry": experiment_carry,
         "cognitive_episode_carry": cognitive_episode if cognitive_episode.get("active") else {},
+        "theory_of_mind_carry": theory_of_mind if theory_of_mind.get("active") else {},
         "experiential_support": experiential_support if experiential_support.get("support_posture") else {},
         "active_constraints": constraints_summary,
         "counts": {
@@ -610,6 +624,7 @@ def build_cognitive_frame(
             "private_signals": len(private_signal_items),
             "cognitive_experiment_salience": len(experiment_carry.get("salient_items") or []),
             "cognitive_episode_carry": 1 if cognitive_episode.get("active") else 0,
+            "theory_of_mind_carry": 1 if theory_of_mind.get("active") else 0,
             "integrated_signal_inputs": (
                 len(relation_items)
                 + len(world_items)
@@ -623,6 +638,7 @@ def build_cognitive_frame(
                 + len(dream_items)
                 + len(experiment_carry.get("salient_items") or [])
                 + (1 if cognitive_episode.get("active") else 0)
+                + (1 if theory_of_mind.get("active") else 0)
             ),
         },
         "summary": _build_frame_summary(
@@ -684,6 +700,7 @@ def build_cognitive_frame_prompt_section() -> str | None:
     affordances = frame["affordances"]
     experiment_carry = frame.get("cognitive_experiment_carry") or {}
     episode_carry = frame.get("cognitive_episode_carry") or {}
+    theory_of_mind = frame.get("theory_of_mind_carry") or {}
 
     experiential_support = frame.get("experiential_support") or {}
 
@@ -715,6 +732,13 @@ def build_cognitive_frame_prompt_section() -> str | None:
         if learning:
             lines.append(f"- Episode learning: {learning[:90]}")
 
+    if theory_of_mind.get("active"):
+        policy = theory_of_mind.get("response_policy") or {}
+        if policy.get("response_mode"):
+            lines.append(f"- Theory-of-mind mode: {policy['response_mode']}")
+        if policy.get("directive"):
+            lines.append(f"- Theory-of-mind directive: {str(policy['directive'])[:70]}")
+
     if salient:
         for item in salient[:3]:
             lines.append(f"- [{item['source']}] {item['summary'][:80]}")
@@ -729,6 +753,8 @@ def build_cognitive_frame_prompt_section() -> str | None:
         labels = [g["label"] for g in gated[:2]]
         lines.append(f"- Gated: {', '.join(labels)}")
 
+    while len("\n".join(lines)) >= 780 and len(lines) > 4:
+        lines.pop()
     return "\n".join(lines)
 
 
@@ -980,6 +1006,14 @@ def _safe_cognitive_episode_surface() -> dict[str, object]:
         return build_cognitive_episode_surface(limit=3)
     except Exception:
         return {"active": False, "items": [], "summary": "", "directives": {}}
+
+
+def _safe_theory_of_mind_surface() -> dict[str, object]:
+    try:
+        from core.services.theory_of_mind_engine import build_theory_of_mind_surface
+        return build_theory_of_mind_surface()
+    except Exception:
+        return {"active": False, "summary": "", "hypotheses": [], "response_policy": {}}
 
 
 def _safe_relation_continuity() -> dict[str, object]:

@@ -838,6 +838,15 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     except Exception:
         pass
 
+    try:
+        from core.services.temporal_self_continuity import build_temporal_self_continuity_prompt_section
+        temporal_self_line = build_temporal_self_continuity_prompt_section()
+        if temporal_self_line:
+            parts.append(temporal_self_line.replace("\n", " | "))
+            sources_used.append("temporal_self_continuity")
+    except Exception:
+        pass
+
     if not parts:
         return None
 

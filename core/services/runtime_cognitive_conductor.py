@@ -76,9 +76,11 @@ def _select_mode(
     liveness_state: str,
     contradiction_active: bool,
     experiment_carry: dict[str, object] | None = None,
+    cognitive_episode: dict[str, object] | None = None,
 ) -> dict[str, str]:
     """Select the bounded mental mode from runtime state."""
     carry = experiment_carry or {}
+    episode = cognitive_episode or {}
     salience_pressure = str(carry.get("salience_pressure") or "low")
     reflective_weight = str(carry.get("reflective_weight") or "light")
 
@@ -90,6 +92,12 @@ def _select_mode(
 
     if contradiction_active:
         return {"mode": "clarify", "reason": "Executive contradiction is active — pause and re-check before carrying forward"}
+
+    if episode.get("active") and str(episode.get("prompt_priority") or "") == "high":
+        return {
+            "mode": "clarify",
+            "reason": "Cognitive episode carry is high priority — resume/re-check before new exploration",
+        }
 
     if reflective_weight == "elevated" and salience_pressure in {"medium", "high"}:
         return {
@@ -489,6 +497,7 @@ def build_cognitive_frame(
         liveness_state=liveness_state,
         contradiction_active=contradiction_active,
         experiment_carry=experiment_carry,
+        cognitive_episode=cognitive_episode,
     )
 
     salient = _select_salient_items(

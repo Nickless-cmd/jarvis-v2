@@ -203,6 +203,23 @@ def test_mode_selection_clarify_when_contradiction_active() -> None:
     assert result["mode"] == "clarify"
 
 
+def test_mode_selection_clarify_when_episode_priority_high() -> None:
+    from core.services.runtime_cognitive_conductor import _select_mode
+
+    result = _select_mode(
+        visible_active=False,
+        question_gate_active=False,
+        approval_pending=False,
+        brain_count=0,
+        open_loop_count=0,
+        liveness_state="quiet",
+        contradiction_active=False,
+        cognitive_episode={"active": True, "prompt_priority": "high"},
+    )
+    assert result["mode"] == "clarify"
+    assert "Cognitive episode" in result["reason"]
+
+
 # ---------------------------------------------------------------------------
 # Temporal depth classification
 # ---------------------------------------------------------------------------

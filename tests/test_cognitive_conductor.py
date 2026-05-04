@@ -25,6 +25,7 @@ def test_cognitive_frame_has_required_keys() -> None:
     assert "continuity_mode" in frame
     assert "cognitive_experiment_carry" in frame
     assert "cognitive_episode_carry" in frame
+    assert "theory_of_mind_carry" in frame
     assert "active_constraints" in frame
     assert "experiential_support" in frame
     assert "counts" in frame
@@ -279,6 +280,7 @@ def test_counts_are_populated() -> None:
     assert "private_signals" in counts
     assert "cognitive_experiment_salience" in counts
     assert "cognitive_episode_carry" in counts
+    assert "theory_of_mind_carry" in counts
     assert all(isinstance(v, int) for v in counts.values())
 
 
@@ -460,6 +462,33 @@ def test_cognitive_frame_exposes_active_episode_carry(monkeypatch) -> None:
 
     section = conductor.build_cognitive_frame_prompt_section()
     assert "Cognitive episode next" in section
+
+
+def test_cognitive_frame_exposes_theory_of_mind_carry(monkeypatch) -> None:
+    from core.services import runtime_cognitive_conductor as conductor
+
+    monkeypatch.setattr(
+        conductor,
+        "_safe_theory_of_mind_surface",
+        lambda: {
+            "active": True,
+            "summary": "research-mode-over-product-bounds; policy=research-rigorous",
+            "hypotheses": [{"label": "research-mode-over-product-bounds"}],
+            "response_policy": {
+                "response_mode": "research-rigorous",
+                "directive": "Offer architectural depth and avoid product-bounded flattening.",
+            },
+        },
+    )
+
+    frame = conductor.build_cognitive_frame()
+
+    assert frame["theory_of_mind_carry"]["active"] is True
+    assert frame["counts"]["theory_of_mind_carry"] == 1
+    assert any(item["source"] == "theory-of-mind" for item in frame["salient_items"])
+
+    section = conductor.build_cognitive_frame_prompt_section()
+    assert "Theory-of-mind mode" in section
 
 
 def test_cognitive_frame_integrates_living_signal_inputs(monkeypatch) -> None:

@@ -75,6 +75,11 @@ def record_runtime_episode(
         update_learning_policies_from_episode(source_run_id=source_run_id)
     except Exception:
         pass
+    try:
+        from core.services.counterfactual_self_simulation import simulate_from_latest_episode
+        simulate_from_latest_episode()
+    except Exception:
+        pass
     return {**result, **fields}
 
 

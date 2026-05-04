@@ -457,3 +457,149 @@ def _apply_aging_weight(row: dict[str, object]) -> dict[str, object]:
             weight = 0.0
 
     return {**row, "score": score * weight, "age_days": age_days}
+
+
+# ---------------------------------------------------------------------------
+# Surface for the cognitive conductor
+# ---------------------------------------------------------------------------
+
+
+def build_emotional_memory_surface(
+    *,
+    anchor_type: str,
+    context_features: dict[str, object],
+) -> dict[str, object]:
+    """Return a bounded surface describing emotional precedent for the current context."""
+    from core.runtime.settings import load_settings
+
+    try:
+        min_anchors = int(getattr(load_settings(), "emotional_memory_min_anchors", 2))
+    except Exception:
+        min_anchors = 2
+
+    if not context_features:
+        return _inactive_surface()
+
+    try:
+        matches = find_similar_anchors(
+            anchor_type=anchor_type,
+            context_features=context_features,
+            limit=8,
+        )
+    except Exception as exc:
+        logger.debug("emotional_memory: surface retrieval failed: %s", exc)
+        return _inactive_surface()
+
+    if len(matches) < min_anchors:
+        return {
+            "active": False,
+            "summary": "Insufficient precedent",
+            "items": [],
+            "match_count": len(matches),
+        }
+
+    mood_distribution: dict[str, int] = {}
+    intensities: list[float] = []
+    outcome_distribution = {"good": 0, "neutral": 0, "bad": 0, "unknown": 0}
+    for m in matches:
+        mood = str(m.get("mood") or "unknown")
+        mood_distribution[mood] = mood_distribution.get(mood, 0) + 1
+        try:
+            intensities.append(float(m.get("intensity") or 0.0))
+        except Exception:
+            pass
+        outcome = m.get("outcome_score")
+        if outcome is None:
+            outcome_distribution["unknown"] += 1
+        else:
+            try:
+                v = float(outcome)
+                if v <= -0.2:
+                    outcome_distribution["bad"] += 1
+                elif v >= 0.2:
+                    outcome_distribution["good"] += 1
+                else:
+                    outcome_distribution["neutral"] += 1
+            except Exception:
+                outcome_distribution["unknown"] += 1
+
+    mean_intensity = (
+        round(sum(intensities) / len(intensities), 3) if intensities else 0.0
+    )
+    directive = _compile_directive(
+        match_count=len(matches),
+        mood_distribution=mood_distribution,
+        outcome_distribution=outcome_distribution,
+    )
+
+    items = [
+        {
+            "anchor_id": m.get("anchor_id"),
+            "mood": m.get("mood"),
+            "intensity": m.get("intensity"),
+            "outcome_score": m.get("outcome_score"),
+            "captured_at": m.get("captured_at"),
+            "score": round(float(m.get("score") or 0.0), 3),
+        }
+        for m in matches[:5]
+    ]
+
+    return {
+        "active": True,
+        "anchor_type": anchor_type,
+        "match_count": len(matches),
+        "mood_distribution": mood_distribution,
+        "mean_intensity": mean_intensity,
+        "outcome_distribution": outcome_distribution,
+        "directive": directive,
+        "items": items,
+    }
+
+
+def _inactive_surface() -> dict[str, object]:
+    return {
+        "active": False,
+        "summary": "",
+        "items": [],
+        "match_count": 0,
+    }
+
+
+def _compile_directive(
+    *,
+    match_count: int,
+    mood_distribution: dict[str, int],
+    outcome_distribution: dict[str, int],
+) -> str:
+    if not match_count:
+        return ""
+    dominant_mood, dominant_count = max(
+        mood_distribution.items(), key=lambda kv: kv[1]
+    )
+    bad = outcome_distribution.get("bad", 0)
+    pieces = [
+        f"{match_count} similar contexts:",
+        f"mood {dominant_mood} {dominant_count}/{match_count}",
+    ]
+    if bad >= 1:
+        pieces.append(f"outcome bad {bad}/{match_count}")
+    if bad >= max(2, match_count // 2):
+        pieces.append("recommend pause and synthesis")
+    return ", ".join(pieces)
+
+
+def build_emotional_memory_prompt_section(
+    *,
+    anchor_type: str,
+    context_features: dict[str, object],
+) -> str | None:
+    """Compact one-line section for inclusion in cognitive_frame_prompt."""
+    surface = build_emotional_memory_surface(
+        anchor_type=anchor_type, context_features=context_features
+    )
+    if not surface.get("active"):
+        return None
+    directive = str(surface.get("directive") or "").strip()
+    if not directive:
+        return None
+    return f"Emotional precedent: {directive[:140]}"

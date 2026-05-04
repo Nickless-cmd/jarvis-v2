@@ -196,3 +196,96 @@ def test_capture_idempotent_overwrites_existing(
     assert len(rows) == 1
     row = get_emotional_memory_anchor("cognitive_episode", "ce-dup")
     assert row["mood"] == "frustrated"
+
+
+def test_prune_keeps_recent_anchors(isolated_runtime) -> None:
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db import (
+        insert_emotional_memory_anchor,
+        list_emotional_memory_anchors,
+    )
+    from core.services.emotional_memory_engine import prune_aged_anchors
+
+    now = datetime.now(UTC)
+    insert_emotional_memory_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="recent",
+        captured_at=(now - timedelta(days=5)).isoformat(),
+        mood="x",
+        intensity=0.2,
+        context_features_json="{}",
+    )
+    removed = prune_aged_anchors()
+    assert removed == 0
+    assert len(list_emotional_memory_anchors()) == 1
+
+
+def test_prune_removes_old_low_signal_anchors(isolated_runtime) -> None:
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db import (
+        insert_emotional_memory_anchor,
+        list_emotional_memory_anchors,
+    )
+    from core.services.emotional_memory_engine import prune_aged_anchors
+
+    now = datetime.now(UTC)
+    insert_emotional_memory_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="old-bland",
+        captured_at=(now - timedelta(days=200)).isoformat(),
+        mood="x",
+        intensity=0.2,
+        outcome_score=0.0,
+        context_features_json="{}",
+    )
+    removed = prune_aged_anchors()
+    assert removed == 1
+    assert list_emotional_memory_anchors() == []
+
+
+def test_prune_keeps_old_intense_anchors(isolated_runtime) -> None:
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db import (
+        insert_emotional_memory_anchor,
+        list_emotional_memory_anchors,
+    )
+    from core.services.emotional_memory_engine import prune_aged_anchors
+
+    now = datetime.now(UTC)
+    insert_emotional_memory_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="old-intense",
+        captured_at=(now - timedelta(days=200)).isoformat(),
+        mood="x",
+        intensity=0.85,
+        outcome_score=0.0,
+        context_features_json="{}",
+    )
+    removed = prune_aged_anchors()
+    assert removed == 0
+    assert len(list_emotional_memory_anchors()) == 1
+
+
+def test_prune_keeps_old_anchors_with_strongly_negative_outcome(
+    isolated_runtime,
+) -> None:
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db import (
+        insert_emotional_memory_anchor,
+        list_emotional_memory_anchors,
+    )
+    from core.services.emotional_memory_engine import prune_aged_anchors
+
+    now = datetime.now(UTC)
+    insert_emotional_memory_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="old-bad",
+        captured_at=(now - timedelta(days=200)).isoformat(),
+        mood="x",
+        intensity=0.3,
+        outcome_score=-0.7,
+        context_features_json="{}",
+    )
+    removed = prune_aged_anchors()
+    assert removed == 0
+    assert len(list_emotional_memory_anchors()) == 1

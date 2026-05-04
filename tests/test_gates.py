@@ -141,7 +141,8 @@ class TestAffectModulation:
         budget = compute_agentic_loop_budget(resume_context=True)
 
         assert budget["max_rounds"] <= 12
-        assert budget["max_tool_only_rounds"] <= 3
+        assert budget["max_tool_only_rounds"] == 8
+        assert budget["max_empty_text_rounds"] == 8
         assert budget["round_silence_timeout_s"] <= 45.0
 
 

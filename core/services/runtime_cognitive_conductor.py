@@ -407,6 +407,7 @@ def build_cognitive_frame(
         review = _safe_self_review()
         dream = _safe_dream_family()
         cognitive_core_experiments = _safe_cognitive_core_experiments()
+        cognitive_episode = _safe_cognitive_episode_surface()
 
         # --- Extract summaries ---
         brain_excerpts = brain_context.get("excerpts") or []
@@ -508,6 +509,17 @@ def build_cognitive_frame(
         dream_items=dream_items,
         experiment_carry=experiment_carry,
     )
+    if cognitive_episode.get("active"):
+        episode_summary = str(cognitive_episode.get("summary") or "")[:_MAX_SLICE_CHARS]
+        if episode_summary:
+            salient = [
+                {
+                    "source": "cognitive-episode",
+                    "summary": episode_summary,
+                    "temporal": "current-session",
+                },
+                *salient,
+            ][:_MAX_SALIENT_ITEMS]
 
     affordances = _select_affordances(
         active_capabilities=active_capabilities,
@@ -576,6 +588,7 @@ def build_cognitive_frame(
         "private_signal_items": private_signal_items[:2],
         "continuity_mode": continuity_mode,
         "cognitive_experiment_carry": experiment_carry,
+        "cognitive_episode_carry": cognitive_episode if cognitive_episode.get("active") else {},
         "experiential_support": experiential_support if experiential_support.get("support_posture") else {},
         "active_constraints": constraints_summary,
         "counts": {
@@ -587,6 +600,7 @@ def build_cognitive_frame(
             "inner_forces": len(inner_forces),
             "private_signals": len(private_signal_items),
             "cognitive_experiment_salience": len(experiment_carry.get("salient_items") or []),
+            "cognitive_episode_carry": 1 if cognitive_episode.get("active") else 0,
             "integrated_signal_inputs": (
                 len(relation_items)
                 + len(world_items)
@@ -599,6 +613,7 @@ def build_cognitive_frame(
                 + len(self_review_items)
                 + len(dream_items)
                 + len(experiment_carry.get("salient_items") or [])
+                + (1 if cognitive_episode.get("active") else 0)
             ),
         },
         "summary": _build_frame_summary(
@@ -659,6 +674,7 @@ def build_cognitive_frame_prompt_section() -> str | None:
     private_signal_pressure = str(frame.get("private_signal_pressure") or "low")
     affordances = frame["affordances"]
     experiment_carry = frame.get("cognitive_experiment_carry") or {}
+    episode_carry = frame.get("cognitive_episode_carry") or {}
 
     experiential_support = frame.get("experiential_support") or {}
 
@@ -677,6 +693,18 @@ def build_cognitive_frame_prompt_section() -> str | None:
 
     if experiment_carry.get("summary"):
         lines.append(f"- Cognitive experiment carry: {experiment_carry['summary'][:100]}")
+
+    if episode_carry.get("active"):
+        directives = episode_carry.get("directives") or {}
+        next_behavior = str(directives.get("next_behavior") or "").strip()
+        attention = str(directives.get("attention") or "").strip()
+        learning = str(directives.get("learning") or "").strip()
+        if next_behavior:
+            lines.append(f"- Cognitive episode next: {next_behavior[:100]}")
+        if attention:
+            lines.append(f"- Episode attention: {attention[:90]}")
+        if learning:
+            lines.append(f"- Episode learning: {learning[:90]}")
 
     if salient:
         for item in salient[:3]:
@@ -935,6 +963,14 @@ def _safe_relation_state() -> dict[str, object]:
         return build_runtime_relation_state_signal_surface(limit=2)
     except Exception:
         return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_cognitive_episode_surface() -> dict[str, object]:
+    try:
+        from core.services.cognitive_episodes import build_cognitive_episode_surface
+        return build_cognitive_episode_surface(limit=3)
+    except Exception:
+        return {"active": False, "items": [], "summary": "", "directives": {}}
 
 
 def _safe_relation_continuity() -> dict[str, object]:

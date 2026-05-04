@@ -32,6 +32,9 @@ from urllib import request as urllib_request
 
 _log = logging.getLogger(__name__)
 
+_OLLAMA_MAX_FOLLOWUP_EXCHANGES = 10
+_OLLAMA_MAX_TOOL_RESULT_CHARS = 2500
+
 
 # ── Event types ──────────────────────────────────────────────────────────────
 
@@ -161,6 +164,43 @@ class OllamaFollowupAdapter:
                 out.append(dict(raw))
         return out
 
+    def _compact_exchanges(self, exchanges: list[ToolExchange]) -> list[ToolExchange]:
+        """Bound Ollama follow-up replay so long tool loops do not 400.
+
+        Ollama cloud accepts large contexts, but repeated structured
+        assistant/tool turns with full file contents can still make
+        /api/chat reject the payload in later rounds. Keep recent tool
+        history and trim each tool result; durable checkpoints retain the
+        full local details outside the provider payload.
+        """
+        bounded = list(exchanges)[-_OLLAMA_MAX_FOLLOWUP_EXCHANGES:]
+        compacted: list[ToolExchange] = []
+        for exch in bounded:
+            results: list[ToolResult] = []
+            for tr in exch.results:
+                content = str(tr.content or "")
+                if len(content) > _OLLAMA_MAX_TOOL_RESULT_CHARS:
+                    omitted = len(content) - _OLLAMA_MAX_TOOL_RESULT_CHARS
+                    content = (
+                        content[:_OLLAMA_MAX_TOOL_RESULT_CHARS]
+                        + f"\n\n[tool result truncated for follow-up context; {omitted} chars omitted]"
+                    )
+                results.append(
+                    ToolResult(
+                        tool_call_id=tr.tool_call_id,
+                        tool_name=tr.tool_name,
+                        content=content,
+                    )
+                )
+            compacted.append(
+                ToolExchange(
+                    text=exch.text,
+                    tool_calls=list(exch.tool_calls),
+                    results=results,
+                )
+            )
+        return compacted
+
     def _serialize_exchanges(self, exchanges: list[ToolExchange]) -> list[dict]:
         """Replay exchanges as structured assistant + role=tool messages.
 
@@ -173,7 +213,7 @@ class OllamaFollowupAdapter:
         infer continuation from the structured turn pattern.
         """
         messages: list[dict] = []
-        for exch in exchanges:
+        for exch in self._compact_exchanges(exchanges):
             messages.append(
                 {
                     "role": "assistant",

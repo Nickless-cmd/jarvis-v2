@@ -455,3 +455,81 @@ def test_find_similar_returns_empty_when_no_match(isolated_runtime) -> None:
         context_features={"trigger": "any", "tool_names": [], "summary": "anything"},
     )
     assert matches == []
+
+
+def test_surface_returns_inactive_when_below_threshold(isolated_runtime) -> None:
+    import json
+    from core.runtime.db import insert_emotional_memory_anchor
+    from core.services.emotional_memory_engine import build_emotional_memory_surface
+
+    insert_emotional_memory_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="solo",
+        captured_at="2026-05-04T12:00:00+00:00",
+        mood="frustrated", intensity=0.7,
+        outcome_score=-0.4, outcome_source="auto",
+        context_features_json=json.dumps({
+            "trigger": "x", "tool_names": ["a"],
+            "outcome_status": "interrupted", "error_kind": "timeout",
+            "summary": "lonely",
+        }),
+    )
+
+    surface = build_emotional_memory_surface(
+        anchor_type="cognitive_episode",
+        context_features={
+            "trigger": "x", "tool_names": ["a"],
+            "outcome_status": "interrupted", "error_kind": "timeout",
+            "summary": "lonely",
+        },
+    )
+    assert surface["active"] is False
+    assert surface["match_count"] == 1
+
+
+def test_surface_directive_compiles_distribution_correctly(
+    isolated_runtime,
+) -> None:
+    import json
+    from core.runtime.db import insert_emotional_memory_anchor
+    from core.services.emotional_memory_engine import build_emotional_memory_surface
+
+    feats = json.dumps({
+        "trigger": "x", "tool_names": ["a"],
+        "outcome_status": "interrupted", "error_kind": "timeout",
+        "summary": "same",
+    })
+    for i, outcome in enumerate([-0.7, -0.4, 0.0]):
+        insert_emotional_memory_anchor(
+            anchor_type="cognitive_episode",
+            anchor_id=f"ce-{i}",
+            captured_at=f"2026-05-04T12:0{i}:00+00:00",
+            mood="frustrated", intensity=0.6,
+            outcome_score=outcome, outcome_source="auto",
+            context_features_json=feats,
+        )
+
+    surface = build_emotional_memory_surface(
+        anchor_type="cognitive_episode",
+        context_features={
+            "trigger": "x", "tool_names": ["a"],
+            "outcome_status": "interrupted", "error_kind": "timeout",
+            "summary": "same",
+        },
+    )
+    assert surface["active"] is True
+    assert surface["match_count"] == 3
+    assert surface["mood_distribution"] == {"frustrated": 3}
+    assert surface["outcome_distribution"]["bad"] == 2
+    assert surface["outcome_distribution"]["neutral"] == 1
+    assert "frustrated" in surface["directive"].lower()
+    assert "3" in surface["directive"]
+
+
+def test_surface_returns_inactive_for_empty_context(isolated_runtime) -> None:
+    from core.services.emotional_memory_engine import build_emotional_memory_surface
+
+    surface = build_emotional_memory_surface(
+        anchor_type="cognitive_episode", context_features={}
+    )
+    assert surface["active"] is False

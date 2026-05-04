@@ -847,6 +847,15 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     except Exception:
         pass
 
+    try:
+        from core.services.curiosity_hypothesis_debt import build_curiosity_debt_prompt_section
+        curiosity_line = build_curiosity_debt_prompt_section()
+        if curiosity_line:
+            parts.append(curiosity_line.replace("\n", " | "))
+            sources_used.append("curiosity_hypothesis_debt")
+    except Exception:
+        pass
+
     if not parts:
         return None
 

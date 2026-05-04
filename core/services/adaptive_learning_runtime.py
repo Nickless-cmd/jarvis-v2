@@ -104,6 +104,7 @@ def build_adaptive_learning_runtime_from_sources(
         "attenuation_bias": attenuation_bias,
         "maturation_state": maturation_state,
         "confidence": confidence,
+        "explicit_policy": _safe_learning_policy_surface(),
         "summary": (
             f"{learning_engine_mode} adaptive learning around {reinforcement_target}"
             f" with {maturation_state} maturation"
@@ -377,6 +378,11 @@ def _source_contributors(
 
 
 def _guidance_for_adaptive_learning(state: dict[str, object]) -> str:
+    explicit_policy = state.get("explicit_policy") or {}
+    if isinstance(explicit_policy, dict) and explicit_policy.get("active"):
+        directive = str(explicit_policy.get("directive") or "").strip()
+        if directive:
+            return f"Apply learned policy: {directive}"
     mode = str(state.get("learning_engine_mode") or "retain")
     target = str(state.get("reinforcement_target") or "reasoning")
     retention = str(state.get("retention_bias") or "light")
@@ -398,6 +404,14 @@ def _safe_guided_learning() -> dict[str, object] | None:
         return build_guided_learning_runtime_surface()
     except Exception:
         return None
+
+
+def _safe_learning_policy_surface() -> dict[str, object]:
+    try:
+        from core.services.learning_policy_engine import build_learning_policy_surface
+        return build_learning_policy_surface(limit=3)
+    except Exception:
+        return {"active": False, "rules": [], "directive": ""}
 
 
 def _safe_adaptive_planner() -> dict[str, object] | None:

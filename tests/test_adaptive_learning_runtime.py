@@ -96,6 +96,30 @@ def test_adaptive_learning_prompt_section_is_grounded(isolated_runtime) -> None:
     assert "maturation=forming" in section
 
 
+def test_adaptive_learning_prompt_section_applies_explicit_policy(isolated_runtime) -> None:
+    learning = isolated_runtime.adaptive_learning_runtime
+
+    section = learning.build_adaptive_learning_prompt_section(
+        {
+            "learning_engine_mode": "retain",
+            "reinforcement_target": "reasoning",
+            "retention_bias": "warm",
+            "attenuation_bias": "none",
+            "maturation_state": "forming",
+            "confidence": "medium",
+            "source_contributors": [],
+            "freshness": {"state": "fresh"},
+            "explicit_policy": {
+                "active": True,
+                "directive": "Before edit proposals, inspect exact current context.",
+            },
+        }
+    )
+
+    assert "Apply learned policy" in section
+    assert "inspect exact current context" in section
+
+
 def test_heartbeat_runtime_truth_instruction_includes_adaptive_learning(isolated_runtime) -> None:
     prompt_contract = isolated_runtime.prompt_contract
 

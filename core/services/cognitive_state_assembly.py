@@ -802,6 +802,15 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         parts.append(experiment_state_line)
         sources_used.append("cognitive_core_experiments")
 
+    try:
+        from core.services.learning_policy_engine import build_learning_policy_prompt_section
+        learning_policy_line = build_learning_policy_prompt_section()
+        if learning_policy_line:
+            parts.append(learning_policy_line.replace("\n", " | "))
+            sources_used.append("learning_policy_engine")
+    except Exception:
+        pass
+
     if not parts:
         return None
 

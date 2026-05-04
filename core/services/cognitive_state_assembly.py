@@ -811,6 +811,15 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     except Exception:
         pass
 
+    try:
+        from core.services.perceptual_event_engine import build_perception_prompt_section
+        perception_line = build_perception_prompt_section()
+        if perception_line:
+            parts.append(perception_line.replace("\n", " | "))
+            sources_used.append("perceptual_event_engine")
+    except Exception:
+        pass
+
     if not parts:
         return None
 

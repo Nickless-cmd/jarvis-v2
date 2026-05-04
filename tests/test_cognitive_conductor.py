@@ -27,6 +27,7 @@ def test_cognitive_frame_has_required_keys() -> None:
     assert "cognitive_episode_carry" in frame
     assert "theory_of_mind_carry" in frame
     assert "learning_policy_carry" in frame
+    assert "perception_carry" in frame
     assert "active_constraints" in frame
     assert "experiential_support" in frame
     assert "counts" in frame
@@ -283,6 +284,7 @@ def test_counts_are_populated() -> None:
     assert "cognitive_episode_carry" in counts
     assert "theory_of_mind_carry" in counts
     assert "learning_policy_carry" in counts
+    assert "perception_carry" in counts
     assert all(isinstance(v, int) for v in counts.values())
 
 
@@ -515,6 +517,30 @@ def test_cognitive_frame_exposes_learning_policy_carry(monkeypatch) -> None:
 
     section = conductor.build_cognitive_frame_prompt_section()
     assert "Learned policy" in section
+
+
+def test_cognitive_frame_exposes_perception_carry(monkeypatch) -> None:
+    from core.services import runtime_cognitive_conductor as conductor
+
+    monkeypatch.setattr(
+        conductor,
+        "_safe_perception_surface",
+        lambda: {
+            "active": True,
+            "summary": "2 recent perceptual changes; latest=tool-error:Tool failed",
+            "events": [{"change_type": "tool-error"}],
+            "directive": "Attend to tool failure as feedback before retry.",
+        },
+    )
+
+    frame = conductor.build_cognitive_frame()
+
+    assert frame["perception_carry"]["active"] is True
+    assert frame["counts"]["perception_carry"] == 1
+    assert any(item["source"] == "perception" for item in frame["salient_items"])
+
+    section = conductor.build_cognitive_frame_prompt_section()
+    assert "Perception:" in section
 
 
 def test_cognitive_frame_integrates_living_signal_inputs(monkeypatch) -> None:

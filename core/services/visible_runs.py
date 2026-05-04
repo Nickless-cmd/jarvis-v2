@@ -1884,6 +1884,16 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             )
                         except Exception:
                             pass
+                        try:
+                            from core.services.theory_of_mind_engine import record_theory_of_mind_update
+                            record_theory_of_mind_update(
+                                user_message=_run_ref.user_message,
+                                assistant_text=_followup_text,
+                                outcome_status=_outcome_status,
+                                source_run_id=_run_ref.run_id,
+                            )
+                        except Exception:
+                            pass
                         _run_memory_postprocess(_run_ref, _followup_text)
                     except Exception:
                         pass

@@ -61,6 +61,8 @@ def schedule_self_wakeup(
     delay_seconds: int,
     prompt: str,
     reason: str = "",
+    channel: str | None = None,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     """Queue a self-wakeup. Returns the wakeup record."""
     prompt = (prompt or "").strip()

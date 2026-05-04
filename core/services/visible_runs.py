@@ -1839,6 +1839,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 _tokens = (total_input_tokens, total_output_tokens)
                 _followup_text = followup_text
                 _outcome_status = _final_run_status
+                _outcome_error = _final_run_error
                 import threading as _threading
 
                 def _persist_tool_result() -> None:
@@ -1869,6 +1870,20 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                     "native_tool_path": True,
                                 },
                             )
+                        try:
+                            from core.services.cognitive_episodes import record_visible_run_episode
+                            record_visible_run_episode(
+                                run_id=_run_ref.run_id,
+                                session_id=_run_ref.session_id,
+                                provider=_run_ref.provider,
+                                model=_run_ref.model,
+                                status=_outcome_status,
+                                user_message=_run_ref.user_message,
+                                assistant_text=_followup_text,
+                                error=str(_outcome_error or ""),
+                            )
+                        except Exception:
+                            pass
                         _run_memory_postprocess(_run_ref, _followup_text)
                     except Exception:
                         pass

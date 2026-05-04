@@ -24,6 +24,7 @@ def test_cognitive_frame_has_required_keys() -> None:
     assert "private_signal_items" in frame
     assert "continuity_mode" in frame
     assert "cognitive_experiment_carry" in frame
+    assert "cognitive_episode_carry" in frame
     assert "active_constraints" in frame
     assert "experiential_support" in frame
     assert "counts" in frame
@@ -260,6 +261,7 @@ def test_counts_are_populated() -> None:
     assert "inner_forces" in counts
     assert "private_signals" in counts
     assert "cognitive_experiment_salience" in counts
+    assert "cognitive_episode_carry" in counts
     assert all(isinstance(v, int) for v in counts.values())
 
 
@@ -414,6 +416,33 @@ def test_prompt_section_exposes_cognitive_experiment_carry(monkeypatch) -> None:
 
     section = conductor.build_cognitive_frame_prompt_section()
     assert "Cognitive experiment carry:" in section
+
+
+def test_cognitive_frame_exposes_active_episode_carry(monkeypatch) -> None:
+    from core.services import runtime_cognitive_conductor as conductor
+
+    monkeypatch.setattr(
+        conductor,
+        "_safe_cognitive_episode_surface",
+        lambda: {
+            "active": True,
+            "summary": "proposal recovery worked after exact-context read",
+            "directives": {
+                "next_behavior": "reuse successful proposal repair pattern",
+                "attention": "narrow to exact file context",
+                "learning": "inspect exact lines before retry",
+            },
+        },
+    )
+
+    frame = conductor.build_cognitive_frame()
+
+    assert frame["cognitive_episode_carry"]["active"] is True
+    assert frame["counts"]["cognitive_episode_carry"] == 1
+    assert frame["salient_items"][0]["source"] == "cognitive-episode"
+
+    section = conductor.build_cognitive_frame_prompt_section()
+    assert "Cognitive episode next" in section
 
 
 def test_cognitive_frame_integrates_living_signal_inputs(monkeypatch) -> None:

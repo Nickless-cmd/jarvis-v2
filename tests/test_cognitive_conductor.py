@@ -260,8 +260,8 @@ def test_prompt_section_is_compact() -> None:
     assert "Cognitive frame" in section
     assert "Time horizon" in section
     assert "Continuity pressure" in section
-    # Should be under 800 chars
-    assert len(section) < 800, f"Section too long: {len(section)} chars"
+    # Truncation budget bumped to 900 chars when emotional_memory carry was added.
+    assert len(section) < 900, f"Section too long: {len(section)} chars"
 
 
 def test_counts_are_populated() -> None:

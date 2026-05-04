@@ -104,6 +104,12 @@ class RuntimeSettings:
     # selection across all eligible (provider, model) slots and circuit
     # breakers. When False, falls back to task_kind="background" routing.
     daemon_balancer_enabled: bool = True
+    # Emotional memory engine — thresholds and retention.
+    emotional_memory_min_anchors: int = 2
+    emotional_memory_retention_recent_days: int = 30
+    emotional_memory_retention_aging_days: int = 180
+    emotional_memory_significance_intensity: float = 0.7
+    emotional_memory_significance_outcome: float = -0.3
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -143,6 +149,11 @@ class RuntimeSettings:
             "jarvis_brain_auto_archive_days": self.jarvis_brain_auto_archive_days,
             "jarvis_brain_theme_consolidation_enabled": self.jarvis_brain_theme_consolidation_enabled,
             "daemon_balancer_enabled": self.daemon_balancer_enabled,
+            "emotional_memory_min_anchors": self.emotional_memory_min_anchors,
+            "emotional_memory_retention_recent_days": self.emotional_memory_retention_recent_days,
+            "emotional_memory_retention_aging_days": self.emotional_memory_retention_aging_days,
+            "emotional_memory_significance_intensity": self.emotional_memory_significance_intensity,
+            "emotional_memory_significance_outcome": self.emotional_memory_significance_outcome,
         }
         return {**self.extra, **typed}
 
@@ -276,6 +287,11 @@ def load_settings() -> RuntimeSettings:
         jarvis_brain_auto_archive_days=int(data.get("jarvis_brain_auto_archive_days", defaults.jarvis_brain_auto_archive_days)),
         jarvis_brain_theme_consolidation_enabled=bool(data.get("jarvis_brain_theme_consolidation_enabled", defaults.jarvis_brain_theme_consolidation_enabled)),
         daemon_balancer_enabled=bool(data.get("daemon_balancer_enabled", defaults.daemon_balancer_enabled)),
+        emotional_memory_min_anchors=int(data.get("emotional_memory_min_anchors", defaults.emotional_memory_min_anchors)),
+        emotional_memory_retention_recent_days=int(data.get("emotional_memory_retention_recent_days", defaults.emotional_memory_retention_recent_days)),
+        emotional_memory_retention_aging_days=int(data.get("emotional_memory_retention_aging_days", defaults.emotional_memory_retention_aging_days)),
+        emotional_memory_significance_intensity=float(data.get("emotional_memory_significance_intensity", defaults.emotional_memory_significance_intensity)),
+        emotional_memory_significance_outcome=float(data.get("emotional_memory_significance_outcome", defaults.emotional_memory_significance_outcome)),
         extra={key: value for key, value in data.items() if key not in KNOWN_FIELDS},
     )
 

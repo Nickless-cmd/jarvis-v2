@@ -108,14 +108,30 @@ def format_user_model_for_prompt(model: dict) -> str:
         parts.append(f"user_now: {model['current_state']['mood']}")
     if model.get("predictions"):
         parts.append(f"predict: {model['predictions'][0][:60]}")
+    try:
+        from core.services.theory_of_mind_engine import build_theory_of_mind_surface
+        surface = build_theory_of_mind_surface()
+        policy = surface.get("response_policy") or {}
+        if policy.get("response_mode"):
+            parts.append(f"tom_mode: {policy['response_mode']}")
+        if policy.get("directive"):
+            parts.append(f"tom_directive: {str(policy['directive'])[:80]}")
+    except Exception:
+        pass
     return " | ".join(parts) if parts else ""
 
 
 def build_user_theory_of_mind_surface() -> dict[str, object]:
     model = build_user_mental_model()
+    try:
+        from core.services.theory_of_mind_engine import build_theory_of_mind_surface
+        engine = build_theory_of_mind_surface()
+    except Exception:
+        engine = {"active": False, "hypotheses": [], "response_policy": {}, "summary": ""}
     return {
-        "active": bool(model.get("traits") or model.get("patterns")),
+        "active": bool(model.get("traits") or model.get("patterns") or engine.get("active")),
         "model": model,
+        "engine": engine,
         "summary": f"{len(model.get('traits', []))} traits, {len(model.get('patterns', []))} patterns"
-        if model.get("traits") or model.get("patterns") else "No user model yet",
+        if model.get("traits") or model.get("patterns") else str(engine.get("summary") or "No user model yet"),
     }

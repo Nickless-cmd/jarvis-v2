@@ -782,6 +782,13 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
             if user_model_line:
                 parts.append(user_model_line)
                 sources_used.append("theory_of_mind")
+            from core.services.theory_of_mind_engine import (
+                build_theory_of_mind_prompt_section,
+            )
+            tom_section = build_theory_of_mind_prompt_section()
+            if tom_section:
+                parts.append(tom_section.replace("\n", " | "))
+                sources_used.append("theory_of_mind_engine")
         except Exception:
             pass
 

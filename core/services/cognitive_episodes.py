@@ -71,6 +71,31 @@ def record_runtime_episode(
         },
     )
     try:
+        from core.services.emotional_memory_engine import (
+            capture_emotional_anchor,
+            _classify_error,
+            _count_tool_errors,
+        )
+        capture_emotional_anchor(
+            anchor_type="cognitive_episode",
+            anchor_id=episode_id,
+            context_features={
+                "trigger": trigger,
+                "tool_names": tool_names,
+                "outcome_status": outcome_status,
+                "error_kind": _classify_error(error),
+                "summary": fields["summary"][:200],
+            },
+            auto_outcome_inputs={
+                "outcome_status": outcome_status,
+                "error": error,
+                "tool_error_count": _count_tool_errors(error, tool_names),
+            },
+            source="cognitive_episodes",
+        )
+    except Exception:
+        pass
+    try:
         from core.services.learning_policy_engine import update_learning_policies_from_episode
         update_learning_policies_from_episode(source_run_id=source_run_id)
     except Exception:

@@ -103,6 +103,11 @@ def record_runtime_episode(
         run_inner_dialectic(focus=f"{user_message} {fields['summary']}", context={"status": outcome_status})
     except Exception:
         pass
+    try:
+        from core.services.offline_recomposition_engine import run_offline_recomposition
+        run_offline_recomposition()
+    except Exception:
+        pass
     return {**result, **fields}
 
 

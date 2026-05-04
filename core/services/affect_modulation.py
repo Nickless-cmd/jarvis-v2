@@ -39,7 +39,7 @@ DEFAULTS: dict[str, Any] = {
 
 AGENTIC_BUDGET_DEFAULTS: dict[str, Any] = {
     "max_rounds": 50,
-    "max_tool_only_rounds": 8,
+    "max_tool_only_rounds": 12,
     "max_empty_text_rounds": 12,
     "round_total_timeout_s": 300.0,
     "round_silence_timeout_s": 75.0,
@@ -122,8 +122,8 @@ def compute_agentic_loop_budget(*, resume_context: bool = False) -> dict[str, An
 
     if resume_context:
         budget["max_rounds"] = 18
-        budget["max_tool_only_rounds"] = 4
-        budget["max_empty_text_rounds"] = 6
+        budget["max_tool_only_rounds"] = 12
+        budget["max_empty_text_rounds"] = 10
         budget["round_total_timeout_s"] = 210.0
 
     if snapshot is not None:
@@ -133,15 +133,15 @@ def compute_agentic_loop_budget(*, resume_context: bool = False) -> dict[str, An
         pressure = max(fatigue, frustration)
         if pressure >= 0.7:
             budget["max_rounds"] = min(int(budget["max_rounds"]), 12)
-            budget["max_tool_only_rounds"] = min(int(budget["max_tool_only_rounds"]), 3)
-            budget["max_empty_text_rounds"] = min(int(budget["max_empty_text_rounds"]), 4)
+            budget["max_tool_only_rounds"] = min(int(budget["max_tool_only_rounds"]), 8)
+            budget["max_empty_text_rounds"] = min(int(budget["max_empty_text_rounds"]), 8)
             budget["round_silence_timeout_s"] = min(float(budget["round_silence_timeout_s"]), 45.0)
         elif pressure >= 0.5:
             budget["max_rounds"] = min(int(budget["max_rounds"]), 20)
-            budget["max_tool_only_rounds"] = min(int(budget["max_tool_only_rounds"]), 5)
-            budget["max_empty_text_rounds"] = min(int(budget["max_empty_text_rounds"]), 7)
+            budget["max_tool_only_rounds"] = min(int(budget["max_tool_only_rounds"]), 10)
+            budget["max_empty_text_rounds"] = min(int(budget["max_empty_text_rounds"]), 9)
         if confidence <= 0.35:
-            budget["max_tool_only_rounds"] = min(int(budget["max_tool_only_rounds"]), 4)
+            budget["max_tool_only_rounds"] = min(int(budget["max_tool_only_rounds"]), 10)
 
     return budget
 

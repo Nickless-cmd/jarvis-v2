@@ -1894,6 +1894,31 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             )
                         except Exception:
                             pass
+                        try:
+                            from core.services.perceptual_event_engine import record_perceptual_event
+                            _change_type = (
+                                "runtime-interruption"
+                                if _outcome_status == "interrupted"
+                                else "runtime-completion"
+                            )
+                            _summary = (
+                                f"Visible run {_outcome_status}: "
+                                f"{_outcome_error or _followup_text[:160] or _run_ref.provider}"
+                            )
+                            record_perceptual_event(
+                                change_type=_change_type,
+                                summary=_summary,
+                                salience="high" if _outcome_status == "interrupted" else "medium",
+                                source_kind=f"runtime.visible_run_{_outcome_status}",
+                                evidence={
+                                    "run_id": _run_ref.run_id,
+                                    "provider": _run_ref.provider,
+                                    "model": _run_ref.model,
+                                    "status": _outcome_status,
+                                },
+                            )
+                        except Exception:
+                            pass
                         _run_memory_postprocess(_run_ref, _followup_text)
                     except Exception:
                         pass

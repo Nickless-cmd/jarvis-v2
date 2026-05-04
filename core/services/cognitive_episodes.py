@@ -88,6 +88,11 @@ def record_runtime_episode(
         )
     except Exception:
         pass
+    try:
+        from core.services.temporal_self_continuity import update_temporal_continuity_from_latest_episode
+        update_temporal_continuity_from_latest_episode()
+    except Exception:
+        pass
     return {**result, **fields}
 
 

@@ -255,3 +255,205 @@ def prune_aged_anchors() -> int:
     except Exception as exc:
         logger.warning("emotional_memory: prune failed: %s", exc)
         return 0
+
+
+# ---------------------------------------------------------------------------
+# Retrieval — tiered similarity matching with aging weight
+# ---------------------------------------------------------------------------
+
+
+_TIER1_THRESHOLD = 0.4
+_TIER2_THRESHOLD = 0.25
+_TIER1_FETCH_SIZE = 200
+_TIER2_FETCH_SIZE = 500
+
+
+def find_similar_anchors(
+    *,
+    anchor_type: str,
+    context_features: dict[str, object],
+    limit: int = 5,
+    min_intensity: float = 0.0,
+    require_outcome: bool = False,
+) -> list[dict[str, object]]:
+    """Find similar past anchors. Tiered: structured match first, lexical fallback.
+
+    Returns up to `limit` rows enriched with a `score` field, sorted desc.
+    Each row also carries `parsed_context` (decoded context_features_json).
+    """
+    from core.runtime.db import list_emotional_memory_anchors
+
+    try:
+        candidates = list_emotional_memory_anchors(
+            anchor_type=anchor_type,
+            min_intensity=min_intensity,
+            limit=_TIER1_FETCH_SIZE,
+        )
+    except Exception as exc:
+        logger.debug("emotional_memory: candidate fetch failed: %s", exc)
+        return []
+
+    parsed = [_with_parsed_context(row) for row in candidates]
+    if require_outcome:
+        parsed = [r for r in parsed if r.get("outcome_score") is not None]
+
+    tier1 = _tier1_score(anchor_type, context_features, parsed)
+    tier1_kept = [r for r in tier1 if r["score"] >= _TIER1_THRESHOLD]
+
+    if len(tier1_kept) >= 2:
+        kept = tier1_kept
+    else:
+        try:
+            broad = list_emotional_memory_anchors(
+                anchor_type=anchor_type,
+                min_intensity=min_intensity,
+                limit=_TIER2_FETCH_SIZE,
+            )
+        except Exception:
+            broad = candidates
+        broad_parsed = [_with_parsed_context(row) for row in broad]
+        if require_outcome:
+            broad_parsed = [r for r in broad_parsed if r.get("outcome_score") is not None]
+        tier2 = _tier2_lexical_score(context_features, broad_parsed)
+        tier2_kept = [r for r in tier2 if r["score"] >= _TIER2_THRESHOLD]
+        seen = {r["anchor_id"] for r in tier1_kept}
+        kept = list(tier1_kept) + [r for r in tier2_kept if r["anchor_id"] not in seen]
+
+    weighted = [_apply_aging_weight(r) for r in kept]
+    weighted = [r for r in weighted if r["score"] > 0.0]
+    weighted.sort(key=lambda r: r["score"], reverse=True)
+    return weighted[: max(int(limit), 1)]
+
+
+def _with_parsed_context(row: dict[str, object]) -> dict[str, object]:
+    raw = row.get("context_features_json") or "{}"
+    try:
+        ctx = json.loads(str(raw)) if raw else {}
+    except Exception:
+        ctx = {}
+    return {**row, "parsed_context": ctx}
+
+
+def _tier1_score(
+    anchor_type: str,
+    current: dict[str, object],
+    candidates: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    out: list[dict[str, object]] = []
+    if anchor_type == "cognitive_episode":
+        cur_trigger = str(current.get("trigger") or "")
+        cur_tools = set(str(t) for t in (current.get("tool_names") or []))
+        cur_status = str(current.get("outcome_status") or "")
+        cur_error_kind = str(current.get("error_kind") or "")
+        for row in candidates:
+            ctx = row.get("parsed_context") or {}
+            past_trigger = str(ctx.get("trigger") or "")
+            past_tools = set(str(t) for t in (ctx.get("tool_names") or []))
+            past_status = str(ctx.get("outcome_status") or "")
+            past_error_kind = str(ctx.get("error_kind") or "")
+            score = (
+                0.5 * (1.0 if cur_trigger and cur_trigger == past_trigger else 0.0)
+                + 0.3 * _jaccard(cur_tools, past_tools)
+                + 0.1 * (1.0 if cur_status and cur_status == past_status else 0.0)
+                + 0.1 * (1.0 if cur_error_kind and cur_error_kind == past_error_kind else 0.0)
+            )
+            out.append({**row, "score": score, "tier": "structural"})
+    elif anchor_type == "perceptual_event":
+        cur_kind = str(current.get("event_kind") or "")
+        cur_change = str(current.get("change_type") or "")
+        for row in candidates:
+            ctx = row.get("parsed_context") or {}
+            past_kind = str(ctx.get("event_kind") or "")
+            past_change = str(ctx.get("change_type") or "")
+            score = (
+                0.6 * (1.0 if cur_kind and cur_kind == past_kind else 0.0)
+                + 0.4 * (1.0 if cur_change and cur_change == past_change else 0.0)
+            )
+            out.append({**row, "score": score, "tier": "structural"})
+    elif anchor_type == "memory_heading":
+        cur_heading = str(current.get("heading_display") or "").strip().lower()[:30]
+        for row in candidates:
+            ctx = row.get("parsed_context") or {}
+            past_heading = str(ctx.get("heading_display") or "").strip().lower()[:30]
+            score = 1.0 if cur_heading and cur_heading == past_heading else 0.0
+            out.append({**row, "score": score, "tier": "structural"})
+    else:
+        for row in candidates:
+            out.append({**row, "score": 0.0, "tier": "structural"})
+    return out
+
+
+def _tier2_lexical_score(
+    current: dict[str, object], candidates: list[dict[str, object]]
+) -> list[dict[str, object]]:
+    cur_summary = str(current.get("summary") or "")
+    cur_tokens = _shingle(cur_summary)
+    out: list[dict[str, object]] = []
+    for row in candidates:
+        ctx = row.get("parsed_context") or {}
+        past_summary = str(ctx.get("summary") or "")
+        past_tokens = _shingle(past_summary)
+        score = _jaccard(cur_tokens, past_tokens)
+        out.append({**row, "score": score, "tier": "lexical"})
+    return out
+
+
+def _jaccard(a: set[str], b: set[str]) -> float:
+    if not a and not b:
+        return 0.0
+    inter = len(a & b)
+    union = len(a | b) or 1
+    return inter / union
+
+
+def _shingle(text: str, *, n: int = 3) -> set[str]:
+    """Tokenize lowercased text into overlapping n-grams of words."""
+    words = [w for w in (text or "").lower().split() if w]
+    if len(words) < n:
+        return set(words)
+    return {" ".join(words[i : i + n]) for i in range(len(words) - n + 1)}
+
+
+def _apply_aging_weight(row: dict[str, object]) -> dict[str, object]:
+    """Multiply score by aging factor based on captured_at.
+
+    < 30 days  → 1.0
+    30-180     → 0.5
+    > 180      → 0.0 unless intensity >= 0.7 OR outcome_score <= -0.3
+    """
+    from core.runtime.settings import load_settings
+
+    try:
+        settings = load_settings()
+        recent = int(getattr(settings, "emotional_memory_retention_recent_days", 30))
+        aging = int(getattr(settings, "emotional_memory_retention_aging_days", 180))
+        sig_int = float(getattr(settings, "emotional_memory_significance_intensity", 0.7))
+        sig_out = float(getattr(settings, "emotional_memory_significance_outcome", -0.3))
+    except Exception:
+        recent, aging, sig_int, sig_out = (30, 180, 0.7, -0.3)
+
+    captured_at = str(row.get("captured_at") or "")
+    age_days = 0
+    try:
+        ts = datetime.fromisoformat(captured_at)
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=UTC)
+        age_days = (datetime.now(UTC) - ts).days
+    except Exception:
+        age_days = 0
+
+    score = float(row.get("score") or 0.0)
+    if age_days < recent:
+        weight = 1.0
+    elif age_days <= aging:
+        weight = 0.5
+    else:
+        intensity = float(row.get("intensity") or 0.0)
+        outcome = row.get("outcome_score")
+        outcome_val = float(outcome) if outcome is not None else 0.0
+        if intensity >= sig_int or outcome_val <= sig_out:
+            weight = 0.5
+        else:
+            weight = 0.0
+
+    return {**row, "score": score * weight, "age_days": age_days}

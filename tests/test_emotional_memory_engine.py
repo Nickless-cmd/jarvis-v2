@@ -289,3 +289,169 @@ def test_prune_keeps_old_anchors_with_strongly_negative_outcome(
     removed = prune_aged_anchors()
     assert removed == 0
     assert len(list_emotional_memory_anchors()) == 1
+
+
+def test_find_similar_tier1_structured_match_episode(isolated_runtime) -> None:
+    import json
+    from core.runtime.db import insert_emotional_memory_anchor
+    from core.services.emotional_memory_engine import find_similar_anchors
+
+    insert_emotional_memory_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="ce-1",
+        captured_at="2026-05-04T12:00:00+00:00",
+        mood="frustrated",
+        intensity=0.6,
+        context_features_json=json.dumps({
+            "trigger": "visible-run:ollama/glm",
+            "tool_names": ["read_file", "propose_source_edit"],
+            "outcome_status": "interrupted",
+            "error_kind": "timeout",
+            "summary": "...",
+        }),
+    )
+    insert_emotional_memory_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="ce-2",
+        captured_at="2026-05-04T12:01:00+00:00",
+        mood="frustrated",
+        intensity=0.7,
+        context_features_json=json.dumps({
+            "trigger": "visible-run:ollama/glm",
+            "tool_names": ["read_file"],
+            "outcome_status": "interrupted",
+            "error_kind": "timeout",
+            "summary": "...",
+        }),
+    )
+    insert_emotional_memory_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="ce-other",
+        captured_at="2026-05-04T12:02:00+00:00",
+        mood="calm",
+        intensity=0.3,
+        context_features_json=json.dumps({
+            "trigger": "voice-input",
+            "tool_names": ["speak"],
+            "outcome_status": "completed",
+            "error_kind": "none",
+            "summary": "...",
+        }),
+    )
+
+    matches = find_similar_anchors(
+        anchor_type="cognitive_episode",
+        context_features={
+            "trigger": "visible-run:ollama/glm",
+            "tool_names": ["read_file", "propose_source_edit"],
+            "outcome_status": "interrupted",
+            "error_kind": "timeout",
+            "summary": "fresh run",
+        },
+    )
+    ids = [m["anchor_id"] for m in matches]
+    assert "ce-1" in ids and "ce-2" in ids
+    assert "ce-other" not in ids
+
+
+def test_find_similar_tier2_lexical_fallback_when_tier1_thin(
+    isolated_runtime,
+) -> None:
+    import json
+    from core.runtime.db import insert_emotional_memory_anchor
+    from core.services.emotional_memory_engine import find_similar_anchors
+
+    insert_emotional_memory_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="lex-1",
+        captured_at="2026-05-04T12:00:00+00:00",
+        mood="frustrated",
+        intensity=0.6,
+        context_features_json=json.dumps({
+            "trigger": "trigger-a",
+            "tool_names": ["x"],
+            "outcome_status": "completed",
+            "error_kind": "none",
+            "summary": "propose source edit attempt failed during commit hook",
+        }),
+    )
+    insert_emotional_memory_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="lex-2",
+        captured_at="2026-05-04T12:01:00+00:00",
+        mood="frustrated",
+        intensity=0.6,
+        context_features_json=json.dumps({
+            "trigger": "trigger-b",
+            "tool_names": ["y"],
+            "outcome_status": "completed",
+            "error_kind": "none",
+            "summary": "propose source edit attempt failed during commit hook again",
+        }),
+    )
+
+    matches = find_similar_anchors(
+        anchor_type="cognitive_episode",
+        context_features={
+            "trigger": "totally-different-trigger",
+            "tool_names": ["unrelated"],
+            "outcome_status": "completed",
+            "error_kind": "none",
+            "summary": "propose source edit attempt failed during commit hook",
+        },
+    )
+    ids = [m["anchor_id"] for m in matches]
+    assert "lex-1" in ids and "lex-2" in ids
+
+
+def test_find_similar_aging_weights_old_anchors_lower(isolated_runtime) -> None:
+    import json
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db import insert_emotional_memory_anchor
+    from core.services.emotional_memory_engine import find_similar_anchors
+
+    now = datetime.now(UTC)
+    feats = json.dumps({
+        "trigger": "x",
+        "tool_names": ["a"],
+        "outcome_status": "completed",
+        "error_kind": "none",
+        "summary": "exactly the same",
+    })
+    insert_emotional_memory_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="fresh",
+        captured_at=now.isoformat(),
+        mood="x", intensity=0.5,
+        context_features_json=feats,
+    )
+    insert_emotional_memory_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="aged",
+        captured_at=(now - timedelta(days=60)).isoformat(),
+        mood="x", intensity=0.5,
+        context_features_json=feats,
+    )
+
+    matches = find_similar_anchors(
+        anchor_type="cognitive_episode",
+        context_features={
+            "trigger": "x",
+            "tool_names": ["a"],
+            "outcome_status": "completed",
+            "error_kind": "none",
+            "summary": "exactly the same",
+        },
+    )
+    ids = [m["anchor_id"] for m in matches]
+    assert ids.index("fresh") < ids.index("aged")
+
+
+def test_find_similar_returns_empty_when_no_match(isolated_runtime) -> None:
+    from core.services.emotional_memory_engine import find_similar_anchors
+
+    matches = find_similar_anchors(
+        anchor_type="cognitive_episode",
+        context_features={"trigger": "any", "tool_names": [], "summary": "anything"},
+    )
+    assert matches == []

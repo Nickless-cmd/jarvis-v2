@@ -29604,6 +29604,119 @@ def list_cognitive_chronicle_entries(*, limit: int = 10) -> list[dict[str, objec
     ]
 
 
+# --- Cognitive Episodes ---
+
+def _ensure_cognitive_episodes_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cognitive_episodes (
+            episode_id TEXT NOT NULL,
+            source_run_id TEXT NOT NULL DEFAULT '',
+            session_id TEXT NOT NULL DEFAULT '',
+            trigger TEXT NOT NULL DEFAULT '',
+            outcome_status TEXT NOT NULL DEFAULT '',
+            summary TEXT NOT NULL DEFAULT '',
+            metacognition_json TEXT NOT NULL DEFAULT '{}',
+            attention_json TEXT NOT NULL DEFAULT '{}',
+            learning_json TEXT NOT NULL DEFAULT '{}',
+            social_json TEXT NOT NULL DEFAULT '{}',
+            perception_json TEXT NOT NULL DEFAULT '{}',
+            policy_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (episode_id)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_cognitive_episodes_recent
+        ON cognitive_episodes(created_at DESC)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_cognitive_episodes_run
+        ON cognitive_episodes(source_run_id)
+        """
+    )
+
+
+def insert_cognitive_episode(
+    *,
+    episode_id: str,
+    source_run_id: str = "",
+    session_id: str = "",
+    trigger: str = "",
+    outcome_status: str = "",
+    summary: str = "",
+    metacognition_json: str = "{}",
+    attention_json: str = "{}",
+    learning_json: str = "{}",
+    social_json: str = "{}",
+    perception_json: str = "{}",
+    policy_json: str = "{}",
+) -> dict[str, object]:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_cognitive_episodes_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO cognitive_episodes
+               (episode_id, source_run_id, session_id, trigger, outcome_status,
+                summary, metacognition_json, attention_json, learning_json,
+                social_json, perception_json, policy_json, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                str(episode_id),
+                str(source_run_id or ""),
+                str(session_id or ""),
+                str(trigger or "")[:240],
+                str(outcome_status or "")[:80],
+                str(summary or "")[:500],
+                str(metacognition_json or "{}"),
+                str(attention_json or "{}"),
+                str(learning_json or "{}"),
+                str(social_json or "{}"),
+                str(perception_json or "{}"),
+                str(policy_json or "{}"),
+                now,
+            ),
+        )
+    return {"episode_id": str(episode_id), "created_at": now}
+
+
+def list_cognitive_episodes(*, limit: int = 10) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_cognitive_episodes_table(conn)
+        rows = conn.execute(
+            "SELECT * FROM cognitive_episodes ORDER BY created_at DESC LIMIT ?",
+            (max(int(limit), 1),),
+        ).fetchall()
+    return [_cognitive_episode_row_to_dict(row) for row in rows]
+
+
+def get_latest_cognitive_episode() -> dict[str, object] | None:
+    episodes = list_cognitive_episodes(limit=1)
+    return episodes[0] if episodes else None
+
+
+def _cognitive_episode_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "episode_id": row["episode_id"],
+        "source_run_id": row["source_run_id"],
+        "session_id": row["session_id"],
+        "trigger": row["trigger"],
+        "outcome_status": row["outcome_status"],
+        "summary": row["summary"],
+        "metacognition_json": row["metacognition_json"],
+        "attention_json": row["attention_json"],
+        "learning_json": row["learning_json"],
+        "social_json": row["social_json"],
+        "perception_json": row["perception_json"],
+        "policy_json": row["policy_json"],
+        "created_at": row["created_at"],
+    }
+
+
 # --- Relationship Texture ---
 
 def _ensure_cognitive_relationship_texture_table(conn: sqlite3.Connection) -> None:

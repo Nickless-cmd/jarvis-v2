@@ -874,6 +874,15 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     except Exception:
         pass
 
+    try:
+        from core.services.offline_recomposition_engine import build_offline_recomposition_prompt_section
+        recomposition_line = build_offline_recomposition_prompt_section()
+        if recomposition_line:
+            parts.append(recomposition_line.replace("\n", " | "))
+            sources_used.append("offline_recomposition")
+    except Exception:
+        pass
+
     if not parts:
         return None
 

@@ -85,18 +85,14 @@ def _recently_touched_headings() -> set[str]:
     cutoff = (datetime.now(UTC) - timedelta(days=_FRESH_DAYS)).isoformat()
     touched: set[str] = set()
     try:
-        with connect() as conn:
-            # captured in emotional context recently
-            try:
-                rows = conn.execute(
-                    "SELECT heading_normalized FROM memory_emotional_context "
-                    "WHERE captured_at >= ?",
-                    (cutoff,),
-                ).fetchall()
-                for r in rows:
-                    touched.add(r["heading_normalized"])
-            except Exception:
-                pass
+        from core.runtime.db import list_emotional_memory_anchors
+        rows = list_emotional_memory_anchors(
+            anchor_type="memory_heading", since=cutoff, limit=2000
+        )
+        for r in rows:
+            anchor_id = r.get("anchor_id")
+            if anchor_id:
+                touched.add(str(anchor_id))
     except Exception as exc:
         logger.debug("memory_resurfacing: touched-headings lookup failed: %s", exc)
     return touched

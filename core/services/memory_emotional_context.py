@@ -1,56 +1,31 @@
-"""Emotional sidecar for MEMORY.md sections.
+"""Backwards-compatible shim — emotional memory now lives in emotional_memory_engine.
 
-Each MEMORY.md section heading gets an emotional snapshot at write time
-(mood, intensity, brief affect notes). Stored in a separate table so
-MEMORY.md content stays clean text — the affect is enrichment, not
-inline noise.
+This module re-exposes the original three public functions so existing
+call-sites do not break. New code should import from
+`core.services.emotional_memory_engine` directly.
 
-When Jarvis reads MEMORY.md back into a prompt, sections that have
-sidecar entries can be optionally annotated with their original mood:
-  ## Mini-Jarvis v0.2 Live (2026-04-28)  [felt: content, intensity 0.4]
-
-That gives him the sense that *this memory has weight* — he wasn't just
-recording facts, he was recording how it felt at the time. Closes the
-loop: future-Jarvis-recall can reference past-Jarvis-affect.
-
-Read path: enrich_headings_with_mood(text) — non-destructive, returns
-the text with [felt: ...] suffixes appended to matching headings.
-
-Write path: capture_mood_for_heading(heading) — call this whenever
-MEMORY.md is mutated (currently from _exec_memory_upsert_section).
-Idempotent — replaces the existing snapshot if the same heading is
-written again.
+The legacy `memory_emotional_context` table is no longer written to or
+read from by this shim. A separate one-shot migration script (see
+`scripts/migrate_emotional_memory.py`) copies any pre-existing legacy
+rows into `emotional_memory_anchors`.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
-from datetime import UTC, datetime
 
-from core.runtime.db import connect
+from core.runtime.db import (
+    get_emotional_memory_anchor,
+    list_emotional_memory_anchors,
+)
+from core.services.emotional_memory_engine import capture_emotional_anchor
 
 logger = logging.getLogger(__name__)
 
 
 def _normalize(heading: str) -> str:
-    return re.sub(r"\s+", " ", heading.strip().lower())
-
-
-def _ensure_table() -> None:
-    """Create the sidecar table if it doesn't exist. Idempotent."""
-    with connect() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS memory_emotional_context (
-                heading_normalized TEXT PRIMARY KEY,
-                heading_display    TEXT NOT NULL,
-                mood               TEXT NOT NULL,
-                intensity          REAL NOT NULL,
-                captured_at        TEXT NOT NULL,
-                source             TEXT,
-                notes              TEXT
-            )
-        """)
-        conn.commit()
+    return re.sub(r"\s+", " ", (heading or "").strip().lower())
 
 
 def capture_mood_for_heading(
@@ -59,111 +34,81 @@ def capture_mood_for_heading(
     source: str = "memory_upsert",
     notes: str | None = None,
 ) -> dict | None:
-    """Snapshot the current mood for a MEMORY.md heading.
-
-    Called from the upsert path. Reads current mood from mood_oscillator
-    (lazy import — avoids circular deps if the oscillator imports from
-    memory layers later).
-
-    Returns the captured row dict or None on failure (never raises —
-    memory writes must never fail because of sidecar trouble).
-    """
+    """Snapshot mood for a MEMORY.md heading. Returns legacy dict shape."""
     if not heading:
         return None
-    try:
-        from core.services.mood_oscillator import get_current_mood, get_mood_intensity
-        mood = get_current_mood()
-        intensity = round(float(get_mood_intensity()), 3)
-    except Exception as exc:
-        logger.debug("memory_emotional_context: could not read mood: %s", exc)
-        return None
-
     norm = _normalize(heading)
-    captured_at = datetime.now(UTC).isoformat()
-
-    try:
-        _ensure_table()
-        with connect() as conn:
-            conn.execute(
-                "INSERT INTO memory_emotional_context "
-                "(heading_normalized, heading_display, mood, intensity, captured_at, source, notes) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(heading_normalized) DO UPDATE SET "
-                "  heading_display=excluded.heading_display, "
-                "  mood=excluded.mood, "
-                "  intensity=excluded.intensity, "
-                "  captured_at=excluded.captured_at, "
-                "  source=excluded.source, "
-                "  notes=excluded.notes",
-                (norm, heading, mood, intensity, captured_at, source, notes),
-            )
-            conn.commit()
-    except Exception as exc:
-        logger.warning("memory_emotional_context: capture failed: %s", exc)
+    captured = capture_emotional_anchor(
+        anchor_type="memory_heading",
+        anchor_id=norm,
+        context_features={"heading_display": heading},
+        source=source,
+        notes=notes,
+    )
+    if captured is None:
         return None
-
     return {
         "heading_normalized": norm,
         "heading_display": heading,
-        "mood": mood,
-        "intensity": intensity,
-        "captured_at": captured_at,
+        "mood": captured.get("mood"),
+        "intensity": captured.get("intensity"),
+        "captured_at": captured.get("captured_at"),
         "source": source,
         "notes": notes,
     }
 
 
 def get_mood_for_heading(heading: str) -> dict | None:
-    """Return the stored mood snapshot for a heading, or None."""
     if not heading:
         return None
     norm = _normalize(heading)
-    try:
-        _ensure_table()
-        with connect() as conn:
-            row = conn.execute(
-                "SELECT heading_display, mood, intensity, captured_at, source, notes "
-                "FROM memory_emotional_context WHERE heading_normalized = ?",
-                (norm,),
-            ).fetchone()
-    except Exception as exc:
-        logger.debug("memory_emotional_context: lookup failed: %s", exc)
-        return None
+    row = get_emotional_memory_anchor(
+        anchor_type="memory_heading", anchor_id=norm
+    )
     if row is None:
         return None
-    return dict(row)
+    try:
+        ctx = json.loads(str(row.get("context_features_json") or "{}"))
+    except Exception:
+        ctx = {}
+    return {
+        "heading_normalized": norm,
+        "heading_display": str(ctx.get("heading_display") or norm),
+        "mood": row.get("mood"),
+        "intensity": row.get("intensity"),
+        "captured_at": row.get("captured_at"),
+        "source": row.get("source"),
+        "notes": row.get("notes"),
+    }
 
 
 def enrich_headings_with_mood(text: str) -> str:
-    """Annotate MEMORY.md headings with [felt: mood, intensity X.X] suffixes.
-
-    Reads the sidecar table once, walks the markdown headings, appends
-    the suffix when a match exists. Non-destructive — if the table is
-    empty or the heading has no sidecar, the text is returned unchanged.
-
-    Used at prompt-build time so Jarvis sees the emotional weight of
-    each remembered fact without polluting the canonical MEMORY.md file.
-    """
+    """Annotate MEMORY.md headings with [felt: mood, intensity X.X] suffixes."""
     if not text:
         return text
     try:
-        _ensure_table()
-        with connect() as conn:
-            rows = conn.execute(
-                "SELECT heading_normalized, mood, intensity FROM memory_emotional_context"
-            ).fetchall()
+        rows = list_emotional_memory_anchors(
+            anchor_type="memory_heading", limit=2000
+        )
     except Exception:
         return text
-
     if not rows:
         return text
 
-    by_norm = {r["heading_normalized"]: (r["mood"], float(r["intensity"])) for r in rows}
+    by_norm: dict[str, tuple[str, float]] = {}
+    for r in rows:
+        try:
+            mood = str(r.get("mood") or "")
+            intensity = float(r.get("intensity") or 0.0)
+            anchor_id = str(r.get("anchor_id") or "")
+            if anchor_id and mood:
+                by_norm[anchor_id] = (mood, intensity)
+        except Exception:
+            continue
 
     def _annotate(match: re.Match[str]) -> str:
         prefix = match.group(1)
         heading = match.group(2).strip()
-        # Skip if already annotated (idempotent across multiple enrich passes)
         if "[felt:" in heading:
             return match.group(0)
         norm = _normalize(heading)

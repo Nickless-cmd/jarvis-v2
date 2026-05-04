@@ -820,6 +820,15 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     except Exception:
         pass
 
+    try:
+        from core.services.counterfactual_self_simulation import build_counterfactual_prompt_section
+        counterfactual_line = build_counterfactual_prompt_section()
+        if counterfactual_line:
+            parts.append(counterfactual_line.replace("\n", " | "))
+            sources_used.append("counterfactual_self_simulation")
+    except Exception:
+        pass
+
     if not parts:
         return None
 

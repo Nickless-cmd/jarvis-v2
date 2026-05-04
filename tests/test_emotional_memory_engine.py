@@ -83,3 +83,116 @@ def test_count_tool_errors_heuristic(isolated_runtime) -> None:
     assert _count_tool_errors(
         "tool a failed; tool b error: 500", ["a", "b", "c"]
     ) == 2
+
+
+def test_capture_persists_full_affect_vector(isolated_runtime, monkeypatch) -> None:
+    from core.runtime.db import get_emotional_memory_anchor
+    from core.services import emotional_memory_engine as em
+
+    monkeypatch.setattr(em, "_read_current_mood", lambda: ("frustrated", 0.62))
+    monkeypatch.setattr(
+        em,
+        "_read_current_dimensions",
+        lambda: {
+            "confidence": 0.4,
+            "curiosity": 0.3,
+            "frustration": 0.7,
+            "fatigue": 0.5,
+            "trust": 0.6,
+        },
+    )
+
+    result = em.capture_emotional_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="ce-x1",
+        context_features={"trigger": "visible-run:ollama/glm", "tool_names": ["a"]},
+        auto_outcome_inputs={
+            "outcome_status": "interrupted",
+            "error": "",
+            "tool_error_count": 0,
+        },
+        source="cognitive_episodes",
+    )
+    assert result is not None
+    assert result["mood"] == "frustrated"
+
+    row = get_emotional_memory_anchor("cognitive_episode", "ce-x1")
+    assert row is not None
+    assert row["frustration"] == 0.7
+    assert row["fatigue"] == 0.5
+    assert row["outcome_score"] == -0.4
+    assert row["outcome_source"] == "auto"
+
+
+def test_capture_with_unavailable_dimensions_still_persists_mood(
+    isolated_runtime, monkeypatch
+) -> None:
+    from core.runtime.db import get_emotional_memory_anchor
+    from core.services import emotional_memory_engine as em
+
+    monkeypatch.setattr(em, "_read_current_mood", lambda: ("calm", 0.4))
+
+    def _raise():
+        raise RuntimeError("affect surface broken")
+
+    monkeypatch.setattr(em, "_read_current_dimensions", _raise)
+
+    em.capture_emotional_anchor(
+        anchor_type="memory_heading",
+        anchor_id="some-heading",
+        context_features={"heading_display": "Some Heading"},
+    )
+    row = get_emotional_memory_anchor("memory_heading", "some-heading")
+    assert row is not None
+    assert row["mood"] == "calm"
+    assert row["confidence"] is None
+    assert row["frustration"] is None
+
+
+def test_capture_returns_none_when_mood_unavailable(
+    isolated_runtime, monkeypatch
+) -> None:
+    from core.services import emotional_memory_engine as em
+
+    def _raise():
+        raise RuntimeError("oscillator down")
+
+    monkeypatch.setattr(em, "_read_current_mood", _raise)
+
+    result = em.capture_emotional_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="ce-broken",
+        context_features={},
+    )
+    assert result is None
+
+
+def test_capture_idempotent_overwrites_existing(
+    isolated_runtime, monkeypatch
+) -> None:
+    from core.runtime.db import (
+        get_emotional_memory_anchor,
+        list_emotional_memory_anchors,
+    )
+    from core.services import emotional_memory_engine as em
+
+    monkeypatch.setattr(em, "_read_current_dimensions", lambda: {})
+
+    monkeypatch.setattr(em, "_read_current_mood", lambda: ("calm", 0.3))
+    em.capture_emotional_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="ce-dup",
+        context_features={},
+    )
+
+    monkeypatch.setattr(em, "_read_current_mood", lambda: ("frustrated", 0.7))
+    em.capture_emotional_anchor(
+        anchor_type="cognitive_episode",
+        anchor_id="ce-dup",
+        context_features={},
+    )
+
+    rows = list_emotional_memory_anchors(anchor_type="cognitive_episode")
+    assert len(rows) == 1
+    row = get_emotional_memory_anchor("cognitive_episode", "ce-dup")
+    assert row["mood"] == "frustrated"

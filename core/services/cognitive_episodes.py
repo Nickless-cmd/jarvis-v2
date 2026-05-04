@@ -98,6 +98,11 @@ def record_runtime_episode(
         maybe_register_from_text(text=f"{user_message} {fields['summary']}", source="cognitive-episode")
     except Exception:
         pass
+    try:
+        from core.services.inner_dialectic_engine import run_inner_dialectic
+        run_inner_dialectic(focus=f"{user_message} {fields['summary']}", context={"status": outcome_status})
+    except Exception:
+        pass
     return {**result, **fields}
 
 

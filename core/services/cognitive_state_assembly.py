@@ -856,6 +856,15 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     except Exception:
         pass
 
+    try:
+        from core.services.inner_dialectic_engine import build_inner_dialectic_prompt_section
+        dialectic_line = build_inner_dialectic_prompt_section()
+        if dialectic_line:
+            parts.append(dialectic_line.replace("\n", " | "))
+            sources_used.append("inner_dialectic")
+    except Exception:
+        pass
+
     if not parts:
         return None
 

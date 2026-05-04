@@ -159,7 +159,28 @@ def record_perceptual_event(
         observed_at=datetime.now(UTC).isoformat(),
         evidence=evidence or {},
     )
-    return _record_perceptual_event(percept, state=_load_state())
+    result = _record_perceptual_event(percept, state=_load_state())
+
+    try:
+        from core.services.emotional_memory_engine import capture_emotional_anchor
+        anchor_id = str(
+            result.get("percept_id")
+            or f"pe-{percept.get('observed_at') or ''}-{change_type}"
+        )
+        capture_emotional_anchor(
+            anchor_type="perceptual_event",
+            anchor_id=anchor_id,
+            context_features={
+                "event_kind": source_kind,
+                "change_type": change_type,
+                "summary": summary[:200],
+            },
+            source="perceptual_event_engine",
+        )
+    except Exception:
+        pass
+
+    return result
 
 
 def build_perception_surface(*, limit: int = 6, scan: bool = True) -> dict[str, object]:

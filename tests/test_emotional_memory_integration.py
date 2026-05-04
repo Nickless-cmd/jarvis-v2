@@ -56,3 +56,24 @@ def test_capture_failure_does_not_break_episode_recording(
         summary="ok",
     )
     assert result["episode_id"].startswith("ce-")
+
+
+def test_perceptual_event_records_anchor(isolated_runtime, monkeypatch) -> None:
+    from core.runtime.db import list_emotional_memory_anchors
+    from core.services import emotional_memory_engine as em
+    from core.services.perceptual_event_engine import record_perceptual_event
+
+    monkeypatch.setattr(em, "_read_current_mood", lambda: ("alert", 0.5))
+    monkeypatch.setattr(em, "_read_current_dimensions", lambda: {})
+
+    record_perceptual_event(
+        change_type="file_modified",
+        summary="config.json changed externally",
+        salience="elevated",
+        source_kind="manual",
+    )
+
+    anchors = list_emotional_memory_anchors(anchor_type="perceptual_event")
+    assert len(anchors) == 1
+    assert anchors[0]["mood"] == "alert"
+    assert anchors[0]["outcome_score"] is None

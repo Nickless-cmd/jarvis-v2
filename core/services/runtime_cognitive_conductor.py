@@ -419,6 +419,9 @@ def build_cognitive_frame(
         theory_of_mind = _safe_theory_of_mind_surface()
         learning_policy = _safe_learning_policy_surface()
         perception = _safe_perception_surface()
+        emotional_memory = _safe_emotional_memory_surface(
+            context_features=_extract_context_features_from_episode(cognitive_episode)
+        )
 
         # --- Extract summaries ---
         brain_excerpts = brain_context.get("excerpts") or []
@@ -569,6 +572,21 @@ def build_cognitive_frame(
             else:
                 salient = [perception_item, *salient][:_MAX_SALIENT_ITEMS]
 
+    if emotional_memory.get("active"):
+        em_summary = str(emotional_memory.get("directive") or "")[:_MAX_SLICE_CHARS]
+        if em_summary:
+            em_item = {
+                "source": "emotional-memory",
+                "summary": em_summary,
+                "temporal": "carried-across-sessions",
+            }
+            if salient and salient[0].get("source") in {
+                "cognitive-episode", "theory-of-mind", "learning-policy",
+            }:
+                salient = [salient[0], em_item, *salient[1:]][:_MAX_SALIENT_ITEMS]
+            else:
+                salient = [em_item, *salient][:_MAX_SALIENT_ITEMS]
+
     affordances = _select_affordances(
         active_capabilities=active_capabilities,
         gated_items=gated_items,
@@ -640,6 +658,7 @@ def build_cognitive_frame(
         "theory_of_mind_carry": theory_of_mind if theory_of_mind.get("active") else {},
         "learning_policy_carry": learning_policy if learning_policy.get("active") else {},
         "perception_carry": perception if perception.get("active") else {},
+        "emotional_memory_carry": emotional_memory if emotional_memory.get("active") else {},
         "experiential_support": experiential_support if experiential_support.get("support_posture") else {},
         "active_constraints": constraints_summary,
         "counts": {
@@ -655,6 +674,7 @@ def build_cognitive_frame(
             "theory_of_mind_carry": 1 if theory_of_mind.get("active") else 0,
             "learning_policy_carry": 1 if learning_policy.get("active") else 0,
             "perception_carry": 1 if perception.get("active") else 0,
+            "emotional_memory_carry": 1 if emotional_memory.get("active") else 0,
             "integrated_signal_inputs": (
                 len(relation_items)
                 + len(world_items)
@@ -671,6 +691,7 @@ def build_cognitive_frame(
                 + (1 if theory_of_mind.get("active") else 0)
                 + (1 if learning_policy.get("active") else 0)
                 + (1 if perception.get("active") else 0)
+                + (1 if emotional_memory.get("active") else 0)
             ),
         },
         "summary": _build_frame_summary(
@@ -783,6 +804,12 @@ def build_cognitive_frame_prompt_section() -> str | None:
         if directive:
             lines.append(f"- Perception: {directive[:90]}")
 
+    emotional_memory = frame.get("emotional_memory_carry") or {}
+    if emotional_memory.get("active"):
+        directive = str(emotional_memory.get("directive") or "").strip()
+        if directive:
+            lines.append(f"- Emotional precedent: {directive[:120]}")
+
     if salient:
         for item in salient[:3]:
             lines.append(f"- [{item['source']}] {item['summary'][:80]}")
@@ -797,7 +824,7 @@ def build_cognitive_frame_prompt_section() -> str | None:
         labels = [g["label"] for g in gated[:2]]
         lines.append(f"- Gated: {', '.join(labels)}")
 
-    while len("\n".join(lines)) >= 780 and len(lines) > 4:
+    while len("\n".join(lines)) >= 900 and len(lines) > 4:
         lines.pop()
     return "\n".join(lines)
 
@@ -1074,6 +1101,44 @@ def _safe_perception_surface() -> dict[str, object]:
         return build_perception_surface(limit=4)
     except Exception:
         return {"active": False, "summary": "", "events": [], "directive": ""}
+
+
+def _safe_emotional_memory_surface(
+    *,
+    context_features: dict[str, object] | None = None,
+) -> dict[str, object]:
+    try:
+        from core.services.emotional_memory_engine import build_emotional_memory_surface
+        return build_emotional_memory_surface(
+            anchor_type="cognitive_episode",
+            context_features=context_features or {},
+        )
+    except Exception:
+        return {"active": False, "summary": "", "items": [], "match_count": 0}
+
+
+def _extract_context_features_from_episode(
+    cognitive_episode: dict[str, object],
+) -> dict[str, object]:
+    """Pull retrieval-relevant fields from a cognitive_episode surface entry."""
+    if not cognitive_episode or not cognitive_episode.get("active"):
+        return {}
+    items = cognitive_episode.get("items") or []
+    if not items:
+        return {}
+    latest = items[0]
+    perception = latest.get("perception") or {}
+    learning = latest.get("learning") or {}
+    evidence = learning.get("evidence") or {}
+    return {
+        "trigger": str(latest.get("trigger") or ""),
+        "tool_names": [
+            t for t in (evidence.get("tools") or []) if t
+        ],
+        "outcome_status": str(latest.get("outcome_status") or ""),
+        "error_kind": str(perception.get("mode") or ""),
+        "summary": str(latest.get("summary") or "")[:200],
+    }
 
 
 def _safe_relation_continuity() -> dict[str, object]:

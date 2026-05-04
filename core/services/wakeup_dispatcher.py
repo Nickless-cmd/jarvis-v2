@@ -45,33 +45,38 @@ def dispatch_due_wakeups() -> dict[str, Any]:
         prompt = str(record.get("prompt", ""))
         reason = str(record.get("reason", ""))
 
-        # A: push to webchat + Discord DM (dual-channel — user sees it
-        # regardless of which channel they're active on)
-        try:
-            from core.services.notification_bridge import send_session_notification
-            msg = (
-                f"⏰ Self-wakeup fyrede ({reason or 'no reason'}):\n"
-                f"  {prompt}\n"
-                f"_(wakeup_id: {wid})_"
-            )
-            send_session_notification(msg, source="self-wakeup")
-        except Exception as exc:
-            logger.warning("wakeup webchat push failed: %s", exc)
+        # A: push notification to the ORIGINAL channel only.
+        # The wakeup record stores which channel + session it came from —
+        # we respect that instead of blasting dual-channel every time.
+        wakeup_channel = record.get("channel", "webchat")
+        wakeup_session = record.get("session_id", "")
 
-        # Discord DM fallback — ensures the user sees the wakeup even when
-        # they're talking on Discord instead of webchat
-        try:
-            from core.services.discord_gateway import send_dm_to_user, is_gateway_connected
-            from core.services.discord_identity import get_owner_discord_id
-            if is_gateway_connected():
-                owner_id = get_owner_discord_id()
-                if owner_id:
-                    send_dm_to_user(
-                        owner_id,
-                        f"⏰ Self-wakeup: {prompt}\n_(wakeup_id: {wid})_",
-                    )
-        except Exception as exc:
-            logger.debug("wakeup Discord DM failed: %s", exc)
+        if wakeup_channel == "discord":
+            # Discord DM only
+            try:
+                from core.services.discord_gateway import send_dm_to_user, is_gateway_connected
+                from core.services.discord_identity import get_owner_discord_id
+                if is_gateway_connected():
+                    owner_id = get_owner_discord_id()
+                    if owner_id:
+                        send_dm_to_user(
+                            owner_id,
+                            f"⏰ Self-wakeup: {prompt}\n_(wakeup_id: {wid})_",
+                        )
+            except Exception as exc:
+                logger.debug("wakeup Discord DM failed: %s", exc)
+        else:
+            # Default: webchat notification
+            try:
+                from core.services.notification_bridge import send_session_notification
+                msg = (
+                    f"⏰ Self-wakeup fyrede ({reason or 'no reason'}):\n"
+                    f"  {prompt}\n"
+                    f"_(wakeup_id: {wid})_"
+                )
+                send_session_notification(msg, source="self-wakeup")
+            except Exception as exc:
+                logger.warning("wakeup webchat push failed: %s", exc)
 
         # B: trigger heartbeat phase tick (lets Jarvis' inner loop see it)
         try:

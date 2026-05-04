@@ -249,6 +249,15 @@ def _record_perceptual_event(
             reinforce_learning_policy(rule)
     except Exception:
         pass
+    try:
+        from core.services.somatic_runtime_body import update_somatic_body
+        update_somatic_body(
+            event_type=str(event.get("change_type") or ""),
+            intensity=0.8 if str(event.get("salience") or "") == "high" else 0.45,
+            detail=str(event.get("summary") or ""),
+        )
+    except Exception:
+        pass
     return event
 
 

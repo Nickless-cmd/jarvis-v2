@@ -865,6 +865,15 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     except Exception:
         pass
 
+    try:
+        from core.services.somatic_runtime_body import build_somatic_body_prompt_section
+        somatic_line = build_somatic_body_prompt_section()
+        if somatic_line:
+            parts.append(somatic_line.replace("\n", " | "))
+            sources_used.append("somatic_runtime_body")
+    except Exception:
+        pass
+
     if not parts:
         return None
 

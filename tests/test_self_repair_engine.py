@@ -265,3 +265,101 @@ def test_check_cooldown_returns_db_error_on_query_failure(
 
     monkeypatch.setattr(eng, "count_recent_attempts", boom)
     assert eng._check_cooldown(p) == "db-error"
+
+
+def test_register_pattern_validates_allowlist(isolated_runtime) -> None:
+    from core.services.self_repair_engine import register_pattern
+
+    import pytest
+    with pytest.raises(ValueError, match="not in allowlist"):
+        register_pattern(
+            pattern_id="p1", name="x",
+            trigger_event_kind="k",
+            action_type="evil_action",
+        )
+
+
+def test_register_pattern_requires_identity_fields(isolated_runtime) -> None:
+    from core.services.self_repair_engine import register_pattern
+
+    import pytest
+    with pytest.raises(ValueError, match="required"):
+        register_pattern(
+            pattern_id="", name="x",
+            trigger_event_kind="k",
+            action_type="control_daemon",
+        )
+
+
+def test_register_pattern_persists_with_settings_defaults(isolated_runtime) -> None:
+    from core.services.self_repair_engine import register_pattern, list_patterns
+
+    register_pattern(
+        pattern_id="p1", name="x",
+        trigger_event_kind="k",
+        action_type="control_daemon",
+        action_params={"name": "mail_checker", "action": "restart"},
+    )
+    patterns = list_patterns()
+    assert len(patterns) == 1
+    p = patterns[0]
+    assert p["pattern_id"] == "p1"
+    assert p["enabled"] == 1
+    assert p["cooldown_seconds"] == 300
+
+
+def test_enable_disable_delete_pattern(isolated_runtime) -> None:
+    from core.services.self_repair_engine import (
+        register_pattern, list_patterns,
+        enable_pattern, disable_pattern, delete_pattern,
+    )
+
+    register_pattern(
+        pattern_id="p1", name="x", trigger_event_kind="k",
+        action_type="control_daemon",
+    )
+    assert disable_pattern("p1") is True
+    assert list_patterns(enabled=False)[0]["pattern_id"] == "p1"
+    assert enable_pattern("p1") is True
+    assert list_patterns(enabled=True)[0]["pattern_id"] == "p1"
+    assert delete_pattern("p1") is True
+    assert list_patterns() == []
+
+
+def test_list_recent_attempts(isolated_runtime) -> None:
+    from core.runtime.db import (
+        insert_self_repair_pattern, insert_self_repair_attempt,
+    )
+    from core.services.self_repair_engine import list_recent_attempts
+
+    insert_self_repair_pattern(
+        pattern_id="p1", name="x", trigger_event_kind="k",
+        action_type="control_daemon", source="manual",
+    )
+    for i in range(3):
+        insert_self_repair_attempt(
+            pattern_id="p1",
+            attempted_at=f"2026-05-05T10:0{i}:00+00:00",
+            triggered_by_event_id=i, outcome="executed",
+            error_summary=None, elapsed_ms=10,
+        )
+    rows = list_recent_attempts(limit=2)
+    assert len(rows) == 2
+    assert rows[0]["attempted_at"] > rows[1]["attempted_at"]
+
+
+def test_build_self_repair_surface_returns_overview(isolated_runtime) -> None:
+    from core.services.self_repair_engine import (
+        register_pattern, build_self_repair_surface,
+    )
+
+    register_pattern(
+        pattern_id="p1", name="X", trigger_event_kind="k",
+        action_type="control_daemon",
+    )
+    surface = build_self_repair_surface()
+    assert surface["engine_enabled"] is True
+    assert surface["pattern_count"] == 1
+    assert surface["enabled_pattern_count"] == 1
+    assert surface["patterns"][0]["pattern_id"] == "p1"
+    assert "recent_attempts" in surface

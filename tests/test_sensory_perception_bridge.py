@@ -446,3 +446,117 @@ def test_salience_medium_for_metadata_change(isolated_runtime) -> None:
 def test_salience_normal_for_mild_lexical_drift(isolated_runtime) -> None:
     from core.services.sensory_perception_bridge import _salience_for_change
     assert _salience_for_change({"changed": True, "kind": "lexical_drift", "jaccard": 0.35}) == "normal"
+
+
+def test_classify_returns_none_for_non_sensory_event(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import classify_sensory_change
+    event = {"id": 1, "kind": "tool.completed", "payload": {}}
+    assert classify_sensory_change(event) is None
+
+
+def test_classify_returns_none_for_invalid_modality(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import classify_sensory_change
+    event = {
+        "id": 1,
+        "kind": "memory.sensory.recorded",
+        "payload": {"id": "x", "modality": "telepathy"},
+    }
+    assert classify_sensory_change(event) is None
+
+
+def test_classify_returns_none_when_record_missing(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import classify_sensory_change
+    event = {
+        "id": 1,
+        "kind": "memory.sensory.recorded",
+        "payload": {"id": "nonexistent-id", "modality": "atmosphere"},
+        "created_at": "2026-05-04T12:00:00+00:00",
+    }
+    assert classify_sensory_change(event) is None
+
+
+def test_classify_returns_none_when_bridge_disabled(
+    isolated_runtime, monkeypatch
+) -> None:
+    from core.runtime.db_sensory import insert_sensory_memory
+    from core.runtime import settings as settings_mod
+    from core.services.sensory_perception_bridge import classify_sensory_change
+
+    record = insert_sensory_memory(
+        modality="atmosphere", content="x", mood_tone="rolig", metadata={},
+    )
+
+    original_load = settings_mod.load_settings
+    def patched_load():
+        s = original_load()
+        s.sensory_perception_bridge_enabled = False
+        return s
+    monkeypatch.setattr(settings_mod, "load_settings", patched_load)
+
+    event = {
+        "id": 1, "kind": "memory.sensory.recorded",
+        "payload": {"id": record["id"], "modality": "atmosphere"},
+        "created_at": "2026-05-04T12:00:00+00:00",
+    }
+    assert classify_sensory_change(event) is None
+
+
+def test_classify_returns_none_when_no_baseline(isolated_runtime) -> None:
+    from core.runtime.db_sensory import insert_sensory_memory
+    from core.services.sensory_perception_bridge import classify_sensory_change
+
+    record = insert_sensory_memory(
+        modality="atmosphere", content="first ever", mood_tone="rolig", metadata={},
+    )
+    event = {
+        "id": 1, "kind": "memory.sensory.recorded",
+        "payload": {"id": record["id"], "modality": "atmosphere"},
+        "created_at": record["timestamp"],
+    }
+    assert classify_sensory_change(event) is None
+
+
+def test_classify_returns_percept_when_mood_changes(isolated_runtime) -> None:
+    from core.runtime.db_sensory import insert_sensory_memory
+    from core.services.sensory_perception_bridge import classify_sensory_change
+
+    for i in range(3):
+        insert_sensory_memory(
+            modality="atmosphere",
+            content="lyset er varmt og rummet er hyggeligt",
+            mood_tone="rolig", metadata={},
+        )
+    new_record = insert_sensory_memory(
+        modality="atmosphere",
+        content="lyset er varmt og rummet er hyggeligt",
+        mood_tone="kaotisk", metadata={},
+    )
+
+    event = {
+        "id": 99, "kind": "memory.sensory.recorded",
+        "payload": {"id": new_record["id"], "modality": "atmosphere"},
+        "created_at": new_record["timestamp"],
+    }
+    percept = classify_sensory_change(event)
+    assert percept is not None
+    assert percept["change_type"] == "sensory-change-atmosphere"
+    assert percept["salience"] in {"medium", "high"}
+    assert percept["source_kind"] == "memory.sensory.recorded"
+    assert percept["evidence"]["mood_tone_now"] == "kaotisk"
+    assert percept["evidence"]["mood_tone_baseline"] == "rolig"
+    assert "ændret" in percept["summary"] or "skiftet" in percept["summary"].lower()
+
+
+def test_classify_handles_top_level_exception(isolated_runtime, monkeypatch) -> None:
+    from core.services import sensory_perception_bridge as bridge
+
+    def _broken(modality, current):
+        raise RuntimeError("boom")
+    monkeypatch.setattr(bridge, "_build_baseline", _broken)
+
+    event = {
+        "id": 1, "kind": "memory.sensory.recorded",
+        "payload": {"id": "x", "modality": "atmosphere"},
+        "created_at": "2026-05-04T12:00:00+00:00",
+    }
+    assert bridge.classify_sensory_change(event) is None

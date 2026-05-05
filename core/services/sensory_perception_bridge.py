@@ -373,3 +373,97 @@ def _salience_for_change(change: dict) -> str:
     if kind == "metadata_change":
         return "medium"
     return "normal"
+
+
+_VALID_MODALITIES = {"visual", "audio", "atmosphere", "mixed"}
+
+
+def _bridge_enabled() -> bool:
+    try:
+        from core.runtime.settings import load_settings
+        return bool(getattr(load_settings(), "sensory_perception_bridge_enabled", True))
+    except Exception:
+        return True
+
+
+def _percept(
+    *,
+    source_event_id: int,
+    source_kind: str,
+    change_type: str,
+    salience: str,
+    summary: str,
+    observed_at: str,
+    evidence: dict[str, object],
+) -> dict[str, object]:
+    """Build a percept dict in the shape expected by perceptual_event_engine._record_perceptual_event."""
+    return {
+        "source_event_id": int(source_event_id or 0),
+        "source_kind": str(source_kind or ""),
+        "change_type": str(change_type or ""),
+        "salience": str(salience or "normal"),
+        "summary": " ".join(str(summary or "").split())[:240],
+        "observed_at": str(observed_at or ""),
+        "evidence": dict(evidence or {}),
+    }
+
+
+def classify_sensory_change(event: dict[str, object]) -> dict[str, object] | None:
+    """Top-level entry. Returns a percept dict if the event represents a meaningful
+    sensory change, else None. Never raises."""
+    try:
+        if not _bridge_enabled():
+            return None
+        return _classify_sensory_change_inner(event)
+    except Exception as exc:
+        logger.warning("sensory_perception_bridge: classify failed: %s", exc)
+        return None
+
+
+def _classify_sensory_change_inner(event: dict[str, object]) -> dict[str, object] | None:
+    if str(event.get("kind") or "") != "memory.sensory.recorded":
+        return None
+
+    payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+    payload = payload or {}
+    memory_id = payload.get("id")
+    modality = str(payload.get("modality") or "")
+    if not memory_id or modality not in _VALID_MODALITIES:
+        return None
+
+    try:
+        from core.services import sensory_archive
+        record = sensory_archive.get(str(memory_id))
+    except Exception as exc:
+        logger.debug("sensory_perception_bridge: get record failed: %s", exc)
+        return None
+    if not record:
+        return None
+
+    try:
+        baseline = _build_baseline(modality, record)
+    except Exception as exc:
+        logger.debug("sensory_perception_bridge: build_baseline failed: %s", exc)
+        return None
+
+    change = _detect_change(record, baseline, modality)
+    if not change.get("changed"):
+        return None
+
+    salience = _salience_for_change(change)
+    return _percept(
+        source_event_id=int(event.get("id") or 0),
+        source_kind="memory.sensory.recorded",
+        change_type=f"sensory-change-{modality}",
+        salience=salience,
+        summary=change.get("summary") or f"Sensory change in {modality}",
+        observed_at=str(event.get("created_at") or record.get("timestamp") or ""),
+        evidence={
+            "memory_id": memory_id,
+            "modality": modality,
+            "mood_tone_now": record.get("mood_tone"),
+            "mood_tone_baseline": change.get("baseline_mood"),
+            "jaccard": round(float(change.get("jaccard") or 0.0), 4),
+            "change_kind": change.get("kind"),
+        },
+    )

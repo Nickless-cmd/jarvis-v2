@@ -119,6 +119,13 @@ class RuntimeSettings:
     sensory_perception_time_window_days: int = 7
     sensory_perception_min_baseline_records: int = 3
     sensory_perception_recent_baseline_size: int = 3
+    # Self-repair engine — runtime-instigated repair actions for known patterns.
+    self_repair_engine_enabled: bool = True
+    self_repair_default_cooldown_seconds: int = 300
+    self_repair_default_max_attempts_per_window: int = 3
+    self_repair_default_window_seconds: int = 3600
+    self_repair_default_auto_disable_after_escalations: int = 3
+    self_repair_default_auto_disable_window_hours: int = 24
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -171,6 +178,12 @@ class RuntimeSettings:
             "sensory_perception_time_window_days": self.sensory_perception_time_window_days,
             "sensory_perception_min_baseline_records": self.sensory_perception_min_baseline_records,
             "sensory_perception_recent_baseline_size": self.sensory_perception_recent_baseline_size,
+            "self_repair_engine_enabled": self.self_repair_engine_enabled,
+            "self_repair_default_cooldown_seconds": self.self_repair_default_cooldown_seconds,
+            "self_repair_default_max_attempts_per_window": self.self_repair_default_max_attempts_per_window,
+            "self_repair_default_window_seconds": self.self_repair_default_window_seconds,
+            "self_repair_default_auto_disable_after_escalations": self.self_repair_default_auto_disable_after_escalations,
+            "self_repair_default_auto_disable_window_hours": self.self_repair_default_auto_disable_window_hours,
         }
         return {**self.extra, **typed}
 
@@ -317,6 +330,12 @@ def load_settings() -> RuntimeSettings:
         sensory_perception_time_window_days=int(data.get("sensory_perception_time_window_days", defaults.sensory_perception_time_window_days)),
         sensory_perception_min_baseline_records=int(data.get("sensory_perception_min_baseline_records", defaults.sensory_perception_min_baseline_records)),
         sensory_perception_recent_baseline_size=int(data.get("sensory_perception_recent_baseline_size", defaults.sensory_perception_recent_baseline_size)),
+        self_repair_engine_enabled=bool(data.get("self_repair_engine_enabled", defaults.self_repair_engine_enabled)),
+        self_repair_default_cooldown_seconds=int(data.get("self_repair_default_cooldown_seconds", defaults.self_repair_default_cooldown_seconds)),
+        self_repair_default_max_attempts_per_window=int(data.get("self_repair_default_max_attempts_per_window", defaults.self_repair_default_max_attempts_per_window)),
+        self_repair_default_window_seconds=int(data.get("self_repair_default_window_seconds", defaults.self_repair_default_window_seconds)),
+        self_repair_default_auto_disable_after_escalations=int(data.get("self_repair_default_auto_disable_after_escalations", defaults.self_repair_default_auto_disable_after_escalations)),
+        self_repair_default_auto_disable_window_hours=int(data.get("self_repair_default_auto_disable_window_hours", defaults.self_repair_default_auto_disable_window_hours)),
         extra={key: value for key, value in data.items() if key not in KNOWN_FIELDS},
     )
 

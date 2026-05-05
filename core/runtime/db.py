@@ -33533,3 +33533,12 @@ from core.runtime.db_self_repair import (  # noqa: E402,F401
     count_recent_attempts,
     list_recent_self_repair_attempts,
 )
+
+
+# --- Concept baseline (split into db_concept_baseline.py per boy scout rule) ---
+from core.runtime.db_concept_baseline import (  # noqa: E402,F401
+    upsert_concept_baseline_stat,
+    increment_concept_baseline_total,
+    get_concept_baseline_stat,
+    list_concept_baseline_stats,
+)

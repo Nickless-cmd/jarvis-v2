@@ -1198,6 +1198,14 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   ).slice(0, 5)
   const livingExecutiveFocus = livingExecutive?.current_focus || livingExecutive?.currentFocus || null
   const livingExecutiveLatestTrace = livingExecutiveTraces[0] || null
+  const livingExecutiveSummary = livingExecutive?.summary || {}
+  const livingExecutiveSummaryText = typeof livingExecutiveSummary === 'string'
+    ? livingExecutiveSummary
+    : [
+        livingExecutiveSummary.listener_running ? 'listener running' : '',
+        `${livingExecutiveSummary.trace_count ?? 0} traces`,
+        livingExecutiveSummary.last_action ? `last ${humanizeToken(livingExecutiveSummary.last_action)}` : '',
+      ].filter(Boolean).join(' · ')
   const hasLivingExecutive = Boolean(
     livingExecutive?.active ||
     livingExecutiveFocus ||
@@ -1339,7 +1347,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           <small className="muted">
             {livingExecutiveFocus?.summary ||
               livingExecutiveLatestTrace?.aftertaste ||
-              livingExecutive?.summary ||
+              livingExecutiveSummaryText ||
               'No chosen focus yet'}
           </small>
           {livingExecutiveLatestTrace ? (
@@ -2018,7 +2026,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           <div className="panel-header">
             <div>
               <h3>Living Executive</h3>
-              <p className="muted">{livingExecutive?.summary || 'Impulse, choice, action and aftertaste are visible here.'}</p>
+              <p className="muted">{livingExecutiveSummaryText || 'Impulse, choice, action and aftertaste are visible here.'}</p>
             </div>
             <StatusPill status={livingExecutive?.active ? 'active' : 'idle'} />
           </div>

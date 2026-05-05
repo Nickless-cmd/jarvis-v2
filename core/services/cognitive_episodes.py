@@ -133,6 +133,43 @@ def record_runtime_episode(
         run_offline_recomposition()
     except Exception:
         pass
+
+    # emotion-trigger: joy on completed visible run (+ pride on tool-heavy)
+    try:
+        from core.services.emotion_concepts import trigger_emotion_concept
+        if outcome_status == "completed" and not error:
+            trigger_emotion_concept(
+                "joy", intensity=0.4,
+                trigger=f"completed-run-{episode_id[:12]}",
+                source="cognitive_episodes",
+            )
+            if len(tool_names) >= 2:
+                trigger_emotion_concept(
+                    "pride", intensity=0.3,
+                    trigger=f"completed-tool-heavy-{episode_id[:12]}",
+                    source="cognitive_episodes",
+                )
+    except Exception:
+        pass
+
+    # emotion-trigger: frustration_blocked on interrupted/error runs (+ stuck on tool-error)
+    try:
+        from core.services.emotion_concepts import trigger_emotion_concept
+        if outcome_status == "interrupted" or error:
+            trigger_emotion_concept(
+                "frustration_blocked", intensity=0.5,
+                trigger=f"interrupted-run-{episode_id[:12]}",
+                source="cognitive_episodes",
+            )
+            if error and "tool" in str(error).lower():
+                trigger_emotion_concept(
+                    "stuck", intensity=0.4,
+                    trigger=f"tool-error-{episode_id[:12]}",
+                    source="cognitive_episodes",
+                )
+    except Exception:
+        pass
+
     return {**result, **fields}
 
 

@@ -126,6 +126,16 @@ class RuntimeSettings:
     self_repair_default_window_seconds: int = 3600
     self_repair_default_auto_disable_after_escalations: int = 3
     self_repair_default_auto_disable_window_hours: int = 24
+    # Emotion concepts baseline integration — tone, perception, baseline drift.
+    emotion_concepts_tone_injection_enabled: bool = True
+    emotion_concepts_perception_focus_enabled: bool = True
+    concept_baseline_tracker_enabled: bool = True
+    emotion_concepts_tone_intensity_threshold: float = 0.3
+    emotion_concepts_tone_max_hints: int = 3
+    emotion_concepts_perception_max_foci: int = 3
+    concept_baseline_drift_min_sustained_days: int = 14
+    concept_baseline_drift_min_confidence: float = 0.7
+    emotion_concepts_default_trigger_cooldown_seconds: int = 30
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -184,6 +194,15 @@ class RuntimeSettings:
             "self_repair_default_window_seconds": self.self_repair_default_window_seconds,
             "self_repair_default_auto_disable_after_escalations": self.self_repair_default_auto_disable_after_escalations,
             "self_repair_default_auto_disable_window_hours": self.self_repair_default_auto_disable_window_hours,
+            "emotion_concepts_tone_injection_enabled": self.emotion_concepts_tone_injection_enabled,
+            "emotion_concepts_perception_focus_enabled": self.emotion_concepts_perception_focus_enabled,
+            "concept_baseline_tracker_enabled": self.concept_baseline_tracker_enabled,
+            "emotion_concepts_tone_intensity_threshold": self.emotion_concepts_tone_intensity_threshold,
+            "emotion_concepts_tone_max_hints": self.emotion_concepts_tone_max_hints,
+            "emotion_concepts_perception_max_foci": self.emotion_concepts_perception_max_foci,
+            "concept_baseline_drift_min_sustained_days": self.concept_baseline_drift_min_sustained_days,
+            "concept_baseline_drift_min_confidence": self.concept_baseline_drift_min_confidence,
+            "emotion_concepts_default_trigger_cooldown_seconds": self.emotion_concepts_default_trigger_cooldown_seconds,
         }
         return {**self.extra, **typed}
 
@@ -336,6 +355,15 @@ def load_settings() -> RuntimeSettings:
         self_repair_default_window_seconds=int(data.get("self_repair_default_window_seconds", defaults.self_repair_default_window_seconds)),
         self_repair_default_auto_disable_after_escalations=int(data.get("self_repair_default_auto_disable_after_escalations", defaults.self_repair_default_auto_disable_after_escalations)),
         self_repair_default_auto_disable_window_hours=int(data.get("self_repair_default_auto_disable_window_hours", defaults.self_repair_default_auto_disable_window_hours)),
+        emotion_concepts_tone_injection_enabled=bool(data.get("emotion_concepts_tone_injection_enabled", defaults.emotion_concepts_tone_injection_enabled)),
+        emotion_concepts_perception_focus_enabled=bool(data.get("emotion_concepts_perception_focus_enabled", defaults.emotion_concepts_perception_focus_enabled)),
+        concept_baseline_tracker_enabled=bool(data.get("concept_baseline_tracker_enabled", defaults.concept_baseline_tracker_enabled)),
+        emotion_concepts_tone_intensity_threshold=float(data.get("emotion_concepts_tone_intensity_threshold", defaults.emotion_concepts_tone_intensity_threshold)),
+        emotion_concepts_tone_max_hints=int(data.get("emotion_concepts_tone_max_hints", defaults.emotion_concepts_tone_max_hints)),
+        emotion_concepts_perception_max_foci=int(data.get("emotion_concepts_perception_max_foci", defaults.emotion_concepts_perception_max_foci)),
+        concept_baseline_drift_min_sustained_days=int(data.get("concept_baseline_drift_min_sustained_days", defaults.concept_baseline_drift_min_sustained_days)),
+        concept_baseline_drift_min_confidence=float(data.get("concept_baseline_drift_min_confidence", defaults.concept_baseline_drift_min_confidence)),
+        emotion_concepts_default_trigger_cooldown_seconds=int(data.get("emotion_concepts_default_trigger_cooldown_seconds", defaults.emotion_concepts_default_trigger_cooldown_seconds)),
         extra={key: value for key, value in data.items() if key not in KNOWN_FIELDS},
     )
 

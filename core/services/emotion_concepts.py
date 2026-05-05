@@ -195,6 +195,19 @@ def trigger_emotion_concept(
             _prune_if_needed()
 
     _persist_async(dict(signal))
+
+    # Feed concept_baseline_tracker (Layer 3)
+    try:
+        from core.services.concept_baseline_tracker import record_concept_trigger
+        record_concept_trigger(
+            concept=concept,
+            intensity=intensity,
+            triggered_at=now.isoformat(),
+            source=source,
+        )
+    except Exception:
+        pass
+
     logger.debug("emotion_concepts: triggered %s intensity=%.2f", concept, intensity)
     return dict(signal)
 

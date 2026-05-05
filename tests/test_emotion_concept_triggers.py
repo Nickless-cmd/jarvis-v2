@@ -62,3 +62,94 @@ def test_trigger_cooldown_independent_per_source(
     # Different sources → both succeed
     assert r1 is not None
     assert r2 is not None
+
+
+def test_trigger_concept_records_to_baseline_tracker(isolated_runtime) -> None:
+    from core.runtime.db import get_concept_baseline_stat
+    from core.services.emotion_concepts import trigger_emotion_concept
+    from core.services import emotion_concepts as ec
+
+    # Reset cooldown state
+    ec._last_trigger_at.clear()
+
+    trigger_emotion_concept(
+        "joy", intensity=0.5, source="integration-test",
+    )
+    row = get_concept_baseline_stat("joy")
+    assert row is not None
+    assert row["total_triggers"] == 1
+
+
+def test_completed_episode_fires_joy(isolated_runtime, monkeypatch) -> None:
+    from core.services import emotion_concepts as ec
+    from core.services.cognitive_episodes import record_runtime_episode
+
+    ec._last_trigger_at.clear()
+
+    fired = []
+    original = ec.trigger_emotion_concept
+    monkeypatch.setattr(
+        ec, "trigger_emotion_concept",
+        lambda *a, **kw: (fired.append((a, kw)) or original(*a, **kw)),
+    )
+
+    record_runtime_episode(
+        source_run_id="run-1",
+        session_id="s",
+        trigger="visible-run:test",
+        outcome_status="completed",
+        summary="ok",
+        tool_names=["a"],
+    )
+
+    concepts_fired = [a[0][0] for a in fired]
+    assert "joy" in concepts_fired
+
+
+def test_interrupted_episode_fires_frustration_blocked(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.services import emotion_concepts as ec
+    from core.services.cognitive_episodes import record_runtime_episode
+
+    ec._last_trigger_at.clear()
+
+    fired = []
+    original = ec.trigger_emotion_concept
+    monkeypatch.setattr(
+        ec, "trigger_emotion_concept",
+        lambda *a, **kw: (fired.append((a, kw)) or original(*a, **kw)),
+    )
+
+    record_runtime_episode(
+        source_run_id="run-2", session_id="s",
+        trigger="x", outcome_status="interrupted",
+        summary="boom", tool_names=[],
+        error="upstream timeout",
+    )
+
+    concepts_fired = [a[0][0] for a in fired]
+    assert "frustration_blocked" in concepts_fired
+
+
+def test_tool_heavy_completed_fires_pride(isolated_runtime, monkeypatch) -> None:
+    from core.services import emotion_concepts as ec
+    from core.services.cognitive_episodes import record_runtime_episode
+
+    ec._last_trigger_at.clear()
+
+    fired = []
+    original = ec.trigger_emotion_concept
+    monkeypatch.setattr(
+        ec, "trigger_emotion_concept",
+        lambda *a, **kw: (fired.append((a, kw)) or original(*a, **kw)),
+    )
+
+    record_runtime_episode(
+        source_run_id="run-3", session_id="s",
+        trigger="x", outcome_status="completed",
+        summary="ok", tool_names=["t1", "t2", "t3"],
+    )
+
+    concepts_fired = [a[0][0] for a in fired]
+    assert "pride" in concepts_fired

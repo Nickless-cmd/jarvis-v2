@@ -138,6 +138,12 @@ def classify_event_change(event: dict[str, object]) -> dict[str, object] | None:
             observed_at=created_at,
             evidence=payload,
         )
+    if kind == "memory.sensory.recorded":
+        try:
+            from core.services.sensory_perception_bridge import classify_sensory_change
+            return classify_sensory_change(event)
+        except Exception:
+            return None
     return None
 
 

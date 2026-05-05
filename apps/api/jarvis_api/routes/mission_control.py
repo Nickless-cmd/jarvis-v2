@@ -3940,6 +3940,13 @@ def mc_living_executive() -> dict:
     return build_living_executive_surface()
 
 
+@router.get("/agency-map")
+def mc_agency_map() -> dict:
+    """Connected/missing agency bridges for Mission Control."""
+    from core.services.agency_map import build_agency_map_surface
+    return build_agency_map_surface()
+
+
 # ── MC Tab helpers ─────────────────────────────────────────────────────────
 
 def _get_all_tools() -> list[dict]:

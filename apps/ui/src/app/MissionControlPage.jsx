@@ -14,6 +14,7 @@ import { OpsTab } from '../components/mission-control/OpsTab'
 import { OverviewTab } from '../components/mission-control/OverviewTab'
 import { SkillsTab } from '../components/mission-control/SkillsTab'
 import { CouncilTab } from '../components/mission-control/CouncilTab'
+import { AgencyMapTab } from '../components/mission-control/AgencyMapTab'
 import { RelationshipTab } from '../components/mission-control/RelationshipTab'
 import { ProprioceptionTab } from '../components/mission-control/ProprioceptionTab'
 import { ThreadsTab } from '../components/mission-control/ThreadsTab'
@@ -234,6 +235,7 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
 
 
           {activeTab === 'council' ? <CouncilTab /> : null}
+          {activeTab === 'agency' ? <AgencyMapTab /> : null}
           {activeTab === 'memory' ? <MemoryTab /> : null}
           {activeTab === 'skills' ? <SkillsTab /> : null}
           {activeTab === 'hardening' ? <HardeningTab /> : null}

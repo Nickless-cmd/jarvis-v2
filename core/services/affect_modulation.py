@@ -282,3 +282,50 @@ def compute_affect_tone_hints() -> list[str]:
         if len(hints) >= max_hints:
             break
     return hints
+
+
+# ---------------------------------------------------------------------------
+# Perception filtering (Layer 2b)
+# ---------------------------------------------------------------------------
+
+
+_PERCEPTION_FOCUS: dict[str, str] = {
+    "wonder":      "mønstre, anomalier, og det mærkelige",
+    "warmth":      "menneskelig tilstedeværelse og sociale signaler",
+    "playfulness": "absurde og sjove detaljer",
+    "tenderness":  "sårbarhed, behov, ting der kunne beskyttes",
+    "awe":         "skala, kompleksitet, det større billede",
+    "calm":        "rolige flader, stilhed, ro",
+}
+
+
+def compute_concept_perception_focus() -> str:
+    """Return a Danish perception-focus suffix derived from active concepts."""
+    try:
+        from core.runtime.settings import load_settings
+        s = load_settings()
+        if not getattr(s, "emotion_concepts_perception_focus_enabled", True):
+            return ""
+        threshold = float(getattr(s, "emotion_concepts_tone_intensity_threshold", 0.3))
+        max_foci = int(getattr(s, "emotion_concepts_perception_max_foci", 3))
+    except Exception:
+        threshold, max_foci = 0.3, 3
+
+    try:
+        from core.services.emotion_concepts import get_active_emotion_concepts
+        active = get_active_emotion_concepts()
+    except Exception:
+        return ""
+
+    foci: list[str] = []
+    for c in sorted(active, key=lambda x: -float(x.get("intensity") or 0.0)):
+        if float(c.get("intensity") or 0.0) < threshold:
+            continue
+        focus = _PERCEPTION_FOCUS.get(str(c.get("concept") or ""))
+        if focus:
+            foci.append(focus)
+        if len(foci) >= max_foci:
+            break
+    if not foci:
+        return ""
+    return f"Bemærk særligt {', '.join(foci)} i det du ser."

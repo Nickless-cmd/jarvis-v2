@@ -531,3 +531,83 @@ def test_record_failed_triggers_auto_disable_at_threshold(
     assert after["enabled"] == 0
     assert after["last_outcome"] == "auto_disabled"
     assert any("auto-disabled" in m for m in notify_calls)
+
+
+def test_engine_disabled_skips_all_processing(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.runtime.db import list_recent_self_repair_attempts
+    from core.runtime import settings as settings_mod
+    from core.services import self_repair_engine as eng
+
+    eng.register_pattern(
+        pattern_id="p1", name="X", trigger_event_kind="k",
+        action_type="control_daemon",
+        action_params={"name": "x", "action": "restart"},
+    )
+
+    original_load = settings_mod.load_settings
+    def patched_load():
+        s = original_load()
+        s.self_repair_engine_enabled = False
+        return s
+    monkeypatch.setattr(settings_mod, "load_settings", patched_load)
+
+    eng._process_event({"id": 1, "kind": "k", "payload": {}})
+    assert list_recent_self_repair_attempts(pattern_id="p1") == []
+
+
+def test_unknown_event_kind_skipped_silently(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.runtime.db import list_recent_self_repair_attempts
+    from core.services import self_repair_engine as eng
+
+    eng.register_pattern(
+        pattern_id="p1", name="X", trigger_event_kind="kind.x",
+        action_type="control_daemon",
+        action_params={"name": "x", "action": "restart"},
+    )
+
+    monkeypatch.setitem(eng._ACTION_HANDLERS, "control_daemon", lambda p: {"ok": True})
+
+    eng._process_event({"id": 1, "kind": "kind.y", "payload": {}})
+    assert list_recent_self_repair_attempts(pattern_id="p1") == []
+
+
+def test_process_event_runs_matching_pattern(isolated_runtime, monkeypatch) -> None:
+    from core.runtime.db import list_recent_self_repair_attempts
+    from core.services import self_repair_engine as eng
+
+    eng.register_pattern(
+        pattern_id="p1", name="X",
+        trigger_event_kind="kind.x",
+        trigger_match={"daemon": "mail_checker"},
+        action_type="control_daemon",
+        action_params={"name": "mail_checker", "action": "restart"},
+    )
+    monkeypatch.setitem(eng._ACTION_HANDLERS, "control_daemon", lambda p: {"ok": True})
+
+    eng._process_event({
+        "id": 99, "kind": "kind.x", "payload": {"daemon": "mail_checker"},
+    })
+
+    attempts = list_recent_self_repair_attempts(pattern_id="p1")
+    assert len(attempts) == 1
+    assert attempts[0]["outcome"] == "executed"
+
+
+def test_listener_starts_and_stops_cleanly(isolated_runtime) -> None:
+    import time
+    from core.services import self_repair_engine as eng
+
+    eng.start_listener()
+    assert eng._LISTENER_THREAD is not None
+    assert eng._LISTENER_THREAD.is_alive()
+
+    eng.stop_listener()
+    for _ in range(30):
+        if not eng._LISTENER_THREAD.is_alive():
+            break
+        time.sleep(0.1)
+    assert not eng._LISTENER_THREAD.is_alive()

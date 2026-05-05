@@ -544,3 +544,85 @@ def _attempt_repair(pattern: SelfRepairPattern, event: dict) -> None:
             error=str(exc)[:240] or type(exc).__name__,
             elapsed_ms=elapsed_ms,
         )
+
+
+# ---------------------------------------------------------------------------
+# Event processor + listener daemon
+# ---------------------------------------------------------------------------
+
+
+import queue
+
+
+_LISTENER_THREAD: threading.Thread | None = None
+_LISTENER_STOP = threading.Event()
+_LISTENER_QUEUE: "queue.Queue[dict[str, Any] | None] | None" = None
+
+
+def _process_event(event: dict) -> None:
+    """Match event against enabled patterns, execute if any match."""
+    if not _engine_enabled():
+        return
+
+    event_kind = str(event.get("kind") or "")
+    if not event_kind:
+        return
+
+    try:
+        patterns = list_self_repair_patterns(
+            enabled=True, trigger_event_kind=event_kind,
+        )
+    except Exception as exc:
+        logger.warning("self_repair: list_patterns failed: %s", exc)
+        return
+
+    for raw_pattern in patterns:
+        try:
+            pattern = _decode_pattern(raw_pattern)
+        except Exception:
+            continue
+        if not _pattern_matches_event(pattern, event):
+            continue
+        _attempt_repair(pattern, event)
+
+
+def start_listener() -> None:
+    """Start the eventbus listener daemon. Idempotent."""
+    global _LISTENER_THREAD, _LISTENER_QUEUE
+    if _LISTENER_THREAD is not None and _LISTENER_THREAD.is_alive():
+        return
+    _LISTENER_STOP.clear()
+    _LISTENER_QUEUE = event_bus.subscribe()
+    _LISTENER_THREAD = threading.Thread(
+        target=_listener_loop,
+        args=(_LISTENER_QUEUE,),
+        daemon=True,
+        name="self-repair-engine-listener",
+    )
+    _LISTENER_THREAD.start()
+    logger.info("self_repair_engine: listener started")
+
+
+def stop_listener() -> None:
+    """Signal the listener to exit. Best-effort."""
+    _LISTENER_STOP.set()
+    if _LISTENER_QUEUE is not None:
+        try:
+            _LISTENER_QUEUE.put(None)
+        except Exception:
+            pass
+
+
+def _listener_loop(q: "queue.Queue[dict[str, Any] | None]") -> None:
+    while not _LISTENER_STOP.is_set():
+        try:
+            item = q.get(timeout=1.0)
+        except queue.Empty:
+            continue
+        if item is None:
+            break
+        try:
+            _process_event(item)
+        except Exception as exc:
+            logger.warning("self_repair_engine: process_event failed: %s", exc)
+    logger.info("self_repair_engine: listener stopped")

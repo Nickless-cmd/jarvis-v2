@@ -3409,11 +3409,31 @@ def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[st
         _reflection_support_signal_instruction,
         _retained_memory_support_signal_instruction,
         _temporal_support_signal_instruction,
+        _emotion_concept_tone_section,
     ):
         section = builder()
         if section:
             sections.append(section)
     return sections
+
+
+def _emotion_concept_tone_section() -> str | None:
+    """Tone instructions derived from active emotion concepts (Layer 2a).
+
+    Active concepts above intensity threshold contribute Jarvis-voice tone
+    instructions. Empty when no qualifying concept is active.
+    """
+    try:
+        from core.services.affect_modulation import compute_affect_tone_hints
+        hints = compute_affect_tone_hints()
+    except Exception:
+        return None
+    if not hints:
+        return None
+    return (
+        "## Tone right now (active emotion concepts)\n"
+        + "\n".join(f"- {h}" for h in hints)
+    )
 
 
 def _self_model_signal_tracking_section() -> str | None:

@@ -65,6 +65,7 @@ def build_living_executive_surface(*, limit: int = 12) -> dict[str, object]:
         },
         "current_focus": dict(state.get("current_focus") or {}),
         "current_tool_plan": dict(state.get("current_tool_plan") or {}),
+        "runnable_tool_proposals": list((state.get("current_tool_plan") or {}).get("runnable_proposals") or []),
         "memory_precedents": _recent_memory_precedents(limit=5),
         "recent_traces": recent,
         "allowed_actions": sorted(_ACTION_HANDLERS),
@@ -76,11 +77,11 @@ def choose_impulse(events: list[dict[str, Any]]) -> dict[str, Any] | None:
     for event in events:
         impulse = _impulse_from_event(event)
         if impulse:
-            impulses.append(impulse)
+            impulses.append(_attach_memory_precedents(impulse))
     if not impulses:
         return None
-    impulses.sort(key=lambda item: float(item.get("intensity") or 0.0), reverse=True)
-    return _attach_memory_precedents(impulses[0])
+    impulses.sort(key=lambda item: float(item.get("choice_score") or item.get("intensity") or 0.0), reverse=True)
+    return impulses[0]
 
 
 def process_event(event: dict[str, Any]) -> dict[str, object] | None:
@@ -368,7 +369,14 @@ def _action_propose_tool_plan(impulse: dict[str, Any]) -> dict[str, object]:
         "tool_name": str(payload.get("tool_name") or "tool"),
         "status": str(payload.get("status") or "unknown"),
         "reason": str(payload.get("reason") or impulse.get("choice") or ""),
-        "proposal": "inspect prior outcomes, adjust arguments or route through a safer recovery action",
+        "tool_family": _tool_family(str(payload.get("tool_name") or "tool")),
+        "proposal": "inspect prior outcomes, adjust arguments, then route through the least risky runnable recovery",
+        "runnable_proposals": _runnable_tool_proposals(
+            tool_name=str(payload.get("tool_name") or "tool"),
+            status=str(payload.get("status") or "unknown"),
+            reason=str(payload.get("reason") or ""),
+            precedents=precedents,
+        ),
         "precedent_count": len(precedents),
         "precedents": precedents[:3],
         "chosen_at": _now_iso(),
@@ -464,16 +472,18 @@ def _record_trace(
 def _attach_memory_precedents(impulse: dict[str, Any]) -> dict[str, Any]:
     precedents = _recent_memory_precedents(
         action_hint=str(impulse.get("action_id") or ""),
+        tool_hint=str((impulse.get("payload") or {}).get("tool_name") or ""),
         limit=5,
     )
-    if not precedents:
-        return impulse
     enriched = dict(impulse)
     enriched["memory_precedents"] = precedents
+    bias = _choice_bias_from_precedents(enriched, precedents)
+    enriched["memory_bias"] = bias
+    enriched["choice_score"] = max(0.0, min(1.0, float(enriched.get("intensity") or 0.0) + bias))
     return enriched
 
 
-def _recent_memory_precedents(*, action_hint: str = "", limit: int = 5) -> list[dict[str, Any]]:
+def _recent_memory_precedents(*, action_hint: str = "", tool_hint: str = "", limit: int = 5) -> list[dict[str, Any]]:
     try:
         from core.services.runtime_action_outcome_tracking import (
             recent_runtime_action_outcomes,
@@ -482,21 +492,139 @@ def _recent_memory_precedents(*, action_hint: str = "", limit: int = 5) -> list[
     except Exception:
         return []
     hint = action_hint.strip()
+    tool = tool_hint.strip()
     precedents: list[dict[str, Any]] = []
     for item in outcomes:
         action_id = str(item.get("action_id") or "")
         if hint and hint not in action_id and not action_id.startswith("tool:"):
             continue
+        if tool and action_id.startswith("tool:") and tool not in action_id:
+            continue
+        payload = item.get("payload") if isinstance(item.get("payload"), dict) else {}
+        result = item.get("result") if isinstance(item.get("result"), dict) else {}
         precedents.append({
+            "kind": "runtime_action_outcome",
             "outcome_id": str(item.get("outcome_id") or ""),
             "action_id": action_id,
             "status": str(item.get("result_status") or ""),
             "summary": str(item.get("result_summary") or "")[:220],
+            "score": float(item.get("decision_score") or 0.0),
+            "tool_family": str(payload.get("tool_family") or result.get("tool_family") or ""),
             "recorded_at": str(item.get("recorded_at") or ""),
         })
         if len(precedents) >= limit:
             break
+    precedents.extend(_emotional_choice_precedents(limit=max(0, limit - len(precedents))))
     return precedents
+
+
+def _choice_bias_from_precedents(impulse: dict[str, Any], precedents: list[dict[str, Any]]) -> float:
+    if not precedents:
+        return 0.0
+    source_kind = str(impulse.get("source_kind") or "")
+    action_id = str(impulse.get("action_id") or "")
+    bias = 0.0
+    for item in precedents[:5]:
+        status = str(item.get("status") or "").lower()
+        score = float(item.get("score") or 0.0)
+        if status in {"error", "failed", "timeout"} or score < -0.4:
+            bias += 0.05
+        elif status in {"executed", "ok", "success", "completed"} or score > 0.5:
+            bias += 0.03
+        if item.get("kind") == "emotion_concept":
+            bias += 0.02
+    if source_kind == "tool.completed" and action_id == "propose_tool_plan":
+        bias += 0.04
+    return max(-0.08, min(0.18, bias))
+
+
+def _emotional_choice_precedents(*, limit: int) -> list[dict[str, Any]]:
+    if limit <= 0:
+        return []
+    precedents: list[dict[str, Any]] = []
+    try:
+        from core.services.emotion_concepts import get_active_emotion_concepts
+        for concept in get_active_emotion_concepts()[:limit]:
+            precedents.append({
+                "kind": "emotion_concept",
+                "action_id": f"emotion:{concept.get('concept') or ''}",
+                "status": str(concept.get("direction") or "active"),
+                "summary": str(concept.get("trigger") or concept.get("source") or "")[:220],
+                "score": float(concept.get("intensity") or 0.0),
+                "recorded_at": str(concept.get("created_at") or ""),
+            })
+    except Exception:
+        pass
+    return precedents[:limit]
+
+
+def _tool_family(tool_name: str) -> str:
+    try:
+        from core.services.tool_outcome_memory import classify_tool_family
+        return classify_tool_family(tool_name)
+    except Exception:
+        return "general"
+
+
+def _runnable_tool_proposals(
+    *,
+    tool_name: str,
+    status: str,
+    reason: str,
+    precedents: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    family = _tool_family(tool_name)
+    base = {
+        "source_tool": str(tool_name or "tool"),
+        "source_status": str(status or "unknown"),
+        "reason": str(reason or "")[:220],
+        "precedent_count": len(precedents),
+        "approval": "review",
+    }
+    if family == "read":
+        return [{
+            **base,
+            "proposal_id": f"tool-recovery:{tool_name}:retry-read",
+            "label": "Retry read with narrower target",
+            "tool": tool_name,
+            "arguments_template": {"target": "<same target, narrowed if possible>", "limit": 80},
+            "risk": "low",
+        }]
+    if family == "write":
+        return [{
+            **base,
+            "proposal_id": f"tool-recovery:{tool_name}:inspect-before-write",
+            "label": "Inspect exact context before another write",
+            "tool": "read_file",
+            "arguments_template": {"path": "<target path>", "limit": 120},
+            "risk": "medium",
+        }]
+    if family == "execution":
+        return [{
+            **base,
+            "proposal_id": f"tool-recovery:{tool_name}:diagnose-command",
+            "label": "Run a diagnostic before retrying command",
+            "tool": tool_name,
+            "arguments_template": {"cmd": "<diagnostic command>", "yield_time_ms": 1000},
+            "risk": "medium",
+        }]
+    if family == "browser":
+        return [{
+            **base,
+            "proposal_id": f"tool-recovery:{tool_name}:observe-browser",
+            "label": "Observe current browser state before next action",
+            "tool": tool_name,
+            "arguments_template": {"action": "observe"},
+            "risk": "low",
+        }]
+    return [{
+        **base,
+        "proposal_id": f"tool-recovery:{tool_name}:retry-with-context",
+        "label": "Retry with smaller arguments and precedent check",
+        "tool": tool_name,
+        "arguments_template": {"note": "<supply narrowed arguments after inspecting precedents>"},
+        "risk": "medium",
+    }]
 
 
 def _aftertaste(*, status: str, impulse: dict[str, Any]) -> str:

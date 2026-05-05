@@ -190,3 +190,14 @@ def test_mc_agency_map_structure(monkeypatch):
     assert result["summary"]["partial"] == 0
     assert result["summary"]["missing"] == 0
     assert result["nodes"][0]["id"] == "senses"
+
+
+def test_agency_map_exposes_dark_edges_and_completed_next_moves():
+    from core.services.agency_map import build_agency_map_surface
+
+    result = build_agency_map_surface()
+
+    assert result["summary"]["dark_edges"] == len(result["darkEdges"])
+    assert result["summary"]["dark_edges"] >= 1
+    assert any(node["id"] == "hidden_runtime" for node in result["nodes"])
+    assert all(move["priority"] == "done" for move in result["nextMoves"])

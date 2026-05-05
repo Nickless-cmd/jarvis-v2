@@ -11,6 +11,9 @@ const STATUS_COLOR = {
   missing: T.red,
   active: T.accent,
   open: T.amber,
+  done: T.green,
+  'partial-surface': T.amber,
+  'emerging-surface': T.accent,
 }
 
 function statusColor(status) {
@@ -127,6 +130,28 @@ function QuestionRow({ item }) {
   )
 }
 
+function DarkEdgeRow({ item }) {
+  return (
+    <article style={s({
+      background: T.bgRaised,
+      border: `1px solid ${T.border0}`,
+      borderRadius: T.r_sm,
+      padding: 12,
+      display: 'grid',
+      gridTemplateColumns: 'minmax(0, 0.8fr) minmax(0, 1.4fr) minmax(0, 0.7fr) auto',
+      gap: 10,
+      alignItems: 'center',
+    })}>
+      <strong style={s({ fontSize: 11, color: T.text1, minWidth: 0, wordBreak: 'break-word' })}>
+        {item.source} → {item.target}
+      </strong>
+      <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' })}>{item.summary}</span>
+      <span style={s({ ...mono, color: T.text3, fontSize: 9, minWidth: 0, wordBreak: 'break-word' })}>{item.surface}</span>
+      <StatusPill status={item.visibility} />
+    </article>
+  )
+}
+
 export function AgencyMapTab() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -218,6 +243,7 @@ export function AgencyMapTab() {
         <SummaryCard icon={Compass} label="Partial" value={summary.partial || 0} color={T.amber} />
         <SummaryCard icon={Zap} label="Experimental" value={summary.experimental || 0} color={T.accent} />
         <SummaryCard icon={Eye} label="Missing" value={summary.missing || 0} color={T.red} />
+        <SummaryCard icon={Eye} label="Dark Edges" value={summary.dark_edges || 0} color={T.amber} />
       </section>
 
       <section style={s({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 })}>
@@ -239,6 +265,15 @@ export function AgencyMapTab() {
 
       <section style={s({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 })}>
         {(data?.questions || []).map((item) => <QuestionRow key={item.question} item={item} />)}
+      </section>
+
+      <section style={s({ display: 'flex', flexDirection: 'column', gap: 7 })}>
+        <div style={s({ ...mono, color: T.text3, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em' })}>
+          Dark Edges
+        </div>
+        {(data?.darkEdges || []).map((item) => (
+          <DarkEdgeRow key={`${item.source}-${item.target}`} item={item} />
+        ))}
       </section>
 
       <section style={s({ display: 'flex', flexDirection: 'column', gap: 7 })}>

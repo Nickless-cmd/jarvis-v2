@@ -22,8 +22,20 @@ def test_record_tool_outcome_memory_persists_runtime_action(monkeypatch) -> None
     assert stored["action_id"] == "tool:bash"
     assert recorded[0]["mode"] == "tool"
     assert recorded[0]["score"] < 0
+    assert recorded[0]["payload"]["tool_family"] == "execution"
     assert recorded[0]["payload"]["arguments_preview"] == {"command": "false"}
+    assert recorded[0]["result"]["tool_family"] == "execution"
     assert recorded[0]["result"]["summary"] == "exit 1"
+
+
+def test_tool_outcome_scoring_uses_tool_family() -> None:
+    from core.services import tool_outcome_memory as tom
+
+    assert tom.classify_tool_family("read_file") == "read"
+    assert tom.classify_tool_family("write_file") == "write"
+    assert tom.classify_tool_family("browser_navigate") == "browser"
+    assert tom._score_for_outcome(status="ok", family="write", result={}) > tom._score_for_outcome(status="ok", family="read", result={})
+    assert tom._score_for_outcome(status="failed", family="write", result={}) < tom._score_for_outcome(status="failed", family="read", result={})
 
 
 def test_simple_tool_execution_records_tool_outcome(monkeypatch) -> None:

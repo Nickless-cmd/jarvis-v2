@@ -145,4 +145,32 @@ def test_tool_failure_proposes_tool_plan_with_precedent(monkeypatch) -> None:
     assert trace["status"] == "proposed"
     assert trace["action_id"] == "propose_tool_plan"
     assert state["current_tool_plan"]["tool_name"] == "bash"
+    assert state["current_tool_plan"]["tool_family"] == "execution"
+    assert state["current_tool_plan"]["runnable_proposals"][0]["tool"] == "bash"
+    assert state["current_tool_plan"]["runnable_proposals"][0]["risk"] == "medium"
     assert trace["memory_precedents"][0]["action_id"] == "tool:bash"
+
+
+def test_memory_precedents_bias_choice_score(monkeypatch) -> None:
+    lex, _state = _state_patch(monkeypatch)
+    monkeypatch.setattr(
+        lex,
+        "_recent_memory_precedents",
+        lambda **kwargs: [{
+            "kind": "runtime_action_outcome",
+            "action_id": "tool:bash",
+            "status": "failed",
+            "summary": "same tool failed before",
+            "score": -0.65,
+        }],
+    )
+
+    impulse = lex.choose_impulse([{
+        "id": 9,
+        "kind": "tool.completed",
+        "payload": {"tool": "bash", "status": "failed", "error": "exit 1"},
+    }])
+
+    assert impulse is not None
+    assert impulse["choice_score"] > impulse["intensity"]
+    assert impulse["memory_bias"] > 0

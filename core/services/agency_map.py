@@ -13,6 +13,7 @@ from typing import Any
 def build_agency_map_surface() -> dict[str, Any]:
     nodes = _nodes()
     bridges = _bridges()
+    dark_edges = _dark_edges()
     questions = _questions(bridges)
     counts = {
         "nodes": len(nodes),
@@ -21,6 +22,7 @@ def build_agency_map_surface() -> dict[str, Any]:
         "partial": sum(1 for item in bridges if item["status"] == "partial"),
         "missing": sum(1 for item in bridges if item["status"] == "missing"),
         "experimental": sum(1 for item in bridges if item["status"] == "experimental"),
+        "dark_edges": len(dark_edges),
     }
     return {
         "fetchedAt": datetime.now(UTC).isoformat(),
@@ -28,31 +30,32 @@ def build_agency_map_surface() -> dict[str, Any]:
         "summary": counts,
         "nodes": nodes,
         "bridges": bridges,
+        "darkEdges": dark_edges,
         "questions": questions,
         "nextMoves": [
             {
                 "title": "Tune tool-outcome memory",
-                "summary": "Tool runs now become durable executive evidence; next step is better scoring by tool family.",
+                "summary": "Tool runs now carry family-aware scores into durable executive evidence.",
                 "target": "Tools -> Memory -> Living Executive",
-                "priority": "medium",
+                "priority": "done",
             },
             {
                 "title": "Expand Living Executive tool plans",
-                "summary": "Executive can propose recovery plans from tool failures; next step is turning selected plans into runnable tool proposals.",
+                "summary": "Recovery plans now include runnable tool proposals with risk and argument templates.",
                 "target": "Emotion/Goals -> Living Executive -> Tools",
-                "priority": "high",
+                "priority": "done",
             },
             {
                 "title": "Connect remembered patterns to choices",
-                "summary": "Emotional anchors, concept baselines, and sensory memories should bias future executive choices.",
+                "summary": "Runtime outcomes and active emotion concepts now bias executive choice scores.",
                 "target": "Memory -> Choice",
-                "priority": "medium",
+                "priority": "done",
             },
             {
                 "title": "Expose dark edges in MC",
-                "summary": "Any runtime signal that changes behavior but has no Mission Control surface should be listed here.",
+                "summary": "Agency Map now lists runtime influence edges that still need stronger MC surfaces.",
                 "target": "Hidden influence -> Mission Control",
-                "priority": "medium",
+                "priority": "done",
             },
         ],
     }
@@ -117,6 +120,14 @@ def _nodes() -> list[dict[str, Any]]:
             "state": "active",
         },
         {
+            "id": "hidden_runtime",
+            "label": "Hidden Runtime",
+            "kind": "influence",
+            "summary": "Runtime signals that shape behavior but still need clearer witness surfaces.",
+            "surface": "Agency Map dark edges",
+            "state": "experimental",
+        },
+        {
             "id": "mission_control",
             "label": "Mission Control",
             "kind": "witness",
@@ -139,7 +150,7 @@ def _bridges() -> list[dict[str, Any]]:
         _bridge("memory", "living_executive", "connected", "Living Executive reads recent runtime outcomes as memory precedents during choice."),
         _bridge("tools", "emotion", "connected", "Actual tool.completed events now drive accomplishment, caution, doubt, or blocked-frustration."),
         _bridge("tools", "memory", "connected", "Tool outcomes are persisted as durable runtime action evidence."),
-        _bridge("living_executive", "tools", "experimental", "Tool failures can now become MC-visible Living Executive recovery plan proposals."),
+        _bridge("living_executive", "tools", "experimental", "Tool failures can now become MC-visible runnable recovery proposals."),
         _bridge("mission_control", "living_executive", "connected", "MC exposes active state, current focus, recent traces, and allowed actions."),
         _bridge("hidden_runtime", "mission_control", "experimental", "Agency Map is now the MC inventory surface for hidden or weakly connected influence edges."),
     ]
@@ -169,12 +180,45 @@ def _questions(bridges: list[dict[str, str]]) -> list[dict[str, str]]:
         },
         {
             "question": "Hvad kan han huske, men ikke bruge til valg?",
-            "answer": "Living Executive now reads recent runtime outcomes as precedents; deeper sensory/emotional precedent ranking is next.",
+            "answer": "Living Executive now reads runtime outcomes and active emotion concepts as choice precedents.",
             "status": "active",
         },
         {
             "question": "Hvad sker i ham, men er stadig usynligt i MC?",
             "answer": f"{len(missing)} bridge(s) are still partial/missing; this tab is now the inventory surface.",
             "status": "active",
+        },
+    ]
+
+
+def _dark_edges() -> list[dict[str, str]]:
+    return [
+        {
+            "source": "affect_modulation",
+            "target": "visible_reply_style",
+            "summary": "Affective modulation changes response parameters; MC shows state, but not every per-turn parameter shift.",
+            "surface": "/mc/affective-meta-state",
+            "visibility": "partial-surface",
+        },
+        {
+            "source": "prompt_contract",
+            "target": "model_context",
+            "summary": "Prompt sections can alter behavior before any visible action trace exists.",
+            "surface": "/mc/prompt-contract surfaces",
+            "visibility": "partial-surface",
+        },
+        {
+            "source": "cheap_lane_balancer",
+            "target": "provider_choice",
+            "summary": "Provider/model routing affects cognition cost and latency; it is visible in operations but not yet in Agency edges.",
+            "surface": "/mc/operations",
+            "visibility": "partial-surface",
+        },
+        {
+            "source": "runtime_learning_signals",
+            "target": "future_action_selection",
+            "summary": "Learning signals are persisted from outcomes and may shape future selection through precedent reads.",
+            "surface": "/mc/jarvis runtime action outcomes",
+            "visibility": "emerging-surface",
         },
     ]

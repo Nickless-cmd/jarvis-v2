@@ -82,3 +82,41 @@ def test_friendly_message_handles_unstringable_exception(isolated_runtime) -> No
     # Must not raise
     msg = friendly_provider_error_message(NoStr())
     assert msg  # returns the generic fallback
+
+
+def test_friendly_message_for_502_bad_gateway(isolated_runtime) -> None:
+    """Production fingerprint from 2026-05-05 08:30-09:22 incident."""
+    from urllib.error import HTTPError
+    from core.services.visible_runs_error_messaging import (
+        friendly_provider_error_message,
+    )
+
+    exc = Exception("HTTP Error 502: Bad Gateway")
+    msg = friendly_provider_error_message(exc)
+    assert "502" in msg or "overbelastet" in msg
+    assert "<" not in msg
+    assert "HTTP Error 502" not in msg
+
+
+def test_friendly_message_for_503_service_unavailable(isolated_runtime) -> None:
+    from core.services.visible_runs_error_messaging import (
+        friendly_provider_error_message,
+    )
+    msg = friendly_provider_error_message(Exception("503 Service Unavailable"))
+    assert "503" in msg or "drift" in msg.lower()
+
+
+def test_friendly_message_for_504_gateway_timeout(isolated_runtime) -> None:
+    from core.services.visible_runs_error_messaging import (
+        friendly_provider_error_message,
+    )
+    msg = friendly_provider_error_message(Exception("HTTP 504 Gateway Timeout"))
+    assert "504" in msg or "timeout" in msg.lower()
+
+
+def test_friendly_message_for_429_rate_limit(isolated_runtime) -> None:
+    from core.services.visible_runs_error_messaging import (
+        friendly_provider_error_message,
+    )
+    msg = friendly_provider_error_message(Exception("429 Too Many Requests"))
+    assert "429" in msg or "rate-limit" in msg.lower()

@@ -201,6 +201,8 @@ export function AgencyMapTab() {
 
   const summary = data?.summary || {}
   const bridges = data?.bridges || []
+  const cartographer = data?.cartographer || {}
+  const cartSummary = cartographer.summary || {}
 
   return (
     <div style={s({ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' })}>
@@ -265,6 +267,23 @@ export function AgencyMapTab() {
 
       <section style={s({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 })}>
         {(data?.questions || []).map((item) => <QuestionRow key={item.question} item={item} />)}
+      </section>
+
+      <section style={s({
+        background: T.bgRaised,
+        border: `1px solid ${T.border0}`,
+        borderRadius: T.r_sm,
+        padding: 12,
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 0.7fr) minmax(0, 1.3fr) auto',
+        gap: 10,
+        alignItems: 'center',
+      })}>
+        <strong style={s({ fontSize: 12, color: T.text1 })}>Agency Cartographer</strong>
+        <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4 })}>
+          scanned {cartSummary.vision_edges || 0} vision edges · connected {cartSummary.connected || 0} · partial {cartSummary.partial || 0} · missing {cartSummary.missing || 0}
+        </span>
+        <span style={s({ ...mono, color: T.text3, fontSize: 9 })}>{formatFreshness(cartographer.scannedAt)}</span>
       </section>
 
       <section style={s({ display: 'flex', flexDirection: 'column', gap: 7 })}>

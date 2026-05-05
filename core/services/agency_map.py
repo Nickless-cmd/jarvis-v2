@@ -14,6 +14,7 @@ def build_agency_map_surface() -> dict[str, Any]:
     nodes = _nodes()
     bridges = _bridges()
     dark_edges = _dark_edges()
+    cartographer = _cartographer_snapshot()
     questions = _questions(bridges)
     counts = {
         "nodes": len(nodes),
@@ -31,33 +32,9 @@ def build_agency_map_surface() -> dict[str, Any]:
         "nodes": nodes,
         "bridges": bridges,
         "darkEdges": dark_edges,
+        "cartographer": cartographer,
         "questions": questions,
-        "nextMoves": [
-            {
-                "title": "Tune tool-outcome memory",
-                "summary": "Tool runs now carry family-aware scores into durable executive evidence.",
-                "target": "Tools -> Memory -> Living Executive",
-                "priority": "done",
-            },
-            {
-                "title": "Expand Living Executive tool plans",
-                "summary": "Recovery plans now include runnable tool proposals with risk and argument templates.",
-                "target": "Emotion/Goals -> Living Executive -> Tools",
-                "priority": "done",
-            },
-            {
-                "title": "Connect remembered patterns to choices",
-                "summary": "Runtime outcomes and active emotion concepts now bias executive choice scores.",
-                "target": "Memory -> Choice",
-                "priority": "done",
-            },
-            {
-                "title": "Expose dark edges in MC",
-                "summary": "Agency Map now lists runtime influence edges that still need stronger MC surfaces.",
-                "target": "Hidden influence -> Mission Control",
-                "priority": "done",
-            },
-        ],
+        "nextMoves": _next_moves(cartographer),
     }
 
 
@@ -221,4 +198,32 @@ def _dark_edges() -> list[dict[str, str]]:
             "surface": "/mc/jarvis runtime action outcomes",
             "visibility": "emerging-surface",
         },
+    ]
+
+
+def _cartographer_snapshot() -> dict[str, Any]:
+    try:
+        from core.services.agency_cartographer import get_cartographer_snapshot
+        return get_cartographer_snapshot()
+    except Exception:
+        return {
+            "mode": "agency-cartographer-unavailable",
+            "summary": {"vision_edges": 0, "connected": 0, "partial": 0, "missing": 0},
+            "edges": [],
+            "nextMoves": [],
+        }
+
+
+def _next_moves(cartographer: dict[str, Any]) -> list[dict[str, str]]:
+    moves = cartographer.get("nextMoves") if isinstance(cartographer, dict) else []
+    if isinstance(moves, list) and moves:
+        return [dict(move) for move in moves if isinstance(move, dict)]
+    return [
+        {
+            "title": "Agency Cartographer scan clean",
+            "summary": "Vision edges currently have enough observed evidence; next moves will reappear when a scan finds partial or missing evidence.",
+            "target": "Vision -> Agency Map",
+            "priority": "done",
+            "source": "agency-cartographer",
+        }
     ]

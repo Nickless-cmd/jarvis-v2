@@ -779,17 +779,22 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 yield failure_chunk
             return
         except Exception as exc:
-            bounded_message = str(exc) or "visible-run-failed"
-            stage_error = f"first-pass-provider-error: {bounded_message}"
+            from core.services.visible_runs_error_messaging import (
+                friendly_provider_error_message,
+            )
+            raw_message = str(exc) or type(exc).__name__
+            user_message = friendly_provider_error_message(exc)
+            stage_error = f"first-pass-provider-error: {raw_message}"
+            logger.warning("visible_runs first-pass provider error: %s", raw_message)
             _update_visible_execution_trace(
                 run,
                 {
                     "provider_first_pass_status": "failed",
-                    "provider_error_summary": bounded_message,
+                    "provider_error_summary": raw_message,
                     "provider_call_count": 1,
                 },
             )
-            _persist_session_assistant_message(run, bounded_message)
+            _persist_session_assistant_message(run, user_message)
             set_last_visible_run_outcome(
                 run,
                 status="failed",

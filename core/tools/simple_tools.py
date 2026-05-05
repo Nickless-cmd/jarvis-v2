@@ -2470,7 +2470,9 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """Execute a tool call and return the result."""
     handler = _TOOL_HANDLERS.get(name)
     if not handler:
-        return {"error": f"Unknown tool: {name}", "status": "error"}
+        result = {"error": f"Unknown tool: {name}", "status": "error"}
+        _record_tool_outcome_memory(name, arguments, result, mode="tool")
+        return result
 
     event_bus.publish("tool.invoked", {
         "tool": name,
@@ -2501,6 +2503,8 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         pass
 
+    _record_tool_outcome_memory(name, arguments, result, mode="tool")
+
     return result
 
 
@@ -2508,7 +2512,9 @@ def execute_tool_force(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """Execute tool bypassing approval checks. Only call for user-approved requests."""
     handler = _FORCE_HANDLERS.get(name) or _TOOL_HANDLERS.get(name)
     if not handler:
-        return {"error": f"Unknown tool: {name}", "status": "error"}
+        result = {"error": f"Unknown tool: {name}", "status": "error"}
+        _record_tool_outcome_memory(name, arguments, result, mode="tool_force")
+        return result
 
     # Emotional gate — kan transformere "execute" til escalate/verify/simplify
     # baseret på humør-tilstand. Fire-and-forget safe.
@@ -2524,13 +2530,15 @@ def execute_tool_force(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
                 "gate_action": gate_action,
                 "reason": gate_reason,
             })
-            return {
+            result = {
                 "status": "gated",
                 "gate_action": gate_action,
                 "gate_reason": gate_reason,
                 "message": msg,
                 "tool": name,
             }
+            _record_tool_outcome_memory(name, arguments, result, mode="tool_force")
+            return result
     except Exception:
         pass  # never block tool execution on emotional_controls errors
 
@@ -2562,7 +2570,28 @@ def execute_tool_force(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         pass
 
+    _record_tool_outcome_memory(name, arguments, result, mode="tool_force")
+
     return result
+
+
+def _record_tool_outcome_memory(
+    name: str,
+    arguments: dict[str, Any],
+    result: dict[str, Any],
+    *,
+    mode: str,
+) -> None:
+    try:
+        from core.services.tool_outcome_memory import record_tool_outcome_memory
+        record_tool_outcome_memory(
+            tool_name=name,
+            arguments=arguments,
+            result=result,
+            mode=mode,
+        )
+    except Exception:
+        pass
 
 
 def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:

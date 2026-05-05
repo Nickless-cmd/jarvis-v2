@@ -382,6 +382,9 @@ def _handle_event(kind: str, payload: dict[str, Any]) -> None:
         else:
             trigger_emotion_concept("delight", 0.3, trigger="tool_success", source="eventbus")
 
+    elif kind == "tool.completed":
+        _handle_tool_completed(payload)
+
     elif kind == "approval.approved":
         trigger_emotion_concept("relief", 0.5, trigger="approval_approved", source="eventbus")
         trigger_emotion_concept("trust_deep", 0.3, trigger="approval_approved", source="eventbus")
@@ -456,6 +459,37 @@ def _handle_heartbeat_tick(payload: dict[str, Any]) -> None:
         overwhelm_intensity = min(0.8, active_task_count * 0.1)
         trigger_emotion_concept(
             "overwhelm", overwhelm_intensity, trigger="many_tasks", source="eventbus"
+        )
+
+
+def _handle_tool_completed(payload: dict[str, Any]) -> None:
+    """Map the actual simple_tools event shape to emotion concepts."""
+    status = str(payload.get("status") or "").lower()
+    tool_name = str(payload.get("tool") or "tool")
+    source = f"tool.completed:{tool_name}"
+    if status in {"error", "failed", "timeout"}:
+        trigger_emotion_concept(
+            "frustration_blocked",
+            0.35,
+            trigger="tool_completed_error",
+            source=source,
+        )
+        trigger_emotion_concept("doubt", 0.2, trigger="tool_completed_error", source=source)
+        return
+    if status in {"ok", "success", "completed", "executed"}:
+        trigger_emotion_concept(
+            "accomplishment",
+            0.25,
+            trigger="tool_completed_ok",
+            source=source,
+        )
+        return
+    if status in {"approval_needed", "gated", "gate_blocked", "blocked"}:
+        trigger_emotion_concept(
+            "caution",
+            0.25,
+            trigger="tool_completed_blocked",
+            source=source,
         )
 
 

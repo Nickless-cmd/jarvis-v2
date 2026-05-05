@@ -176,7 +176,7 @@ def test_mc_agency_map_structure(monkeypatch):
 
     monkeypatch.setattr(agency_map, "build_agency_map_surface", lambda: {
         "mode": "living-agency-map",
-        "summary": {"nodes": 2, "bridges": 1, "missing": 0},
+        "summary": {"nodes": 2, "bridges": 1, "partial": 0, "missing": 0},
         "nodes": [{"id": "senses", "label": "Senses"}],
         "bridges": [{"source": "senses", "target": "emotion", "status": "connected"}],
         "questions": [],
@@ -187,4 +187,6 @@ def test_mc_agency_map_structure(monkeypatch):
 
     assert result["mode"] == "living-agency-map"
     assert result["summary"]["bridges"] == 1
+    assert result["summary"]["partial"] == 0
+    assert result["summary"]["missing"] == 0
     assert result["nodes"][0]["id"] == "senses"

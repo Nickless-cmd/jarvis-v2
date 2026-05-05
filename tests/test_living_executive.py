@@ -4,7 +4,12 @@ from __future__ import annotations
 def _state_patch(monkeypatch):
     from core.services import living_executive as lex
 
-    state = {"traces": [], "last_action_by_key": {}, "current_focus": {}}
+    state = {
+        "traces": [],
+        "last_action_by_key": {},
+        "current_focus": {},
+        "current_tool_plan": {},
+    }
     monkeypatch.setattr(lex, "_load_state", lambda: state)
     monkeypatch.setattr(lex, "_save_state", lambda new_state: state.update(new_state))
     monkeypatch.setattr(lex.event_bus, "publish", lambda *args, **kwargs: None)
@@ -116,3 +121,28 @@ def test_living_executive_surface(monkeypatch) -> None:
     assert surface["mode"] == "experimental-active"
     assert surface["summary"]["last_action"] == "record_focus_intent"
     assert surface["current_focus"]["focus"] == "emotional gate"
+
+
+def test_tool_failure_proposes_tool_plan_with_precedent(monkeypatch) -> None:
+    lex, state = _state_patch(monkeypatch)
+    monkeypatch.setattr(
+        lex,
+        "_recent_memory_precedents",
+        lambda **kwargs: [{
+            "outcome_id": "out-1",
+            "action_id": "tool:bash",
+            "status": "error",
+            "summary": "previous bash failed",
+        }],
+    )
+
+    trace = lex.run_once(events=[{
+        "id": 8,
+        "kind": "tool.completed",
+        "payload": {"tool": "bash", "status": "error", "error": "exit 1"},
+    }])
+
+    assert trace["status"] == "proposed"
+    assert trace["action_id"] == "propose_tool_plan"
+    assert state["current_tool_plan"]["tool_name"] == "bash"
+    assert trace["memory_precedents"][0]["action_id"] == "tool:bash"

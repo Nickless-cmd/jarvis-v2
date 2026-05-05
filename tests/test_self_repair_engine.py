@@ -110,3 +110,65 @@ def test_decode_pattern_from_db_row(isolated_runtime) -> None:
     assert p.trigger_match == {"daemon": "mail_checker"}
     assert p.action_params == {"name": "mail_checker", "action": "restart"}
     assert p.enabled is True
+
+
+def test_action_handlers_only_contain_allowlisted(isolated_runtime) -> None:
+    from core.services.self_repair_engine import _ACTION_HANDLERS
+
+    assert set(_ACTION_HANDLERS.keys()) == {"control_daemon"}
+
+
+def test_action_control_daemon_calls_daemon_manager(
+    isolated_runtime, monkeypatch
+) -> None:
+    from core.services import self_repair_engine as eng
+    import core.services.daemon_manager as dm
+
+    captured = {}
+
+    def fake_control_daemon(name, action, *, interval_minutes=None):
+        captured["name"] = name
+        captured["action"] = action
+        captured["interval_minutes"] = interval_minutes
+        return {"ok": True, "name": name, "action": action}
+
+    monkeypatch.setattr(dm, "control_daemon", fake_control_daemon)
+
+    result = eng._action_control_daemon({
+        "name": "mail_checker", "action": "restart",
+    })
+    assert captured == {
+        "name": "mail_checker", "action": "restart", "interval_minutes": None,
+    }
+    assert result["ok"] is True
+
+
+def test_action_control_daemon_passes_interval_minutes(
+    isolated_runtime, monkeypatch
+) -> None:
+    from core.services import self_repair_engine as eng
+    import core.services.daemon_manager as dm
+
+    captured = {}
+
+    def fake_control_daemon(name, action, *, interval_minutes=None):
+        captured["interval_minutes"] = interval_minutes
+        return {"ok": True}
+
+    monkeypatch.setattr(dm, "control_daemon", fake_control_daemon)
+
+    eng._action_control_daemon({
+        "name": "x", "action": "set_interval", "interval_minutes": 15,
+    })
+    assert captured["interval_minutes"] == 15
+
+
+def test_action_control_daemon_rejects_invalid_action(isolated_runtime) -> None:
+    from core.services.self_repair_engine import _action_control_daemon
+
+    import pytest
+    with pytest.raises(ValueError, match="invalid control_daemon params"):
+        _action_control_daemon({"name": "x", "action": "delete-everything"})
+
+    with pytest.raises(ValueError, match="invalid control_daemon params"):
+        _action_control_daemon({"name": "", "action": "restart"})

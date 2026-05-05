@@ -256,3 +256,51 @@ def test_build_baseline_atmosphere_uses_recent_directly(isolated_runtime) -> Non
     baseline = _build_baseline("atmosphere", fake_current)
     assert baseline is not None
     assert len(baseline["records"]) == 3
+
+
+def test_metadata_changed_audio_category_shift(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _metadata_changed
+
+    new_md = {"category": "talk", "amplitude": 0.3}
+    baseline_md = {"category": {"silence"}, "amplitude": {"0.1"}}
+    assert _metadata_changed(new_md, baseline_md, "audio") is True
+
+
+def test_metadata_changed_audio_same_category(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _metadata_changed
+
+    new_md = {"category": "talk", "amplitude": 0.5}
+    baseline_md = {"category": {"talk"}, "amplitude": {"0.3"}}
+    assert _metadata_changed(new_md, baseline_md, "audio") is False
+
+
+def test_metadata_changed_visual_ignores_prompt_rotation(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _metadata_changed
+
+    new_md = {"vision_prompt_index": 2}
+    baseline_md = {"vision_prompt_index": {"0", "1"}}
+    assert _metadata_changed(new_md, baseline_md, "visual") is False
+
+
+def test_metadata_changed_atmosphere_any_value_shift(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _metadata_changed
+
+    new_md = {"weather": "rainy"}
+    baseline_md = {"weather": {"sunny"}}
+    assert _metadata_changed(new_md, baseline_md, "atmosphere") is True
+
+
+def test_metadata_changed_atmosphere_new_key(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _metadata_changed
+
+    new_md = {"weather": "sunny", "occupants": 2}
+    baseline_md = {"weather": {"sunny"}}
+    assert _metadata_changed(new_md, baseline_md, "atmosphere") is True
+
+
+def test_metadata_changed_returns_false_for_empty(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _metadata_changed
+
+    assert _metadata_changed({}, {}, "audio") is False
+    assert _metadata_changed({}, {}, "visual") is False
+    assert _metadata_changed({}, {}, "atmosphere") is False

@@ -176,3 +176,53 @@ def _build_baseline(modality: str, current_record: dict) -> dict | None:
     elif modality in {"atmosphere", "mixed"}:
         return _recent_baseline(modality, current_record)
     return None
+
+
+def _metadata_changed(
+    new_md: dict, baseline_md: dict, modality: str
+) -> bool:
+    """Per-modality metadata change detection.
+
+    audio: category-shift only (talk/silence/music/noise/mixed).
+    visual: prompt-rotation ignored; other key changes count.
+    atmosphere/mixed: any new key or value-shift counts.
+    """
+    if not new_md and not baseline_md:
+        return False
+
+    if modality == "audio":
+        new_cat = str(new_md.get("category") or "")
+        baseline_cats = baseline_md.get("category")
+        if not new_cat:
+            return False
+        if isinstance(baseline_cats, set):
+            return new_cat not in baseline_cats
+        return new_cat != str(baseline_cats or "")
+
+    if modality == "visual":
+        for k, v in new_md.items():
+            if k == "vision_prompt_index":
+                continue
+            baseline_vals = baseline_md.get(k)
+            if baseline_vals is None:
+                return True
+            if isinstance(baseline_vals, set):
+                if str(v) not in baseline_vals:
+                    return True
+            else:
+                if str(v) != str(baseline_vals):
+                    return True
+        return False
+
+    # atmosphere + mixed: any shift counts
+    for k, v in new_md.items():
+        baseline_vals = baseline_md.get(k)
+        if baseline_vals is None:
+            return True
+        if isinstance(baseline_vals, set):
+            if str(v) not in baseline_vals:
+                return True
+        else:
+            if str(v) != str(baseline_vals):
+                return True
+    return False

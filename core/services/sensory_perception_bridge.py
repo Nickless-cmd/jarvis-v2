@@ -226,3 +226,120 @@ def _metadata_changed(
             if str(v) != str(baseline_vals):
                 return True
     return False
+
+
+def _detect_change(
+    record: dict, baseline: dict | None, modality: str
+) -> dict:
+    """Combined heuristic: mood_tone shift OR Jaccard < 0.4 OR metadata shift.
+
+    Returns:
+        {
+            "changed": bool,
+            "kind": str,  # one of: no_baseline, no_change, mood_shift, content_drift,
+                          #         lexical_drift, metadata_change, mood_and_content
+            "jaccard": float,
+            "summary": str,
+            "baseline_mood": str | None,
+        }
+    """
+    from core.runtime.settings import load_settings
+
+    try:
+        settings = load_settings()
+        change_threshold = float(
+            getattr(settings, "sensory_perception_jaccard_change_threshold", 0.4)
+        )
+        medium_threshold = float(
+            getattr(settings, "sensory_perception_jaccard_medium_threshold", 0.25)
+        )
+    except Exception:
+        change_threshold, medium_threshold = (0.4, 0.25)
+
+    if baseline is None or not baseline.get("records"):
+        return {
+            "changed": False,
+            "kind": "no_baseline",
+            "jaccard": 1.0,
+            "summary": "",
+            "baseline_mood": None,
+        }
+
+    new_mood = (str(record.get("mood_tone") or "")).strip().lower() or None
+    new_content = str(record.get("content") or "")
+    new_metadata = record.get("metadata") or {}
+
+    baseline_mood = baseline.get("mood")
+    baseline_tokens = baseline.get("content_tokens") or set()
+    baseline_metadata = baseline.get("metadata") or {}
+
+    new_tokens = _shingle(new_content)
+    jaccard = _jaccard(new_tokens, baseline_tokens)
+
+    mood_shifted = bool(new_mood and baseline_mood and new_mood != baseline_mood)
+    lex_shifted = jaccard < change_threshold
+    metadata_shifted = _metadata_changed(new_metadata, baseline_metadata, modality)
+
+    if not (mood_shifted or lex_shifted or metadata_shifted):
+        return {
+            "changed": False,
+            "kind": "no_change",
+            "jaccard": jaccard,
+            "summary": "",
+            "baseline_mood": baseline_mood,
+        }
+
+    if mood_shifted and (jaccard < medium_threshold or metadata_shifted):
+        kind = "mood_and_content"
+    elif mood_shifted:
+        kind = "mood_shift"
+    elif jaccard < medium_threshold:
+        kind = "content_drift"
+    elif metadata_shifted and not lex_shifted:
+        kind = "metadata_change"
+    else:
+        kind = "lexical_drift"
+
+    summary = _summary_for_change(modality, new_mood, baseline_mood, kind, jaccard)
+    return {
+        "changed": True,
+        "kind": kind,
+        "jaccard": jaccard,
+        "summary": summary,
+        "baseline_mood": baseline_mood,
+    }
+
+
+def _summary_for_change(
+    modality: str,
+    new_mood: str | None,
+    baseline_mood: str | None,
+    kind: str,
+    jaccard: float,
+) -> str:
+    """Generate a short Danish summary line for the perceptual event."""
+    modality_label = {
+        "visual": "Visuel",
+        "audio": "Audio",
+        "atmosphere": "Atmosfære",
+        "mixed": "Sammensat",
+    }.get(modality, modality)
+
+    if kind == "mood_and_content":
+        if new_mood and baseline_mood:
+            return (
+                f"{modality_label}-ændring: stemning skiftet fra {baseline_mood} "
+                f"til {new_mood} med markant nyt indhold"
+            )
+        return f"{modality_label}-ændring: kombineret stemnings- og indholdsskift"
+    if kind == "mood_shift":
+        if new_mood and baseline_mood:
+            return f"{modality_label}-stemning ændret fra {baseline_mood} til {new_mood}"
+        return f"{modality_label}-stemningsskift detekteret"
+    if kind == "content_drift":
+        return f"{modality_label}-indhold markant ændret (similarity {jaccard:.2f})"
+    if kind == "metadata_change":
+        return f"{modality_label}-metadata ændret (fx kategori-skift)"
+    if kind == "lexical_drift":
+        return f"{modality_label}-indhold mildt ændret (similarity {jaccard:.2f})"
+    return f"{modality_label}-ændring"

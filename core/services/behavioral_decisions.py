@@ -13,6 +13,7 @@ commitment: "from now on, when Y happens, do Z." This service:
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from core.eventbus.bus import event_bus
@@ -30,6 +31,10 @@ from core.runtime.db_decisions import (
 logger = logging.getLogger(__name__)
 
 
+def _normalize_directive(value: str) -> str:
+    return re.sub(r"\s+", " ", str(value or "").strip().lower())
+
+
 def create_decision(
     *,
     directive: str,
@@ -40,6 +45,26 @@ def create_decision(
     source_type: str | None = None,
     created_by: str | None = None,
 ) -> dict[str, Any]:
+    normalized = _normalize_directive(directive)
+    for existing in _db_list(status="active", limit=100):
+        if _normalize_directive(str(existing.get("directive") or "")) == normalized:
+            deduped = dict(existing)
+            deduped["deduped"] = True
+            deduped["dedupe_reason"] = "active-directive-already-exists"
+            try:
+                event_bus.publish(
+                    "decision.deduped",
+                    {
+                        "decision_id": deduped.get("decision_id"),
+                        "directive": deduped.get("directive"),
+                        "priority": deduped.get("priority"),
+                        "source_type": source_type,
+                    },
+                )
+            except Exception as exc:
+                logger.debug("behavioral_decisions: publish deduped failed: %s", exc)
+            return deduped
+
     decision = _db_create(
         directive=directive,
         rationale=rationale,

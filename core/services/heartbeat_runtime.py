@@ -2887,6 +2887,15 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # --- Consolidation Judge — nightly reckoning ---
+    if _dm.is_enabled("consolidation_judge"):
+        try:
+            from core.services.consolidation_judge_daemon import tick as _cj_tick
+            _cj_result = _cj_tick()
+            _dm.record_daemon_tick("consolidation_judge", _cj_result or {})
+        except Exception:
+            pass
+
     # --- Aesthetic motif accumulation ---
     try:
         from core.services.aesthetic_sense import accumulate_from_daemon

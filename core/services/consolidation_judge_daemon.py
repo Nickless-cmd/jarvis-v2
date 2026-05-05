@@ -22,9 +22,6 @@ from core.services.identity_composer import build_identity_preamble
 
 logger = logging.getLogger(__name__)
 
-# Alias for heartbeat_runtime import convention: `from consolidation_judge_daemon import tick`
-tick = tick_consolidation_judge_daemon
-
 _CADENCE_MINUTES = 1440  # Once daily
 _last_judgment_at: datetime | None = None
 
@@ -387,3 +384,7 @@ def build_consolidation_judge_surface() -> dict[str, Any]:
 
 def now_date_str() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%d")
+
+
+# Alias for heartbeat_runtime import convention: `from consolidation_judge_daemon import tick`
+tick = tick_consolidation_judge_daemon

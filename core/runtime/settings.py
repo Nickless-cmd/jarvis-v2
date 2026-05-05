@@ -110,6 +110,15 @@ class RuntimeSettings:
     emotional_memory_retention_aging_days: int = 180
     emotional_memory_significance_intensity: float = 0.7
     emotional_memory_significance_outcome: float = -0.3
+    # Sensory perception bridge — change detection thresholds.
+    sensory_perception_bridge_enabled: bool = True
+    sensory_perception_jaccard_high_threshold: float = 0.15
+    sensory_perception_jaccard_medium_threshold: float = 0.25
+    sensory_perception_jaccard_change_threshold: float = 0.4
+    sensory_perception_time_window_hours: int = 2
+    sensory_perception_time_window_days: int = 7
+    sensory_perception_min_baseline_records: int = 3
+    sensory_perception_recent_baseline_size: int = 3
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -154,6 +163,14 @@ class RuntimeSettings:
             "emotional_memory_retention_aging_days": self.emotional_memory_retention_aging_days,
             "emotional_memory_significance_intensity": self.emotional_memory_significance_intensity,
             "emotional_memory_significance_outcome": self.emotional_memory_significance_outcome,
+            "sensory_perception_bridge_enabled": self.sensory_perception_bridge_enabled,
+            "sensory_perception_jaccard_high_threshold": self.sensory_perception_jaccard_high_threshold,
+            "sensory_perception_jaccard_medium_threshold": self.sensory_perception_jaccard_medium_threshold,
+            "sensory_perception_jaccard_change_threshold": self.sensory_perception_jaccard_change_threshold,
+            "sensory_perception_time_window_hours": self.sensory_perception_time_window_hours,
+            "sensory_perception_time_window_days": self.sensory_perception_time_window_days,
+            "sensory_perception_min_baseline_records": self.sensory_perception_min_baseline_records,
+            "sensory_perception_recent_baseline_size": self.sensory_perception_recent_baseline_size,
         }
         return {**self.extra, **typed}
 
@@ -292,6 +309,14 @@ def load_settings() -> RuntimeSettings:
         emotional_memory_retention_aging_days=int(data.get("emotional_memory_retention_aging_days", defaults.emotional_memory_retention_aging_days)),
         emotional_memory_significance_intensity=float(data.get("emotional_memory_significance_intensity", defaults.emotional_memory_significance_intensity)),
         emotional_memory_significance_outcome=float(data.get("emotional_memory_significance_outcome", defaults.emotional_memory_significance_outcome)),
+        sensory_perception_bridge_enabled=bool(data.get("sensory_perception_bridge_enabled", defaults.sensory_perception_bridge_enabled)),
+        sensory_perception_jaccard_high_threshold=float(data.get("sensory_perception_jaccard_high_threshold", defaults.sensory_perception_jaccard_high_threshold)),
+        sensory_perception_jaccard_medium_threshold=float(data.get("sensory_perception_jaccard_medium_threshold", defaults.sensory_perception_jaccard_medium_threshold)),
+        sensory_perception_jaccard_change_threshold=float(data.get("sensory_perception_jaccard_change_threshold", defaults.sensory_perception_jaccard_change_threshold)),
+        sensory_perception_time_window_hours=int(data.get("sensory_perception_time_window_hours", defaults.sensory_perception_time_window_hours)),
+        sensory_perception_time_window_days=int(data.get("sensory_perception_time_window_days", defaults.sensory_perception_time_window_days)),
+        sensory_perception_min_baseline_records=int(data.get("sensory_perception_min_baseline_records", defaults.sensory_perception_min_baseline_records)),
+        sensory_perception_recent_baseline_size=int(data.get("sensory_perception_recent_baseline_size", defaults.sensory_perception_recent_baseline_size)),
         extra={key: value for key, value in data.items() if key not in KNOWN_FIELDS},
     )
 

@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Fix 1: Decay debounce — natural decay runs at most once per 30 minutes
 # ---------------------------------------------------------------------------
-_DECAY_DEBOUNCE_SECONDS = 1800  # 30 minutes
+_DECAY_DEBOUNCE_SECONDS = 900  # 15 minutes — faster recovery from fatigue/frustration
 _last_decay_ts: float | None = None
 _decay_lock = threading.Lock()
 
@@ -254,6 +254,12 @@ def _deterministic_update(
 
         baseline["fatigue"] = max(0.0, float(baseline.get("fatigue", 0.0)) * decay_factor)
         baseline["frustration"] = max(0.0, float(baseline.get("frustration", 0.0)) * decay_factor)
+        # Fix 2026-05-05: Active recovery — quiet periods should recharge.
+        # If fatigue is still above 0.3 after passive decay, apply extra reduction.
+        # Prevents the "only goes up" bug where per-run bumps outpace drip decay.
+        fatigue_after_decay = float(baseline.get("fatigue", 0.0))
+        if fatigue_after_decay > 0.3:
+            baseline["fatigue"] = max(0.15, fatigue_after_decay * 0.85)
         cur = float(baseline.get("curiosity", target_curiosity))
         baseline["curiosity"] = cur + (target_curiosity - cur) * (1.0 - decay_factor)
         conf = float(baseline.get("confidence", target_confidence))
@@ -289,8 +295,10 @@ def _deterministic_update(
     if outcome_status in ("completed", "success"):
         baseline["confidence"] = min(_CONF_CEIL, _bump_asymptotic(
             float(baseline.get("confidence", 0.5)), 0.04, _CONF_CEIL))
-        baseline["fatigue"] = min(_FATIGUE_CEIL, _bump_asymptotic(
-            float(baseline.get("fatigue", 0.0)), 0.02, _FATIGUE_CEIL))
+        # Fix 2026-05-05: Success should reduce fatigue, not increase it.
+        # Positive outcomes are energizing, not draining.
+        baseline["fatigue"] = max(0.0, _drop_asymptotic(
+            float(baseline.get("fatigue", 0.0)), 0.03))
         # Successful outcomes also feed curiosity (we learned something new)
         baseline["curiosity"] = min(_CURIOSITY_CEIL, _bump_asymptotic(
             float(baseline.get("curiosity", 0.5)), 0.03, _CURIOSITY_CEIL))

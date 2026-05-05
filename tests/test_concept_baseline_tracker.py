@@ -95,3 +95,84 @@ def test_record_trigger_disabled_is_noop(isolated_runtime, monkeypatch) -> None:
         triggered_at="2026-05-05T10:00:00+00:00", source="test",
     )
     assert get_concept_baseline_stat("joy") is None
+
+
+def test_detect_cluster_dominance_signal(isolated_runtime) -> None:
+    from core.services.concept_baseline_tracker import (
+        record_concept_trigger,
+        _detect_drift,
+        _aggregate_clusters,
+    )
+
+    for _ in range(12):
+        record_concept_trigger(
+            concept="joy", intensity=0.5,
+            triggered_at="2026-05-05T10:00:00+00:00", source="t",
+        )
+    for _ in range(8):
+        record_concept_trigger(
+            concept="frustration_blocked", intensity=0.5,
+            triggered_at="2026-05-05T10:00:00+00:00", source="t",
+        )
+
+    clusters = _aggregate_clusters()
+    signals = _detect_drift(clusters, [])
+    dominance = [s for s in signals if s["type"] == "cluster_dominance"]
+    assert len(dominance) == 1
+    assert dominance[0]["cluster"] == "JOY_APPROACH"
+
+
+def test_detect_no_signal_when_balanced(isolated_runtime) -> None:
+    from core.services.concept_baseline_tracker import (
+        record_concept_trigger,
+        _detect_drift,
+        _aggregate_clusters,
+    )
+
+    for _ in range(10):
+        record_concept_trigger(
+            concept="joy", intensity=0.5,
+            triggered_at="2026-05-05T10:00:00+00:00", source="t",
+        )
+    for _ in range(10):
+        record_concept_trigger(
+            concept="warmth", intensity=0.5,
+            triggered_at="2026-05-05T10:00:00+00:00", source="t",
+        )
+
+    clusters = _aggregate_clusters()
+    signals = _detect_drift(clusters, [])
+    dominance = [s for s in signals if s["type"] == "cluster_dominance"]
+    assert dominance == []
+
+
+def test_write_concept_baseline_md_creates_file(
+    isolated_runtime, monkeypatch, tmp_path,
+) -> None:
+    from core.services import concept_baseline_tracker as cbt
+    from core.services.concept_baseline_tracker import (
+        record_concept_trigger,
+        _write_concept_baseline_md,
+        _aggregate_clusters,
+    )
+    from core.runtime.db import list_concept_baseline_stats
+
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    monkeypatch.setattr(cbt, "_workspace_dir", lambda: workspace)
+
+    for _ in range(3):
+        record_concept_trigger(
+            concept="joy", intensity=0.5,
+            triggered_at="2026-05-05T10:00:00+00:00", source="t",
+        )
+
+    cluster_stats = _aggregate_clusters()
+    _write_concept_baseline_md(cluster_stats, list_concept_baseline_stats())
+
+    md = workspace / "CONCEPT_BASELINE.md"
+    assert md.exists()
+    content = md.read_text()
+    assert "Emotional Baseline" in content
+    assert "JOY_APPROACH" in content
+    assert "joy" in content

@@ -116,3 +116,88 @@ def _aggregate_clusters() -> dict[str, dict[str, object]]:
         }
         for cluster, total in cluster_totals.items()
     }
+
+
+# ---------------------------------------------------------------------------
+# Drift detection
+# ---------------------------------------------------------------------------
+
+
+_CLUSTER_DOMINANCE_SHARE = 0.55
+
+
+def _detect_drift(
+    cluster_stats: dict[str, dict[str, object]],
+    per_concept_stats: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    """Detect drift signals from current stats."""
+    signals: list[dict[str, object]] = []
+
+    for cluster, data in cluster_stats.items():
+        share = float(data.get("share") or 0.0)
+        if share > _CLUSTER_DOMINANCE_SHARE and cluster != "UNKNOWN":
+            confidence = min(1.0, (share - 0.4) * 2.0)
+            signals.append({
+                "type": "cluster_dominance",
+                "cluster": cluster,
+                "share": share,
+                "confidence": confidence,
+                "sustained_days": 1,  # v1: not actually time-tracked yet
+            })
+
+    return signals
+
+
+# ---------------------------------------------------------------------------
+# CONCEPT_BASELINE.md writer
+# ---------------------------------------------------------------------------
+
+
+def _workspace_dir():
+    """Return path to active workspace directory. Indirected for tests."""
+    from pathlib import Path
+    from core.runtime.config import WORKSPACES_DIR
+    return Path(WORKSPACES_DIR) / "default"
+
+
+def _write_concept_baseline_md(
+    cluster_stats: dict[str, dict[str, object]],
+    per_concept_stats: list[dict[str, object]],
+) -> None:
+    """Write auto-managed CONCEPT_BASELINE.md to workspace dir."""
+    try:
+        ws = _workspace_dir()
+        ws.mkdir(parents=True, exist_ok=True)
+        md_path = ws / "CONCEPT_BASELINE.md"
+
+        lines = [
+            "# Emotional Baseline (auto-tracked)",
+            f"> Auto-managed by concept_baseline_tracker. Last updated: {_now_iso()}.",
+            "> Manual edits will be overwritten. For narrative changes to who I am, see IDENTITY.md.",
+            "",
+            "## Cluster distribution",
+        ]
+
+        for cluster, data in sorted(
+            cluster_stats.items(),
+            key=lambda kv: -float(kv[1].get("share") or 0.0),
+        ):
+            share = float(data.get("share") or 0.0)
+            concept_summary = ", ".join(
+                f"{c['concept']} {int(c.get('total_triggers') or 0)}"
+                for c in (data.get("concepts") or [])[:5]
+            )
+            lines.append(f"- {cluster}: {share*100:.0f}% ({concept_summary})")
+
+        lines += ["", "## Most active concepts", ""]
+        lines.append("| Concept | Triggers | Last seen |")
+        lines.append("|---------|----------|-----------|")
+        for s in per_concept_stats[:10]:
+            lines.append(
+                f"| {s['concept']} | {s.get('total_triggers') or 0} | "
+                f"{s.get('last_triggered_at') or '-'} |"
+            )
+
+        md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except Exception as exc:
+        logger.warning("concept_baseline_tracker: md write failed: %s", exc)

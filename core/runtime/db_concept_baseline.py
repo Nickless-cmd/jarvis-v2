@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import sqlite3
 
-from core.runtime.db import connect, _now_iso
-
 
 def _ensure_concept_baseline_table(conn: sqlite3.Connection) -> None:
     conn.execute(
@@ -39,6 +37,7 @@ def upsert_concept_baseline_stat(
     last_triggered_at: str | None = None,
     first_triggered_at: str | None = None,
 ) -> None:
+    from core.runtime.db import connect, _now_iso
     now = _now_iso()
     with connect() as conn:
         _ensure_concept_baseline_table(conn)
@@ -80,6 +79,7 @@ def increment_concept_baseline_total(
 ) -> None:
     """Increment total_triggers and update last_triggered_at for an existing concept.
     Idempotent — concept must already exist (call upsert first if unsure)."""
+    from core.runtime.db import connect, _now_iso
     now = _now_iso()
     with connect() as conn:
         _ensure_concept_baseline_table(conn)
@@ -97,6 +97,7 @@ def increment_concept_baseline_total(
 
 
 def get_concept_baseline_stat(concept: str) -> dict[str, object] | None:
+    from core.runtime.db import connect
     with connect() as conn:
         _ensure_concept_baseline_table(conn)
         row = conn.execute(
@@ -107,6 +108,7 @@ def get_concept_baseline_stat(concept: str) -> dict[str, object] | None:
 
 
 def list_concept_baseline_stats() -> list[dict[str, object]]:
+    from core.runtime.db import connect
     with connect() as conn:
         _ensure_concept_baseline_table(conn)
         rows = conn.execute(

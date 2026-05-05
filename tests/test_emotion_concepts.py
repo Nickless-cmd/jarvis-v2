@@ -64,7 +64,7 @@ def test_trigger_unknown_concept_returns_none() -> None:
     assert result is None
 
 
-def test_max_5_active_concepts_prunes_weakest() -> None:
+def test_max_7_active_concepts_prunes_weakest() -> None:
     ec = _fresh_ec()
     concepts_with_intensities = [
         ("confusion", 0.3),
@@ -72,16 +72,19 @@ def test_max_5_active_concepts_prunes_weakest() -> None:
         ("doubt", 0.2),
         ("pride", 0.8),
         ("shame", 0.6),
-        ("relief", 0.1),  # weakest — should be pruned when 6th added
+        ("relief", 0.1),
+        ("joy", 0.7),
+        ("warmth", 0.4),  # relief is weakest — should be pruned when 8th added
     ]
     for concept, intensity in concepts_with_intensities:
         ec.trigger_emotion_concept(concept, intensity, trigger="test", source="test")
 
     active = ec.get_active_emotion_concepts()
-    assert len(active) <= 5
+    assert len(active) <= 7
     active_concepts = {s["concept"] for s in active}
     # "pride" (0.8) must survive
     assert "pride" in active_concepts
+    assert "relief" not in active_concepts
 
 
 def test_decay_reduces_intensity() -> None:

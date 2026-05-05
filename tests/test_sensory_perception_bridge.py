@@ -304,3 +304,115 @@ def test_metadata_changed_returns_false_for_empty(isolated_runtime) -> None:
     assert _metadata_changed({}, {}, "audio") is False
     assert _metadata_changed({}, {}, "visual") is False
     assert _metadata_changed({}, {}, "atmosphere") is False
+
+
+def test_detect_change_no_baseline_returns_unchanged(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _detect_change
+
+    record = {"mood_tone": "rolig", "content": "anything", "metadata": {}}
+    result = _detect_change(record, None, "atmosphere")
+    assert result["changed"] is False
+    assert result["kind"] == "no_baseline"
+
+
+def test_detect_change_empty_baseline_returns_unchanged(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _detect_change
+
+    record = {"mood_tone": "rolig", "content": "x", "metadata": {}}
+    baseline = {"records": [], "mood": None, "content_tokens": set(), "metadata": {}}
+    result = _detect_change(record, baseline, "atmosphere")
+    assert result["changed"] is False
+    assert result["kind"] == "no_baseline"
+
+
+def test_detect_change_unchanged_record(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _detect_change, _shingle
+
+    record = {
+        "mood_tone": "rolig",
+        "content": "the quick brown fox is here",
+        "metadata": {},
+    }
+    baseline = {
+        "records": [{"id": "r1"}, {"id": "r2"}, {"id": "r3"}],
+        "mood": "rolig",
+        "content_tokens": _shingle("the quick brown fox is here"),
+        "metadata": {},
+    }
+    result = _detect_change(record, baseline, "atmosphere")
+    assert result["changed"] is False
+    assert result["kind"] == "no_change"
+
+
+def test_detect_change_mood_shift_only(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _detect_change, _shingle
+
+    content = "lyset er stadig varmt og rummet er hyggeligt"
+    record = {"mood_tone": "kaotisk", "content": content, "metadata": {}}
+    baseline = {
+        "records": [{"id": "r1"}, {"id": "r2"}, {"id": "r3"}],
+        "mood": "rolig",
+        "content_tokens": _shingle(content),
+        "metadata": {},
+    }
+    result = _detect_change(record, baseline, "atmosphere")
+    assert result["changed"] is True
+    assert result["kind"] == "mood_shift"
+
+
+def test_detect_change_strong_lexical_drift_alone(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _detect_change, _shingle
+
+    record = {
+        "mood_tone": "rolig",
+        "content": "completely different words about strange new objects appearing here",
+        "metadata": {},
+    }
+    baseline = {
+        "records": [{"id": "r1"}, {"id": "r2"}, {"id": "r3"}],
+        "mood": "rolig",
+        "content_tokens": _shingle("the original baseline talked about something very else now"),
+        "metadata": {},
+    }
+    result = _detect_change(record, baseline, "atmosphere")
+    assert result["changed"] is True
+    assert result["kind"] in {"content_drift", "lexical_drift"}
+
+
+def test_detect_change_combined_mood_and_content(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _detect_change, _shingle
+
+    record = {
+        "mood_tone": "kaotisk",
+        "content": "everything has changed completely now and is unrecognizable",
+        "metadata": {},
+    }
+    baseline = {
+        "records": [{"id": "r1"}, {"id": "r2"}, {"id": "r3"}],
+        "mood": "rolig",
+        "content_tokens": _shingle("the quiet morning with familiar tones"),
+        "metadata": {},
+    }
+    result = _detect_change(record, baseline, "atmosphere")
+    assert result["changed"] is True
+    assert result["kind"] == "mood_and_content"
+
+
+def test_detect_change_metadata_only(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _detect_change, _shingle
+
+    content = "stille rum med blød lyd"
+    record = {
+        "mood_tone": "rolig",
+        "content": content,
+        "metadata": {"category": "talk"},
+    }
+    baseline = {
+        "records": [{"id": "r1"}, {"id": "r2"}, {"id": "r3"}],
+        "mood": "rolig",
+        "content_tokens": _shingle(content),
+        "metadata": {"category": {"silence"}},
+    }
+    result = _detect_change(record, baseline, "audio")
+    assert result["changed"] is True
+    assert result["kind"] == "metadata_change"

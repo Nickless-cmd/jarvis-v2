@@ -29,6 +29,32 @@ def friendly_provider_error_message(exc: Exception) -> str:
             "nede. Prøv igen om et øjeblik."
         )
 
+    # HTTP status codes must come before generic SSL/timeout branches because
+    # "504 Gateway Timeout" contains both "504" and "timeout".
+    if "502" in text or "bad gateway" in text:
+        return (
+            "Min LLM-backend returnerede 502 — typisk når modellen er ved at "
+            "starte op igen eller er overbelastet. Prøv igen om et øjeblik."
+        )
+
+    if "503" in text or "service unavailable" in text:
+        return (
+            "Min LLM-backend er midlertidigt ude af drift (503). Prøv igen "
+            "om et øjeblik."
+        )
+
+    if "504" in text or "gateway timeout" in text:
+        return (
+            "Min LLM-backend svarede ikke i tide (504 gateway timeout). "
+            "Prøv igen om et øjeblik."
+        )
+
+    if "429" in text or "too many requests" in text or "rate limit" in text:
+        return (
+            "Jeg har ramt en rate-limit på backend'en. Vent et øjeblik og "
+            "prøv igen."
+        )
+
     # SSL must come before generic timeout — SSL handshake timeouts contain
     # "timed out" but are primarily SSL issues.
     if "ssl" in text and ("handshake" in text or "certificate" in text):

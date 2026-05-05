@@ -225,3 +225,76 @@ def test_user_message_baseline_fires_warmth(
 
     concepts = [a[0][0] for a in fired]
     assert "warmth" in concepts
+
+
+def test_goal_created_fires_excitement(isolated_runtime, monkeypatch) -> None:
+    from core.services import emotion_concepts as ec
+
+    ec._last_trigger_at.clear()
+    fired = []
+    monkeypatch.setattr(
+        ec,
+        "trigger_emotion_concept",
+        lambda *a, **kw: fired.append((a, kw)),
+    )
+
+    ec._handle_event("goal.created", {"goal_id": "g1", "title": "Build Jarvis"})
+
+    concepts = [a[0][0] for a in fired]
+    assert "excitement" in concepts
+
+
+def test_goal_updated_high_progress_fires_pride(isolated_runtime, monkeypatch) -> None:
+    from core.services import emotion_concepts as ec
+
+    ec._last_trigger_at.clear()
+    fired = []
+    monkeypatch.setattr(
+        ec,
+        "trigger_emotion_concept",
+        lambda *a, **kw: fired.append((a, kw)),
+    )
+
+    ec._handle_event("goal.updated", {"goal_id": "g1", "progress_pct": 82, "status": "active"})
+
+    concepts = [a[0][0] for a in fired]
+    assert "pride" in concepts
+
+
+def test_heartbeat_quality_fires_joy(isolated_runtime, monkeypatch) -> None:
+    from core.services import emotion_concepts as ec
+
+    ec._last_trigger_at.clear()
+    fired = []
+    monkeypatch.setattr(
+        ec,
+        "trigger_emotion_concept",
+        lambda *a, **kw: fired.append((a, kw)),
+    )
+
+    ec._handle_event("heartbeat.phased_tick", {"quality_score": 74})
+
+    concepts = [a[0][0] for a in fired]
+    assert "joy" in concepts
+
+
+def test_sensory_novelty_fires_wonder(isolated_runtime, monkeypatch) -> None:
+    from core.services import emotion_concepts as ec
+    from core.services.emotion_concepts_positive_triggers import on_sensory_recorded
+
+    ec._last_trigger_at.clear()
+    fired = []
+    monkeypatch.setattr(
+        ec,
+        "trigger_emotion_concept",
+        lambda *a, **kw: fired.append((a, kw)),
+    )
+
+    on_sensory_recorded({
+        "content": "Der er en ukendt og mærkelig ændring i rummet.",
+        "mood_tone": "mystisk",
+        "metadata": {"source": "look_around"},
+    })
+
+    concepts = [a[0][0] for a in fired]
+    assert "wonder" in concepts

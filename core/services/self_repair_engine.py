@@ -204,3 +204,130 @@ def _check_cooldown(pattern: SelfRepairPattern) -> str:
             pattern.pattern_id, exc,
         )
         return "db-error"
+
+
+# ---------------------------------------------------------------------------
+# Public CRUD API
+# ---------------------------------------------------------------------------
+
+
+from core.runtime.db import (
+    insert_self_repair_pattern,
+    get_self_repair_pattern,
+    list_self_repair_patterns,
+    update_self_repair_pattern,
+    delete_self_repair_pattern,
+    list_recent_self_repair_attempts,
+)
+
+
+def register_pattern(
+    *,
+    pattern_id: str,
+    name: str,
+    trigger_event_kind: str,
+    trigger_match: dict[str, object] | None = None,
+    action_type: str,
+    action_params: dict[str, object] | None = None,
+    enabled: bool = True,
+    cooldown_seconds: int | None = None,
+    max_attempts_per_window: int | None = None,
+    window_seconds: int | None = None,
+    auto_disable_after_escalations: int | None = None,
+    auto_disable_window_hours: int | None = None,
+    source: str = "manual",
+    source_evidence: dict[str, object] | None = None,
+) -> dict[str, object]:
+    """Register a self-repair pattern. Validates action_type against allowlist."""
+    if action_type not in _ACTION_HANDLERS:
+        raise ValueError(
+            f"action_type {action_type!r} not in allowlist: {sorted(_ACTION_HANDLERS)}"
+        )
+    if not pattern_id or not name or not trigger_event_kind:
+        raise ValueError(
+            "pattern_id, name, trigger_event_kind required (non-empty strings)"
+        )
+
+    try:
+        from core.runtime.settings import load_settings
+        s = load_settings()
+        cd = cooldown_seconds if cooldown_seconds is not None else int(getattr(s, "self_repair_default_cooldown_seconds", 300))
+        max_w = max_attempts_per_window if max_attempts_per_window is not None else int(getattr(s, "self_repair_default_max_attempts_per_window", 3))
+        win_s = window_seconds if window_seconds is not None else int(getattr(s, "self_repair_default_window_seconds", 3600))
+        auto_n = auto_disable_after_escalations if auto_disable_after_escalations is not None else int(getattr(s, "self_repair_default_auto_disable_after_escalations", 3))
+        auto_h = auto_disable_window_hours if auto_disable_window_hours is not None else int(getattr(s, "self_repair_default_auto_disable_window_hours", 24))
+    except Exception:
+        cd = cooldown_seconds if cooldown_seconds is not None else 300
+        max_w = max_attempts_per_window if max_attempts_per_window is not None else 3
+        win_s = window_seconds if window_seconds is not None else 3600
+        auto_n = auto_disable_after_escalations if auto_disable_after_escalations is not None else 3
+        auto_h = auto_disable_window_hours if auto_disable_window_hours is not None else 24
+
+    insert_self_repair_pattern(
+        pattern_id=pattern_id,
+        name=name,
+        trigger_event_kind=trigger_event_kind,
+        trigger_match_json=json.dumps(trigger_match or {}, ensure_ascii=False),
+        action_type=action_type,
+        action_params_json=json.dumps(action_params or {}, ensure_ascii=False),
+        enabled=enabled,
+        cooldown_seconds=cd,
+        max_attempts_per_window=max_w,
+        window_seconds=win_s,
+        auto_disable_after_escalations=auto_n,
+        auto_disable_window_hours=auto_h,
+        source=source,
+        source_evidence_json=(
+            json.dumps(source_evidence, ensure_ascii=False) if source_evidence else None
+        ),
+    )
+    return get_self_repair_pattern(pattern_id) or {}
+
+
+def list_patterns(
+    *,
+    enabled: bool | None = None,
+    trigger_event_kind: str | None = None,
+) -> list[dict[str, object]]:
+    return list_self_repair_patterns(
+        enabled=enabled, trigger_event_kind=trigger_event_kind,
+    )
+
+
+def enable_pattern(pattern_id: str) -> bool:
+    return update_self_repair_pattern(pattern_id, enabled=True)
+
+
+def disable_pattern(pattern_id: str) -> bool:
+    return update_self_repair_pattern(pattern_id, enabled=False)
+
+
+def delete_pattern(pattern_id: str) -> bool:
+    return delete_self_repair_pattern(pattern_id)
+
+
+def list_recent_attempts(
+    *, pattern_id: str | None = None, limit: int = 50,
+) -> list[dict[str, object]]:
+    return list_recent_self_repair_attempts(pattern_id=pattern_id, limit=limit)
+
+
+def build_self_repair_surface() -> dict[str, object]:
+    """Compact surface for Mission Control consumption."""
+    patterns = list_self_repair_patterns()
+    enabled_count = sum(1 for p in patterns if p["enabled"])
+    return {
+        "engine_enabled": _engine_enabled(),
+        "pattern_count": len(patterns),
+        "enabled_pattern_count": enabled_count,
+        "patterns": patterns,
+        "recent_attempts": list_recent_self_repair_attempts(limit=20),
+    }
+
+
+def _engine_enabled() -> bool:
+    try:
+        from core.runtime.settings import load_settings
+        return bool(getattr(load_settings(), "self_repair_engine_enabled", True))
+    except Exception:
+        return True

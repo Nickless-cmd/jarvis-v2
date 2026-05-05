@@ -404,6 +404,71 @@ def test_attempt_repair_executes_action_and_records_executed(
     assert notify_calls == []  # No Discord push on success
 
 
+def test_attempt_repair_captures_emotional_anchor(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.runtime.db import get_self_repair_pattern
+    from core.services import self_repair_engine as eng
+    import core.services.emotional_memory_engine as em
+
+    eng.register_pattern(
+        pattern_id="p1", name="X", trigger_event_kind="k",
+        action_type="control_daemon",
+        action_params={"name": "mail_checker", "action": "restart"},
+    )
+    monkeypatch.setitem(eng._ACTION_HANDLERS, "control_daemon", lambda p: {"ok": True})
+
+    captured = []
+    monkeypatch.setattr(
+        em,
+        "capture_emotional_anchor",
+        lambda **kwargs: captured.append(kwargs) or {"ok": True},
+    )
+
+    pattern = eng._decode_pattern(get_self_repair_pattern("p1"))
+    eng._attempt_repair(pattern, {"id": 99, "kind": "k", "payload": {}})
+
+    assert captured
+    assert captured[0]["anchor_type"] == "self_repair_attempt"
+    assert captured[0]["context_features"]["pattern_id"] == "p1"
+    assert captured[0]["context_features"]["outcome"] == "executed"
+
+
+def test_attempt_repair_publishes_emotional_precedent(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.runtime.db import get_self_repair_pattern
+    from core.services import self_repair_engine as eng
+    import core.services.emotional_memory_engine as em
+
+    eng.register_pattern(
+        pattern_id="p1", name="X", trigger_event_kind="k",
+        action_type="control_daemon",
+        action_params={"name": "mail_checker", "action": "restart"},
+    )
+    monkeypatch.setitem(eng._ACTION_HANDLERS, "control_daemon", lambda p: {"ok": True})
+    monkeypatch.setattr(
+        em,
+        "find_similar_anchors",
+        lambda **kwargs: [{"outcome_score": -1.0, "score": 0.8}],
+    )
+    monkeypatch.setattr(em, "capture_emotional_anchor", lambda **kwargs: None)
+    published = []
+    monkeypatch.setattr(
+        eng.event_bus,
+        "publish",
+        lambda kind, payload=None: published.append((kind, payload)),
+    )
+
+    pattern = eng._decode_pattern(get_self_repair_pattern("p1"))
+    eng._attempt_repair(pattern, {"id": 99, "kind": "k", "payload": {}})
+
+    assert any(
+        kind == "self_repair.emotional_precedent_found"
+        for kind, _payload in published
+    )
+
+
 def test_attempt_repair_records_failed_on_handler_exception(
     isolated_runtime, monkeypatch,
 ) -> None:
@@ -595,6 +660,55 @@ def test_process_event_runs_matching_pattern(isolated_runtime, monkeypatch) -> N
     attempts = list_recent_self_repair_attempts(pattern_id="p1")
     assert len(attempts) == 1
     assert attempts[0]["outcome"] == "executed"
+
+
+def test_process_emotional_gate_event_suggests_pattern_after_repetition(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.services import self_repair_engine as eng
+    import core.services.emotional_memory_engine as em
+
+    captured = []
+    monkeypatch.setattr(
+        em,
+        "capture_emotional_anchor",
+        lambda **kwargs: captured.append(kwargs) or {"ok": True},
+    )
+    monkeypatch.setattr(
+        em,
+        "find_similar_anchors",
+        lambda **kwargs: [{"score": 0.9}, {"score": 0.8}, {"score": 0.7}],
+    )
+    published = []
+    monkeypatch.setattr(
+        eng.event_bus,
+        "publish",
+        lambda kind, payload=None: published.append((kind, payload)),
+    )
+
+    eng._process_emotional_gate_event({
+        "id": 44,
+        "kind": "runtime.emotional_gate",
+        "payload": {
+            "input_action": "restart_daemon",
+            "decision": "verify_first",
+            "reason": "fatigue high",
+            "risk": "medium",
+            "snapshot": {
+                "primary_mood": "tired",
+                "frustration": 0.2,
+                "fatigue": 0.8,
+                "confidence": 0.3,
+            },
+        },
+    })
+
+    assert captured
+    assert captured[0]["anchor_type"] == "self_repair_emotional_gate"
+    assert any(
+        kind == "self_repair.emotional_gate_pattern_suggested"
+        for kind, _payload in published
+    )
 
 
 def test_listener_starts_and_stops_cleanly(isolated_runtime) -> None:

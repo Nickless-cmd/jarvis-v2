@@ -144,6 +144,58 @@ def classify_event_change(event: dict[str, object]) -> dict[str, object] | None:
             return classify_sensory_change(event)
         except Exception:
             return None
+    if kind == "self_repair.action_executed":
+        return _percept(
+            source_event_id=event_id,
+            source_kind=kind,
+            change_type="self-repair-action",
+            salience="medium",
+            summary=(
+                "Self-repair executed: "
+                f"{payload.get('name') or payload.get('pattern_id') or 'unknown'}"
+            ),
+            observed_at=created_at,
+            evidence=payload,
+        )
+    if kind == "self_repair.rate_limited":
+        return _percept(
+            source_event_id=event_id,
+            source_kind=kind,
+            change_type="self-repair-rate-limited",
+            salience="normal",
+            summary=(
+                "Self-repair rate limited: "
+                f"{payload.get('reason') or payload.get('pattern_id') or 'unknown'}"
+            ),
+            observed_at=created_at,
+            evidence=payload,
+        )
+    if kind == "self_repair.action_failed":
+        return _percept(
+            source_event_id=event_id,
+            source_kind=kind,
+            change_type="self-repair-failure",
+            salience="high",
+            summary=(
+                "Self-repair failed: "
+                f"{payload.get('error') or payload.get('pattern_id') or 'unknown'}"
+            ),
+            observed_at=created_at,
+            evidence=payload,
+        )
+    if kind == "self_repair.escalated":
+        return _percept(
+            source_event_id=event_id,
+            source_kind=kind,
+            change_type="self-repair-escalation",
+            salience="high",
+            summary=(
+                "Self-repair escalated: "
+                f"{payload.get('name') or payload.get('pattern_id') or 'unknown'}"
+            ),
+            observed_at=created_at,
+            evidence=payload,
+        )
     return None
 
 
@@ -324,6 +376,14 @@ def _learning_rule_for_percept(event: dict[str, object]) -> dict[str, object] | 
             "policy": "Treat tool errors as world-state changes; inspect the error and local context before retrying.",
             "lesson": "Tool failures are sensory feedback for the next action.",
             "confidence": 0.58,
+            "last_evidence": str(event.get("summary") or ""),
+        }
+    if change_type in {"self-repair-failure", "self-repair-escalation"}:
+        return {
+            "rule_key": "perceive-self-repair-as-feedback",
+            "policy": "Treat self-repair failures and escalations as operational feedback; inspect the repair history before repeating the action.",
+            "lesson": "Self-repair outcomes are sensory feedback, not just maintenance logs.",
+            "confidence": 0.6,
             "last_evidence": str(event.get("summary") or ""),
         }
     return None

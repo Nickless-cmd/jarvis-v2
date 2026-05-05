@@ -52,3 +52,27 @@ def test_observe_recent_changes_scans_eventbus(isolated_runtime) -> None:
 
     assert result["observed_count"] >= 1
     assert any(item["change_type"] == "tool-error" for item in result["events"])
+
+
+def test_classify_self_repair_events_as_perception() -> None:
+    from core.services.perceptual_event_engine import classify_event_change
+
+    executed = classify_event_change({
+        "id": 10,
+        "kind": "self_repair.action_executed",
+        "created_at": "2026-05-05T10:00:00+00:00",
+        "payload": {"pattern_id": "p1", "name": "Restart mail checker"},
+    })
+    assert executed is not None
+    assert executed["change_type"] == "self-repair-action"
+    assert executed["salience"] == "medium"
+
+    failed = classify_event_change({
+        "id": 11,
+        "kind": "self_repair.action_failed",
+        "created_at": "2026-05-05T10:01:00+00:00",
+        "payload": {"pattern_id": "p1", "error": "restart failed"},
+    })
+    assert failed is not None
+    assert failed["change_type"] == "self-repair-failure"
+    assert failed["salience"] == "high"

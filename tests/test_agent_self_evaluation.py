@@ -116,27 +116,41 @@ def test_stale_goals_section_lists_when_present():
 
 
 def test_adherence_returns_none_when_no_decisions():
-    with patch("core.runtime.db.list_cognitive_decisions", return_value=[]):
+    with patch("core.runtime.db_decisions.list_decisions", return_value=[]):
         result = decision_adherence_summary()
     assert result["score"] is None
 
 
 def test_adherence_calculates_score():
-    with patch("core.runtime.db.list_cognitive_decisions", return_value=[
-        {"status": "applied"}, {"status": "applied"}, {"status": "applied"},
-        {"status": "revoked"},
+    with patch("core.runtime.db_decisions.list_decisions", return_value=[
+        {"decision_id": "d1", "directive": "x", "adherence_score": 1.0},
+        {"decision_id": "d2", "directive": "y", "adherence_score": 0.5},
     ]):
         result = decision_adherence_summary()
     assert result["score"] == 75.0
-    assert result["flag"] is False  # 75 > 60
+    assert result["flag"] is None  # 75 > 60
 
 
 def test_adherence_flags_low_score():
-    with patch("core.runtime.db.list_cognitive_decisions", return_value=[
-        {"status": "revoked"}, {"status": "revoked"}, {"status": "applied"},
+    with patch("core.runtime.db_decisions.list_decisions", return_value=[
+        {"decision_id": "d1", "directive": "x", "adherence_score": 0.0},
+        {"decision_id": "d2", "directive": "y", "adherence_score": 0.5},
     ]):
         result = decision_adherence_summary()
-    assert result["flag"] is True
+    assert result["flag"]
+    assert result["recovery"]["needed"] is True
+    assert result["low_decisions"][0]["decision_id"] == "d1"
+
+
+def test_adherence_recovery_detects_duplicate_active_decisions():
+    with patch("core.runtime.db_decisions.list_decisions", return_value=[
+        {"decision_id": "d1", "directive": "Do the thing", "priority": 80, "adherence_score": 0.5, "created_at": "1"},
+        {"decision_id": "d2", "directive": "  do   the thing  ", "priority": 75, "adherence_score": None, "created_at": "2"},
+    ]):
+        result = decision_adherence_summary()
+    assert result["duplicate_groups"][0]["keeper_id"] == "d1"
+    assert result["duplicate_groups"][0]["duplicate_ids"] == ["d2"]
+    assert "duplicate" in result["recovery"]["actions"][0].lower()
 
 
 def test_self_evaluation_section_combines_all():

@@ -204,13 +204,23 @@ def decision_adherence_summary() -> dict[str, Any]:
 
     scores: list[float] = []
     unreviewed = 0
+    duplicate_groups = _duplicate_decision_groups(decisions)
+    low_decisions: list[dict[str, Any]] = []
     for d in decisions:
         s = d.get("adherence_score")
         if s is None:
             unreviewed += 1
             continue
         try:
-            scores.append(float(s))
+            score_f = float(s)
+            scores.append(score_f)
+            if score_f < 0.6:
+                low_decisions.append({
+                    "decision_id": str(d.get("decision_id") or ""),
+                    "directive": str(d.get("directive") or "")[:180],
+                    "adherence_score": round(score_f, 3),
+                    "last_reviewed_at": str(d.get("last_reviewed_at") or ""),
+                })
         except (TypeError, ValueError):
             unreviewed += 1
     total = len(decisions)
@@ -221,12 +231,19 @@ def decision_adherence_summary() -> dict[str, Any]:
             "score": None,
             "total": total,
             "unreviewed": unreviewed,
+            "duplicate_groups": duplicate_groups,
             "note": "no decisions have been reviewed yet — no adherence data",
         }
 
     mean = sum(scores) / len(scores)
     score = round(mean * 100, 1)
     flag = "under 60% — review and either revoke or strengthen" if score < 60 else None
+    recovery = _adherence_recovery_plan(
+        score=score,
+        low_decisions=low_decisions,
+        duplicate_groups=duplicate_groups,
+        unreviewed=unreviewed,
+    )
     return {
         "status": "ok",
         "score": score,
@@ -234,7 +251,69 @@ def decision_adherence_summary() -> dict[str, Any]:
         "total": total,
         "reviewed": len(scores),
         "unreviewed": unreviewed,
+        "duplicate_groups": duplicate_groups,
+        "low_decisions": low_decisions,
+        "recovery": recovery,
         "flag": flag,
+    }
+
+
+def _normalize_decision_directive(value: object) -> str:
+    return " ".join(str(value or "").strip().lower().split())
+
+
+def _duplicate_decision_groups(decisions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_directive: dict[str, list[dict[str, Any]]] = {}
+    for decision in decisions:
+        key = _normalize_decision_directive(decision.get("directive"))
+        if not key:
+            continue
+        by_directive.setdefault(key, []).append(decision)
+    groups: list[dict[str, Any]] = []
+    for items in by_directive.values():
+        if len(items) < 2:
+            continue
+        items_sorted = sorted(
+            items,
+            key=lambda item: (
+                item.get("adherence_score") is None,
+                -int(item.get("priority") or 0),
+                str(item.get("created_at") or ""),
+            ),
+        )
+        keeper = items_sorted[0]
+        duplicates = items_sorted[1:]
+        groups.append({
+            "directive": str(keeper.get("directive") or "")[:180],
+            "keeper_id": str(keeper.get("decision_id") or ""),
+            "duplicate_ids": [str(item.get("decision_id") or "") for item in duplicates],
+            "count": len(items),
+        })
+    return groups
+
+
+def _adherence_recovery_plan(
+    *,
+    score: float,
+    low_decisions: list[dict[str, Any]],
+    duplicate_groups: list[dict[str, Any]],
+    unreviewed: int,
+) -> dict[str, Any]:
+    actions: list[str] = []
+    if duplicate_groups:
+        duplicate_count = sum(len(group.get("duplicate_ids") or []) for group in duplicate_groups)
+        actions.append(f"Revoke or merge {duplicate_count} duplicate active decision(s); keep the reviewed/highest-priority one.")
+    if low_decisions:
+        actions.append("For each low-adherence decision, do one visible recovery action next turn before adding new commitments.")
+    if unreviewed:
+        actions.append(f"Review {unreviewed} unreviewed active decision(s) before creating replacements.")
+    if score < 60:
+        actions.append("During tool work, surface a short status before the 5th tool call or explain the blocker.")
+    return {
+        "needed": bool(actions),
+        "actions": actions,
+        "focus_decision_ids": [item["decision_id"] for item in low_decisions[:3]],
+        "duplicate_groups": duplicate_groups,
     }
 
 
@@ -284,6 +363,10 @@ def self_evaluation_section() -> str | None:
         score = adherence["score"]
         if adherence.get("flag"):
             parts.append(f"⚠ Decision adherence {score}% — under 60% tærskel")
+            recovery = adherence.get("recovery") if isinstance(adherence.get("recovery"), dict) else {}
+            actions = recovery.get("actions") if isinstance(recovery.get("actions"), list) else []
+            if actions:
+                parts.append(f"Adherence recovery: {actions[0]}")
         elif score < 80:
             parts.append(f"Decision adherence: {score}% (overvej review)")
 

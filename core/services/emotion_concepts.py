@@ -117,22 +117,52 @@ _LAG1_AXES = ("confidence", "curiosity", "frustration", "fatigue")
 # Public API
 # ---------------------------------------------------------------------------
 
+_last_trigger_at: dict[tuple[str, str], datetime] = {}
+
+
+def _now() -> datetime:
+    """Indirected for monkeypatching in tests."""
+    return datetime.now(UTC)
+
+
 def trigger_emotion_concept(
     concept: str,
     intensity: float,
     trigger: str = "",
     source: str = "",
     lifetime_hours: float = 2.0,
+    *,
+    min_seconds_since_last_from_same_source: int | None = None,
 ) -> dict[str, Any] | None:
     """Create or strengthen an active emotion concept instance.
 
     If the concept is already active, blends the new intensity in (adds 50%
     of incoming intensity) rather than replacing. Returns the signal dict, or
-    None if the concept name is unknown.
+    None if the concept name is unknown OR the cooldown blocked this fire.
     """
     if concept not in VALID_CONCEPTS:
         logger.debug("emotion_concepts: unknown concept %r — ignored", concept)
         return None
+
+    # Cooldown gate (per (concept, source))
+    if min_seconds_since_last_from_same_source is None:
+        try:
+            from core.runtime.settings import load_settings
+            min_seconds_since_last_from_same_source = int(
+                getattr(load_settings(),
+                        "emotion_concepts_default_trigger_cooldown_seconds", 30)
+            )
+        except Exception:
+            min_seconds_since_last_from_same_source = 30
+
+    cooldown_key = (concept, source or "")
+    cooldown_now = _now()
+    last = _last_trigger_at.get(cooldown_key)
+    if last is not None:
+        elapsed = (cooldown_now - last).total_seconds()
+        if elapsed < min_seconds_since_last_from_same_source:
+            return None
+    _last_trigger_at[cooldown_key] = cooldown_now
 
     intensity = max(0.0, min(1.0, float(intensity)))
     now = datetime.now(UTC)

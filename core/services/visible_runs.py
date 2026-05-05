@@ -1057,7 +1057,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     )
                 except Exception:
                     _agentic_budget = {}
-                _AGENTIC_MAX_ROUNDS = int(_agentic_budget.get("max_rounds") or 50)
+                _AGENTIC_MAX_ROUNDS = int(_agentic_budget.get("max_rounds") or 100)
                 _agentic_tools = _get_tool_defs()
                 _all_followup_parts: list[str] = []
                 _a_parts: list[str] = []

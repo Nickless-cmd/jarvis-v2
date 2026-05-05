@@ -65,6 +65,47 @@ def test_affective_meta_state_builds_bounded_state_from_runtime_inputs(isolated_
     assert surface["live_emotional_state"]["rhythm_phase"] == "social"
 
 
+def test_live_emotional_state_exposes_all_active_emotion_concepts(isolated_runtime, monkeypatch) -> None:
+    affective = isolated_runtime.affective_meta_state
+    from core.services import emotion_concepts
+
+    active = [
+        {"concept": concept, "intensity": 0.7, "direction": "rising"}
+        for concept in (
+            "joy",
+            "wonder",
+            "warmth",
+            "pride",
+            "caution",
+            "resolve",
+            "accomplishment",
+        )
+    ]
+
+    monkeypatch.setattr(emotion_concepts, "get_active_emotion_concepts", lambda: active)
+    monkeypatch.setattr(
+        emotion_concepts,
+        "get_lag1_influence_deltas",
+        lambda: {"confidence": 0.0, "curiosity": 0.0, "frustration": 0.0, "fatigue": 0.0},
+    )
+
+    state = affective._build_live_emotional_state(
+        personality_vector={"emotional_baseline": '{"confidence": 0.5}'},
+        relationship_texture={},
+        rhythm_state={},
+    )
+
+    assert [item["concept"] for item in state["emotion_concepts"]] == [
+        "joy",
+        "wonder",
+        "warmth",
+        "pride",
+        "caution",
+        "resolve",
+        "accomplishment",
+    ]
+
+
 def test_affective_meta_prompt_section_includes_guidance(isolated_runtime) -> None:
     affective = isolated_runtime.affective_meta_state
 

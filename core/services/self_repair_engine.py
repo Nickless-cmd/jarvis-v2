@@ -131,3 +131,28 @@ def _now() -> datetime:
 
 def _now_iso() -> str:
     return _now().isoformat()
+
+
+# ---------------------------------------------------------------------------
+# Action allowlist + handlers
+# ---------------------------------------------------------------------------
+
+
+def _action_control_daemon(params: dict) -> dict:
+    """Allowlisted handler for control_daemon. Validates params then delegates."""
+    from core.services.daemon_manager import control_daemon
+
+    name = str(params.get("name") or "")
+    action = str(params.get("action") or "")
+    if not name or action not in {"enable", "disable", "restart", "set_interval"}:
+        raise ValueError(f"invalid control_daemon params: {params!r}")
+    interval = params.get("interval_minutes")
+    if interval is not None:
+        interval = int(interval)
+    return control_daemon(name, action, interval_minutes=interval)
+
+
+_ACTION_HANDLERS: dict[str, Callable[[dict], dict]] = {
+    "control_daemon": _action_control_daemon,
+    # v1: only this. Adding new actions requires explicit PR + governance review.
+}

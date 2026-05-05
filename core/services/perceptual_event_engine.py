@@ -165,28 +165,10 @@ def record_perceptual_event(
         observed_at=datetime.now(UTC).isoformat(),
         evidence=evidence or {},
     )
-    result = _record_perceptual_event(percept, state=_load_state())
-
-    try:
-        from core.services.emotional_memory_engine import capture_emotional_anchor
-        anchor_id = str(
-            result.get("percept_id")
-            or f"pe-{percept.get('observed_at') or ''}-{change_type}"
-        )
-        capture_emotional_anchor(
-            anchor_type="perceptual_event",
-            anchor_id=anchor_id,
-            context_features={
-                "event_kind": source_kind,
-                "change_type": change_type,
-                "summary": summary[:200],
-            },
-            source="perceptual_event_engine",
-        )
-    except Exception:
-        pass
-
-    return result
+    # Emotional memory capture lives inside _record_perceptual_event so it
+    # fires on both manual record_perceptual_event() calls and eventbus-driven
+    # observe_recent_changes paths.
+    return _record_perceptual_event(percept, state=_load_state())
 
 
 def build_perception_surface(*, limit: int = 6, scan: bool = True) -> dict[str, object]:
@@ -284,6 +266,20 @@ def _record_perceptual_event(
             event_type=str(event.get("change_type") or ""),
             intensity=0.8 if str(event.get("salience") or "") == "high" else 0.45,
             detail=str(event.get("summary") or ""),
+        )
+    except Exception:
+        pass
+    try:
+        from core.services.emotional_memory_engine import capture_emotional_anchor
+        capture_emotional_anchor(
+            anchor_type="perceptual_event",
+            anchor_id=str(event["percept_id"]),
+            context_features={
+                "event_kind": str(event.get("source_kind") or ""),
+                "change_type": str(event.get("change_type") or ""),
+                "summary": str(event.get("summary") or "")[:200],
+            },
+            source="perceptual_event_engine",
         )
     except Exception:
         pass

@@ -210,7 +210,7 @@ def _build_live_emotional_state(
             get_lag1_influence_deltas,
         )
         deltas = get_lag1_influence_deltas()
-        emotion_concepts_list = get_active_emotion_concepts()[:5]  # type: ignore[assignment]
+        emotion_concepts_list = get_active_emotion_concepts()  # type: ignore[assignment]
 
         def _apply_delta(base: float | None, delta: float) -> float | None:
             if base is None and delta == 0.0:

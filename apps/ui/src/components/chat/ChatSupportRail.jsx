@@ -144,6 +144,16 @@ function clusterColor(cluster) {
   }
 }
 
+function clusterLabel(cluster) {
+  switch (cluster) {
+    case 'JOY': return 'joy'
+    case 'SOCIAL': return 'bond'
+    case 'DISTRESS': return 'distress'
+    case 'REG': return 'reg'
+    default: return 'other'
+  }
+}
+
 function deriveEmotions(affective, emotionalBaseline = {}) {
   const state = affective.state || 'unknown'
   const bearing = affective.bearing || 'unknown'
@@ -312,6 +322,16 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
   const reflectiveLoad = affective.reflective_load || 'unknown'
 
   const emotions = deriveEmotions(affective, emotionalBaseline)
+  const activeEmotionConcepts = Array.isArray(liveEmotionalState.emotion_concepts)
+    ? liveEmotionalState.emotion_concepts
+        .map((concept) => ({
+          ...concept,
+          concept: String(concept?.concept || ''),
+          intensity: clampUnit(concept?.intensity, 0) ?? 0,
+          direction: String(concept?.direction || ''),
+        }))
+        .filter((concept) => concept.concept)
+    : []
   const emotionCards = [
     { label: 'CONF', value: emotions.confidence, color: '#4caf82', icon: Smile },
     { label: 'CURIO', value: emotions.curiosity, color: '#d4963a', icon: Lightbulb },
@@ -404,13 +424,13 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
             )
           })}
         </div>
-        {Array.isArray(liveEmotionalState.emotion_concepts) && liveEmotionalState.emotion_concepts.length > 0 ? (
+        {activeEmotionConcepts.length > 0 ? (
           <div className="rail-emotion-concepts">
-            <div className="rail-emotion-concepts-header mono">Active concepts</div>
+            <div className="rail-emotion-concepts-header mono">Active feelings</div>
             <div className="rail-emotion-concepts-list">
-              {liveEmotionalState.emotion_concepts.map((c) => {
-                const concept = String(c.concept || '')
-                const intensity = Number(c.intensity) || 0
+              {activeEmotionConcepts.map((c) => {
+                const concept = c.concept
+                const intensity = c.intensity
                 const direction = String(c.direction || '')
                 const dirArrow = direction === 'rising' ? '↑' : direction === 'falling' ? '↓' : '·'
                 const cluster = conceptCluster(concept)
@@ -420,7 +440,7 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
                   <div key={concept} className="rail-emotion-concept" title={`${concept} (${cluster}) intensity ${intensity.toFixed(2)} — ${direction}`}>
                     <div className="rail-emotion-concept-row">
                       <span className="mono rail-emotion-concept-name" style={{ color }}>{concept}</span>
-                      <span className="mono rail-emotion-concept-meta">{dirArrow} {intensity.toFixed(2)}</span>
+                      <span className="mono rail-emotion-concept-meta">{clusterLabel(cluster)} {dirArrow} {intensity.toFixed(2)}</span>
                     </div>
                     <div className="progress-bar">
                       <div className="progress-bar-fill" style={{ width: `${pct}%`, background: color }} />

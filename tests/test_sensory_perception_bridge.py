@@ -416,3 +416,33 @@ def test_detect_change_metadata_only(isolated_runtime) -> None:
     result = _detect_change(record, baseline, "audio")
     assert result["changed"] is True
     assert result["kind"] == "metadata_change"
+
+
+def test_salience_high_for_mood_and_content(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _salience_for_change
+    assert _salience_for_change({"changed": True, "kind": "mood_and_content", "jaccard": 0.1}) == "high"
+
+
+def test_salience_high_for_mood_with_strong_lexical_drift(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _salience_for_change
+    assert _salience_for_change({"changed": True, "kind": "mood_shift", "jaccard": 0.10}) == "high"
+
+
+def test_salience_medium_for_mood_shift_alone(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _salience_for_change
+    assert _salience_for_change({"changed": True, "kind": "mood_shift", "jaccard": 0.6}) == "medium"
+
+
+def test_salience_medium_for_content_drift(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _salience_for_change
+    assert _salience_for_change({"changed": True, "kind": "content_drift", "jaccard": 0.20}) == "medium"
+
+
+def test_salience_medium_for_metadata_change(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _salience_for_change
+    assert _salience_for_change({"changed": True, "kind": "metadata_change", "jaccard": 0.7}) == "medium"
+
+
+def test_salience_normal_for_mild_lexical_drift(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _salience_for_change
+    assert _salience_for_change({"changed": True, "kind": "lexical_drift", "jaccard": 0.35}) == "normal"

@@ -186,6 +186,17 @@ def append_chat_message(
             resonate(normalized_content, source=f"chat:{normalized_session}")
         except Exception:
             pass
+        # emotion-trigger: warmth/playfulness/tenderness from user-message content
+        try:
+            from core.services.emotion_concepts_channel_triggers import (
+                on_channel_message_appended,
+            )
+            on_channel_message_appended({
+                "session_id": normalized_session,
+                "message": {"role": "user", "content": normalized_content},
+            })
+        except Exception:
+            pass
 
     if normalized_role == "tool" and not parse_tool_result_reference(normalized_content):
         normalized_tool_name = (tool_name or _infer_tool_name_from_content(normalized_content) or "tool").strip()

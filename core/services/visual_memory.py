@@ -440,6 +440,14 @@ def _build_prompt(previous: dict[str, object] | None = None, prompt_index: int |
         prev_at = str(previous.get("captured_at") or "")
         if prev_desc and prev_at:
             parts.append(_compare_suffix(prev_desc, _previous_time_label(prev_at)))
+    # Append emotion-concept perception focus (Layer 2b live perception)
+    try:
+        from core.services.affect_modulation import compute_concept_perception_focus
+        concept_focus = compute_concept_perception_focus()
+        if concept_focus:
+            parts.append(concept_focus)
+    except Exception:
+        pass
     return "\n\n".join(parts)
 
 

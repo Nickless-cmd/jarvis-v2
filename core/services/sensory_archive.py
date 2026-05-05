@@ -137,6 +137,11 @@ def _record(
         )
     except Exception as exc:
         logger.debug("sensory_archive: event publish failed: %s", exc)
+    try:
+        from core.services.emotion_concepts_positive_triggers import on_sensory_recorded
+        on_sensory_recorded(record)
+    except Exception as exc:
+        logger.debug("sensory_archive: emotion concept trigger failed: %s", exc)
     return record
 
 

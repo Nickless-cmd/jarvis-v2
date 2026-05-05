@@ -394,6 +394,14 @@ def _handle_event(kind: str, payload: dict[str, Any]) -> None:
     elif kind == "memory.write":
         trigger_emotion_concept("accomplishment", 0.3, trigger="memory_write", source="eventbus")
 
+    elif kind == "goal.created":
+        from core.services.emotion_concepts_positive_triggers import on_goal_created
+        on_goal_created(payload)
+
+    elif kind == "goal.updated":
+        from core.services.emotion_concepts_positive_triggers import on_goal_updated
+        on_goal_updated(payload)
+
     elif kind == "goal.progress":
         progress = float(payload.get("progress_delta") or 0)
         if progress > 0:
@@ -411,6 +419,7 @@ def _handle_event(kind: str, payload: dict[str, Any]) -> None:
         "heartbeat.execute",
         "heartbeat.propose",
         "heartbeat.initiative",
+        "heartbeat.phased_tick",
     ):
         _handle_heartbeat_tick(payload)
 
@@ -419,6 +428,12 @@ def _handle_heartbeat_tick(payload: dict[str, Any]) -> None:
     """Map heartbeat tick outcomes to emotion concepts."""
     action_status = str(payload.get("action_status") or "").lower()
     active_task_count = int(payload.get("active_task_count") or 0)
+
+    try:
+        from core.services.emotion_concepts_positive_triggers import on_heartbeat_quality
+        on_heartbeat_quality(payload)
+    except Exception:
+        pass
 
     if action_status in ("failed", "error"):
         trigger_emotion_concept(

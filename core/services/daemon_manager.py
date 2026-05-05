@@ -253,6 +253,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 720,
         "description": "12t opdatering af relation map: last_seen for primary, tom stale-check for secondary",
     },
+    "consolidation_judge": {
+        "module": "core.services.consolidation_judge_daemon",
+        "reset_var": "_last_judge_at",
+        "reset_value": None,
+        "default_cadence_minutes": 1440,
+        "description": "Natlig revision: samler dagens data og tvinger stillingtagen til 3-5 konkrete valg (accept/reject/defer)",
+    },
 }
 
 

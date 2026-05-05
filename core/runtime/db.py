@@ -33520,3 +33520,16 @@ from core.runtime.db_emotional_memory import (  # noqa: E402,F401
     update_emotional_memory_outcome,
     delete_emotional_memory_anchor,
 )
+
+
+# --- Self-repair engine (split into db_self_repair.py per boy scout rule) ---
+from core.runtime.db_self_repair import (  # noqa: E402,F401
+    insert_self_repair_pattern,
+    get_self_repair_pattern,
+    list_self_repair_patterns,
+    update_self_repair_pattern,
+    delete_self_repair_pattern,
+    insert_self_repair_attempt,
+    count_recent_attempts,
+    list_recent_self_repair_attempts,
+)

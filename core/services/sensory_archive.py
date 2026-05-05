@@ -103,15 +103,25 @@ def _record(
 ) -> dict[str, Any]:
     if not content or not content.strip():
         raise ValueError("sensory memory content must not be empty")
-    
+
     # Auto-extract mood if not provided
     final_mood = mood_tone
     if final_mood is None:
         final_mood = _extract_mood_from_content(content, modality)
-    
+
+    # Append concept-perception note (Layer 2b memory enrichment)
+    final_content = content.strip()
+    try:
+        from core.services.affect_modulation import compute_concept_perception_focus
+        focus = compute_concept_perception_focus()
+        if focus:
+            final_content = f"{final_content}\n[concept-focus: {focus}]"
+    except Exception:
+        pass
+
     record = insert_sensory_memory(
         modality=modality,
-        content=content.strip(),
+        content=final_content,
         mood_tone=final_mood,
         metadata=metadata or {},
     )

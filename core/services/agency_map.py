@@ -31,14 +31,14 @@ def build_agency_map_surface() -> dict[str, Any]:
         "questions": questions,
         "nextMoves": [
             {
-                "title": "Close tool-outcome memory",
-                "summary": "Successful and failed tool runs should become durable executive evidence, not just events.",
+                "title": "Tune tool-outcome memory",
+                "summary": "Tool runs now become durable executive evidence; next step is better scoring by tool family.",
                 "target": "Tools -> Memory -> Living Executive",
-                "priority": "high",
+                "priority": "medium",
             },
             {
-                "title": "Make Living Executive propose actions",
-                "summary": "Executive traces are active now; the next step is candidate action proposals with MC-visible reasons.",
+                "title": "Expand Living Executive tool plans",
+                "summary": "Executive can propose recovery plans from tool failures; next step is turning selected plans into runnable tool proposals.",
                 "target": "Emotion/Goals -> Living Executive -> Tools",
                 "priority": "high",
             },
@@ -135,13 +135,13 @@ def _bridges() -> list[dict[str, Any]]:
         _bridge("goals", "emotion", "connected", "Goal creation/progress/completion now triggers excitement, pride, joy."),
         _bridge("emotion", "living_executive", "experimental", "Emotional gates and high-salience events can become executive impulses."),
         _bridge("self_repair", "living_executive", "experimental", "Repair failures can schedule a future executive return."),
-        _bridge("living_executive", "memory", "partial", "Executive can write observations, but not all choices become durable lessons yet."),
-        _bridge("memory", "living_executive", "partial", "Some memory signals influence executive choices; no general precedent engine yet."),
-        _bridge("tools", "emotion", "partial", "Tool success/error concepts exist, but retry-success and nuanced outcomes are not mapped."),
-        _bridge("tools", "memory", "missing", "Tool outcomes are not consistently converted into durable action evidence."),
-        _bridge("living_executive", "tools", "partial", "Executive schedules wakeups and records focus, but does not yet propose full tool plans."),
+        _bridge("living_executive", "memory", "connected", "Every executive trace now becomes durable runtime action evidence."),
+        _bridge("memory", "living_executive", "connected", "Living Executive reads recent runtime outcomes as memory precedents during choice."),
+        _bridge("tools", "emotion", "connected", "Actual tool.completed events now drive accomplishment, caution, doubt, or blocked-frustration."),
+        _bridge("tools", "memory", "connected", "Tool outcomes are persisted as durable runtime action evidence."),
+        _bridge("living_executive", "tools", "experimental", "Tool failures can now become MC-visible Living Executive recovery plan proposals."),
         _bridge("mission_control", "living_executive", "connected", "MC exposes active state, current focus, recent traces, and allowed actions."),
-        _bridge("hidden_runtime", "mission_control", "partial", "Many living signals are surfaced; hidden influence edges still need automatic inventory."),
+        _bridge("hidden_runtime", "mission_control", "experimental", "Agency Map is now the MC inventory surface for hidden or weakly connected influence edges."),
     ]
 
 
@@ -159,18 +159,18 @@ def _questions(bridges: list[dict[str, str]]) -> list[dict[str, str]]:
     return [
         {
             "question": "Hvad kan Jarvis mærke, men ikke handle på?",
-            "answer": "Emotion and sensory novelty are active; full tool-plan proposal from those states is still partial.",
-            "status": "partial",
+            "answer": "Emotion and sensory novelty can reach Living Executive; tool failures now produce recovery plan proposals.",
+            "status": "active",
         },
         {
             "question": "Hvad kan han handle på, men ikke huske?",
-            "answer": "Tool outcomes and executive action outcomes need more durable memory/evidence rows.",
-            "status": "open",
+            "answer": "Tool outcomes and executive action outcomes now persist as runtime action evidence.",
+            "status": "active",
         },
         {
             "question": "Hvad kan han huske, men ikke bruge til valg?",
-            "answer": "Sensory, emotional anchors, and concept baselines exist; a general precedent engine is not wired into all choices.",
-            "status": "partial",
+            "answer": "Living Executive now reads recent runtime outcomes as precedents; deeper sensory/emotional precedent ranking is next.",
+            "status": "active",
         },
         {
             "question": "Hvad sker i ham, men er stadig usynligt i MC?",

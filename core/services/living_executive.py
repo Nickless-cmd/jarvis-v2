@@ -39,6 +39,7 @@ def _load_state() -> dict[str, Any]:
     raw.setdefault("traces", [])
     raw.setdefault("last_action_by_key", {})
     raw.setdefault("current_focus", {})
+    raw.setdefault("current_tool_plan", {})
     return raw
 
 
@@ -63,6 +64,8 @@ def build_living_executive_surface(*, limit: int = 12) -> dict[str, object]:
             "last_status": (recent[0] if recent else {}).get("status", ""),
         },
         "current_focus": dict(state.get("current_focus") or {}),
+        "current_tool_plan": dict(state.get("current_tool_plan") or {}),
+        "memory_precedents": _recent_memory_precedents(limit=5),
         "recent_traces": recent,
         "allowed_actions": sorted(_ACTION_HANDLERS),
     }
@@ -77,7 +80,7 @@ def choose_impulse(events: list[dict[str, Any]]) -> dict[str, Any] | None:
     if not impulses:
         return None
     impulses.sort(key=lambda item: float(item.get("intensity") or 0.0), reverse=True)
-    return impulses[0]
+    return _attach_memory_precedents(impulses[0])
 
 
 def process_event(event: dict[str, Any]) -> dict[str, object] | None:
@@ -156,6 +159,28 @@ def _impulse_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
                 "reason": "living-executive:self-repair-failure",
             },
             cooldown_key=f"repair:{payload.get('pattern_id') or name}",
+        )
+
+    if kind == "tool.completed":
+        status = str(payload.get("status") or "").lower()
+        if status not in {"error", "failed", "timeout", "blocked", "gate_blocked"}:
+            return None
+        tool_name = str(payload.get("tool") or "tool")
+        return _impulse(
+            source_event_id=event_id,
+            source_kind=kind,
+            felt_signal="tool outcome pain",
+            impulse="form tool recovery plan",
+            intensity=0.72,
+            action_id="propose_tool_plan",
+            choice=f"Propose recovery plan for {tool_name}",
+            payload={
+                "tool_name": tool_name,
+                "status": status,
+                "reason": str(payload.get("error") or payload.get("message") or "tool did not complete cleanly"),
+            },
+            cooldown_key=f"tool-plan:{tool_name}:{status}",
+            cooldown_seconds=1800,
         )
 
     if kind == "self_repair.emotional_gate_pattern_suggested":
@@ -335,10 +360,37 @@ def _action_create_jarvis_brain_observation(impulse: dict[str, Any]) -> dict[str
     return {"status": "executed", "summary": f"brain observation {entry_id}", "entry_id": entry_id}
 
 
+def _action_propose_tool_plan(impulse: dict[str, Any]) -> dict[str, object]:
+    state = _load_state()
+    payload = dict(impulse.get("payload") or {})
+    precedents = list(impulse.get("memory_precedents") or [])
+    plan = {
+        "tool_name": str(payload.get("tool_name") or "tool"),
+        "status": str(payload.get("status") or "unknown"),
+        "reason": str(payload.get("reason") or impulse.get("choice") or ""),
+        "proposal": "inspect prior outcomes, adjust arguments or route through a safer recovery action",
+        "precedent_count": len(precedents),
+        "precedents": precedents[:3],
+        "chosen_at": _now_iso(),
+    }
+    state["current_tool_plan"] = plan
+    _save_state(state)
+    try:
+        event_bus.publish("living_executive.tool_plan_proposed", plan)
+    except Exception:
+        pass
+    return {
+        "status": "proposed",
+        "summary": f"tool plan proposed for {plan['tool_name']}",
+        "tool_plan": plan,
+    }
+
+
 _ACTION_HANDLERS = {
     "schedule_self_wakeup": _action_schedule_self_wakeup,
     "record_focus_intent": _action_record_focus_intent,
     "create_jarvis_brain_observation": _action_create_jarvis_brain_observation,
+    "propose_tool_plan": _action_propose_tool_plan,
 }
 
 
@@ -362,6 +414,7 @@ def _record_trace(
         "aftertaste": _aftertaste(status=status, impulse=impulse),
         "source_event_kind": str(impulse.get("source_kind") or ""),
         "source_event_id": int(impulse.get("source_event_id") or 0),
+        "memory_precedents": list(impulse.get("memory_precedents") or [])[:5],
         "details": details or {},
     }
     state = _load_state()
@@ -381,7 +434,69 @@ def _record_trace(
         )
     except Exception:
         pass
+    try:
+        from core.services.runtime_action_outcome_tracking import (
+            record_runtime_action_outcome,
+        )
+        record_runtime_action_outcome(
+            action_id=f"living_executive:{trace['action_id']}",
+            mode="living_executive",
+            reason=str(trace["choice"]),
+            score=float(trace["intensity"]),
+            payload={
+                "felt_signal": trace["felt_signal"],
+                "source_event_kind": trace["source_event_kind"],
+                "source_event_id": trace["source_event_id"],
+                "memory_precedents": trace["memory_precedents"],
+            },
+            result={
+                "status": status,
+                "summary": outcome[:300],
+                "aftertaste": trace["aftertaste"],
+                "details": details or {},
+            },
+        )
+    except Exception:
+        pass
     return trace
+
+
+def _attach_memory_precedents(impulse: dict[str, Any]) -> dict[str, Any]:
+    precedents = _recent_memory_precedents(
+        action_hint=str(impulse.get("action_id") or ""),
+        limit=5,
+    )
+    if not precedents:
+        return impulse
+    enriched = dict(impulse)
+    enriched["memory_precedents"] = precedents
+    return enriched
+
+
+def _recent_memory_precedents(*, action_hint: str = "", limit: int = 5) -> list[dict[str, Any]]:
+    try:
+        from core.services.runtime_action_outcome_tracking import (
+            recent_runtime_action_outcomes,
+        )
+        outcomes = recent_runtime_action_outcomes(limit=max(limit * 3, limit))
+    except Exception:
+        return []
+    hint = action_hint.strip()
+    precedents: list[dict[str, Any]] = []
+    for item in outcomes:
+        action_id = str(item.get("action_id") or "")
+        if hint and hint not in action_id and not action_id.startswith("tool:"):
+            continue
+        precedents.append({
+            "outcome_id": str(item.get("outcome_id") or ""),
+            "action_id": action_id,
+            "status": str(item.get("result_status") or ""),
+            "summary": str(item.get("result_summary") or "")[:220],
+            "recorded_at": str(item.get("recorded_at") or ""),
+        })
+        if len(precedents) >= limit:
+            break
+    return precedents
 
 
 def _aftertaste(*, status: str, impulse: dict[str, Any]) -> str:

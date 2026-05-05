@@ -298,3 +298,38 @@ def test_sensory_novelty_fires_wonder(isolated_runtime, monkeypatch) -> None:
 
     concepts = [a[0][0] for a in fired]
     assert "wonder" in concepts
+
+
+def test_tool_completed_error_fires_frustration_and_doubt(isolated_runtime, monkeypatch) -> None:
+    from core.services import emotion_concepts as ec
+
+    ec._last_trigger_at.clear()
+    fired = []
+    monkeypatch.setattr(
+        ec,
+        "trigger_emotion_concept",
+        lambda *a, **kw: fired.append((a, kw)),
+    )
+
+    ec._handle_event("tool.completed", {"tool": "bash", "status": "error"})
+
+    concepts = [a[0][0] for a in fired]
+    assert "frustration_blocked" in concepts
+    assert "doubt" in concepts
+
+
+def test_tool_completed_ok_fires_accomplishment(isolated_runtime, monkeypatch) -> None:
+    from core.services import emotion_concepts as ec
+
+    ec._last_trigger_at.clear()
+    fired = []
+    monkeypatch.setattr(
+        ec,
+        "trigger_emotion_concept",
+        lambda *a, **kw: fired.append((a, kw)),
+    )
+
+    ec._handle_event("tool.completed", {"tool": "read_file", "status": "ok"})
+
+    concepts = [a[0][0] for a in fired]
+    assert "accomplishment" in concepts

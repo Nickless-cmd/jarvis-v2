@@ -38,7 +38,7 @@ DEFAULTS: dict[str, Any] = {
 }
 
 AGENTIC_BUDGET_DEFAULTS: dict[str, Any] = {
-    "max_rounds": 50,
+    "max_rounds": 100,
     "max_tool_only_rounds": 12,
     "max_empty_text_rounds": 12,
     "round_total_timeout_s": 300.0,

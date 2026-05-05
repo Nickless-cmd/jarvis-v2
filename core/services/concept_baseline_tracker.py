@@ -1,0 +1,118 @@
+"""Concept baseline tracker — Layer 3 of emotion concepts integration.
+
+Tracks concept-trigger frequency over time and aggregates to cluster-level
+distributions. Real-time stats updated on each trigger; daily evaluation
+runs via governance handler and proposes IDENTITY.md updates through the
+existing identity_drift_proposer when stable drift signals are detected.
+
+See docs/superpowers/specs/2026-05-05-emotion-concepts-baseline-integration-design.md
+"""
+from __future__ import annotations
+
+import logging
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+
+def _cluster_for_concept(concept: str) -> str:
+    """Look up cluster for a concept. Falls back to UNKNOWN."""
+    try:
+        from core.services.emotion_concepts import CONCEPT_CLUSTERS
+        for cluster_name, members in CONCEPT_CLUSTERS.items():
+            if concept in members:
+                return cluster_name
+    except Exception:
+        pass
+    return "UNKNOWN"
+
+
+def _tracker_enabled() -> bool:
+    try:
+        from core.runtime.settings import load_settings
+        return bool(getattr(load_settings(), "concept_baseline_tracker_enabled", True))
+    except Exception:
+        return True
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _now_iso() -> str:
+    return _now().isoformat()
+
+
+def record_concept_trigger(
+    *,
+    concept: str,
+    intensity: float,
+    triggered_at: str,
+    source: str,
+) -> None:
+    """Real-time: update per-concept stats when a concept fires."""
+    if not _tracker_enabled():
+        return
+    try:
+        from core.runtime.db import (
+            get_concept_baseline_stat,
+            upsert_concept_baseline_stat,
+            increment_concept_baseline_total,
+        )
+
+        cluster = _cluster_for_concept(str(concept))
+        existing = get_concept_baseline_stat(str(concept))
+        if existing is None:
+            upsert_concept_baseline_stat(
+                concept=str(concept),
+                cluster=cluster,
+                total_triggers=1,
+                triggers_7d=1,
+                triggers_30d=1,
+                mean_intensity_7d=float(intensity),
+                last_triggered_at=str(triggered_at),
+                first_triggered_at=str(triggered_at),
+            )
+        else:
+            increment_concept_baseline_total(
+                concept=str(concept),
+                intensity=float(intensity),
+                triggered_at=str(triggered_at),
+            )
+    except Exception as exc:
+        logger.warning("concept_baseline_tracker: record failed: %s", exc)
+
+
+def _aggregate_clusters() -> dict[str, dict[str, object]]:
+    """Compute cluster-level share from total_triggers across all concepts."""
+    try:
+        from core.runtime.db import list_concept_baseline_stats
+        stats = list_concept_baseline_stats()
+    except Exception:
+        return {}
+
+    cluster_totals: dict[str, int] = {}
+    cluster_concepts: dict[str, list[dict[str, object]]] = {}
+    grand_total = 0
+    for s in stats:
+        cluster = str(s.get("cluster") or "UNKNOWN")
+        total = int(s.get("total_triggers") or 0)
+        cluster_totals[cluster] = cluster_totals.get(cluster, 0) + total
+        cluster_concepts.setdefault(cluster, []).append(s)
+        grand_total += total
+
+    if grand_total == 0:
+        return {}
+
+    return {
+        cluster: {
+            "total": total,
+            "share": total / grand_total,
+            "concepts": sorted(
+                cluster_concepts.get(cluster, []),
+                key=lambda c: -int(c.get("total_triggers") or 0),
+            ),
+        }
+        for cluster, total in cluster_totals.items()
+    }

@@ -343,3 +343,33 @@ def _summary_for_change(
     if kind == "lexical_drift":
         return f"{modality_label}-indhold mildt ændret (similarity {jaccard:.2f})"
     return f"{modality_label}-ændring"
+
+
+def _salience_for_change(change: dict) -> str:
+    """Map change description to salience level (high/medium/normal)."""
+    from core.runtime.settings import load_settings
+
+    try:
+        settings = load_settings()
+        high_threshold = float(
+            getattr(settings, "sensory_perception_jaccard_high_threshold", 0.15)
+        )
+    except Exception:
+        high_threshold = 0.15
+
+    kind = str(change.get("kind") or "")
+    jaccard = float(change.get("jaccard") or 1.0)
+
+    if kind == "mood_and_content":
+        return "high"
+    if kind == "mood_shift" and jaccard < high_threshold:
+        return "high"
+    if kind == "mood_shift":
+        return "medium"
+    if kind == "content_drift" and jaccard < high_threshold:
+        return "high"
+    if kind == "content_drift":
+        return "medium"
+    if kind == "metadata_change":
+        return "medium"
+    return "normal"

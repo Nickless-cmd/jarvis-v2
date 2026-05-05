@@ -63,6 +63,11 @@ def _decode_pattern(row: dict) -> SelfRepairPattern:
     else:
         source_evidence = None
 
+    def _int_or(default: int, key: str) -> int:
+        # is-None check, NOT `or` — value 0 is valid and must not fall through
+        v = row.get(key)
+        return int(v) if v is not None else default
+
     return SelfRepairPattern(
         pattern_id=str(row.get("pattern_id") or ""),
         name=str(row.get("name") or ""),
@@ -70,12 +75,12 @@ def _decode_pattern(row: dict) -> SelfRepairPattern:
         trigger_match=trigger_match if isinstance(trigger_match, dict) else {},
         action_type=str(row.get("action_type") or ""),
         action_params=action_params if isinstance(action_params, dict) else {},
-        enabled=bool(int(row.get("enabled") or 0)),
-        cooldown_seconds=int(row.get("cooldown_seconds") or 300),
-        max_attempts_per_window=int(row.get("max_attempts_per_window") or 3),
-        window_seconds=int(row.get("window_seconds") or 3600),
-        auto_disable_after_escalations=int(row.get("auto_disable_after_escalations") or 3),
-        auto_disable_window_hours=int(row.get("auto_disable_window_hours") or 24),
+        enabled=bool(_int_or(0, "enabled")),
+        cooldown_seconds=_int_or(300, "cooldown_seconds"),
+        max_attempts_per_window=_int_or(3, "max_attempts_per_window"),
+        window_seconds=_int_or(3600, "window_seconds"),
+        auto_disable_after_escalations=_int_or(3, "auto_disable_after_escalations"),
+        auto_disable_window_hours=_int_or(24, "auto_disable_window_hours"),
         source=str(row.get("source") or ""),
         source_evidence=source_evidence,
     )
@@ -156,3 +161,46 @@ _ACTION_HANDLERS: dict[str, Callable[[dict], dict]] = {
     "control_daemon": _action_control_daemon,
     # v1: only this. Adding new actions requires explicit PR + governance review.
 }
+
+
+# ---------------------------------------------------------------------------
+# Cooldown
+# ---------------------------------------------------------------------------
+
+
+from core.runtime.db import count_recent_attempts
+
+
+def _check_cooldown(pattern: SelfRepairPattern) -> str:
+    """Return 'ok' if attempt allowed, else reason string explaining why blocked."""
+    try:
+        now = _now()
+
+        if pattern.cooldown_seconds > 0:
+            cooldown_since = (now - timedelta(seconds=pattern.cooldown_seconds)).isoformat()
+            recent_executed = count_recent_attempts(
+                pattern_id=pattern.pattern_id,
+                since_iso=cooldown_since,
+                outcome="executed",
+            )
+            if recent_executed > 0:
+                return f"cooldown ({pattern.cooldown_seconds}s since last execution)"
+
+        window_since = (now - timedelta(seconds=pattern.window_seconds)).isoformat()
+        recent = count_recent_attempts(
+            pattern_id=pattern.pattern_id,
+            since_iso=window_since,
+            outcome=None,
+        )
+        if recent >= pattern.max_attempts_per_window:
+            return (
+                f"window-cap-reached ({recent}/{pattern.max_attempts_per_window} "
+                f"in {pattern.window_seconds}s)"
+            )
+        return "ok"
+    except Exception as exc:
+        logger.warning(
+            "self_repair: cooldown check failed for %s: %s",
+            pattern.pattern_id, exc,
+        )
+        return "db-error"

@@ -172,3 +172,96 @@ def test_action_control_daemon_rejects_invalid_action(isolated_runtime) -> None:
 
     with pytest.raises(ValueError, match="invalid control_daemon params"):
         _action_control_daemon({"name": "", "action": "restart"})
+
+
+def test_check_cooldown_ok_when_no_recent_attempts(isolated_runtime) -> None:
+    from core.runtime.db import insert_self_repair_pattern, get_self_repair_pattern
+    from core.services.self_repair_engine import _check_cooldown, _decode_pattern
+
+    insert_self_repair_pattern(
+        pattern_id="p1", name="x", trigger_event_kind="k",
+        action_type="control_daemon", source="manual",
+    )
+    p = _decode_pattern(get_self_repair_pattern("p1"))
+    assert _check_cooldown(p) == "ok"
+
+
+def test_check_cooldown_blocks_within_cooldown_seconds(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db import (
+        insert_self_repair_pattern,
+        get_self_repair_pattern,
+        insert_self_repair_attempt,
+    )
+    from core.services import self_repair_engine as eng
+
+    insert_self_repair_pattern(
+        pattern_id="p1", name="x", trigger_event_kind="k",
+        action_type="control_daemon", cooldown_seconds=300, source="manual",
+    )
+    now = datetime(2026, 5, 5, 12, 0, tzinfo=UTC)
+    monkeypatch.setattr(eng, "_now", lambda: now)
+
+    insert_self_repair_attempt(
+        pattern_id="p1",
+        attempted_at=(now - timedelta(seconds=120)).isoformat(),
+        triggered_by_event_id=1, outcome="executed",
+        error_summary=None, elapsed_ms=10,
+    )
+
+    p = eng._decode_pattern(get_self_repair_pattern("p1"))
+    reason = eng._check_cooldown(p)
+    assert reason.startswith("cooldown")
+
+
+def test_check_cooldown_blocks_at_window_cap(isolated_runtime, monkeypatch) -> None:
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db import (
+        insert_self_repair_pattern,
+        get_self_repair_pattern,
+        insert_self_repair_attempt,
+    )
+    from core.services import self_repair_engine as eng
+
+    insert_self_repair_pattern(
+        pattern_id="p1", name="x", trigger_event_kind="k",
+        action_type="control_daemon",
+        cooldown_seconds=0,
+        max_attempts_per_window=3, window_seconds=3600,
+        source="manual",
+    )
+    now = datetime(2026, 5, 5, 12, 0, tzinfo=UTC)
+    monkeypatch.setattr(eng, "_now", lambda: now)
+
+    for i, outcome in enumerate(["executed", "failed", "rate_limited"]):
+        insert_self_repair_attempt(
+            pattern_id="p1",
+            attempted_at=(now - timedelta(minutes=i * 10)).isoformat(),
+            triggered_by_event_id=i, outcome=outcome,
+            error_summary=None, elapsed_ms=5,
+        )
+
+    p = eng._decode_pattern(get_self_repair_pattern("p1"))
+    reason = eng._check_cooldown(p)
+    assert reason.startswith("window-cap-reached")
+
+
+def test_check_cooldown_returns_db_error_on_query_failure(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.runtime.db import insert_self_repair_pattern, get_self_repair_pattern
+    from core.services import self_repair_engine as eng
+
+    insert_self_repair_pattern(
+        pattern_id="p1", name="x", trigger_event_kind="k",
+        action_type="control_daemon", source="manual",
+    )
+    p = eng._decode_pattern(get_self_repair_pattern("p1"))
+
+    def boom(**kwargs):
+        raise RuntimeError("simulated DB failure")
+
+    monkeypatch.setattr(eng, "count_recent_attempts", boom)
+    assert eng._check_cooldown(p) == "db-error"

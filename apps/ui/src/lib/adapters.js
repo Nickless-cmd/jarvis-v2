@@ -4554,6 +4554,10 @@ export const backend = {
     return requestJson('/mc/lab')
   },
 
+  async getMissionControlAgencyMap() {
+    return requestJson('/mc/agency-map')
+  },
+
   async getMissionControlMemory({ query = '', scope = '', limit = 100 } = {}) {
     const params = new URLSearchParams()
     if (query) params.set('q', query)

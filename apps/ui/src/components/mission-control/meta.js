@@ -19,6 +19,7 @@ export function mcUpdateModeLabel(tabId) {
   if (tabId === 'observability') return 'ws feed + 60s summaries'
   if (tabId === 'jarvis') return 'entry + 30s + heartbeat events'
   if (tabId === 'mind') return 'entry + 30s + heartbeat events'
+  if (tabId === 'agency') return 'snapshot + 60s agency inventory'
   return 'snapshot'
 }
 

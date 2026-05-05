@@ -1,6 +1,5 @@
 # tests/test_mc_tabs_endpoints.py
 from __future__ import annotations
-import pytest
 
 
 def _fake_tools():
@@ -169,3 +168,23 @@ def test_mc_living_executive_structure(monkeypatch):
     assert result["mode"] == "experimental-active"
     assert result["summary"]["last_action"] == "record_focus_intent"
     assert result["current_focus"]["focus"] == "emotional gate"
+
+
+def test_mc_agency_map_structure(monkeypatch):
+    import apps.api.jarvis_api.routes.mission_control as mc
+    import core.services.agency_map as agency_map
+
+    monkeypatch.setattr(agency_map, "build_agency_map_surface", lambda: {
+        "mode": "living-agency-map",
+        "summary": {"nodes": 2, "bridges": 1, "missing": 0},
+        "nodes": [{"id": "senses", "label": "Senses"}],
+        "bridges": [{"source": "senses", "target": "emotion", "status": "connected"}],
+        "questions": [],
+        "nextMoves": [],
+    })
+
+    result = mc.mc_agency_map()
+
+    assert result["mode"] == "living-agency-map"
+    assert result["summary"]["bridges"] == 1
+    assert result["nodes"][0]["id"] == "senses"

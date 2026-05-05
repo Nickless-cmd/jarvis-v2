@@ -230,6 +230,14 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _concept_baseline_evaluation_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            from core.services.concept_baseline_tracker import evaluate_baseline_drift
+            return {"status": "ok", "kind": "concept_baseline_evaluation",
+                    "result": evaluate_baseline_drift()}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
     handlers = {
         "chronicle_refresh": _chronicle_refresh_handler,
         "memory_decay_sweep": _memory_decay_handler,
@@ -250,6 +258,7 @@ def ensure_default_job_handlers() -> list[str]:
         "arc_rule_extraction": _arc_rule_extraction_handler,
         "signal_surface_gc": _signal_surface_gc_handler,
         "decision_review": _decision_review_handler,
+        "concept_baseline_evaluation": _concept_baseline_evaluation_handler,
     }
 
     for job_type, handler in handlers.items():

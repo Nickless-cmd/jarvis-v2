@@ -176,3 +176,70 @@ def test_write_concept_baseline_md_creates_file(
     assert "Emotional Baseline" in content
     assert "JOY_APPROACH" in content
     assert "joy" in content
+
+
+def test_evaluate_calls_proposer_when_signal_stable(
+    isolated_runtime, monkeypatch, tmp_path,
+) -> None:
+    from core.services import concept_baseline_tracker as cbt
+
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    monkeypatch.setattr(cbt, "_workspace_dir", lambda: workspace)
+
+    proposer_calls = []
+    monkeypatch.setattr(
+        cbt, "_propose_identity_update",
+        lambda signal: proposer_calls.append(signal),
+    )
+
+    for _ in range(12):
+        cbt.record_concept_trigger(
+            concept="joy", intensity=0.5,
+            triggered_at="2026-05-05T10:00:00+00:00", source="t",
+        )
+    for _ in range(8):
+        cbt.record_concept_trigger(
+            concept="frustration_blocked", intensity=0.5,
+            triggered_at="2026-05-05T10:00:00+00:00", source="t",
+        )
+
+    result = cbt.evaluate_baseline_drift()
+    assert result.get("skipped") is not True
+    assert "drift_signals" in result
+    assert any(s["type"] == "cluster_dominance" for s in result["drift_signals"])
+
+
+def test_evaluate_disabled_returns_skipped(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.runtime import settings as settings_mod
+    from core.services import concept_baseline_tracker as cbt
+
+    original = settings_mod.load_settings
+    def patched():
+        s = original()
+        s.concept_baseline_tracker_enabled = False
+        return s
+    monkeypatch.setattr(settings_mod, "load_settings", patched)
+
+    result = cbt.evaluate_baseline_drift()
+    assert result.get("skipped") is True
+
+
+def test_build_concept_baseline_surface_returns_overview(
+    isolated_runtime,
+) -> None:
+    from core.services.concept_baseline_tracker import (
+        record_concept_trigger,
+        build_concept_baseline_surface,
+    )
+
+    record_concept_trigger(
+        concept="joy", intensity=0.6,
+        triggered_at="2026-05-05T10:00:00+00:00", source="t",
+    )
+    surface = build_concept_baseline_surface()
+    assert surface["enabled"] is True
+    assert surface["concept_count"] >= 1
+    assert "cluster_stats" in surface

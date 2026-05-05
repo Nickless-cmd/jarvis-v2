@@ -201,3 +201,113 @@ def _write_concept_baseline_md(
         md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     except Exception as exc:
         logger.warning("concept_baseline_tracker: md write failed: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Identity drift proposer integration
+# ---------------------------------------------------------------------------
+
+
+def _propose_identity_update(signal: dict[str, object]) -> dict[str, object]:
+    """Forward a drift signal to identity_drift_proposer."""
+    try:
+        from core.services.identity_drift_proposer import propose_identity_update_if_drifted
+        try:
+            from core.eventbus.bus import event_bus
+            event_bus.publish(
+                "concept_baseline.drift_signal_proposed",
+                {
+                    "signal_type": signal.get("type"),
+                    "cluster": signal.get("cluster"),
+                    "concept": signal.get("concept"),
+                    "confidence": signal.get("confidence"),
+                    "share": signal.get("share"),
+                    "sustained_days": signal.get("sustained_days"),
+                },
+            )
+        except Exception:
+            pass
+        return propose_identity_update_if_drifted()
+    except Exception as exc:
+        logger.warning(
+            "concept_baseline_tracker: identity proposer failed: %s", exc,
+        )
+        return {"status": "error", "error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# Daily evaluation
+# ---------------------------------------------------------------------------
+
+
+def evaluate_baseline_drift() -> dict[str, object]:
+    """Daily: compute stats, write MD, propose drift updates if stable."""
+    if not _tracker_enabled():
+        return {"evaluated_at": _now_iso(), "skipped": True, "reason": "disabled"}
+
+    try:
+        from core.runtime.db import list_concept_baseline_stats
+        from core.runtime.settings import load_settings
+        s = load_settings()
+        min_confidence = float(getattr(s, "concept_baseline_drift_min_confidence", 0.7))
+        min_sustained = int(getattr(s, "concept_baseline_drift_min_sustained_days", 14))
+    except Exception:
+        return {"evaluated_at": _now_iso(), "skipped": True, "reason": "settings-load-failed"}
+
+    cluster_stats = _aggregate_clusters()
+    per_concept_stats = list_concept_baseline_stats()
+    drift_signals = _detect_drift(cluster_stats, per_concept_stats)
+
+    try:
+        _write_concept_baseline_md(cluster_stats, per_concept_stats)
+    except Exception as exc:
+        logger.warning("concept_baseline_tracker: md write in evaluate failed: %s", exc)
+
+    proposals_filed: list[dict[str, object]] = []
+    for signal in drift_signals:
+        confidence = float(signal.get("confidence") or 0.0)
+        sustained = int(signal.get("sustained_days") or 0)
+        if confidence >= min_confidence and sustained >= min_sustained:
+            try:
+                proposer_result = _propose_identity_update(signal)
+                proposals_filed.append({"signal": signal, "result": proposer_result})
+            except Exception as exc:
+                logger.warning(
+                    "concept_baseline_tracker: proposer call failed for %s: %s",
+                    signal, exc,
+                )
+
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "concept_baseline.evaluated",
+            {
+                "cluster_count": len(cluster_stats),
+                "drift_signals_count": len(drift_signals),
+                "proposals_filed": len(proposals_filed),
+            },
+        )
+    except Exception:
+        pass
+
+    return {
+        "evaluated_at": _now_iso(),
+        "cluster_stats": cluster_stats,
+        "drift_signals": drift_signals,
+        "proposals_filed": proposals_filed,
+    }
+
+
+def build_concept_baseline_surface() -> dict[str, object]:
+    """Read-only: return current state for Mission Control consumption."""
+    try:
+        from core.runtime.db import list_concept_baseline_stats
+        per_concept = list_concept_baseline_stats()
+    except Exception:
+        per_concept = []
+    return {
+        "enabled": _tracker_enabled(),
+        "concept_count": len(per_concept),
+        "cluster_stats": _aggregate_clusters(),
+        "top_concepts": per_concept[:10],
+    }

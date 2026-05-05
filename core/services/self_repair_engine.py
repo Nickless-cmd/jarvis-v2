@@ -331,3 +331,216 @@ def _engine_enabled() -> bool:
         return bool(getattr(load_settings(), "self_repair_engine_enabled", True))
     except Exception:
         return True
+
+
+# ---------------------------------------------------------------------------
+# Audit + attempt orchestration
+# ---------------------------------------------------------------------------
+
+
+from core.eventbus.bus import event_bus
+from core.runtime.db import insert_self_repair_attempt
+
+
+def _notify_owner_async(message: str) -> None:
+    """Best-effort Discord DM to owner. Failure is silently swallowed."""
+    try:
+        from core.services.discord_gateway import send_dm_to_owner
+        send_dm_to_owner(message)
+    except Exception as exc:
+        logger.debug("self_repair: notify_owner failed: %s", exc)
+
+
+def _record_executed(
+    pattern: SelfRepairPattern,
+    triggered_by: int,
+    result: dict,
+    elapsed_ms: int,
+) -> None:
+    try:
+        insert_self_repair_attempt(
+            pattern_id=pattern.pattern_id,
+            attempted_at=_now_iso(),
+            triggered_by_event_id=triggered_by,
+            outcome="executed",
+            error_summary=None,
+            elapsed_ms=elapsed_ms,
+        )
+    except Exception as exc:
+        logger.warning("self_repair: audit insert failed: %s", exc)
+    try:
+        update_self_repair_pattern(
+            pattern.pattern_id,
+            last_attempt_at=_now_iso(),
+            last_outcome="executed",
+            total_executed_increment=1,
+        )
+    except Exception:
+        pass
+    try:
+        event_bus.publish(
+            "self_repair.action_executed",
+            {
+                "pattern_id": pattern.pattern_id,
+                "name": pattern.name,
+                "action_type": pattern.action_type,
+                "action_params": pattern.action_params,
+                "elapsed_ms": elapsed_ms,
+                "result": result,
+            },
+        )
+    except Exception:
+        pass
+    logger.info(
+        "self_repair: executed %s (%s) elapsed=%dms",
+        pattern.pattern_id, pattern.action_type, elapsed_ms,
+    )
+
+
+def _record_attempt_and_escalate(
+    pattern: SelfRepairPattern,
+    triggered_by: int,
+    *,
+    outcome: str,
+    error: str,
+    elapsed_ms: int,
+) -> None:
+    try:
+        insert_self_repair_attempt(
+            pattern_id=pattern.pattern_id,
+            attempted_at=_now_iso(),
+            triggered_by_event_id=triggered_by,
+            outcome=outcome,
+            error_summary=error[:240],
+            elapsed_ms=elapsed_ms,
+        )
+    except Exception as exc:
+        logger.warning("self_repair: audit insert failed: %s", exc)
+    try:
+        update_self_repair_pattern(
+            pattern.pattern_id,
+            last_attempt_at=_now_iso(),
+            last_outcome=outcome,
+            total_failed_increment=1,
+        )
+    except Exception:
+        pass
+    try:
+        event_bus.publish(
+            "self_repair.action_failed",
+            {
+                "pattern_id": pattern.pattern_id,
+                "name": pattern.name,
+                "action_type": pattern.action_type,
+                "error": error,
+                "elapsed_ms": elapsed_ms,
+            },
+        )
+    except Exception:
+        pass
+    logger.warning(
+        "self_repair: %s failed for %s: %s",
+        pattern.action_type, pattern.pattern_id, error,
+    )
+
+    _notify_owner_async(
+        f"⚠️ Self-repair failed: {pattern.name}\n"
+        f"Action: {pattern.action_type} → {error[:120]}"
+    )
+
+    try:
+        escalation_window_since = (
+            _now() - timedelta(hours=pattern.auto_disable_window_hours)
+        ).isoformat()
+        failures = count_recent_attempts(
+            pattern_id=pattern.pattern_id,
+            since_iso=escalation_window_since,
+            outcome="failed",
+        )
+        if failures >= pattern.auto_disable_after_escalations:
+            _auto_disable_pattern(pattern, failures)
+    except Exception as exc:
+        logger.warning("self_repair: escalation check failed: %s", exc)
+
+
+def _auto_disable_pattern(pattern: SelfRepairPattern, failure_count: int) -> None:
+    try:
+        update_self_repair_pattern(
+            pattern.pattern_id,
+            enabled=False,
+            last_outcome="auto_disabled",
+            total_escalated_increment=1,
+        )
+    except Exception as exc:
+        logger.warning("self_repair: auto_disable update failed: %s", exc)
+    try:
+        event_bus.publish(
+            "self_repair.escalated",
+            {
+                "pattern_id": pattern.pattern_id,
+                "name": pattern.name,
+                "failure_count": failure_count,
+                "window_hours": pattern.auto_disable_window_hours,
+            },
+        )
+    except Exception:
+        pass
+    logger.error(
+        "self_repair: auto-disabled %s after %d failures in %dh",
+        pattern.pattern_id, failure_count, pattern.auto_disable_window_hours,
+    )
+    _notify_owner_async(
+        f"🚨 Self-repair auto-disabled: {pattern.name}\n"
+        f"Failed {failure_count} times in {pattern.auto_disable_window_hours}h. "
+        f"Re-enable manually."
+    )
+
+
+def _attempt_repair(pattern: SelfRepairPattern, event: dict) -> None:
+    """Run cooldown check, execute action, record audit, escalate if needed."""
+    triggered_by = int(event.get("id") or 0)
+    cooldown_status = _check_cooldown(pattern)
+    if cooldown_status != "ok":
+        try:
+            insert_self_repair_attempt(
+                pattern_id=pattern.pattern_id,
+                attempted_at=_now_iso(),
+                triggered_by_event_id=triggered_by,
+                outcome="rate_limited",
+                error_summary=cooldown_status,
+                elapsed_ms=0,
+            )
+        except Exception:
+            pass
+        try:
+            event_bus.publish(
+                "self_repair.rate_limited",
+                {"pattern_id": pattern.pattern_id, "reason": cooldown_status},
+            )
+        except Exception:
+            pass
+        return
+
+    started = time.monotonic()
+    handler = _ACTION_HANDLERS.get(pattern.action_type)
+    if handler is None:
+        _record_attempt_and_escalate(
+            pattern, triggered_by,
+            outcome="failed",
+            error=f"unknown action_type: {pattern.action_type}",
+            elapsed_ms=0,
+        )
+        return
+
+    try:
+        result = handler(pattern.action_params)
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        _record_executed(pattern, triggered_by, result, elapsed_ms)
+    except Exception as exc:
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        _record_attempt_and_escalate(
+            pattern, triggered_by,
+            outcome="failed",
+            error=str(exc)[:240] or type(exc).__name__,
+            elapsed_ms=elapsed_ms,
+        )

@@ -351,6 +351,72 @@ def _notify_owner_async(message: str) -> None:
         logger.debug("self_repair: notify_owner failed: %s", exc)
 
 
+def _repair_context_features(
+    pattern: SelfRepairPattern,
+    *,
+    triggered_by: int,
+    outcome: str,
+    error: str | None = None,
+) -> dict[str, object]:
+    return {
+        "pattern_id": pattern.pattern_id,
+        "name": pattern.name,
+        "action_type": pattern.action_type,
+        "action_params": pattern.action_params,
+        "triggered_by_event_id": triggered_by,
+        "outcome": outcome,
+        "error": (error or "")[:240],
+    }
+
+
+def _capture_repair_emotional_anchor(
+    pattern: SelfRepairPattern,
+    *,
+    triggered_by: int,
+    outcome: str,
+    error: str | None = None,
+) -> None:
+    """Best-effort emotional memory capture for repair outcomes."""
+    try:
+        from core.services.emotional_memory_engine import capture_emotional_anchor
+        capture_emotional_anchor(
+            anchor_type="self_repair_attempt",
+            anchor_id=f"{pattern.pattern_id}:{triggered_by}:{outcome}:{int(time.time() * 1000)}",
+            context_features=_repair_context_features(
+                pattern, triggered_by=triggered_by, outcome=outcome, error=error,
+            ),
+            auto_outcome_inputs={
+                "outcome_status": "ok" if outcome == "executed" else "error",
+                "error": error or "",
+                "tool_error_count": 0 if outcome == "executed" else 1,
+            },
+            source="self_repair_engine",
+        )
+    except Exception:
+        pass
+
+
+def _find_repair_emotional_precedents(
+    pattern: SelfRepairPattern,
+    *,
+    triggered_by: int,
+) -> list[dict[str, object]]:
+    """Return similar repair anchors with outcomes, if emotional memory is available."""
+    try:
+        from core.services.emotional_memory_engine import find_similar_anchors
+        return find_similar_anchors(
+            anchor_type="self_repair_attempt",
+            context_features=_repair_context_features(
+                pattern, triggered_by=triggered_by, outcome="pending",
+            ),
+            limit=3,
+            min_intensity=0.0,
+            require_outcome=True,
+        )
+    except Exception:
+        return []
+
+
 def _record_executed(
     pattern: SelfRepairPattern,
     triggered_by: int,
@@ -391,6 +457,9 @@ def _record_executed(
         )
     except Exception:
         pass
+    _capture_repair_emotional_anchor(
+        pattern, triggered_by=triggered_by, outcome="executed",
+    )
     logger.info(
         "self_repair: executed %s (%s) elapsed=%dms",
         pattern.pattern_id, pattern.action_type, elapsed_ms,
@@ -438,6 +507,9 @@ def _record_attempt_and_escalate(
         )
     except Exception:
         pass
+    _capture_repair_emotional_anchor(
+        pattern, triggered_by=triggered_by, outcome=outcome, error=error,
+    )
     logger.warning(
         "self_repair: %s failed for %s: %s",
         pattern.action_type, pattern.pattern_id, error,
@@ -519,6 +591,12 @@ def _attempt_repair(pattern: SelfRepairPattern, event: dict) -> None:
             )
         except Exception:
             pass
+        _capture_repair_emotional_anchor(
+            pattern,
+            triggered_by=triggered_by,
+            outcome="rate_limited",
+            error=cooldown_status,
+        )
         return
 
     started = time.monotonic()
@@ -531,6 +609,21 @@ def _attempt_repair(pattern: SelfRepairPattern, event: dict) -> None:
             elapsed_ms=0,
         )
         return
+
+    precedents = _find_repair_emotional_precedents(pattern, triggered_by=triggered_by)
+    if precedents:
+        try:
+            event_bus.publish(
+                "self_repair.emotional_precedent_found",
+                {
+                    "pattern_id": pattern.pattern_id,
+                    "match_count": len(precedents),
+                    "top_outcome_score": precedents[0].get("outcome_score"),
+                    "top_score": precedents[0].get("score"),
+                },
+            )
+        except Exception:
+            pass
 
     try:
         result = handler(pattern.action_params)
@@ -586,6 +679,75 @@ def _process_event(event: dict) -> None:
         _attempt_repair(pattern, event)
 
 
+def _process_emotional_gate_event(event: dict) -> None:
+    """Observe repeated emotional gates as candidates for repair pattern design.
+
+    This deliberately does not auto-register an executable repair pattern: an
+    emotional gate says the executive layer was wisely cautious, not that a
+    daemon restart or other repair action is known to be safe. We capture the
+    precedent and emit a proposal signal after repeated similar gates.
+    """
+    if str(event.get("kind") or "") != "runtime.emotional_gate":
+        return
+
+    payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+    payload = payload or {}
+    context = {
+        "input_action": str(payload.get("input_action") or ""),
+        "decision": str(payload.get("decision") or ""),
+        "reason": str(payload.get("reason") or ""),
+        "risk": str(payload.get("risk") or ""),
+    }
+    snapshot = payload.get("snapshot") if isinstance(payload.get("snapshot"), dict) else {}
+    if snapshot:
+        context["primary_mood"] = str(snapshot.get("primary_mood") or "")
+        context["frustration"] = float(snapshot.get("frustration") or 0.0)
+        context["fatigue"] = float(snapshot.get("fatigue") or 0.0)
+        context["confidence"] = float(snapshot.get("confidence") or 0.0)
+
+    anchor_id = f"emotional-gate:{int(event.get('id') or 0)}:{int(time.time() * 1000)}"
+    try:
+        from core.services.emotional_memory_engine import (
+            capture_emotional_anchor,
+            find_similar_anchors,
+        )
+        capture_emotional_anchor(
+            anchor_type="self_repair_emotional_gate",
+            anchor_id=anchor_id,
+            context_features=context,
+            auto_outcome_inputs={
+                "outcome_status": "error",
+                "error": str(payload.get("reason") or "emotional-gate"),
+                "tool_error_count": 1,
+            },
+            source="self_repair_engine",
+        )
+        matches = find_similar_anchors(
+            anchor_type="self_repair_emotional_gate",
+            context_features=context,
+            limit=5,
+            min_intensity=0.0,
+            require_outcome=False,
+        )
+    except Exception:
+        matches = []
+
+    if len(matches) >= 3:
+        try:
+            event_bus.publish(
+                "self_repair.emotional_gate_pattern_suggested",
+                {
+                    "input_action": context["input_action"],
+                    "decision": context["decision"],
+                    "risk": context["risk"],
+                    "similar_gate_count": len(matches),
+                    "reason": context["reason"],
+                },
+            )
+        except Exception:
+            pass
+
+
 def start_listener() -> None:
     """Start the eventbus listener daemon. Idempotent."""
     global _LISTENER_THREAD, _LISTENER_QUEUE
@@ -622,6 +784,7 @@ def _listener_loop(q: "queue.Queue[dict[str, Any] | None]") -> None:
         if item is None:
             break
         try:
+            _process_emotional_gate_event(item)
             _process_event(item)
         except Exception as exc:
             logger.warning("self_repair_engine: process_event failed: %s", exc)

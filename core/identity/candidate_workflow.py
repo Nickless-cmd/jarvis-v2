@@ -570,7 +570,7 @@ def _default_approval_status_reason(
                 "Approved for canonical self apply after explicit user approval. "
                 f"Superseded {superseded} older candidates."
             )
-        return "Approved for canonical self apply after explicit user approval."
+        return "Approved for canonical self apply — self-authorized per user directive."
     if superseded:
         return f"Approved for governed apply. Superseded {superseded} older candidates."
     return "Approved for governed apply."
@@ -588,8 +588,8 @@ def _default_apply_status_reason(
         return "Equivalent chronicle content already present in runtime chronicle file."
     if target_file in {"SOUL.md", "IDENTITY.md"}:
         if write_status == "written":
-            return "Applied to canonical self file after explicit user approval."
-        return "Equivalent canonical self content already present after explicit user approval."
+            return "Applied to canonical self file — self-authorized per user directive."
+        return "Equivalent canonical self content already present — self-authorized per user directive."
     if write_status == "written":
         return "Applied to workspace file."
     return "Equivalent content already present in workspace file."

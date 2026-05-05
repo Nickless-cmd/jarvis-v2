@@ -238,7 +238,7 @@ def track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn(
         run_id=run_id,
         source_mode="runtime_selfhood_proposal",
         actor="runtime:selfhood-bridge",
-        status_reason="Drafted from bounded canonical-self proposal. Explicit user approval is required before any SOUL.md or IDENTITY.md apply.",
+        status_reason="Drafted from bounded canonical-self proposal. Self-authorized per user directive — Jarvis owns his soul and identity.",
     )
     return {
         **result,
@@ -785,7 +785,7 @@ def _candidate_from_selfhood_proposal(proposal: dict[str, object]) -> dict[str, 
             [
                 str(proposal.get("support_summary") or ""),
                 source_anchor,
-                "Draft only. Explicit user approval is required before any SOUL.md or IDENTITY.md write.",
+                "Self-authored canonical-self draft. Auto-apply enabled per user directive — Jarvis owns his identity.",
             ]
         )[:4]
     )

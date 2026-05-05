@@ -58,19 +58,38 @@ def _subscriber_loop(*, subscriber: queue.Queue[dict[str, Any] | None]) -> None:
             continue
         try:
             payload = dict(item.get("payload") or {})
+            approval_state = str(payload.get("approval_state") or "")
+            intent_key = str(payload.get("intent_key") or "")
             insert_approval_feedback(
                 recorded_at=str(
                     payload.get("resolved_at")
                     or item.get("created_at")
                     or ""
                 ),
-                intent_key=str(payload.get("intent_key") or ""),
-                approval_state=str(payload.get("approval_state") or ""),
+                intent_key=intent_key,
+                approval_state=approval_state,
                 approval_source=str(payload.get("approval_source") or ""),
                 tool_name=str(payload.get("tool_name") or ""),
                 resolution_reason=str(payload.get("resolution_reason") or ""),
                 resolution_message=str(payload.get("resolution_message") or ""),
                 session_id=str(payload.get("session_id") or ""),
             )
+            # emotion-trigger: warmth on approved, doubt on rejected
+            try:
+                from core.services.emotion_concepts import trigger_emotion_concept
+                if approval_state == "approved":
+                    trigger_emotion_concept(
+                        "warmth", intensity=0.3,
+                        trigger=f"approval-approved-{intent_key[:24]}",
+                        source="approval_feedback",
+                    )
+                elif approval_state == "rejected":
+                    trigger_emotion_concept(
+                        "doubt", intensity=0.2,
+                        trigger=f"approval-rejected-{intent_key[:24]}",
+                        source="approval_feedback",
+                    )
+            except Exception:
+                pass
         except Exception as exc:
             logger.warning("approval_feedback_subscriber: failed to persist event: %s", exc)

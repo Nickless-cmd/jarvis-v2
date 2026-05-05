@@ -116,3 +116,143 @@ def test_aggregate_baseline_filters_empty_moods(isolated_runtime) -> None:
     ]
     baseline = _aggregate_baseline(records)
     assert baseline["mood"] == "rolig"
+
+
+def test_recent_baseline_returns_last_three_excluding_current(isolated_runtime) -> None:
+    from core.runtime.db_sensory import insert_sensory_memory, list_sensory_memories
+    from core.services.sensory_perception_bridge import _recent_baseline
+
+    for i, mood in enumerate(["rolig", "rolig", "travl", "rolig", "kaotisk"]):
+        insert_sensory_memory(
+            modality="atmosphere",
+            content=f"sample {i}",
+            mood_tone=mood,
+            metadata={},
+        )
+    rows = list_sensory_memories(modality="atmosphere", limit=10)
+    assert len(rows) == 5
+    current = rows[0]
+
+    baseline = _recent_baseline("atmosphere", current)
+    assert len(baseline["records"]) == 3
+    assert all(r["id"] != current["id"] for r in baseline["records"])
+
+
+def test_recent_baseline_returns_empty_for_first_record(isolated_runtime) -> None:
+    from core.services.sensory_perception_bridge import _recent_baseline
+
+    fake_record = {
+        "id": "nonexistent",
+        "modality": "atmosphere",
+        "content": "first one",
+        "mood_tone": "rolig",
+        "metadata": {},
+        "timestamp": "2026-05-04T12:00:00+00:00",
+    }
+    baseline = _recent_baseline("atmosphere", fake_record)
+    assert baseline["records"] == []
+    assert baseline["mood"] is None
+    assert baseline["content_tokens"] == set()
+
+
+def test_time_of_day_baseline_returns_records_in_window(isolated_runtime) -> None:
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db_sensory import insert_sensory_memory
+    from core.services.sensory_perception_bridge import _time_of_day_baseline
+
+    base = datetime(2026, 5, 4, 14, 0, tzinfo=UTC)
+    in_window_times = [
+        base - timedelta(days=1, minutes=30),
+        base - timedelta(days=2),
+        base - timedelta(days=3, hours=1),
+    ]
+    out_of_window_times = [
+        base - timedelta(days=1, hours=4),
+        base - timedelta(days=2, hours=6),
+    ]
+    for ts in in_window_times + out_of_window_times:
+        insert_sensory_memory(
+            modality="visual",
+            content=f"snapshot at {ts.isoformat()}",
+            mood_tone="rolig",
+            metadata={},
+            timestamp=ts.isoformat(),
+        )
+
+    current = {
+        "id": "current-uuid",
+        "modality": "visual",
+        "content": "now",
+        "mood_tone": "rolig",
+        "metadata": {},
+        "timestamp": base.isoformat(),
+    }
+    baseline = _time_of_day_baseline("visual", current)
+    assert baseline is not None
+    assert len(baseline["records"]) == 3
+
+
+def test_time_of_day_baseline_returns_none_when_under_threshold(
+    isolated_runtime,
+) -> None:
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db_sensory import insert_sensory_memory
+    from core.services.sensory_perception_bridge import _time_of_day_baseline
+
+    base = datetime(2026, 5, 4, 14, 0, tzinfo=UTC)
+    for ts in [base - timedelta(days=1), base - timedelta(days=2)]:
+        insert_sensory_memory(
+            modality="visual", content="x", mood_tone="rolig", metadata={},
+            timestamp=ts.isoformat(),
+        )
+
+    current = {
+        "id": "current",
+        "modality": "visual",
+        "content": "now",
+        "mood_tone": "rolig",
+        "metadata": {},
+        "timestamp": base.isoformat(),
+    }
+    assert _time_of_day_baseline("visual", current) is None
+
+
+def test_build_baseline_visual_falls_back_to_recent_when_window_thin(
+    isolated_runtime,
+) -> None:
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db_sensory import insert_sensory_memory
+    from core.services.sensory_perception_bridge import _build_baseline
+
+    base = datetime(2026, 5, 4, 14, 0, tzinfo=UTC)
+    for ts in [base - timedelta(hours=10), base - timedelta(hours=20)]:
+        insert_sensory_memory(
+            modality="visual", content="x", mood_tone="rolig", metadata={},
+            timestamp=ts.isoformat(),
+        )
+
+    current = {
+        "id": "current", "modality": "visual", "content": "now",
+        "mood_tone": "rolig", "metadata": {}, "timestamp": base.isoformat(),
+    }
+    baseline = _build_baseline("visual", current)
+    assert baseline is not None
+    assert len(baseline["records"]) == 2
+
+
+def test_build_baseline_atmosphere_uses_recent_directly(isolated_runtime) -> None:
+    from core.runtime.db_sensory import insert_sensory_memory
+    from core.services.sensory_perception_bridge import _build_baseline
+
+    for i in range(3):
+        insert_sensory_memory(
+            modality="atmosphere", content=f"x{i}", mood_tone="rolig", metadata={},
+        )
+
+    fake_current = {
+        "id": "fake-current", "modality": "atmosphere", "content": "z",
+        "mood_tone": "rolig", "metadata": {}, "timestamp": "2026-05-04T12:00:00+00:00",
+    }
+    baseline = _build_baseline("atmosphere", fake_current)
+    assert baseline is not None
+    assert len(baseline["records"]) == 3

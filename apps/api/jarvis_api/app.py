@@ -138,6 +138,12 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("living_executive start failed: %s", _exc)
             try:
+                from core.services.agency_cartographer import start_agency_cartographer_daemon
+                start_agency_cartographer_daemon()
+                logger.info("agency_cartographer daemon started")
+            except Exception as _exc:
+                logger.warning("agency_cartographer start failed: %s", _exc)
+            try:
                 from core.services.jarvis_brain_daemon import start_brain_daemon
                 start_brain_daemon()
                 logger.info("jarvis_brain daemon started")
@@ -206,6 +212,11 @@ def create_app() -> FastAPI:
             try:
                 from core.services.living_executive import stop_listener as stop_living_executive
                 stop_living_executive()
+            except Exception:
+                pass
+            try:
+                from core.services.agency_cartographer import stop_agency_cartographer_daemon
+                stop_agency_cartographer_daemon()
             except Exception:
                 pass
             try:

@@ -200,4 +200,52 @@ def test_agency_map_exposes_dark_edges_and_completed_next_moves():
     assert result["summary"]["dark_edges"] == len(result["darkEdges"])
     assert result["summary"]["dark_edges"] >= 1
     assert any(node["id"] == "hidden_runtime" for node in result["nodes"])
-    assert all(move["priority"] == "done" for move in result["nextMoves"])
+    assert result["cartographer"]["mode"] == "agency-cartographer"
+    assert result["cartographer"]["summary"]["vision_edges"] >= 1
+    assert result["nextMoves"]
+
+
+def test_agency_map_next_moves_come_from_cartographer_when_partial(monkeypatch):
+    import core.services.agency_map as agency_map
+
+    monkeypatch.setattr(agency_map, "_cartographer_snapshot", lambda: {
+        "mode": "agency-cartographer",
+        "summary": {"vision_edges": 1, "connected": 0, "partial": 1, "missing": 0},
+        "edges": [{"id": "x", "status": "partial"}],
+        "nextMoves": [{
+            "title": "Wire missing vision edge",
+            "summary": "scanner found weak evidence",
+            "target": "A -> B",
+            "priority": "medium",
+            "source": "agency-cartographer",
+        }],
+    })
+
+    result = agency_map.build_agency_map_surface()
+
+    assert result["nextMoves"][0]["title"] == "Wire missing vision edge"
+    assert result["nextMoves"][0]["source"] == "agency-cartographer"
+
+
+def test_agency_cartographer_scans_markers_from_files(monkeypatch, tmp_path):
+    from core.services import agency_cartographer as cart
+
+    monkeypatch.setattr(
+        cart,
+        "_candidate_files",
+        lambda: {
+            "core/example.py": (
+                "record_tool_outcome_memory\n"
+                "classify_tool_family\n"
+                "_recent_memory_precedents\n"
+                "choice_score\n"
+            )
+        },
+    )
+    monkeypatch.setattr(cart, "save_json", lambda *args, **kwargs: None)
+
+    snapshot = cart.build_cartographer_snapshot()
+    edge = next(item for item in snapshot["edges"] if item["id"] == "tools-memory-executive")
+
+    assert edge["status"] == "connected"
+    assert edge["confidence"] == 1.0

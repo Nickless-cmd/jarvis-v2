@@ -130,6 +130,7 @@ ALLOWED_EVENT_FAMILIES = {
     "desire",
     "user_model",
     "existential_wonder",
+    "goal",
 }
 
 

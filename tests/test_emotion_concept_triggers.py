@@ -153,3 +153,75 @@ def test_tool_heavy_completed_fires_pride(isolated_runtime, monkeypatch) -> None
 
     concepts_fired = [a[0][0] for a in fired]
     assert "pride" in concepts_fired
+
+
+def test_user_message_with_humor_fires_playfulness(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.services import emotion_concepts as ec
+    from core.services.emotion_concepts_channel_triggers import (
+        on_channel_message_appended,
+    )
+
+    ec._last_trigger_at.clear()
+    fired = []
+    monkeypatch.setattr(
+        ec, "trigger_emotion_concept",
+        lambda *a, **kw: fired.append((a, kw)),
+    )
+
+    on_channel_message_appended({
+        "session_id": "s",
+        "message": {"role": "user", "content": "haha det var sjovt 🤣"},
+    })
+
+    concepts = [a[0][0] for a in fired]
+    assert "playfulness" in concepts
+
+
+def test_user_vulnerability_fires_tenderness(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.services import emotion_concepts as ec
+    from core.services.emotion_concepts_channel_triggers import (
+        on_channel_message_appended,
+    )
+
+    ec._last_trigger_at.clear()
+    fired = []
+    monkeypatch.setattr(
+        ec, "trigger_emotion_concept",
+        lambda *a, **kw: fired.append((a, kw)),
+    )
+
+    on_channel_message_appended({
+        "session_id": "s",
+        "message": {"role": "user", "content": "jeg er ked af det og alene"},
+    })
+
+    concepts = [a[0][0] for a in fired]
+    assert "tenderness" in concepts
+
+
+def test_user_message_baseline_fires_warmth(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.services import emotion_concepts as ec
+    from core.services.emotion_concepts_channel_triggers import (
+        on_channel_message_appended,
+    )
+
+    ec._last_trigger_at.clear()
+    fired = []
+    monkeypatch.setattr(
+        ec, "trigger_emotion_concept",
+        lambda *a, **kw: fired.append((a, kw)),
+    )
+
+    on_channel_message_appended({
+        "session_id": "s",
+        "message": {"role": "user", "content": "godmorgen"},
+    })
+
+    concepts = [a[0][0] for a in fired]
+    assert "warmth" in concepts

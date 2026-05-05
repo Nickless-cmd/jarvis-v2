@@ -1190,6 +1190,19 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
   const promptEvolutionCadence = cadenceProducer(internalCadence, 'prompt_evolution_runtime')
   const webchatExecutionPilot = data?.development?.webchatExecutionPilot || { items: [], summary: {} }
+  const livingExecutive = data?.livingExecutive || null
+  const livingExecutiveTraces = (
+    livingExecutive?.recent_traces ||
+    livingExecutive?.recentTraces ||
+    []
+  ).slice(0, 5)
+  const livingExecutiveFocus = livingExecutive?.current_focus || livingExecutive?.currentFocus || null
+  const livingExecutiveLatestTrace = livingExecutiveTraces[0] || null
+  const hasLivingExecutive = Boolean(
+    livingExecutive?.active ||
+    livingExecutiveFocus ||
+    livingExecutiveTraces.length
+  )
 
   const scrollToFeature = (targetId) => {
     if (!targetId || typeof document === 'undefined') return
@@ -1204,6 +1217,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const features = [
     { id: 'embodied', targetId: 'living-mind-embodied-state', label: 'Embodied State', icon: Cpu, active: hasEmbodiedState, status: embodiedState.state, statusLabel: embodiedState.state || 'unknown' },
     { id: 'loop', targetId: 'living-mind-loop-runtime', label: 'Loop Runtime', icon: Activity, active: hasLoopRuntime, status: loopRuntimeSummaryData.currentStatus, statusLabel: loopRuntimeSummaryData.currentStatus || 'idle' },
+    { id: 'living-executive', targetId: 'living-mind-living-executive', label: 'Living Executive', icon: Compass, active: hasLivingExecutive, status: livingExecutiveLatestTrace?.status, statusLabel: livingExecutiveLatestTrace?.choice || livingExecutive?.mode || 'listening' },
     { id: 'idle', targetId: 'living-mind-idle-consolidation', label: 'Idle Consolidation', icon: Moon, active: hasIdleConsolidation, status: idleConsolidationSummaryData.lastState, statusLabel: idleConsolidationSummaryData.lastState || 'idle' },
     { id: 'dream', targetId: 'living-mind-dream-articulation', label: 'Dream Articulation', icon: Sparkles, active: hasDreamArticulation, status: dreamArticulationSummaryData.lastState, statusLabel: dreamArticulationSummaryData.lastState || 'idle' },
     { id: 'prompt', targetId: 'living-mind-prompt-evolution', label: 'Prompt Evolution', icon: Wand2, active: hasPromptEvolution, status: promptEvolutionSummaryData.lastState, statusLabel: promptEvolutionSummaryData.lastState || 'idle' },
@@ -1312,6 +1326,27 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
             {loopRuntimeCountsData.join(' · ') || 'No active runtime loops'}
             {loopRuntime.createdAt ? ` · ${formatFreshness(loopRuntime.createdAt)}` : ''}
           </small>
+        </article>
+        ) : null}
+        {hasLivingExecutive ? (
+        <article id="living-mind-living-executive" tabIndex={-1} className="mc-stat tone-amber mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/living-executive',
+          fetchedAt: livingExecutiveLatestTrace?.created_at || livingExecutiveLatestTrace?.createdAt || data?.fetchedAt,
+          mode: livingExecutive?.mode || 'experimental-active',
+        })}>
+          <span>Living Executive</span>
+          <strong>{humanizeToken(livingExecutiveLatestTrace?.choice || livingExecutive?.mode) || 'listening'}</strong>
+          <small className="muted">
+            {livingExecutiveFocus?.summary ||
+              livingExecutiveLatestTrace?.aftertaste ||
+              livingExecutive?.summary ||
+              'No chosen focus yet'}
+          </small>
+          {livingExecutiveLatestTrace ? (
+            <small className="muted">
+              {`${humanizeToken(livingExecutiveLatestTrace.action_id || livingExecutiveLatestTrace.actionId) || 'no action'} · ${humanizeToken(livingExecutiveLatestTrace.status) || 'unknown'}`}
+            </small>
+          ) : null}
         </article>
         ) : null}
         {hasIdleConsolidation ? (
@@ -1972,6 +2007,65 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
       </section>
+
+      {hasLivingExecutive ? (
+      <section className="mc-section-grid">
+        <article className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/living-executive',
+          fetchedAt: livingExecutiveLatestTrace?.created_at || livingExecutiveLatestTrace?.createdAt || data?.fetchedAt,
+          mode: livingExecutive?.mode || 'experimental-active',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Living Executive</h3>
+              <p className="muted">{livingExecutive?.summary || 'Impulse, choice, action and aftertaste are visible here.'}</p>
+            </div>
+            <StatusPill status={livingExecutive?.active ? 'active' : 'idle'} />
+          </div>
+          {livingExecutiveFocus ? (
+            <button
+              type="button"
+              className="mc-list-row active"
+              onClick={() => onOpenItem('Living Executive Focus', livingExecutiveFocus)}
+            >
+              <div>
+                <strong>{humanizeToken(livingExecutiveFocus.kind || 'current focus')}</strong>
+                <span>{livingExecutiveFocus.summary || 'Inspect current focus'}</span>
+              </div>
+              <div className="mc-row-meta">
+                <small>{livingExecutiveFocus.created_at || livingExecutiveFocus.createdAt || 'current'}</small>
+                <ChevronRight size={14} />
+              </div>
+            </button>
+          ) : null}
+          <div className="mc-list" style={{ marginTop: 8 }}>
+            {livingExecutiveTraces.length ? livingExecutiveTraces.map((trace) => (
+              <button
+                type="button"
+                key={trace.trace_id || trace.traceId || trace.created_at || trace.createdAt}
+                className="mc-list-row"
+                onClick={() => onOpenItem('Living Executive Trace', trace)}
+              >
+                <div>
+                  <strong>{humanizeToken(trace.choice || trace.impulse || 'trace')}</strong>
+                  <span>{trace.aftertaste || trace.felt_signal || trace.feltSignal || 'No aftertaste recorded'}</span>
+                </div>
+                <div className="mc-row-meta">
+                  <StatusPill status={trace.status || 'unknown'} />
+                  <small>{humanizeToken(trace.action_id || trace.actionId) || 'observe'}</small>
+                  <ChevronRight size={14} />
+                </div>
+              </button>
+            )) : (
+              <div className="mc-empty-state">
+                <strong>No executive traces yet</strong>
+                <p className="muted">The listener is active, but no impulse has crossed action threshold.</p>
+              </div>
+            )}
+          </div>
+        </article>
+      </section>
+      ) : null}
 
       {hasThoughtStream ? (
       <section className="mc-section-grid">

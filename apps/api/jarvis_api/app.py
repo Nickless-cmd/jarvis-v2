@@ -132,6 +132,12 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("self_repair_engine start failed: %s", _exc)
             try:
+                from core.services.living_executive import start_listener as start_living_executive
+                start_living_executive()
+                logger.info("living_executive listener started")
+            except Exception as _exc:
+                logger.warning("living_executive start failed: %s", _exc)
+            try:
                 from core.services.jarvis_brain_daemon import start_brain_daemon
                 start_brain_daemon()
                 logger.info("jarvis_brain daemon started")
@@ -195,6 +201,11 @@ def create_app() -> FastAPI:
             try:
                 from core.services.self_repair_engine import stop_listener as stop_self_repair
                 stop_self_repair()
+            except Exception:
+                pass
+            try:
+                from core.services.living_executive import stop_listener as stop_living_executive
+                stop_living_executive()
             except Exception:
                 pass
             try:

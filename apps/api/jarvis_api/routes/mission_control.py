@@ -3933,6 +3933,13 @@ def mc_cognitive_core_experiments() -> dict:
     return build_cognitive_core_experiments_surface()
 
 
+@router.get("/living-executive")
+def mc_living_executive() -> dict:
+    """Living Executive impulse/choice/action trace for Mission Control."""
+    from core.services.living_executive import build_living_executive_surface
+    return build_living_executive_surface()
+
+
 # ── MC Tab helpers ─────────────────────────────────────────────────────────
 
 def _get_all_tools() -> list[dict]:

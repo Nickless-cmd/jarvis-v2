@@ -148,3 +148,24 @@ def test_mc_lab_providers_sorted(monkeypatch):
 
     result = mc.mc_lab()
     assert result["providers_today"][0]["provider"] == "anthropic"
+
+
+def test_mc_living_executive_structure(monkeypatch):
+    import apps.api.jarvis_api.routes.mission_control as mc
+    import core.services.living_executive as lex
+
+    monkeypatch.setattr(lex, "build_living_executive_surface", lambda: {
+        "active": True,
+        "mode": "experimental-active",
+        "summary": {"trace_count": 1, "last_action": "record_focus_intent"},
+        "current_focus": {"focus": "emotional gate"},
+        "recent_traces": [{"trace_id": "lex-test"}],
+        "allowed_actions": ["record_focus_intent"],
+    })
+
+    result = mc.mc_living_executive()
+
+    assert result["active"] is True
+    assert result["mode"] == "experimental-active"
+    assert result["summary"]["last_action"] == "record_focus_intent"
+    assert result["current_focus"]["focus"] == "emotional gate"

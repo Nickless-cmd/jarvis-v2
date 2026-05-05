@@ -12,6 +12,7 @@ const STATUS_COLOR = {
   active: T.accent,
   open: T.amber,
   done: T.green,
+  'visible-surface': T.green,
   'partial-surface': T.amber,
   'emerging-surface': T.accent,
 }
@@ -131,6 +132,7 @@ function QuestionRow({ item }) {
 }
 
 function DarkEdgeRow({ item }) {
+  const evidence = Array.isArray(item.evidence) ? item.evidence : []
   return (
     <article style={s({
       background: T.bgRaised,
@@ -145,7 +147,14 @@ function DarkEdgeRow({ item }) {
       <strong style={s({ fontSize: 11, color: T.text1, minWidth: 0, wordBreak: 'break-word' })}>
         {item.source} → {item.target}
       </strong>
-      <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' })}>{item.summary}</span>
+      <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' })}>
+        {item.summary}
+        {evidence.length > 0 ? (
+          <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
+            evidence {evidence.length} · {item.remaining_gap || 'no remaining gap noted'}
+          </span>
+        ) : null}
+      </span>
       <span style={s({ ...mono, color: T.text3, fontSize: 9, minWidth: 0, wordBreak: 'break-word' })}>{item.surface}</span>
       <StatusPill status={item.visibility} />
     </article>

@@ -363,3 +363,171 @@ def test_build_self_repair_surface_returns_overview(isolated_runtime) -> None:
     assert surface["enabled_pattern_count"] == 1
     assert surface["patterns"][0]["pattern_id"] == "p1"
     assert "recent_attempts" in surface
+
+
+def test_attempt_repair_executes_action_and_records_executed(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.runtime.db import (
+        list_recent_self_repair_attempts,
+        get_self_repair_pattern,
+    )
+    from core.services import self_repair_engine as eng
+
+    eng.register_pattern(
+        pattern_id="p1", name="X", trigger_event_kind="k",
+        trigger_match={"daemon": "mail_checker"},
+        action_type="control_daemon",
+        action_params={"name": "mail_checker", "action": "restart"},
+    )
+
+    captured = {}
+    def fake_handler(params):
+        captured["params"] = params
+        return {"ok": True}
+    monkeypatch.setitem(eng._ACTION_HANDLERS, "control_daemon", fake_handler)
+
+    notify_calls = []
+    monkeypatch.setattr(eng, "_notify_owner_async", lambda msg: notify_calls.append(msg))
+
+    pattern = eng._decode_pattern(get_self_repair_pattern("p1"))
+    eng._attempt_repair(
+        pattern,
+        {"id": 99, "kind": "k", "payload": {"daemon": "mail_checker"}},
+    )
+
+    assert captured["params"] == {"name": "mail_checker", "action": "restart"}
+    attempts = list_recent_self_repair_attempts(pattern_id="p1")
+    assert len(attempts) == 1
+    assert attempts[0]["outcome"] == "executed"
+    assert attempts[0]["triggered_by_event_id"] == 99
+    assert notify_calls == []  # No Discord push on success
+
+
+def test_attempt_repair_records_failed_on_handler_exception(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.runtime.db import list_recent_self_repair_attempts, get_self_repair_pattern
+    from core.services import self_repair_engine as eng
+
+    eng.register_pattern(
+        pattern_id="p1", name="X", trigger_event_kind="k",
+        action_type="control_daemon",
+        action_params={"name": "mail_checker", "action": "restart"},
+    )
+
+    def boom(params):
+        raise RuntimeError("backend on fire")
+    monkeypatch.setitem(eng._ACTION_HANDLERS, "control_daemon", boom)
+
+    notify_calls = []
+    monkeypatch.setattr(eng, "_notify_owner_async", lambda msg: notify_calls.append(msg))
+
+    pattern = eng._decode_pattern(get_self_repair_pattern("p1"))
+    eng._attempt_repair(pattern, {"id": 1, "kind": "k", "payload": {}})
+
+    attempts = list_recent_self_repair_attempts(pattern_id="p1")
+    assert len(attempts) == 1
+    assert attempts[0]["outcome"] == "failed"
+    assert "on fire" in attempts[0]["error_summary"]
+    assert len(notify_calls) == 1
+    assert "Self-repair failed" in notify_calls[0]
+
+
+def test_attempt_repair_skips_when_action_not_in_allowlist(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.runtime.db import (
+        list_recent_self_repair_attempts, get_self_repair_pattern,
+        insert_self_repair_pattern,
+    )
+    from core.services import self_repair_engine as eng
+
+    insert_self_repair_pattern(
+        pattern_id="p1", name="X", trigger_event_kind="k",
+        action_type="ghost_action", source="manual",
+    )
+
+    notify_calls = []
+    monkeypatch.setattr(eng, "_notify_owner_async", lambda msg: notify_calls.append(msg))
+
+    pattern = eng._decode_pattern(get_self_repair_pattern("p1"))
+    eng._attempt_repair(pattern, {"id": 1, "kind": "k", "payload": {}})
+
+    attempts = list_recent_self_repair_attempts(pattern_id="p1")
+    assert len(attempts) == 1
+    assert attempts[0]["outcome"] == "failed"
+    assert "unknown action_type" in attempts[0]["error_summary"]
+
+
+def test_attempt_repair_skips_when_cooldown_blocks(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from core.runtime.db import (
+        list_recent_self_repair_attempts, get_self_repair_pattern,
+    )
+    from core.services import self_repair_engine as eng
+
+    eng.register_pattern(
+        pattern_id="p1", name="X", trigger_event_kind="k",
+        action_type="control_daemon",
+        action_params={"name": "mail_checker", "action": "restart"},
+    )
+    monkeypatch.setattr(eng, "_check_cooldown", lambda p: "cooldown (test)")
+
+    handler_called = []
+    monkeypatch.setitem(
+        eng._ACTION_HANDLERS, "control_daemon",
+        lambda params: handler_called.append(params),
+    )
+
+    pattern = eng._decode_pattern(get_self_repair_pattern("p1"))
+    eng._attempt_repair(pattern, {"id": 1, "kind": "k", "payload": {}})
+
+    assert handler_called == []
+    attempts = list_recent_self_repair_attempts(pattern_id="p1")
+    assert attempts[0]["outcome"] == "rate_limited"
+
+
+def test_record_failed_triggers_auto_disable_at_threshold(
+    isolated_runtime, monkeypatch,
+) -> None:
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db import (
+        get_self_repair_pattern, insert_self_repair_attempt,
+    )
+    from core.services import self_repair_engine as eng
+
+    eng.register_pattern(
+        pattern_id="p1", name="X", trigger_event_kind="k",
+        action_type="control_daemon",
+        cooldown_seconds=0,
+        max_attempts_per_window=10,
+        auto_disable_after_escalations=3,
+        auto_disable_window_hours=24,
+    )
+    now = datetime(2026, 5, 5, 12, 0, tzinfo=UTC)
+    monkeypatch.setattr(eng, "_now", lambda: now)
+
+    for i in range(2):
+        insert_self_repair_attempt(
+            pattern_id="p1",
+            attempted_at=(now - timedelta(hours=i + 1)).isoformat(),
+            triggered_by_event_id=i, outcome="failed",
+            error_summary="prior", elapsed_ms=5,
+        )
+
+    notify_calls = []
+    monkeypatch.setattr(eng, "_notify_owner_async", lambda msg: notify_calls.append(msg))
+
+    def boom(params):
+        raise RuntimeError("third failure")
+    monkeypatch.setitem(eng._ACTION_HANDLERS, "control_daemon", boom)
+
+    pattern = eng._decode_pattern(get_self_repair_pattern("p1"))
+    eng._attempt_repair(pattern, {"id": 99, "kind": "k", "payload": {}})
+
+    after = get_self_repair_pattern("p1")
+    assert after["enabled"] == 0
+    assert after["last_outcome"] == "auto_disabled"
+    assert any("auto-disabled" in m for m in notify_calls)

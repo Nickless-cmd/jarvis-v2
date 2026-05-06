@@ -2309,6 +2309,31 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "load_more_tools",
+            "description": (
+                "Fetch full tool schemas you didn't get this turn. Provide either explicit "
+                "`names` (list of tool names from the catalog) or a natural-language `query` "
+                "and the router will embedding-match. Added tools become available on the next agentic round."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "names": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Explicit tool names to load.",
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "Natural-language query for embedding match.",
+                    },
+                },
+            },
+        },
+    },
 ]
 
 
@@ -5637,6 +5662,77 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
 
 # ── Handler registry ───────────────────────────────────────────────────
 
+def _tool_load_more_tools(arguments: dict) -> dict:
+    """Resolve which tools to add to the next round. Logs to DB + events."""
+    import json as _json
+    from core.eventbus.bus import event_bus
+    from core.runtime.db import connect
+
+    names = list(arguments.get("names") or [])
+    query = (arguments.get("query") or "").strip()
+
+    all_names = {
+        ((d.get("function") or {}).get("name") or d.get("name") or "")
+        for d in (TOOL_DEFINITIONS or [])
+    }
+
+    resolved: list[str] = []
+    unknown: list[str] = []
+    for n in names:
+        if n in all_names:
+            resolved.append(n)
+        else:
+            unknown.append(n)
+
+    if query and not resolved:
+        try:
+            from core.services.tool_embeddings import top_k_similar
+            hits = top_k_similar(query, k=10)
+            resolved = [n for n, _ in hits if n in all_names][:5]
+        except Exception:
+            resolved = []
+
+    if not resolved and unknown:
+        return {
+            "status": "error",
+            "error": f"tools not found: {unknown}. Use names from the TOOL CATALOG.",
+        }
+
+    if not resolved:
+        return {
+            "status": "ok",
+            "added": [],
+            "message": "no strong matches",
+        }
+
+    try:
+        event_bus.publish("tool_router.load_more_fired", {
+            "requested_names": names,
+            "requested_query": query,
+            "resolved_names": resolved,
+        })
+    except Exception:
+        pass
+
+    try:
+        with connect() as c:
+            c.execute(
+                "INSERT INTO tool_router_load_more("
+                "requested_names_json, requested_query, resolved_names_json, created_at) "
+                "VALUES (?,?,?, datetime('now'))",
+                (_json.dumps(names), query, _json.dumps(resolved)),
+            )
+            c.commit()
+    except Exception:
+        pass
+
+    return {
+        "status": "ok",
+        "added": resolved,
+        "message": f"Added {len(resolved)} tool(s); available next round.",
+    }
+
+
 _TOOL_HANDLERS: dict[str, Any] = {
     "read_tool_result": _exec_read_tool_result,
     "read_self_docs": _exec_read_self_docs,
@@ -5932,6 +6028,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "my_project_journal_write": _exec_my_project_journal_write,
     "my_project_accept_proposal": _exec_my_project_accept_proposal,
     "my_project_declare": _exec_my_project_declare,
+    # Tool router escape-hatch (added 2026-05-06)
+    "load_more_tools": _tool_load_more_tools,
 }
 
 
@@ -6008,6 +6106,7 @@ _FORCE_HANDLERS: dict[str, Any] = {
     "write_file": _force_write_file,
     "edit_file": _force_edit_file,
     "bash": _force_bash,
+    "load_more_tools": _tool_load_more_tools,
 }
 
 

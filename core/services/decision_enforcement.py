@@ -36,7 +36,13 @@ logger = logging.getLogger(__name__)
 
 def enforcement_section() -> str | None:
     """High-priority awareness: lists active decisions as obligations + asks
-    the model to name a breach if its response would commit one."""
+    the model to name a breach if its response would commit one.
+
+    Gate 3 — heed-rate escalation: decisions with adherence < 40% get
+    DU SKAL (mandatory) language instead of soft reminders. This turns
+    passive nudges into imperative commands when telemetry shows the model
+    is consistently ignoring them.
+    """
     try:
         from core.services.behavioral_decisions import list_active_decisions
         active = list_active_decisions(limit=5)
@@ -44,18 +50,35 @@ def enforcement_section() -> str | None:
         return None
     if not active:
         return None
+
+    _ESCALATION_THRESHOLD = 0.4  # below this → DU SKAL language
+
     lines = [
         "🤝 AKTIVE FORPLIGTELSER — du har sagt JA til disse adfærdsregler:",
     ]
+    low_adherence_count = 0
     for d in active:
         directive = str(d.get("directive") or "").strip()
         if not directive:
             continue
-        lines.append(f"  • {directive}")
-    lines.append(
-        "Hvis det du nu skriver bryder en af disse, NAVNGIV bruddet kort "
-        "FØR du fortsætter (f.eks. 'jeg er ved at bryde X — bevidst valg fordi Y')."
-    )
+        adherence = d.get("adherence_score")
+        if adherence is not None and adherence < _ESCALATION_THRESHOLD:
+            # Gate 3: Escalate low-adherence decisions to mandatory
+            lines.append(f"  • ⚠ DU SKAL: {directive} (adherence={adherence:.0%} — IKKE valgfrit)")
+            low_adherence_count += 1
+        else:
+            lines.append(f"  • {directive}")
+
+    if low_adherence_count > 0:
+        lines.append(
+            f"⚠ Decision adherence {low_adherence_count}/{len(active)} under {_ESCALATION_THRESHOLD:.0%} — "
+            "for lav adherence betyder at decisions EJ længere er forslag, de er PÅKRØVEDE."
+        )
+    else:
+        lines.append(
+            "Hvis det du nu skriver bryder en af disse, NAVNGIV bruddet kort "
+            "FØR du fortsætter (f.eks. 'jeg er ved at bryde X — bevidst valg fordi Y')."
+        )
     return "\n".join(lines)
 
 

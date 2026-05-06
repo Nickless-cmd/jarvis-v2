@@ -137,6 +137,7 @@ ALLOWED_EVENT_FAMILIES = {
     "agentic",
     "cheap_balancer",
     "jarvis_brain",
+    "tool_router",  # tool selection observability (added 2026-05-06)
 }
 
 

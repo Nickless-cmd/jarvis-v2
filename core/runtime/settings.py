@@ -136,6 +136,13 @@ class RuntimeSettings:
     concept_baseline_drift_min_sustained_days: int = 14
     concept_baseline_drift_min_confidence: float = 0.7
     emotion_concepts_default_trigger_cooldown_seconds: int = 30
+    # Tool router (added 2026-05-06)
+    tool_router_enabled: bool = True
+    tool_router_threshold: float = 0.55
+    tool_router_always_core_size: int = 70
+    tool_router_k_embeddings: int = 30
+    tool_router_embedding_model: str = "nomic-embed-text"
+    tool_router_embedding_provider: str = "ollama"
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

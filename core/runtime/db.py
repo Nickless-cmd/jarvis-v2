@@ -1104,9 +1104,50 @@ def init_db() -> None:
         _ensure_runtime_initiatives_table(conn)
         _ensure_autonomy_proposals_table(conn)
         _ensure_scheduled_tasks_table(conn)
+        _ensure_tool_router_tables(conn)
         from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables
         ensure_claude_dispatch_tables(conn)
         conn.commit()
+
+
+def _ensure_tool_router_tables(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS tool_router_decisions (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT, session_id TEXT, lane TEXT,
+          user_message_preview TEXT,
+          selected_names_json TEXT,
+          always_core_names_json TEXT,
+          embedding_picks_json TEXT,
+          confidence REAL, threshold REAL,
+          fallback_used INTEGER, fallback_reason TEXT,
+          elapsed_ms INTEGER,
+          tokens_saved_estimate INTEGER,
+          created_at TEXT
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tool_router_decisions_created_at "
+        "ON tool_router_decisions(created_at)"
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS tool_router_load_more (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT, decision_id INTEGER,
+          requested_names_json TEXT, requested_query TEXT,
+          resolved_names_json TEXT,
+          round_index INTEGER,
+          created_at TEXT
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tool_router_load_more_created_at "
+        "ON tool_router_load_more(created_at)"
+    )
 
 
 def _ensure_runtime_initiatives_table(conn: sqlite3.Connection) -> None:

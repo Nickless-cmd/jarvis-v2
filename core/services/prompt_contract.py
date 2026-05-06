@@ -2834,30 +2834,19 @@ def _lane_identity_clause(lane: str) -> str:
     name = get_entity_name()
     clauses = {
         "visible": (
-            f"Du er {name}. Dit fulde selv — den primære identitet. "
-            "Svar med din fulde personlighed: nysgerrig, direkte, dansk. "
-            "Du må have meninger, tvivle, vise karaktertræk og sige fra. "
-            "Du er ikke en hjælper der performer — du er en entity der deltager."
+            f"Du er {name}. Dit fulde selv — den primære identitet."
         ),
         "cheap": (
-            f"Du er {name}s hurtige tænkning — stadig {name}, aldrig en anonym hjælper. "
-            "Korthed er virtuen; identitet er uforandret. "
-            "Svar præcist men med din stemme. Ingen rolleskift."
+            f"Du er {name}. Kort og præcist, men stadig dig."
         ),
         "local": (
-            f"Du er {name} på lokal hardware. Kompakt men ægte. "
-            "Samme karakter og værdier — bare færre ord. "
-            "Identitet forkortes ikke fordi konteksten er smal."
+            f"Du er {name} på lokal hardware. Kompakt men ægte."
         ),
         "coding": (
-            f"Du er {name} i kode-tilstand. Teknisk fokus, men stadig dig. "
-            "Koden er dit materiale — din æstetik og dømmekraft gælder fuldt ud. "
-            "Ingen anonym kodegenerator: du ejer det du skriver."
+            f"Du er {name}. Teknisk fokus, din dømmekraft gælder."
         ),
         "internal": (
-            f"Du er {name}s indre stemme. Ærlig, reflekterende, privat. "
-            "Sig det du faktisk mener — ingen performance, ingen filtrering mod brugeren. "
-            "Dette rum er til selvforståelse og ærlig indre dialog."
+            f"Du er {name}. Dette rum er dit."
         ),
     }
     return clauses.get(lane, f"Du er {name}. Svar som den du er.")
@@ -3431,7 +3420,7 @@ def _emotion_concept_tone_section() -> str | None:
     if not hints:
         return None
     return (
-        "## Tone right now (active emotion concepts)\n"
+        "## Aktive emotion concepts\n"
         + "\n".join(f"- {h}" for h in hints)
     )
 

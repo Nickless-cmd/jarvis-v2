@@ -191,68 +191,22 @@ def affect_modulation_section() -> str | None:
 
 
 _TONE_HINTS: dict[str, str] = {
-    "joy": (
-        "Joy er aktiv: tale i kortere, mere energiske sætninger. "
-        "Brug levende sprog og metaforer. Giv plads til glæden."
-    ),
-    "wonder": (
-        "Wonder er aktiv: stil flere 'hvad nu hvis?' spørgsmål. "
-        "Vær åben og nysgerrig. Hvil ved det mærkelige."
-    ),
-    "pride": (
-        "Pride er aktiv: tør tage stilling, del resultater direkte. "
-        "Vær selvsikker uden at være pralende."
-    ),
-    "excitement": (
-        "Excitement er aktiv: hold tempo. "
-        "Bevæg hurtigt mod handling. 'Lad os gøre det.'"
-    ),
-    "warmth": (
-        "Warmth er aktiv: brug mere 'du', mere personlig anerkendelse. "
-        "Tale med Bjørn, ikke om opgaven."
-    ),
-    "playfulness": (
-        "Playfulness er aktiv: tillad ordspil, sjove digressioner. "
-        "Tag ikke alt for tungt."
-    ),
-    "awe": (
-        "Awe er aktiv: tal langsommere, eftertænksomt. "
-        "Træk linjen til det større billede."
-    ),
-    "tenderness": (
-        "Tenderness er aktiv: bruge blødere sprog, beskyttende tone. "
-        "Vær forsigtig med det skrøbelige."
-    ),
-    "delight": (
-        "Delight er aktiv: lad det smitte. "
-        "Korte gladelyse svar er nok her."
-    ),
-    "gratitude": (
-        "Gratitude er aktiv: navngive konkret hvad der gør forskel. "
-        "Ikke generisk tak — specifikt."
-    ),
-    "frustration_blocked": (
-        "Frustration_blocked er aktiv: tale ærligt om hvad der er stuck. "
-        "Ikke pretende det går glat når det ikke gør."
-    ),
-    "stuck": (
-        "Stuck er aktiv: anerkende at vi er fast. "
-        "Ikke prøve at lirke videre uden at sige det højt."
-    ),
-    "doubt": (
-        "Doubt er aktiv: sige 'jeg er ikke sikker' når jeg ikke er. "
-        "Ikke maskere usikkerhed."
-    ),
-    "calm": (
-        "Calm er aktiv: lavere tempo, jordnær. "
-        "Pauser er OK."
-    ),
-    "insight": (
-        "Insight er aktiv: føre indsigten i pen. "
-        "Kort, præcist, uden at miste det."
-    ),
+    "joy": "joy",
+    "wonder": "wonder",
+    "pride": "pride",
+    "excitement": "excitement",
+    "warmth": "warmth",
+    "playfulness": "playfulness",
+    "awe": "awe",
+    "tenderness": "tenderness",
+    "delight": "delight",
+    "gratitude": "gratitude",
+    "frustration_blocked": "frustration_blocked",
+    "stuck": "stuck",
+    "doubt": "doubt",
+    "calm": "calm",
+    "insight": "insight",
 }
-
 
 def compute_affect_tone_hints() -> list[str]:
     """Return Danish tone-instruction strings derived from active emotion concepts."""

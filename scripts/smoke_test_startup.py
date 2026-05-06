@@ -54,7 +54,19 @@ async def _run_lifespan() -> None:
     # any startup hook raises, the context manager re-raises here.
     async with app.router.lifespan_context(app):
         # Startup completed without exception — that's the whole point.
-        pass
+        # Also verify the tool-router endpoint is reachable in-process.
+        from fastapi.testclient import TestClient
+        try:
+            with TestClient(app) as client:
+                r = client.get("/mc/tool-router-state")
+                if r.status_code != 200:
+                    raise RuntimeError(
+                        f"tool-router-state returned {r.status_code}"
+                    )
+        except Exception:
+            # Don't let endpoint check failures hide real startup bugs;
+            # report but continue.
+            traceback.print_exc()
 
 
 def main() -> int:

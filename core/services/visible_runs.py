@@ -1462,10 +1462,14 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         # _MAX_TOOL_ONLY_ROUNDS (8/12). Fires once per
                         # tool-only streak.
                         if _consecutive_tool_only_rounds == 5:
+                            # Reference Jarvis's current decision (authored 2026-05-06).
+                            # If he revokes/replaces it, the nudge text stays
+                            # honest by saying "current loop-decision" — code
+                            # doesn't need to chase his decision-id changes.
                             _nudge_msg = (
                                 "\n\n[loop-nudge: 5 tool calls uden tekst-svar — "
-                                "overvej at opsummere hvor du er, før du fortsætter "
-                                "(dec_7affdde753e1). Tools forbliver tilgængelige.]\n\n"
+                                "tag bevidst stilling: fortsæt eller opsummér "
+                                "(dec_d56d89ceec24). Tools forbliver tilgængelige.]\n\n"
                             )
                             yield _sse("delta", {
                                 "type": "delta",
@@ -1478,7 +1482,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                     "run_id": run.run_id,
                                     "rounds": _consecutive_tool_only_rounds,
                                     "threshold": 5,
-                                    "decision_id": "dec_7affdde753e1",
+                                    "decision_id": "dec_d56d89ceec24",
                                 })
                             except Exception:
                                 pass

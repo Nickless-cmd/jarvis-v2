@@ -694,6 +694,11 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.decision_adherence_gate import decision_adherence_section
+        _awareness_add(25, "decision adherence gate", decision_adherence_section())
+    except Exception:
+        pass
+    try:
         from core.services.memory_consolidation_nudge import memory_consolidation_nudge_section
         _awareness_add(24, "memory consolidation nudge", memory_consolidation_nudge_section())
     except Exception:

@@ -1868,6 +1868,11 @@ def _run_heartbeat_tick_locked(
     except Exception:
         pass
     try:
+        from core.services.daemon_memory_safeguard import tick_memory_safeguard_daemon
+        tick_memory_safeguard_daemon()
+    except Exception:
+        pass
+    try:
         from core.services.attention_blink_test import run_attention_blink_test_if_due
         run_attention_blink_test_if_due()
     except Exception:

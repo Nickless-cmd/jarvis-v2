@@ -58,7 +58,7 @@ def _compute_embedding(text: str) -> list[float]:
     s = RuntimeSettings()
     model = s.tool_router_embedding_model
     import requests
-    base_url = os.getenv("OLLAMA_BASE_URL", "http://10.0.0.25:11434")
+    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     r = requests.post(
         f"{base_url}/api/embeddings",
         json={"model": model, "prompt": text},

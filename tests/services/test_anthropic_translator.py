@@ -94,3 +94,83 @@ def test_translate_stream_flag_passed():
     body = {"messages": [{"role": "user", "content": "x"}], "stream": True}
     out = at.translate_request_to_ollama(body, identity_prefix="", backend_model="m")
     assert out["stream"] is True
+
+
+def test_drive_emitter_with_text_only_chunks():
+    """Translator drives an emitter from Ollama-format streamed chunks."""
+    from core.services.anthropic_sse_emitter import AnthropicSSEEmitter
+    chunks = [
+        {"message": {"role": "assistant", "content": "Hej"}, "done": False},
+        {"message": {"role": "assistant", "content": " Bjørn"}, "done": False},
+        {"message": {"role": "assistant", "content": ""}, "done": True, "done_reason": "stop"},
+    ]
+    emitter = AnthropicSSEEmitter(message_id="m", model="jarvis")
+    events = list(at.drive_emitter_from_ollama_chunks(emitter, iter(chunks)))
+    text = "".join(events)
+    assert "text_delta" in text
+    assert "Hej" in text
+    assert " Bjørn" in text
+    assert "stop_reason" in text
+    assert "end_turn" in text
+
+
+def test_drive_emitter_with_tool_calls_chunks():
+    from core.services.anthropic_sse_emitter import AnthropicSSEEmitter
+    chunks = [
+        {"message": {"role": "assistant", "content": "Listing..."}, "done": False},
+        {"message": {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [{
+                "id": "toolu_x",
+                "function": {"name": "Bash", "arguments": {"command": "ls"}},
+            }],
+        }, "done": False},
+        {"message": {"content": ""}, "done": True, "done_reason": "stop"},
+    ]
+    emitter = AnthropicSSEEmitter(message_id="m", model="jarvis")
+    events = list(at.drive_emitter_from_ollama_chunks(emitter, iter(chunks)))
+    text = "".join(events)
+    assert "Listing..." in text
+    assert "tool_use" in text
+    assert "Bash" in text
+    assert "input_json_delta" in text
+    # partial_json is JSON-escaped inside the SSE data line, so we look for
+    # the escaped form
+    assert "command" in text and "ls" in text
+    assert "stop_reason" in text
+
+
+def test_build_non_streaming_response_text_only():
+    final = at.build_non_streaming_response(
+        message_id="msg_x", model="jarvis",
+        text="Hej Bjørn",
+        tool_calls=[],
+    )
+    assert final["id"] == "msg_x"
+    assert final["type"] == "message"
+    assert final["role"] == "assistant"
+    assert final["model"] == "jarvis"
+    assert len(final["content"]) == 1
+    assert final["content"][0] == {"type": "text", "text": "Hej Bjørn"}
+    assert final["stop_reason"] == "end_turn"
+
+
+def test_build_non_streaming_response_with_tool_use():
+    final = at.build_non_streaming_response(
+        message_id="msg_x", model="jarvis",
+        text="Looking",
+        tool_calls=[{
+            "id": "toolu_1",
+            "function": {"name": "Bash", "arguments": {"command": "ls"}},
+        }],
+    )
+    assert len(final["content"]) == 2
+    assert final["content"][0] == {"type": "text", "text": "Looking"}
+    assert final["content"][1] == {
+        "type": "tool_use",
+        "id": "toolu_1",
+        "name": "Bash",
+        "input": {"command": "ls"},
+    }
+    assert final["stop_reason"] == "tool_use"

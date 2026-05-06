@@ -140,3 +140,96 @@ def _stringify_tool_result_content(content: Any) -> str:
                 parts.append(block)
         return "\n".join(parts)
     return str(content or "")
+
+
+# ---------------------------------------------------------------------------
+# Response side: Ollama → Anthropic
+# ---------------------------------------------------------------------------
+
+import json as _json_mod
+from typing import Iterator, Iterable
+
+
+def drive_emitter_from_ollama_chunks(emitter, chunks: Iterable[dict]) -> Iterator[str]:
+    """Drive an AnthropicSSEEmitter from a stream of Ollama chat chunks.
+
+    Each chunk has shape:
+      {"message": {"role": "assistant", "content": "...", "tool_calls": [...]}, "done": bool, ...}
+
+    Yields SSE-formatted strings. Calls begin_message once, then translates
+    each delta into text_delta or tool_use_start + input_json_delta. Ends
+    with end_message(stop_reason).
+    """
+    yield from emitter.begin_message()
+    has_tool_call = False
+    seen_tool_call_ids: set[str] = set()
+
+    try:
+        for chunk in chunks:
+            msg = chunk.get("message") or {}
+            content = str(msg.get("content") or "")
+            if content:
+                yield from emitter.text_delta(content)
+
+            tool_calls = msg.get("tool_calls") or []
+            for tc in tool_calls:
+                tc_id = str(tc.get("id") or "")
+                if not tc_id or tc_id in seen_tool_call_ids:
+                    continue
+                seen_tool_call_ids.add(tc_id)
+                fn = tc.get("function") or {}
+                name = str(fn.get("name") or "")
+                args = fn.get("arguments")
+                yield from emitter.tool_use_start(tool_call_id=tc_id, name=name)
+                if isinstance(args, dict):
+                    yield from emitter.tool_use_input_delta(_json_mod.dumps(args, ensure_ascii=False))
+                elif isinstance(args, str):
+                    yield from emitter.tool_use_input_delta(args)
+                has_tool_call = True
+
+            if chunk.get("done"):
+                break
+    except Exception as exc:
+        yield from emitter.error(str(exc))
+        return
+
+    stop_reason = "tool_use" if has_tool_call else "end_turn"
+    yield from emitter.end_message(stop_reason=stop_reason)
+
+
+def build_non_streaming_response(
+    *,
+    message_id: str,
+    model: str,
+    text: str,
+    tool_calls: list[dict],
+) -> dict:
+    """Build the final Anthropic Messages response (non-streaming)."""
+    content: list[dict] = []
+    if text:
+        content.append({"type": "text", "text": text})
+    for tc in tool_calls:
+        fn = tc.get("function") or {}
+        args = fn.get("arguments")
+        if isinstance(args, str):
+            try:
+                args = _json_mod.loads(args)
+            except Exception:
+                args = {}
+        content.append({
+            "type": "tool_use",
+            "id": str(tc.get("id") or ""),
+            "name": str(fn.get("name") or ""),
+            "input": args or {},
+        })
+    stop_reason = "tool_use" if tool_calls else "end_turn"
+    return {
+        "id": message_id,
+        "type": "message",
+        "role": "assistant",
+        "model": model,
+        "content": content,
+        "stop_reason": stop_reason,
+        "stop_sequence": None,
+        "usage": {"input_tokens": 0, "output_tokens": 0},
+    }

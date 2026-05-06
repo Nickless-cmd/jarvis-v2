@@ -75,6 +75,51 @@ def test_messages_invalid_api_key_returns_401(app_with_router):
         assert r.status_code == 401
 
 
+def test_messages_streaming_emits_anthropic_sse(monkeypatch, isolated_keys):
+    """End-to-end: streaming endpoint emits the full Anthropic event sequence."""
+    fake_chunks = [
+        {"message": {"role": "assistant", "content": "Hej "}, "done": False},
+        {"message": {"role": "assistant", "content": "Bjørn"}, "done": False},
+        {"message": {"content": ""}, "done": True, "done_reason": "stop"},
+    ]
+    def fake_stream(payload):
+        for c in fake_chunks:
+            yield c
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.routes.anthropic_compat._ollama_chat_stream",
+        fake_stream,
+    )
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.routes.anthropic_compat._resolve_backend_model",
+        lambda requested: "test-model",
+    )
+
+    from apps.api.jarvis_api.routes.anthropic_compat import router
+    app = FastAPI()
+    app.include_router(router)
+
+    with TestClient(app) as c:
+        r = c.post("/anthropic/v1/messages",
+            headers={"x-api-key": "jvs-test-key"},
+            json={
+                "model": "jarvis",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": "hi"}],
+                "stream": True,
+            },
+        )
+        assert r.status_code == 200
+        body = r.text
+        assert body.index("event: message_start") < body.index("event: content_block_start")
+        assert body.index("event: content_block_start") < body.index("event: content_block_delta")
+        assert body.index("event: content_block_delta") < body.index("event: content_block_stop")
+        assert body.index("event: content_block_stop") < body.index("event: message_delta")
+        assert body.index("event: message_delta") < body.index("event: message_stop")
+        assert "Hej " in body
+        assert "Bjørn" in body
+        assert "end_turn" in body
+
+
 def test_messages_non_streaming_returns_anthropic_format(app_with_router):
     with TestClient(app_with_router) as c:
         r = c.post("/anthropic/v1/messages",

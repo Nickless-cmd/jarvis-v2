@@ -138,7 +138,7 @@ class RuntimeSettings:
     emotion_concepts_default_trigger_cooldown_seconds: int = 30
     # Tool router (added 2026-05-06)
     tool_router_enabled: bool = True
-    tool_router_threshold: float = 0.55
+    tool_router_threshold: float = 0.40  # 0.55 caused 100% fallback on validation set; nomic-embed cross-language similarity is weaker than expected. Daemon will tune adaptively.
     tool_router_always_core_size: int = 70
     tool_router_k_embeddings: int = 30
     tool_router_embedding_model: str = "nomic-embed-text"

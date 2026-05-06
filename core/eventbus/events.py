@@ -131,6 +131,12 @@ ALLOWED_EVENT_FAMILIES = {
     "user_model",
     "existential_wonder",
     "goal",
+    # Infrastructure events (added 2026-05-06): without these, emits from
+    # cheap_lane_balancer, jarvis_brain, and the agentic loop guards
+    # silently fail validation and never persist to the events table.
+    "agentic",
+    "cheap_balancer",
+    "jarvis_brain",
 }
 
 

@@ -143,6 +143,11 @@ class RuntimeSettings:
     tool_router_k_embeddings: int = 30
     tool_router_embedding_model: str = "nomic-embed-text"
     tool_router_embedding_provider: str = "ollama"
+    # Anthropic-compat endpoint (added 2026-05-06)
+    anthropic_compat_enabled: bool = True
+    # When true, requests without x-api-key are accepted in dev (resolves to default workspace).
+    # NEVER enable in production.
+    anthropic_compat_dev_mode_open: bool = False
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { RefreshCcw, Zap, ShieldCheck, ShieldOff, AlertCircle, CheckCircle2, Hand } from 'lucide-react'
 import { s, T, mono } from '../../shared/theme/tokens'
 import { Card, SectionTitle, MetricCard, ScrollPanel, EmptyState } from './shared'
+import { ToolRouterCard } from './ToolRouterCard'
 
 
 function AgenticGuardsCard() {
@@ -275,6 +276,8 @@ export function CheapBalancerTab() {
       </div>
 
       <AgenticGuardsCard />
+
+      <ToolRouterCard />
 
       <div>
         <SectionTitle>Slots (sorted by weight)</SectionTitle>

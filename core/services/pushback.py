@@ -183,7 +183,9 @@ _DISAGREEMENT_INVITE = (
 
 def disagreement_invite_section() -> str | None:
     """Always-on reminder that pushback is welcome. Static text."""
-    return _DISAGREEMENT_INVITE
+    # CALIBRATION EXPERIMENT: disabled 2026-05-06 → 2026-05-08
+    # Baseline adherence 50%. If ≥45% after 48h = section was noise.
+    return None
 
 
 # ── 2.5 affective_pushback ────────────────────────────────────────────────

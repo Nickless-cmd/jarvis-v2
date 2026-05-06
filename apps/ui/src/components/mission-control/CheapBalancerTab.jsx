@@ -1,7 +1,104 @@
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCcw, Zap, ShieldCheck, ShieldOff, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { RefreshCcw, Zap, ShieldCheck, ShieldOff, AlertCircle, CheckCircle2, Hand } from 'lucide-react'
 import { s, T, mono } from '../../shared/theme/tokens'
 import { Card, SectionTitle, MetricCard, ScrollPanel, EmptyState } from './shared'
+
+
+function AgenticGuardsCard() {
+  const [state, setState] = useState(null)
+  const [error, setError] = useState(null)
+
+  const fetchState = useCallback(async () => {
+    try {
+      const r = await fetch('/mc/agentic-guards-state')
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const data = await r.json()
+      setState(data)
+      setError(null)
+    } catch (e) {
+      setError(String(e))
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchState()
+    const id = setInterval(fetchState, 8000)
+    return () => clearInterval(id)
+  }, [fetchState])
+
+  if (error) {
+    return (
+      <Card>
+        <div style={s({ ...mono, fontSize: 11, color: T.red, padding: 8 })}>
+          guards-state error: {error}
+        </div>
+      </Card>
+    )
+  }
+
+  if (!state) {
+    return <Card><div style={s({ padding: 8, color: T.text3, fontSize: 11 })}>Loading…</div></Card>
+  }
+
+  const nudge = state.tool_only_nudge_fired || {}
+  const recent = nudge.recent_fires || []
+  const today = nudge.today || 0
+  const last24 = nudge.last_24h || 0
+  const last7d = nudge.last_7d || 0
+
+  return (
+    <div>
+      <SectionTitle>Agentic guards</SectionTitle>
+      <div style={s({ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 8 })}>
+        <MetricCard
+          label="Loop-nudges today"
+          value={today}
+          sub="5 tool-calls reminder"
+          icon={Hand}
+          color={today > 5 ? T.amber : T.green}
+        />
+        <MetricCard
+          label="Last 24h"
+          value={last24}
+          sub="rolling window"
+          icon={Hand}
+          color={T.text2}
+        />
+        <MetricCard
+          label="Last 7d"
+          value={last7d}
+          sub="weekly trend"
+          icon={Hand}
+          color={T.text2}
+        />
+      </div>
+      <Card style={{ marginTop: 8 }}>
+        <ScrollPanel maxHeight={140}>
+          {recent.length > 0 ? (
+            recent.map((f, i) => (
+              <div key={i} style={s({ display: 'flex', gap: 8, alignItems: 'center', padding: '3px 6px', fontSize: 10, ...mono })}>
+                <span style={s({ color: T.text3, width: 64 })}>
+                  {f.at ? new Date(f.at).toLocaleTimeString() : '—'}
+                </span>
+                <span style={s({ color: T.amber, width: 32 })}>{f.rounds}r</span>
+                <span style={s({ color: T.text2, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
+                  {f.run_id || '(no run_id)'}
+                </span>
+                <span style={s({ color: T.accent })}>
+                  {f.decision_id || ''}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div style={s({ padding: 8, color: T.text3, fontSize: 11, ...mono })}>
+              Ingen loop-nudges fired endnu (sidste 7 dage). Det er enten at Jarvis lander svar inden 5 tool-only-rounds, eller at mekanismen lige er deployet.
+            </div>
+          )}
+        </ScrollPanel>
+      </Card>
+    </div>
+  )
+}
 
 function statusEmoji(slot) {
   if (slot.manually_disabled) return '⚫'
@@ -176,6 +273,8 @@ export function CheapBalancerTab() {
         <MetricCard label="Blocked now" value={state.blocked_now} sub="cooldown / disabled" icon={AlertCircle} color={state.blocked_now > 0 ? T.amber : T.text3} />
         <MetricCard label="Recent calls" value={state.recent_calls?.length || 0} sub="last 75" icon={ShieldCheck} color={T.text2} />
       </div>
+
+      <AgenticGuardsCard />
 
       <div>
         <SectionTitle>Slots (sorted by weight)</SectionTitle>

@@ -1,0 +1,12 @@
+{
+  "_doc": "Tools pinned to always-core regardless of 7-day usage. Edit freely.",
+  "pinned": [
+    "read_file", "write_file", "edit_file", "grep", "list_dir", "glob",
+    "bash", "pause_and_ask", "remember_this", "recall_memories",
+    "search_memory", "search_sessions", "web_search", "web_fetch",
+    "decision_create", "goal_create", "todo_add", "todo_complete",
+    "scheduled_task_create", "load_more_tools",
+    "discord_channel", "send_message",
+    "git_status", "git_log", "git_diff", "git_show"
+  ]
+}

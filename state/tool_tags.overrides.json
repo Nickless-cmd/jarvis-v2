@@ -1,0 +1,4 @@
+{
+  "_doc": "Manual tag overrides. Format: {\"tool_name\": [\"tag1\", \"tag2\"]}. Wins over auto tags.",
+  "overrides": {}
+}

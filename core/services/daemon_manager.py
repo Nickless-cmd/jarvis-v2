@@ -76,6 +76,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 10,
         "description": "Pure experiential awareness — non-instrumental reflection",
     },
+    "memory_safeguard": {
+        "module": "core.services.daemon_memory_safeguard",
+        "reset_var": "_last_nudge_at",
+        "reset_value": None,
+        "default_cadence_minutes": 15,
+        "description": "Post-hoc check for missed memory consolidation — nudges if learning markers found without save calls",
+    },
     "curiosity": {
         "module": "core.services.curiosity_daemon",
         "reset_var": "_last_tick_at",
@@ -259,6 +266,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_value": None,
         "default_cadence_minutes": 1440,
         "description": "Natlig revision: samler dagens data og tvinger stillingtagen til 3-5 konkrete valg (accept/reject/defer)",
+    },
+    "memory_safeguard": {
+        "module": "core.services.daemon_memory_safeguard",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 15,
+        "description": "Daemon-sikkerhedsnet: tjekker om seneste tur indeholdt læringsmarkører uden save-tool kald",
     },
 }
 

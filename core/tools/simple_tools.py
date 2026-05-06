@@ -2638,6 +2638,14 @@ def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
     if len(text) > MAX_READ_CHARS:
         text = text[:MAX_READ_CHARS - 1] + "…"
 
+    # Record read for read-before-write guard
+    try:
+        from core.services.read_before_write_guard import record_read
+        _session_id = args.get("_session_id", "default")
+        record_read(str(target), session_id=_session_id)
+    except Exception:
+        pass
+
     return {"text": text, "path": str(target), "size": len(text), "status": "ok"}
 
 
@@ -2697,6 +2705,16 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
             "path": str(target),
             "content_preview": content[:200] + ("…" if len(content) > 200 else ""),
         }
+
+    # Read-before-write guard: block overwriting protected files without reading first
+    try:
+        from core.services.read_before_write_guard import check_read_before_write
+        _session_id = args.get("_session_id", "default")
+        _guard_allowed, _guard_reason = check_read_before_write(str(target), session_id=_session_id)
+        if not _guard_allowed:
+            return {"status": "guard_blocked", "error": _guard_reason}
+    except Exception:
+        pass  # guard failure → allow (fail-open)
 
     # Auto-approved (workspace files)
     target.parent.mkdir(parents=True, exist_ok=True)

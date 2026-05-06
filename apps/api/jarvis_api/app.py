@@ -71,6 +71,7 @@ from apps.api.jarvis_api.routes.live import router as live_router
 from apps.api.jarvis_api.routes.mission_control import router as mc_router
 from apps.api.jarvis_api.routes.cheap_balancer import router as cheap_balancer_router
 from apps.api.jarvis_api.routes.agentic_guards import router as agentic_guards_router
+from apps.api.jarvis_api.routes.tool_router import router as tool_router_router
 from apps.api.jarvis_api.routes.openai_compat import router as openai_compat_router
 from apps.api.jarvis_api.routes.openai_auth import router as openai_auth_router
 from apps.api.jarvis_api.routes.system_health import router as system_health_router
@@ -151,6 +152,12 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("jarvis_brain daemon start failed: %s", _exc)
             try:
+                from core.services.tool_router_runtime import start_tool_router_runtime
+                start_tool_router_runtime()
+                logger.info("tool_router_runtime daemon started")
+            except Exception as _exc:
+                logger.warning("tool_router_runtime start failed: %s", _exc)
+            try:
                 from core.services.agent_runtime import recover_crashed_agents
                 recovery = recover_crashed_agents()
                 if recovery["recovered"]:
@@ -225,6 +232,11 @@ def create_app() -> FastAPI:
                 stop_brain_daemon()
             except Exception:
                 pass
+            try:
+                from core.services.tool_router_runtime import stop_tool_router_runtime
+                stop_tool_router_runtime()
+            except Exception:
+                pass
             stop_global_workspace_listener()
             stop_emotion_concept_listener()
             stop_mood_listener()
@@ -265,6 +277,7 @@ def create_app() -> FastAPI:
     app.include_router(mc_router)
     app.include_router(cheap_balancer_router)
     app.include_router(agentic_guards_router)
+    app.include_router(tool_router_router)
     app.include_router(live_router)
     app.include_router(system_health_router, prefix="/mc")
     app.include_router(openai_compat_router)

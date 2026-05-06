@@ -1188,6 +1188,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 _consecutive_tool_only_rounds = 0
                 _MAX_TOOL_ONLY_ROUNDS = int(_agentic_budget.get("max_tool_only_rounds") or 8)
                 _TOOL_ONLY_TEXT_THRESHOLD = 80  # chars
+                _tool_pause_active = False  # set True after 5 tool-only rounds → withhold tools
                 _agentic_loop_exit_reason = "completed"
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
                     if not _provider_supports_followup:
@@ -1218,7 +1219,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         or _consecutive_empty_text_rounds >= _MAX_EMPTY_TEXT_ROUNDS - 1
                         or _consecutive_tool_only_rounds >= _MAX_TOOL_ONLY_ROUNDS - 1
                     )
-                    _round_tool_definitions = None if _is_last_round else _agentic_tools
+                    _round_tool_definitions = None if (_is_last_round or _tool_pause_active) else _agentic_tools
                     # Merge in tools added by load_more_tools in previous rounds
                     if _round_tool_definitions is not None and _round_extra_tools:
                         _all_defs = _get_tool_defs() or []
@@ -1537,6 +1538,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 run.run_id, _consecutive_tool_only_rounds,
                                 _MAX_TOOL_ONLY_ROUNDS,
                             )
+                            # Activate tool-pause: next round withholds tools
+                            # so the model must produce a text response.
+                            _tool_pause_active = True
                         if _consecutive_tool_only_rounds >= _MAX_TOOL_ONLY_ROUNDS:
                             logger.info(
                                 "tool-only-loop-guard run_id=%s rounds=%d threshold=%d — forcing text response",
@@ -1567,6 +1571,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             break
                     else:
                         _consecutive_tool_only_rounds = 0
+                        _tool_pause_active = False  # model produced text, lift the pause
 
                     # ── Execute tools for this agentic round ───────────────────────
                     for _a_tc in _a_tool_calls:

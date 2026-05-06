@@ -826,6 +826,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         capability_plan = _extract_capability_plan(result.text)
 
         # ── Native tool_calls: execute directly via simple_tools ──
+        # _round_extra_tools holds names added by load_more_tools calls (any round);
+        # merged into next-round tool_definitions inside the agentic loop.
+        _round_extra_tools: list[str] = []
         if _collected_native_tool_calls:
             # Mark initial "thinking" step done so it moves to top of done list
             yield _sse("working_step", {
@@ -857,6 +860,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 session_id=run.session_id,
                 user_message=run.user_message,
             )
+
+            # Detect first-pass load_more_tools so the agentic loop can include
+            # the requested tools in its next round.
+            for _lm_sr in (simple_results or []):
+                try:
+                    if str(_lm_sr.get("tool_name") or "") != "load_more_tools":
+                        continue
+                    _lm_added = (_lm_sr.get("result") or {}).get("added") or []
+                    for _lm_n in _lm_added:
+                        if _lm_n and _lm_n not in _round_extra_tools:
+                            _round_extra_tools.append(str(_lm_n))
+                except Exception:
+                    pass
 
             if simple_results:
                 _update_visible_execution_trace(
@@ -1059,6 +1075,24 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     _agentic_budget = {}
                 _AGENTIC_MAX_ROUNDS = int(_agentic_budget.get("max_rounds") or 100)
                 _agentic_tools = _get_tool_defs()
+                # ── Tool router: scope tool defs to a relevant subset ──
+                # Falls back to the full list silently if anything goes wrong.
+                try:
+                    from core.services.tool_router import select_tools as _select_tools
+                    _selection = _select_tools(
+                        user_message=run.user_message,
+                        session_id=run.session_id,
+                        lane="autonomous" if run.autonomous else "visible",
+                        run_id=run.run_id,
+                    )
+                    if not _selection.fallback_used:
+                        _selected_set = set(_selection.selected_names)
+                        _agentic_tools = [
+                            d for d in _agentic_tools
+                            if ((d.get("function") or {}).get("name") or d.get("name") or "") in _selected_set
+                        ]
+                except Exception:
+                    pass  # keep full list on any error
                 _all_followup_parts: list[str] = []
                 _a_parts: list[str] = []
 
@@ -1185,6 +1219,18 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         or _consecutive_tool_only_rounds >= _MAX_TOOL_ONLY_ROUNDS - 1
                     )
                     _round_tool_definitions = None if _is_last_round else _agentic_tools
+                    # Merge in tools added by load_more_tools in previous rounds
+                    if _round_tool_definitions is not None and _round_extra_tools:
+                        _all_defs = _get_tool_defs() or []
+                        _extra_set = set(_round_extra_tools)
+                        _existing_names = {
+                            ((d.get("function") or {}).get("name") or d.get("name") or "")
+                            for d in _round_tool_definitions
+                        }
+                        for _xd in _all_defs:
+                            _xn = (_xd.get("function") or {}).get("name") or _xd.get("name") or ""
+                            if _xn in _extra_set and _xn not in _existing_names:
+                                _round_tool_definitions = list(_round_tool_definitions) + [_xd]
 
                     def _pump_agentic(
                         q=_a_queue,
@@ -1557,6 +1603,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         int((time.monotonic() - _a_exec_start) * 1000),
                         len(_a_results),
                     )
+                    # If any tool call this round was load_more_tools, capture
+                    # its added names so the next round's tool_definitions
+                    # includes them.
+                    for _lm_sr in _a_results:
+                        try:
+                            if str(_lm_sr.get("tool_name") or "") != "load_more_tools":
+                                continue
+                            _lm_added = (_lm_sr.get("result") or {}).get("added") or []
+                            for _lm_n in _lm_added:
+                                if _lm_n and _lm_n not in _round_extra_tools:
+                                    _round_extra_tools.append(str(_lm_n))
+                        except Exception:
+                            pass
                     _a_resolved: dict[int, str] = {}
 
                     for _a_idx, _a_sr in enumerate(_a_results):

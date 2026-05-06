@@ -1169,6 +1169,18 @@ def build_visible_chat_prompt_assembly(
         parts.append(transcript_content)
         derived_inputs.append("recent transcript slice (flat text fallback)")
 
+    # Tool catalog — always-on compact list of all tool names so Jarvis knows
+    # what exists even when tool_router scopes the full schemas to a subset.
+    # Best-effort: never breaks prompt assembly.
+    try:
+        from core.services.tool_catalog import build_catalog_text as _build_catalog_text
+        _catalog_text = _build_catalog_text()
+        if _catalog_text:
+            parts.append(_catalog_text)
+            derived_inputs.append("tool catalog (compact)")
+    except Exception:
+        pass
+
     executor.shutdown(wait=False)
 
     _total_ms = int((_t_mod.monotonic() - _t_assembly_start) * 1000)

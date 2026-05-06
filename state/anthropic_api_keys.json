@@ -1,4 +1,6 @@
 {
-  "_doc": "Anthropic-compat API key registry. Keys map to user/workspace. Generate keys with `openssl rand -hex 24` prefixed with 'jvs-<user>-'.",
-  "keys": {}
+  "_doc": "Anthropic-compat API key registry. Keys map to user/workspace. Generate keys with `openssl rand -hex 12` prefixed with 'jvs-<user>-'.",
+  "keys": {
+    "jvs-bjorn-ce8e3edb91bbe5820cea3539": {"user": "bjorn", "workspace": "default"}
+  }
 }

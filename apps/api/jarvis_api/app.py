@@ -72,6 +72,7 @@ from apps.api.jarvis_api.routes.mission_control import router as mc_router
 from apps.api.jarvis_api.routes.cheap_balancer import router as cheap_balancer_router
 from apps.api.jarvis_api.routes.agentic_guards import router as agentic_guards_router
 from apps.api.jarvis_api.routes.tool_router import router as tool_router_router
+from apps.api.jarvis_api.routes.anthropic_compat import router as anthropic_compat_router
 from apps.api.jarvis_api.routes.openai_compat import router as openai_compat_router
 from apps.api.jarvis_api.routes.openai_auth import router as openai_auth_router
 from apps.api.jarvis_api.routes.system_health import router as system_health_router
@@ -278,6 +279,7 @@ def create_app() -> FastAPI:
     app.include_router(cheap_balancer_router)
     app.include_router(agentic_guards_router)
     app.include_router(tool_router_router)
+    app.include_router(anthropic_compat_router)
     app.include_router(live_router)
     app.include_router(system_health_router, prefix="/mc")
     app.include_router(openai_compat_router)

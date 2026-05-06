@@ -1454,6 +1454,39 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     # few chars (resetting empty-text) but no real answer. ──
                     if _a_tool_calls and _round_text_total < _TOOL_ONLY_TEXT_THRESHOLD:
                         _consecutive_tool_only_rounds += 1
+                        # ── Soft nudge at 5 tool-only rounds (2026-05-06) ──
+                        # Surfaces dec_7affdde753e1 ("efter 5 tool calls
+                        # uden synligt svar, stop og opsummer") as a
+                        # transparent reminder — does NOT remove tools or
+                        # force summary. Hard-stop still happens at
+                        # _MAX_TOOL_ONLY_ROUNDS (8/12). Fires once per
+                        # tool-only streak.
+                        if _consecutive_tool_only_rounds == 5:
+                            _nudge_msg = (
+                                "\n\n[loop-nudge: 5 tool calls uden tekst-svar — "
+                                "overvej at opsummere hvor du er, før du fortsætter "
+                                "(dec_7affdde753e1). Tools forbliver tilgængelige.]\n\n"
+                            )
+                            yield _sse("delta", {
+                                "type": "delta",
+                                "run_id": run.run_id,
+                                "delta": _nudge_msg,
+                            })
+                            _a_parts.append(_nudge_msg)
+                            try:
+                                event_bus.publish("agentic.tool_only_nudge_fired", {
+                                    "run_id": run.run_id,
+                                    "rounds": _consecutive_tool_only_rounds,
+                                    "threshold": 5,
+                                    "decision_id": "dec_7affdde753e1",
+                                })
+                            except Exception:
+                                pass
+                            logger.info(
+                                "tool-only-soft-nudge run_id=%s rounds=%d (hard-stop at %d)",
+                                run.run_id, _consecutive_tool_only_rounds,
+                                _MAX_TOOL_ONLY_ROUNDS,
+                            )
                         if _consecutive_tool_only_rounds >= _MAX_TOOL_ONLY_ROUNDS:
                             logger.info(
                                 "tool-only-loop-guard run_id=%s rounds=%d threshold=%d — forcing text response",

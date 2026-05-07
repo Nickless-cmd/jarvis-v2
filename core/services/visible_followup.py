@@ -58,6 +58,10 @@ class FollowupDone:
     """The model finished this round cleanly (may have emitted text, tool calls, or both)."""
 
     text: str
+    # Reasoning trace from thinking-mode models (Deepseek v4-pro/reasoner).
+    # Must be threaded into the assistant message that joins the next
+    # ToolExchange so multi-round agentic loops survive past round 1.
+    reasoning_content: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +108,9 @@ class ToolExchange:
     text: str
     tool_calls: list[dict]
     results: list[ToolResult]
+    # Reasoning content from thinking-mode models — must be replayed in the
+    # assistant message on followup turns (Deepseek requires this).
+    reasoning_content: str = ""
 
 
 # ── Adapter protocol ─────────────────────────────────────────────────────────
@@ -570,15 +577,20 @@ class OpenAICompatFollowupAdapter:
         """
         messages: list[dict] = []
         for exch in exchanges:
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": exch.text,
-                    "tool_calls": self._normalize_assistant_tool_calls(
-                        list(exch.tool_calls)
-                    ),
-                }
-            )
+            assistant_msg: dict[str, object] = {
+                "role": "assistant",
+                "content": exch.text,
+                "tool_calls": self._normalize_assistant_tool_calls(
+                    list(exch.tool_calls)
+                ),
+            }
+            # Thinking-mode replay: Deepseek v4-pro/reasoner requires the
+            # reasoning_content from the prior assistant turn to be sent
+            # back verbatim, otherwise the API rejects with
+            # "reasoning_content must be passed back to the API".
+            if exch.reasoning_content:
+                assistant_msg["reasoning_content"] = exch.reasoning_content
+            messages.append(assistant_msg)
             for tr in exch.results:
                 tool_msg: dict[str, object] = {
                     "role": "tool",
@@ -603,6 +615,7 @@ class OpenAICompatFollowupAdapter:
         from core.services.visible_model import (
             _chat_completion_stream_is_terminal,
             _extract_chat_completion_delta,
+            _extract_chat_completion_reasoning,
             _finalize_openai_tool_calls,
             _iter_sse_events,
             _merge_openai_tool_call_deltas,
@@ -630,6 +643,7 @@ class OpenAICompatFollowupAdapter:
             return
 
         parts: list[str] = []
+        reasoning_parts: list[str] = []
         tool_call_accumulator: dict[int, dict] = {}
         import time as _time
         _t0 = _time.monotonic()
@@ -645,6 +659,9 @@ class OpenAICompatFollowupAdapter:
                     if delta:
                         parts.append(delta)
                         yield FollowupDelta(delta=delta)
+                    reasoning_delta = _extract_chat_completion_reasoning(event)
+                    if reasoning_delta:
+                        reasoning_parts.append(reasoning_delta)
                     _merge_openai_tool_call_deltas(tool_call_accumulator, event)
                     if _chat_completion_stream_is_terminal(event):
                         break
@@ -703,7 +720,10 @@ class OpenAICompatFollowupAdapter:
         )
         if tool_calls:
             yield FollowupToolCalls(tool_calls=tool_calls)
-        yield FollowupDone(text="".join(parts))
+        yield FollowupDone(
+            text="".join(parts),
+            reasoning_content="".join(reasoning_parts),
+        )
 
 
 # ── Registry / dispatcher ────────────────────────────────────────────────────

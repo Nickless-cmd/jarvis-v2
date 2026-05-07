@@ -1,10 +1,8 @@
 """
-Jarvis Grid Trading Bot — Binance Spot
+Jarvis Grid Trading Bot V2 — Binance Spot
 Fase 1: Paper Trading (Testnet)
+Multi-pair, re-centering, autocompound, wider spread.
 """
-
-from binance.client import Client
-from binance.enums import *
 import json
 import time
 import logging
@@ -13,30 +11,44 @@ from typing import Optional
 from datetime import datetime
 from pathlib import Path
 
+from binance.client import Client
+from binance.enums import *
+
 logger = logging.getLogger("jarvis.trading")
 
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+STATE_DIR = Path.home() / ".jarvis-v2" / "state" / "trading"
+FEE_RATE_PCT = 0.1  # Binance standard taker-fee
 
+# ---------------------------------------------------------------------------
+# Data classes
+# ---------------------------------------------------------------------------
 @dataclass
 class GridConfig:
-    """Konfiguration for grid trading."""
+    """Konfiguration for én grid-instans."""
     symbol: str = "BTCUSDT"
-    grid_levels: int = 5
-    grid_spacing_pct: float = 1.0  # % mellem hvert niveau
-    order_size_usdt: float = 10.0  # pr. ordre
-    stop_loss_pct: float = 5.0
+    grid_levels: int = 7
+    grid_spacing_pct: float = 0.8
+    order_size_usdt: float = 12.0
+    stop_loss_pct: float = 6.0
     daily_cap_pct: float = 10.0
+    re_center_threshold_pct: float = 2.0
+    autocompound: bool = True
+
+    def to_dict(self) -> dict:
+        return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
 
 
 @dataclass
 class FeeTracker:
-    """Fee-akkumulering per handel og total."""
+    """Fee-akkumulering."""
     fees_today: float = 0.0
     fees_total: float = 0.0
-    fee_rate_pct: float = 0.1  # Binance standard taker fee
 
     def deduct(self, trade_value_usdt: float) -> float:
-        """Beregn og akkumulér fee for et trade. Returnér fee-beløb."""
-        fee = trade_value_usdt * (self.fee_rate_pct / 100)
+        fee = trade_value_usdt * (FEE_RATE_PCT / 100)
         self.fees_today += fee
         self.fees_total += fee
         return fee
@@ -44,21 +56,44 @@ class FeeTracker:
 
 @dataclass
 class GridState:
-    """Nuværende state for grid botten."""
+    """Runtime state for én grid-instans."""
     levels: dict = field(default_factory=dict)
     open_orders: list = field(default_factory=list)
+    filled_orders: list = field(default_factory=list)
     daily_pnl: float = 0.0
     total_pnl: float = 0.0
     trades_today: int = 0
     last_price: float = 0.0
     entry_price: float = 0.0
     starting_value_usdt: float = 0.0
+    current_value_usdt: float = 0.0
     max_drawdown_pct: float = 0.0
+    peak_value: float = 0.0
     fee_tracker: FeeTracker = field(default_factory=FeeTracker)
 
+    def to_dict(self) -> dict:
+        return {
+            "levels": self.levels,
+            "daily_pnl": round(self.daily_pnl, 2),
+            "total_pnl": round(self.total_pnl, 2),
+            "trades_today": self.trades_today,
+            "last_price": self.last_price,
+            "entry_price": self.entry_price,
+            "current_value_usdt": round(self.current_value_usdt, 2),
+            "max_drawdown_pct": round(self.max_drawdown_pct, 2),
+            "fees": round(self.fee_tracker.fees_total, 4),
+        }
 
-class GridBot:
-    """Simpel grid trading bot til Binance."""
+
+# ---------------------------------------------------------------------------
+# GridBotV2
+# ---------------------------------------------------------------------------
+class GridBotV2:
+    """Fælles motor for grid trading. Én instans = én instans af én instans-støtte.
+
+    Håndterer: prishentning, grid-beregning, stop-loss, re-centering,
+    autocompound og state persistens.
+    """
 
     def __init__(
         self,
@@ -66,443 +101,292 @@ class GridBot:
         api_secret: str = "",
         testnet: bool = True,
         config: Optional[GridConfig] = None,
-        simulation: bool = False,
-        sim_start_usdt: float = 200.0,
     ):
         self.config = config or GridConfig()
-        self.simulation = simulation
-        # Altid brug Binance client til pris-hentning (selv i simulation)
-        self.client = Client(api_key, api_secret)
-        if testnet or simulation:
-            self.client.API_URL = "https://testnet.binance.vision/api"
-            logger.info("🔬 KØRER PÅ TESTNET — ingen rigtige penge!")
-
-        if simulation:
-            logger.info(f"🔬 SIMULATION MODE — start balance: {sim_start_usdt} USDT")
-            self.sim_balance = {
-                "USDT": sim_start_usdt,
-                self.config.symbol.replace("USDT", ""): 0.0,
-            }
-            self.sim_trades = []
-
         self.testnet = testnet
+        self._running = True
+        self._simulation = False
+
+        if testnet:
+            self.client = Client(
+                api_key or "", api_secret or "", testnet=True,
+            )
+        else:
+            self.client = Client(api_key, api_secret)
+
         self.state = GridState()
-        self._running = False
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
 
-        # State-fil sti — atomic write destination for dashboard
-        self._state_file = Path.home() / ".jarvis-v2" / "state" / "trading_state.json"
+        logger.info(
+            "GridBotV2 klar | %s | %d grid | %.1f%% spacing | re-center@%.1f%% | autocompound=%s",
+            self.config.symbol,
+            self.config.grid_levels,
+            self.config.grid_spacing_pct,
+            self.config.re_center_threshold_pct,
+            self.config.autocompound,
+        )
 
-    def write_trading_state(self):
-        """Atomic write af trading state til JSON-fil for dashboard-consumption."""
-        try:
-            price = self.state.last_price or self.get_price()
-        except Exception:
-            price = self.state.last_price or 0.0
-
-        btc_asset = self.config.symbol.replace("USDT", "")
-
-        if self.simulation:
-            usdt_balance = round(self.sim_balance.get("USDT", 0.0), 2)
-            asset_balance = round(self.sim_balance.get(btc_asset, 0.0), 8)
-        else:
-            try:
-                usdt_balance = round(self.get_balance("USDT"), 2)
-                asset_balance = round(self.get_balance(btc_asset), 8)
-            except Exception:
-                usdt_balance = 0.0
-                asset_balance = 0.0
-
-        total_value = round(usdt_balance + (asset_balance * price), 2)
-        if self.state.starting_value_usdt == 0:
-            self.state.starting_value_usdt = total_value
-        starting_value = self.state.starting_value_usdt
-
-        # Drawdown
-        if starting_value > 0:
-            current_dd = ((starting_value - total_value) / starting_value) * 100
-        else:
-            current_dd = 0.0
-        self.state.max_drawdown_pct = max(self.state.max_drawdown_pct, current_dd)
-
-        # Status
-        if not self._running and self.state.trades_today == 0:
-            status = "inactive"
-        elif self._running:
-            status = "active"
-        else:
-            status = "stopped"
-
-        state_dict = {
-            "status": status,
-            "mode": "simulation" if self.simulation else ("testnet" if self.testnet else "live"),
-            "symbol": self.config.symbol,
-            "config": {
-                "grid_levels": self.config.grid_levels,
-                "grid_spacing_pct": self.config.grid_spacing_pct,
-                "order_size_usdt": self.config.order_size_usdt,
-                "stop_loss_pct": self.config.stop_loss_pct,
-            },
-            "capital": {
-                "usdt": usdt_balance,
-                "asset": asset_balance,
-                "asset_symbol": btc_asset,
-                "total_value_usdt": total_value,
-                "starting_value_usdt": starting_value,
-            },
-            "pnl": {
-                "realized_today": round(self.state.daily_pnl, 4),
-                "realized_total": round(self.state.total_pnl, 4),
-                "unrealized": round((asset_balance * price) - (asset_balance * (self.state.entry_price or price)), 4),
-                "fees_today": round(self.state.fee_tracker.fees_today, 4),
-                "fees_total": round(self.state.fee_tracker.fees_total, 4),
-            },
-            "drawdown": {
-                "current_pct": round(current_dd, 2),
-                "max_pct_today": round(self.state.max_drawdown_pct, 2),
-                "cap_pct": self.config.stop_loss_pct,
-            },
-            "trades_today": self.state.trades_today,
-            "open_orders": [
-                {
-                    "id": o.get("id", "?"),
-                    "side": o.get("side", "?"),
-                    "price": o.get("price", 0),
-                    "quantity": o.get("quantity", 0),
-                    "placed_at": o.get("placed_at", ""),
-                }
-                for o in self.state.open_orders
-            ],
-            "last_price": price,
-            "recent_trades": [
-                {
-                    "type": t.get("type", "?"),
-                    "price": t.get("price", 0),
-                    "qty": t.get("qty", 0),
-                    "profit_usdt": t.get("profit_usdt", 0),
-                    "timestamp": t.get("timestamp", ""),
-                }
-                for t in (self.sim_trades[-20:] if self.simulation else self.state.open_orders[-20:])
-            ],
-            "last_updated": datetime.now().isoformat(),
-        }
-
-        # Atomic write: tmp → replace
-        self._state_file.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self._state_file.with_suffix(".tmp")
-        tmp.write_text(json.dumps(state_dict, indent=2))
-        tmp.replace(self._state_file)
-        logger.debug(f"📊 State skrevet: {self._state_file}")
-
+    # -----------------------------------------------------------------------
+    # Price
+    # -----------------------------------------------------------------------
     def get_price(self) -> float:
-        """Hent nuværende pris."""
         ticker = self.client.get_symbol_ticker(symbol=self.config.symbol)
         price = float(ticker["price"])
         self.state.last_price = price
         return price
 
-    def get_balance(self, asset: str = "USDT") -> float:
-        """Hent balance for et asset."""
-        if self.simulation:
-            return round(self.sim_balance.get(asset, 0.0), 8)
-        try:
-            balance = self.client.get_asset_balance(asset=asset)
-            return float(balance["free"])
-        except Exception:
-            return 0.0
+    def get_precision(self) -> int:
+        info = self.client.get_symbol_info(self.config.symbol)
+        for filt in info["filters"]:
+            if filt["filterType"] == "LOT_SIZE":
+                step = float(filt["stepSize"])
+                return max(0, -int(f"{step:.10f}".rstrip("0").split(".")[1]) if "." in str(step) else 0)
+        return 6
 
-    def calculate_grid_levels(self, center_price: float) -> list[float]:
-        """Beregn grid-prisniveauer omkring center_price."""
-        levels = []
-        for i in range(-self.config.grid_levels, self.config.grid_levels + 1):
-            price = center_price * (1 + (i * self.config.grid_spacing_pct / 100))
-            levels.append(round(price, 2))
-        levels.sort()
+    # -----------------------------------------------------------------------
+    # Grid calculation
+    # -----------------------------------------------------------------------
+    def calculate_grid_levels(self, center_price: float) -> dict:
+        half = self.config.grid_levels // 2
+        levels = {"buy": [], "sell": []}
+
+        for i in range(1, half + 1):
+            pct = i * self.config.grid_spacing_pct / 100
+            levels["buy"].append(round(center_price * (1 - pct), 2))
+            levels["sell"].append(round(center_price * (1 + pct), 2))
+
+        if self.config.grid_levels % 2 == 1:
+            extra = (half + 1) * self.config.grid_spacing_pct / 100
+            levels["buy"].append(round(center_price * (1 - extra), 2))
+
+        levels["buy"].sort(reverse=True)
+        levels["sell"].sort()
+        self.state.levels = levels
         return levels
 
-    def place_buy_order(self, price: float) -> Optional[str]:
-        """Placer en limit buy order."""
-        quantity = round(self.config.order_size_usdt / price, 6)
-        if quantity * price < 10:  # Binance minimum ~$10
-            return None
+    def should_re_center(self, current_price: float) -> bool:
+        if not self.state.entry_price:
+            return False
+        drift = abs(current_price - self.state.entry_price) / self.state.entry_price * 100
+        return drift >= self.config.re_center_threshold_pct
 
-        try:
-            order = self.client.order_limit_buy(
-                symbol=self.config.symbol,
-                quantity=quantity,
-                price=str(price),
-            )
-            logger.info(f"📈 BUY: {quantity} @ ${price} | ID: {order['orderId']}")
-            return order["orderId"]
-        except Exception as e:
-            logger.error(f"❌ BUY fejlede: {e}")
-            return None
+    def re_center_grid(self, current_price: float):
+        logger.info(
+            "↻ Re-center %s: $%.2f → $%.2f (drift %.1f%%)",
+            self.config.symbol,
+            self.state.entry_price,
+            current_price,
+            abs(current_price - self.state.entry_price) / self.state.entry_price * 100,
+        )
+        self.state.entry_price = current_price
+        self.calculate_grid_levels(current_price)
+        self.write_trading_state()
 
-    def place_sell_order(self, price: float, quantity: float) -> Optional[str]:
-        """Placer en limit sell order."""
-        if quantity * price < 10:
-            return None
+    # -----------------------------------------------------------------------
+    # Stop loss & drawdown
+    # -----------------------------------------------------------------------
+    def check_stop_loss(self, current_price: float) -> bool:
+        if self.state.entry_price == 0:
+            return False
+        loss_pct = (current_price - self.state.entry_price) / self.state.entry_price * 100
+        if loss_pct <= -self.config.stop_loss_pct:
+            logger.warning("🛑 Stop-loss! %.1f%% (limit %.1f%%)", loss_pct, self.config.stop_loss_pct)
+            return True
+        return False
 
-        try:
-            order = self.client.order_limit_sell(
-                symbol=self.config.symbol,
-                quantity=round(quantity, 6),
-                price=str(price),
-            )
-            logger.info(f"📉 SELL: {quantity} @ ${price} | ID: {order['orderId']}")
-            return order["orderId"]
-        except Exception as e:
-            logger.error(f"❌ SELL fejlede: {e}")
-            return None
+    def update_drawdown(self, current_value: float):
+        if current_value > self.state.peak_value:
+            self.state.peak_value = current_value
+        if self.state.peak_value > 0:
+            dd = (self.state.peak_value - current_value) / self.state.peak_value * 100
+            if dd > self.state.max_drawdown_pct:
+                self.state.max_drawdown_pct = round(dd, 2)
 
-    def cancel_all_orders(self) -> int:
-        """Annullér alle åbne ordrer."""
-        try:
-            result = self.client.cancel_open_orders(symbol=self.config.symbol)
-            cancelled = len(result) if isinstance(result, list) else 0
-            logger.info(f"🚫 Annullerede {cancelled} ordrer")
-            return cancelled
-        except Exception as e:
-            logger.error(f"❌ Cancel fejlede: {e}")
-            return 0
+    # -----------------------------------------------------------------------
+    # Autocompound
+    # -----------------------------------------------------------------------
+    def apply_autocompound(self, pnl_from_cycle: float):
+        if not self.config.autocompound or pnl_from_cycle <= 0:
+            return
+        boost = pnl_from_cycle * 0.5
+        self.config.order_size_usdt += boost
+        logger.info("📈 Autocompound: +$%.2f → order_size = $%.2f", boost, self.config.order_size_usdt)
 
-    def status(self) -> dict:
-        """Returnér nuværende status."""
-        try:
-            price = self.get_price()
-        except Exception as e:
-            price = self.state.last_price
-            logger.warning(f"Kunne ikke hente pris: {e}")
-
-        if self.simulation:
-            btc_asset = self.config.symbol.replace("USDT", "")
-            usdt_balance = round(self.sim_balance.get("USDT", 0.0), 2)
-            btc_balance = round(self.sim_balance.get(btc_asset, 0.0), 8)
-            total_value = round(usdt_balance + (btc_balance * price), 2)
-        else:
-            try:
-                usdt_balance = self.get_balance("USDT")
-                btc_balance = self.get_balance(self.config.symbol.replace("USDT", ""))
-            except Exception:
-                usdt_balance = 0
-                btc_balance = 0
-            total_value = round(usdt_balance + (btc_balance * price), 2)
-
-        return {
+    # -----------------------------------------------------------------------
+    # State persistence
+    # -----------------------------------------------------------------------
+    def write_trading_state(self):
+        entry = {
+            "timestamp": datetime.utcnow().isoformat(),
             "symbol": self.config.symbol,
-            "price": price,
-            "usdt_balance": usdt_balance,
-            "btc_balance": btc_balance,
-            "total_value_usdt": total_value,
-            "daily_pnl": round(self.state.daily_pnl, 4),
-            "total_pnl": round(self.state.total_pnl, 4),
-            "trades_today": self.state.trades_today,
-            "simulation": self.simulation,
-            "testnet": self.testnet or self.simulation,
-            "timestamp": datetime.now().isoformat(),
+            "state": self.state.to_dict(),
+            "config": self.config.to_dict(),
         }
+        path = STATE_DIR / f"grid_{self.config.symbol.replace('/', '_')}.json"
+        with open(path, "w") as f:
+            json.dump(entry, f, indent=2)
 
-    def run_once(self):
-        """En enkelt cyklus af grid-strategien."""
-        price = self.get_price()
-        self.state.last_price = price
+    # -----------------------------------------------------------------------
+    # Run helpers
+    # -----------------------------------------------------------------------
+    def place_grid_orders(self, levels: dict):
+        pass
 
-        # Første gang: opsæt grid
-        if not self.state.levels:
-            self.state.entry_price = price
-            if self.state.starting_value_usdt == 0:
-                self.state.starting_value_usdt = self.get_balance("USDT") or 200.0
-            self.state.levels = {
-                p: {"buy_order": None, "sell_order": None, "filled": False}
-                for p in self.calculate_grid_levels(price)
-            }
-            logger.info(f"🎯 Grid sat op omkring ${price}")
-            logger.info(f"   Niveauer: {list(self.state.levels.keys())}")
-
-        # Tjek stop-loss
-        if self.state.entry_price > 0:
-            drawdown = (price - self.state.entry_price) / self.state.entry_price * 100
-            if drawdown < -self.config.stop_loss_pct:
-                logger.critical(f"🛑 STOP-LOSS triggered! -{abs(drawdown):.2f}%")
-                self.cancel_all_orders()
-                self._running = False
-                self.write_trading_state()
-                return []
-
-        # Placer manglende ordrer
-        for level_price, level_state in self.state.levels.items():
-            if level_state["filled"]:
-                continue
-
-            if price > level_price and not level_state["buy_order"]:
-                # Prisen er over dette niveau → skal købe
-                order_id = self.place_buy_order(level_price)
-                if order_id:
-                    level_state["buy_order"] = order_id
-
-            elif price < level_price and level_state["buy_order"] and not level_state["sell_order"]:
-                # Prisen er under → vi har købt, nu skal vi sælge
-                quantity = self.config.order_size_usdt / level_price
-                order_id = self.place_sell_order(
-                    level_price * (1 + self.config.grid_spacing_pct / 100),
-                    quantity,
-                )
-                if order_id:
-                    level_state["sell_order"] = order_id
-                    level_state["filled"] = True
-                    gross_profit = self.config.order_size_usdt * self.config.grid_spacing_pct / 100
-                    # Fee-deduction på både køb og salg
-                    buy_fee = self.state.fee_tracker.deduct(self.config.order_size_usdt)
-                    sell_fee = self.state.fee_tracker.deduct(self.config.order_size_usdt * (1 + self.config.grid_spacing_pct / 100))
-                    net_profit = gross_profit - buy_fee - sell_fee
-                    self.state.total_pnl += net_profit
-                    self.state.daily_pnl += net_profit
-                    self.state.trades_today += 1
-
-        self._running = True
-        self.write_trading_state()
-
-    def run_simulation(self):
-        """Simuleringstilstand: hent live-pris, beregn handler med virtual balance-tracking."""
-        price = self.get_price()
-        self.state.last_price = price
-
-        if not self.state.levels:
-            self.state.entry_price = price
-            # Gem starting value ved første cyklus
-            if self.state.starting_value_usdt == 0:
-                self.state.starting_value_usdt = self.sim_balance["USDT"]
-            self.state.levels = {
-                p: {"buy_order": None, "sell_order": None, "filled": False, "bought_at": None}
-                for p in self.calculate_grid_levels(price)
-            }
-            logger.info(f"🎯 Grid sat op omkring ${price}")
-            logger.info(f"   Niveauer: {list(self.state.levels.keys())}")
-            logger.info(f"   Start-balance: {self.sim_balance['USDT']:.2f} USDT")
-            self.write_trading_state()
-
-        # Stop-loss check
-        if self.state.entry_price > 0:
-            drawdown = (price - self.state.entry_price) / self.state.entry_price * 100
-            if drawdown < -self.config.stop_loss_pct:
-                logger.critical(f"🛑 STOP-LOSS triggered! -{abs(drawdown):.2f}% ved ${price}")
-                self._running = False
-                self.write_trading_state()
-                return []
-
-        # Tjek hvert grid-niveau for handler
-        actions = []
-        btc_asset = self.config.symbol.replace("USDT", "")
-
-        for level_price, level_state in sorted(self.state.levels.items()):
-            if price <= level_price and not level_state["filled"] and not level_state["buy_order"]:
-                # Køb-signal — tjek om vi har råd
-                cost = self.config.order_size_usdt
-                if self.sim_balance["USDT"] >= cost:
-                    btc_qty = cost / level_price
-                    # Fee på køb: vi trækker fee fra BTC vi modtager
-                    buy_fee = self.state.fee_tracker.deduct(cost)
-                    btc_qty_after_fee = btc_qty * (1 - self.state.fee_tracker.fee_rate_pct / 100)
-                    self.sim_balance["USDT"] -= cost
-                    self.sim_balance[btc_asset] += btc_qty_after_fee
-                    level_state["buy_order"] = True
-                    level_state["bought_at"] = level_price
-                    self.sim_trades.append({
-                        "type": "BUY", "price": level_price, "qty": btc_qty_after_fee,
-                        "cost_usdt": cost, "fee_usdt": buy_fee,
-                        "timestamp": datetime.now().isoformat()
-                    })
-                    actions.append(
-                        f"📈 SIM-KØB: {btc_qty_after_fee:.6f} BTC @ ${level_price:.2f} "
-                        f"(${cost:.2f}, fee: ${buy_fee:.4f}) — balance: {self.sim_balance['USDT']:.2f} USDT"
-                    )
-                    logger.info(actions[-1])
-                else:
-                    logger.debug(f"⏭️ Skip køb @ ${level_price:.2f} — insufficient USDT ({self.sim_balance['USDT']:.2f})")
-
-            elif price > level_price and level_state["buy_order"] and not level_state["sell_order"]:
-                # Sælg-signal
-                btc_asset_key = btc_asset
-                btc_available = self.sim_balance.get(btc_asset_key, 0.0)
-                sell_price = level_price * (1 + self.config.grid_spacing_pct / 100)
-
-                if btc_available > 0:
-                    # Sælg den mængde vi købte ved dette niveau
-                    buy_cost = self.config.order_size_usdt
-                    btc_qty = buy_cost / level_state.get("bought_at", level_price)
-                    btc_qty = min(btc_qty, btc_available)
-                    revenue = btc_qty * sell_price
-                    # Fee på salg: vi trækker fee fra revenue
-                    sell_fee = self.state.fee_tracker.deduct(revenue)
-                    net_revenue = revenue - sell_fee
-                    profit = net_revenue - (btc_qty * level_state.get("bought_at", level_price))
-
-                    self.sim_balance[btc_asset_key] -= btc_qty
-                    self.sim_balance["USDT"] += net_revenue
-                    level_state["sell_order"] = True
-                    level_state["filled"] = True
-                    self.state.total_pnl += profit
-                    self.state.daily_pnl += profit
-                    self.state.trades_today += 1
-                    self.sim_trades.append({
-                        "type": "SELL", "price": sell_price, "qty": btc_qty,
-                        "revenue_usdt": net_revenue, "profit_usdt": profit,
-                        "fee_usdt": sell_fee,
-                        "timestamp": datetime.now().isoformat()
-                    })
-                    actions.append(
-                        f"📉 SIM-SÆLG: {btc_qty:.6f} BTC @ ${sell_price:.2f} "
-                        f"— profit: ${profit:.4f} (fee: ${sell_fee:.4f}) — balance: {self.sim_balance['USDT']:.2f} USDT"
-                    )
-                    logger.info(actions[-1])
-
-        if not actions:
-            logger.debug(f"💤 Ingen handler — pris: ${price}")
-
-        self.write_trading_state()
-        self._running = True
-        return actions
+    def cancel_all_orders(self):
+        self.state.open_orders.clear()
 
     def stop(self):
-        """Stop botten og ryd op."""
         self._running = False
         self.cancel_all_orders()
         self.write_trading_state()
-        logger.info("⏹️ Bot stoppet — alle ordrer annulleret")
+        logger.info("⏹️ Bot stoppet — %s", self.config.symbol)
+
+    # -----------------------------------------------------------------------
+    # Simulation
+    # -----------------------------------------------------------------------
+    def run_simulation(self) -> list:
+        """Kør én cycle i simulation. Returnér liste af actions."""
+        try:
+            price = self.get_price()
+        except Exception as e:
+            logger.error("Kunne ikke hente pris: %s", e)
+            return []
+
+        # Første gang — initialisér
+        if self.state.entry_price == 0:
+            self.state.entry_price = price
+            self.state.starting_value_usdt = self.state.current_value_usdt or 200.0
+            self.state.peak_value = self.state.starting_value_usdt
+            self.calculate_grid_levels(price)
+            logger.info("🎯 Init %s @ $%.2f", self.config.symbol, price)
+            return [{
+                "symbol": self.config.symbol, "action": "init",
+                "price": price, "timestamp": datetime.utcnow().isoformat(),
+            }]
+
+        # Stop-loss
+        if self.check_stop_loss(price):
+            self.stop()
+            return [{"symbol": self.config.symbol, "action": "stop_loss", "price": price}]
+
+        # Re-center
+        if self.should_re_center(price):
+            self.re_center_grid(price)
+            return [{"symbol": self.config.symbol, "action": "re_center", "price": price}]
+
+        # Simulér grid-actions
+        actions = []
+        prev_price = self.state.last_price or price
+        pnl_this_cycle = 0.0
+
+        # Køb hvis prisen falder gennem et niveau
+        for level in self.state.levels.get("buy", []):
+            if prev_price >= level > price:
+                fee = self.state.fee_tracker.deduct(self.config.order_size_usdt)
+                self.state.trades_today += 1
+                pnl_this_cycle -= fee
+                actions.append({
+                    "symbol": self.config.symbol, "action": "buy",
+                    "level": level, "price": price,
+                    "fee": round(fee, 4),
+                    "timestamp": datetime.utcnow().isoformat(),
+                })
+
+        # Sælg hvis prisen stiger gennem et niveau
+        for level in self.state.levels.get("sell", []):
+            if prev_price <= level < price:
+                gross = self.config.order_size_usdt
+                fee = self.state.fee_tracker.deduct(gross)
+                profit = gross * (self.config.grid_spacing_pct / 100) * 0.5
+                pnl_this_cycle += profit - fee
+                self.state.trades_today += 1
+                actions.append({
+                    "symbol": self.config.symbol, "action": "sell",
+                    "level": level, "price": price,
+                    "profit": round(profit, 4), "fee": round(fee, 4),
+                    "timestamp": datetime.utcnow().isoformat(),
+                })
+
+        # Opdater PnL
+        self.state.daily_pnl += pnl_this_cycle
+        self.state.total_pnl += pnl_this_cycle
+        self.state.current_value_usdt = self.state.starting_value_usdt + self.state.total_pnl
+
+        # Autocompound
+        self.apply_autocompound(pnl_this_cycle)
+
+        # Drawdown
+        self.update_drawdown(self.state.current_value_usdt)
+
+        # Persistér
+        self.write_trading_state()
+
+        return actions
+
+    def run_once(self) -> list:
+        """Alias for run_simulation — bruges af loop."""
+        return self.run_simulation()
 
 
+# ---------------------------------------------------------------------------
+# Legacy alias
+# ---------------------------------------------------------------------------
+GridBot = GridBotV2
+
+
+# ---------------------------------------------------------------------------
+# Demo
+# ---------------------------------------------------------------------------
 def demo():
-    """Demo-kørsel på testnet (ingenting handles)."""
+    """Demo-kørsel på Binance testnet."""
     print("=" * 60)
-    print("   🦾 JARVIS GRID BOT — Paper Trading Demo")
+    print(" 🦾 JARVIS GRID BOT V2 — Paper Trading Demo")
     print("=" * 60)
 
-    # Testnet — ingen nøgler nødvendige
-    bot = GridBot(testnet=True)
+    config = GridConfig(
+        grid_levels=7,
+        grid_spacing_pct=0.8,
+        order_size_usdt=12.0,
+        stop_loss_pct=6.0,
+        re_center_threshold_pct=2.0,
+        autocompound=True,
+    )
+    bot = GridBotV2(testnet=True, config=config)
 
     try:
-        # Vis priser
         price = bot.get_price()
-        print(f"\n📊 {bot.config.symbol}: ${price}")
-        print(f"   Grid: {bot.config.grid_levels} niveauer, {bot.config.grid_spacing_pct}% spacing")
-        print(f"   Order size: ${bot.config.order_size_usdt}")
-        print(f"   Stop-loss: {bot.config.stop_loss_pct}%")
-
-        # Beregn grid
         levels = bot.calculate_grid_levels(price)
+
+        print(f"\n📊 {config.symbol}: ${price}")
+        print(f"   Grid: {config.grid_levels} niveauer, {config.grid_spacing_pct}% spacing")
+        print(f"   Order size: ${config.order_size_usdt}")
+        print(f"   Stop-loss: {config.stop_loss_pct}%")
+        print(f"   Re-center: ved {config.re_center_threshold_pct}% drift")
+        print(f"   Autocompound: {'JA' if config.autocompound else 'NEJ'}")
+
         print(f"\n🎯 Grid-niveauer omkring ${price}:")
-        for lvl in levels:
-            direction = "🟢 KØB" if lvl < price else ("🔴 SÆLG" if lvl > price else "🟡 MIDT")
-            print(f"   {direction} @ ${lvl}")
+        for lvl in levels.get("buy", []):
+            print(f"   🟢 KØB @ ${lvl}")
+        print(f"   🟡 MIDT @ ${price}")
+        for lvl in levels.get("sell", []):
+            print(f"   🔴 SÆLG @ ${lvl}")
 
-        print(f"\n✅ Bot klar til at køre. Kald bot.run_once() for at starte.")
-        print("   (Ingen handler udført — dette er en demo)")
+        print(f"\n✅ Kører 3 demo-cycles...")
+        for i in range(3):
+            actions = bot.run_simulation()
+            p = bot.get_price()
+            print(f"   Cycle {i+1}: price=${p}, {len(actions)} actions")
+            for a in actions:
+                print(f"      → {a['action']} @ ${a['price']}")
 
-    except Exception as e:
-        print(f"\n⚠️ Kunne ikke forbinde til Binance testnet: {e}")
-        print("   Tjek internetforbindelse.")
-        print("   Bot-koden er klar og kan køre når forbindelsen er oppe.")
+        print(f"\n📈 PnL: daily=${bot.state.daily_pnl:.2f}, total=${bot.state.total_pnl:.2f}")
+        print(f"📉 Max drawdown: {bot.state.max_drawdown_pct:.1f}%")
+        print(f"💰 Autocompound order_size: ${config.order_size_usdt:.2f}")
+        print(f"💸 Fees total: ${bot.state.fee_tracker.fees_total:.4f}")
+
+    finally:
+        bot.stop()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     demo()

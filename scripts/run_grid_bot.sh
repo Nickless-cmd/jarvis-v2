@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Jarvis Grid Bot — continuous simulation loop
 # Spawned via process_spawn, supervised by JarvisX
 set -euo pipefail
@@ -7,33 +6,54 @@ cd /media/projects/jarvis-v2
 
 CYCLE_INTERVAL="${GRID_BOT_INTERVAL:-30}"  # seconds between cycles, default 30
 
-echo "=== Grid Bot starting (interval: ${CYCLE_INTERVAL}s) ==="
+echo "=== Grid Bot V2 starting (interval: ${CYCLE_INTERVAL}s) ==="
 
-# Use the 'ai' conda env where binance + other deps are installed.
-# When spawned via process_supervisor the parent's PATH may not have
-# conda activated, so we call the absolute path directly.
 PYTHON_BIN="${PYTHON_BIN:-/opt/conda/envs/ai/bin/python3.11}"
 
 "$PYTHON_BIN" -c "
 import time, sys, logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
-from core.services.trading.grid_bot import GridBot
+from core.services.trading.grid_bot import GridBotV2, GridConfig
 
-bot = GridBot(testnet=True, simulation=True, sim_start_usdt=200.0)
-bot._running = True
-print(f'Grid Bot initialized — simulation mode, 200 USDT start', flush=True)
+# Multi-pair setup: BTC, ETH, SOL
+SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']
+bots = {}
+for sym in SYMBOLS:
+    cfg = GridConfig(
+        symbol=sym,
+        grid_levels=7,
+        grid_spacing_pct=0.8,
+        order_size_usdt=12.0,
+        stop_loss_pct=6.0,
+        re_center_threshold_pct=2.0,
+        autocompound=True,
+    )
+    bot = GridBotV2(testnet=True, config=cfg)
+    bot._simulation = True
+    bot.state.current_value_usdt = 200.0  # 200 USDT pr. pair
+    bot._running = True
+    bots[sym] = bot
+    print(f'{sym}: Init — 200 USDT, {cfg.grid_levels} levels, {cfg.grid_spacing_pct}% spacing', flush=True)
+
+total_start = len(SYMBOLS) * 200
+print(f'=== {len(SYMBOLS)} pairs, {total_start} USDT total, interval {CYCLE_INTERVAL}s ===', flush=True)
 
 cycle = 0
-while bot._running:
+while any(b._running for b in bots.values()):
     cycle += 1
-    try:
-        actions = bot.run_simulation()
-        if actions is None:
-            actions = []
-        print(f'Cycle {cycle}: {len(actions)} actions', flush=True)
-    except Exception as e:
-        print(f'Cycle {cycle} ERROR: {e}', flush=True)
-        import traceback
-        traceback.print_exc()
+    for sym, bot in bots.items():
+        if not bot._running:
+            continue
+        try:
+            actions = bot.run_once()
+            if actions:
+                pnl = round(bot.state.total_pnl, 2)
+                val = round(bot.state.current_value_usdt, 2)
+                print(f'Cycle {cycle} | {sym}: {len(actions)} actions | PnL={pnl} | Value={val}', flush=True)
+        except Exception as e:
+            print(f'Cycle {cycle} | {sym}: ERROR: {e}', flush=True)
+            import traceback; traceback.print_exc()
     time.sleep(${CYCLE_INTERVAL})
+
+print('=== All bots stopped ===', flush=True)
 "

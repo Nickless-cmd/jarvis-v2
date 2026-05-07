@@ -1482,7 +1482,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 },
                             )
                             _empty_guard_msg = (
-                                "⚠ Jeg kørte {_MAX_EMPTY_TEXT_ROUNDS} runder uden at producere tekst. "
+                                f"⚠ Jeg kørte {_MAX_EMPTY_TEXT_ROUNDS} runder uden at producere tekst. "
                                 "Noget gik galt — prøv igen."
                             )
                             yield _sse("delta", {

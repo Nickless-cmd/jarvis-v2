@@ -61,6 +61,9 @@ OPENAI_TEXT_PRICING_PER_1M_TOKENS: dict[str, tuple[Decimal, Decimal]] = {
     "gpt-5": (Decimal("1.25"), Decimal("10.00")),
     "gpt-5-mini": (Decimal("0.25"), Decimal("2.00")),
     "gpt-5-nano": (Decimal("0.05"), Decimal("0.40")),
+    # DeepSeek V4 — May 2026 promotional pricing (75% off Pro until end of May)
+    "deepseek-v4-flash": (Decimal("0.14"), Decimal("0.28")),
+    "deepseek-v4-pro": (Decimal("0.435"), Decimal("0.87")),
 }
 
 

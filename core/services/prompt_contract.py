@@ -380,10 +380,13 @@ def build_visible_chat_prompt_assembly(
     derived_inputs.append("model identity awareness")
 
     # Current pull — Lag 5: highest-priority inner context (private, not announced)
+    # NOTE: 2026-05-07 — moved from forrest to AFTER stable identity files (below).
+    # Reason: this section is dynamic (desire-daemon output), and being forrest
+    # broke Deepseek's prefix-caching (~12% hit rate on identical prompts).
+    # Moving it after the stable SOUL/IDENTITY/STANDING_ORDERS/USER block
+    # preserves the cacheable prefix while still giving the pull priority
+    # over operational awareness blocks below.
     current_pull_hint = _visible_current_pull_section()
-    if current_pull_hint:
-        parts.append(current_pull_hint)
-        derived_inputs.append("current pull (inner desire)")
 
     capability_truth = _visible_capability_truth_instruction(compact=compact)
     # capability_truth is added via budget-controlled section below
@@ -418,6 +421,31 @@ def build_visible_chat_prompt_assembly(
     # MEMORY-FIRST: always check QUICK_FACTS + search_memory before asking or searching.
     parts.append("Tjek QUICK_FACTS + search_memory FØR du spørger eller leder.")
     derived_inputs.append("memory-first nudge")
+
+    # ── Stable identity block (moved here 2026-05-07 from line ~930) ─────────
+    # SOUL/IDENTITY/STANDING_ORDERS/USER.md are workspace files that change
+    # rarely — perfect cache-prefix candidates. Previously they sat AFTER
+    # ~30 dynamic awareness sections (todos, plan, monitors, current pull),
+    # which broke Deepseek's prefix-caching to ~12% hit rate. Moving them
+    # forrest (right after the stable rules/nudges) creates a ~5-8k-token
+    # cacheable identity prefix and gives identity primacy over operational
+    # noise — same content, better placement.
+    for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
+        section = _workspace_file_section(
+            workspace_dir / filename,
+            label=filename,
+            max_lines=3 if compact else 5,
+            max_chars=220 if compact else 340,
+        )
+        if section:
+            parts.append(section)
+            included_files.append(filename)
+
+    # Current pull — dynamic inner-desire signal, kept high-priority but
+    # AFTER the stable identity block so the prefix stays cacheable.
+    if current_pull_hint:
+        parts.append(current_pull_hint)
+        derived_inputs.append("current pull (inner desire)")
 
     # Open questions — REMOVED from fixed injection (2026-05-03).
     # Questions are now on-demand via search_memory("åbne spørgsmål") when relevant.
@@ -904,9 +932,16 @@ def build_visible_chat_prompt_assembly(
             x[0],
         )
     )
+    # Buffer awareness output instead of writing directly to parts (2026-05-07).
+    # Awareness sections contain second-resolution timestamps and other rapidly
+    # varying content — appending them mid-assembly broke Deepseek's prefix
+    # cache after only ~2k tokens. Buffer here, flush at the END of assembly
+    # so all stable workspace-file sections (chronicle, milestones, finitude,
+    # mutation, etc.) land inside the cacheable prefix first.
     _used = 0
     _dropped: list[str] = []
     _last_category: str | None = None
+    _awareness_buffer: list[str] = []
     for _prio, _label, _content in _awareness:
         _category = _awareness_category_for(_label)
         _pending_header = (
@@ -918,25 +953,18 @@ def build_visible_chat_prompt_assembly(
             _dropped.append(_label)
             continue
         if _pending_header:
-            parts.append(_pending_header)
+            _awareness_buffer.append(_pending_header)
             _used += len(_pending_header) + 2  # +2 for "\n\n" join overhead
-        parts.append(_content)
+        _awareness_buffer.append(_content)
         derived_inputs.append(_label)
         _used += len(_content)
         _last_category = _category
     if _dropped:
         derived_inputs.append(f"awareness budget dropped: {', '.join(_dropped)}")
 
-    for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
-        section = _workspace_file_section(
-            workspace_dir / filename,
-            label=filename,
-            max_lines=3 if compact else 5,
-            max_chars=220 if compact else 340,
-        )
-        if section:
-            parts.append(section)
-            included_files.append(filename)
+    # SOUL/IDENTITY/STANDING_ORDERS/USER.md were moved forrest (2026-05-07)
+    # to fix Deepseek prefix-caching. See block above the awareness budget
+    # for the new injection point.
 
     temperature_hint = _visible_unconscious_temperature_field_section()
     if temperature_hint:
@@ -1171,6 +1199,12 @@ def build_visible_chat_prompt_assembly(
             parts.append(content)
             label = _section_labels.get(sec_name, sec_name)
             derived_inputs.append(label)
+
+    # Flush buffered awareness sections HERE — bagest in the assembly so the
+    # rapidly varying timestamps don't break Deepseek's prefix cache.
+    # See _awareness_buffer construction further up for rationale.
+    if _awareness_buffer:
+        parts.extend(_awareness_buffer)
 
     # Transcript: prefer structured messages; fall back to flat text in system prompt
     if structured_transcript:

@@ -197,6 +197,13 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("user_attribution migrations failed: %s", _exc)
             event_bus.publish("runtime.started", {"component": "api"})
+        # Send restart confirmation if pending
+        from core.tools.restart_self_tools import send_pending_restart_confirmation
+        try:
+            send_pending_restart_confirmation()
+        except Exception as _exc:
+            logger.warning("restart confirmation check failed: %s", _exc)
+
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):
             yield

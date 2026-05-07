@@ -1105,9 +1105,42 @@ def init_db() -> None:
         _ensure_autonomy_proposals_table(conn)
         _ensure_scheduled_tasks_table(conn)
         _ensure_tool_router_tables(conn)
+        _ensure_decision_trigger_column(conn)
         from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables
         ensure_claude_dispatch_tables(conn)
         conn.commit()
+
+
+def _ensure_decision_trigger_column(conn: sqlite3.Connection) -> None:
+    """Add behavioral_decisions.trigger_name column and wire known decisions.
+
+    Idempotent: skips ALTER if column exists; UPDATEs are no-ops if
+    decisions already have the right trigger_name set.
+    """
+    existing_cols = {
+        r[1] for r in conn.execute(
+            "PRAGMA table_info(behavioral_decisions)"
+        ).fetchall()
+    }
+    if "trigger_name" not in existing_cols:
+        try:
+            conn.execute(
+                "ALTER TABLE behavioral_decisions ADD COLUMN trigger_name TEXT"
+            )
+        except sqlite3.OperationalError as exc:
+            # Column may have been added concurrently
+            if "duplicate column" not in str(exc).lower():
+                raise
+
+    # Wire the v1 triggers for the two known decisions
+    conn.execute(
+        "UPDATE behavioral_decisions SET trigger_name = 'loop_nudge_5_rounds' "
+        "WHERE decision_id = 'dec_d56d89ceec24'"
+    )
+    conn.execute(
+        "UPDATE behavioral_decisions SET trigger_name = 'backend_unresolved_3_calls' "
+        "WHERE decision_id = 'dec_56d4dbb03e22'"
+    )
 
 
 def _ensure_tool_router_tables(conn: sqlite3.Connection) -> None:

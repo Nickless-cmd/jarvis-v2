@@ -159,6 +159,12 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("tool_router_runtime start failed: %s", _exc)
             try:
+                from core.services.counterfactual_engine_runtime import start_counterfactual_runtime
+                start_counterfactual_runtime()
+                logger.info("counterfactual_runtime daemon started")
+            except Exception as _exc:
+                logger.warning("counterfactual_runtime start failed: %s", _exc)
+            try:
                 from core.services.agent_runtime import recover_crashed_agents
                 recovery = recover_crashed_agents()
                 if recovery["recovered"]:
@@ -243,6 +249,11 @@ def create_app() -> FastAPI:
             try:
                 from core.services.tool_router_runtime import stop_tool_router_runtime
                 stop_tool_router_runtime()
+            except Exception:
+                pass
+            try:
+                from core.services.counterfactual_engine_runtime import stop_counterfactual_runtime
+                stop_counterfactual_runtime()
             except Exception:
                 pass
             stop_global_workspace_listener()

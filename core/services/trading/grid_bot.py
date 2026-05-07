@@ -326,7 +326,7 @@ class GridBot:
                 self.cancel_all_orders()
                 self._running = False
                 self.write_trading_state()
-                return
+                return []
 
         # Placer manglende ordrer
         for level_price, level_state in self.state.levels.items():
@@ -387,7 +387,7 @@ class GridBot:
                 logger.critical(f"🛑 STOP-LOSS triggered! -{abs(drawdown):.2f}% ved ${price}")
                 self._running = False
                 self.write_trading_state()
-                return
+                return []
 
         # Tjek hvert grid-niveau for handler
         actions = []

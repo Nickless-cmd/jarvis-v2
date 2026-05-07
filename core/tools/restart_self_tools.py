@@ -89,7 +89,7 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
     logger.info("restart_self: wrote confirmation to %s", PENDING_RESTART_FILE)
 
     # 2. Build restart command with a short delay so response can reach user first
-    restart_cmds = " && ".join(f"systemctl restart {svc}" for svc in services)
+    restart_cmds = " && ".join(f"sudo systemctl restart {svc}" for svc in services)
     full_cmd = f"sleep 3 && {restart_cmds}"
 
     # 3. Fire-and-forget via detached subprocess

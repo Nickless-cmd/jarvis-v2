@@ -1190,7 +1190,13 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 # counter. The threshold chars are deliberately low to only
                 # suppress truly tool-only rounds, not rounds with real prose.
                 _consecutive_tool_only_rounds = 0
-                _MAX_TOOL_ONLY_ROUNDS = int(_agentic_budget.get("max_tool_only_rounds") or 8)
+                # Bumpet 8 → 15 (2026-05-07): ægte safety-net, ikke daglig
+                # blokering. Soft loop_nudge (ved round 8) bærer attention-
+                # ansvaret; hård brake skal kun fange runaway-loops, ikke
+                # legitime dybe undersøgelser. Override via
+                # _agentic_budget.max_tool_only_rounds hvis runtime-config
+                # vil have anden værdi.
+                _MAX_TOOL_ONLY_ROUNDS = int(_agentic_budget.get("max_tool_only_rounds") or 15)
                 _TOOL_ONLY_TEXT_THRESHOLD = 80  # chars
                 _tool_pause_active = False  # set True after 5 tool-only rounds → withhold tools
                 _agentic_loop_exit_reason = "completed"
@@ -1554,11 +1560,15 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 "decision_signal_emitted run_id=%s decision=%s trigger=%s",
                                 run.run_id, _ds_f.decision_id, _ds_f.trigger_name,
                             )
-                            # If loop_nudge fired, activate tool-pause so the
-                            # next round withholds tools and forces a text
-                            # response — preserves the original soft-nudge UX.
-                            if _ds_f.trigger_name == "loop_nudge_5_rounds":
-                                _tool_pause_active = True
+                            # 2026-05-07: loop_nudge er nu BLØD — kun en
+                            # reminder via decision_signal-prompten. Tool-pause
+                            # var oprindeligt koblet på, men det fjernede
+                            # Jarvis' agency på legitime dybe undersøgelser
+                            # (4-module-port, debug-sessions kræver ofte 10+
+                            # tool-calls). Hård brake på _MAX_TOOL_ONLY_ROUNDS
+                            # er stadig safety-net hvis han kører løbsk.
+                            # if _ds_f.trigger_name == "loop_nudge_5_rounds":
+                            #     _tool_pause_active = True
                     except Exception as _ds_exc:
                         logger.warning(
                             "decision_signal evaluation failed run_id=%s: %s",

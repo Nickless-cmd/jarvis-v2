@@ -1,0 +1,120 @@
+"""Trigger detection for counterfactual reflection.
+
+Reads recent regret-events from the events table and normalizes them
+into TriggerEvent records. Each event-family has a primary-key extractor
+that picks the most stable identifier from the payload.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+from typing import Any, Callable
+
+from core.runtime.db import connect
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class TriggerEvent:
+    """A regret-worthy event normalized for counterfactual processing."""
+    source_event_id: int
+    workspace_id: str
+    event_type: str
+    primary_key: str
+    summary: str
+    payload: dict
+    created_at: str
+
+
+def _key_self_review(payload: dict) -> str:
+    return str(payload.get("review_id") or payload.get("run_id") or "").strip()
+
+
+def _key_conflict(payload: dict) -> str:
+    return str(payload.get("conflict_id") or payload.get("run_id") or "").strip()
+
+
+def _key_decision(payload: dict) -> str:
+    return str(payload.get("decision_id") or "").strip()
+
+
+def _key_review(payload: dict) -> str:
+    return str(payload.get("review_id") or "").strip()
+
+
+# event_type → primary_key extractor
+_TRIGGER_FAMILIES: dict[str, Callable[[dict], str]] = {
+    "self_review_outcome.created": _key_self_review,
+    "conflict.detected": _key_conflict,
+    "decision_revoked": _key_decision,
+    "behavioral_decision_review.broken": _key_review,
+}
+
+
+def cf_key(workspace_id: str, event_type: str, primary_key: str) -> str:
+    """First-pass dedup hash. Same workspace+type+key = same hash = skip."""
+    raw = f"{workspace_id}:{event_type}:{primary_key}".encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()[:24]
+
+
+def _extract_summary(payload: dict) -> str:
+    for k in ("summary", "reason", "message", "directive", "note"):
+        v = payload.get(k)
+        if v:
+            return str(v)[:300]
+    return ""
+
+
+def fetch_recent_triggers(
+    *, workspace_id: str, lookback_minutes: int = 60
+) -> list[TriggerEvent]:
+    """Query events table for recent regret-worthy events.
+
+    Returns TriggerEvents for the 4 trigger families. Events whose
+    primary-key extractor returns empty string are skipped (we need a
+    stable identifier for cf_key dedup).
+    """
+    cutoff = (datetime.now(UTC) - timedelta(minutes=max(1, int(lookback_minutes)))).isoformat()
+    placeholders = ",".join("?" for _ in _TRIGGER_FAMILIES)
+    sql = (
+        f"SELECT id, kind, payload_json, created_at FROM events "
+        f"WHERE kind IN ({placeholders}) AND created_at >= ? "
+        f"ORDER BY id ASC"
+    )
+    params = list(_TRIGGER_FAMILIES.keys()) + [cutoff]
+
+    out: list[TriggerEvent] = []
+    try:
+        with connect() as c:
+            rows = c.execute(sql, params).fetchall()
+    except Exception as exc:
+        logger.warning("counterfactual_triggers: events query failed: %s", exc)
+        return []
+
+    for r in rows:
+        try:
+            payload = json.loads(r["payload_json"] or "{}")
+        except Exception:
+            payload = {}
+        event_type = str(r["kind"] or "")
+        extractor = _TRIGGER_FAMILIES.get(event_type)
+        if extractor is None:
+            continue
+        primary_key = extractor(payload)
+        if not primary_key:
+            # Skip events without stable identifier — can't dedup safely
+            continue
+        out.append(TriggerEvent(
+            source_event_id=int(r["id"]),
+            workspace_id=str(workspace_id),
+            event_type=event_type,
+            primary_key=primary_key,
+            summary=_extract_summary(payload),
+            payload=payload,
+            created_at=str(r["created_at"] or ""),
+        ))
+    return out

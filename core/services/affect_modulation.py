@@ -39,10 +39,10 @@ DEFAULTS: dict[str, Any] = {
 
 AGENTIC_BUDGET_DEFAULTS: dict[str, Any] = {
     "max_rounds": 100,
-    "max_tool_only_rounds": 12,
-    "max_empty_text_rounds": 12,
+    "max_tool_only_rounds": 24,
+    "max_empty_text_rounds": 20,
     "round_total_timeout_s": 300.0,
-    "round_silence_timeout_s": 75.0,
+    "round_silence_timeout_s": 180.0,
 }
 
 
@@ -135,7 +135,7 @@ def compute_agentic_loop_budget(*, resume_context: bool = False) -> dict[str, An
             budget["max_rounds"] = min(int(budget["max_rounds"]), 12)
             budget["max_tool_only_rounds"] = min(int(budget["max_tool_only_rounds"]), 8)
             budget["max_empty_text_rounds"] = min(int(budget["max_empty_text_rounds"]), 8)
-            budget["round_silence_timeout_s"] = min(float(budget["round_silence_timeout_s"]), 45.0)
+            # Silence timeout no longer reduced here — reasoning models need time
         elif pressure >= 0.5:
             budget["max_rounds"] = min(int(budget["max_rounds"]), 20)
             budget["max_tool_only_rounds"] = min(int(budget["max_tool_only_rounds"]), 10)

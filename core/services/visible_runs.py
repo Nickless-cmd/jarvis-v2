@@ -1296,7 +1296,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     # - silence ceiling catches stalled streams while allowing
                     #   long rounds that keep producing deltas/tool calls.
                     _round_overall_timeout_s = float(_agentic_budget.get("round_total_timeout_s") or 300.0)
-                    _round_silence_timeout_s = float(_agentic_budget.get("round_silence_timeout_s") or 75.0)
+                    _round_silence_timeout_s = float(_agentic_budget.get("round_silence_timeout_s") or 180.0)
                     _last_provider_progress_t = _round_start_t
                     _mid_round_steers: list[dict[str, object]] = []
                     while True:

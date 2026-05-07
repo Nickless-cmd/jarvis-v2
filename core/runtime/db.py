@@ -1106,6 +1106,7 @@ def init_db() -> None:
         _ensure_scheduled_tasks_table(conn)
         _ensure_tool_router_tables(conn)
         _ensure_decision_trigger_column(conn)
+        _ensure_counterfactuals_table(conn)
         from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables
         ensure_claude_dispatch_tables(conn)
         conn.commit()
@@ -1180,6 +1181,44 @@ def _ensure_tool_router_tables(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_tool_router_load_more_created_at "
         "ON tool_router_load_more(created_at)"
+    )
+
+
+def _ensure_counterfactuals_table(conn: sqlite3.Connection) -> None:
+    """Create counterfactuals table with UNIQUE(cf_key) constraint.
+
+    Idempotent: CREATE TABLE IF NOT EXISTS + index creation. Re-runs are
+    no-ops. UNIQUE constraint on cf_key makes INSERT OR IGNORE
+    idempotent at the row level.
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS counterfactuals (
+            cf_id TEXT PRIMARY KEY,
+            cf_key TEXT NOT NULL UNIQUE,
+            workspace_id TEXT NOT NULL,
+            cluster_id TEXT NOT NULL,
+            trigger_event_ids_json TEXT NOT NULL,
+            trigger_types_json TEXT NOT NULL,
+            what_if TEXT NOT NULL,
+            likely_difference TEXT,
+            reasoning TEXT,
+            llm_confidence REAL DEFAULT 0.0,
+            apophenia_score REAL DEFAULT 1.0,
+            final_confidence REAL DEFAULT 0.0,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_counterfactuals_workspace_created "
+        "ON counterfactuals(workspace_id, created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_counterfactuals_status "
+        "ON counterfactuals(status)"
     )
 
 

@@ -165,6 +165,7 @@ def append_chat_message(
     tool_arguments: dict[str, object] | None = None,
     user_id: str | None = None,
     workspace_name: str | None = None,
+    reasoning_content: str = "",
 ) -> dict[str, object]:
     normalized_session = (session_id or "").strip()
     if not normalized_session:
@@ -245,11 +246,12 @@ def append_chat_message(
         conn.execute(
             """
             INSERT INTO chat_messages (message_id, session_id, role, content,
-                                        user_id, workspace_name, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                                        user_id, workspace_name,
+                                        reasoning_content, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (message_id, normalized_session, normalized_role, normalized_content,
-             _user_id, _workspace_name, timestamp),
+             _user_id, _workspace_name, str(reasoning_content or ""), timestamp),
         )
 
         next_title = str(exists["title"])
@@ -269,6 +271,7 @@ def append_chat_message(
         "id": message_id,
         "role": normalized_role,
         "content": normalized_content,
+        "reasoning_content": str(reasoning_content or ""),
         "ts": _time_label(timestamp),
         "created_at": timestamp,
     }
@@ -288,7 +291,7 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
     with connect() as conn:
         rows = conn.execute(
             """
-            SELECT role, content, created_at, user_id
+            SELECT role, content, created_at, user_id, reasoning_content
             FROM chat_messages
             WHERE session_id = ? AND role != 'compact_marker'
             ORDER BY id DESC
@@ -302,6 +305,7 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
             "content": str(row["content"]),
             "created_at": str(row["created_at"]),
             "user_id": str(row["user_id"] or ""),
+            "reasoning_content": str(row["reasoning_content"] or ""),
         }
         for row in reversed(rows)
     ]

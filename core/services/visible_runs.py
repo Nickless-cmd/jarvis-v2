@@ -1204,6 +1204,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 _tool_pause_active = False  # set True after 5 tool-only rounds → withhold tools
                 _agentic_loop_exit_reason = "completed"
                 _prev_round_end_t: float | None = None  # for inter-round-gap metric
+                # Track most-recent assistant reasoning_content for persistence
+                # (Deepseek thinking-mode replay). Starter med first-pass-result.
+                _persist_reasoning: str = str(getattr(result, "reasoning_content", "") or "")
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
                     if not _provider_supports_followup:
                         logger.warning(
@@ -1222,7 +1225,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         int((_round_loop_start_t - _prev_round_end_t) * 1000)
                         if _prev_round_end_t is not None else 0
                     )
-                    logger.info(
+                    logger.warning(
                         "agentic-round-start run_id=%s round=%d exchanges=%d inter_round_gap_ms=%d",
                         run.run_id, _agentic_round + 1, len(_followup_exchanges), _inter_round_gap_ms,
                     )
@@ -1385,6 +1388,11 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             # Stash reasoning so the ToolExchange built below
                             # carries it forward to the next followup round.
                             _a_round_reasoning = str(_a_item.reasoning_content or "")
+                            # Track for final persistence: hvis denne round
+                            # producerede reasoning, gem den så vi kan replaye
+                            # den i næste session.
+                            if _a_round_reasoning:
+                                _persist_reasoning = _a_round_reasoning
                             continue
 
                     # If mid-round steers landed, inject them as user messages
@@ -1861,7 +1869,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     import time as _time_mod_end
                     _round_end_t = _time_mod_end.monotonic()
                     _round_total_ms = int((_round_end_t - _round_loop_start_t) * 1000)
-                    logger.info(
+                    logger.warning(
                         "agentic-round-end run_id=%s round=%d text_chars=%d "
                         "tool_calls=%d resolved=%d round_total_ms=%d",
                         run.run_id, _agentic_round + 1,
@@ -1962,8 +1970,14 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
                 # Persist the assistant message BEFORE done so loadSession()
                 # finds it immediately (avoids "message disappears" race).
+                # reasoning_content threaded through så thinking-mode-modeller
+                # (Deepseek v4-flash thinking, v4-pro) kan replaye prior
+                # assistant turns med reasoning ved næste run.
                 try:
-                    _persist_session_assistant_message(run, followup_text)
+                    _persist_session_assistant_message(
+                        run, followup_text,
+                        reasoning_content=_persist_reasoning,
+                    )
                 except Exception:
                     pass
 
@@ -2351,7 +2365,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         # message in the DB (avoids the "message disappears" race condition).
         if visible_output_text:
             try:
-                _persist_session_assistant_message(run, visible_output_text)
+                _persist_session_assistant_message(
+                    run, visible_output_text,
+                    reasoning_content=str(locals().get("_persist_reasoning", "") or ""),
+                )
             except Exception:
                 pass
         yield _sse(
@@ -2472,7 +2489,12 @@ def _mark_mid_word_truncation(text: str) -> str:
     return stripped + "…"
 
 
-def _persist_session_assistant_message(run: VisibleRun, text: str) -> None:
+def _persist_session_assistant_message(
+    run: VisibleRun,
+    text: str,
+    *,
+    reasoning_content: str = "",
+) -> None:
     if not run.session_id:
         return
     normalized = str(text or "").strip()
@@ -2480,7 +2502,12 @@ def _persist_session_assistant_message(run: VisibleRun, text: str) -> None:
         return
     normalized = _mark_mid_word_truncation(normalized)
     _assert_presentation_invariant(normalized)
-    message = append_chat_message(session_id=run.session_id, role="assistant", content=normalized)
+    message = append_chat_message(
+        session_id=run.session_id,
+        role="assistant",
+        content=normalized,
+        reasoning_content=str(reasoning_content or ""),
+    )
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish("channel.chat_message_appended", {

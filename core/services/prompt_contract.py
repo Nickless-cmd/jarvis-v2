@@ -3314,7 +3314,20 @@ def _build_structured_transcript_messages(
             # don't get truncated mid-sentence in his own working memory.
             if len(content) > 2400:
                 content = content[:2397].rstrip() + "…"
-            merged.append({"role": "assistant", "content": content})
+            assistant_msg: dict[str, str] = {"role": "assistant", "content": content}
+            # Thinking-mode replay: Deepseek v4-pro/reasoner kræver at
+            # reasoning_content fra prior assistant-turns sendes med tilbage.
+            # Vi gemmer det nu pr. message i chat_messages.reasoning_content;
+            # threades her ind i transcript-output så API'et får det.
+            r_content = str(item.get("reasoning_content") or "").strip()
+            if r_content:
+                # Capper også reasoning ved 2400 så vi ikke pumper kæmpe
+                # context tilbage. Deepseek bryder sig ikke om hvor langt det
+                # er, kun at det er der.
+                if len(r_content) > 2400:
+                    r_content = r_content[:2397].rstrip() + "…"
+                assistant_msg["reasoning_content"] = r_content
+            merged.append(assistant_msg)
 
     # Phase 2: Ensure alternating user/assistant turns (required by some models).
     # Drop messages that break alternation rather than fabricating filler.

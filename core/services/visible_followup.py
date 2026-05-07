@@ -632,6 +632,23 @@ class OpenAICompatFollowupAdapter:
             )
             model = deepseek_model_for_thinking_mode(model, thinking_mode)
 
+        # Filter legacy assistant turns uden reasoning_content for
+        # thinking-mode Deepseek-modeller (de afviser requesten ellers).
+        # Strip kun fra base_messages — current-run exchanges har
+        # reasoning_content sat via _serialize_exchanges.
+        _is_thinking_model = (
+            self.provider_id == "deepseek"
+            and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner")
+        )
+        if _is_thinking_model:
+            base_messages = [
+                m for m in base_messages
+                if not (
+                    m.get("role") == "assistant"
+                    and not str(m.get("reasoning_content") or "").strip()
+                )
+            ]
+
         messages = list(base_messages) + self._serialize_exchanges(exchanges)
 
         try:

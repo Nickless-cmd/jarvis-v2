@@ -1137,6 +1137,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             simple_results,
                             _resolved_result_texts,
                         ),
+                        # Thinking-mode replay (Deepseek v4-pro/reasoner):
+                        # the API rejects followups if reasoning_content from
+                        # the prior assistant turn isn't sent back verbatim.
+                        reasoning_content=str(getattr(result, "reasoning_content", "") or ""),
                     )
                 ]
                 try:
@@ -1204,6 +1208,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     )
                     _a_parts = []
                     _a_tool_calls: list[dict] = []
+                    _a_round_reasoning: str = ""  # captured from FollowupDone
                     _a_queue: asyncio.Queue = asyncio.Queue()
                     _a_sentinel = object()
                     _a_failure: dict[str, object] = {}
@@ -1357,6 +1362,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                     "run_id": run.run_id,
                                     "delta": _a_item.text,
                                 })
+                            # Stash reasoning so the ToolExchange built below
+                            # carries it forward to the next followup round.
+                            _a_round_reasoning = str(_a_item.reasoning_content or "")
                             continue
 
                     # If mid-round steers landed, inject them as user messages
@@ -1778,6 +1786,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         _vf.ToolExchange(
                             text="".join(_a_parts) or "",
                             tool_calls=list(_a_tool_calls),
+                            reasoning_content=_a_round_reasoning,
                             results=_to_followup_results(
                                 _a_tool_calls,
                                 _a_results,

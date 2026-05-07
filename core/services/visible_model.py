@@ -73,6 +73,11 @@ class VisibleModelResult:
     input_tokens: int
     output_tokens: int
     cost_usd: float
+    # Reasoning trace from thinking-mode models (Deepseek v4-pro/reasoner).
+    # Must be threaded back into the assistant message on followup turns
+    # — Deepseek rejects requests with "reasoning_content must be passed
+    # back to the API" if we strip it. Empty for non-thinking models.
+    reasoning_content: str = ""
 
 
 @dataclass(slots=True)
@@ -548,6 +553,7 @@ def _stream_openai_compatible_model(
                         input_tokens=int(ev.get("input_tokens") or _estimate_tokens(message)),
                         output_tokens=int(ev.get("output_tokens") or _estimate_tokens(full_text)),
                         cost_usd=float(ev.get("cost_usd") or 0.0),
+                        reasoning_content=str(ev.get("reasoning_content") or ""),
                     )
                 )
                 return
@@ -2311,6 +2317,25 @@ def _extract_chat_completion_delta(event: dict) -> str:
                 text = str(chunk.get("text") or "").strip()
                 if text:
                     parts.append(text)
+    return "".join(parts)
+
+
+def _extract_chat_completion_reasoning(event: dict) -> str:
+    """Pull reasoning_content delta from a streaming Chat Completions chunk.
+
+    Deepseek thinking-mode emits reasoning as ``delta.reasoning_content``
+    alongside (or instead of) ``delta.content``. Must be captured so we
+    can replay it on the next assistant turn.
+    """
+    choices = event.get("choices") or []
+    parts: list[str] = []
+    for item in choices:
+        if not isinstance(item, dict):
+            continue
+        delta = item.get("delta") or {}
+        reasoning = delta.get("reasoning_content")
+        if isinstance(reasoning, str) and reasoning:
+            parts.append(reasoning)
     return "".join(parts)
 
 

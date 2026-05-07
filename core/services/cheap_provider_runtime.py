@@ -1244,6 +1244,7 @@ def _iter_openai_compatible_chat_events(
         payload["tools"] = _normalize_tools_for_openai_chat(tools)
 
     text_parts: list[str] = []
+    reasoning_parts: list[str] = []
     pending_tool_calls: dict[int, dict] = {}
     final_usage: dict = {}
 
@@ -1301,6 +1302,14 @@ def _iter_openai_compatible_chat_events(
                 if content:
                     text_parts.append(str(content))
                     yield {"kind": "delta", "text": str(content)}
+                # Deepseek thinking-mode emits reasoning as separate stream
+                # field — capture but don't yield as user-visible delta
+                # (UI renders it differently, and we need it for followup
+                # replay regardless of UI choice).
+                reasoning = delta.get("reasoning_content")
+                if reasoning:
+                    reasoning_parts.append(str(reasoning))
+                    yield {"kind": "reasoning_delta", "text": str(reasoning)}
                 tc_fragments = delta.get("tool_calls") or []
                 for frag in tc_fragments:
                     if not isinstance(frag, dict):
@@ -1349,6 +1358,7 @@ def _iter_openai_compatible_chat_events(
     yield {
         "kind": "done",
         "full_text": full_text,
+        "reasoning_content": "".join(reasoning_parts),
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "cache_hit_tokens": cache_hit,

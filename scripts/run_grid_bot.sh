@@ -28,6 +28,8 @@ while bot._running:
     cycle += 1
     try:
         actions = bot.run_simulation()
+        if actions is None:
+            actions = []
         print(f'Cycle {cycle}: {len(actions)} actions', flush=True)
     except Exception as e:
         print(f'Cycle {cycle} ERROR: {e}', flush=True)

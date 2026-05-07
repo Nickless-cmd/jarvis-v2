@@ -1201,6 +1201,38 @@ def _execute_openai_compatible_chat(
     }
 
 
+def deepseek_model_for_thinking_mode(model: str, thinking_mode: str) -> str:
+    """Map composer's thinking_mode to the right Deepseek model alias.
+
+    Deepseek toggler thinking-mode via MODEL-NAVN (ikke via param):
+      - deepseek-chat       = v4-flash non-thinking (compat alias)
+      - deepseek-v4-flash   = thinking-mode default
+      - deepseek-reasoner   = v4-flash thinking (compat alias)
+      - deepseek-v4-pro     = ALWAYS thinking (kan ikke slås fra)
+
+    Composer modes:
+      - fast  → ingen thinking, hurtig respons
+      - think → default thinking
+      - deep  → thinking + reasoning_effort hvis modellen understøtter
+
+    Mapping for v4-flash:
+      - fast  → swap til deepseek-chat (non-thinking)
+      - think → deepseek-v4-flash som er
+      - deep  → deepseek-v4-flash som er
+
+    Mapping for v4-pro:
+      - alle modes → uændret (kan ikke slås fra)
+
+    Andre modeller (deepseek-chat, deepseek-reasoner) returneres uændret —
+    bruger har eksplicit valgt en bestemt mode-variant.
+    """
+    mode = (thinking_mode or "think").strip().lower()
+    m = (model or "").strip()
+    if m == "deepseek-v4-flash" and mode == "fast":
+        return "deepseek-chat"
+    return m
+
+
 _DSML_OPEN = "<｜｜DSML｜｜tool_calls>"
 _DSML_CLOSE = "</｜｜DSML｜｜tool_calls>"
 

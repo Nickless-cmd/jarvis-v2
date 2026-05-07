@@ -456,6 +456,7 @@ def stream_visible_model(
             message=message,
             session_id=session_id,
             controller=controller,
+            thinking_mode=thinking_mode,
         )
         return
 
@@ -477,6 +478,7 @@ def _stream_openai_compatible_model(
     message: str,
     session_id: str | None = None,
     controller=None,
+    thinking_mode: str = "think",
 ) -> Iterator[VisibleModelDelta | VisibleModelStreamDone | VisibleModelToolCalls]:
     """Native SSE streaming for openai-compat providers (deepseek, groq, ...).
 
@@ -484,11 +486,18 @@ def _stream_openai_compatible_model(
     _iter_openai_compatible_chat_events generator into the VisibleModel*
     discriminated union the visible-runs pump expects. Yields deltas as
     they arrive — no fake-chunking, real token-by-token UX.
+
+    thinking_mode plumbes for Deepseek så "fast" composer-mode swap'er til
+    deepseek-chat (non-thinking compat-alias). Andre openai-compat
+    providere ignorerer (de har ikke thinking-mode).
     """
     from core.services.cheap_provider_runtime import (
         _iter_openai_compatible_chat_events,
+        deepseek_model_for_thinking_mode,
         provider_runtime_defaults,
     )
+    if provider == "deepseek":
+        model = deepseek_model_for_thinking_mode(model, thinking_mode)
     from core.tools.simple_tools import get_tool_definitions
     from core.tools.copilot_tool_pruning import select_tools_for_visible
 

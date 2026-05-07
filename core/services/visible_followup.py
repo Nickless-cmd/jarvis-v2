@@ -538,7 +538,8 @@ class OpenAICompatFollowupAdapter:
             "max_tokens": 4096,
         }
         if tool_definitions:
-            payload["tools"] = list(tool_definitions)
+            from core.services.cheap_provider_runtime import _normalize_tools_for_openai_chat
+            payload["tools"] = _normalize_tools_for_openai_chat(list(tool_definitions))
         return urllib_request.Request(
             f"{base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),

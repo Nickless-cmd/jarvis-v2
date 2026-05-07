@@ -611,6 +611,7 @@ class OpenAICompatFollowupAdapter:
         exchanges: list[ToolExchange],
         tool_definitions: list[dict] | None = None,
         round_index: int = 0,
+        thinking_mode: str = "think",
     ) -> Iterator[FollowupEvent]:
         from core.services.visible_model import (
             _chat_completion_stream_is_terminal,
@@ -620,6 +621,16 @@ class OpenAICompatFollowupAdapter:
             _iter_sse_events,
             _merge_openai_tool_call_deltas,
         )
+
+        # Deepseek thinking-mode toggles via model-name swap, ikke via
+        # request-param. "fast" → swap til deepseek-chat (non-thinking
+        # compat-alias). Andre openai-compat providere har ikke thinking-
+        # mode og returneres uændret.
+        if self.provider_id == "deepseek":
+            from core.services.cheap_provider_runtime import (
+                deepseek_model_for_thinking_mode,
+            )
+            model = deepseek_model_for_thinking_mode(model, thinking_mode)
 
         messages = list(base_messages) + self._serialize_exchanges(exchanges)
 

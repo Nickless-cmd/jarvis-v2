@@ -1802,34 +1802,53 @@ def _normalize_tools_for_openai_chat(tools: list[dict] | None) -> list[dict] | N
     if not tools:
         return None
     out: list[dict] = []
+    seen_names: set[str] = set()
+
+    def _add(tool: dict, name: str) -> None:
+        # Deepseek (og strict OpenAI-compat) afviser med
+        # "Tool names must be unique" hvis samme function-navn
+        # registreres flere gange. Vores tool-registry har 3 dubletter
+        # (process_list, goal_create, goal_list). Drop første-vinder —
+        # bedre at miste en duplikat end at tabe hele turn'en.
+        if not name or name in seen_names:
+            return
+        seen_names.add(name)
+        out.append(tool)
+
     for t in tools:
         if not isinstance(t, dict):
             continue
         # Already Chat-Completions-shaped
         if t.get("type") == "function" and isinstance(t.get("function"), dict):
-            out.append(t)
+            _add(t, str((t.get("function") or {}).get("name") or ""))
             continue
         # Anthropic shape → convert
         if "input_schema" in t and "name" in t:
-            out.append({
-                "type": "function",
-                "function": {
-                    "name": str(t.get("name") or ""),
-                    "description": str(t.get("description") or ""),
-                    "parameters": t.get("input_schema") or {"type": "object", "properties": {}},
+            _add(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": str(t.get("name") or ""),
+                        "description": str(t.get("description") or ""),
+                        "parameters": t.get("input_schema") or {"type": "object", "properties": {}},
+                    },
                 },
-            })
+                str(t.get("name") or ""),
+            )
             continue
         # Bare-name shape (rare) — wrap minimally
         if "name" in t:
-            out.append({
-                "type": "function",
-                "function": {
-                    "name": str(t.get("name") or ""),
-                    "description": str(t.get("description") or ""),
-                    "parameters": t.get("parameters") or t.get("input_schema") or {"type": "object", "properties": {}},
+            _add(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": str(t.get("name") or ""),
+                        "description": str(t.get("description") or ""),
+                        "parameters": t.get("parameters") or t.get("input_schema") or {"type": "object", "properties": {}},
+                    },
                 },
-            })
+                str(t.get("name") or ""),
+            )
     return out or None
 
 

@@ -1139,7 +1139,7 @@ def _execute_openai_compatible_chat(
         "max_tokens": 4096,
     }
     if tools:
-        payload["tools"] = tools
+        payload["tools"] = _normalize_tools_for_openai_chat(tools)
     if provider == "groq":
         data, _headers = _http_json_httpx(
             f"{root}/chat/completions",
@@ -1241,7 +1241,7 @@ def _iter_openai_compatible_chat_events(
         "stream_options": {"include_usage": True},
     }
     if tools:
-        payload["tools"] = tools
+        payload["tools"] = _normalize_tools_for_openai_chat(tools)
 
     text_parts: list[str] = []
     pending_tool_calls: dict[int, dict] = {}
@@ -1775,6 +1775,52 @@ def _execute_openai_codex_chat(
         "cost_usd": 0.0,  # Codex via ChatGPT Plus has no per-token billing
         "model_used": model_used,
     }
+
+
+def _normalize_tools_for_openai_chat(tools: list[dict] | None) -> list[dict] | None:
+    """Normalize tool defs to OpenAI Chat Completions format.
+
+    Some tools in our registry are registered in Anthropic shape:
+        {"name": "...", "description": "...", "input_schema": {...}}
+    OpenAI Chat Completions (and Deepseek/Groq/etc.) require:
+        {"type":"function", "function":{"name":"...","description":"...","parameters":{...}}}
+
+    Without this conversion, deepseek rejects the request with HTTP 400
+    "missing field type" on the offending tool. Run on every tool list
+    before dispatching to /chat/completions.
+    """
+    if not tools:
+        return None
+    out: list[dict] = []
+    for t in tools:
+        if not isinstance(t, dict):
+            continue
+        # Already Chat-Completions-shaped
+        if t.get("type") == "function" and isinstance(t.get("function"), dict):
+            out.append(t)
+            continue
+        # Anthropic shape → convert
+        if "input_schema" in t and "name" in t:
+            out.append({
+                "type": "function",
+                "function": {
+                    "name": str(t.get("name") or ""),
+                    "description": str(t.get("description") or ""),
+                    "parameters": t.get("input_schema") or {"type": "object", "properties": {}},
+                },
+            })
+            continue
+        # Bare-name shape (rare) — wrap minimally
+        if "name" in t:
+            out.append({
+                "type": "function",
+                "function": {
+                    "name": str(t.get("name") or ""),
+                    "description": str(t.get("description") or ""),
+                    "parameters": t.get("parameters") or t.get("input_schema") or {"type": "object", "properties": {}},
+                },
+            })
+    return out or None
 
 
 def _convert_tools_to_responses_format(tools: list[dict] | None) -> list[dict] | None:

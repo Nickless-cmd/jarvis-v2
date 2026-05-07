@@ -853,12 +853,15 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         "status": "running",
                     })
 
-            simple_results = _execute_simple_tool_calls(
-                _collected_native_tool_calls,
-                force=run.autonomous,
-                run_id=run.run_id,
-                session_id=run.session_id,
-                user_message=run.user_message,
+            simple_results = await loop.run_in_executor(
+                None,
+                lambda: _execute_simple_tool_calls(
+                    _collected_native_tool_calls,
+                    force=run.autonomous,
+                    run_id=run.run_id,
+                    session_id=run.session_id,
+                    user_message=run.user_message,
+                ),
             )
 
             # Detect first-pass load_more_tools so the agentic loop can include

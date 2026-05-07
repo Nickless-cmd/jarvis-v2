@@ -1501,46 +1501,63 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     # few chars (resetting empty-text) but no real answer. ──
                     if _a_tool_calls and _round_text_total < _TOOL_ONLY_TEXT_THRESHOLD:
                         _consecutive_tool_only_rounds += 1
-                        # ── Soft nudge at 5 tool-only rounds (2026-05-06) ──
-                        # Surfaces dec_7affdde753e1 ("efter 5 tool calls
-                        # uden synligt svar, stop og opsummer") as a
-                        # transparent reminder — does NOT remove tools or
-                        # force summary. Hard-stop still happens at
-                        # _MAX_TOOL_ONLY_ROUNDS (8/12). Fires once per
-                        # tool-only streak.
-                        if _consecutive_tool_only_rounds == 5:
-                            # Reference Jarvis's current decision (authored 2026-05-06).
-                            # If he revokes/replaces it, the nudge text stays
-                            # honest by saying "current loop-decision" — code
-                            # doesn't need to chase his decision-id changes.
-                            _nudge_msg = (
-                                "\n\n[loop-nudge: 5 tool calls uden tekst-svar — "
-                                "tag bevidst stilling: fortsæt eller opsummér "
-                                "(dec_d56d89ceec24). Tools forbliver tilgængelige.]\n\n"
+
+                    # ── Decision-signals evaluation (2026-05-07) ──
+                    # Replaces the hardcoded loop-nudge with registry-based
+                    # decision triggers. Each fired decision becomes a chat
+                    # delta visible in the conversation; Jarvis sees it via
+                    # _a_parts in the next round's context. Killswitch:
+                    # RuntimeSettings.decision_signals_enabled.
+                    try:
+                        # Lazy import to ensure registry is populated
+                        import core.services.decision_triggers  # noqa: F401
+                        from core.services.decision_signals import (
+                            build_trigger_context, evaluate_decision_triggers,
+                        )
+                        # Aggregate recent tool calls across all rounds
+                        _ds_recent_calls: list[dict] = []
+                        for _ex in _followup_exchanges:
+                            _ds_recent_calls.extend(list(_ex.tool_calls or []))
+                        _ds_recent_calls = _ds_recent_calls[-5:]
+                        # Recent assistant text from current round
+                        _ds_recent_text = "".join(_a_parts)[-2000:]
+                        _ds_ctx = build_trigger_context(
+                            user_message=run.user_message,
+                            session_id=run.session_id,
+                            run_id=run.run_id,
+                            consecutive_tool_only_rounds=_consecutive_tool_only_rounds,
+                            recent_tool_calls=_ds_recent_calls,
+                            recent_assistant_text=_ds_recent_text,
+                            agentic_round_seq=_agentic_round + 1,
+                        )
+                        _ds_fired = evaluate_decision_triggers(_ds_ctx)
+                        for _ds_f in _ds_fired:
+                            _ds_msg = (
+                                f"\n\n[decision-signal: {_ds_f.decision_id} "
+                                f"({_ds_f.trigger_name}: {_ds_f.context_summary})]\n\n"
                             )
                             yield _sse("delta", {
                                 "type": "delta",
                                 "run_id": run.run_id,
-                                "delta": _nudge_msg,
+                                "delta": _ds_msg,
                             })
-                            _a_parts.append(_nudge_msg)
-                            try:
-                                event_bus.publish("agentic.tool_only_nudge_fired", {
-                                    "run_id": run.run_id,
-                                    "rounds": _consecutive_tool_only_rounds,
-                                    "threshold": 5,
-                                    "decision_id": "dec_d56d89ceec24",
-                                })
-                            except Exception:
-                                pass
+                            _a_parts.append(_ds_msg)
                             logger.info(
-                                "tool-only-soft-nudge run_id=%s rounds=%d (hard-stop at %d)",
-                                run.run_id, _consecutive_tool_only_rounds,
-                                _MAX_TOOL_ONLY_ROUNDS,
+                                "decision_signal_emitted run_id=%s decision=%s trigger=%s",
+                                run.run_id, _ds_f.decision_id, _ds_f.trigger_name,
                             )
-                            # Activate tool-pause: next round withholds tools
-                            # so the model must produce a text response.
-                            _tool_pause_active = True
+                            # If loop_nudge fired, activate tool-pause so the
+                            # next round withholds tools and forces a text
+                            # response — preserves the original soft-nudge UX.
+                            if _ds_f.trigger_name == "loop_nudge_5_rounds":
+                                _tool_pause_active = True
+                    except Exception as _ds_exc:
+                        logger.warning(
+                            "decision_signal evaluation failed run_id=%s: %s",
+                            run.run_id, _ds_exc,
+                        )
+
+                    if _a_tool_calls and _round_text_total < _TOOL_ONLY_TEXT_THRESHOLD:
                         if _consecutive_tool_only_rounds >= _MAX_TOOL_ONLY_ROUNDS:
                             logger.info(
                                 "tool-only-loop-guard run_id=%s rounds=%d threshold=%d — forcing text response",

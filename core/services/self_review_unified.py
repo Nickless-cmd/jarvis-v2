@@ -204,8 +204,11 @@ def run_self_review(*, period: str = "ad-hoc") -> dict[str, Any]:
 
     # LLM enrichment
     try:
-        from core.services.daemon_llm import daemon_llm_call
-        raw = daemon_llm_call(
+        # Self-review er Jarvis' samvittighed — kører på inner_enrichment lane
+        # (deepseek-v4-flash) i stedet for shared cheap-lane balancer. Quality
+        # her kobler direkte til decision adherence.
+        from core.services.daemon_llm import quality_daemon_llm_call
+        raw = quality_daemon_llm_call(
             _build_review_prompt(inputs),
             max_len=400,
             fallback="",

@@ -87,7 +87,8 @@ def review_pending_decisions() -> dict[str, Any]:
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
     try:
-        from core.services.daemon_llm import daemon_llm_call
+        # Decision-review koblet direkte til adherence — quality lane (deepseek-v4-flash).
+        from core.services.daemon_llm import quality_daemon_llm_call as daemon_llm_call
     except Exception as exc:
         return {"status": "error", "error": f"daemon_llm import failed: {exc}"}
 

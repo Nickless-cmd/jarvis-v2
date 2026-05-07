@@ -6,7 +6,10 @@ the same prompt is seen within the daemon's TTL window.
 from __future__ import annotations
 
 import hashlib
+import logging
 import time
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Response cache — Layer A
@@ -84,6 +87,96 @@ def daemon_llm_call(
         fallback=fallback,
         daemon_name=daemon_name,
         public_safe=False,
+    )
+
+
+def quality_daemon_llm_call(
+    prompt: str,
+    *,
+    max_len: int = 200,
+    fallback: str = "",
+    daemon_name: str = "",
+) -> str:
+    """Call path for QUALITY-CRITICAL daemons (self-review, decision-review,
+    inner reflection). Routes through the inner_enrichment lane — currently
+    deepseek-v4-flash — instead of the shared cheap-lane balancer.
+
+    Use for daemons whose output drives Jarvis' adherence and self-monitoring.
+    Self-review is his conscience; the model should be smart enough to hold
+    him accountable. The cost difference vs cheap-lane is negligible on a
+    daemon's traffic profile (~$1-2/month at most).
+
+    Falls back to the standard cheap-lane balancer if the quality lane is
+    unavailable, so this never breaks daemon execution.
+    """
+    # Layer A: response cache (same as standard daemon_llm_call)
+    cache_key = ""
+    if daemon_name and _get_cache_ttl(daemon_name) > 0:
+        cache_key = hashlib.sha256(prompt.encode()).hexdigest()
+        cached = _check_cache(cache_key)
+        if cached is not None:
+            try:
+                from core.runtime.db import daemon_output_log_insert
+                daemon_output_log_insert(
+                    daemon_name=daemon_name,
+                    raw_llm_output=cached[:2000],
+                    parsed_result=cached[:500],
+                    success=True,
+                    provider="cache",
+                )
+            except Exception:
+                pass
+            return cached
+
+    # Try inner_enrichment lane (deepseek-v4-flash by default)
+    try:
+        from core.runtime.provider_router import resolve_provider_router_target
+        from core.services.cheap_provider_runtime import (
+            _execute_openai_compatible_chat,
+            _OPENAI_COMPATIBLE_PROVIDERS,
+        )
+        target = resolve_provider_router_target(lane="inner_enrichment")
+        provider = str(target.get("provider") or "").strip()
+        model = str(target.get("model") or "").strip()
+        auth_profile = str(target.get("auth_profile") or "").strip()
+        base_url = str(target.get("base_url") or "").strip()
+        if (
+            target.get("active")
+            and target.get("credentials_ready")
+            and provider in _OPENAI_COMPATIBLE_PROVIDERS
+            and model
+        ):
+            result = _execute_openai_compatible_chat(
+                provider=provider, model=model,
+                auth_profile=auth_profile or "default",
+                base_url=base_url,
+                message=prompt,
+            )
+            text = str(result.get("text") or "").strip()
+            if text:
+                if cache_key and _get_cache_ttl(daemon_name) > 0:
+                    _store_cache(cache_key, text, daemon_name)
+                try:
+                    from core.runtime.db import daemon_output_log_insert
+                    daemon_output_log_insert(
+                        daemon_name=daemon_name,
+                        raw_llm_output=text[:2000],
+                        parsed_result=text[:500],
+                        success=True,
+                        provider=f"{provider}/{model}",
+                    )
+                except Exception:
+                    pass
+                return text[:max_len] if max_len else text
+    except Exception as exc:
+        logger.warning(
+            "quality_daemon_llm_call: inner_enrichment lane failed (%s) — falling back to cheap-lane",
+            exc,
+        )
+
+    # Fallback to standard cheap-lane (never break the daemon)
+    return daemon_llm_call(
+        prompt, max_len=max_len, fallback=fallback, daemon_name=daemon_name,
     )
 
 

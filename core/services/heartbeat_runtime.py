@@ -4822,8 +4822,12 @@ def _validate_heartbeat_decision(
             }
         # ── Ping cooldown: max 1 successful ping per hour ──
         _PING_COOLDOWN_SECONDS = 3600  # 1 hour
+        # `persisted` isn't a parameter here — read it on-demand. The
+        # alternative (threading it through the function signature) would
+        # touch every call site for a value used only in the cooldown check.
+        _persisted_now = get_heartbeat_runtime_state() or _default_persisted_state()
         last_successful_ping_at = str(
-            persisted.get("last_successful_ping_at") or ""
+            _persisted_now.get("last_successful_ping_at") or ""
         ).strip()
         if last_successful_ping_at:
             try:

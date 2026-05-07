@@ -78,16 +78,27 @@ def evaluate_tick_quality(*, tick_result: dict[str, Any]) -> dict[str, Any]:
         score += 30
         notes.append("dispatched tick on warranted priorities")
     elif act_kind == "productive_idle":
+        # Productive idle is a *valid success state* (no priorities to act on,
+        # so the tick used time on observation/maintenance). It deserves to
+        # cap near the same ceiling as dispatched, not act as a consolation.
+        # Was: +25 for ≥2 actions / +10 for 1. Bumped 2026-05-07 because
+        # productive_idle previously couldn't score above 55 even when
+        # everything went well — that read as "stable but low" tick quality.
         actions = (act.get("result") or {}).get("actions") or []
         if len(actions) >= 2:
-            score += 25
+            score += 40
             notes.append(f"productive idle: {len(actions)} actions")
         elif actions:
-            score += 10
+            score += 20
             notes.append(f"productive idle: {len(actions)} action")
 
+    # Healthy elapsed time. Threshold was 30s — set when heartbeat used
+    # faster providers (groq llama-3.1-8b). Now the visible/heartbeat lane
+    # uses glm-5.1:cloud via Ollama which routinely takes 2-3 minutes per
+    # tick. Bumped to 180s (2026-05-07) so legitimate ticks get credit;
+    # >180s still indicates a real stall (provider hung, infinite loop).
     elapsed_ms = int(tick_result.get("elapsed_ms") or 0)
-    if elapsed_ms > 0 and elapsed_ms < 30000:  # under 30s = healthy
+    if elapsed_ms > 0 and elapsed_ms < 180_000:
         score += 20
         notes.append(f"healthy elapsed time ({elapsed_ms}ms)")
 

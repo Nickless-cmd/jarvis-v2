@@ -1,22 +1,294 @@
-"""Counterfactual Engine — "What if we had chosen differently?"
+"""Counterfactual reflection orchestrator.
 
-Generates alternative scenarios from decisions, regrets, and incidents.
-During idle time, can also generate "dream counterfactuals" —
-speculative what-if scenarios about recent work.
+Phase 1 (dry-run): captures triggers, dedups, stores rows with placeholder
+values. No LLM call. No apophenia modulation.
+
+Phase 2-4 will progressively enable:
+  - _generate_counterfactuals_via_llm (Phase 2)
+  - _modulate_with_apophenia (Phase 3)
+  - tool exposition via decisions_tools-style handlers (Phase 4)
+
+Legacy API (classify_event_to_counterfactual, generate_counterfactual, etc.)
+is preserved below for backward compatibility.
 """
-
 from __future__ import annotations
 
+import json
 import logging
+import time
+from collections import Counter
+from datetime import UTC, datetime
+from typing import Any, Optional
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
-from core.runtime.db import (
-    insert_cognitive_counterfactual,
-    list_cognitive_counterfactuals,
+from core.runtime.db import connect
+from core.runtime.settings import RuntimeSettings
+from core.services.counterfactual_triggers import (
+    TriggerEvent,
+    cf_key,
+    fetch_recent_triggers,
 )
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Phase 1+ pipeline — run() entry point
+# ---------------------------------------------------------------------------
+
+def run(*, workspace_id: str = "default", dry_run: bool = True) -> dict:
+    """One full pipeline cycle. Always returns a summary dict, never raises.
+
+    dry_run=True (Phase 1 default): skip LLM generation. All counterfactuals
+    get what_if='TODO', llm_confidence=0.0, status='generated'.
+
+    Phase 2+ will pass dry_run=False; Phase 1 always uses True.
+    """
+    started_at = time.monotonic()
+    summary: dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "triggers_fetched": 0,
+        "triggers_unique": 0,
+        "trigger_breakdown": {},
+        "counterfactuals_generated": 0,
+        "promoted": 0,
+        "llm_generation_failures": 0,
+        "elapsed_ms": 0,
+        "skipped": False,
+        "skipped_reason": "",
+        "phase": "1",
+    }
+
+    try:
+        settings = RuntimeSettings()
+    except Exception as exc:
+        logger.warning("counterfactual_engine: cannot load settings: %s", exc)
+        summary["skipped"] = True
+        summary["skipped_reason"] = "settings-load-error"
+        summary["elapsed_ms"] = int((time.monotonic() - started_at) * 1000)
+        return summary
+
+    if not settings.counterfactual_engine_enabled:
+        summary["skipped"] = True
+        summary["skipped_reason"] = "killswitch-off"
+        summary["elapsed_ms"] = int((time.monotonic() - started_at) * 1000)
+        return summary
+
+    # Step 1: fetch triggers
+    try:
+        triggers = fetch_recent_triggers(
+            workspace_id=workspace_id,
+            lookback_minutes=settings.counterfactual_engine_lookback_minutes,
+        )
+    except Exception as exc:
+        logger.warning("counterfactual_engine: fetch failed: %s", exc)
+        summary["error"] = f"fetch-failed: {type(exc).__name__}"
+        summary["elapsed_ms"] = int((time.monotonic() - started_at) * 1000)
+        return summary
+
+    summary["triggers_fetched"] = len(triggers)
+    summary["trigger_breakdown"] = dict(Counter(t.event_type for t in triggers))
+
+    if not triggers:
+        summary["elapsed_ms"] = int((time.monotonic() - started_at) * 1000)
+        _publish_cycle_complete(summary)
+        return summary
+
+    # Step 2: dedup (first-pass via cf_key lookup)
+    try:
+        unique_triggers = _dedup_filter(triggers)
+    except Exception as exc:
+        logger.warning("counterfactual_engine: dedup failed: %s", exc)
+        unique_triggers = triggers  # degrade gracefully — UNIQUE constraint catches dups
+    summary["triggers_unique"] = len(unique_triggers)
+
+    if not unique_triggers:
+        summary["elapsed_ms"] = int((time.monotonic() - started_at) * 1000)
+        _publish_cycle_complete(summary)
+        return summary
+
+    # Step 3: generation (Phase 1: skip; placeholder per trigger)
+    if dry_run:
+        counterfactuals = [_dry_run_placeholder(t) for t in unique_triggers]
+    else:
+        # Phase 2 will fill this in; until then it's a no-op stub
+        try:
+            counterfactuals = _generate_counterfactuals_via_llm(unique_triggers)
+        except Exception as exc:
+            logger.warning("counterfactual_engine: LLM generation failed: %s", exc)
+            summary["llm_generation_failures"] += 1
+            counterfactuals = [_failed_generation_placeholder(t) for t in unique_triggers]
+
+    # Step 4: apophenia modulation (Phase 3+; Phase 1 stub returns 1.0)
+    counterfactuals = _modulate_with_apophenia(counterfactuals)
+
+    # Step 5: store
+    threshold = settings.counterfactual_engine_promotion_threshold
+    for cf in counterfactuals:
+        cf["status"] = (
+            "promoted" if cf["final_confidence"] >= threshold else "generated"
+        )
+        try:
+            _store_counterfactual(workspace_id=workspace_id, **cf)
+        except Exception as exc:
+            logger.warning("counterfactual_engine: store failed: %s", exc)
+            continue
+        summary["counterfactuals_generated"] += 1
+        if cf["status"] == "promoted":
+            summary["promoted"] += 1
+
+        # Step 6: publish per-cf event
+        try:
+            _publish_event(
+                cf_id=cf["cf_id"],
+                workspace_id=workspace_id,
+                cluster_size=len(cf.get("trigger_event_ids", [])),
+                final_confidence=cf["final_confidence"],
+                status=cf["status"],
+            )
+        except Exception:
+            pass
+
+    summary["elapsed_ms"] = int((time.monotonic() - started_at) * 1000)
+    _publish_cycle_complete(summary)
+    return summary
+
+
+def _dry_run_placeholder(trigger: TriggerEvent) -> dict:
+    """Phase 1: every unique trigger becomes a TODO counterfactual."""
+    return {
+        "cf_id": f"cf-{uuid4().hex[:16]}",
+        "cf_key": cf_key(trigger.workspace_id, trigger.event_type, trigger.primary_key),
+        "cluster_id": f"cluster-{trigger.source_event_id}",
+        "trigger_event_ids": [trigger.source_event_id],
+        "trigger_types": [trigger.event_type],
+        "what_if": "TODO",
+        "likely_difference": None,
+        "reasoning": None,
+        "llm_confidence": 0.0,
+        "apophenia_score": 1.0,
+        "final_confidence": 0.0,
+    }
+
+
+def _failed_generation_placeholder(trigger: TriggerEvent) -> dict:
+    """Phase 2+: when LLM call fails, store with a marker so we can see frequency."""
+    return {
+        "cf_id": f"cf-{uuid4().hex[:16]}",
+        "cf_key": cf_key(trigger.workspace_id, trigger.event_type, trigger.primary_key),
+        "cluster_id": f"cluster-{trigger.source_event_id}",
+        "trigger_event_ids": [trigger.source_event_id],
+        "trigger_types": [trigger.event_type],
+        "what_if": "[generation failed]",
+        "likely_difference": None,
+        "reasoning": None,
+        "llm_confidence": 0.0,
+        "apophenia_score": 1.0,
+        "final_confidence": 0.0,
+    }
+
+
+def _dedup_filter(triggers: list[TriggerEvent]) -> list[TriggerEvent]:
+    """Remove triggers whose cf_key is already stored in the DB."""
+    if not triggers:
+        return []
+    keys = [
+        cf_key(t.workspace_id, t.event_type, t.primary_key) for t in triggers
+    ]
+    placeholders = ",".join("?" for _ in keys)
+    with connect() as c:
+        rows = c.execute(
+            f"SELECT cf_key FROM counterfactuals WHERE cf_key IN ({placeholders})",
+            keys,
+        ).fetchall()
+    existing = {str(r["cf_key"]) for r in rows}
+    return [
+        t for t, k in zip(triggers, keys) if k not in existing
+    ]
+
+
+def _generate_counterfactuals_via_llm(triggers: list[TriggerEvent]) -> list[dict]:
+    """Phase 2 stub. Returns empty list in Phase 1.
+
+    Will be implemented in Phase 2 plan as a single cheap-lane LLM call.
+    """
+    return []
+
+
+def _modulate_with_apophenia(counterfactuals: list[dict]) -> list[dict]:
+    """Phase 3 stub. Returns counterfactuals unchanged with apophenia_score=1.0.
+
+    Will be implemented in Phase 3 plan as per-cf apophenia_guard.rate_hypothesis()
+    call. final_confidence = min(llm_confidence, apophenia_score).
+    """
+    for cf in counterfactuals:
+        cf.setdefault("apophenia_score", 1.0)
+        cf["final_confidence"] = min(
+            float(cf.get("llm_confidence", 0.0)),
+            float(cf["apophenia_score"]),
+        )
+    return counterfactuals
+
+
+def _store_counterfactual(*, workspace_id: str, **cf) -> None:
+    """INSERT OR IGNORE — UNIQUE(cf_key) makes this idempotent."""
+    now = datetime.now(UTC).isoformat()
+    with connect() as c:
+        c.execute(
+            "INSERT OR IGNORE INTO counterfactuals("
+            "cf_id, cf_key, workspace_id, cluster_id, "
+            "trigger_event_ids_json, trigger_types_json, "
+            "what_if, likely_difference, reasoning, "
+            "llm_confidence, apophenia_score, final_confidence, "
+            "status, created_at, updated_at"
+            ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                cf["cf_id"], cf["cf_key"], workspace_id, cf["cluster_id"],
+                json.dumps(cf["trigger_event_ids"]),
+                json.dumps(cf["trigger_types"]),
+                cf["what_if"], cf.get("likely_difference"), cf.get("reasoning"),
+                float(cf["llm_confidence"]),
+                float(cf["apophenia_score"]),
+                float(cf["final_confidence"]),
+                cf["status"], now, now,
+            ),
+        )
+        c.commit()
+
+
+def _publish_event(
+    *, cf_id: str, workspace_id: str, cluster_size: int,
+    final_confidence: float, status: str,
+) -> None:
+    event_bus.publish("cognitive_counterfactual.generated", {
+        "cf_id": cf_id,
+        "workspace_id": workspace_id,
+        "cluster_size": cluster_size,
+        "final_confidence": float(final_confidence),
+        "status": status,
+    })
+
+
+def _publish_cycle_complete(summary: dict) -> None:
+    try:
+        event_bus.publish("cognitive_counterfactual.cycle_complete", dict(summary))
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Legacy API — preserved for backward compatibility
+# ---------------------------------------------------------------------------
+
+try:
+    from core.runtime.db import (
+        insert_cognitive_counterfactual,
+        list_cognitive_counterfactuals,
+    )
+    _LEGACY_DB_AVAILABLE = True
+except ImportError:
+    _LEGACY_DB_AVAILABLE = False
 
 _TRIGGER_TEMPLATES = {
     "regret": "Hvad hvis vi havde valgt en anden tilgang til {anchor}?",
@@ -165,14 +437,26 @@ def generate_counterfactual(
         question = template.format(anchor=anchor[:80])
 
     cf_id = f"cf-{uuid4().hex[:10]}"
-    result = insert_cognitive_counterfactual(
-        cf_id=cf_id,
-        trigger_type=trigger_type,
-        anchor=anchor[:200],
-        cf_question=question,
-        source=source,
-        confidence=confidence,
-    )
+
+    if not _LEGACY_DB_AVAILABLE:
+        logger.warning("counterfactual_engine: legacy DB functions unavailable")
+        result: dict[str, object] = {
+            "cf_id": cf_id,
+            "trigger_type": trigger_type,
+            "anchor": anchor[:200],
+            "cf_question": question,
+            "source": source,
+            "confidence": confidence,
+        }
+    else:
+        result = insert_cognitive_counterfactual(
+            cf_id=cf_id,
+            trigger_type=trigger_type,
+            anchor=anchor[:200],
+            cf_question=question,
+            source=source,
+            confidence=confidence,
+        )
 
     event_bus.publish(
         "cognitive_counterfactual.generated",
@@ -229,6 +513,9 @@ def narrativize_regret(
 
 
 def build_counterfactual_surface() -> dict[str, object]:
+    if not _LEGACY_DB_AVAILABLE:
+        return {"active": False, "items": [], "dream_count": 0, "runtime_count": 0,
+                "summary": "Legacy DB unavailable"}
     items = list_cognitive_counterfactuals(limit=15)
     dream_count = sum(1 for i in items if i.get("source") == "dream")
     runtime_count = len(items) - dream_count

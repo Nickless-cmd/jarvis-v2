@@ -498,6 +498,17 @@ def _stream_openai_compatible_model(
     )
     if provider == "deepseek":
         model = deepseek_model_for_thinking_mode(model, thinking_mode)
+    # Thinking-mode-modeller (deepseek-v4-flash thinking, deepseek-v4-pro,
+    # deepseek-reasoner) kræver at PRIOR assistant turns indeholder
+    # reasoning_content. Legacy chat-history rækker uden det vil fejle
+    # requesten. Strip assistant-messages uden reasoning_content når vi
+    # går til thinking-mode model. Pris: tab af gamle assistant-turns.
+    # Værdi: API'et accepterer requesten.
+    _is_thinking_model = (
+        provider == "deepseek"
+        and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner")
+    )
+    # NB: filtreringen anvendes nedenfor på chat_messages efter de er bygget
     from core.tools.simple_tools import get_tool_definitions
     from core.tools.copilot_tool_pruning import select_tools_for_visible
 
@@ -520,6 +531,18 @@ def _stream_openai_compatible_model(
     chat_messages = _build_visible_chat_messages_for_github(
         message=message, session_id=session_id, provider=provider, model=model,
     )
+    # Filter legacy assistant turns uden reasoning_content for thinking-mode
+    # Deepseek-modeller (de afviser requesten ellers). Bevarer system + user
+    # turns uændret. Forventet kun at fyre på første ny-thinking run efter
+    # opgradering — fremover persisteres reasoning_content pr. message.
+    if _is_thinking_model:
+        chat_messages = [
+            m for m in chat_messages
+            if not (
+                m.get("role") == "assistant"
+                and not str(m.get("reasoning_content") or "").strip()
+            )
+        ]
     tools = select_tools_for_visible(
         get_tool_definitions(), user_message=message, session_id=session_id,
     )
@@ -1858,7 +1881,16 @@ def _build_visible_chat_messages_for_github(
             role = tmsg.get("role", "user")
             content = tmsg.get("content", "")
             if content:
-                messages.append({"role": role, "content": content})
+                msg_dict: dict[str, str] = {"role": role, "content": content}
+                # Thinking-mode replay (Deepseek v4-flash/v4-pro): prior
+                # assistant turns must carry reasoning_content if produced.
+                # _build_structured_transcript_messages threader feltet ind
+                # på dict'en når det findes i chat_messages-tabellen.
+                if role == "assistant":
+                    r_content = str(tmsg.get("reasoning_content") or "").strip()
+                    if r_content:
+                        msg_dict["reasoning_content"] = r_content
+                messages.append(msg_dict)
     messages.append({"role": "user", "content": message})
     return messages
 

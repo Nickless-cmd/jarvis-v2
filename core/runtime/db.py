@@ -420,6 +420,7 @@ def init_db() -> None:
                 content TEXT NOT NULL,
                 user_id TEXT NOT NULL DEFAULT '',
                 workspace_name TEXT NOT NULL DEFAULT '',
+                reasoning_content TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL
             )
             """
@@ -1106,6 +1107,7 @@ def init_db() -> None:
         _ensure_scheduled_tasks_table(conn)
         _ensure_tool_router_tables(conn)
         _ensure_decision_trigger_column(conn)
+        _ensure_chat_messages_reasoning_column(conn)
         _ensure_counterfactuals_table(conn)
         from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables
         ensure_claude_dispatch_tables(conn)
@@ -1142,6 +1144,32 @@ def _ensure_decision_trigger_column(conn: sqlite3.Connection) -> None:
         "UPDATE behavioral_decisions SET trigger_name = 'backend_unresolved_3_calls' "
         "WHERE decision_id = 'dec_56d4dbb03e22'"
     )
+
+
+def _ensure_chat_messages_reasoning_column(conn: sqlite3.Connection) -> None:
+    """Add chat_messages.reasoning_content column. Idempotent.
+
+    Required by Deepseek thinking-mode models (v4-flash thinking, v4-pro).
+    The API rejects requests with "reasoning_content in the thinking mode
+    must be passed back to the API" if any prior assistant turn in the
+    conversation lacks reasoning_content. Persisting it here lets us
+    replay it on subsequent runs/sessions instead of dropping it.
+
+    Older rows will have empty string — Deepseek treats empty as absent
+    and rejects, so historic transcripts may need to be filtered out
+    before sending to thinking-mode API. visible_model handles that.
+    """
+    existing_cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(chat_messages)").fetchall()
+    }
+    if "reasoning_content" not in existing_cols:
+        try:
+            conn.execute(
+                "ALTER TABLE chat_messages ADD COLUMN reasoning_content TEXT NOT NULL DEFAULT ''"
+            )
+        except sqlite3.OperationalError as exc:
+            if "duplicate column" not in str(exc).lower():
+                raise
 
 
 def _ensure_tool_router_tables(conn: sqlite3.Connection) -> None:

@@ -645,6 +645,13 @@ class OpenAICompatFollowupAdapter:
         parts: list[str] = []
         reasoning_parts: list[str] = []
         tool_call_accumulator: dict[int, dict] = {}
+        # DSML-leak filter for followup-rounds (Deepseek v4-pro/flash kan
+        # spille sin interne tool-call DSL ud i delta.content sammen med
+        # struktureret tool_calls — første-pass har allerede filteret,
+        # men followup-runder gik gennem en separat SSE-parser uden det.)
+        from core.services.cheap_provider_runtime import _strip_dsml_leak
+        _dsml_in_block = False
+        _dsml_buffer = ""
         import time as _time
         _t0 = _time.monotonic()
         _ttfb_ms: int | None = None
@@ -657,8 +664,13 @@ class OpenAICompatFollowupAdapter:
                         _ttfb_ms = int((_time.monotonic() - _t0) * 1000)
                     delta = _extract_chat_completion_delta(event)
                     if delta:
-                        parts.append(delta)
-                        yield FollowupDelta(delta=delta)
+                        _dsml_buffer += delta
+                        safe, _dsml_buffer, _dsml_in_block = _strip_dsml_leak(
+                            _dsml_buffer, _dsml_in_block
+                        )
+                        if safe:
+                            parts.append(safe)
+                            yield FollowupDelta(delta=safe)
                     reasoning_delta = _extract_chat_completion_reasoning(event)
                     if reasoning_delta:
                         reasoning_parts.append(reasoning_delta)

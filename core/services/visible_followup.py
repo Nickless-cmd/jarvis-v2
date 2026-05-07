@@ -710,6 +710,7 @@ _ADAPTERS: dict[str, FollowupAdapter] = {
     "mistral": OpenAICompatFollowupAdapter(provider_id="mistral"),
     "nvidia-nim": OpenAICompatFollowupAdapter(provider_id="nvidia-nim"),
     "sambanova": OpenAICompatFollowupAdapter(provider_id="sambanova"),
+    "deepseek": OpenAICompatFollowupAdapter(provider_id="deepseek"),
 }
 
 

@@ -510,8 +510,22 @@ class OpenAICompatFollowupAdapter:
 
         defaults = provider_runtime_defaults(self.provider_id)
         base_url = str(defaults.get("base_url") or "").rstrip("/")
+        # Auth profile lookup — provider name og auth profile er ikke altid
+        # det samme (deepseek bruger fx "default" profil, ikke "deepseek").
+        # Fald tilbage til provider name hvis registry-entry mangler.
+        try:
+            from core.runtime.provider_router import load_provider_router_registry
+            _registry = load_provider_router_registry()
+            _auth_profile = ""
+            for _p in _registry.get("providers") or []:
+                if str(_p.get("provider") or "") == self.provider_id:
+                    _auth_profile = str(_p.get("auth_profile") or "").strip()
+                    break
+            _auth_profile = _auth_profile or self.provider_id
+        except Exception:
+            _auth_profile = self.provider_id
         credentials = _require_credentials(
-            profile=self.provider_id, provider=self.provider_id
+            profile=_auth_profile, provider=self.provider_id
         )
         api_key = str(credentials.get("api_key") or "").strip()
         payload: dict[str, object] = {

@@ -185,8 +185,11 @@ def get_provider_credentials(*, profile: str, provider: str) -> dict[str, Any] |
     if state is None:
         return None
 
-    credentials_path = Path(str(state.get("credentials_path") or ""))
-    if not credentials_path.exists():
+    raw_path = str(state.get("credentials_path") or "").strip()
+    if not raw_path:
+        return None
+    credentials_path = Path(raw_path)
+    if not credentials_path.is_file():
         return None
     return _read_json(credentials_path)
 

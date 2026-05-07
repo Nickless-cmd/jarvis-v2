@@ -30,6 +30,7 @@ _OPENAI_COMPATIBLE_PROVIDERS = {
     "mistral",
     "sambanova",
     "opencode",
+    "deepseek",
 }
 
 # Codex uses a distinct responses-based protocol via chatgpt.com/backend-api.
@@ -139,6 +140,21 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "rpm_limit": None,
         "daily_limit": None,
         "static_models": ["jarvis-cheap-lane"],
+    },
+    "deepseek": {
+        # Paid provider — Bjørn's $100 wallet, V4 Pro promo until 2026-05-31.
+        # Auto prefix-caching on the server side (no params needed); cached
+        # input tokens billed at lower rate. Keep system prompt prefix stable
+        # for cache hits to actually land. Visible-lane only for now.
+        "label": "DeepSeek",
+        "priority": 5,
+        "base_url": "https://api.deepseek.com/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": None,
+        "daily_limit": None,
+        "static_models": ["deepseek-v4-flash", "deepseek-v4-pro"],
     },
     "opencode": {
         "label": "OpenCode Zen",
@@ -1151,6 +1167,18 @@ def _execute_openai_compatible_chat(
         text = _extract_openai_compatible_text(provider=provider, data=data)
     usage = data.get("usage") or {}
     prompt_estimate = sum(len(str(m.get("content", ""))) for m in messages) // 4
+    # Deepseek (and a few other openai-compat providers) report cache hit/miss
+    # split inside usage. Plumb through so cost calc and observability can
+    # distinguish — Deepseek charges ~50x less for cache hits ($0.0028/M vs
+    # $0.14/M on v4-flash). If absent, downstream pricing falls back to
+    # treating all input as cache miss.
+    cache_hit = int(usage.get("prompt_cache_hit_tokens") or 0)
+    cache_miss = int(usage.get("prompt_cache_miss_tokens") or 0)
+    enriched_usage = dict(usage)
+    if provider == "deepseek":
+        enriched_usage.setdefault("prompt_cache_hit_tokens", cache_hit)
+        enriched_usage.setdefault("prompt_cache_miss_tokens", cache_miss)
+        enriched_usage.setdefault("model", model)
     return {
         "text": text,
         "tool_calls": tool_calls,
@@ -1164,7 +1192,9 @@ def _execute_openai_compatible_chat(
             or usage.get("output_tokens")
             or _estimate_tokens(text)
         ),
-        "cost_usd": float(_estimate_cheap_cost(provider=provider, usage=usage)),
+        "cache_hit_tokens": cache_hit,
+        "cache_miss_tokens": cache_miss,
+        "cost_usd": float(_estimate_cheap_cost(provider=provider, usage=enriched_usage)),
     }
 
 
@@ -2153,7 +2183,68 @@ def _listing_surface(
     }
 
 
+# DeepSeek pricing (per 1M tokens, USD). Source: https://api-docs.deepseek.com/
+# Pulled 2026-05-07. v4-pro has a 75% promo until 2026-05-31 15:59 UTC — after
+# that the full price kicks in. v4-flash flat priced; cache-hit ~50x cheaper
+# than cache-miss. Update if Deepseek changes pricing.
+_DEEPSEEK_PROMO_END_ISO = "2026-05-31T15:59:00+00:00"
+
+_DEEPSEEK_PRICES_PER_M: dict[str, dict[str, Decimal]] = {
+    "deepseek-v4-flash": {
+        "cache_hit": Decimal("0.0028"),
+        "cache_miss": Decimal("0.14"),
+        "output": Decimal("0.28"),
+    },
+    "deepseek-v4-pro_promo": {
+        "cache_hit": Decimal("0.003625"),
+        "cache_miss": Decimal("0.435"),
+        "output": Decimal("0.87"),
+    },
+    "deepseek-v4-pro_full": {
+        "cache_hit": Decimal("0.0145"),
+        "cache_miss": Decimal("1.74"),
+        "output": Decimal("3.48"),
+    },
+}
+
+
+def _deepseek_price_table(model: str) -> dict[str, Decimal] | None:
+    if model == "deepseek-v4-flash":
+        return _DEEPSEEK_PRICES_PER_M["deepseek-v4-flash"]
+    if model == "deepseek-v4-pro":
+        from datetime import datetime, timezone
+        promo_end = datetime.fromisoformat(_DEEPSEEK_PROMO_END_ISO)
+        in_promo = datetime.now(timezone.utc) < promo_end
+        key = "deepseek-v4-pro_promo" if in_promo else "deepseek-v4-pro_full"
+        return _DEEPSEEK_PRICES_PER_M[key]
+    return None
+
+
+def _estimate_deepseek_cost(usage: dict[str, object]) -> Decimal:
+    model = str(usage.get("model") or "").strip()
+    table = _deepseek_price_table(model)
+    if table is None:
+        return Decimal("0")
+    prompt_total = Decimal(str(usage.get("prompt_tokens") or 0))
+    cache_hit = Decimal(str(usage.get("prompt_cache_hit_tokens") or 0))
+    cache_miss = Decimal(str(usage.get("prompt_cache_miss_tokens") or 0))
+    # If the API didn't split it, treat all prompt tokens as cache miss
+    # (conservative — tracks higher cost rather than under-reporting).
+    if cache_hit == 0 and cache_miss == 0:
+        cache_miss = prompt_total
+    output = Decimal(str(usage.get("completion_tokens") or usage.get("output_tokens") or 0))
+    million = Decimal("1000000")
+    cost = (
+        cache_hit * table["cache_hit"]
+        + cache_miss * table["cache_miss"]
+        + output * table["output"]
+    ) / million
+    return cost
+
+
 def _estimate_cheap_cost(*, provider: str, usage: dict[str, object]) -> Decimal:
+    if provider == "deepseek":
+        return _estimate_deepseek_cost(usage)
     # Free-tier cheap providers are tracked primarily by quota rather than spend.
     if provider != "openrouter":
         return Decimal("0")

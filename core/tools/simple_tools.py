@@ -83,6 +83,10 @@ from core.tools.tiktok_analytics_tools import (
     TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
     _exec_tiktok_analytics,
 )
+from core.tools.restart_self_tools import (
+    RESTART_SELF_TOOL_DEFINITIONS,
+    _exec_restart_self,
+)
 from core.tools.mail_tools import (
     MAIL_TOOL_DEFINITIONS,
     _exec_send_mail,
@@ -2180,6 +2184,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *WAKE_WORD_TOOL_DEFINITIONS,
     *TIKTOK_TOOL_DEFINITIONS,
     *TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
+    *RESTART_SELF_TOOL_DEFINITIONS,
     *MAIL_TOOL_DEFINITIONS,
     *VISUAL_MEMORY_TOOL_DEFINITIONS,
     *JARVIS_BRAIN_TOOL_DEFINITIONS,
@@ -5872,6 +5877,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "percentage": _exec_percentage,
     # Process/system tools
     "service_status": _exec_service_status,
+    "restart_self": _exec_restart_self,
     "process_list": _exec_process_list,
     "disk_usage": _exec_disk_usage,
     "memory_usage": _exec_memory_usage,

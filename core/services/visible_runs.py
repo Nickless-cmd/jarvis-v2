@@ -2360,7 +2360,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         )
         _outer_error = str(_outer_exc) or "unexpected-run-error"
         set_last_visible_run_outcome(run, status="failed", error=_outer_error)
-        for _fail_chunk in _fail_visible_run(run, _outer_error):
+        for _fail_chunk in _fail_visible_run(run, _outer_error, partial_text=visible_output_text):
             yield _fail_chunk
         unregister_visible_run(run.run_id)
         return
@@ -4616,7 +4616,12 @@ def _parse_tc_args(tc: dict) -> dict:
     return dict(raw) if isinstance(raw, dict) else {}
 
 
-def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]:
+def _fail_visible_run(
+    run: VisibleRun,
+    error_message: str,
+    *,
+    partial_text: str = "",
+) -> AsyncIterator[str]:
     controller = get_visible_run_controller(run.run_id)
     finished_at = datetime.now(UTC).isoformat()
     bounded_error = _bounded_error(error_message)
@@ -4638,6 +4643,19 @@ def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]
     )
     _set_orb_phase("idle")
     yield _sse("trace", _visible_trace_payload(run))
+    # If we have accumulated partial text that the frontend hasn't seen
+    # (e.g. because the provider stream was killed mid-token), send it
+    # before the failed/done events so the user sees what was produced.
+    partial = (partial_text or "").strip()
+    if partial:
+        yield _sse(
+            "delta",
+            {
+                "type": "delta",
+                "run_id": run.run_id,
+                "delta": partial,
+            },
+        )
     event_bus.publish(
         "runtime.visible_run_failed",
         {

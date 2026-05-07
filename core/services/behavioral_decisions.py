@@ -177,6 +177,22 @@ def get_decision_with_reviews(
         return None
     d = dict(d)
     d["recent_reviews"] = list_reviews(decision_id, limit=review_limit)
+
+    # Decision-signals metadata (added 2026-05-07): trigger_name comes from
+    # the SELECT * already; last_fired_at lives in runtime_state_kv where
+    # the signal-pipeline writes it on each fire.
+    d.setdefault("trigger_name", None)
+    try:
+        from core.runtime.db import connect
+        with connect() as c:
+            row = c.execute(
+                "SELECT value FROM runtime_state_kv WHERE key = ?",
+                (f"decision_signal_last_fired:{decision_id}",),
+            ).fetchone()
+        d["last_fired_at"] = str(row["value"]) if row else None
+    except Exception:
+        d["last_fired_at"] = None
+
     return d
 
 

@@ -140,12 +140,26 @@ def _call_openai_compat_relevance(
 
     defaults = CHEAP_PROVIDER_DEFAULTS.get(provider) or {}
     base_url = str(defaults.get("base_url") or "")
+    # Auth profile lookup — provider name og auth profile er ikke altid det
+    # samme (deepseek bruger fx "default" profil). Hent fra provider_router
+    # registry; fald tilbage til provider_id hvis ikke registreret.
+    try:
+        from core.runtime.provider_router import load_provider_router_registry
+        _registry = load_provider_router_registry()
+        auth_profile = ""
+        for _p in _registry.get("providers") or []:
+            if str(_p.get("provider") or "") == provider:
+                auth_profile = str(_p.get("auth_profile") or "").strip()
+                break
+        auth_profile = auth_profile or provider
+    except Exception:
+        auth_profile = provider
 
     def _do_call() -> dict[str, Any]:
         return _execute_openai_compatible_chat(
             provider=provider,
             model=model,
-            auth_profile=provider,
+            auth_profile=auth_profile,
             base_url=base_url,
             message=prompt,
         )

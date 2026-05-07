@@ -148,6 +148,11 @@ class RuntimeSettings:
     # When true, requests without x-api-key are accepted in dev (resolves to default workspace).
     # NEVER enable in production.
     anthropic_compat_dev_mode_open: bool = False
+    # Decisions-as-signals refactor (added 2026-05-07)
+    # When True (default), behavioral decisions appear in prompt only when
+    # their registered trigger fires. When False, the legacy
+    # enforcement_section() runs as before — instant rollback path.
+    decision_signals_enabled: bool = True
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

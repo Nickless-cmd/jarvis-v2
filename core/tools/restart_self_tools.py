@@ -130,14 +130,17 @@ def send_pending_restart_confirmation() -> None:
             from core.services.telegram_gateway import send_telegram_message
             send_telegram_message(base_msg)
         else:
-            from core.services.discord_gateway import send_discord_message
+            # Send DM til owner via send_dm_to_owner (åbner DM-kanalen baseret
+            # på owner_discord_id user-id). Tidligere kode misbrugte
+            # owner_discord_id som channel_id i send_discord_message →
+            # silent failure efter restart. Bug fixet 2026-05-07.
+            from core.services.discord_gateway import send_dm_to_owner
             from core.services.discord_config import load_discord_config
             cfg = load_discord_config()
-            ch_id = cfg.get("owner_discord_id") if cfg else None
-            if ch_id:
-                send_discord_message(int(ch_id), base_msg)
+            if cfg:
+                send_dm_to_owner(base_msg)
             else:
-                logger.info("restart confirmation (no channel configured): %s", base_msg)
+                logger.info("restart confirmation (no discord config): %s", base_msg)
     except Exception as e:
         logger.warning("restart confirmation: failed to send: %s", e)
     finally:

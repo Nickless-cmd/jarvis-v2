@@ -131,9 +131,9 @@ def send_pending_restart_confirmation() -> None:
             send_telegram_message(base_msg)
         else:
             from core.services.discord_gateway import send_discord_message
-            from core.runtime.config import get_runtime_config
-            cfg = get_runtime_config()
-            ch_id = cfg.get("discord", {}).get("owner_channel_id") or cfg.get("discord", {}).get("default_channel_id")
+            from core.services.discord_config import load_discord_config
+            cfg = load_discord_config()
+            ch_id = cfg.get("owner_discord_id") if cfg else None
             if ch_id:
                 send_discord_message(int(ch_id), base_msg)
             else:

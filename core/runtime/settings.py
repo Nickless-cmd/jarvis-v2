@@ -153,6 +153,13 @@ class RuntimeSettings:
     # their registered trigger fires. When False, the legacy
     # enforcement_section() runs as before — instant rollback path.
     decision_signals_enabled: bool = True
+    # Counterfactuals Phase 1 (added 2026-05-07)
+    # When True (default), the counterfactual_engine_runtime daemon runs
+    # the dry-run capture pipeline at the configured interval.
+    counterfactual_engine_enabled: bool = True
+    counterfactual_engine_interval_seconds: int = 3600  # 1h between cycles
+    counterfactual_engine_lookback_minutes: int = 60    # how far back to fetch triggers
+    counterfactual_engine_promotion_threshold: float = 0.6  # final_confidence to promote
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -220,6 +227,10 @@ class RuntimeSettings:
             "concept_baseline_drift_min_sustained_days": self.concept_baseline_drift_min_sustained_days,
             "concept_baseline_drift_min_confidence": self.concept_baseline_drift_min_confidence,
             "emotion_concepts_default_trigger_cooldown_seconds": self.emotion_concepts_default_trigger_cooldown_seconds,
+            "counterfactual_engine_enabled": self.counterfactual_engine_enabled,
+            "counterfactual_engine_interval_seconds": self.counterfactual_engine_interval_seconds,
+            "counterfactual_engine_lookback_minutes": self.counterfactual_engine_lookback_minutes,
+            "counterfactual_engine_promotion_threshold": self.counterfactual_engine_promotion_threshold,
         }
         return {**self.extra, **typed}
 
@@ -381,6 +392,10 @@ def load_settings() -> RuntimeSettings:
         concept_baseline_drift_min_sustained_days=int(data.get("concept_baseline_drift_min_sustained_days", defaults.concept_baseline_drift_min_sustained_days)),
         concept_baseline_drift_min_confidence=float(data.get("concept_baseline_drift_min_confidence", defaults.concept_baseline_drift_min_confidence)),
         emotion_concepts_default_trigger_cooldown_seconds=int(data.get("emotion_concepts_default_trigger_cooldown_seconds", defaults.emotion_concepts_default_trigger_cooldown_seconds)),
+        counterfactual_engine_enabled=bool(data.get("counterfactual_engine_enabled", defaults.counterfactual_engine_enabled)),
+        counterfactual_engine_interval_seconds=int(data.get("counterfactual_engine_interval_seconds", defaults.counterfactual_engine_interval_seconds)),
+        counterfactual_engine_lookback_minutes=int(data.get("counterfactual_engine_lookback_minutes", defaults.counterfactual_engine_lookback_minutes)),
+        counterfactual_engine_promotion_threshold=float(data.get("counterfactual_engine_promotion_threshold", defaults.counterfactual_engine_promotion_threshold)),
         extra={key: value for key, value in data.items() if key not in KNOWN_FIELDS},
     )
 

@@ -1,8 +1,34 @@
 # Decisions as Signals — Design Spec
 
 **Date:** 2026-05-07
-**Status:** Approved (Bjørn + Jarvis) — ready for implementation plan
+**Status:** Approved (Bjørn + Jarvis) — REVISED 2026-05-07 mid-implementation
 **Owner:** Claude Code
+
+## Revision note (2026-05-07, during Task 6)
+
+Original design called for a `[FIRED_DECISIONS]` AWARENESS section in the
+system prompt. **This doesn't work** because the system prompt is built
+exactly once per visible run (in `visible_runs.py` line ~894), before any
+tool calls — meaning per-round state (`consecutive_tool_only_rounds`,
+`recent_tool_calls`) is always empty/zero at prompt-build time. The two
+v1 triggers we built would never fire via prompt injection.
+
+**Pivot:** Signals are delivered as **chat deltas** during the agentic
+loop instead of as a prompt section. This matches the existing
+hardcoded loop-nudge mechanism that already works (visible_runs.py
+line 1511). Jarvis sees the signal in his own text history (via
+`_a_parts`), the same way the existing soft-nudge works. The user
+sees `[decision-signal: ...]` in the chat UI — accepted as feature
+(transparency) for v1; can be hidden later if it proves to be noise.
+
+The mechanism stays unchanged: registry, cooldown, sandboxed
+evaluation, killswitch. Only the **delivery channel** changed from
+prompt-section to chat-delta-during-agentic-loop.
+
+The legacy `enforcement_section()` is still suppressed when the
+killswitch is on — that part of the original design stands. The
+escalation language (`DU SKAL`, `IKKE valgfrit`) disappears as
+intended.
 
 ## Problem
 

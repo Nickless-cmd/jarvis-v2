@@ -23,7 +23,7 @@ _SKIP_FOR_HEARTBEAT: frozenset[str] = frozenset({"groq", "ollamafreeapi"})
 
 # Providers supported via OpenAI-chat/completions API
 _OPENAI_COMPAT_PROVIDERS = frozenset(
-    {"sambanova", "mistral", "nvidia-nim", "openrouter", "openai"}
+    {"sambanova", "mistral", "nvidia-nim", "openrouter", "openai", "deepseek"}
 )
 
 # Known base URLs for providers that don't require runtime config
@@ -33,6 +33,7 @@ _PROVIDER_BASE_URLS: dict[str, str] = {
     "nvidia-nim": "https://integrate.api.nvidia.com/v1",
     "openrouter": "https://openrouter.ai/api/v1",
     "opencode": "https://opencode.ai/zen/v1",
+    "deepseek": "https://api.deepseek.com/v1",
 }
 
 

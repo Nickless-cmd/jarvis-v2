@@ -4222,7 +4222,10 @@ def _execute_heartbeat_model(
         return _execute_openrouter_prompt(prompt=prompt, target=target)
     if provider == "groq":
         return _execute_groq_prompt(prompt=prompt, target=target)
-    if provider in {"sambanova", "mistral", "nvidia-nim", "opencode"}:
+    if provider in {"sambanova", "mistral", "nvidia-nim", "opencode", "deepseek"}:
+        # deepseek tilføjet 2026-05-07 — bruger samme openai-compat shape
+        # som de andre. heartbeat_provider_fallback wrapper handler base_url
+        # + auth-profile-lookup pr. provider.
         from core.services.heartbeat_provider_fallback import (
             execute_openai_compat_heartbeat_prompt,
         )

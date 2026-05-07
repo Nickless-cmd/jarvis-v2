@@ -154,7 +154,10 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "models_endpoint": "/models",
         "rpm_limit": None,
         "daily_limit": None,
-        "static_models": ["deepseek-v4-flash", "deepseek-v4-pro"],
+        # deepseek-chat = compat-alias for v4-flash non-thinking mode.
+        # Listet først så det er default-pick i classification-paths
+        # (relevance, memory_selection) — ingen reasoning overhead.
+        "static_models": ["deepseek-chat", "deepseek-v4-flash", "deepseek-v4-pro"],
     },
     "opencode": {
         "label": "OpenCode Zen",

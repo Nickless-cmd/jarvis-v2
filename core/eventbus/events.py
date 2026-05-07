@@ -140,6 +140,7 @@ ALLOWED_EVENT_FAMILIES = {
     "tool_router",  # tool selection observability (added 2026-05-06)
     "decision_signal",  # decisions-as-signals refactor (added 2026-05-07)
     "contradiction",    # contradiction_engine port (added 2026-05-07)
+    "emergence",        # emergence pattern detection port (added 2026-05-07)
 }
 
 

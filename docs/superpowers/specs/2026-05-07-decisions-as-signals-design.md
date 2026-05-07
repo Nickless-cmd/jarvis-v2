@@ -153,6 +153,21 @@ def build_trigger_context(*, user_message, session_id, run_id, **kwargs) -> Trig
 
 **Cooldown storage:** `runtime_state_kv` table, key format `decision_signal_last_fired:<decision_id>`, value ISO timestamp. For turn-based cooldowns, additionally `decision_signal_turn_seq:<decision_id>` with the agentic-round-seq integer.
 
+**Cooldown semantics across multi-turn conditions:** `cooldown_turns=N` blocks
+re-firing for the next N turns *regardless* of whether the trigger condition
+still holds. Concrete examples:
+
+- `loop_nudge_5_rounds` with `cooldown_turns=1`: fires when
+  `consecutive_tool_only_rounds == 5`. Trigger function uses `==`, so it only
+  matches at exactly round 5 — round 6 won't match anyway. Cooldown is
+  belt-and-suspenders: even if a future trigger update changes to `>= 5`,
+  cooldown=1 still ensures one-fire-per-spree.
+
+- `backend_unresolved_3_calls` with `cooldown_seconds=0`: no cooldown. Every
+  turn the streak ≥ 3 with no resolution → fires. By design (incident-style
+  nagging). If first-week observation shows it firing 5+ times per session
+  in normal investigation work, switch this to a streak-aware mechanism.
+
 **Section format:**
 
 ```
@@ -178,32 +193,98 @@ Cooldown: 1 turn — after firing, must wait one full agentic round before firin
 
 ### `decision_triggers/backend_unresolved.py`
 
+The decision is "Når jeg finder problem i **min egen backend** ..." — so the trigger
+must distinguish "investigating Jarvis's own runtime/code" from "reading user
+files for some other reason". Two filters apply, AND'd together:
+
+1. **Tool name** matches a backend-investigation pattern
+2. **Path argument** (when present) points inside Jarvis's own project tree
+
 ```python
 from core.services.decision_signals import register
 
+# Tool-name allowlist for backend-investigation tools
 _BACKEND_TOOL_PATTERNS = ("read_file", "grep", "list_dir", "glob", "git_")
-_RESOLUTION_KEYWORDS = ("fixed", "found", "root cause", "fundet", "fikset", "rod", "løst")
+
+# Path prefixes that indicate "Jarvis's own backend"
+# Both repo root and runtime state count as backend territory.
+_JARVIS_PATH_HINTS = (
+    "/media/projects/jarvis-v2",
+    "/home/bs/.jarvis-v2",
+    "core/",
+    "apps/",
+)
+
+# Minimum length for an assistant text to count as a "resolution statement".
+# Below 80 chars it's likely a status/checkpoint, not a real conclusion.
+_RESOLUTION_MIN_CHARS = 80
+
+# Keywords that signal a resolution conclusion was reached. Any one of these
+# in a sufficiently long assistant text suppresses the trigger.
+_RESOLUTION_KEYWORDS = (
+    "fixed", "found", "root cause", "fundet", "fikset", "rod", "løst",
+    "deployed", "deployet", "committed", "committet",
+)
+
+
+def _is_jarvis_backend_call(tool_call: dict) -> bool:
+    """A tool call counts as backend-investigation if BOTH:
+    - tool name matches an investigation pattern
+    - path argument (if any) points inside Jarvis's project/runtime
+    git_* calls have no path argument; we accept them by name alone since
+    they are always in the current repo by definition.
+    """
+    fn = tool_call.get("function") or {}
+    name = str(fn.get("name") or tool_call.get("name") or "")
+    if not any(name.startswith(p) for p in _BACKEND_TOOL_PATTERNS):
+        return False
+    if name.startswith("git_"):
+        return True
+    args = fn.get("arguments") or tool_call.get("arguments") or {}
+    if isinstance(args, str):
+        try:
+            import json as _j
+            args = _j.loads(args)
+        except Exception:
+            args = {}
+    path = str((args or {}).get("path") or (args or {}).get("dir") or "")
+    if not path:
+        # No path arg → treat as backend (e.g., bash without explicit cwd)
+        return True
+    return any(hint in path for hint in _JARVIS_PATH_HINTS)
+
 
 def backend_unresolved_3_calls(ctx) -> bool:
-    """Three consecutive backend-related tool calls without a resolution-text response."""
+    """Three consecutive Jarvis-backend tool calls without a resolution-text response."""
     backend_streak = 0
     for tc in ctx.recent_tool_calls[-5:]:
-        name = (tc.get("function") or {}).get("name", "") or tc.get("name", "")
-        if any(name.startswith(p) for p in _BACKEND_TOOL_PATTERNS):
+        if _is_jarvis_backend_call(tc):
             backend_streak += 1
         else:
             backend_streak = 0
     if backend_streak < 3:
         return False
     last_text = (ctx.recent_assistant_text or "").strip().lower()
-    if len(last_text) > 80 and any(kw in last_text for kw in _RESOLUTION_KEYWORDS):
+    if len(last_text) >= _RESOLUTION_MIN_CHARS and any(kw in last_text for kw in _RESOLUTION_KEYWORDS):
         return False
     return True
 
 register("backend_unresolved_3_calls", backend_unresolved_3_calls, cooldown_seconds=0)
 ```
 
-Cooldown: 0 — fires every time conditions match. This is an incident trigger; we want it to keep nagging until resolved.
+**Cooldown semantics:** `cooldown_seconds=0` means "fire every turn while the
+condition holds". If 3 backend calls fire on turn N, and turn N+1 adds a 4th
+backend call without resolution, the trigger fires *again* on N+1 (streak is
+now 4 ≥ 3, no resolution). Intentional — this is an incident trigger and we
+want it to keep nagging until either resolved or the streak breaks. If the
+nagging proves too noisy in first-week observation, switch to a one-shot-per-
+streak mechanism (track `last_fired_streak_id` derived from the streak's
+starting tool_call_id).
+
+**TriggerContext requirement:** `recent_tool_calls` must include each tool
+call's `arguments` field (a dict, or JSON string). `visible_runs.py` already
+captures these in `_followup_exchanges`; the context-builder must preserve
+them rather than reducing to just names.
 
 ### `decision_triggers/__init__.py`
 

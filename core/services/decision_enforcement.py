@@ -42,7 +42,19 @@ def enforcement_section() -> str | None:
     DU SKAL (mandatory) language instead of soft reminders. This turns
     passive nudges into imperative commands when telemetry shows the model
     is consistently ignoring them.
+
+    Killswitch (2026-05-07): when decision_signals_enabled is True (default),
+    this legacy section is suppressed in favor of registry-driven chat-delta
+    signals emitted from inside the agentic loop. Returning None here means
+    prompt_contract simply skips this section — clean rollback path: flip
+    the setting to False and this prompt-injection comes back.
     """
+    try:
+        from core.runtime.settings import RuntimeSettings
+        if RuntimeSettings().decision_signals_enabled:
+            return None
+    except Exception:
+        pass
     try:
         from core.services.behavioral_decisions import list_active_decisions
         active = list_active_decisions(limit=5)

@@ -68,6 +68,19 @@ async def _run_lifespan() -> None:
             # report but continue.
             traceback.print_exc()
 
+        # Verify decision_signals registry populated (added 2026-05-07)
+        try:
+            import core.services.decision_triggers  # noqa: F401
+            from core.services.decision_signals import _TRIGGER_REGISTRY
+            expected = {"loop_nudge_5_rounds", "backend_unresolved_3_calls"}
+            missing = expected - set(_TRIGGER_REGISTRY.keys())
+            if missing:
+                raise RuntimeError(
+                    f"decision_signals registry missing: {missing}"
+                )
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

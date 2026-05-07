@@ -1198,6 +1198,165 @@ def _execute_openai_compatible_chat(
     }
 
 
+def _iter_openai_compatible_chat_events(
+    *,
+    provider: str,
+    model: str,
+    auth_profile: str,
+    base_url: str,
+    messages: list[dict],
+    tools: list[dict] | None = None,
+):
+    """Stream OpenAI-compatible /chat/completions deltas via SSE.
+
+    Yields dicts:
+      {"kind": "delta", "text": "..."}                   — content token
+      {"kind": "tool_call", "id":..., "name":..., "arguments":...}
+      {"kind": "done",
+       "input_tokens": N, "output_tokens": M,
+       "cache_hit_tokens": H, "cache_miss_tokens": MS,
+       "full_text": "...", "cost_usd": X}
+
+    Tool-call accumulation: Chat Completions streams tool_calls in
+    fragments keyed by index. First fragment usually has id+name+start
+    of arguments; subsequent fragments append to arguments. We merge
+    by index then yield one tool_call event per index when stream ends.
+
+    stream_options.include_usage=true makes the server send a final
+    chunk with full usage stats (incl. Deepseek's prompt_cache_*
+    fields) before the [DONE] sentinel.
+    """
+    credentials = _require_credentials(profile=auth_profile, provider=provider)
+    api_key = str(credentials.get("api_key") or "").strip()
+    root = str(base_url or provider_runtime_defaults(provider).get("base_url") or "").rstrip("/")
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+    }
+    payload: dict[str, object] = {
+        "model": model,
+        "messages": messages,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+    if tools:
+        payload["tools"] = tools
+
+    text_parts: list[str] = []
+    pending_tool_calls: dict[int, dict] = {}
+    final_usage: dict = {}
+
+    try:
+        with httpx.stream(
+            "POST", f"{root}/chat/completions",
+            json=payload, headers=headers,
+            timeout=httpx.Timeout(connect=15, read=None, write=15, pool=15),
+        ) as response:
+            if response.status_code == 401:
+                raise CheapProviderError(
+                    provider=provider, code="auth-failed",
+                    message=f"{provider} API key rejected (HTTP 401)",
+                    status_code=401,
+                )
+            if response.status_code == 429:
+                retry_after = int(response.headers.get("retry-after", "60") or "60")
+                raise CheapProviderError(
+                    provider=provider, code="rate-limited",
+                    message=f"{provider} rate limited (HTTP 429)",
+                    retry_after_seconds=retry_after, status_code=429,
+                )
+            if response.status_code >= 400:
+                body = b""
+                for chunk in response.iter_bytes():
+                    body += chunk
+                    if len(body) > 2000:
+                        break
+                raise CheapProviderError(
+                    provider=provider, code="provider-error",
+                    message=f"HTTP {response.status_code}: {body.decode('utf-8', errors='replace')[:500]}",
+                    status_code=response.status_code,
+                )
+            for line in response.iter_lines():
+                line = (line or "").strip()
+                if not line.startswith("data: "):
+                    continue
+                data_str = line[6:]
+                if data_str == "[DONE]":
+                    break
+                try:
+                    event = json.loads(data_str)
+                except json.JSONDecodeError:
+                    continue
+                # Usage-only chunks (stream_options=include_usage) have
+                # empty choices but a populated usage block.
+                usage_block = event.get("usage") or {}
+                if usage_block:
+                    final_usage = dict(usage_block)
+                choices = event.get("choices") or []
+                if not choices:
+                    continue
+                delta = (choices[0] or {}).get("delta") or {}
+                content = delta.get("content")
+                if content:
+                    text_parts.append(str(content))
+                    yield {"kind": "delta", "text": str(content)}
+                tc_fragments = delta.get("tool_calls") or []
+                for frag in tc_fragments:
+                    if not isinstance(frag, dict):
+                        continue
+                    idx = int(frag.get("index") or 0)
+                    slot = pending_tool_calls.setdefault(
+                        idx, {"id": "", "name": "", "arguments": ""}
+                    )
+                    if frag.get("id"):
+                        slot["id"] = str(frag.get("id"))
+                    fn = frag.get("function") or {}
+                    if fn.get("name"):
+                        slot["name"] = str(fn.get("name"))
+                    args_frag = fn.get("arguments")
+                    if args_frag:
+                        slot["arguments"] += str(args_frag)
+    except CheapProviderError:
+        raise
+    except Exception as exc:
+        raise CheapProviderError(
+            provider=provider, code="stream-error",
+            message=f"{provider} streaming failed: {exc}",
+        ) from exc
+
+    # Emit accumulated tool calls in index order (consumer expects them
+    # before the done event so working_step gets surfaced correctly).
+    for idx in sorted(pending_tool_calls.keys()):
+        slot = pending_tool_calls[idx]
+        if slot.get("name"):
+            yield {
+                "kind": "tool_call",
+                "id": slot.get("id") or f"call_{idx}",
+                "name": slot["name"],
+                "arguments": slot.get("arguments") or "",
+            }
+
+    full_text = "".join(text_parts)
+    input_tokens = int(final_usage.get("prompt_tokens") or final_usage.get("input_tokens") or 0)
+    output_tokens = int(final_usage.get("completion_tokens") or final_usage.get("output_tokens") or 0)
+    cache_hit = int(final_usage.get("prompt_cache_hit_tokens") or 0)
+    cache_miss = int(final_usage.get("prompt_cache_miss_tokens") or 0)
+    enriched_usage = dict(final_usage)
+    if provider == "deepseek":
+        enriched_usage.setdefault("model", model)
+    cost_usd = float(_estimate_cheap_cost(provider=provider, usage=enriched_usage))
+    yield {
+        "kind": "done",
+        "full_text": full_text,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_hit_tokens": cache_hit,
+        "cache_miss_tokens": cache_miss,
+        "cost_usd": cost_usd,
+    }
+
+
 def _execute_gemini_chat(
     *,
     model: str,

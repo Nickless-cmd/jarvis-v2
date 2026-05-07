@@ -439,22 +439,19 @@ def stream_visible_model(
         )
         return
 
-    # openai-compat providers (opencode, groq, openrouter, nvidia-nim, mistral,
-    # sambanova) — non-streaming call with tools, then yield chunks + tool_calls
-    # so the agentic loop can pick them up and run the follow-up round.
+    # openai-compat providers (deepseek, opencode, groq, openrouter, nvidia-nim,
+    # mistral, sambanova) — native SSE streaming via /chat/completions.
+    # Yields tokens as they arrive and surfaces tool_calls before the done
+    # event so working_step reaches the user instantly.
     from core.services.cheap_provider_runtime import _OPENAI_COMPATIBLE_PROVIDERS
     if provider in _OPENAI_COMPATIBLE_PROVIDERS:
-        result, tool_calls = _run_openai_compatible_visible(
+        yield from _stream_openai_compatible_model(
             provider=provider,
             model=model,
             message=message,
             session_id=session_id,
+            controller=controller,
         )
-        for chunk in _chunk_text(result.text):
-            yield VisibleModelDelta(delta=chunk)
-        if tool_calls:
-            yield VisibleModelToolCalls(tool_calls=tool_calls)
-        yield VisibleModelStreamDone(result=result)
         return
 
     result = execute_visible_model(
@@ -466,6 +463,100 @@ def stream_visible_model(
     for chunk in _chunk_text(result.text):
         yield VisibleModelDelta(delta=chunk)
     yield VisibleModelStreamDone(result=result)
+
+
+def _stream_openai_compatible_model(
+    *,
+    provider: str,
+    model: str,
+    message: str,
+    session_id: str | None = None,
+    controller=None,
+) -> Iterator[VisibleModelDelta | VisibleModelStreamDone | VisibleModelToolCalls]:
+    """Native SSE streaming for openai-compat providers (deepseek, groq, ...).
+
+    Mirrors _stream_openai_codex_model: bridges the
+    _iter_openai_compatible_chat_events generator into the VisibleModel*
+    discriminated union the visible-runs pump expects. Yields deltas as
+    they arrive — no fake-chunking, real token-by-token UX.
+    """
+    from core.services.cheap_provider_runtime import (
+        _iter_openai_compatible_chat_events,
+        provider_runtime_defaults,
+    )
+    from core.tools.simple_tools import get_tool_definitions
+    from core.tools.copilot_tool_pruning import select_tools_for_visible
+
+    defaults = provider_runtime_defaults(provider)
+    base_url = str(defaults.get("base_url") or "")
+
+    # Auth profile lookup — same logic as _run_openai_compatible_visible.
+    try:
+        from core.runtime.provider_router import load_provider_router_registry
+        _registry = load_provider_router_registry()
+        auth_profile = ""
+        for _p in _registry.get("providers") or []:
+            if str(_p.get("provider") or "") == provider:
+                auth_profile = str(_p.get("auth_profile") or "").strip()
+                break
+        auth_profile = auth_profile or provider
+    except Exception:
+        auth_profile = provider
+
+    chat_messages = _build_visible_chat_messages_for_github(
+        message=message, session_id=session_id, provider=provider, model=model,
+    )
+    tools = select_tools_for_visible(
+        get_tool_definitions(), user_message=message, session_id=session_id,
+    )
+
+    collected_tool_calls: list[dict] = []
+
+    try:
+        for ev in _iter_openai_compatible_chat_events(
+            provider=provider,
+            model=model,
+            auth_profile=auth_profile,
+            base_url=base_url,
+            messages=chat_messages,
+            tools=tools or None,
+        ):
+            if controller is not None and controller.is_cancelled():
+                raise VisibleModelStreamCancelled("visible-run-cancelled")
+            kind = ev.get("kind")
+            if kind == "delta":
+                delta = str(ev.get("text") or "")
+                if delta:
+                    yield VisibleModelDelta(delta=delta)
+            elif kind == "tool_call":
+                tc = {
+                    "id": str(ev.get("id") or ""),
+                    "type": "function",
+                    "function": {
+                        "name": str(ev.get("name") or ""),
+                        "arguments": str(ev.get("arguments") or ""),
+                    },
+                }
+                collected_tool_calls.append(tc)
+            elif kind == "done":
+                if collected_tool_calls:
+                    yield VisibleModelToolCalls(tool_calls=collected_tool_calls)
+                full_text = str(ev.get("full_text") or "")
+                yield VisibleModelStreamDone(
+                    result=VisibleModelResult(
+                        text=full_text,
+                        input_tokens=int(ev.get("input_tokens") or _estimate_tokens(message)),
+                        output_tokens=int(ev.get("output_tokens") or _estimate_tokens(full_text)),
+                        cost_usd=float(ev.get("cost_usd") or 0.0),
+                    )
+                )
+                return
+    except VisibleModelStreamCancelled:
+        raise
+    except Exception:
+        if controller is not None and controller.is_cancelled():
+            raise VisibleModelStreamCancelled("visible-run-cancelled")
+        raise
 
 
 def _run_openai_compatible_visible(
@@ -501,10 +592,25 @@ def _run_openai_compatible_visible(
     )
     _prompt_chars = sum(len(str(m.get("content", ""))) for m in chat_messages)
     _t_api = _time.monotonic()
+    # Lookup auth_profile fra provider_router registry — provider name og
+    # auth profile er ikke altid det samme (deepseek bruger fx "default"
+    # profil, ikke "deepseek"). Fald tilbage til provider name hvis
+    # registry-entry mangler eller er tom.
+    try:
+        from core.runtime.provider_router import load_provider_router_registry
+        _registry = load_provider_router_registry()
+        _auth_profile = ""
+        for _p in _registry.get("providers") or []:
+            if str(_p.get("provider") or "") == provider:
+                _auth_profile = str(_p.get("auth_profile") or "").strip()
+                break
+        _auth_profile = _auth_profile or provider
+    except Exception:
+        _auth_profile = provider
     raw = _execute_openai_compatible_chat(
         provider=provider,
         model=model,
-        auth_profile=provider,
+        auth_profile=_auth_profile,
         base_url=base_url,
         messages=chat_messages,
         tools=tools or None,

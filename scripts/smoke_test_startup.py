@@ -81,6 +81,22 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Verify counterfactuals table exists + daemon importable (Phase 1)
+        try:
+            from core.runtime.db import connect
+            with connect() as c:
+                row = c.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name='counterfactuals'"
+                ).fetchone()
+                if row is None:
+                    raise RuntimeError("counterfactuals table missing")
+            from core.services.counterfactual_engine_runtime import (
+                start_counterfactual_runtime,  # noqa: F401
+            )
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

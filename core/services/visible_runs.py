@@ -1203,6 +1203,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 _TOOL_ONLY_TEXT_THRESHOLD = 80  # chars
                 _tool_pause_active = False  # set True after 5 tool-only rounds → withhold tools
                 _agentic_loop_exit_reason = "completed"
+                _prev_round_end_t: float | None = None  # for inter-round-gap metric
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
                     if not _provider_supports_followup:
                         logger.warning(
@@ -1211,9 +1212,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         )
                         _agentic_loop_exit_reason = "provider-not-supported"
                         break
+                    # Measure inter-round gap: tid fra forrige round-end til
+                    # at denne round faktisk begynder LLM-arbejde. Bjørn
+                    # observerede 7. maj at gap'et nogle gange føles meget
+                    # langt — instrumenteret her så vi kan se hvor tiden går.
+                    import time as _time_mod
+                    _round_loop_start_t = _time_mod.monotonic()
+                    _inter_round_gap_ms = (
+                        int((_round_loop_start_t - _prev_round_end_t) * 1000)
+                        if _prev_round_end_t is not None else 0
+                    )
                     logger.info(
-                        "agentic-round-start run_id=%s round=%d exchanges=%d",
-                        run.run_id, _agentic_round + 1, len(_followup_exchanges),
+                        "agentic-round-start run_id=%s round=%d exchanges=%d inter_round_gap_ms=%d",
+                        run.run_id, _agentic_round + 1, len(_followup_exchanges), _inter_round_gap_ms,
                     )
                     _a_parts = []
                     _a_tool_calls: list[dict] = []
@@ -1847,13 +1858,17 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         )
                     except Exception:
                         pass
+                    import time as _time_mod_end
+                    _round_end_t = _time_mod_end.monotonic()
+                    _round_total_ms = int((_round_end_t - _round_loop_start_t) * 1000)
                     logger.info(
                         "agentic-round-end run_id=%s round=%d text_chars=%d "
-                        "tool_calls=%d resolved=%d",
+                        "tool_calls=%d resolved=%d round_total_ms=%d",
                         run.run_id, _agentic_round + 1,
                         sum(len(p) for p in _a_parts),
-                        len(_a_tool_calls), len(_a_resolved),
+                        len(_a_tool_calls), len(_a_resolved), _round_total_ms,
                     )
+                    _prev_round_end_t = _round_end_t
 
                     # ── Mid-flight steer ────────────────────────────────────
                     # Pick up any user messages that landed via

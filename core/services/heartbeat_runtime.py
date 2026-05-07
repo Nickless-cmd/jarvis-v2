@@ -3967,6 +3967,7 @@ def _select_heartbeat_target(policy: dict | None = None) -> dict[str, str | bool
     supported_providers = {
         "phase1-runtime", "openai", "openrouter", "ollama", "groq",
         "opencode", "sambanova", "mistral", "nvidia-nim",
+        "deepseek",  # added 2026-05-07 — heartbeat lane swapped to v4-flash
     }
     settings = load_settings()
     heartbeat_provider = str(

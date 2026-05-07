@@ -1198,6 +1198,65 @@ def _execute_openai_compatible_chat(
     }
 
 
+_DSML_OPEN = "<｜｜DSML｜｜tool_calls>"
+_DSML_CLOSE = "</｜｜DSML｜｜tool_calls>"
+
+
+def _strip_dsml_leak(buffer: str, in_block: bool) -> tuple[str, str, bool]:
+    """Strip Deepseek thinking-mode tool_call DSL from streaming content.
+
+    Deepseek v4-pro can spill its internal tool_call DSL — wrapped in
+    ``<｜｜DSML｜｜tool_calls>...</｜｜DSML｜｜tool_calls>`` (U+FF5C fullwidth
+    bars) — into delta.content alongside the proper structured tool_calls
+    array. Without this filter the user sees raw special-token markup,
+    AND any tool arguments embedded there (which has previously included
+    secrets the model planned to use). Strip the entire block; structured
+    tool_calls.tool_calls path is unaffected.
+
+    Returns ``(safe_chunk, remaining_buffer, in_block)``.
+
+    The remaining_buffer holds either:
+    - in_block=False: the tail that *might* be the start of a DSML opener
+      we haven't fully matched yet (so we don't emit it prematurely).
+    - in_block=True: bytes we're still skipping until the closer arrives.
+    """
+    safe: list[str] = []
+    while buffer:
+        if in_block:
+            close_idx = buffer.find(_DSML_CLOSE)
+            if close_idx == -1:
+                # We're still inside the block; no close yet. Keep buffer
+                # but cap it so a never-closing block doesn't grow unbounded.
+                if len(buffer) > 8192:
+                    buffer = buffer[-1024:]
+                return "".join(safe), buffer, in_block
+            buffer = buffer[close_idx + len(_DSML_CLOSE):]
+            in_block = False
+            continue
+        # Not in block — find next opener
+        open_idx = buffer.find(_DSML_OPEN)
+        if open_idx == -1:
+            # No full opener. But the buffer's tail could still be a partial
+            # opener mid-stream (e.g. ends with "<｜｜D"). Hold back any tail
+            # that *could* be a prefix of the opener to avoid emitting "<｜"
+            # before deciding.
+            tail_keep = 0
+            for k in range(1, min(len(_DSML_OPEN), len(buffer)) + 1):
+                if _DSML_OPEN.startswith(buffer[-k:]):
+                    tail_keep = k
+            if tail_keep:
+                safe.append(buffer[:-tail_keep])
+                return "".join(safe), buffer[-tail_keep:], in_block
+            safe.append(buffer)
+            return "".join(safe), "", in_block
+        # Emit prefix before the opener, then enter block
+        if open_idx > 0:
+            safe.append(buffer[:open_idx])
+        buffer = buffer[open_idx + len(_DSML_OPEN):]
+        in_block = True
+    return "".join(safe), "", in_block
+
+
 def _iter_openai_compatible_chat_events(
     *,
     provider: str,
@@ -1247,6 +1306,15 @@ def _iter_openai_compatible_chat_events(
     reasoning_parts: list[str] = []
     pending_tool_calls: dict[int, dict] = {}
     final_usage: dict = {}
+    # DSML-leak filter (Deepseek v4-pro). The thinking-mode model can spill
+    # its internal tool-call DSL ("<｜｜DSML｜｜tool_calls>...</｜｜DSML｜｜tool_calls>")
+    # into delta.content before firing the proper structured tool_calls.
+    # Without filtering, users see raw special-token markup AND any tool
+    # arguments embedded there (which has previously included secrets the
+    # model planned to use). Strip the entire block from user-visible
+    # deltas. The structured tool_calls.tool_calls path is unaffected.
+    _dsml_in_block = False
+    _dsml_buffer = ""
 
     try:
         with httpx.stream(
@@ -1300,8 +1368,13 @@ def _iter_openai_compatible_chat_events(
                 delta = (choices[0] or {}).get("delta") or {}
                 content = delta.get("content")
                 if content:
-                    text_parts.append(str(content))
-                    yield {"kind": "delta", "text": str(content)}
+                    _dsml_buffer += str(content)
+                    safe_chunk, _dsml_buffer, _dsml_in_block = _strip_dsml_leak(
+                        _dsml_buffer, _dsml_in_block
+                    )
+                    if safe_chunk:
+                        text_parts.append(safe_chunk)
+                        yield {"kind": "delta", "text": safe_chunk}
                 # Deepseek thinking-mode emits reasoning as separate stream
                 # field — capture but don't yield as user-visible delta
                 # (UI renders it differently, and we need it for followup

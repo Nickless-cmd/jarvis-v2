@@ -531,17 +531,26 @@ def _stream_openai_compatible_model(
     chat_messages = _build_visible_chat_messages_for_github(
         message=message, session_id=session_id, provider=provider, model=model,
     )
-    # Filter legacy assistant turns uden reasoning_content for thinking-mode
-    # Deepseek-modeller (de afviser requesten ellers). Bevarer system + user
-    # turns uændret. Forventet kun at fyre på første ny-thinking run efter
-    # opgradering — fremover persisteres reasoning_content pr. message.
+    # Legacy assistant-turns uden reasoning_content: Deepseek thinking-mode
+    # afviser requesten hvis et felt mangler. Vi STRIP'ede tidligere hele
+    # turn'en — det fjernede kontekst og fik Jarvis til at "glemme" prior
+    # samtale (Bjørn observerede 7. maj). Bedre: tilføj placeholder-reasoning
+    # så API'et accepterer requesten OG indholdet bevares. Verificeret at
+    # Deepseek accepterer placeholder og recall stadig virker.
     if _is_thinking_model:
+        _LEGACY_REASONING_PLACEHOLDER = (
+            "[legacy turn — reasoning trace not preserved before "
+            "reasoning_content persistence shipped]"
+        )
         chat_messages = [
-            m for m in chat_messages
-            if not (
-                m.get("role") == "assistant"
-                and not str(m.get("reasoning_content") or "").strip()
+            (
+                m if not (
+                    m.get("role") == "assistant"
+                    and not str(m.get("reasoning_content") or "").strip()
+                )
+                else {**m, "reasoning_content": _LEGACY_REASONING_PLACEHOLDER}
             )
+            for m in chat_messages
         ]
     tools = select_tools_for_visible(
         get_tool_definitions(), user_message=message, session_id=session_id,

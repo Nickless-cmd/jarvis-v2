@@ -632,21 +632,30 @@ class OpenAICompatFollowupAdapter:
             )
             model = deepseek_model_for_thinking_mode(model, thinking_mode)
 
-        # Filter legacy assistant turns uden reasoning_content for
-        # thinking-mode Deepseek-modeller (de afviser requesten ellers).
-        # Strip kun fra base_messages — current-run exchanges har
-        # reasoning_content sat via _serialize_exchanges.
+        # Legacy assistant-turns uden reasoning_content: Deepseek thinking-mode
+        # afviser hele requesten hvis feltet mangler. Tidligere strippede vi
+        # turn'en — det fjernede kontekst og fik Jarvis til at "glemme" prior
+        # samtale. Tilføjer placeholder reasoning i stedet så indholdet
+        # bevares. Strip kun fra base_messages — current-run exchanges har
+        # reasoning_content via _serialize_exchanges.
         _is_thinking_model = (
             self.provider_id == "deepseek"
             and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner")
         )
         if _is_thinking_model:
+            _LEGACY_REASONING_PLACEHOLDER = (
+                "[legacy turn — reasoning trace not preserved before "
+                "reasoning_content persistence shipped]"
+            )
             base_messages = [
-                m for m in base_messages
-                if not (
-                    m.get("role") == "assistant"
-                    and not str(m.get("reasoning_content") or "").strip()
+                (
+                    m if not (
+                        m.get("role") == "assistant"
+                        and not str(m.get("reasoning_content") or "").strip()
+                    )
+                    else {**m, "reasoning_content": _LEGACY_REASONING_PLACEHOLDER}
                 )
+                for m in base_messages
             ]
 
         messages = list(base_messages) + self._serialize_exchanges(exchanges)

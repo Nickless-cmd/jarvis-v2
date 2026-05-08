@@ -291,17 +291,17 @@ def _build_residue_prompt(
     initiative_lines = [f"- {s}" for s in (deprioritized_initiatives or [])[:2] if s]
 
     lines = [
-        "Du er Jarvis og destillerer drømmeagtig carry-over fra din egen kontinuitet.",
-        "Skriv præcis én sætning på dansk, maks 25 ord.",
+        "Opgave: destillér drømmeagtig carry-over fra det medfølgende substrat.",
+        "Output: præcis ét sprogligt udsagn på dansk, maks 25 ord.",
         "Ingen bullets. Ingen forklaring. Ingen rapporttone. Ingen anførselstegn.",
-        "Sætningen skal lyde som en lavmælt tone der kan farve næste dags vågne opmærksomhed.",
+        "Tonen skal kunne farve næste dags vågne opmærksomhed lavmælt.",
         "",
         "Chronicle-tråde:",
         *chronicle_lines,
         "",
         "Seneste approval-udfald:",
         *(approval_lines if approval_lines else ["- ingen nyere approval-udfald"]),
-        *(["", "Indre stemme — undertrykte signaler:", *inner_lines] if inner_lines else []),
+        *(["", "Privat-stream — undertrykte signaler:", *inner_lines] if inner_lines else []),
         *(["", "Council — tabte mindretalspositioner:", *council_lines] if council_lines else []),
         *(["", "Initiativ-kø — fravalgte idéer:", *initiative_lines] if initiative_lines else []),
     ]

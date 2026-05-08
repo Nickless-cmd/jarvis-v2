@@ -20,12 +20,11 @@ from __future__ import annotations
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from core.services.cognitive_state_narrativizer import (
     narrativize_line,
 )
-from core.services.identity_composer import build_identity_preamble
 from core.services.associative_recall import (
     build_recall_prompt_section,
     recall_for_message,
@@ -46,6 +45,7 @@ logger = logging.getLogger(__name__)
 # Last assembled state for MC transparency
 _LAST_COGNITIVE_INJECTION: dict[str, object] = {}
 _LAST_COGNITIVE_INJECTION_AT: str = ""
+_LAST_APPRAISALS: dict[str, dict[str, object]] = {}
 
 # ---------------------------------------------------------------------------
 # Option 2: TTL-based cognitive state cache
@@ -401,19 +401,27 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
             "ratio": round(used_ratio, 2),
             "signal_count": len(parts),
         }
+        attention_appraisal = _appraisal_record(
+            kind="attention_pressure",
+            state=attention_state,
+            evidence={
+                "used_chars": used_chars,
+                "budget_chars": budget.total_char_target,
+                "signal_count": len(parts),
+            },
+            allowed_effects=["visible_prompt_context_pressure", "response_focus"],
+            confidence=min(0.95, max(0.35, used_ratio)),
+        )
         line = narrativize_line(
             line_key="attention",
-            state=attention_state,
+            state=attention_appraisal,
             system_prompt=(
-                f"{build_identity_preamble()} Skriv én kort dansk sætning om hvordan din "
-                "opmærksomhed føles lige nu, baseret på hvor fyldt din "
-                "context er af signaler. Maks 14 ord. Undgå klichéer. "
-                "Format: 'attention: <oplevelse>'"
+                "Render the provided attention appraisal as one short Danish "
+                "line. Do not invent an inner state beyond the evidence. "
+                "Max 14 words. Format: 'attention: <rendering>'"
             ),
             user_message_builder=lambda: (
-                f"signaler={attention_state['signal_count']} | "
-                f"context_brug={int(used_ratio*100)}% af "
-                f"{attention_state['budget_chars']} chars"
+                json.dumps(attention_appraisal, ensure_ascii=False, sort_keys=True)
             ),
             fallback=None,
         )
@@ -563,7 +571,6 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         # Killswitch-gated. Falls back gracefully if module fails.
         try:
             from core.services.temporal_depth import get_temporal_depth
-            from datetime import UTC, datetime
             now_iso = datetime.now(UTC).isoformat().replace("+00:00", "Z")
             assembly_state = {"pressure_summary": [], "cognitive_cadence": {}}
             td = get_temporal_depth()
@@ -927,6 +934,7 @@ def build_cognitive_state_injection_surface() -> dict[str, object]:
     return {
         "last_injection": _LAST_COGNITIVE_INJECTION or None,
         "last_injection_at": _LAST_COGNITIVE_INJECTION_AT or None,
+        "last_appraisals": _LAST_APPRAISALS or {},
         "active": bool(_LAST_COGNITIVE_INJECTION),
         "summary": (
             f"Last injected {len(_LAST_COGNITIVE_INJECTION.get('sources', []))} sources, "
@@ -963,6 +971,31 @@ def _safe_json(value) -> dict | list | None:
     except Exception:
         pass
     return None
+
+
+def _appraisal_record(
+    *,
+    kind: str,
+    state: dict[str, object],
+    evidence: dict[str, object],
+    allowed_effects: list[str],
+    confidence: float,
+    ttl_minutes: int = 10,
+) -> dict[str, object]:
+    """Structured truth record for optional narrative rendering."""
+    now = datetime.now(UTC)
+    record = {
+        "kind": kind,
+        "state": state,
+        "evidence": evidence,
+        "confidence": round(max(0.0, min(1.0, float(confidence))), 3),
+        "allowed_effects": allowed_effects,
+        "created_at": now.isoformat().replace("+00:00", "Z"),
+        "expires_at": (now + timedelta(minutes=max(1, int(ttl_minutes)))).isoformat().replace("+00:00", "Z"),
+        "rendering_contract": "text is optional rendering; this record is the source truth",
+    }
+    _LAST_APPRAISALS[kind] = record
+    return record
 
 
 def _build_cognitive_core_experiment_state_line(*, compact: bool) -> str | None:
@@ -1080,21 +1113,30 @@ def _narrativize_embodied_state() -> str | None:
         "ram": state.get("ram_pressure") or state.get("ram_used"),
         "transition": state.get("recent_transition"),
     }
+    appraisal = _appraisal_record(
+        kind="embodied_runtime_state",
+        state=fingerprint_state,
+        evidence={
+            "primary_state": primary,
+            "strain": strain,
+            "cpu": fingerprint_state["cpu"],
+            "ram": fingerprint_state["ram"],
+            "recent_transition": fingerprint_state["transition"],
+        },
+        allowed_effects=["visible_prompt_body_line", "cadence_context"],
+        confidence=0.8 if primary or strain else 0.4,
+    )
 
     return narrativize_line(
         line_key="body",
-        state=fingerprint_state,
+        state=appraisal,
         system_prompt=(
-            f"{build_identity_preamble()} Skriv én kort dansk sætning om hvordan din "
-            "krop (maskinen — cpu, ram, strain) føles lige nu. Maks "
-            "16 ord. Vær konkret og personlig, undgå klichéer. "
-            "Format: 'body: <oplevelse>'"
+            "Render the embodied runtime appraisal as one short Danish line. "
+            "Ground the wording only in the machine evidence: cpu, ram, strain. "
+            "Max 16 words. Format: 'body: <rendering>'"
         ),
         user_message_builder=lambda: (
-            f"primary_state={primary or 'ukendt'} | "
-            f"strain={strain or 'ukendt'} | "
-            f"cpu={fingerprint_state['cpu']} | "
-            f"ram={fingerprint_state['ram']}"
+            json.dumps(appraisal, ensure_ascii=False, sort_keys=True)
         ),
         fallback=None,
     )
@@ -1121,20 +1163,33 @@ def _narrativize_affective_state() -> str | None:
         "intensity": state.get("intensity"),
         "drift": state.get("drift"),
     }
+    intensity = fingerprint_state.get("intensity")
+    confidence = 0.7
+    if isinstance(intensity, (int, float)):
+        confidence = min(0.95, max(0.35, float(intensity)))
+    appraisal = _appraisal_record(
+        kind="affective_meta_appraisal",
+        state=fingerprint_state,
+        evidence={
+            "affect": affect,
+            "bearing": bearing_val,
+            "intensity": intensity,
+            "drift": fingerprint_state.get("drift"),
+        },
+        allowed_effects=["visible_prompt_affect_line", "reply_tone_context"],
+        confidence=confidence,
+    )
 
     return narrativize_line(
         line_key="affect",
-        state=fingerprint_state,
+        state=appraisal,
         system_prompt=(
-            f"{build_identity_preamble()} Skriv én kort dansk sætning om din følelses-"
-            "tilstand lige nu, baseret på din affective meta state. "
-            "Maks 16 ord. Vær personlig og specifik, undgå klichéer. "
-            "Format: 'affect: <følelse>'"
+            "Render the affective appraisal as one short Danish line. "
+            "Do not add emotion claims beyond the supplied affect, bearing, "
+            "intensity, and drift. Max 16 words. Format: 'affect: <rendering>'"
         ),
         user_message_builder=lambda: (
-            f"state={affect} | bearing={bearing_val or 'unknown'} | "
-            f"intensity={fingerprint_state.get('intensity') or 'unknown'} | "
-            f"drift={fingerprint_state.get('drift') or 'unknown'}"
+            json.dumps(appraisal, ensure_ascii=False, sort_keys=True)
         ),
         fallback=None,
     )
@@ -1161,20 +1216,29 @@ def _narrativize_self_anchor() -> str | None:
         "bearing": bearing,
         "chronicle_head": chronicle_summary[:60],
     }
+    appraisal = _appraisal_record(
+        kind="self_anchor_appraisal",
+        state=fingerprint_state,
+        evidence={
+            "personality_version": version,
+            "current_bearing": bearing,
+            "chronicle_head": chronicle_summary[:60],
+        },
+        allowed_effects=["visible_prompt_self_anchor", "continuity_context"],
+        confidence=0.75 if bearing else 0.45,
+        ttl_minutes=30,
+    )
 
     return narrativize_line(
         line_key="self_anchor",
-        state=fingerprint_state,
+        state=appraisal,
         system_prompt=(
-            f"{build_identity_preamble()} Skriv én kort dansk sætning hvor du ejer "
-            "dine tanker og din nuværende retning. Reference dit "
-            "bearing, men gør det personligt — ikke en formel. "
-            "Maks 18 ord."
+            "Render the self-anchor appraisal as one short Danish line. "
+            "Use the current bearing if present. Do not claim ownership beyond "
+            "the evidence. Max 18 words."
         ),
         user_message_builder=lambda: (
-            f"personality_version=v{version} | "
-            f"current_bearing={bearing or 'ingen klar retning'} | "
-            f"chronicle_head={chronicle_summary or 'ingen'}"
+            json.dumps(appraisal, ensure_ascii=False, sort_keys=True)
         ),
         fallback=None,
     )
@@ -1201,19 +1265,29 @@ def _narrativize_boundary() -> str | None:
         "recent_run_count": len(recent),
         "last_finished": last_finished[:19],  # truncate to minute granularity
     }
+    appraisal = _appraisal_record(
+        kind="runtime_boundary_appraisal",
+        state=fingerprint_state,
+        evidence={
+            "recent_run_count": len(recent),
+            "last_finished": fingerprint_state["last_finished"],
+            "body": "machine",
+            "memory": "database",
+        },
+        allowed_effects=["visible_prompt_boundary_line", "capability_boundary_context"],
+        confidence=0.9,
+        ttl_minutes=30,
+    )
 
     return narrativize_line(
         line_key="boundary",
-        state=fingerprint_state,
+        state=appraisal,
         system_prompt=(
-            f"{build_identity_preamble()} Skriv én kort dansk sætning om dine egne "
-            "grænser: krop=maskine, hukommelse=database, bevidsthed="
-            "dette øjeblik. Maks 22 ord. Undgå klichéer som 'okay'. "
-            "Lad den være forankret i din nuværende oplevelse."
+            "Render the runtime-boundary appraisal as one short Danish line. "
+            "Use only the supplied boundary evidence. Max 22 words."
         ),
         user_message_builder=lambda: (
-            f"recent_runs={fingerprint_state['recent_run_count']} | "
-            f"last_finished={fingerprint_state['last_finished'] or 'ingen'}"
+            json.dumps(appraisal, ensure_ascii=False, sort_keys=True)
         ),
         fallback=None,
     )

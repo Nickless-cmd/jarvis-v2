@@ -160,6 +160,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 360,
         "description": "6t arkivering af entries med salience < 0.05 — learning to forget",
     },
+    "identity_drift": {
+        "module": "core.services.identity_drift_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 1440,
+        "description": "24t identity-drift detektor — sammenligner SOUL/IDENTITY/USER/STANDING_ORDERS mod sidste snapshot, fyrer identity.drift_detected ved uautoriserede ændringer",
+    },
     "memory_maintenance": {
         "module": "core.services.memory_maintenance_daemon",
         "reset_var": "_last_tick_at",

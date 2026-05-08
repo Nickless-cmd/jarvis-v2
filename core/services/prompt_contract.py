@@ -757,6 +757,17 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        # Causal narrative — surface "how you landed here" backward chain
+        # from the most recent narrative-worthy anchor event. Phase 2 of
+        # causal graph wiring (2026-05-08). Procedural; no LLM call on
+        # critical path; 5-min TTL cache.
+        from core.services.prompt_sections.causal_narrative import (
+            causal_narrative_section,
+        )
+        _awareness_add(25, "causal narrative", causal_narrative_section())
+    except Exception:
+        pass
+    try:
         from core.services.r2_5_blocking_gate import r2_5_block_section
         from core.services.reasoning_classifier import classify_reasoning_tier
         _tier = str(classify_reasoning_tier(user_message).get("tier") or "fast")

@@ -190,16 +190,26 @@ def _select_inner(
     confidence = _score(user_message or "", top_sim=top_sim, load_more_rate_7d=load_more_rate)
 
     if confidence < threshold:
+        # Low-confidence case (chitchat, single-word affirmations, vague
+        # questions) used to fall back to ALL ~300 tool schemas — costing
+        # ~38K prompt tokens per turn for messages where no tool will
+        # likely be called anyway. Send always_core only; the model can
+        # call load_more_tools(query=...) on demand for anything outside
+        # the core. Killswitch-off and router-error paths still send the
+        # full set so safety isn't reduced when the router itself fails.
         sel = ToolSelection(
-            selected_names=_all_tool_names(),
+            selected_names=list(always_core),
             always_core=always_core,
             embedding_picks=[n for n, _ in sim],
             confidence=confidence,
             threshold=threshold,
-            fallback_used=True,
-            fallback_reason="confidence-below-threshold",
+            fallback_used=False,
+            fallback_reason="confidence-below-threshold-core-only",
             elapsed_ms=int((time.monotonic() - started_at) * 1000),
-            reason=f"confidence={confidence:.3f} < threshold={threshold:.3f}",
+            reason=(
+                f"confidence={confidence:.3f} < threshold={threshold:.3f}; "
+                f"sending always_core only ({len(always_core)} tools)"
+            ),
         )
         _persist(sel, user_message, session_id, lane, run_id)
         return sel

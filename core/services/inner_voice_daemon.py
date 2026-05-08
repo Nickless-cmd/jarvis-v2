@@ -592,7 +592,7 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
 
     context_lines.extend(
         [
-            "- Inner voice may remain unresolved; candidate thoughts and half-formed pulls are allowed.",
+            "- The thought may remain unresolved; candidate thoughts and half-formed pulls are allowed.",
             "- Do not default to steady/support/work-stabilization unless the grounding clearly warrants it.",
             "- If there is no real next-step pull, set initiative to null.",
             "- Approval feedback, when present, reflects how the user has recently responded to your tool approach; treat it as a cue about trust, timing, or aggressiveness.",

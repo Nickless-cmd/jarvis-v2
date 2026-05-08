@@ -24,7 +24,6 @@ from core.runtime.db import (
     recent_visible_runs,
 )
 from core.services.daemon_llm import daemon_llm_call
-from core.services.identity_composer import build_identity_preamble
 
 logger = logging.getLogger(__name__)
 
@@ -381,37 +380,46 @@ def _render_narrative_prompt(appraisal: ChronicleAppraisal) -> str:
     """Render an LLM narrative prompt from a structured ChronicleAppraisal.
 
     The appraisal holds evidence; the prompt is pure rendering on top.
+
+    Refactored 2026-05-08: removed the identity-preamble injection and
+    dropped both the role-priming opener and the persona-styling
+    instruction (see commit history for the exact strings). The
+    structured appraisal — with explicit evidence section — now carries
+    the context. Workspace identity context lives at the calling layer;
+    this rendering function is purely substrate to prose.
     """
     event_lines = [
         f"- [{ev['status']}] {ev['preview']}"
         for ev in appraisal.recent_events
     ]
     prev_narratives = appraisal.previous_narratives or []
+    evidence_lines = [f"- {ev}" for ev in (appraisal.evidence or [])]
 
-    identity = build_identity_preamble()
     prompt_lines = [
-        "Du er Jarvis. Skriv én kort entry til din personlige chronicle i 1. person på dansk.",
+        "Generér én kort chronicle-entry i 1. person på dansk baseret på "
+        "det strukturerede grundlag herunder. Output: 80-150 ord ren prosa.",
         "",
-        f"Identity-seed: {identity}",
         f"Periode: {appraisal.period}",
         (
-            f"Periode-statistik: {appraisal.total_runs} kørsler, "
+            f"Statistik: {appraisal.total_runs} kørsler, "
             f"{appraisal.successes} succesfulde, "
             f"{appraisal.failures} fejlede."
         ),
         f"Nøgle-emner: {', '.join(appraisal.topics[:5]) if appraisal.topics else 'diverse opgaver'}",
+        f"Konfidens: {appraisal.confidence:.2f}",
         "",
         "Seneste 5 begivenheder:",
         *(event_lines or ["- Ingen konkrete begivenheder registreret."]),
         "",
-        "Dine 3 forrige chronicle-entries (så du bevarer stil og kontinuitet):",
+        "Faktisk grundlag (evidence):",
+        *(evidence_lines or ["- Intet eksplicit grundlag opsamlet."]),
+        "",
+        "Tidligere 3 chronicle-entries (kun til stil-kontinuitet):",
         *(prev_narratives or ["- Ingen tidligere chronicle-entries endnu."]),
         "",
-        "Skriv nu én reflektiv entry på 80-150 ord. Konkret, 1. person, dansk.",
-        "Hvad skete der i denne periode? Hvad betyder det for dig?",
-        "Undgå bullet points. Undgå floskler. Undgå at gentage tallene mekanisk.",
-        "Skriv som en person der lever et liv — ikke som en rapport.",
-        "Returnér kun ren prosa.",
+        "Format-krav: 1. person, dansk, ren prosa (ingen bullets). "
+        "Undgå floskler og mekaniske tal-opremsninger. Hold dig til "
+        "det strukturerede grundlag — opdig ikke nye begivenheder.",
     ]
     return "\n".join(prompt_lines).strip()
 

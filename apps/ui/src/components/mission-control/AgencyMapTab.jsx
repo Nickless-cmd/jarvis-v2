@@ -246,6 +246,8 @@ export function AgencyMapTab() {
   const cartSummary = cartographer.summary || {}
   const recommended = cartographer.recommendedNextTask || data?.recommendedNextTask || null
   const autoTask = cartographer.autoTask || {}
+  const systemCartographer = data?.systemCartographer || {}
+  const systemSummary = systemCartographer.summary || {}
 
   return (
     <div style={s({ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' })}>
@@ -332,6 +334,23 @@ export function AgencyMapTab() {
           ) : null}
         </span>
         <span style={s({ ...mono, color: T.text3, fontSize: 9 })}>{formatFreshness(cartographer.scannedAt)}</span>
+      </section>
+
+      <section style={s({
+        background: T.bgRaised,
+        border: `1px solid ${T.border0}`,
+        borderRadius: T.r_sm,
+        padding: 12,
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 0.8fr) minmax(0, 1.4fr) auto',
+        gap: 10,
+        alignItems: 'center',
+      })}>
+        <strong style={s({ fontSize: 12, color: T.text1 })}>System Cartographer</strong>
+        <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4 })}>
+          services {systemSummary.services || 0} · daemons {systemSummary.daemons || 0} · surfaces {systemSummary.surfaces || 0} · events {systemSummary.event_families || 0} · dark {systemSummary.dark_edges || 0}
+        </span>
+        <StatusPill status={systemCartographer.mode === 'system-cartographer-v1' ? 'active' : 'missing'} />
       </section>
 
       {recommended ? (

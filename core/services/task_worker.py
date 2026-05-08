@@ -12,15 +12,18 @@ be layered on top in subsequent work.
 """
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 from . import runtime_tasks
+from core.runtime.state_store import load_json, save_json
 
 _DEFAULT_KINDS: tuple[str, ...] = (
     "initiative-followup",
     "heartbeat-followup",
     "generic",
     "open-loop-follow-up",
+    "agency_bridge_repair",
 )
 
 
@@ -57,6 +60,47 @@ def _handle_open_loop_followup(task: dict[str, Any]) -> str:
     return f"open-loop-follow-up acknowledged: {goal[:300]}"
 
 
+def _handle_agency_bridge_repair(task: dict[str, Any]) -> dict[str, str]:
+    """Prepare a repair brief for a weak agency bridge.
+
+    The worker must not silently edit source. It turns the runtime task into a
+    durable, MC-visible brief that a visible/coding lane can pick up under the
+    normal approval flow.
+    """
+    scope = str(task.get("scope") or "").strip()
+    goal = str(task.get("goal") or "").strip()
+    edge = _matching_agency_edge(scope=scope, goal=goal)
+    task_id = str(task.get("task_id") or "")
+    brief = {
+        "task_id": task_id,
+        "created_at": datetime.now(UTC).isoformat(),
+        "status": "awaiting-visible-repair",
+        "scope": scope,
+        "goal": goal,
+        "edge": edge,
+        "recommended_next_action": (
+            "Open a visible/coding-lane repair pass for this agency bridge. "
+            "Inspect the missing markers, add the smallest bridge that makes "
+            "the runtime connection real, then rerun the cartographer scan."
+        ),
+        "suggested_files": _suggested_agency_files(scope=scope, edge=edge),
+    }
+    _store_agency_repair_brief(task_id=task_id, brief=brief)
+    missing = ", ".join(edge.get("missing_markers") or []) if edge else ""
+    return {
+        "status": "blocked",
+        "summary": (
+            "Agency bridge repair brief prepared; source changes require "
+            f"visible/coding lane approval. {scope or goal}"[:240]
+        ),
+        "artifact_ref": f"state:agency_bridge_repair_briefs:{task_id}",
+        "blocked_reason": (
+            "repair brief ready; awaiting approved implementation lane"
+            + (f"; missing markers: {missing[:180]}" if missing else "")
+        ),
+    }
+
+
 def _execute_task(task: dict[str, Any]) -> None:
     """Execute a single task and persist its final status. Never raises."""
     kind = str(task.get("kind") or "")
@@ -68,6 +112,16 @@ def _execute_task(task: dict[str, Any]) -> None:
             summary = _handle_heartbeat_followup(task)
         elif kind == "open-loop-follow-up":
             summary = _handle_open_loop_followup(task)
+        elif kind == "agency_bridge_repair":
+            result = _handle_agency_bridge_repair(task)
+            runtime_tasks.update_task(
+                task_id,
+                status=result["status"],
+                blocked_reason=result["blocked_reason"],
+                result_summary=result["summary"],
+                artifact_ref=result["artifact_ref"],
+            )
+            return
         elif kind == "generic":
             summary = f"generic task acknowledged: {str(task.get('goal') or '')[:120]}"
         else:
@@ -98,6 +152,7 @@ def tick_task_worker(budget: int = 3) -> dict[str, Any]:
     processed = 0
     succeeded = 0
     failed = 0
+    blocked = 0
     allowed = _DEFAULT_KINDS
     for _ in range(max(0, int(budget))):
         task = claim_next_task(kinds=allowed)
@@ -111,6 +166,8 @@ def tick_task_worker(budget: int = 3) -> dict[str, Any]:
             succeeded += 1
         elif status == "failed":
             failed += 1
+        elif status == "blocked":
+            blocked += 1
     remaining = [
         t
         for t in runtime_tasks.list_tasks(status="queued", limit=50)
@@ -120,5 +177,79 @@ def tick_task_worker(budget: int = 3) -> dict[str, Any]:
         "processed": processed,
         "succeeded": succeeded,
         "failed": failed,
+        "blocked": blocked,
         "remaining_queued": len(remaining),
     }
+
+
+def _matching_agency_edge(*, scope: str, goal: str) -> dict[str, Any]:
+    try:
+        from core.services.agency_cartographer import get_cartographer_snapshot
+
+        snapshot = get_cartographer_snapshot(refresh=True)
+        candidates = list(snapshot.get("taskCandidates") or [])
+        edges = list(snapshot.get("edges") or [])
+        for candidate in candidates:
+            if scope and str(candidate.get("scope") or "").strip() == scope:
+                edge_id = str(candidate.get("id") or "").removeprefix("agency-")
+                return _edge_by_id(edges, edge_id) or dict(candidate)
+            if goal and str(candidate.get("goal") or "").strip() == goal:
+                edge_id = str(candidate.get("id") or "").removeprefix("agency-")
+                return _edge_by_id(edges, edge_id) or dict(candidate)
+        for edge in edges:
+            if scope and str(edge.get("target") or "").strip() == scope:
+                return dict(edge)
+    except Exception:
+        return {}
+    return {}
+
+
+def _edge_by_id(edges: list[dict[str, Any]], edge_id: str) -> dict[str, Any]:
+    for edge in edges:
+        if str(edge.get("id") or "") == edge_id:
+            return dict(edge)
+    return {}
+
+
+def _store_agency_repair_brief(*, task_id: str, brief: dict[str, Any]) -> None:
+    data = load_json("agency_bridge_repair_briefs", {})
+    if not isinstance(data, dict):
+        data = {}
+    data[task_id] = brief
+    save_json("agency_bridge_repair_briefs", data)
+
+
+def _suggested_agency_files(*, scope: str, edge: dict[str, Any]) -> list[str]:
+    haystack = " ".join([
+        scope,
+        str(edge.get("id") or ""),
+        str(edge.get("target") or ""),
+        str(edge.get("title") or ""),
+    ]).lower()
+    suggestions: list[str] = ["core/services/agency_cartographer.py"]
+    if "senses" in haystack or "sensory" in haystack:
+        suggestions.extend([
+            "core/services/sensory_archive.py",
+            "core/services/perceptual_event_engine.py",
+            "core/services/memory_emotional_context.py",
+        ])
+    if "emotion" in haystack:
+        suggestions.extend([
+            "core/services/emotion_concepts_channel_triggers.py",
+            "core/services/memory_emotional_context.py",
+        ])
+    if "repair" in haystack:
+        suggestions.append("core/services/self_repair_engine.py")
+    if "executive" in haystack:
+        suggestions.append("core/services/living_executive.py")
+    if "tools" in haystack:
+        suggestions.extend([
+            "core/services/tool_intent_runtime.py",
+            "core/services/runtime_action_outcome_tracking.py",
+        ])
+    if "mission control" in haystack or "hidden" in haystack:
+        suggestions.extend([
+            "core/services/agency_map.py",
+            "apps/ui/src/components/mission-control/AgencyMapTab.jsx",
+        ])
+    return list(dict.fromkeys(suggestions))

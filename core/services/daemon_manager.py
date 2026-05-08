@@ -153,6 +153,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 1440,
         "description": "Selective forgetting + re-discovery of signals",
     },
+    "memory_pruning": {
+        "module": "core.services.memory_pruning_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 360,
+        "description": "6t arkivering af entries med salience < 0.05 — learning to forget",
+    },
     "memory_maintenance": {
         "module": "core.services.memory_maintenance_daemon",
         "reset_var": "_last_tick_at",

@@ -51,6 +51,14 @@ _VALID_TRIGGER = {
 }
 
 
+_IMPORTANCE_BY_KIND: dict[str, float] = {
+    "observation": 0.4,
+    "fakta":       0.8,
+    "indsigt":     0.7,
+    "reference":   0.9,
+}
+
+
 @dataclass
 class BrainEntry:
     id: str
@@ -64,6 +72,7 @@ class BrainEntry:
     last_used_at: Optional[datetime]
     salience_base: float
     salience_bumps: int
+    importance: float  # 0.0–1.0, styrer hvor hurtigt entry glemmes
     related: list[str]
     trigger: str
     status: str
@@ -151,6 +160,7 @@ def render_entry_markdown(entry: BrainEntry) -> str:
         "trigger": entry.trigger,
         "salience_base": entry.salience_base,
         "salience_bumps": entry.salience_bumps,
+        "importance": entry.importance,
         "related": entry.related,
         "status": entry.status,
         "superseded_by": entry.superseded_by,
@@ -163,9 +173,10 @@ def render_entry_markdown(entry: BrainEntry) -> str:
 
 def entry_from_frontmatter(fm: dict, body: str) -> BrainEntry:
     """Build a BrainEntry from parsed frontmatter dict + body string."""
+    kind = fm["kind"]
     return BrainEntry(
         id=fm["id"],
-        kind=fm["kind"],
+        kind=kind,
         visibility=fm["visibility"],
         domain=fm["domain"],
         title=fm["title"],
@@ -175,6 +186,7 @@ def entry_from_frontmatter(fm: dict, body: str) -> BrainEntry:
         last_used_at=_parse_iso(fm.get("last_used_at")),
         salience_base=float(fm.get("salience_base", 1.0)),
         salience_bumps=int(fm.get("salience_bumps", 0)),
+        importance=float(fm.get("importance", _IMPORTANCE_BY_KIND.get(kind, 0.5))),
         related=list(fm.get("related") or []),
         trigger=fm.get("trigger", "spontaneous"),
         status=fm.get("status", "active"),
@@ -202,6 +214,7 @@ CREATE TABLE IF NOT EXISTS brain_index (
     last_used_at    TEXT,
     salience_base   REAL NOT NULL DEFAULT 1.0,
     salience_bumps  INTEGER NOT NULL DEFAULT 0,
+    importance      REAL NOT NULL DEFAULT 0.5,
     status          TEXT NOT NULL DEFAULT 'active',
     superseded_by   TEXT,
     file_hash       TEXT NOT NULL,
@@ -288,6 +301,7 @@ def write_entry(
     related: list[str] | None = None,
     source_url: str | None = None,
     source_chronicle: str | None = None,
+    importance: float | None = None,
     now: datetime | None = None,
 ) -> str:
     """Skriver en ny brain-entry til disk og indexerer den (uden embedding endnu).
@@ -298,11 +312,20 @@ def write_entry(
     new_id = new_brain_id()
     related = related or []
 
+    # Importance-gate: hvis ikke angivet, brug kind-baseret default
+    if importance is None:
+        importance = _IMPORTANCE_BY_KIND.get(kind, 0.5)
+    importance = max(0.0, min(1.0, importance))
+
+    # salience_base sættes fra importance — lavere importance = hurtigere glemsel
+    salience_base = importance
+
     entry = BrainEntry(
         id=new_id, kind=kind, visibility=visibility, domain=domain,
         title=title, content=content,
         created_at=now, updated_at=now, last_used_at=None,
-        salience_base=1.0, salience_bumps=0, related=related,
+        salience_base=salience_base, salience_bumps=0,
+        importance=importance, related=related,
         trigger=trigger, status="active", superseded_by=None,
         source_chronicle=source_chronicle, source_url=source_url,
     )
@@ -323,12 +346,12 @@ def write_entry(
         conn.execute(
             """INSERT INTO brain_index
                (id, path, kind, visibility, domain, title, created_at, updated_at,
-                last_used_at, salience_base, salience_bumps, status,
+                last_used_at, salience_base, salience_bumps, importance, status,
                 superseded_by, file_hash, embedding, embedding_dim, indexed_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 1.0, 0, 'active',
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 0, ?, 'active',
                        NULL, ?, NULL, NULL, ?)""",
             (new_id, rel_path, kind, visibility, domain, title,
-             _iso(now), _iso(now), fhash, _iso(now)),
+             _iso(now), _iso(now), salience_base, importance, fhash, _iso(now)),
         )
         for to_id in related:
             conn.execute(
@@ -387,12 +410,13 @@ _SALIENCE_FLOOR = 0.02
 
 
 def compute_effective_salience(entry: BrainEntry, now: datetime) -> float:
-    """Compute time-decayed salience with bump amplification.
+    """Compute time-decayed salience with bump amplification + importance gate.
 
     Formula:
-        effective = max(floor, base * exp(-days/halflife) * (1 + 0.3*log2(1+bumps)))
+        effective = max(floor, importance * decay * (1 + 0.3*log2(1+bumps)))
 
-    references never decay (halflife = inf).
+    importance bliver den øvre grænse — en entry med importance=0.3 kan max
+    have 0.3 i effektiv salience, uanset bumps. Det er importance-gaten.
     """
     last = entry.last_used_at or entry.created_at
     days = max(0.0, (now - last).total_seconds() / 86400.0)
@@ -403,7 +427,9 @@ def compute_effective_salience(entry: BrainEntry, now: datetime) -> float:
         decay = math.exp(-days / halflife)
     bumps_factor = math.log2(1 + entry.salience_bumps) if entry.salience_bumps > 0 else 0.0
     raw = entry.salience_base * decay * (1.0 + 0.3 * bumps_factor)
-    return max(_SALIENCE_FLOOR, raw)
+    # Importance-ceiling: effektiv salience kan aldrig overstige importance
+    effective = min(raw, entry.importance)
+    return max(_SALIENCE_FLOOR, effective)
 
 
 # ---------------------------------------------------------------------------
@@ -660,10 +686,10 @@ def rebuild_index_from_files() -> int:
                         """INSERT INTO brain_index
                            (id, path, kind, visibility, domain, title,
                             created_at, updated_at, last_used_at,
-                            salience_base, salience_bumps, status,
+                            salience_base, salience_bumps, importance, status,
                             superseded_by, file_hash, embedding,
                             embedding_dim, indexed_at)
-                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?)""",
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?)""",
                         (
                             fm["id"], rel, kind, fm["visibility"], fm["domain"],
                             fm["title"], fm["created_at"],
@@ -671,6 +697,7 @@ def rebuild_index_from_files() -> int:
                             fm.get("last_used_at"),
                             fm.get("salience_base", 1.0),
                             fm.get("salience_bumps", 0),
+                            float(fm.get("importance", _IMPORTANCE_BY_KIND.get(kind, 0.5))),
                             fm.get("status", "active"),
                             fm.get("superseded_by"),
                             fhash,
@@ -683,15 +710,16 @@ def rebuild_index_from_files() -> int:
                         """UPDATE brain_index
                            SET path=?, kind=?, visibility=?, domain=?, title=?,
                                updated_at=?, last_used_at=?, salience_base=?,
-                               salience_bumps=?, status=?, superseded_by=?,
-                               file_hash=?, embedding=NULL, embedding_dim=NULL,
-                               indexed_at=?
+                               salience_bumps=?, importance=?, status=?,
+                               superseded_by=?, file_hash=?, embedding=NULL,
+                               embedding_dim=NULL, indexed_at=?
                            WHERE id=?""",
                         (
                             rel, kind, fm["visibility"], fm["domain"], fm["title"],
                             fm.get("updated_at"), fm.get("last_used_at"),
                             fm.get("salience_base", 1.0),
                             fm.get("salience_bumps", 0),
+                            float(fm.get("importance", _IMPORTANCE_BY_KIND.get(kind, 0.5))),
                             fm.get("status", "active"),
                             fm.get("superseded_by"),
                             fhash,

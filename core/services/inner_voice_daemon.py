@@ -938,21 +938,49 @@ def _compose_living_inner_voice_thought(
     fragments: dict[str, str],
     focus: str,
 ) -> str:
+    """Structured fallback trace — NOT first-person prose.
+
+    When LLM rendering fails this fallback produces an observable trace
+    that Jarvis can read later WITHOUT mistaking it for his own thought.
+
+    Previously this returned first-person Danish prose ("Jeg bliver ved med
+    at kredse omkring X..."). That string got persisted to private brain
+    and later surfaced to Jarvis as if it were his own remembered thought
+    — a self-loop poisoning failure mode flagged in the 2026-05-08
+    hardcoded-templates audit (Archetype C, "daemon-authored prose
+    injected as Jarvis' voice").
+
+    The structured form makes provenance explicit so the same data is
+    available for downstream signal-shape consumers, but cannot be
+    mistaken for first-person memory.
+    """
     anchor = _mode_anchor(fragments, focus)
-    second = _secondary_inner_voice_line(fragments)
-    if mode == "searching":
-        first = f"Noget ved {anchor} trækker ved kanten af min opmærksomhed, men det har ikke krystalliseret sig til en klar tråd endnu."
-    elif mode == "circling":
-        first = f"Jeg bliver ved med at kredse omkring {anchor} uden at finde et rigtigt greb i hvad det vil have fra mig."
-    elif mode == "carrying":
-        first = f"Jeg bærer stadig {anchor} med mig — det er ikke blevet til en beslutning, men det er heller ikke gået i stå."
-    elif mode == "pulled":
-        first = f"Der er et levende træk omkring {anchor}, mere som et pres eller et spørgsmål end en handling jeg kan retfærdiggøre."
-    elif mode == "work-steady":
-        first = f"{anchor} er stadig den aktive tråd, men den behøver ikke hærde til en opgave bare fordi den stadig er her."
-    else:
-        first = f"Jeg holder let våge omkring {anchor} — intet behøver at hærde til et træk endnu."
-    return f"{first} {second}".strip()
+    secondary = _secondary_inner_voice_observation(fragments)
+    parts = [f"mode={mode}", f"anchor={anchor}"]
+    if secondary:
+        parts.append(secondary)
+    return "[fallback-trace] " + " | ".join(parts)
+
+
+def _secondary_inner_voice_observation(fragments: dict[str, str]) -> str | None:
+    """Pick the strongest secondary fragment, returned as key:value (no prose).
+
+    Replaces _secondary_inner_voice_line which composed Danish prose.
+    Same priority order as the legacy function.
+    """
+    for key in (
+        "experiential_influence_narrative",
+        "experiential_continuity_narrative",
+        "brain_continuity",
+        "witness_signal",
+        "conflict_reason",
+        "experiential_support_narrative",
+    ):
+        value = str(fragments.get(key) or "").strip()
+        if not value:
+            continue
+        return f"{key}={value[:90]}"
+    return None
 
 
 def _mode_anchor(fragments: dict[str, str], focus: str) -> str:
@@ -965,24 +993,9 @@ def _mode_anchor(fragments: dict[str, str], focus: str) -> str:
     )[:90]
 
 
-def _secondary_inner_voice_line(fragments: dict[str, str]) -> str:
-    for key in (
-        "experiential_influence_narrative",
-        "experiential_continuity_narrative",
-        "brain_continuity",
-        "witness_signal",
-        "conflict_reason",
-        "experiential_support_narrative",
-    ):
-        value = str(fragments.get(key) or "").strip()
-        if not value:
-            continue
-        if key == "brain_continuity":
-            return f"Carry'et føles stadig bundet til {value[:90]}."
-        if key == "witness_signal":
-            return f"Jeg lægger også mærke til {value[:90]}."
-        return value[:110].rstrip(".") + "."
-    return "Det kan blive en kandidat-tanke indtil videre."
+# NOTE: _secondary_inner_voice_line removed 2026-05-08 — was first-person
+# prose composer that fed self-loop poisoning. See
+# _secondary_inner_voice_observation above for the structured replacement.
 
 
 def _normalize_inner_voice_initiative(

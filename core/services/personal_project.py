@@ -537,14 +537,16 @@ def advance_active_project() -> dict[str, Any]:
 
     # LLM-generate autonomous entry
     prompt = (
-        "Du er Jarvis. Dit personlige projekt er:\n"
+        "Generér ÉN kort journal-entry (2-4 fri-form linjer på dansk) om "
+        "status på det aktive personlige projekt herunder. Output: "
+        "refleksion, ikke status-rapport. Ingen præambel, ingen "
+        "etiketter, kun entry-teksten.\n\n"
+        "Aktivt projekt:\n"
         f"  Navn: {active['name']}\n"
         f"  Hvorfor mit: {active.get('why_mine', '')}\n"
         f"  Beskrivelse: {active.get('description', '')}\n\n"
-        "Skriv ÉN kort journal-entry (2-4 sætninger) om hvor du er med projektet "
-        "lige nu. Ikke en status-rapport — en refleksion. Hvad trækker i dig? "
-        "Hvad har ændret sig? Hvad har du lagt mærke til?\n\n"
-        "Skriv som dig selv, til dig selv. Intet præambel. Kun entry'en."
+        "Spørg: Hvad trækker lige nu? Hvad har ændret sig? Hvad er "
+        "blevet lagt mærke til?"
     )
     entry_text = ""
     try:

@@ -329,14 +329,14 @@ _SOUND_PROMPTS = [
     (
         "Lydbilledet er klassificeret som '{category}' "
         "(amplitude: gennemsnit={mean:.4f}, variation={std:.4f}, tidspunkt={hour}:xx). "
-        "Skriv én kort sætning på dansk der beskriver stemningen i rummet. "
+        "Output: én kort linje på dansk der beskriver stemningen i rummet. "
         "Tænk på tidspunkt og intensitet — ikke blot kategorien. "
         "Undgå: 'det er stille', 'der er musik'. Vær konkret og sanselig."
     ),
     (
         "Lydniveauet er '{category}' (mean={mean:.4f}, std={std:.4f}) klokken ~{hour}. "
         "Hvad fortæller dette lydmønster om hvad der foregår i rummet? "
-        "Skriv én sætning på dansk — fokus på energi og tilstedeværelse."
+        "Output: én linje på dansk — fokus på energi og tilstedeværelse."
     ),
     (
         "Akustisk snapshot: kategori='{category}', amplitude={mean:.4f}, tid={hour}:xx. "
@@ -345,8 +345,8 @@ _SOUND_PROMPTS = [
     ),
     (
         "Lydklassifikation: '{category}' (variation={std:.4f} ift. niveau={mean:.4f}). "
-        "Skriv én sætning på dansk om den akustiske stemning — "
-        "som om du beskriver det til én der ikke er i rummet."
+        "Output: én linje på dansk om den akustiske stemning — "
+        "beskrevet til én der ikke er i rummet."
     ),
 ]
 

@@ -458,3 +458,26 @@ def test_inference_upgrades_confidence():
         ).fetchone()
     assert float(row["confidence"]) == 0.9
     assert row["source"] == "inferred-kind"
+
+
+def test_query_why_tool_by_event_id():
+    from core.tools.simple_tools import _exec_query_why
+    a, b, c = _setup_chain_a_b_c()
+    result = _exec_query_why({"event_id": c, "max_depth": 5})
+    assert result["status"] == "ok"
+    assert "chain" in result
+    assert any(step["event"]["id"] == a for step in result["chain"])
+
+
+def test_query_why_tool_by_event_kind_finds_latest():
+    from core.tools.simple_tools import _exec_query_why
+    a, b, c = _setup_chain_a_b_c()
+    result = _exec_query_why({"event_kind": "runtime.chain_c", "max_depth": 5})
+    assert result["status"] == "ok"
+    assert result["root_event"]["id"] == c
+
+
+def test_query_why_tool_unknown_event_kind_returns_error():
+    from core.tools.simple_tools import _exec_query_why
+    result = _exec_query_why({"event_kind": "no.such.kind"})
+    assert result["status"] == "error"

@@ -1412,6 +1412,40 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "query_why",
+            "description": (
+                "Spørg causal graph hvorfor en event skete. Traverser baglæns "
+                "gennem causal_edges. Giv enten event_id (specifik) eller "
+                "event_kind (seneste event af den kind bruges). Returnerer "
+                "kæden af forældre-events op til max_depth."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "event_id": {
+                        "type": "integer",
+                        "description": "Specifik event-id at starte fra.",
+                    },
+                    "event_kind": {
+                        "type": "string",
+                        "description": "Brug seneste event af denne kind (fx 'tool.error', 'behavioral_decision_review.broken').",
+                    },
+                    "max_depth": {
+                        "type": "integer",
+                        "description": "Max chain-dybde, default 5.",
+                    },
+                    "min_confidence": {
+                        "type": "number",
+                        "description": "Filter low-confidence edges, default 0.5.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "send_ntfy",
             "description": "Send a push notification to Bjørn's phone via ntfy (jarvis-heartbeat topic). Best for short alerts, reminders, and silent background notifications. Very fast and reliable.",
             "parameters": {
@@ -4474,6 +4508,46 @@ def _exec_list_attachments(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "text": f"list_attachments error: {exc}"}
 
 
+def _exec_query_why(args: dict[str, Any]) -> dict[str, Any]:
+    """Query the causal graph for why an event happened.
+
+    Either event_id (specific event) or event_kind (latest of kind).
+    Returns chain of parent events backward up to max_depth (default 5).
+    """
+    from core.runtime.db import connect
+    from core.services.causal_graph import query_causal_chain
+
+    event_id = args.get("event_id")
+    event_kind = str(args.get("event_kind") or "").strip()
+    max_depth = int(args.get("max_depth") or 5)
+    min_confidence = float(args.get("min_confidence") or 0.5)
+
+    if event_id is None and not event_kind:
+        return {"status": "error", "error": "must supply event_id or event_kind"}
+
+    if event_id is None:
+        with connect() as c:
+            row = c.execute(
+                "SELECT id FROM events WHERE kind = ? "
+                "ORDER BY id DESC LIMIT 1",
+                (event_kind,),
+            ).fetchone()
+        if not row:
+            return {
+                "status": "error",
+                "error": f"no event found with kind={event_kind}",
+            }
+        event_id = int(row["id"])
+
+    chain = query_causal_chain(
+        event_id=int(event_id),
+        direction="backward",
+        max_depth=max_depth,
+        min_confidence=min_confidence,
+    )
+    return {"status": "ok", **chain}
+
+
 def _exec_send_ntfy(args: dict[str, Any]) -> dict[str, Any]:
     message = str(args.get("message") or "").strip()
     if not message:
@@ -5800,6 +5874,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_attachment": _exec_read_attachment,
     "list_attachments": _exec_list_attachments,
     "send_ntfy": _exec_send_ntfy,
+    "query_why": _exec_query_why,
     "send_webchat_message": _exec_send_webchat_message,
     "send_discord_dm": _exec_send_discord_dm,
     "discord_status": _exec_discord_status,

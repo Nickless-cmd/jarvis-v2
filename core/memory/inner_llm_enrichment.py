@@ -263,7 +263,7 @@ def _resolve_auth_header(target: dict) -> dict[str, str]:
                 headers["X-GitHub-Api-Version"] = "2022-11-28"
         except Exception:
             logger.warning("inner-llm-enrichment: failed to get github copilot token")
-    elif provider in {"openai", "groq", "openrouter", "sambanova", "mistral", "nvidia-nim"}:
+    elif provider in {"openai", "groq", "openrouter", "sambanova", "mistral", "nvidia-nim", "deepseek"}:
         try:
             credentials = get_provider_credentials(
                 profile=auth_profile,
@@ -414,6 +414,12 @@ def _call_remote_chat(
     provider = str(target.get("provider") or "").strip()
     model = str(target.get("model") or "").strip()
     base_url = str(target.get("base_url") or "").rstrip("/")
+    # Inner-enrichment is short reflective text; thinking-mode wastes the
+    # _MAX_OUTPUT_TOKENS budget on reasoning_content (which counts toward
+    # the cap) and leaves no room for actual content → empty-response.
+    # Swap thinking-model aliases to the non-thinking compat alias.
+    if provider == "deepseek" and model in ("deepseek-v4-flash", "deepseek-reasoner"):
+        model = "deepseek-chat"
     payload = json.dumps(
         {
             "model": model,

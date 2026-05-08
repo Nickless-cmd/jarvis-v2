@@ -43,6 +43,7 @@ _ALLOWLIST = frozenset({
     "channel.message_inbound",
     "memory.seed_triggered", "memory.seed_fulfilled",
     "identity.drift_detected", "heartbeat.conflict_resolved",
+    "runtime.agentic_round_start",
 })
 
 _KIND_RULES: dict[str, set[str]] = {

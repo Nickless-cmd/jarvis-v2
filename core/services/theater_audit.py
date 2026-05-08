@@ -118,11 +118,23 @@ def _scan_findings() -> list[dict[str, Any]]:
         except Exception:
             continue
         rel = str(path.relative_to(_REPO_ROOT))
+        is_python = path.suffix.lower() == ".py"
+        in_docstring = False  # Tracks multi-line docstring state for .py files
         for line_no, line in enumerate(text.splitlines(), start=1):
-            if path.suffix.lower() == ".py" and _skip_python_line(line):
-                continue
+            if is_python:
+                in_docstring, skip = _python_line_state(line, in_docstring)
+                if skip:
+                    continue
+                # Strip trailing inline comments before pattern-matching so
+                # comment-text inside descriptive comments doesn't trigger
+                # (e.g. `_X = 5  # min minutes between inner voice runs`).
+                # Only strip when there's a `  #` or `\t#` separator so we
+                # don't break URL-fragments or strings containing `#`.
+                scan_line = _strip_trailing_inline_comment(line)
+            else:
+                scan_line = line
             for pattern in _PATTERNS:
-                if pattern["regex"].search(line):
+                if pattern["regex"].search(scan_line):
                     findings.append({
                         "id": f"{rel}:{line_no}:{pattern['id']}",
                         "path": rel,
@@ -163,17 +175,73 @@ def _scan_files() -> list[Path]:
     return files
 
 
-def _skip_python_line(line: str) -> bool:
+def _python_line_state(line: str, in_docstring: bool) -> tuple[bool, bool]:
+    """Track multi-line docstring state and decide whether to skip this line.
+
+    Returns (new_in_docstring_state, skip_this_line).
+
+    Replaces the older single-line-only _skip_python_line which couldn't
+    skip docstring CONTENT (only the opening line). That meant module
+    docstrings, function docstrings, and any prose embedded in triple-
+    quoted strings would still get scanned and produce false positives
+    for self-referential daemons (e.g. inner_voice_daemon mentioning
+    "inner voice" in its own docstring).
+    """
     stripped = line.strip()
-    if not stripped:
-        return True
-    if stripped.startswith("#"):
-        return True
+
+    if in_docstring:
+        # Closing triple-quote ends the docstring section; skip the line itself.
+        if '"""' in line or "'''" in line:
+            return False, True
+        return True, True
+
+    # Detect docstring open. A line that starts with """ AND has another """
+    # later means it's a one-line docstring → skip but stay closed.
     if stripped.startswith(('"""', "'''")):
-        return True
+        opener = '"""' if stripped.startswith('"""') else "'''"
+        rest = stripped[3:]
+        if opener in rest:
+            return False, True  # one-liner docstring
+        return True, True  # multi-line docstring opens
+
+    if not stripped:
+        return False, True
+    if stripped.startswith("#"):
+        return False, True
     if stripped.startswith(("def ", "class ", "import ", "from ")):
-        return True
-    return False
+        return False, True
+    # Inline comment after code: drop the comment portion before scanning.
+    # If after stripping the inline comment there's nothing significant
+    # left (just a constant assignment etc.), skip the line.
+    # Conservative: only skip if the line is ONLY a comment-bearing
+    # constant/variable assignment with `# ...` trailing.
+    if "  #" in line or "\t#" in line:
+        # Don't fully skip — let the scanner check the code part. The
+        # comment text itself can still trigger, but inline comments are
+        # rare false-positive sources compared to docstrings.
+        pass
+    return False, False
+
+
+def _skip_python_line(line: str) -> bool:
+    """Backwards-compatible wrapper. Use _python_line_state for new code."""
+    _, skip = _python_line_state(line, False)
+    return skip
+
+
+def _strip_trailing_inline_comment(line: str) -> str:
+    """Drop trailing `  # ...` or `\\t# ...` comment so its prose isn't scanned.
+
+    Conservative: only triggers when the `#` is preceded by whitespace
+    (so URL fragments and `#` inside string literals stay intact). Won't
+    handle every edge case but covers the common ``CONST = 5  # comment``
+    pattern that produces false positives in self-referential modules.
+    """
+    for sep in ("  #", "\t#"):
+        idx = line.find(sep)
+        if idx >= 0:
+            return line[:idx]
+    return line
 
 
 def _rank_files(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:

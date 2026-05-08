@@ -1126,6 +1126,8 @@ def _ensure_decision_trigger_column(conn: sqlite3.Connection) -> None:
             "PRAGMA table_info(behavioral_decisions)"
         ).fetchall()
     }
+    if not existing_cols:
+        return
     if "trigger_name" not in existing_cols:
         try:
             conn.execute(

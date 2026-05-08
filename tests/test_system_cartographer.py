@@ -23,6 +23,7 @@ def test_system_cartographer_builds_broad_inventory() -> None:
     assert "coverage" in surface
     assert "systemHealth" in surface
     assert "autoTask" in surface
+    assert "theaterAutoTask" in surface
     assert "theaterAudit" in surface
     assert "theater_findings" in surface["summary"]
     assert surface["theaterAudit"]["mode"] in {
@@ -63,3 +64,26 @@ def test_system_cartographer_auto_enqueues_observability_task(monkeypatch):
     if surface["autoTask"]["status"] == "enqueued":
         assert created[0]["kind"] == "observability_bridge_repair"
         assert created[0]["origin"] == "system-cartographer"
+
+
+def test_system_cartographer_auto_enqueues_theater_task(monkeypatch):
+    from core.services import system_cartographer as cart
+    from core.services import runtime_tasks
+
+    created = []
+
+    def fake_create_task(**kwargs):
+        task = {"task_id": "task-theater", "status": "queued", **kwargs}
+        created.append(task)
+        return task
+
+    monkeypatch.setattr(cart, "_find_existing_observability_task", lambda candidate: {"task_id": "existing"})
+    monkeypatch.setattr(cart, "_find_existing_theater_task", lambda candidate: None)
+    monkeypatch.setattr(runtime_tasks, "create_task", fake_create_task)
+
+    surface = cart.build_system_cartographer_surface(auto_enqueue=True)
+
+    assert surface["theaterAutoTask"]["status"] in {"enqueued", "no-candidate", "below-threshold"}
+    if surface["theaterAutoTask"]["status"] == "enqueued":
+        assert created[0]["kind"] == "theater_refactor"
+        assert created[0]["origin"] == "theater-audit"

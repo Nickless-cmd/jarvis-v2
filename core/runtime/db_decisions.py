@@ -33,6 +33,7 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
             directive TEXT NOT NULL,
             rationale TEXT,
             trigger_cue TEXT,
+            trigger_name TEXT,
             status TEXT NOT NULL DEFAULT 'active',
             priority INTEGER NOT NULL DEFAULT 50,
             created_at TEXT NOT NULL,

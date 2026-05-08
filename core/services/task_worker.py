@@ -26,6 +26,7 @@ _DEFAULT_KINDS: tuple[str, ...] = (
     "open-loop-follow-up",
     "agency_bridge_repair",
     "observability_bridge_repair",
+    "theater_refactor",
 )
 
 
@@ -134,6 +135,45 @@ def _handle_observability_bridge_repair(task: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def _handle_theater_refactor(task: dict[str, Any]) -> dict[str, str]:
+    scope = str(task.get("scope") or "").strip()
+    goal = str(task.get("goal") or "").strip()
+    task_id = str(task.get("task_id") or "")
+    audit_file = _matching_theater_file(scope=scope)
+    brief = {
+        "task_id": task_id,
+        "created_at": datetime.now(UTC).isoformat(),
+        "status": "awaiting-visible-refactor",
+        "scope": scope,
+        "goal": goal,
+        "audit_file": audit_file,
+        "recommended_next_action": (
+            "Convert this layer from narrative-first prompting to structured "
+            "appraisal state. Preserve voice as optional rendering, but make "
+            "evidence, confidence, expiry, and allowed runtime effects the durable truth."
+        ),
+        "refactor_contract": {
+            "state_before_prose": True,
+            "requires_evidence": True,
+            "requires_confidence": True,
+            "requires_decay_or_expiry": True,
+            "requires_allowed_effects": True,
+            "first_person_text_is_rendering_only": True,
+        },
+        "suggested_files": _suggested_theater_files(scope=scope),
+    }
+    _store_theater_refactor_brief(task_id=task_id, brief=brief)
+    return {
+        "status": "blocked",
+        "summary": (
+            "Theater refactor brief prepared; source changes require "
+            f"visible/coding lane approval. {scope or goal}"[:240]
+        ),
+        "artifact_ref": f"state:theater_refactor_briefs:{task_id}",
+        "blocked_reason": "theater refactor brief ready; awaiting approved implementation lane",
+    }
+
+
 def _execute_task(task: dict[str, Any]) -> None:
     """Execute a single task and persist its final status. Never raises."""
     kind = str(task.get("kind") or "")
@@ -157,6 +197,16 @@ def _execute_task(task: dict[str, Any]) -> None:
             return
         elif kind == "observability_bridge_repair":
             result = _handle_observability_bridge_repair(task)
+            runtime_tasks.update_task(
+                task_id,
+                status=result["status"],
+                blocked_reason=result["blocked_reason"],
+                result_summary=result["summary"],
+                artifact_ref=result["artifact_ref"],
+            )
+            return
+        elif kind == "theater_refactor":
+            result = _handle_theater_refactor(task)
             runtime_tasks.update_task(
                 task_id,
                 status=result["status"],
@@ -270,6 +320,29 @@ def _store_observability_repair_brief(*, task_id: str, brief: dict[str, Any]) ->
     save_json("observability_bridge_repair_briefs", data)
 
 
+def _store_theater_refactor_brief(*, task_id: str, brief: dict[str, Any]) -> None:
+    data = load_json("theater_refactor_briefs", {})
+    if not isinstance(data, dict):
+        data = {}
+    data[task_id] = brief
+    save_json("theater_refactor_briefs", data)
+
+
+def _matching_theater_file(*, scope: str) -> dict[str, Any]:
+    if not scope:
+        return {}
+    try:
+        from core.services.theater_audit import build_theater_audit_surface
+
+        surface = build_theater_audit_surface()
+        for item in surface.get("files") or []:
+            if str(item.get("path") or "").strip() == scope:
+                return dict(item)
+    except Exception:
+        return {}
+    return {}
+
+
 def _suggested_agency_files(*, scope: str, edge: dict[str, Any]) -> list[str]:
     haystack = " ".join([
         scope,
@@ -317,4 +390,23 @@ def _suggested_observability_files(*, scope: str, service: str) -> list[str]:
     ])
     if service == "identity_composer":
         suggestions.insert(0, "core/services/identity_composer.py")
+    return list(dict.fromkeys(suggestions))
+
+
+def _suggested_theater_files(*, scope: str) -> list[str]:
+    suggestions = []
+    if scope:
+        suggestions.append(scope)
+    suggestions.extend([
+        "core/services/theater_audit.py",
+        "core/services/system_cartographer.py",
+        "core/services/agency_map.py",
+        "apps/ui/src/components/mission-control/AgencyMapTab.jsx",
+    ])
+    if scope.endswith("cognitive_state_assembly.py"):
+        suggestions.extend([
+            "core/services/cognitive_state_assembly.py",
+            "core/services/affective_meta_state.py",
+            "core/services/somatic_daemon.py",
+        ])
     return list(dict.fromkeys(suggestions))

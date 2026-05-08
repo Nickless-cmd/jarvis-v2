@@ -141,6 +141,7 @@ ALLOWED_EVENT_FAMILIES = {
     "decision_signal",  # decisions-as-signals refactor (added 2026-05-07)
     "contradiction",    # contradiction_engine port (added 2026-05-07)
     "emergence",        # emergence pattern detection port (added 2026-05-07)
+    "identity",         # identity_drift_daemon (added 2026-05-08)
 }
 
 

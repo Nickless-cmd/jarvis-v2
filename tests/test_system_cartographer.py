@@ -10,6 +10,12 @@ def test_system_cartographer_builds_broad_inventory() -> None:
     assert surface["summary"]["services"] > 50
     assert surface["summary"]["daemons"] > 10
     assert surface["summary"]["edges"] > 0
+    assert "observed_events" in surface["summary"]
+    assert "observed_causal_edges" in surface["summary"]
+    assert surface["causalRuntime"]["mode"] in {
+        "causal-runtime-v1",
+        "causal-runtime-unavailable",
+    }
     assert "services" in surface["nodes"]
     assert "event_families" in surface["nodes"]
 

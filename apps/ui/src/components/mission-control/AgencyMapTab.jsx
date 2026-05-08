@@ -349,6 +349,9 @@ export function AgencyMapTab() {
         <strong style={s({ fontSize: 12, color: T.text1 })}>System Cartographer</strong>
         <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4 })}>
           services {systemSummary.services || 0} · daemons {systemSummary.daemons || 0} · surfaces {systemSummary.surfaces || 0} · events {systemSummary.event_families || 0} · dark {systemSummary.dark_edges || 0}
+          <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
+            observed events {systemSummary.observed_events || 0} · causal edges {systemSummary.observed_causal_edges || 0} · family edges {systemSummary.observed_causal_family_edges || 0}
+          </span>
         </span>
         <StatusPill status={systemCartographer.mode === 'system-cartographer-v1' ? 'active' : 'missing'} />
       </section>

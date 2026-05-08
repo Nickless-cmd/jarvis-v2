@@ -606,9 +606,10 @@ def _find_existing_theater_task(candidate: dict[str, Any]) -> dict[str, Any] | N
         goal = str(candidate.get("goal") or "").strip()
         for status in ("queued", "running", "blocked"):
             for task in list_tasks(status=status, kind=_THEATER_AUTO_TASK_KIND, limit=50):
-                if str(task.get("scope") or "").strip() == scope:
+                task_scope = str(task.get("scope") or "").strip()
+                if scope and task_scope == scope:
                     return task
-                if str(task.get("goal") or "").strip() == goal:
+                if not scope and str(task.get("goal") or "").strip() == goal:
                     return task
     except Exception:
         return None

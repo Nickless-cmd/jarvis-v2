@@ -732,6 +732,11 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.prompt_sections.forgetting_nudge import forgetting_nudge_section
+        _awareness_add(24, "forgetting nudge", forgetting_nudge_section())
+    except Exception:
+        pass
+    try:
         from core.services.r2_5_blocking_gate import r2_5_block_section
         from core.services.reasoning_classifier import classify_reasoning_tier
         _tier = str(classify_reasoning_tier(user_message).get("tier") or "fast")

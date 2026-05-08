@@ -174,6 +174,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 15,
         "description": "15min causal-graph inference (three-tier matching) — populates causal_edges from events allowlist, emits causal.inference_stats",
     },
+    "narrative_summary": {
+        "module": "core.services.narrative_summary_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 15,
+        "description": "Phase 2.5 of causal graph — every 15 min, asks cheap LLM to summarise the most recent backward causal chain into a 1-2 sentence Danish narrative; persists as narrative.summary event",
+    },
     "memory_maintenance": {
         "module": "core.services.memory_maintenance_daemon",
         "reset_var": "_last_tick_at",

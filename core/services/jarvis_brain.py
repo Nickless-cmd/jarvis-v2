@@ -275,8 +275,25 @@ def connect_index() -> sqlite3.Connection:
     p.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(p))
     conn.executescript(_INDEX_SCHEMA)
+    _ensure_index_schema_migrations(conn)
     conn.commit()
     return conn
+
+
+def _ensure_index_schema_migrations(conn: sqlite3.Connection) -> None:
+    """Bring pre-existing brain_index tables up to the current schema.
+
+    ``CREATE TABLE IF NOT EXISTS`` does not add columns to old SQLite tables.
+    Keep this idempotent so daemon startup can safely repair schema drift.
+    """
+    cols = {
+        str(row[1])
+        for row in conn.execute("PRAGMA table_info(brain_index)").fetchall()
+    }
+    if "importance" not in cols:
+        conn.execute(
+            "ALTER TABLE brain_index ADD COLUMN importance REAL NOT NULL DEFAULT 0.5"
+        )
 
 
 def _slugify(s: str, max_len: int = 40) -> str:

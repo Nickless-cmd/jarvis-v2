@@ -158,6 +158,48 @@ def test_ensure_index_creates_tables(tmp_path, monkeypatch):
     conn.close()
 
 
+def test_connect_index_migrates_missing_importance_column(tmp_path, monkeypatch):
+    import sqlite3
+    from core.services import jarvis_brain
+
+    monkeypatch.setattr(jarvis_brain, "_state_root", lambda: tmp_path)
+    db_path = tmp_path / "jarvis_brain_index.sqlite"
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.execute(
+            """
+            CREATE TABLE brain_index (
+                id TEXT PRIMARY KEY,
+                path TEXT NOT NULL UNIQUE,
+                kind TEXT NOT NULL,
+                visibility TEXT NOT NULL,
+                domain TEXT NOT NULL,
+                title TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                last_used_at TEXT,
+                salience_base REAL NOT NULL DEFAULT 1.0,
+                salience_bumps INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'active',
+                superseded_by TEXT,
+                file_hash TEXT NOT NULL,
+                embedding BLOB,
+                embedding_dim INTEGER,
+                indexed_at TEXT NOT NULL
+            )
+            """
+        )
+
+    conn = jarvis_brain.connect_index()
+    cols = {
+        row[1]: row
+        for row in conn.execute("PRAGMA table_info(brain_index)").fetchall()
+    }
+    conn.close()
+
+    assert "importance" in cols
+    assert cols["importance"][4] == "0.5"
+
+
 def test_write_and_read_entry_roundtrip(tmp_path, monkeypatch):
     from core.services import jarvis_brain
     monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path / "ws")

@@ -3547,22 +3547,51 @@ def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[st
 
 
 def _emotion_concept_tone_section() -> str | None:
-    """Tone instructions derived from active emotion concepts (Layer 2a).
+    """Affect-relevant runtime substrate (replaces tone-hint injection).
 
-    Active concepts above intensity threshold contribute Jarvis-voice tone
-    instructions. Empty when no qualifying concept is active.
+    Design: "Giv mig dataen, ikke dommen" (2026-05-07). Instead of telling
+    Jarvis which tone-tags are active ("warmth", "doubt"), we show him the
+    raw events that affect-coding would have read. He infers his own state.
+
+    Killswitch: ``prompt_affect_substrate_enabled`` (default True). The
+    legacy tone-hint path is gated behind ``prompt_affect_tone_hints_enabled``
+    (default False) — flip both to roll back instantly without code changes.
     """
     try:
-        from core.services.affect_modulation import compute_affect_tone_hints
-        hints = compute_affect_tone_hints()
+        from core.runtime.settings import load_settings
+        s = load_settings()
+        substrate_enabled = bool(getattr(s, "prompt_affect_substrate_enabled", True))
+        tone_hints_enabled = bool(getattr(s, "prompt_affect_tone_hints_enabled", False))
     except Exception:
+        substrate_enabled, tone_hints_enabled = True, False
+
+    if substrate_enabled:
+        try:
+            from core.services.affect_modulation import compute_affect_substrate
+            lines = compute_affect_substrate()
+        except Exception:
+            lines = []
+        if lines:
+            return (
+                "## Nylige affektivt-relevante events\n"
+                + "\n".join(f"- {ln}" for ln in lines)
+            )
         return None
-    if not hints:
-        return None
-    return (
-        "## Aktive emotion concepts\n"
-        + "\n".join(f"- {h}" for h in hints)
-    )
+
+    if tone_hints_enabled:
+        try:
+            from core.services.affect_modulation import compute_affect_tone_hints
+            hints = compute_affect_tone_hints()
+        except Exception:
+            return None
+        if not hints:
+            return None
+        return (
+            "## Aktive emotion concepts\n"
+            + "\n".join(f"- {h}" for h in hints)
+        )
+
+    return None
 
 
 def _self_model_signal_tracking_section() -> str | None:

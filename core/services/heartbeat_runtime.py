@@ -4616,7 +4616,7 @@ def _heartbeat_prompt_text(base_text: str) -> str:
             "Heartbeat response contract:",
             "- Return only one compact JSON object.",
             "- decision_type must be one of: noop, propose, execute, ping, initiative.",
-            "- Use initiative when you see pending initiatives from inner voice that you want to act on.",
+            "- Use initiative when you see pending items from the initiative-queue that you want to act on.",
             "- Prefer execute or initiative over propose when you can take one bounded internal step now without user approval.",
             "- summary must be short and concrete.",
             "- reason must explain why this decision is appropriate now.",
@@ -6284,7 +6284,7 @@ def _execute_heartbeat_internal_action(
                     run_id=tick_id,
                     focus=focus,
                     summary=f"Acted on initiative from {initiative.get('source', 'unknown')}: {focus}",
-                    detail="Initiative detected by inner voice and acted on by heartbeat.",
+                    detail="Initiative surfaced via initiative-queue and acted on by heartbeat.",
                     source_signals=f"initiative-queue:{initiative_id}",
                     confidence="medium",
                     created_at=datetime.now(UTC).isoformat(),
@@ -7176,13 +7176,16 @@ def _execute_heartbeat_internal_action(
             )
             loop_count = len(open_loops)
 
-            from core.services.identity_composer import build_identity_preamble
+            # Daily-note rendering: substrate-grounded, no identity-priming.
+            # The observation lands in daily memory file, so it must be tied
+            # to actual runtime signals rather than poetic floskler.
             system_prompt = (
-                f"{build_identity_preamble()} Skriv én kort dansk sætning som en privat "
-                "observation til dig selv om hvad der sker lige nu. Maks "
-                "20 ord. Vær konkret — referér til en faktisk åben loop, "
-                "et signal, eller noget specifikt fra runtime. Undgå "
-                "klichéer som 'Jeg mærker' eller 'Alt kører smooth'."
+                "Generér én kort dansk linje (max 20 ord) der refererer til "
+                "et konkret runtime-signal: en åben loop, et event, eller "
+                "noget specifikt fra de oplysninger der følger. Output: ren "
+                "tekst, ingen quotes, ingen bullets, ingen klichéer. "
+                "Undgå generiske vendinger som vag emotion-prose eller "
+                "'alt kører smooth'-formuleringer. Hold dig til substratet."
             )
             user_message = (
                 f"open_loops={loop_count} | "

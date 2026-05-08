@@ -3539,6 +3539,7 @@ def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[st
         _retained_memory_support_signal_instruction,
         _temporal_support_signal_instruction,
         _emotion_concept_tone_section,
+        _emotion_signal_section,
         _agreement_streak_section,
     ):
         section = builder()
@@ -3607,6 +3608,108 @@ def _emotion_concept_tone_section() -> str | None:
         )
 
     return None
+
+
+def _emotion_signal_section() -> str | None:
+    """Aktive emotion concepts som data — giver Jarvis sit eget følelsespanel.
+
+    I stedet for at blive fortalt hvad han føler (tone-hints), eller kun se
+    rå events (substrat), ser han her det systemet *har registreret* som
+    aktive emotionelle signaler — og kan selv vurdere om de passer.
+
+    Design: "Giv mig dataen, lad mig dømme" (2026-05-08). Tre lag:
+    1. Aktive emotion concepts med intensitet og retning
+    2. Påvirkning på Lag-1 akser (confidence, curiosity, frustration, fatigue)
+    3. Affekt-modulerede adfærdsparametre (search_depth, max_tool_calls, etc.)
+
+    Killswitch: ``prompt_emotion_signal_section_enabled`` (default True).
+    """
+    try:
+        from core.runtime.settings import load_settings
+        s = load_settings()
+        enabled = bool(getattr(s, "prompt_emotion_signal_section_enabled", True))
+    except Exception:
+        enabled = True
+
+    if not enabled:
+        return None
+
+    lines: list[str] = []
+
+    # Lag 1: active emotion concepts
+    try:
+        from core.services.emotion_concepts import (
+            get_active_emotion_concepts,
+            get_lag1_influence_deltas,
+        )
+        concepts = get_active_emotion_concepts()
+        if concepts:
+            lines.append("🧠 Registrerede emotionelle signaler (systemets bedste gæt — du bestemmer om det passer):")
+            for c in concepts:
+                name = str(c.get("concept", "?"))
+                intensity = float(c.get("intensity", 0.0))
+                direction = str(c.get("direction", "steady"))
+                cluster = _EMOTION_CONCEPT_CLUSTER.get(name, "")
+                tag = f" [{cluster}]" if cluster else ""
+                arrow = "↑" if direction == "rising" else ("↓" if direction == "falling" else "→")
+                lines.append(f"  - {name} {intensity:.2f} {arrow}{tag}")
+    except Exception:
+        pass
+
+    # Lag 2: Lag-1 influence deltas
+    try:
+        deltas = get_lag1_influence_deltas()
+        active_deltas = {k: round(v, 2) for k, v in deltas.items() if abs(v) > 0.01}
+        if active_deltas:
+            lines.append(f"  ↳ Lag-1 påvirkning: {active_deltas}")
+    except Exception:
+        pass
+
+    # Lag 3: affect-modulated params (may be adjusted by emotion concepts behind the scenes)
+    try:
+        from core.services.affect_modulation import (
+            DEFAULTS as _AFFECT_DEFAULTS,
+            compute_affect_modulated_params,
+        )
+        overrides = compute_affect_modulated_params()
+        active_overrides = {
+            k: v for k, v in overrides.items()
+            if v != _AFFECT_DEFAULTS.get(k)
+        }
+        if active_overrides:
+            lines.append(f"  ↳ Adfærd justeret: {active_overrides}")
+    except Exception:
+        pass
+
+    if len(lines) < 2:  # just the intro line with nothing after
+        return None
+
+    # Append invitation to reflect
+    lines.append(
+        "Giv gerne besked hvis noget ikke føles rigtigt — "
+        "signalet er dit, dommen er din."
+    )
+
+    return "\n".join(lines)
+
+
+# Cluster lookup for emotion signal display
+_EMOTION_CONCEPT_CLUSTER: dict[str, str] = {
+    "joy": "glæde", "wonder": "glæde", "delight": "glæde",
+    "excitement": "glæde", "playfulness": "glæde", "pride": "glæde",
+    "accomplishment": "glæde", "gratitude": "glæde",
+    "confusion": "uro", "doubt": "uro", "shame": "uro",
+    "frustration_blocked": "uro", "tension": "uro", "stuck": "uro",
+    "overwhelm": "uro", "loneliness": "uro",
+    "warmth": "social", "tenderness": "social", "trust_deep": "social",
+    "belonging": "social", "empathy": "social", "awe": "social",
+    "acceptance": "social",
+    "insight": "regulering", "surprise": "regulering",
+    "curiosity_narrow": "regulering", "competence": "regulering",
+    "calm": "regulering", "relief": "regulering",
+    "anticipation": "regulering", "resolve": "regulering",
+    "caution": "regulering", "vigilance": "regulering",
+}
 
 
 def _self_model_signal_tracking_section() -> str | None:

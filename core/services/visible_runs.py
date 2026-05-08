@@ -1215,6 +1215,18 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         )
                         _agentic_loop_exit_reason = "provider-not-supported"
                         break
+                    # Causal graph (2026-05-08): publish round-start sentinel
+                    # and set EventContext so all event_bus.publish() calls
+                    # inside this iteration auto-link to round-start as parent.
+                    # NB: vi resetter ikke mellem iterationer — næste iteration
+                    # SETter bare til sin nye værdi. Endelig reset sker EFTER
+                    # for-loop'en (se neden). break/continue/exception under
+                    # iteration leaker kort men næste iteration overskriver.
+                    from core.eventbus.context import set_current_event as _set_round_ctx
+                    _round_event_id = _publish_agentic_round_start(
+                        run_id=run.run_id, round_num=_agentic_round + 1,
+                    )
+                    _set_round_ctx(_round_event_id)
                     # Measure inter-round gap: tid fra forrige round-end til
                     # at denne round faktisk begynder LLM-arbejde. Bjørn
                     # observerede 7. maj at gap'et nogle gange føles meget
@@ -1915,6 +1927,14 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     run.run_id, _agentic_loop_exit_reason,
                     locals().get("_agentic_round", -1) + 1,
                 )
+                # Causal graph: clear EventContext after the loop so
+                # subsequent code outside doesn't auto-link to a stale
+                # round_event_id from the last iteration.
+                try:
+                    from core.eventbus.context import set_current_event
+                    set_current_event(None)
+                except Exception:
+                    pass
 
                 # ── End agentic loop ───────────────────────────────────────────────
 
@@ -5617,3 +5637,26 @@ def _visible_trace_payload(run: VisibleRun) -> dict[str, object]:
         "run_id": run.run_id,
         **trace,
     }
+
+
+def _publish_agentic_round_start(*, run_id: str, round_num: int) -> int:
+    """Publish runtime.agentic_round_start event and return its event_id.
+
+    Used by the causal graph layer (commit 894a214) to anchor all events
+    inside an agentic round to a stable round-start parent. Inferens-
+    daemonen kan derefter trække chains via shared run_id eller via
+    EventContext-auto-pickup når events publiceres inden i round'en.
+    """
+    from core.eventbus.bus import event_bus
+    from core.runtime.db import connect
+    event_bus.publish(
+        "runtime.agentic_round_start",
+        {"run_id": run_id, "round": round_num},
+    )
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT id FROM events WHERE kind = ? "
+            "ORDER BY id DESC LIMIT 1",
+            ("runtime.agentic_round_start",),
+        ).fetchone()
+    return int(row["id"]) if row else 0

@@ -22,6 +22,7 @@ men ikke kritisk identity. Dropper først hvis budget overflows.
 from __future__ import annotations
 
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,26 @@ logger = logging.getLogger(__name__)
 # billede uden at fylde prompten. Engine returnerer allerede sorteret
 # efter priority_delta DESC, urgency DESC.
 _TOP_N = 5
+
+# TTL-cache for signal-snapshot. list_all_surfaces() er dyr — primært
+# fordi runtime_awareness-surface laver mutation-on-read (~10s pr. kald).
+# Reglerne behøver ikke millisekund-friskhed på snapshots — 30s er fint.
+# Perf-fix 2026-05-08: før dette kostede hver visible-tur ~10s i
+# prompt-assembly fordi rule_conclusions trigger'ede full surface-scan.
+_SURFACE_CACHE_TTL = 30.0
+_surface_cache: dict | None = None
+_surface_cache_at: float = 0.0
+
+
+def _cached_signals() -> dict:
+    global _surface_cache, _surface_cache_at
+    now = time.monotonic()
+    if _surface_cache is not None and (now - _surface_cache_at) < _SURFACE_CACHE_TTL:
+        return _surface_cache
+    from core.services.signal_surface_router import list_all_surfaces
+    _surface_cache = list_all_surfaces()
+    _surface_cache_at = now
+    return _surface_cache
 
 # Per-suggestion cap så en lang regel ikke fylder hele sektionen.
 _SUGGESTION_MAX_CHARS = 140
@@ -59,13 +80,12 @@ def rule_conclusions_section() -> str:
     """
     try:
         from core.services.rule_engine import evaluate_rules
-        from core.services.signal_surface_router import list_all_surfaces
     except Exception as exc:
         logger.debug("rule_conclusions: import failed: %s", exc)
         return ""
 
     try:
-        signals = list_all_surfaces()
+        signals = _cached_signals()
         result = evaluate_rules(signals)
     except Exception as exc:
         logger.debug("rule_conclusions: evaluate failed: %s", exc)

@@ -557,3 +557,46 @@ def test_counterfactual_publish_event_with_explicit_caused_by():
             (trigger_id,),
         ).fetchall()
     assert any(r["edge_kind"] == "caused" and r["source"] == "explicit" for r in rows)
+
+
+def test_end_to_end_explicit_inference_query():
+    """Full flow: explicit edge + tier-1 inference + query returns combined chain."""
+    import uuid as _uuid
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    from core.eventbus.bus import event_bus
+    from core.services.causal_inference_daemon import run_inference_cycle
+    from core.services.causal_graph import query_causal_chain
+
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+
+    cid = f"e2e_{_uuid.uuid4().hex[:8]}"
+    parent = _insert_event_with_payload(
+        "tool.invoked", {"tool_call_id": cid}, _recent_ts(420),
+    )
+    child = _insert_event_with_payload(
+        "tool.completed", {"tool_call_id": cid}, _recent_ts(418),
+    )
+    # Explicit edge: child → grandchild via event_bus.publish
+    event_bus.publish(
+        "memory.seed_planted",
+        {"context": "test", "trigger": "e2e", "tag": cid},
+        caused_by=child,
+    )
+    with connect() as c:
+        grandchild_id = int(c.execute(
+            "SELECT id FROM events WHERE kind = 'memory.seed_planted' "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()["id"])
+
+    # Inference picks up the tier-1 edge (parent → child)
+    run_inference_cycle(since_minutes=15)
+
+    # Query backward from grandchild: should reach child (explicit) AND parent (inferred)
+    result = query_causal_chain(
+        event_id=grandchild_id, direction="backward",
+        max_depth=5, min_confidence=0.5,
+    )
+    chain_ids = [s["event"]["id"] for s in result["chain"]]
+    assert child in chain_ids
+    assert parent in chain_ids

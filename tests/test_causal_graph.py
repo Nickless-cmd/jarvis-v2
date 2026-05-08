@@ -45,3 +45,30 @@ def test_causal_edges_unique_constraint():
             pass
         # Cleanup so test is rerunnable
         c.execute("DELETE FROM causal_edges WHERE child_event_id = 1")
+
+
+def test_event_context_default_is_none():
+    from core.eventbus.context import get_current_event
+    assert get_current_event() is None
+
+
+def test_event_context_set_and_reset():
+    from core.eventbus.context import set_current_event, get_current_event
+    token = set_current_event(42)
+    try:
+        assert get_current_event() == 42
+    finally:
+        from core.eventbus.context import _current_event_context
+        _current_event_context.reset(token)
+    assert get_current_event() is None
+
+
+def test_event_context_with_helper():
+    from core.eventbus.context import with_event_context, get_current_event
+    assert get_current_event() is None
+    with with_event_context(99):
+        assert get_current_event() == 99
+        with with_event_context(100):
+            assert get_current_event() == 100
+        assert get_current_event() == 99
+    assert get_current_event() is None

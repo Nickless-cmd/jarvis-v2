@@ -1109,6 +1109,7 @@ def init_db() -> None:
         _ensure_decision_trigger_column(conn)
         _ensure_chat_messages_reasoning_column(conn)
         _ensure_counterfactuals_table(conn)
+        _ensure_causal_edges_table(conn)
         from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables
         ensure_claude_dispatch_tables(conn)
         conn.commit()
@@ -1170,6 +1171,43 @@ def _ensure_chat_messages_reasoning_column(conn: sqlite3.Connection) -> None:
         except sqlite3.OperationalError as exc:
             if "duplicate column" not in str(exc).lower():
                 raise
+
+
+def _ensure_causal_edges_table(conn: sqlite3.Connection) -> None:
+    """Create causal_edges table for the causal graph layer.
+
+    Tracks parent→child relationships between events, both explicitly
+    instrumented (source='explicit') and inferred by causal_inference_daemon
+    (source='inferred-kind' | 'inferred-id' | 'inferred-temporal').
+
+    UNIQUE(child, parent, edge_kind) prevents dupes; daemon UPDATE'er
+    confidence opadrettet hvis stærkere evidens dukker op senere.
+
+    Idempotent — kan kaldes flere gange uden fejl.
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS causal_edges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            child_event_id  INTEGER NOT NULL,
+            parent_event_id INTEGER NOT NULL,
+            edge_kind       TEXT NOT NULL,
+            confidence      REAL NOT NULL,
+            source          TEXT NOT NULL,
+            created_at      TEXT NOT NULL,
+            reasoning       TEXT NOT NULL DEFAULT '',
+            UNIQUE(child_event_id, parent_event_id, edge_kind)
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_causal_edges_child "
+        "ON causal_edges(child_event_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_causal_edges_parent "
+        "ON causal_edges(parent_event_id)"
+    )
 
 
 def _ensure_tool_router_tables(conn: sqlite3.Connection) -> None:

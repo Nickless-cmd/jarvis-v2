@@ -210,6 +210,33 @@ def create_app() -> FastAPI:
         except Exception as _exc:
             logger.warning("restart confirmation check failed: %s", _exc)
 
+        # Pre-warm prompt-assembly caches in EVERY worker process. Each
+        # uvicorn worker has its own module-level cache for
+        # build_runtime_awareness_signal_surface; without warm-up the
+        # first visible turn that lands on a fresh worker pays a ~7s
+        # cold-call cost. Run in background thread so startup itself
+        # doesn't block. Two limits (8 default, 6 from autonomy_pressure
+        # / proactive_question_gate) — warm both slots.
+        try:
+            import threading
+            def _prewarm_prompt_caches() -> None:
+                try:
+                    from core.services.runtime_awareness_signal_tracking import (
+                        build_runtime_awareness_signal_surface,
+                    )
+                    build_runtime_awareness_signal_surface(limit=8)
+                    build_runtime_awareness_signal_surface(limit=6)
+                    logger.info("prompt-cache prewarm complete")
+                except Exception as _e:
+                    logger.warning("prompt-cache prewarm failed: %s", _e)
+            threading.Thread(
+                target=_prewarm_prompt_caches,
+                name="prompt-cache-prewarm",
+                daemon=True,
+            ).start()
+        except Exception as _exc:
+            logger.warning("prompt-cache prewarm dispatch failed: %s", _exc)
+
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):
             yield

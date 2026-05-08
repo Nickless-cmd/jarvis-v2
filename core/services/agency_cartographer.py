@@ -30,6 +30,8 @@ VISION_EDGES: tuple[dict[str, Any], ...] = (
         "title": "Senses -> Emotion",
         "target": "Senses -> Emotion",
         "summary": "Perceptual and sensory events should create emotional anchors/concepts.",
+        "importance": 82,
+        "agency_axes": ("sense", "feel", "remember"),
         "markers": (
             "capture_emotional_anchor",
             "on_sensory_recorded",
@@ -42,6 +44,8 @@ VISION_EDGES: tuple[dict[str, Any], ...] = (
         "title": "Emotion -> Self-Repair",
         "target": "Emotion -> Self-Repair",
         "summary": "Repair should consult and record emotional context.",
+        "importance": 78,
+        "agency_axes": ("feel", "repair", "act"),
         "markers": (
             "_find_repair_emotional_precedents",
             "_process_emotional_gate_event",
@@ -54,6 +58,8 @@ VISION_EDGES: tuple[dict[str, Any], ...] = (
         "title": "Self-Repair -> Senses",
         "target": "Self-Repair -> Senses",
         "summary": "Repair actions should become perceptual/runtime changes.",
+        "importance": 68,
+        "agency_axes": ("repair", "sense", "witness"),
         "markers": (
             "self_repair.action_executed",
             "self-repair-action",
@@ -66,6 +72,8 @@ VISION_EDGES: tuple[dict[str, Any], ...] = (
         "title": "Goals -> Emotion",
         "target": "Goals -> Emotion",
         "summary": "Goal creation/progress/completion should affect discrete emotion concepts.",
+        "importance": 70,
+        "agency_axes": ("intend", "feel", "remember"),
         "markers": (
             "on_goal_created",
             "on_goal_updated",
@@ -78,6 +86,8 @@ VISION_EDGES: tuple[dict[str, Any], ...] = (
         "title": "Tools -> Memory -> Living Executive",
         "target": "Tools -> Memory -> Living Executive",
         "summary": "Tool outcomes should become durable precedents that shape later choices.",
+        "importance": 92,
+        "agency_axes": ("act", "remember", "choose"),
         "markers": (
             "record_tool_outcome_memory",
             "classify_tool_family",
@@ -91,6 +101,8 @@ VISION_EDGES: tuple[dict[str, Any], ...] = (
         "title": "Living Executive -> Tools",
         "target": "Living Executive -> Tools",
         "summary": "Executive plans should become concrete runnable tool proposals.",
+        "importance": 96,
+        "agency_axes": ("choose", "act", "witness"),
         "markers": (
             "runnable_tool_proposals",
             "_runnable_tool_proposals",
@@ -103,6 +115,8 @@ VISION_EDGES: tuple[dict[str, Any], ...] = (
         "title": "Hidden Runtime -> Mission Control",
         "target": "Hidden Runtime -> Mission Control",
         "summary": "Runtime influences that change behavior should be visible in MC.",
+        "importance": 88,
+        "agency_axes": ("witness", "integrity", "governance"),
         "markers": (
             "darkEdges",
             "_dark_edges",
@@ -117,7 +131,15 @@ def build_cartographer_snapshot() -> dict[str, Any]:
     """Scan code markers and persist a fresh Agency Cartographer snapshot."""
     files = _candidate_files()
     edges = [_scan_edge(edge, files) for edge in VISION_EDGES]
-    missing_or_partial = [edge for edge in edges if edge["status"] in {"missing", "partial"}]
+    missing_or_partial = sorted(
+        [edge for edge in edges if edge["status"] in {"missing", "partial"}],
+        key=lambda edge: (
+            -int(edge.get("priority_score") or 0),
+            str(edge.get("title") or ""),
+        ),
+    )
+    task_candidates = _rank_task_candidates(edges)
+    recommended_next_task = task_candidates[0] if task_candidates else None
     snapshot = {
         "scannedAt": datetime.now(UTC).isoformat(),
         "mode": "agency-cartographer",
@@ -126,9 +148,15 @@ def build_cartographer_snapshot() -> dict[str, Any]:
             "connected": sum(1 for edge in edges if edge["status"] == "connected"),
             "partial": sum(1 for edge in edges if edge["status"] == "partial"),
             "missing": sum(1 for edge in edges if edge["status"] == "missing"),
+            "task_candidates": len(task_candidates),
+            "top_priority_score": (
+                task_candidates[0]["priority_score"] if task_candidates else 0
+            ),
         },
         "edges": edges,
         "nextMoves": [_next_move_from_edge(edge) for edge in missing_or_partial],
+        "taskCandidates": task_candidates,
+        "recommendedNextTask": recommended_next_task,
     }
     save_json(_STATE_KEY, snapshot)
     return snapshot
@@ -138,7 +166,14 @@ def get_cartographer_snapshot(*, refresh: bool = False) -> dict[str, Any]:
     if refresh:
         return build_cartographer_snapshot()
     snapshot = load_json(_STATE_KEY, {})
-    if isinstance(snapshot, dict) and snapshot.get("edges"):
+    summary = snapshot.get("summary") if isinstance(snapshot, dict) else None
+    if (
+        isinstance(snapshot, dict)
+        and snapshot.get("edges")
+        and isinstance(summary, dict)
+        and "task_candidates" in summary
+        and "recommendedNextTask" in snapshot
+    ):
         return snapshot
     return build_cartographer_snapshot()
 
@@ -193,6 +228,14 @@ def _scan_edge(edge: dict[str, Any], files: dict[str, str]) -> dict[str, Any]:
             evidence.append({"marker": str(marker), "path": hit_path})
     ratio = len(evidence) / max(len(edge["markers"]), 1)
     status = "connected" if ratio >= 0.67 else "partial" if evidence else "missing"
+    importance = int(edge.get("importance") or 50)
+    agency_axes = tuple(str(axis) for axis in edge.get("agency_axes", ()))
+    priority_score = _priority_score(
+        status=status,
+        confidence=ratio,
+        importance=importance,
+        agency_axes=agency_axes,
+    )
     return {
         "id": str(edge["id"]),
         "title": str(edge["title"]),
@@ -200,6 +243,15 @@ def _scan_edge(edge: dict[str, Any], files: dict[str, str]) -> dict[str, Any]:
         "summary": str(edge["summary"]),
         "status": status,
         "confidence": round(ratio, 2),
+        "importance": importance,
+        "agency_axes": list(agency_axes),
+        "priority_score": priority_score,
+        "priority_reason": _priority_reason(
+            status=status,
+            confidence=ratio,
+            importance=importance,
+            agency_axes=agency_axes,
+        ),
         "evidence": evidence,
         "missing_markers": [
             str(marker)
@@ -218,11 +270,105 @@ def _find_marker(marker: str, files: dict[str, str]) -> str:
 
 
 def _next_move_from_edge(edge: dict[str, Any]) -> dict[str, str]:
-    priority = "high" if edge["status"] == "missing" else "medium"
+    priority = _priority_label(int(edge.get("priority_score") or 0))
     return {
         "title": str(edge["title"]),
         "summary": str(edge["next_move"]),
         "target": str(edge["target"]),
         "priority": priority,
         "source": "agency-cartographer",
+        "priority_score": str(edge.get("priority_score") or 0),
+        "reason": str(edge.get("priority_reason") or ""),
     }
+
+
+def _rank_task_candidates(edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    candidates = [
+        _task_candidate_from_edge(edge)
+        for edge in edges
+        if edge.get("status") in {"missing", "partial"}
+    ]
+    candidates.sort(
+        key=lambda item: (
+            -int(item.get("priority_score") or 0),
+            str(item.get("title") or ""),
+        )
+    )
+    return candidates
+
+
+def _task_candidate_from_edge(edge: dict[str, Any]) -> dict[str, Any]:
+    score = int(edge.get("priority_score") or 0)
+    return {
+        "id": f"agency-{edge.get('id')}",
+        "title": str(edge.get("title") or ""),
+        "goal": str(edge.get("next_move") or ""),
+        "scope": str(edge.get("target") or ""),
+        "task_kind": "agency_bridge_repair",
+        "priority": _priority_label(score),
+        "priority_score": score,
+        "reason": str(edge.get("priority_reason") or ""),
+        "status": str(edge.get("status") or ""),
+        "confidence": edge.get("confidence", 0),
+        "missing_markers": list(edge.get("missing_markers") or []),
+        "evidence_count": len(edge.get("evidence") or []),
+        "source": "agency-cartographer",
+    }
+
+
+def _priority_score(
+    *,
+    status: str,
+    confidence: float,
+    importance: int,
+    agency_axes: tuple[str, ...],
+) -> int:
+    if status == "connected":
+        return 0
+    gap_score = 100 if status == "missing" else 58
+    confidence_gap = int(round((1.0 - max(0.0, min(confidence, 1.0))) * 28))
+    axis_bonus = 0
+    for axis in agency_axes:
+        axis_bonus += {
+            "act": 9,
+            "choose": 9,
+            "witness": 7,
+            "integrity": 7,
+            "governance": 6,
+            "repair": 6,
+            "remember": 5,
+            "feel": 4,
+            "sense": 4,
+            "intend": 4,
+        }.get(axis, 2)
+    raw = gap_score + int(importance * 0.75) + min(axis_bonus, 24) + confidence_gap
+    return max(0, min(raw, 200))
+
+
+def _priority_label(score: int) -> str:
+    if score >= 165:
+        return "critical"
+    if score >= 125:
+        return "high"
+    if score >= 80:
+        return "medium"
+    if score > 0:
+        return "low"
+    return "done"
+
+
+def _priority_reason(
+    *,
+    status: str,
+    confidence: float,
+    importance: int,
+    agency_axes: tuple[str, ...],
+) -> str:
+    if status == "connected":
+        return "Bridge has enough code/runtime evidence right now."
+    gap = "no evidence" if status == "missing" else f"{confidence:.0%} evidence"
+    axes = ", ".join(agency_axes) if agency_axes else "general agency"
+    return (
+        f"{status} bridge with {gap}; importance {importance}/100; "
+        f"touches {axes}."
+    )

@@ -202,6 +202,7 @@ def test_agency_map_exposes_dark_edges_and_completed_next_moves():
     assert any(node["id"] == "hidden_runtime" for node in result["nodes"])
     assert result["cartographer"]["mode"] == "agency-cartographer"
     assert result["cartographer"]["summary"]["vision_edges"] >= 1
+    assert "task_candidates" in result["cartographer"]["summary"]
     assert result["nextMoves"]
     by_source = {edge["source"]: edge for edge in result["darkEdges"]}
     for source in ("affect_modulation", "prompt_contract", "cheap_lane_balancer"):
@@ -217,6 +218,14 @@ def test_agency_map_next_moves_come_from_cartographer_when_partial(monkeypatch):
         "mode": "agency-cartographer",
         "summary": {"vision_edges": 1, "connected": 0, "partial": 1, "missing": 0},
         "edges": [{"id": "x", "status": "partial"}],
+        "recommendedNextTask": {
+            "title": "Wire missing vision edge",
+            "goal": "scanner found weak evidence",
+            "scope": "A -> B",
+            "priority": "medium",
+            "priority_score": 99,
+            "source": "agency-cartographer",
+        },
         "nextMoves": [{
             "title": "Wire missing vision edge",
             "summary": "scanner found weak evidence",
@@ -230,6 +239,7 @@ def test_agency_map_next_moves_come_from_cartographer_when_partial(monkeypatch):
 
     assert result["nextMoves"][0]["title"] == "Wire missing vision edge"
     assert result["nextMoves"][0]["source"] == "agency-cartographer"
+    assert result["cartographer"]["recommendedNextTask"]["priority_score"] == 99
 
 
 def test_agency_cartographer_scans_markers_from_files(monkeypatch, tmp_path):
@@ -254,3 +264,6 @@ def test_agency_cartographer_scans_markers_from_files(monkeypatch, tmp_path):
 
     assert edge["status"] == "connected"
     assert edge["confidence"] == 1.0
+    assert snapshot["summary"]["task_candidates"] >= 1
+    assert snapshot["recommendedNextTask"]["task_kind"] == "agency_bridge_repair"
+    assert snapshot["taskCandidates"][0]["priority_score"] >= snapshot["taskCandidates"][-1]["priority_score"]

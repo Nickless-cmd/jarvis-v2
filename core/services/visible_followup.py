@@ -660,6 +660,47 @@ class OpenAICompatFollowupAdapter:
 
         messages = list(base_messages) + self._serialize_exchanges(exchanges)
 
+        # Belt-and-suspenders: even after _is_thinking_model patch above
+        # covered base_messages, current-run exchanges can still arrive
+        # without reasoning_content (e.g., model returned empty reasoning,
+        # or a tool-call round captured no thinking trace). Deepseek
+        # thinking-mode rejects the entire request with HTTP 400 if ANY
+        # assistant message lacks reasoning_content. Patch the merged
+        # message list once, right before send.
+        if (
+            self.provider_id == "deepseek"
+            and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner")
+        ):
+            _PLACEHOLDER = (
+                "[reasoning trace not captured for this turn — preserving "
+                "field so deepseek thinking-mode accepts the request]"
+            )
+            messages = [
+                (
+                    m if not (
+                        m.get("role") == "assistant"
+                        and not str(m.get("reasoning_content") or "").strip()
+                    )
+                    else {**m, "reasoning_content": _PLACEHOLDER}
+                )
+                for m in messages
+            ]
+
+        if self.provider_id == "deepseek":
+            _has_rc = sum(
+                1 for m in messages
+                if m.get("role") == "assistant" and str(m.get("reasoning_content") or "").strip()
+            )
+            _no_rc = sum(
+                1 for m in messages
+                if m.get("role") == "assistant" and not str(m.get("reasoning_content") or "").strip()
+            )
+            if _no_rc and model in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner"):
+                _log.warning(
+                    "deepseek followup round=%d model=%s missing reasoning_content on %d assistants — patching",
+                    round_index, model, _no_rc,
+                )
+
         try:
             req = self._build_request(
                 model=model, messages=messages, tool_definitions=tool_definitions

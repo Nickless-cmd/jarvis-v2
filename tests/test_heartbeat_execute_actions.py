@@ -435,6 +435,65 @@ def test_propose_decision_delivers_message_to_webchat_when_available(
     )
 
 
+def test_active_chat_gate_blocks_ping_when_user_recently_active(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+    chat_sessions = __import__(
+        "core.services.chat_sessions",
+        fromlist=["append_chat_message", "create_chat_session"],
+    )
+    session = chat_sessions.create_chat_session(title="Active gate")
+    chat_sessions.append_chat_message(
+        session_id=str(session["id"]),
+        role="user",
+        content="Jeg er her lige nu, så heartbeat skal ikke afbryde.",
+        user_id="test-user",
+        workspace_name="default",
+    )
+
+    emitted = []
+    monkeypatch.setattr(
+        heartbeat_runtime.event_bus,
+        "publish",
+        lambda kind, payload: emitted.append((kind, payload)),
+    )
+
+    result = heartbeat_runtime._validate_heartbeat_decision(
+        decision={
+            "decision_type": "ping",
+            "summary": "Gate smoke.",
+            "reason": "A proactive ping would otherwise be eligible.",
+            "proposed_action": "",
+            "ping_text": "Skal jeg tage næste skridt?",
+            "execute_action": "",
+        },
+        policy={
+            "allow_execute": True,
+            "allow_ping": True,
+            "allow_propose": True,
+            "ping_channel": "discord",
+        },
+        workspace_dir=Path("/tmp/test-workspace"),
+        tick_id="heartbeat-tick:active-chat-gate",
+    )
+
+    assert result["blocked_reason"] == "active-chat-gate"
+    assert result["ping_result"] == "deferred-active-chat"
+    assert result["action_status"] == "blocked"
+    assert emitted == [
+        (
+            "heartbeat.proactive_deferred_active_chat",
+            {
+                "tick_id": "heartbeat-tick:active-chat-gate",
+                "decision_type": "ping",
+                "gate_window_minutes": 10,
+            },
+        )
+    ]
+
+
 def test_blocked_heartbeat_tick_dispatches_runtime_hooks_from_active_loop(
     isolated_runtime,
     monkeypatch,

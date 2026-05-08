@@ -23,12 +23,17 @@ _cached_hash: Optional[str] = None
 
 
 def _short_desc(tool_def: dict) -> str:
+    # 2026-05-08: cap descriptions at 50 chars (was 120). When tool_router
+    # prunes per-turn, the model sees ~70-100 schemas with full descriptions
+    # already; the catalog only needs to be a "what else exists" hint so the
+    # model can decide which load_more_tools(names=[...]) to call. Cutting
+    # descriptions roughly halves the catalog (~25K → ~13K chars).
     fn = tool_def.get("function") or tool_def
     desc = str(fn.get("description") or "").strip()
     head = desc.split("\n", 1)[0]
-    if "." in head[:120]:
+    if "." in head[:50]:
         head = head.split(".", 1)[0] + "."
-    return head[:120].strip() or "(no description)"
+    return head[:50].strip() or "(no description)"
 
 
 def _registry_hash() -> str:

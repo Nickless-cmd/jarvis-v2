@@ -167,6 +167,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 1440,
         "description": "24t identity-drift detektor — sammenligner SOUL/IDENTITY/USER/STANDING_ORDERS mod sidste snapshot, fyrer identity.drift_detected ved uautoriserede ændringer",
     },
+    "causal_inference": {
+        "module": "core.services.causal_inference_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 15,
+        "description": "15min causal-graph inference (three-tier matching) — populates causal_edges from events allowlist, emits causal.inference_stats",
+    },
     "memory_maintenance": {
         "module": "core.services.memory_maintenance_daemon",
         "reset_var": "_last_tick_at",

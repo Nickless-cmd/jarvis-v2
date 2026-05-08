@@ -737,6 +737,17 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        # Wire forward-chaining symbolic rule_engine into prompt (2026-05-08).
+        # Engine + 36 rules existed since 8860301 but weren't reaching the LLM.
+        # Top-5 fired conclusions injected as awareness-line — first
+        # neuro-symbolic layer that actually surfaces to Jarvis.
+        from core.services.prompt_sections.rule_conclusions import (
+            rule_conclusions_section,
+        )
+        _awareness_add(28, "rule engine conclusions", rule_conclusions_section())
+    except Exception:
+        pass
+    try:
         from core.services.r2_5_blocking_gate import r2_5_block_section
         from core.services.reasoning_classifier import classify_reasoning_tier
         _tier = str(classify_reasoning_tier(user_message).get("tier") or "fast")

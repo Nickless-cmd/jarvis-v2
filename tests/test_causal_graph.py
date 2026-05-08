@@ -529,3 +529,31 @@ def test_causal_alerts_section_returns_text_for_recent_failure():
     )
     out = causal_alerts_section()
     assert "Kausalkæde" in out or "🔗" in out
+
+
+def test_counterfactual_publish_event_with_explicit_caused_by():
+    """When _publish_event gets caused_by_trigger_id, it writes a causal edge."""
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    from core.services.counterfactual_engine import _publish_event
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+        cur = c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES "
+            "('self_review.completed', '{}', datetime('now'))"
+        )
+        trigger_id = int(cur.lastrowid)
+        c.commit()
+    _publish_event(
+        cf_id="cf-test",
+        workspace_id="default",
+        cluster_size=1,
+        final_confidence=0.8,
+        status="open",
+        caused_by_trigger_id=trigger_id,
+    )
+    with connect() as c:
+        rows = c.execute(
+            "SELECT * FROM causal_edges WHERE parent_event_id = ?",
+            (trigger_id,),
+        ).fetchall()
+    assert any(r["edge_kind"] == "caused" and r["source"] == "explicit" for r in rows)

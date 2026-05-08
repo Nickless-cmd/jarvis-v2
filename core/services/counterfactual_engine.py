@@ -108,6 +108,35 @@ def run(*, workspace_id: str = "default", dry_run: bool = True) -> dict:
         _publish_cycle_complete(summary)
         return summary
 
+    # Step 2.5: forward-query causal graph for downstream events that would
+    # be prunet i hypotesen. Phase 1 returns empty list if graph hasn't
+    # tracked edges for this trigger yet — Phase 2 LLM-generation will
+    # use this context to populate the what_if field with concrete
+    # downstream-event references instead of placeholders.
+    downstream_context: list[dict] = []
+    try:
+        from core.services.causal_graph import query_causal_chain
+        for trigger in unique_triggers:
+            chain = query_causal_chain(
+                event_id=trigger.source_event_id,
+                direction="forward",
+                max_depth=3,
+                min_confidence=0.6,
+            )
+            if chain.get("chain"):
+                downstream_context.append({
+                    "trigger_id": trigger.source_event_id,
+                    "downstream": [
+                        {"id": s["event"]["id"], "kind": s["event"]["kind"]}
+                        for s in chain["chain"]
+                    ],
+                })
+    except Exception as exc:
+        logger.debug("counterfactual_engine: causal forward-query failed: %s", exc)
+    summary["downstream_events_seen"] = sum(
+        len(d.get("downstream", [])) for d in downstream_context
+    )
+
     # Step 3: generation (Phase 1: skip; placeholder per trigger)
     if dry_run:
         counterfactuals = [_dry_run_placeholder(t) for t in unique_triggers]
@@ -138,14 +167,21 @@ def run(*, workspace_id: str = "default", dry_run: bool = True) -> dict:
         if cf["status"] == "promoted":
             summary["promoted"] += 1
 
-        # Step 6: publish per-cf event
+        # Step 6: publish per-cf event with explicit caused_by trigger
+        # (causal graph two-way integration — commit 894a214). Use first
+        # trigger_event_id as the causal parent; if multiple triggers
+        # contributed, downstream queries can still find them all via
+        # trigger_event_ids_json on the counterfactual record.
         try:
+            _trigger_ids = cf.get("trigger_event_ids") or []
+            _first_trigger = int(_trigger_ids[0]) if _trigger_ids else None
             _publish_event(
                 cf_id=cf["cf_id"],
                 workspace_id=workspace_id,
-                cluster_size=len(cf.get("trigger_event_ids", [])),
+                cluster_size=len(_trigger_ids),
                 final_confidence=cf["final_confidence"],
                 status=cf["status"],
+                caused_by_trigger_id=_first_trigger,
             )
         except Exception:
             pass
@@ -260,14 +296,32 @@ def _store_counterfactual(*, workspace_id: str, **cf) -> None:
 def _publish_event(
     *, cf_id: str, workspace_id: str, cluster_size: int,
     final_confidence: float, status: str,
+    caused_by_trigger_id: int | None = None,
 ) -> None:
-    event_bus.publish("cognitive_counterfactual.generated", {
-        "cf_id": cf_id,
-        "workspace_id": workspace_id,
-        "cluster_size": cluster_size,
-        "final_confidence": float(final_confidence),
-        "status": status,
-    })
+    """Publish counterfactual event. If caused_by_trigger_id is given,
+    a causal edge is written linking this counterfactual to its trigger
+    (Phase 1 backward integration with causal graph — commit 894a214)."""
+    if caused_by_trigger_id is not None:
+        event_bus.publish(
+            "cognitive_counterfactual.generated",
+            {
+                "cf_id": cf_id,
+                "workspace_id": workspace_id,
+                "cluster_size": cluster_size,
+                "final_confidence": float(final_confidence),
+                "status": status,
+            },
+            caused_by=int(caused_by_trigger_id),
+            edge_kind="caused",
+        )
+    else:
+        event_bus.publish("cognitive_counterfactual.generated", {
+            "cf_id": cf_id,
+            "workspace_id": workspace_id,
+            "cluster_size": cluster_size,
+            "final_confidence": float(final_confidence),
+            "status": status,
+        })
 
 
 def _publish_cycle_complete(summary: dict) -> None:

@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 _STATE_KEY = "agency_cartographer"
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SCAN_INTERVAL_SECONDS = 900
+_AUTO_TASK_MIN_SCORE = 125
+_AUTO_TASK_KIND = "agency_bridge_repair"
+_AUTO_TASK_ORIGIN = "agency-cartographer"
 
 _THREAD: threading.Thread | None = None
 _STOP = threading.Event()
@@ -127,7 +130,7 @@ VISION_EDGES: tuple[dict[str, Any], ...] = (
 )
 
 
-def build_cartographer_snapshot() -> dict[str, Any]:
+def build_cartographer_snapshot(*, auto_enqueue: bool = False) -> dict[str, Any]:
     """Scan code markers and persist a fresh Agency Cartographer snapshot."""
     files = _candidate_files()
     edges = [_scan_edge(edge, files) for edge in VISION_EDGES]
@@ -140,6 +143,10 @@ def build_cartographer_snapshot() -> dict[str, Any]:
     )
     task_candidates = _rank_task_candidates(edges)
     recommended_next_task = task_candidates[0] if task_candidates else None
+    auto_task = _maybe_enqueue_recommended_task(recommended_next_task) if auto_enqueue else {
+        "enabled": False,
+        "status": "not-requested",
+    }
     snapshot = {
         "scannedAt": datetime.now(UTC).isoformat(),
         "mode": "agency-cartographer",
@@ -157,6 +164,7 @@ def build_cartographer_snapshot() -> dict[str, Any]:
         "nextMoves": [_next_move_from_edge(edge) for edge in missing_or_partial],
         "taskCandidates": task_candidates,
         "recommendedNextTask": recommended_next_task,
+        "autoTask": auto_task,
     }
     save_json(_STATE_KEY, snapshot)
     return snapshot
@@ -173,6 +181,7 @@ def get_cartographer_snapshot(*, refresh: bool = False) -> dict[str, Any]:
         and isinstance(summary, dict)
         and "task_candidates" in summary
         and "recommendedNextTask" in snapshot
+        and "autoTask" in snapshot
     ):
         return snapshot
     return build_cartographer_snapshot()
@@ -195,7 +204,7 @@ def stop_agency_cartographer_daemon() -> None:
 def _loop() -> None:
     while not _STOP.is_set():
         try:
-            build_cartographer_snapshot()
+            build_cartographer_snapshot(auto_enqueue=True)
         except Exception as exc:
             logger.debug("agency_cartographer: scan failed: %s", exc)
         _STOP.wait(_SCAN_INTERVAL_SECONDS)
@@ -304,7 +313,7 @@ def _task_candidate_from_edge(edge: dict[str, Any]) -> dict[str, Any]:
         "title": str(edge.get("title") or ""),
         "goal": str(edge.get("next_move") or ""),
         "scope": str(edge.get("target") or ""),
-        "task_kind": "agency_bridge_repair",
+        "task_kind": _AUTO_TASK_KIND,
         "priority": _priority_label(score),
         "priority_score": score,
         "reason": str(edge.get("priority_reason") or ""),
@@ -314,6 +323,104 @@ def _task_candidate_from_edge(edge: dict[str, Any]) -> dict[str, Any]:
         "evidence_count": len(edge.get("evidence") or []),
         "source": "agency-cartographer",
     }
+
+
+def _maybe_enqueue_recommended_task(candidate: dict[str, Any] | None) -> dict[str, Any]:
+    if not candidate:
+        return {"enabled": True, "status": "no-candidate"}
+
+    score = int(candidate.get("priority_score") or 0)
+    if score < _AUTO_TASK_MIN_SCORE:
+        return {
+            "enabled": True,
+            "status": "below-threshold",
+            "threshold": _AUTO_TASK_MIN_SCORE,
+            "priority_score": score,
+        }
+
+    duplicate = _find_existing_agency_task(candidate)
+    if duplicate:
+        return {
+            "enabled": True,
+            "status": "duplicate-present",
+            "task_id": str(duplicate.get("task_id") or ""),
+            "task_status": str(duplicate.get("status") or ""),
+            "priority_score": score,
+        }
+
+    try:
+        from core.services.runtime_tasks import create_task
+
+        task = create_task(
+            kind=_AUTO_TASK_KIND,
+            goal=str(candidate.get("goal") or candidate.get("title") or ""),
+            scope=str(candidate.get("scope") or ""),
+            origin=_AUTO_TASK_ORIGIN,
+            priority=_runtime_task_priority(str(candidate.get("priority") or "")),
+            owner="jarvis",
+        )
+        _publish_auto_task_event(candidate, task)
+        return {
+            "enabled": True,
+            "status": "enqueued",
+            "task_id": str(task.get("task_id") or ""),
+            "priority_score": score,
+        }
+    except Exception as exc:
+        logger.debug("agency_cartographer: auto task enqueue failed: %s", exc)
+        return {
+            "enabled": True,
+            "status": "enqueue-failed",
+            "error": f"{type(exc).__name__}: {exc}"[:300],
+            "priority_score": score,
+        }
+
+
+def _find_existing_agency_task(candidate: dict[str, Any]) -> dict[str, Any] | None:
+    try:
+        from core.services.runtime_tasks import list_tasks
+
+        scope = str(candidate.get("scope") or "").strip()
+        goal = str(candidate.get("goal") or "").strip()
+        for status in ("queued", "running", "blocked"):
+            for task in list_tasks(status=status, kind=_AUTO_TASK_KIND, limit=50):
+                if str(task.get("scope") or "").strip() == scope:
+                    return task
+                if str(task.get("goal") or "").strip() == goal:
+                    return task
+    except Exception:
+        return None
+    return None
+
+
+def _runtime_task_priority(priority: str) -> str:
+    normalized = str(priority or "").strip().lower()
+    if normalized == "critical":
+        return "high"
+    if normalized in {"high", "medium", "low"}:
+        return normalized
+    return "medium"
+
+
+def _publish_auto_task_event(
+    candidate: dict[str, Any],
+    task: dict[str, object],
+) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+
+        event_bus.publish(
+            "agency_cartographer.task_enqueued",
+            {
+                "task_id": task.get("task_id"),
+                "title": candidate.get("title"),
+                "scope": candidate.get("scope"),
+                "priority_score": candidate.get("priority_score"),
+                "reason": candidate.get("reason"),
+            },
+        )
+    except Exception:
+        return
 
 
 def _priority_score(

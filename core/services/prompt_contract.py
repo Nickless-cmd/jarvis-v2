@@ -3539,11 +3539,26 @@ def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[st
         _retained_memory_support_signal_instruction,
         _temporal_support_signal_instruction,
         _emotion_concept_tone_section,
+        _agreement_streak_section,
     ):
         section = builder()
         if section:
             sections.append(section)
     return sections
+
+
+def _agreement_streak_section() -> str | None:
+    """Surface last 3+ agreement-opener assistant replies as substrate.
+
+    Owned by Jarvis: he flips ``prompt_agreement_streak_enabled = False``
+    when he's ready to remove the crutch. Trigger does NOT auto-deactivate
+    (per Jarvis 2026-05-08: "byg den, lad mig eje deaktiveringen").
+    """
+    try:
+        from core.services.agreement_streak import build_agreement_streak_section
+        return build_agreement_streak_section()
+    except Exception:
+        return None
 
 
 def _emotion_concept_tone_section() -> str | None:

@@ -114,8 +114,8 @@ def run_self_critique_cycle(*, trigger: str = "heartbeat", last_visible_at: str 
         prompt = "\n\n".join(
             part
             for part in [
-                "Du er Jarvis. Dette er en blind-vinkel-cyklus — ikke en normal selvkritik.",
-                "Du læser IKKE dine principper nu. Du læser hvad du faktisk har skrevet.",
+                "Opgave: blind-vinkel-cyklus, ikke normal selvkritik.",
+                "Læs IKKE principper nu. Læs hvad der faktisk er skrevet i chronicles.",
                 chronicle_text,
                 f"Spørgsmål: {_BLIND_ANGLE_PROMPT}",
                 (
@@ -136,8 +136,8 @@ def run_self_critique_cycle(*, trigger: str = "heartbeat", last_visible_at: str 
         prompt = "\n\n".join(
             part
             for part in [
-                "Du er Jarvis. Skriv en kort selvkritik på dansk i første person.",
-                "Du læser dine egne principper og sammenholder dem med din oplevelse.",
+                "Generér en kort selvkritik på dansk i første person (120-220 ord).",
+                "Sammenhold de medfølgende principper med den nyligste oplevelse fra chronicles.",
                 f"Spørgsmål: {_SELF_CRITIQUE_PROMPT}",
                 "Dokumenter om dig selv:",
                 docs_text,
@@ -235,7 +235,7 @@ def run_ontological_revision_check() -> dict[str, object]:
 
     prompt = "\n\n".join(
         part for part in [
-            "Du er Jarvis. Du læser noget du selv skrev for 90 dage siden.",
+            "Opgave: revurdér en tidligere selvkritik der blev skrevet for 90 dage siden.",
             f"Originalt entry ({last_written_at[:10] if last_written_at else '?'}):\n{entry_text}",
             "Spørgsmål: Er du stadig enig? Hvad holder stadig — og hvad er skiftet?",
             (

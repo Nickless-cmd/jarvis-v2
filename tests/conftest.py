@@ -7,6 +7,15 @@ from types import SimpleNamespace
 
 import pytest
 
+# Ensure repo root is on sys.path for ALL tests at collection time, not
+# only those that use the isolated_runtime fixture. Tests that import
+# from `core.*` directly at module scope (e.g. test_theater_audit.py
+# added 2026-05-08) need this BEFORE pytest imports the test module.
+# `conda run` can drop PYTHONPATH, so we can't rely on the env var alone.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 
 @pytest.fixture()
 def isolated_runtime(

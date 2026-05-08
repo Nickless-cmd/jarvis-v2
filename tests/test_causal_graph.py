@@ -481,3 +481,51 @@ def test_query_why_tool_unknown_event_kind_returns_error():
     from core.tools.simple_tools import _exec_query_why
     result = _exec_query_why({"event_kind": "no.such.kind"})
     assert result["status"] == "error"
+
+
+def test_causal_alerts_section_empty_when_no_failures():
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    from core.services.prompt_sections.causal_alerts import causal_alerts_section
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+        # Clean any failure events from very recent window
+        c.execute(
+            "DELETE FROM events WHERE kind IN "
+            "('tool.error','behavioral_decision_review.broken',"
+            " 'runtime.cheap_lane_provider_failed','identity.drift_detected',"
+            " 'executive_contradiction.detected') "
+            "AND created_at >= datetime('now', '-1 minute')"
+        )
+        c.commit()
+    out = causal_alerts_section()
+    assert out == ""
+
+
+def test_causal_alerts_section_returns_text_for_recent_failure():
+    import uuid as _uuid
+    from datetime import UTC, datetime, timedelta
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    from core.eventbus.bus import event_bus
+    from core.services.prompt_sections.causal_alerts import causal_alerts_section
+    tag = _uuid.uuid4().hex[:8]
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+        # Insert parent at -45s so it's within recent window for the alert
+        cur = c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES "
+            "(?, ?, ?)",
+            (
+                "runtime.alert_parent",
+                f'{{"tag":"{tag}"}}',
+                (datetime.now(UTC) - timedelta(seconds=45)).isoformat().replace("+00:00", "Z"),
+            ),
+        )
+        parent = int(cur.lastrowid)
+        c.commit()
+    event_bus.publish(
+        "tool.error",
+        {"tool": "test_tool", "error": "boom", "severity": "high", "tag": tag},
+        caused_by=parent,
+    )
+    out = causal_alerts_section()
+    assert "Kausalkæde" in out or "🔗" in out

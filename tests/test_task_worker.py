@@ -109,3 +109,39 @@ def test_tick_handles_initiative_and_heartbeat_followup(isolated_runtime) -> Non
     assert result["processed"] == 2
     assert result["succeeded"] == 2
     assert result["failed"] == 0
+
+
+def test_agency_bridge_repair_prepares_brief(monkeypatch) -> None:
+    _, task_worker = _import_modules()
+    saved = {}
+
+    monkeypatch.setattr(task_worker, "load_json", lambda name, default: {})
+    monkeypatch.setattr(task_worker, "save_json", lambda name, data: saved.update({name: data}))
+    monkeypatch.setattr(
+        task_worker,
+        "_matching_agency_edge",
+        lambda **kwargs: {
+            "id": "executive-tools",
+            "title": "Living Executive -> Tools",
+            "target": "Living Executive -> Tools",
+            "missing_markers": ["living_executive.tool_plan_proposed"],
+        },
+    )
+
+    task = {
+        "task_id": "task-agency",
+        "kind": "agency_bridge_repair",
+        "goal": "Turn executive recovery plans into runnable tool proposals.",
+        "origin": "agency-cartographer",
+        "scope": "Living Executive -> Tools",
+        "priority": "high",
+    }
+
+    result = task_worker._handle_agency_bridge_repair(task)
+
+    assert result["status"] == "blocked"
+    assert result["artifact_ref"] == "state:agency_bridge_repair_briefs:task-agency"
+    assert "awaiting approved implementation lane" in result["blocked_reason"]
+    brief = saved["agency_bridge_repair_briefs"][task["task_id"]]
+    assert brief["edge"]["id"] == "executive-tools"
+    assert "core/services/living_executive.py" in brief["suggested_files"]

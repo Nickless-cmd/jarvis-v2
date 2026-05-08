@@ -33,7 +33,7 @@ _STALE_AFTER_DAYS = 7
 # without re-running the full extract+persist+refresh pipeline on every call.
 # Perf-fix 2026-05-08: 7.2s → ~0ms warm.
 import time as _time
-_SURFACE_CACHE_TTL = 30.0
+_SURFACE_CACHE_TTL = 120.0
 # Keyed by `limit` because callers pass different values (8 default,
 # 6 from autonomy_pressure / proactive_question_gate). Each gets its own slot.
 _surface_cache_by_limit: dict[int, tuple[float, dict]] = {}

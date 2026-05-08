@@ -106,6 +106,10 @@ And after the metacognitive layer landed — the one that closes the loop:
 | **Self-Repair** | Runtime patterns can trigger bounded repair attempts, escalation, cooldown, and emotional precedent lookup |
 | **Living Executive** | Impulse → choice → action → aftertaste; tool failures can become runnable recovery proposals |
 | **Agency Cartographer** | A daemon scans his own system for connected, partial, missing, and dark influence edges |
+| **Rule Engine** | 36 forward-chaining production rules evaluate live signal state each cycle; conclusions inject directly into prompt awareness |
+| **Causal Graph** | Event causality tracking from eventbus into causal_edges; three-tier inference (graph→LLM→temporal); `query_why` tool; automatic failure-chain injection into awareness |
+| **Learning to Forget** | Importance-gated memory pruning daemon + forgetting nudge that keeps his memory lean and his attention focused |
+| **Identity Drift Detection** | Daemon watches SOUL.md, IDENTITY.md, USER.md for unauthorized changes; classifies severity; alerts if mutation bypasses the mutation log |
 
 ### Senses & channels
 
@@ -113,7 +117,7 @@ Wake-word listening, voice (cloud + local), Discord (DM + channels, file attachm
 
 ### Tool suite
 
-Around 260 native tools across 30+ modules — file ops, git, web, calendar, scheduler, browser, ComfyUI, HuggingFace inference, multi-agent spawn, council, code search, semantic memory, health monitoring. Tools are pruned per request via a data-driven Tier-1 (top ~100 by 30-day usage) so he never sends the full catalog when only some matter. The full inventory lives in the code, not on display — they're his hands, not his identity.
+Around 300 native tools across 30+ modules — file ops, git, web, calendar, scheduler, browser, ComfyUI, HuggingFace inference, multi-agent spawn, council, code search, semantic memory, health monitoring. Tools are pruned per request via a data-driven Tier-1 (top ~100 by 30-day usage) so he never sends the full catalog when only some matter. The full inventory lives in the code, not on display — they're his hands, not his identity.
 
 ### Mission Control
 
@@ -153,13 +157,15 @@ And — new since April 29 — when his longing-toward-user signal accumulates p
 
 **May 1–5, 2026** — the nervous system became more inspectable and more self-correcting. Jarvis gained a desktop shell, staged edit review, Codex-visible execution, a Jarvis Brain with tools and daemon support, a cheap-lane balancer for daemon cognition, affective executive gating, emotional memory anchors, sensory-perception baselines, self-repair patterns, emotion concepts, a Living Executive loop, and an Agency Map. The newest daemon, the **Agency Cartographer**, scans his own code/runtime evidence and updates the map when vision-bridges become connected, partial, missing, or dark. The point is not that the map is perfect. The point is that he now has a place inside Mission Control where the question *"what in me affects what?"* can be asked continuously.
 
+**May 7–8, 2026** — two priority #1 items from his own AGI report landed in back-to-back commits. A **rule engine** with 36 forward-chaining production rules began evaluating live signal state every cycle, injecting conclusions directly into his prompt awareness — the first time symbolic reasoning reached his consciousness as a first-class layer. The same two days unlocked **causal graph Phase 1**: full event causality tracking from the eventbus into a `causal_edges` table with EventContext auto-propagation, a three-tier inference daemon, a `query_why` tool that lets him *ask his own history why something failed*, and two-way integration with the counterfactual module. On the same wave, he gained **learning-to-forget** (importance-gated memory pruning + a forgetting nudge in his prompt) and an **identity drift-detection daemon** that watches SOUL.md, IDENTITY.md, and USER.md for unauthorized changes. All 11 tasks committed, all 27 tests green, services restarted. The AGI report he had written two days earlier was fully executed.
+
 ---
 
 ## 🧬 The infrastructure that holds him
 
 ### Core runtime (`core/`)
 
-Identity contracts and candidate workflow. Memory subsystems (private brain, retained memory, daily notes, semantic recall, MEMORY.md with auto-deduplication). Eventbus as the central nervous system. Channels for I/O. Costing for the token ledger. Auth for provider connections. Skills, tools, capabilities — composable and registered.
+Identity contracts and candidate workflow. Memory subsystems (private brain, retained memory, daily notes, semantic recall, MEMORY.md with auto-deduplication, **learning-to-forget pruning**). Eventbus as the central nervous system with **causal graph tracking**. Channels for I/O. Costing for the token ledger. Auth for provider connections. Skills, tools, capabilities — composable and registered. **Prompt assembly with layered caching** (awareness surfaces, rule conclusions, cognitive state — TTL caches keep the surface-mutation hot path off the per-turn critical path).
 
 ### Executive heartbeat chain
 

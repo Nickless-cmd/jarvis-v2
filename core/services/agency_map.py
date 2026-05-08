@@ -35,6 +35,11 @@ def build_agency_map_surface() -> dict[str, Any]:
         "cartographer": cartographer,
         "questions": questions,
         "nextMoves": _next_moves(cartographer),
+        "recommendedNextTask": (
+            cartographer.get("recommendedNextTask")
+            if isinstance(cartographer, dict)
+            else None
+        ),
     }
 
 
@@ -232,6 +237,8 @@ def _cartographer_snapshot() -> dict[str, Any]:
             "summary": {"vision_edges": 0, "connected": 0, "partial": 0, "missing": 0},
             "edges": [],
             "nextMoves": [],
+            "taskCandidates": [],
+            "recommendedNextTask": None,
         }
 
 

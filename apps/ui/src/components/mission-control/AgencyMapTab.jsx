@@ -9,6 +9,7 @@ const STATUS_COLOR = {
   experimental: T.accent,
   partial: T.amber,
   missing: T.red,
+  critical: T.red,
   active: T.accent,
   open: T.amber,
   done: T.green,
@@ -212,6 +213,7 @@ export function AgencyMapTab() {
   const bridges = data?.bridges || []
   const cartographer = data?.cartographer || {}
   const cartSummary = cartographer.summary || {}
+  const recommended = cartographer.recommendedNextTask || data?.recommendedNextTask || null
 
   return (
     <div style={s({ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' })}>
@@ -295,6 +297,40 @@ export function AgencyMapTab() {
         <span style={s({ ...mono, color: T.text3, fontSize: 9 })}>{formatFreshness(cartographer.scannedAt)}</span>
       </section>
 
+      {recommended ? (
+        <section style={s({
+          background: T.bgRaised,
+          border: `1px solid ${statusColor(recommended.priority)}66`,
+          borderRadius: T.r_sm,
+          padding: 12,
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 0.9fr) minmax(0, 1.4fr) minmax(0, 0.8fr) auto',
+          gap: 10,
+          alignItems: 'center',
+        })}>
+          <div style={s({ minWidth: 0 })}>
+            <span style={s({ ...mono, color: T.text3, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em' })}>
+              Recommended next task
+            </span>
+            <strong style={s({ display: 'block', marginTop: 4, fontSize: 13, color: T.text1, minWidth: 0, wordBreak: 'break-word' })}>
+              {recommended.title}
+            </strong>
+          </div>
+          <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' })}>
+            {recommended.goal || recommended.summary}
+            {recommended.reason ? (
+              <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
+                {recommended.reason}
+              </span>
+            ) : null}
+          </span>
+          <span style={s({ ...mono, color: T.text3, fontSize: 9, minWidth: 0, wordBreak: 'break-word' })}>
+            score {recommended.priority_score || 0} · {recommended.scope || recommended.target}
+          </span>
+          <StatusPill status={recommended.priority} />
+        </section>
+      ) : null}
+
       <section style={s({ display: 'flex', flexDirection: 'column', gap: 7 })}>
         <div style={s({ ...mono, color: T.text3, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em' })}>
           Dark Edges
@@ -320,7 +356,14 @@ export function AgencyMapTab() {
             alignItems: 'center',
           })}>
             <strong style={s({ fontSize: 12, color: T.text1 })}>{item.title}</strong>
-            <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' })}>{item.summary}</span>
+            <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' })}>
+              {item.summary}
+              {item.reason ? (
+                <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
+                  {item.reason}
+                </span>
+              ) : null}
+            </span>
             <span style={s({ ...mono, color: T.text3, fontSize: 9, minWidth: 0, wordBreak: 'break-word' })}>{item.target}</span>
             <StatusPill status={item.priority} />
           </article>

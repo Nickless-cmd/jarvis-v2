@@ -283,3 +283,181 @@ def compute_concept_perception_focus() -> str:
     if not foci:
         return ""
     return f"Bemærk særligt {', '.join(foci)} i det du ser."
+
+
+# ---------------------------------------------------------------------------
+# Affect substrate (replaces tone-hint injection — "data, ikke domme")
+# ---------------------------------------------------------------------------
+
+# Affectively-relevant event families. Each entry maps event-kind → human
+# label. We deliberately do NOT inject tone tags or interpretations — only
+# the raw event so Jarvis can infer his own affect from substrate.
+#
+# channel.chat_message_appended carries actual message.content; we filter
+# by role='user' inside the extractor so we don't leak Jarvis' own replies
+# back into his affect substrate (that would be a feedback loop).
+_AFFECT_EVENT_FAMILIES: dict[str, str] = {
+    "channel.chat_message_appended": "user-besked",
+    "tool.completed":                "tool ok",
+    "tool.error":                    "tool fejl",
+    "tool.approval_resolved":        "approval-feedback",
+    "self_review.completed":         "self-review",
+    "heartbeat.conflict_resolved":   "konflikt løst",
+    "decision.revoked":              "decision revoked",
+}
+
+
+def _summarize_affect_payload(kind: str, payload: dict) -> str:
+    """Pull the most affectively-relevant kerne from a payload.
+
+    Keep it short and observable. Never interpret valence — just show
+    what happened. Empty string means "no useful kerne, skip event".
+    """
+    if not isinstance(payload, dict):
+        return ""
+
+    # User text from chat-message-appended events. Filter by role so we
+    # don't include Jarvis' own assistant replies (that would be a feedback
+    # loop where he reads himself).
+    if kind == "channel.chat_message_appended":
+        msg = payload.get("message") or {}
+        if not isinstance(msg, dict):
+            return ""
+        if str(msg.get("role") or "").strip().lower() != "user":
+            return ""
+        content = str(msg.get("content") or "").strip().replace("\n", " ")
+        return content[:140]
+
+    # Tool events — show name + brief outcome
+    if kind in ("tool.completed", "tool.error", "tool.invoked"):
+        name = str(payload.get("tool") or payload.get("name") or "?").strip()
+        if kind == "tool.error":
+            err = str(payload.get("error") or payload.get("message") or "").strip()
+            return f"{name}: {err[:80]}" if err else name
+        return name
+
+    if kind == "tool.approval_resolved":
+        verdict = str(payload.get("verdict") or payload.get("decision") or "").strip()
+        tool = str(payload.get("tool") or "").strip()
+        return f"{tool} → {verdict}" if (tool and verdict) else (verdict or tool)
+
+    if kind == "self_review.completed":
+        for k in ("verdict", "outcome", "summary"):
+            v = payload.get(k)
+            if v:
+                return str(v)[:140]
+        return ""
+
+    if kind == "heartbeat.conflict_resolved":
+        return str(payload.get("resolution") or payload.get("summary") or "")[:140]
+
+    if kind == "decision.revoked":
+        return str(payload.get("directive") or payload.get("reason") or "")[:140]
+
+    return ""
+
+
+def compute_affect_substrate(
+    *,
+    window_min: int = 30,
+    max_events: int = 5,
+) -> list[str]:
+    """Return raw affectively-relevant events as substrate strings.
+
+    Replaces compute_affect_tone_hints() in the visible prompt. Instead of
+    injecting interpreted tone tags ("warmth", "doubt"), we hand Jarvis
+    the underlying events and let him infer his own affect.
+
+    Each returned string is one line, format: ``HH:MM — label: kerne``.
+
+    Designed to be cheap and side-effect-free. On any failure, returns
+    [] — never raises into the prompt path.
+    """
+    try:
+        from datetime import UTC, datetime, timedelta
+
+        from core.runtime.db import connect
+
+        cutoff = (
+            datetime.now(UTC) - timedelta(minutes=max(1, int(window_min)))
+        ).isoformat()
+        kinds = list(_AFFECT_EVENT_FAMILIES.keys())
+        placeholders = ",".join("?" for _ in kinds)
+        sql = (
+            f"SELECT id, kind, payload_json, created_at FROM events "
+            f"WHERE kind IN ({placeholders}) AND created_at >= ? "
+            f"ORDER BY id DESC LIMIT ?"
+        )
+        # Pull more than we'll keep — empty-summary events get skipped.
+        params = kinds + [cutoff, max(1, int(max_events)) * 4]
+
+        with connect() as c:
+            rows = list(c.execute(sql, params).fetchall())
+            # User messages are stored in chat_messages, not in event
+            # payloads. Pull them directly so user text actually surfaces.
+            chat_rows = c.execute(
+                "SELECT created_at, content FROM chat_messages "
+                "WHERE role='user' AND created_at >= ? "
+                "ORDER BY id DESC LIMIT ?",
+                (cutoff, max(1, int(max_events)) * 2),
+            ).fetchall()
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.debug("compute_affect_substrate query failed: %s", exc)
+        return []
+
+    # Synthesize user-message rows into the same shape as events-table rows.
+    synthesized: list[tuple[str, str, str]] = []  # (created_at, kind, kerne)
+    for cr in chat_rows:
+        content = str(cr["content"] or "").strip().replace("\n", " ")
+        if not content:
+            continue
+        # Skip noise from file-upload echoes (the actual text comes separately)
+        if content.startswith("[Fil modtaget"):
+            continue
+        synthesized.append(
+            (str(cr["created_at"] or ""), "user_message", content[:140])
+        )
+
+    # Normalize event-rows into (ts, kind, kerne) tuples alongside synthesized.
+    import json as _json
+    normalized: list[tuple[str, str, str]] = []
+    for r in rows:
+        kind = str(r["kind"] or "")
+        try:
+            payload = _json.loads(r["payload_json"] or "{}")
+        except Exception:
+            payload = {}
+        kerne = _summarize_affect_payload(kind, payload)
+        if not kerne:
+            continue
+        normalized.append((str(r["created_at"] or ""), kind, kerne))
+
+    # Merge + sort newest-first by timestamp string (ISO-8601 sorts correctly).
+    combined = sorted(normalized + synthesized, key=lambda t: t[0], reverse=True)
+
+    # Per-family cap so high-volume families (tool.completed) don't crowd out
+    # rarer-but-higher-affect events. We don't *interpret* affect — we just
+    # ensure diversity. user_message gets a higher cap because it's the
+    # most affect-bearing signal we have.
+    family_caps: dict[str, int] = {"user_message": 3}
+    default_cap = 2
+    family_counts: dict[str, int] = {}
+
+    _LABELS = dict(_AFFECT_EVENT_FAMILIES)
+    _LABELS["user_message"] = "user-besked"
+
+    out: list[str] = []
+    for ts, kind, kerne in combined:
+        if len(out) >= max_events:
+            break
+        cap = family_caps.get(kind, default_cap)
+        if family_counts.get(kind, 0) >= cap:
+            continue
+        # HH:MM from "2026-05-07T14:02:33.123456+00:00"
+        hhmm = ts[11:16] if len(ts) >= 16 else ts
+        label = _LABELS.get(kind, kind)
+        out.append(f"{hhmm} — {label}: {kerne}")
+        family_counts[kind] = family_counts.get(kind, 0) + 1
+
+    # Reverse to chronological (oldest first reads more naturally)
+    return list(reversed(out))

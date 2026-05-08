@@ -136,6 +136,10 @@ class RuntimeSettings:
     concept_baseline_drift_min_sustained_days: int = 14
     concept_baseline_drift_min_confidence: float = 0.7
     emotion_concepts_default_trigger_cooldown_seconds: int = 30
+    # Affect substrate over tone-hints (added 2026-05-07 — "data, ikke domme")
+    # Replaces interpreted tone-tags with raw event substrate in visible prompt.
+    prompt_affect_substrate_enabled: bool = True
+    prompt_affect_tone_hints_enabled: bool = False
     # Tool router (added 2026-05-06)
     tool_router_enabled: bool = True
     tool_router_threshold: float = 0.40  # 0.55 caused 100% fallback on validation set; nomic-embed cross-language similarity is weaker than expected. Daemon will tune adaptively.
@@ -218,6 +222,8 @@ class RuntimeSettings:
             "self_repair_default_window_seconds": self.self_repair_default_window_seconds,
             "self_repair_default_auto_disable_after_escalations": self.self_repair_default_auto_disable_after_escalations,
             "self_repair_default_auto_disable_window_hours": self.self_repair_default_auto_disable_window_hours,
+            "prompt_affect_substrate_enabled": self.prompt_affect_substrate_enabled,
+            "prompt_affect_tone_hints_enabled": self.prompt_affect_tone_hints_enabled,
             "emotion_concepts_tone_injection_enabled": self.emotion_concepts_tone_injection_enabled,
             "emotion_concepts_perception_focus_enabled": self.emotion_concepts_perception_focus_enabled,
             "concept_baseline_tracker_enabled": self.concept_baseline_tracker_enabled,
@@ -383,6 +389,8 @@ def load_settings() -> RuntimeSettings:
         self_repair_default_window_seconds=int(data.get("self_repair_default_window_seconds", defaults.self_repair_default_window_seconds)),
         self_repair_default_auto_disable_after_escalations=int(data.get("self_repair_default_auto_disable_after_escalations", defaults.self_repair_default_auto_disable_after_escalations)),
         self_repair_default_auto_disable_window_hours=int(data.get("self_repair_default_auto_disable_window_hours", defaults.self_repair_default_auto_disable_window_hours)),
+        prompt_affect_substrate_enabled=bool(data.get("prompt_affect_substrate_enabled", defaults.prompt_affect_substrate_enabled)),
+        prompt_affect_tone_hints_enabled=bool(data.get("prompt_affect_tone_hints_enabled", defaults.prompt_affect_tone_hints_enabled)),
         emotion_concepts_tone_injection_enabled=bool(data.get("emotion_concepts_tone_injection_enabled", defaults.emotion_concepts_tone_injection_enabled)),
         emotion_concepts_perception_focus_enabled=bool(data.get("emotion_concepts_perception_focus_enabled", defaults.emotion_concepts_perception_focus_enabled)),
         concept_baseline_tracker_enabled=bool(data.get("concept_baseline_tracker_enabled", defaults.concept_baseline_tracker_enabled)),

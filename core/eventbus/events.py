@@ -144,6 +144,7 @@ ALLOWED_EVENT_FAMILIES = {
     "identity",         # identity_drift_daemon (added 2026-05-08)
     "causal",           # causal_graph subsystem (added 2026-05-08)
     "narrative",        # narrative_summary_daemon — Phase 2.5 (added 2026-05-08)
+    "counterfactual",   # counterfactual_engine + pattern_counterfactual_daemon (added 2026-05-08)
 }
 
 

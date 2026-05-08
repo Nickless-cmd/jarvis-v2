@@ -77,3 +77,20 @@ def test_build_identity_preamble_works_without_signals(tmp_path):
             with patch("core.services.identity_composer._read_energy", return_value=""):
                 preamble = ic.build_identity_preamble()
     assert preamble == "Jarvis."
+
+
+def test_build_identity_composer_surface_exposes_derived_state(tmp_path):
+    identity = tmp_path / "IDENTITY.md"
+    identity.write_text("Name: Jarvis\n")
+    _reset_cache()
+    import core.services.identity_composer as ic
+    with patch.object(ic, "_IDENTITY_FILE", identity):
+        with patch("core.services.identity_composer._read_bearing", return_value="Rolig"):
+            with patch("core.services.identity_composer._read_energy", return_value="høj"):
+                surface = ic.build_identity_composer_surface()
+
+    assert surface["mode"] == "identity-composer"
+    assert surface["name"] == "Jarvis"
+    assert surface["bearing_present"] is True
+    assert surface["energy_present"] is True
+    assert surface["authority"] == "derived-surface-only"

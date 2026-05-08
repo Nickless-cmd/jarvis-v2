@@ -13,6 +13,7 @@ be layered on top in subsequent work.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from . import runtime_tasks
@@ -24,6 +25,7 @@ _DEFAULT_KINDS: tuple[str, ...] = (
     "generic",
     "open-loop-follow-up",
     "agency_bridge_repair",
+    "observability_bridge_repair",
 )
 
 
@@ -101,6 +103,37 @@ def _handle_agency_bridge_repair(task: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def _handle_observability_bridge_repair(task: dict[str, Any]) -> dict[str, str]:
+    scope = str(task.get("scope") or "").strip()
+    goal = str(task.get("goal") or "").strip()
+    task_id = str(task.get("task_id") or "")
+    service = Path(scope).stem if scope else ""
+    brief = {
+        "task_id": task_id,
+        "created_at": datetime.now(UTC).isoformat(),
+        "status": "awaiting-visible-repair",
+        "scope": scope,
+        "goal": goal,
+        "service": service,
+        "recommended_next_action": (
+            "Add a minimal build_*surface for this service or connect an existing "
+            "surface to Mission Control/System Cartographer. Then rerun the "
+            "cartographer and verify the dark edge drops or its coverage score rises."
+        ),
+        "suggested_files": _suggested_observability_files(scope=scope, service=service),
+    }
+    _store_observability_repair_brief(task_id=task_id, brief=brief)
+    return {
+        "status": "blocked",
+        "summary": (
+            "Observability bridge repair brief prepared; source changes require "
+            f"visible/coding lane approval. {service or scope or goal}"[:240]
+        ),
+        "artifact_ref": f"state:observability_bridge_repair_briefs:{task_id}",
+        "blocked_reason": "observability brief ready; awaiting approved implementation lane",
+    }
+
+
 def _execute_task(task: dict[str, Any]) -> None:
     """Execute a single task and persist its final status. Never raises."""
     kind = str(task.get("kind") or "")
@@ -114,6 +147,16 @@ def _execute_task(task: dict[str, Any]) -> None:
             summary = _handle_open_loop_followup(task)
         elif kind == "agency_bridge_repair":
             result = _handle_agency_bridge_repair(task)
+            runtime_tasks.update_task(
+                task_id,
+                status=result["status"],
+                blocked_reason=result["blocked_reason"],
+                result_summary=result["summary"],
+                artifact_ref=result["artifact_ref"],
+            )
+            return
+        elif kind == "observability_bridge_repair":
+            result = _handle_observability_bridge_repair(task)
             runtime_tasks.update_task(
                 task_id,
                 status=result["status"],
@@ -219,6 +262,14 @@ def _store_agency_repair_brief(*, task_id: str, brief: dict[str, Any]) -> None:
     save_json("agency_bridge_repair_briefs", data)
 
 
+def _store_observability_repair_brief(*, task_id: str, brief: dict[str, Any]) -> None:
+    data = load_json("observability_bridge_repair_briefs", {})
+    if not isinstance(data, dict):
+        data = {}
+    data[task_id] = brief
+    save_json("observability_bridge_repair_briefs", data)
+
+
 def _suggested_agency_files(*, scope: str, edge: dict[str, Any]) -> list[str]:
     haystack = " ".join([
         scope,
@@ -252,4 +303,18 @@ def _suggested_agency_files(*, scope: str, edge: dict[str, Any]) -> list[str]:
             "core/services/agency_map.py",
             "apps/ui/src/components/mission-control/AgencyMapTab.jsx",
         ])
+    return list(dict.fromkeys(suggestions))
+
+
+def _suggested_observability_files(*, scope: str, service: str) -> list[str]:
+    suggestions = []
+    if scope:
+        suggestions.append(scope)
+    suggestions.extend([
+        "core/services/system_cartographer.py",
+        "core/services/agency_map.py",
+        "apps/ui/src/components/mission-control/AgencyMapTab.jsx",
+    ])
+    if service == "identity_composer":
+        suggestions.insert(0, "core/services/identity_composer.py")
     return list(dict.fromkeys(suggestions))

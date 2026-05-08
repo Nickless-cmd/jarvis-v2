@@ -249,6 +249,8 @@ export function AgencyMapTab() {
   const systemCartographer = data?.systemCartographer || {}
   const systemSummary = systemCartographer.summary || {}
   const observabilityTask = systemCartographer.recommendedObservabilityTask || null
+  const systemHealth = systemCartographer.systemHealth || {}
+  const systemAutoTask = systemCartographer.autoTask || {}
 
   return (
     <div style={s({ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' })}>
@@ -353,9 +355,31 @@ export function AgencyMapTab() {
           <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
             observed events {systemSummary.observed_events || 0} · causal edges {systemSummary.observed_causal_edges || 0} · family edges {systemSummary.observed_causal_family_edges || 0}
           </span>
+          <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
+            coverage avg {systemSummary.avg_causal_coverage_score || 0} · low {systemSummary.low_coverage_services || 0} · auto-task {systemAutoTask.status || 'unknown'}
+          </span>
         </span>
         <StatusPill status={systemCartographer.mode === 'system-cartographer-v1' ? 'active' : 'missing'} />
       </section>
+
+      {systemHealth.summary ? (
+        <section style={s({
+          background: T.bgRaised,
+          border: `1px solid ${T.border0}`,
+          borderRadius: T.r_sm,
+          padding: 12,
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 0.8fr) minmax(0, 1.6fr) auto',
+          gap: 10,
+          alignItems: 'center',
+        })}>
+          <strong style={s({ fontSize: 12, color: T.text1 })}>System Health</strong>
+          <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' })}>
+            {systemHealth.summary}
+          </span>
+          <StatusPill status={systemHealth.state || 'unknown'} />
+        </section>
+      ) : null}
 
       {observabilityTask ? (
         <section style={s({

@@ -145,3 +145,28 @@ def test_agency_bridge_repair_prepares_brief(monkeypatch) -> None:
     brief = saved["agency_bridge_repair_briefs"][task["task_id"]]
     assert brief["edge"]["id"] == "executive-tools"
     assert "core/services/living_executive.py" in brief["suggested_files"]
+
+
+def test_observability_bridge_repair_prepares_brief(monkeypatch) -> None:
+    _, task_worker = _import_modules()
+    saved = {}
+
+    monkeypatch.setattr(task_worker, "load_json", lambda name, default: {})
+    monkeypatch.setattr(task_worker, "save_json", lambda name, data: saved.update({name: data}))
+
+    task = {
+        "task_id": "task-observe",
+        "kind": "observability_bridge_repair",
+        "goal": "Expose identity_composer in Mission Control.",
+        "origin": "system-cartographer",
+        "scope": "core/services/identity_composer.py",
+        "priority": "medium",
+    }
+
+    result = task_worker._handle_observability_bridge_repair(task)
+
+    assert result["status"] == "blocked"
+    assert result["artifact_ref"] == "state:observability_bridge_repair_briefs:task-observe"
+    brief = saved["observability_bridge_repair_briefs"][task["task_id"]]
+    assert brief["service"] == "identity_composer"
+    assert "core/services/identity_composer.py" in brief["suggested_files"]

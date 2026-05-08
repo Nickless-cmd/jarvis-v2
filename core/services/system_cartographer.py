@@ -7,11 +7,21 @@ what is probably still dark?"
 from __future__ import annotations
 
 import re
+import logging
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
+_AUTO_TASK_MIN_SCORE = 75
+_AUTO_TASK_KIND = "observability_bridge_repair"
+_AUTO_TASK_ORIGIN = "system-cartographer"
+_SCAN_INTERVAL_SECONDS = 900
+
+logger = logging.getLogger(__name__)
+_THREAD: threading.Thread | None = None
+_STOP = threading.Event()
 
 _PUBLISH_RE = re.compile(r"event_bus\.publish\(\s*[\"']([^\"']+)[\"']")
 _EMIT_RE = re.compile(r"emit\(\s*[\"']([^\"']+)[\"']")
@@ -19,7 +29,7 @@ _SURFACE_RE = re.compile(r"def\s+(build_[a-zA-Z0-9_]*surface)\s*\(")
 _TOOL_RE = re.compile(r"[\"']name[\"']\s*:\s*[\"']([^\"']+)[\"']")
 
 
-def build_system_cartographer_surface() -> dict[str, Any]:
+def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str, Any]:
     files = _service_files()
     services = [_service_node(path, text) for path, text in files.items()]
     services.sort(key=lambda item: str(item["id"]))
@@ -39,6 +49,17 @@ def build_system_cartographer_surface() -> dict[str, Any]:
     recommended_observability_task = (
         _observability_task_from_dark_edge(dark_edges[0]) if dark_edges else None
     )
+    auto_task = (
+        _maybe_enqueue_observability_task(recommended_observability_task)
+        if auto_enqueue
+        else {"enabled": False, "status": "not-requested"}
+    )
+    coverage = _coverage_summary(services)
+    system_health = _system_health_from_jarvis_perspective(
+        dark_edges=dark_edges,
+        coverage=coverage,
+        recommended=recommended_observability_task,
+    )
     return {
         "fetchedAt": datetime.now(UTC).isoformat(),
         "mode": "system-cartographer-v1",
@@ -53,6 +74,8 @@ def build_system_cartographer_surface() -> dict[str, Any]:
             "observed_events": causal.get("event_count", 0),
             "observed_causal_edges": causal.get("edge_count", 0),
             "observed_causal_family_edges": len(causal.get("family_edges") or []),
+            "avg_causal_coverage_score": coverage["avg_score"],
+            "low_coverage_services": coverage["low_count"],
         },
         "nodes": {
             "services": services,
@@ -64,12 +87,39 @@ def build_system_cartographer_surface() -> dict[str, Any]:
         "darkEdges": dark_edges,
         "causalRuntime": causal,
         "recommendedObservabilityTask": recommended_observability_task,
+        "autoTask": auto_task,
+        "coverage": coverage,
+        "systemHealth": system_health,
         "notes": [
             "Phase 1 is code/runtime inventory, not proof of causal influence.",
             "Phase 2 adds eventbus/causal_edges runtime evidence.",
             "Next phase should persist deltas over time and rank missing witness surfaces.",
         ],
     }
+
+
+def start_system_cartographer_daemon() -> None:
+    global _THREAD
+    if _THREAD is not None and _THREAD.is_alive():
+        return
+    _STOP.clear()
+    _THREAD = threading.Thread(target=_loop, daemon=True, name="system-cartographer")
+    _THREAD.start()
+    logger.info("system_cartographer: daemon started")
+
+
+def stop_system_cartographer_daemon() -> None:
+    _STOP.set()
+
+
+def _loop() -> None:
+    while not _STOP.is_set():
+        try:
+            build_system_cartographer_surface(auto_enqueue=True)
+        except Exception as exc:
+            logger.debug("system_cartographer: scan failed: %s", exc)
+        _STOP.wait(_SCAN_INTERVAL_SECONDS)
+    logger.info("system_cartographer: daemon stopped")
 
 
 def _service_files() -> dict[str, str]:
@@ -111,6 +161,7 @@ def _service_node(path: str, text: str) -> dict[str, Any]:
             "db": uses_db,
             "state_store": reads_state or writes_state,
         },
+        "coverage": {},
     }
 
 
@@ -305,6 +356,64 @@ def _rank_dark_edges(
     return ranked[:80]
 
 
+def _coverage_summary(services: list[dict[str, Any]]) -> dict[str, Any]:
+    scored = []
+    for service in services:
+        score, parts = _coverage_score(service)
+        item = {
+            "service": service["id"],
+            "path": service["path"],
+            "kind": service["kind"],
+            "score": score,
+            "parts": parts,
+        }
+        service["coverage"] = item
+        scored.append(item)
+    scored.sort(key=lambda item: (int(item["score"]), str(item["service"])))
+    low = [item for item in scored if int(item["score"]) < 45]
+    avg = round(sum(int(item["score"]) for item in scored) / max(len(scored), 1), 1)
+    return {
+        "avg_score": avg,
+        "low_count": len(low),
+        "lowest": scored[:20],
+    }
+
+
+def _coverage_score(service: dict[str, Any]) -> tuple[int, dict[str, int]]:
+    uses = service.get("uses") or {}
+    parts = {
+        "surface": 25 if int(service.get("surface_count") or 0) > 0 else 0,
+        "events": 20 if int(service.get("publishes_count") or 0) > 0 else 0,
+        "eventbus": 15 if uses.get("eventbus") else 0,
+        "state": 15 if (uses.get("db") or uses.get("state_store")) else 0,
+        "llm": 10 if uses.get("llm") else 0,
+        "daemon_or_action": 15 if service.get("kind") in {"daemon", "action"} else 0,
+    }
+    return min(sum(parts.values()), 100), parts
+
+
+def _system_health_from_jarvis_perspective(
+    *,
+    dark_edges: list[dict[str, Any]],
+    coverage: dict[str, Any],
+    recommended: dict[str, Any] | None,
+) -> dict[str, Any]:
+    top_dark = dark_edges[:5]
+    lowest = list(coverage.get("lowest") or [])[:5]
+    return {
+        "mode": "jarvis-perspective-system-health",
+        "state": "needs-witness" if top_dark else "well-witnessed",
+        "summary": (
+            f"{len(dark_edges)} dark influence edges; "
+            f"{coverage.get('low_count', 0)} low-coverage services; "
+            f"next: {recommended.get('title') if recommended else 'none'}"
+        ),
+        "least_visible_influential": top_dark,
+        "lowest_coverage": lowest,
+        "recommended_next": recommended,
+    }
+
+
 def _dark_edge_score(
     *,
     service: str,
@@ -353,6 +462,77 @@ def _observability_task_from_dark_edge(edge: dict[str, Any]) -> dict[str, Any]:
         "reason": "; ".join(edge.get("priority_reasons") or []),
         "source": "system-cartographer",
     }
+
+
+def _maybe_enqueue_observability_task(candidate: dict[str, Any] | None) -> dict[str, Any]:
+    if not candidate:
+        return {"enabled": True, "status": "no-candidate"}
+    score = int(candidate.get("priority_score") or 0)
+    if score < _AUTO_TASK_MIN_SCORE:
+        return {
+            "enabled": True,
+            "status": "below-threshold",
+            "threshold": _AUTO_TASK_MIN_SCORE,
+            "priority_score": score,
+        }
+    duplicate = _find_existing_observability_task(candidate)
+    if duplicate:
+        return {
+            "enabled": True,
+            "status": "duplicate-present",
+            "task_id": str(duplicate.get("task_id") or ""),
+            "task_status": str(duplicate.get("status") or ""),
+            "priority_score": score,
+        }
+    try:
+        from core.services.runtime_tasks import create_task
+
+        task = create_task(
+            kind=_AUTO_TASK_KIND,
+            goal=str(candidate.get("goal") or candidate.get("title") or ""),
+            scope=str(candidate.get("scope") or ""),
+            origin=_AUTO_TASK_ORIGIN,
+            priority=_runtime_task_priority(str(candidate.get("priority") or "")),
+            owner="jarvis",
+        )
+        return {
+            "enabled": True,
+            "status": "enqueued",
+            "task_id": str(task.get("task_id") or ""),
+            "priority_score": score,
+        }
+    except Exception as exc:
+        logger.debug("system_cartographer: auto task enqueue failed: %s", exc)
+        return {
+            "enabled": True,
+            "status": "enqueue-failed",
+            "error": f"{type(exc).__name__}: {exc}"[:300],
+            "priority_score": score,
+        }
+
+
+def _find_existing_observability_task(candidate: dict[str, Any]) -> dict[str, Any] | None:
+    try:
+        from core.services.runtime_tasks import list_tasks
+
+        scope = str(candidate.get("scope") or "").strip()
+        goal = str(candidate.get("goal") or "").strip()
+        for status in ("queued", "running", "blocked"):
+            for task in list_tasks(status=status, kind=_AUTO_TASK_KIND, limit=50):
+                if str(task.get("scope") or "").strip() == scope:
+                    return task
+                if str(task.get("goal") or "").strip() == goal:
+                    return task
+    except Exception:
+        return None
+    return None
+
+
+def _runtime_task_priority(priority: str) -> str:
+    normalized = str(priority or "").strip().lower()
+    if normalized in {"high", "medium", "low"}:
+        return normalized
+    return "medium"
 
 
 def _tool_count() -> int:

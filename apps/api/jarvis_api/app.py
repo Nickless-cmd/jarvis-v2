@@ -147,6 +147,12 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("agency_cartographer start failed: %s", _exc)
             try:
+                from core.services.system_cartographer import start_system_cartographer_daemon
+                start_system_cartographer_daemon()
+                logger.info("system_cartographer daemon started")
+            except Exception as _exc:
+                logger.warning("system_cartographer start failed: %s", _exc)
+            try:
                 from core.services.jarvis_brain_daemon import start_brain_daemon
                 start_brain_daemon()
                 logger.info("jarvis_brain daemon started")
@@ -266,6 +272,11 @@ def create_app() -> FastAPI:
             try:
                 from core.services.agency_cartographer import stop_agency_cartographer_daemon
                 stop_agency_cartographer_daemon()
+            except Exception:
+                pass
+            try:
+                from core.services.system_cartographer import stop_system_cartographer_daemon
+                stop_system_cartographer_daemon()
             except Exception:
                 pass
             try:

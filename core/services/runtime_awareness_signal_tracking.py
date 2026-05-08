@@ -25,6 +25,19 @@ from core.runtime.db import (
 
 _STALE_AFTER_DAYS = 7
 
+# TTL-cache for build_runtime_awareness_signal_surface result.
+# This surface costs ~7s per call due to mutation-on-read (DB persist + status
+# refresh) over many sub-signals. Prompt assembly calls it 2-3x per visible
+# turn (autonomy_pressure, proactive_question_gate, rule_conclusions via
+# list_all_surfaces). 30s TTL keeps freshness aligned with heartbeat cadence
+# without re-running the full extract+persist+refresh pipeline on every call.
+# Perf-fix 2026-05-08: 7.2s → ~0ms warm.
+import time as _time
+_SURFACE_CACHE_TTL = 30.0
+# Keyed by `limit` because callers pass different values (8 default,
+# 6 from autonomy_pressure / proactive_question_gate). Each gets its own slot.
+_surface_cache_by_limit: dict[int, tuple[float, dict]] = {}
+
 
 def track_runtime_awareness_signals_for_visible_turn(
     *,
@@ -80,6 +93,10 @@ def refresh_runtime_awareness_signal_statuses() -> dict[str, int]:
 
 
 def build_runtime_awareness_signal_surface(*, limit: int = 8) -> dict[str, object]:
+    now = _time.monotonic()
+    cached = _surface_cache_by_limit.get(limit)
+    if cached is not None and (now - cached[0]) < _SURFACE_CACHE_TTL:
+        return cached[1]
     # Passivt refresh: opdater signaler baseret på aktuel runtime-tilstand
     candidates = _extract_runtime_awareness_candidates()
     _persist_runtime_awareness_signals(signals=candidates, session_id="heartbeat", run_id="")
@@ -97,7 +114,7 @@ def build_runtime_awareness_signal_surface(*, limit: int = 8) -> dict[str, objec
         active=active,
         recovered=recovered,
     )
-    return {
+    result = {
         "active": bool(active or constrained or recovered),
         "items": ordered,
         "recent_history": [_history_item_from_signal(item) for item in items[: min(max(limit, 1), 5)]],
@@ -113,6 +130,8 @@ def build_runtime_awareness_signal_surface(*, limit: int = 8) -> dict[str, objec
             "machine_detail": machine_state["detail"],
         },
     }
+    _surface_cache_by_limit[limit] = (now, result)
+    return result
 
 
 def _machine_available_signal(*, heartbeat: dict[str, object]) -> dict[str, object]:

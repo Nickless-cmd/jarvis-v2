@@ -23,6 +23,12 @@ def test_system_cartographer_builds_broad_inventory() -> None:
     assert "coverage" in surface
     assert "systemHealth" in surface
     assert "autoTask" in surface
+    assert "theaterAudit" in surface
+    assert "theater_findings" in surface["summary"]
+    assert surface["theaterAudit"]["mode"] in {
+        "theater-audit-v1",
+        "theater-audit-unavailable",
+    }
 
 
 def test_system_cartographer_finds_dark_edges() -> None:

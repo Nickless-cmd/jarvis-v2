@@ -1,7 +1,7 @@
 # Causal Graph Layer — Design Spec
 
 **Dato:** 2026-05-08
-**Status:** Approved by Bjørn 2026-05-08
+**Status:** Approved by Bjørn 2026-05-08; revised after Jarvis review same dag (6 punkter implementeret: context-propagation §3.0, edge-kind semantik §1.5, eviction §4.4, daemon-metrikker §4.5, awareness lookback-konstant §7.2, query pagination §5)
 **Forfatter:** Brainstormet med Claude
 **Motivation:** Jarvis AGI-rapport 2026-05-07, prioritet #1 (neuro-symbolic). Lukker hullet "causally grounded retrieval" som Pengfei Du-survey identificerede som ét af 10 åbne udfordringer for autonome LLM-agenter.
 
@@ -16,6 +16,21 @@ Etablere et causal graph-lag oven på den eksisterende `events`-tabel (389k rows
 - *"Hvis X ikke var sket, hvilke events ville være prunet?"* — counterfactuals beriget med ægte kausal-data
 
 Subsystemet er **advisory** (suggestions, ikke binding gates) og **decoupled** (eksisterende events fortsætter uændret; ingen call-sites tvinges til migrering).
+
+---
+
+## 1.5 Edge-kind semantik
+
+Fire `edge_kind`-værdier med klart-defineret semantik (Jarvis review 2026-05-08):
+
+| edge_kind | Betydning | Eksempel |
+|---|---|---|
+| **triggered** | Direkte årsag: X startede Y | `tool.invoked` → `tool.completed` |
+| **caused** | Indirekte men nødvendig: X førte logisk til Y | `decision.created` → `behavioral_decision_review.broken` |
+| **enabled** | X gjorde Y mulig (fjernede barriere/gav adgang) | `tool_router.unlocked` → `tool.invoked` |
+| **blocked** | X forhindrede Y | `executive_contradiction.detected` → `runtime.action_aborted` |
+
+Default ved eksplicit `caused_by` uden eksplicit `edge_kind` er `triggered`. Inference-daemon vælger `triggered` for kind-rule + shared-id matches og `caused` for temporal-only.
 
 ---
 
@@ -48,6 +63,44 @@ CREATE INDEX idx_ce_parent ON causal_edges(parent_event_id);
 ---
 
 ## 3. Eksplicit edges — instrumentering
+
+### 3.0 Context-propagation (kritisk)
+
+Uden en automatisk mekanisme bliver `caused_by` sjælden brugt — hver caller skal selv huske at hente og sende parent-id'et. Løsning: **`EventContext` via `contextvars.ContextVar`**.
+
+```python
+# core/eventbus/context.py
+import contextvars
+_current_event_context: contextvars.ContextVar[int | None] = \
+    contextvars.ContextVar("current_event_context", default=None)
+
+def set_current_event(event_id: int | None) -> contextvars.Token:
+    """Set parent-event-id for the current dispatch scope.
+    Returns token to reset() with later. Use as context manager
+    via with_event_context() helper for cleanest pattern."""
+    return _current_event_context.set(event_id)
+
+def get_current_event() -> int | None:
+    return _current_event_context.get()
+```
+
+**Producers der sætter context** (cooperative — ingen tvang):
+- `tool_router.dispatch(...)` sætter context til parent tool-call event-id før den kalder tool-handler
+- `agentic_round` sætter context til round-start-event-id under hele round'en
+- `channel.message_inbound` handler sætter context før den propagerer til downstream services
+
+**`publish()` læser context automatisk** når `caused_by` ikke er eksplicit sat:
+
+```python
+def publish(kind, payload, *, caused_by=None, edge_kind="triggered"):
+    if caused_by is None:
+        caused_by = get_current_event()  # auto-pick from ContextVar
+    # ... resten som før
+```
+
+Net-effekt: services kalder `publish()` som normalt og får edges gratis hvis en parent-event er aktiv. Eksplicit override mulig via kwarg når caller ved bedre.
+
+### 3.1 Direct call signature
 
 `event_bus.publish()` udvides:
 
@@ -111,6 +164,41 @@ identity.drift_detected, heartbeat.conflict_resolved
 - Cap: max 500 nye edges/tick
 - Backfill: første kørsel scanner sidste 7 dage retroaktivt, chunks á 1000 events, sleep 100ms mellem chunks
 
+### 4.4 Eviction / retention
+
+Med 389k events og potentielt 1-3 edges pr. event ville tabellen vokse til ~1M+ rows uden retention. Det skader query-performance over tid.
+
+**Politik (v1):**
+- `retention_days = 30` (konfigurerbar)
+- Efter hvert tick kører `_prune_old_edges()` der DELETE'er edges hvor `created_at < now - retention_days`
+- Cap på pruning: max 5000 rows pr. tick (forhindrer DELETE-storm)
+- Pruning er idempotent — kører selv hvis ingen new edges blev oprettet i samme tick
+
+Eksplicit edges (source='explicit') beskyttes med længere retention (60 dage) fordi de er pålidelige og dyrere at miste end inferens-edges.
+
+### 4.5 Observability — daemon-metrikker
+
+Efter hvert tick emitterer daemon `causal.inference_stats` event:
+
+```python
+event_bus.publish("causal.inference_stats", {
+    "events_scanned": int,
+    "edges_created": int,
+    "edges_upgraded": int,        # confidence-tier upgrades
+    "tier1_kind_rule_hits": int,
+    "tier2_shared_id_hits": int,
+    "tier3_temporal_hits": int,
+    "edges_pruned": int,
+    "duration_ms": int,
+    "completed_at": "iso-timestamp",
+})
+```
+
+Det giver:
+- MC-dashboard kan se inference-volume + tier-distribution
+- Over tid kan vi sammenligne tier-præcision (tier-1 burde dominere; hvis tier-3 dominerer er allowlist for løs)
+- Latency-tracking — daemon må ikke blokere længere end ~5s pr. tick
+
 ---
 
 ## 5. Query API
@@ -123,8 +211,13 @@ def query_causal_chain(
     direction: str = "backward",  # 'backward'|'forward'
     max_depth: int = 5,
     min_confidence: float = 0.5,
+    offset: int = 0,
+    limit: int = 100,
 ) -> dict:
     """
+    Pagination via (offset, limit). Default returnerer op til 100 noder.
+    total_available i response signalerer om der er flere end vi viser.
+
     Returns:
       {
         "root_event": {id, kind, payload, created_at},
@@ -133,8 +226,11 @@ def query_causal_chain(
           {"depth": 2, "event": {...}, "edge": {...}},
           ...
         ],
-        "truncated": bool,        # True hvis hit max_depth uden at nå root
-        "total_nodes": int,
+        "truncated_by_depth": bool,        # hit max_depth uden at nå root
+        "truncated_by_limit": bool,        # hit limit (mere data tilgængeligt)
+        "total_nodes_returned": int,       # længde af chain
+        "total_available": int,            # estimeret total uden pagination cap
+        "next_offset": int | None,         # offset for næste side, None hvis udtømt
       }
     """
 
@@ -198,7 +294,17 @@ Format: kæde fra `query_causal_chain()` + human-readable summary pr. trin.
 
 ### 7.2 Prompt-injection: `prompt_sections/causal_alerts.py`
 
-Awareness-sektion (priority 30) scanner sidste 30 min for kritiske failure-events:
+Awareness-sektion (priority 30) scanner kritiske failure-events i et lookback-vindue:
+
+```python
+# Tunable konstant — eksponeret som modul-niveau så MC kan justere
+# uden code-edit hvis 30 min viser sig forkert i praksis. Alternativ
+# strategi der kan overvejes senere: events_since_last_tick i stedet
+# for et fast tidsvindue.
+LOOKBACK_MINUTES = 30
+```
+
+Failure-event-kinds:
 - `tool.error` med severity≥medium
 - `behavioral_decision_review.broken`
 - `runtime.cheap_lane_provider_failed`

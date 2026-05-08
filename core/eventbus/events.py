@@ -142,6 +142,7 @@ ALLOWED_EVENT_FAMILIES = {
     "contradiction",    # contradiction_engine port (added 2026-05-07)
     "emergence",        # emergence pattern detection port (added 2026-05-07)
     "identity",         # identity_drift_daemon (added 2026-05-08)
+    "causal",           # causal_graph subsystem (added 2026-05-08)
 }
 
 

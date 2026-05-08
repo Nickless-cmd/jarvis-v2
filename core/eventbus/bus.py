@@ -14,7 +14,23 @@ class EventBus:
         self._subscribers: list[queue.Queue[dict[str, Any] | None]] = []
         self._lock = threading.Lock()
 
-    def publish(self, kind: str, payload: dict[str, Any] | None = None) -> None:
+    def publish(
+        self,
+        kind: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        caused_by: int | list[int] | None = None,
+        edge_kind: str = "triggered",
+    ) -> None:
+        # Auto-pickup parent from EventContext if caller didn't specify.
+        # Explicit caused_by always wins over context.
+        if caused_by is None:
+            try:
+                from core.eventbus.context import get_current_event
+                caused_by = get_current_event()
+            except Exception:
+                caused_by = None
+
         event = Event.create(kind=kind, payload=payload)
         payload_json = json.dumps(event.payload, ensure_ascii=False)
         created_at = event.ts.isoformat()
@@ -30,8 +46,25 @@ class EventBus:
                     created_at,
                 ),
             )
-            conn.commit()
             event_id = int(cursor.lastrowid)
+            # Write causal edges if parent(s) given. Best-effort —
+            # never let edge-write break event publication.
+            if caused_by is not None:
+                parents = caused_by if isinstance(caused_by, list) else [caused_by]
+                for pid in parents:
+                    try:
+                        conn.execute(
+                            """
+                            INSERT OR IGNORE INTO causal_edges
+                            (child_event_id, parent_event_id, edge_kind,
+                             confidence, source, created_at, reasoning)
+                            VALUES (?, ?, ?, 1.0, 'explicit', ?, '')
+                            """,
+                            (event_id, int(pid), edge_kind, created_at),
+                        )
+                    except Exception:
+                        pass
+            conn.commit()
 
         item = self._serialize_event(event_id=event_id, event=event)
         self._notify_subscribers(item)

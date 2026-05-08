@@ -72,3 +72,115 @@ def test_event_context_with_helper():
             assert get_current_event() == 100
         assert get_current_event() == 99
     assert get_current_event() is None
+
+
+def test_publish_with_explicit_caused_by_writes_edge():
+    from core.eventbus.bus import event_bus
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+        cur = c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES "
+            "('runtime.test_parent', '{}', '2026-05-08T00:00:00Z')"
+        )
+        parent_id = int(cur.lastrowid)
+        c.commit()
+    event_bus.publish(
+        "runtime.test_child",
+        {"x": 1},
+        caused_by=parent_id,
+        edge_kind="triggered",
+    )
+    with connect() as c:
+        rows = c.execute(
+            "SELECT * FROM causal_edges WHERE parent_event_id = ?",
+            (parent_id,),
+        ).fetchall()
+    assert len(rows) == 1
+    assert rows[0]["edge_kind"] == "triggered"
+    assert rows[0]["source"] == "explicit"
+    assert rows[0]["confidence"] == 1.0
+
+
+def test_publish_auto_pickup_from_event_context():
+    from core.eventbus.bus import event_bus
+    from core.eventbus.context import with_event_context
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+        cur = c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES "
+            "('runtime.ctx_parent', '{}', '2026-05-08T00:00:00Z')"
+        )
+        parent_id = int(cur.lastrowid)
+        c.commit()
+    with with_event_context(parent_id):
+        event_bus.publish("runtime.ctx_child", {"y": 2})
+    with connect() as c:
+        rows = c.execute(
+            "SELECT * FROM causal_edges WHERE parent_event_id = ?",
+            (parent_id,),
+        ).fetchall()
+    assert len(rows) == 1
+    assert rows[0]["source"] == "explicit"
+    assert rows[0]["edge_kind"] == "triggered"
+
+
+def test_publish_explicit_overrides_context():
+    from core.eventbus.bus import event_bus
+    from core.eventbus.context import with_event_context
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+        c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES "
+            "('runtime.override_ctx', '{}', '2026-05-08T00:00:00Z')"
+        )
+        ctx_id = int(c.execute("SELECT last_insert_rowid()").fetchone()[0])
+        c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES "
+            "('runtime.override_explicit', '{}', '2026-05-08T00:00:00Z')"
+        )
+        explicit_id = int(c.execute("SELECT last_insert_rowid()").fetchone()[0])
+        c.commit()
+    with with_event_context(ctx_id):
+        event_bus.publish(
+            "runtime.override_child",
+            {"z": 3},
+            caused_by=explicit_id,
+        )
+    with connect() as c:
+        rows = c.execute(
+            "SELECT parent_event_id FROM causal_edges "
+            "WHERE parent_event_id IN (?, ?)",
+            (ctx_id, explicit_id),
+        ).fetchall()
+    parents = {int(r["parent_event_id"]) for r in rows}
+    assert parents == {explicit_id}, f"explicit should override context: {parents}"
+
+
+def test_publish_caused_by_list_creates_multiple_edges():
+    from core.eventbus.bus import event_bus
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+        c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES "
+            "('runtime.multi_p1', '{}', '2026-05-08T00:00:00Z')"
+        )
+        p1 = int(c.execute("SELECT last_insert_rowid()").fetchone()[0])
+        c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES "
+            "('runtime.multi_p2', '{}', '2026-05-08T00:00:00Z')"
+        )
+        p2 = int(c.execute("SELECT last_insert_rowid()").fetchone()[0])
+        c.commit()
+    event_bus.publish(
+        "runtime.multi_child", {"v": 1}, caused_by=[p1, p2],
+    )
+    with connect() as c:
+        rows = c.execute(
+            "SELECT parent_event_id FROM causal_edges "
+            "WHERE parent_event_id IN (?, ?)", (p1, p2),
+        ).fetchall()
+    assert {int(r["parent_event_id"]) for r in rows} == {p1, p2}

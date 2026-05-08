@@ -18,6 +18,8 @@ def test_system_cartographer_builds_broad_inventory() -> None:
     }
     assert "services" in surface["nodes"]
     assert "event_families" in surface["nodes"]
+    task = surface["recommendedObservabilityTask"]
+    assert task is None or task["task_kind"] == "observability_bridge_repair"
 
 
 def test_system_cartographer_finds_dark_edges() -> None:
@@ -27,3 +29,6 @@ def test_system_cartographer_finds_dark_edges() -> None:
 
     assert isinstance(surface["darkEdges"], list)
     assert all("service" in item for item in surface["darkEdges"])
+    if surface["darkEdges"]:
+        assert "priority_score" in surface["darkEdges"][0]
+        assert surface["darkEdges"][0]["priority_score"] >= surface["darkEdges"][-1]["priority_score"]

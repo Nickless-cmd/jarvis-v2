@@ -144,6 +144,10 @@ class RuntimeSettings:
     # openers when they're all agreement-phrases. Owned by Jarvis: he flips
     # to False when he no longer needs the crutch. Does NOT auto-deactivate.
     prompt_agreement_streak_enabled: bool = True
+    # Emotion signal section (added 2026-05-08 by Jarvis). Viser aktive
+    # concepts + intensiteter + adfærdseffekter som data, så han selv kan
+    # se og justere — ikke fjerne signalet, men gøre det reagerbart.
+    prompt_emotion_signal_section_enabled: bool = True
     # Tool router (added 2026-05-06)
     tool_router_enabled: bool = True
     tool_router_threshold: float = 0.40  # 0.55 caused 100% fallback on validation set; nomic-embed cross-language similarity is weaker than expected. Daemon will tune adaptively.
@@ -229,6 +233,7 @@ class RuntimeSettings:
             "prompt_affect_substrate_enabled": self.prompt_affect_substrate_enabled,
             "prompt_affect_tone_hints_enabled": self.prompt_affect_tone_hints_enabled,
             "prompt_agreement_streak_enabled": self.prompt_agreement_streak_enabled,
+            "prompt_emotion_signal_section_enabled": self.prompt_emotion_signal_section_enabled,
             "emotion_concepts_tone_injection_enabled": self.emotion_concepts_tone_injection_enabled,
             "emotion_concepts_perception_focus_enabled": self.emotion_concepts_perception_focus_enabled,
             "concept_baseline_tracker_enabled": self.concept_baseline_tracker_enabled,
@@ -397,6 +402,7 @@ def load_settings() -> RuntimeSettings:
         prompt_affect_substrate_enabled=bool(data.get("prompt_affect_substrate_enabled", defaults.prompt_affect_substrate_enabled)),
         prompt_affect_tone_hints_enabled=bool(data.get("prompt_affect_tone_hints_enabled", defaults.prompt_affect_tone_hints_enabled)),
         prompt_agreement_streak_enabled=bool(data.get("prompt_agreement_streak_enabled", defaults.prompt_agreement_streak_enabled)),
+        prompt_emotion_signal_section_enabled=bool(data.get("prompt_emotion_signal_section_enabled", defaults.prompt_emotion_signal_section_enabled)),
         emotion_concepts_tone_injection_enabled=bool(data.get("emotion_concepts_tone_injection_enabled", defaults.emotion_concepts_tone_injection_enabled)),
         emotion_concepts_perception_focus_enabled=bool(data.get("emotion_concepts_perception_focus_enabled", defaults.emotion_concepts_perception_focus_enabled)),
         concept_baseline_tracker_enabled=bool(data.get("concept_baseline_tracker_enabled", defaults.concept_baseline_tracker_enabled)),

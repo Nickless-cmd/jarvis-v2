@@ -29,6 +29,7 @@ JARVIS_BRAIN_TOOL_DEFINITIONS: list[dict] = [
                     "content": {"type": "string", "description": "Indhold (max 4096 chars)"},
                     "visibility": {"type": "string", "enum": ["public_safe", "personal", "intimate"], "description": "Synlighed"},
                     "domain": {"type": "string", "description": "Domæne, fx 'self', 'projects', 'relationships'"},
+                    "importance": {"type": "integer", "description": "Vigtighed 0-100. Under 30 = kandidat til hurtig glemsel. Default fra kind."},
                     "related": {"type": "array", "items": {"type": "string"}, "description": "Relaterede emner"},
                     "source_url": {"type": "string", "description": "Kilde-URL"},
                     "source_chronicle": {"type": "string", "description": "Kilde-chronicle"},
@@ -176,6 +177,7 @@ def _exec_remember_this(args: dict[str, Any]) -> dict[str, Any]:
         related=args.get("related"),
         source_url=args.get("source_url"),
         source_chronicle=args.get("source_chronicle"),
+        importance=args.get("importance"),
     )
 
 
@@ -236,6 +238,7 @@ def remember_this(
     related: list[str] | None = None,
     source_url: str | None = None,
     source_chronicle: str | None = None,
+    importance: int | None = None,
 ) -> dict[str, Any]:
     """Skriv en post i Jarvis' egen hjerne.
 
@@ -274,11 +277,16 @@ def remember_this(
     # Persist
     try:
         from core.services import jarvis_brain
+        # Importance-gate: konverter 0-100 skala til 0.0-1.0 float
+        importance_float = None
+        if importance is not None:
+            importance_float = max(0.0, min(1.0, importance / 100.0))
         new_id = jarvis_brain.write_entry(
             kind=kind, title=title, content=content,
             visibility=visibility, domain=domain,
             trigger="spontaneous", related=related or [],
             source_url=source_url, source_chronicle=source_chronicle,
+            importance=importance_float,
             now=now,
         )
     except Exception as exc:

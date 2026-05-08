@@ -251,6 +251,9 @@ export function AgencyMapTab() {
   const observabilityTask = systemCartographer.recommendedObservabilityTask || null
   const systemHealth = systemCartographer.systemHealth || {}
   const systemAutoTask = systemCartographer.autoTask || {}
+  const theaterAudit = systemCartographer.theaterAudit || {}
+  const theaterSummary = theaterAudit.summary || {}
+  const theaterTask = theaterAudit.recommendedTheaterTask || systemHealth.recommended_theater_refactor || null
 
   return (
     <div style={s({ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' })}>
@@ -358,6 +361,9 @@ export function AgencyMapTab() {
           <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
             coverage avg {systemSummary.avg_causal_coverage_score || 0} · low {systemSummary.low_coverage_services || 0} · auto-task {systemAutoTask.status || 'unknown'}
           </span>
+          <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
+            theater findings {systemSummary.theater_findings || 0} · high-risk {systemSummary.theater_high_risk || 0}
+          </span>
         </span>
         <StatusPill status={systemCartographer.mode === 'system-cartographer-v1' ? 'active' : 'missing'} />
       </section>
@@ -378,6 +384,64 @@ export function AgencyMapTab() {
             {systemHealth.summary}
           </span>
           <StatusPill status={systemHealth.state || 'unknown'} />
+        </section>
+      ) : null}
+
+      {theaterAudit.mode ? (
+        <section style={s({
+          background: T.bgRaised,
+          border: `1px solid ${T.border0}`,
+          borderRadius: T.r_sm,
+          padding: 12,
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 0.8fr) minmax(0, 1.4fr) auto',
+          gap: 10,
+          alignItems: 'center',
+        })}>
+          <strong style={s({ fontSize: 12, color: T.text1 })}>Theater Audit</strong>
+          <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' })}>
+            findings {theaterSummary.findings || 0} · high {theaterSummary.high_risk || 0} · medium {theaterSummary.medium_risk || 0} · files {theaterSummary.files || 0}
+            {theaterTask ? (
+              <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
+                next {theaterTask.scope} · score {theaterTask.priority_score || 0}
+              </span>
+            ) : null}
+          </span>
+          <StatusPill status={(theaterSummary.high_risk || 0) > 0 ? 'open' : 'done'} />
+        </section>
+      ) : null}
+
+      {theaterTask ? (
+        <section style={s({
+          background: T.bgRaised,
+          border: `1px solid ${statusColor(theaterTask.priority)}66`,
+          borderRadius: T.r_sm,
+          padding: 12,
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 0.9fr) minmax(0, 1.4fr) minmax(0, 0.8fr) auto',
+          gap: 10,
+          alignItems: 'center',
+        })}>
+          <div style={s({ minWidth: 0 })}>
+            <span style={s({ ...mono, color: T.text3, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em' })}>
+              Recommended theater refactor
+            </span>
+            <strong style={s({ display: 'block', marginTop: 4, fontSize: 13, color: T.text1, minWidth: 0, wordBreak: 'break-word' })}>
+              {theaterTask.title}
+            </strong>
+          </div>
+          <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' })}>
+            {theaterTask.goal}
+            {theaterTask.reason ? (
+              <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
+                {theaterTask.reason}
+              </span>
+            ) : null}
+          </span>
+          <span style={s({ ...mono, color: T.text3, fontSize: 9, minWidth: 0, wordBreak: 'break-word' })}>
+            score {theaterTask.priority_score || 0} · {theaterTask.scope}
+          </span>
+          <StatusPill status={theaterTask.priority} />
         </section>
       ) : null}
 

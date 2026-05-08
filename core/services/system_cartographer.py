@@ -45,6 +45,7 @@ def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str
         event_families=event_families,
         causal=causal,
     )
+    theater = _theater_audit_surface()
     dark_edges = _rank_dark_edges(_dark_edges(services), causal=causal, daemons=daemons)
     recommended_observability_task = (
         _observability_task_from_dark_edge(dark_edges[0]) if dark_edges else None
@@ -58,6 +59,7 @@ def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str
     system_health = _system_health_from_jarvis_perspective(
         dark_edges=dark_edges,
         coverage=coverage,
+        theater=theater,
         recommended=recommended_observability_task,
     )
     return {
@@ -76,6 +78,8 @@ def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str
             "observed_causal_family_edges": len(causal.get("family_edges") or []),
             "avg_causal_coverage_score": coverage["avg_score"],
             "low_coverage_services": coverage["low_count"],
+            "theater_findings": (theater.get("summary") or {}).get("findings", 0),
+            "theater_high_risk": (theater.get("summary") or {}).get("high_risk", 0),
         },
         "nodes": {
             "services": services,
@@ -90,9 +94,11 @@ def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str
         "autoTask": auto_task,
         "coverage": coverage,
         "systemHealth": system_health,
+        "theaterAudit": theater,
         "notes": [
             "Phase 1 is code/runtime inventory, not proof of causal influence.",
             "Phase 2 adds eventbus/causal_edges runtime evidence.",
+            "Phase 3 adds theater-risk audit for narrative-first inner-life prompts.",
             "Next phase should persist deltas over time and rank missing witness surfaces.",
         ],
     }
@@ -396,20 +402,28 @@ def _system_health_from_jarvis_perspective(
     *,
     dark_edges: list[dict[str, Any]],
     coverage: dict[str, Any],
+    theater: dict[str, Any],
     recommended: dict[str, Any] | None,
 ) -> dict[str, Any]:
     top_dark = dark_edges[:5]
     lowest = list(coverage.get("lowest") or [])[:5]
+    theater_summary = theater.get("summary") if isinstance(theater, dict) else {}
+    theater_high = int((theater_summary or {}).get("high_risk") or 0)
     return {
         "mode": "jarvis-perspective-system-health",
-        "state": "needs-witness" if top_dark else "well-witnessed",
+        "state": "needs-witness" if top_dark or theater_high else "well-witnessed",
         "summary": (
             f"{len(dark_edges)} dark influence edges; "
             f"{coverage.get('low_count', 0)} low-coverage services; "
+            f"{theater_high} high-risk theater prompts; "
             f"next: {recommended.get('title') if recommended else 'none'}"
         ),
         "least_visible_influential": top_dark,
         "lowest_coverage": lowest,
+        "theater_high_risk": theater.get("files", [])[:5] if isinstance(theater, dict) else [],
+        "recommended_theater_refactor": (
+            theater.get("recommendedTheaterTask") if isinstance(theater, dict) else None
+        ),
         "recommended_next": recommended,
     }
 
@@ -533,6 +547,19 @@ def _runtime_task_priority(priority: str) -> str:
     if normalized in {"high", "medium", "low"}:
         return normalized
     return "medium"
+
+
+def _theater_audit_surface() -> dict[str, Any]:
+    try:
+        from core.services.theater_audit import build_theater_audit_surface
+
+        return build_theater_audit_surface()
+    except Exception as exc:
+        return {
+            "mode": "theater-audit-unavailable",
+            "summary": {"findings": 0, "high_risk": 0, "medium_risk": 0, "low_risk": 0},
+            "error": f"{type(exc).__name__}: {exc}"[:300],
+        }
 
 
 def _tool_count() -> int:

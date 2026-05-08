@@ -251,6 +251,7 @@ export function AgencyMapTab() {
   const observabilityTask = systemCartographer.recommendedObservabilityTask || null
   const systemHealth = systemCartographer.systemHealth || {}
   const systemAutoTask = systemCartographer.autoTask || {}
+  const systemTheaterAutoTask = systemCartographer.theaterAutoTask || {}
   const theaterAudit = systemCartographer.theaterAudit || {}
   const theaterSummary = theaterAudit.summary || {}
   const theaterTask = theaterAudit.recommendedTheaterTask || systemHealth.recommended_theater_refactor || null
@@ -362,7 +363,7 @@ export function AgencyMapTab() {
             coverage avg {systemSummary.avg_causal_coverage_score || 0} · low {systemSummary.low_coverage_services || 0} · auto-task {systemAutoTask.status || 'unknown'}
           </span>
           <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
-            theater findings {systemSummary.theater_findings || 0} · high-risk {systemSummary.theater_high_risk || 0}
+            theater findings {systemSummary.theater_findings || 0} · high-risk {systemSummary.theater_high_risk || 0} · auto-task {systemTheaterAutoTask.status || 'unknown'}
           </span>
         </span>
         <StatusPill status={systemCartographer.mode === 'system-cartographer-v1' ? 'active' : 'missing'} />
@@ -558,6 +559,17 @@ export function AgencyMapTab() {
             Repair Briefs
           </div>
           {(data?.repairBriefs || []).map((item) => (
+            <RepairBriefRow key={item.task_id} item={item} />
+          ))}
+        </section>
+      ) : null}
+
+      {(data?.theaterRefactorBriefs || []).length > 0 ? (
+        <section style={s({ display: 'flex', flexDirection: 'column', gap: 7 })}>
+          <div style={s({ ...mono, color: T.text3, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em' })}>
+            Theater Refactor Briefs
+          </div>
+          {(data?.theaterRefactorBriefs || []).map((item) => (
             <RepairBriefRow key={item.task_id} item={item} />
           ))}
         </section>

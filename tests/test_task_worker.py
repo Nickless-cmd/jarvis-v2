@@ -170,3 +170,38 @@ def test_observability_bridge_repair_prepares_brief(monkeypatch) -> None:
     brief = saved["observability_bridge_repair_briefs"][task["task_id"]]
     assert brief["service"] == "identity_composer"
     assert "core/services/identity_composer.py" in brief["suggested_files"]
+
+
+def test_theater_refactor_prepares_brief(monkeypatch) -> None:
+    _, task_worker = _import_modules()
+    saved = {}
+
+    monkeypatch.setattr(task_worker, "load_json", lambda name, default: {})
+    monkeypatch.setattr(task_worker, "save_json", lambda name, data: saved.update({name: data}))
+    monkeypatch.setattr(
+        task_worker,
+        "_matching_theater_file",
+        lambda **kwargs: {
+            "path": "core/services/cognitive_state_assembly.py",
+            "risk_score": 250,
+            "high_risk": 5,
+        },
+    )
+
+    task = {
+        "task_id": "task-theater",
+        "kind": "theater_refactor",
+        "goal": "Convert cognitive_state_assembly to appraisal state.",
+        "origin": "theater-audit",
+        "scope": "core/services/cognitive_state_assembly.py",
+        "priority": "high",
+    }
+
+    result = task_worker._handle_theater_refactor(task)
+
+    assert result["status"] == "blocked"
+    assert result["artifact_ref"] == "state:theater_refactor_briefs:task-theater"
+    brief = saved["theater_refactor_briefs"][task["task_id"]]
+    assert brief["audit_file"]["risk_score"] == 250
+    assert brief["refactor_contract"]["state_before_prose"] is True
+    assert "core/services/cognitive_state_assembly.py" in brief["suggested_files"]

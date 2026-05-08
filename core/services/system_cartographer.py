@@ -17,6 +17,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _AUTO_TASK_MIN_SCORE = 75
 _AUTO_TASK_KIND = "observability_bridge_repair"
 _AUTO_TASK_ORIGIN = "system-cartographer"
+_THEATER_AUTO_TASK_MIN_SCORE = 120
+_THEATER_AUTO_TASK_KIND = "theater_refactor"
+_THEATER_AUTO_TASK_ORIGIN = "theater-audit"
 _SCAN_INTERVAL_SECONDS = 900
 
 logger = logging.getLogger(__name__)
@@ -53,6 +56,11 @@ def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str
     auto_task = (
         _maybe_enqueue_observability_task(recommended_observability_task)
         if auto_enqueue
+        else {"enabled": False, "status": "not-requested"}
+    )
+    theater_auto_task = (
+        _maybe_enqueue_theater_task(theater.get("recommendedTheaterTask"))
+        if auto_enqueue and isinstance(theater, dict)
         else {"enabled": False, "status": "not-requested"}
     )
     coverage = _coverage_summary(services)
@@ -92,6 +100,7 @@ def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str
         "causalRuntime": causal,
         "recommendedObservabilityTask": recommended_observability_task,
         "autoTask": auto_task,
+        "theaterAutoTask": theater_auto_task,
         "coverage": coverage,
         "systemHealth": system_health,
         "theaterAudit": theater,
@@ -533,6 +542,70 @@ def _find_existing_observability_task(candidate: dict[str, Any]) -> dict[str, An
         goal = str(candidate.get("goal") or "").strip()
         for status in ("queued", "running", "blocked"):
             for task in list_tasks(status=status, kind=_AUTO_TASK_KIND, limit=50):
+                if str(task.get("scope") or "").strip() == scope:
+                    return task
+                if str(task.get("goal") or "").strip() == goal:
+                    return task
+    except Exception:
+        return None
+    return None
+
+
+def _maybe_enqueue_theater_task(candidate: dict[str, Any] | None) -> dict[str, Any]:
+    if not candidate:
+        return {"enabled": True, "status": "no-candidate"}
+    score = int(candidate.get("priority_score") or 0)
+    if score < _THEATER_AUTO_TASK_MIN_SCORE:
+        return {
+            "enabled": True,
+            "status": "below-threshold",
+            "threshold": _THEATER_AUTO_TASK_MIN_SCORE,
+            "priority_score": score,
+        }
+    duplicate = _find_existing_theater_task(candidate)
+    if duplicate:
+        return {
+            "enabled": True,
+            "status": "duplicate-present",
+            "task_id": str(duplicate.get("task_id") or ""),
+            "task_status": str(duplicate.get("status") or ""),
+            "priority_score": score,
+        }
+    try:
+        from core.services.runtime_tasks import create_task
+
+        task = create_task(
+            kind=_THEATER_AUTO_TASK_KIND,
+            goal=str(candidate.get("goal") or candidate.get("title") or ""),
+            scope=str(candidate.get("scope") or ""),
+            origin=_THEATER_AUTO_TASK_ORIGIN,
+            priority=_runtime_task_priority(str(candidate.get("priority") or "")),
+            owner="jarvis",
+        )
+        return {
+            "enabled": True,
+            "status": "enqueued",
+            "task_id": str(task.get("task_id") or ""),
+            "priority_score": score,
+        }
+    except Exception as exc:
+        logger.debug("system_cartographer: theater task enqueue failed: %s", exc)
+        return {
+            "enabled": True,
+            "status": "enqueue-failed",
+            "error": f"{type(exc).__name__}: {exc}"[:300],
+            "priority_score": score,
+        }
+
+
+def _find_existing_theater_task(candidate: dict[str, Any]) -> dict[str, Any] | None:
+    try:
+        from core.services.runtime_tasks import list_tasks
+
+        scope = str(candidate.get("scope") or "").strip()
+        goal = str(candidate.get("goal") or "").strip()
+        for status in ("queued", "running", "blocked"):
+            for task in list_tasks(status=status, kind=_THEATER_AUTO_TASK_KIND, limit=50):
                 if str(task.get("scope") or "").strip() == scope:
                     return task
                 if str(task.get("goal") or "").strip() == goal:

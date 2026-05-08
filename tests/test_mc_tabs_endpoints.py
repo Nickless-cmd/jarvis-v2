@@ -267,3 +267,39 @@ def test_agency_cartographer_scans_markers_from_files(monkeypatch, tmp_path):
     assert snapshot["summary"]["task_candidates"] >= 1
     assert snapshot["recommendedNextTask"]["task_kind"] == "agency_bridge_repair"
     assert snapshot["taskCandidates"][0]["priority_score"] >= snapshot["taskCandidates"][-1]["priority_score"]
+
+
+def test_agency_cartographer_auto_enqueues_top_task(monkeypatch):
+    from core.services import agency_cartographer as cart
+    from core.services import runtime_tasks
+
+    created = []
+
+    def fake_create_task(**kwargs):
+        task = {"task_id": "task-agency", "status": "queued", **kwargs}
+        created.append(task)
+        return task
+
+    monkeypatch.setattr(cart, "_candidate_files", lambda: {})
+    monkeypatch.setattr(cart, "save_json", lambda *args, **kwargs: None)
+    monkeypatch.setattr(cart, "_find_existing_agency_task", lambda candidate: None)
+    monkeypatch.setattr(cart, "_publish_auto_task_event", lambda candidate, task: None)
+    monkeypatch.setattr(runtime_tasks, "create_task", fake_create_task)
+
+    snapshot = cart.build_cartographer_snapshot(auto_enqueue=True)
+
+    assert snapshot["autoTask"]["status"] == "enqueued"
+    assert snapshot["autoTask"]["task_id"]
+    task = created[0]
+    assert task["kind"] == "agency_bridge_repair"
+    assert task["origin"] == "agency-cartographer"
+    assert task["priority"] == "high"
+
+    monkeypatch.setattr(
+        cart,
+        "_find_existing_agency_task",
+        lambda candidate: {"task_id": "task-agency", "status": "queued"},
+    )
+    second = cart.build_cartographer_snapshot(auto_enqueue=True)
+    assert second["autoTask"]["status"] == "duplicate-present"
+    assert second["autoTask"]["task_id"] == "task-agency"

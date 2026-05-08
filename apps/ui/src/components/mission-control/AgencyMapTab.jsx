@@ -214,6 +214,7 @@ export function AgencyMapTab() {
   const cartographer = data?.cartographer || {}
   const cartSummary = cartographer.summary || {}
   const recommended = cartographer.recommendedNextTask || data?.recommendedNextTask || null
+  const autoTask = cartographer.autoTask || {}
 
   return (
     <div style={s({ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' })}>
@@ -293,6 +294,11 @@ export function AgencyMapTab() {
         <strong style={s({ fontSize: 12, color: T.text1 })}>Agency Cartographer</strong>
         <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4 })}>
           scanned {cartSummary.vision_edges || 0} vision edges · connected {cartSummary.connected || 0} · partial {cartSummary.partial || 0} · missing {cartSummary.missing || 0}
+          {autoTask.status ? (
+            <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
+              auto-task {autoTask.status}{autoTask.task_id ? ` · ${autoTask.task_id}` : ''}
+            </span>
+          ) : null}
         </span>
         <span style={s({ ...mono, color: T.text3, fontSize: 9 })}>{formatFreshness(cartographer.scannedAt)}</span>
       </section>

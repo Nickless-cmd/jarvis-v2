@@ -184,3 +184,117 @@ def test_publish_caused_by_list_creates_multiple_edges():
             "WHERE parent_event_id IN (?, ?)", (p1, p2),
         ).fetchall()
     assert {int(r["parent_event_id"]) for r in rows} == {p1, p2}
+
+
+def _setup_chain_a_b_c():
+    """Build a deterministic A→B→C chain. Returns (a_id, b_id, c_id)."""
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    from core.eventbus.bus import event_bus
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+        c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES "
+            "('runtime.chain_a', '{}', '2026-05-08T00:00:00Z')"
+        )
+        a = int(c.execute("SELECT last_insert_rowid()").fetchone()[0])
+        c.commit()
+    event_bus.publish("runtime.chain_b", {}, caused_by=a)
+    with connect() as c:
+        b = int(c.execute(
+            "SELECT id FROM events WHERE kind='runtime.chain_b' "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()[0])
+    event_bus.publish("runtime.chain_c", {}, caused_by=b)
+    with connect() as c:
+        ch = int(c.execute(
+            "SELECT id FROM events WHERE kind='runtime.chain_c' "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()[0])
+    return a, b, ch
+
+
+def test_query_causal_chain_backward_traversal():
+    from core.services.causal_graph import query_causal_chain
+    a, b, c = _setup_chain_a_b_c()
+    result = query_causal_chain(event_id=c, direction="backward", max_depth=5)
+    assert result["root_event"]["id"] == c
+    chain_ids = [step["event"]["id"] for step in result["chain"]]
+    assert chain_ids == [b, a]
+    assert result["truncated_by_depth"] is False
+    assert result["total_nodes_returned"] == 2
+
+
+def test_query_causal_chain_forward_traversal():
+    from core.services.causal_graph import query_causal_chain
+    a, b, c = _setup_chain_a_b_c()
+    result = query_causal_chain(event_id=a, direction="forward", max_depth=5)
+    chain_ids = [step["event"]["id"] for step in result["chain"]]
+    assert b in chain_ids
+    assert c in chain_ids
+
+
+def test_query_causal_chain_max_depth_truncates():
+    from core.services.causal_graph import query_causal_chain
+    a, b, c = _setup_chain_a_b_c()
+    result = query_causal_chain(event_id=c, direction="backward", max_depth=1)
+    assert result["truncated_by_depth"] is True
+    assert result["total_nodes_returned"] == 1
+
+
+def test_query_causal_chain_no_edges_returns_empty_chain():
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    from core.services.causal_graph import query_causal_chain
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+        c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES "
+            "('runtime.lonely', '{}', '2026-05-08T00:00:00Z')"
+        )
+        lonely = int(c.execute("SELECT last_insert_rowid()").fetchone()[0])
+        c.commit()
+    result = query_causal_chain(event_id=lonely, direction="backward")
+    assert result["chain"] == []
+    assert result["root_event"]["id"] == lonely
+
+
+def test_query_causal_chain_handles_cycle_gracefully():
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    from core.services.causal_graph import query_causal_chain
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+        c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES "
+            "('runtime.cycle_a', '{}', '2026-05-08T00:00:00Z')"
+        )
+        a = int(c.execute("SELECT last_insert_rowid()").fetchone()[0])
+        c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES "
+            "('runtime.cycle_b', '{}', '2026-05-08T00:00:00Z')"
+        )
+        b = int(c.execute("SELECT last_insert_rowid()").fetchone()[0])
+        c.execute(
+            "INSERT INTO causal_edges (child_event_id, parent_event_id, "
+            "edge_kind, confidence, source, created_at) VALUES "
+            "(?, ?, 'triggered', 1.0, 'explicit', '2026-05-08T00:00:00Z')",
+            (b, a),
+        )
+        c.execute(
+            "INSERT INTO causal_edges (child_event_id, parent_event_id, "
+            "edge_kind, confidence, source, created_at) VALUES "
+            "(?, ?, 'triggered', 1.0, 'explicit', '2026-05-08T00:00:01Z')",
+            (a, b),
+        )
+        c.commit()
+    result = query_causal_chain(event_id=a, direction="backward", max_depth=10)
+    assert isinstance(result, dict)
+
+
+def test_query_causal_chain_pagination():
+    from core.services.causal_graph import query_causal_chain
+    a, b, c = _setup_chain_a_b_c()
+    result = query_causal_chain(
+        event_id=c, direction="backward", max_depth=5, limit=1, offset=0,
+    )
+    assert result["total_nodes_returned"] == 1
+    assert result["truncated_by_limit"] is True
+    assert result["next_offset"] == 1

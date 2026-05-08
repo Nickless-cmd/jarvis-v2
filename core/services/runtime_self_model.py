@@ -18,7 +18,7 @@ Design constraints:
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from core.services.runtime_surface_cache import runtime_surface_cache
@@ -1828,7 +1828,7 @@ def _derive_support_stream_awareness(
 ) -> dict[str, object]:
     """Derive compact self-aware support stream state.
 
-    Synthesizes experiential support carry-forward and inner voice daemon
+    Synthesizes experiential support carry-forward and private stream daemon
     truth into a small awareness snapshot that tells the self-model whether
     experiential support is actively shaping the inner stream.
     """
@@ -1841,7 +1841,7 @@ def _derive_support_stream_awareness(
     voice_created = bool(last_result.get("inner_voice_created"))
     voice_mode = str(last_result.get("mode") or "")
 
-    # Stream is shaped when support is non-default AND inner voice was produced
+    # Stream is shaped when support is non-default and a private stream note was produced.
     active = posture != "steadying"
     shaped = active and voice_created and voice_mode != ""
 
@@ -1853,13 +1853,37 @@ def _derive_support_stream_awareness(
     if shaped:
         narrative = (
             f"Inner stream is {stream_state}. "
-            f"Support ({posture}/{bias}) shaped inner voice to {voice_mode}."
+            f"Support ({posture}/{bias}) shaped private stream mode to {voice_mode}."
         )
     elif active:
         narrative = (
             f"Inner stream is {stream_state}. "
-            f"Support active ({posture}/{bias}) but inner voice not yet shaped."
+            f"Support active ({posture}/{bias}) but private stream not yet shaped."
         )
+    appraisal = _runtime_self_appraisal_record(
+        kind="support_stream_awareness",
+        state={
+            "stream_state": stream_state,
+            "stream_shaped": shaped,
+            "support_posture": posture if active else "none",
+            "support_bias": bias if active else "none",
+            "private_stream_mode": voice_mode if shaped else "",
+        },
+        evidence={
+            "support_posture": posture,
+            "support_bias": bias,
+            "support_mode": mode,
+            "private_stream_created": voice_created,
+            "private_stream_mode": voice_mode,
+        },
+        confidence=0.86 if active else 0.7,
+        allowed_effects=[
+            "runtime_self_model_surface",
+            "heartbeat_self_knowledge_context",
+            "prompt_support_stream_line",
+        ],
+        ttl_minutes=20,
+    )
 
     return {
         "stream_state": stream_state,
@@ -1868,9 +1892,35 @@ def _derive_support_stream_awareness(
         "active_support_bias": bias if active else "none",
         "shaped_voice_mode": voice_mode if shaped else "",
         "narrative": narrative,
+        "appraisal": appraisal,
         "authority": "derived-runtime-truth",
         "visibility": "internal-only",
         "kind": "support-stream-awareness",
+    }
+
+
+def _runtime_self_appraisal_record(
+    *,
+    kind: str,
+    state: dict[str, object],
+    evidence: dict[str, object],
+    confidence: float,
+    allowed_effects: list[str],
+    ttl_minutes: int,
+) -> dict[str, object]:
+    """Structured source-truth record for runtime self-model renderings."""
+    now = datetime.now(UTC)
+    return {
+        "kind": kind,
+        "state": state,
+        "evidence": evidence,
+        "confidence": round(max(0.0, min(1.0, float(confidence))), 3),
+        "allowed_effects": allowed_effects,
+        "created_at": now.isoformat().replace("+00:00", "Z"),
+        "expires_at": (
+            now + timedelta(minutes=max(1, int(ttl_minutes)))
+        ).isoformat().replace("+00:00", "Z"),
+        "rendering_contract": "narrative is derived display text; appraisal is source truth",
     }
 
 
@@ -1995,7 +2045,7 @@ def _temporal_narrative(
         return f"Brief ~{gap_minutes}m gap behind; continuity holds."
     # immediate
     if felt_proximity == "held":
-        return "Immediate; actively held by support or inner voice."
+        return "Immediate; actively held by support or private stream."
     return "Continuous; nothing pressing from the past."
 
 
@@ -2972,7 +3022,7 @@ def _longing_narrative(
         return ""
     if longing_state == "returning-pull":
         if longing_source == "temporal-return":
-            return "Absent thread pulling to be resumed."
+            return "Absent thread returning, pulling to be resumed."
         return "Carried absence turning into return signal."
     if longing_state == "aching":
         if longing_source == "unresolved-relational-absence":
@@ -4560,7 +4610,7 @@ def _self_boundary_narrative(
     if pressure_source == "self-driven":
         if primary_internal.startswith("inner-voice-"):
             mode = primary_internal.split("inner-voice-")[1]
-            return f"Self-generated direction; inner voice {mode}."
+            return f"Self-generated direction; private stream {mode}."
         if primary_internal.startswith("longing-"):
             return "Pulled by internal longing; no external demand."
         if primary_internal == "initiative-tension":
@@ -5117,7 +5167,7 @@ def _producer_layers() -> list[dict[str, str]]:
             ("brain_continuity", "Brain continuity motor"),
             ("sleep_consolidation", "Sleep / idle consolidation"),
             ("witness_daemon", "Witness daemon"),
-            ("inner_voice_daemon", "Inner voice daemon"),
+            ("inner_voice_daemon", "Private stream daemon"),
             ("emergent_signal_daemon", "Emergent signal daemon"),
             ("dream_articulation", "Dream articulation"),
             ("prompt_evolution_runtime", "Runtime prompt evolution"),
@@ -5142,7 +5192,7 @@ def _producer_label(name: str) -> str:
         "brain_continuity": "Brain continuity motor",
         "sleep_consolidation": "Sleep / idle consolidation",
         "witness_daemon": "Witness daemon",
-        "inner_voice_daemon": "Inner voice daemon",
+        "inner_voice_daemon": "Private stream daemon",
         "emergent_signal_daemon": "Emergent signal daemon",
         "dream_articulation": "Dream articulation",
         "prompt_evolution_runtime": "Runtime prompt evolution",

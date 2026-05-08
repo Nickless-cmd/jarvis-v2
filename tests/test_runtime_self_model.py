@@ -472,6 +472,9 @@ def test_self_model_includes_support_stream_awareness(isolated_runtime) -> None:
     assert "active_support_posture" in stream
     assert "active_support_bias" in stream
     assert "narrative" in stream
+    assert "appraisal" in stream
+    assert stream["appraisal"]["kind"] == "support_stream_awareness"
+    assert stream["appraisal"]["rendering_contract"].startswith("narrative is derived")
     assert stream["authority"] == "derived-runtime-truth"
     assert stream["visibility"] == "internal-only"
     assert stream["kind"] == "support-stream-awareness"
@@ -496,6 +499,8 @@ def test_support_stream_baseline_when_no_support() -> None:
     assert stream["active_support_posture"] == "none"
     assert stream["active_support_bias"] == "none"
     assert stream["narrative"] == ""
+    assert stream["appraisal"]["state"]["stream_state"] == "baseline"
+    assert stream["appraisal"]["evidence"]["private_stream_created"] is False
 
 
 def test_support_stream_active_but_not_shaped() -> None:
@@ -518,6 +523,8 @@ def test_support_stream_active_but_not_shaped() -> None:
     assert stream["active_support_bias"] == "protect_focus"
     assert stream["shaped_voice_mode"] == ""
     assert "not yet shaped" in stream["narrative"]
+    assert stream["appraisal"]["confidence"] > 0.8
+    assert "heartbeat_self_knowledge_context" in stream["appraisal"]["allowed_effects"]
 
 
 def test_support_stream_shaped_when_voice_produced() -> None:
@@ -543,7 +550,8 @@ def test_support_stream_shaped_when_voice_produced() -> None:
     assert stream["stream_shaped"] is True
     assert stream["active_support_posture"] == "carrying"
     assert stream["shaped_voice_mode"] == "continuity-aware"
-    assert "shaped inner voice to continuity-aware" in stream["narrative"]
+    assert "shaped private stream mode to continuity-aware" in stream["narrative"]
+    assert stream["appraisal"]["state"]["private_stream_mode"] == "continuity-aware"
 
 
 def test_support_stream_prompt_line_only_when_active(isolated_runtime) -> None:

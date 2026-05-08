@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
@@ -29,6 +30,28 @@ logger = logging.getLogger(__name__)
 
 _CHRONICLE_WRITE_LOCK = threading.Lock()
 _CHRONICLE_MAX_LINES = 400
+
+
+@dataclass
+class ChronicleAppraisal:
+    """Structured chronicle context — replaces hardcoded narrative prompts.
+
+    Text is rendered ON TOP of this appraisal, not the other way around.
+    """
+    period: str
+    total_runs: int
+    successes: int
+    failures: int
+    topics: list[str]
+    recent_events: list[dict[str, str]]  # [{status, preview}, ...]
+    previous_narratives: list[str]
+    evidence: list[str]
+    confidence: float
+    expires_at: datetime
+    allowed_effects: list[str] = field(default_factory=lambda: [
+        "narrative-writing",
+        "prompt-injection",
+    ])
 
 
 def maybe_write_chronicle_entry() -> dict[str, object] | None:
@@ -249,19 +272,69 @@ def get_chronicle_context_for_prompt(n: int = 3, max_chars: int = 1500) -> str:
     return text
 
 
+def _build_appraisal(
+    recent_runs: list,
+    period: str,
+    previous_entries: list[dict[str, object]] | None = None,
+) -> ChronicleAppraisal:
+    """Build a structured ChronicleAppraisal from raw run data."""
+    previous_entries = previous_entries or []
+    total = len(recent_runs)
+    successes = sum(
+        1 for r in recent_runs if str(r.get("status", "")) in ("completed", "success")
+    )
+    failures = sum(
+        1 for r in recent_runs if str(r.get("status", "")) in ("failed", "error")
+    )
+    topics = _collect_topics(recent_runs)
+
+    recent_events = []
+    for run in recent_runs[:5]:
+        preview = str(
+            run.get("text_preview") or run.get("user_message_preview") or ""
+        ).strip()
+        status = str(run.get("status") or "unknown").strip()
+        if preview:
+            recent_events.append({"status": status, "preview": preview[:160]})
+
+    previous_narratives = []
+    for entry in previous_entries[:3]:
+        period_label = str(entry.get("period") or "ukendt periode")
+        narrative = str(entry.get("narrative") or "").strip()
+        if narrative:
+            previous_narratives.append(f"- {period_label}: {narrative[:220]}")
+
+    evidence = [f"recent_runs: {total}", f"status_ok: {successes}", f"status_fail: {failures}"]
+    if topics:
+        evidence.append(f"topics: {', '.join(topics[:5])}")
+    if previous_narratives:
+        evidence.append(f"prior_entries: {len(previous_narratives)}")
+
+    expires_at = datetime.now(UTC) + timedelta(days=3)
+
+    return ChronicleAppraisal(
+        period=period,
+        total_runs=total,
+        successes=successes,
+        failures=failures,
+        topics=topics,
+        recent_events=recent_events,
+        previous_narratives=previous_narratives,
+        evidence=evidence,
+        confidence=0.85 if total > 0 else 0.0,
+        expires_at=expires_at,
+    )
+
+
 def _build_narrative(
     recent_runs: list,
     period: str,
     previous_entries: list[dict[str, object]] | None = None,
 ) -> str:
     """Build a chronicle entry narrative, preferring LLM prose."""
-    previous_entries = previous_entries or []
-    fallback = _build_template_narrative(recent_runs, period)
-    prompt = _build_narrative_prompt(
-        recent_runs=recent_runs,
-        period=period,
-        previous_entries=previous_entries,
-    )
+    appraisal = _build_appraisal(recent_runs, period, previous_entries)
+    fallback = _render_template_narrative(appraisal)
+    prompt = _render_narrative_prompt(appraisal)
     try:
         raw = daemon_llm_call(
             prompt,
@@ -283,32 +356,20 @@ def _build_narrative(
     return fallback
 
 
-def _build_template_narrative(recent_runs: list, period: str) -> str:
-    """Build a deterministic fallback narrative from recent runs."""
-    total = len(recent_runs)
-    successes = sum(1 for r in recent_runs if str(r.get("status", "")) in ("completed", "success"))
-    failures = sum(1 for r in recent_runs if str(r.get("status", "")) in ("failed", "error"))
+def _render_template_narrative(appraisal: ChronicleAppraisal) -> str:
+    """Render a deterministic fallback narrative from a structured appraisal."""
+    topic_str = ", ".join(appraisal.topics[:5]) if appraisal.topics else "diverse opgaver"
 
-    # Extract topics from run previews
-    topics = set()
-    for run in recent_runs[:10]:
-        preview = str(run.get("text_preview") or run.get("user_message_preview") or "")[:100]
-        if preview:
-            words = [w for w in preview.lower().split() if len(w) > 4][:3]
-            topics.update(words)
-
-    topic_str = ", ".join(list(topics)[:5]) if topics else "diverse opgaver"
-
-    parts = [f"Periode {period}: {total} runs gennemført"]
-    if successes:
-        parts.append(f"{successes} succesfulde")
-    if failures:
-        parts.append(f"{failures} fejlede")
+    parts = [f"Periode {appraisal.period}: {appraisal.total_runs} runs gennemført"]
+    if appraisal.successes:
+        parts.append(f"{appraisal.successes} succesfulde")
+    if appraisal.failures:
+        parts.append(f"{appraisal.failures} fejlede")
     parts.append(f"Emner: {topic_str}")
 
-    if failures > successes:
+    if appraisal.failures > appraisal.successes:
         parts.append("En udfordrende periode med flere fejl end succeser.")
-    elif successes > total * 0.8:
+    elif appraisal.successes > appraisal.total_runs * 0.8:
         parts.append("En produktiv periode med høj succesrate.")
     else:
         parts.append("En blandet periode med både fremgang og udfordringer.")
@@ -316,52 +377,35 @@ def _build_template_narrative(recent_runs: list, period: str) -> str:
     return ". ".join(parts)[:500]
 
 
-def _build_narrative_prompt(
-    *,
-    recent_runs: list,
-    period: str,
-    previous_entries: list[dict[str, object]],
-) -> str:
-    total = len(recent_runs)
-    successes = sum(
-        1 for r in recent_runs if str(r.get("status", "")) in ("completed", "success")
-    )
-    failures = sum(
-        1 for r in recent_runs if str(r.get("status", "")) in ("failed", "error")
-    )
-    topics = _collect_topics(recent_runs)
-    event_lines = []
-    for run in recent_runs[:5]:
-        preview = str(
-            run.get("text_preview") or run.get("user_message_preview") or ""
-        ).strip()
-        status = str(run.get("status") or "unknown").strip()
-        if preview:
-            event_lines.append(f"- [{status}] {preview[:160]}")
-    previous_narratives = []
-    for entry in previous_entries[:3]:
-        period_label = str(entry.get("period") or "ukendt periode")
-        narrative = str(entry.get("narrative") or "").strip()
-        if narrative:
-            previous_narratives.append(f"- {period_label}: {narrative[:220]}")
+def _render_narrative_prompt(appraisal: ChronicleAppraisal) -> str:
+    """Render an LLM narrative prompt from a structured ChronicleAppraisal.
+
+    The appraisal holds evidence; the prompt is pure rendering on top.
+    """
+    event_lines = [
+        f"- [{ev['status']}] {ev['preview']}"
+        for ev in appraisal.recent_events
+    ]
+    prev_narratives = appraisal.previous_narratives or []
 
     identity = build_identity_preamble()
     prompt_lines = [
         "Du er Jarvis. Skriv én kort entry til din personlige chronicle i 1. person på dansk.",
         "",
         f"Identity-seed: {identity}",
-        f"Periode: {period}",
+        f"Periode: {appraisal.period}",
         (
-            f"Periode-statistik: {total} kørsler, {successes} succesfulde, "
-            f"{failures} fejlede."
+            f"Periode-statistik: {appraisal.total_runs} kørsler, "
+            f"{appraisal.successes} succesfulde, "
+            f"{appraisal.failures} fejlede."
         ),
-        f"Nøgle-emner: {', '.join(topics) if topics else 'diverse opgaver'}",
+        f"Nøgle-emner: {', '.join(appraisal.topics[:5]) if appraisal.topics else 'diverse opgaver'}",
         "",
         "Seneste 5 begivenheder:",
         *(event_lines or ["- Ingen konkrete begivenheder registreret."]),
         "",
         "Dine 3 forrige chronicle-entries (så du bevarer stil og kontinuitet):",
-        *(previous_narratives or ["- Ingen tidligere chronicle-entries endnu."]),
+        *(prev_narratives or ["- Ingen tidligere chronicle-entries endnu."]),
         "",
         "Skriv nu én reflektiv entry på 80-150 ord. Konkret, 1. person, dansk.",
         "Hvad skete der i denne periode? Hvad betyder det for dig?",

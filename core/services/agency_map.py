@@ -43,6 +43,7 @@ def build_agency_map_surface() -> dict[str, Any]:
             else None
         ),
         "repairBriefs": _repair_briefs(),
+        "systemCartographer": _system_cartographer_snapshot(),
     }
 
 
@@ -267,3 +268,16 @@ def _repair_briefs(limit: int = 8) -> list[dict[str, Any]]:
     briefs = [item for item in data.values() if isinstance(item, dict)]
     briefs.sort(key=lambda item: str(item.get("created_at") or ""), reverse=True)
     return briefs[: max(1, int(limit))]
+
+
+def _system_cartographer_snapshot() -> dict[str, Any]:
+    try:
+        from core.services.system_cartographer import build_system_cartographer_surface
+
+        return build_system_cartographer_surface()
+    except Exception as exc:
+        return {
+            "mode": "system-cartographer-unavailable",
+            "summary": {},
+            "error": f"{type(exc).__name__}: {exc}"[:300],
+        }

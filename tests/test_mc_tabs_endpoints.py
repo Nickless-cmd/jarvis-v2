@@ -203,6 +203,8 @@ def test_agency_map_exposes_dark_edges_and_completed_next_moves():
     assert result["cartographer"]["mode"] == "agency-cartographer"
     assert result["cartographer"]["summary"]["vision_edges"] >= 1
     assert "task_candidates" in result["cartographer"]["summary"]
+    assert result["systemCartographer"]["mode"] == "system-cartographer-v1"
+    assert result["systemCartographer"]["summary"]["services"] >= 1
     assert result["nextMoves"]
     by_source = {edge["source"]: edge for edge in result["darkEdges"]}
     for source in ("affect_modulation", "prompt_contract", "cheap_lane_balancer"):

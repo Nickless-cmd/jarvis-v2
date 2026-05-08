@@ -733,7 +733,7 @@ def build_visible_chat_prompt_assembly(
         pass
     try:
         from core.services.prompt_sections.forgetting_nudge import forgetting_nudge_section
-        _awareness_add(24, "forgetting nudge", forgetting_nudge_section())
+        _awareness_add(24, "forgetting nudge", forgetting_nudge_section(session_id))
     except Exception:
         pass
     try:

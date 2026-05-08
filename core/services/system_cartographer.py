@@ -26,8 +26,15 @@ def build_system_cartographer_surface() -> dict[str, Any]:
     daemons = _daemon_nodes()
     surfaces = _surface_nodes(services)
     event_families = _event_family_nodes(services)
+    causal = _causal_runtime_evidence()
     tool_count = _tool_count()
-    edges = _edges(services=services, daemons=daemons, surfaces=surfaces, event_families=event_families)
+    edges = _edges(
+        services=services,
+        daemons=daemons,
+        surfaces=surfaces,
+        event_families=event_families,
+        causal=causal,
+    )
     dark_edges = _dark_edges(services)
     return {
         "fetchedAt": datetime.now(UTC).isoformat(),
@@ -40,6 +47,9 @@ def build_system_cartographer_surface() -> dict[str, Any]:
             "edges": len(edges),
             "dark_edges": len(dark_edges),
             "tools": tool_count,
+            "observed_events": causal.get("event_count", 0),
+            "observed_causal_edges": causal.get("edge_count", 0),
+            "observed_causal_family_edges": len(causal.get("family_edges") or []),
         },
         "nodes": {
             "services": services,
@@ -49,10 +59,11 @@ def build_system_cartographer_surface() -> dict[str, Any]:
         },
         "edges": edges,
         "darkEdges": dark_edges,
+        "causalRuntime": causal,
         "notes": [
             "Phase 1 is code/runtime inventory, not proof of causal influence.",
-            "Eventbus is the right evidence stream; a daemon is the right mapper.",
-            "Next phase should correlate event families with causal_edges and MC surfaces.",
+            "Phase 2 adds eventbus/causal_edges runtime evidence.",
+            "Next phase should persist deltas over time and rank missing witness surfaces.",
         ],
     }
 
@@ -152,6 +163,7 @@ def _edges(
     daemons: list[dict[str, Any]],
     surfaces: list[dict[str, Any]],
     event_families: list[dict[str, Any]],
+    causal: dict[str, Any],
 ) -> list[dict[str, str]]:
     edges: list[dict[str, str]] = []
     service_ids = {str(s["id"]) for s in services}
@@ -168,7 +180,71 @@ def _edges(
             family = str(kind).split(".", 1)[0]
             if family in families:
                 edges.append({"from": f"service:{service['id']}", "to": f"event:{family}", "type": "publishes"})
+    for item in causal.get("family_edges") or []:
+        parent = str(item.get("parent_family") or "")
+        child = str(item.get("child_family") or "")
+        if parent and child:
+            edges.append({"from": f"event:{parent}", "to": f"event:{child}", "type": "observed-causes"})
     return edges[:1200]
+
+
+def _causal_runtime_evidence(limit: int = 40) -> dict[str, Any]:
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            event_count = int(conn.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+            edge_count = int(conn.execute("SELECT COUNT(*) FROM causal_edges").fetchone()[0])
+            rows = conn.execute(
+                """
+                SELECT
+                    substr(parent.kind, 1, instr(parent.kind || '.', '.') - 1) AS parent_family,
+                    substr(child.kind, 1, instr(child.kind || '.', '.') - 1) AS child_family,
+                    parent.kind AS parent_kind,
+                    child.kind AS child_kind,
+                    ce.edge_kind AS edge_kind,
+                    ce.source AS source,
+                    COUNT(*) AS count,
+                    AVG(ce.confidence) AS avg_confidence,
+                    MAX(ce.created_at) AS last_seen_at
+                FROM causal_edges ce
+                JOIN events child ON child.id = ce.child_event_id
+                JOIN events parent ON parent.id = ce.parent_event_id
+                GROUP BY parent_family, child_family, parent.kind, child.kind, ce.edge_kind, ce.source
+                ORDER BY count DESC, last_seen_at DESC
+                LIMIT ?
+                """,
+                (max(1, int(limit)),),
+            ).fetchall()
+    except Exception as exc:
+        return {
+            "mode": "causal-runtime-unavailable",
+            "event_count": 0,
+            "edge_count": 0,
+            "family_edges": [],
+            "error": f"{type(exc).__name__}: {exc}"[:300],
+        }
+
+    family_edges = [
+        {
+            "parent_family": str(row["parent_family"] or ""),
+            "child_family": str(row["child_family"] or ""),
+            "parent_kind": str(row["parent_kind"] or ""),
+            "child_kind": str(row["child_kind"] or ""),
+            "edge_kind": str(row["edge_kind"] or ""),
+            "source": str(row["source"] or ""),
+            "count": int(row["count"] or 0),
+            "avg_confidence": round(float(row["avg_confidence"] or 0.0), 3),
+            "last_seen_at": str(row["last_seen_at"] or ""),
+        }
+        for row in rows
+    ]
+    return {
+        "mode": "causal-runtime-v1",
+        "event_count": event_count,
+        "edge_count": edge_count,
+        "family_edges": family_edges,
+    }
 
 
 def _dark_edges(services: list[dict[str, Any]]) -> list[dict[str, Any]]:

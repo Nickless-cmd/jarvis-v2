@@ -87,3 +87,33 @@ def build_identity_preamble() -> str:
         pass
 
     return result
+
+
+def build_identity_composer_surface() -> dict[str, object]:
+    """Mission Control surface for the identity preamble composer.
+
+    This exposes the identity-bearing preamble layer without making it an
+    authority over identity truth. SOUL/IDENTITY files remain canonical.
+    """
+    name = get_entity_name()
+    bearing = _read_bearing()
+    energy = _read_energy()
+    preamble = build_identity_preamble()
+    return {
+        "active": True,
+        "mode": "identity-composer",
+        "name": name,
+        "bearing_present": bool(bearing),
+        "energy_present": bool(energy),
+        "signals": {
+            "bearing": bearing,
+            "energy": energy,
+        },
+        "preamble": preamble,
+        "authority": "derived-surface-only",
+        "canonical_sources": ["workspace/default/IDENTITY.md"],
+        "summary": (
+            f"{name}; bearing={'yes' if bearing else 'no'}; "
+            f"energy={'yes' if energy else 'no'}"
+        ),
+    }

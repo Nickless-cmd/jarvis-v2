@@ -20,6 +20,9 @@ def test_system_cartographer_builds_broad_inventory() -> None:
     assert "event_families" in surface["nodes"]
     task = surface["recommendedObservabilityTask"]
     assert task is None or task["task_kind"] == "observability_bridge_repair"
+    assert "coverage" in surface
+    assert "systemHealth" in surface
+    assert "autoTask" in surface
 
 
 def test_system_cartographer_finds_dark_edges() -> None:
@@ -32,3 +35,25 @@ def test_system_cartographer_finds_dark_edges() -> None:
     if surface["darkEdges"]:
         assert "priority_score" in surface["darkEdges"][0]
         assert surface["darkEdges"][0]["priority_score"] >= surface["darkEdges"][-1]["priority_score"]
+
+
+def test_system_cartographer_auto_enqueues_observability_task(monkeypatch):
+    from core.services import system_cartographer as cart
+    from core.services import runtime_tasks
+
+    created = []
+
+    def fake_create_task(**kwargs):
+        task = {"task_id": "task-observe", "status": "queued", **kwargs}
+        created.append(task)
+        return task
+
+    monkeypatch.setattr(cart, "_find_existing_observability_task", lambda candidate: None)
+    monkeypatch.setattr(runtime_tasks, "create_task", fake_create_task)
+
+    surface = cart.build_system_cartographer_surface(auto_enqueue=True)
+
+    assert surface["autoTask"]["status"] in {"enqueued", "no-candidate", "below-threshold"}
+    if surface["autoTask"]["status"] == "enqueued":
+        assert created[0]["kind"] == "observability_bridge_repair"
+        assert created[0]["origin"] == "system-cartographer"

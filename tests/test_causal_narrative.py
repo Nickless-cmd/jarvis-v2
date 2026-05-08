@@ -63,8 +63,14 @@ def test_returns_empty_when_no_anchor_in_window():
     assert isinstance(out, str)
 
 
-def test_picks_highest_priority_anchor():
-    """When both identity and visible_run events exist, identity wins."""
+def test_picks_highest_priority_anchor(monkeypatch):
+    """When both identity and visible_run events exist, identity wins.
+
+    Bypasses the Phase 2.5 LLM-summary preference so we exercise the
+    procedural anchor-priority path directly.
+    """
+    monkeypatch.setattr(causal_narrative, "_fetch_llm_summary", lambda: "")
+
     # Insert visible_run first (older), then identity (newer in time but
     # we still want identity to win because of priority).
     vis_id = _insert_event("runtime.visible_run_started", _recent_iso(30))
@@ -130,9 +136,17 @@ def test_low_confidence_edges_are_skipped():
 
 
 def test_silent_fallback_on_db_error(monkeypatch):
-    """If query fails, returns "" silently — never breaks prompt assembly."""
+    """If query fails, returns "" silently — never breaks prompt assembly.
+
+    Both LLM-summary and procedural paths must fail for output to be empty,
+    so monkeypatch both to simulate a full DB outage.
+    """
     def boom(*args, **kwargs):
         raise RuntimeError("simulated db failure")
+    monkeypatch.setattr(
+        "core.services.prompt_sections.causal_narrative._fetch_llm_summary",
+        boom,
+    )
     monkeypatch.setattr(
         "core.services.prompt_sections.causal_narrative._fetch_recent_anchor",
         boom,

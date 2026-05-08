@@ -74,6 +74,12 @@ _CACHE_TTL_SECONDS = 300.0
 _cached_text: str | None = None
 _cached_at: float = 0.0
 
+# Phase 2.5: prefer the LLM-summarised narrative if narrative_summary_daemon
+# has produced one in the last hour. The daemon writes ``narrative.summary``
+# events with payload {anchor_event_id, summary, ...}; we just read the
+# latest one fresh enough to be relevant.
+_LLM_SUMMARY_FRESHNESS_MINUTES = 60
+
 
 def _fetch_recent_anchor() -> dict | None:
     """Return the most narrative-worthy event in the lookback window.
@@ -131,16 +137,55 @@ def _format_chain(anchor: dict) -> str:
     return "\n".join(lines)
 
 
+def _fetch_llm_summary() -> str:
+    """Return latest ``narrative.summary`` event payload if fresh, else ""."""
+    cutoff = (
+        datetime.now(UTC) - timedelta(minutes=_LLM_SUMMARY_FRESHNESS_MINUTES)
+    ).isoformat()
+    with connect() as c:
+        row = c.execute(
+            "SELECT payload_json FROM events "
+            "WHERE kind = 'narrative.summary' AND created_at >= ? "
+            "ORDER BY id DESC LIMIT 1",
+            (cutoff,),
+        ).fetchone()
+    if not row:
+        return ""
+    import json as _json
+    try:
+        payload = _json.loads(row["payload_json"] or "{}")
+    except Exception:
+        return ""
+    summary = str(payload.get("summary") or "").strip()
+    if not summary:
+        return ""
+    return f"🌊 Sådan landede du her:\n  {summary}"
+
+
 def causal_narrative_section() -> str:
     """Build the causal-narrative awareness section. Returns "" if no anchor.
 
-    Caches result for ``_CACHE_TTL_SECONDS`` so prompt-assembly stays
-    cheap. Best-effort throughout — never breaks prompt assembly.
+    Prefers the LLM-summarised narrative if narrative_summary_daemon has
+    produced one within the freshness window. Falls back to the
+    procedural backward-chain rendering otherwise. Caches result for
+    ``_CACHE_TTL_SECONDS``. Best-effort throughout — never breaks
+    prompt assembly.
     """
     global _cached_text, _cached_at
     now = time.monotonic()
     if _cached_text is not None and (now - _cached_at) < _CACHE_TTL_SECONDS:
         return _cached_text
+
+    # Phase 2.5: prefer LLM summary if recent
+    try:
+        llm_text = _fetch_llm_summary()
+    except Exception as exc:
+        logger.debug("causal_narrative: llm summary fetch failed: %s", exc)
+        llm_text = ""
+    if llm_text:
+        _cached_text = llm_text
+        _cached_at = now
+        return llm_text
 
     try:
         anchor = _fetch_recent_anchor()

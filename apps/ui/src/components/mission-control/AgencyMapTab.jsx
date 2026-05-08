@@ -248,6 +248,7 @@ export function AgencyMapTab() {
   const autoTask = cartographer.autoTask || {}
   const systemCartographer = data?.systemCartographer || {}
   const systemSummary = systemCartographer.summary || {}
+  const observabilityTask = systemCartographer.recommendedObservabilityTask || null
 
   return (
     <div style={s({ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' })}>
@@ -355,6 +356,40 @@ export function AgencyMapTab() {
         </span>
         <StatusPill status={systemCartographer.mode === 'system-cartographer-v1' ? 'active' : 'missing'} />
       </section>
+
+      {observabilityTask ? (
+        <section style={s({
+          background: T.bgRaised,
+          border: `1px solid ${statusColor(observabilityTask.priority)}66`,
+          borderRadius: T.r_sm,
+          padding: 12,
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 0.9fr) minmax(0, 1.4fr) minmax(0, 0.8fr) auto',
+          gap: 10,
+          alignItems: 'center',
+        })}>
+          <div style={s({ minWidth: 0 })}>
+            <span style={s({ ...mono, color: T.text3, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em' })}>
+              Recommended observability bridge
+            </span>
+            <strong style={s({ display: 'block', marginTop: 4, fontSize: 13, color: T.text1, minWidth: 0, wordBreak: 'break-word' })}>
+              {observabilityTask.title}
+            </strong>
+          </div>
+          <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' })}>
+            {observabilityTask.goal}
+            {observabilityTask.reason ? (
+              <span style={s({ display: 'block', ...mono, color: T.text3, fontSize: 9, marginTop: 4 })}>
+                {observabilityTask.reason}
+              </span>
+            ) : null}
+          </span>
+          <span style={s({ ...mono, color: T.text3, fontSize: 9, minWidth: 0, wordBreak: 'break-word' })}>
+            score {observabilityTask.priority_score || 0} · {observabilityTask.scope}
+          </span>
+          <StatusPill status={observabilityTask.priority} />
+        </section>
+      ) : null}
 
       {recommended ? (
         <section style={s({

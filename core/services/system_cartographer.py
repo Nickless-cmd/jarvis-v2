@@ -35,7 +35,10 @@ def build_system_cartographer_surface() -> dict[str, Any]:
         event_families=event_families,
         causal=causal,
     )
-    dark_edges = _dark_edges(services)
+    dark_edges = _rank_dark_edges(_dark_edges(services), causal=causal, daemons=daemons)
+    recommended_observability_task = (
+        _observability_task_from_dark_edge(dark_edges[0]) if dark_edges else None
+    )
     return {
         "fetchedAt": datetime.now(UTC).isoformat(),
         "mode": "system-cartographer-v1",
@@ -60,6 +63,7 @@ def build_system_cartographer_surface() -> dict[str, Any]:
         "edges": edges,
         "darkEdges": dark_edges,
         "causalRuntime": causal,
+        "recommendedObservabilityTask": recommended_observability_task,
         "notes": [
             "Phase 1 is code/runtime inventory, not proof of causal influence.",
             "Phase 2 adds eventbus/causal_edges runtime evidence.",
@@ -258,8 +262,97 @@ def _dark_edges(services: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "reason": "runtime/state/event influence with no local build_*surface marker",
                 "kind": service["kind"],
             })
-    dark.sort(key=lambda item: (str(item["kind"]), str(item["service"])))
-    return dark[:80]
+    return dark
+
+
+def _rank_dark_edges(
+    dark_edges: list[dict[str, Any]],
+    *,
+    causal: dict[str, Any],
+    daemons: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    daemon_modules = {
+        str(item.get("module") or "").rsplit(".", 1)[-1]
+        for item in daemons
+    }
+    causal_families = {
+        str(item.get("parent_family") or "")
+        for item in causal.get("family_edges") or []
+    } | {
+        str(item.get("child_family") or "")
+        for item in causal.get("family_edges") or []
+    }
+    ranked = []
+    for edge in dark_edges:
+        service = str(edge.get("service") or "")
+        score, reasons = _dark_edge_score(
+            service=service,
+            kind=str(edge.get("kind") or ""),
+            is_daemon=service in daemon_modules,
+            has_causal_family=service.split("_", 1)[0] in causal_families,
+        )
+        item = dict(edge)
+        item["priority_score"] = score
+        item["priority"] = _priority_label(score)
+        item["priority_reasons"] = reasons
+        ranked.append(item)
+    ranked.sort(
+        key=lambda item: (
+            -int(item.get("priority_score") or 0),
+            str(item.get("service") or ""),
+        )
+    )
+    return ranked[:80]
+
+
+def _dark_edge_score(
+    *,
+    service: str,
+    kind: str,
+    is_daemon: bool,
+    has_causal_family: bool,
+) -> tuple[int, list[str]]:
+    score = 40
+    reasons = ["runtime influence without local MC surface marker"]
+    if is_daemon:
+        score += 30
+        reasons.append("registered daemon")
+    if has_causal_family:
+        score += 20
+        reasons.append("family appears in observed causal graph")
+    if kind in {"action", "memory", "signal"}:
+        score += 12
+        reasons.append(f"{kind} layer")
+    if any(token in service for token in ("approval", "repair", "executive", "tool", "memory", "identity", "governance")):
+        score += 18
+        reasons.append("touches protected agency/continuity surface")
+    return min(score, 140), reasons
+
+
+def _priority_label(score: int) -> str:
+    if score >= 105:
+        return "high"
+    if score >= 75:
+        return "medium"
+    return "low"
+
+
+def _observability_task_from_dark_edge(edge: dict[str, Any]) -> dict[str, Any]:
+    service = str(edge.get("service") or "")
+    return {
+        "id": f"observability-{service}",
+        "title": f"Expose {service} in Mission Control",
+        "goal": (
+            "Add or connect a minimal build_*surface / MC projection for "
+            f"{service}, then rerun System Cartographer to verify the dark edge clears."
+        ),
+        "scope": str(edge.get("path") or service),
+        "task_kind": "observability_bridge_repair",
+        "priority": str(edge.get("priority") or "medium"),
+        "priority_score": int(edge.get("priority_score") or 0),
+        "reason": "; ".join(edge.get("priority_reasons") or []),
+        "source": "system-cartographer",
+    }
 
 
 def _tool_count() -> int:

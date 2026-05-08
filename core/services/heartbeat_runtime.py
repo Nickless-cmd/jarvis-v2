@@ -4467,6 +4467,68 @@ def _recent_ping_history(*, limit: int = 6) -> list[str]:
         return []
 
 
+def _user_recently_active(minutes: int) -> bool:
+    """Return True if any user-role chat message landed within the window.
+
+    Checks chat_messages directly so it catches BOTH webchat sessions AND
+    Discord-relayed user messages (which both end up in chat_messages).
+    The existing ``visible_session_continuity()`` check only catches
+    webchat-active state and misses Discord conversations.
+
+    Used by the active-chat gate (added 2026-05-08) so heartbeat doesn't
+    fire propose/ping on top of an in-progress conversation.
+    """
+    try:
+        from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+
+        from core.runtime.db import connect
+
+        cutoff = (
+            _dt.now(_tz.utc) - _td(minutes=max(1, int(minutes)))
+        ).isoformat()
+        with connect() as c:
+            row = c.execute(
+                "SELECT 1 FROM chat_messages WHERE role='user' "
+                "AND created_at >= ? LIMIT 1",
+                (cutoff,),
+            ).fetchone()
+        return row is not None
+    except Exception:
+        # Fail open — if the check fails we allow the proactive message
+        # rather than silently swallowing the daemon's intent.
+        return False
+
+
+def _active_chat_gate_blocked_result(
+    *, tick_id: str, decision_type: str, minutes: int
+) -> dict[str, object]:
+    """Build the blocked-result + emit deferred event for active-chat gate."""
+    try:
+        event_bus.publish(
+            "heartbeat.proactive_deferred_active_chat",
+            {
+                "tick_id": tick_id,
+                "decision_type": decision_type,
+                "gate_window_minutes": minutes,
+            },
+        )
+    except Exception:
+        pass
+    return {
+        "tick_id": tick_id,
+        "blocked_reason": "active-chat-gate",
+        "ping_eligible": False,
+        "ping_result": "deferred-active-chat",
+        "action_status": "blocked",
+        "action_summary": (
+            f"Bjørn er aktiv i chat (sidste {minutes} min) — "
+            f"{decision_type} udsat for ikke at afbryde."
+        ),
+        "action_type": "",
+        "action_artifact": "",
+    }
+
+
 def _heartbeat_prompt_text(base_text: str) -> str:
     # Inject affective guidance as active instruction
     affective_guidance = ""
@@ -4709,6 +4771,27 @@ def _validate_heartbeat_decision(
             "action_type": "",
             "action_artifact": "",
         }
+
+    # ── Active-chat gate (added 2026-05-08): suppress propose/ping while
+    # the user is actively chatting (covers Discord too, unlike the
+    # ping-specific visible_session_continuity gate further down). ──
+    if decision_type in {"propose", "ping"}:
+        try:
+            from core.runtime.settings import load_settings as _load_settings_for_gate
+            _gate_settings = _load_settings_for_gate()
+            if bool(getattr(_gate_settings, "heartbeat_active_chat_gate_enabled", True)):
+                _gate_min = int(
+                    getattr(_gate_settings, "heartbeat_active_chat_gate_minutes", 10)
+                )
+                if _user_recently_active(_gate_min):
+                    return _active_chat_gate_blocked_result(
+                        tick_id=tick_id,
+                        decision_type=decision_type,
+                        minutes=_gate_min,
+                    )
+        except Exception:
+            pass  # Fail open — gate failures shouldn't suppress everything
+
     if decision_type in {"execute", "initiative"}:
         if not bool(policy["allow_execute"]):
             return {

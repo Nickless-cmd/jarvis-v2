@@ -3541,11 +3541,28 @@ def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[st
         _emotion_concept_tone_section,
         _emotion_signal_section,
         _agreement_streak_section,
+        _proactive_outbound_section,
     ):
         section = builder()
         if section:
             sections.append(section)
     return sections
+
+
+def _proactive_outbound_section() -> str | None:
+    """Recent proactive messages Jarvis sent (substrate for user-reply context).
+
+    Closes the gap where user replies to a daemon-fired question and Jarvis'
+    visible-prompt sees only the user reply, missing context for what's
+    being responded to. Added 2026-05-08 per Jarvis' own diagnosis.
+    """
+    try:
+        from core.services.proactive_outbound_substrate import (
+            build_proactive_outbound_section,
+        )
+        return build_proactive_outbound_section()
+    except Exception:
+        return None
 
 
 def _agreement_streak_section() -> str | None:

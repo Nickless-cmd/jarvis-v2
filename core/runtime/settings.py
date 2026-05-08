@@ -148,6 +148,13 @@ class RuntimeSettings:
     # concepts + intensiteter + adfærdseffekter som data, så han selv kan
     # se og justere — ikke fjerne signalet, men gøre det reagerbart.
     prompt_emotion_signal_section_enabled: bool = True
+    # Proactive outbound substrate (added 2026-05-08): when daemon fires a
+    # propose/ping to user, echo it into Jarvis' next visible prompt so he
+    # has context for the reply that follows. Plus active-chat gate to
+    # prevent the daemon from firing on top of an active conversation.
+    prompt_proactive_outbound_substrate_enabled: bool = True
+    heartbeat_active_chat_gate_enabled: bool = True
+    heartbeat_active_chat_gate_minutes: int = 10
     # Tool router (added 2026-05-06)
     tool_router_enabled: bool = True
     tool_router_threshold: float = 0.40  # 0.55 caused 100% fallback on validation set; nomic-embed cross-language similarity is weaker than expected. Daemon will tune adaptively.
@@ -234,6 +241,9 @@ class RuntimeSettings:
             "prompt_affect_tone_hints_enabled": self.prompt_affect_tone_hints_enabled,
             "prompt_agreement_streak_enabled": self.prompt_agreement_streak_enabled,
             "prompt_emotion_signal_section_enabled": self.prompt_emotion_signal_section_enabled,
+            "prompt_proactive_outbound_substrate_enabled": self.prompt_proactive_outbound_substrate_enabled,
+            "heartbeat_active_chat_gate_enabled": self.heartbeat_active_chat_gate_enabled,
+            "heartbeat_active_chat_gate_minutes": self.heartbeat_active_chat_gate_minutes,
             "emotion_concepts_tone_injection_enabled": self.emotion_concepts_tone_injection_enabled,
             "emotion_concepts_perception_focus_enabled": self.emotion_concepts_perception_focus_enabled,
             "concept_baseline_tracker_enabled": self.concept_baseline_tracker_enabled,
@@ -403,6 +413,9 @@ def load_settings() -> RuntimeSettings:
         prompt_affect_tone_hints_enabled=bool(data.get("prompt_affect_tone_hints_enabled", defaults.prompt_affect_tone_hints_enabled)),
         prompt_agreement_streak_enabled=bool(data.get("prompt_agreement_streak_enabled", defaults.prompt_agreement_streak_enabled)),
         prompt_emotion_signal_section_enabled=bool(data.get("prompt_emotion_signal_section_enabled", defaults.prompt_emotion_signal_section_enabled)),
+        prompt_proactive_outbound_substrate_enabled=bool(data.get("prompt_proactive_outbound_substrate_enabled", defaults.prompt_proactive_outbound_substrate_enabled)),
+        heartbeat_active_chat_gate_enabled=bool(data.get("heartbeat_active_chat_gate_enabled", defaults.heartbeat_active_chat_gate_enabled)),
+        heartbeat_active_chat_gate_minutes=int(data.get("heartbeat_active_chat_gate_minutes", defaults.heartbeat_active_chat_gate_minutes)),
         emotion_concepts_tone_injection_enabled=bool(data.get("emotion_concepts_tone_injection_enabled", defaults.emotion_concepts_tone_injection_enabled)),
         emotion_concepts_perception_focus_enabled=bool(data.get("emotion_concepts_perception_focus_enabled", defaults.emotion_concepts_perception_focus_enabled)),
         concept_baseline_tracker_enabled=bool(data.get("concept_baseline_tracker_enabled", defaults.concept_baseline_tracker_enabled)),

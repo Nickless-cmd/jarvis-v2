@@ -162,6 +162,37 @@ function DarkEdgeRow({ item }) {
   )
 }
 
+function RepairBriefRow({ item }) {
+  const edge = item.edge || {}
+  const files = Array.isArray(item.suggested_files) ? item.suggested_files : []
+  return (
+    <article style={s({
+      background: T.bgRaised,
+      border: `1px solid ${T.border0}`,
+      borderRadius: T.r_sm,
+      padding: 12,
+      display: 'grid',
+      gridTemplateColumns: 'minmax(0, 0.8fr) minmax(0, 1.4fr) minmax(0, 0.8fr) auto',
+      gap: 10,
+      alignItems: 'center',
+    })}>
+      <div style={s({ minWidth: 0 })}>
+        <strong style={s({ display: 'block', fontSize: 12, color: T.text1, minWidth: 0, wordBreak: 'break-word' })}>
+          {edge.title || item.scope || item.task_id}
+        </strong>
+        <span style={s({ ...mono, color: T.text3, fontSize: 9 })}>{item.task_id}</span>
+      </div>
+      <span style={s({ color: T.text2, fontSize: 11, lineHeight: 1.4, minWidth: 0, wordBreak: 'break-word' })}>
+        {item.recommended_next_action || item.goal}
+      </span>
+      <span style={s({ ...mono, color: T.text3, fontSize: 9, minWidth: 0, wordBreak: 'break-word' })}>
+        {files.slice(0, 3).join(' · ')}
+      </span>
+      <StatusPill status={item.status || 'open'} />
+    </article>
+  )
+}
+
 export function AgencyMapTab() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -375,6 +406,17 @@ export function AgencyMapTab() {
           </article>
         ))}
       </section>
+
+      {(data?.repairBriefs || []).length > 0 ? (
+        <section style={s({ display: 'flex', flexDirection: 'column', gap: 7 })}>
+          <div style={s({ ...mono, color: T.text3, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em' })}>
+            Repair Briefs
+          </div>
+          {(data?.repairBriefs || []).map((item) => (
+            <RepairBriefRow key={item.task_id} item={item} />
+          ))}
+        </section>
+      ) : null}
     </div>
   )
 }

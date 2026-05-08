@@ -9,6 +9,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from core.runtime.state_store import load_json
+
 
 def build_agency_map_surface() -> dict[str, Any]:
     nodes = _nodes()
@@ -40,6 +42,7 @@ def build_agency_map_surface() -> dict[str, Any]:
             if isinstance(cartographer, dict)
             else None
         ),
+        "repairBriefs": _repair_briefs(),
     }
 
 
@@ -255,3 +258,12 @@ def _next_moves(cartographer: dict[str, Any]) -> list[dict[str, str]]:
             "source": "agency-cartographer",
         }
     ]
+
+
+def _repair_briefs(limit: int = 8) -> list[dict[str, Any]]:
+    data = load_json("agency_bridge_repair_briefs", {})
+    if not isinstance(data, dict):
+        return []
+    briefs = [item for item in data.values() if isinstance(item, dict)]
+    briefs.sort(key=lambda item: str(item.get("created_at") or ""), reverse=True)
+    return briefs[: max(1, int(limit))]

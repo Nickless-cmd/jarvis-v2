@@ -211,6 +211,33 @@ def test_agency_map_exposes_dark_edges_and_completed_next_moves():
         assert by_source[source]["remaining_gap"]
 
 
+def test_agency_map_exposes_repair_briefs(monkeypatch):
+    import core.services.agency_map as agency_map
+
+    monkeypatch.setattr(
+        agency_map,
+        "load_json",
+        lambda name, default: {
+            "task-old": {
+                "task_id": "task-old",
+                "created_at": "2026-05-08T10:00:00+00:00",
+                "status": "awaiting-visible-repair",
+            },
+            "task-new": {
+                "task_id": "task-new",
+                "created_at": "2026-05-08T11:00:00+00:00",
+                "status": "awaiting-visible-repair",
+                "edge": {"title": "Living Executive -> Tools"},
+            },
+        },
+    )
+
+    result = agency_map.build_agency_map_surface()
+
+    assert result["repairBriefs"][0]["task_id"] == "task-new"
+    assert result["repairBriefs"][0]["edge"]["title"] == "Living Executive -> Tools"
+
+
 def test_agency_map_next_moves_come_from_cartographer_when_partial(monkeypatch):
     import core.services.agency_map as agency_map
 

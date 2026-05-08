@@ -298,3 +298,163 @@ def test_query_causal_chain_pagination():
     assert result["total_nodes_returned"] == 1
     assert result["truncated_by_limit"] is True
     assert result["next_offset"] == 1
+
+
+def _insert_event_with_payload(kind: str, payload: dict, ts: str) -> int:
+    """Insert event. Tests should use _recent_ts() helper for ts so the
+    daemon's default lookback window picks up the synthetic event.
+    """
+    import json as _json
+    from core.runtime.db import connect
+    with connect() as c:
+        cur = c.execute(
+            "INSERT INTO events (kind, payload_json, created_at) VALUES (?, ?, ?)",
+            (kind, _json.dumps(payload), ts),
+        )
+        c.commit()
+        return int(cur.lastrowid)
+
+
+def _recent_ts(seconds_ago: int = 0) -> str:
+    """Return ISO-Z timestamp `seconds_ago` seconds before now."""
+    from datetime import UTC, datetime, timedelta
+    return (
+        datetime.now(UTC) - timedelta(seconds=seconds_ago)
+    ).isoformat().replace("+00:00", "Z")
+
+
+def test_inference_tier1_kind_rule_match():
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    from core.services.causal_inference_daemon import run_inference_cycle
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+    import uuid as _uuid
+    cid = f"t1_{_uuid.uuid4().hex[:8]}"
+    parent = _insert_event_with_payload(
+        "tool.invoked", {"tool_call_id": cid}, _recent_ts(120),
+    )
+    child = _insert_event_with_payload(
+        "tool.completed", {"tool_call_id": cid}, _recent_ts(118),
+    )
+    stats = run_inference_cycle(since_minutes=10)
+    assert stats["edges_created"] >= 1 or stats["edges_upgraded"] >= 0
+    with connect() as c:
+        rows = c.execute(
+            "SELECT * FROM causal_edges WHERE child_event_id = ? AND parent_event_id = ?",
+            (child, parent),
+        ).fetchall()
+    assert len(rows) == 1
+    assert rows[0]["source"] == "inferred-kind"
+    assert rows[0]["confidence"] == 0.9
+
+
+def test_inference_tier2_shared_id_match():
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    from core.services.causal_inference_daemon import run_inference_cycle
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+    import uuid as _uuid
+    rid = f"run_{_uuid.uuid4().hex[:8]}"
+    parent = _insert_event_with_payload(
+        "decision.created",
+        {"run_id": rid, "decision_id": f"d_{rid}"},
+        _recent_ts(180),
+    )
+    child = _insert_event_with_payload(
+        "memory.seed_triggered",
+        {"run_id": rid},
+        _recent_ts(150),
+    )
+    run_inference_cycle(since_minutes=10)
+    with connect() as c:
+        rows = c.execute(
+            "SELECT * FROM causal_edges WHERE child_event_id = ? AND parent_event_id = ?",
+            (child, parent),
+        ).fetchall()
+    assert len(rows) == 1
+    assert rows[0]["source"] == "inferred-id"
+    assert rows[0]["confidence"] == 0.8
+
+
+def test_inference_tier3_temporal_only():
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    from core.services.causal_inference_daemon import run_inference_cycle
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+    import uuid as _uuid
+    sid = f"chat-{_uuid.uuid4().hex[:8]}"
+    parent = _insert_event_with_payload(
+        "channel.message_inbound",
+        {"session_id": sid},
+        _recent_ts(240),
+    )
+    child = _insert_event_with_payload(
+        "self_review.completed",
+        {"session_id": sid},
+        _recent_ts(220),
+    )
+    run_inference_cycle(since_minutes=10)
+    with connect() as c:
+        rows = c.execute(
+            "SELECT * FROM causal_edges WHERE child_event_id = ? AND parent_event_id = ?",
+            (child, parent),
+        ).fetchall()
+    assert len(rows) == 1
+    assert rows[0]["source"] == "inferred-temporal"
+    assert rows[0]["confidence"] == 0.4
+
+
+def test_inference_idempotent_no_dupes():
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    from core.services.causal_inference_daemon import run_inference_cycle
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+    import uuid as _uuid
+    cid = f"idem_{_uuid.uuid4().hex[:8]}"
+    p = _insert_event_with_payload(
+        "tool.invoked", {"tool_call_id": cid}, _recent_ts(300),
+    )
+    ch = _insert_event_with_payload(
+        "tool.completed", {"tool_call_id": cid}, _recent_ts(298),
+    )
+    run_inference_cycle(since_minutes=10)
+    run_inference_cycle(since_minutes=10)
+    with connect() as c:
+        row = c.execute(
+            "SELECT COUNT(*) AS n FROM causal_edges "
+            "WHERE child_event_id = ? AND parent_event_id = ?",
+            (ch, p),
+        ).fetchone()
+    assert int(row["n"]) == 1
+
+
+def test_inference_upgrades_confidence():
+    from core.runtime.db import connect, _ensure_causal_edges_table
+    from core.services.causal_inference_daemon import (
+        _record_edge, _ensure_table_ready,
+    )
+    with connect() as c:
+        _ensure_causal_edges_table(c)
+    import uuid as _uuid
+    cid = f"upgrade_{_uuid.uuid4().hex[:8]}"
+    p = _insert_event_with_payload(
+        "tool.invoked", {"tool_call_id": cid}, _recent_ts(360),
+    )
+    ch = _insert_event_with_payload(
+        "tool.completed", {"tool_call_id": cid}, _recent_ts(358),
+    )
+    _ensure_table_ready()
+    _record_edge(child=ch, parent=p, edge_kind="triggered",
+                 confidence=0.4, source="inferred-temporal",
+                 reasoning="initial-low")
+    _record_edge(child=ch, parent=p, edge_kind="triggered",
+                 confidence=0.9, source="inferred-kind",
+                 reasoning="upgraded")
+    with connect() as c:
+        row = c.execute(
+            "SELECT confidence, source FROM causal_edges "
+            "WHERE child_event_id = ? AND parent_event_id = ?",
+            (ch, p),
+        ).fetchone()
+    assert float(row["confidence"]) == 0.9
+    assert row["source"] == "inferred-kind"

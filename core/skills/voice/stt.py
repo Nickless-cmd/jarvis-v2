@@ -226,13 +226,117 @@ def _normalize(audio: np.ndarray, target_rms: float = 0.1) -> np.ndarray:
     return np.clip(audio * gain, -1.0, 1.0).astype(np.float32)
 
 
+def _transcribe_local(audio: np.ndarray, model: WhisperModel | None, language: str) -> str:
+    """Local faster-whisper-tiny — kept as offline-degradation tier."""
+    if model is None:
+        model = get_model()
+    segments, info = model.transcribe(
+        audio,
+        language=language,
+        beam_size=1,
+        condition_on_previous_text=False,
+    )
+    text = " ".join(s.text.strip() for s in segments).strip()
+    _debug(
+        f"transcribe[local]: lang={info.language} prob={info.language_probability:.2f} "
+        f"duration={info.duration:.2f}s → {text!r}"
+    )
+    return text
+
+
+def _transcribe_via_hf(audio: np.ndarray, language: str) -> str | None:
+    """Primary: HF Whisper-large-v3 cloud. None on error/rate-limit."""
+    try:
+        import io as _io
+        import tempfile
+        import wave as _wave
+        from pathlib import Path as _P
+
+        from core.tools.hf_inference_tools import transcribe_audio
+
+        # numpy float32 [-1,1] → s16le WAV bytes
+        pcm = (np.clip(audio, -1.0, 1.0) * 32767).astype(np.int16).tobytes()
+        buf = _io.BytesIO()
+        with _wave.open(buf, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(SAMPLE_RATE)
+            wf.writeframes(pcm)
+        tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        try:
+            tmp.write(buf.getvalue())
+            tmp.close()
+            result = transcribe_audio(
+                audio_source=tmp.name,
+                model="openai/whisper-large-v3",
+                language=language,
+            )
+        finally:
+            try:
+                _P(tmp.name).unlink()
+            except Exception:
+                pass
+        if result.get("status") == "ok":
+            text = str(result.get("text") or "").strip()
+            _debug(f"transcribe[hf]: → {text!r}")
+            return text
+        _debug(f"transcribe[hf] non-ok: {str(result.get('text',''))[:120]}")
+        return None
+    except Exception as exc:
+        _debug(f"transcribe[hf] failed: {exc}")
+        return None
+
+
+def _transcribe_via_elevenlabs(audio: np.ndarray, language: str) -> str | None:
+    """Fallback: ElevenLabs Scribe (paid SLA). None on error."""
+    try:
+        import io as _io
+        import json as _json
+        import wave as _wave
+        from pathlib import Path as _P
+
+        cfg = _P.home() / ".jarvis-v2" / "config" / "runtime.json"
+        key = _json.loads(cfg.read_text()).get("elevenlabs_api_key")
+        if not key:
+            return None
+
+        pcm = (np.clip(audio, -1.0, 1.0) * 32767).astype(np.int16).tobytes()
+        buf = _io.BytesIO()
+        with _wave.open(buf, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(SAMPLE_RATE)
+            wf.writeframes(pcm)
+        buf.seek(0)
+
+        from elevenlabs.client import ElevenLabs
+        client = ElevenLabs(api_key=key)
+        result = client.speech_to_text.convert(
+            file=("audio.wav", buf, "audio/wav"),
+            model_id="scribe_v1",
+            language_code=language,
+        )
+        text = (result.text or "").strip()
+        _debug(f"transcribe[el]: → {text!r}")
+        return text
+    except Exception as exc:
+        _debug(f"transcribe[el] failed: {exc}")
+        return None
+
+
 def transcribe(audio: np.ndarray, model: WhisperModel | None = None, language: str = "en") -> str:
-    """Transcribe numpy audio array to text."""
+    """3-tier waterfall transcription.
+
+    Refactored 2026-05-09 per Bjørn: local tiny "stinks" — primary path is
+    now HF Whisper-large-v3 (free, best quality), then ElevenLabs Scribe
+    (paid SLA fallback), then local tiny (offline-degradation tier).
+
+    Behavior preserved: same signature, same input/output, same _debug
+    logging shape — drop-in replacement.
+    """
     if audio.size == 0:
         _debug("transcribe: empty audio, skipping")
         return ""
-    if model is None:
-        model = get_model()
 
     pre_rms = float(np.sqrt(np.mean(audio ** 2)))
     audio = _normalize(audio)
@@ -243,18 +347,15 @@ def transcribe(audio: np.ndarray, model: WhisperModel | None = None, language: s
         f"(peak {post_peak:.3f})"
     )
 
-    segments, info = model.transcribe(
-        audio,
-        language=language,
-        beam_size=1,
-        condition_on_previous_text=False,
-    )
-    text = " ".join(s.text.strip() for s in segments).strip()
-    _debug(
-        f"transcribe: lang={info.language} prob={info.language_probability:.2f} "
-        f"duration={info.duration:.2f}s → {text!r}"
-    )
-    return text
+    hf_text = _transcribe_via_hf(audio, language)
+    if hf_text:
+        return hf_text
+
+    el_text = _transcribe_via_elevenlabs(audio, language)
+    if el_text:
+        return el_text
+
+    return _transcribe_local(audio, model, language)
 
 
 def listen_and_transcribe(duration: float = 5.0, language: str = "da") -> str:

@@ -131,14 +131,71 @@ def _clean_transcript(text: str) -> str:
     return text
 
 
+def _frames_to_wav_bytes(frames: list[bytes]) -> bytes:
+    """Encode raw PCM frames as a WAV byte string (for HF inference)."""
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(SAMPLE_RATE)
+        wf.writeframes(b"".join(frames))
+    return buf.getvalue()
+
+
+def _transcribe_hf(frames: list[bytes]) -> str | None:
+    """Primary: HF Whisper-large-v3 (free, best quality). None on error."""
+    try:
+        import tempfile
+        from pathlib import Path as _P
+
+        from core.tools.hf_inference_tools import transcribe_audio
+
+        wav_bytes = _frames_to_wav_bytes(frames)
+        # HF transcribe_audio reads from a file path; write a temp WAV.
+        tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        try:
+            tmp.write(wav_bytes)
+            tmp.close()
+            result = transcribe_audio(
+                audio_source=tmp.name,
+                model="openai/whisper-large-v3",
+                language="da",
+            )
+        finally:
+            try:
+                _P(tmp.name).unlink()
+            except Exception:
+                pass
+        if result.get("status") == "ok":
+            return str(result.get("text") or "").strip()
+        # On rate-limit / cold-start / 503: log and fall through
+        print(f"  [stt] HF transcribe non-ok: {result.get('text','?')[:120]}")
+        return None
+    except Exception as exc:
+        print(f"  [stt] HF transcribe failed: {exc}")
+        return None
+
+
 def _transcribe(frames: list[bytes]) -> str:
-    """Local whisper first, ElevenLabs fallback."""
+    """3-tier waterfall: HF Whisper-v3 → ElevenLabs Scribe → local tiny.
+
+    Refactored 2026-05-09: local-first was producing poor wake-word
+    transcriptions ("local whisper der stinker"). HF Whisper-large-v3
+    is free with HF token, ElevenLabs Scribe is paid SLA fallback,
+    local tiny remains as offline-degradation tier.
+    """
+    hf = _transcribe_hf(frames)
+    if hf is not None and hf != "":
+        return _clean_transcript(hf)
+
+    cloud = _transcribe_elevenlabs(frames)
+    if cloud is not None and cloud != "":
+        return _clean_transcript(cloud)
+
     local = _transcribe_local(frames)
     if local is not None:
         return _clean_transcript(local)
-    cloud = _transcribe_elevenlabs(frames)
-    if cloud is not None:
-        return _clean_transcript(cloud)
+
     return ""
 
 

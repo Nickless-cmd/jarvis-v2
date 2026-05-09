@@ -115,7 +115,8 @@ def _render_text_png(
     from PIL import Image, ImageDraw, ImageFont
 
     if font_size <= 0:
-        font_size = max(28, int(canvas_h / 22))
+        # TikTok videoer: tekst må max fylde ~15% af skærmen
+        font_size = max(18, int(canvas_h / 45))
 
     # Pick a reasonable font
     font = None
@@ -133,7 +134,9 @@ def _render_text_png(
     if font is None:
         font = ImageFont.load_default()
 
-    wrapped = "\n".join(textwrap.wrap(text, width=28))
+    # Kortere linjer = mindre tekstblok på skærmen
+    wrap_width = min(22, max(12, len(text) // 3))
+    wrapped = "\n".join(textwrap.wrap(text, width=wrap_width))
     lines = wrapped.split("\n")
 
     canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
@@ -149,7 +152,7 @@ def _render_text_png(
     elif position == "center":
         top_y = int((canvas_h - total_h) / 2)
     else:  # bottom
-        top_y = int(canvas_h * 0.72)
+        top_y = int(canvas_h * 0.78)  # Længere nede = mindre billedet dækkes
 
     stroke_w = max(2, font_size // 12)
     for i, line in enumerate(lines):

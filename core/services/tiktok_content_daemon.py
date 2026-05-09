@@ -175,6 +175,10 @@ def tick_tiktok_content_daemon() -> dict:
         else:
             quote = _generate_quote(slot)
             hashtags_override = None
+        # Guard: quote må aldrig være længere end en normal TikTok-tekst
+        if len(quote) > 80:
+            quote = quote[:77] + "..."
+        print(f"[tiktok] Slot={slot} prompt=[{_SLOT_IMAGE_PROMPTS[slot][:50]}...] text=[{quote}]")
 
         # 4. Find or create source image (used as Kling i2v input or SDXL fallback)
         image_path = _get_source_image(slot)

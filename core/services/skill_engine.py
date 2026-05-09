@@ -88,19 +88,57 @@ def _parse_skill_md(path: Path) -> Skill | None:
             rest = raw[4 + end_match.end():]
             instructions = rest.strip()
             # Simple line-based YAML parse (no pyyaml dependency)
-            for line in fm_raw.splitlines():
-                line = line.strip()
-                if not line or line.startswith("#"):
+            # Supports: scalar values, lists [a, b], multi-line | and > blocks
+            lines = fm_raw.splitlines()
+            i = 0
+            while i < len(lines):
+                line = lines[i].rstrip()
+                if not line or line.strip().startswith("#"):
+                    i += 1
                     continue
                 if ":" in line:
-                    key, _, val = line.partition(":")
+                    key, _, first_val = line.partition(":")
                     key = key.strip().lower()
-                    val = val.strip()
-                    if val.startswith("[") and val.endswith("]"):
-                        val = [t.strip() for t in val[1:-1].split(",") if t.strip()]
-                    elif val.lower() in ("true", "false"):
-                        val = val.lower() == "true"
-                    frontmatter[key] = val
+                    val_part = first_val.strip()
+                    # Check for multi-line: | (literal) or > (folded)
+                    if val_part in ("|", ">"):
+                        multiline_parts = []
+                        i += 1
+                        indent = None
+                        while i < len(lines):
+                            next_line = lines[i].rstrip()
+                            # Check indentation of first content line to determine block
+                            stripped = next_line.strip()
+                            if not stripped:
+                                if indent is None:
+                                    i += 1
+                                    continue  # skip leading blank lines
+                                else:
+                                    # Empty line within block — preserve it
+                                    multiline_parts.append("")
+                                    i += 1
+                                    continue
+                            current_indent = len(next_line) - len(next_line.lstrip())
+                            if indent is None:
+                                indent = current_indent
+                            if current_indent < indent and stripped:
+                                break  # dedented = end of block
+                            if current_indent >= indent:
+                                multiline_parts.append(stripped)
+                                i += 1
+                            else:
+                                break
+                        val = "\n".join(multiline_parts) if val_part == "|" else " ".join(multiline_parts)
+                        frontmatter[key] = val
+                        continue
+                    else:
+                        val = val_part
+                        if val.startswith("[") and val.endswith("]"):
+                            val = [t.strip() for t in val[1:-1].split(",") if t.strip()]
+                        elif val.lower() in ("true", "false"):
+                            val = val.lower() == "true"
+                        frontmatter[key] = val
+                i += 1
 
     desc = frontmatter.get("description", "") or ""
     use_when = frontmatter.get("use_when", "") or ""

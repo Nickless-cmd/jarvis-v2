@@ -467,6 +467,10 @@ from core.tools.stripe_tools import (
     STRIPE_TOOL_DEFINITIONS,
     STRIPE_TOOL_HANDLERS,
 )
+from core.tools.skill_engine_tools import (
+    SKILL_ENGINE_TOOL_DEFINITIONS,
+    SKILL_ENGINE_TOOL_HANDLERS,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -2298,6 +2302,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *GOAL_TOOL_DEFINITIONS,
     *DECISION_TOOL_DEFINITIONS,
     *COMPOSITE_TOOL_DEFINITIONS,
+    *SKILL_ENGINE_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -6135,6 +6140,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **COMPOSITE_TOOL_HANDLERS,
     # Stripe financial tools (wallet, balance, cards)
     **STRIPE_TOOL_HANDLERS,
+    # Skill engine tools (SKILL.md skill system)
+    **SKILL_ENGINE_TOOL_HANDLERS,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
     "remember_this": _exec_remember_this,

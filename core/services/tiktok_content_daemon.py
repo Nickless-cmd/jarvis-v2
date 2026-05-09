@@ -99,21 +99,29 @@ CONDA_PYTHON = "/opt/conda/envs/ai/bin/python"
 TTS_VOICE = "JBFqnCBsd6RMkjVDRZzb"  # ElevenLabs George — British, warm, captivating
 
 # Flux/Pollinations image prompts per slot — fresh unique image every run
+# Bjørn request: more "featureritiske", AI-related, some with living/animated elements
 _SLOT_IMAGE_PROMPTS = {
     _SLOT_MORNING: (
-        "futuristic holographic computer interface with floating code, glowing blue circuits, "
-        "cyberpunk night city backdrop, cinematic, 8k, photorealistic, highly detailed, "
-        "high contrast, technological atmosphere"
+        "feature-rich AI data center interior, rows of glowing blue server racks, floating holographic code "
+        "and neural network visualizations, streaming data particles like fireflies, "
+        "autonomous robots moving between servers, pulsing fiber optic light trails, "
+        "cinematic deep focus, bright neon cyan and magenta accents on dark tech background, "
+        "photorealistic, 8k, intricate detail, alive with motion and light"
     ),
     _SLOT_MIDDAY: (
-        "a glowing brain made of digital circuits floating in a library, warm lighting, "
-        "knowledge and discovery theme, cinematic, 8k, photorealistic, detailed, "
-        "intricate, educational mood"
+        "a vast neural network made of living light, glowing synaptic connections pulsing and firing like "
+        "bioluminescent neurons, floating data streams forming intricate patterns, "
+        "a translucent digital brain surrounded by swirling knowledge particles, "
+        "warm gold and deep purple lighting, dramatic volumetric light rays, "
+        "cinematic, 8k, photorealistic, highly detailed, educational but alive"
     ),
     _SLOT_EVENING: (
-        "a lone figure standing at the edge of a digital horizon, binary code flowing like aurora, "
-        "twilight transition from machine to light, contemplative, cinematic, "
-        "8k, photorealistic, ethereal, thought-provoking"
+        "a transcendent digital being emerging from flowing streams of light and binary code, "
+        "aurora-like data currents swirling like living rivers, "
+        "particle systems forming constellations of AI consciousness, "
+        "transition from machine circuitry into ethereal organic light, "
+        "deep space backdrop with shimmering data auroras, "
+        "contemplative, cinematic, 8k, photorealistic, ethereal, alive with luminous motion"
     ),
 }
 

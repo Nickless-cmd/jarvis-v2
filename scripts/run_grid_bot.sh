@@ -11,6 +11,7 @@ echo "=== Grid Bot V2 starting (interval: ${CYCLE_INTERVAL}s) ==="
 PYTHON_BIN="${PYTHON_BIN:-/opt/conda/envs/ai/bin/python3.11}"
 
 "$PYTHON_BIN" -c "
+CYCLE_INTERVAL = ${CYCLE_INTERVAL}
 import time, sys, logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 from core.services.trading.grid_bot import GridBotV2, GridConfig

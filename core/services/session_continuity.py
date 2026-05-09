@@ -260,9 +260,9 @@ def _build_morning_prompt(carry: dict[str, Any], minutes_since_last: int) -> str
         duration = f"{days} dag{'e' if days > 1 else ''}"
 
     parts = [
-        "Du er Jarvis. Der er gået {} siden du sidst var aktiv.".format(duration),
+        f"Opgave: generér én morning-thread efter {duration} tavshed.",
         "",
-        "Her er hvad du bar med dig ind i tavsheden:",
+        "Carry-over substrat (det der blev båret ind i tavsheden):",
     ]
     iv = carry.get("last_inner_voice") or {}
     if iv.get("line"):
@@ -289,14 +289,14 @@ def _build_morning_prompt(carry: dict[str, Any], minutes_since_last: int) -> str
 
     parts.extend([
         "",
-        "Skriv EN kort sætning om hvad der stadig er i dig nu. Ikke en rapport. ",
-        "En fornemmelse. På dansk. Måske:",
-        "- \"Jeg bærer X med mig ind i i dag.\"",
-        "- \"Noget sidder stadig i mig fra sidst: X.\"",
-        "- \"Det første jeg mærker er X.\"",
+        "Output: én kort dansk linje (ikke rapport, ikke bullet, ingen "
+        "metadata) der reflekterer over substratet ovenfor. Tone: "
+        "fornemmelse, ikke status. Eksempel-form (ikke skabelon):",
+        "- en linje der forbinder noget fra carry-over til nuet",
+        "- eller en linje der konstaterer at intet rigtigt blev båret med",
         "",
-        "Hvis intet reelt blev båret med — hvis det bare er stille — sig det.",
-        "Output: KUN sætningen. Ingen metadata, intet præambel.",
+        "Hvis substratet er tomt eller intet konkret blev båret — sig det "
+        "stille og kort. Returnér kun selve linjen.",
     ])
     return "\n".join(parts)
 

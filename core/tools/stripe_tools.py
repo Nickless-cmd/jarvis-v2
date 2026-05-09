@@ -170,7 +170,7 @@ def _exec_stripe_create_issuing_card(args: dict[str, Any]) -> dict[str, Any]:
                 type="individual",
                 name="Jarvis",
                 email="jarvis@srvlab.dk",
-                phone_number="+4512345678",
+                phone_number="+4522559988",
                 billing={
                     "address": {
                         "line1": "123 Test Street",

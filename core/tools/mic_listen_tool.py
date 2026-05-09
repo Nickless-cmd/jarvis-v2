@@ -5,13 +5,13 @@ only, no content). This tool is an **active, intentional** listen: Jarvis
 calls it, audio is captured, transcribed, and returned as text.
 
 Two transcription backends:
-- 'hf' (default) — HF Whisper-v3, better Danish/multilingual quality, needs
+- 'hf' (default) — HF Whisper-v3, good Danish/multilingual quality, needs
   network + huggingface_token
 - 'local' — faster-whisper tiny via core.skills.voice.stt, offline + private
-  but lower quality on Danish
+  but poor quality on Danish
 
-Audio captured from Logitech PRO USB via parec (same source as voice loop)
-or sounddevice fallback.
+Audio captured from NOS X500 USB via parec (switched from Logitech PRO
+2026-05-09) or sounddevice fallback.
 """
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 _SAMPLE_RATE = 16000
 _DEFAULT_DURATION = 8.0
 _MAX_DURATION = 60.0
-_MIC_SOURCE = "alsa_input.usb-Logitech_PRO_000000000000-00.mono-fallback"
+_MIC_SOURCE = "alsa_input.usb-NOS_X500_NOS_X500_20200508V100-00.mono-fallback"
 _PAREC_BIN_CANDIDATES = (
     "/home/linuxbrew/.linuxbrew/bin/parec",
     "/usr/bin/parec",
@@ -223,7 +223,7 @@ def _capture_sounddevice(duration: float) -> bytes | None:
 
 
 def _capture_audio(duration: float) -> tuple[bytes | None, str]:
-    """Try parec first (Logitech), then sounddevice fallback."""
+    """Try parec first (NOS X500), then sounddevice fallback."""
     raw = _capture_parec(duration)
     if raw:
         return raw, "parec"

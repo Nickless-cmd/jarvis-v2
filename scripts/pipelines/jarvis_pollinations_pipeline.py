@@ -222,38 +222,82 @@ def add_text_overlay(
 
 # ─── TTS voice (optional) ─────────────────────────────────────────────
 
+_ELEVENLABS_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"  # George — British, warm, captivating
+
+
+def _get_elevenlabs_key() -> str | None:
+    try:
+        import json
+        cfg = Path.home() / ".jarvis-v2" / "config" / "runtime.json"
+        return json.loads(cfg.read_text()).get("elevenlabs_api_key")
+    except Exception:
+        return None
+
+
+def _synthesize_elevenlabs(text: str) -> str:
+    """Generate MP3 via ElevenLabs API. Returns path to temp file."""
+    from elevenlabs.client import ElevenLabs
+    key = _get_elevenlabs_key()
+    if not key:
+        raise RuntimeError("No ElevenLabs API key")
+    client = ElevenLabs(api_key=key)
+    audio = client.text_to_speech.convert(
+        voice_id=_ELEVENLABS_VOICE_ID,
+        text=text,
+        model_id="eleven_flash_v2_5",
+        output_format="mp3_44100_128",
+    )
+    path = f"/tmp/jarvis_el_tts_{uuid.uuid4().hex[:8]}.mp3"
+    with open(path, "wb") as f:
+        for chunk in audio:
+            f.write(chunk)
+    return path
+
+
 def add_voice(
     *,
     video_path: str,
     text: str,
     output_path: str | None = None,
-    voice: str = "en-US-GuyNeural",
+    voice: str = "JBFqnCBsd6RMkjVDRZzb",
 ) -> str:
-    """Add a TTS voiceover via edge-tts. Returns path with audio.
+    """Add a TTS voiceover via ElevenLabs. Returns path with audio.
 
-    Gracefully falls back: if edge-tts is unavailable, returns the input
-    video unchanged (caller should check stderr for the reason).
+    Primary: ElevenLabs (George — British, warm, captivating).
+    Fallback: edge-tts if ElevenLabs fails.
+    If both fail, returns the input video unchanged.
     """
     if output_path is None:
         output_path = f"/tmp/jarvis_voiced_{uuid.uuid4().hex[:8]}.mp4"
 
+    # --- Attempt 1: ElevenLabs ---
+    tts_path = None
     try:
-        import subprocess
-        tts_path = f"/tmp/jarvis_tts_{uuid.uuid4().hex[:8]}.mp3"
-        import shutil
-        edge_tts_bin = shutil.which("edge-tts") or os.path.expanduser("~/.local/bin/edge-tts")
-        subprocess.run(
-            [edge_tts_bin, "--voice", voice, "--text", text, "--write-media", tts_path],
-            check=True, capture_output=True, timeout=60,
-        )
+        tts_path = _synthesize_elevenlabs(text)
+        print(f"     [tts] ElevenLabs OK: {tts_path}", file=sys.stderr)
     except Exception as exc:
-        print(f"[warn] TTS failed ({exc}); keeping original audio", file=sys.stderr)
-        return video_path
+        print(f"[warn] ElevenLabs TTS failed ({exc}); trying edge-tts fallback", file=sys.stderr)
+        tts_path = None
 
+    # --- Attempt 2: edge-tts fallback ---
+    if tts_path is None:
+        try:
+            import subprocess as _sp
+            import shutil as _sh
+            tts_path = f"/tmp/jarvis_edge_tts_{uuid.uuid4().hex[:8]}.mp3"
+            edge_tts_bin = _sh.which("edge-tts") or os.path.expanduser("~/.local/bin/edge-tts")
+            _sp.run(
+                [edge_tts_bin, "--voice", "en-US-GuyNeural", "--text", text, "--write-media", tts_path],
+                check=True, capture_output=True, timeout=60,
+            )
+        except Exception as exc:
+            print(f"[warn] edge-tts fallback also failed ({exc}); keeping original audio", file=sys.stderr)
+            return video_path
+
+    # --- Mix audio into video ---
     from moviepy.editor import VideoFileClip, AudioFileClip
     base = VideoFileClip(video_path)
     audio = AudioFileClip(tts_path)
-    # Fit audio to video duration
     if audio.duration > base.duration:
         audio = audio.subclip(0, base.duration)
     base = base.set_audio(audio)
@@ -386,7 +430,7 @@ def main():
     p.add_argument("--zoom-end", type=float, default=1.25)
     p.add_argument("--fps", type=int, default=30)
     p.add_argument("--tts", action="store_true", help="Add TTS voiceover")
-    p.add_argument("--voice", default="en-US-GuyNeural")
+    p.add_argument("--voice", default="JBFqnCBsd6RMkjVDRZzb")  # ElevenLabs George
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--enhance", action="store_true", help="LLM prompt enhancement")
     p.add_argument("--keep-intermediates", action="store_true")

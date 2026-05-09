@@ -1109,6 +1109,7 @@ def init_db() -> None:
         _ensure_decision_trigger_column(conn)
         _ensure_chat_messages_reasoning_column(conn)
         _ensure_counterfactuals_table(conn)
+        _ensure_experience_episodes_table(conn)
         _ensure_causal_edges_table(conn)
         from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables
         ensure_claude_dispatch_tables(conn)
@@ -1287,6 +1288,44 @@ def _ensure_counterfactuals_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_counterfactuals_status "
         "ON counterfactuals(status)"
+    )
+
+
+def _ensure_experience_episodes_table(conn: sqlite3.Connection) -> None:
+    """Append-only log of (context, tool_choice, outcome) episodes.
+
+    Foundation for embedding-retrieval based learning substrate
+    (added 2026-05-09 — Lag 1 of Runtime Decision Policy spec).
+
+    The actual embeddings live in chromadb at workspace runtime path;
+    this table holds the structured fields + a chromadb_id link.
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS experience_episodes (
+            episode_id TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL,
+            turn_id TEXT,
+            context_text TEXT NOT NULL,
+            context_intent TEXT,
+            active_loops_json TEXT,
+            last_tools_json TEXT,
+            session_phase TEXT,
+            tool_sequence_json TEXT NOT NULL,
+            outcome_signals_json TEXT NOT NULL,
+            user_corrected INTEGER NOT NULL DEFAULT 0,
+            chromadb_id TEXT,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_experience_episodes_session "
+        "ON experience_episodes(session_id, created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_experience_episodes_created "
+        "ON experience_episodes(created_at DESC)"
     )
 
 

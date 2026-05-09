@@ -65,6 +65,10 @@ from core.tools.mic_listen_tool import (
     MIC_LISTEN_TOOL_DEFINITIONS,
     _exec_mic_listen,
 )
+from core.tools.speak_tool import (
+    SPEAK_TOOL_DEFINITIONS,
+    _exec_speak,
+)
 from core.tools.voice_journal_tool import (
     VOICE_JOURNAL_TOOL_DEFINITIONS,
     _exec_voice_journal,
@@ -2214,6 +2218,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *HF_INFERENCE_TOOL_DEFINITIONS,
     *TIKTOK_CONTENT_TOOL_DEFINITIONS,
     *MIC_LISTEN_TOOL_DEFINITIONS,
+    *SPEAK_TOOL_DEFINITIONS,
     *VOICE_JOURNAL_TOOL_DEFINITIONS,
     *WAKE_WORD_TOOL_DEFINITIONS,
     *TIKTOK_TOOL_DEFINITIONS,
@@ -5939,6 +5944,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "tiktok_generate_video": _exec_tiktok_generate_video,
     # Active mic listening + transcription
     "mic_listen": _exec_mic_listen,
+    # Text-to-speech: speak aloud through system speakers
+    "speak": _exec_speak,
     # Voice journal (30-60s → memory_density)
     "voice_journal": _exec_voice_journal,
     # Wake-word listener ('Hey Jarvis' via ElevenLabs STT)

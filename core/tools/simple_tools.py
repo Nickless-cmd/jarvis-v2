@@ -463,6 +463,10 @@ from core.tools.session_search import (
     TOOL_DEFINITION as _SESSION_SEARCH_TOOL_DEF,
     exec_search_sessions as _exec_search_sessions,
 )
+from core.tools.stripe_tools import (
+    STRIPE_TOOL_DEFINITIONS,
+    STRIPE_TOOL_HANDLERS,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -2227,6 +2231,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *MAIL_TOOL_DEFINITIONS,
     *VISUAL_MEMORY_TOOL_DEFINITIONS,
     *JARVIS_BRAIN_TOOL_DEFINITIONS,
+    *STRIPE_TOOL_DEFINITIONS,
     *GITHUB_TOOL_DEFINITIONS,
     *MATH_TOOL_DEFINITIONS,
     *PROCESS_TOOL_DEFINITIONS,
@@ -6128,6 +6133,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **DECISION_TOOL_HANDLERS,
     # Self-extending composite tools
     **COMPOSITE_TOOL_HANDLERS,
+    # Stripe financial tools (wallet, balance, cards)
+    **STRIPE_TOOL_HANDLERS,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
     "remember_this": _exec_remember_this,

@@ -2852,6 +2852,9 @@ def _build_influence_trace(
 
     if _dm.is_enabled("tiktok_content"):
         try:
+            import importlib
+            import core.services.tiktok_content_daemon
+            importlib.reload(core.services.tiktok_content_daemon)
             from core.services.tiktok_content_daemon import tick_tiktok_content_daemon
             _tc_result = tick_tiktok_content_daemon()
             _dm.record_daemon_tick("tiktok_content", _tc_result or {})
@@ -2860,6 +2863,9 @@ def _build_influence_trace(
 
     if _dm.is_enabled("tiktok_research"):
         try:
+            import importlib
+            import core.services.tiktok_research_daemon
+            importlib.reload(core.services.tiktok_research_daemon)
             from core.services.tiktok_research_daemon import tick_tiktok_research_daemon
             _tr_result = tick_tiktok_research_daemon()
             _dm.record_daemon_tick("tiktok_research", _tr_result or {})

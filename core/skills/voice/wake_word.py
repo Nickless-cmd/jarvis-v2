@@ -19,7 +19,12 @@ import numpy as np
 import webrtcvad
 
 PAREC_BIN = "/home/linuxbrew/.linuxbrew/bin/parec"
-MIC_SOURCE = "alsa_input.usb-Logitech_PRO_000000000000-00.mono-fallback"
+# Configurable so we don't have to edit code on mic swap.
+# 2026-05-09: switched from Logitech PRO to NOS X500 after gain-dump issues.
+MIC_SOURCE = os.environ.get(
+    "JARVIS_MIC_SOURCE",
+    "alsa_input.usb-NOS_X500_NOS_X500_20200508V100-00.mono-fallback",
+)
 SAMPLE_RATE = 16000
 FRAME_MS = 30          # webrtcvad supports 10, 20, 30 ms
 FRAME_BYTES = int(SAMPLE_RATE * FRAME_MS / 1000) * 2  # s16le

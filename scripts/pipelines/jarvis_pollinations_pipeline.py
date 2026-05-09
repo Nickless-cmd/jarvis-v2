@@ -68,7 +68,11 @@ def build_zoom_video(
     fps: int = 30,
     output_path: str | None = None,
 ) -> str:
-    """Slow-zoom animation from a still image. No GPU, bounded RAM."""
+    """Slow-zoom animation from a still image. No GPU, bounded RAM.
+
+    zoom_start < zoom_end = zoom IN (default)
+    zoom_start > zoom_end = zoom OUT
+    """
     from moviepy.video.VideoClip import VideoClip
     import numpy as np
     from PIL import Image
@@ -97,6 +101,59 @@ def build_zoom_video(
         logger=None,  # quiet
     )
     clip.close()
+    return output_path
+
+
+def build_crossfade_video(
+    *,
+    image_paths: list[str],
+    duration: float = 18.0,
+    fps: int = 30,
+    crossfade_duration: float = 1.0,
+    output_path: str | None = None,
+) -> str:
+    """Multi-image crossfade video from N images. Each image gets equal screen time
+    with smooth crossfade transitions. No GPU, bounded RAM.
+    """
+    from moviepy.editor import VideoFileClip, CompositeVideoClip, concatenate_videoclips
+    import numpy as np
+    from PIL import Image
+    from moviepy.video.VideoClip import VideoClip, ImageClip
+    import tempfile
+
+    if output_path is None:
+        output_path = f"/tmp/jarvis_crossfade_{uuid.uuid4().hex[:8]}.mp4"
+
+    n = len(image_paths)
+    clip_duration = duration / n
+
+    clips = []
+    for img_path in image_paths:
+        img = Image.open(img_path).convert("RGB")
+        w_img, h_img = img.size
+        arr = np.array(img)
+
+        def make_frame(t, arr=arr):
+            return arr
+
+        clip = VideoClip(make_frame, duration=clip_duration).set_fps(fps)
+        clips.append(clip)
+
+    # Concatenate with crossfade transitions
+    # Use 'compose' method which supports crossfades
+    final = concatenate_videoclips(clips, method="compose", padding=-crossfade_duration)
+
+    # If concatenation didn't produce crossfade, manually overlay
+    if final.duration < duration * 0.8:  # crossfade shortened it too much
+        # Fall back to simple concatenation
+        final = concatenate_videoclips(clips, method="chain")
+
+    final.write_videofile(
+        output_path, fps=fps, codec="libx264",
+        audio=False, preset="medium", threads=4,
+        logger=None,
+    )
+    final.close()
     return output_path
 
 
@@ -338,6 +395,9 @@ def run_pipeline(
     enhance_prompt: bool = False,
     keep_intermediates: bool = False,
     text_position: str = "bottom",
+    video_style: str = "zoom-in",
+    multi_images: int = 1,
+    crossfade_duration: float = 1.0,
 ) -> dict:
     """Full pipeline returning dict with paths + timings."""
     start_total = time.time()
@@ -351,28 +411,74 @@ def run_pipeline(
     print(f"Text:    {text[:100]}")
     print(f"Output:  {output_path}")
 
-    # Step 1 — image
+    total_steps = 4 if add_tts else 3
+    step = 1
+
+    # Resolve video style → zoom params
+    if video_style == "zoom-out":
+        zoom_start, zoom_end = 1.25, 1.0  # Zoom OUT (reverse)
+        image_count = 1
+    elif video_style == "crossfade":
+        image_count = multi_images
+    else:  # zoom-in
+        image_count = 1
+
+    # Step 1 — generate image(s)
     t0 = time.time()
-    print(f"\n[1/{4 if add_tts else 3}] Generating image via pollinations.ai ({image_model})...")
-    image_path = generate_base_image(
-        prompt=prompt, width=width, height=height,
-        model=image_model, seed=seed, enhance=enhance_prompt,
-    )
+    image_paths: list[str] = []
+    models_used: list[str] = []
+
+    for i in range(image_count):
+        # Auto-randomize model for crossfade if not specified
+        cur_model = image_model
+        if image_model == "auto":
+            import random as _rand
+            cur_model = _rand.choice(["flux", "turbo", "variation"])
+        models_used.append(cur_model)
+
+        cur_seed = seed
+        if image_count > 1 and seed is None:
+            import random as _rand
+            cur_seed = _rand.randint(0, 999999)
+
+        print(f"\n[{step}/{total_steps}] Generating image {i+1}/{image_count} via pollinations.ai ({cur_model})...")
+        img_path = generate_base_image(
+            prompt=prompt,
+            width=width, height=height,
+            model=cur_model, seed=cur_seed, enhance=enhance_prompt,
+        )
+        image_paths.append(img_path)
+        print(f"     → {img_path}")
+
     timings["image_generation_s"] = round(time.time() - t0, 2)
-    print(f"     → {image_path}  ({timings['image_generation_s']}s)")
+    print(f"     Images done in {timings['image_generation_s']}s")
+    step += 1
 
-    # Step 2 — zoom video
+    # Step 2 — build video
     t0 = time.time()
-    print(f"\n[2/{4 if add_tts else 3}] Building Ken-Burns zoom video ({duration}s @ {fps}fps)...")
-    zoom_path = build_zoom_video(
-        image_path=image_path,
-        duration=duration, zoom_start=zoom_start, zoom_end=zoom_end, fps=fps,
-    )
-    intermediates.append(zoom_path)
-    timings["zoom_video_s"] = round(time.time() - t0, 2)
-    print(f"     → {zoom_path}  ({timings['zoom_video_s']}s)")
+    current = ""
 
-    current = zoom_path
+    if video_style == "crossfade" and len(image_paths) > 1:
+        print(f"\n[{step}/{total_steps}] Building crossfade video ({len(image_paths)} images, {duration}s)...")
+        current = build_crossfade_video(
+            image_paths=image_paths,
+            duration=duration,
+            fps=fps,
+            crossfade_duration=crossfade_duration,
+        )
+        timings["video_build_s"] = round(time.time() - t0, 2)
+        print(f"     → {current}  ({timings['video_build_s']}s)")
+    else:
+        print(f"\n[{step}/{total_steps}] Building {'zoom-out' if video_style == 'zoom-out' else 'zoom-in'} video ({duration}s @ {fps}fps)...")
+        current = build_zoom_video(
+            image_path=image_paths[0],
+            duration=duration, zoom_start=zoom_start, zoom_end=zoom_end, fps=fps,
+        )
+        timings["video_build_s"] = round(time.time() - t0, 2)
+        print(f"     → {current}  ({timings['video_build_s']}s)")
+
+    intermediates.append(current)
+    step += 1
 
     # Step 3 — optional TTS
     if add_tts:
@@ -438,6 +544,12 @@ def main():
     p.add_argument("--enhance", action="store_true", help="LLM prompt enhancement")
     p.add_argument("--keep-intermediates", action="store_true")
     p.add_argument("--text-position", default="bottom", choices=["top", "center", "bottom"])
+    p.add_argument("--video-style", default="zoom-in", choices=["zoom-in", "zoom-out", "crossfade"],
+                   help="Video animation style")
+    p.add_argument("--multi-images", type=int, default=2,
+                   help="Number of images for crossfade (default 2)")
+    p.add_argument("--crossfade-duration", type=float, default=1.0,
+                   help="Crossfade transition seconds (default 1.0)")
     args = p.parse_args()
 
     try:
@@ -455,6 +567,9 @@ def main():
             enhance_prompt=args.enhance,
             keep_intermediates=args.keep_intermediates,
             text_position=args.text_position,
+            video_style=args.video_style,
+            multi_images=args.multi_images,
+            crossfade_duration=args.crossfade_duration,
         )
     except KeyboardInterrupt:
         print("\n[cancelled]", file=sys.stderr)

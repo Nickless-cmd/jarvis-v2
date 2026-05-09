@@ -51,8 +51,14 @@ def _exec_tiktok_generate_video(args: dict[str, Any]) -> dict[str, Any]:
         fps = int(args.get("fps") or 30)
         zoom_start = float(args.get("zoom_start") or 1.0)
         zoom_end = float(args.get("zoom_end") or 1.25)
+        multi_images = int(args.get("multi_images") or 2)
+        crossfade_duration = float(args.get("crossfade_duration") or 1.0)
     except Exception as exc:
         return {"status": "error", "text": f"bad numeric arg: {exc}"}
+
+    video_style = str(args.get("video_style") or "zoom-in").lower().strip()
+    if video_style not in ("zoom-in", "zoom-out", "crossfade"):
+        video_style = "zoom-in"
 
     add_tts = bool(args.get("add_tts", False))
     voice = str(args.get("voice") or "en-US-GuyNeural")
@@ -90,6 +96,9 @@ def _exec_tiktok_generate_video(args: dict[str, Any]) -> dict[str, Any]:
             add_tts=add_tts, voice=voice,
             seed=seed, enhance_prompt=enhance,
             text_position=text_position,
+            video_style=video_style,
+            multi_images=multi_images,
+            crossfade_duration=crossfade_duration,
             keep_intermediates=False,
         )
     except Exception as exc:
@@ -164,7 +173,15 @@ TIKTOK_CONTENT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                     "image_model": {
                         "type": "string",
-                        "description": "flux (default) | turbo | variation | anime",
+                        "description": "flux (default) | turbo | variation | anime | auto",
+                    },
+                    "video_style": {
+                        "type": "string",
+                        "description": "zoom-in (default) | zoom-out | crossfade",
+                    },
+                    "multi_images": {
+                        "type": "integer",
+                        "description": "Number of images for crossfade style. Default 2.",
                     },
                     "width": {
                         "type": "integer",

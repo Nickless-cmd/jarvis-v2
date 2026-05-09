@@ -65,6 +65,8 @@ def _exec_tiktok_generate_video(args: dict[str, Any]) -> dict[str, Any]:
     text_position = str(args.get("text_position") or "bottom")
     if text_position not in ("top", "center", "bottom"):
         text_position = "bottom"
+    add_background_music = bool(args.get("add_background_music", True))
+    add_ai_label = bool(args.get("add_ai_label", True))
 
     seed = args.get("seed")
     if seed is not None:
@@ -99,6 +101,8 @@ def _exec_tiktok_generate_video(args: dict[str, Any]) -> dict[str, Any]:
             video_style=video_style,
             multi_images=multi_images,
             crossfade_duration=crossfade_duration,
+            add_background_music=add_background_music,
+            add_ai_label=add_ai_label,
             keep_intermediates=False,
         )
     except Exception as exc:

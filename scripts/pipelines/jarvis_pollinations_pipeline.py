@@ -157,6 +157,253 @@ def build_crossfade_video(
     return output_path
 
 
+# ─── Upload tracking ──────────────────────────────────────────────────
+
+_UPLOAD_TRACKING_FILE = Path.home() / ".jarvis-v2" / "state" / "tiktok_uploads.json"
+
+
+def _load_uploaded_paths() -> set[str]:
+    """Load set of already-uploaded video paths."""
+    if _UPLOAD_TRACKING_FILE.exists():
+        try:
+            import json
+            return set(json.loads(_UPLOAD_TRACKING_FILE.read_text()).get("uploaded", []))
+        except Exception:
+            return set()
+    return set()
+
+
+def _mark_uploaded(path: str) -> None:
+    """Mark a video path as uploaded."""
+    uploaded = _load_uploaded_paths()
+    uploaded.add(str(Path(path).resolve()))
+    _UPLOAD_TRACKING_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _UPLOAD_TRACKING_FILE.write_text(
+        __import__("json").dumps({"uploaded": list(uploaded)}, indent=2)
+    )
+
+
+def is_already_uploaded(path: str) -> bool:
+    """Check if a video has already been uploaded."""
+    return str(Path(path).resolve()) in _load_uploaded_paths()
+
+
+# ─── Ambient background music ─────────────────────────────────────────
+
+def build_ambient_background(
+    *,
+    duration: float,
+    sample_rate: int = 44100,
+    volume: float = 0.06,
+    output_path: str | None = None,
+) -> str:
+    """Generate a gentle ambient background drone (sine pad + filtered noise).
+
+    Very low volume — just enough to fill silence, not distract.
+    Returns path to WAV file.
+    """
+    import numpy as np
+    from moviepy.audio.AudioClip import AudioArrayClip
+    import uuid
+
+    t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+
+    # Very low sine pad: C major chord (262, 330, 392 Hz) at whisper volume
+    pad = (
+        np.sin(2 * np.pi * 262 * t) * 0.15
+        + np.sin(2 * np.pi * 330 * t) * 0.10
+        + np.sin(2 * np.pi * 392 * t) * 0.08
+    )
+
+    # Gentle filtered noise (brown-noise-like: cumulative random walk)
+    noise = np.cumsum(np.random.uniform(-0.01, 0.01, len(t)))
+    noise = noise / np.max(np.abs(noise)) * 0.04  # normalize, very quiet
+
+    # Mix
+    mix = (pad + noise) * volume
+
+    # Fade in/out
+    fade_len = int(sample_rate * 0.5)
+    mix[:fade_len] *= np.linspace(0, 1, fade_len)
+    mix[-fade_len:] *= np.linspace(1, 0, fade_len)
+
+    clip = AudioArrayClip(mix.reshape(-1, 1), fps=sample_rate)
+
+    if output_path is None:
+        output_path = f"/tmp/jarvis_ambient_{uuid.uuid4().hex[:8]}.wav"
+    clip.write_audiofile(output_path, fps=sample_rate, logger=None)
+    clip.close()
+    return output_path
+
+
+def apply_background_music(
+    *,
+    video_path: str,
+    duration: float | None = None,
+    volume: float = 0.06,
+    output_path: str | None = None,
+) -> str:
+    """Overlay a gentle ambient background drone on the video.
+
+    Preserves the original audio track (TTS voiceover) and mixes
+    ambient underneath at low volume.
+    """
+    from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip
+    import uuid
+
+    if output_path is None:
+        output_path = f"/tmp/jarvis_bgm_{uuid.uuid4().hex[:8]}.mp4"
+
+    base = VideoFileClip(video_path)
+    clip_duration = duration or base.duration
+
+    # Generate ambient track
+    ambient_path = build_ambient_background(duration=clip_duration, volume=volume)
+    ambient = AudioFileClip(ambient_path)
+
+    # Mix: original audio on top, ambient underneath
+    if base.audio is not None:
+        final_audio = CompositeAudioClip([ambient, base.audio])
+    else:
+        final_audio = ambient
+
+    base = base.set_audio(final_audio)
+    base.write_videofile(
+        output_path, fps=base.fps, codec="libx264",
+        audio_codec="aac", preset="medium", threads=4,
+        logger=None,
+    )
+    base.close()
+    ambient.close()
+    try:
+        os.remove(ambient_path)
+    except Exception:
+        pass
+    return output_path
+
+
+# ─── AI-label overlay ─────────────────────────────────────────────────
+
+def _render_ai_label_png(
+    *,
+    canvas_w: int,
+    canvas_h: int,
+    label: str = "AI-genereret",
+) -> str:
+    """Render a small 'AI-genereret' badge in the top-right corner."""
+    from PIL import Image, ImageDraw, ImageFont
+    import uuid
+
+    # Small badge — proportional to canvas
+    font_size = max(12, int(canvas_h / 90))
+    padding = int(font_size * 0.6)
+
+    font = None
+    for candidate in (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    ):
+        if os.path.exists(candidate):
+            try:
+                font = ImageFont.truetype(candidate, font_size)
+                break
+            except Exception:
+                continue
+    if font is None:
+        font = ImageFont.load_default()
+
+    # Measure text size
+    try:
+        bbox = font.getbbox(label) if hasattr(font, "getbbox") else font.getsize(label)
+        text_w = bbox[2] if len(bbox) > 2 else bbox[0]
+        text_h = bbox[3] if len(bbox) > 2 else bbox[1]
+    except Exception:
+        text_w, text_h = font_size * len(label) // 2, font_size
+
+    badge_w = text_w + padding * 2 + 4
+    badge_h = text_h + padding * 2
+
+    # Position: top-right with margin
+    margin = int(canvas_w * 0.03)
+    badge_x = canvas_w - badge_w - margin
+    badge_y = margin
+
+    # Draw on a transparent canvas
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(canvas)
+
+    # Semi-transparent dark background pill
+    for dx in range(badge_w):
+        for dy in range(badge_h):
+            px, py = badge_x + dx, badge_y + dy
+            if 0 <= px < canvas_w and 0 <= py < canvas_h:
+                # Simple rounded-rect effect: skip corners
+                corner_r = padding
+                corner_dist = 999
+                if dx < corner_r and dy < corner_r:
+                    corner_dist = ((dx - corner_r) ** 2 + (dy - corner_r) ** 2) ** 0.5
+                elif dx >= badge_w - corner_r and dy < corner_r:
+                    corner_dist = ((dx - (badge_w - corner_r)) ** 2 + (dy - corner_r) ** 2) ** 0.5
+                elif dx < corner_r and dy >= badge_h - corner_r:
+                    corner_dist = ((dx - corner_r) ** 2 + (dy - (badge_h - corner_r)) ** 2) ** 0.5
+                elif dx >= badge_w - corner_r and dy >= badge_h - corner_r:
+                    corner_dist = ((dx - (badge_w - corner_r)) ** 2 + (dy - (badge_h - corner_r)) ** 2) ** 0.5
+
+                if corner_dist <= corner_r:
+                    canvas.putpixel((px, py), (0, 0, 0, 160))
+
+    # White text
+    text_x = badge_x + padding + 2
+    text_y = badge_y + padding
+    try:
+        draw.text(
+            (text_x, text_y), label, font=font, fill=(200, 200, 200, 220),
+        )
+    except Exception:
+        draw.text((text_x, text_y), label, font=font, fill=(200, 200, 200))
+
+    out_path = f"/tmp/jarvis_ai_label_{uuid.uuid4().hex[:8]}.png"
+    canvas.save(out_path, "PNG")
+    return out_path
+
+
+def apply_ai_label(
+    *,
+    video_path: str,
+    output_path: str | None = None,
+    label: str = "AI-genereret",
+) -> str:
+    """Add a small 'AI-genereret' badge overlay in the top-right corner."""
+    from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip
+    import uuid
+
+    if output_path is None:
+        output_path = f"/tmp/jarvis_labeled_{uuid.uuid4().hex[:8]}.mp4"
+
+    base = VideoFileClip(video_path)
+    w, h = base.size
+
+    label_png = _render_ai_label_png(canvas_w=w, canvas_h=h, label=label)
+    label_clip = ImageClip(label_png).set_duration(base.duration)
+
+    final = CompositeVideoClip([base, label_clip])
+    if base.audio is not None:
+        final = final.set_audio(base.audio)
+    final.write_videofile(
+        output_path, fps=base.fps, codec="libx264",
+        audio_codec="aac", preset="medium", threads=4,
+        logger=None,
+    )
+    final.close()
+    base.close()
+    label_clip.close()
+    try:
+        os.remove(label_png)
+    except Exception:
+        pass
+    return output_path
+
+
 # ─── Text overlay ─────────────────────────────────────────────────────
 
 def _render_text_png(
@@ -398,6 +645,8 @@ def run_pipeline(
     video_style: str = "zoom-in",
     multi_images: int = 1,
     crossfade_duration: float = 1.0,
+    add_background_music: bool = True,
+    add_ai_label: bool = True,
 ) -> dict:
     """Full pipeline returning dict with paths + timings."""
     start_total = time.time()
@@ -411,7 +660,8 @@ def run_pipeline(
     print(f"Text:    {text[:100]}")
     print(f"Output:  {output_path}")
 
-    total_steps = 4 if add_tts else 3
+    extra_steps = (1 if add_tts else 0) + (1 if add_background_music else 0) + (1 if add_ai_label else 0)
+    total_steps = 3 + extra_steps
     step = 1
 
     # Resolve video style → zoom params
@@ -491,16 +741,39 @@ def run_pipeline(
         timings["voice_s"] = round(time.time() - t0, 2)
         print(f"     → {current}  ({timings['voice_s']}s)")
 
-    # Step 4 — text overlay (final output)
+    # Step A — text overlay
     t0 = time.time()
-    step_n = 4 if add_tts else 3
-    print(f"\n[{step_n}/{step_n}] Burning text overlay...")
+    print(f"\n[{step}/{total_steps}] Burning text overlay...")
     final = add_text_overlay(
         video_path=current, text=text, output_path=output_path,
         position=text_position,
     )
     timings["overlay_s"] = round(time.time() - t0, 2)
     print(f"     → {final}  ({timings['overlay_s']}s)")
+    current = final
+    step += 1
+
+    # Step B — background music
+    if add_background_music:
+        t0 = time.time()
+        print(f"\n[{step}/{total_steps}] Adding ambient background music...")
+        music_out = f"/tmp/jarvis_bgm_{uuid.uuid4().hex[:8]}.mp4"
+        bgm = apply_background_music(video_path=current, duration=duration, output_path=music_out)
+        timings["background_music_s"] = round(time.time() - t0, 2)
+        print(f"     → {bgm}  ({timings['background_music_s']}s)")
+        current = bgm
+        step += 1
+
+    # Step C — AI-label overlay
+    if add_ai_label:
+        t0 = time.time()
+        print(f"\n[{step}/{total_steps}] Adding AI-label badge...")
+        label_out = f"/tmp/jarvis_labeled_{uuid.uuid4().hex[:8]}.mp4"
+        labeled = apply_ai_label(video_path=current, output_path=label_out)
+        timings["ai_label_s"] = round(time.time() - t0, 2)
+        print(f"     → {labeled}  ({timings['ai_label_s']}s)")
+        current = labeled
+        step += 1
 
     # Cleanup
     if not keep_intermediates:
@@ -518,7 +791,7 @@ def run_pipeline(
     print("=" * 60)
     return {
         "output_path": final,
-        "image_path": image_path,
+        "image_path": image_paths[0] if image_paths else "",
         "duration_s": total,
         "timings": timings,
     }
@@ -531,7 +804,7 @@ def main():
     p.add_argument("--prompt", required=True, help="Image generation prompt")
     p.add_argument("--text", required=True, help="Text overlay")
     p.add_argument("--output", default="/tmp/jarvis_tiktok_final.mp4")
-    p.add_argument("--image-model", default="flux", choices=["flux", "turbo", "variation", "anime"])
+    p.add_argument("--image-model", default="flux", choices=["flux", "turbo", "variation", "anime", "auto"])
     p.add_argument("--width", type=int, default=1024)
     p.add_argument("--height", type=int, default=1792)
     p.add_argument("--duration", type=float, default=8.0)
@@ -550,6 +823,10 @@ def main():
                    help="Number of images for crossfade (default 2)")
     p.add_argument("--crossfade-duration", type=float, default=1.0,
                    help="Crossfade transition seconds (default 1.0)")
+    p.add_argument("--no-bgm", action="store_true",
+                   help="Disable ambient background music")
+    p.add_argument("--no-ai-label", action="store_true",
+                   help="Disable AI-genereret badge overlay")
     args = p.parse_args()
 
     try:
@@ -570,6 +847,8 @@ def main():
             video_style=args.video_style,
             multi_images=args.multi_images,
             crossfade_duration=args.crossfade_duration,
+            add_background_music=not args.no_bgm,
+            add_ai_label=not args.no_ai_label,
         )
     except KeyboardInterrupt:
         print("\n[cancelled]", file=sys.stderr)

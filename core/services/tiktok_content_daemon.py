@@ -331,11 +331,13 @@ def _get_source_image(slot: str) -> str | None:
 def _generate_flux_image(slot: str) -> str | None:
     """Generate a high-quality image via pollinations.ai flux model (free API).
 
+    Uses the dedicated pollinations_image tool via internal subprocess call.
+    Falls back to direct requests-based API call if tool is unavailable.
     Returns path to generated JPEG, or None on failure.
     """
     import os
-    import urllib.request
-    import urllib.parse
+    import subprocess
+    import sys
 
     prompt = _SLOT_IMAGE_PROMPTS.get(slot)
     if not prompt:
@@ -343,19 +345,48 @@ def _generate_flux_image(slot: str) -> str | None:
 
     output_path = f"/tmp/jarvis_tiktok_flux_{slot}.jpg"
 
+    # Try method 1: call generate_image from pollinations_tools module
+    # (same mechanism as the built-in pollinations_image tool)
     try:
-        # Build pollinations URL with flux model, 9:16 aspect, no watermark
-        url = (
-            "https://image.pollinations.ai/prompt/"
-            + urllib.parse.quote(prompt)
-            + "?width=576&height=1024&model=flux&nologo=true&seed="
-            + str(abs(hash(slot + prompt)) % 999999)
+        from core.tools.pollinations_tools import generate_image
+        result = generate_image(
+            prompt=prompt,
+            model="flux",
+            width=576,
+            height=1024,
+            nologo=True,
+            seed=abs(hash(slot + prompt)) % 999999,
         )
-        urllib.request.urlretrieve(url, output_path)
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+        if result.get("status") == "ok" and result.get("path"):
+            img_path = result["path"]
+            if os.path.exists(img_path) and os.path.getsize(img_path) > 1000:
+                import shutil
+                shutil.copy2(img_path, output_path)
+                return output_path
+    except Exception as exc:
+        print(f"[tiktok] Pollinations generate_image failed for {slot}: {exc}")
+
+    # Try method 2: direct requests-based API call with proper headers
+    try:
+        import requests as _requests
+        params = {
+            "width": 576,
+            "height": 1024,
+            "model": "flux",
+            "nologo": "true",
+            "seed": abs(hash(slot + prompt)) % 999999,
+        }
+        url = "https://image.pollinations.ai/prompt/" + prompt.replace(" ", "%20")
+        resp = _requests.get(url, params=params, timeout=60, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; JarvisBot/1.0)",
+            "Accept": "image/webp,image/jpeg,image/*,*/*",
+        })
+        if resp.status_code == 200 and len(resp.content) > 1000:
+            with open(output_path, "wb") as f:
+                f.write(resp.content)
             return output_path
     except Exception as exc:
-        print(f"[tiktok] Pollinations flux failed for {slot}: {exc}")
+        print(f"[tiktok] Pollinations requests failed for {slot}: {exc}")
 
     return None
 

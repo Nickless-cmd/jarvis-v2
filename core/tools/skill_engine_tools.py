@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # ── Intent matching (Fase 4) ──────────────────────────────────────────
 
-_INTENT_MATCH_THRESHOLD_DEFAULT = 0.55
+_INTENT_MATCH_THRESHOLD_DEFAULT = 0.15
 _INTENT_MATCH_MAX_SUGGESTIONS = 3
 
 

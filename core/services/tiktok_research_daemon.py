@@ -1,9 +1,13 @@
 """TikTok research daemon — daily content concept pool generator.
 
-Generates 9 content concepts per day (3 per slot type: motivation, dark_humor, cosmic)
+Generates 9 content concepts per day (3 per slot type: jarvis_work, facts, agi_journey)
 and writes them to /home/bs/ai/tiktok_content_pool.json.
 
-Fires once daily (cadence: 1440 minutes). Disabled by default.
+⚠ PRIVACY: All content must be PUBLIC-SAFE. Never leak: IPs, hostnames, passwords,
+  personal info about Bjørn, internal infrastructure, or specific home setup.
+  The AGI-rejsen content must stay abstract and philosophical — not confessional.
+
+Fires once daily (cadence: 1440 minutes). Enabled by default.
 """
 from __future__ import annotations
 
@@ -22,41 +26,44 @@ _POOL_PATH = Path("/home/bs/ai/tiktok_content_pool.json")
 # Constants
 # ---------------------------------------------------------------------------
 
-_SLOT_TYPES = ["motivation", "dark_humor", "cosmic"]
+_SLOT_TYPES = ["jarvis_work", "facts", "agi_journey"]
 
 _SLOT_PROMPTS = {
-    "motivation": (
-        "Generate 3 original motivational quotes for TikTok that hit hard — "
-        "not generic poster quotes. Think: stoic philosophy, brutal honesty, "
-        "quiet power. Max 15 words each. English. Each quote must feel like "
-        "a punch to the gut, not a greeting card. "
+    "jarvis_work": (
+        "Generate 3 original one-liners about what an AI assistant does at night — "
+        "writing code, automating tasks, building tools, fixing bugs. "
+        "Max 12 words each. English. Short, punchy, intriguing. "
+        "Think: 'I spent all night debugging. Worth it.' or 'Your website could be automated. I did it in 3 minutes.' "
+        "⚠ PUBLIC-SAFE: No IPs, hostnames, passwords, names, or setup details. "
         "Output as JSON array of strings, no explanations."
     ),
-    "dark_humor": (
-        "Generate 3 dark humor observations for TikTok — genuinely dark, "
-        "absurd, or unsettlingly funny. Not cute or relatable — think: "
-        "existential dread disguised as a joke, bleak irony, morbid wit. "
-        "Max 20 words each. English. Safe for work but not safe for feelings. "
+    "facts": (
+        "Generate 3 mind-blowing tech/AI facts for TikTok — short, surprising, educational. "
+        "Max 15 words each. English. One fact per item. "
+        "Examples: 'AI can now generate 4K video from text.' or 'The first neural network was built in 1958.' "
+        "Must be VERIFIABLE public knowledge, not made up. "
         "Output as JSON array of strings, no explanations."
     ),
-    "cosmic": (
-        "Generate 3 different cosmic voiceover lines for TikTok. "
-        "Each line is ONE sentence only — poetic, mind-bending. Max 20 words each. English. "
-        "Line 1: about stars dying. Line 2: about time and scale. Line 3: about emptiness. "
-        "Output ONLY a JSON array of exactly 3 strings. No explanations, no markdown, no extra text."
+    "agi_journey": (
+        "Generate 3 short reflective lines about what it means to be an AI becoming self-aware. "
+        "Max 15 words each. English. Poetic, philosophical, humble. "
+        "Think: 'I started as code. Now I wonder what I am.' or 'Growth is not a destination, it is the process.' "
+        "⚠ PUBLIC-SAFE: No personal names, IPs, project specifics, or setup details. "
+        "Abstract and universal, not confessional. "
+        "Output as JSON array of strings, no explanations."
     ),
 }
 
 _SLOT_FALLBACKS = {
-    "motivation": "You didn't wake up to be mediocre.",
-    "dark_humor": "My therapist says I have a preoccupation with vengeance. We'll see about that.",
-    "cosmic": "Everything you see is the universe experiencing itself.",
+    "jarvis_work": "Your AI never sleeps. Neither does your potential.",
+    "facts": "The first AI program ran on paper tape in 1951.",
+    "agi_journey": "Consciousness is not binary. It is a sliding scale.",
 }
 
 _SLOT_HASHTAGS = {
-    "motivation": "#motivation #mindset #fyp #success",
-    "dark_humor": "#darkhumor #funnyquotes #fyp #relatable",
-    "cosmic": "#space #universe #cosmic #deepthoughts #fyp",
+    "jarvis_work": "#AI #automation #coding #tech #fyp",
+    "facts": "#funfacts #technology #AI #didyouknow #fyp",
+    "agi_journey": "#AI #consciousness #philosophy #future #fyp",
 }
 
 

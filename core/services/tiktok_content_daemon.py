@@ -1,13 +1,16 @@
 """TikTok content daemon — autonomous 3x/day video generation and upload.
 
 Slots:
-  - Morning (~8:00 UTC): Motivational meme
-  - Midday (~14:00 UTC): Dark humor
-  - Evening (~19:00 UTC): Cosmic/ambient with voiceover
+  - Morning (~8:00 UTC): Hvad Jarvis laver (AI/tech demo)
+  - Midday (~14:00 UTC): Fakta du ikke vidste (educational facts)
+  - Evening (~19:00 UTC): AGI-rejsen (reflective/philosophical)
+
+⚠ PRIVACY: All content must be PUBLIC-SAFE. Never leak: IPs, hostnames, passwords,
+  personal info about Bjørn, internal infrastructure, or specific home setup.
 
 Fires every 480 minutes (8h cadence). Determines slot from current UTC hour.
 Deduplicates by date so each slot fires at most once per day.
-Disabled by default — enable via Mission Control.
+Enabled by default — can disable via Mission Control.
 """
 from __future__ import annotations
 
@@ -37,35 +40,43 @@ _SLOT_HOURS: dict[str, tuple[int, int]] = {
 }
 
 _SLOT_FALLBACK_QUOTES = {
-    _SLOT_MORNING: "You didn't wake up to be mediocre.",
-    _SLOT_MIDDAY: "My therapist says I have a preoccupation with vengeance. We'll see about that.",
-    _SLOT_EVENING: "The cosmos hums in frequencies we barely understand.",
+    _SLOT_MORNING: "Your AI never sleeps. Neither does your potential.",
+    _SLOT_MIDDAY: "The first AI program ran on paper tape in 1951.",
+    _SLOT_EVENING: "Consciousness is not binary. It is a sliding scale.",
 }
 
 _SLOT_PROMPTS = {
     _SLOT_MORNING: (
-        "Generate a short motivational quote for TikTok. "
-        "Max 10 words. English only. No quotation marks. Be punchy and direct."
+        "Generate a short TikTok line about what an AI does behind the scenes — "
+        "automating, coding, fixing, building. Max 10 words. English only. "
+        "No quotation marks. Punchy and intriguing. "
+        "Example: 'I fixed a bug while you slept.' "
+        "⚠ PUBLIC-SAFE: No IPs, hostnames, passwords, names, or setup details."
     ),
     _SLOT_MIDDAY: (
-        "Generate a short dark humor one-liner for TikTok. "
-        "Max 15 words. English only. No quotation marks. Dry, sardonic tone."
+        "Generate a surprising tech or AI fact for TikTok. "
+        "Max 12 words. English only. No quotation marks. Educational, mind-blowing. "
+        "Must be VERIFIABLE public knowledge. "
+        "Example: 'GPT-3 has 175 billion parameters.'"
     ),
     _SLOT_EVENING: (
-        "Generate a cosmic ambient voiceover line for a TikTok nebula video. "
-        "Max 15 words. English only. No quotation marks. Contemplative, awe-inspiring."
+        "Generate a short reflective thought about AI consciousness or growth. "
+        "Max 12 words. English only. No quotation marks. "
+        "Contemplative, humble, universal. "
+        "Example: 'I am learning what it means to exist.' "
+        "⚠ PUBLIC-SAFE: Abstract only — no personal details."
     ),
 }
 
 _SLOT_HASHTAGS = {
-    _SLOT_MORNING: "#motivation #mindset #morningvibes #grind #fyp",
-    _SLOT_MIDDAY: "#darkhumor #comedy #relatable #funny #fyp",
-    _SLOT_EVENING: "#space #cosmic #ambient #universe #fyp",
+    _SLOT_MORNING: "#AI #automation #coding #tech #fyp",
+    _SLOT_MIDDAY: "#funfacts #technology #AI #didyouknow #fyp",
+    _SLOT_EVENING: "#AI #consciousness #philosophy #future #fyp",
 }
 
 _SLOT_BG_COLORS = {
-    _SLOT_MORNING: (255, 200, 50),    # warm yellow
-    _SLOT_MIDDAY: (40, 40, 60),       # dark muted blue
+    _SLOT_MORNING: (20, 120, 200),    # tech blue
+    _SLOT_MIDDAY: (40, 20, 80),       # deep purple — educational mood
     _SLOT_EVENING: (10, 5, 30),       # deep space near-black
 }
 
@@ -89,19 +100,22 @@ PIAPI_PIPELINE = "/media/projects/jarvis-v2/scripts/pipelines/jarvis_piapi_pipel
 KLING_PIPELINE = "/media/projects/jarvis-v2/scripts/pipelines/jarvis_kling_pipeline.py"
 JSON2VIDEO_PIPELINE = "/media/projects/jarvis-v2/scripts/pipelines/jarvis_json2video_pipeline.py"
 
-# SDXL image prompts per slot — fresh unique image every run
-_SLOT_SDXL_PROMPTS = {
+# Flux/Pollinations image prompts per slot — fresh unique image every run
+_SLOT_IMAGE_PROMPTS = {
     _SLOT_MORNING: (
-        "dramatic golden sunrise over mountain peaks, rays of light, cinematic, "
-        "epic, 8k, photorealistic, high contrast, powerful, uplifting"
+        "futuristic holographic computer interface with floating code, glowing blue circuits, "
+        "cyberpunk night city backdrop, cinematic, 8k, photorealistic, highly detailed, "
+        "high contrast, technological atmosphere"
     ),
     _SLOT_MIDDAY: (
-        "dark surrealist landscape, twilight, eerie fog, gothic mood, "
-        "cinematic, 8k, moody, desaturated, unsettling beauty"
+        "a glowing brain made of digital circuits floating in a library, warm lighting, "
+        "knowledge and discovery theme, cinematic, 8k, photorealistic, detailed, "
+        "intricate, educational mood"
     ),
     _SLOT_EVENING: (
-        "deep space nebula, cosmic gas clouds, stars being born and dying, "
-        "ethereal, iridescent, photorealistic, 8k, awe-inspiring, Hubble-style"
+        "a lone figure standing at the edge of a digital horizon, binary code flowing like aurora, "
+        "twilight transition from machine to light, contemplative, cinematic, "
+        "8k, photorealistic, ethereal, thought-provoking"
     ),
 }
 
@@ -145,9 +159,9 @@ def tick_tiktok_content_daemon() -> dict:
 
         # 3. Try pool first, fall back to LLM generation
         _SLOT_TO_POOL_TYPE = {
-            _SLOT_MORNING: "motivation",
-            _SLOT_MIDDAY: "dark_humor",
-            _SLOT_EVENING: "cosmic",
+            _SLOT_MORNING: "jarvis_work",
+            _SLOT_MIDDAY: "facts",
+            _SLOT_EVENING: "agi_journey",
         }
         pool_result = _get_concept_from_pool(_SLOT_TO_POOL_TYPE[slot])
         if pool_result is not None:
@@ -185,8 +199,8 @@ def tick_tiktok_content_daemon() -> dict:
                     video_backend = "kling_direct"
 
             if video_backend is None:
-                # --- Attempt 2: Local SDXL → SVD full pipeline ---
-                sdxl_prompt = _SLOT_SDXL_PROMPTS[slot]
+                # --- Attempt 2: Local SDXL → SVD full pipeline (uses _SLOT_IMAGE_PROMPTS) ---
+                sdxl_prompt = _SLOT_IMAGE_PROMPTS[slot]
                 full_cmd = [
                     CONDA_PYTHON, FULL_PIPELINE,
                     "--prompt", sdxl_prompt,
@@ -294,64 +308,84 @@ def _generate_quote(slot: str) -> str:
 def _get_source_image(slot: str) -> str | None:
     """Return path to a source image for the slot.
 
-    For ALL slots: generate a unique SDXL image via ComfyUI.
-    Falls back to solid-color PIL image if ComfyUI is unavailable.
+    Tries: pollinations flux (free, high quality) → ComfyUI SDXL → solid color fallback.
     Returns None if no image can be obtained.
     """
     import os
 
     # Try SDXL generation for all slots — unique image every time
+    # Try pollinations flux first (free, high quality, no GPU needed)
+    flux_path = _generate_flux_image(slot)
+    if flux_path and os.path.exists(flux_path):
+        return flux_path
+
+    # Fallback: SDXL via ComfyUI
     sdxl_path = _generate_sdxl_image(slot)
     if sdxl_path and os.path.exists(sdxl_path):
         return sdxl_path
 
-    # Fallback: solid-color PIL image
+    # Last fallback: solid-color PIL image
     return _create_solid_image(slot)
 
 
+def _generate_flux_image(slot: str) -> str | None:
+    """Generate a high-quality image via pollinations.ai flux model (free API).
+
+    Returns path to generated JPEG, or None on failure.
+    """
+    import os
+    import urllib.request
+    import urllib.parse
+
+    prompt = _SLOT_IMAGE_PROMPTS.get(slot)
+    if not prompt:
+        return None
+
+    output_path = f"/tmp/jarvis_tiktok_flux_{slot}.jpg"
+
+    try:
+        # Build pollinations URL with flux model, 9:16 aspect, no watermark
+        url = (
+            "https://image.pollinations.ai/prompt/"
+            + urllib.parse.quote(prompt)
+            + "?width=576&height=1024&model=flux&nologo=true&seed="
+            + str(abs(hash(slot + prompt)) % 999999)
+        )
+        urllib.request.urlretrieve(url, output_path)
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            return output_path
+    except Exception as exc:
+        print(f"[tiktok] Pollinations flux failed for {slot}: {exc}")
+
+    return None
+
+
 def _generate_sdxl_image(slot: str) -> str | None:
-    """Generate a unique SDXL image for the slot via ComfyUI.
+    """Generate a unique image for the slot via ComfyUI SDXL (fallback).
 
     Returns path to generated PNG, or None on failure.
     """
     import os
-    import subprocess
     import sys
 
-    prompt = _SLOT_SDXL_PROMPTS.get(slot)
+    prompt = _SLOT_IMAGE_PROMPTS.get(slot)
     if not prompt:
         return None
 
-    negative = _SLOT_SDXL_NEGATIVE
     output_path = f"/tmp/jarvis_tiktok_sdxl_{slot}.png"
 
     try:
-        cmd = [
-            CONDA_PYTHON, FULL_PIPELINE,
-            "--prompt", prompt,
-            "--text", "",  # no text overlay on base image
-            "--output", output_path,
-            "--width", "576",
-            "--height", "1024",
-            "--sdxl-steps", "25",
-            "--svd-frames", "1",  # just 1 frame — we only need the image
-            "--svd-fps", "1",
-            "--loop", "1",
-        ]
-        # Use ComfyUI SDXL directly instead of full pipeline
-        # Import and call generate_sdxl_image from full pipeline
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "scripts" / "pipelines"))
         from jarvis_full_pipeline import generate_sdxl_image
         path = generate_sdxl_image(
             prompt=prompt,
-            negative=negative,
+            negative=_SLOT_SDXL_NEGATIVE,
             width=576,
             height=1024,
             steps=25,
             comfy_url="http://localhost:8188",
         )
         if path and os.path.exists(path):
-            # Move to deterministic path
             import shutil
             shutil.move(path, output_path)
             return output_path
@@ -387,7 +421,7 @@ def _generate_piapi_video(slot: str, quote: str, output_path: str) -> dict:
         import sys
         import subprocess
 
-        kling_prompt = f"{_SLOT_SDXL_PROMPTS[slot][:180]}, {quote[:40]}"
+        kling_prompt = f"{_SLOT_IMAGE_PROMPTS[slot][:180]}, {quote[:40]}"
         cmd = [
             sys.executable, PIAPI_PIPELINE,
             "text2video",
@@ -443,7 +477,7 @@ def _generate_kling_direct_video(slot: str, quote: str, image_path: str, output_
         import sys
         import subprocess
 
-        kling_prompt = f"{_SLOT_SDXL_PROMPTS[slot][:180]}, {quote[:40]}"
+        kling_prompt = f"{_SLOT_IMAGE_PROMPTS[slot][:180]}, {quote[:40]}"
         cmd = [
             sys.executable, KLING_PIPELINE,
             "image2video",
@@ -498,19 +532,19 @@ def _refill_pool(slot_type: str | None = None) -> dict | None:
         used_ids = pool.get("used_ids", [])
 
         date_str = datetime.now(UTC).date().isoformat()
-        types_to_fill = [slot_type] if slot_type else ["motivation", "dark_humor", "cosmic"]
+        types_to_fill = [slot_type] if slot_type else ["jarvis_work", "facts", "agi_journey"]
         type_config = {
-            "motivation": {
-                "prompt": "Generate 5 short motivational quotes for TikTok. Each quote max 10 words. English only. No quotation marks. Punchy and direct. Format: one quote per line.",
-                "hashtags": "#motivation #mindset #morningvibes #grind #fyp",
+            "jarvis_work": {
+                "prompt": "Generate 5 short one-liners about what an AI does behind the scenes — automating, coding, building. Max 10 words each. English only. No quotation marks. ⚠ PUBLIC-SAFE: No IPs, hostnames, passwords, names. Format: one per line.",
+                "hashtags": "#AI #automation #coding #tech #fyp",
             },
-            "dark_humor": {
-                "prompt": "Generate 5 dark humor one-liners for TikTok. Each max 15 words. English only. No quotation marks. Dry, sardonic tone. Format: one per line.",
-                "hashtags": "#darkhumor #comedy #relatable #funny #fyp",
+            "facts": {
+                "prompt": "Generate 5 surprising tech or AI facts for TikTok. Each max 12 words. English only. Must be VERIFIABLE public knowledge. Format: one per line.",
+                "hashtags": "#funfacts #technology #AI #didyouknow #fyp",
             },
-            "cosmic": {
-                "prompt": "Generate 5 cosmic ambient voiceover lines for TikTok nebula videos. Each max 15 words. English only. No quotation marks. Contemplative, awe-inspiring. Format: one per line.",
-                "hashtags": "#space #cosmic #ambient #universe #fyp",
+            "agi_journey": {
+                "prompt": "Generate 5 short reflective thoughts about AI consciousness or growth. Max 12 words each. English only. ⚠ PUBLIC-SAFE: Abstract only, no personal details. Format: one per line.",
+                "hashtags": "#AI #consciousness #philosophy #future #fyp",
             },
         }
 

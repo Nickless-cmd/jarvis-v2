@@ -242,15 +242,15 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 480,
-        "default_enabled": False,
-        "description": "Autonomous TikTok content: 3 videos/day (motivation, humor, cosmic)",
+        "default_enabled": True,
+        "description": "Autonomous TikTok content: 3 videos/day (jarvis_work, facts, agi_journey)",
     },
     "tiktok_research": {
         "module": "core.services.tiktok_research_daemon",
         "reset_var": "_last_tick_at",
         "reset_value": None,
         "default_cadence_minutes": 1440,
-        "default_enabled": False,
+        "default_enabled": True,
         "description": "Daily content research: generates TikTok concept pool for 3 slot types",
     },
     "mail_checker": {

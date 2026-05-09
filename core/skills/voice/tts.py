@@ -1,12 +1,21 @@
 """Text-to-speech — ElevenLabs (primary) with edge-tts fallback."""
 
 import asyncio
+import os
 import subprocess
 import tempfile
 from pathlib import Path
 
-# ElevenLabs: George — British, warm, captivating (fits Jarvis well)
-ELEVENLABS_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
+# Default: Jesper — Danish, calm, deep, professional (rigsdansk).
+# Override via env JARVIS_TTS_VOICE_ID for quick swaps without code change.
+# Alternatives: Mathias=ygiXC2Oa1BiHksD3WkJZ (jutlandic warm),
+#               Constantin=Hp07ONf6C5qlCKOeB4oo (calm soothing),
+#               Søren=xj6X4BCUsv9oxohm1E8o (confident versatile),
+#               Camilla=4RklGmuxoAskAbGXplXN (female engaging),
+#               George=JBFqnCBsd6RMkjVDRZzb (English, prior default).
+ELEVENLABS_VOICE_ID = os.environ.get(
+    "JARVIS_TTS_VOICE_ID", "Bl1YwS3uJac5zEOSNESn"
+)
 # edge-tts fallback voices
 EDGE_VOICES = ["da-DK-JeppeNeural", "en-GB-RyanNeural"]
 

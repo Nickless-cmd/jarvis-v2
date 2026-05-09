@@ -416,13 +416,17 @@ MIC_LISTEN_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "mic_listen",
             "description": (
-                "Actively listen through the mic (Logitech PRO USB) for N seconds, "
-                "then transcribe the recording. Use when Bjørn says something out loud, "
-                "asks Jarvis to note a voice memo, or when active listening is needed. "
-                "NOT for background monitoring — that's what ambient_sound_daemon handles "
-                "(metadata only, no content). "
-                "Default: HF Whisper-v3 (cloud, best quality); falls back to local "
-                "faster-whisper if HF fails. Emits mic.transcribed event."
+                "Record N seconds of NEW audio from the system mic and "
+                "transcribe it. ONLY call when Bjørn EXPLICITLY asks you to "
+                "listen now (e.g. 'lyt', 'optag voice memo', 'tag det her "
+                "ned mens jeg taler'). DO NOT call this just because the "
+                "current message arrived via voice — the wake-word pipeline "
+                "already transcribed what Bjørn said and that's the message "
+                "you're reading right now. Calling mic_listen on a regular "
+                "message produces several seconds of dead delay and captures "
+                "silence. If unsure: don't call it. Background acoustic "
+                "monitoring is ambient_sound_daemon's job (metadata only). "
+                "Default backend: HF Whisper-v3 (cloud), falls back to local."
             ),
             "parameters": {
                 "type": "object",

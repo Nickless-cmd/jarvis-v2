@@ -66,21 +66,26 @@ def ask_jarvis(session_id: str, text: str) -> str:
     return full_text.strip()
 
 
-def on_wake_word(word: str):
-    import re
-    say("Ja?", blocking=True)
+import os
+import re
 
-    _set_phase("user")
-    print("[stt] optager...", flush=True)
-    text = listen_and_transcribe(duration=5.0, language="da")
-    # Filter out pure noise/sound-effect descriptions like "(baggrundsstøj)"
-    text_clean = re.sub(r"\([^)]*\)", "", text).strip()
-    if not text_clean:
-        _set_phase("idle")
-        say("Jeg hørte ikke noget.", blocking=True)
-        return
-    text = text_clean
+# Follow-up window: after Jarvis answers, listen N seconds for an
+# unprompted follow-up so Bjørn doesn't have to say "Hey Jarvis" again
+# every turn. Set FOLLOW_UP_SECONDS=0 (or env JARVIS_VOICE_FOLLOW_UP=0)
+# to disable.
+FOLLOW_UP_SECONDS = float(os.environ.get("JARVIS_VOICE_FOLLOW_UP_S", "6"))
 
+
+def _capture_user_utterance(duration: float) -> str:
+    """Listen N seconds, return cleaned utterance or '' if silence/noise."""
+    text = listen_and_transcribe(duration=duration, language="da")
+    # Strip sound-effect markup like "(baggrundsstøj)"
+    return re.sub(r"\([^)]*\)", "", text).strip()
+
+
+def _handle_turn(text: str) -> bool:
+    """Process one utterance through ask_jarvis + speak. Returns False if
+    something went wrong and we should bail out of the loop."""
     print(f"[stt] hørt: {text}", flush=True)
     _set_phase("think")
     say("Et øjeblik.", blocking=False)
@@ -92,16 +97,45 @@ def on_wake_word(word: str):
         print(f"[api] fejl: {e}", flush=True)
         _set_phase("idle")
         say("Beklager, jeg kunne ikke nå min hjerne.", blocking=True)
-        return
+        return False
 
     if not response:
         _set_phase("idle")
         say("Jeg har intet svar.", blocking=True)
-        return
+        return False
 
     print(f"[tts] svarer: {response[:80]}...", flush=True)
     _set_phase("speak")
     say(response, blocking=True)
+    return True
+
+
+def on_wake_word(word: str):
+    say("Ja?", blocking=True)
+
+    _set_phase("user")
+    print("[stt] optager...", flush=True)
+    text = _capture_user_utterance(duration=5.0)
+    if not text:
+        _set_phase("idle")
+        say("Jeg hørte ikke noget.", blocking=True)
+        return
+
+    if not _handle_turn(text):
+        return
+
+    # Follow-up loop: stay in conversation without requiring fresh wake-word.
+    # Each iteration listens for FOLLOW_UP_SECONDS; silence ends the session.
+    while FOLLOW_UP_SECONDS > 0:
+        _set_phase("user")
+        print(f"[stt] follow-up vindue ({FOLLOW_UP_SECONDS:.0f}s)...", flush=True)
+        follow_up = _capture_user_utterance(duration=FOLLOW_UP_SECONDS)
+        if not follow_up:
+            print("[stt] stilhed → tilbage til wake-word-mode", flush=True)
+            break
+        if not _handle_turn(follow_up):
+            break
+
     _set_phase("idle")
 
 

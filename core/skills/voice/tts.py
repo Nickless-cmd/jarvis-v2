@@ -6,15 +6,16 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-# Default: Jesper — Danish, calm, deep, professional (rigsdansk).
+# Default: Mathias — Danish, engaging, natural, warm (jutlandic accent).
+# Picked 2026-05-09 by Bjørn after sampling against Jesper + Constantin.
 # Override via env JARVIS_TTS_VOICE_ID for quick swaps without code change.
-# Alternatives: Mathias=ygiXC2Oa1BiHksD3WkJZ (jutlandic warm),
-#               Constantin=Hp07ONf6C5qlCKOeB4oo (calm soothing),
-#               Søren=xj6X4BCUsv9oxohm1E8o (confident versatile),
+# Alternatives: Jesper=Bl1YwS3uJac5zEOSNESn (calm deep professional, rigsdansk),
+#               Constantin=Hp07ONf6C5qlCKOeB4oo (calm soothing, rigsdansk),
+#               Søren=xj6X4BCUsv9oxohm1E8o (confident versatile, rigsdansk),
 #               Camilla=4RklGmuxoAskAbGXplXN (female engaging),
 #               George=JBFqnCBsd6RMkjVDRZzb (English, prior default).
 ELEVENLABS_VOICE_ID = os.environ.get(
-    "JARVIS_TTS_VOICE_ID", "Bl1YwS3uJac5zEOSNESn"
+    "JARVIS_TTS_VOICE_ID", "ygiXC2Oa1BiHksD3WkJZ"
 )
 # edge-tts fallback voices
 EDGE_VOICES = ["da-DK-JeppeNeural", "en-GB-RyanNeural"]

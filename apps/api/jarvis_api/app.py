@@ -135,6 +135,14 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("self_repair_engine start failed: %s", _exc)
             try:
+                from core.services.experience_correction_listener import (
+                    start_listener as start_experience_correction,
+                )
+                start_experience_correction()
+                logger.info("experience_correction listener started")
+            except Exception as _exc:
+                logger.warning("experience_correction start failed: %s", _exc)
+            try:
                 from core.services.living_executive import start_listener as start_living_executive
                 start_living_executive()
                 logger.info("living_executive listener started")

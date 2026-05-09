@@ -177,20 +177,23 @@ def _transcribe_hf(frames: list[bytes]) -> str | None:
 
 
 def _transcribe(frames: list[bytes]) -> str:
-    """3-tier waterfall: HF Whisper-v3 → ElevenLabs Scribe → local tiny.
+    """3-tier waterfall: ElevenLabs Scribe → HF Whisper-v3 → local tiny.
 
-    Refactored 2026-05-09: local-first was producing poor wake-word
-    transcriptions ("local whisper der stinker"). HF Whisper-large-v3
-    is free with HF token, ElevenLabs Scribe is paid SLA fallback,
-    local tiny remains as offline-degradation tier.
+    Refactored 2026-05-09: HF first failed because the hf-inference
+    Whisper endpoint silently drops the language parameter and
+    auto-detect mis-classifies short Danish utterances as German/
+    Swedish (e.g. "klokken" → "Glocken"). ElevenLabs Scribe accepts
+    language_code="da" and gets Danish right, so it's now primary.
+    HF stays as middle fallback for non-Danish or when EL has issues.
+    Local tiny remains as offline-degradation tier.
     """
-    hf = _transcribe_hf(frames)
-    if hf is not None and hf != "":
-        return _clean_transcript(hf)
-
     cloud = _transcribe_elevenlabs(frames)
     if cloud is not None and cloud != "":
         return _clean_transcript(cloud)
+
+    hf = _transcribe_hf(frames)
+    if hf is not None and hf != "":
+        return _clean_transcript(hf)
 
     local = _transcribe_local(frames)
     if local is not None:

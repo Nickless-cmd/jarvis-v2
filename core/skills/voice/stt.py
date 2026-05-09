@@ -13,8 +13,11 @@ SAMPLE_RATE = 16000
 FRAME_MS = 30
 FRAME_BYTES = int(SAMPLE_RATE * FRAME_MS / 1000) * 2  # s16le
 
-# PipeWire source for Logitech PRO USB sound card
-MIC_SOURCE = "alsa_input.usb-Logitech_PRO_000000000000-00.mono-fallback"
+# Mic source — env-overridable for swap. Default = NOS X500 (2026-05-09).
+MIC_SOURCE = os.environ.get(
+    "JARVIS_MIC_SOURCE",
+    "alsa_input.usb-NOS_X500_NOS_X500_20200508V100-00.mono-fallback",
+)
 PAREC_BIN = "/home/linuxbrew/.linuxbrew/bin/parec"
 
 _DEBUG_LOG = Path("/tmp/jarvis-voice-debug.log")

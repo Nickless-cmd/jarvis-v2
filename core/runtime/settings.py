@@ -148,6 +148,10 @@ class RuntimeSettings:
     # concepts + intensiteter + adfærdseffekter som data, så han selv kan
     # se og justere — ikke fjerne signalet, men gøre det reagerbart.
     prompt_emotion_signal_section_enabled: bool = True
+    # Experience substrate section (added 2026-05-09 by Jarvis). Lag 3 af
+    # embedding-retrieval baseret læring: viser nylige lignende situationer
+    # (intent, tool-choice, outcome) som substrat — data, ikke ordre.
+    prompt_experience_substrate_enabled: bool = True
     # Proactive outbound substrate (added 2026-05-08): when daemon fires a
     # propose/ping to user, echo it into Jarvis' next visible prompt so he
     # has context for the reply that follows. Plus active-chat gate to
@@ -241,6 +245,7 @@ class RuntimeSettings:
             "prompt_affect_tone_hints_enabled": self.prompt_affect_tone_hints_enabled,
             "prompt_agreement_streak_enabled": self.prompt_agreement_streak_enabled,
             "prompt_emotion_signal_section_enabled": self.prompt_emotion_signal_section_enabled,
+            "prompt_experience_substrate_enabled": self.prompt_experience_substrate_enabled,
             "prompt_proactive_outbound_substrate_enabled": self.prompt_proactive_outbound_substrate_enabled,
             "heartbeat_active_chat_gate_enabled": self.heartbeat_active_chat_gate_enabled,
             "heartbeat_active_chat_gate_minutes": self.heartbeat_active_chat_gate_minutes,
@@ -413,6 +418,7 @@ def load_settings() -> RuntimeSettings:
         prompt_affect_tone_hints_enabled=bool(data.get("prompt_affect_tone_hints_enabled", defaults.prompt_affect_tone_hints_enabled)),
         prompt_agreement_streak_enabled=bool(data.get("prompt_agreement_streak_enabled", defaults.prompt_agreement_streak_enabled)),
         prompt_emotion_signal_section_enabled=bool(data.get("prompt_emotion_signal_section_enabled", defaults.prompt_emotion_signal_section_enabled)),
+        prompt_experience_substrate_enabled=bool(data.get("prompt_experience_substrate_enabled", defaults.prompt_experience_substrate_enabled)),
         prompt_proactive_outbound_substrate_enabled=bool(data.get("prompt_proactive_outbound_substrate_enabled", defaults.prompt_proactive_outbound_substrate_enabled)),
         heartbeat_active_chat_gate_enabled=bool(data.get("heartbeat_active_chat_gate_enabled", defaults.heartbeat_active_chat_gate_enabled)),
         heartbeat_active_chat_gate_minutes=int(data.get("heartbeat_active_chat_gate_minutes", defaults.heartbeat_active_chat_gate_minutes)),

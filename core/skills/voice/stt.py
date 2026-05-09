@@ -325,14 +325,12 @@ def _transcribe_via_elevenlabs(audio: np.ndarray, language: str) -> str | None:
 
 
 def transcribe(audio: np.ndarray, model: WhisperModel | None = None, language: str = "en") -> str:
-    """3-tier waterfall transcription.
+    """ElevenLabs Scribe primary, local tiny offline fallback.
 
-    Refactored 2026-05-09: ElevenLabs Scribe primary because the
-    hf-inference Whisper endpoint silently drops language parameter
-    and auto-detect mis-classifies short Danish ("klokken" → German
-    "Glocken"). EL accepts language_code="da" and is reliable for
-    Danish. HF stays as middle fallback (free, multi-language good
-    on longer utterances), local tiny as offline-degradation tier.
+    Refactored 2026-05-09: HF Whisper was mis-classifying short Danish
+    utterances as German/Swedish — out of the path. EL Scribe accepts
+    language_code="da" and stays reliable. Local tiny is last-resort
+    offline tier if EL is unreachable.
     """
     if audio.size == 0:
         _debug("transcribe: empty audio, skipping")
@@ -350,10 +348,6 @@ def transcribe(audio: np.ndarray, model: WhisperModel | None = None, language: s
     el_text = _transcribe_via_elevenlabs(audio, language)
     if el_text:
         return el_text
-
-    hf_text = _transcribe_via_hf(audio, language)
-    if hf_text:
-        return hf_text
 
     return _transcribe_local(audio, model, language)
 

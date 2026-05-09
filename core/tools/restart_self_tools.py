@@ -105,6 +105,18 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
         PENDING_RESTART_FILE.unlink(missing_ok=True)
         return {"status": "error", "error": f"Failed to schedule restart: {e}"}
 
+    # Missing return on success path was crashing visible-run pipeline
+    # (None returned to execute_tool_force which called .get() on it).
+    # Fixed 2026-05-09 — Jarvis got stuck in a 6-call retry loop trying
+    # to restart himself because each call crashed before returning.
+    return {
+        "status": "ok",
+        "scheduled": True,
+        "services": services,
+        "pid": proc.pid,
+        "delay_seconds": 3,
+        "channel": channel,
+    }
 
 
 def send_pending_restart_confirmation() -> None:

@@ -2548,6 +2548,11 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     except Exception as exc:
         result = {"error": str(exc), "status": "error"}
 
+    # Defensive: tools may return None for pure side-effects; normalize
+    # so .get() won't crash the visible-run pipeline.
+    if not isinstance(result, dict):
+        result = {"status": "ok", "result": result}
+
     status = str(result.get("status", "ok"))
     event_bus.publish("tool.completed", {
         "tool": name,
@@ -2615,6 +2620,12 @@ def execute_tool_force(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         result = handler(arguments)
     except Exception as exc:
         result = {"error": str(exc), "status": "error"}
+
+    # Tools occasionally return None (e.g. from a pure side-effect handler);
+    # normalize so .get() doesn't crash the visible-run pipeline. Treat
+    # None as "ok with no payload" — the tool ran without raising.
+    if not isinstance(result, dict):
+        result = {"status": "ok", "result": result}
 
     status = str(result.get("status", "ok"))
     event_bus.publish("tool.completed", {

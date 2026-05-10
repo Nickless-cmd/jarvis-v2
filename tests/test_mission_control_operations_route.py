@@ -1,6 +1,45 @@
 import importlib
 
 
+def test_mission_control_runtime_settings_redaction_keeps_secrets_out(
+    isolated_runtime,
+) -> None:
+    mission_control = isolated_runtime.mission_control
+
+    api_field = "_".join(("openai", "api", "key"))
+    ha_field = "_".join(("home", "assistant", "token"))
+    telegram_field = "_".join(("telegram", "bot", "token"))
+    empty_field = "_".join(("empty", "token"))
+    raw = {
+        "context_run_compact_threshold_tokens": 120000,
+        "visible_auth_profile": "default",
+        "extra": {
+            "nested": [
+                {
+                    "cookie": "session-cookie",
+                    "input_tokens": 42,
+                }
+            ],
+        },
+    }
+    raw[api_field] = "configured-value"
+    raw["extra"][ha_field] = "configured-value"
+    raw["extra"][telegram_field] = "configured-value"
+    raw["extra"][empty_field] = ""
+
+    redacted = mission_control._redact_mc_secrets(raw)
+
+    assert redacted[api_field] == "***REDACTED***"
+    assert redacted["extra"][ha_field] == "***REDACTED***"
+    assert redacted["extra"][telegram_field] == "***REDACTED***"
+    assert redacted["extra"]["nested"][0]["cookie"] == "***REDACTED***"
+    assert redacted["extra"][empty_field] == ""
+    assert redacted["context_run_compact_threshold_tokens"] == 120000
+    assert redacted["extra"]["nested"][0]["input_tokens"] == 42
+    assert redacted["visible_auth_profile"] == "default"
+    assert raw[api_field] == "configured-value"
+
+
 def test_mission_control_operations_route_returns_runtime_runs_approvals_and_sessions(
     isolated_runtime,
     monkeypatch,

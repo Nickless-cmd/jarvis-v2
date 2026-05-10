@@ -607,7 +607,7 @@ def _mc_runtime_uncached() -> dict:
 
         cognitive_architecture = build_cognitive_architecture_surface()
         payload = {
-            "settings": settings.to_dict(),
+            "settings": _redact_mc_secrets(settings.to_dict()),
             "heartbeat_runtime": heartbeat,
             "cognitive_architecture": cognitive_architecture,
             "runtime_embodied_state": build_embodied_state_surface(),
@@ -2489,6 +2489,44 @@ def _path_state(path) -> dict[str, str | bool]:
         "path": str(path),
         "exists": path.exists(),
     }
+
+
+_MC_SECRET_KEY_MARKERS = (
+    "api_key",
+    "secret",
+    "password",
+    "credential",
+    "authorization",
+    "bearer",
+    "cookie",
+    "oauth",
+)
+
+
+def _mc_key_is_secret(key: object) -> bool:
+    normalized = str(key).strip().lower().replace("-", "_")
+    if not normalized:
+        return False
+    if any(marker in normalized for marker in _MC_SECRET_KEY_MARKERS):
+        return True
+    return normalized == "token" or normalized.endswith("_token")
+
+
+def _redact_mc_secrets(value):
+    """Return an MC-safe copy with configured secrets masked, not exposed."""
+    if isinstance(value, dict):
+        redacted = {}
+        for key, item in value.items():
+            if _mc_key_is_secret(key):
+                redacted[key] = "***REDACTED***" if item not in (None, "") else item
+            else:
+                redacted[key] = _redact_mc_secrets(item)
+        return redacted
+    if isinstance(value, list):
+        return [_redact_mc_secrets(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_redact_mc_secrets(item) for item in value)
+    return value
 
 
 def _visible_execution_surface(settings) -> dict:

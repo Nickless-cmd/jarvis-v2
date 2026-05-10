@@ -1111,6 +1111,7 @@ def init_db() -> None:
         _ensure_counterfactuals_table(conn)
         _ensure_absence_traces_table(conn)
         _ensure_soft_deleted_at_columns(conn)
+        _ensure_dream_bias_active_table(conn)
         _ensure_experience_episodes_table(conn)
         _ensure_causal_edges_table(conn)
         from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables
@@ -1362,6 +1363,46 @@ def _ensure_soft_deleted_at_columns(conn: sqlite3.Connection) -> None:
             # "duplicate column name" means the column already exists
             if "duplicate column name" not in str(exc).lower():
                 raise
+
+
+def _ensure_dream_bias_active_table(conn: sqlite3.Connection) -> None:
+    """Create dream_bias_active table for Lag 2 dream-bias (added 2026-05-10).
+
+    One row per workspace (UNIQUE constraint). Daemon UPSERTs on accumulation.
+    Stores attention_bias_json and threshold_bias_json with locked vocabulary
+    (5 attention keys + 4 threshold keys), intensity, TTL, and observability
+    fields (dream_text, accumulated_count, source_event_ids_json).
+
+    No memory_id reference is stored — only timestamps and source-event-IDs
+    so that the dream's content cannot be reverse-engineered from the row.
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS dream_bias_active (
+            bias_id              TEXT PRIMARY KEY,
+            workspace_id         TEXT NOT NULL UNIQUE,
+            attention_bias_json  TEXT NOT NULL DEFAULT '{}',
+            threshold_bias_json  TEXT NOT NULL DEFAULT '{}',
+            intensity            REAL NOT NULL DEFAULT 0.0,
+            ttl_expires_at       TEXT NOT NULL,
+            dream_text           TEXT NOT NULL DEFAULT '',
+            accumulated_count    INTEGER NOT NULL DEFAULT 1,
+            last_dream_at        TEXT NOT NULL,
+            source_event_ids_json TEXT NOT NULL DEFAULT '[]',
+            source_kinds_json    TEXT NOT NULL DEFAULT '[]',
+            created_at           TEXT NOT NULL,
+            updated_at           TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_dream_bias_active_workspace "
+        "ON dream_bias_active(workspace_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_dream_bias_active_ttl "
+        "ON dream_bias_active(ttl_expires_at)"
+    )
 
 
 def _ensure_experience_episodes_table(conn: sqlite3.Connection) -> None:

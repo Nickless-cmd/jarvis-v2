@@ -1181,6 +1181,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 # pattern (big-pickle 30+ tool-spam still gets caught long
                 # before it balloons the prompt past 200k chars).
                 _MAX_EMPTY_TEXT_ROUNDS = int(_agentic_budget.get("max_empty_text_rounds") or 12)
+                # Dream bias (Lag 2) — loop_persistence shifts how long he stays in loop.
+                # ±2 rounds at intensity=1.0; hard floor 4, cap 20.
+                try:
+                    from core.services.dream_bias_engine import get_active_dream_bias
+                    _bias = get_active_dream_bias(workspace_id="default")
+                    if _bias:
+                        _persistence_mod = float(_bias["threshold_bias"].get("loop_persistence", 0.0))
+                        _intensity = float(_bias.get("intensity") or 0.0)
+                        if _persistence_mod != 0.0:
+                            _shift = int(round(_persistence_mod * _intensity * 2))
+                            _MAX_EMPTY_TEXT_ROUNDS = max(4, min(20, _MAX_EMPTY_TEXT_ROUNDS + _shift))
+                except Exception:
+                    pass
                 # ── Tool-only loop guard (2026-05-03) ──
                 # Counts consecutive agentic rounds that produced tool calls
                 # but emitted less than _TOOL_ONLY_TEXT_THRESHOLD chars of

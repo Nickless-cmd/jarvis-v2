@@ -1109,6 +1109,8 @@ def init_db() -> None:
         _ensure_decision_trigger_column(conn)
         _ensure_chat_messages_reasoning_column(conn)
         _ensure_counterfactuals_table(conn)
+        _ensure_absence_traces_table(conn)
+        _ensure_soft_deleted_at_columns(conn)
         _ensure_experience_episodes_table(conn)
         _ensure_causal_edges_table(conn)
         from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables
@@ -1289,6 +1291,77 @@ def _ensure_counterfactuals_table(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_counterfactuals_status "
         "ON counterfactuals(status)"
     )
+
+
+def _ensure_absence_traces_table(conn: sqlite3.Connection) -> None:
+    """Create absence_traces table for Lag 11 forgetting (added 2026-05-10).
+
+    Two-track schema: 'auto_counter' rows aggregate monthly fade counts;
+    'self_marker' rows record deliberate releases with a period_label.
+    UNIQUE(track_kind, workspace_id, month_key) lets the daemon UPSERT
+    one counter row per month per workspace.
+
+    Self-marker rows carry NO memory_id, NO content. The DB row alone
+    cannot reveal what was released.
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS absence_traces (
+            trace_id          TEXT PRIMARY KEY,
+            track_kind        TEXT NOT NULL,
+            workspace_id      TEXT NOT NULL DEFAULT 'default',
+            month_key         TEXT,
+            auto_count        INTEGER DEFAULT 0,
+            released_at       TEXT,
+            period_label      TEXT,
+            is_self_released  INTEGER DEFAULT 0,
+            created_at        TEXT NOT NULL,
+            updated_at        TEXT NOT NULL,
+            UNIQUE(track_kind, workspace_id, month_key)
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_absence_traces_kind "
+        "ON absence_traces(track_kind)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_absence_traces_released "
+        "ON absence_traces(released_at)"
+    )
+
+
+def _ensure_soft_deleted_at_columns(conn: sqlite3.Connection) -> None:
+    """Add soft_deleted_at column to episodic tables (Lag 11 Phase 1).
+
+    Idempotent: SQLite ALTER TABLE ADD COLUMN errors with "duplicate
+    column name" if the column already exists, which we swallow.
+    The list of tables comes from the audit at
+    docs/superpowers/notes/2026-05-10-forgetting-table-audit.md.
+    """
+    # Phase 1 minimal set: chronicle + project journal. Keep in sync
+    # with _AUTO_FADE_TABLES in core/services/forgetting_engine.py.
+    tables = [
+        "cognitive_chronicle_entries",
+        "cognitive_personal_project_journal",
+    ]
+    for table in tables:
+        # Skip if table doesn't exist yet — caller may run this before
+        # all tables are created (test fixtures, partial initialization).
+        exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            (table,),
+        ).fetchone()
+        if exists is None:
+            continue
+        try:
+            conn.execute(
+                f"ALTER TABLE {table} ADD COLUMN soft_deleted_at TEXT"
+            )
+        except sqlite3.OperationalError as exc:
+            # "duplicate column name" means the column already exists
+            if "duplicate column name" not in str(exc).lower():
+                raise
 
 
 def _ensure_experience_episodes_table(conn: sqlite3.Connection) -> None:

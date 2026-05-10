@@ -185,6 +185,12 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("forgetting_runtime start failed: %s", _exc)
             try:
+                from core.services.user_temperature_runtime import start_user_temperature_runtime
+                start_user_temperature_runtime()
+                logger.info("user_temperature_runtime daemon started")
+            except Exception as _exc:
+                logger.warning("user_temperature_runtime start failed: %s", _exc)
+            try:
                 from core.services.agent_runtime import recover_crashed_agents
                 recovery = recover_crashed_agents()
                 if recovery["recovered"]:
@@ -311,6 +317,11 @@ def create_app() -> FastAPI:
             try:
                 from core.services.forgetting_runtime import stop_forgetting_runtime
                 stop_forgetting_runtime()
+            except Exception:
+                pass
+            try:
+                from core.services.user_temperature_runtime import stop_user_temperature_runtime
+                stop_user_temperature_runtime()
             except Exception:
                 pass
             stop_global_workspace_listener()

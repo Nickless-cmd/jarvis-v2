@@ -111,3 +111,17 @@ without modification.
 - intensity over time: does it climb when context warrants?
 - LLM rationale quality: does it stay perceptive or drift?
 - Bjørn's qualitative read: does the field match his actual state?
+
+## 30-day review scheduled
+
+- Task ID: `sched-7ec0c6b9a5`
+- Fires: `2026-06-09T16:22:47Z`
+- Source: `user-temperature-phase1-deploy`
+- Focus: "User Temperature Field Phase 1 — 30-dages review. Tjek
+  user_temperature_active row history (struct vs LLM, conflict-rate,
+  texture-distribution), kig efter signaler i chronicle/inner_voice om
+  at feltet mærkes, om Site 4 modifiers faktisk påvirker svar-stil.
+  Spec: docs/superpowers/specs/2026-05-10-user-temperature-design.md
+  (3 dimensions i succeskriterier). Beslutning: keep, retune
+  thresholds/multipliers, eller plan Phase 2 (5-axis vector + 4
+  deferred plug-ins)."

@@ -1112,6 +1112,7 @@ def init_db() -> None:
         _ensure_absence_traces_table(conn)
         _ensure_soft_deleted_at_columns(conn)
         _ensure_dream_bias_active_table(conn)
+        _ensure_user_temperature_active_table(conn)
         _ensure_experience_episodes_table(conn)
         _ensure_causal_edges_table(conn)
         from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables
@@ -1402,6 +1403,62 @@ def _ensure_dream_bias_active_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_dream_bias_active_ttl "
         "ON dream_bias_active(ttl_expires_at)"
+    )
+
+
+def _ensure_user_temperature_active_table(conn: sqlite3.Connection) -> None:
+    """Create user_temperature_active table for Lag 10 (added 2026-05-10).
+
+    Single row per workspace (UNIQUE constraint). Two streams stored side-
+    by-side: structural (always populated) + LLM (nullable). Final field_*
+    columns are the combined output consumers read.
+
+    Baseline statistics live as JSON in baseline_stats_json (mean, stdev,
+    typical hours). Refreshed every 24h.
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_temperature_active (
+            field_id              TEXT PRIMARY KEY,
+            workspace_id          TEXT NOT NULL UNIQUE,
+
+            -- Final field (consumers read these)
+            field_valens          REAL NOT NULL DEFAULT 0.0,
+            field_arousal         REAL NOT NULL DEFAULT 0.0,
+            field_texture         TEXT NOT NULL DEFAULT 'cool',
+            field_intensity       REAL NOT NULL DEFAULT 0.0,
+            field_conflict        INTEGER NOT NULL DEFAULT 0,
+
+            -- Structural stream (always populated)
+            struct_valens         REAL NOT NULL DEFAULT 0.0,
+            struct_arousal        REAL NOT NULL DEFAULT 0.0,
+            struct_texture        TEXT NOT NULL DEFAULT 'cool',
+            struct_confidence     REAL NOT NULL DEFAULT 0.0,
+            struct_signals_json   TEXT NOT NULL DEFAULT '{}',
+            last_structural_at    TEXT NOT NULL,
+
+            -- LLM stream (nullable; populated every 4h or on trigger)
+            llm_valens            REAL,
+            llm_arousal           REAL,
+            llm_texture           TEXT,
+            llm_confidence        REAL,
+            llm_rationale         TEXT NOT NULL DEFAULT '',
+            last_llm_at           TEXT,
+            llm_trigger_pending   INTEGER NOT NULL DEFAULT 0,
+
+            -- Baseline metadata
+            baseline_message_count INTEGER NOT NULL DEFAULT 0,
+            baseline_built_at     TEXT,
+            baseline_stats_json   TEXT NOT NULL DEFAULT '{}',
+
+            created_at            TEXT NOT NULL,
+            updated_at            TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_user_temperature_workspace "
+        "ON user_temperature_active(workspace_id)"
     )
 
 

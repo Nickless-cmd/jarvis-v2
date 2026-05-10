@@ -48,6 +48,47 @@ _INVOKE_THRESHOLD = 0.30       # ≥ 0.30 → invoke skill, read instructions
 _AUTO_USE_THRESHOLD = 0.45     # ≥ 0.45 → use skill's format as output template
 
 
+# ── Chain-candidate helpers (Lag #4 — added 2026-05-10) ───────────────
+
+
+def _build_chain_candidates(suggestions: list[dict]) -> list[dict]:
+    """Return top-3 (max) skills within 0.10 of top score.
+
+    Empty list when:
+    - No suggestions
+    - Only 1 suggestion exists
+    - Top score below 0.30 (weak match — chain doesn't help)
+    - Only top-1 was within the 0.10 window
+    """
+    if not suggestions or len(suggestions) < 2:
+        return []
+    top_score = float(suggestions[0].get("score") or 0.0)
+    if top_score < 0.30:
+        return []
+    candidates = [
+        {"name": s["name"], "score": s["score"]}
+        for s in suggestions[:3]
+        if float(s.get("score") or 0.0) >= top_score - 0.10
+    ]
+    if len(candidates) < 2:
+        return []
+    return candidates
+
+
+def _build_chain_hint(candidates: list[dict]) -> str:
+    """Render human-readable chain suggestion from candidates."""
+    if not candidates:
+        return ""
+    names = [c["name"] for c in candidates]
+    plan_repr = ", ".join(f"'{n}'" for n in names)
+    n = len(candidates)
+    return (
+        f"{n} skills matched closely (within 0.10 of top score). "
+        f"Consider skill_chain(plan=[{plan_repr}]) "
+        "if the task requires multiple steps."
+    )
+
+
 # ── Executor ───────────────────────────────────────────────────────────
 
 def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
@@ -67,6 +108,8 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
                 "status": "ok",
                 "gate_result": "disabled",
                 "note": "skill_gate is disabled in runtime settings — proceed with standard workflow.",
+                "chain_candidates": [],
+                "chain_hint": "",
             }
     except Exception:
         # Settings unavailable (very unlikely) — fail open and run gate.
@@ -79,6 +122,8 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
             "gate_result": "skip",
             "reason": "no query provided — gate bypassed",
             "note": "Provide a query to check for matching skills.",
+            "chain_candidates": [],
+            "chain_hint": "",
         }
 
     force_skill = str(args.get("skill") or "").strip()
@@ -98,6 +143,10 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
         max_results=_INTENT_MATCH_MAX_SUGGESTIONS,
     )
 
+    # Lag #4: compute chain candidates from suggestions (always, all return paths)
+    chain_candidates = _build_chain_candidates(suggestions)
+    chain_hint = _build_chain_hint(chain_candidates)
+
     if not suggestions:
         return {
             "status": "ok",
@@ -106,6 +155,8 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
             "reason": "no skills matched the query",
             "suggestions": [],
             "note": "No relevant skills found. Proceed with standard workflow.",
+            "chain_candidates": chain_candidates,
+            "chain_hint": chain_hint,
         }
 
     # ── Phase 2: Select best match ──────────────────────────────────
@@ -129,6 +180,8 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
                 f"Closest skill: '{best_name}' ({best_score:.2f}). "
                 f"Under threshold — proceed with standard workflow, or request a specific skill."
             ),
+            "chain_candidates": chain_candidates,
+            "chain_hint": chain_hint,
         }
 
     # ── Phase 3: Invoke ─────────────────────────────────────────────
@@ -137,6 +190,8 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
         return {
             "status": "error",
             "error": f"failed to load skill '{best_name}': {invoke_result.get('error', 'unknown')}",
+            "chain_candidates": chain_candidates,
+            "chain_hint": chain_hint,
         }
 
     instructions = invoke_result.get("instructions", "")
@@ -189,6 +244,9 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         pass  # non-critical
 
+    # Lag #4: inject chain fields into invoked-result path
+    result["chain_candidates"] = chain_candidates
+    result["chain_hint"] = chain_hint
     return result
 
 

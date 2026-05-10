@@ -74,3 +74,16 @@ All 5 sites confirmed live:
 - The dream_text is in proper Danish, first-person, present tense — LLM
   followed the system-prompt instructions correctly.
 - intensity=0.7 → bias renders in heartbeat (above 0.1 floor).
+
+## 30-day review scheduled
+
+- Task ID: `sched-8ed350bd0c`
+- Fires: `2026-06-09T13:54:48Z`
+- Source: `dream-bias-phase1-deploy`
+- Focus: "Dream Bias Phase 1 — 30-dages review. Tjek dream_bias_active row
+  distributions (intensity, accumulated_count), kig efter signaler i
+  chronicle/inner_voice om biases mærkes, om plug-ins faktisk modulerede
+  outputs. Spec: docs/superpowers/specs/2026-05-10-dream-bias-design.md
+  (3 dimensions i succeskriterier). Beslutning: keep, retune
+  thresholds/multipliers, eller plan Phase 2 (hybrid output + 4 deferred
+  plug-ins)."

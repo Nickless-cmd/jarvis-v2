@@ -132,6 +132,11 @@ class RuntimeSettings:
     user_temperature_shift_threshold: float = 0.4
     # LLM call budget (max response tokens).
     user_temperature_llm_max_response_tokens: int = 300
+    # ── Skill chain (Lag #4 — added 2026-05-10) ────────────────────────
+    # Master kill-switch for skill_chain tool. When False, the tool returns
+    # a "disabled" stub immediately. The tool stays in the schema so the
+    # model can still call it; it just no-ops.
+    skill_chain_enabled: bool = True
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -481,6 +486,9 @@ def load_settings() -> RuntimeSettings:
         ),
         user_temperature_llm_max_response_tokens=int(
             data.get("user_temperature_llm_max_response_tokens", defaults.user_temperature_llm_max_response_tokens)
+        ),
+        skill_chain_enabled=bool(
+            data.get("skill_chain_enabled", defaults.skill_chain_enabled)
         ),
         longing_daemon_cadence_minutes=int(
             data.get("longing_daemon_cadence_minutes", defaults.longing_daemon_cadence_minutes)

@@ -179,6 +179,12 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("counterfactual_runtime start failed: %s", _exc)
             try:
+                from core.services.forgetting_runtime import start_forgetting_runtime
+                start_forgetting_runtime()
+                logger.info("forgetting_runtime daemon started")
+            except Exception as _exc:
+                logger.warning("forgetting_runtime start failed: %s", _exc)
+            try:
                 from core.services.agent_runtime import recover_crashed_agents
                 recovery = recover_crashed_agents()
                 if recovery["recovered"]:
@@ -300,6 +306,11 @@ def create_app() -> FastAPI:
             try:
                 from core.services.counterfactual_engine_runtime import stop_counterfactual_runtime
                 stop_counterfactual_runtime()
+            except Exception:
+                pass
+            try:
+                from core.services.forgetting_runtime import stop_forgetting_runtime
+                stop_forgetting_runtime()
             except Exception:
                 pass
             stop_global_workspace_listener()

@@ -119,6 +119,19 @@ def build_runtime_open_loop_signal_surface(*, limit: int = 8) -> dict[str, objec
 def _build_runtime_open_loop_signal_surface_uncached(
     *, limit: int = 8
 ) -> dict[str, object]:
+    # Dream bias (Lag 2) — unfinished_business amplifies how many open loops
+    # surface. ±40% modulation at intensity=1.0 (limit floor 4, cap 16).
+    try:
+        from core.services.dream_bias_engine import get_active_dream_bias
+        _bias = get_active_dream_bias(workspace_id="default")
+        if _bias:
+            _modifier = float(_bias["attention_bias"].get("unfinished_business", 0.0))
+            _intensity = float(_bias.get("intensity") or 0.0)
+            if _modifier != 0.0:
+                _shift = _modifier * _intensity * 0.4
+                limit = max(4, min(16, int(round(limit * (1.0 + _shift)))))
+    except Exception:
+        pass
     refresh_runtime_open_loop_signal_statuses()
     items = list_runtime_open_loop_signals(limit=limit)
     snapshots = _build_governance_snapshots()

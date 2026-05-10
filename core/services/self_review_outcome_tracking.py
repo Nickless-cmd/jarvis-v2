@@ -80,6 +80,19 @@ def refresh_runtime_self_review_outcome_statuses() -> dict[str, int]:
 
 
 def build_runtime_self_review_outcome_surface(*, limit: int = 8) -> dict[str, object]:
+    # Dream bias (Lag 2) — regret_threads amplifies surfacing of negative outcomes.
+    # ±40% modulation at intensity=1.0 (limit floor 4, cap 16).
+    try:
+        from core.services.dream_bias_engine import get_active_dream_bias
+        _bias = get_active_dream_bias(workspace_id="default")
+        if _bias:
+            _modifier = float(_bias["attention_bias"].get("regret_threads", 0.0))
+            _intensity = float(_bias.get("intensity") or 0.0)
+            if _modifier != 0.0:
+                _shift = _modifier * _intensity * 0.4
+                limit = max(4, min(16, int(round(limit * (1.0 + _shift)))))
+    except Exception:
+        pass
     refresh_runtime_self_review_outcome_statuses()
     items = list_runtime_self_review_outcomes(limit=max(limit, 1))
     snapshots = _build_outcome_snapshots()

@@ -471,6 +471,10 @@ from core.tools.skill_engine_tools import (
     SKILL_ENGINE_TOOL_DEFINITIONS,
     SKILL_ENGINE_TOOL_HANDLERS,
 )
+from core.tools.skill_gate_tool import (
+    SKILL_GATE_TOOL_DEFINITIONS,
+    SKILL_GATE_TOOL_HANDLERS,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -2303,6 +2307,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *DECISION_TOOL_DEFINITIONS,
     *COMPOSITE_TOOL_DEFINITIONS,
     *SKILL_ENGINE_TOOL_DEFINITIONS,
+    *SKILL_GATE_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -6142,6 +6147,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **STRIPE_TOOL_HANDLERS,
     # Skill engine tools (SKILL.md skill system)
     **SKILL_ENGINE_TOOL_HANDLERS,
+    **SKILL_GATE_TOOL_HANDLERS,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
     "remember_this": _exec_remember_this,

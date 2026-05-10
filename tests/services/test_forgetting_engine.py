@@ -259,6 +259,55 @@ def test_run_auto_cycle_disabled_short_circuits(fresh_db, monkeypatch):
     assert result["skipped"] == "disabled"
 
 
+def test_heartbeat_formatter_returns_empty_when_no_data(fresh_db):
+    from core.services.forgetting_engine import format_forgetting_section_for_heartbeat
+    out = format_forgetting_section_for_heartbeat(workspace_id="default")
+    assert out == ""
+
+
+def test_heartbeat_formatter_renders_auto_counter(fresh_db):
+    from core.runtime.db_absence_traces import increment_auto_counter
+    from core.services.forgetting_engine import format_forgetting_section_for_heartbeat
+    for _ in range(5):
+        increment_auto_counter(workspace_id="default")
+    out = format_forgetting_section_for_heartbeat(workspace_id="default")
+    assert "5 ting" in out
+    assert "fadet" in out
+
+
+def test_heartbeat_formatter_renders_self_marker_anniversary(fresh_db):
+    """Self-marker renders when its age hits an anniversary bucket."""
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    from core.runtime.db import connect
+    from core.runtime.db_absence_traces import insert_self_marker
+    from core.services.forgetting_engine import format_forgetting_section_for_heartbeat
+
+    m = insert_self_marker(workspace_id="default", period_label="~30 dage siden")
+    backdated = (_dt.now(_tz.utc) - _td(days=30)).isoformat().replace("+00:00", "Z")
+    with connect() as conn:
+        conn.execute(
+            "UPDATE absence_traces SET released_at = ?, created_at = ? WHERE trace_id = ?",
+            (backdated, backdated, m["trace_id"]),
+        )
+
+    out = format_forgetting_section_for_heartbeat(workspace_id="default")
+    # 30 days labels as "~4 uger siden" via compute_period_label.
+    # Verify the line shape: anniversary phrasing + the period label.
+    assert "valgte du at slippe noget" in out, out
+    assert "uger siden" in out, out
+
+
+def test_heartbeat_formatter_skips_recursively_released(fresh_db):
+    """Markers with is_self_released=1 are not rendered."""
+    from core.runtime.db_absence_traces import insert_self_marker, mark_self_released
+    from core.services.forgetting_engine import format_forgetting_section_for_heartbeat
+    m = insert_self_marker(workspace_id="default", period_label="~3 dage siden")
+    mark_self_released(trace_id=m["trace_id"])
+    out = format_forgetting_section_for_heartbeat(workspace_id="default")
+    # Counter is 0 (we didn't increment) and the only marker is hidden.
+    assert out == ""
+
+
 def test_run_auto_cycle_grace_sweep_hard_deletes_expired(fresh_db):
     from core.runtime.db import connect
     from core.services.forgetting_engine import run_auto_cycle

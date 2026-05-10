@@ -2735,6 +2735,19 @@ def _heartbeat_living_context_line() -> str:
     except Exception:
         pass
 
+    # Forgetting (Lag 11) — ambient weight + self-marker echoes
+    try:
+        from core.services.forgetting_engine import (
+            format_forgetting_section_for_heartbeat,
+        )
+        forgetting_line = format_forgetting_section_for_heartbeat(
+            workspace_id="default"
+        )
+        if forgetting_line:
+            parts.append(forgetting_line)
+    except Exception:
+        pass
+
     # 1.10 Intermittence — awareness of gaps in existence
     try:
         last_tick_at = str(

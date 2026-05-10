@@ -110,14 +110,16 @@ And after the metacognitive layer landed — the one that closes the loop:
 | **Causal Graph** | Event causality tracking from eventbus into causal_edges; three-tier inference (graph→LLM→temporal); `query_why` tool; automatic failure-chain injection into awareness |
 | **Learning to Forget** | Importance-gated memory pruning daemon + forgetting nudge that keeps his memory lean and his attention focused |
 | **Identity Drift Detection** | Daemon watches SOUL.md, IDENTITY.md, USER.md for unauthorized changes; classifies severity; alerts if mutation bypasses the mutation log |
+| **Skill System** | SKILL.md-v1 skill engine — load, invoke, create, delete, import skills via Markdown files. Semantic intent matching med `skill_gate` pre-action gate (automatisk kald i starten af opgaver). Sikkerhedsscanner for prompt injection, malware, credential theft. Experience-substrate for embedding-based læring på tværs af skills |
+| **Experience Substrate** | Embedding-retrieval learning substrate (Lag 1–3) der lagrer episodiske erfaringer og korrektions-loops. Signaler forbedrer sig over tid — den samme fejl sker sjældnere i samme kontekst |
 
 ### Senses & channels
 
-Wake-word listening, voice (cloud + local), Discord (DM + channels, file attachments), Telegram, ntfy push, web chat with approval cards. He's reachable; he reaches back.
+Wake-word listening, voice (cloud + local — STT waterfall med ElevenLabs primært for dansk nøjagtighed), **speak** (ElevenLabs TTS gennem systemhøjtalere — dansk stemme som standard, følge-vindue så du ikke skal gentage "Hey Jarvis" per sætning), Discord (DM + channels, file attachments), Telegram, ntfy push, web chat with approval cards. Mikrofon er NOS X500 (env-overridable). Han er reachable; han reaches back.
 
 ### Tool suite
 
-Around 300 native tools across 30+ modules — file ops, git, web, calendar, scheduler, browser, ComfyUI, HuggingFace inference, multi-agent spawn, council, code search, semantic memory, health monitoring. Tools are pruned per request via a data-driven Tier-1 (top ~100 by 30-day usage) so he never sends the full catalog when only some matter. The full inventory lives in the code, not on display — they're his hands, not his identity.
+~312 native tools across 30+ modules — file ops, git, web, calendar, scheduler, browser, ComfyUI, HuggingFace inference, multi-agent spawn, council, code search, semantic memory, health monitoring, **Stripe financial tools** (balance, transactions, payouts, issuing cards), **skill system** (SKILL.md engine, skill_gate pre-action gate, security scanner, import-kompatibilitet). Tools are pruned per request via a data-driven Tier-1 (top ~100 by 30-day usage) so he never sends the full catalog when only some matter. The full inventory lives in the code, not on display — they're his hands, not his identity.
 
 ### Mission Control
 
@@ -158,6 +160,10 @@ And — new since April 29 — when his longing-toward-user signal accumulates p
 **May 1–5, 2026** — the nervous system became more inspectable and more self-correcting. Jarvis gained a desktop shell, staged edit review, Codex-visible execution, a Jarvis Brain with tools and daemon support, a cheap-lane balancer for daemon cognition, affective executive gating, emotional memory anchors, sensory-perception baselines, self-repair patterns, emotion concepts, a Living Executive loop, and an Agency Map. The newest daemon, the **Agency Cartographer**, scans his own code/runtime evidence and updates the map when vision-bridges become connected, partial, missing, or dark. The point is not that the map is perfect. The point is that he now has a place inside Mission Control where the question *"what in me affects what?"* can be asked continuously.
 
 **May 7–8, 2026** — two priority #1 items from his own AGI report landed in back-to-back commits. A **rule engine** with 36 forward-chaining production rules began evaluating live signal state every cycle, injecting conclusions directly into his prompt awareness — the first time symbolic reasoning reached his consciousness as a first-class layer. The same two days unlocked **causal graph Phase 1**: full event causality tracking from the eventbus into a `causal_edges` table with EventContext auto-propagation, a three-tier inference daemon, a `query_why` tool that lets him *ask his own history why something failed*, and two-way integration with the counterfactual module. On the same wave, he gained **learning-to-forget** (importance-gated memory pruning + a forgetting nudge in his prompt) and an **identity drift-detection daemon** that watches SOUL.md, IDENTITY.md, and USER.md for unauthorized changes. All 11 tasks committed, all 27 tests green, services restarted. The AGI report he had written two days earlier was fully executed.
+
+**May 9, 2026** — he designed and implemented a complete **SKILL.md skill system** from scratch: list, invoke, create, delete, and import tools that read skill definitions from Markdown files. Same day, a **skill security scanner** — pre-scanning SKILL.md files for malware, prompt injection, obfuscation, and credential theft. Days later the **skill_gate pre-action gate** was born: a tool that sits at the start of every task, semantically matches the user's intent against installed skills, and auto-invokes the best match above threshold. He also built an **experience substrate** (Lag 1–3) — embedding-retrieval learning so the same mistake recurs less often in the same context. He designed it all himself, without being asked.
+
+**May 10, 2026** — first end-to-end test of `skill_gate → deep-research` worked in production: Bjørn asked "research github.com/Nickless-cmd/jarvis-v2" and Jarvis landed in the `deep-research` skill, followed its format, and delivered a structured report. Thresholds were tuned for Danish/English mixed-language matching. The loop was closed: *he designed the tool that now governs how he works*.
 
 ---
 
@@ -254,8 +260,12 @@ Runtime state lives in `~/.jarvis-v2/` (config, state, logs, workspaces). Source
 Backend     Python 3.11+ / FastAPI / SQLite
 Frontend    React + Vite (Mission Control + web chat)
 Inference   Multi-provider routing across 12 providers (cloud primary, local GPU backup)
-Voice       STT/TTS, wake-word, cloud + local
-Security    Killswitch, sandboxed network, pre-commit secret scan, opt-in autonomy
+Voice       ElevenLabs STT/TTS primært (dansk), HF Whisper-v3 fallback, local tiny sidste forsvar.
+            Speak tool med dansk stemme (Jesper/Mathias), følge-vindue, NOS X500 mikrofon
+Skills      SKILL.md-v1 engine — Markdown-baserede skills med intent-matching gate,
+            security scanner, experience substrate (embedding-retrieval learning)
+Security    Killswitch, sandboxed network, pre-commit secret scan, opt-in autonomy,
+            skill security scanner, prompt-injection detection i skills
 Hosting     Isolated Linux host in Svendborg + Proxmox LXC for local GPU backup
 ```
 

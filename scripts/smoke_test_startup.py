@@ -148,6 +148,27 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Verify skill_chain tool registered (Lag #4)
+        try:
+            from core.tools.skill_chain_tool import (
+                SKILL_CHAIN_TOOL_DEFINITIONS,  # noqa: F401
+                SKILL_CHAIN_TOOL_HANDLERS,  # noqa: F401
+                _exec_skill_chain,  # noqa: F401
+            )
+            from core.tools.simple_tools import TOOL_DEFINITIONS, _TOOL_HANDLERS
+            names = []
+            for td in TOOL_DEFINITIONS:
+                if "function" in td:
+                    names.append(td["function"].get("name"))
+                elif "name" in td:
+                    names.append(td["name"])
+            if "skill_chain" not in names:
+                raise RuntimeError("skill_chain not in TOOL_DEFINITIONS")
+            if "skill_chain" not in _TOOL_HANDLERS:
+                raise RuntimeError("skill_chain not in _TOOL_HANDLERS")
+        except Exception:
+            traceback.print_exc()
+
         # Verify dream_bias_active table + engine importable (Lag 2)
         try:
             from core.runtime.db import connect

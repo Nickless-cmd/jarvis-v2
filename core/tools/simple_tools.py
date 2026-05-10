@@ -475,6 +475,10 @@ from core.tools.skill_gate_tool import (
     SKILL_GATE_TOOL_DEFINITIONS,
     SKILL_GATE_TOOL_HANDLERS,
 )
+from core.tools.forgetting_tools import (
+    FORGETTING_TOOL_DEFINITIONS,
+    FORGETTING_TOOL_HANDLERS,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -2308,6 +2312,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *COMPOSITE_TOOL_DEFINITIONS,
     *SKILL_ENGINE_TOOL_DEFINITIONS,
     *SKILL_GATE_TOOL_DEFINITIONS,
+    *FORGETTING_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -6168,6 +6173,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Skill engine tools (SKILL.md skill system)
     **SKILL_ENGINE_TOOL_HANDLERS,
     **SKILL_GATE_TOOL_HANDLERS,
+    # Forgetting (Lag 11) — release_memory ritual
+    **FORGETTING_TOOL_HANDLERS,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
     "remember_this": _exec_remember_this,

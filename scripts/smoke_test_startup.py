@@ -125,6 +125,24 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Verify dream_bias_active table + engine importable (Lag 2)
+        try:
+            from core.runtime.db import connect
+            with connect() as c:
+                row = c.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name='dream_bias_active'"
+                ).fetchone()
+                if row is None:
+                    raise RuntimeError("dream_bias_active table missing")
+            from core.services.dream_bias_engine import (
+                get_active_dream_bias,  # noqa: F401
+                format_dream_bias_for_heartbeat,  # noqa: F401
+                run_dream_bias_distillation,  # noqa: F401
+            )
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

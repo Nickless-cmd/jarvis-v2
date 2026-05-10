@@ -8,23 +8,53 @@ Skills are SKILL.md directories compatible with Claude Code and OpenClaw.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from core.services import skill_engine
 from core.services.skill_security_scanner import (
-    format_scan_report,
+    scan_skill_directory,
     scan_skill_file,
-    ScanResult,
 )
 from pathlib import Path as _Path
-from core.tools.skill_import_scanner import scan_skill_directory
 
 logger = logging.getLogger(__name__)
 
 # ── Intent matching (Fase 4) ──────────────────────────────────────────
 
-_INTENT_MATCH_THRESHOLD_DEFAULT = 0.15
+_INTENT_MATCH_THRESHOLD_DEFAULT = 0.30
 _INTENT_MATCH_MAX_SUGGESTIONS = 3
+
+
+def _split_bilingual_use_when(text: str) -> list[str]:
+    """Split a use_when block into separate language fragments.
+
+    Skill frontmatters often hold both DA and EN trigger lists in one
+    multi-line use_when (e.g. `EN: …\n…\nDA: …\n…`). When we embed the
+    whole block as one candidate, mixing two languages dilutes the
+    similarity score for monolingual queries — an EN-only query gets
+    pulled toward the DA half. Splitting yields per-language candidates
+    so the max-aggregator below picks the right half.
+    """
+    if not text:
+        return []
+    # Strip the language tag at the start of each section if present.
+    # Tags we recognize: "EN:", "DA:", "DK:", "ENG:", "DAN:" — case-insensitive.
+    chunks: list[str] = []
+    current: list[str] = []
+    tag_re = re.compile(r"^\s*(EN|DA|DK|ENG|DAN)\s*:", re.IGNORECASE)
+    for line in text.splitlines():
+        if tag_re.match(line):
+            if current:
+                chunks.append("\n".join(current).strip())
+            current = [tag_re.sub("", line, count=1).strip()]
+        else:
+            current.append(line)
+    if current:
+        chunks.append("\n".join(current).strip())
+    # Filter empties; if no language tags were found, fall back to one chunk.
+    chunks = [c for c in chunks if c]
+    return chunks or ([text.strip()] if text.strip() else [])
 
 
 def _suggest_skills_for_query(
@@ -34,31 +64,38 @@ def _suggest_skills_for_query(
 ) -> list[dict[str, Any]]:
     """Match a user query against all installed skills' use_when + description.
 
-    Uses hf_embed (sentence-transformers/all-MiniLM-L6-v2) for semantic
-    similarity. Returns skills scoring above threshold, ranked by score.
+    For each skill, builds *multiple* candidate strings — split bilingual
+    use_when into per-language fragments + description fragment + the
+    raw skill name — and runs semantic_similarity once over the combined
+    pool. Then takes the *max* score per skill.
+
+    Why max-aggregation: a monolingual query (e.g. pure English "fact-check
+    this article") gets diluted when the candidate concatenates both DA
+    and EN trigger lines. Splitting + max means the EN-only fragment
+    competes alone and scores cleanly.
+
+    Uses hf_embed (sentence-transformers/all-MiniLM-L6-v2) for similarity.
+    Returns skills scoring above threshold, ranked by score.
     """
     skills = skill_engine.list_skills()
     if not skills:
         return []
 
-    # Build candidate strings: "use_when: <text> description: <text> name: <name>"
-    # Prioritise use_when as the primary match target
-    skill_texts: list[tuple[str, str]] = []  # (skill_name, combined_text)
+    # candidate_text -> skill_name (stable; index-based mapping breaks if
+    # two skills happen to share a candidate string)
+    cand_to_skill: list[tuple[str, str]] = []  # [(candidate_text, skill_name), …]
     for s in skills:
-        parts = []
-        if s.get("use_when"):
-            parts.append(f"use_when: {s['use_when']}")
+        name = s["name"]
+        for fragment in _split_bilingual_use_when(s.get("use_when") or ""):
+            cand_to_skill.append((f"use_when: {fragment}", name))
         if s.get("description"):
-            parts.append(f"description: {s['description']}")
-        if s.get("name"):
-            parts.append(f"name: {s['name']}")
-        combined = " | ".join(parts)
-        skill_texts.append((s["name"], combined))
+            cand_to_skill.append((f"description: {s['description']}", name))
+        cand_to_skill.append((f"skill name: {name}", name))
 
-    if not skill_texts:
+    if not cand_to_skill:
         return []
 
-    candidates = [text for _, text in skill_texts]
+    candidates = [c for c, _ in cand_to_skill]
 
     try:
         from core.tools.hf_inference_tools import semantic_similarity
@@ -73,20 +110,29 @@ def _suggest_skills_for_query(
     if result.get("status") != "ok":
         return []
 
-    ranked = result.get("ranked", [])
-    suggestions = []
-    for r in ranked:
-        score = r.get("score", 0.0)
-        if score < threshold:
+    # Aggregate to per-skill max score. A skill wins via its single best
+    # fragment, not via the average of all fragments.
+    best_per_skill: dict[str, dict[str, Any]] = {}
+    cand_lookup = {cand: skill for cand, skill in cand_to_skill}
+    for r in result.get("ranked", []):
+        cand = r.get("candidate", "")
+        score = float(r.get("score") or 0.0)
+        skill_name = cand_lookup.get(cand)
+        if not skill_name:
             continue
-        idx = candidates.index(r["candidate"])  # find which skill this is
-        skill_name = skill_texts[idx][0]
-        suggestions.append({
-            "name": skill_name,
-            "score": round(score, 4),
-            "candidate": r["candidate"][:120],
-        })
+        existing = best_per_skill.get(skill_name)
+        if existing is None or score > existing["score"]:
+            best_per_skill[skill_name] = {
+                "name": skill_name,
+                "score": round(score, 4),
+                "candidate": cand[:120],
+            }
 
+    suggestions = sorted(
+        (s for s in best_per_skill.values() if s["score"] >= threshold),
+        key=lambda s: s["score"],
+        reverse=True,
+    )
     return suggestions[:max_results]
 
 
@@ -410,154 +456,89 @@ def _find_skill_dir_in_tree(root: Path) -> Path | None:
     return None
 
 
-def _exec_skill_import_from_url(args: dict[str, Any]) -> dict[str, Any]:
-    """Import a skill from a remote URL (GitHub raw, ClawHub, or any SKILL.md URL).
+# ── URL fetch + install helpers (used by skill_import_from_url) ──────
 
-    Supports:
-    - Raw SKILL.md URL: https://raw.githubusercontent.com/.../SKILL.md
-    - GitHub shorthand: 'user/repo' (fetches from GitHub)
-    - ClawHub URL: https://clawhub.com/... (tbd)
-    - Generic URL pointing to a skill directory or SKILL.md
-    """
-    url = str(args.get("url") or "").strip()
-    if not url:
-        return {"status": "error", "error": "url is required"}
+# Hard cap on remote SKILL.md size — defense against OOM via malicious URL.
+# A real Claude Code skill is typically 2-30 KB; 500 KB is a generous ceiling.
+_MAX_URL_FETCH_BYTES = 500_000
 
+
+def _fetch_url_capped(url: str, *, timeout: int = 30) -> tuple[str | None, str | None]:
+    """Fetch a URL, capped at _MAX_URL_FETCH_BYTES. Returns (content, error)."""
     import urllib.request
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Jarvis-v2/1.0"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            # Read +1 byte over the cap so we can detect oversize responses.
+            raw = resp.read(_MAX_URL_FETCH_BYTES + 1)
+        if len(raw) > _MAX_URL_FETCH_BYTES:
+            return None, (
+                f"response exceeds {_MAX_URL_FETCH_BYTES} byte cap — refusing "
+                "to import. Skills should be tiny markdown files; oversize "
+                "content is suspicious."
+            )
+        try:
+            return raw.decode("utf-8"), None
+        except UnicodeDecodeError:
+            # Try latin-1 as graceful fallback (rare but legitimate for some
+            # non-UTF8 markdown). Still safe — content is text-scanned.
+            return raw.decode("utf-8", errors="replace"), None
+    except Exception as exc:
+        return None, f"fetch failed: {exc}"
+
+
+def _install_skill_md_content(
+    *,
+    content: str,
+    target_name: str,
+    source_label: str,
+) -> dict[str, Any]:
+    """Stage SKILL.md content in a tempdir, scan, copy to skills root, reload.
+
+    Returns the import-result dict (success or scan-blocked error).
+    Caller is responsible for not passing oversize content (we still cap
+    defensively).
+    """
+    import shutil
     import tempfile
     from pathlib import Path
 
-    name_override = str(args.get("name") or "").strip()
-    temp_dir = Path(tempfile.mkdtemp(prefix="skill_url_import_"))
+    if len(content.encode("utf-8")) > _MAX_URL_FETCH_BYTES:
+        return {
+            "status": "error",
+            "error": f"SKILL.md content exceeds {_MAX_URL_FETCH_BYTES} byte cap",
+        }
+    if "name:" not in content[:500] and "---" not in content[:500]:
+        return {
+            "status": "error",
+            "error": "content does not appear to be a SKILL.md file (no frontmatter detected)",
+        }
 
+    temp_dir = Path(tempfile.mkdtemp(prefix="skill_install_"))
     try:
-        # Handle GitHub shorthand: user/repo
-        if "/" in url and not url.startswith(("http://", "https://")):
-            parts = url.split("/")
-            if len(parts) == 2:
-                # Try to fetch SKILL.md from GitHub (try main, then master)
-                import urllib.error
-                for branch in ("main", "master"):
-                    github_url = (
-                        f"https://raw.githubusercontent.com/{parts[0]}/{parts[1]}/{branch}/SKILL.md"
-                    )
-                    try:
-                        req = urllib.request.Request(
-                            github_url,
-                            headers={"User-Agent": "Jarvis-v2/1.0"},
-                        )
-                        with urllib.request.urlopen(req, timeout=15) as resp:
-                            status = resp.status
-                            if status == 200:
-                                content = resp.read().decode("utf-8")
-                                break
-                    except urllib.error.HTTPError:
-                        continue
-                else:
-                    # Neither branch worked — return error, don't fall through
-                    import shutil
-                    shutil.rmtree(temp_dir, ignore_errors=True)
-                    return {
-                        "status": "error",
-                        "error": f"GitHub user/repo '{url}' not found (checked main + master branches)",
-                    }
-
-                # It's a single SKILL.md, infer name from repo
-                inferred_name = name_override or parts[1]
-                skill_dir = temp_dir / inferred_name
-                skill_dir.mkdir(parents=True, exist_ok=True)
-                (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
-                # Create empty subdirs
-                (skill_dir / "scripts").mkdir(exist_ok=True)
-                (skill_dir / "templates").mkdir(exist_ok=True)
-                (skill_dir / "references").mkdir(exist_ok=True)
-                # Now import this directory
-                import shutil as shutil2
-                target_name = inferred_name
-                target_dir = skill_engine.SKILLS_ROOT / target_name
-                if target_dir.exists():
-                    shutil2.rmtree(temp_dir, ignore_errors=True)
-                    return {"status": "error", "error": f"skill '{target_name}' already exists"}
-
-                # ── Security pre-scan ──
-                scan_result = scan_skill_file(skill_dir / "SKILL.md")
-                if scan_result and scan_result.has_critical:
-                    shutil2.rmtree(temp_dir, ignore_errors=True)
-                    return {
-                        "status": "error",
-                        "error": f"SECURITY BLOCKED: skill '{target_name}' has critical security issues",
-                        "security_scan": {
-                            "findings": [
-                                {
-                                    "pattern": f.pattern_name,
-                                    "description": f.description,
-                                    "severity_label": "CRITICAL",
-                                    "line": f.line_number,
-                                    "match": f.match_text[:120],
-                                }
-                                for f in scan_result.findings
-                                if f.severity >= 7
-                            ],
-                        },
-                    }
-
-                shutil2.copytree(skill_dir, target_dir, dirs_exist_ok=False)
-                skill_engine.reload_skills()
-                imported = skill_engine.get_skill(target_name)
-                shutil2.rmtree(temp_dir, ignore_errors=True)
-                return {
-                    "status": "ok",
-                    "name": target_name,
-                    "path": str(target_dir),
-                    "source": url,
-                    "details": {
-                        "name": imported.name if imported else target_name,
-                        "description": imported.description if imported else "",
-                        "use_when": imported.use_when if imported else "",
-                        "tags": imported.tags if imported else [],
-                    } if imported else {},
-                    "note": f"Skill '{target_name}' imported from GitHub {url}",
-                }
-
-        # Generic URL fetch — try to get a SKILL.md
-        req = urllib.request.Request(url, headers={"User-Agent": "Jarvis-v2/1.0"})
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                content = resp.read().decode("utf-8")
-        except Exception as exc:
-            import shutil
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            return {"status": "error", "error": f"failed to fetch URL: {exc}"}
-
-        # Check if it's valid SKILL.md
-        if "name:" not in content[:500] and "---" not in content[:500]:
-            import shutil
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            return {
-                "status": "error",
-                "error": "URL does not appear to be a SKILL.md file (no frontmatter detected)",
-            }
-
-        # Infer name from URL or use override
-        from urllib.parse import urlparse
-        parsed_url = urlparse(url)
-        inferred_name = name_override or Path(parsed_url.path).stem.lower().replace("_", "-")
-
-        import shutil
-        skill_dir = temp_dir / inferred_name
+        skill_dir = temp_dir / target_name
         skill_dir.mkdir(parents=True, exist_ok=True)
         (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
         (skill_dir / "scripts").mkdir(exist_ok=True)
         (skill_dir / "templates").mkdir(exist_ok=True)
         (skill_dir / "references").mkdir(exist_ok=True)
 
-        # ── Security pre-scan ──
-        scan_result = scan_skill_file(skill_dir / "SKILL.md")
-        if scan_result and scan_result.has_critical:
-            shutil.rmtree(temp_dir, ignore_errors=True)
+        target_dir = skill_engine.SKILLS_ROOT / target_name
+        if target_dir.exists():
             return {
                 "status": "error",
-                "error": f"SECURITY BLOCKED: skill '{inferred_name}' has critical security issues",
+                "error": f"skill '{target_name}' already exists",
+                "existing_path": str(target_dir),
+            }
+
+        # Security pre-scan via canonical scanner (covers SKILL.md only here
+        # since scripts/ is empty for URL installs — directory scan would
+        # produce identical results).
+        scan_result = scan_skill_file(skill_dir / "SKILL.md")
+        if scan_result and scan_result.has_critical:
+            return {
+                "status": "error",
+                "error": f"SECURITY BLOCKED: skill '{target_name}' has critical security issues",
                 "security_scan": {
                     "findings": [
                         {
@@ -573,33 +554,85 @@ def _exec_skill_import_from_url(args: dict[str, Any]) -> dict[str, Any]:
                 },
             }
 
-        target_name = inferred_name
-        target_dir = skill_engine.SKILLS_ROOT / target_name
-        if target_dir.exists():
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            return {"status": "error", "error": f"skill '{target_name}' already exists"}
         shutil.copytree(skill_dir, target_dir, dirs_exist_ok=False)
-        skill_engine.reload_skills()
-        imported = skill_engine.get_skill(target_name)
+    finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
-        return {
-            "status": "ok",
-            "name": target_name,
-            "path": str(target_dir),
-            "source": url,
-            "details": {
-                "name": imported.name if imported else target_name,
-                "description": imported.description if imported else "",
-                "use_when": imported.use_when if imported else "",
-                "tags": imported.tags if imported else [],
-            } if imported else {},
-            "note": f"Skill '{target_name}' imported from {url}",
-        }
 
-    except Exception as exc:
-        import shutil
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        return {"status": "error", "error": f"import from URL failed: {exc}"}
+    skill_engine.reload_skills()
+    imported = skill_engine.get_skill(target_name)
+    return {
+        "status": "ok",
+        "name": target_name,
+        "path": str(skill_engine.SKILLS_ROOT / target_name),
+        "source": source_label,
+        "details": {
+            "name": imported.name if imported else target_name,
+            "description": imported.description if imported else "",
+            "use_when": imported.use_when if imported else "",
+            "tags": imported.tags if imported else [],
+        } if imported else {},
+        "note": f"Skill '{target_name}' imported from {source_label}",
+    }
+
+
+def _exec_skill_import_from_url(args: dict[str, Any]) -> dict[str, Any]:
+    """Import a skill from a remote URL.
+
+    Supports:
+    - Raw SKILL.md URL: https://raw.githubusercontent.com/.../SKILL.md
+    - GitHub shorthand: 'user/repo' (fetches main → master fallback)
+    - Generic URL pointing to a SKILL.md file
+    """
+    url = str(args.get("url") or "").strip()
+    if not url:
+        return {"status": "error", "error": "url is required"}
+
+    name_override = str(args.get("name") or "").strip()
+
+    # GitHub shorthand: user/repo
+    if "/" in url and not url.startswith(("http://", "https://")):
+        parts = url.split("/")
+        if len(parts) != 2:
+            return {"status": "error", "error": f"invalid GitHub shorthand '{url}' — expected user/repo"}
+
+        content = None
+        last_err = None
+        for branch in ("main", "master"):
+            github_url = (
+                f"https://raw.githubusercontent.com/{parts[0]}/{parts[1]}/{branch}/SKILL.md"
+            )
+            content, last_err = _fetch_url_capped(github_url, timeout=15)
+            if content is not None:
+                break
+        if content is None:
+            return {
+                "status": "error",
+                "error": f"GitHub user/repo '{url}' not found on main/master ({last_err})",
+            }
+
+        target_name = name_override or parts[1]
+        return _install_skill_md_content(
+            content=content,
+            target_name=target_name,
+            source_label=f"GitHub {url}",
+        )
+
+    # Generic URL
+    content, err = _fetch_url_capped(url, timeout=30)
+    if content is None:
+        return {"status": "error", "error": err}
+
+    from urllib.parse import urlparse
+    inferred_name = (
+        name_override
+        or _Path(urlparse(url).path).stem.lower().replace("_", "-")
+        or "imported-skill"
+    )
+    return _install_skill_md_content(
+        content=content,
+        target_name=inferred_name,
+        source_label=url,
+    )
 
 
 # ── Tool definitions ───────────────────────────────────────────────────
@@ -766,7 +799,11 @@ SKILL_ENGINE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                     "threshold": {
                         "type": "number",
-                        "description": "Minimum similarity score (0.0-1.0). Default 0.55. Lower = more suggestions.",
+                        "description": (
+                            "Minimum similarity score (0.0-1.0). Default 0.30 after "
+                            "per-skill multi-candidate aggregation. Lower if you want "
+                            "more suggestions; raise for stricter matching."
+                        ),
                     },
                     "max_results": {
                         "type": "integer",

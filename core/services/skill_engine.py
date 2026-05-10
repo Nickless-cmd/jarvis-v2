@@ -25,10 +25,16 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+try:  # pyyaml is in v2's dep set; fall back to manual parser if missing
+    import yaml as _yaml
+except Exception:  # pragma: no cover
+    _yaml = None
 
 from core.runtime.config import JARVIS_HOME
 
@@ -81,64 +87,45 @@ def _parse_skill_md(path: Path) -> Skill | None:
 
     # Check for --- frontmatter
     if raw.startswith("---\n") or raw.startswith("---\r\n"):
-        # Find closing ---
         end_match = re.search(r"\n---\s*\n|\n---\s*$", raw[4:])
         if end_match:
             fm_raw = raw[4:4 + end_match.start()]
             rest = raw[4 + end_match.end():]
             instructions = rest.strip()
-            # Simple line-based YAML parse (no pyyaml dependency)
-            # Supports: scalar values, lists [a, b], multi-line | and > blocks
-            lines = fm_raw.splitlines()
-            i = 0
-            while i < len(lines):
-                line = lines[i].rstrip()
-                if not line or line.strip().startswith("#"):
-                    i += 1
-                    continue
-                if ":" in line:
-                    key, _, first_val = line.partition(":")
-                    key = key.strip().lower()
-                    val_part = first_val.strip()
-                    # Check for multi-line: | (literal) or > (folded)
-                    if val_part in ("|", ">"):
-                        multiline_parts = []
-                        i += 1
-                        indent = None
-                        while i < len(lines):
-                            next_line = lines[i].rstrip()
-                            # Check indentation of first content line to determine block
-                            stripped = next_line.strip()
-                            if not stripped:
-                                if indent is None:
-                                    i += 1
-                                    continue  # skip leading blank lines
-                                else:
-                                    # Empty line within block — preserve it
-                                    multiline_parts.append("")
-                                    i += 1
-                                    continue
-                            current_indent = len(next_line) - len(next_line.lstrip())
-                            if indent is None:
-                                indent = current_indent
-                            if current_indent < indent and stripped:
-                                break  # dedented = end of block
-                            if current_indent >= indent:
-                                multiline_parts.append(stripped)
-                                i += 1
-                            else:
-                                break
-                        val = "\n".join(multiline_parts) if val_part == "|" else " ".join(multiline_parts)
-                        frontmatter[key] = val
+            # Prefer pyyaml — handles nested objects, anchors, multiline blocks,
+            # quoted strings, escapes correctly. Fall back to a minimal parser
+            # if pyyaml is missing OR the frontmatter is malformed.
+            parsed_ok = False
+            if _yaml is not None:
+                try:
+                    loaded = _yaml.safe_load(fm_raw)
+                    if isinstance(loaded, dict):
+                        # Lower-case top-level keys to keep API stable
+                        frontmatter = {
+                            str(k).lower(): v for k, v in loaded.items()
+                        }
+                        parsed_ok = True
+                    elif loaded is None:
+                        parsed_ok = True  # empty frontmatter is valid
+                except _yaml.YAMLError as exc:
+                    logger.warning(
+                        "skill_engine: pyyaml failed for %s: %s — using fallback",
+                        path, exc,
+                    )
+            if not parsed_ok:
+                # Minimal fallback: scalar key:value lines + inline [a, b] lists
+                for line in fm_raw.splitlines():
+                    stripped = line.strip()
+                    if not stripped or stripped.startswith("#") or ":" not in line:
                         continue
-                    else:
-                        val = val_part
-                        if val.startswith("[") and val.endswith("]"):
-                            val = [t.strip() for t in val[1:-1].split(",") if t.strip()]
-                        elif val.lower() in ("true", "false"):
-                            val = val.lower() == "true"
-                        frontmatter[key] = val
-                i += 1
+                    key, _, val_part = line.partition(":")
+                    key = key.strip().lower()
+                    val = val_part.strip()
+                    if val.startswith("[") and val.endswith("]"):
+                        val = [t.strip() for t in val[1:-1].split(",") if t.strip()]
+                    elif val.lower() in ("true", "false"):
+                        val = val.lower() == "true"
+                    frontmatter[key] = val
 
     desc = frontmatter.get("description", "") or ""
     use_when = frontmatter.get("use_when", "") or ""
@@ -171,8 +158,15 @@ def _parse_skill_md(path: Path) -> Skill | None:
 
 # ── Registry (in-memory + on-demand reload) ────────────────────────────
 
+# `_registry` is read by the visible-lane chat thread, the heartbeat
+# daemon, and skill_gate at the same time. `reload_skills()` rebuilds it
+# wholesale — without a lock, an iterating thread can crash on dict
+# mutation. Use an RLock so reload_skills can call _scan_skills which
+# itself touches state, and so reentrant reads inside hot paths don't
+# deadlock.
 _registry: dict[str, Skill] = {}
 _last_scan: str = ""
+_registry_lock = threading.RLock()
 
 
 def _scan_skills() -> dict[str, Skill]:
@@ -198,33 +192,42 @@ def _scan_skills() -> dict[str, Skill]:
 def reload_skills() -> dict[str, Any]:
     """Force-reload all skills from disk. Returns summary."""
     global _registry, _last_scan
-    _registry = _scan_skills()
-    _last_scan = datetime.now(UTC).isoformat()
-    return {
-        "status": "ok",
-        "count": len(_registry),
-        "skills": list(_registry.keys()),
-        "scanned_at": _last_scan,
-    }
+    with _registry_lock:
+        _registry = _scan_skills()
+        _last_scan = datetime.now(UTC).isoformat()
+        return {
+            "status": "ok",
+            "count": len(_registry),
+            "skills": list(_registry.keys()),
+            "scanned_at": _last_scan,
+        }
 
 
 def get_skill(name: str) -> Skill | None:
     """Get a single skill by name. Lazy-loads if not cached."""
-    if not _registry:
-        reload_skills()
-    # Case-insensitive match
-    for key, skill in _registry.items():
-        if key.lower() == name.lower():
-            return skill
-    return _registry.get(name)
+    with _registry_lock:
+        if not _registry:
+            # Release lock during scan? RLock allows reentry, so reload_skills
+            # below re-acquires safely.
+            pass
+        if not _registry:
+            reload_skills()
+        for key, skill in _registry.items():
+            if key.lower() == name.lower():
+                return skill
+        return _registry.get(name)
 
 
 def list_skills(tag: str | None = None) -> list[dict[str, Any]]:
     """List all skills, optionally filtered by tag."""
-    if not _registry:
-        reload_skills()
+    with _registry_lock:
+        if not _registry:
+            reload_skills()
+        # Snapshot under lock so iteration is safe even if a reload fires
+        # mid-call from another thread.
+        snapshot = list(_registry.values())
     results = []
-    for skill in _registry.values():
+    for skill in snapshot:
         if tag and tag.lower() not in [t.lower() for t in skill.tags]:
             continue
         results.append({
@@ -266,15 +269,31 @@ def create_skill(
         return {"status": "error", "error": f"skill '{name}' already exists"}
 
     tags = tags or []
-    tags_yaml = f"  [{', '.join(tags)}]" if tags else "  []"
-    fm = f"""---
-name: {name}
-description: {description}
-use_when: {use_when or description}
-tags: {tags_yaml}
----
-
-"""
+    # Use yaml.safe_dump for the frontmatter so values containing colons,
+    # quotes, commas, or newlines round-trip safely. Falls back to a manual
+    # build only if pyyaml is unavailable (matches _parse_skill_md fallback).
+    fm_data = {
+        "name": name,
+        "description": description,
+        "use_when": use_when or description,
+        "tags": list(tags),
+    }
+    if _yaml is not None:
+        fm_body = _yaml.safe_dump(
+            fm_data, sort_keys=False, allow_unicode=True, default_flow_style=False
+        )
+    else:
+        # Conservative fallback: quote string values, render tags inline.
+        # Triggers ONLY if pyyaml is absent — production v2 has it.
+        def _q(s: str) -> str:
+            return '"' + str(s).replace('\\', '\\\\').replace('"', '\\"') + '"'
+        fm_body = (
+            f"name: {_q(name)}\n"
+            f"description: {_q(description)}\n"
+            f"use_when: {_q(use_when or description)}\n"
+            f"tags: [{', '.join(_q(t) for t in tags)}]\n"
+        )
+    fm = f"---\n{fm_body}---\n\n"
     content = fm + instructions.strip() + "\n"
 
     try:
@@ -341,11 +360,13 @@ def get_skill_instructions(name: str) -> dict[str, Any]:
 
 def search_skills(query: str) -> list[dict[str, Any]]:
     """Simple keyword search across skill names, descriptions, and instructions."""
-    if not _registry:
-        reload_skills()
+    with _registry_lock:
+        if not _registry:
+            reload_skills()
+        snapshot = list(_registry.values())
     q = query.lower()
     results = []
-    for skill in _registry.values():
+    for skill in snapshot:
         if (q in skill.name.lower()
                 or q in skill.description.lower()
                 or q in skill.use_when.lower()
@@ -362,10 +383,12 @@ def search_skills(query: str) -> list[dict[str, Any]]:
 
 def build_skill_engine_surface() -> dict[str, Any]:
     """Mission Control surface."""
-    if not _registry:
-        reload_skills()
+    with _registry_lock:
+        if not _registry:
+            reload_skills()
+        snapshot = list(_registry.values())
     all_tags: set[str] = set()
-    for s in _registry.values():
+    for s in snapshot:
         all_tags.update(s.tags)
     return {
         "active": len(_registry) > 0,

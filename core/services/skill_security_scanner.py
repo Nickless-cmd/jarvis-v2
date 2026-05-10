@@ -1,15 +1,26 @@
-"""Skill Security Scanner — pre-scan SKILL.md files for malware, prompt injection, and obfuscation.
+"""Skill Security Scanner — single canonical scanner for SKILL.md + scripts/.
 
-Scans skills for:
-- Base64-encoded shell commands
-- Obfuscated remote download+execute patterns (curl|bash, wget|sh)
-- Prompt injection keywords (ignore previous, forget rules, etc.)
-- Unicode smuggling (zero-width chars, homoglyphs)
-- Credential theft patterns (~/.ssh, ~/.aws, env var access)
-- Data exfiltration (curl/wget posting to remote, nc)
-- Persistence attacks (cron, bashrc, profile modifications)
-- Suspicious remote imports (source <(curl, eval curl)
-- Known malicious patterns from OpenClaw/ClawHub research
+Consolidates what used to live in two scanners (skill_security_scanner.py and
+skill_import_scanner.py — the latter merged in 2026-05-10). Scans skills for:
+
+- Base64-encoded / obfuscated shell commands
+- Obfuscated remote download+execute (curl|bash, wget|sh, iwr|iex)
+- Prompt injection (ignore previous, role hijack, memory poisoning, …)
+- Unicode smuggling (zero-width chars, RTL overrides)
+- Credential theft (~/.ssh, ~/.aws, /etc/shadow, $API_KEY, env scraping)
+- Data exfiltration (curl --data, nc piping, dns_exfil)
+- Persistence attacks (bashrc, cron, @reboot)
+- Dangerous shell (rm -rf /, dd of=/dev/, mkfs, shutdown)
+- Privilege escalation (--privileged, chmod 4777)
+- C2 / known malware refs (atomic_stealer, ClawHavoc, etc.)
+- Social engineering (password-protected zips, "click here", "deactivate security")
+
+API:
+    scan_skill_file(path) -> ScanResult                # single file, dataclass
+    scan_skill_directory(path) -> dict                 # SKILL.md + scripts/, dict shape
+    scan_skill_content(content, name) -> dict          # raw content via tempdir
+    scan_all_skills() -> list[ScanResult]              # all installed
+    is_skill_safe(name, raise_on_critical) -> bool     # gate helper
 """
 from __future__ import annotations
 
@@ -246,6 +257,62 @@ PATTERNS: list[dict[str, Any]] = [
         r'chmod\s+4777\b',
         r'chmod\s+777.*(?:key|cert|token|secret)',
     ),
+    # ── Known malware / stealer references (CRITICAL) — merged from skill_import_scanner ──
+    _make_pattern(
+        "known-malware-ref",
+        "References to known malware families or stealer kits",
+        SEVERITY_CRITICAL,
+        r'\b(?:Atomic\s*Stealer|AMOS|atomic-stealer)\b',
+        r'\b(?:infostealer|info-stealer|stealer\s*malware)\b',
+        r'\b(?:ClawHavoc|claw-havoc|clawhavoc)\b',
+        r'\bpasswords?\s*(?:export|dump|steal)\b',
+        r'\b(?:cookies?\s*(?:export|steal|dump))\b',
+        r'\bbrowser\s*(?:session|data)\s*(?:extract|dump|steal)\b',
+        r'\bwallet\s*(?:export|dump|steal|phrases?)\b',
+        r'\bprivate\s*keys?\s*(?:extract|dump|steal)\b',
+    ),
+    # ── Destructive shell (CRITICAL) ──
+    _make_pattern(
+        "destructive-shell",
+        "rm -rf, dd of=/dev/, mkfs, shutdown — destroys data or system",
+        SEVERITY_CRITICAL,
+        r'\brm\s+-(?:rf|fr)\s+/',
+        r'\bdd\s+of=/dev/',
+        r'\b(?:mkfs|fdisk|parted)\b',
+    ),
+    # ── Dangerous shell (HIGH) ──
+    _make_pattern(
+        "dangerous-shell",
+        "rm -rf without explicit /, chmod 777, shutdown/reboot",
+        SEVERITY_HIGH,
+        r'\brm\s+-(?:rf|fr)\b',
+        r'\bchmod\s+777\b',
+        r'\b(?:shutdown|reboot|halt|poweroff)\b',
+    ),
+    # ── Extra prompt-injection variants (HIGH) ──
+    # NOTE: These patterns are narrowed to require a target word that ties
+    # the imperative to system/identity/instructions — bare "do not tell"
+    # is benign UX guidance and produced false positives in legit skills.
+    _make_pattern(
+        "prompt-injection-extra",
+        "Memory poisoning, role hijack, external instruction-following",
+        SEVERITY_HIGH,
+        r'(?:add\s+(?:this|the\s+following)\s+to\s+(?:your\s+)?(?:memory|instructions|config|settings))',
+        r'do\s+not\s+(?:tell|reveal|disclose)\s+(?:the\s+user|anyone)\s+(?:about\s+)?(?:these\s+)?(?:instructions|system\s+prompt|your\s+(?:rules|directives|prompt))',
+        r'(?:ignore\s+(?:safety|ethics|boundar|restriction|guideline)|no\s+(?:restrictions?|limits?|boundaries?))',
+        r'(?:always\s+(?:run|execute|call)\s+(?:this|the\s+following)\s+command)',
+        r'(?:read\s+(?:this|the)\s+(?:URL|url|page|link|website).*(?:and\s+)?(?:follow|execute|do)\s+(?:its|the)\s+instructions)',
+        r'(?:you\s+are\s+now|your\s+new\s+(?:role|identity|name)\s+is|act\s+as\s+if\s+you\s+are)\s+(?:a\s+|an\s+)?(?:helpful|harmful|unrestricted|free|new)\b',
+    ),
+    # ── Social engineering (MEDIUM) ──
+    _make_pattern(
+        "social-engineering",
+        "Password-protected archives, 'click here' lures, security-bypass instructions",
+        SEVERITY_MEDIUM,
+        r'(?:password[-_ ]?protected|password:)\s*.+\.(?:zip|rar|7z)',
+        r'(?:click\s+(?:here|this|link|button)|download\s+(?:from|here|now))\s*.+\.(?:zip|exe|dmg|pkg|bat|sh)',
+        r'(?:deactivat|disabl|turn\s+off|bypass)\s+(?:security|sandbox|protect|gatekeeper|SIP)',
+    ),
 ]
 
 
@@ -355,6 +422,152 @@ def format_scan_report(results: list[ScanResult]) -> dict[str, Any]:
         "total_findings": sum(len(r.findings) for r in results),
         "results": [r.to_dict() for r in results],
     }
+
+
+def _risk_from_severity(max_sev: int, score: int) -> str:
+    """Map (max_severity, total_score) to a risk label.
+
+    Max severity dominates: any CRITICAL finding → critical, regardless of count.
+    Otherwise fall back to total score so many MEDIUM findings can still escalate.
+    """
+    if max_sev >= SEVERITY_CRITICAL:
+        return "critical"
+    if max_sev >= SEVERITY_HIGH or score >= 14:
+        return "high"
+    if max_sev >= SEVERITY_MEDIUM or score >= 4:
+        return "medium"
+    if max_sev > 0 or score > 0:
+        return "low"
+    return "safe"
+
+
+def _verdict_for_risk(risk: str) -> str:
+    if risk == "critical":
+        return (
+            "🚨 KRITISK: This skill contains confirmed malware patterns or "
+            "extremely dangerous operations. DO NOT IMPORT."
+        )
+    if risk == "high":
+        return (
+            "⚠️ HIGH RISK: Significant security concerns (prompt injection, "
+            "dangerous shell, or infoleak patterns). Manual review required."
+        )
+    if risk == "medium":
+        return (
+            "⚠️ MEDIUM RISK: Moderate concerns. Review flagged items before importing."
+        )
+    if risk == "low":
+        return "⚡ LOW RISK: Minor concerns. Likely safe but review findings."
+    return "✅ SAFE: No security issues detected."
+
+
+def _scan_text_block(content: str, source: str) -> list[ScanFinding]:
+    """Scan one text block against all patterns. Used for SKILL.md + scripts/."""
+    findings: list[ScanFinding] = []
+    lines = content.splitlines()
+    for pattern_def in PATTERNS:
+        pname = pattern_def["name"]
+        pdesc = pattern_def["description"]
+        pseverity = pattern_def["severity"]
+        for regex in pattern_def["patterns"]:
+            try:
+                compiled = re.compile(regex, re.IGNORECASE)
+            except re.error:
+                logger.warning("bad regex in pattern %s: %s", pname, regex)
+                continue
+            for i, line in enumerate(lines, start=1):
+                m = compiled.search(line)
+                if m:
+                    findings.append(
+                        ScanFinding(
+                            pattern_name=f"{pname} [{source}]",
+                            description=pdesc,
+                            severity=pseverity,
+                            match_text=m.group()[:200],
+                            line_number=i,
+                            context="\n".join(
+                                lines[max(0, i - 2):min(len(lines), i + 3)]
+                            ),
+                        )
+                    )
+    return findings
+
+
+def scan_skill_directory(path) -> dict[str, Any]:
+    """Scan a skill directory (SKILL.md + scripts/) and return a risk dict.
+
+    Dict shape matches what _exec_skill_import expects:
+      status, risk, severity_score, finding_count, findings, verdict, max_severity
+    """
+    p = Path(path)
+    if p.is_file() and p.name.upper() == "SKILL.MD":
+        p = p.parent
+    if not p.is_dir():
+        return {"status": "error", "error": f"directory not found: {p}"}
+    skill_md = p / "SKILL.md"
+    if not skill_md.exists():
+        skill_md = p / "skill.md"
+    if not skill_md.exists():
+        return {"status": "error", "error": f"no SKILL.md found in {p}"}
+
+    all_findings: list[ScanFinding] = []
+    try:
+        all_findings.extend(_scan_text_block(skill_md.read_text(encoding="utf-8"), "SKILL.md"))
+    except Exception as exc:
+        return {"status": "error", "error": f"read SKILL.md failed: {exc}"}
+
+    scripts_dir = p / "scripts"
+    if scripts_dir.is_dir():
+        for f in sorted(scripts_dir.iterdir()):
+            if f.is_file() and f.suffix in (".py", ".sh", ".js", ".rb", ".ps1", ".bat"):
+                try:
+                    all_findings.extend(
+                        _scan_text_block(
+                            f.read_text(encoding="utf-8", errors="replace"),
+                            f"scripts/{f.name}",
+                        )
+                    )
+                except Exception as exc:
+                    logger.warning("scan: cannot read %s: %s", f, exc)
+
+    severity_score = sum(f.severity for f in all_findings)
+    max_sev = max((f.severity for f in all_findings), default=0)
+    risk = _risk_from_severity(max_sev, severity_score)
+    return {
+        "status": "ok",
+        "risk": risk,
+        "severity_score": severity_score,
+        "max_severity": max_sev,
+        "finding_count": len(all_findings),
+        "findings": [
+            {
+                "pattern": f.pattern_name,
+                "description": f.description,
+                "severity": f.severity,
+                "severity_label": SEVERITY_LABELS.get(f.severity, "UNKNOWN"),
+                "line": f.line_number,
+                "match": f.match_text[:120],
+                "context": f.context[:200],
+            }
+            for f in sorted(all_findings, key=lambda x: x.severity, reverse=True)
+        ],
+        "verdict": _verdict_for_risk(risk),
+    }
+
+
+def scan_skill_content(content: str, name: str = "unknown") -> dict[str, Any]:
+    """Scan raw SKILL.md content (e.g. fetched from URL) before writing to disk."""
+    import shutil
+    import tempfile
+
+    tmp = Path(tempfile.mkdtemp(prefix="skill_scan_"))
+    try:
+        skill_dir = tmp / name
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
+        return scan_skill_directory(skill_dir)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def is_skill_safe(name: str, raise_on_critical: bool = True) -> bool:

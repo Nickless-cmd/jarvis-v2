@@ -5476,10 +5476,17 @@ def _exec_my_project_status(args: dict[str, Any]) -> dict[str, Any]:
             result["recent_journal"] = list_journal_entries(
                 project_id=active["id"], limit=5,
             )
+            name = active.get("name", "untitled")
+            entries = len(result["recent_journal"])
+            result["text"] = (
+                f"Aktivt projekt: **{name}** — {entries} journalindlæg."
+            )
         else:
             result["active_project"] = None
+            result["text"] = "Ingen aktivt projekt."
         if proposal:
             result["pending_proposal"] = proposal
+            result["text"] += f" Forslag venter: {proposal.get('name', 'untitled')}."
         return result
     except Exception as exc:
         return {"error": str(exc), "status": "error"}
@@ -5503,7 +5510,12 @@ def _exec_my_project_journal_write(args: dict[str, Any]) -> dict[str, Any]:
             source="inner_voice_spinoff",
             mood_tone=mood,
         )
-        return {"status": "ok", "entry": result, "project_name": active["name"]}
+        return {
+            "status": "ok",
+            "entry": result,
+            "project_name": active["name"],
+            "text": f"Journal-indlæg gemt i **{active['name']}** ({len(text)} tegn).",
+        }
     except Exception as exc:
         return {"error": str(exc), "status": "error"}
 
@@ -5527,7 +5539,11 @@ def _exec_my_project_accept_proposal(args: dict[str, Any]) -> dict[str, Any]:
         )
         if not result:
             return {"error": "declare_failed_maybe_already_active", "status": "error"}
-        return {"status": "ok", "project": result}
+        return {
+            "status": "ok",
+            "project": result,
+            "text": f"Forslag accepteret som personligt projekt: **{result.get('name', 'untitled')}**.",
+        }
     except Exception as exc:
         return {"error": str(exc), "status": "error"}
 
@@ -5547,7 +5563,11 @@ def _exec_my_project_declare(args: dict[str, Any]) -> dict[str, Any]:
         result = declare_project(name=name, why_mine=why, description=description)
         if not result:
             return {"error": "declare_failed_active_project_exists", "status": "error"}
-        return {"status": "ok", "project": result}
+        return {
+            "status": "ok",
+            "project": result,
+            "text": f"Personligt projekt erklæret: **{result.get('name', name)}**.",
+        }
     except Exception as exc:
         return {"error": str(exc), "status": "error"}
 
@@ -6278,8 +6298,19 @@ def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
         n = result.get("replacements", 0)
         return f"Edited {path} ({n} replacement{'s' if n != 1 else ''})"
 
-    return json.dumps(
-        {k: v for k, v in result.items() if k != "status"},
-        ensure_ascii=False,
-        indent=2,
+    # Defense-in-depth: cap the raw JSON fallback so a tool returning a fat
+    # payload (full project object, journal lists, schema dumps) can't spill
+    # thousands of tokens into the visible-lane context. If any tool actually
+    # needs to surface large data, it should provide a "text" key with a
+    # human summary — that path is taken above.
+    _MAX_FALLBACK_CHARS = 1500
+    _filtered = {k: v for k, v in result.items() if k != "status"}
+    _dumped = json.dumps(_filtered, ensure_ascii=False, indent=2)
+    if len(_dumped) <= _MAX_FALLBACK_CHARS:
+        return _dumped
+    _keys = ", ".join(sorted(_filtered.keys())) or "<none>"
+    return (
+        f"[Tool {name} returned {len(_dumped)} chars of unsummarized data — "
+        f"truncated. Keys: {_keys}. "
+        f"Add a 'text' key in the tool's exec for a clean summary.]"
     )

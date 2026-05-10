@@ -58,6 +58,12 @@ class RuntimeSettings:
     # foundation) keeps running for observability but produces no user-
     # facing actions while this is False. Default off — opt-in.
     generative_autonomy_enabled: bool = False
+    # Skill-gate kill-switch. When False, the skill_gate tool returns a
+    # short "disabled" stub immediately — no embedding call, no skill
+    # invocation. Use to temporarily silence over-eager gating without
+    # ripping the tool out of the schema. Default on; flip to False if
+    # the gate fires too aggressively or HF embed latency hurts UX.
+    skill_gate_enabled: bool = True
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -338,6 +344,9 @@ def load_settings() -> RuntimeSettings:
         ),
         generative_autonomy_enabled=bool(
             data.get("generative_autonomy_enabled", defaults.generative_autonomy_enabled)
+        ),
+        skill_gate_enabled=bool(
+            data.get("skill_gate_enabled", defaults.skill_gate_enabled)
         ),
         longing_daemon_cadence_minutes=int(
             data.get("longing_daemon_cadence_minutes", defaults.longing_daemon_cadence_minutes)

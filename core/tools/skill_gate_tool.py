@@ -2,11 +2,26 @@
 
 Designed to be called at the START of any task. It:
 1. Runs skill_suggest (semantic match) against the user's query
-2. If match >= threshold: auto-invokes the best-matching skill + reads SKILL.md
+2. If match >= INVOKE_THRESHOLD: auto-invokes the best-matching skill + reads SKILL.md
 3. Returns what skill matched, the score, and the instructions — or "no match"
 
 This is the C-løsning: an actual tool that wraps the logic so I don't have to
 *remember* to check skills — the tool does it for me.
+
+THRESHOLDS — these are tuned by hand for the HF MiniLM-L6-v2 embedding
+model used by skill_suggest. That model scores Danish/English blended
+queries lower than an intuitive 0.5-0.8 range. After per-skill
+multi-candidate max aggregation, legit matches land above 0.30 while
+the observed noise floor tops out around 0.32. If you swap the embedding
+model or matcher, retune.
+
+  - INVOKE_THRESHOLD (0.30): below this, no skill is loaded.
+  - AUTO_USE_THRESHOLD (0.45): above this, the skill's format is treated
+    as the template for the response. Strong match.
+  - Initial suggest threshold (0.20): one notch lower than INVOKE so the
+    gate sees borderline matches and can report them as `low_match`.
+
+Killable via runtime setting `skill_gate_enabled=False` in runtime.json.
 """
 from __future__ import annotations
 
@@ -25,8 +40,12 @@ logger = logging.getLogger(__name__)
 
 # ── Thresholds ─────────────────────────────────────────────────────────
 
-_INVOKE_THRESHOLD = 0.15       # ≥ 0.15 → invoke skill, read instructions (sænket fra 0.30 for dansk/engelsk blanding)
-_AUTO_USE_THRESHOLD = 0.40     # ≥ 0.40 → use skill's format as output template (sænket fra 0.50)
+# Tuned 2026-05-10 after rolling out per-skill multi-candidate max-aggregation
+# in skill_engine_tools._suggest_skills_for_query. With the new matcher, all
+# correct matches (DA + EN) score 0.36-0.60 while the noise floor maxes at
+# 0.32, giving a clean separation at 0.30.
+_INVOKE_THRESHOLD = 0.30       # ≥ 0.30 → invoke skill, read instructions
+_AUTO_USE_THRESHOLD = 0.45     # ≥ 0.45 → use skill's format as output template
 
 
 # ── Executor ───────────────────────────────────────────────────────────
@@ -37,6 +56,22 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
     Call this at the START of any task that involves research, analysis,
     fact-checking, data processing, report writing, or structured output.
     """
+    # Kill-switch: runtime setting `skill_gate_enabled=False` short-circuits
+    # the gate to a cheap stub. Avoids embedding call + auto-invoke when
+    # the gate is misbehaving or HF latency is biting. The tool stays in
+    # the schema so the model can still call it; it just returns a no-op.
+    try:
+        from core.runtime.settings import load_settings
+        if not load_settings().skill_gate_enabled:
+            return {
+                "status": "ok",
+                "gate_result": "disabled",
+                "note": "skill_gate is disabled in runtime settings — proceed with standard workflow.",
+            }
+    except Exception:
+        # Settings unavailable (very unlikely) — fail open and run gate.
+        pass
+
     query = str(args.get("query") or "").strip()
     if not query:
         return {
@@ -54,9 +89,12 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
         threshold = _INVOKE_THRESHOLD
 
     # ── Phase 1: Suggest ────────────────────────────────────────────
+    # One notch below INVOKE_THRESHOLD so the gate can report `low_match`
+    # and `suggestions` for borderline queries. Below this nothing useful
+    # is happening and we'd rather skip the embedding cost.
     suggestions = _suggest_skills_for_query(
         query=query,
-        threshold=0.10,  # low threshold for gate — we want to catch borderline matches
+        threshold=0.20,
         max_results=_INTENT_MATCH_MAX_SUGGESTIONS,
     )
 
@@ -165,9 +203,9 @@ SKILL_GATE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "**Pre-action gate for skills.** Call this at the START of any task "
                 "involving research, analysis, fact-checking, data processing, report "
                 "writing, or structured output. It semantically matches your query "
-                "against all installed skills, and if a relevant skill is found (score ≥ 0.30), "
-                "it auto-invokes it and loads its instructions into context. "
-                "If score ≥ 0.40, it marks the skill's format as the template to follow. "
+                "against all installed skills, and if a relevant skill is found "
+                "(score ≥ 0.30), it auto-invokes it and loads its instructions into context. "
+                "If score ≥ 0.45, it marks the skill's format as the template to follow. "
                 "Use this to ensure you always leverage installed skills instead of "
                 "reverting to default workflows. Pass a specific 'skill' name to force-invoke that skill."
             ),
@@ -184,7 +222,11 @@ SKILL_GATE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                     "threshold": {
                         "type": "number",
-                        "description": "Minimum match score to auto-invoke (0.0-1.0). Default 0.30.",
+                        "description": (
+                            "Minimum match score to auto-invoke (0.0-1.0). "
+                            "Default 0.30 after multi-candidate aggregation. "
+                            "Raise for stricter matching."
+                        ),
                     },
                 },
                 "required": ["query"],

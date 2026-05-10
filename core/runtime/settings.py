@@ -108,6 +108,30 @@ class RuntimeSettings:
     dream_bias_max_corpus_events: int = 30
     # LLM call budget — max tokens for the JSON response.
     dream_bias_max_response_tokens: int = 400
+    # ── User temperature field (Lag 10 — added 2026-05-10) ─────────────
+    # Master kill-switch for FIELD APPLICATION. When False:
+    # - Site 1 (heartbeat) renders nothing
+    # - Site 4 (response-style) returns default modifiers
+    # - Engine still computes struct_* on user msg (observability)
+    # - LLM stream skips cycles
+    user_temperature_enabled: bool = True
+    # LLM stream cadence between forced cycles. Also responds to
+    # significant-shift triggers from structural stream.
+    user_temperature_llm_cadence_hours: int = 4
+    # Lookback window for the LLM corpus (last N user messages).
+    user_temperature_llm_corpus_messages: int = 30
+    # Days for rolling baseline computation (mean/stdev of message
+    # length, response delay, typical hours).
+    user_temperature_baseline_days: int = 30
+    # Minimum baseline messages before z-scores activate. Below this,
+    # struct stream returns confidence=0 (graceful degradation).
+    user_temperature_baseline_min_messages: int = 30
+    # How often to rebuild baseline (hours).
+    user_temperature_baseline_refresh_hours: int = 24
+    # Threshold for "significant shift" that triggers LLM stream.
+    user_temperature_shift_threshold: float = 0.4
+    # LLM call budget (max response tokens).
+    user_temperature_llm_max_response_tokens: int = 300
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -433,6 +457,30 @@ def load_settings() -> RuntimeSettings:
         ),
         dream_bias_max_response_tokens=int(
             data.get("dream_bias_max_response_tokens", defaults.dream_bias_max_response_tokens)
+        ),
+        user_temperature_enabled=bool(
+            data.get("user_temperature_enabled", defaults.user_temperature_enabled)
+        ),
+        user_temperature_llm_cadence_hours=int(
+            data.get("user_temperature_llm_cadence_hours", defaults.user_temperature_llm_cadence_hours)
+        ),
+        user_temperature_llm_corpus_messages=int(
+            data.get("user_temperature_llm_corpus_messages", defaults.user_temperature_llm_corpus_messages)
+        ),
+        user_temperature_baseline_days=int(
+            data.get("user_temperature_baseline_days", defaults.user_temperature_baseline_days)
+        ),
+        user_temperature_baseline_min_messages=int(
+            data.get("user_temperature_baseline_min_messages", defaults.user_temperature_baseline_min_messages)
+        ),
+        user_temperature_baseline_refresh_hours=int(
+            data.get("user_temperature_baseline_refresh_hours", defaults.user_temperature_baseline_refresh_hours)
+        ),
+        user_temperature_shift_threshold=float(
+            data.get("user_temperature_shift_threshold", defaults.user_temperature_shift_threshold)
+        ),
+        user_temperature_llm_max_response_tokens=int(
+            data.get("user_temperature_llm_max_response_tokens", defaults.user_temperature_llm_max_response_tokens)
         ),
         longing_daemon_cadence_minutes=int(
             data.get("longing_daemon_cadence_minutes", defaults.longing_daemon_cadence_minutes)

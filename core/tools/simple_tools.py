@@ -479,6 +479,10 @@ from core.tools.forgetting_tools import (
     FORGETTING_TOOL_DEFINITIONS,
     FORGETTING_TOOL_HANDLERS,
 )
+from core.tools.nudge_broend_tools import (
+    NUDGE_BROEND_TOOL_DEFINITIONS,
+    NUDGE_BROEND_TOOL_HANDLERS,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -2313,6 +2317,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *SKILL_ENGINE_TOOL_DEFINITIONS,
     *SKILL_GATE_TOOL_DEFINITIONS,
     *FORGETTING_TOOL_DEFINITIONS,
+    *NUDGE_BROEND_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -2398,6 +2403,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    *NUDGE_BROEND_TOOL_DEFINITIONS,
 ]
 
 
@@ -6175,6 +6181,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **SKILL_GATE_TOOL_HANDLERS,
     # Forgetting (Lag 11) — release_memory ritual
     **FORGETTING_TOOL_HANDLERS,
+    **NUDGE_BROEND_TOOL_HANDLERS,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
     "remember_this": _exec_remember_this,

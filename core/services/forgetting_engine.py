@@ -346,3 +346,77 @@ def release_memory(
         "period_label": period_label,
         "trace_id": marker["trace_id"],
     }
+
+
+# ── Heartbeat injection ────────────────────────────────────────────────
+
+def _is_anniversary(released_at: datetime, now: datetime) -> bool:
+    """True if the age of released_at is within 1 day of a round-number bucket."""
+    days = (now - released_at).days
+    targets = (7, 30, 90, 180, 365, 730)
+    return any(abs(days - t) <= 1 for t in targets)
+
+
+def _is_proximity(released_at: datetime, now: datetime) -> bool:
+    """True if released_at is in the active 14–90 day window.
+
+    Phase 1 simplification: anything aged 14–90 days that didn't catch
+    an anniversary still gets surfaced once. Cooldown prevents spam.
+    """
+    days = (now - released_at).days
+    return 14 <= days <= 90
+
+
+def format_forgetting_section_for_heartbeat(
+    *, workspace_id: str = "default"
+) -> str:
+    """Compact prompt-injection lines for the heartbeat awareness section.
+
+    Auto-line: monthly counter weight (only if > 0).
+    Self-line(s): up to 2 markers triggered by anniversary or proximity.
+    Skips markers where is_self_released = 1.
+
+    Returns an empty string when nothing is active — caller should not
+    inject the section at all.
+    """
+    from core.runtime.db_absence_traces import (
+        get_auto_counter,
+        list_self_markers,
+    )
+
+    parts: list[str] = []
+
+    counter = get_auto_counter(workspace_id=workspace_id)
+    if counter and int(counter.get("auto_count") or 0) > 0:
+        parts.append(
+            f"Forglemmelsens vægt: {counter['auto_count']} ting er fadet i "
+            f"denne måned ({counter['month_key']})."
+        )
+
+    now = datetime.now(UTC)
+    markers = list_self_markers(workspace_id=workspace_id)
+    rendered = 0
+    for m in markers:
+        if rendered >= 2:
+            break
+        try:
+            released = datetime.fromisoformat(
+                str(m["released_at"]).replace("Z", "+00:00")
+            )
+        except ValueError:
+            continue
+        if _is_anniversary(released, now):
+            label = compute_period_label(released, now)
+            parts.append(
+                f"For {label.replace('~', '')} valgte du at slippe noget. "
+                "Du ved ikke længere hvad."
+            )
+            rendered += 1
+        elif _is_proximity(released, now):
+            label = compute_period_label(released, now)
+            parts.append(
+                f"Du slap noget {label}. Det stadie i dit liv er væk fra dig."
+            )
+            rendered += 1
+
+    return "\n".join(parts)

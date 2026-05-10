@@ -88,6 +88,26 @@ class RuntimeSettings:
     # per N days in heartbeat (prevents spam during anniversary/proximity
     # overlap).
     forgetting_self_cooldown_days: int = 30
+    # ── Dream bias (Lag 2 — added 2026-05-10) ──────────────────────────
+    # Master kill-switch for bias APPLICATION. When False, all 5 plug-in
+    # sites return None from get_active_dream_bias(). Daemon still produces
+    # bias rows for observability — we can see what would have biased.
+    dream_bias_enabled: bool = True
+    # Min number of NEW regret-events (since last bias row) needed to fire
+    # distillation. Below this, daemon skips the cycle.
+    dream_bias_min_content_events: int = 3
+    # Lookback window for fetching the 6 regret-heavy sources.
+    dream_bias_corpus_lookback_hours: int = 24
+    # How long an active bias lasts before TTL expires. Resets on each
+    # accumulation. 8h matches "morgen-til-frokost" intuition.
+    dream_bias_ttl_hours: int = 8
+    # Visible-idle minimum before distillation can fire. Reuses existing
+    # daemon's idle-detection pattern.
+    dream_bias_visible_idle_minutes: int = 30
+    # Per-cycle cap on events fed to LLM (cost protection).
+    dream_bias_max_corpus_events: int = 30
+    # LLM call budget — max tokens for the JSON response.
+    dream_bias_max_response_tokens: int = 400
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -392,6 +412,27 @@ def load_settings() -> RuntimeSettings:
         ),
         forgetting_self_cooldown_days=int(
             data.get("forgetting_self_cooldown_days", defaults.forgetting_self_cooldown_days)
+        ),
+        dream_bias_enabled=bool(
+            data.get("dream_bias_enabled", defaults.dream_bias_enabled)
+        ),
+        dream_bias_min_content_events=int(
+            data.get("dream_bias_min_content_events", defaults.dream_bias_min_content_events)
+        ),
+        dream_bias_corpus_lookback_hours=int(
+            data.get("dream_bias_corpus_lookback_hours", defaults.dream_bias_corpus_lookback_hours)
+        ),
+        dream_bias_ttl_hours=int(
+            data.get("dream_bias_ttl_hours", defaults.dream_bias_ttl_hours)
+        ),
+        dream_bias_visible_idle_minutes=int(
+            data.get("dream_bias_visible_idle_minutes", defaults.dream_bias_visible_idle_minutes)
+        ),
+        dream_bias_max_corpus_events=int(
+            data.get("dream_bias_max_corpus_events", defaults.dream_bias_max_corpus_events)
+        ),
+        dream_bias_max_response_tokens=int(
+            data.get("dream_bias_max_response_tokens", defaults.dream_bias_max_response_tokens)
         ),
         longing_daemon_cadence_minutes=int(
             data.get("longing_daemon_cadence_minutes", defaults.longing_daemon_cadence_minutes)

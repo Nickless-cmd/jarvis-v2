@@ -88,6 +88,7 @@ ALLOWED_EVENT_FAMILIES = {
     "cognitive_decision",
     "cognitive_counterfactual",
     "cognitive_forgetting",
+    "cognitive_dream_bias",
     "cognitive_paradox",
     "cognitive_aesthetic",
     "cognitive_gut",

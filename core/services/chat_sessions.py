@@ -187,6 +187,17 @@ def append_chat_message(
             resonate(normalized_content, source=f"chat:{normalized_session}")
         except Exception:
             pass
+        # Lag 10: structural temperature stream — per-message synchronous
+        # signal computation. Fire-and-forget, never block chat persistence.
+        try:
+            from core.services.user_temperature_engine import run_structural_stream
+            run_structural_stream(
+                workspace_id="default",
+                message=normalized_content,
+                message_at=timestamp,
+            )
+        except Exception:
+            pass
         # emotion-trigger: warmth/playfulness/tenderness from user-message content
         try:
             from core.services.emotion_concepts_channel_triggers import (

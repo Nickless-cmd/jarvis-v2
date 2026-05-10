@@ -89,6 +89,7 @@ ALLOWED_EVENT_FAMILIES = {
     "cognitive_counterfactual",
     "cognitive_forgetting",
     "cognitive_dream_bias",
+    "cognitive_temperature",
     "cognitive_paradox",
     "cognitive_aesthetic",
     "cognitive_gut",

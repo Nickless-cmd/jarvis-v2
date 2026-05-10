@@ -52,3 +52,15 @@ No traceback. Schema integrity preserved.
 - No self-track usage yet (release_memory tool live but unused). Acceptable
   in phase 1 — observation criterion in spec is "at least once unprompted
   within 30 days".
+
+## 30-day review scheduled
+
+- Task ID: `sched-e93cf23c9d`
+- Fires: `2026-06-09T13:07:53Z`
+- Source: `forgetting-phase1-deploy`
+- Focus: "Forgetting Phase 1 — 30-dages review. Tjek absence_traces row
+  counts (auto vs self), kig efter signaler i chronicle/inner_voice om at
+  vægten mærkes, om release_memory blev brugt unprompted. Spec:
+  docs/superpowers/specs/2026-05-10-true-forgetting-design.md (3 dimensions
+  i succeskriterier). Beslutning: keep, retune thresholds, eller plan
+  Phase 2."

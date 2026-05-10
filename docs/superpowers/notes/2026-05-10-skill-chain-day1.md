@@ -78,3 +78,16 @@ multiple skill domains.
 - chain_hint visibility in real visible-lane runs: **pending observation**
 - Pre-validation rejection-rate (typos in real Jarvis usage): **pending**
 - Plan-size distribution (2 vs 3 vs 5): **pending**
+
+## 30-day review scheduled
+
+- Task ID: `sched-ae211b5630`
+- Fires: `2026-06-09T16:50:56Z`
+- Source: `skill-chain-phase1-deploy`
+- Focus: "Skill Chain Phase 1 — 30-dages review. Tjek hvor ofte Jarvis
+  kalder skill_chain spontant, om chain_hint i skill_gate fyrer og om
+  Jarvis følger den, plan-størrelses-fordeling (2 vs 3 vs 5),
+  pre-validation rejection-rate. Spec: docs/superpowers/specs/2026-05-10-skill-chain-design.md
+  (3 dimensions i succeskriterier). Beslutning: keep, retune
+  thresholds/cap, eller plan Phase 2 (auto-planner, tool invention,
+  gate auto-detection, prompt-contract integration)."

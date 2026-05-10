@@ -248,8 +248,45 @@ def _reach_out(
     channel: str = "ntfy",
     importance: str = "normal",
     source: str = "",
+    bypass_nudge: bool = False,
 ) -> dict[str, Any]:
-    """Send a proactive message respecting daily cap and cooldown."""
+    """Send a proactive message. Routes through nudge-broend for Jarvis gatekeeping.
+
+    CRITICAL events (infra-nedbrud, desperation) bypass the nudge-broend.
+    Everything else goes to the broend — Jarvis (visible) inspects and decides
+    whether to actually reach out.
+
+    Args:
+        bypass_nudge: If True, send immediately (no nudge-broend). For infra
+                      emergencies and true criticals only.
+    """
+    # ── Nudge-broend path (default for non-critical) ──
+    if not bypass_nudge:
+        try:
+            from core.services.nudge_broend import push as _push_nudge
+            nudge_id = _push_nudge(
+                source=source,
+                kind="info",
+                message=message,
+                importance=importance,
+            )
+            # Still log the attempt in proactive_log for visibility
+            entry = {
+                "at": datetime.now(UTC).isoformat(),
+                "outcome": "nudged",
+                "reason": f"routed-to-nudge-broend:{nudge_id}",
+                "channel": channel,
+                "message": message[:240],
+                "importance": importance,
+                "source": source,
+            }
+            _append_proactive(entry)
+            return entry
+        except Exception as exc:
+            logger.debug("action_router: nudge-broend push failed, falling back: %s", exc)
+            # Fall through to direct send on error
+
+    # ── Direct-send path (critical only, or fallback) ──
     today_count = _proactive_messages_today()
     if today_count >= _MAX_PROACTIVE_PER_DAY:
         entry = {
@@ -299,13 +336,13 @@ def _route_warning(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
     if kind == "infra_weather.critical":
         reasons = ", ".join(payload.get("reasons") or [])
         msg = f"⛈ Infra under pres: {reasons}"
-        return _reach_out(message=msg, importance="high", source=kind)
+        return _reach_out(message=msg, importance="high", source=kind, bypass_nudge=True)
     if kind == "inner_voice.signal" and str(payload.get("kind")) == "desperation-awareness":
         level = str(payload.get("level") or "")
         text = str(payload.get("text") or "")
         _adjust_mood(-0.05, reason=f"desperation-{level}")
         if level == "desperate":
-            return _reach_out(message=text[:200], importance="high", source="desperation")
+            return _reach_out(message=text[:200], importance="high", source="desperation", bypass_nudge=True)
         return {"outcome": "logged", "reason": f"desperation-{level}"}
     if kind == "prompt_mutation.rolled_back" and payload.get("auto"):
         target = payload.get("target_file")

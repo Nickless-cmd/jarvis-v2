@@ -125,6 +125,29 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Verify user_temperature_active table + engine importable (Lag 10)
+        try:
+            from core.runtime.db import connect
+            with connect() as c:
+                row = c.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name='user_temperature_active'"
+                ).fetchone()
+                if row is None:
+                    raise RuntimeError("user_temperature_active table missing")
+            from core.services.user_temperature_engine import (
+                get_active_field,  # noqa: F401
+                format_temperature_field_for_heartbeat,  # noqa: F401
+                get_response_style_modifiers,  # noqa: F401
+                run_structural_stream,  # noqa: F401
+                run_llm_stream,  # noqa: F401
+            )
+            from core.services.user_temperature_runtime import (
+                start_user_temperature_runtime,  # noqa: F401
+            )
+        except Exception:
+            traceback.print_exc()
+
         # Verify dream_bias_active table + engine importable (Lag 2)
         try:
             from core.runtime.db import connect

@@ -87,6 +87,7 @@ ALLOWED_EVENT_FAMILIES = {
     "cognitive_silence",
     "cognitive_decision",
     "cognitive_counterfactual",
+    "cognitive_forgetting",
     "cognitive_paradox",
     "cognitive_aesthetic",
     "cognitive_gut",

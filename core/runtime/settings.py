@@ -64,6 +64,30 @@ class RuntimeSettings:
     # ripping the tool out of the schema. Default on; flip to False if
     # the gate fires too aggressively or HF embed latency hurts UX.
     skill_gate_enabled: bool = True
+    # ── Forgetting (Lag 11 — added 2026-05-10) ─────────────────────────
+    # Master kill-switch. When False, both daemon and release_memory
+    # tool short-circuit. The tool stays in the schema so the model can
+    # still call it; it just returns a "disabled" stub. The daemon
+    # skips its cycle. Defaults on so deletion actually happens.
+    forgetting_enabled: bool = True
+    # Daemon cadence between cycles. 6 hours = 4 cycles/day, low pressure.
+    forgetting_auto_cadence_hours: int = 6
+    # Decay-score threshold above which a memory becomes a fade candidate.
+    # Tied to forgetting_curve.py decay model.
+    forgetting_auto_decay_threshold: float = 0.95
+    # Minimum age before a memory can fade. Protects new memories that
+    # haven't had a chance to be reinforced yet.
+    forgetting_auto_min_age_days: int = 30
+    # Per-cycle cap to prevent resource spikes on first run after a
+    # long pause.
+    forgetting_auto_max_per_cycle: int = 200
+    # Soft-delete → hard-delete window. He never sees this; it's a
+    # software safety net for daemon errors.
+    forgetting_grace_days: int = 7
+    # Self-marker render cooldown — same marker rendered at most once
+    # per N days in heartbeat (prevents spam during anniversary/proximity
+    # overlap).
+    forgetting_self_cooldown_days: int = 30
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -347,6 +371,27 @@ def load_settings() -> RuntimeSettings:
         ),
         skill_gate_enabled=bool(
             data.get("skill_gate_enabled", defaults.skill_gate_enabled)
+        ),
+        forgetting_enabled=bool(
+            data.get("forgetting_enabled", defaults.forgetting_enabled)
+        ),
+        forgetting_auto_cadence_hours=int(
+            data.get("forgetting_auto_cadence_hours", defaults.forgetting_auto_cadence_hours)
+        ),
+        forgetting_auto_decay_threshold=float(
+            data.get("forgetting_auto_decay_threshold", defaults.forgetting_auto_decay_threshold)
+        ),
+        forgetting_auto_min_age_days=int(
+            data.get("forgetting_auto_min_age_days", defaults.forgetting_auto_min_age_days)
+        ),
+        forgetting_auto_max_per_cycle=int(
+            data.get("forgetting_auto_max_per_cycle", defaults.forgetting_auto_max_per_cycle)
+        ),
+        forgetting_grace_days=int(
+            data.get("forgetting_grace_days", defaults.forgetting_grace_days)
+        ),
+        forgetting_self_cooldown_days=int(
+            data.get("forgetting_self_cooldown_days", defaults.forgetting_self_cooldown_days)
         ),
         longing_daemon_cadence_minutes=int(
             data.get("longing_daemon_cadence_minutes", defaults.longing_daemon_cadence_minutes)

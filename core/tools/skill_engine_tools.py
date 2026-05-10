@@ -11,6 +11,13 @@ import logging
 from typing import Any
 
 from core.services import skill_engine
+from core.services.skill_security_scanner import (
+    format_scan_report,
+    scan_skill_file,
+    ScanResult,
+)
+from pathlib import Path as _Path
+from core.tools.skill_import_scanner import scan_skill_directory
 
 logger = logging.getLogger(__name__)
 
@@ -277,6 +284,33 @@ def _exec_skill_import(args: dict[str, Any]) -> dict[str, Any]:
                 shutil.rmtree(temp_dir, ignore_errors=True)
             return {"status": "error", "error": f"no SKILL.md in {skill_dir}"}
 
+        # ── Security scan ──────────────────────────────────────────
+        scan_result = scan_skill_directory(skill_dir)
+        if scan_result.get("status") == "error":
+            if temp_dir:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            return {
+                "status": "error",
+                "error": f"skill scanner failed: {scan_result.get('error')}",
+            }
+
+        if scan_result["risk"] == "critical":
+            if temp_dir:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            return {
+                "status": "error",
+                "error": "IMPORT BLOCKED — critical security risk",
+                "scan_result": scan_result,
+                "verdict": scan_result["verdict"],
+                "findings": scan_result["findings"],
+                "hint": "This skill contains malware patterns. Do not import.",
+            }
+
+        if scan_result["risk"] in ("high", "medium"):
+            # Return scan result for user review — import can proceed
+            # but user sees warnings. We still continue the import.
+            pass
+
         # Parse to validate and get name
         parsed = skill_engine._parse_skill_md(skill_md)
         if not parsed:
@@ -334,7 +368,7 @@ def _exec_skill_import(args: dict[str, Any]) -> dict[str, Any]:
             "has_references": imported.has_references,
         }
 
-    return {
+    result = {
         "status": "ok",
         "name": target_name,
         "path": str(target_dir),
@@ -343,6 +377,21 @@ def _exec_skill_import(args: dict[str, Any]) -> dict[str, Any]:
         "skills_loaded": reload_result.get("count", 0),
         "note": f"Skill '{target_name}' imported successfully from {source}",
     }
+
+    # Include scan findings if any were found
+    if scan_result["risk"] in ("high", "medium"):
+        result["scan_warning"] = True
+        result["scan_risk"] = scan_result["risk"]
+        result["scan_severity"] = scan_result["severity_score"]
+        result["scan_findings"] = scan_result["findings"]
+        result["scan_verdict"] = scan_result["verdict"]
+        result["note"] += (
+            f"\n⚠️  Scanner fandt {scan_result['finding_count']} issue(s) "
+            f"(risk: {scan_result['risk']}, score: {scan_result['severity_score']}). "
+            f"{scan_result['verdict']}"
+        )
+
+    return result
 
 
 def _find_skill_dir_in_tree(root: Path) -> Path | None:
@@ -429,6 +478,29 @@ def _exec_skill_import_from_url(args: dict[str, Any]) -> dict[str, Any]:
                 if target_dir.exists():
                     shutil2.rmtree(temp_dir, ignore_errors=True)
                     return {"status": "error", "error": f"skill '{target_name}' already exists"}
+
+                # ── Security pre-scan ──
+                scan_result = scan_skill_file(skill_dir / "SKILL.md")
+                if scan_result and scan_result.has_critical:
+                    shutil2.rmtree(temp_dir, ignore_errors=True)
+                    return {
+                        "status": "error",
+                        "error": f"SECURITY BLOCKED: skill '{target_name}' has critical security issues",
+                        "security_scan": {
+                            "findings": [
+                                {
+                                    "pattern": f.pattern_name,
+                                    "description": f.description,
+                                    "severity_label": "CRITICAL",
+                                    "line": f.line_number,
+                                    "match": f.match_text[:120],
+                                }
+                                for f in scan_result.findings
+                                if f.severity >= 7
+                            ],
+                        },
+                    }
+
                 shutil2.copytree(skill_dir, target_dir, dirs_exist_ok=False)
                 skill_engine.reload_skills()
                 imported = skill_engine.get_skill(target_name)
@@ -478,6 +550,28 @@ def _exec_skill_import_from_url(args: dict[str, Any]) -> dict[str, Any]:
         (skill_dir / "scripts").mkdir(exist_ok=True)
         (skill_dir / "templates").mkdir(exist_ok=True)
         (skill_dir / "references").mkdir(exist_ok=True)
+
+        # ── Security pre-scan ──
+        scan_result = scan_skill_file(skill_dir / "SKILL.md")
+        if scan_result and scan_result.has_critical:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return {
+                "status": "error",
+                "error": f"SECURITY BLOCKED: skill '{inferred_name}' has critical security issues",
+                "security_scan": {
+                    "findings": [
+                        {
+                            "pattern": f.pattern_name,
+                            "description": f.description,
+                            "severity_label": "CRITICAL",
+                            "line": f.line_number,
+                            "match": f.match_text[:120],
+                        }
+                        for f in scan_result.findings
+                        if f.severity >= 7
+                    ],
+                },
+            }
 
         target_name = inferred_name
         target_dir = skill_engine.SKILLS_ROOT / target_name

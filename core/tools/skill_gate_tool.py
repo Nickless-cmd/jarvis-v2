@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 
 # ── Thresholds ─────────────────────────────────────────────────────────
 
-_INVOKE_THRESHOLD = 0.30       # ≥ 0.30 → invoke skill, read instructions
-_AUTO_USE_THRESHOLD = 0.50     # ≥ 0.50 → use skill's format as output template
+_INVOKE_THRESHOLD = 0.15       # ≥ 0.15 → invoke skill, read instructions (sænket fra 0.30 for dansk/engelsk blanding)
+_AUTO_USE_THRESHOLD = 0.40     # ≥ 0.40 → use skill's format as output template (sænket fra 0.50)
 
 
 # ── Executor ───────────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ SKILL_GATE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "writing, or structured output. It semantically matches your query "
                 "against all installed skills, and if a relevant skill is found (score ≥ 0.30), "
                 "it auto-invokes it and loads its instructions into context. "
-                "If score ≥ 0.50, it marks the skill's format as the template to follow. "
+                "If score ≥ 0.40, it marks the skill's format as the template to follow. "
                 "Use this to ensure you always leverage installed skills instead of "
                 "reverting to default workflows. Pass a specific 'skill' name to force-invoke that skill."
             ),

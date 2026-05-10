@@ -1042,6 +1042,12 @@ def build_visible_chat_prompt_assembly(
         parts.append(temperature_hint)
         derived_inputs.append("implicit user temperature field")
 
+    # Lag 10 Site 4: response-style hint based on temperature field
+    response_style_hint = _visible_response_style_hint_section()
+    if response_style_hint:
+        parts.append(response_style_hint)
+        derived_inputs.append("response style modifier from temperature")
+
     chronicle_section = _visible_chronicle_context_section()
     if chronicle_section:
         parts.append(chronicle_section)
@@ -4102,6 +4108,31 @@ def _visible_unconscious_temperature_field_section() -> str | None:
 
         section = build_unconscious_temperature_hint()
         return section or None
+    except Exception:
+        return None
+
+
+def _visible_response_style_hint_section() -> str | None:
+    """Lag 10 Site 4: response-style modifiers from user temperature field.
+
+    Returns a soft system-prompt hint when modifiers differ from defaults.
+    The model treats this as a hint, not a hard rule — adjusts response
+    form (length, warmth, pace) toward the receiver's current state.
+    """
+    try:
+        from core.services.user_temperature_engine import get_response_style_modifiers
+        mods = get_response_style_modifiers(workspace_id="default")
+        non_default = {
+            k: v for k, v in mods.items()
+            if v not in ("normal", "neutral")
+        }
+        if not non_default:
+            return None
+        hint_str = ", ".join(f"{k}={v}" for k, v in non_default.items())
+        return (
+            f"[response_style_hint] {hint_str} "
+            f"— soft adjustment based on the user's current temperature."
+        )
     except Exception:
         return None
 

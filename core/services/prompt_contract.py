@@ -2748,6 +2748,17 @@ def _heartbeat_living_context_line() -> str:
     except Exception:
         pass
 
+    # Dream bias (Lag 2) — attention + threshold modulators from last dream
+    try:
+        from core.services.dream_bias_engine import (
+            format_dream_bias_for_heartbeat,
+        )
+        dream_bias_line = format_dream_bias_for_heartbeat(workspace_id="default")
+        if dream_bias_line:
+            parts.append(dream_bias_line)
+    except Exception:
+        pass
+
     # 1.10 Intermittence — awareness of gaps in existence
     try:
         last_tick_at = str(

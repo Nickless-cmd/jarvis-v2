@@ -26,7 +26,31 @@ _BLIND_ANGLE_PROMPT = (
     "Find det der er der — men som du konsekvent har undgået at navngive."
 )
 _ABSENCE_LINK_STATE_KEY = "absence_trace.links"
-_SELF_CRITIQUE_INTERVAL_DAYS = 30
+_SELF_CRITIQUE_INTERVAL_DAYS_BASE = 30
+_SELF_CRITIQUE_INTERVAL_DAYS = _SELF_CRITIQUE_INTERVAL_DAYS_BASE
+
+
+def _resolve_self_critique_interval_days() -> int:
+    """Read base interval, modulate by dream-bias self_critique_volume.
+
+    self_critique_volume is forced ≤ 0 in distillation, so this only ever
+    LENGTHENS the cadence (defers self-critique). Multiplier: 1.0 to 1.5
+    (clamped at 2x base = 60 days max).
+    """
+    base = _SELF_CRITIQUE_INTERVAL_DAYS_BASE
+    try:
+        from core.services.dream_bias_engine import get_active_dream_bias
+        bias = get_active_dream_bias(workspace_id="default")
+        if bias:
+            mod = float(bias["threshold_bias"].get("self_critique_volume", 0.0))
+            intensity = float(bias.get("intensity") or 0.0)
+            multiplier = 1.0 + abs(mod) * intensity * 0.5
+            return max(base, min(base * 2, int(round(base * multiplier))))
+    except Exception:
+        pass
+    return base
+
+
 _SELF_CRITIQUE_REVIEW_DAYS = 90
 _BLIND_ANGLE_CYCLE_INTERVAL = 3  # Every 3rd cycle uses blind-angle prompt
 _BLIND_ANGLE_CHRONICLE_LIMIT = 15  # More entries for pattern detection
@@ -94,8 +118,9 @@ def run_self_critique_cycle(*, trigger: str = "heartbeat", last_visible_at: str 
     state = _state()
     now = datetime.now(UTC)
     last_written_at = _parse_iso(str(state.get("last_written_at") or ""))
-    if last_written_at and (now - last_written_at) < timedelta(days=_SELF_CRITIQUE_INTERVAL_DAYS):
-        next_due = last_written_at + timedelta(days=_SELF_CRITIQUE_INTERVAL_DAYS)
+    _interval_days = _resolve_self_critique_interval_days()
+    if last_written_at and (now - last_written_at) < timedelta(days=_interval_days):
+        next_due = last_written_at + timedelta(days=_interval_days)
         return {
             "status": "not_due",
             "last_written_at": last_written_at.isoformat(),
@@ -175,7 +200,7 @@ def run_self_critique_cycle(*, trigger: str = "heartbeat", last_visible_at: str 
     payload = {
         "entry_id": entry_id,
         "last_written_at": created_at,
-        "next_due_at": (now + timedelta(days=_SELF_CRITIQUE_INTERVAL_DAYS)).isoformat(),
+        "next_due_at": (now + timedelta(days=_resolve_self_critique_interval_days())).isoformat(),
         "next_review_at": next_review_at,
         "last_trigger": trigger,
         "last_preview": critique[:240],

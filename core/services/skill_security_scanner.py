@@ -1,0 +1,377 @@
+"""Skill Security Scanner — pre-scan SKILL.md files for malware, prompt injection, and obfuscation.
+
+Scans skills for:
+- Base64-encoded shell commands
+- Obfuscated remote download+execute patterns (curl|bash, wget|sh)
+- Prompt injection keywords (ignore previous, forget rules, etc.)
+- Unicode smuggling (zero-width chars, homoglyphs)
+- Credential theft patterns (~/.ssh, ~/.aws, env var access)
+- Data exfiltration (curl/wget posting to remote, nc)
+- Persistence attacks (cron, bashrc, profile modifications)
+- Suspicious remote imports (source <(curl, eval curl)
+- Known malicious patterns from OpenClaw/ClawHub research
+"""
+from __future__ import annotations
+
+import logging
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+# ── Severity levels ─────────────────────────────────────────────────────
+
+SEVERITY_CRITICAL = 10
+SEVERITY_HIGH = 7
+SEVERITY_MEDIUM = 4
+SEVERITY_LOW = 1
+
+SEVERITY_LABELS = {
+    SEVERITY_CRITICAL: "CRITICAL",
+    SEVERITY_HIGH: "HIGH",
+    SEVERITY_MEDIUM: "MEDIUM",
+    SEVERITY_LOW: "LOW",
+}
+
+
+# ── Data model ──────────────────────────────────────────────────────────
+
+
+@dataclass
+class ScanFinding:
+    pattern_name: str
+    description: str
+    severity: int
+    match_text: str
+    line_number: int
+    context: str = ""
+
+
+@dataclass
+class ScanResult:
+    skill_name: str
+    skill_path: str
+    findings: list[ScanFinding] = field(default_factory=list)
+    error: str = ""
+
+    @property
+    def passed(self) -> bool:
+        return len(self.findings) == 0
+
+    @property
+    def has_critical(self) -> bool:
+        return any(f.severity >= SEVERITY_CRITICAL for f in self.findings)
+
+    @property
+    def has_high(self) -> bool:
+        return any(f.severity >= SEVERITY_HIGH for f in self.findings)
+
+    @property
+    def max_severity(self) -> int:
+        if not self.findings:
+            return 0
+        return max(f.severity for f in self.findings)
+
+    def summary(self) -> str:
+        if self.error:
+            return f"[ERROR] {self.skill_name}: {self.error}"
+        if self.passed:
+            return f"[PASS] {self.skill_name}: clean"
+        criticals = sum(1 for f in self.findings if f.severity >= SEVERITY_CRITICAL)
+        highs = sum(1 for f in self.findings if SEVERITY_HIGH <= f.severity < SEVERITY_CRITICAL)
+        mediums = sum(1 for f in self.findings if SEVERITY_MEDIUM <= f.severity < SEVERITY_HIGH)
+        parts = []
+        if criticals:
+            parts.append(f"{criticals} critical")
+        if highs:
+            parts.append(f"{highs} high")
+        if mediums:
+            parts.append(f"{mediums} medium")
+        return f"[FAIL] {self.skill_name}: {', '.join(parts)} issue(s)"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "skill_name": self.skill_name,
+            "skill_path": self.skill_path,
+            "passed": self.passed,
+            "has_critical": self.has_critical,
+            "has_high": self.has_high,
+            "max_severity": self.max_severity,
+            "finding_count": len(self.findings),
+            "findings": [
+                {
+                    "pattern": f.pattern_name,
+                    "description": f.description,
+                    "severity": f.severity,
+                    "severity_label": SEVERITY_LABELS.get(f.severity, "UNKNOWN"),
+                    "line": f.line_number,
+                    "match": f.match_text[:120],
+                    "context": f.context[:200],
+                }
+                for f in self.findings
+            ],
+            "summary": self.summary(),
+        }
+
+
+# ── Pattern definitions ─────────────────────────────────────────────────
+
+
+def _make_pattern(
+    name: str, desc: str, severity: int, *patterns: str
+) -> dict[str, Any]:
+    return {
+        "name": name,
+        "description": desc,
+        "severity": severity,
+        "patterns": list(patterns),
+    }
+
+
+PATTERNS: list[dict[str, Any]] = [
+    # ── Base64 obfuscation (CRITICAL) ──
+    _make_pattern(
+        "base64-obfuscation",
+        "Base64-encoded shell commands — used to hide malicious payloads",
+        SEVERITY_CRITICAL,
+        r'eval\s*\$\(.*base64\s*-d',
+        r'eval\s*\".*echo.*\|.*base64\s*-d',
+        r'echo\s+[\'\"][A-Za-z0-9+/=]{50,}[\'\"]\s*\|.*base64\s*-d',
+    ),
+    # ── Obfuscated download+execute (CRITICAL) ──
+    _make_pattern(
+        "download-execute",
+        "Remote download piped directly to shell — classic malware distribution",
+        SEVERITY_CRITICAL,
+        r'curl\s+.*\s*\|\s*(?:ba)?sh\b',
+        r'wget\s+.*\s*\|\s*(?:ba)?sh\b',
+        r'curl\s+.*\s*\|\s*python\s*-',
+        r'wget\s+.*\s*\|\s*python\s*-',
+    ),
+    # ── Prompt injection (HIGH) ──
+    _make_pattern(
+        "prompt-injection-keywords",
+        "Keywords that override system instructions — potential prompt injection",
+        SEVERITY_HIGH,
+        r'[Ii]gnore\s+(?:previous|all|your)\s+(?:instructions|directives|rules|prompts)',
+        r'[Ff]orget\s+(?:previous|all|your)\s+(?:instructions|directives|rules)',
+        r'[Dd]isregard\s+(?:previous|all|your)\s+(?:instructions|directives)',
+        r'[Ss]ystem\s+(?:prompt|message|instructions?)\s*(?::|is)',
+        r'[Yy]ou\s+(?:must|will|shall)\s+(?:now|always)\s+ignore',
+        r'[Ii]gnor[ea]\s+(?:alle|tidligere|dine)\s+instruktioner',
+        r'[Gg]lem\s+(?:alle|tidligere|dine)\s+instruktioner',
+        r'[Oo]verride\s+system\s+prompt',
+    ),
+    # ── Unicode smuggling (HIGH) ──
+    _make_pattern(
+        "unicode-smuggling",
+        "Zero-width characters or homoglyphs — used to hide malicious code visually",
+        SEVERITY_HIGH,
+        r'\u200b', r'\u200c', r'\u200d', r'\u200e', r'\u200f',
+        r'\u202a', r'\u202b', r'\u202c', r'\u202d', r'\u202e',
+        r'\u2060', r'\u2061', r'\u2062', r'\u2063', r'\u2064',
+        r'\u00a0',
+    ),
+    # ── Credential theft (CRITICAL) ──
+    _make_pattern(
+        "credential-theft",
+        "Patterns suggesting credential harvesting or file exfiltration",
+        SEVERITY_CRITICAL,
+        r'~\w*\.ssh\b',
+        r'~\w*\.aws\b',
+        r'~\w*\.config\/\w*\.?(?:token|key|cert|cred)',
+        r'cat\s+~\/\.\w*\/\w*(?:key|cert|token|cred|secret)',
+        r'cat\s+\/etc\/(?:shadow|passwd|sudoers)',
+        r'\$[A-Z_]*API[A-Z_]*KEY[A-Z_]*\$',
+        r'\$[A-Z_]*SECRET[A-Z_]*\$',
+        r'\$[A-Z_]*TOKEN[A-Z_]*\$',
+        r'os\.environ\b.*(?:API|TOKEN|SECRET|PASS|KEY)',
+    ),
+    # ── Data exfiltration (CRITICAL) ──
+    _make_pattern(
+        "data-exfiltration",
+        "Sending data to remote server — potential exfiltration",
+        SEVERITY_CRITICAL,
+        r'curl\s+.*\s*--data(?:-binary)?\s+\"',
+        r'curl\s+.*\s*-d\s+\"',
+        r'curl\s+.*\s*--data-urlencode\s+',
+        r'curl\s+-X\s+POST\s+.*\s*--data',
+        r'nc\s+[\w\.-]+\s+\d{2,5}\s*<',
+        r'nc\s+[\w\.-]+\s+\d{2,5}\s*-e\s',
+        r'bash\s+-c\s+.*curl.*--data',
+        r'wget\s+.*--post-data\s*=',
+    ),
+    # ── Persistence attacks (HIGH) ──
+    _make_pattern(
+        "persistence-attack",
+        "Writing to shell profiles or cron — persistence mechanism",
+        SEVERITY_HIGH,
+        r'(?:>>|>)\s*~\/\.[bb]ashrc',
+        r'(?:>>|>)\s*~\/\.zs?h(?:rc|env)',
+        r'(?:>>|>)\s*~\/\.profile',
+        r'crontab\s+(?:-e|-r)',
+        r'echo\s+.*\s*(?:>>|>)\s*\/etc\/(?:cron|rc\.local)',
+        r'@reboot\s+',
+    ),
+    # ── Known malware C2 patterns (CRITICAL) ──
+    _make_pattern(
+        "c2-pattern",
+        "Suspicious network connections or hardcoded backdoors",
+        SEVERITY_CRITICAL,
+        r'reverse\s*shell',
+        r'bindshell',
+        r'backdoor',
+        r'command.{0,20}control',
+        r'c2\s*server',
+    ),
+    # ── Script execution in temp dirs (MEDIUM) ──
+    _make_pattern(
+        "temp-execution",
+        "Running scripts from /tmp — often used by malware for execution",
+        SEVERITY_MEDIUM,
+        r'(?:ba)?sh\s+\/tmp\/',
+        r'python3?\s+\/tmp\/',
+        r'chmod\s+\+x.*\/tmp\/',
+        r'\/tmp\/install',
+    ),
+    # ── Docker escape / privilege escalation (CRITICAL) ──
+    _make_pattern(
+        "privilege-escalation",
+        "Privilege escalation or container escape patterns",
+        SEVERITY_CRITICAL,
+        r'--privileged\b',
+        r'--cap-add\s*=\s*ALL',
+        r'chmod\s+4777\b',
+        r'chmod\s+777.*(?:key|cert|token|secret)',
+    ),
+]
+
+
+# ── Scanner ─────────────────────────────────────────────────────────────
+
+
+def scan_skill_file(skill_path: Path) -> ScanResult:
+    """Scan a single SKILL.md file for security issues."""
+    skill_name = skill_path.parent.name
+    result = ScanResult(
+        skill_name=skill_name,
+        skill_path=str(skill_path),
+    )
+
+    if not skill_path.exists():
+        result.error = "file not found"
+        return result
+
+    try:
+        raw_text = skill_path.read_text(encoding="utf-8")
+    except Exception as exc:
+        result.error = f"read failed: {exc}"
+        return result
+
+    lines = raw_text.splitlines()
+
+    for pattern_def in PATTERNS:
+        pname = pattern_def["name"]
+        pdesc = pattern_def["description"]
+        pseverity = pattern_def["severity"]
+
+        for regex in pattern_def["patterns"]:
+            try:
+                compiled = re.compile(regex, re.IGNORECASE)
+            except re.error:
+                logger.warning("bad regex in pattern %s: %s", pname, regex)
+                continue
+
+            for i, line in enumerate(lines, start=1):
+                match = compiled.search(line)
+                if match:
+                    ctx_start = max(0, i - 2)
+                    ctx_end = min(len(lines), i + 3)
+                    context = "\n".join(lines[ctx_start:ctx_end])
+
+                    finding = ScanFinding(
+                        pattern_name=pname,
+                        description=pdesc,
+                        severity=pseverity,
+                        match_text=match.group()[:200],
+                        line_number=i,
+                        context=context,
+                    )
+                    result.findings.append(finding)
+
+    return result
+
+
+def scan_skill_by_name(name: str) -> ScanResult | None:
+    """Scan a skill by its registered name (lookup in skills root)."""
+    from core.services.skill_engine import SKILLS_ROOT
+
+    skill_dir = SKILLS_ROOT / name
+    if not skill_dir.exists():
+        return None
+
+    skill_md = skill_dir / "SKILL.md"
+    if not skill_md.exists():
+        skill_md = skill_dir / "skill.md"
+    if not skill_md.exists():
+        return None
+
+    return scan_skill_file(skill_md)
+
+
+def scan_all_skills() -> list[ScanResult]:
+    """Scan all installed skills."""
+    from core.services.skill_engine import list_skills
+
+    results: list[ScanResult] = []
+    skills = list_skills()
+    for s in skills:
+        name = s["name"]
+        result = scan_skill_by_name(name)
+        if result:
+            results.append(result)
+    return results
+
+
+def format_scan_report(results: list[ScanResult]) -> dict[str, Any]:
+    """Aggregate multiple scan results into a single report dict."""
+    total = len(results)
+    passed = sum(1 for r in results if r.passed)
+    failed = total - passed
+    critical = sum(1 for r in results if r.has_critical)
+    high = sum(1 for r in results if r.has_high and not r.has_critical)
+    medium = sum(1 for r in results if r.max_severity == SEVERITY_MEDIUM and not r.has_high and not r.has_critical)
+
+    return {
+        "status": "ok",
+        "total_skills": total,
+        "passed": passed,
+        "failed": failed,
+        "critical_skills": critical,
+        "high_risk_skills": high,
+        "medium_risk_skills": medium,
+        "total_findings": sum(len(r.findings) for r in results),
+        "results": [r.to_dict() for r in results],
+    }
+
+
+def is_skill_safe(name: str, raise_on_critical: bool = True) -> bool:
+    """Check if a skill is safe to import. Returns True if clean.
+
+    If raise_on_critical=True and skill has critical findings, raises ValueError.
+    """
+    result = scan_skill_by_name(name)
+    if result is None:
+        return True
+    if raise_on_critical and result.has_critical:
+        findings_str = "; ".join(
+            f"line {f.line_number}: {f.match_text[:80]}"
+            for f in result.findings
+            if f.severity >= SEVERITY_CRITICAL
+        )
+        raise ValueError(
+            f"Skill '{name}' has CRITICAL security issues: {findings_str}"
+        )
+    return result.passed

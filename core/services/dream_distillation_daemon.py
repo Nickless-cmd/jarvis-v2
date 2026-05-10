@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime, timedelta
 
 from core.eventbus.bus import event_bus
@@ -13,6 +14,8 @@ from core.runtime.settings import load_settings
 from core.services.chronicle_engine import list_cognitive_chronicle_entries
 from core.services.daemon_llm import daemon_llm_call
 
+logger = logging.getLogger(__name__)
+
 _STATE_KEY = "dream_distillation_daemon.state"
 _VISIBLE_IDLE_MINUTES = 30
 _RESIDUE_TTL_HOURS = 48
@@ -20,13 +23,37 @@ _MAX_RESIDUE_WORDS = 25
 _MAX_RESIDUE_CHARS = 180
 
 
+def _run_bias_pipeline_safe() -> dict:
+    """Run the dream-bias distillation pipeline and never raise.
+
+    Has its own kill-switch and min-content gate inside the engine, so
+    calling this on every cycle is cheap when there's no regret material.
+    """
+    try:
+        from core.services.dream_bias_engine import run_dream_bias_distillation
+        return run_dream_bias_distillation(workspace_id="default")
+    except Exception as exc:
+        logger.warning("dream_distillation_daemon: bias call failed: %s", exc)
+        return {"status": "error", "reason": str(exc)[:120]}
+
+
 def run_dream_distillation_daemon(
     *,
     trigger: str = "heartbeat",
     last_visible_at: str = "",
 ) -> dict[str, object]:
+    # Run the Lag 2 dream-bias pipeline alongside the residue pipeline.
+    # The bias engine has its own kill-switch + min-content gate, so this
+    # is cheap when there's nothing to distill. Result is attached to all
+    # return paths below as `bias_pipeline`.
+    bias_result = _run_bias_pipeline_safe()
+
     if not _dream_residue_enabled():
-        return {"status": "disabled", "reason": "layer_dream_residue_enabled=false"}
+        return {
+            "status": "disabled",
+            "reason": "layer_dream_residue_enabled=false",
+            "bias_pipeline": bias_result,
+        }
 
     clear_expired_dream_residue()
     active = _state()
@@ -36,6 +63,7 @@ def run_dream_distillation_daemon(
             "created_at": str(active.get("created_at") or ""),
             "expires_at": str(active.get("expires_at") or ""),
             "residue": str(active.get("residue") or ""),
+            "bias_pipeline": bias_result,
         }
 
     last_visible = _parse_iso(last_visible_at)
@@ -47,12 +75,17 @@ def run_dream_distillation_daemon(
                 "status": "not_idle",
                 "reason": "visible-activity-too-recent",
                 "idle_minutes": round(idle_minutes, 1),
+                "bias_pipeline": bias_result,
             }
 
     chronicle_entries = list_cognitive_chronicle_entries(limit=6)
     selected_entries = chronicle_entries[:3]
     if not selected_entries:
-        return {"status": "no_basis", "reason": "no-chronicle-entries"}
+        return {
+            "status": "no_basis",
+            "reason": "no-chronicle-entries",
+            "bias_pipeline": bias_result,
+        }
 
     approval_entries = list_approval_feedback(limit=2)
     dismissed_inner = _load_dismissed_inner_voice()
@@ -66,7 +99,11 @@ def run_dream_distillation_daemon(
         deprioritized_initiatives=deprioritized_initiatives,
     )
     if not residue:
-        return {"status": "no_output", "reason": "llm-empty"}
+        return {
+            "status": "no_output",
+            "reason": "llm-empty",
+            "bias_pipeline": bias_result,
+        }
 
     created_at = now.isoformat()
     expires_at = (now + timedelta(hours=_RESIDUE_TTL_HOURS)).isoformat()
@@ -98,7 +135,7 @@ def run_dream_distillation_daemon(
         )
     except Exception:
         pass
-    return {"status": "written", **payload}
+    return {"status": "written", **payload, "bias_pipeline": bias_result}
 
 
 def get_dream_residue_for_prompt(*, max_chars: int = _MAX_RESIDUE_CHARS) -> str:

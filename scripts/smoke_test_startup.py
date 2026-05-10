@@ -97,6 +97,34 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Verify absence_traces + soft_deleted_at columns + forgetting daemon (Lag 11)
+        try:
+            from core.runtime.db import connect
+            with connect() as c:
+                row = c.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name='absence_traces'"
+                ).fetchone()
+                if row is None:
+                    raise RuntimeError("absence_traces table missing")
+                cols = [
+                    r[1] for r in c.execute(
+                        "PRAGMA table_info(cognitive_chronicle_entries)"
+                    ).fetchall()
+                ]
+                if "soft_deleted_at" not in cols:
+                    raise RuntimeError(
+                        "soft_deleted_at missing on cognitive_chronicle_entries"
+                    )
+            from core.services.forgetting_runtime import (
+                start_forgetting_runtime,  # noqa: F401
+            )
+            from core.tools.forgetting_tools import (
+                FORGETTING_TOOL_DEFINITIONS,  # noqa: F401
+            )
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

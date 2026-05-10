@@ -475,6 +475,10 @@ from core.tools.skill_gate_tool import (
     SKILL_GATE_TOOL_DEFINITIONS,
     SKILL_GATE_TOOL_HANDLERS,
 )
+from core.tools.skill_chain_tool import (
+    SKILL_CHAIN_TOOL_DEFINITIONS,
+    SKILL_CHAIN_TOOL_HANDLERS,
+)
 from core.tools.forgetting_tools import (
     FORGETTING_TOOL_DEFINITIONS,
     FORGETTING_TOOL_HANDLERS,
@@ -2316,6 +2320,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *COMPOSITE_TOOL_DEFINITIONS,
     *SKILL_ENGINE_TOOL_DEFINITIONS,
     *SKILL_GATE_TOOL_DEFINITIONS,
+    *SKILL_CHAIN_TOOL_DEFINITIONS,
     *FORGETTING_TOOL_DEFINITIONS,
     *NUDGE_BROEND_TOOL_DEFINITIONS,
     {
@@ -6179,6 +6184,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Skill engine tools (SKILL.md skill system)
     **SKILL_ENGINE_TOOL_HANDLERS,
     **SKILL_GATE_TOOL_HANDLERS,
+    # Skill chain (Lag #4) — sequential skill composition
+    **SKILL_CHAIN_TOOL_HANDLERS,
     # Forgetting (Lag 11) — release_memory ritual
     **FORGETTING_TOOL_HANDLERS,
     **NUDGE_BROEND_TOOL_HANDLERS,

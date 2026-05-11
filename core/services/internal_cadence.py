@@ -499,6 +499,22 @@ def _ensure_producers_registered() -> None:
         depends_on=["creative_journal_runtime"],
     ))
 
+    def _run_finitude_monthly_reflection(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.finitude_runtime import (
+            run_monthly_finitude_reflection,
+        )
+
+        return run_monthly_finitude_reflection(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="finitude_monthly_reflection",
+        cooldown_minutes=43200,  # 30 days
+        visible_grace_minutes=60,
+        run_fn=_run_finitude_monthly_reflection,
+        priority=27,
+        depends_on=["finitude_runtime"],
+    ))
+
     def _run_life_projects_reassessment(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.life_projects import tick_life_projects_reassessment
         return tick_life_projects_reassessment(trigger=trigger, last_visible_at=last_visible_at)

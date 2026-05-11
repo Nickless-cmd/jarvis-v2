@@ -2584,6 +2584,15 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Emotion Repair Bridge daemon — tovejskobling emotion↔selvreparation
+    if _dm.is_enabled("emotion_repair_bridge"):
+        try:
+            from core.services.emotion_repair_bridge_daemon import tick_emotion_repair_bridge
+            _er_result = tick_emotion_repair_bridge()
+            _dm.record_daemon_tick("emotion_repair_bridge", _er_result or {})
+        except Exception:
+            pass
+
     # ── Group 3: Rare cadence (30min+/daily/weekly LLM daemons) ──
 
     # Aesthetic taste

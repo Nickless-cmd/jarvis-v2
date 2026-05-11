@@ -4258,6 +4258,14 @@ def _visible_visual_memory_section() -> str | None:
             parts.append(a)
     except Exception:
         pass
+    # Music accumulator (Lag #6 Phase 1, added 2026-05-11)
+    try:
+        from core.services.ambient_sound_daemon import get_music_accumulator_for_prompt
+        music_line = get_music_accumulator_for_prompt()
+        if music_line:
+            parts.append(music_line)
+    except Exception:
+        pass
     try:
         from core.services.personal_project import get_project_prompt_hint
         pp = get_project_prompt_hint()

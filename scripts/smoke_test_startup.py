@@ -187,6 +187,25 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Creative voice (Lag #4 — added 2026-05-11)
+        try:
+            from core.services import voice_anchor, voice_curator  # noqa: F401
+            from core.services.voice_anchor import read_voice_anchor  # noqa: F401
+            from core.services.voice_curator import refresh_voice_recent  # noqa: F401
+            from core.services.creative_journal_runtime import (  # noqa: F401
+                _should_skip_week,
+                _interval_days_for_state,
+                _fetch_broken_decisions,
+                _fetch_affective_klangbraet,
+                _format_yaml_frontmatter,
+                _quality_lane_enabled,
+            )
+            from core.services.prompt_contract import (  # noqa: F401
+                format_journal_for_heartbeat,
+            )
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

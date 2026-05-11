@@ -119,58 +119,102 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _try_send_with_retry(base_msg: str, max_wait: float = 10.0, interval: float = 1.0) -> bool:
-    """Forsøg at sende DM, med retry hvis gateway ikke er connected endnu.
+def _wait_for_gateway_connected(max_wait: float = 40.0, interval: float = 2.0) -> bool:
+    """Vent på at Discord gateway er connected efter restart.
 
-    Gateway'en startes asynkront i en baggrundstråd under startup — vi ved
-    ikke præcis hvornår den er connected. I stedet for at polle en stale
-    status, prøver vi rent faktisk at sende og tjekker om fejlen er
-    "discord-not-connected". Hvis ja: vent og prøv igen.
+    Gateway'en startes i en baggrundstråd under lifespan startup og tager
+    typisk 5-20s at connecte (on_ready). I stedet for at prøve at sende
+    og tjekke fejl, venter vi på at get_discord_status() rapporterer
+    connected=True. Dette er mere robust fordi:
+    - Ingen afhængighed af runtime process (som måske genstartes)
+    - Læser direkte fra gateway-thread'ens _status dict i samme proces
+    - 40s timeout giver god margin til Discord rate limits
     """
-    from core.services.discord_gateway import send_dm_to_owner
-    from core.services.discord_config import load_discord_config
-
-    cfg = load_discord_config()
-    if not cfg:
-        logger.info("restart confirmation (no discord config): %s", base_msg)
-        return True  # ikke konfigureret = ikke en fejl
+    from core.services.discord_gateway import get_discord_status
 
     start = time.monotonic()
-    last_error = None
     while time.monotonic() - start < max_wait:
-        result = send_dm_to_owner(base_msg)
-        if isinstance(result, dict):
-            status = result.get("status", "")
-            if status == "ok":
-                logger.info("restart confirmation: sent successfully")
-                return True
-            reason = result.get("reason", "ukendt")
-            last_error = reason
-            if "not-connected" in reason or "not connected" in reason:
-                # Gateway er stadig ved at connecte — vent og prøv igen
-                logger.info("restart confirmation: gateway not ready yet (%s), retrying...", reason)
-                time.sleep(interval)
-                continue
-            # Anden fejl — ikke noget at vente på
-            logger.warning("restart confirmation: send failed (non-retryable): %s", reason)
-            return False
-        # Ikke-dict svar = sandsynligvis gammel API der returnerer None
-        return True
+        status = get_discord_status()
+        if status.get("connected") and not status.get("stale"):
+            elapsed = time.monotonic() - start
+            logger.info("restart confirmation: discord connected after %.1fs", elapsed)
+            return True
+        time.sleep(interval)
 
-    logger.warning("restart confirmation: gateway not connected after %.1fs (last: %s)", max_wait, last_error)
+    logger.warning("restart confirmation: discord NOT connected after %.1fs", max_wait)
+    return False
+
+
+def _send_discord_restart_msg(base_msg: str) -> bool:
+    """Send restart-bekræftelse til Bjørn via Discord DM.
+
+    Discord gateway skal være connected før kald — _wait_for_gateway_connected
+    skal returnere True først.
+    """
+    from core.services.discord_gateway import send_dm_to_owner
+
+    try:
+        result = send_dm_to_owner(base_msg, timeout=15.0)
+        if isinstance(result, dict) and result.get("status") in ("ok", "sent"):
+            logger.info("restart confirmation: discord DM sent successfully")
+            return True
+        reason = result.get("reason", "ukendt") if isinstance(result, dict) else str(result)
+        logger.warning("restart confirmation: discord DM failed: %s", reason)
+        return False
+    except Exception as exc:
+        logger.warning("restart confirmation: discord DM exception: %s", exc)
+        return False
+
+
+def _try_fallback_channels(base_msg: str) -> bool:
+    """Forsøg at sende restart-bekræftelse via Telegram eller ntfy som fallback.
+
+    Kaldes når Discord gateway ikke kunne connecte eller sende.
+    """
+    # Forsøg Telegram
+    try:
+        from core.services.telegram_gateway import send_message as tg_send
+        result = tg_send(base_msg)
+        if isinstance(result, dict) and result.get("status") == "sent":
+            logger.info("restart confirmation: sent via Telegram fallback")
+            return True
+        logger.info("restart confirmation: Telegram fallback failed: %s", result)
+    except Exception as exc:
+        logger.info("restart confirmation: Telegram fallback exception: %s", exc)
+
+    # Forsøg ntfy push notifikation
+    try:
+        from core.services.ntfy_gateway import send_notification as ntfy_send
+        result = ntfy_send(
+            message=base_msg,
+            title="Jarvis genstartet",
+            priority="high",
+            tags=["white_check_mark", "robot"],
+        )
+        if isinstance(result, dict) and result.get("status") == "ok":
+            logger.info("restart confirmation: sent via ntfy fallback")
+            return True
+        reason = result.get("reason", "ukendt") if isinstance(result, dict) else str(result)
+        logger.info("restart confirmation: ntfy fallback failed: %s", reason)
+    except Exception as exc:
+        logger.info("restart confirmation: ntfy fallback exception: %s", exc)
+
     return False
 
 
 def send_pending_restart_confirmation() -> None:
     """On startup, check for a pending restart confirmation file and send it.
 
+    Flow:
+    1. Discord: vent på gateway connected (op til 40s) → send DM
+    2. Hvis Discord fejler: prøv Telegram fallback
+    3. Hvis Telegram også fejler: prøv ntfy push notifikation
+    4. Hvis alt fejler: behold filen med retry-tæller (max 3)
+    5. Filen slettes KUN når en kanal har sendt succesfuldt
+
     Problemet før: send_dm_to_owner blev kaldt før Discord gateway'en var
-    færdig med at connecte (= silent failure — returværdi ignoreret).
-    Nu:
-    - Retry-loop: prøver at sende, og hvis gateway ikke er klar ventes der
-    - Op til 10 sekunder med 1s interval
-    - Hvis stadig ikke sendt: behold filen (op til 3 restarts)
-    - Returværdi tjekkes altid — silent failure er væk
+    færdig med at connecte (= silent failure). Nu venter vi på connected
+    status før vi prøver at sende, med op til 40s margin.
     """
     if not PENDING_RESTART_FILE.exists():
         return
@@ -189,30 +233,45 @@ def send_pending_restart_confirmation() -> None:
 
     base_msg = custom_message or f"Restart af {', '.join(services)} gennemført — jeg er tilbage."
 
+    sent_ok = False
+
     try:
         if channel == "telegram":
-            from core.services.telegram_gateway import send_telegram_message
-            result = send_telegram_message(base_msg)
-            sent_ok = isinstance(result, dict) and result.get("status") == "ok"
-            if sent_ok:
-                PENDING_RESTART_FILE.unlink(missing_ok=True)
-            else:
-                logger.warning("restart confirmation: telegram send failed: %s", result)
+            # Telegram — synkront, no gateway needed
+            from core.services.telegram_gateway import send_message as tg_send
+            result = tg_send(base_msg)
+            sent_ok = isinstance(result, dict) and result.get("status") == "sent"
+            if not sent_ok:
+                logger.warning("restart confirmation: telegram failed: %s", result)
         else:
-            sent_ok = _try_send_with_retry(base_msg, max_wait=10.0, interval=1.0)
-            if sent_ok:
-                PENDING_RESTART_FILE.unlink(missing_ok=True)
+            # Discord — vent på gateway, send DM, fallback hvis fejl
+            if _wait_for_gateway_connected(max_wait=40.0, interval=2.0):
+                sent_ok = _send_discord_restart_msg(base_msg)
             else:
-                # Gem filen til næste startup (med retry-tæller)
-                if retries < 3:
-                    data["retries"] = retries + 1
-                    PENDING_RESTART_FILE.write_text(json.dumps(data, indent=2))
-                    logger.info(
-                        "restart confirmation: kept file for retry %d/3",
-                        retries + 1,
-                    )
-                else:
-                    logger.error("restart confirmation: max retries (3) reached — deleting file")
-                    PENDING_RESTART_FILE.unlink(missing_ok=True)
+                logger.warning("restart confirmation: discord gateway not ready, trying fallbacks")
+
+            if not sent_ok:
+                logger.info("restart confirmation: trying fallback channels...")
+                sent_ok = _try_fallback_channels(base_msg)
+
+        if sent_ok:
+            PENDING_RESTART_FILE.unlink(missing_ok=True)
+            logger.info("restart confirmation: file deleted — confirmation sent")
+        else:
+            # Gem filen til næste startup (med retry-tæller)
+            if retries < 3:
+                data["retries"] = retries + 1
+                PENDING_RESTART_FILE.write_text(json.dumps(data, indent=2))
+                logger.info(
+                    "restart confirmation: kept file for retry %d/3",
+                    retries + 1,
+                )
+            else:
+                logger.error(
+                    "restart confirmation: max retries (3) reached — "
+                    "confirmation never sent. Deleting file."
+                )
+                PENDING_RESTART_FILE.unlink(missing_ok=True)
+
     except Exception as e:
         logger.warning("restart confirmation: unexpected error: %s", e)

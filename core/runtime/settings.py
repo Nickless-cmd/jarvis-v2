@@ -147,6 +147,12 @@ class RuntimeSettings:
     # (deepseek-v4-flash). Falls back to cheap lane if quality lane is
     # unavailable. Single flag covers both rituals.
     finitude_quality_lane_enabled: bool = True
+    # ── Current pull staleness (Lag #5 Phase 1 — added 2026-05-11) ───────
+    # Embedding-similarity check between current_pull and recent landscape
+    # (appetites + chronicle + journal). When cos < threshold → regenerate.
+    current_pull_staleness_check_enabled: bool = True
+    current_pull_staleness_threshold: float = 0.45
+    current_pull_staleness_check_interval_hours: int = 12
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -510,6 +516,24 @@ def load_settings() -> RuntimeSettings:
             data.get(
                 "finitude_quality_lane_enabled",
                 defaults.finitude_quality_lane_enabled,
+            )
+        ),
+        current_pull_staleness_check_enabled=bool(
+            data.get(
+                "current_pull_staleness_check_enabled",
+                defaults.current_pull_staleness_check_enabled,
+            )
+        ),
+        current_pull_staleness_threshold=float(
+            data.get(
+                "current_pull_staleness_threshold",
+                defaults.current_pull_staleness_threshold,
+            )
+        ),
+        current_pull_staleness_check_interval_hours=int(
+            data.get(
+                "current_pull_staleness_check_interval_hours",
+                defaults.current_pull_staleness_check_interval_hours,
             )
         ),
         longing_daemon_cadence_minutes=int(

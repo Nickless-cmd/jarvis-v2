@@ -441,6 +441,25 @@ def build_visible_chat_prompt_assembly(
             parts.append(section)
             included_files.append(filename)
 
+    # Continuity wake-up block — inject after identity block so Jarvis
+    # wakes up with felt state from the previous session instead of cold.
+    # Only injects if a state capsule exists (not a first-ever start).
+    # Compact lane gets a shorter version.
+    try:
+        from core.services.continuity import build_wake_up_block
+        wake_block = build_wake_up_block()
+        if wake_block:
+            if compact:
+                # Compact: only include the first 3 lines (tier + mood + focus)
+                wake_lines = wake_block.split("\n")
+                compact_wake = "\n".join(wake_lines[:4])
+                parts.append(f"▲ WAKE (compact):\n{compact_wake}")
+            else:
+                parts.append(wake_block)
+            derived_inputs.append("continuity wake-up block")
+    except Exception:
+        pass
+
     # Current pull — dynamic inner-desire signal, kept high-priority but
     # AFTER the stable identity block so the prefix stays cacheable.
     if current_pull_hint:

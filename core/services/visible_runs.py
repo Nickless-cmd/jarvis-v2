@@ -2777,6 +2777,62 @@ def _run_memory_postprocess(run: VisibleRun, assistant_text: str) -> None:
     except Exception as exc:
         errors.append(f"cross_session_threads:{type(exc).__name__}:{exc}")
 
+    # Continuity state capsule: persist after every turn
+    try:
+        from core.services.continuity import live_update_after_turn
+
+        # Gather mood approximation from available signals
+        mood = {}
+        try:
+            from core.services.mood_oscillator import get_current_mood as _gcm, get_mood_intensity as _gmi
+            mood_name = _gcm()
+            mood_intensity = _gmi()
+            if mood_name:
+                mood["bearing"] = str(mood_name)
+            if mood_intensity is not None:
+                mood["curiosity"] = float(mood_intensity) * 0.8 + 0.2
+        except Exception:
+            pass
+
+        # Gather attention from active goals
+        attention = {}
+        try:
+            from core.services.goal_signal_tracking import list_runtime_goal_signals
+            signals = list_runtime_goal_signals(limit=3)
+            if signals:
+                top = signals[0]
+                attention["active_goal_title"] = str(top.get("goal_title", top.get("title", "")))[:80]
+                attention["current_focus"] = str(top.get("title", top.get("goal_title", "")))[:80]
+        except Exception:
+            pass
+
+        # Gather recent activity
+        recent_activity = {"last_tool_result_summary": assistant_text[:120]}
+        try:
+            from core.services.chat_sessions import recent_chat_tool_messages
+            tool_msgs = recent_chat_tool_messages(run.session_id, limit=3)
+            if tool_msgs:
+                tools_used = []
+                for tm in tool_msgs:
+                    content = str(tm.get("content", "") or "")
+                    name = str(tm.get("tool_name", "") or "")
+                    if name:
+                        tools_used.append(name)
+                    elif "tool_use" in str(tm.get("role", "")):
+                        tools_used.append(content.split("(")[0][:40])
+                recent_activity["tools_used_recently"] = tools_used[:10]
+        except Exception:
+            pass
+
+        live_update_after_turn(
+            mood=mood or None,
+            attention=attention or None,
+            recent_activity=recent_activity or None,
+            session_id=run.session_id,
+        )
+    except Exception:
+        pass
+
     event_bus.publish(
         "memory.visible_run_postprocess_completed",
         {

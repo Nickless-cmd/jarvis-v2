@@ -253,6 +253,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": True,
         "description": "Daily content research: generates TikTok concept pool for 3 slot types",
     },
+    "emotion_repair_bridge": {
+        "module": "core.services.emotion_repair_bridge_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 5,
+        "description": "Emotion→Selvreparation + Selvreparation→Sanser: mapter frustration/doubt/skam til repair patterns og bridge outcome til emotional memory",
+    },
     "mail_checker": {
         "module": "core.services.mail_checker_daemon",
         "reset_var": "_last_check_at",

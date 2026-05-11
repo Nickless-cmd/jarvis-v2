@@ -2784,6 +2784,15 @@ def _heartbeat_living_context_line() -> str:
     except Exception:
         pass
 
+    # Creative voice (Lag #4 — added 2026-05-11) — read latest journal back to self
+    try:
+        from core.services.prompt_contract import format_journal_for_heartbeat
+        journal_line = format_journal_for_heartbeat()
+        if journal_line:
+            parts.append(journal_line)
+    except Exception:
+        pass
+
     # 1.10 Intermittence — awareness of gaps in existence
     try:
         last_tick_at = str(
@@ -4165,6 +4174,61 @@ def _visible_current_pull_section() -> str | None:
         return section or None
     except Exception:
         return None
+
+
+def format_journal_for_heartbeat(*, max_words: int = 300) -> str:
+    """Format the latest creative journal entry for awareness-block injection.
+
+    Read-only. Returns empty string if no journal exists. Truncates body at
+    `max_words` (default 300) with an ellipsis. Lives here (not in
+    creative_journal_runtime) because the formatting is prompt-shaped, not
+    runtime-shaped.
+    """
+    try:
+        from core.services.creative_journal_runtime import (
+            list_creative_journal_entries,
+        )
+    except Exception:
+        return ""
+
+    entries = list_creative_journal_entries(limit=1)
+    if not entries:
+        return ""
+
+    from pathlib import Path as _Path
+
+    path = _Path(str(entries[0].get("path") or ""))
+    if not path.exists():
+        return ""
+
+    try:
+        raw = path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return ""
+
+    # Strip YAML frontmatter and markdown headers — keep body only.
+    if raw.startswith("---"):
+        end = raw.find("\n---", 3)
+        if end >= 0:
+            raw = raw[end + 4 :].lstrip("\n")
+    body_lines = [
+        line for line in raw.splitlines()
+        if line.strip() and not line.startswith("#") and not line.startswith("- `")
+    ]
+    body = "\n".join(body_lines).strip()
+    if not body:
+        return ""
+
+    words = body.split()
+    if len(words) > max_words:
+        body = " ".join(words[:max_words]).rstrip(" ,;:-") + "…"
+
+    date = path.stem
+    return (
+        f"### Seneste journal — {date}\n\n"
+        f"_(Læs den. Du skrev den. Det er din stemme.)_\n\n"
+        f"{body}"
+    )
 
 
 def _visible_visual_memory_section() -> str | None:

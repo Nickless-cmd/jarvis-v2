@@ -7,16 +7,19 @@ for prompt assembly (time of day, productive hours, etc).
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from core.eventbus.bus import event_bus
 
 logger = logging.getLogger(__name__)
 
+_LOCAL_TZ = ZoneInfo("Europe/Copenhagen")
+
 
 def build_temporal_context() -> dict[str, object]:
-    """Build current temporal context."""
-    now = datetime.now(UTC)
+    """Build current temporal context in local (CEST/CET) time."""
+    now = datetime.now(_LOCAL_TZ)
     hour = now.hour
     weekday = now.weekday()  # 0=Monday
 

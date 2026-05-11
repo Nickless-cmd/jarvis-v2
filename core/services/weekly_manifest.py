@@ -16,14 +16,16 @@ roughly once per week (Sunday-ish).
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from typing import Any
 
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.services.daemon_llm import daemon_llm_call
 
 logger = logging.getLogger(__name__)
+_LOCAL_TZ = ZoneInfo("Europe/Copenhagen")
 
 
 def _weekly_manifest_path() -> Path:
@@ -33,7 +35,7 @@ def _weekly_manifest_path() -> Path:
 def _gather_context() -> dict[str, Any]:
     """Pull recent self-state to ground the reflection."""
     ctx: dict[str, Any] = {"chronicle_excerpt": "", "mood_snapshot": "", "week_label": ""}
-    now = datetime.now(UTC)
+    now = datetime.now(_LOCAL_TZ)
     iso_year, iso_week, _ = now.isocalendar()
     ctx["week_label"] = f"{iso_year}-W{iso_week:02d}"
     try:
@@ -81,7 +83,7 @@ def build_weekly_manifest() -> dict[str, Any]:
         logger.warning("weekly_manifest: empty/short LLM output, skipping write")
         return {"status": "failed", "reason": "llm output empty or too short", "week_label": ctx.get("week_label")}
 
-    timestamp = datetime.now(UTC).isoformat(timespec="seconds")
+    timestamp = datetime.now(_LOCAL_TZ).isoformat(timespec="seconds")
     content = (
         f"# Ugentligt Manifest — {ctx.get('week_label', '?')}\n\n"
         f"*Skrevet af mig, til mig. {timestamp}.*\n\n"

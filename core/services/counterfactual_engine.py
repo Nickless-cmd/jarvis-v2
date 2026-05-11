@@ -28,6 +28,7 @@ from core.services.counterfactual_triggers import (
     TriggerEvent,
     cf_key,
     fetch_recent_triggers,
+    fetch_recent_aspiration_triggers,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,19 +76,33 @@ def run(*, workspace_id: str = "default", dry_run: bool = True) -> dict:
         summary["elapsed_ms"] = int((time.monotonic() - started_at) * 1000)
         return summary
 
-    # Step 1: fetch triggers
+    # Step 1: fetch triggers (both regret and aspiration)
     try:
-        triggers = fetch_recent_triggers(
+        regret_triggers = fetch_recent_triggers(
             workspace_id=workspace_id,
             lookback_minutes=settings.counterfactual_engine_lookback_minutes,
         )
     except Exception as exc:
-        logger.warning("counterfactual_engine: fetch failed: %s", exc)
-        summary["error"] = f"fetch-failed: {type(exc).__name__}"
-        summary["elapsed_ms"] = int((time.monotonic() - started_at) * 1000)
-        return summary
+        logger.warning("counterfactual_engine: regret fetch failed: %s", exc)
+        regret_triggers = []
+
+    try:
+        aspiration_triggers = fetch_recent_aspiration_triggers(
+            workspace_id=workspace_id,
+            lookback_minutes=settings.counterfactual_engine_lookback_minutes,
+        )
+    except Exception as exc:
+        logger.warning("counterfactual_engine: aspiration fetch failed: %s", exc)
+        aspiration_triggers = []
+
+    triggers = regret_triggers + aspiration_triggers
+    if regret_triggers and aspiration_triggers:
+        # Prefer positive when both are present — promotes balanced reflection
+        triggers = aspiration_triggers + regret_triggers
 
     summary["triggers_fetched"] = len(triggers)
+    summary["regret_count"] = len(regret_triggers)
+    summary["aspiration_count"] = len(aspiration_triggers)
     summary["trigger_breakdown"] = dict(Counter(t.event_type for t in triggers))
 
     if not triggers:
@@ -563,6 +578,39 @@ def narrativize_regret(
         parts.append("Hvad hvis du havde opdaget det tidligere?")
     else:
         parts.append(f"En anden vej var mulig ved {anchor[:60]}")
+    return ". ".join(parts)
+
+
+def narrativize_aspiration(
+    *,
+    trigger_type: str,
+    anchor: str,
+    actual_outcome: str = "",
+    positive_effect: str = "",
+) -> str:
+    """Turn a success/kept-decision into an aspiration narrative.
+
+    Positive counterpart to narrativize_regret — captures what went
+    right so it can be repeated and built upon.
+    """
+    parts = []
+    if trigger_type == "kept":
+        parts.append(f"Du holdt fast i {anchor[:60]}")
+        if actual_outcome:
+            parts.append(f"Det førte til: {actual_outcome[:60]}")
+        if positive_effect:
+            parts.append(f"Virkning: {positive_effect[:60]}")
+        parts.append("Hvordan kan du gøre det igen?")
+    elif trigger_type == "goal_completed":
+        parts.append(f"Målet {anchor[:60]} blev nået")
+        if positive_effect:
+            parts.append(f"Det betød: {positive_effect[:60]}")
+        parts.append("Hvad kan du lære af den vej?")
+    elif trigger_type == "conflict_resolved":
+        parts.append(f"Konflikten omkring {anchor[:60]} blev løst")
+        parts.append("Hvad gjorde forskellen?")
+    else:
+        parts.append(f"En vej viste sig at være rigtig ved {anchor[:60]}")
     return ". ".join(parts)
 
 

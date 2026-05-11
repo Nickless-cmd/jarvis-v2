@@ -414,6 +414,36 @@ def _gather_grounding() -> dict[str, object]:
     except Exception:
         pass
 
+    # Decision success echoes — positive counterpart to open loops
+    try:
+        from core.services.decision_ghosts import (
+            build_decision_ghosts_surface,
+        )
+        ghosts = build_decision_ghosts_surface()
+        if ghosts.get("active") and int(ghosts.get("confirmed_count") or 0) > 0:
+            sources.append("decision-echoes")
+            fragments["decision_echo_count"] = str(ghosts.get("confirmed_count") or "0")
+            top_echo = ghosts.get("top_echo")
+            if top_echo:
+                fragments["decision_echo_top"] = str(top_echo.get("decision") or "")[:100]
+                fragments["decision_echo_outcome"] = str(top_echo.get("outcome") or "")[:100]
+    except Exception:
+        pass
+
+    # Tick quality trend — positive signal: improving trajectory
+    try:
+        from core.services.agent_self_evaluation import (
+            tick_quality_summary,
+        )
+        tq = tick_quality_summary(days=7)
+        trend = tq.get("trend", "")
+        if trend in {"improving", "stable"} and int(tq.get("count") or 0) >= 3:
+            sources.append("tick-quality-trend")
+            fragments["tick_quality_trend"] = trend
+            fragments["tick_quality_avg"] = str(tq.get("avg_score") or "")
+    except Exception:
+        pass
+
     # Experiential support carry-forward
     try:
         from core.services.experiential_runtime_context import (
@@ -583,6 +613,23 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
             context_lines.append(
                 f"- Recent approval feedback: the user has approved {count} approval-gated actions in a row{tool_text}."
             )
+
+    # Decision echoes — positive grounding
+    echo_count = fragments.get("decision_echo_count")
+    echo_top = fragments.get("decision_echo_top")
+    echo_outcome = fragments.get("decision_echo_outcome")
+    if echo_count and int(echo_count) > 0:
+        detail = f": {echo_top} → {echo_outcome}" if echo_top and echo_outcome else ""
+        context_lines.append(
+            f"- Decision confidence: {echo_count} recent decisions proved right{detail}."
+        )
+
+    # Tick quality trend — positive trajectory
+    tick_trend = fragments.get("tick_quality_trend")
+    if tick_trend == "improving":
+        context_lines.append(
+            "- Heartbeat trend: recent ticks are improving in quality."
+        )
 
     # NB: Previous-thought chaining og anti-attractor er fjernet (2026-04-22).
     # Forgænger-inner_voice havde ingen af disse — hver tanke stod alene, og

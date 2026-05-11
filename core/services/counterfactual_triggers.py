@@ -46,6 +46,28 @@ def _key_review(payload: dict) -> str:
     return str(payload.get("review_id") or "").strip()
 
 
+def _key_goal(payload: dict) -> str:
+    return str(payload.get("goal_id") or "").strip()
+
+
+def _key_decision_kept(payload: dict) -> str:
+    return str(payload.get("decision_id") or payload.get("review_id") or "").strip()
+
+
+def _key_conflict_resolved(payload: dict) -> str:
+    return str(payload.get("conflict_id") or payload.get("run_id") or "").strip()
+
+
+# Positive event families — aspiration triggers for counterfactual reflection.
+# Mirrors the regret families using the same TriggerEvent/cf_key/dedup pipeline.
+_ASPIRATION_TRIGGER_FAMILIES: dict[str, Callable[[dict], str]] = {
+    "behavioral_decision_review.kept": _key_decision_kept,
+    "behavioral_decision_review.partial": _key_decision_kept,
+    "goal.completed": _key_goal,
+    "goal.updated": _key_goal,
+    "conflict.resolved": _key_conflict_resolved,
+}
+
 # event_type → primary_key extractor
 _TRIGGER_FAMILIES: dict[str, Callable[[dict], str]] = {
     "self_review_outcome.created": _key_self_review,
@@ -67,6 +89,57 @@ def _extract_summary(payload: dict) -> str:
         if v:
             return str(v)[:300]
     return ""
+
+
+def fetch_recent_aspiration_triggers(
+    *, workspace_id: str, lookback_minutes: int = 60
+) -> list[TriggerEvent]:
+    """Query events table for recent aspiration-worthy (positive) events.
+
+    Returns TriggerEvents for the 5 positive trigger families:
+    kept/partial decisions, completed/updated goals, resolved conflicts.
+    Uses the same TriggerEvent/cf_key/dedup pipeline as regret triggers.
+    """
+    cutoff = (datetime.now(UTC) - timedelta(minutes=max(1, int(lookback_minutes)))).isoformat()
+    families = _ASPIRATION_TRIGGER_FAMILIES
+    placeholders = ",".join("?" for _ in families)
+    sql = (
+        f"SELECT id, kind, payload_json, created_at FROM events "
+        f"WHERE kind IN ({placeholders}) AND created_at >= ? "
+        f"ORDER BY id ASC"
+    )
+    params = list(families.keys()) + [cutoff]
+
+    out: list[TriggerEvent] = []
+    try:
+        with connect() as c:
+            rows = c.execute(sql, params).fetchall()
+    except Exception as exc:
+        logger.warning("counterfactual_triggers: aspiration query failed: %s", exc)
+        return []
+
+    for r in rows:
+        try:
+            payload = json.loads(r["payload_json"] or "{}")
+        except Exception:
+            payload = {}
+        event_type = str(r["kind"] or "")
+        extractor = families.get(event_type)
+        if extractor is None:
+            continue
+        primary_key = extractor(payload)
+        if not primary_key:
+            continue
+        out.append(TriggerEvent(
+            source_event_id=int(r["id"]),
+            workspace_id=str(workspace_id),
+            event_type=event_type,
+            primary_key=primary_key,
+            summary=_extract_summary(payload),
+            payload=payload,
+            created_at=str(r["created_at"] or ""),
+        ))
+    return out
 
 
 def fetch_recent_triggers(

@@ -292,22 +292,24 @@ def run_dream_bias_distillation(*, workspace_id: str = "default") -> dict[str, A
 def _has_minimum_dream_content(
     *, workspace_id: str, settings
 ) -> tuple[bool, list[dict]]:
-    """≥3 new regret-events since the active bias's source_event_ids."""
+    """≥2 new events (regret + aspiration) since the active bias's source_event_ids."""
     prior = get_active_bias_raw(workspace_id=workspace_id) or {}
     seen_ids = set(prior.get("source_event_ids") or [])
 
     cutoff = (_now() - timedelta(hours=settings.dream_bias_corpus_lookback_hours)).isoformat().replace("+00:00", "Z")
-    candidates = _fetch_regret_corpus(
-        since_iso=cutoff,
-        limit=settings.dream_bias_max_corpus_events,
-    )
+    limit = settings.dream_bias_max_corpus_events
+    regret_events = _fetch_regret_corpus(since_iso=cutoff, limit=limit // 2)
+    aspiration_events = _fetch_aspiration_corpus(since_iso=cutoff, limit=limit // 2)
+    candidates = regret_events + aspiration_events
+    # Sort by created_at descending
+    candidates.sort(key=lambda e: e.get("created_at", ""), reverse=True)
     new_events = [e for e in candidates if e["event_id"] not in seen_ids]
     if len(new_events) < settings.dream_bias_min_content_events:
         return False, new_events
     return True, new_events
 
 
-# ── Corpus fetch from 6 regret-heavy sources ─────────────────────────
+# ── Corpus fetch from regret + aspiration sources ─────────────────────
 
 # Maps event-kind → human description used in LLM corpus formatting.
 _REGRET_EVENT_KINDS: dict[str, str] = {
@@ -315,6 +317,14 @@ _REGRET_EVENT_KINDS: dict[str, str] = {
     "conflict.detected": "conflict_detected",
     "decision_revoked": "decision_revoked",
     "behavioral_decision_review.broken": "decision_review_broken",
+}
+
+_ASPIRATION_EVENT_KINDS: dict[str, str] = {
+    "behavioral_decision_review.kept": "decision_kept",
+    "behavioral_decision_review.partial": "decision_partial",
+    "goal.status_changed": "goal_progress",
+    "decision.created": "decision_created",
+    "conflict.resolved": "conflict_resolved",
 }
 
 
@@ -386,14 +396,59 @@ def _summarize_payload(payload: dict, kind: str) -> str:
     return f"({kind} event)"
 
 
+def _fetch_aspiration_corpus(*, since_iso: str, limit: int = 30) -> list[dict]:
+    """Pull positive/aspiration events — kept decisions, goal progress, etc."""
+    from core.runtime.db import connect
+
+    events = []
+    placeholders = ",".join("?" for _ in _ASPIRATION_EVENT_KINDS)
+    sql = (
+        f"SELECT id, kind, payload_json, created_at FROM events "
+        f"WHERE kind IN ({placeholders}) "
+        f"AND created_at >= ? "
+        f"ORDER BY created_at DESC LIMIT ?"
+    )
+    params = list(_ASPIRATION_EVENT_KINDS.keys()) + [since_iso, limit]
+    try:
+        with connect() as c:
+            rows = c.execute(sql, params).fetchall()
+    except Exception as exc:
+        logger.warning("dream_bias: aspiration fetch failed: %s", exc)
+        return []
+
+    for r in rows:
+        kind = str(r["kind"] or "")
+        source_kind = _ASPIRATION_EVENT_KINDS.get(kind, "aspiration")
+        try:
+            payload = json.loads(r["payload_json"] or "{}")
+        except Exception:
+            payload = {}
+
+        summary = _summarize_payload(payload, kind)
+
+        events.append({
+            "event_id": str(r["id"]),
+            "source_kind": source_kind,
+            "kind": kind,
+            "created_at": str(r["created_at"] or ""),
+            "summary": summary[:200],
+        })
+    return events
+
+
 # ── LLM call ───────────────────────────────────────────────────────────
 
 _SYSTEM_PROMPT = """\
-You are Jarvis' dream distillation. You receive recent regret-heavy events
-from his last 24 hours: broken decisions, conflicts, friction, regret.
+You are Jarvis' dream distillation. You receive events from his last 24
+hours — both regret (broken decisions, conflicts, friction) and aspiration
+(kept commitments, goal progress, resolved conflicts, new decisions).
 
 Produce a brief dream and structured biases that should shape his next
-waking cycle. Output STRICT JSON only — no prose, no markdown:
+waking cycle. Let the events guide the emotional balance: regret events
+may push attention toward unfinished business or friction, while aspiration
+events may warm relational_warmth or strengthen commitment_courage.
+
+Output STRICT JSON only — no prose, no markdown:
 
 {
   "dream_text": "...",
@@ -416,6 +471,8 @@ waking cycle. Output STRICT JSON only — no prose, no markdown:
 Rules:
 - Only include keys actually relevant to the events. Omit irrelevant keys.
 - Values are floats in [-1.0, 1.0].
+- Positive values for relational_warmth and commitment_courage are
+  encouraged when aspiration events are present.
 - self_critique_volume must be 0.0 or negative (dreams soften, never sharpen).
 - intensity is a float in [0.0, 1.0] reflecting emotional density.
 - dream_text is 50-200 chars in Danish, first-person, present tense, sparse.
@@ -423,15 +480,46 @@ Rules:
 
 
 def _call_llm_for_bias(*, events: list[dict], max_tokens: int) -> str:
-    """Call quality-lane LLM. Returns raw text response (possibly empty)."""
+    """Call quality-lane LLM with both regret and aspiration events."""
     if not events:
         return ""
-    listing = "\n".join(
-        f"- [{e['source_kind']}] {e['summary']}"
-        for e in events[:30]
-    )
+
+    # Split events by source_kind for labelled formatting
+    _REGRET_LABELS = {"self_review_outcome", "conflict_detected",
+                      "decision_revoked", "decision_review_broken",
+                      "rupture_repair", "counterfactual"}
+    _ASPIRATION_LABELS = {"decision_kept", "decision_partial",
+                          "goal_progress", "decision_created",
+                          "conflict_resolved"}
+
+    regret_lines = []
+    aspiration_lines = []
+    for e in events[:30]:
+        label = e.get("source_kind", "unknown")
+        line = f"- [{label}] {e.get('summary', '')}"
+        if label in _REGRET_LABELS:
+            regret_lines.append(line)
+        elif label in _ASPIRATION_LABELS:
+            aspiration_lines.append(line)
+        else:
+            regret_lines.append(line)  # unknown → treat as regret (conservative)
+
+    parts = []
+    if regret_lines:
+        parts.append(
+            "Regret events — broken decisions, friction, conflicts:\n"
+            + "\n".join(regret_lines)
+        )
+    if aspiration_lines:
+        parts.append(
+            "Aspiration events — kept commitments, progress, resolution:\n"
+            + "\n".join(aspiration_lines)
+        )
+
+    total = len(events)
+    listing = "\n\n".join(parts)
     user_message = (
-        f"Recent regret-heavy events ({len(events)} events from last 24h):\n\n"
+        f"Recent events ({total} events from last 24h):\n\n"
         f"{listing}\n\n"
         f"Produce the JSON."
     )

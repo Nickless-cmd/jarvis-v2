@@ -287,3 +287,38 @@ def test_tick_keeps_pull_when_not_stale(monkeypatch):
     assert new_state["pull"] == "stadig levende pull"
     assert "last_staleness_checked_at" in new_state
     assert new_state["last_staleness_score"] == 0.72
+
+
+def test_build_current_pull_surface_exposes_refresh_history(monkeypatch):
+    from core.services import current_pull
+
+    state_holder: dict = {
+        current_pull._STATE_KEY: {
+            "pull": "aktiv pull",
+            "created_at": "2026-05-09T17:00:00+00:00",
+            "expires_at": (datetime.now(UTC) + timedelta(days=5)).isoformat(),
+            "empty": False,
+            "refresh_history": [
+                {
+                    "refreshed_at": "2026-05-10T08:00:00+00:00",
+                    "reason": "stale",
+                    "stale_score": 0.31,
+                    "previous_pull": "tidligere pull",
+                },
+            ],
+            "last_staleness_score": 0.72,
+            "last_staleness_checked_at": "2026-05-11T19:00:00+00:00",
+        }
+    }
+    monkeypatch.setattr(
+        current_pull, "get_runtime_state_value",
+        lambda key, default=None: state_holder.get(key, default if default is not None else {}),
+    )
+    monkeypatch.setattr(current_pull, "_enabled", lambda: True)
+
+    surface = current_pull.build_current_pull_surface()
+    assert "refresh_history" in surface
+    assert len(surface["refresh_history"]) == 1
+    assert surface["refresh_history"][0]["reason"] == "stale"
+    assert surface["last_staleness_score"] == 0.72
+    assert surface["last_staleness_checked_at"] == "2026-05-11T19:00:00+00:00"

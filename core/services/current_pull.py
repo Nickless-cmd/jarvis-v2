@@ -363,6 +363,10 @@ def build_current_pull_surface() -> dict[str, object]:
             f"Træk: {pull[:60]}" if pull
             else ("Tomt træk (eksplicit 'intet')" if state.get("empty") else "Ingen aktiv pull")
         ),
+        # Phase 1 fields (Lag #5, added 2026-05-11)
+        "refresh_history": list(state.get("refresh_history") or []),
+        "last_staleness_score": float(state.get("last_staleness_score") or 0.0),
+        "last_staleness_checked_at": str(state.get("last_staleness_checked_at") or ""),
     }
 
 

@@ -416,6 +416,82 @@ def _fetch_broken_decisions(*, days_back: int = 7, limit: int = 5) -> list[str]:
     return summaries
 
 
+_AESTHETIC_MOTIF_LOOKBACK_DAYS = 7
+_TASTE_EVIDENCE_FLOOR = 5
+
+
+def _fetch_recent_top_motif(*, days_back: int = _AESTHETIC_MOTIF_LOOKBACK_DAYS) -> str:
+    """Return the most-recent aesthetic motif from the last `days_back` days.
+
+    Empty string if no recent motif. Reads aesthetic_motif_log directly so we
+    don't depend on the aesthetic_taste_daemon being healthy.
+    """
+    from core.runtime.db import connect
+
+    cutoff = (datetime.now(UTC) - timedelta(days=max(days_back, 1))).isoformat()
+    try:
+        with connect() as c:
+            row = c.execute(
+                "SELECT motif FROM aesthetic_motif_log "
+                "WHERE created_at >= ? ORDER BY id DESC LIMIT 1",
+                (cutoff,),
+            ).fetchone()
+    except Exception:
+        return ""
+    if not row:
+        return ""
+    try:
+        motif = str(row["motif"])
+    except Exception:
+        motif = str(row[0])
+    return motif.strip()
+
+
+def _fetch_dominant_taste(*, evidence_floor: int = _TASTE_EVIDENCE_FLOOR) -> str:
+    """Return 'dimension_name (value)' for the taste-dimension with largest |val - 0.5|.
+
+    Gated on evidence_count >= evidence_floor (default 5). Empty string
+    if no profile, low evidence, or all dimensions exactly at 0.5.
+    """
+    try:
+        from core.runtime.db import get_latest_cognitive_taste_profile
+        profile = get_latest_cognitive_taste_profile()
+    except Exception:
+        return ""
+    if not profile:
+        return ""
+    if int(profile.get("evidence_count") or 0) < evidence_floor:
+        return ""
+
+    import json as _json
+    best_name = ""
+    best_value = 0.5
+    best_deviation = 0.0
+    for category in ("code_taste", "design_taste", "communication_taste"):
+        raw = profile.get(category)
+        if not raw:
+            continue
+        try:
+            dims = _json.loads(raw) if isinstance(raw, str) else dict(raw)
+        except Exception:
+            continue
+        if not isinstance(dims, dict):
+            continue
+        for name, value in dims.items():
+            try:
+                v = float(value)
+            except Exception:
+                continue
+            dev = abs(v - 0.5)
+            if dev > best_deviation:
+                best_deviation = dev
+                best_name = str(name)
+                best_value = v
+    if best_deviation <= 0.0 or not best_name:
+        return ""
+    return f"{best_name} ({best_value:.2f})"
+
+
 def _fetch_affective_klangbraet() -> dict[str, object]:
     """Pull current affective signals — these shape tone, not content.
 

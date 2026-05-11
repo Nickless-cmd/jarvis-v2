@@ -204,6 +204,38 @@ def _write_journal_entry(*, created_at: str, text: str) -> Path:
     return path
 
 
+_EXTENDED_INTERVAL_DAYS = 14
+_SKIP_THRESHOLD = 3
+
+
+def _should_skip_week(
+    *,
+    chronicle_count: int,
+    broken_decisions_count: int,
+    life_projects_count: int,
+) -> tuple[bool, str]:
+    """Return (skip?, reason). Skip when ALL three signals are absent/thin.
+
+    Rule: skip if (chronicle < 2) AND (broken == 0) AND (life_projects == 0).
+    """
+    if chronicle_count < 2 and broken_decisions_count == 0 and life_projects_count == 0:
+        return True, (
+            f"corpus thin: chronicle={chronicle_count}, "
+            f"broken={broken_decisions_count}, projects={life_projects_count}"
+        )
+    return False, "corpus has signal"
+
+
+def _interval_days_for_state(state: dict[str, object]) -> int:
+    """Return current cadence interval based on skip counter.
+
+    7 days normally. Extends to 14 once consecutive_skips >= 3.
+    Reverts to 7 immediately when a successful write resets the counter.
+    """
+    skips = int(state.get("consecutive_skips") or 0)
+    return _EXTENDED_INTERVAL_DAYS if skips >= _SKIP_THRESHOLD else _JOURNAL_INTERVAL_DAYS
+
+
 def _fetch_broken_decisions(*, days_back: int = 7, limit: int = 5) -> list[str]:
     """Pull recent broken-decision summaries from the events table.
 

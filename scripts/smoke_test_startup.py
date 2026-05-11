@@ -219,6 +219,21 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Desire Phase 1 (Lag #5 — added 2026-05-11)
+        try:
+            from core.services.current_pull import (  # noqa: F401
+                _pull_is_stale,
+                _compute_landscape_embedding,
+                _collect_appetite_texts,
+                _collect_chronicle_texts,
+                _collect_journal_texts,
+                _archive_refresh_event,
+                _should_run_staleness_check,
+                _staleness_check_enabled,
+            )
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

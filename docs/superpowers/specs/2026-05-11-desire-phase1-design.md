@@ -202,8 +202,11 @@ After Phase 1:
    from landscape (cos < 0.45) → `_pull_is_stale` returns True with score.
 3. **Refresh fires:** simulated stale state → `tick_current_pull_daemon`
    clears pull, regenerates, archives refresh event.
-4. **No false-positives in production:** 30-day refresh count is 0-3
-   (acceptable). > 5 refreshes = retune threshold.
+4. **No false-positives in production:** 30-day refresh count is a
+   baseline-measurement, not a hard limit. Jarvis' own estimate is 5+
+   refreshes per quiet month may be genuine. We accept whatever the
+   first month produces as data; the 30-day review decides what's
+   noise vs. signal.
 5. **Empty landscape handled:** if < 2 items in last 3 days, stale-check
    abstains; pull stays until TTL.
 6. **Backwards compat:** existing `current_pull` consumers

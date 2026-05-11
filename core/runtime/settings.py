@@ -95,7 +95,7 @@ class RuntimeSettings:
     dream_bias_enabled: bool = True
     # Min number of NEW regret-events (since last bias row) needed to fire
     # distillation. Below this, daemon skips the cycle.
-    dream_bias_min_content_events: int = 3
+    dream_bias_min_content_events: int = 2
     # Lookback window for fetching the 6 regret-heavy sources.
     dream_bias_corpus_lookback_hours: int = 24
     # How long an active bias lasts before TTL expires. Resets on each

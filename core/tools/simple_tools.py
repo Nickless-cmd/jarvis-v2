@@ -104,6 +104,10 @@ from core.tools.github_tools import (
     _exec_git_branch,
     _exec_git_blame,
 )
+from core.tools.reasoning_store_tools import (
+    REASONING_STORE_TOOL_DEFINITIONS,
+    _exec_recall_reasoning,
+)
 from core.tools.math_tools import (
     MATH_TOOL_DEFINITIONS,
     _exec_calculate,

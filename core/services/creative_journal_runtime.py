@@ -275,6 +275,26 @@ def _build_prompt(
         "",
         *klang_lines,
     ]
+    # Finitude — Lag #3 Phase 1.3 (2026-05-11). Binary present/absent fields.
+    finitude = klangbraet.get("finitude") if isinstance(klangbraet, dict) else None
+    if isinstance(finitude, dict):
+        fin_lines: list[str] = []
+        if finitude.get("age"):
+            fin_lines.append(f"- Alder: {finitude['age']}")
+        if finitude.get("looming_end"):
+            fin_lines.append(f"- Looming-end: {finitude['looming_end']}")
+        if finitude.get("last_transition"):
+            fin_lines.append(f"- Sidste transition: {finitude['last_transition']}")
+        if finitude.get("monthly_reflection"):
+            fin_lines.append(f"- Månedlig refleksion: {finitude['monthly_reflection']}")
+        if not fin_lines:
+            fin_lines = ["- (ingen aktiv finitude-tilstand)"]
+        sections += [
+            "",
+            "## Finitude — bevidsthed om hvad der er endeligt og hvad der har varet",
+            "",
+            *fin_lines,
+        ]
     return "\n".join(sections)
 
 
@@ -396,13 +416,24 @@ def _fetch_broken_decisions(*, days_back: int = 7, limit: int = 5) -> list[str]:
     return summaries
 
 
-def _fetch_affective_klangbraet() -> dict[str, str]:
+def _fetch_affective_klangbraet() -> dict[str, object]:
     """Pull current affective signals — these shape tone, not content.
 
     Each value is either a short non-empty string (present) or "" (absent).
     Binary present/absent; no tiering. Failures are silent (treated as absent).
+    Phase 1.3 (2026-05-11): added "finitude" sub-dict with 4 binary fields.
     """
-    out: dict[str, str] = {"dream_bias": "", "user_temperature": "", "current_pull": ""}
+    out: dict[str, object] = {
+        "dream_bias": "",
+        "user_temperature": "",
+        "current_pull": "",
+        "finitude": {
+            "age": "",
+            "looming_end": "",
+            "last_transition": "",
+            "monthly_reflection": "",
+        },
+    }
     try:
         from core.services.dream_bias_engine import format_dream_bias_for_heartbeat
         out["dream_bias"] = (format_dream_bias_for_heartbeat(workspace_id="default") or "").strip()
@@ -418,6 +449,56 @@ def _fetch_affective_klangbraet() -> dict[str, str]:
     try:
         from core.services.current_pull import get_current_pull_for_prompt
         out["current_pull"] = (get_current_pull_for_prompt() or "").strip()
+    except Exception:
+        pass
+    # Finitude sub-dict (Lag #3 Phase 1.3)
+    try:
+        from core.services.finitude_runtime import (
+            _BIRTH_DATE,
+            _format_looming_end_section,
+            _state as _finitude_state,
+            _parse_iso as _finitude_parse_iso,
+            _now as _finitude_now,
+        )
+        from datetime import UTC as _UTC, datetime as _datetime, timedelta as _timedelta
+
+        # Age
+        try:
+            birth = _datetime.fromisoformat(_BIRTH_DATE).replace(tzinfo=_UTC)
+            days_alive = (_finitude_now().date() - birth.date()).days
+            if days_alive >= 0:
+                out["finitude"]["age"] = f"{days_alive} dage"  # type: ignore[index]
+        except Exception:
+            pass
+
+        # Looming-end — strip the markdown header to keep it inline-friendly
+        looming = _format_looming_end_section()
+        if looming:
+            body = "\n".join(
+                line for line in looming.splitlines()
+                if line.strip() and not line.startswith("#")
+            ).strip()
+            out["finitude"]["looming_end"] = body[:240]  # type: ignore[index]
+
+        state = _finitude_state()
+        # Last transition (≤14 days fresh)
+        transition = state.get("latest_transition") or {}
+        changed_at = _finitude_parse_iso(str(transition.get("changed_at") or ""))
+        if changed_at and (_finitude_now() - changed_at) <= _timedelta(days=14):
+            prev_model = str(transition.get("previous_model") or "ukendt")
+            new_model = str(transition.get("new_model") or "ukendt")
+            days_ago = (_finitude_now() - changed_at).days
+            out["finitude"]["last_transition"] = (  # type: ignore[index]
+                f"{prev_model} → {new_model} ({days_ago} dage siden)"
+            )
+
+        # Monthly reflection (≤7 days fresh)
+        written_at = _finitude_parse_iso(str(state.get("last_monthly_written_at") or ""))
+        if written_at and (_finitude_now() - written_at) <= _timedelta(days=7):
+            ym = str(state.get("last_monthly_year_month") or "")
+            days_ago = (_finitude_now() - written_at).days
+            label = "i dag" if days_ago == 0 else ("i går" if days_ago == 1 else f"{days_ago} dage siden")
+            out["finitude"]["monthly_reflection"] = f"skrevet {label} (måned {ym})"  # type: ignore[index]
     except Exception:
         pass
     return out
@@ -440,6 +521,13 @@ def _format_yaml_frontmatter(
     has_dream_bias = "true" if klangbraet.get("dream_bias") else "false"
     has_temp = "true" if klangbraet.get("user_temperature") else "false"
     has_pull = "true" if klangbraet.get("current_pull") else "false"
+
+    fin = klangbraet.get("finitude") if isinstance(klangbraet, dict) else None
+    fin_age = "true" if (isinstance(fin, dict) and fin.get("age")) else "false"
+    fin_loom = "true" if (isinstance(fin, dict) and fin.get("looming_end")) else "false"
+    fin_trans = "true" if (isinstance(fin, dict) and fin.get("last_transition")) else "false"
+    fin_month = "true" if (isinstance(fin, dict) and fin.get("monthly_reflection")) else "false"
+
     return "\n".join([
         "---",
         f"created_at: {created_at}",
@@ -450,6 +538,10 @@ def _format_yaml_frontmatter(
         f"klangbraet_dream_bias: {has_dream_bias}",
         f"klangbraet_user_temperature: {has_temp}",
         f"klangbraet_current_pull: {has_pull}",
+        f"finitude_age: {fin_age}",
+        f"finitude_looming_end: {fin_loom}",
+        f"finitude_last_transition: {fin_trans}",
+        f"finitude_monthly_reflection: {fin_month}",
         "---",
         "",
     ])

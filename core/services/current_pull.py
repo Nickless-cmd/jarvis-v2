@@ -17,6 +17,7 @@ Kill switch: layer_current_pull_enabled i runtime.json.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import get_runtime_state_value, set_runtime_state_value
@@ -26,6 +27,12 @@ from core.services.daemon_llm import daemon_llm_call
 _STATE_KEY = "current_pull.state"
 _PULL_TTL_DAYS = 7
 _MAX_PULL_CHARS = 200
+
+# Staleness detection (Lag #5 Phase 1 — added 2026-05-11)
+_STALENESS_LANDSCAPE_DAYS = 3
+_STALENESS_MIN_LANDSCAPE_ITEMS = 2
+_APPETITE_MIN_INTENSITY_FOR_LANDSCAPE = 0.2
+_REFRESH_HISTORY_MAX = 5
 
 
 # ---------------------------------------------------------------------------
@@ -80,6 +87,128 @@ def tick_current_pull_daemon() -> dict[str, object]:
 # ---------------------------------------------------------------------------
 # Public: prompt injection
 # ---------------------------------------------------------------------------
+
+
+def _collect_appetite_texts(*, days_back: int) -> list[str]:
+    """Pull active appetite labels for landscape embedding.
+
+    days_back is accepted for symmetry with other collectors; desire_daemon
+    appetites decay via intensity so we filter by intensity instead of age.
+    """
+    try:
+        from core.services.desire_daemon import get_active_appetites
+        appetites = get_active_appetites()
+    except Exception:
+        return []
+    out: list[str] = []
+    for a in appetites:
+        label = str(a.get("label") or "").strip()
+        intensity = float(a.get("intensity") or 0.0)
+        if not label or intensity < _APPETITE_MIN_INTENSITY_FOR_LANDSCAPE:
+            continue
+        out.append(label)
+    return out
+
+
+def _collect_chronicle_texts(*, days_back: int) -> list[str]:
+    """Pull chronicle narratives from the last `days_back` days."""
+    try:
+        from core.services.chronicle_engine import list_cognitive_chronicle_entries
+        entries = list_cognitive_chronicle_entries(limit=10)
+    except Exception:
+        return []
+    cutoff = datetime.now(UTC) - timedelta(days=days_back)
+    out: list[str] = []
+    for e in entries:
+        narrative = str(e.get("narrative") or "").strip()
+        if not narrative:
+            continue
+        created_iso = str(e.get("created_at") or "")
+        try:
+            created = datetime.fromisoformat(created_iso.replace("Z", "+00:00"))
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=UTC)
+            if created < cutoff:
+                continue
+        except Exception:
+            # If date can't be parsed, include the entry anyway —
+            # chronicle entries are scarce, we'd rather have signal.
+            pass
+        out.append(narrative[:600])
+    return out
+
+
+def _collect_journal_texts(*, days_back: int) -> list[str]:
+    """Pull journal entry bodies from the last `days_back` days."""
+    try:
+        from core.services.creative_journal_runtime import (
+            list_creative_journal_entries,
+        )
+        entries = list_creative_journal_entries(limit=5)
+    except Exception:
+        return []
+    cutoff = (datetime.now(UTC) - timedelta(days=days_back)).date()
+    out: list[str] = []
+    for e in entries:
+        path_str = str(e.get("path") or "")
+        if not path_str:
+            continue
+        path = Path(path_str)
+        if not path.exists():
+            continue
+        # Filename stem is the date (YYYY-MM-DD)
+        try:
+            entry_date = datetime.fromisoformat(path.stem).date()
+            if entry_date < cutoff:
+                continue
+        except Exception:
+            continue
+        try:
+            body = path.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            continue
+        # Strip YAML frontmatter
+        if body.startswith("---"):
+            end = body.find("\n---", 3)
+            if end >= 0:
+                body = body[end + 4 :].lstrip("\n")
+        # Strip markdown headers
+        body = "\n".join(
+            line for line in body.splitlines()
+            if not line.startswith("#") and not line.startswith("- `")
+        ).strip()
+        if not body:
+            continue
+        out.append(body[:1000])
+    return out
+
+
+def _compute_landscape_embedding() -> list[float] | None:
+    """Build a mean-pooled embedding from the last 3 days of desire signals.
+
+    Returns None if landscape is thin (< 2 items) or embedder fails.
+    """
+    appetite_texts = _collect_appetite_texts(days_back=_STALENESS_LANDSCAPE_DAYS)
+    chronicle_texts = _collect_chronicle_texts(days_back=_STALENESS_LANDSCAPE_DAYS)
+    journal_texts = _collect_journal_texts(days_back=_STALENESS_LANDSCAPE_DAYS)
+    landscape_texts = appetite_texts + chronicle_texts + journal_texts
+
+    if len(landscape_texts) < _STALENESS_MIN_LANDSCAPE_ITEMS:
+        return None
+
+    try:
+        from core.services.experience_substrate import _get_embedder
+        embedder = _get_embedder()
+        vectors = embedder.encode(landscape_texts, normalize_embeddings=True).tolist()
+        # Mean-pool
+        dim = len(vectors[0])
+        mean = [0.0] * dim
+        for vec in vectors:
+            for i in range(dim):
+                mean[i] += vec[i]
+        return [v / len(vectors) for v in mean]
+    except Exception:
+        return None
 
 
 def get_current_pull_for_prompt() -> str:

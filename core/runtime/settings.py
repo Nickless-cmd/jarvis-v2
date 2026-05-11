@@ -153,6 +153,14 @@ class RuntimeSettings:
     current_pull_staleness_check_enabled: bool = True
     current_pull_staleness_threshold: float = 0.45
     current_pull_staleness_check_interval_hours: int = 12
+    # ── Music accumulator (Lag #6 Phase 1 — added 2026-05-11) ────────────
+    # Counts "music" samples from ambient_sound_daemon over a rolling
+    # window. Threshold gates the awareness-line. Ratio param is reserved
+    # for Phase 2 when sample cadence may increase from 4/day to 6-8/day —
+    # at current cadence the count threshold is the effective rule.
+    music_accumulator_threshold_samples: int = 2
+    music_accumulator_window_hours: int = 24
+    music_accumulator_ratio_threshold: float = 0.0
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -534,6 +542,24 @@ def load_settings() -> RuntimeSettings:
             data.get(
                 "current_pull_staleness_check_interval_hours",
                 defaults.current_pull_staleness_check_interval_hours,
+            )
+        ),
+        music_accumulator_threshold_samples=int(
+            data.get(
+                "music_accumulator_threshold_samples",
+                defaults.music_accumulator_threshold_samples,
+            )
+        ),
+        music_accumulator_window_hours=int(
+            data.get(
+                "music_accumulator_window_hours",
+                defaults.music_accumulator_window_hours,
+            )
+        ),
+        music_accumulator_ratio_threshold=float(
+            data.get(
+                "music_accumulator_ratio_threshold",
+                defaults.music_accumulator_ratio_threshold,
             )
         ),
         longing_daemon_cadence_minutes=int(

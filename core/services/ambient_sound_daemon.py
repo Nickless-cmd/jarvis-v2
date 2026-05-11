@@ -387,6 +387,43 @@ def _experiment_enabled() -> bool:
         return False
 
 
+def count_music_samples_last_hours(hours: int = 24) -> tuple[int, int]:
+    """Return (music_count, total_count) for samples in the last `hours` hours.
+
+    Reads from the persisted history buffer in runtime_state. Samples without
+    a parseable `sampled_at` are skipped. Returns (0, 0) on any error.
+    """
+    try:
+        state = _state()
+    except Exception:
+        return 0, 0
+    history = state.get("history") or []
+    if not isinstance(history, list):
+        return 0, 0
+
+    cutoff = datetime.now(UTC) - timedelta(hours=max(int(hours), 1))
+    total = 0
+    music = 0
+    for sample in history:
+        if not isinstance(sample, dict):
+            continue
+        sampled_at_iso = str(sample.get("sampled_at") or "").strip()
+        if not sampled_at_iso:
+            continue
+        try:
+            sampled_at = datetime.fromisoformat(sampled_at_iso.replace("Z", "+00:00"))
+            if sampled_at.tzinfo is None:
+                sampled_at = sampled_at.replace(tzinfo=UTC)
+        except Exception:
+            continue
+        if sampled_at < cutoff:
+            continue
+        total += 1
+        if str(sample.get("category") or "").strip().lower() == "music":
+            music += 1
+    return music, total
+
+
 def _state() -> dict:
     val = get_runtime_state_value(_STATE_KEY, default={})
     return dict(val) if isinstance(val, dict) else {}

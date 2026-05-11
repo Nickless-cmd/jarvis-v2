@@ -109,7 +109,12 @@ def _last_user_message_context() -> dict[str, Any]:
 
 
 def _gather_signal_context() -> dict[str, Any]:
-    """Top-3 pressures + bearing + affect, for the outreach prompt."""
+    """Top-3 pressures + bearing + affect, for the outreach prompt.
+
+    Only includes pressures reinforced within the last 4 hours
+    (outreach_freshness_hours) — stale topics from hours ago are filtered
+    out so Jarvis doesn't ask about things that were already handled.
+    """
     ctx: dict[str, Any] = {
         "top_pressures": [],
         "bearing": "",
@@ -117,12 +122,19 @@ def _gather_signal_context() -> dict[str, Any]:
     }
     try:
         from core.services.signal_pressure_accumulator import get_dominant_pressures
-        for pv in get_dominant_pressures(min_accumulated=0.15)[:3]:
+        for pv in get_dominant_pressures(min_accumulated=0.15):
+            # Skip stale pressures — only include those reinforced recently
+            hours_since = _hours_since(pv.last_reinforced_at)
+            if hours_since is None or hours_since > 4.0:
+                continue
             ctx["top_pressures"].append({
                 "direction": pv.direction,
                 "topic": pv.topic,
                 "accumulated": round(pv.accumulated, 3),
+                "hours_since_reinforced": round(hours_since, 1),
             })
+            if len(ctx["top_pressures"]) >= 3:
+                break
     except Exception:
         pass
     try:

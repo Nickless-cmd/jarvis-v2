@@ -211,6 +211,75 @@ def _compute_landscape_embedding() -> list[float] | None:
         return None
 
 
+def _pull_is_stale(pull_text: str) -> tuple[bool, float]:
+    """Return (is_stale, cos_score).
+
+    Stale iff: landscape has >= 2 items AND cos(pull, landscape_mean) < threshold.
+    Returns (False, 0.0) on thin landscape, embedder failure, or any error.
+    """
+    landscape = _compute_landscape_embedding()
+    if landscape is None:
+        return False, 0.0
+    try:
+        from core.services.experience_substrate import _get_embedder
+        embedder = _get_embedder()
+        pull_vec = embedder.encode(pull_text, normalize_embeddings=True).tolist()
+    except Exception:
+        return False, 0.0
+    try:
+        from core.services.reasoning_store import _cosine_similarity
+        cos = float(_cosine_similarity(pull_vec, landscape))
+    except Exception:
+        return False, 0.0
+    try:
+        threshold = float(load_settings().current_pull_staleness_threshold)
+    except Exception:
+        threshold = 0.45
+    return (cos < threshold), cos
+
+
+def _staleness_check_enabled() -> bool:
+    try:
+        return bool(load_settings().current_pull_staleness_check_enabled)
+    except Exception:
+        return True
+
+
+def _should_run_staleness_check(state: dict, *, interval_hours: int) -> bool:
+    """Throttle: only run the embedding check every `interval_hours`."""
+    last_iso = str(state.get("last_staleness_checked_at") or "").strip()
+    if not last_iso:
+        return True
+    try:
+        last = datetime.fromisoformat(last_iso.replace("Z", "+00:00"))
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=UTC)
+    except Exception:
+        return True
+    return (datetime.now(UTC) - last) >= timedelta(hours=max(interval_hours, 1))
+
+
+def _archive_refresh_event(
+    *,
+    state: dict,
+    refreshed_at: str,
+    reason: str,
+    stale_score: float,
+    previous_pull: str,
+) -> None:
+    """Append a refresh event to state['refresh_history'], capped at 5 (FIFO)."""
+    history = list(state.get("refresh_history") or [])
+    history.append({
+        "refreshed_at": refreshed_at,
+        "reason": reason,
+        "stale_score": round(float(stale_score), 4),
+        "previous_pull": str(previous_pull or "")[:200],
+    })
+    if len(history) > _REFRESH_HISTORY_MAX:
+        history = history[-_REFRESH_HISTORY_MAX:]
+    state["refresh_history"] = history
+
+
 def get_current_pull_for_prompt() -> str:
     """Return prompt fragment for visible chat injection — or empty string."""
     if not _enabled():

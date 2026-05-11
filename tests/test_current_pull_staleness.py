@@ -73,3 +73,112 @@ def test_collect_appetite_texts_filters_low_intensity(monkeypatch):
     assert "lyst C" in texts
     assert "lyst B" not in texts
     assert "" not in texts
+
+
+def test_pull_is_stale_returns_false_when_landscape_thin(monkeypatch):
+    from core.services import current_pull
+
+    monkeypatch.setattr(current_pull, "_compute_landscape_embedding", lambda: None)
+    is_stale, score = current_pull._pull_is_stale("min pull tekst")
+    assert is_stale is False
+    assert score == 0.0
+
+
+def test_pull_is_stale_true_when_cos_below_threshold(monkeypatch):
+    from core.services import current_pull
+
+    monkeypatch.setattr(current_pull, "_compute_landscape_embedding",
+                        lambda: [1.0, 0.0, 0.0, 0.0])
+
+    class FakeEmbedder:
+        def encode(self, text, normalize_embeddings=True):
+            import numpy as np
+            return np.array([0.0, 1.0, 0.0, 0.0])  # orthogonal → cos = 0
+
+    monkeypatch.setattr(
+        "core.services.experience_substrate._get_embedder",
+        lambda: FakeEmbedder(),
+    )
+
+    class FakeSettings:
+        current_pull_staleness_threshold = 0.45
+
+    monkeypatch.setattr(current_pull, "load_settings", lambda: FakeSettings())
+
+    is_stale, score = current_pull._pull_is_stale("min pull tekst")
+    assert is_stale is True
+    assert score < 0.45
+
+
+def test_pull_is_stale_false_when_cos_above_threshold(monkeypatch):
+    from core.services import current_pull
+
+    monkeypatch.setattr(current_pull, "_compute_landscape_embedding",
+                        lambda: [1.0, 0.0, 0.0, 0.0])
+
+    class FakeEmbedder:
+        def encode(self, text, normalize_embeddings=True):
+            import numpy as np
+            return np.array([1.0, 0.0, 0.0, 0.0])  # identical → cos = 1.0
+
+    monkeypatch.setattr(
+        "core.services.experience_substrate._get_embedder",
+        lambda: FakeEmbedder(),
+    )
+
+    class FakeSettings:
+        current_pull_staleness_threshold = 0.45
+
+    monkeypatch.setattr(current_pull, "load_settings", lambda: FakeSettings())
+
+    is_stale, score = current_pull._pull_is_stale("min pull tekst")
+    assert is_stale is False
+    assert score > 0.9
+
+
+def test_archive_refresh_event_appends_and_caps_at_5():
+    from core.services import current_pull
+
+    state: dict = {}
+    for i in range(7):
+        current_pull._archive_refresh_event(
+            state=state,
+            refreshed_at=f"2026-05-{11+i:02d}T19:00:00+00:00",
+            reason="stale",
+            stale_score=0.30 + i * 0.01,
+            previous_pull=f"pull {i}",
+        )
+
+    history = state["refresh_history"]
+    assert len(history) == 5
+    assert history[0]["previous_pull"] == "pull 2"
+    assert history[-1]["previous_pull"] == "pull 6"
+
+
+def test_should_run_staleness_check_first_time():
+    from core.services import current_pull
+
+    state = {}
+    assert current_pull._should_run_staleness_check(state, interval_hours=12) is True
+
+
+def test_should_run_staleness_check_within_window():
+    from core.services import current_pull
+
+    state = {
+        "last_staleness_checked_at": (
+            datetime.now(UTC) - timedelta(hours=3)
+        ).isoformat()
+    }
+    assert current_pull._should_run_staleness_check(state, interval_hours=12) is False
+
+
+def test_should_run_staleness_check_after_window():
+    from core.services import current_pull
+
+    state = {
+        "last_staleness_checked_at": (
+            datetime.now(UTC) - timedelta(hours=13)
+        ).isoformat()
+    }
+    assert current_pull._should_run_staleness_check(state, interval_hours=12) is True

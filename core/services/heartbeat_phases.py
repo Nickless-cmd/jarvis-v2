@@ -159,6 +159,20 @@ def reflect_phase(signals: dict[str, Any]) -> dict[str, Any]:
         "priorities": priorities,
         "reflection_kind": "heuristic",
     }
+
+    # Learning pipeline loop closure — route outputs between learning systems
+    try:
+        from core.services.learning_pipeline_orchestrator import run_reflect_cycle
+        pipeline_result = run_reflect_cycle()
+        if pipeline_result.get("status") == "completed" and pipeline_result.get("actions_taken", 0) > 0:
+            reflection["learning_pipeline"] = {
+                "actions_taken": pipeline_result["actions_taken"],
+                "generalizations_created": pipeline_result.get("generalizations_created", 0),
+                "reasoning_captured": pipeline_result.get("reasoning_captured", 0),
+                "policies_routed": pipeline_result.get("policies_routed", 0),
+            }
+    except Exception as exc:
+        logger.debug("reflect_phase: learning pipeline failed: %s", exc)
     # Recall-before-act: pull warm-tier + (optional cold) memories tied to
     # current priorities. Cheap when priorities empty; meaningful otherwise.
     try:

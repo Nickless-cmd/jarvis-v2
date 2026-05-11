@@ -149,6 +149,7 @@ ALLOWED_EVENT_FAMILIES = {
     "causal",           # causal_graph subsystem (added 2026-05-08)
     "narrative",        # narrative_summary_daemon — Phase 2.5 (added 2026-05-08)
     "counterfactual",   # counterfactual_engine + pattern_counterfactual_daemon (added 2026-05-08)
+    "learning_pipeline",  # learning_pipeline_orchestrator — Phase 3 loop closure (added 2026-05-11)
 }
 
 

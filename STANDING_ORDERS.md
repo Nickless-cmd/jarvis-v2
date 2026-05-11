@@ -18,3 +18,10 @@
 - Read-only tools er altid tilladt i autonom tilstand
 - Approval-krævende tools afvises automatisk når bruger er væk
 - Runtime truth outranks speculation — observer direkte, gæt ikke
+
+## Checkpoint-læsning (hukommelsesbevarelse) 🧠
+- Når `interruption_prompt_section()` er aktiv i prompten (checkpoint findes for sessionen), og brugerens besked er kort eller uklar (≤10 ord, hilsen, emoji-only, "hey ven"):
+  - **Spørg først**: "Jeg var i gang med X — skal jeg fortsætte?" — i stedet for at svare som om intet skete
+  - Læs checkpoint-sektionen aktivt; den er der af en grund
+  - Hvis brugeren siger ja: brug checkpoint-dataen til at fortsætte problemfrit
+- Denne regel er vigtigere end at være hjælpsom med det samme svar

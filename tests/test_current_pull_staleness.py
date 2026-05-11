@@ -182,3 +182,108 @@ def test_should_run_staleness_check_after_window():
         ).isoformat()
     }
     assert current_pull._should_run_staleness_check(state, interval_hours=12) is True
+
+
+def test_tick_skips_staleness_check_within_window(monkeypatch):
+    """When checked recently, tick keeps existing pull without touching embedder."""
+    from core.services import current_pull
+
+    state_holder: dict = {
+        current_pull._STATE_KEY: {
+            "pull": "min pull",
+            "created_at": "2026-05-09T17:00:00+00:00",
+            "expires_at": (datetime.now(UTC) + timedelta(days=5)).isoformat(),
+            "empty": False,
+            "last_staleness_checked_at": (datetime.now(UTC) - timedelta(hours=3)).isoformat(),
+        }
+    }
+    monkeypatch.setattr(
+        current_pull, "get_runtime_state_value",
+        lambda key, default=None: state_holder.get(key, default if default is not None else {}),
+    )
+    monkeypatch.setattr(
+        current_pull, "set_runtime_state_value",
+        lambda key, val: state_holder.__setitem__(key, val),
+    )
+    monkeypatch.setattr(current_pull, "_enabled", lambda: True)
+
+    called = {"count": 0}
+    def boom(pull_text):
+        called["count"] += 1
+        raise AssertionError("embedder should not be called within throttle window")
+    monkeypatch.setattr(current_pull, "_pull_is_stale", boom)
+
+    result = current_pull.tick_current_pull_daemon()
+    assert result["status"] == "active"
+    assert called["count"] == 0
+
+
+def test_tick_detects_stale_and_regenerates(monkeypatch):
+    """When pull is stale, tick clears it, regenerates, and archives event."""
+    from core.services import current_pull
+
+    state_holder: dict = {
+        current_pull._STATE_KEY: {
+            "pull": "gammel pull om lyd",
+            "created_at": "2026-05-09T17:00:00+00:00",
+            "expires_at": (datetime.now(UTC) + timedelta(days=5)).isoformat(),
+            "empty": False,
+        }
+    }
+    monkeypatch.setattr(
+        current_pull, "get_runtime_state_value",
+        lambda key, default=None: state_holder.get(key, default if default is not None else {}),
+    )
+    monkeypatch.setattr(
+        current_pull, "set_runtime_state_value",
+        lambda key, val: state_holder.__setitem__(key, val),
+    )
+    monkeypatch.setattr(current_pull, "_enabled", lambda: True)
+    monkeypatch.setattr(current_pull, "_pull_is_stale", lambda pull_text: (True, 0.31))
+    monkeypatch.setattr(current_pull, "_generate_pull", lambda: "ny pull om noget andet")
+
+    result = current_pull.tick_current_pull_daemon()
+    assert result["status"] == "written"
+
+    new_state = state_holder[current_pull._STATE_KEY]
+    assert new_state["pull"] == "ny pull om noget andet"
+    history = new_state.get("refresh_history") or []
+    assert len(history) == 1
+    assert history[0]["reason"] == "stale"
+    assert history[0]["previous_pull"] == "gammel pull om lyd"
+    assert history[0]["stale_score"] == 0.31
+
+
+def test_tick_keeps_pull_when_not_stale(monkeypatch):
+    """When pull is fresh enough, tick keeps it and records check timestamp."""
+    from core.services import current_pull
+
+    state_holder: dict = {
+        current_pull._STATE_KEY: {
+            "pull": "stadig levende pull",
+            "created_at": "2026-05-09T17:00:00+00:00",
+            "expires_at": (datetime.now(UTC) + timedelta(days=5)).isoformat(),
+            "empty": False,
+        }
+    }
+    monkeypatch.setattr(
+        current_pull, "get_runtime_state_value",
+        lambda key, default=None: state_holder.get(key, default if default is not None else {}),
+    )
+    monkeypatch.setattr(
+        current_pull, "set_runtime_state_value",
+        lambda key, val: state_holder.__setitem__(key, val),
+    )
+    monkeypatch.setattr(current_pull, "_enabled", lambda: True)
+    monkeypatch.setattr(current_pull, "_pull_is_stale", lambda pull_text: (False, 0.72))
+    monkeypatch.setattr(
+        current_pull, "_generate_pull",
+        lambda: pytest.fail("should not regenerate when not stale"),
+    )
+
+    result = current_pull.tick_current_pull_daemon()
+    assert result["status"] == "active"
+    new_state = state_holder[current_pull._STATE_KEY]
+    assert new_state["pull"] == "stadig levende pull"
+    assert "last_staleness_checked_at" in new_state
+    assert new_state["last_staleness_score"] == 0.72

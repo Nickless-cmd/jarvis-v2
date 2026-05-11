@@ -41,12 +41,57 @@ _REFRESH_HISTORY_MAX = 5
 
 
 def tick_current_pull_daemon() -> dict[str, object]:
-    """Weekly daemon tick. Generates a new pull if none active or expired."""
+    """Weekly daemon tick. Generates a new pull if none active, expired, or stale.
+
+    Phase 1 (Lag #5, 2026-05-11): staleness check runs every
+    current_pull_staleness_check_interval_hours (default 12h) BEFORE the
+    pull-presence check. When stale, current pull is archived and cleared,
+    falling through to the existing regeneration path.
+    """
     if not _enabled():
         return {"status": "disabled", "reason": "layer_current_pull_enabled=false"}
 
-    _expire_if_stale()
+    _expire_if_stale()  # TTL expiry — not the embedding-staleness check
     state = _load_state()
+
+    # Phase 1 — mid-week staleness check (only if a pull is currently set)
+    if state.get("pull") and _staleness_check_enabled():
+        try:
+            interval = int(load_settings().current_pull_staleness_check_interval_hours)
+        except Exception:
+            interval = 12
+        if _should_run_staleness_check(state, interval_hours=interval):
+            is_stale, cos_score = _pull_is_stale(str(state["pull"]))
+            now_iso = datetime.now(UTC).isoformat()
+            state["last_staleness_checked_at"] = now_iso
+            state["last_staleness_score"] = round(float(cos_score), 4)
+            if is_stale:
+                previous_pull = str(state.get("pull") or "")
+                _archive_refresh_event(
+                    state=state,
+                    refreshed_at=now_iso,
+                    reason="stale",
+                    stale_score=cos_score,
+                    previous_pull=previous_pull,
+                )
+                # Clear pull-fields but preserve refresh_history + check timestamps
+                state.pop("pull", None)
+                state.pop("created_at", None)
+                state.pop("expires_at", None)
+                state.pop("empty", None)
+                try:
+                    event_bus.publish(
+                        "cognitive_state.current_pull_refreshed_stale",
+                        {
+                            "previous_pull": previous_pull[:200],
+                            "stale_score": round(float(cos_score), 4),
+                            "threshold": float(load_settings().current_pull_staleness_threshold),
+                        },
+                    )
+                except Exception:
+                    pass
+            # Persist check timestamps regardless of outcome
+            set_runtime_state_value(_STATE_KEY, state)
 
     if state.get("pull"):
         return {
@@ -63,6 +108,10 @@ def tick_current_pull_daemon() -> dict[str, object]:
         "created_at": now.isoformat(),
         "expires_at": expires_at,
         "empty": not bool(pull),
+        # Preserve staleness/refresh fields across regeneration
+        "refresh_history": state.get("refresh_history") or [],
+        "last_staleness_checked_at": state.get("last_staleness_checked_at") or "",
+        "last_staleness_score": state.get("last_staleness_score") or 0.0,
     }
     set_runtime_state_value(_STATE_KEY, payload)
 

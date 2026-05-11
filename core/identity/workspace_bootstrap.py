@@ -29,6 +29,7 @@ OPTIONAL_WORKSPACE_FILES = (
     "VISIBLE_MEMORY_SELECTION.md",
     "INNER_VOICE.md",
     "MILESTONES.md",
+    "VOICE.md",
 )
 
 

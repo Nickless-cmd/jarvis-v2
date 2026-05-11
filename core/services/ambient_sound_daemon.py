@@ -28,6 +28,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import get_runtime_state_value, insert_private_brain_record, set_runtime_state_value
+from core.runtime.settings import load_settings
 
 logger = logging.getLogger(__name__)
 
@@ -422,6 +423,41 @@ def count_music_samples_last_hours(hours: int = 24) -> tuple[int, int]:
         if str(sample.get("category") or "").strip().lower() == "music":
             music += 1
     return music, total
+
+
+def _select_music_influence_phrase(*, ratio: float) -> str:
+    """3-tier rotating phrase based on music-to-total ratio.
+
+    No LLM. 30-day review may expand to more variants if these feel rote.
+    """
+    if ratio >= 1.0:
+        return "Musikken har haft dig hele dagen."
+    if ratio > 0.5:
+        return "Rytmen kan bære dig."
+    return "Musik har været i rummet."
+
+
+def get_music_accumulator_for_prompt() -> str:
+    """Return prompt fragment if music threshold met, else empty string.
+
+    Format: "Musik (sidste {h}h): {music}/{total} samples — {phrase}"
+    Empty if music_count below settings threshold OR total == 0.
+    """
+    try:
+        settings = load_settings()
+        threshold = int(settings.music_accumulator_threshold_samples)
+        window = int(settings.music_accumulator_window_hours)
+    except Exception:
+        threshold = 2
+        window = 24
+
+    music, total = count_music_samples_last_hours(hours=window)
+    if music < threshold or total == 0:
+        return ""
+
+    ratio = music / total
+    phrase = _select_music_influence_phrase(ratio=ratio)
+    return f"Musik (sidste {window}h): {music}/{total} samples — {phrase}"
 
 
 def _state() -> dict:

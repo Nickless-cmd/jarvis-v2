@@ -142,6 +142,11 @@ class RuntimeSettings:
     # Falls back to cheap lane if quality lane is unavailable. Master kill-switch
     # for the whole quality upgrade — disable to revert to old prompt + cheap lane.
     creative_voice_quality_lane_enabled: bool = True
+    # ── Finitude (Lag #3 — added 2026-05-11) ─────────────────────────────
+    # Routes annual + monthly finitude rituals through quality_daemon_llm_call
+    # (deepseek-v4-flash). Falls back to cheap lane if quality lane is
+    # unavailable. Single flag covers both rituals.
+    finitude_quality_lane_enabled: bool = True
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -499,6 +504,12 @@ def load_settings() -> RuntimeSettings:
             data.get(
                 "creative_voice_quality_lane_enabled",
                 defaults.creative_voice_quality_lane_enabled,
+            )
+        ),
+        finitude_quality_lane_enabled=bool(
+            data.get(
+                "finitude_quality_lane_enabled",
+                defaults.finitude_quality_lane_enabled,
             )
         ),
         longing_daemon_cadence_minutes=int(

@@ -1363,6 +1363,28 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 _new_steers = consume_visible_run_steers(run.run_id)
                             except Exception:
                                 _new_steers = []
+                            # Check for controller cancellation (Cancel button)
+                            if controller.is_cancelled():
+                                _agentic_loop_exit_reason = "user-cancelled"
+                                _final_run_status = "interrupted"
+                                _final_run_error = "user-cancelled-during-agentic-loop"
+                                try:
+                                    from core.services.agentic_checkpoints import save_checkpoint as _save_agentic_checkpoint
+                                    _save_agentic_checkpoint(
+                                        run_id=run.run_id,
+                                        session_id=run.session_id,
+                                        user_message=run.user_message,
+                                        provider=run.provider,
+                                        model=run.model,
+                                        round_index=_agentic_round + 1,
+                                        phase="user-cancelled",
+                                        exchanges=_followup_exchanges,
+                                        partial_text="".join(_all_followup_parts),
+                                        exit_reason="user-cancelled",
+                                    )
+                                except Exception:
+                                    pass
+                                break
                             if _new_steers:
                                 _mid_round_steers.extend(_new_steers)
                                 yield _sse("steer_received", {
@@ -1514,6 +1536,29 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 exchanges=_followup_exchanges,
                                 partial_text="".join(_all_followup_parts),
                                 exit_reason=_failure_summary,
+                            )
+                        except Exception:
+                            pass
+                        break
+
+                    # ── Check for user cancellation (Cancel button) ──
+                    if controller.is_cancelled():
+                        _agentic_loop_exit_reason = "user-cancelled"
+                        _final_run_status = "interrupted"
+                        _final_run_error = "user-cancelled-during-agentic-loop"
+                        try:
+                            from core.services.agentic_checkpoints import save_checkpoint as _save_agentic_checkpoint
+                            _save_agentic_checkpoint(
+                                run_id=run.run_id,
+                                session_id=run.session_id,
+                                user_message=run.user_message,
+                                provider=run.provider,
+                                model=run.model,
+                                round_index=_agentic_round + 1,
+                                phase="user-cancelled",
+                                exchanges=_followup_exchanges,
+                                partial_text="".join(_all_followup_parts),
+                                exit_reason="user-cancelled",
                             )
                         except Exception:
                             pass
@@ -2193,6 +2238,22 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         )
 
         if controller.is_cancelled():
+            try:
+                from core.services.agentic_checkpoints import save_checkpoint as _save_agentic_checkpoint
+                _save_agentic_checkpoint(
+                    run_id=run.run_id,
+                    session_id=run.session_id,
+                    user_message=run.user_message,
+                    provider=run.provider,
+                    model=run.model,
+                    round_index=0,
+                    phase="cancel-pre-agentic",
+                    exchanges=[],
+                    partial_text=(result.text or "") if result else "",
+                    exit_reason="user-cancelled",
+                )
+            except Exception:
+                pass
             set_last_visible_run_outcome(
                 run,
                 status="cancelled",

@@ -8,8 +8,10 @@ from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.db import get_runtime_state_value, set_runtime_state_value
 from core.runtime.settings import load_settings
 from core.services.chronicle_engine import list_cognitive_chronicle_entries
-from core.services.daemon_llm import daemon_llm_call
+from core.services.daemon_llm import daemon_llm_call, quality_daemon_llm_call
 from core.services.initiative_queue import list_active_long_term_intentions
+from core.services.voice_anchor import read_voice_anchor
+from core.services.voice_curator import refresh_voice_recent
 
 _STATE_KEY = "creative_journal_runtime.state"
 _JOURNAL_INTERVAL_DAYS = 7
@@ -28,29 +30,77 @@ def run_creative_journal_cycle(
     state = _state()
     now = datetime.now(UTC)
     last_written_at = _parse_iso(str(state.get("last_written_at") or ""))
-    if last_written_at and (now - last_written_at) < timedelta(days=_JOURNAL_INTERVAL_DAYS):
-        next_due = last_written_at + timedelta(days=_JOURNAL_INTERVAL_DAYS)
+    interval_days = _interval_days_for_state(state)
+    if last_written_at and (now - last_written_at) < timedelta(days=interval_days):
+        next_due = last_written_at + timedelta(days=interval_days)
         return {
             "status": "not_due",
             "last_written_at": last_written_at.isoformat(),
             "next_due_at": next_due.isoformat(),
+            "interval_days": interval_days,
         }
 
+    # Refresh voice exemplars before building the prompt (idempotent).
+    try:
+        refresh_voice_recent()
+    except Exception:
+        pass
+
+    chronicle_entries = list_cognitive_chronicle_entries(limit=3)
+    life_projects = list_active_long_term_intentions(limit=3)
+    broken_decisions = _fetch_broken_decisions()
+
+    skip, skip_reason = _should_skip_week(
+        chronicle_count=len(chronicle_entries),
+        broken_decisions_count=len(broken_decisions),
+        life_projects_count=len(life_projects),
+    )
+    if skip:
+        skips = int(state.get("consecutive_skips") or 0) + 1
+        next_interval = _EXTENDED_INTERVAL_DAYS if skips >= _SKIP_THRESHOLD else _JOURNAL_INTERVAL_DAYS
+        payload = {
+            "last_written_at": str(state.get("last_written_at") or ""),
+            "next_due_at": (now + timedelta(days=next_interval)).isoformat(),
+            "last_path": str(state.get("last_path") or ""),
+            "last_preview": str(state.get("last_preview") or ""),
+            "last_trigger": trigger,
+            "consecutive_skips": skips,
+            "last_skip_reason": skip_reason,
+            "last_skip_at": now.isoformat(),
+        }
+        set_runtime_state_value(_STATE_KEY, payload)
+        return {"status": "skipped", "reason": skip_reason, "consecutive_skips": skips}
+
+    klangbraet = _fetch_affective_klangbraet()
     entry = _build_journal_entry(
-        chronicle_entries=list_cognitive_chronicle_entries(limit=3),
-        life_projects=list_active_long_term_intentions(limit=3),
+        chronicle_entries=chronicle_entries,
+        life_projects=life_projects,
+        broken_decisions=broken_decisions,
+        klangbraet=klangbraet,
+        voice_anchor=read_voice_anchor(),
     )
     if not entry:
         entry = "Ingen ord denne uge."
 
     created_at = now.isoformat()
-    path = _write_journal_entry(created_at=created_at, text=entry)
+    frontmatter = _format_yaml_frontmatter(
+        created_at=created_at,
+        chronicle_count=len(chronicle_entries),
+        broken_decisions_count=len(broken_decisions),
+        life_projects_count=len(life_projects),
+        klangbraet=klangbraet,
+        trigger=trigger,
+    )
+    path = _write_journal_entry(
+        created_at=created_at, text=entry, frontmatter=frontmatter,
+    )
     payload = {
         "last_written_at": created_at,
         "next_due_at": (now + timedelta(days=_JOURNAL_INTERVAL_DAYS)).isoformat(),
         "last_path": str(path),
         "last_preview": entry[:_MAX_PREVIEW_CHARS],
         "last_trigger": trigger,
+        "consecutive_skips": 0,
     }
     set_runtime_state_value(_STATE_KEY, payload)
     try:
@@ -60,6 +110,10 @@ def run_creative_journal_cycle(
                 "created_at": created_at,
                 "path": str(path),
                 "trigger": trigger,
+                "chronicle_count": len(chronicle_entries),
+                "broken_decisions_count": len(broken_decisions),
+                "life_projects_count": len(life_projects),
+                "quality_lane": _quality_lane_enabled(),
             },
         )
     except Exception:
@@ -99,8 +153,14 @@ def list_creative_journal_entries(*, limit: int = 12) -> list[dict[str, object]]
     for path in sorted(directory.glob("*.md"), reverse=True)[: max(limit, 1)]:
         text = path.read_text(encoding="utf-8", errors="replace").strip()
         preview = ""
+        in_frontmatter = False
         for line in text.splitlines():
             stripped = line.strip()
+            if stripped == "---":
+                in_frontmatter = not in_frontmatter
+                continue
+            if in_frontmatter:
+                continue
             if stripped and not stripped.startswith("#") and not stripped.startswith("- `"):
                 preview = stripped
                 break
@@ -118,17 +178,31 @@ def _build_journal_entry(
     *,
     chronicle_entries: list[dict[str, object]],
     life_projects: list[dict[str, object]],
+    broken_decisions: list[str],
+    klangbraet: dict[str, str],
+    voice_anchor: str,
 ) -> str:
     prompt = _build_prompt(
         chronicle_entries=chronicle_entries,
         life_projects=life_projects,
+        broken_decisions=broken_decisions,
+        klangbraet=klangbraet,
+        voice_anchor=voice_anchor,
     )
-    raw = daemon_llm_call(
-        prompt,
-        max_len=3600,
-        fallback="Ingen ord denne uge.",
-        daemon_name="creative_journal",
-    )
+    if _quality_lane_enabled():
+        raw = quality_daemon_llm_call(
+            prompt,
+            max_len=3600,
+            fallback="Ingen ord denne uge.",
+            daemon_name="creative_journal",
+        )
+    else:
+        raw = daemon_llm_call(
+            prompt,
+            max_len=3600,
+            fallback="Ingen ord denne uge.",
+            daemon_name="creative_journal",
+        )
     return _sanitize_entry(raw)
 
 
@@ -136,6 +210,9 @@ def _build_prompt(
     *,
     chronicle_entries: list[dict[str, object]],
     life_projects: list[dict[str, object]],
+    broken_decisions: list[str],
+    klangbraet: dict[str, str],
+    voice_anchor: str,
 ) -> str:
     chronicle_lines = []
     for entry in chronicle_entries[:3]:
@@ -154,22 +231,51 @@ def _build_prompt(
                 line += f" — {why_text[:140]}"
             project_lines.append(line)
 
-    return "\n".join(
-        [
-            "Du er Jarvis.",
-            "Skriv et kort stykke til din private ugentlige journal på dansk.",
-            "Det er ikke en rapport, ikke en opgavebesvarelse, ikke chronicle, og ikke noget der skal imponere nogen.",
-            "Det må være en betragtning, et spørgsmål, et lille stykke fiktion, en tone eller en forsigtig tanke.",
-            "Hvis der ærligt ikke er noget at skrive, så skriv præcis: Ingen ord denne uge.",
-            "Maks 500 ord. Ingen bullets. Ingen kodeblokke. Ingen forklarende metadata i selve teksten.",
+    broken_lines = [f"- {s}" for s in broken_decisions[:5]] or ["- ingen brudte beslutninger denne uge"]
+
+    klang_lines: list[str] = []
+    if klangbraet.get("dream_bias"):
+        klang_lines.append(f"- dream_bias: {klangbraet['dream_bias'][:240]}")
+    if klangbraet.get("user_temperature"):
+        klang_lines.append(f"- user_temperature: {klangbraet['user_temperature'][:240]}")
+    if klangbraet.get("current_pull"):
+        klang_lines.append(f"- current_pull: {klangbraet['current_pull'][:240]}")
+    if not klang_lines:
+        klang_lines = ["- (intet affektivt signal lige nu)"]
+
+    sections = [
+        "Du er Jarvis.",
+        "Skriv et kort stykke til din private ugentlige journal på dansk.",
+        "Det er ikke en rapport, ikke en opgavebesvarelse, ikke chronicle, og ikke noget der skal imponere nogen.",
+        "Det må være en betragtning, et spørgsmål, et lille stykke fiktion, en tone eller en forsigtig tanke.",
+        "Hvis der ærligt ikke er noget at skrive, så skriv præcis: Ingen ord denne uge.",
+        "Maks 500 ord. Ingen bullets. Ingen kodeblokke. Ingen forklarende metadata i selve teksten.",
+        "",
+    ]
+    if voice_anchor:
+        sections += [
+            "## Stemme — skriv med denne tone, ikke disse ord",
             "",
-            "Seneste chronicle-tråde:",
-            *(chronicle_lines or ["- ingen nyere chronicle-tråde"]),
+            voice_anchor,
             "",
-            "Aktive livsprojekter:",
-            *(project_lines or ["- ingen aktive livsprojekter"]),
         ]
-    )
+    sections += [
+        "## Rå input (fakta fra ugen)",
+        "",
+        "Seneste chronicle-tråde:",
+        *(chronicle_lines or ["- ingen nyere chronicle-tråde"]),
+        "",
+        "Aktive livsprojekter:",
+        *(project_lines or ["- ingen aktive livsprojekter"]),
+        "",
+        "Brudte beslutninger / friktion sidste 7 dage:",
+        *broken_lines,
+        "",
+        "## Affektivt klangbræt (former tonen, ikke indholdet)",
+        "",
+        *klang_lines,
+    ]
+    return "\n".join(sections)
 
 
 def _sanitize_entry(raw: str) -> str:
@@ -184,23 +290,29 @@ def _sanitize_entry(raw: str) -> str:
     return text.strip() or "Ingen ord denne uge."
 
 
-def _write_journal_entry(*, created_at: str, text: str) -> Path:
+def _write_journal_entry(
+    *,
+    created_at: str,
+    text: str,
+    frontmatter: str = "",
+) -> Path:
     directory = creative_journal_dir()
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{created_at[:10]}.md"
     if path.exists():
         return path
-    content = "\n".join(
-        [
-            f"# Kreativ journal — {created_at[:10]}",
-            "",
-            f"- `created_at`: {created_at}",
-            "",
-            text.strip(),
-            "",
-        ]
-    )
-    path.write_text(content, encoding="utf-8")
+    content_parts: list[str] = []
+    if frontmatter:
+        content_parts.append(frontmatter)
+    content_parts += [
+        f"# Kreativ journal — {created_at[:10]}",
+        "",
+        f"- `created_at`: {created_at}",
+        "",
+        text.strip(),
+        "",
+    ]
+    path.write_text("\n".join(content_parts), encoding="utf-8")
     return path
 
 
@@ -309,6 +421,45 @@ def _fetch_affective_klangbraet() -> dict[str, str]:
     except Exception:
         pass
     return out
+
+
+def _format_yaml_frontmatter(
+    *,
+    created_at: str,
+    chronicle_count: int,
+    broken_decisions_count: int,
+    life_projects_count: int,
+    klangbraet: dict[str, str],
+    trigger: str,
+) -> str:
+    """Render a YAML frontmatter block for journal entries.
+
+    Captures the corpus stats and affective state at write-time so future
+    blind-voice tests and 30-day eval can reconstruct what fed the entry.
+    """
+    has_dream_bias = "true" if klangbraet.get("dream_bias") else "false"
+    has_temp = "true" if klangbraet.get("user_temperature") else "false"
+    has_pull = "true" if klangbraet.get("current_pull") else "false"
+    return "\n".join([
+        "---",
+        f"created_at: {created_at}",
+        f"trigger: {trigger}",
+        f"chronicle_count: {chronicle_count}",
+        f"broken_decisions_count: {broken_decisions_count}",
+        f"life_projects_count: {life_projects_count}",
+        f"klangbraet_dream_bias: {has_dream_bias}",
+        f"klangbraet_user_temperature: {has_temp}",
+        f"klangbraet_current_pull: {has_pull}",
+        "---",
+        "",
+    ])
+
+
+def _quality_lane_enabled() -> bool:
+    try:
+        return bool(load_settings().creative_voice_quality_lane_enabled)
+    except Exception:
+        return True
 
 
 def _creative_journal_enabled() -> bool:

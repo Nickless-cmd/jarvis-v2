@@ -106,6 +106,7 @@ from core.tools.github_tools import (
 )
 from core.tools.reasoning_store_tools import (
     REASONING_STORE_TOOL_DEFINITIONS,
+    REASONING_STORE_TOOL_HANDLERS,
     _exec_recall_reasoning,
 )
 from core.tools.math_tools import (
@@ -2325,6 +2326,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *SKILL_ENGINE_TOOL_DEFINITIONS,
     *SKILL_GATE_TOOL_DEFINITIONS,
     *SKILL_CHAIN_TOOL_DEFINITIONS,
+    *REASONING_STORE_TOOL_DEFINITIONS,
     *FORGETTING_TOOL_DEFINITIONS,
     *NUDGE_BROEND_TOOL_DEFINITIONS,
     {
@@ -6190,6 +6192,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **SKILL_GATE_TOOL_HANDLERS,
     # Skill chain (Lag #4) — sequential skill composition
     **SKILL_CHAIN_TOOL_HANDLERS,
+    # Reasoning store (Jarvis overnight 2026-05-11) — recall_reasoning
+    **REASONING_STORE_TOOL_HANDLERS,
     # Forgetting (Lag 11) — release_memory ritual
     **FORGETTING_TOOL_HANDLERS,
     **NUDGE_BROEND_TOOL_HANDLERS,

@@ -118,3 +118,11 @@ REASONING_STORE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
 ]
+
+
+# Handler map — mirrors pattern from other tool modules. Added 2026-05-11
+# during audit; Jarvis's overnight commit defined the executor + definitions
+# but never exposed a handler map for simple_tools.py to merge.
+REASONING_STORE_TOOL_HANDLERS: dict[str, Any] = {
+    "recall_reasoning": _exec_recall_reasoning,
+}

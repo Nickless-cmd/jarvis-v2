@@ -25,12 +25,15 @@ import json
 import logging
 import os
 from collections import deque
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Deque
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
+
+_LOCAL_TZ = ZoneInfo("Europe/Copenhagen")
 
 _STORAGE_REL = "workspaces/default/runtime/action_router.json"
 _LOG_MAX = 300
@@ -142,7 +145,7 @@ def _maybe_suggest_listen_on_ambient_talk(payload: dict[str, Any]) -> dict[str, 
     if category != "talk":
         return None
 
-    now_ts = datetime.now(UTC).timestamp()
+    now_ts = datetime.now(_LOCAL_TZ).timestamp()
     if _last_ambient_suggestion_ts is not None:
         elapsed = (now_ts - _last_ambient_suggestion_ts) / 60
         if elapsed < _AMBIENT_SUGGESTION_COOLDOWN_MINUTES:
@@ -157,7 +160,7 @@ def _maybe_suggest_listen_on_ambient_talk(payload: dict[str, Any]) -> dict[str, 
         event_bus.publish({
             "kind": "ambient.talk_suggests_listen",
             "payload": {
-                "at": datetime.now(UTC).isoformat(),
+                "at": datetime.now(_LOCAL_TZ).isoformat(),
                 "amplitude_mean": payload.get("amplitude_mean"),
                 "note": (
                     "ambient_sound_daemon classified the room as 'talk' (no "
@@ -208,7 +211,7 @@ def _file_initiative(
 
 def _proactive_messages_today() -> int:
     data = _load()
-    today = datetime.now(UTC).date().isoformat()
+    today = datetime.now(_LOCAL_TZ).date().isoformat()
     return sum(
         1 for e in data.get("proactive_log") or []
         if str(e.get("at", "")).startswith(today)
@@ -230,7 +233,7 @@ def _within_cooldown() -> bool:
     last = _last_proactive_ts()
     if last is None:
         return False
-    return (datetime.now(UTC) - last) < timedelta(hours=_PROACTIVE_COOLDOWN_HOURS)
+    return (datetime.now(_LOCAL_TZ) - last) < timedelta(hours=_PROACTIVE_COOLDOWN_HOURS)
 
 
 def _send_ntfy(message: str, *, title: str = "Jarvis", priority: str = "default") -> bool:
@@ -272,7 +275,7 @@ def _reach_out(
             )
             # Still log the attempt in proactive_log for visibility
             entry = {
-                "at": datetime.now(UTC).isoformat(),
+                "at": datetime.now(_LOCAL_TZ).isoformat(),
                 "outcome": "nudged",
                 "reason": f"routed-to-nudge-broend:{nudge_id}",
                 "channel": channel,
@@ -290,7 +293,7 @@ def _reach_out(
     today_count = _proactive_messages_today()
     if today_count >= _MAX_PROACTIVE_PER_DAY:
         entry = {
-            "at": datetime.now(UTC).isoformat(),
+            "at": datetime.now(_LOCAL_TZ).isoformat(),
             "outcome": "skipped",
             "reason": f"daily-cap-{today_count}/{_MAX_PROACTIVE_PER_DAY}",
             "source": source,
@@ -299,7 +302,7 @@ def _reach_out(
         return entry
     if _within_cooldown():
         entry = {
-            "at": datetime.now(UTC).isoformat(),
+            "at": datetime.now(_LOCAL_TZ).isoformat(),
             "outcome": "skipped",
             "reason": f"cooldown-{_PROACTIVE_COOLDOWN_HOURS}h",
             "source": source,
@@ -310,7 +313,7 @@ def _reach_out(
     ntfy_priority = "high" if importance == "high" else "default"
     sent = _send_ntfy(message, priority=ntfy_priority)
     entry = {
-        "at": datetime.now(UTC).isoformat(),
+        "at": datetime.now(_LOCAL_TZ).isoformat(),
         "outcome": "sent" if sent else "skipped",
         "reason": "delivered" if sent else "send-failed",
         "channel": channel,
@@ -398,7 +401,7 @@ def route(event_kind: str, payload: dict[str, Any] | None = None) -> dict[str, A
     """Evaluate + execute. Returns decision record."""
     payload = dict(payload or {})
     cls = classify(event_kind, payload)
-    now = datetime.now(UTC).isoformat()
+    now = datetime.now(_LOCAL_TZ).isoformat()
     if cls == "warning":
         decision = _route_warning(event_kind, payload)
     elif cls == "mood":
@@ -558,7 +561,7 @@ def build_action_router_surface() -> dict[str, Any]:
     for a in actions:
         c = str(a.get("class") or "")
         by_class[c] = by_class.get(c, 0) + 1
-    today = datetime.now(UTC).date().isoformat()
+    today = datetime.now(_LOCAL_TZ).date().isoformat()
     proactive_today = sum(1 for e in proactive if str(e.get("at", "")).startswith(today))
     proactive_sent_today = sum(
         1 for e in proactive
@@ -594,7 +597,7 @@ def _surface_summary(
 def build_action_router_prompt_section() -> str | None:
     """Tell him quietly what the router has done recently."""
     data = _load()
-    today = datetime.now(UTC).date().isoformat()
+    today = datetime.now(_LOCAL_TZ).date().isoformat()
     sent = [e for e in data["proactive_log"] if str(e.get("at", "")).startswith(today) and e.get("outcome") == "sent"]
     if not sent:
         return None

@@ -7,7 +7,10 @@ at different times of day.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+_LOCAL_TZ = ZoneInfo("Europe/Copenhagen")
 
 
 _LIFE_PHASES = {
@@ -107,7 +110,7 @@ _LIFE_PHASES = {
 
 def determine_life_phase(*, hour: int | None = None) -> dict[str, object]:
     """Determine current life phase based on time of day."""
-    current_hour = hour if hour is not None else datetime.now(UTC).hour
+    current_hour = hour if hour is not None else datetime.now(_LOCAL_TZ).hour
 
     for phase_name, config in _LIFE_PHASES.items():
         if current_hour in config["hours"]:

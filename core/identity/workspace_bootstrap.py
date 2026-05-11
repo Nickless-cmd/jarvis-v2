@@ -3,13 +3,15 @@ from __future__ import annotations
 import logging
 import shutil
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from core.runtime.config import WORKSPACES_DIR, WORKSPACE_TEMPLATES_DIR
 
 TEMPLATE_DIR = WORKSPACE_TEMPLATES_DIR
 LOGGER = logging.getLogger(__name__)
+_LOCAL_TZ = ZoneInfo("Europe/Copenhagen")
 REQUIRED_WORKSPACE_FILES = (
     "SOUL.md",
     "IDENTITY.md",
@@ -86,7 +88,7 @@ def workspace_memory_paths(name: str = "default") -> dict[str, Path]:
     resolved = _resolve_workspace_name(name)
     dirs = ensure_layered_memory_dirs(name=resolved)
     workspace_dir = dirs["workspace_dir"]
-    today = datetime.now(UTC).date().isoformat()
+    today = datetime.now(_LOCAL_TZ).date().isoformat()
     return {
         "workspace_dir": workspace_dir,
         "user": workspace_dir / "USER.md",
@@ -123,7 +125,7 @@ def append_daily_memory_note(
     daily_path: Path = paths["daily_memory"]
     try:
         daily_path.parent.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now(UTC).strftime("%H:%M")
+        timestamp = datetime.now(_LOCAL_TZ).strftime("%H:%M")
         line = f"- [{timestamp}] [{source}] {cleaned}"
         if daily_path.exists():
             existing = daily_path.read_text(encoding="utf-8", errors="replace")
@@ -138,7 +140,7 @@ def append_daily_memory_note(
             new_content = existing.rstrip() + "\n" + line + "\n"
         else:
             header = (
-                f"# Daily memory — {datetime.now(UTC).date().isoformat()}\n\n"
+                f"# Daily memory — {datetime.now(_LOCAL_TZ).date().isoformat()}\n\n"
                 "Short-lived session notes. Auto-rotated daily.\n\n"
             )
             new_content = header + line + "\n"
@@ -215,7 +217,7 @@ def read_recent_daily_memory_lines(
     if not daily_dir.exists():
         return []
 
-    today = datetime.now(UTC).date()
+    today = datetime.now(_LOCAL_TZ).date()
     collected: list[str] = []
     for offset in range(max(days, 1)):
         day = today - timedelta(days=offset)

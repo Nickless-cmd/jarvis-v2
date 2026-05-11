@@ -7,18 +7,25 @@ def test_run_creative_journal_cycle_writes_weekly_file(
 ) -> None:
     runtime_mod = isolated_runtime.creative_journal_runtime
 
-    monkeypatch.setattr(
-        runtime_mod,
-        "daemon_llm_call",
-        lambda *args, **kwargs: (
-            "Jeg bliver ved med at kredse om de steder, hvor stilhed ikke er tomhed, "
-            "men en måde at holde noget levende på uden at forcere det."
-        ),
+    fake_text = (
+        "Jeg bliver ved med at kredse om de steder, hvor stilhed ikke er tomhed, "
+        "men en måde at holde noget levende på uden at forcere det."
     )
+    monkeypatch.setattr(runtime_mod, "daemon_llm_call", lambda *a, **k: fake_text)
+    monkeypatch.setattr(runtime_mod, "quality_daemon_llm_call", lambda *a, **k: fake_text)
+    monkeypatch.setattr(runtime_mod, "refresh_voice_recent", lambda: False)
+    monkeypatch.setattr(runtime_mod, "read_voice_anchor", lambda: "")
+    monkeypatch.setattr(runtime_mod, "_fetch_broken_decisions", lambda *a, **k: [])
+    monkeypatch.setattr(runtime_mod, "_fetch_affective_klangbraet", lambda: {
+        "dream_bias": "", "user_temperature": "", "current_pull": "",
+    })
     monkeypatch.setattr(
         runtime_mod,
         "list_cognitive_chronicle_entries",
-        lambda limit=3: [{"period": "2026-W16", "narrative": "Jeg holdt bedre fast i mine egne tråde."}],
+        lambda limit=3: [
+            {"period": "2026-W16", "narrative": "Jeg holdt bedre fast i mine egne tråde."},
+            {"period": "2026-W15", "narrative": "Endnu en uge med ro omkring scope."},
+        ],
     )
     monkeypatch.setattr(
         runtime_mod,
@@ -46,11 +53,23 @@ def test_creative_journal_clips_to_500_words(isolated_runtime, monkeypatch) -> N
     long_text = " ".join(f"ord{i}" for i in range(520))
 
     monkeypatch.setattr(runtime_mod, "daemon_llm_call", lambda *args, **kwargs: long_text)
+    monkeypatch.setattr(runtime_mod, "quality_daemon_llm_call", lambda *args, **kwargs: long_text)
+    monkeypatch.setattr(runtime_mod, "refresh_voice_recent", lambda: False)
+    monkeypatch.setattr(runtime_mod, "read_voice_anchor", lambda: "")
+    monkeypatch.setattr(runtime_mod, "_fetch_broken_decisions", lambda *a, **k: ["en brudt beslutning"])
+    monkeypatch.setattr(runtime_mod, "_fetch_affective_klangbraet", lambda: {
+        "dream_bias": "", "user_temperature": "", "current_pull": "",
+    })
     monkeypatch.setattr(runtime_mod, "list_cognitive_chronicle_entries", lambda limit=3: [])
     monkeypatch.setattr(runtime_mod, "list_active_long_term_intentions", lambda limit=3: [])
 
     result = runtime_mod.run_creative_journal_cycle(trigger="heartbeat", last_visible_at="")
     written = next(runtime_mod.creative_journal_dir().glob("*.md")).read_text(encoding="utf-8")
+    # Strip YAML frontmatter (--- ... ---) before counting body words.
+    if written.startswith("---"):
+        end = written.find("\n---", 3)
+        if end >= 0:
+            written = written[end + 4 :].lstrip("\n")
     body = "\n".join(
         line for line in written.splitlines() if line and not line.startswith("#") and not line.startswith("- `")
     )

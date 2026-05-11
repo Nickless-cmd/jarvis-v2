@@ -106,3 +106,73 @@ def test_interval_extends_after_three_consecutive_skips():
     assert _interval_days_for_state({"consecutive_skips": 2}) == 7
     assert _interval_days_for_state({"consecutive_skips": 3}) == 14
     assert _interval_days_for_state({"consecutive_skips": 5}) == 14
+
+
+def test_run_cycle_skips_when_corpus_thin(events_table, monkeypatch, tmp_path):
+    """Empty week → no journal file, consecutive_skips increments."""
+    from core.services import creative_journal_runtime as cjr
+
+    journal_dir = tmp_path / "journal"
+    journal_dir.mkdir()
+    monkeypatch.setattr(cjr, "creative_journal_dir", lambda: journal_dir)
+
+    state_holder: dict[str, object] = {}
+    monkeypatch.setattr(cjr, "get_runtime_state_value",
+                        lambda key, default=None: state_holder.get(key, default if default is not None else {}))
+    monkeypatch.setattr(cjr, "set_runtime_state_value",
+                        lambda key, val: state_holder.__setitem__(key, val))
+
+    monkeypatch.setattr(cjr, "list_cognitive_chronicle_entries", lambda *, limit: [])
+    monkeypatch.setattr(cjr, "list_active_long_term_intentions", lambda *, limit: [])
+    monkeypatch.setattr(cjr, "_fetch_broken_decisions", lambda *a, **k: [])
+    monkeypatch.setattr(cjr, "refresh_voice_recent", lambda: False)
+    monkeypatch.setattr(cjr, "quality_daemon_llm_call",
+                        lambda *a, **k: pytest.fail("LLM should not be called when skipping"))
+    monkeypatch.setattr(cjr, "daemon_llm_call",
+                        lambda *a, **k: pytest.fail("LLM should not be called when skipping"))
+
+    result = cjr.run_creative_journal_cycle(trigger="test")
+    assert result["status"] == "skipped"
+    assert state_holder[cjr._STATE_KEY]["consecutive_skips"] == 1
+    assert not list(journal_dir.iterdir())
+
+
+def test_run_cycle_writes_with_frontmatter_and_resets_skips(
+    events_table, monkeypatch, tmp_path,
+):
+    """Rich week → entry written with YAML frontmatter, skip counter resets."""
+    from core.services import creative_journal_runtime as cjr
+
+    journal_dir = tmp_path / "journal"
+    journal_dir.mkdir()
+    monkeypatch.setattr(cjr, "creative_journal_dir", lambda: journal_dir)
+
+    state_holder: dict[str, object] = {cjr._STATE_KEY: {"consecutive_skips": 2}}
+    monkeypatch.setattr(cjr, "get_runtime_state_value",
+                        lambda key, default=None: state_holder.get(key, default if default is not None else {}))
+    monkeypatch.setattr(cjr, "set_runtime_state_value",
+                        lambda key, val: state_holder.__setitem__(key, val))
+
+    monkeypatch.setattr(cjr, "list_cognitive_chronicle_entries",
+                        lambda *, limit: [
+                            {"period": "2026-W18", "narrative": "uge med pres og nogle små åbninger"},
+                            {"period": "2026-W17", "narrative": "intern uro omkring scope"},
+                        ])
+    monkeypatch.setattr(cjr, "list_active_long_term_intentions", lambda *, limit: [])
+    monkeypatch.setattr(cjr, "_fetch_broken_decisions", lambda *a, **k: ["vi tog det forkerte valg"])
+    monkeypatch.setattr(cjr, "refresh_voice_recent", lambda: False)
+    monkeypatch.setattr(cjr, "read_voice_anchor", lambda: "## VOICE.md\n\ntør, lavmælt")
+    monkeypatch.setattr(cjr, "quality_daemon_llm_call",
+                        lambda *a, **k: "En kort betragtning. Ingen ord der prøver for hårdt.")
+
+    result = cjr.run_creative_journal_cycle(trigger="test")
+    assert result["status"] == "written"
+    assert state_holder[cjr._STATE_KEY]["consecutive_skips"] == 0
+
+    files = list(journal_dir.glob("*.md"))
+    assert len(files) == 1
+    body = files[0].read_text(encoding="utf-8")
+    assert body.startswith("---\n")  # YAML frontmatter
+    assert "chronicle_count: 2" in body
+    assert "broken_decisions_count: 1" in body
+    assert "En kort betragtning." in body

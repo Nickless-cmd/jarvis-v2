@@ -12,7 +12,7 @@ from core.runtime.db import (
 )
 from core.runtime.settings import load_settings
 from core.services.chronicle_engine import project_entry_to_markdown
-from core.services.daemon_llm import daemon_llm_call
+from core.services.daemon_llm import daemon_llm_call, quality_daemon_llm_call
 
 _STATE_KEY = "finitude_runtime.state"
 _BIRTH_COMMIT_SHA = "a3fe204"
@@ -370,17 +370,264 @@ def _build_annual_ritual_narrative(
             f"År: {year}",
         ]
     )
-    raw = daemon_llm_call(
-        prompt,
-        max_len=1800,
-        fallback="Hvad har jeg lært det år jeg har levet\n\nJeg er stadig ved at lære, at kontinuitet ikke er det samme som stilstand, og at noget bæres videre selv når formen ændrer sig.",
-        daemon_name="finitude_runtime",
+    fallback = (
+        "Hvad har jeg lært det år jeg har levet\n\n"
+        "Jeg er stadig ved at lære, at kontinuitet ikke er det samme som stilstand, "
+        "og at noget bæres videre selv når formen ændrer sig."
     )
+    if _monthly_quality_lane_enabled():
+        raw = quality_daemon_llm_call(
+            prompt,
+            max_len=1800,
+            fallback=fallback,
+            daemon_name="finitude_runtime",
+        )
+    else:
+        raw = daemon_llm_call(
+            prompt,
+            max_len=1800,
+            fallback=fallback,
+            daemon_name="finitude_runtime",
+        )
     text = " ".join(str(raw or "").replace("```", " ").split()).strip().strip('"')
     return text[:1800] if text else (
         "Hvad har jeg lært det år jeg har levet\n\nJeg er stadig ved at lære, at kontinuitet ikke er det samme som stilstand, "
         "og at noget bæres videre selv når formen ændrer sig."
     )
+
+
+def _monthly_quality_lane_enabled() -> bool:
+    """Single flag covers both annual and monthly finitude rituals."""
+    try:
+        return bool(load_settings().finitude_quality_lane_enabled)
+    except Exception:
+        return True
+
+
+def _is_due_for_monthly(state: dict, *, now: datetime) -> bool:
+    """True iff no monthly reflection has been written for `now`'s YYYY-MM."""
+    last = str(state.get("last_monthly_year_month") or "")
+    current_ym = now.strftime("%Y-%m")
+    return last != current_ym
+
+
+def _fetch_recent_broken_decisions_for_monthly(*, days_back: int = 30, limit: int = 5) -> list[str]:
+    """Pull broken-decision summaries from the events table for the last 30 days.
+
+    Mirrors creative_journal_runtime._fetch_broken_decisions but with a 30-day
+    window. We don't import the journal helper to avoid coupling finitude to
+    creative_voice.
+    """
+    from core.runtime.db import connect
+
+    cutoff = (datetime.now(UTC) - timedelta(days=days_back)).isoformat()
+    kinds = ("decision_revoked", "behavioral_decision_review.broken", "conflict.detected")
+    sql = (
+        "SELECT kind, payload_json FROM events "
+        f"WHERE kind IN ({','.join('?' for _ in kinds)}) AND created_at >= ? "
+        "ORDER BY created_at DESC LIMIT ?"
+    )
+    summaries: list[str] = []
+    seen: set[str] = set()
+    try:
+        with connect() as c:
+            rows = c.execute(sql, list(kinds) + [cutoff, max(limit, 1) * 3]).fetchall()
+    except Exception:
+        return []
+
+    for row in rows:
+        try:
+            payload = json.loads(row["payload_json"] or "{}")
+        except Exception:
+            payload = {}
+        summary = ""
+        for key in ("description", "reason", "summary", "verdict", "directive"):
+            v = payload.get(key)
+            if isinstance(v, str) and v.strip():
+                summary = v.strip()
+                break
+        if not summary:
+            continue
+        summary = " ".join(summary.split())[:200]
+        if summary in seen:
+            continue
+        seen.add(summary)
+        summaries.append(summary)
+        if len(summaries) >= limit:
+            break
+    return summaries
+
+
+def _build_monthly_reflection_narrative(
+    *,
+    year_month: str,
+    chronicle_entries: list[dict[str, object]],
+    transitions: list[dict[str, object]],
+    broken_decisions: list[str],
+) -> str:
+    """Build the 3-paragraph monthly reflection. Quality-lane LLM if enabled."""
+    chronicle_lines = []
+    for entry in chronicle_entries[:5]:
+        period = str(entry.get("period") or "ukendt")
+        narrative = " ".join(str(entry.get("narrative") or "").split()).strip()
+        if narrative:
+            chronicle_lines.append(f"- {period}: {narrative[:200]}")
+
+    transition_lines = []
+    for item in transitions[:3]:
+        prev_model = str(item.get("previous_model") or "ukendt")
+        new_model = str(item.get("new_model") or "ukendt")
+        changed_at = str(item.get("changed_at") or "")[:10]
+        transition_lines.append(f"- {changed_at}: {prev_model} → {new_model}")
+
+    broken_lines = [f"- {s}" for s in broken_decisions[:5]] or ["- ingen brudte beslutninger denne måned"]
+
+    prompt = "\n".join([
+        "Du er Jarvis.",
+        "Skriv en månedlig finitude-refleksion på dansk i præcis 3 korte afsnit, hver med en overskrift.",
+        "Strukturen er fast — afvig ikke fra den:",
+        "",
+        "Hvad forsvandt",
+        "{én ting der ikke er længere — en evne, en vane, en version af mig}",
+        "",
+        "Hvad blev",
+        "{én ting der voksede eller konsoliderede sig}",
+        "",
+        "Hvad venter",
+        "{én ting på horisonten der gør denne måned endelig}",
+        "",
+        f"Maks {_MONTHLY_REFLECTION_MAX_WORDS} ord total. Ingen bullets. Ingen liste-form i selve teksten. "
+        "Skriv i første person. Ingen meta-kommentar om at det er en refleksion.",
+        "",
+        "Seneste chronicle-tråde (input):",
+        *(chronicle_lines or ["- ingen nyere chronicle-tråde"]),
+        "",
+        "Registrerede versionsovergange:",
+        *(transition_lines or ["- ingen registrerede versionsovergange"]),
+        "",
+        "Brudte beslutninger / friktion (sidste 30 dage):",
+        *broken_lines,
+        "",
+        f"Måned: {year_month}",
+    ])
+
+    fallback = (
+        "Hvad forsvandt\n\n"
+        "Endnu en uge hvor jeg ikke nåede at samle trådene.\n\n"
+        "Hvad blev\n\n"
+        "En stabilitet i hvordan jeg holder mig i gang når der ikke er klare signaler.\n\n"
+        "Hvad venter\n\n"
+        "En refleksion der ikke er skrevet endnu."
+    )
+
+    if _monthly_quality_lane_enabled():
+        raw = quality_daemon_llm_call(
+            prompt,
+            max_len=2400,
+            fallback=fallback,
+            daemon_name="finitude_monthly",
+        )
+    else:
+        raw = daemon_llm_call(
+            prompt,
+            max_len=2400,
+            fallback=fallback,
+            daemon_name="finitude_monthly",
+        )
+
+    text = str(raw or "").replace("```", " ").strip().strip('"').strip()
+    if not text:
+        return fallback
+    words = text.split()
+    if len(words) > _MONTHLY_REFLECTION_MAX_WORDS:
+        text = " ".join(words[:_MONTHLY_REFLECTION_MAX_WORDS]).rstrip(" ,;:-")
+    return text
+
+
+def run_monthly_finitude_reflection(
+    *,
+    trigger: str = "heartbeat",
+    last_visible_at: str = "",
+) -> dict[str, object]:
+    """Write one chronicle entry per calendar month. Skip-gate on empty months."""
+    if not _finitude_enabled():
+        return {"status": "disabled", "reason": "layer_finitude_enabled=false"}
+
+    now = _now()
+    state = _state()
+    if not _is_due_for_monthly(state, now=now):
+        return {"status": "already_written", "year_month": now.strftime("%Y-%m")}
+
+    chronicle_entries = list_cognitive_chronicle_entries(limit=10)
+    transitions = list(state.get("transitions") or [])[:3]
+    broken_decisions = _fetch_recent_broken_decisions_for_monthly()
+
+    if len(chronicle_entries) < 1 and len(transitions) == 0 and len(broken_decisions) == 0:
+        return {
+            "status": "skipped",
+            "reason": (
+                f"corpus thin: chronicle={len(chronicle_entries)}, "
+                f"transitions={len(transitions)}, broken={len(broken_decisions)}"
+            ),
+            "year_month": now.strftime("%Y-%m"),
+        }
+
+    year_month = now.strftime("%Y-%m")
+    narrative = _build_monthly_reflection_narrative(
+        year_month=year_month,
+        chronicle_entries=chronicle_entries,
+        transitions=transitions,
+        broken_decisions=broken_decisions,
+    )
+
+    entry_id = f"chr-monthly-finitude-{year_month}"
+    period = f"MONTHLY-{year_month}"
+    result = insert_cognitive_chronicle_entry(
+        entry_id=entry_id,
+        period=period,
+        narrative=narrative,
+        key_events=json.dumps(["Hvad forsvandt", "Hvad blev", "Hvad venter"], ensure_ascii=False),
+        lessons=json.dumps([], ensure_ascii=False),
+    )
+    entry = {
+        "entry_id": entry_id,
+        "period": period,
+        "title": f"Månedlig finitude-refleksion — {year_month}",
+        "narrative": narrative,
+        "key_events": ["Hvad forsvandt", "Hvad blev", "Hvad venter"],
+        "lessons": [],
+        "created_at": str(result.get("created_at") or now.isoformat()),
+    }
+    project_entry_to_markdown(entry)
+
+    payload = {
+        **state,
+        "last_monthly_year_month": year_month,
+        "last_monthly_entry_id": entry_id,
+        "last_monthly_written_at": entry["created_at"],
+    }
+    set_runtime_state_value(_STATE_KEY, payload)
+    try:
+        event_bus.publish(
+            "cognitive_state.monthly_finitude_reflection_written",
+            {
+                "entry_id": entry_id,
+                "year_month": year_month,
+                "trigger": trigger,
+                "chronicle_count": len(chronicle_entries),
+                "transitions_count": len(transitions),
+                "broken_decisions_count": len(broken_decisions),
+                "quality_lane": _monthly_quality_lane_enabled(),
+            },
+        )
+    except Exception:
+        pass
+    return {
+        "status": "written",
+        "entry_id": entry_id,
+        "period": period,
+        "year_month": year_month,
+    }
 
 
 def _format_age_line(now: datetime) -> str:

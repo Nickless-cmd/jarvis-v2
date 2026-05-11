@@ -1114,7 +1114,13 @@ def init_db() -> None:
         _ensure_soft_deleted_at_columns(conn)
         _ensure_dream_bias_active_table(conn)
         _ensure_user_temperature_active_table(conn)
-        _ensure_generalized_policies_table(conn)
+        # Generalized policies schema lives in policy_abstraction.py to keep
+        # db.py from growing. Delegate the ensure-call here.
+        # Added 2026-05-11 by Jarvis; the init_db call referenced a
+        # function name that was never defined in db.py — fixed by
+        # delegating to the real _ensure_table.
+        from core.services.policy_abstraction import _ensure_table as _ensure_generalized_policies
+        _ensure_generalized_policies(conn)
         _ensure_experience_episodes_table(conn)
         _ensure_causal_edges_table(conn)
         from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables

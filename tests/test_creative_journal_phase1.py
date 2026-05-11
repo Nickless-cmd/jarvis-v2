@@ -60,3 +60,49 @@ def test_fetch_affective_klangbraet_present_keys():
     out = _fetch_affective_klangbraet()
     assert isinstance(out, dict)
     assert set(out.keys()) == {"dream_bias", "user_temperature", "current_pull"}
+
+
+def test_should_skip_week_when_corpus_thin():
+    from core.services.creative_journal_runtime import _should_skip_week
+
+    skip, reason = _should_skip_week(
+        chronicle_count=1,
+        broken_decisions_count=0,
+        life_projects_count=0,
+    )
+    assert skip is True
+    assert "thin" in reason.lower() or "skip" in reason.lower()
+
+
+def test_should_not_skip_when_any_signal_present():
+    from core.services.creative_journal_runtime import _should_skip_week
+
+    skip, _ = _should_skip_week(
+        chronicle_count=2,
+        broken_decisions_count=0,
+        life_projects_count=0,
+    )
+    assert skip is False
+
+    skip2, _ = _should_skip_week(
+        chronicle_count=0,
+        broken_decisions_count=1,
+        life_projects_count=0,
+    )
+    assert skip2 is False
+
+    skip3, _ = _should_skip_week(
+        chronicle_count=0,
+        broken_decisions_count=0,
+        life_projects_count=1,
+    )
+    assert skip3 is False
+
+
+def test_interval_extends_after_three_consecutive_skips():
+    from core.services.creative_journal_runtime import _interval_days_for_state
+
+    assert _interval_days_for_state({"consecutive_skips": 0}) == 7
+    assert _interval_days_for_state({"consecutive_skips": 2}) == 7
+    assert _interval_days_for_state({"consecutive_skips": 3}) == 14
+    assert _interval_days_for_state({"consecutive_skips": 5}) == 14

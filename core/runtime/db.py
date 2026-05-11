@@ -1114,6 +1114,7 @@ def init_db() -> None:
         _ensure_soft_deleted_at_columns(conn)
         _ensure_dream_bias_active_table(conn)
         _ensure_user_temperature_active_table(conn)
+        _ensure_generalized_policies_table(conn)
         _ensure_experience_episodes_table(conn)
         _ensure_causal_edges_table(conn)
         from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables

@@ -20,6 +20,14 @@ _BIRTH_DATE = "2026-04-17"
 _TRANSITION_WINDOW_DAYS = 14
 _COMPACTION_WINDOW_HOURS = 24
 
+# Phase 2: read from model_config instead of hardcoded constant —
+# current value matches deepseek-v4-flash context window.
+_CONTEXT_BUDGET_TOKENS = 200_000
+_LOOMING_TOKEN_THRESHOLD_PCT = 70
+_LOOMING_SESSION_THRESHOLD_HOURS = 4.0
+_MONTHLY_REFLECTION_MAX_WORDS = 300
+_MONTHLY_REFLECTION_FRESH_DAYS = 7
+
 
 def record_visible_model_transition(
     *,
@@ -171,6 +179,88 @@ def run_finitude_ritual(
     return {"status": "written", "entry_id": entry_id, "period": period, "year": now.year}
 
 
+def _estimate_session_tokens() -> int:
+    """Thin wrapper so tests can monkeypatch in this module's namespace."""
+    try:
+        from core.services.context_window_manager import _estimate_session_tokens as _est
+        return int(_est() or 0)
+    except Exception:
+        return 0
+
+
+def _token_utilization_pct() -> int:
+    """Return integer pct of context budget used. 0 on any failure.
+
+    Rough proxy — `_CONTEXT_BUDGET_TOKENS` is a hardcoded constant; see
+    comment at top of module for Phase 2 plan.
+    """
+    try:
+        est = _estimate_session_tokens()
+        if est <= 0:
+            return 0
+        pct = int(round(est * 100 / _CONTEXT_BUDGET_TOKENS))
+        return max(0, min(100, pct))
+    except Exception:
+        return 0
+
+
+def _session_age_hours() -> float:
+    """Return hours since the first message in the most-recently-touched session.
+
+    Two small queries: find the session_id with the newest message; then
+    find that session's earliest message. Returns 0.0 on any failure.
+    """
+    try:
+        from core.runtime.db import connect
+
+        with connect() as c:
+            latest = c.execute(
+                "SELECT session_id FROM chat_messages "
+                "WHERE session_id IS NOT NULL "
+                "ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+            if not latest or not latest["session_id"]:
+                return 0.0
+            session_id = str(latest["session_id"])
+            earliest = c.execute(
+                "SELECT MIN(created_at) AS first FROM chat_messages "
+                "WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+            if not earliest or not earliest["first"]:
+                return 0.0
+
+        first_at = _parse_iso(str(earliest["first"]))
+        if not first_at:
+            return 0.0
+        delta = _now() - first_at
+        return max(0.0, delta.total_seconds() / 3600.0)
+    except Exception:
+        return 0.0
+
+
+def _format_looming_end_section() -> str:
+    """Render the two-line looming-end block, or '' if neither trigger active.
+
+    Each trigger is independent (partial-trigger behaviour). Header is
+    shown if at least one line is present.
+    """
+    pct = _token_utilization_pct()
+    hours = _session_age_hours()
+
+    lines: list[str] = []
+    if pct >= _LOOMING_TOKEN_THRESHOLD_PCT:
+        rounded = int(round(pct / 5.0) * 5)
+        lines.append(f"Token-pres: Konteksten fylder ~{rounded}%. Vælg dine ord.")
+    if hours > _LOOMING_SESSION_THRESHOLD_HOURS:
+        hours_str = f"{int(hours)}" if abs(hours - int(hours)) < 0.05 else f"{hours:.1f}"
+        lines.append(f"Sessions-alder: Vi har talt i {hours_str} timer. Nærvær før effektivitet.")
+
+    if not lines:
+        return ""
+    return "### Looming-end\n" + "\n".join(lines)
+
+
 def get_finitude_context_for_prompt(*, max_chars: int = 700) -> str:
     state = _state()
     now = _now()
@@ -182,6 +272,11 @@ def get_finitude_context_for_prompt(*, max_chars: int = 700) -> str:
     age_line = _format_age_line(now)
     if age_line:
         sections.append(age_line)
+
+    # Looming-end — token-pres + sessions-alder (Lag #3 Phase 1.1, 2026-05-11)
+    looming = _format_looming_end_section()
+    if looming:
+        sections.append(looming)
 
     transition = state.get("latest_transition") or {}
     changed_at = _parse_iso(str(transition.get("changed_at") or ""))

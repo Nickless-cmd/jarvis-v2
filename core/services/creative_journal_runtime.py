@@ -204,6 +204,81 @@ def _write_journal_entry(*, created_at: str, text: str) -> Path:
     return path
 
 
+def _fetch_broken_decisions(*, days_back: int = 7, limit: int = 5) -> list[str]:
+    """Pull recent broken-decision summaries from the events table.
+
+    Reuses the pattern from dream_bias_engine._fetch_regret_corpus, scoped to
+    the last 7 days for journal-context relevance. Returns a list of short
+    summary strings (deduplicated, truncated).
+    """
+    from core.runtime.db import connect
+
+    cutoff = (datetime.now(UTC) - timedelta(days=days_back)).isoformat()
+    kinds = ("decision_revoked", "behavioral_decision_review.broken", "conflict.detected")
+    sql = (
+        "SELECT kind, payload_json, created_at FROM events "
+        f"WHERE kind IN ({','.join('?' for _ in kinds)}) AND created_at >= ? "
+        "ORDER BY created_at DESC LIMIT ?"
+    )
+    summaries: list[str] = []
+    seen: set[str] = set()
+    try:
+        with connect() as c:
+            rows = c.execute(sql, list(kinds) + [cutoff, max(limit, 1) * 3]).fetchall()
+    except Exception:
+        return []
+
+    import json as _json
+    for row in rows:
+        try:
+            payload = _json.loads(row["payload_json"] or "{}")
+        except Exception:
+            payload = {}
+        summary = ""
+        for key in ("description", "reason", "summary", "verdict", "directive"):
+            v = payload.get(key)
+            if isinstance(v, str) and v.strip():
+                summary = v.strip()
+                break
+        if not summary:
+            continue
+        summary = " ".join(summary.split())[:200]
+        if summary in seen:
+            continue
+        seen.add(summary)
+        summaries.append(summary)
+        if len(summaries) >= limit:
+            break
+    return summaries
+
+
+def _fetch_affective_klangbraet() -> dict[str, str]:
+    """Pull current affective signals — these shape tone, not content.
+
+    Each value is either a short non-empty string (present) or "" (absent).
+    Binary present/absent; no tiering. Failures are silent (treated as absent).
+    """
+    out: dict[str, str] = {"dream_bias": "", "user_temperature": "", "current_pull": ""}
+    try:
+        from core.services.dream_bias_engine import format_dream_bias_for_heartbeat
+        out["dream_bias"] = (format_dream_bias_for_heartbeat(workspace_id="default") or "").strip()
+    except Exception:
+        pass
+    try:
+        from core.services.user_temperature_engine import get_response_style_modifiers
+        mods = get_response_style_modifiers(workspace_id="default") or {}
+        texture = "; ".join(f"{k}: {v}" for k, v in mods.items() if v)
+        out["user_temperature"] = texture
+    except Exception:
+        pass
+    try:
+        from core.services.current_pull import get_current_pull_for_prompt
+        out["current_pull"] = (get_current_pull_for_prompt() or "").strip()
+    except Exception:
+        pass
+    return out
+
+
 def _creative_journal_enabled() -> bool:
     settings = load_settings()
     return bool(settings.extra.get("layer_creative_journal_enabled", True))

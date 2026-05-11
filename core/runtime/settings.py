@@ -137,6 +137,11 @@ class RuntimeSettings:
     # a "disabled" stub immediately. The tool stays in the schema so the
     # model can still call it; it just no-ops.
     skill_chain_enabled: bool = True
+    # ── Creative voice (Lag #4 — added 2026-05-11) ───────────────────────
+    # Routes weekly journal through quality_daemon_llm_call (deepseek-v4-flash).
+    # Falls back to cheap lane if quality lane is unavailable. Master kill-switch
+    # for the whole quality upgrade — disable to revert to old prompt + cheap lane.
+    creative_voice_quality_lane_enabled: bool = True
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -489,6 +494,12 @@ def load_settings() -> RuntimeSettings:
         ),
         skill_chain_enabled=bool(
             data.get("skill_chain_enabled", defaults.skill_chain_enabled)
+        ),
+        creative_voice_quality_lane_enabled=bool(
+            data.get(
+                "creative_voice_quality_lane_enabled",
+                defaults.creative_voice_quality_lane_enabled,
+            )
         ),
         longing_daemon_cadence_minutes=int(
             data.get("longing_daemon_cadence_minutes", defaults.longing_daemon_cadence_minutes)

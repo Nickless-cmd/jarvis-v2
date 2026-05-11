@@ -136,6 +136,10 @@ creative_journal_runtime._fetch_affective_klangbraet()
   ```
   Token line shows when utilization ≥ 70%, rounded to nearest 5%.
   Session line shows when active session > 4h.
+- **Partial-trigger behaviour:** Each line is independent. If only one
+  trigger is active (e.g. long conversation with few tokens), only that
+  line renders. The `### Looming-end` header is shown whenever at least
+  one line is present.
 - Wire into `get_finitude_context_for_prompt` after the age section.
 - If neither trigger active: no `### Looming-end` block at all.
 
@@ -230,6 +234,10 @@ creative_journal_runtime._fetch_affective_klangbraet()
   budget × 100. Fallback to 0 if `_estimate_session_tokens` fails.
   The constant lives in `finitude_runtime.py` and is documented as a
   rough proxy — it doesn't need to be perfect, just stable.
+  *Code-comment requirement:* the constant declaration must carry a
+  `# Phase 2: read from model_config instead of hardcoded constant —
+  current value matches deepseek-v4-flash context window` comment so
+  the next refactor finds it.
 
 ## Out of scope (Phase 2 / deferred)
 
@@ -250,4 +258,8 @@ Schedule eval at 2026-06-11:
 - Read the May monthly entry — does the 3-paragraph format hold?
 - Verify klangbræt finitude fields are populated in stored frontmatter
 - Tune 70% threshold if noisy
+- **Measure prompt-length delta** — sample 20 prompts before-deploy
+  baseline vs 20 prompts post-deploy with finitude fully populated;
+  report avg + worst-case growth in lines and tokens. Phase 2 needs
+  this to budget for further prompt-bloat.
 - Decide: keep, tune, deprecate

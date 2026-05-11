@@ -1110,6 +1110,7 @@ def init_db() -> None:
         _ensure_chat_messages_reasoning_column(conn)
         _ensure_counterfactuals_table(conn)
         _ensure_absence_traces_table(conn)
+        _ensure_reasoning_conclusions_table(conn)
         _ensure_soft_deleted_at_columns(conn)
         _ensure_dream_bias_active_table(conn)
         _ensure_user_temperature_active_table(conn)
@@ -1330,6 +1331,40 @@ def _ensure_absence_traces_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_absence_traces_released "
         "ON absence_traces(released_at)"
+    )
+
+
+def _ensure_reasoning_conclusions_table(conn: sqlite3.Connection) -> None:
+    """Create reasoning_conclusions table for Phase 1 Generalized Learning.
+
+    Idempotent: CREATE TABLE IF NOT EXISTS + index creation. Re-runs are
+    no-ops. Stores LLM reasoning conclusions from deep_analyze,
+    reasoning_classify, self_evaluation, counterfactuals, and agent runs
+    with an embedding column for semantic retrieval.
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS reasoning_conclusions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conclusion_id TEXT NOT NULL UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+            source TEXT NOT NULL,
+            conclusion_text TEXT NOT NULL,
+            context TEXT NOT NULL DEFAULT '',
+            confidence REAL NOT NULL DEFAULT 0.0,
+            embedding_json TEXT NOT NULL DEFAULT '[]',
+            source_record_id TEXT NOT NULL DEFAULT '',
+            metadata_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_reasoning_conclusions_source "
+        "ON reasoning_conclusions(source, created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_reasoning_conclusions_created "
+        "ON reasoning_conclusions(created_at DESC)"
     )
 
 

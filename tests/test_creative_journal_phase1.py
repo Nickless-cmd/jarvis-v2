@@ -59,7 +59,7 @@ def test_fetch_affective_klangbraet_present_keys():
 
     out = _fetch_affective_klangbraet()
     assert isinstance(out, dict)
-    assert set(out.keys()) == {"dream_bias", "user_temperature", "current_pull"}
+    assert set(out.keys()) == {"dream_bias", "user_temperature", "current_pull", "finitude"}
 
 
 def test_should_skip_week_when_corpus_thin():
@@ -135,6 +135,81 @@ def test_run_cycle_skips_when_corpus_thin(events_table, monkeypatch, tmp_path):
     assert result["status"] == "skipped"
     assert state_holder[cjr._STATE_KEY]["consecutive_skips"] == 1
     assert not list(journal_dir.iterdir())
+
+
+def test_klangbraet_includes_finitude_subdict():
+    from core.services.creative_journal_runtime import _fetch_affective_klangbraet
+
+    out = _fetch_affective_klangbraet()
+    assert "finitude" in out
+    assert isinstance(out["finitude"], dict)
+    assert set(out["finitude"].keys()) == {
+        "age", "looming_end", "last_transition", "monthly_reflection",
+    }
+
+
+def test_klangbraet_finitude_age_always_present():
+    from core.services.creative_journal_runtime import _fetch_affective_klangbraet
+
+    out = _fetch_affective_klangbraet()
+    # Age computed from _BIRTH_DATE — should always be non-empty in normal runtime.
+    assert out["finitude"]["age"]
+    assert "dage" in out["finitude"]["age"]
+
+
+def test_build_prompt_renders_finitude_section():
+    from core.services.creative_journal_runtime import _build_prompt
+
+    prompt = _build_prompt(
+        chronicle_entries=[],
+        life_projects=[],
+        broken_decisions=[],
+        klangbraet={
+            "dream_bias": "",
+            "user_temperature": "",
+            "current_pull": "",
+            "finitude": {
+                "age": "24 dage",
+                "looming_end": "Token-pres: ~75%",
+                "last_transition": "",
+                "monthly_reflection": "",
+            },
+        },
+        voice_anchor="",
+    )
+    assert "## Finitude" in prompt
+    assert "Alder: 24 dage" in prompt
+    assert "Looming-end: Token-pres: ~75%" in prompt
+    # Empty fields skipped
+    assert "Sidste transition:" not in prompt
+    assert "Månedlig refleksion:" not in prompt
+
+
+def test_yaml_frontmatter_includes_finitude_booleans():
+    from core.services.creative_journal_runtime import _format_yaml_frontmatter
+
+    frontmatter = _format_yaml_frontmatter(
+        created_at="2026-05-11T20:00:00+00:00",
+        chronicle_count=2,
+        broken_decisions_count=1,
+        life_projects_count=0,
+        klangbraet={
+            "dream_bias": "",
+            "user_temperature": "",
+            "current_pull": "",
+            "finitude": {
+                "age": "24 dage",
+                "looming_end": "",
+                "last_transition": "deepseek-v4-pro → flash",
+                "monthly_reflection": "",
+            },
+        },
+        trigger="heartbeat",
+    )
+    assert "finitude_age: true" in frontmatter
+    assert "finitude_looming_end: false" in frontmatter
+    assert "finitude_last_transition: true" in frontmatter
+    assert "finitude_monthly_reflection: false" in frontmatter
 
 
 def test_run_cycle_writes_with_frontmatter_and_resets_skips(

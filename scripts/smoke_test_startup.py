@@ -206,6 +206,19 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Finitude Phase 1 (Lag #3 — added 2026-05-11)
+        try:
+            from core.services.finitude_runtime import (  # noqa: F401
+                _format_looming_end_section,
+                _session_age_hours,
+                _token_utilization_pct,
+                _monthly_quality_lane_enabled,
+                _is_due_for_monthly,
+                run_monthly_finitude_reflection,
+            )
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

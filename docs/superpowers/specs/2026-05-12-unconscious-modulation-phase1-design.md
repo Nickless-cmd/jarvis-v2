@@ -123,6 +123,8 @@ chat request arrives at execute_visible_model / stream_visible_model
        │      ├─ temp_delta  = max_temp_delta  × intensity × valens
        │      ├─ top_p_delta = max_top_p_delta × intensity × arousal
        │      ├─ clamp both into safe range
+       │      ├─ logger.debug("unconscious_modulation: base=(%s,%s) → modulated=(%s,%s)",
+       │      │               base_temp, base_top_p, mod_temp, mod_top_p)
        │      └─ return (mod_temp, mod_top_p)
        └─ provider API call with modulated params
 ```

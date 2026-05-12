@@ -51,6 +51,7 @@ def propose_plan(
     title: str,
     why: str,
     steps: list[str],
+    skill_data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     title = (title or "").strip()
     why = (why or "").strip()
@@ -104,6 +105,10 @@ def propose_plan(
         "status": "awaiting_approval",
         "created_at": now,
         "completed_step_indices": [],  # Phase 1 (2026-05-12): tracks progress
+        # Tool Invention Phase 1 (2026-05-12): optional skill-install metadata.
+        # When present, resolve_plan(decision="approved") will call
+        # skill_engine.create_skill() on it after status transition.
+        "skill_data": skill_data if isinstance(skill_data, dict) else None,
     }
     _save_all(data)
     return {"status": "ok", "plan_id": plan_id, "awaiting": True, "session_id": sid}

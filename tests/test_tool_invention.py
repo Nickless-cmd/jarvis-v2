@@ -123,3 +123,59 @@ def test_create_skill_still_validates_via_helper(isolated_skills_root):
         instructions="x",
     )
     assert result["status"] == "error"
+
+
+@pytest.fixture()
+def clean_plan_state(tmp_path, monkeypatch):
+    """Isolated state_store so plans don't pollute."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("JARVIS_WORKSPACES_DIR", str(tmp_path / "workspaces"))
+    import importlib
+    import core.runtime.state_store as ss
+    importlib.reload(ss)
+    import core.services.plan_proposals as pp
+    importlib.reload(pp)
+    import core.services.agent_todos as at
+    importlib.reload(at)
+    return None
+
+
+def test_propose_plan_accepts_skill_data(clean_plan_state):
+    from core.services.plan_proposals import propose_plan, _load_all
+
+    skill_data = {
+        "name": "my-skill",
+        "description": "x",
+        "instructions": "y",
+        "use_when": "z",
+        "tags": ["a"],
+    }
+    result = propose_plan(
+        session_id="s1",
+        title="Ny skill: my-skill",
+        why="x",
+        steps=["Install skill 'my-skill' (auto on approval)"],
+        skill_data=skill_data,
+    )
+    assert result["status"] == "ok"
+    plan_id = result["plan_id"]
+
+    plans = _load_all()
+    assert plans[plan_id]["skill_data"] == skill_data
+
+
+def test_propose_plan_without_skill_data_works_unchanged(clean_plan_state):
+    """Backwards compat: existing callers don't pass skill_data."""
+    from core.services.plan_proposals import propose_plan, _load_all
+
+    result = propose_plan(
+        session_id="s1",
+        title="Regular plan",
+        why="x",
+        steps=["step 1"],
+    )
+    assert result["status"] == "ok"
+    plan_id = result["plan_id"]
+
+    plans = _load_all()
+    assert plans[plan_id].get("skill_data") is None

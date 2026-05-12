@@ -586,7 +586,21 @@ def build_visible_chat_prompt_assembly(
                 return category
         return "general"
 
+    # Per-section awareness timing — captures elapsed-since-prev-call so we
+    # can identify which sections in the synchronous awareness block dominate
+    # the ~7.5s sync gap. The 'content' arg has already been evaluated by
+    # the caller's expression, so this measures *between* additions — i.e.
+    # the work done between the previous _awareness_add return and this call.
+    # Added 2026-05-12 to find which of the 50+ inline section builders are
+    # the heavy hitters without instrumenting every call site.
+    _awareness_call_times: list[tuple[int, str]] = []  # [(elapsed_ms_since_prev, label)]
+    _last_awareness_t = [_t_mod.monotonic()]
+
     def _awareness_add(priority: int, label: str, content: str | None) -> None:
+        _now = _t_mod.monotonic()
+        _elapsed_ms = int((_now - _last_awareness_t[0]) * 1000)
+        _awareness_call_times.append((_elapsed_ms, label))
+        _last_awareness_t[0] = _now
         if not content:
             return
         _awareness.append((priority, label, content))
@@ -1449,6 +1463,21 @@ def build_visible_chat_prompt_assembly(
         file=_sys_mod.stderr,
         flush=True,
     )
+
+    # Top-10 slowest awareness sections by elapsed-since-prev. The label is
+    # what was JUST added — the elapsed time is the work it took to build.
+    # Helps identify which of the 50+ inline section builders dominate.
+    try:
+        _top = sorted(_awareness_call_times, key=lambda x: x[0], reverse=True)[:10]
+        _top_str = " ".join(f"{lbl.replace(' ', '_')}={ms}" for ms, lbl in _top if ms > 50)
+        if _top_str:
+            print(
+                f"prompt-assembly-awareness-top10 {_top_str}",
+                file=_sys_mod.stderr,
+                flush=True,
+            )
+    except Exception:
+        pass
 
     # P1 instrumentation: measure system-prompt size before returning. Pure
     # observation — no behavior change. Emits an eventbus event so MC and

@@ -17,6 +17,7 @@ from typing import Any
 from uuid import uuid4
 
 from core.runtime.db import connect
+from core.runtime.settings import load_settings
 from core.runtime.state_store import load_json, save_json
 
 logger = logging.getLogger(__name__)
@@ -171,3 +172,43 @@ def _safe_publish(family_event: str, payload: dict[str, Any]) -> None:
         event_bus.publish(family_event, payload)
     except Exception:
         pass
+
+
+# ---------------------------------------------------------------------------
+# Killswitch helper
+# ---------------------------------------------------------------------------
+
+def curiosity_enabled() -> bool:
+    """Read killswitch from settings. Fail-open: settings errors → True."""
+    try:
+        return bool(load_settings().curiosity_budget_enabled)
+    except Exception:
+        return True
+
+
+# ---------------------------------------------------------------------------
+# Idle-window flag
+# ---------------------------------------------------------------------------
+
+def idle_window_open() -> bool:
+    state = load_json(_WINDOW_KEY, default=None)
+    return bool(isinstance(state, dict) and state.get("open"))
+
+
+def open_idle_window() -> None:
+    """Mark window open IF there's still budget. No-op if budget exhausted."""
+    if remaining_today() <= 0:
+        return
+    if idle_window_open():
+        return  # already open
+    save_json(_WINDOW_KEY, {"open": True, "opened_at": datetime.now(UTC).isoformat()})
+    _safe_publish("cognitive_state.curiosity_window_opened", {})
+
+
+def close_idle_window(*, reason: str) -> None:
+    """Close the window. Reason is logged for diagnostics."""
+    if not idle_window_open():
+        return
+    save_json(_WINDOW_KEY, {"open": False, "closed_at": datetime.now(UTC).isoformat(),
+                            "reason": reason})
+    _safe_publish("cognitive_state.curiosity_window_closed", {"reason": reason})

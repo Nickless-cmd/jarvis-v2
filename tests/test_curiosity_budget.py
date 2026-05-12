@@ -165,3 +165,43 @@ def test_fetch_recent_observations_returns_newest_first(clean_state):
     assert len(rows) == 2
     assert rows[0]["id"] == obs_c
     assert rows[1]["id"] == obs_b
+
+
+def test_curiosity_enabled_killswitch(clean_state, monkeypatch):
+    """When settings.curiosity_budget_enabled is False, curiosity_enabled() returns False."""
+    from core.services import curiosity_budget as cb
+
+    class FakeSettings:
+        curiosity_budget_enabled = False
+
+    monkeypatch.setattr(cb, "load_settings", lambda: FakeSettings())
+    assert cb.curiosity_enabled() is False
+
+
+def test_curiosity_enabled_default_true(clean_state):
+    from core.services.curiosity_budget import curiosity_enabled
+    assert curiosity_enabled() is True
+
+
+def test_window_flag_open_close(clean_state):
+    from core.services.curiosity_budget import (
+        open_idle_window, close_idle_window, idle_window_open,
+    )
+    assert idle_window_open() is False
+    open_idle_window()
+    assert idle_window_open() is True
+    close_idle_window(reason="action_used")
+    assert idle_window_open() is False
+
+
+def test_open_idle_window_skips_if_no_budget(clean_state):
+    """If remaining==0, opening the window is a no-op (window stays closed)."""
+    from core.services.curiosity_budget import (
+        decrement_budget, load_or_reset_budget,
+        open_idle_window, idle_window_open,
+    )
+    load_or_reset_budget()
+    for i in range(5):
+        decrement_budget(action="x", observation_id=f"o{i}")
+    open_idle_window()
+    assert idle_window_open() is False

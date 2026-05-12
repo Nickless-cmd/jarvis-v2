@@ -8,8 +8,8 @@ Current audit:
 
 | Score | Count |
 |---|---:|
-| LIVE | 426 |
-| PARTIAL | 76 |
+| LIVE | 431 |
+| PARTIAL | 71 |
 | SUSPICIOUS | 3 |
 | ORPHAN | 1 |
 
@@ -104,29 +104,39 @@ Result: direct contract tests added in `tests/test_partial_service_contracts.py`
 `continuity.py` and `development_sense.py` also had small wording changes to
 replace identity/performance claims with evidence-based state reporting.
 
-Batch 2 COMPLETE (2026-05-12):
+Batch 2 complete (2026-05-12):
 
-1. `proactive_outbound_substrate.py` — 23 tests added, all passing, ruff clean.
+1. `proactive_outbound_substrate.py` — existing tests prove the contract.
    Test file: `tests/test_proactive_outbound_substrate.py`.
    Coverage: payload summarization (8), DB-backed substrate (7), section builder (4),
    constraint verification (3 — whitelist-only kinds, no DB writes, no side effects).
    Module itself unchanged — zero theater, pure data-reader. Killswitch verified.
 
-Batch 3 COMPLETE (2026-05-12):
+Batch 3 complete (2026-05-12):
 
-1. `verification_gate_telemetry.py` — 21 tests added, all passing, ruff clean.
+1. `verification_gate_telemetry.py` — existing tests prove the contract.
    Test file: `tests/test_verification_gate_telemetry.py`.
    Coverage: record_surface (5), record_verify_event (4), sweep_expired_surfaces (3),
    get_telemetry_summary (6), telemetry_section (3).
    All IO faked via in-memory state_store — no disk, no eventbus needed.
-   Module itself unchanged — zero theater, pure evidence aggregator.
+   Low heed-rate wording now reports telemetry instead of second-person judgment.
+
+Batch 4 complete (2026-05-12):
+
+1. `semantic_memory.py` — existing tests prove the contract.
+   Test file: `tests/test_semantic_memory.py`.
+2. `semantic_indexer.py` — direct handler tests added.
+   Test file: `tests/test_semantic_indexer_and_inheritance_seed.py`.
+3. `inheritance_seed.py` — direct read/write seed tests added.
+   Test file: `tests/test_semantic_indexer_and_inheritance_seed.py`.
 
 Current next batch candidates:
 
-1. `semantic_memory.py`
-2. `semantic_memory.py`
-3. `semantic_indexer.py`
-4. `inheritance_seed.py`
+1. `automation_dsl.py`
+2. `scheduled_job_windows.py`
+3. `skill_contract_registry.py`
+4. `outcome_learning.py`
+5. `cross_session_threads.py`
 
 Acceptance criteria:
 

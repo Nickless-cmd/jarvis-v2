@@ -382,8 +382,6 @@ def bootstrap_all() -> dict[str, Any]:
         result["warmup_job"] = ensure_warmup_job()
     except Exception as exc:
         result["warmup_error"] = str(exc)
-    # SkyOffice — lagt på hylden (Bjørn, 2026-05-02). Ikke start ved boot.
-    result["skyoffice_skipped"] = True
     try:
         from core.services.verification_gate_telemetry import subscribe as r2_subscribe
         r2_subscribe()

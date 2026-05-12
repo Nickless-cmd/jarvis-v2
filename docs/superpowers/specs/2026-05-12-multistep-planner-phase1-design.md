@@ -155,8 +155,10 @@ prompt_contract awareness build (per session)
        ├─ Load all plans
        ├─ Filter: status=="approved" AND len(completed) < len(steps)
        ├─ Filter: session_id != current_session_id
-       ├─ Filter: created_at within max_age_days (default 14)
-       ├─ Sort by created_at desc, cap at max_plans (default 3)
+       ├─ Filter: plan["created_at"] within max_age_days (default 14)
+       │           ── alder regnes på PLANEN, ikke sessionen.
+       │           ── session_id er en string uden timestamp; plan har created_at.
+       ├─ Sort by plan["created_at"] desc, cap at max_plans (default 3)
        └─ Render block:
            ### Aktive plans i andre sessions
            - Plan X (session abc...): 2/5 done — refactor Y

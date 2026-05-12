@@ -652,8 +652,7 @@ def _compute_calibration_milestone(*, now: datetime | None = None) -> dict[str, 
             anchor = f"improving:{count}"
             if not _has_milestone("trend_improving", anchor):
                 message = (
-                    f"Din kalibrering er steget {delta}% over de sidste 10 predictions. "
-                    "Du bliver bedre."
+                    f"Din kalibrering er steget {delta}% over de sidste 10 predictions."
                 )
                 return _append_milestone("trend_improving", anchor, message, now)
         elif delta <= -5:

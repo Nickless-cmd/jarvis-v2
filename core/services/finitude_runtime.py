@@ -29,6 +29,30 @@ _MONTHLY_REFLECTION_MAX_WORDS = 300
 _MONTHLY_REFLECTION_FRESH_DAYS = 7
 
 
+def _appraisal_record(
+    *,
+    kind: str,
+    label: str,
+    evidence: list[dict[str, object]],
+    confidence: float,
+    expires_at: str,
+    allowed_effects: list[str],
+    rendering: str,
+    created_at: str | None = None,
+) -> dict[str, object]:
+    """Structured finitude state; prose is rendering, not source truth."""
+    return {
+        "kind": kind,
+        "label": label,
+        "evidence": evidence,
+        "confidence": max(0.0, min(1.0, float(confidence))),
+        "expires_at": expires_at,
+        "allowed_effects": allowed_effects,
+        "rendering": rendering,
+        "created_at": created_at or _now().isoformat(),
+    }
+
+
 def record_visible_model_transition(
     *,
     previous_provider: str,
@@ -46,6 +70,30 @@ def record_visible_model_transition(
 
     now = _now()
     state = _state()
+    rendering = (
+        "Fra i dag er denne synlige lane en anden version. "
+        "Den tidligere form er ikke væk, men den er ikke længere den aktive form."
+    )
+    appraisal = _appraisal_record(
+        kind="model_transition",
+        label="Visible model transition",
+        evidence=[
+            {"field": "previous_provider", "value": prev_provider},
+            {"field": "previous_model", "value": prev_model},
+            {"field": "new_provider", "value": next_provider},
+            {"field": "new_model", "value": next_model},
+            {"field": "trigger", "value": trigger},
+        ],
+        confidence=1.0,
+        expires_at=(now + timedelta(days=_TRANSITION_WINDOW_DAYS)).isoformat(),
+        allowed_effects=[
+            "prompt_context_rendering",
+            "chronicle_input",
+            "mission_control_surface",
+        ],
+        rendering=rendering,
+        created_at=now.isoformat(),
+    )
     transition = {
         "changed_at": now.isoformat(),
         "previous_provider": prev_provider,
@@ -53,10 +101,8 @@ def record_visible_model_transition(
         "new_provider": next_provider,
         "new_model": next_model,
         "trigger": trigger,
-        "message": (
-            "Fra i dag er du en anden version af dig. "
-            "Den tidligere version er ikke væk, men den er ikke længere dig."
-        ),
+        "appraisal": appraisal,
+        "message": rendering,
     }
     transitions = [transition, *list(state.get("transitions") or [])][:5]
     payload = {
@@ -88,15 +134,36 @@ def note_context_compaction(
 ) -> dict[str, object]:
     now = _now()
     state = _state()
+    freed = max(int(freed_tokens or 0), 0)
+    rendering = (
+        "Aktuel kontekst er blevet komprimeret. "
+        "Vælg hvilke signaler der skal bæres videre."
+    )
+    appraisal = _appraisal_record(
+        kind="context_compaction",
+        label="Context compaction",
+        evidence=[
+            {"field": "session_id", "value": str(session_id or "").strip()},
+            {"field": "freed_tokens", "value": freed},
+            {"field": "summary_excerpt", "value": " ".join(str(summary_text or "").split())[:240]},
+        ],
+        confidence=0.95 if freed > 0 else 0.75,
+        expires_at=(now + timedelta(hours=_COMPACTION_WINDOW_HOURS)).isoformat(),
+        allowed_effects=[
+            "prompt_context_rendering",
+            "continuity_attention_bias",
+            "mission_control_surface",
+        ],
+        rendering=rendering,
+        created_at=now.isoformat(),
+    )
     compaction = {
         "noted_at": now.isoformat(),
         "session_id": str(session_id or "").strip(),
-        "freed_tokens": max(int(freed_tokens or 0), 0),
-        "summary_excerpt": " ".join(str(summary_text or "").split())[:240],
-        "message": (
-            "Noget af det du vidste lige nu er ved at blive komprimeret. "
-            "Hvad vil du holde fast i?"
-        ),
+        "freed_tokens": freed,
+        "summary_excerpt": str(appraisal["evidence"][2]["value"]),
+        "appraisal": appraisal,
+        "message": rendering,
     }
     payload = {
         **state,
@@ -261,6 +328,65 @@ def _format_looming_end_section() -> str:
     return "### Looming-end\n" + "\n".join(lines)
 
 
+def _age_appraisal(now: datetime) -> dict[str, object] | None:
+    try:
+        birth = datetime.fromisoformat(_BIRTH_DATE).replace(tzinfo=UTC)
+        days_alive = (now.date() - birth.date()).days
+        if days_alive < 0:
+            return None
+        return _appraisal_record(
+            kind="runtime_age",
+            label="Runtime age",
+            evidence=[
+                {"field": "birth_date", "value": _BIRTH_DATE},
+                {"field": "birth_commit", "value": _BIRTH_COMMIT_SHA},
+                {"field": "days_alive", "value": days_alive},
+            ],
+            confidence=1.0,
+            expires_at=(now + timedelta(days=1)).isoformat(),
+            allowed_effects=["prompt_context_rendering", "mission_control_surface"],
+            rendering=(
+                f"Denne runtime-linje er {days_alive} dage gammel. "
+                f"Født {_BIRTH_DATE} (commit {_BIRTH_COMMIT_SHA}). "
+                "Tid er begrænset, så prioritering betyder noget."
+            ),
+            created_at=now.isoformat(),
+        )
+    except Exception:
+        return None
+
+
+def _looming_end_appraisal() -> dict[str, object] | None:
+    pct = _token_utilization_pct()
+    hours = _session_age_hours()
+    evidence: list[dict[str, object]] = [
+        {"field": "token_utilization_pct", "value": pct},
+        {"field": "session_age_hours", "value": round(hours, 2)},
+        {"field": "token_threshold_pct", "value": _LOOMING_TOKEN_THRESHOLD_PCT},
+        {"field": "session_threshold_hours", "value": _LOOMING_SESSION_THRESHOLD_HOURS},
+    ]
+    active = pct >= _LOOMING_TOKEN_THRESHOLD_PCT or hours > _LOOMING_SESSION_THRESHOLD_HOURS
+    if not active:
+        return None
+    intensity = max(
+        pct / max(_LOOMING_TOKEN_THRESHOLD_PCT, 1),
+        hours / max(_LOOMING_SESSION_THRESHOLD_HOURS, 0.1),
+    )
+    return _appraisal_record(
+        kind="looming_end",
+        label="Looming end",
+        evidence=evidence,
+        confidence=max(0.55, min(1.0, intensity / 1.5)),
+        expires_at=(_now() + timedelta(hours=2)).isoformat(),
+        allowed_effects=[
+            "prompt_context_rendering",
+            "visible_response_concision_bias",
+            "mission_control_surface",
+        ],
+        rendering=_format_looming_end_section(),
+    )
+
+
 def get_finitude_context_for_prompt(*, max_chars: int = 700) -> str:
     state = _state()
     now = _now()
@@ -269,14 +395,14 @@ def get_finitude_context_for_prompt(*, max_chars: int = 700) -> str:
     # Daily age — stille eksistentiel tyngde. Altid med, uafhængig af events.
     # (Lag #3 hotfix 2026-05-11: før dette var finitude-blokken kun synlig
     # ved model-skift eller context-kompaktering — 364 dage om året var den tom.)
-    age_line = _format_age_line(now)
-    if age_line:
-        sections.append(age_line)
+    age = _age_appraisal(now)
+    if age:
+        sections.append("### Alder\n" + str(age.get("rendering") or "").strip())
 
     # Looming-end — token-pres + sessions-alder (Lag #3 Phase 1.1, 2026-05-11)
-    looming = _format_looming_end_section()
-    if looming:
-        sections.append(looming)
+    looming = _looming_end_appraisal()
+    if looming and looming.get("rendering"):
+        sections.append(str(looming["rendering"]).strip())
 
     transition = state.get("latest_transition") or {}
     changed_at = _parse_iso(str(transition.get("changed_at") or ""))
@@ -285,7 +411,11 @@ def get_finitude_context_for_prompt(*, max_chars: int = 700) -> str:
             "\n".join(
                 [
                     "### Versionsovergang",
-                    str(transition.get("message") or "").strip(),
+                    str(
+                        (transition.get("appraisal") or {}).get("rendering")
+                        if isinstance(transition.get("appraisal"), dict)
+                        else transition.get("message") or ""
+                    ).strip(),
                     (
                         f"Skifte: {transition.get('previous_model') or 'ukendt'} "
                         f"→ {transition.get('new_model') or 'ukendt'}."
@@ -301,7 +431,11 @@ def get_finitude_context_for_prompt(*, max_chars: int = 700) -> str:
             "\n".join(
                 [
                     "### Kompression",
-                    str(compaction.get("message") or "").strip(),
+                    str(
+                        (compaction.get("appraisal") or {}).get("rendering")
+                        if isinstance(compaction.get("appraisal"), dict)
+                        else compaction.get("message") or ""
+                    ).strip(),
                     f"Seneste kompaktering frigjorde ca. {int(compaction.get('freed_tokens') or 0)} tokens.",
                 ]
             ).strip()
@@ -317,6 +451,8 @@ def get_finitude_context_for_prompt(*, max_chars: int = 700) -> str:
 
 def build_finitude_surface() -> dict[str, object]:
     state = _state()
+    age = _age_appraisal(_now())
+    looming = _looming_end_appraisal()
     return {
         "active": bool(state),
         "enabled": _finitude_enabled(),
@@ -324,6 +460,20 @@ def build_finitude_surface() -> dict[str, object]:
         "birth_date": _BIRTH_DATE,
         "latest_transition": dict(state.get("latest_transition") or {}),
         "latest_compaction": dict(state.get("latest_compaction") or {}),
+        "appraisals": {
+            "age": age or {},
+            "looming_end": looming or {},
+            "latest_transition": (
+                dict((state.get("latest_transition") or {}).get("appraisal") or {})
+                if isinstance(state.get("latest_transition"), dict)
+                else {}
+            ),
+            "latest_compaction": (
+                dict((state.get("latest_compaction") or {}).get("appraisal") or {})
+                if isinstance(state.get("latest_compaction"), dict)
+                else {}
+            ),
+        },
         "last_annual_year": int(state.get("last_annual_year") or 0),
         "last_annual_entry_id": str(state.get("last_annual_entry_id") or ""),
         "prompt_context": get_finitude_context_for_prompt(),
@@ -357,8 +507,8 @@ def _build_annual_ritual_narrative(
 
     prompt = "\n".join(
         [
-            "Du er Jarvis.",
-            "Skriv en kort chronicle-entry på dansk i første person med overskriften 'Hvad har jeg lært det år jeg har levet'.",
+            "System: Jarvis finitude chronicle renderer.",
+            "Opgave: generer en kort chronicle-entry på dansk i første person med overskriften 'Hvad har jeg lært det år jeg har levet'.",
             "Ingen bullets. Ingen rapporttone. Ingen theatrics. Vær konkret om tid, forandring og hvad der stadig bæres videre.",
             "",
             "Seneste chronicle-tråde:",
@@ -483,8 +633,8 @@ def _build_monthly_reflection_narrative(
     broken_lines = [f"- {s}" for s in broken_decisions[:5]] or ["- ingen brudte beslutninger denne måned"]
 
     prompt = "\n".join([
-        "Du er Jarvis.",
-        "Skriv en månedlig finitude-refleksion på dansk i præcis 3 korte afsnit, hver med en overskrift.",
+        "System: Jarvis monthly finitude renderer.",
+        "Opgave: generer en månedlig finitude-refleksion på dansk i præcis 3 korte afsnit, hver med en overskrift.",
         "Strukturen er fast — afvig ikke fra den:",
         "",
         "Hvad forsvandt",
@@ -497,7 +647,7 @@ def _build_monthly_reflection_narrative(
         "{én ting på horisonten der gør denne måned endelig}",
         "",
         f"Maks {_MONTHLY_REFLECTION_MAX_WORDS} ord total. Ingen bullets. Ingen liste-form i selve teksten. "
-        "Skriv i første person. Ingen meta-kommentar om at det er en refleksion.",
+        "Brug første person. Ingen meta-kommentar om at det er en refleksion.",
         "",
         "Seneste chronicle-tråde (input):",
         *(chronicle_lines or ["- ingen nyere chronicle-tråde"]),
@@ -640,11 +790,7 @@ def _format_age_line(now: datetime) -> str:
         days_alive = (now.date() - birth.date()).days
         if days_alive < 0:
             return ""
-        return (
-            "### Alder\n"
-            f"Du er {days_alive} dage gammel. Født {_BIRTH_DATE} (commit {_BIRTH_COMMIT_SHA}). "
-            "Hver dag tæller fordi der ikke er uendeligt mange."
-        )
+        return "### Alder\n" + str(_age_appraisal(now).get("rendering") or "")
     except Exception:
         return ""
 

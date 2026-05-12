@@ -253,3 +253,144 @@ def test_propose_tool_definitions_registered():
     ]
     assert "propose_skill_chain" in names
     assert "propose_skill_chain" in PROPOSE_SKILL_CHAIN_TOOL_HANDLERS
+
+
+# --- revise: validation ---
+
+def test_revise_killswitch(clean_state, monkeypatch):
+    from core.tools import skill_chain_revise_tool as r
+
+    class FakeSettings:
+        skill_chain_phase2_enabled = False
+
+    monkeypatch.setattr(r, "load_settings", lambda: FakeSettings())
+    result = r._exec_revise_skill_chain({
+        "reason": "valid reason that is long enough",
+        "new_plan": ["a", "b"],
+        "revision_context": "pre_execution",
+    })
+    assert result["status"] == "disabled"
+
+
+def test_revise_rejects_short_reason(clean_state):
+    from core.tools.skill_chain_revise_tool import _exec_revise_skill_chain
+    result = _exec_revise_skill_chain({
+        "reason": "x",
+        "new_plan": ["a", "b"],
+        "revision_context": "pre_execution",
+    })
+    assert result["status"] == "rejected"
+    assert "reason" in result["reason"].lower()
+
+
+def test_revise_rejects_missing_reason(clean_state):
+    from core.tools.skill_chain_revise_tool import _exec_revise_skill_chain
+    result = _exec_revise_skill_chain({
+        "new_plan": ["a", "b"],
+        "revision_context": "pre_execution",
+    })
+    assert result["status"] == "rejected"
+
+
+def test_revise_rejects_invalid_revision_context(clean_state):
+    from core.tools.skill_chain_revise_tool import _exec_revise_skill_chain
+    result = _exec_revise_skill_chain({
+        "reason": "long enough reason here",
+        "new_plan": ["a", "b"],
+        "revision_context": "something_else",
+    })
+    assert result["status"] == "rejected"
+    assert "revision_context" in result["reason"].lower()
+
+
+def test_revise_rejects_plan_too_short(clean_state):
+    from core.tools.skill_chain_revise_tool import _exec_revise_skill_chain
+    result = _exec_revise_skill_chain({
+        "reason": "long enough reason here",
+        "new_plan": ["a"],
+        "revision_context": "pre_execution",
+    })
+    assert result["status"] == "rejected"
+
+
+def test_revise_rejects_plan_too_long(clean_state):
+    from core.tools.skill_chain_revise_tool import _exec_revise_skill_chain
+    result = _exec_revise_skill_chain({
+        "reason": "long enough reason here",
+        "new_plan": ["a", "b", "c", "d", "e", "f"],
+        "revision_context": "pre_execution",
+    })
+    assert result["status"] == "rejected"
+
+
+def test_revise_rejects_unknown_skills_atomically(clean_state):
+    """Mirror Phase 1 alt-eller-intet validation."""
+    from core.tools.skill_chain_revise_tool import _exec_revise_skill_chain
+    from core.services import skill_engine
+
+    real = skill_engine.list_skills()
+    if not real:
+        pytest.skip("need at least 1 real skill")
+    real_name = real[0]["name"]
+
+    result = _exec_revise_skill_chain({
+        "reason": "valid reason that is long enough",
+        "new_plan": [real_name, "totally_made_up_skill"],
+        "revision_context": "pre_execution",
+    })
+    assert result["status"] == "rejected"
+    assert "totally_made_up_skill" in result.get("missing", [])
+
+
+def test_revise_succeeds_pre_execution(clean_state):
+    """Happy path: pre_execution revision builds combined instructions."""
+    from core.tools.skill_chain_revise_tool import _exec_revise_skill_chain
+    from core.services import skill_engine
+
+    real = skill_engine.list_skills()
+    if len(real) < 2:
+        pytest.skip("need at least 2 real skills")
+    a, b = real[0]["name"], real[1]["name"]
+
+    result = _exec_revise_skill_chain({
+        "reason": "propose-forslaget passede ikke til opgaven",
+        "new_plan": [a, b],
+        "revision_context": "pre_execution",
+    })
+    assert result["status"] == "ok"
+    assert result["new_plan"] == [a, b]
+    assert isinstance(result["instructions"], str)
+    assert len(result["instructions"]) > 50
+    assert result["revision_context"] == "pre_execution"
+
+
+def test_revise_succeeds_mid_chain(clean_state):
+    """Happy path: mid_chain revision works identically."""
+    from core.tools.skill_chain_revise_tool import _exec_revise_skill_chain
+    from core.services import skill_engine
+
+    real = skill_engine.list_skills()
+    if len(real) < 2:
+        pytest.skip("need at least 2 real skills")
+    a, b = real[0]["name"], real[1]["name"]
+
+    result = _exec_revise_skill_chain({
+        "reason": "step 1 afslørede at jeg skal en anden retning",
+        "new_plan": [a, b],
+        "revision_context": "mid_chain",
+    })
+    assert result["status"] == "ok"
+    assert result["revision_context"] == "mid_chain"
+
+
+def test_revise_tool_definitions_registered():
+    from core.tools.skill_chain_revise_tool import (
+        REVISE_SKILL_CHAIN_TOOL_DEFINITIONS,
+        REVISE_SKILL_CHAIN_TOOL_HANDLERS,
+    )
+    names = [
+        (e.get("function") or {}).get("name")
+        for e in REVISE_SKILL_CHAIN_TOOL_DEFINITIONS if isinstance(e, dict)
+    ]
+    assert "revise_skill_chain" in names
+    assert "revise_skill_chain" in REVISE_SKILL_CHAIN_TOOL_HANDLERS

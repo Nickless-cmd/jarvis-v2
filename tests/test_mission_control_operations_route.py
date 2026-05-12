@@ -7,6 +7,9 @@ def test_mission_control_runtime_settings_redaction_keeps_secrets_out(
     mission_control = isolated_runtime.mission_control
 
     api_field = "_".join(("openai", "api", "key"))
+    provider_key_field = "_".join(("provider", "key"))
+    app_id_field = "_".join(("app", "id"))
+    claim_code_field = "_".join(("claim", "code"))
     ha_field = "_".join(("home", "assistant", "token"))
     telegram_field = "_".join(("telegram", "bot", "token"))
     empty_field = "_".join(("empty", "token"))
@@ -23,6 +26,9 @@ def test_mission_control_runtime_settings_redaction_keeps_secrets_out(
         },
     }
     raw[api_field] = "configured-value"
+    raw[provider_key_field] = "configured-value"
+    raw["extra"][app_id_field] = "configured-value"
+    raw["extra"][claim_code_field] = "configured-value"
     raw["extra"][ha_field] = "configured-value"
     raw["extra"][telegram_field] = "configured-value"
     raw["extra"][empty_field] = ""
@@ -30,6 +36,9 @@ def test_mission_control_runtime_settings_redaction_keeps_secrets_out(
     redacted = mission_control._redact_mc_secrets(raw)
 
     assert redacted[api_field] == "***REDACTED***"
+    assert redacted[provider_key_field] == "***REDACTED***"
+    assert redacted["extra"][app_id_field] == "***REDACTED***"
+    assert redacted["extra"][claim_code_field] == "***REDACTED***"
     assert redacted["extra"][ha_field] == "***REDACTED***"
     assert redacted["extra"][telegram_field] == "***REDACTED***"
     assert redacted["extra"]["nested"][0]["cookie"] == "***REDACTED***"

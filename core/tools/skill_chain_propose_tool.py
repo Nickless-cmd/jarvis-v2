@@ -20,6 +20,8 @@ import re
 from typing import Any
 
 from core.runtime.settings import load_settings
+from core.services.cheap_provider_runtime import execute_public_safe_cheap_lane
+from core.services.skill_engine import list_skills, skill_exists
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +41,19 @@ def _phase2_enabled() -> bool:
 
 
 def _exec_propose_skill_chain(args: dict[str, Any]) -> dict[str, Any]:
-    """Tool handler for propose_skill_chain (skeleton — Task 2 of plan)."""
+    """Tool handler for propose_skill_chain.
+
+    Pipeline:
+      1. Killswitch
+      2. Validate task_description (≥ 10 chars)
+      3. Fetch skill catalog
+      4. Build prompt
+      5. Invoke cheap-lane
+      6. Parse JSON response
+      7. Validate skill existence (alt-eller-intet)
+      8. Emit cognitive_skill_chain.proposed event
+      9. Return structured proposal
+    """
     # 1. Killswitch
     if not _phase2_enabled():
         return {
@@ -57,8 +71,143 @@ def _exec_propose_skill_chain(args: dict[str, Any]) -> dict[str, Any]:
             "reason": f"task_description must be at least {_MIN_TASK_LEN} chars",
         }
 
-    # Remaining steps wired in Task 3
-    return {"status": "error", "reason": "implementation incomplete"}
+    # 3. Fetch catalog
+    try:
+        catalog = list_skills()
+    except Exception as exc:
+        logger.warning("propose_skill_chain: catalog fetch failed: %s", exc)
+        return {"status": "error", "reason": f"skill catalog unavailable: {exc}"}
+
+    # 4. Build prompt
+    prompt = _build_propose_prompt(task_description=task, catalog=catalog)
+
+    # 5. Invoke cheap-lane
+    try:
+        cheap_result = execute_public_safe_cheap_lane(message=prompt)
+    except Exception as exc:
+        logger.warning("propose_skill_chain: cheap-lane invocation failed: %s", exc)
+        return {"status": "error", "reason": f"cheap-lane error: {exc}"}
+
+    response_text = str(cheap_result.get("text") or "")
+    model_used = str(cheap_result.get("model") or "")
+    provider_used = str(cheap_result.get("provider") or "")
+
+    # 6. Parse response
+    parsed = _parse_propose_response(response_text)
+    if parsed["status"] != "ok":
+        return {
+            "status": "error",
+            "reason": parsed["reason"],
+            "raw_response_excerpt": response_text[:200],
+            "model_used": model_used,
+        }
+
+    plan = parsed["plan"]
+    rationale = parsed["rationale"]
+    confidence = parsed["confidence"]
+
+    # 7. Validate skill existence (only when plan non-empty)
+    missing = [name for name in plan if not skill_exists(name)]
+    if missing:
+        return {
+            "status": "rejected",
+            "reason": "cheap-lane suggested unknown skills",
+            "missing": missing,
+            "rejected_plan": plan,
+            "rationale": rationale,
+            "confidence": confidence,
+        }
+
+    # 8. Emit event (metadata only — task_excerpt PII-bounded, rationale_length not text)
+    _publish_propose_event(
+        plan=plan,
+        confidence=confidence,
+        rationale_length=len(rationale),
+        model_used=model_used,
+        provider_used=provider_used,
+        task_excerpt=task[:_TASK_EXCERPT_MAX],
+    )
+
+    # 9. Return proposal to Jarvis (rationale text DOES return to caller —
+    # event_payload is the PII-bounded version; tool return value is the
+    # full Jarvis-facing payload)
+    return {
+        "status": "ok",
+        "plan": plan,
+        "rationale": rationale,
+        "confidence": confidence,
+        "model_used": model_used,
+        "provider_used": provider_used,
+        "is_empty_chain": len(plan) == 0,
+    }
+
+
+def _publish_propose_event(
+    *,
+    plan: list[str],
+    confidence: float,
+    rationale_length: int,
+    model_used: str,
+    provider_used: str,
+    task_excerpt: str,
+) -> None:
+    """Defensively publish cognitive_skill_chain.proposed. Never blocks."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "cognitive_skill_chain.proposed",
+            {
+                "plan": plan,
+                "step_count": len(plan),
+                "is_empty_chain": len(plan) == 0,
+                "confidence": confidence,
+                "rationale_length": rationale_length,
+                "model_used": model_used,
+                "provider_used": provider_used,
+                "task_excerpt": task_excerpt,
+            },
+        )
+    except Exception as exc:
+        logger.debug("propose_skill_chain: event publish failed: %s", exc)
+
+
+PROPOSE_SKILL_CHAIN_TOOL_DEFINITIONS: list[dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_skill_chain",
+            "description": (
+                "Foreslå en ordnet kæde af 2-5 skills til at løse en given "
+                "opgave. Bruger cheap-lane LLM med fuldt skill-katalog "
+                "(~50 skills) til at vælge meningsfulde sekvenser. "
+                "Returnér struktureret forslag: {plan, rationale, "
+                "confidence (0-1), model_used}. Confidence er DIT filter — "
+                "lav confidence betyder du bør justere kæden selv. "
+                "Tom plan ([]) er legitimt resultat når ingen meningsfuld "
+                "kæde findes. Forslag er IKKE autorisation — kald "
+                "`skill_chain(plan=...)` for at eksekvere, eller "
+                "`revise_skill_chain(...)` for at justere før eksekvering."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_description": {
+                        "type": "string",
+                        "description": (
+                            "Klar beskrivelse af opgaven der skal løses. "
+                            "Mindst 10 tegn."
+                        ),
+                    },
+                },
+                "required": ["task_description"],
+            },
+        },
+    },
+]
+
+PROPOSE_SKILL_CHAIN_TOOL_HANDLERS: dict[str, Any] = {
+    "propose_skill_chain": _exec_propose_skill_chain,
+}
 
 
 def _build_propose_prompt(

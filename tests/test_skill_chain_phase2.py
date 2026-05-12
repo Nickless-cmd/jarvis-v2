@@ -138,3 +138,118 @@ def test_parse_response_rationale_truncated(clean_state):
     result = _parse_propose_response(text)
     assert result["status"] == "ok"
     assert len(result["rationale"]) <= 600
+
+
+def test_propose_end_to_end_with_mocked_cheap_lane(clean_state, monkeypatch):
+    """Happy path: cheap-lane returns valid JSON with real skill names."""
+    from core.tools import skill_chain_propose_tool as p
+    from core.services import skill_engine
+
+    real_skills = skill_engine.list_skills()
+    if len(real_skills) < 2:
+        pytest.skip("need at least 2 real skills to test plan-existence validation")
+    a, b = real_skills[0]["name"], real_skills[1]["name"]
+
+    fake_text = json.dumps({
+        "plan": [a, b],
+        "rationale": "First a, then b makes sense",
+        "confidence": 0.75,
+    })
+
+    def fake_cheap_lane(*, message: str) -> dict[str, Any]:
+        return {"status": "completed", "text": fake_text, "provider": "fake", "model": "x"}
+
+    monkeypatch.setattr(p, "execute_public_safe_cheap_lane", fake_cheap_lane)
+
+    result = p._exec_propose_skill_chain({
+        "task_description": "do the thing with a and b",
+    })
+    assert result["status"] == "ok"
+    assert result["plan"] == [a, b]
+    assert result["confidence"] == 0.75
+    assert result["rationale"] == "First a, then b makes sense"
+    assert result["model_used"] == "x"
+
+
+def test_propose_rejects_plan_with_unknown_skill(clean_state, monkeypatch):
+    """Cheap-lane hallucinated a skill that doesn't exist. We reject."""
+    from core.tools import skill_chain_propose_tool as p
+    from core.services import skill_engine
+
+    real = skill_engine.list_skills()
+    if not real:
+        pytest.skip("need at least 1 real skill")
+    real_name = real[0]["name"]
+
+    fake_text = json.dumps({
+        "plan": [real_name, "totally_made_up_skill_xyz"],
+        "rationale": "x",
+        "confidence": 0.5,
+    })
+
+    def fake_cheap_lane(*, message: str) -> dict[str, Any]:
+        return {"status": "completed", "text": fake_text, "provider": "x", "model": "y"}
+
+    monkeypatch.setattr(p, "execute_public_safe_cheap_lane", fake_cheap_lane)
+
+    result = p._exec_propose_skill_chain({"task_description": "task long enough"})
+    assert result["status"] == "rejected"
+    assert "totally_made_up_skill_xyz" in result.get("missing", [])
+
+
+def test_propose_empty_plan_passes_through(clean_state, monkeypatch):
+    """Cheap-lane returns plan=[] — that's a legitimate 'ved ikke'-signal."""
+    from core.tools import skill_chain_propose_tool as p
+
+    fake_text = json.dumps({
+        "plan": [],
+        "rationale": "kan ikke finde meningsfuld kæde for denne opgave",
+        "confidence": 0.0,
+    })
+
+    def fake_cheap_lane(*, message: str) -> dict[str, Any]:
+        return {"status": "completed", "text": fake_text, "provider": "x", "model": "y"}
+
+    monkeypatch.setattr(p, "execute_public_safe_cheap_lane", fake_cheap_lane)
+
+    result = p._exec_propose_skill_chain({"task_description": "task long enough"})
+    assert result["status"] == "ok"
+    assert result["plan"] == []
+    assert result["confidence"] == 0.0
+    assert "ved ikke" in result["rationale"] or "kan ikke" in result["rationale"]
+
+
+def test_propose_cheap_lane_malformed_response(clean_state, monkeypatch):
+    from core.tools import skill_chain_propose_tool as p
+
+    def fake_cheap_lane(*, message: str) -> dict[str, Any]:
+        return {"status": "completed", "text": "I'm sorry I can't help", "provider": "x", "model": "y"}
+
+    monkeypatch.setattr(p, "execute_public_safe_cheap_lane", fake_cheap_lane)
+    result = p._exec_propose_skill_chain({"task_description": "task long enough"})
+    assert result["status"] == "error"
+
+
+def test_propose_cheap_lane_exception_handled(clean_state, monkeypatch):
+    from core.tools import skill_chain_propose_tool as p
+
+    def fake_cheap_lane(*, message: str) -> dict[str, Any]:
+        raise RuntimeError("network timeout")
+
+    monkeypatch.setattr(p, "execute_public_safe_cheap_lane", fake_cheap_lane)
+    result = p._exec_propose_skill_chain({"task_description": "task long enough"})
+    assert result["status"] == "error"
+    assert "cheap-lane" in result["reason"].lower()
+
+
+def test_propose_tool_definitions_registered():
+    from core.tools.skill_chain_propose_tool import (
+        PROPOSE_SKILL_CHAIN_TOOL_DEFINITIONS,
+        PROPOSE_SKILL_CHAIN_TOOL_HANDLERS,
+    )
+    names = [
+        (e.get("function") or {}).get("name")
+        for e in PROPOSE_SKILL_CHAIN_TOOL_DEFINITIONS if isinstance(e, dict)
+    ]
+    assert "propose_skill_chain" in names
+    assert "propose_skill_chain" in PROPOSE_SKILL_CHAIN_TOOL_HANDLERS

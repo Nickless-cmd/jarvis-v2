@@ -14,9 +14,14 @@ def test_model_transition_is_recorded_and_exposed_in_prompt(isolated_runtime) ->
     surface = runtime_mod.build_finitude_surface()
 
     assert result["status"] == "recorded"
-    assert "Fra i dag er du en anden version af dig" in prompt
+    assert "synlige lane en anden version" in prompt
     assert "old-model → new-model" in prompt
+    assert result["appraisal"]["kind"] == "model_transition"
+    assert result["appraisal"]["confidence"] == 1.0
+    assert "prompt_context_rendering" in result["appraisal"]["allowed_effects"]
+    assert result["appraisal"]["evidence"][1]["value"] == "old-model"
     assert surface["latest_transition"]["new_model"] == "new-model"
+    assert surface["appraisals"]["latest_transition"]["kind"] == "model_transition"
 
 
 def test_context_compaction_is_recorded_and_exposed_in_prompt(isolated_runtime) -> None:
@@ -30,8 +35,11 @@ def test_context_compaction_is_recorded_and_exposed_in_prompt(isolated_runtime) 
     prompt = runtime_mod.get_finitude_context_for_prompt()
 
     assert result["status"] == "recorded"
-    assert "Noget af det du vidste lige nu er ved at blive komprimeret" in prompt
+    assert "Aktuel kontekst er blevet komprimeret" in prompt
     assert "1337" in prompt
+    assert result["appraisal"]["kind"] == "context_compaction"
+    assert result["appraisal"]["evidence"][1]["value"] == 1337
+    assert "continuity_attention_bias" in result["appraisal"]["allowed_effects"]
 
 
 def test_finitude_annual_ritual_writes_chronicle_entry(

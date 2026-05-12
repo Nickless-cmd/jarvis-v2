@@ -104,6 +104,12 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
     from core.services.world_model_signal_tracking import (
         build_runtime_world_model_signal_surface,
     )
+    from core.services.contradiction_engine import build_contradiction_engine_surface
+    from core.services.emergence import build_emergence_surface
+    from core.services.jarvis_brain_reflection import (
+        build_jarvis_brain_reflection_surface,
+    )
+    from core.services.prospective_memory import build_prospective_memory_surface
     from core.services.self_model_signal_tracking import (
         build_runtime_self_model_signal_surface,
     )
@@ -185,6 +191,10 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
         "chronicle_consolidation": build_runtime_chronicle_consolidation_signal_surface,
         "remembered_fact": build_runtime_remembered_fact_signal_surface,
         "world_model": build_runtime_world_model_signal_surface,
+        "contradiction_engine": build_contradiction_engine_surface,
+        "emergence": build_emergence_surface,
+        "jarvis_brain_reflection": build_jarvis_brain_reflection_surface,
+        "prospective_memory": build_prospective_memory_surface,
         "self_model": build_runtime_self_model_signal_surface,
         "runtime_awareness": build_runtime_awareness_signal_surface,
         "consolidation_target": build_runtime_consolidation_target_signal_surface,

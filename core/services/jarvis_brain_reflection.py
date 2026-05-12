@@ -118,3 +118,37 @@ def run_daily_reflection_if_active() -> None:
         logger.warning("could not build chronicle summary: %s", exc)
         return
     _run_reflection_turn(summary)
+
+
+def build_jarvis_brain_reflection_surface() -> dict:
+    """Surface the daily reflection slot without triggering it."""
+    active_today = _was_active_today()
+    summary = ""
+    if active_today:
+        try:
+            summary = _build_today_chronicle_summary()
+        except Exception:
+            summary = "(chronicle summary unavailable)"
+    return {
+        "active": active_today,
+        "mode": "daily-visible-reflection-slot",
+        "summary": {
+            "active_today": active_today,
+            "current_state": (
+                "ready_for_reflection" if active_today else "skipped_no_activity"
+            ),
+            "chronicle_summary_available": bool(summary),
+        },
+        "items": [
+            {
+                "kind": "reflection_envelope_preview",
+                "chronicle_summary": summary[:800],
+                "nudge_after_count": 3,
+            }
+        ] if summary else [],
+        "allowed_effects": [
+            "prompt_attention",
+            "request_visible_reflection",
+            "do_not_write_memory_without_remember_this",
+        ],
+    }

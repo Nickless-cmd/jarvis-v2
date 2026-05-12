@@ -628,6 +628,16 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Loop-compliance self-check (added 2026-05-12). Fires when Jarvis is
+    # ignoring his own loop-nudge commitment OR R2-gate heed_rate is low.
+    # Priority 7 = right after identity pins so he can't miss it among 50+
+    # other awareness sections. See prompt_sections/loop_compliance.py.
+    try:
+        from core.services.prompt_sections.loop_compliance import loop_compliance_section
+        _awareness_add(7, "loop-compliance self-check", loop_compliance_section())
+    except Exception:
+        pass
+
     # Jarvis Brain — always-on summary af hans egen vidensjournal.
     # Priority 6 = lige efter identity. Repræsenterer "hvad jeg ved nu",
     # er på identitets-tier (persistent selvviden, ikke situational kontekst).

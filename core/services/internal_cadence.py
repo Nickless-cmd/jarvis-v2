@@ -604,6 +604,51 @@ def _ensure_producers_registered() -> None:
         depends_on=[],
     ))
 
+    def _run_prompt_assembly_cache_warmer(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Refresh prompt-assembly section caches in background.
+
+        Strategy: every 2 minutes, invalidate + rebuild both rule_conclusions
+        and cognitive_frame caches. This way visible-chat turns always see
+        ≤2 min stale data, AND never pay the cold-rebuild cost themselves —
+        the heartbeat thread absorbs it.
+
+        Without this: 180s TTL means a turn lands exactly when the cache
+        expired pays the full 10s rebuild. With this: cache is always warm
+        when visible chat needs it.
+
+        Added 2026-05-12 after instrumentation identified rule_conclusions
+        + cognitive_frame as the dominant assembly cost.
+        """
+        out: dict[str, object] = {"rule_conclusions": "skipped", "cognitive_frame": "skipped"}
+        try:
+            from core.services.prompt_sections.rule_conclusions import (
+                invalidate_section_cache, rule_conclusions_section,
+            )
+            invalidate_section_cache()
+            _ = rule_conclusions_section()  # rebuild + cache
+            out["rule_conclusions"] = "warmed"
+        except Exception as exc:
+            out["rule_conclusions"] = f"error: {exc}"
+        try:
+            from core.services.prompt_contract import (
+                invalidate_cognitive_frame_cache, _cognitive_frame_section,
+            )
+            invalidate_cognitive_frame_cache()
+            _ = _cognitive_frame_section()
+            out["cognitive_frame"] = "warmed"
+        except Exception as exc:
+            out["cognitive_frame"] = f"error: {exc}"
+        return {"status": "ok", **out}
+
+    register_producer(ProducerSpec(
+        name="prompt_assembly_cache_warmer",
+        cooldown_minutes=2,            # refresh every 2 min (< 3 min TTL)
+        visible_grace_minutes=0,       # always run — it's background pre-warm
+        run_fn=_run_prompt_assembly_cache_warmer,
+        priority=31,
+        depends_on=[],
+    ))
+
     def _run_life_projects_reassessment(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.life_projects import tick_life_projects_reassessment
         return tick_life_projects_reassessment(trigger=trigger, last_visible_at=last_visible_at)

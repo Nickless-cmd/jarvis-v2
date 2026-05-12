@@ -29,17 +29,26 @@ def decision_adherence_section() -> str:
 
     Returns empty string if all decisions are above good threshold.
     """
+    # Fix 2026-05-12: prior import was core.services.decision_runtime which
+    # doesn't exist — this gate had been silently returning "" since its
+    # creation. Real API lives in behavioral_decisions.list_active_decisions().
+    # Result: low-adherence decisions (incl. loop-nudge compliance) never
+    # reached Jarvis as awareness, even when score < 25%. Switched to the
+    # correct module so escalation actually surfaces.
     try:
-        from core.services.decision_runtime import get_all_decisions
+        from core.services.behavioral_decisions import list_active_decisions
     except ImportError:
-        logger.debug("decision_adherence_gate: decision_runtime not available")
+        logger.debug("decision_adherence_gate: behavioral_decisions not available")
         return ""
 
-    decisions = get_all_decisions()
-    if not decisions:
+    try:
+        active = list_active_decisions(limit=20)
+    except Exception as exc:
+        logger.debug("decision_adherence_gate: list failed: %s", exc)
         return ""
 
-    active = [d for d in decisions if d.get("status") == "active"]
+    if not active:
+        return ""
     if not active:
         return ""
 

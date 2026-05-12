@@ -480,6 +480,10 @@ from core.tools.skill_gate_tool import (
     SKILL_GATE_TOOL_DEFINITIONS,
     SKILL_GATE_TOOL_HANDLERS,
 )
+from core.tools.world_model_tools import (
+    WORLD_MODEL_TOOL_DEFINITIONS,
+    WORLD_MODEL_TOOL_HANDLERS,
+)
 from core.tools.skill_chain_tool import (
     SKILL_CHAIN_TOOL_DEFINITIONS,
     SKILL_CHAIN_TOOL_HANDLERS,
@@ -2324,6 +2328,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *DECISION_TOOL_DEFINITIONS,
     *COMPOSITE_TOOL_DEFINITIONS,
     *SKILL_ENGINE_TOOL_DEFINITIONS,
+    *WORLD_MODEL_TOOL_DEFINITIONS,
     *SKILL_GATE_TOOL_DEFINITIONS,
     *SKILL_CHAIN_TOOL_DEFINITIONS,
     *REASONING_STORE_TOOL_DEFINITIONS,
@@ -6189,6 +6194,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **STRIPE_TOOL_HANDLERS,
     # Skill engine tools (SKILL.md skill system)
     **SKILL_ENGINE_TOOL_HANDLERS,
+    **WORLD_MODEL_TOOL_HANDLERS,
     **SKILL_GATE_TOOL_HANDLERS,
     # Skill chain (Lag #4) — sequential skill composition
     **SKILL_CHAIN_TOOL_HANDLERS,

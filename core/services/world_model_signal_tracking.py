@@ -76,14 +76,17 @@ def record_runtime_world_model_prediction(
     predictions = _load_predictions()
     predictions.insert(0, item)
     _save_predictions(predictions[:_MAX_PREDICTIONS])
-    event_bus.publish(
-        "world_model_signal.prediction_recorded",
-        {
-            "prediction_id": item["prediction_id"],
-            "subject": item["subject"],
-            "confidence": item["confidence"],
-        },
-    )
+    try:
+        event_bus.publish(
+            "world_model_signal.prediction_recorded",
+            {
+                "prediction_id": item["prediction_id"],
+                "subject": item["subject"],
+                "confidence": item["confidence"],
+            },
+        )
+    except Exception:
+        pass  # never block recording on event-bus errors
     return {"status": "ok", "prediction": item}
 
 
@@ -93,6 +96,7 @@ def resolve_runtime_world_model_prediction(
     observed: str,
     outcome: str,
     now: datetime | None = None,
+    resolved_via: str = "tool",
 ) -> dict[str, object]:
     """Resolve a prediction with a later observation."""
     normalized_id = str(prediction_id or "").strip()
@@ -113,14 +117,18 @@ def resolve_runtime_world_model_prediction(
         item["outcome"] = normalized_outcome
         item["resolved_at"] = resolved_at
         item["updated_at"] = resolved_at
+        item["resolved_via"] = str(resolved_via or "tool")
         _save_predictions(predictions)
-        event_bus.publish(
-            "world_model_signal.prediction_resolved",
-            {
-                "prediction_id": normalized_id,
-                "outcome": normalized_outcome,
-            },
-        )
+        try:
+            event_bus.publish(
+                "world_model_signal.prediction_resolved",
+                {
+                    "prediction_id": normalized_id,
+                    "outcome": normalized_outcome,
+                },
+            )
+        except Exception:
+            pass  # never block resolution on event-bus errors
         return {"status": "ok", "prediction": item}
     return {"status": "error", "error": f"prediction '{normalized_id}' not found"}
 

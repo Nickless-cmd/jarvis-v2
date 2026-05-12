@@ -682,3 +682,72 @@ def test_meta_learning_tools_registered_via_simple_tools():
     assert "list_learning_memos" in names
     assert "read_learning_memo" in _TOOL_HANDLERS
     assert "list_learning_memos" in _TOOL_HANDLERS
+
+
+def test_awareness_empty_when_no_memo(clean_state):
+    from core.services.meta_learning_retrospective import (
+        ensure_schema, format_latest_unacknowledged_memo_for_awareness,
+    )
+    ensure_schema()
+    assert format_latest_unacknowledged_memo_for_awareness() == ""
+
+
+def test_awareness_empty_when_killswitch_off(clean_state, monkeypatch):
+    from core.services import meta_learning_retrospective as mlr
+
+    class FakeSettings:
+        meta_learning_enabled = False
+
+    monkeypatch.setattr(mlr, "load_settings", lambda: FakeSettings())
+    assert mlr.format_latest_unacknowledged_memo_for_awareness() == ""
+
+
+def test_awareness_shows_teaser_with_memo(clean_state):
+    from core.services.meta_learning_retrospective import (
+        ensure_schema, _persist_memo,
+        format_latest_unacknowledged_memo_for_awareness,
+    )
+    ensure_schema()
+    _persist_memo(
+        memo_id="memo-teaser",
+        ts="2026-05-12T04:00:00+00:00",
+        period_start="2026-05-05T00:00:00+00:00",
+        period_end="2026-05-12T00:00:00+00:00",
+        narrative=(
+            "Det har været en interessant uge. Jeg har set at plan-abc123 "
+            "blev superseded hurtigt. Mit kalibreringsmønster er stabilt på "
+            "tværs af predictions."
+        ),
+        hypothesis_candidates=[
+            {"id": "hyp-1", "statement": "Vent længere før propose_plan"},
+            {"id": "hyp-2", "statement": "Cap confidence"},
+        ],
+        aggregator_snapshot={}, model_used="m",
+    )
+    out = format_latest_unacknowledged_memo_for_awareness()
+    assert "📓" in out
+    assert "memo-teaser" in out
+    assert (
+        "2 hypothesis" in out.lower()
+        or "2 hypotheses" in out.lower()
+        or "2 hypothesis-kandidater" in out.lower()
+    )
+    assert "read_learning_memo" in out
+    assert "Det har været en interessant uge" in out
+
+
+def test_awareness_empty_after_acknowledge(clean_state):
+    from core.services.meta_learning_retrospective import (
+        ensure_schema, _persist_memo, acknowledge_memo,
+        format_latest_unacknowledged_memo_for_awareness,
+    )
+    ensure_schema()
+    _persist_memo(
+        memo_id="memo-acked", ts="2026-05-12T04:00:00+00:00",
+        period_start="x", period_end="y",
+        narrative="...", hypothesis_candidates=[],
+        aggregator_snapshot={}, model_used="m",
+    )
+    assert format_latest_unacknowledged_memo_for_awareness() != ""
+    acknowledge_memo("memo-acked")
+    assert format_latest_unacknowledged_memo_for_awareness() == ""

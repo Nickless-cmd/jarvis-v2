@@ -389,3 +389,49 @@ def generate_weekly_retrospective(*, now: datetime) -> dict[str, Any]:
         "hypothesis_candidates": candidates,
         "model_used": model_used,
     }
+
+
+# ---------------------------------------------------------------------------
+# Awareness rendering (priority 39 in prompt_contract)
+# ---------------------------------------------------------------------------
+
+_TEASER_NARRATIVE_CHARS = 200
+
+
+def _format_period_for_display(period_start: str, period_end: str) -> str:
+    """Render period as 'YYYY-MM-DD to YYYY-MM-DD' for awareness display."""
+    def _date(iso: str) -> str:
+        try:
+            return datetime.fromisoformat(iso).strftime("%Y-%m-%d")
+        except (ValueError, TypeError):
+            return iso[:10] if iso else "?"
+    return f"{_date(period_start)} to {_date(period_end)}"
+
+
+def format_latest_unacknowledged_memo_for_awareness() -> str:
+    """Render a short teaser for the most recent unacknowledged memo."""
+    if not _meta_learning_enabled():
+        return ""
+    memo = fetch_latest_unacknowledged_memo()
+    if not memo:
+        return ""
+
+    narrative = str(memo.get("narrative") or "")
+    teaser = narrative[:_TEASER_NARRATIVE_CHARS].rstrip()
+    if len(narrative) > _TEASER_NARRATIVE_CHARS:
+        teaser += "..."
+
+    period_disp = _format_period_for_display(
+        str(memo.get("period_start") or ""),
+        str(memo.get("period_end") or ""),
+    )
+    n_hypotheses = len(memo.get("hypothesis_candidates") or [])
+    memo_id = str(memo.get("memo_id") or "")
+
+    return (
+        f"📓 Nyt ugentligt meta-læringsmemo (period {period_disp}):\n"
+        f'"{teaser}"\n'
+        "\n"
+        f"{n_hypotheses} hypothesis-kandidater. Læs hele memoet via "
+        f"read_learning_memo(memo_id='{memo_id}')."
+    )

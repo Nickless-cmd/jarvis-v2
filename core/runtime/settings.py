@@ -195,6 +195,11 @@ class RuntimeSettings:
     # error immediately. Reverts to Phase 1-only behaviour (propose +
     # approve + supersede-on-duplicate). Existing plans unaffected.
     plan_revision_enabled: bool = True
+    # ── Curiosity budget (Phase 1 — added 2026-05-12) ─────────────────────
+    # When True: curiosity-tools registered, idle-window producer fires,
+    # awareness-injection shows budget. When False: all tools error out,
+    # producer skipped, no awareness. Reverts fully. AGI track #6.
+    curiosity_budget_enabled: bool = True
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -660,6 +665,12 @@ def load_settings() -> RuntimeSettings:
             data.get(
                 "plan_revision_enabled",
                 defaults.plan_revision_enabled,
+            )
+        ),
+        curiosity_budget_enabled=bool(
+            data.get(
+                "curiosity_budget_enabled",
+                defaults.curiosity_budget_enabled,
             )
         ),
         longing_daemon_cadence_minutes=int(

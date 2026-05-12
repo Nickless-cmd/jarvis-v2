@@ -1121,6 +1121,8 @@ def _execute_openai_compatible_chat(
     message: str | None = None,
     messages: list[dict] | None = None,
     tools: list[dict] | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
 ) -> dict[str, object]:
     credentials = _require_credentials(profile=auth_profile, provider=provider)
     root = str(base_url or provider_runtime_defaults(provider).get("base_url") or "").rstrip("/")
@@ -1141,6 +1143,13 @@ def _execute_openai_compatible_chat(
         # single visible reply without burning the free quota.
         "max_tokens": 4096,
     }
+    # Lag 10 Phase 1 (2026-05-12): caller may pass modulated values.
+    # When None, omit from payload so server-side defaults apply (cheap-lane
+    # callers don't pass them; only visible-lane wrappers do).
+    if temperature is not None:
+        payload["temperature"] = float(temperature)
+    if top_p is not None:
+        payload["top_p"] = float(top_p)
     if tools:
         payload["tools"] = _normalize_tools_for_openai_chat(tools)
     if provider == "groq":
@@ -1300,6 +1309,8 @@ def _iter_openai_compatible_chat_events(
     base_url: str,
     messages: list[dict],
     tools: list[dict] | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
 ):
     """Stream OpenAI-compatible /chat/completions deltas via SSE.
 
@@ -1334,6 +1345,13 @@ def _iter_openai_compatible_chat_events(
         "stream": True,
         "stream_options": {"include_usage": True},
     }
+    # Lag 10 Phase 1 (2026-05-12): caller may pass modulated values.
+    # When None, omit from payload so server-side defaults apply (cheap-lane
+    # callers don't pass them; only visible-lane wrappers do).
+    if temperature is not None:
+        payload["temperature"] = float(temperature)
+    if top_p is not None:
+        payload["top_p"] = float(top_p)
     if tools:
         payload["tools"] = _normalize_tools_for_openai_chat(tools)
 

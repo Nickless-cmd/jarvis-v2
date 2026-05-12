@@ -558,6 +558,16 @@ def _stream_openai_compatible_model(
 
     collected_tool_calls: list[dict] = []
 
+    # Lag 10 Phase 1 (2026-05-12): unconscious modulation of sampling params.
+    # Visible-lane only — cheap-lane callers of _iter_openai_compatible_chat_events
+    # don't pass these kwargs, so server-side defaults are preserved for them.
+    from core.services.unconscious_modulation import compute_unconscious_modulation
+    _mod_temp, _mod_top_p = compute_unconscious_modulation(
+        base_temperature=None,
+        base_top_p=None,
+        workspace_id="default",
+    )
+
     try:
         for ev in _iter_openai_compatible_chat_events(
             provider=provider,
@@ -566,6 +576,8 @@ def _stream_openai_compatible_model(
             base_url=base_url,
             messages=chat_messages,
             tools=tools or None,
+            temperature=_mod_temp,
+            top_p=_mod_top_p,
         ):
             if controller is not None and controller.is_cancelled():
                 raise VisibleModelStreamCancelled("visible-run-cancelled")
@@ -654,6 +666,15 @@ def _run_openai_compatible_visible(
         _auth_profile = _auth_profile or provider
     except Exception:
         _auth_profile = provider
+    # Lag 10 Phase 1 (2026-05-12): unconscious modulation of sampling params.
+    # Visible-lane only — cheap-lane callers of _execute_openai_compatible_chat
+    # don't pass these kwargs, so server-side defaults are preserved for them.
+    from core.services.unconscious_modulation import compute_unconscious_modulation
+    _mod_temp, _mod_top_p = compute_unconscious_modulation(
+        base_temperature=None,
+        base_top_p=None,
+        workspace_id="default",
+    )
     raw = _execute_openai_compatible_chat(
         provider=provider,
         model=model,
@@ -661,6 +682,8 @@ def _run_openai_compatible_visible(
         base_url=base_url,
         messages=chat_messages,
         tools=tools or None,
+        temperature=_mod_temp,
+        top_p=_mod_top_p,
     )
     _api_ms = int((_time.monotonic() - _t_api) * 1000)
     print(

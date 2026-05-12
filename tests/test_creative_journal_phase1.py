@@ -59,7 +59,7 @@ def test_fetch_affective_klangbraet_present_keys():
 
     out = _fetch_affective_klangbraet()
     assert isinstance(out, dict)
-    assert set(out.keys()) == {"dream_bias", "user_temperature", "current_pull", "finitude"}
+    assert set(out.keys()) == {"dream_bias", "user_temperature", "current_pull", "finitude", "aesthetic"}
 
 
 def test_should_skip_week_when_corpus_thin():

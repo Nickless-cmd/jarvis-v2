@@ -295,6 +295,22 @@ def _build_prompt(
             "",
             *fin_lines,
         ]
+    # Aesthetic — Lag #6 Phase 1.2 (2026-05-11). Binary present/absent.
+    aesthetic = klangbraet.get("aesthetic") if isinstance(klangbraet, dict) else None
+    if isinstance(aesthetic, dict):
+        aest_lines: list[str] = []
+        if aesthetic.get("top_motif"):
+            aest_lines.append(f"- Seneste motif: {aesthetic['top_motif']}")
+        if aesthetic.get("dominant_taste"):
+            aest_lines.append(f"- Dominant taste: {aesthetic['dominant_taste']}")
+        if not aest_lines:
+            aest_lines = ["- (intet æstetisk signal lige nu)"]
+        sections += [
+            "",
+            "## Æstetik — det æstetiske spor du bærer",
+            "",
+            *aest_lines,
+        ]
     return "\n".join(sections)
 
 
@@ -509,6 +525,11 @@ def _fetch_affective_klangbraet() -> dict[str, object]:
             "last_transition": "",
             "monthly_reflection": "",
         },
+        # Lag #6 Phase 1 (2026-05-11)
+        "aesthetic": {
+            "top_motif": "",
+            "dominant_taste": "",
+        },
     }
     try:
         from core.services.dream_bias_engine import format_dream_bias_for_heartbeat
@@ -577,6 +598,14 @@ def _fetch_affective_klangbraet() -> dict[str, object]:
             out["finitude"]["monthly_reflection"] = f"skrevet {label} (måned {ym})"  # type: ignore[index]
     except Exception:
         pass
+    # Aesthetic sub-dict (Lag #6 Phase 1, 2026-05-11)
+    try:
+        out["aesthetic"] = {
+            "top_motif": _fetch_recent_top_motif(),
+            "dominant_taste": _fetch_dominant_taste(),
+        }
+    except Exception:
+        out["aesthetic"] = {"top_motif": "", "dominant_taste": ""}
     return out
 
 
@@ -604,6 +633,10 @@ def _format_yaml_frontmatter(
     fin_trans = "true" if (isinstance(fin, dict) and fin.get("last_transition")) else "false"
     fin_month = "true" if (isinstance(fin, dict) and fin.get("monthly_reflection")) else "false"
 
+    aest = klangbraet.get("aesthetic") if isinstance(klangbraet, dict) else None
+    aest_motif = "true" if (isinstance(aest, dict) and aest.get("top_motif")) else "false"
+    aest_taste = "true" if (isinstance(aest, dict) and aest.get("dominant_taste")) else "false"
+
     return "\n".join([
         "---",
         f"created_at: {created_at}",
@@ -618,6 +651,8 @@ def _format_yaml_frontmatter(
         f"finitude_looming_end: {fin_loom}",
         f"finitude_last_transition: {fin_trans}",
         f"finitude_monthly_reflection: {fin_month}",
+        f"aesthetic_top_motif: {aest_motif}",
+        f"aesthetic_dominant_taste: {aest_taste}",
         "---",
         "",
     ])

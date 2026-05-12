@@ -179,6 +179,10 @@ class RuntimeSettings:
     unconscious_modulation_temp_ceiling: float = 1.2
     unconscious_modulation_top_p_floor: float = 0.7
     unconscious_modulation_top_p_ceiling: float = 1.0
+    # ── Tool invention (AGI track #9 — added 2026-05-12) ─────────────────
+    # When True, propose_new_skill tool is exposed and active. When False,
+    # the tool returns an error immediately (kill-switch).
+    tool_invention_enabled: bool = True
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -626,6 +630,12 @@ def load_settings() -> RuntimeSettings:
             data.get(
                 "unconscious_modulation_top_p_ceiling",
                 defaults.unconscious_modulation_top_p_ceiling,
+            )
+        ),
+        tool_invention_enabled=bool(
+            data.get(
+                "tool_invention_enabled",
+                defaults.tool_invention_enabled,
             )
         ),
         longing_daemon_cadence_minutes=int(

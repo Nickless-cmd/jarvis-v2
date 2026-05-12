@@ -391,3 +391,51 @@ def summarize_patterns() -> dict[str, Any]:
         "rejected": counts.get("rejected", 0),
         "total": sum(counts.values()),
     }
+
+
+def _decode_json_list(value: object) -> list[str]:
+    try:
+        loaded = json.loads(str(value or "[]"))
+    except Exception:
+        loaded = []
+    if not isinstance(loaded, list):
+        return []
+    return [str(item) for item in loaded if str(item).strip()]
+
+
+def build_emergence_surface(*, limit: int = 8) -> dict[str, Any]:
+    """Surface persisted emergence candidates without running detection."""
+    patterns = list_patterns(limit=max(1, int(limit or 8)))
+    items: list[dict[str, Any]] = []
+    for pattern in patterns:
+        items.append({
+            "pattern_key": str(pattern.get("pattern_key") or ""),
+            "title": str(pattern.get("title") or ""),
+            "summary": str(pattern.get("summary") or ""),
+            "status": str(pattern.get("status") or ""),
+            "confidence": float(pattern.get("confidence") or 0.0),
+            "evidence_count": int(pattern.get("evidence_count") or 0),
+            "competing_explanations": _decode_json_list(
+                pattern.get("competing_explanations_json")
+            ),
+            "confounders": _decode_json_list(pattern.get("confounders_json")),
+            "last_updated_at": str(pattern.get("last_updated_at") or ""),
+        })
+    summary = summarize_patterns()
+    active = bool(summary.get("candidate") or summary.get("upgraded"))
+    return {
+        "active": active,
+        "mode": "evidence-based-emergence-patterns",
+        "summary": {
+            **summary,
+            "current_pattern": (
+                items[0]["title"] if items else "No persisted emergence pattern"
+            ),
+        },
+        "items": items,
+        "allowed_effects": [
+            "prompt_attention",
+            "request_more_evidence",
+            "do_not_treat_candidate_as_identity_truth",
+        ],
+    }

@@ -372,3 +372,45 @@ def _set_status(
                 """,
                 (status, now, seed_id, workspace_id),
             )
+
+
+def build_prospective_memory_surface(
+    *, limit: int = 8, workspace_id: str = "default"
+) -> dict[str, Any]:
+    """Surface prospective seeds without triggering or mutating them."""
+    summary = summarize_seeds(workspace_id=workspace_id)
+    seeds = list_seeds(limit=max(1, int(limit or 8)), workspace_id=workspace_id)
+    active_statuses = {"planted", "maturing", "triggered"}
+    return {
+        "active": any(int(summary.get(status) or 0) > 0 for status in active_statuses),
+        "mode": "prospective-memory-seeds",
+        "summary": {
+            **summary,
+            "current_seed": (
+                str(seeds[0].get("title") or "") if seeds else "No prospective seeds"
+            ),
+        },
+        "items": [
+            {
+                "seed_id": str(seed.get("seed_id") or ""),
+                "title": str(seed.get("title") or ""),
+                "summary": str(seed.get("summary") or ""),
+                "status": str(seed.get("status") or ""),
+                "activate_at": str(seed.get("activate_at") or ""),
+                "activate_on_event": list(seed.get("activate_on_event") or []),
+                "activate_on_context": list(seed.get("activate_on_context") or []),
+                "expires_at": str(seed.get("expires_at") or ""),
+                "relevance_score": float(seed.get("relevance_score") or 0.0),
+                "linked_goal": str(seed.get("linked_goal") or ""),
+                "linked_project": str(seed.get("linked_project") or ""),
+                "created_at": str(seed.get("created_at") or ""),
+                "updated_at": str(seed.get("updated_at") or ""),
+            }
+            for seed in seeds
+        ],
+        "allowed_effects": [
+            "prompt_attention",
+            "wait_for_activation_context",
+            "do_not_auto_execute_seed",
+        ],
+    }

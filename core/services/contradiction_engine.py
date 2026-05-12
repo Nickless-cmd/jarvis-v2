@@ -207,3 +207,28 @@ def run_contradiction_tick() -> dict[str, Any]:
         "contradictions": len(findings),
         "findings": findings,
     }
+
+
+def build_contradiction_engine_surface(*, limit: int = 5) -> dict[str, Any]:
+    """Mission-control/read-surface for semantic contradiction detection.
+
+    Side-effect free: runs detection only, does not publish events.
+    """
+    findings = detect_contradictions(max_findings=max(1, int(limit or 5)))
+    return {
+        "active": bool(findings),
+        "mode": "semantic-decision-review-contradictions",
+        "summary": {
+            "finding_count": len(findings),
+            "current_finding": (
+                str(findings[0].get("decision_directive") or "")
+                if findings else "No semantic contradiction detected"
+            ),
+        },
+        "items": findings,
+        "allowed_effects": [
+            "prompt_attention",
+            "review_decision_or_self_review",
+            "do_not_auto_mutate_decisions",
+        ],
+    }

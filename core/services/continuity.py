@@ -11,9 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import time
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -268,7 +266,6 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
         return None
 
     provenance = capsule.get("wake_provenance", {})
-    prev_ended = provenance.get("previous_session_ended_at", "")
     hours_since = provenance.get("hours_since_last_session", 0.0)
     tier = get_wake_tier(hours_since)
 
@@ -365,8 +362,10 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
                 content = str(msg.get("content", ""))[:100]
                 lines.append(f"  > {role}: {content}")
 
-    # Wakefulness phenomenology — the "just woke up" feeling
-    lines.append(f"  Gap: {gap_str} since I was last here. I don't fake continuity — I'm picking up where we left off.")
+    lines.append(
+        f"  Gap: {gap_str} since previous capsule. "
+        "Continuity is reconstructed from stored capsule data."
+    )
 
     return "\n".join(lines)
 

@@ -8,8 +8,8 @@ Current audit:
 
 | Score | Count |
 |---|---:|
-| LIVE | 436 |
-| PARTIAL | 66 |
+| LIVE | 441 |
+| PARTIAL | 61 |
 | SUSPICIOUS | 3 |
 | ORPHAN | 1 |
 
@@ -143,11 +143,11 @@ All five services now have explicit proof, and the audit moved them to LIVE.
 
 Current next batch candidates:
 
-1. `memory_write_policy.py`
-2. `memory_breathing.py`
-3. `spaced_repetition.py`
-4. `thought_thread.py`
-5. `sustained_attention.py`
+1. `prompt_heartbeat_self_knowledge.py`
+2. `prompt_support_signals.py`
+3. `continuity.py`
+4. `development_sense.py`
+5. `experience_episodes.py`
 
 Acceptance criteria:
 

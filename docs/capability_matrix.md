@@ -1,15 +1,15 @@
 # Capability Matrix
 
 Statisk audit af `core/services/` genereret af `scripts/capability_audit.py`.  
-Sidst kørt: 2026-05-12T19:29:00+00:00  
+Sidst kørt: 2026-05-12T19:33:24+00:00  
 Total services: 506
 
 ## Sammenfatning
 
 | Score | Antal | Andel |
 |---|---:|---:|
-| 🟢 LIVE | 436 | 86.2% |
-| 🟡 PARTIAL | 66 | 13.0% |
+| 🟢 LIVE | 441 | 87.2% |
+| 🟡 PARTIAL | 61 | 12.1% |
 | 🟠 STALE | 0 | 0.0% |
 | 🔴 SUSPICIOUS | 3 | 0.6% |
 | ⚫ ORPHAN | 1 | 0.2% |
@@ -93,7 +93,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/arc_rule_extractor.py` | 🟢 LIVE | 182 | 15d | yes | core.services.governance_bootstrap, core.services.prompt_contract | 0 | — | 2 | 4 | yes | no | no |
 | `core/services/associative_recall.py` | 🟢 LIVE | 291 | 29d | yes | core.services.cognitive_state_assembly | 2 | test_associative_recall.py, test_jarvis_experimental.py | 3 | 4 | no | no | no |
 | `core/services/attachment_service.py` | 🟢 LIVE | 315 | 14d | yes | core.services.discord_gateway, core.services.telegram_gateway, core.tools.simple_tools | 2 | test_attachment_service.py, test_tools_attachments.py | 5 | 4 | no | no | no |
-| `core/services/attachment_topology_signal_tracking.py` | 🟢 LIVE | 525 | 44d | yes | apps.api.jarvis_api.routes.mission_control, core.services.autonomy_pressure_signal_tracking, core.services.proactive_loop_lifecycle_tracking | 1 | conftest.py | 8 | 2 | yes | no | no |
+| `core/services/attachment_topology_signal_tracking.py` | 🟢 LIVE | 525 | 45d | yes | apps.api.jarvis_api.routes.mission_control, core.services.autonomy_pressure_signal_tracking, core.services.proactive_loop_lifecycle_tracking | 1 | conftest.py | 8 | 2 | yes | no | no |
 | `core/services/attention_blink_test.py` | 🟢 LIVE | 153 | 29d | yes | apps.api.jarvis_api.routes.mission_control, core.services.cognitive_core_experiments, core.services.heartbeat_runtime | 1 | test_consciousness_experiments.py | 4 | 3 | yes | no | no |
 | `core/services/attention_budget.py` | 🟢 LIVE | 358 | 36d | yes | apps.api.jarvis_api.routes.mission_control, core.services.cognitive_state_assembly, core.services.prompt_contract | 1 | test_attention_budget.py | 4 | 1 | no | no | no |
 | `core/services/attention_contour.py` | 🟢 LIVE | 27 | 35d | yes | apps.api.jarvis_api.routes.mission_control, core.services.heartbeat_runtime | 1 | test_attention_contour.py | 3 | 0 | no | no | no |
@@ -185,7 +185,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/decision_log.py` | 🟢 LIVE | 60 | 36d | yes | apps.api.jarvis_api.routes.mission_control, core.services.cadence_producers, core.services.heartbeat_runtime | 0 | — | 3 | 2 | yes | no | no |
 | `core/services/decision_review_prompter.py` | 🟡 PARTIAL | 150 | 5d | yes | core.services.governance_bootstrap | 0 | — | 1 | 2 | no | no | no |
 | `core/services/decision_signals.py` | 🟢 LIVE | 307 | 5d | yes | core.services.visible_runs | 3 | test_decision_signals_in_prompt.py, test_decision_signals.py, test_decision_triggers.py | 7 | 3 | yes | no | no |
-| `core/services/decision_weight.py` | 🟢 LIVE | 79 | 30d | yes | core.services.runtime_action_executor | 1 | test_decision_weight.py | 2 | 0 | no | no | no |
+| `core/services/decision_weight.py` | 🟢 LIVE | 79 | 31d | yes | core.services.runtime_action_executor | 1 | test_decision_weight.py | 2 | 0 | no | no | no |
 | `core/services/decisions_journal.py` | 🟢 LIVE | 211 | 20d | yes | apps.api.jarvis_api.routes.mission_control | 0 | — | 1 | 3 | yes | no | no |
 | `core/services/deep_analyzer.py` | 🟡 PARTIAL | 355 | 20d | yes | apps.api.jarvis_api.routes.mission_control, core.tools.simple_tools | 0 | — | 2 | 0 | no | no | no |
 | `core/services/deep_reflection_slot.py` | 🟢 LIVE | 410 | 22d | yes | core.services.heartbeat_runtime, core.services.runtime_self_model | 0 | — | 2 | 10 | yes | no | no |
@@ -301,7 +301,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/loyalty_gradient_signal_tracking.py` | 🟢 LIVE | 592 | 44d | yes | apps.api.jarvis_api.routes.mission_control, core.services.autonomy_pressure_signal_tracking, core.services.proactive_loop_lifecycle_tracking | 1 | conftest.py | 8 | 2 | yes | no | no |
 | `core/services/mail_checker_daemon.py` | 🟢 LIVE | 376 | 21d | yes | core.services.daemon_manager, core.services.heartbeat_runtime | 0 | — | 2 | 6 | yes | no | no |
 | `core/services/meaning_significance_signal_tracking.py` | 🟢 LIVE | 628 | 45d | yes | apps.api.jarvis_api.routes.mission_control, core.services.autonomy_pressure_signal_tracking, core.services.heartbeat_runtime | 1 | conftest.py | 9 | 2 | yes | no | no |
-| `core/services/memory_breathing.py` | 🟡 PARTIAL | 132 | 22d | yes | core.services.heartbeat_runtime, core.services.runtime_self_model, core.services.thought_thread | 0 | — | 3 | 1 | no | no | no |
+| `core/services/memory_breathing.py` | 🟢 LIVE | 132 | 22d | yes | core.services.heartbeat_runtime, core.services.runtime_self_model, core.services.thought_thread | 1 | test_attention_memory_surfaces.py | 4 | 1 | no | no | no |
 | `core/services/memory_consolidation_nudge.py` | 🟡 PARTIAL | 19 | 6d | yes | core.services.prompt_contract | 0 | — | 1 | 0 | no | no | no |
 | `core/services/memory_decay_daemon.py` | 🟢 LIVE | 148 | 28d | yes | apps.api.jarvis_api.routes.mission_control_living_mind, core.services.daemon_manager, core.services.governance_bootstrap | 2 | test_adaptive_decay.py, test_memory_decay_daemon.py | 7 | 2 | yes | no | no |
 | `core/services/memory_density.py` | 🟢 LIVE | 262 | 22d | yes | core.services.heartbeat_runtime, core.services.runtime_self_model, core.tools.mic_listen_tool | 0 | — | 4 | 1 | yes | no | no |
@@ -315,7 +315,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/memory_resurfacing.py` | 🟡 PARTIAL | 214 | 8d | yes | core.tools.simple_tools | 0 | — | 1 | 3 | no | no | no |
 | `core/services/memory_search.py` | 🟢 LIVE | 277 | 32d | yes | core.services.heartbeat_phases, core.services.memory_hierarchy, core.services.memory_recall_engine | 2 | test_memory_search_smoke.py, test_memory_hierarchy.py | 6 | 1 | no | no | no |
 | `core/services/memory_tattoos.py` | 🟢 LIVE | 42 | 35d | yes | apps.api.jarvis_api.routes.mission_control, core.services.heartbeat_runtime | 2 | test_memory_tattoos.py, test_prompt_contract_capability_rules.py | 4 | 0 | no | no | no |
-| `core/services/memory_write_policy.py` | 🟡 PARTIAL | 239 | 22d | yes | core.services.heartbeat_runtime, core.services.runtime_self_model | 0 | — | 2 | 0 | no | no | no |
+| `core/services/memory_write_policy.py` | 🟢 LIVE | 239 | 22d | yes | core.services.heartbeat_runtime, core.services.runtime_self_model | 1 | test_attention_memory_surfaces.py | 3 | 0 | no | no | no |
 | `core/services/meta_cognition_daemon.py` | 🟢 LIVE | 209 | 14d | yes | apps.api.jarvis_api.routes.mission_control, core.services.cognitive_core_experiments, core.services.heartbeat_runtime | 1 | test_consciousness_experiments.py | 4 | 6 | yes | no | no |
 | `core/services/meta_learning_aggregator.py` | 🟢 LIVE | 413 | 0d | yes | core.services.meta_learning_retrospective | 1 | test_meta_learning.py | 3 | 3 | no | no | no |
 | `core/services/meta_learning_retrospective.py` | 🟢 LIVE | 437 | 0d | yes | core.services.internal_cadence, core.services.prompt_contract, core.tools.meta_learning_tools | 1 | test_meta_learning.py | 5 | 5 | yes | no | no |
@@ -360,7 +360,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/priors_feedback.py` | 🟡 PARTIAL | 122 | 15d | yes | core.services.prompt_contract | 0 | — | 1 | 2 | no | no | no |
 | `core/services/private_initiative_tension_signal_tracking.py` | 🟢 LIVE | 461 | 43d | yes | apps.api.jarvis_api.routes.mission_control, core.services.autonomy_pressure_signal_tracking, core.services.emergent_signal_tracking | 1 | conftest.py | 13 | 2 | yes | no | no |
 | `core/services/private_inner_interplay_signal_tracking.py` | 🟢 LIVE | 456 | 43d | yes | apps.api.jarvis_api.routes.mission_control, core.services.signal_surface_router, core.services.visible_runs | 1 | conftest.py | 4 | 2 | yes | no | no |
-| `core/services/private_inner_note_signal_tracking.py` | 🟢 LIVE | 456 | 43d | yes | apps.api.jarvis_api.routes.mission_control, core.services.session_distillation, core.services.signal_surface_router | 1 | conftest.py | 5 | 3 | yes | no | no |
+| `core/services/private_inner_note_signal_tracking.py` | 🟢 LIVE | 456 | 44d | yes | apps.api.jarvis_api.routes.mission_control, core.services.session_distillation, core.services.signal_surface_router | 1 | conftest.py | 5 | 3 | yes | no | no |
 | `core/services/private_state_snapshot_tracking.py` | 🟢 LIVE | 477 | 29d | yes | apps.api.jarvis_api.routes.mission_control, core.services.chronicle_consolidation_signal_tracking, core.services.heartbeat_runtime | 1 | conftest.py | 10 | 2 | yes | no | no |
 | `core/services/private_temporal_curiosity_state_tracking.py` | 🟢 LIVE | 397 | 45d | yes | apps.api.jarvis_api.routes.mission_control, core.services.visible_runs | 1 | conftest.py | 3 | 2 | yes | no | no |
 | `core/services/private_temporal_promotion_signal_tracking.py` | 🟢 LIVE | 448 | 45d | yes | apps.api.jarvis_api.routes.mission_control, core.services.chronicle_consolidation_brief_tracking, core.services.chronicle_consolidation_proposal_tracking | 1 | conftest.py | 7 | 2 | yes | no | no |
@@ -493,14 +493,14 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/social_labilizer.py` | 🟢 LIVE | 262 | 13d | yes | core.services.visible_runs | 0 | — | 1 | 3 | yes | no | no |
 | `core/services/somatic_daemon.py` | 🟢 LIVE | 277 | 21d | yes | apps.api.jarvis_api.routes.mission_control_living_mind, core.services.daemon_manager, core.services.embodied_state | 2 | test_embodied_state.py, test_somatic_daemon.py | 7 | 5 | yes | no | no |
 | `core/services/somatic_runtime_body.py` | 🟢 LIVE | 101 | 8d | yes | core.services.cognitive_state_assembly, core.services.perceptual_event_engine | 1 | test_somatic_runtime_body.py | 3 | 2 | yes | no | no |
-| `core/services/spaced_repetition.py` | 🟡 PARTIAL | 219 | 22d | yes | core.services.chronicle_engine, core.services.heartbeat_runtime, core.services.runtime_self_model | 0 | — | 3 | 0 | no | no | no |
+| `core/services/spaced_repetition.py` | 🟢 LIVE | 219 | 22d | yes | core.services.chronicle_engine, core.services.heartbeat_runtime, core.services.runtime_self_model | 1 | test_attention_memory_surfaces.py | 4 | 0 | no | no | no |
 | `core/services/staged_edits.py` | 🟡 PARTIAL | 437 | 11d | yes | apps.api.jarvis_api.routes.jarvisx, core.tools.staged_edits_tools | 0 | — | 2 | 2 | no | no | no |
 | `core/services/subagent_digest.py` | 🟡 PARTIAL | 109 | 15d | yes | core.services.prompt_contract | 0 | — | 1 | 2 | no | no | no |
 | `core/services/subagent_ecology.py` | 🟢 LIVE | 427 | 40d | yes | apps.api.jarvis_api.routes.mission_control, core.services.council_runtime, core.services.heartbeat_runtime | 1 | conftest.py | 7 | 6 | no | no | no |
 | `core/services/subjective_time.py` | 🟢 LIVE | 30 | 35d | yes | core.services.cognitive_state_assembly | 1 | test_subjective_time_smoke.py | 2 | 0 | no | no | no |
 | `core/services/surprise_daemon.py` | 🟢 LIVE | 243 | 24d | yes | apps.api.jarvis_api.routes.mission_control_living_mind, core.services.cognitive_core_experiments, core.services.daemon_manager | 2 | test_consciousness_experiments.py, test_surprise_daemon.py | 7 | 4 | yes | no | no |
 | `core/services/surprise_detector.py` | 🟢 LIVE | 179 | 15d | yes | core.services.heartbeat_phases, core.services.heartbeat_runtime, core.tools.simple_tools | 0 | — | 3 | 2 | yes | no | no |
-| `core/services/sustained_attention.py` | 🟡 PARTIAL | 270 | 22d | yes | core.services.heartbeat_runtime, core.services.runtime_self_model | 0 | — | 2 | 0 | no | no | no |
+| `core/services/sustained_attention.py` | 🟢 LIVE | 270 | 22d | yes | core.services.heartbeat_runtime, core.services.runtime_self_model | 1 | test_attention_memory_surfaces.py | 3 | 0 | no | no | no |
 | `core/services/system_cartographer.py` | 🟢 LIVE | 660 | 4d | yes | apps.api.jarvis_api.app, core.services.agency_map | 1 | test_system_cartographer.py | 3 | 5 | no | no | no |
 | `core/services/task_worker.py` | 🟢 LIVE | 412 | 4d | yes | core.services.daemon_manager, core.services.heartbeat_runtime | 1 | test_task_worker.py | 3 | 5 | no | no | no |
 | `core/services/taste_profile.py` | 🟢 LIVE | 184 | 22d | yes | apps.api.jarvis_api.routes.mission_control, core.services.heartbeat_runtime, core.services.runtime_self_model | 0 | — | 4 | 2 | yes | no | no |
@@ -510,7 +510,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/temporal_context.py` | 🟢 LIVE | 64 | 1d | yes | apps.api.jarvis_api.routes.mission_control | 1 | test_temporal_context_smoke.py | 2 | 1 | no | no | no |
 | `core/services/temporal_depth.py` | 🟡 PARTIAL | 184 | 13d | yes | core.services.cognitive_state_assembly | 0 | — | 1 | 0 | no | no | no |
 | `core/services/temporal_narrative.py` | 🟢 LIVE | 165 | 35d | yes | apps.api.jarvis_api.routes.mission_control, core.services.prompt_contract | 1 | test_temporal_narrative.py | 3 | 1 | no | no | no |
-| `core/services/temporal_recurrence_signal_tracking.py` | 🟢 LIVE | 395 | 47d | yes | apps.api.jarvis_api.routes.mission_control, core.services.dream_hypothesis_signal_tracking, core.services.signal_surface_router | 1 | conftest.py | 5 | 2 | yes | no | no |
+| `core/services/temporal_recurrence_signal_tracking.py` | 🟢 LIVE | 395 | 48d | yes | apps.api.jarvis_api.routes.mission_control, core.services.dream_hypothesis_signal_tracking, core.services.signal_surface_router | 1 | conftest.py | 5 | 2 | yes | no | no |
 | `core/services/temporal_rhythm.py` | 🟡 PARTIAL | 214 | 22d | yes | core.services.creative_impulse_daemon, core.services.deep_reflection_slot, core.services.heartbeat_runtime | 0 | — | 4 | 4 | no | no | no |
 | `core/services/temporal_self_continuity.py` | 🟢 LIVE | 91 | 8d | yes | core.services.cognitive_episodes, core.services.cognitive_state_assembly | 1 | test_temporal_self_continuity.py | 3 | 2 | yes | no | no |
 | `core/services/text_resonance.py` | 🟡 PARTIAL | 186 | 22d | yes | core.services.chat_sessions, core.services.heartbeat_runtime, core.services.runtime_self_model | 0 | — | 3 | 1 | no | no | no |
@@ -518,7 +518,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/theory_of_mind_engine.py` | 🟢 LIVE | 267 | 8d | yes | core.services.cognitive_state_assembly, core.services.runtime_cognitive_conductor, core.services.user_theory_of_mind | 1 | test_theory_of_mind_engine.py | 5 | 3 | yes | no | no |
 | `core/services/thought_action_proposal_daemon.py` | 🟢 LIVE | 150 | 16d | yes | apps.api.jarvis_api.routes.mission_control_living_mind, core.services.daemon_manager, core.services.heartbeat_runtime | 1 | test_thought_action_proposal_daemon.py | 6 | 4 | yes | no | no |
 | `core/services/thought_stream_daemon.py` | 🟢 LIVE | 163 | 15d | yes | apps.api.jarvis_api.routes.mission_control_living_mind, core.services.daemon_manager, core.services.development_sense | 1 | test_thought_stream_daemon.py | 7 | 7 | yes | no | no |
-| `core/services/thought_thread.py` | 🟡 PARTIAL | 253 | 21d | yes | core.services.heartbeat_runtime, core.services.runtime_self_model | 0 | — | 2 | 2 | no | no | no |
+| `core/services/thought_thread.py` | 🟢 LIVE | 253 | 21d | yes | core.services.heartbeat_runtime, core.services.runtime_self_model | 1 | test_attention_memory_surfaces.py | 3 | 2 | no | no | no |
 | `core/services/tick_cache.py` | 🟢 LIVE | 57 | 29d | yes | core.services.heartbeat_runtime, core.services.identity_composer | 1 | test_tick_cache.py | 3 | 0 | no | no | no |
 | `core/services/tiktok_content_daemon.py` | 🟢 LIVE | 608 | 3d | yes | core.services.daemon_manager, core.services.heartbeat_runtime | 2 | test_tiktok_content_daemon.py, test_tiktok_research_daemon.py | 4 | 3 | no | no | no |
 | `core/services/tiktok_research_daemon.py` | 🟢 LIVE | 236 | 3d | yes | core.services.daemon_manager, core.services.heartbeat_runtime | 1 | test_tiktok_research_daemon.py | 3 | 1 | no | no | no |

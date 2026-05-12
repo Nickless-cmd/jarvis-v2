@@ -161,6 +161,11 @@ class RuntimeSettings:
     music_accumulator_threshold_samples: int = 2
     music_accumulator_window_hours: int = 24
     music_accumulator_ratio_threshold: float = 0.0
+    # ── Multi-step planner (Phase 1 — added 2026-05-12) ──────────────────
+    # When True, approve_plan auto-creates pending todos from plan steps
+    # in the plan's original session. Each todo carries plan_id +
+    # plan_step_index so todo completion can feed back to plan progress.
+    plan_todo_auto_create_enabled: bool = True
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -560,6 +565,12 @@ def load_settings() -> RuntimeSettings:
             data.get(
                 "music_accumulator_ratio_threshold",
                 defaults.music_accumulator_ratio_threshold,
+            )
+        ),
+        plan_todo_auto_create_enabled=bool(
+            data.get(
+                "plan_todo_auto_create_enabled",
+                defaults.plan_todo_auto_create_enabled,
             )
         ),
         longing_daemon_cadence_minutes=int(

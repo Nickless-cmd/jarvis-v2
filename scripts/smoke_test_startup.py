@@ -289,6 +289,34 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # World Model Phase 1 — closing the loop (AGI track #1 — 2026-05-12)
+        try:
+            from core.services.world_model_signal_tracking import (  # noqa: F401
+                extract_prediction_language,
+                extract_resolution_language,
+                record_prediction_nudge,
+                record_resolution_nudge,
+                format_world_model_nudges_for_awareness,
+                _ttl_sweep_open_predictions,
+                _compute_calibration_milestone,
+                format_world_model_milestone_for_awareness,
+            )
+            from core.tools.world_model_tools import (  # noqa: F401
+                _exec_predict_outcome,
+                _exec_resolve_prediction,
+            )
+            from core.tools.simple_tools import TOOL_DEFINITIONS, _TOOL_HANDLERS
+            _names = [
+                (e.get("function") or {}).get("name")
+                for e in TOOL_DEFINITIONS if isinstance(e, dict)
+            ]
+            if "predict_outcome" not in _names:
+                raise RuntimeError("predict_outcome not in TOOL_DEFINITIONS")
+            if "resolve_prediction" not in _names:
+                raise RuntimeError("resolve_prediction not in TOOL_DEFINITIONS")
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

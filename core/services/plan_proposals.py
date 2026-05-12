@@ -24,6 +24,7 @@ from typing import Any
 from uuid import uuid4
 
 from core.runtime.state_store import load_json, save_json
+from core.runtime.settings import load_settings
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +125,35 @@ def resolve_plan(plan_id: str, *, decision: str) -> dict[str, Any]:
     rec["status"] = decision
     rec["resolved_at"] = datetime.now(UTC).isoformat()
     _save_all(data)
+
+    # Phase 1 (2026-05-12): auto-create todos when plan is approved.
+    # Hook is here (not in the approve_plan tool wrapper) so MC approvals
+    # and programmatic approvals both flow through it.
+    if decision == "approved" and _plan_todo_auto_create_enabled():
+        steps = list(rec.get("steps") or [])
+        sid = str(rec.get("session_id") or "_default")
+        if steps:
+            try:
+                from core.services.agent_todos import create_from_plan
+                create_from_plan(
+                    plan_id=plan_id,
+                    session_id=sid,
+                    steps=steps,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "plan_proposals: failed to auto-create todos for %s: %s",
+                    plan_id, exc,
+                )
+
     return {"status": "ok", "plan_id": plan_id, "new_status": decision}
+
+
+def _plan_todo_auto_create_enabled() -> bool:
+    try:
+        return bool(load_settings().plan_todo_auto_create_enabled)
+    except Exception:
+        return True
 
 
 def list_session_plans(session_id: str | None) -> list[dict[str, Any]]:

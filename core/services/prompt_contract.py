@@ -1001,6 +1001,18 @@ def build_visible_chat_prompt_assembly(
         )
     except Exception:
         pass
+    # Curiosity-budget Phase 1 (2026-05-12) — idle-window invitation (AGI #6)
+    try:
+        from core.services.curiosity_budget import (
+            format_curiosity_window_for_awareness,
+        )
+        _awareness_add(
+            38,
+            "curiosity-budget idle-window invitation",
+            format_curiosity_window_for_awareness() or None,
+        )
+    except Exception:
+        pass
     try:
         from core.services.turn_changelog import previous_turn_changelog_section
         _awareness_add(40, "previous turn changelog (ground truth)", previous_turn_changelog_section(session_id))

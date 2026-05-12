@@ -389,3 +389,71 @@ def test_idle_window_producer_skips_when_killswitch_off(clean_state, monkeypatch
     result = spec.run_fn(trigger="cadence", last_visible_at="")
     assert result["status"] == "skipped"
     assert idle_window_open() is False
+
+
+def test_awareness_returns_empty_when_window_closed(clean_state):
+    from core.services.curiosity_budget import format_curiosity_window_for_awareness
+    assert format_curiosity_window_for_awareness() == ""
+
+
+def test_awareness_returns_empty_when_no_budget(clean_state):
+    from core.services.curiosity_budget import (
+        format_curiosity_window_for_awareness,
+        load_or_reset_budget, decrement_budget, open_idle_window,
+    )
+    load_or_reset_budget()
+    open_idle_window()
+    for i in range(5):
+        decrement_budget(action="x", observation_id=f"o{i}")
+    assert format_curiosity_window_for_awareness() == ""
+
+
+def test_awareness_shows_remaining_when_open_and_budget(clean_state):
+    from core.services.curiosity_budget import (
+        format_curiosity_window_for_awareness, open_idle_window,
+    )
+    open_idle_window()
+    out = format_curiosity_window_for_awareness()
+    assert "5/5 curiosity" in out
+    assert "Kig på hvad du vil" in out
+    assert "eller lad være" in out
+
+
+def test_awareness_includes_recent_observations(clean_state):
+    from core.services.curiosity_budget import (
+        format_curiosity_window_for_awareness, open_idle_window, record_observation,
+    )
+    record_observation("read_dreams", "{}", "Første blik på mine drømme.", None)
+    record_observation("list_tools", "{}", "Kigger på mine ubrugte tools.", None)
+    open_idle_window()
+    out = format_curiosity_window_for_awareness()
+    assert "Første blik" in out or "ubrugte tools" in out
+
+
+def test_awareness_does_not_show_follow_up_hint(clean_state):
+    """Follow-up hints exist as a field but must NEVER appear in awareness."""
+    from core.services.curiosity_budget import (
+        format_curiosity_window_for_awareness, open_idle_window, record_observation,
+    )
+    record_observation(
+        "search_memory", "{}",
+        "Bare nysgerrig.",
+        "Følg op på trådene fra dengang jeg sagde jeg var bange for at miste kontinuitet.",
+    )
+    open_idle_window()
+    out = format_curiosity_window_for_awareness()
+    assert "kontinuitet" not in out
+    assert "Følg op" not in out
+    assert "follow" not in out.lower()
+
+
+def test_window_closes_on_action_use(clean_state):
+    """Using a curiosity-tool closes the idle-window flag."""
+    from core.services.curiosity_budget import idle_window_open, open_idle_window
+    from core.tools.curiosity_tools import _exec_curiosity_list_tools
+
+    open_idle_window()
+    assert idle_window_open() is True
+
+    _exec_curiosity_list_tools({"observation": "kigger lige."})
+    assert idle_window_open() is False

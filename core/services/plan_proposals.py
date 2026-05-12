@@ -151,6 +151,70 @@ def resolve_plan(plan_id: str, *, decision: str) -> dict[str, Any]:
                     plan_id, exc,
                 )
 
+    # Tool Invention Phase 1 (2026-05-12): if the plan carries skill_data,
+    # call create_skill() on approval. Validation already ran at propose-time,
+    # so this should normally succeed; I/O failures are logged + emitted but
+    # do not raise (plan stays "approved" but uncompleted in that case).
+    if decision == "approved":
+        skill_data = rec.get("skill_data")
+        if isinstance(skill_data, dict):
+            try:
+                from core.services.skill_engine import create_skill
+                install_result = create_skill(
+                    name=str(skill_data.get("name") or ""),
+                    description=str(skill_data.get("description") or ""),
+                    instructions=str(skill_data.get("instructions") or ""),
+                    use_when=str(skill_data.get("use_when") or ""),
+                    tags=list(skill_data.get("tags") or []),
+                )
+                if install_result.get("status") == "ok":
+                    try:
+                        from core.eventbus.bus import event_bus
+                        event_bus.publish(
+                            "cognitive_state.skill_installed",
+                            {
+                                "plan_id": plan_id,
+                                "name": skill_data.get("name"),
+                                "path": install_result.get("path"),
+                            },
+                        )
+                    except Exception:
+                        pass
+                else:
+                    logger.error(
+                        "tool_invention: create_skill returned error for plan %s: %s",
+                        plan_id, install_result.get("error"),
+                    )
+                    try:
+                        from core.eventbus.bus import event_bus
+                        event_bus.publish(
+                            "cognitive_state.skill_install_failed",
+                            {
+                                "plan_id": plan_id,
+                                "name": skill_data.get("name"),
+                                "error": install_result.get("error"),
+                            },
+                        )
+                    except Exception:
+                        pass
+            except Exception as exc:
+                logger.error(
+                    "tool_invention: create_skill raised for plan %s: %s",
+                    plan_id, exc,
+                )
+                try:
+                    from core.eventbus.bus import event_bus
+                    event_bus.publish(
+                        "cognitive_state.skill_install_failed",
+                        {
+                            "plan_id": plan_id,
+                            "name": skill_data.get("name"),
+                            "error": str(exc),
+                        },
+                    )
+                except Exception:
+                    pass
+
     return {"status": "ok", "plan_id": plan_id, "new_status": decision}
 
 

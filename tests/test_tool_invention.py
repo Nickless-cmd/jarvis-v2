@@ -179,3 +179,98 @@ def test_propose_plan_without_skill_data_works_unchanged(clean_plan_state):
 
     plans = _load_all()
     assert plans[plan_id].get("skill_data") is None
+
+
+def test_resolve_plan_approved_calls_create_skill(clean_plan_state, isolated_skills_root):
+    from core.services.plan_proposals import propose_plan, resolve_plan
+    from core.services.skill_engine import skill_exists
+
+    r = propose_plan(
+        session_id="s1",
+        title="Ny skill: install-this",
+        why="testing",
+        steps=["Install skill 'install-this' (auto on approval)"],
+        skill_data={
+            "name": "install-this",
+            "description": "Does the install",
+            "instructions": "When triggered, install something.",
+            "use_when": "When asked",
+            "tags": ["test"],
+        },
+    )
+    plan_id = r["plan_id"]
+
+    res = resolve_plan(plan_id, decision="approved")
+    assert res["status"] == "ok"
+
+    assert skill_exists("install-this") is True
+
+
+def test_resolve_plan_dismissed_does_not_install_skill(clean_plan_state, isolated_skills_root):
+    from core.services.plan_proposals import propose_plan, resolve_plan
+    from core.services.skill_engine import skill_exists
+
+    r = propose_plan(
+        session_id="s1",
+        title="Ny skill: dont-install",
+        why="x",
+        steps=["x"],
+        skill_data={
+            "name": "dont-install",
+            "description": "x",
+            "instructions": "x",
+            "use_when": "x",
+            "tags": [],
+        },
+    )
+    resolve_plan(r["plan_id"], decision="dismissed")
+    assert skill_exists("dont-install") is False
+
+
+def test_resolve_plan_without_skill_data_no_install_attempted(clean_plan_state, isolated_skills_root):
+    """Backwards compat: plans without skill_data behave exactly as before."""
+    from core.services.plan_proposals import propose_plan, resolve_plan
+
+    r = propose_plan(
+        session_id="s1",
+        title="Regular plan",
+        why="x",
+        steps=["x"],
+    )
+    res = resolve_plan(r["plan_id"], decision="approved")
+    assert res["status"] == "ok"
+
+
+def test_resolve_plan_install_io_failure_logged_not_raised(
+    clean_plan_state, isolated_skills_root, monkeypatch, caplog,
+):
+    """If create_skill raises at install time, resolve_plan logs but does
+    not raise. Plan stays approved."""
+    from core.services.plan_proposals import propose_plan, resolve_plan, _load_all
+    import core.services.skill_engine as se
+
+    def boom(**kwargs):
+        raise IOError("disk full")
+    monkeypatch.setattr(se, "create_skill", boom)
+
+    r = propose_plan(
+        session_id="s1",
+        title="x",
+        why="x",
+        steps=["x"],
+        skill_data={
+            "name": "will-fail",
+            "description": "x",
+            "instructions": "x",
+            "use_when": "x",
+            "tags": [],
+        },
+    )
+    plan_id = r["plan_id"]
+
+    with caplog.at_level("ERROR"):
+        res = resolve_plan(plan_id, decision="approved")
+    assert res["status"] == "ok"
+
+    plan = _load_all()[plan_id]
+    assert plan["status"] == "approved"

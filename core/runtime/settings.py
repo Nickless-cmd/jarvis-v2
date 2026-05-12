@@ -166,6 +166,19 @@ class RuntimeSettings:
     # in the plan's original session. Each todo carries plan_id +
     # plan_step_index so todo completion can feed back to plan progress.
     plan_todo_auto_create_enabled: bool = True
+    # ── Unconscious modulation (Lag 10 — added 2026-05-12) ───────────────
+    # Sub-symbolic sampling-parameter modulation: user_temperature's valens
+    # nudges visible-chat LLM temperature, arousal nudges top_p, scaled by
+    # field_intensity. Jarvis sees no tokens about it; the model generates
+    # differently because the API params shifted before the call. Phase 1
+    # instruments only the production visible provider (deepseek).
+    unconscious_modulation_enabled: bool = True
+    unconscious_modulation_temp_delta: float = 0.30
+    unconscious_modulation_top_p_delta: float = 0.15
+    unconscious_modulation_temp_floor: float = 0.3
+    unconscious_modulation_temp_ceiling: float = 1.2
+    unconscious_modulation_top_p_floor: float = 0.7
+    unconscious_modulation_top_p_ceiling: float = 1.0
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -571,6 +584,48 @@ def load_settings() -> RuntimeSettings:
             data.get(
                 "plan_todo_auto_create_enabled",
                 defaults.plan_todo_auto_create_enabled,
+            )
+        ),
+        unconscious_modulation_enabled=bool(
+            data.get(
+                "unconscious_modulation_enabled",
+                defaults.unconscious_modulation_enabled,
+            )
+        ),
+        unconscious_modulation_temp_delta=float(
+            data.get(
+                "unconscious_modulation_temp_delta",
+                defaults.unconscious_modulation_temp_delta,
+            )
+        ),
+        unconscious_modulation_top_p_delta=float(
+            data.get(
+                "unconscious_modulation_top_p_delta",
+                defaults.unconscious_modulation_top_p_delta,
+            )
+        ),
+        unconscious_modulation_temp_floor=float(
+            data.get(
+                "unconscious_modulation_temp_floor",
+                defaults.unconscious_modulation_temp_floor,
+            )
+        ),
+        unconscious_modulation_temp_ceiling=float(
+            data.get(
+                "unconscious_modulation_temp_ceiling",
+                defaults.unconscious_modulation_temp_ceiling,
+            )
+        ),
+        unconscious_modulation_top_p_floor=float(
+            data.get(
+                "unconscious_modulation_top_p_floor",
+                defaults.unconscious_modulation_top_p_floor,
+            )
+        ),
+        unconscious_modulation_top_p_ceiling=float(
+            data.get(
+                "unconscious_modulation_top_p_ceiling",
+                defaults.unconscious_modulation_top_p_ceiling,
             )
         ),
         longing_daemon_cadence_minutes=int(

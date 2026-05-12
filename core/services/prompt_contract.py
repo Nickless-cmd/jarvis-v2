@@ -380,6 +380,14 @@ def build_visible_chat_prompt_assembly(
         runtime_self_report_context=runtime_self_report_context or {},
     )
 
+    # Sync-gap instrumentation: capture timestamps at key landmarks so we can
+    # see where the synchronous work between parallel submits and final
+    # assembly is spent. Added 2026-05-12 to find the ~16s unaccounted gap.
+    _sync_landmarks: dict[str, int] = {}
+    def _mark(_label: str) -> None:
+        _sync_landmarks[_label] = int((_t_mod.monotonic() - _t_assembly_start) * 1000)
+    _mark("after_phase1_submit")
+
     # 0.5 Lane identity — inject before everything else
     lane = "local" if compact else "visible"
     lane_clause = _lane_identity_clause(lane)
@@ -1191,9 +1199,11 @@ def build_visible_chat_prompt_assembly(
         parts.append(mutation_section)
         derived_inputs.append("self mutation lineage")
 
+    _mark("before_relevance_resolve")
     # Resolve relevance — blocks until the bounded NL prompt relevance call
     # returns, but happens concurrently with fast file reads above.
     relevance = _timed_result(future_relevance, "relevance")
+    _mark("after_relevance_resolve")
 
     # --- Phase 2: launch relevance-dependent Ollama calls in parallel ---
     future_memory_selection = (
@@ -1325,12 +1335,14 @@ def build_visible_chat_prompt_assembly(
 
     # --- Cognitive State (accumulated personality, bearing, taste, rhythm) ---
     # Submitted as a future at function entry; resolve here.
+    _mark("before_heavy_resolves")
     cognitive_state_content = _timed_result(future_cognitive_state, "cognitive_state")
     # Real-time self-state numbers (decision adherence, goal progress, tick
     # quality). Without this Jarvis confabulates pessimistic answers when
     # asked introspective questions in chat — claims 0% adherence when DB
     # shows 60%, claims stale goals when none are stale, etc.
     self_state_content = _timed_result(future_self_state, "self_state")
+    _mark("after_heavy_resolves")
 
     raw_sections = {
         "capability_truth": capability_truth,
@@ -1410,10 +1422,30 @@ def build_visible_chat_prompt_assembly(
 
     executor.shutdown(wait=False)
 
+    _mark("after_assembly_complete")
     _total_ms = int((_t_mod.monotonic() - _t_assembly_start) * 1000)
     _phases_str = " ".join(f"{k}_ms={v}" for k, v in sorted(_phase_timings.items()))
+    # Compute sync-gap deltas between consecutive landmarks (work that the
+    # main thread did while parallel futures ran). _sync_landmarks keys
+    # are wall-clock-from-start, so deltas show elapsed-since-prev.
+    _ordered_marks = [
+        "after_phase1_submit",
+        "before_relevance_resolve",
+        "after_relevance_resolve",
+        "before_heavy_resolves",
+        "after_heavy_resolves",
+        "after_assembly_complete",
+    ]
+    _gaps: list[str] = []
+    _prev_t = 0
+    for _name in _ordered_marks:
+        if _name in _sync_landmarks:
+            _delta = _sync_landmarks[_name] - _prev_t
+            _gaps.append(f"sync_{_name}_ms={_delta}")
+            _prev_t = _sync_landmarks[_name]
+    _gaps_str = " ".join(_gaps)
     print(
-        f"prompt-assembly-timing total_ms={_total_ms} {_phases_str}",
+        f"prompt-assembly-timing total_ms={_total_ms} {_phases_str} {_gaps_str}",
         file=_sys_mod.stderr,
         flush=True,
     )

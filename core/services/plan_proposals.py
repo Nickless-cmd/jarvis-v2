@@ -28,7 +28,9 @@ from core.runtime.state_store import load_json, save_json
 logger = logging.getLogger(__name__)
 
 _STATE_KEY = "plan_proposals"
-_VALID_STATUSES = ("awaiting_approval", "approved", "dismissed", "superseded")
+_VALID_STATUSES = (
+    "awaiting_approval", "approved", "completed", "dismissed", "superseded",
+)
 
 
 def _load_all() -> dict[str, dict[str, Any]]:
@@ -100,6 +102,7 @@ def propose_plan(
         "steps": cleaned_steps[:20],
         "status": "awaiting_approval",
         "created_at": now,
+        "completed_step_indices": [],  # Phase 1 (2026-05-12): tracks progress
     }
     _save_all(data)
     return {"status": "ok", "plan_id": plan_id, "awaiting": True, "session_id": sid}

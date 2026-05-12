@@ -135,6 +135,52 @@ def add_todo(session_id: str | None, content: str) -> dict[str, Any]:
     return {"status": "ok", "todo": item, "count": len(items)}
 
 
+def create_from_plan(
+    *,
+    plan_id: str,
+    session_id: str | None,
+    steps: list[str],
+) -> dict[str, Any]:
+    """Append pending todos for each plan step. Idempotent.
+
+    Each todo carries plan_id + plan_step_index so todo completion can
+    feed back to plan progress.
+
+    If ANY todo with this plan_id already exists in this session, no-op
+    (returns skipped=True). Empty steps list also no-ops.
+    """
+    pid = str(plan_id or "").strip()
+    if not pid:
+        return {"status": "error", "error": "plan_id is required"}
+    cleaned_steps = [str(s).strip() for s in (steps or []) if str(s).strip()]
+    if not cleaned_steps:
+        return {"status": "ok", "count": 0, "reason": "empty steps"}
+
+    sid = _session_key(session_id)
+    data = _load_all()
+    items = list(data.get(sid, []))
+
+    # Idempotency: if any todo with this plan_id exists, skip.
+    if any(str(t.get("plan_id") or "") == pid for t in items):
+        return {"status": "ok", "skipped": True, "reason": "plan_id already has todos"}
+
+    now = datetime.now(UTC).isoformat()
+    new_todos = []
+    for idx, content in enumerate(cleaned_steps):
+        new_todos.append({
+            "id": f"td-{uuid4().hex[:10]}",
+            "content": content[:240],
+            "status": "pending",
+            "plan_id": pid,
+            "plan_step_index": idx,
+            "updated_at": now,
+        })
+    items.extend(new_todos)
+    data[sid] = items
+    _save_all(data)
+    return {"status": "ok", "count": len(new_todos), "todos": new_todos}
+
+
 def remove_todo(session_id: str | None, todo_id: str) -> dict[str, Any]:
     sid = _session_key(session_id)
     data = _load_all()

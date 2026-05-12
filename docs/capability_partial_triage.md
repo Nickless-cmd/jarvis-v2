@@ -112,9 +112,18 @@ Batch 2 COMPLETE (2026-05-12):
    constraint verification (3 — whitelist-only kinds, no DB writes, no side effects).
    Module itself unchanged — zero theater, pure data-reader. Killswitch verified.
 
+Batch 3 COMPLETE (2026-05-12):
+
+1. `verification_gate_telemetry.py` — 21 tests added, all passing, ruff clean.
+   Test file: `tests/test_verification_gate_telemetry.py`.
+   Coverage: record_surface (5), record_verify_event (4), sweep_expired_surfaces (3),
+   get_telemetry_summary (6), telemetry_section (3).
+   All IO faked via in-memory state_store — no disk, no eventbus needed.
+   Module itself unchanged — zero theater, pure evidence aggregator.
+
 Current next batch candidates:
 
-1. `verification_gate_telemetry.py`
+1. `semantic_memory.py`
 2. `semantic_memory.py`
 3. `semantic_indexer.py`
 4. `inheritance_seed.py`

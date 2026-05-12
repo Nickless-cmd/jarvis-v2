@@ -111,6 +111,10 @@ def decrement_budget(*, action: str, observation_id: str) -> dict[str, Any]:
         "observation_id": observation_id,
         "remaining": state["remaining"],
     })
+    # Close idle-window when an action is used (per design: window is a
+    # one-shot permission flag, not a time-bounded slot).
+    if idle_window_open():
+        close_idle_window(reason="action_used")
     return {"status": "ok", "remaining": state["remaining"]}
 
 
@@ -212,3 +216,41 @@ def close_idle_window(*, reason: str) -> None:
     save_json(_WINDOW_KEY, {"open": False, "closed_at": datetime.now(UTC).isoformat(),
                             "reason": reason})
     _safe_publish("cognitive_state.curiosity_window_closed", {"reason": reason})
+
+
+# ---------------------------------------------------------------------------
+# Awareness rendering (priority 38 in prompt_contract)
+# ---------------------------------------------------------------------------
+
+def format_curiosity_window_for_awareness() -> str:
+    """Render the curiosity window text for prompt_contract injection.
+
+    Returns an empty string when:
+      - killswitch off
+      - idle-window is closed
+      - budget is exhausted
+
+    Otherwise: 'Du har X/5 curiosity tilbage i dag. Seneste fund:\\n  • ...\\n
+                Kig på hvad du vil — eller lad være.'
+
+    Follow-up hints are NEVER shown — design decision per spec.
+    """
+    if not curiosity_enabled():
+        return ""
+    if not idle_window_open():
+        return ""
+    remaining = remaining_today()
+    if remaining <= 0:
+        return ""
+    recent = fetch_recent_observations(limit=3)
+    if recent:
+        bullets = "\n".join(f"  • {o['observation_text']}" for o in recent[:3])
+        return (
+            f"Du har {remaining}/5 curiosity tilbage i dag. "
+            f"Seneste fund:\n{bullets}\n"
+            f"Kig på hvad du vil — eller lad være."
+        )
+    return (
+        f"Du har {remaining}/5 curiosity tilbage i dag. "
+        f"Kig på hvad du vil — eller lad være."
+    )

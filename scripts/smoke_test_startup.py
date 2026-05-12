@@ -268,6 +268,27 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Tool Invention Phase 1 (AGI track — added 2026-05-12)
+        try:
+            from core.services.skill_engine import (  # noqa: F401
+                validate_skill_proposal,
+                _collect_registered_tool_names,
+            )
+            from core.tools.skill_engine_tools import (  # noqa: F401
+                _exec_propose_new_skill,
+            )
+            from core.tools.simple_tools import TOOL_DEFINITIONS, _TOOL_HANDLERS
+            _names = [
+                (e.get("function") or {}).get("name")
+                for e in TOOL_DEFINITIONS if isinstance(e, dict)
+            ]
+            if "propose_new_skill" not in _names:
+                raise RuntimeError("propose_new_skill not in TOOL_DEFINITIONS")
+            if "propose_new_skill" not in _TOOL_HANDLERS:
+                raise RuntimeError("propose_new_skill not in _TOOL_HANDLERS")
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

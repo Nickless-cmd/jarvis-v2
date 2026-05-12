@@ -378,6 +378,36 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Skill Chain Phase 2 — AGI track #10 (added 2026-05-12)
+        try:
+            from core.tools.skill_chain_propose_tool import (  # noqa: F401
+                _exec_propose_skill_chain,
+                _build_propose_prompt,
+                _parse_propose_response,
+                PROPOSE_SKILL_CHAIN_TOOL_DEFINITIONS,
+                PROPOSE_SKILL_CHAIN_TOOL_HANDLERS,
+            )
+            from core.tools.skill_chain_revise_tool import (  # noqa: F401
+                _exec_revise_skill_chain,
+                REVISE_SKILL_CHAIN_TOOL_DEFINITIONS,
+                REVISE_SKILL_CHAIN_TOOL_HANDLERS,
+            )
+            from core.tools.simple_tools import TOOL_DEFINITIONS, _TOOL_HANDLERS
+            _sc2_names = {
+                (e.get("function") or {}).get("name")
+                for e in TOOL_DEFINITIONS if isinstance(e, dict)
+            }
+            for _n in ("propose_skill_chain", "revise_skill_chain"):
+                if _n not in _sc2_names:
+                    raise RuntimeError(f"{_n} missing from TOOL_DEFINITIONS")
+                if _n not in _TOOL_HANDLERS:
+                    raise RuntimeError(f"{_n} missing from _TOOL_HANDLERS")
+            # Phase 1 must still be present (backwards-compat check)
+            if "skill_chain" not in _sc2_names:
+                raise RuntimeError("Phase 1 skill_chain missing — regression!")
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

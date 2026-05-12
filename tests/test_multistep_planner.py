@@ -79,3 +79,75 @@ def test_create_from_plan_caps_content_length(clean_state):
     create_from_plan(plan_id="plan-abc", session_id="s1", steps=[long_step])
     todos = list_todos("s1")
     assert len(todos[0]["content"]) == 240
+
+
+def test_resolve_plan_approved_creates_todos(clean_state):
+    from core.services.plan_proposals import propose_plan, resolve_plan
+    from core.services.agent_todos import list_todos
+
+    r1 = propose_plan(
+        session_id="s1", title="Build feature", why="needed",
+        steps=["step 1", "step 2"],
+    )
+    plan_id = r1["plan_id"]
+
+    r2 = resolve_plan(plan_id, decision="approved")
+    assert r2["status"] == "ok"
+
+    todos = list_todos("s1")
+    assert len(todos) == 2
+    assert all(t["plan_id"] == plan_id for t in todos)
+
+
+def test_resolve_plan_approved_idempotent_on_retry(clean_state):
+    from core.services.plan_proposals import propose_plan, resolve_plan
+    from core.services.agent_todos import list_todos
+
+    r1 = propose_plan(
+        session_id="s1", title="Build", why="x", steps=["a", "b"],
+    )
+    plan_id = r1["plan_id"]
+
+    resolve_plan(plan_id, decision="approved")
+    r2 = resolve_plan(plan_id, decision="approved")
+    assert r2["status"] == "error"
+    todos = list_todos("s1")
+    assert len(todos) == 2
+
+
+def test_resolve_plan_dismissed_does_not_create_todos(clean_state):
+    from core.services.plan_proposals import propose_plan, resolve_plan
+    from core.services.agent_todos import list_todos
+
+    r1 = propose_plan(session_id="s1", title="X", why="x", steps=["a"])
+    resolve_plan(r1["plan_id"], decision="dismissed")
+    assert list_todos("s1") == []
+
+
+def test_resolve_plan_respects_killswitch(clean_state, monkeypatch):
+    from core.services import plan_proposals as pp
+    from core.services.plan_proposals import propose_plan, resolve_plan
+    from core.services.agent_todos import list_todos
+
+    class FakeSettings:
+        plan_todo_auto_create_enabled = False
+
+    monkeypatch.setattr(pp, "load_settings", lambda: FakeSettings())
+
+    r1 = propose_plan(session_id="s1", title="X", why="x", steps=["a", "b"])
+    resolve_plan(r1["plan_id"], decision="approved")
+    assert list_todos("s1") == []
+
+
+def test_resolve_plan_uses_original_session_not_default(clean_state):
+    from core.services.plan_proposals import propose_plan, resolve_plan
+    from core.services.agent_todos import list_todos
+
+    r1 = propose_plan(
+        session_id="original-session-xyz",
+        title="X", why="x", steps=["a", "b"],
+    )
+    resolve_plan(r1["plan_id"], decision="approved")
+    assert len(list_todos("original-session-xyz")) == 2
+    assert list_todos("_default") == []
+    assert list_todos("some-other-session") == []

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -34,6 +34,23 @@ def _bucket_confidence(c: float) -> str:
     if c >= 0.4:
         return "medium"
     return "low"
+
+
+def _confidence_score(value: Any, *, default: float = 0.0) -> float:
+    """Normalize numeric and world-model textual confidence to 0..1."""
+    if isinstance(value, str):
+        mapped = {"low": 0.25, "medium": 0.55, "high": 0.85}
+        lowered = value.strip().lower()
+        if lowered in mapped:
+            return mapped[lowered]
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _prediction_id(prediction: dict[str, Any]) -> str:
+    return str(prediction.get("prediction_id") or prediction.get("id") or "")
 
 
 # ---------------------------------------------------------------------------
@@ -64,24 +81,22 @@ def aggregate_world_model(*, since: datetime, until: datetime) -> dict[str, Any]
 
     confidence_buckets = {"high": 0, "medium": 0, "low": 0}
     for p in in_window:
-        try:
-            c = float(p.get("confidence") or 0.0)
-            confidence_buckets[_bucket_confidence(c)] += 1
-        except (TypeError, ValueError):
-            pass
+        c = _confidence_score(p.get("confidence"))
+        confidence_buckets[_bucket_confidence(c)] += 1
 
     extreme_samples: list[dict[str, Any]] = []
 
     contradicted = [p for p in resolved if p.get("outcome") == "contradicted"]
     if contradicted:
-        top = max(contradicted, key=lambda p: float(p.get("confidence") or 0))
+        top = max(contradicted, key=lambda p: _confidence_score(p.get("confidence")))
         extreme_samples.append({
             "role": "highest_confidence_contradicted",
-            "id": str(top.get("id") or ""),
+            "id": _prediction_id(top),
             "data": {
                 "subject": str(top.get("subject") or ""),
                 "expectation": str(top.get("expectation") or ""),
-                "confidence": float(top.get("confidence") or 0),
+                "confidence": top.get("confidence"),
+                "confidence_score": _confidence_score(top.get("confidence")),
                 "created_at": str(top.get("created_at") or ""),
                 "resolved_at": str(top.get("resolved_at") or ""),
             },
@@ -89,14 +104,17 @@ def aggregate_world_model(*, since: datetime, until: datetime) -> dict[str, Any]
 
     supported = [p for p in resolved if p.get("outcome") == "supported"]
     if supported:
-        low = min(supported, key=lambda p: float(p.get("confidence") or 1))
+        low = min(supported, key=lambda p: _confidence_score(
+            p.get("confidence"), default=1.0
+        ))
         extreme_samples.append({
             "role": "lowest_confidence_supported",
-            "id": str(low.get("id") or ""),
+            "id": _prediction_id(low),
             "data": {
                 "subject": str(low.get("subject") or ""),
                 "expectation": str(low.get("expectation") or ""),
-                "confidence": float(low.get("confidence") or 0),
+                "confidence": low.get("confidence"),
+                "confidence_score": _confidence_score(low.get("confidence")),
                 "created_at": str(low.get("created_at") or ""),
                 "resolved_at": str(low.get("resolved_at") or ""),
             },

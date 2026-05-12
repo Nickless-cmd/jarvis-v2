@@ -100,6 +100,45 @@ def test_aggregate_world_model_with_data(clean_state):
     assert roles.get("lowest_confidence_supported") == "p2"
 
 
+def test_aggregate_world_model_accepts_runtime_prediction_shape(clean_state):
+    from core.runtime.state_store import save_json
+    from core.services.meta_learning_aggregator import aggregate_world_model
+
+    now = datetime.now(UTC)
+    iso_now = now.isoformat()
+    predictions = [
+        {
+            "prediction_id": "worldpred-high",
+            "subject": "x",
+            "expectation": "y",
+            "confidence": "high",
+            "created_at": iso_now,
+            "outcome": "contradicted",
+            "resolved_at": iso_now,
+        },
+        {
+            "prediction_id": "worldpred-low",
+            "subject": "a",
+            "expectation": "b",
+            "confidence": "low",
+            "created_at": iso_now,
+            "outcome": "supported",
+            "resolved_at": iso_now,
+        },
+    ]
+    save_json("runtime_world_model_predictions", predictions)
+
+    result = aggregate_world_model(since=now - timedelta(days=1), until=now)
+
+    assert result["confidence_buckets"]["high"] == 1
+    assert result["confidence_buckets"]["low"] == 1
+    roles = {s["role"]: s for s in result["extreme_samples"]}
+    assert roles["highest_confidence_contradicted"]["id"] == "worldpred-high"
+    assert roles["lowest_confidence_supported"]["id"] == "worldpred-low"
+    assert roles["highest_confidence_contradicted"]["data"]["confidence"] == "high"
+    assert roles["highest_confidence_contradicted"]["data"]["confidence_score"] == 0.85
+
+
 def test_aggregate_plan_revision_empty(clean_state):
     from core.services.meta_learning_aggregator import aggregate_plan_revision
     now = datetime.now(UTC)

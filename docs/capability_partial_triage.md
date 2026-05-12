@@ -104,13 +104,20 @@ Result: direct contract tests added in `tests/test_partial_service_contracts.py`
 `continuity.py` and `development_sense.py` also had small wording changes to
 replace identity/performance claims with evidence-based state reporting.
 
-Next batch candidates:
+Batch 2 COMPLETE (2026-05-12):
 
-1. `proactive_outbound_substrate.py`
-2. `verification_gate_telemetry.py`
-3. `semantic_memory.py`
-4. `semantic_indexer.py`
-5. `inheritance_seed.py`
+1. `proactive_outbound_substrate.py` — 23 tests added, all passing, ruff clean.
+   Test file: `tests/test_proactive_outbound_substrate.py`.
+   Coverage: payload summarization (8), DB-backed substrate (7), section builder (4),
+   constraint verification (3 — whitelist-only kinds, no DB writes, no side effects).
+   Module itself unchanged — zero theater, pure data-reader. Killswitch verified.
+
+Current next batch candidates:
+
+1. `verification_gate_telemetry.py`
+2. `semantic_memory.py`
+3. `semantic_indexer.py`
+4. `inheritance_seed.py`
 
 Acceptance criteria:
 

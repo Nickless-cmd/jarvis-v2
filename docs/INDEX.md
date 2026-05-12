@@ -42,7 +42,7 @@ Dette er hovedoversigten over al dokumentation for Jarvis V2. Brug denne side ti
 |----------|-------------|
 | [JARVIS_MANIFESTO.md](./JARVIS_MANIFESTO.md) | Projektets filosofi og vision |
 | [CHANGELOG.md](./CHANGELOG.md) | Versionshistorik |
-| [skyoffice_plan.md](./skyoffice_plan.md) | SkyOffice integrationsplan |
+
 
 ---
 
@@ -72,7 +72,6 @@ docs/
 ├── SECURITY.md                   # Sikkerhed
 ├── CHANGELOG.md                  # Changelog
 ├── project_reasoning_layer.md    # Reasoning layer
-└── skyoffice_plan.md             # SkyOffice plan
 ```
 
 ---

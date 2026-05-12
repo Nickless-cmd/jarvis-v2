@@ -2,17 +2,17 @@
 
 Statisk audit af `core/services/` genereret af `scripts/capability_audit.py`.  
 Sidst kørt: 2026-05-12T20:11:55+00:00  
-Total services: 506
+Total services: 501
 
 ## Sammenfatning
 
 | Score | Antal | Andel |
 |---|---:|---:|
-| 🟢 LIVE | 501 | 99.0% |
-| 🟡 PARTIAL | 1 | 0.2% |
+| 🟢 LIVE | 501 | 100.0% |
+| 🟡 PARTIAL | 0 | 0.0% |
 | 🟠 STALE | 0 | 0.0% |
-| 🔴 SUSPICIOUS | 3 | 0.6% |
-| ⚫ ORPHAN | 1 | 0.2% |
+| 🔴 SUSPICIOUS | 0 | 0.0% |
+| ⚫ ORPHAN | 0 | 0.0% |
 
 **Median filstørrelse:** 260 linjer  
 **Totale linjer:** 186484  
@@ -39,17 +39,6 @@ Services over 1000 linjer der trænger til at blive skåret ned (prioriteret eft
 | `core/services/prompt_evolution_runtime.py` | 1084 | 🟢 LIVE | 29d |
 | `core/services/open_loop_signal_tracking.py` | 1017 | 🟢 LIVE | 2d |
 | `core/services/witness_signal_tracking.py` | 1007 | 🟢 LIVE | 25d |
-
-## Kandidater til konsolidering eller fjernelse
-
-Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå dem manuelt:
-
-| Service | Score | Linjer | Sidst rørt | Imported by | Bemærk |
-|---|---|---:|---|---:|---|
-| `core/services/skyoffice_activity.py` | ⚫ ORPHAN | 217 | 15d | 0 | no reachable path and no importers; no direct test imports |
-| `core/services/skyoffice_council_viz.py` | 🔴 SUSPICIOUS | 303 | 15d | 2 | not reachable from configured entry points; no direct test imports |
-| `core/services/skyoffice_residency.py` | 🔴 SUSPICIOUS | 317 | 15d | 2 | not reachable from configured entry points; no direct test imports |
-| `core/services/skyoffice_walk.py` | 🔴 SUSPICIOUS | 185 | 15d | 3 | not reachable from configured entry points; no direct test imports |
 
 ## Fuld matrix
 
@@ -174,7 +163,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/curiosity_daemon.py` | 🟢 LIVE | 157 | 16d | yes | apps.api.jarvis_api.routes.mission_control_living_mind, core.services.daemon_manager, core.services.goal_signal_synthesizer | 2 | test_curiosity_daemon.py, test_daemon_manager.py | 10 | 4 | yes | no | no |
 | `core/services/curiosity_hypothesis_debt.py` | 🟢 LIVE | 97 | 8d | yes | core.services.cognitive_episodes, core.services.cognitive_state_assembly | 1 | test_curiosity_hypothesis_debt.py | 3 | 2 | yes | no | no |
 | `core/services/current_pull.py` | 🟢 LIVE | 458 | 1d | yes | core.services.creative_journal_runtime, core.services.daemon_manager, core.services.heartbeat_runtime | 1 | test_current_pull_staleness.py | 6 | 10 | yes | no | no |
-| `core/services/daemon_llm.py` | 🟢 LIVE | 325 | 5d | yes | apps.api.jarvis_api.routes.skyoffice, core.services.absence_daemon, core.services.aesthetic_taste_daemon | 14 | test_absence_daemon.py, test_agent_observation_compressor.py, test_autonomous_goals.py | 66 | 7 | no | no | no |
+| `core/services/daemon_llm.py` | 🟢 LIVE | 325 | 5d | yes | core.services.absence_daemon, core.services.aesthetic_taste_daemon | 14 | test_absence_daemon.py, test_agent_observation_compressor.py, test_autonomous_goals.py | 66 | 7 | no | no | no |
 | `core/services/daemon_manager.py` | 🟢 LIVE | 469 | 1d | yes | apps.api.jarvis_api.routes.status, core.services.autonomous_council_daemon, core.services.heartbeat_runtime | 3 | test_daemon_manager.py, test_daemon_tools.py, test_self_repair_engine.py | 11 | 42 | no | no | no |
 | `core/services/daemon_memory_safeguard.py` | 🟢 LIVE | 99 | 6d | yes | core.services.daemon_manager, core.services.heartbeat_runtime | 0 | — | 2 | 2 | yes | no | no |
 | `core/services/day_shape_memory.py` | 🟢 LIVE | 299 | 22d | yes | core.services.collective_pulse_daemon, core.services.heartbeat_runtime, core.services.runtime_self_model | 1 | test_signal_and_idea_daemons.py | 4 | 3 | no | no | no |
@@ -485,11 +474,7 @@ Services med score 🔴 SUSPICIOUS eller ⚫ ORPHAN — ejeren skal gennemgå de
 | `core/services/skill_contract_registry.py` | 🟢 LIVE | 223 | 22d | yes | core.services.heartbeat_runtime, core.services.runtime_self_model | 1 | test_autonomy_registry_surfaces.py | 3 | 0 | no | no | no |
 | `core/services/skill_engine.py` | 🟢 LIVE | 571 | 0d | yes | core.services.plan_proposals, core.services.skill_security_scanner, core.tools.skill_chain_propose_tool | 5 | test_skill_chain_phase2.py, test_skill_engine.py, test_tool_invention.py | 12 | 2 | no | no | no |
 | `core/services/skill_security_scanner.py` | 🟢 LIVE | 590 | 2d | yes | core.tools.skill_engine_tools | 1 | test_skill_engine.py | 2 | 1 | no | no | no |
-| `core/services/skyoffice_activity.py` | ⚫ ORPHAN | 217 | 15d | no | — | 0 | — | 0 | 5 | no | no | no |
-| `core/services/skyoffice_bridge.py` | 🟡 PARTIAL | 200 | 15d | yes | apps.api.jarvis_api.routes.skyoffice | 0 | — | 5 | 1 | no | no | no |
-| `core/services/skyoffice_council_viz.py` | 🔴 SUSPICIOUS | 303 | 15d | no | — | 0 | — | 2 | 4 | no | no | no |
-| `core/services/skyoffice_residency.py` | 🔴 SUSPICIOUS | 317 | 15d | no | — | 0 | — | 2 | 4 | no | no | no |
-| `core/services/skyoffice_walk.py` | 🔴 SUSPICIOUS | 185 | 15d | no | — | 0 | — | 3 | 1 | no | no | no |
+
 | `core/services/social_labilizer.py` | 🟢 LIVE | 262 | 13d | yes | core.services.visible_runs | 0 | — | 1 | 3 | yes | no | no |
 | `core/services/somatic_daemon.py` | 🟢 LIVE | 277 | 21d | yes | apps.api.jarvis_api.routes.mission_control_living_mind, core.services.daemon_manager, core.services.embodied_state | 2 | test_embodied_state.py, test_somatic_daemon.py | 7 | 5 | yes | no | no |
 | `core/services/somatic_runtime_body.py` | 🟢 LIVE | 101 | 8d | yes | core.services.cognitive_state_assembly, core.services.perceptual_event_engine | 1 | test_somatic_runtime_body.py | 3 | 2 | yes | no | no |

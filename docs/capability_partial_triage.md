@@ -9,9 +9,9 @@ Current audit:
 | Score | Count |
 |---|---:|
 | LIVE | 501 |
-| PARTIAL | 1 |
-| SUSPICIOUS | 3 |
-| ORPHAN | 1 |
+| PARTIAL | 0 |
+| SUSPICIOUS | 0 |
+| ORPHAN | 0 |
 
 ## What PARTIAL Means Here
 
@@ -75,18 +75,6 @@ These are relevant to Jarvis becoming more agentic, but should be handled after 
 These are reachable and useful, but mostly score `PARTIAL` because they are tool helpers without direct tests.
 
 Examples: `auto_code_review.py`, `deep_analyzer.py`, `delegation_advisor.py`, `good_enough_gate.py`, `read_before_write_guard.py`, `recurring_tasks.py`, `process_supervisor.py`, `staged_edits.py`, `monitor_streams.py`, `memory_graph.py`, `memory_resurfacing.py`.
-
-### E. Leave For Later
-
-Skyoffice remains intentionally out of scope for now:
-
-| Service | Current status |
-|---|---|
-| `skyoffice_activity.py` | ORPHAN |
-| `skyoffice_council_viz.py` | SUSPICIOUS |
-| `skyoffice_residency.py` | SUSPICIOUS |
-| `skyoffice_walk.py` | SUSPICIOUS |
-| `skyoffice_bridge.py` | PARTIAL |
 
 ## Recommended Next Batch
 
@@ -230,7 +218,7 @@ The audit moved to 501 LIVE / 1 PARTIAL.
 
 Current next batch candidates:
 
-1. `skyoffice_bridge.py`
+*(ingen — alle services er nu LIVE)*
 
 Acceptance criteria:
 

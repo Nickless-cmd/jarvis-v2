@@ -404,3 +404,152 @@ def test_parse_memo_malformed_returns_narrative_only(clean_state):
     assert result["status"] == "ok"
     assert "Just some text" in result["narrative"]
     assert isinstance(result["hypothesis_candidates"], list)
+
+
+def test_persist_memo_inserts_row(clean_state):
+    from core.runtime.db import connect
+    from core.services.meta_learning_retrospective import (
+        ensure_schema, _persist_memo,
+    )
+    ensure_schema()
+
+    memo_id = _persist_memo(
+        memo_id="memo-test-1",
+        ts="2026-05-12T04:00:00+00:00",
+        period_start="2026-05-05T00:00:00+00:00",
+        period_end="2026-05-12T00:00:00+00:00",
+        narrative="Test narrative.",
+        hypothesis_candidates=[{"id": "hyp-1", "statement": "x"}],
+        aggregator_snapshot={"world_model": {}},
+        model_used="fake-model",
+    )
+    assert memo_id == "memo-test-1"
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM learning_memos WHERE memo_id = ?", (memo_id,)
+        ).fetchone()
+    assert row is not None
+    assert row["narrative"] == "Test narrative."
+    assert row["model_used"] == "fake-model"
+    assert row["acknowledged_at"] is None
+
+
+def test_fetch_latest_unacknowledged(clean_state):
+    from core.services.meta_learning_retrospective import (
+        ensure_schema, _persist_memo, fetch_latest_unacknowledged_memo,
+    )
+    ensure_schema()
+    assert fetch_latest_unacknowledged_memo() is None
+
+    _persist_memo(
+        memo_id="memo-old", ts="2026-05-01T04:00:00+00:00",
+        period_start="x", period_end="y",
+        narrative="old", hypothesis_candidates=[], aggregator_snapshot={},
+        model_used="m",
+    )
+    _persist_memo(
+        memo_id="memo-new", ts="2026-05-12T04:00:00+00:00",
+        period_start="x", period_end="y",
+        narrative="newer", hypothesis_candidates=[], aggregator_snapshot={},
+        model_used="m",
+    )
+    result = fetch_latest_unacknowledged_memo()
+    assert result is not None
+    assert result["memo_id"] == "memo-new"
+
+
+def test_acknowledge_memo_updates_field(clean_state):
+    from core.runtime.db import connect
+    from core.services.meta_learning_retrospective import (
+        ensure_schema, _persist_memo, acknowledge_memo,
+    )
+    ensure_schema()
+    _persist_memo(
+        memo_id="memo-ack", ts="2026-05-12T04:00:00+00:00",
+        period_start="x", period_end="y",
+        narrative="...", hypothesis_candidates=[], aggregator_snapshot={},
+        model_used="m",
+    )
+    acknowledge_memo("memo-ack")
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT acknowledged_at FROM learning_memos WHERE memo_id = ?",
+            ("memo-ack",),
+        ).fetchone()
+    assert row["acknowledged_at"] is not None
+
+
+def test_generate_weekly_retrospective_end_to_end(clean_state, monkeypatch):
+    from core.services import meta_learning_retrospective as mlr
+    from core.runtime.db import connect
+
+    fake_text = """Det var en rolig uge med få events. Plan-abc123 blev superseded efter 30 min.
+
+## Hypothesis Candidates
+
+### Kandidat 1: Vent længere
+- **Observation:** Plans hurtigt superseded (plan-abc123)
+- **Hypotese:** Vent 3 min før propose_plan
+- **Success-kriterium:** Approval-rate stiger
+- **Sample-størrelse:** 10
+"""
+
+    def fake_cheap_lane(*, message: str) -> dict[str, Any]:
+        return {"status": "completed", "text": fake_text, "provider": "fake", "model": "fake-m"}
+
+    monkeypatch.setattr(mlr, "execute_public_safe_cheap_lane", fake_cheap_lane)
+    import core.services.meta_learning_aggregator as agg
+    monkeypatch.setattr(agg, "aggregate_world_model",
+                        lambda *, since, until: {"predictions_made": 0, "predictions_resolved": 0, "outcome_distribution": {}, "confidence_buckets": {}, "extreme_samples": []})
+    monkeypatch.setattr(agg, "aggregate_plan_revision",
+                        lambda *, since, until: {"plans_created": 0, "status_distribution": {}, "extreme_samples": []})
+    monkeypatch.setattr(agg, "aggregate_curiosity",
+                        lambda *, since, until: {"actions_used": 0, "action_distribution": {}, "extreme_samples": []})
+    monkeypatch.setattr(agg, "aggregate_skill_chain_phase2",
+                        lambda *, since, until: {"proposals_made": 0, "revisions_made": 0, "revision_context_distribution": {}, "extreme_samples": []})
+    monkeypatch.setattr(agg, "aggregate_tool_invention",
+                        lambda *, since, until: {"proposed": 0, "adopted": 0, "extreme_samples": []})
+
+    now = datetime.now(UTC)
+    result = mlr.generate_weekly_retrospective(now=now)
+    assert result["status"] == "ok"
+    assert result["memo_id"].startswith("memo-")
+    assert "plan-abc123" in result["narrative"].lower()
+    assert len(result["hypothesis_candidates"]) == 1
+    assert result["model_used"] == "fake-m"
+
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM learning_memos WHERE memo_id = ?", (result["memo_id"],)
+        ).fetchone()
+    assert row is not None
+
+
+def test_generate_handles_cheap_lane_failure(clean_state, monkeypatch):
+    from core.services import meta_learning_retrospective as mlr
+
+    def failing_cheap_lane(*, message: str) -> dict[str, Any]:
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr(mlr, "execute_public_safe_cheap_lane", failing_cheap_lane)
+    import core.services.meta_learning_aggregator as agg
+    for name in ("aggregate_world_model", "aggregate_plan_revision",
+                 "aggregate_curiosity", "aggregate_skill_chain_phase2",
+                 "aggregate_tool_invention"):
+        monkeypatch.setattr(agg, name,
+                            lambda *, since, until: {"extreme_samples": []})
+
+    result = mlr.generate_weekly_retrospective(now=datetime.now(UTC))
+    assert result["status"] == "error"
+    assert "cheap-lane" in result["reason"].lower()
+
+
+def test_generate_respects_killswitch(clean_state, monkeypatch):
+    from core.services import meta_learning_retrospective as mlr
+
+    class FakeSettings:
+        meta_learning_enabled = False
+
+    monkeypatch.setattr(mlr, "load_settings", lambda: FakeSettings())
+    result = mlr.generate_weekly_retrospective(now=datetime.now(UTC))
+    assert result["status"] == "disabled"

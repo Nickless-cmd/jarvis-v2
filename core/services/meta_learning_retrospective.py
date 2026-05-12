@@ -18,6 +18,8 @@ from typing import Any
 from uuid import uuid4
 
 from core.runtime.db import connect
+from core.runtime.settings import load_settings
+from core.services.cheap_provider_runtime import execute_public_safe_cheap_lane
 
 logger = logging.getLogger(__name__)
 
@@ -184,4 +186,206 @@ def _parse_memo_markdown(text: str) -> dict[str, Any]:
         "status": "ok",
         "narrative": narrative,
         "hypothesis_candidates": candidates[:3],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Persistence
+# ---------------------------------------------------------------------------
+
+def _persist_memo(
+    *,
+    memo_id: str,
+    ts: str,
+    period_start: str,
+    period_end: str,
+    narrative: str,
+    hypothesis_candidates: list[dict[str, Any]],
+    aggregator_snapshot: dict[str, Any],
+    model_used: str,
+) -> str:
+    """Insert a new memo row. Returns memo_id."""
+    ensure_schema()
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO learning_memos "
+            "(memo_id, ts, period_start, period_end, narrative, "
+            " hypothesis_candidates_json, aggregator_snapshot_json, "
+            " model_used, acknowledged_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)",
+            (
+                memo_id, ts, period_start, period_end, narrative,
+                json.dumps(hypothesis_candidates, ensure_ascii=False, default=str),
+                json.dumps(aggregator_snapshot, ensure_ascii=False, default=str),
+                model_used,
+            ),
+        )
+        conn.commit()
+    return memo_id
+
+
+def fetch_latest_unacknowledged_memo() -> dict[str, Any] | None:
+    """Return the most recent memo with acknowledged_at IS NULL, or None."""
+    ensure_schema()
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM learning_memos "
+            "WHERE acknowledged_at IS NULL "
+            "ORDER BY ts DESC LIMIT 1"
+        ).fetchone()
+    if not row:
+        return None
+    d = dict(row)
+    try:
+        d["hypothesis_candidates"] = json.loads(d.get("hypothesis_candidates_json") or "[]")
+    except (json.JSONDecodeError, ValueError):
+        d["hypothesis_candidates"] = []
+    return d
+
+
+def fetch_memo_by_id(memo_id: str) -> dict[str, Any] | None:
+    ensure_schema()
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM learning_memos WHERE memo_id = ?", (memo_id,)
+        ).fetchone()
+    if not row:
+        return None
+    d = dict(row)
+    try:
+        d["hypothesis_candidates"] = json.loads(d.get("hypothesis_candidates_json") or "[]")
+    except (json.JSONDecodeError, ValueError):
+        d["hypothesis_candidates"] = []
+    return d
+
+
+def list_recent_memos(limit: int = 5) -> list[dict[str, Any]]:
+    ensure_schema()
+    limit = max(1, min(int(limit), 50))
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT memo_id, ts, period_start, period_end, model_used, "
+            "       acknowledged_at, length(narrative) AS narrative_length "
+            "FROM learning_memos ORDER BY ts DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def acknowledge_memo(memo_id: str) -> bool:
+    """Mark memo as acknowledged. Returns True if a row was updated."""
+    ensure_schema()
+    now_iso = datetime.now(UTC).isoformat()
+    with connect() as conn:
+        cur = conn.execute(
+            "UPDATE learning_memos SET acknowledged_at = ? "
+            "WHERE memo_id = ? AND acknowledged_at IS NULL",
+            (now_iso, memo_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+
+
+# ---------------------------------------------------------------------------
+# Generator
+# ---------------------------------------------------------------------------
+
+def _meta_learning_enabled() -> bool:
+    try:
+        return bool(load_settings().meta_learning_enabled)
+    except Exception:
+        return True  # fail-open
+
+
+def _safe_publish(family_event: str, payload: dict[str, Any]) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(family_event, payload)
+    except Exception as exc:
+        logger.debug("meta_learning: event publish failed: %s", exc)
+
+
+def generate_weekly_retrospective(*, now: datetime) -> dict[str, Any]:
+    """Generate a weekly retrospective memo for the 7 days ending at `now`."""
+    if not _meta_learning_enabled():
+        return {"status": "disabled", "note": "meta_learning is disabled"}
+
+    period_end = now
+    period_start = now - timedelta(days=7)
+
+    from core.services.meta_learning_aggregator import (
+        aggregate_world_model,
+        aggregate_plan_revision,
+        aggregate_curiosity,
+        aggregate_skill_chain_phase2,
+        aggregate_tool_invention,
+    )
+
+    try:
+        snapshot = {
+            "world_model": aggregate_world_model(since=period_start, until=period_end),
+            "plan_revision": aggregate_plan_revision(since=period_start, until=period_end),
+            "curiosity": aggregate_curiosity(since=period_start, until=period_end),
+            "skill_chain_phase2": aggregate_skill_chain_phase2(since=period_start, until=period_end),
+            "tool_invention": aggregate_tool_invention(since=period_start, until=period_end),
+        }
+    except Exception as exc:
+        logger.warning("generate_weekly_retrospective: aggregator failed: %s", exc)
+        return {"status": "error", "reason": f"aggregator error: {exc}"}
+
+    prompt = _build_retrospective_prompt(
+        period_start=period_start.isoformat(),
+        period_end=period_end.isoformat(),
+        aggregator_snapshot=snapshot,
+    )
+
+    try:
+        cheap_result = execute_public_safe_cheap_lane(message=prompt)
+    except Exception as exc:
+        logger.warning("generate_weekly_retrospective: cheap-lane failed: %s", exc)
+        return {"status": "error", "reason": f"cheap-lane error: {exc}"}
+
+    response_text = str(cheap_result.get("text") or "")
+    model_used = str(cheap_result.get("model") or "")
+
+    parsed = _parse_memo_markdown(response_text)
+    narrative = parsed.get("narrative", "").strip()
+    if not narrative:
+        return {
+            "status": "error",
+            "reason": "cheap-lane returned empty narrative",
+            "raw_response_excerpt": response_text[:200],
+        }
+
+    memo_id = f"memo-{uuid4().hex[:12]}"
+    ts_iso = now.isoformat()
+    candidates = parsed.get("hypothesis_candidates", [])
+
+    _persist_memo(
+        memo_id=memo_id,
+        ts=ts_iso,
+        period_start=period_start.isoformat(),
+        period_end=period_end.isoformat(),
+        narrative=narrative,
+        hypothesis_candidates=candidates,
+        aggregator_snapshot=snapshot,
+        model_used=model_used,
+    )
+
+    _safe_publish("cognitive_meta_learning.memo_generated", {
+        "memo_id": memo_id,
+        "period_start": period_start.isoformat(),
+        "period_end": period_end.isoformat(),
+        "hypothesis_count": len(candidates),
+        "narrative_length": len(narrative),
+        "model_used": model_used,
+    })
+
+    return {
+        "status": "ok",
+        "memo_id": memo_id,
+        "ts": ts_iso,
+        "narrative": narrative,
+        "hypothesis_candidates": candidates,
+        "model_used": model_used,
     }

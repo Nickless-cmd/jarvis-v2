@@ -248,6 +248,17 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Multi-step planner Phase 1 (added 2026-05-12)
+        try:
+            from core.services.plan_proposals import (  # noqa: F401
+                mark_step_completed,
+                format_cross_session_plans_for_awareness,
+                _plan_todo_auto_create_enabled,
+            )
+            from core.services.agent_todos import create_from_plan  # noqa: F401
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

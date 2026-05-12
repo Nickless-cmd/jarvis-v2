@@ -8,8 +8,8 @@ Current audit:
 
 | Score | Count |
 |---|---:|
-| LIVE | 441 |
-| PARTIAL | 61 |
+| LIVE | 452 |
+| PARTIAL | 50 |
 | SUSPICIOUS | 3 |
 | ORPHAN | 1 |
 
@@ -141,13 +141,24 @@ Batch 5 complete (2026-05-12):
 Result: direct contract tests added in `tests/test_autonomy_registry_surfaces.py`.
 All five services now have explicit proof, and the audit moved them to LIVE.
 
+Batch 6 complete (2026-05-12):
+
+1. `selective_attention.py`
+2. `resonance_decay.py`
+3. `auto_code_review.py`
+4. `delegation_advisor.py`
+5. `good_enough_gate.py`
+
+Result: direct contract tests added in `tests/test_internal_and_helper_surfaces.py`.
+All five services now have explicit proof, and the audit moved again.
+
 Current next batch candidates:
 
-1. `prompt_heartbeat_self_knowledge.py`
-2. `prompt_support_signals.py`
-3. `continuity.py`
-4. `development_sense.py`
-5. `experience_episodes.py`
+1. `monitor_streams.py`
+2. `read_before_write_guard.py`
+3. `deep_analyzer.py`
+4. `decision_review_prompter.py`
+5. `agent_outcomes_log.py`
 
 Acceptance criteria:
 

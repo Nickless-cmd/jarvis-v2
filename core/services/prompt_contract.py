@@ -1013,6 +1013,18 @@ def build_visible_chat_prompt_assembly(
         )
     except Exception:
         pass
+    # Meta-læring Phase 1 (2026-05-12) — weekly retrospective teaser (AGI #3)
+    try:
+        from core.services.meta_learning_retrospective import (
+            format_latest_unacknowledged_memo_for_awareness,
+        )
+        _awareness_add(
+            39,
+            "meta-learning weekly retrospective teaser",
+            format_latest_unacknowledged_memo_for_awareness() or None,
+        )
+    except Exception:
+        pass
     try:
         from core.services.turn_changelog import previous_turn_changelog_section
         _awareness_add(40, "previous turn changelog (ground truth)", previous_turn_changelog_section(session_id))

@@ -408,6 +408,44 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Meta-læring Phase 1 — AGI track #3 (added 2026-05-12)
+        try:
+            from core.services.meta_learning_retrospective import (  # noqa: F401
+                ensure_schema,
+                generate_weekly_retrospective,
+                fetch_latest_unacknowledged_memo,
+                fetch_memo_by_id,
+                list_recent_memos,
+                acknowledge_memo,
+                format_latest_unacknowledged_memo_for_awareness,
+                _build_retrospective_prompt,
+                _parse_memo_markdown,
+            )
+            from core.services.meta_learning_aggregator import (  # noqa: F401
+                aggregate_world_model,
+                aggregate_plan_revision,
+                aggregate_curiosity,
+                aggregate_skill_chain_phase2,
+                aggregate_tool_invention,
+            )
+            from core.tools.meta_learning_tools import (  # noqa: F401
+                META_LEARNING_TOOL_DEFINITIONS,
+                META_LEARNING_TOOL_HANDLERS,
+            )
+            from core.tools.simple_tools import TOOL_DEFINITIONS, _TOOL_HANDLERS
+            _ml_names = {
+                (e.get("function") or {}).get("name")
+                for e in TOOL_DEFINITIONS if isinstance(e, dict)
+            }
+            for _n in ("read_learning_memo", "list_learning_memos"):
+                if _n not in _ml_names:
+                    raise RuntimeError(f"{_n} missing from TOOL_DEFINITIONS")
+                if _n not in _TOOL_HANDLERS:
+                    raise RuntimeError(f"{_n} missing from _TOOL_HANDLERS")
+            ensure_schema()
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

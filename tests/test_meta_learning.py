@@ -292,3 +292,115 @@ def test_aggregate_tool_invention_with_data(clean_state, monkeypatch):
     assert result["adopted"] == 1
     sample_ids = {s["id"] for s in result["extreme_samples"]}
     assert "plan-skill-a" in sample_ids
+
+
+def test_build_prompt_includes_personality_and_citation_instruction(clean_state):
+    from core.services.meta_learning_retrospective import _build_retrospective_prompt
+
+    aggregator_snapshot = {
+        "world_model": {"predictions_made": 0, "predictions_resolved": 0,
+                        "outcome_distribution": {}, "extreme_samples": []},
+        "plan_revision": {"plans_created": 0, "status_distribution": {},
+                          "extreme_samples": []},
+        "curiosity": {"actions_used": 0, "action_distribution": {},
+                      "extreme_samples": []},
+        "skill_chain_phase2": {"proposals_made": 0, "revisions_made": 0,
+                               "revision_context_distribution": {},
+                               "extreme_samples": []},
+        "tool_invention": {"proposed": 0, "adopted": 0, "extreme_samples": []},
+    }
+    prompt = _build_retrospective_prompt(
+        period_start="2026-05-05T00:00:00+00:00",
+        period_end="2026-05-12T00:00:00+00:00",
+        aggregator_snapshot=aggregator_snapshot,
+    )
+    lo = prompt.lower()
+    assert "1.-person" in lo or "1. person" in lo or "1st-person" in lo
+    assert "dansk" in lo
+    assert "citationsnøgle" in lo or "plan_id" in prompt
+    assert "Hypothesis Candidates" in prompt
+    assert "tom" in lo or "empty" in lo
+
+
+def test_parse_memo_with_hypotheses(clean_state):
+    from core.services.meta_learning_retrospective import _parse_memo_markdown
+
+    markdown = """Dette er ugentlig prosa-analyse. Jeg har observeret at jeg reviderer plans hurtigt: plan-abc123 blev superseded efter 30 min (12. maj 09:30→10:00).
+
+Mit kalibreringsmønster: confidence 0.9 var contradicted i prediction-xyz789.
+
+## Hypothesis Candidates
+
+### Kandidat 1: Vent 3 min før propose_plan
+- **Observation:** Plans superseded inden for 1 time i 80% af tilfældene (plan-abc123, plan-def456)
+- **Hypotese:** Hvis jeg venter 3 min med refleksion før propose_plan, stiger approval-rate
+- **Success-kriterium:** Approval-rate (approved / proposed) stiger fra X til Y over 4 uger
+- **Sample-størrelse:** Mindst 10 plans
+
+### Kandidat 2: Lavere confidence i overraskelser
+- **Observation:** Predictions med confidence >0.85 contradicted i 40%
+- **Hypotese:** Hvis jeg sætter et cap på max 0.85 confidence, vil overall kalibrering forbedres
+- **Success-kriterium:** Brier score lavere efter 20 nye predictions
+- **Sample-størrelse:** 20 predictions
+"""
+    result = _parse_memo_markdown(markdown)
+    assert result["status"] == "ok"
+    assert "ugentlig prosa-analyse" in result["narrative"]
+    assert "plan-abc123" in result["narrative"]
+    assert "## Hypothesis Candidates" not in result["narrative"]
+    assert len(result["hypothesis_candidates"]) == 2
+    cand1 = result["hypothesis_candidates"][0]
+    assert cand1["id"] == "hyp-1"
+    assert "Vent 3 min" in cand1["statement"]
+    assert "plan-abc123" in cand1["observation"]
+    assert cand1["sample_size_needed"] == 10
+
+
+def test_parse_memo_without_hypotheses(clean_state):
+    from core.services.meta_learning_retrospective import _parse_memo_markdown
+
+    markdown = """Ugen var rolig. Få events, lille datagrundlag, ingen klare mønstre.
+
+## Hypothesis Candidates
+
+(Ingen hypoteser denne uge — datagrundlaget er for spinkelt.)
+"""
+    result = _parse_memo_markdown(markdown)
+    assert result["status"] == "ok"
+    assert "Ugen var rolig" in result["narrative"]
+    assert result["hypothesis_candidates"] == []
+
+
+def test_parse_memo_with_markdown_fence(clean_state):
+    from core.services.meta_learning_retrospective import _parse_memo_markdown
+
+    markdown = """```markdown
+Prosa-analyse her.
+
+## Hypothesis Candidates
+
+### Kandidat 1: Test
+- **Observation:** noget
+- **Hypotese:** hvis X så Y
+- **Success-kriterium:** måling
+- **Sample-størrelse:** 5
+```"""
+    result = _parse_memo_markdown(markdown)
+    assert result["status"] == "ok"
+    assert "Prosa-analyse" in result["narrative"]
+    assert len(result["hypothesis_candidates"]) == 1
+
+
+def test_parse_memo_malformed_returns_narrative_only(clean_state):
+    from core.services.meta_learning_retrospective import _parse_memo_markdown
+
+    markdown = """Just some text without proper structure.
+
+## Hypothesis Candidates
+
+### Kandidat 1: But fields are missing
+"""
+    result = _parse_memo_markdown(markdown)
+    assert result["status"] == "ok"
+    assert "Just some text" in result["narrative"]
+    assert isinstance(result["hypothesis_candidates"], list)

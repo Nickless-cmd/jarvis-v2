@@ -63,6 +63,9 @@ from core.services.creative_journal_runtime import (
 from core.services.finitude_runtime import (
     build_finitude_surface,
 )
+from core.services.modulator_witness import (
+    build_modulator_witness_surface,
+)
 from core.services.subagent_ecology import (
     build_subagent_ecology_surface,
 )
@@ -629,6 +632,7 @@ def _mc_runtime_uncached() -> dict:
             "runtime_self_critique": build_self_critique_surface(),
             "runtime_creative_journal": build_creative_journal_surface(),
             "runtime_finitude": build_finitude_surface(),
+            "runtime_modulator_witness": build_modulator_witness_surface(),
             "runtime_dream_distillation": build_dream_distillation_surface(),
             "runtime_unconscious_temperature_field": build_unconscious_temperature_field_surface(),
             "visible_execution": visible_execution_readiness(),

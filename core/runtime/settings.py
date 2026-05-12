@@ -190,6 +190,11 @@ class RuntimeSettings:
     # When False: tools still work as a ledger, but no nudges, no TTL, no
     # milestones — reverts to pre-Phase-1 behaviour.
     world_model_loop_enabled: bool = True
+    # ── Plan revision (Phase 2 multi-step planner — added 2026-05-12) ───
+    # When True: revise_plan tool is active. When False: tool returns
+    # error immediately. Reverts to Phase 1-only behaviour (propose +
+    # approve + supersede-on-duplicate). Existing plans unaffected.
+    plan_revision_enabled: bool = True
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -649,6 +654,12 @@ def load_settings() -> RuntimeSettings:
             data.get(
                 "world_model_loop_enabled",
                 defaults.world_model_loop_enabled,
+            )
+        ),
+        plan_revision_enabled=bool(
+            data.get(
+                "plan_revision_enabled",
+                defaults.plan_revision_enabled,
             )
         ),
         longing_daemon_cadence_minutes=int(

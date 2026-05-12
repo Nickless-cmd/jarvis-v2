@@ -317,6 +317,27 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Multi-step Planner Phase 2 — revise_plan (added 2026-05-12)
+        try:
+            from core.services.plan_proposals import (  # noqa: F401
+                revise_plan,
+                _plan_revision_enabled,
+            )
+            from core.tools.plan_revise_tool import (  # noqa: F401
+                _exec_revise_plan,
+            )
+            from core.tools.simple_tools import TOOL_DEFINITIONS, _TOOL_HANDLERS
+            _names = [
+                (e.get("function") or {}).get("name")
+                for e in TOOL_DEFINITIONS if isinstance(e, dict)
+            ]
+            if "revise_plan" not in _names:
+                raise RuntimeError("revise_plan not in TOOL_DEFINITIONS")
+            if "revise_plan" not in _TOOL_HANDLERS:
+                raise RuntimeError("revise_plan not in _TOOL_HANDLERS")
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

@@ -220,6 +220,32 @@ def resolve_plan(plan_id: str, *, decision: str) -> dict[str, Any]:
                 except Exception:
                     pass
 
+    # Phase 2 (2026-05-12) — supersede the revised plan's original.
+    # Fires only on approval of a revision; gracefully no-ops if the
+    # original is no longer in 'approved' state (race condition with
+    # manual dismiss/completion).
+    if decision == "approved":
+        revised_from = rec.get("revised_from")
+        if revised_from:
+            data_after = _load_all()
+            old_rec = data_after.get(str(revised_from))
+            if old_rec is not None and old_rec.get("status") == "approved":
+                old_rec["status"] = "superseded"
+                old_rec["superseded_by"] = plan_id
+                old_rec["updated_at"] = datetime.now(UTC).isoformat()
+                _save_all(data_after)
+                try:
+                    from core.eventbus.bus import event_bus
+                    event_bus.publish(
+                        "cognitive_state.plan_revision_approved",
+                        {
+                            "old_plan_id": str(revised_from),
+                            "new_plan_id": plan_id,
+                        },
+                    )
+                except Exception:
+                    pass
+
     return {"status": "ok", "plan_id": plan_id, "new_status": decision}
 
 

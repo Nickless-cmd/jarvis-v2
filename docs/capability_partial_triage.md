@@ -8,8 +8,8 @@ Current audit:
 
 | Score | Count |
 |---|---:|
-| LIVE | 431 |
-| PARTIAL | 71 |
+| LIVE | 436 |
+| PARTIAL | 66 |
 | SUSPICIOUS | 3 |
 | ORPHAN | 1 |
 
@@ -130,13 +130,24 @@ Batch 4 complete (2026-05-12):
 3. `inheritance_seed.py` — direct read/write seed tests added.
    Test file: `tests/test_semantic_indexer_and_inheritance_seed.py`.
 
-Current next batch candidates:
+Batch 5 complete (2026-05-12):
 
 1. `automation_dsl.py`
 2. `scheduled_job_windows.py`
 3. `skill_contract_registry.py`
 4. `outcome_learning.py`
 5. `cross_session_threads.py`
+
+Result: direct contract tests added in `tests/test_autonomy_registry_surfaces.py`.
+All five services now have explicit proof, and the audit moved them to LIVE.
+
+Current next batch candidates:
+
+1. `memory_write_policy.py`
+2. `memory_breathing.py`
+3. `spaced_repetition.py`
+4. `thought_thread.py`
+5. `sustained_attention.py`
 
 Acceptance criteria:
 

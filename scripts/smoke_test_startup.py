@@ -259,6 +259,15 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Unconscious modulation Phase 1 (Lag 10 — added 2026-05-12)
+        try:
+            from core.services.unconscious_modulation import (  # noqa: F401
+                compute_unconscious_modulation,
+                _modulation_enabled,
+            )
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

@@ -40,6 +40,17 @@ _SURFACE_CACHE_TTL = 30.0
 _surface_cache: dict | None = None
 _surface_cache_at: float = 0.0
 
+# Section-result cache. Even with signals cached, evaluate_rules(36 regler
+# over full signal-stak) still takes ~7s per call. Symbolic conclusions
+# don't need millisecond freshness either — visible-chat reads the
+# pre-computed string, refresh happens once per minute.
+# Perf-fix 2026-05-12: identified as the dominant awareness section
+# (7-10s of the ~7.5s sync gap in prompt assembly).
+_SECTION_CACHE_TTL = 60.0
+_section_cache: str | None = None
+_section_cache_at: float = 0.0
+_section_cache_lock = None  # initialized lazily; threading.Lock
+
 
 def _cached_signals() -> dict:
     global _surface_cache, _surface_cache_at
@@ -50,6 +61,13 @@ def _cached_signals() -> dict:
     _surface_cache = list_all_surfaces()
     _surface_cache_at = now
     return _surface_cache
+
+
+def invalidate_section_cache() -> None:
+    """Force next call to rebuild. Useful for tests + heartbeat-driven refresh."""
+    global _section_cache, _section_cache_at
+    _section_cache = None
+    _section_cache_at = 0.0
 
 # Per-suggestion cap så en lang regel ikke fylder hele sektionen.
 _SUGGESTION_MAX_CHARS = 140
@@ -68,16 +86,8 @@ def _format_conclusion(c) -> str:
     return f"  [{urgency:>4}:{domain:<10} {sign}{delta:>3}] {suggestion} ({rule_name})"
 
 
-def rule_conclusions_section() -> str:
-    """Build the rule-engine conclusions section for prompt injection.
-
-    Returns empty string if:
-      - Engine fails to import or evaluate
-      - No rules fired against current signal state
-      - Top-5 conclusions all have priority_delta=0
-
-    Best-effort throughout — never breaks prompt assembly.
-    """
+def _build_section_uncached() -> str:
+    """Compute the section fresh. Slow path — should only run via cache miss."""
     try:
         from core.services.rule_engine import evaluate_rules
     except Exception as exc:
@@ -107,3 +117,34 @@ def rule_conclusions_section() -> str:
         "De er ikke ordrer — du beslutter."
     )
     return "\n".join(lines)
+
+
+def rule_conclusions_section() -> str:
+    """Build the rule-engine conclusions section for prompt injection.
+
+    Cached for _SECTION_CACHE_TTL (60s) so it doesn't dominate the
+    synchronous prompt-assembly path. Returns the previous-computed string
+    on cache hit; rebuilds on miss. Thread-safe.
+
+    Cache invalidates automatically every 60s, or explicitly via
+    invalidate_section_cache().
+    """
+    global _section_cache, _section_cache_at, _section_cache_lock
+    if _section_cache_lock is None:
+        import threading
+        _section_cache_lock = threading.Lock()
+
+    now = time.monotonic()
+    # Fast path: cache hit without lock contention
+    if _section_cache is not None and (now - _section_cache_at) < _SECTION_CACHE_TTL:
+        return _section_cache
+
+    # Slow path: hold lock to prevent multiple concurrent rebuilds
+    with _section_cache_lock:
+        # Re-check after acquiring lock (another thread may have rebuilt)
+        now = time.monotonic()
+        if _section_cache is not None and (now - _section_cache_at) < _SECTION_CACHE_TTL:
+            return _section_cache
+        _section_cache = _build_section_uncached()
+        _section_cache_at = now
+        return _section_cache

@@ -338,6 +338,46 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Curiosity-budget Phase 1 — AGI track #6 Åben udforskning (added 2026-05-12)
+        try:
+            from core.services.curiosity_budget import (  # noqa: F401
+                curiosity_enabled,
+                load_or_reset_budget,
+                decrement_budget,
+                record_observation,
+                fetch_recent_observations,
+                open_idle_window,
+                close_idle_window,
+                idle_window_open,
+                format_curiosity_window_for_awareness,
+                ensure_schema,
+            )
+            from core.tools.curiosity_tools import (  # noqa: F401
+                CURIOSITY_TOOL_DEFINITIONS,
+                CURIOSITY_TOOL_HANDLERS,
+            )
+            from core.tools.simple_tools import TOOL_DEFINITIONS, _TOOL_HANDLERS
+            _curio_names = {
+                (e.get("function") or {}).get("name")
+                for e in TOOL_DEFINITIONS if isinstance(e, dict)
+            }
+            _expected = {
+                "curiosity_search_memory", "curiosity_read_chronicles",
+                "curiosity_read_dreams", "curiosity_read_model_config",
+                "curiosity_read_mood", "curiosity_list_skills",
+                "curiosity_list_tools", "curiosity_search_events",
+                "curiosity_search_sessions",
+            }
+            _missing = _expected - _curio_names
+            if _missing:
+                raise RuntimeError(f"curiosity tools missing: {_missing}")
+            _missing_handlers = _expected - set(_TOOL_HANDLERS.keys())
+            if _missing_handlers:
+                raise RuntimeError(f"curiosity handlers missing: {_missing_handlers}")
+            ensure_schema()
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

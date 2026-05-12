@@ -22,7 +22,6 @@ Format (Claude Code / OpenClaw kompatibelt):
 """
 from __future__ import annotations
 
-import json
 import logging
 import re
 import threading
@@ -270,6 +269,87 @@ def _collect_registered_tool_names() -> set[str]:
     return names
 
 
+_GENERIC_SKILL_NAMES = {
+    "assistant",
+    "general",
+    "helper",
+    "new-skill",
+    "skill",
+    "tool",
+}
+
+
+def _skill_quality_nudges(
+    name: str,
+    description: str,
+    instructions: str,
+    use_when: str = "",
+    tags: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Return non-blocking quality nudges for installable skill proposals."""
+    nudges: list[dict[str, Any]] = []
+    tags = tags or []
+    desc_norm = " ".join(description.lower().split())
+    use_norm = " ".join((use_when or "").lower().split())
+    instructions_norm = instructions.lower()
+
+    def add(nudge_id: str, message: str, severity: str = "suggestion") -> None:
+        nudges.append({
+            "id": nudge_id,
+            "severity": severity,
+            "message": message,
+        })
+
+    if name in _GENERIC_SKILL_NAMES:
+        add(
+            "generic_name",
+            "Name is very generic; choose a name that describes the concrete trigger or capability.",
+            "warning",
+        )
+    if len(description.strip()) < 24:
+        add(
+            "thin_description",
+            "Description is thin; add the capability, scope, and expected outcome.",
+        )
+    if len(instructions.strip()) < 120:
+        add(
+            "thin_instructions",
+            "Instructions are thin; add concrete steps, boundaries, and verification criteria.",
+            "warning",
+        )
+    if not use_norm or use_norm == desc_norm:
+        add(
+            "weak_trigger",
+            "use_when should describe the activation context separately from the description.",
+        )
+
+    workflow_markers = (
+        "when ",
+        "steps",
+        "step ",
+        "use ",
+        "return",
+        "verify",
+        "check",
+        "- ",
+        "1.",
+    )
+    if not any(marker in instructions_norm for marker in workflow_markers):
+        add(
+            "missing_workflow_shape",
+            "Instructions should read like an operational workflow, not just a capability label.",
+        )
+    if not tags:
+        add("missing_tags", "Add at least one tag so skill discovery can classify it.")
+    elif len(tags) > 8:
+        add(
+            "too_many_tags",
+            "Too many tags make discovery noisy; keep only the strongest categories.",
+        )
+
+    return nudges
+
+
 def validate_skill_proposal(
     name: str,
     description: str,
@@ -286,8 +366,11 @@ def validate_skill_proposal(
       - no existing skill with the (normalized) name
       - normalized name does not shadow a registered tool name
 
-    Returns {"status": "ok", "name": normalized_name} or
+    Returns {"status": "ok", "name": normalized_name, ...} or
     {"status": "error", "error": "..."}.
+
+    Quality nudges are advisory only. They help the approval flow surface
+    thin or over-broad proposals without turning taste into a hard gate.
 
     Single source of truth — create_skill() also calls this function.
     """
@@ -316,7 +399,20 @@ def validate_skill_proposal(
             ),
         }
 
-    return {"status": "ok", "name": name}
+    quality_nudges = _skill_quality_nudges(
+        name=name,
+        description=description,
+        instructions=instructions,
+        use_when=use_when,
+        tags=tags,
+    )
+    quality_score = max(0.0, round(1.0 - (len(quality_nudges) * 0.16), 2))
+    return {
+        "status": "ok",
+        "name": name,
+        "quality_nudges": quality_nudges,
+        "quality_score": quality_score,
+    }
 
 
 def create_skill(

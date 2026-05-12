@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+from pathlib import Path
 from typing import Any
 
 from core.runtime.settings import load_settings
@@ -17,8 +18,6 @@ from core.services.skill_security_scanner import (
     scan_skill_directory,
     scan_skill_file,
 )
-from pathlib import Path as _Path
-
 logger = logging.getLogger(__name__)
 
 # ── Intent matching (Fase 4) ──────────────────────────────────────────
@@ -200,6 +199,8 @@ def _exec_propose_new_skill(args: dict[str, Any]) -> dict[str, Any]:
 
     # Use the normalized name from validation (it lowercases + space→hyphen)
     normalized_name = str(validation.get("name") or name)
+    quality_nudges = list(validation.get("quality_nudges") or [])
+    quality_score = validation.get("quality_score")
 
     from core.services.plan_proposals import propose_plan
     result = propose_plan(
@@ -213,8 +214,13 @@ def _exec_propose_new_skill(args: dict[str, Any]) -> dict[str, Any]:
             "instructions": instructions,
             "use_when": use_when,
             "tags": tags,
+            "quality_nudges": quality_nudges,
+            "quality_score": quality_score,
         },
     )
+    if result.get("status") == "ok":
+        result["quality_nudges"] = quality_nudges
+        result["quality_score"] = quality_score
     if result.get("status") == "ok":
         try:
             from core.eventbus.bus import event_bus
@@ -688,7 +694,7 @@ def _exec_skill_import_from_url(args: dict[str, Any]) -> dict[str, Any]:
     from urllib.parse import urlparse
     inferred_name = (
         name_override
-        or _Path(urlparse(url).path).stem.lower().replace("_", "-")
+        or Path(urlparse(url).path).stem.lower().replace("_", "-")
         or "imported-skill"
     )
     return _install_skill_md_content(

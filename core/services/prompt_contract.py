@@ -967,6 +967,16 @@ def build_visible_chat_prompt_assembly(
         _awareness_add(30, "active todos", todos_prompt_section(session_id))
     except Exception:
         pass
+    # Multi-step planner Phase 1 (added 2026-05-12) — other-session plan resumption
+    try:
+        from core.services.plan_proposals import format_cross_session_plans_for_awareness
+        _awareness_add(
+            35,
+            "cross-session plans awaiting resumption",
+            format_cross_session_plans_for_awareness(session_id) or None,
+        )
+    except Exception:
+        pass
     try:
         from core.services.turn_changelog import previous_turn_changelog_section
         _awareness_add(40, "previous turn changelog (ground truth)", previous_turn_changelog_section(session_id))

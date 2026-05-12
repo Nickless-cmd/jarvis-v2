@@ -19,7 +19,7 @@ of every visible prompt until resolved.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -258,6 +258,66 @@ def pending_plan_section(session_id: str | None) -> str | None:
         )
 
     return "\n\n".join(blocks)
+
+
+def format_cross_session_plans_for_awareness(
+    current_session_id: str | None,
+    *,
+    max_plans: int = 3,
+    max_age_days: int = 14,
+) -> str:
+    """Return awareness-block text for approved+incomplete plans owned by
+    OTHER sessions. Empty string if none qualify.
+
+    Filters:
+      - status == "approved"
+      - len(completed_step_indices) < len(steps)  (incomplete)
+      - session_id != current_session_id
+      - plan["created_at"] within max_age_days (recency on the PLAN, not session)
+
+    Capped at max_plans (sorted by created_at desc).
+    """
+    current = str(current_session_id or "").strip()
+    if not current:
+        return ""
+
+    cutoff = datetime.now(UTC) - timedelta(days=max(int(max_age_days), 1))
+    candidates: list[dict[str, Any]] = []
+    for rec in _load_all().values():
+        if rec.get("status") != "approved":
+            continue
+        steps = rec.get("steps") or []
+        completed = rec.get("completed_step_indices") or []
+        if len(completed) >= len(steps):
+            continue  # fully done
+        sid = str(rec.get("session_id") or "")
+        if sid == current:
+            continue
+        created_iso = str(rec.get("created_at") or "")
+        try:
+            created = datetime.fromisoformat(created_iso.replace("Z", "+00:00"))
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=UTC)
+            if created < cutoff:
+                continue
+        except Exception:
+            continue
+        candidates.append(rec)
+
+    if not candidates:
+        return ""
+
+    candidates.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
+    capped = candidates[: max(int(max_plans), 1)]
+
+    lines = ["### Aktive plans i andre sessions"]
+    for rec in capped:
+        sid_short = str(rec.get("session_id") or "?")[:8]
+        completed = len(rec.get("completed_step_indices") or [])
+        total = len(rec.get("steps") or [])
+        title = str(rec.get("title") or "(uden titel)")
+        lines.append(f"- {title} (session {sid_short}): {completed}/{total} done")
+    return "\n".join(lines)
 
 
 def all_pending_plans_section() -> str | None:

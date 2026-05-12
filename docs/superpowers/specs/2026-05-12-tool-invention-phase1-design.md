@@ -93,8 +93,8 @@ ved approval, er det en alvorlig systemfejl, ikke en proposal-status."*
   shows skill-proposal plans alongside other plans (no new section
   required).
 - `core/eventbus/events.py` — `cognitive_state` family covers new
-  events (`cognitive_state.skill_proposed_via_plan`,
-  `cognitive_state.skill_installed_from_plan`,
+  events (`cognitive_state.skill_proposed`,
+  `cognitive_state.skill_installed`,
   `cognitive_state.skill_install_failed`).
 - No new DB tables. No new event families. No new daemons.
 
@@ -117,7 +117,7 @@ Jarvis calls propose_new_skill(name, description, instructions, use_when, tags)
               skill_data={"name": ..., "description": ..., "instructions": ...,
                           "use_when": ..., "tags": ...},
           )
-       └─ emit cognitive_state.skill_proposed_via_plan {plan_id, name}
+       └─ emit cognitive_state.skill_proposed {plan_id, name}
 
 User approves (via approve_plan tool or MC):
   → resolve_plan(plan_id, decision="approved")
@@ -126,7 +126,7 @@ User approves (via approve_plan tool or MC):
        └─ NEW: if rec.get("skill_data"):
             try:
                 skill_engine.create_skill(**rec["skill_data"])
-                emit cognitive_state.skill_installed_from_plan
+                emit cognitive_state.skill_installed
                 # plan will auto-complete when todo is marked done; the
                 # install completion can mark the todo too via
                 # update_todo_status to chain into auto-completion.
@@ -213,7 +213,7 @@ behavior change for existing `create_skill()` callers.
 3. **Approval triggers install.** When user approves, `create_skill()`
    runs; SKILL.md exists on disk; `list_skills()` includes it.
 4. **Event emitted on install:**
-   `cognitive_state.skill_installed_from_plan` fires with `plan_id`
+   `cognitive_state.skill_installed` fires with `plan_id`
    and `name`.
 5. **Kill-switch works:** `tool_invention_enabled=False` →
    `propose_new_skill` returns error immediately.

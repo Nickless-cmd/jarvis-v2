@@ -245,3 +245,83 @@ def test_nudge_ttl_48h(clean_state):
     expires = datetime.fromisoformat(n["expires_at"].replace("Z", "+00:00"))
     delta = expires - created
     assert timedelta(hours=47) <= delta <= timedelta(hours=49)
+
+
+def test_format_nudges_returns_empty_when_no_nudges(clean_state):
+    from core.services.world_model_signal_tracking import (
+        format_world_model_nudges_for_awareness,
+    )
+    assert format_world_model_nudges_for_awareness(session_id="s1") == ""
+
+
+def test_format_nudges_renders_oldest_unrendered(clean_state):
+    from core.services.world_model_signal_tracking import (
+        record_prediction_nudge,
+        format_world_model_nudges_for_awareness,
+        _load_nudges,
+    )
+
+    record_prediction_nudge(
+        session_id="s1",
+        run_id="r1",
+        matched_phrase="jeg tror",
+        context_excerpt="Jeg tror det virker.",
+    )
+    out = format_world_model_nudges_for_awareness(session_id="s1")
+    assert out
+    assert "jeg tror" in out.lower() or "prediction" in out.lower()
+
+    nudges = _load_nudges()
+    assert nudges["prediction_nudges"][0]["rendered_at"]
+
+
+def test_format_nudges_skips_already_rendered(clean_state):
+    from core.services.world_model_signal_tracking import (
+        record_prediction_nudge,
+        format_world_model_nudges_for_awareness,
+    )
+
+    record_prediction_nudge(
+        session_id="s1", run_id="r1",
+        matched_phrase="jeg tror", context_excerpt="x",
+    )
+    first = format_world_model_nudges_for_awareness(session_id="s1")
+    second = format_world_model_nudges_for_awareness(session_id="s1")
+    assert first
+    assert second == ""
+
+
+def test_format_nudges_skips_expired(clean_state):
+    from core.services.world_model_signal_tracking import (
+        record_prediction_nudge,
+        format_world_model_nudges_for_awareness,
+        _load_nudges,
+        _save_nudges,
+    )
+
+    record_prediction_nudge(
+        session_id="s1", run_id="r1",
+        matched_phrase="jeg tror", context_excerpt="x",
+    )
+    data = _load_nudges()
+    data["prediction_nudges"][0]["expires_at"] = (
+        datetime.now(UTC) - timedelta(hours=1)
+    ).isoformat()
+    _save_nudges(data)
+
+    assert format_world_model_nudges_for_awareness(session_id="s1") == ""
+
+
+def test_format_nudges_respects_killswitch(clean_state, monkeypatch):
+    from core.services import world_model_signal_tracking as wm
+
+    class FakeSettings:
+        world_model_loop_enabled = False
+
+    monkeypatch.setattr(wm, "load_settings", lambda: FakeSettings())
+
+    wm.record_prediction_nudge(
+        session_id="s1", run_id="r1",
+        matched_phrase="jeg tror", context_excerpt="x",
+    )
+    assert wm.format_world_model_nudges_for_awareness(session_id="s1") == ""

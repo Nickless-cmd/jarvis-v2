@@ -414,6 +414,51 @@ def record_resolution_nudge(
     _save_nudges(data)
 
 
+def format_world_model_nudges_for_awareness(*, session_id: str | None = None) -> str:
+    """Surface up to 1 prediction-nudge + 1 resolution-nudge for the awareness block.
+
+    Picks oldest unrendered+unexpired nudge per kind. Marks them as rendered.
+    Returns empty string if killswitch off or nothing to surface.
+    """
+    if not _loop_enabled():
+        return ""
+    now = datetime.now(UTC)
+    data = _load_nudges()
+    parts: list[str] = []
+    dirty = False
+
+    for kind in ("prediction_nudges", "resolution_nudges"):
+        for n in data.get(kind, []):
+            if n.get("rendered_at"):
+                continue
+            try:
+                exp = datetime.fromisoformat(str(n.get("expires_at") or "").replace("Z", "+00:00"))
+            except Exception:
+                continue
+            if exp <= now:
+                continue
+            phrase = str(n.get("matched_phrase") or "")
+            if kind == "prediction_nudges":
+                parts.append(
+                    f"📡 Du sagde '{phrase}' — vil du lave en prediction? "
+                    "Brug predict_outcome hvis ja."
+                )
+            else:
+                cand = str(n.get("candidate_prediction_id") or "")
+                hint = f" (kandidat: {cand[:16]})" if cand else ""
+                parts.append(
+                    f"🎯 Du sagde '{phrase}' — vil du resolve en prediction{hint}? "
+                    "Brug resolve_prediction hvis ja."
+                )
+            n["rendered_at"] = now.isoformat()
+            dirty = True
+            break  # only one per kind per session
+
+    if dirty:
+        _save_nudges(data)
+    return "\n".join(parts)
+
+
 def _load_predictions() -> list[dict[str, object]]:
     raw = load_json(_PREDICTION_STATE_KEY, [])
     if not isinstance(raw, list):

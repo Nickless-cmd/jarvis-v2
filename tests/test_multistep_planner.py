@@ -246,3 +246,47 @@ def test_set_todos_does_not_double_mark_already_completed(clean_state):
 
     plan = _load_all()[plan_id]
     assert plan["completed_step_indices"].count(0) == 1
+
+
+def test_pending_plan_section_shows_awaiting_approval(clean_state):
+    from core.services.plan_proposals import propose_plan, pending_plan_section
+
+    propose_plan(session_id="s1", title="Awaiting plan", why="x", steps=["a", "b"])
+    section = pending_plan_section("s1")
+    assert section is not None
+    assert "Awaiting plan" in section
+
+
+def test_pending_plan_section_shows_approved_incomplete_with_progress(clean_state):
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, mark_step_completed, pending_plan_section,
+    )
+
+    r = propose_plan(session_id="s1", title="Active plan", why="x", steps=["a", "b", "c"])
+    resolve_plan(r["plan_id"], decision="approved")
+    mark_step_completed(r["plan_id"], 0)
+
+    section = pending_plan_section("s1")
+    assert section is not None
+    assert "Active plan" in section
+    assert "1/3" in section
+    assert "b" in section
+    assert "c" in section
+
+
+def test_pending_plan_section_hides_fully_completed(clean_state):
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, mark_step_completed, pending_plan_section,
+    )
+
+    r = propose_plan(session_id="s1", title="Done plan", why="x", steps=["a"])
+    resolve_plan(r["plan_id"], decision="approved")
+    mark_step_completed(r["plan_id"], 0)  # auto-completes
+
+    section = pending_plan_section("s1")
+    assert section is None or "Done plan" not in section
+
+
+def test_pending_plan_section_returns_none_when_empty(clean_state):
+    from core.services.plan_proposals import pending_plan_section
+    assert pending_plan_section("s1") is None

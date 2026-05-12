@@ -207,24 +207,57 @@ def list_session_plans(session_id: str | None) -> list[dict[str, Any]]:
 
 
 def pending_plan_section(session_id: str | None) -> str | None:
-    pending = [
-        r for r in list_session_plans(session_id)
-        if r.get("status") == "awaiting_approval"
+    """Surface plans relevant to the current session.
+
+    Two categories:
+      1. awaiting_approval — render full plan, stop-and-wait message.
+      2. approved + incomplete — render progress + remaining steps.
+
+    Returns None if neither category has any entry for this session.
+    Phase 1 (2026-05-12): now shows approved+incomplete, not only
+    awaiting_approval.
+    """
+    session_plans = list_session_plans(session_id)
+
+    awaiting = [r for r in session_plans if r.get("status") == "awaiting_approval"]
+    active = [
+        r for r in session_plans
+        if r.get("status") == "approved"
+        and len(r.get("completed_step_indices") or []) < len(r.get("steps") or [])
     ]
-    if not pending:
+
+    if not awaiting and not active:
         return None
-    rec = pending[0]  # at most one by construction
-    steps = rec.get("steps") or []
-    step_lines = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(steps))
-    return (
-        "📋 Du har en plan der venter på brugerens godkendelse "
-        f"(plan_id={rec.get('plan_id')}):\n"
-        f"  Titel: {rec.get('title')}\n"
-        f"  Hvorfor: {rec.get('why') or '(ikke angivet)'}\n"
-        f"  Trin:\n{step_lines}\n"
-        "Stop og afvent godkendelse FØR du udfører nogen af trinnene. "
-        "Hvis brugeren beder om en ændring, så foreslå en ny plan."
-    )
+
+    blocks: list[str] = []
+
+    for rec in awaiting[:1]:  # at most one by construction
+        steps = rec.get("steps") or []
+        step_lines = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(steps))
+        blocks.append(
+            "📋 Du har en plan der venter på brugerens godkendelse "
+            f"(plan_id={rec.get('plan_id')}):\n"
+            f"  Titel: {rec.get('title')}\n"
+            f"  Hvorfor: {rec.get('why') or '(ikke angivet)'}\n"
+            f"  Trin:\n{step_lines}\n"
+            "Stop og afvent godkendelse FØR du udfører nogen af trinnene. "
+            "Hvis brugeren beder om en ændring, så foreslå en ny plan."
+        )
+
+    for rec in active[:3]:  # cap at 3 in same session
+        steps = list(rec.get("steps") or [])
+        completed = sorted(set(rec.get("completed_step_indices") or []))
+        remaining_indices = [i for i in range(len(steps)) if i not in completed]
+        remaining_lines = "\n".join(
+            f"    {i+1}. {steps[i]}" for i in remaining_indices
+        )
+        blocks.append(
+            f"🎯 Aktiv plan (godkendt, {len(completed)}/{len(steps)} done) "
+            f"plan_id={rec.get('plan_id')}: {rec.get('title')}\n"
+            f"  Resterende trin:\n{remaining_lines}"
+        )
+
+    return "\n\n".join(blocks)
 
 
 def all_pending_plans_section() -> str | None:

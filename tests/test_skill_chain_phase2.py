@@ -394,3 +394,18 @@ def test_revise_tool_definitions_registered():
     ]
     assert "revise_skill_chain" in names
     assert "revise_skill_chain" in REVISE_SKILL_CHAIN_TOOL_HANDLERS
+
+
+def test_both_tools_registered_via_simple_tools():
+    """End-to-end: splat into simple_tools picks up both Phase 2 tools."""
+    from core.tools.simple_tools import TOOL_DEFINITIONS, _TOOL_HANDLERS
+    names = {
+        (e.get("function") or {}).get("name")
+        for e in TOOL_DEFINITIONS if isinstance(e, dict)
+    }
+    assert "propose_skill_chain" in names
+    assert "revise_skill_chain" in names
+    assert "propose_skill_chain" in _TOOL_HANDLERS
+    assert "revise_skill_chain" in _TOOL_HANDLERS
+    # Phase 1 skill_chain must still be present
+    assert "skill_chain" in names

@@ -91,6 +91,7 @@ ALLOWED_EVENT_FAMILIES = {
     "cognitive_dream_bias",
     "cognitive_temperature",
     "cognitive_skill_chain",
+    "cognitive_meta_learning",
     "cognitive_paradox",
     "cognitive_aesthetic",
     "cognitive_gut",

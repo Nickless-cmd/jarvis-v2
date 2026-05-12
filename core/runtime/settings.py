@@ -205,6 +205,12 @@ class RuntimeSettings:
     # When False: both tools error immediately, Phase 1 skill_chain works
     # as before (manual plukning). Master killswitch for both new tools.
     skill_chain_phase2_enabled: bool = True
+    # ── Meta-læring Phase 1 (added 2026-05-12 — AGI track #3) ─────────────
+    # When True: weekly retrospective producer fires, learning-memo
+    # awareness-injection active, read_learning_memo + list_learning_memos
+    # tools registered. When False: producer skipped, awareness empty,
+    # tools fail-soft. Master killswitch for the AGI track.
+    meta_learning_enabled: bool = True
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -682,6 +688,12 @@ def load_settings() -> RuntimeSettings:
             data.get(
                 "skill_chain_phase2_enabled",
                 defaults.skill_chain_phase2_enabled,
+            )
+        ),
+        meta_learning_enabled=bool(
+            data.get(
+                "meta_learning_enabled",
+                defaults.meta_learning_enabled,
             )
         ),
         longing_daemon_cadence_minutes=int(

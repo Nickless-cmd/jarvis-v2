@@ -414,6 +414,80 @@ def record_resolution_nudge(
     _save_nudges(data)
 
 
+_HORIZON_DEFAULT_GRACE_DAYS = 7
+_TTL_GRACE_HOURS = 24
+
+
+def _next_weekday(d: datetime, target_weekday: int) -> datetime:
+    """Next occurrence of given weekday (0=Mon..6=Sun) at end-of-day."""
+    days_ahead = (target_weekday - d.weekday()) % 7
+    if days_ahead == 0:
+        days_ahead = 7
+    return (d + timedelta(days=days_ahead)).replace(hour=23, minute=59)
+
+
+def _parse_horizon(horizon: str, created: datetime) -> datetime:
+    """Return the cutoff datetime when horizon would have elapsed.
+
+    Conservative: only matches known phrases (case-insensitive). Anything
+    else falls back to a 7-day default grace.
+    """
+    h = (horizon or "").strip().lower()
+    if h:
+        if h.startswith("i dag") or h == "eod":
+            return created.replace(hour=23, minute=59)
+        if h.startswith("i morgen"):
+            return (created + timedelta(days=1)).replace(hour=23, minute=59)
+        if h.startswith("denne uge"):
+            return created + timedelta(days=7)
+        weekday_map = {
+            "mandag": 0, "tirsdag": 1, "onsdag": 2, "torsdag": 3,
+            "fredag": 4, "lørdag": 5, "søndag": 6,
+        }
+        for name, idx in weekday_map.items():
+            if h.startswith(f"inden {name}"):
+                return _next_weekday(created, idx)
+    return created + timedelta(days=_HORIZON_DEFAULT_GRACE_DAYS)
+
+
+def _ttl_sweep_open_predictions(*, now: datetime | None = None) -> dict[str, int]:
+    """Scan open predictions; auto-resolve as 'uncertain' if past horizon+grace.
+
+    Returns {"resolved": N, "skipped": M}. Honors killswitch.
+    """
+    if not _loop_enabled():
+        return {"resolved": 0, "skipped": 0, "reason": "killswitch_off"}
+
+    cutoff_now = now or datetime.now(UTC)
+    predictions = _load_predictions()
+    resolved = 0
+    skipped = 0
+    for pred in predictions:
+        if str(pred.get("status") or "") != "open":
+            skipped += 1
+            continue
+        try:
+            created = datetime.fromisoformat(
+                str(pred.get("created_at") or "").replace("Z", "+00:00")
+            )
+        except Exception:
+            skipped += 1
+            continue
+        horizon_cutoff = _parse_horizon(str(pred.get("horizon") or ""), created)
+        if cutoff_now < horizon_cutoff + timedelta(hours=_TTL_GRACE_HOURS):
+            skipped += 1
+            continue
+        resolve_runtime_world_model_prediction(
+            str(pred.get("prediction_id") or ""),
+            observed="(no observation — TTL auto-resolve)",
+            outcome="uncertain",
+            now=cutoff_now,
+            resolved_via="ttl_auto",
+        )
+        resolved += 1
+    return {"resolved": resolved, "skipped": skipped}
+
+
 def format_world_model_nudges_for_awareness(*, session_id: str | None = None) -> str:
     """Surface up to 1 prediction-nudge + 1 resolution-nudge for the awareness block.
 

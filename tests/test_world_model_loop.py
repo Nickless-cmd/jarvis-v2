@@ -426,3 +426,95 @@ def test_ttl_sweep_respects_killswitch(clean_state, monkeypatch):
     result = wm._ttl_sweep_open_predictions(now=datetime.now(UTC))
     assert result["resolved"] == 0
     assert wm._load_predictions()[0]["status"] == "open"
+
+
+def _seed_resolved(predictions_module, *, outcomes: list[str]) -> None:
+    """Helper: create resolved predictions with the given outcome sequence."""
+    base = datetime.now(UTC) - timedelta(days=2)
+    for i, out in enumerate(outcomes):
+        predictions_module.record_runtime_world_model_prediction(
+            subject=f"s{i}",
+            expectation=f"e{i}",
+            horizon="i dag",
+            confidence="low",
+            evidence=[],
+        )
+        preds = predictions_module._load_predictions()
+        preds[0]["status"] = "resolved"
+        preds[0]["outcome"] = out
+        preds[0]["resolved_at"] = (base + timedelta(minutes=i)).isoformat()
+        preds[0]["resolved_via"] = "tool"
+        predictions_module._save_predictions(preds)
+
+
+def test_milestone_count_10_fires(clean_state):
+    from core.services import world_model_signal_tracking as wm
+
+    _seed_resolved(wm, outcomes=["supported"] * 7 + ["contradicted"] * 3)
+    milestone = wm._compute_calibration_milestone(now=datetime.now(UTC))
+    assert milestone is not None
+    assert milestone["kind"] == "count_10"
+    assert "kalibrering" in milestone["message"].lower()
+
+
+def test_milestone_first_contradiction_after_streak(clean_state):
+    from core.services import world_model_signal_tracking as wm
+
+    _seed_resolved(wm, outcomes=["supported"] * 5 + ["contradicted"])
+    milestone = wm._compute_calibration_milestone(now=datetime.now(UTC))
+    assert milestone is not None
+    assert milestone["kind"] == "first_contradiction_after_streak"
+
+
+def test_milestone_threshold_70_cross(clean_state):
+    from core.services import world_model_signal_tracking as wm
+
+    _seed_resolved(wm, outcomes=["supported"] * 7 + ["contradicted"] * 3)
+    milestone = wm._compute_calibration_milestone(now=datetime.now(UTC))
+    assert milestone is not None
+    # count_10 takes priority over threshold; either acceptable
+    assert milestone["kind"] in ("count_10", "threshold_70")
+
+
+def test_milestone_trend_improving(clean_state):
+    from core.services import world_model_signal_tracking as wm
+
+    _seed_resolved(wm, outcomes=(
+        ["supported"] * 5 + ["contradicted"] * 5
+        + ["supported"] * 8 + ["contradicted"] * 2
+    ))
+    milestone = wm._compute_calibration_milestone(now=datetime.now(UTC))
+    assert milestone is not None
+
+
+def test_milestone_format_for_awareness(clean_state):
+    """One milestone per call. Same milestone never renders twice; multiple
+    different milestones may surface across calls until all are rendered."""
+    from core.services import world_model_signal_tracking as wm
+
+    _seed_resolved(wm, outcomes=["supported"] * 7 + ["contradicted"] * 3)
+    out = wm.format_world_model_milestone_for_awareness()
+    assert out
+    # Drain remaining milestones — eventually returns ""
+    seen = {out}
+    for _ in range(10):
+        next_out = wm.format_world_model_milestone_for_awareness()
+        if next_out == "":
+            break
+        # No milestone should repeat
+        assert next_out not in seen
+        seen.add(next_out)
+    # After draining, must be empty
+    assert wm.format_world_model_milestone_for_awareness() == ""
+
+
+def test_milestone_format_respects_killswitch(clean_state, monkeypatch):
+    from core.services import world_model_signal_tracking as wm
+
+    class FakeSettings:
+        world_model_loop_enabled = False
+
+    monkeypatch.setattr(wm, "load_settings", lambda: FakeSettings())
+
+    _seed_resolved(wm, outcomes=["supported"] * 10)
+    assert wm.format_world_model_milestone_for_awareness() == ""

@@ -533,6 +533,156 @@ def format_world_model_nudges_for_awareness(*, session_id: str | None = None) ->
     return "\n".join(parts)
 
 
+_MILESTONE_STATE_KEY = "runtime_world_model_milestones"
+
+
+def _load_milestones() -> dict[str, list[dict[str, object]]]:
+    raw = load_json(_MILESTONE_STATE_KEY, {})
+    if not isinstance(raw, dict):
+        raw = {}
+    return {"history": list(raw.get("history") or [])}
+
+
+def _save_milestones(data: dict[str, list[dict[str, object]]]) -> None:
+    save_json(_MILESTONE_STATE_KEY, data)
+
+
+def _resolved_predictions_chrono() -> list[dict[str, object]]:
+    """Return resolved predictions in chronological order (oldest first)."""
+    preds = _load_predictions()
+    resolved = [
+        p for p in preds
+        if str(p.get("status") or "") == "resolved"
+        and str(p.get("outcome") or "") in {"supported", "contradicted", "uncertain"}
+    ]
+    resolved.sort(key=lambda p: str(p.get("resolved_at") or p.get("created_at") or ""))
+    return resolved
+
+
+def _calibration_of(predictions: list[dict[str, object]]) -> float:
+    """% supported among supported+contradicted; uncertain is excluded."""
+    s = sum(1 for p in predictions if p.get("outcome") == "supported")
+    c = sum(1 for p in predictions if p.get("outcome") == "contradicted")
+    if s + c == 0:
+        return 0.0
+    return round(100.0 * s / (s + c), 1)
+
+
+def _has_milestone(kind: str, value: object = None) -> bool:
+    """Check if a milestone of given kind (+ optional value) has been recorded."""
+    for m in _load_milestones().get("history", []):
+        if m.get("kind") != kind:
+            continue
+        if value is not None and m.get("value") != value:
+            continue
+        return True
+    return False
+
+
+def _append_milestone(kind: str, value: object, message: str, now: datetime) -> dict[str, object]:
+    m = {
+        "milestone_id": f"wmmile-{uuid4().hex}",
+        "kind": kind,
+        "value": value,
+        "message": message,
+        "created_at": now.isoformat(),
+        "rendered_at": "",
+    }
+    data = _load_milestones()
+    data["history"].append(m)
+    _save_milestones(data)
+    return m
+
+
+def _compute_calibration_milestone(*, now: datetime | None = None) -> dict[str, object] | None:
+    """Compute the latest calibration milestone if any rule fires.
+
+    Rules in priority order:
+      1. count_10 — every 10th resolved prediction (10, 20, 30 ...)
+      2. first_contradiction_after_streak — latest is contradicted after ≥5 supported
+      3. threshold_60 / threshold_70 / threshold_80 — calibration crossed since last
+      4. trend_improving (≥+5%) / trend_declining (≤-5%) — last 10 vs prior 10
+    Returns the newly recorded milestone dict, or None if nothing fires.
+    """
+    if not _loop_enabled():
+        return None
+
+    now = now or datetime.now(UTC)
+    resolved = _resolved_predictions_chrono()
+    count = len(resolved)
+    if count == 0:
+        return None
+
+    calibration = _calibration_of(resolved[-30:])
+
+    # Rule 1: count_10
+    if count > 0 and count % 10 == 0 and not _has_milestone("count_10", count):
+        message = f"Du har nu {count} resolved predictions. Kalibrering sidste 30: {calibration}%."
+        return _append_milestone("count_10", count, message, now)
+
+    # Rule 2: first_contradiction_after_streak
+    if count >= 6 and resolved[-1].get("outcome") == "contradicted":
+        prior_5 = resolved[-6:-1]
+        if all(p.get("outcome") == "supported" for p in prior_5):
+            pid = str(resolved[-1].get("prediction_id") or "")
+            if not _has_milestone("first_contradiction_after_streak", pid):
+                message = (
+                    f"Du tog fejl efter {len(prior_5)} rigtige predictions i træk. "
+                    "Worth noting."
+                )
+                return _append_milestone(
+                    "first_contradiction_after_streak", pid, message, now,
+                )
+
+    # Rule 3: threshold cross
+    for tier in (60, 70, 80):
+        kind = f"threshold_{tier}"
+        if calibration >= tier and not _has_milestone(kind):
+            message = f"Din kalibrering er nu {calibration}% — over {tier}%."
+            return _append_milestone(kind, tier, message, now)
+
+    # Rule 4: trend (Jarvis-addition)
+    if count >= 20:
+        recent_10 = resolved[-10:]
+        prior_10 = resolved[-20:-10]
+        recent_cal = _calibration_of(recent_10)
+        prior_cal = _calibration_of(prior_10)
+        delta = round(recent_cal - prior_cal, 1)
+        if delta >= 5:
+            anchor = f"improving:{count}"
+            if not _has_milestone("trend_improving", anchor):
+                message = (
+                    f"Din kalibrering er steget {delta}% over de sidste 10 predictions. "
+                    "Du bliver bedre."
+                )
+                return _append_milestone("trend_improving", anchor, message, now)
+        elif delta <= -5:
+            anchor = f"declining:{count}"
+            if not _has_milestone("trend_declining", anchor):
+                message = (
+                    f"Din kalibrering er faldet {abs(delta)}%. Hvad har ændret sig?"
+                )
+                return _append_milestone("trend_declining", anchor, message, now)
+
+    return None
+
+
+def format_world_model_milestone_for_awareness() -> str:
+    """Surface one unrendered milestone per call. Returns '' when nothing."""
+    if not _loop_enabled():
+        return ""
+    _compute_calibration_milestone()
+
+    data = _load_milestones()
+    for m in data.get("history", []):
+        if m.get("rendered_at"):
+            continue
+        m["rendered_at"] = datetime.now(UTC).isoformat()
+        _save_milestones(data)
+        return f"🧮 {m.get('message')}"
+    return ""
+
+
 def _load_predictions() -> list[dict[str, object]]:
     raw = load_json(_PREDICTION_STATE_KEY, [])
     if not isinstance(raw, list):

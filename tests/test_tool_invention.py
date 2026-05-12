@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 
@@ -20,12 +18,40 @@ def test_validate_accepts_clean_proposal(isolated_skills_root):
 
     result = validate_skill_proposal(
         name="my-new-skill",
-        description="Does X cleanly.",
-        instructions="When triggered, do X by following these steps...",
-        use_when="When user asks for X",
+        description="Renames files from their content with a verified preview.",
+        instructions=(
+            "When triggered, inspect the requested files, infer clear names, "
+            "return a preview before changing anything, and verify conflicts "
+            "or duplicate names before the final rename step."
+        ),
+        use_when="When user asks for safe content-based batch renaming",
         tags=["productivity"],
     )
     assert result["status"] == "ok"
+    assert "quality_score" in result
+    assert result["quality_nudges"] == []
+
+
+def test_validate_returns_quality_nudges_for_thin_proposal(isolated_skills_root):
+    from core.services.skill_engine import validate_skill_proposal
+
+    result = validate_skill_proposal(
+        name="helper",
+        description="Helps.",
+        instructions="Do it.",
+    )
+    assert result["status"] == "ok"
+
+    nudge_ids = {n["id"] for n in result["quality_nudges"]}
+    assert {
+        "generic_name",
+        "thin_description",
+        "thin_instructions",
+        "weak_trigger",
+        "missing_workflow_shape",
+        "missing_tags",
+    }.issubset(nudge_ids)
+    assert result["quality_score"] < 1.0
 
 
 def test_validate_rejects_empty_name(isolated_skills_root):
@@ -330,6 +356,28 @@ def test_propose_new_skill_valid_proposal_creates_plan(
     plans = _load_all()
     assert plans[plan_id]["status"] == "awaiting_approval"
     assert plans[plan_id]["skill_data"]["name"] == "auto-renamer"
+
+
+def test_propose_new_skill_persists_quality_nudges(
+    clean_plan_state, isolated_skills_root,
+):
+    from core.tools import skill_engine_tools as set_
+    from core.services.plan_proposals import _load_all
+
+    result = set_._exec_propose_new_skill({
+        "name": "thin-skill",
+        "description": "Thin",
+        "instructions": "Act.",
+        "session_id": "s1",
+    })
+    assert result["status"] == "ok"
+    assert result["quality_nudges"]
+    assert result["quality_score"] < 1.0
+
+    plans = _load_all()
+    skill_data = plans[result["plan_id"]]["skill_data"]
+    assert skill_data["quality_nudges"] == result["quality_nudges"]
+    assert skill_data["quality_score"] == result["quality_score"]
 
 
 def test_propose_new_skill_registered_in_tool_definitions():

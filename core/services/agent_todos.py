@@ -59,11 +59,19 @@ def set_todos(session_id: str | None, items: list[dict[str, Any]]) -> dict[str, 
     Each item may include id (auto-generated if missing), content (required),
     status (default pending). Enforces the ONE in_progress rule by keeping
     only the first in_progress in source order; later ones drop to pending.
+
+    Phase 1 (2026-05-12): if a todo with plan_id transitions to 'completed',
+    notify plan_proposals.mark_step_completed.
     """
     sid = _session_key(session_id)
     cleaned: list[dict[str, Any]] = []
     in_progress_seen = False
     now = datetime.now(UTC).isoformat()
+
+    # Snapshot old state for transition detection
+    data = _load_all()
+    old_by_id = {str(t.get("id") or ""): t for t in data.get(sid, [])}
+
     for raw in items or []:
         if not isinstance(raw, dict):
             continue
@@ -82,11 +90,33 @@ def set_todos(session_id: str | None, items: list[dict[str, Any]]) -> dict[str, 
             "id": str(raw.get("id") or f"td-{uuid4().hex[:10]}"),
             "content": content[:240],
             "status": status,
+            "plan_id": raw.get("plan_id"),
+            "plan_step_index": raw.get("plan_step_index"),
             "updated_at": now,
         })
-    data = _load_all()
+
     data[sid] = cleaned
     _save_all(data)
+
+    # Phase 1 transition detection: pending/in_progress → completed.
+    for new_todo in cleaned:
+        if new_todo.get("status") != "completed":
+            continue
+        old = old_by_id.get(str(new_todo.get("id") or ""))
+        old_status = (old or {}).get("status")
+        if old_status == "completed":
+            continue  # already completed — no transition
+        pid = new_todo.get("plan_id")
+        step_idx = new_todo.get("plan_step_index")
+        if pid and step_idx is not None:
+            try:
+                from core.services.plan_proposals import mark_step_completed
+                mark_step_completed(str(pid), int(step_idx))
+            except Exception as exc:
+                logger.warning(
+                    "agent_todos: failed to mark step completed: %s", exc,
+                )
+
     return {"status": "ok", "session_id": sid, "count": len(cleaned), "todos": cleaned}
 
 
@@ -104,6 +134,9 @@ def update_todo_status(session_id: str | None, todo_id: str, new_status: str) ->
             break
     if not found:
         return {"status": "error", "error": f"unknown todo_id {todo_id}"}
+
+    old_status = found.get("status")
+
     if new_status == "in_progress":
         # Demote any other in_progress to pending — invariant: max 1 active.
         for it in items:
@@ -113,6 +146,23 @@ def update_todo_status(session_id: str | None, todo_id: str, new_status: str) ->
     found["updated_at"] = datetime.now(UTC).isoformat()
     data[sid] = items
     _save_all(data)
+
+    # Phase 1 transition detection: only fire on actual transition to completed.
+    if (
+        new_status == "completed"
+        and old_status != "completed"
+        and found.get("plan_id")
+        and found.get("plan_step_index") is not None
+    ):
+        try:
+            from core.services.plan_proposals import mark_step_completed
+            mark_step_completed(
+                str(found["plan_id"]),
+                int(found["plan_step_index"]),
+            )
+        except Exception as exc:
+            logger.warning("agent_todos: failed to mark step completed: %s", exc)
+
     return {"status": "ok", "todo": found}
 
 

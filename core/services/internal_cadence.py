@@ -532,6 +532,38 @@ def _ensure_producers_registered() -> None:
         depends_on=[],
     ))
 
+    def _run_curiosity_idle_window(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Curiosity-budget Phase 1 (2026-05-12) — idle-window opener.
+
+        Cadence framework has already enforced `visible_grace_minutes=30`,
+        so this fires only when visible chat has been quiet ≥30 min.
+        We just check killswitch + budget, then flip the state_store flag.
+        """
+        from core.services.curiosity_budget import (
+            curiosity_enabled,
+            idle_window_open,
+            open_idle_window,
+            remaining_today,
+        )
+        if not curiosity_enabled():
+            return {"status": "skipped", "reason": "killswitch"}
+        if remaining_today() <= 0:
+            return {"status": "skipped", "reason": "no_budget"}
+        if idle_window_open():
+            return {"status": "skipped", "reason": "already_open"}
+        open_idle_window()
+        return {"status": "ok", "window_opened": True,
+                "remaining": remaining_today()}
+
+    register_producer(ProducerSpec(
+        name="curiosity_idle_window",
+        cooldown_minutes=1,
+        visible_grace_minutes=30,  # only fire after ≥30 min visible silence
+        run_fn=_run_curiosity_idle_window,
+        priority=29,
+        depends_on=[],
+    ))
+
     def _run_life_projects_reassessment(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.life_projects import tick_life_projects_reassessment
         return tick_life_projects_reassessment(trigger=trigger, last_visible_at=last_visible_at)

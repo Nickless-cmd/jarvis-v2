@@ -342,3 +342,50 @@ def test_curiosity_tools_registered_via_simple_tools():
     }
     assert expected <= names
     assert expected <= set(_TOOL_HANDLERS.keys())
+
+
+def test_idle_window_producer_opens_window_when_due(clean_state, monkeypatch):
+    """When cadence layer calls the producer (visible-grace already enforced
+    by the framework), it should open the window if budget remains."""
+    from core.services.curiosity_budget import idle_window_open
+    from core.services.internal_cadence import _producers, _ensure_producers_registered
+
+    _ensure_producers_registered()
+    spec = _producers["curiosity_idle_window"]
+    result = spec.run_fn(trigger="cadence", last_visible_at="")
+    assert result["status"] == "ok"
+    assert idle_window_open() is True
+
+
+def test_idle_window_producer_skips_when_budget_exhausted(clean_state):
+    from core.services.curiosity_budget import (
+        load_or_reset_budget, decrement_budget, idle_window_open,
+    )
+    from core.services.internal_cadence import _producers, _ensure_producers_registered
+
+    load_or_reset_budget()
+    for i in range(5):
+        decrement_budget(action="x", observation_id=f"o{i}")
+
+    _ensure_producers_registered()
+    spec = _producers["curiosity_idle_window"]
+    result = spec.run_fn(trigger="cadence", last_visible_at="")
+    assert result["status"] == "skipped"
+    assert idle_window_open() is False
+
+
+def test_idle_window_producer_skips_when_killswitch_off(clean_state, monkeypatch):
+    from core.services import curiosity_budget as cb
+    from core.services.curiosity_budget import idle_window_open
+    from core.services.internal_cadence import _producers, _ensure_producers_registered
+
+    class FakeSettings:
+        curiosity_budget_enabled = False
+
+    monkeypatch.setattr(cb, "load_settings", lambda: FakeSettings())
+
+    _ensure_producers_registered()
+    spec = _producers["curiosity_idle_window"]
+    result = spec.run_fn(trigger="cadence", last_visible_at="")
+    assert result["status"] == "skipped"
+    assert idle_window_open() is False

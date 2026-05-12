@@ -2899,6 +2899,34 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
         )
     except Exception:
         return
+    # World Model loop Phase 1 (2026-05-12): scan Jarvis' OWN response
+    # (not the user message) for prediction/resolution language and
+    # persist nudges. Jarvis sees them in next session's awareness.
+    try:
+        from core.services.world_model_signal_tracking import (
+            extract_prediction_language,
+            extract_resolution_language,
+            record_prediction_nudge,
+            record_resolution_nudge,
+        )
+        for m in extract_prediction_language(assistant_text or ""):
+            record_prediction_nudge(
+                session_id=run.session_id,
+                run_id=run.run_id,
+                matched_phrase=m["matched_phrase"],
+                context_excerpt=m["context_excerpt"],
+            )
+        for m in extract_resolution_language(assistant_text or ""):
+            record_resolution_nudge(
+                session_id=run.session_id,
+                run_id=run.run_id,
+                matched_phrase=m["matched_phrase"],
+                context_excerpt=m["context_excerpt"],
+                candidate_prediction_id="",
+            )
+    except Exception:
+        # Never block downstream candidate tracking on scanner failures.
+        pass
     try:
         track_runtime_self_model_signals_for_visible_turn(
             session_id=run.session_id,

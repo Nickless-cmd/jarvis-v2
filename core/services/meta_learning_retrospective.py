@@ -61,7 +61,7 @@ def ensure_schema() -> None:
 
 _HYPOTHESIS_HEADER = "## Hypothesis Candidates"
 _KANDIDAT_RE = re.compile(r"###\s+Kandidat\s+(\d+):\s*(.*)$", re.MULTILINE)
-_FIELD_RE = re.compile(r"^\s*-\s*\*\*([^*]+)\*\*:\s*(.+)$", re.MULTILINE)
+_FIELD_RE = re.compile(r"^\s*-\s*\*\*([^*]+?):?\*\*:?\s*(.+)$", re.MULTILINE)
 _FENCE_RE = re.compile(r"```(?:markdown|md)?\s*\n?(.*?)\n?```", re.DOTALL)
 
 

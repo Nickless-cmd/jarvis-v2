@@ -248,14 +248,49 @@ def skill_exists(name: str) -> bool:
     return (SKILLS_ROOT / name / "SKILL.md").exists() or (SKILLS_ROOT / name / "skill.md").exists()
 
 
-def create_skill(
+def _collect_registered_tool_names() -> set[str]:
+    """Return the set of registered tool names (normalized form).
+
+    Lazy import to avoid pulling simple_tools at module load time —
+    simple_tools transitively imports a lot.
+    """
+    try:
+        from core.tools.simple_tools import TOOL_DEFINITIONS
+    except Exception:
+        return set()
+    names: set[str] = set()
+    for entry in TOOL_DEFINITIONS or []:
+        if not isinstance(entry, dict):
+            continue
+        fn = entry.get("function") if isinstance(entry.get("function"), dict) else entry
+        n = str((fn or {}).get("name") or "").strip()
+        if n:
+            # Normalize for comparison: lowercase, "-" → "_"
+            names.add(n.lower().replace("-", "_"))
+    return names
+
+
+def validate_skill_proposal(
     name: str,
     description: str,
     instructions: str,
     use_when: str = "",
     tags: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Create a new skill directory with SKILL.md on disk."""
+    """Validate that a proposed skill would be installable by create_skill().
+
+    Same checks as create_skill() but without writing to disk:
+      - name is non-empty after strip+lower+space→hyphen normalization
+      - name matches ^[a-z0-9][a-z0-9_-]*$
+      - description and instructions are non-empty
+      - no existing skill with the (normalized) name
+      - normalized name does not shadow a registered tool name
+
+    Returns {"status": "ok", "name": normalized_name} or
+    {"status": "error", "error": "..."}.
+
+    Single source of truth — create_skill() also calls this function.
+    """
     name = name.strip().lower().replace(" ", "-")
     if not name:
         return {"status": "error", "error": "name is required"}
@@ -267,6 +302,46 @@ def create_skill(
     skill_dir = SKILLS_ROOT / name
     if skill_dir.exists():
         return {"status": "error", "error": f"skill '{name}' already exists"}
+
+    # Shadow-check: skill name (normalized to underscore form) must not
+    # collide with a registered tool name.
+    normalized_for_tool_check = name.replace("-", "_")
+    tool_names = _collect_registered_tool_names()
+    if normalized_for_tool_check in tool_names:
+        return {
+            "status": "error",
+            "error": (
+                f"name '{name}' shadows existing tool '{normalized_for_tool_check}' — "
+                "pick a different name to avoid skill_chain confusion"
+            ),
+        }
+
+    return {"status": "ok", "name": name}
+
+
+def create_skill(
+    name: str,
+    description: str,
+    instructions: str,
+    use_when: str = "",
+    tags: list[str] | None = None,
+) -> dict[str, Any]:
+    """Create a new skill directory with SKILL.md on disk.
+
+    Delegates validation to validate_skill_proposal() (single source of truth).
+    """
+    validation = validate_skill_proposal(
+        name=name,
+        description=description,
+        instructions=instructions,
+        use_when=use_when,
+        tags=tags,
+    )
+    if validation.get("status") != "ok":
+        return validation
+    name = str(validation.get("name") or name.strip().lower().replace(" ", "-"))
+
+    skill_dir = SKILLS_ROOT / name
 
     tags = tags or []
     # Use yaml.safe_dump for the frontmatter so values containing colons,

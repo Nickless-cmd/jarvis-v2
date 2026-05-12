@@ -32,6 +32,7 @@ _STATE_KEY = "plan_proposals"
 _VALID_STATUSES = (
     "awaiting_approval", "approved", "completed", "dismissed", "superseded",
 )
+_REPLAN_STALE_DAYS = 3
 
 
 def _load_all() -> dict[str, dict[str, Any]]:
@@ -270,6 +271,62 @@ def mark_step_completed(plan_id: str, step_index: int) -> dict[str, Any]:
     }
 
 
+def _parse_iso(value: str) -> datetime | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def replan_signal_for_plan(
+    rec: dict[str, Any],
+    *,
+    now: datetime | None = None,
+    stale_days: int = _REPLAN_STALE_DAYS,
+) -> dict[str, Any]:
+    """Return a non-mutating backtracking signal for an approved stale plan."""
+    if rec.get("status") != "approved":
+        return {"needed": False, "reason": "not-approved"}
+    steps = list(rec.get("steps") or [])
+    completed = list(rec.get("completed_step_indices") or [])
+    if not steps or len(completed) >= len(steps):
+        return {"needed": False, "reason": "complete-or-empty"}
+
+    ref = _parse_iso(str(rec.get("updated_at") or rec.get("resolved_at") or rec.get("created_at") or ""))
+    if ref is None:
+        return {"needed": False, "reason": "no-timestamp"}
+    current = now or datetime.now(UTC)
+    age_days = max(0.0, (current - ref).total_seconds() / 86400.0)
+    threshold = max(int(stale_days), 1)
+    if age_days < threshold:
+        return {
+            "needed": False,
+            "reason": "fresh",
+            "age_days": round(age_days, 2),
+            "threshold_days": threshold,
+        }
+
+    return {
+        "needed": True,
+        "reason": "approved-plan-stale",
+        "age_days": round(age_days, 2),
+        "threshold_days": threshold,
+        "completed": len(completed),
+        "total": len(steps),
+        "allowed_effects": [
+            "prompt_attention",
+            "ask_user_or_propose_replan",
+            "do_not_auto_execute_new_plan",
+        ],
+    }
+
+
 def list_session_plans(session_id: str | None) -> list[dict[str, Any]]:
     sid = str(session_id or "_default")
     return [r for r in _load_all().values() if r.get("session_id") == sid]
@@ -320,10 +377,19 @@ def pending_plan_section(session_id: str | None) -> str | None:
         remaining_lines = "\n".join(
             f"    {i+1}. {steps[i]}" for i in remaining_indices
         )
+        replan = replan_signal_for_plan(rec)
+        replan_line = ""
+        if replan.get("needed"):
+            replan_line = (
+                "\n  ⚠ Replan-signal: planen er stale "
+                f"({replan.get('age_days')} dage uden progress). "
+                "Vurder om næste handling bør være at foreslå en revideret plan."
+            )
         blocks.append(
             f"🎯 Aktiv plan (godkendt, {len(completed)}/{len(steps)} done) "
             f"plan_id={rec.get('plan_id')}: {rec.get('title')}\n"
             f"  Resterende trin:\n{remaining_lines}"
+            f"{replan_line}"
         )
 
     return "\n\n".join(blocks)

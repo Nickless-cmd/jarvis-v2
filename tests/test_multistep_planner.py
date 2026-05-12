@@ -274,6 +274,46 @@ def test_pending_plan_section_shows_approved_incomplete_with_progress(clean_stat
     assert "c" in section
 
 
+def test_replan_signal_marks_stale_approved_incomplete_plan(clean_state):
+    from datetime import UTC, datetime, timedelta
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, _load_all, _save_all,
+        pending_plan_section, replan_signal_for_plan,
+    )
+
+    r = propose_plan(session_id="s1", title="Stale plan", why="x", steps=["a", "b"])
+    resolve_plan(r["plan_id"], decision="approved")
+    data = _load_all()
+    old = (datetime.now(UTC) - timedelta(days=4)).isoformat()
+    data[r["plan_id"]]["resolved_at"] = old
+    data[r["plan_id"]]["created_at"] = old
+    _save_all(data)
+
+    signal = replan_signal_for_plan(_load_all()[r["plan_id"]])
+    section = pending_plan_section("s1")
+
+    assert signal["needed"] is True
+    assert signal["reason"] == "approved-plan-stale"
+    assert "Replan-signal" in section
+    assert "Stale plan" in section
+
+
+def test_replan_signal_does_not_mark_fresh_plan(clean_state):
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, _load_all,
+        pending_plan_section, replan_signal_for_plan,
+    )
+
+    r = propose_plan(session_id="s1", title="Fresh plan", why="x", steps=["a", "b"])
+    resolve_plan(r["plan_id"], decision="approved")
+
+    signal = replan_signal_for_plan(_load_all()[r["plan_id"]])
+    section = pending_plan_section("s1")
+
+    assert signal["needed"] is False
+    assert "Replan-signal" not in section
+
+
 def test_pending_plan_section_hides_fully_completed(clean_state):
     from core.services.plan_proposals import (
         propose_plan, resolve_plan, mark_step_completed, pending_plan_section,

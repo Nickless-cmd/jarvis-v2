@@ -195,3 +195,201 @@ def aggregate_plan_revision(*, since: datetime, until: datetime) -> dict[str, An
         "status_distribution": status_dist,
         "extreme_samples": extreme_samples,
     }
+
+
+# ---------------------------------------------------------------------------
+# Curiosity
+# ---------------------------------------------------------------------------
+
+def aggregate_curiosity(*, since: datetime, until: datetime) -> dict[str, Any]:
+    """Aggregate curiosity-tool activity in [since, until]."""
+    from core.runtime.db import connect
+
+    since_iso = since.isoformat()
+    until_iso = until.isoformat()
+
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT id, ts, action, observation_text FROM curiosity_observations "
+                "WHERE ts >= ? AND ts <= ? ORDER BY ts",
+                (since_iso, until_iso),
+            ).fetchall()
+            rows = [dict(r) for r in rows]
+    except Exception as exc:
+        logger.warning("aggregate_curiosity: query failed: %s", exc)
+        rows = []
+
+    action_dist: dict[str, int] = {}
+    for r in rows:
+        a = str(r.get("action") or "")
+        action_dist[a] = action_dist.get(a, 0) + 1
+
+    extreme_samples: list[dict[str, Any]] = []
+    non_empty = [r for r in rows if str(r.get("observation_text") or "").strip()]
+    if non_empty:
+        longest = max(non_empty, key=lambda r: len(str(r.get("observation_text") or "")))
+        shortest = min(non_empty, key=lambda r: len(str(r.get("observation_text") or "")))
+        extreme_samples.append({
+            "role": "longest_observation_text",
+            "id": str(longest.get("id") or ""),
+            "data": {
+                "action": str(longest.get("action") or ""),
+                "ts": str(longest.get("ts") or ""),
+                "observation_text": str(longest.get("observation_text") or ""),
+            },
+        })
+        if shortest.get("id") != longest.get("id"):
+            extreme_samples.append({
+                "role": "shortest_non_empty_observation",
+                "id": str(shortest.get("id") or ""),
+                "data": {
+                    "action": str(shortest.get("action") or ""),
+                    "ts": str(shortest.get("ts") or ""),
+                    "observation_text": str(shortest.get("observation_text") or ""),
+                },
+            })
+
+    return {
+        "actions_used": len(rows),
+        "action_distribution": action_dist,
+        "extreme_samples": extreme_samples,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Skill chain Phase 2
+# ---------------------------------------------------------------------------
+
+def aggregate_skill_chain_phase2(*, since: datetime, until: datetime) -> dict[str, Any]:
+    """Aggregate skill_chain Phase 2 events in [since, until]."""
+    from core.runtime.db import connect
+
+    since_iso = since.isoformat()
+    until_iso = until.isoformat()
+
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT event_id, kind, created_at, payload_json FROM events "
+                "WHERE family = 'cognitive_skill_chain' "
+                "AND kind IN ('proposed', 'revised') "
+                "AND created_at >= ? AND created_at <= ?",
+                (since_iso, until_iso),
+            ).fetchall()
+            rows = [dict(r) for r in rows]
+    except Exception as exc:
+        logger.warning("aggregate_skill_chain_phase2: query failed: %s", exc)
+        rows = []
+
+    proposals: list[dict[str, Any]] = []
+    revisions: list[dict[str, Any]] = []
+    for r in rows:
+        try:
+            payload = json.loads(str(r.get("payload_json") or "{}"))
+        except (json.JSONDecodeError, ValueError):
+            payload = {}
+        r["_payload"] = payload
+        if r.get("kind") == "proposed":
+            proposals.append(r)
+        elif r.get("kind") == "revised":
+            revisions.append(r)
+
+    ctx_dist = {"pre_execution": 0, "mid_chain": 0}
+    for r in revisions:
+        ctx = str(r["_payload"].get("revision_context") or "")
+        if ctx in ctx_dist:
+            ctx_dist[ctx] += 1
+
+    extreme_samples: list[dict[str, Any]] = []
+
+    if proposals:
+        top = max(proposals, key=lambda r: float(r["_payload"].get("confidence") or 0))
+        extreme_samples.append({
+            "role": "highest_confidence_proposal",
+            "id": str(top.get("event_id") or ""),
+            "data": {
+                "plan": top["_payload"].get("plan", []),
+                "confidence": float(top["_payload"].get("confidence") or 0),
+                "created_at": str(top.get("created_at") or ""),
+            },
+        })
+
+    if revisions:
+        longest = max(revisions, key=lambda r: len(str(r["_payload"].get("reason") or "")))
+        extreme_samples.append({
+            "role": "longest_reason_revision",
+            "id": str(longest.get("event_id") or ""),
+            "data": {
+                "new_plan": longest["_payload"].get("new_plan", []),
+                "revision_context": str(longest["_payload"].get("revision_context") or ""),
+                "reason": str(longest["_payload"].get("reason") or ""),
+                "created_at": str(longest.get("created_at") or ""),
+            },
+        })
+
+    return {
+        "proposals_made": len(proposals),
+        "revisions_made": len(revisions),
+        "revision_context_distribution": ctx_dist,
+        "extreme_samples": extreme_samples,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Tool invention (proxy via plan_proposals with skill_data)
+# ---------------------------------------------------------------------------
+
+def aggregate_tool_invention(*, since: datetime, until: datetime) -> dict[str, Any]:
+    """Aggregate tool-invention activity in [since, until]."""
+    from core.services.plan_proposals import _load_all
+
+    try:
+        all_plans = _load_all()
+    except Exception as exc:
+        logger.warning("aggregate_tool_invention: load failed: %s", exc)
+        all_plans = {}
+
+    skill_plans = [
+        rec for rec in all_plans.values()
+        if rec.get("skill_data") and _in_window(
+            str(rec.get("created_at") or ""), since, until
+        )
+    ]
+    proposed = len(skill_plans)
+    adopted = sum(1 for r in skill_plans if r.get("status") == "approved")
+
+    extreme_samples: list[dict[str, Any]] = []
+    approved_skills = [r for r in skill_plans if r.get("status") == "approved"]
+    if approved_skills:
+        latest = max(approved_skills, key=lambda r: str(r.get("created_at") or ""))
+        sd = latest.get("skill_data") or {}
+        extreme_samples.append({
+            "role": "most_recent_adopted_skill",
+            "id": str(latest.get("plan_id") or ""),
+            "data": {
+                "skill_name": str(sd.get("name") or ""),
+                "description": str(sd.get("description") or "")[:200],
+                "created_at": str(latest.get("created_at") or ""),
+            },
+        })
+
+    dismissed_skills = [r for r in skill_plans if r.get("status") == "dismissed"]
+    if dismissed_skills:
+        latest = max(dismissed_skills, key=lambda r: str(r.get("created_at") or ""))
+        sd = latest.get("skill_data") or {}
+        extreme_samples.append({
+            "role": "most_recent_dismissed_skill",
+            "id": str(latest.get("plan_id") or ""),
+            "data": {
+                "skill_name": str(sd.get("name") or ""),
+                "description": str(sd.get("description") or "")[:200],
+                "created_at": str(latest.get("created_at") or ""),
+            },
+        })
+
+    return {
+        "proposed": proposed,
+        "adopted": adopted,
+        "extreme_samples": extreme_samples,
+    }

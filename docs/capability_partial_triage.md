@@ -8,8 +8,8 @@ Current audit:
 
 | Score | Count |
 |---|---:|
-| LIVE | 487 |
-| PARTIAL | 15 |
+| LIVE | 501 |
+| PARTIAL | 1 |
 | SUSPICIOUS | 3 |
 | ORPHAN | 1 |
 
@@ -218,13 +218,19 @@ Batch 12 complete (2026-05-12):
 Result: direct contract tests added in `tests/test_turn_side_text_gc_surfaces.py`.
 The audit moved again.
 
+Batch 13 complete (2026-05-12):
+
+1. `recurring_tasks.py`
+2. `relation_dynamics.py`
+3. `self_mutation_lineage.py`
+4. `staged_edits.py`
+
+Result: direct contract tests added in `tests/test_recurring_relation_mutation_staged.py`.
+The audit moved to 501 LIVE / 1 PARTIAL.
+
 Current next batch candidates:
 
-1. `agent_skill_distiller.py`
-2. `avoidance_detector.py`
-3. `creative_instinct_daemon.py`
-4. `day_shape_memory.py`
-5. `dream_motif_daemon.py`
+1. `skyoffice_bridge.py`
 
 Acceptance criteria:
 

@@ -46,7 +46,7 @@ _surface_cache_at: float = 0.0
 # pre-computed string, refresh happens once per minute.
 # Perf-fix 2026-05-12: identified as the dominant awareness section
 # (7-10s of the ~7.5s sync gap in prompt assembly).
-_SECTION_CACHE_TTL = 60.0
+_SECTION_CACHE_TTL = 180.0  # 3 min — typical active conversation turn gap
 _section_cache: str | None = None
 _section_cache_at: float = 0.0
 _section_cache_lock = None  # initialized lazily; threading.Lock

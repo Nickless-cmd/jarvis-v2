@@ -3253,16 +3253,52 @@ def _heartbeat_liveness_summary(context: dict[str, object]) -> str | None:
     )
 
 
-def _cognitive_frame_section() -> str | None:
-    """Build a compact cognitive frame section for prompt inclusion."""
-    try:
-        from core.services.runtime_cognitive_conductor import (
-            build_cognitive_frame_prompt_section,
-        )
+_FRAME_CACHE_TTL = 180.0  # 3 min — matches rule_conclusions
+_frame_cache: str | None = None
+_frame_cache_at: float = 0.0
+_frame_cache_lock = None  # threading.Lock, lazy init
 
-        return build_cognitive_frame_prompt_section()
-    except Exception:
-        return None
+
+def invalidate_cognitive_frame_cache() -> None:
+    """Force next call to rebuild. For tests + heartbeat-driven refresh."""
+    global _frame_cache, _frame_cache_at
+    _frame_cache = None
+    _frame_cache_at = 0.0
+
+
+def _cognitive_frame_section() -> str | None:
+    """Build a compact cognitive frame section for prompt inclusion.
+
+    Cached for _FRAME_CACHE_TTL (180s). build_cognitive_frame() runs 30+
+    sequential _safe_*() DB queries which contributes ~3-6s to assembly.
+    Frame state changes slowly (mode, salience, affordances) — 3-min stale
+    is acceptable in visible chat.
+
+    Perf-fix 2026-05-12: identified via per-section instrumentation.
+    """
+    global _frame_cache, _frame_cache_at, _frame_cache_lock
+    import time as _t_mod
+    if _frame_cache_lock is None:
+        import threading
+        _frame_cache_lock = threading.Lock()
+
+    now = _t_mod.monotonic()
+    if _frame_cache is not None and (now - _frame_cache_at) < _FRAME_CACHE_TTL:
+        return _frame_cache
+
+    with _frame_cache_lock:
+        now = _t_mod.monotonic()
+        if _frame_cache is not None and (now - _frame_cache_at) < _FRAME_CACHE_TTL:
+            return _frame_cache
+        try:
+            from core.services.runtime_cognitive_conductor import (
+                build_cognitive_frame_prompt_section,
+            )
+            _frame_cache = build_cognitive_frame_prompt_section()
+        except Exception:
+            _frame_cache = None
+        _frame_cache_at = now
+        return _frame_cache
 
 
 def _micro_cognitive_frame_section() -> str | None:

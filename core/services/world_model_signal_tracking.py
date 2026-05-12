@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-from core.services.chat_sessions import get_chat_session, list_chat_sessions
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
     list_runtime_world_model_signals,
@@ -11,6 +10,8 @@ from core.runtime.db import (
     update_runtime_world_model_signal_status,
     upsert_runtime_world_model_signal,
 )
+from core.runtime.state_store import load_json, save_json
+from core.services.chat_sessions import get_chat_session, list_chat_sessions
 
 _CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
 _SOURCE_KIND_RANKS = {
@@ -20,6 +21,144 @@ _SOURCE_KIND_RANKS = {
     "user-explicit": 4,
 }
 _STALE_AFTER_DAYS = 10
+_PREDICTION_STATE_KEY = "runtime_world_model_predictions"
+_MAX_PREDICTIONS = 120
+_PREDICTION_ALLOWED_EFFECTS = [
+    "prompt_attention",
+    "compare_future_observations",
+    "update_calibration_only",
+    "do_not_auto_act",
+]
+
+
+def record_runtime_world_model_prediction(
+    *,
+    subject: str,
+    expectation: str,
+    horizon: str = "",
+    confidence: str = "low",
+    evidence: list[str] | None = None,
+    source: str = "runtime",
+    now: datetime | None = None,
+) -> dict[str, object]:
+    """Record an explicit, falsifiable world-model expectation.
+
+    This is deliberately a small ledger, not a planner. A prediction may
+    influence attention and later calibration, but it must not execute work.
+    """
+    normalized_subject = " ".join(str(subject or "").split()).strip()
+    normalized_expectation = " ".join(str(expectation or "").split()).strip()
+    if not normalized_subject:
+        return {"status": "error", "error": "subject is required"}
+    if not normalized_expectation:
+        return {"status": "error", "error": "expectation is required"}
+
+    created_at = (now or datetime.now(UTC)).isoformat()
+    confidence = str(confidence or "low").strip().lower()
+    if confidence not in _CONFIDENCE_RANKS:
+        confidence = "low"
+    item = {
+        "prediction_id": f"worldpred-{uuid4().hex}",
+        "status": "open",
+        "subject": normalized_subject,
+        "expectation": normalized_expectation,
+        "horizon": " ".join(str(horizon or "").split()).strip(),
+        "confidence": confidence,
+        "evidence": [str(e).strip() for e in (evidence or []) if str(e).strip()][:5],
+        "source": str(source or "runtime").strip() or "runtime",
+        "created_at": created_at,
+        "updated_at": created_at,
+        "resolved_at": "",
+        "observed": "",
+        "outcome": "",
+        "allowed_effects": list(_PREDICTION_ALLOWED_EFFECTS),
+    }
+    predictions = _load_predictions()
+    predictions.insert(0, item)
+    _save_predictions(predictions[:_MAX_PREDICTIONS])
+    event_bus.publish(
+        "world_model_signal.prediction_recorded",
+        {
+            "prediction_id": item["prediction_id"],
+            "subject": item["subject"],
+            "confidence": item["confidence"],
+        },
+    )
+    return {"status": "ok", "prediction": item}
+
+
+def resolve_runtime_world_model_prediction(
+    prediction_id: str,
+    *,
+    observed: str,
+    outcome: str,
+    now: datetime | None = None,
+) -> dict[str, object]:
+    """Resolve a prediction with a later observation."""
+    normalized_id = str(prediction_id or "").strip()
+    normalized_observed = " ".join(str(observed or "").split()).strip()
+    normalized_outcome = str(outcome or "").strip().lower()
+    if normalized_outcome not in {"supported", "contradicted", "uncertain"}:
+        return {
+            "status": "error",
+            "error": "outcome must be supported, contradicted, or uncertain",
+        }
+    predictions = _load_predictions()
+    resolved_at = (now or datetime.now(UTC)).isoformat()
+    for item in predictions:
+        if str(item.get("prediction_id") or "") != normalized_id:
+            continue
+        item["status"] = "resolved"
+        item["observed"] = normalized_observed
+        item["outcome"] = normalized_outcome
+        item["resolved_at"] = resolved_at
+        item["updated_at"] = resolved_at
+        _save_predictions(predictions)
+        event_bus.publish(
+            "world_model_signal.prediction_resolved",
+            {
+                "prediction_id": normalized_id,
+                "outcome": normalized_outcome,
+            },
+        )
+        return {"status": "ok", "prediction": item}
+    return {"status": "error", "error": f"prediction '{normalized_id}' not found"}
+
+
+def build_runtime_world_model_prediction_surface(*, limit: int = 6) -> dict[str, object]:
+    predictions = _load_predictions()
+    open_items = [p for p in predictions if str(p.get("status") or "") == "open"]
+    resolved_items = [
+        p for p in predictions
+        if str(p.get("status") or "") == "resolved"
+    ]
+    supported = [
+        p for p in resolved_items
+        if str(p.get("outcome") or "") == "supported"
+    ]
+    contradicted = [
+        p for p in resolved_items
+        if str(p.get("outcome") or "") == "contradicted"
+    ]
+    scored_total = len(supported) + len(contradicted)
+    calibration = round(len(supported) / scored_total, 2) if scored_total else None
+    ordered = [*open_items, *resolved_items][: max(limit, 1)]
+    return {
+        "active": bool(open_items),
+        "items": ordered,
+        "summary": {
+            "open_count": len(open_items),
+            "resolved_count": len(resolved_items),
+            "supported_count": len(supported),
+            "contradicted_count": len(contradicted),
+            "calibration": calibration,
+            "current_prediction": str(
+                (open_items[0] if open_items else {}).get("expectation")
+                or "No open world-model prediction"
+            ),
+        },
+        "allowed_effects": list(_PREDICTION_ALLOWED_EFFECTS),
+    }
 
 
 def track_runtime_world_model_signals_for_visible_turn(
@@ -113,7 +252,19 @@ def build_runtime_world_model_signal_surface(*, limit: int = 8) -> dict[str, obj
             "current_signal": str((latest or {}).get("title") or "No active world-model signal"),
             "current_status": str((latest or {}).get("status") or "none"),
         },
+        "prediction_skeleton": build_runtime_world_model_prediction_surface(),
     }
+
+
+def _load_predictions() -> list[dict[str, object]]:
+    raw = load_json(_PREDICTION_STATE_KEY, [])
+    if not isinstance(raw, list):
+        return []
+    return [item for item in raw if isinstance(item, dict)]
+
+
+def _save_predictions(predictions: list[dict[str, object]]) -> None:
+    save_json(_PREDICTION_STATE_KEY, predictions[:_MAX_PREDICTIONS])
 
 
 def _extract_world_model_candidates(*, user_message: str, session_id: str) -> list[dict[str, object]]:

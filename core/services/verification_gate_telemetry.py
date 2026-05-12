@@ -218,7 +218,7 @@ def telemetry_section() -> str | None:
     rate_str = f"{int(rate * 100)}%" if rate is not None else "n/a"
     flag = ""
     if rate is not None and rate < 0.4:
-        flag = " ⚠ under 40% — du ignorerer for ofte advarslerne"
+        flag = " ⚠ under 40% — verify-followup below threshold"
     return (
         f"R2-gate telemetry (24t): surfaced={s['surfaced_total']} "
         f"heeded={s['heeded_total']} ignored={s['ignored_total']} "

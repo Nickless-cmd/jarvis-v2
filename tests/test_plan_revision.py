@@ -217,3 +217,102 @@ def test_revise_plan_does_not_inherit_skill_data(clean_state):
     )
     new_rec = _load_all()[r2["plan_id"]]
     assert new_rec.get("skill_data") is None
+
+
+def test_approving_revision_supersedes_old(clean_state):
+    """When the revised plan is approved, old plan transitions to superseded."""
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, revise_plan, _load_all,
+    )
+
+    r1 = propose_plan(session_id="s1", title="Original", why="x", steps=["a", "b"])
+    old_id = r1["plan_id"]
+    resolve_plan(old_id, decision="approved")
+
+    r2 = revise_plan(
+        plan_id=old_id, session_id="s1",
+        reason="changed", new_steps=["x", "y"],
+    )
+    new_id = r2["plan_id"]
+
+    resolve_plan(new_id, decision="approved")
+
+    plans = _load_all()
+    assert plans[old_id]["status"] == "superseded"
+    assert plans[old_id]["superseded_by"] == new_id
+    assert plans[new_id]["status"] == "approved"
+
+
+def test_dismissing_revision_preserves_old(clean_state):
+    """When the revised plan is dismissed, old plan stays approved."""
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, revise_plan, _load_all,
+    )
+
+    r1 = propose_plan(session_id="s1", title="P", why="x", steps=["a"])
+    old_id = r1["plan_id"]
+    resolve_plan(old_id, decision="approved")
+
+    r2 = revise_plan(
+        plan_id=old_id, session_id="s1",
+        reason="x", new_steps=["b"],
+    )
+    new_id = r2["plan_id"]
+
+    resolve_plan(new_id, decision="dismissed")
+
+    plans = _load_all()
+    assert plans[old_id]["status"] == "approved"
+    assert plans[old_id].get("superseded_by") is None
+    assert plans[new_id]["status"] == "dismissed"
+
+
+def test_approving_revision_creates_fresh_todos(clean_state):
+    """The Phase 1 todo-creation hook still fires for revised plans."""
+    from core.services.plan_proposals import propose_plan, resolve_plan, revise_plan
+    from core.services.agent_todos import list_todos
+
+    r1 = propose_plan(session_id="s1", title="P", why="x", steps=["old-step"])
+    resolve_plan(r1["plan_id"], decision="approved")
+
+    r2 = revise_plan(
+        plan_id=r1["plan_id"], session_id="s1",
+        reason="x", new_steps=["new-step-1", "new-step-2"],
+    )
+    resolve_plan(r2["plan_id"], decision="approved")
+
+    todos = list_todos("s1")
+    new_todo_contents = [t["content"] for t in todos if t.get("plan_id") == r2["plan_id"]]
+    assert "new-step-1" in new_todo_contents
+    assert "new-step-2" in new_todo_contents
+
+
+def test_approval_when_old_already_not_approved_is_graceful(clean_state):
+    """Race condition: old plan manually moved out of approved before revision approved.
+    Revision still approves; supersede hook no-ops on non-approved old."""
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, revise_plan, _load_all, _save_all,
+    )
+
+    r1 = propose_plan(session_id="s1", title="P", why="x", steps=["a"])
+    old_id = r1["plan_id"]
+    resolve_plan(old_id, decision="approved")
+
+    r2 = revise_plan(
+        plan_id=old_id, session_id="s1",
+        reason="x", new_steps=["b"],
+    )
+    new_id = r2["plan_id"]
+
+    # Manually mark old plan as completed (race condition)
+    data = _load_all()
+    data[old_id]["status"] = "completed"
+    _save_all(data)
+
+    result = resolve_plan(new_id, decision="approved")
+    assert result["status"] == "ok"
+
+    plans = _load_all()
+    assert plans[old_id]["status"] == "completed"
+    assert plans[old_id].get("superseded_by") is None
+    assert plans[new_id]["status"] == "approved"

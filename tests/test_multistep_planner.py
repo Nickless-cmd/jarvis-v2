@@ -151,3 +151,98 @@ def test_resolve_plan_uses_original_session_not_default(clean_state):
     assert len(list_todos("original-session-xyz")) == 2
     assert list_todos("_default") == []
     assert list_todos("some-other-session") == []
+
+
+def test_mark_step_completed_appends_and_sorts(clean_state):
+    from core.services.plan_proposals import propose_plan, mark_step_completed, _load_all
+
+    r = propose_plan(session_id="s1", title="X", why="x", steps=["a", "b", "c"])
+    plan_id = r["plan_id"]
+
+    mark_step_completed(plan_id, 2)
+    mark_step_completed(plan_id, 0)
+    plan = _load_all()[plan_id]
+    assert plan["completed_step_indices"] == [0, 2]
+
+
+def test_mark_step_completed_idempotent(clean_state):
+    from core.services.plan_proposals import propose_plan, mark_step_completed, _load_all
+
+    r = propose_plan(session_id="s1", title="X", why="x", steps=["a", "b"])
+    plan_id = r["plan_id"]
+
+    mark_step_completed(plan_id, 0)
+    mark_step_completed(plan_id, 0)
+    plan = _load_all()[plan_id]
+    assert plan["completed_step_indices"] == [0]
+
+
+def test_mark_step_completed_auto_transitions_to_completed(clean_state):
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, mark_step_completed, _load_all,
+    )
+
+    r = propose_plan(session_id="s1", title="X", why="x", steps=["a", "b"])
+    plan_id = r["plan_id"]
+    resolve_plan(plan_id, decision="approved")
+
+    mark_step_completed(plan_id, 0)
+    assert _load_all()[plan_id]["status"] == "approved"
+
+    mark_step_completed(plan_id, 1)
+    assert _load_all()[plan_id]["status"] == "completed"
+
+
+def test_set_todos_marks_step_completed_on_transition(clean_state):
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, _load_all,
+    )
+    from core.services.agent_todos import set_todos, list_todos
+
+    r = propose_plan(session_id="s1", title="X", why="x", steps=["a", "b"])
+    plan_id = r["plan_id"]
+    resolve_plan(plan_id, decision="approved")
+
+    todos = list_todos("s1")
+    todos[0]["status"] = "completed"
+    set_todos("s1", todos)
+
+    plan = _load_all()[plan_id]
+    assert 0 in plan["completed_step_indices"]
+
+
+def test_update_todo_status_marks_step_completed(clean_state):
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, _load_all,
+    )
+    from core.services.agent_todos import update_todo_status, list_todos
+
+    r = propose_plan(session_id="s1", title="X", why="x", steps=["a", "b"])
+    plan_id = r["plan_id"]
+    resolve_plan(plan_id, decision="approved")
+
+    todos = list_todos("s1")
+    update_todo_status("s1", todos[0]["id"], "completed")
+
+    plan = _load_all()[plan_id]
+    assert 0 in plan["completed_step_indices"]
+
+
+def test_set_todos_does_not_double_mark_already_completed(clean_state):
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, _load_all,
+    )
+    from core.services.agent_todos import set_todos, list_todos
+
+    r = propose_plan(session_id="s1", title="X", why="x", steps=["a", "b"])
+    plan_id = r["plan_id"]
+    resolve_plan(plan_id, decision="approved")
+
+    todos = list_todos("s1")
+    todos[0]["status"] = "completed"
+    set_todos("s1", todos)
+    todos2 = list_todos("s1")
+    set_todos("s1", todos2)
+
+    plan = _load_all()[plan_id]
+    assert plan["completed_step_indices"].count(0) == 1

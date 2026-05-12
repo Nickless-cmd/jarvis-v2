@@ -156,6 +156,51 @@ def _plan_todo_auto_create_enabled() -> bool:
         return True
 
 
+def mark_step_completed(plan_id: str, step_index: int) -> dict[str, Any]:
+    """Append step_index to plan's completed_step_indices (idempotent, sorted).
+
+    Auto-transitions plan status to 'completed' when all steps are done.
+    No-op if plan doesn't exist or step_index is out of range.
+    """
+    pid = str(plan_id or "").strip()
+    if not pid:
+        return {"status": "error", "error": "plan_id is required"}
+    try:
+        idx = int(step_index)
+    except Exception:
+        return {"status": "error", "error": "step_index must be int"}
+
+    data = _load_all()
+    rec = data.get(pid)
+    if rec is None:
+        return {"status": "error", "error": f"unknown plan_id {pid}"}
+
+    steps = list(rec.get("steps") or [])
+    if idx < 0 or idx >= len(steps):
+        return {"status": "error", "error": f"step_index {idx} out of range (0..{len(steps)-1})"}
+
+    completed = list(rec.get("completed_step_indices") or [])
+    if idx not in completed:
+        completed.append(idx)
+        completed.sort()
+        rec["completed_step_indices"] = completed
+        rec["updated_at"] = datetime.now(UTC).isoformat()
+
+        # Auto-completion: when all steps done, transition status.
+        if len(completed) == len(steps) and rec.get("status") == "approved":
+            rec["status"] = "completed"
+            rec["completed_at"] = rec["updated_at"]
+
+        _save_all(data)
+    return {
+        "status": "ok",
+        "plan_id": pid,
+        "completed_count": len(completed),
+        "total_count": len(steps),
+        "plan_status": rec.get("status"),
+    }
+
+
 def list_session_plans(session_id: str | None) -> list[dict[str, Any]]:
     sid = str(session_id or "_default")
     return [r for r in _load_all().values() if r.get("session_id") == sid]

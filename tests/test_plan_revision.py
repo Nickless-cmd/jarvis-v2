@@ -316,3 +316,82 @@ def test_approval_when_old_already_not_approved_is_graceful(clean_state):
     assert plans[old_id]["status"] == "completed"
     assert plans[old_id].get("superseded_by") is None
     assert plans[new_id]["status"] == "approved"
+
+
+def test_revise_plan_tool_creates_revision(clean_state):
+    from core.services.plan_proposals import propose_plan, resolve_plan, _load_all
+    from core.tools.plan_revise_tool import _exec_revise_plan
+
+    r1 = propose_plan(session_id="s1", title="P", why="x", steps=["a", "b"])
+    resolve_plan(r1["plan_id"], decision="approved")
+
+    result = _exec_revise_plan({
+        "plan_id": r1["plan_id"],
+        "session_id": "s1",
+        "reason": "user wants different approach",
+        "new_steps": ["x", "y"],
+    })
+    assert result["status"] == "ok"
+    new_id = result["plan_id"]
+
+    plans = _load_all()
+    assert plans[new_id]["revised_from"] == r1["plan_id"]
+
+
+def test_revise_plan_tool_validates_required_args(clean_state):
+    from core.tools.plan_revise_tool import _exec_revise_plan
+
+    result = _exec_revise_plan({"reason": "x", "new_steps": ["a"]})
+    assert result["status"] == "error"
+
+    result = _exec_revise_plan({"plan_id": "p", "new_steps": ["a"]})
+    assert result["status"] == "error"
+
+    result = _exec_revise_plan({"plan_id": "p", "reason": "x"})
+    assert result["status"] == "error"
+
+
+def test_revise_plan_tool_killswitch(clean_state, monkeypatch):
+    from core.tools import plan_revise_tool as prt
+
+    class FakeSettings:
+        plan_revision_enabled = False
+
+    monkeypatch.setattr(prt, "load_settings", lambda: FakeSettings())
+
+    result = prt._exec_revise_plan({
+        "plan_id": "any",
+        "session_id": "s1",
+        "reason": "x",
+        "new_steps": ["a"],
+    })
+    assert result["status"] == "error"
+    assert "disabled" in result["error"].lower()
+
+
+def test_revise_plan_tool_definitions_registered():
+    from core.tools.plan_revise_tool import (
+        PLAN_REVISE_TOOL_DEFINITIONS,
+        PLAN_REVISE_TOOL_HANDLERS,
+    )
+
+    names = [
+        (e.get("function") or {}).get("name")
+        for e in PLAN_REVISE_TOOL_DEFINITIONS
+        if isinstance(e, dict)
+    ]
+    assert "revise_plan" in names
+    assert "revise_plan" in PLAN_REVISE_TOOL_HANDLERS
+
+
+def test_revise_plan_tool_registered_via_simple_tools():
+    """End-to-end: the splat into simple_tools picks up our new tool."""
+    from core.tools.simple_tools import TOOL_DEFINITIONS, _TOOL_HANDLERS
+
+    names = [
+        (e.get("function") or {}).get("name")
+        for e in TOOL_DEFINITIONS
+        if isinstance(e, dict)
+    ]
+    assert "revise_plan" in names
+    assert "revise_plan" in _TOOL_HANDLERS

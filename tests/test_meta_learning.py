@@ -24,6 +24,12 @@ def clean_state(tmp_path, monkeypatch):
     importlib.reload(db)
     import core.runtime.state_store as ss
     importlib.reload(ss)
+    # Reload modules that cache _SCHEMA_INITIALIZED globals so they re-create
+    # tables in the tmp_path DB instead of pointing at a stale prior DB.
+    import core.services.curiosity_budget as cb
+    importlib.reload(cb)
+    import core.services.meta_learning_retrospective as mlr
+    importlib.reload(mlr)
     return None
 
 

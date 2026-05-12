@@ -10,8 +10,41 @@ from core.runtime.db import (
     update_runtime_world_model_signal_status,
     upsert_runtime_world_model_signal,
 )
+from core.runtime.settings import load_settings
 from core.runtime.state_store import load_json, save_json
 from core.services.chat_sessions import get_chat_session, list_chat_sessions
+
+import re as _re
+
+# Pattern phrases for nudge detection (Phase 1 of world model loop).
+# Each pattern matches in Jarvis' OWN response text.
+_PREDICTION_PHRASES = [
+    _re.compile(r"\bjeg tror\b", _re.IGNORECASE),
+    _re.compile(r"\bjeg vil tro\b", _re.IGNORECASE),
+    _re.compile(r"\bforventer (at|en|et|den|de)\b", _re.IGNORECASE),
+    _re.compile(r"\bgætter på\b", _re.IGNORECASE),
+    _re.compile(r"\bdet vil (sandsynligvis|nok|måske)\b", _re.IGNORECASE),
+    _re.compile(r"\bdet bliver (nok|sandsynligvis)\b", _re.IGNORECASE),
+    _re.compile(r"\bdet skal nok\b", _re.IGNORECASE),
+    _re.compile(r"\bsandsynligvis\b", _re.IGNORECASE),
+    _re.compile(r"\bjeg satser på\b", _re.IGNORECASE),
+]
+
+_RESOLUTION_PHRASES = [
+    _re.compile(r"\bdet viste sig\b", _re.IGNORECASE),
+    _re.compile(r"\bjeg fik ret\b", _re.IGNORECASE),
+    _re.compile(r"\bjeg tog fejl\b", _re.IGNORECASE),
+    _re.compile(r"\bsom forventet\b", _re.IGNORECASE),
+    _re.compile(r"\boverrasket over\b", _re.IGNORECASE),
+    _re.compile(r"\bblev som\b", _re.IGNORECASE),
+    _re.compile(r"\bvirkede (ikke|som forventet)\b", _re.IGNORECASE),
+    _re.compile(r"\bdet gik (ikke )?som\b", _re.IGNORECASE),
+]
+
+_NUDGE_STATE_KEY = "runtime_world_model_nudges"
+_MAX_NUDGES_PER_KIND = 20
+_NUDGE_TTL_HOURS = 48  # Jarvis review: 24h was too short for overnight gap
+_NUDGE_CONTEXT_WORDS = 30
 
 _CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
 _SOURCE_KIND_RANKS = {
@@ -262,6 +295,123 @@ def build_runtime_world_model_signal_surface(*, limit: int = 8) -> dict[str, obj
         },
         "prediction_skeleton": build_runtime_world_model_prediction_surface(),
     }
+
+
+def _extract_pattern_matches(text: str, patterns: list) -> list[dict[str, str]]:
+    """Return list of {matched_phrase, context_excerpt} for each regex hit.
+
+    Context excerpt = ~30 words before and after the match.
+    """
+    if not text:
+        return []
+    words = text.split()
+    matches: list[dict[str, str]] = []
+    for pat in patterns:
+        for m in pat.finditer(text):
+            char_pos = m.start()
+            running_chars = 0
+            word_idx = 0
+            for i, w in enumerate(words):
+                if running_chars + len(w) >= char_pos:
+                    word_idx = i
+                    break
+                running_chars += len(w) + 1
+            start = max(0, word_idx - _NUDGE_CONTEXT_WORDS)
+            end = min(len(words), word_idx + _NUDGE_CONTEXT_WORDS)
+            context_excerpt = " ".join(words[start:end])
+            matches.append({
+                "matched_phrase": m.group(0),
+                "context_excerpt": context_excerpt[:400],
+            })
+    return matches
+
+
+def extract_prediction_language(text: str) -> list[dict[str, str]]:
+    """Find prediction-shape phrases in Jarvis' own response text."""
+    return _extract_pattern_matches(text, _PREDICTION_PHRASES)
+
+
+def extract_resolution_language(text: str) -> list[dict[str, str]]:
+    """Find resolution-shape phrases in Jarvis' own response text."""
+    return _extract_pattern_matches(text, _RESOLUTION_PHRASES)
+
+
+def _loop_enabled() -> bool:
+    """World-model-loop kill-switch check."""
+    try:
+        return bool(load_settings().world_model_loop_enabled)
+    except Exception:
+        return True
+
+
+def _load_nudges() -> dict[str, list[dict[str, object]]]:
+    raw = load_json(_NUDGE_STATE_KEY, {})
+    if not isinstance(raw, dict):
+        raw = {}
+    return {
+        "prediction_nudges": list(raw.get("prediction_nudges") or []),
+        "resolution_nudges": list(raw.get("resolution_nudges") or []),
+    }
+
+
+def _save_nudges(data: dict[str, list[dict[str, object]]]) -> None:
+    save_json(_NUDGE_STATE_KEY, data)
+
+
+def record_prediction_nudge(
+    *,
+    session_id: str,
+    run_id: str,
+    matched_phrase: str,
+    context_excerpt: str,
+) -> None:
+    """Append a prediction-language nudge to state (FIFO, max 20, 48h TTL)."""
+    now = datetime.now(UTC)
+    nudge = {
+        "nudge_id": f"wmnudge-{uuid4().hex}",
+        "kind": "prediction",
+        "session_id": str(session_id or ""),
+        "run_id": str(run_id or ""),
+        "matched_phrase": str(matched_phrase or "")[:80],
+        "context_excerpt": str(context_excerpt or "")[:400],
+        "created_at": now.isoformat(),
+        "rendered_at": "",
+        "expires_at": (now + timedelta(hours=_NUDGE_TTL_HOURS)).isoformat(),
+    }
+    data = _load_nudges()
+    data["prediction_nudges"].append(nudge)
+    if len(data["prediction_nudges"]) > _MAX_NUDGES_PER_KIND:
+        data["prediction_nudges"] = data["prediction_nudges"][-_MAX_NUDGES_PER_KIND:]
+    _save_nudges(data)
+
+
+def record_resolution_nudge(
+    *,
+    session_id: str,
+    run_id: str,
+    matched_phrase: str,
+    context_excerpt: str,
+    candidate_prediction_id: str = "",
+) -> None:
+    """Append a resolution-language nudge to state (FIFO, max 20, 48h TTL)."""
+    now = datetime.now(UTC)
+    nudge = {
+        "nudge_id": f"wmnudge-{uuid4().hex}",
+        "kind": "resolution",
+        "session_id": str(session_id or ""),
+        "run_id": str(run_id or ""),
+        "matched_phrase": str(matched_phrase or "")[:80],
+        "context_excerpt": str(context_excerpt or "")[:400],
+        "candidate_prediction_id": str(candidate_prediction_id or ""),
+        "created_at": now.isoformat(),
+        "rendered_at": "",
+        "expires_at": (now + timedelta(hours=_NUDGE_TTL_HOURS)).isoformat(),
+    }
+    data = _load_nudges()
+    data["resolution_nudges"].append(nudge)
+    if len(data["resolution_nudges"]) > _MAX_NUDGES_PER_KIND:
+        data["resolution_nudges"] = data["resolution_nudges"][-_MAX_NUDGES_PER_KIND:]
+    _save_nudges(data)
 
 
 def _load_predictions() -> list[dict[str, object]]:

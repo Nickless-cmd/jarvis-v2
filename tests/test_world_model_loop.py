@@ -142,3 +142,106 @@ def test_tools_registered_in_simple_tools():
     assert "resolve_prediction" in names
     assert "predict_outcome" in _TOOL_HANDLERS
     assert "resolve_prediction" in _TOOL_HANDLERS
+
+
+def test_extract_prediction_language_matches(clean_state):
+    from core.services.world_model_signal_tracking import extract_prediction_language
+
+    text = "Det her bliver svært. Jeg tror det vil tage en uge mere."
+    matches = extract_prediction_language(text)
+    assert len(matches) >= 1
+    phrases = [m["matched_phrase"] for m in matches]
+    assert any("jeg tror" in p.lower() for p in phrases)
+
+
+def test_extract_prediction_language_no_match(clean_state):
+    from core.services.world_model_signal_tracking import extract_prediction_language
+
+    matches = extract_prediction_language("Hej. Vejret er fint i dag.")
+    assert matches == []
+
+
+def test_extract_resolution_language_matches(clean_state):
+    from core.services.world_model_signal_tracking import extract_resolution_language
+
+    text = "Som forventet virkede løsningen ikke. Jeg tog fejl."
+    matches = extract_resolution_language(text)
+    phrases = [m["matched_phrase"] for m in matches]
+    assert any("som forventet" in p.lower() for p in phrases)
+    assert any("tog fejl" in p.lower() for p in phrases)
+
+
+def test_record_prediction_nudge_persists(clean_state):
+    from core.services.world_model_signal_tracking import (
+        record_prediction_nudge,
+        _load_nudges,
+    )
+
+    record_prediction_nudge(
+        session_id="s1",
+        run_id="r1",
+        matched_phrase="jeg tror",
+        context_excerpt="Jeg tror det virker.",
+    )
+    nudges = _load_nudges()
+    assert len(nudges.get("prediction_nudges", [])) == 1
+    n = nudges["prediction_nudges"][0]
+    assert n["session_id"] == "s1"
+    assert n["matched_phrase"] == "jeg tror"
+    assert n["rendered_at"] == ""
+
+
+def test_record_resolution_nudge_persists(clean_state):
+    from core.services.world_model_signal_tracking import (
+        record_resolution_nudge,
+        _load_nudges,
+    )
+
+    record_resolution_nudge(
+        session_id="s1",
+        run_id="r1",
+        matched_phrase="jeg tog fejl",
+        context_excerpt="Som forventet jeg tog fejl.",
+        candidate_prediction_id="",
+    )
+    nudges = _load_nudges()
+    assert len(nudges.get("resolution_nudges", [])) == 1
+
+
+def test_nudge_cap_at_20_per_kind(clean_state):
+    from core.services.world_model_signal_tracking import (
+        record_prediction_nudge,
+        _load_nudges,
+    )
+
+    for i in range(25):
+        record_prediction_nudge(
+            session_id="s1",
+            run_id=f"r{i}",
+            matched_phrase="jeg tror",
+            context_excerpt=f"context {i}",
+        )
+    nudges = _load_nudges()
+    assert len(nudges["prediction_nudges"]) == 20
+    assert nudges["prediction_nudges"][0]["run_id"] == "r5"
+    assert nudges["prediction_nudges"][-1]["run_id"] == "r24"
+
+
+def test_nudge_ttl_48h(clean_state):
+    """Nudges get expires_at = created_at + 48h."""
+    from core.services.world_model_signal_tracking import (
+        record_prediction_nudge,
+        _load_nudges,
+    )
+
+    record_prediction_nudge(
+        session_id="s1",
+        run_id="r1",
+        matched_phrase="jeg tror",
+        context_excerpt="x",
+    )
+    n = _load_nudges()["prediction_nudges"][0]
+    created = datetime.fromisoformat(n["created_at"].replace("Z", "+00:00"))
+    expires = datetime.fromisoformat(n["expires_at"].replace("Z", "+00:00"))
+    delta = expires - created
+    assert timedelta(hours=47) <= delta <= timedelta(hours=49)

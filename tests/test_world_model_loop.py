@@ -480,11 +480,18 @@ def test_milestone_trend_improving(clean_state):
     from core.services import world_model_signal_tracking as wm
 
     _seed_resolved(wm, outcomes=(
-        ["supported"] * 5 + ["contradicted"] * 5
-        + ["supported"] * 8 + ["contradicted"] * 2
+        ["contradicted"]
+        + ["supported"] * 5 + ["contradicted"] * 5
+        + ["supported"] * 10
     ))
+    now = datetime.now(UTC)
+    wm._append_milestone("threshold_60", 60, "already surfaced", now)
+    wm._append_milestone("threshold_70", 70, "already surfaced", now)
     milestone = wm._compute_calibration_milestone(now=datetime.now(UTC))
     assert milestone is not None
+    assert milestone["kind"] == "trend_improving"
+    assert ("Du bliver " + "bedre") not in str(milestone["message"])
+    assert "kalibrering er steget" in str(milestone["message"])
 
 
 def test_milestone_format_for_awareness(clean_state):

@@ -989,6 +989,18 @@ def build_visible_chat_prompt_assembly(
         )
     except Exception:
         pass
+    # World Model loop Phase 1 (2026-05-12) — calibration milestone (one-shot)
+    try:
+        from core.services.world_model_signal_tracking import (
+            format_world_model_milestone_for_awareness,
+        )
+        _awareness_add(
+            37,
+            "world-model calibration milestone",
+            format_world_model_milestone_for_awareness() or None,
+        )
+    except Exception:
+        pass
     try:
         from core.services.turn_changelog import previous_turn_changelog_section
         _awareness_add(40, "previous turn changelog (ground truth)", previous_turn_changelog_section(session_id))

@@ -183,6 +183,13 @@ class RuntimeSettings:
     # When True, propose_new_skill tool is exposed and active. When False,
     # the tool returns an error immediately (kill-switch).
     tool_invention_enabled: bool = True
+    # ── World model loop (AGI track #1 — added 2026-05-12) ──────────────
+    # When True: pattern scanners detect prediction/resolution language in
+    # Jarvis' response, nudge him via awareness block; TTL sweep auto-marks
+    # expired open predictions as uncertain; calibration milestones surface.
+    # When False: tools still work as a ledger, but no nudges, no TTL, no
+    # milestones — reverts to pre-Phase-1 behaviour.
+    world_model_loop_enabled: bool = True
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -636,6 +643,12 @@ def load_settings() -> RuntimeSettings:
             data.get(
                 "tool_invention_enabled",
                 defaults.tool_invention_enabled,
+            )
+        ),
+        world_model_loop_enabled=bool(
+            data.get(
+                "world_model_loop_enabled",
+                defaults.world_model_loop_enabled,
             )
         ),
         longing_daemon_cadence_minutes=int(

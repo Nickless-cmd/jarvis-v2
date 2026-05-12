@@ -328,29 +328,53 @@ def build_visible_chat_prompt_assembly(
     import sys as _sys_mod
     _t_assembly_start = _t_mod.monotonic()
     _phase_timings: dict[str, int] = {}
-
-    def _timed_result(_future, _name: str):
-        _t = _t_mod.monotonic()
-        _val = _future.result()
-        _phase_timings[_name] = int((_t_mod.monotonic() - _t) * 1000)
-        return _val
+    import threading as _threading_mod
+    _phase_timings_lock = _threading_mod.Lock()
 
     executor = ThreadPoolExecutor(max_workers=6, thread_name_prefix="prompt-assembly")
+
+    def _measured_submit(_name: str, _fn, *args, **kwargs):
+        """Submit fn to executor with self-measuring wall-clock timing.
+
+        Records actual work time (not wait-time-from-.result()) in
+        _phase_timings under _name. Critical fix vs. prior _timed_result
+        which measured 0ms whenever a future finished before its .result()
+        was called — hiding ~30s of assembly cost in 4 sections.
+        """
+        def _wrapped():
+            _t = _t_mod.monotonic()
+            try:
+                return _fn(*args, **kwargs)
+            finally:
+                _elapsed = int((_t_mod.monotonic() - _t) * 1000)
+                with _phase_timings_lock:
+                    _phase_timings[_name] = _elapsed
+        return executor.submit(_wrapped)
+
+    def _timed_result(_future, _name: str):
+        """Resolve a future. Timing is recorded inside the wrapped fn now,
+        so this is just a wait point. Kept as a name-preserving shim.
+        """
+        return _future.result()
+
     frame_fn = _micro_cognitive_frame_section if compact else _cognitive_frame_section
 
-    future_relevance = executor.submit(
+    future_relevance = _measured_submit(
+        "relevance",
         build_prompt_relevance_decision,
         user_message,
         mode="visible_chat",
         compact=compact,
         name=name,
     )
-    future_cognitive_state = executor.submit(
-        _safe_build_cognitive_state_for_prompt, compact=compact
+    future_cognitive_state = _measured_submit(
+        "cognitive_state",
+        _safe_build_cognitive_state_for_prompt, compact=compact,
     )
-    future_self_state = executor.submit(_safe_build_self_state_block)
-    future_frame = executor.submit(frame_fn)
-    future_self_report = executor.submit(
+    future_self_state = _measured_submit("self_state", _safe_build_self_state_block)
+    future_frame = _measured_submit("frame", frame_fn)
+    future_self_report = _measured_submit(
+        "self_report",
         _runtime_self_report_instruction,
         user_message=user_message,
         runtime_self_report_context=runtime_self_report_context or {},
@@ -1173,7 +1197,8 @@ def build_visible_chat_prompt_assembly(
 
     # --- Phase 2: launch relevance-dependent Ollama calls in parallel ---
     future_memory_selection = (
-        executor.submit(
+        _measured_submit(
+            "memory_selection",
             _workspace_memory_section,
             workspace_dir / "MEMORY.md",
             label="MEMORY.md",
@@ -1187,7 +1212,8 @@ def build_visible_chat_prompt_assembly(
         else None
     )
     future_recall_bundle = (
-        executor.submit(
+        _measured_submit(
+            "recall_bundle",
             _visible_memory_recall_bundle_section,
             session_id=session_id,
             user_message=user_message,
@@ -1196,7 +1222,8 @@ def build_visible_chat_prompt_assembly(
         if relevance.include_memory
         else None
     )
-    future_bridge_decision = executor.submit(
+    future_bridge_decision = _measured_submit(
+        "bridge_decision",
         _build_inner_visible_prompt_bridge_decision,
         user_message=user_message,
         mode="visible_chat",

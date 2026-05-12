@@ -164,7 +164,9 @@ Each prediction record gains optional `resolved_via` field:
             "candidate_prediction_id": "" | "worldpred-...",  # only for resolution
             "created_at": "...",
             "rendered_at": "",  # empty until surfaced
-            "expires_at": "...",  # +24h from creation
+            "expires_at": "...",  # +48h from creation (Jarvis review:
+                                   # 24h was too short — a nudge from 23:00
+                                   # could expire before next-morning awareness)
         },
         # FIFO, max 20 per kind
     ],

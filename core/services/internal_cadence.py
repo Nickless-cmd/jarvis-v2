@@ -564,6 +564,46 @@ def _ensure_producers_registered() -> None:
         depends_on=[],
     ))
 
+    def _run_meta_learning_weekly(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Meta-læring Phase 1 (2026-05-12) — weekly retrospective."""
+        from datetime import UTC as _UTC
+        from datetime import datetime as _datetime
+        from datetime import timedelta as _timedelta
+        from core.services.meta_learning_retrospective import (
+            _meta_learning_enabled,
+            generate_weekly_retrospective,
+        )
+        from core.runtime.db import connect
+
+        if not _meta_learning_enabled():
+            return {"status": "skipped", "reason": "killswitch"}
+
+        try:
+            with connect() as conn:
+                row = conn.execute(
+                    "SELECT ts FROM learning_memos ORDER BY ts DESC LIMIT 1"
+                ).fetchone()
+            if row:
+                last_ts = _datetime.fromisoformat(str(row["ts"]))
+                if last_ts.tzinfo is None:
+                    last_ts = last_ts.replace(tzinfo=_UTC)
+                age = _datetime.now(_UTC) - last_ts
+                if age < _timedelta(days=6, hours=12):
+                    return {"status": "skipped", "reason": "recent memo exists (<6.5d)"}
+        except Exception as exc:
+            logger.debug("meta_learning producer: db check failed: %s", exc)
+
+        return generate_weekly_retrospective(now=_datetime.now(_UTC))
+
+    register_producer(ProducerSpec(
+        name="meta_learning_weekly_retrospective",
+        cooldown_minutes=10080,        # 7 dage
+        visible_grace_minutes=60,
+        run_fn=_run_meta_learning_weekly,
+        priority=30,
+        depends_on=[],
+    ))
+
     def _run_life_projects_reassessment(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.life_projects import tick_life_projects_reassessment
         return tick_life_projects_reassessment(trigger=trigger, last_visible_at=last_visible_at)

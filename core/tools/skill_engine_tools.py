@@ -11,6 +11,7 @@ import logging
 import re
 from typing import Any
 
+from core.runtime.settings import load_settings
 from core.services import skill_engine
 from core.services.skill_security_scanner import (
     scan_skill_directory,
@@ -165,6 +166,68 @@ def _exec_skill_invoke(args: dict[str, Any]) -> dict[str, Any]:
             f"Use its instructions as guidance for the current task."
         ),
     }
+
+
+def _exec_propose_new_skill(args: dict[str, Any]) -> dict[str, Any]:
+    """Propose a new skill via the plan-approval flow.
+
+    Validates the proposal up front. If validation fails, returns the
+    error to the caller. If validation passes, creates a plan with the
+    skill_data payload; when the plan is approved, the install hook
+    automatically calls create_skill().
+    """
+    try:
+        if not bool(load_settings().tool_invention_enabled):
+            return {"status": "error", "error": "tool_invention disabled"}
+    except Exception:
+        pass  # fail-open if settings broken
+
+    name = str(args.get("name") or "")
+    description = str(args.get("description") or "")
+    instructions = str(args.get("instructions") or "")
+    use_when = str(args.get("use_when") or "") or description
+    tags = list(args.get("tags") or [])
+
+    validation = skill_engine.validate_skill_proposal(
+        name=name,
+        description=description,
+        instructions=instructions,
+        use_when=use_when,
+        tags=tags,
+    )
+    if validation.get("status") != "ok":
+        return validation
+
+    # Use the normalized name from validation (it lowercases + space→hyphen)
+    normalized_name = str(validation.get("name") or name)
+
+    from core.services.plan_proposals import propose_plan
+    result = propose_plan(
+        session_id=args.get("session_id"),
+        title=f"Ny skill: {normalized_name}",
+        why=description,
+        steps=[f"Install skill '{normalized_name}' (auto on approval)"],
+        skill_data={
+            "name": normalized_name,
+            "description": description,
+            "instructions": instructions,
+            "use_when": use_when,
+            "tags": tags,
+        },
+    )
+    if result.get("status") == "ok":
+        try:
+            from core.eventbus.bus import event_bus
+            event_bus.publish(
+                "cognitive_state.skill_proposed",
+                {
+                    "plan_id": result.get("plan_id"),
+                    "name": normalized_name,
+                },
+            )
+        except Exception:
+            pass
+    return result
 
 
 def _exec_skill_create(args: dict[str, Any]) -> dict[str, Any]:
@@ -866,6 +929,46 @@ SKILL_ENGINE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    # Tool Invention Phase 1 (AGI track #9 — added 2026-05-12)
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_new_skill",
+            "description": (
+                "Foreslå en ny skill du selv mener du har brug for. Værktøjet "
+                "validerer at navn+content er installerbart, lægger forslaget "
+                "som en plan der venter på godkendelse. Når brugeren godkender, "
+                "installeres skillen automatisk via skill_engine.create_skill()."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "lowercase, alphanumeric + - + _ (matches ^[a-z0-9][a-z0-9_-]*$)",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "én sætning om hvad skillen gør",
+                    },
+                    "instructions": {
+                        "type": "string",
+                        "description": "SKILL.md body (markdown). Skal være konkret nok til at en frisk session kan følge den.",
+                    },
+                    "use_when": {
+                        "type": "string",
+                        "description": "trigger-beskrivelse: hvornår skal denne skill påberåbes? Default = description.",
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "valgfrie tags til søgbarhed",
+                    },
+                },
+                "required": ["name", "description", "instructions"],
+            },
+        },
+    },
 ]
 
 # ── Handler map ────────────────────────────────────────────────────────
@@ -883,4 +986,6 @@ SKILL_ENGINE_TOOL_HANDLERS: dict[str, Any] = {
     # Fase 5
     "skill_import": _exec_skill_import,
     "skill_import_from_url": _exec_skill_import_from_url,
+    # Tool Invention Phase 1 (AGI track #9 — 2026-05-12)
+    "propose_new_skill": _exec_propose_new_skill,
 }

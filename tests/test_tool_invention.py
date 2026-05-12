@@ -274,3 +274,76 @@ def test_resolve_plan_install_io_failure_logged_not_raised(
 
     plan = _load_all()[plan_id]
     assert plan["status"] == "approved"
+
+
+def test_propose_new_skill_killswitch_returns_error(
+    clean_plan_state, isolated_skills_root, monkeypatch,
+):
+    from core.tools import skill_engine_tools as set_
+
+    class FakeSettings:
+        tool_invention_enabled = False
+
+    monkeypatch.setattr(set_, "load_settings", lambda: FakeSettings())
+
+    result = set_._exec_propose_new_skill({
+        "name": "x",
+        "description": "x",
+        "instructions": "x",
+        "session_id": "s1",
+    })
+    assert result["status"] == "error"
+    assert "disabled" in result["error"].lower()
+
+
+def test_propose_new_skill_validation_failure_returns_error(
+    clean_plan_state, isolated_skills_root,
+):
+    from core.tools import skill_engine_tools as set_
+
+    result = set_._exec_propose_new_skill({
+        "name": "BAD!NAME",
+        "description": "x",
+        "instructions": "x",
+        "session_id": "s1",
+    })
+    assert result["status"] == "error"
+
+
+def test_propose_new_skill_valid_proposal_creates_plan(
+    clean_plan_state, isolated_skills_root,
+):
+    from core.tools import skill_engine_tools as set_
+    from core.services.plan_proposals import _load_all
+
+    result = set_._exec_propose_new_skill({
+        "name": "auto-renamer",
+        "description": "Renames files based on content",
+        "instructions": "When given a file, rename it based on its content.",
+        "use_when": "When user asks for batch rename",
+        "tags": ["filesystem"],
+        "session_id": "s1",
+    })
+    assert result["status"] == "ok"
+    plan_id = result["plan_id"]
+
+    plans = _load_all()
+    assert plans[plan_id]["status"] == "awaiting_approval"
+    assert plans[plan_id]["skill_data"]["name"] == "auto-renamer"
+
+
+def test_propose_new_skill_registered_in_tool_definitions():
+    """The new tool is exposed via SKILL_ENGINE_TOOL_DEFINITIONS
+    and SKILL_ENGINE_TOOL_HANDLERS."""
+    from core.tools.skill_engine_tools import (
+        SKILL_ENGINE_TOOL_DEFINITIONS,
+        SKILL_ENGINE_TOOL_HANDLERS,
+    )
+
+    names = [
+        (entry.get("function") or {}).get("name")
+        for entry in SKILL_ENGINE_TOOL_DEFINITIONS
+        if isinstance(entry, dict)
+    ]
+    assert "propose_new_skill" in names
+    assert "propose_new_skill" in SKILL_ENGINE_TOOL_HANDLERS

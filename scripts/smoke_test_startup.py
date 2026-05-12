@@ -234,6 +234,20 @@ async def _run_lifespan() -> None:
         except Exception:
             traceback.print_exc()
 
+        # Music / Æstetik Phase 1 (Lag #6 — added 2026-05-11)
+        try:
+            from core.services.ambient_sound_daemon import (  # noqa: F401
+                count_music_samples_last_hours,
+                _select_music_influence_phrase,
+                get_music_accumulator_for_prompt,
+            )
+            from core.services.creative_journal_runtime import (  # noqa: F401
+                _fetch_recent_top_motif,
+                _fetch_dominant_taste,
+            )
+        except Exception:
+            traceback.print_exc()
+
 
 def main() -> int:
     started = time.monotonic()

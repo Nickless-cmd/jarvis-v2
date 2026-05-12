@@ -515,6 +515,23 @@ def _ensure_producers_registered() -> None:
         depends_on=["finitude_runtime"],
     ))
 
+    def _run_world_model_ttl_sweep(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from datetime import UTC as _UTC
+        from datetime import datetime as _datetime
+        from core.services.world_model_signal_tracking import (
+            _ttl_sweep_open_predictions,
+        )
+        return _ttl_sweep_open_predictions(now=_datetime.now(_UTC))
+
+    register_producer(ProducerSpec(
+        name="world_model_ttl_sweeper",
+        cooldown_minutes=1440,  # 1×/day
+        visible_grace_minutes=60,
+        run_fn=_run_world_model_ttl_sweep,
+        priority=28,
+        depends_on=[],
+    ))
+
     def _run_life_projects_reassessment(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.life_projects import tick_life_projects_reassessment
         return tick_life_projects_reassessment(trigger=trigger, last_visible_at=last_visible_at)

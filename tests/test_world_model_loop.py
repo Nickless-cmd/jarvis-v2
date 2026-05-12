@@ -325,3 +325,104 @@ def test_format_nudges_respects_killswitch(clean_state, monkeypatch):
         matched_phrase="jeg tror", context_excerpt="x",
     )
     assert wm.format_world_model_nudges_for_awareness(session_id="s1") == ""
+
+
+def test_ttl_sweep_marks_expired_prediction_uncertain(clean_state):
+    """Predictions with parseable horizon past grace get auto-uncertain."""
+    from core.services.world_model_signal_tracking import (
+        record_runtime_world_model_prediction,
+        _ttl_sweep_open_predictions,
+        _load_predictions,
+        _save_predictions,
+    )
+
+    record_runtime_world_model_prediction(
+        subject="test",
+        expectation="should expire",
+        horizon="i dag",
+        confidence="low",
+        evidence=[],
+    )
+    preds = _load_predictions()
+    preds[0]["created_at"] = (
+        datetime.now(UTC) - timedelta(hours=50)
+    ).isoformat()
+    _save_predictions(preds)
+
+    result = _ttl_sweep_open_predictions(now=datetime.now(UTC))
+    assert result["resolved"] >= 1
+
+    preds_after = _load_predictions()
+    assert preds_after[0]["status"] == "resolved"
+    assert preds_after[0]["outcome"] == "uncertain"
+    assert preds_after[0]["resolved_via"] == "ttl_auto"
+
+
+def test_ttl_sweep_keeps_recent_predictions_open(clean_state):
+    """Fresh predictions are not touched by TTL sweep."""
+    from core.services.world_model_signal_tracking import (
+        record_runtime_world_model_prediction,
+        _ttl_sweep_open_predictions,
+        _load_predictions,
+    )
+
+    record_runtime_world_model_prediction(
+        subject="fresh",
+        expectation="should stay open",
+        horizon="i dag",
+        confidence="low",
+        evidence=[],
+    )
+    result = _ttl_sweep_open_predictions(now=datetime.now(UTC))
+    assert result["resolved"] == 0
+    preds = _load_predictions()
+    assert preds[0]["status"] == "open"
+
+
+def test_ttl_sweep_ignores_unparseable_horizon_initially(clean_state):
+    """If horizon can't be parsed, the default grace is used (7 days)."""
+    from core.services.world_model_signal_tracking import (
+        record_runtime_world_model_prediction,
+        _ttl_sweep_open_predictions,
+        _load_predictions,
+        _save_predictions,
+    )
+
+    record_runtime_world_model_prediction(
+        subject="weird-horizon",
+        expectation="x",
+        horizon="vague time soon",
+        confidence="low",
+        evidence=[],
+    )
+    preds = _load_predictions()
+    preds[0]["created_at"] = (
+        datetime.now(UTC) - timedelta(days=3)
+    ).isoformat()
+    _save_predictions(preds)
+
+    result = _ttl_sweep_open_predictions(now=datetime.now(UTC))
+    assert result["resolved"] == 0
+
+
+def test_ttl_sweep_respects_killswitch(clean_state, monkeypatch):
+    from core.services import world_model_signal_tracking as wm
+
+    class FakeSettings:
+        world_model_loop_enabled = False
+
+    monkeypatch.setattr(wm, "load_settings", lambda: FakeSettings())
+
+    wm.record_runtime_world_model_prediction(
+        subject="x", expectation="y", horizon="i dag",
+        confidence="low", evidence=[],
+    )
+    preds = wm._load_predictions()
+    preds[0]["created_at"] = (
+        datetime.now(UTC) - timedelta(hours=50)
+    ).isoformat()
+    wm._save_predictions(preds)
+
+    result = wm._ttl_sweep_open_predictions(now=datetime.now(UTC))
+    assert result["resolved"] == 0
+    assert wm._load_predictions()[0]["status"] == "open"

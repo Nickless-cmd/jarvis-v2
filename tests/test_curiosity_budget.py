@@ -205,3 +205,140 @@ def test_open_idle_window_skips_if_no_budget(clean_state):
         decrement_budget(action="x", observation_id=f"o{i}")
     open_idle_window()
     assert idle_window_open() is False
+
+
+def test_curiosity_tool_definitions_complete():
+    from core.tools.curiosity_tools import (
+        CURIOSITY_TOOL_DEFINITIONS, CURIOSITY_TOOL_HANDLERS,
+    )
+    expected = {
+        "curiosity_search_memory", "curiosity_read_chronicles",
+        "curiosity_read_dreams", "curiosity_read_model_config",
+        "curiosity_read_mood", "curiosity_list_skills",
+        "curiosity_list_tools", "curiosity_search_events",
+        "curiosity_search_sessions",
+    }
+    names = {
+        (e.get("function") or {}).get("name")
+        for e in CURIOSITY_TOOL_DEFINITIONS if isinstance(e, dict)
+    }
+    assert names == expected
+    assert set(CURIOSITY_TOOL_HANDLERS.keys()) == expected
+
+
+def test_curiosity_tool_requires_observation(clean_state):
+    from core.tools.curiosity_tools import _exec_curiosity_list_tools
+    result = _exec_curiosity_list_tools({})  # missing observation
+    assert result["status"] == "error"
+    assert "observation" in result["error"].lower()
+
+
+def test_curiosity_tool_decrements_budget(clean_state):
+    from core.services.curiosity_budget import remaining_today
+    from core.tools.curiosity_tools import _exec_curiosity_list_tools
+
+    before = remaining_today()
+    result = _exec_curiosity_list_tools({
+        "observation": "Vil se hvilke tools jeg har men aldrig brugt.",
+    })
+    assert result["status"] == "ok"
+    assert "observation_id" in result
+    assert "remaining" in result
+    assert remaining_today() == before - 1
+
+
+def test_curiosity_tool_killswitch(clean_state, monkeypatch):
+    from core.services import curiosity_budget as cb
+    from core.tools.curiosity_tools import _exec_curiosity_list_tools
+
+    class FakeSettings:
+        curiosity_budget_enabled = False
+
+    monkeypatch.setattr(cb, "load_settings", lambda: FakeSettings())
+    result = _exec_curiosity_list_tools({"observation": "x"})
+    assert result["status"] == "error"
+    assert "disabled" in result["error"].lower()
+
+
+def test_curiosity_tool_budget_exhaustion(clean_state):
+    from core.services.curiosity_budget import load_or_reset_budget, decrement_budget
+    from core.tools.curiosity_tools import _exec_curiosity_list_tools
+
+    load_or_reset_budget()
+    for i in range(5):
+        decrement_budget(action="x", observation_id=f"o{i}")
+
+    result = _exec_curiosity_list_tools({"observation": "let me see anyway"})
+    assert result["status"] == "error"
+    assert "brugt op" in result["error"]
+
+
+def test_curiosity_tool_persists_observation(clean_state):
+    from core.tools.curiosity_tools import _exec_curiosity_list_tools
+    from core.runtime.db import connect
+
+    result = _exec_curiosity_list_tools({
+        "observation": "Mit første nysgerrigheds-blik på mit eget toolset.",
+        "follow_up_hint": "Find ud af om jeg nogensinde har brugt finitude-tools.",
+    })
+    obs_id = result["observation_id"]
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM curiosity_observations WHERE id = ?", (obs_id,)
+        ).fetchone()
+    assert row is not None
+    assert row["action"] == "list_tools"
+    assert "nysgerrigheds-blik" in row["observation_text"]
+    assert "finitude-tools" in row["follow_up_hint"]
+
+
+def test_curiosity_search_events_returns_rows(clean_state):
+    """search_events queries the events table; returns OK with rows list."""
+    from core.runtime.db import connect
+    from core.tools.curiosity_tools import _exec_curiosity_search_events
+
+    # Seed at least one event row so the query has something to return
+    with connect() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS events (
+              event_id TEXT PRIMARY KEY,
+              family TEXT,
+              kind TEXT,
+              created_at TEXT,
+              payload_json TEXT
+            )
+        """)
+        conn.execute(
+            "INSERT INTO events VALUES (?, ?, ?, ?, ?)",
+            ("evt-1", "cognitive_state", "test_event",
+             datetime.now(UTC).isoformat(), "{}"),
+        )
+        conn.commit()
+
+    result = _exec_curiosity_search_events({
+        "observation": "Hvilke events har jeg haft i dag?",
+        "family": "cognitive_state",
+        "limit": 5,
+    })
+    assert result["status"] == "ok"
+    assert isinstance(result["result"]["rows"], list)
+    assert len(result["result"]["rows"]) >= 1
+
+
+def test_curiosity_tools_registered_via_simple_tools():
+    """End-to-end: splat into simple_tools picks up all 9 wrappers."""
+    from core.tools.simple_tools import TOOL_DEFINITIONS, _TOOL_HANDLERS
+
+    names = {
+        (e.get("function") or {}).get("name")
+        for e in TOOL_DEFINITIONS if isinstance(e, dict)
+    }
+    expected = {
+        "curiosity_search_memory", "curiosity_read_chronicles",
+        "curiosity_read_dreams", "curiosity_read_model_config",
+        "curiosity_read_mood", "curiosity_list_skills",
+        "curiosity_list_tools", "curiosity_search_events",
+        "curiosity_search_sessions",
+    }
+    assert expected <= names
+    assert expected <= set(_TOOL_HANDLERS.keys())

@@ -110,6 +110,10 @@ def propose_plan(
         # When present, resolve_plan(decision="approved") will call
         # skill_engine.create_skill() on it after status transition.
         "skill_data": skill_data if isinstance(skill_data, dict) else None,
+        # Phase 2 (2026-05-12) — revision tracking
+        "revised_from": None,
+        "revision_reason": None,
+        "superseded_by": None,
     }
     _save_all(data)
     return {"status": "ok", "plan_id": plan_id, "awaiting": True, "session_id": sid}
@@ -224,6 +228,114 @@ def _plan_todo_auto_create_enabled() -> bool:
         return bool(load_settings().plan_todo_auto_create_enabled)
     except Exception:
         return True
+
+
+def revise_plan(
+    *,
+    plan_id: str,
+    session_id: str | None,
+    reason: str,
+    new_steps: list[str],
+) -> dict[str, Any]:
+    """Propose a revision of an existing approved plan.
+
+    Creates a NEW plan record with status="awaiting_approval", linked to
+    the original via revised_from. The original plan is NOT mutated here —
+    it stays "approved" until the revision is approved (see resolve_plan
+    hook). Progress is reset on the new plan; skill_data is NOT inherited.
+
+    Phase 2 of Multi-step Planner (2026-05-12).
+    """
+    if not _plan_revision_enabled():
+        return {"status": "error", "error": "plan_revision disabled (killswitch)"}
+
+    pid = str(plan_id or "").strip()
+    reason_clean = (reason or "").strip()
+    cleaned_steps = [str(s).strip() for s in (new_steps or []) if str(s).strip()]
+
+    if not pid:
+        return {"status": "error", "error": "plan_id is required"}
+    if not reason_clean:
+        return {"status": "error", "error": "reason is required"}
+    if not cleaned_steps:
+        return {"status": "error", "error": "new_steps must contain at least one non-empty entry"}
+
+    data = _load_all()
+    old = data.get(pid)
+    if old is None:
+        return {"status": "error", "error": f"unknown plan_id {pid!r}"}
+    if old.get("status") != "approved":
+        return {
+            "status": "error",
+            "error": (
+                f"plan {pid} is {old.get('status')!r}, not 'approved' — "
+                "only approved plans can be revised"
+            ),
+        }
+
+    # Dedupe: if a pending revision of this same plan_id already exists,
+    # return the existing one rather than creating a duplicate.
+    for existing_id, rec in data.items():
+        if (
+            rec.get("status") == "awaiting_approval"
+            and rec.get("revised_from") == pid
+        ):
+            return {
+                "status": "skipped_duplicate",
+                "existing_plan_id": existing_id,
+                "awaiting": True,
+                "session_id": str(rec.get("session_id") or session_id or "_default"),
+            }
+
+    sid = str(session_id or old.get("session_id") or "_default")
+    new_plan_id = f"plan-{uuid4().hex[:10]}"
+    now = datetime.now(UTC).isoformat()
+
+    data[new_plan_id] = {
+        "plan_id": new_plan_id,
+        "session_id": sid,
+        "title": f"Revision of {old.get('title') or pid}"[:160],
+        "why": reason_clean[:400],
+        "steps": cleaned_steps[:20],
+        "status": "awaiting_approval",
+        "created_at": now,
+        "completed_step_indices": [],
+        # Revisions never carry skill_data — they are for step-flows.
+        "skill_data": None,
+        # Phase 2 revision tracking
+        "revised_from": pid,
+        "revision_reason": reason_clean,
+        "superseded_by": None,
+    }
+    _save_all(data)
+
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "cognitive_state.plan_revised",
+            {
+                "old_plan_id": pid,
+                "new_plan_id": new_plan_id,
+                "reason": reason_clean[:120],
+            },
+        )
+    except Exception:
+        pass
+
+    return {
+        "status": "ok",
+        "plan_id": new_plan_id,
+        "awaiting": True,
+        "session_id": sid,
+        "revised_from": pid,
+    }
+
+
+def _plan_revision_enabled() -> bool:
+    try:
+        return bool(load_settings().plan_revision_enabled)
+    except Exception:
+        return True  # fail-open
 
 
 def mark_step_completed(plan_id: str, step_index: int) -> dict[str, Any]:

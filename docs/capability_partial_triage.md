@@ -8,8 +8,8 @@ Current audit:
 
 | Score | Count |
 |---|---:|
-| LIVE | 452 |
-| PARTIAL | 50 |
+| LIVE | 487 |
+| PARTIAL | 15 |
 | SUSPICIOUS | 3 |
 | ORPHAN | 1 |
 
@@ -152,13 +152,79 @@ Batch 6 complete (2026-05-12):
 Result: direct contract tests added in `tests/test_internal_and_helper_surfaces.py`.
 All five services now have explicit proof, and the audit moved again.
 
+Batch 7 complete (2026-05-12):
+
+1. `affirmation_anchor.py`
+2. `agreement_streak.py`
+3. `decision_adherence_gate.py`
+4. `self_model_predictive.py`
+5. `self_monitor.py`
+
+Result: direct contract tests added in `tests/test_prompt_surface_helpers.py`.
+The audit moved again.
+
+Batch 8 complete (2026-05-12):
+
+1. `conflict_prompt_service.py`
+2. `life_milestones.py`
+3. `priors_feedback.py`
+4. `session_wakeup.py`
+5. `clarification_classifier.py`
+
+Result: direct contract tests added in `tests/test_prompt_surface_helpers_2.py`.
+The audit moved again.
+
+Batch 9 complete (2026-05-12):
+
+1. `agentic_tool_cache.py`
+2. `memory_consolidation_nudge.py`
+3. `creative_projects.py`
+4. `mood_dialer.py`
+5. `heartbeat_provider_fallback.py`
+
+Result: direct contract tests added in `tests/test_cache_project_and_fallback_surfaces.py`.
+The audit moved again.
+
+Batch 10 complete (2026-05-12):
+
+1. `calm_anchor.py`
+2. `developmental_valence.py`
+3. `temporal_rhythm.py`
+4. `valence_trajectory.py`
+5. `relational_warmth.py`
+
+Result: direct contract tests added in `tests/test_affect_and_anchor_surfaces.py`.
+The audit moved again.
+
+Batch 11 complete (2026-05-12):
+
+1. `experience_correction_listener.py`
+2. `subagent_digest.py`
+3. `visible_self_state_summary.py`
+4. `memory_resurfacing.py`
+5. `memory_graph.py`
+
+Result: direct contract tests added in `tests/test_memory_and_session_surfaces.py`.
+The audit moved again.
+
+Batch 12 complete (2026-05-12):
+
+1. `turn_changelog.py`
+2. `side_tasks.py`
+3. `text_resonance.py`
+4. `nudge_broend.py`
+5. `signal_surface_gc.py`
+
+Result: direct contract tests added in `tests/test_turn_side_text_gc_surfaces.py`.
+The audit moved again.
+
 Current next batch candidates:
 
-1. `monitor_streams.py`
-2. `read_before_write_guard.py`
-3. `deep_analyzer.py`
-4. `decision_review_prompter.py`
-5. `agent_outcomes_log.py`
+1. `agent_skill_distiller.py`
+2. `avoidance_detector.py`
+3. `creative_instinct_daemon.py`
+4. `day_shape_memory.py`
+5. `dream_motif_daemon.py`
 
 Acceptance criteria:
 

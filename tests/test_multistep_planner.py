@@ -290,3 +290,92 @@ def test_pending_plan_section_hides_fully_completed(clean_state):
 def test_pending_plan_section_returns_none_when_empty(clean_state):
     from core.services.plan_proposals import pending_plan_section
     assert pending_plan_section("s1") is None
+
+
+def test_cross_session_excludes_current_session(clean_state):
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan,
+        format_cross_session_plans_for_awareness,
+    )
+
+    rA = propose_plan(session_id="A", title="Plan A", why="x", steps=["a", "b"])
+    resolve_plan(rA["plan_id"], decision="approved")
+
+    surface_A = format_cross_session_plans_for_awareness("A")
+    assert surface_A == ""
+
+    surface_B = format_cross_session_plans_for_awareness("B")
+    assert "Plan A" in surface_B
+
+
+def test_cross_session_excludes_fully_completed(clean_state):
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, mark_step_completed,
+        format_cross_session_plans_for_awareness,
+    )
+
+    rA = propose_plan(session_id="A", title="Done plan", why="x", steps=["a"])
+    resolve_plan(rA["plan_id"], decision="approved")
+    mark_step_completed(rA["plan_id"], 0)
+
+    surface_B = format_cross_session_plans_for_awareness("B")
+    assert "Done plan" not in surface_B
+
+
+def test_cross_session_excludes_awaiting_and_dismissed(clean_state):
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan,
+        format_cross_session_plans_for_awareness,
+    )
+
+    propose_plan(session_id="A", title="Awaiting", why="x", steps=["a"])
+    rA2 = propose_plan(session_id="A", title="Dismissed", why="x", steps=["a"])
+    resolve_plan(rA2["plan_id"], decision="dismissed")
+
+    surface_B = format_cross_session_plans_for_awareness("B")
+    assert "Awaiting" not in surface_B
+    assert "Dismissed" not in surface_B
+
+
+def test_cross_session_caps_at_max_plans(clean_state):
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan,
+        format_cross_session_plans_for_awareness,
+    )
+
+    for i in range(5):
+        r = propose_plan(
+            session_id=f"sess-{i}", title=f"Plan {i}", why="x", steps=["a"],
+        )
+        resolve_plan(r["plan_id"], decision="approved")
+
+    surface = format_cross_session_plans_for_awareness("current", max_plans=3)
+    mentions = sum(1 for i in range(5) if f"Plan {i}" in surface)
+    assert mentions == 3
+
+
+def test_cross_session_filters_by_plan_age(clean_state, monkeypatch):
+    from core.services.plan_proposals import (
+        propose_plan, resolve_plan, _load_all, _save_all,
+        format_cross_session_plans_for_awareness,
+    )
+
+    r1 = propose_plan(session_id="A", title="Fresh", why="x", steps=["a"])
+    r2 = propose_plan(session_id="B", title="Stale", why="x", steps=["a"])
+    resolve_plan(r1["plan_id"], decision="approved")
+    resolve_plan(r2["plan_id"], decision="approved")
+
+    data = _load_all()
+    data[r2["plan_id"]]["created_at"] = (
+        datetime.now(UTC) - timedelta(days=30)
+    ).isoformat()
+    _save_all(data)
+
+    surface = format_cross_session_plans_for_awareness("X", max_age_days=14)
+    assert "Fresh" in surface
+    assert "Stale" not in surface
+
+
+def test_cross_session_empty_returns_empty_string(clean_state):
+    from core.services.plan_proposals import format_cross_session_plans_for_awareness
+    assert format_cross_session_plans_for_awareness("A") == ""

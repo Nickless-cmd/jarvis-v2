@@ -8,8 +8,8 @@ Current audit:
 
 | Score | Count |
 |---|---:|
-| LIVE | 421 |
-| PARTIAL | 81 |
+| LIVE | 426 |
+| PARTIAL | 76 |
 | SUSPICIOUS | 3 |
 | ORPHAN | 1 |
 
@@ -92,13 +92,25 @@ Skyoffice remains intentionally out of scope for now:
 
 Start with the prompt/memory/governance edge because that is where "real vs theater" matters most.
 
-Batch 1:
+Batch 1 complete:
 
 1. `prompt_heartbeat_self_knowledge.py`
 2. `prompt_support_signals.py`
 3. `continuity.py`
 4. `development_sense.py`
 5. `experience_episodes.py`
+
+Result: direct contract tests added in `tests/test_partial_service_contracts.py`.
+`continuity.py` and `development_sense.py` also had small wording changes to
+replace identity/performance claims with evidence-based state reporting.
+
+Next batch candidates:
+
+1. `proactive_outbound_substrate.py`
+2. `verification_gate_telemetry.py`
+3. `semantic_memory.py`
+4. `semantic_indexer.py`
+5. `inheritance_seed.py`
 
 Acceptance criteria:
 

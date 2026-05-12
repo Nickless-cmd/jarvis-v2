@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import sys
 
 import pytest
 
@@ -9,11 +10,20 @@ import pytest
 def clean_runtime_state(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("JARVIS_WORKSPACES_DIR", str(tmp_path / "workspaces"))
+    import core.runtime.config as config
     import core.runtime.db as db
     import core.runtime.state_store as state_store
 
+    importlib.reload(config)
     importlib.reload(db)
     importlib.reload(state_store)
+    for module_name in (
+        "core.services.contradiction_engine",
+        "core.services.emergence",
+        "core.services.prospective_memory",
+    ):
+        if module_name in sys.modules:
+            importlib.reload(sys.modules[module_name])
     return None
 
 

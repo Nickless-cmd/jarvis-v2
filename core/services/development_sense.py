@@ -156,15 +156,15 @@ def stuck_signal() -> dict[str, Any] | None:
         )
         loops = list_runtime_proactive_loop_lifecycle_signals(limit=20) or []
         cutoff = datetime.now(UTC) - timedelta(days=14)
-        for l in loops:
-            if str(l.get("status", "")) not in {"active", "softening"}:
+        for loop in loops:
+            if str(loop.get("status", "")) not in {"active", "softening"}:
                 continue
             try:
-                created = datetime.fromisoformat(str(l.get("created_at", "")))
+                created = datetime.fromisoformat(str(loop.get("created_at", "")))
             except ValueError:
                 continue
             if created < cutoff:
-                title = str(l.get("title") or l.get("summary", ""))[:60]
+                title = str(loop.get("title") or loop.get("summary", ""))[:60]
                 age_days = (datetime.now(UTC) - created).days
                 reasons.append(f"loop '{title}' åben i {age_days}d")
                 if len(reasons) >= 3:
@@ -174,7 +174,9 @@ def stuck_signal() -> dict[str, Any] | None:
     # Decision adherence persistently low
     adh = _adherence_score()
     if adh is not None and adh < 0.5:
-        reasons.append(f"adherence={int(adh*100)}% — du holder ikke dine forpligtelser")
+        reasons.append(
+            f"adherence={int(adh*100)}% — beslutningsopfølgning under tærskel"
+        )
 
     if not reasons:
         return None
@@ -261,7 +263,7 @@ def resistance_signal() -> dict[str, Any] | None:
                     if abs(float(z)) >= 2.0 and dim:
                         flags.append(
                             f"{dim} drifter {direction} (z={float(z):+.1f}) — "
-                            "du flytter dig væk fra din baseline"
+                            "baseline-afvigelse over tærskel"
                         )
                 except (TypeError, ValueError):
                     continue

@@ -2502,6 +2502,13 @@ _MC_SECRET_KEY_MARKERS = (
     "oauth",
 )
 
+_MC_SECRET_EXACT_KEYS = {
+    "app_id",
+    "claim_code",
+    "key",
+    "token",
+}
+
 
 def _mc_key_is_secret(key: object) -> bool:
     normalized = str(key).strip().lower().replace("-", "_")
@@ -2509,7 +2516,9 @@ def _mc_key_is_secret(key: object) -> bool:
         return False
     if any(marker in normalized for marker in _MC_SECRET_KEY_MARKERS):
         return True
-    return normalized == "token" or normalized.endswith("_token")
+    if normalized in _MC_SECRET_EXACT_KEYS:
+        return True
+    return normalized.endswith("_token") or normalized.endswith("_key")
 
 
 def _redact_mc_secrets(value):

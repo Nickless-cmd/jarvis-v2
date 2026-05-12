@@ -200,6 +200,11 @@ class RuntimeSettings:
     # awareness-injection shows budget. When False: all tools error out,
     # producer skipped, no awareness. Reverts fully. AGI track #6.
     curiosity_budget_enabled: bool = True
+    # ── Skill Chain Phase 2 (added 2026-05-12 — AGI track #10) ────────────
+    # When True: propose_skill_chain + revise_skill_chain tools registered.
+    # When False: both tools error immediately, Phase 1 skill_chain works
+    # as before (manual plukning). Master killswitch for both new tools.
+    skill_chain_phase2_enabled: bool = True
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -671,6 +676,12 @@ def load_settings() -> RuntimeSettings:
             data.get(
                 "curiosity_budget_enabled",
                 defaults.curiosity_budget_enabled,
+            )
+        ),
+        skill_chain_phase2_enabled=bool(
+            data.get(
+                "skill_chain_phase2_enabled",
+                defaults.skill_chain_phase2_enabled,
             )
         ),
         longing_daemon_cadence_minutes=int(

@@ -133,7 +133,84 @@ META_LEARNING_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
 ]
 
+def _exec_register_hypothesis(args: dict[str, Any]) -> dict[str, Any]:
+    """Promote a memo hypothesis_candidate to an active tracked hypothesis."""
+    if not _phase1_enabled():
+        return {"status": "disabled"}
+    memo_id = str(args.get("memo_id") or "").strip()
+    try:
+        idx = int(args.get("candidate_idx") or 0)
+    except (TypeError, ValueError):
+        return {"status": "rejected", "reason": "candidate_idx must be integer"}
+    if not memo_id:
+        return {"status": "rejected", "reason": "memo_id required"}
+    try:
+        from core.services.meta_learning_hypotheses import register_hypothesis
+        return register_hypothesis(memo_id=memo_id, candidate_idx=idx)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _exec_record_hypothesis_sample(args: dict[str, Any]) -> dict[str, Any]:
+    if not _phase1_enabled():
+        return {"status": "disabled"}
+    hyp_id = str(args.get("hypothesis_id") or "").strip()
+    supports = bool(args.get("supports"))
+    note = args.get("note")
+    if not hyp_id:
+        return {"status": "rejected", "reason": "hypothesis_id required"}
+    try:
+        from core.services.meta_learning_hypotheses import record_hypothesis_sample
+        return record_hypothesis_sample(hypothesis_id=hyp_id, supports=supports, note=note)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+META_LEARNING_TOOL_DEFINITIONS.extend([
+    {
+        "type": "function",
+        "function": {
+            "name": "register_hypothesis",
+            "description": (
+                "Promovér en hypotese-kandidat fra et meta-læringsmemo til "
+                "en aktiv testet hypotese. Efter sample_size_needed prøver "
+                "auto-resolves den til supported/contradicted/uncertain."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "memo_id": {"type": "string"},
+                    "candidate_idx": {"type": "integer", "description": "0-indekseret position i memo.hypothesis_candidates"},
+                },
+                "required": ["memo_id", "candidate_idx"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "record_hypothesis_sample",
+            "description": (
+                "Registrér én observation der enten understøtter eller "
+                "modsiger en aktiv hypotese. supports=true betyder "
+                "observationen stemmer med hypotesen."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "hypothesis_id": {"type": "string"},
+                    "supports": {"type": "boolean"},
+                    "note": {"type": "string"},
+                },
+                "required": ["hypothesis_id", "supports"],
+            },
+        },
+    },
+])
+
 META_LEARNING_TOOL_HANDLERS: dict[str, Any] = {
     "read_learning_memo": _exec_read_learning_memo,
     "list_learning_memos": _exec_list_learning_memos,
+    "register_hypothesis": _exec_register_hypothesis,
+    "record_hypothesis_sample": _exec_record_hypothesis_sample,
 }

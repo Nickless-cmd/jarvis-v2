@@ -49,16 +49,44 @@ def decision_adherence_section() -> str:
 
     if not active:
         return ""
-    if not active:
-        return ""
+
+    # Live R2 heed-rate overlay (2026-05-13). adherence_score in DB only
+    # updates on manual review_decision() — most decisions never get reviewed,
+    # so the stored score stays at default (0.95+). Real behaviour is in R2
+    # telemetry (surfaces vs heeded). For decisions about "follow warnings"
+    # (loop_nudge, verification gate), R2 heed_rate is the truer signal.
+    # If R2 rate is low + surfaced volume meaningful, fold it in as min(score, rate)
+    # so gate fires when EITHER signal indicates a problem.
+    r2_rate: float | None = None
+    try:
+        from core.services.verification_gate_telemetry import get_telemetry_summary
+        s = get_telemetry_summary(hours=24)
+        if int(s.get("surfaced_total") or 0) >= 5:
+            r = s.get("heed_rate")
+            if r is not None:
+                r2_rate = float(r)
+    except Exception as exc:
+        logger.debug("decision_adherence_gate: r2 lookup failed: %s", exc)
+
+    # Decision IDs whose adherence should be derived from R2 telemetry rather
+    # than the stale stored score. Add new ones here when we identify them.
+    _R2_LINKED_DECISIONS = {
+        "dec_d56d89ceec24",  # loop-nudge commitment — tracked in R2 gate
+    }
 
     lines = ["\n[DECISION-ADHERENCE-GATE]"]
     has_escalation = False
 
     for d in active:
         directive = d.get("directive", "")
-        score = d.get("adherence_score", 1.0) or 1.0
+        stored_score = d.get("adherence_score", 1.0) or 1.0
         dec_id = d.get("decision_id", "?")
+
+        # Overlay R2 telemetry where applicable
+        if r2_rate is not None and dec_id in _R2_LINKED_DECISIONS:
+            score = min(float(stored_score), r2_rate)
+        else:
+            score = float(stored_score)
 
         if score >= _GOOD_THRESHOLD:
             continue  # doing fine, no nudge needed

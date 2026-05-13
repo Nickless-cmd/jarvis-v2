@@ -129,13 +129,35 @@ def _fire_due_tasks() -> None:
                 pass
 
             try:
-                result = send_session_notification(
-                    f"[scheduled reminder] {focus}",
-                    source="scheduled-task",
-                )
+                # Route through outbound_nudges (2026-05-13): scheduled
+                # reminders are INTERNAL signals to Jarvis (not DMs to user).
+                # They land in his awareness; he decides how to act. User
+                # sees outcome when Jarvis responds or via Mission Control.
+                try:
+                    from core.runtime.settings import load_settings as _ls_st
+                    if _ls_st().nudge_system_enabled:
+                        from core.services.outbound_nudges import push_nudge
+                        nudge_r = push_nudge(
+                            source="scheduled_task",
+                            kind="other",
+                            message=f"[scheduled reminder] {focus}",
+                            importance="normal",
+                        )
+                        result = {"status": "ok", "via": "nudge", "nudge_id": nudge_r.get("nudge_id")}
+                    else:
+                        result = send_session_notification(
+                            f"[scheduled reminder] {focus}",
+                            source="scheduled-task",
+                        )
+                except Exception:
+                    # Fallback to direct on any failure
+                    result = send_session_notification(
+                        f"[scheduled reminder] {focus}",
+                        source="scheduled-task",
+                    )
                 if result.get("status") == "ok":
                     runtime_db.mark_scheduled_task_fired(task_id, fired_at=now_iso, updated_at=now_iso)
-                    logger.info("scheduled_tasks: fired %s → delivered", task_id)
+                    logger.info("scheduled_tasks: fired %s → delivered (via=%s)", task_id, result.get("via", "direct"))
 
                     # Also push to initiative queue so Jarvis can act on it autonomously
                     try:

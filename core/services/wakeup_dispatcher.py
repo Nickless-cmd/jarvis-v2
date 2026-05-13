@@ -45,38 +45,42 @@ def dispatch_due_wakeups() -> dict[str, Any]:
         prompt = str(record.get("prompt", ""))
         reason = str(record.get("reason", ""))
 
-        # A: push notification to the ORIGINAL channel only.
-        # The wakeup record stores which channel + session it came from —
-        # we respect that instead of blasting dual-channel every time.
+        # A: route through outbound_nudges (2026-05-13). Self-wakeups are
+        # INTERNAL signals to Jarvis (he set them, or Bjørn set them for
+        # him). They should not land as DMs to Bjørn — they should appear
+        # in Jarvis' awareness so he can choose to act on them. Bjørn sees
+        # the outcome when Jarvis responds, or via Mission Control.
         wakeup_channel = record.get("channel", "webchat")
         wakeup_session = record.get("session_id", "")
-
-        if wakeup_channel == "discord":
-            # Discord DM only
-            try:
-                from core.services.discord_gateway import send_dm_to_user, is_gateway_connected
-                from core.services.discord_identity import get_owner_discord_id
-                if is_gateway_connected():
-                    owner_id = get_owner_discord_id()
-                    if owner_id:
-                        send_dm_to_user(
-                            owner_id,
-                            f"⏰ Self-wakeup: {prompt}\n_(wakeup_id: {wid})_",
-                        )
-            except Exception as exc:
-                logger.debug("wakeup Discord DM failed: %s", exc)
-        else:
-            # Default: webchat notification
-            try:
-                from core.services.notification_bridge import send_session_notification
-                msg = (
-                    f"⏰ Self-wakeup fyrede ({reason or 'no reason'}):\n"
-                    f"  {prompt}\n"
-                    f"_(wakeup_id: {wid})_"
+        nudge_message = (
+            f"Self-wakeup fyrede ({reason or 'no reason'}): {prompt} "
+            f"[wakeup_id={wid}, channel={wakeup_channel}]"
+        )
+        try:
+            from core.runtime.settings import load_settings as _ls_w
+            if _ls_w().nudge_system_enabled:
+                from core.services.outbound_nudges import push_nudge
+                push_nudge(
+                    source="wakeup_dispatcher",
+                    kind="other",
+                    message=nudge_message,
+                    importance="normal",
+                    parent_session_id=wakeup_session,
                 )
-                send_session_notification(msg, source="self-wakeup")
-            except Exception as exc:
-                logger.warning("wakeup webchat push failed: %s", exc)
+            else:
+                # Fallback (killswitch off): legacy direct-send paths
+                if wakeup_channel == "discord":
+                    from core.services.discord_gateway import send_dm_to_user, is_gateway_connected
+                    from core.services.discord_identity import get_owner_discord_id
+                    if is_gateway_connected():
+                        owner_id = get_owner_discord_id()
+                        if owner_id:
+                            send_dm_to_user(owner_id, f"⏰ Self-wakeup: {prompt}\n_(wakeup_id: {wid})_")
+                else:
+                    from core.services.notification_bridge import send_session_notification
+                    send_session_notification(nudge_message, source="self-wakeup")
+        except Exception as exc:
+            logger.warning("wakeup nudge push failed: %s", exc)
 
         # B: trigger heartbeat phase tick (lets Jarvis' inner loop see it)
         try:

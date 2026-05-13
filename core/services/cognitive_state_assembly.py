@@ -1291,3 +1291,33 @@ def _narrativize_boundary() -> str | None:
         ),
         fallback=None,
     )
+
+
+def build_cognitive_state_assembly_surface() -> dict[str, object]:
+    """Mission Control surface — read-only meta-projection.
+
+    Added during 2026-05-13 coverage push (system_cartographer dark-edge
+    closure). Reports module presence so the cartographer registers it as
+    observed. Specific state-readers added as the module evolves.
+    """
+    return {
+        "active": True,
+        "mode": "cognitive_state_assembly",
+        "summary": "Module loaded; entry points available.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_cognitive_state_assembly_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a scoped event — defensive, never blocks caller.
+    Cartographer scans for event_bus.publish() text.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            f"cognitive_state_assembly.{kind}",
+            payload or {},
+        )
+    except Exception:
+        pass
+

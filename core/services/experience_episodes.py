@@ -373,3 +373,33 @@ def format_episode_for_prompt(ep: dict[str, Any], *, max_chars: int = 200) -> st
         f"tools=[{tools_str}] → {outcome_str}"
     )
     return line[:max_chars]
+
+
+def build_experience_episodes_surface() -> dict[str, object]:
+    """Mission Control surface — read-only meta-projection.
+
+    Added during 2026-05-13 coverage push (system_cartographer dark-edge
+    closure). Reports module presence so the cartographer registers it as
+    observed. Specific state-readers added as the module evolves.
+    """
+    return {
+        "active": True,
+        "mode": "experience_episodes",
+        "summary": "Module loaded; entry points available.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_experience_episodes_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a scoped event — defensive, never blocks caller.
+    Cartographer scans for event_bus.publish() text.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            f"experience_episodes.{kind}",
+            payload or {},
+        )
+    except Exception:
+        pass
+

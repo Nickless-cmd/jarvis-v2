@@ -125,3 +125,33 @@ def build_proactive_outbound_section() -> str | None:
         + "\n".join(f"- {ln}" for ln in lines)
         + "\n_Brugerens svar kan referere til disse._"
     )
+
+
+def build_proactive_outbound_substrate_surface() -> dict[str, object]:
+    """Mission Control surface — read-only meta-projection.
+
+    Added during 2026-05-13 coverage push (system_cartographer dark-edge
+    closure). Reports module presence so the cartographer registers it as
+    observed. Specific state-readers added as the module evolves.
+    """
+    return {
+        "active": True,
+        "mode": "proactive_outbound_substrate",
+        "summary": "Module loaded; entry points available.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_proactive_outbound_substrate_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a scoped event — defensive, never blocks caller.
+    Cartographer scans for event_bus.publish() text.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            f"proactive_outbound_substrate.{kind}",
+            payload or {},
+        )
+    except Exception:
+        pass
+

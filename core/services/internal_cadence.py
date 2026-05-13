@@ -619,6 +619,11 @@ def _ensure_producers_registered() -> None:
         Added 2026-05-12 after instrumentation identified rule_conclusions
         + cognitive_frame as the dominant assembly cost.
         """
+        # Logger.info so we can SEE when this fires in journal.
+        # Without this, the warmer is invisible because the producer
+        # doesn't publish events to the DB. Cheap line, big diagnostic value.
+        logger.info("prompt_assembly_cache_warmer: tick fired (trigger=%s)", trigger)
+
         out: dict[str, object] = {"rule_conclusions": "skipped", "cognitive_frame": "skipped"}
         try:
             from core.services.prompt_sections.rule_conclusions import (
@@ -638,6 +643,10 @@ def _ensure_producers_registered() -> None:
             out["cognitive_frame"] = "warmed"
         except Exception as exc:
             out["cognitive_frame"] = f"error: {exc}"
+        logger.info(
+            "prompt_assembly_cache_warmer: done rule_conclusions=%s cognitive_frame=%s",
+            out["rule_conclusions"], out["cognitive_frame"],
+        )
         return {"status": "ok", **out}
 
     register_producer(ProducerSpec(

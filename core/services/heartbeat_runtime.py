@@ -1845,8 +1845,17 @@ def _run_heartbeat_tick_locked(
             trigger="heartbeat",
             last_visible_at_iso=last_visible_at,
         )
-    except Exception:
-        pass  # cadence layer failure must not block heartbeat
+    except Exception as _cadence_exc:
+        # Was: bare `pass`. The silence hid that the cadence layer was
+        # broken — cache-warmer + meta-learning + life-projects producers
+        # never fired. Logger.warning now surfaces the actual exception so
+        # we can debug. Still doesn't re-raise — heartbeat must continue.
+        # (2026-05-13)
+        import traceback as _tb
+        logger.warning(
+            "cadence layer crashed in heartbeat tick: %s\n%s",
+            _cadence_exc, _tb.format_exc(),
+        )
 
     # --- Consciousness Experiments ---
     try:

@@ -165,3 +165,18 @@ def build_self_mutation_prompt_lines(*, limit: int = 5) -> list[str]:
         ts = m["when"][:16] if m["when"] else "?"
         lines.append(f"[{ts}] {m['change_type']} {m['path']} ({m['category']})")
     return lines
+
+
+def _emit_self_mutation_lineage_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a scoped event for cartographer observability.
+
+    State-mutation points in this module can call this with a transition
+    kind ("created", "updated", "transitioned", etc.). Defensive — never
+    blocks the caller. Added 2026-05-13 (top-18 cartographer pass).
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(f"self_mutation_lineage.{kind}", payload or {})
+    except Exception:
+        pass
+

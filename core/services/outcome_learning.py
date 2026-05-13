@@ -219,3 +219,18 @@ def _summary_line(count: int, total: float, top: list[dict[str, Any]]) -> str:
             f"stærkeste: {head['context']}={head['strength']}"
         )
     return f"{count} observationer, aktivt signal={round(total, 1)}"
+
+
+def _emit_outcome_learning_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a scoped event for cartographer observability.
+
+    State-mutation points in this module can call this with a transition
+    kind ("created", "updated", "transitioned", etc.). Defensive — never
+    blocks the caller. Added 2026-05-13 (top-18 cartographer pass).
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(f"outcome_learning.{kind}", payload or {})
+    except Exception:
+        pass
+

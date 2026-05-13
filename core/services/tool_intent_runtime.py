@@ -822,3 +822,18 @@ def _derive_intent_from_awareness(
         "low",
         "medium",
     )
+
+
+def _emit_tool_intent_runtime_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a scoped event for cartographer observability.
+
+    State-mutation points in this module can call this with a transition
+    kind ("created", "updated", "transitioned", etc.). Defensive — never
+    blocks the caller. Added 2026-05-13 (top-18 cartographer pass).
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(f"tool_intent_runtime.{kind}", payload or {})
+    except Exception:
+        pass
+

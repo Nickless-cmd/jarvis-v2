@@ -164,18 +164,18 @@ def build_mood_dialer_surface() -> dict[str, Any]:
 
 
 def _interpret_dialer(params: MoodDialerParams) -> str:
-    """Natural-language explanation of what these params mean right now."""
+    """Mechanism description of what the active preset gates."""
     if params.style_preset == "agentic":
         return (
-            "Jarvis er i agentic mode — tager selv initiativ, kører flere "
-            f"skridt ({params.max_steps}) uden at spørge om små ting."
+            f"Agentic preset: max_steps={params.max_steps}, "
+            "initiativ-band high, confirmation-threshold low."
         )
     if params.style_preset == "passive":
         return (
-            "Jarvis er i passive mode — venter på dig, tager minimal "
-            f"initiativ, kræver bekræftelse. Max {params.max_steps} skridt."
+            f"Passive preset: max_steps={params.max_steps}, "
+            "initiativ-band low, confirmation required for non-trivial steps."
         )
     return (
-        "Jarvis er balanced — moderat initiativ, bekræftelse på større skridt. "
-        f"Op til {params.max_steps} skridt per opgave."
+        f"Balanced preset: max_steps={params.max_steps}, "
+        "initiativ-band medium, confirmation for major branches."
     )

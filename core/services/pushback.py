@@ -280,25 +280,27 @@ def affective_pushback_section(user_message: str) -> str | None:
     if evidence and strength >= 0.75:
         action = "firm_pushback"
         instruction = (
-            "Sig tydeligt nej/ikke endnu, navngiv følelsen kort, bind den til "
-            "evidensen, og foreslå én bedre handling."
+            "Klassifikation: firm_pushback band — affect-intensity ≥0.75 + "
+            "evidence-match. Forventet output-shape: navngivet følelse + "
+            "evidence-binding + alternativ handling."
         )
     elif evidence:
         action = "soft_pushback"
         instruction = (
-            "Markér modstand før du handler, bind den til evidensen, og foreslå "
-            "ét verificerende næste skridt."
+            "Klassifikation: soft_pushback band — evidence-match uden høj intensity. "
+            "Forventet output-shape: markeret resistance + evidence-binding + "
+            "verification-step."
         )
     else:
         action = "ask_or_check"
         instruction = (
-            "Følelsen er ikke nok som dommer. Sig kun at du mærker modstand "
-            "hvis det hjælper, og lav et lille fakta-/risiko-check før du følger den."
+            "Klassifikation: ask_or_check band — affect uden evidence. "
+            "Forventet output-shape: fakta-/risiko-check før affect handles."
         )
 
     lines = [
-        "🫀 Affective pushback signal:",
-        f"  - feeling={feeling} intensity={strength:.2f} action={action}",
+        "Affective pushback signal:",
+        f"  feeling={feeling} intensity={strength:.2f} action={action}",
     ]
     if evidence:
         for item in evidence:

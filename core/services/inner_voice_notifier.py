@@ -123,9 +123,28 @@ def _handle_event(payload: dict[str, Any]) -> None:
 
     message = _format_message(summary=summary, initiative=initiative, mode=mode)
 
+    # Route through nudge ledger (Path 5 of spejlsal-audit). Inner voice
+    # notes are Type C: refleksive outputs fra indre tryk. They go via nudge
+    # so Jarvis can decide whether to surface with full context, instead of
+    # the user receiving a context-less inner-voice fragment.
     try:
-        from core.services.notification_bridge import send_session_notification
-        result = send_session_notification(message, source="inner-voice-notifier")
+        from core.runtime.settings import load_settings as _ls_iv
+        if _ls_iv().nudge_system_enabled:
+            from core.services.outbound_nudges import push_nudge
+            push_result = push_nudge(
+                source="inner_voice",
+                kind="inner_voice",
+                message=message,
+                importance="normal",
+            )
+            result = {
+                "status": "ok",
+                "via": "nudge",
+                "nudge_id": push_result.get("nudge_id"),
+            }
+        else:
+            from core.services.notification_bridge import send_session_notification
+            result = send_session_notification(message, source="inner-voice-notifier")
     except Exception as exc:
         logger.warning("inner_voice_notifier: delivery raised: %s", exc)
         return

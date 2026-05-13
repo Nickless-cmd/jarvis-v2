@@ -135,7 +135,21 @@ def _boredom_listener_loop() -> None:
                 restlessness = state.get("restlessness", 0)
                 desire = state.get("desire", "")
                 msg = f"[boredom] Restlessness {restlessness:.0%} — {desire}" if desire else f"[boredom] Restlessness {restlessness:.0%}"
-                send_session_notification(msg, source="boredom-bridge")
+                # Route through nudge ledger (Path 6 of spejlsal-audit).
+                try:
+                    from core.runtime.settings import load_settings as _ls_b
+                    if _ls_b().nudge_system_enabled:
+                        from core.services.outbound_nudges import push_nudge
+                        push_nudge(
+                            source="boredom_bridge",
+                            kind="boredom",
+                            message=msg,
+                            importance="low",
+                        )
+                    else:
+                        send_session_notification(msg, source="boredom-bridge")
+                except Exception:
+                    send_session_notification(msg, source="boredom-bridge")
             except Exception as exc:
                 logger.error("notification_bridge: boredom notify failed: %s", exc)
     finally:

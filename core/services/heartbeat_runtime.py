@@ -5130,8 +5130,47 @@ def _validate_heartbeat_decision(
                             session_id, title,
                         )
                         continue
+                    # Route through nudge ledger instead of direct send
+                    # (2026-05-13). Fixes spejlsal-bug: previously sent the
+                    # ping straight to Discord DM, user's reply landed in
+                    # fresh session with NO context of original ping.
+                    # Daemons-skal-ikke-tale-direkte rule. Discord-bypass
+                    # only when nudge system is killswitched off.
+                    try:
+                        from core.services.outbound_nudges import push_nudge
+                        from core.runtime.settings import load_settings
+                        if load_settings().nudge_system_enabled:
+                            push_result = push_nudge(
+                                source="heartbeat",
+                                kind="heartbeat_ping",
+                                message=msg,
+                                importance="normal",
+                            )
+                            sent_ch_id = ch_id  # not actually sent, but mark eligible
+                            # Telemetry symmetry — fire ping_delivered event
+                            # for Discord-path too (used to be missing; the
+                            # other Path-2 webchat fires it).
+                            try:
+                                event_bus.publish("heartbeat.ping_delivered", {
+                                    "tick_id": tick_id, "channel": "discord-nudge",
+                                    "nudge_id": push_result.get("nudge_id"),
+                                    "message_excerpt": msg[:120],
+                                })
+                            except Exception:
+                                pass
+                            break
+                    except Exception as _nudge_exc:
+                        logger.debug("heartbeat: nudge push failed, fallback to direct: %s", _nudge_exc)
+                    # Fallback (killswitch or push failure): direct send
                     send_discord_message(ch_id, msg)
                     sent_ch_id = ch_id
+                    try:
+                        event_bus.publish("heartbeat.ping_delivered", {
+                            "tick_id": tick_id, "channel": "discord-direct",
+                            "message_excerpt": msg[:120],
+                        })
+                    except Exception:
+                        pass
                     break
                 if sent_ch_id is not None:
                     return {
@@ -5537,6 +5576,44 @@ def _deliver_heartbeat_ping_directly(
             "blocked_reason": "missing-webchat-session",
         }
 
+    # Route through nudge ledger instead of direct send to webchat
+    # (2026-05-13). Same spejlsal-fix as Discord path: Jarvis sees the
+    # pending nudge in awareness and decides whether to surface, with
+    # full context. Killswitch falls back to direct send.
+    try:
+        from core.services.outbound_nudges import push_nudge
+        from core.runtime.settings import load_settings as _ls
+        if _ls().nudge_system_enabled:
+            push_result = push_nudge(
+                source="heartbeat",
+                kind="heartbeat_ping",
+                message=message_text,
+                importance="normal",
+                parent_session_id=session_id,
+            )
+            event_bus.publish("heartbeat.ping_delivered", {
+                "tick_id": tick_id,
+                "session_id": session_id,
+                "channel": "webchat-nudge",
+                "nudge_id": push_result.get("nudge_id"),
+                "ping_text": message_text[:200],
+            })
+            return {
+                "status": "queued",
+                "summary": "Heartbeat ping queued as nudge for Jarvis review.",
+                "action_type": "webchat-heartbeat-ping-nudge",
+                "artifact": json.dumps({
+                    "session_id": session_id,
+                    "nudge_id": push_result.get("nudge_id"),
+                    "delivery_channel": "nudge-ledger",
+                    "ping_text": message_text[:200],
+                }, ensure_ascii=False, default=str),
+                "blocked_reason": "",
+            }
+    except Exception as _nudge_exc:
+        logger.debug("heartbeat webchat: nudge push failed, fallback to direct: %s", _nudge_exc)
+
+    # Fallback: direct send (killswitch off or nudge failed)
     message = append_chat_message(
         session_id=session_id,
         role="assistant",
@@ -5556,13 +5633,14 @@ def _deliver_heartbeat_ping_directly(
             "tick_id": tick_id,
             "session_id": session_id,
             "message_id": str(message.get("id") or ""),
+            "channel": "webchat-direct",
             "summary": summary,
             "ping_text": message_text[:200],
         },
     )
     return {
         "status": "sent",
-        "summary": "Heartbeat delivered one bounded ping to webchat.",
+        "summary": "Heartbeat delivered one bounded ping to webchat (direct, nudge bypassed).",
         "action_type": "webchat-heartbeat-ping",
         "artifact": json.dumps(
             {

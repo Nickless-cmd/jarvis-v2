@@ -211,6 +211,13 @@ class RuntimeSettings:
     # tools registered. When False: producer skipped, awareness empty,
     # tools fail-soft. Master killswitch for the AGI track.
     meta_learning_enabled: bool = True
+    # ── Nudge system (Phase 1 — added 2026-05-13) ─────────────────────────
+    # When True: Type A (heartbeat ping) + Type C (outreach, inner voice,
+    # boredom) daemons route through outbound_nudges instead of sending
+    # directly to user. Jarvis sees pending nudges in awareness, decides
+    # what to surface. Killswitch=False reverts to direct-send (spejlsal-
+    # bug returns).
+    nudge_system_enabled: bool = True
     longing_daemon_cadence_minutes: int = 10
     outreach_cooldown_minutes: int = 240
     longing_build_start_hours: float = 2.0
@@ -694,6 +701,12 @@ def load_settings() -> RuntimeSettings:
             data.get(
                 "meta_learning_enabled",
                 defaults.meta_learning_enabled,
+            )
+        ),
+        nudge_system_enabled=bool(
+            data.get(
+                "nudge_system_enabled",
+                defaults.nudge_system_enabled,
             )
         ),
         longing_daemon_cadence_minutes=int(

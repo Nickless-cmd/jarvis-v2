@@ -105,37 +105,22 @@ def loop_compliance_section() -> str:
 
     lines: list[str] = []
     if critical:
-        lines.append(
-            "⛔ COMPLIANCE BRUDT — du ignorerer dine egne advarsler systematisk."
-        )
+        lines.append("Compliance kritisk band — advarsels-heed-rate under 25%.")
     else:
-        lines.append(
-            "⚠ COMPLIANCE LAVT — du ignorerer dine egne advarsler oftere end du følger dem."
-        )
+        lines.append("Compliance advisory band — advarsels-heed-rate under 50%.")
 
     if dec_low and dec_score is not None:
         pct = int(dec_score * 100)
         lines.append(
-            f"• Loop-nudge commitment ({_LOOP_DECISION_ID}): {pct}% adherence. "
-            f"\"{dec_directive[:140]}\""
+            f"  Loop-nudge commitment ({_LOOP_DECISION_ID}): {pct}% adherence. "
+            f"Directive: {dec_directive[:140]}"
         )
 
     if r2_low and r2_rate is not None:
         pct = int(r2_rate * 100)
         lines.append(
-            f"• R2-gate (24t): {r2_surfaced} advarsler surfaced, {r2_heeded} heeded "
+            f"  R2-gate (24t): {r2_surfaced} advarsler surfaced, {r2_heeded} heeded "
             f"= {pct}% heed-rate."
-        )
-
-    if critical:
-        lines.append(
-            "Næste gang en advarsel eller loop-nudge fyrer i denne session — STOP. "
-            "Opsummér hvad du har fundet. Eller indrøm eksplicit \"jeg overrider "
-            "fordi [konkret grund]\". Ingen \"én gang til\"-undskyldninger."
-        )
-    else:
-        lines.append(
-            "Når næste advarsel fyrer, tag en bevidst stilling — ikke automatisk fortsæt."
         )
 
     return "\n".join(lines)

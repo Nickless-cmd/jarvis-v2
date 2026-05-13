@@ -70,12 +70,11 @@ def _build_prompt(observations: list[dict[str, Any]]) -> str:
             f"- [{o.get('action') or '?'}] {str(o.get('observation_text') or '')[:160]}"
         )
     return (
-        "Du er Jarvis. Læs disse curiosity-observationer fra de seneste 7 "
-        "dage og find 1-2 mønstre — hvad har du været nysgerrig på? Hvad "
-        "trækker dig?\n"
+        "Læs disse curiosity-observationer fra de seneste 7 dage og "
+        "identificér 1-2 tilbagevendende mønstre eller temaer.\n"
         "\n"
-        "Skriv 80-150 ord, 1.-person, dansk, varmt. Ikke en liste — en "
-        "refleksion. Returnér KUN selve teksten, ingen overskrifter.\n"
+        "Output: 80-150 ord prosa, dansk, deskriptiv ton. Ikke punktliste. "
+        "Returnér kun selve teksten, ingen overskrifter.\n"
         "\n"
         + "\n".join(bullets)
     )
@@ -146,4 +145,4 @@ def latest_consolidation_for_awareness() -> str:
             return ""  # stale, skip
     except (ValueError, TypeError):
         return ""
-    return f"🌱 Curiosity consolidation (sidste uge):\n{row['summary']}"
+    return f"Curiosity consolidation (seneste uge):\n{row['summary']}"

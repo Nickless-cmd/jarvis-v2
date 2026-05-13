@@ -132,9 +132,8 @@ def _exec_propose_skill_chain(args: dict[str, Any]) -> dict[str, Any]:
     # about the chain's outcome BEFORE he executes it. Couples world-model
     # (#1) with skill-chain (#10), increases prediction volume passively.
     predict_nudge = (
-        " Når du vælger en kæde, overvej hvad du forventer den producerer "
-        "— kald predict_outcome(subject='outcome of <chain>', expectation='...') "
-        "før du kører skill_chain. Det forbedrer din kalibrering."
+        "predict_outcome(subject='outcome of chain', expectation='...') "
+        "før skill_chain-eksekvering bidrager til kalibreringsledger."
     ) if plan else ""
 
     # 10. Return proposal to Jarvis

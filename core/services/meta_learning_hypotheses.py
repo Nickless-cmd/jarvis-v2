@@ -219,12 +219,11 @@ def format_active_hypotheses_for_awareness() -> str:
         return ""
     if not rows:
         return ""
-    lines = ["🔬 Aktive hypoteser (du tester disse om dig selv):"]
+    lines = ["Aktive hypoteser (registrerede fra meta-læringsmemoer):"]
     for r in rows:
         lines.append(
-            f"  • {r['statement'][:120]} "
-            f"({r['samples_so_far']}/{r['sample_size_needed']} samples) "
-            f"[{r['hypothesis_id']}]"
+            f"  {r['hypothesis_id']}: {r['statement'][:120]} "
+            f"({r['samples_so_far']}/{r['sample_size_needed']} samples)"
         )
     return "\n".join(lines)
 

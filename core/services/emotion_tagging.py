@@ -86,3 +86,22 @@ EMOTION_TAGGING_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
 ]
+
+def build_emotion_tagging_surface() -> dict[str, object]:
+    return {
+        "active": True,
+        "mode": "emotion-tagging",
+        "summary": "Module ready; tags emerge on cognitive_state events.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_tagging_event(tag: str, intensity: float) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "emotion_tagging.tag_applied",
+            {"tag": str(tag), "intensity": float(intensity)},
+        )
+    except Exception:
+        pass

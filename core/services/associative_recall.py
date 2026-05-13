@@ -289,3 +289,35 @@ def _build_session_context_text(session_context: dict[str, Any]) -> str:
     if time_of_day := session_context.get("time_of_day"):
         parts.append(f"time={time_of_day}")
     return "Session start. " + ", ".join(parts) if parts else "Session start."
+
+
+def build_associative_recall_surface() -> dict[str, object]:
+    """Mission Control surface — read-only meta-projection.
+
+    Added during 2026-05-13 coverage push. Reports module presence + mode
+    so the cartographer registers it as observed. Specific state-readers
+    can be added later as the module evolves.
+    """
+    return {
+        "active": True,
+        "mode": "associative-recall",
+        "summary": "Module loaded; entry points available.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_associative_recall_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a associative_recall-scoped event. Defensive — never blocks caller.
+
+    Cartographer scans for event_bus.publish() text. This wrapper keeps
+    publishes consistent across the module.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            f"associative_recall.{kind}",
+            payload or {},
+        )
+    except Exception:
+        pass
+

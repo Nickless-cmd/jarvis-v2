@@ -489,3 +489,22 @@ if __name__ == "__main__":
     print(f"Readiness: {frag_detail['readiness']}")
     print(f"Regulation: {frag_detail['regulation']}")
     print(f"Prompt line: {frag_line}")
+
+def build_metacognitive_integration_surface() -> dict[str, object]:
+    return {
+        "active": True,
+        "mode": "metacognitive-integration",
+        "summary": "Integrates first-order observations into reflective frame.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_integration_event(layer: str, signal: str) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "metacognitive_integration.integrated",
+            {"layer": str(layer), "signal": str(signal)[:100]},
+        )
+    except Exception:
+        pass

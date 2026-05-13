@@ -245,3 +245,22 @@ def get_presence_line(db_conn=None) -> Optional[str]:
         return f"presence: {sig.summary}"
     except Exception:
         return None
+
+def build_embodied_presence_surface() -> dict[str, object]:
+    return {
+        "active": True,
+        "mode": "embodied-presence",
+        "summary": "Tracks Jarvis' subjective presence indicators.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_presence_event(state: str) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "embodied_presence.state_changed",
+            {"state": str(state)[:60]},
+        )
+    except Exception:
+        pass

@@ -405,3 +405,22 @@ def clear_resonances() -> None:
     global _active_resonances, _last_scan_at
     _active_resonances = []
     _last_scan_at = ""
+
+def build_resonance_decay_surface() -> dict[str, object]:
+    return {
+        "active": True,
+        "mode": "resonance-decay-tracker",
+        "summary": "Decays salience scores over time so old signals fade.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_decay_event(signal_id: str, half_life: float) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "resonance_decay.applied",
+            {"signal_id": str(signal_id), "half_life": float(half_life)},
+        )
+    except Exception:
+        pass

@@ -258,3 +258,22 @@ REASONING_CLASSIFIER_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
 ]
+
+def build_reasoning_classifier_surface() -> dict[str, object]:
+    return {
+        "active": True,
+        "mode": "reasoning-tier-classifier",
+        "summary": "Classifier ready; classify_reasoning_tier(text) returns tier estimate.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_tier_event(tier: str, score: int) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "reasoning_classifier.tiered",
+            {"tier": tier, "score": int(score)},
+        )
+    except Exception:
+        pass

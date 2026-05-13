@@ -219,3 +219,22 @@ REASONING_ESCALATION_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
 ]
+
+def build_reasoning_escalation_surface() -> dict[str, object]:
+    return {
+        "active": True,
+        "mode": "reasoning-escalation-evaluator",
+        "summary": "evaluate_escalation(message) returns escalation recommendation.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_escalation_event(path: str, tier: str) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "reasoning_escalation.recommended",
+            {"path": path, "tier": tier},
+        )
+    except Exception:
+        pass

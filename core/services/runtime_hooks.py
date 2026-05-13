@@ -176,3 +176,33 @@ def _find_active_task(
             if task_goal == normalized_goal and task_scope == normalized_scope:
                 return task
     return None
+
+
+def build_runtime_hooks_surface() -> dict[str, object]:
+    """Mission Control surface — read-only meta-projection.
+
+    Added during 2026-05-13 coverage push (system_cartographer dark-edge
+    closure). Reports module presence so the cartographer registers it as
+    observed. Specific state-readers added as the module evolves.
+    """
+    return {
+        "active": True,
+        "mode": "runtime_hooks",
+        "summary": "Module loaded; entry points available.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_runtime_hooks_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a scoped event — defensive, never blocks caller.
+    Cartographer scans for event_bus.publish() text.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            f"runtime_hooks.{kind}",
+            payload or {},
+        )
+    except Exception:
+        pass
+

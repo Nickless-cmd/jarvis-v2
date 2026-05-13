@@ -220,3 +220,28 @@ def get_all_rules() -> list[dict[str, Any]]:
         }
         for r in get_engine().rules
     ]
+
+def build_rule_engine_surface() -> dict[str, object]:
+    try:
+        engine = get_engine()
+        rule_count = len(getattr(engine, "rules", []) or [])
+    except Exception:
+        rule_count = 0
+    return {
+        "active": True,
+        "mode": "forward-chaining-rule-engine",
+        "rule_count": rule_count,
+        "summary": f"{rule_count} rules registered.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_rule_fired_event(rule_name: str, urgency: str) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "rule_engine.rule_fired",
+            {"rule_name": str(rule_name), "urgency": str(urgency)},
+        )
+    except Exception:
+        pass

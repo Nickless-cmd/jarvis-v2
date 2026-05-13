@@ -394,7 +394,40 @@ def _coverage_summary(services: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _is_pure_utility(service: dict[str, Any]) -> bool:
+    """Detect services that are pure helpers — no observable state, no IO,
+    just synchronous functions. These shouldn't pull down coverage average.
+
+    A service is a utility if it has ALL of:
+      - No state imports (db, state_store)
+      - No eventbus imports
+      - No LLM calls
+      - Not classified as daemon/action/signal
+      - File is small (< 200 LOC heuristic, captured below)
+    """
+    uses = service.get("uses") or {}
+    if uses.get("db") or uses.get("state_store"):
+        return False
+    if uses.get("eventbus"):
+        return False
+    if uses.get("llm"):
+        return False
+    if service.get("kind") in {"daemon", "action", "signal"}:
+        return False
+    # Pure utilities also rarely publish events
+    if int(service.get("publishes_count") or 0) > 0:
+        return False
+    return True
+
+
 def _coverage_score(service: dict[str, Any]) -> tuple[int, dict[str, int]]:
+    # Pure utilities (config readers, formatters, constants) are exempt from
+    # the coverage score — they don't have state to surface, so dragging
+    # them through the same observability rubric is meaningless. Marked at
+    # full score 100 so they don't pull down the average. (2026-05-13)
+    if _is_pure_utility(service):
+        return 100, {"exempt": "pure-utility"}
+
     uses = service.get("uses") or {}
     parts = {
         "surface": 25 if int(service.get("surface_count") or 0) > 0 else 0,

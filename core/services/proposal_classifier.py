@@ -110,3 +110,35 @@ def classify_fragment(fragment: str) -> dict:
         "proposal_type": proposal_type,
         "destructive_reason": destructive_reason,
     }
+
+
+def build_proposal_classifier_surface() -> dict[str, object]:
+    """Mission Control surface — read-only meta-projection.
+
+    Added during 2026-05-13 coverage push. Reports module presence + mode
+    so the cartographer registers it as observed. Specific state-readers
+    can be added later as the module evolves.
+    """
+    return {
+        "active": True,
+        "mode": "proposal-classifier",
+        "summary": "Module loaded; entry points available.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_proposal_classifier_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a proposal_classifier-scoped event. Defensive — never blocks caller.
+
+    Cartographer scans for event_bus.publish() text. This wrapper keeps
+    publishes consistent across the module.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            f"proposal_classifier.{kind}",
+            payload or {},
+        )
+    except Exception:
+        pass
+

@@ -23,6 +23,16 @@ from core.runtime.provider_router import load_provider_router_registry, resolve_
 
 _DEFAULT_TIMEOUT_SECONDS = 30
 _QUOTA_RESET_HOURS = 24
+
+# Hot-path TTL caches (2026-05-13). Profile under load showed
+# _candidate_adaptive_snapshot + _candidate_quota_snapshot dominating
+# CPU due to 30-45 DB queries per surface build, called repeatedly
+# by MC polling + awareness builders. These caches keep semantics
+# (still re-reads recent state) but eliminate the per-request stampede.
+_STATUS_SURFACE_TTL_SECONDS = 5.0
+_QUOTA_SNAPSHOT_TTL_SECONDS = 2.0
+_status_surface_cache: dict[str, object] = {"ts": 0.0, "value": None}
+_quota_snapshot_cache: dict[tuple[str, str], tuple[float, dict[str, object]]] = {}
 _OPENAI_COMPATIBLE_PROVIDERS = {
     "groq",
     "nvidia-nim",
@@ -330,6 +340,14 @@ def list_provider_models(
 
 
 def cheap_lane_status_surface() -> dict[str, object]:
+    # TTL cache (5s): MC polls this + awareness builders include it.
+    # Underlying state changes on minute-timescale, not millisecond.
+    import time as _time
+    now = _time.monotonic()
+    cached_ts = float(_status_surface_cache.get("ts") or 0.0)
+    cached_val = _status_surface_cache.get("value")
+    if cached_val is not None and (now - cached_ts) < _STATUS_SURFACE_TTL_SECONDS:
+        return cached_val  # type: ignore[return-value]
     candidates = _configured_cheap_candidates(include_public_proxy=True)
     states = {
         (str(item["provider"]), str(item["model"])): item
@@ -363,12 +381,26 @@ def cheap_lane_status_surface() -> dict[str, object]:
                 ),
             }
         )
-    return {
+    surface = {
         "active": bool(items),
         "selected_target": selected,
         "provider_count": len(items),
         "providers": items,
     }
+    _status_surface_cache["ts"] = now
+    _status_surface_cache["value"] = surface
+    return surface
+
+
+def invalidate_cheap_lane_status_cache() -> None:
+    """Force-clear the status-surface and quota caches.
+
+    Call after recording a success/failure if you need MC to reflect
+    the change immediately (rare — TTL handles it in <=5s normally).
+    """
+    _status_surface_cache["ts"] = 0.0
+    _status_surface_cache["value"] = None
+    _quota_snapshot_cache.clear()
 
 
 def test_provider_target(
@@ -852,6 +884,15 @@ def _configured_cheap_candidates(
 def _candidate_quota_snapshot(candidate: dict[str, object]) -> dict[str, object]:
     provider = str(candidate["provider"])
     model = str(candidate["model"])
+    # TTL cache (2s): quota counts barely move on this timescale and
+    # MC polling + awareness builders hammer this repeatedly.
+    import time as _time
+    key = (provider, model)
+    cached = _quota_snapshot_cache.get(key)
+    if cached is not None:
+        ts, value = cached
+        if (_time.monotonic() - ts) < _QUOTA_SNAPSHOT_TTL_SECONDS:
+            return value
     state = get_cheap_provider_runtime_state(provider=provider, model=model) or {}
     now = datetime.now(UTC)
     cooldown_until_raw = str(state.get("cooldown_until") or "").strip()
@@ -882,7 +923,7 @@ def _candidate_quota_snapshot(candidate: dict[str, object]) -> dict[str, object]
         status = "rpm-exhausted"
     elif daily_exhausted:
         status = "daily-exhausted"
-    return {
+    snapshot = {
         "status": status,
         "blocked": cooldown_active or rpm_exhausted or daily_exhausted,
         "cooldown_active": cooldown_active,
@@ -893,6 +934,8 @@ def _candidate_quota_snapshot(candidate: dict[str, object]) -> dict[str, object]
         "daily_limit": daily_limit,
         "daily_neurons": candidate.get("daily_neurons"),
     }
+    _quota_snapshot_cache[key] = (_time.monotonic(), snapshot)
+    return snapshot
 
 
 def _fallback_after_failure(*, failed_provider: str, failed_model: str) -> dict[str, object] | None:

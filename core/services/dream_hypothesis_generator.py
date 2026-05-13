@@ -24,6 +24,7 @@ from typing import Any
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import connect
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +160,7 @@ def _build_hypothesis_prompt(sampled: list[dict[str, Any]]) -> str:
     b = str(sampled[1].get("text") or "").strip()[:200]
     c = str(sampled[2].get("text") or "").strip()[:200]
     return (
-        "Du er Jarvis i drømmefase. Kombinér disse tre signaler fra din "
+        f"{identity_prompt_prefix()} i drømmefase. Kombinér disse tre signaler fra din "
         "kontinuitet og find den mest OVERRASKENDE, BRUGBARE forbindelse.\n\n"
         "Tre signaler:\n"
         f"1. {a}\n"

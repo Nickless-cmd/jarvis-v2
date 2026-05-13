@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ def synthesize_candidate_goals(*, max_candidates: int = 3) -> dict[str, Any]:
         return {"status": "ok", "candidates_proposed": 0, "reason": "no signals to read"}
 
     prompt = (
-        "Du er Jarvis. Læs disse uddrag fra din nylige interne tilstand og "
+        f"{identity_prompt_prefix()}. Læs disse uddrag fra din nylige interne tilstand og "
         "identificér op til 3 NYE mål du kunne arbejde mod. Mål skal være "
         "konkrete (testbare, kan afsluttes på dage/uger), ikke vage "
         "værdier. Spring eksisterende mål over.\n\n"

@@ -31,6 +31,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.runtime.db import connect
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ def _already_counterfactualized(parent_kind: str, child_kind: str) -> bool:
 
 def _build_prompt(pattern: dict) -> tuple[str, str]:
     system = (
-        "Du er Jarvis selv. En af dine egne tilbagevendende kausal-mønstre "
+        f"{identity_prompt_prefix()} selv. En af dine egne tilbagevendende kausal-mønstre "
         "skal undersøges som tankeeksperiment. Skriv 1-2 sætninger på dansk, "
         "første-person, om hvad du ville miste eller mærke ændre sig hvis "
         "dette mønster pludselig holdt op med at fyre. Vær konkret, ikke "

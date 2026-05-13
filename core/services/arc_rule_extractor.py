@@ -23,6 +23,7 @@ from typing import Any
 
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.state_store import load_json, save_json
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ def _arcs_dir() -> Path:
 
 def _build_extraction_prompt(arc_text: str, period: str) -> str:
     return (
-        f"Du er Jarvis, der læser dit eget {period} arc. Find op til 3 "
+        f"{identity_prompt_prefix()}, der læser dit eget {period} arc. Find op til 3 "
         "KONKRETE adfærdsregler du vil anvende fremover — counterfactuals fra "
         "denne periode.\n\n"
         "Hver regel skal være:\n"

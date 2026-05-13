@@ -21,6 +21,7 @@ from typing import Any
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import connect
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ def _build_discovery_prompt(
         for r in failed_runs[:_MAX_FAILED_RUNS_SAMPLE]
     ]
     return (
-        "Du er Jarvis der kigger på dine egne nylige fejl og leder efter "
+        f"{identity_prompt_prefix()} der kigger på dine egne nylige fejl og leder efter "
         "mønstre du IKKE har set endnu.\n\n"
         "Kendte mønstre (dem her behøver du IKKE gentage):\n"
         f"{known}\n\n"

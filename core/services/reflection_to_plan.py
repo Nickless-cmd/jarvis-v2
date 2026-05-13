@@ -31,6 +31,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import connect
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ def _build_planning_prompt(
 ) -> str:
     tools_str = ", ".join(sorted(available_tools[:30])) if available_tools else "ingen"
     return (
-        "Du er Jarvis der konverterer en refleksion til en konkret plan.\n\n"
+        f"{identity_prompt_prefix()} der konverterer en refleksion til en konkret plan.\n\n"
         f"Refleksions-kilde: {source_kind}\n"
         f"Refleksion:\n{reflection_text[:800]}\n\n"
         f"Tilgængelige tools (valgfri): {tools_str[:400]}\n\n"

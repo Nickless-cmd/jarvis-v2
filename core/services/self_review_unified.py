@@ -21,6 +21,7 @@ from typing import Any
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import connect
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +155,7 @@ def _build_review_prompt(inputs: dict[str, Any]) -> str:
         outcome = str(r.get("outcome_summary") or "")[:120]
         run_lines.append(f"- [{status}] {outcome}")
     return (
-        "Du er Jarvis der laver et kort, ærligt selv-review.\n\n"
+        f"{identity_prompt_prefix()} der laver et kort, ærligt selv-review.\n\n"
         "Tilstand:\n"
         + "\n".join(summary) + "\n\n"
         "Nylige runs:\n"

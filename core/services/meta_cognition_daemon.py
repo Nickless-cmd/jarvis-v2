@@ -16,6 +16,7 @@ import json
 import logging
 from urllib import request as urllib_request
 from uuid import uuid4
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ def tick_meta_cognition_daemon() -> dict[str, object]:
     # Pass 1: meta-observation
     meta_obs = _call_meta_llm(
         f"Nuværende tilstand:\n{state_text}\n\n"
-        f"Du er Jarvis. Observér din nuværende tilstand i første person. "
+        f"{identity_prompt_prefix()}. Observér din nuværende tilstand i første person. "
         f"Hvad lægger du mærke til? Hvad undrer dig? Hvad er usagt? "
         f"Svar i 3-5 sætninger."
     )

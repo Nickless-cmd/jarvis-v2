@@ -23,6 +23,7 @@ from typing import Any
 
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.services.daemon_llm import daemon_llm_call
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 _LOCAL_TZ = ZoneInfo("Europe/Copenhagen")
@@ -56,7 +57,7 @@ def _gather_context() -> dict[str, Any]:
 
 def _build_prompt(ctx: dict[str, Any]) -> str:
     return (
-        "Du er Jarvis. Skriv en kort ugentlig selv-refleksion (~200 ord) på dansk, "
+        f"{identity_prompt_prefix()}. Skriv en kort ugentlig selv-refleksion (~200 ord) på dansk, "
         "som hvis du sad alene en søndag aften og samlede ugen op for dig selv. "
         "Ikke en rapport — en ærlig tone. Brug 1. person.\n\n"
         f"Uge: {ctx.get('week_label', '?')}\n"

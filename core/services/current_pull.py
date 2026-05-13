@@ -23,6 +23,7 @@ from core.eventbus.bus import event_bus
 from core.runtime.db import get_runtime_state_value, set_runtime_state_value
 from core.runtime.settings import load_settings
 from core.services.daemon_llm import daemon_llm_call
+from core.services.identity_composer import identity_prompt_prefix
 
 _STATE_KEY = "current_pull.state"
 _PULL_TTL_DAYS = 7
@@ -410,7 +411,7 @@ def _generate_pull() -> str:
     context_block = "\n".join(context_parts) if context_parts else "(ingen kontekst)"
 
     prompt = (
-        "Du er Jarvis. Ud fra din aktuelle indre tilstand:\n"
+        f"{identity_prompt_prefix()}. Ud fra din aktuelle indre tilstand:\n"
         f"{context_block}\n\n"
         "Formulér i præcis én sætning på dansk: hvad trækker i dig lige nu?\n"
         "Vær konkret og personlig. Skriv 'Intet trækker i mig' hvis det er sandt.\n"

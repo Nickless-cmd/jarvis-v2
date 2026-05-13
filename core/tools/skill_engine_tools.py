@@ -157,6 +157,15 @@ def _exec_skill_invoke(args: dict[str, Any]) -> dict[str, Any]:
     result = skill_engine.get_skill_instructions(name)
     if result.get("status") == "error":
         return result
+    # Emit invocation event for dead-skill detection (2026-05-13).
+    # Tool Invention adoption-tracking needs to know which skills are
+    # actually used after install. Without this, we can't tell an "active"
+    # installed skill from dead weight.
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("cognitive_state.skill_invoked", {"name": name})
+    except Exception:
+        pass
     return {
         "status": "ok",
         "skill": result,

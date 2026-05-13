@@ -44,7 +44,7 @@ def _exec_predict_outcome(args: dict[str, Any]) -> dict[str, Any]:
     if not expectation:
         return {"status": "error", "error": "expectation is required"}
 
-    return record_runtime_world_model_prediction(
+    result = record_runtime_world_model_prediction(
         subject=subject,
         expectation=expectation,
         horizon=horizon,
@@ -52,6 +52,34 @@ def _exec_predict_outcome(args: dict[str, Any]) -> dict[str, Any]:
         evidence=[str(e) for e in evidence],
         source="visible-chat-tool",
     )
+
+    # Memory-search bridge (2026-05-13): on each new prediction, surface
+    # similar past predictions so Jarvis can use his own track record.
+    # World model was amnesiac across sessions — this fixes that.
+    try:
+        from core.services.world_model_signal_tracking import _load_predictions
+        all_preds = _load_predictions()
+        subject_words = {w.lower() for w in subject.split() if len(w) > 3}
+        similar: list[dict] = []
+        for p in all_preds[-200:]:  # search recent 200
+            if p.get("prediction_id") == result.get("prediction_id"):
+                continue
+            past_subj = str(p.get("subject") or "").lower()
+            if subject_words and any(w in past_subj for w in subject_words):
+                similar.append({
+                    "subject": p.get("subject"),
+                    "expectation": p.get("expectation"),
+                    "outcome": p.get("outcome") or "open",
+                    "confidence": p.get("confidence"),
+                })
+                if len(similar) >= 3:
+                    break
+        if similar:
+            result["similar_past_predictions"] = similar
+    except Exception:
+        pass
+
+    return result
 
 
 def _exec_resolve_prediction(args: dict[str, Any]) -> dict[str, Any]:

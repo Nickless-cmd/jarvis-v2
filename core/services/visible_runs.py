@@ -2916,6 +2916,20 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
                 matched_phrase=m["matched_phrase"],
                 context_excerpt=m["context_excerpt"],
             )
+            # World Model Phase 2 (2026-05-13): also pass to cheap-lane for
+            # structured extraction. Records real prediction if cheap-lane
+            # confirms it's falsifiable. Rate-limited to 15/day.
+            try:
+                from core.services.world_model_auto_extraction import (
+                    auto_extract_and_record,
+                )
+                auto_extract_and_record(
+                    matched_phrase=m["matched_phrase"],
+                    context_excerpt=m["context_excerpt"],
+                    session_id=run.session_id,
+                )
+            except Exception:
+                pass
         for m in extract_resolution_language(assistant_text or ""):
             record_resolution_nudge(
                 session_id=run.session_id,

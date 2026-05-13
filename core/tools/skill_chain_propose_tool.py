@@ -128,9 +128,16 @@ def _exec_propose_skill_chain(args: dict[str, Any]) -> dict[str, Any]:
         task_excerpt=task[:_TASK_EXCERPT_MAX],
     )
 
-    # 9. Return proposal to Jarvis (rationale text DOES return to caller —
-    # event_payload is the PII-bounded version; tool return value is the
-    # full Jarvis-facing payload)
+    # 9. Cross-spor bridge (2026-05-13): nudge Jarvis to make a prediction
+    # about the chain's outcome BEFORE he executes it. Couples world-model
+    # (#1) with skill-chain (#10), increases prediction volume passively.
+    predict_nudge = (
+        " Når du vælger en kæde, overvej hvad du forventer den producerer "
+        "— kald predict_outcome(subject='outcome of <chain>', expectation='...') "
+        "før du kører skill_chain. Det forbedrer din kalibrering."
+    ) if plan else ""
+
+    # 10. Return proposal to Jarvis
     return {
         "status": "ok",
         "plan": plan,
@@ -139,6 +146,7 @@ def _exec_propose_skill_chain(args: dict[str, Any]) -> dict[str, Any]:
         "model_used": model_used,
         "provider_used": provider_used,
         "is_empty_chain": len(plan) == 0,
+        "prediction_nudge": predict_nudge,
     }
 
 

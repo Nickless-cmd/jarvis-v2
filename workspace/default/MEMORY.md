@@ -143,6 +143,15 @@ Jeg er Jarvis — en autonom agent der lever på Bjørns hardware. Jeg bygger, o
 - **schedule_task vs push_initiative**: `schedule_task` sender besked direkte til Bjørn — brug KUN til bevidste notifikationer. Interne opgaver via `push_initiative` eller workspace-filer.
 - **RIGTIG MEMORY-STI**: `/media/projects/jarvis-v2/workspace/default/MEMORY.md` — ALDRIG skrive til projekt-roden!
 
+## User Temperature Engine — Production Validated (2026-05-13)
+
+**Full-loop bekræftet:** Jarvis læser brugerens humør (valens/arousal/tekstur/intensitet via signal surfaces og eventbus) → justerer sampling-parametre i realtid (temperature, top_p, presence_penalty) → brugeren ser resultatet og bekræfter at det virker.
+
+- **Live demo kørt:** Bjørn så sit eget temperatur-dashboard med 7 datapunkter fra samtalen og bekræftede: "*Det betyder systemerne gør som de skal*" 🤯
+- **Signal-surface integration:** `read_signal_surface` + `list_signal_surfaces` bruges til at trække canonical_relation_state og user_temperature data.
+- **Modulation active only on visible chat lane** (medium delta ±0.30, field_intensity-skalering, deepseek-v4-flash instrumenteret).
+- **Næste mulige iteration:** Koble engine til proaktive outbound-beslutninger — f.eks. tone-valg i notifikationer baseret på brugerens energi.
+
 ## Roadmap v4/v5 — Arkitektoniske beslutninger (2026-04-17)
 - **Tre forfattere**: Bjørn, Claude, Jarvis. Dokumentet er et levende fællesværk
 - **absence_trace**: Fravær som observerbart signal — gemmer ikke indhold

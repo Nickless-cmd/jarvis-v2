@@ -615,6 +615,21 @@ def _ensure_producers_registered() -> None:
         depends_on=[],
     ))
 
+    def _run_curiosity_consolidation_weekly(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from datetime import UTC as _UTC
+        from datetime import datetime as _datetime
+        from core.services.curiosity_consolidation import run_consolidation
+        return run_consolidation(now=_datetime.now(_UTC))
+
+    register_producer(ProducerSpec(
+        name="curiosity_consolidation_weekly",
+        cooldown_minutes=10080,        # 7 dage
+        visible_grace_minutes=60,
+        run_fn=_run_curiosity_consolidation_weekly,
+        priority=30,
+        depends_on=[],
+    ))
+
     def _run_prompt_assembly_cache_warmer(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         """Refresh prompt-assembly section caches in background.
 

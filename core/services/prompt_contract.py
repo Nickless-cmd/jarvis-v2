@@ -1057,6 +1057,42 @@ def build_visible_chat_prompt_assembly(
         )
     except Exception:
         pass
+    # Plan-revision patterns (2026-05-13) — recurring reasons cluster
+    try:
+        from core.services.prompt_sections.plan_revision_patterns import (
+            plan_revision_patterns_section,
+        )
+        _awareness_add(44, "plan-revision recurring patterns", plan_revision_patterns_section() or None)
+    except Exception:
+        pass
+    # Dead-skill detector (2026-05-13) — Tool Invention adoption tracking
+    try:
+        from core.services.prompt_sections.dead_skills import dead_skills_section
+        _awareness_add(43, "dead skills (never invoked)", dead_skills_section() or None)
+    except Exception:
+        pass
+    # Curiosity consolidation (2026-05-13) — weekly synthesis of observations
+    try:
+        from core.services.curiosity_consolidation import latest_consolidation_for_awareness
+        _awareness_add(
+            42,
+            "curiosity consolidation (weekly)",
+            latest_consolidation_for_awareness() or None,
+        )
+    except Exception:
+        pass
+    # Meta-læring Phase 2 (2026-05-13) — active hypotheses Jarvis is testing
+    try:
+        from core.services.meta_learning_hypotheses import (
+            format_active_hypotheses_for_awareness,
+        )
+        _awareness_add(
+            41,
+            "active hypotheses (meta-learning)",
+            format_active_hypotheses_for_awareness() or None,
+        )
+    except Exception:
+        pass
     # Curiosity-budget Phase 1 (2026-05-12) — idle-window invitation (AGI #6)
     try:
         from core.services.curiosity_budget import (

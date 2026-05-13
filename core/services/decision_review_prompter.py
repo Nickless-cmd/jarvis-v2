@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ def _build_review_prompt(decision: dict[str, Any]) -> str:
     directive = str(decision.get("directive") or "").strip()
     reason = str(decision.get("reason") or "").strip()
     return (
-        "Du er Jarvis. Du forpligtede dig på en adfærdsbeslutning og skal nu "
+        f"{identity_prompt_prefix()}. Du forpligtede dig på en adfærdsbeslutning og skal nu "
         "ærligt vurdere om du har holdt den siden sidste review.\n\n"
         f"Beslutning: {directive}\n"
         f"Grund: {reason}\n\n"

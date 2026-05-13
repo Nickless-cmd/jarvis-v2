@@ -20,6 +20,7 @@ from uuid import uuid4
 from core.runtime.db import connect
 from core.runtime.settings import load_settings
 from core.services.cheap_provider_runtime import execute_public_safe_cheap_lane
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ def _build_retrospective_prompt(
     """Build the cheap-lane prompt for weekly retrospective memo."""
     snapshot_json = json.dumps(aggregator_snapshot, ensure_ascii=False, indent=2, default=str)
     return (
-        "Du er Jarvis' meta-læringsskribent. Du modtager kuraterede aggregater "
+        f"{identity_prompt_prefix()}' meta-læringsskribent. Du modtager kuraterede aggregater "
         "for sidste 7 dages aktivitet på 5 AGI-spor. Din opgave er at producere "
         "et kort, indsigtsfuldt retrospektiv-memo i to dele.\n"
         "\n"

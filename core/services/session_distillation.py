@@ -63,6 +63,7 @@ from core.services.remembered_fact_signal_tracking import (
 from core.services.goal_signal_tracking import (
     build_runtime_goal_signal_surface,
 )
+from core.services.identity_composer import identity_prompt_prefix
 
 
 # ---------------------------------------------------------------------------
@@ -893,7 +894,7 @@ def generate_session_summary(
     from core.services.daemon_llm import daemon_llm_call
 
     prompt = (
-        "Du er Jarvis. Opsummér denne samtale i 1-2 sætninger på dansk.\n"
+        f"{identity_prompt_prefix()}. Opsummér denne samtale i 1-2 sætninger på dansk.\n"
         "Fokus: hvad handlede samtalen om, og hvad blev besluttet eller gjort?\n"
         "Format: 'Emne: ... | Resultat: ...' — max 150 ord.\n\n"
         f"{conversation}"

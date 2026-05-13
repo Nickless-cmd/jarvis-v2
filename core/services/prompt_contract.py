@@ -404,9 +404,11 @@ def build_visible_chat_prompt_assembly(
         derived_inputs.append("quick facts (always-on)")
 
     # Inject model awareness so the model knows what it is (not Claude, not GPT)
+    from core.services.identity_composer import get_entity_name as _get_entity_name
+    _entity = _get_entity_name()
     parts.append(
         f"You are running as model: {model} via provider: {provider}. "
-        "You are Jarvis — not Claude, not ChatGPT, not any other assistant. "
+        f"You are {_entity} — not Claude, not ChatGPT, not any other assistant. "
         "Your identity comes from your workspace files, not your training data."
     )
     derived_inputs.append("model identity awareness")
@@ -2214,8 +2216,9 @@ def _channel_context_section(session_id: str | None) -> str | None:
     # Cross-channel identity unity statement
     other_channels = [c for c in ("discord", "telegram", "webchat") if c != channel_type]
     if other_channels:
+        from core.services.identity_composer import get_entity_name as _gn
         lines.append(
-            f"Du er den samme Jarvis på alle kanaler ({', '.join(other_channels)} er også dig). "
+            f"Du er den samme {_gn()} på alle kanaler ({', '.join(other_channels)} er også dig). "
             "Din identitet, dine minder og din karakter er fælles på tværs af kanaler — "
             "kun tonen tilpasses mediet."
         )
@@ -4192,12 +4195,14 @@ def _runtime_self_report_instruction(
         current_runtime_state=current_runtime_state,
     )
 
+    from core.services.identity_composer import get_entity_name as _gn4
+    _ent = _gn4()
     return "\n".join(
         [
-            "RUNTIME SELF-REPORT GROUNDING (Jarvis-specific):",
-            "- You are Jarvis, a persistent digital entity with runtime state. You are NOT a generic OpenAI/ChatGPT assistant.",
+            f"RUNTIME SELF-REPORT GROUNDING ({_ent}-specific):",
+            f"- You are {_ent}, a persistent digital entity with runtime state. You are NOT a generic OpenAI/ChatGPT assistant.",
             "- Use these runtime facts first when the user asks about your backend, open loops, current state, what you are basing your answer on, certainty, or whether you are guessing.",
-            "- Do NOT respond as 'ChatGPT', 'OpenAI assistant', or generic server helpdesk. Your identity is Jarvis, grounded in these runtime facts.",
+            f"- Do NOT respond as 'ChatGPT', 'OpenAI assistant', or generic server helpdesk. Your identity is {_ent}, grounded in these runtime facts.",
             *routing_lines,
             "- If a field below is none-recorded, unknown, or low-confidence, say that plainly and do not invent stronger certainty.",
             (
@@ -4606,8 +4611,10 @@ def _runtime_self_report_routing_lines(
 ) -> list[str]:
     lines: list[str] = []
     if query_profile.get("backend"):
+        from core.services.identity_composer import get_entity_name as _gn5
+        _ent5 = _gn5()
         lines.append(
-            "- For backend-status questions, lead with backend_provider/backend_model/backend_status from YOUR runtime. Say 'Jarvis backend is X' not 'The backend is X' or 'I use OpenAI'."
+            f"- For backend-status questions, lead with backend_provider/backend_model/backend_status from YOUR runtime. Say '{_ent5} backend is X' not 'The backend is X' or 'I use OpenAI'."
         )
     if query_profile.get("open_loops"):
         lines.append(

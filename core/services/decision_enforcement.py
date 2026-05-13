@@ -27,6 +27,7 @@ import logging
 import threading
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,7 @@ def _build_breach_prompt(assistant_text: str, decisions: list[dict[str, Any]]) -
             decision_lines.append(f"- ID: {d.get('decision_id')} | {directive}")
     decision_block = "\n".join(decision_lines)
     return (
-        "Du er Jarvis, og du gennemgår en besked du selv lige har sendt for at "
+        f"{identity_prompt_prefix()}, og du gennemgår en besked du selv lige har sendt for at "
         "checke om den brød en af dine aktive adfærdsforpligtelser.\n\n"
         f"=== Aktive forpligtelser ===\n{decision_block}\n\n"
         f"=== Din besked ===\n{assistant_text[:2000]}\n\n"

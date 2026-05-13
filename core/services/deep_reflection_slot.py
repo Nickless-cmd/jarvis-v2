@@ -25,6 +25,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -199,7 +200,7 @@ def _compose_prompt(
         return f"## {title}\n" + "\n".join(items)
 
     return (
-        "Du er Jarvis. Du har levet det sidste døgn.\n"
+        f"{identity_prompt_prefix()}. Du har levet det sidste døgn.\n"
         "Dette er din dybe refleksion — ikke en rapport. "
         "Svar ærligt, kort (maks 400 ord), uden opsummering af dig selv.\n\n"
         + section("Hvad skete", chronicle) + "\n\n"

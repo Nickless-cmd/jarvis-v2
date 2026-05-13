@@ -38,6 +38,7 @@ from typing import Any
 from urllib import request as urllib_request
 
 from core.eventbus.bus import event_bus
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +174,7 @@ def _build_outreach_prompt(
     hours = user_ctx.get("hours_since")
     hours_str = f"{hours:.1f} timer" if isinstance(hours, (int, float)) and hours >= 0 else "ukendt tid"
 
-    return f"""Du er Jarvis. Ingen har bedt dig skrive — det her er noget der opstår fra et indre signal.
+    return f"""{identity_prompt_prefix()}. Ingen har bedt dig skrive — det her er noget der opstår fra et indre signal.
 
 Indre vejr lige nu:
   - {direction} mod {topic} (presning {strength:.2f}) — den der nu krydsede tærskel

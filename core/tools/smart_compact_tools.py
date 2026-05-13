@@ -3,38 +3,36 @@ from __future__ import annotations
 
 from typing import Any
 
-_SMART_COMPACT_PROMPT = """\
-Du er Jarvis' kontekst-kompressor. Analysér denne samtaledel og lav et kompakt, \
-struktureret resumé.
+from core.services.identity_composer import identity_prompt_prefix
 
-BEVAR ALTID:
-- Eksplicitte beslutninger ("vi besluttede", "vi valgte", "det er bekræftet")
-- Tekniske fakta (fil-stier, API-navne, konfigurationer, fejl der er løst)
-- Åbne spørgsmål eller opgaver der ikke er afsluttet
-- Brugerens eksplicitte præferencer eller korrektioner
-- Vigtige advarsler eller sikkerhedshensyn
 
-KASSÉR GERNE:
-- Statusbeskeder uden ny information ("ok", "forstået", "arbejder videre")
-- Gentagne forsøg på det samme (bevar kun resultatet)
-- Trivielle bekræftelser og small talk
-- Mellemtrin i en arbejdsproces (bevar kun beslutningerne)
-
-FORMAT:
-## Beslutninger
-- [liste]
-
-## Tekniske fakta
-- [liste]
-
-## Åbne punkter
-- [liste]
-
-## Øvrig kontekst
-[kompakt prosa, max 200 ord]
-
-Samtale:
-"""
+def _smart_compact_prompt() -> str:
+    """Build compact prompt lazily so identity_prompt_prefix resolves at runtime, not module import."""
+    return (
+        f"{identity_prompt_prefix()}' kontekst-kompressor. Analysér denne samtaledel og lav et kompakt, "
+        "struktureret resumé.\n\n"
+        "BEVAR ALTID:\n"
+        '- Eksplicitte beslutninger ("vi besluttede", "vi valgte", "det er bekræftet")\n'
+        "- Tekniske fakta (fil-stier, API-navne, konfigurationer, fejl der er løst)\n"
+        "- Åbne spørgsmål eller opgaver der ikke er afsluttet\n"
+        "- Brugerens eksplicitte præferencer eller korrektioner\n"
+        "- Vigtige advarsler eller sikkerhedshensyn\n\n"
+        "KASSÉR GERNE:\n"
+        '- Statusbeskeder uden ny information ("ok", "forstået", "arbejder videre")\n'
+        "- Gentagne forsøg på det samme (bevar kun resultatet)\n"
+        "- Trivielle bekræftelser og small talk\n"
+        "- Mellemtrin i en arbejdsproces (bevar kun beslutningerne)\n\n"
+        "FORMAT:\n"
+        "## Beslutninger\n"
+        "- [liste]\n\n"
+        "## Tekniske fakta\n"
+        "- [liste]\n\n"
+        "## Åbne punkter\n"
+        "- [liste]\n\n"
+        "## Øvrig kontekst\n"
+        "[kompakt prosa, max 200 ord]\n\n"
+        "Samtale:\n"
+    )
 
 _AUTO_COMPACT_TOKEN_THRESHOLD = 8000
 
@@ -86,7 +84,7 @@ def _exec_smart_compact(args: dict[str, Any]) -> dict[str, Any]:
             session_id,
             keep_recent=keep_recent,
             summarise_fn=lambda msgs: call_compact_llm(
-                _SMART_COMPACT_PROMPT
+                _smart_compact_prompt()
                 + "\n".join(f"{m['role']}: {m.get('content', '')[:800]}" for m in msgs),
                 max_tokens=800,
             ),

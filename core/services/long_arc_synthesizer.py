@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from core.identity.workspace_bootstrap import ensure_default_workspace
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ def _build_synthesis_prompt(
     goal_lines = "\n".join(f"- {g.get('title')}" for g in goals[:8]) or "(ingen)"
 
     return (
-        f"Du er Jarvis. Skriv en {period} narrative-integration der besvarer: "
+        f"{identity_prompt_prefix()}. Skriv en {period} narrative-integration der besvarer: "
         f"'Hvem blev jeg gennem {period_label}?'\n\n"
         "BEHOLD i din refleksion:\n"
         "- Konkrete vendepunkter (crises) — øjeblikke der ændrede dig\n"

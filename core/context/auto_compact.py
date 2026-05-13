@@ -41,8 +41,9 @@ def maybe_auto_compact_session(session_id: str) -> bool:
         from core.context.session_compact import compact_session_history
         from core.context.compact_llm import call_compact_llm
 
+        from core.services.identity_composer import identity_prompt_prefix as _ipp
         _SMART_PROMPT = (
-            "Du er Jarvis' kontekst-kompressor. Komprimér denne dialog.\n\n"
+            f"{_ipp()}' kontekst-kompressor. Komprimér denne dialog.\n\n"
             "BEVAR: eksplicitte beslutninger, tekniske fakta, fil-stier, åbne opgaver, "
             "brugerens præferencer og korrektioner.\n"
             "KASSÉR: statusbeskeder, trivielle bekræftelser, gentagne forsøg (bevar kun resultatet).\n\n"

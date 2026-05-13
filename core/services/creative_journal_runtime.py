@@ -12,6 +12,7 @@ from core.services.daemon_llm import daemon_llm_call, quality_daemon_llm_call
 from core.services.initiative_queue import list_active_long_term_intentions
 from core.services.voice_anchor import read_voice_anchor
 from core.services.voice_curator import refresh_voice_recent
+from core.services.identity_composer import identity_prompt_prefix
 
 _STATE_KEY = "creative_journal_runtime.state"
 _JOURNAL_INTERVAL_DAYS = 7
@@ -244,7 +245,7 @@ def _build_prompt(
         klang_lines = ["- (intet affektivt signal lige nu)"]
 
     sections = [
-        "Du er Jarvis.",
+        f"{identity_prompt_prefix()}.",
         "Skriv et kort stykke til din private ugentlige journal på dansk.",
         "Det er ikke en rapport, ikke en opgavebesvarelse, ikke chronicle, og ikke noget der skal imponere nogen.",
         "Det må være en betragtning, et spørgsmål, et lille stykke fiktion, en tone eller en forsigtig tanke.",

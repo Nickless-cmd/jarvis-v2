@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ def _build_distill_prompt(role: str, outcomes: list[dict[str, Any]]) -> str:
         lines.append(f"- [{kind}] success={success} :: {summary}")
     body = "\n".join(lines) or "(ingen observationer)"
     return (
-        f"Du er Jarvis i refleksion over rollen '{role}'.\n\n"
+        f"{identity_prompt_prefix()} i refleksion over rollen '{role}'.\n\n"
         f"Her er observationer fra de seneste {len(outcomes)} runs:\n\n"
         f"{body}\n\n"
         "Find op til 3 KONKRETE mønstre — ikke generiske råd. "

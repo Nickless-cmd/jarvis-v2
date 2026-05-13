@@ -492,7 +492,7 @@ def test_openai_compat_chat_accepts_messages_list(isolated_runtime, monkeypatch)
     monkeypatch.setattr(cheap, "_http_json", _fake_http_json)
 
     chat_messages = [
-        {"role": "system", "content": "Du er Jarvis."},
+        {"role": "system", "content": "Du er Jarvis."},  # hardcoded test — identity_composer not available in unit-test
         {"role": "user", "content": "hvem er du?"},
     ]
     result = cheap._execute_openai_compatible_chat(

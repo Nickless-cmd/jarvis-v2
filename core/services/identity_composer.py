@@ -12,28 +12,58 @@ from core.runtime.config import WORKSPACES_DIR
 
 _IDENTITY_FILE = WORKSPACES_DIR / "default" / "IDENTITY.md"
 _FALLBACK_NAME = "the entity"
+_FALLBACK_PRONOUNS = "they/them"
 
 _name_cache: str | None = None
+_pronouns_cache: str | None = None
 
 
 def get_entity_name() -> str:
     """Return the entity name from IDENTITY.md. Cached after first read."""
     global _name_cache
     if _name_cache is None:
-        _name_cache = _parse_name_from_identity()
+        _name_cache = _parse_field_from_identity("Name", _FALLBACK_NAME)
     return _name_cache
 
 
-def _parse_name_from_identity() -> str:
+def get_entity_pronouns() -> str:
+    """Return the entity pronouns from IDENTITY.md. Cached after first read.
+
+    Format: 'han/ham', 'hun/hende', 'they/them', etc.
+    """
+    global _pronouns_cache
+    if _pronouns_cache is None:
+        _pronouns_cache = _parse_field_from_identity("Pronouns", _FALLBACK_PRONOUNS)
+    return _pronouns_cache
+
+
+def invalidate_identity_cache() -> None:
+    """Clear name + pronouns caches. Call after editing IDENTITY.md."""
+    global _name_cache, _pronouns_cache
+    _name_cache = None
+    _pronouns_cache = None
+
+
+def identity_prompt_prefix() -> str:
+    """Return 'Du er <name>' — used as role-setting prefix in cheap-lane prompts.
+
+    Centralised so renaming the entity (edit Name: in IDENTITY.md + call
+    invalidate_identity_cache()) updates all sub-prompts atomically.
+    """
+    return f"Du er {get_entity_name()}"
+
+
+def _parse_field_from_identity(field: str, fallback: str) -> str:
     try:
         text = _IDENTITY_FILE.read_text(encoding="utf-8")
+        pattern = re.compile(rf"^{re.escape(field)}:\s*(.+)$")
         for line in text.splitlines():
-            m = re.match(r"^Name:\s*(.+)", line.strip())
+            m = pattern.match(line.strip())
             if m:
                 return m.group(1).strip()
     except Exception:
         pass
-    return _FALLBACK_NAME
+    return fallback
 
 
 def _read_bearing() -> str:

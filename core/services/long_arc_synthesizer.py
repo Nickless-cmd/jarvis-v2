@@ -123,7 +123,10 @@ def _build_synthesis_prompt(
         f"=== Baseline-drift ({drift.get('window_days', days)} dage) ===\n{drift_lines}\n\n"
         f"=== Mål jeg lukkede ===\n{goal_lines}\n\n"
         f"=== Seneste weekly manifest (kontekst) ===\n{weekly[:1500]}\n\n"
-        "Skriv som dig selv, ikke som en rapport. 1. person. ~300 ord."
+        "Output: ~300 ord, deskriptiv prosa der forbinder data-pointerne "
+        "til én sekvens. Markdown med 3-sektioner-struktur ovenfor. "
+        "Neutral analytisk tone — Jarvis former selv sin egen 1.-persons "
+        "respons hvis dette resonerer."
     )
 
 

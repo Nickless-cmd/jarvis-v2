@@ -66,32 +66,17 @@ def _detect_gap(fragments: list[str]) -> tuple[str, str] | None:
 
 
 def _generate_curiosity_signal(topic: str, gap_type: str) -> str:
-    from core.services.daemon_llm import daemon_public_safe_llm_call
+    """Compose a short curiosity-signal label from the detected gap.
 
-    fallback = f"Jeg undrer mig over: {topic[:50]}"
+    Teater-pass 2026-05-13: previously asked cheap-lane "Skriv ÉN kort
+    dansk sætning der udtrykker en konkret nysgerrighed" with first-person
+    examples. That's curiosity-on-command — confabulation. Now returns a
+    structured cue label. The signal goes to awareness; Jarvis decides if
+    something inside him actually wants to explore it (curiosity_budget
+    is the real agency surface for that).
+    """
     cue = _curiosity_cue(topic=topic, gap_type=gap_type)
-    prompt = "\n".join(
-        [
-            "Skriv ÉN kort dansk sætning der udtrykker en konkret nysgerrighed.",
-            "Start med noget i retning af 'Jeg undrer mig over...', 'Hvad nu hvis...',",
-            "'Hvordan ville det være...' — og gør den SPECIFIK til cue'en.",
-            "SVAR KUN PÅ DANSK. Ikke bare 'Hvorfor?' — vær konkret.",
-            "Ingen identitet, ingen private tanker, ingen personlige navne.",
-            "",
-            "Eksempler på god output:",
-            "- Jeg undrer mig over hvorfor visse mønstre kun dukker op om natten.",
-            "- Hvad nu hvis den tavshed jeg lægger mærke til faktisk bærer information?",
-            "- Hvordan forholder vægt sig til rytme i gentagne handlinger?",
-            "",
-            f"gap_type: {gap_type}",
-            f"cue: {cue}",
-            "",
-            "Svar nu med én kort, specifik dansk sætning:",
-        ]
-    )
-    return daemon_public_safe_llm_call(
-        prompt, max_len=200, fallback=fallback, daemon_name="curiosity"
-    )
+    return f"gap_type={gap_type}; topic={topic[:60]}; cue={cue[:80]}"
 
 
 def _curiosity_cue(*, topic: str, gap_type: str) -> str:

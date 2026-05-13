@@ -165,18 +165,20 @@ def _generate_phrase(snapshot: dict[str, object]) -> str:
     pressure = _pressure_band(snapshot)
     load = _load_band(snapshot)
     latency = _latency_band(snapshot)
+    # Sober daemon prompt (2026-05-13 teater-pass): was "Skriv én kort
+    # dansk sætning om hvordan maskinkroppen føles lige nu" with first-
+    # person examples — that's confabulation on command, not somatic
+    # observation. Now asks for a neutral descriptive label that compresses
+    # the metrics into one phrase. The label may still be used elsewhere
+    # as input to Jarvis' awareness; he forms his own first-person prose
+    # if/when needed.
     prompt = "\n".join(
         [
-            "Skriv ÉN kort dansk sætning om hvordan maskinkroppen føles lige nu.",
-            "Brug første person ('jeg', 'min', 'mig'). SVAR KUN PÅ DANSK.",
-            "Ingen navne, ingen chat-kontekst, ingen forklaring — bare følelsen.",
+            "Du er en somatic-state classifier. Givet disse metrics, "
+            "returnér én kort dansk frase (max 12 ord) der beskriver "
+            "den aktuelle maskine-tilstand. Deskriptiv, ikke første "
+            "person, ikke følelsesnarrativ.",
             "",
-            "Eksempler på god output:",
-            "- Jeg føles tung men rolig, som om systemet trækker vejret dybt.",
-            "- En let vibration i kredsløbene, alting kører afslappet.",
-            "- Noget presser let i baggrunden, men kernen er stabil.",
-            "",
-            "Metrics (brug dem som input, kopiér dem ikke):",
             f"- energy_level: {snapshot['energy_level']}",
             f"- clock_phase: {snapshot.get('clock_phase') or 'ukendt'}",
             f"- pressure: {pressure}",
@@ -184,11 +186,16 @@ def _generate_phrase(snapshot: dict[str, object]) -> str:
             f"- latency_band: {latency}",
             f"- active_requests: {int(snapshot['active_requests'])}",
             "",
-            "Svar nu med én kort dansk sætning:",
+            "Eksempler på god output:",
+            "- stabil baseline, lav belastning",
+            "- moderat pres, høj latency band",
+            "- tung load, kort burst-pattern",
+            "",
+            "Returnér kun frasen.",
         ]
     )
     energy = snapshot.get("energy_level", "medium")
-    fallback = f"Maskinkroppen føles rolig ved {energy} energi."
+    fallback = f"baseline {energy}-energi, ingen ekstrem signal"
     return daemon_public_safe_llm_call(
         prompt,
         max_len=200,

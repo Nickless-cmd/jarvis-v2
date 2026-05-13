@@ -603,3 +603,74 @@ def build_emotional_memory_prompt_section(
     if not directive:
         return None
     return f"Emotional precedent: {directive[:140]}"
+
+
+def build_emotional_memory_overview(*, limit: int = 20) -> dict[str, object]:
+    """Mission Control overview surface.
+
+    Closes the dark-edge cartographer flagged 2026-05-13: emotional_memory
+    has causal influence + touches protected agency/continuity surface, but
+    had no visible MC surface. This adds the read-side projection so the
+    cartographer registers it as observed.
+
+    Returns aggregate stats + recent anchors. Read-only — never mutates.
+    """
+    from core.runtime.db_emotional_memory import list_emotional_memory_anchors
+
+    recent = list_emotional_memory_anchors(limit=limit)
+    by_type: dict[str, int] = {}
+    by_outcome: dict[str, int] = {"good": 0, "bad": 0, "neutral": 0, "unscored": 0}
+    intensity_sum = 0.0
+    intensity_count = 0
+    for r in recent:
+        t = str(r.get("anchor_type") or "?")
+        by_type[t] = by_type.get(t, 0) + 1
+        outcome = r.get("outcome_score")
+        if outcome is None:
+            by_outcome["unscored"] += 1
+        else:
+            try:
+                f = float(outcome)
+                if f > 0.2:
+                    by_outcome["good"] += 1
+                elif f < -0.2:
+                    by_outcome["bad"] += 1
+                else:
+                    by_outcome["neutral"] += 1
+            except (TypeError, ValueError):
+                by_outcome["unscored"] += 1
+        try:
+            intensity_sum += float(r.get("intensity") or 0)
+            intensity_count += 1
+        except (TypeError, ValueError):
+            pass
+
+    avg_intensity = (intensity_sum / intensity_count) if intensity_count else 0.0
+
+    return {
+        "active": bool(recent),
+        "summary": (
+            f"{len(recent)} recent anchors; "
+            f"types={by_type}; outcomes={by_outcome}; "
+            f"avg_intensity={avg_intensity:.2f}"
+        ),
+        "counts": {
+            "by_type": by_type,
+            "by_outcome": by_outcome,
+            "total": len(recent),
+        },
+        "avg_intensity": round(avg_intensity, 3),
+        "anchors": [
+            {
+                "anchor_id": r.get("anchor_id"),
+                "anchor_type": r.get("anchor_type"),
+                "captured_at": r.get("captured_at"),
+                "intensity": r.get("intensity"),
+                "outcome_score": r.get("outcome_score"),
+                "summary": str(r.get("summary") or "")[:200],
+            }
+            for r in recent[:10]
+        ],
+        "source": "core.services.emotional_memory_engine",
+        "authority": "derived-read-only",
+    }

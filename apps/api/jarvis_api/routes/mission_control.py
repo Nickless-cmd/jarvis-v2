@@ -2101,6 +2101,15 @@ def mc_heartbeat() -> dict:
     return heartbeat_runtime_surface()
 
 
+@router.get("/emotional-memory")
+def mc_emotional_memory(limit: int = 20) -> dict:
+    """Closes cartographer dark-edge (2026-05-13): emotional_memory_engine
+    had causal influence + protected agency/continuity reach but no MC
+    surface. Now exposed as read-only overview."""
+    from core.services.emotional_memory_engine import build_emotional_memory_overview
+    return build_emotional_memory_overview(limit=limit)
+
+
 @router.post("/heartbeat/tick")
 def mc_heartbeat_tick() -> dict:
     result = run_heartbeat_tick(trigger="manual")

@@ -125,14 +125,27 @@ def _is_positive_stable(snap: dict[str, float]) -> bool:
 
 def tick(_seconds: float = 0.0) -> dict[str, Any]:
     """Capture a snapshot if current state qualifies as baseline."""
+    captured = False
     try:
         snap = _current_snapshot()
         if _is_positive_stable(snap):
             _anchor_samples.append(snap)
             _persist_samples()
+            captured = True
     except Exception as exc:
         logger.debug("calm_anchor.tick failed: %s", exc)
-    return {"buffer_size": len(_anchor_samples)}
+    if captured:
+        # Publish on real state-transition (buffer grew). Cartographer reads
+        # the literal kind below as a publish anchor; the f-string version
+        # gets noticed too via the relaxed regex.
+        try:
+            from core.eventbus.bus import event_bus
+            event_bus.publish("calm_anchor.sample_captured", {
+                "buffer_size": len(_anchor_samples),
+            })
+        except Exception:
+            pass
+    return {"buffer_size": len(_anchor_samples), "captured": captured}
 
 
 def _compute_anchor_signature() -> dict[str, float]:

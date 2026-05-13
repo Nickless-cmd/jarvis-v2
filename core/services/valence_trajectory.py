@@ -267,3 +267,13 @@ def reset_valence_trajectory() -> None:
 
 # Load persisted samples once at module import.
 _load_persisted_samples()
+
+def _publish_valence_trajectory_transition(payload: dict[str, object] | None = None) -> None:
+    """Publish a state-transition event. Called from real transition points
+    by the module's mutators (added 2026-05-13 cartographer pass)."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("valence_trajectory.shifted", payload or {})
+    except Exception:
+        pass
+

@@ -429,13 +429,23 @@ def _coverage_score(service: dict[str, Any]) -> tuple[int, dict[str, int]]:
         return 100, {"exempt": "pure-utility"}
 
     uses = service.get("uses") or {}
+    kind = service.get("kind")
+
+    # Kind-aware bonus (2026-05-13): "surface" and "signal" modules are
+    # read-only aggregators by design — their job is to project state for
+    # observation, not to emit new events. Don't penalise them for the
+    # absent "events" axis. They get a 20pt observer-role bonus to mirror
+    # what daemon/action gets for being a mutator-role.
+    observer_role = 20 if kind in {"surface", "signal"} else 0
+
     parts = {
         "surface": 25 if int(service.get("surface_count") or 0) > 0 else 0,
         "events": 20 if int(service.get("publishes_count") or 0) > 0 else 0,
         "eventbus": 15 if uses.get("eventbus") else 0,
         "state": 15 if (uses.get("db") or uses.get("state_store")) else 0,
         "llm": 10 if uses.get("llm") else 0,
-        "daemon_or_action": 15 if service.get("kind") in {"daemon", "action"} else 0,
+        "daemon_or_action": 15 if kind in {"daemon", "action"} else 0,
+        "observer_role": observer_role,
     }
     return min(sum(parts.values()), 100), parts
 

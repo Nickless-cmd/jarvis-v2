@@ -180,3 +180,13 @@ def build_initiative_accumulator_surface() -> dict[str, Any]:
             if state["want_count"] > 0 else "Ingen ønsker"
         ),
     }
+
+def _publish_initiative_accumulator_transition(payload: dict[str, object] | None = None) -> None:
+    """Publish a state-transition event. Called from real transition points
+    by the module's mutators (added 2026-05-13 cartographer pass)."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("initiative_accumulator.want_accumulated", payload or {})
+    except Exception:
+        pass
+

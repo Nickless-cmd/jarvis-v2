@@ -251,3 +251,18 @@ def reset_thought_thread() -> None:
     global _last_thread, _last_computed_ts
     _last_thread = {}
     _last_computed_ts = 0.0
+
+
+def _emit_thought_thread_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a scoped event for cartographer observability.
+
+    State-mutation points in this module can call this with a transition
+    kind ("created", "updated", "transitioned", etc.). Defensive — never
+    blocks the caller. Added 2026-05-13 (top-18 cartographer pass).
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(f"thought_thread.{kind}", payload or {})
+    except Exception:
+        pass
+

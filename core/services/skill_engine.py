@@ -569,3 +569,18 @@ def build_skill_engine_surface() -> dict[str, Any]:
         "skills_root": str(SKILLS_ROOT),
         "summary": f"{len(_registry)} skills loaded from {SKILLS_ROOT}",
     }
+
+
+def _emit_skill_engine_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a scoped event for cartographer observability.
+
+    State-mutation points in this module can call this with a transition
+    kind ("created", "updated", "transitioned", etc.). Defensive — never
+    blocks the caller. Added 2026-05-13 (top-18 cartographer pass).
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(f"skill_engine.{kind}", payload or {})
+    except Exception:
+        pass
+

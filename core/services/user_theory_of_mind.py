@@ -135,3 +135,18 @@ def build_user_theory_of_mind_surface() -> dict[str, object]:
         "summary": f"{len(model.get('traits', []))} traits, {len(model.get('patterns', []))} patterns"
         if model.get("traits") or model.get("patterns") else str(engine.get("summary") or "No user model yet"),
     }
+
+
+def _emit_user_theory_of_mind_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a scoped event for cartographer observability.
+
+    State-mutation points in this module can call this with a transition
+    kind ("created", "updated", "transitioned", etc.). Defensive — never
+    blocks the caller. Added 2026-05-13 (top-18 cartographer pass).
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(f"user_theory_of_mind.{kind}", payload or {})
+    except Exception:
+        pass
+

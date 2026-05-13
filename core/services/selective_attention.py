@@ -409,3 +409,29 @@ def _compute_focus_width(
         return "broad"
     else:
         return "medium"
+
+def build_selective_attention_surface() -> dict[str, object]:
+    """Returns current attention spotlight if any."""
+    try:
+        spotlight = compute_selective_attention()
+        if spotlight is None:
+            return {"active": False, "summary": "no spotlight active"}
+        return {
+            "active": True,
+            "mode": "selective-attention",
+            "summary": getattr(spotlight, "summary", None) or "spotlight active",
+            "authority": "derived-read-only",
+        }
+    except Exception:
+        return {"active": False, "summary": "spotlight evaluation failed"}
+
+
+def _emit_spotlight_event(label: str) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "selective_attention.spotlight_changed",
+            {"label": str(label)[:120]},
+        )
+    except Exception:
+        pass

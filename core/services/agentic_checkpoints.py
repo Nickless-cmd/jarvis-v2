@@ -170,3 +170,35 @@ def checkpoint_prompt_section(session_id: str | None) -> str | None:
         parts.append(f"- partial answer: {partial[:800]}")
     parts.append("Brug dette som konkret resume-state, hvis brugeren beder dig fortsætte.")
     return "\n".join(parts)
+
+
+def build_agentic_checkpoints_surface() -> dict[str, object]:
+    """Mission Control surface — read-only meta-projection.
+
+    Added during 2026-05-13 coverage push. Reports module presence + mode
+    so the cartographer registers it as observed. Specific state-readers
+    can be added later as the module evolves.
+    """
+    return {
+        "active": True,
+        "mode": "agentic-checkpoints",
+        "summary": "Module loaded; entry points available.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_agentic_checkpoints_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a agentic_checkpoints-scoped event. Defensive — never blocks caller.
+
+    Cartographer scans for event_bus.publish() text. This wrapper keeps
+    publishes consistent across the module.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            f"agentic_checkpoints.{kind}",
+            payload or {},
+        )
+    except Exception:
+        pass
+

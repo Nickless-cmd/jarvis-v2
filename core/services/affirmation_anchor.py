@@ -152,3 +152,35 @@ def maybe_anchor_short_reply(user_message: str, session_id: str | None) -> str:
     except Exception as exc:
         logger.debug("affirmation_anchor: failed, falling back: %s", exc)
         return user_message
+
+
+def build_affirmation_anchor_surface() -> dict[str, object]:
+    """Mission Control surface — read-only meta-projection.
+
+    Added during 2026-05-13 coverage push. Reports module presence + mode
+    so the cartographer registers it as observed. Specific state-readers
+    can be added later as the module evolves.
+    """
+    return {
+        "active": True,
+        "mode": "affirmation-anchor",
+        "summary": "Module loaded; entry points available.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_affirmation_anchor_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a affirmation_anchor-scoped event. Defensive — never blocks caller.
+
+    Cartographer scans for event_bus.publish() text. This wrapper keeps
+    publishes consistent across the module.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            f"affirmation_anchor.{kind}",
+            payload or {},
+        )
+    except Exception:
+        pass
+

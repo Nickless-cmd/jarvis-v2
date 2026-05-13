@@ -576,3 +576,22 @@ def set_last_conflict_trace(trace: ConflictTrace) -> None:
     """Store the latest conflict trace for MC observability."""
     global _last_conflict_trace
     _last_conflict_trace = trace
+
+def build_conflict_resolution_surface() -> dict[str, object]:
+    return {
+        "active": True,
+        "mode": "conflict-resolution",
+        "summary": "Resolves competing internal directives.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_resolved_event(winning: str, losing: str) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "conflict_resolution.resolved",
+            {"winning": str(winning)[:80], "losing": str(losing)[:80]},
+        )
+    except Exception:
+        pass

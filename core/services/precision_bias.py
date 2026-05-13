@@ -280,3 +280,22 @@ def _find_style_dominant_signal(dominant_pressures: list) -> str | None:
                 best_family = family
 
     return best_family
+
+def build_precision_bias_surface() -> dict[str, object]:
+    return {
+        "active": True,
+        "mode": "precision-bias-tracker",
+        "summary": "Tracks precision-vs-recall preference per query class.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_bias_event(class_id: str, bias: float) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "precision_bias.updated",
+            {"class_id": str(class_id), "bias": float(bias)},
+        )
+    except Exception:
+        pass

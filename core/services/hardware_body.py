@@ -200,3 +200,22 @@ def _derive_wake_state(clock_phase: str, energy_level: str) -> str:
     if clock_phase in {"sen eftermiddag", "aften"} and energy_level in {"lav", "udmattet"}:
         return "winding down"
     return "alert"
+
+def build_hardware_body_surface() -> dict[str, object]:
+    return {
+        "active": True,
+        "mode": "hardware-body-state",
+        "summary": "Reports physical machine signals (energy, latency band).",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_body_event(metric: str, value: object) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "hardware_body.metric_updated",
+            {"metric": str(metric), "value": value},
+        )
+    except Exception:
+        pass

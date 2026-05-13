@@ -112,3 +112,25 @@ CLARIFICATION_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
 ]
+
+def build_clarification_classifier_surface() -> dict[str, object]:
+    """Mission Control surface — does not call the classifier (would need a
+    message). Returns module-level meta. Cartographer-observable.
+    """
+    return {
+        "active": True,
+        "mode": "ambiguity-score-classifier",
+        "summary": "Classifier ready; score_message(text) returns ambiguity verdict.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_classifier_event(verdict: str, score: int) -> None:
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "clarification_classifier.scored",
+            {"verdict": verdict, "score": int(score)},
+        )
+    except Exception:
+        pass

@@ -75,21 +75,21 @@ def enforcement_section() -> str | None:
             continue
         adherence = d.get("adherence_score")
         if adherence is not None and adherence < _ESCALATION_THRESHOLD:
-            # Gate 3: Escalate low-adherence decisions to mandatory
-            lines.append(f"  • ⚠ DU SKAL: {directive} (adherence={adherence:.0%} — IKKE valgfrit)")
+            # Gate 3: low-adherence decisions marked as enforced band
+            lines.append(f"  • [enforced, adherence {adherence:.0%}] {directive}")
             low_adherence_count += 1
         else:
             lines.append(f"  • {directive}")
 
     if low_adherence_count > 0:
         lines.append(
-            f"⚠ Decision adherence {low_adherence_count}/{len(active)} under {_ESCALATION_THRESHOLD:.0%} — "
-            "for lav adherence betyder at decisions EJ længere er forslag, de er PÅKRØVEDE."
+            f"Adherence under {_ESCALATION_THRESHOLD:.0%} på {low_adherence_count}/{len(active)} "
+            "decisions — enforcement-band aktiv (revoke ved fortsat brud)."
         )
     else:
         lines.append(
-            "Hvis det du nu skriver bryder en af disse, NAVNGIV bruddet kort "
-            "FØR du fortsætter (f.eks. 'jeg er ved at bryde X — bevidst valg fordi Y')."
+            "Mekanisme: brud på en aktiv decision tracker som review-event "
+            "(format: kort note om hvorfor, fx 'bryder X fordi Y')."
         )
     return "\n".join(lines)
 

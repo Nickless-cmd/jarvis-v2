@@ -109,12 +109,11 @@ def _build_section_uncached() -> str:
     if all(abs(c.priority_delta) < 5 for c in top):
         return ""
 
-    lines = ["🧠 Symbolsk ræsonnering — top-5 regel-konklusioner lige nu:"]
+    lines = ["Forward-chaining konklusioner (top-5, sorted by priority_delta):"]
     for c in top:
         lines.append(_format_conclusion(c))
     lines.append(
-        "(Disse er forslag fra forward-chaining over signal-stakken. "
-        "De er ikke ordrer — du beslutter."
+        "Kilde: rule_engine forward-chaining over signal-stakken."
     )
     return "\n".join(lines)
 

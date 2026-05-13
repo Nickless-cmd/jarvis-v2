@@ -429,9 +429,8 @@ def format_latest_unacknowledged_memo_for_awareness() -> str:
     memo_id = str(memo.get("memo_id") or "")
 
     return (
-        f"📓 Nyt ugentligt meta-læringsmemo (period {period_disp}):\n"
-        f'"{teaser}"\n'
-        "\n"
-        f"{n_hypotheses} hypothesis-kandidater. Læs hele memoet via "
-        f"read_learning_memo(memo_id='{memo_id}')."
+        f"Ugentligt meta-læringsmemo (period {period_disp}), "
+        f"unacknowledged:\n{teaser}\n"
+        f"Hypothesis-kandidater: {n_hypotheses}. "
+        f"Tool: read_learning_memo(memo_id='{memo_id}')."
     )

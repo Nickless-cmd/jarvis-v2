@@ -350,9 +350,8 @@ def self_evaluation_section() -> str | None:
             avg_f = float(avg)
             if avg_f < 50.0:
                 line = (
-                    f"⚠ TICK-KVALITET LAV: {avg}/100 over {summary.get('count')} ticks "
-                    f"({trend}). Hvis du har en decision om at evaluere kvalitet, "
-                    "er det nu den skal aktiveres."
+                    f"Tick-kvalitet under tærskel: {avg}/100 over "
+                    f"{summary.get('count')} ticks ({trend})."
                 )
                 # Fire eventbus alarm so other subscribers (council activator,
                 # etc.) can react too.
@@ -373,18 +372,18 @@ def self_evaluation_section() -> str | None:
     if adherence.get("score") is not None:
         score = adherence["score"]
         if adherence.get("flag"):
-            parts.append(f"⚠ Decision adherence {score}% — under 60% tærskel")
+            parts.append(f"Decision adherence {score}% (under 60% tærskel)")
             recovery = adherence.get("recovery") if isinstance(adherence.get("recovery"), dict) else {}
             actions = recovery.get("actions") if isinstance(recovery.get("actions"), list) else []
             if actions:
-                parts.append(f"Adherence recovery: {actions[0]}")
+                parts.append(f"Adherence recovery kandidat: {actions[0]}")
         elif score < 80:
-            parts.append(f"Decision adherence: {score}% (overvej review)")
+            parts.append(f"Decision adherence: {score}% (advisory band)")
 
     # Stale goals
     stale = detect_stale_goals()
     if stale:
-        parts.append(f"⏰ {len(stale)} mål stagnerer (≥3 dage uden progress)")
+        parts.append(f"Stagnerende mål: {len(stale)} (≥3 dage uden progress)")
 
     if not parts:
         return None

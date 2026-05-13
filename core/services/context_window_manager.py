@@ -204,9 +204,9 @@ def context_window_section() -> str | None:
     rec = deg.get("advice", "")
     sig_text = "; ".join(signals[:3]) if signals else "context pressure"
     return (
-        f"⚠ Context degradation score {score}/100 ({sig_text}). "
-        f"Anbefaling: **{rec}**. Brug `manage_context_window(strategy='adaptive')` "
-        "for at lade systemet vælge bedst egnede komprimering."
+        f"Context degradation score {score}/100 ({sig_text}). "
+        f"Klassifikation: {rec}. "
+        "Tool: manage_context_window(strategy='adaptive') vælger komprimering."
     )
 
 

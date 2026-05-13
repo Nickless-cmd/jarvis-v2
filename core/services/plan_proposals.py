@@ -519,13 +519,12 @@ def pending_plan_section(session_id: str | None) -> str | None:
         replan_line = ""
         if replan.get("needed"):
             replan_line = (
-                "\n  ⚠ Replan-signal: planen er stale "
-                f"({replan.get('age_days')} dage uden progress). "
-                "Vurder om næste handling bør være at foreslå en revideret plan."
+                f"\n  Replan-signal: stale ({replan.get('age_days')} dage uden progress). "
+                "revise_plan-tool tilgængelig."
             )
         blocks.append(
-            f"🎯 Aktiv plan (godkendt, {len(completed)}/{len(steps)} done) "
-            f"plan_id={rec.get('plan_id')}: {rec.get('title')}\n"
+            f"Aktiv plan ({len(completed)}/{len(steps)} done, plan_id={rec.get('plan_id')}): "
+            f"{rec.get('title')}\n"
             f"  Resterende trin:\n{remaining_lines}"
             f"{replan_line}"
         )

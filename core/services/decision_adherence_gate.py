@@ -94,28 +94,25 @@ def decision_adherence_section() -> str:
         has_escalation = True
 
         if score < _CRITICAL_THRESHOLD:
-            # Critical: highest urgency
+            # Critical band — adherence below 25%
             lines.append(
-                f"⛔ KRITISK ({score:.0%} adherence): {directive}"
+                f"Adherence {score:.0%} (kritisk band) — {dec_id}: {directive}"
             )
             lines.append(
-                f"   → Hvis du ikke kan følge denne decision, revoke den med decision_revoke."
-            )
-            lines.append(
-                f"   → Ellers: OVERHOLD DEN NU. Ingen undtagelser. [{dec_id}]"
+                "  Mekanisme: ved fortsat lav adherence revokes decision automatisk."
             )
         elif score < _ADVISORY_THRESHOLD:
-            # Imperative: strong command
+            # Imperative band — adherence below 40%
             lines.append(
-                f"⚠ DU SKAL ({score:.0%} adherence): {directive}"
+                f"Adherence {score:.0%} (imperativ band) — {dec_id}: {directive}"
             )
             lines.append(
-                f"   → Konsekvens for brud: decision revokes eller adherence falder yderligere. [{dec_id}]"
+                "  Mekanisme: adherence falder yderligere ved næste brud, kan trigger revoke."
             )
         else:
-            # Advisory: gentle reminder
+            # Advisory band — adherence below good threshold
             lines.append(
-                f"📌 Husk ({score:.0%} adherence): {directive} [{dec_id}]"
+                f"Adherence {score:.0%} (advisory band) — {dec_id}: {directive}"
             )
 
     if not has_escalation:

@@ -72,10 +72,12 @@ def dead_skills_section() -> str:
     if not dead:
         return ""
 
-    # Cap to 5 most recent to avoid bloat
-    lines = [f"💤 Skills uden brug i {_INACTIVITY_DAYS} dage ({len(dead)} stk):"]
+    lines = [
+        f"Skills uden invocation seneste {_INACTIVITY_DAYS} dage "
+        f"({len(dead)} stk; viser 5):"
+    ]
     for s in dead[:5]:
         desc = str(s.get("description") or "")[:80]
-        lines.append(f"  • {s['name']}: {desc}")
-    lines.append("(Overvej delete_skill hvis de ikke længere tjener dig.)")
+        lines.append(f"  {s['name']}: {desc}")
+    lines.append("Mekanisme: delete_skill fjerner uden brug; ingen auto-deletion.")
     return "\n".join(lines)

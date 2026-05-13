@@ -77,9 +77,9 @@ def plan_revision_patterns_section() -> str:
         return ""
 
     dominant.sort(key=lambda x: -x[1])
-    lines = ["🔁 Plan-revision mønstre (sidste 30 dage):"]
+    lines = [f"Plan-revision clustering (seneste {_WINDOW_DAYS} dage):"]
     for bucket, n in dominant[:3]:
-        lines.append(f"  • {bucket}: {n} revisioner")
+        lines.append(f"  {bucket}: {n} revisioner")
         if bucket in examples:
-            lines.append(f"    eks: \"{examples[bucket]}\"")
+            lines.append(f"    eksempel: {examples[bucket]}")
     return "\n".join(lines)

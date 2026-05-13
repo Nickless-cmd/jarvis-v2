@@ -26,8 +26,8 @@ logger = logging.getLogger(__name__)
 _THREAD: threading.Thread | None = None
 _STOP = threading.Event()
 
-_PUBLISH_RE = re.compile(r"event_bus\.publish\(\s*[\"']([^\"']+)[\"']")
-_EMIT_RE = re.compile(r"emit\(\s*[\"']([^\"']+)[\"']")
+_PUBLISH_RE = re.compile(r"event_bus\.publish\(\s*f?[\"']([^\"']+)[\"']")
+_EMIT_RE = re.compile(r"emit\(\s*f?[\"']([^\"']+)[\"']")
 _SURFACE_RE = re.compile(r"def\s+(build_[a-zA-Z0-9_]*surface)\s*\(")
 _TOOL_RE = re.compile(r"[\"']name[\"']\s*:\s*[\"']([^\"']+)[\"']")
 

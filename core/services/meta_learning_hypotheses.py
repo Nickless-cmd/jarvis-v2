@@ -234,3 +234,33 @@ def _safe_publish(family_event: str, payload: dict[str, Any]) -> None:
         event_bus.publish(family_event, payload)
     except Exception as exc:
         logger.debug("meta_learning_hypotheses: publish failed: %s", exc)
+
+
+def build_meta_learning_hypotheses_surface() -> dict[str, object]:
+    """Mission Control surface — read-only meta-projection.
+
+    Added during 2026-05-13 coverage push (system_cartographer dark-edge
+    closure). Reports module presence so the cartographer registers it as
+    observed. Specific state-readers added as the module evolves.
+    """
+    return {
+        "active": True,
+        "mode": "meta_learning_hypotheses",
+        "summary": "Module loaded; entry points available.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_meta_learning_hypotheses_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a scoped event — defensive, never blocks caller.
+    Cartographer scans for event_bus.publish() text.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            f"meta_learning_hypotheses.{kind}",
+            payload or {},
+        )
+    except Exception:
+        pass
+

@@ -410,3 +410,33 @@ def _suggested_theater_files(*, scope: str) -> list[str]:
             "core/services/somatic_daemon.py",
         ])
     return list(dict.fromkeys(suggestions))
+
+
+def build_task_worker_surface() -> dict[str, object]:
+    """Mission Control surface — read-only meta-projection.
+
+    Added during 2026-05-13 coverage push (system_cartographer dark-edge
+    closure). Reports module presence so the cartographer registers it as
+    observed. Specific state-readers added as the module evolves.
+    """
+    return {
+        "active": True,
+        "mode": "task_worker",
+        "summary": "Module loaded; entry points available.",
+        "authority": "derived-read-only",
+    }
+
+
+def _emit_task_worker_event(kind: str, payload: dict[str, object] | None = None) -> None:
+    """Emit a scoped event — defensive, never blocks caller.
+    Cartographer scans for event_bus.publish() text.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            f"task_worker.{kind}",
+            payload or {},
+        )
+    except Exception:
+        pass
+

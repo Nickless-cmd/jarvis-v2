@@ -633,6 +633,17 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Pending nudges from daemons (added 2026-05-13). Closes the spejlsal-
+    # bug: heartbeat/outreach/inner-voice/boredom daemons now route through
+    # outbound_nudges instead of sending directly. Priority 4 — even higher
+    # than loop-compliance (7) and identity pins (5) because these are
+    # PENDING context that Jarvis needs to know about before he speaks.
+    try:
+        from core.services.outbound_nudges import format_pending_for_awareness
+        _awareness_add(4, "pending outbound nudges", format_pending_for_awareness() or None)
+    except Exception:
+        pass
+
     # Loop-compliance self-check (added 2026-05-12). Fires when Jarvis is
     # ignoring his own loop-nudge commitment OR R2-gate heed_rate is low.
     # Priority 7 = right after identity pins so he can't miss it among 50+

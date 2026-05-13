@@ -329,9 +329,41 @@ def compose_and_send_outreach(
     if len(message_text) > 800:
         message_text = message_text[:800].rstrip() + "…"
 
-    # Choose channel and send
+    # Route through nudge ledger (2026-05-13). Outreach was Path 3 in the
+    # spejlsal-audit: longing-pressure crossed threshold, daemon generated
+    # message, sent directly to user, fresh session on reply. Now Jarvis
+    # sees the proposed outreach as a pending nudge and decides whether to
+    # surface it himself with full context. Bypass for high strength (>=0.9).
     channel = user_ctx.get("channel_hint") or "webchat"
-    send_result = _send_message(message_text, channel=channel)
+    bypass_threshold = 0.9
+    use_nudge = True
+    try:
+        from core.runtime.settings import load_settings as _ls_o
+        if not _ls_o().nudge_system_enabled:
+            use_nudge = False
+    except Exception:
+        pass
+    if float(strength) >= bypass_threshold:
+        use_nudge = False  # urgent enough to send direct
+
+    if use_nudge:
+        try:
+            from core.services.outbound_nudges import push_nudge
+            push_result = push_nudge(
+                source="outreach_composer",
+                kind="outreach",
+                message=message_text,
+                importance="high" if float(strength) >= 0.75 else "normal",
+            )
+            send_result = {
+                "sent": True,
+                "channel": "nudge-ledger",
+                "nudge_id": push_result.get("nudge_id"),
+            }
+        except Exception as _nudge_exc:
+            send_result = _send_message(message_text, channel=channel)
+    else:
+        send_result = _send_message(message_text, channel=channel)
     if not send_result.get("sent"):
         return {
             "status": "error",

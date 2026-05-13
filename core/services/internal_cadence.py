@@ -28,13 +28,24 @@ Design constraints:
 from __future__ import annotations
 
 import logging
+import threading
+import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Callable
+from typing import Callable, Optional
 
 from core.eventbus.bus import event_bus
 
 logger = logging.getLogger(__name__)
+
+# Standalone scheduler — decoupled from heartbeat (2026-05-13).
+# Cadence used to run inside heartbeat tick. Heartbeat blocked during
+# active-chat-gate → cadence skipped → cache-warmer never fired →
+# visible-chat assembly went cold every 3 min. Now runs in its own
+# daemon thread, independent of heartbeat schedule.
+_SCHEDULER_THREAD: Optional[threading.Thread] = None
+_SCHEDULER_STOP = threading.Event()
+_SCHEDULER_INTERVAL_S = 60  # tick once per minute; producers self-cool
 
 
 # ---------------------------------------------------------------------------
@@ -689,10 +700,68 @@ def run_cadence_tick_with_bootstrap(
 ) -> dict[str, object]:
     """Bootstrap producers and run a cadence tick.
 
-    This is the main entry point called by heartbeat.
+    Used by both the dedicated cadence scheduler (trigger='cadence-scheduler')
+    and any external caller. Heartbeat used to call this too — that path is
+    deprecated; cadence now runs independently of heartbeat via
+    start_cadence_scheduler() below.
     """
     _ensure_producers_registered()
     return run_cadence_tick(
         trigger=trigger,
         last_visible_at_iso=last_visible_at_iso,
     )
+
+
+# ---------------------------------------------------------------------------
+# Standalone cadence scheduler (decoupled from heartbeat)
+# ---------------------------------------------------------------------------
+
+def _scheduler_loop() -> None:
+    """Background loop: tick cadence every _SCHEDULER_INTERVAL_S seconds.
+
+    Runs in a daemon thread, dies with the process. Catches exceptions
+    per-tick so a single failure doesn't stop the loop.
+    """
+    logger.info("cadence scheduler loop starting (interval=%ds)", _SCHEDULER_INTERVAL_S)
+    # Pull recent visible-chat timestamp on each tick from event_bus so
+    # visible-grace logic still works (producers like curiosity_idle_window
+    # use visible_grace_minutes to delay until chat has been quiet).
+    while not _SCHEDULER_STOP.is_set():
+        try:
+            last_visible_at = ""
+            try:
+                recent = event_bus.recent(limit=20)
+                for evt in recent:
+                    if str(evt.get("kind") or "").startswith("runtime.visible_run"):
+                        last_visible_at = str(evt.get("created_at") or "")
+                        break
+            except Exception:
+                pass
+            run_cadence_tick_with_bootstrap(
+                trigger="cadence-scheduler",
+                last_visible_at_iso=last_visible_at,
+            )
+        except Exception as exc:
+            logger.warning("cadence scheduler loop error: %s", exc)
+        _SCHEDULER_STOP.wait(_SCHEDULER_INTERVAL_S)
+    logger.info("cadence scheduler loop exited")
+
+
+def start_cadence_scheduler() -> None:
+    """Spawn the standalone cadence scheduler thread. Idempotent."""
+    global _SCHEDULER_THREAD
+    if _SCHEDULER_THREAD is not None and _SCHEDULER_THREAD.is_alive():
+        return
+    _SCHEDULER_STOP.clear()
+    _SCHEDULER_THREAD = threading.Thread(
+        target=_scheduler_loop,
+        name="cadence-scheduler",
+        daemon=True,
+    )
+    _SCHEDULER_THREAD.start()
+    logger.info("cadence-scheduler daemon started")
+
+
+def stop_cadence_scheduler() -> None:
+    """Signal the scheduler thread to exit. Best-effort; daemon dies with process."""
+    _SCHEDULER_STOP.set()

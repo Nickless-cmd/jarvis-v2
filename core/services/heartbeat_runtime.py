@@ -1824,38 +1824,13 @@ def _run_heartbeat_tick_locked(
             limit=2,
         )
 
-    # Run non-visible inner producers through the internal cadence layer.
-    # Cadence layer evaluates due/cooling/blocked state for each producer
-    # and dispatches in priority order. Replaces loose stacked side-effects.
-    try:
-        from core.services.internal_cadence import (
-            run_cadence_tick_with_bootstrap,
-        )
-
-        last_visible_at = ""
-        try:
-            recent = event_bus.recent(limit=20)
-            for evt in recent:
-                if str(evt.get("kind") or "").startswith("runtime.visible_run"):
-                    last_visible_at = str(evt.get("created_at") or "")
-                    break
-        except Exception:
-            pass
-        run_cadence_tick_with_bootstrap(
-            trigger="heartbeat",
-            last_visible_at_iso=last_visible_at,
-        )
-    except Exception as _cadence_exc:
-        # Was: bare `pass`. The silence hid that the cadence layer was
-        # broken — cache-warmer + meta-learning + life-projects producers
-        # never fired. Logger.warning now surfaces the actual exception so
-        # we can debug. Still doesn't re-raise — heartbeat must continue.
-        # (2026-05-13)
-        import traceback as _tb
-        logger.warning(
-            "cadence layer crashed in heartbeat tick: %s\n%s",
-            _cadence_exc, _tb.format_exc(),
-        )
+    # Cadence layer USED to run here. Moved to its own background thread
+    # in 2026-05-13 because heartbeat's blocked-reason gate (active-chat,
+    # already-ticking) was silently killing cadence — cache-warmer +
+    # meta-learning + life-projects producers never fired during active
+    # chat sessions. Cadence now lives in core.services.internal_cadence
+    # start_cadence_scheduler() (daemon thread, 60s interval), spawned
+    # from FastAPI app.py lifespan.
 
     # --- Consciousness Experiments ---
     try:

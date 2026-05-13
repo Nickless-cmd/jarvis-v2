@@ -172,6 +172,17 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("tool_router_runtime start failed: %s", _exc)
             try:
+                # Cadence scheduler — decoupled from heartbeat (2026-05-13).
+                # Was: heartbeat called cadence at end of tick. But heartbeat
+                # gets blocked during active-chat-gate or already-ticking,
+                # which silently killed cache-warmer + other cadence
+                # producers. Now runs independently every 60s.
+                from core.services.internal_cadence import start_cadence_scheduler
+                start_cadence_scheduler()
+                logger.info("cadence_scheduler daemon started")
+            except Exception as _exc:
+                logger.warning("cadence_scheduler start failed: %s", _exc)
+            try:
                 from core.services.counterfactual_engine_runtime import start_counterfactual_runtime
                 start_counterfactual_runtime()
                 logger.info("counterfactual_runtime daemon started")

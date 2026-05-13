@@ -33975,3 +33975,68 @@ from core.runtime.db_concept_baseline import (  # noqa: E402,F401
     get_concept_baseline_stat,
     list_concept_baseline_stats,
 )
+
+
+# ---------------------------------------------------------------------------
+# Per-process "table-ensured" memoization (2026-05-13).
+# ---------------------------------------------------------------------------
+# Profile under load showed ~40 `_ensure_*_table` calls per prompt-build
+# as the new dominant hot path after the cheap-lane caches landed. Each
+# call ran `CREATE TABLE IF NOT EXISTS` (+ indexes, sometimes ALTER for
+# additive migrations) — all idempotent and fully redundant after the
+# first call in the process lifetime.
+#
+# Strategy: wrap every `_ensure_*_table` function at module-load time so
+# subsequent calls short-circuit. First call still runs the original
+# (which handles migrations); subsequent calls become a single set-lookup.
+#
+# Safety: every wrapped function is designed to be idempotent (see
+# docstrings in db.py — "Idempotent — kan kaldes flere gange uden fejl").
+# Migrations use `ALTER TABLE ... ADD COLUMN` guarded against duplicate
+# column errors, so running once at startup is identical to running on
+# every call.
+_ENSURED_TABLES: set[str] = set()
+
+
+def _install_ensure_once_cache() -> None:
+    import sys as _sys
+    _mod = _sys.modules[__name__]
+    _names = [
+        _n for _n in vars(_mod).keys()
+        if _n.startswith("_ensure_") and _n.endswith("_table") and callable(getattr(_mod, _n, None))
+    ]
+    for _name in _names:
+        _orig = getattr(_mod, _name)
+        # Skip if already wrapped (idempotent re-install)
+        if getattr(_orig, "_ensure_once_wrapped", False):
+            continue
+
+        def _make_wrapped(_fn, _key):
+            def _wrapped(*args, **kwargs):
+                if _key in _ENSURED_TABLES:
+                    return None
+                _result = _fn(*args, **kwargs)
+                _ENSURED_TABLES.add(_key)
+                return _result
+            _wrapped.__name__ = _fn.__name__
+            _wrapped.__qualname__ = _fn.__qualname__
+            _wrapped.__doc__ = _fn.__doc__
+            _wrapped._ensure_once_wrapped = True  # type: ignore[attr-defined]
+            _wrapped._ensure_once_orig = _fn  # type: ignore[attr-defined]
+            return _wrapped
+        setattr(_mod, _name, _make_wrapped(_orig, _name))
+
+
+def invalidate_ensure_once_cache(table_name: str | None = None) -> None:
+    """Force re-run of `_ensure_*_table` on next call.
+
+    Pass None to clear all (e.g. after switching DB files in tests).
+    Pass a specific name to re-ensure that one table.
+    """
+    if table_name is None:
+        _ENSURED_TABLES.clear()
+    else:
+        _ENSURED_TABLES.discard(table_name)
+
+
+_install_ensure_once_cache()

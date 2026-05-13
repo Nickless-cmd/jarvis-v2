@@ -117,9 +117,10 @@ def _build_prompt(anchor: dict, chain: list[dict]) -> tuple[str, str]:
         ts = ev.get("created_at", "")[11:16] if len(ev.get("created_at", "")) >= 16 else ""
         chain_lines.append(f"  ← ({ts}): {ev.get('kind', '?')}")
     user = (
-        "Her er den kausale kæde der har ført til mit nuværende øjeblik. "
-        "Skriv en kort refleksion (1-2 sætninger) over hvad der er sket "
-        "som sammenhængende handling — ikke bare en liste:\n\n"
+        "Causal chain leading to the current anchor event. "
+        "Output: 1-2 sentence descriptive summary connecting the events as "
+        "one coherent sequence. Neutral analytic tone, not first-person "
+        "reflection.\n\n"
         + "\n".join(chain_lines)
     )
     return system, user

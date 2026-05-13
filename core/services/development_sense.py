@@ -298,14 +298,13 @@ def development_sense_section() -> str | None:
     # Vækstpuls — 1 linje
     if pulse.get("score") is not None:
         score = pulse["score"]
-        emoji = "🌱" if score >= 0.4 else "🪨"
-        lines.append(f"{emoji} Vækstpuls: {score} — {pulse['label']}")
-    
+        lines.append(f"Vækstpuls: {score} ({pulse['label']})")
+
     # Stuck — 1 linje max
     if stuck:
         reasons = stuck.get("reasons", [])
         if reasons:
-            lines.append(f"🪤 Stuck: {reasons[0][:60]}")
+            lines.append(f"Stuck-signal: {reasons[0][:60]}")
     
     # Appetit — 1 linje max
     if appetite:

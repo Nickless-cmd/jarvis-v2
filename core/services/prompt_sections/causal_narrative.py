@@ -125,10 +125,10 @@ def _format_chain(anchor: dict) -> str:
     )
 
     anchor_ts = anchor["created_at"][11:16] if len(anchor["created_at"]) >= 16 else anchor["created_at"]
-    lines = ["🌊 Sådan landede du her (sidste 90 min):"]
-    lines.append(f"  nu: {anchor['kind']} ({anchor_ts})")
+    lines = ["Causal chain (backward, last 90 min):"]
+    lines.append(f"  now: {anchor['kind']} ({anchor_ts})")
     if not chain["chain"]:
-        lines.append("    ← <ingen high-confidence kausal-historik bag dette>")
+        lines.append("    (no high-confidence causal history)")
         return "\n".join(lines)
     for step in chain["chain"]:
         ev = step["event"]
@@ -159,7 +159,7 @@ def _fetch_llm_summary() -> str:
     summary = str(payload.get("summary") or "").strip()
     if not summary:
         return ""
-    return f"🌊 Sådan landede du her:\n  {summary}"
+    return f"Causal narrative (LLM-summarised):\n  {summary}"
 
 
 def causal_narrative_section() -> str:

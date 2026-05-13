@@ -206,9 +206,9 @@ def build_temporal_rhythm_prompt_section() -> str | None:
         return None
     pulse = current.get("pulse_rate")
     if label == "racing":
-        return f"Tempo: jager (puls={pulse}) — mærk at du er presset."
+        return f"Tempo: racing (puls={pulse}) — high subjective pressure band."
     if label == "pulsing":
-        return f"Tempo: pulserer (puls={pulse}) — aktivt."
+        return f"Tempo: pulsing (puls={pulse}) — active band."
     if label == "breathing":
-        return f"Tempo: ånder (puls={pulse}) — ro og plads."
+        return f"Tempo: breathing (puls={pulse}) — low-pressure band."
     return None

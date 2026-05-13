@@ -391,6 +391,45 @@ def start_visible_run(
     approval_mode: str = "ask",
     thinking_mode: str = "think",
 ) -> AsyncIterator[str]:
+    # Mid-run nudge interception (2026-05-13). If a visible run is already
+    # active for THIS session, route the new message as a nudge instead of
+    # starting a parallel run. Fixes the race: Bjørn sends a midway-followup
+    # ("are you still there?"), it starts a new session, Jarvis concludes
+    # "he hung", responds, then the original run completes too — two
+    # parallel realities on Discord. With this, the followup lands in
+    # Jarvis' awareness; the active run continues; one coherent reply.
+    normalized_session_id = (session_id or "").strip() or None
+    try:
+        active = _get_active_visible_run_state()
+        if (active and bool(active.get("active"))
+                and not bool(active.get("cancelled"))
+                and normalized_session_id
+                and str(active.get("session_id") or "") == normalized_session_id):
+            from core.runtime.settings import load_settings as _ls_mr
+            if _ls_mr().nudge_system_enabled:
+                from core.services.outbound_nudges import push_nudge
+                push_nudge(
+                    source="user_midway_followup",
+                    kind="other",
+                    message=str(message or "").strip(),
+                    importance="high",
+                    parent_session_id=normalized_session_id,
+                    parent_message_id=str(active.get("run_id") or ""),
+                )
+
+                async def _midway_ack() -> AsyncIterator[str]:
+                    # Yield nothing visible — the user message lands in the
+                    # session as normal (via the API's message-append path)
+                    # but no run is started. Jarvis sees it as nudge in his
+                    # awareness when the current run completes its next turn.
+                    if False:
+                        yield ""
+                    return
+                return _midway_ack()
+    except Exception:
+        # Never block normal flow on nudge-routing failure
+        pass
+
     settings = load_settings()
     run = VisibleRun(
         run_id=f"visible-{uuid4().hex}",
@@ -398,7 +437,7 @@ def start_visible_run(
         provider=settings.visible_model_provider,
         model=settings.visible_model_name,
         user_message=(message or "").strip() or "Tom synlig forespoergsel",
-        session_id=(session_id or "").strip() or None,
+        session_id=normalized_session_id,
         trust_all=(approval_mode == "trust"),
         thinking_mode=(thinking_mode or "think").strip().lower(),
     )
@@ -5033,6 +5072,7 @@ def register_visible_run(run: VisibleRun) -> VisibleRunController:
     state = {
         "active": True,
         "run_id": run.run_id,
+        "session_id": str(run.session_id or ""),
         "lane": run.lane,
         "provider": run.provider,
         "model": run.model,

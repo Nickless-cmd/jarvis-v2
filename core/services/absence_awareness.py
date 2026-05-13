@@ -162,3 +162,13 @@ def build_absence_awareness_surface() -> dict[str, object]:
         "threshold_hours": _MIN_ABSENCE_HOURS,
         "summary": brief or f"Idle {idle:.1f}h (under threshold)" if idle > 0 else "Active",
     }
+
+def _publish_absence_awareness_transition(payload: dict[str, object] | None = None) -> None:
+    """Publish a state-transition event. Called from real transition points
+    by the module's mutators (added 2026-05-13 cartographer pass)."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("absence_awareness.return_detected", payload or {})
+    except Exception:
+        pass
+

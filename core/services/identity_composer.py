@@ -42,6 +42,11 @@ def invalidate_identity_cache() -> None:
     global _name_cache, _pronouns_cache
     _name_cache = None
     _pronouns_cache = None
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("identity_composer.cache_invalidated", {})
+    except Exception:
+        pass
 
 
 def identity_prompt_prefix() -> str:

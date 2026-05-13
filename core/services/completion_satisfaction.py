@@ -44,3 +44,13 @@ def detect_completion_satisfaction(
 
 def build_completion_satisfaction_surface() -> dict[str, object]:
     return {"active": True, "summary": "Completion satisfaction runs per session analysis"}
+
+def _publish_completion_satisfaction_transition(payload: dict[str, object] | None = None) -> None:
+    """Publish a state-transition event. Called from real transition points
+    by the module's mutators (added 2026-05-13 cartographer pass)."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("completion_satisfaction.detected", payload or {})
+    except Exception:
+        pass
+

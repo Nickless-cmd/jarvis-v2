@@ -99,17 +99,13 @@ def self_monitor_section() -> str | None:
     looped = _looped_tools(events)
     for tool, count in looped:
         notes.append(
-            f"⚠ Du har lige kaldt **{tool}** {count} gange i træk og fået "
-            f"fejl hver gang. Stop med at gentage — læs den seneste fejl, "
-            f"og prøv en anden tilgang (andet tool, anden vinkel, eller "
-            f"spørg brugeren)."
+            f"  {tool}: {count} konsekutive fejlede kald i seneste vindue."
         )
     thrash = _thrashing_score(events)
     if thrash >= _THRASH_THRESHOLD and not looped:
         notes.append(
-            f"⚠ {thrash} tool-calls i seneste vindue uden synlig progress. "
-            f"Stop og opsummer hvad du har lært før næste call."
+            f"  Thrash-score {thrash}: tool-calls uden synlig progress i seneste vindue."
         )
     if not notes:
         return None
-    return "Selv-monitor (advarsler fra dit eget tool-call mønster):\n" + "\n".join(notes)
+    return "Self-monitor (tool-call mønster, seneste vindue):\n" + "\n".join(notes)

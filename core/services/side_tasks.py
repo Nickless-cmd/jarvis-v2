@@ -97,8 +97,7 @@ def side_tasks_prompt_section() -> str | None:
         bullets.append(f"  [{sid}] {title}{suffix}")
     extra = f"  (+{len(pending) - _MAX_SHOWN} mere)" if len(pending) > _MAX_SHOWN else ""
     return (
-        "📌 Side-tasks du har flagget til senere "
-        "(brug dem hvis brugeren spørger 'hvad mangler?'; ellers ignorer):\n"
+        "Flaggede side-tasks (deferred):\n"
         + "\n".join(bullets) + extra
     )
 

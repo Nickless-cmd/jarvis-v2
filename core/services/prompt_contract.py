@@ -3958,7 +3958,7 @@ def _emotion_signal_section() -> str | None:
         )
         concepts = get_active_emotion_concepts()
         if concepts:
-            lines.append("🧠 Registrerede emotionelle signaler (systemets bedste gæt — du bestemmer om det passer):")
+            lines.append("Registrerede emotionelle signaler (system-estimat, ikke autoritativt):")
             for c in concepts:
                 name = str(c.get("concept", "?"))
                 intensity = float(c.get("intensity", 0.0))

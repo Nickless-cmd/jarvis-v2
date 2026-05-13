@@ -82,9 +82,9 @@ def clarification_prompt_section(message: str) -> str | None:
     signals = result.get("signals") or []
     sig_text = ", ".join(signals[:3]) if signals else "ingen specifik markør"
     return (
-        f"⚠ Tvetydig brugerbesked (ambiguity-score {result['score']}/100, "
-        f"signaler: {sig_text}). Stil ÉT konkret afklarende spørgsmål før "
-        "du udfører mere end et trivielt skridt."
+        f"Ambiguity-classifier: brugerbesked scored {result['score']}/100 "
+        f"(signaler: {sig_text}). Klassifikation: 'ask_first' band — "
+        "afklarende spørgsmål før non-triviel handling indikeret."
     )
 
 

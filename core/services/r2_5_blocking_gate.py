@@ -128,7 +128,10 @@ def r2_5_block_section(reasoning_tier: str) -> str | None:
     block = should_block_for_verification(reasoning_tier=reasoning_tier)
     if not block:
         return None
-    lines = ["🛑 R2.5 BLOCK — verifér før du fortsætter:", block["reason"]]
-    for s in block.get("suggestions") or []:
-        lines.append(f"  - {s}")
+    lines = ["R2.5 block (verifikation required):", block["reason"]]
+    suggestions = block.get("suggestions") or []
+    if suggestions:
+        lines.append("Verifikations-kandidater:")
+        for s in suggestions:
+            lines.append(f"  {s}")
     return "\n".join(lines)

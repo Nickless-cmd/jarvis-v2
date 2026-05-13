@@ -115,9 +115,9 @@ def health_section() -> str | None:
         return None
     checked = str(snap.get("checked_at", ""))[11:19]
     return (
-        f"⚠ Provider sundhed (sidste check {checked}): "
-        f"{len(unreachable)} ude af stand: {', '.join(unreachable)}. "
-        "Cheap-lane fallback chain håndterer det automatisk."
+        f"Provider health (check {checked}): "
+        f"{len(unreachable)} unreachable ({', '.join(unreachable)}). "
+        "Cheap-lane fallback chain håndterer routing."
     )
 
 

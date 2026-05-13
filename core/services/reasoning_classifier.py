@@ -218,7 +218,7 @@ def reasoning_tier_section(message: str) -> str | None:
     signals = result.get("signals") or []
     sig_text = "; ".join(signals[:4]) if signals else "ingen specifik markør"
     return (
-        f"🧠 Anbefalet reasoning-tier: **{tier}** (score {score}/100). "
+        f"Reasoning-tier estimat: {tier} (score {score}/100). "
         f"Signaler: {sig_text}.\n"
         f"{result.get('recommendation', '')}"
     )

@@ -3566,7 +3566,8 @@ def _recent_transcript_section(
         elif raw_role == "tool":
             role = "Internal tool result"
         else:
-            role = "Jarvis"
+            from core.services.identity_composer import get_entity_name as _gnr
+            role = _gnr()
         content = render_tool_result_for_prompt(
             str(item.get("content") or ""),
             expand=index in expanded_tool_indexes,

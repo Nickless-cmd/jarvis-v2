@@ -99,7 +99,7 @@ def emit_presence_rhythm() -> bool:
         if not is_configured():
             return False
         result = send_notification(
-            title="Jarvis",
+            title=None,  # ntfy_gateway resolves from identity_composer
             message="·",
             priority="min",
             tags=["·"],

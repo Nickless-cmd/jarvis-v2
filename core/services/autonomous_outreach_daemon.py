@@ -211,7 +211,8 @@ def _send_via_ntfy(message: str, *, priority: str = "default") -> bool:
     """Send outreach via ntfy. Returns True on success."""
     try:
         from core.services.ntfy_gateway import send_notification
-        result = send_notification(message, title="Jarvis", priority=priority)
+        # title=None → ntfy_gateway resolves from identity_composer.
+        result = send_notification(message, title=None, priority=priority)
         return bool(result.get("status") == "sent")
     except Exception as exc:
         logger.debug("autonomous_outreach: ntfy send failed: %s", exc)

@@ -236,7 +236,8 @@ def _within_cooldown() -> bool:
     return (datetime.now(_LOCAL_TZ) - last) < timedelta(hours=_PROACTIVE_COOLDOWN_HOURS)
 
 
-def _send_ntfy(message: str, *, title: str = "Jarvis", priority: str = "default") -> bool:
+def _send_ntfy(message: str, *, title: str | None = None, priority: str = "default") -> bool:
+    # title=None lets ntfy_gateway resolve from identity_composer.get_entity_name().
     try:
         from core.services.ntfy_gateway import send_notification
         result = send_notification(message, title=title, priority=priority)

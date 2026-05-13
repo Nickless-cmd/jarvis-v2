@@ -27,9 +27,20 @@ def is_configured() -> bool:
     return _load_config() is not None
 
 
+def _default_title() -> str:
+    # Lazy import so callers can pass a custom title without dragging
+    # identity_composer in. Mutable default ("Jarvis") would never update
+    # if the entity renames itself, so we resolve at call time.
+    try:
+        from core.services.identity_composer import get_entity_name
+        return get_entity_name()
+    except Exception:
+        return "Jarvis"
+
+
 def send_notification(
     message: str,
-    title: str = "Jarvis",
+    title: str | None = None,
     priority: str = "default",
     tags: list[str] | None = None,
 ) -> dict:
@@ -43,8 +54,9 @@ def send_notification(
         return {"status": "error", "reason": "ntfy-not-configured"}
 
     url = f"{cfg['server']}/{cfg['topic']}"
+    resolved_title = title if title is not None else _default_title()
     headers = {
-        "Title": title,
+        "Title": resolved_title,
         "Priority": priority,
         "Content-Type": "text/plain; charset=utf-8",
     }

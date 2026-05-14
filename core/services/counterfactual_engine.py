@@ -203,7 +203,9 @@ def run(*, workspace_id: str = "default", dry_run: bool = True) -> dict:
 
         # Step 7: bind a real counterfactual (non-placeholder) to a
         # world-model prediction. Skips TODO placeholders since they
-        # carry no semantic claim worth predicting on.
+        # carry no semantic claim worth predicting on. trigger_types[0]
+        # in the new pipeline IS the eventbus kind (e.g. "conflict.detected"),
+        # so it doubles as event_kind for the Phase 2 frequency comparison.
         try:
             _what_if = str(cf.get("what_if") or "").strip()
             if _what_if and _what_if != "TODO" and _what_if != "[generation failed]":
@@ -218,6 +220,7 @@ def run(*, workspace_id: str = "default", dry_run: bool = True) -> dict:
                     anchor=_what_if[:200],
                     confidence=float(cf.get("final_confidence", 0.0)),
                     source="counterfactual",
+                    event_kind=_primary_type,
                 )
         except Exception as exc:
             logger.debug("counterfactual_engine: pipeline binding failed: %s", exc)
@@ -504,6 +507,7 @@ def generate_classified_counterfactual(
         source="classified",
         confidence=float(classification["confidence"]),
         cf_question=str(classification["what_if"]),
+        event_kind=event_kind,
     )
 
 
@@ -514,6 +518,7 @@ def generate_counterfactual(
     source: str = "runtime",
     confidence: float = 0.5,
     cf_question: str = "",
+    event_kind: str = "",
 ) -> dict[str, object]:
     """Generate a counterfactual question from a trigger event.
 
@@ -567,6 +572,7 @@ def generate_counterfactual(
             anchor=anchor,
             confidence=float(confidence),
             source="counterfactual",
+            event_kind=event_kind,
         )
     except Exception as exc:
         logger.debug("counterfactual_engine: prediction binding failed: %s", exc)

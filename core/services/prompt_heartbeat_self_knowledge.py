@@ -395,6 +395,19 @@ def build_heartbeat_self_knowledge_section() -> str | None:
     except Exception:
         pass
     try:
+        from core.services.active_sensing_daemon import build_active_sensing_surface
+        surface = build_active_sensing_surface()
+        if surface.get("enabled") and surface.get("total_sensing_events", 0) > 0:
+            last_modality = surface.get("last_modality", "")
+            total = surface.get("total_sensing_events", 0)
+            last_at = surface.get("last_sensed_at", "")
+            if last_at:
+                last_at_short = str(last_at)[:16]
+                section = f"Sansetrang ({total} sansninger, sidst: {last_modality} @ {last_at_short}): Jeg vælger selv at sanse rummet."
+                _append_entry(key="active-sensing", section=section, importance="foreground")
+    except Exception:
+        pass
+    try:
         from core.services.runtime_self_model import build_shadow_scan_prompt_section
         section = build_shadow_scan_prompt_section()
         if section:

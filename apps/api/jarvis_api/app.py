@@ -122,6 +122,12 @@ def create_app() -> FastAPI:
             start_telegram_gateway()
             start_voice_daemon()
             try:
+                from core.services.my_projects import ensure_my_projects_running
+                _mp_result = ensure_my_projects_running()
+                logger.info("my_projects boot spawn: %s", _mp_result)
+            except Exception as _exc:
+                logger.warning("my_projects boot spawn failed: %s", _exc)
+            try:
                 from core.services.process_watcher import start_watcher_daemon
                 start_watcher_daemon()
                 logger.info("process_watcher daemon started")

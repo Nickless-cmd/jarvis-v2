@@ -3019,6 +3019,15 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # --- My Projects Watchdog (240 min) ---
+    if _dm.is_enabled("my_projects_watchdog"):
+        try:
+            from core.services.my_projects import tick_my_projects_watchdog
+            _mpw_result = tick_my_projects_watchdog()
+            _dm.record_daemon_tick("my_projects_watchdog", _mpw_result or {})
+        except Exception:
+            pass
+
     # --- Aesthetic motif accumulation ---
     try:
         from core.services.aesthetic_sense import accumulate_from_daemon

@@ -316,6 +316,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 15,
         "description": "Daemon-sikkerhedsnet: tjekker om seneste tur indeholdt læringsmarkører uden save-tool kald",
     },
+    "my_projects_watchdog": {
+        "module": "core.services.my_projects",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 240,
+        "default_enabled": True,
+        "description": "240min checker: genstarter grid-bot, dealwork-worker, superteam-scanner og toku-poller hvis de er døde",
+    },
 }
 
 

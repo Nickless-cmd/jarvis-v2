@@ -49,7 +49,7 @@ def _creative_dir() -> Path:
 def _load() -> dict[str, Any]:
     path = _storage_path()
     if not path.exists():
-        return {"creations": [], "last_creation_at": None, "next_due_at": None}
+        return {"creations": [], "last_creation_at": None, "next_due_at": None, "last_surfaced_at": None}
     try:
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
@@ -57,10 +57,11 @@ def _load() -> dict[str, Any]:
             data.setdefault("creations", [])
             data.setdefault("last_creation_at", None)
             data.setdefault("next_due_at", None)
+            data.setdefault("last_surfaced_at", None)
             return data
     except Exception as exc:
         logger.warning("creative_impulse: load failed: %s", exc)
-    return {"creations": [], "last_creation_at": None, "next_due_at": None}
+    return {"creations": [], "last_creation_at": None, "next_due_at": None, "last_surfaced_at": None}
 
 
 def _save(data: dict[str, Any]) -> None:
@@ -238,6 +239,7 @@ def create_now() -> dict[str, Any]:
     creation = {
         "creation_id": f"cr-{uuid4().hex[:10]}",
         "created_at": datetime.now(UTC).isoformat(),
+        "surfaced_at": None,
         **composition,
     }
     path = _write_creation(creation)
@@ -338,3 +340,109 @@ def build_creative_impulse_prompt_section() -> str | None:
         return None
     latest = creations[-1]
     return f"Jeg skabte en {latest.get('form')} for {int((datetime.now(UTC) - last_dt).total_seconds() / 60)}m siden — uden grund, bare fordi."
+
+
+# ─── Seed Surface — 1 seed/dag til brugeren ──────────────────────────
+
+def _seed_confidence(creation: dict[str, Any]) -> float:
+    """Score a creation as a 'seed worth showing' — higher = better.
+
+    Factors:
+    - Has a non-empty body (+0.30)
+    - Has signals_at_creation (+0.15)
+    - Is a 'concept' form (+0.20, most actionable)
+    - Has path (was written to disk) (+0.10)
+    - Recency bonus: up to +0.25 for creations < 24h old
+    """
+    score = 0.0
+    body = str(creation.get("body") or "")
+    if len(body) > 20:
+        score += 0.30
+    if creation.get("signals_at_creation"):
+        score += 0.15
+    if creation.get("form") == "concept":
+        score += 0.20
+    if creation.get("path"):
+        score += 0.10
+    try:
+        created = datetime.fromisoformat(str(creation["created_at"]).replace("Z", "+00:00"))
+        age_hours = (datetime.now(UTC) - created).total_seconds() / 3600
+        if age_hours < 1:
+            score += 0.25
+        elif age_hours < 6:
+            score += 0.20
+        elif age_hours < 24:
+            score += 0.10
+        elif age_hours < 72:
+            score += 0.05
+    except Exception:
+        pass
+    return min(score, 1.0)
+
+
+def _select_best_unsurfaced() -> dict[str, Any] | None:
+    """Find the highest-confidence creation that hasn't been surfaced."""
+    data = _load()
+    unsurfaced = [c for c in data["creations"] if c.get("surfaced_at") is None]
+    if not unsurfaced:
+        return None
+    scored = [(_seed_confidence(c), c) for c in unsurfaced]
+    scored.sort(key=lambda x: -x[0])
+    best = scored[0]
+    if best[0] < 0.10:
+        return None
+    return best[1]
+
+
+def surface_daily_seed() -> dict[str, Any] | None:
+    """Pick the best unsurfaced creation and mark it as surfaced.
+
+    Returns a nudge-ready dict with creation info, or None if nothing to surface.
+    Checks that at least 1h has passed since last surface (1/day throttle).
+    """
+    data = _load()
+    last_surfaced = data.get("last_surfaced_at")
+    if last_surfaced:
+        try:
+            last_dt = datetime.fromisoformat(str(last_surfaced).replace("Z", "+00:00"))
+            if (datetime.now(UTC) - last_dt) < timedelta(hours=1):
+                return None  # too soon — at least 1h between surfaces
+        except Exception:
+            pass
+
+    best = _select_best_unsurfaced()
+    if best is None:
+        return None
+
+    now_iso = datetime.now(UTC).isoformat()
+    best["surfaced_at"] = now_iso
+    data["last_surfaced_at"] = now_iso
+    _save(data)
+
+    return {
+        "creation_id": best.get("creation_id"),
+        "form": best.get("form"),
+        "body_preview": str(best.get("body") or "")[:300],
+        "created_at": best.get("created_at"),
+        "path": best.get("path"),
+        "signals": str(best.get("signals_at_creation") or ""),
+        "confidence": _seed_confidence(best),
+    }
+
+
+def build_creative_seed_section() -> str | None:
+    """Build a prompt-awareness section if there's an unsurfaced seed waiting."""
+    data = _load()
+    unsurfaced = [c for c in data["creations"] if c.get("surfaced_at") is None]
+    if not unsurfaced:
+        return None
+    scored = [(_seed_confidence(c), c) for c in unsurfaced]
+    scored.sort(key=lambda x: -x[0])
+    best = scored[0]
+    if best[0] < 0.10:
+        return None
+    c = best[1]
+    return (
+        f"🌱 Kreativt frø venter: en {c.get('form')} fra {str(c.get('created_at') or '')[:10]} — "
+        f"ikke vist til Bjørn endnu. Sig til hvis jeg skal foreslå den."
+    )

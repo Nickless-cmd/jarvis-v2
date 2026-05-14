@@ -381,6 +381,13 @@ def build_heartbeat_self_knowledge_section() -> str | None:
     except Exception:
         pass
     try:
+        from core.services.creative_impulse_daemon import build_creative_seed_section
+        section = build_creative_seed_section()
+        if section:
+            _append_entry(key="creative-seed", section=section, importance="foreground")
+    except Exception:
+        pass
+    try:
         from core.services.runtime_self_model import build_shadow_scan_prompt_section
         section = build_shadow_scan_prompt_section()
         if section:

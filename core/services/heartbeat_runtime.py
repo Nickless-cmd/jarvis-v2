@@ -1851,6 +1851,22 @@ def _run_heartbeat_tick_locked(
             tick_meta_cognition_daemon()
     except Exception:
         pass
+    # narrative_summary (Phase 2.5 of causal graph) + pattern_counterfactual
+    # (Phase 3.5) were registered in daemon_manager but never wired into the
+    # heartbeat tick loop. Result: 4 narrative.summary events ever, last
+    # one 2026-05-08; daemons effectively dead. Fix 2026-05-14: invoke them
+    # here. Both tick functions self-throttle via _CADENCE_SECONDS so the
+    # heartbeat-rate doesn't matter — they skip when cadence not elapsed.
+    try:
+        from core.services.narrative_summary_daemon import tick_narrative_summary_daemon
+        tick_narrative_summary_daemon()
+    except Exception:
+        pass
+    try:
+        from core.services.pattern_counterfactual_daemon import tick_pattern_counterfactual_daemon
+        tick_pattern_counterfactual_daemon()
+    except Exception:
+        pass
     try:
         from core.services.daemon_memory_safeguard import tick_memory_safeguard_daemon
         tick_memory_safeguard_daemon()

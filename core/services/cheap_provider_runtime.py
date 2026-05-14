@@ -183,7 +183,6 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
             "big-pickle",
             "minimax-m2.5-free",
             "nemotron-3-super-free",
-            "ling-2.6-flash-free",
         ],
     },
     "openai-codex": {

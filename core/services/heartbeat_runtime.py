@@ -338,10 +338,68 @@ def poll_heartbeat_schedule(*, name: str = "default") -> dict[str, object]:
         last_tick_at=state.get("last_tick_at"),
     )
     if state.get("schedule_state") == "due":
-        with runtime_surface_cache():
-            run_heartbeat_tick(name=name, trigger="scheduled")
-            return heartbeat_runtime_surface(name=name)
+        _run_heartbeat_tick_with_deadline(
+            name=name, trigger="scheduled"
+        )
+        return heartbeat_runtime_surface(name=name)
     return {"state": state}
+
+
+def _run_heartbeat_tick_with_deadline(
+    *, name: str, trigger: str, deadline_seconds: int = 90
+) -> None:
+    """Run a heartbeat tick on a background thread with a wall-clock deadline.
+
+    Heartbeat used to invoke 30+ daemons synchronously inline; ANY one
+    making a slow/dead HTTP call (ollamafreeapi DNS, rate-limited groq,
+    etc.) would freeze the entire heartbeat — and thus all downstream
+    daemons — indefinitely. The 30s http-timeout in cheap_provider_runtime
+    doesn't reliably help: some libraries (ollamafreeapi) drop the timeout
+    kwarg, and TCP-layer connect can hang past it.
+
+    Fix (2026-05-14): run the tick on a fire-and-forget thread. The
+    scheduler's main loop returns after at most ``deadline_seconds``
+    regardless of tick progress. The tick thread continues in the
+    background until its own HTTP timeouts fire — if it eventually
+    completes, ``currently_ticking`` gets cleared; if not, the next
+    startup's stuck-state recovery handles it.
+
+    The scheduler is free to poll again on its 30s cadence; the
+    currently_ticking flag prevents overlapping ticks.
+    """
+    import threading as _threading
+
+    def _runner():
+        try:
+            with runtime_surface_cache():
+                run_heartbeat_tick(name=name, trigger=trigger)
+        except Exception as exc:
+            logger.warning("heartbeat tick thread crashed: %s", exc)
+
+    t = _threading.Thread(
+        target=_runner,
+        name=f"heartbeat-tick-{trigger}",
+        daemon=True,
+    )
+    t.start()
+    t.join(timeout=deadline_seconds)
+    if t.is_alive():
+        # Tick exceeded deadline. Don't kill the thread — Python doesn't
+        # allow safe thread kills. Let it continue in the background; its
+        # HTTP timeout will eventually free it. Scheduler proceeds.
+        logger.warning(
+            "heartbeat tick exceeded %ds deadline (name=%s trigger=%s) — "
+            "continuing in background",
+            deadline_seconds, name, trigger,
+        )
+        try:
+            event_bus.publish("heartbeat.tick_deadline_exceeded", {
+                "name": name,
+                "trigger": trigger,
+                "deadline_seconds": deadline_seconds,
+            })
+        except Exception:
+            pass
 
 
 def _poll_heartbeat_schedule_with_trigger(
@@ -369,9 +427,8 @@ def _poll_heartbeat_schedule_with_trigger(
                     "last_tick_at": state.get("last_tick_at"),
                 },
             )
-        with runtime_surface_cache():
-            run_heartbeat_tick(name=name, trigger=due_trigger)
-            return heartbeat_runtime_surface(name=name)
+        _run_heartbeat_tick_with_deadline(name=name, trigger=due_trigger)
+        return heartbeat_runtime_surface(name=name)
     return {"state": state}
 
 

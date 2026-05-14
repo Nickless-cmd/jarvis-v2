@@ -388,6 +388,13 @@ def build_heartbeat_self_knowledge_section() -> str | None:
     except Exception:
         pass
     try:
+        from core.services.shadow_scan_daemon import build_shadow_feedback_section
+        section = build_shadow_feedback_section()
+        if section:
+            _append_entry(key="shadow-feedback", section=section, importance="critical")
+    except Exception:
+        pass
+    try:
         from core.services.runtime_self_model import build_mortality_awareness_prompt_section
         section = build_mortality_awareness_prompt_section()
         if section:

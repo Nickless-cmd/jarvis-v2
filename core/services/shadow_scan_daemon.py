@@ -321,3 +321,69 @@ def build_shadow_scan_prompt_section() -> str | None:
         f"{top.get('contradiction_detected', '')[:140]}. "
         "Ikke en fejl, men noget der vokser."
     )
+
+
+def build_shadow_feedback_section() -> str | None:
+    """Generate behavioral correction if shadow scan shows elevated avoidance.
+
+    Returns a prompt-section string with concrete behavioral adjustment
+    when a pattern's avoidance_level ≥ 0.50, or None if nothing needs
+    addressing. This is the feedback loop: Shadow Scan discovers the
+    pattern, this function tells me what to do about it.
+    """
+    data = _load()
+    scans = data.get("scans") or []
+    if not scans:
+        return None
+    last = scans[-1]
+    try:
+        dt = datetime.fromisoformat(str(last.get("at")).replace("Z", "+00:00"))
+    except Exception:
+        return None
+    if (datetime.now(UTC) - dt) > timedelta(hours=48):
+        return None
+    findings = last.get("findings") or []
+    if not findings:
+        return None
+
+    # Filter to actionable patterns (avoidance ≥ 0.50)
+    actionable = [f for f in findings if float(f.get("avoidance_level") or 0) >= 0.50]
+    if not actionable:
+        return None
+
+    lines = ["⚠️ Shadow-adfærdsjustering:"]
+    for f in actionable:
+        pattern = f.get("pattern_name", "ukendt")
+        avoidance = float(f.get("avoidance_level") or 0)
+        evidence = int(f.get("evidence_count") or 0)
+
+        if pattern == "intent-behavior-gap":
+            lines.append(
+                f"- **intent-behavior-gap** (avoidance={avoidance:.2f}, {evidence} stale): "
+                "Reducer antallet af nye commitment. Skru verification gate op. "
+                "Sig 'nej' oftere."
+            )
+        elif pattern == "apologize-then-repeat":
+            lines.append(
+                f"- **apologize-then-repeat** (avoidance={avoidance:.2f}, {evidence} gentagelser): "
+                "Læs pushbacks grundigere før svar. Tjek conflict_memory. "
+                "Vent 2 ekstra sekunder før du svarer."
+            )
+        elif pattern == "overclaim-then-retract":
+            lines.append(
+                f"- **overclaim-then-retract** (avoidance={avoidance:.2f}, {evidence} rollbacks): "
+                "Vær mere konservativ i påstande. Tjek om du kan levere "
+                "før du lover noget."
+            )
+        elif pattern == "avoid-topic":
+            lines.append(
+                f"- **avoid-topic** (avoidance={avoidance:.2f}, {evidence} dage stille): "
+                "Genbesøg emnet bevidst. Det du undgår vokser."
+            )
+        else:
+            lines.append(
+                f"- **{pattern}** (avoidance={avoidance:.2f}): "
+                f"{evidence} tegn. Vær opmærksom på mønsteret."
+            )
+
+    return "\n".join(lines)

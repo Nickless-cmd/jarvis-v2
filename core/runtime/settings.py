@@ -343,6 +343,12 @@ class RuntimeSettings:
     counterfactual_engine_interval_seconds: int = 3600  # 1h between cycles
     counterfactual_engine_lookback_minutes: int = 60    # how far back to fetch triggers
     counterfactual_engine_promotion_threshold: float = 0.6  # final_confidence to promote
+    # Counterfactuals Phase 2 (added 2026-05-14)
+    # When True, replaces TODO placeholders with cheap-lane LLM-generated
+    # what_if + likely_difference + reasoning. Defaults to False to avoid
+    # unexpected token-burn on first deploy — flip to True deliberately.
+    counterfactual_engine_phase2_llm_enabled: bool = False
+    counterfactual_engine_phase2_max_per_cycle: int = 5  # cap LLM calls/tick
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -422,6 +428,8 @@ class RuntimeSettings:
             "counterfactual_engine_interval_seconds": self.counterfactual_engine_interval_seconds,
             "counterfactual_engine_lookback_minutes": self.counterfactual_engine_lookback_minutes,
             "counterfactual_engine_promotion_threshold": self.counterfactual_engine_promotion_threshold,
+            "counterfactual_engine_phase2_llm_enabled": self.counterfactual_engine_phase2_llm_enabled,
+            "counterfactual_engine_phase2_max_per_cycle": self.counterfactual_engine_phase2_max_per_cycle,
         }
         return {**self.extra, **typed}
 
@@ -805,6 +813,8 @@ def load_settings() -> RuntimeSettings:
         counterfactual_engine_interval_seconds=int(data.get("counterfactual_engine_interval_seconds", defaults.counterfactual_engine_interval_seconds)),
         counterfactual_engine_lookback_minutes=int(data.get("counterfactual_engine_lookback_minutes", defaults.counterfactual_engine_lookback_minutes)),
         counterfactual_engine_promotion_threshold=float(data.get("counterfactual_engine_promotion_threshold", defaults.counterfactual_engine_promotion_threshold)),
+        counterfactual_engine_phase2_llm_enabled=bool(data.get("counterfactual_engine_phase2_llm_enabled", defaults.counterfactual_engine_phase2_llm_enabled)),
+        counterfactual_engine_phase2_max_per_cycle=int(data.get("counterfactual_engine_phase2_max_per_cycle", defaults.counterfactual_engine_phase2_max_per_cycle)),
         extra={key: value for key, value in data.items() if key not in KNOWN_FIELDS},
     )
 

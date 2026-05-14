@@ -38,14 +38,26 @@ logger = logging.getLogger(__name__)
 # Phase 1+ pipeline — run() entry point
 # ---------------------------------------------------------------------------
 
-def run(*, workspace_id: str = "default", dry_run: bool = True) -> dict:
+def run(*, workspace_id: str = "default", dry_run: bool | None = None) -> dict:
     """One full pipeline cycle. Always returns a summary dict, never raises.
 
-    dry_run=True (Phase 1 default): skip LLM generation. All counterfactuals
-    get what_if='TODO', llm_confidence=0.0, status='generated'.
+    dry_run=True: skip LLM generation. All counterfactuals get
+    what_if='TODO', llm_confidence=0.0, status='generated'.
 
-    Phase 2+ will pass dry_run=False; Phase 1 always uses True.
+    dry_run=None (default, Phase 2 entry, 2026-05-14): consult
+    RuntimeSettings.counterfactual_engine_phase2_llm_enabled. When False
+    (default-off), behaves as Phase 1 dry-run. When True, calls
+    _generate_counterfactuals_via_llm to fill what_if + likely_difference
+    + reasoning per trigger (capped by counterfactual_engine_phase2_max_per_cycle).
     """
+    if dry_run is None:
+        try:
+            from core.runtime.settings import RuntimeSettings as _RS
+            dry_run = not bool(
+                getattr(_RS(), "counterfactual_engine_phase2_llm_enabled", False)
+            )
+        except Exception:
+            dry_run = True
     started_at = time.monotonic()
     summary: dict[str, Any] = {
         "workspace_id": workspace_id,
@@ -283,12 +295,136 @@ def _dedup_filter(triggers: list[TriggerEvent]) -> list[TriggerEvent]:
     ]
 
 
-def _generate_counterfactuals_via_llm(triggers: list[TriggerEvent]) -> list[dict]:
-    """Phase 2 stub. Returns empty list in Phase 1.
+_PHASE2_PROMPT_TEMPLATE = """Du modtager et regret-eller-aspiration event fra Jarvis' eventbus.
+Generer en kort, falsifiabel counterfactual-refleksion på dansk.
 
-    Will be implemented in Phase 2 plan as a single cheap-lane LLM call.
+Event:
+  type:    {event_type}
+  summary: {summary}
+
+Returnér KUN JSON i denne form (ingen markdown fences):
+{{
+  "what_if": "Hvad hvis ... (én kort sætning, max 25 ord)",
+  "likely_difference": "Hvilken konkret forskel ville det have skabt (én sætning)",
+  "reasoning": "Hvorfor — kort begrundelse i ét til to sætninger",
+  "confidence": 0.0-1.0
+}}
+
+Krav:
+- what_if skal være konkret og knyttet til event'et, ikke generisk
+- confidence reflekterer hvor sikker du er — typisk 0.4-0.7
+- ingen lange essays, ingen meta-kommentarer
+"""
+
+_FENCE_RE = __import__("re").compile(r"```(?:json)?\s*\n?(.*?)\n?```", __import__("re").DOTALL)
+
+
+def _extract_json_from_llm(text: str) -> str:
+    """Strip markdown fences and trim to outermost JSON object."""
+    text = (text or "").strip()
+    m = _FENCE_RE.search(text)
+    if m:
+        text = m.group(1).strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        return text[start : end + 1]
+    return text
+
+
+def _generate_one_via_llm(trigger: TriggerEvent) -> dict | None:
+    """Single cheap-lane call to produce structured CF fields for one trigger.
+
+    Returns the parsed dict on success, or None on any failure (caller
+    falls back to the failed_generation_placeholder).
     """
-    return []
+    try:
+        from core.services.cheap_provider_runtime import execute_public_safe_cheap_lane
+    except Exception:
+        return None
+    prompt = _PHASE2_PROMPT_TEMPLATE.format(
+        event_type=trigger.event_type,
+        summary=(trigger.summary or "(no summary)")[:240],
+    )
+    try:
+        result = execute_public_safe_cheap_lane(message=prompt)
+    except Exception as exc:
+        logger.debug("counterfactual_engine: cheap-lane call failed: %s", exc)
+        return None
+    text = str((result or {}).get("text") or "")
+    if not text:
+        return None
+    try:
+        data = json.loads(_extract_json_from_llm(text))
+    except (json.JSONDecodeError, ValueError):
+        logger.debug("counterfactual_engine: cheap-lane returned non-JSON: %s", text[:120])
+        return None
+    if not isinstance(data, dict):
+        return None
+    what_if = str(data.get("what_if") or "").strip()
+    if not what_if:
+        return None
+    try:
+        confidence = float(data.get("confidence") or 0.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    confidence = max(0.0, min(1.0, confidence))
+    return {
+        "what_if": what_if[:500],
+        "likely_difference": str(data.get("likely_difference") or "").strip()[:500] or None,
+        "reasoning": str(data.get("reasoning") or "").strip()[:500] or None,
+        "llm_confidence": confidence,
+    }
+
+
+def _generate_counterfactuals_via_llm(triggers: list[TriggerEvent]) -> list[dict]:
+    """Phase 2 (2026-05-14): one cheap-lane LLM call per unique trigger.
+
+    Rate-limited via counterfactual_engine_phase2_max_per_cycle. Triggers
+    past the cap fall back to the same TODO placeholder Phase 1 produced,
+    so volume stays bounded. Triggers where the LLM call fails or returns
+    unparseable JSON get the [generation failed] marker so we can see
+    failure rate in telemetry.
+    """
+    if not triggers:
+        return []
+    try:
+        from core.runtime.settings import RuntimeSettings
+        settings = RuntimeSettings()
+        if not getattr(settings, "counterfactual_engine_phase2_llm_enabled", False):
+            return [_dry_run_placeholder(t) for t in triggers]
+        max_per_cycle = int(
+            getattr(settings, "counterfactual_engine_phase2_max_per_cycle", 5) or 5
+        )
+    except Exception:
+        return [_dry_run_placeholder(t) for t in triggers]
+
+    out: list[dict] = []
+    llm_calls = 0
+    for trigger in triggers:
+        if llm_calls >= max_per_cycle:
+            # Volume cap hit — degrade to placeholder so we don't blow budget
+            out.append(_dry_run_placeholder(trigger))
+            continue
+        llm_calls += 1
+        parsed = _generate_one_via_llm(trigger)
+        if parsed is None:
+            out.append(_failed_generation_placeholder(trigger))
+            continue
+        out.append({
+            "cf_id": f"cf-{uuid4().hex[:16]}",
+            "cf_key": cf_key(trigger.workspace_id, trigger.event_type, trigger.primary_key),
+            "cluster_id": f"cluster-{trigger.source_event_id}",
+            "trigger_event_ids": [trigger.source_event_id],
+            "trigger_types": [trigger.event_type],
+            "what_if": parsed["what_if"],
+            "likely_difference": parsed["likely_difference"],
+            "reasoning": parsed["reasoning"],
+            "llm_confidence": parsed["llm_confidence"],
+            "apophenia_score": 1.0,
+            "final_confidence": parsed["llm_confidence"],  # Phase 3 modulates this
+        })
+    return out
 
 
 def _modulate_with_apophenia(counterfactuals: list[dict]) -> list[dict]:

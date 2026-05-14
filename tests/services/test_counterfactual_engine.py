@@ -55,7 +55,11 @@ def test_run_dry_run_stores_placeholder_values(monkeypatch):
     cf = captured[0]
     assert cf["what_if"] == "TODO"
     assert cf["llm_confidence"] == 0.0
-    assert cf["apophenia_score"] == 1.0
+    # apophenia_score is now data-dependent (Phase 3, 2026-05-14) — was
+    # a fixed 1.0 in the stub-era. The invariant that still holds for
+    # a TODO placeholder is that final_confidence stays 0.0 regardless
+    # of apophenia's verdict, because llm_confidence is 0.
+    assert 0.0 <= cf["apophenia_score"] <= 1.0
     assert cf["final_confidence"] == 0.0
     assert cf["status"] == "generated"
 

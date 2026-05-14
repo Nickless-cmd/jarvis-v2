@@ -17,7 +17,7 @@ import json
 import logging
 import time
 from collections import Counter
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -427,17 +427,77 @@ def _generate_counterfactuals_via_llm(triggers: list[TriggerEvent]) -> list[dict
     return out
 
 
-def _modulate_with_apophenia(counterfactuals: list[dict]) -> list[dict]:
-    """Phase 3 stub. Returns counterfactuals unchanged with apophenia_score=1.0.
+def _count_similar_trigger_events(event_kind: str, *, window_days: int = 7) -> int:
+    """Count eventbus rows of ``event_kind`` in the last ``window_days``.
 
-    Will be implemented in Phase 3 plan as per-cf apophenia_guard.rate_hypothesis()
-    call. final_confidence = min(llm_confidence, apophenia_score).
+    Used by apophenia modulation as the observation_count proxy: a
+    counterfactual based on a high-frequency trigger has more pattern
+    support than one based on a one-off event. Returns 0 on any failure.
     """
+    if not event_kind:
+        return 0
+    try:
+        cutoff = (datetime.now(UTC) - timedelta(days=int(window_days))).isoformat()
+        with connect() as c:
+            row = c.execute(
+                "SELECT COUNT(*) FROM events WHERE kind = ? AND created_at >= ?",
+                (event_kind, cutoff),
+            ).fetchone()
+            return int(row[0]) if row else 0
+    except Exception as exc:
+        logger.debug("counterfactual_engine: count_similar query failed: %s", exc)
+        return 0
+
+
+def _modulate_with_apophenia(counterfactuals: list[dict]) -> list[dict]:
+    """Phase 3 (2026-05-14): rate each counterfactual via apophenia_guard.
+
+    For each cf, count similar trigger-events in the last 7 days as
+    observation_count, pass to apophenia.assess_pattern(base_confidence=1.0,
+    include_rationale=False) so we don't spawn an LLM call per cf.
+
+    Effects:
+      - cf["apophenia_score"]    = result["confidence"]   (modulated)
+      - cf["apophenia_status"]   = result["status"]       (rejected|candidate|upgraded)
+      - cf["final_confidence"]   = min(llm_confidence, apophenia_score)
+
+    A counterfactual based on a one-off event (observation_count < 3)
+    gets apophenia_status="rejected" → apophenia_score=0 → final=0.
+    Stored, not promoted. A counterfactual on a high-frequency pattern
+    (e.g. conflict.detected with 138 instances) gets apophenia_status=
+    "upgraded" → apophenia_score≈1.0 → final=llm_confidence (no damping).
+    """
+    try:
+        from core.services.apophenia_guard import assess_pattern
+    except Exception:
+        # Fallback to Phase 2 behavior if apophenia is unavailable
+        for cf in counterfactuals:
+            cf.setdefault("apophenia_score", 1.0)
+            cf["final_confidence"] = float(cf.get("llm_confidence", 0.0))
+        return counterfactuals
+
     for cf in counterfactuals:
-        cf.setdefault("apophenia_score", 1.0)
+        trigger_types = cf.get("trigger_types") or []
+        event_kind = str(trigger_types[0]) if trigger_types else ""
+        # observation_count: similar trigger events in last 7 days. Fall
+        # back to len(trigger_event_ids) (at minimum 1) when event_kind
+        # is missing — keeps apophenia honest about pattern strength.
+        obs_count = _count_similar_trigger_events(event_kind, window_days=7)
+        if obs_count < 1:
+            obs_count = len(cf.get("trigger_event_ids") or []) or 1
+
+        result = assess_pattern(
+            observation_count=obs_count,
+            base_confidence=1.0,
+            include_rationale=False,
+        )
+        apophenia_score = float(result.get("confidence") or 0.0)
+        cf["apophenia_score"] = apophenia_score
+        cf["apophenia_status"] = str(result.get("status") or "unknown")
+        cf["apophenia_observation_count"] = obs_count
         cf["final_confidence"] = min(
             float(cf.get("llm_confidence", 0.0)),
-            float(cf["apophenia_score"]),
+            apophenia_score,
         )
     return counterfactuals
 

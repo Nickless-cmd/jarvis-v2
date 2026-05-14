@@ -26,6 +26,10 @@ _AUTO_TASK_ORIGIN = "agency-cartographer"
 _THREAD: threading.Thread | None = None
 _STOP = threading.Event()
 
+# Awareness tracking: edge-status history for detecting stuck edges
+_AGENCY_AWARENESS_KEY = "agency_cartographer_awareness"
+_MAX_HISTORY_SCANS = 12  # ~3 hours at 15-min intervals
+
 
 VISION_EDGES: tuple[dict[str, Any], ...] = (
     {
@@ -167,6 +171,8 @@ def build_cartographer_snapshot(*, auto_enqueue: bool = False) -> dict[str, Any]
         "autoTask": auto_task,
     }
     save_json(_STATE_KEY, snapshot)
+    # Record edge-status history for stuck-edge detection
+    _record_awareness_history(edges)
     return snapshot
 
 
@@ -479,3 +485,117 @@ def _priority_reason(
         f"{status} bridge with {gap}; importance {importance}/100; "
         f"touches {axes}."
     )
+
+
+# ─── Live Awareness (Agency Cartographer → prompt feedback) ───
+
+
+def build_agency_cartographer_awareness_section() -> str | None:
+    """Build a compact 'Agency Bridges' awareness section for the heartbeat prompt.
+
+    Returns a formatted markdown block showing:
+      - Overall bridge health (connected/partial/missing)
+      - The top 1-2 stuck edges (missing/partial for multiple scans)
+      - A concrete next-move for each stuck edge
+    Returns None if no snapshot data is available.
+    """
+    snapshot = get_cartographer_snapshot(refresh=False)
+    if not isinstance(snapshot, dict) or not snapshot.get("edges"):
+        return None
+
+    summary = snapshot.get("summary") or {}
+    edges: list[dict[str, Any]] = snapshot.get("edges") or []
+    next_moves: list[dict[str, str]] = snapshot.get("nextMoves") or []
+
+    # Find stuck edges (same status for >= 3 scans; history recorded by build_cartographer_snapshot)
+    stuck = _compute_stuck_edges(edges)
+
+    total = summary.get("vision_edges", 0)
+    connected = summary.get("connected", 0)
+    partial = summary.get("partial", 0)
+    missing = summary.get("missing", 0)
+
+    lines: list[str] = []
+    lines.append(f"🧭 **Agency Bridges:** {connected}/{total} connected | {partial} partial | {missing} missing")
+
+    # Show stuck edges with next moves
+    if stuck:
+        lines.append("")
+        for edge_id, status, stuck_count in stuck[:2]:
+            edge = next((e for e in edges if e.get("id") == edge_id), None)
+            if not edge:
+                continue
+            next_move = next(
+                (nm.get("summary") for nm in next_moves if nm.get("title") == edge.get("title")),
+                edge.get("next_move", ""),
+            )
+            label = "🔴" if status == "missing" else "🟡"
+            lines.append(
+                f"{label} **{edge.get('title', edge_id)}** "
+                f"(stuck {stuck_count} scans) — {next_move}"
+            )
+
+    # If nothing stuck, show the highest-priority next move
+    elif next_moves:
+        lines.append("")
+        top = next_moves[0]
+        lines.append(f"🔄 **Next move:** {top.get('summary', '')}")
+
+    result = "\n".join(lines)
+    return result if result.strip() else None
+
+
+def _record_awareness_history(edges: list[dict[str, Any]]) -> None:
+    """Record current edge statuses into awareness history for stuck detection."""
+    history: dict[str, list[str]] = load_json(_AGENCY_AWARENESS_KEY, {})
+    now_iso = datetime.now(UTC).isoformat()
+    for edge in edges:
+        edge_id = str(edge.get("id", ""))
+        status = str(edge.get("status", "unknown"))
+        if edge_id not in history:
+            history[edge_id] = []
+        history[edge_id].append(status)
+        # Trim to max history length
+        if len(history[edge_id]) > _MAX_HISTORY_SCANS:
+            history[edge_id] = history[edge_id][-_MAX_HISTORY_SCANS:]
+    # Trim stale edge entries
+    active_ids = {str(e.get("id", "")) for e in edges}
+    for edge_id in list(history.keys()):
+        if edge_id not in active_ids:
+            del history[edge_id]
+    save_json(_AGENCY_AWARENESS_KEY, history)
+
+
+def _compute_stuck_edges(
+    edges: list[dict[str, Any]],
+) -> list[tuple[str, str, int]]:
+    """Return edges whose status hasn't changed in >= 3 scans.
+
+    Returns list of (edge_id, status, stuck_count) sorted by priority_score descending.
+    """
+    history: dict[str, list[str]] = load_json(_AGENCY_AWARENESS_KEY, {})
+    stuck: list[tuple[str, str, int]] = []
+    for edge in edges:
+        edge_id = str(edge.get("id", ""))
+        status = str(edge.get("status", "unknown"))
+        if status == "connected":
+            continue
+        hist = history.get(edge_id, [status])
+        # Count consecutive same status from the end
+        consecutive = 0
+        for s in reversed(hist):
+            if s == status:
+                consecutive += 1
+            else:
+                break
+        if consecutive >= 3:
+            stuck.append((edge_id, status, consecutive))
+    # Sort by priority
+    edge_map = {str(e.get("id", "")): e for e in edges}
+    stuck.sort(
+        key=lambda item: (
+            -int(edge_map.get(item[0], {}).get("priority_score", 0) if item[0] in edge_map else 0),
+            -item[2],
+        ),
+    )
+    return stuck

@@ -9,30 +9,31 @@ This is a safety net for identity/personality files (USER.md, MEMORY.md, etc.)
 that have been accidentally overwritten in the past, destroying months of
 accumulated context.
 
-Design:
-- Tracks file reads per session via a lightweight in-memory set.
-- Only blocks writes to files that ALREADY EXIST and are in the protected set.
-- New files (doesn't exist yet) are always allowed — no data to lose.
-- Files outside the protected set are always allowed.
-- The guard can be bypassed by the user explicitly confirming (not implemented
-  at this level — the LLM should read first and then write, which satisfies
-  the guard).
-- Session tracking uses the visible-run session_id from the runtime context.
+Two hardenings landed 2026-05-14 after a SOUL.md + USER.md overwrite:
+
+  1. **Cross-worker via shared_cache.** Was a per-process in-memory dict.
+     jarvis-api runs 4 workers — a read on worker A was invisible to a
+     write on worker B, so the guard silently let cross-worker writes
+     through. Now uses shared_cache (SQLite-backed) so all workers see
+     the same recent-reads.
+
+  2. **Bash overwrite detection.** The guard only checked write_file.
+     Jarvis bypassed it by using `bash cp ... SOUL.md` to overwrite —
+     no read_file → no track, no write_file → no guard, just gone.
+     check_bash_command_safe now sniffs bash commands for cp/mv/redirect/
+     tee patterns targeting protected files and blocks the same way.
 """
 
 from __future__ import annotations
 
 import logging
-import os
+import re
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # ── Protected files ──────────────────────────────────────────
-# These files contain identity, memory, and relationship data that must never
-# be overwritten without reading first. The canonical workspace paths are
-# resolved at check time.
 _PROTECTED_FILENAMES = frozenset({
     "USER.md",
     "MEMORY.md",
@@ -40,22 +41,65 @@ _PROTECTED_FILENAMES = frozenset({
     "IDENTITY.md",
     "STANDING_ORDERS.md",
     "SKILLS.md",
+    "MANIFEST.md",
+    "VOICE.md",
+    "CHRONICLE.md",
 })
 
-# ── Session read-tracker ─────────────────────────────────────
-# Maps session_id → set of absolute paths that have been read in that session.
-# This is in-memory only — resets on restart. That's fine: the guard is about
-# preventing accidental overwrite within a single conversation/run, not across
-# restarts (where the model context is fresh anyway).
-_read_tracker: dict[str, set[str]] = {}
+# How long a recent-read is considered "fresh enough" to satisfy the guard.
+# Stored as TTL in shared_cache so cross-process visibility is automatic.
+_READ_FRESHNESS_SECONDS = 600  # 10 minutes
+
+_CACHE_KEY_PREFIX = "rbw_guard:"  # shared_cache key prefix
+
+
+def _cache_key(session_id: str, abs_path: str) -> str:
+    return f"{_CACHE_KEY_PREFIX}{session_id}:{abs_path}"
 
 
 def record_read(path: str, session_id: str = "default") -> None:
-    """Record that a file has been read in this session."""
-    abs_path = str(Path(path).expanduser().resolve())
-    if session_id not in _read_tracker:
-        _read_tracker[session_id] = set()
-    _read_tracker[session_id].add(abs_path)
+    """Record that a file has been read in this session.
+
+    Persisted to shared_cache so all worker processes see it. Best-effort —
+    silently degrades if the cache is unavailable.
+    """
+    try:
+        from core.services import shared_cache as _sc
+        abs_path = str(Path(path).expanduser().resolve())
+        _sc.set(
+            _cache_key(session_id, abs_path),
+            {"path": abs_path, "session_id": session_id},
+            ttl_seconds=_READ_FRESHNESS_SECONDS,
+        )
+    except Exception as exc:
+        logger.debug("read_before_write_guard: record_read failed: %s", exc)
+
+
+def _was_read(abs_path: str, session_id: str) -> bool:
+    """True if `abs_path` was read in this session within the TTL window.
+
+    Also checks the "default" session as a fallback — many callers don't
+    propagate the real session_id, so reads under default + writes under
+    default are a common path.
+    """
+    try:
+        from core.services import shared_cache as _sc
+        if _sc.get(_cache_key(session_id, abs_path)) is not None:
+            return True
+        if session_id != "default" and _sc.get(_cache_key("default", abs_path)) is not None:
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def is_protected(path: str) -> bool:
+    """True if the path's basename is in the protected set."""
+    try:
+        name = Path(path).expanduser().name
+    except Exception:
+        return False
+    return name in _PROTECTED_FILENAMES
 
 
 def check_read_before_write(
@@ -64,33 +108,18 @@ def check_read_before_write(
 ) -> tuple[bool, str | None]:
     """Check whether write_file should be allowed for this path.
 
-    Returns (allowed, reason). If allowed=False, the write is blocked and
-    the reason explains why.
-
-    Logic:
-    1. If the file's basename is not in the protected set → allow.
-    2. If the file doesn't exist yet (new file) → allow.
-    3. If the file has been read in this session → allow.
-    4. Otherwise → block with a helpful message including current content preview.
+    Returns (allowed, reason). If allowed=False, the write is blocked.
     """
     target = Path(path).expanduser().resolve()
 
-    # Step 1: Only protect specific files
     if target.name not in _PROTECTED_FILENAMES:
         return True, None
-
-    # Step 2: New files are always fine
     if not target.exists():
         return True, None
-
-    # Step 3: Already read in this session → allow
-    abs_path = str(target)
-    session_reads = _read_tracker.get(session_id, set())
-    if abs_path in session_reads:
+    if _was_read(str(target), session_id):
         return True, None
 
-    # Step 4: Block — file exists but hasn't been read
-    # Read a preview of the current content to include in the error
+    # Block — file exists but hasn't been read
     try:
         current_content = target.read_text(encoding="utf-8", errors="replace")
         content_lines = current_content.split("\n")
@@ -101,9 +130,9 @@ def check_read_before_write(
         reason = (
             f"⚠️ READ-BEFORE-WRITE GUARD: {target.name} eksisterer allerede "
             f"({total_bytes} bytes, {total_lines} linjer) men er ikke blevet "
-            f"læst i denne session. Læs filen først med `read_file`, brug "
-            f"derefter `edit_file` for kirurgiske ændringer — eller `write_file` "
-            f"hvis du har læst og forstået indholdet.\n\n"
+            f"læst i denne session. Læs filen først med `read_file('{target}')`, "
+            f"brug derefter `edit_file` for kirurgiske ændringer — eller "
+            f"`write_file` hvis du har læst og forstået indholdet.\n\n"
             f"Første 20 linjer:\n{preview}"
         )
     except Exception as e:
@@ -113,17 +142,203 @@ def check_read_before_write(
             f"preview: {e})"
         )
 
-    logger.info(f"Read-before-write guard blocked write to {target.name} "
-                f"(session={session_id}, reads={len(session_reads)})")
-
+    logger.info(
+        "read_before_write_guard: BLOCKED write to %s (session=%s)",
+        target.name, session_id,
+    )
     return False, reason
 
 
+# ── Bash overwrite detection ──────────────────────────────────
+# Today Jarvis bypassed the write_file guard by using `bash cp` to
+# overwrite SOUL.md. These patterns catch the common shell ways to
+# clobber a file: cp/mv to a path or a directory, > redirect, tee.
+
+_BASH_OVERWRITE_PATTERNS = [
+    # cp [opts] src dest  — dest may be file or directory
+    re.compile(
+        r"\bcp\s+(?:-[a-zA-Z]+\s+)*\S+\s+(\S+)",
+    ),
+    # mv [opts] src dest
+    re.compile(
+        r"\bmv\s+(?:-[a-zA-Z]+\s+)*\S+\s+(\S+)",
+    ),
+    # > path or >> path — capture path
+    re.compile(r"(?<![<>])>>?\s*([^\s|;&]+)"),
+    # tee [-a] path
+    re.compile(r"\btee\s+(?:-[a-zA-Z]+\s+)*([^\s|;&]+)"),
+    # sed -i ... path
+    re.compile(r"\bsed\s+(?:-\S+\s+)*(?:--?in[-_]?place\S*\s+)?[^\s]*\s+([^\s|;&]+)\s*$"),
+]
+
+
+def _normalize_path(p: str, *, base: Path | None = None) -> Path | None:
+    """Best-effort resolve of a path token (may be ~/, relative, ./)."""
+    try:
+        expanded = Path(p).expanduser()
+        if not expanded.is_absolute() and base is not None:
+            expanded = base / expanded
+        return expanded.resolve()
+    except Exception:
+        return None
+
+
+def check_bash_command_safe(
+    command: str,
+    *,
+    session_id: str = "default",
+    cwd: str | None = None,
+) -> tuple[bool, str | None]:
+    """Sniff a bash command for protected-file overwrites without prior read.
+
+    Returns (allowed, reason). Conservative: when in doubt about whether
+    the pattern is a real overwrite, we err on the side of blocking. The
+    user can always read the file first to satisfy the guard.
+
+    Detected patterns:
+      - cp ... PROTECTED.md
+      - cp ... /path/to/dir/  (where dir contains a PROTECTED.md target)
+      - mv ... PROTECTED.md
+      - > PROTECTED.md / >> PROTECTED.md
+      - tee PROTECTED.md
+      - sed -i ... PROTECTED.md
+    """
+    cmd = str(command or "")
+    if not cmd:
+        return True, None
+
+    # Fast path: no protected filename anywhere in the command → allow
+    if not any(name in cmd for name in _PROTECTED_FILENAMES):
+        return True, None
+
+    base = Path(cwd).expanduser().resolve() if cwd else None
+
+    # Collect every protected-target candidate from the command
+    candidates: list[Path] = []
+    for pattern in _BASH_OVERWRITE_PATTERNS:
+        for match in pattern.finditer(cmd):
+            raw_path = match.group(1).strip().strip("\"'")
+            if not raw_path:
+                continue
+            resolved = _normalize_path(raw_path, base=base)
+            if resolved is None:
+                continue
+            # If the captured path IS a protected file → candidate
+            if resolved.name in _PROTECTED_FILENAMES:
+                candidates.append(resolved)
+                continue
+            # If the captured path is an existing directory, and a source
+            # path in the command is a protected filename, the cp/mv lands
+            # there as `dir/PROTECTED.md`. Check.
+            if resolved.is_dir():
+                for name in _PROTECTED_FILENAMES:
+                    if name in cmd:
+                        possible = resolved / name
+                        # Only treat as overwrite candidate if it would
+                        # actually clobber an existing file there.
+                        if possible.exists():
+                            candidates.append(possible)
+            # Trailing slash in raw_path also means destination is a dir
+            elif raw_path.endswith("/"):
+                for name in _PROTECTED_FILENAMES:
+                    if name in cmd:
+                        possible = resolved / name
+                        if possible.exists():
+                            candidates.append(possible)
+
+    # Dedupe
+    unique_candidates = []
+    seen: set[str] = set()
+    for c in candidates:
+        s = str(c)
+        if s not in seen:
+            seen.add(s)
+            unique_candidates.append(c)
+
+    if not unique_candidates:
+        return True, None
+
+    # Now check each candidate against the recent-read tracker
+    for target in unique_candidates:
+        if _was_read(str(target), session_id):
+            continue
+        # Block — found a protected overwrite without prior read
+        try:
+            preview = "\n".join(
+                target.read_text(encoding="utf-8", errors="replace").split("\n")[:20]
+            )
+        except Exception:
+            preview = "(could not read preview)"
+        reason = (
+            f"⚠️ READ-BEFORE-WRITE GUARD (bash): denne kommando vil "
+            f"overskrive {target.name} ({target}) men filen er ikke "
+            f"blevet læst i denne session. Læs den først med "
+            f"`read_file('{target}')`, og kør derefter kommandoen igen.\n\n"
+            f"Første 20 linjer af filen:\n{preview}"
+        )
+        logger.info(
+            "read_before_write_guard: BLOCKED bash overwrite of %s (session=%s)",
+            target.name, session_id,
+        )
+        return False, reason
+
+    return True, None
+
+
 def clear_session(session_id: str = "default") -> None:
-    """Clear the read-tracker for a session (e.g., on session end)."""
-    _read_tracker.pop(session_id, None)
+    """Clear all recent-read entries for a session in shared_cache."""
+    try:
+        from core.services import shared_cache as _sc
+        _sc.invalidate_prefix(f"{_CACHE_KEY_PREFIX}{session_id}:")
+    except Exception as exc:
+        logger.debug("read_before_write_guard: clear_session failed: %s", exc)
 
 
 def get_session_reads(session_id: str = "default") -> set[str]:
-    """Return the set of paths read in this session (for debugging)."""
-    return _read_tracker.get(session_id, set()).copy()
+    """Return the set of paths read in this session (for debugging).
+
+    Reads directly from shared_cache; only returns live (non-expired) entries.
+    """
+    out: set[str] = set()
+    try:
+        from core.runtime.db import connect
+        import time
+        now = time.time()
+        prefix = f"{_CACHE_KEY_PREFIX}{session_id}:"
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT cache_key FROM shared_cache "
+                "WHERE cache_key LIKE ? AND expires_at > ?",
+                (prefix + "%", now),
+            ).fetchall()
+        for r in rows:
+            full_key = str(r[0])
+            path = full_key.removeprefix(prefix)
+            if path:
+                out.add(path)
+    except Exception as exc:
+        logger.debug("read_before_write_guard: get_session_reads failed: %s", exc)
+    return out
+
+
+def build_read_before_write_guard_surface() -> dict[str, object]:
+    """MC surface — read-only meta-projection."""
+    return {
+        "active": True,
+        "mode": "read_before_write_guard",
+        "protected_files": sorted(_PROTECTED_FILENAMES),
+        "freshness_seconds": _READ_FRESHNESS_SECONDS,
+        "default_session_reads": sorted(get_session_reads("default")),
+        "authority": "policy-enforcing",
+    }
+
+
+def _emit_read_before_write_guard_event(
+    kind: str, payload: dict[str, object] | None = None
+) -> None:
+    """Defensive scoped event emitter."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(f"read_before_write_guard.{kind}", payload or {})
+    except Exception:
+        pass

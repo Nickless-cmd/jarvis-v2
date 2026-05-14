@@ -2771,10 +2771,17 @@ def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
         text = text[:MAX_READ_CHARS - 1] + "…"
 
     # Record read for read-before-write guard
+    # Note: tools receive _runtime_session_id (not _session_id) — fall back
+    # through both keys so the guard tracks reads correctly regardless of
+    # caller convention.
     try:
         from core.services.read_before_write_guard import record_read
-        _session_id = args.get("_session_id", "default")
-        record_read(str(target), session_id=_session_id)
+        _session_id = (
+            args.get("_runtime_session_id")
+            or args.get("_session_id")
+            or "default"
+        )
+        record_read(str(target), session_id=str(_session_id))
     except Exception:
         pass
 
@@ -2841,8 +2848,14 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
     # Read-before-write guard: block overwriting protected files without reading first
     try:
         from core.services.read_before_write_guard import check_read_before_write
-        _session_id = args.get("_session_id", "default")
-        _guard_allowed, _guard_reason = check_read_before_write(str(target), session_id=_session_id)
+        _session_id = (
+            args.get("_runtime_session_id")
+            or args.get("_session_id")
+            or "default"
+        )
+        _guard_allowed, _guard_reason = check_read_before_write(
+            str(target), session_id=str(_session_id)
+        )
         if not _guard_allowed:
             return {"status": "guard_blocked", "error": _guard_reason}
     except Exception:
@@ -3097,6 +3110,25 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     command = str(args.get("command") or "").strip()
     if not command:
         return {"error": "command is required", "status": "error"}
+
+    # Read-before-write guard for bash: detect cp/mv/redirect/tee/sed
+    # patterns targeting protected files (SOUL.md, IDENTITY.md, USER.md,
+    # MEMORY.md, ...). 2026-05-14 hardening after SOUL.md + USER.md
+    # were overwritten via `bash cp` that bypassed the write_file guard.
+    try:
+        from core.services.read_before_write_guard import check_bash_command_safe
+        _session_id = (
+            args.get("_runtime_session_id")
+            or args.get("_session_id")
+            or "default"
+        )
+        _guard_allowed, _guard_reason = check_bash_command_safe(
+            command, session_id=str(_session_id)
+        )
+        if not _guard_allowed:
+            return {"status": "guard_blocked", "error": _guard_reason}
+    except Exception:
+        pass  # guard failure → allow (fail-open)
 
     classification = classify_command(command)
 

@@ -518,9 +518,20 @@ def pending_plan_section(session_id: str | None) -> str | None:
         replan = replan_signal_for_plan(rec)
         replan_line = ""
         if replan.get("needed"):
+            # Phase 2.4 finding (2026-05-14): the previous text said
+            # "revise_plan-tool tilgængelig" but 0 revisions were ever
+            # called despite 8+ stale plans. Spec called this out as
+            # "tool not visible enough" — fix by spelling out both
+            # action paths concretely so Jarvis sees the move, not
+            # just the alert.
+            pid = rec.get("plan_id", "plan-???")
             replan_line = (
-                f"\n  Replan-signal: stale ({replan.get('age_days')} dage uden progress). "
-                "revise_plan-tool tilgængelig."
+                f"\n  ⚠ Replan-signal: stale ({replan.get('age_days')} dage, "
+                f"{len(completed)}/{len(steps)} gjort). To veje:"
+                f"\n    A) Hvis konteksten har ændret sig: "
+                f"revise_plan(plan_id='{pid}', reason='...', new_steps=[...])"
+                f"\n    B) Hvis du allerede er videre uden at have markeret: "
+                f"mark_step_completed(plan_id='{pid}', step_index=N)"
             )
         blocks.append(
             f"Aktiv plan ({len(completed)}/{len(steps)} done, plan_id={rec.get('plan_id')}): "

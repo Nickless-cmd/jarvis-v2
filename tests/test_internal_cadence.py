@@ -292,7 +292,11 @@ def test_bootstrap_registers_known_producers(isolated_runtime) -> None:
     cadence._producers.clear()
 
     result = cadence.run_cadence_tick_with_bootstrap(trigger="test")
-    assert result["producer_count"] == 7
+    # Was '== 7' when this test was written; the system has grown to ~20
+    # producers since then. The test's intent is "the 7 known producers
+    # are registered" — verified by the membership asserts below — so
+    # relax the count to >= 7 to stay stable as new producers are added.
+    assert result["producer_count"] >= 7
 
     state = cadence.get_cadence_state()
     names = [p["name"] for p in state["producers"]]

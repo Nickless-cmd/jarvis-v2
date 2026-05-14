@@ -33995,7 +33995,31 @@ from core.runtime.db_concept_baseline import (  # noqa: E402,F401
 # Migrations use `ALTER TABLE ... ADD COLUMN` guarded against duplicate
 # column errors, so running once at startup is identical to running on
 # every call.
-_ENSURED_TABLES: set[str] = set()
+_ENSURED_TABLES: set[tuple[str, str]] = set()
+
+
+def _conn_db_id(conn: sqlite3.Connection) -> str:
+    """Stable identifier for a sqlite connection's underlying database.
+
+    For file-backed DBs this is the file path — same across all
+    connect() calls in production. For :memory: DBs each connection
+    has its own private database, so we use id(conn) as the discriminator
+    to force per-connection re-ensure (which is what tests need).
+    """
+    try:
+        rows = conn.execute("PRAGMA database_list").fetchall()
+        for row in rows:
+            # PRAGMA database_list yields (seq, name, file). Look for 'main'.
+            name = row[1] if len(row) > 1 else ""
+            path = row[2] if len(row) > 2 else ""
+            if str(name) == "main":
+                if path:
+                    return str(path)
+                # In-memory: per-connection identity so tests get fresh ensure
+                return f"memory:{id(conn)}"
+    except Exception:
+        pass
+    return f"unknown:{id(conn)}"
 
 
 def _install_ensure_once_cache() -> None:
@@ -34007,16 +34031,18 @@ def _install_ensure_once_cache() -> None:
     ]
     for _name in _names:
         _orig = getattr(_mod, _name)
-        # Skip if already wrapped (idempotent re-install)
         if getattr(_orig, "_ensure_once_wrapped", False):
             continue
 
-        def _make_wrapped(_fn, _key):
+        def _make_wrapped(_fn, _fname):
             def _wrapped(*args, **kwargs):
-                if _key in _ENSURED_TABLES:
+                conn = args[0] if args else kwargs.get("conn")
+                db_id = _conn_db_id(conn) if conn is not None else "no-conn"
+                cache_key = (_fname, db_id)
+                if cache_key in _ENSURED_TABLES:
                     return None
                 _result = _fn(*args, **kwargs)
-                _ENSURED_TABLES.add(_key)
+                _ENSURED_TABLES.add(cache_key)
                 return _result
             _wrapped.__name__ = _fn.__name__
             _wrapped.__qualname__ = _fn.__qualname__
@@ -34031,12 +34057,16 @@ def invalidate_ensure_once_cache(table_name: str | None = None) -> None:
     """Force re-run of `_ensure_*_table` on next call.
 
     Pass None to clear all (e.g. after switching DB files in tests).
-    Pass a specific name to re-ensure that one table.
+    Pass a specific table name to re-ensure that one table (matches by
+    function-name prefix across all DB paths).
     """
     if table_name is None:
         _ENSURED_TABLES.clear()
     else:
-        _ENSURED_TABLES.discard(table_name)
+        # Remove all cache entries whose function name matches.
+        to_remove = {key for key in _ENSURED_TABLES if key[0] == table_name}
+        for key in to_remove:
+            _ENSURED_TABLES.discard(key)
 
 
 _install_ensure_once_cache()

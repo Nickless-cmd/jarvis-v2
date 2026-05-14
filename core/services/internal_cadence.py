@@ -727,6 +727,24 @@ def _ensure_producers_registered() -> None:
         priority=35,
     ))
 
+    def _run_shared_cache_cleanup(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Sweep expired rows from shared_cache (2026-05-14).
+
+        shared_cache lazy-expires individual entries on read, but rows
+        written and never read again would linger. Hourly cleanup keeps
+        the table tight."""
+        from core.services.shared_cache import cleanup_expired, stats
+        deleted = cleanup_expired()
+        return {"status": "ok", "deleted": deleted, **stats()}
+
+    register_producer(ProducerSpec(
+        name="shared_cache_cleanup",
+        cooldown_minutes=60,  # hourly
+        visible_grace_minutes=0,
+        run_fn=_run_shared_cache_cleanup,
+        priority=36,
+    ))
+
 
 def run_cadence_tick_with_bootstrap(
     *,

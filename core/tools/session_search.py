@@ -266,6 +266,14 @@ def exec_search_sessions(args: dict[str, Any]) -> dict[str, Any]:
             results = keyword_results
 
         if not results:
+            # Phase 2 Lag 11 (true forgetting): recall-empty telemetry so
+            # the future correlation daemon can detect search-near-fade
+            # patterns. Best-effort — never blocks the response.
+            try:
+                from core.services.memory_recall_telemetry import emit_recall_empty
+                emit_recall_empty(tool="search_sessions", query=query)
+            except Exception:
+                pass
             return {
                 "status": "ok",
                 "count": 0,

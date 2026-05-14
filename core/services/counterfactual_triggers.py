@@ -35,7 +35,26 @@ def _key_self_review(payload: dict) -> str:
 
 
 def _key_conflict(payload: dict) -> str:
-    return str(payload.get("conflict_id") or payload.get("run_id") or "").strip()
+    """Primary key for conflict.detected events.
+
+    Tries stable identifiers first (conflict_id, run_id). Falls back to
+    a composite of conflict_type + phrase-hash when neither is present —
+    which is the actual schema currently emitted by the conflict
+    detector (2026-05-14 fix: 138/138 events on 7-day window had only
+    conflict_type+phrase, no conflict_id, so the whole family was being
+    silently dropped).
+    """
+    explicit = str(payload.get("conflict_id") or payload.get("run_id") or "").strip()
+    if explicit:
+        return explicit
+    conflict_type = str(payload.get("conflict_type") or "").strip()
+    phrase = str(payload.get("phrase") or "").strip()
+    if conflict_type and phrase:
+        phrase_hash = hashlib.sha1(phrase.encode("utf-8", errors="ignore")).hexdigest()[:16]
+        return f"{conflict_type}:{phrase_hash}"
+    if conflict_type:
+        return conflict_type
+    return ""
 
 
 def _key_decision(payload: dict) -> str:

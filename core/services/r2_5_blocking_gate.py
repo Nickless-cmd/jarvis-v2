@@ -129,21 +129,68 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
     except Exception:
         pass
 
+    # Phase 2.4 finding (2026-05-14): R2.5 itself sits at 17% heed-rate
+    # because the previous block message ended with "STOP og kig tilbage"
+    # — passive imperative without a concrete next move. Same anti-pattern
+    # we fixed in replan-signal and inline verify-hints today: surface
+    # the action shape, not just the alert.
+    #
+    # Build a concrete one-line action prompt from the top unverified
+    # tool. The mutation-tool ↔ verify-tool mapping mirrors
+    # _suggested_verify in verification_gate.py.
+    by_tool = gate.get("by_tool") or {}
+    top_tool = next(iter(sorted(by_tool.items(), key=lambda kv: -kv[1])), None)
+    action_line = ""
+    if top_tool:
+        mut_name, mut_count = top_tool
+        if mut_name in ("write_file", "edit_file", "publish_file", "stage_edit_file"):
+            action_line = (
+                f"Næste move: read_file den fil du senest skrev til, "
+                "eller verify_file_contains(path='...', expected='...')."
+            )
+        elif mut_name in ("control_daemon", "restart_overdue_daemons"):
+            action_line = (
+                "Næste move: verify_service_active(service='...') eller "
+                "process_list for at bekræfte at servicen kører."
+            )
+        elif mut_name == "propose_git_commit":
+            action_line = (
+                "Næste move: git_log eller bash 'git status' for at bekræfte "
+                "commit'en landede."
+            )
+        elif mut_name == "memory_upsert_section":
+            action_line = (
+                "Næste move: read_file MEMORY.md eller search_memory for at "
+                "bekræfte sektionen blev skrevet i den form du ville."
+            )
+        elif mut_name == "send_discord_dm":
+            action_line = "Næste move: tjek om brugeren har svaret."
+        elif mut_name in ("bash", "bash_session_run"):
+            action_line = (
+                "Næste move: kør en anden bash der inspicerer udfaldet "
+                "(systemctl status / ps / ls / git status / curl ...) — "
+                "eller read_file det output du forventer ændredes."
+            )
+        else:
+            action_line = (
+                "Næste move: read_file / db_query / process_list / git_log "
+                "på det du lige ændrede."
+            )
+
     return {
         "reason": (
             f"R2.5 conditional block (tier={tier}, threshold={threshold}): "
             f"{failed} fejlede verifies, {unverified_effective} mutation(er) "
-            f"uden ÉT kig tilbage (hverken verify_* eller read_file/db_query/"
-            f"process_list/git_log/...). 24t effective heed_rate="
+            f"uden ÉT kig tilbage. 24t effective heed_rate="
             f"{int(heed_rate*100)}% under {int(_HEED_RATE_THRESHOLD*100)}%-"
-            "grænsen — track-record viser du springer over. STOP og kig "
-            "tilbage før næste mutation."
+            f"grænsen.\n{action_line}"
         ),
         "suggestions": suggestions,
         "urgency": urgency,
         "tier": tier,
         "threshold": threshold,
         "unverified_effective": unverified_effective,
+        "action_line": action_line,
     }
 
 

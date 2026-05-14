@@ -38,7 +38,18 @@ logger = logging.getLogger(__name__)
 
 
 _MIN_FAILED_VERIFIES = 1
-_MIN_UNVERIFIED = 5
+
+# Tier-aware unverified-mutation thresholds (2026-05-14, Phase 1 retune).
+# Uses unverified_effective (mutations with NO readback of any kind —
+# strict verify_* OR light readback like read_file/db_query/process_list).
+# Numbers reflect risk-proportional caution: deep work blocks fast,
+# fast chat tolerates more before nagging.
+_UNVERIFIED_THRESHOLD_BY_TIER: dict[str, int] = {
+    "deep": 3,
+    "reasoning": 5,
+    "fast": 8,
+}
+
 _HEED_RATE_THRESHOLD = 0.4
 _BLOCK_COOLDOWN_SECONDS = 60
 
@@ -59,15 +70,17 @@ def _heed_rate_24h() -> float | None:
 
 
 def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | None:
-    """Decide whether to inject a 'stop and verify' block.
+    """Decide whether to inject a 'stop and look back' block.
 
     Returns a dict {reason, suggestions, urgency} when blocking is warranted,
-    else None.
+    else None. Tier-aware: deep work blocks fast, fast chat tolerates more
+    before nagging. Uses unverified_effective (Phase 1) so a readback —
+    not just verify_* — counts as resolving the block.
     """
     global _last_block_at
     tier = (reasoning_tier or "").strip().lower()
-    if tier not in {"deep", "reasoning"}:
-        return None
+    if tier not in _UNVERIFIED_THRESHOLD_BY_TIER:
+        tier = "fast"
 
     # Cooldown — don't re-block within a minute of the last block
     now = datetime.now(UTC)
@@ -81,8 +94,14 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
         return None
 
     failed = int(gate.get("failed_verify_count") or 0)
-    unverified = int(gate.get("unverified_count") or 0)
-    if failed < _MIN_FAILED_VERIFIES and unverified < _MIN_UNVERIFIED:
+    # Use unverified_effective if available (post-Phase-1); fall back to
+    # unverified_count (back-compat strict) when running against an
+    # older verification_gate.
+    unverified_effective = int(
+        gate.get("unverified_effective", gate.get("unverified_count")) or 0
+    )
+    threshold = _UNVERIFIED_THRESHOLD_BY_TIER[tier]
+    if failed < _MIN_FAILED_VERIFIES and unverified_effective < threshold:
         return None
 
     heed_rate = _heed_rate_24h()
@@ -102,7 +121,8 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
         event_bus.publish("r2_5_gate.blocked", {
             "tier": tier,
             "failed_verify_count": failed,
-            "unverified_count": unverified,
+            "unverified_effective": unverified_effective,
+            "threshold": threshold,
             "heed_rate": heed_rate,
             "urgency": urgency,
         })
@@ -111,15 +131,19 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
 
     return {
         "reason": (
-            f"R2.5 conditional block: {failed} failed verifies, {unverified} "
-            f"unverified mutations, og 24t heed_rate={int(heed_rate*100)}% "
-            f"(under {int(_HEED_RATE_THRESHOLD*100)}%-grænsen). Du har en "
-            "trackrecord for at ignorere R2-advarsler. STOP og kør verify_* "
-            "FØRST denne gang."
+            f"R2.5 conditional block (tier={tier}, threshold={threshold}): "
+            f"{failed} fejlede verifies, {unverified_effective} mutation(er) "
+            f"uden ÉT kig tilbage (hverken verify_* eller read_file/db_query/"
+            f"process_list/git_log/...). 24t effective heed_rate="
+            f"{int(heed_rate*100)}% under {int(_HEED_RATE_THRESHOLD*100)}%-"
+            "grænsen — track-record viser du springer over. STOP og kig "
+            "tilbage før næste mutation."
         ),
         "suggestions": suggestions,
         "urgency": urgency,
         "tier": tier,
+        "threshold": threshold,
+        "unverified_effective": unverified_effective,
     }
 
 

@@ -271,7 +271,7 @@ def _impulse_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
             action_id="schedule_self_wakeup",
             choice="Schedule return to interrupted visible run",
             payload={
-                "delay_seconds": 300,
+                "delay_seconds": 30,
                 "prompt": f"Resume from interrupted visible run: {payload.get('summary') or payload.get('error') or 'unknown interruption'}",
                 "reason": "living-executive:visible-run-interrupted",
             },

@@ -175,7 +175,7 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "base_url": "https://opencode.ai/zen/v1",
         "auth_kind": "bearer",
         "protocol": "openai-chat",
-        # No dynamic /models endpoint — models listed in provider_router.json
+        # No dynamic /models endpoint — models listed in static_models below.
         "models_endpoint": "",
         "rpm_limit": None,
         "daily_limit": None,
@@ -965,6 +965,50 @@ def _configured_cheap_candidates(
                 "updated_at": str(item.get("updated_at") or ""),
             }
         )
+    # Phase D (2026-05-14): also inject models from provider defaults' static_models
+    # for providers that have no explicit model entries in the registry.
+    # This lets us remove redundant model entries for providers like opencode
+    # whose models are already declared in CHEAP_PROVIDER_DEFAULTS.
+    for provider_name, provider_cfg in CHEAP_PROVIDER_DEFAULTS.items():
+        static_models = provider_cfg.get("static_models") or []
+        if not static_models:
+            continue
+        provider_entry = provider_entries.get(provider_name, {})
+        auth_profile = str(provider_entry.get("auth_profile") or "").strip()
+        for sm in static_models:
+            key = (provider_name, sm)
+            if key in seen:
+                continue
+            if skip_providers and provider_name in skip_providers:
+                continue
+            if provider_name in ("ollamafreeapi", "arko") and not include_public_proxy:
+                continue
+            seen.add(key)
+            candidates.append(
+                {
+                    "active": True,
+                    "lane": "cheap",
+                    "provider": provider_name,
+                    "model": sm,
+                    "auth_profile": auth_profile,
+                    "auth_mode": str(provider_entry.get("auth_mode") or "").strip(),
+                    "base_url": str(
+                        provider_entry.get("base_url")
+                        or provider_cfg.get("base_url")
+                        or ""
+                    ).strip(),
+                    "credentials_ready": provider_auth_ready(
+                        provider=provider_name,
+                        auth_profile=auth_profile,
+                    ),
+                    "priority": int(provider_cfg.get("priority") or 9999),
+                    "rpm_limit": provider_cfg.get("rpm_limit"),
+                    "daily_limit": provider_cfg.get("daily_limit"),
+                    "daily_neurons": provider_cfg.get("daily_neurons"),
+                    "source": "provider-defaults-static-models",
+                    "updated_at": "",
+                }
+            )
     candidates.sort(
         key=lambda item: (
             _candidate_adaptive_snapshot(item)["effective_priority"],

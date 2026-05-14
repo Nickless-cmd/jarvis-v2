@@ -394,4 +394,10 @@ def bootstrap_all() -> dict[str, Any]:
         result["decision_enforcement_subscribed"] = True
     except Exception as exc:
         result["decision_enforcement_error"] = str(exc)
+    try:
+        from core.services.decision_signal_telemetry import subscribe as ds_telem_subscribe
+        ds_telem_subscribe()
+        result["decision_signal_telemetry_subscribed"] = True
+    except Exception as exc:
+        result["decision_signal_telemetry_error"] = str(exc)
     return result

@@ -52,9 +52,9 @@ def run(*, workspace_id: str = "default", dry_run: bool | None = None) -> dict:
     """
     if dry_run is None:
         try:
-            from core.runtime.settings import RuntimeSettings as _RS
+            from core.runtime.settings import load_settings as _load_rs
             dry_run = not bool(
-                getattr(_RS(), "counterfactual_engine_phase2_llm_enabled", False)
+                getattr(_load_rs(), "counterfactual_engine_phase2_llm_enabled", False)
             )
         except Exception:
             dry_run = True
@@ -389,8 +389,8 @@ def _generate_counterfactuals_via_llm(triggers: list[TriggerEvent]) -> list[dict
     if not triggers:
         return []
     try:
-        from core.runtime.settings import RuntimeSettings
-        settings = RuntimeSettings()
+        from core.runtime.settings import load_settings
+        settings = load_settings()
         if not getattr(settings, "counterfactual_engine_phase2_llm_enabled", False):
             return [_dry_run_placeholder(t) for t in triggers]
         max_per_cycle = int(

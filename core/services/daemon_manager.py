@@ -324,6 +324,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": True,
         "description": "240min checker: genstarter grid-bot, dealwork-worker, superteam-scanner og toku-poller hvis de er døde",
     },
+    "active_sensing": {
+        "module": "core.services.active_sensing_daemon",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 30,
+        "default_enabled": True,
+        "description": "Aktiv sansetrang: Sansernes Arkiv vælger selv at sanse (visual/audio/atmosphere/mixed) på eget initiativ",
+    },
 }
 
 

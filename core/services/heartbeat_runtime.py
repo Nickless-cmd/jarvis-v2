@@ -2876,6 +2876,9 @@ def _build_influence_trace(
             from core.services.ambient_sound_daemon import tick_ambient_sound_daemon
             _as_result = tick_ambient_sound_daemon()
             _dm.record_daemon_tick("ambient_sound", _as_result or {})
+            from core.services.active_sensing_daemon import tick_active_sensing_daemon
+            _asense_result = tick_active_sensing_daemon()
+            _dm.record_daemon_tick("active_sensing", _asense_result or {})
         except Exception:
             pass
 

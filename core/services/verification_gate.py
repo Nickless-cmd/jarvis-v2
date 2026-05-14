@@ -27,10 +27,10 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Tools that *change state* (file/repo/system/config) and should ideally be
-# paired with a verify_* call before the model claims success.
+# Tools that *change state* (file/repo/system/config/memory/comms) and should
+# ideally be paired with a verify before the model claims success.
 _MUTATION_TOOLS_FILE: frozenset[str] = frozenset({
-    "write_file", "edit_file", "publish_file",
+    "write_file", "edit_file", "publish_file", "stage_edit_file",
 })
 _MUTATION_TOOLS_SHELL: frozenset[str] = frozenset({
     "bash", "bash_session_run",
@@ -40,6 +40,19 @@ _MUTATION_TOOLS_SERVICE: frozenset[str] = frozenset({
 })
 _MUTATION_TOOLS_CONFIG: frozenset[str] = frozenset({
     "update_setting", "approve_proposal", "approve_plan",
+    "propose_git_commit",
+})
+# Phase 1 expansion (2026-05-14): memory writes and outbound communication
+# are mutations too — Jarvis was treating these as "free" because they
+# weren't in the gate's awareness.
+_MUTATION_TOOLS_MEMORY: frozenset[str] = frozenset({
+    "memory_upsert_section",
+})
+_MUTATION_TOOLS_COMMS: frozenset[str] = frozenset({
+    "send_discord_dm",
+})
+_MUTATION_TOOLS_TODO: frozenset[str] = frozenset({
+    "todo_set", "todo_update_status",
 })
 
 _MUTATION_TOOLS: frozenset[str] = (
@@ -47,11 +60,38 @@ _MUTATION_TOOLS: frozenset[str] = (
     | _MUTATION_TOOLS_SHELL
     | _MUTATION_TOOLS_SERVICE
     | _MUTATION_TOOLS_CONFIG
+    | _MUTATION_TOOLS_MEMORY
+    | _MUTATION_TOOLS_COMMS
+    | _MUTATION_TOOLS_TODO
 )
 
+# Strict verifies — explicit verify_* tools designed for the purpose.
+# When Jarvis calls one of these, it's a strong signal of "I checked".
 _VERIFY_TOOLS: frozenset[str] = frozenset({
     "verify_file_contains", "verify_service_active", "verify_endpoint_responds",
 })
+
+# Light verifies (Phase 1 addition, 2026-05-14) — tools that read back
+# state without claiming it. When Jarvis reads a file he just edited, or
+# queries db_query / process_list / git_log right after a mutation,
+# that's evidence he at least glanced back. Weaker signal than a strict
+# verify_*, but a much better proxy for "did you look?" than nothing.
+#
+# Counted toward "effective heeding" in telemetry; reported separately
+# from strict_heeded so the difference is visible.
+_LIGHT_VERIFY_TOOLS: frozenset[str] = frozenset({
+    "read_file",
+    "db_query",
+    "process_list", "process_tail",
+    "git_log",
+    "find_files",
+    "smart_outline",
+    "search", "search_memory", "search_sessions", "search_chat_history",
+    "semantic_search_code",
+    "verification_status",
+})
+
+ALL_VERIFY_TOOLS: frozenset[str] = _VERIFY_TOOLS | _LIGHT_VERIFY_TOOLS
 
 _LOOKBACK_MINUTES = 10
 _LOOKBACK_EVENTS = 200
@@ -81,9 +121,15 @@ def _recent_events(minutes: int = _LOOKBACK_MINUTES) -> list[dict[str, Any]]:
 
 
 def _scan(events: list[dict[str, Any]]) -> dict[str, Any]:
-    """Classify events into mutations + verifies and pair them."""
+    """Classify events into mutations / strict-verifies / light-verifies.
+
+    Strict verifies = explicit verify_* tools.
+    Light verifies = read-back tools (read_file, db_query, process_list, ...).
+    Both count toward "effective" heeding; only strict counts as a strong signal.
+    """
     mutations: list[dict[str, Any]] = []
-    verifies: list[dict[str, Any]] = []
+    strict_verifies: list[dict[str, Any]] = []
+    light_verifies: list[dict[str, Any]] = []
     failed_verifies: list[dict[str, Any]] = []
 
     for e in events:
@@ -95,20 +141,21 @@ def _scan(events: list[dict[str, Any]]) -> dict[str, Any]:
         tool = str(payload.get("tool", ""))
         status = str(payload.get("status", ""))
         ts = str(e.get("created_at", ""))
+        item = {"tool": tool, "status": status, "ts": ts, "payload": payload}
         if tool in _VERIFY_TOOLS:
-            verifies.append({"tool": tool, "status": status, "ts": ts, "payload": payload})
+            strict_verifies.append(item)
             if status == "failed":
-                failed_verifies.append({"tool": tool, "status": status, "ts": ts, "payload": payload})
+                failed_verifies.append(item)
+        elif tool in _LIGHT_VERIFY_TOOLS and status == "ok":
+            light_verifies.append(item)
         elif tool in _MUTATION_TOOLS and status == "ok":
-            mutations.append({"tool": tool, "status": status, "ts": ts, "payload": payload})
+            mutations.append(item)
 
-    # Crude pairing: count mutations that have NO subsequent verify in the window.
-    # We don't try to match by path/target — that's brittle and the goal is just
-    # to surface "you mutated N things and verified M". The model can decide if
-    # M < N is a problem.
     return {
         "mutations": mutations,
-        "verifies": verifies,
+        "verifies": strict_verifies,           # back-compat key
+        "strict_verifies": strict_verifies,
+        "light_verifies": light_verifies,
         "failed_verifies": failed_verifies,
     }
 
@@ -118,14 +165,21 @@ def evaluate_verification_gate(*, minutes: int = _LOOKBACK_MINUTES) -> dict[str,
     events = _recent_events(minutes=minutes)
     scan = _scan(events)
     mutations = scan["mutations"]
-    verifies = scan["verifies"]
+    strict_verifies = scan["strict_verifies"]
+    light_verifies = scan["light_verifies"]
     failed = scan["failed_verifies"]
 
     by_tool: dict[str, int] = {}
     for m in mutations:
         by_tool[m["tool"]] = by_tool.get(m["tool"], 0) + 1
 
-    unverified_count = max(0, len(mutations) - len(verifies))
+    # Strict-only count: mutations without an explicit verify_* call
+    unverified_strict = max(0, len(mutations) - len(strict_verifies))
+    # Effective count: mutations without ANY readback (strict OR light)
+    unverified_effective = max(
+        0, len(mutations) - len(strict_verifies) - len(light_verifies)
+    )
+
     suggestions: list[str] = []
     for tool, count in sorted(by_tool.items(), key=lambda kv: -kv[1]):
         verify = _suggested_verify(tool)
@@ -136,9 +190,13 @@ def evaluate_verification_gate(*, minutes: int = _LOOKBACK_MINUTES) -> dict[str,
         "status": "ok",
         "window_minutes": minutes,
         "mutation_count": len(mutations),
-        "verify_count": len(verifies),
+        "verify_count": len(strict_verifies),               # back-compat
+        "strict_verify_count": len(strict_verifies),
+        "light_verify_count": len(light_verifies),
         "failed_verify_count": len(failed),
-        "unverified_count": unverified_count,
+        "unverified_count": unverified_strict,              # back-compat
+        "unverified_strict": unverified_strict,
+        "unverified_effective": unverified_effective,
         "by_tool": by_tool,
         "suggestions": suggestions,
         "failed_verifies": [
@@ -155,24 +213,30 @@ def evaluate_verification_gate(*, minutes: int = _LOOKBACK_MINUTES) -> dict[str,
 
 
 def verification_gate_section() -> str | None:
-    """Format gate signals as a prompt-awareness section, or None."""
+    """Format gate signals as a prompt-awareness section, or None.
+
+    Uses "effective" unverified count (no strict verify AND no light readback)
+    to decide whether to surface. This avoids nagging when Jarvis has already
+    glanced back at what he mutated.
+    """
     result = evaluate_verification_gate()
     failed = result.get("failed_verifies") or []
-    unverified = int(result.get("unverified_count") or 0)
+    unverified_effective = int(result.get("unverified_effective") or 0)
+    unverified_strict = int(result.get("unverified_strict") or 0)
     suggestions = result.get("suggestions") or []
 
-    if not failed and unverified <= 0:
+    if not failed and unverified_effective <= 0:
         return None
 
     # Record this surface for R2 telemetry — we want to know whether this
-    # warning gets heeded (followed by a verify_*) or ignored.
+    # warning gets heeded (followed by a strict OR light readback).
     try:
         from core.services.verification_gate_telemetry import record_surface
         record_surface(
             failed_verify_count=int(result.get("failed_verify_count") or 0),
-            unverified_count=int(result.get("unverified_count") or 0),
+            unverified_count=unverified_effective,
             mutation_count=int(result.get("mutation_count") or 0),
-            verify_count=int(result.get("verify_count") or 0),
+            verify_count=int(result.get("strict_verify_count") or 0),
         )
     except Exception:
         pass
@@ -186,14 +250,25 @@ def verification_gate_section() -> str | None:
         for f in failed:
             reason = f.get("reason") or "se eventbus for detaljer"
             lines.append(f"  - {f['tool']}: {reason}")
-    if unverified > 0 and suggestions:
+    if unverified_effective > 0:
+        strict = int(result.get("strict_verify_count") or 0)
+        light = int(result.get("light_verify_count") or 0)
         lines.append(
-            f"⚠ {result['mutation_count']} mutations / {result['verify_count']} verifies "
-            f"i sidste {result['window_minutes']} min — overvej at verificere før du "
-            f"rapporterer noget som gjort:"
+            f"⚠ {result['mutation_count']} mutations / {strict} strict-verifies "
+            f"/ {light} read-backs i sidste {result['window_minutes']} min — "
+            f"{unverified_effective} mutation(er) uden nogen form for kig tilbage:"
         )
-        for s in suggestions[:_MAX_WARNINGS_SURFACED]:
-            lines.append(f"  - {s}")
+        if suggestions:
+            for s in suggestions[:_MAX_WARNINGS_SURFACED]:
+                lines.append(f"  - {s}")
+        else:
+            # No suggested verify_* for these mutation kinds, but still
+            # surface the count by tool — Jarvis can decide if a readback
+            # (read_file / db_query / process_list / ...) is warranted.
+            by_tool = result.get("by_tool") or {}
+            top_tools = sorted(by_tool.items(), key=lambda kv: -kv[1])[:_MAX_WARNINGS_SURFACED]
+            for tool, count in top_tools:
+                lines.append(f"  - {count}× {tool}")
 
     return "Verification gate:\n" + "\n".join(lines)
 

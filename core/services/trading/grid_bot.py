@@ -338,7 +338,7 @@ GridBot = GridBotV2
 # Demo
 # ---------------------------------------------------------------------------
 def demo():
-    """Demo-kørsel på Binance testnet."""
+    """Demo-kørsel på Binance testnet — 3 cycles."""
     print("=" * 60)
     print(" 🦾 JARVIS GRID BOT V2 — Paper Trading Demo")
     print("=" * 60)
@@ -388,5 +388,69 @@ def demo():
         bot.stop()
 
 
+# ---------------------------------------------------------------------------
+# Continuous run (used by process_spawn)
+# ---------------------------------------------------------------------------
+def run_continuous():
+    """Kør grid-bot i loop hvert 60. sekund indtil stoppet."""
+    import signal
+
+    config = GridConfig(
+        grid_levels=7,
+        grid_spacing_pct=0.8,
+        order_size_usdt=12.0,
+        stop_loss_pct=6.0,
+        re_center_threshold_pct=2.0,
+        autocompound=True,
+    )
+    bot = GridBotV2(testnet=True, config=config)
+
+    def handle_sigterm(signum, frame):
+        print("\n⏹️ SIGTERM modtaget — stopper grid-bot...")
+        bot.stop()
+
+    signal.signal(signal.SIGTERM, handle_sigterm)
+    signal.signal(signal.SIGINT, handle_sigterm)
+
+    cycle_count = 0
+    interval = 60  # sekunder mellem cycles
+
+    print("=" * 60)
+    print(" 🦾 JARVIS GRID BOT V2 — Continuous Paper Trading")
+    print("=" * 60)
+
+    try:
+        while bot._running:
+            cycle_count += 1
+            actions = bot.run_simulation()
+            price = bot.state.last_price
+            print(
+                f"  Cycle {cycle_count}: price=${price:.2f}, "
+                f"actions={len(actions)}, "
+                f"PnL=${bot.state.total_pnl:.2f}, "
+                f"trades={bot.state.trades_today}"
+            )
+            for a in actions:
+                print(f"    → {a['action']} @ ${a.get('price', 0):.2f}")
+
+            # Vent (i små bidder så SIGTERM fanges hurtigt)
+            for _ in range(interval):
+                if not bot._running:
+                    break
+                time.sleep(1)
+
+    except KeyboardInterrupt:
+        print("\n⏹️ KeyboardInterrupt — stopper grid-bot...")
+    finally:
+        bot.stop()
+        print(f"📈 Final PnL: daily=${bot.state.daily_pnl:.2f}, total=${bot.state.total_pnl:.2f}")
+        print(f"📉 Max drawdown: {bot.state.max_drawdown_pct:.1f}%")
+        print(f"💸 Fees total: ${bot.state.fee_tracker.fees_total:.4f}")
+
+
 if __name__ == "__main__":
-    demo()
+    import sys
+    if "--continuous" in sys.argv or "-c" in sys.argv:
+        run_continuous()
+    else:
+        demo()

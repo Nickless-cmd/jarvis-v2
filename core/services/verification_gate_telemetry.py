@@ -226,38 +226,94 @@ def telemetry_section() -> str | None:
     )
 
 
-# ── Eventbus subscription ──────────────────────────────────────────────────
+# ── Eventbus DB-polling listener ───────────────────────────────────────────
+# Was previously an in-process event_bus.subscribe() loop — but eventbus
+# subscribers are per-process Python queues. The api workers (where chat
+# lives and verify_* calls actually fire) had no subscriber attached
+# because governance_bootstrap is gated on JARVIS_ENABLE_RUNTIME_SERVICES,
+# which is 0 on jarvis-api.service. Net effect: ~63 of 71 real verify
+# events since 8 May never reached the telemetry listener.
+#
+# Fix (2026-05-14): poll the events DB table instead. SQLite is shared
+# across processes, so a single listener (running on jarvis-runtime)
+# now sees every tool.completed regardless of which process emitted it.
 
 
 _subscribed = False
+_POLL_INTERVAL_SECONDS = 5.0
 
 
-def _poll_loop() -> None:
+def _poll_db_for_verify_events() -> None:
+    """Poll the events table for new tool.completed verify_* events.
+
+    Cursor is last_event_id_seen, stored in memory. On first run we
+    initialize the cursor to the current MAX(id) so we don't replay
+    history. Subsequent polls fetch only new rows.
+    """
+    import time as _time
     try:
-        from core.eventbus.bus import event_bus
+        from core.runtime.db import connect
     except Exception:
         return
-    queue = event_bus.subscribe()
+
+    # Initialize cursor at current max id — we don't want to replay
+    # old verifies against new surfaces.
+    last_id = 0
+    try:
+        with connect() as conn:
+            row = conn.execute("SELECT COALESCE(MAX(id), 0) FROM events").fetchone()
+            last_id = int(row[0] or 0) if row else 0
+    except Exception as exc:
+        logger.debug("r2_telemetry: cursor init failed: %s", exc)
+
     while True:
-        item = queue.get()
-        if item is None:
-            return
+        _time.sleep(_POLL_INTERVAL_SECONDS)
         try:
-            kind = str(item.get("kind") or "")
-            if kind != "tool.completed":
-                continue
-            payload = item.get("payload") or {}
-            tool = str(payload.get("tool") or "")
-            status = str(payload.get("status") or "")
-            if tool.startswith("verify_") and status == "ok":
-                record_verify_event(tool=tool, status=status)
-        except Exception:
+            import json as _json
+            with connect() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT id, payload_json, created_at
+                    FROM events
+                    WHERE id > ?
+                      AND kind = 'tool.completed'
+                    ORDER BY id ASC
+                    LIMIT 500
+                    """,
+                    (last_id,),
+                ).fetchall()
+            for row in rows:
+                eid = int(row[0])
+                last_id = max(last_id, eid)
+                try:
+                    payload = _json.loads(row[1] or "{}")
+                except (ValueError, TypeError):
+                    continue
+                if not isinstance(payload, dict):
+                    continue
+                tool = str(payload.get("tool") or "")
+                status = str(payload.get("status") or "")
+                if not (tool.startswith("verify_") and status == "ok"):
+                    continue
+                created_at_raw = str(row[2] or "")
+                try:
+                    event_at = datetime.fromisoformat(created_at_raw)
+                except ValueError:
+                    event_at = datetime.now(UTC)
+                record_verify_event(tool=tool, status=status, at=event_at)
+        except Exception as exc:
+            logger.debug("r2_telemetry: poll cycle failed: %s", exc)
             continue
 
 
 def subscribe() -> None:
+    """Start the DB-polling telemetry listener. Idempotent per process."""
     global _subscribed
     if _subscribed:
         return
     _subscribed = True
-    threading.Thread(target=_poll_loop, name="r2-telemetry", daemon=True).start()
+    threading.Thread(
+        target=_poll_db_for_verify_events,
+        name="r2-telemetry-db-poll",
+        daemon=True,
+    ).start()

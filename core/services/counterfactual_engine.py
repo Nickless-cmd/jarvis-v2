@@ -201,6 +201,27 @@ def run(*, workspace_id: str = "default", dry_run: bool = True) -> dict:
         except Exception:
             pass
 
+        # Step 7: bind a real counterfactual (non-placeholder) to a
+        # world-model prediction. Skips TODO placeholders since they
+        # carry no semantic claim worth predicting on.
+        try:
+            _what_if = str(cf.get("what_if") or "").strip()
+            if _what_if and _what_if != "TODO" and _what_if != "[generation failed]":
+                from core.services.counterfactual_predictions import (
+                    bind_counterfactual_to_prediction,
+                )
+                _trigger_types = cf.get("trigger_types") or []
+                _primary_type = str(_trigger_types[0]) if _trigger_types else "unknown"
+                bind_counterfactual_to_prediction(
+                    cf_id=cf["cf_id"],
+                    trigger_type=_primary_type,
+                    anchor=_what_if[:200],
+                    confidence=float(cf.get("final_confidence", 0.0)),
+                    source="counterfactual",
+                )
+        except Exception as exc:
+            logger.debug("counterfactual_engine: pipeline binding failed: %s", exc)
+
     summary["elapsed_ms"] = int((time.monotonic() - started_at) * 1000)
     _publish_cycle_complete(summary)
     return summary
@@ -531,6 +552,24 @@ def generate_counterfactual(
         "cognitive_counterfactual.generated",
         {"cf_id": cf_id, "trigger_type": trigger_type, "source": source},
     )
+
+    # Bind to a world-model prediction so the calibration loop has
+    # something to chew on. Best-effort — never blocks counterfactual
+    # creation (2026-05-14 fix: previously 0/1019 generated counterfactuals
+    # were bound to predictions).
+    try:
+        from core.services.counterfactual_predictions import (
+            bind_counterfactual_to_prediction,
+        )
+        bind_counterfactual_to_prediction(
+            cf_id=cf_id,
+            trigger_type=trigger_type,
+            anchor=anchor,
+            confidence=float(confidence),
+            source="counterfactual",
+        )
+    except Exception as exc:
+        logger.debug("counterfactual_engine: prediction binding failed: %s", exc)
     return result
 
 

@@ -708,6 +708,26 @@ def _ensure_producers_registered() -> None:
         priority=30,
     ))
 
+    def _run_counterfactual_predictions_sweep(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Counterfactuals Phase 1.5 (2026-05-14) — close the prediction
+        resolution loop. Resolves counterfactual-bound predictions whose
+        7-day horizon (+1d grace) has passed, marking as 'uncertain' with
+        an audit note. Future Phase 2 will replace this with frequency-
+        based supported/contradicted assignment."""
+        from core.services.counterfactual_predictions import (
+            sweep_expired_counterfactual_predictions,
+        )
+        return sweep_expired_counterfactual_predictions()
+
+    register_producer(ProducerSpec(
+        name="counterfactual_predictions_sweep",
+        cooldown_minutes=1440,  # daily
+        visible_grace_minutes=0,
+        run_fn=_run_counterfactual_predictions_sweep,
+        priority=35,
+    ))
+
+
 def run_cadence_tick_with_bootstrap(
     *,
     trigger: str = "heartbeat",

@@ -8187,11 +8187,18 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
     blocked_reason = str(persisted.get("blocked_reason") or "")
     last_recovery_at = str(persisted.get("last_recovery_at") or "")
     tick_state = _resolve_tick_activity_state(persisted=persisted, now=now)
-    currently_ticking = bool(tick_state["active"])
-    if bool(tick_state["stale"]):
-        blocked_reason = "stale-ticking-state-cleared"
+    # On scheduler startup we are by definition a new process — any
+    # previous tick is dead by the time we re-import this module. Force
+    # currently_ticking=False to prevent a stuck-ticking state from
+    # surviving restarts (bug 2026-05-14: rapid restarts kept updated_at
+    # fresh within the 10-min stale window, so the system stayed in
+    # permanent "ticking" state, blocking schedule_state from ever
+    # reaching "due" and starving 19+ downstream daemons).
+    if bool(tick_state["active"]) or bool(tick_state["stale"]):
+        blocked_reason = blocked_reason or "stale-ticking-state-cleared"
         recovery_status = "stale-ticking-state-cleared"
         last_recovery_at = now.isoformat()
+    currently_ticking = False
 
     startup_state = _persist_runtime_state(
         policy=policy,

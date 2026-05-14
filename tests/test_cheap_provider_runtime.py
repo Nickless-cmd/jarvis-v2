@@ -400,10 +400,18 @@ def test_generic_cheap_lane_skips_ollamafreeapi(isolated_runtime) -> None:
     assert target["status"] == "no-healthy-provider"
 
 
-def test_public_safe_lane_prefers_ollamafreeapi_and_falls_back_local(
+def test_public_safe_lane_prefers_local_ollama_then_ollamafreeapi(
     isolated_runtime,
     monkeypatch,
 ) -> None:
+    """Public-safe lane order (2026-05-14 update):
+
+    1. Local ollama first (higher uptime than ollamafreeapi)
+    2. ollamafreeapi as fallback if local fails
+
+    Was: ollamafreeapi first, _execute_public_safe_local_ollama as fallback.
+    Changed because ollamafreeapi is too often down in production.
+    """
     provider_router = isolated_runtime.provider_router
     cheap = isolated_runtime.cheap_provider_runtime
 
@@ -428,37 +436,33 @@ def test_public_safe_lane_prefers_ollamafreeapi_and_falls_back_local(
         set_visible=False,
     )
 
+    calls: list[str] = []
+
     def _execute_provider_chat(*, provider, model, auth_profile, base_url, message):
-        if provider == "ollamafreeapi":
-            raise cheap.CheapProviderError(
-                provider="ollamafreeapi",
-                code="provider-error",
-                message="down",
-            )
-        raise AssertionError(f"unexpected provider {provider}")
+        calls.append(provider)
+        if provider == "ollama":
+            return {
+                "lane": "cheap",
+                "provider": "ollama",
+                "model": model,
+                "status": "completed",
+                "execution_mode": "public-safe-local-ollama",
+                "source": "cheap-provider-runtime",
+                "text": "local-ollama-ok",
+                "input_tokens": 1,
+                "output_tokens": 1,
+                "cost_usd": 0.0,
+            }
+        raise AssertionError(f"should not reach {provider} when local works")
 
     monkeypatch.setattr(cheap, "_execute_provider_chat", _execute_provider_chat)
-    monkeypatch.setattr(
-        cheap,
-        "_execute_public_safe_local_ollama",
-        lambda *, message: {
-            "lane": "local",
-            "provider": "ollama",
-            "model": "qwen3.5:9b",
-            "status": "completed",
-            "execution_mode": "public-safe-local-fallback",
-            "source": "cheap-provider-runtime",
-            "text": "fallback-ok",
-            "input_tokens": 1,
-            "output_tokens": 1,
-            "cost_usd": 0.0,
-        },
-    )
 
     result = cheap.execute_public_safe_cheap_lane(message="ping")
 
     assert result["provider"] == "ollama"
-    assert result["text"] == "fallback-ok"
+    assert result["text"] == "local-ollama-ok"
+    # Verify local ollama was tried FIRST, before ollamafreeapi
+    assert calls[0] == "ollama"
 
 
 def test_openai_compat_chat_accepts_messages_list(isolated_runtime, monkeypatch) -> None:

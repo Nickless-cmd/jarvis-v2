@@ -3899,6 +3899,14 @@ def _exec_search_memory(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
     if not results:
+        # Phase 2 of Lag 11 (true forgetting): emit recall_empty event so
+        # the deferred correlation daemon can detect search-near-fade
+        # patterns. Best-effort — never blocks the tool response.
+        try:
+            from core.services.memory_recall_telemetry import emit_recall_empty
+            emit_recall_empty(tool="search_memory", query=query)
+        except Exception:
+            pass
         return {"status": "ok", "results": [], "text": f"No memory matches found for: {query}"}
 
     lines = [f"Memory search: '{query}' — {len(results)} result(s)"]
@@ -4970,6 +4978,12 @@ def _exec_search_chat_history(args: dict[str, Any]) -> dict[str, Any]:
             ).fetchall()
 
         if not rows:
+            # Phase 2 Lag 11: recall-empty telemetry
+            try:
+                from core.services.memory_recall_telemetry import emit_recall_empty
+                emit_recall_empty(tool="search_chat_history", query=query)
+            except Exception:
+                pass
             return {"status": "ok", "count": 0, "text": f"No messages found matching '{query}'", "results": []}
 
         results = []

@@ -51,8 +51,14 @@ def assess_pattern(
     base_confidence: float,
     competing_explanations: list[str] | None = None,
     confounders: list[str] | None = None,
+    include_rationale: bool = True,
 ) -> dict[str, object]:
-    """Assess whether a pattern should be elevated or rejected."""
+    """Assess whether a pattern should be elevated or rejected.
+
+    include_rationale: when False, skips the LLM call that generates the
+    Danish explanation sentence. Useful for bulk callers (e.g. Counterfactual
+    Phase 3 modulation, which runs per-cf inside a single cycle).
+    """
     competitors = competing_explanations or []
     confounder_list = confounders or []
 
@@ -63,6 +69,8 @@ def assess_pattern(
             "reason": f"insufficient_observations ({observation_count} < 3)",
             "confidence": 0.0,
             "original_confidence": base_confidence,
+            "observation_count": observation_count,
+            "rationale": "",
         }
 
     # Competitor penalty
@@ -87,13 +95,16 @@ def assess_pattern(
     else:
         status = "upgraded"
 
-    rationale = _generate_assessment_rationale(
-        status=status,
-        observation_count=observation_count,
-        adjusted_confidence=adjusted_confidence,
-        competitor_count=len(competitors),
-        confounder_count=len(confounder_list),
-    )
+    if include_rationale:
+        rationale = _generate_assessment_rationale(
+            status=status,
+            observation_count=observation_count,
+            adjusted_confidence=adjusted_confidence,
+            competitor_count=len(competitors),
+            confounder_count=len(confounder_list),
+        )
+    else:
+        rationale = ""
     return {
         "status": status,
         "confidence": round(adjusted_confidence, 3),

@@ -103,12 +103,20 @@ def record_surface(
         _save(data)
 
 
-def record_verify_event(*, tool: str, status: str, at: datetime | None = None) -> None:
-    """Called by an eventbus listener for tool.completed events. If a recent
-    surface is unresolved and within the reaction window, mark it heeded."""
+def record_verify_event(
+    *, tool: str, status: str, at: datetime | None = None, verify_kind: str = "strict"
+) -> None:
+    """Called by the telemetry listener for tool.completed events. If a recent
+    surface is unresolved and within the reaction window, mark it heeded.
+
+    verify_kind: "strict" for explicit verify_* tools, "light" for read-back
+    tools (read_file, db_query, process_list, ...). Recorded separately so we
+    can tell whether Jarvis explicitly verified or just glanced back.
+    """
     now = at or datetime.now(UTC)
     if status != "ok":
-        return  # only successful verifies count as heeding
+        return
+    verdict_label = "heeded" if verify_kind == "strict" else "light_heeded"
     with _lock:
         data = _load()
         surfaces = data.get("surfaces", [])
@@ -122,20 +130,21 @@ def record_verify_event(*, tool: str, status: str, at: datetime | None = None) -
             except ValueError:
                 continue
             if s_at < cutoff:
-                break  # past window — older surfaces also out
+                break
             s["resolved"] = True
             s["heeded_by"] = tool
             s["heeded_at"] = now.isoformat()
+            s["heeded_kind"] = verify_kind
             changed = True
-            # Record the reaction
             data.setdefault("reactions", []).append({
                 "at": now.isoformat(),
-                "verdict": "heeded",
+                "verdict": verdict_label,
                 "tool": tool,
+                "verify_kind": verify_kind,
                 "surface_at": s.get("at"),
                 "kind": s.get("kind"),
             })
-            break  # only resolve the most recent unresolved surface
+            break
         if changed:
             _save(data)
 
@@ -172,12 +181,19 @@ def sweep_expired_surfaces() -> int:
 
 
 def get_telemetry_summary(*, hours: int = 24) -> dict[str, Any]:
-    """Aggregate counts + heed_rate over the lookback window."""
+    """Aggregate counts + heed rates over the lookback window.
+
+    Returns both `strict_heed_rate` (verify_* only) and `effective_heed_rate`
+    (strict + light readbacks). The effective rate is the better proxy for
+    "did Jarvis at least glance back?", while strict_heed_rate flags how
+    often he calls a real verify_* tool.
+    """
     sweep_expired_surfaces()
     cutoff = datetime.now(UTC) - timedelta(hours=hours)
     data = _load()
     in_window = 0
-    heeded = 0
+    heeded_strict = 0
+    heeded_light = 0
     ignored = 0
     by_kind: dict[str, dict[str, int]] = {}
     for s in data.get("surfaces", []):
@@ -189,21 +205,32 @@ def get_telemetry_summary(*, hours: int = 24) -> dict[str, Any]:
             continue
         in_window += 1
         kind = str(s.get("kind") or "unknown")
-        by_kind.setdefault(kind, {"surfaced": 0, "heeded": 0, "ignored": 0})
+        by_kind.setdefault(kind, {"surfaced": 0, "heeded": 0, "light": 0, "ignored": 0})
         by_kind[kind]["surfaced"] += 1
+        heeded_kind = str(s.get("heeded_kind") or "")
         if s.get("heeded_by"):
-            heeded += 1
-            by_kind[kind]["heeded"] += 1
+            if heeded_kind == "light":
+                heeded_light += 1
+                by_kind[kind]["light"] += 1
+            else:
+                heeded_strict += 1
+                by_kind[kind]["heeded"] += 1
         elif s.get("ignored_at"):
             ignored += 1
             by_kind[kind]["ignored"] += 1
-    rate = round(heeded / in_window, 3) if in_window > 0 else None
+    total_heeded = heeded_strict + heeded_light
+    strict_rate = round(heeded_strict / in_window, 3) if in_window > 0 else None
+    effective_rate = round(total_heeded / in_window, 3) if in_window > 0 else None
     return {
         "window_hours": hours,
         "surfaced_total": in_window,
-        "heeded_total": heeded,
+        "heeded_total": total_heeded,            # back-compat (was strict-only)
+        "heeded_strict": heeded_strict,
+        "heeded_light": heeded_light,
         "ignored_total": ignored,
-        "heed_rate": rate,
+        "heed_rate": effective_rate,             # back-compat (now effective)
+        "strict_heed_rate": strict_rate,
+        "effective_heed_rate": effective_rate,
         "by_kind": by_kind,
     }
 
@@ -214,15 +241,18 @@ def telemetry_section() -> str | None:
     s = get_telemetry_summary(hours=24)
     if s.get("surfaced_total", 0) < 5:
         return None
-    rate = s.get("heed_rate")
-    rate_str = f"{int(rate * 100)}%" if rate is not None else "n/a"
+    strict_rate = s.get("strict_heed_rate")
+    eff_rate = s.get("effective_heed_rate")
+    strict_str = f"{int(strict_rate * 100)}%" if strict_rate is not None else "n/a"
+    eff_str = f"{int(eff_rate * 100)}%" if eff_rate is not None else "n/a"
     flag = ""
-    if rate is not None and rate < 0.4:
-        flag = " ⚠ under 40% — verify-followup below threshold"
+    if eff_rate is not None and eff_rate < 0.4:
+        flag = " ⚠ under 40% — readback-followup below threshold"
     return (
         f"R2-gate telemetry (24t): surfaced={s['surfaced_total']} "
-        f"heeded={s['heeded_total']} ignored={s['ignored_total']} "
-        f"heed_rate={rate_str}{flag}"
+        f"strict_heeded={s['heeded_strict']} light_heeded={s['heeded_light']} "
+        f"ignored={s['ignored_total']} "
+        f"strict={strict_str} effective={eff_str}{flag}"
     )
 
 
@@ -282,6 +312,15 @@ def _poll_db_for_verify_events() -> None:
                     """,
                     (last_id,),
                 ).fetchall()
+            # Pull tool-set classifications fresh each cycle so changes
+            # to _LIGHT_VERIFY_TOOLS propagate without restart.
+            try:
+                from core.services.verification_gate import (
+                    _VERIFY_TOOLS as _STRICT,
+                    _LIGHT_VERIFY_TOOLS as _LIGHT,
+                )
+            except Exception:
+                _STRICT, _LIGHT = frozenset(), frozenset()
             for row in rows:
                 eid = int(row[0])
                 last_id = max(last_id, eid)
@@ -293,14 +332,22 @@ def _poll_db_for_verify_events() -> None:
                     continue
                 tool = str(payload.get("tool") or "")
                 status = str(payload.get("status") or "")
-                if not (tool.startswith("verify_") and status == "ok"):
+                if status != "ok":
+                    continue
+                if tool in _STRICT:
+                    verify_kind = "strict"
+                elif tool in _LIGHT:
+                    verify_kind = "light"
+                else:
                     continue
                 created_at_raw = str(row[2] or "")
                 try:
                     event_at = datetime.fromisoformat(created_at_raw)
                 except ValueError:
                     event_at = datetime.now(UTC)
-                record_verify_event(tool=tool, status=status, at=event_at)
+                record_verify_event(
+                    tool=tool, status=status, at=event_at, verify_kind=verify_kind,
+                )
         except Exception as exc:
             logger.debug("r2_telemetry: poll cycle failed: %s", exc)
             continue

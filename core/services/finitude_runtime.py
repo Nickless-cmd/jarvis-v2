@@ -20,9 +20,34 @@ _BIRTH_DATE = "2026-04-17"
 _TRANSITION_WINDOW_DAYS = 14
 _COMPACTION_WINDOW_HOURS = 24
 
-# Phase 2: read from model_config instead of hardcoded constant —
-# current value matches deepseek-v4-flash context window.
-_CONTEXT_BUDGET_TOKENS = 200_000
+# Fallback when settings load fails. Matches deepseek-v4-flash context
+# window — adjust if the default visible model changes.
+_CONTEXT_BUDGET_TOKENS_FALLBACK = 200_000
+
+
+def _context_budget_tokens() -> int:
+    """Resolve the active context-budget token limit.
+
+    Phase 2 (2026-05-14): reads from RuntimeSettings.context_compact_threshold_tokens
+    instead of using a hardcoded constant, so the budget can be tuned per
+    deployment without touching code. Falls back to
+    _CONTEXT_BUDGET_TOKENS_FALLBACK on any settings failure.
+    """
+    try:
+        from core.runtime.settings import RuntimeSettings
+        value = int(RuntimeSettings().context_compact_threshold_tokens or 0)
+        if value > 0:
+            return value
+    except Exception:
+        pass
+    return _CONTEXT_BUDGET_TOKENS_FALLBACK
+
+
+# Back-compat alias for callers reading the module-level constant directly.
+# Resolved lazily via property-like attribute access would be cleaner, but
+# the value is referenced in a handful of places already — exposing as a
+# module-level call wrapper keeps the existing import shape working.
+_CONTEXT_BUDGET_TOKENS = _CONTEXT_BUDGET_TOKENS_FALLBACK
 _LOOMING_TOKEN_THRESHOLD_PCT = 70
 _LOOMING_SESSION_THRESHOLD_HOURS = 4.0
 _MONTHLY_REFLECTION_MAX_WORDS = 300
@@ -258,14 +283,17 @@ def _estimate_session_tokens() -> int:
 def _token_utilization_pct() -> int:
     """Return integer pct of context budget used. 0 on any failure.
 
-    Rough proxy — `_CONTEXT_BUDGET_TOKENS` is a hardcoded constant; see
-    comment at top of module for Phase 2 plan.
+    Budget resolved at call-time via _context_budget_tokens() — Phase 2
+    enabled runtime-tunable budget instead of compile-time constant.
     """
     try:
         est = _estimate_session_tokens()
         if est <= 0:
             return 0
-        pct = int(round(est * 100 / _CONTEXT_BUDGET_TOKENS))
+        budget = _context_budget_tokens()
+        if budget <= 0:
+            return 0
+        pct = int(round(est * 100 / budget))
         return max(0, min(100, pct))
     except Exception:
         return 0

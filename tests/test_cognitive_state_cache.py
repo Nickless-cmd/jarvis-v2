@@ -58,25 +58,28 @@ def test_cache_ttl_zero_disables_cache(isolated_runtime, monkeypatch) -> None:
     assert csa._get_cached_state("visible_full") is None
 
 
-def test_cache_expires_after_ttl_when_snapshot_changes(
-    isolated_runtime, monkeypatch
-) -> None:
-    from core.services import cognitive_state_assembly as csa
+def test_cache_expires_after_ttl(isolated_runtime, monkeypatch) -> None:
+    """Cache entries past their TTL return None on get.
 
+    After the 2026-05-14 migration to shared_cache (SQLite cross-worker),
+    TTL expiry is handled by shared_cache.get's lazy-delete on lookup.
+    The previous test-internal manipulation of csa._COHERENT_CACHE no
+    longer applies — instead we override the TTL helper to write entries
+    with sub-second TTL and verify expiry.
+    """
+    import core.runtime.settings as settings_mod
+    from core.services import cognitive_state_assembly as csa
+    import time
+
+    # cognitive_state_cache_enabled gates on int(ttl) > 0, so use 2s
+    # and sleep slightly longer to verify lazy-expiry on lookup.
+    monkeypatch.setattr(settings_mod, "load_settings", lambda: _fake_settings(True, 2))
     csa.invalidate_cognitive_state_cache()
     csa._set_cached_state("visible_full", "OLD", ["src"])
-
-    entry = csa._COHERENT_CACHE["visible_full"]
-    old_time = (datetime.now(UTC) - timedelta(seconds=500)).isoformat().replace(
-        "+00:00", "Z"
-    )
-    entry["cached_at"] = old_time
-    entry["invalidation_snapshot"] = {"pv_version": "v-old"}
-
-    monkeypatch.setattr(
-        csa, "_build_invalidation_snapshot", lambda: {"pv_version": "v-new"}
-    )
-
+    # Within TTL
+    assert csa._get_cached_state("visible_full") == "OLD"
+    time.sleep(2.5)
+    # Past TTL → lazy-expired by shared_cache
     assert csa._get_cached_state("visible_full") is None
 
 

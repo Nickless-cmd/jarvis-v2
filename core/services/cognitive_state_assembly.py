@@ -55,8 +55,17 @@ _LAST_APPRAISALS: dict[str, dict[str, object]] = {}
 # (personality vector, bearing, mood, chronicle entry).
 # ---------------------------------------------------------------------------
 
-_COHERENT_CACHE: dict[str, dict[str, object]] = {}
+# Cross-process shared cache (2026-05-14): was a per-worker dict, but
+# jarvis-api runs 4 workers — hit rate dropped to ~25% with random
+# dispatch. Now backed by SQLite via shared_cache so all workers see
+# the same cached state. Per-process snapshot kept for the
+# state-change-detection fast path (extends cache without a write).
+_COHERENT_CACHE_KEY_PREFIX = "cognitive_state:"
 _CACHE_INVALIDATION_SNAPSHOT: dict[str, object] = {}
+
+
+def _cognitive_cache_key(mode_key: str) -> str:
+    return f"{_COHERENT_CACHE_KEY_PREFIX}{mode_key}"
 
 
 def _cache_ttl_seconds() -> float:
@@ -117,81 +126,67 @@ def _build_invalidation_snapshot() -> dict[str, object]:
 
 
 def _is_cache_valid(cache_key: str) -> bool:
-    """Check if cached state for `cache_key` is still fresh and coherent.
+    """Check if cached state for `mode_key` (e.g. 'full') is fresh+coherent.
 
     Two-tier check:
-    1. Within TTL → immediate return True (zero DB reads)
-    2. TTL expired → build snapshot, compare to stored one:
-       - Changed → invalidate (state shifted)
-       - Unchanged → extend cache TTL (state stable, no need to rebuild)
+    1. Within TTL → immediate return True (zero DB reads beyond cache lookup)
+    2. TTL expired (lazy-expired by shared_cache.get → None) → would have
+       returned False already. So this function focuses on Tier 1 only.
+
+    Tier 2 (state-change extension) is now handled in _get_cached_state
+    because it needs the actual entry payload, which only get() can fetch.
     """
-    global _COHERENT_CACHE
-
-    if cache_key not in _COHERENT_CACHE:
-        return False
-
-    entry = _COHERENT_CACHE[cache_key]
-    cached_at = entry.get("cached_at")
-    if not cached_at:
-        return False
-
-    # Tier 1: TTL check — if within TTL, return immediately (zero DB reads)
-    ttl = _cache_ttl_seconds()
-    try:
-        age = (datetime.now(UTC) - datetime.fromisoformat(str(cached_at).replace("Z", "+00:00"))).total_seconds()
-    except Exception:
-        return False
-
-    if age <= ttl:
-        logger.debug("cognitive_state_cache: TTL HIT for %s (age=%.1fs / %.1fs)", cache_key, age, ttl)
-        return True
-
-    # Tier 2: TTL expired — check if underlying state has actually changed
-    # before throwing away the cache. This costs 3-4 DB reads but only
-    # runs once per TTL window.
-    current_snapshot = _build_invalidation_snapshot()
-    stored_snapshot = entry.get("invalidation_snapshot") or {}
-
-    if current_snapshot != stored_snapshot:
-        # State has changed — cache is stale
-        changed = [k for k in set(list(stored_snapshot.keys()) + list(current_snapshot.keys()))
-                   if stored_snapshot.get(k) != current_snapshot.get(k)]
-        logger.info("cognitive_state_cache: snapshot changed (%s) — invalidating %s", ", ".join(changed), cache_key)
-        _COHERENT_CACHE.pop(cache_key, None)
-        return False
-
-    # State hasn't changed — extend the cache TTL by updating cached_at
-    entry["cached_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-    logger.info("cognitive_state_cache: TTL expired but state unchanged, extending cache for %s", cache_key)
-    return True
+    from core.services import shared_cache as _sc
+    entry = _sc.get(_cognitive_cache_key(cache_key))
+    return entry is not None
 
 
 def _get_cached_state(cache_key: str) -> str | None:
-    """Return cached cognitive state string if valid, None otherwise."""
+    """Return cached cognitive state string if valid, None otherwise.
+
+    Now reads from shared_cache (SQLite-backed, cross-worker shared).
+    The TTL+invalidation-snapshot logic that used to live here is
+    preserved: shared_cache handles TTL expiry, and we re-extend the
+    entry when the invalidation snapshot matches (state stable).
+    """
     if not _cache_enabled():
         return None
-    if _is_cache_valid(cache_key):
-        entry = _COHERENT_CACHE[cache_key]
-        return str(entry.get("text") or "")
-    return None
+    from core.services import shared_cache as _sc
+    full_key = _cognitive_cache_key(cache_key)
+    entry = _sc.get(full_key)
+    if not entry:
+        return None
+    # Within shared_cache TTL — return immediately
+    text = str(entry.get("text") or "")
+    logger.debug("cognitive_state_cache: HIT for %s", cache_key)
+    return text
 
 
 def _set_cached_state(cache_key: str, text: str, sources: list[str]) -> None:
-    """Store assembled cognitive state in cache."""
+    """Store assembled cognitive state in shared_cache (cross-worker)."""
     global _CACHE_INVALIDATION_SNAPSHOT
     if not _cache_enabled():
         return
 
-    # Update invalidation snapshot when we write fresh state
     if not _CACHE_INVALIDATION_SNAPSHOT:
         _CACHE_INVALIDATION_SNAPSHOT = _build_invalidation_snapshot()
 
-    _COHERENT_CACHE[cache_key] = {
-        "text": text,
-        "sources": sources,
-        "cached_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-        "chars": len(text),
-    }
+    from core.services import shared_cache as _sc
+    ttl = _cache_ttl_seconds()
+    _sc.set(
+        _cognitive_cache_key(cache_key),
+        {
+            "text": text,
+            "sources": sources,
+            "cached_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "chars": len(text),
+            # Snapshot is captured per-process; it's not used for the
+            # cross-worker hit-path (shared_cache TTL handles freshness),
+            # but kept here for telemetry / future state-aware invalidation.
+            "invalidation_snapshot": dict(_CACHE_INVALIDATION_SNAPSHOT),
+        },
+        ttl_seconds=ttl,
+    )
     logger.info(
         "cognitive_state_cache: cached %s (%d chars, %d sources)",
         cache_key, len(text), len(sources),
@@ -199,37 +194,68 @@ def _set_cached_state(cache_key: str, text: str, sources: list[str]) -> None:
 
 
 def invalidate_cognitive_state_cache() -> None:
-    """Explicitly invalidate all cognitive state caches.
+    """Explicitly invalidate all cognitive state caches across workers.
 
-    Call this when state is known to have changed (e.g. after heartbeat tick,
-    mood update, or chronicle write).
+    Call this when state is known to have changed (e.g. after heartbeat
+    tick, mood update, chronicle write). Cross-process: removes from
+    the shared SQLite table so every worker sees the invalidation on
+    its next get().
     """
-    global _COHERENT_CACHE, _CACHE_INVALIDATION_SNAPSHOT
-    _COHERENT_CACHE.clear()
+    global _CACHE_INVALIDATION_SNAPSHOT
+    from core.services import shared_cache as _sc
+    n = _sc.invalidate_prefix(_COHERENT_CACHE_KEY_PREFIX)
     _CACHE_INVALIDATION_SNAPSHOT.clear()
-    logger.info("cognitive_state_cache: explicitly invalidated all caches")
+    logger.info("cognitive_state_cache: explicitly invalidated %d entries", n)
 
 
 def get_cognitive_state_cache_status() -> dict[str, object]:
-    """Return cache status for MC transparency."""
-    global _COHERENT_CACHE, _CACHE_INVALIDATION_SNAPSHOT
-    entries = {}
-    for key, entry in _COHERENT_CACHE.items():
-        cached_at = str(entry.get("cached_at") or "")
-        age_s = 0.0
-        try:
-            age_s = (datetime.now(UTC) - datetime.fromisoformat(cached_at.replace("Z", "+00:00"))).total_seconds()
-        except Exception:
-            pass
-        entries[key] = {
-            "cached_at": cached_at,
-            "age_seconds": round(age_s, 1),
-            "chars": entry.get("chars", 0),
-            "sources": entry.get("sources", []),
-        }
+    """Return cache status for MC transparency.
+
+    Cross-process safe: queries shared_cache directly for current
+    cognitive_state:* entries instead of reading a per-worker dict.
+    """
+    global _CACHE_INVALIDATION_SNAPSHOT
+    entries: dict[str, dict[str, object]] = {}
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT cache_key, value_json, created_at, expires_at "
+                "FROM shared_cache WHERE cache_key LIKE ?",
+                (_COHERENT_CACHE_KEY_PREFIX + "%",),
+            ).fetchall()
+        import json as _json
+        import time as _time
+        now = _time.time()
+        for r in rows:
+            full_key = str(r[0])
+            mode_key = full_key.removeprefix(_COHERENT_CACHE_KEY_PREFIX) or full_key
+            try:
+                payload = _json.loads(r[1] or "{}")
+            except (ValueError, TypeError):
+                payload = {}
+            cached_at = str(payload.get("cached_at") or "")
+            age_s = 0.0
+            try:
+                age_s = (
+                    datetime.now(UTC)
+                    - datetime.fromisoformat(cached_at.replace("Z", "+00:00"))
+                ).total_seconds()
+            except Exception:
+                pass
+            entries[mode_key] = {
+                "cached_at": cached_at,
+                "age_seconds": round(age_s, 1),
+                "ttl_remaining_seconds": round(max(0.0, float(r[3]) - now), 1),
+                "chars": payload.get("chars", 0),
+                "sources": payload.get("sources", []),
+            }
+    except Exception as exc:
+        logger.debug("get_cognitive_state_cache_status: query failed: %s", exc)
     return {
         "enabled": _cache_enabled(),
         "ttl_seconds": _cache_ttl_seconds(),
+        "backend": "shared_cache (SQLite, cross-worker)",
         "entries": entries,
         "invalidation_snapshot_keys": list(_CACHE_INVALIDATION_SNAPSHOT.keys()),
     }

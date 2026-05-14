@@ -6343,6 +6343,55 @@ def get_tool_definitions() -> list[dict[str, Any]]:
     return TOOL_DEFINITIONS
 
 
+def _verify_hint_for(tool: str, result: dict[str, Any]) -> str | None:
+    """Build a brief, contextual verify-hint to attach to a mutation's result.
+
+    Phase 2 of the verification-gate honesty work (2026-05-14). Hints appear
+    INSIDE the tool result Jarvis just sees, in the same breath as the
+    mutation — instead of post-hoc in awareness 10 min later when focus
+    has moved on.
+
+    Returns None for non-mutation tools or for tools that don't have a
+    natural verify pairing (bash, memory writes etc — Jarvis decides).
+    """
+    if str(result.get("status") or "") != "ok":
+        return None
+    path = str(result.get("path") or "")
+    if tool in ("write_file", "edit_file", "publish_file", "stage_edit_file"):
+        if path:
+            return (
+                f"💡 Verify-hint: kør verify_file_contains(path='{path}', ...) "
+                "med en streng du forventer der står — eller bare read_file "
+                "for at se hvad du faktisk skrev."
+            )
+        return (
+            "💡 Verify-hint: read_file den fil du lige ændrede for at bekræfte "
+            "diff'en blev som du regnede med."
+        )
+    if tool in ("control_daemon", "restart_overdue_daemons"):
+        return (
+            "💡 Verify-hint: verify_service_active eller process_list for at "
+            "tjekke at servicen faktisk kører — restart-kommandoer fejler tit "
+            "stille."
+        )
+    if tool == "propose_git_commit":
+        return (
+            "💡 Verify-hint: git_log eller bash 'git status' for at bekræfte "
+            "commit'en landede og din working tree er som forventet."
+        )
+    if tool == "memory_upsert_section":
+        return (
+            "💡 Verify-hint: read_file MEMORY.md eller search_memory for at "
+            "bekræfte sektionen blev skrevet i den form du ville."
+        )
+    if tool == "send_discord_dm":
+        return (
+            "💡 Verify-hint: send_discord_dm bekræfter kun at API'et "
+            "accepterede beskeden. Selve leveringen verificeres af brugeren."
+        )
+    return None
+
+
 def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
     """Format a tool result as text for the model's context."""
     status = result.get("status", "unknown")
@@ -6357,31 +6406,35 @@ def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
         return f"[Tool {name}: {result.get('message', 'requires user approval')}]"
 
     text = result.get("text", "")
-    if text:
-        return text
+    if not text:
+        # Human-friendly summaries for common tool results
+        path = result.get("path", "")
+        if name == "write_file" and path:
+            size = result.get("size", "")
+            text = f"Wrote {path}" + (f" ({size} bytes)" if size else "")
+        elif name == "edit_file" and path:
+            n = result.get("replacements", 0)
+            text = f"Edited {path} ({n} replacement{'s' if n != 1 else ''})"
+        else:
+            # Defense-in-depth: cap the raw JSON fallback so a tool returning a
+            # fat payload can't spill thousands of tokens into visible context.
+            _MAX_FALLBACK_CHARS = 1500
+            _filtered = {k: v for k, v in result.items() if k != "status"}
+            _dumped = json.dumps(_filtered, ensure_ascii=False, indent=2)
+            if len(_dumped) <= _MAX_FALLBACK_CHARS:
+                text = _dumped
+            else:
+                _keys = ", ".join(sorted(_filtered.keys())) or "<none>"
+                text = (
+                    f"[Tool {name} returned {len(_dumped)} chars of unsummarized "
+                    f"data — truncated. Keys: {_keys}. "
+                    f"Add a 'text' key in the tool's exec for a clean summary.]"
+                )
 
-    # Human-friendly summaries for common tool results
-    path = result.get("path", "")
-    if name == "write_file" and path:
-        size = result.get("size", "")
-        return f"Wrote {path}" + (f" ({size} bytes)" if size else "")
-    if name == "edit_file" and path:
-        n = result.get("replacements", 0)
-        return f"Edited {path} ({n} replacement{'s' if n != 1 else ''})"
-
-    # Defense-in-depth: cap the raw JSON fallback so a tool returning a fat
-    # payload (full project object, journal lists, schema dumps) can't spill
-    # thousands of tokens into the visible-lane context. If any tool actually
-    # needs to surface large data, it should provide a "text" key with a
-    # human summary — that path is taken above.
-    _MAX_FALLBACK_CHARS = 1500
-    _filtered = {k: v for k, v in result.items() if k != "status"}
-    _dumped = json.dumps(_filtered, ensure_ascii=False, indent=2)
-    if len(_dumped) <= _MAX_FALLBACK_CHARS:
-        return _dumped
-    _keys = ", ".join(sorted(_filtered.keys())) or "<none>"
-    return (
-        f"[Tool {name} returned {len(_dumped)} chars of unsummarized data — "
-        f"truncated. Keys: {_keys}. "
-        f"Add a 'text' key in the tool's exec for a clean summary.]"
-    )
+    # Phase 2 of verification-gate honesty (2026-05-14): attach a brief
+    # verify hint to mutation results so it lands in the SAME breath as
+    # the mutation, not 10 min later in post-hoc awareness.
+    hint = _verify_hint_for(name, result)
+    if hint:
+        return f"{text}\n\n{hint}"
+    return text

@@ -743,12 +743,106 @@ def execute_cheap_lane_via_pool(
     }
 
 
+def _public_safe_candidates() -> list[dict[str, object]]:
+    """Build the public-safe candidate pool: ollamafreeapi (lane=cheap)
+    plus local ollama (lane=local). Local ollama is included even though
+    it's not registered under lane=cheap because the cloud-passthrough
+    models there are the actual reliable public-safe path.
+
+    Added 2026-05-14: was selecting only lane=cheap candidates filtered to
+    ollamafreeapi, missing the entire local-ollama provider which has
+    much better uptime.
+    """
+    registry = load_provider_router_registry()
+    provider_entries = {
+        str(item.get("provider") or "").strip(): item
+        for item in registry.get("providers") or []
+        if bool(item.get("enabled", True))
+    }
+    candidates: list[dict[str, object]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in registry.get("models") or []:
+        if not bool(item.get("enabled", True)):
+            continue
+        provider = str(item.get("provider") or "").strip()
+        lane = str(item.get("lane") or "").strip()
+        # Accept ollamafreeapi at any lane (was cheap-only), and ollama
+        # at lane=local since that's the configured shape today.
+        if provider == "ollamafreeapi":
+            pass  # accept
+        elif provider == "ollama" and lane in {"local", "cheap"}:
+            pass  # accept
+        else:
+            continue
+        model = str(item.get("model") or "").strip()
+        if not provider or not model:
+            continue
+        key = (provider, model)
+        if key in seen:
+            continue
+        seen.add(key)
+        provider_entry = provider_entries.get(provider, {})
+        defaults = provider_runtime_defaults(provider)
+        auth_profile = str(provider_entry.get("auth_profile") or "").strip()
+        # Local ollama uses auth_mode='none' and isn't in CHEAP_PROVIDER_DEFAULTS
+        # — provider_auth_ready would return False even though no auth is
+        # needed. Special-case: trust local ollama at base_url when auth_mode
+        # is 'none' or empty.
+        auth_mode = str(provider_entry.get("auth_mode") or "").strip().lower()
+        if provider == "ollama":
+            credentials_ready = auth_mode in {"", "none"}
+            # Honor per-model priority override from the registry if set,
+            # else default to 50 (between top-tier commercial and the
+            # ollamafreeapi fallback at 95). Lower is better.
+            priority_val = int(item.get("priority") or 50)
+        else:
+            credentials_ready = provider_auth_ready(
+                provider=provider,
+                auth_profile=auth_profile,
+            )
+            priority_val = int(defaults.get("priority") or 9999)
+        candidates.append(
+            {
+                "active": True,
+                "lane": "cheap",  # treated as cheap for selection
+                "provider": provider,
+                "model": model,
+                "auth_profile": auth_profile,
+                "auth_mode": auth_mode,
+                "base_url": str(provider_entry.get("base_url") or defaults.get("base_url") or "").strip(),
+                "credentials_ready": credentials_ready,
+                "priority": priority_val,
+                "rpm_limit": defaults.get("rpm_limit"),
+                "daily_limit": defaults.get("daily_limit"),
+                "daily_neurons": defaults.get("daily_neurons"),
+                "source": "public-safe-pool",
+                "updated_at": str(item.get("updated_at") or ""),
+            }
+        )
+    return candidates
+
+
 def select_public_safe_cheap_lane_target() -> dict[str, object]:
-    candidates = [
-        item
-        for item in _configured_cheap_candidates(include_public_proxy=True)
-        if str(item.get("provider") or "").strip() == "ollamafreeapi"
-    ]
+    """Pick the highest-priority ready public-safe provider for cheap-lane work.
+
+    Public-safe = provider where outbound messages don't expose identity
+    to a commercial API. Two providers qualify:
+      - ollamafreeapi (public proxy, no logging)
+      - ollama (local Ollama on 127.0.0.1, including :cloud suffixed
+        models which go through Ollama's own passthrough — still under
+        Ollama's privacy boundary, not direct commercial API)
+
+    Walks both providers' candidates by base priority (lower = better),
+    skipping blocked/unauthorized ones, and returns the first ready hit.
+    Updated 2026-05-14: was hardcoded to ollamafreeapi only — ollamafreeapi
+    is too often down, so local Ollama is the more reliable public-safe lane.
+    """
+    candidates = _public_safe_candidates()
+    # Prefer local ollama before ollamafreeapi (better uptime), then by priority
+    candidates.sort(key=lambda c: (
+        0 if c.get("provider") == "ollama" else 1,
+        int(c.get("priority") or 9999),
+    ))
     for candidate in candidates:
         if not bool(candidate.get("credentials_ready")):
             continue
@@ -760,7 +854,7 @@ def select_public_safe_cheap_lane_target() -> dict[str, object]:
             **candidate,
             "effective_priority": adaptive["effective_priority"],
             "adaptive_penalty": adaptive["adaptive_penalty"],
-            "selection_reason": "public-safe-proxy",
+            "selection_reason": f"public-safe-{candidate.get('provider')}",
         }
     return {
         "active": False,
@@ -1137,6 +1231,12 @@ def _execute_provider_chat(
     if provider == "ollamafreeapi":
         return _execute_ollamafreeapi_chat(
             model=model,
+            message=message,
+        )
+    if provider == "ollama":
+        return _execute_local_ollama_chat(
+            model=model,
+            base_url=base_url,
             message=message,
         )
     if provider == "arko":
@@ -2271,6 +2371,63 @@ def _iter_openai_codex_chat_events(
         "output_tokens": output_tokens,
         "model_used": model_used,
         "full_text": full_text,
+    }
+
+
+_OLLAMA_LOCAL_TIMEOUT_SECONDS = 120
+
+
+def _execute_local_ollama_chat(
+    *, model: str, base_url: str, message: str
+) -> dict[str, object]:
+    """Call the local Ollama instance with a specific model.
+
+    Added 2026-05-14 to support per-model selection from the public-safe
+    cheap-lane pool (vs. _execute_public_safe_local_ollama which picks
+    via resolve_provider_router_target and only respects lane=local).
+
+    Uses a 120s timeout (vs the 30s default) because cloud-passthrough
+    models on local Ollama can be slow on first call / cold start, and
+    counterfactual prompts are longer than the typical heartbeat probe.
+    """
+    url = str(base_url or "http://127.0.0.1:11434").rstrip("/")
+    payload = {
+        "model": str(model or "").strip(),
+        "messages": [{"role": "user", "content": message}],
+        "stream": False,
+    }
+    try:
+        # Use urllib directly with extended timeout — _http_json is locked
+        # to _DEFAULT_TIMEOUT_SECONDS and shared by many providers.
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib_request.Request(
+            f"{url}/api/chat",
+            data=body,
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": "jarvis-v2/cheap-lane",
+            },
+            method="POST",
+        )
+        with urllib_request.urlopen(req, timeout=_OLLAMA_LOCAL_TIMEOUT_SECONDS) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except Exception as exc:
+        raise CheapProviderError(
+            provider="ollama", code="request-failed", message=str(exc)
+        )
+    text = str((data.get("message") or {}).get("content") or "").strip()
+    return {
+        "lane": "cheap",
+        "provider": "ollama",
+        "model": model,
+        "status": "completed",
+        "execution_mode": "public-safe-local-ollama",
+        "source": "cheap-provider-runtime",
+        "text": text,
+        "input_tokens": _estimate_tokens(message),
+        "output_tokens": _estimate_tokens(text),
+        "cost_usd": 0.0,
     }
 
 

@@ -1071,6 +1071,11 @@ def run_heartbeat_tick(
 
 _HEARTBEAT_TICK_COUNTER = 0
 
+# Mutex flag: true while a background meta-reflection LLM tick is
+# in-flight. Prevents heartbeat from piling up parallel meta calls when
+# cheap-lane is slow. Reset by the thread itself on completion.
+_META_REFLECTION_INFLIGHT = False
+
 
 def _run_heartbeat_tick_locked(
     *, name: str = "default", trigger: str = "manual"
@@ -2550,28 +2555,69 @@ def _build_influence_trace(
             pass
 
     # Meta-reflection daemon
+    #
+    # Was blocking the heartbeat tick with a synchronous LLM call inside
+    # tick_meta_reflection_daemon (via daemon_llm_call → cheap-lane HTTP).
+    # On busy/cold cheap-lane each call could take 5-30s, starving all
+    # 20+ downstream daemons that depend on heartbeat ticking promptly
+    # (somatic, surprise, thought_stream, curiosity, ...).
+    #
+    # Fix 2026-05-14: fire-and-forget on a background thread. We still
+    # surface the LATEST cached meta-insight on the current tick (so
+    # awareness isn't blank) — just don't wait for the new one to land.
+    # Mutex prevents thread pile-up if heartbeat ticks faster than LLM
+    # round-trip.
     if _dm.is_enabled("meta_reflection"):
         try:
-            from core.services.meta_reflection_daemon import tick_meta_reflection_daemon, get_latest_meta_insight
-            from core.services.aesthetic_taste_daemon import build_taste_surface as _taste_surface
-            from core.services.irony_daemon import build_irony_surface as _irony_surface
-            _taste = _taste_surface()
-            _irony = _irony_surface()
-            _meta_snap = {
-                "energy_level": _energy_ts,
-                "inner_voice_mode": _iv_mode_ts,
-                "latest_fragment": _tss.get("latest_fragment", "") if "_tss" in dir() else "",
-                "last_surprise": _surp.get("last_surprise", "") if "_surp" in dir() else "",
-                "last_conflict": _conflict if "_conflict" in dir() else "",
-                "last_irony": _irony.get("last_observation", ""),
-                "last_taste": _taste.get("latest_insight", ""),
-                "curiosity_signal": _curiosity if "_curiosity" in dir() else "",
-            }
-            _meta_result = tick_meta_reflection_daemon(_meta_snap)
-            _dm.record_daemon_tick("meta_reflection", _meta_result or {})
+            from core.services.meta_reflection_daemon import (
+                tick_meta_reflection_daemon, get_latest_meta_insight,
+            )
+            # Surface cached insight inline (cheap read, no LLM)
             _meta = get_latest_meta_insight()
             if _meta:
                 inputs_present.append(f"meta-refleksion: {_meta[:60]}")
+            # Schedule the LLM tick in a background thread if no prior
+            # tick is still in-flight. Module-level mutex on the
+            # heartbeat module so we don't restart-leak.
+            global _META_REFLECTION_INFLIGHT  # type: ignore[name-defined]  # noqa: F824
+            if not _META_REFLECTION_INFLIGHT:
+                _META_REFLECTION_INFLIGHT = True
+
+                def _meta_runner():
+                    global _META_REFLECTION_INFLIGHT  # type: ignore[name-defined]
+                    try:
+                        from core.services.aesthetic_taste_daemon import (
+                            build_taste_surface as _ts,
+                        )
+                        from core.services.irony_daemon import (
+                            build_irony_surface as _is,
+                        )
+                        _taste_bg = _ts()
+                        _irony_bg = _is()
+                        _meta_snap = {
+                            "energy_level": _energy_ts,
+                            "inner_voice_mode": _iv_mode_ts,
+                            "latest_fragment": _tss.get("latest_fragment", "")
+                            if "_tss" in dir() else "",
+                            "last_surprise": _surp.get("last_surprise", "")
+                            if "_surp" in dir() else "",
+                            "last_conflict": _conflict if "_conflict" in dir() else "",
+                            "last_irony": _irony_bg.get("last_observation", ""),
+                            "last_taste": _taste_bg.get("latest_insight", ""),
+                            "curiosity_signal": _curiosity if "_curiosity" in dir() else "",
+                        }
+                        _result = tick_meta_reflection_daemon(_meta_snap)
+                        _dm.record_daemon_tick("meta_reflection", _result or {})
+                    except Exception:
+                        pass
+                    finally:
+                        _META_REFLECTION_INFLIGHT = False
+                import threading
+                threading.Thread(
+                    target=_meta_runner,
+                    name="meta-reflection-bg",
+                    daemon=True,
+                ).start()
         except Exception:
             pass
 

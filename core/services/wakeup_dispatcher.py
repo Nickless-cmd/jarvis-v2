@@ -18,134 +18,121 @@ We track dispatched-already in the wakeup record itself.
 from __future__ import annotations
 
 import logging
+import threading
 from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Serialiser adgang til dispatch-sektionen — forhindrer TOCTOU-race
+# mellem _load() og _save() når dispatch_due_wakeups() kaldes
+# samtidigt fra f.eks. periodic_jobs_scheduler + heartbeat poll.
+_dispatch_lock = threading.Lock()
 
 
 def dispatch_due_wakeups() -> dict[str, Any]:
     """Find newly-fired wakeups, push them out via webchat + heartbeat tick."""
     from core.services.self_wakeup import due_wakeups, _load, _save
 
-    fired = due_wakeups(include_fired_unconsumed=True)
-    if not fired:
-        return {"status": "ok", "dispatched": 0}
+    with _dispatch_lock:
+        fired = due_wakeups(include_fired_unconsumed=True)
+        if not fired:
+            return {"status": "ok", "dispatched": 0}
 
-    # Load full records to check + mutate dispatched flag
-    all_records = _load()
-    by_id = {r.get("wakeup_id"): r for r in all_records}
+        # Load full records to check + mutate dispatched flag
+        all_records = _load()
+        by_id = {r.get("wakeup_id"): r for r in all_records}
 
-    dispatched: list[str] = []
-    for w in fired:
-        wid = w.get("wakeup_id")
-        record = by_id.get(wid)
-        if record is None or record.get("dispatched"):
-            continue
-        prompt = str(record.get("prompt", ""))
-        reason = str(record.get("reason", ""))
+        dispatched: list[str] = []
+        for w in fired:
+            wid = w.get("wakeup_id")
+            record = by_id.get(wid)
+            if record is None or record.get("dispatched"):
+                continue
+            prompt = str(record.get("prompt", ""))
+            reason = str(record.get("reason", ""))
 
-        # A: route through outbound_nudges (2026-05-13). Self-wakeups are
-        # INTERNAL signals to Jarvis (he set them, or Bjørn set them for
-        # him). They should not land as DMs to Bjørn — they should appear
-        # in Jarvis' awareness so he can choose to act on them. Bjørn sees
-        # the outcome when Jarvis responds, or via Mission Control.
-        wakeup_channel = record.get("channel", "webchat")
-        wakeup_session = record.get("session_id", "")
-        nudge_message = (
-            f"Self-wakeup fyrede ({reason or 'no reason'}): {prompt} "
-            f"[wakeup_id={wid}, channel={wakeup_channel}]"
-        )
-        try:
-            from core.runtime.settings import load_settings as _ls_w
-            if _ls_w().nudge_system_enabled:
-                from core.services.outbound_nudges import push_nudge
-                push_nudge(
-                    source="wakeup_dispatcher",
-                    kind="other",
-                    message=nudge_message,
-                    importance="normal",
-                    parent_session_id=wakeup_session,
-                )
-            else:
-                # Fallback (killswitch off): legacy direct-send paths
-                if wakeup_channel == "discord":
-                    from core.services.discord_gateway import send_dm_to_user, is_gateway_connected
-                    from core.services.discord_identity import get_owner_discord_id
-                    if is_gateway_connected():
-                        owner_id = get_owner_discord_id()
-                        if owner_id:
-                            send_dm_to_user(owner_id, f"⏰ Self-wakeup: {prompt}\n_(wakeup_id: {wid})_")
-                else:
-                    from core.services.notification_bridge import send_session_notification
-                    send_session_notification(nudge_message, source="self-wakeup")
-        except Exception as exc:
-            logger.warning("wakeup nudge push failed: %s", exc)
-
-        # B: trigger heartbeat phase tick (lets Jarvis' inner loop see it)
-        try:
-            from core.services.heartbeat_phases import tick_with_phases
-            tick_with_phases(name="default", trigger="self-wakeup-fire")
-        except Exception as exc:
-            logger.debug("wakeup heartbeat trigger failed: %s", exc)
-
-        # C: actually EXECUTE the wakeup prompt as a self-directive run.
-        # Without this step the wakeup just sits in awareness — Jarvis sees
-        # it but never picks up the prompt and acts. start_autonomous_run
-        # spawns a fire-and-forget visible run on the active session so the
-        # tools fire, the answer streams to chat, and the user sees Jarvis
-        # actually doing the thing he asked himself to do.
-        if prompt.strip():
-            try:
-                from core.services.visible_runs import start_autonomous_run
-                from core.identity.owner_resolver import resolve_owner_target_session
-
-                # Self-wakeups are always Bjørn's events (he's the only
-                # role that can schedule them for himself). The target
-                # session MUST be owner-owned — we can't dump a
-                # "you asked yourself to..." message into Mikkel's DM
-                # because his session happened to be pinned last.
-                # resolve_owner_target_session() refuses non-owner
-                # sessions even if they're pinned. Empty string means
-                # no owner session yet — autonomous_run will create one.
-                target_session = resolve_owner_target_session()
-
-                self_directive = (
-                    f"[SELF-WAKEUP FIRED — wakeup_id={wid}]\n"
-                    f"Du bad dig selv: {prompt}\n"
-                    f"Kontekst: {reason or '(ingen begrundelse angivet)'}\n\n"
-                    "UDFØR opgaven nu med dine tools — beskriv den ikke bare. "
-                    "Hvis prompten siger 'tjek Discord', så BRUG discord_channel-værktøjet. "
-                    "Hvis den siger 'læs filen X', så BRUG read_file. "
-                    "Når du er færdig, kald `mark_wakeup_consumed` med wakeup_id="
-                    f"\"{wid}\" og rapportér resultatet kort til Bjørn."
-                )
-                start_autonomous_run(
-                    self_directive,
-                    session_id=target_session or None,
-                )
-            except Exception as exc:
-                logger.warning("wakeup autonomous run trigger failed: %s", exc)
-
-        # Mark dispatched in record
-        record["dispatched"] = True
-        record["dispatched_at"] = datetime.now(UTC).isoformat()
-        dispatched.append(str(wid))
-
-        # Eventbus
-        try:
-            from core.eventbus.bus import event_bus
-            event_bus.publish(
-                "self_wakeup.dispatched",
-                {"wakeup_id": wid, "reason": reason[:80]},
+            # A: route through outbound_nudges
+            wakeup_channel = record.get("channel", "webchat")
+            wakeup_session = record.get("session_id", "")
+            nudge_message = (
+                f"Self-wakeup fyrede ({reason or 'no reason'}): {prompt} "
+                f"[wakeup_id={wid}, channel={wakeup_channel}]"
             )
-        except Exception:
-            pass
+            try:
+                from core.runtime.settings import load_settings as _ls_w
+                if _ls_w().nudge_system_enabled:
+                    from core.services.outbound_nudges import push_nudge
+                    push_nudge(
+                        source="wakeup_dispatcher",
+                        kind="other",
+                        message=nudge_message,
+                        importance="normal",
+                        parent_session_id=wakeup_session,
+                    )
+                else:
+                    if wakeup_channel == "discord":
+                        from core.services.discord_gateway import send_dm_to_user, is_gateway_connected
+                        from core.services.discord_identity import get_owner_discord_id
+                        if is_gateway_connected():
+                            owner_id = get_owner_discord_id()
+                            if owner_id:
+                                send_dm_to_user(owner_id, f"⏰ Self-wakeup: {prompt}\n_(wakeup_id: {wid})_")
+                    else:
+                        from core.services.notification_bridge import send_session_notification
+                        send_session_notification(nudge_message, source="self-wakeup")
+            except Exception as exc:
+                logger.warning("wakeup nudge push failed: %s", exc)
 
-    if dispatched:
-        _save(all_records)
+            # B: trigger heartbeat phase tick
+            try:
+                from core.services.heartbeat_phases import tick_with_phases
+                tick_with_phases(name="default", trigger="self-wakeup-fire")
+            except Exception as exc:
+                logger.debug("wakeup heartbeat trigger failed: %s", exc)
 
-    return {"status": "ok", "dispatched": len(dispatched), "dispatched_ids": dispatched}
+            # C: actually EXECUTE the wakeup prompt as a self-directive run
+            if prompt.strip():
+                try:
+                    from core.services.visible_runs import start_autonomous_run
+                    from core.identity.owner_resolver import resolve_owner_target_session
+                    target_session = resolve_owner_target_session()
+                    self_directive = (
+                        f"[SELF-WAKEUP FIRED — wakeup_id={wid}]\n"
+                        f"Du bad dig selv: {prompt}\n"
+                        f"Kontekst: {reason or '(ingen begrundelse angivet)'}\n\n"
+                        "UDFØR opgaven nu med dine tools — beskriv den ikke bare. "
+                        "Hvis prompten siger 'tjek Discord', så BRUG discord_channel-værktøjet. "
+                        "Hvis den siger 'læs filen X', så BRUG read_file. "
+                        "Når du er færdig, kald `mark_wakeup_consumed` med wakeup_id="
+                        f"\"{wid}\" og rapportér resultatet kort til Bjørn."
+                    )
+                    start_autonomous_run(
+                        self_directive,
+                        session_id=target_session or None,
+                    )
+                except Exception as exc:
+                    logger.warning("wakeup autonomous run trigger failed: %s", exc)
+
+            # Mark dispatched in record (inside lock — TOCTOU race fix)
+            record["dispatched"] = True
+            record["dispatched_at"] = datetime.now(UTC).isoformat()
+            dispatched.append(str(wid))
+
+            # Eventbus
+            try:
+                from core.eventbus.bus import event_bus
+                event_bus.publish(
+                    "self_wakeup.dispatched",
+                    {"wakeup_id": wid, "reason": reason[:80]},
+                )
+            except Exception:
+                pass
+
+        if dispatched:
+            _save(all_records)
+
+        return {"status": "ok", "dispatched": len(dispatched), "dispatched_ids": dispatched}
 
 
 def _exec_dispatch_due_wakeups(args: dict[str, Any]) -> dict[str, Any]:

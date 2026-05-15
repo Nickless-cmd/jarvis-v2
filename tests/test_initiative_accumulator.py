@@ -58,7 +58,14 @@ def test_reset_initiative_accumulator():
     assert state["want_count"] == 0
 
 
-def test_clear_wants_by_type():
+def test_clear_wants_by_type(monkeypatch):
+    # accumulate_wants() branches on life_phase: dreaming→insight,
+    # awakening→meaning, deep_work→growth, reflection→clarity.
+    # Test was non-deterministic — passed only when phase==reflection.
+    # Pin to reflection so clear_wants_by_type('clarity') actually
+    # targets the want that was created.
+    import core.services.initiative_accumulator as ia
+    monkeypatch.setattr(ia, "determine_life_phase", lambda: {"phase": "reflection"})
     accumulate_wants(timedelta(minutes=5))
     clear_wants_by_type("clarity")
     state = get_initiative_accumulator_state()

@@ -258,11 +258,14 @@ def _make_entry(kind="fakta", bumps=0, base=1.0, last_used_days_ago=None):
         else now - timedelta(days=last_used_days_ago)
     )
     created = now - timedelta(days=last_used_days_ago or 0)
+    # importance=1.0 (no ceiling) so these tests exercise pure decay+bumps
+    # math without being clamped by the kind-based importance cap added
+    # to compute_effective_salience.
     return BrainEntry(
         id="brn_T", kind=kind, visibility="personal", domain="x",
         title="t", content="c",
         created_at=created, updated_at=now, last_used_at=last,
-        salience_base=base, salience_bumps=bumps, related=[],
+        salience_base=base, salience_bumps=bumps, importance=1.0, related=[],
         trigger="spontaneous", status="active", superseded_by=None,
         source_chronicle=None, source_url=None,
     )
@@ -296,8 +299,12 @@ def test_effective_salience_floor_never_below_002():
 def test_effective_salience_bumps_amplify_modestly():
     from core.services.jarvis_brain import compute_effective_salience
     now = datetime(2026, 5, 2, tzinfo=timezone.utc)
-    e0 = _make_entry(kind="fakta", bumps=0, last_used_days_ago=0)
-    e3 = _make_entry(kind="fakta", bumps=3, last_used_days_ago=0)
+    # Use base=0.5 so the bumps-amplified raw (0.5*1.6=0.8) stays under
+    # the importance=1.0 ceiling. compute_effective_salience caps
+    # effective at importance — testing pure bumps math requires the
+    # ratio to be computed below the cap.
+    e0 = _make_entry(kind="fakta", bumps=0, base=0.5, last_used_days_ago=0)
+    e3 = _make_entry(kind="fakta", bumps=3, base=0.5, last_used_days_ago=0)
     s0 = compute_effective_salience(e0, now)
     s3 = compute_effective_salience(e3, now)
     # 3 bumps: 1 + 0.3*log2(4) = 1 + 0.6 = 1.6

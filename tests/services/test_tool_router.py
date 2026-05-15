@@ -46,8 +46,14 @@ def test_low_confidence_falls_back(monkeypatch):
         lambda query, k=30: [],
     )
     sel = tr.select_tools(user_message="ok", session_id=None, lane="visible")
-    assert sel.fallback_used
-    assert sel.fallback_reason == "confidence-below-threshold"
+    # Semantics changed (~2026-05-x): when confidence is below threshold,
+    # the router NO LONGER full-falls-back to the entire 350-tool set.
+    # Instead it returns the always-core subset (~52 tools) and lets the
+    # model call load_more_tools() on demand. fallback_used=False
+    # because this is a normal "core-only" mode, not an error fallback.
+    # The fallback_reason field still carries the "below threshold" signal.
+    assert sel.fallback_reason == "confidence-below-threshold-core-only"
+    assert len(sel.selected_names) < 100  # core-only, not full set
 
 
 def test_selection_returns_subset_when_confident(monkeypatch):

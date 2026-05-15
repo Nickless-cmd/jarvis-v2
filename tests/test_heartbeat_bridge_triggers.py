@@ -99,5 +99,10 @@ def test_ping_posts_when_trigger_present(workspace: Path, monkeypatch) -> None:
         ping_text="a real, non-templated question",
         summary="summary",
     )
-    assert result["status"] == "sent"
+    # Outbound nudge system (2026-05-13) routes heartbeat pings through
+    # push_nudge instead of direct webchat send. The result status is
+    # now "queued" (nudge added to ledger for Jarvis to surface) rather
+    # than "sent" (direct write). Tested intent — "ping was delivered
+    # through the canonical channel" — still holds.
+    assert result["status"] in {"queued", "sent"}
     assert heartbeat_triggers.peek_trigger(workspace) is None

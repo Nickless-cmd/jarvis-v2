@@ -143,7 +143,11 @@ class TestAffectModulation:
         assert budget["max_rounds"] <= 12
         assert budget["max_tool_only_rounds"] == 8
         assert budget["max_empty_text_rounds"] == 8
-        assert budget["round_silence_timeout_s"] <= 45.0
+        # round_silence_timeout_s tightening was deliberately removed
+        # (see affect_modulation.py line 138 — reasoning models need
+        # long silence windows). Default 180s no longer reduced under
+        # fatigue. Just assert it stays at the default ceiling.
+        assert budget["round_silence_timeout_s"] == 180.0
 
 
 # ── Integration: _execute_simple_tool_calls gate pipeline ──────────────

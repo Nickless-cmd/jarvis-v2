@@ -15,16 +15,22 @@ def _ctx(**overrides):
     return ds.TriggerContext(**base)
 
 
-def test_loop_nudge_fires_at_exactly_5():
-    assert loop_nudge.loop_nudge_5_rounds(_ctx(consecutive_tool_only_rounds=5)) is True
+def test_loop_nudge_fires_at_threshold():
+    # Threshold bumped from 5 → 8 on 2026-05-07 (was too aggressive on
+    # legitimate deep work). Test now reads LOOP_NUDGE_THRESHOLD so
+    # future bumps don't require touching this assertion.
+    n = loop_nudge.LOOP_NUDGE_THRESHOLD
+    assert loop_nudge.loop_nudge_5_rounds(_ctx(consecutive_tool_only_rounds=n)) is True
 
 
-def test_loop_nudge_does_not_fire_at_4():
-    assert loop_nudge.loop_nudge_5_rounds(_ctx(consecutive_tool_only_rounds=4)) is False
+def test_loop_nudge_does_not_fire_below_threshold():
+    n = loop_nudge.LOOP_NUDGE_THRESHOLD
+    assert loop_nudge.loop_nudge_5_rounds(_ctx(consecutive_tool_only_rounds=n - 1)) is False
 
 
-def test_loop_nudge_does_not_fire_at_6():
-    assert loop_nudge.loop_nudge_5_rounds(_ctx(consecutive_tool_only_rounds=6)) is False
+def test_loop_nudge_does_not_fire_above_threshold():
+    n = loop_nudge.LOOP_NUDGE_THRESHOLD
+    assert loop_nudge.loop_nudge_5_rounds(_ctx(consecutive_tool_only_rounds=n + 1)) is False
 
 
 def test_loop_nudge_module_registers_in_registry():

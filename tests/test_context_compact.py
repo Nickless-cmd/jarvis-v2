@@ -45,13 +45,16 @@ def test_estimate_messages_tokens_list_content():
 def test_settings_compact_threshold_default():
     from core.runtime.settings import RuntimeSettings
     s = RuntimeSettings()
-    assert s.context_compact_threshold_tokens == 40_000
+    # Bumped from 40k to 200k when DeepSeek-v4-flash became the visible
+    # model (context window 200k). Update preserves the test's intent:
+    # the default tracks the configured visible model's context budget.
+    assert s.context_compact_threshold_tokens == 200_000
 
 
 def test_settings_run_compact_threshold_default():
     from core.runtime.settings import RuntimeSettings
     s = RuntimeSettings()
-    assert s.context_run_compact_threshold_tokens == 60_000
+    assert s.context_run_compact_threshold_tokens == 240_000
 
 
 def test_settings_keep_recent_defaults():
@@ -65,8 +68,8 @@ def test_settings_serialise_round_trip():
     from core.runtime.settings import RuntimeSettings
     s = RuntimeSettings()
     d = s.to_dict()
-    assert d["context_compact_threshold_tokens"] == 40_000
-    assert d["context_run_compact_threshold_tokens"] == 60_000
+    assert d["context_compact_threshold_tokens"] == 200_000
+    assert d["context_run_compact_threshold_tokens"] == 240_000
     assert d["context_keep_recent"] == 20
     assert d["context_keep_recent_pairs"] == 4
 
@@ -93,10 +96,17 @@ def test_get_compact_marker_returns_none_when_absent(monkeypatch):
 def test_recent_session_messages_excludes_compact_markers(monkeypatch):
     from core.services import chat_sessions
 
+    # Production schema includes user_id + reasoning_content fields
+    # (added 2026-04-x for user-attribution + reasoning content support);
+    # fixture rows must mirror the schema so the production code's
+    # row["user_id"] lookup doesn't KeyError.
     all_rows = [
-        {"role": "user", "content": "hello", "created_at": "2026-01-01"},
-        {"role": "compact_marker", "content": "old summary", "created_at": "2026-01-01"},
-        {"role": "assistant", "content": "hi", "created_at": "2026-01-01"},
+        {"role": "user", "content": "hello", "created_at": "2026-01-01",
+         "user_id": "u1", "reasoning_content": ""},
+        {"role": "compact_marker", "content": "old summary", "created_at": "2026-01-01",
+         "user_id": "u1", "reasoning_content": ""},
+        {"role": "assistant", "content": "hi", "created_at": "2026-01-01",
+         "user_id": "u1", "reasoning_content": ""},
     ]
 
     class _FakeCursor:
@@ -119,6 +129,10 @@ def test_recent_session_messages_excludes_compact_markers(monkeypatch):
 
 def test_call_compact_llm_returns_string(monkeypatch):
     from core.context import compact_llm
+    # call_compact_llm now tries _call_cheap_no_groq FIRST and only falls
+    # through to _call_heartbeat_llm_simple if cheap returns empty.
+    # Patch both so the test is deterministic regardless of provider state.
+    monkeypatch.setattr(compact_llm, "_call_cheap_no_groq", lambda prompt: "")
     monkeypatch.setattr(
         compact_llm,
         "_call_heartbeat_llm_simple",
@@ -134,6 +148,7 @@ def test_call_compact_llm_fallback_on_error(monkeypatch):
     def _fail(prompt, max_tokens):
         raise RuntimeError("model unavailable")
 
+    monkeypatch.setattr(compact_llm, "_call_cheap_no_groq", lambda prompt: "")
     monkeypatch.setattr(compact_llm, "_call_heartbeat_llm_simple", _fail)
     result = compact_llm.call_compact_llm("Summarise this", max_tokens=200)
     assert isinstance(result, str)

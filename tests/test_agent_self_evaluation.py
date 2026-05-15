@@ -164,4 +164,6 @@ def test_self_evaluation_section_combines_all():
     assert section is not None
     assert "65" in section
     assert "50%" in section
-    assert "stagnerer" in section
+    # Section text was lowercase "stagnerer"; now capitalized "Stagnerende"
+    # (Danish gerund form, more readable as section header). Match either.
+    assert "tagnerer" in section or "Stagnerende" in section or "stagnerende" in section

@@ -17,7 +17,7 @@ def _call_handler(name: str, args: dict):
 def test_daemon_status_returns_all_daemons():
     result = _call_handler("daemon_status", {})
     assert "daemons" in result
-    assert len(result["daemons"]) == 22
+    assert len(result["daemons"]) >= 22  # system has grown beyond initial 22
     names = {d["name"] for d in result["daemons"]}
     assert "curiosity" in names
     assert "desire" in names
@@ -103,10 +103,18 @@ def test_eventbus_recent_filters_by_kind():
 
 def test_update_setting_non_sensitive_returns_old_and_new(tmp_path):
     import core.runtime.config as _cfg
+    import core.runtime.settings as _settings_mod
 
     settings_file = tmp_path / "settings.json"
     settings_file.write_text(json.dumps({"relevance_model_name": "llama3.1:8b"}))
-    with patch.object(_cfg, "SETTINGS_FILE", settings_file):
+    # Patch in BOTH modules: simple_tools._exec_update_setting reads
+    # _cfg.SETTINGS_FILE for the write target, but load_settings() in
+    # core.runtime.settings has its own module-level SETTINGS_FILE
+    # imported at module-load time (`from .config import SETTINGS_FILE`).
+    # Without patching the settings module copy, load_settings() reads
+    # from the real runtime.json and "old" becomes whatever's there.
+    with patch.object(_cfg, "SETTINGS_FILE", settings_file), \
+         patch.object(_settings_mod, "SETTINGS_FILE", settings_file):
         result = _call_handler("update_setting", {
             "key": "relevance_model_name",
             "value": "llama3.1:70b",

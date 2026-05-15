@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -202,10 +203,42 @@ def _try_fallback_channels(base_msg: str) -> bool:
     return False
 
 
+def _claim_restart_file() -> Path | None:
+    """Atomic claim af restart-confirmation-fil — kun én uvicorn worker vinder.
+
+    Brug: når jarvis-api kører med --workers 4, vil 4 worker-processer hver
+    kalde send_pending_restart_confirmation ved startup. Uden en claim-mekanisme
+    sender alle 4 beskeden uafhængigt (= duplikater).
+
+    Løsning: atomisk rename via os.rename(). Den worker der først får lov at
+    omdøbe filen til .claimed, vinder. Resten ser den ikke længere på den
+    oprindelige sti og afbryder stille.
+
+    Returns: stien til den claimede fil (skal slettes af kaldende worker),
+    eller None hvis en anden worker allerede har claimet.
+    """
+    if not PENDING_RESTART_FILE.exists():
+        return None
+
+    claimed_path = PENDING_RESTART_FILE.with_name(
+        f"pending_restart_confirmation.{os.getpid()}.claimed.json"
+    )
+    try:
+        os.rename(str(PENDING_RESTART_FILE), str(claimed_path))
+    except FileNotFoundError:
+        return None  # En anden worker nåede først
+    except OSError:
+        return None  # Race tabt
+
+    logger.info("restart confirmation: claimed file as pid=%s", os.getpid())
+    return claimed_path
+
+
 def send_pending_restart_confirmation() -> None:
     """On startup, check for a pending restart confirmation file and send it.
 
     Flow:
+    0. Atomisk claim af filen (kun én uvicorn worker vinder)
     1. Discord: vent på gateway connected (op til 40s) → send DM
     2. Hvis Discord fejler: prøv Telegram fallback
     3. Hvis Telegram også fejler: prøv ntfy push notifikation
@@ -216,14 +249,16 @@ def send_pending_restart_confirmation() -> None:
     færdig med at connecte (= silent failure). Nu venter vi på connected
     status før vi prøver at sende, med op til 40s margin.
     """
-    if not PENDING_RESTART_FILE.exists():
-        return
+    # Step 0: Atomic claim — kun én worker fortsætter
+    claimed_path = _claim_restart_file()
+    if claimed_path is None:
+        return  # En anden worker klarer det
 
     try:
-        data = json.loads(PENDING_RESTART_FILE.read_text())
+        data = json.loads(claimed_path.read_text())
     except Exception as e:
-        logger.warning("restart confirmation: failed to read file: %s", e)
-        PENDING_RESTART_FILE.unlink(missing_ok=True)
+        logger.warning("restart confirmation: failed to read claimed file: %s", e)
+        claimed_path.unlink(missing_ok=True)
         return
 
     channel = data.get("channel", "discord")
@@ -237,14 +272,12 @@ def send_pending_restart_confirmation() -> None:
 
     try:
         if channel == "telegram":
-            # Telegram — synkront, no gateway needed
             from core.services.telegram_gateway import send_message as tg_send
             result = tg_send(base_msg)
             sent_ok = isinstance(result, dict) and result.get("status") == "sent"
             if not sent_ok:
                 logger.warning("restart confirmation: telegram failed: %s", result)
         else:
-            # Discord — vent på gateway, send DM, fallback hvis fejl
             if _wait_for_gateway_connected(max_wait=40.0, interval=2.0):
                 sent_ok = _send_discord_restart_msg(base_msg)
             else:
@@ -255,23 +288,28 @@ def send_pending_restart_confirmation() -> None:
                 sent_ok = _try_fallback_channels(base_msg)
 
         if sent_ok:
-            PENDING_RESTART_FILE.unlink(missing_ok=True)
-            logger.info("restart confirmation: file deleted — confirmation sent")
+            claimed_path.unlink(missing_ok=True)
+            logger.info("restart confirmation: claimed file deleted — confirmation sent")
         else:
-            # Gem filen til næste startup (med retry-tæller)
             if retries < 3:
                 data["retries"] = retries + 1
-                PENDING_RESTART_FILE.write_text(json.dumps(data, indent=2))
-                logger.info(
-                    "restart confirmation: kept file for retry %d/3",
-                    retries + 1,
-                )
+                # Genopret filen på den oprindelige sti til næste startup
+                try:
+                    PENDING_RESTART_FILE.write_text(json.dumps(data, indent=2))
+                    logger.info(
+                        "restart confirmation: recreated file for retry %d/3",
+                        retries + 1,
+                    )
+                except Exception as _write_err:
+                    logger.warning("restart confirmation: failed to recreate retry file: %s", _write_err)
+                claimed_path.unlink(missing_ok=True)
             else:
                 logger.error(
                     "restart confirmation: max retries (3) reached — "
                     "confirmation never sent. Deleting file."
                 )
-                PENDING_RESTART_FILE.unlink(missing_ok=True)
+                claimed_path.unlink(missing_ok=True)
 
     except Exception as e:
         logger.warning("restart confirmation: unexpected error: %s", e)
+        claimed_path.unlink(missing_ok=True)

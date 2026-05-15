@@ -169,7 +169,7 @@ def _tick_emotion_repair_bridge_inner() -> dict[str, Any]:
             concept_intensities[c] = max(concept_intensities.get(c, 0), i)
 
     # ── Phase 2: Match against repair patterns ───────────────────────────
-    patterns = list_self_repair_patterns(enabled_only=True)
+    patterns = list_self_repair_patterns(enabled=True)
     import json
 
     # Each matched entry = {pattern, matched_concept, matched_intensity}

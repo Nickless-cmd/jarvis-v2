@@ -43,6 +43,8 @@ def _stub_modules():
 
     DB_MOD = sys.modules["core.runtime.db"]
     DB_MOD.decay_private_brain_records = MagicMock(return_value=5)
+    # Returnerer dict[domain, count] efter 2026-05-x refactor (var int før)
+    DB_MOD.decay_private_brain_records_by_domain = MagicMock(return_value={"general": 5})
     DB_MOD.get_salient_private_brain_records = MagicMock(return_value=[])
     DB_MOD.update_private_brain_record_salience = MagicMock()
     DB_MOD.list_private_brain_records = MagicMock(return_value=[])
@@ -87,12 +89,14 @@ def test_decay_called_after_24h():
     _reset()
     db_mod = DB_MOD
     db_mod.decay_private_brain_records.reset_mock()
+    db_mod.decay_private_brain_records_by_domain.reset_mock()
     db_mod.get_salient_private_brain_records.return_value = []
 
     memory_decay_daemon._last_decay_at = datetime.now(UTC) - timedelta(hours=25)
     result = memory_decay_daemon.tick_memory_decay_daemon()
     assert result["decayed"] is True
-    db_mod.decay_private_brain_records.assert_called_once()
+    # Production-koden kalder nu _by_domain-varianten (per-domain decay rates).
+    db_mod.decay_private_brain_records_by_domain.assert_called_once()
 
 
 def test_hold_fast_sets_salience_to_one():

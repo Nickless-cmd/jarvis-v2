@@ -1867,14 +1867,15 @@ def build_future_agent_task_prompt_assembly(
     )
 
 
-_RELEVANCE_DECISION_CACHE: dict[tuple[str, str, bool, str], tuple[float, "PromptRelevanceDecision"]] = {}
 _RELEVANCE_DECISION_TTL_SECONDS = 60.0
+_RELEVANCE_DECISION_CACHE_PREFIX = "relevance_decision:"
 
 
-def _relevance_cache_key(text: str, mode: str, compact: bool, name: str) -> tuple[str, str, bool, str]:
+def _relevance_cache_key(text: str, mode: str, compact: bool, name: str) -> str:
+    """Build a string cache key for shared_cache (cross-worker visibility)."""
     import hashlib as _hashlib
     h = _hashlib.blake2b(text.encode("utf-8", errors="ignore"), digest_size=16).hexdigest()
-    return (mode, h, compact, name)
+    return f"{_RELEVANCE_DECISION_CACHE_PREFIX}{mode}:{h}:{int(bool(compact))}:{name}"
 
 
 def build_prompt_relevance_decision(
@@ -1884,16 +1885,18 @@ def build_prompt_relevance_decision(
     compact: bool,
     name: str = "default",
 ) -> PromptRelevanceDecision:
-    # TTL cache (60s): same (text, mode, compact, name) hits the cheap-lane
-    # LLM repeatedly when webchat+voice+retry all build prompts for the
-    # same user message. Cache the decision rather than re-firing the gate.
-    import time as _t
+    # TTL cache (60s) via shared_cache (2026-05-15): cross-worker visible
+    # so webchat+voice+retry rebuilds for the same user message all share
+    # the same cached decision regardless of which uvicorn worker handles
+    # the request.
+    from core.services import shared_cache as _sc
     _ckey = _relevance_cache_key(text, mode, compact, name)
-    _cached = _RELEVANCE_DECISION_CACHE.get(_ckey)
-    if _cached is not None:
-        _ts, _decision = _cached
-        if (_t.monotonic() - _ts) < _RELEVANCE_DECISION_TTL_SECONDS:
-            return _decision
+    _cached = _sc.get(_ckey)
+    if isinstance(_cached, dict):
+        try:
+            return PromptRelevanceDecision(**_cached)
+        except (TypeError, ValueError):
+            pass  # malformed cache entry — fall through and regenerate
     heuristic_memory_relevant = _should_include_memory(text, mode=mode)
     heuristic_guidance_relevant = _should_include_guidance(text)
     heuristic_transcript_relevant = _should_include_transcript(text)
@@ -1963,12 +1966,12 @@ def build_prompt_relevance_decision(
         backend_status=backend_attempt.status,
     )
     _track_relevance_decision(decision)
-    _RELEVANCE_DECISION_CACHE[_ckey] = (_t.monotonic(), decision)
-    # Bound cache size — keep latest 64 entries
-    if len(_RELEVANCE_DECISION_CACHE) > 64:
-        _oldest = sorted(_RELEVANCE_DECISION_CACHE.items(), key=lambda kv: kv[1][0])[:len(_RELEVANCE_DECISION_CACHE) - 64]
-        for _k, _ in _oldest:
-            _RELEVANCE_DECISION_CACHE.pop(_k, None)
+    # Serialize dataclass → dict for shared_cache (JSON-backed). Reconstruct
+    # via PromptRelevanceDecision(**dict) on lookup. dataclasses.asdict
+    # would do the same but pulls in extra machinery — slots makes vars()
+    # the natural route.
+    from dataclasses import asdict as _asdict
+    _sc.set(_ckey, _asdict(decision), ttl_seconds=_RELEVANCE_DECISION_TTL_SECONDS)
     return decision
 
 

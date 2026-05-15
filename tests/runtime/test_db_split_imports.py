@@ -52,6 +52,34 @@ def test_phase0_symbols_on_db_core():
     _assert_importable("core.runtime.db_core", PHASE_0_SYMBOLS)
 
 
+# Phase 1: capability_approval + approval_feedback domæne — skal være
+# importerbar fra BÅDE core.runtime.db (facade) OG
+# core.runtime.db_capability_approval (submodul).
+PHASE_1_SYMBOLS = [
+    "recent_capability_approval_requests",
+    "get_capability_approval_request",
+    "approve_capability_approval_request",
+    "record_capability_approval_request_execution",
+    "_capability_approval_request_from_row",
+    "_ensure_capability_approval_request_columns",
+    "latest_capability_approval_request",
+    "latest_approved_capability_approval_request",
+    "insert_approval_feedback",
+    "list_approval_feedback",
+    "approval_feedback_stats_by_tool",
+    "count_approval_feedback",
+    "_approval_feedback_from_row",
+]
+
+
+def test_phase1_symbols_on_facade():
+    _assert_importable("core.runtime.db", PHASE_1_SYMBOLS)
+
+
+def test_phase1_symbols_on_submodule():
+    _assert_importable("core.runtime.db_capability_approval", PHASE_1_SYMBOLS)
+
+
 def test_connect_returns_working_connection():
     from core.runtime.db import connect
     with connect() as conn:

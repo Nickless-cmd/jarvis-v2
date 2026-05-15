@@ -7,13 +7,26 @@ from unittest.mock import patch, MagicMock
 from core.tools.simple_tools import execute_tool, get_tool_definitions
 
 
+def _tool_name(t: dict) -> str:
+    """Tools use two definition shapes in the registry (mixed at 2026-05-x):
+
+      - Wrapped: {"type": "function", "function": {"name": ..., ...}}
+      - Flat:    {"name": ..., "description": ..., "parameters": ...}
+
+    Handle both to keep this test resilient to the mix.
+    """
+    if "function" in t and isinstance(t["function"], dict):
+        return str(t["function"].get("name") or "")
+    return str(t.get("name") or "")
+
+
 def test_convene_council_tool_registered():
-    names = [t["function"]["name"] for t in get_tool_definitions()]
+    names = [_tool_name(t) for t in get_tool_definitions()]
     assert "convene_council" in names
 
 
 def test_quick_council_check_tool_registered():
-    names = [t["function"]["name"] for t in get_tool_definitions()]
+    names = [_tool_name(t) for t in get_tool_definitions()]
     assert "quick_council_check" in names
 
 

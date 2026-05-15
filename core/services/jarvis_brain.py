@@ -6,7 +6,7 @@ Ingen LLM-kald (konsolidering ligger i daemonen).
 Spec: docs/superpowers/specs/2026-05-02-jarvis-brain-design.md
 """
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -72,13 +72,18 @@ class BrainEntry:
     last_used_at: Optional[datetime]
     salience_base: float
     salience_bumps: int
-    importance: float  # 0.0–1.0, styrer hvor hurtigt entry glemmes
-    related: list[str]
-    trigger: str
-    status: str
-    superseded_by: Optional[str]
-    source_chronicle: Optional[str]
-    source_url: Optional[str]
+    # Importance + the structural fields that follow it now have sensible
+    # defaults (2026-05-15). Production call-sites in entry_from_frontmatter
+    # and create_brain_entry pass them explicitly via _IMPORTANCE_BY_KIND
+    # lookup. Defaults are for test fixtures and one-off construction
+    # where the caller doesn't care about these axes.
+    importance: float = 0.5  # 0.0–1.0, styrer hvor hurtigt entry glemmes
+    related: list[str] = field(default_factory=list)
+    trigger: str = "spontaneous"
+    status: str = "active"
+    superseded_by: Optional[str] = None
+    source_chronicle: Optional[str] = None
+    source_url: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.kind not in _VALID_KINDS:

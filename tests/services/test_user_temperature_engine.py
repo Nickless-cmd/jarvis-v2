@@ -8,7 +8,10 @@ import pytest
 def fresh_db(monkeypatch, tmp_path):
     db_path = tmp_path / "jarvis.db"
     from core.runtime import db as db_mod
+    from core.runtime import db_core
+    # Post-2026-05-15 split: patch begge facade + db_core (kilden).
     monkeypatch.setattr(db_mod, "DB_PATH", db_path)
+    monkeypatch.setattr(db_core, "DB_PATH", db_path)
     db_mod.init_db()
     return db_path
 

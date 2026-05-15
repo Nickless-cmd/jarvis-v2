@@ -57,7 +57,10 @@ def test_narrative_uses_llm_when_available(monkeypatch) -> None:
     assert result is not None
     assert inserted[0]["narrative"] == "Jeg mærkede, at arbejdet samlede sig til en mere rolig rytme."
     assert projected[0]["narrative"] == inserted[0]["narrative"]
-    assert events[-1][0] == "cognitive_chronicle.entry_written"
+    # Multiple events may emit (chronicle + personal_project journal).
+    # Verificer at chronicle entry-written eventen ER blandt dem.
+    event_kinds = [e[0] for e in events]
+    assert "cognitive_chronicle.entry_written" in event_kinds, event_kinds
 
 
 def test_narrative_falls_back_to_template_on_llm_failure(monkeypatch) -> None:

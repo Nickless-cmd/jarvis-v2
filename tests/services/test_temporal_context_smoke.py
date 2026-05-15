@@ -23,4 +23,5 @@ def test_build_temporal_context_for_weekday_focus_window(monkeypatch) -> None:
 
     assert context["day_phase"] == "late_morning"
     assert context["is_peak_focus"] is True
-    assert "Monday 10:00" in surface["summary"]
+    # Surface-summary skiftet til dansk per Bjørns sprog-præference.
+    assert "mandag 10:00" in surface["summary"]

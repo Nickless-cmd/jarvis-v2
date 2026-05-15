@@ -21,4 +21,6 @@ def test_process_failure_toward_acceptance_returns_high_support_for_many_failure
     assert result["needed"] is True
     assert result["level"] == "high"
     assert "check assumptions earlier" in result["narrative"]
-    assert "6 fejl i træk" in resilience
+    # Resilience narrative-format ændret fra dansk prosa til structured
+    # key=value (samme info, kompakt). Match nu på struct-formatet.
+    assert "consecutive_failures=6" in resilience

@@ -19,8 +19,13 @@ def fresh_db(monkeypatch, tmp_path):
     """
     db_path = tmp_path / "jarvis.db"
     from core.runtime import db as db_mod
+    from core.runtime import db_core
 
+    # Efter 2026-05-15 db.py split lever DB_PATH og connect() i db_core.
+    # db.py re-eksporterer DB_PATH som lokal binding — patch begge for at
+    # connect() faktisk bruger den isolerede tmp DB.
     monkeypatch.setattr(db_mod, "DB_PATH", db_path)
+    monkeypatch.setattr(db_core, "DB_PATH", db_path)
     db_mod.init_db()
 
     # Create the episodic tables that init_db doesn't.

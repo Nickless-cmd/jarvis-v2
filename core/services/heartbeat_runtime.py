@@ -1134,6 +1134,69 @@ _HEARTBEAT_TICK_COUNTER = 0
 _META_REFLECTION_INFLIGHT = False
 
 
+def _daemon_tick_with_deadline(
+    name: str,
+    fn: "Callable[..., Any]",
+    *args,
+    deadline_seconds: float = 15.0,
+    **kwargs,
+) -> Any:
+    """Run a daemon tick on a background thread with a wall-clock deadline.
+
+    Many heartbeat-side daemon ticks (thought_stream, user_model,
+    development_narrative, etc.) make LLM calls that can hang for 30s+
+    when a provider is slow or unreachable. Without per-tick deadline
+    these freeze the entire heartbeat — and starve the 20+ downstream
+    daemons that share the same tick.
+
+    Pattern (2026-05-15, generalizing the heartbeat-tick deadline
+    from yesterday's commit 9e17ec4a):
+      - Spawn thread, run fn, capture result in a closure-local box.
+      - join(timeout=deadline_seconds). If timed out, orphan the
+        thread (Python can't safely kill threads) — its HTTP timeout
+        eventually fires and it ends. Return None as the result so
+        callers downstream don't break on a NoneType.
+      - Heartbeat scheduler is free to proceed; next tick of this
+        daemon will re-run (typically gated by its own cadence).
+
+    Result of None means "this tick didn't finish in time". Callers
+    that read derived state (get_latest_X functions) still see last
+    cycle's value — there's no regression beyond "this cycle is
+    skipped". The chain producer→consumer pattern (somatic →
+    surprise → thought_stream → meta) keeps working because each
+    consumer reads its predecessor's get_latest_X cache, which is
+    independent of THIS cycle completing.
+    """
+    import threading as _threading
+    result_box: list[Any] = [None]
+    def _runner():
+        try:
+            result_box[0] = fn(*args, **kwargs)
+        except Exception as exc:
+            logger.debug("daemon %s tick crashed: %s", name, exc)
+    t = _threading.Thread(
+        target=_runner,
+        name=f"daemon-bg-{name}",
+        daemon=True,
+    )
+    t.start()
+    t.join(timeout=deadline_seconds)
+    if t.is_alive():
+        logger.warning(
+            "daemon %s exceeded %.1fs deadline — orphaning thread",
+            name, deadline_seconds,
+        )
+        try:
+            event_bus.publish("heartbeat.daemon_tick_deadline_exceeded", {
+                "daemon": name,
+                "deadline_seconds": deadline_seconds,
+            })
+        except Exception:
+            pass
+        return None
+    return result_box[0]
+
+
 def _run_heartbeat_tick_locked(
     *, name: str = "default", trigger: str = "manual"
 ) -> HeartbeatExecutionResult:
@@ -1919,14 +1982,22 @@ def _run_heartbeat_tick_locked(
     # one 2026-05-08; daemons effectively dead. Fix 2026-05-14: invoke them
     # here. Both tick functions self-throttle via _CADENCE_SECONDS so the
     # heartbeat-rate doesn't matter — they skip when cadence not elapsed.
+    # Both narrative_summary and pattern_counterfactual make cheap-lane
+    # LLM calls — deadline-guard so a slow provider can't freeze the
+    # heartbeat. They self-throttle via _CADENCE_SECONDS internally, so
+    # being skipped on a slow tick is harmless (next tick will retry).
     try:
         from core.services.narrative_summary_daemon import tick_narrative_summary_daemon
-        tick_narrative_summary_daemon()
+        _daemon_tick_with_deadline(
+            "narrative_summary", tick_narrative_summary_daemon, deadline_seconds=20.0,
+        )
     except Exception:
         pass
     try:
         from core.services.pattern_counterfactual_daemon import tick_pattern_counterfactual_daemon
-        tick_pattern_counterfactual_daemon()
+        _daemon_tick_with_deadline(
+            "pattern_counterfactual", tick_pattern_counterfactual_daemon, deadline_seconds=25.0,
+        )
     except Exception:
         pass
     try:
@@ -2498,7 +2569,13 @@ def _build_influence_trace(
                 _energy_ts = str(_gcc2().get("energy_level") or "")
             except Exception:
                 pass
-            _ts_result = tick_thought_stream_daemon(energy_level=_energy_ts, inner_voice_mode=_iv_mode_ts)
+            _ts_result = _daemon_tick_with_deadline(
+                "thought_stream",
+                tick_thought_stream_daemon,
+                energy_level=_energy_ts,
+                inner_voice_mode=_iv_mode_ts,
+                deadline_seconds=15.0,
+            )
             _dm.record_daemon_tick("thought_stream", _ts_result or {})
             _fragment = get_latest_thought_fragment()
             if _fragment:
@@ -2678,11 +2755,17 @@ def _build_influence_trace(
         except Exception:
             pass
 
-    # User model daemon — theory of mind
+    # User model daemon — theory of mind. Makes an LLM call to summarize
+    # recent visible_runs → must be deadline-guarded.
     if _dm.is_enabled("user_model"):
         try:
             from core.services.user_model_daemon import tick_user_model_daemon
-            _um_result = tick_user_model_daemon([])  # reads recent_visible_runs internally
+            _um_result = _daemon_tick_with_deadline(
+                "user_model",
+                tick_user_model_daemon,
+                [],  # reads recent_visible_runs internally
+                deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("user_model", _um_result or {})
         except Exception:
             pass

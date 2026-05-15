@@ -150,7 +150,7 @@ def test_visible_prompt_assembly_includes_chronicle_between_identity_and_memory(
         subordinate=True,
     ))
     monkeypatch.setattr(prompt_contract, "_runtime_self_report_instruction", lambda **kwargs: None)
-    monkeypatch.setattr(prompt_contract, "_visible_support_signal_sections", lambda compact=False, include=False: [])
+    monkeypatch.setattr(prompt_contract, "_visible_support_signal_sections", lambda *args, **kwargs: [])
     monkeypatch.setattr(prompt_contract, "_micro_cognitive_frame_section", lambda: None)
     monkeypatch.setattr(prompt_contract, "_cognitive_frame_section", lambda: None)
     monkeypatch.setattr(prompt_contract, "_build_structured_transcript_messages", lambda *args, **kwargs: [])
@@ -257,7 +257,7 @@ def test_visible_prompt_assembly_places_dream_residue_after_chronicle(
         subordinate=True,
     ))
     monkeypatch.setattr(prompt_contract, "_runtime_self_report_instruction", lambda **kwargs: None)
-    monkeypatch.setattr(prompt_contract, "_visible_support_signal_sections", lambda compact=False, include=False: [])
+    monkeypatch.setattr(prompt_contract, "_visible_support_signal_sections", lambda *args, **kwargs: [])
     monkeypatch.setattr(prompt_contract, "_micro_cognitive_frame_section", lambda: None)
     monkeypatch.setattr(prompt_contract, "_cognitive_frame_section", lambda: None)
     monkeypatch.setattr(prompt_contract, "_build_structured_transcript_messages", lambda *args, **kwargs: [])
@@ -369,7 +369,7 @@ def test_visible_prompt_assembly_places_temperature_hint_before_chronicle(
         subordinate=True,
     ))
     monkeypatch.setattr(prompt_contract, "_runtime_self_report_instruction", lambda **kwargs: None)
-    monkeypatch.setattr(prompt_contract, "_visible_support_signal_sections", lambda compact=False, include=False: [])
+    monkeypatch.setattr(prompt_contract, "_visible_support_signal_sections", lambda *args, **kwargs: [])
     monkeypatch.setattr(prompt_contract, "_micro_cognitive_frame_section", lambda: None)
     monkeypatch.setattr(prompt_contract, "_cognitive_frame_section", lambda: None)
     monkeypatch.setattr(prompt_contract, "_build_structured_transcript_messages", lambda *args, **kwargs: [])

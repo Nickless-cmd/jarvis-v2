@@ -11,8 +11,13 @@ def fresh_db(monkeypatch, tmp_path):
     """Same fresh-db pattern as test_forgetting_engine.py."""
     db_path = tmp_path / "jarvis.db"
     from core.runtime import db as db_mod
+    from core.runtime import db_core
 
+    # Efter 2026-05-15 db.py split lever DB_PATH og connect() i db_core.
+    # db.py re-eksporterer DB_PATH som en lokal binding — at monkeypatche
+    # på db_mod alene ændrer ikke hvad connect() ser. Patch begge.
     monkeypatch.setattr(db_mod, "DB_PATH", db_path)
+    monkeypatch.setattr(db_core, "DB_PATH", db_path)
     db_mod.init_db()
     with db_mod.connect() as conn:
         db_mod._ensure_cognitive_chronicle_entries_table(conn)

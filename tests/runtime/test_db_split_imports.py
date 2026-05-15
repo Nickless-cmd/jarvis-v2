@@ -32,7 +32,6 @@ PHASE_0_SYMBOLS = [
     "_ENSURED_TABLES",
     "ClosingConnection",
     "connect",
-    "init_db",
     "_now_iso",
     "_rank_for",
     "_stronger_ranked_value",

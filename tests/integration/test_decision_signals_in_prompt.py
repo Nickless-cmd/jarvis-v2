@@ -26,8 +26,10 @@ def _ctx(**overrides):
 
 
 def test_loop_nudge_fires_via_registry_pipeline(monkeypatch):
-    """When consecutive_tool_only_rounds == 5, the registry-driven
-    loop_nudge_5_rounds trigger fires and emits a FiredDecision."""
+    """When consecutive_tool_only_rounds >= LOOP_NUDGE_THRESHOLD (8 as of
+    2026-05-x retune), the registry-driven loop_nudge_5_rounds trigger
+    fires and emits a FiredDecision. (Trigger name keeps its '5_rounds'
+    suffix for stability — threshold value lives in loop_nudge.py.)"""
     monkeypatch.setattr(
         ds, "_active_decisions_with_triggers",
         lambda: [{"decision_id": "dec_d56d89ceec24", "trigger_name": "loop_nudge_5_rounds"}],
@@ -42,11 +44,16 @@ def test_loop_nudge_fires_via_registry_pipeline(monkeypatch):
         lambda **kwargs: published.append(kwargs),
     )
 
-    fired = ds.evaluate_decision_triggers(_ctx(consecutive_tool_only_rounds=5, agentic_round_seq=5))
+    from core.services.decision_triggers.loop_nudge import LOOP_NUDGE_THRESHOLD
+
+    fired = ds.evaluate_decision_triggers(_ctx(
+        consecutive_tool_only_rounds=LOOP_NUDGE_THRESHOLD,
+        agentic_round_seq=LOOP_NUDGE_THRESHOLD,
+    ))
     assert len(fired) == 1
     assert fired[0].decision_id == "dec_d56d89ceec24"
     assert fired[0].trigger_name == "loop_nudge_5_rounds"
-    assert "round 5" in fired[0].context_summary
+    assert f"round {LOOP_NUDGE_THRESHOLD}" in fired[0].context_summary
 
     assert len(published) == 1
     assert published[0]["decision_id"] == "dec_d56d89ceec24"

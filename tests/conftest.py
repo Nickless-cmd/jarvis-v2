@@ -17,6 +17,27 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 
+@pytest.fixture(autouse=True)
+def _reset_ensure_once_cache():
+    """Tøm _ENSURED_TABLES cache før hver test.
+
+    Cachen lever module-level i core.runtime.db_core (efter 2026-05-15
+    split). Cache-key er (func_name, conn_db_id). For :memory: connections
+    er conn_db_id = "memory:{id(conn)}" — CPython genbruger memory addresses
+    efter GC, så to sekventielle tests kan ramme samme cache-key og
+    fejle silent (anden test får cache-hit, tabel oprettes ikke).
+
+    Denne autouse-fixture invaliderer cachen før hver test for at undgå
+    race condition. Pre-2026-05-15 var cachen i db.py og blev tømt af
+    conftest's reload-liste.
+    """
+    try:
+        from core.runtime.db_core import invalidate_ensure_once_cache
+        invalidate_ensure_once_cache()
+    except ImportError:
+        pass
+
+
 @pytest.fixture()
 def isolated_runtime(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -34,6 +55,11 @@ def isolated_runtime(
     module_names = [
         "core.runtime.config",
         "core.runtime.settings",
+        # db_core skal reloades FØR db, fordi db re-eksporterer fra db_core
+        # og _ENSURED_TABLES cache lever i db_core (efter 2026-05-15 split).
+        # Uden dette overlever cache-entries mellem tests og forurener
+        # downstream tests (fx test_subscriber_ignores_unrelated_events).
+        "core.runtime.db_core",
         "core.runtime.db",
         "core.runtime.bootstrap",
         "core.auth.profiles",

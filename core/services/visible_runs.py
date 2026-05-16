@@ -2576,6 +2576,15 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         # Message persistence now happens synchronously before done (above).
         import threading
 
+        # 2026-05-16 fix: unregister FØRST, synkront. Tidligere version lod
+        # post_process-thread (daemon=True) være ansvarlig for at clear
+        # active-run state. Hvis api blev restartet mens threaden ventede,
+        # blev unregister aldrig kaldt → active state stuck → nye messages
+        # blev rute't som "midway nudges" og yieldede intet. Bjørn så det
+        # som "No response content returned". Garanti: unregister sker
+        # synkront før vi yielder kontrol til post-processing.
+        unregister_visible_run(run.run_id)
+
         def _post_process() -> None:
             try:
                 set_last_visible_run_outcome(
@@ -2588,13 +2597,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 _run_memory_postprocess(run, visible_output_text)
             except Exception:
                 pass
-            finally:
-                unregister_visible_run(run.run_id)
 
         if visible_output_text:
             threading.Thread(target=_post_process, daemon=True).start()
-        else:
-            unregister_visible_run(run.run_id)
 
         # Phase 5: clear in-flight record. Runs reaching this finally block
         # have either completed, failed cleanly, or been cancelled — all

@@ -190,6 +190,38 @@ def update_personality_vector_async(
     thread.start()
 
 
+def tick_personality_drift(*, outcome_signal: str | None = None) -> dict | None:
+    """Heartbeat-triggered passive drift af personality_vector.
+
+    Bygget 2026-05-16 efter Jarvis' "frosset i 14 dage"-rapport.
+    Eksisterende decay-pathway i _deterministic_update var sofistikeret
+    nok (EMA mod evolved_baseline, asymptotic bumps, debounced, capped),
+    men kørte KUN ved visible runs. Denne tick wirer pathwayen til
+    heartbeat så drift sker uafhængigt af samtaler.
+
+    Args:
+        outcome_signal: Optional override for outcome_status. Reserveret
+            til fremtidig lag 1 (credit assignment fra self_review_outcome).
+            Default None → "idle" som ikke trigger outcome-bumps, kun
+            decay-pathway. Hvis sat til "completed" / "failed" / "success"
+            / "error", trigger den tilhørende asymptotic bump.
+
+    Returns:
+        Den opdaterede vector dict (eller current hvis no-op skip), eller
+        None hvis ingen baseline endnu, eller hvis intern fejl. Aldrig raises.
+    """
+    try:
+        current = get_latest_cognitive_personality_vector()
+        if current is None:
+            # Ingen historie endnu — første run skal initialisere den
+            return None
+        status = outcome_signal or "idle"
+        return _deterministic_update(status, current)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("tick_personality_drift: suppressed %s: %s", type(exc).__name__, exc)
+        return None
+
+
 def _safe_update(**kwargs) -> None:
     try:
         update_personality_vector_from_run(**kwargs)

@@ -1419,6 +1419,20 @@ def _run_heartbeat_tick_locked(
         except Exception:
             pass
 
+    # Every 30th tick: passive personality drift (decay-pathway uden samtaler).
+    # 2026-05-16 fix til Jarvis' "frosset 14 dage"-rapport. Eksisterende
+    # _deterministic_update var sofistikeret men kørte kun ved visible runs.
+    # tick_personality_drift trigger decay-pathwayen periodisk så drift
+    # sker uafhængigt af samtaler. Internal 30-min debounce sikrer at
+    # decay ikke kører for ofte selv ved hyppige heartbeat-ticks.
+    # outcome_signal kwarg reserveret til fremtidig lag 1 (credit assignment).
+    if tick_count % 30 == 0:
+        try:
+            from core.services.personality_vector import tick_personality_drift
+            tick_personality_drift()
+        except Exception:
+            pass
+
     # Life services: update internal state between ticks
     try:
         record_tick_elapsed(seconds=30)

@@ -33034,6 +33034,88 @@ def session_summary_cleanup(max_age_days: int = 90) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Session topics — real-time topic accumulator for Jarvis' conversation memory
+# ---------------------------------------------------------------------------
+
+
+def _ensure_session_topics_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS session_topics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            topic_label TEXT NOT NULL,
+            mention_count INTEGER NOT NULL DEFAULT 1,
+            first_seen TEXT NOT NULL,
+            last_seen TEXT NOT NULL,
+            UNIQUE(session_id, topic_label)
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_session_topics_session ON session_topics(session_id, last_seen DESC)"
+    )
+
+
+def session_topic_accumulate(
+    session_id: str,
+    topic_label: str,
+    mention_count: int = 1,
+    first_seen: str = "",
+    last_seen: str = "",
+) -> None:
+    """Upsert a topic for a session — merge if exists, insert if not."""
+    with connect() as conn:
+        _ensure_session_topics_table(conn)
+        existing = conn.execute(
+            "SELECT id, mention_count FROM session_topics WHERE session_id = ? AND topic_label = ?",
+            (session_id, topic_label),
+        ).fetchone()
+        if existing:
+            conn.execute(
+                "UPDATE session_topics SET mention_count = mention_count + ?, last_seen = ? WHERE id = ?",
+                (mention_count, last_seen, existing["id"]),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO session_topics (session_id, topic_label, mention_count, first_seen, last_seen) VALUES (?, ?, ?, ?, ?)",
+                (session_id, topic_label, mention_count, first_seen or last_seen, last_seen),
+            )
+        conn.commit()
+
+
+def session_topics_for_session(session_id: str) -> list[dict[str, object]]:
+    """Return all accumulated topics for a session, ordered by mention_count DESC."""
+    with connect() as conn:
+        _ensure_session_topics_table(conn)
+        rows = conn.execute(
+            "SELECT * FROM session_topics WHERE session_id = ? ORDER BY mention_count DESC, last_seen DESC",
+            (session_id,),
+        ).fetchall()
+        return [
+            {
+                "id": r["id"],
+                "session_id": r["session_id"],
+                "topic_label": r["topic_label"],
+                "mention_count": r["mention_count"],
+                "first_seen": r["first_seen"],
+                "last_seen": r["last_seen"],
+            }
+            for r in rows
+        ]
+
+
+def session_topic_cleanup(max_age_days: int = 90) -> int:
+    """Delete session topics not seen for max_age_days."""
+    with connect() as conn:
+        _ensure_session_topics_table(conn)
+        cutoff = (datetime.now(UTC) - timedelta(days=max_age_days)).isoformat()
+        cursor = conn.execute("DELETE FROM session_topics WHERE last_seen < ?", (cutoff,))
+        conn.commit()
+        return cursor.rowcount
+
+
+# ---------------------------------------------------------------------------
 # Signal archive — stores signals before decay-deletion for debugging
 # ---------------------------------------------------------------------------
 

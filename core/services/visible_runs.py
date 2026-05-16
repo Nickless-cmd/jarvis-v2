@@ -636,6 +636,20 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     except Exception:
         pass
 
+    # ── Session topic tracker ──────────────────────────────────────────
+    # Extract and accumulate topics from each user turn so Jarvis
+    # remembers what we've discussed even after /compact. Lightweight:
+    # regex-based, no LLM call. Every N turns, persists to DB.
+    try:
+        from core.services.session_topic_tracker import track_session_topics
+        track_session_topics(
+            session_id=run.session_id,
+            run_id=run.run_id,
+            user_message=run.user_message,
+        )
+    except Exception:
+        pass
+
     controller = register_visible_run(run)
     trace = _start_visible_execution_trace(run)
     _set_orb_phase("think")

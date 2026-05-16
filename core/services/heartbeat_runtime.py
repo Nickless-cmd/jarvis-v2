@@ -433,9 +433,26 @@ def _poll_heartbeat_schedule_with_trigger(
 
 
 def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
-    return get_cached_runtime_surface(
+    # 2026-05-16 perf fix: surface-build tager ~9.6s + producerer 146KB JSON.
+    # Tidligere brugte vi get_cached_runtime_surface (ContextVar-baseret cache)
+    # der KUN er aktiv inde i en runtime_surface_cache() context. Heartbeat-
+    # scheduler-loop'en kalder denne UDEN context → cache miss hver poll.
+    # Resultat: 9.6s rebuild hver 30s = 32% CPU brændt konstant.
+    #
+    # Fix: brug get_timed_runtime_surface (modul-level TTL cache) med 25s TTL.
+    # Poll-interval er 30s, så surface bygges 1x per 30s i stedet for hver poll.
+    # Når en faktisk heartbeat-tick kører inde i runtime_surface_cache()-
+    # context-manager, vil ContextVar-cache stadig gælde (get_timed checker
+    # ContextVar først, så ingen redundant deepcopy under tick).
+    from core.services.runtime_surface_cache import get_timed_runtime_surface
+    return get_timed_runtime_surface(
         ("heartbeat_runtime_surface", name),
-        lambda: _heartbeat_runtime_surface_uncached(name=name),
+        # TTL 60s = 1 rebuild per 2 polls (~5% CPU vs 34% før).
+        # Surface bruges af MC og heartbeat-tick — 60s freshness er fint;
+        # når en faktisk tick sker, kører den inde i runtime_surface_cache()
+        # context der eksplicit invaliderer + rebuilder.
+        ttl_seconds=60.0,
+        builder=lambda: _heartbeat_runtime_surface_uncached(name=name),
     )
 
 

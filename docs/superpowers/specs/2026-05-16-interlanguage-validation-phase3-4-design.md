@@ -28,7 +28,7 @@ FROM interlanguage_practice
 WHERE created_at >= '<PHASE2_START_ISO>'
   AND created_at <  '<PHASE2_END_ISO>'
   AND expression_text != ''
-  AND length(expression_text) >= 5
+  AND length(expression_text) >= 3
 ORDER BY peer_id, created_at ASC
 ```
 
@@ -38,7 +38,7 @@ ORDER BY peer_id, created_at ASC
 
 Disse er **eneste** ændringer vi må lave på rådata:
 
-1. **Drop expressions med text-længde < 5 tegn** — sandsynlige fejl, ikke gyldige expressions
+1. **Drop expressions med text-længde < 3 tegn** — sandsynlige fejl (tom eller næsten-tom). Beholder gyldige korte single-primitive expressions som `!ro` (3 tegn). Bekræftet med Jarvis 2026-05-16.
 2. **Drop expressions uden primitiv-symbol** (→ ↔ ⊂ ≈ !) — model fulgte ikke format
 3. **Drop expressions med >200 tegn** — model genererede prosa, ikke compact expression
 4. **De-duplikering per peer:** hvis samme expression text optræder flere gange fra samme peer inden for 1 time, behold kun den første

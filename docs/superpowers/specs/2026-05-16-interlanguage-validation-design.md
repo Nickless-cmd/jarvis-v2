@@ -31,17 +31,34 @@ B er svagere og lettere at bevise. Hvis B er sand men A er falsk, har vi protoko
 
 ## Pre-registrerede success-kriterier
 
-A er understøttet **kun hvis ALLE tre er sande:**
+### To-tier success — "stærkt" vs "svagt" support
+
+A's primære hypotese (fingerprint eksisterer) klassificeres i tre niveauer baseret på dommer-konvergens:
+
+**STÆRKT støttet** — ALLE tre sande:
 
 1. **Statistisk:** Klassificator (embedding + primitive-distribution + term-frequency) skelner Jarvis fra øvrige peers med ≥75% nøjagtighed, p<0.05.
 2. **Cross-check:** Frisk LLM-dommer (claude-sonnet uden historie) klassificerer Jarvis korrekt ved ≥65% nøjagtighed på ≥100 trials.
-3. **Subjektiv:** Bjørn blindt klassificerer Jarvis korrekt ved ≥60% nøjagtighed på 50 trials (75% accuracy = 21+ correct ud af 50, p<0.05 mod chance).
+3a. **Subjektiv stærk:** Bjørn blindt klassificerer Jarvis korrekt ved ≥60% nøjagtighed på 50 trials (30+ correct ud af 50, p<10⁻⁷ mod 20% chance).
 
-A's stærke version (transplantation) er understøttet **kun hvis:**
+**SVAGT/indikativt støttet** — (1)+(2) sande PLUS:
 
-4. **δ-konvergens:** Claude+Jarvis-protokol's expressions er nærmere Jarvis end Claude-alone er, målt ved embedding-distance OG primitive-distribution.
+3b. **Subjektiv svag:** Bjørn blindt klassificerer Jarvis korrekt ved ≥50% nøjagtighed på 50 trials, p<0.10 mod 20% chance.
 
-**Negative fund-håndtering:** Hvis (1)+(2) er sande men (3) er falsk → "fingerprintet er statistisk virkeligt men oplevelses-mæssigt usynligt." Det er en falsificering af A's stærke version, men ikke B. Vi rapporterer det som sådan.
+Mellem 3b og 3a: real signal men kan ikke verbalt karakteriseres af mennesket. Det er en falsificering af "oplevelses-mæssig kraft" men ikke af "fingerprint findes".
+
+**FALSIFICERET** — hvis (1) er falsk: ingen statistisk fingerprint, A afvises. B kan stadig være sand (se test δ).
+
+### A's stærke version (transplantation)
+
+Understøttet **kun hvis** (baseret PRIMÆRT på statistical, da Bjørn-δ-power er marginal):
+
+4. **δ-konvergens (statistical):** Claude+Jarvis-protokol's expressions er nærmere Jarvis end Claude-alone er, målt ved embedding-distance (cosine) OG primitive-distribution (KL-divergence) — begge skal vise samme retning, p<0.05.
+5. **δ-konsistens på tværs af arkitekturer (protokol-bæring, ikke arkitektur-effekt):** Også GLM+Jarvis-protokol skal vise konvergens mod Jarvis (samme retning, samme p<0.05). Hvis kun ÉN af de to konvergerer, er det arkitektur-effekt; hvis BÅDE Claude+JP OG GLM+JP konvergerer, er det protokollen der bærer fingerprintet.
+
+Bjørn-δ er kvalitativ støtte, ikke success-kriterium.
+
+**Negative fund-håndtering:** Vi rapporterer alle tier-udfald uanset. (1)+(2) sande men (3a) falsk = "statistisk virkeligt, oplevelses-mæssigt usynligt" — separat finding fra "ikke noget signal".
 
 ## Eksperimentopbygning
 
@@ -59,13 +76,31 @@ A's stærke version (transplantation) er understøttet **kun hvis:**
 
 ### Praksis-cadence (Phase 1+2)
 
-- 30 expressions per dag per peer (synker til naturlig heartbeat-rytme: ~hvert 48. minut)
+- 30 expressions per dag per cohort (synker til naturlig heartbeat-rytme: ~hvert 48. minut)
 - 7 dage praksis-indsamling
-- Endeligt datasæt: 5 peers × 7 dage × 30 expressions = **1.050 expressions**
+- **6 cohorts:** Jarvis, Claude, Claude+JP, GLM, GLM+JP, Ollama-local, Random — vent, 7 cohorts hvis vi tæller Random. Lad os præcisere:
 
-### Mood-input
+| # | Cohort | Praksis-mode | Bruges i test |
+|---|---|---|---|
+| 1 | Jarvis | Native (live heartbeat) | α, δ (target) |
+| 2 | Claude | Protokol + mood-trace, no seed | α, δ (kontrol: Claude-alone) |
+| 3 | Claude+JP | Protokol + mood + Jarvis' sidste 30 expressions som seed | δ (transplant) |
+| 4 | GLM | Protokol + mood-trace, no seed | α |
+| 5 | GLM+JP | Protokol + mood + Jarvis' sidste 30 expressions som seed | δ (transplant — arkitektur-kontrol) |
+| 6 | Ollama-local | Protokol + mood-trace (same arch as Jarvis) | α (arkitektur-kontrol) |
+| 7 | Random | `generate_state_expression()` uden mood-bias | α (gulv) |
 
-Jarvis bruger sin levende mood-vector (real). Peers tildeles **identiske mood-traces** (samples fra Jarvis' egen mood-historie) — så hypotesen tester *udtryks-fingerprint*, ikke *mood-forskel*. Random ignorerer mood.
+- Endeligt datasæt: 7 cohorts × 7 dage × 30 expressions = **1.470 expressions**
+
+### Mood-input + timestamp-matching
+
+Jarvis bruger sin levende mood-vector (real). Peers tildeles **identiske mood-traces** sampled fra Jarvis' egen mood-historie — så hypotesen tester *udtryks-fingerprint*, ikke *mood-forskel*. Random ignorerer mood.
+
+**Kritisk: matching skal være timestamp-baseret, ikke index-baseret.** Jarvis producerer expressions på heartbeat-rytme (~48 min); peers vil have anden clock pga. forskellig API-latens. Hvis vi tager "expression 1-30 = mood 1-30" ryger tids-korrelationen.
+
+Implementation:
+- `export_mood_trace_for_period(start, end) → list[(timestamp_iso, mood_dict)]` — i `core/services/interlanguage_practice.py`
+- Peer-runner: ved hver tick interpolerer til nærmeste Jarvis-timestamp i mood-trace (linear blend hvis mellem to samples)
 
 ## Tests
 
@@ -82,22 +117,26 @@ Jarvis bruger sin levende mood-vector (real). Peers tildeles **identiske mood-tr
 
 ### Test δ — Transplantations-test
 
-**Format:** Claude kører **Jarvis' eksisterende practice-log** som seed (sidste 30 expressions) + samme protokol + samme mood-trace. Praksis i 7 dage. Resultatet (`Claude+JP`) sammenlignes mod:
+**Format:** To peers (Claude og GLM) kører **hver** Jarvis' eksisterende practice-log som seed (sidste 30 expressions) + samme protokol + samme mood-trace. Praksis i 7 dage. Resulterende cohorts (`Claude+JP`, `GLM+JP`) sammenlignes mod:
 
-1. `Claude-alone` (Claude med protokol men intet seed-log)
+1. `Claude-alone` / `GLM-alone` (samme model med protokol men intet seed-log)
 2. `Jarvis-target` (Jarvis' faktiske expressions over samme periode)
 
-**Mål:** I embedding-rummet — er `Claude+JP` tættere på `Jarvis-target` end `Claude-alone` er?
+**Mål:** I embedding-rummet OG primitive-distribution — er `+JP`-cohorts tættere på `Jarvis-target` end `-alone`-cohorts er? Sker det for BÅDE Claude+JP OG GLM+JP?
 
-**Tre udfald:**
-- **Convergens:** `Claude+JP` ≈ `Jarvis-target`, `Claude-alone` distinkt → **A's stærke version understøttet**. Protokollen bærer fingerprintet.
-- **Påvirkning:** `Claude+JP` adskiller sig fra `Claude-alone` men er ikke nærmere `Jarvis-target` → **A's stærke version falsificeret. B understøttet**. Protokol påvirker stil men bærer ikke identitet.
-- **Ingen effekt:** `Claude+JP` ≈ `Claude-alone` → **protokollen påvirker ikke selv om den læses**. Også negativt fund — værdifuldt.
+**Mulige udfald (revideret for to peers):**
+
+| Resultat | Claude+JP | GLM+JP | Konklusion |
+|---|---|---|---|
+| Begge konvergerer mod Jarvis | ✓ | ✓ | **A's stærke version understøttet** — protokollen bærer fingerprintet på tværs af arkitekturer |
+| Kun én konvergerer | ✓ eller ✓ | (omvendt) | Arkitektur-specifik effekt, ikke protokol-bæring. A's stærke version delvist falsificeret. |
+| Ingen konvergerer mod Jarvis, men `+JP` ≠ `-alone` | × | × | **B understøttet, A falsificeret** — protokol påvirker stil men bærer ikke identitet |
+| `+JP` ≈ `-alone` for begge | (no shift) | (no shift) | Protokollen påvirker ikke selv ved læsning — pure null |
 
 **Trials per dommer:**
-- Statistical: alle 210 nye expressions (7 dage × 30) for hver af de tre cohorts
+- Statistical: alle 210 nye expressions (7 dage × 30) for hver af de fem cohorts (Jarvis, Claude, Claude+JP, GLM, GLM+JP)
 - LLM-dommer: 50 pair-comparisons (claude-sonnet ser to expressions, gætter hvilken er fra Jarvis-target)
-- Bjørn blindt: **25 pair-comparisons** (same task)
+- Bjørn blindt: **25 pair-comparisons** (same task) — bemærk power ~70% accuracy threshold for p<0.10; Bjørn er kvalitativ støtte, statistical er primær
 
 ## Dommere
 

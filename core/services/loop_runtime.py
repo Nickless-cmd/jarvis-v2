@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.services.runtime_surface_cache import (
-    get_cached_runtime_surface,
+    get_timed_runtime_surface,
 )
 
 _LAST_LOOP_RUNTIME: dict[str, object] | None = None
@@ -12,8 +12,9 @@ _RECENTLY_CLOSED_WINDOW = timedelta(minutes=20)
 
 
 def build_loop_runtime_surface() -> dict[str, object]:
-    return get_cached_runtime_surface(
+    return get_timed_runtime_surface(
         "loop_runtime_surface",
+        60,
         _build_loop_runtime_surface_uncached,
     )
 

@@ -12,7 +12,7 @@ from core.services.runtime_cognitive_conductor import (
     build_cognitive_frame,
 )
 from core.services.runtime_surface_cache import (
-    get_cached_runtime_surface,
+    get_timed_runtime_surface,
     peek_cached_runtime_surface,
 )
 from core.identity.workspace_bootstrap import ensure_default_workspace
@@ -33,8 +33,9 @@ def build_experiential_runtime_context_surface() -> dict[str, object]:
         shared = heartbeat_surface.get("experiential_runtime_context")
         if isinstance(shared, dict) and shared.get("experiential_continuity"):
             return shared
-    return get_cached_runtime_surface(
+    return get_timed_runtime_surface(
         "experiential_runtime_context_surface",
+        60,
         _build_experiential_runtime_context_surface_uncached,
     )
 

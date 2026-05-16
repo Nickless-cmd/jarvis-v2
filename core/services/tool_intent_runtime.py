@@ -20,13 +20,14 @@ from core.services.bounded_mutation_intent_runtime import (
 from core.services.tool_intent_approval_runtime import (
     build_tool_intent_approval_surface,
 )
-from core.services.runtime_surface_cache import get_cached_runtime_surface
+from core.services.runtime_surface_cache import get_timed_runtime_surface
 from core.tools.workspace_capabilities import get_capability_invocation_truth
 
 
 def build_tool_intent_runtime_surface() -> dict[str, object]:
-    return get_cached_runtime_surface(
+    return get_timed_runtime_surface(
         "tool_intent_runtime_surface",
+        60,
         _build_tool_intent_runtime_surface,
     )
 

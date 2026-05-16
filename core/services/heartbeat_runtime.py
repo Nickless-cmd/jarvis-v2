@@ -1395,6 +1395,18 @@ def _run_heartbeat_tick_locked(
     except Exception:
         pass
 
+    # Every 6th tick: scan for user contradictions (Bjørn→Jarvis)
+    # Lightweight DB query — no LLM calls.
+    if tick_count % 6 == 0:
+        try:
+            from core.services.user_contradiction_tracker import (
+                scan_for_contradictions,
+            )
+
+            scan_for_contradictions(hours=72)
+        except Exception:
+            pass
+
     # Life services: update internal state between ticks
     try:
         record_tick_elapsed(seconds=30)

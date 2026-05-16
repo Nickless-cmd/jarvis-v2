@@ -755,6 +755,7 @@ def init_db() -> None:
         _ensure_runtime_chronicle_consolidation_signal_table(conn)
         _ensure_runtime_chronicle_consolidation_brief_table(conn)
         _ensure_runtime_chronicle_consolidation_proposal_table(conn)
+        _ensure_user_contradiction_tables(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS private_inner_notes (
@@ -33413,6 +33414,18 @@ from core.runtime.db_self_repair import (  # noqa: E402,F401
     insert_self_repair_attempt,
     count_recent_attempts,
     list_recent_self_repair_attempts,
+)
+
+
+# --- User Contradiction (split into db_user_contradiction.py per boy scout rule) ---
+from core.runtime.db_user_contradiction import (  # noqa: E402,F401
+    _ensure_user_contradiction_tables,
+    upsert_user_statement,
+    get_user_statement_by_text,
+    list_user_statements,
+    insert_user_contradiction,
+    list_user_contradictions,
+    update_user_contradiction_status,
 )
 
 

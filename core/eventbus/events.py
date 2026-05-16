@@ -145,6 +145,7 @@ ALLOWED_EVENT_FAMILIES = {
     "tool_router",  # tool selection observability (added 2026-05-06)
     "decision_signal",  # decisions-as-signals refactor (added 2026-05-07)
     "contradiction",    # contradiction_engine port (added 2026-05-07)
+    "user_contradiction",  # user_contradiction_tracker (added 2026-05-16)
     "emergence",        # emergence pattern detection port (added 2026-05-07)
     "identity",         # identity_drift_daemon (added 2026-05-08)
     "causal",           # causal_graph subsystem (added 2026-05-08)

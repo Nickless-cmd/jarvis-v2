@@ -74,7 +74,20 @@ class _Session:
                 os.execvpe(
                     "bash",
                     ["bash", "--noprofile", "--norc", "-i"],
-                    dict(os.environ, PS1="", PS2="", TERM="dumb"),
+                    dict(
+                        os.environ,
+                        PS1="",
+                        PS2="",
+                        TERM="dumb",
+                        # 2026-05-16 fix: pty hænger fordi git/less/man auto-pager
+                        # venter på "Press RETURN to continue". Tving alle pagers
+                        # til at bare dumpe output uden interaktion.
+                        GIT_PAGER="cat",
+                        PAGER="cat",
+                        LESS="FRX",  # F=quit-if-one-screen, R=raw, X=no-init
+                        # Forhindre interaktive prompts fra andre værktøjer
+                        DEBIAN_FRONTEND="noninteractive",
+                    ),
                 )
             except Exception:
                 os._exit(127)

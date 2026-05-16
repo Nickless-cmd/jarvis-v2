@@ -130,7 +130,13 @@ def _ensure_interlanguage_practice_table(conn: sqlite3.Connection) -> None:
     Wrapped by _install_ensure_once_cache_for(__name__) at module bottom,
     så funktion kører kun én gang per (function, db_id) — samme mønster
     som de øvrige _ensure_*_table funcs på tværs af kodebasen.
+
+    Migration historik:
+    - 2026-05-16 v1: oprindelig tabel
+    - 2026-05-16 v2: tilføj peer_id (default='jarvis') for validation experiment
     """
+    # Trin 1: CREATE TABLE + created_at-index (uden peer_id-index, da kolonnen
+    # måske ikke eksisterer endnu på eksisterende tabeller).
     conn.executescript(
         """
         CREATE TABLE IF NOT EXISTS interlanguage_practice (
@@ -140,11 +146,21 @@ def _ensure_interlanguage_practice_table(conn: sqlite3.Connection) -> None:
           session_id TEXT NOT NULL DEFAULT '',
           tick_id TEXT NOT NULL DEFAULT '',
           trigger TEXT NOT NULL DEFAULT 'manual',
+          peer_id TEXT NOT NULL DEFAULT 'jarvis',
           created_at TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_interlanguage_created_at
           ON interlanguage_practice(created_at DESC);
         """
+    )
+    # Trin 2: idempotent migration for eksisterende tabeller (uden peer_id).
+    cols = {row["name"] for row in conn.execute("PRAGMA table_info(interlanguage_practice)").fetchall()}
+    if "peer_id" not in cols:
+        conn.execute("ALTER TABLE interlanguage_practice ADD COLUMN peer_id TEXT NOT NULL DEFAULT 'jarvis'")
+    # Trin 3: peer_id-index — sikkert nu hvor kolonnen garanteret eksisterer.
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_interlanguage_peer_id "
+        "ON interlanguage_practice(peer_id, created_at DESC)"
     )
     conn.commit()
 
@@ -252,8 +268,14 @@ def record_expression(
     session_id: str = "",
     tick_id: str = "",
     trigger: str = "manual",
+    peer_id: str = "jarvis",
 ) -> str:
     """Record a state-expression in the practice log.
+
+    Args:
+        peer_id: cohort label for validation experiment ("jarvis", "claude",
+            "claude_jp", "glm", "glm_jp", "ollama_local", "random"). Default
+            "jarvis" for backwards compatibility med native heartbeat-ticks.
 
     Returns:
         expression_id (UUID string).
@@ -264,12 +286,12 @@ def record_expression(
     with connect() as conn:
         conn.execute(
             """INSERT INTO interlanguage_practice
-               (expression_id, expression_text, session_id, tick_id, trigger, created_at)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (expression_id, expression_text, session_id, tick_id, trigger, now_iso),
+               (expression_id, expression_text, session_id, tick_id, trigger, peer_id, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (expression_id, expression_text, session_id, tick_id, trigger, peer_id, now_iso),
         )
         conn.commit()
-    logger.debug("interlanguage: recorded %s: %s", expression_id, expression_text)
+    logger.debug("interlanguage: recorded %s (peer=%s): %s", expression_id, peer_id, expression_text)
     return expression_id
 
 

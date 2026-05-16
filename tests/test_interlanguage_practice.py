@@ -257,3 +257,37 @@ class TestPracticeTick:
             practice_tick(session_id="s", tick_id=f"tick-{i}")
         result = practice_tick(session_id="s", tick_id="tick-6")
         assert result["expressions_24h"] == before + 6
+
+
+class TestPeerIdMigration:
+    def test_peer_id_column_exists(self, clean_state):
+        """Schema skal have peer_id kolonne efter migration (default='jarvis')."""
+        from core.runtime.db import connect
+        from core.services.interlanguage_practice import ensure_schema
+        ensure_schema()
+        with connect() as conn:
+            rows = conn.execute("PRAGMA table_info(interlanguage_practice)").fetchall()
+        names = {row["name"] for row in rows}
+        assert "peer_id" in names, f"Mangler peer_id i schema. Fundet: {names}"
+
+    def test_peer_id_default_is_jarvis(self, clean_state):
+        """Eksisterende rows uden peer_id skal default til 'jarvis' (backwards compat)."""
+        from core.services.interlanguage_practice import record_expression
+        from core.runtime.db import connect
+        record_expression("test → backcompat", session_id="bc-test")
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT peer_id FROM interlanguage_practice WHERE session_id='bc-test'"
+            ).fetchone()
+        assert row["peer_id"] == "jarvis"
+
+    def test_record_expression_accepts_peer_id(self, clean_state):
+        """record_expression skal kunne tage peer_id som kwarg."""
+        from core.services.interlanguage_practice import record_expression
+        from core.runtime.db import connect
+        record_expression("claude → expression", session_id="claude-test", peer_id="claude")
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT peer_id FROM interlanguage_practice WHERE session_id='claude-test'"
+            ).fetchone()
+        assert row["peer_id"] == "claude"

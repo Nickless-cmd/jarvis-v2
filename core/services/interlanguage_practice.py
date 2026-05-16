@@ -14,7 +14,10 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
+import sqlite3
+
 from core.runtime.db import connect
+from core.runtime.db_core import _install_ensure_once_cache_for
 
 logger = logging.getLogger(__name__)
 
@@ -118,34 +121,46 @@ CORE_VOCABULARY: dict[str, dict[str, str]] = {
 CORE_TERMS = list(CORE_VOCABULARY.keys())
 
 # ---------------------------------------------------------------------------
-# Schema bootstrap
+# Schema bootstrap (Phase 0+1 pattern: _ensure_*_table + once-cache wrap)
 # ---------------------------------------------------------------------------
 
-_SCHEMA_INITIALIZED = False
+def _ensure_interlanguage_practice_table(conn: sqlite3.Connection) -> None:
+    """Idempotently create interlanguage_practice table + index.
+
+    Wrapped by _install_ensure_once_cache_for(__name__) at module bottom,
+    så funktion kører kun én gang per (function, db_id) — samme mønster
+    som de øvrige _ensure_*_table funcs på tværs af kodebasen.
+    """
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS interlanguage_practice (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          expression_id TEXT NOT NULL UNIQUE,
+          expression_text TEXT NOT NULL,
+          session_id TEXT NOT NULL DEFAULT '',
+          tick_id TEXT NOT NULL DEFAULT '',
+          trigger TEXT NOT NULL DEFAULT 'manual',
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_interlanguage_created_at
+          ON interlanguage_practice(created_at DESC);
+        """
+    )
+    conn.commit()
+
+
+# Bagudkompat-alias — flere callsites brugte ensure_schema() før omskrivning.
+# Funktionen forventer ingen conn-argument og åbner sin egen.
+_SCHEMA_INITIALIZED = False  # tests resetter denne for at force re-init
 
 
 def ensure_schema() -> None:
-    """Idempotently create interlanguage_practice table + index."""
+    """Bagudkompat: åbner en conn og kalder _ensure_interlanguage_practice_table."""
     global _SCHEMA_INITIALIZED
     if _SCHEMA_INITIALIZED:
         return
     with connect() as conn:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS interlanguage_practice (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              expression_id TEXT NOT NULL UNIQUE,
-              expression_text TEXT NOT NULL,
-              session_id TEXT NOT NULL DEFAULT '',
-              tick_id TEXT NOT NULL DEFAULT '',
-              trigger TEXT NOT NULL DEFAULT 'manual',
-              created_at TEXT NOT NULL
-            );
-            CREATE INDEX IF NOT EXISTS idx_interlanguage_created_at
-              ON interlanguage_practice(created_at DESC);
-            """
-        )
-        conn.commit()
+        _ensure_interlanguage_practice_table(conn)
     _SCHEMA_INITIALIZED = True
 
 
@@ -376,3 +391,7 @@ def practice_tick(*, session_id: str = "", tick_id: str = "", mood: dict[str, fl
         "expressions_24h": count,
     }
 
+
+
+# Wrap _ensure_*_table funcs på dette modul med once-cache (Phase 0+1 pattern).
+_install_ensure_once_cache_for(__name__)

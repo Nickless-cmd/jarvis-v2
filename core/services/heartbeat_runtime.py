@@ -1407,6 +1407,18 @@ def _run_heartbeat_tick_locked(
         except Exception:
             pass
 
+    # Every 30th tick (~15 min @ 30s/tick): generate inter-sprog state-expression.
+    # Per spec docs/superpowers/specs/2026-05-16-interlanguage-design.md:
+    # internaliseret protokol-praksis der bæres på tværs af modeller.
+    # Lightweight (no LLM) — render + DB insert only. practice_tick selv
+    # markerer trigger="heartbeat" på record-niveau.
+    if tick_count % 30 == 0:
+        try:
+            from core.services.interlanguage_practice import practice_tick
+            practice_tick(tick_id=str(tick_count))
+        except Exception:
+            pass
+
     # Life services: update internal state between ticks
     try:
         record_tick_elapsed(seconds=30)

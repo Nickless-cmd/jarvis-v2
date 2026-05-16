@@ -11,17 +11,25 @@ import pytest
 
 @pytest.fixture()
 def clean_state(tmp_path, monkeypatch):
-    """Isolated workspace + DB."""
+    """Isolated workspace + DB.
+
+    Efter 2026-05-15 db.py split lever DB_PATH og connect() i db_core,
+    ikke db (db re-eksporterer kun). Vi skal patche begge moduler — ellers
+    skriver tests til prod-DB. Dette skete faktisk i den oprindelige version
+    af denne fixture (136 test-records forurenede prod 2026-05-16).
+    """
+    db_path = tmp_path / "state" / "jarvis.db"
+    db_path.parent.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("JARVIS_WORKSPACES_DIR", str(tmp_path / "workspaces"))
     import core.runtime.config as cfg
     monkeypatch.setattr(cfg, "STATE_DIR", str(tmp_path / "state"))
-    import importlib
+    # Patch DB_PATH på BEGGE moduler (db er facade, db_core er kilden).
     import core.runtime.db as db
-    importlib.reload(db)
-    import core.runtime.state_store as ss
-    importlib.reload(ss)
-    # Force schema re-init
+    import core.runtime.db_core as db_core
+    monkeypatch.setattr(db, "DB_PATH", db_path)
+    monkeypatch.setattr(db_core, "DB_PATH", db_path)
+    # Force schema re-init på interlanguage modulet
     import core.services.interlanguage_practice as ilp
     ilp._SCHEMA_INITIALIZED = False
     return None

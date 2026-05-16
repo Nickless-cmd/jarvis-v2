@@ -497,6 +497,30 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Conversation continuity — inject topic summaries from recent sessions
+    # so Jarvis never wakes up cold on a thread we were just discussing.
+    # Placed right after the wake-up block (same bypass on relevance filter).
+    try:
+        from core.services.continuity import build_conversation_continuity
+        convo_block = build_conversation_continuity(limit=3)
+        if convo_block:
+            parts.append(convo_block)
+            derived_inputs.append("conversation continuity (always-on)")
+    except Exception:
+        pass
+
+    # Session topics — active topics from the current session so Jarvis
+    # remembers what's been discussed even after context compression.
+    # Lightweight: regex-based extraction accumulated every N turns.
+    try:
+        from core.services.session_topic_tracker import build_session_topics_prompt_section
+        topics_block = build_session_topics_prompt_section(session_id=session_id)
+        if topics_block:
+            parts.append(topics_block)
+            derived_inputs.append("session topics (always-on)")
+    except Exception:
+        pass
+
     # Current pull — dynamic inner-desire signal, kept high-priority but
     # AFTER the stable identity block so the prefix stays cacheable.
     if current_pull_hint:
@@ -2735,9 +2759,13 @@ def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 1800) -> str |
         return None
     if len(text) > max_chars:
         text = text[: max_chars - 1].rstrip() + "…"
+    # Inject current datetime so Jarvis always knows what time it is
+    from datetime import UTC, datetime as _dt
+    now = _dt.now(UTC)
+    tz_line = f"now: {now.strftime('%Y-%m-%d %H:%M')} UTC"
     return (
         "Quick Facts (altid gældende — tjek her FØR du leder lokalt eller på nettet):\n"
-        f"{text}"
+        f"{text}\n{tz_line}"
     )
 
 

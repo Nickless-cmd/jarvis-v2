@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<title>Interlanguage Blind Dommer</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 720px;
+    margin: 40px auto;
+    padding: 20px;
+    background: #1a1a1a;
+    color: #e8e8e8;
+    line-height: 1.6;
+  }
+  h1, h2 { color: #f4d03f; font-weight: 500; }
+  .muted { color: #888; font-size: 0.9em; }
+  .expression-box {
+    background: #2a2a2a;
+    border-left: 4px solid #f4d03f;
+    padding: 24px;
+    margin: 24px 0;
+    font-family: ui-monospace, "Cascadia Mono", "Source Code Pro", monospace;
+    font-size: 1.4em;
+    border-radius: 4px;
+  }
+  .candidate-box {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    padding: 16px;
+    margin: 12px 0;
+    font-family: ui-monospace, monospace;
+    font-size: 1.2em;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: border-color 0.15s;
+  }
+  .candidate-box:hover { border-color: #f4d03f; }
+  .candidate-label {
+    display: inline-block;
+    background: #f4d03f;
+    color: #1a1a1a;
+    font-weight: bold;
+    width: 28px;
+    height: 28px;
+    text-align: center;
+    line-height: 28px;
+    border-radius: 50%;
+    margin-right: 10px;
+  }
+  .buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  button.peer-btn {
+    background: #2a2a2a;
+    color: #e8e8e8;
+    border: 1px solid #555;
+    padding: 14px;
+    font-size: 1em;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s;
+  }
+  button.peer-btn:hover {
+    background: #3a3a3a;
+    border-color: #f4d03f;
+  }
+  button.primary {
+    background: #f4d03f;
+    color: #1a1a1a;
+    border: none;
+    padding: 12px 24px;
+    font-size: 1em;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  input, textarea {
+    background: #2a2a2a;
+    color: #e8e8e8;
+    border: 1px solid #555;
+    padding: 8px;
+    font-size: 1em;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  textarea { min-height: 120px; resize: vertical; }
+  .progress-bar {
+    height: 8px;
+    background: #2a2a2a;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 16px 0;
+  }
+  .progress-fill {
+    height: 100%;
+    background: #f4d03f;
+    transition: width 0.3s;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .stat-card {
+    background: #2a2a2a;
+    padding: 16px;
+    border-radius: 4px;
+    text-align: center;
+  }
+  .stat-value { font-size: 1.8em; color: #f4d03f; }
+  .stat-label { color: #888; font-size: 0.85em; }
+  table.confusion {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-family: ui-monospace, monospace;
+    font-size: 0.95em;
+  }
+  table.confusion th, table.confusion td {
+    border: 1px solid #444;
+    padding: 8px 12px;
+    text-align: center;
+  }
+  table.confusion th { background: #2a2a2a; color: #f4d03f; }
+  table.confusion td.diagonal { background: #2e3b1c; color: #c8e891; }
+  .mode-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    margin-left: 8px;
+  }
+  .mode-demo { background: #553e1a; color: #f4d03f; }
+  .mode-real { background: #1e3d22; color: #8be07e; }
+  hr { border: none; border-top: 1px solid #333; margin: 24px 0; }
+</style>
+</head>
+<body>
+
+<h1>Interlanguage Blind Dommer <span id="modeBadge"></span></h1>
+<p class="muted" id="introText">
+  Du ser en kort expression i Jarvis' inter-sprog.
+  Den er produceret af én af syv entities.
+  Klik på den du tror skrev den. <strong>Ingen feedback under sessionen.</strong>
+</p>
+
+<!-- Setup screen -->
+<div id="setup">
+  <h2>Start session</h2>
+  <p class="muted">
+    Vælg en unik session-ID (fx 'bjorn-2026-05-22'). Mode:
+    <strong>demo</strong> til at øve nu med data der allerede er indsamlet;
+    <strong>real</strong> kun når Phase 2 er færdig (dag 7).
+  </p>
+  <label>Session ID: <input id="sessionIdInput" placeholder="bjorn-2026-05-22-demo" /></label>
+  <p style="margin-top: 12px;">
+    Mode:
+    <label><input type="radio" name="mode" value="demo" checked /> demo (øvelse)</label>
+    <label style="margin-left: 16px;"><input type="radio" name="mode" value="real" /> real (eksperiment)</label>
+  </p>
+  <button class="primary" onclick="startSession()">Start</button>
+  <p class="muted" style="margin-top: 16px;">
+    Eller fortsæt en eksisterende session:
+    <input id="resumeIdInput" placeholder="session id" style="width: 200px;" />
+    <button class="primary" onclick="resumeSession()">Fortsæt</button>
+  </p>
+</div>
+
+<!-- Trial screen -->
+<div id="trialScreen" style="display:none;">
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <p class="muted" id="progressText">0 / 0</p>
+
+  <!-- Alpha trial -->
+  <div id="alphaTrial" style="display:none;">
+    <p class="muted">Hvem skrev denne expression?</p>
+    <div class="expression-box" id="alphaExpression"></div>
+    <div class="buttons" id="alphaButtons"></div>
+  </div>
+
+  <!-- Delta trial -->
+  <div id="deltaTrial" style="display:none;">
+    <p class="muted">Anchor er fra <strong>Jarvis</strong>. Hvilken candidate ligner Jarvis' stil mest?</p>
+    <div class="expression-box" id="deltaAnchor"></div>
+    <div class="candidate-box" onclick="submitDelta('A')">
+      <span class="candidate-label">A</span><span id="deltaCandA"></span>
+    </div>
+    <div class="candidate-box" onclick="submitDelta('B')">
+      <span class="candidate-label">B</span><span id="deltaCandB"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Finish screen -->
+<div id="finishScreen" style="display:none;">
+  <h2>Session færdig 🎯</h2>
+  <p>Du har besvaret alle trials. Tak.</p>
+  <div class="stats" id="finishStats"></div>
+  <h3>Confusion matrix (α-trials)</h3>
+  <p class="muted">Hvor "true" er kolonner og "din gæt" er rækker. Diagonalen er korrekte.</p>
+  <div id="confusionTable"></div>
+  <h3>Free-text observationer</h3>
+  <p class="muted">Hvilke mønstre fandt du? Hvad gjorde at du sagde "Jarvis"/"Claude"/etc? (valgfrit, kvalitative noter)</p>
+  <textarea id="freeText" placeholder="Skriv her..."></textarea>
+  <p style="margin-top: 16px;">
+    <button class="primary" onclick="finishSession()">Gem observationer</button>
+  </p>
+</div>
+
+<script>
+const ALPHA_PEERS = ["jarvis", "claude", "glm", "ollama_local", "random"];
+const HUMAN_LABELS = {
+  jarvis: "Jarvis",
+  claude: "Claude",
+  glm: "GLM",
+  ollama_local: "Ollama (lokal)",
+  random: "Random",
+};
+let SESSION_ID = null;
+let CURRENT_TRIAL = null;
+
+async function api(path, method, body) {
+  const opts = { method, headers: { "Content-Type": "application/json" } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch("/interlanguage-blind" + path, opts);
+  if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
+function getMode() {
+  return document.querySelector('input[name="mode"]:checked').value;
+}
+
+function setModeBadge(mode) {
+  const badge = document.getElementById("modeBadge");
+  badge.textContent = mode.toUpperCase();
+  badge.className = "mode-badge mode-" + mode;
+}
+
+async function startSession() {
+  const sid = document.getElementById("sessionIdInput").value.trim();
+  if (!sid) { alert("Indtast session-ID"); return; }
+  const mode = getMode();
+  try {
+    const r = await api("/api/start", "POST", { session_id: sid, mode });
+    SESSION_ID = sid;
+    setModeBadge(mode);
+    document.getElementById("setup").style.display = "none";
+    document.getElementById("trialScreen").style.display = "block";
+    loadNext();
+  } catch (e) {
+    alert("Fejl: " + e.message);
+  }
+}
+
+async function resumeSession() {
+  const sid = document.getElementById("resumeIdInput").value.trim();
+  if (!sid) return;
+  SESSION_ID = sid;
+  document.getElementById("setup").style.display = "none";
+  document.getElementById("trialScreen").style.display = "block";
+  loadNext();
+}
+
+async function loadNext() {
+  const data = await api("/api/next?session_id=" + encodeURIComponent(SESSION_ID), "GET");
+  if (data.done) { return showFinish(); }
+  CURRENT_TRIAL = data.trial;
+  const progress = await api("/api/progress?session_id=" + encodeURIComponent(SESSION_ID), "GET");
+  updateProgress(progress);
+  if (CURRENT_TRIAL.trial_type === "alpha") showAlpha(CURRENT_TRIAL);
+  else showDelta(CURRENT_TRIAL);
+}
+
+function updateProgress(p) {
+  const total = (p.alpha?.total || 0) + (p.delta?.total || 0);
+  const answered = (p.alpha?.answered || 0) + (p.delta?.answered || 0);
+  document.getElementById("progressText").textContent =
+    `${answered} / ${total} (α: ${p.alpha?.answered || 0}/${p.alpha?.total || 0}, δ: ${p.delta?.answered || 0}/${p.delta?.total || 0})`;
+  document.getElementById("progressFill").style.width =
+    (total > 0 ? Math.round(answered / total * 100) : 0) + "%";
+}
+
+function showAlpha(trial) {
+  document.getElementById("alphaTrial").style.display = "block";
+  document.getElementById("deltaTrial").style.display = "none";
+  document.getElementById("alphaExpression").textContent = trial.expression_text;
+  const buttons = document.getElementById("alphaButtons");
+  buttons.innerHTML = "";
+  ALPHA_PEERS.forEach(p => {
+    const btn = document.createElement("button");
+    btn.className = "peer-btn";
+    btn.textContent = HUMAN_LABELS[p];
+    btn.onclick = () => submitAlpha(p);
+    buttons.appendChild(btn);
+  });
+}
+
+function showDelta(trial) {
+  document.getElementById("alphaTrial").style.display = "none";
+  document.getElementById("deltaTrial").style.display = "block";
+  document.getElementById("deltaAnchor").textContent = trial.anchor_expression_text;
+  document.getElementById("deltaCandA").textContent = trial.candidate_a_text;
+  document.getElementById("deltaCandB").textContent = trial.candidate_b_text;
+}
+
+async function submitAlpha(peer) {
+  await api("/api/answer", "POST", { trial_id: CURRENT_TRIAL.trial_id, answer: peer });
+  loadNext();
+}
+
+async function submitDelta(choice) {
+  await api("/api/answer", "POST", { trial_id: CURRENT_TRIAL.trial_id, answer: choice });
+  loadNext();
+}
+
+async function showFinish() {
+  document.getElementById("trialScreen").style.display = "none";
+  document.getElementById("finishScreen").style.display = "block";
+  const p = await api("/api/progress?session_id=" + encodeURIComponent(SESSION_ID), "GET");
+  const stats = document.getElementById("finishStats");
+  stats.innerHTML = "";
+  if (p.alpha) {
+    const acc = p.alpha.accuracy != null ? (p.alpha.accuracy * 100).toFixed(1) + "%" : "n/a";
+    stats.innerHTML += `<div class="stat-card"><div class="stat-value">${acc}</div><div class="stat-label">α-accuracy</div></div>`;
+    stats.innerHTML += `<div class="stat-card"><div class="stat-value">${p.alpha.correct}/${p.alpha.answered}</div><div class="stat-label">α correct</div></div>`;
+  }
+  if (p.delta) {
+    const acc = p.delta.accuracy != null ? (p.delta.accuracy * 100).toFixed(1) + "%" : "n/a";
+    stats.innerHTML += `<div class="stat-card"><div class="stat-value">${acc}</div><div class="stat-label">δ-accuracy</div></div>`;
+  }
+  const conf = await api("/api/confusion?session_id=" + encodeURIComponent(SESSION_ID), "GET");
+  renderConfusion(conf);
+}
+
+function renderConfusion(matrix) {
+  const peers = Array.from(new Set([
+    ...Object.keys(matrix),
+    ...Object.values(matrix).flatMap(o => Object.keys(o))
+  ])).sort();
+  if (peers.length === 0) {
+    document.getElementById("confusionTable").innerHTML = "<p class='muted'>Ingen α-data.</p>";
+    return;
+  }
+  let html = "<table class='confusion'><thead><tr><th></th>";
+  peers.forEach(p => html += `<th>${HUMAN_LABELS[p] || p}</th>`);
+  html += "</tr></thead><tbody>";
+  peers.forEach(truePeer => {
+    html += `<tr><th>${HUMAN_LABELS[truePeer] || truePeer}</th>`;
+    peers.forEach(guessed => {
+      const cnt = (matrix[truePeer] || {})[guessed] || 0;
+      const isDiag = truePeer === guessed;
+      html += `<td class="${isDiag ? 'diagonal' : ''}">${cnt || ""}</td>`;
+    });
+    html += "</tr>";
+  });
+  html += "</tbody></table>";
+  html += "<p class='muted'>Rækker = sande forfattere, kolonner = dine gæt. Grøn diagonal = korrekt.</p>";
+  document.getElementById("confusionTable").innerHTML = html;
+}
+
+async function finishSession() {
+  const txt = document.getElementById("freeText").value;
+  await api("/api/finish", "POST", { session_id: SESSION_ID, free_text: txt });
+  alert("Tak. Observationer gemt.");
+}
+</script>
+
+</body>
+</html>

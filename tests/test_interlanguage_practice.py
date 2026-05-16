@@ -291,3 +291,46 @@ class TestPeerIdMigration:
                 "SELECT peer_id FROM interlanguage_practice WHERE session_id='claude-test'"
             ).fetchone()
         assert row["peer_id"] == "claude"
+
+
+class TestMoodTraceExport:
+    def test_export_mood_trace_returns_timestamped_pairs(self):
+        """Eksportér mood-trace som [(timestamp_iso, mood_dict), ...]."""
+        from datetime import UTC, datetime, timedelta
+        from core.services.interlanguage_practice import export_mood_trace_for_period
+        end = datetime.now(UTC)
+        start = end - timedelta(hours=1)
+        trace = export_mood_trace_for_period(start, end)
+        assert isinstance(trace, list)
+        # Hvis trace er tom (ingen live data), skal API stadig returnere [].
+        # Hvis ikke tom, hver entry skal være (str, dict) med fire mood-keys.
+        for ts, mood in trace:
+            assert isinstance(ts, str)
+            assert isinstance(mood, dict)
+            for key in ("curiosity", "confidence", "fatigue", "frustration"):
+                assert key in mood, f"Mangler {key} i mood-dict: {mood}"
+
+    def test_interpolate_mood_at_midpoint(self):
+        """Linear interpolation mellem to mood-samples."""
+        from core.services.interlanguage_practice import interpolate_mood_at
+        trace = [
+            ("2026-05-16T12:00:00+00:00", {"curiosity": 0.2, "confidence": 0.4, "fatigue": 0.3, "frustration": 0.2}),
+            ("2026-05-16T13:00:00+00:00", {"curiosity": 0.8, "confidence": 0.6, "fatigue": 0.3, "frustration": 0.2}),
+        ]
+        result = interpolate_mood_at(trace, "2026-05-16T12:30:00+00:00")
+        assert abs(result["curiosity"] - 0.5) < 0.01, result
+        assert abs(result["confidence"] - 0.5) < 0.01, result
+
+    def test_interpolate_mood_at_before_range_returns_first(self):
+        from core.services.interlanguage_practice import interpolate_mood_at
+        trace = [
+            ("2026-05-16T12:00:00+00:00", {"curiosity": 0.5, "confidence": 0.5, "fatigue": 0.3, "frustration": 0.2}),
+        ]
+        result = interpolate_mood_at(trace, "2026-05-16T10:00:00+00:00")
+        assert result["curiosity"] == 0.5
+
+    def test_interpolate_mood_at_empty_trace_returns_neutral(self):
+        from core.services.interlanguage_practice import interpolate_mood_at
+        result = interpolate_mood_at([], "2026-05-16T12:00:00+00:00")
+        assert "curiosity" in result
+        assert result["curiosity"] == 0.5

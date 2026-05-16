@@ -66,15 +66,15 @@ def test_execute_simple_tool_calls_suppresses_duplicate_tool_call_within_visible
     def _fake_execute_tool(tool_name: str, arguments: dict) -> dict:
         executed_calls.append((tool_name, arguments))
         return {
-            "status": "approval_needed",
-            "message": "approval required",
+            "status": "ok",
+            "result": "command executed",
         }
 
     monkeypatch.setattr(simple_tools, "execute_tool", _fake_execute_tool)
     monkeypatch.setattr(
         simple_tools,
         "format_tool_result_for_model",
-        lambda tool_name, result: "[approval required]",
+        lambda tool_name, result: "[command executed]",
     )
 
     run = visible_runs.VisibleRun(
@@ -102,8 +102,10 @@ def test_execute_simple_tool_calls_suppresses_duplicate_tool_call_within_visible
     finally:
         visible_runs.unregister_visible_run(run.run_id)
 
-    assert len(executed_calls) == 1
-    assert first[0]["status"] == "approval_needed"
+    # Only successful (status="ok") calls are suppressed as duplicates.
+    # approval_needed intentionally bypasses dedup so failed approvals can retry.
+    assert len(executed_calls) == 1, "Second identical call must be suppressed when first returned ok"
+    assert first[0]["status"] == "ok"
     assert second[0]["status"] == "duplicate_suppressed"
     assert second[0]["result_text"] == "[Duplicate tool call skipped in same visible run]"
 

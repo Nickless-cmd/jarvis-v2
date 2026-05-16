@@ -22,7 +22,8 @@ from core.runtime.db import (
     upsert_runtime_open_loop_signal,
 )
 
-_STALE_AFTER_DAYS = 14
+_STALE_AFTER_DAYS = 5    # 2026-05-16: 14d var for langt — Bjørn fik 16 zombie-loops fra test-runs
+_CLOSE_STALE_AFTER_DAYS = 7  # efter stale-mark, auto-close hvis ingen update i yderligere 7 dage
 _THREAD_TOKEN_STOPWORDS = {
     "active",
     "around",
@@ -79,34 +80,55 @@ def track_runtime_open_loop_signals_for_visible_turn(
 def refresh_runtime_open_loop_signal_statuses() -> dict[str, int]:
     now = datetime.now(UTC)
     refreshed = 0
+    auto_closed = 0
     for item in list_runtime_open_loop_signals(limit=40):
-        if str(item.get("status") or "") not in {"open", "softening", "closed"}:
+        current_status = str(item.get("status") or "")
+        if current_status not in {"open", "softening", "closed", "stale"}:
             continue
         updated_at = _parse_dt(
             str(item.get("updated_at") or item.get("created_at") or "")
         )
-        if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
+        if updated_at is None:
             continue
-        refreshed_item = update_runtime_open_loop_signal_status(
-            str(item.get("signal_id") or ""),
-            status="stale",
-            updated_at=now.isoformat(),
-            status_reason="Marked stale after bounded open-loop inactivity window.",
-        )
-        if refreshed_item is None:
+
+        # Trin 1: stale → closed efter yderligere _CLOSE_STALE_AFTER_DAYS
+        # 2026-05-16 fix: forhindrer at zombie-loops bliver ved med at trigge
+        # autonomy_pressure → council → CPU-spinning loop.
+        if current_status == "stale" and updated_at < now - timedelta(days=_CLOSE_STALE_AFTER_DAYS):
+            closed_item = update_runtime_open_loop_signal_status(
+                str(item.get("signal_id") or ""),
+                status="closed",
+                updated_at=now.isoformat(),
+                status_reason="Auto-closed after extended stale inactivity (forhindrer feedback-loop).",
+            )
+            if closed_item is not None:
+                auto_closed += 1
             continue
-        refreshed += 1
-        event_bus.publish(
-            "open_loop_signal.stale",
-            {
-                "signal_id": refreshed_item.get("signal_id"),
-                "signal_type": refreshed_item.get("signal_type"),
-                "status": refreshed_item.get("status"),
-                "summary": refreshed_item.get("summary"),
-                "status_reason": refreshed_item.get("status_reason"),
-            },
-        )
-    return {"stale_marked": refreshed}
+
+        # Trin 2: open/softening → stale efter _STALE_AFTER_DAYS
+        if current_status in {"open", "softening", "closed"}:
+            if updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
+                continue
+            refreshed_item = update_runtime_open_loop_signal_status(
+                str(item.get("signal_id") or ""),
+                status="stale",
+                updated_at=now.isoformat(),
+                status_reason="Marked stale after bounded open-loop inactivity window.",
+            )
+            if refreshed_item is None:
+                continue
+            refreshed += 1
+            event_bus.publish(
+                "open_loop_signal.stale",
+                {
+                    "signal_id": refreshed_item.get("signal_id"),
+                    "signal_type": refreshed_item.get("signal_type"),
+                    "status": refreshed_item.get("status"),
+                    "summary": refreshed_item.get("summary"),
+                    "status_reason": refreshed_item.get("status_reason"),
+                },
+            )
+    return {"stale_marked": refreshed, "auto_closed": auto_closed}
 
 
 def build_runtime_open_loop_signal_surface(*, limit: int = 8) -> dict[str, object]:

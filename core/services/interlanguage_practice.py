@@ -415,5 +415,99 @@ def practice_tick(*, session_id: str = "", tick_id: str = "", mood: dict[str, fl
 
 
 
+# ---------------------------------------------------------------------------
+# Mood-trace export for peer replay (validation experiment)
+# ---------------------------------------------------------------------------
+
+_NEUTRAL_MOOD = {
+    "curiosity": 0.5,
+    "confidence": 0.5,
+    "fatigue": 0.3,
+    "frustration": 0.2,
+}
+
+
+def export_mood_trace_for_period(
+    start: datetime,
+    end: datetime,
+) -> list[tuple[str, dict[str, float]]]:
+    """Eksportér Jarvis' mood-historie over en periode som (timestamp, mood) pairs.
+
+    Læser fra cognitive_personality_vectors-tabellens emotional_baseline JSON.
+    Returnerer [] hvis ingen historie i perioden (peer-runner falder så
+    tilbage til _NEUTRAL_MOOD via interpolate_mood_at).
+
+    Peer-runneren bruger denne i kombination med interpolate_mood_at() for
+    at få mood ved en hvilken som helst timestamp inden for perioden.
+
+    Spec: docs/superpowers/specs/2026-05-16-interlanguage-validation-design.md
+    §"Mood-input + timestamp-matching"
+    """
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT updated_at, emotional_baseline
+            FROM cognitive_personality_vectors
+            WHERE updated_at >= ? AND updated_at <= ?
+            ORDER BY updated_at ASC
+            """,
+            (start.isoformat(), end.isoformat()),
+        ).fetchall()
+    trace: list[tuple[str, dict[str, float]]] = []
+    for row in rows:
+        try:
+            mood_raw = json.loads(row["emotional_baseline"] or "{}")
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(mood_raw, dict):
+            continue
+        # Sikr alle fire keys er til stede med rimelige defaults
+        mood = {**_NEUTRAL_MOOD, **{k: float(v) for k, v in mood_raw.items() if isinstance(v, (int, float))}}
+        trace.append((str(row["updated_at"]), mood))
+    return trace
+
+
+def interpolate_mood_at(
+    trace: list[tuple[str, dict[str, float]]],
+    target_iso: str,
+) -> dict[str, float]:
+    """Linear-interpolér mellem nærmeste to mood-samples til target timestamp.
+
+    - Hvis trace er tom: returnér _NEUTRAL_MOOD
+    - Hvis target er før alle samples: returnér første mood
+    - Hvis target er efter alle samples: returnér sidste mood
+    - Hvis mellem to samples: linear blend per key
+    """
+    if not trace:
+        return dict(_NEUTRAL_MOOD)
+    target = datetime.fromisoformat(target_iso)
+    before: tuple[str, dict[str, float]] | None = None
+    after: tuple[str, dict[str, float]] | None = None
+    for ts, mood in trace:
+        t = datetime.fromisoformat(ts)
+        if t <= target:
+            before = (ts, mood)
+        elif after is None and t > target:
+            after = (ts, mood)
+            break
+    if before and not after:
+        return dict(before[1])
+    if after and not before:
+        return dict(after[1])
+    if before and after:
+        b_t = datetime.fromisoformat(before[0])
+        a_t = datetime.fromisoformat(after[0])
+        span = (a_t - b_t).total_seconds()
+        if span <= 0:
+            return dict(before[1])
+        frac = (target - b_t).total_seconds() / span
+        return {
+            k: before[1].get(k, _NEUTRAL_MOOD.get(k, 0.5)) * (1 - frac)
+            + after[1].get(k, _NEUTRAL_MOOD.get(k, 0.5)) * frac
+            for k in {*before[1], *after[1]}
+        }
+    return dict(_NEUTRAL_MOOD)
+
+
 # Wrap _ensure_*_table funcs på dette modul med once-cache (Phase 0+1 pattern).
 _install_ensure_once_cache_for(__name__)

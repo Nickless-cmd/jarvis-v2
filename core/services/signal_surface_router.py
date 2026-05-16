@@ -105,6 +105,7 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
         build_runtime_world_model_signal_surface,
     )
     from core.services.contradiction_engine import build_contradiction_engine_surface
+    from core.services.user_contradiction_tracker import build_user_contradiction_surface
     from core.services.emergence import build_emergence_surface
     from core.services.jarvis_brain_reflection import (
         build_jarvis_brain_reflection_surface,
@@ -192,6 +193,7 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
         "remembered_fact": build_runtime_remembered_fact_signal_surface,
         "world_model": build_runtime_world_model_signal_surface,
         "contradiction_engine": build_contradiction_engine_surface,
+        "user_contradiction": build_user_contradiction_surface,
         "emergence": build_emergence_surface,
         "jarvis_brain_reflection": build_jarvis_brain_reflection_surface,
         "prospective_memory": build_prospective_memory_surface,

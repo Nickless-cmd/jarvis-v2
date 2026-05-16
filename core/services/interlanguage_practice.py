@@ -509,5 +509,58 @@ def interpolate_mood_at(
     return dict(_NEUTRAL_MOOD)
 
 
+# ---------------------------------------------------------------------------
+# Mission Control surface (registreres i signal_surface_router)
+# ---------------------------------------------------------------------------
+
+def build_interlanguage_practice_surface() -> dict[str, Any]:
+    """Surface for Mission Control — 3 vital signs + dummy state ved ingen data.
+
+    1. total_24h: hvor mange expressions er gemt sidste 24t (alle peers)
+    2. per_peer_24h: counts per peer_id (Phase 2 health-check)
+    3. recent_sample: sidste 3 expressions med peer_id (kvalitativ peek)
+
+    Følger samme dict-format som andre Mission Control surfaces:
+    'active' (bool) + topic-specifik state.
+    """
+    ensure_schema()
+    try:
+        since_iso = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
+        with connect() as conn:
+            total_row = conn.execute(
+                "SELECT COUNT(*) AS cnt FROM interlanguage_practice WHERE created_at >= ?",
+                (since_iso,),
+            ).fetchone()
+            per_peer_rows = conn.execute(
+                """SELECT peer_id, COUNT(*) AS cnt
+                   FROM interlanguage_practice
+                   WHERE created_at >= ?
+                   GROUP BY peer_id ORDER BY cnt DESC""",
+                (since_iso,),
+            ).fetchall()
+            recent_rows = conn.execute(
+                """SELECT expression_text, peer_id, created_at
+                   FROM interlanguage_practice
+                   ORDER BY created_at DESC LIMIT 3""",
+            ).fetchall()
+    except Exception as exc:
+        return {"active": False, "error": f"{type(exc).__name__}: {exc}"}
+
+    total_24h = int(total_row["cnt"]) if total_row else 0
+    per_peer = {r["peer_id"]: int(r["cnt"]) for r in per_peer_rows}
+    recent = [
+        {"text": r["expression_text"], "peer": r["peer_id"], "at": r["created_at"]}
+        for r in recent_rows
+    ]
+    if total_24h == 0 and not recent:
+        return {"active": True, "state": "no-data-yet", "total_24h": 0}
+    return {
+        "active": True,
+        "total_24h": total_24h,
+        "per_peer_24h": per_peer,
+        "recent_sample": recent,
+    }
+
+
 # Wrap _ensure_*_table funcs på dette modul med once-cache (Phase 0+1 pattern).
 _install_ensure_once_cache_for(__name__)

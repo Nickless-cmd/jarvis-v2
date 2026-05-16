@@ -243,10 +243,13 @@ def test_current_flow_materializes_open_loop_before_downstream_tracking(
     assert open_loops[0]["status"] == "open"
     assert "initiative tension" in open_loops[0]["summary"].lower()
 
-    assert len(autonomy) == 1
-    assert autonomy[0]["canonical_key"] == "autonomy-pressure:initiative-pressure"
-    assert autonomy[0]["status"] == "active"
+    assert len(autonomy) == 3
+    assert any(a["canonical_key"] == "autonomy-pressure:initiative-pressure" for a in autonomy)
+    assert any(a["canonical_key"] == "autonomy-pressure:question-pressure" for a in autonomy)
+    assert any(a["canonical_key"] == "autonomy-pressure:anomaly-report-pressure" for a in autonomy)
+    assert all(a["status"] == "active" for a in autonomy)
 
-    assert len(lifecycle) == 1
-    assert lifecycle[0]["canonical_key"] == "proactive-loop-lifecycle:initiative-loop:none"
-    assert lifecycle[0]["status"] == "active"
+    assert len(lifecycle) == 2
+    assert any(lc["canonical_key"] == "proactive-loop-lifecycle:initiative-loop:visible-work" for lc in lifecycle)
+    assert any(lc["canonical_key"] == "proactive-loop-lifecycle:question-loop:visible-work" for lc in lifecycle)
+    assert all(lc["status"] == "active" for lc in lifecycle)

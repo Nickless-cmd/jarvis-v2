@@ -41,55 +41,41 @@ def test_heartbeat_living_context_line_includes_experimental_prompt_fragments(
 ) -> None:
     pc = isolated_runtime.prompt_contract
 
-    body_memory = importlib.import_module("core.services.body_memory")
-    ghost_networks = importlib.import_module(
-        "core.services.ghost_networks"
+    # Mock the new living_heartbeat_cycle service (the core replacement)
+    living_cycle = importlib.import_module(
+        "core.services.living_heartbeat_cycle"
     )
-    parallel_selves = importlib.import_module(
-        "core.services.parallel_selves"
-    )
-    silence_listener = importlib.import_module(
-        "core.services.silence_listener"
-    )
-    decision_ghosts = importlib.import_module(
-        "core.services.decision_ghosts"
-    )
-    memory_tattoos = importlib.import_module(
-        "core.services.memory_tattoos"
+    monkeypatch.setattr(
+        living_cycle,
+        "determine_life_phase",
+        lambda: {
+            "phase": "dreaming",
+            "mood_tendency": "contemplative",
+            "suggested_actions": [
+                "generate_counterfactual_dreams",
+                "decay_forgotten_signals",
+                "check_seed_activation",
+            ],
+            "depth_prompt": "Giv slip på rapporteringen.",
+            "play_mode": True,
+            "sleep_batch": True,
+        },
     )
 
-    monkeypatch.setattr(body_memory, "format_body_for_prompt", lambda: "body=warm")
-    monkeypatch.setattr(
-        ghost_networks,
-        "format_ghost_for_prompt",
-        lambda: "ghosts=audible",
+    # Mock relationship_texture for autonomy_from_trust
+    relationship = importlib.import_module(
+        "core.services.relationship_texture"
     )
     monkeypatch.setattr(
-        parallel_selves,
-        "format_self_for_prompt",
-        lambda: "selves=aligned",
-    )
-    monkeypatch.setattr(
-        silence_listener,
-        "format_silence_for_prompt",
-        lambda: "silence=listening",
-    )
-    monkeypatch.setattr(
-        decision_ghosts,
-        "format_decision_ghost_for_prompt",
-        lambda: "decision_ghosts=present",
-    )
-    monkeypatch.setattr(
-        memory_tattoos,
-        "format_tattoo_for_prompt",
-        lambda: "tattoos=glowing",
+        relationship,
+        "derive_appropriate_autonomy_level",
+        lambda: "bounded",
     )
 
     line = pc._heartbeat_living_context_line()
 
-    assert "body=warm" in line
-    assert "ghosts=audible" in line
-    assert "selves=aligned" in line
-    assert "silence=listening" in line
-    assert "decision_ghosts=present" in line
-    assert "tattoos=glowing" in line
+    assert "life_phase=dreaming" in line
+    assert "mood_tendency=contemplative" in line
+    assert "play_mode=true" in line
+    assert "sleep_batch=true" in line
+    assert "autonomy_from_trust=bounded" in line

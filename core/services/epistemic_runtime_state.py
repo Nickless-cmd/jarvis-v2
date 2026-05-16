@@ -3,13 +3,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from core.services.runtime_surface_cache import (
-    get_cached_runtime_surface,
+    get_timed_runtime_surface,
 )
 
 
 def build_epistemic_runtime_state_surface() -> dict[str, object]:
-    return get_cached_runtime_surface(
+    return get_timed_runtime_surface(
         "epistemic_runtime_state_surface",
+        60,
         _build_epistemic_runtime_state_surface_uncached,
     )
 

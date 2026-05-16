@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from core.services.runtime_surface_cache import (
-    get_cached_runtime_surface,
+    get_timed_runtime_surface,
 )
 
 
@@ -11,8 +11,9 @@ _ROLE_NAMES = ("critic", "witness-helper", "planner-helper")
 
 
 def build_subagent_ecology_surface() -> dict[str, object]:
-    return get_cached_runtime_surface(
+    return get_timed_runtime_surface(
         "subagent_ecology_surface",
+        60,
         _build_subagent_ecology_surface_uncached,
     )
 

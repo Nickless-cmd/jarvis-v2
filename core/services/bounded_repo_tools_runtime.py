@@ -5,7 +5,7 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
-from core.services.runtime_surface_cache import get_cached_runtime_surface
+from core.services.runtime_surface_cache import get_timed_runtime_surface
 
 _MAX_EXCERPT_LINES = 4
 _MAX_STATUS_FILES = 6
@@ -27,8 +27,9 @@ def build_bounded_repo_tool_execution_surface(
             ((awareness_surface or {}).get("host_context") or {}).get("repo_root") or ""
         ),
     )
-    return get_cached_runtime_surface(
+    return get_timed_runtime_surface(
         key,
+        60,
         lambda: _build_bounded_repo_tool_execution_surface(
             intent_surface,
             awareness_surface=awareness_surface,

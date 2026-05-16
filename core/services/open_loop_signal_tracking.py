@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from core.services.runtime_surface_cache import (
-    get_cached_runtime_surface,
+    get_timed_runtime_surface,
 )
 
 from datetime import UTC, datetime, timedelta
@@ -132,9 +132,10 @@ def refresh_runtime_open_loop_signal_statuses() -> dict[str, int]:
 
 
 def build_runtime_open_loop_signal_surface(*, limit: int = 8) -> dict[str, object]:
-    return get_cached_runtime_surface(
+    return get_timed_runtime_surface(
         ("runtime_open_loop_signal_surface", max(limit, 1)),
-        lambda: _build_runtime_open_loop_signal_surface_uncached(limit=max(limit, 1)),
+        60,
+                lambda: _build_runtime_open_loop_signal_surface_uncached(limit=max(limit, 1)),
     )
 
 

@@ -250,23 +250,83 @@ def send_discord_file(channel_id: int, text: str, file_path: str) -> dict:
     )
 
 
-def _open_dm_and_send(recipient_discord_id: int, text: str, timeout: float) -> dict[str, object]:
-    """Open DM channel with a Discord user and queue a message. Gateway-process only."""
-    if not _status["connected"] or _client is None or _loop is None:
-        return {"status": "error", "reason": "discord-not-connected"}
+def _open_dm_and_send(
+    recipient_discord_id: int,
+    text: str,
+    timeout: float,
+    max_retries: int = 3,
+    retry_delay: float = 5.0,
+) -> dict[str, object]:
+    """Open DM channel with a Discord user and queue a message. Gateway-process only.
 
-    async def _open() -> int:
-        user = await _client.fetch_user(recipient_discord_id)
-        dm_channel = await user.create_dm()
-        return dm_channel.id
+    Retries up to `max_retries` times with `retry_delay` seconds between attempts.
+    Transient Discord API errors (rate-limit, network blip, timeout) are retried;
+    permanent errors (not-connected, unknown user) are NOT retried.
+    """
+    first_attempt_ts = time.monotonic()
 
-    try:
-        future = asyncio.run_coroutine_threadsafe(_open(), _loop)
-        channel_id = future.result(timeout=timeout)
-        send_discord_message(channel_id, text)
-        return {"status": "sent", "channel_id": channel_id}
-    except Exception as exc:
-        return {"status": "error", "reason": str(exc)}
+    for attempt in range(1, max_retries + 1):
+        # ── Connection check (not retried — if gateway is down, waiting won't help) ──
+        if not _status["connected"] or _client is None or _loop is None:
+            if attempt == 1:
+                return {"status": "error", "reason": "discord-not-connected"}
+            # Subsequent attempts: gateway may have reconnected, so retry once
+            time.sleep(retry_delay)
+            continue
+
+        # ── Remaining timeout for this attempt ──
+        elapsed = time.monotonic() - first_attempt_ts
+        remaining_timeout = max(timeout - elapsed, timeout / 2)
+
+        async def _open() -> int:
+            user = await _client.fetch_user(recipient_discord_id)
+            dm_channel = await user.create_dm()
+            return dm_channel.id
+
+        try:
+            future = asyncio.run_coroutine_threadsafe(_open(), _loop)
+            channel_id = future.result(timeout=remaining_timeout)
+            send_discord_message(channel_id, text)
+            if attempt > 1:
+                logger.info(
+                    "discord_gateway: DM to %d succeeded on attempt %d",
+                    recipient_discord_id, attempt,
+                )
+            return {"status": "sent", "channel_id": channel_id}
+        except Exception as exc:
+            reason = str(exc)
+            # ── Distinguish permanent from transient errors ──
+            exc_lower = reason.lower()
+            is_transient = any(
+                marker in exc_lower
+                for marker in [
+                    "timeout", "rate limit", "rate_limit",
+                    "429", "500", "502", "503", "504",
+                    "temporary", "try again", "connection",
+                    "reset", "refused", "broken pipe",
+                    "http exception", "gateway timeout",
+                    "unknown error",
+                ]
+            )
+            if not is_transient:
+                # Permanent error: don't retry
+                return {"status": "error", "reason": reason}
+
+            if attempt < max_retries:
+                delay = retry_delay * attempt  # linear backoff: 5s, 10s, 15s
+                logger.warning(
+                    "discord_gateway: DM to %d attempt %d/%d failed (%s) — retrying in %.0fs",
+                    recipient_discord_id, attempt, max_retries, reason, delay,
+                )
+                time.sleep(delay)
+            else:
+                logger.error(
+                    "discord_gateway: DM to %d failed after %d attempts: %s",
+                    recipient_discord_id, max_retries, reason,
+                )
+                return {"status": "error", "reason": f"DM failed after {max_retries} attempts: {reason}"}
+
+    return {"status": "error", "reason": "DM failed — unexpected retry exhaustion"}
 
 
 def send_dm_to_owner(text: str, timeout: float = 10.0) -> dict[str, object]:

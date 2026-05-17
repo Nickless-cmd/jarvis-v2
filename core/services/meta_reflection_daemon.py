@@ -63,8 +63,11 @@ def tick_meta_reflection_daemon(cross_snapshot: dict) -> dict[str, object]:
 def _check_credit(cross_snapshot: dict) -> dict[str, object]:
     """Check for unreviewed prompt_variant decisions and score them.
 
-    Runs every tick — cheap query for unreviewed decisions, then uses
-    available signals to generate a credit_score and link it.
+    Uses the partial index idx_cognitive_decisions_pending for O(log N) pre-check.
+    Runs every tick — fast no-op when no pending decisions exist.
+
+    credit_score: 1-5 scale (per Claude review 2026-05-17).
+    evidence_summary: JSON blob with raw context (drift-delta, signals).
     """
     try:
         unreviewed = list_unreviewed_decisions(kind="prompt_variant", limit=3)
@@ -78,7 +81,7 @@ def _check_credit(cross_snapshot: dict) -> dict[str, object]:
     for dec in unreviewed:
         decision_id = dec["decision_id"]
         try:
-            # Build credit_score from available signals
+            # Build credit_score (1-5) and evidence (JSON) from available signals
             score = _estimate_credit_score(dec, cross_snapshot)
             evidence = _build_evidence_summary(dec, cross_snapshot)
 
@@ -97,45 +100,65 @@ def _check_credit(cross_snapshot: dict) -> dict[str, object]:
 
 
 def _estimate_credit_score(decision: dict, cross_snapshot: dict) -> float:
-    """Heuristic credit score 0-100 based on available signals.
+    """Heuristic credit score 1-5 based on available signals.
 
-    Starts at neutral 65, adjusts:
-    - +5 if energy_level is moderate (not low, not frantic)
-    - -10 if there's a recent conflict signal
-    - +10 if curiosity_signal is present (exploration is good)
-    - +/- from Lag 2 drift trend if available
+    Starts at neutral 3, adjusts ±1 based on signals.
+    Drift-delta is stored in evidence_summary, NOT mixed into score
+    (per Claude review — avoid confounders, keep dimensions separate).
     """
-    score = 65.0
+    score = 3.0
 
-    energy = str(cross_snapshot.get("energy_level", "")).lower()
-    if "moderate" in energy or energy in ("0.5", "0.4", "0.6"):
-        score += 5.0
-    elif "low" in energy:
-        score -= 5.0
+    raw = cross_snapshot.get("energy_level", "")
+    try:
+        e = float(raw)
+        if 0.35 <= e <= 0.65:
+            score += 1.0
+        elif e < 0.25:
+            score -= 1.0
+    except (TypeError, ValueError):
+        energy = str(raw).lower()
+        if "moderate" in energy:
+            score += 1.0
+        elif "low" in energy:
+            score -= 1.0
 
     if cross_snapshot.get("last_conflict"):
-        score -= 10.0
+        score -= 1.0
 
     if cross_snapshot.get("curiosity_signal"):
-        score += 10.0
+        score += 0.5
 
-    return max(0.0, min(100.0, score))
+    return max(1.0, min(5.0, score))
 
 
 def _build_evidence_summary(decision: dict, cross_snapshot: dict) -> str:
-    """Build a short evidence string explaining the credit score."""
-    parts = []
+    """Build evidence_summary as JSON blob with raw context signals.
+
+    Stores drift-delta, energy, conflicts as raw context — NOT mixed into score.
+    Claude rationale: confounders are correlative, not causal.
+    Post-hoc analysis after 100+ records will determine if weighting is warranted.
+    """
+    import json as _json
+
+    evidence: dict[str, object] = {
+        "signals": {},
+        "decision_context": {},
+    }
+
+    # Signals snapshot (raw, unweighted)
+    for key in ("energy_level", "last_conflict", "curiosity_signal",
+                 "last_surprise", "inner_voice_mode"):
+        val = cross_snapshot.get(key)
+        if val:
+            evidence["signals"][key] = val
+
+    # Decision context
     if decision.get("options") and decision.get("options") != "[]":
-        parts.append(f"options: {decision['options']}")
+        evidence["decision_context"]["options"] = decision["options"]
     if decision.get("decision"):
-        parts.append(f"chose: {decision['decision'][:60]}")
-    if cross_snapshot.get("energy_level"):
-        parts.append(f"energy={cross_snapshot['energy_level']}")
-    if cross_snapshot.get("last_conflict"):
-        parts.append("conflict_detected")
-    if cross_snapshot.get("curiosity_signal"):
-        parts.append("curiosity_active")
-    return "; ".join(parts) if parts else "auto-scored"
+        evidence["decision_context"]["chosen"] = decision["decision"][:120]
+
+    return _json.dumps(evidence, ensure_ascii=False)
 
 
 def _generate_meta_insight(cross_snapshot: dict) -> str:
@@ -168,8 +191,6 @@ def _generate_meta_insight(cross_snapshot: dict) -> str:
         "- Alt peger i samme retning: ro. Det er usædvanligt.\n"
         "- Overraskelsen og konflikten hænger sammen — begge handler om kontrol."
     )
-    from core.services.daemon_llm import daemon_llm_call
-
     fallback = "Jeg ser et mønster, men det er endnu ikke tydeligt nok til at sætte ord på."
     return daemon_llm_call(prompt, max_len=300, fallback=fallback, daemon_name="meta_reflection")
 

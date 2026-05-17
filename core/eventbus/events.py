@@ -154,6 +154,7 @@ ALLOWED_EVENT_FAMILIES = {
     "learning_pipeline",  # learning_pipeline_orchestrator — Phase 3 loop closure (added 2026-05-11)
     "learning_policy",    # policy_abstraction — Phase 2 generalization (added 2026-05-11)
     "self_repair",        # emotion_repair_bridge_daemon (added 2026-05-11)
+    "credit_assignment",  # Lag 1 — choice recording & outcome linking (added 2026-05-17)
 }
 
 

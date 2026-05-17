@@ -37,6 +37,15 @@ def _reset_ensure_once_cache():
     except ImportError:
         pass
 
+    # 2026-05-17: efter perf-fix returnerer get_timed_runtime_surface samme
+    # objekt på hver cache-hit (ingen per-read deepcopy). _TIMED_CACHE er
+    # module-level state der ellers lækker mellem tests — clear før hver.
+    try:
+        from core.services.runtime_surface_cache import _TIMED_CACHE
+        _TIMED_CACHE.clear()
+    except ImportError:
+        pass
+
 
 @pytest.fixture()
 def isolated_runtime(

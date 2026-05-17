@@ -64,3 +64,38 @@ def test_timed_runtime_surface_reuses_value_across_calls_within_ttl() -> None:
     assert first == {"count": 1}
     assert second == {"count": 1}
     assert calls["count"] == 1
+
+
+def test_timed_runtime_surface_returns_same_object_on_hit() -> None:
+    """Cache-hits skal returnere samme objekt (ingen per-read deepcopy).
+
+    Surface'en er 140KB+ og deepcopy ved hver read koster ~1.6ms/call —
+    målt til ~20% af runtime-worker CPU under load. Kontrakten er nu:
+    callers skal behandle surface som read-only. Audit (2026-05-17):
+    alle produktions-call-sites læser kun, muterer ikke.
+    """
+    def builder() -> dict[str, object]:
+        return {"nested": {"value": 42}, "list": [1, 2, 3]}
+
+    first = get_timed_runtime_surface("readonly-demo", 60.0, builder)
+    second = get_timed_runtime_surface("readonly-demo", 60.0, builder)
+
+    assert first is second, "cache hit skal returnere SAMME objekt, ikke deepcopy"
+    assert first["nested"] is second["nested"]
+
+
+def test_timed_runtime_surface_isolates_builder_from_external_mutation() -> None:
+    """Builder-returværdi gemmes som deepcopy så ekstern mutation af
+    builder's lokale state ikke poisoner cachen."""
+    source = {"live": True, "items": [1, 2]}
+
+    def builder() -> dict[str, object]:
+        return source  # builder returnerer ref til ekstern state
+
+    cached = get_timed_runtime_surface("isolation-demo", 60.0, builder)
+    source["live"] = False
+    source["items"].append(99)
+
+    # Cachen er isoleret fra builder's eksterne mutation
+    assert cached["live"] is True
+    assert cached["items"] == [1, 2]

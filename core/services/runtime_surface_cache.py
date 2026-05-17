@@ -61,14 +61,23 @@ def get_timed_runtime_surface(
     with _TIMED_CACHE_LOCK:
         cached = _TIMED_CACHE.get(key)
         if cached and cached[0] > now:
-            value = copy.deepcopy(cached[1])
+            # 2026-05-17 perf fix: ingen deepcopy på read.
+            # Surface'en er 140KB+; deepcopy ved hver hit kostede ~1.6ms/call
+            # = ~20% af runtime-worker CPU under load (py-spy sample).
+            # Kontrakt: callers MÅ IKKE mutere returværdien. Audit:
+            # alle produktions-call-sites (mission_control routes,
+            # runtime_awareness_signal_tracking) læser kun.
+            value = cached[1]
             if cache is not None:
                 cache[key] = value
             return value  # type: ignore[return-value]
 
+    # Deepcopy på STORE beskytter cachen mod at builder returnerer en
+    # reference til ekstern muterbar state.
     value = builder()
+    stored = copy.deepcopy(value)
     with _TIMED_CACHE_LOCK:
-        _TIMED_CACHE[key] = (time.monotonic() + ttl_seconds, copy.deepcopy(value))
+        _TIMED_CACHE[key] = (time.monotonic() + ttl_seconds, stored)
     if cache is not None:
-        cache[key] = value
-    return value
+        cache[key] = stored
+    return stored  # type: ignore[return-value]

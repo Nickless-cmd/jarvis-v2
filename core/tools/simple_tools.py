@@ -524,6 +524,10 @@ from core.tools.nudge_broend_tools import (
     NUDGE_BROEND_TOOL_DEFINITIONS,
     NUDGE_BROEND_TOOL_HANDLERS,
 )
+from core.tools.coding_lane_tools import (
+    CODING_LANE_TOOL_DEFINITIONS,
+    CODING_LANE_TOOL_HANDLERS,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -2369,6 +2373,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *REASONING_STORE_TOOL_DEFINITIONS,
     *FORGETTING_TOOL_DEFINITIONS,
     *NUDGE_BROEND_TOOL_DEFINITIONS,
+    *CODING_LANE_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -6291,6 +6296,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Forgetting (Lag 11) — release_memory ritual
     **FORGETTING_TOOL_HANDLERS,
     **NUDGE_BROEND_TOOL_HANDLERS,
+    **CODING_LANE_TOOL_HANDLERS,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
     "remember_this": _exec_remember_this,

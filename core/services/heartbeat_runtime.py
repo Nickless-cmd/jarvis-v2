@@ -254,7 +254,7 @@ def start_heartbeat_scheduler(*, name: str = "default") -> None:
         "due": bool(recovery.get("due")),
     }
     logger.info(
-        "heartbeat scheduler started name=%s due=%s schedule_state=%s recovery_status=%s",
+        "HEARTBEAT-STATE: scheduler started name=%s due=%s schedule_state=%s recovery_status=%s",
         name,
         bool(recovery.get("due")),
         str(recovery.get("schedule_state") or "unknown"),
@@ -8172,7 +8172,7 @@ def _persist_runtime_state(
         updated_at=str(merged_input.get("updated_at") or now.isoformat()),
     )
     _log_debug(
-        "_persist_runtime_state OK",
+        "HEARTBEAT-STATE: persist ok",
         schedule_state=state.get("schedule_state"),
         state_id=state.get("state_id"),
         currently_ticking=state.get("currently_ticking"),
@@ -8416,7 +8416,7 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
     currently_ticking = False
 
     _log_debug(
-        "_prepare_scheduler_startup BEFORE first persist",
+        "HEARTBEAT-STATE: before first persist",
         name=name,
         overrides={
             "blocked_reason": blocked_reason,
@@ -8441,12 +8441,24 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
         },
     )
     _log_debug(
-        "_prepare_scheduler_startup AFTER first persist",
+        "HEARTBEAT-STATE: after first persist",
         name=name,
         schedule_state=startup_state.get("schedule_state"),
         due=startup_state.get("due"),
         state_id=startup_state.get("state_id"),
     )
+    # Verify: fresh DB-read comparison after persist
+    fresh_read = get_heartbeat_runtime_state()
+    expected_updated_at = startup_state.get("updated_at")
+    actual_updated_at = fresh_read.get("updated_at") if fresh_read else None
+    if expected_updated_at and actual_updated_at and expected_updated_at != actual_updated_at:
+        logger.error(
+            "HEARTBEAT-STATE-WRITE-MISMATCH first persist: "
+            "expected_updated_at=%s actual_updated_at=%s",
+            expected_updated_at, actual_updated_at,
+        )
+    elif fresh_read is None:
+        logger.error("HEARTBEAT-STATE-WRITE-MISMATCH first persist: fresh_read returned None")
     next_tick_at = _parse_dt(str(startup_state.get("next_tick_at") or ""))
     should_trigger_recovery = bool(
         policy.get("enabled")
@@ -8466,7 +8478,7 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
             },
         )
         _log_debug(
-            "_prepare_scheduler_startup BEFORE recovery persist",
+            "HEARTBEAT-STATE: before recovery persist",
             name=name,
             should_trigger_recovery=should_trigger_recovery,
         )
@@ -8485,11 +8497,23 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
             },
         )
         _log_debug(
-            "_prepare_scheduler_startup AFTER recovery persist",
+            "HEARTBEAT-STATE: after recovery persist",
             name=name,
             schedule_state=startup_state.get("schedule_state"),
             state_id=startup_state.get("state_id"),
         )
+        # Verify: fresh DB-read comparison after recovery persist
+        fresh_after_recovery = get_heartbeat_runtime_state()
+        expected_updated_at = startup_state.get("updated_at")
+        actual_updated_at = fresh_after_recovery.get("updated_at") if fresh_after_recovery else None
+        if expected_updated_at and actual_updated_at and expected_updated_at != actual_updated_at:
+            logger.error(
+                "HEARTBEAT-STATE-WRITE-MISMATCH recovery persist: "
+                "expected_updated_at=%s actual_updated_at=%s",
+                expected_updated_at, actual_updated_at,
+            )
+        elif fresh_after_recovery is None:
+            logger.error("HEARTBEAT-STATE-WRITE-MISMATCH recovery persist: fresh_read returned None")
     _log_debug(
         "heartbeat scheduler startup prepared",
         name=name,

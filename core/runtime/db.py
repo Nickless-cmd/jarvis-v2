@@ -24631,26 +24631,26 @@ def upsert_heartbeat_runtime_state(
             ),
         )
         _logger.info(
-            "heartbeat runtime state BEFORE commit: schedule_state=%s due=%s updated_at=%s state_id=%s",
-            schedule_state, due, updated_at, state_id,
+            "HEARTBEAT-UPSERT-BEFORE-COMMIT: schedule_state=%s due=%s updated_at=%s state_id=%s in_transaction=%s",
+            schedule_state, due, updated_at, state_id, conn.in_transaction,
         )
         try:
             conn.commit()
         except Exception:
             _logger.error(
-                "heartbeat runtime state COMMIT FAILED: schedule_state=%s due=%s updated_at=%s state_id=%s",
+                "HEARTBEAT-UPSERT-COMMIT-FAILED: schedule_state=%s due=%s updated_at=%s state_id=%s",
                 schedule_state, due, updated_at, state_id,
             )
             raise
     state = get_heartbeat_runtime_state()
     if state is None:
         _logger.error(
-            "heartbeat runtime state NOT PERSISTED after commit: schedule_state=%s due=%s updated_at=%s state_id=%s",
+            "HEARTBEAT-UPSERT-NOT-PERSISTED: schedule_state=%s due=%s updated_at=%s state_id=%s",
             schedule_state, due, updated_at, state_id,
         )
         raise RuntimeError("heartbeat runtime state was not persisted")
     _logger.info(
-        "heartbeat runtime state persisted OK: schedule_state=%s state_id=%s",
+        "HEARTBEAT-UPSERT-PERSISTED-OK: schedule_state=%s state_id=%s",
         state.get("schedule_state"), state.get("state_id"),
     )
     return state

@@ -8131,7 +8131,7 @@ def _persist_runtime_state(
         **overrides,
     }
     merged = _merge_runtime_state(policy=policy, persisted=merged_input, now=now)
-    return upsert_heartbeat_runtime_state(
+    state = upsert_heartbeat_runtime_state(
         state_id=str(merged_input.get("state_id") or "default"),
         last_tick_id=str(merged_input.get("last_tick_id") or ""),
         last_tick_at=str(merged_input.get("last_tick_at") or ""),
@@ -8171,6 +8171,14 @@ def _persist_runtime_state(
         last_action_artifact=str(merged_input.get("last_action_artifact") or ""),
         updated_at=str(merged_input.get("updated_at") or now.isoformat()),
     )
+    _log_debug(
+        "_persist_runtime_state OK",
+        schedule_state=state.get("schedule_state"),
+        state_id=state.get("state_id"),
+        currently_ticking=state.get("currently_ticking"),
+        scheduler_active=state.get("scheduler_active"),
+    )
+    return state
 
 
 def _parse_heartbeat_key_values(text: str) -> dict[str, str]:
@@ -8407,6 +8415,15 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
         last_recovery_at = now.isoformat()
     currently_ticking = False
 
+    _log_debug(
+        "_prepare_scheduler_startup BEFORE first persist",
+        name=name,
+        overrides={
+            "blocked_reason": blocked_reason,
+            "currently_ticking": currently_ticking,
+            "recovery_status": recovery_status,
+        },
+    )
     startup_state = _persist_runtime_state(
         policy=policy,
         persisted=persisted,
@@ -8422,6 +8439,13 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
             "last_recovery_at": last_recovery_at,
             "updated_at": now.isoformat(),
         },
+    )
+    _log_debug(
+        "_prepare_scheduler_startup AFTER first persist",
+        name=name,
+        schedule_state=startup_state.get("schedule_state"),
+        due=startup_state.get("due"),
+        state_id=startup_state.get("state_id"),
     )
     next_tick_at = _parse_dt(str(startup_state.get("next_tick_at") or ""))
     should_trigger_recovery = bool(
@@ -8441,6 +8465,11 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
                 "trigger": "startup",
             },
         )
+        _log_debug(
+            "_prepare_scheduler_startup BEFORE recovery persist",
+            name=name,
+            should_trigger_recovery=should_trigger_recovery,
+        )
         startup_state = _persist_runtime_state(
             policy=policy,
             persisted=get_heartbeat_runtime_state() or startup_state,
@@ -8454,6 +8483,12 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
                 "last_recovery_at": now.isoformat(),
                 "updated_at": now.isoformat(),
             },
+        )
+        _log_debug(
+            "_prepare_scheduler_startup AFTER recovery persist",
+            name=name,
+            schedule_state=startup_state.get("schedule_state"),
+            state_id=startup_state.get("state_id"),
         )
     _log_debug(
         "heartbeat scheduler startup prepared",

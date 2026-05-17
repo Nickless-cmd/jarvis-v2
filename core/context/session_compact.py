@@ -19,6 +19,7 @@ class CompactResult:
     freed_tokens: int
     summary_text: str
     marker_id: str
+    validation: dict | None = None  # Lag C: post-compact validation report
 
 
 def compact_session_history(
@@ -50,6 +51,25 @@ def compact_session_history(
 
     marker_id = _store_marker(session_id, summary_text, git_sha=git_sha)
 
+    # Lag C: post-compact validation — check for hallucinated claims
+    validation: dict | None = None
+    try:
+        from core.context.compact_ground_truth import validate_compact_marker
+        validation = validate_compact_marker(
+            session_id,
+            summary_text,
+            marker_id=marker_id,
+        )
+        if validation.get("verified_false", 0) > 0:
+            logger.warning(
+                "session_compact: session=%s marker=%s has %d verified-false claims",
+                session_id,
+                marker_id,
+                validation["verified_false"],
+            )
+    except Exception as exc:
+        logger.debug("session_compact: validation skipped (%s)", exc)
+
     logger.info(
         "session_compact: session=%s compacted %d messages → %d tokens freed",
         session_id,
@@ -60,6 +80,7 @@ def compact_session_history(
         freed_tokens=freed_tokens,
         summary_text=summary_text,
         marker_id=marker_id,
+        validation=validation,
     )
 
 

@@ -191,6 +191,447 @@ def format_ground_truth_block(gt: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+# ──────────────────────────────────────────────────────────────────────
+# Lag C: Post-compact validation — detect hallucinated claims
+# ──────────────────────────────────────────────────────────────────────
+
+HALLUCINATION_PATTERNS: list[tuple[str, str]] = [
+    # (Danish_pattern, English_pattern)
+    ("ikke implementeret", "not implemented"),
+    ("mangler", "missing"),
+    ("åbent", "open"),
+    ("klar til design", "ready for design"),
+    ("skal bygges", "needs to be built"),
+    ("endnu ikke", "not yet"),
+    ("venter på", "waiting for"),
+    ("ikke påbegyndt", "not started"),
+    ("findes ikke", "does not exist"),
+    ("manglende", "lacking"),
+]
+
+
+def _parse_compact_claims(marker_text: str) -> list[dict[str, str]]:
+    """Extract suspicious claims from a compact marker text.
+
+    Returns a list of dicts with:
+      - pattern: the matched pattern text
+      - context: ~80 chars surrounding the match
+      - claim_type: 'missing_file' | 'missing_feature' | 'unimplemented'
+    """
+    from core.context.token_estimate import estimate_tokens
+    import re
+
+    claims: list[dict[str, str]] = []
+    lower_text = marker_text.lower()
+
+    for da_pat, en_pat in HALLUCINATION_PATTERNS:
+        # Try both patterns
+        for pat in (da_pat, en_pat):
+            if pat not in lower_text:
+                continue
+            # Find each occurrence
+            start = 0
+            while True:
+                idx = lower_text.find(pat, start)
+                if idx == -1:
+                    break
+
+                # Grab surrounding context (~80 chars)
+                ctx_start = max(0, idx - 60)
+                ctx_end = min(len(marker_text), idx + len(pat) + 60)
+                context = marker_text[ctx_start:ctx_end].replace("\n", " ").strip()
+
+                # Classify the claim type
+                claim_type = "unimplemented"
+                # Check if it mentions a file / code thing
+                if any(w in context.lower() for w in
+                       (".py", ".ts", ".js", ".md", "file", "modul", "service", "tool")):
+                    claim_type = "missing_file"
+                elif any(w in context.lower() for w in
+                         ("funktion", "feature", "kommando", "command", "daemon")):
+                    claim_type = "missing_feature"
+
+                claims.append({
+                    "pattern": pat,
+                    "context": context[:120],
+                    "claim_type": claim_type,
+                })
+                start = idx + 1
+
+    # Deduplicate by (pattern, context_prefix) — same pattern + same context = duplicate
+    seen: set[str] = set()
+    unique: list[dict[str, str]] = []
+    for c in claims:
+        key = f"{c['pattern']}|{c['context'][:60]}"
+        if key not in seen:
+            seen.add(key)
+            unique.append(c)
+    return unique
+
+
+def _check_claim_against_ground_truth(
+    claim: dict[str, str],
+    ground_truth: dict[str, Any],
+) -> dict[str, Any]:
+    """Check a single claim against ground truth. Returns verification result.
+
+    Returns:
+        {
+            "pattern": str,
+            "context": str,
+            "verified_false": bool,   # True = claim contradicts ground truth
+            "evidence": str,          # Why it's verified false
+            "confidence": str,        # "high" | "medium" | "low"
+        }
+    """
+    ctx = claim["context"]
+    result = {
+        "pattern": claim["pattern"],
+        "context": ctx,
+        "verified_false": False,
+        "evidence": "",
+        "confidence": "low",
+    }
+
+    # Check 1: Does any KEY_FILE name appear in the context next to a "missing" claim?
+    for rel_path in (ground_truth.get("key_files") or {}):
+        filename = rel_path.split("/")[-1]  # e.g. "db_credit_assignment.py"
+        if filename.replace(".py", "") in ctx or filename.replace("_", " ") in ctx:
+            actual_status = ground_truth["key_files"].get(rel_path, "unknown")
+            if actual_status == "exists":
+                result["verified_false"] = True
+                result["evidence"] = (
+                    f"Claim mentions '{filename}' as missing/unimplemented, "
+                    f"but file exists at {rel_path}"
+                )
+                result["confidence"] = "high"
+                return result
+            elif actual_status == "missing":
+                result["verified_false"] = False
+                result["evidence"] = f"File {rel_path} is indeed missing"
+                result["confidence"] = "high"
+                return result
+
+    # Check 2: Does the context match any commit message topic?
+    commits = ground_truth.get("recent_commits", "")
+    if commits:
+        # Extract topic words from context (remove noise words)
+        topic_words = [
+            w for w in ctx.lower().split()
+            if len(w) > 3 and w not in ("ikke", "med", "til", "det", "den", "der",
+                                        "some", "thing", "this", "that", "with", "from")
+        ]
+        for word in topic_words:
+            if word in commits.lower():
+                result["verified_false"] = True
+                result["evidence"] = (
+                    f"Claim mentions '{word}' as unimplemented, but "
+                    f"recent commits reference '{word}'"
+                )
+                result["confidence"] = "medium"
+                return result
+
+    # Check 3: Does it claim cognitive_decisions is missing when it exists?
+    if claim["pattern"] in ("mangler", "missing", "findes ikke", "does not exist"):
+        if "cognitive" in ctx.lower() or "beslutning" in ctx.lower():
+            dec_count = ground_truth.get("cognitive_decisions_count")
+            if dec_count is not None and dec_count > 0:
+                result["verified_false"] = True
+                result["evidence"] = (
+                    f"Claim suggests cognitive_decisions is missing/unavailable, "
+                    f"but DB has {dec_count} records"
+                )
+                result["confidence"] = "high"
+                return result
+            elif dec_count == 0:
+                result["verified_false"] = False
+                result["evidence"] = "cognitive_decisions table exists but is empty"
+                result["confidence"] = "medium"
+                return result
+
+    return result
+
+
+def _ensure_compaction_validation_table() -> None:
+    """Create compaction_validation_failures table if it doesn't exist (Lag D prep)."""
+    try:
+        from core.runtime.db import connect as _connect
+        with _connect() as _conn:
+            _conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS compaction_validation_failures (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT NOT NULL,
+                    marker_id TEXT NOT NULL DEFAULT '',
+                    failures_json TEXT NOT NULL DEFAULT '[]',
+                    regenerated BOOLEAN NOT NULL DEFAULT 0,
+                    new_marker_id TEXT NOT NULL DEFAULT '',
+                    detected_at TEXT NOT NULL,
+                    resolved_at TEXT
+                )
+                """
+            )
+    except Exception:
+        pass
+
+
+def _log_validation_failure(
+    session_id: str,
+    marker_id: str,
+    failures: list[dict[str, Any]],
+) -> int | None:
+    """Log a validation failure to DB. Returns the row ID or None."""
+    import json
+    try:
+        _ensure_compaction_validation_table()
+        from core.runtime.db import connect as _connect
+        with _connect() as _conn:
+            _conn.execute(
+                """
+                INSERT INTO compaction_validation_failures
+                    (session_id, marker_id, failures_json, detected_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    session_id,
+                    marker_id,
+                    json.dumps(failures, ensure_ascii=False),
+                    datetime.now(UTC).isoformat(),
+                ),
+            )
+            return _conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    except Exception as exc:
+        logger.warning("compact_ground_truth: failed to log validation failure: %s", exc)
+        return None
+
+
+def validate_compact_marker(
+    session_id: str,
+    marker_text: str,
+    marker_id: str = "",
+    ground_truth: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Post-compact validation of a compact marker against ground truth.
+
+    Lag C: Parses the marker for hallucination patterns (claims that something
+    is missing, not implemented, or open) and cross-references each against
+    verifiable ground truth.
+
+    If false claims are found, they're logged to the compaction_validation_failures
+    table for later investigation and potential auto-regeneration.
+
+    Returns a validation report dict:
+        {
+            "marker_id": str,
+            "session_id": str,
+            "checked_at": str (ISO),
+            "total_suspicious_claims": int,
+            "verified_false": int,          # claims that ARE hallucinated
+            "verified_true": int,            # claims that are actually correct
+            "inconclusive": int,             # can't verify either way
+            "failures": [                    # only the verified_false ones
+                { "pattern", "context", "evidence", "confidence" }
+            ],
+            "passed": bool,  # True if zero verified_false
+            "logged": bool,   # True if failures were persisted to DB
+        }
+    """
+    if not marker_text:
+        return {
+            "marker_id": marker_id,
+            "session_id": session_id,
+            "checked_at": datetime.now(UTC).isoformat(),
+            "total_suspicious_claims": 0,
+            "verified_false": 0,
+            "verified_true": 0,
+            "inconclusive": 0,
+            "failures": [],
+            "passed": True,
+            "logged": False,
+        }
+
+    # Collect ground truth if not provided
+    if ground_truth is None:
+        ground_truth = collect_compact_ground_truth(session_id)
+
+    # Parse claims
+    claims = _parse_compact_claims(marker_text)
+
+    # Check each claim
+    verified_false: list[dict[str, Any]] = []
+    verified_true_count = 0
+    inconclusive_count = 0
+
+    for claim in claims:
+        result = _check_claim_against_ground_truth(claim, ground_truth)
+        if result["verified_false"]:
+            verified_false.append(result)
+        elif result["confidence"] == "high":
+            verified_true_count += 1
+        else:
+            inconclusive_count += 1
+
+    # Log failures if any
+    logged = False
+    if verified_false:
+        row_id = _log_validation_failure(session_id, marker_id, verified_false)
+        logged = row_id is not None
+
+    return {
+        "marker_id": marker_id,
+        "session_id": session_id,
+        "checked_at": datetime.now(UTC).isoformat(),
+        "total_suspicious_claims": len(claims),
+        "verified_false": len(verified_false),
+        "verified_true": verified_true_count,
+        "inconclusive": inconclusive_count,
+        "failures": verified_false,
+        "passed": len(verified_false) == 0,
+        "logged": logged,
+    }
+
+
+def auto_regenerate_compact_marker(
+    session_id: str,
+    original_marker_id: str = "",
+) -> str | None:
+    """Auto-regenerate a compact marker if post-compact validation failed.
+
+    Injects the ground-truth block directly into the compaction prompt so the
+    LLM has factual data and cannot hallucinate about missing files/features.
+
+    Returns the new marker_id, or None on failure. If the original marker
+    needs no correction, returns None without regenerating.
+    """
+    # Fetch current marker
+    from core.services.chat_sessions import get_compact_marker_with_sha
+    current_text, current_sha = get_compact_marker_with_sha(session_id)
+    if not current_text:
+        return None
+
+    # Validate it first
+    gt = collect_compact_ground_truth(session_id)
+    report = validate_compact_marker(
+        session_id, current_text,
+        marker_id=original_marker_id,
+        ground_truth=gt,
+    )
+
+    if report["passed"]:
+        return None  # No correction needed
+
+    logger.info(
+        "auto_regenerate: session=%s has %d verified-false claims — regenerating",
+        session_id, report["verified_false"],
+    )
+
+    # Build a corrected compact prompt with ground truth injected
+    from core.context.compact_llm import call_compact_llm
+
+    gt_block = format_ground_truth_block(gt)
+    corrected_prompt = (
+        ">>> CORRECTING PREVIOUS COMPACT MARKER\n"
+        "The previous compact marker contained claims that contradict verifiable facts.\n"
+        "Here are the verified facts — use them to produce an ACCURATE summary:\n\n"
+        f"{gt_block}\n\n"
+        "The previous (incorrect) marker was:\n"
+        f"{current_text}\n\n"
+        "---\n"
+        "Rewrite the compact summary above, correcting any factual errors.\n"
+        "Focus on actual session context. Be precise — don't speculate.\n"
+        "Keep it under 300 words."
+    )
+
+    new_summary = call_compact_llm(corrected_prompt)
+    if not new_summary or new_summary.startswith("[Kontekst komprimeret"):
+        logger.warning("auto_regenerate: LLM returned fallback — keeping original")
+        return None
+
+    # Store the new marker
+    from core.services.chat_sessions import store_compact_marker
+    new_sha = get_current_git_sha()
+    new_marker_id = store_compact_marker(session_id, new_summary, git_sha=new_sha)
+
+    # Mark the original failure as resolved
+    try:
+        _ensure_compaction_validation_table()
+        from core.runtime.db import connect as _connect
+        with _connect() as _conn:
+            _conn.execute(
+                """
+                UPDATE compaction_validation_failures
+                SET regenerated = 1, new_marker_id = ?, resolved_at = ?
+                WHERE session_id = ? AND marker_id = ? AND resolved_at IS NULL
+                """,
+                (new_marker_id, datetime.now(UTC).isoformat(), session_id, original_marker_id),
+            )
+    except Exception:
+        pass
+
+    logger.info(
+        "auto_regenerate: session=%s regenerated marker %s",
+        session_id, new_marker_id,
+    )
+    return new_marker_id
+
+
+def get_validation_failures(session_id: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
+    """Read recent compaction validation failures from DB.
+
+    If session_id is given, filters to that session.
+    Returns list of dicts sorted by detected_at DESC.
+    """
+    import json
+    try:
+        _ensure_compaction_validation_table()
+        from core.runtime.db import connect as _connect
+        with _connect() as _conn:
+            if session_id:
+                rows = _conn.execute(
+                    """
+                    SELECT * FROM compaction_validation_failures
+                    WHERE session_id = ?
+                    ORDER BY id DESC LIMIT ?
+                    """,
+                    (session_id, limit),
+                ).fetchall()
+            else:
+                rows = _conn.execute(
+                    """
+                    SELECT * FROM compaction_validation_failures
+                    ORDER BY id DESC LIMIT ?
+                    """,
+                    (limit,),
+                ).fetchall()
+        return [
+            {
+                "id": r["id"],
+                "session_id": r["session_id"],
+                "marker_id": r["marker_id"],
+                "failures": json.loads(r["failures_json"]),
+                "regenerated": bool(r["regenerated"]),
+                "new_marker_id": r["new_marker_id"],
+                "detected_at": r["detected_at"],
+                "resolved_at": r["resolved_at"],
+            }
+            for r in rows
+        ]
+    except Exception as exc:
+        logger.warning("compact_ground_truth: get_validation_failures failed: %s", exc)
+        return []
+
+
+def get_validation_failures_summary(session_id: str | None = None) -> dict[str, Any]:
+    """Get a summary of validation failures for awareness / heartbeat."""
+    failures = get_validation_failures(session_id)
+    return {
+        "total_failures": len(failures),
+        "unresolved": sum(1 for f in failures if not f["resolved_at"]),
+        "auto_regenerated": sum(1 for f in failures if f["regenerated"]),
+        "latest": failures[0] if failures else None,
+    }
+
+
 def get_compact_marker_freshness(stored_sha: str | None) -> dict[str, Any]:
     """Check freshness of a stored compact marker against current git HEAD.
 

@@ -413,3 +413,170 @@ def test_compact_context_tool_returns_freed_tokens(monkeypatch):
     result = simple_tools._exec_compact_context({})
     assert result["status"] == "ok"
     assert result["freed_tokens"] == 5000
+
+
+# ── Task 10: Lag C — Post-compact validation ──────────────────────────────
+
+def test_parse_compact_claims_empty_text():
+    from core.context.compact_ground_truth import _parse_compact_claims
+    assert _parse_compact_claims("") == []
+    assert _parse_compact_claims("Nothing suspicious here") == []
+
+
+def test_parse_compact_claims_detects_missing_pattern():
+    from core.context.compact_ground_truth import _parse_compact_claims
+
+    text = "The credit assignment module is **not implemented** yet."
+    claims = _parse_compact_claims(text)
+    assert len(claims) == 1
+    assert "not implemented" in claims[0]["context"].lower()
+    assert claims[0]["claim_type"] in ("missing_file", "missing_feature", "unimplemented")
+
+
+def test_parse_compact_claims_danish_patterns():
+    from core.context.compact_ground_truth import _parse_compact_claims
+
+    text = "Lag 1 credit assignment mangler stadig. Workspace-loader er ikke påbegyndt."
+    claims = _parse_compact_claims(text)
+    assert len(claims) >= 2  # 'mangler' + 'ikke påbegyndt'
+    patterns = [c["pattern"] for c in claims]
+    assert "mangler" in patterns
+    assert "ikke påbegyndt" in patterns
+
+
+def test_parse_compact_claims_deduplicates_by_context():
+    from core.context.compact_ground_truth import _parse_compact_claims
+
+    text = "X mangler. X mangler stadig. X mangler helt."
+    claims = _parse_compact_claims(text)
+    assert len(claims) == 1  # all three are the same "X mangler" context
+
+
+def test_check_claim_detects_file_exists(monkeypatch):
+    from core.context.compact_ground_truth import _check_claim_against_ground_truth
+
+    ground_truth = {
+        "current_git_sha": "abc1234",
+        "key_files": {
+            "core/runtime/db_credit_assignment.py": "exists",
+            "core/services/chat_sessions.py": "exists",
+        },
+        "cognitive_decisions_count": 47,
+    }
+
+    # Claim about a file that DOES exist
+    claim = {
+        "pattern": "not implemented",
+        "context": "The db_credit_assignment module is not implemented yet",
+        "claim_type": "missing_file",
+    }
+    result = _check_claim_against_ground_truth(claim, ground_truth)
+    assert result["verified_false"] is True
+    assert result["confidence"] == "high"
+
+
+def test_check_claim_accepts_file_really_missing(monkeypatch):
+    from core.context.compact_ground_truth import _check_claim_against_ground_truth
+
+    ground_truth = {
+        "current_git_sha": "abc1234",
+        "key_files": {
+            "core/runtime/db_credit_assignment.py": "missing",
+        },
+        "cognitive_decisions_count": 0,
+    }
+
+    claim = {
+        "pattern": "missing",
+        "context": "The db_credit_assignment file is missing",
+        "claim_type": "missing_file",
+    }
+    result = _check_claim_against_ground_truth(claim, ground_truth)
+    assert result["verified_false"] is False  # file IS missing, claim is honest
+    assert result["confidence"] == "high"
+
+
+def test_check_claim_cognitive_decisions_exists():
+    from core.context.compact_ground_truth import _check_claim_against_ground_truth
+
+    ground_truth = {
+        "current_git_sha": "abc1234",
+        "key_files": {},
+        "cognitive_decisions_count": 47,
+    }
+
+    claim = {
+        "pattern": "missing",
+        "context": "cognitive decisions tracking is still missing",
+        "claim_type": "missing_feature",
+    }
+    result = _check_claim_against_ground_truth(claim, ground_truth)
+    assert result["verified_false"] is True
+    assert "47" in result["evidence"]
+
+
+def test_check_claim_inconclusive_if_no_match():
+    from core.context.compact_ground_truth import _check_claim_against_ground_truth
+
+    ground_truth = {
+        "current_git_sha": "abc1234",
+        "key_files": {"some/file.py": "exists"},
+        "cognitive_decisions_count": None,
+    }
+
+    claim = {
+        "pattern": "missing",
+        "context": "Something completely unrelated is missing",
+        "claim_type": "unimplemented",
+    }
+    result = _check_claim_against_ground_truth(claim, ground_truth)
+    assert result["verified_false"] is False
+    assert result["confidence"] == "low"
+
+
+def test_validate_compact_marker_passed_with_no_claims():
+    from core.context.compact_ground_truth import validate_compact_marker
+
+    report = validate_compact_marker("session-x", "Everything was built and working fine.")
+    assert report["passed"] is True
+    assert report["total_suspicious_claims"] == 0
+    assert report["verified_false"] == 0
+
+
+def test_validate_compact_marker_never_logs_on_pass():
+    from core.context.compact_ground_truth import validate_compact_marker
+
+    report = validate_compact_marker("session-x", "Normal conversation about testing.")
+    assert report["logged"] is False
+
+
+def test_auto_regenerate_noop_when_passed(monkeypatch):
+    """auto_regenerate should return None when marker has no false claims."""
+    from core.context.compact_ground_truth import auto_regenerate_compact_marker
+
+    monkeypatch.setattr(
+        "core.services.chat_sessions.get_compact_marker_with_sha",
+        lambda sid: ("Clean marker with no issues", "abc1234"),
+    )
+    result = auto_regenerate_compact_marker("session-x")
+    assert result is None  # no regeneration needed
+
+
+def test_compact_result_validation_default():
+    """CompactResult should still work without validation field (backward compat)."""
+    from core.context.session_compact import CompactResult
+    r = CompactResult(freed_tokens=100, summary_text="test", marker_id="m-1")
+    assert r.validation is None
+    assert r.freed_tokens == 100
+
+
+def test_compact_result_validation_provided():
+    """CompactResult accepts validation field."""
+    from core.context.session_compact import CompactResult
+    r = CompactResult(
+        freed_tokens=100,
+        summary_text="test",
+        marker_id="m-1",
+        validation={"passed": True, "verified_false": 0},
+    )
+    assert r.validation["passed"] is True

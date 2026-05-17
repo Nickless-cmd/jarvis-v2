@@ -1,0 +1,7 @@
+2026-05-15T10:31:57.352078+00:00  baseline_before  cold=102.62ms  warm=12.27ms
+2026-05-15T10:31:57.545268+00:00  baseline_before  cold=105.94ms  warm=11.77ms
+2026-05-15T10:31:57.740472+00:00  baseline_before  cold=107.91ms  warm=11.19ms
+2026-05-15T11:30:25.402052+00:00  phase0_after  cold=93.01ms  warm=10.40ms
+2026-05-15T11:30:25.570045+00:00  phase0_after  cold=90.40ms  warm=10.79ms
+2026-05-15T19:51:38.599602+00:00  phase1_after  cold=102.59ms  warm=11.89ms
+2026-05-15T19:51:38.789290+00:00  phase1_after  cold=102.85ms  warm=12.09ms

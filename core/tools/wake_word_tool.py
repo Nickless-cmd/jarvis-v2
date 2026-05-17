@@ -37,6 +37,13 @@ def _on_wake(phrase: str) -> None:
     _detection_count += 1
     logger.info("wake_word: detected '%s' (#%d)", phrase, _detection_count)
 
+    # Speak an audible acknowledgment — non-blocking so it doesn't hold the listener
+    try:
+        from core.skills.voice.tts import say as _tts_say
+        _tts_say("Ja, jeg hører dig!", blocking=False)
+    except Exception:
+        pass
+
     # Emit bus event
     try:
         from core.eventbus.bus import event_bus

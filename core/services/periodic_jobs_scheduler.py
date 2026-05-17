@@ -48,39 +48,17 @@ _SCHEDULE: dict[str, timedelta] = {
 }
 
 
-def _last_job_time(job_type: str) -> datetime | None:
-    """Most recent enqueued/run job of this type, or None."""
-    try:
-        from core.services.jobs_engine import list_jobs
-        items = list_jobs(limit=200)
-    except Exception:
-        return None
-    matches = [i for i in items if i.get("job_type") == job_type]
-    if not matches:
-        return None
-    times: list[datetime] = []
-    for i in matches:
-        for key in ("completed_at", "started_at", "enqueued_at"):
-            v = i.get(key)
-            if not v:
-                continue
-            try:
-                times.append(datetime.fromisoformat(str(v)))
-                break
-            except ValueError:
-                continue
-    if not times:
-        return None
-    return max(times)
-
-
-def _has_pending(job_type: str) -> bool:
-    try:
-        from core.services.jobs_engine import list_jobs
-        pending = list_jobs(status="pending", limit=200)
-    except Exception:
-        return False
-    return any(i.get("job_type") == job_type for i in pending)
+def _extract_last_time(item: dict[str, Any]) -> datetime | None:
+    """Pick the most relevant timestamp from a job record."""
+    for key in ("completed_at", "started_at", "enqueued_at"):
+        v = item.get(key)
+        if not v:
+            continue
+        try:
+            return datetime.fromisoformat(str(v))
+        except ValueError:
+            continue
+    return None
 
 
 def check_and_enqueue_due_periodic_jobs() -> dict[str, Any]:
@@ -88,22 +66,50 @@ def check_and_enqueue_due_periodic_jobs() -> dict[str, Any]:
 
     Returns {"enqueued": [job_types]}. Empty list = nothing was due.
     Skips a job_type if there's already a pending one (avoid pile-up).
+
+    2026-05-17 perf fix: tidligere blev jobs_engine._load() (16 MB JSON-parse,
+    ~235 ms) kaldt op til 36× pr. 30s heartbeat-poll — 2× pr. job_type via
+    _has_pending + _last_job_time. py-spy viste 76-79% inclusive CPU på den
+    path. Daemons "kogede" fordi scheduleren ikke nåede at enqueue dem
+    rettidigt. Fix: ÉN list_jobs() øverst, in-memory filtering bagefter.
     """
     enqueued: list[str] = []
     skipped: list[str] = []
     now = datetime.now(UTC)
 
     try:
-        from core.services.jobs_engine import enqueue_job
+        from core.services.jobs_engine import enqueue_job, list_jobs
     except Exception as exc:
         logger.debug("periodic_jobs_scheduler: jobs_engine import failed: %s", exc)
         return {"enqueued": [], "skipped": [], "error": str(exc)}
 
+    # Load ONE gang — herfra arbejder vi på in-memory data
+    try:
+        all_items = list_jobs(limit=200)
+    except Exception as exc:
+        logger.warning("periodic_jobs_scheduler: list_jobs failed: %s", exc)
+        all_items = []
+
+    # Byg pending-set + last-time map i én pass
+    pending_types: set[str] = set()
+    last_times: dict[str, datetime] = {}
+    for item in all_items:
+        jt = item.get("job_type")
+        if not jt:
+            continue
+        if item.get("status") == "pending":
+            pending_types.add(jt)
+        ts = _extract_last_time(item)
+        if ts is not None:
+            existing = last_times.get(jt)
+            if existing is None or ts > existing:
+                last_times[jt] = ts
+
     for job_type, cadence in _SCHEDULE.items():
-        if _has_pending(job_type):
+        if job_type in pending_types:
             skipped.append(f"{job_type} (already pending)")
             continue
-        last = _last_job_time(job_type)
+        last = last_times.get(job_type)
         if last is not None and (now - last) < cadence:
             continue
         try:

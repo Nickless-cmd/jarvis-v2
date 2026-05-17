@@ -7,6 +7,10 @@ opgaven ikke er færdig.
 
 Fix: detector der scanner Jarvis' visible-run output for pause-patterns,
 og auto-trigger en continuation autonomous-run hvis match.
+
+Konsolideret 2026-05-17 efter parallel-build-incident: detector lever nu
+i unfinished_intent.py med bredere regex (fanger "lad mig SELV se"),
+cooldown, min-text-len guard og approval-pattern.
 """
 from __future__ import annotations
 
@@ -15,162 +19,229 @@ import pytest
 from core.services.unfinished_intent import (
     detect_unfinished_intent,
     UnfinishedIntent,
+    is_in_cooldown,
+    mark_triggered,
+    reset_cooldown_for_tests,
 )
 
 
-class TestDetector:
-    def test_lad_mig_foerst_detected(self):
-        text = "Stoler du på mig — så laver jeg en cache-vagt. Lad mig først se hvordan det ser ud i dag."
+@pytest.fixture(autouse=True)
+def _reset_cooldown_state():
+    """Sørg for cooldown-state er ren mellem tests."""
+    reset_cooldown_for_tests()
+    yield
+    reset_cooldown_for_tests()
+
+
+# ── Pattern detection ───────────────────────────────────────────────────
+
+
+class TestLadMig:
+    def test_lad_mig_foerst(self):
+        text = (
+            "Stoler du på mig — så laver jeg en cache-vagt der passer "
+            "på sig selv. Lad mig først se hvordan det ser ud i dag."
+        )
         result = detect_unfinished_intent(text)
         assert result is not None
         assert result.pattern == "lad_mig"
 
-    def test_lad_mig_se_detected(self):
-        text = "OK, lad mig se hvad der er der."
+    def test_lad_mig_se(self):
+        text = (
+            "OK, jeg har modtaget anmodningen og vil sætte i gang nu. "
+            "Lad mig se hvad der er der allerede."
+        )
         result = detect_unfinished_intent(text)
         assert result is not None
 
-    def test_lad_mig_tjekke_detected(self):
-        text = "Godt — lad mig tjekke det først."
+    def test_lad_mig_tjekke(self):
+        text = (
+            "Godt — jeg starter en undersøgelse på spørgsmålet med det "
+            "samme. Lad mig tjekke det først."
+        )
         result = detect_unfinished_intent(text)
         assert result is not None
 
-    def test_jeg_skal_lige_detected(self):
-        text = "OK. Jeg skal lige finde den fil først."
+    def test_lad_mig_selv_se_detected(self):
+        """REGRESSION 2026-05-17: 'lad mig SELV se' blev ikke fanget af tidligere
+        narrow regex. Bjørn observerede live at Jarvis stoppede med præcis
+        denne formulering. Bred regex skal fange den."""
+        text = (
+            "Hold — lad mig selv se hvad der ligger, så vi ikke bygger "
+            "parallelt igen. Det er vigtigt at vi koordinerer."
+        )
+        result = detect_unfinished_intent(text)
+        assert result is not None
+        assert result.pattern == "lad_mig"
+
+    def test_lad_mig_selv_se_exact_regression_text(self):
+        """REGRESSION 2026-05-17: nøjagtig tekst Jarvis sendte (73 tegn).
+        Tidligere min_text_len på 80 missede den. Skal fanges nu med 50."""
+        text = "Hold — lad mig selv se hvad der ligger, så vi ikke bygger parallelt igen."
+        assert len(text) == 73
+        result = detect_unfinished_intent(text)
+        assert result is not None
+        assert result.pattern == "lad_mig"
+        assert "lad mig selv se" in result.matched_text
+
+    def test_lad_mig_lige_kigge(self):
+        text = (
+            "Jeg har det grundlag i hovedet allerede. Men lad mig lige "
+            "kigge på den fil først for at være sikker."
+        )
+        result = detect_unfinished_intent(text)
+        assert result is not None
+
+
+class TestJegSkal:
+    def test_jeg_skal_lige(self):
+        text = (
+            "OK forstået, jeg går i gang med opgaven nu. Jeg skal "
+            "lige finde den rigtige fil først og så er vi i gang."
+        )
         result = detect_unfinished_intent(text)
         assert result is not None
         assert result.pattern == "jeg_skal"
 
-    def test_jeg_skal_foerst_detected(self):
-        text = "Jeg skal først rydde op i state-filen."
+    def test_jeg_skal_foerst(self):
+        text = (
+            "Modtaget — jeg starter på det med det samme nu. Jeg skal "
+            "først rydde op i state-filen så vi har et rent grundlag."
+        )
         result = detect_unfinished_intent(text)
         assert result is not None
 
-    def test_cliffhanger_ellipsis_detected(self):
-        text = "Her er hvad jeg fandt — interessant..."
+
+class TestFoerstSkal:
+    def test_foerst_skal_jeg(self):
+        text = (
+            "Det giver mening at gå i gang nu med det samme. Først "
+            "skal jeg dog hente seneste version af filen."
+        )
+        result = detect_unfinished_intent(text)
+        assert result is not None
+        assert result.pattern == "foerst_skal"
+
+
+class TestCliffhanger:
+    def test_ellipsis_ending(self):
+        text = (
+            "Jeg har set på det grundigt og fundet noget bemærkelsesværdigt. "
+            "Her er hvad jeg fandt — interessant..."
+        )
         result = detect_unfinished_intent(text)
         assert result is not None
         assert result.pattern == "cliffhanger"
 
-    def test_cliffhanger_colon_detected(self):
-        text = "Status nu:"
+    def test_colon_ending(self):
+        text = (
+            "Her er sammenfatningen efter den grundige investigation jeg "
+            "lavede i dag på alle de fund jeg har samlet. Status nu:"
+        )
+        result = detect_unfinished_intent(text)
+        assert result is not None
+        assert result.pattern == "cliffhanger"
+
+
+class TestApprovalQuestion:
+    def test_vil_du_have_question(self):
+        """Insight fra Jarvis' parallel-build 2026-05-17: når Jarvis ender med
+        et approval-spørgsmål selv om user lige har sagt ja, er han i pause."""
+        text = (
+            "Jeg har analyseret det og kan se to mulige veje frem nu. "
+            "Vil du have mig til at lave en simpel rengøring af gamle cache-filer?"
+        )
+        result = detect_unfinished_intent(text)
+        assert result is not None
+        assert result.pattern == "approval_question"
+
+    def test_skal_jeg_question(self):
+        text = (
+            "Klar med implementation. Den lever i hovedet og jeg kan "
+            "bygge nu. Skal jeg gå i gang med det nu?"
+        )
         result = detect_unfinished_intent(text)
         assert result is not None
 
-    def test_done_message_not_detected(self):
-        text = "Done! 🎉 Committed 56c5cf1e med 2 files: 1 ny daemon + registrering."
+    def test_maa_jeg_question(self):
+        text = (
+            "Status: planen er klar og jeg har alt jeg skal bruge for "
+            "at bygge det færdigt nu. Må jeg fortsætte med implementationen?"
+        )
+        result = detect_unfinished_intent(text)
+        assert result is not None
+
+
+# ── Negative cases (skal IKKE detecte) ──────────────────────────────────
+
+
+class TestNegative:
+    def test_done_message(self):
+        text = (
+            "Done! 🎉 Committed 56c5cf1e med 2 files: 1 ny daemon + "
+            "registrering. Klar til at passe sig selv."
+        )
         result = detect_unfinished_intent(text)
         assert result is None
 
-    def test_completion_message_not_detected(self):
-        text = "Jeg har bygget X. Committet som a170e5d7. Læn dig tilbage, pas på dig selv. 🖤"
+    def test_completion_message(self):
+        text = (
+            "Jeg har bygget X. Committet som a170e5d7. Læn dig tilbage, "
+            "pas på dig selv. 🖤 Du klarer den."
+        )
         result = detect_unfinished_intent(text)
         assert result is None
 
-    def test_short_acknowledgment_not_detected(self):
+    def test_short_acknowledgment_below_min_len(self):
+        # Under 80 tegn → skip uanset pattern
         text = "Færdig 🖤"
         result = detect_unfinished_intent(text)
         assert result is None
 
-    def test_question_for_user_not_detected(self):
-        # En reel afsluttet besked med spørgsmål er ikke unfinished — han venter aktivt
-        text = "Klar. Hvilken vil du have først, a eller b?"
-        result = detect_unfinished_intent(text)
-        assert result is None
-
-    def test_empty_text_not_detected(self):
+    def test_empty_text(self):
         assert detect_unfinished_intent("") is None
         assert detect_unfinished_intent(None) is None  # type: ignore
 
-    def test_pattern_appears_in_middle_only_not_detected(self):
-        # "lad mig" der ikke afslutter beskeden — han fortsatte allerede
-        text = "Lad mig se — okay, jeg har set det nu og det er færdigt."
+    def test_pattern_in_middle_not_at_end(self):
+        # "lad mig se" tidligt + lang følge-op tekst = pattern langt fra
+        # slutningen → vi triggerer ikke (han fulgte allerede op)
+        text = (
+            "Lad mig se — okay jeg har nu set det grundigt igennem og "
+            "kan rapportere at det er løst, alle tests grønne, intet at "
+            "bekymre sig om. Vi er klar til næste skridt nu. Det hele "
+            "ligger på main og er deployed. Plus jeg har skrevet en "
+            "lille runbook der dækker rollback-scenarier. Det er solid. "
+            "Vi kan bevæge os videre nu uden tøven."
+        )
         result = detect_unfinished_intent(text)
         assert result is None  # already followed through
 
-    def test_pattern_near_end_detected(self):
-        # "lad mig" tæt på slutningen = aktuelt unfinished
-        text = "OK. Stoler du på mig så ordner jeg det. Lad mig først se hvordan det ser ud."
+    def test_normal_question_to_user_not_approval(self):
+        # Et reelt spørgsmål til user uden "vil du/skal jeg/må jeg" → ikke approval
+        text = (
+            "Jeg har leveret rapporten og forklaret konklusionerne. "
+            "Hvad mener du om resultaterne her — er de overraskende?"
+        )
         result = detect_unfinished_intent(text)
-        assert result is not None
+        assert result is None
 
 
-class TestContinuationHook:
-    """Integration-tests for _maybe_trigger_continuation."""
+# ── Cooldown mechanic ──────────────────────────────────────────────────
 
-    def test_autonomous_run_skips_continuation(self, monkeypatch):
-        """Continuations må ALDRIG spawne fra en autonomous run — undgår
-        infinite loop hvor continuation triggerer continuation."""
-        from core.services import visible_runs as vr
-        from core.services.visible_runs import VisibleRun
 
-        spawned: list[str] = []
-        monkeypatch.setattr(
-            vr, "start_autonomous_run",
-            lambda msg, session_id=None: spawned.append(msg),
-        )
+class TestCooldown:
+    def test_fresh_session_not_in_cooldown(self):
+        assert is_in_cooldown("session-fresh-xyz") is False
 
-        autonomous_run = VisibleRun(
-            run_id="autonomous-test-123",
-            lane="primary",
-            provider="deepseek",
-            model="deepseek-v4-flash",
-            user_message="test",
-            session_id="session-123",
-            autonomous=True,
-        )
-        # Sending text der ville trigger continuation, men da run.autonomous=True
-        # skal vi IKKE spawne
-        vr._maybe_trigger_continuation(autonomous_run, "Lad mig først se på det...")
-        # Vent kort så delayed-spawn ikke fanger os
-        import time
-        time.sleep(0.2)
-        assert spawned == [], "autonomous run må aldrig trigger continuation"
+    def test_after_mark_in_cooldown(self):
+        mark_triggered("session-marked-xyz")
+        assert is_in_cooldown("session-marked-xyz") is True
 
-    def test_run_without_session_skips_continuation(self, monkeypatch):
-        from core.services import visible_runs as vr
-        from core.services.visible_runs import VisibleRun
+    def test_empty_session_id_treated_as_cooldown(self):
+        # Defensive: ingen session = vi kan ikke trigge → behandl som cooldown
+        assert is_in_cooldown("") is True
 
-        spawned: list[str] = []
-        monkeypatch.setattr(
-            vr, "start_autonomous_run",
-            lambda msg, session_id=None: spawned.append(msg),
-        )
-
-        run_no_session = VisibleRun(
-            run_id="test-456",
-            lane="primary",
-            provider="deepseek",
-            model="deepseek-v4-flash",
-            user_message="test",
-            session_id="",
-            autonomous=False,
-        )
-        vr._maybe_trigger_continuation(run_no_session, "Lad mig først se på det...")
-        import time
-        time.sleep(0.2)
-        assert spawned == []
-
-    def test_finished_text_does_not_trigger(self, monkeypatch):
-        from core.services import visible_runs as vr
-        from core.services.visible_runs import VisibleRun
-
-        spawned: list[str] = []
-        monkeypatch.setattr(
-            vr, "start_autonomous_run",
-            lambda msg, session_id=None: spawned.append(msg),
-        )
-
-        run = VisibleRun(
-            run_id="test-789",
-            lane="primary",
-            provider="deepseek",
-            model="deepseek-v4-flash",
-            user_message="test",
-            session_id="session-789",
-            autonomous=False,
-        )
-        vr._maybe_trigger_continuation(run, "Done! Committet og restartet. 🖤")
-        import time
-        time.sleep(0.2)
-        assert spawned == []
+    def test_different_sessions_independent(self):
+        mark_triggered("session-A")
+        assert is_in_cooldown("session-A") is True
+        assert is_in_cooldown("session-B") is False

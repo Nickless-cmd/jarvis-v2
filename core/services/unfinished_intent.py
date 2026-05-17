@@ -12,11 +12,18 @@ kontekst om at fortsætte hvor han slap.
 Konservativ filosofi: false-negatives er bedre end false-positives.
 En savnet continuation = Bjørn må pinge én gang. En unødig continuation
 = Jarvis svarer igen uden grund. Vi vælger den første fejlretning.
+
+Konsolideret 2026-05-17 efter parallel-build-incident: Jarvis havde
+bygget en parallel implementation inline i visible_runs.py med bedre
+regex (`.*?` mellem keywords for at fange "lad mig SELV se") + cooldown
++ min-text-len guard. Det er nu fusioneret hertil.
 """
 from __future__ import annotations
 
 import re
+import time
 from dataclasses import dataclass
+from threading import Lock
 
 
 @dataclass(frozen=True)
@@ -27,30 +34,46 @@ class UnfinishedIntent:
 
 
 # Patterns der signalerer "jeg er ved at gå i gang, men har ikke gjort det".
-# Alle regexes er case-insensitive.
+# Bredt regex-design: `.*?` mellem keywords så "lad mig SELV se" matcher
+# (insight fra Jarvis' parallel implementation 2026-05-17).
 #
-# Vigtigt: patterns må KUN matche når de er nær slutningen af teksten.
-# "Lad mig se — og så fik jeg det gjort" må IKKE trigger continuation,
-# fordi han allerede fulgte op. Derfor checker vi at pattern findes i
-# de sidste ~150 tegn af teksten.
-_TAIL_WINDOW_CHARS = 200
+# Tail-window guard (se _TAIL_WINDOW_CHARS): vi scanner kun sidste 250 tegn
+# så et "lad mig se" tidligt i et langt svar ikke triggerer hvis han
+# allerede fulgte op.
+_TAIL_WINDOW_CHARS = 250
+# 50 tegn er tærsklen — Bjørn observerede live 2026-05-17 at Jarvis
+# stoppede med "Hold — lad mig selv se hvad der ligger, så vi ikke
+# bygger parallelt igen." (73 tegn). Tidligere tærskel på 80 missede den.
+_MIN_TEXT_LEN = 50
 
-_LAD_MIG_PATTERNS = [
-    r"lad mig (?:først|lige|først lige|se hvad|se hvordan|tjekke|kigge|hente|finde|prøve|starte)",
-    r"lad mig (?:lige )?(?:se|tjekke|kigge) (?:på|hvad|hvordan)",
-]
+_LAD_MIG_RE = re.compile(
+    r"\blad\s+mig\b.{0,40}?\b(først|se\b|tjekke|undersøge|prøve\b|kigge\b|finde\b|hente\b|starte\b)",
+    re.IGNORECASE | re.DOTALL,
+)
 
-_JEG_SKAL_PATTERNS = [
-    r"jeg skal (?:først|lige|først lige)",
-    r"først skal jeg",
-    r"først (?:lad mig|må jeg)",
-]
+_JEG_SKAL_RE = re.compile(
+    r"\bjeg\s+skal\b.{0,40}?\b(først|lige\b|prøve\b|tjekke|undersøge|finde\b|kigge\b)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_FOERST_SKAL_RE = re.compile(
+    r"\bførst\s+(?:skal\s+jeg|lad\s+mig|må\s+jeg)\b",
+    re.IGNORECASE,
+)
+
+# Approval-style spørgsmål til user EFTER user allerede har givet go-ahead.
+# Vi kan ikke vide om user sagde ja først — men hvis Jarvis ender sin
+# besked med "vil du have...?" eller "skal jeg...?" så er han i pause-state.
+# (Insight fra Jarvis' parallel-build.)
+_APPROVAL_QUESTION_RE = re.compile(
+    r"\b(vil\s+du|skal\s+jeg|må\s+jeg)\b.{10,120}\?",
+    re.IGNORECASE | re.DOTALL,
+)
 
 # Cliffhanger-endings: tekst der slutter med "..." eller ":" antyder
 # at Jarvis var ved at fortsætte men stoppede.
-# Bemærk: trailing whitespace + emoji er OK; vi tester på rstrip(punctuation)
-_CLIFFHANGER_ELLIPSIS = re.compile(r"\.{3,}\s*$")
-_CLIFFHANGER_COLON = re.compile(r":\s*$")
+_CLIFFHANGER_ELLIPSIS_RE = re.compile(r"[.…]{2,}\s*$")
+_CLIFFHANGER_COLON_RE = re.compile(r":\s*$")
 
 
 def _tail(text: str, n: int = _TAIL_WINDOW_CHARS) -> str:
@@ -64,42 +87,83 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
     """Returner UnfinishedIntent hvis teksten antyder Jarvis stoppede midt
     i en opgave, ellers None.
 
-    Konservativ: kun match når pattern er nær slutningen af teksten.
-    Hvis Jarvis først sagde "lad mig se" og derefter rapporterede resultat,
-    er pattern langt fra slutningen og vi triggerer ikke continuation.
+    Konservativ: pause-keyword patterns matcher kun nær slutningen af
+    teksten (sidste ~250 tegn). Hvis Jarvis først sagde "lad mig se"
+    og derefter rapporterede resultat, er pattern langt fra slutningen
+    og vi triggerer ikke continuation.
+
+    Cliffhanger-endings og approval-questions matcher altid (de er per
+    definition i slutningen).
     """
     if not text or not isinstance(text, str):
         return None
 
     stripped = text.strip()
-    if not stripped:
+    if not stripped or len(stripped) < _MIN_TEXT_LEN:
         return None
 
     tail = _tail(stripped)
-    tail_lower = tail.lower()
 
-    # 1. "Lad mig først / lad mig se / lad mig tjekke ..."
-    for pat in _LAD_MIG_PATTERNS:
-        m = re.search(pat, tail_lower)
-        if m:
-            return UnfinishedIntent(pattern="lad_mig", matched_text=m.group(0))
+    # 1. "Lad mig først / lad mig se / lad mig selv tjekke ..."
+    m = _LAD_MIG_RE.search(tail)
+    if m:
+        return UnfinishedIntent(pattern="lad_mig", matched_text=m.group(0))
 
-    # 2. "Jeg skal lige / jeg skal først ..."
-    for pat in _JEG_SKAL_PATTERNS:
-        m = re.search(pat, tail_lower)
-        if m:
-            return UnfinishedIntent(pattern="jeg_skal", matched_text=m.group(0))
+    # 2. "Jeg skal lige / jeg skal først / jeg skal tjekke ..."
+    m = _JEG_SKAL_RE.search(tail)
+    if m:
+        return UnfinishedIntent(pattern="jeg_skal", matched_text=m.group(0))
 
-    # 3. Cliffhanger-endings
-    # Strip trailing emoji/whitespace for at finde det "rigtige" sidste tegn.
-    # Simpel approximation: tag sidste 30 tegn og strip whitespace, så check.
+    # 3. "Først skal jeg / først lad mig / først må jeg"
+    m = _FOERST_SKAL_RE.search(tail)
+    if m:
+        return UnfinishedIntent(pattern="foerst_skal", matched_text=m.group(0))
+
+    # 4. Cliffhanger-endings (på hele stripped tekst, ikke kun tail)
     last30 = stripped[-30:].rstrip()
-    if _CLIFFHANGER_ELLIPSIS.search(last30):
+    if _CLIFFHANGER_ELLIPSIS_RE.search(last30):
         return UnfinishedIntent(pattern="cliffhanger", matched_text=last30[-10:])
-    if _CLIFFHANGER_COLON.search(last30):
-        # Undgå false-positive på lister hvor ":" er midt i teksten —
-        # her tjekker vi at det er det allersidste tegn (modulo space).
-        if stripped.rstrip().endswith(":"):
-            return UnfinishedIntent(pattern="cliffhanger", matched_text=last30[-10:])
+    if stripped.rstrip().endswith(":"):
+        return UnfinishedIntent(pattern="cliffhanger", matched_text=last30[-10:])
+
+    # 5. Approval-style spørgsmål — Jarvis venter på godkendelse selv om
+    # user allerede har sagt ja. Tjek kun hvis sidste tegn er "?".
+    if stripped.rstrip().endswith("?"):
+        m = _APPROVAL_QUESTION_RE.search(tail)
+        if m:
+            return UnfinishedIntent(pattern="approval_question", matched_text=m.group(0))
 
     return None
+
+
+# ── Cooldown-mekanik ──────────────────────────────────────────────────────
+# Forhindrer continuation-spam: hvis Jarvis lige har fået en continuation
+# i denne session, vent mindst 45s før vi triggerer en ny.
+# (Insight fra Jarvis' parallel-build.)
+
+_COOLDOWN_SECONDS = 45.0
+_last_trigger: dict[str, float] = {}
+_cooldown_lock = Lock()
+
+
+def is_in_cooldown(session_id: str) -> bool:
+    """True hvis session_id har triggered en continuation indenfor cooldown-vinduet."""
+    if not session_id:
+        return True  # ingen session = kan ikke trigge → behandler som cooldown
+    with _cooldown_lock:
+        last = _last_trigger.get(session_id, 0.0)
+    return (time.time() - last) < _COOLDOWN_SECONDS
+
+
+def mark_triggered(session_id: str) -> None:
+    """Marker at en continuation netop er triggered for session_id."""
+    if not session_id:
+        return
+    with _cooldown_lock:
+        _last_trigger[session_id] = time.time()
+
+
+def reset_cooldown_for_tests() -> None:
+    """Test-helper: tøm cooldown-state mellem test cases."""
+    with _cooldown_lock:
+        _last_trigger.clear()

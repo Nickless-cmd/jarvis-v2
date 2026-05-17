@@ -2745,121 +2745,6 @@ def _recent_internal_tool_context(session_id: str | None, *, limit: int = 6) -> 
     )
 
 
-# ── Continuation detector ──────────────────────────────────────────────
-# 2026-05-17: auto-continuation when Jarvis pauses mid-task.
-# Patterns: "lad mig først se...", "jeg skal lige...", cliffhanger endings.
-# Spawns an autonomous background run after 8s delay so the user doesn't
-# need to ping "ja?" or "?" to get the task finished.
-_CONTINUATION_LAST_TRIGGER: dict[str, float] = {}  # session_id → timestamp
-_CONTINUATION_COOLDOWN_S = 45.0  # don't re-trigger within 45s per session
-_CONTINUATION_MIN_TEXT_LEN = 80  # skip trivial replies
-
-_CONTINUATION_PAUSE_PATTERNS: list[tuple[re.Pattern, str]] = [
-    # Pattern 1: "lad mig først/se/tjekke/undersøge" → suspension marker
-    (
-        re.compile(r'\blad\s+mig\b.*?\b(først|se\b|tjekke|undersøge|prøve\b|kigge\b)', re.IGNORECASE),
-        "pause-lad-mig",
-    ),
-    # Pattern 2: "jeg skal lige/først" → deferral
-    (
-        re.compile(r'\bjeg\s+skal\b.*?\b(li|først|lige\b|prøve\b|tjekke|undersøge)', re.IGNORECASE),
-        "pause-jeg-skal",
-    ),
-    # Pattern 3: Output ends with unclosed line ("..." or ":" as final char)
-    (
-        re.compile(r'[.…]{2,}\s*$', re.MULTILINE),
-        "cliffhanger-ellipsis",
-    ),
-    (
-        re.compile(r':\s*$', re.MULTILINE),
-        "cliffhanger-colon",
-    ),
-    # Pattern 4: Approval-style question ("vil du have mig til at...?")
-    (
-        re.compile(
-            r'\b(vil\s+du|skal\s+jeg|må\s+jeg)\b.*?\b(jeg|mig)\b.*?\?',
-            re.IGNORECASE,
-        ),
-        "pause-approval-question",
-    ),
-]
-
-
-def _detect_pause_pattern(visible_output_text: str) -> str | None:
-    """Scan output for pause patterns. Returns the tag or None."""
-    if not visible_output_text or len(visible_output_text.strip()) < _CONTINUATION_MIN_TEXT_LEN:
-        return None
-    for pattern, tag in _CONTINUATION_PAUSE_PATTERNS:
-        if pattern.search(visible_output_text):
-            return tag
-    return None
-
-
-def _maybe_trigger_continuation(run: VisibleRun, visible_output_text: str) -> None:
-    """Detect pause-patterns in Jarvis' output and auto-continue.
-
-    Called from _post_process (finally block of _stream_visible_run).
-    When the visible output contains a known pause-pattern, spawn an
-    autonomous run after a short delay that tells Jarvis to continue
-    — without the user having to ping "ja?".
-    """
-    # ── Guards ──────────────────────────────────────────────────────
-    # 1. Never auto-continue an autonomous run (would loop)
-    if run.autonomous:
-        return
-    # 2. Must have a session to continue in
-    session_id = run.session_id
-    if not session_id:
-        return
-    # 3. Cooldown: at most once per 45s per session
-    now = time.time()
-    last_trigger = _CONTINUATION_LAST_TRIGGER.get(session_id, 0.0)
-    if now - last_trigger < _CONTINUATION_COOLDOWN_S:
-        return
-    # 4. Detect pause pattern
-    pause_tag = _detect_pause_pattern(visible_output_text)
-    if not pause_tag:
-        return
-
-    # ── Matched — schedule the continuation ─────────────────────────
-    _CONTINUATION_LAST_TRIGGER[session_id] = now
-
-    # Extract a short snippet from the output for context
-    # (first 200 chars of the last paragraph)
-    text = visible_output_text.strip()
-    last_para = text.split("\n\n")[-1] if "\n\n" in text else text
-    snippet = (last_para or text)[:200].strip()
-
-    # Build a focused continuation message
-    continuation_message = (
-        f"[auto-continuation efter '{pause_tag}'] "
-        f"Du skrev netop til Bjørn:\n"
-        f"---\n{snippet}...\n---\n"
-        f"Du stoppede her — men opgaven er ikke færdig. "
-        f"Fortsæt uden at vente på svar. Gør det færdigt."
-    )
-
-    # Spawn in a thread after an 8-second delay so the current run's
-    # output is fully delivered and visible before the continuation fires.
-    import threading as _ct_threading
-
-    def _delayed_continuation() -> None:
-        time.sleep(8.0)
-        try:
-            start_autonomous_run(
-                message=continuation_message,
-                session_id=session_id,
-            )
-        except Exception:
-            pass
-
-    _ct_threading.Thread(
-        target=_delayed_continuation,
-        name=f"auto-continuation-{run.run_id[:12]}",
-        daemon=True,
-    ).start()
-
-
 def _run_memory_postprocess(run: VisibleRun, assistant_text: str) -> None:
     if not run.session_id:
         return
@@ -3051,20 +2936,33 @@ def _maybe_trigger_continuation(run: VisibleRun, assistant_text: str) -> None:
 
     Guards:
     - Kun for visible (ikke-autonomous) runs — undgår infinite continuation-loop
-    - Kun ved match på unfinished_intent.detect_unfinished_intent
     - Kun hvis session_id findes (vi har et sted at fortsætte i)
+    - Cooldown 45s per session (undgår spam)
+    - Kun ved match på unfinished_intent.detect_unfinished_intent
     - Delay 5s før spawn så user kan reagere først hvis de ser problemet
+    - Re-check ved spawn: hvis ny visible-run er aktiv i sessionen, afstå
     """
     if run.autonomous:
         return  # autonomous runs spawner ikke continuations (loop-beskyttelse)
     if not run.session_id:
         return
     try:
-        from core.services.unfinished_intent import detect_unfinished_intent
+        from core.services.unfinished_intent import (
+            detect_unfinished_intent,
+            is_in_cooldown,
+            mark_triggered,
+        )
+
+        # Cooldown check FØR detection — sparer arbejde
+        if is_in_cooldown(run.session_id):
+            return
 
         intent = detect_unfinished_intent(assistant_text)
         if intent is None:
             return
+
+        # Mark cooldown nu så concurrent _post_process'er ikke begge fires
+        mark_triggered(run.session_id)
 
         # Publish for observability — Bjørn kan se i Mission Control
         # hvor ofte detector fires
@@ -3081,16 +2979,18 @@ def _maybe_trigger_continuation(run: VisibleRun, assistant_text: str) -> None:
         except Exception:
             pass
 
-        # Byg en continuation-besked til Jarvis selv. Vi gentager hans egne
-        # ord så han har klar kontekst om hvad han stoppede ved.
-        preview = assistant_text.strip()
-        if len(preview) > 500:
-            preview = "…" + preview[-500:]
+        # Snippet fra sidste paragraf (mere fokuseret end de sidste N tegn)
+        text = assistant_text.strip()
+        last_para = text.split("\n\n")[-1] if "\n\n" in text else text
+        snippet = (last_para or text)[-400:].strip()
+
         continuation_message = (
-            "Du svarede sidst med:\n\n"
-            f"> {preview}\n\n"
-            "Fortsæt nu opgaven uden at vente på nyt input fra Bjørn. "
-            "Han har allerede givet grønt lys. Hvis du er færdig, så bekræft det kort."
+            f"[auto-continuation efter pause-pattern '{intent.pattern}'] "
+            "Du skrev netop til Bjørn:\n\n"
+            f"---\n{snippet}\n---\n\n"
+            "Du stoppede her — men opgaven er ikke færdig. Bjørn har "
+            "allerede givet grønt lys. Fortsæt uden at vente på svar. "
+            "Hvis du er færdig, så bekræft det kort."
         )
 
         # Delay spawn så user kan reagere først hvis de ser problemet før vi gør

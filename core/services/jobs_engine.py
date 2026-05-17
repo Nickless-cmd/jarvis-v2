@@ -28,6 +28,14 @@ logger = logging.getLogger(__name__)
 _STORAGE_REL = "workspaces/default/runtime/jobs_queue.json"
 _HANDLERS: dict[str, Callable[[dict[str, Any]], "JobResult | dict[str, Any]"]] = {}
 
+# 2026-05-17 perf cache: jobs_queue.json er ~16 MB. Uden cache koster hver
+# _load() ~235ms JSON-parse. Vi cacher det parsede resultat keyed på
+# (mtime_ns, size). _save() opdaterer cachen direkte, så vi aldrig
+# re-parser efter vores egen skrivning. Ekstern modifikation detekteres
+# via mtime/size mismatch.
+_LOAD_CACHE_KEY: tuple[int, int] | None = None
+_LOAD_CACHE_ITEMS: list[dict[str, Any]] | None = None
+
 
 @dataclass
 class JobResult:
@@ -50,20 +58,37 @@ def _storage_path() -> Path:
 
 
 def _load() -> list[dict[str, Any]]:
+    global _LOAD_CACHE_KEY, _LOAD_CACHE_ITEMS
     path = _storage_path()
-    if not path.exists():
-        return []
+    try:
+        st = path.stat()
+    except FileNotFoundError:
+        # Cache også "tom fil" så gentagne kald ikke stat'er igen unødigt.
+        if _LOAD_CACHE_KEY == (0, 0) and _LOAD_CACHE_ITEMS is not None:
+            return _LOAD_CACHE_ITEMS
+        _LOAD_CACHE_KEY = (0, 0)
+        _LOAD_CACHE_ITEMS = []
+        return _LOAD_CACHE_ITEMS
+
+    key = (st.st_mtime_ns, st.st_size)
+    if key == _LOAD_CACHE_KEY and _LOAD_CACHE_ITEMS is not None:
+        return _LOAD_CACHE_ITEMS
+
     try:
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
         if isinstance(data, list):
+            _LOAD_CACHE_KEY = key
+            _LOAD_CACHE_ITEMS = data
             return data
     except Exception as exc:
         logger.warning("jobs_engine: load failed: %s", exc)
+    # Cache ikke ved fejl — næste kald prøver igen
     return []
 
 
 def _save(items: list[dict[str, Any]]) -> None:
+    global _LOAD_CACHE_KEY, _LOAD_CACHE_ITEMS
     path = _storage_path()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -71,6 +96,15 @@ def _save(items: list[dict[str, Any]]) -> None:
         with tmp.open("w", encoding="utf-8") as f:
             json.dump(items, f, ensure_ascii=False, indent=2)
         tmp.replace(path)
+        # Opdater cache med det netop skrevne — undgår re-parse ved næste _load
+        try:
+            st = path.stat()
+            _LOAD_CACHE_KEY = (st.st_mtime_ns, st.st_size)
+            _LOAD_CACHE_ITEMS = items
+        except OSError:
+            # Hvis stat fejler, invalider cache så næste _load tvinges til at re-stat
+            _LOAD_CACHE_KEY = None
+            _LOAD_CACHE_ITEMS = None
     except Exception as exc:
         logger.warning("jobs_engine: save failed: %s", exc)
 

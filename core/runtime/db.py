@@ -13,10 +13,13 @@ Flyttes når de tilhørende _ensure_*-funcs flyttes til submoduler.
 from __future__ import annotations
 
 import json as _json
+import logging as _logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
+
+_logger = _logging.getLogger("uvicorn.error")
 
 from core.runtime.config import STATE_DIR
 
@@ -24627,10 +24630,29 @@ def upsert_heartbeat_runtime_state(
                 updated_at,
             ),
         )
-        conn.commit()
+        _logger.info(
+            "HEARTBEAT-UPSERT-BEFORE-COMMIT: schedule_state=%s due=%s updated_at=%s state_id=%s in_transaction=%s",
+            schedule_state, due, updated_at, state_id, conn.in_transaction,
+        )
+        try:
+            conn.commit()
+        except Exception:
+            _logger.error(
+                "HEARTBEAT-UPSERT-COMMIT-FAILED: schedule_state=%s due=%s updated_at=%s state_id=%s",
+                schedule_state, due, updated_at, state_id,
+            )
+            raise
     state = get_heartbeat_runtime_state()
     if state is None:
+        _logger.error(
+            "HEARTBEAT-UPSERT-NOT-PERSISTED: schedule_state=%s due=%s updated_at=%s state_id=%s",
+            schedule_state, due, updated_at, state_id,
+        )
         raise RuntimeError("heartbeat runtime state was not persisted")
+    _logger.info(
+        "HEARTBEAT-UPSERT-PERSISTED-OK: schedule_state=%s state_id=%s",
+        state.get("schedule_state"), state.get("state_id"),
+    )
     return state
 
 

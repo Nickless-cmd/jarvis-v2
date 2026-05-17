@@ -21,6 +21,7 @@ Split-spec: docs/superpowers/specs/2026-05-15-db-split-design.md
 from __future__ import annotations
 
 import json as _json
+import logging as _logging
 import sqlite3
 import sys as _sys
 from datetime import UTC, datetime, timedelta
@@ -34,6 +35,8 @@ from core.runtime.config import STATE_DIR
 # Note: init_db() forbliver i db.py fordi den kalder ~117 _ensure_*_table-funcs
 # der lever der. Flytning vil ske i senere fase når _ensure_* også flyttes.
 DB_PATH = Path(STATE_DIR) / "jarvis.db"
+_DB_CONNECT_LOGGED: bool = False
+_core_logger = _logging.getLogger("uvicorn.error")
 _CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
 _EVIDENCE_CLASS_RANKS = {
     "weak_signal": 1,
@@ -63,6 +66,11 @@ def connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH, factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
+    global _DB_CONNECT_LOGGED
+    if not _DB_CONNECT_LOGGED:
+        rows = conn.execute("PRAGMA database_list").fetchall()
+        _core_logger.info("DB_CONNECT_FIRST: path=%s | db_list=%s", DB_PATH, rows)
+        _DB_CONNECT_LOGGED = True
     return conn
 
 

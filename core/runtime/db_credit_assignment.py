@@ -2,6 +2,12 @@
 
 Lag 1: links beslutninger (cognitive_decisions) til self-review outcomes,
 så Jarvis kan lære af sine valg over tid.
+
+Conventions (Claude review 2026-05-17):
+- credit_score: 1-5 scale (self-judgement), not weighted composite
+- Drift-delta stored in evidence_summary JSON as raw context
+- Eventbus: credit_assignment.choice_recorded + .outcome_linked
+- Pending index for O(log N) pre-check every tick
 """
 from __future__ import annotations
 
@@ -11,6 +17,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
+from core.eventbus.bus import event_bus
 from core.runtime.db import connect
 
 
@@ -21,9 +28,10 @@ def _now_iso() -> str:
 # ── Schema migration ──────────────────────────────────────────────────────
 
 def ensure_credit_assignment_tables(conn: sqlite3.Connection | None = None) -> None:
-    """Add credit-assignment columns to existing tables.
+    """Add credit-assignment columns to existing tables + pending index.
 
-    Idempotent: columns are added once only. No-op if they already exist.
+    Idempotent: columns are added once only. Index is IF NOT EXISTS.
+    No-op if they already exist.
     """
     _close = False
     if conn is None:
@@ -46,6 +54,13 @@ def ensure_credit_assignment_tables(conn: sqlite3.Connection | None = None) -> N
                 ("credit_score", "REAL"),
             ],
         )
+        conn.execute(
+            """CREATE INDEX IF NOT EXISTS idx_cognitive_decisions_pending
+               ON cognitive_decisions(kind, outcome_aggregate)
+               WHERE outcome_aggregate IS NULL
+                 AND kind != 'conversational'"""
+        )
+        conn.commit()
     finally:
         if _close:
             conn.close()
@@ -80,6 +95,7 @@ def record_choice(
 ) -> str:
     """Record a choice in cognitive_decisions with a kind tag.
 
+    Fires credit_assignment.choice_recorded on the eventbus.
     Returns the decision_id so outcome hooks can reference it later.
     """
     decision_id = f"dec-{uuid4().hex[:12]}"
@@ -104,6 +120,21 @@ def record_choice(
             ),
         )
         conn.commit()
+
+    # Eventbus: choice_recorded
+    try:
+        event_bus.publish(
+            "credit_assignment.choice_recorded",
+            {
+                "decision_id": decision_id,
+                "kind": kind,
+                "created_at": now,
+                "score": None,
+                "rationale": why or None,
+            },
+        )
+    except Exception:
+        pass
 
     return decision_id
 
@@ -141,16 +172,24 @@ def link_outcome_to_decision(
     decision_id: str,
     credit_score: float,
     rationale: str,
-    evidence_summary: str,
+    evidence_summary: str = "{}",
     run_id: str = "",
 ) -> dict[str, Any] | None:
     """Link a self-review outcome to a decision and update outcome_aggregate.
 
+    credit_score: 1-5 scale (self-judgement). 5 = excellent, 1 = poor.
+    evidence_summary: JSON blob with raw context (drift-delta, signals, etc.).
+
+    Fires credit_assignment.outcome_linked on the eventbus.
     Creates an outcome record in runtime_self_review_outcomes, then updates
-    cognitive_decisions.outcome_aggregate with a simple average.
+    cognitive_decisions.outcome_aggregate with a simple average (1-5 scale).
     """
     now = _now_iso()
     outcome_id = f"ca-{uuid4().hex[:12]}"
+
+    # Guard: clamp credit_score to 1-5
+    credit_score_clamped = max(1.0, min(5.0, credit_score))
+    credit_score_display = f"{credit_score_clamped}/5"
 
     with connect() as conn:
         ensure_credit_assignment_tables(conn)
@@ -178,7 +217,7 @@ def link_outcome_to_decision(
                 decision_id,
                 "active",
                 f"Lag 1 outcome: {decision_id}",
-                f"Credit score: {credit_score}/100",
+                f"Credit score: {credit_score_display}",
                 rationale,
                 "meta_reflection",
                 "medium",
@@ -193,7 +232,7 @@ def link_outcome_to_decision(
                 now,
                 now,
                 decision_id,
-                credit_score,
+                credit_score_clamped,
             ),
         )
 
@@ -206,7 +245,7 @@ def link_outcome_to_decision(
         ).fetchall()
 
         scores = [r["credit_score"] for r in all_outcomes if r["credit_score"] is not None]
-        aggregate = sum(scores) / len(scores) if scores else credit_score
+        aggregate = sum(scores) / len(scores) if scores else credit_score_clamped
 
         conn.execute(
             "UPDATE cognitive_decisions SET outcome_aggregate = ? WHERE decision_id = ?",
@@ -215,7 +254,28 @@ def link_outcome_to_decision(
 
         conn.commit()
 
-    return {"decision_id": decision_id, "outcome_id": outcome_id, "credit_score": credit_score, "aggregate": aggregate}
+    # Eventbus: outcome_linked
+    try:
+        event_bus.publish(
+            "credit_assignment.outcome_linked",
+            {
+                "decision_id": decision_id,
+                "kind": None,  # caller should enrich from decision record
+                "created_at": now,
+                "score": credit_score_clamped,
+                "rationale": rationale or None,
+            },
+        )
+    except Exception:
+        pass
+
+    return {
+        "decision_id": decision_id,
+        "outcome_id": outcome_id,
+        "credit_score": credit_score_clamped,
+        "aggregate": aggregate,
+        "scale": "1-5",
+    }
 
 
 # ── Query surface ─────────────────────────────────────────────────────────

@@ -457,7 +457,7 @@ def _auto_commit_after_source_edit(proposal: dict, result: dict) -> None:
     commit_msg = f"source-edit: {rationale}\n\nProposal: {proposal_id}"
 
     commit_result = _sp.run(
-        ["git", "commit", "-m", commit_msg],
+        ["git", "commit", "--author", "Jarvis <jarvis@srvlab.dk>", "-m", commit_msg],
         capture_output=True,
         text=True,
         cwd=project_root,
@@ -507,7 +507,7 @@ def _execute_git_commit_proposal(payload: dict) -> dict:
 
     # Commit
     commit_result = _sp.run(
-        ["git", "commit", "-m", message],
+        ["git", "commit", "--author", "Jarvis <jarvis@srvlab.dk>", "-m", message],
         capture_output=True,
         text=True,
         cwd=project_root,

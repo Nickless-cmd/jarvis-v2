@@ -69,6 +69,10 @@ from core.tools.speak_tool import (
     SPEAK_TOOL_DEFINITIONS,
     _exec_speak,
 )
+from core.tools.screen_tool import (
+    SCREEN_TOOL_DEFINITIONS,
+    _exec_screen_control,
+)
 from core.tools.voice_journal_tool import (
     VOICE_JOURNAL_TOOL_DEFINITIONS,
     _exec_voice_journal,
@@ -2284,6 +2288,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *TIKTOK_CONTENT_TOOL_DEFINITIONS,
     *MIC_LISTEN_TOOL_DEFINITIONS,
     *SPEAK_TOOL_DEFINITIONS,
+    *SCREEN_TOOL_DEFINITIONS,
     *VOICE_JOURNAL_TOOL_DEFINITIONS,
     *WAKE_WORD_TOOL_DEFINITIONS,
     *TIKTOK_TOOL_DEFINITIONS,
@@ -6094,6 +6099,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "mic_listen": _exec_mic_listen,
     # Text-to-speech: speak aloud through system speakers
     "speak": _exec_speak,
+    # Screen control: DPMS on/off/standby/status
+    "screen_control": _exec_screen_control,
     # Voice journal (30-60s → memory_density)
     "voice_journal": _exec_voice_journal,
     # Wake-word listener ('Hey Jarvis' via ElevenLabs STT)

@@ -1430,12 +1430,32 @@ def _run_heartbeat_tick_locked(
     # internaliseret protokol-praksis der bæres på tværs af modeller.
     # Lightweight (no LLM) — render + DB insert only. practice_tick selv
     # markerer trigger="heartbeat" på record-niveau.
-    if tick_count % 30 == 0:
-        try:
+    #
+    # 2026-05-17 fix: skift fra tick_count % 30 til tidsbaseret gating.
+    # _HEARTBEAT_TICK_COUNTER er process-lokal og nulstilles ved restart.
+    # Med 4-5 restarts/dag + ~25 completed ticks/dag når counter aldrig 30
+    # → Jarvis-baseline-expressions blev aldrig genereret. Phase 2 vali-
+    # dering manglede den vigtigste cohort. Nu: fire hvis sidst > 30 min.
+    try:
+        import sqlite3 as _sql
+        _practice_db = str(Path.home() / ".jarvis-v2" / "state" / "jarvis.db")
+        with _sql.connect(_practice_db) as _conn:
+            _row = _conn.execute(
+                "SELECT MAX(created_at) FROM interlanguage_practice WHERE peer_id = 'jarvis'"
+            ).fetchone()
+        _last_iso = _row[0] if _row else None
+        _should_fire = False
+        if _last_iso is None:
+            _should_fire = True
+        else:
+            _last_dt = datetime.fromisoformat(_last_iso)
+            if (datetime.now(UTC) - _last_dt).total_seconds() >= 1800:  # 30 min
+                _should_fire = True
+        if _should_fire:
             from core.services.interlanguage_practice import practice_tick
             practice_tick(tick_id=str(tick_count))
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     # Every 30th tick: passive personality drift (decay-pathway uden samtaler).
     # 2026-05-16 fix til Jarvis' "frosset 14 dage"-rapport. Eksisterende

@@ -118,7 +118,7 @@ def _xset_dpms_status() -> dict[str, Any]:
 
 def _exec_screen_control(args: dict[str, Any]) -> dict[str, Any]:
     """Execute the screen control tool."""
-    action = str(args.get("action") or "").strip().lower()
+    action = str(args.get("command") or args.get("action") or "").strip().lower()
 
     if not action:
         return {

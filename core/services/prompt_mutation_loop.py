@@ -59,6 +59,9 @@ _PROTECTED_FILES: frozenset[str] = frozenset({
     "INHERITANCE_SEED.md",
     "CONSENT_REGISTRY.json",
     "MEMORY.md",  # MEMORY.md has its own write-policy
+    "USER.md",   # 2026-05-17: blev autonomt komprimeret af compaction-LLM
+                 # — mistede ~70 linjer rich context om Bjørns arbejdsstil.
+                 # Restaureret + låst. Skal aldrig auto-muteres.
     "jarvis.db",
 })
 

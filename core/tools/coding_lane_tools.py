@@ -76,24 +76,46 @@ Hold skeleton kort — max 200 linjer i alt. Returnér kun planen, ingen dialog.
     except Exception:
         pass
 
-    # Dispatch to coding lane (same provider as auto-reviewer)
+    # Dispatch to coding lane (same provider as auto-reviewer).
+    # Fallback to cheap lane if coding lane isn't executable (e.g. expired OAuth).
+    coding_lane_ok = False
+    result: dict[str, Any] = {}
+
     try:
         from core.services.non_visible_lane_execution import execute_coding_lane
         result = execute_coding_lane(message=prompt)
-    except Exception as exc:
-        return {
-            "status": "error",
-            "error": f"coding lane dispatch failed: {type(exc).__name__}: {exc}",
-        }
+        text = str(result.get("text") or result.get("output") or result.get("response") or "")
+        if text:
+            coding_lane_ok = True
+    except Exception:
+        pass
 
-    # Extract text from result — handles various return shapes
-    text = str(result.get("text") or result.get("output") or result.get("response") or "")
-    if not text:
-        return {
-            "status": "error",
-            "error": "coding lane returned empty skeleton",
-            "raw_result": {k: v for k, v in result.items() if k != "text"},
-        }
+    if not coding_lane_ok:
+        # Fallback: use cheap lane (NVIDIA, Groq, Gemini, etc.)
+        try:
+            from core.services.non_visible_lane_execution import (
+                execute_with_role_or_fallback,
+            )
+            fallback_prompt = prompt.replace(
+                "Du er en kode-arkitekt",
+                "Du er Claude Code, en ekspert kode-arkitekt",
+            )
+            result = execute_with_role_or_fallback(message=fallback_prompt)
+            text = str(result.get("text") or result.get("output") or result.get("response") or "")
+            if not text:
+                return {
+                    "status": "error",
+                    "error": "coding lane + fallback both returned empty skeleton",
+                }
+            result["lane"] = "coding-fallback"
+        except Exception as exc:
+            return {
+                "status": "error",
+                "error": (
+                    f"coding lane + fallback both failed: "
+                    f"{type(exc).__name__}: {exc}"
+                ),
+            }
 
     return {
         "status": "ok",

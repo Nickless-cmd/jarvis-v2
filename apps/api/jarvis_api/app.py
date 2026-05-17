@@ -48,6 +48,10 @@ from core.services.global_workspace import (
     register_event_listeners as start_global_workspace_listener,
     stop_event_listeners as stop_global_workspace_listener,
 )
+from core.coding_lane.auto_reviewer import (
+    register_event_listeners as start_coding_lane_reviewer,
+    stop_event_listeners as stop_coding_lane_reviewer,
+)
 from core.services.discord_gateway import (
     start_discord_gateway,
     stop_discord_gateway,
@@ -119,6 +123,7 @@ def create_app() -> FastAPI:
             start_mood_listener()
             start_emotion_concept_listener()
             start_global_workspace_listener()
+            start_coding_lane_reviewer()
             start_discord_gateway()
             start_telegram_gateway()
             start_voice_daemon()
@@ -342,6 +347,7 @@ def create_app() -> FastAPI:
             except Exception:
                 pass
             stop_global_workspace_listener()
+            stop_coding_lane_reviewer()
             stop_emotion_concept_listener()
             stop_mood_listener()
             stop_semantic_indexer()

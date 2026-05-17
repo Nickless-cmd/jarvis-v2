@@ -155,6 +155,7 @@ ALLOWED_EVENT_FAMILIES = {
     "learning_policy",    # policy_abstraction — Phase 2 generalization (added 2026-05-11)
     "self_repair",        # emotion_repair_bridge_daemon (added 2026-05-11)
     "credit_assignment",  # Lag 1 — choice recording & outcome linking (added 2026-05-17)
+    "coding_lane",  # auto-reviewer + future code-gen (added 2026-05-17)
 }
 
 

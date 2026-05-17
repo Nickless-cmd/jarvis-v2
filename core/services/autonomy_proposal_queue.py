@@ -473,6 +473,25 @@ def _auto_commit_after_source_edit(proposal: dict, result: dict) -> None:
 
     logger.info("auto-commit: committed %s for proposal %s", relative_path, proposal_id)
 
+    # Publish commit_landed event for coding_lane auto-reviewer
+    try:
+        from core.eventbus.bus import event_bus as _eb
+        import subprocess as _sp2
+        _sha_result = _sp2.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=5, cwd=project_root,
+        )
+        _sha = _sha_result.stdout.strip() if _sha_result.returncode == 0 else "unknown"
+        _eb.publish("coding_lane.commit_landed", {
+            "sha": _sha,
+            "message": commit_msg[:200],
+            "files": [relative_path],
+            "author": "Jarvis <jarvis@srvlab.dk>",
+            "project_root": project_root,
+        })
+    except Exception:
+        pass
+
 
 def _execute_git_commit_proposal(payload: dict) -> dict:
     """Execute an approved git-commit proposal.
@@ -525,6 +544,19 @@ def _execute_git_commit_proposal(payload: dict) -> dict:
     import re as _re
     m = _re.search(r"\[(?:\S+)\s+([0-9a-f]+)\]", output)
     commit_hash = m.group(1) if m else "unknown"
+
+    # Publish commit_landed event for coding_lane auto-reviewer
+    try:
+        from core.eventbus.bus import event_bus as _eb
+        _eb.publish("coding_lane.commit_landed", {
+            "sha": commit_hash,
+            "message": message[:200],
+            "files": files,
+            "author": "Jarvis <jarvis@srvlab.dk>",
+            "project_root": project_root,
+        })
+    except Exception:
+        pass
 
     return {
         "status": "executed",

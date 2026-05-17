@@ -166,7 +166,7 @@ def test_compact_session_history_skips_if_too_few_messages(monkeypatch):
         "_get_all_session_messages",
         lambda session_id: [{"role": "user", "content": "hi"} for _ in range(5)],
     )
-    monkeypatch.setattr(session_compact, "_store_marker", lambda sid, text: "marker-1")
+    monkeypatch.setattr(session_compact, "_store_marker", lambda sid, text, git_sha="": "marker-1")
 
     result = session_compact.compact_session_history(
         "session-x", keep_recent=20, summarise_fn=summarise_fn
@@ -184,7 +184,7 @@ def test_compact_session_history_calls_summarise_on_enough_messages(monkeypatch)
         for i in range(30)
     ]
     monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: messages)
-    monkeypatch.setattr(session_compact, "_store_marker", lambda sid, text: "marker-1")
+    monkeypatch.setattr(session_compact, "_store_marker", lambda sid, text, git_sha="": "marker-1")
 
     result = session_compact.compact_session_history(
         "session-x", keep_recent=20, summarise_fn=summarise_fn
@@ -206,7 +206,7 @@ def test_compact_session_history_compresses_only_old_messages(monkeypatch):
 
     messages = [{"role": "user", "content": f"msg {i}"} for i in range(25)]
     monkeypatch.setattr(session_compact, "_get_all_session_messages", lambda sid: messages)
-    monkeypatch.setattr(session_compact, "_store_marker", lambda sid, text: "m")
+    monkeypatch.setattr(session_compact, "_store_marker", lambda sid, text, git_sha="": "m")
 
     session_compact.compact_session_history(
         "session-x", keep_recent=20, summarise_fn=_capture_summarise

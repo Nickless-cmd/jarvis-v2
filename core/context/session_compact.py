@@ -26,6 +26,7 @@ def compact_session_history(
     *,
     keep_recent: int = 20,
     summarise_fn: Callable[[list[dict]], str],
+    git_sha: str = "",
 ) -> CompactResult | None:
     """Compact old session history for session_id.
 
@@ -33,6 +34,9 @@ def compact_session_history(
     old slice via summarise_fn, stores a compact_marker in DB, and returns
     a CompactResult. Returns None if there are not enough messages to compact
     (i.e. total <= keep_recent).
+
+    If git_sha is provided, it's stored with the marker for freshness checks
+    (Lag B — ground-truth grounding).
     """
     messages = _get_all_session_messages(session_id)
     if len(messages) <= keep_recent:
@@ -44,7 +48,7 @@ def compact_session_history(
 
     summary_text = summarise_fn(old_messages)
 
-    marker_id = _store_marker(session_id, summary_text)
+    marker_id = _store_marker(session_id, summary_text, git_sha=git_sha)
 
     logger.info(
         "session_compact: session=%s compacted %d messages → %d tokens freed",
@@ -66,6 +70,6 @@ def _get_all_session_messages(session_id: str) -> list[dict]:
     return recent_chat_session_messages(session_id, limit=500)
 
 
-def _store_marker(session_id: str, summary_text: str) -> str:
+def _store_marker(session_id: str, summary_text: str, git_sha: str = "") -> str:
     from core.services.chat_sessions import store_compact_marker
-    return store_compact_marker(session_id, summary_text)
+    return store_compact_marker(session_id, summary_text, git_sha=git_sha)

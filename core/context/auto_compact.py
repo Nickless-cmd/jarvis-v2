@@ -40,10 +40,22 @@ def maybe_auto_compact_session(session_id: str) -> bool:
 
         from core.context.session_compact import compact_session_history
         from core.context.compact_llm import call_compact_llm
+        from core.context.compact_ground_truth import (
+            collect_compact_ground_truth,
+            format_ground_truth_block,
+            get_current_git_sha,
+        )
 
         from core.services.identity_composer import identity_prompt_prefix as _ipp
+
+        # Lag A: collect ground truth and inject into prompt
+        gt = collect_compact_ground_truth(session_id)
+        gt_block = format_ground_truth_block(gt)
+        current_sha = get_current_git_sha()
+
         _SMART_PROMPT = (
             f"{_ipp()}' kontekst-kompressor. Komprimér denne dialog.\n\n"
+            f"{gt_block}\n\n"
             "BEVAR: eksplicitte beslutninger, tekniske fakta, fil-stier, åbne opgaver, "
             "brugerens præferencer og korrektioner.\n"
             "KASSÉR: statusbeskeder, trivielle bekræftelser, gentagne forsøg (bevar kun resultatet).\n\n"
@@ -59,6 +71,7 @@ def maybe_auto_compact_session(session_id: str) -> bool:
                 + "\n".join(f"{m['role']}: {m.get('content', '')[:600]}" for m in msgs),
                 max_tokens=600,
             ),
+            git_sha=current_sha,
         )
 
         if result:

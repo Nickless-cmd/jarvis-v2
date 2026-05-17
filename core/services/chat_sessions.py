@@ -322,25 +322,71 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
     ]
 
 
-def store_compact_marker(session_id: str, summary_text: str) -> str:
-    """Store a compact marker for the session. Returns the marker message_id."""
+def _ensure_compact_marker_git_sha_column() -> None:
+    """Add git_sha column to chat_messages if it doesn't exist (idempotent migration)."""
+    try:
+        from core.runtime.db import connect as _connect
+        with _connect() as _conn:
+            _conn.execute(
+                "ALTER TABLE chat_messages ADD COLUMN git_sha TEXT NOT NULL DEFAULT ''"
+            )
+    except Exception:
+        pass  # Column already exists
+
+
+def store_compact_marker(
+    session_id: str,
+    summary_text: str,
+    git_sha: str = "",
+) -> str:
+    """Store a compact marker for the session. Returns the marker message_id.
+
+    If git_sha is provided, it's stored alongside the marker for later
+    freshness checks (Lag B — see core/context/compact_ground_truth.py).
+    """
+    _ensure_compact_marker_git_sha_column()
     normalized_session = (session_id or "").strip()
     if not normalized_session:
         raise ValueError("session_id must not be empty")
     normalized_content = str(summary_text or "").strip()
     if not normalized_content:
         raise ValueError("summary_text must not be empty")
+    normalized_git_sha = (git_sha or "").strip()
     timestamp = datetime.now(UTC).isoformat()
     marker_id = f"compact-{uuid4().hex}"
     with connect() as conn:
         conn.execute(
             """
-            INSERT INTO chat_messages (message_id, session_id, role, content, created_at)
-            VALUES (?, ?, 'compact_marker', ?, ?)
+            INSERT INTO chat_messages (message_id, session_id, role, content, git_sha, created_at)
+            VALUES (?, ?, 'compact_marker', ?, ?, ?)
             """,
-            (marker_id, normalized_session, normalized_content, timestamp),
+            (marker_id, normalized_session, normalized_content, normalized_git_sha, timestamp),
         )
     return marker_id
+
+
+def get_compact_marker_with_sha(session_id: str) -> tuple[str | None, str | None]:
+    """Return (summary, git_sha) of the most recent compact marker, or (None, None)."""
+    try:
+        _ensure_compact_marker_git_sha_column()
+    except Exception:
+        pass
+    normalized = (session_id or "").strip()
+    if not normalized:
+        return (None, None)
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT content, git_sha FROM chat_messages
+            WHERE session_id = ? AND role = 'compact_marker'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (normalized,),
+        ).fetchone()
+    if row:
+        return (str(row["content"]), str(row["git_sha"]) if row["git_sha"] else None)
+    return (None, None)
 
 
 def get_compact_marker(session_id: str) -> str | None:

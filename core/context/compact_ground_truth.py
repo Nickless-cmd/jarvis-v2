@@ -671,3 +671,246 @@ def get_compact_marker_freshness(stored_sha: str | None) -> dict[str, Any]:
         "commits_since": commits,
         "status": "stale",
     }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Lag D: Self-healing compaction loop
+# ──────────────────────────────────────────────────────────────────────
+
+# Danish correction signal phrases — when the user says something like
+# this while a compact marker claimed the opposite, it's a mismatch.
+CORRECTION_SIGNAL_PHRASES: list[str] = [
+    "det er da implementeret",
+    "det findes allerede",
+    "det virker",
+    "det er bygget",
+    "det har vi lavet",
+    "det er lavet",
+    "det er der",
+    "det eksisterer",
+    "det kører",
+    "det er på plads",
+    "allerede bygget",
+    "allerede implementeret",
+    "det er færdigt",
+    "det er klar",
+    "jo det gør",
+    "det er ikke åbent",
+    "det er ikke noget mangler",
+    "det er ikke missing",
+    "nej det er",
+    "jo det er",
+    "det er der jo",
+]
+
+
+def _extract_topic_words(text: str) -> set[str]:
+    """Extract meaningful topic/noun words from a text, filtering noise."""
+    import re
+
+    noise: set[str] = {
+        "det", "den", "til", "af", "at", "med", "fra", "på", "om",
+        "er", "har", "var", "kan", "skal", "vil", "blev", "være",
+        "the", "and", "for", "are", "has", "not", "but", "its",
+        "bare", "lige", "også", "mere", "helt", "faktisk",
+        "mangler", "missing", "implementeret", "implemented",
+        "åbent", "open", "ikke", "not", "stadig", "still",
+        "endnu", "yet", "bliver", "being", "været", "been",
+        "blevet", "gøre", "do", "gør", "does", "gor",
+        "din", "dit", "min", "mit", "jeg", "du", "han", "hun",
+        "vi", "i", "de", "mig", "dig", "sig", "vores", "deres",
+        "ja", "nej", "jo", "da", "bare", "godt", "fint", "ok",
+    }
+
+    words = re.findall(r'\b[a-zæøåA-ZÆØÅ]{3,}\b', text.lower())
+    return {w for w in words if w not in noise}
+
+
+def _check_user_message_against_marker(
+    user_msg: str,
+    marker_text: str,
+    marker_failures: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    """Check if a user message corrects a compact marker's false claim.
+
+    Returns a mismatch report dict if a correction is detected, or None.
+
+    Report format:
+        {
+            "matched": True,
+            "marker_topic_overlap": set[str],
+            "failure_context": str | None,   # the specific failure context that matched
+            "confidence": "high" | "medium",
+        }
+    """
+    msg_lower = user_msg.lower()
+
+    # Step 1: Check for correction signal phrases
+    has_signal = any(phrase in msg_lower for phrase in CORRECTION_SIGNAL_PHRASES)
+    if not has_signal:
+        return None
+
+    # Step 2: Extract topic words
+    msg_words = _extract_topic_words(msg_lower)
+    marker_words = _extract_topic_words(marker_text)
+    overlap = msg_words & marker_words
+
+    # Step 3: Cross-reference with known failures (high confidence match)
+    if marker_failures:
+        for failure in marker_failures:
+            ctx = failure.get("context", "")
+            ctx_words = _extract_topic_words(ctx)
+            if msg_words & ctx_words:
+                return {
+                    "matched": True,
+                    "marker_topic_overlap": overlap,
+                    "failure_context": ctx[:120],
+                    "confidence": "high",
+                }
+
+    # Step 4: Topic overlap alone (medium confidence)
+    if overlap:
+        return {
+            "matched": True,
+            "marker_topic_overlap": overlap,
+            "failure_context": None,
+            "confidence": "medium",
+        }
+
+    return None
+
+
+def detect_compact_mismatch_in_chat(session_id: str) -> list[dict[str, Any]]:
+    """Scan recent user messages for corrections contradicting the latest compact marker.
+
+    Called during conversation to detect when the user implicitly corrects
+    a hallucinated compact claim. If mismatches are found, auto-regeneration
+    is triggered.
+
+    Returns a list of mismatch reports (one per offending message).
+    """
+    from core.services.chat_sessions import get_compact_marker_with_sha, recent_chat_session_messages
+
+    # Get latest marker
+    marker_text, _marker_sha = get_compact_marker_with_sha(session_id)
+    if not marker_text:
+        return []
+
+    # Get recent user messages (last 10)
+    messages = recent_chat_session_messages(session_id, limit=10)
+    user_msgs = [m for m in messages if m["role"] == "user"]
+
+    # Get known failures for this session
+    failures = get_validation_failures(session_id, limit=10)
+
+    mismatches: list[dict[str, Any]] = []
+    for msg in user_msgs:
+        result = _check_user_message_against_marker(
+            msg["content"], marker_text, failures,
+        )
+        if result:
+            result["user_message"] = msg["content"][:200]
+            mismatches.append(result)
+
+    return mismatches
+
+
+def resolve_stale_markers_on_load(session_id: str) -> str | None:
+    """Boot-time check: auto-regenerate stale/unresolved compact markers.
+
+    Called when a session loads. Checks:
+      1. Are there unresolved validation failures for this session?
+      2. Is the marker stale (commits since stored SHA)?
+
+    If either is true, auto-regenerates the marker with ground truth injected.
+
+    Returns the new marker_id if regeneration happened, None otherwise.
+    """
+    # Check unresolved failures
+    failures = get_validation_failures(session_id, limit=5)
+    unresolved = [f for f in failures if not f.get("resolved_at")]
+    if not unresolved:
+        return None  # no known failures — nothing to heal
+
+    # Check freshness only if we have a stored SHA
+    from core.services.chat_sessions import get_compact_marker_with_sha as _get_marker
+
+    _text, _sha = _get_marker(session_id)
+    if _sha:
+        freshness = get_compact_marker_freshness(_sha)
+        if freshness.get("fresh"):
+            # Marker is fresh — no need to regenerate even if old failures exist
+            # (they may have been superseded by a newer compaction)
+            logger.debug(
+                "resolve_stale: session=%s marker is fresh (SHA matches) — skipping",
+                session_id,
+            )
+            return None
+
+    # Auto-regenerate
+    logger.info(
+        "resolve_stale: session=%s has %d unresolved failures — auto-regenerating",
+        session_id, len(unresolved),
+    )
+    # Find the marker_id of the most recent unresolved failure
+    marker_id = unresolved[0].get("marker_id", "")
+    return auto_regenerate_compact_marker(session_id, original_marker_id=marker_id)
+
+
+def compact_healthcheck_daemon_tick() -> list[dict[str, Any]]:
+    """Periodic healthcheck: scan all sessions with unresolved validation failures.
+
+    Called by the heartbeat daemon (e.g. every 30 min). Iterates over all
+    sessions that have unresolved compaction_validation_failures and attempts
+    auto-regeneration.
+
+    Returns a list of resolution reports.
+    """
+    attempts: list[dict[str, Any]] = []
+
+    try:
+        _ensure_compaction_validation_table()
+        from core.runtime.db import connect as _connect
+
+        with _connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT DISTINCT session_id
+                FROM compaction_validation_failures
+                WHERE resolved_at IS NULL AND regenerated = 0
+                """
+            ).fetchall()
+    except Exception as exc:
+        logger.warning("compact_healthcheck: db query failed: %s", exc)
+        return attempts
+
+    for row in rows:
+        session_id = str(row["session_id"])
+        try:
+            new_id = resolve_stale_markers_on_load(session_id)
+            attempts.append({
+                "session_id": session_id,
+                "regenerated": new_id is not None,
+                "new_marker_id": new_id or "",
+                "checked_at": datetime.now(UTC).isoformat(),
+            })
+        except Exception as exc:
+            logger.warning(
+                "compact_healthcheck: failed to heal session %s: %s",
+                session_id, exc,
+            )
+            attempts.append({
+                "session_id": session_id,
+                "regenerated": False,
+                "error": str(exc),
+                "checked_at": datetime.now(UTC).isoformat(),
+            })
+
+    if attempts:
+        healed = sum(1 for a in attempts if a["regenerated"])
+        logger.info(
+            "compact_healthcheck: healed %d/%d sessions",
+            healed, len(attempts),
+        )
+
+    return attempts

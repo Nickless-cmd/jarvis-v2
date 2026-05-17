@@ -38,7 +38,22 @@ def compact_session_history(
 
     If git_sha is provided, it's stored with the marker for freshness checks
     (Lag B — ground-truth grounding).
+
+    Lag D: On entry, attempts to resolve any stale/unresolved compact markers
+    for this session. This is the boot-time self-healing hook.
     """
+    # Lag D: self-heal stale markers before compacting
+    try:
+        from core.context.compact_ground_truth import resolve_stale_markers_on_load
+        healed = resolve_stale_markers_on_load(session_id)
+        if healed:
+            logger.info(
+                "session_compact: self-healed session=%s → new marker=%s",
+                session_id, healed,
+            )
+    except Exception as exc:
+        logger.debug("session_compact: self-heal skipped (%s)", exc)
+
     messages = _get_all_session_messages(session_id)
     if len(messages) <= keep_recent:
         return None

@@ -580,3 +580,202 @@ def test_compact_result_validation_provided():
         validation={"passed": True, "verified_false": 0},
     )
     assert r.validation["passed"] is True
+
+
+# ── Task 11: Lag D — Self-healing compaction loop ─────────────────────────
+
+def test_extract_topic_words_removes_noise():
+    from core.context.compact_ground_truth import _extract_topic_words
+    words = _extract_topic_words("det er bare en test af credit assignment")
+    assert "test" in words
+    assert "credit" in words
+    assert "assignment" in words
+    assert "det" not in words
+    assert "er" not in words
+    assert "bare" not in words
+
+
+def test_extract_topic_words_returns_set():
+    from core.context.compact_ground_truth import _extract_topic_words
+    result = _extract_topic_words("Lag 1 credit assignment mangler stadig")
+    assert isinstance(result, set)
+    assert len(result) >= 1
+
+
+def test_check_user_message_against_marker_no_signal():
+    """A normal user message without correction signal should return None."""
+    from core.context.compact_ground_truth import _check_user_message_against_marker
+    result = _check_user_message_against_marker(
+        "Kan du bygge credit assignment modulet?",
+        "Lag 1 credit assignment mangler og er åbent",
+    )
+    assert result is None  # no correction signal phrase
+
+
+def test_check_user_message_against_marker_detects_correction():
+    """A user message with correction signal + topic overlap should match."""
+    from core.context.compact_ground_truth import _check_user_message_against_marker
+    result = _check_user_message_against_marker(
+        "Det er da implementeret, credit assignment kører fint",
+        "Lag 1 credit assignment mangler og er åbent",
+    )
+    assert result is not None
+    assert result["matched"] is True
+    # "credit" and "assignment" should overlap
+    assert "credit" in result["marker_topic_overlap"] or "assignment" in result["marker_topic_overlap"]
+
+
+def test_check_user_message_against_marker_high_confidence_with_failure():
+    """If a known failure context matches, confidence should be 'high'."""
+    from core.context.compact_ground_truth import _check_user_message_against_marker
+    failures = [
+        {
+            "pattern": "mangler",
+            "context": "credit assignment modulet mangler og er ikke implementeret",
+            "verified_false": True,
+            "confidence": "high",
+        }
+    ]
+    result = _check_user_message_against_marker(
+        "Det virker fint, credit assignment er på plads",
+        "Lag 1 credit assignment mangler",
+        marker_failures=failures,
+    )
+    assert result is not None
+    assert result["matched"] is True
+    assert result["confidence"] == "high"
+
+
+def test_check_user_message_against_marker_medium_confidence_no_failure():
+    """Without known failures, topic overlap alone gives medium confidence."""
+    from core.context.compact_ground_truth import _check_user_message_against_marker
+    result = _check_user_message_against_marker(
+        "Det er bygget, workspace loader kører allerede",
+        "Workspace loader mangler og er ikke påbegyndt",
+    )
+    assert result is not None
+    assert result["matched"] is True
+    assert result["confidence"] == "medium"
+    assert "workspace" in result["marker_topic_overlap"] or "loader" in result["marker_topic_overlap"]
+
+
+def test_detect_compact_mismatch_in_chat_no_marker(monkeypatch):
+    """If no compact marker exists, should return empty list."""
+    from core.context.compact_ground_truth import detect_compact_mismatch_in_chat
+    monkeypatch.setattr(
+        "core.services.chat_sessions.get_compact_marker_with_sha",
+        lambda sid: (None, None),
+    )
+    result = detect_compact_mismatch_in_chat("session-x")
+    assert result == []
+
+
+def test_detect_compact_mismatch_in_chat_no_mismatch(monkeypatch):
+    """If user messages don't contradict the marker, return empty list."""
+    from core.context.compact_ground_truth import detect_compact_mismatch_in_chat
+    monkeypatch.setattr(
+        "core.services.chat_sessions.get_compact_marker_with_sha",
+        lambda sid: ("All features are implemented and working", "abc1234"),
+    )
+    monkeypatch.setattr(
+        "core.services.chat_sessions.recent_chat_session_messages",
+        lambda sid, limit: [
+            {"role": "user", "content": "Hvad med at bygge noget nyt?"},
+            {"role": "assistant", "content": "Sure"},
+        ],
+    )
+    monkeypatch.setattr(
+        "core.context.compact_ground_truth.get_validation_failures",
+        lambda sid, limit: [],
+    )
+    result = detect_compact_mismatch_in_chat("session-x")
+    assert result == []
+
+
+def test_resolve_stale_markers_on_load_no_failures(monkeypatch):
+    """If no unresolved failures, should return None."""
+    from core.context.compact_ground_truth import resolve_stale_markers_on_load
+    monkeypatch.setattr(
+        "core.context.compact_ground_truth.get_validation_failures",
+        lambda sid, limit: [],
+    )
+    result = resolve_stale_markers_on_load("session-x")
+    assert result is None
+
+
+def test_resolve_stale_markers_on_load_skips_fresh_marker(monkeypatch):
+    """If marker is fresh (SHA matches), skip even if old failures exist."""
+    from core.context.compact_ground_truth import resolve_stale_markers_on_load
+    monkeypatch.setattr(
+        "core.context.compact_ground_truth.get_validation_failures",
+        lambda sid, limit: [
+            {"resolved_at": None, "marker_id": "old-marker", "session_id": "session-x"},
+        ],
+    )
+    monkeypatch.setattr(
+        "core.services.chat_sessions.get_compact_marker_with_sha",
+        lambda sid: ("stale text", "abc1234"),
+    )
+    monkeypatch.setattr(
+        "core.context.compact_ground_truth.get_compact_marker_freshness",
+        lambda sha: {"fresh": True, "status": "fresh"},
+    )
+    result = resolve_stale_markers_on_load("session-x")
+    assert result is None
+
+
+def test_compact_healthcheck_daemon_tick_no_failures(monkeypatch):
+    """If no sessions have unresolved failures, return empty list."""
+    from core.context.compact_ground_truth import compact_healthcheck_daemon_tick
+
+    class _FakeEmptyCursor:
+        def fetchall(self): return []
+        def execute(self, *a, **kw): return self
+
+    class _FakeConn:
+        def execute(self, *a, **kw): return _FakeEmptyCursor()
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+
+    monkeypatch.setattr(
+        "core.context.compact_ground_truth._ensure_compaction_validation_table",
+        lambda: None,
+    )
+    monkeypatch.setattr("core.runtime.db.connect", lambda: _FakeConn())
+
+    result = compact_healthcheck_daemon_tick()
+    assert result == []
+
+
+def test_compact_healthcheck_daemon_tick_with_unresolved(monkeypatch):
+    """If sessions have unresolved failures, attempt healing."""
+    from core.context.compact_ground_truth import compact_healthcheck_daemon_tick
+
+    class _FakeCursor:
+        def __init__(self, rows):
+            self._rows = rows
+            self._idx = 0
+        def fetchall(self): return self._rows
+        def execute(self, *a, **kw): return self
+
+    class _FakeConn:
+        def execute(self, *a, **kw):
+            return _FakeCursor([{"session_id": "session-x"}])
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+
+    monkeypatch.setattr(
+        "core.context.compact_ground_truth._ensure_compaction_validation_table",
+        lambda: None,
+    )
+    monkeypatch.setattr("core.runtime.db.connect", lambda: _FakeConn())
+    monkeypatch.setattr(
+        "core.context.compact_ground_truth.resolve_stale_markers_on_load",
+        lambda sid: "new-marker-42",
+    )
+
+    result = compact_healthcheck_daemon_tick()
+    assert len(result) == 1
+    assert result[0]["session_id"] == "session-x"
+    assert result[0]["regenerated"] is True
+    assert result[0]["new_marker_id"] == "new-marker-42"

@@ -1084,6 +1084,8 @@ def init_db() -> None:
         _ensure_causal_edges_table(conn)
         from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables
         ensure_claude_dispatch_tables(conn)
+        from core.runtime.db_credit_assignment import ensure_credit_assignment_tables
+        ensure_credit_assignment_tables(conn)
         conn.commit()
 
 

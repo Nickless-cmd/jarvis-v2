@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import threading
 import time
@@ -8394,6 +8395,125 @@ def _heartbeat_scheduler_loop(*, name: str, startup_recovery_requested: bool) ->
             )
 
 
+def _value_drifted(expected: object, actual: object) -> bool:
+    """True hvis expected ≠ actual under tolerant sammenligning.
+
+    Bools sammenlignes som bools (0/False, 1/True er ens). Andre typer
+    sammenlignes som strenge for at undgå falske positiver mellem fx
+    ``""`` og ``None`` der begge repræsenterer "ingen værdi" i DB-rækken.
+    """
+    if isinstance(expected, bool) or isinstance(actual, bool):
+        return bool(expected) != bool(actual)
+    return str(expected if expected is not None else "") != str(
+        actual if actual is not None else ""
+    )
+
+
+def _detect_startup_drift(
+    *,
+    name: str,
+    phase: str,
+    overrides: dict[str, object],
+    actual_state: dict[str, object],
+) -> dict[str, dict[str, object]]:
+    """Sammenlign intended overrides mod hvad SELECT-back faktisk returnerede.
+
+    Hvis upserten fejlede stille (eller skrev til en anden DB), vil
+    actual_state ikke afspejle overrides. Returnerer en mismatch-dict
+    (tom hvis alt landede). Publisher heartbeat.scheduler_startup_drift
+    + logger.error med diagnostisk kontekst hvis drift opdages — så næste
+    incident giver et tydeligt signal i stedet for stille tavshed
+    (bug 2026-05-17: scheduler_health='stopped' overlevede flere restarts).
+    """
+    mismatches: dict[str, dict[str, object]] = {}
+    for key, expected in overrides.items():
+        actual = actual_state.get(key)
+        if _value_drifted(expected, actual):
+            mismatches[key] = {"expected": expected, "actual": actual}
+    if not mismatches:
+        return mismatches
+
+    try:
+        from core.runtime.db_core import DB_PATH as _DB_PATH
+
+        db_path_str = str(_DB_PATH)
+        if _DB_PATH.exists():
+            stat = _DB_PATH.stat()
+            db_size = stat.st_size
+            db_mtime = datetime.fromtimestamp(stat.st_mtime, UTC).isoformat()
+        else:
+            db_size = -1
+            db_mtime = ""
+    except Exception:  # pragma: no cover — diagnostic best-effort
+        db_path_str = ""
+        db_size = -1
+        db_mtime = ""
+
+    payload: dict[str, object] = {
+        "name": name,
+        "phase": phase,
+        "pid": os.getpid(),
+        "db_path": db_path_str,
+        "db_size": db_size,
+        "db_mtime": db_mtime,
+        "mismatches": mismatches,
+    }
+    logger.error(
+        "HEARTBEAT-STATE-DRIFT: name=%s phase=%s pid=%s db_path=%s "
+        "db_size=%s db_mtime=%s mismatches=%s",
+        name,
+        phase,
+        os.getpid(),
+        db_path_str,
+        db_size,
+        db_mtime,
+        mismatches,
+    )
+    event_bus.publish("heartbeat.scheduler_startup_drift", payload)
+    return mismatches
+
+
+def _persist_runtime_state_with_diagnostics(
+    *,
+    name: str,
+    phase: str,
+    policy: dict[str, object],
+    persisted: dict[str, object],
+    now: datetime,
+    overrides: dict[str, object],
+) -> dict[str, object]:
+    """Wrapper omkring _persist_runtime_state der re-raiser med stack trace
+    og opdager silent write-drift bagefter. Bevidst ikke-swallowing — vi vil
+    have systemd-level signal hvis startup-persist fejler.
+
+    Komplementær til Phase 1's fresh-read mismatch-check:
+    - Denne wrapper fanger field-by-field drift mellem intended og actual state
+      (via upsert'ens SELECT-back)
+    - Fresh-read check (caller-side) fanger concurrent-writer-overskrivning
+      efter persist
+    Begge er værd at have; de fanger forskellige failure modes.
+    """
+    try:
+        actual_state = _persist_runtime_state(
+            policy=policy,
+            persisted=persisted,
+            now=now,
+            overrides=overrides,
+        )
+    except Exception:
+        logger.exception(
+            "HEARTBEAT-STATE-PERSIST-FAILED: name=%s phase=%s overrides=%s",
+            name,
+            phase,
+            overrides,
+        )
+        raise
+    _detect_startup_drift(
+        name=name, phase=phase, overrides=overrides, actual_state=actual_state
+    )
+    return actual_state
+
+
 def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
     policy = load_heartbeat_policy(name=name)
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
@@ -8424,7 +8544,9 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
             "recovery_status": recovery_status,
         },
     )
-    startup_state = _persist_runtime_state(
+    startup_state = _persist_runtime_state_with_diagnostics(
+        name=name,
+        phase="startup",
         policy=policy,
         persisted=persisted,
         now=now,
@@ -8482,7 +8604,9 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
             name=name,
             should_trigger_recovery=should_trigger_recovery,
         )
-        startup_state = _persist_runtime_state(
+        startup_state = _persist_runtime_state_with_diagnostics(
+            name=name,
+            phase="startup-recovery",
             policy=policy,
             persisted=get_heartbeat_runtime_state() or startup_state,
             now=now,

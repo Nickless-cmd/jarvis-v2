@@ -267,6 +267,18 @@ def tick_mail_checker_daemon() -> dict[str, object]:
         except Exception:
             pass
 
+        # Push nudge so Jarvis sees new mail in awareness prompt
+        try:
+            from core.services.outbound_nudges import push_nudge
+            push_nudge(
+                source="mail_checker",
+                kind="other",
+                message=f"Ny mail fra {sender}: {subject}",
+                importance="high",
+            )
+        except Exception:
+            pass
+
         # Proactive notification + auto-evaluate for non-self mail
         if "jarvis@srvlab.dk" not in sender and "root@srvlab.dk" not in sender:
             try:

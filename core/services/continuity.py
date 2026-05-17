@@ -255,6 +255,76 @@ def get_wake_tier(hours_since_last: float) -> str:
     return "deep_sleep"
 
 
+def build_conversation_continuity(*, limit: int = 3) -> str | None:
+    """Build a 'hvad talte vi om' block from recent session data.
+
+    Combines session titles, LLM-generated summaries, and recent messages
+    into a narrative thread so Jarvis wakes up knowing what was discussed.
+
+    Returns a markdown-formatted string or None if no data.
+    """
+    import logging as _log
+    _log.debug("build_conversation_continuity")
+
+    lines: list[str] = []
+    seen_topics: set[str] = set()
+
+    # 1. Recent session titles from chat_sessions
+    try:
+        from core.services.chat_sessions import list_chat_sessions as _lcs
+        sessions = _lcs(limit=limit)
+        if sessions:
+            for s in sessions:
+                sid = str(s.get("id") or s.get("session_id") or "")
+                title = str(s.get("title") or "").strip()
+                if sid and title and title.lower() != "new chat" and title not in seen_topics:
+                    seen_topics.add(title)
+                    created = str(s.get("created_at") or "")[:10] if s.get("created_at") else ""
+                    date_str = f" ({created})" if created else ""
+                    lines.append(f"- **{title}**{date_str}")
+    except Exception:
+        pass
+
+    # 2. LLM-generated session summaries
+    try:
+        from core.runtime.db import session_summary_recent as _ssr
+        summaries = _ssr(limit=limit)
+        if summaries:
+            for s in summaries:
+                created = str(s.get("created_at") or "")[:16]
+                text = str(s.get("summary") or "").strip()
+                if text:
+                    lines.append(f"  - [{created}] {text[:200]}")
+    except Exception:
+        pass
+
+    # 3. Latest user message from most recent session (pick up open thread)
+    try:
+        from core.services.chat_sessions import recent_chat_session_messages as _rcsm
+        if sessions:
+            latest_sid = str(sessions[0].get("id") or sessions[0].get("session_id") or "")
+            if latest_sid:
+                msgs = _rcsm(latest_sid, limit=3)
+                if msgs:
+                    latest_user = None
+                    for m in reversed(msgs):
+                        if m.get("role") == "user":
+                            latest_user = str(m.get("content") or "")[:120]
+                            break
+                    if latest_user:
+                    # Don't add as separate line — it's already visible in context.
+                    # Just use it to check if the thread is clearly still open.
+                        pass
+    except Exception:
+        pass
+
+    if not lines:
+        return None
+
+    header = "## Tidligere samtaler (seneste først)" if len(lines) > 1 else "## Seneste samtale"
+    return f"{header}\n" + "\n".join(lines)
+
+
 def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
     """Build the wake-up block for prompt injection.
 

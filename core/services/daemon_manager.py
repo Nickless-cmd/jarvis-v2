@@ -237,6 +237,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 60,
         "description": "Archives and deletes stale signals older than 24h across all signal tables",
     },
+    "cache_maintenance": {
+        "module": "core.services.cache_maintenance_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 360,
+        "default_enabled": True,
+        "description": "6t cleanup af web_cache: sletter udløbne entries (web_search + web_scrape), logger cache-sammensætning",
+    },
     "tiktok_content": {
         "module": "core.services.tiktok_content_daemon",
         "reset_var": "_last_tick_at",

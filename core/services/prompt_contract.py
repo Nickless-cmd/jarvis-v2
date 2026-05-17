@@ -3821,9 +3821,32 @@ def _recent_tool_reference_indexes(
 
 
 def _get_compact_marker_for_transcript(session_id: str) -> str | None:
-    """Fetch the most recent compact marker for this session (monkeypatchable)."""
+    """Fetch the most recent compact marker for this session (monkeypatchable).
+
+    Lag D: Before returning, runs compact-mismatch detection on recent user
+    messages. If the user has corrected a compaction claim, auto-regenerates
+    the marker and returns the corrected version.
+    """
     try:
         from core.services.chat_sessions import get_compact_marker
+        from core.context.compact_ground_truth import (
+            detect_compact_mismatch_in_chat,
+            auto_regenerate_compact_marker,
+        )
+
+        # Check if user messages contradict the compact marker
+        mismatches = detect_compact_mismatch_in_chat(session_id)
+        if mismatches:
+            high_confidence = any(m.get("confidence") == "high" for m in mismatches)
+            if high_confidence:
+                import logging as _lg
+                _lg.getLogger(__name__).info(
+                    "compact_heal: session=%s has %d high-confidence mismatches — regenerating",
+                    session_id, sum(1 for m in mismatches if m.get("confidence") == "high"),
+                )
+                auto_regenerate_compact_marker(session_id)
+
+        # Return the (possibly regenerated) marker
         return get_compact_marker(session_id)
     except Exception:
         return None

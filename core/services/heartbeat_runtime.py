@@ -2575,7 +2575,9 @@ def _build_influence_trace(
                 get_latest_somatic_phrase,
                 tick_somatic_daemon,
             )
-            _somatic_result = tick_somatic_daemon()
+            _somatic_result = _daemon_tick_with_deadline(
+                "somatic", tick_somatic_daemon, deadline_seconds=15.0,
+            )
             _dm.record_daemon_tick("somatic", _somatic_result or {})
             _somatic = get_latest_somatic_phrase()
             if _somatic:
@@ -2601,7 +2603,11 @@ def _build_influence_trace(
                 _energy_s = str(_gcc().get("energy_level") or "")
             except Exception:
                 pass
-            _surprise_result = tick_surprise_daemon(inner_voice_mode=_iv_mode_s, somatic_energy=_energy_s)
+            _surprise_result = _daemon_tick_with_deadline(
+                "surprise", tick_surprise_daemon,
+                inner_voice_mode=_iv_mode_s, somatic_energy=_energy_s,
+                deadline_seconds=15.0,
+            )
             _dm.record_daemon_tick("surprise", _surprise_result or {})
             _surprise = get_latest_surprise()
             if _surprise:
@@ -2650,7 +2656,12 @@ def _build_influence_trace(
             _ts_fragment = _get_ts_fragment()
             _tap_result = {}
             if _ts_fragment:
-                _tap_result = tick_thought_action_proposal_daemon(_ts_fragment) or {}
+                _tap_result = _daemon_tick_with_deadline(
+                    "thought_action_proposal",
+                    tick_thought_action_proposal_daemon,
+                    _ts_fragment,
+                    deadline_seconds=15.0,
+                ) or {}
             _dm.record_daemon_tick("thought_action_proposal", _tap_result)
             _pending = get_pending_proposals()
             if _pending:
@@ -2679,7 +2690,10 @@ def _build_influence_trace(
                 "last_surprise_at": _surp.get("generated_at", ""),
                 "fragment_count": _tss.get("fragment_count", 0),
             }
-            _conflict_result = tick_conflict_daemon(_conflict_snap)
+            _conflict_result = _daemon_tick_with_deadline(
+                "conflict", tick_conflict_daemon, _conflict_snap,
+                deadline_seconds=15.0,
+            )
             _dm.record_daemon_tick("conflict", _conflict_result or {})
             _conflict = get_latest_conflict()
             if _conflict:
@@ -2704,7 +2718,10 @@ def _build_influence_trace(
                 "flow_state": "",
                 "wonder_state": "",
             }
-            _tension_result = tick_layer_tension_daemon(_tension_snap)
+            _tension_result = _daemon_tick_with_deadline(
+                "layer_tension", tick_layer_tension_daemon, _tension_snap,
+                deadline_seconds=15.0,
+            )
             _dm.record_daemon_tick("layer_tension", _tension_result or {})
         except Exception:
             pass
@@ -2723,7 +2740,10 @@ def _build_influence_trace(
                 "last_conflict": _get_conflict(),
                 "last_surprise": _surp.get("last_surprise", "") if "_surp" in dir() else "",
             }
-            _reflect_result = tick_reflection_cycle_daemon(_reflect_snap)
+            _reflect_result = _daemon_tick_with_deadline(
+                "reflection_cycle", tick_reflection_cycle_daemon, _reflect_snap,
+                deadline_seconds=15.0,
+            )
             _dm.record_daemon_tick("reflection_cycle", _reflect_result or {})
             _reflection = get_latest_reflection()
             if _reflection:
@@ -2736,7 +2756,10 @@ def _build_influence_trace(
         try:
             from core.services.curiosity_daemon import tick_curiosity_daemon, get_latest_curiosity
             _ts_fragments = _tss.get("fragment_buffer", []) if "_tss" in dir() else []
-            _curiosity_result = tick_curiosity_daemon(_ts_fragments)
+            _curiosity_result = _daemon_tick_with_deadline(
+                "curiosity", tick_curiosity_daemon, _ts_fragments,
+                deadline_seconds=15.0,
+            )
             _dm.record_daemon_tick("curiosity", _curiosity_result or {})
             _curiosity = get_latest_curiosity()
             if _curiosity:
@@ -2830,7 +2853,10 @@ def _build_influence_trace(
     if _dm.is_enabled("emotion_repair_bridge"):
         try:
             from core.services.emotion_repair_bridge_daemon import tick_emotion_repair_bridge
-            _er_result = tick_emotion_repair_bridge()
+            _er_result = _daemon_tick_with_deadline(
+                "emotion_repair_bridge", tick_emotion_repair_bridge,
+                deadline_seconds=15.0,
+            )
             _dm.record_daemon_tick("emotion_repair_bridge", _er_result or {})
         except Exception:
             pass
@@ -2860,7 +2886,9 @@ def _build_influence_trace(
                 _dk = sum(1 for w in ["jeg", "er", "og", "det", "at", "en"] if w in _preview.lower())
                 _style_signals.append("danish" if _dk >= 2 else "english")
             record_choice(mode=_iv_mode_t, style_signals=_style_signals)
-            _taste_result = tick_taste_daemon()
+            _taste_result = _daemon_tick_with_deadline(
+                "aesthetic_taste", tick_taste_daemon, deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("aesthetic_taste", _taste_result or {})
             _taste = get_latest_taste_insight()
             if _taste:
@@ -2875,7 +2903,9 @@ def _build_influence_trace(
                 tick_irony_daemon,
                 get_latest_irony_observation,
             )
-            _irony_result = tick_irony_daemon()
+            _irony_result = _daemon_tick_with_deadline(
+                "irony", tick_irony_daemon, deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("irony", _irony_result or {})
             _irony = get_latest_irony_observation()
             if _irony:
@@ -2887,7 +2917,10 @@ def _build_influence_trace(
     if _dm.is_enabled("development_narrative"):
         try:
             from core.services.development_narrative_daemon import tick_development_narrative_daemon, get_latest_development_narrative
-            _dev_result = tick_development_narrative_daemon()
+            _dev_result = _daemon_tick_with_deadline(
+                "development_narrative", tick_development_narrative_daemon,
+                deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("development_narrative", _dev_result or {})
             _dev_narr = get_latest_development_narrative()
             if _dev_narr:
@@ -2903,9 +2936,11 @@ def _build_influence_trace(
             _abs = _abs_surface()
             _wonder_absence_hours = float(_abs.get("absence_duration_hours") or 0)
             _wonder_frag_count = int((_tss.get("fragment_count") or 0) if "_tss" in dir() else 0)
-            _wonder_result = tick_existential_wonder_daemon(
+            _wonder_result = _daemon_tick_with_deadline(
+                "existential_wonder", tick_existential_wonder_daemon,
                 absence_hours=_wonder_absence_hours,
                 fragment_count=_wonder_frag_count,
+                deadline_seconds=20.0,
             )
             _dm.record_daemon_tick("existential_wonder", _wonder_result or {})
         except Exception:
@@ -2915,7 +2950,10 @@ def _build_influence_trace(
     if _dm.is_enabled("code_aesthetic"):
         try:
             from core.services.code_aesthetic_daemon import tick_code_aesthetic_daemon
-            _ca_result = tick_code_aesthetic_daemon()
+            _ca_result = _daemon_tick_with_deadline(
+                "code_aesthetic", tick_code_aesthetic_daemon,
+                deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("code_aesthetic", _ca_result or {})
         except Exception:
             pass
@@ -2926,11 +2964,13 @@ def _build_influence_trace(
     if _dm.is_enabled("experienced_time"):
         try:
             from core.services.experienced_time_daemon import tick_experienced_time_daemon
-            _et_result = tick_experienced_time_daemon(
+            _et_result = _daemon_tick_with_deadline(
+                "experienced_time", tick_experienced_time_daemon,
                 event_count=len(inputs_present),
                 new_signal_count=1 if "_tss" in dir() and _tss.get("fragment_count", 0) > 0 else 0,
                 energy_level=_energy_ts,
-            )
+                deadline_seconds=10.0,
+            ) or {}
             _dm.record_daemon_tick("experienced_time", _et_result or {})
             _felt_label = _et_result.get("felt_label", "")
             if _felt_label and _felt_label not in ("meget kort", ""):
@@ -2943,7 +2983,9 @@ def _build_influence_trace(
         try:
             from core.services.absence_daemon import tick_absence_daemon, get_latest_absence, seed_last_interaction_from_db
             seed_last_interaction_from_db()
-            _absence_result = tick_absence_daemon()
+            _absence_result = _daemon_tick_with_deadline(
+                "absence", tick_absence_daemon, deadline_seconds=10.0,
+            )
             _dm.record_daemon_tick("absence", _absence_result or {})
             _absence_label = get_latest_absence()
             if _absence_label:
@@ -2956,7 +2998,10 @@ def _build_influence_trace(
         try:
             from core.services.creative_drift_daemon import tick_creative_drift_daemon, get_latest_drift
             _ts_frags_for_drift = _tss.get("fragment_buffer", []) if "_tss" in dir() else []
-            _drift_result = tick_creative_drift_daemon(_ts_frags_for_drift)
+            _drift_result = _daemon_tick_with_deadline(
+                "creative_drift", tick_creative_drift_daemon,
+                _ts_frags_for_drift, deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("creative_drift", _drift_result or {})
             _drift_idea = get_latest_drift()
             if _drift_idea:
@@ -2979,7 +3024,11 @@ def _build_influence_trace(
                 _da_signal_id = str(_da_artifact.get("signal_id") or "")
                 _da_summary = str(_da_artifact.get("summary") or _da_summary)
             if _da_signal_id and _da_summary:
-                _di_result = tick_dream_insight_daemon(signal_id=_da_signal_id, signal_summary=_da_summary)
+                _di_result = _daemon_tick_with_deadline(
+                    "dream_insight", tick_dream_insight_daemon,
+                    signal_id=_da_signal_id, signal_summary=_da_summary,
+                    deadline_seconds=20.0,
+                )
                 _dm.record_daemon_tick("dream_insight", _di_result or {"ok": True})
             else:
                 # No articulation candidate available — upstream dream_articulation
@@ -3004,7 +3053,9 @@ def _build_influence_trace(
     if _dm.is_enabled("dream_motif"):
         try:
             from core.services.dream_motif_daemon import tick_dream_motif_daemon
-            _motif_result = tick_dream_motif_daemon()
+            _motif_result = _daemon_tick_with_deadline(
+                "dream_motif", tick_dream_motif_daemon, deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("dream_motif", _motif_result or {})
         except Exception:
             pass
@@ -3013,10 +3064,14 @@ def _build_influence_trace(
     if _dm.is_enabled("ambient_sound"):
         try:
             from core.services.ambient_sound_daemon import tick_ambient_sound_daemon
-            _as_result = tick_ambient_sound_daemon()
+            _as_result = _daemon_tick_with_deadline(
+                "ambient_sound", tick_ambient_sound_daemon, deadline_seconds=15.0,
+            )
             _dm.record_daemon_tick("ambient_sound", _as_result or {})
             from core.services.active_sensing_daemon import tick_active_sensing_daemon
-            _asense_result = tick_active_sensing_daemon()
+            _asense_result = _daemon_tick_with_deadline(
+                "active_sensing", tick_active_sensing_daemon, deadline_seconds=15.0,
+            )
             _dm.record_daemon_tick("active_sensing", _asense_result or {})
         except Exception:
             pass
@@ -3025,7 +3080,9 @@ def _build_influence_trace(
     if _dm.is_enabled("shutdown_window"):
         try:
             from core.services.shutdown_window_daemon import tick_shutdown_window_daemon
-            _sw_result = tick_shutdown_window_daemon()
+            _sw_result = _daemon_tick_with_deadline(
+                "shutdown_window", tick_shutdown_window_daemon, deadline_seconds=10.0,
+            )
             _dm.record_daemon_tick("shutdown_window", _sw_result or {})
         except Exception:
             pass
@@ -3035,7 +3092,9 @@ def _build_influence_trace(
         try:
             from core.services.memory_decay_daemon import tick_memory_decay_daemon, maybe_rediscover
             from core.services.thought_stream_daemon import inject_rediscovery_fragment
-            _md_result = tick_memory_decay_daemon()
+            _md_result = _daemon_tick_with_deadline(
+                "memory_decay", tick_memory_decay_daemon, deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("memory_decay", _md_result or {})
             _rediscovered = maybe_rediscover()
             if _rediscovered and _rediscovered.get("summary"):
@@ -3047,7 +3106,9 @@ def _build_influence_trace(
     if _dm.is_enabled("memory_maintenance"):
         try:
             from core.services.memory_maintenance_daemon import tick_memory_maintenance_daemon
-            _mm_result = tick_memory_maintenance_daemon()
+            _mm_result = _daemon_tick_with_deadline(
+                "memory_maintenance", tick_memory_maintenance_daemon, deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("memory_maintenance", _mm_result or {})
         except Exception:
             pass
@@ -3056,7 +3117,9 @@ def _build_influence_trace(
     if _dm.is_enabled("signal_decay"):
         try:
             from core.services.signal_decay_daemon import tick_signal_decay_daemon
-            _sd_result = tick_signal_decay_daemon()
+            _sd_result = _daemon_tick_with_deadline(
+                "signal_decay", tick_signal_decay_daemon, deadline_seconds=15.0,
+            )
             _dm.record_daemon_tick("signal_decay", _sd_result or {})
         except Exception:
             pass
@@ -3065,7 +3128,9 @@ def _build_influence_trace(
     if _dm.is_enabled("task_worker"):
         try:
             from core.services.task_worker import tick_task_worker
-            _tw_result = tick_task_worker(budget=3)
+            _tw_result = _daemon_tick_with_deadline(
+                "task_worker", tick_task_worker, budget=3, deadline_seconds=30.0,
+            )
             _dm.record_daemon_tick("task_worker", _tw_result or {})
         except Exception as _tw_exc:  # noqa: BLE001
             _dm.record_daemon_tick(
@@ -3082,7 +3147,9 @@ def _build_influence_trace(
                 "craft": _drift_idea if "_drift_idea" in dir() else "",
                 "connection": (_tss.get("latest_fragment", "") if "_tss" in dir() else "")[:80],
             }
-            _desire_result = tick_desire_daemon(_desire_signals)
+            _desire_result = _daemon_tick_with_deadline(
+                "desire", tick_desire_daemon, _desire_signals, deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("desire", _desire_result or {})
         except Exception:
             pass
@@ -3090,7 +3157,9 @@ def _build_influence_trace(
     if _dm.is_enabled("autonomous_council"):
         try:
             from core.services.autonomous_council_daemon import tick_autonomous_council_daemon
-            _ac_result = tick_autonomous_council_daemon()
+            _ac_result = _daemon_tick_with_deadline(
+                "autonomous_council", tick_autonomous_council_daemon, deadline_seconds=30.0,
+            )
             _dm.record_daemon_tick("autonomous_council", _ac_result or {})
         except Exception:
             pass
@@ -3099,7 +3168,10 @@ def _build_influence_trace(
         try:
             from core.services.council_memory_daemon import tick_council_memory_daemon
             _recent_ctx = " ".join(inputs_present[:5])
-            _cm_result = tick_council_memory_daemon(recent_context=_recent_ctx)
+            _cm_result = _daemon_tick_with_deadline(
+                "council_memory", tick_council_memory_daemon,
+                recent_context=_recent_ctx, deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("council_memory", _cm_result or {})
         except Exception:
             pass
@@ -3110,7 +3182,9 @@ def _build_influence_trace(
             import core.services.tiktok_content_daemon
             importlib.reload(core.services.tiktok_content_daemon)
             from core.services.tiktok_content_daemon import tick_tiktok_content_daemon
-            _tc_result = tick_tiktok_content_daemon()
+            _tc_result = _daemon_tick_with_deadline(
+                "tiktok_content", tick_tiktok_content_daemon, deadline_seconds=30.0,
+            )
             _dm.record_daemon_tick("tiktok_content", _tc_result or {})
         except Exception:
             pass
@@ -3121,7 +3195,9 @@ def _build_influence_trace(
             import core.services.tiktok_research_daemon
             importlib.reload(core.services.tiktok_research_daemon)
             from core.services.tiktok_research_daemon import tick_tiktok_research_daemon
-            _tr_result = tick_tiktok_research_daemon()
+            _tr_result = _daemon_tick_with_deadline(
+                "tiktok_research", tick_tiktok_research_daemon, deadline_seconds=30.0,
+            )
             _dm.record_daemon_tick("tiktok_research", _tr_result or {})
         except Exception:
             pass
@@ -3129,7 +3205,9 @@ def _build_influence_trace(
     if _dm.is_enabled("mail_checker"):
         try:
             from core.services.mail_checker_daemon import tick_mail_checker_daemon
-            _mc_result = tick_mail_checker_daemon()
+            _mc_result = _daemon_tick_with_deadline(
+                "mail_checker", tick_mail_checker_daemon, deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("mail_checker", _mc_result or {})
         except Exception:
             pass
@@ -3138,7 +3216,9 @@ def _build_influence_trace(
     if _dm.is_enabled("current_pull"):
         try:
             from core.services.current_pull import tick_current_pull_daemon
-            _cp_result = tick_current_pull_daemon()
+            _cp_result = _daemon_tick_with_deadline(
+                "current_pull", tick_current_pull_daemon, deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("current_pull", _cp_result or {})
         except Exception:
             pass
@@ -3147,7 +3227,9 @@ def _build_influence_trace(
     if _dm.is_enabled("visual_memory"):
         try:
             from core.services.visual_memory import tick_visual_memory_daemon
-            _vm_result = tick_visual_memory_daemon()
+            _vm_result = _daemon_tick_with_deadline(
+                "visual_memory", tick_visual_memory_daemon, deadline_seconds=30.0,
+            )
             _dm.record_daemon_tick("visual_memory", _vm_result or {})
         except Exception:
             pass
@@ -3156,7 +3238,9 @@ def _build_influence_trace(
     if _dm.is_enabled("consolidation_judge"):
         try:
             from core.services.consolidation_judge_daemon import tick as _cj_tick
-            _cj_result = _cj_tick()
+            _cj_result = _daemon_tick_with_deadline(
+                "consolidation_judge", _cj_tick, deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("consolidation_judge", _cj_result or {})
         except Exception:
             pass
@@ -3165,7 +3249,9 @@ def _build_influence_trace(
     if _dm.is_enabled("my_projects_watchdog"):
         try:
             from core.services.my_projects import tick_my_projects_watchdog
-            _mpw_result = tick_my_projects_watchdog()
+            _mpw_result = _daemon_tick_with_deadline(
+                "my_projects_watchdog", tick_my_projects_watchdog, deadline_seconds=20.0,
+            )
             _dm.record_daemon_tick("my_projects_watchdog", _mpw_result or {})
         except Exception:
             pass

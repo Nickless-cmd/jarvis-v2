@@ -373,7 +373,11 @@ def _run_heartbeat_tick_with_deadline(
     def _runner():
         try:
             with runtime_surface_cache():
-                run_heartbeat_tick(name=name, trigger=trigger)
+                # 2026-05-18: Route through tick_with_phases() so that
+                # _identify_priorities() runs and empty ticks become
+                # productive_idle instead of blind dispatches.
+                from core.services.heartbeat_phases import tick_with_phases
+                tick_with_phases(name=name, trigger=trigger)
         except Exception as exc:
             logger.warning("heartbeat tick thread crashed: %s", exc)
 

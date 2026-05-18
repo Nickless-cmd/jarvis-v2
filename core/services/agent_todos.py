@@ -95,8 +95,18 @@ def set_todos(session_id: str | None, items: list[dict[str, Any]]) -> dict[str, 
             "updated_at": now,
         })
 
+    # Capture old plan_ids before replacement — for orphaned-plan detection
+    old_plan_ids: set[str] = set()
+    for t in data.get(sid, []):
+        pid = t.get("plan_id")
+        if pid and str(pid).strip():
+            old_plan_ids.add(str(pid).strip())
+
     data[sid] = cleaned
     _save_all(data)
+
+    # Auto-dismiss orphaned plans after full replacement
+    _maybe_dismiss_orphaned_plan(sid, old_plan_ids, cleaned)
 
     # Phase 1 transition detection: pending/in_progress → completed.
     for new_todo in cleaned:
@@ -231,16 +241,75 @@ def create_from_plan(
     return {"status": "ok", "count": len(new_todos), "todos": new_todos}
 
 
+def _maybe_dismiss_orphaned_plan(
+    session_id: str,
+    old_plan_ids: set[str],
+    new_todos: list[dict[str, Any]],
+) -> None:
+    """Dismiss any awaiting_approval plan that no longer has linked todos.
+
+    Called after a todo-removal operation.  Scans ``new_todos`` for any
+    remaining references to the plan_ids that existed *before* the
+    operation.  If a plan_id vanished entirely, and the plan is still
+    ``awaiting_approval``, it gets auto-dismissed — the plan no longer
+    has anything to execute.
+    """
+    remaining = set()
+    for t in new_todos:
+        pid = t.get("plan_id")
+        if pid and str(pid).strip():
+            remaining.add(str(pid).strip())
+
+    orphaned = old_plan_ids - remaining
+    if not orphaned:
+        return
+
+    try:
+        from core.services.plan_proposals import (
+            resolve_plan,
+        )
+
+        for pid in orphaned:
+            try:
+                resolve_plan(pid, decision="dismissed")
+                logger.info(
+                    "agent_todos: auto-dismissed orphaned plan %s "
+                    "(all linked todos removed)",
+                    pid,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "agent_todos: failed to auto-dismiss plan %s: %s",
+                    pid,
+                    exc,
+                )
+    except ImportError:
+        pass  # plan_proposals not available — skip gracefully
+
+
 def remove_todo(session_id: str | None, todo_id: str) -> dict[str, Any]:
     sid = _session_key(session_id)
     data = _load_all()
     items = data.get(sid, [])
+
+    # Capture plan_id before removal
+    removed_plan_ids: set[str] = set()
+    for i in items:
+        if i.get("id") == todo_id:
+            pid = i.get("plan_id")
+            if pid and str(pid).strip():
+                removed_plan_ids.add(str(pid).strip())
+            break
+
     before = len(items)
     items = [i for i in items if i.get("id") != todo_id]
     if len(items) == before:
         return {"status": "error", "error": f"unknown todo_id {todo_id}"}
     data[sid] = items
     _save_all(data)
+
+    _maybe_dismiss_orphaned_plan(sid, removed_plan_ids, items)
+
     return {"status": "ok", "removed_id": todo_id, "remaining": len(items)}
 
 
@@ -248,8 +317,14 @@ def clear_session_todos(session_id: str | None) -> dict[str, Any]:
     sid = _session_key(session_id)
     data = _load_all()
     if sid in data:
+        old_plan_ids: set[str] = set()
+        for t in data[sid]:
+            pid = t.get("plan_id")
+            if pid and str(pid).strip():
+                old_plan_ids.add(str(pid).strip())
         del data[sid]
         _save_all(data)
+        _maybe_dismiss_orphaned_plan(sid, old_plan_ids, [])
     return {"status": "ok", "cleared": sid}
 
 

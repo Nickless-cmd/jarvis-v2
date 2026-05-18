@@ -20,7 +20,7 @@ class TestVetoGate:
     def test_blocks_when_firm_pushback_exists(self, mock_pushback):
         from core.services.veto_gate import check_veto
         mock_pushback.return_value = "\n".join([
-            "Affective pushback: action=firm_pushback feeling=irritation",
+            "Affective pushback: action=firm_pushback feeling=irritation intensity=0.85",
             "evidence: Risk: slette filer uden test",
         ])
         allowed, reason = check_veto("edit_file", user_message="slette filer nu")

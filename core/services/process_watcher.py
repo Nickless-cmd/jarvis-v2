@@ -431,39 +431,29 @@ def _fire_action(watch: Watch, reason: str) -> None:
 
     if watch.on_match == "self_wakeup":
         try:
-            # Schedule a wakeup ~5 seconds out so it surfaces immediately
-            # but doesn't fire inside the watcher loop's lock.
-            from core.services.scheduled_tasks import schedule_self_wakeup
+            # Schedule a wakeup ~60 seconds out (self_wakeup minimum)
+            # so it surfaces on the next prompt assembly cycle.
+            from core.services.self_wakeup import schedule_self_wakeup
             schedule_self_wakeup(
                 prompt=body[:1000],
-                fire_at_seconds_from_now=5,
+                delay_seconds=5,
                 reason=f"process_watcher:{watch.label}",
             )
         except Exception as exc:
-            # Fallback: many codebases don't have schedule_self_wakeup with
-            # that signature. Try the wakeup_dispatcher direct path.
+            # Fallback: self_wakeup module missing or signature mismatch.
+            # Degrade gracefully to push_initiative.
             try:
-                from core.services.wakeup_dispatcher import register_self_wakeup
-                register_self_wakeup(
-                    prompt=body[:1000],
-                    fire_in_seconds=5,
-                    reason=f"process_watcher:{watch.label}",
+                from core.services.initiative_queue import push_initiative
+                push_initiative(
+                    focus=body[:500],
+                    source="process_watcher_fallback",
+                    source_id=watch.watch_id,
                 )
             except Exception as exc2:
                 logger.warning(
-                    "process_watcher: self_wakeup failed (both paths): %s | %s",
+                    "process_watcher: self_wakeup + fallback failed: %s | %s",
                     exc, exc2,
                 )
-                # Last resort: degrade to push_initiative
-                try:
-                    from core.services.initiative_queue import push_initiative
-                    push_initiative(
-                        focus=body[:500],
-                        source="process_watcher_fallback",
-                        source_id=watch.watch_id,
-                    )
-                except Exception:
-                    pass
         return
 
     if watch.on_match == "notify_owner":

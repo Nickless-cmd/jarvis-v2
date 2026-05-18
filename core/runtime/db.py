@@ -1089,6 +1089,8 @@ def init_db() -> None:
         ensure_claude_dispatch_tables(conn)
         from core.runtime.db_credit_assignment import ensure_credit_assignment_tables
         ensure_credit_assignment_tables(conn)
+        # Migration: add affective_signature column to chronicle entries
+        _migrate_chronicle_table_add_affective_signature()
         conn.commit()
 
 
@@ -29480,12 +29482,25 @@ def _ensure_cognitive_chronicle_entries_table(conn: sqlite3.Connection) -> None:
             narrative TEXT NOT NULL DEFAULT '',
             key_events TEXT NOT NULL DEFAULT '[]',
             lessons TEXT NOT NULL DEFAULT '[]',
+            affective_signature TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             PRIMARY KEY (entry_id)
         )
         """
     )
+
+
+def _migrate_chronicle_table_add_affective_signature() -> None:
+    """Add affective_signature column to existing tables missing it."""
+    try:
+        with connect() as conn:
+            conn.execute(
+                """ALTER TABLE cognitive_chronicle_entries
+                   ADD COLUMN affective_signature TEXT NOT NULL DEFAULT ''"""
+            )
+    except Exception:
+        pass  # Column already exists
 
 
 def insert_cognitive_chronicle_entry(
@@ -29495,15 +29510,16 @@ def insert_cognitive_chronicle_entry(
     narrative: str,
     key_events: str = "[]",
     lessons: str = "[]",
+    affective_signature: str = "",
 ) -> dict[str, object]:
     now = _now_iso()
     with connect() as conn:
         _ensure_cognitive_chronicle_entries_table(conn)
         conn.execute(
             """INSERT OR REPLACE INTO cognitive_chronicle_entries
-               (entry_id, period, narrative, key_events, lessons, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (entry_id, period, narrative, key_events, lessons, now, now),
+               (entry_id, period, narrative, key_events, lessons, affective_signature, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (entry_id, period, narrative, key_events, lessons, affective_signature, now, now),
         )
     return {"entry_id": entry_id, "period": period, "created_at": now}
 
@@ -29522,6 +29538,7 @@ def get_latest_cognitive_chronicle_entry() -> dict[str, object] | None:
         "narrative": row["narrative"],
         "key_events": row["key_events"],
         "lessons": row["lessons"],
+        "affective_signature": dict(row).get("affective_signature", ""),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -29541,6 +29558,7 @@ def list_cognitive_chronicle_entries(*, limit: int = 10) -> list[dict[str, objec
             "narrative": r["narrative"],
             "key_events": r["key_events"],
             "lessons": r["lessons"],
+            "affective_signature": dict(r).get("affective_signature", ""),
             "created_at": r["created_at"],
         }
         for r in rows

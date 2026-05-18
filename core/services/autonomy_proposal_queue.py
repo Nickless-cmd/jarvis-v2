@@ -558,28 +558,6 @@ def _execute_git_commit_proposal(payload: dict) -> dict:
     except Exception:
         pass
 
-    # Capture emotion tag after successful commit for affective continuity
-    try:
-        from core.services.emotion_tagging import current_emotion_tag, format_emotion_tag
-        tag = current_emotion_tag()
-        tag_text = format_emotion_tag(tag)
-        if tag_text:
-            logger.info("git-commit emotion tag: %s", tag_text)
-
-        # Publish emotion-tagged event for chronicle engine
-        try:
-            from core.eventbus.bus import event_bus as _eb2
-            _eb2.publish("autonomy_proposal.git_commit_landed", {
-                "sha": commit_hash,
-                "message": message[:200],
-                "emotion_tag": tag,
-                "emotion_tag_text": tag_text,
-            })
-        except Exception:
-            pass
-    except Exception:
-        pass
-
     return {
         "status": "executed",
         "commit": commit_hash,

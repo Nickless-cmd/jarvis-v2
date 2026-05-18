@@ -87,15 +87,6 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
         key_events = _extract_key_events(recent)
         lessons = _extract_lessons(recent)
 
-        # Capture affective signature for emotion continuity
-        affective_signature = ""
-        try:
-            from core.services.emotion_tagging import current_emotion_tag, format_emotion_tag
-            tag = current_emotion_tag()
-            affective_signature = format_emotion_tag(tag)
-        except Exception:
-            pass
-
         entry_id = f"chr-{uuid4().hex[:10]}"
         result = insert_cognitive_chronicle_entry(
             entry_id=entry_id,
@@ -103,7 +94,6 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
             narrative=narrative,
             key_events=json.dumps(key_events, ensure_ascii=False),
             lessons=json.dumps(lessons, ensure_ascii=False),
-            affective_signature=affective_signature,
         )
         entry = {
             "entry_id": entry_id,
@@ -111,7 +101,6 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
             "narrative": narrative,
             "key_events": key_events,
             "lessons": lessons,
-            "affective_signature": affective_signature,
             "created_at": str(result.get("created_at") or now.isoformat()),
         }
         project_entry_to_markdown(entry)
@@ -267,9 +256,7 @@ def get_chronicle_context_for_prompt(n: int = 3, max_chars: int = 1500) -> str:
         narrative = str(entry.get("narrative") or "").strip()
         if not narrative:
             continue
-        affective_signature = str(entry.get("affective_signature") or "").strip()
-        affect_line = f"\n{affective_signature}" if affective_signature else ""
-        sections.append(f"### {period} ({age_label}){affect_line}\n{narrative}")
+        sections.append(f"### {period} ({age_label})\n{narrative}")
 
     if not sections:
         return ""

@@ -313,7 +313,7 @@ def act_phase(
     activity = str(reflection.get("activity_level") or "normal")
     priorities = reflection.get("priorities") or []
 
-    if priorities or activity == "high":
+    if priorities:
         # Action warranted — dispatch to existing tick
         try:
             from core.services.heartbeat_runtime import run_heartbeat_tick
@@ -328,7 +328,13 @@ def act_phase(
             logger.warning("act_phase: tick dispatch failed: %s", exc)
             return {"kind": "tick_failed", "error": str(exc)}
 
-    # No clear action — productive idle
+    # No clear priorities — productive idle.
+    # IMPORTANT: Even when activity == "high" (e.g. during a chat session),
+    # we do NOT dispatch to run_heartbeat_tick here. That call would
+    # try to acquire _HEARTBEAT_TICK_LOCK and almost certainly fail,
+    # producing a <100ms "tick_dispatched" with score=20.
+    # Without priorities there's nothing urgent to act on — productive
+    # idle is strictly more useful.
     idle_result = productive_idle()
     return {"kind": "productive_idle", "result": idle_result}
 

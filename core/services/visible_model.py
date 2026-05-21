@@ -1923,6 +1923,13 @@ def _build_visible_chat_messages_for_github(
                     if r_content:
                         msg_dict["reasoning_content"] = r_content
                 messages.append(msg_dict)
+    # Hallucination guard: injectér memory for faktuelle spørgsmål
+    try:
+        from core.services.hallucination_guard import inject_memory_into_prompt
+        messages = inject_memory_into_prompt(message, messages)
+    except Exception:
+        logger.warning("hallucination_guard inject failed", exc_info=True)
+
     messages.append({"role": "user", "content": message})
     return messages
 

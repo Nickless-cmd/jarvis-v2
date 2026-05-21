@@ -5917,13 +5917,36 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
     url = f"http://localhost:80/files/{safe_name}"
-    return {
+
+    # Hallucination guard: verificér at URL'en faktisk virker
+    url_verified = False
+    url_error = ""
+    try:
+        req = urllib_request.Request(url, method="GET")
+        with urllib_request.urlopen(req, timeout=5) as resp:
+            url_verified = 200 <= resp.status < 300
+            if not url_verified:
+                url_error = f"HTTP {resp.status}"
+    except Exception as exc:
+        url_verified = False
+        url_error = str(exc)
+
+    result: dict[str, Any] = {
         "status": "ok",
         "filename": safe_name,
         "url": url,
         "markdown_link": f"[{safe_name}]({url})",
         "size_bytes": dest.stat().st_size,
+        "url_verified": url_verified,
     }
+    if url_error:
+        result["url_verify_error"] = url_error
+    if not url_verified:
+        result["warning"] = (
+            f"URL'en {url} returnerede ikke 200 ({url_error or 'unknown'}). "
+            "Præsenter IKKE URL'en for brugeren — den virker ikke."
+        )
+    return result
 
 
 # ── Handler registry ───────────────────────────────────────────────────

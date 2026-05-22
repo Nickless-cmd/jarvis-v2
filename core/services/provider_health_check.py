@@ -108,14 +108,20 @@ def latest_health_snapshot() -> dict[str, Any]:
 
 
 def health_section() -> str | None:
-    """Awareness section listing currently unreachable providers."""
+    """Awareness section listing currently unreachable providers.
+
+    2026-05-22 (Claude): dropped the `(check HH:MM:SS)` timestamp suffix.
+    It was unique per build and broke DeepSeek's prompt cache at exactly
+    the boundary where this section landed in the prompt. The model
+    doesn't need the wall-clock time of the check — only the result.
+    Time Pin gives the model wall time globally.
+    """
     snap = latest_health_snapshot()
     unreachable = snap.get("unreachable") or []
     if not unreachable:
         return None
-    checked = str(snap.get("checked_at", ""))[11:19]
     return (
-        f"Provider health (check {checked}): "
+        f"Provider health: "
         f"{len(unreachable)} unreachable ({', '.join(unreachable)}). "
         "Cheap-lane fallback chain håndterer routing."
     )

@@ -176,3 +176,24 @@ class TestDbPathPointsToRuntimeDb:
     def test_db_path_filename_is_jarvis_db(self):
         from core.services.ground_truth_registry import DB_PATH
         assert DB_PATH.name == "jarvis.db"
+
+
+class TestProviderHealthSectionStable:
+    """2026-05-22 (Claude): timestamp removed from health_section since
+    it broke DeepSeek's prompt cache. Lives in provider_health_check,
+    tested here to keep watchdog over cache-stability invariants near
+    the GTR file (related concept).
+    """
+
+    def test_health_section_has_no_clock_timestamp(self):
+        """Section text must not contain HH:MM:SS clock pattern."""
+        import re
+        from core.services.provider_health_check import health_section
+        section = health_section()
+        if section is None:
+            return  # nothing to check when all providers reachable
+        # Pattern \d{1,2}:\d{2}:\d{2} = clock timestamp; must not appear
+        assert not re.search(r"\d{1,2}:\d{2}:\d{2}", section), (
+            f"Health section must not contain a clock timestamp "
+            f"(breaks prompt cache): {section!r}"
+        )

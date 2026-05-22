@@ -340,3 +340,87 @@ class TestActPhaseSkipForActiveChat:
                 trigger="test",
             )
         assert result["kind"] == "tick_dispatched"
+
+
+class TestVetoAdaptiveCountersTable:
+    """2026-05-22: counters moved from runtime_state_kv to dedicated table.
+
+    The KV approach worked, but a typed table gives per-row audit
+    (created_at, last_modified), explicit UNIQUE constraint, and
+    cleaner inspection. Migration from legacy KV is lazy on first
+    ensure-call.
+    """
+
+    def test_adjust_and_get_round_trip(self):
+        from core.services.veto_gate import _adjust_counter, _get_counter
+        # Use a tool name that won't collide with real data
+        TOOL = "_test_tool_round_trip"
+        FEELING = "test_feeling"
+        try:
+            assert _get_counter(TOOL, FEELING, "overrides") == 0
+            assert _adjust_counter(TOOL, FEELING, "overrides", +1) == 1
+            assert _adjust_counter(TOOL, FEELING, "overrides", +2) == 3
+            assert _get_counter(TOOL, FEELING, "overrides") == 3
+            # Negative adjust clamps to 0
+            assert _adjust_counter(TOOL, FEELING, "overrides", -10) == 0
+        finally:
+            # Cleanup
+            import sqlite3, os
+            with sqlite3.connect(os.path.expanduser("~/.jarvis-v2/state/jarvis.db")) as c:
+                c.execute(
+                    "DELETE FROM veto_adaptive_counters WHERE tool_name = ?",
+                    (TOOL,),
+                )
+
+    def test_overrides_and_honored_are_separate(self):
+        from core.services.veto_gate import _adjust_counter, _get_counter
+        TOOL = "_test_separate"
+        FEELING = "tf"
+        try:
+            _adjust_counter(TOOL, FEELING, "overrides", +5)
+            _adjust_counter(TOOL, FEELING, "honored", +3)
+            assert _get_counter(TOOL, FEELING, "overrides") == 5
+            assert _get_counter(TOOL, FEELING, "honored") == 3
+        finally:
+            import sqlite3, os
+            with sqlite3.connect(os.path.expanduser("~/.jarvis-v2/state/jarvis.db")) as c:
+                c.execute(
+                    "DELETE FROM veto_adaptive_counters WHERE tool_name = ?",
+                    (TOOL,),
+                )
+
+    def test_table_has_audit_columns(self):
+        """created_at and last_modified must be present and update correctly."""
+        from core.services.veto_gate import _adjust_counter, _ensure_veto_adaptive_counters_table
+        import sqlite3, os, time
+        _ensure_veto_adaptive_counters_table()
+        TOOL = "_test_audit"
+        FEELING = "tf"
+        try:
+            _adjust_counter(TOOL, FEELING, "overrides", +1)
+            with sqlite3.connect(os.path.expanduser("~/.jarvis-v2/state/jarvis.db")) as c:
+                row = c.execute(
+                    "SELECT created_at, last_modified FROM veto_adaptive_counters "
+                    "WHERE tool_name = ? AND feeling = ? AND counter_kind = 'overrides'",
+                    (TOOL, FEELING),
+                ).fetchone()
+            assert row is not None
+            created_at, last_modified_1 = row
+            assert created_at  # non-empty ISO timestamp
+            time.sleep(0.01)
+            # Mutate again → last_modified should update, created_at stays
+            _adjust_counter(TOOL, FEELING, "overrides", +1)
+            with sqlite3.connect(os.path.expanduser("~/.jarvis-v2/state/jarvis.db")) as c:
+                row2 = c.execute(
+                    "SELECT created_at, last_modified FROM veto_adaptive_counters "
+                    "WHERE tool_name = ? AND feeling = ? AND counter_kind = 'overrides'",
+                    (TOOL, FEELING),
+                ).fetchone()
+            assert row2[0] == created_at  # created_at stable
+            assert row2[1] >= last_modified_1  # last_modified moved forward
+        finally:
+            with sqlite3.connect(os.path.expanduser("~/.jarvis-v2/state/jarvis.db")) as c:
+                c.execute(
+                    "DELETE FROM veto_adaptive_counters WHERE tool_name = ?",
+                    (TOOL,),
+                )

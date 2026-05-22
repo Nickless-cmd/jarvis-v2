@@ -358,29 +358,138 @@ _THRESHOLD_MIN = 0.30
 _THRESHOLD_MAX = 0.98
 
 
-def _adjust_counter(tool_name: str, feeling: str, kind: str, delta: int) -> int:
-    """Read-modify-write a counter ("overrides" or "honored") in runtime_state_kv.
+# Storage for adaptive counters.
+#
+# 2026-05-22 (Claude): migrated from runtime_state_kv to a dedicated
+# table after Bjørn's review. The KV approach worked, but a typed
+# table gives:
+#   - per-row audit (created_at, last_modified) instead of just upsert ts
+#   - clean DELETE / inspection without grep'ing through KV
+#   - explicit UNIQUE constraint on (tool, feeling, kind) preventing
+#     duplicate counter rows
+#   - matches the storage pattern used by veto_events
+#
+# Migration from legacy KV happens lazily on first ensure-call.
+_VETO_ADAPTIVE_COUNTERS_TABLE = """
+CREATE TABLE IF NOT EXISTS veto_adaptive_counters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tool_name TEXT NOT NULL,
+    feeling TEXT NOT NULL,
+    counter_kind TEXT NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    last_modified TEXT NOT NULL,
+    UNIQUE(tool_name, feeling, counter_kind)
+)
+"""
 
-    Returns the new value.
-    """
-    key = f"veto_adaptive:{tool_name}:{feeling}:{kind}"
+_VETO_ADAPTIVE_COUNTERS_MIGRATED = False
+
+
+def _ensure_veto_adaptive_counters_table() -> None:
+    """Create the table if missing + migrate legacy KV entries once per process."""
+    global _VETO_ADAPTIVE_COUNTERS_MIGRATED
     try:
-        from core.runtime.db_core import get_runtime_state_value, set_runtime_state_value
-        current = get_runtime_state_value(key)
-        new_value = max(0, (int(current) if current else 0) + delta)
-        set_runtime_state_value(key, str(new_value))
-        return new_value
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            conn.execute(_VETO_ADAPTIVE_COUNTERS_TABLE)
     except Exception:
+        logger.exception("Failed to create veto_adaptive_counters table")
+        return
+
+    if _VETO_ADAPTIVE_COUNTERS_MIGRATED:
+        return
+    _VETO_ADAPTIVE_COUNTERS_MIGRATED = True
+    # Lazy migration from runtime_state_kv. Old key format:
+    #   veto_adaptive:<tool>:<feeling>:<kind>
+    # Old value format: JSON-encoded string of int.
+    try:
+        import json as _json
+        from core.runtime.db_core import connect
+        now = datetime.now(UTC).isoformat()
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT key, value_json FROM runtime_state_kv "
+                "WHERE key LIKE 'veto_adaptive:%'"
+            ).fetchall()
+            migrated = 0
+            for key, raw_value in rows:
+                parts = key.split(":")
+                # Expect 4 parts: 'veto_adaptive', tool, feeling, kind
+                if len(parts) != 4:
+                    continue
+                _, tool, feeling, kind = parts
+                if kind not in ("overrides", "honored"):
+                    continue
+                try:
+                    decoded = _json.loads(raw_value) if raw_value else "0"
+                    count = int(decoded) if decoded else 0
+                except Exception:
+                    count = 0
+                conn.execute(
+                    """INSERT OR IGNORE INTO veto_adaptive_counters
+                       (tool_name, feeling, counter_kind, count, created_at, last_modified)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (tool, feeling, kind, count, now, now),
+                )
+                migrated += 1
+            if migrated:
+                logger.info(
+                    "veto_adaptive_counters: migrated %d legacy KV entries", migrated
+                )
+    except Exception:
+        logger.exception("veto_adaptive_counters: legacy migration failed")
+
+
+def _adjust_counter(tool_name: str, feeling: str, kind: str, delta: int) -> int:
+    """Read-modify-write a counter ("overrides" or "honored") in veto_adaptive_counters.
+
+    Returns the new value. Always >= 0 (counters cannot go negative).
+    """
+    _ensure_veto_adaptive_counters_table()
+    try:
+        from core.runtime.db_core import connect
+        now = datetime.now(UTC).isoformat()
+        with connect() as conn:
+            row = conn.execute(
+                """SELECT count FROM veto_adaptive_counters
+                   WHERE tool_name = ? AND feeling = ? AND counter_kind = ?""",
+                (tool_name, feeling, kind),
+            ).fetchone()
+            current = int(row[0]) if row else 0
+            new_value = max(0, current + delta)
+            if row is None:
+                conn.execute(
+                    """INSERT INTO veto_adaptive_counters
+                       (tool_name, feeling, counter_kind, count, created_at, last_modified)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (tool_name, feeling, kind, new_value, now, now),
+                )
+            else:
+                conn.execute(
+                    """UPDATE veto_adaptive_counters
+                       SET count = ?, last_modified = ?
+                       WHERE tool_name = ? AND feeling = ? AND counter_kind = ?""",
+                    (new_value, now, tool_name, feeling, kind),
+                )
+            return new_value
+    except Exception:
+        logger.exception("_adjust_counter failed for %s/%s/%s", tool_name, feeling, kind)
         return 0
 
 
 def _get_counter(tool_name: str, feeling: str, kind: str) -> int:
     """Read a counter without modification."""
-    key = f"veto_adaptive:{tool_name}:{feeling}:{kind}"
+    _ensure_veto_adaptive_counters_table()
     try:
-        from core.runtime.db_core import get_runtime_state_value
-        val = get_runtime_state_value(key)
-        return int(val) if val else 0
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            row = conn.execute(
+                """SELECT count FROM veto_adaptive_counters
+                   WHERE tool_name = ? AND feeling = ? AND counter_kind = ?""",
+                (tool_name, feeling, kind),
+            ).fetchone()
+        return int(row[0]) if row else 0
     except Exception:
         return 0
 

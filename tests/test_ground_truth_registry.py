@@ -158,3 +158,21 @@ def test_ground_truth_summary_contains_keys():
     summary = ground_truth_summary()
     assert "Model" in summary
     assert "Repository" in summary or "Host" in summary
+
+
+class TestDbPathPointsToRuntimeDb:
+    """2026-05-22 (Claude): regression test for Codex' finding that
+    DB_PATH pointed at /media/projects/jarvis-v2/state/jarvis.db (0 bytes)
+    instead of ~/.jarvis-v2/state/jarvis.db (the live runtime DB)."""
+
+    def test_db_path_under_jarvis_home(self):
+        from core.services.ground_truth_registry import DB_PATH, JARVIS_HOME
+        # Path must be relative to JARVIS_HOME, not REPO_PATH
+        assert str(DB_PATH).startswith(str(JARVIS_HOME)), (
+            f"DB_PATH={DB_PATH} must live under JARVIS_HOME={JARVIS_HOME}, "
+            f"not under the repo path (stale empty file)"
+        )
+
+    def test_db_path_filename_is_jarvis_db(self):
+        from core.services.ground_truth_registry import DB_PATH
+        assert DB_PATH.name == "jarvis.db"

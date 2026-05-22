@@ -32,7 +32,13 @@ logger = logging.getLogger(__name__)
 
 JARVIS_HOME = Path(os.environ.get("HOME", "/root")) / ".jarvis-v2"
 REPO_PATH = Path("/media/projects/jarvis-v2")
-DB_PATH = REPO_PATH / "state" / "jarvis.db"
+# 2026-05-22 (Claude, after Codex audit): DB_PATH previously pointed at
+# REPO_PATH/state/jarvis.db — that file is 0 bytes (stale, never written
+# to by runtime). The actual runtime DB lives in JARVIS_HOME/state/jarvis.db
+# (~1 GB of live data). Reading from the repo path meant Ground Truth
+# Registry's DB-derived facts (commit_count, expression_count, etc.) were
+# all defaults — every "verified" claim against this registry was bogus.
+DB_PATH = JARVIS_HOME / "state" / "jarvis.db"
 CONFIG_PATH = JARVIS_HOME / "config" / "runtime.json"
 
 # ── Pattern matchers for extracting numbers from claims ─────────────────

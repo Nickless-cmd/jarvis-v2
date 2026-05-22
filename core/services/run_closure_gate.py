@@ -360,7 +360,7 @@ def _listener_loop(q: "queue.Queue[dict[str, Any] | None]") -> None:
         except queue.Empty:
             continue
         except Exception:
-            logger.debug("run_closure_gate: listener iteration error", exc_info=True)
+            logger.warning("run_closure_gate: listener iteration error", exc_info=True)
 
 
 def start_run_closure_gate() -> None:
@@ -379,7 +379,11 @@ def start_run_closure_gate() -> None:
             name="run-closure-gate",
         )
         _listener_thread.start()
-        logger.warning("run_closure_gate: subscriber started")
+        logger.warning(
+            "run_closure_gate: subscriber started — event_bus=%s subscribers=%d",
+            id(event_bus),
+            len(event_bus._subscribers),
+        )
     except Exception:
         logger.exception("run_closure_gate: failed to start subscriber")
 

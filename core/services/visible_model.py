@@ -609,6 +609,12 @@ def _stream_openai_compatible_model(
                 if collected_tool_calls:
                     yield VisibleModelToolCalls(tool_calls=collected_tool_calls)
                 full_text = str(ev.get("full_text") or "")
+                # 2026-05-22 (Claude): pull cache_hit/miss from the streaming
+                # done-event. cheap_provider_runtime already yields them
+                # (search for "cache_hit_tokens" in that file's done-yield),
+                # but this handler only read input/output/cost/reasoning —
+                # which is why cost.recorded events still showed 0% cache
+                # hit even after we plumbed the VisibleModelResult fields.
                 yield VisibleModelStreamDone(
                     result=VisibleModelResult(
                         text=full_text,
@@ -616,6 +622,8 @@ def _stream_openai_compatible_model(
                         output_tokens=int(ev.get("output_tokens") or _estimate_tokens(full_text)),
                         cost_usd=float(ev.get("cost_usd") or 0.0),
                         reasoning_content=str(ev.get("reasoning_content") or ""),
+                        cache_hit_tokens=int(ev.get("cache_hit_tokens") or 0),
+                        cache_miss_tokens=int(ev.get("cache_miss_tokens") or 0),
                     )
                 )
                 return

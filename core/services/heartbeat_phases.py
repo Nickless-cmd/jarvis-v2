@@ -275,15 +275,20 @@ def productive_idle(*, budget_seconds: float = _PRODUCTIVE_IDLE_BUDGET_SECONDS) 
         except Exception:
             pass
 
-    # 5. Memory consolidation — Phase 2: idle-tick is good time to merge dupes
-    if _budget_left():
-        try:
-            from core.services.memory_search import invalidate_index
-            # Cheap: invalidate stale embedding cache so next search rebuilds fresh
-            invalidate_index()
-            actions.append("memory_index_invalidated")
-        except Exception:
-            pass
+    # 5. (removed 2026-05-22) Used to call invalidate_index() here on every
+    # idle tick. That deleted the memory_search embedding cache on disk
+    # (~4.5MB pickle of 1234 chunks × 768-dim embeddings), forcing the
+    # next prompt-assembly call to rebuild from scratch via local nomic-
+    # embed-text — which takes ~43 seconds. With the new productive_idle
+    # firing on most ticks (post-cadence fix), this ran every few minutes
+    # → cache was always cold → every visible chat saw 43s
+    # sync_before_relevance_resolve_ms in the timing logs.
+    #
+    # The cache has its own mtime-based invalidation built into
+    # _load_or_build_index: it rebuilds automatically when any memory
+    # file's mtime changes. Manual invalidation here was destructive,
+    # not productive. Leaving the actions.append commented out so we
+    # don't break logs that grep for it.
 
     # 6. Idle recovery — fatigue drains faster during real idle than passive decay alone.
     # Models physical "rest is restorative" — sitting still with the system actively

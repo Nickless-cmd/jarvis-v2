@@ -36,6 +36,28 @@ _LOW_ACTIVITY_TICK_THRESHOLD = 1
 _PRODUCTIVE_IDLE_BUDGET_SECONDS = 30   # cap for idle work
 
 
+def _user_active_recently(*, window_minutes: int = 10) -> bool:
+    """Cheap check: has any user-role chat message landed in the last N minutes?
+
+    Defensive copy of heartbeat_runtime._user_recently_active that doesn't
+    require an import from the heavy module. Returns False on any error
+    (fail-open — we'd rather burn the dispatch than skip a needed tick).
+    """
+    try:
+        from core.runtime.db import connect
+        cutoff = (datetime.now(UTC) - timedelta(minutes=max(1, int(window_minutes)))).isoformat()
+        with connect() as c:
+            row = c.execute(
+                """SELECT 1 FROM chat_messages
+                   WHERE role = 'user' AND created_at >= ?
+                   LIMIT 1""",
+                (cutoff,),
+            ).fetchone()
+        return row is not None
+    except Exception:
+        return False
+
+
 # ── Phase 1: Sense ─────────────────────────────────────────────────────
 
 
@@ -384,6 +406,27 @@ def act_phase(
     priorities = reflection.get("priorities") or []
 
     if priorities:
+        # 2026-05-22 (Claude): early active-chat gate check.
+        # The dispatched run_heartbeat_tick runs 30+ inline daemons with
+        # per-daemon deadlines totalling 90-150s wall time. If we already
+        # know Bjørn is chatting (active in last ~10 min), the gate
+        # WILL block the outbound action anyway — but we'd have burned
+        # 140s of CPU first. Short-circuit: skip the heavy dispatch,
+        # go straight to productive_idle (0.13s) so baseline rhythms
+        # still fire without wasted work.
+        if _user_active_recently(window_minutes=10):
+            logger.info(
+                "act_phase: skipping dispatch — user active in last 10min "
+                "(would be blocked by active-chat-gate anyway)"
+            )
+            idle_result = productive_idle()
+            return {
+                "kind": "skipped_for_active_chat",
+                "trigger": trigger,
+                "had_priorities": bool(priorities),
+                "idle_result": idle_result,
+            }
+
         # Action warranted — dispatch to existing tick
         try:
             from core.services.heartbeat_runtime import run_heartbeat_tick
@@ -391,12 +434,9 @@ def act_phase(
             tick_status = (
                 getattr(tick_result, "status", "unknown") if tick_result else "none"
             )
-            # 2026-05-22: If the dispatched tick was blocked (e.g. by the
-            # active-chat-gate that suppresses outbound propose/ping while
-            # Bjørn is chatting), still run productive_idle so baseline
-            # rhythms (interlanguage practice, dreams, wants, personality
-            # drift) keep firing. The gate is meant to suppress *outbound*
-            # actions, not silence the system's quiet internal pulse.
+            # If the dispatched tick was blocked (e.g. the active-chat-gate
+            # fired because user became active mid-dispatch), still run
+            # productive_idle so baseline rhythms keep firing.
             if tick_status == "blocked":
                 idle_result = productive_idle()
                 return {

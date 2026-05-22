@@ -302,3 +302,41 @@ class TestAdaptiveThresholds:
         with patch("core.services.veto_gate._get_override_count", return_value=4), \
              patch("core.services.veto_gate._get_honored_count", return_value=5):
             assert abs(_adaptive_threshold("default", "irritation", 1.0) - 0.85) < 1e-9
+
+
+class TestActPhaseSkipForActiveChat:
+    """2026-05-22: act_phase should skip heavy dispatch when user is active.
+
+    Without this short-circuit, a 30+ daemon dispatch (~140s) runs only
+    to be blocked by active-chat-gate at the end. Now we check early.
+    """
+
+    def test_skips_dispatch_when_user_active(self):
+        from unittest.mock import patch
+        from core.services.heartbeat_phases import act_phase
+
+        with patch("core.services.heartbeat_phases._user_active_recently", return_value=True), \
+             patch("core.services.heartbeat_phases.productive_idle", return_value={"actions": []}) as p_idle:
+            result = act_phase(
+                signals={},
+                reflection={"priorities": ["advance_goals"], "activity_level": "high"},
+                name="default",
+                trigger="test",
+            )
+        assert result["kind"] == "skipped_for_active_chat"
+        assert p_idle.called
+
+    def test_dispatches_normally_when_user_inactive(self):
+        from unittest.mock import patch, MagicMock
+        from core.services.heartbeat_phases import act_phase
+
+        fake_tick = MagicMock(status="completed")
+        with patch("core.services.heartbeat_phases._user_active_recently", return_value=False), \
+             patch("core.services.heartbeat_runtime.run_heartbeat_tick", return_value=fake_tick):
+            result = act_phase(
+                signals={},
+                reflection={"priorities": ["advance_goals"], "activity_level": "normal"},
+                name="default",
+                trigger="test",
+            )
+        assert result["kind"] == "tick_dispatched"

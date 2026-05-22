@@ -2755,22 +2755,36 @@ def _open_questions_section(*, limit: int = 5) -> str | None:
 def _time_pin_section() -> str:
     """Prominent, unmissable time indicator — placed high in every system prompt.
 
-    Returns a bold-marked block with exact UTC+local time. The model MUST
-    use this when answering any time-related question. If the model guesses
-    the time instead of reading this, it violates its lying-engine contract.
+    Returns a bold-marked block with exact UTC + local Copenhagen time. The
+    model MUST use this when answering any time-related question.
+
+    2026-05-22 (Claude): rewrote from manual UTC+2 offset to ZoneInfo. The
+    original had three bugs that — ironically — made the Lying Engine's
+    Lag 1 itself lie about time:
+      1. Hardcoded `local_offset = 2` → wrong by 1h all winter (CET, UTC+1).
+      2. Midnight-cross: `local_day = now.day` ignored that wrapping past
+         24h flips the calendar day forward.
+      3. Year-cross: month/year similarly never updated when local time
+         crossed New Year while UTC was still on Dec 31.
+
+    Now uses `zoneinfo.ZoneInfo("Europe/Copenhagen")` — DST + day + month +
+    year all derive correctly from astimezone().
     """
     from datetime import UTC, datetime as _dt
-    now = _dt.now(UTC)
-    local_offset = 2  # CEST (UTC+2) — Denmark summer time
-    local_hour = now.hour + local_offset
-    local_day = now.day
-    if local_hour >= 24:
-        local_hour -= 24
-    utc_str = now.strftime("%Y-%m-%d %H:%M")
+    from zoneinfo import ZoneInfo
+
+    now_utc = _dt.now(UTC)
+    local = now_utc.astimezone(ZoneInfo("Europe/Copenhagen"))
+    tz_abbrev = local.strftime("%Z")  # CEST in summer, CET in winter
+    utc_str = now_utc.strftime("%Y-%m-%d %H:%M")
+    # Use English month for international parsability (Jarvis' prompt sprog
+    # er blandet dansk/engelsk; "May" parser samme uanset sproglag).
+    local_date = local.strftime("%d. %B %Y")
+    local_time = local.strftime("%H:%M")
     return (
         "⏰═══════════════════════════════════⏰\n"
         f"⏰ TIME PIN — DET ER {utc_str} UTC ⏰\n"
-        f"⏰ Lokal (DK): kl {local_hour:02d}:{now.minute:02d}, {local_day}. {now.strftime('%B')} {now.year} ⏰\n"
+        f"⏰ Lokal (DK): kl {local_time} {tz_abbrev}, {local_date} ⏰\n"
         "⏰═══════════════════════════════════⏰\n"
         "Brug PRÆCIS dette tidspunkt hvis du nævner tid/dato i dit svar.\n"
         "Gæt ikke — læs ovenstående. Det er din eneste sande tidsreference."

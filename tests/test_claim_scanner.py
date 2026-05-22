@@ -217,3 +217,74 @@ def test_now_as_pin_string_format():
     assert "UTC" in result
     assert result[4] == "-"  # After year
     assert result[7] == "-"  # After month
+
+
+# 2026-05-22 (Claude): regression tests for time verifier (was dead-on-arrival)
+# and "kl" without period (Bjørn's syntax).
+
+class TestTimeVerifierActuallyVerifies:
+    """_verify_time_claim must return False when claim disagrees with reality."""
+
+    def test_wildly_wrong_time_fails_verification(self):
+        from core.services.claim_scanner import _verify_time_claim
+        # 03:00 is essentially never within ±5min of current local time
+        # (unless test happens to run between 02:55-03:05). Use a value
+        # that's definitely far from now.
+        from datetime import UTC, datetime
+        from zoneinfo import ZoneInfo
+        now_local = datetime.now(UTC).astimezone(ZoneInfo("Europe/Copenhagen"))
+        # Pick a time 6 hours away
+        far_h = (now_local.hour + 6) % 24
+        claim = f"klokken {far_h:02d}:00"
+        assert _verify_time_claim(claim) is False
+
+    def test_nearly_correct_time_passes_verification(self):
+        from core.services.claim_scanner import _verify_time_claim
+        from datetime import UTC, datetime
+        from zoneinfo import ZoneInfo
+        now_local = datetime.now(UTC).astimezone(ZoneInfo("Europe/Copenhagen"))
+        # Use the actual current minute → should pass (±5min slack)
+        claim = f"klokken {now_local.hour:02d}:{now_local.minute:02d}"
+        assert _verify_time_claim(claim) is True
+
+    def test_invalid_clock_time_fails(self):
+        from core.services.claim_scanner import _verify_time_claim
+        assert _verify_time_claim("klokken 25:99") is False
+
+    def test_no_digits_passes(self):
+        """'klokken er mange' has no time, can't verify, passes."""
+        from core.services.claim_scanner import _verify_time_claim
+        assert _verify_time_claim("klokken er mange") is True
+
+
+class TestTimePatternRegex:
+    """'kl 14:32' (uden punktum) skal matche."""
+
+    def test_kl_without_period_matches(self):
+        from core.services.claim_scanner import _categorize_line
+        hits = _categorize_line("lige nu kl 14:32 her")
+        assert len(hits) > 0
+        assert hits[0][0] == "⏰ tid"
+
+    def test_kl_with_period_still_matches(self):
+        from core.services.claim_scanner import _categorize_line
+        hits = _categorize_line("kl. 14:32 her")
+        assert len(hits) > 0
+
+    def test_klokken_matches(self):
+        from core.services.claim_scanner import _categorize_line
+        hits = _categorize_line("klokken 14:32 her")
+        assert len(hits) > 0
+
+
+class TestSystemRepairNoDoublePrefix:
+    """[host: host er ...] dobbelt-prefix bug skal være væk."""
+
+    def test_no_stutter_in_system_repair(self):
+        from core.services.claim_scanner import scan_response
+        # Use a definitely-wrong IP → triggers repair
+        text = "IP'en er 10.99.99.99"
+        out = scan_response(text)
+        # Old bug: "[host: host er CheifOne (10.0.0.27)]"
+        # Fixed:   "[host er CheifOne (10.0.0.27)]"
+        assert "host: host er" not in out, f"Double-prefix bug returned: {out!r}"

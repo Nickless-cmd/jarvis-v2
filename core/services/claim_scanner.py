@@ -22,10 +22,13 @@ logger = logging.getLogger(__name__)
 
 # ── Category patterns ──────────────────────────────────────────────────
 
-# ⏰ Time patterns — any mention of clock time
+# ⏰ Time patterns — any mention of clock time.
+# 2026-05-22 (Claude): "kl" uden punktum tilføjet — Bjørn skriver det ofte
+# uden punktum ("kl 14:32"), og pattern krævede tidligere `\.\s*` så match
+# missede den faktiske bruger-syntax.
 _TIME_PATTERNS: list[re.Pattern] = [
     re.compile(r'\bklokken\s+\d{1,2}[:\.]\d{2}\b', re.IGNORECASE),
-    re.compile(r'\bkl\.\s*\d{1,2}[:\.]\d{2}\b', re.IGNORECASE),
+    re.compile(r'\bkl\.?\s+\d{1,2}[:\.]\d{2}\b', re.IGNORECASE),
     re.compile(r'\b(er|bliver|blev|var)\s+\d{1,2}[:\.]\d{2}\b', re.IGNORECASE),
     re.compile(r'\bklokken\s+(er|bliver|var|blev)\s+\d{1,2}\b', re.IGNORECASE),
 ]
@@ -122,10 +125,47 @@ def _categorize_line(line: str) -> list[tuple[str, str, re.Match]]:
 
 def _verify_time_claim(matched_text: str) -> bool:
     """Verify a time claim against the active Time Pin."""
-    pin_text = _active_time_pin()
-    if not pin_text:
-        return True  # no pin available = can't verify, let it pass
-    return True  # The pin exists in the prompt — assume model saw it
+    # 2026-05-22 (Claude): made this actually verify instead of trusting
+    # that "the model saw the pin". Original implementation always returned
+    # True, which made the time category dead-on-arrival — Lying Engine
+    # Layer 2 couldn't detect a wrong time claim even though that's the
+    # primary thing it was built for.
+    #
+    # Approach: extract HH:MM from the claim, compare to actual time (UTC
+    # converted to Copenhagen). Allow ±5 min slack (model may say
+    # approximate time). If claim is outside that window → verification
+    # fails → repair runs.
+    from datetime import UTC, datetime as _dt
+    from zoneinfo import ZoneInfo
+
+    # Extract HH:MM from claim text
+    time_match = re.search(r"(\d{1,2})[:\.](\d{2})", matched_text)
+    if not time_match:
+        # Pattern matched a clock-related phrase but no concrete digits
+        # (e.g. "klokken er mange"). Nothing to verify.
+        return True
+
+    claim_h = int(time_match.group(1))
+    claim_m = int(time_match.group(2))
+
+    # Reality check: claim must be a valid clock time
+    if not (0 <= claim_h <= 23 and 0 <= claim_m <= 59):
+        return False  # nonsense time → trigger repair
+
+    # Compare to current local time
+    try:
+        local = _dt.now(UTC).astimezone(ZoneInfo("Europe/Copenhagen"))
+    except Exception:
+        return True  # zoneinfo issue → don't false-positive
+
+    actual_minutes = local.hour * 60 + local.minute
+    claim_minutes = claim_h * 60 + claim_m
+    diff = abs(actual_minutes - claim_minutes)
+    # Wrap-around: 23:55 vs 00:05 should be 10 min, not 23h50m
+    diff = min(diff, 1440 - diff)
+
+    # Allow ±5 minutes of slack (model says "lige nu kl 14:30" when it's 14:33)
+    return diff <= 5
 
 
 def _verify_env_claim(matched_text: str) -> bool:
@@ -175,15 +215,36 @@ def _repair_time_claim(line: str, matched_text: str) -> str:
 def _repair_claim(line: str, category: str, matched_text: str) -> str:
     """Apply category-specific repair to a line."""
     if category == "⏰ tid":
-        now_str = _now_as_pin_string()
-        return line.replace(matched_text, f"[kl. ??? — se ⏰ Time Pin: {now_str}]")
+        # 2026-05-22 (Claude): repair now writes the actual correct local
+        # time from the Time Pin, not a "???" placeholder. The pin section
+        # already shows it; here we materialise it inline so the repaired
+        # response is immediately readable without scrolling.
+        from datetime import UTC, datetime as _dt
+        from zoneinfo import ZoneInfo
+        try:
+            local = _dt.now(UTC).astimezone(ZoneInfo("Europe/Copenhagen"))
+            corrected = local.strftime("%H:%M")
+            return line.replace(
+                matched_text,
+                f"[kl. {corrected} — korrigeret fra hallucineret '{matched_text}']",
+            )
+        except Exception:
+            now_str = _now_as_pin_string()
+            return line.replace(
+                matched_text,
+                f"[kl. ??? — se ⏰ Time Pin: {now_str}]",
+            )
 
     if category == "⚙️ system":
+        # 2026-05-22 (Claude): drop double "host:" prefix. The verifier
+        # returns strings like "host er CheifOne (10.0.0.27)" which already
+        # contain the descriptor — wrapping in "[host: host er CheifOne ...]"
+        # produced "host: host er ..." stutter.
         try:
             from core.services.ground_truth_registry import verify_system_claim
             _verified, correct = verify_system_claim(matched_text)
             if correct:
-                return line.replace(matched_text, f"[host: {correct}]")
+                return line.replace(matched_text, f"[{correct}]")
         except ImportError:
             pass
         return line.replace(matched_text, f"{matched_text} [usikker]")

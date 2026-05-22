@@ -388,11 +388,29 @@ def act_phase(
         try:
             from core.services.heartbeat_runtime import run_heartbeat_tick
             tick_result = run_heartbeat_tick(name=name, trigger=trigger)
+            tick_status = (
+                getattr(tick_result, "status", "unknown") if tick_result else "none"
+            )
+            # 2026-05-22: If the dispatched tick was blocked (e.g. by the
+            # active-chat-gate that suppresses outbound propose/ping while
+            # Bjørn is chatting), still run productive_idle so baseline
+            # rhythms (interlanguage practice, dreams, wants, personality
+            # drift) keep firing. The gate is meant to suppress *outbound*
+            # actions, not silence the system's quiet internal pulse.
+            if tick_status == "blocked":
+                idle_result = productive_idle()
+                return {
+                    "kind": "tick_blocked_then_idle",
+                    "trigger": trigger,
+                    "had_priorities": bool(priorities),
+                    "tick_status": tick_status,
+                    "idle_result": idle_result,
+                }
             return {
                 "kind": "tick_dispatched",
                 "trigger": trigger,
                 "had_priorities": bool(priorities),
-                "tick_status": getattr(tick_result, "status", "unknown") if tick_result else "none",
+                "tick_status": tick_status,
             }
         except Exception as exc:
             logger.warning("act_phase: tick dispatch failed: %s", exc)

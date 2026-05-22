@@ -252,10 +252,18 @@ def search_memory(query: str, *, limit: int = 5) -> list[dict]:
         q_emb = _embed_single(query)
         if q_emb is not None:
             scores = _cosine_sim(q_emb, embeddings)
-            top_idx = np.argsort(scores)[::-1][:limit * 2]  # over-fetch to allow quarantine filter
+            # 2026-05-22 (Claude): apply CANDIDATE penalty BEFORE picking
+            # top_idx so genuinely-curated entries surface above legacy
+            # [CANDIDATE→...] entries that the bulk-rewrite preserved as
+            # low-confidence hints. 0.3x penalty matches recall_engine.
+            adjusted_scores = scores.copy()
+            for i in range(len(chunks)):
+                if "[CANDIDATE→" in chunks[i].text:
+                    adjusted_scores[i] = adjusted_scores[i] * 0.3
+            top_idx = np.argsort(adjusted_scores)[::-1][:limit * 3]
             results = []
             for i in top_idx:
-                if scores[i] <= 0.1:
+                if adjusted_scores[i] <= 0.1:
                     continue
                 if _is_quarantined(chunks[i].text):
                     continue
@@ -263,7 +271,9 @@ def search_memory(query: str, *, limit: int = 5) -> list[dict]:
                     "text": chunks[i].text,
                     "source": chunks[i].source,
                     "section": chunks[i].section,
-                    "score": float(scores[i]),
+                    "score": float(adjusted_scores[i]),
+                    "raw_score": float(scores[i]),
+                    "candidate_penalty": "[CANDIDATE→" in chunks[i].text,
                     "method": "embedding",
                 })
                 if len(results) >= limit:

@@ -204,6 +204,20 @@ def unified_recall(
         src = str(r.get("source", ""))
         r["weighted_score"] = float(r.get("score", 0.0)) * weights.get(src, 1.0)
 
+    # 2026-05-22 (Claude): legacy [CANDIDATE→] penalty. The bulk-rewrite
+    # script (scripts/rewrite_legacy_memory_provenance.py) renamed ~2045
+    # daily entries from fake `[MEMORY.md]` provenance to honest
+    # `[CANDIDATE→MEMORY.md]` provenance — they were proposals that may
+    # never have been adopted. Source-weight alone doesn't penalize them
+    # (they live in workspace dailies → weight 2.0), so they still surface
+    # at top ranks for keyword matches. Multiply weighted_score by 0.3 so
+    # they only surface when nothing else is available, but don't drop
+    # them entirely — they CAN be useful as low-confidence hints.
+    for r in all_results:
+        if "[CANDIDATE→" in str(r.get("text", "")):
+            r["weighted_score"] = float(r.get("weighted_score", 0.0)) * 0.3
+            r["candidate_penalty"] = True
+
     # Mood boost
     mood_boosted = False
     if with_mood:

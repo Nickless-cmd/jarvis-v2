@@ -245,3 +245,60 @@ class TestExecuteSimpleToolCallsGates:
 
         assert results[0]["status"] == "ok"
         mock_execute.assert_called_once()
+
+
+class TestAdaptiveThresholds:
+    """Layer 3: adaptive thresholds per spec §B.
+
+    2026-05-22 rewrite — per-(tool, feeling) base, override raises +0.05,
+    honored lowers -0.02, clamp [0.30, 0.98].
+    """
+
+    def test_base_threshold_per_tool_feeling(self):
+        from core.services.veto_gate import _base_threshold
+        # restart/irritation is highest per spec
+        assert _base_threshold("restart", "irritation") == 0.95
+        # delete/irritation is medium
+        assert _base_threshold("delete", "irritation") == 0.70
+        # unknown tool falls back to default
+        assert _base_threshold("unknown_tool", "irritation") == 0.75
+        # unknown feeling within known tool uses default-feeling fallback
+        assert _base_threshold("restart", "unknown_feeling") == 0.75
+
+    def test_adaptive_threshold_clamps(self):
+        """Override bumps and honored dampens must never escape [0.30, 0.98]."""
+        from core.services.veto_gate import _adaptive_threshold, _THRESHOLD_MIN, _THRESHOLD_MAX
+        from unittest.mock import patch
+        # Many overrides → clamped to 0.98
+        with patch("core.services.veto_gate._get_override_count", return_value=100), \
+             patch("core.services.veto_gate._get_honored_count", return_value=0):
+            assert _adaptive_threshold("restart", "irritation", 1.0) == _THRESHOLD_MAX
+        # Many honored → clamped to 0.30
+        with patch("core.services.veto_gate._get_override_count", return_value=0), \
+             patch("core.services.veto_gate._get_honored_count", return_value=100):
+            assert _adaptive_threshold("delete", "irritation", 1.0) == _THRESHOLD_MIN
+
+    def test_override_raises_threshold(self):
+        from core.services.veto_gate import _adaptive_threshold
+        from unittest.mock import patch
+        # 3 overrides on default(irritation) base 0.75 → 0.75 + 3*0.05 = 0.90
+        with patch("core.services.veto_gate._get_override_count", return_value=3), \
+             patch("core.services.veto_gate._get_honored_count", return_value=0):
+            assert _adaptive_threshold("default", "irritation", 1.0) == 0.90
+
+    def test_honored_lowers_threshold(self):
+        from core.services.veto_gate import _adaptive_threshold
+        from unittest.mock import patch
+        # 5 honored on default(irritation) base 0.75 → 0.75 - 5*0.02 = 0.65
+        with patch("core.services.veto_gate._get_override_count", return_value=0), \
+             patch("core.services.veto_gate._get_honored_count", return_value=5):
+            assert abs(_adaptive_threshold("default", "irritation", 1.0) - 0.65) < 1e-9
+
+    def test_overrides_minus_honored(self):
+        """Mixed signals: overrides and honored events offset each other."""
+        from core.services.veto_gate import _adaptive_threshold
+        from unittest.mock import patch
+        # 4 overrides (+0.20) and 5 honored (-0.10) on 0.75 base → 0.85
+        with patch("core.services.veto_gate._get_override_count", return_value=4), \
+             patch("core.services.veto_gate._get_honored_count", return_value=5):
+            assert abs(_adaptive_threshold("default", "irritation", 1.0) - 0.85) < 1e-9

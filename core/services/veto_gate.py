@@ -227,14 +227,45 @@ def log_veto_event(
 
 
 def resolve_veto_event(event_id: str, resolution: str) -> None:
-    """Mark a veto event as resolved (overridden, honored, false_positive)."""
+    """Mark a veto event as resolved (overridden, honored, false_positive).
+
+    2026-05-22 (Claude): wires the honored path into the adaptive
+    threshold counter. When the user honors a veto ("ok, stop"), the
+    threshold for that (tool, feeling) drops -0.02 per spec §B. This
+    keeps the gate sensitive for combos that Bjørn actually wants
+    blocked. Without this, the gate could only ever desensitize via
+    override, never resensitize via honored.
+    """
     try:
         from core.runtime.db_core import connect
+        # Read tool_name + feeling before updating so we can bump the
+        # honored counter for the correct combo.
         with connect() as conn:
+            row = conn.execute(
+                "SELECT tool_name, feeling FROM veto_events WHERE event_id = ?",
+                (event_id,),
+            ).fetchone()
             conn.execute(
                 "UPDATE veto_events SET resolution = ? WHERE event_id = ?",
                 (resolution, event_id),
             )
+        if row and resolution == "honored":
+            tool_name = str(row[0] or "")
+            feeling = str(row[1] or "")
+            if tool_name and feeling:
+                count = _increment_honored_count(tool_name, feeling)
+                new_threshold = _adaptive_threshold(tool_name, feeling, 1.0)
+                logger.info(
+                    "Veto honored recorded for %s/%s: honored_count=%d, "
+                    "new_threshold=%.2f",
+                    tool_name, feeling, count, new_threshold,
+                )
+                _emit_veto_gate_event("honored_recorded", {
+                    "tool_name": tool_name,
+                    "feeling": feeling,
+                    "honored_count": count,
+                    "new_threshold": round(new_threshold, 2),
+                })
     except Exception:
         logger.exception("Failed to resolve veto event")
 
@@ -279,55 +310,120 @@ def veto_event_stats(tool_name: str | None = None, limit: int = 50) -> list[dict
 
 
 # ── Layer 3: Adaptive thresholds ───────────────────────────────────────────
+#
+# 2026-05-22 (Claude): rewrite to match the spec
+# docs/superpowers/specs/2026-05-18-adaptive-veto-gate.md §B.
+#
+# Original implementation used a single base (0.75) with a global per-
+# (tool, feeling) override-count multiplier. Spec called for:
+#   1. Per-tool, per-feeling base thresholds (restart/delete/default)
+#   2. Override raises threshold by +0.05 (already correct)
+#   3. Honored lowers threshold by -0.02 (was missing)
+#   4. Clamp: min 0.30, max 0.98 (was [0, 1.0])
+#
+# A "honored" veto is one where the user accepted the block ("ok", "stop",
+# "ja, du har ret") — the gate was correct, so reduce the threshold a
+# bit so the same combo stays sensitive. An "overridden" veto is one
+# where the user said "kør anyway" — the gate was a false positive, so
+# raise the threshold to suppress it next time.
 
-def _get_override_count(tool_name: str, feeling: str) -> int:
-    """Read the current override count for this (tool, feeling) pair.
+# Per (tool, feeling) base thresholds. Tool-specific entries take
+# precedence; otherwise "default" applies. Higher value = harder to
+# trigger (more frustrated user required before veto fires).
+_BASE_THRESHOLDS: dict[str, dict[str, float]] = {
+    "restart": {
+        "irritation": 0.95,   # very hard — restart is rarely catastrophic
+        "unease": 0.50,
+        "fatigue": 0.60,
+    },
+    "delete": {
+        "irritation": 0.70,   # easier — delete is irreversible
+        "unease": 0.40,
+        "fatigue": 0.50,
+    },
+    "default": {
+        "irritation": 0.75,
+        "unease": 0.50,
+        "fatigue": 0.75,
+    },
+}
 
-    Stored in runtime_state_kv for simplicity.
+# Adjustment per outcome. Override = false positive, raise threshold.
+# Honored = correct gate, lower threshold (resensitize).
+_OVERRIDE_BUMP = 0.05
+_HONORED_DAMPEN = 0.02
+
+# Hard clamp per spec
+_THRESHOLD_MIN = 0.30
+_THRESHOLD_MAX = 0.98
+
+
+def _adjust_counter(tool_name: str, feeling: str, kind: str, delta: int) -> int:
+    """Read-modify-write a counter ("overrides" or "honored") in runtime_state_kv.
+
+    Returns the new value.
     """
-    key = f"veto_adaptive:{tool_name}:{feeling}:overrides"
-    try:
-        from core.runtime.db_core import get_runtime_state_value
-        val = get_runtime_state_value(key)
-        if val:
-            return int(val)
-    except Exception:
-        pass
-    return 0
-
-
-def _increment_override_count(tool_name: str, feeling: str) -> int:
-    """Increment the override count for this (tool, feeling) pair.
-
-    After enough overrides, the adaptive threshold rises so the same
-    tool+feeling combo stops triggering false positives.
-    """
-    key = f"veto_adaptive:{tool_name}:{feeling}:overrides"
+    key = f"veto_adaptive:{tool_name}:{feeling}:{kind}"
     try:
         from core.runtime.db_core import get_runtime_state_value, set_runtime_state_value
         current = get_runtime_state_value(key)
-        count = (int(current) if current else 0) + 1
-        set_runtime_state_value(key, str(count))
-        return count
+        new_value = max(0, (int(current) if current else 0) + delta)
+        set_runtime_state_value(key, str(new_value))
+        return new_value
     except Exception:
         return 0
+
+
+def _get_counter(tool_name: str, feeling: str, kind: str) -> int:
+    """Read a counter without modification."""
+    key = f"veto_adaptive:{tool_name}:{feeling}:{kind}"
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        val = get_runtime_state_value(key)
+        return int(val) if val else 0
+    except Exception:
+        return 0
+
+
+# Public names kept for back-compat with existing callers.
+def _get_override_count(tool_name: str, feeling: str) -> int:
+    return _get_counter(tool_name, feeling, "overrides")
+
+
+def _increment_override_count(tool_name: str, feeling: str) -> int:
+    return _adjust_counter(tool_name, feeling, "overrides", +1)
+
+
+def _get_honored_count(tool_name: str, feeling: str) -> int:
+    return _get_counter(tool_name, feeling, "honored")
+
+
+def _increment_honored_count(tool_name: str, feeling: str) -> int:
+    return _adjust_counter(tool_name, feeling, "honored", +1)
+
+
+def _base_threshold(tool_name: str, feeling: str) -> float:
+    """Look up per-(tool, feeling) base from _BASE_THRESHOLDS.
+
+    Falls through to "default" tool key, then to 0.75 if even that's missing.
+    """
+    tool_table = _BASE_THRESHOLDS.get(tool_name) or _BASE_THRESHOLDS["default"]
+    return tool_table.get(feeling, _BASE_THRESHOLDS["default"].get(feeling, 0.75))
 
 
 def _adaptive_threshold(tool_name: str, feeling: str, intensity: float) -> float:
     """Compute the effective veto threshold for this (tool, feeling) pair.
 
-    Base threshold: 0.75 (original fixed value).
-    Each override (user said "kør" after a veto) raises the threshold
-    by 0.05, making it harder to trigger for the same combo again.
-
-    After 5 overrides on the same (tool, feeling), the threshold is 1.0
-    meaning the veto effectively disables itself for that combo.
+    base = per-(tool, feeling) value from _BASE_THRESHOLDS
+    adjustment = (overrides * +0.05) - (honored * -0.02)
+    clamped to [0.30, 0.98]
     """
-    base = 0.75
+    base = _base_threshold(tool_name, feeling)
     overrides = _get_override_count(tool_name, feeling)
-    adaptive_bump = min(overrides * 0.05, 0.25)  # Max bump: 0.25 (after 5 overrides)
-    effective = base + adaptive_bump
-    return min(1.0, effective)
+    honored = _get_honored_count(tool_name, feeling)
+    adjustment = (overrides * _OVERRIDE_BUMP) - (honored * _HONORED_DAMPEN)
+    effective = base + adjustment
+    return max(_THRESHOLD_MIN, min(_THRESHOLD_MAX, effective))
 
 
 # ── Tools always allowed ───────────────────────────────────────────────────

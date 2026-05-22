@@ -2492,6 +2492,31 @@ _READ_ONLY_COMMAND_PREFIXES = [
     "echo ", "date", "cal ",
     "env", "printenv",
     "tree ",
+    # 2026-05-22 (Claude): network diagnostic read-only tools. Without
+    # these, every factual question that triggers Jarvis's hallucination-
+    # guard tool-call ("let me verify with dig") hit the approval-card
+    # flow and hung for up to 240s waiting for confirmation. The hang
+    # was the dominant component of the "Jarvis is slow" complaint.
+    # All listed tools are query-only: dig/host/nslookup look up DNS,
+    # traceroute prints route info, getent reads name databases, arp -a
+    # reads ARP table. They modify nothing.
+    "dig ", "dig\n", "host ", "nslookup ",
+    "traceroute ", "tracepath ", "mtr -r ", "mtr --report",
+    "getent ",
+    "arp -a", "arp -n",
+    # ping bounded by -c flag is also read-only. Bare "ping <host>"
+    # would run forever, so we only whitelist when count is explicit.
+    # (Pattern handling for this lives in classify_command below.)
+]
+
+# Bounded network commands: prefix + required-flag check.
+# 2026-05-22 (Claude): allow `ping -c <N>` and `ping6 -c <N>` as auto-
+# approved since the -c flag bounds the run. Bare `ping host` would
+# loop forever and stays at "approval". The regex requires the literal
+# token `-c <digits>` to appear somewhere in a ping/ping6 invocation;
+# additional flags (-W timeout, -i interval, -s size, etc.) are fine.
+_BOUNDED_READ_ONLY_REGEX: list[re.Pattern[str]] = [
+    re.compile(r"^ping6?\b(?=.*\s-c\s+\d+)", re.IGNORECASE),
 ]
 
 _DESTRUCTIVE_PATTERNS = [
@@ -2533,6 +2558,11 @@ def classify_command(command: str) -> str:
 
     for prefix in _READ_ONLY_COMMAND_PREFIXES:
         if normalized.startswith(prefix) or normalized == prefix.strip():
+            return "auto"
+
+    # Bounded network commands (e.g. ping -c N)
+    for pattern in _BOUNDED_READ_ONLY_REGEX:
+        if pattern.match(normalized):
             return "auto"
 
     # Git with flags before subcommand (e.g. git -C /path log)

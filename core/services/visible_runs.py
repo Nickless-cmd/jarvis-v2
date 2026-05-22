@@ -2506,6 +2506,29 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 had_markup=bool(capability_plan["had_markup"]),
             )
             # Deltas already streamed live — no need to re-send the full text.
+            # 2026-05-22 (Claude): Claim-scanner first-pass global coverage.
+            # Previously the scanner only ran in the capability-followup paths
+            # above. Pure text replies (no capability markup) skipped scanning
+            # entirely — claims about time, system, env, stats went to the
+            # user AND were persisted to memory unverified. Now we scan here
+            # too. The deltas have already streamed (user sees uncorrected
+            # text live), but the DB-persisted version and any downstream
+            # memory consolidation use the corrected text. A scan_correction
+            # event is emitted so the UI can patch the displayed message.
+            try:
+                _scanned_first_pass = _scan_response(visible_output_text)
+                if _scanned_first_pass != visible_output_text:
+                    yield _sse(
+                        "scan_correction",
+                        {
+                            "type": "scan_correction",
+                            "run_id": run.run_id,
+                            "corrected": _scanned_first_pass,
+                        },
+                    )
+                    visible_output_text = _scanned_first_pass
+            except Exception:
+                pass
 
         record_cost(
             lane=run.lane,

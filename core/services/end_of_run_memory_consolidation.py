@@ -445,6 +445,25 @@ def _append_daily_memory_log(
     assistant_response: str,
     items: list[dict[str, str]],
 ) -> bool:
+    """Append an end-of-run consolidation block to today's daily memory.
+
+    2026-05-22 (Claude): provenance bug fix. The original implementation
+    wrote `- [MEMORY.md] {line}` for every carried candidate. That prefix
+    looks like a citation FROM MEMORY.md — but at this point the line
+    is only a LLM-generated CANDIDATE proposed for promotion to MEMORY.md.
+    It has not been approved by Bjørn or written to MEMORY.md.
+
+    The fabricated provenance was the mechanism by which hallucinations
+    got "MEMORY.md authority": Jarvis invents a fact → consolidation
+    LLM tags it `target=MEMORY.md` → daily writer prefixes with
+    `[MEMORY.md]` → search_memory returns it with apparent provenance →
+    next chat treats it as authoritative.
+
+    Fix: prefix with `[CANDIDATE→{target}]` so it's clear the line is
+    a proposal, not a citation. search_memory / hallucination_guard /
+    Jarvis himself can then treat candidates as evidence-of-thinking,
+    not evidence-of-fact.
+    """
     if not items:
         return False
     daily_memory_path.parent.mkdir(parents=True, exist_ok=True)
@@ -458,9 +477,11 @@ def _append_daily_memory_log(
         "- carried:",
     ]
     for item in items:
-        lines.append(
-            f"  - [{item['target']}] {item['line'][2:] if item['line'].startswith('- ') else item['line']}"
-        )
+        body = item['line'][2:] if item['line'].startswith('- ') else item['line']
+        # Prefix as candidate, not as citation. The promotion to actual
+        # MEMORY.md / USER.md happens via the runtime_contract_candidate
+        # approval flow — only then does it become a real citation.
+        lines.append(f"  - [CANDIDATE→{item['target']}] {body}")
     lines.append("")
     with daily_memory_path.open("a", encoding="utf-8") as handle:
         handle.write("\n".join(lines))

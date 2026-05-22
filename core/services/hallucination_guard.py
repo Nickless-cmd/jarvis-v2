@@ -231,15 +231,41 @@ def inject_memory_into_prompt(
     # Byg guard-besked — sæt den som en system-rolle besked
     # Vi indsætter den EFTER den primære system instruction (første system-message)
     # så den stadig er synlig men ikke overskriver den primære instruktion.
+    #
+    # 2026-05-22 (Claude): styrket forfatningssproget efter Codex+Bjørn
+    # diagnose. Tidligere version sagde "Svar KUN baseret på dette" men
+    # blev rutinemæssigt ignoreret. Ny version:
+    #  - er eksplicit om "fabuler ikke"
+    #  - giver en konkret fallback-sætning at sige hvis info mangler
+    #  - peger på read_self_docs som verificerbar tool-vej
+    #  - signalerer at provenance er regel ([MEMORY.md] vs [DAILY])
     guard_message = {
         "role": "system",
         "content": (
-            "[HALLUCINATION GUARD — TVUNGEN HUKOMMELSE]\n"
-            "Du svarede på et fakta-spørgsmål om infrastruktur. "
-            "Her er hvad du har skrevet i din MEMORY.md om emnet. "
-            "Svar KUN baseret på dette. Gæt aldrig. Hvis du er i tvivl, "
-            "sig 'Det står ikke i min hukommelse'.\n\n"
-            f"{relevant}"
+            "[HALLUCINATION GUARD — HÅRDT HUKOMMELSES-KRAV]\n"
+            "\n"
+            "Brugeren stiller et fakta-spørgsmål om dit eget system / "
+            "infrastruktur. Følg denne procedure ord-for-ord:\n"
+            "\n"
+            "1. LÆS de relevante MEMORY.md-sektioner herunder.\n"
+            "2. Hvis svaret står i sektionerne → citér det. Brug "
+            "provenance-prefix [MEMORY.md] kun hvis claim faktisk findes "
+            "i MEMORY.md-uddraget herunder.\n"
+            "3. Hvis svaret IKKE står herunder → svar præcist: "
+            "\"Det står ikke i min hukommelse — jeg vil hellere tjekke "
+            "med et tool end gætte.\" og kald derefter read_self_docs / "
+            "search_memory / read_file.\n"
+            "4. FABULÉR IKKE infrastruktur-detaljer (URL'er, paths, "
+            "subdomains, IP-adresser, mappe-strukturer). Disse ER fakta, "
+            "ikke gæt-bare-emner. En gæt der lyder rimeligt forstyrrer "
+            "Bjørn mere end et ærligt \"ved ikke\".\n"
+            "5. Hvis du tidligere har sagt noget om dette emne i samtalen, "
+            "antag det kan have været forkert — gå til MEMORY.md igen, "
+            "ikke tilbage til din egen tidligere besked.\n"
+            "\n"
+            "── MEMORY.md-uddrag (kanonisk kilde) ──\n"
+            f"{relevant}\n"
+            "── slut MEMORY.md ──\n"
         ),
     }
 
@@ -256,8 +282,12 @@ def inject_memory_into_prompt(
         # Ingen system-besked — indsæt før user message
         chat_messages.insert(0, guard_message)
 
+    # Log: tæller sektioner via heading-markører, ikke characters.
+    # 2026-05-22 (Claude): tidligere log brugte len(relevant) (char count)
+    # som "sections=" — misvisende.
+    section_count = relevant.count("###")
     logger.info(
         "hallucination_guard injected for factual question "
-        f"(keywords={keywords}, sections={len(relevant)})"
+        f"(keywords={keywords}, sections={section_count}, chars={len(relevant)})"
     )
     return chat_messages

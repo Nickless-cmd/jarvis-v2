@@ -167,3 +167,65 @@ def test_end_of_run_memory_consolidation_prompt_includes_internal_context(
 
     assert "INTERNAL JARVIS-ONLY TOOL/RUNTIME CONTEXT" in prompts[0]
     assert "[bash]: found one failed runtime event" in prompts[0]
+
+
+# ─── 2026-05-22: fabricated provenance fix ───
+
+class TestDailyMemoryProvenance:
+    """Daily-memory writer must mark carried items as CANDIDATES,
+    not as MEMORY.md citations."""
+
+    def test_carried_items_use_candidate_prefix(self, tmp_path):
+        from core.services.end_of_run_memory_consolidation import _append_daily_memory_log
+        daily = tmp_path / "2026-05-22.md"
+        items = [
+            {
+                "target": "MEMORY.md",
+                "line": "- Subdomains: foo.bar.dk",
+                "kind": "fact",
+                "confidence": "medium",
+                "source": "runtime-inference",
+                "summary": "",
+                "reason": "",
+            }
+        ]
+        ok = _append_daily_memory_log(
+            daily_memory_path=daily,
+            session_id="s",
+            run_id="r",
+            user_message="u",
+            assistant_response="a",
+            items=items,
+        )
+        assert ok
+        content = daily.read_text(encoding="utf-8")
+        # Old (bad) prefix must NOT appear
+        assert "  - [MEMORY.md] Subdomains" not in content
+        # New (correct) candidate prefix must be present
+        assert "[CANDIDATE→MEMORY.md] Subdomains: foo.bar.dk" in content
+
+    def test_user_md_target_also_prefixed(self, tmp_path):
+        from core.services.end_of_run_memory_consolidation import _append_daily_memory_log
+        daily = tmp_path / "test.md"
+        items = [
+            {
+                "target": "USER.md",
+                "line": "- prefers concise answers",
+                "kind": "preference",
+                "confidence": "high",
+                "source": "explicit-user-statement",
+                "summary": "",
+                "reason": "",
+            }
+        ]
+        _append_daily_memory_log(
+            daily_memory_path=daily,
+            session_id="s",
+            run_id="r",
+            user_message="u",
+            assistant_response="a",
+            items=items,
+        )
+        content = daily.read_text(encoding="utf-8")
+        assert "[CANDIDATE→USER.md] prefers concise answers" in content
+        assert "[USER.md] prefers" not in content

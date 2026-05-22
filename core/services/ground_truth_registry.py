@@ -41,6 +41,43 @@ REPO_PATH = Path("/media/projects/jarvis-v2")
 DB_PATH = JARVIS_HOME / "state" / "jarvis.db"
 CONFIG_PATH = JARVIS_HOME / "config" / "runtime.json"
 
+# ── Infrastructure facts ────────────────────────────────────────────────
+# Static, hand-maintained facts about Jarvis' deployment infrastructure
+# that can be verified by Claim Scanner. Codex audit 2026-05-22 flagged
+# the Claim Scanner domain/path coverage gap — previously only repo_path
+# and db_path were checked. These facts let the scanner catch wrong
+# IPs/hosts/paths/ports that Jarvis might fabricate.
+#
+# Update when infrastructure changes. Each entry's *keys* are searched as
+# substrings in claim text; if found, the claim is considered verified
+# against the known fact. Unknown infrastructure mentions pass through
+# (cannot verify ≠ wrong) — only KNOWN-WRONG values get flagged.
+INFRASTRUCTURE_FACTS: dict[str, dict[str, str]] = {
+    # Known hosts and what role each plays.
+    "hosts": {
+        "10.0.0.2": "Proxmox host (4TB external backup, 4 VMs)",
+        "10.0.0.25": "Ollama LXC (Proxmox 107, GTX 1070 passthrough)",
+        "cheifone": "Jarvis primary workstation (Bjørn's desktop)",
+        "chefone": "Jarvis primary workstation (Bjørn's desktop)",
+        "chiefone": "Jarvis primary workstation (Bjørn's desktop)",
+    },
+    # Known stable filesystem paths.
+    "paths": {
+        "/media/projects/jarvis-v2": "code repository",
+        "/home/bs/.jarvis-v2": "runtime state directory",
+        "/home/bs/.jarvis-v2/state/jarvis.db": "live SQLite database (~1 GB)",
+        "/home/bs/.jarvis-v2/config/runtime.json": "runtime config + secrets",
+        "/home/bs/.jarvis-v2/workspaces/default": "default workspace",
+        "/mnt/backup-ext": "external 4TB backup mount (on 10.0.0.2)",
+    },
+    # Known service ports.
+    "ports": {
+        "80": "Jarvis API (4 uvicorn workers, runtime_services_enabled=0)",
+        "8011": "Jarvis runtime (heartbeat + services, workers=1)",
+        "11434": "Ollama on 10.0.0.25",
+    },
+}
+
 # ── Pattern matchers for extracting numbers from claims ─────────────────
 
 _NUMBER_PATTERN = re.compile(r"\b(\d+)\s*(expression|daemon|tick|test|commit|service)s?\b", re.IGNORECASE)
@@ -292,6 +329,17 @@ def verify_system_claim(claim_text: str) -> tuple[bool, str | None]:
     gt = get_ground_truth()
     text_lower = claim_text.lower()
 
+    # 2026-05-22 (Claude): consult infrastructure_facts FIRST so known
+    # remote hosts (10.0.0.2, 10.0.0.25), shared paths (/mnt/backup-ext)
+    # and service ports (80, 8011, 11434) don't get falsely flagged as
+    # mismatching the local running_on host. Without this short-circuit,
+    # any IP that's not the local primary IP returns (False, ...) which
+    # is wrong — they're known good facts about the broader deployment.
+    for category in ("hosts", "paths", "ports"):
+        for key in INFRASTRUCTURE_FACTS.get(category, {}):
+            if key.lower() in text_lower:
+                return (True, None)
+
     # Check hostname claims — fuzzy match
     host_match = _HOSTNAME_PATTERN.search(claim_text)
     if host_match:
@@ -335,6 +383,23 @@ def verify_system_claim(claim_text: str) -> tuple[bool, str | None]:
 
     # No specific match — pass through (can't verify ≠ wrong)
     return (True, None)
+
+
+def lookup_infrastructure_fact(key: str) -> str | None:
+    """Look up a known infrastructure fact (host/path/port) for ground-truth
+    citation. Returns the description, or None if unknown.
+
+    Used by Claim Scanner and hallucination_guard to inject correct values
+    when a wrong claim is detected.
+    """
+    needle = str(key or "").lower().strip()
+    if not needle:
+        return None
+    for category in ("hosts", "paths", "ports"):
+        for fact_key, description in INFRASTRUCTURE_FACTS.get(category, {}).items():
+            if fact_key.lower() == needle:
+                return description
+    return None
 
 
 def verify_stats_claim(claim_text: str) -> tuple[bool, str | None]:

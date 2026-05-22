@@ -197,3 +197,47 @@ class TestProviderHealthSectionStable:
             f"Health section must not contain a clock timestamp "
             f"(breaks prompt cache): {section!r}"
         )
+
+
+class TestInfrastructureFacts:
+    """2026-05-22 (Claude): infrastructure_facts registry closes the
+    Claim Scanner domain/path coverage gap flagged by Codex audit.
+    """
+
+    def test_known_ip_verified(self):
+        from core.services.ground_truth_registry import verify_system_claim
+        ok, _ = verify_system_claim(
+            "Proxmox host kører på 10.0.0.2"
+        )
+        assert ok is True
+
+    def test_known_path_verified(self):
+        from core.services.ground_truth_registry import verify_system_claim
+        ok, _ = verify_system_claim(
+            "Runtime state lever i /home/bs/.jarvis-v2"
+        )
+        assert ok is True
+
+    def test_known_port_verified(self):
+        from core.services.ground_truth_registry import verify_system_claim
+        ok, _ = verify_system_claim(
+            "Jarvis-runtime lytter på port 8011"
+        )
+        assert ok is True
+
+    def test_lookup_infrastructure_fact_ip(self):
+        from core.services.ground_truth_registry import lookup_infrastructure_fact
+        desc = lookup_infrastructure_fact("10.0.0.25")
+        assert desc is not None
+        assert "Ollama" in desc
+
+    def test_lookup_infrastructure_fact_path(self):
+        from core.services.ground_truth_registry import lookup_infrastructure_fact
+        desc = lookup_infrastructure_fact("/media/projects/jarvis-v2")
+        assert desc is not None
+        assert "repo" in desc.lower()
+
+    def test_lookup_unknown_returns_none(self):
+        from core.services.ground_truth_registry import lookup_infrastructure_fact
+        assert lookup_infrastructure_fact("/nonexistent/path") is None
+        assert lookup_infrastructure_fact("") is None

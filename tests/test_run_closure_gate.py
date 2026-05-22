@@ -47,24 +47,37 @@ class TestPreRunGitSnapshot:
         with patch(
             "core.services.run_closure_gate._git_porcelain_status",
             return_value={" M file.py", "?? other.py"},
+        ), patch(
+            "core.services.run_closure_gate._git_dirty_content_hashes",
+            return_value={"file.py": "abc123"},
         ):
             _record_pre_run_state("test-run-1")
-        out = _pop_pre_run_state("test-run-1")
-        assert " M file.py" in out
-        assert "?? other.py" in out
+        lines, hashes = _pop_pre_run_state("test-run-1")
+        assert " M file.py" in lines
+        assert "?? other.py" in lines
+        assert hashes == {"file.py": "abc123"}
 
     def test_pop_unknown_returns_empty(self):
-        assert _pop_pre_run_state("nonexistent") == set()
+        lines, hashes = _pop_pre_run_state("nonexistent")
+        assert lines == set()
+        assert hashes == {}
 
     def test_pop_is_destructive(self):
         with patch(
             "core.services.run_closure_gate._git_porcelain_status",
             return_value={" M f.py"},
+        ), patch(
+            "core.services.run_closure_gate._git_dirty_content_hashes",
+            return_value={"f.py": "h1"},
         ):
             _record_pre_run_state("rid-2")
-        assert _pop_pre_run_state("rid-2") == {" M f.py"}
-        # second pop returns empty (popped already)
-        assert _pop_pre_run_state("rid-2") == set()
+        lines, hashes = _pop_pre_run_state("rid-2")
+        assert lines == {" M f.py"}
+        assert hashes == {"f.py": "h1"}
+        # second pop returns empty
+        lines2, hashes2 = _pop_pre_run_state("rid-2")
+        assert lines2 == set()
+        assert hashes2 == {}
 
     def test_empty_run_id_ignored(self):
         _record_pre_run_state("")  # no-op, shouldn't raise
@@ -97,41 +110,85 @@ class TestOnRunCompletedFlow:
     def test_publishes_unstaged_when_diff(self):
         from core.services.run_closure_gate import _on_run_completed
 
+        published_events = []
+
+        class FakeBus:
+            def publish(self, kind, payload):
+                published_events.append((kind, payload))
+
         with patch(
             "core.services.run_closure_gate._git_porcelain_status",
             return_value={" M new_file.py"},
+        ), patch(
+            "core.services.run_closure_gate._git_dirty_content_hashes",
+            return_value={"new_file.py": "h-after"},
+        ), patch(
+            "core.eventbus.bus.event_bus", FakeBus(),
+        ), patch(
+            "core.services.run_closure_gate._pop_pre_run_state",
+            return_value=(set(), {}),
         ):
-            # No pre-state means post is all new
-            published_events = []
+            _on_run_completed({"run_id": "test-rid", "session_id": "test-sid"})
 
-            class FakeBus:
-                def publish(self, kind, payload):
-                    published_events.append((kind, payload))
-
-            with patch("core.eventbus.bus.event_bus", FakeBus()), \
-                 patch("core.services.run_closure_gate._pop_pre_run_state", return_value=set()):
-                _on_run_completed({"run_id": "test-rid", "session_id": "test-sid"})
-
-            kinds = [k for k, _ in published_events]
-            assert "runtime.run_left_unstaged_changes" in kinds
+        kinds = [k for k, _ in published_events]
+        assert "runtime.run_left_unstaged_changes" in kinds
 
     def test_no_publish_when_no_diff(self):
         from core.services.run_closure_gate import _on_run_completed
 
+        published = []
+
+        class FakeBus:
+            def publish(self, kind, payload):
+                published.append(kind)
+
+        # Pre and post identical → no diff
         with patch(
             "core.services.run_closure_gate._git_porcelain_status",
             return_value={" M existing.py"},
+        ), patch(
+            "core.services.run_closure_gate._git_dirty_content_hashes",
+            return_value={"existing.py": "same-hash"},
+        ), patch(
+            "core.eventbus.bus.event_bus", FakeBus(),
+        ), patch(
+            "core.services.run_closure_gate._pop_pre_run_state",
+            return_value=({" M existing.py"}, {"existing.py": "same-hash"}),
         ):
-            published = []
+            _on_run_completed({"run_id": "r", "session_id": "s"})
 
-            class FakeBus:
-                def publish(self, kind, payload):
-                    published.append(kind)
+        assert "runtime.run_left_unstaged_changes" not in published
 
-            with patch("core.eventbus.bus.event_bus", FakeBus()), \
-                 patch("core.services.run_closure_gate._pop_pre_run_state",
-                       return_value={" M existing.py"}):
-                _on_run_completed({"run_id": "r", "session_id": "s"})
+    def test_content_change_detected_even_when_porcelain_unchanged(self):
+        """Critical: modify-modify within run window must be detected.
 
-            # diff is empty → no unstaged publish
-            assert "runtime.run_left_unstaged_changes" not in published
+        Pre and post both show " M file.py" in porcelain — diff is empty
+        — but the content hash changed, so the gate should still fire.
+        """
+        from core.services.run_closure_gate import _on_run_completed
+
+        published = []
+
+        class FakeBus:
+            def publish(self, kind, payload):
+                published.append((kind, payload))
+
+        with patch(
+            "core.services.run_closure_gate._git_porcelain_status",
+            return_value={" M file.py"},  # same line both pre and post
+        ), patch(
+            "core.services.run_closure_gate._git_dirty_content_hashes",
+            return_value={"file.py": "hash-after"},
+        ), patch(
+            "core.eventbus.bus.event_bus", FakeBus(),
+        ), patch(
+            "core.services.run_closure_gate._pop_pre_run_state",
+            return_value=({" M file.py"}, {"file.py": "hash-before"}),
+        ):
+            _on_run_completed({"run_id": "r", "session_id": "s"})
+
+        kinds = [k for k, _ in published]
+        assert "runtime.run_left_unstaged_changes" in kinds
+        # And the payload should mention the file
+        payload = next(p for k, p in published if k == "runtime.run_left_unstaged_changes")
+        assert "file.py" in payload["summary"]["paths"]

@@ -70,10 +70,62 @@ def _git_porcelain_status(*, cwd: Path = _REPO_ROOT) -> set[str]:
         return set()
 
 
+def _git_dirty_content_hashes(*, cwd: Path = _REPO_ROOT) -> dict[str, str]:
+    """Return {path: blob_hash_or_marker} for every file that differs from HEAD.
+
+    Where porcelain status only tells us "M file.py" (modified at all), this
+    captures the actual content hash so we can detect modify-modify changes
+    within a single run window. Untracked files are included with an
+    "untracked:<mtime>" sentinel.
+
+    2026-05-22 (Claude): added because porcelain-only diff missed cases
+    where Bjørn already had unstaged changes pre-run AND Jarvis edited
+    the same file during the run. Pre and post porcelain both showed
+    "M file.py" → empty diff → no notification.
+    """
+    out: dict[str, str] = {}
+    try:
+        # Modified tracked files: use `git diff` with object hashes
+        result = subprocess.run(
+            ["git", "diff", "HEAD", "--raw"],
+            capture_output=True, text=True, timeout=5, cwd=cwd,
+        )
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                # Format: :100644 100644 abc123 def456 M\tpath/to/file
+                parts = line.split()
+                if len(parts) >= 6:
+                    new_hash = parts[3]
+                    path = parts[-1]
+                    out[path] = new_hash
+        # Untracked files: use porcelain + mtime so creation/modification
+        # of a brand-new file is detectable too.
+        result = subprocess.run(
+            ["git", "ls-files", "--others", "--exclude-standard"],
+            capture_output=True, text=True, timeout=5, cwd=cwd,
+        )
+        if result.returncode == 0:
+            for path in result.stdout.splitlines():
+                path = path.strip()
+                if not path:
+                    continue
+                full = cwd / path
+                try:
+                    mtime = full.stat().st_mtime
+                except Exception:
+                    mtime = 0.0
+                out[path] = f"untracked:{mtime}"
+    except Exception:
+        pass
+    return out
+
+
 # ── per-run state cache ────────────────────────────────────────────────
-# Pre-run git snapshot, keyed by run_id. Populated by a pre-run event
-# subscriber and consumed by the post-run handler so we can diff.
-_pre_run_git_state: dict[str, set[str]] = {}
+# Pre-run git snapshot, keyed by run_id. We store both porcelain status
+# AND a content-hash map so we can detect modify-modify changes within
+# a single run window (where porcelain status alone would look identical
+# before and after).
+_pre_run_git_state: dict[str, tuple[set[str], dict[str, str]]] = {}
 _pre_run_git_lock = threading.Lock()
 
 
@@ -81,13 +133,14 @@ def _record_pre_run_state(run_id: str) -> None:
     if not run_id:
         return
     snapshot = _git_porcelain_status()
+    hashes = _git_dirty_content_hashes()
     with _pre_run_git_lock:
-        _pre_run_git_state[run_id] = snapshot
+        _pre_run_git_state[run_id] = (snapshot, hashes)
 
 
-def _pop_pre_run_state(run_id: str) -> set[str]:
+def _pop_pre_run_state(run_id: str) -> tuple[set[str], dict[str, str]]:
     with _pre_run_git_lock:
-        return _pre_run_git_state.pop(run_id, set())
+        return _pre_run_git_state.pop(run_id, (set(), {}))
 
 
 # ── tool-call tracking ────────────────────────────────────────────────
@@ -99,7 +152,29 @@ _run_tool_lock = threading.Lock()
 _RUN_TOOL_CACHE_MAX = 256
 
 
+# Latest in-flight run_id. Tool events from simple_tools.py don't carry
+# run_id in their payload — we fall back to this when correlating.
+# Concurrent runs would collide here, but in practice we have one active
+# visible run at a time per process.
+_current_run_id: str = ""
+_current_run_lock = threading.Lock()
+
+
+def _set_current_run(run_id: str) -> None:
+    with _current_run_lock:
+        global _current_run_id
+        _current_run_id = run_id
+
+
+def _get_current_run() -> str:
+    with _current_run_lock:
+        return _current_run_id
+
+
 def _record_tool_call(run_id: str, tool_name: str) -> None:
+    # Fall back to the in-flight run if payload didn't include run_id.
+    if not run_id:
+        run_id = _get_current_run()
     if not run_id or not tool_name:
         return
     with _run_tool_lock:
@@ -140,16 +215,44 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
     session_id = str(payload.get("session_id") or "")
     if not run_id:
         return
+    # Clear in-flight pointer if this is the current run.
+    if _get_current_run() == run_id:
+        _set_current_run("")
 
-    # Compute new unstaged paths introduced during this run.
-    pre = _pop_pre_run_state(run_id)
-    post = _git_porcelain_status()
-    new_lines = post - pre
+    # Compute changed/new paths introduced during this run.
+    # We diff TWO things:
+    #   1. New porcelain status lines (catches genuinely new file
+    #      appearances and status-transitions like staged→unstaged)
+    #   2. Content-hash deltas (catches modify-modify within run window
+    #      where porcelain alone would look identical before and after)
+    pre_lines, pre_hashes = _pop_pre_run_state(run_id)
+    post_lines = _git_porcelain_status()
+    post_hashes = _git_dirty_content_hashes()
+
+    new_lines = post_lines - pre_lines
+    # Content-changed paths: present in both pre+post but with different hash
+    content_changed: set[str] = set()
+    for path, new_hash in post_hashes.items():
+        old_hash = pre_hashes.get(path)
+        if old_hash is None or old_hash != new_hash:
+            content_changed.add(path)
+    # Combine into a single "touched during run" set (path-strings).
+    # For porcelain new_lines, strip the status prefix so we get just paths.
+    touched_paths: set[str] = set(content_changed)
+    for line in new_lines:
+        if len(line) > 3:
+            touched_paths.add(line[3:].strip())
+        else:
+            touched_paths.add(line.strip())
+    touched_paths.discard("")
 
     tool_calls = _pop_tool_calls(run_id)
 
-    if new_lines:
-        summary = _summarize_unstaged(new_lines)
+    if touched_paths:
+        # Build a fake "porcelain lines" set from the paths so the
+        # existing _summarize_unstaged formatter works unchanged.
+        synthetic = {f"   {p}" for p in touched_paths}
+        summary = _summarize_unstaged(synthetic)
         try:
             from core.eventbus.bus import event_bus
             event_bus.publish("runtime.run_left_unstaged_changes", {
@@ -200,13 +303,19 @@ def _on_run_started(payload: dict[str, Any]) -> None:
     run_id = str(payload.get("run_id") or "")
     if run_id:
         _record_pre_run_state(run_id)
+        _set_current_run(run_id)
 
 
 def _on_tool_used(payload: dict[str, Any]) -> None:
-    """Track tool calls so we can detect silent runs."""
+    """Track tool calls so we can detect silent runs.
+
+    Tool events from simple_tools.py don't include run_id in their
+    payload — _record_tool_call falls back to the current in-flight
+    run via _get_current_run().
+    """
     run_id = str(payload.get("run_id") or "")
     tool_name = str(payload.get("tool") or payload.get("tool_name") or "")
-    if run_id and tool_name:
+    if tool_name:
         _record_tool_call(run_id, tool_name)
 
 
@@ -250,7 +359,7 @@ def start_run_closure_gate() -> None:
             name="run-closure-gate",
         )
         _listener_thread.start()
-        logger.info("run_closure_gate: subscriber started")
+        logger.warning("run_closure_gate: subscriber started")
     except Exception:
         logger.exception("run_closure_gate: failed to start subscriber")
 

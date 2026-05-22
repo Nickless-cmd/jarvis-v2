@@ -541,8 +541,16 @@ def get_echo_signals_for_prompt() -> str:
         return ""
     if not themes:
         return ""
+    # 2026-05-22 (Claude): bucket counts to nearest 10 so small per-turn
+    # increments (×93 → ×94 → ×95) don't break the prompt cache. Each
+    # bucket carries the same semantic meaning ("recurring a lot") with
+    # ~10x cache stability. Live diff found this counter rolled every
+    # turn at byte ~10,749 of system prompt.
     top = themes[:3]
-    parts = [f"{t['theme']} (×{t['count']})" for t in top]
+    parts = []
+    for t in top:
+        bucket = (t['count'] // 10) * 10
+        parts.append(f"{t['theme']} (×{bucket}+)")
     return f"[tilbagevendende strømme de sidste dage]: {', '.join(parts)}"
 
 

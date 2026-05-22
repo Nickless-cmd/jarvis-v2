@@ -1468,6 +1468,19 @@ def build_visible_chat_prompt_assembly(
     # shows 60%, claims stale goals when none are stale, etc.
     self_state_content = _timed_result(future_self_state, "self_state")
     _mark("after_heavy_resolves")
+    # 2026-05-22 (Claude): defer cognitive_state + self_state to tail.
+    # Live cache diff round-2 found COGNITIVE STATE block at byte ~14,936
+    # toggled the "agens:" line on/off per-turn (conditional on recent
+    # agency invocation), breaking cache from 94% → 33% on alternating
+    # calls. Same defer pattern as recall_bundle/visible_continuity in
+    # round-1 — both blocks are runtime state that's still semantically
+    # useful at tail (after stable identity/tools).
+    if cognitive_state_content:
+        _awareness_add(40, "cognitive state", cognitive_state_content)
+        cognitive_state_content = None
+    if self_state_content:
+        _awareness_add(41, "self state numbers", self_state_content)
+        self_state_content = None
 
     raw_sections = {
         "capability_truth": capability_truth,

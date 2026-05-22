@@ -285,16 +285,40 @@ def build_conversation_continuity(*, limit: int = 3) -> str | None:
     except Exception:
         pass
 
-    # 2. LLM-generated session summaries
+    # 2. LLM-generated session summaries.
+    # 2026-05-22 (Claude): filter out fresh summaries (<5 min old) and
+    # round timestamps to HOUR (was minute). Live cache diff found this
+    # list rotated every chat turn — each new turn generates a fresh
+    # session summary that pushed the top entry down, breaking the
+    # prompt cache. 5-min cooling window means recent activity is
+    # invisible (the user is still seeing it in the active chat anyway);
+    # only stable cross-session summaries appear here.
     try:
         from core.runtime.db import session_summary_recent as _ssr
-        summaries = _ssr(limit=limit)
+        from datetime import datetime as _dt, timedelta as _td, UTC as _UTC
+        # Over-fetch so the cooling filter doesn't yield empty.
+        summaries = _ssr(limit=limit * 3)
+        cutoff = _dt.now(_UTC) - _td(minutes=5)
+        accepted = 0
         if summaries:
             for s in summaries:
-                created = str(s.get("created_at") or "")[:16]
+                created_raw = str(s.get("created_at") or "")
+                try:
+                    created_dt = _dt.fromisoformat(created_raw.replace("Z", "+00:00"))
+                    if created_dt.tzinfo is None:
+                        created_dt = created_dt.replace(tzinfo=_UTC)
+                    if created_dt > cutoff:
+                        continue  # too fresh; would rotate cache every turn
+                except (ValueError, AttributeError):
+                    pass
+                # Round to hour (was minute) for extra cache stability
+                created_label = created_raw[:13]  # YYYY-MM-DDTHH
                 text = str(s.get("summary") or "").strip()
                 if text:
-                    lines.append(f"  - [{created}] {text[:200]}")
+                    lines.append(f"  - [{created_label}] {text[:200]}")
+                    accepted += 1
+                    if accepted >= limit:
+                        break
     except Exception:
         pass
 

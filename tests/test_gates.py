@@ -47,6 +47,52 @@ class TestVetoGate:
         assert allowed is True
 
 
+class TestTokenSignalGate:
+    """Token-signal gate (Layer 1 of adaptive veto-gate).
+
+    Added 2026-05-22 after review of d7b400fe found two bugs:
+    - typo `gaa det` in the override regex (should be `gå det`)
+    - negation bypass: "ikke godkendt restart" was treated as consent
+    """
+
+    def test_pure_consent_words_pass(self):
+        from core.services.veto_gate import _check_token_signal_gate
+        for msg in ("ja", "kør", "godkendt", "approved", "ok", "okay"):
+            assert _check_token_signal_gate(msg, "any_tool") is True, msg
+
+    def test_danish_go_phrase(self):
+        from core.services.veto_gate import _check_token_signal_gate
+        assert _check_token_signal_gate("gå det", "any_tool") is True
+        assert _check_token_signal_gate("gør det", "any_tool") is True
+        # "gaa det" is not real Danish — should NOT match
+        assert _check_token_signal_gate("gaa det", "any_tool") is False
+
+    def test_consent_near_risk_marker(self):
+        from core.services.veto_gate import _check_token_signal_gate
+        # Bjørn explicitly approving a risky operation
+        assert _check_token_signal_gate("godkendt restart", "restart") is True
+        assert _check_token_signal_gate("ja, kør restart", "restart") is True
+
+    def test_negation_blocks_consent(self):
+        """Critical: refusal must NOT bypass the veto gate.
+
+        Without this, "ikke godkendt restart" would be treated as consent
+        and any risky tool call could be silently approved.
+        """
+        from core.services.veto_gate import _check_token_signal_gate
+        for msg in (
+            "ikke godkendt restart",
+            "aldrig godkendt restart",
+            "nej, ikke kør restart",
+            "stop, ikke approved",
+        ):
+            assert _check_token_signal_gate(msg, "restart") is False, msg
+
+    def test_empty_message(self):
+        from core.services.veto_gate import _check_token_signal_gate
+        assert _check_token_signal_gate("", "any_tool") is False
+
+
 # ── Decision gate ──────────────────────────────────────────────────────
 
 class TestDecisionGate:

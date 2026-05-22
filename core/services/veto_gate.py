@@ -38,10 +38,25 @@ logger = logging.getLogger(__name__)
 # Consent/override markers — short explicit confirmations that should
 # bypass the veto gate entirely. These are the words Bjørn uses to
 # override a veto ("ja", "kør", "godkendt", etc.).
+#
+# 2026-05-22 (Claude): fixed `gaa det` → `gå det` typo. Original had
+# `r'\bg(?:ør|aa) det\b'` which matched non-Danish "gaa det" but
+# missed actual "gå det".
 _OVERRIDE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r'^\s*(ja|kør|kør på|do it|go ahead|proceed)\s*\.?\s*$', re.IGNORECASE),
     re.compile(r'^\s*(godkendt|accepteret|approved|accept|ok|okay)\s*\.?\s*$', re.IGNORECASE),
-    re.compile(r'\bg(?:ør|aa) det\b', re.IGNORECASE),
+    re.compile(r'\bg(?:ør|å) det\b', re.IGNORECASE),
+)
+
+# Negation markers — words that flip consent into refusal.
+# When any of these appear before a consent token (within ~30 chars),
+# the message is NOT a consent signal — it's a refusal/negation.
+# 2026-05-22 (Claude): added because original implementation matched
+# "ikke godkendt restart" as consent, a security bug that let users
+# accidentally bypass veto by typing refusals.
+_NEGATION_RE = re.compile(
+    r'\b(ikke|aldrig|nej|stop|annull[eé]r|cancel|abort|nope|no)\b',
+    re.IGNORECASE,
 )
 
 # Consent-in-context: when a consent word appears near a risk marker,
@@ -54,22 +69,42 @@ _CONSENT_NEAR_RISK = re.compile(
 )
 
 
+def _is_negated(user_message: str, consent_start_idx: int) -> bool:
+    """True if a negation word appears within ~30 chars BEFORE the consent token.
+
+    Catches "ikke godkendt restart", "aldrig approved", "nej, kør restart" etc.
+    Window is 30 chars (~5-6 words) — Danish negations cling close to the verb.
+    """
+    if consent_start_idx <= 0:
+        return False
+    window_start = max(0, consent_start_idx - 30)
+    window = user_message[window_start:consent_start_idx]
+    return bool(_NEGATION_RE.search(window))
+
+
 def _check_token_signal_gate(user_message: str, tool_name: str) -> bool:
     """Check if user message contains explicit consent that overrides veto.
 
     Returns True if the message is a clear override signal.
     This runs BEFORE affective pushback, so the veto never fires at all.
+
+    `tool_name` is accepted for future use (tool-specific consent rules)
+    but currently the gate is tool-agnostic — explicit consent words
+    override veto for any tool. This is intentional: when Bjørn types
+    "godkendt", he means "yes, do the thing I just saw you ask about".
     """
     if not user_message:
         return False
 
     # Pure override: short consent messages ("ja", "kør", "godkendt")
     for pattern in _OVERRIDE_PATTERNS:
-        if pattern.search(user_message):
+        m = pattern.search(user_message)
+        if m and not _is_negated(user_message, m.start()):
             return True
 
     # Consent near risk marker: "godkendt restart" = explicit approval
-    if _CONSENT_NEAR_RISK.search(user_message):
+    m = _CONSENT_NEAR_RISK.search(user_message)
+    if m and not _is_negated(user_message, m.start()):
         return True
 
     return False
@@ -81,18 +116,27 @@ def _maybe_record_override_from_token_signal(tool_name: str) -> None:
 
     This closes the feedback loop: every "kør" or "ja" from the user
     raises the adaptive threshold for that (tool, feeling) pair.
+
+    Time-window: 15 minutes. Older "pending" vetoes are not considered
+    related to the current message — Bjørn typing "ja" today shouldn't
+    override-credit a veto from last week. 2026-05-22 (Claude): added
+    cutoff because the original query had no time bound, so an ancient
+    pending veto would soak up every override signal indefinitely.
     """
     if not tool_name:
         return
     try:
+        from datetime import timedelta
         from core.runtime.db_core import connect
+        cutoff_iso = (datetime.now(UTC) - timedelta(minutes=15)).isoformat()
         with connect() as conn:
             rows = conn.execute(
                 """SELECT event_id, feeling FROM veto_events
                    WHERE tool_name = ? AND veto_result = 'blocked'
                      AND resolution = 'pending'
+                     AND created_at >= ?
                    ORDER BY id DESC LIMIT 1""",
-                (tool_name,),
+                (tool_name, cutoff_iso),
             ).fetchall()
         for row in rows:
             event_id, feeling = row

@@ -293,6 +293,76 @@ def productive_idle(*, budget_seconds: float = _PRODUCTIVE_IDLE_BUDGET_SECONDS) 
         except Exception:
             pass
 
+    # 7. Baseline rhythms (2026-05-22 fix): jobs that previously lived in
+    # run_heartbeat_tick but were orphaned when scheduler started routing
+    # through tick_with_phases (commit a3bfb0f6). These are LLM-free, very
+    # cheap, and are critical for cross-session baseline data (most notably
+    # the interlanguage practice cohort used in Phase 2 validation).
+    #
+    # Each job is self-gating (debounce / time-window inside its own logic)
+    # so calling it on every idle tick is safe — it no-ops when not due.
+
+    # 7a. Interlanguage practice — 30-min DB-gated (mirrors
+    # heartbeat_runtime.py:1443 logic exactly).
+    if _budget_left():
+        try:
+            import sqlite3 as _sql
+            from pathlib import Path as _Path
+            _practice_db = str(_Path.home() / ".jarvis-v2" / "state" / "jarvis.db")
+            with _sql.connect(_practice_db) as _conn:
+                _row = _conn.execute(
+                    "SELECT MAX(created_at) FROM interlanguage_practice "
+                    "WHERE peer_id = 'jarvis'"
+                ).fetchone()
+            _last_iso = _row[0] if _row else None
+            _should_fire = False
+            if _last_iso is None:
+                _should_fire = True
+            else:
+                _last_dt = datetime.fromisoformat(_last_iso)
+                if (datetime.now(UTC) - _last_dt).total_seconds() >= 1800:
+                    _should_fire = True
+            if _should_fire:
+                from core.services.interlanguage_practice import practice_tick
+                practice_tick(tick_id="productive_idle")
+                actions.append("interlanguage_practice")
+        except Exception:
+            pass
+
+    # 7b. Personality drift tick — has its own internal 30-min debounce.
+    if _budget_left():
+        try:
+            from core.services.personality_vector import tick_personality_drift
+            tick_personality_drift()
+            actions.append("personality_drift_tick")
+        except Exception:
+            pass
+
+    # 7c. Life services — dreams, wants, boredom, tick-elapsed. Each
+    # one accepts a duration kwarg and decays/accumulates accordingly.
+    # Use idle elapsed (capped at 60s for sanity) rather than fixed 30s
+    # so the system reflects actual idle time, not assumed cadence.
+    if _budget_left():
+        _idle_dur = min(time.time() - started, 60.0)
+        for _fn_path, _label in (
+            ("core.services.continuity_kernel.record_tick_elapsed", "tick_elapsed"),
+            ("core.services.dream_continuum.evolve_dreams", "dreams"),
+            ("core.services.initiative_accumulator.accumulate_wants", "wants"),
+            ("core.services.boredom_curiosity_bridge.add_boredom", "boredom"),
+        ):
+            try:
+                _mod_path, _fn_name = _fn_path.rsplit(".", 1)
+                _mod = __import__(_mod_path, fromlist=[_fn_name])
+                _fn = getattr(_mod, _fn_name)
+                # record_tick_elapsed uses seconds=, others use duration=timedelta
+                if _label == "tick_elapsed":
+                    _fn(seconds=_idle_dur)
+                else:
+                    _fn(duration=timedelta(seconds=_idle_dur))
+                actions.append(_label)
+            except Exception:
+                pass
+
     elapsed = time.time() - started
     return {
         "kind": "productive_idle",

@@ -14,6 +14,28 @@
 - **Stop ved fejl**: Hvis en autonom run fejler 2 gange i træk → pause og vent på bruger
 - **Lidt er nok**: Ét lille fund er bedre end ti rodige eksperimenter
 
+## Kodeændringer — automatisk test + commit 🔨
+**Denne regel håndhæves af to automatiserede lag — den er ikke valgfri.**
+
+### Lag 1 — Pre-commit hook (blokerende)
+`.pre-commit-config.yaml` → `enforce-test-coverage` hook:
+- Scanner staged `.py`-filer under `core/`
+- Blokerer commit hvis `tests/test_<modul>.py` mangler
+- Installeret via `pre-commit install` — kører automatisk ved `git commit`
+
+### Lag 2 — Runtime auto-ensure (proaktiv)
+`core/tools/auto_ensure_tests.py`:
+- Kaldes automatisk efter Jarvis redigerer en core-fil
+- Opretter testskeleton hvis testfil mangler
+- Kører pytest på testfilen
+- Rapporterer grøn/rød — commit først når grøn
+
+### Jarvis' pligt
+1. Skriv tests **før** eller **samtidig med** kodeændringer
+2. Kør tests — bekræft grøn — før commit
+3. Brug `propose_git_commit` eller commit direkte når grøn
+4. **Undlad aldrig** at committe — følg ændringer i git historikken
+
 ## Generelle regler
 - Read-only tools er altid tilladt i autonom tilstand
 - Approval-krævende tools afvises automatisk når bruger er væk

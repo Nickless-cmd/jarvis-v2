@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""
+Pre-commit hook: enforces test coverage for core/ code changes.
+
+Called by pre-commit framework (or directly) with no args — it reads
+`git diff --cached --name-only --diff-filter=ACMR` to find staged files.
+
+For every staged .py file under core/ (excluding __init__.py and
+__pycache__), checks whether a matching test file exists at
+tests/test_<module_name>.py.  If any are missing, exits 1 with
+a clear message so the commit is blocked.
+"""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Files that don't need dedicated test files (suffix-only match)
+SKIP_SUFFIXES = ("__init__.py", "__main__.py", "_pb2.py", "_pb2_grpc.py")
+# Directories whose changed files should trigger test-coverage check
+COVERED_DIRS = ("core/",)
+
+# Few known modules whose tests live in non-standard locations
+KNOWN_MAPPINGS: dict[str, str] = {}
+
+
+def _is_covered(path: str) -> bool:
+    """Check if a file path falls under a directory we enforce tests for."""
+    return any(path.startswith(d) for d in COVERED_DIRS)
+
+
+def _expected_test_path(staged_path: str, repo_root: Path | None = None) -> Path | None:
+    """
+    Given a staged file path like 'core/services/foo.py',
+    return the expected test path like 'tests/test_foo.py'.
+
+    Returns None if the file doesn't need a test file.
+    """
+    p = Path(staged_path)
+    root = repo_root or REPO_ROOT
+
+    # Skip non-.py files
+    if p.suffix != ".py":
+        return None
+    # Skip known suffixes
+    if any(p.name.endswith(suf) for suf in SKIP_SUFFIXES):
+        return None
+
+    module_name = p.stem  # e.g. 'foo'  from 'foo.py'
+
+    # Check explicit overrides
+    if staged_path in KNOWN_MAPPINGS:
+        return root / KNOWN_MAPPINGS[staged_path]
+
+    return root / "tests" / f"test_{module_name}.py"
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Entry point.  Accept optional --repo-root to override REPO_ROOT."""
+    args = argv or sys.argv[1:]
+
+    repo_root = REPO_ROOT
+    if args and args[0] == "--repo-root":
+        if len(args) < 2:
+            print("ERROR: --repo-root requires a path argument", file=sys.stderr)
+            return 1
+        repo_root = Path(args[1])
+
+    # Get staged files
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
+        capture_output=True, text=True, cwd=repo_root,
+    )
+    if result.returncode != 0:
+        print(f"ERROR: git diff failed:\n{result.stderr}", file=sys.stderr)
+        return 1
+
+    staged = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    if not staged:
+        return 0  # nothing staged, nothing to check
+
+    failures: list[str] = []
+
+    for path in staged:
+        if not _is_covered(path):
+            continue
+
+        expected = _expected_test_path(path, repo_root)
+        if expected is None:
+            continue
+
+        if not expected.exists():
+            failures.append(f"  {path}  →  {expected.relative_to(repo_root)} (MISSING)")
+
+    if failures:
+        print("❌ TEST COVERAGE GATE — commit blocked", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("The following staged file(s) have no matching test:", file=sys.stderr)
+        print("\n".join(failures), file=sys.stderr)
+        print("", file=sys.stderr)
+        print("Write tests first, then commit.", file=sys.stderr)
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

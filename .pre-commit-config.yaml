@@ -23,6 +23,17 @@ repos:
   # ~4s on a warm system. See scripts/smoke_test_startup.py.
   - repo: local
     hooks:
+      # Pre-commit: enforce test coverage for core/ changes.
+      # Scans staged .py files under core/ and blocks commit if any
+      # are missing a corresponding tests/test_<module>.py file.
+      - id: enforce-test-coverage
+        name: Enforce test coverage (core/ → tests/)
+        entry: /opt/conda/envs/ai/bin/python scripts/enforce_test_coverage.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       - id: jarvis-runtime-startup-smoke
         name: Jarvis runtime startup smoke test
         entry: /opt/conda/envs/ai/bin/python scripts/smoke_test_startup.py

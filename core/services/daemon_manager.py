@@ -340,6 +340,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": True,
         "description": "Aktiv sansetrang: Sansernes Arkiv vælger selv at sanse (visual/audio/atmosphere/mixed) på eget initiativ",
     },
+    "ground_truth_registry": {
+        "module": "core.services.ground_truth_registry",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 60,
+        "default_enabled": True,
+        "description": "Lag 3 (Lying Engine): 60min refresh af Ground Truth Registry — system_model, host, expression_count, commit_count, daemon_count",
+    },
 }
 
 

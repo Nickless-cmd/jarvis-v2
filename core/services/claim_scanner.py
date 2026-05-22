@@ -134,15 +134,23 @@ def _verify_env_claim(matched_text: str) -> bool:
 
 
 def _verify_system_claim(matched_text: str) -> bool:
-    """Verify system claims — delegate to Hallucination Guard infra."""
-    # For now, we tag the claim for awareness but don't block it.
-    # Future: run the full Hallucination Guard fact-check.
-    return True
+    """Verify system claims against Ground Truth Registry (Layer 3)."""
+    try:
+        from core.services.ground_truth_registry import verify_system_claim as _verify
+        verified, _correct = _verify(matched_text)
+        return verified
+    except ImportError:
+        return True  # Graceful fallback if registry not available
 
 
 def _verify_stats_claim(matched_text: str) -> bool:
-    """Verify statistic claims — would need a live DB query."""
-    return True  # Placeholder — live DB query TBD
+    """Verify statistic claims against Ground Truth Registry (Layer 3)."""
+    try:
+        from core.services.ground_truth_registry import verify_stats_claim as _verify
+        verified, _correct = _verify(matched_text)
+        return verified
+    except ImportError:
+        return True  # Graceful fallback if registry not available
 
 
 _VERIFIERS = {
@@ -169,11 +177,42 @@ def _repair_claim(line: str, category: str, matched_text: str) -> str:
     if category == "⏰ tid":
         now_str = _now_as_pin_string()
         return line.replace(matched_text, f"[kl. ??? — se ⏰ Time Pin: {now_str}]")
-    # For other categories, just mark as uncertain
+
+    if category == "⚙️ system":
+        try:
+            from core.services.ground_truth_registry import verify_system_claim
+            _verified, correct = verify_system_claim(matched_text)
+            if correct:
+                return line.replace(matched_text, f"[host: {correct}]")
+        except ImportError:
+            pass
+        return line.replace(matched_text, f"{matched_text} [usikker]")
+
+    if category == "🧮 statistik":
+        try:
+            from core.services.ground_truth_registry import verify_stats_claim
+            _verified, correct = verify_stats_claim(matched_text)
+            if correct:
+                return line.replace(matched_text, matched_text.replace(
+                    # Replace the number with the correct value
+                    _extract_number(matched_text), correct
+                ))
+        except ImportError:
+            pass
+        return line.replace(matched_text, f"{matched_text} [usikker]")
+
+    # For environment, just mark as uncertain
     return line.replace(
         matched_text,
         f"{matched_text} [usikker]"
     )
+
+
+def _extract_number(text: str) -> str:
+    """Extract the first number from a string for replacement."""
+    import re
+    m = re.search(r'\d+', text)
+    return m.group(0) if m else ""
 
 
 # ── Public API ─────────────────────────────────────────────────────────

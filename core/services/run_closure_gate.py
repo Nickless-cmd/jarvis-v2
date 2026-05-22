@@ -71,52 +71,72 @@ def _git_porcelain_status(*, cwd: Path = _REPO_ROOT) -> set[str]:
 
 
 def _git_dirty_content_hashes(*, cwd: Path = _REPO_ROOT) -> dict[str, str]:
-    """Return {path: blob_hash_or_marker} for every file that differs from HEAD.
+    """Return {path: content_hash} for every file currently dirty in working tree.
 
-    Where porcelain status only tells us "M file.py" (modified at all), this
-    captures the actual content hash so we can detect modify-modify changes
-    within a single run window. Untracked files are included with an
-    "untracked:<mtime>" sentinel.
+    2026-05-22 (Claude): originally used `git diff HEAD --raw` to get blob
+    hashes, but git reports "00000000" as the destination hash for any
+    unstaged modification (because the working tree isn't a committed
+    object). That meant the hash never changed between pre and post,
+    defeating the modify-modify detection entirely.
 
-    2026-05-22 (Claude): added because porcelain-only diff missed cases
-    where Bjørn already had unstaged changes pre-run AND Jarvis edited
-    the same file during the run. Pre and post porcelain both showed
-    "M file.py" → empty diff → no notification.
+    Fixed by collecting the list of dirty paths via porcelain, then
+    running `git hash-object <path>` for each to get the would-be-staged
+    SHA. That hash actually reflects current content and changes when
+    the file is edited. Untracked files are also hashed this way.
     """
-    out: dict[str, str] = {}
+    dirty_paths: list[str] = []
     try:
-        # Modified tracked files: use `git diff` with object hashes
         result = subprocess.run(
-            ["git", "diff", "HEAD", "--raw"],
+            ["git", "status", "--porcelain"],
             capture_output=True, text=True, timeout=5, cwd=cwd,
         )
-        if result.returncode == 0:
-            for line in result.stdout.splitlines():
-                # Format: :100644 100644 abc123 def456 M\tpath/to/file
-                parts = line.split()
-                if len(parts) >= 6:
-                    new_hash = parts[3]
-                    path = parts[-1]
-                    out[path] = new_hash
-        # Untracked files: use porcelain + mtime so creation/modification
-        # of a brand-new file is detectable too.
-        result = subprocess.run(
-            ["git", "ls-files", "--others", "--exclude-standard"],
-            capture_output=True, text=True, timeout=5, cwd=cwd,
-        )
-        if result.returncode == 0:
-            for path in result.stdout.splitlines():
-                path = path.strip()
-                if not path:
-                    continue
-                full = cwd / path
-                try:
-                    mtime = full.stat().st_mtime
-                except Exception:
-                    mtime = 0.0
-                out[path] = f"untracked:{mtime}"
+        if result.returncode != 0:
+            return {}
+        for line in result.stdout.splitlines():
+            if not line.strip():
+                continue
+            # porcelain line format: XY<space>path  (X/Y are status codes)
+            if len(line) > 3:
+                path = line[3:].strip()
+                # Renames look like "old -> new" — take new
+                if " -> " in path:
+                    path = path.split(" -> ", 1)[1].strip()
+                if path:
+                    dirty_paths.append(path)
     except Exception:
-        pass
+        return {}
+
+    # Filter out directory-only porcelain entries (e.g. untracked
+    # directory `?? .codex/`) — git hash-object fails on those with
+    # "fatal: Unable to hash <dir>" and aborts the whole batch.
+    file_paths: list[str] = []
+    for path in dirty_paths:
+        full = cwd / path
+        try:
+            if full.is_file():
+                file_paths.append(path)
+        except Exception:
+            continue
+
+    if not file_paths:
+        return {}
+
+    # Hash each file individually so one bad path doesn't abort the batch.
+    # (stdin-paths is faster but it returns nothing for the whole batch
+    # on the first error.)
+    out: dict[str, str] = {}
+    for path in file_paths:
+        try:
+            result = subprocess.run(
+                ["git", "hash-object", path],
+                capture_output=True, text=True, timeout=3, cwd=cwd,
+            )
+            if result.returncode == 0:
+                h = result.stdout.strip()
+                if h:
+                    out[path] = h
+        except Exception:
+            continue
     return out
 
 

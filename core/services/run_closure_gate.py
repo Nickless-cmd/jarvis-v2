@@ -291,13 +291,20 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
             logger.debug("run_closure_gate: failed to publish unstaged event", exc_info=True)
 
     # Silent-run detection: tool calls happened but no visible text was
-    # delivered. We check the run-record DB for the final output text.
+    # delivered. We check the run-record DB for the final preview text.
+    #
+    # 2026-05-22 (Claude, second pass): originally queried `output_text`
+    # column which doesn't exist — the column is `text_preview`. The
+    # try/except silently swallowed the OperationalError so silent-run
+    # detection never fired. Corroborated by run autonomous-141add33d9
+    # (30 tool.force_invoked, 20 agentic rounds, text_preview empty,
+    # zero notification to Bjørn — his actual complaint pattern).
     if tool_calls:
         try:
             from core.runtime.db import connect
             with connect() as conn:
                 row = conn.execute(
-                    "SELECT output_text FROM visible_runs WHERE run_id = ?",
+                    "SELECT text_preview FROM visible_runs WHERE run_id = ?",
                     (run_id,),
                 ).fetchone()
             output = (row[0] if row else "") or ""
@@ -315,7 +322,7 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
                     run_id[:12], len(tool_calls),
                 )
         except Exception:
-            logger.debug("run_closure_gate: failed silent-run check", exc_info=True)
+            logger.warning("run_closure_gate: failed silent-run check", exc_info=True)
 
 
 def _on_run_started(payload: dict[str, Any]) -> None:

@@ -2621,8 +2621,21 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             except Exception:
                 pass
 
-        if visible_output_text:
-            threading.Thread(target=_post_process, daemon=True).start()
+        # 2026-05-22 (Claude): post-process MUST run even when
+        # visible_output_text is empty. Originally guarded by
+        # `if visible_output_text:` which meant a run that ended after
+        # tool-calls with no final text skipped:
+        #   1. set_last_visible_run_outcome — text_preview never updated
+        #   2. _run_memory_postprocess — consolidation lost
+        #   3. _maybe_trigger_continuation — auto-wakeup never fired
+        # That's the root cause of "Jarvis silently completes a run
+        # without delivering anything" — verified via run autonomous-
+        # 141add33d9 (30 tool calls, 20 agentic rounds, text_preview
+        # blank). Removing the guard runs the post-process pipeline
+        # for every completed run; the individual functions already
+        # handle empty text gracefully (most early-return on falsy
+        # input).
+        threading.Thread(target=_post_process, daemon=True).start()
 
         # Phase 5: clear in-flight record. Runs reaching this finally block
         # have either completed, failed cleanly, or been cancelled — all

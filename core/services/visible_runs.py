@@ -187,6 +187,7 @@ from core.services.open_loop_closure_proposal_tracking import (
 from core.services.selfhood_proposal_tracking import (
     track_runtime_selfhood_proposals_for_visible_turn,
 )
+from core.services.claim_scanner import scan_response as _scan_response
 from core.services.visible_model import (
     VisibleModelDelta,
     VisibleModelRateLimited,
@@ -2467,17 +2468,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             "provider_call_count": 2,
                         },
                     )
+                _scanned = _scan_response(visible_output_text)
                 yield _sse(
                     "delta",
-                    {"type": "delta", "run_id": run.run_id, "delta": visible_output_text},
+                    {"type": "delta", "run_id": run.run_id, "delta": _scanned},
                 )
             else:
                 _update_visible_execution_trace(
                     run, {"provider_second_pass_status": "skipped"},
                 )
+                _scanned = _scan_response(visible_output_text)
                 yield _sse(
                     "delta",
-                    {"type": "delta", "run_id": run.run_id, "delta": visible_output_text},
+                    {"type": "delta", "run_id": run.run_id, "delta": _scanned},
                 )
         else:
             _update_visible_execution_trace(

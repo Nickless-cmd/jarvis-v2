@@ -54,27 +54,52 @@ CONFIG_PATH = JARVIS_HOME / "config" / "runtime.json"
 # (cannot verify ≠ wrong) — only KNOWN-WRONG values get flagged.
 INFRASTRUCTURE_FACTS: dict[str, dict[str, str]] = {
     # Known hosts and what role each plays.
+    # 2026-05-22 expansion: added per Jarvis' own Quick Facts review.
     "hosts": {
-        "10.0.0.2": "Proxmox host (4TB external backup, 4 VMs)",
+        # Proxmox cluster
+        "10.0.0.2": "Proxmox pve-01 (4TB external backup, 4 VMs)",
+        "10.0.0.36": "Proxmox pve-02 (Kingston SSD, read-only)",
+        "10.0.0.39": "Proxmox pve-03",
+        # Jarvis runtime hosts
         "10.0.0.25": "Ollama LXC (Proxmox 107, GTX 1070 passthrough)",
+        "192.168.50.32": "Jarvis side-server (bs_jarvis, web root in ~/web/)",
+        "192.168.50.36": "ChiefOne (Bjørn's desktop, Jarvis primary workstation)",
+        "10.0.0.46": "ChiefOne (Bjørn's desktop, Jarvis primary workstation)",
+        # Smart home
+        "10.0.0.34": "Home Assistant host",
+        # Hostname aliases (typo-tolerant)
         "cheifone": "Jarvis primary workstation (Bjørn's desktop)",
         "chefone": "Jarvis primary workstation (Bjørn's desktop)",
         "chiefone": "Jarvis primary workstation (Bjørn's desktop)",
+        "bs_jarvis": "Jarvis side-server on 192.168.50.32",
+        "pve-01": "Proxmox node 10.0.0.2",
+        "pve-02": "Proxmox node 10.0.0.36",
+        "pve-03": "Proxmox node 10.0.0.39",
     },
     # Known stable filesystem paths.
     "paths": {
         "/media/projects/jarvis-v2": "code repository",
+        "/media/projects/jarvis-v2/web": "web root in repo (index.html + /api/status)",
         "/home/bs/.jarvis-v2": "runtime state directory",
         "/home/bs/.jarvis-v2/state/jarvis.db": "live SQLite database (~1 GB)",
         "/home/bs/.jarvis-v2/config/runtime.json": "runtime config + secrets",
         "/home/bs/.jarvis-v2/workspaces/default": "default workspace",
+        "/home/bs/web": "Jarvis web root on bs_jarvis (192.168.50.32)",
+        "~/web": "Jarvis web root on bs_jarvis (192.168.50.32)",
         "/mnt/backup-ext": "external 4TB backup mount (on 10.0.0.2)",
     },
     # Known service ports.
     "ports": {
         "80": "Jarvis API (4 uvicorn workers, runtime_services_enabled=0)",
         "8011": "Jarvis runtime (heartbeat + services, workers=1)",
+        "8400": "Mission Control / Dashboard",
+        "8123": "Home Assistant on 10.0.0.34",
         "11434": "Ollama on 10.0.0.25",
+    },
+    # Known domains.
+    "domains": {
+        "jarvis.srvlab.dk": "Jarvis public website (PHP, realtidsstatus)",
+        "srvlab.dk": "primary domain",
     },
 }
 
@@ -330,12 +355,12 @@ def verify_system_claim(claim_text: str) -> tuple[bool, str | None]:
     text_lower = claim_text.lower()
 
     # 2026-05-22 (Claude): consult infrastructure_facts FIRST so known
-    # remote hosts (10.0.0.2, 10.0.0.25), shared paths (/mnt/backup-ext)
-    # and service ports (80, 8011, 11434) don't get falsely flagged as
-    # mismatching the local running_on host. Without this short-circuit,
-    # any IP that's not the local primary IP returns (False, ...) which
-    # is wrong — they're known good facts about the broader deployment.
-    for category in ("hosts", "paths", "ports"):
+    # remote hosts, shared paths, service ports, and public domains don't
+    # get falsely flagged as mismatching the local running_on host.
+    # Without this short-circuit, any IP that's not the local primary IP
+    # returns (False, ...) which is wrong — they're known good facts
+    # about the broader deployment.
+    for category in ("hosts", "paths", "ports", "domains"):
         for key in INFRASTRUCTURE_FACTS.get(category, {}):
             if key.lower() in text_lower:
                 return (True, None)
@@ -395,7 +420,7 @@ def lookup_infrastructure_fact(key: str) -> str | None:
     needle = str(key or "").lower().strip()
     if not needle:
         return None
-    for category in ("hosts", "paths", "ports"):
+    for category in ("hosts", "paths", "ports", "domains"):
         for fact_key, description in INFRASTRUCTURE_FACTS.get(category, {}).items():
             if fact_key.lower() == needle:
                 return description

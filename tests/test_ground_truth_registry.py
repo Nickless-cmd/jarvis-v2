@@ -241,3 +241,50 @@ class TestInfrastructureFacts:
         from core.services.ground_truth_registry import lookup_infrastructure_fact
         assert lookup_infrastructure_fact("/nonexistent/path") is None
         assert lookup_infrastructure_fact("") is None
+
+
+class TestJarvisQuickFactsCoverage:
+    """2026-05-22 expansion: Jarvis reviewed INFRASTRUCTURE_FACTS and
+    flagged missing items from his own Quick Facts. Tests pin those
+    additions so future edits don't accidentally drop them.
+    """
+
+    def test_proxmox_cluster_nodes(self):
+        from core.services.ground_truth_registry import lookup_infrastructure_fact
+        assert "pve-01" in (lookup_infrastructure_fact("10.0.0.2") or "")
+        assert "pve-02" in (lookup_infrastructure_fact("10.0.0.36") or "")
+        assert "pve-03" in (lookup_infrastructure_fact("10.0.0.39") or "")
+
+    def test_side_server_and_workstation_ips(self):
+        from core.services.ground_truth_registry import lookup_infrastructure_fact
+        assert lookup_infrastructure_fact("192.168.50.32") is not None
+        assert lookup_infrastructure_fact("192.168.50.36") is not None
+        assert lookup_infrastructure_fact("10.0.0.46") is not None
+
+    def test_home_assistant_host(self):
+        from core.services.ground_truth_registry import lookup_infrastructure_fact
+        desc = lookup_infrastructure_fact("10.0.0.34")
+        assert desc is not None
+        assert "Home Assistant" in desc
+
+    def test_mission_control_port(self):
+        from core.services.ground_truth_registry import lookup_infrastructure_fact
+        desc = lookup_infrastructure_fact("8400")
+        assert desc is not None
+        assert "Mission Control" in desc
+
+    def test_home_assistant_port(self):
+        from core.services.ground_truth_registry import lookup_infrastructure_fact
+        desc = lookup_infrastructure_fact("8123")
+        assert desc is not None
+        assert "Home Assistant" in desc
+
+    def test_jarvis_public_domain(self):
+        from core.services.ground_truth_registry import verify_system_claim
+        ok, _ = verify_system_claim("Min hjemmeside ligger på jarvis.srvlab.dk")
+        assert ok is True
+
+    def test_web_root_paths(self):
+        from core.services.ground_truth_registry import verify_system_claim
+        ok, _ = verify_system_claim("Web root i repo er /media/projects/jarvis-v2/web")
+        assert ok is True

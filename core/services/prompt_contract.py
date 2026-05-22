@@ -413,13 +413,15 @@ def build_visible_chat_prompt_assembly(
     )
     derived_inputs.append("model identity awareness")
 
-    # Time Pin — prominent, unmissable time-of-day anchor.
-    # Placed here (right after model identity) so Jarvis always knows what
-    # time it is BEFORE reading any further context. This is Lag 1 of the
-    # Lying Engine (Truth Anchor) design spec.
-    time_pin = _time_pin_section()
-    parts.append(time_pin)
-    derived_inputs.append("time pin (always-on)")
+    # Time Pin — 2026-05-22 (Claude): moved from position #4 to the very
+    # END of the system prompt (just before user_message). Reason: DeepSeek
+    # prompt-caching is prefix-based, and Time Pin changes every minute
+    # (`DET ER 2026-05-22 18:24 UTC`). With it at position #4, every chat
+    # had a unique prefix → 0% cache hit measured across 20 calls. Moving
+    # it to the tail keeps ~25-28k of stable identity content as a
+    # cacheable prefix while still showing the timestamp prominently to
+    # the model right before its turn. Matches the spec's own intention:
+    # "Placeret så sent at intet overskriver den."
 
     # Current pull — Lag 5: highest-priority inner context (private, not announced)
     # NOTE: 2026-05-07 — moved from forrest to AFTER stable identity files (below).
@@ -1578,6 +1580,17 @@ def build_visible_chat_prompt_assembly(
     # the wakeup digest can both surface bloat. Per-part chars logged so
     # we can see which sections dominate without instrumenting every
     # parts.append site.
+
+    # Time Pin — appended LAST so it sits immediately above the user
+    # message in the constructed prompt. Keeps the prefix above it stable
+    # (cacheable by DeepSeek) while still ensuring the model sees an
+    # up-to-the-minute timestamp right before processing the user turn.
+    # See 2026-05-22 note near top of this function for the cache-hit
+    # rationale.
+    time_pin = _time_pin_section()
+    parts.append(time_pin)
+    derived_inputs.append("time pin (tail-anchored)")
+
     _assembled_text = "\n\n".join(part for part in parts if part).strip()
     _total_chars = len(_assembled_text)
     _approx_tokens = _total_chars // 4  # rough heuristic — close enough for triage

@@ -849,9 +849,91 @@ def _eventbus_subscriber_loop() -> None:
                 else:
                     logger.debug("discord_sub: %s sid=%s — no pending", kind.split(".")[-1], session_id[:12])
 
+            # 2026-05-22 (Claude): silent-run detection — run completed
+            # with tool-calls but no visible text. Without this, Bjørn
+            # sees "Jarvis is typing..." that never finishes. Emit a
+            # status message so he knows what happened.
+            elif kind == "runtime.run_ended_silent":
+                session_id = str(payload.get("session_id") or "")
+                run_id = str(payload.get("run_id") or "")
+                unique_tools = list(payload.get("unique_tools") or [])
+                tool_count = int(payload.get("tool_call_count") or 0)
+                # Look up the channel via in-flight registry, falling
+                # back to the owner DM if we can't resolve.
+                channel_id = _resolve_channel_for_session(session_id)
+                if channel_id and unique_tools:
+                    summary = (
+                        f"_(auto-status fra run-closure-gate)_\n"
+                        f"Jeg afsluttede en agentic run uden at returnere tekst. "
+                        f"Tools brugt: **{', '.join(unique_tools[:6])}** "
+                        f"({tool_count} total). Run-id `{run_id[:12]}`.\n"
+                        f"Hvis du venter på et svar — sig til hvad du så efter."
+                    )
+                    try:
+                        send_discord_message(channel_id, summary)
+                        logger.info(
+                            "discord_sub: silent-run auto-status sent to channel=%s run=%s",
+                            channel_id, run_id[:12],
+                        )
+                    except Exception:
+                        logger.debug("discord_sub: silent-run send failed", exc_info=True)
+
+            # 2026-05-22 (Claude): unstaged-changes notification —
+            # Bjørn was hitting "Jarvis edited code but didn't commit" pattern
+            # repeatedly. Surface it explicitly so he knows there's a working-tree
+            # diff sitting after the run.
+            elif kind == "runtime.run_left_unstaged_changes":
+                session_id = str(payload.get("session_id") or "")
+                run_id = str(payload.get("run_id") or "")
+                summary = dict(payload.get("summary") or {})
+                paths = list(summary.get("paths") or [])
+                count = int(summary.get("count") or 0)
+                truncated = bool(summary.get("truncated"))
+                channel_id = _resolve_channel_for_session(session_id)
+                if channel_id and paths:
+                    listing = "\n".join(f"  • `{p}`" for p in paths)
+                    more = f"\n  …og {count - len(paths)} mere" if truncated else ""
+                    notice = (
+                        f"⚠️ _(run-closure-gate)_ Run `{run_id[:12]}` efterlod **{count} "
+                        f"uncommitted ændring(er)** i working tree:\n"
+                        f"{listing}{more}\n"
+                        f"Husk at committe — eller bed mig om det."
+                    )
+                    try:
+                        send_discord_message(channel_id, notice)
+                        logger.info(
+                            "discord_sub: unstaged-changes notice sent to channel=%s run=%s count=%d",
+                            channel_id, run_id[:12], count,
+                        )
+                    except Exception:
+                        logger.debug("discord_sub: unstaged-changes send failed", exc_info=True)
+
     finally:
         logger.warning("discord_sub: subscriber loop exited")
         event_bus.unsubscribe(sub)
+
+
+def _resolve_channel_for_session(session_id: str) -> str | None:
+    """Look up the Discord channel that originated a given session.
+
+    The in-flight registry tracks which channel a session was bound to.
+    Falls back to the owner-DM channel if specific lookup fails — that
+    matches the existing send_discord_dm tool's behaviour (everything
+    routes to Bjørn anyway, see MEMORY.md "Discord DM — known limits").
+    """
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT channel_id FROM chat_sessions WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+        if row and row[0]:
+            return str(row[0])
+    except Exception:
+        pass
+    # Fallback to owner DM — Bjørn's channel from MEMORY.md
+    return "1474048593219555461"
 
 
 def start_discord_gateway() -> None:

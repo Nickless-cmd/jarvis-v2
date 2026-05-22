@@ -52,6 +52,10 @@ from core.coding_lane.auto_reviewer import (
     register_event_listeners as start_coding_lane_reviewer,
     stop_event_listeners as stop_coding_lane_reviewer,
 )
+from core.services.run_closure_gate import (
+    start_run_closure_gate,
+    stop_run_closure_gate,
+)
 from core.services.discord_gateway import (
     start_discord_gateway,
     stop_discord_gateway,
@@ -124,6 +128,7 @@ def create_app() -> FastAPI:
             start_emotion_concept_listener()
             start_global_workspace_listener()
             start_coding_lane_reviewer()
+            start_run_closure_gate()
             start_discord_gateway()
             start_telegram_gateway()
             start_voice_daemon()

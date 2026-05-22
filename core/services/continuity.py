@@ -366,11 +366,20 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
     lines.append(f"▲ CONTINUITY — {tier_label} ({gap_str} since last session)")
 
     # Warm tier: mood + focus (always included)
+    # 2026-05-22 (Claude): bucket mood values to 0.1 increments. Live cache
+    # investigation found CONTINUITY mood at byte 78,924 was the prime
+    # cache-killer — curiosity=0.50 vs 0.49 between consecutive calls broke
+    # the prompt-cache prefix every time. 0.1 buckets give 10 levels per
+    # dimension (plenty of gradation for awareness) and survive small drift.
     mood_parts = []
     for k in ("curiosity", "fatigue", "frustration", "confidence"):
         v = mood.get(k)
         if v is not None:
-            mood_parts.append(f"{k}={v:.2f}")
+            try:
+                bucketed = round(float(v) * 10) / 10
+                mood_parts.append(f"{k}={bucketed:.1f}")
+            except (TypeError, ValueError):
+                mood_parts.append(f"{k}={v}")
     bearing = mood.get("bearing", "")
     if mood_parts:
         lines.append(f"  Mood: {', '.join(mood_parts)}")
@@ -417,20 +426,13 @@ def build_wake_up_block(capsule: dict[str, Any] | None = None) -> str | None:
     if completions:
         lines.append(f"  Recent completions: {', '.join(completions[:3])}")
 
-    # Activity hint
-    focus_item = recent.get("last_tool_result_summary", "")
-    if focus_item:
-        lines.append(f"  Last activity: {focus_item[:80]}")
-
-    # Hot tier: last messages (only for quick return)
-    if tier == "quick_return":
-        msgs = recent.get("last_5_messages", [])
-        if msgs:
-            lines.append("  Last exchange:")
-            for msg in msgs[-3:]:
-                role = msg.get("role", "?")
-                content = str(msg.get("content", ""))[:100]
-                lines.append(f"  > {role}: {content}")
+    # 2026-05-22 (Claude): "Last activity" and "Last exchange" removed from
+    # continuity head. They duplicate content already present in the chat
+    # transcript (the actual user/assistant messages following the system
+    # prompt) and were the next cache-breaker after the mood fix —
+    # changing every turn at byte ~79,288. The model still sees the same
+    # information via the transcript; continuity stays focused on stable
+    # session-context (bearing, focus, relationship, environment).
 
     lines.append(
         f"  Gap: {gap_str} since previous capsule. "

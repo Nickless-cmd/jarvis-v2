@@ -472,12 +472,17 @@ def build_private_brain_context(*, limit: int = _BRAIN_CONTEXT_LIMIT) -> dict[st
             "confidence": str(record.get("confidence") or "medium"),
         })
 
-    # Build a readable one-line continuity summary
-    type_parts = [f"{count} {t}" for t, count in types_seen.items()]
+    # Build a readable one-line continuity summary.
+    # 2026-05-22 (Claude): sort type_parts alphabetically and drop the
+    # "Latest: <summary>" tail. Both were per-call volatile (dict insertion
+    # order + most-recent record summary churned every turn), breaking the
+    # prompt cache at byte ~85,225. The model still gets the full excerpt
+    # data via the dedicated private-brain awareness section; this one-liner
+    # only needs the structural count breakdown for fast awareness.
+    type_parts = sorted(f"{count} {t}" for t, count in types_seen.items())
     continuity_summary = (
         f"Private brain carries {len(records)} active records "
-        f"({', '.join(type_parts)}). "
-        f"Latest: {excerpts[0]['summary'][:80]}"
+        f"({', '.join(type_parts)})."
     )
 
     return {

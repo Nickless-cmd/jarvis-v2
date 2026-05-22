@@ -1385,7 +1385,13 @@ def build_visible_chat_prompt_assembly(
 
         recall_bundle = _timed_result(future_recall_bundle, "recall_bundle")
         if recall_bundle:
-            parts.append(recall_bundle)
+            # 2026-05-22 (Claude): defer to tail via _awareness_add. Live cache
+            # diff found Memory recall bundle was the next breaker after the
+            # mood + continuity-snippet fixes — its private-brain excerpts
+            # churn every turn (new inner-notes about current user message)
+            # and were sitting in head/middle of system prompt at byte ~13K.
+            # Moving to tail lets the larger stable head become cache-friendly.
+            _awareness_add(30, "memory recall bundle", recall_bundle)
             derived_inputs.append("bounded memory recall bundle")
 
     if relevance.include_guidance:
@@ -1412,6 +1418,13 @@ def build_visible_chat_prompt_assembly(
         if relevance.include_continuity
         else None
     )
+    # 2026-05-22 (Claude): defer visible session continuity to tail. Live
+    # cache diff found it broke prefix at byte ~16,299 with churning
+    # latest_finished_at timestamps + recent-session topic list. The model
+    # still sees it via _awareness flush — just much later in prompt.
+    if continuity_content:
+        _awareness_add(35, "visible session continuity", continuity_content)
+        continuity_content = None  # remove from budget-selection path
 
     self_report_content = _timed_result(future_self_report, "self_report")
 

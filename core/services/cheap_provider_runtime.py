@@ -1546,6 +1546,25 @@ def _iter_openai_compatible_chat_events(
     if tools:
         payload["tools"] = _normalize_tools_for_openai_chat(tools)
 
+    # 2026-05-22 (Claude): cache-mystery investigation. When the sentinel file
+    # /tmp/jarvis-payload-dump exists, dump full payload JSON to
+    # /tmp/jarvis-payload-dumps/payload-<ts>.json so two back-to-back live
+    # calls can be byte-diffed to find the cache-breaking content. Provider-
+    # gated to deepseek so cheap-lane bursts don't flood the dir.
+    try:
+        import os as _os
+        if provider == "deepseek" and _os.path.exists("/tmp/jarvis-payload-dump"):
+            from pathlib import Path as _P
+            import time as _t
+            _dump_dir = _P("/tmp/jarvis-payload-dumps")
+            _dump_dir.mkdir(exist_ok=True)
+            _dump_path = _dump_dir / f"payload-{int(_t.time()*1000)}-{model}.json"
+            _dump_path.write_text(
+                json.dumps(payload, indent=2, ensure_ascii=False, default=str)
+            )
+    except Exception:
+        pass
+
     text_parts: list[str] = []
     reasoning_parts: list[str] = []
     pending_tool_calls: dict[int, dict] = {}

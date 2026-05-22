@@ -507,35 +507,13 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
-    # Conversation continuity — inject topic summaries from recent sessions
-    # so Jarvis never wakes up cold on a thread we were just discussing.
-    # Placed right after the wake-up block (same bypass on relevance filter).
-    try:
-        from core.services.continuity import build_conversation_continuity
-        convo_block = build_conversation_continuity(limit=3)
-        if convo_block:
-            parts.append(convo_block)
-            derived_inputs.append("conversation continuity (always-on)")
-    except Exception:
-        pass
-
-    # Session topics — active topics from the current session so Jarvis
-    # remembers what's been discussed even after context compression.
-    # Lightweight: regex-based extraction accumulated every N turns.
-    try:
-        from core.services.session_topic_tracker import build_session_topics_prompt_section
-        topics_block = build_session_topics_prompt_section(session_id=session_id)
-        if topics_block:
-            parts.append(topics_block)
-            derived_inputs.append("session topics (always-on)")
-    except Exception:
-        pass
-
-    # Current pull — dynamic inner-desire signal, kept high-priority but
-    # AFTER the stable identity block so the prefix stays cacheable.
-    if current_pull_hint:
-        parts.append(current_pull_hint)
-        derived_inputs.append("current pull (inner desire)")
+    # 2026-05-22 (Claude, Step 2 cache optimisation): conversation
+    # continuity, session topics, and current_pull moved to the awareness
+    # buffer (queued below, after _awareness_add becomes available). They
+    # used to be parts.append'ed here at position ~7500 chars (= 2048
+    # tokens), breaking DeepSeek's prompt cache at exactly that boundary.
+    # The actual deferred calls are at the "Step-2 cache deferred" block
+    # further down — search for that string.
 
     # Open questions — REMOVED from fixed injection (2026-05-03).
     # Questions are now on-demand via search_memory("åbne spørgsmål") when relevant.
@@ -643,6 +621,27 @@ def build_visible_chat_prompt_assembly(
         if not content:
             return
         _awareness.append((priority, label, content))
+
+    # ── Step-2 cache deferred ──────────────────────────────────────────
+    # Conversation continuity, session topics, and current_pull moved
+    # here from their original inline parts.append sites further up.
+    # Reason: they're per-chat dynamic, and inlining them at ~7500 chars
+    # broke the cache boundary at 2048 tokens. Queued through _awareness_add
+    # so they flush at the tail of the prompt, just above Time Pin.
+    if current_pull_hint:
+        _awareness_add(1, "current pull (inner desire)", current_pull_hint)
+    try:
+        from core.services.continuity import build_conversation_continuity
+        _awareness_add(2, "conversation continuity (always-on)",
+                       build_conversation_continuity(limit=3))
+    except Exception:
+        pass
+    try:
+        from core.services.session_topic_tracker import build_session_topics_prompt_section
+        _awareness_add(3, "session topics (always-on)",
+                       build_session_topics_prompt_section(session_id=session_id))
+    except Exception:
+        pass
 
     # Eventbus wake-up digest — also goes through the awareness budget.
     try:
@@ -1256,16 +1255,19 @@ def build_visible_chat_prompt_assembly(
     # to fix Deepseek prefix-caching. See block above the awareness budget
     # for the new injection point.
 
+    # 2026-05-22 (Claude, Step 2 cache optimisation): both of these
+    # are per-chat dynamic — temperature field updates every turn from
+    # user_temperature_engine signals. Inlining them mid-prompt was
+    # breaking DeepSeek's cache at position ~7500 chars. Route through
+    # the awareness buffer so they flush at the tail (right before
+    # Time Pin) along with the other dynamic-context signals.
     temperature_hint = _visible_unconscious_temperature_field_section()
     if temperature_hint:
-        parts.append(temperature_hint)
-        derived_inputs.append("implicit user temperature field")
+        _awareness_add(4, "implicit user temperature field", temperature_hint)
 
-    # Lag 10 Site 4: response-style hint based on temperature field
     response_style_hint = _visible_response_style_hint_section()
     if response_style_hint:
-        parts.append(response_style_hint)
-        derived_inputs.append("response style modifier from temperature")
+        _awareness_add(5, "response style modifier from temperature", response_style_hint)
 
     chronicle_section = _visible_chronicle_context_section()
     if chronicle_section:

@@ -163,7 +163,7 @@ def submit_answer(
     with connect() as conn:
         _ensure_interlanguage_blind_trials_table(conn)
         row = conn.execute(
-            "SELECT trial_type, true_peer_id, jp_position FROM interlanguage_blind_trials WHERE trial_id = ?",
+            "SELECT trial_type, true_peer_id, jp_position, mode FROM interlanguage_blind_trials WHERE trial_id = ?",
             (trial_id,),
         ).fetchone()
         if row is None:
@@ -181,7 +181,16 @@ def submit_answer(
             (user_answer, correct, now_iso, trial_id),
         )
         conn.commit()
-    return {"correct": bool(correct), "true_value": true_value}
+    # 2026-05-22 (Claude, after Codex audit): in real-mode the rater must
+    # not see correctness feedback per trial — that would leak experimental
+    # information and contaminate later trials. The current UI hides the
+    # field, but defense-in-depth: just don't return it from the server in
+    # real-mode. Demo-mode still gets feedback (training the rater).
+    return {
+        "correct": bool(correct),
+        "true_value": true_value,
+        "mode": row["mode"],
+    }
 
 
 def get_progress(*, session_id: str) -> dict[str, Any]:

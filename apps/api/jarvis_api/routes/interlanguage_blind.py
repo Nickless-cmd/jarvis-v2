@@ -208,7 +208,14 @@ def submit_answer_route(body: AnswerRequest) -> JSONResponse:
         result = submit_answer(trial_id=body.trial_id, user_answer=body.answer)
     except ValueError as exc:
         raise HTTPException(404, str(exc))
-    return JSONResponse({"saved": True, "correct": result["correct"]})
+    # 2026-05-22 (Claude, after Codex audit): real-mode must not leak
+    # per-trial correctness. Frontend may hide it, but defense-in-depth:
+    # don't send it from the server. Demo-mode still receives it for
+    # rater training.
+    response: dict[str, object] = {"saved": True}
+    if result.get("mode") == "demo":
+        response["correct"] = result["correct"]
+    return JSONResponse(response)
 
 
 @router.get("/api/progress")

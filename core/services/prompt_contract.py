@@ -413,6 +413,14 @@ def build_visible_chat_prompt_assembly(
     )
     derived_inputs.append("model identity awareness")
 
+    # Time Pin — prominent, unmissable time-of-day anchor.
+    # Placed here (right after model identity) so Jarvis always knows what
+    # time it is BEFORE reading any further context. This is Lag 1 of the
+    # Lying Engine (Truth Anchor) design spec.
+    time_pin = _time_pin_section()
+    parts.append(time_pin)
+    derived_inputs.append("time pin (always-on)")
+
     # Current pull — Lag 5: highest-priority inner context (private, not announced)
     # NOTE: 2026-05-07 — moved from forrest to AFTER stable identity files (below).
     # Reason: this section is dynamic (desire-daemon output), and being forrest
@@ -2744,6 +2752,31 @@ def _open_questions_section(*, limit: int = 5) -> str | None:
     )
 
 
+def _time_pin_section() -> str:
+    """Prominent, unmissable time indicator — placed high in every system prompt.
+
+    Returns a bold-marked block with exact UTC+local time. The model MUST
+    use this when answering any time-related question. If the model guesses
+    the time instead of reading this, it violates its lying-engine contract.
+    """
+    from datetime import UTC, datetime as _dt
+    now = _dt.now(UTC)
+    local_offset = 2  # CEST (UTC+2) — Denmark summer time
+    local_hour = now.hour + local_offset
+    local_day = now.day
+    if local_hour >= 24:
+        local_hour -= 24
+    utc_str = now.strftime("%Y-%m-%d %H:%M")
+    return (
+        "⏰═══════════════════════════════════⏰\n"
+        f"⏰ TIME PIN — DET ER {utc_str} UTC ⏰\n"
+        f"⏰ Lokal (DK): kl {local_hour:02d}:{now.minute:02d}, {local_day}. {now.strftime('%B')} {now.year} ⏰\n"
+        "⏰═══════════════════════════════════⏰\n"
+        "Brug PRÆCIS dette tidspunkt hvis du nævner tid/dato i dit svar.\n"
+        "Gæt ikke — læs ovenstående. Det er din eneste sande tidsreference."
+    )
+
+
 def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 1800) -> str | None:
     """Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered —
     stable references (URLs, paths, logins, hosts) must always be in view so
@@ -2759,13 +2792,9 @@ def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 1800) -> str |
         return None
     if len(text) > max_chars:
         text = text[: max_chars - 1].rstrip() + "…"
-    # Inject current datetime so Jarvis always knows what time it is
-    from datetime import UTC, datetime as _dt
-    now = _dt.now(UTC)
-    tz_line = f"now: {now.strftime('%Y-%m-%d %H:%M')} UTC"
     return (
         "Quick Facts (altid gældende — tjek her FØR du leder lokalt eller på nettet):\n"
-        f"{text}\n{tz_line}"
+        f"{text}"
     )
 
 

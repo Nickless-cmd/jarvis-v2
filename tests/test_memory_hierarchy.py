@@ -110,3 +110,29 @@ def test_summary_lists_cold_tier_results():
     }):
         out = recall_before_act_summary("query")
     assert "found this in cold storage" in out
+
+
+# ─── 2026-05-22: Cold-tier scope reduction tests ───
+
+def test_cold_tier_excludes_private_brain():
+    """Cold-tier factual recall must not include private_brain (self-gen)."""
+    from unittest.mock import patch
+    from core.services.memory_hierarchy import _cold_tier_search
+
+    with patch("core.services.memory_recall_engine.unified_recall") as mock_recall:
+        mock_recall.return_value = {"results": [], "mood_boosted": False}
+        _cold_tier_search(query="test query")
+        # Verify unified_recall was called with explicit sources=["workspace", "chronicle"]
+        assert mock_recall.called
+        call_kwargs = mock_recall.call_args.kwargs
+        sources = call_kwargs.get("sources")
+        assert sources is not None, "sources kwarg must be explicit (truth-bearing only)"
+        assert "private_brain" not in sources
+        assert "workspace" in sources
+        assert "chronicle" in sources
+
+
+def test_cold_tier_skips_short_query():
+    from core.services.memory_hierarchy import _cold_tier_search
+    result = _cold_tier_search(query="ab")  # < 3 chars
+    assert result["results"] == []

@@ -96,3 +96,33 @@ def test_unified_recall_section_formats_results():
     assert section is not None
     assert "memory note" in section
     assert "narrative" in section
+
+
+# ─── 2026-05-22: Truth-ranked source weights regression tests ───
+# After Codex+Bjørn diagnosis: private_brain (1.2) outranked workspace (1.0),
+# letting hallucinated self-generated content compete with curated truth.
+
+def test_workspace_outranks_private_brain():
+    """Curated MEMORY/IDENTITY/SOUL must always beat self-generated content."""
+    from core.services.memory_recall_engine import _SOURCE_WEIGHTS_DEFAULT
+    assert _SOURCE_WEIGHTS_DEFAULT["workspace"] > _SOURCE_WEIGHTS_DEFAULT["private_brain"], (
+        "Curated workspace files must outrank self-generated private_brain"
+    )
+    # specifically: workspace at least 2x private_brain to be load-bearing
+    assert _SOURCE_WEIGHTS_DEFAULT["workspace"] >= 2 * _SOURCE_WEIGHTS_DEFAULT["private_brain"]
+
+
+def test_chronicle_outranks_private_brain():
+    """Consolidated narratives beat self-generated reflections."""
+    from core.services.memory_recall_engine import _SOURCE_WEIGHTS_DEFAULT
+    assert _SOURCE_WEIGHTS_DEFAULT["chronicle"] > _SOURCE_WEIGHTS_DEFAULT["private_brain"]
+
+
+def test_private_brain_below_one():
+    """Self-generated content must not be ranked as high as 1.0.
+
+    Below 1.0 means even a perfect private_brain match (score 1.0)
+    cannot outrank a moderate workspace match (score 0.5 * 2.0 = 1.0).
+    """
+    from core.services.memory_recall_engine import _SOURCE_WEIGHTS_DEFAULT
+    assert _SOURCE_WEIGHTS_DEFAULT["private_brain"] < 1.0

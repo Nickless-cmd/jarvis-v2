@@ -81,13 +81,34 @@ def _warm_tier_snapshot(*, query: str = "") -> dict[str, Any]:
 
 
 def _cold_tier_search(*, query: str, max_results: int = 6) -> dict[str, Any]:
-    """Semantic-search across full archive — only invoked when query is specific."""
+    """Semantic-search across full archive — only invoked when query is specific.
+
+    2026-05-22 (Claude): scope reduced to truth-bearing sources only.
+    The previous implementation passed ``sources=None`` to unified_recall,
+    which let private_brain (58k+ self-generated rows) compete with
+    curated workspace files for top-k slots in the cold-tier results.
+    A hallucinated note in private_brain could outrank MEMORY.md as
+    "evidence" — the root cause of the assets.srvlab.dk self-
+    reinforcement that Codex documented.
+
+    Now cold-tier searches only ``workspace`` (curated) and ``chronicle``
+    (consolidated weekly narratives). Self-generated content
+    (private_brain, council reasoning) is excluded from cold-tier
+    factual recall. Those sources remain available via explicit
+    recall_memories() calls when continuity / mood context is wanted —
+    not when factual recall is needed.
+    """
     snapshot: dict[str, Any] = {"tier": "cold", "query": query, "results": []}
     if not query or len(query) < 3:
         return snapshot
     try:
         from core.services.memory_recall_engine import unified_recall
-        result = unified_recall(query=query, total_limit=max_results, with_mood=True)
+        result = unified_recall(
+            query=query,
+            sources=["workspace", "chronicle"],  # truth-bearing only
+            total_limit=max_results,
+            with_mood=True,
+        )
         snapshot["results"] = [
             {
                 "source": r.get("source"),

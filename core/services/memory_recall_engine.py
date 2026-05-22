@@ -27,14 +27,39 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-# Default per-source priority weights (tunable)
+# Default per-source priority weights (tunable).
+#
+# 2026-05-22 (Claude, after Codex+Bjørn diagnosis): re-ranked to put
+# CURATED truth above SELF-GENERATED content.
+#
+# The old hierarchy gave private_brain (1.2) the highest weight, above
+# the curated workspace files (1.0). This created a self-reinforcing
+# hallucination loop: Jarvis would invent a fact in chat → consolidation
+# wrote it into private_brain/daily memory → search_memory surfaced it
+# again as "internal record" → confirmed in next chat → reinforced.
+#
+# New hierarchy:
+#   workspace (MEMORY.md, IDENTITY.md, SOUL.md, USER.md) — 2.0
+#     These are the only sources Bjørn directly curates. They are the
+#     ground truth for infrastructure facts, identity, user prefs.
+#   chronicle — 1.1
+#     Weekly narratives are consolidated and human-supervised. Trustworthy.
+#   chat_history — 0.9 (unchanged)
+#     Past conversations are evidence-of-said but not ground truth.
+#   sensory — 0.8 (unchanged)
+#     Recent perceptions are accurate but ephemeral.
+#   council — 0.8 (was 1.0)
+#     Council deliberations are reasoning artifacts, not facts.
+#   private_brain — 0.5 (was 1.2)
+#     Self-generated thoughts. Useful for continuity / mood / feel.
+#     NEVER trusted as factual ground truth.
 _SOURCE_WEIGHTS_DEFAULT: dict[str, float] = {
-    "workspace": 1.0,         # MEMORY.md, IDENTITY.md, SOUL.md
-    "private_brain": 1.2,     # internal records, often most relevant
+    "workspace": 2.0,         # CURATED — MEMORY.md, IDENTITY.md, SOUL.md, USER.md
+    "chronicle": 1.1,         # consolidated weekly narratives
+    "chat_history": 0.9,      # past conversations (evidence-of-said, not truth)
     "sensory": 0.8,           # recent perceptions, time-bounded
-    "chat_history": 0.9,      # past conversations
-    "chronicle": 1.1,         # weekly narratives
-    "council": 1.0,           # past council deliberations
+    "council": 0.8,           # past council deliberations (reasoning, not facts)
+    "private_brain": 0.5,     # SELF-GENERATED — continuity/feel only, never truth
 }
 
 

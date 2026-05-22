@@ -209,10 +209,33 @@ def _load_or_build_index() -> tuple[list[Chunk], np.ndarray | None, dict[str, fl
     return all_chunks, embeddings, current_mtimes
 
 
+def _is_quarantined(text: str) -> bool:
+    """True if a chunk has been marked as retracted/false.
+
+    2026-05-22 (Claude): added so search_memory cannot resurface
+    chunks that contain known-false claims. Quarantine marker is the
+    literal token "[QUARANTINED" anywhere in the chunk text. The
+    marker is written by humans (or by Claude during review) after a
+    hallucination has been identified and corrected — the entry stays
+    in the file for audit trail, but ranking treats it as filtered.
+
+    Examples that match:
+      "[QUARANTINED 2026-05-22 — HALLUCINATION] ~~Assets domain ...~~"
+      "[QUARANTINE NOTE 2026-05-22 (Claude)] ..."
+    """
+    if not text:
+        return False
+    return "[QUARANTINED" in text or "[QUARANTINE NOTE" in text
+
+
 def search_memory(query: str, *, limit: int = 5) -> list[dict]:
     """Search workspace memory files by semantic similarity.
 
     Returns a list of matching chunks with source, section, and score.
+
+    Quarantined chunks (containing "[QUARANTINED" or "[QUARANTINE NOTE"
+    markers) are excluded — they remain in the source files for audit
+    but cannot resurface as evidence in recall.
     """
     query = query.strip()
     if not query:
@@ -229,21 +252,28 @@ def search_memory(query: str, *, limit: int = 5) -> list[dict]:
         q_emb = _embed_single(query)
         if q_emb is not None:
             scores = _cosine_sim(q_emb, embeddings)
-            top_idx = np.argsort(scores)[::-1][:limit]
-            return [
-                {
+            top_idx = np.argsort(scores)[::-1][:limit * 2]  # over-fetch to allow quarantine filter
+            results = []
+            for i in top_idx:
+                if scores[i] <= 0.1:
+                    continue
+                if _is_quarantined(chunks[i].text):
+                    continue
+                results.append({
                     "text": chunks[i].text,
                     "source": chunks[i].source,
                     "section": chunks[i].section,
                     "score": float(scores[i]),
                     "method": "embedding",
-                }
-                for i in top_idx
-                if scores[i] > 0.1
-            ]
+                })
+                if len(results) >= limit:
+                    break
+            return results
 
-    # Fallback
-    return _tfidf_search(query, chunks, limit)
+    # Fallback (also applies quarantine filter)
+    raw = _tfidf_search(query, chunks, limit * 2)
+    filtered = [r for r in raw if not _is_quarantined(r.get("text", ""))]
+    return filtered[:limit]
 
 
 def invalidate_index() -> None:

@@ -78,3 +78,87 @@ class TestInjectMemoryIntoPrompt:
         # Critical instructions must be present
         assert "FABULÉR IKKE" in c
         assert "Det står ikke i min hukommelse" in c
+
+
+class TestSubstringBugFix:
+    """2026-05-22: word-boundary regex replaces substring match.
+
+    Bug: original code did `kw in message_lower` and `kw in line_lower`,
+    so "ip" matched "tip", "api" matched "rapid", "host" matched
+    "ghost", "local" matched "vocalist". This spammed false positives.
+    """
+
+    def test_ip_not_in_tip(self):
+        from core.services.hallucination_guard import _section_keywords_for_message
+        assert _section_keywords_for_message("tip mig om noget") == []
+
+    def test_host_not_in_ghost(self):
+        from core.services.hallucination_guard import _section_keywords_for_message
+        assert _section_keywords_for_message("ghost-feature") == []
+
+    def test_api_not_in_rapid(self):
+        from core.services.hallucination_guard import _section_keywords_for_message
+        assert _section_keywords_for_message("rapid response") == []
+
+    def test_local_not_in_vocalist(self):
+        from core.services.hallucination_guard import _section_keywords_for_message
+        assert _section_keywords_for_message("vocalist på scenen") == []
+
+    def test_real_ip_question_still_matches(self):
+        from core.services.hallucination_guard import _section_keywords_for_message
+        kw = _section_keywords_for_message("hvad er min IP")
+        assert "ip" in kw
+
+    def test_factual_pattern_consistent_word_boundary(self):
+        from core.services.hallucination_guard import classify_question
+        # "ghost" should NOT trigger factual via host-substring
+        assert classify_question("ghost-feature er kompleks") == "casual"
+        # but real host question should
+        assert classify_question("hvilken host kører den på?") == "factual"
+
+    def test_extract_relevant_uses_word_boundary(self, tmp_path):
+        """_extract_relevant_sections must score by word-match, not substring."""
+        from core.services.hallucination_guard import _extract_relevant_sections
+        text = (
+            "## Section A\nThis line has the word host as a token.\n"
+            "## Section B\nThis line mentions ghost-busters only.\n"
+        )
+        # Only Section A should score >0 for keyword 'host'
+        excerpt = _extract_relevant_sections(text, ["host"])
+        assert "Section A" in excerpt
+        assert "Section B" not in excerpt
+
+    def test_pluralization_still_matches(self):
+        """Keyword 'subdomain' should match 'subdomains' (plural)."""
+        from core.services.hallucination_guard import _word_present
+        assert _word_present("subdomain", "i need a list of subdomains") is True
+        # And the singular form still works
+        assert _word_present("subdomain", "my subdomain") is True
+        # Danish plural -er also works
+        assert _word_present("vært", "to værter på serveren") is True
+
+
+class TestMultiSourceCuration:
+    """2026-05-22: guard reads IDENTITY/USER/SOUL in addition to MEMORY."""
+
+    def test_find_curated_paths_returns_existing_files(self, tmp_path, monkeypatch):
+        # Build a fake workspace with subset of curated files
+        workspace = tmp_path / "workspaces" / "default"
+        workspace.mkdir(parents=True)
+        (workspace / "MEMORY.md").write_text("# memory")
+        (workspace / "IDENTITY.md").write_text("# identity")
+        # USER.md and SOUL.md intentionally missing
+
+        # Patch JARVIS_HOME so _find_curated_paths looks in tmp_path
+        monkeypatch.setattr("core.runtime.config.JARVIS_HOME", str(tmp_path))
+
+        from core.services import hallucination_guard
+        import importlib
+        importlib.reload(hallucination_guard)
+        found = hallucination_guard._find_curated_paths()
+        labels = [label for label, _ in found]
+        assert "MEMORY.md" in labels
+        assert "IDENTITY.md" in labels
+        # Missing files not returned
+        assert "USER.md" not in labels
+        assert "SOUL.md" not in labels

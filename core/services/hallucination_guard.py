@@ -16,64 +16,96 @@ logger = logging.getLogger(__name__)
 
 # ── Trigger-mønstre ────────────────────────────────────────────────────
 # Når brugerens besked matcher disse, slår guard'en til.
-
+#
+# 2026-05-22 (Claude): konsistent word-boundary brug. Tidligere version
+# var inkonsistent — nogle patterns havde \b (linje 22/25/32/34), andre
+# ikke (linje 23/24/26-31/33). Substring-match gjorde at "ghost-feature"
+# triggered factual-guard fordi "host" var substring i "ghost", "tip"
+# matchede via "ip", osv. Alle patterns har nu word-boundaries.
+#
+# Multi-word patterns (linje 30: assets.srvlab) behøver ikke \b på begge
+# sider — de er allerede unike strings der ikke optræder som substring
+# i danske/engelske ord. Hvor-spørgsmål (linje 33) er heller ikke ord-
+# enkeltheder men sætning-mønstre, så \b er irrelevant der.
 _FACTUAL_PATTERNS: list[re.Pattern] = [
-    re.compile(r"(subdomain|subdom[æa]ne|dom[æa]ne|srvlab\.dk)", re.IGNORECASE),
+    re.compile(r"\b(subdomain|subdom[æa]ne|dom[æa]ne|srvlab\.dk)\b", re.IGNORECASE),
     re.compile(r"\b(IP|adresse|adr)\b", re.IGNORECASE),
-    re.compile(r"(sti|path|folder|mappe|directory|bibliotek)", re.IGNORECASE),
-    re.compile(r"(host|server|maskine|v[æe]rt|node|vaert)", re.IGNORECASE),
+    re.compile(r"\b(sti|path|folder|mappe|directory|bibliotek)\b", re.IGNORECASE),
+    re.compile(r"\b(host|server|maskine|v[æe]rt|node|vaert)\b", re.IGNORECASE),
     re.compile(r"\b(pve|proxmox|chiefone|chefone|cheaf)\b", re.IGNORECASE),
-    re.compile(r"(nginx|port|docker|LXC|container)", re.IGNORECASE),
-    re.compile(r"(network|netv[æe]rk|DNS|router)", re.IGNORECASE),
-    re.compile(r"(fil|file|upload|download|publish|share|drev)", re.IGNORECASE),
-    re.compile(r"(config|konfig|ops[æa]tning|setup|install)", re.IGNORECASE),
+    re.compile(r"\b(nginx|port|docker|LXC|container)\b", re.IGNORECASE),
+    re.compile(r"\b(network|netv[æe]rk|DNS|router)\b", re.IGNORECASE),
+    re.compile(r"\b(fil|file|upload|download|publish|share|drev)\b", re.IGNORECASE),
+    re.compile(r"\b(config|konfig|ops[æa]tning|setup|install)\b", re.IGNORECASE),
+    # Multi-word URL/path patterns — no \b needed (they don't appear as substring in normal words)
     re.compile(r"(assets?\.srvlab|jarvis-share|localhost:80/files)", re.IGNORECASE),
-    re.compile(r"(mount|nfs|samba|cifs|fileserver|external)", re.IGNORECASE),
-    re.compile(r"\b(IP|IP-adresse|adresse|port|URL|url|link)\b", re.IGNORECASE),
+    re.compile(r"\b(mount|nfs|samba|cifs|fileserver|external)\b", re.IGNORECASE),
+    re.compile(r"\b(URL|url|link)\b", re.IGNORECASE),  # IP/port/adresse already in line above
+    # Question phrases (multi-word) — \b not meaningful
     re.compile(r"(hvilken mappe|hvor ligger|hvor gemmer|hvad hedder|what is)", re.IGNORECASE),
-    re.compile(r"\b(ollama|deepseek|model|GPU|NVIDIA|lxc|container)\b", re.IGNORECASE),
+    re.compile(r"\b(ollama|deepseek|model|GPU|NVIDIA|lxc)\b", re.IGNORECASE),
 ]
 
 # ── Memory-section keywords (hvad hedder sektionerne i MEMORY.md) ──────
 
+# Infrastructure-ord der bruges som nøgler til MEMORY-sektion-matching.
+# Hver term er en WORD-token, ikke en substring. Word-boundary check
+# i _section_keywords_for_message sikrer at "ip" ikke matcher "tip",
+# "api" ikke matcher "rapid", osv.
+_INFRA_KEYWORDS: tuple[str, ...] = (
+    "subdomain", "subdomæne", "domæne", "domain", "srvlab", "ip", "adresse", "sti",
+    "path", "folder", "mappe", "host", "server", "maskine",
+    "pve", "proxmox", "chiefone", "nginx", "port", "docker",
+    "fileserver", "external", "mount", "nfs", "network",
+    "publish", "upload", "download", "assets", "local",
+    "jarvis", "files", "web", "api", "url", "dns",
+    "ollama", "deepseek", "model", "gpu", "lxc",
+)
+
+# Synonym-map: dansk ↔ engelsk så ét match henter sektionsord på begge sprog
+_SYNONYMS: dict[str, list[str]] = {
+    "subdomæne": ["subdomain", "subdomæne"],
+    "domæne": ["domain", "domæne"],
+    "mappe": ["folder", "mappe"],
+    "sti": ["path", "sti"],
+    "maskine": ["machine", "node", "maskine"],
+    "vært": ["host", "vært"],
+    "netværk": ["network", "netværk"],
+    "drev": ["drive", "drev"],
+    "subdomain": ["subdomain", "subdomæne"],
+    "folder": ["folder", "mappe"],
+    "path": ["path", "sti"],
+    "machine": ["machine", "maskine", "node"],
+    "host": ["host", "vært"],
+    "network": ["network", "netværk"],
+    "drive": ["drive", "drev"],
+}
+
+
+def _word_present(word: str, text_lower: str) -> bool:
+    """Word-boundary check: True if `word` appears as a standalone token (with optional plural).
+
+    2026-05-22 (Claude): replacement for `word in text_lower`. The old
+    substring test let "ip" match "tip", "api" match "rapid", "host"
+    match "ghost", "local" match "vocalist" — producing spurious
+    keyword hits that triggered the guard on irrelevant messages.
+
+    Allows trailing plural-s (or Danish -er) so "subdomains" matches
+    keyword "subdomain", "værter" matches "vært", "ips" matches "ip".
+    The pluralization is conservative — it accepts EITHER "s" or "er"
+    suffix, not both, and only at word end.
+    """
+    return re.search(rf"\b{re.escape(word)}(s|er)?\b", text_lower) is not None
+
+
 def _section_keywords_for_message(message: str) -> list[str]:
-    """Udled nøgleord fra beskeden, så vi kan finde den rette MEMORY-sektion."""
+    """Udled nøgleord fra beskeden så vi kan finde den rette MEMORY-sektion."""
     message_lower = message.lower()
-    keywords = []
-    # Infrastructure-ord
-    infra_keywords = [
-        "subdomain", "subdomæne", "domæne", "domain", "srvlab", "ip", "adresse", "sti",
-        "path", "folder", "mappe", "host", "server", "maskine",
-        "pve", "proxmox", "chiefone", "nginx", "port", "docker",
-        "fileserver", "external", "mount", "nfs", "network",
-        "publish", "upload", "download", "assets", "local",
-        "jarvis", "files", "web", "api", "url", "dns",
-        "ollama", "deepseek", "model", "gpu", "lxc",
-    ]
-    # Synonym-map: dansk → engelsk og omvendt, så vi matcher MEMORY.md på tværs af sprog
-    _synonyms: dict[str, list[str]] = {
-        "subdomæne": ["subdomain", "subdomæne"],
-        "domæne": ["domain", "domæne"],
-        "mappe": ["folder", "mappe"],
-        "sti": ["path", "sti"],
-        "maskine": ["machine", "node", "maskine"],
-        "vært": ["host", "vært"],
-        "netværk": ["network", "netværk"],
-        "drev": ["drive", "drev"],
-        "subdomain": ["subdomain", "subdomæne"],
-        "folder": ["folder", "mappe"],
-        "path": ["path", "sti"],
-        "machine": ["machine", "maskine", "node"],
-        "host": ["host", "vært"],
-        "network": ["network", "netværk"],
-        "drive": ["drive", "drev"],
-    }
+    keywords: list[str] = []
     seen: set[str] = set()
-    for kw in infra_keywords:
-        if kw in message_lower:
-            # Tilføj hovedordet og alle synonymer
-            to_add = _synonyms.get(kw, [kw])
-            for w in to_add:
+    for kw in _INFRA_KEYWORDS:
+        if _word_present(kw, message_lower):
+            for w in _SYNONYMS.get(kw, [kw]):
                 if w not in seen:
                     keywords.append(w)
                     seen.add(w)
@@ -123,14 +155,47 @@ def _find_memory_path() -> Path:
     return candidates[0]
 
 
+def _find_curated_paths() -> list[tuple[str, Path]]:
+    """Locate all curated workspace files for hallucination-guard recall.
+
+    2026-05-22 (Claude): expanded from MEMORY.md-only to the full set of
+    curated files. Identity questions ("hvad er din rolle?", "hvem er
+    Bjørn?") should consult IDENTITY.md / USER.md, not just MEMORY.md.
+    Returns [(label, path), ...] for files that actually exist on disk.
+    """
+    from core.runtime.config import JARVIS_HOME
+    base = Path(JARVIS_HOME) / "workspaces" / "default"
+    candidates = [
+        ("MEMORY.md", base / "MEMORY.md"),
+        ("IDENTITY.md", base / "IDENTITY.md"),
+        ("USER.md", base / "USER.md"),
+        ("SOUL.md", base / "SOUL.md"),
+    ]
+    return [(label, path) for label, path in candidates if path.exists()]
+
+
 def _extract_relevant_sections(
     memory_text: str,
     keywords: list[str],
     max_chars: int = 2000,
 ) -> str:
-    """Find MEMORY.md-sektioner der matcher keywords, returnér som tekst."""
+    """Find MEMORY.md-sektioner der matcher keywords, returnér som tekst.
+
+    2026-05-22 (Claude): keyword-tælling bruger nu word-boundary regex
+    så "host" ikke matcher "ghost", "local" ikke matcher "vocalist"
+    osv. Tidligere `kw in line_lower` substring-tjek oppumpede score
+    for irrelevante sektioner.
+    """
     if not keywords or not memory_text.strip():
         return ""
+
+    # Pre-compile word-boundary patterns en gang per kald.
+    # Trailing (s|er)? matcher pluralisform — fanger "subdomains" for
+    # keyword "subdomain", "værter" for "vært", osv.
+    kw_patterns = [
+        re.compile(rf"\b{re.escape(kw)}(s|er)?\b", re.IGNORECASE)
+        for kw in keywords
+    ]
 
     lines = memory_text.split("\n")
     sections: list[dict[str, Any]] = []  # each: {"heading": str, "content": str, "score": int}
@@ -156,10 +221,9 @@ def _extract_relevant_sections(
         else:
             current_content.append(line)
 
-        # Tæl keyword-matches
-        line_lower = line.lower()
-        for kw in keywords:
-            if kw in line_lower:
+        # Tæl word-boundary keyword-matches (én pr keyword per linje)
+        for pat in kw_patterns:
+            if pat.search(line):
                 current_score += 1
 
     # Gem sidste sektion
@@ -202,9 +266,16 @@ def inject_memory_into_prompt(
 ) -> list[dict[str, str]]:
     """Injectér relevant memory som en system-rolle besked i prompten.
 
-    Hvis brugerens besked er klassificeret som 'factual', læser vi
-    MEMORY.md og indsætter relevante sektioner som en system-rolle
-    besked lige efter den primære system instruction.
+    Hvis brugerens besked er klassificeret som 'factual', læser vi de
+    curated workspace-filer (MEMORY/IDENTITY/USER/SOUL) og indsætter
+    relevante sektioner som en system-rolle besked lige efter den
+    primære system instruction.
+
+    2026-05-22 (Claude): udvidet fra MEMORY.md-only til alle curated
+    sources. Spørgsmål om identitet ("hvad er din rolle?") eller
+    bruger-præferencer ("hvad foretrækker Bjørn?") blev tidligere kun
+    matched mod MEMORY.md, hvilket missede de filer der faktisk har
+    svaret.
 
     Returnerer den opdaterede chat_messages-liste.
     """
@@ -216,17 +287,38 @@ def inject_memory_into_prompt(
     if not keywords:
         return chat_messages
 
-    # Læs MEMORY.md
-    mem_path = Path(memory_path) if memory_path else _find_memory_path()
-    try:
-        memory_text = mem_path.read_text(encoding="utf-8")
-    except Exception as exc:
-        logger.warning(f"hallucination_guard: kunne ikke læse {mem_path}: {exc}")
+    # Læs alle curated sources og udtræk relevante sektioner per fil.
+    # Hvis `memory_path` er givet (test-override), bruges KUN den path.
+    if memory_path is not None:
+        sources = [("MEMORY.md", Path(memory_path))]
+    else:
+        sources = _find_curated_paths()
+
+    per_source_excerpts: list[tuple[str, str]] = []
+    total_chars = 0
+    per_source_budget = 1500  # divider mellem 4 mulige kilder
+    for label, path in sources:
+        if total_chars >= 4000:  # samlet cap
+            break
+        try:
+            text = path.read_text(encoding="utf-8")
+        except Exception as exc:
+            logger.warning(f"hallucination_guard: kunne ikke læse {path}: {exc}")
+            continue
+        excerpt = _extract_relevant_sections(text, keywords, max_chars=per_source_budget)
+        if excerpt:
+            per_source_excerpts.append((label, excerpt))
+            total_chars += len(excerpt)
+
+    if not per_source_excerpts:
         return chat_messages
 
-    relevant = _extract_relevant_sections(memory_text, keywords)
-    if not relevant:
-        return chat_messages
+    # Sammensæt alle excerpts med klart label så Jarvis kan se hvilken fil
+    # citaterne kommer fra
+    relevant = "\n\n".join(
+        f"━━━━━ FROM {label} ━━━━━\n{excerpt}"
+        for label, excerpt in per_source_excerpts
+    )
 
     # Byg guard-besked — sæt den som en system-rolle besked
     # Vi indsætter den EFTER den primære system instruction (første system-message)

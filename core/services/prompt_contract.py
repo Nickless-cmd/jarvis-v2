@@ -1505,13 +1505,14 @@ def build_visible_chat_prompt_assembly(
             label = _section_labels.get(sec_name, sec_name)
             derived_inputs.append(label)
 
-    # Flush buffered awareness sections HERE — bagest in the assembly so the
-    # rapidly varying timestamps don't break Deepseek's prefix cache.
-    # See _awareness_buffer construction further up for rationale.
-    if _awareness_buffer:
-        parts.extend(_awareness_buffer)
-
     # Transcript: prefer structured messages; fall back to flat text in system prompt
+    # 2026-05-22 (Claude): re-ordered so stable-content (transcript, tool
+    # catalog) lands BEFORE awareness flush. Original code claimed
+    # awareness was "bagest" but measurement showed it landed at ~37-45%
+    # of the prompt, with transcript + tool_catalog (the stable parts)
+    # coming AFTER it. That meant awareness was the cache-killer in the
+    # middle. Moving awareness to land RIGHT BEFORE Time Pin (the
+    # absolute tail) keeps the entire stable middle cacheable.
     if structured_transcript:
         derived_inputs.append(f"structured transcript ({len(structured_transcript)} messages)")
     elif transcript_content:
@@ -1529,6 +1530,17 @@ def build_visible_chat_prompt_assembly(
             derived_inputs.append("tool catalog (compact)")
     except Exception:
         pass
+
+    # Flush buffered awareness sections HERE — true tail position, after
+    # all stable-content (workspace files, transcript, tool catalog).
+    # Time Pin (appended below the assembled_text print block) is the
+    # only thing that lands after this — and Time Pin is always at the
+    # very end so the model sees it right before user_message. This
+    # ordering maximises DeepSeek prompt-cache hits on the stable prefix
+    # while keeping awareness in "handlings-mode" (Jarvis' own framing)
+    # immediately above the timestamp + user turn.
+    if _awareness_buffer:
+        parts.extend(_awareness_buffer)
 
     executor.shutdown(wait=False)
 

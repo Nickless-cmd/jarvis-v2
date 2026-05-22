@@ -41,3 +41,35 @@ class TestVisibleRunsModuleSurface:
         assert len(out) <= 64
         # Newlines should be normalised
         assert "\n" not in out
+
+
+class TestCacheTokenPlumbing:
+    """2026-05-22: cost.recorded must include cache_hit/miss tokens.
+
+    Before this fix, DeepSeek's prompt_cache_hit_tokens were parsed by
+    cheap_provider_runtime but dropped at VisibleModelResult layer, so
+    every cost.recorded event showed 0% cache hit even when DeepSeek
+    was serving cached prefixes.
+    """
+
+    def test_visible_model_result_has_cache_fields(self):
+        from core.services.visible_model import VisibleModelResult
+        r = VisibleModelResult(
+            text="test",
+            input_tokens=100,
+            output_tokens=10,
+            cost_usd=0.001,
+            cache_hit_tokens=80,
+            cache_miss_tokens=20,
+        )
+        assert r.cache_hit_tokens == 80
+        assert r.cache_miss_tokens == 20
+
+    def test_visible_model_result_defaults_to_zero(self):
+        """Old callers (and providers without cache) should default to 0."""
+        from core.services.visible_model import VisibleModelResult
+        r = VisibleModelResult(
+            text="t", input_tokens=10, output_tokens=2, cost_usd=0.0,
+        )
+        assert r.cache_hit_tokens == 0
+        assert r.cache_miss_tokens == 0

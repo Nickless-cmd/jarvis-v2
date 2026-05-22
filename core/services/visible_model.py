@@ -78,6 +78,15 @@ class VisibleModelResult:
     # — Deepseek rejects requests with "reasoning_content must be passed
     # back to the API" if we strip it. Empty for non-thinking models.
     reasoning_content: str = ""
+    # 2026-05-22 (Claude): prompt-cache hit/miss split from the provider's
+    # usage object. DeepSeek reports these as prompt_cache_hit_tokens and
+    # prompt_cache_miss_tokens; cheap_provider_runtime plumbs them through
+    # as cache_hit_tokens / cache_miss_tokens. Without these fields on
+    # VisibleModelResult, the data was dropped at this layer boundary and
+    # downstream cost.recorded events showed 0% cache hit for every chat
+    # — even when DeepSeek was actually serving cached prefixes.
+    cache_hit_tokens: int = 0
+    cache_miss_tokens: int = 0
 
 
 @dataclass(slots=True)
@@ -700,6 +709,8 @@ def _run_openai_compatible_visible(
         input_tokens=int(raw.get("input_tokens") or 0),
         output_tokens=int(raw.get("output_tokens") or 0),
         cost_usd=float(raw.get("cost_usd") or 0.0),
+        cache_hit_tokens=int(raw.get("cache_hit_tokens") or 0),
+        cache_miss_tokens=int(raw.get("cache_miss_tokens") or 0),
     )
     tool_calls = list(raw.get("tool_calls") or [])
     return result, tool_calls

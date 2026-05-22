@@ -2319,6 +2319,13 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         total_input_tokens = result.input_tokens
         total_output_tokens = result.output_tokens
         total_cost_usd = result.cost_usd
+        # 2026-05-22 (Claude): also accumulate cache hit/miss across rounds
+        # so cost.recorded can surface the cache-hit ratio. Without this,
+        # we measured 0% cache hit for every chat — not because we weren't
+        # getting hits, but because the data got dropped at the
+        # VisibleModelResult layer.
+        total_cache_hit_tokens = getattr(result, "cache_hit_tokens", 0)
+        total_cache_miss_tokens = getattr(result, "cache_miss_tokens", 0)
 
         all_capabilities = capability_plan.get("all_capabilities") or []
         if all_capabilities:
@@ -2382,6 +2389,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     total_input_tokens += followup_result.input_tokens
                     total_output_tokens += followup_result.output_tokens
                     total_cost_usd += followup_result.cost_usd
+                    total_cache_hit_tokens += getattr(followup_result, "cache_hit_tokens", 0)
+                    total_cache_miss_tokens += getattr(followup_result, "cache_miss_tokens", 0)
                     _update_visible_execution_trace(
                         run,
                         {
@@ -2433,6 +2442,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 total_input_tokens += final_followup.input_tokens
                                 total_output_tokens += final_followup.output_tokens
                                 total_cost_usd += final_followup.cost_usd
+                                total_cache_hit_tokens += getattr(final_followup, "cache_hit_tokens", 0)
+                                total_cache_miss_tokens += getattr(final_followup, "cache_miss_tokens", 0)
                                 _update_visible_execution_trace(
                                     run,
                                     {
@@ -2514,6 +2525,11 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 "input_tokens": total_input_tokens,
                 "output_tokens": total_output_tokens,
                 "cost_usd": total_cost_usd,
+                # 2026-05-22 (Claude): cache hit/miss now surfaced so we
+                # can measure DeepSeek prompt-cache utilization. ratio =
+                # cache_hit_tokens / input_tokens (0.0 = full miss, 1.0 = full hit).
+                "cache_hit_tokens": total_cache_hit_tokens,
+                "cache_miss_tokens": total_cache_miss_tokens,
             },
         )
         finished_at = datetime.now(UTC).isoformat()

@@ -834,6 +834,16 @@ def build_visible_chat_prompt_assembly(
             _awareness_add(21, "metacognition signals", latest_signals_section())
         except Exception:
             pass
+        # 2026-05-23 (Claude, Step A.v1): theory-of-mind communication
+        # ledger. Quiet by default — surfaces only when Jarvis has
+        # repeated the same fact 3+ times to partner within 1 hour.
+        try:
+            from core.services.theory_of_mind import (
+                communication_ledger_section,
+            )
+            _awareness_add(22, "communication ledger", communication_ledger_section())
+        except Exception:
+            pass
     except Exception:
         pass
     try:

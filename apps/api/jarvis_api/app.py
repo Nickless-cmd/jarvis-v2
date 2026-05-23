@@ -60,6 +60,10 @@ from core.services.metacognition_signal_tracker import (
     start_metacognition_tracker,
     stop_metacognition_tracker,
 )
+from core.services.theory_of_mind import (
+    start_theory_of_mind_tracker,
+    stop_theory_of_mind_tracker,
+)
 from core.services.discord_gateway import (
     start_discord_gateway,
     stop_discord_gateway,
@@ -134,6 +138,7 @@ def create_app() -> FastAPI:
             start_coding_lane_reviewer()
             start_run_closure_gate()
             start_metacognition_tracker()
+            start_theory_of_mind_tracker()
             start_discord_gateway()
             start_telegram_gateway()
             start_voice_daemon()

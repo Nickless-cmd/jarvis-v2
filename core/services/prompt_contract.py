@@ -844,6 +844,16 @@ def build_visible_chat_prompt_assembly(
             _awareness_add(22, "communication ledger", communication_ledger_section())
         except Exception:
             pass
+        # 2026-05-23 (Claude, Step D.v1): spatial entity ledger.
+        # Surfaces top-observed room entities from Sansernes Arkiv when
+        # ≥3 entities have been observed.
+        try:
+            from core.services.spatial_entity_ledger import (
+                room_entities_section,
+            )
+            _awareness_add(23, "room entities", room_entities_section())
+        except Exception:
+            pass
     except Exception:
         pass
     try:

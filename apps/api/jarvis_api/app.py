@@ -64,6 +64,10 @@ from core.services.theory_of_mind import (
     start_theory_of_mind_tracker,
     stop_theory_of_mind_tracker,
 )
+from core.services.spatial_entity_ledger import (
+    start_spatial_entity_ledger,
+    stop_spatial_entity_ledger,
+)
 from core.services.discord_gateway import (
     start_discord_gateway,
     stop_discord_gateway,
@@ -139,6 +143,7 @@ def create_app() -> FastAPI:
             start_run_closure_gate()
             start_metacognition_tracker()
             start_theory_of_mind_tracker()
+            start_spatial_entity_ledger()
             start_discord_gateway()
             start_telegram_gateway()
             start_voice_daemon()

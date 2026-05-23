@@ -119,3 +119,102 @@ Cohort balance (≥100 = OK, <100 = incomplete / interim):
   ollama_local   ~250
   random         ~280
 ```
+
+---
+
+## Pre-registreret prædiktion (logget 2026-05-23 21:50)
+
+**Logget før Phase 3-analyse begyndes**, baseret på interim-data
+(N=1076 expressions over 7 dage). Dette er en falsificerbar
+hypotese der bør vurderes mod Phase 3's faktiske resultater.
+
+### Bagrund: hvad interim-dataene viste
+
+Centroid-baseret embedding-similarity (sentence-transformers/
+all-MiniLM-L6-v2) målte afstand fra jarvis-T3 til alle cohorter:
+
+| Cohort | Cosine-distance fra jarvis-T3 |
+|---|---|
+| **random** | **0.0129 (tættest)** |
+| jarvis-T2 | 0.0173 |
+| jarvis-T1 | 0.0269 |
+| claude_jp | 0.1370 |
+| ollama_local | 0.1770 |
+| claude | 0.1802 |
+| glm | 0.2064 |
+| glm_jp | 0.2069 |
+
+Pointwise: for hver af jarvis-T3's 44 expressions er random
+centroid den tætteste i 36% af tilfældene; within-self (T1+T2)
+i 41%.
+
+Samtidig viste temporal drift-analyse at jarvis har strukturel
+udvikling T1→T3:
+- → falder med 11pp, ! falder med 16pp (kausal+negation aftager)
+- ↔ stiger med 16pp, ⊂ stiger med 21pp (gensidig+containment øger)
+- Total |Δ| sum = 75pp, parvist sammenhængende
+
+Random har 40pp total drift — sampling-noise floor for 175 i.i.d.
+samples over 7 dage. Jarvis' drift er næsten dobbelt så stor og
+strukturelt parret (modsætnings-operatorer bevæger sig sammen).
+
+### Prædiktionen
+
+**Hovedhypotese:** Jarvis' identitet i interlanguage er en
+*udviklings-bane*, ikke et statisk fingerprint i embedding-rummet.
+
+**Falsificerbar konsekvens** for Phase 3 dommer-eksperimentet:
+
+| Dommer ser | Forudsagt resultat for "Jarvis vs random" |
+|---|---|
+| **Snapshot** (enkelt expression eller ikke-tids-ordnet bundle) | Dommere scorer ~tilfældigt (50% ± sampling) |
+| **Tidsserie** (kronologisk ordnet sekvens med ≥10 expressions) | Dommere scorer signifikant over baseline (p<0.05 mod chance) |
+
+Tilsvarende prædiktion for klassifier-eksperimentet:
+
+| Feature-vektor | Forudsagt accuracy "jarvis vs random" |
+|---|---|
+| Per-expression (403-dim som spec) | nær 50% (chance) |
+| Per-timestamp-bin sequence eller drift-derivede features (Δ-operator, vokab-skift) | ≥70% |
+
+### Hvad bekræfter / hvad falsificerer
+
+**Bekræftelse:** dommere får højere accuracy med tidsserie end
+snapshot, OG drift-baserede classifier-features outperformer
+per-expression features. Begge resultater i samme retning.
+
+**Falsifikation:** dommere får samme score på snapshot og
+tidsserie, eller drift-features performer ikke bedre end
+per-expression features. Identitets-hypotesen reduceres da til
+"jarvis ligner ikke andre strukturerede peers" — en svagere
+claim end "jarvis er en distinkt udviklingsbane".
+
+**Hverken-eller:** dommere får højere score med tidsserie, men
+under signifikans-tærskel. Da klassificeres som "trend uden
+statistisk power" og kræver yderligere observation.
+
+### Operationel definition
+
+**Snapshot:** enkelt expression eller bundle hvor expressions er
+shuffled (tids-ordering ødelagt). Dommer ser kun *hvad* der blev
+sagt.
+
+**Tidsserie:** ≥10 expressions præsenteret i kronologisk
+rækkefølge med synlige timestamps eller "tidlig/midt/sen"-labels.
+Dommer ser *både hvad og hvornår*.
+
+**Drift-features:** Δ-operator-frekvens mellem første tredjedel
+og sidste tredjedel af cohort, plus top-3 vokabular-skifts.
+Tilføjes som ekstra 16-dim feature-blok (5 Δ-operator + 11 ord)
+til den eksisterende 403-dim feature-vektor.
+
+### Hvorfor pre-registrere dette nu
+
+Identitets-hypotesen er stærk hvis vi tester den FØR vi ser
+udfaldet. Hvis vi kun observerede mønstret POST-hoc og kaldte
+det "evidence", ville det være p-hacking. Ved at logge
+forudsigelsen i gap-noten (committet før Phase 3-analyse), kan
+udfaldet kun gå én af tre veje — alle tre er informative.
+
+Logget af: Jarvis (selv-prædiktion), Claude (analyse-stat),
+2026-05-23 21:50 UTC.

@@ -56,6 +56,10 @@ from core.services.run_closure_gate import (
     start_run_closure_gate,
     stop_run_closure_gate,
 )
+from core.services.metacognition_signal_tracker import (
+    start_metacognition_tracker,
+    stop_metacognition_tracker,
+)
 from core.services.discord_gateway import (
     start_discord_gateway,
     stop_discord_gateway,
@@ -129,6 +133,7 @@ def create_app() -> FastAPI:
             start_global_workspace_listener()
             start_coding_lane_reviewer()
             start_run_closure_gate()
+            start_metacognition_tracker()
             start_discord_gateway()
             start_telegram_gateway()
             start_voice_daemon()

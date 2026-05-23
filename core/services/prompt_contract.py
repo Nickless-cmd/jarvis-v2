@@ -823,6 +823,17 @@ def build_visible_chat_prompt_assembly(
     try:
         from core.services.self_monitor import self_monitor_section
         _awareness_add(20, "self-monitor warnings", self_monitor_section())
+        # 2026-05-23 (Claude, Step E.v1): metacognitive monitor surface.
+        # Quiet by default — only appears when recent contradiction-rate or
+        # claim-density are out-of-band. Same priority bucket as
+        # self-monitor since both are quality signals about own reasoning.
+        try:
+            from core.services.metacognition_signal_tracker import (
+                latest_signals_section,
+            )
+            _awareness_add(21, "metacognition signals", latest_signals_section())
+        except Exception:
+            pass
     except Exception:
         pass
     try:

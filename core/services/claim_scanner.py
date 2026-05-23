@@ -27,9 +27,13 @@ logger = logging.getLogger(__name__)
 # uden punktum ("kl 14:32"), og pattern krævede tidligere `\.\s*` så match
 # missede den faktiske bruger-syntax.
 _TIME_PATTERNS: list[re.Pattern] = [
-    re.compile(r'\bklokken\s+\d{1,2}[:\.]\d{2}\b', re.IGNORECASE),
-    re.compile(r'\bkl\.?\s+\d{1,2}[:\.]\d{2}\b', re.IGNORECASE),
-    re.compile(r'\b(er|bliver|blev|var)\s+\d{1,2}[:\.]\d{2}\b', re.IGNORECASE),
+    # 2026-05-23 (Jarvis): removed `.` as separator — dansk retskrivning
+    # bruger kun `:` i klokkeslæt ("kl. 10:30", ikke "kl. 10.30"). `.`
+    # forårsagede falske positiver på IP-adresser: "er 10.99.99.99" matchede
+    # tidsmønsteret og udløste en unødvendig reparation.
+    re.compile(r'\bklokken\s+\d{1,2}:\d{2}\b', re.IGNORECASE),
+    re.compile(r'\bkl\.?\s+\d{1,2}:\d{2}\b', re.IGNORECASE),
+    re.compile(r'\b(er|bliver|blev|var)\s+\d{1,2}:\d{2}\b', re.IGNORECASE),
     re.compile(r'\bklokken\s+(er|bliver|var|blev)\s+\d{1,2}\b', re.IGNORECASE),
 ]
 

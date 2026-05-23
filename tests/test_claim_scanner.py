@@ -277,6 +277,25 @@ class TestTimePatternRegex:
         assert len(hits) > 0
 
 
+class TestTimePatternNoIpFalsePositive:
+    """IP-adresser skal IKKE udløse ⏰ tid-kategorien."""
+
+    def test_ip_does_not_trigger_time_category(self):
+        """'er 10.0.0.2' må ikke matche tidsmønsteret."""
+        from core.services.claim_scanner import _categorize_line
+        hits = _categorize_line("serveren er 10.0.0.2")
+        categories = {h[0] for h in hits}
+        assert "⏰ tid" not in categories, f"IP udløste tid: {hits}"
+
+    def test_ip_with_er_does_not_trigger_time_category(self):
+        """'IP'en er 10.99.99.99' må ikke repareres som tid."""
+        from core.services.claim_scanner import scan_response
+        text = "IP'en er 10.99.99.99"
+        result = scan_response(text)
+        # Ingen [kl. ... korrigeret ...] i output
+        assert "korrigeret" not in result, f"IP blev repareret som tid: {result!r}"
+
+
 class TestSystemRepairNoDoublePrefix:
     """[host: host er ...] dobbelt-prefix bug skal være væk."""
 

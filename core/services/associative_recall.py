@@ -1,24 +1,156 @@
 """Associative Recall — dormant memories triggered by context.
 
-Coordinator that queries the experiential memory DB, scores candidates via
-local LLM, and maintains in-memory active memories for the current session.
+Coordinator that queries experiential memory, private brain & sensory DBs,
+scores candidates via local LLM, and maintains persistent active memories.
 
-Strong matches (score ≥ 0.7) are injected as text into the system prompt.
+Strong matches (score ≥ 0.7) are injected into the [ASSOCIATIONER] awareness section.
 Weak matches (score 0.3–0.69) trigger emotion concepts at proportional intensity.
 
 Max 5 active memories at any time. Weakest is evicted when cap is reached.
 Topic repetition: same topic in ≥3 of last 10 messages amplifies scores by ×1.5.
+
+Persistence: active memories survive restarts via recall_active_memories table.
+Keyword extraction: cheap-lane LLM with regex fallback.
+Rate limiting: max 1 extraction every 3 seconds, queue max 10.
+Scope: experiential memory + private brain + sensory archive.
 """
 from __future__ import annotations
 
+import json
 import logging
+import re
+import time
 from collections import deque
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 _REPETITION_THRESHOLD = 3   # kept hardcoded — not in spec
 _TOPIC_WINDOW = 10           # kept hardcoded — not in spec
+
+# Rate limiting for LLM keyword extraction
+_EXTRACTION_MIN_INTERVAL_S = 3.0
+_EXTRACTION_QUEUE_MAX = 10
+_last_extraction_at: float = 0.0
+_extraction_queue: list[dict[str, Any]] = []
+
+# In-memory state (synced to DB)
+_active_memories: dict[str, dict[str, Any]] = {}
+_topic_history: deque[str] = deque(maxlen=_TOPIC_WINDOW)
+
+
+# ---------------------------------------------------------------------------
+# DB persistence helpers
+# ---------------------------------------------------------------------------
+
+def _ensure_active_memories_table() -> None:
+    """Create recall_active_memories table if it doesn't exist (lazy init)."""
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS recall_active_memories (
+                    memory_id TEXT PRIMARY KEY,
+                    narrative TEXT NOT NULL DEFAULT '',
+                    topic TEXT NOT NULL DEFAULT '',
+                    emotion_arc TEXT NOT NULL DEFAULT '',
+                    importance REAL NOT NULL DEFAULT 0,
+                    score REAL NOT NULL DEFAULT 0,
+                    source_table TEXT NOT NULL DEFAULT 'experiential_memory',
+                    activated_at TEXT NOT NULL
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_recall_active_memories_score
+                ON recall_active_memories(score DESC)
+            """)
+    except Exception as exc:
+        logger.warning("associative_recall: DB table init failed: %s", exc)
+
+
+def _persist_active_memory(memory: dict[str, Any]) -> None:
+    """Save an active memory to DB (upsert)."""
+    try:
+        from core.runtime.db import connect
+        _ensure_active_memories_table()
+        with connect() as conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO recall_active_memories
+                (memory_id, narrative, topic, emotion_arc, importance, score, source_table, activated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                str(memory.get("memory_id") or ""),
+                str(memory.get("narrative") or "")[:500],
+                str(memory.get("topic") or "")[:200],
+                str(memory.get("emotion_arc") or "")[:100],
+                float(memory.get("importance") or 0),
+                float(memory.get("score") or 0),
+                str(memory.get("source_table") or "experiential_memory"),
+                datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            ))
+    except Exception as exc:
+        logger.debug("associative_recall: persist failed for %s: %s",
+                     memory.get("memory_id"), exc)
+
+
+def _remove_persisted_memory(memory_id: str) -> None:
+    """Remove a memory from the DB persistence table."""
+    try:
+        from core.runtime.db import connect
+        _ensure_active_memories_table()
+        with connect() as conn:
+            conn.execute(
+                "DELETE FROM recall_active_memories WHERE memory_id = ?",
+                (memory_id,),
+            )
+    except Exception as exc:
+        logger.debug("associative_recall: remove persisted failed for %s: %s",
+                     memory_id, exc)
+
+
+def _load_active_memories_from_db() -> dict[str, dict[str, Any]]:
+    """Restore active memories from DB on module load."""
+    try:
+        from core.runtime.db import connect
+        _ensure_active_memories_table()
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM recall_active_memories ORDER BY score DESC LIMIT ?",
+                (_get_max_active(),),
+            ).fetchall()
+        restored: dict[str, dict[str, Any]] = {}
+        for r in rows:
+            restored[str(r[0])] = {
+                "memory_id": str(r[0]),
+                "narrative": str(r[1]),
+                "topic": str(r[2]),
+                "emotion_arc": str(r[3]),
+                "importance": float(r[4]),
+                "score": float(r[5]),
+                "source_table": str(r[6]),
+            }
+        if restored:
+            logger.info("associative_recall: restored %d memories from DB", len(restored))
+        return restored
+    except Exception as exc:
+        logger.debug("associative_recall: DB load failed (first run?): %s", exc)
+        return {}
+
+
+def _clear_persisted_memories() -> None:
+    """Remove all active memories from DB."""
+    try:
+        from core.runtime.db import connect
+        _ensure_active_memories_table()
+        with connect() as conn:
+            conn.execute("DELETE FROM recall_active_memories")
+    except Exception as exc:
+        logger.debug("associative_recall: clear persisted failed: %s", exc)
+
+
+# Restore from DB on module load
+_active_memories = _load_active_memories_from_db()
 
 
 def _get_strong_threshold() -> float:
@@ -52,10 +184,6 @@ def _get_repetition_multiplier() -> float:
     except Exception:
         return 1.5
 
-# In-memory state
-_active_memories: dict[str, dict[str, Any]] = {}
-_topic_history: deque[str] = deque(maxlen=_TOPIC_WINDOW)
-
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -64,6 +192,7 @@ _topic_history: deque[str] = deque(maxlen=_TOPIC_WINDOW)
 def recall_for_session(session_context: dict[str, Any]) -> list[dict[str, Any]]:
     """Run associative recall at session start. Populates up to 3 active memories.
 
+    Scope: experiential memory + private brain + sensory archive.
     session_context keys used: channel, bearing, time_of_day (all optional).
     Returns list of memories that were activated.
     """
@@ -71,6 +200,11 @@ def recall_for_session(session_context: dict[str, Any]) -> list[dict[str, Any]]:
     from core.services.experiential_memory import score_memories_by_relevance
 
     candidates = get_experiential_memory_candidates(limit=20)
+
+    # --- Private brain + sensory scope ---
+    _add_private_brain_candidates(candidates, "", limit=5)
+    _add_sensory_candidates(candidates, "", limit=3)
+
     if not candidates:
         return []
 
@@ -117,6 +251,7 @@ def recall_for_message(
 ) -> list[dict[str, Any]]:
     """Run associative recall for a user message. Adds up to 2 active memories.
 
+    Scope: experiential memory + private brain + sensory archive.
     Excludes already-active memories from candidate pool.
     Applies topic repetition multiplier to scores.
     Returns list of newly activated memories.
@@ -131,6 +266,12 @@ def recall_for_message(
     candidates = get_experiential_memory_candidates(limit=15)
     active_ids = set(_active_memories.keys())
     candidates = [c for c in candidates if c["memory_id"] not in active_ids]
+
+    # --- Private brain scope: include private_brain_records ---
+    _add_private_brain_candidates(candidates, topic_hint, limit=5)
+
+    # --- Sensory scope: include recent sensory memories ---
+    _add_sensory_candidates(candidates, topic_hint, limit=3)
 
     # Check for re-activation of existing active memories
     for mem_id in list(active_ids):
@@ -187,19 +328,23 @@ def recall_for_message(
 
 
 def build_recall_prompt_section() -> str:
-    """Format active memories for system prompt injection.
+    """Format active memories as [ASSOCIATIONER] awareness section (Danish, compact).
 
     Returns empty string if no active memories.
+    Format: one line per memory — "→ narrative (topic, styrke: score)"
     """
     if not _active_memories:
         return ""
 
-    lines = ["Associative memories (triggered by current context):"]
+    lines = ["[ASSOCIATIONER]"]
     for mem in sorted(_active_memories.values(), key=lambda m: m.get("score", 0), reverse=True):
         narrative = str(mem.get("narrative") or "")[:80]
         topic = str(mem.get("topic") or "")
         score = float(mem.get("score") or 0)
-        lines.append(f"- {narrative} (topic: {topic}, strength: {score:.2f})")
+        source = str(mem.get("source_table") or "")
+        # Compact: source only shown if not experiential_memory
+        source_suffix = f", fra: {source}" if source and source != "experiential_memory" else ""
+        lines.append(f"→ {narrative} ({topic}, styrke: {score:.2f}{source_suffix})")
 
     return "\n".join(lines)
 
@@ -240,7 +385,8 @@ def clear_session_recall() -> None:
     global _topic_history
     _active_memories.clear()
     _topic_history = deque(maxlen=_TOPIC_WINDOW)
-    logger.debug("associative_recall: session cleared")
+    _clear_persisted_memories()
+    logger.debug("associative_recall: session cleared (memory + DB)")
 
 
 # ---------------------------------------------------------------------------
@@ -248,15 +394,17 @@ def clear_session_recall() -> None:
 # ---------------------------------------------------------------------------
 
 def _add_to_active(memory: dict[str, Any]) -> None:
-    """Add memory to active set. Evicts weakest if at cap."""
+    """Add memory to active set. Evicts weakest if at cap. Persists to DB."""
     memory_id = str(memory["memory_id"])
     if len(_active_memories) >= _get_max_active() and memory_id not in _active_memories:
         weakest_id = min(
             _active_memories.keys(),
             key=lambda k: float(_active_memories[k].get("score") or 0),
         )
+        _remove_persisted_memory(weakest_id)
         del _active_memories[weakest_id]
     _active_memories[memory_id] = memory
+    _persist_active_memory(memory)
 
 
 def _record_topic(topic: str) -> None:
@@ -273,10 +421,175 @@ def _get_topic_multiplier(topic: str) -> float:
     return _get_repetition_multiplier() if count >= _REPETITION_THRESHOLD else 1.0
 
 
+# ---------------------------------------------------------------------------
+# Keyword extraction (LLM + regex fallback)
+# ---------------------------------------------------------------------------
+
+def _extract_keywords_llm(text: str) -> list[str]:
+    """Extract keywords via cheap-lane LLM. Returns empty list on failure."""
+    try:
+        from core.services.cheap_provider_runtime import call_cheap_provider
+
+        prompt = (
+            "Extract 3-5 key topics/keywords from this message. "
+            "Return ONLY a JSON array of lowercase strings, nothing else. "
+            "Focus on concrete topics, technical terms, and named entities.\n\n"
+            f"Message: {text[:500]}"
+        )
+        result = call_cheap_provider(
+            prompt=prompt,
+            system="You are a keyword extractor. Return only JSON arrays.",
+            temperature=0.1,
+            max_tokens=80,
+        )
+        if result and result.strip():
+            # Parse JSON array from response
+            cleaned = result.strip().strip("`").strip()
+            if cleaned.startswith("["):
+                import json as _json
+                keywords = _json.loads(cleaned)
+                if isinstance(keywords, list):
+                    return [str(k).lower().strip()[:50] for k in keywords[:5] if str(k).strip()]
+    except Exception as exc:
+        logger.debug("associative_recall: LLM keyword extraction failed: %s", exc)
+    return []
+
+
+def _extract_keywords_regex(text: str) -> list[str]:
+    """Regex fallback: capitalized words, technical terms, named entities."""
+    keywords: list[str] = []
+
+    # Capitalized words (potential named entities)
+    capitalized = re.findall(r'\b[A-ZÆØÅ][a-zæøå]{2,}\b', text)
+    keywords.extend([w.lower() for w in capitalized[:3]])
+
+    # CamelCase / snake_case technical terms
+    technical = re.findall(r'\b[a-z]+(?:[_-][a-z]+)+(?:\.[a-z]+)?\b', text)
+    keywords.extend([t.lower() for t in technical[:3]])
+
+    # Code-like tokens (imports, paths, function names)
+    code_like = re.findall(r'\b[a-z_]+\.[a-z_]+\b', text)
+    keywords.extend([c.lower() for c in code_like[:2]])
+
+    # Remove duplicates, filter noise
+    seen: set[str] = set()
+    filtered: list[str] = []
+    noise = {"the", "and", "for", "that", "this", "with", "from", "have",
+             "det", "der", "som", "til", "for", "med", "har", "kan", "skal"}
+    for kw in keywords:
+        kw = kw.strip(".,!?;:'\"()[]{}").lower()
+        if kw and kw not in seen and kw not in noise and len(kw) > 2:
+            seen.add(kw)
+            filtered.append(kw)
+
+    return filtered[:5]
+
+
 def _extract_topic_hint(text: str) -> str:
-    """Extract a short topic hint from message text (first meaningful words)."""
+    """Extract topic hints: LLM first, regex fallback, then simple fallback.
+
+    Returns a space-joined string of keywords (max 40 chars).
+    """
+    global _last_extraction_at, _extraction_queue
+
+    # Rate limit: max 1 extraction every 3 seconds
+    now = time.monotonic()
+    if now - _last_extraction_at < _EXTRACTION_MIN_INTERVAL_S:
+        # Queue the text and use simple fallback for this call
+        if len(_extraction_queue) < _EXTRACTION_QUEUE_MAX:
+            _extraction_queue.append({"text": text, "queued_at": now})
+        # Simple fallback for rate-limited calls
+        words = [w.strip(".,!?") for w in text.split() if len(w) > 4][:3]
+        return " ".join(words)[:40] if words else ""
+
+    _last_extraction_at = now
+
+    # Process any queued extractions first
+    if _extraction_queue:
+        # Take the latest queued item (most recent context)
+        queued = _extraction_queue.pop()
+        text = str(queued.get("text") or text)
+        _extraction_queue.clear()  # Drain queue
+
+    # Try LLM extraction
+    keywords = _extract_keywords_llm(text)
+    if keywords:
+        logger.debug("associative_recall: LLM keywords: %s", keywords)
+        return " ".join(keywords)[:40]
+
+    # Regex fallback
+    keywords = _extract_keywords_regex(text)
+    if keywords:
+        logger.debug("associative_recall: regex keywords: %s", keywords)
+        return " ".join(keywords)[:40]
+
+    # Ultimate fallback: first meaningful words
     words = [w.strip(".,!?") for w in text.split() if len(w) > 4][:3]
     return " ".join(words)[:40] if words else ""
+
+
+def _add_private_brain_candidates(
+    candidates: list[dict[str, Any]],
+    topic_hint: str,
+    limit: int = 5,
+) -> None:
+    """Add private brain records as recall candidates.
+
+    Maps private_brain_records to the candidate format expected by scoring.
+    Only includes records with salience ≥ 0.3.
+    """
+    try:
+        from core.runtime.db import get_salient_private_brain_records
+        records = get_salient_private_brain_records(min_salience=0.3, limit=limit)
+        existing_ids = {str(c.get("memory_id") or "") for c in candidates}
+        for r in records:
+            record_id = str(r.get("record_id") or "")
+            if record_id in existing_ids:
+                continue
+            # Map to candidate format
+            candidate = {
+                "memory_id": f"pb:{record_id}",
+                "narrative": str(r.get("content") or r.get("title") or "")[:200],
+                "topic": str(r.get("domain") or "")[:80],
+                "emotion_arc": "",
+                "importance": float(r.get("salience") or 0.5),
+                "source_table": "private_brain",
+            }
+            candidates.append(candidate)
+    except Exception as exc:
+        logger.debug("associative_recall: private_brain candidates failed: %s", exc)
+
+
+def _add_sensory_candidates(
+    candidates: list[dict[str, Any]],
+    topic_hint: str,
+    limit: int = 3,
+) -> None:
+    """Add recent sensory memories as recall candidates.
+
+    Maps sensory_memories to the candidate format expected by scoring.
+    """
+    try:
+        from core.runtime.db_sensory import list_sensory_memories
+        records = list_sensory_memories(limit=limit)
+        existing_ids = {str(c.get("memory_id") or "") for c in candidates}
+        for r in records:
+            record_id = str(r.get("id") or "")
+            if f"sensory:{record_id}" in existing_ids:
+                continue
+            description = str(r.get("description") or "")[:200]
+            modality = str(r.get("modality") or "")
+            candidate = {
+                "memory_id": f"sensory:{record_id}",
+                "narrative": description,
+                "topic": f"{modality} memory",
+                "emotion_arc": str(r.get("atmosphere") or ""),
+                "importance": 0.4,  # Sensory memories start at moderate importance
+                "source_table": "sensory",
+            }
+            candidates.append(candidate)
+    except Exception as exc:
+        logger.debug("associative_recall: sensory candidates failed: %s", exc)
 
 
 def _build_session_context_text(session_context: dict[str, Any]) -> str:

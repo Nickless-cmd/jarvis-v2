@@ -382,8 +382,7 @@ async function runPullAndRebuild(): Promise<{ ok: boolean; error?: string }> {
   // Phase 2: npm install + build (streamed). We accept that this may
   // take 30–90s; the renderer shows the live tail of stdout.
   const ok = await runShellStreaming(
-    'sh',
-    ['-c', 'npm install --silent && npm run build'],
+    'npm install --silent && npm run build',
     jarvisxDir,
     'install + build',
   )
@@ -412,14 +411,20 @@ function manualRelaunch(): void {
   app.exit(0)
 }
 
+// 2026-05-24 (Claude): cross-platform shell runner.
+// Previously hardcoded 'sh' as the binary, which doesn't exist on
+// Windows. Now uses spawn({ shell: true }) which delegates to the OS
+// default shell (/bin/sh on Unix, cmd.exe on Windows). The caller
+// passes a single command string (incl. any && chaining or args) since
+// shell:true with separate args has confusing escaping semantics —
+// a single string is the portable contract.
 function runShellStreaming(
-  cmd: string,
-  args: string[],
+  command: string,
   cwd: string,
   phase: string,
 ): Promise<boolean> {
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, { cwd, env: process.env })
+    const child = spawn(command, { shell: true, cwd, env: process.env })
     let buf = ''
     const onChunk = (data: Buffer) => {
       buf += data.toString('utf8')

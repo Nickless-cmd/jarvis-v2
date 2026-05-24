@@ -99,7 +99,7 @@ CREATE INDEX idx_assoc_session_status
 - `stop_associative_memory()` — stopper listener
 - `_listener_loop()` — poller events tabellen for nye `channel.chat_message_appended`
 - `_process_message(event)` — ekstraherer keywords, embedder, søger
-- `_extract_keywords_llm(text)` → liste af nøgleord/fraser via cheap-lane (Ollama eller provider cheap-lane). Prompt: "Extraktér 3-5 nøgleord eller korte fraser fra denne tekst — kun substantiver, navne, centrale begreber. Returnér som JSON-liste."
+- `_extract_keywords_llm(text)` → liste af nøgleord/fraser via cheap-lane (Ollama eller provider cheap-lane). Prompt: "Extraktér 3-5 nøgleord eller korte fraser fra denne tekst — kun substantiver, navne, centrale begreber. Returnér som JSON-liste." **Fallback:** hvis LLM fejler (timeout/rate-limit), kør regex-fallback der trækker ord >5 tegn, store bogstaver, og tekniske termer. **Rate-limit:** maks 1 kald/3s; resten queues (max 10 i queue, 60s timeout).
 - `_find_associations(keywords)` → cosine-match mod memory-index (chat_history + private_brain + workspace)
 - `_record_association(trigger, match)` → gemmer i `memory_associations`
 
@@ -125,6 +125,46 @@ Bygget i `core/services/heartbeat_runtime.py` eller `core/services/prompt_contra
 | Min trigger-længde | 3 ord | Kortere triggers (1-2 ord) giver for mange falske positiver |
 | Dedup vindue | 60 min | Samme association gentages ikke inden for en time |
 
+## Edge cases & robusthed
+
+Følgende risici blev identificeret ved spec-gennemgang (2026-05-24, pro-model review):
+
+### 1. LLM extraction — fallback ved fejl
+
+Hvis cheap-lane fejler (timeout, rate-limit, model nede), må beskeden **ikke bare droppes**. Løsning: **regex-fallback** der trækker simple nøgleord ud som sidste udvej:
+
+```
+Forsøg 1: cheap-lane LLM → JSON-liste
+Forsøg 2: regex-fallback → ord med stort begyndelsesbogstav, tekniske termer, navneord >5 tegn
+Hvis begge fejler: besked droppes stille (log-level WARNING)
+```
+
+### 2. Rate-limiter for hurtig samtale
+
+Hvis Bjørn og Jarvis skriver 10 beskeder i rap, fyres 10 LLM-kald af i baggrunden. Løsning:
+
+| Regel | Værdi |
+|-------|-------|
+| Maks ét extraction-kald hvert | 3. sekund |
+| Queue ved overskridelse | Beskeder queues i FIFO |
+| Maks queue-længde | 10 beskeder |
+| Queue timeout | 60 sek (ældre beskeder droppes) |
+
+### 3. "Mellem ture" = næste tur (ikke realtid)
+
+Associationer der opdages i **denne tur** bliver først synlige i **næste tur**. Det skyldes at awareness-sektionen bygges i starten af en tur, før nye beskeder. Dette er bevidst — det undgår midt-i-turen afbrydelser — men skal dokumenteres tydeligt så vi ikke forventer realtid.
+
+### 4. Private brain — embedding-indeks verificering
+
+Spec'en antager at `semantic_memory.search()` virker med embeddings for private_brain + sensory_memories. Før implementering skal det verificeres at:
+- Private brain records faktisk er indekseret med embeddings (ikke kun keyword-match)
+- `semantic_memory._embed_ollama()` returnerer embeddings for disse kilder
+- Tabellen `memory_index` indeholder rækker for private_brain source types
+
+### 5. Cold start — ingen associationer første 60 min
+
+Ved daemon-start er der ingen events at associere fra. Første association dukker først op efter 1-2 ture. Dette er acceptabelt — daemonen er designet til at bygge op over tid, ikke at give øjeblikkelig værdi.
+
 ## Hvad genbruges fra eksisterende infrastruktur
 
 | Komponent | Genbruger | Status |
@@ -144,7 +184,7 @@ Bygget i `core/services/heartbeat_runtime.py` eller `core/services/prompt_contra
 | `core/services/associative_memory.py` | ~250 linjer | Medium — samme struktur som session_inbox men med embedding-integration |
 | Awareness-sektion (prompt-build) | ~20 linjer | Lavi — eksisterende surface-mønster |
 | Keyword extraction (LLM) | ~40 linjer | Lavi — cheap-lane LLM kald med prompt |
-| Tests | ~100 linjer | Medium — DB-fixtures + event injection |
+| Tests | ~150 linjer | Medium — DB-fixtures + event injection, se Testplan nedenfor |
 
 ## Filer der ændres
 
@@ -154,6 +194,22 @@ Bygget i `core/services/heartbeat_runtime.py` eller `core/services/prompt_contra
 | `apps/api/jarvis_api/app.py` | Kald `start_associative_memory()` ved boot |
 | `core/services/prompt_contract.py` | Tilføj `[ASSOCIATIONER]` sektion i awareness (hvis relevant) |
 | `tests/test_associative_memory.py` **(ny)** | Tests |
+
+## Testplan
+
+| # | Test | Hvad verificeres | Mock-behov |
+|---|------|-----------------|------------|
+| 1 | `test_llm_extraction_returns_keywords` | LLM returnerer gyldig JSON → keywords parses korrekt | Mock cheap-lane |
+| 2 | `test_llm_extraction_falls_back_to_regex` | LLM fejler → regex-fallback trækker nøgleord ud | Mock cheap-lane failure |
+| 3 | `test_embedding_unavailable_skips_gracefully` | nomic-embed-text nede → besked droppes stille, ingen crash | Mock embedding timeout |
+| 4 | `test_match_above_threshold_stores_association` | Cosine ≥0.55 → gemmes i DB med status=pending | Fixture embeddings |
+| 5 | `test_match_below_threshold_not_stored` | Cosine <0.55 → IKKE gemmes | Fixture embeddings |
+| 6 | `test_dedup_same_trigger_within_60min` | Samme trigger+match inden for 60 min → kun én association | DB-fixture |
+| 7 | `test_max_3_associations_per_turn` | 4+ matches → kun de 3 højeste scores overlever | Fixture |
+| 8 | `test_trigger_shorter_than_3_words_skipped` | Besked med <3 ord → ingen extraction, ingen DB-skrivning | Ingen mock |
+| 9 | `test_awareness_section_built_correctly` | Prompt får `[ASSOCIATIONER]` med korrekt format og indhold | Fixture |
+| 10 | `test_daemon_lifecycle_start_tick_stop` | start → listener kører, stop → listener stopper | Event injection |
+| 11 | `test_rate_limiter_queues_not_drops` | 5 hurtige beskeder → max 1 LLM-kald/3s, resten queues | Mock cheap-lane |
 
 ## Prioritet i forhold til Phase 4
 

@@ -81,12 +81,29 @@ def _helpful_signal(*, status: str, focus: str, work_signal: str) -> str:
         base = f"Det virker værd at holde fast i det, der hjalp omkring {focus_text}."
         if signal_text:
             base = f"{base} Det peger stadig {signal_text}."
-        return base[:140].rstrip()
-    if normalized in {"failed", "cancelled"}:
-        return f"Det kræver en mere varsom hånd omkring {focus_text}."[:140].rstrip()
-    if normalized == "observe":
-        return f"Det er værd at blive ved med at følge tråden omkring {focus_text}."[:140].rstrip()
-    return normalized[:48]
+        output = base[:140].rstrip()
+    elif normalized in {"failed", "cancelled"}:
+        output = f"Det kræver en mere varsom hånd omkring {focus_text}."[:140].rstrip()
+    elif normalized == "observe":
+        output = f"Det er værd at blive ved med at følge tråden omkring {focus_text}."[:140].rstrip()
+    else:
+        output = normalized[:48]
+
+    # 2026-05-24 (Claude): pilot for llm_driven_inner_pipeline. Fire-and-
+    # forget a parallel LLM call so we can compare template-vs-LLM outputs
+    # side-by-side without changing this function's return value.
+    # Behavior in production is identical until we decide to flip the
+    # switch based on observed data. See core/services/inner_voice_shadow.
+    try:
+        from core.services.inner_voice_shadow import shadow_helpful_signal
+        shadow_helpful_signal(
+            status=status, focus=focus, work_signal=work_signal,
+            template_output=output,
+        )
+    except Exception:
+        pass  # shadow must never affect template path
+
+    return output
 
 
 def _confidence(*, status: str, work_preview: str | None) -> str:

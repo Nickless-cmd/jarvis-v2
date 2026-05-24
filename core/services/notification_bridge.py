@@ -53,10 +53,19 @@ def send_session_notification(
     content: str,
     *,
     source: str = "jarvis-notify",
+    urgent: bool = False,
 ) -> dict[str, object]:
     """Append a proactive message to the most recently active chat session.
 
     Returns a status dict. Never raises — returns error dict on failure.
+
+    2026-05-24 (Claude): when the target session is active (chat-stream
+    activity within last 5 min) AND urgent=False, the notification is
+    queued in session_inbox instead of appended directly. It will be
+    flushed after Jarvis' next turn completes — preventing the "knock at
+    the door mid-sentence" effect Jarvis flagged in inner-voice and
+    Bjørn observed externally. urgent=True bypasses the queue for
+    emergencies (errors, security alerts, etc.).
     """
     from core.services.chat_sessions import (
         append_chat_message,
@@ -86,6 +95,35 @@ def send_session_notification(
             session_id = str((sessions[0] or {}).get("id") or "").strip() if sessions else ""
     if not session_id or get_chat_session(session_id) is None:
         return {"status": "blocked", "error": "no active session"}
+
+    # Daemon-interruption gate: queue if session is active and not urgent.
+    if not urgent:
+        try:
+            from core.services.session_inbox import (
+                is_session_active, enqueue as inbox_enqueue,
+            )
+            if is_session_active(session_id):
+                result = inbox_enqueue(
+                    session_id=session_id,
+                    content=content,
+                    source=source,
+                    urgent=False,
+                )
+                if result.get("status") == "queued":
+                    logger.info(
+                        "notification_bridge: queued [%s] for session %s "
+                        "(active session — will flush after next turn)",
+                        source, session_id,
+                    )
+                    return {
+                        "status": "queued",
+                        "session_id": session_id,
+                        "source": source,
+                        "inbox_id": result.get("id"),
+                    }
+        except Exception:
+            # If inbox path fails, fall through to direct delivery
+            logger.exception("notification_bridge: inbox gate failed; delivering directly")
 
     try:
         message = append_chat_message(

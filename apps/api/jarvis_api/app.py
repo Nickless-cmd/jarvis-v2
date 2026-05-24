@@ -68,6 +68,10 @@ from core.services.spatial_entity_ledger import (
     start_spatial_entity_ledger,
     stop_spatial_entity_ledger,
 )
+from core.services.session_inbox import (
+    start_session_inbox,
+    stop_session_inbox,
+)
 from core.services.discord_gateway import (
     start_discord_gateway,
     stop_discord_gateway,
@@ -144,6 +148,7 @@ def create_app() -> FastAPI:
             start_metacognition_tracker()
             start_theory_of_mind_tracker()
             start_spatial_entity_ledger()
+            start_session_inbox()
             start_discord_gateway()
             start_telegram_gateway()
             start_voice_daemon()

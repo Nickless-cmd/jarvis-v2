@@ -54,12 +54,17 @@ def ensure_credit_assignment_tables(conn: sqlite3.Connection | None = None) -> N
                 ("credit_score", "REAL"),
             ],
         )
-        conn.execute(
-            """CREATE INDEX IF NOT EXISTS idx_cognitive_decisions_pending
-               ON cognitive_decisions(kind, outcome_aggregate)
-               WHERE outcome_aggregate IS NULL
-                 AND kind != 'conversational'"""
-        )
+        # Only create index if table exists (may not be created yet)
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='cognitive_decisions'"
+        ).fetchone()
+        if table_exists:
+            conn.execute(
+                """CREATE INDEX IF NOT EXISTS idx_cognitive_decisions_pending
+                   ON cognitive_decisions(kind, outcome_aggregate)
+                   WHERE outcome_aggregate IS NULL
+                     AND kind != 'conversational'"""
+            )
         conn.commit()
     finally:
         if _close:
@@ -69,7 +74,20 @@ def ensure_credit_assignment_tables(conn: sqlite3.Connection | None = None) -> N
 def _migrate_table(
     conn: sqlite3.Connection, table: str, columns: list[tuple[str, str]]
 ) -> None:
-    """Add columns to *table* if they don't already exist."""
+    """Add columns to *table* if they don't already exist.
+
+    Gracefully no-ops if the table itself doesn't exist yet — the
+    main init_db() may call ensure_credit_assignment_tables() before
+    the table's _ensure_* function has run.
+    """
+    # Check table existence first — PRAGMA table_info fails on missing table
+    exists = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+        (table,),
+    ).fetchone()
+    if not exists:
+        return  # table not created yet; columns will be in the CREATE TABLE
+
     existing = {
         row[1].lower()
         for row in conn.execute(f"PRAGMA table_info({table})").fetchall()

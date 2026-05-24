@@ -629,3 +629,97 @@ def _emit_associative_recall_event(kind: str, payload: dict[str, object] | None 
     except Exception:
         pass
 
+
+# ---------------------------------------------------------------------------
+# Heartbeat daemon tick
+# ---------------------------------------------------------------------------
+
+_DECAY_RATE_PER_MINUTE = 0.015  # ~50% decay in ~45 min
+_last_tick_at: float | None = None
+
+
+def tick_associative_recall() -> dict[str, Any]:
+    """Heartbeat daemon tick — decay + periodic candidate scan.
+
+    Called every 2 minutes by the heartbeat scheduler.
+    1. Decay all active memory scores (slow fade)
+    2. Evict fallen memories (score < 0.1)
+    3. If room available, scan for new candidates
+    Returns summary dict for daemon_manager.
+    """
+    global _last_tick_at
+
+    now = time.monotonic()
+    elapsed_minutes = 2.0
+    if _last_tick_at is not None:
+        elapsed_minutes = max(0.5, (now - _last_tick_at) / 60.0)
+    _last_tick_at = now
+
+    decayed = 0
+    evicted = 0
+    refreshed = 0
+
+    # 1. Decay + evict
+    for mem_id in list(_active_memories.keys()):
+        mem = _active_memories[mem_id]
+        old_score = float(mem.get("score") or 0)
+        new_score = max(0.0, old_score - (_DECAY_RATE_PER_MINUTE * elapsed_minutes))
+        if new_score < 0.1:
+            _remove_persisted_memory(mem_id)
+            del _active_memories[mem_id]
+            evicted += 1
+        elif new_score < old_score:
+            mem["score"] = new_score
+            _persist_active_memory(mem)
+            decayed += 1
+
+    # 2. If room, scan for new candidates
+    max_active = _get_max_active()
+    if len(_active_memories) < max_active:
+        try:
+            from core.runtime.db import get_experiential_memory_candidates
+            from core.services.experiential_memory import score_memories_by_relevance
+
+            slots = max_active - len(_active_memories)
+            active_ids = set(_active_memories.keys())
+            candidates = get_experiential_memory_candidates(limit=10)
+            candidates = [c for c in candidates if c["memory_id"] not in active_ids]
+
+            _add_private_brain_candidates(candidates, "", limit=3)
+            _add_sensory_candidates(candidates, "", limit=2)
+            candidates = [c for c in candidates if c["memory_id"] not in active_ids]
+
+            if candidates:
+                # Score against current active memory topics as context
+                context = " ".join(str(m.get("topic") or "") for m in _active_memories.values())
+                scores = score_memories_by_relevance(
+                    candidates=candidates,
+                    context_text=context or "idle heartbeat",
+                    emotional_state={},
+                )
+                if scores:
+                    for memory_id, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
+                        if score < _get_weak_threshold():
+                            continue
+                        if refreshed >= slots:
+                            break
+                        candidate = next((c for c in candidates if c["memory_id"] == memory_id), None)
+                        if candidate:
+                            _add_to_active({**candidate, "score": score})
+                            refreshed += 1
+        except Exception as exc:
+            logger.debug("associative_recall: tick scan failed: %s", exc)
+
+    active_count = len(_active_memories)
+    result = {
+        "active_count": active_count,
+        "decayed": decayed,
+        "evicted": evicted,
+        "refreshed": refreshed,
+    }
+
+    if active_count > 0 or refreshed > 0:
+        logger.debug("associative_recall tick: %s", result)
+
+    return result
+

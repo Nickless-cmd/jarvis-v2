@@ -3269,6 +3269,17 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # --- Associative Recall (2 min) ---
+    if _dm.is_enabled("associative_recall"):
+        try:
+            from core.services.associative_recall import tick_associative_recall
+            _ar_result = _daemon_tick_with_deadline(
+                "associative_recall", tick_associative_recall, deadline_seconds=15.0,
+            )
+            _dm.record_daemon_tick("associative_recall", _ar_result or {})
+        except Exception:
+            pass
+
     # --- My Projects Watchdog (240 min) ---
     if _dm.is_enabled("my_projects_watchdog"):
         try:

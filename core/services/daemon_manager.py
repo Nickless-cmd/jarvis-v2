@@ -348,6 +348,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": True,
         "description": "Lag 3 (Lying Engine): 60min refresh af Ground Truth Registry — system_model, host, expression_count, commit_count, daemon_count",
     },
+    "associative_recall": {
+        "module": "core.services.associative_recall",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 2,
+        "default_enabled": True,
+        "description": "Associativ hukommelse: dormant memories trigged by context — queries experiential + private brain + sensory DBs, scores candidates, maintains persistent active memories",
+    },
 }
 
 

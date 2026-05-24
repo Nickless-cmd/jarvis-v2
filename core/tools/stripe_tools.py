@@ -12,11 +12,32 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import stripe
+# 2026-05-24 (Claude, after Codex audit): stripe is an optional dependency.
+# Hard-importing it broke `core.tools.simple_tools` for any environment
+# without the stripe pip package (CI, test envs, fresh installs). Now we
+# probe softly — if stripe isn't installed, all stripe tools return an
+# error dict at call time but the module still imports and the rest of
+# simple_tools stays usable.
+try:
+    import stripe  # type: ignore[import-not-found]
+    _STRIPE_AVAILABLE = True
+except ImportError:
+    stripe = None  # type: ignore[assignment]
+    _STRIPE_AVAILABLE = False
 
 from core.runtime.config import JARVIS_HOME
 
 logger = logging.getLogger(__name__)
+
+
+def _stripe_unavailable_response() -> dict[str, Any]:
+    return {
+        "status": "error",
+        "error": (
+            "stripe Python package not installed in this runtime. "
+            "Install with `pip install stripe` to enable financial tools."
+        ),
+    }
 
 # ── Config loading ───────────────────────────────────────────────────
 
@@ -38,6 +59,8 @@ def _load_stripe_key() -> str | None:
 
 def _init_stripe() -> str | None:
     """Initialise the Stripe SDK with the stored key. Returns mode label."""
+    if not _STRIPE_AVAILABLE:
+        return None
     key = _load_stripe_key()
     if not key:
         return None
@@ -62,6 +85,8 @@ def _to_dict(obj: Any) -> dict[str, Any]:
 
 def _exec_stripe_balance(_args: dict[str, Any]) -> dict[str, Any]:
     """Get the Stripe account balance."""
+    if not _STRIPE_AVAILABLE:
+        return _stripe_unavailable_response()
     mode = _init_stripe()
     if not mode:
         return {"status": "error", "error": "No Stripe API key configured. Add keys to runtime.json under 'stripe_api_keys'."}
@@ -91,6 +116,8 @@ def _exec_stripe_balance(_args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_stripe_transactions(args: dict[str, Any]) -> dict[str, Any]:
+    if not _STRIPE_AVAILABLE:
+        return _stripe_unavailable_response()
     """List recent balance transactions."""
     mode = _init_stripe()
     if not mode:
@@ -121,6 +148,8 @@ def _exec_stripe_transactions(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_stripe_payouts(args: dict[str, Any]) -> dict[str, Any]:
+    if not _STRIPE_AVAILABLE:
+        return _stripe_unavailable_response()
     """List recent payouts."""
     mode = _init_stripe()
     if not mode:
@@ -150,6 +179,8 @@ def _exec_stripe_payouts(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_stripe_create_issuing_card(args: dict[str, Any]) -> dict[str, Any]:
+    if not _STRIPE_AVAILABLE:
+        return _stripe_unavailable_response()
     """Create a virtual prepaid card via Stripe Issuing.
 
     NOTE: Requires Stripe Issuing to be enabled on the account.

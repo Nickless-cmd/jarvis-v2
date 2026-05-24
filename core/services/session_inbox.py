@@ -90,6 +90,12 @@ def is_session_active(session_id: str, *, window_seconds: int | None = None) -> 
 
     Checks the events table for channel.chat_message_appended events for
     this session within the active window. Cross-process safe.
+
+    2026-05-24 (Claude, after Codex audit): switched from LIKE substring
+    matching on payload_json to sqlite's json_extract(). The LIKE form
+    was fragile — any change to JSON whitespace, key order or escaping
+    would silently break the active-detection. json_extract reads the
+    typed field directly and is bound by sqlite, not by formatting.
     """
     if not session_id:
         return False
@@ -101,9 +107,9 @@ def is_session_active(session_id: str, *, window_seconds: int | None = None) -> 
                 """SELECT 1 FROM events
                    WHERE kind = 'channel.chat_message_appended'
                      AND created_at >= ?
-                     AND payload_json LIKE ?
+                     AND json_extract(payload_json, '$.session_id') = ?
                    LIMIT 1""",
-                (cutoff, f'%"session_id": "{session_id}"%'),
+                (cutoff, session_id),
             ).fetchone()
         return row is not None
     except Exception:

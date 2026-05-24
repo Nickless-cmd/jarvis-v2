@@ -18,7 +18,7 @@ import wave
 import numpy as np
 import webrtcvad
 
-PAREC_BIN = "/home/linuxbrew/.linuxbrew/bin/parec"
+PAREC_BIN = "/opt/conda/envs/ai/bin/parec"
 # Configurable so we don't have to edit code on mic swap.
 # 2026-05-09: switched from Logitech PRO to NOS X500 after gain-dump issues.
 MIC_SOURCE = os.environ.get(

@@ -428,7 +428,7 @@ def _get_topic_multiplier(topic: str) -> float:
 def _extract_keywords_llm(text: str) -> list[str]:
     """Extract keywords via cheap-lane LLM. Returns empty list on failure."""
     try:
-        from core.services.cheap_provider_runtime import call_cheap_provider
+        from core.services.cheap_provider_runtime import execute_public_safe_cheap_lane
 
         prompt = (
             "Extract 3-5 key topics/keywords from this message. "
@@ -436,18 +436,13 @@ def _extract_keywords_llm(text: str) -> list[str]:
             "Focus on concrete topics, technical terms, and named entities.\n\n"
             f"Message: {text[:500]}"
         )
-        result = call_cheap_provider(
-            prompt=prompt,
-            system="You are a keyword extractor. Return only JSON arrays.",
-            temperature=0.1,
-            max_tokens=80,
-        )
-        if result and result.strip():
+        result = execute_public_safe_cheap_lane(message=prompt)
+        response_text = str((result or {}).get("text") or "")
+        if response_text and response_text.strip():
             # Parse JSON array from response
-            cleaned = result.strip().strip("`").strip()
+            cleaned = response_text.strip().strip("`").strip()
             if cleaned.startswith("["):
-                import json as _json
-                keywords = _json.loads(cleaned)
+                keywords = json.loads(cleaned)
                 if isinstance(keywords, list):
                     return [str(k).lower().strip()[:50] for k in keywords[:5] if str(k).strip()]
     except Exception as exc:

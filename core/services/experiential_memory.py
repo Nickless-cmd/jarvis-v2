@@ -300,35 +300,30 @@ def _build_scoring_prompt(
 
 
 def _call_scoring_llm(target: dict[str, object], prompt: str) -> str:
-    """Score memories with cloud-first / local-fallback strategy.
+    """Score memories via cheap-lane provider pool.
 
-    2026-04-29: scoring prompts are public-safe (200-char user-message
-    snippet + 80-char memory narrative snippets, no identity context).
-    Per project norms (see prompt_relevance_backend) this content class
-    is acceptable for OllamaFreeAPI cloud calls. We try cloud first
-    (typical 0.7-1.5s) and fall back to local Ollama (3s ceiling).
+    2026-05-24: migrated from ollamafreeapi→local-ollama fallback to the
+    cheap-lane provider pool (execute_cheap_lane_via_pool). The pool
+    auto-selects the healthiest cloud provider (nvidia-nim, openrouter,
+    sambanova, mistral, groq, etc.) with quota management and adaptive
+    backoff — no local models, no hardcoded single-provider dependency.
 
-    The local Ollama path is preserved unchanged as the safety net —
-    if cloud is down or rate-limited, scoring still works at the
-    higher local-Ollama latency.
+    Public-safe note: scoring prompts are 200-char user-message snippets
+    + 80-char memory narrative snippets with no identity context, so
+    they're safe for commercial APIs.
     """
     try:
-        from core.runtime.settings import load_settings
-        primary = str(
-            getattr(load_settings(), "memory_scoring_primary", "ollamafreeapi") or ""
-        ).strip().lower()
-    except Exception:
-        primary = "ollamafreeapi"
-
-    if primary == "ollamafreeapi":
-        cloud_text = _call_scoring_llm_ollamafreeapi(prompt)
-        if cloud_text:
-            return cloud_text
-        logger.info(
-            "experiential_memory: cloud scoring unavailable, falling back to local Ollama"
+        from core.services.cheap_provider_runtime import execute_cheap_lane_via_pool
+        result = execute_cheap_lane_via_pool(
+            message=prompt,
+            task_kind="default",
         )
-
-    return _call_scoring_llm_local(target, prompt)
+        text = str(result.get("text") or "").strip()
+        if text:
+            return text
+    except Exception:
+        logger.debug("experiential_memory: cheap-lane scoring failed", exc_info=True)
+    return ""
 
 
 def _call_scoring_llm_ollamafreeapi(prompt: str) -> str:

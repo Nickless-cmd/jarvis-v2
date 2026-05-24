@@ -41,6 +41,42 @@ _topic_history: deque[str] = deque(maxlen=_TOPIC_WINDOW)
 
 
 # ---------------------------------------------------------------------------
+# Settings getters (must be defined before any module-level code that calls them)
+# ---------------------------------------------------------------------------
+
+def _get_strong_threshold() -> float:
+    try:
+        from core.runtime.settings import load_settings
+        return float(load_settings().recall_strong_threshold)
+    except Exception:
+        return 0.7
+
+
+def _get_weak_threshold() -> float:
+    try:
+        from core.runtime.settings import load_settings
+        return float(load_settings().recall_weak_threshold)
+    except Exception:
+        return 0.3
+
+
+def _get_max_active() -> int:
+    try:
+        from core.runtime.settings import load_settings
+        return int(load_settings().recall_max_active)
+    except Exception:
+        return 5
+
+
+def _get_repetition_multiplier() -> float:
+    try:
+        from core.runtime.settings import load_settings
+        return float(load_settings().recall_repetition_multiplier)
+    except Exception:
+        return 1.5
+
+
+# ---------------------------------------------------------------------------
 # DB persistence helpers
 # ---------------------------------------------------------------------------
 
@@ -153,38 +189,6 @@ def _clear_persisted_memories() -> None:
 _active_memories = _load_active_memories_from_db()
 
 
-def _get_strong_threshold() -> float:
-    try:
-        from core.runtime.settings import load_settings
-        return float(load_settings().recall_strong_threshold)
-    except Exception:
-        return 0.7
-
-
-def _get_weak_threshold() -> float:
-    try:
-        from core.runtime.settings import load_settings
-        return float(load_settings().recall_weak_threshold)
-    except Exception:
-        return 0.3
-
-
-def _get_max_active() -> int:
-    try:
-        from core.runtime.settings import load_settings
-        return int(load_settings().recall_max_active)
-    except Exception:
-        return 5
-
-
-def _get_repetition_multiplier() -> float:
-    try:
-        from core.runtime.settings import load_settings
-        return float(load_settings().recall_repetition_multiplier)
-    except Exception:
-        return 1.5
-
-
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -293,7 +297,10 @@ def recall_for_message(
     )
 
     if not scores:
-        return []
+        # Fallback: activate top-2 by importance when LLM scoring fails
+        for c in candidates[:2]:
+            _add_to_active({**c, "score": c["importance"]})
+        return list(_active_memories.values())
 
     # Apply topic repetition multiplier
     for memory_id in list(scores.keys()):
@@ -535,7 +542,7 @@ def _add_private_brain_candidates(
     """
     try:
         from core.runtime.db import get_salient_private_brain_records
-        records = get_salient_private_brain_records(min_salience=0.3, limit=limit)
+        records = get_salient_private_brain_records(threshold=0.3, limit=limit)
         existing_ids = {str(c.get("memory_id") or "") for c in candidates}
         for r in records:
             record_id = str(r.get("record_id") or "")
@@ -706,6 +713,12 @@ def tick_associative_recall() -> dict[str, Any]:
                         candidate = next((c for c in candidates if c["memory_id"] == memory_id), None)
                         if candidate:
                             _add_to_active({**candidate, "score": score})
+                            refreshed += 1
+                else:
+                    # Fallback: activate by importance when LLM scoring fails
+                    for c in candidates[:slots]:
+                        if float(c.get("importance") or 0) >= 0.3:
+                            _add_to_active({**c, "score": c["importance"]})
                             refreshed += 1
         except Exception as exc:
             logger.debug("associative_recall: tick scan failed: %s", exc)

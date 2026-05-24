@@ -996,6 +996,11 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             "session_id": run.session_id,
                             "created_at": created_at,
                         }
+                        # 2026-05-24 (Claude): tag the sr so the persistence
+                        # loop can later check if resolve_pending_approval
+                        # already wrote role=tool to chat (chat_persisted flag
+                        # in approval state).
+                        sr["approval_id"] = approval_id
                         _persist_pending_approvals()
                         _set_visible_approval_state(approval_id, {
                             "approval_id": approval_id,
@@ -1088,17 +1093,34 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     })
 
                 # Persist tool results to session DB after all approvals are resolved.
+                # 2026-05-24 (Claude): skip when resolve_pending_approval already
+                # persisted (chat_persisted=True flag in approval state). This
+                # avoids duplicate role=tool messages when the user approves
+                # while the stream is still active — both code paths used to
+                # race to append.
                 if run.session_id:
                     for _idx, sr in enumerate(simple_results):
                         result_text = _resolved_result_texts.get(_idx, sr.get("result_text", ""))
-                        if result_text and sr.get("status") not in ("duplicate_suppressed", "gate_blocked"):
-                            append_chat_message(
-                                session_id=run.session_id,
-                                role="tool",
-                                content=result_text,
-                                tool_name=str(sr.get("tool_name") or ""),
-                                tool_arguments=dict(sr.get("arguments") or {}),
-                            )
+                        if not result_text:
+                            continue
+                        if sr.get("status") in ("duplicate_suppressed", "gate_blocked"):
+                            continue
+                        # Check if approval-path already persisted this tool result
+                        _aid = sr.get("approval_id") or ""
+                        if _aid:
+                            try:
+                                _astate = _get_visible_approval_state(str(_aid)) or {}
+                                if _astate.get("chat_persisted"):
+                                    continue
+                            except Exception:
+                                pass
+                        append_chat_message(
+                            session_id=run.session_id,
+                            role="tool",
+                            content=result_text,
+                            tool_name=str(sr.get("tool_name") or ""),
+                            tool_arguments=dict(sr.get("arguments") or {}),
+                        )
 
                 # ── Agentic follow-up loop ────────────────────────────────────────────
                 # Runs up to _AGENTIC_MAX_ROUNDS LLM passes after the first-pass
@@ -1834,6 +1856,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 "session_id": run.session_id,
                                 "created_at": _a_created_at,
                             }
+                            # Tag the sr so the second-pass agentic loop's
+                            # persistence can later check chat_persisted flag.
+                            _a_sr["approval_id"] = _a_apid
                             _persist_pending_approvals()
                             _set_visible_approval_state(_a_apid, {
                                 "approval_id": _a_apid,
@@ -1925,18 +1950,32 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             "status": "done",
                         })
 
-                    # Persist tool results to DB
+                    # Persist tool results to DB.
+                    # 2026-05-24 (Claude): skip when resolve_pending_approval
+                    # already persisted (chat_persisted flag). Same dedup logic
+                    # as first-pass persistence above.
                     if run.session_id:
                         for _a_idx, _a_sr in enumerate(_a_results):
                             _a_rt = _a_resolved.get(_a_idx, _a_sr.get("result_text", ""))
-                            if _a_rt and _a_sr.get("status") not in ("duplicate_suppressed", "gate_blocked"):
-                                append_chat_message(
-                                    session_id=run.session_id,
-                                    role="tool",
-                                    content=_a_rt,
-                                    tool_name=str(_a_sr.get("tool_name") or ""),
-                                    tool_arguments=dict(_a_sr.get("arguments") or {}),
-                                )
+                            if not _a_rt:
+                                continue
+                            if _a_sr.get("status") in ("duplicate_suppressed", "gate_blocked"):
+                                continue
+                            _a_aid = _a_sr.get("approval_id") or ""
+                            if _a_aid:
+                                try:
+                                    _a_astate = _get_visible_approval_state(str(_a_aid)) or {}
+                                    if _a_astate.get("chat_persisted"):
+                                        continue
+                                except Exception:
+                                    pass
+                            append_chat_message(
+                                session_id=run.session_id,
+                                role="tool",
+                                content=_a_rt,
+                                tool_name=str(_a_sr.get("tool_name") or ""),
+                                tool_arguments=dict(_a_sr.get("arguments") or {}),
+                            )
 
                     _followup_exchanges.append(
                         _vf.ToolExchange(
@@ -3878,6 +3917,35 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
     result = execute_tool_force(pending["tool_name"], pending["arguments"])
     result_text = format_tool_result_for_model(pending["tool_name"], result)
 
+    # 2026-05-24 (Claude): persist tool result as role=tool in chat
+    # transcript here too. Previously this was only done inside the
+    # streaming run's tool-loop (visible_runs.py line ~1095). When the
+    # streaming run timed out or disconnected before the user clicked
+    # Approve, the tool would execute on approval but the result never
+    # reached chat_messages — leaving Jarvis blind to it on the next
+    # turn. Now we append from here AND set a dedupe marker so the
+    # streaming path can skip its own append when it sees we already
+    # persisted (avoiding duplicate role=tool messages when the stream
+    # is still active and racing with resolve_pending_approval).
+    chat_persisted = False
+    session_id = str(pending.get("session_id") or "")
+    if session_id:
+        try:
+            # Use the module-level import so monkeypatching in tests works.
+            append_chat_message(
+                session_id=session_id,
+                role="tool",
+                content=result_text,
+                tool_name=str(pending.get("tool_name") or ""),
+                tool_arguments=dict(pending.get("arguments") or {}),
+            )
+            chat_persisted = True
+        except Exception:
+            logger.exception(
+                "resolve_pending_approval: chat persistence failed for %s",
+                approval_id,
+            )
+
     event_bus.publish("tool.approval_resolved", {
         "approval_id": approval_id,
         "tool": pending["tool_name"],
@@ -3894,6 +3962,7 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
             "resolved_at": datetime.now(UTC).isoformat(),
             "tool_status": result.get("status", "ok"),
             "result_text": result_text,
+            "chat_persisted": chat_persisted,
         },
     )
 
@@ -3901,6 +3970,7 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
         "status": result.get("status", "ok"),
         "tool": pending["tool_name"],
         "result_text": result_text,
+        "chat_persisted": chat_persisted,
     }
 
 

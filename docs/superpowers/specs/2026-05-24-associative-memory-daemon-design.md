@@ -1,7 +1,7 @@
 # Associativ hukommelses-daemon — design
 
 **Dato:** 2026-05-24
-**Status:** Design godkendt af Bjørn — arkitektur-revideret (udvidelse, ikke erstatning)
+**Status:** ✅ Implementeret — `9134b2f9`
 **Forfatter:** Jarvis (efter Bjørns idé)
 
 ## Problem

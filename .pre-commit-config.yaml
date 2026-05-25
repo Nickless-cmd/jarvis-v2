@@ -34,6 +34,18 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Pre-commit: block kitchen-sink commits (mix of code + scaffolding,
+      # or >20 files across multiple top-level domains). Catches the
+      # 2026-05-25 anti-pattern where Jarvis bundled 8400+ lines of
+      # composio scaffolding into a "spec revision" commit.
+      - id: enforce-commit-hygiene
+        name: Block kitchen-sink commits
+        entry: /opt/conda/envs/ai/bin/python scripts/enforce_commit_hygiene.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       - id: jarvis-runtime-startup-smoke
         name: Jarvis runtime startup smoke test
         entry: /opt/conda/envs/ai/bin/python scripts/smoke_test_startup.py

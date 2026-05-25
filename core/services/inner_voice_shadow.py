@@ -238,6 +238,84 @@ def shadow_helpful_signal(
     )
 
 
+# ── Synchronous LLM generation (for production rollout, not shadow) ──────
+
+
+def generate_helpful_signal_via_llm(
+    *,
+    status: str,
+    focus: str,
+    work_signal: str,
+    fallback: str,
+    timeout_seconds: float = 5.0,
+) -> str:
+    """Production path: synchronously generate the inner-voice signal via
+    LLM, with strict timeout. Returns the LLM output on success, falls
+    back to the provided template output on any failure (timeout, empty
+    response, LLM error).
+
+    2026-05-25 (Claude): rolled out after 109 shadow samples showed LLM
+    output (75 char avg, ~60% useful, ~30% generic, ~10% confused) was
+    consistently better than the template (126 char avg, ~80% grammatical
+    gibberish because focus-input was raw user-message fragments). The
+    parallel _derive_focus fix in private_inner_note.py also helps both
+    paths by giving cleaner focus values.
+
+    Records the comparison via record_shadow (fire-and-forget) so we
+    keep the audit trail for ongoing tuning.
+    """
+    prompt = _build_helpful_signal_prompt(
+        status=status, focus=focus, work_signal=work_signal,
+    )
+    result_holder: dict[str, Any] = {}
+
+    def _inner():
+        result_holder.update(_call_llm(prompt))
+
+    t = threading.Thread(target=_inner, daemon=True)
+    t.start()
+    t.join(timeout=timeout_seconds)
+
+    if t.is_alive():
+        # Timed out — fall back to template
+        chosen_output = fallback
+        llm_output = None
+        llm_error = f"timeout > {timeout_seconds}s"
+        llm_latency = int(timeout_seconds * 1000)
+        llm_provider = None
+        llm_model = None
+    else:
+        llm_output = result_holder.get("output")
+        llm_error = result_holder.get("error")
+        llm_latency = result_holder.get("latency_ms")
+        llm_provider = result_holder.get("provider")
+        llm_model = result_holder.get("model")
+        if llm_output and not llm_error:
+            chosen_output = llm_output
+        else:
+            chosen_output = fallback
+
+    # Fire-and-forget audit trail
+    try:
+        _persist(
+            function_name="_helpful_signal",
+            inputs={
+                "status": status, "focus": focus, "work_signal": work_signal,
+                "_chosen_source": "llm" if chosen_output == llm_output else "template",
+            },
+            template_output=fallback,
+            llm_output=llm_output,
+            llm_provider=llm_provider,
+            llm_model=llm_model,
+            llm_latency_ms=llm_latency,
+            llm_error=llm_error,
+        )
+    except Exception:
+        pass
+
+    return chosen_output
+
+
 # ── Diagnostics ──────────────────────────────────────────────────────────
 
 

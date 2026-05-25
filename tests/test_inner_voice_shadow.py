@@ -35,13 +35,12 @@ def _wait_for_shadow_thread():
             t.join(timeout=15)
 
 
-# ── Template path unaffected ─────────────────────────────────────────────
+# ── Production contract: LLM-primary, template fallback ─────────────────
 
 
-def test_helpful_signal_return_unchanged(tmp_db, monkeypatch):
-    """Production behavior of _helpful_signal must be identical regardless
-    of shadow-recording success/failure."""
-    # Force LLM call to fail — return value must still match templates
+def test_helpful_signal_falls_back_to_template_on_llm_failure(tmp_db, monkeypatch):
+    """When LLM call fails (error/timeout/empty), _helpful_signal must
+    fall back to the template output — heartbeat must never break."""
     import core.services.inner_voice_shadow as shadow_mod
 
     def _failing_llm(prompt):
@@ -54,16 +53,19 @@ def test_helpful_signal_return_unchanged(tmp_db, monkeypatch):
     out = _helpful_signal(
         status="completed", focus="cache-fix", work_signal="completed:cache",
     )
+    # Falls back to template
     assert "holde fast" in out
     assert len(out) <= 140
 
 
-def test_helpful_signal_all_status_paths_unchanged(tmp_db, monkeypatch):
+def test_helpful_signal_returns_llm_output_when_succeeds(tmp_db, monkeypatch):
+    """2026-05-25 rollout: LLM output IS what _helpful_signal returns now
+    (was template-only before). Template becomes fallback path."""
     import core.services.inner_voice_shadow as shadow_mod
     monkeypatch.setattr(
         shadow_mod, "_call_llm",
-        lambda _: {"output": "x", "provider": "p", "model": "m",
-                   "latency_ms": 100, "error": None},
+        lambda _: {"output": "LLM-skrevet kort note.", "provider": "p",
+                   "model": "m", "latency_ms": 100, "error": None},
     )
     from core.memory.private_growth_note import _helpful_signal
 
@@ -72,10 +74,11 @@ def test_helpful_signal_all_status_paths_unchanged(tmp_db, monkeypatch):
     observe = _helpful_signal(status="observe", focus="f", work_signal="")
     unknown = _helpful_signal(status="weird", focus="f", work_signal="")
 
-    assert "holde fast" in completed
-    assert "varsom" in failed
-    assert "følge tråden" in observe
-    assert unknown == "weird"
+    # All four paths return the LLM output (LLM succeeded for each)
+    assert completed == "LLM-skrevet kort note."
+    assert failed == "LLM-skrevet kort note."
+    assert observe == "LLM-skrevet kort note."
+    assert unknown == "LLM-skrevet kort note."
 
 
 # ── Shadow recording ────────────────────────────────────────────────────

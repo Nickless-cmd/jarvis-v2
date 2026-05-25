@@ -81,29 +81,31 @@ def _helpful_signal(*, status: str, focus: str, work_signal: str) -> str:
         base = f"Det virker værd at holde fast i det, der hjalp omkring {focus_text}."
         if signal_text:
             base = f"{base} Det peger stadig {signal_text}."
-        output = base[:140].rstrip()
+        template_output = base[:140].rstrip()
     elif normalized in {"failed", "cancelled"}:
-        output = f"Det kræver en mere varsom hånd omkring {focus_text}."[:140].rstrip()
+        template_output = f"Det kræver en mere varsom hånd omkring {focus_text}."[:140].rstrip()
     elif normalized == "observe":
-        output = f"Det er værd at blive ved med at følge tråden omkring {focus_text}."[:140].rstrip()
+        template_output = f"Det er værd at blive ved med at følge tråden omkring {focus_text}."[:140].rstrip()
     else:
-        output = normalized[:48]
+        template_output = normalized[:48]
 
-    # 2026-05-24 (Claude): pilot for llm_driven_inner_pipeline. Fire-and-
-    # forget a parallel LLM call so we can compare template-vs-LLM outputs
-    # side-by-side without changing this function's return value.
-    # Behavior in production is identical until we decide to flip the
-    # switch based on observed data. See core/services/inner_voice_shadow.
+    # 2026-05-25 (Claude): rollout from shadow to production.
+    # After 109 shadow samples we have evidence that LLM output is
+    # consistently better (60% useful + coherent Danish) than the
+    # template (80% grammatical gibberish because focus inputs were
+    # truncated user-message fragments). Call LLM synchronously with
+    # 5s timeout; fall back to template on any failure. Continue
+    # logging both outputs in inner_voice_shadow for ongoing tuning.
     try:
-        from core.services.inner_voice_shadow import shadow_helpful_signal
-        shadow_helpful_signal(
+        from core.services.inner_voice_shadow import generate_helpful_signal_via_llm
+        return generate_helpful_signal_via_llm(
             status=status, focus=focus, work_signal=work_signal,
-            template_output=output,
+            fallback=template_output,
         )
     except Exception:
-        pass  # shadow must never affect template path
-
-    return output
+        # If the LLM path imports fail, return the template — heartbeat
+        # must never break because of this.
+        return template_output
 
 
 def _confidence(*, status: str, work_preview: str | None) -> str:

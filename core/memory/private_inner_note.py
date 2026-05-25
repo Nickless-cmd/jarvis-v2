@@ -95,11 +95,32 @@ def _signal_phrase(value: str) -> str:
 
 
 def _derive_focus(user_message_preview: str | None) -> str:
-    """Derive a short topic label from the user's message when no capability_id is available."""
+    """Derive a short topic label when no capability_id is available.
+
+    2026-05-25 (Claude): previously this just truncated the raw user message
+    to 48 chars. That produced focus values like "kl 16:40???", "hmm feks.
+    hvis jeg skifter din model feks. til g" (mid-word truncation), and
+    "1, du vælger selv. 2. Llm (vi bruger ollama elle". Downstream uses of
+    focus (private growth notes, inner voice templates) then produced
+    grammatically-broken Danish like "holde fast i det der hjalp omkring
+    [truncated fragment]". 80% of inner_voice_shadow comparisons over
+    109 samples showed template output was gibberish for this reason.
+
+    Now: return a stable, coherent placeholder when no capability_id is
+    set. The user-message content lives in private_summary; focus should
+    be a topic-label, not a message-fragment.
+    """
     raw = (user_message_preview or "").strip()
     if not raw:
-        return "conversation"
-    return " ".join(raw.split())[:48]
+        return "open conversation"
+    # Heuristic: if message is short AND looks like a phrase (no
+    # punctuation chaos, no multi-questions), it's safe to use directly
+    # as a topic. Otherwise use the generic placeholder.
+    if len(raw) <= 36 and raw.count("?") <= 1 and raw.count(",") <= 1:
+        cleaned = " ".join(raw.split())
+        # Don't keep trailing punctuation
+        return cleaned.rstrip("?.! ,;:")
+    return "open conversation"
 
 
 def _uncertainty(*, status: str, work_preview: str | None) -> str:

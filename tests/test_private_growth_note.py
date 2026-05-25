@@ -19,11 +19,25 @@ from core.memory.private_growth_note import (
 
 @pytest.fixture(autouse=True)
 def _stub_shadow(monkeypatch):
-    """Disable the LLM shadow side-effect for these template-invariant tests.
-    Shadow-side coverage lives in tests/test_inner_voice_shadow.py.
+    """Pin the template fallback path for these template-invariant tests.
+
+    2026-05-25 (Claude): _helpful_signal now calls generate_helpful_signal_via_llm
+    which returns the LLM output (or template fallback on failure). For tests
+    that verify TEMPLATE behavior specifically, we stub the LLM generator to
+    always return its fallback argument. The actual LLM path is tested in
+    tests/test_inner_voice_shadow.py.
     """
     import core.services.inner_voice_shadow as shadow_mod
-    monkeypatch.setattr(shadow_mod, "shadow_helpful_signal", lambda **kw: None)
+
+    # Old shadow API (kept for safety if any test path still uses it)
+    monkeypatch.setattr(
+        shadow_mod, "shadow_helpful_signal", lambda **kw: None,
+    )
+    # New sync-LLM API: always return fallback (template)
+    monkeypatch.setattr(
+        shadow_mod, "generate_helpful_signal_via_llm",
+        lambda *, status, focus, work_signal, fallback, timeout_seconds=5.0: fallback,
+    )
 
 
 def test_helpful_signal_completed_returns_template_string():

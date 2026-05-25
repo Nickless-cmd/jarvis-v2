@@ -25,7 +25,9 @@ SKIP_SUFFIXES = ("__init__.py", "__main__.py", "_pb2.py", "_pb2_grpc.py")
 COVERED_DIRS = ("core/",)
 
 # Few known modules whose tests live in non-standard locations
-KNOWN_MAPPINGS: dict[str, str] = {}
+KNOWN_MAPPINGS: dict[str, str] = {
+    "core/services/tool_router.py": "tests/services/test_tool_router.py",
+}
 
 
 def _is_covered(path: str) -> bool:

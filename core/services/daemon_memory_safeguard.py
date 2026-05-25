@@ -10,9 +10,12 @@ appends a nudge to the next prompt via the initiative queue.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from typing import Any
+
+from core.runtime.db import connect
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,66 @@ _SAVE_TOOLS = {
     "write_file",  # writing to MEMORY.md / USER.md counts
     "edit_file",   # editing those files counts too
 }
+
+
+def build_memory_safeguard_surface() -> dict[str, Any]:
+    """Mission Control surface for the memory safeguard daemon.
+
+    Read-only projection over missed-save events and static guardrails.
+    """
+    try:
+        with connect() as c:
+            missed_24h = c.execute(
+                "SELECT COUNT(*) FROM events WHERE kind = 'memory_safeguard.missed_save' "
+                "AND created_at >= datetime('now', '-24 hours')"
+            ).fetchone()[0]
+            missed_7d = c.execute(
+                "SELECT COUNT(*) FROM events WHERE kind = 'memory_safeguard.missed_save' "
+                "AND created_at >= datetime('now', '-7 days')"
+            ).fetchone()[0]
+            latest = c.execute(
+                "SELECT id, payload_json, created_at FROM events "
+                "WHERE kind = 'memory_safeguard.missed_save' "
+                "ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+    except Exception as exc:
+        return {
+            "active": False,
+            "mode": "daemon-memory-safeguard",
+            "summary": {"error": str(exc)},
+            "authority": "event-derived-read-only",
+        }
+
+    latest_missed_save = None
+    if latest is not None:
+        try:
+            payload = json.loads(latest["payload_json"] or "{}")
+        except (TypeError, ValueError):
+            payload = {}
+        latest_missed_save = {
+            "event_id": int(latest["id"]),
+            "created_at": str(latest["created_at"] or ""),
+            "hint": payload.get("hint"),
+            "message_preview": payload.get("message_preview"),
+        }
+
+    return {
+        "active": True,
+        "mode": "daemon-memory-safeguard",
+        "summary": {
+            "missed_save_24h": int(missed_24h),
+            "missed_save_7d": int(missed_7d),
+            "status": "watching-assistant-learning-markers",
+        },
+        "latest_missed_save": latest_missed_save,
+        "learning_markers": _LEARNING_MARKERS.pattern,
+        "save_tools": sorted(_SAVE_TOOLS),
+        "runtime_effects": [
+            "publishes memory_safeguard.missed_save when a learnable assistant turn has no recent save tool",
+            "returns nudge_fired to heartbeat caller",
+        ],
+        "authority": "event-derived-read-only",
+    }
 
 
 def run(**kwargs: Any) -> dict[str, Any]:

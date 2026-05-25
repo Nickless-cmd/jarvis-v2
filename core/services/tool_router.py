@@ -11,6 +11,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import connect
@@ -129,6 +130,134 @@ def _load_more_rate_7d() -> float:
         return float(load_more) / float(decisions)
     except Exception:
         return 0.0
+
+
+def _confidence_buckets(values: list[float], n_buckets: int = 10) -> list[int]:
+    buckets = [0] * n_buckets
+    for value in values:
+        idx = min(n_buckets - 1, max(0, int(float(value) * n_buckets)))
+        buckets[idx] += 1
+    return buckets
+
+
+def _count_missed_tools(rows) -> list[dict[str, object]]:
+    counts: dict[str, int] = {}
+    for row in rows:
+        try:
+            names = json.loads(row[0] or "[]")
+        except Exception:
+            names = []
+        for name in names:
+            if isinstance(name, str) and name:
+                counts[name] = counts.get(name, 0) + 1
+    return [
+        {"name": name, "count": count}
+        for name, count in sorted(counts.items(), key=lambda item: item[1], reverse=True)[:10]
+    ]
+
+
+def build_tool_router_surface() -> dict[str, object]:
+    """Mission Control surface for tool router state.
+
+    Read-only projection: observes persisted router decisions and config,
+    but never invokes tool selection or imports the full tool registry.
+    """
+    settings = RuntimeSettings()
+    now = datetime.now(timezone.utc)
+    today_iso = now.strftime("%Y-%m-%dT00:00:00+00:00")
+    d7_iso = (now - timedelta(days=7)).isoformat()
+
+    try:
+        with connect() as c:
+            decisions_today = c.execute(
+                "SELECT COUNT(*) FROM tool_router_decisions WHERE created_at >= ?",
+                (today_iso,),
+            ).fetchone()[0]
+            decisions_7d = c.execute(
+                "SELECT COUNT(*) FROM tool_router_decisions WHERE created_at >= ?",
+                (d7_iso,),
+            ).fetchone()[0]
+            fallback_7d = c.execute(
+                "SELECT COUNT(*) FROM tool_router_decisions "
+                "WHERE fallback_used = 1 AND created_at >= ?",
+                (d7_iso,),
+            ).fetchone()[0]
+            load_more_7d = c.execute(
+                "SELECT COUNT(*) FROM tool_router_load_more WHERE created_at >= ?",
+                (d7_iso,),
+            ).fetchone()[0]
+            avg_saved = c.execute(
+                "SELECT AVG(tokens_saved_estimate) FROM tool_router_decisions "
+                "WHERE created_at >= ?",
+                (d7_iso,),
+            ).fetchone()[0] or 0
+            avg_elapsed = c.execute(
+                "SELECT AVG(elapsed_ms) FROM tool_router_decisions WHERE created_at >= ?",
+                (d7_iso,),
+            ).fetchone()[0] or 0
+            confidence_rows = c.execute(
+                "SELECT confidence FROM tool_router_decisions WHERE created_at >= ?",
+                (d7_iso,),
+            ).fetchall()
+            recent_rows = c.execute(
+                "SELECT created_at, user_message_preview, confidence, threshold, "
+                "fallback_used, fallback_reason, "
+                "json_array_length(selected_names_json) AS selected_count, elapsed_ms "
+                "FROM tool_router_decisions ORDER BY id DESC LIMIT 10"
+            ).fetchall()
+            miss_rows = c.execute(
+                "SELECT resolved_names_json FROM tool_router_load_more WHERE created_at >= ?",
+                (d7_iso,),
+            ).fetchall()
+    except Exception as exc:
+        logger.warning("tool_router surface query failed: %s", exc)
+        return {
+            "active": False,
+            "mode": "tool-router",
+            "enabled": bool(settings.tool_router_enabled),
+            "summary": {"error": str(exc)},
+            "authority": "db-derived-read-only",
+        }
+
+    fallback_rate = (float(fallback_7d) / float(decisions_7d)) if decisions_7d else 0.0
+    load_more_rate = (float(load_more_7d) / float(decisions_7d)) if decisions_7d else 0.0
+    confidences = [float(r[0]) for r in confidence_rows if r[0] is not None]
+
+    return {
+        "active": bool(settings.tool_router_enabled),
+        "mode": "tool-router",
+        "enabled": bool(settings.tool_router_enabled),
+        "config": {
+            "threshold": settings.tool_router_threshold,
+            "always_core_size": settings.tool_router_always_core_size,
+            "k_embeddings": settings.tool_router_k_embeddings,
+            "embedding_model": settings.tool_router_embedding_model,
+        },
+        "summary": {
+            "decisions_today": int(decisions_today),
+            "decisions_7d": int(decisions_7d),
+            "fallback_rate_7d": fallback_rate,
+            "load_more_rate_7d": load_more_rate,
+            "avg_tokens_saved_7d": int(avg_saved),
+            "avg_elapsed_ms": float(avg_elapsed),
+        },
+        "confidence_histogram": _confidence_buckets(confidences),
+        "top_missed_tools_7d": _count_missed_tools(miss_rows),
+        "recent_decisions": [
+            {
+                "at": row[0],
+                "preview": row[1],
+                "confidence": row[2],
+                "threshold": row[3],
+                "fallback_used": bool(row[4]),
+                "fallback_reason": row[5],
+                "selected_count": row[6],
+                "elapsed_ms": row[7],
+            }
+            for row in recent_rows
+        ],
+        "authority": "db-derived-read-only",
+    }
 
 
 def select_tools(

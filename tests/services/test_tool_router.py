@@ -81,6 +81,25 @@ def test_always_core_falls_back_to_bootstrap(monkeypatch):
     assert out == tr._BOOTSTRAP_FALLBACK_CORE
 
 
+def test_build_tool_router_surface_is_read_only_projection():
+    surface = tr.build_tool_router_surface()
+
+    assert surface["mode"] == "tool-router"
+    assert surface["authority"] == "db-derived-read-only"
+    assert "config" in surface
+    assert "summary" in surface
+    assert "recent_decisions" in surface
+    assert "top_missed_tools_7d" in surface
+
+
+def test_tool_router_surface_registered_in_signal_router():
+    from core.services.signal_surface_router import get_surface_names, read_surface
+
+    assert "tool_router" in get_surface_names()
+    surface = read_surface("tool_router")
+    assert surface["mode"] == "tool-router"
+
+
 class _FakeEmptyDB:
     def __enter__(self): return self
     def __exit__(self, *a): pass

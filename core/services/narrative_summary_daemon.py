@@ -225,3 +225,61 @@ def tick_narrative_summary_daemon() -> dict[str, Any]:
         )
         _last_tick_at = now
         return {"ran": False, "error": str(exc)}
+
+
+def build_narrative_summary_surface() -> dict[str, Any]:
+    """Mission Control surface for the latest narrative summary.
+
+    Read-only projection over narrative.summary events. This gives System
+    Cartographer a local MC surface marker for the daemon's runtime influence
+    without adding a second truth store.
+    """
+    try:
+        with connect() as c:
+            row = c.execute(
+                """SELECT id, payload_json, created_at
+                   FROM events
+                   WHERE kind = 'narrative.summary'
+                   ORDER BY id DESC LIMIT 1"""
+            ).fetchone()
+    except Exception as exc:
+        return {
+            "active": False,
+            "mode": "narrative-summary-daemon",
+            "error": str(exc),
+            "authority": "event-derived-read-only",
+        }
+
+    if row is None:
+        return {
+            "active": False,
+            "mode": "narrative-summary-daemon",
+            "latest_summary": "",
+            "latest": None,
+            "summary": "No narrative.summary event recorded yet.",
+            "authority": "event-derived-read-only",
+        }
+
+    try:
+        payload = json.loads(row["payload_json"] or "{}")
+    except (ValueError, TypeError):
+        payload = {}
+    latest = {
+        "event_id": int(row["id"]),
+        "created_at": str(row["created_at"] or ""),
+        "anchor_event_id": payload.get("anchor_event_id"),
+        "anchor_kind": payload.get("anchor_kind"),
+        "summary": str(payload.get("summary") or ""),
+        "model": payload.get("model"),
+    }
+    return {
+        "active": bool(latest["summary"]),
+        "mode": "narrative-summary-daemon",
+        "latest_summary": latest["summary"],
+        "latest": latest,
+        "summary": latest["summary"] or "Latest narrative.summary has no summary text.",
+        "cadence_seconds": _CADENCE_SECONDS,
+        "dedupe_window_minutes": _DEDUPE_WINDOW_MINUTES,
+        "lookback_minutes": _LOOKBACK_MINUTES,
+        "authority": "event-derived-read-only",
+    }

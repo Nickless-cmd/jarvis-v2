@@ -146,3 +146,36 @@ def test_tick_respects_cadence():
     result = nsd.tick_narrative_summary_daemon()
     assert result["ran"] is False
     assert result["reason"] == "cadence-not-elapsed"
+
+
+def test_build_narrative_summary_surface_reads_latest_event():
+    """Mission Control surface exposes the latest persisted narrative summary."""
+    anchor_id = _insert_event("runtime.visible_run_started", _recent_iso(3))
+    _insert_event("narrative.summary", _recent_iso(1))
+    with connect() as c:
+        c.execute(
+            "UPDATE events SET payload_json = ? WHERE id = (SELECT MAX(id) FROM events WHERE kind = 'narrative.summary')",
+            (
+                '{"anchor_event_id": %d, "anchor_kind": "runtime.visible_run_started", '
+                '"summary": "Jeg samlede en kort kausal tråd.", '
+                '"model": "cheap-llm-enrichment"}' % anchor_id,
+            ),
+        )
+        c.commit()
+
+    surface = nsd.build_narrative_summary_surface()
+
+    assert surface["active"] is True
+    assert surface["mode"] == "narrative-summary-daemon"
+    assert surface["latest_summary"] == "Jeg samlede en kort kausal tråd."
+    assert surface["latest"]["anchor_event_id"] == anchor_id
+
+
+def test_narrative_summary_surface_registered_in_router():
+    """System Cartographer can discover narrative_summary via the surface router."""
+    from core.services.signal_surface_router import get_surface_names, read_surface
+
+    assert "narrative_summary" in get_surface_names()
+    surface = read_surface("narrative_summary")
+    assert isinstance(surface, dict)
+    assert surface.get("mode") == "narrative-summary-daemon"

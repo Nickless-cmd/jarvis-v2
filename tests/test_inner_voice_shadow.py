@@ -134,6 +134,158 @@ def test_shadow_records_llm_failure(tmp_db, monkeypatch):
     assert "varsom" in row["template_output"]
 
 
+# ── AppraisalRecord (theater-refactor tranche 1) ─────────────────────────
+
+
+def test_generate_appraisal_returns_record_on_llm_success(tmp_db, monkeypatch):
+    """generate_appraisal returns a full AppraisalRecord, not just a string."""
+    import core.services.inner_voice_shadow as shadow_mod
+    monkeypatch.setattr(
+        shadow_mod, "_call_llm",
+        lambda _: {"output": "En rolig indre note.", "provider": "deepseek",
+                   "model": "v4", "latency_ms": 200, "error": None},
+    )
+
+    record = shadow_mod.generate_appraisal(
+        function_name="_helpful_signal",
+        prompt_builder=shadow_mod._build_helpful_signal_prompt,
+        inputs={"status": "completed", "focus": "x", "work_signal": ""},
+        fallback="(template fallback)",
+    )
+
+    assert isinstance(record, shadow_mod.AppraisalRecord)
+    assert record.rendered_text == "En rolig indre note."
+    assert record.source == "llm"
+    assert record.confidence == 1.0
+    assert record.llm_provider == "deepseek"
+    assert record.llm_error is None
+    assert record.inputs["status"] == "completed"  # evidence preserved
+    assert record.allowed_effects == ("render_only",)
+    assert record.expiry_seconds == 300
+
+
+def test_generate_appraisal_fallback_record_on_llm_failure(tmp_db, monkeypatch):
+    """When LLM fails, record's source is 'template_fallback', confidence 0."""
+    import core.services.inner_voice_shadow as shadow_mod
+    monkeypatch.setattr(
+        shadow_mod, "_call_llm",
+        lambda _: {"output": None, "provider": None, "model": None,
+                   "latency_ms": 50, "error": "rate-limited"},
+    )
+
+    record = shadow_mod.generate_appraisal(
+        function_name="_helpful_signal",
+        prompt_builder=shadow_mod._build_helpful_signal_prompt,
+        inputs={"status": "failed", "focus": "y", "work_signal": ""},
+        fallback="(template content here)",
+    )
+
+    assert record.rendered_text == "(template content here)"
+    assert record.source == "template_fallback"
+    assert record.confidence == 0.0
+    assert record.llm_error == "rate-limited"
+
+
+def test_appraisal_record_expiry():
+    """is_expired() respects expiry_seconds relative to generated_at."""
+    from datetime import UTC, datetime, timedelta
+
+    from core.services.inner_voice_shadow import AppraisalRecord
+
+    base = datetime.now(UTC)
+    record = AppraisalRecord(
+        function_name="_test",
+        inputs={},
+        rendered_text="x",
+        source="llm",
+        confidence=1.0,
+        generated_at=base.isoformat(),
+        expiry_seconds=300,
+    )
+    # 1 second after generation: not expired
+    assert not record.is_expired(now=base + timedelta(seconds=1))
+    # 299 seconds: still not expired
+    assert not record.is_expired(now=base + timedelta(seconds=299))
+    # 301 seconds: expired
+    assert record.is_expired(now=base + timedelta(seconds=301))
+
+
+def test_appraisal_record_to_dict_roundtrip():
+    """to_dict produces JSON-friendly representation."""
+    import json
+
+    from core.services.inner_voice_shadow import AppraisalRecord
+
+    record = AppraisalRecord(
+        function_name="_voice_line",
+        inputs={"mood_tone": "steady"},
+        rendered_text="Jeg står roligt.",
+        source="llm",
+        confidence=1.0,
+        generated_at="2026-05-25T18:30:00+00:00",
+        expiry_seconds=300,
+        allowed_effects=("render_only",),
+    )
+    d = record.to_dict()
+    # Must be JSON-serializable
+    json.dumps(d)
+    assert d["rendered_text"] == "Jeg står roligt."
+    assert d["source"] == "llm"
+    assert d["allowed_effects"] == ["render_only"]
+    assert d["inputs"] == {"mood_tone": "steady"}
+
+
+def test_appraisal_persisted_with_new_columns(tmp_db, monkeypatch):
+    """The DB row carries the new state columns (source/confidence/expiry)."""
+    import core.services.inner_voice_shadow as shadow_mod
+    monkeypatch.setattr(
+        shadow_mod, "_call_llm",
+        lambda _: {"output": "LLM ord.", "provider": "p", "model": "m",
+                   "latency_ms": 100, "error": None},
+    )
+
+    shadow_mod.generate_appraisal(
+        function_name="_helpful_signal",
+        prompt_builder=shadow_mod._build_helpful_signal_prompt,
+        inputs={"status": "completed", "focus": "f", "work_signal": ""},
+        fallback="(fallback)",
+    )
+
+    with sqlite3.connect(str(tmp_db)) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT source, confidence, expiry_seconds, allowed_effects_json "
+            "FROM inner_voice_shadow ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    assert row["source"] == "llm"
+    assert row["confidence"] == 1.0
+    assert row["expiry_seconds"] == 300
+    assert row["allowed_effects_json"] == '["render_only"]'
+
+
+def test_legacy_string_api_unchanged_after_refactor(tmp_db, monkeypatch):
+    """generate_helpful_signal_via_llm still returns a str (not a record).
+
+    Backwards-compat guarantee for tranche 1: call-sites are untouched.
+    """
+    import core.services.inner_voice_shadow as shadow_mod
+    monkeypatch.setattr(
+        shadow_mod, "_call_llm",
+        lambda _: {"output": "Kort note.", "provider": "p", "model": "m",
+                   "latency_ms": 100, "error": None},
+    )
+
+    out = shadow_mod.generate_helpful_signal_via_llm(
+        status="completed", focus="f", work_signal="",
+        fallback="(fallback)",
+    )
+    assert isinstance(out, str)
+    assert out == "Kort note."
+
+
+# ── Existing tests continue below ────────────────────────────────────────
+
+
 def test_stats_aggregation(tmp_db, monkeypatch):
     """shadow_stats summarizes total / success / latency / sizes."""
     import core.services.inner_voice_shadow as shadow_mod

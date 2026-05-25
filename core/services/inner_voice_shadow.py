@@ -30,9 +30,10 @@ import logging
 import os
 import sqlite3
 import threading
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, Mapping
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,87 @@ _LLM_TIMEOUT_SECONDS = 12
 
 # Output length cap matches the templates (~140 char target).
 _OUTPUT_CHAR_CAP = 160
+
+# Default expiry for inner-voice appraisals. Inner-voice ticks every ~15 min;
+# 5 min keeps the appraisal fresher than one full tick interval. Callers that
+# want a different expiry can override via _generate_via_llm.
+_DEFAULT_EXPIRY_SECONDS = 300
+
+# Default allowed runtime effects for an inner-voice appraisal. "render_only"
+# means the rendered_text may be shown / persisted but MUST NOT trigger any
+# runtime behavior change. Future tranches can introduce richer effect tags
+# (e.g. "may_emit_chat_signal", "may_adjust_pacing") with explicit policy.
+_DEFAULT_ALLOWED_EFFECTS: tuple[str, ...] = ("render_only",)
+
+
+# ── Appraisal record (state-first, narrative-second) ────────────────────
+
+
+@dataclass(frozen=True)
+class AppraisalRecord:
+    """Structured inner-voice state with narrative rendering.
+
+    The audit recommends moving from "narrative-first" (where the rendered
+    sentence IS the artifact) to "state-first" (where the structured record
+    is the artifact and the sentence is just one rendering of it). This
+    record holds the full state so future consumers can act on confidence,
+    expiry, and allowed_effects instead of regex-parsing prose.
+
+    Fields:
+        function_name: which inner-voice function produced this record
+        inputs: evidence — the raw inputs that triggered the appraisal
+        rendered_text: the one-line first-person sentence (current API)
+        source: "llm" when LLM produced a usable output, otherwise
+            "template_fallback" — the rendered_text came from the template
+        confidence: 0.0-1.0; 1.0 when LLM succeeded with non-empty output,
+            0.0 when we fell back to template. Reserved for richer scoring.
+        expiry_seconds: how long this appraisal should be considered fresh
+        allowed_effects: tuple of runtime-effect tags this appraisal may
+            trigger. Default ("render_only",) means narrative only — no
+            behavior change. Stored as JSON in the DB.
+        generated_at: ISO UTC timestamp
+        llm_provider/model/latency_ms/error: provenance for audit
+    """
+
+    function_name: str
+    inputs: Mapping[str, Any]
+    rendered_text: str
+    source: Literal["llm", "template_fallback"]
+    confidence: float
+    generated_at: str
+    expiry_seconds: int = _DEFAULT_EXPIRY_SECONDS
+    allowed_effects: tuple[str, ...] = _DEFAULT_ALLOWED_EFFECTS
+    llm_provider: str | None = None
+    llm_model: str | None = None
+    llm_latency_ms: int | None = None
+    llm_error: str | None = None
+
+    def is_expired(self, *, now: datetime | None = None) -> bool:
+        """True if more than expiry_seconds have passed since generated_at."""
+        try:
+            generated = datetime.fromisoformat(self.generated_at)
+        except ValueError:
+            return True
+        current = now or datetime.now(UTC)
+        if generated.tzinfo is None:
+            generated = generated.replace(tzinfo=UTC)
+        return (current - generated).total_seconds() > self.expiry_seconds
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "function_name": self.function_name,
+            "inputs": dict(self.inputs),
+            "rendered_text": self.rendered_text,
+            "source": self.source,
+            "confidence": self.confidence,
+            "expiry_seconds": self.expiry_seconds,
+            "allowed_effects": list(self.allowed_effects),
+            "generated_at": self.generated_at,
+            "llm_provider": self.llm_provider,
+            "llm_model": self.llm_model,
+            "llm_latency_ms": self.llm_latency_ms,
+            "llm_error": self.llm_error,
+        }
 
 
 # ── DB ───────────────────────────────────────────────────────────────────
@@ -68,6 +150,20 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_inner_voice_shadow_fn_time "
         "ON inner_voice_shadow(function_name, generated_at)"
     )
+    # Appraisal-record columns added 2026-05-25 (theater-refactor tranche 1).
+    # Use ALTER + try/except so older DBs are migrated lazily without a
+    # separate migration step.
+    for col_sql in (
+        "ALTER TABLE inner_voice_shadow ADD COLUMN source TEXT",
+        "ALTER TABLE inner_voice_shadow ADD COLUMN confidence REAL",
+        "ALTER TABLE inner_voice_shadow ADD COLUMN expiry_seconds INTEGER",
+        "ALTER TABLE inner_voice_shadow ADD COLUMN allowed_effects_json TEXT",
+    ):
+        try:
+            conn.execute(col_sql)
+        except sqlite3.OperationalError:
+            # Column already exists — idempotent migration.
+            pass
 
 
 def _connect() -> sqlite3.Connection:
@@ -87,6 +183,11 @@ def _persist(
     llm_model: str | None,
     llm_latency_ms: int | None,
     llm_error: str | None,
+    source: str | None = None,
+    confidence: float | None = None,
+    expiry_seconds: int | None = None,
+    allowed_effects: tuple[str, ...] | None = None,
+    generated_at: str | None = None,
 ) -> None:
     try:
         with _connect() as conn:
@@ -94,8 +195,9 @@ def _persist(
                 """INSERT INTO inner_voice_shadow
                    (function_name, inputs_json, template_output, llm_output,
                     llm_provider, llm_model, llm_latency_ms, llm_error,
-                    generated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    generated_at, source, confidence, expiry_seconds,
+                    allowed_effects_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     function_name,
                     json.dumps(inputs, ensure_ascii=False, default=str),
@@ -105,7 +207,14 @@ def _persist(
                     llm_model,
                     llm_latency_ms,
                     llm_error,
-                    datetime.now(UTC).isoformat(),
+                    generated_at or datetime.now(UTC).isoformat(),
+                    source,
+                    confidence,
+                    expiry_seconds,
+                    (
+                        json.dumps(list(allowed_effects))
+                        if allowed_effects is not None else None
+                    ),
                 ),
             )
             conn.commit()
@@ -298,30 +407,49 @@ def shadow_helpful_signal(
 # ── Synchronous LLM generation (for production rollout, not shadow) ──────
 
 
-def _generate_via_llm(
+def generate_appraisal(
     *,
     function_name: str,
     prompt_builder,
     inputs: dict[str, Any],
     fallback: str,
     timeout_seconds: float = 5.0,
-) -> str:
-    """Generic production-path LLM call with timeout + template fallback.
+    expiry_seconds: int = _DEFAULT_EXPIRY_SECONDS,
+    allowed_effects: tuple[str, ...] = _DEFAULT_ALLOWED_EFFECTS,
+) -> AppraisalRecord:
+    """State-first appraisal: returns the full structured record.
 
-    Synchronously calls the cheap-lane LLM via the given prompt-builder,
-    falls back to the provided template output on any failure (timeout,
-    empty response, LLM error), and records the comparison in the
-    shadow audit table for ongoing monitoring.
+    Same LLM-primary + template-fallback semantics as _generate_via_llm,
+    but exposes the full AppraisalRecord with evidence, confidence,
+    expiry, and allowed_effects. Use this for new call-sites that want
+    to act on structure (confidence gating, expiry-driven re-eval,
+    effect-aware behavior) instead of regex-parsing the narrative.
 
-    Used by per-function wrappers (generate_helpful_signal_via_llm,
-    generate_private_summary_via_llm, ...). Each wrapper provides a
-    semantically appropriate prompt-builder for its template function.
+    Tranche 1: only this function exists; no call-sites use it yet.
+    Tranche 2 (after container migration) will migrate call-sites one
+    at a time, starting with _voice_line.
     """
+    generated_at = datetime.now(UTC).isoformat()
+
     try:
         prompt = prompt_builder(**inputs)
     except Exception:
-        logger.exception("inner_voice_shadow: prompt builder failed for %s", function_name)
-        return fallback
+        logger.exception(
+            "inner_voice_shadow: prompt builder failed for %s", function_name,
+        )
+        record = AppraisalRecord(
+            function_name=function_name,
+            inputs=dict(inputs),
+            rendered_text=fallback,
+            source="template_fallback",
+            confidence=0.0,
+            generated_at=generated_at,
+            expiry_seconds=expiry_seconds,
+            allowed_effects=allowed_effects,
+            llm_error="prompt_builder_failed",
+        )
+        _persist_record(record, template_output=fallback)
+        return record
 
     result_holder: dict[str, Any] = {}
 
@@ -333,7 +461,6 @@ def _generate_via_llm(
     t.join(timeout=timeout_seconds)
 
     if t.is_alive():
-        chosen_output = fallback
         llm_output = None
         llm_error = f"timeout > {timeout_seconds}s"
         llm_latency = int(timeout_seconds * 1000)
@@ -345,29 +472,87 @@ def _generate_via_llm(
         llm_latency = result_holder.get("latency_ms")
         llm_provider = result_holder.get("provider")
         llm_model = result_holder.get("model")
-        if llm_output and not llm_error:
-            chosen_output = llm_output
-        else:
-            chosen_output = fallback
 
+    if llm_output and not llm_error:
+        source: Literal["llm", "template_fallback"] = "llm"
+        # Confidence heuristic v1: binary. Tranche 2+ may add length-based
+        # scoring, response-time vs avg, semantic-similarity-to-prompt etc.
+        confidence = 1.0
+        rendered_text = llm_output
+    else:
+        source = "template_fallback"
+        confidence = 0.0
+        rendered_text = fallback
+
+    record = AppraisalRecord(
+        function_name=function_name,
+        inputs=dict(inputs),
+        rendered_text=rendered_text,
+        source=source,
+        confidence=confidence,
+        generated_at=generated_at,
+        expiry_seconds=expiry_seconds,
+        allowed_effects=allowed_effects,
+        llm_provider=llm_provider,
+        llm_model=llm_model,
+        llm_latency_ms=llm_latency,
+        llm_error=llm_error,
+    )
+    _persist_record(record, template_output=fallback)
+    return record
+
+
+def _persist_record(record: AppraisalRecord, *, template_output: str) -> None:
+    """Persist an AppraisalRecord to the shadow audit table."""
     try:
         _persist(
-            function_name=function_name,
-            inputs={
-                **inputs,
-                "_chosen_source": "llm" if chosen_output == llm_output else "template",
-            },
-            template_output=fallback,
-            llm_output=llm_output,
-            llm_provider=llm_provider,
-            llm_model=llm_model,
-            llm_latency_ms=llm_latency,
-            llm_error=llm_error,
+            function_name=record.function_name,
+            inputs={**dict(record.inputs), "_chosen_source": record.source},
+            template_output=template_output,
+            llm_output=(
+                record.rendered_text if record.source == "llm" else None
+            ),
+            llm_provider=record.llm_provider,
+            llm_model=record.llm_model,
+            llm_latency_ms=record.llm_latency_ms,
+            llm_error=record.llm_error,
+            source=record.source,
+            confidence=record.confidence,
+            expiry_seconds=record.expiry_seconds,
+            allowed_effects=record.allowed_effects,
+            generated_at=record.generated_at,
         )
     except Exception:
         pass
 
-    return chosen_output
+
+def _generate_via_llm(
+    *,
+    function_name: str,
+    prompt_builder,
+    inputs: dict[str, Any],
+    fallback: str,
+    timeout_seconds: float = 5.0,
+) -> str:
+    """Narrative-first wrapper for backwards compatibility.
+
+    Builds an AppraisalRecord internally via generate_appraisal() and
+    returns just the rendered_text. Existing call-sites
+    (generate_helpful_signal_via_llm, etc.) keep their string return
+    type — only this module knows about the structured state for now.
+
+    2026-05-25 theater-refactor tranche 1: this used to be the primary
+    path; now it's a thin adapter over generate_appraisal(). Tranche 2
+    will migrate call-sites to consume AppraisalRecord directly.
+    """
+    record = generate_appraisal(
+        function_name=function_name,
+        prompt_builder=prompt_builder,
+        inputs=inputs,
+        fallback=fallback,
+        timeout_seconds=timeout_seconds,
+    )
+    return record.rendered_text
 
 
 def generate_helpful_signal_via_llm(

@@ -101,6 +101,31 @@ INFRASTRUCTURE_FACTS: dict[str, dict[str, str]] = {
         "jarvis.srvlab.dk": "Jarvis public website (PHP, realtidsstatus)",
         "srvlab.dk": "primary domain",
     },
+    # Designed cadences for daemons/services. When Jarvis evaluates
+    # whether a subsystem is "dead", he should query against these
+    # ground-truth cadences first. Added 2026-05-25 after he claimed
+    # audio/atmosphere/mixed daemons were "død 18-74h" when their
+    # actual events were within minutes of his report — he forgot
+    # active_sensing_daemon rotates one modality every 30-90 min.
+    "cadences": {
+        "active_sensing_daemon": (
+            "single daemon, 30-90 min random interval, rotates across "
+            "4 modalities (visual/audio/atmosphere/mixed). Each modality "
+            "gets a turn every 2-6 hours on average. ~9-16 events/12h is "
+            "normal — NOT 'dead' if last event was <6h ago."
+        ),
+        "heartbeat_phased_tick": "every ~1-2 seconds (fast tick)",
+        "heartbeat_cadence_tick": "every ~30 seconds (slow tick)",
+        "metacognition_signal_tracker": (
+            "DB-polling every 5s, scores assistant messages post-flush"
+        ),
+        "theory_of_mind_tracker": "DB-polling every 5s, processes role=user|assistant",
+        "spatial_entity_ledger": "DB-polling every 5s, processes visual sensory_memories",
+        "session_inbox_flusher": "DB-polling every 5s, flushes on visible-run turn-end",
+        "inner_voice_shadow": (
+            "fire-and-forget per _helpful_signal call, ~1700ms avg LLM latency"
+        ),
+    },
 }
 
 # ── Pattern matchers for extracting numbers from claims ─────────────────
@@ -360,7 +385,7 @@ def verify_system_claim(claim_text: str) -> tuple[bool, str | None]:
     # Without this short-circuit, any IP that's not the local primary IP
     # returns (False, ...) which is wrong — they're known good facts
     # about the broader deployment.
-    for category in ("hosts", "paths", "ports", "domains"):
+    for category in ("hosts", "paths", "ports", "domains", "cadences"):
         for key in INFRASTRUCTURE_FACTS.get(category, {}):
             if key.lower() in text_lower:
                 return (True, None)
@@ -420,7 +445,7 @@ def lookup_infrastructure_fact(key: str) -> str | None:
     needle = str(key or "").lower().strip()
     if not needle:
         return None
-    for category in ("hosts", "paths", "ports", "domains"):
+    for category in ("hosts", "paths", "ports", "domains", "cadences"):
         for fact_key, description in INFRASTRUCTURE_FACTS.get(category, {}).items():
             if fact_key.lower() == needle:
                 return description

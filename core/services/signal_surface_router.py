@@ -152,6 +152,7 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
     from core.services.user_model_daemon import build_user_model_surface
     from core.services.desire_daemon import build_desire_surface
     from core.services.daemon_memory_safeguard import build_memory_safeguard_surface
+    from core.services.emotion_repair_bridge_daemon import build_emotion_repair_bridge_surface
     from core.services.narrative_summary_daemon import build_narrative_summary_surface
     from core.services.tool_router import build_tool_router_surface
 
@@ -229,6 +230,7 @@ def _build_router() -> dict[str, Callable[[], dict[str, Any]]]:
         "user_model": build_user_model_surface,
         "desire": build_desire_surface,
         "daemon_memory_safeguard": build_memory_safeguard_surface,
+        "emotion_repair_bridge": build_emotion_repair_bridge_surface,
         "narrative_summary": build_narrative_summary_surface,
         "autonomous_council": build_autonomous_council_surface,
         "council_memory": build_council_memory_surface,

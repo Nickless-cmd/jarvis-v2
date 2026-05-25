@@ -28,6 +28,7 @@ from core.runtime.db_self_repair import (
     insert_self_repair_attempt,
     insert_self_repair_pattern,
     list_self_repair_patterns,
+    list_recent_self_repair_attempts,
 )
 from core.services import sensory_archive  # Sansernes Arkiv — senses bridge
 
@@ -86,6 +87,68 @@ _DEFAULT_PATTERNS: list[dict[str, Any]] = [
 
 _last_tick_at: datetime | None = None
 _cadence_minutes = 5  # same as curiosity daemon
+
+
+def build_emotion_repair_bridge_surface() -> dict[str, Any]:
+    """Mission Control surface for emotion-repair bridge state.
+
+    Read-only projection over configured repair patterns and recent
+    repair attempts. Does not execute repairs or touch the event flow.
+    """
+    try:
+        patterns = list_self_repair_patterns()
+        attempts = list_recent_self_repair_attempts(limit=10)
+    except Exception as exc:
+        return {
+            "active": False,
+            "mode": "emotion-repair-bridge-daemon",
+            "summary": {"error": str(exc)},
+            "authority": "db-derived-read-only",
+        }
+
+    enabled_patterns = [p for p in patterns if int(p.get("enabled", 0)) == 1]
+    success_24h = 0
+    failed_24h = 0
+    now = datetime.now(UTC)
+    for attempt in attempts:
+        try:
+            attempted_at = datetime.fromisoformat(str(attempt.get("attempted_at") or ""))
+        except ValueError:
+            continue
+        if (now - attempted_at) > timedelta(hours=24):
+            continue
+        if attempt.get("outcome") == "success":
+            success_24h += 1
+        elif attempt.get("outcome") == "failed":
+            failed_24h += 1
+
+    return {
+        "active": True,
+        "mode": "emotion-repair-bridge-daemon",
+        "summary": {
+            "cadence_minutes": _cadence_minutes,
+            "patterns_total": len(patterns),
+            "patterns_enabled": len(enabled_patterns),
+            "attempts_recent": len(attempts),
+            "success_24h": success_24h,
+            "failed_24h": failed_24h,
+        },
+        "patterns": [
+            {
+                "pattern_id": p.get("pattern_id"),
+                "name": p.get("name"),
+                "trigger_event_kind": p.get("trigger_event_kind"),
+                "action_type": p.get("action_type"),
+                "enabled": bool(int(p.get("enabled", 0))),
+                "cooldown_seconds": p.get("cooldown_seconds"),
+                "max_attempts_per_window": p.get("max_attempts_per_window"),
+            }
+            for p in patterns[:10]
+        ],
+        "recent_attempts": attempts,
+        "last_tick_at": _last_tick_at.isoformat() if _last_tick_at else None,
+        "authority": "db-derived-read-only",
+    }
 
 
 def _ensure_default_patterns() -> None:

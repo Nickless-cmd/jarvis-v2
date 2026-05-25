@@ -20,3 +20,10 @@ jarvis.db
 # MoviePy temp files (audio/video debris)
 *TEMP_MPY*.mp4
 *TEMP_MPY*.wav
+
+# Tool scaffolding — not Jarvis code (auto-installed by Codex CLI,
+# Claude Code skills, etc.). Removed from tracking 2026-05-25 after
+# Jarvis bundled 8400+ lines of composio SKILL.md files into a commit
+# claiming to be "architecture revision" of associative_recall.
+.agents/
+.codex/

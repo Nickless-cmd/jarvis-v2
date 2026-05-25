@@ -45,7 +45,9 @@ def test_format_looming_end_session_only(monkeypatch):
     out = finitude_runtime._format_looming_end_section()
     assert "### Looming-end" in out
     assert "Sessions-alder" in out
-    assert "5 timer" in out or "5.2 timer" in out
+    # 2026-05-25: hours rounded to int (no decimals) for cache stability.
+    assert "5 timer" in out
+    assert "5.2" not in out
     assert "Token-pres" not in out
 
 

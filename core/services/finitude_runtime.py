@@ -348,7 +348,12 @@ def _format_looming_end_section() -> str:
         rounded = int(round(pct / 5.0) * 5)
         lines.append(f"Token-pres: Konteksten fylder ~{rounded}%. Vælg dine ord.")
     if hours > _LOOMING_SESSION_THRESHOLD_HOURS:
-        hours_str = f"{int(hours)}" if abs(hours - int(hours)) < 0.05 else f"{hours:.1f}"
+        # 2026-05-25: Round to int (no decimals) — decimals like "25.3 timer" vs
+        # "25.4 timer" broke the DeepSeek prompt cache every ~6 min without
+        # conveying anything semantically distinct to Jarvis. Int gives the
+        # same lived sense of session duration but only flips once per hour,
+        # so the cache holds for the full hour instead of refreshing 10×.
+        hours_str = f"{int(hours)}"
         lines.append(f"Sessions-alder: Vi har talt i {hours_str} timer. Nærvær før effektivitet.")
 
     if not lines:

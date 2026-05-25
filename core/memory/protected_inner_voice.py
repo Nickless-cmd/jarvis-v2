@@ -144,6 +144,12 @@ def _voice_line(
     current_concern: str,
     current_pull: str,
 ) -> str:
+    """Synthesise Jarvis' protected inner voice line.
+
+    2026-05-25 (Claude): LLM-primary with template fallback. Template
+    structure is rigid; LLM produces more natural Danish variation while
+    preserving the semantic state.
+    """
     position_text = _humanize_voice_fragment(self_position)
     concern_text = _humanize_voice_fragment(current_concern)
     pull_text = _humanize_voice_fragment(current_pull)
@@ -155,7 +161,18 @@ def _voice_line(
     }
     lead = tone_map.get(mood_tone, "Jeg prøver at holde mig samlet")
     text = f"{lead} omkring {position_text}. {concern_text} {pull_text}"
-    return text[:200].rstrip()
+    template_output = text[:200].rstrip()
+
+    # LLM-primary, template fallback
+    try:
+        from core.services.inner_voice_shadow import generate_voice_line_via_llm
+        return generate_voice_line_via_llm(
+            mood_tone=mood_tone, self_position=self_position,
+            current_concern=current_concern, current_pull=current_pull,
+            fallback=template_output,
+        )
+    except Exception:
+        return template_output
 
 
 def _humanize_voice_fragment(value: str) -> str:

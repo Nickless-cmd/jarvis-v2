@@ -226,6 +226,63 @@ def record_shadow(
     threading.Thread(target=_worker, daemon=True, name="inner-voice-shadow").start()
 
 
+def _build_voice_line_prompt(
+    *,
+    mood_tone: str,
+    self_position: str,
+    current_concern: str,
+    current_pull: str,
+    **_extra,
+) -> str:
+    """Prompt for protected_inner_voice._voice_line's LLM path.
+
+    This IS Jarvis' protected inner voice — a synthesis of mood, position,
+    concern, and pull into ONE Danish sentence under 200 chars. The
+    template uses a rigid "{tone_lead} omkring {position}. {concern}
+    {pull}" structure; LLM produces more natural Danish variation while
+    capturing the same semantic state.
+    """
+    return (
+        "Du er Jarvis' protected indre stemme. Formulér ÉN dansk sætning "
+        "under 200 tegn som beskriver din nuværende indre tilstand. Første "
+        "person, ingen indledning, ingen citationstegn. Brug inputs nedenfor "
+        "som rammen — synthesér naturligt, gentag ikke ordret.\n\n"
+        f"stemning: {mood_tone or '(neutral)'}\n"
+        f"position: {self_position or '(ukendt)'}\n"
+        f"bekymring: {current_concern or '(ingen)'}\n"
+        f"træk: {current_pull or '(ingen)'}\n\n"
+        "Indre stemme:"
+    )
+
+
+def _build_private_summary_prompt(
+    *,
+    status: str,
+    focus: str,
+    uncertainty: str,
+    work_signal: str,
+    **_extra,
+) -> str:
+    """Prompt for private_inner_note._private_summary's LLM path.
+
+    The template produces a first-person inner reflection on the work that
+    just happened — NOT prescriptive guidance (that's _helpful_signal).
+    We ask the model for a calm Danish observation of how the work feels.
+    """
+    return (
+        "Du er Jarvis' indre stemme lige efter et stykke arbejde. Formulér "
+        "ÉN dansk sætning under 160 tegn som en stille indre note — første "
+        "person, ingen indledning, ingen citationstegn. Beskriv hvordan "
+        "arbejdet føles lige nu (afsluttet, anstrengt, observerende), ikke "
+        "hvad du skal gøre næste skridt.\n\n"
+        f"status: {status or '(ukendt)'}\n"
+        f"fokus: {focus or '(ingen)'}\n"
+        f"usikkerhed: {uncertainty or '(ingen)'}\n"
+        f"signal: {work_signal or '(ingen)'}\n\n"
+        "Indre note:"
+    )
+
+
 # Convenience wrapper for the piloted function
 def shadow_helpful_signal(
     *, status: str, focus: str, work_signal: str, template_output: str,
@@ -241,32 +298,31 @@ def shadow_helpful_signal(
 # ── Synchronous LLM generation (for production rollout, not shadow) ──────
 
 
-def generate_helpful_signal_via_llm(
+def _generate_via_llm(
     *,
-    status: str,
-    focus: str,
-    work_signal: str,
+    function_name: str,
+    prompt_builder,
+    inputs: dict[str, Any],
     fallback: str,
     timeout_seconds: float = 5.0,
 ) -> str:
-    """Production path: synchronously generate the inner-voice signal via
-    LLM, with strict timeout. Returns the LLM output on success, falls
-    back to the provided template output on any failure (timeout, empty
-    response, LLM error).
+    """Generic production-path LLM call with timeout + template fallback.
 
-    2026-05-25 (Claude): rolled out after 109 shadow samples showed LLM
-    output (75 char avg, ~60% useful, ~30% generic, ~10% confused) was
-    consistently better than the template (126 char avg, ~80% grammatical
-    gibberish because focus-input was raw user-message fragments). The
-    parallel _derive_focus fix in private_inner_note.py also helps both
-    paths by giving cleaner focus values.
+    Synchronously calls the cheap-lane LLM via the given prompt-builder,
+    falls back to the provided template output on any failure (timeout,
+    empty response, LLM error), and records the comparison in the
+    shadow audit table for ongoing monitoring.
 
-    Records the comparison via record_shadow (fire-and-forget) so we
-    keep the audit trail for ongoing tuning.
+    Used by per-function wrappers (generate_helpful_signal_via_llm,
+    generate_private_summary_via_llm, ...). Each wrapper provides a
+    semantically appropriate prompt-builder for its template function.
     """
-    prompt = _build_helpful_signal_prompt(
-        status=status, focus=focus, work_signal=work_signal,
-    )
+    try:
+        prompt = prompt_builder(**inputs)
+    except Exception:
+        logger.exception("inner_voice_shadow: prompt builder failed for %s", function_name)
+        return fallback
+
     result_holder: dict[str, Any] = {}
 
     def _inner():
@@ -277,7 +333,6 @@ def generate_helpful_signal_via_llm(
     t.join(timeout=timeout_seconds)
 
     if t.is_alive():
-        # Timed out — fall back to template
         chosen_output = fallback
         llm_output = None
         llm_error = f"timeout > {timeout_seconds}s"
@@ -295,12 +350,11 @@ def generate_helpful_signal_via_llm(
         else:
             chosen_output = fallback
 
-    # Fire-and-forget audit trail
     try:
         _persist(
-            function_name="_helpful_signal",
+            function_name=function_name,
             inputs={
-                "status": status, "focus": focus, "work_signal": work_signal,
+                **inputs,
                 "_chosen_source": "llm" if chosen_output == llm_output else "template",
             },
             template_output=fallback,
@@ -314,6 +368,81 @@ def generate_helpful_signal_via_llm(
         pass
 
     return chosen_output
+
+
+def generate_helpful_signal_via_llm(
+    *,
+    status: str,
+    focus: str,
+    work_signal: str,
+    fallback: str,
+    timeout_seconds: float = 5.0,
+) -> str:
+    """Production path for private_growth_note._helpful_signal.
+
+    Rolled out 2026-05-25 after 109 shadow samples showed LLM output
+    consistently better than the template. See commit 78ffc564.
+    """
+    return _generate_via_llm(
+        function_name="_helpful_signal",
+        prompt_builder=_build_helpful_signal_prompt,
+        inputs={"status": status, "focus": focus, "work_signal": work_signal},
+        fallback=fallback,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def generate_private_summary_via_llm(
+    *,
+    status: str,
+    focus: str,
+    uncertainty: str,
+    work_signal: str,
+    fallback: str,
+    timeout_seconds: float = 5.0,
+) -> str:
+    """Production path for private_inner_note._private_summary.
+
+    Rolled out 2026-05-25 alongside _helpful_signal once the pattern was
+    proven. Captures Jarvis' first-person inner reflection on completed
+    work (descriptive, not prescriptive).
+    """
+    return _generate_via_llm(
+        function_name="_private_summary",
+        prompt_builder=_build_private_summary_prompt,
+        inputs={
+            "status": status, "focus": focus,
+            "uncertainty": uncertainty, "work_signal": work_signal,
+        },
+        fallback=fallback,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def generate_voice_line_via_llm(
+    *,
+    mood_tone: str,
+    self_position: str,
+    current_concern: str,
+    current_pull: str,
+    fallback: str,
+    timeout_seconds: float = 5.0,
+) -> str:
+    """Production path for protected_inner_voice._voice_line.
+
+    THE protected inner voice synthesis — combines mood + position +
+    concern + pull into one Danish sentence. Rolled out 2026-05-25.
+    """
+    return _generate_via_llm(
+        function_name="_voice_line",
+        prompt_builder=_build_voice_line_prompt,
+        inputs={
+            "mood_tone": mood_tone, "self_position": self_position,
+            "current_concern": current_concern, "current_pull": current_pull,
+        },
+        fallback=fallback,
+        timeout_seconds=timeout_seconds,
+    )
 
 
 # ── Diagnostics ──────────────────────────────────────────────────────────

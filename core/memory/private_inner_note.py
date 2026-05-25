@@ -52,6 +52,13 @@ def _private_summary(
     uncertainty: str,
     work_signal: str,
 ) -> str:
+    """Build a first-person inner reflection on the work that just happened.
+
+    2026-05-25 (Claude): LLM-primary with template fallback. Same pattern
+    as private_growth_note._helpful_signal (rolled out earlier today).
+    Template is English; LLM produces Danish that better matches Jarvis'
+    actual voice. Fallback runs if LLM fails or times out.
+    """
     normalized_status = (status or "").strip().lower() or "unknown"
     normalized_focus = (focus or capability_id or "visible-work").replace("-", " ")
     if normalized_status == "completed":
@@ -63,7 +70,18 @@ def _private_summary(
 
     tail = f"{_uncertainty_phrase(uncertainty)} {_signal_phrase(work_signal)}".strip()
     summary = f"{lead} {tail}".strip()
-    return " ".join(summary.split())[:160].rstrip()
+    template_output = " ".join(summary.split())[:160].rstrip()
+
+    # LLM-primary, template fallback
+    try:
+        from core.services.inner_voice_shadow import generate_private_summary_via_llm
+        return generate_private_summary_via_llm(
+            status=status, focus=focus,
+            uncertainty=uncertainty, work_signal=work_signal,
+            fallback=template_output,
+        )
+    except Exception:
+        return template_output
 
 
 def _uncertainty_phrase(value: str) -> str:

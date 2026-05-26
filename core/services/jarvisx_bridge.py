@@ -211,3 +211,29 @@ class BridgeRegistry:
 
 # Module-level singleton — one registry per Python process
 bridge_registry = BridgeRegistry()
+
+
+# ── Main-loop reference (for thread-safe coroutine submission) ──────────
+#
+# The bridge's WebSocket lives on uvicorn's main asyncio loop. When sync
+# tool-handlers want to call dispatch() from a worker thread, they need
+# to run the coroutine ON the main loop (not on a thread-local loop) —
+# otherwise ws.send_json races with concurrent traffic and the result
+# delivery never wakes the awaiter.
+#
+# Use asyncio.run_coroutine_threadsafe(coro, get_main_loop()) from sync
+# code, then call .result(timeout=...) on the returned concurrent.futures.
+# Future. This gives us a clean thread → main-loop bridge.
+
+_main_loop: Optional[asyncio.AbstractEventLoop] = None
+
+
+def set_main_loop(loop: asyncio.AbstractEventLoop) -> None:
+    """Register the main uvicorn loop. Called from app startup."""
+    global _main_loop
+    _main_loop = loop
+
+
+def get_main_loop() -> Optional[asyncio.AbstractEventLoop]:
+    """Return the registered main loop, or None if not set yet."""
+    return _main_loop

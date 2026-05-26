@@ -132,6 +132,15 @@ def create_app() -> FastAPI:
             "jarvis api startup mode runtime_services_enabled=%s",
             runtime_services_enabled,
         )
+        # Register the main asyncio loop so sync tool-handlers can submit
+        # bridge-dispatch coroutines via run_coroutine_threadsafe instead
+        # of spawning their own loops (which broke cross-loop semantics).
+        try:
+            import asyncio as _asyncio_mod
+            from core.services.jarvisx_bridge import set_main_loop
+            set_main_loop(_asyncio_mod.get_running_loop())
+        except Exception:
+            pass
         if runtime_services_enabled:
             start_runtime_hook_runtime()
             start_approval_feedback_subscriber()

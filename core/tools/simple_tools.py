@@ -3023,13 +3023,37 @@ def _operator_user_id(args: dict[str, Any]) -> str:
 def _run_operator_async(coro_fn, *, tool_name: str, timeout_s: float = 35.0) -> dict[str, Any]:
     """Bridge sync tool-handler → async dispatcher.
 
-    Tool handlers run synchronously from uvicorn's event loop. asyncio.run()
-    refuses to nest, so we spawn a dedicated thread with its own loop.
-    coro_fn is called with no args; it should return a coroutine.
+    The bridge's WebSocket lives on uvicorn's main asyncio loop. Submitting
+    the dispatch coroutine to that SAME loop (via run_coroutine_threadsafe)
+    avoids cross-loop races where ws.send_json from a worker thread's loop
+    would silently fail to deliver / wake up. Falls back to a dedicated
+    worker-loop only if no main loop has been registered (e.g. CLI scripts
+    importing the tool outside the API process).
     """
     import asyncio
-    import threading
+    from core.services.jarvisx_bridge import get_main_loop
 
+    main_loop = get_main_loop()
+    if main_loop is not None and main_loop.is_running():
+        # Preferred path: submit to the loop that owns the bridge's WS.
+        try:
+            cf_fut = asyncio.run_coroutine_threadsafe(coro_fn(), main_loop)
+            result = cf_fut.result(timeout=timeout_s)
+            return {"status": "ok", "result": result}
+        except TimeoutError:
+            return {
+                "error": f"{tool_name}: dispatcher did not return in {timeout_s}s",
+                "status": "error",
+            }
+        except RuntimeError as exc:
+            return {"error": str(exc), "status": "error"}
+        except Exception as exc:
+            return {"error": f"{tool_name} failed: {exc!s}"[:240], "status": "error"}
+
+    # Fallback: standalone loop in a thread. Only used when main loop is
+    # unavailable (CLI scripts, tests outside the API process). Has the
+    # cross-loop ws.send_json hazard but is the only option here.
+    import threading
     holder: dict[str, Any] = {}
 
     def _runner() -> None:

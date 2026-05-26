@@ -22,6 +22,26 @@ def test_operator_read_file_registered():
     )
 
 
+def test_phase2_operator_tools_registered():
+    """All Phase 2 operator_* tools have both a TOOL_DEFINITIONS entry
+    AND a _TOOL_HANDLERS handler."""
+    from core.tools.simple_tools import _TOOL_HANDLERS, get_tool_definitions
+    tools = get_tool_definitions() or []
+    names = {t.get("function", {}).get("name", "") for t in tools}
+    expected = {
+        "operator_read_file",
+        "operator_write_file",
+        "operator_edit_file",
+        "operator_glob",
+        "operator_grep",
+        "operator_list_dir",
+    }
+    missing_defs = expected - names
+    missing_handlers = expected - set(_TOOL_HANDLERS.keys())
+    assert not missing_defs, f"Missing in TOOL_DEFINITIONS: {missing_defs}"
+    assert not missing_handlers, f"Missing in _TOOL_HANDLERS: {missing_handlers}"
+
+
 def test_tool_definitions_well_formed():
     """Every tool def has function.name + function.description."""
     from core.tools.simple_tools import get_tool_definitions

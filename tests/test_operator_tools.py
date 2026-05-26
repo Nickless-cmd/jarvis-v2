@@ -26,3 +26,66 @@ async def test_async_wrapper_raises_on_bridge_not_connected():
         await operator_read_file_async(
             path="/tmp/x.txt", user_id="nobody", timeout_s=0.5,
         )
+
+
+# ── Phase 2 wrappers ───────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_all_phase2_wrappers_exist():
+    """All Phase 2 async wrappers are importable and callable."""
+    from core.tools import operator_tools
+    for name in (
+        "operator_write_file_async",
+        "operator_edit_file_async",
+        "operator_glob_async",
+        "operator_grep_async",
+        "operator_list_dir_async",
+    ):
+        assert hasattr(operator_tools, name), f"missing {name}"
+        assert callable(getattr(operator_tools, name))
+
+
+@pytest.mark.asyncio
+async def test_write_file_dispatches_correctly(monkeypatch):
+    """Wrapper passes path+content to bridge_registry.dispatch."""
+    captured = {}
+
+    async def _fake_dispatch(*, user_id, tool, args, timeout_s):
+        captured.update({"tool": tool, "args": args, "user_id": user_id})
+        return {"status": "ok", "result": {"bytes_written": 42, "path": args["path"]}}
+
+    monkeypatch.setattr(
+        "core.services.jarvisx_bridge.bridge_registry.dispatch", _fake_dispatch,
+    )
+    from core.tools.operator_tools import operator_write_file_async
+    result = await operator_write_file_async(
+        path="/tmp/x.txt", content="hello", user_id="u1",
+    )
+    assert captured["tool"] == "operator_write_file"
+    assert captured["args"]["path"] == "/tmp/x.txt"
+    assert captured["args"]["content"] == "hello"
+    assert result["bytes_written"] == 42
+
+
+@pytest.mark.asyncio
+async def test_grep_dispatches_with_optional_args(monkeypatch):
+    """Wrapper passes through pattern + optional path/glob/case_insensitive."""
+    captured = {}
+
+    async def _fake_dispatch(*, user_id, tool, args, timeout_s):
+        captured.update({"tool": tool, "args": args})
+        return {"status": "ok", "result": [{"file": "/x", "line": 1, "text": "foo"}]}
+
+    monkeypatch.setattr(
+        "core.services.jarvisx_bridge.bridge_registry.dispatch", _fake_dispatch,
+    )
+    from core.tools.operator_tools import operator_grep_async
+    result = await operator_grep_async(
+        pattern="foo", path="/home/bs", case_insensitive=True, user_id="u1",
+    )
+    assert captured["tool"] == "operator_grep"
+    assert captured["args"]["pattern"] == "foo"
+    assert captured["args"]["path"] == "/home/bs"
+    assert captured["args"]["case_insensitive"] is True
+    assert len(result) == 1

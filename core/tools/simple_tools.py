@@ -680,6 +680,108 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "operator_write_file",
+            "description": (
+                "Write content to a file on the OPERATOR'S DESKTOP. Creates the file "
+                "(and any missing parent directories) if needed; overwrites if it "
+                "exists. Use when the user asks you to save something on their machine. "
+                "Returns {bytes_written, path}. Requires JarvisX bridge connected."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Absolute file path on the operator's desktop"},
+                    "content": {"type": "string", "description": "Full file contents (string)"},
+                },
+                "required": ["path", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_edit_file",
+            "description": (
+                "Surgical find-and-replace in a file on the OPERATOR'S DESKTOP. "
+                "Fails if old_string is not found, OR if replace_all=false and "
+                "old_string appears more than once. Set replace_all=true to replace "
+                "every occurrence. Returns {replacements, path}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Absolute file path on the operator's desktop"},
+                    "old_string": {"type": "string", "description": "Exact text to find (literal, not regex)"},
+                    "new_string": {"type": "string", "description": "Replacement text"},
+                    "replace_all": {"type": "boolean", "description": "Replace every occurrence (default false = error if more than one match)"},
+                },
+                "required": ["path", "old_string", "new_string"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_glob",
+            "description": (
+                "Find files matching a glob pattern on the OPERATOR'S DESKTOP. "
+                "Pattern like '**/*.py' or 'src/**/*.ts'. Use this to discover files "
+                "on the user's machine. Returns a list of absolute paths."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string", "description": "Glob pattern, e.g. '**/*.py' or '*.txt'"},
+                    "cwd": {"type": "string", "description": "Directory to search from (defaults to operator's home)"},
+                    "max_results": {"type": "integer", "description": "Cap on results (default 200)"},
+                },
+                "required": ["pattern"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_grep",
+            "description": (
+                "Search for a regex pattern in files on the OPERATOR'S DESKTOP. "
+                "Returns matches as a list of {file, line, text}. Use to find where "
+                "something is mentioned in the user's codebase or notes."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string", "description": "Regex pattern to search for"},
+                    "path": {"type": "string", "description": "Directory or file to search (default operator's home)"},
+                    "glob": {"type": "string", "description": "Optional glob filter, e.g. '*.py'"},
+                    "case_insensitive": {"type": "boolean", "description": "Case-insensitive matching"},
+                    "max_results": {"type": "integer", "description": "Cap on results (default 200)"},
+                },
+                "required": ["pattern"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_list_dir",
+            "description": (
+                "List the contents of a directory on the OPERATOR'S DESKTOP. "
+                "Returns list of {name, type: file|dir|symlink, size}. Use to "
+                "explore the user's filesystem."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Absolute directory path on the operator's desktop"},
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "write_file",
             "description": "Write content to a file. Creates file if it doesn't exist. Always call this tool directly — the runtime handles approval automatically.",
             "parameters": {
@@ -2813,63 +2915,165 @@ def _record_tool_outcome_memory(
         pass
 
 
-def _exec_operator_read_file(args: dict[str, Any]) -> dict[str, Any]:
-    """Read a file from the OPERATOR'S DESKTOP via JarvisX bridge.
+def _operator_user_id(args: dict[str, Any]) -> str:
+    """Resolve operator's user_id for bridge routing.
 
-    Dispatches via core.services.jarvisx_bridge to the JarvisX Electron-app
-    running on the operator's machine. Returns the file content on success,
-    or {status: error, error: ...} if the bridge isn't connected or the
-    read fails on the operator side.
+    Phase 1-2: single-operator deployment — fall back to owner_user_id
+    in runtime.json (or hardcoded Bjørn discord_id). Phase 5 will route
+    per-session user_id from the agentic loop's context.
     """
-    path = str(args.get("path") or "").strip()
-    if not path:
-        return {"error": "path is required", "status": "error"}
-
-    # Phase 1: single-operator deployment — user_id resolved from settings.
-    # Phase 2 will route per-session user_id from the agentic loop's context.
     user_id = str(
         args.get("_runtime_user_id")
         or args.get("_user_id")
         or ""
     ).strip()
-    if not user_id:
-        try:
-            from core.runtime.settings import load_settings
-            settings = load_settings()
-            user_id = str(settings.extra.get("owner_user_id") or "1246415163603816499")
-        except Exception:
-            user_id = "1246415163603816499"
+    if user_id:
+        return user_id
+    try:
+        from core.runtime.settings import load_settings
+        settings = load_settings()
+        return str(settings.extra.get("owner_user_id") or "1246415163603816499")
+    except Exception:
+        return "1246415163603816499"
 
-    # Tool-handlers are called synchronously from async contexts (uvicorn
-    # event loop). asyncio.run() refuses to run inside a running loop, so
-    # we spawn a dedicated thread with its own loop to bridge the gap.
+
+def _run_operator_async(coro_fn, *, tool_name: str, timeout_s: float = 35.0) -> dict[str, Any]:
+    """Bridge sync tool-handler → async dispatcher.
+
+    Tool handlers run synchronously from uvicorn's event loop. asyncio.run()
+    refuses to nest, so we spawn a dedicated thread with its own loop.
+    coro_fn is called with no args; it should return a coroutine.
+    """
     import asyncio
     import threading
-    from core.tools.operator_tools import operator_read_file_async
 
     holder: dict[str, Any] = {}
 
     def _runner() -> None:
         loop = asyncio.new_event_loop()
         try:
-            holder["result"] = loop.run_until_complete(
-                operator_read_file_async(path=path, user_id=user_id, timeout_s=30.0)
-            )
+            holder["result"] = loop.run_until_complete(coro_fn())
         except RuntimeError as exc:
             holder["error"] = str(exc)
         except Exception as exc:
-            holder["error"] = f"operator_read_file failed: {exc!s}"[:240]
+            holder["error"] = f"{tool_name} failed: {exc!s}"[:240]
         finally:
             loop.close()
 
-    t = threading.Thread(target=_runner, daemon=True, name="operator-read-file")
+    t = threading.Thread(target=_runner, daemon=True, name=f"operator-{tool_name}")
     t.start()
-    t.join(timeout=35.0)
+    t.join(timeout=timeout_s)
     if t.is_alive():
-        return {"error": "operator_read_file: dispatcher thread did not return in 35s", "status": "error"}
+        return {"error": f"{tool_name}: dispatcher thread did not return in {timeout_s}s", "status": "error"}
     if "error" in holder:
         return {"error": holder["error"], "status": "error"}
-    return {"status": "ok", "result": holder.get("result", ""), "path": path}
+    return {"status": "ok", "result": holder.get("result")}
+
+
+def _exec_operator_read_file(args: dict[str, Any]) -> dict[str, Any]:
+    path = str(args.get("path") or "").strip()
+    if not path:
+        return {"error": "path is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_read_file_async
+    out = _run_operator_async(
+        lambda: operator_read_file_async(path=path, user_id=user_id, timeout_s=30.0),
+        tool_name="operator_read_file",
+    )
+    if out.get("status") == "ok":
+        return {"status": "ok", "result": out["result"], "path": path}
+    return out
+
+
+def _exec_operator_write_file(args: dict[str, Any]) -> dict[str, Any]:
+    path = str(args.get("path") or "").strip()
+    content = args.get("content")
+    if not path:
+        return {"error": "path is required", "status": "error"}
+    if content is None:
+        return {"error": "content is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_write_file_async
+    return _run_operator_async(
+        lambda: operator_write_file_async(
+            path=path, content=str(content), user_id=user_id, timeout_s=30.0,
+        ),
+        tool_name="operator_write_file",
+    )
+
+
+def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
+    path = str(args.get("path") or "").strip()
+    old_string = args.get("old_string")
+    new_string = args.get("new_string")
+    if not path:
+        return {"error": "path is required", "status": "error"}
+    if old_string is None or new_string is None:
+        return {"error": "old_string and new_string are required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_edit_file_async
+    return _run_operator_async(
+        lambda: operator_edit_file_async(
+            path=path,
+            old_string=str(old_string),
+            new_string=str(new_string),
+            replace_all=bool(args.get("replace_all", False)),
+            user_id=user_id,
+            timeout_s=30.0,
+        ),
+        tool_name="operator_edit_file",
+    )
+
+
+def _exec_operator_glob(args: dict[str, Any]) -> dict[str, Any]:
+    pattern = str(args.get("pattern") or "").strip()
+    if not pattern:
+        return {"error": "pattern is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_glob_async
+    return _run_operator_async(
+        lambda: operator_glob_async(
+            pattern=pattern,
+            cwd=args.get("cwd"),
+            max_results=int(args.get("max_results") or 200),
+            user_id=user_id,
+            timeout_s=30.0,
+        ),
+        tool_name="operator_glob",
+    )
+
+
+def _exec_operator_grep(args: dict[str, Any]) -> dict[str, Any]:
+    pattern = str(args.get("pattern") or "").strip()
+    if not pattern:
+        return {"error": "pattern is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_grep_async
+    return _run_operator_async(
+        lambda: operator_grep_async(
+            pattern=pattern,
+            path=args.get("path"),
+            glob=args.get("glob"),
+            case_insensitive=bool(args.get("case_insensitive", False)),
+            max_results=int(args.get("max_results") or 200),
+            user_id=user_id,
+            timeout_s=60.0,  # grep over many files takes longer
+        ),
+        tool_name="operator_grep",
+        timeout_s=65.0,
+    )
+
+
+def _exec_operator_list_dir(args: dict[str, Any]) -> dict[str, Any]:
+    path = str(args.get("path") or "").strip()
+    if not path:
+        return {"error": "path is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_list_dir_async
+    return _run_operator_async(
+        lambda: operator_list_dir_async(path=path, user_id=user_id, timeout_s=30.0),
+        tool_name="operator_list_dir",
+    )
 
 
 def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
@@ -6138,6 +6342,11 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_self_docs": _exec_read_self_docs,
     "read_file": _exec_read_file,
     "operator_read_file": _exec_operator_read_file,
+    "operator_write_file": _exec_operator_write_file,
+    "operator_edit_file": _exec_operator_edit_file,
+    "operator_glob": _exec_operator_glob,
+    "operator_grep": _exec_operator_grep,
+    "operator_list_dir": _exec_operator_list_dir,
     "write_file": _exec_write_file,
     "edit_file": _exec_edit_file,
     "search": _exec_search,

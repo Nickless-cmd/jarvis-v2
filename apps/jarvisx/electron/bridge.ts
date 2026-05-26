@@ -9,9 +9,16 @@
  * Phase 1: operator_read_file only. Add more tools by extending the
  * `handlers` map below.
  */
-import { readFileSync, appendFileSync } from 'node:fs'
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  readdirSync,
+  lstatSync,
+  appendFileSync,
+} from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join, isAbsolute, resolve } from 'node:path'
 import WebSocket from 'ws'
 
 const LOG_PATH = join(homedir(), '.config', 'jarvisx', 'bridge.log')
@@ -35,12 +42,205 @@ export interface BridgeConfig {
 
 type ToolHandler = (args: Record<string, unknown>) => Promise<unknown> | unknown
 
-/** Built-in handlers — Phase 1: read-only filesystem access. */
+/** Resolve a path argument — accept absolute or relative-to-home. */
+function resolveOperatorPath(p: unknown): string {
+  const raw = String(p ?? '').trim()
+  if (!raw) throw new Error('path required')
+  // Expand leading ~ to home dir (Jarvis often passes ~/foo paths).
+  if (raw === '~') return homedir()
+  if (raw.startsWith('~/')) return join(homedir(), raw.slice(2))
+  if (isAbsolute(raw)) return raw
+  return resolve(homedir(), raw)
+}
+
+/** Lightweight glob → regex, supports **, *, ?. Handles bash-style patterns. */
+function globToRegex(pattern: string): RegExp {
+  // Escape regex special chars except for our glob chars.
+  let re = ''
+  let i = 0
+  while (i < pattern.length) {
+    const c = pattern[i]
+    if (c === '*' && pattern[i + 1] === '*') {
+      re += '.*'
+      i += 2
+      // Skip trailing slash in **/ — treat ** as "any depth"
+      if (pattern[i] === '/') i++
+    } else if (c === '*') {
+      re += '[^/]*'
+      i++
+    } else if (c === '?') {
+      re += '[^/]'
+      i++
+    } else if ('.+^$()[]{}|\\'.includes(c)) {
+      re += '\\' + c
+      i++
+    } else {
+      re += c
+      i++
+    }
+  }
+  return new RegExp('^' + re + '$')
+}
+
+/** Recursive directory walk, capped at max files to avoid runaway. */
+function* walkDir(root: string, max: number): Generator<string> {
+  let count = 0
+  const stack: string[] = [root]
+  while (stack.length && count < max) {
+    const dir = stack.pop()!
+    let entries: string[]
+    try {
+      entries = readdirSync(dir)
+    } catch {
+      continue
+    }
+    for (const name of entries) {
+      if (count >= max) return
+      // Skip common heavy dirs by default
+      if (name === 'node_modules' || name === '.git' || name === '__pycache__') continue
+      const full = join(dir, name)
+      let st
+      try {
+        st = lstatSync(full)
+      } catch {
+        continue
+      }
+      if (st.isDirectory()) {
+        stack.push(full)
+      } else if (st.isFile()) {
+        yield full
+        count++
+      }
+    }
+  }
+}
+
+/** Built-in handlers — Phase 1+2: read/write/edit/glob/grep/list_dir. */
 const handlers: Record<string, ToolHandler> = {
   operator_read_file: (args) => {
-    const path = String(args.path ?? '')
-    if (!path) throw new Error('operator_read_file: path required')
+    const path = resolveOperatorPath(args.path)
     return readFileSync(path, 'utf8')
+  },
+
+  operator_write_file: (args) => {
+    const path = resolveOperatorPath(args.path)
+    const content = String(args.content ?? '')
+    // Create parent dirs as needed (mkdir -p style)
+    try {
+      mkdirSync(dirname(path), { recursive: true })
+    } catch {}
+    writeFileSync(path, content, 'utf8')
+    return { bytes_written: Buffer.byteLength(content, 'utf8'), path }
+  },
+
+  operator_edit_file: (args) => {
+    const path = resolveOperatorPath(args.path)
+    const oldStr = String(args.old_string ?? '')
+    const newStr = String(args.new_string ?? '')
+    const replaceAll = Boolean(args.replace_all)
+    if (!oldStr) throw new Error('old_string is required and must be non-empty')
+    const orig = readFileSync(path, 'utf8')
+    const occurrences = orig.split(oldStr).length - 1
+    if (occurrences === 0) {
+      throw new Error(`old_string not found in ${path}`)
+    }
+    if (occurrences > 1 && !replaceAll) {
+      throw new Error(
+        `old_string appears ${occurrences} times in ${path}; set replace_all=true to replace all, or provide more context`,
+      )
+    }
+    const updated = replaceAll
+      ? orig.split(oldStr).join(newStr)
+      : orig.replace(oldStr, newStr)
+    writeFileSync(path, updated, 'utf8')
+    return { replacements: replaceAll ? occurrences : 1, path }
+  },
+
+  operator_glob: (args) => {
+    const pattern = String(args.pattern ?? '')
+    if (!pattern) throw new Error('pattern is required')
+    const cwd = args.cwd ? resolveOperatorPath(args.cwd) : homedir()
+    const maxResults = Number(args.max_results) || 200
+    const re = globToRegex(pattern)
+    const out: string[] = []
+    for (const file of walkDir(cwd, maxResults * 20)) {
+      // Match against path relative to cwd, with forward slashes.
+      const rel = file.startsWith(cwd + '/') ? file.slice(cwd.length + 1) : file
+      if (re.test(rel)) {
+        out.push(file)
+        if (out.length >= maxResults) break
+      }
+    }
+    return out
+  },
+
+  operator_grep: (args) => {
+    const pattern = String(args.pattern ?? '')
+    if (!pattern) throw new Error('pattern is required')
+    const searchPath = args.path ? resolveOperatorPath(args.path) : homedir()
+    const fileGlob = args.glob ? String(args.glob) : null
+    const ci = Boolean(args.case_insensitive)
+    const maxResults = Number(args.max_results) || 200
+    const flags = ci ? 'i' : ''
+    let regex: RegExp
+    try {
+      regex = new RegExp(pattern, flags)
+    } catch (e) {
+      throw new Error(`invalid regex pattern: ${e}`)
+    }
+    const globRe = fileGlob ? globToRegex(fileGlob) : null
+
+    const out: Array<{ file: string; line: number; text: string }> = []
+    let st
+    try { st = lstatSync(searchPath) } catch { return out }
+
+    const files: Iterable<string> = st.isFile()
+      ? [searchPath]
+      : walkDir(searchPath, maxResults * 50)
+
+    for (const file of files) {
+      if (out.length >= maxResults) break
+      if (globRe) {
+        const rel = file.startsWith(searchPath + '/') ? file.slice(searchPath.length + 1) : file
+        if (!globRe.test(rel)) continue
+      }
+      let content: string
+      try {
+        content = readFileSync(file, 'utf8')
+      } catch {
+        continue
+      }
+      const lines = content.split('\n')
+      for (let i = 0; i < lines.length; i++) {
+        if (regex.test(lines[i])) {
+          out.push({ file, line: i + 1, text: lines[i].slice(0, 240) })
+          if (out.length >= maxResults) break
+        }
+      }
+    }
+    return out
+  },
+
+  operator_list_dir: (args) => {
+    const path = resolveOperatorPath(args.path)
+    const entries = readdirSync(path)
+    return entries.map((name) => {
+      const full = join(path, name)
+      let st
+      try {
+        st = lstatSync(full)
+      } catch {
+        return { name, type: 'unknown', size: 0 }
+      }
+      const type = st.isSymbolicLink()
+        ? 'symlink'
+        : st.isDirectory()
+          ? 'dir'
+          : st.isFile()
+            ? 'file'
+            : 'other'
+      return { name, type, size: Number(st.size) || 0 }
+    })
   },
 }
 

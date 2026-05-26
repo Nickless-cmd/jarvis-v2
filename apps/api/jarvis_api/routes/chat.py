@@ -147,6 +147,16 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
         if prefix_parts:
             effective_message = "\n\n".join(prefix_parts) + "\n\n---\n\n" + request.message
 
+    # Reject empty / whitespace-only messages cleanly (400) instead of
+    # letting append_chat_message raise a ValueError that becomes a 500.
+    # JarvisX UI occasionally sends empty payloads (e.g. accidental enter-
+    # press) and we don't want that to look like a server crash.
+    if not (effective_message or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="message must not be empty or whitespace-only",
+        )
+
     append_chat_message(session_id=session_id, role="user", content=effective_message)
     from core.services.notification_bridge import pin_session
     pin_session(session_id)

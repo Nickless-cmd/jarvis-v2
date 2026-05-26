@@ -208,13 +208,35 @@ def get_latest_visual_memory_for_prompt() -> str:
         try:
             dt = datetime.fromisoformat(captured_at.replace("Z", "+00:00"))
             minutes_ago = int((datetime.now(UTC) - dt.astimezone(UTC)).total_seconds() / 60)
-            if minutes_ago < 60:
-                time_label = f" (for {minutes_ago} min siden)"
-            elif minutes_ago < 1440:
-                time_label = f" (for {minutes_ago // 60}t siden)"
+            time_label = " " + _coarse_age_label(minutes_ago)
         except Exception:
             pass
     return f"[rum{time_label}]: {desc[:_MAX_DESC_CHARS]}"
+
+
+def _coarse_age_label(minutes_ago: int) -> str:
+    """Bucket minutes-since into coarse labels so prompt cache stays stable.
+
+    Per-minute labels ("for 7t siden") were the worst pre-catalog cache breaker:
+    they roll every hour, invalidating ~10k tokens of stable prefix every time.
+    These buckets only update at major boundaries (15m, 1h, 3h, 12h, 24h, days).
+    """
+    if minutes_ago < 5:
+        return "(lige nu)"
+    if minutes_ago < 15:
+        return "(for få min siden)"
+    if minutes_ago < 60:
+        return "(inden for sidste time)"
+    if minutes_ago < 180:
+        return "(for et par timer siden)"
+    if minutes_ago < 720:
+        return "(tidligere i dag)"
+    if minutes_ago < 1440:
+        return "(for et stykke tid siden)"
+    days = minutes_ago // 1440
+    if days < 7:
+        return f"(for {days} dag{'e' if days != 1 else ''} siden)"
+    return "(for over en uge siden)"
 
 
 def look_around_now(*, prompt_override: str = "") -> dict[str, object]:

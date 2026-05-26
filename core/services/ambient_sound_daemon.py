@@ -294,10 +294,10 @@ def get_latest_ambient_sound_for_prompt() -> str:
     minutes_ago = int((datetime.now(UTC) - dt).total_seconds() / 60)
     if minutes_ago > 12 * 60:
         return ""
-    time_label = (
-        f" (for {minutes_ago} min siden)" if minutes_ago < 60
-        else f" (for {minutes_ago // 60}t siden)"
-    )
+    # Coarse bucketed age — see visual_memory._coarse_age_label for rationale
+    # (per-hour labels were the worst pre-catalog prompt-cache breaker).
+    from core.services.visual_memory import _coarse_age_label
+    time_label = " " + _coarse_age_label(minutes_ago)
     transcript = str(state.get("last_transcript") or "").strip()
     description = str(state.get("last_description") or "").strip()
     if not description:

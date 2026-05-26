@@ -406,6 +406,36 @@ def start_visible_run(
     normalized_session_id = (session_id or "").strip() or None
     try:
         active = _get_active_visible_run_state()
+        # Stuck-state auto-clear (2026-05-26 Claude). When a run dies without
+        # cleanly calling unregister_visible_run() — e.g. an autonomous
+        # auto-continuation that errors before its finally-block, or a process
+        # restart mid-run — the active_run state stays in DB. Every subsequent
+        # chat message gets routed below as a "midway nudge" which yields
+        # nothing visible → user sees "No response content returned" forever.
+        # Auto-clear when (a) active is stale (>5 min) AND (b) the owning
+        # controller is no longer in process memory (= the run process died).
+        if active and bool(active.get("active")):
+            stale_run_id = str(active.get("run_id") or "")
+            still_alive = stale_run_id in _VISIBLE_RUN_CONTROLLERS
+            if not still_alive:
+                from datetime import datetime as _dt2, UTC as _UTC2
+                try:
+                    started = _dt2.fromisoformat(
+                        str(active.get("started_at") or "").replace("Z", "+00:00")
+                    )
+                    if started.tzinfo is None:
+                        started = started.replace(tzinfo=_UTC2)
+                    age_s = (_dt2.now(_UTC2) - started).total_seconds()
+                except Exception:
+                    age_s = 99999.0  # malformed timestamp → treat as very old
+                if age_s > 300:  # 5 minutes
+                    logger.warning(
+                        "visible_runs: clearing stale active_run %s (age=%.0fs, "
+                        "no in-process controller) — likely died without cleanup",
+                        stale_run_id, age_s,
+                    )
+                    _set_active_visible_run({})
+                    active = {}
         if (active and bool(active.get("active"))
                 and not bool(active.get("cancelled"))
                 and normalized_session_id

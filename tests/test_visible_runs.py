@@ -34,6 +34,62 @@ class TestVisibleRunsModuleSurface:
         assert visible_runs._preview_text("") == ""
         assert visible_runs._preview_text(None) == ""  # type: ignore[arg-type]
 
+    def test_stuck_active_run_auto_clear(self, monkeypatch):
+        """Regression-guard for 'No response content returned' loop.
+
+        When a run dies without unregister_visible_run() (process restart
+        mid-run, error before finally-block, autonomous run that exits
+        uncleanly), the active_run state stays in DB. Every subsequent
+        chat then gets routed as a 'midway nudge' which yields nothing
+        visible. User sees empty responses until manual cleanup.
+
+        Auto-clear logic: when active_run state is present but its
+        controller is NOT in _VISIBLE_RUN_CONTROLLERS, and the run has
+        been 'active' for >5 min, clear it on the next start_visible_run.
+        """
+        from datetime import datetime, timedelta, UTC
+
+        stale_id = "visible-stale-12345"
+        # No controller in process memory
+        monkeypatch.setattr(visible_runs, "_VISIBLE_RUN_CONTROLLERS", {})
+
+        # Inject a fake 10-minute-old active_run via DB-backed setter
+        stale_started = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
+        captured = {}
+        def fake_get():
+            return captured.get("state", {
+                "active": True,
+                "run_id": stale_id,
+                "session_id": "chat-x",
+                "started_at": stale_started,
+                "cancelled": False,
+            })
+        def fake_set(payload):
+            captured["state"] = payload or {}
+        monkeypatch.setattr(visible_runs, "_get_active_visible_run_state", fake_get)
+        monkeypatch.setattr(visible_runs, "_set_active_visible_run", fake_set)
+
+        # Cap downstream side-effects: we only want to verify the clear path
+        monkeypatch.setattr(visible_runs, "load_settings", lambda: type("S", (), {
+            "primary_model_lane": "primary",
+            "visible_model_provider": "deepseek",
+            "visible_model_name": "test",
+        })())
+        monkeypatch.setattr(visible_runs, "_stream_visible_run", lambda run: iter([]))
+
+        # Call site of interest — the stale state should be cleared, NOT
+        # routed as a midway nudge.
+        _ = visible_runs.start_visible_run(
+            message="hello",
+            session_id="chat-x",
+            approval_mode="approve",
+            thinking_mode="none",
+        )
+
+        assert captured.get("state") == {}, (
+            f"Stale active_run should have been auto-cleared, got: {captured.get('state')}"
+        )
+
     def test_preview_text_truncates(self):
         """Long input gets truncated to a single bounded line."""
         long_text = "x" * 1000

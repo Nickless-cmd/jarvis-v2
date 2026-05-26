@@ -313,36 +313,39 @@ const handlers: Record<string, ToolHandler> = {
     const cwd = args.cwd ? resolveOperatorPath(args.cwd) : homedir()
     const timeoutS = Math.min(Math.max(Number(args.timeout_s) || 30, 1), 300)
 
-    // Approval dialog — operator must explicitly approve every command.
-    // Shows command + cwd + timeout. Default button is Cancel (safe-by-default).
-    // Auto-rejects after 20s if no response, so the agentic loop on
-    // Jarvis' side isn't blocked indefinitely waiting for the operator.
-    const APPROVAL_DEADLINE_MS = 20_000
-    const choice = await Promise.race<{ response: number }>([
-      dialog.showMessageBox({
-        type: 'warning',
-        title: 'Jarvis vil køre en kommando',
-        message: 'Jarvis beder om at køre en shell-kommando på din maskine.',
-        detail: `Kommando:\n  ${command}\n\nMappe:\n  ${cwd}\n\nTimeout: ${timeoutS}s\n\nAuto-afviser efter 20 sek hvis du ikke svarer.`,
-        buttons: ['Afvis', 'Godkend og kør'],
-        defaultId: 0,
-        cancelId: 0,
-        noLink: true,
-      }),
-      new Promise<{ response: number }>((resolve) =>
-        setTimeout(() => resolve({ response: 0 }), APPROVAL_DEADLINE_MS),
-      ),
-    ])
+    const skipApproval = Boolean(args.skip_approval)
 
-    if (choice.response !== 1) {
-      return {
-        approved: false,
-        stdout: '',
-        stderr: '',
-        exit_code: null,
-        timed_out: false,
+    if (!skipApproval) {
+      // Approval dialog — operator must explicitly approve every command.
+      // Auto-rejects after 20s if no response.
+      const APPROVAL_DEADLINE_MS = 20_000
+      const choice = await Promise.race<{ response: number }>([
+        dialog.showMessageBox({
+          type: 'warning',
+          title: 'Jarvis vil køre en kommando',
+          message: 'Jarvis beder om at køre en shell-kommando på din maskine.',
+          detail: `Kommando:\n  ${command}\n\nMappe:\n  ${cwd}\n\nTimeout: ${timeoutS}s\n\nAuto-afviser efter 20 sek hvis du ikke svarer.`,
+          buttons: ['Afvis', 'Godkend og kør'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true,
+        }),
+        new Promise<{ response: number }>((resolve) =>
+          setTimeout(() => resolve({ response: 0 }), APPROVAL_DEADLINE_MS),
+        ),
+      ])
+
+      if (choice.response !== 1) {
+        return {
+          approved: false,
+          stdout: '',
+          stderr: '',
+          exit_code: null,
+          timed_out: false,
+        }
       }
     }
+    // else: trust-all mode — no dialog, command runs directly.
 
     // Platform-aware shell selection: bash on Linux/macOS, PowerShell
     // on Windows. Same surface for the LLM — shell-features (pipes,

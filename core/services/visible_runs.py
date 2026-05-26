@@ -293,6 +293,10 @@ class VisibleRunController:
     active_stream: object | None = None
     last_capability_id: str | None = None
     seen_simple_tool_call_signatures: set[str] = field(default_factory=set)
+    # 2026-05-26: forwarded from VisibleRun.trust_all so operator_* tools
+    # can skip per-call approval dialogs when the operator already
+    # opted into "Trust All" in the JarvisX composer.
+    trust_all: bool = False
 
     def attach_stream(self, stream: object) -> None:
         self.active_stream = stream
@@ -3697,6 +3701,12 @@ def _execute_simple_tool_calls(
             arguments["_runtime_session_id"] = session_id
         if run_id:
             arguments["_runtime_turn_id"] = run_id
+        # Forward trust_all so operator_* tools can skip per-call approval
+        # dialogs when the user already opted into "Trust All" mode.
+        # `force=True` (autonomous runs) implies trust_all — no human in
+        # the loop to approve anything.
+        if force or (controller and controller.trust_all):
+            arguments["_runtime_trust_all"] = True
         signature = json.dumps(
             {
                 "tool_name": name,
@@ -5309,6 +5319,7 @@ def register_visible_run(run: VisibleRun) -> VisibleRunController:
         model=run.model,
         started_at=started_at,
         user_message_preview=_preview_text(run.user_message),
+        trust_all=bool(getattr(run, "trust_all", False)),
     )
     _VISIBLE_RUN_CONTROLLERS[run.run_id] = controller
     state = {

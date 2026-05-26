@@ -3186,9 +3186,9 @@ def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "command is required", "status": "error"}
     user_id = _operator_user_id(args)
     timeout_s = float(args.get("timeout_s") or 30.0)
-    # Bridge-call inner timeout = timeout_s + 25s (dialog auto-reject 20s + 5s slack).
-    # Outer thread timeout adds 5s more so the dispatcher doesn't fight the
-    # bridge's own timeout for the win.
+    # Skip per-call dialog when "Trust All" was selected in composer
+    # (forwarded as _runtime_trust_all by visible_runs.py).
+    skip_approval = bool(args.get("_runtime_trust_all"))
     thread_timeout = min(timeout_s, 300.0) + 30.0
     from core.tools.operator_tools import operator_bash_async
     return _run_operator_async(
@@ -3197,6 +3197,7 @@ def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
             cwd=args.get("cwd"),
             timeout_s=timeout_s,
             user_id=user_id,
+            skip_approval=skip_approval,
         ),
         tool_name="operator_bash",
         timeout_s=thread_timeout,

@@ -235,27 +235,30 @@ async def operator_bash_async(
     cwd: str | None = None,
     timeout_s: float = 30.0,
     user_id: str,
+    skip_approval: bool = False,
 ) -> dict[str, Any]:
-    """Run a shell command on the operator's desktop after explicit approval.
+    """Run a shell command on the operator's desktop.
 
-    The JarvisX-app shows the operator a dialog with the full command,
-    cwd, and timeout. Only on operator-approval does the command run.
+    By default the JarvisX-app shows the operator a dialog with the full
+    command before running. When skip_approval=True (e.g. operator opted
+    into "Trust All" in composer, or autonomous run), the bridge runs the
+    command directly without prompting.
+
     Returns {stdout, stderr, exit_code, timed_out, approved}.
-
-    Bridge-side timeout is generous (timeout_s + 30s) to allow time for
-    operator to read and approve the dialog.
     """
     # Cap at 5 min to prevent ridiculous timeouts
     timeout_s = min(max(timeout_s, 1.0), 300.0)
     # Bridge-call timeout: command timeout + 25s (20s dialog auto-reject + 5s slack).
     # If operator doesn't respond to the approval dialog within 20s, bridge
     # auto-rejects so Jarvis' agentic loop isn't blocked for minutes.
+    # When skip_approval=True, the 25s buffer is overkill but harmless.
     result = await _bridge_call(
         tool="operator_bash",
         args={
             "command": str(command),
             "cwd": str(cwd) if cwd else None,
             "timeout_s": float(timeout_s),
+            "skip_approval": bool(skip_approval),
         },
         user_id=user_id,
         timeout_s=timeout_s + 25.0,

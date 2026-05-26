@@ -184,6 +184,71 @@ async def test_operator_read_file_routes_via_bridge(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_dispatch_cross_loop_safe():
+    """Regression: deliver_result must wake awaiter even when called from
+    a different event loop than dispatch().
+
+    Scenario in production: tool-handler runs in a worker thread with its
+    own loop (so it can call asyncio.run_until_complete). WS handler runs
+    on the main uvicorn loop. Without owning-loop tracking, set_result()
+    fires on the wrong loop and the awaiter never wakes — tool times out
+    even though the bridge actually replied.
+    """
+    import asyncio
+    from core.services.jarvisx_bridge import bridge_registry, BridgeConnection
+    bridge_registry.clear()
+
+    sent = []
+
+    class FakeWS:
+        async def send_json(self, msg):
+            sent.append(msg)
+
+    conn = BridgeConnection(user_id="user-x", client="test", ws=FakeWS())
+    bridge_registry.register(conn)
+
+    # Simulate WS handler arriving on a DIFFERENT loop than the
+    # dispatcher. We run dispatch in a thread with its own loop and
+    # call deliver_result from THIS test's main loop.
+    import threading
+    holder = {}
+
+    def _run_dispatch_in_worker():
+        new_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(new_loop)
+        try:
+            holder["result"] = new_loop.run_until_complete(
+                bridge_registry.dispatch(
+                    user_id="user-x", tool="operator_read_file",
+                    args={"path": "/x"}, timeout_s=3.0,
+                )
+            )
+        finally:
+            new_loop.close()
+
+    t = threading.Thread(target=_run_dispatch_in_worker, daemon=True)
+    t.start()
+    # Wait until the worker has sent the invoke
+    while not sent:
+        await asyncio.sleep(0.01)
+    correlation_id = sent[0]["correlation_id"]
+
+    # Call deliver_result from the main test loop (different from worker's)
+    await conn.deliver_result(
+        correlation_id=correlation_id,
+        status="ok",
+        result="cross-loop content",
+        error=None,
+    )
+
+    # Worker should now complete; join with timeout
+    t.join(timeout=2.0)
+    assert not t.is_alive(), "dispatch thread hung — cross-loop wake-up failed"
+    assert holder["result"]["status"] == "ok"
+    assert holder["result"]["result"] == "cross-loop content"
+
+
+@pytest.mark.asyncio
 async def test_operator_read_file_propagates_bridge_error():
     """If bridge returns error, tool raises RuntimeError with message."""
     from core.tools import operator_tools

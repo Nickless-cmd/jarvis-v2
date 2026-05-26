@@ -38,7 +38,14 @@ class BridgeConnection:
     platform: str = ""
     capabilities: list[str] = field(default_factory=list)
     ws: Any = None  # FastAPI WebSocket, or a fake in tests
-    _pending: dict[str, asyncio.Future] = field(default_factory=dict)
+    # Pending entries: correlation_id → (future, owning_loop). The
+    # owning_loop is needed because dispatch() may run from a worker
+    # thread with its own event loop, while deliver_result() runs on
+    # the main loop (where the WS handler lives). Without recording
+    # the loop, set_result() fires on the wrong loop and the awaiter
+    # never wakes up — tool-handler times out even though the bridge
+    # replied correctly. See test_dispatch_cross_loop_safe.
+    _pending: dict[str, tuple[asyncio.Future, asyncio.AbstractEventLoop]] = field(default_factory=dict)
 
     async def send_invoke(
         self,
@@ -67,18 +74,46 @@ class BridgeConnection:
         result: Any = None,
         error: Optional[str] = None,
     ) -> None:
-        """Complete the pending future for this correlation_id."""
-        fut = self._pending.pop(correlation_id, None)
-        if fut is None or fut.done():
-            # Result for an unknown / already-completed correlation — drop
+        """Complete the pending future for this correlation_id.
+
+        Marshals set_result onto the future's owning loop so cross-loop
+        dispatch (e.g. tool-handler running in a worker thread with its
+        own loop, while WS handler runs on the main loop) actually wakes
+        the awaiter.
+        """
+        entry = self._pending.pop(correlation_id, None)
+        if entry is None:
             return
-        fut.set_result({"status": status, "result": result, "error": error})
+        fut, owning_loop = entry
+        if fut.done():
+            return
+        payload = {"status": status, "result": result, "error": error}
+        if owning_loop is asyncio.get_event_loop():
+            fut.set_result(payload)
+        else:
+            # Cross-loop: schedule the set_result on the owning loop so
+            # the worker-thread awaiter actually receives the wake-up.
+            try:
+                owning_loop.call_soon_threadsafe(fut.set_result, payload)
+            except RuntimeError:
+                # Loop closed already — drop result silently
+                pass
 
     def cancel_all_pending(self, *, reason: str = "bridge_disconnected") -> None:
         """Cancel all in-flight calls (e.g. on WS disconnect)."""
-        for cid, fut in list(self._pending.items()):
-            if not fut.done():
-                fut.set_result({"status": "error", "result": None, "error": reason})
+        payload = {"status": "error", "result": None, "error": reason}
+        for cid, entry in list(self._pending.items()):
+            fut, owning_loop = entry
+            if fut.done():
+                continue
+            try:
+                if owning_loop.is_closed():
+                    continue
+                owning_loop.call_soon_threadsafe(
+                    lambda f=fut, p=payload: (f.set_result(p) if not f.done() else None),
+                )
+            except RuntimeError:
+                pass
         self._pending.clear()
 
 
@@ -144,7 +179,9 @@ class BridgeRegistry:
         correlation_id = str(uuid.uuid4())
         loop = asyncio.get_event_loop()
         fut: asyncio.Future = loop.create_future()
-        bridge._pending[correlation_id] = fut
+        # Pair future with its owning loop so deliver_result can marshal
+        # set_result correctly when WS handler runs on a different loop.
+        bridge._pending[correlation_id] = (fut, loop)
 
         try:
             await bridge.send_invoke(

@@ -88,7 +88,7 @@ def _network_latency() -> dict[str, Any]:
     # 1) Internal: ping Ollama (known endpoint)
     try:
         import socket
-        ollama_host = os.environ.get("OLLAMA_HOST", "10.0.0.25")
+        ollama_host = os.environ.get("OLLAMA_HOST", "127.0.0.1")
         ollama_port = int(os.environ.get("OLLAMA_PORT", "11434"))
         start = datetime.now(UTC).timestamp()
         sock = socket.create_connection((ollama_host, ollama_port), timeout=2.0)

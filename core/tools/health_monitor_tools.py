@@ -13,7 +13,7 @@ _MAX_HISTORY = 20
 
 _PRESET_ENDPOINTS = {
     "jarvis-api": "http://localhost:8000/health",
-    "ollama": "http://10.0.0.25:11434/api/tags",
+    "ollama": "http://127.0.0.1:11434/api/tags",
     "comfyui": "http://localhost:8188/",
 }
 

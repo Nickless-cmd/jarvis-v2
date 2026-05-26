@@ -57,24 +57,23 @@ INFRASTRUCTURE_FACTS: dict[str, dict[str, str]] = {
     # 2026-05-22 expansion: added per Jarvis' own Quick Facts review.
     "hosts": {
         # Proxmox cluster
-        "10.0.0.2": "Proxmox pve-01 (4TB external backup, 4 VMs)",
+        "10.0.0.2": "Proxmox host pve (i9-9900k, 32GB DDR4, Bjørn's old workstation; now Jarvis' Proxmox host)",
         "10.0.0.36": "Proxmox pve-02 (Kingston SSD, read-only)",
-        "10.0.0.39": "Proxmox pve-03",
-        # Jarvis runtime hosts
-        "10.0.0.25": "Ollama LXC (Proxmox 107, GTX 1070 passthrough)",
+        "10.0.0.39": "Jarvis runtime host (LXC-105 on 10.0.0.2) — primary runtime location since 2026-05-25",
+        # Legacy Jarvis runtime hosts (pre-2026-05-25 migration)
         "192.168.50.32": "Jarvis side-server (bs_jarvis, web root in ~/web/)",
-        "192.168.50.36": "ChiefOne (Bjørn's desktop, Jarvis primary workstation)",
-        "10.0.0.46": "ChiefOne (Bjørn's desktop, Jarvis primary workstation)",
+        "192.168.50.36": "ChiefOne (Bjørn's desktop, NOT Jarvis runtime anymore)",
+        "10.0.0.46": "ChiefOne (Bjørn's desktop, NOT Jarvis runtime anymore — was primary pre-2026-05-25)",
         # Smart home
         "10.0.0.34": "Home Assistant host",
         # Hostname aliases (typo-tolerant)
-        "cheifone": "Jarvis primary workstation (Bjørn's desktop)",
-        "chefone": "Jarvis primary workstation (Bjørn's desktop)",
-        "chiefone": "Jarvis primary workstation (Bjørn's desktop)",
+        "cheifone": "Bjørn's desktop (NOT Jarvis runtime since 2026-05-25)",
+        "chefone": "Bjørn's desktop (NOT Jarvis runtime since 2026-05-25)",
+        "chiefone": "Bjørn's desktop (NOT Jarvis runtime since 2026-05-25)",
         "bs_jarvis": "Jarvis side-server on 192.168.50.32",
-        "pve-01": "Proxmox node 10.0.0.2",
+        "jarvis": "Jarvis runtime LXC-105 on 10.0.0.39 (host = 10.0.0.2 / pve)",
+        "pve": "Proxmox host 10.0.0.2 (Jarvis' new home)",
         "pve-02": "Proxmox node 10.0.0.36",
-        "pve-03": "Proxmox node 10.0.0.39",
     },
     # Known stable filesystem paths.
     "paths": {
@@ -94,7 +93,7 @@ INFRASTRUCTURE_FACTS: dict[str, dict[str, str]] = {
         "8011": "Jarvis runtime (heartbeat + services, workers=1)",
         "8400": "Mission Control / Dashboard",
         "8123": "Home Assistant on 10.0.0.34",
-        "11434": "Ollama on 10.0.0.25",
+        "11434": "Ollama on 127.0.0.1 (localhost — same host as Jarvis runtime since 2026-05-25)",
     },
     # Known domains.
     "domains": {

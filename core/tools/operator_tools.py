@@ -247,6 +247,9 @@ async def operator_bash_async(
     """
     # Cap at 5 min to prevent ridiculous timeouts
     timeout_s = min(max(timeout_s, 1.0), 300.0)
+    # Bridge-call timeout: command timeout + 25s (20s dialog auto-reject + 5s slack).
+    # If operator doesn't respond to the approval dialog within 20s, bridge
+    # auto-rejects so Jarvis' agentic loop isn't blocked for minutes.
     result = await _bridge_call(
         tool="operator_bash",
         args={
@@ -255,7 +258,6 @@ async def operator_bash_async(
             "timeout_s": float(timeout_s),
         },
         user_id=user_id,
-        # Bridge-call timeout must accommodate: operator dialog + command run
-        timeout_s=timeout_s + 120.0,
+        timeout_s=timeout_s + 25.0,
     )
     return result or {}

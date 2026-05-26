@@ -315,16 +315,24 @@ const handlers: Record<string, ToolHandler> = {
 
     // Approval dialog — operator must explicitly approve every command.
     // Shows command + cwd + timeout. Default button is Cancel (safe-by-default).
-    const choice = await dialog.showMessageBox({
-      type: 'warning',
-      title: 'Jarvis vil køre en kommando',
-      message: 'Jarvis beder om at køre en shell-kommando på din maskine.',
-      detail: `Kommando:\n  ${command}\n\nMappe:\n  ${cwd}\n\nTimeout: ${timeoutS}s`,
-      buttons: ['Afvis', 'Godkend og kør'],
-      defaultId: 0,
-      cancelId: 0,
-      noLink: true,
-    })
+    // Auto-rejects after 20s if no response, so the agentic loop on
+    // Jarvis' side isn't blocked indefinitely waiting for the operator.
+    const APPROVAL_DEADLINE_MS = 20_000
+    const choice = await Promise.race<{ response: number }>([
+      dialog.showMessageBox({
+        type: 'warning',
+        title: 'Jarvis vil køre en kommando',
+        message: 'Jarvis beder om at køre en shell-kommando på din maskine.',
+        detail: `Kommando:\n  ${command}\n\nMappe:\n  ${cwd}\n\nTimeout: ${timeoutS}s\n\nAuto-afviser efter 20 sek hvis du ikke svarer.`,
+        buttons: ['Afvis', 'Godkend og kør'],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+      }),
+      new Promise<{ response: number }>((resolve) =>
+        setTimeout(() => resolve({ response: 0 }), APPROVAL_DEADLINE_MS),
+      ),
+    ])
 
     if (choice.response !== 1) {
       return {

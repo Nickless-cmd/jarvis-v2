@@ -3186,8 +3186,10 @@ def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "command is required", "status": "error"}
     user_id = _operator_user_id(args)
     timeout_s = float(args.get("timeout_s") or 30.0)
-    # Bridge-call timeout must allow for approval-dialog + command run.
-    thread_timeout = min(timeout_s, 300.0) + 130.0
+    # Bridge-call inner timeout = timeout_s + 25s (dialog auto-reject 20s + 5s slack).
+    # Outer thread timeout adds 5s more so the dispatcher doesn't fight the
+    # bridge's own timeout for the win.
+    thread_timeout = min(timeout_s, 300.0) + 30.0
     from core.tools.operator_tools import operator_bash_async
     return _run_operator_async(
         lambda: operator_bash_async(

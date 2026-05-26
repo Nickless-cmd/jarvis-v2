@@ -93,8 +93,9 @@ async def test_bash_dispatches_with_approval_flow(monkeypatch):
     assert captured["tool"] == "operator_bash"
     assert captured["args"]["command"] == "echo hi"
     assert captured["args"]["cwd"] == "/tmp"
-    # Outer bridge-call timeout = command timeout + 120s buffer for approval
-    assert captured["outer_timeout"] == 10.0 + 120.0
+    # Outer bridge-call timeout = command timeout + 25s buffer (20s dialog
+    # auto-reject + 5s slack). Tight enough that agentic loop doesn't hang.
+    assert captured["outer_timeout"] == 10.0 + 25.0
     assert result["approved"] is True
     assert result["exit_code"] == 0
 

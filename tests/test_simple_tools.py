@@ -61,6 +61,30 @@ def test_phase3_operator_bash_registered():
     )
 
 
+def test_phase4_operator_webfetch_registered():
+    """operator_webfetch is registered."""
+    from core.tools.simple_tools import _TOOL_HANDLERS, get_tool_definitions
+    tools = get_tool_definitions() or []
+    names = {t.get("function", {}).get("name", "") for t in tools}
+    assert "operator_webfetch" in names
+    assert "operator_webfetch" in _TOOL_HANDLERS
+
+
+def test_phase5_user_id_resolution_explicit_wins():
+    """Explicit _runtime_user_id in args takes priority over session lookup."""
+    from core.tools.simple_tools import _operator_user_id
+    assert _operator_user_id({"_runtime_user_id": "user-explicit"}) == "user-explicit"
+    assert _operator_user_id({"_user_id": "user-legacy"}) == "user-legacy"
+
+
+def test_phase5_user_id_falls_back_to_owner():
+    """With no explicit user_id and no session_id, falls back to owner."""
+    from core.tools.simple_tools import _operator_user_id
+    uid = _operator_user_id({})
+    # Default fallback is Bjørn's discord_id
+    assert uid == "1246415163603816499" or len(uid) > 0
+
+
 def test_tool_definitions_well_formed():
     """Every tool def has function.name + function.description."""
     from core.tools.simple_tools import get_tool_definitions

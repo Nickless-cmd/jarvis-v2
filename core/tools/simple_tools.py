@@ -782,6 +782,30 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "operator_webfetch",
+            "description": (
+                "Fetch a URL from the OPERATOR'S LOCAL NETWORK via JarvisX bridge. "
+                "Use when the URL is on the operator's LAN (router admin, local "
+                "Docker services, intranet) that Jarvis can't reach directly. "
+                "For public URLs prefer web_fetch (faster, no bridge required). "
+                "Returns {status, headers, body, content_type}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "URL to fetch (e.g. http://192.168.1.1)"},
+                    "method": {"type": "string", "description": "HTTP method (default GET)"},
+                    "headers": {"type": "object", "description": "Optional request headers"},
+                    "body": {"type": "string", "description": "Optional request body (for POST/PUT)"},
+                    "timeout_s": {"type": "number", "description": "Timeout in seconds (default 30)"},
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "operator_bash",
             "description": (
                 "Run a shell command on the OPERATOR'S DESKTOP. Every call shows "
@@ -2950,9 +2974,15 @@ def _record_tool_outcome_memory(
 def _operator_user_id(args: dict[str, Any]) -> str:
     """Resolve operator's user_id for bridge routing.
 
-    Phase 1-2: single-operator deployment — fall back to owner_user_id
-    in runtime.json (or hardcoded Bjørn discord_id). Phase 5 will route
-    per-session user_id from the agentic loop's context.
+    Resolution order (Phase 5 multi-user-ready):
+      1. Explicit _runtime_user_id / _user_id in args (set by caller)
+      2. Latest user-stamped message in the session (Mikkel/Bjørn etc.)
+      3. owner_user_id from runtime.json
+      4. Hardcoded Bjørn discord_id (final fallback)
+
+    For multi-user deployments (Bjørn + Mikkel), step 2 is what makes
+    each operator route to THEIR OWN bridge: their JarvisX-app stamps
+    messages with their user_id, and tool-calls inherit it.
     """
     user_id = str(
         args.get("_runtime_user_id")
@@ -2961,6 +2991,27 @@ def _operator_user_id(args: dict[str, Any]) -> str:
     ).strip()
     if user_id:
         return user_id
+
+    # Try to derive from session participants
+    session_id = str(args.get("_runtime_session_id") or "").strip()
+    if session_id:
+        try:
+            import sqlite3
+            from pathlib import Path
+            import os
+            db_path = Path(os.environ.get("HOME", "/root")) / ".jarvis-v2" / "state" / "jarvis.db"
+            with sqlite3.connect(str(db_path)) as conn:
+                row = conn.execute(
+                    "SELECT user_id FROM message_user_attribution "
+                    "WHERE session_id=? AND user_id IS NOT NULL AND user_id != '' "
+                    "ORDER BY rowid DESC LIMIT 1",
+                    (session_id,),
+                ).fetchone()
+                if row and row[0]:
+                    return str(row[0])
+        except Exception:
+            pass
+
     try:
         from core.runtime.settings import load_settings
         settings = load_settings()
@@ -3105,6 +3156,27 @@ def _exec_operator_list_dir(args: dict[str, Any]) -> dict[str, Any]:
     return _run_operator_async(
         lambda: operator_list_dir_async(path=path, user_id=user_id, timeout_s=30.0),
         tool_name="operator_list_dir",
+    )
+
+
+def _exec_operator_webfetch(args: dict[str, Any]) -> dict[str, Any]:
+    url = str(args.get("url") or "").strip()
+    if not url:
+        return {"error": "url is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    timeout_s = float(args.get("timeout_s") or 30.0)
+    from core.tools.operator_tools import operator_webfetch_async
+    return _run_operator_async(
+        lambda: operator_webfetch_async(
+            url=url,
+            method=str(args.get("method") or "GET"),
+            headers=args.get("headers"),
+            body=args.get("body"),
+            timeout_s=timeout_s,
+            user_id=user_id,
+        ),
+        tool_name="operator_webfetch",
+        timeout_s=timeout_s + 35.0,
     )
 
 
@@ -6400,6 +6472,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "operator_glob": _exec_operator_glob,
     "operator_grep": _exec_operator_grep,
     "operator_list_dir": _exec_operator_list_dir,
+    "operator_webfetch": _exec_operator_webfetch,
     "operator_bash": _exec_operator_bash,
     "write_file": _exec_write_file,
     "edit_file": _exec_edit_file,

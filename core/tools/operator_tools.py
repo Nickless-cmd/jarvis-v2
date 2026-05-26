@@ -190,6 +190,42 @@ async def operator_list_dir_async(
     return list(result or [])
 
 
+# ── operator_webfetch ───────────────────────────────────────────────────
+
+
+async def operator_webfetch_async(
+    *,
+    url: str,
+    method: str = "GET",
+    headers: dict[str, str] | None = None,
+    body: str | None = None,
+    timeout_s: float = 30.0,
+    user_id: str,
+) -> dict[str, Any]:
+    """Fetch a URL from the operator's local network via the bridge.
+
+    Useful for reaching private services on the operator's LAN that
+    Jarvis (in his LXC) can't reach directly — e.g. router admin
+    pages, local Docker services, intranet sites.
+
+    Returns {status, headers, body, content_type}. Body is truncated
+    at ~100KB; binary content returned as base64.
+    """
+    result = await _bridge_call(
+        tool="operator_webfetch",
+        args={
+            "url": str(url),
+            "method": str(method).upper(),
+            "headers": dict(headers) if headers else None,
+            "body": str(body) if body else None,
+            "timeout_s": float(timeout_s),
+        },
+        user_id=user_id,
+        timeout_s=timeout_s + 30.0,
+    )
+    return result or {}
+
+
 # ── operator_bash ───────────────────────────────────────────────────────
 
 

@@ -20,8 +20,27 @@ import {
 import { homedir } from 'node:os'
 import { dirname, join, isAbsolute, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { platform as osPlatform } from 'node:os'
 import { dialog } from 'electron'
 import WebSocket from 'ws'
+
+/** Resolve which shell to use for operator_bash based on the OS the
+ * JarvisX-app is running on. Linux/macOS use bash; Windows defaults to
+ * PowerShell (more capable than cmd.exe, still ubiquitous on Windows 10+). */
+function selectShell(): { cmd: string; args: (command: string) => string[] } {
+  const p = osPlatform()
+  if (p === 'win32') {
+    return {
+      cmd: 'powershell.exe',
+      // -NoProfile keeps startup fast; -Command takes the inline command
+      args: (command) => ['-NoProfile', '-NonInteractive', '-Command', command],
+    }
+  }
+  return {
+    cmd: 'bash',
+    args: (command) => ['-c', command],
+  }
+}
 
 const LOG_PATH = join(homedir(), '.config', 'jarvisx', 'bridge.log')
 
@@ -245,6 +264,49 @@ const handlers: Record<string, ToolHandler> = {
     })
   },
 
+  operator_webfetch: async (args) => {
+    const url = String(args.url ?? '').trim()
+    if (!url) throw new Error('url is required')
+    const method = String(args.method ?? 'GET').toUpperCase()
+    const headers = (args.headers as Record<string, string>) || {}
+    const body = args.body !== null && args.body !== undefined ? String(args.body) : undefined
+    const timeoutMs = Math.min(Math.max(Number(args.timeout_s) || 30, 1), 120) * 1000
+
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const resp = await fetch(url, {
+        method,
+        headers,
+        body: ['GET', 'HEAD'].includes(method) ? undefined : body,
+        signal: controller.signal,
+      })
+      const contentType = resp.headers.get('content-type') || ''
+      const isText = /^(text\/|application\/(json|xml|javascript|x-www-form-urlencoded))/i.test(contentType)
+      let resBody: string
+      if (isText) {
+        const text = await resp.text()
+        resBody = text.slice(0, 100_000)
+      } else {
+        const buf = await resp.arrayBuffer()
+        // Cap binary at 64KB then base64-encode
+        const slice = buf.byteLength > 64 * 1024 ? buf.slice(0, 64 * 1024) : buf
+        resBody = Buffer.from(slice).toString('base64')
+      }
+      const headersObj: Record<string, string> = {}
+      resp.headers.forEach((v, k) => { headersObj[k] = v })
+      return {
+        status: resp.status,
+        headers: headersObj,
+        body: resBody,
+        content_type: contentType,
+        is_base64: !isText,
+      }
+    } finally {
+      clearTimeout(timer)
+    }
+  },
+
   operator_bash: async (args) => {
     const command = String(args.command ?? '').trim()
     if (!command) throw new Error('command is required')
@@ -274,8 +336,11 @@ const handlers: Record<string, ToolHandler> = {
       }
     }
 
-    // Run via bash -c so shell features (pipes, redirects) work.
-    const result = spawnSync('bash', ['-c', command], {
+    // Platform-aware shell selection: bash on Linux/macOS, PowerShell
+    // on Windows. Same surface for the LLM — shell-features (pipes,
+    // redirects, env-vars) work in both.
+    const shell = selectShell()
+    const result = spawnSync(shell.cmd, shell.args(command), {
       cwd,
       timeout: timeoutS * 1000,
       encoding: 'utf8',
@@ -284,6 +349,8 @@ const handlers: Record<string, ToolHandler> = {
 
     return {
       approved: true,
+      platform: osPlatform(),
+      shell: shell.cmd,
       stdout: (result.stdout ?? '').slice(0, 100_000),
       stderr: (result.stderr ?? '').slice(0, 50_000),
       exit_code: result.status,
@@ -351,6 +418,7 @@ export class JarvisXBridge {
         client: 'jarvisx-electron',
         version: process.env.npm_package_version || '0.0.0',
         platform: `${process.platform}-${process.arch}`,
+        os: process.platform,  // 'linux' | 'darwin' | 'win32' — used for path/shell hints
         capabilities: Object.keys(handlers),
       })
       // Start heartbeat (every 25s, server expects activity within ~30s)

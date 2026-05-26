@@ -42,6 +42,25 @@ def test_phase2_operator_tools_registered():
     assert not missing_handlers, f"Missing in _TOOL_HANDLERS: {missing_handlers}"
 
 
+def test_phase3_operator_bash_registered():
+    """operator_bash exists with both definition and handler."""
+    from core.tools.simple_tools import _TOOL_HANDLERS, get_tool_definitions
+    tools = get_tool_definitions() or []
+    names = {t.get("function", {}).get("name", "") for t in tools}
+    assert "operator_bash" in names
+    assert "operator_bash" in _TOOL_HANDLERS
+
+    # Verify the description mentions approval explicitly so the LLM
+    # is steered toward more specific tools when possible.
+    bash_def = next(
+        t for t in tools if t.get("function", {}).get("name") == "operator_bash"
+    )
+    desc = bash_def["function"]["description"].lower()
+    assert "approv" in desc or "approve" in desc, (
+        "operator_bash description must mention approval requirement"
+    )
+
+
 def test_tool_definitions_well_formed():
     """Every tool def has function.name + function.description."""
     from core.tools.simple_tools import get_tool_definitions

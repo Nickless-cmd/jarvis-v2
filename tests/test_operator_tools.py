@@ -69,6 +69,54 @@ async def test_write_file_dispatches_correctly(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_bash_dispatches_with_approval_flow(monkeypatch):
+    """operator_bash_async passes command + caps timeout at 300s."""
+    captured = {}
+
+    async def _fake_dispatch(*, user_id, tool, args, timeout_s):
+        captured.update({"tool": tool, "args": args, "outer_timeout": timeout_s})
+        return {
+            "status": "ok",
+            "result": {
+                "approved": True, "stdout": "hi\n", "stderr": "",
+                "exit_code": 0, "timed_out": False,
+            },
+        }
+
+    monkeypatch.setattr(
+        "core.services.jarvisx_bridge.bridge_registry.dispatch", _fake_dispatch,
+    )
+    from core.tools.operator_tools import operator_bash_async
+    result = await operator_bash_async(
+        command="echo hi", cwd="/tmp", timeout_s=10.0, user_id="u1",
+    )
+    assert captured["tool"] == "operator_bash"
+    assert captured["args"]["command"] == "echo hi"
+    assert captured["args"]["cwd"] == "/tmp"
+    # Outer bridge-call timeout = command timeout + 120s buffer for approval
+    assert captured["outer_timeout"] == 10.0 + 120.0
+    assert result["approved"] is True
+    assert result["exit_code"] == 0
+
+
+@pytest.mark.asyncio
+async def test_bash_caps_timeout_at_300s(monkeypatch):
+    """Excessive timeout values are clamped to 300s max."""
+    captured = {}
+
+    async def _fake_dispatch(*, user_id, tool, args, timeout_s):
+        captured["args"] = args
+        return {"status": "ok", "result": {}}
+
+    monkeypatch.setattr(
+        "core.services.jarvisx_bridge.bridge_registry.dispatch", _fake_dispatch,
+    )
+    from core.tools.operator_tools import operator_bash_async
+    await operator_bash_async(command="sleep 9999", timeout_s=99999.0, user_id="u1")
+    assert captured["args"]["timeout_s"] == 300.0
+
+
+@pytest.mark.asyncio
 async def test_grep_dispatches_with_optional_args(monkeypatch):
     """Wrapper passes through pattern + optional path/glob/case_insensitive."""
     captured = {}

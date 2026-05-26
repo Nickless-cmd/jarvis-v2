@@ -19,6 +19,8 @@ import {
 } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, isAbsolute, resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
+import { dialog } from 'electron'
 import WebSocket from 'ws'
 
 const LOG_PATH = join(homedir(), '.config', 'jarvisx', 'bridge.log')
@@ -241,6 +243,52 @@ const handlers: Record<string, ToolHandler> = {
             : 'other'
       return { name, type, size: Number(st.size) || 0 }
     })
+  },
+
+  operator_bash: async (args) => {
+    const command = String(args.command ?? '').trim()
+    if (!command) throw new Error('command is required')
+    const cwd = args.cwd ? resolveOperatorPath(args.cwd) : homedir()
+    const timeoutS = Math.min(Math.max(Number(args.timeout_s) || 30, 1), 300)
+
+    // Approval dialog — operator must explicitly approve every command.
+    // Shows command + cwd + timeout. Default button is Cancel (safe-by-default).
+    const choice = await dialog.showMessageBox({
+      type: 'warning',
+      title: 'Jarvis vil køre en kommando',
+      message: 'Jarvis beder om at køre en shell-kommando på din maskine.',
+      detail: `Kommando:\n  ${command}\n\nMappe:\n  ${cwd}\n\nTimeout: ${timeoutS}s`,
+      buttons: ['Afvis', 'Godkend og kør'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    })
+
+    if (choice.response !== 1) {
+      return {
+        approved: false,
+        stdout: '',
+        stderr: '',
+        exit_code: null,
+        timed_out: false,
+      }
+    }
+
+    // Run via bash -c so shell features (pipes, redirects) work.
+    const result = spawnSync('bash', ['-c', command], {
+      cwd,
+      timeout: timeoutS * 1000,
+      encoding: 'utf8',
+      maxBuffer: 5 * 1024 * 1024, // 5 MB stdout cap
+    })
+
+    return {
+      approved: true,
+      stdout: (result.stdout ?? '').slice(0, 100_000),
+      stderr: (result.stderr ?? '').slice(0, 50_000),
+      exit_code: result.status,
+      timed_out: result.signal === 'SIGTERM' && result.error?.message?.includes('timed out'),
+    }
   },
 }
 

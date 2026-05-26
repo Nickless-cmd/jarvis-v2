@@ -782,6 +782,38 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "operator_bash",
+            "description": (
+                "Run a shell command on the OPERATOR'S DESKTOP. Every call shows "
+                "the operator a dialog with the full command, cwd, and timeout; "
+                "the command runs only if they approve. Returns {stdout, stderr, "
+                "exit_code, timed_out, approved}. Use sparingly — the operator "
+                "has to approve each invocation. Prefer the more specific "
+                "operator_read_file/operator_glob/etc. when they fit."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "Shell command to run (e.g. 'ls -la ~/Downloads')",
+                    },
+                    "cwd": {
+                        "type": "string",
+                        "description": "Working directory (defaults to operator's home)",
+                    },
+                    "timeout_s": {
+                        "type": "number",
+                        "description": "Command timeout in seconds (default 30, max 300)",
+                    },
+                },
+                "required": ["command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "write_file",
             "description": "Write content to a file. Creates file if it doesn't exist. Always call this tool directly — the runtime handles approval automatically.",
             "parameters": {
@@ -3073,6 +3105,27 @@ def _exec_operator_list_dir(args: dict[str, Any]) -> dict[str, Any]:
     return _run_operator_async(
         lambda: operator_list_dir_async(path=path, user_id=user_id, timeout_s=30.0),
         tool_name="operator_list_dir",
+    )
+
+
+def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
+    command = str(args.get("command") or "").strip()
+    if not command:
+        return {"error": "command is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    timeout_s = float(args.get("timeout_s") or 30.0)
+    # Bridge-call timeout must allow for approval-dialog + command run.
+    thread_timeout = min(timeout_s, 300.0) + 130.0
+    from core.tools.operator_tools import operator_bash_async
+    return _run_operator_async(
+        lambda: operator_bash_async(
+            command=command,
+            cwd=args.get("cwd"),
+            timeout_s=timeout_s,
+            user_id=user_id,
+        ),
+        tool_name="operator_bash",
+        timeout_s=thread_timeout,
     )
 
 
@@ -6347,6 +6400,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "operator_glob": _exec_operator_glob,
     "operator_grep": _exec_operator_grep,
     "operator_list_dir": _exec_operator_list_dir,
+    "operator_bash": _exec_operator_bash,
     "write_file": _exec_write_file,
     "edit_file": _exec_edit_file,
     "search": _exec_search,

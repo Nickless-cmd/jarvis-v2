@@ -188,3 +188,38 @@ async def operator_list_dir_async(
         timeout_s=timeout_s,
     )
     return list(result or [])
+
+
+# ── operator_bash ───────────────────────────────────────────────────────
+
+
+async def operator_bash_async(
+    *,
+    command: str,
+    cwd: str | None = None,
+    timeout_s: float = 30.0,
+    user_id: str,
+) -> dict[str, Any]:
+    """Run a shell command on the operator's desktop after explicit approval.
+
+    The JarvisX-app shows the operator a dialog with the full command,
+    cwd, and timeout. Only on operator-approval does the command run.
+    Returns {stdout, stderr, exit_code, timed_out, approved}.
+
+    Bridge-side timeout is generous (timeout_s + 30s) to allow time for
+    operator to read and approve the dialog.
+    """
+    # Cap at 5 min to prevent ridiculous timeouts
+    timeout_s = min(max(timeout_s, 1.0), 300.0)
+    result = await _bridge_call(
+        tool="operator_bash",
+        args={
+            "command": str(command),
+            "cwd": str(cwd) if cwd else None,
+            "timeout_s": float(timeout_s),
+        },
+        user_id=user_id,
+        # Bridge-call timeout must accommodate: operator dialog + command run
+        timeout_s=timeout_s + 120.0,
+    )
+    return result or {}

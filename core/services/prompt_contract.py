@@ -1512,6 +1512,14 @@ def build_visible_chat_prompt_assembly(
     if self_state_content:
         _awareness_add(41, "self state numbers", self_state_content)
         self_state_content = None
+    # 2026-05-26 (Claude): defer cognitive_frame to awareness tail same way.
+    # Live cache audit found cognitive_frame at pos ~55 (before tool catalog)
+    # is the worst per-turn cache breaker — LLM-generated routing/mode advice
+    # that varies every turn, breaking the ~6k-token tool catalog from
+    # caching. Same defer pattern as cognitive_state/self_state above.
+    if frame_content:
+        _awareness_add(42, "cognitive frame", frame_content)
+        frame_content = None
 
     raw_sections = {
         "capability_truth": capability_truth,

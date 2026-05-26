@@ -658,6 +658,28 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "operator_read_file",
+            "description": (
+                "Read a file from the OPERATOR'S DESKTOP (the machine running JarvisX), "
+                "not from Jarvis' own container. Use this when the user asks you to look "
+                "at something on their computer. Requires JarvisX bridge to be connected — "
+                "fails with 'bridge_not_connected' if the desktop app isn't running."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute file path on the operator's desktop (e.g. /home/bs/document.txt)",
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "write_file",
             "description": "Write content to a file. Creates file if it doesn't exist. Always call this tool directly — the runtime handles approval automatically.",
             "parameters": {
@@ -2789,6 +2811,65 @@ def _record_tool_outcome_memory(
         )
     except Exception:
         pass
+
+
+def _exec_operator_read_file(args: dict[str, Any]) -> dict[str, Any]:
+    """Read a file from the OPERATOR'S DESKTOP via JarvisX bridge.
+
+    Dispatches via core.services.jarvisx_bridge to the JarvisX Electron-app
+    running on the operator's machine. Returns the file content on success,
+    or {status: error, error: ...} if the bridge isn't connected or the
+    read fails on the operator side.
+    """
+    path = str(args.get("path") or "").strip()
+    if not path:
+        return {"error": "path is required", "status": "error"}
+
+    # Phase 1: single-operator deployment — user_id resolved from settings.
+    # Phase 2 will route per-session user_id from the agentic loop's context.
+    user_id = str(
+        args.get("_runtime_user_id")
+        or args.get("_user_id")
+        or ""
+    ).strip()
+    if not user_id:
+        try:
+            from core.runtime.settings import load_settings
+            settings = load_settings()
+            user_id = str(settings.extra.get("owner_user_id") or "1246415163603816499")
+        except Exception:
+            user_id = "1246415163603816499"
+
+    # Tool-handlers are called synchronously from async contexts (uvicorn
+    # event loop). asyncio.run() refuses to run inside a running loop, so
+    # we spawn a dedicated thread with its own loop to bridge the gap.
+    import asyncio
+    import threading
+    from core.tools.operator_tools import operator_read_file_async
+
+    holder: dict[str, Any] = {}
+
+    def _runner() -> None:
+        loop = asyncio.new_event_loop()
+        try:
+            holder["result"] = loop.run_until_complete(
+                operator_read_file_async(path=path, user_id=user_id, timeout_s=30.0)
+            )
+        except RuntimeError as exc:
+            holder["error"] = str(exc)
+        except Exception as exc:
+            holder["error"] = f"operator_read_file failed: {exc!s}"[:240]
+        finally:
+            loop.close()
+
+    t = threading.Thread(target=_runner, daemon=True, name="operator-read-file")
+    t.start()
+    t.join(timeout=35.0)
+    if t.is_alive():
+        return {"error": "operator_read_file: dispatcher thread did not return in 35s", "status": "error"}
+    if "error" in holder:
+        return {"error": holder["error"], "status": "error"}
+    return {"status": "ok", "result": holder.get("result", ""), "path": path}
 
 
 def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
@@ -6056,6 +6137,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_tool_result": _exec_read_tool_result,
     "read_self_docs": _exec_read_self_docs,
     "read_file": _exec_read_file,
+    "operator_read_file": _exec_operator_read_file,
     "write_file": _exec_write_file,
     "edit_file": _exec_edit_file,
     "search": _exec_search,

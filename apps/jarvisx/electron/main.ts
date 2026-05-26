@@ -671,6 +671,38 @@ async function createWindow(): Promise<void> {
 app.whenReady().then(async () => {
   currentConfig = loadConfig()
   installRequestHooks()
+
+  // Bootstrap the tool-bridge: outbound WS to Jarvis-runtime that lets
+  // Jarvis dispatch operator_* tools back to this desktop.
+  // Spec: docs/superpowers/specs/2026-05-26-jarvisx-tool-bridge.md
+  try {
+    const { appendFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const { homedir } = await import('node:os')
+    const _bootLog = join(homedir(), '.config', 'jarvisx', 'bridge.log')
+    appendFileSync(_bootLog, `${new Date().toISOString()} BOOTSTRAP start apiBaseUrl=${currentConfig.apiBaseUrl} userId=${currentConfig.userId}\n`)
+    const { JarvisXBridge } = await import('./bridge.js')
+    const bridge = new JarvisXBridge({
+      apiBaseUrl: currentConfig.apiBaseUrl,
+      userId: currentConfig.userId,
+      authToken: currentConfig.authToken,
+      log: (m) => console.log(`[bridge] ${m}`),
+    })
+    bridge.start()
+    appendFileSync(_bootLog, `${new Date().toISOString()} BOOTSTRAP bridge.start() called\n`)
+    app.on('before-quit', () => bridge.stop())
+  } catch (e) {
+    console.warn('JarvisX bridge bootstrap failed:', e)
+    try {
+      const { appendFileSync } = await import('node:fs')
+      const { join } = await import('node:path')
+      const { homedir } = await import('node:os')
+      appendFileSync(
+        join(homedir(), '.config', 'jarvisx', 'bridge.log'),
+        `${new Date().toISOString()} BOOTSTRAP FAILED: ${e}\n`,
+      )
+    } catch {}
+  }
   // Remove the application menu entirely (File / Edit / View / Window /
   // Help). JarvisX is its own toolbar; the OS chrome would clutter it.
   Menu.setApplicationMenu(null)

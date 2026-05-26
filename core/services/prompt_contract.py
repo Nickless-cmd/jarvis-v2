@@ -643,10 +643,17 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
-    # Eventbus wake-up digest — also goes through the awareness budget.
+    # Eventbus wake-up digest — DEFERRED to tail (just before time pin).
+    # 2026-05-26 (Claude): empirically the only within-session cache breaker
+    # (varies turn-to-turn with new event IDs/timestamps). Was at awareness
+    # priority 55 → landed at pos ~73 of 88, breaking caching of the final
+    # ~14 awareness blocks. Append directly to parts immediately before
+    # time_pin so only time_pin itself (which already varies per minute by
+    # design) lands after it. See assembly tail near line 1660.
+    _wakeup_digest_text: str | None = None
     try:
         from core.services.session_wakeup import wakeup_digest
-        _awareness_add(55, "eventbus wake-up digest", wakeup_digest(session_id))
+        _wakeup_digest_text = wakeup_digest(session_id)
     except Exception:
         pass
 
@@ -1659,6 +1666,14 @@ def build_visible_chat_prompt_assembly(
     # the wakeup digest can both surface bloat. Per-part chars logged so
     # we can see which sections dominate without instrumenting every
     # parts.append site.
+
+    # Eventbus wake-up digest — appended here (just before time pin) so it
+    # lands AFTER all awareness sections. See cache-hit note near line 646
+    # for the rationale: it's the only within-session breaker, so isolating
+    # it at the absolute tail keeps awareness blocks cacheable.
+    if _wakeup_digest_text:
+        parts.append(_wakeup_digest_text)
+        derived_inputs.append("eventbus wake-up digest (tail-anchored)")
 
     # Time Pin — appended LAST so it sits immediately above the user
     # message in the constructed prompt. Keeps the prefix above it stable

@@ -66,6 +66,10 @@ const DEFAULT_CONFIG: AppConfig = {
 
 let mainWindow: BrowserWindow | null = null
 let pingTimer: NodeJS.Timeout | null = null
+// Bridge instance + restart hook so setConfig can swap credentials.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let activeBridge: { stop(): void; start(): void } | null = null
+let restartBridge: (() => void) | null = null
 
 function configPath(): string {
   return join(app.getPath('userData'), 'config.json')
@@ -708,15 +712,28 @@ app.whenReady().then(async () => {
     mkdirSync(dirname(_bootLog), { recursive: true })
     appendFileSync(_bootLog, `${new Date().toISOString()} BOOTSTRAP start apiBaseUrl=${currentConfig.apiBaseUrl} userId=${currentConfig.userId}\n`)
     const { JarvisXBridge } = await import('./bridge.js')
-    const bridge = new JarvisXBridge({
-      apiBaseUrl: currentConfig.apiBaseUrl,
-      userId: currentConfig.userId,
-      authToken: currentConfig.authToken,
-      log: (m) => console.log(`[bridge] ${m}`),
-    })
-    bridge.start()
+    const makeBridge = () =>
+      new JarvisXBridge({
+        apiBaseUrl: currentConfig.apiBaseUrl,
+        userId: currentConfig.userId,
+        authToken: currentConfig.authToken,
+        log: (m) => console.log(`[bridge] ${m}`),
+      })
+    activeBridge = makeBridge()
+    activeBridge.start()
     appendFileSync(_bootLog, `${new Date().toISOString()} BOOTSTRAP bridge.start() called\n`)
-    app.on('before-quit', () => bridge.stop())
+    // Expose a restart hook so setConfig can pick up a new authToken /
+    // apiBaseUrl after the user completes SetupScreen — otherwise the
+    // bridge keeps trying with the old (empty) token and the server
+    // rejects with 403 every reconnect.
+    restartBridge = () => {
+      try {
+        activeBridge?.stop()
+      } catch {}
+      activeBridge = makeBridge()
+      activeBridge.start()
+    }
+    app.on('before-quit', () => activeBridge?.stop())
   } catch (e) {
     console.warn('JarvisX bridge bootstrap failed:', e)
     try {
@@ -735,10 +752,22 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('jarvisx:get-config', () => currentConfig)
   ipcMain.handle('jarvisx:set-config', (_evt, patch: Partial<AppConfig>) => {
+    const prev = currentConfig
     currentConfig = { ...currentConfig, ...patch }
     saveConfig(currentConfig)
     // Restart ping loop in case URL changed
     startPingLoop()
+    // If auth / endpoint changed, restart the bridge so it picks up the
+    // new credentials. Without this the bridge stays bound to the
+    // bootstrap-time cfg (often empty authToken before first SetupScreen
+    // run) and gets rejected with 403 forever.
+    const credsChanged =
+      prev.apiBaseUrl !== currentConfig.apiBaseUrl ||
+      prev.authToken !== currentConfig.authToken ||
+      prev.userId !== currentConfig.userId
+    if (credsChanged && restartBridge) {
+      restartBridge()
+    }
   })
   ipcMain.handle('jarvisx:ping-backend', (_evt, url?: string) => pingBackend(url))
 

@@ -9,7 +9,7 @@ import {
   X,
 } from 'lucide-react'
 import { MarkdownRenderer } from '@ui/components/chat/MarkdownRenderer.jsx'
-import { ThinkingBar } from '@ui/components/chat/ChatThinking.jsx'
+import { StatusInline } from '@ui/components/chat/ChatThinking.jsx'
 import { ApprovalCard } from '@ui/components/chat/ApprovalCard.jsx'
 
 interface ChatMessage {
@@ -243,9 +243,12 @@ export function MessageList({ messages, workingSteps, isStreaming, sessionId, on
 
         {showStandaloneThinking && (
           <article className="message-row assistant">
-            <div className="message-name">Jarvis</div>
+            <div className="message-name">
+              Jarvis
+              <StatusInline workingSteps={workingSteps} />
+            </div>
             <div className="message-bubble pending">
-              <ThinkingBar workingSteps={workingSteps} isStreaming={true} />
+              <span className="streaming-cursor" />
             </div>
           </article>
         )}
@@ -302,7 +305,10 @@ const Row = memo(
     // assistant (and any other role like 'output')
     return (
       <article className="message-row assistant">
-        <div className="message-name">Jarvis</div>
+        <div className="message-name">
+          Jarvis
+          {message.pending && <StatusInline workingSteps={workingSteps} />}
+        </div>
         <AssistantBubble
           message={message}
           workingSteps={workingSteps}
@@ -333,7 +339,7 @@ const Row = memo(
 
 const AssistantBubble = memo(function AssistantBubble({
   message,
-  workingSteps,
+  workingSteps: _workingSteps,  // kept in signature for Row.memo equality check; consumed by StatusInline in header
   prevUserText,
   onAction,
 }: {
@@ -357,8 +363,12 @@ const AssistantBubble = memo(function AssistantBubble({
   return (
     <div className="message-group">
       <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
+        {/* No more in-bubble ThinkingBar — status lives next to "Jarvis"
+            in the message-name row now (StatusInline). The bubble stays
+            empty during pre-token pending state; a streaming-cursor is
+            shown if pending but no content yet. */}
         {message.pending && !message.content ? (
-          <ThinkingBar workingSteps={workingSteps} isStreaming={true} />
+          <span className="streaming-cursor" />
         ) : null}
         {message.content ? (
           <div className="message-content">

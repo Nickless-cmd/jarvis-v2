@@ -106,6 +106,53 @@ const FALLBACK_PHASES = [
   'komponerer',
 ]
 
+/**
+ * StatusInline — minimal icon + label, NO bouncing track/rider.
+ *
+ * Designed to live on the message header row (next to "Jarvis"), staying
+ * visible for the whole streaming duration so the user can see which
+ * tool is currently in use even after text starts flowing. Same
+ * data-source as ThinkingBar (workingSteps); same icon resolution and
+ * fallback phase rotation. Just without the bar animation.
+ *
+ * Use this in MessageList header. Use ThinkingBar where you specifically
+ * want the bouncing pulse aesthetic (e.g. workspace scan rail).
+ */
+export function StatusInline({ workingSteps }) {
+  const running = (workingSteps || []).filter((s) => s.status === 'running')
+  const latest = running[running.length - 1] || null
+
+  const [phaseIdx, setPhaseIdx] = useState(0)
+  useEffect(() => {
+    if (latest) return
+    const id = setInterval(() => {
+      setPhaseIdx((i) => (i + 1) % FALLBACK_PHASES.length)
+    }, 1600)
+    return () => clearInterval(id)
+  }, [latest])
+
+  const label = latest
+    ? (latest.detail || latest.action || 'arbejder')
+    : FALLBACK_PHASES[phaseIdx]
+  const Icon = latest ? resolveStepIcon(latest) : Brain
+
+  return (
+    <span className="status-inline" aria-label={`Jarvis ${label}`}>
+      <span className="status-inline-icon">
+        <Icon size={11} />
+      </span>
+      <span className="status-inline-label">
+        <ScrambleText text={String(label)} />
+        {running.length > 1 && (
+          <span style={{ opacity: 0.55, marginLeft: 6 }}>
+            (+{running.length - 1})
+          </span>
+        )}
+      </span>
+    </span>
+  )
+}
+
 export function ThinkingBar({ workingSteps, isStreaming, compact = false }) {
   const running = (workingSteps || []).filter((s) => s.status === 'running')
   const latest = running[running.length - 1] || null

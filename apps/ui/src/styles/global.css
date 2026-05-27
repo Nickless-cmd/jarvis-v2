@@ -267,8 +267,31 @@ button { cursor: pointer; }
 .message-name {
   font-size:9px; letter-spacing:.09em; text-transform:uppercase;
   color:rgba(40,177,163,.45); padding:0 2px; margin-bottom:1px;
+  display:flex; align-items:center; gap:10px;
 }
 .message-row.user .message-name { color:rgba(104,163,255,.35); }
+
+/* Inline status next to message-name during streaming — replaces the
+ * old in-bubble ThinkingBar with a quieter header-level indicator that
+ * stays visible all the way through streaming. */
+.status-inline {
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:9px; letter-spacing:.06em; text-transform:none;
+  color:rgba(40,177,163,.72);
+  background:rgba(40,177,163,.06);
+  border:1px solid rgba(40,177,163,.22);
+  border-radius:10px; padding:1px 8px 1px 5px;
+  animation: statusPulse 2.2s ease-in-out infinite;
+}
+.status-inline-icon {
+  display:inline-flex; align-items:center;
+  color:rgba(95,234,255,.85);
+}
+.status-inline-label { white-space:nowrap; }
+@keyframes statusPulse {
+  0%,100% { opacity: 0.85; }
+  50%     { opacity: 1.0; }
+}
 .message-bubble {
   min-width:0; padding:7px 12px;
   border-left:2px solid rgba(40,177,163,.28); background:transparent;

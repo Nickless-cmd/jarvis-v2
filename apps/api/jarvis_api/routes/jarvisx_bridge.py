@@ -19,6 +19,12 @@ router = APIRouter()
 logger = logging.getLogger("uvicorn.error")
 
 _KEEPALIVE_S = 25.0
+# Server-side receive watchdog. If no message (incl. ping/pong) arrives
+# within this window, treat the connection as dead and disconnect. Client
+# sends ping every 25s; server sends ping every 25s; either should keep
+# traffic flowing. Anything beyond 70s of silence = zombie TCP that
+# silently broke (NAT timeout, laptop sleep, network drop without RST).
+_RECEIVE_TIMEOUT_S = 70.0
 
 
 @router.websocket("/api/jarvisx-bridge/ws")
@@ -123,7 +129,25 @@ async def jarvisx_bridge_ws(ws: WebSocket) -> None:
 
     try:
         while True:
-            raw = await ws.receive_text()
+            # Watchdog: bound receive so silently-dead TCP gets cleaned up.
+            # Without this, ws.receive_text() can hang forever on a zombie
+            # connection — bridge stays "registered" but every tool_invoke
+            # dispatched to it times out with bridge_timeout. Symptom:
+            # Jarvis "loses contact" with JarvisX without anyone noticing.
+            try:
+                raw = await asyncio.wait_for(
+                    ws.receive_text(), timeout=_RECEIVE_TIMEOUT_S
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "jarvisx_bridge: receive timeout user=%s — closing zombie ws",
+                    user_id,
+                )
+                try:
+                    await ws.close(code=1011, reason="receive_timeout")
+                except Exception:
+                    pass
+                break
             try:
                 msg = json.loads(raw)
             except Exception:

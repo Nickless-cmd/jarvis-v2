@@ -929,12 +929,19 @@ function scheduleBrowserIdleClose(): void {
 }
 
 const RECONNECT_BACKOFF_MS = [1000, 2000, 4000, 8000, 15000, 30000]
+// No-traffic watchdog: if we don't receive ANY message (incl. ping/pong)
+// within this window, the server has gone silent and our "OPEN" status
+// is a TCP-level zombie. Force-close + reconnect. Server sends ping
+// every 25s; we expect at least one message every ~30s.
+const TRAFFIC_TIMEOUT_MS = 75_000
 
 export class JarvisXBridge {
   private ws: WebSocket | null = null
   private reconnectAttempt = 0
   private stopped = false
   private heartbeatTimer: NodeJS.Timeout | null = null
+  private trafficWatchdog: NodeJS.Timeout | null = null
+  private lastMessageAt = 0
 
   constructor(private cfg: BridgeConfig) {}
 
@@ -952,9 +959,32 @@ export class JarvisXBridge {
   stop(): void {
     this.stopped = true
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer)
+    if (this.trafficWatchdog) clearInterval(this.trafficWatchdog)
     if (this.ws) {
       try { this.ws.close(1000, 'client_stop') } catch {}
     }
+  }
+
+  private noteTraffic(): void {
+    this.lastMessageAt = Date.now()
+  }
+
+  private startTrafficWatchdog(): void {
+    if (this.trafficWatchdog) clearInterval(this.trafficWatchdog)
+    this.lastMessageAt = Date.now()
+    // Check every 10s — granularity finer than TRAFFIC_TIMEOUT_MS so we
+    // catch the deadline within ~10s of breach.
+    this.trafficWatchdog = setInterval(() => {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return
+      const elapsed = Date.now() - this.lastMessageAt
+      if (elapsed > TRAFFIC_TIMEOUT_MS) {
+        this.log(`no traffic in ${Math.round(elapsed / 1000)}s — forcing reconnect`)
+        try { this.ws.terminate?.() } catch {}  // hard-close vs close()
+        try { this.ws.close(4001, 'no_traffic') } catch {}
+        // 'close' handler will schedule reconnect
+      }
+    }, 10_000)
+    this.trafficWatchdog.unref?.()
   }
 
   private wsUrl(): string {
@@ -992,9 +1022,12 @@ export class JarvisXBridge {
       })
       // Start heartbeat (every 25s, server expects activity within ~30s)
       this.heartbeatTimer = setInterval(() => this.send({ type: 'ping' }), 25_000)
+      // Start no-traffic watchdog — detect zombie TCP within ~75s
+      this.startTrafficWatchdog()
     })
 
     this.ws.on('message', (raw) => {
+      this.noteTraffic()
       void this.handleMessage(String(raw))
     })
 
@@ -1003,6 +1036,10 @@ export class JarvisXBridge {
       if (this.heartbeatTimer) {
         clearInterval(this.heartbeatTimer)
         this.heartbeatTimer = null
+      }
+      if (this.trafficWatchdog) {
+        clearInterval(this.trafficWatchdog)
+        this.trafficWatchdog = null
       }
       this.ws = null
       this.scheduleReconnect()
@@ -1055,7 +1092,21 @@ export class JarvisXBridge {
         return
       }
       try {
-        const result = await handler(args)
+        // Per-handler timeout. Without this, a hung handler (browser
+        // session stuck, bash command waiting forever) blocks the whole
+        // bridge. Server-side already times out the dispatch at 30s; we
+        // race against a slightly higher deadline (40s) so the server
+        // gives up first when both fire — gives cleaner error reporting.
+        const HANDLER_TIMEOUT_MS = 40_000
+        const result = await Promise.race([
+          handler(args),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error(`handler_timeout: ${tool} did not respond within 40s`)),
+              HANDLER_TIMEOUT_MS,
+            ),
+          ),
+        ])
         this.send({
           type: 'tool_result',
           correlation_id,

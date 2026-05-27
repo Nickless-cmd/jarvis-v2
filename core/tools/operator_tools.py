@@ -264,3 +264,392 @@ async def operator_bash_async(
         timeout_s=timeout_s + 25.0,
     )
     return result or {}
+
+
+# ── operator_screenshot ─────────────────────────────────────────────────
+
+
+async def operator_screenshot_async(
+    *,
+    user_id: str,
+    display_id: int | None = None,
+    save_path: str | None = None,
+    format: str = "png",
+    jpeg_quality: int = 85,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Capture a screenshot of the operator's desktop.
+
+    Calls the JarvisX bridge which uses Electron's desktopCapturer. The
+    bridge returns base64-encoded image bytes; here we decode and write
+    them to a Jarvis-side temp file so the LLM can immediately pass the
+    path to analyze_image.
+
+    Returns {path, width, height, mime_type, display_id, operator_path?, bytes}.
+    """
+    import base64
+    import tempfile
+    import time
+    from pathlib import Path
+
+    args: dict[str, Any] = {"format": format, "jpeg_quality": int(jpeg_quality)}
+    if display_id is not None:
+        args["display_id"] = int(display_id)
+    if save_path:
+        args["save_path"] = str(save_path)
+
+    raw = await _bridge_call(
+        tool="operator_screenshot",
+        args=args,
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    result = raw or {}
+    data_b64 = result.get("data_base64")
+    if not data_b64:
+        raise RuntimeError("operator_screenshot returned no image data")
+
+    img_bytes = base64.b64decode(data_b64)
+    ext = "jpg" if str(result.get("mime_type", "")).endswith("jpeg") else "png"
+    tmp = Path(tempfile.gettempdir()) / f"jarvisx-screenshot-{int(time.time() * 1000)}.{ext}"
+    tmp.write_bytes(img_bytes)
+
+    return {
+        "path": str(tmp),
+        "width": result.get("width"),
+        "height": result.get("height"),
+        "mime_type": result.get("mime_type"),
+        "display_id": result.get("display_id"),
+        "display_label": result.get("display_label"),
+        "operator_path": result.get("operator_path"),
+        "bytes": result.get("bytes") or len(img_bytes),
+    }
+
+
+# ── operator_open_url ───────────────────────────────────────────────────
+
+
+async def operator_open_url_async(
+    *,
+    url: str,
+    user_id: str,
+    skip_approval: bool = False,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Open a URL in the operator s default browser. Returns {approved, opened, url}."""
+    result = await _bridge_call(
+        tool="operator_open_url",
+        args={"url": str(url), "skip_approval": bool(skip_approval)},
+        user_id=user_id,
+        timeout_s=timeout_s + 25.0,
+    )
+    return result or {}
+
+
+# ── operator_launch_app ─────────────────────────────────────────────────
+
+
+async def operator_launch_app_async(
+    *,
+    path: str,
+    user_id: str,
+    args: list[str] | None = None,
+    cwd: str | None = None,
+    skip_approval: bool = False,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Launch an installed app on the operator s machine.
+
+    `path` may be an absolute path (C:/Program Files/.../app.exe), a name
+    resolvable on PATH (`notepad`, `code`, `chrome`), or a UWP shell URI
+    (`shell:appsFolder\<AppId>` on Windows).
+
+    Returns {approved, started, path, pid?, error?}.
+    """
+    bridge_args: dict[str, Any] = {
+        "path": str(path),
+        "skip_approval": bool(skip_approval),
+    }
+    if args:
+        bridge_args["args"] = [str(a) for a in args]
+    if cwd:
+        bridge_args["cwd"] = str(cwd)
+    result = await _bridge_call(
+        tool="operator_launch_app",
+        args=bridge_args,
+        user_id=user_id,
+        timeout_s=timeout_s + 25.0,
+    )
+    return result or {}
+
+
+# ── operator_mouse_move ─────────────────────────────────────────────────
+
+
+async def operator_mouse_move_async(
+    *,
+    x: int,
+    y: int,
+    user_id: str,
+    smooth: bool = False,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Move the operator s mouse cursor to (x, y) screen coordinates."""
+    result = await _bridge_call(
+        tool="operator_mouse_move",
+        args={"x": int(x), "y": int(y), "smooth": bool(smooth)},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_mouse_click ────────────────────────────────────────────────
+
+
+async def operator_mouse_click_async(
+    *,
+    user_id: str,
+    button: str = "left",
+    double: bool = False,
+    x: int | None = None,
+    y: int | None = None,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Click the mouse on the operator s desktop, optionally moving first."""
+    args: dict[str, Any] = {"button": str(button), "double": bool(double)}
+    if x is not None:
+        args["x"] = int(x)
+    if y is not None:
+        args["y"] = int(y)
+    result = await _bridge_call(
+        tool="operator_mouse_click",
+        args=args,
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_mouse_position ─────────────────────────────────────────────
+
+
+async def operator_mouse_position_async(
+    *,
+    user_id: str,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Get the current mouse cursor position on the operator s desktop."""
+    result = await _bridge_call(
+        tool="operator_mouse_position",
+        args={},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_keyboard_type ──────────────────────────────────────────────
+
+
+async def operator_keyboard_type_async(
+    *,
+    text: str,
+    user_id: str,
+    delay_ms: int | None = None,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Type a string into the operator s currently focused window."""
+    args: dict[str, Any] = {"text": str(text)}
+    if delay_ms is not None:
+        args["delay_ms"] = int(delay_ms)
+    result = await _bridge_call(
+        tool="operator_keyboard_type",
+        args=args,
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_keyboard_press ─────────────────────────────────────────────
+
+
+async def operator_keyboard_press_async(
+    *,
+    keys: list[str] | str,
+    user_id: str,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Press a single key or a hotkey combination on the operator s keyboard.
+
+    `keys` may be a single string ("Enter", "F5") or a list of modifier+key
+    (["Control", "C"] for Ctrl+C, ["Control", "Shift", "T"] for Ctrl+Shift+T).
+    """
+    args: dict[str, Any] = {
+        "keys": [str(k) for k in keys] if isinstance(keys, (list, tuple)) else str(keys)
+    }
+    result = await _bridge_call(
+        tool="operator_keyboard_press",
+        args=args,
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_screen_size ────────────────────────────────────────────────
+
+
+async def operator_screen_size_async(
+    *,
+    user_id: str,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Get the operator s primary display size in pixels."""
+    result = await _bridge_call(
+        tool="operator_screen_size",
+        args={},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_browser_* ──────────────────────────────────────────────────
+
+
+async def operator_browser_open_async(
+    *, url: str, user_id: str, wait_until: str = "load",
+    timeout_ms: int = 30000, timeout_s: float = 45.0,
+) -> dict[str, Any]:
+    """Navigate the browser session to URL. First call opens browser."""
+    result = await _bridge_call(
+        tool="operator_browser_open",
+        args={"url": str(url), "wait_until": str(wait_until), "timeout_ms": int(timeout_ms)},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_browser_get_text_async(
+    *, user_id: str, selector: str | None = None, max_chars: int = 50000,
+    timeout_s: float = 20.0,
+) -> dict[str, Any]:
+    args: dict[str, Any] = {"max_chars": int(max_chars)}
+    if selector:
+        args["selector"] = str(selector)
+    result = await _bridge_call(
+        tool="operator_browser_get_text", args=args, user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_browser_get_links_async(
+    *, user_id: str, timeout_s: float = 20.0,
+) -> dict[str, Any]:
+    result = await _bridge_call(
+        tool="operator_browser_get_links", args={}, user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_browser_click_async(
+    *, selector: str, user_id: str, wait_navigation: bool = False,
+    wait_for_selector: bool = True, timeout_ms: int = 5000, timeout_s: float = 25.0,
+) -> dict[str, Any]:
+    result = await _bridge_call(
+        tool="operator_browser_click",
+        args={
+            "selector": str(selector),
+            "wait_navigation": bool(wait_navigation),
+            "wait_for_selector": bool(wait_for_selector),
+            "timeout_ms": int(timeout_ms),
+        },
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_browser_type_async(
+    *, selector: str, text: str, user_id: str,
+    clear_first: bool = False, delay_ms: int = 0, timeout_s: float = 30.0,
+) -> dict[str, Any]:
+    result = await _bridge_call(
+        tool="operator_browser_type",
+        args={
+            "selector": str(selector),
+            "text": str(text),
+            "clear_first": bool(clear_first),
+            "delay_ms": int(delay_ms),
+        },
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_browser_screenshot_async(
+    *, user_id: str, full_page: bool = False, format: str = "png",
+    jpeg_quality: int = 85, timeout_s: float = 30.0,
+) -> dict[str, Any]:
+    """Screenshot the active browser page. Decoded to a Jarvis-side temp file."""
+    import base64, tempfile, time
+    from pathlib import Path
+    raw = await _bridge_call(
+        tool="operator_browser_screenshot",
+        args={"full_page": bool(full_page), "format": str(format), "jpeg_quality": int(jpeg_quality)},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    result = raw or {}
+    data_b64 = result.get("data_base64")
+    if not data_b64:
+        raise RuntimeError("operator_browser_screenshot returned no image data")
+    img = base64.b64decode(data_b64)
+    ext = "jpg" if str(result.get("mime_type", "")).endswith("jpeg") else "png"
+    tmp = Path(tempfile.gettempdir()) / f"jarvisx-browser-{int(time.time() * 1000)}.{ext}"
+    tmp.write_bytes(img)
+    return {
+        "path": str(tmp),
+        "url": result.get("url"),
+        "width": result.get("width"),
+        "height": result.get("height"),
+        "mime_type": result.get("mime_type"),
+        "full_page": result.get("full_page"),
+        "bytes": result.get("bytes") or len(img),
+    }
+
+
+async def operator_browser_evaluate_async(
+    *, script: str, user_id: str, skip_approval: bool = False,
+    timeout_s: float = 30.0,
+) -> dict[str, Any]:
+    """Run JS in the page context. Requires approval unless skip_approval."""
+    result = await _bridge_call(
+        tool="operator_browser_evaluate",
+        args={"script": str(script), "skip_approval": bool(skip_approval)},
+        user_id=user_id,
+        timeout_s=timeout_s + 25.0,
+    )
+    return result or {}
+
+
+async def operator_browser_status_async(
+    *, user_id: str, timeout_s: float = 10.0,
+) -> dict[str, Any]:
+    result = await _bridge_call(
+        tool="operator_browser_status", args={}, user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_browser_close_async(
+    *, user_id: str, timeout_s: float = 10.0,
+) -> dict[str, Any]:
+    result = await _bridge_call(
+        tool="operator_browser_close", args={}, user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}

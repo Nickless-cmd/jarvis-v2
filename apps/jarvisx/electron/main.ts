@@ -471,6 +471,14 @@ const API_PATH_PREFIXES = [
   '/live',
 ]
 
+// On Windows, file:// URLs include the drive letter in the pathname
+// (file:///C:/foo → pathname is `/C:/foo`). Strip it so API-prefix matching
+// against `/api`, `/mc` etc. works the same as on Linux/macOS.
+function normalizeFilePathname(pathname: string): string {
+  const m = pathname.match(/^\/[A-Za-z]:(\/.*)$/)
+  return m ? m[1] : pathname
+}
+
 function shouldProxyToBackend(url: string): boolean {
   // file:// renderer: rewrite ./assets stays local; /chat etc rewrite to
   // backend. http://localhost:5173 (vite): vite handles it via its proxy
@@ -478,7 +486,15 @@ function shouldProxyToBackend(url: string): boolean {
   try {
     const u = new URL(url)
     if (u.protocol === 'file:') {
-      return API_PATH_PREFIXES.some((p) => u.pathname.startsWith(p))
+      const p = normalizeFilePathname(u.pathname)
+      return API_PATH_PREFIXES.some((pre) => p.startsWith(pre))
+    }
+    if (u.protocol === 'ws:' || u.protocol === 'wss:') {
+      // apps/ui builds WS URLs as `ws://${window.location.host}/ws`.
+      // On a file:// page window.location.host is empty, so the
+      // browser normalizes the URL to `ws://ws/`. Detect that and
+      // any similarly host-less ws and route to the backend.
+      if (!u.hostname || u.hostname === 'ws') return true
     }
     if (u.host === 'localhost:5173' || u.host === '127.0.0.1:5173') {
       return false // vite dev server handles it
@@ -497,7 +513,13 @@ function installRequestHooks(): void {
   ses.webRequest.onBeforeRequest((details, callback) => {
     if (shouldProxyToBackend(details.url)) {
       const u = new URL(details.url)
-      const target = currentConfig.apiBaseUrl.replace(/\/$/, '') + u.pathname + u.search
+      const pathname =
+        u.protocol === 'file:' ? normalizeFilePathname(u.pathname) : u.pathname
+      let base = currentConfig.apiBaseUrl.replace(/\/$/, '')
+      if (u.protocol === 'ws:' || u.protocol === 'wss:') {
+        base = base.replace(/^http/, 'ws')
+      }
+      const target = base + pathname + u.search
       callback({ redirectURL: target })
       return
     }
@@ -676,10 +698,14 @@ app.whenReady().then(async () => {
   // Jarvis dispatch operator_* tools back to this desktop.
   // Spec: docs/superpowers/specs/2026-05-26-jarvisx-tool-bridge.md
   try {
-    const { appendFileSync } = await import('node:fs')
-    const { join } = await import('node:path')
+    const { appendFileSync, mkdirSync } = await import('node:fs')
+    const { join, dirname } = await import('node:path')
     const { homedir } = await import('node:os')
     const _bootLog = join(homedir(), '.config', 'jarvisx', 'bridge.log')
+    // Parent dir doesn't exist on fresh Windows installs (.config is a
+    // Linux convention). Without this mkdir the very first appendFileSync
+    // throws ENOENT, the catch fires, and bridge.start() is never called.
+    mkdirSync(dirname(_bootLog), { recursive: true })
     appendFileSync(_bootLog, `${new Date().toISOString()} BOOTSTRAP start apiBaseUrl=${currentConfig.apiBaseUrl} userId=${currentConfig.userId}\n`)
     const { JarvisXBridge } = await import('./bridge.js')
     const bridge = new JarvisXBridge({

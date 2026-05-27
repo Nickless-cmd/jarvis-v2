@@ -838,6 +838,351 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "operator_screenshot",
+            "description": (
+                "Capture a screenshot of the OPERATOR'S DESKTOP and save it to a "
+                "Jarvis-side temp file. Returns {path, width, height, mime_type, "
+                "display_id, operator_path?}. Pass the returned path to "
+                "analyze_image to actually see the contents. Use when the user "
+                "asks you to look at their screen, debug what they're seeing, "
+                "or describe what's currently visible."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "display_id": {
+                        "type": "number",
+                        "description": "Specific display id to capture (default: primary). Multi-monitor setups expose more than one.",
+                    },
+                    "save_path": {
+                        "type": "string",
+                        "description": "Optional absolute path on the operator's machine to also save a copy at (for history/debugging).",
+                    },
+                    "format": {
+                        "type": "string",
+                        "enum": ["png", "jpeg"],
+                        "description": "Image format (default: png). Use jpeg for smaller files at the cost of quality.",
+                    },
+                    "jpeg_quality": {
+                        "type": "number",
+                        "description": "JPEG quality 1-100 (default 85). Ignored for png.",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_open_url",
+            "description": (
+                "Open a URL in the OPERATOR'S default browser (Chrome/Edge/etc). "
+                "The operator sees an approval dialog showing the URL; the URL "
+                "opens only if they approve. Returns {approved, opened, url}. "
+                "Use when the user asks you to look something up online, share "
+                "a link with them, or open a webpage they need."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "URL to open. Must be http://, https://, or mailto:.",
+                    },
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_launch_app",
+            "description": (
+                "Launch an installed application on the OPERATOR'S DESKTOP. "
+                "Path may be an absolute path (C:/Program Files/.../app.exe), "
+                "a command name on PATH (notepad, code, chrome), or a UWP "
+                "shell URI (shell:appsFolder\<AppId>). The operator must "
+                "approve via dialog. Returns {approved, started, path, pid?}. "
+                "Use when the user asks you to open a program for them."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "App to launch — absolute path, PATH name, or shell URI.",
+                    },
+                    "args": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional command-line arguments to pass to the app.",
+                    },
+                    "cwd": {
+                        "type": "string",
+                        "description": "Working directory (defaults to operator s home).",
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_mouse_move",
+            "description": (
+                "Move the OPERATOR'S MOUSE cursor to absolute screen coordinates "
+                "(x, y). No click is performed. Combine with operator_screen_size "
+                "to know the coordinate range, and operator_screenshot to see "
+                "where things actually are. Returns {moved, x, y, smooth}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "x": {"type": "number", "description": "Horizontal pixel from screen left (0..screen_width)."},
+                    "y": {"type": "number", "description": "Vertical pixel from screen top (0..screen_height)."},
+                    "smooth": {"type": "boolean", "description": "Animated path (slower, fires mouseover events). Default false = instant teleport."},
+                },
+                "required": ["x", "y"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_mouse_click",
+            "description": (
+                "Click the OPERATOR'S MOUSE button. Optionally move first by "
+                "passing x and y. Use button='right' for context menus or "
+                "double=true for double-click. Returns {clicked, button, double}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "x": {"type": "number", "description": "Optional x to move to before clicking."},
+                    "y": {"type": "number", "description": "Optional y to move to before clicking."},
+                    "button": {"type": "string", "enum": ["left", "right", "middle"], "description": "Which mouse button (default left)."},
+                    "double": {"type": "boolean", "description": "True for double-click."},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_mouse_position",
+            "description": "Get the current OPERATOR'S MOUSE cursor position. Returns {x, y}.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_keyboard_type",
+            "description": (
+                "Type a string into the OPERATOR'S currently focused window. "
+                "Whatever window is in front on the desktop receives the keystrokes — "
+                "use operator_mouse_click first to focus a specific text field. "
+                "Returns {typed, length}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to type. UTF-8 is supported."},
+                    "delay_ms": {"type": "number", "description": "Optional inter-keystroke delay in ms (default 0 = as fast as possible)."},
+                },
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_keyboard_press",
+            "description": (
+                "Press a single key or a hotkey combo on the OPERATOR'S keyboard. "
+                "Pass a single key name (\"Enter\", \"F5\", \"Escape\") or an "
+                "array of modifier+key for combos ([\"Control\", \"C\"] = Ctrl+C, "
+                "[\"Control\", \"Shift\", \"T\"] = Ctrl+Shift+T). Key names match "
+                "nut.js Key enum: Control, Shift, Alt, LeftWin, Enter, Tab, Escape, "
+                "Space, Backspace, Delete, Home, End, PageUp, PageDown, ArrowUp, "
+                "ArrowDown, ArrowLeft, ArrowRight, F1-F12, A-Z, Num0-Num9."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "keys": {
+                        "description": "Key name or list of modifier+key names.",
+                        "oneOf": [
+                            {"type": "string"},
+                            {"type": "array", "items": {"type": "string"}},
+                        ],
+                    },
+                },
+                "required": ["keys"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_screen_size",
+            "description": "Get the OPERATOR'S primary display size in pixels. Returns {width, height}. Useful before mouse_move so you know the coordinate range.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_browser_open",
+            "description": (
+                "Open a URL in a controlled browser session on the OPERATOR'S desktop. "
+                "First call launches Chrome/Edge (auto-detected). Subsequent browser_* "
+                "calls share the same browser window. Returns {url, title, status, ok}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "URL to navigate to."},
+                    "wait_until": {
+                        "type": "string",
+                        "enum": ["load", "domcontentloaded", "networkidle0", "networkidle2"],
+                        "description": "Page-load condition (default 'load').",
+                    },
+                    "timeout_ms": {"type": "number", "description": "Navigation timeout (default 30000)."},
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_browser_get_text",
+            "description": (
+                "Extract visible text from the current browser page (or a specific "
+                "CSS selector). Truncated to max_chars. Returns {text, length, truncated, selector}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {"type": "string", "description": "Optional CSS selector. Omit for whole document.body."},
+                    "max_chars": {"type": "number", "description": "Truncate after this many characters (default 50000)."},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_browser_get_links",
+            "description": "Extract all href links from the current page. Returns {count, links: [{href, text}]}. Capped at 500.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_browser_click",
+            "description": (
+                "Click a CSS-selected element on the current page. Use "
+                "wait_navigation=true if the click triggers a page load. "
+                "Returns {clicked, selector, navigated, url}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {"type": "string", "description": "CSS selector of the element to click."},
+                    "wait_navigation": {"type": "boolean", "description": "Await page navigation triggered by the click."},
+                    "wait_for_selector": {"type": "boolean", "description": "Wait for selector to appear first (default true)."},
+                    "timeout_ms": {"type": "number", "description": "How long to wait for the selector (default 5000)."},
+                },
+                "required": ["selector"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_browser_type",
+            "description": (
+                "Focus a CSS-selected input/textarea and type into it. Set "
+                "clear_first=true to replace existing content. Returns {typed, selector, length}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {"type": "string", "description": "CSS selector of the input field."},
+                    "text": {"type": "string", "description": "Text to type."},
+                    "clear_first": {"type": "boolean", "description": "Select all + replace (true) or append (false, default)."},
+                    "delay_ms": {"type": "number", "description": "Inter-keystroke delay in ms (default 0)."},
+                },
+                "required": ["selector", "text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_browser_screenshot",
+            "description": (
+                "Capture the current browser page. Pass full_page=true for the entire "
+                "scrollable page (else just the viewport). Saves to a Jarvis-side "
+                "temp file. Returns {path, url, width, height, mime_type, full_page}. "
+                "Pass the path to analyze_image to see the contents."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "full_page": {"type": "boolean", "description": "Capture the full scrollable page (default false)."},
+                    "format": {"type": "string", "enum": ["png", "jpeg"], "description": "Image format (default png)."},
+                    "jpeg_quality": {"type": "number", "description": "JPEG quality 1-100 (default 85)."},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_browser_evaluate",
+            "description": (
+                "Run JavaScript inside the current page context and return its result. "
+                "Powerful — the operator sees an approval dialog unless skip_approval=true. "
+                "Use for structured extraction (e.g. read JSON-LD, walk shadow DOM) where "
+                "get_text/get_links don't suffice. Returns {approved, executed, result}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "script": {
+                        "type": "string",
+                        "description": "JS to execute. Wrapped in an async IIFE — use 'return X;' to return values.",
+                    },
+                },
+                "required": ["script"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_browser_status",
+            "description": "Get current browser-session status: {open, url?, title?, viewport?, idle_for_ms?}.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_browser_close",
+            "description": "Close the browser session. Frees memory; a fresh session opens on the next browser_* call.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "write_file",
             "description": "Write content to a file. Creates file if it doesn't exist. Always call this tool directly — the runtime handles approval automatically.",
             "parameters": {
@@ -3225,6 +3570,302 @@ def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
         ),
         tool_name="operator_bash",
         timeout_s=thread_timeout,
+    )
+
+
+def _exec_operator_screenshot(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    display_id = args.get("display_id")
+    save_path = args.get("save_path")
+    fmt = str(args.get("format") or "png").lower()
+    jpeg_quality = int(args.get("jpeg_quality") or 85)
+    from core.tools.operator_tools import operator_screenshot_async
+    return _run_operator_async(
+        lambda: operator_screenshot_async(
+            user_id=user_id,
+            display_id=int(display_id) if display_id is not None else None,
+            save_path=str(save_path) if save_path else None,
+            format=fmt,
+            jpeg_quality=jpeg_quality,
+            timeout_s=30.0,
+        ),
+        tool_name="operator_screenshot",
+        timeout_s=45.0,
+    )
+
+
+def _exec_operator_open_url(args: dict[str, Any]) -> dict[str, Any]:
+    url = str(args.get("url") or "").strip()
+    if not url:
+        return {"error": "url is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    skip_approval = bool(args.get("_runtime_trust_all"))
+    from core.tools.operator_tools import operator_open_url_async
+    return _run_operator_async(
+        lambda: operator_open_url_async(
+            url=url,
+            user_id=user_id,
+            skip_approval=skip_approval,
+            timeout_s=30.0,
+        ),
+        tool_name="operator_open_url",
+        timeout_s=45.0,
+    )
+
+
+def _exec_operator_launch_app(args: dict[str, Any]) -> dict[str, Any]:
+    path = str(args.get("path") or args.get("app") or "").strip()
+    if not path:
+        return {"error": "path is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    skip_approval = bool(args.get("_runtime_trust_all"))
+    cli_args = args.get("args") or []
+    if not isinstance(cli_args, list):
+        return {"error": "args must be a list of strings", "status": "error"}
+    cwd = args.get("cwd")
+    from core.tools.operator_tools import operator_launch_app_async
+    return _run_operator_async(
+        lambda: operator_launch_app_async(
+            path=path,
+            user_id=user_id,
+            args=[str(a) for a in cli_args],
+            cwd=str(cwd) if cwd else None,
+            skip_approval=skip_approval,
+            timeout_s=30.0,
+        ),
+        tool_name="operator_launch_app",
+        timeout_s=45.0,
+    )
+
+
+def _exec_operator_mouse_move(args: dict[str, Any]) -> dict[str, Any]:
+    try:
+        x, y = int(args["x"]), int(args["y"])
+    except (KeyError, ValueError, TypeError):
+        return {"error": "x and y are required integers", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_mouse_move_async
+    return _run_operator_async(
+        lambda: operator_mouse_move_async(
+            x=x, y=y, user_id=user_id, smooth=bool(args.get("smooth")), timeout_s=15.0,
+        ),
+        tool_name="operator_mouse_move",
+        timeout_s=20.0,
+    )
+
+
+def _exec_operator_mouse_click(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    button = str(args.get("button") or "left")
+    double = bool(args.get("double"))
+    x = args.get("x")
+    y = args.get("y")
+    from core.tools.operator_tools import operator_mouse_click_async
+    return _run_operator_async(
+        lambda: operator_mouse_click_async(
+            user_id=user_id,
+            button=button,
+            double=double,
+            x=int(x) if x is not None else None,
+            y=int(y) if y is not None else None,
+            timeout_s=15.0,
+        ),
+        tool_name="operator_mouse_click",
+        timeout_s=20.0,
+    )
+
+
+def _exec_operator_mouse_position(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_mouse_position_async
+    return _run_operator_async(
+        lambda: operator_mouse_position_async(user_id=user_id, timeout_s=10.0),
+        tool_name="operator_mouse_position",
+        timeout_s=15.0,
+    )
+
+
+def _exec_operator_keyboard_type(args: dict[str, Any]) -> dict[str, Any]:
+    text = args.get("text")
+    if not isinstance(text, str) or not text:
+        return {"error": "text is required (non-empty string)", "status": "error"}
+    user_id = _operator_user_id(args)
+    delay_ms = args.get("delay_ms")
+    from core.tools.operator_tools import operator_keyboard_type_async
+    return _run_operator_async(
+        lambda: operator_keyboard_type_async(
+            text=text,
+            user_id=user_id,
+            delay_ms=int(delay_ms) if delay_ms is not None else None,
+            timeout_s=max(15.0, len(text) * 0.05),
+        ),
+        tool_name="operator_keyboard_type",
+        timeout_s=max(20.0, len(text) * 0.1),
+    )
+
+
+def _exec_operator_keyboard_press(args: dict[str, Any]) -> dict[str, Any]:
+    keys = args.get("keys")
+    if keys is None:
+        return {"error": "keys is required", "status": "error"}
+    if not isinstance(keys, (str, list)):
+        return {"error": "keys must be a string or list of strings", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_keyboard_press_async
+    return _run_operator_async(
+        lambda: operator_keyboard_press_async(
+            keys=keys, user_id=user_id, timeout_s=10.0,
+        ),
+        tool_name="operator_keyboard_press",
+        timeout_s=15.0,
+    )
+
+
+def _exec_operator_screen_size(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_screen_size_async
+    return _run_operator_async(
+        lambda: operator_screen_size_async(user_id=user_id, timeout_s=10.0),
+        tool_name="operator_screen_size",
+        timeout_s=15.0,
+    )
+
+
+def _exec_operator_browser_open(args: dict[str, Any]) -> dict[str, Any]:
+    url = str(args.get("url") or "").strip()
+    if not url:
+        return {"error": "url is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    wait_until = str(args.get("wait_until") or "load")
+    timeout_ms = int(args.get("timeout_ms") or 30000)
+    from core.tools.operator_tools import operator_browser_open_async
+    return _run_operator_async(
+        lambda: operator_browser_open_async(
+            url=url, user_id=user_id, wait_until=wait_until,
+            timeout_ms=timeout_ms, timeout_s=45.0,
+        ),
+        tool_name="operator_browser_open",
+        timeout_s=55.0,
+    )
+
+
+def _exec_operator_browser_get_text(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    selector = args.get("selector")
+    max_chars = int(args.get("max_chars") or 50000)
+    from core.tools.operator_tools import operator_browser_get_text_async
+    return _run_operator_async(
+        lambda: operator_browser_get_text_async(
+            user_id=user_id,
+            selector=str(selector) if selector else None,
+            max_chars=max_chars,
+            timeout_s=20.0,
+        ),
+        tool_name="operator_browser_get_text",
+        timeout_s=25.0,
+    )
+
+
+def _exec_operator_browser_get_links(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_browser_get_links_async
+    return _run_operator_async(
+        lambda: operator_browser_get_links_async(user_id=user_id, timeout_s=20.0),
+        tool_name="operator_browser_get_links",
+        timeout_s=25.0,
+    )
+
+
+def _exec_operator_browser_click(args: dict[str, Any]) -> dict[str, Any]:
+    selector = str(args.get("selector") or "").strip()
+    if not selector:
+        return {"error": "selector is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_browser_click_async
+    return _run_operator_async(
+        lambda: operator_browser_click_async(
+            selector=selector, user_id=user_id,
+            wait_navigation=bool(args.get("wait_navigation")),
+            wait_for_selector=bool(args.get("wait_for_selector", True)),
+            timeout_ms=int(args.get("timeout_ms") or 5000),
+            timeout_s=25.0,
+        ),
+        tool_name="operator_browser_click",
+        timeout_s=30.0,
+    )
+
+
+def _exec_operator_browser_type(args: dict[str, Any]) -> dict[str, Any]:
+    selector = str(args.get("selector") or "").strip()
+    text = args.get("text")
+    if not selector:
+        return {"error": "selector is required", "status": "error"}
+    if not isinstance(text, str):
+        return {"error": "text is required (string)", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_browser_type_async
+    return _run_operator_async(
+        lambda: operator_browser_type_async(
+            selector=selector, text=text, user_id=user_id,
+            clear_first=bool(args.get("clear_first")),
+            delay_ms=int(args.get("delay_ms") or 0),
+            timeout_s=30.0,
+        ),
+        tool_name="operator_browser_type",
+        timeout_s=35.0,
+    )
+
+
+def _exec_operator_browser_screenshot(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_browser_screenshot_async
+    return _run_operator_async(
+        lambda: operator_browser_screenshot_async(
+            user_id=user_id,
+            full_page=bool(args.get("full_page")),
+            format=str(args.get("format") or "png"),
+            jpeg_quality=int(args.get("jpeg_quality") or 85),
+            timeout_s=30.0,
+        ),
+        tool_name="operator_browser_screenshot",
+        timeout_s=40.0,
+    )
+
+
+def _exec_operator_browser_evaluate(args: dict[str, Any]) -> dict[str, Any]:
+    script = str(args.get("script") or "")
+    if not script:
+        return {"error": "script is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    skip_approval = bool(args.get("_runtime_trust_all"))
+    from core.tools.operator_tools import operator_browser_evaluate_async
+    return _run_operator_async(
+        lambda: operator_browser_evaluate_async(
+            script=script, user_id=user_id, skip_approval=skip_approval,
+            timeout_s=30.0,
+        ),
+        tool_name="operator_browser_evaluate",
+        timeout_s=60.0,
+    )
+
+
+def _exec_operator_browser_status(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_browser_status_async
+    return _run_operator_async(
+        lambda: operator_browser_status_async(user_id=user_id, timeout_s=10.0),
+        tool_name="operator_browser_status",
+        timeout_s=15.0,
+    )
+
+
+def _exec_operator_browser_close(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_browser_close_async
+    return _run_operator_async(
+        lambda: operator_browser_close_async(user_id=user_id, timeout_s=10.0),
+        tool_name="operator_browser_close",
+        timeout_s=15.0,
     )
 
 
@@ -6501,6 +7142,24 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "operator_list_dir": _exec_operator_list_dir,
     "operator_webfetch": _exec_operator_webfetch,
     "operator_bash": _exec_operator_bash,
+    "operator_screenshot": _exec_operator_screenshot,
+    "operator_open_url": _exec_operator_open_url,
+    "operator_launch_app": _exec_operator_launch_app,
+    "operator_mouse_move": _exec_operator_mouse_move,
+    "operator_mouse_click": _exec_operator_mouse_click,
+    "operator_mouse_position": _exec_operator_mouse_position,
+    "operator_keyboard_type": _exec_operator_keyboard_type,
+    "operator_keyboard_press": _exec_operator_keyboard_press,
+    "operator_screen_size": _exec_operator_screen_size,
+    "operator_browser_open": _exec_operator_browser_open,
+    "operator_browser_get_text": _exec_operator_browser_get_text,
+    "operator_browser_get_links": _exec_operator_browser_get_links,
+    "operator_browser_click": _exec_operator_browser_click,
+    "operator_browser_type": _exec_operator_browser_type,
+    "operator_browser_screenshot": _exec_operator_browser_screenshot,
+    "operator_browser_evaluate": _exec_operator_browser_evaluate,
+    "operator_browser_status": _exec_operator_browser_status,
+    "operator_browser_close": _exec_operator_browser_close,
     "write_file": _exec_write_file,
     "edit_file": _exec_edit_file,
     "search": _exec_search,

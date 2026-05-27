@@ -16,12 +16,14 @@ import {
   readdirSync,
   lstatSync,
   appendFileSync,
+  existsSync,
 } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, isAbsolute, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { platform as osPlatform } from 'node:os'
-import { dialog } from 'electron'
+import { dialog, desktopCapturer, screen, shell as electronShell } from 'electron'
+import { spawn } from 'node:child_process'
 import WebSocket from 'ws'
 
 /** Resolve which shell to use for operator_bash based on the OS the
@@ -368,6 +370,562 @@ const handlers: Record<string, ToolHandler> = {
       timed_out: result.signal === 'SIGTERM' && result.error?.message?.includes('timed out'),
     }
   },
+
+  operator_screenshot: async (args) => {
+    // Capture the operator's screen and return PNG bytes (base64) plus
+    // metadata. Backend tool wrapper writes the bytes to a temp file on
+    // Jarvis-side so the LLM can hand it to analyze_image.
+    //
+    // Args:
+    //   display_id?: number  — specific display to capture; default = primary
+    //   save_path?: string   — also save to this path on the operator's
+    //                          machine (handy for debugging / history)
+    //   format?: 'png'|'jpeg' — default png
+    //   jpeg_quality?: number — 1-100, only used for jpeg, default 85
+    const fmt = String(args.format ?? 'png').toLowerCase()
+    if (fmt !== 'png' && fmt !== 'jpeg') {
+      throw new Error("format must be 'png' or 'jpeg'")
+    }
+    const jpegQuality = Math.min(Math.max(Number(args.jpeg_quality ?? 85), 1), 100)
+
+    const displays = screen.getAllDisplays()
+    const targetDisplay = args.display_id != null
+      ? displays.find((d) => d.id === Number(args.display_id)) ?? screen.getPrimaryDisplay()
+      : screen.getPrimaryDisplay()
+
+    // Request thumbnails at the display's native pixel resolution.
+    const px = {
+      width: Math.round(targetDisplay.size.width * targetDisplay.scaleFactor),
+      height: Math.round(targetDisplay.size.height * targetDisplay.scaleFactor),
+    }
+
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: px,
+    })
+    if (sources.length === 0) throw new Error('no screen sources available')
+
+    // Match source to requested display when possible; desktopCapturer's
+    // display_id is a string of the Electron display id.
+    let source = sources[0]
+    const matched = sources.find((s) => s.display_id === String(targetDisplay.id))
+    if (matched) source = matched
+
+    const img = source.thumbnail
+    const sz = img.getSize()
+    const buf = fmt === 'jpeg' ? img.toJPEG(jpegQuality) : img.toPNG()
+
+    let savedPath: string | null = null
+    if (args.save_path) {
+      const p = resolveOperatorPath(args.save_path)
+      mkdirSync(dirname(p), { recursive: true })
+      writeFileSync(p, buf)
+      savedPath = p
+    }
+
+    return {
+      data_base64: buf.toString('base64'),
+      mime_type: `image/${fmt}`,
+      width: sz.width,
+      height: sz.height,
+      display_id: targetDisplay.id,
+      display_label: source.name,
+      bytes: buf.length,
+      operator_path: savedPath,
+    }
+  },
+
+  operator_open_url: async (args) => {
+    // Open a URL in the operator's default browser. Asks for approval
+    // unless skip_approval=true (Trust All).
+    const url = String(args.url ?? '').trim()
+    if (!url) throw new Error('url is required')
+    // Restrict to common navigable schemes to prevent abuse via file://
+    // or javascript: URIs being shelled out.
+    let parsed: URL
+    try {
+      parsed = new URL(url)
+    } catch {
+      throw new Error(`invalid url: ${url}`)
+    }
+    const allowed = ['http:', 'https:', 'mailto:']
+    if (!allowed.includes(parsed.protocol)) {
+      throw new Error(`scheme not allowed: ${parsed.protocol}`)
+    }
+
+    const skipApproval = Boolean(args.skip_approval)
+    if (!skipApproval) {
+      const choice = await Promise.race<{ response: number }>([
+        dialog.showMessageBox({
+          type: 'question',
+          title: 'Jarvis vil åbne en URL',
+          message: 'Jarvis beder om at åbne en URL i din browser.',
+          detail: `URL:\n  ${url}\n\nAuto-afviser efter 20 sek hvis du ikke svarer.`,
+          buttons: ['Afvis', 'Åbn'],
+          defaultId: 1,
+          cancelId: 0,
+          noLink: true,
+        }),
+        new Promise<{ response: number }>((resolve) =>
+          setTimeout(() => resolve({ response: 0 }), 20_000),
+        ),
+      ])
+      if (choice.response !== 1) {
+        return { approved: false, opened: false, url }
+      }
+    }
+
+    // electronShell.openExternal is the OS-native "open" — defers to
+    // the default handler (browser for http/https, mail client for mailto).
+    await electronShell.openExternal(url)
+    return { approved: true, opened: true, url }
+  },
+
+  operator_launch_app: async (args) => {
+    // Launch an installed application. Accepts either a full path or a
+    // name resolvable on PATH (e.g. 'notepad', 'code', 'chrome').
+    // For UWP apps, pass the AppId like 'shell:appsFolder\\<AppId>' as `path`.
+    const target = String(args.path ?? args.app ?? '').trim()
+    if (!target) throw new Error('path (or app) is required')
+
+    const cliArgs: string[] = Array.isArray(args.args)
+      ? args.args.map((a) => String(a))
+      : []
+    const cwd = args.cwd ? resolveOperatorPath(args.cwd) : homedir()
+
+    const skipApproval = Boolean(args.skip_approval)
+    if (!skipApproval) {
+      const argsPreview = cliArgs.length > 0 ? `\n\nArgumenter:\n  ${cliArgs.join(' ')}` : ''
+      const choice = await Promise.race<{ response: number }>([
+        dialog.showMessageBox({
+          type: 'warning',
+          title: 'Jarvis vil starte en app',
+          message: 'Jarvis beder om at starte et program på din maskine.',
+          detail: `App:\n  ${target}${argsPreview}\n\nMappe:\n  ${cwd}\n\nAuto-afviser efter 20 sek hvis du ikke svarer.`,
+          buttons: ['Afvis', 'Start'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true,
+        }),
+        new Promise<{ response: number }>((resolve) =>
+          setTimeout(() => resolve({ response: 0 }), 20_000),
+        ),
+      ])
+      if (choice.response !== 1) {
+        return { approved: false, started: false, path: target }
+      }
+    }
+
+    // Spawn detached so the new process doesn't tie to JarvisX' lifetime.
+    // shell:true lets PATH resolution (e.g. 'notepad') and shell:appsFolder
+    // URIs work the same way Start-Process would resolve them.
+    try {
+      const child = spawn(target, cliArgs, {
+        cwd,
+        detached: true,
+        stdio: 'ignore',
+        shell: true,
+      })
+      child.unref()
+      return {
+        approved: true,
+        started: true,
+        path: target,
+        pid: child.pid ?? null,
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      return { approved: true, started: false, path: target, error: msg }
+    }
+  },
+
+  // ── GUI control via nut.js ───────────────────────────────────────────
+  // The nut.js module is imported lazily so the bridge still loads even
+  // if native build fails on a given install. Each handler imports the
+  // pieces it actually needs.
+
+  operator_mouse_move: async (args) => {
+    const x = Number(args.x)
+    const y = Number(args.y)
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      throw new Error('x and y are required numeric coordinates')
+    }
+    const { mouse, Point, straightTo } = await import('@nut-tree-fork/nut-js')
+    // Smooth=false → instantaneous teleport. Smooth path takes longer but
+    // looks human; useful when an app cares about mouseover events.
+    if (args.smooth) {
+      await mouse.move(straightTo(new Point(x, y)))
+    } else {
+      await mouse.setPosition(new Point(x, y))
+    }
+    return { moved: true, x, y, smooth: Boolean(args.smooth) }
+  },
+
+  operator_mouse_click: async (args) => {
+    const { mouse, Point, Button } = await import('@nut-tree-fork/nut-js')
+    // Optional pre-move; useful so the LLM doesn't have to chain two calls.
+    if (args.x != null && args.y != null) {
+      const x = Number(args.x), y = Number(args.y)
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        await mouse.setPosition(new Point(x, y))
+      }
+    }
+    const btnName = String(args.button ?? 'left').toLowerCase()
+    const btn =
+      btnName === 'right' ? Button.RIGHT :
+      btnName === 'middle' ? Button.MIDDLE :
+      Button.LEFT
+    if (args.double) {
+      await mouse.doubleClick(btn)
+    } else {
+      await mouse.click(btn)
+    }
+    return { clicked: true, button: btnName, double: Boolean(args.double) }
+  },
+
+  operator_mouse_position: async () => {
+    const { mouse } = await import('@nut-tree-fork/nut-js')
+    const p = await mouse.getPosition()
+    return { x: p.x, y: p.y }
+  },
+
+  operator_keyboard_type: async (args) => {
+    const text = String(args.text ?? '')
+    if (!text) throw new Error('text is required')
+    const { keyboard } = await import('@nut-tree-fork/nut-js')
+    // nut.js Keyboard.type accepts variadic args; each string is typed.
+    // Tune delay between keystrokes via setKeyboardDelay if needed.
+    if (args.delay_ms != null) {
+      keyboard.config.autoDelayMs = Math.max(0, Number(args.delay_ms))
+    }
+    await keyboard.type(text)
+    return { typed: true, length: text.length }
+  },
+
+  operator_keyboard_press: async (args) => {
+    // Accept either a single key string ("Enter") or array of modifiers
+    // + key for hotkeys (["Control", "C"]).
+    const keysArg = args.keys
+    if (!keysArg) throw new Error('keys is required (string or string[])')
+    const keys: string[] = Array.isArray(keysArg)
+      ? keysArg.map(String)
+      : [String(keysArg)]
+
+    const nut = await import('@nut-tree-fork/nut-js')
+    const { Key, keyboard } = nut
+    // Map human names to nut.js Key enum.
+    const resolveKey = (name: string): unknown => {
+      const norm = name.trim().replace(/\s+/g, '')
+      // Try exact match first, then case-insensitive
+      const direct = (Key as unknown as Record<string, unknown>)[norm]
+      if (direct !== undefined) return direct
+      const lower = norm.toLowerCase()
+      for (const k of Object.keys(Key)) {
+        if (k.toLowerCase() === lower) {
+          return (Key as unknown as Record<string, unknown>)[k]
+        }
+      }
+      throw new Error(`unknown key: ${name}`)
+    }
+    const resolved = keys.map(resolveKey)
+    await keyboard.pressKey(...(resolved as never[]))
+    await keyboard.releaseKey(...(resolved as never[]))
+    return { pressed: true, keys }
+  },
+
+  operator_screen_size: async () => {
+    const { screen: nutScreen } = await import('@nut-tree-fork/nut-js')
+    const width = await nutScreen.width()
+    const height = await nutScreen.height()
+    return { width, height }
+  },
+
+  // ── Browser automation via puppeteer-core ─────────────────────────────
+  // One persistent browser session per JarvisX run, lazily created on
+  // first browser tool call. Auto-closes after BROWSER_IDLE_MS of
+  // inactivity. Browser binary is auto-detected (Chrome → Edge).
+
+  operator_browser_open: async (args) => {
+    const url = String(args.url ?? '').trim()
+    if (!url) throw new Error('url is required')
+    const waitUntil = String(args.wait_until ?? 'load') as
+      | 'load' | 'domcontentloaded' | 'networkidle0' | 'networkidle2'
+    const sess = await ensureBrowserSession()
+    const resp = await sess.page.goto(url, {
+      waitUntil,
+      timeout: Number(args.timeout_ms ?? 30000),
+    })
+    const title = await sess.page.title()
+    return {
+      url: sess.page.url(),
+      title,
+      status: resp?.status() ?? null,
+      ok: resp?.ok() ?? false,
+    }
+  },
+
+  operator_browser_get_text: async (args) => {
+    const sess = await ensureBrowserSession()
+    const selector = args.selector ? String(args.selector) : null
+    const maxChars = Math.max(100, Number(args.max_chars ?? 50000))
+    let text: string
+    if (selector) {
+      text = await sess.page.$eval(selector, (el: Element) => el.textContent ?? '')
+    } else {
+      text = await sess.page.evaluate(() => document.body?.innerText ?? '')
+    }
+    const truncated = text.length > maxChars
+    return {
+      text: truncated ? text.slice(0, maxChars) + '…' : text,
+      length: text.length,
+      truncated,
+      selector,
+    }
+  },
+
+  operator_browser_get_links: async () => {
+    const sess = await ensureBrowserSession()
+    const links: { href: string; text: string }[] = await sess.page.evaluate(() => {
+      const out: { href: string; text: string }[] = []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(globalThis as any).document.querySelectorAll('a[href]').forEach((a: Element) => {
+        const href = (a as HTMLAnchorElement).href
+        const text = ((a as HTMLAnchorElement).textContent ?? '').trim().slice(0, 200)
+        if (href) out.push({ href, text })
+      })
+      return out
+    })
+    return { count: links.length, links: links.slice(0, 500) }
+  },
+
+  operator_browser_click: async (args) => {
+    const selector = String(args.selector ?? '').trim()
+    if (!selector) throw new Error('selector is required')
+    const sess = await ensureBrowserSession()
+    if (args.wait_for_selector !== false) {
+      await sess.page.waitForSelector(selector, {
+        timeout: Number(args.timeout_ms ?? 5000),
+      })
+    }
+    if (args.wait_navigation) {
+      const [resp] = await Promise.all([
+        sess.page.waitForNavigation({ timeout: 15000 }).catch(() => null),
+        sess.page.click(selector),
+      ])
+      return {
+        clicked: true,
+        selector,
+        navigated: !!resp,
+        url: sess.page.url(),
+      }
+    }
+    await sess.page.click(selector)
+    return { clicked: true, selector, navigated: false, url: sess.page.url() }
+  },
+
+  operator_browser_type: async (args) => {
+    const selector = String(args.selector ?? '').trim()
+    const text = String(args.text ?? '')
+    if (!selector) throw new Error('selector is required')
+    const sess = await ensureBrowserSession()
+    await sess.page.waitForSelector(selector, { timeout: 5000 })
+    if (args.clear_first) {
+      // Triple-click to select all, then type to replace.
+      await sess.page.click(selector, { clickCount: 3 })
+    } else {
+      await sess.page.focus(selector)
+    }
+    await sess.page.type(selector, text, {
+      delay: Number(args.delay_ms ?? 0),
+    })
+    return { typed: true, selector, length: text.length }
+  },
+
+  operator_browser_screenshot: async (args) => {
+    const sess = await ensureBrowserSession()
+    const fullPage = Boolean(args.full_page)
+    const fmt = String(args.format ?? 'png').toLowerCase() as 'png' | 'jpeg'
+    if (fmt !== 'png' && fmt !== 'jpeg') {
+      throw new Error("format must be 'png' or 'jpeg'")
+    }
+    const buf = (await sess.page.screenshot({
+      fullPage,
+      type: fmt,
+      quality: fmt === 'jpeg' ? Math.min(Math.max(Number(args.jpeg_quality ?? 85), 1), 100) : undefined,
+    })) as Buffer
+    const viewport = sess.page.viewport()
+    return {
+      data_base64: buf.toString('base64'),
+      mime_type: `image/${fmt}`,
+      width: viewport?.width ?? null,
+      height: viewport?.height ?? null,
+      full_page: fullPage,
+      url: sess.page.url(),
+      bytes: buf.length,
+    }
+  },
+
+  operator_browser_evaluate: async (args) => {
+    // Run arbitrary JS in the page context. Powerful — requires approval
+    // unless skip_approval=true. Returns whatever the script returns
+    // (must be JSON-serializable).
+    const script = String(args.script ?? '')
+    if (!script) throw new Error('script is required')
+
+    const skipApproval = Boolean(args.skip_approval)
+    if (!skipApproval) {
+      const choice = await Promise.race<{ response: number }>([
+        dialog.showMessageBox({
+          type: 'warning',
+          title: 'Jarvis vil køre JavaScript i din browser',
+          message: 'Jarvis beder om at evaluere JavaScript i den aktive side.',
+          detail: `Side:\n  (browser-session)\n\nScript:\n  ${script.slice(0, 400)}${script.length > 400 ? '…' : ''}\n\nAuto-afviser efter 20 sek.`,
+          buttons: ['Afvis', 'Kør'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true,
+        }),
+        new Promise<{ response: number }>((resolve) =>
+          setTimeout(() => resolve({ response: 0 }), 20_000),
+        ),
+      ])
+      if (choice.response !== 1) {
+        return { approved: false, executed: false }
+      }
+    }
+
+    const sess = await ensureBrowserSession()
+    // Wrap script in a function so we can return arbitrary expressions.
+    // The model can use either `return X;` syntax or just an expression.
+    const wrapped = `(async () => { ${script} })()`
+    const result = await sess.page.evaluate(wrapped)
+    return { approved: true, executed: true, result }
+  },
+
+  operator_browser_status: async () => {
+    if (!browserSession) {
+      return { open: false }
+    }
+    const title = await browserSession.page.title()
+    const vp = browserSession.page.viewport()
+    return {
+      open: true,
+      url: browserSession.page.url(),
+      title,
+      viewport: vp,
+      idle_for_ms: Date.now() - browserSession.lastUsed,
+    }
+  },
+
+  operator_browser_close: async () => {
+    if (!browserSession) return { closed: false, reason: 'no_session' }
+    try {
+      await browserSession.browser.close()
+    } catch {}
+    browserSession = null
+    return { closed: true }
+  },
+}
+
+// ── Browser-session singleton helpers ───────────────────────────────────
+
+interface BrowserSession {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  browser: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  page: any
+  lastUsed: number
+  idleTimer: NodeJS.Timeout | null
+}
+
+let browserSession: BrowserSession | null = null
+const BROWSER_IDLE_MS = 5 * 60 * 1000  // close session after 5 min idle
+
+function findBrowserExecutable(): string {
+  const candidates = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    join(homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    // macOS / Linux fallbacks — keeps the bridge code portable
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+  ]
+  for (const p of candidates) {
+    try {
+      if (existsSync(p)) return p
+    } catch {}
+  }
+  throw new Error(
+    'No Chrome/Edge browser found. Install Google Chrome or Microsoft Edge.',
+  )
+}
+
+async function ensureBrowserSession(): Promise<BrowserSession> {
+  if (browserSession) {
+    browserSession.lastUsed = Date.now()
+    scheduleBrowserIdleClose()
+    return browserSession
+  }
+  const puppeteer = await import('puppeteer-core')
+  const executablePath = findBrowserExecutable()
+  // Dedicated profile so we don't trample on the user's main Chrome
+  // session / cookies / extensions.
+  const userDataDir = join(homedir(), '.config', 'jarvisx', 'browser-profile')
+  mkdirSync(userDataDir, { recursive: true })
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: false,
+    userDataDir,
+    defaultViewport: null, // use the window's native size
+    args: [
+      '--no-default-browser-check',
+      '--no-first-run',
+      '--disable-features=TranslateUI',
+      '--start-maximized',
+    ],
+  })
+  const pages = await browser.pages()
+  const page = pages.length > 0 ? pages[0] : await browser.newPage()
+  browserSession = {
+    browser,
+    page,
+    lastUsed: Date.now(),
+    idleTimer: null,
+  }
+  // If user closes the window manually, drop the session reference so
+  // the next tool call boots a fresh one.
+  browser.on('disconnected', () => {
+    if (browserSession?.idleTimer) clearTimeout(browserSession.idleTimer)
+    browserSession = null
+    fileLog('browser session disconnected')
+  })
+  scheduleBrowserIdleClose()
+  fileLog(`browser session opened (executable=${executablePath})`)
+  return browserSession
+}
+
+function scheduleBrowserIdleClose(): void {
+  if (!browserSession) return
+  if (browserSession.idleTimer) clearTimeout(browserSession.idleTimer)
+  browserSession.idleTimer = setTimeout(async () => {
+    if (!browserSession) return
+    const idleFor = Date.now() - browserSession.lastUsed
+    if (idleFor >= BROWSER_IDLE_MS) {
+      try {
+        await browserSession.browser.close()
+      } catch {}
+      browserSession = null
+      fileLog('browser session closed (idle)')
+    } else {
+      scheduleBrowserIdleClose()
+    }
+  }, BROWSER_IDLE_MS)
+  // Don't keep the process alive solely on this timer.
+  browserSession.idleTimer.unref?.()
 }
 
 const RECONNECT_BACKOFF_MS = [1000, 2000, 4000, 8000, 15000, 30000]

@@ -67,6 +67,11 @@ _PUBLIC_PATHS = (
     # route-level check to reject requests with X-Forwarded-For
     # (which would mean Caddy or another proxy forwarded them).
     "/api/internal",
+    # Anthropic-compat endpoint (Claude Desktop, claude-code) uses its
+    # own x-api-key auth scheme via resolve_api_key() inside the route
+    # handler. Bypass the Bearer-token middleware so the route can
+    # apply its own auth.
+    "/v1",
 )
 
 

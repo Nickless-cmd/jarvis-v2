@@ -56,6 +56,21 @@ export interface JarvisXBridge {
     authTokenExpiresAt?: string
   }) => Promise<void>
   pingBackend: (url?: string) => Promise<{ ok: boolean; latencyMs: number; error?: string }>
+  validateToken: (
+    apiBaseUrl: string,
+    token: string,
+  ) => Promise<
+    | {
+        ok: true
+        valid: boolean
+        user_id?: string
+        role?: string
+        expires_at?: number
+        error?: string
+        http_status: number
+      }
+    | { ok: false; error: string }
+  >
   pickProjectRoot: () => Promise<{ projectRoot: string; recentProjects: string[] } | null>
   listScreenSources: () => Promise<
     Array<{

@@ -45,51 +45,63 @@ export function SetupScreen({ onComplete }: { onComplete: () => void }) {
       return
     }
     setStatus({ kind: 'validating' })
-    try {
-      const res = await fetch(`${url}/api/auth/whoami-token`, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${tok}` },
+    // Route via the Electron main process — the renderer's fetch() would
+    // trigger a CORS preflight (file:// → https://...) that FastAPI doesn't
+    // handle, manifesting as "Kunne ikke kontakte backend" even when the
+    // backend is perfectly reachable. main.ts uses Node's fetch which has
+    // no CORS layer.
+    if (!window.jarvisx?.validateToken) {
+      setStatus({
+        kind: 'error',
+        message: 'JarvisX-bridge mangler validateToken — geninstaller app-bygget.',
       })
-      if (!res.ok) {
+      return
+    }
+    try {
+      const r = await window.jarvisx.validateToken(url, tok)
+      if (!r.ok) {
         setStatus({
           kind: 'error',
-          message: `Backend afviste tokenen (HTTP ${res.status}). Tjek at den er korrekt og ikke udløbet.`,
+          message: `Kunne ikke kontakte backend: ${r.error}. Tjek at api URL'en er korrekt og du har netværk.`,
         })
         return
       }
-      const data = await res.json()
-      if (!data?.valid) {
+      if (r.http_status >= 400) {
         setStatus({
           kind: 'error',
-          message: `Token ikke valid: ${data?.error || 'ukendt grund'}`,
+          message: `Backend afviste tokenen (HTTP ${r.http_status}). Tjek at den er korrekt og ikke udløbet.`,
         })
         return
       }
-      const userId = String(data.user_id || '')
-      const role = String(data.role || 'member')
-      const expiresAt = data.expires_at
-        ? new Date(data.expires_at * 1000).toISOString()
+      if (!r.valid) {
+        setStatus({
+          kind: 'error',
+          message: `Token ikke valid: ${r.error || 'ukendt grund'}`,
+        })
+        return
+      }
+      const userId = String(r.user_id || '')
+      const role = String(r.role || 'member')
+      const expiresAt = r.expires_at
+        ? new Date(r.expires_at * 1000).toISOString()
         : ''
       setStatus({ kind: 'success', userId, role, expiresAt })
 
-      // Persist + reload
-      if (window.jarvisx) {
-        await window.jarvisx.setConfig({
-          apiBaseUrl: url,
-          userId,
-          authToken: tok,
-          authTokenUserId: userId,
-          authTokenRole: role,
-          authTokenExpiresAt: expiresAt,
-        } as Partial<{ apiBaseUrl: string; userId: string; authToken: string; authTokenUserId: string; authTokenRole: string; authTokenExpiresAt: string }>)
-      }
+      await window.jarvisx.setConfig({
+        apiBaseUrl: url,
+        userId,
+        authToken: tok,
+        authTokenUserId: userId,
+        authTokenRole: role,
+        authTokenExpiresAt: expiresAt,
+      } as Partial<{ apiBaseUrl: string; userId: string; authToken: string; authTokenUserId: string; authTokenRole: string; authTokenExpiresAt: string }>)
       // Give the success screen a moment to be seen, then continue
       setTimeout(onComplete, 1200)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       setStatus({
         kind: 'error',
-        message: `Kunne ikke kontakte backend: ${msg}. Tjek at api URL'en er korrekt og du har netværk.`,
+        message: `Uventet fejl: ${msg}.`,
       })
     }
   }

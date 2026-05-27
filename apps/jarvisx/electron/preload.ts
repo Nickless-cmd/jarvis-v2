@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('jarvisx', {
   setConfig: (patch: Record<string, unknown>) =>
     ipcRenderer.invoke('jarvisx:set-config', patch),
   pingBackend: (url?: string) => ipcRenderer.invoke('jarvisx:ping-backend', url),
+  // Token validation — bypasses renderer-CORS by running fetch from main.
+  validateToken: (apiBaseUrl: string, token: string) =>
+    ipcRenderer.invoke('jarvisx:validate-token', { apiBaseUrl, token }),
   pickProjectRoot: () => ipcRenderer.invoke('jarvisx:pick-project-root'),
   listScreenSources: () => ipcRenderer.invoke('jarvisx:list-screen-sources'),
   onBackendStatus: (cb: (status: { up: boolean; latencyMs?: number }) => void) => {

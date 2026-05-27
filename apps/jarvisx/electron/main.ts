@@ -742,6 +742,54 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('jarvisx:ping-backend', (_evt, url?: string) => pingBackend(url))
 
+  // Token validation — performed from the main process to bypass the
+  // browser's CORS preflight on the renderer's fetch(). On first-run
+  // SetupScreen the renderer would otherwise see "Kunne ikke kontakte
+  // backend" because the OPTIONS preflight hits 405 (FastAPI has no
+  // CORS middleware configured — and we don't want to weaken the
+  // shared backend just for the desktop app).
+  ipcMain.handle(
+    'jarvisx:validate-token',
+    async (
+      _evt,
+      args: { apiBaseUrl: string; token: string },
+    ): Promise<
+      | { ok: true; valid: boolean; user_id?: string; role?: string; expires_at?: number; error?: string; http_status: number }
+      | { ok: false; error: string }
+    > => {
+      try {
+        const url = String(args.apiBaseUrl || '').trim().replace(/\/$/, '')
+        const tok = String(args.token || '').trim()
+        if (!url) return { ok: false, error: 'apiBaseUrl required' }
+        if (!tok) return { ok: false, error: 'token required' }
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 10_000)
+        const res = await fetch(`${url}/api/auth/whoami-token`, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${tok}` },
+          signal: controller.signal,
+        })
+        clearTimeout(timeout)
+        let body: { valid?: boolean; user_id?: string; role?: string; expires_at?: number; error?: string } = {}
+        try {
+          body = (await res.json()) as typeof body
+        } catch {}
+        return {
+          ok: true,
+          valid: Boolean(body.valid),
+          user_id: body.user_id,
+          role: body.role,
+          expires_at: body.expires_at,
+          error: body.error,
+          http_status: res.status,
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        return { ok: false, error: msg }
+      }
+    },
+  )
+
   // Screen capture — list available sources (screens + windows). The
   // renderer presents a picker UI, then calls capture-source with the
   // chosen sourceId via getUserMedia (handled in the renderer because

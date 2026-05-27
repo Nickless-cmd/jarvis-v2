@@ -51,10 +51,21 @@ export function UpdateBanner() {
     (status.kind === 'available' || status.kind === 'downloaded') &&
     dismissedVersion === status.info.version
 
+  // Suppress "No published versions on GitHub" — this is the expected
+  // state when no releases have been cut yet, not a real error. Same
+  // for network/DNS hiccups during background check — user didn't ask
+  // for an update check, so a transient failure isn't actionable.
+  const isBenignError =
+    status.kind === 'error' &&
+    /no published versions|cannot find latest|ENOTFOUND|EAI_AGAIN|fetch failed/i.test(
+      String(status.error || ''),
+    )
+
   if (
     status.kind === 'idle' ||
     status.kind === 'checking' ||
     status.kind === 'not-available' ||
+    isBenignError ||
     isDismissed
   ) {
     return null
@@ -132,12 +143,21 @@ export function UpdateBanner() {
         icon={<AlertCircle size={12} />}
         message={`Update-fejl: ${status.error}`}
         actions={
-          <button
-            onClick={() => window.jarvisx?.updaterCheck()}
-            className="flex items-center gap-1 rounded border border-line2 bg-bg2 px-2 py-1 text-[10px] text-fg2 hover:text-fg"
-          >
-            <RotateCw size={10} /> Prøv igen
-          </button>
+          <>
+            <button
+              onClick={() => window.jarvisx?.updaterCheck()}
+              className="flex items-center gap-1 rounded border border-line2 bg-bg2 px-2 py-1 text-[10px] text-fg2 hover:text-fg"
+            >
+              <RotateCw size={10} /> Prøv igen
+            </button>
+            <button
+              onClick={() => setStatus({ kind: 'idle' })}
+              className="flex h-5 w-5 items-center justify-center rounded text-fg3 hover:text-fg"
+              title="Skjul fejl indtil næste app-start"
+            >
+              <X size={11} />
+            </button>
+          </>
         }
       />
     )

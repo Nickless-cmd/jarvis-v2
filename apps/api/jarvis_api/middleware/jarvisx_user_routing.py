@@ -66,7 +66,7 @@ _PUBLIC_PATHS = (
     # auth doesn't open external access. We additionally tighten the
     # route-level check to reject requests with X-Forwarded-For
     # (which would mean Caddy or another proxy forwarded them).
-    "/api/internal/",
+    "/api/internal",
 )
 
 

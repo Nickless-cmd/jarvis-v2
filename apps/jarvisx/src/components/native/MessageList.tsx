@@ -124,18 +124,45 @@ export function MessageList({ messages, workingSteps, isStreaming, sessionId, on
   // assistant message arriving means the conversation moved on.
   // (Streaming token growth is handled by ResizeObserver above with
   // user-intent gating.)
+  //
+  // Double-rAF: outer waits for React commit + layout pass, inner
+  // catches any late layout settling (markdown render, syntax-highlight
+  // mount, image-load reflow). Single rAF wasn't enough in practice —
+  // we'd scroll to bottom, then a code-block rendered tall and pushed
+  // the new content below the viewport.
   useEffect(() => {
     if (messages.length > prevCountRef.current) {
       wasNearBottomRef.current = true  // override stale "scrolled up"
       const node = containerRef.current
       if (node) {
         requestAnimationFrame(() => {
-          if (node) node.scrollTop = node.scrollHeight
+          requestAnimationFrame(() => {
+            if (node) node.scrollTop = node.scrollHeight
+          })
         })
       }
     }
     prevCountRef.current = messages.length
   }, [messages.length])
+
+  // Streaming-start nudge: when isStreaming transitions false→true,
+  // re-engage auto-follow even if the user had drifted slightly. The
+  // intent is clear: assistant is about to speak, bring me to it.
+  const prevStreamingRef = useRef(false)
+  useEffect(() => {
+    if (isStreaming && !prevStreamingRef.current) {
+      wasNearBottomRef.current = true
+      const node = containerRef.current
+      if (node) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (node) node.scrollTop = node.scrollHeight
+          })
+        })
+      }
+    }
+    prevStreamingRef.current = !!isStreaming
+  }, [isStreaming])
 
   // Hide raw tool messages (their results render inline via [tool_result:..]
   // refs in the assistant message). Empty system messages are hidden too.
@@ -160,12 +187,28 @@ export function MessageList({ messages, workingSteps, isStreaming, sessionId, on
     <div
       ref={containerRef}
       className="flex-1 overflow-y-auto"
-      style={{ scrollBehavior: 'auto' }}
+      style={{
+        scrollBehavior: 'auto',
+        // Chrome's default overflow-anchor: auto fights our scrollTop
+        // manipulation — when new content is added below the viewport,
+        // Chrome silently re-anchors to "preserve" the user's visual
+        // position, which UNDOES our auto-scroll. Disable it so our JS
+        // is the sole authority over scroll position. See 2026-05-27
+        // auto-scroll bug-hunt — Bjørn had to manually scroll after
+        // every message for months because of this.
+        overflowAnchor: 'none',
+      }}
     >
       <section
-        ref={innerRef}
+        ref={innerRef as React.RefObject<HTMLElement>}
         className="transcript mx-auto"
-        style={{ width: '100%', maxWidth: 880, padding: '16px 24px' }}
+        style={{
+          width: '100%',
+          maxWidth: 880,
+          padding: '16px 24px',
+          // Belt-and-suspenders: also disable on the inner growing element.
+          overflowAnchor: 'none',
+        }}
       >
         {visible.length === 0 && !isStreaming && (
           <div className="flex h-full min-h-[40vh] items-center justify-center text-center text-xs text-fg3">

@@ -15,6 +15,7 @@ import { KeyboardShortcutsOverlay } from './components/KeyboardShortcutsOverlay'
 import { OnboardingModal } from './components/OnboardingModal'
 import { UpdateBanner } from './components/UpdateBanner'
 import { GitUpdateBanner } from './components/GitUpdateBanner'
+import { SetupScreen } from './components/SetupScreen'
 import { cachedFetch } from './lib/apiCache'
 import { matchShortcut, isTypingTarget } from './lib/shortcuts'
 
@@ -25,6 +26,20 @@ interface AppConfig {
   mode: 'dev' | 'thin-client' | 'standalone'
   projectRoot: string
   recentProjects: string[]
+  authToken?: string
+  authTokenUserId?: string
+  authTokenRole?: string
+  authTokenExpiresAt?: string
+}
+
+/** Config is considered "bootstrapped" once apiBaseUrl + authToken are
+ *  set to non-fallback values. Until then we render the SetupScreen
+ *  instead of the main app. This is what makes "send Mikkel a .exe +
+ *  token" workflow actually usable. */
+function isConfigBootstrapped(cfg: AppConfig): boolean {
+  if (!cfg.authToken || cfg.authToken.length < 20) return false
+  if (!cfg.apiBaseUrl || cfg.apiBaseUrl === 'http://localhost') return false
+  return true
 }
 
 const FALLBACK_CONFIG: AppConfig = {
@@ -163,6 +178,24 @@ export default function App() {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [])
+
+  // First-run gate: if config doesn't have a valid apiBaseUrl + token,
+  // render the setup screen instead of the main app. The user has to
+  // bootstrap before anything else.
+  if (!isConfigBootstrapped(config)) {
+    return (
+      <SetupScreen
+        onComplete={() => {
+          // SetupScreen wrote to disk + we'll re-read here. Force a
+          // fresh config pull (in case fields beyond what we sent
+          // got normalised) and let the next render pass the gate.
+          if (window.jarvisx) {
+            window.jarvisx.getConfig().then(setConfig).catch(() => undefined)
+          }
+        }}
+      />
+    )
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">

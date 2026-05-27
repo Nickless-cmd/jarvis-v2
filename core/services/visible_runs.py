@@ -3751,6 +3751,20 @@ def _execute_simple_tool_calls(
             arguments["_runtime_session_id"] = session_id
         if run_id:
             arguments["_runtime_turn_id"] = run_id
+        # Stamp the active user_id from workspace context so operator_*
+        # tools route to THIS user's JarvisX bridge — not owner_user_id
+        # by default. Without this, Mikkel asking "open facebook" would
+        # dispatch the open_url to Bjørn's bridge because _operator_user_id
+        # in simple_tools falls back to owner via runtime.json. (The
+        # message_user_attribution DB-lookup step in that fallback chain
+        # is also empty — no code writes that table.)
+        try:
+            from core.identity.workspace_context import current_user_id
+            uid = current_user_id()
+            if uid:
+                arguments["_runtime_user_id"] = uid
+        except Exception:
+            pass
         # Forward trust_all so operator_* tools can skip per-call approval
         # dialogs when the user already opted into "Trust All" mode.
         # `force=True` (autonomous runs) implies trust_all — no human in

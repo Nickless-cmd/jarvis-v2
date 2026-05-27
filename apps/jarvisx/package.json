@@ -3,6 +3,11 @@
   "private": true,
   "version": "0.1.0-poc",
   "description": "JarvisX — Electron desktop app wrapping Jarvis V2",
+  "homepage": "https://github.com/Nickless-cmd/jarvis-v2",
+  "author": {
+    "name": "Nickless",
+    "email": "admin@srvlab.dk"
+  },
   "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {
@@ -59,12 +64,15 @@
       "dist-electron/**/*",
       "package.json"
     ],
+    "icon": "assets/icon.png",
     "linux": {
       "target": [
         "deb",
         "AppImage"
       ],
-      "category": "Office"
+      "category": "Office",
+      "icon": "assets/icon.png",
+      "maintainer": "Nickless <admin@srvlab.dk>"
     },
     "mac": {
       "category": "public.app-category.productivity",

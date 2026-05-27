@@ -46,6 +46,19 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Pre-commit: block Jarvis-issued API keys (jvs-<user>-<hex>) from
+      # being committed. detect-secrets' entropy detector missed
+      # `***REDACTED-LEAKED-KEY-2026-05-06***` in commit a1f1f9ee on
+      # 2026-05-06 because the hex chunk alone was below the threshold
+      # in context. This regex-based check is unambiguous: any literal
+      # matching `jvs-[a-z0-9]+-[0-9a-f]{20,}` in staged content fails.
+      - id: block-jvs-keys
+        name: Block jvs-* API keys
+        entry: scripts/block_jvs_keys.sh
+        language: script
+        pass_filenames: true
+        stages: [pre-commit]
+
       - id: jarvis-runtime-startup-smoke
         name: Jarvis runtime startup smoke test
         entry: /opt/conda/envs/ai/bin/python scripts/smoke_test_startup.py

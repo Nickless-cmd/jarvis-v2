@@ -157,7 +157,19 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
             detail="message must not be empty or whitespace-only",
         )
 
-    append_chat_message(session_id=session_id, role="user", content=effective_message)
+    # Stamp user_id from workspace context (resolved by jarvisx_user_routing
+    # middleware from the Bearer token's `sub` claim). Without this the
+    # message is anonymized in storage → prompt_contract's multi-user
+    # speaker prefix can't label it → Jarvis falls back to assuming it's
+    # the owner (Bjørn) regardless of who actually typed it.
+    from core.identity.workspace_context import current_user_id
+    _uid = current_user_id() or None
+    append_chat_message(
+        session_id=session_id,
+        role="user",
+        content=effective_message,
+        user_id=_uid,
+    )
     from core.services.notification_bridge import pin_session
     pin_session(session_id)
     return StreamingResponse(

@@ -90,6 +90,60 @@ class TestVisibleRunsModuleSurface:
             f"Stale active_run should have been auto-cleared, got: {captured.get('state')}"
         )
 
+    def test_hung_active_run_clears_even_with_controller(self, monkeypatch):
+        """Extension of the auto-clear: pause-pattern auto-continuation runs
+        register their controller in the SAME process that handles incoming
+        chat (jarvis-api). The original >5min+no-controller check missed
+        them — they'd hang indefinitely while chat-stream returned empty.
+
+        Tier 2: ANY run older than 10 minutes is hung regardless of whether
+        the controller is in memory. Real visible runs complete in seconds
+        to a couple of minutes.
+        """
+        from datetime import datetime, timedelta, UTC
+
+        stale_id = "autonomous-hung-67890"
+        # Mock controller — has a cancel() method we expect to be called
+        cancel_called = {"v": False}
+        class FakeController:
+            def cancel(self): cancel_called["v"] = True
+        controllers = {stale_id: FakeController()}
+        monkeypatch.setattr(visible_runs, "_VISIBLE_RUN_CONTROLLERS", controllers)
+
+        # 12-minute-old run that's still "active" with controller in memory
+        stale_started = (datetime.now(UTC) - timedelta(minutes=12)).isoformat()
+        captured = {}
+        def fake_get():
+            return captured.get("state", {
+                "active": True,
+                "run_id": stale_id,
+                "session_id": "chat-x",
+                "started_at": stale_started,
+                "cancelled": False,
+            })
+        def fake_set(payload):
+            captured["state"] = payload or {}
+        monkeypatch.setattr(visible_runs, "_get_active_visible_run_state", fake_get)
+        monkeypatch.setattr(visible_runs, "_set_active_visible_run", fake_set)
+        monkeypatch.setattr(visible_runs, "load_settings", lambda: type("S", (), {
+            "primary_model_lane": "primary",
+            "visible_model_provider": "deepseek",
+            "visible_model_name": "test",
+        })())
+        monkeypatch.setattr(visible_runs, "_stream_visible_run", lambda run: iter([]))
+
+        _ = visible_runs.start_visible_run(
+            message="hello",
+            session_id="chat-x",
+            approval_mode="approve",
+            thinking_mode="none",
+        )
+
+        assert captured.get("state") == {}, (
+            f"Hung active_run (>10min) should clear even with controller; got: {captured.get('state')}"
+        )
+        assert cancel_called["v"], "Controller should have been cancelled to stop zombie work"
+
     def test_preview_text_truncates(self):
         """Long input gets truncated to a single bounded line."""
         long_text = "x" * 1000

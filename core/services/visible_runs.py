@@ -406,36 +406,56 @@ def start_visible_run(
     normalized_session_id = (session_id or "").strip() or None
     try:
         active = _get_active_visible_run_state()
-        # Stuck-state auto-clear (2026-05-26 Claude). When a run dies without
-        # cleanly calling unregister_visible_run() — e.g. an autonomous
-        # auto-continuation that errors before its finally-block, or a process
-        # restart mid-run — the active_run state stays in DB. Every subsequent
-        # chat message gets routed below as a "midway nudge" which yields
-        # nothing visible → user sees "No response content returned" forever.
-        # Auto-clear when (a) active is stale (>5 min) AND (b) the owning
-        # controller is no longer in process memory (= the run process died).
+        # Stuck-state auto-clear (2026-05-26 Claude, extended 2026-05-27).
+        # When a run dies without cleanly calling unregister_visible_run() —
+        # autonomous auto-continuation that errors before finally-block, a
+        # process restart mid-run, or a run that hangs in some toolloop —
+        # the active_run state stays "active" in DB. Every subsequent chat
+        # gets routed below as a "midway nudge" yielding nothing → user
+        # sees "No response content returned" forever.
+        #
+        # Two-tier clear logic:
+        #   (a) >5 min old AND no in-process controller → clear (run died
+        #       in another process)
+        #   (b) >10 min old regardless of controller → clear (controller
+        #       may still be in this process's memory, but a 10+ min
+        #       "active" run is almost certainly hung — real runs complete
+        #       in seconds to a couple of minutes). The first version
+        #       missed pause-pattern auto-continuation runs that registered
+        #       their controller in jarvis-api itself.
         if active and bool(active.get("active")):
             stale_run_id = str(active.get("run_id") or "")
             still_alive = stale_run_id in _VISIBLE_RUN_CONTROLLERS
-            if not still_alive:
-                from datetime import datetime as _dt2, UTC as _UTC2
-                try:
-                    started = _dt2.fromisoformat(
-                        str(active.get("started_at") or "").replace("Z", "+00:00")
-                    )
-                    if started.tzinfo is None:
-                        started = started.replace(tzinfo=_UTC2)
-                    age_s = (_dt2.now(_UTC2) - started).total_seconds()
-                except Exception:
-                    age_s = 99999.0  # malformed timestamp → treat as very old
-                if age_s > 300:  # 5 minutes
-                    logger.warning(
-                        "visible_runs: clearing stale active_run %s (age=%.0fs, "
-                        "no in-process controller) — likely died without cleanup",
-                        stale_run_id, age_s,
-                    )
-                    _set_active_visible_run({})
-                    active = {}
+            from datetime import datetime as _dt2, UTC as _UTC2
+            try:
+                started = _dt2.fromisoformat(
+                    str(active.get("started_at") or "").replace("Z", "+00:00")
+                )
+                if started.tzinfo is None:
+                    started = started.replace(tzinfo=_UTC2)
+                age_s = (_dt2.now(_UTC2) - started).total_seconds()
+            except Exception:
+                age_s = 99999.0  # malformed timestamp → treat as very old
+            should_clear_dead = (not still_alive) and age_s > 300       # 5 min
+            should_clear_hung = age_s > 600                              # 10 min
+            if should_clear_dead or should_clear_hung:
+                logger.warning(
+                    "visible_runs: clearing stuck active_run %s "
+                    "(age=%.0fs, in_memory=%s, reason=%s)",
+                    stale_run_id, age_s, still_alive,
+                    "no_controller" if should_clear_dead else "hung_too_long",
+                )
+                # If the controller IS in memory, try to also cancel it so
+                # any background work stops cleanly instead of zombie-ing.
+                if still_alive:
+                    try:
+                        controller = _VISIBLE_RUN_CONTROLLERS.get(stale_run_id)
+                        if controller is not None:
+                            controller.cancel()
+                    except Exception:
+                        pass
+                _set_active_visible_run({})
+                active = {}
         if (active and bool(active.get("active"))
                 and not bool(active.get("cancelled"))
                 and normalized_session_id

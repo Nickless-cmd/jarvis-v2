@@ -71,7 +71,7 @@ _PUBLIC_PATHS = (
     # own x-api-key auth scheme via resolve_api_key() inside the route
     # handler. Bypass the Bearer-token middleware so the route can
     # apply its own auth.
-    "/v1",
+    "/anthropic",
 )
 
 

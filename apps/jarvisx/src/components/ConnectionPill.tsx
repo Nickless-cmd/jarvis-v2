@@ -42,36 +42,62 @@ export function ConnectionPill({ apiBaseUrl }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    const check = async () => {
+
+    // Use /health instead of /openapi.json — smaller payload, no
+    // dependency on FastAPI's lazy openapi-schema generation.
+    const checkUrl = `${apiBaseUrl.replace(/\/$/, '')}/health`
+
+    const fetchOnce = async (timeoutMs: number) => {
       const start = Date.now()
+      const ctrl = new AbortController()
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs)
       try {
-        const ctrl = new AbortController()
-        const timer = setTimeout(() => ctrl.abort(), 4000)
-        const res = await fetch(
-          `${apiBaseUrl.replace(/\/$/, '')}/openapi.json`,
-          { signal: ctrl.signal },
-        )
+        const res = await fetch(checkUrl, { signal: ctrl.signal })
         clearTimeout(timer)
-        if (cancelled) return
-        if (res.status === 401) {
-          setStatus({ kind: 'auth-required' })
-          return
-        }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const latencyMs = Date.now() - start
-        setStatus(
-          isLocalUrl
-            ? { kind: 'local', latencyMs }
-            : { kind: 'remote', latencyMs },
-        )
+        return { ok: res.ok, status: res.status, latencyMs: Date.now() - start }
       } catch (e) {
-        if (cancelled) return
-        setStatus({
-          kind: 'offline',
+        clearTimeout(timer)
+        return {
+          ok: false,
+          status: 0,
+          latencyMs: Date.now() - start,
           error: e instanceof Error ? e.message : String(e),
-        })
+        }
       }
     }
+
+    const check = async () => {
+      // 2-attempt retry with progressive timeouts. The backend's
+      // event loop can be briefly blocked during synchronous urllib
+      // calls in agentic loops (deepseek API roundtrips, 3-5s).
+      // A single 4s ping can false-positive offline during busy
+      // windows even when the backend is fully healthy. Two tries
+      // with backoff catches that without making real offline detection
+      // unreasonably slow.
+      let attempt = await fetchOnce(6000)
+      if (!attempt.ok && !cancelled) {
+        await new Promise((r) => setTimeout(r, 1500))
+        attempt = await fetchOnce(8000)
+      }
+      if (cancelled) return
+      if (attempt.status === 401) {
+        setStatus({ kind: 'auth-required' })
+        return
+      }
+      if (!attempt.ok) {
+        setStatus({
+          kind: 'offline',
+          error: ('error' in attempt && attempt.error) || `HTTP ${attempt.status}`,
+        })
+        return
+      }
+      setStatus(
+        isLocalUrl
+          ? { kind: 'local', latencyMs: attempt.latencyMs }
+          : { kind: 'remote', latencyMs: attempt.latencyMs },
+      )
+    }
+
     void check()
     const id = window.setInterval(check, POLL_MS)
     return () => {

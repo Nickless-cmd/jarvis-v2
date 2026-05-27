@@ -364,18 +364,28 @@ const AssistantBubble = memo(function AssistantBubble({
     <div className="message-group">
       <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
         {/* No more in-bubble ThinkingBar — status lives next to "Jarvis"
-            in the message-name row now (StatusInline). The bubble stays
-            empty during pre-token pending state; a streaming-cursor is
-            shown if pending but no content yet. */}
-        {message.pending && !message.content ? (
-          <span className="streaming-cursor" />
-        ) : null}
+            in the message-name row now (StatusInline). The cursor is a
+            single stable child of message-bubble (always last, never
+            duplicated). Putting it inside message-content used to cause
+            two bugs: (1) markdown re-renders 5+ Hz during streaming kept
+            restarting the CSS blink animation before it reached 50%, so
+            the cursor looked frozen-solid; (2) the cursor landed AFTER
+            the last markdown element, which meant it jumped to a new
+            line below the text whenever the last block was <pre>/<ul>/
+            <p>-with-newline. As a stable sibling at the end of the
+            bubble it keeps the same DOM node across re-renders, so the
+            animation runs continuously and the position is consistent. */}
         {message.content ? (
           <div className="message-content">
             <MarkdownRenderer content={message.content} streaming={!!message.pending} />
-            {message.pending && <span className="streaming-cursor" />}
           </div>
         ) : null}
+        {/* JS-rendered cursor only when there's no content yet. Once
+            content arrives, the cursor is taken over by the CSS
+            `::after` pseudo-element on .message-content's last child
+            (see index.css). That avoids the re-mount-on-every-token
+            issue that froze the blink animation. */}
+        {message.pending && !message.content ? <span className="streaming-cursor" /> : null}
       </div>
       {!message.pending && message.content && (
         <div className="message-actions">

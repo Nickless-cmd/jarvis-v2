@@ -41,20 +41,49 @@ textarea, input,
 }
 ::-webkit-scrollbar-thumb:hover { background: #484f58; }
 
-/* Streaming cursor at end of last token in pending bubbles */
-.streaming-cursor {
+/* Streaming cursor.
+ *
+ * Two strategies coexist:
+ *
+ * 1. Empty pending bubble (no content yet) — we render a literal
+ *    <span class="streaming-cursor"> so there's *something* visible
+ *    in the bubble. This is the only place the JS-rendered cursor
+ *    still lives.
+ *
+ * 2. Pending bubble WITH content (the common case during streaming)
+ *    — we attach the cursor as a `::after` pseudo-element on the
+ *    *last child* of .message-content. This solves two bugs that
+ *    the JS-sibling approach kept hitting:
+ *      - The cursor used to land BELOW the content because
+ *        .message-content is a block-level div; an inline-block
+ *        sibling renders on its own line below.
+ *      - Markdown re-rendered 5+ times per second during streaming,
+ *        which kept tearing down and re-creating the <span>; the CSS
+ *        animation never reached the 50% mark, so the cursor stayed
+ *        solid (no blink). A pseudo-element on the last child is
+ *        preserved by the browser across attribute updates and the
+ *        animation runs continuously.
+ *
+ * The pseudo-element targets ` > *:last-child` so it inlines with
+ * whatever the markdown ended on (a <p> in practice). If the last
+ * child happens to be <pre> or <ul>, the cursor will appear just
+ * after the closing tag, which is acceptable for those rare cases.
+ */
+.streaming-cursor,
+.message-bubble.pending .message-content > *:last-child::after {
+  content: '';
   display: inline-block;
   width: 2px;
   height: 1em;
   background: #5ab8a0;
-  margin-left: 2px;
+  margin-left: 4px;
   vertical-align: text-bottom;
   border-radius: 1px;
-  animation: streamingCursor 0.8s step-end infinite;
+  animation: streamingCursor 1s step-end infinite;
 }
 @keyframes streamingCursor {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
 }
 
 /* Thinking bar (rider that bounces while LLM is generating) */

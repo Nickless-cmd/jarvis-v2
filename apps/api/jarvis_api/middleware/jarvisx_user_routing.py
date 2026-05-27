@@ -58,6 +58,15 @@ _PUBLIC_PATHS = (
     "/docs",
     "/openapi.json",
     "/redoc",
+    # Cross-process IPC from the runtime process (port 8011) to the
+    # api process (port 80). The runtime can't realistically carry a
+    # user token — it's a service, not a user. Each route under
+    # /api/internal/ enforces loopback-only itself (see e.g.
+    # routes/internal_discord.py), so exempting the prefix from token
+    # auth doesn't open external access. We additionally tighten the
+    # route-level check to reject requests with X-Forwarded-For
+    # (which would mean Caddy or another proxy forwarded them).
+    "/api/internal/",
 )
 
 

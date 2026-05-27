@@ -34,6 +34,11 @@ def dispatch(req: DispatchRequest, request: Request) -> dict:
     client_host = request.client.host if request.client else ""
     if client_host not in {"127.0.0.1", "::1", "localhost"}:
         raise HTTPException(status_code=403, detail="loopback-only")
+    # Reject Caddy/proxy-forwarded requests: they appear to come from
+    # 127.0.0.1 too, but X-Forwarded-For betrays the real external
+    # origin. Internal IPC from the runtime process never sets this.
+    if request.headers.get("x-forwarded-for") or request.headers.get("forwarded"):
+        raise HTTPException(status_code=403, detail="loopback-only (proxy-forwarded)")
 
     if not _is_gateway_owner():
         raise HTTPException(

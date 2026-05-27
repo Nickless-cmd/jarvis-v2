@@ -12,7 +12,9 @@ import { ChannelsView } from './components/views/ChannelsView'
 import { SchedulingView } from './components/views/SchedulingView'
 import { SettingsView } from './components/SettingsView'
 import { KeyboardShortcutsOverlay } from './components/KeyboardShortcutsOverlay'
-import { OnboardingModal } from './components/OnboardingModal'
+// OnboardingModal removed 2026-05-27 — it had an "Owner" path that any
+// user could click to gain elevated role without backend validation.
+// Replaced by SetupScreen which forces token-based auth from start.
 import { UpdateBanner } from './components/UpdateBanner'
 import { GitUpdateBanner } from './components/GitUpdateBanner'
 import { SetupScreen } from './components/SetupScreen'
@@ -56,10 +58,7 @@ export default function App() {
   const [config, setConfig] = useState<AppConfig>(FALLBACK_CONFIG)
   const [role, setRole] = useState<'owner' | 'member' | 'guest'>('owner')  // optimistic owner; downgraded after whoami fetch
   const [showShortcuts, setShowShortcuts] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
-    // Show on first launch (no completed flag in localStorage)
-    return localStorage.getItem('jarvisx:onboarding-done') !== '1'
-  })
+  // showOnboarding removed — SetupScreen (token-validated) replaces it
   const [sidebarHidden, setSidebarHidden] = useState<boolean>(() => {
     return localStorage.getItem('jarvisx:sidebar-hidden') === '1'
   })
@@ -240,19 +239,6 @@ export default function App() {
       <KeyboardShortcutsOverlay
         open={showShortcuts}
         onClose={() => setShowShortcuts(false)}
-      />
-      <OnboardingModal
-        open={showOnboarding}
-        apiBaseUrl={config.apiBaseUrl}
-        defaultUserName={config.userName}
-        onComplete={async (patch) => {
-          await updateConfig(patch)
-          localStorage.setItem('jarvisx:onboarding-done', '1')
-        }}
-        onSkip={() => {
-          localStorage.setItem('jarvisx:onboarding-done', '1')
-          setShowOnboarding(false)
-        }}
       />
     </div>
   )

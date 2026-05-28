@@ -139,6 +139,7 @@ def _fire_due_tasks() -> None:
     due = runtime_db.get_due_scheduled_tasks(now.isoformat())
     if due:
         from core.services.notification_bridge import send_session_notification
+        from core.identity.workspace_context import user_context
 
         for task in due:
             task_id = str(task.get("task_id") or "")
@@ -158,97 +159,110 @@ def _fire_due_tasks() -> None:
             except (ValueError, TypeError):
                 pass
 
-            try:
-                # Route through outbound_nudges (2026-05-13): scheduled
-                # reminders are INTERNAL signals to Jarvis (not DMs to user).
-                # They land in his awareness; he decides how to act. User
-                # sees outcome when Jarvis responds or via Mission Control.
+            # Multi-user: bind workspace_context to the task's owner BEFORE
+            # dispatching. notification_bridge, initiative_queue and
+            # autonomous_run will all see the correct user/workspace so memory
+            # injection and operator tool routing go to the right bridge.
+            # Tasks without scheduled_for_user_id fall through to owner context
+            # (user_context with no discord_id resolves to default 'bjorn').
+            scheduled_uid = str(task.get("scheduled_for_user_id") or "").strip()
+            if scheduled_uid:
+                _ctx_kwargs = {"discord_id": scheduled_uid}
+            else:
+                _ctx_kwargs = {}
+
+            with user_context(**_ctx_kwargs):
                 try:
-                    from core.runtime.settings import load_settings as _ls_st
-                    if _ls_st().nudge_system_enabled:
-                        from core.services.outbound_nudges import push_nudge
-                        nudge_r = push_nudge(
-                            source="scheduled_task",
-                            kind="other",
-                            message=f"[scheduled reminder] {focus}",
-                            importance="normal",
-                        )
-                        result = {"status": "ok", "via": "nudge", "nudge_id": nudge_r.get("nudge_id")}
-                    else:
+                    # Route through outbound_nudges (2026-05-13): scheduled
+                    # reminders are INTERNAL signals to Jarvis (not DMs to user).
+                    # They land in his awareness; he decides how to act. User
+                    # sees outcome when Jarvis responds or via Mission Control.
+                    try:
+                        from core.runtime.settings import load_settings as _ls_st
+                        if _ls_st().nudge_system_enabled:
+                            from core.services.outbound_nudges import push_nudge
+                            nudge_r = push_nudge(
+                                source="scheduled_task",
+                                kind="other",
+                                message=f"[scheduled reminder] {focus}",
+                                importance="normal",
+                            )
+                            result = {"status": "ok", "via": "nudge", "nudge_id": nudge_r.get("nudge_id")}
+                        else:
+                            result = send_session_notification(
+                                f"[scheduled reminder] {focus}",
+                                source="scheduled-task",
+                            )
+                    except Exception:
+                        # Fallback to direct on any failure
                         result = send_session_notification(
                             f"[scheduled reminder] {focus}",
                             source="scheduled-task",
                         )
-                except Exception:
-                    # Fallback to direct on any failure
-                    result = send_session_notification(
-                        f"[scheduled reminder] {focus}",
-                        source="scheduled-task",
-                    )
-                if result.get("status") == "ok":
-                    runtime_db.mark_scheduled_task_fired(task_id, fired_at=now_iso, updated_at=now_iso)
-                    logger.info("scheduled_tasks: fired %s → delivered (via=%s)", task_id, result.get("via", "direct"))
+                    if result.get("status") == "ok":
+                        runtime_db.mark_scheduled_task_fired(task_id, fired_at=now_iso, updated_at=now_iso)
+                        logger.info("scheduled_tasks: fired %s → delivered (via=%s)", task_id, result.get("via", "direct"))
 
-                    # Also push to initiative queue so Jarvis can act on it autonomously
-                    try:
-                        from core.services.initiative_queue import push_initiative
-                        push_initiative(
-                            focus=focus,
-                            source="scheduled-task",
-                            source_id=task_id,
-                            priority="medium",
-                        )
-                        logger.info("scheduled_tasks: pushed %s to initiative queue", task_id)
-                    except Exception as init_exc:
-                        logger.warning("scheduled_tasks: failed to push %s to initiative queue: %s", task_id, init_exc)
-
-                    # EXECUTE the reminder as a self-directive run — without
-                    # this the reminder just lands as text in chat and Jarvis
-                    # describes it instead of acting on it. Same pattern as
-                    # the self-wakeup dispatcher's C-step.
-                    if focus.strip():
+                        # Also push to initiative queue so Jarvis can act on it autonomously
                         try:
-                            from core.services.visible_runs import start_autonomous_run
-                            from core.identity.owner_resolver import (
-                                resolve_owner_target_session,
+                            from core.services.initiative_queue import push_initiative
+                            push_initiative(
+                                focus=focus,
+                                source="scheduled-task",
+                                source_id=task_id,
+                                priority="medium",
                             )
+                            logger.info("scheduled_tasks: pushed %s to initiative queue", task_id)
+                        except Exception as init_exc:
+                            logger.warning("scheduled_tasks: failed to push %s to initiative queue: %s", task_id, init_exc)
 
-                            # Scheduled reminders are Bjørn's. They must
-                            # never land in a member's session (e.g.
-                            # Mikkel's DM whose session got pinned last).
-                            # resolve_owner_target_session refuses
-                            # non-owner sessions; empty string falls
-                            # through to autonomous_run creating a fresh
-                            # owner-owned session.
-                            target_session = resolve_owner_target_session()
+                        # EXECUTE the reminder as a self-directive run — without
+                        # this the reminder just lands as text in chat and Jarvis
+                        # describes it instead of acting on it. Same pattern as
+                        # the self-wakeup dispatcher's C-step.
+                        if focus.strip():
+                            try:
+                                from core.services.visible_runs import start_autonomous_run
+                                from core.identity.owner_resolver import (
+                                    resolve_owner_target_session,
+                                )
 
-                            self_directive = (
-                                f"[SCHEDULED REMINDER FIRED — task_id={task_id}]\n"
-                                f"Du planlagde: {focus}\n\n"
-                                "UDFØR opgaven nu med dine tools — beskriv den ikke bare. "
-                                "Hvis det handler om at tjekke noget (Discord, en fil, "
-                                "en status), så BRUG værktøjet. "
-                                "Når du er færdig, rapportér resultatet kort til Bjørn."
-                            )
-                            start_autonomous_run(
-                                self_directive,
-                                session_id=target_session or None,
-                            )
-                            logger.info("scheduled_tasks: dispatched %s as autonomous run", task_id)
-                        except Exception as run_exc:
-                            logger.warning(
-                                "scheduled_tasks: autonomous run trigger failed for %s: %s",
-                                task_id, run_exc,
-                            )
-                else:
-                    # Delivery failed (no active session etc.) — leave pending, retry next poll
-                    logger.warning(
-                        "scheduled_tasks: %s delivery failed (%s) — will retry",
-                        task_id,
-                        result.get("error", "unknown"),
-                    )
-            except Exception as exc:
-                logger.error("scheduled_tasks: failed to fire %s: %s", task_id, exc)
+                                # Scheduled reminders are Bjørn's. They must
+                                # never land in a member's session (e.g.
+                                # Mikkel's DM whose session got pinned last).
+                                # resolve_owner_target_session refuses
+                                # non-owner sessions; empty string falls
+                                # through to autonomous_run creating a fresh
+                                # owner-owned session.
+                                target_session = resolve_owner_target_session()
+
+                                self_directive = (
+                                    f"[SCHEDULED REMINDER FIRED — task_id={task_id}]\n"
+                                    f"Du planlagde: {focus}\n\n"
+                                    "UDFØR opgaven nu med dine tools — beskriv den ikke bare. "
+                                    "Hvis det handler om at tjekke noget (Discord, en fil, "
+                                    "en status), så BRUG værktøjet. "
+                                    "Når du er færdig, rapportér resultatet kort til Bjørn."
+                                )
+                                start_autonomous_run(
+                                    self_directive,
+                                    session_id=target_session or None,
+                                )
+                                logger.info("scheduled_tasks: dispatched %s as autonomous run", task_id)
+                            except Exception as run_exc:
+                                logger.warning(
+                                    "scheduled_tasks: autonomous run trigger failed for %s: %s",
+                                    task_id, run_exc,
+                                )
+                    else:
+                        # Delivery failed (no active session etc.) — leave pending, retry next poll
+                        logger.warning(
+                            "scheduled_tasks: %s delivery failed (%s) — will retry",
+                            task_id,
+                            result.get("error", "unknown"),
+                        )
+                except Exception as exc:
+                    logger.error("scheduled_tasks: failed to fire %s: %s", task_id, exc)
 
     try:
         from core.services.agent_runtime import run_due_agent_schedules

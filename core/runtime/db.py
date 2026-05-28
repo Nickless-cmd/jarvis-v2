@@ -1663,7 +1663,18 @@ def create_runtime_initiative(
     first_seeded_at: str = "",
     next_attempt_at: str = "",
     updated_at: str,
+    scheduled_for_user_id: str | None = None,
+    initiated_by: str | None = None,
 ) -> dict[str, object]:
+    # Auto-stamp from workspace_context if caller did not provide values.
+    if scheduled_for_user_id is None and initiated_by is None:
+        try:
+            from core.identity.workspace_context import current_user_id
+            uid = current_user_id() or None
+            scheduled_for_user_id = uid
+            initiated_by = f"user:{uid}" if uid else "jarvis-self"
+        except Exception:
+            pass
     with connect() as conn:
         _ensure_runtime_initiatives_table(conn)
         conn.execute(
@@ -1680,9 +1691,11 @@ def create_runtime_initiative(
                 detected_at,
                 first_seeded_at,
                 next_attempt_at,
-                updated_at
+                updated_at,
+                scheduled_for_user_id,
+                initiated_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 initiative_id,
@@ -1697,6 +1710,8 @@ def create_runtime_initiative(
                 first_seeded_at,
                 next_attempt_at,
                 updated_at,
+                scheduled_for_user_id,
+                initiated_by,
             ),
         )
         conn.commit()
@@ -4454,6 +4469,16 @@ def create_tool_intent_approval_request(
     execution_state: str = "not-executed",
 ) -> dict[str, object]:
     approval_id = f"tool-intent-approval-{uuid4().hex}"
+    # Stamp from workspace_context so approval rows carry the requesting user.
+    scheduled_for_user_id: str | None = None
+    initiated_by: str | None = None
+    try:
+        from core.identity.workspace_context import current_user_id
+        uid = current_user_id() or None
+        scheduled_for_user_id = uid
+        initiated_by = f"user:{uid}" if uid else "jarvis-self"
+    except Exception:
+        pass
     with connect() as conn:
         conn.execute(
             """
@@ -4469,9 +4494,11 @@ def create_tool_intent_approval_request(
                 approval_reason,
                 requested_at,
                 expires_at,
-                execution_state
+                execution_state,
+                scheduled_for_user_id,
+                initiated_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 approval_id,
@@ -4486,6 +4513,8 @@ def create_tool_intent_approval_request(
                 requested_at,
                 expires_at,
                 execution_state,
+                scheduled_for_user_id,
+                initiated_by,
             ),
         )
         conn.commit()

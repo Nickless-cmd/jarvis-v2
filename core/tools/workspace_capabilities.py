@@ -3751,6 +3751,16 @@ def _persist_capability_approval_request(
     capability = invocation.get("capability") or {}
     approval = invocation.get("approval") or {}
     proposal_content = invocation.get("proposal_content") or {}
+    # Stamp from workspace_context so capability approval rows carry the requesting user.
+    scheduled_for_user_id: str | None = None
+    initiated_by: str | None = None
+    try:
+        from core.identity.workspace_context import current_user_id
+        uid = current_user_id() or None
+        scheduled_for_user_id = uid
+        initiated_by = f"user:{uid}" if uid else "jarvis-self"
+    except Exception:
+        pass
     with connect() as conn:
         conn.execute(
             """
@@ -3769,9 +3779,11 @@ def _persist_capability_approval_request(
                 proposal_content_source,
                 proposal_reason,
                 requested_at,
-                status
+                status,
+                scheduled_for_user_id,
+                initiated_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 f"cap-approval-{uuid4().hex}",
@@ -3789,6 +3801,8 @@ def _persist_capability_approval_request(
                 proposal_content.get("reason"),
                 requested_at,
                 "pending",
+                scheduled_for_user_id,
+                initiated_by,
             ),
         )
         conn.commit()

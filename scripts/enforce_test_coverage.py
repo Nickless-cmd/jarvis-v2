@@ -34,6 +34,9 @@ KNOWN_MAPPINGS: dict[str, str] = {
     # Mapping added 2026-05-28.
     "core/services/cognitive_chronicle.py": "tests/multi_user/test_scope_filters.py",
     "core/services/scheduled_tasks.py": "tests/multi_user/test_scope_filters.py",
+    # Group 6: scheduling user-id binding — dispatcher tested in test_scheduling_context.py
+    # Mapping added 2026-05-28.
+    "core/services/scheduled_task_runner.py": "tests/multi_user/test_scheduling_context.py",
     # Group 5: workspace_context tested thoroughly in test_multi_user.py
     # Mapping added 2026-05-28.
     "core/identity/workspace_context.py": "tests/test_multi_user.py",

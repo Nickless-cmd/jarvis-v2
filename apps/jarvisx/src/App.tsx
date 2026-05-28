@@ -206,6 +206,7 @@ export default function App() {
             active={view}
             onSelect={setView}
             userName={config.userName}
+            role={config.authTokenRole}
             shell={shell}
             onShowShortcuts={() => setShowShortcuts(true)}
           />

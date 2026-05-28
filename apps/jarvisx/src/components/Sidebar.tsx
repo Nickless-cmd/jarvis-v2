@@ -38,24 +38,41 @@ interface SidebarProps {
   active: ViewKey
   onSelect: (key: ViewKey) => void
   userName: string
+  /** Authorization role from the active bearer token. Used to hide
+   * owner-only nav items (Claude jobs, Trading) for member/guest users. */
+  role?: string
   shell?: ShellLike
   onShowShortcuts?: () => void
 }
 
-const NAV: { key: ViewKey; label: string; Icon: typeof MessageSquare; hint?: string }[] = [
+// `ownerOnly` items are hidden in the sidebar for non-owner roles. Server
+// endpoints behind them should ALSO enforce — the client filter is UX,
+// not a security boundary. See visible_runs / scheduling routes for the
+// matching server-side guards.
+const NAV: {
+  key: ViewKey
+  label: string
+  Icon: typeof MessageSquare
+  hint?: string
+  ownerOnly?: boolean
+}[] = [
   { key: 'chat', label: 'Chat', Icon: MessageSquare, hint: 'Samtale med Jarvis' },
   { key: 'mind', label: 'Mind', Icon: Sparkles, hint: 'Hans indre liv: tilstand, drømme, milepæle, identitet' },
   { key: 'memory', label: 'Hukommelse', Icon: Brain, hint: 'Workspace-filer, MEMORY, daily notes' },
   { key: 'tools', label: 'Værktøjer', Icon: Wrench, hint: 'Daemoner og skills' },
-  { key: 'dispatches', label: 'Claude jobs', Icon: Workflow, hint: 'Parallelle Claude Code-instanser dispatched af Jarvis' },
-  { key: 'trading', label: 'Trading', Icon: TrendingUp, hint: 'Read-only dashboard for grid bot — kapital, PnL, drawdown' },
+  { key: 'dispatches', label: 'Claude jobs', Icon: Workflow, hint: 'Parallelle Claude Code-instanser dispatched af Jarvis', ownerOnly: true },
+  { key: 'trading', label: 'Trading', Icon: TrendingUp, hint: 'Read-only dashboard for grid bot — kapital, PnL, drawdown', ownerOnly: true },
   { key: 'dashboard', label: 'Dashboard', Icon: BarChart3, hint: 'CPU, ticks, signal weather' },
   { key: 'channels', label: 'Channels', Icon: Radio, hint: 'Discord, Telegram, WhatsApp' },
   { key: 'scheduling', label: 'Planlægning', Icon: Clock, hint: 'Scheduled tasks & wakeups' },
   { key: 'settings', label: 'Indstillinger', Icon: SettingsIcon, hint: 'Model, providers, tema' },
 ]
 
-export function Sidebar({ active, onSelect, userName, shell, onShowShortcuts }: SidebarProps) {
+export function Sidebar({ active, onSelect, userName, role, shell, onShowShortcuts }: SidebarProps) {
+  const isOwner = role === 'owner'
+  // Owner-only items disappear entirely for members/guests so the UI
+  // looks clean rather than "you don't have access" placeholders.
+  const visibleNav = NAV.filter((n) => !n.ownerOnly || isOwner)
   const sessions = Array.isArray(shell?.sessions) ? shell!.sessions : []
   const handleSessionClick = (id: string) => {
     shell?.handleSessionSelect?.(id)
@@ -78,7 +95,7 @@ export function Sidebar({ active, onSelect, userName, shell, onShowShortcuts }: 
 
       {/* Nav */}
       <nav className="flex-shrink-0 px-2 py-3">
-        {NAV.map(({ key, label, Icon, hint }) => {
+        {visibleNav.map(({ key, label, Icon, hint }) => {
           const isActive = active === key
           return (
             <div key={key}>

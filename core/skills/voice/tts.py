@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -17,12 +18,15 @@ from pathlib import Path
 ELEVENLABS_VOICE_ID = os.environ.get(
     "JARVIS_TTS_VOICE_ID", "ygiXC2Oa1BiHksD3WkJZ"
 )
-# edge-tts fallback voices
+# edge-tts fallback voices — Danish primary, English fallback
 EDGE_VOICES = ["da-DK-JeppeNeural", "en-GB-RyanNeural"]
 
-_FFMPEG = "/home/linuxbrew/.linuxbrew/bin/ffmpeg"
-_PAPLAY = "/home/linuxbrew/.linuxbrew/bin/paplay"
-_FFPLAY = "/home/linuxbrew/.linuxbrew/bin/ffplay"
+# Resolve audio-playback binaries dynamically (conda env vs system PATH).
+# Fallback paths for the conda ai environment where these are installed.
+_CONDA_BIN = Path("/home/bs/miniconda3/envs/ai/bin")
+_FFMPEG = shutil.which("ffmpeg") or str(_CONDA_BIN / "ffmpeg")
+_PAPLAY = shutil.which("paplay") or str(_CONDA_BIN / "paplay")
+_FFPLAY = shutil.which("ffplay") or str(_CONDA_BIN / "ffplay")
 
 
 def _get_elevenlabs_key() -> str | None:
@@ -100,13 +104,48 @@ def play_audio(path: str) -> None:
             pass
 
 
+def _run_edge_tts_in_thread(text: str) -> str:
+    """Run edge-tts in a dedicated thread+loop (handles both sync/async callers)."""
+    import threading
+    result: list[str | None] = [None]
+    exc: list[Exception | None] = [None]
+
+    def _target():
+        new_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(new_loop)
+        try:
+            result[0] = new_loop.run_until_complete(_synthesize_edge(text))
+        except Exception as e:
+            exc[0] = e
+        finally:
+            new_loop.close()
+
+    t = threading.Thread(target=_target, daemon=True)
+    t.start()
+    t.join()
+    if exc[0]:
+        raise exc[0]
+    return result[0]  # type: ignore[return-value]
+
+
+def _edge_fallback(text: str) -> str:
+    """Synthesize via edge-tts, handling both sync and async callers."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop — normal sync caller
+        return asyncio.run(_synthesize_edge(text))
+    # Running loop exists — use dedicated thread
+    return _run_edge_tts_in_thread(text)
+
+
 def say(text: str, blocking: bool = True) -> str:
     """Synthesize and play text. ElevenLabs primary, edge-tts fallback."""
     try:
         path = _synthesize_elevenlabs(text)
     except Exception as e:
         print(f"[tts] ElevenLabs failed ({e}), falling back to edge-tts")
-        path = asyncio.run(_synthesize_edge(text))
+        path = _edge_fallback(text)
 
     if blocking:
         play_audio(path)

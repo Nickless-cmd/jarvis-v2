@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 router = APIRouter()
 logger = logging.getLogger("uvicorn.error")
 
-_DEFAULT_VOICE = "da-DK-ChristelNeural"
+_DEFAULT_VOICE = "da-DK-JeppeNeural"
 _MAX_TEXT_CHARS = 5000  # sanity cap; long Jarvis monologues should be summarized first
 
 

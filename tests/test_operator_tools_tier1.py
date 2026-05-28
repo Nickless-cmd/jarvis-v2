@@ -181,11 +181,12 @@ def test_list_processes_filter_forwarded():
 
 def test_kill_process_dispatches():
     from core.tools.simple_tools import _exec_operator_kill_process
-    with _patch_bridge({"approved": True, "killed": True, "pid": 1234}) as mock:
+    # Med _runtime_trust_all=True dispatcher vi direkte til bridge (skip_approval=True).
+    with _patch_bridge({"killed": True, "pid": 1234}) as mock:
         result = _exec_operator_kill_process({
             "_runtime_user_id": "test-user",
             "pid": 1234,
-            "_runtime_trust_all": True,  # skip approval in test
+            "_runtime_trust_all": True,  # allerede godkendt i chat
         })
         assert mock.called
         call_kwargs = mock.call_args.kwargs
@@ -203,10 +204,9 @@ def test_kill_process_requires_pid():
     assert "pid" in result.get("error", "").lower()
 
 
-def test_kill_process_skip_approval_off_by_default():
+def test_kill_process_returns_approval_needed_without_trust_all():
+    """Uden _runtime_trust_all returneres approval_needed (chat-card, ikke OS-dialog)."""
     from core.tools.simple_tools import _exec_operator_kill_process
-    with _patch_bridge({"approved": False, "killed": False, "pid": 999}) as mock:
-        _exec_operator_kill_process({"_runtime_user_id": "test-user", "pid": 999})
-        call_kwargs = mock.call_args.kwargs
-        # Without _runtime_trust_all, skip_approval must be False.
-        assert call_kwargs.get("args", {}).get("skip_approval") is False
+    result = _exec_operator_kill_process({"_runtime_user_id": "test-user", "pid": 999})
+    assert result.get("status") == "approval_needed"
+    assert result.get("tool_name") == "operator_kill_process"

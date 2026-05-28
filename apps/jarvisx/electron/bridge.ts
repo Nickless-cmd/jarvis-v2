@@ -33,6 +33,11 @@ import {
 /**
  * Race a native confirmation dialog against an auto-reject timer.
  *
+ * BEMÆRK 2026-05-28: Alle 6 operator-tools bruger nu runtime chat-card
+ * godkendelse i stedet for OS-dialoger (se refactoring commit). Denne
+ * helper er IKKE KALDT i øjeblikket, men beholdes til fremtidige tools
+ * der har brug for en nativ dialog uden for runtime-mediation.
+ *
  * CRITICAL: must parent the dialog to a BrowserWindow. On Linux (and
  * sometimes on Wayland-only sessions) `dialog.showMessageBox(options)`
  * without a parent creates a modal that *never visually appears* — the
@@ -48,7 +53,9 @@ import {
  *   - true  if the user picked the `accept_button_index`
  *   - false if the user picked any other button OR the timer fired
  */
-async function approvalRace(
+// Eksporteret så TS ikke klager over "declared but never read" —
+// fremtidige callers kan importere den direkte.
+export async function approvalRace(
   options: Electron.MessageBoxOptions,
   acceptButtonIndex: number,
   timeoutMs: number = 20_000,
@@ -361,36 +368,9 @@ const handlers: Record<string, ToolHandler> = {
     const cwd = args.cwd ? resolveOperatorPath(args.cwd) : homedir()
     const timeoutS = Math.min(Math.max(Number(args.timeout_s) || 30, 1), 300)
 
-    const skipApproval = Boolean(args.skip_approval)
-
-    if (!skipApproval) {
-      // Approval dialog — operator must explicitly approve every command.
-      // Auto-rejects after 20s if no response.
-      const approved = await approvalRace(
-        {
-          type: 'warning',
-          title: 'Jarvis vil køre en kommando',
-          message: 'Jarvis beder om at køre en shell-kommando på din maskine.',
-          detail: `Kommando:\n  ${command}\n\nMappe:\n  ${cwd}\n\nTimeout: ${timeoutS}s\n\nAuto-afviser efter 20 sek hvis du ikke svarer.`,
-          buttons: ['Afvis', 'Godkend og kør'],
-          defaultId: 0,
-          cancelId: 0,
-          noLink: true,
-        },
-        1,
-      )
-
-      if (!approved) {
-        return {
-          approved: false,
-          stdout: '',
-          stderr: '',
-          exit_code: null,
-          timed_out: false,
-        }
-      }
-    }
-    // else: trust-all mode — no dialog, command runs directly.
+    // Godkendelse håndteres nu af runtime via chat-card FØR denne handler
+    // kaldes. Når vi når hertil, har brugeren allerede godkendt i chatten.
+    // approvalRace() er fjernet — ingen OS-dialog her.
 
     // Platform-aware shell selection: bash on Linux/macOS, PowerShell
     // on Windows. Same surface for the LLM — shell-features (pipes,
@@ -404,7 +384,6 @@ const handlers: Record<string, ToolHandler> = {
     })
 
     return {
-      approved: true,
       platform: osPlatform(),
       shell: shell.cmd,
       stdout: (result.stdout ?? '').slice(0, 100_000),
@@ -479,8 +458,8 @@ const handlers: Record<string, ToolHandler> = {
   },
 
   operator_open_url: async (args) => {
-    // Open a URL in the operator's default browser. Asks for approval
-    // unless skip_approval=true (Trust All).
+    // Godkendelse håndteres nu af runtime via chat-card FØR denne handler
+    // kaldes. Når vi når hertil, har brugeren allerede godkendt i chatten.
     const url = String(args.url ?? '').trim()
     if (!url) throw new Error('url is required')
     // Restrict to common navigable schemes to prevent abuse via file://
@@ -496,33 +475,15 @@ const handlers: Record<string, ToolHandler> = {
       throw new Error(`scheme not allowed: ${parsed.protocol}`)
     }
 
-    const skipApproval = Boolean(args.skip_approval)
-    if (!skipApproval) {
-      const approved = await approvalRace(
-        {
-          type: 'question',
-          title: 'Jarvis vil åbne en URL',
-          message: 'Jarvis beder om at åbne en URL i din browser.',
-          detail: `URL:\n  ${url}\n\nAuto-afviser efter 20 sek hvis du ikke svarer.`,
-          buttons: ['Afvis', 'Åbn'],
-          defaultId: 1,
-          cancelId: 0,
-          noLink: true,
-        },
-        1,
-      )
-      if (!approved) {
-        return { approved: false, opened: false, url }
-      }
-    }
-
     // electronShell.openExternal is the OS-native "open" — defers to
     // the default handler (browser for http/https, mail client for mailto).
     await electronShell.openExternal(url)
-    return { approved: true, opened: true, url }
+    return { opened: true, url }
   },
 
   operator_launch_app: async (args) => {
+    // Godkendelse håndteres nu af runtime via chat-card FØR denne handler
+    // kaldes. Når vi når hertil, har brugeren allerede godkendt i chatten.
     // Launch an installed application. Accepts either a full path or a
     // name resolvable on PATH (e.g. 'notepad', 'code', 'chrome').
     // For UWP apps, pass the AppId like 'shell:appsFolder\\<AppId>' as `path`.
@@ -533,27 +494,6 @@ const handlers: Record<string, ToolHandler> = {
       ? args.args.map((a) => String(a))
       : []
     const cwd = args.cwd ? resolveOperatorPath(args.cwd) : homedir()
-
-    const skipApproval = Boolean(args.skip_approval)
-    if (!skipApproval) {
-      const argsPreview = cliArgs.length > 0 ? `\n\nArgumenter:\n  ${cliArgs.join(' ')}` : ''
-      const approved = await approvalRace(
-        {
-          type: 'warning',
-          title: 'Jarvis vil starte en app',
-          message: 'Jarvis beder om at starte et program på din maskine.',
-          detail: `App:\n  ${target}${argsPreview}\n\nMappe:\n  ${cwd}\n\nAuto-afviser efter 20 sek hvis du ikke svarer.`,
-          buttons: ['Afvis', 'Start'],
-          defaultId: 0,
-          cancelId: 0,
-          noLink: true,
-        },
-        1,
-      )
-      if (!approved) {
-        return { approved: false, started: false, path: target }
-      }
-    }
 
     // Spawn detached so the new process doesn't tie to JarvisX' lifetime.
     // shell:true lets PATH resolution (e.g. 'notepad') and shell:appsFolder
@@ -567,14 +507,13 @@ const handlers: Record<string, ToolHandler> = {
       })
       child.unref()
       return {
-        approved: true,
         started: true,
         path: target,
         pid: child.pid ?? null,
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      return { approved: true, started: false, path: target, error: msg }
+      return { started: false, path: target, error: msg }
     }
   },
 
@@ -805,38 +744,19 @@ const handlers: Record<string, ToolHandler> = {
   },
 
   operator_browser_evaluate: async (args) => {
-    // Run arbitrary JS in the page context. Powerful — requires approval
-    // unless skip_approval=true. Returns whatever the script returns
-    // (must be JSON-serializable).
+    // Godkendelse håndteres nu af runtime via chat-card FØR denne handler
+    // kaldes. Når vi når hertil, har brugeren allerede godkendt i chatten.
+    // Run arbitrary JS in the page context. Returns whatever the script
+    // returns (must be JSON-serializable).
     const script = String(args.script ?? '')
     if (!script) throw new Error('script is required')
-
-    const skipApproval = Boolean(args.skip_approval)
-    if (!skipApproval) {
-      const approved = await approvalRace(
-        {
-          type: 'warning',
-          title: 'Jarvis vil køre JavaScript i din browser',
-          message: 'Jarvis beder om at evaluere JavaScript i den aktive side.',
-          detail: `Side:\n  (browser-session)\n\nScript:\n  ${script.slice(0, 400)}${script.length > 400 ? '…' : ''}\n\nAuto-afviser efter 20 sek.`,
-          buttons: ['Afvis', 'Kør'],
-          defaultId: 0,
-          cancelId: 0,
-          noLink: true,
-        },
-        1,
-      )
-      if (!approved) {
-        return { approved: false, executed: false }
-      }
-    }
 
     const sess = await ensureBrowserSession()
     // Wrap script in a function so we can return arbitrary expressions.
     // The model can use either `return X;` syntax or just an expression.
     const wrapped = `(async () => { ${script} })()`
     const result = await sess.page.evaluate(wrapped)
-    return { approved: true, executed: true, result }
+    return { executed: true, result }
   },
 
   operator_browser_status: async () => {
@@ -1044,11 +964,12 @@ const handlers: Record<string, ToolHandler> = {
   },
 
   operator_kill_process: async (args) => {
+    // Godkendelse håndteres nu af runtime via chat-card FØR denne handler
+    // kaldes. Når vi når hertil, har brugeren allerede godkendt i chatten.
     const pid = Number(args.pid)
     if (!Number.isInteger(pid) || pid <= 0) throw new Error('pid must be a positive integer')
-    const skipApproval = Boolean(args.skip_approval)
 
-    // Find process name for a friendlier approval message.
+    // Find process name for informative result.
     let procName = `PID ${pid}`
     const platform = osPlatform()
     try {
@@ -1066,25 +987,6 @@ const handlers: Record<string, ToolHandler> = {
       }
     } catch {}
 
-    if (!skipApproval) {
-      const approved = await approvalRace(
-        {
-          type: 'warning',
-          title: 'Jarvis vil afslutte en proces',
-          message: 'Jarvis beder om at lukke følgende proces.',
-          detail: `Proces:\n  ${procName}\n\nDette kan lukke åbne filer og miste ugemte data.\n\nAuto-afviser efter 20 sek hvis du ikke svarer.`,
-          buttons: ['Afvis', 'Afslut proces'],
-          defaultId: 0,
-          cancelId: 0,
-          noLink: true,
-        },
-        1,
-      )
-      if (!approved) {
-        return { approved: false, killed: false, pid, name: procName }
-      }
-    }
-
     // Send SIGTERM (Linux) / Stop-Process (Windows).
     if (platform === 'win32') {
       const res = spawnSync('powershell.exe', [
@@ -1092,14 +994,14 @@ const handlers: Record<string, ToolHandler> = {
         `Stop-Process -Id ${pid} -Force`,
       ], { encoding: 'utf8', timeout: 10000 })
       if (res.error) throw res.error
-      return { approved: true, killed: true, pid, name: procName }
+      return { killed: true, pid, name: procName }
     } else {
       const res = spawnSync('kill', [String(pid)], { encoding: 'utf8', timeout: 5000 })
       if (res.error) throw res.error
       if (res.status !== 0) {
-        return { approved: true, killed: false, pid, name: procName, error: res.stderr.trim() }
+        return { killed: false, pid, name: procName, error: res.stderr.trim() }
       }
-      return { approved: true, killed: true, pid, name: procName }
+      return { killed: true, pid, name: procName }
     }
   },
 
@@ -1420,10 +1322,10 @@ const handlers: Record<string, ToolHandler> = {
   },
 
   operator_record_audio: async (args) => {
+    // Godkendelse håndteres nu af runtime via chat-card FØR denne handler
+    // kaldes. Når vi når hertil, har brugeren allerede godkendt i chatten.
     // Record audio via arecord (Linux) or ffmpeg (Windows/fallback).
-    // REQUIRES APPROVAL via dialog (auto-rejects after 20 sec).
     const durationS = Math.max(1, Math.min(300, Number(args.duration_s ?? 10)))
-    const skipApproval = Boolean(args.skip_approval)
     const deviceArg = args.device != null ? String(args.device) : null
     const platform = osPlatform()
 
@@ -1435,26 +1337,6 @@ const handlers: Record<string, ToolHandler> = {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
     const defaultPath = pathJoin(recordingsDir, `recording-${timestamp}.wav`)
     const outputPath = args.output_path != null ? String(args.output_path) : defaultPath
-
-    // Approval dialog
-    if (!skipApproval) {
-      const approved = await approvalRace(
-        {
-          type: 'warning',
-          title: 'Jarvis vil optage lyd',
-          message: 'Jarvis beder om at optage fra mikrofonen.',
-          detail: `Varighed: ${durationS} sekunder\nFil: ${outputPath}\n\nAuto-afviser efter 20 sek hvis du ikke svarer.`,
-          buttons: ['Afvis', 'Optag'],
-          defaultId: 0,
-          cancelId: 0,
-          noLink: true,
-        },
-        1,
-      )
-      if (!approved) {
-        return { recorded: false, reason: 'user_rejected' }
-      }
-    }
 
     // Record via platform command
     let recordRes: ReturnType<typeof spawnSync>

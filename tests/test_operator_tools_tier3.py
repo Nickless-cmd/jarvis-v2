@@ -225,11 +225,13 @@ def test_watch_events_requires_watcher_id():
 # ── operator_record_audio ─────────────────────────────────────────────────
 
 def test_record_audio_dispatches():
+    # Med _runtime_trust_all=True bypasses approval-gate og dispatcher til bridge.
     from core.tools.simple_tools import _exec_operator_record_audio
     with _patch_bridge({"recorded": True, "path": "/tmp/rec.wav", "duration_s": 5, "size_bytes": 441044}) as mock:
         result = _exec_operator_record_audio({
             "_runtime_user_id": "test-user",
             "duration_s": 5,
+            "_runtime_trust_all": True,  # allerede godkendt i chat
         })
         assert mock.called
         kwargs = mock.call_args.kwargs
@@ -246,6 +248,7 @@ def test_record_audio_with_output_path():
             "_runtime_user_id": "test-user",
             "duration_s": 3,
             "output_path": "/custom/out.wav",
+            "_runtime_trust_all": True,  # allerede godkendt i chat
         })
         args_sent = mock.call_args.kwargs.get("args", {})
         assert args_sent.get("output_path") == "/custom/out.wav"
@@ -258,6 +261,7 @@ def test_record_audio_with_device():
             "_runtime_user_id": "test-user",
             "duration_s": 2,
             "device": "hw:1,0",
+            "_runtime_trust_all": True,  # allerede godkendt i chat
         })
         args_sent = mock.call_args.kwargs.get("args", {})
         assert args_sent.get("device") == "hw:1,0"
@@ -289,9 +293,9 @@ def test_record_audio_rejects_non_integer_duration():
 
 
 def test_record_audio_skip_approval_from_trust_all():
-    """_runtime_trust_all flag sets skip_approval=True (bypasses dialog in E2E)."""
+    """Med _runtime_trust_all=True sender exec-stubben skip_approval=True til bridge."""
     from core.tools.simple_tools import _exec_operator_record_audio
-    with _patch_bridge({"recorded": False, "reason": "user_rejected"}) as mock:
+    with _patch_bridge({"recorded": True, "path": "/tmp/r.wav", "duration_s": 1, "size_bytes": 88200}) as mock:
         _exec_operator_record_audio({
             "_runtime_user_id": "test-user",
             "_runtime_trust_all": True,
@@ -301,15 +305,15 @@ def test_record_audio_skip_approval_from_trust_all():
         assert args_sent.get("skip_approval") is True
 
 
-def test_record_audio_approval_not_skipped_by_default():
+def test_record_audio_returns_approval_needed_without_trust_all():
+    """Uden _runtime_trust_all returneres approval_needed (chat-card, ikke OS-dialog)."""
     from core.tools.simple_tools import _exec_operator_record_audio
-    with _patch_bridge({"recorded": True, "path": "/tmp/r.wav", "duration_s": 1, "size_bytes": 88200}) as mock:
-        _exec_operator_record_audio({
-            "_runtime_user_id": "test-user",
-            "duration_s": 1,
-        })
-        args_sent = mock.call_args.kwargs.get("args", {})
-        assert args_sent.get("skip_approval") is False
+    result = _exec_operator_record_audio({
+        "_runtime_user_id": "test-user",
+        "duration_s": 5,
+    })
+    assert result.get("status") == "approval_needed"
+    assert result.get("tool_name") == "operator_record_audio"
 
 
 # ── async wrappers (operator_tools.py) ───────────────────────────────────

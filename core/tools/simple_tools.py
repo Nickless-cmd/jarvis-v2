@@ -3946,10 +3946,24 @@ def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "command is required", "status": "error"}
     user_id = _operator_user_id(args)
     timeout_s = float(args.get("timeout_s") or 30.0)
-    # Skip per-call dialog when "Trust All" was selected in composer
-    # (forwarded as _runtime_trust_all by visible_runs.py).
-    skip_approval = bool(args.get("_runtime_trust_all"))
     thread_timeout = min(timeout_s, 300.0) + 30.0
+
+    # Godkendelse via chat-card (ikke OS-dialog).
+    # Hvis _runtime_trust_all er sat, dispatcher vi direkte.
+    # Ellers returnerer vi approval_needed så visible_runs sender
+    # approval_request SSE til ChatView → inline ApprovalCard.
+    skip_approval = bool(args.get("_runtime_trust_all"))
+    if not skip_approval:
+        cwd_preview = str(args.get("cwd") or "~")
+        return {
+            "status": "approval_needed",
+            "tool_name": "operator_bash",
+            "message": f"Jarvis vil køre en shell-kommando på operatørens maskine: {command}",
+            "command": command,
+            "cwd": cwd_preview,
+        }
+
+    # Allerede godkendt — dispatcher til bridge med skip_approval=True.
     from core.tools.operator_tools import operator_bash_async
     return _run_operator_async(
         lambda: operator_bash_async(
@@ -3957,7 +3971,7 @@ def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
             cwd=args.get("cwd"),
             timeout_s=timeout_s,
             user_id=user_id,
-            skip_approval=skip_approval,
+            skip_approval=True,  # godkendt i chat; bridge spørger ikke igen
         ),
         tool_name="operator_bash",
         timeout_s=thread_timeout,
@@ -3990,13 +4004,25 @@ def _exec_operator_open_url(args: dict[str, Any]) -> dict[str, Any]:
     if not url:
         return {"error": "url is required", "status": "error"}
     user_id = _operator_user_id(args)
+
+    # Godkendelse via chat-card (ikke OS-dialog).
     skip_approval = bool(args.get("_runtime_trust_all"))
+    if not skip_approval:
+        return {
+            "status": "approval_needed",
+            "tool_name": "operator_open_url",
+            "message": f"Jarvis vil åbne URL i operatørens browser: {url}",
+            "command": url,
+            "url": url,
+        }
+
+    # Allerede godkendt — dispatcher til bridge med skip_approval=True.
     from core.tools.operator_tools import operator_open_url_async
     return _run_operator_async(
         lambda: operator_open_url_async(
             url=url,
             user_id=user_id,
-            skip_approval=skip_approval,
+            skip_approval=True,  # godkendt i chat; bridge spørger ikke igen
             timeout_s=30.0,
         ),
         tool_name="operator_open_url",
@@ -4009,11 +4035,25 @@ def _exec_operator_launch_app(args: dict[str, Any]) -> dict[str, Any]:
     if not path:
         return {"error": "path is required", "status": "error"}
     user_id = _operator_user_id(args)
-    skip_approval = bool(args.get("_runtime_trust_all"))
     cli_args = args.get("args") or []
     if not isinstance(cli_args, list):
         return {"error": "args must be a list of strings", "status": "error"}
     cwd = args.get("cwd")
+
+    # Godkendelse via chat-card (ikke OS-dialog).
+    skip_approval = bool(args.get("_runtime_trust_all"))
+    if not skip_approval:
+        args_preview = " ".join(str(a) for a in cli_args) if cli_args else ""
+        detail = f"{path} {args_preview}".strip()
+        return {
+            "status": "approval_needed",
+            "tool_name": "operator_launch_app",
+            "message": f"Jarvis vil starte et program på operatørens maskine: {detail}",
+            "command": detail,
+            "path": path,
+        }
+
+    # Allerede godkendt — dispatcher til bridge med skip_approval=True.
     from core.tools.operator_tools import operator_launch_app_async
     return _run_operator_async(
         lambda: operator_launch_app_async(
@@ -4021,7 +4061,7 @@ def _exec_operator_launch_app(args: dict[str, Any]) -> dict[str, Any]:
             user_id=user_id,
             args=[str(a) for a in cli_args],
             cwd=str(cwd) if cwd else None,
-            skip_approval=skip_approval,
+            skip_approval=True,  # godkendt i chat; bridge spørger ikke igen
             timeout_s=30.0,
         ),
         tool_name="operator_launch_app",
@@ -4235,13 +4275,25 @@ def _exec_operator_kill_process(args: dict[str, Any]) -> dict[str, Any]:
     except (ValueError, TypeError):
         return {"error": "pid must be an integer", "status": "error"}
     user_id = _operator_user_id(args)
+
+    # Godkendelse via chat-card (ikke OS-dialog).
     skip_approval = bool(args.get("_runtime_trust_all"))
+    if not skip_approval:
+        return {
+            "status": "approval_needed",
+            "tool_name": "operator_kill_process",
+            "message": f"Jarvis vil afslutte proces med PID {pid} på operatørens maskine",
+            "command": str(pid),
+            "pid": pid,
+        }
+
+    # Allerede godkendt — dispatcher til bridge med skip_approval=True.
     from core.tools.operator_tools import operator_kill_process_async
     return _run_operator_async(
         lambda: operator_kill_process_async(
             pid=pid,
             user_id=user_id,
-            skip_approval=skip_approval,
+            skip_approval=True,  # godkendt i chat; bridge spørger ikke igen
             timeout_s=30.0,
         ),
         tool_name="operator_kill_process",
@@ -4419,7 +4471,19 @@ def _exec_operator_record_audio(args: dict[str, Any]) -> dict[str, Any]:
     output_path = args.get("output_path")
     device = args.get("device")
     user_id = _operator_user_id(args)
+
+    # Godkendelse via chat-card (ikke OS-dialog).
     skip_approval = bool(args.get("_runtime_trust_all"))
+    if not skip_approval:
+        return {
+            "status": "approval_needed",
+            "tool_name": "operator_record_audio",
+            "message": f"Jarvis vil optage lyd fra mikrofonen i {duration_s} sekunder",
+            "command": f"{duration_s}s lyd-optagelse",
+            "duration_s": duration_s,
+        }
+
+    # Allerede godkendt — dispatcher til bridge med skip_approval=True.
     from core.tools.operator_tools import operator_record_audio_async
     return _run_operator_async(
         lambda: operator_record_audio_async(
@@ -4427,7 +4491,7 @@ def _exec_operator_record_audio(args: dict[str, Any]) -> dict[str, Any]:
             user_id=user_id,
             output_path=str(output_path) if output_path is not None else None,
             device=str(device) if device is not None else None,
-            skip_approval=skip_approval,
+            skip_approval=True,  # godkendt i chat; bridge spørger ikke igen
             timeout_s=float(duration_s) + 30.0,
         ),
         tool_name="operator_record_audio",
@@ -4541,11 +4605,24 @@ def _exec_operator_browser_evaluate(args: dict[str, Any]) -> dict[str, Any]:
     if not script:
         return {"error": "script is required", "status": "error"}
     user_id = _operator_user_id(args)
+
+    # Godkendelse via chat-card (ikke OS-dialog).
     skip_approval = bool(args.get("_runtime_trust_all"))
+    if not skip_approval:
+        script_preview = script[:200] + "…" if len(script) > 200 else script
+        return {
+            "status": "approval_needed",
+            "tool_name": "operator_browser_evaluate",
+            "message": f"Jarvis vil køre JavaScript i operatørens browser: {script_preview}",
+            "command": script_preview,
+            "script": script,
+        }
+
+    # Allerede godkendt — dispatcher til bridge med skip_approval=True.
     from core.tools.operator_tools import operator_browser_evaluate_async
     return _run_operator_async(
         lambda: operator_browser_evaluate_async(
-            script=script, user_id=user_id, skip_approval=skip_approval,
+            script=script, user_id=user_id, skip_approval=True,  # godkendt i chat
             timeout_s=30.0,
         ),
         tool_name="operator_browser_evaluate",
@@ -8273,11 +8350,55 @@ def _force_bash(args: dict[str, Any]) -> dict[str, Any]:
     return {"text": output or "[no output]", "exit_code": result.returncode, "status": "ok"}
 
 
+# ── Force-handlers for operator tools ─────────────────────────────────────
+# Kaldes af resolve_pending_approval efter brugeren har klikket Godkend i chat.
+# Sætter _runtime_trust_all=True så exec-stubben springer approval_needed over
+# og dispatcher direkte til bridge med skip_approval=True.
+
+
+def _force_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
+    """Kør operator_bash direkte efter chat-godkendelse."""
+    return _exec_operator_bash({**args, "_runtime_trust_all": True})
+
+
+def _force_operator_open_url(args: dict[str, Any]) -> dict[str, Any]:
+    """Åbn URL direkte efter chat-godkendelse."""
+    return _exec_operator_open_url({**args, "_runtime_trust_all": True})
+
+
+def _force_operator_launch_app(args: dict[str, Any]) -> dict[str, Any]:
+    """Start program direkte efter chat-godkendelse."""
+    return _exec_operator_launch_app({**args, "_runtime_trust_all": True})
+
+
+def _force_operator_browser_evaluate(args: dict[str, Any]) -> dict[str, Any]:
+    """Kør browser-JavaScript direkte efter chat-godkendelse."""
+    return _exec_operator_browser_evaluate({**args, "_runtime_trust_all": True})
+
+
+def _force_operator_kill_process(args: dict[str, Any]) -> dict[str, Any]:
+    """Afslut proces direkte efter chat-godkendelse."""
+    return _exec_operator_kill_process({**args, "_runtime_trust_all": True})
+
+
+def _force_operator_record_audio(args: dict[str, Any]) -> dict[str, Any]:
+    """Optag lyd direkte efter chat-godkendelse."""
+    return _exec_operator_record_audio({**args, "_runtime_trust_all": True})
+
+
 _FORCE_HANDLERS: dict[str, Any] = {
     "write_file": _force_write_file,
     "edit_file": _force_edit_file,
     "bash": _force_bash,
     "load_more_tools": _tool_load_more_tools,
+    # Operator-bridge tools — refaktoreret 2026-05-28 fra bridge.ts OS-dialoger
+    # til inline chat-card approvals (samme mønster som bash/write_file/edit_file).
+    "operator_bash": _force_operator_bash,
+    "operator_open_url": _force_operator_open_url,
+    "operator_launch_app": _force_operator_launch_app,
+    "operator_browser_evaluate": _force_operator_browser_evaluate,
+    "operator_kill_process": _force_operator_kill_process,
+    "operator_record_audio": _force_operator_record_audio,
 }
 
 

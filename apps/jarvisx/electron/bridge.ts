@@ -22,7 +22,53 @@ import { homedir } from 'node:os'
 import { dirname, join, isAbsolute, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { platform as osPlatform } from 'node:os'
-import { dialog, desktopCapturer, screen, shell as electronShell } from 'electron'
+import {
+  dialog,
+  desktopCapturer,
+  screen,
+  shell as electronShell,
+  BrowserWindow,
+} from 'electron'
+
+/**
+ * Race a native confirmation dialog against an auto-reject timer.
+ *
+ * CRITICAL: must parent the dialog to a BrowserWindow. On Linux (and
+ * sometimes on Wayland-only sessions) `dialog.showMessageBox(options)`
+ * without a parent creates a modal that *never visually appears* — the
+ * Promise never resolves, so the only way out is the timeout. Bjørn
+ * caught this 2026-05-28: the dialog seemed to "arrive after 20 sec"
+ * because that's when the auto-reject branch won and briefly flashed
+ * the dialog as it was being torn down.
+ *
+ * With a parent (the JarvisX main window), the modal shows immediately
+ * and the user can actually click before timeout.
+ *
+ * Returns:
+ *   - true  if the user picked the `accept_button_index`
+ *   - false if the user picked any other button OR the timer fired
+ */
+async function approvalRace(
+  options: Electron.MessageBoxOptions,
+  acceptButtonIndex: number,
+  timeoutMs: number = 20_000,
+): Promise<boolean> {
+  const parent =
+    BrowserWindow.getFocusedWindow() ||
+    BrowserWindow.getAllWindows().find((w) => !w.isDestroyed()) ||
+    null
+  // dialog.showMessageBox has two overloads: with and without parent.
+  // Call the parented form whenever we have a window — that's the only
+  // reliable way to get the modal to actually render.
+  const dialogPromise: Promise<{ response: number }> = parent
+    ? dialog.showMessageBox(parent, options)
+    : dialog.showMessageBox(options)
+  const timeoutPromise = new Promise<{ response: number }>((resolve) =>
+    setTimeout(() => resolve({ response: -1 }), timeoutMs),
+  )
+  const choice = await Promise.race([dialogPromise, timeoutPromise])
+  return choice.response === acceptButtonIndex
+}
 import { spawn } from 'node:child_process'
 import WebSocket from 'ws'
 
@@ -320,9 +366,8 @@ const handlers: Record<string, ToolHandler> = {
     if (!skipApproval) {
       // Approval dialog — operator must explicitly approve every command.
       // Auto-rejects after 20s if no response.
-      const APPROVAL_DEADLINE_MS = 20_000
-      const choice = await Promise.race<{ response: number }>([
-        dialog.showMessageBox({
+      const approved = await approvalRace(
+        {
           type: 'warning',
           title: 'Jarvis vil køre en kommando',
           message: 'Jarvis beder om at køre en shell-kommando på din maskine.',
@@ -331,13 +376,11 @@ const handlers: Record<string, ToolHandler> = {
           defaultId: 0,
           cancelId: 0,
           noLink: true,
-        }),
-        new Promise<{ response: number }>((resolve) =>
-          setTimeout(() => resolve({ response: 0 }), APPROVAL_DEADLINE_MS),
-        ),
-      ])
+        },
+        1,
+      )
 
-      if (choice.response !== 1) {
+      if (!approved) {
         return {
           approved: false,
           stdout: '',
@@ -455,8 +498,8 @@ const handlers: Record<string, ToolHandler> = {
 
     const skipApproval = Boolean(args.skip_approval)
     if (!skipApproval) {
-      const choice = await Promise.race<{ response: number }>([
-        dialog.showMessageBox({
+      const approved = await approvalRace(
+        {
           type: 'question',
           title: 'Jarvis vil åbne en URL',
           message: 'Jarvis beder om at åbne en URL i din browser.',
@@ -465,12 +508,10 @@ const handlers: Record<string, ToolHandler> = {
           defaultId: 1,
           cancelId: 0,
           noLink: true,
-        }),
-        new Promise<{ response: number }>((resolve) =>
-          setTimeout(() => resolve({ response: 0 }), 20_000),
-        ),
-      ])
-      if (choice.response !== 1) {
+        },
+        1,
+      )
+      if (!approved) {
         return { approved: false, opened: false, url }
       }
     }
@@ -496,8 +537,8 @@ const handlers: Record<string, ToolHandler> = {
     const skipApproval = Boolean(args.skip_approval)
     if (!skipApproval) {
       const argsPreview = cliArgs.length > 0 ? `\n\nArgumenter:\n  ${cliArgs.join(' ')}` : ''
-      const choice = await Promise.race<{ response: number }>([
-        dialog.showMessageBox({
+      const approved = await approvalRace(
+        {
           type: 'warning',
           title: 'Jarvis vil starte en app',
           message: 'Jarvis beder om at starte et program på din maskine.',
@@ -506,12 +547,10 @@ const handlers: Record<string, ToolHandler> = {
           defaultId: 0,
           cancelId: 0,
           noLink: true,
-        }),
-        new Promise<{ response: number }>((resolve) =>
-          setTimeout(() => resolve({ response: 0 }), 20_000),
-        ),
-      ])
-      if (choice.response !== 1) {
+        },
+        1,
+      )
+      if (!approved) {
         return { approved: false, started: false, path: target }
       }
     }
@@ -774,8 +813,8 @@ const handlers: Record<string, ToolHandler> = {
 
     const skipApproval = Boolean(args.skip_approval)
     if (!skipApproval) {
-      const choice = await Promise.race<{ response: number }>([
-        dialog.showMessageBox({
+      const approved = await approvalRace(
+        {
           type: 'warning',
           title: 'Jarvis vil køre JavaScript i din browser',
           message: 'Jarvis beder om at evaluere JavaScript i den aktive side.',
@@ -784,12 +823,10 @@ const handlers: Record<string, ToolHandler> = {
           defaultId: 0,
           cancelId: 0,
           noLink: true,
-        }),
-        new Promise<{ response: number }>((resolve) =>
-          setTimeout(() => resolve({ response: 0 }), 20_000),
-        ),
-      ])
-      if (choice.response !== 1) {
+        },
+        1,
+      )
+      if (!approved) {
         return { approved: false, executed: false }
       }
     }
@@ -1030,8 +1067,8 @@ const handlers: Record<string, ToolHandler> = {
     } catch {}
 
     if (!skipApproval) {
-      const choice = await Promise.race<{ response: number }>([
-        dialog.showMessageBox({
+      const approved = await approvalRace(
+        {
           type: 'warning',
           title: 'Jarvis vil afslutte en proces',
           message: 'Jarvis beder om at lukke følgende proces.',
@@ -1040,12 +1077,10 @@ const handlers: Record<string, ToolHandler> = {
           defaultId: 0,
           cancelId: 0,
           noLink: true,
-        }),
-        new Promise<{ response: number }>((resolve) =>
-          setTimeout(() => resolve({ response: 0 }), 20_000),
-        ),
-      ])
-      if (choice.response !== 1) {
+        },
+        1,
+      )
+      if (!approved) {
         return { approved: false, killed: false, pid, name: procName }
       }
     }
@@ -1403,8 +1438,8 @@ const handlers: Record<string, ToolHandler> = {
 
     // Approval dialog
     if (!skipApproval) {
-      const choice = await Promise.race<{ response: number }>([
-        dialog.showMessageBox({
+      const approved = await approvalRace(
+        {
           type: 'warning',
           title: 'Jarvis vil optage lyd',
           message: 'Jarvis beder om at optage fra mikrofonen.',
@@ -1413,12 +1448,10 @@ const handlers: Record<string, ToolHandler> = {
           defaultId: 0,
           cancelId: 0,
           noLink: true,
-        }),
-        new Promise<{ response: number }>((resolve) =>
-          setTimeout(() => resolve({ response: 0 }), 20_000),
-        ),
-      ])
-      if (choice.response !== 1) {
+        },
+        1,
+      )
+      if (!approved) {
         return { recorded: false, reason: 'user_rejected' }
       }
     }

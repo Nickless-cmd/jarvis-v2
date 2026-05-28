@@ -79,6 +79,16 @@ export async function approvalRace(
 import { spawn } from 'node:child_process'
 import WebSocket from 'ws'
 
+// Module-level reference to the currently-connected bridge's config so
+// handlers (operator_speak, anything else that needs to call back into
+// the backend) can read apiBaseUrl + authToken without each handler
+// having to figure out where they live. Populated by JarvisXBridge's
+// constructor; refreshed on every reconnect.
+let _activeBridgeCfg: BridgeConfig | null = null
+export function getActiveBridgeCfg(): BridgeConfig | null {
+  return _activeBridgeCfg
+}
+
 /** Resolve which shell to use for operator_bash based on the OS the
  * JarvisX-app is running on. Linux/macOS use bash; Windows defaults to
  * PowerShell (more capable than cmd.exe, still ubiquitous on Windows 10+). */
@@ -1037,8 +1047,81 @@ const handlers: Record<string, ToolHandler> = {
   // ── Tier-2 wishlist tools ────────────────────────────────────────────
 
   operator_speak: async (args) => {
-    // TTS: Linux via espeak-ng, Windows via SAPI SpeechSynthesizer.
-    // Rate 0-10 maps to: Linux espeak-ng -s (WPM) 80→260, Windows SAPI -10→10.
+    // Primary path: backend /api/tts/synthesize (edge-tts, Danish neural).
+    // Falls back to legacy SAPI/espeak below if the backend call fails
+    // (offline, endpoint missing on an old deployment, etc.) so the tool
+    // never goes completely silent.
+    const cfg = _activeBridgeCfg
+    if (cfg && cfg.apiBaseUrl) {
+      try {
+        const ttsText = String(args.text ?? '')
+        if (!ttsText) throw new Error('text is required')
+        const ttsVoice = args.voice != null ? String(args.voice) : 'da-DK-ChristelNeural'
+        const ttsRate = args.rate != null && typeof args.rate === 'string' ? args.rate : '+0%'
+        const ttsPitch = args.pitch != null && typeof args.pitch === 'string' ? args.pitch : '+0Hz'
+
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (cfg.authToken) headers['Authorization'] = `Bearer ${cfg.authToken}`
+
+        const url = cfg.apiBaseUrl.replace(/\/$/, '') + '/api/tts/synthesize'
+        const res = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ text: ttsText, voice: ttsVoice, rate: ttsRate, pitch: ttsPitch }),
+        })
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '')
+          throw new Error(`tts http ${res.status}: ${errText.slice(0, 200)}`)
+        }
+        const mp3Bytes = Buffer.from(await res.arrayBuffer())
+
+        const { tmpdir: ttsTmpdir } = await import('node:os')
+        const { join: ttsJoin } = await import('node:path')
+        const tmpFile = ttsJoin(ttsTmpdir(), `jarvisx-tts-${Date.now()}.mp3`)
+        writeFileSync(tmpFile, mp3Bytes)
+
+        // ffplay -nodisp -autoexit -loglevel quiet: silent, blocks until
+        // playback ends. spawnSync ensures the bridge reply only fires
+        // once speech actually finished (matches the "spoken" semantics).
+        const play = spawnSync(
+          'ffplay',
+          ['-nodisp', '-autoexit', '-loglevel', 'quiet', tmpFile],
+          { encoding: 'utf8', timeout: 60_000 },
+        )
+        try {
+          const { unlinkSync } = await import('node:fs')
+          unlinkSync(tmpFile)
+        } catch {}
+
+        if (play.error) {
+          throw new Error(
+            `ffplay not found. Install: winget install Gyan.FFmpeg (Windows) ` +
+              `or apt install ffmpeg (Linux). Underlying: ${play.error.message}`,
+          )
+        }
+        if (play.status !== 0) {
+          throw new Error(
+            `ffplay exit ${play.status}: ${(play.stderr || '').trim().slice(0, 200)}`,
+          )
+        }
+        return {
+          spoken: true,
+          length: ttsText.length,
+          voice: ttsVoice,
+          source: 'edge-tts',
+          bytes: mp3Bytes.length,
+        }
+      } catch (e) {
+        fileLog(
+          `operator_speak: backend tts failed, falling back to local: ${e instanceof Error ? e.message : e}`,
+        )
+        // Intentional fall-through to legacy SAPI / espeak path below.
+      }
+    }
+
+    // ── Legacy fallback (English SAPI / espeak-ng) ──────────────────
+    // Kept as a safety net for offline operation or when the backend
+    // doesn't have the /api/tts/synthesize endpoint yet (older deploys).
     const text = String(args.text ?? '')
     if (!text) throw new Error('text is required')
     const rate = Math.max(0, Math.min(10, Number(args.rate ?? 5)))
@@ -1549,7 +1632,11 @@ export class JarvisXBridge {
   private trafficWatchdog: NodeJS.Timeout | null = null
   private lastMessageAt = 0
 
-  constructor(private cfg: BridgeConfig) {}
+  constructor(private cfg: BridgeConfig) {
+    // Publish the latest cfg at module scope so handler code (operator_speak
+    // etc.) can read apiBaseUrl/authToken to call back into the backend.
+    _activeBridgeCfg = cfg
+  }
 
   private log(msg: string): void {
     fileLog(msg)

@@ -14,7 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from core.runtime.jarvisx_auth import require_owner
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 
 from core.identity.users import load_users
@@ -1121,7 +1122,7 @@ def remove_managed_process(name: str) -> dict[str, Any]:
 # tool. This is observability, not control.
 
 
-@router.get("/dispatches")
+@router.get("/dispatches", dependencies=[Depends(require_owner)])
 def list_dispatches(limit: int = Query(default=50, ge=1, le=200)) -> dict[str, Any]:
     """Recent dispatches, running first then by started_at desc.
 
@@ -1185,7 +1186,7 @@ def list_dispatches(limit: int = Query(default=50, ge=1, le=200)) -> dict[str, A
     return {"count": len(out), "dispatches": out}
 
 
-@router.get("/dispatches/budget")
+@router.get("/dispatches/budget", dependencies=[Depends(require_owner)])
 def dispatch_budget() -> dict[str, Any]:
     """Current hour's dispatch budget — count + tokens vs caps."""
     from core.runtime.db import connect
@@ -1211,7 +1212,7 @@ def dispatch_budget() -> dict[str, Any]:
     }
 
 
-@router.get("/dispatches/{task_id}")
+@router.get("/dispatches/{task_id}", dependencies=[Depends(require_owner)])
 def get_dispatch(task_id: str) -> dict[str, Any]:
     """Full audit row + parsed spec for a single dispatch."""
     import json as _json
@@ -1228,7 +1229,7 @@ def get_dispatch(task_id: str) -> dict[str, Any]:
     return {**row, "spec": spec}
 
 
-@router.get("/dispatches/{task_id}/diff")
+@router.get("/dispatches/{task_id}/diff", dependencies=[Depends(require_owner)])
 def get_dispatch_diff(task_id: str) -> dict[str, Any]:
     """Live diff of a dispatch's worktree against main.
 
@@ -1620,7 +1621,7 @@ def spawn_managed_process(payload: _SpawnPayload) -> dict[str, Any]:
 # "inactive" record so the UI has something to render. No 500s.
 
 
-@router.get("/trading/state")
+@router.get("/trading/state", dependencies=[Depends(require_owner)])
 def trading_state() -> dict[str, Any]:
     """Read the current trading-bot state. Read-only.
 

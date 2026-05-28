@@ -216,3 +216,37 @@ def auth_required() -> bool:
     if isinstance(flag, str):
         return flag.strip().lower() in {"1", "true", "yes"}
     return False
+
+
+
+from fastapi import Request
+
+
+# ── FastAPI dependency: owner-only route gate ──────────────────────
+# Add to a route with `dependencies=[Depends(require_owner)]` to make it
+# return 403 for any caller whose verified bearer token claims a role
+# other than owner. Used by Claude-dispatches + Trading endpoints — UI
+# already hides those views for members/guests; this is the real fence.
+
+def require_owner(request: Request) -> dict:
+    """Raise 401/403 unless the caller carries an owner bearer token.
+
+    Returns the verified claims dict on success so handlers can reuse
+    it without re-verifying.
+    """
+    from fastapi import HTTPException
+
+    auth = request.headers.get("authorization") or ""
+    if not auth.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="bearer token required")
+    try:
+        claims = verify_token(auth)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=f"invalid token: {exc!s}"[:200])
+    role = str(claims.get("role") or "").lower()
+    if role != "owner":
+        raise HTTPException(
+            status_code=403,
+            detail=f"owner role required (got role={(role or 'none')!r})",
+        )
+    return claims

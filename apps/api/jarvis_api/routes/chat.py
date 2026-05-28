@@ -196,7 +196,16 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
 
 @router.post("/approvals/{approval_id}/approve")
 async def chat_approve_tool(approval_id: str) -> dict:
-    result = resolve_pending_approval(approval_id, approved=True)
+    # CRITICAL: must run in a thread, not on the event loop directly.
+    # resolve_pending_approval → execute_tool_force → _run_operator_async
+    # uses asyncio.run_coroutine_threadsafe(coro, main_loop) + cf_fut.result()
+    # which deadlocks if called from main_loop itself (loop blocked → coroutine
+    # can't run → future never resolves → 60s timeout → tool returns error
+    # AND THEN the coroutine finally runs after the deadlock returns).
+    # Observed live 2026-05-28: operator_bash "echo hej" returned timeout-error
+    # ~60s after user clicked Approve, even though the bridge replied in 20ms.
+    import asyncio
+    result = await asyncio.to_thread(resolve_pending_approval, approval_id, approved=True)
     if result.get("status") == "error":
         raise HTTPException(status_code=404, detail=result.get("error", "Not found"))
     return result
@@ -204,7 +213,11 @@ async def chat_approve_tool(approval_id: str) -> dict:
 
 @router.post("/approvals/{approval_id}/deny")
 async def chat_deny_tool(approval_id: str) -> dict:
-    result = resolve_pending_approval(approval_id, approved=False)
+    # Same deadlock-avoidance as /approve: see comment there. Deny doesn't
+    # actually run the tool, but resolve_pending_approval is sync either way
+    # and consistency keeps the codepath simple.
+    import asyncio
+    result = await asyncio.to_thread(resolve_pending_approval, approval_id, approved=False)
     if result.get("status") == "error":
         raise HTTPException(status_code=404, detail=result.get("error", "Not found"))
     return result

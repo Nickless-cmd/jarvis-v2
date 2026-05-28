@@ -63,6 +63,50 @@ from core.runtime.db_capability_approval import (
 )
 
 
+def _ensure_multiuser_columns(conn: sqlite3.Connection) -> None:
+    """Additive: tag scheduling tables with scheduled_for_user_id +
+    initiated_by, and inner-life tables with relevant_to_users. Idempotent
+    via existing-column check.
+
+    Part of multi-user workspace isolation refactor — task 2.
+    """
+    scheduling_tables = (
+        "scheduled_tasks",
+        "runtime_initiatives",
+        "capability_approval_requests",
+        "tool_intent_approval_requests",
+    )
+    relevance_tables = (
+        "cognitive_chronicle_entries",
+        "cognitive_dream_hypotheses",
+        "runtime_dream_hypothesis_signals",
+        "runtime_dream_adoption_candidates",
+        "runtime_dream_influence_proposals",
+    )
+
+    def _existing_cols(table: str) -> set[str]:
+        try:
+            return {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+        except Exception:
+            return set()
+
+    for tbl in scheduling_tables:
+        cols = _existing_cols(tbl)
+        if not cols:
+            continue  # table not yet created; skip
+        if "scheduled_for_user_id" not in cols:
+            conn.execute(f"ALTER TABLE {tbl} ADD COLUMN scheduled_for_user_id TEXT")
+        if "initiated_by" not in cols:
+            conn.execute(f"ALTER TABLE {tbl} ADD COLUMN initiated_by TEXT")
+
+    for tbl in relevance_tables:
+        cols = _existing_cols(tbl)
+        if not cols:
+            continue  # table not yet created; skip
+        if "relevant_to_users" not in cols:
+            conn.execute(f"ALTER TABLE {tbl} ADD COLUMN relevant_to_users TEXT")
+
+
 def init_db() -> None:
     with connect() as conn:
         conn.execute(
@@ -975,7 +1019,9 @@ def init_db() -> None:
                 executed INTEGER NOT NULL DEFAULT 0,
                 executed_at TEXT,
                 invocation_status TEXT,
-                invocation_execution_mode TEXT
+                invocation_execution_mode TEXT,
+                scheduled_for_user_id TEXT,
+                initiated_by TEXT
             )
             """
         )
@@ -998,7 +1044,9 @@ def init_db() -> None:
                 resolution_reason TEXT NOT NULL DEFAULT '',
                 resolution_message TEXT NOT NULL DEFAULT '',
                 session_id TEXT NOT NULL DEFAULT '',
-                execution_state TEXT NOT NULL DEFAULT 'not-executed'
+                execution_state TEXT NOT NULL DEFAULT 'not-executed',
+                scheduled_for_user_id TEXT,
+                initiated_by TEXT
             )
             """
         )
@@ -1091,6 +1139,8 @@ def init_db() -> None:
         ensure_credit_assignment_tables(conn)
         # Migration: add affective_signature column to chronicle entries
         _migrate_chronicle_table_add_affective_signature()
+        # Multi-user attribution columns (task 2)
+        _ensure_multiuser_columns(conn)
         conn.commit()
 
 
@@ -1534,7 +1584,9 @@ def _ensure_runtime_initiatives_table(conn: sqlite3.Connection) -> None:
             outcome TEXT NOT NULL DEFAULT '',
             outcome_note TEXT NOT NULL DEFAULT '',
             user_approved_at TEXT NOT NULL DEFAULT '',
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            scheduled_for_user_id TEXT,
+            initiated_by TEXT
         )
         """
     )
@@ -1983,7 +2035,9 @@ def _ensure_scheduled_tasks_table(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL,
             fired_at TEXT NOT NULL DEFAULT '',
             cancelled_at TEXT NOT NULL DEFAULT '',
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            scheduled_for_user_id TEXT,
+            initiated_by TEXT
         )
         """
     )
@@ -26156,7 +26210,8 @@ def _ensure_runtime_dream_hypothesis_signal_table(conn: sqlite3.Connection) -> N
             session_count INTEGER NOT NULL DEFAULT 1,
             merge_count INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            relevant_to_users TEXT
         )
         """
     )
@@ -26197,7 +26252,8 @@ def _ensure_runtime_dream_adoption_candidate_table(conn: sqlite3.Connection) -> 
             session_count INTEGER NOT NULL DEFAULT 1,
             merge_count INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            relevant_to_users TEXT
         )
         """
     )
@@ -26238,7 +26294,8 @@ def _ensure_runtime_dream_influence_proposal_table(conn: sqlite3.Connection) -> 
             session_count INTEGER NOT NULL DEFAULT 1,
             merge_count INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            relevant_to_users TEXT
         )
         """
     )
@@ -29485,6 +29542,7 @@ def _ensure_cognitive_chronicle_entries_table(conn: sqlite3.Connection) -> None:
             affective_signature TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
+            relevant_to_users TEXT,
             PRIMARY KEY (entry_id)
         )
         """

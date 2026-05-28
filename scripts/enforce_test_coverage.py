@@ -28,6 +28,8 @@ COVERED_DIRS = ("core/",)
 KNOWN_MAPPINGS: dict[str, str] = {
     "core/services/tool_router.py": "tests/services/test_tool_router.py",
     "core/runtime/workspace_paths.py": "tests/runtime/test_workspace_paths.py",
+    "core/runtime/db.py": "tests/runtime/test_db_schema_multiuser.py",
+    "core/services/dream_hypothesis_generator.py": "tests/runtime/test_db_schema_multiuser.py",
 }
 
 

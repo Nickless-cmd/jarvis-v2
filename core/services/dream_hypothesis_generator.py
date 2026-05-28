@@ -49,7 +49,8 @@ def _ensure_table() -> None:
                 hypothesis_fingerprint TEXT NOT NULL DEFAULT '',
                 confidence REAL NOT NULL DEFAULT 0.35,
                 presented INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                relevant_to_users TEXT
             )
             """
         )
@@ -61,6 +62,16 @@ def _ensure_table() -> None:
             "CREATE INDEX IF NOT EXISTS idx_cognitive_dream_hypotheses_basis "
             "ON cognitive_dream_hypotheses(basis_fingerprint)"
         )
+        # Additive migration: add relevant_to_users if missing (existing DBs)
+        existing_cols = {
+            row[1] for row in conn.execute(
+                "PRAGMA table_info(cognitive_dream_hypotheses)"
+            ).fetchall()
+        }
+        if "relevant_to_users" not in existing_cols:
+            conn.execute(
+                "ALTER TABLE cognitive_dream_hypotheses ADD COLUMN relevant_to_users TEXT"
+            )
         conn.commit()
 
 

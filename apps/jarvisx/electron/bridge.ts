@@ -107,6 +107,35 @@ function selectShell(): { cmd: string; args: (command: string) => string[] } {
   }
 }
 
+/** First audio capture device discovered via ffmpeg dshow. Cached for
+ * process lifetime so we don't spawn ffmpeg twice per recording. dshow
+ * names look like `Mikrofon (NOS X500)` — must match EXACTLY; bare
+ * 'default' is not a valid dshow source on Windows. */
+let _dshowAudioDevice: string | null | undefined = undefined
+function findDshowAudioDevice(): string | null {
+  if (_dshowAudioDevice !== undefined) return _dshowAudioDevice
+  if (osPlatform() !== 'win32') {
+    _dshowAudioDevice = null
+    return null
+  }
+  try {
+    const probe = spawnSync(
+      'ffmpeg',
+      ['-hide_banner', '-list_devices', 'true', '-f', 'dshow', '-i', 'dummy'],
+      { encoding: 'utf8', timeout: 5000 },
+    )
+    // ffmpeg writes device listings to stderr by convention.
+    const blob = (probe.stderr || '') + (probe.stdout || '')
+    // Lines: [dshow @ ...]  "Device Name"  (audio)
+    const m = [...blob.matchAll(/"([^"]+)"\s*\(audio\)/g)]
+    _dshowAudioDevice = m.length > 0 ? m[0][1] : null
+    return _dshowAudioDevice
+  } catch {
+    _dshowAudioDevice = null
+    return null
+  }
+}
+
 /** Resolve ImageMagick binary path. On Windows the bare `convert` name
  * collides with a built-in disk-conversion utility; we prefer the unified
  * `magick.exe` from ImageMagick 7+ and probe well-known install paths
@@ -1056,7 +1085,7 @@ const handlers: Record<string, ToolHandler> = {
       try {
         const ttsText = String(args.text ?? '')
         if (!ttsText) throw new Error('text is required')
-        const ttsVoice = args.voice != null ? String(args.voice) : 'da-DK-ChristelNeural'
+        const ttsVoice = args.voice != null ? String(args.voice) : 'da-DK-JeppeNeural'
         const ttsRate = args.rate != null && typeof args.rate === 'string' ? args.rate : '+0%'
         const ttsPitch = args.pitch != null && typeof args.pitch === 'string' ? args.pitch : '+0Hz'
 
@@ -1083,9 +1112,27 @@ const handlers: Record<string, ToolHandler> = {
         // ffplay -nodisp -autoexit -loglevel quiet: silent, blocks until
         // playback ends. spawnSync ensures the bridge reply only fires
         // once speech actually finished (matches the "spoken" semantics).
+        //
+        // Anti-stutter flags:
+        //   -infbuf           = unlimited input buffer (whole file in RAM
+        //                       before playback starts).
+        //   -probesize 1M     = scan more of the file up front so the
+        //                       decoder commits to a stable bitrate plan.
+        //   -af aresample=async=1000
+        //                     = soft-resample timestamps within ±1s, which
+        //                       smooths the small frame-boundary gaps
+        //                       between edge-tts chunks ("hakkende" pauses).
         const play = spawnSync(
           'ffplay',
-          ['-nodisp', '-autoexit', '-loglevel', 'quiet', tmpFile],
+          [
+            '-nodisp',
+            '-autoexit',
+            '-loglevel', 'quiet',
+            '-infbuf',
+            '-probesize', '1M',
+            '-af', 'aresample=async=1000',
+            tmpFile,
+          ],
           { encoding: 'utf8', timeout: 60_000 },
         )
         try {
@@ -1462,8 +1509,20 @@ const handlers: Record<string, ToolHandler> = {
     // Record via platform command
     let recordRes: ReturnType<typeof spawnSync>
     if (platform === 'win32') {
-      // Windows: use ffmpeg with dshow audio input
-      const deviceStr = deviceArg ?? 'default'
+      // Windows: ffmpeg dshow requires the EXACT device name (e.g.
+      // 'Mikrofon (NOS X500)'). 'default' is not a valid dshow source —
+      // it returns "Could not find device". Auto-discover the first
+      // audio device if the caller didn't pass one explicitly.
+      const deviceStr = deviceArg ?? findDshowAudioDevice()
+      if (!deviceStr) {
+        return {
+          recorded: false,
+          reason: 'no_audio_device',
+          detail:
+            'no dshow audio device found. Run `ffmpeg -list_devices true -f dshow -i dummy` ' +
+            'to list installed mics, then pass the exact name as `device` arg.',
+        }
+      }
       recordRes = spawnSync('ffmpeg', [
         '-y',
         '-f', 'dshow',

@@ -102,4 +102,11 @@ declare global {
   }
 }
 
+// Build-time constant injected by vite.config.ts's `define` block from
+// package.json. Used in the Sidebar footer + StatusBar so the displayed
+// version stays in sync with the actual built artifact (no drift).
+declare global {
+  const __APP_VERSION__: string
+}
+
 export {}

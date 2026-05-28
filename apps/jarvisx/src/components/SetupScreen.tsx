@@ -26,6 +26,7 @@ import { Flame, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 export function SetupScreen({ onComplete }: { onComplete: () => void }) {
   const [apiBaseUrl, setApiBaseUrl] = useState('https://api.srvlab.dk')
   const [token, setToken] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [status, setStatus] = useState<
     { kind: 'idle' } |
     { kind: 'validating' } |
@@ -87,14 +88,24 @@ export function SetupScreen({ onComplete }: { onComplete: () => void }) {
         : ''
       setStatus({ kind: 'success', userId, role, expiresAt })
 
+      // Derive a friendly display name if the user didn't supply one:
+      // capitalize a short user_id (e.g. "mikkel" → "Mikkel"), else fall
+      // back to "User <last 4 digits>" for snowflake-style ids.
+      const fallbackName = displayName.trim() || (() => {
+        if (/^[a-zæøåA-ZÆØÅ]{2,20}$/.test(userId)) {
+          return userId.charAt(0).toUpperCase() + userId.slice(1)
+        }
+        return `User ${userId.slice(-4)}`
+      })()
       await window.jarvisx.setConfig({
         apiBaseUrl: url,
         userId,
+        userName: fallbackName,
         authToken: tok,
         authTokenUserId: userId,
         authTokenRole: role,
         authTokenExpiresAt: expiresAt,
-      } as Partial<{ apiBaseUrl: string; userId: string; authToken: string; authTokenUserId: string; authTokenRole: string; authTokenExpiresAt: string }>)
+      } as Partial<{ apiBaseUrl: string; userId: string; userName: string; authToken: string; authTokenUserId: string; authTokenRole: string; authTokenExpiresAt: string }>)
       // Give the success screen a moment to be seen, then continue
       setTimeout(onComplete, 1200)
     } catch (e: unknown) {
@@ -146,6 +157,21 @@ export function SetupScreen({ onComplete }: { onComplete: () => void }) {
               Sendt til dig af din Jarvis-administrator. Genereret med{' '}
               <code className="text-fg2">scripts/mint_jarvisx_token.py</code>
             </span>
+          </label>
+
+          <label className="block">
+            <span className="text-[11px] uppercase tracking-wider text-fg2">
+              Dit navn <span className="text-fg3 normal-case">(valgfrit — Jarvis kalder dig dette)</span>
+            </span>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              disabled={status.kind === 'validating'}
+              placeholder="Fx Mikkel, Bjørn, eller dit kaldenavn"
+              maxLength={40}
+              className="mt-1 w-full rounded border border-line bg-bg1 px-3 py-2 text-[13px] text-fg outline-none focus:border-accent disabled:opacity-50"
+            />
           </label>
 
           {status.kind === 'error' && (

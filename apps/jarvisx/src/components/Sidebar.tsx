@@ -154,7 +154,7 @@ export function Sidebar({ active, onSelect, userName, shell, onShowShortcuts }: 
       </div>
 
       <div className="flex flex-shrink-0 items-center justify-between border-t border-line px-4 py-2 text-[10px] text-fg3">
-        <span>v0.1.0-poc</span>
+        <span>v{__APP_VERSION__}</span>
         {onShowShortcuts && (
           <button
             onClick={onShowShortcuts}

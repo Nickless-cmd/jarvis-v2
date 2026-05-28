@@ -84,7 +84,7 @@ export function StatusBar({
         </div>
       )}
       <span className="font-mono opacity-60">{apiBaseUrl}</span>
-      <span className="ml-auto opacity-50">JarvisX 0.1.0-poc</span>
+      <span className="ml-auto opacity-50">JarvisX {__APP_VERSION__}</span>
     </footer>
   )
 }

@@ -31,7 +31,17 @@ function resolveApiTarget(): string {
 const API_TARGET = resolveApiTarget()
 console.log(`[vite] proxying API requests to ${API_TARGET}`)
 
+// Inject app version from package.json at build time so the renderer can
+// surface it (Sidebar footer, StatusBar) without drift between code and
+// the actual built artifact. Stringified so it lands as a literal.
+const PKG_VERSION = JSON.parse(
+  readFileSync(path.join(__dirname, 'package.json'), 'utf8'),
+).version as string
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(PKG_VERSION),
+  },
   plugins: [react()],
   base: './', // critical for Electron file:// loads
   resolve: {

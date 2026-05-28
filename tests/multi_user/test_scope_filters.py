@@ -151,3 +151,41 @@ def test_scheduled_tasks_filtered_by_user(mu_db):
         assert "t1" not in task_ids
     finally:
         reset_context(token)
+
+
+def test_initiatives_filtered_by_relevant_to_users(mu_db):
+    """Mikkel only sees untagged initiatives and his own — not Bjørn's."""
+    import json
+    from core.identity.workspace_context import set_context, reset_context
+
+    db = mu_db
+    with db.connect() as conn:
+        db._ensure_runtime_initiatives_table(conn)
+        # Run the multiuser column migration so relevant_to_users exists
+        db._ensure_multiuser_columns(conn)
+
+        for initiative_id, focus, relevant_to_users in [
+            ("i1", "jarvis-general initiative", None),
+            ("i2", "bjorn initiative", json.dumps([BJORN_ID])),
+            ("i3", "mikkel initiative", json.dumps([MIKKEL_ID])),
+        ]:
+            try:
+                conn.execute(
+                    "INSERT INTO runtime_initiatives "
+                    "(initiative_id, focus, detected_at, updated_at, relevant_to_users) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (initiative_id, focus, "2026-01-01T00:00:00Z",
+                     "2026-01-01T00:00:00Z", relevant_to_users),
+                )
+            except Exception:
+                pass  # row already exists
+
+    token = set_context(workspace_name="mikkel", user_id=MIKKEL_ID)
+    try:
+        rows = db.list_runtime_initiatives(limit=50)
+        ids = {r["initiative_id"] for r in rows}
+        assert "i1" in ids, "missing untagged Jarvis-general initiative"
+        assert "i3" in ids, "missing Mikkel-tagged initiative"
+        assert "i2" not in ids, "leaked Bjørn-tagged initiative to Mikkel"
+    finally:
+        reset_context(token)

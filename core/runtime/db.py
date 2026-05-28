@@ -82,6 +82,7 @@ def _ensure_multiuser_columns(conn: sqlite3.Connection) -> None:
         "runtime_dream_hypothesis_signals",
         "runtime_dream_adoption_candidates",
         "runtime_dream_influence_proposals",
+        "runtime_initiatives",
     )
 
     def _existing_cols(table: str) -> set[str]:
@@ -1802,6 +1803,8 @@ def list_runtime_initiatives(
     initiative_type: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    from core.identity.workspace_context import current_user_id as _uid
+    _current_uid = _uid()
     clauses: list[str] = []
     params: list[object] = []
     if status:
@@ -1810,6 +1813,11 @@ def list_runtime_initiatives(
     if initiative_type:
         clauses.append("initiative_type = ?")
         params.append(initiative_type)
+    if _current_uid:
+        clauses.append(
+            "(relevant_to_users IS NULL OR relevant_to_users LIKE '%' || ? || '%')"
+        )
+        params.append(_current_uid)
     where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     with connect() as conn:
         _ensure_runtime_initiatives_table(conn)

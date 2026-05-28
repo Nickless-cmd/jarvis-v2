@@ -1067,6 +1067,241 @@ const handlers: Record<string, ToolHandler> = {
       return { approved: true, killed: true, pid, name: procName }
     }
   },
+
+  // ── Tier-2 wishlist tools ────────────────────────────────────────────
+
+  operator_speak: async (args) => {
+    // TTS: Linux via espeak-ng, Windows via SAPI SpeechSynthesizer.
+    // Rate 0-10 maps to: Linux espeak-ng -s (WPM) 80→260, Windows SAPI -10→10.
+    const text = String(args.text ?? '')
+    if (!text) throw new Error('text is required')
+    const rate = Math.max(0, Math.min(10, Number(args.rate ?? 5)))
+    const voiceArg = args.voice != null ? String(args.voice) : null
+    const platform = osPlatform()
+
+    if (platform === 'win32') {
+      // Windows SAPI: rate is -10..10, map rate 0-10 → -10..10
+      const sapiRate = Math.round(rate * 2 - 10)
+      // Escape double-quotes in text to avoid breaking the PowerShell string.
+      const safeText = text.replace(/"/g, '`"')
+      const voiceLine = voiceArg
+        ? `$s.SelectVoice("${voiceArg.replace(/"/g, '`"')}")`
+        : ''
+      const res = spawnSync('powershell.exe', [
+        '-NoProfile', '-NonInteractive', '-Command',
+        `Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; ${voiceLine} $s.Rate = ${sapiRate}; $s.Speak("${safeText}")`,
+      ], { encoding: 'utf8', timeout: 30000 })
+      if (res.error) throw res.error
+      if (res.status !== 0) {
+        throw new Error(`SAPI Speak failed: ${res.stderr.trim()}`)
+      }
+    } else {
+      // Linux: espeak-ng -s <wpm> [-v <voice>] "<text>"
+      // Rate 0-10 → WPM 80-260
+      const wpm = Math.round(80 + rate * 18)
+      const speakArgs = ['-s', String(wpm)]
+      if (voiceArg) speakArgs.push('-v', voiceArg)
+      speakArgs.push(text)
+      const res = spawnSync('espeak-ng', speakArgs, { encoding: 'utf8', timeout: 30000 })
+      if (res.error) {
+        // Try plain espeak fallback
+        const res2 = spawnSync('espeak', speakArgs, { encoding: 'utf8', timeout: 30000 })
+        if (res2.error) {
+          throw new Error(
+            `espeak-ng / espeak not found. Install on Linux: apt install espeak-ng`,
+          )
+        }
+        if (res2.status !== 0) throw new Error(`espeak error: ${res2.stderr.trim()}`)
+      } else if (res.status !== 0) {
+        throw new Error(`espeak-ng error: ${res.stderr.trim()}`)
+      }
+    }
+    return { spoken: true, length: text.length }
+  },
+
+  operator_screenshot_window: async (args) => {
+    // Capture a specific window (by title substring or handle).
+    // Linux: use wmctrl to resolve title→hex id, then ImageMagick `import -window <id>`.
+    // Windows: focus the window then take a nut.js screen capture.
+    const titleSub = args.title_substring != null ? String(args.title_substring) : null
+    const handleArg = args.handle != null ? String(args.handle) : null
+    const savePath = args.save_path != null ? String(args.save_path) : null
+
+    if (titleSub === null && handleArg === null) {
+      throw new Error('title_substring or handle is required')
+    }
+
+    const platform = osPlatform()
+    const { tmpdir } = await import('node:os')
+    const { join: pathJoin } = await import('node:path')
+    const { readFileSync: readFS, unlinkSync, existsSync: existsFS } = await import('node:fs')
+
+    const outPath = savePath ?? pathJoin(tmpdir(), `jarvisx_win_${Date.now()}.png`)
+
+    if (platform === 'win32') {
+      // Windows: focus the window first, then capture full screen, then crop.
+      // Simpler than PrintWindow P/Invoke — focus + nut.js screen capture.
+      const target = titleSub ?? handleArg ?? ''
+      spawnSync('powershell.exe', [
+        '-NoProfile', '-NonInteractive', '-Command',
+        `(New-Object -ComObject WScript.Shell).AppActivate("${target.replace(/"/g, '\\"')}")`,
+      ], { encoding: 'utf8', timeout: 5000 })
+      // Short delay to let the window come to front.
+      await new Promise((r) => setTimeout(r, 400))
+      const { screen: nutScreen } = await import('@nut-tree-fork/nut-js')
+      const { FileType: FT } = await import('@nut-tree-fork/nut-js')
+      await nutScreen.capture('jarvisx_win_snap', FT.PNG, outPath.replace(/\/[^/]+$/, ''), 'jarvisx_win_snap')
+      // nut.js appends ext automatically — locate what it wrote.
+      const nutOut = outPath.replace(/\/[^/]+$/, '') + '/jarvisx_win_snap.png'
+      const imgBuf = readFS(existsFS(nutOut) ? nutOut : outPath)
+      if (savePath) {
+        if (nutOut !== outPath) {
+          const { renameSync } = await import('node:fs')
+          try { renameSync(nutOut, savePath) } catch {}
+        }
+        return { captured: true, path: savePath }
+      }
+      const b64 = imgBuf.toString('base64')
+      try { unlinkSync(nutOut) } catch {}
+      return { captured: true, base64: b64 }
+    } else {
+      // Linux: resolve window id via wmctrl, then ImageMagick `import -window`.
+      let winId = handleArg
+
+      if (titleSub !== null) {
+        // wmctrl -l to find hex id matching title substring
+        const listRes = spawnSync('wmctrl', ['-l'], { encoding: 'utf8', timeout: 5000 })
+        if (listRes.error) {
+          throw new Error(
+            `wmctrl not found. Install: apt install wmctrl`,
+          )
+        }
+        for (const line of listRes.stdout.split('\n')) {
+          const m = line.match(/^(0x[0-9a-f]+)\s+\d+\s+\S+\s+(.+)$/)
+          if (m && m[2].toLowerCase().includes(titleSub.toLowerCase())) {
+            winId = m[1]
+            break
+          }
+        }
+        if (!winId) {
+          throw new Error(`No window found matching title: "${titleSub}"`)
+        }
+      }
+
+      // ImageMagick import -window <id>
+      const importRes = spawnSync('import', ['-window', winId!, outPath], {
+        encoding: 'utf8', timeout: 15000,
+      })
+      if (importRes.error) {
+        throw new Error(
+          `ImageMagick import not found. Install: apt install imagemagick`,
+        )
+      }
+      if (importRes.status !== 0) {
+        throw new Error(`ImageMagick import failed: ${importRes.stderr.trim()}`)
+      }
+
+      if (savePath) {
+        return { captured: true, path: savePath }
+      }
+      const imgBuf = readFS(outPath)
+      const b64 = imgBuf.toString('base64')
+      try { const { unlinkSync: rmSync } = await import('node:fs'); rmSync(outPath) } catch {}
+      return { captured: true, base64: b64 }
+    }
+  },
+
+  operator_find_image: async (args) => {
+    // Template-match a reference image against the current screen.
+    // Uses nut.js screen.find() which does built-in image template matching.
+    const templatePath = String(args.template_path ?? '')
+    if (!templatePath) throw new Error('template_path is required')
+    const confidence = Math.max(0.0, Math.min(1.0, Number(args.confidence ?? 0.85)))
+
+    const { screen: nutScreen, imageResource } = await import('@nut-tree-fork/nut-js')
+    // Set confidence threshold.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(nutScreen as any).config = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...(nutScreen as any).config,
+      confidence,
+    }
+
+    try {
+      const img = await imageResource(templatePath)
+      const region = await nutScreen.find(img)
+      const cx = Math.round(region.left + region.width / 2)
+      const cy = Math.round(region.top + region.height / 2)
+      return { found: true, x: cx, y: cy, confidence }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      return { found: false, reason: `No match above confidence ${confidence}: ${msg}` }
+    }
+  },
+
+  operator_ocr_region: async (args) => {
+    // Extract text from screen region using Tesseract.
+    // Flow: nut.js full-screen capture → ImageMagick crop → tesseract stdin → text.
+    const x = Number(args.x)
+    const y = Number(args.y)
+    const width = Number(args.width)
+    const height = Number(args.height)
+    const lang = String(args.lang ?? 'eng')
+    for (const [n, v] of [['x', x], ['y', y], ['width', width], ['height', height]]) {
+      if (!Number.isFinite(v as number)) throw new Error(`${n} must be a finite number`)
+    }
+    if (width <= 0 || height <= 0) throw new Error('width and height must be positive')
+
+    const { tmpdir } = await import('node:os')
+    const { join: pathJoin } = await import('node:path')
+
+    const tmpBase = pathJoin(tmpdir(), `jarvisx_ocr_${Date.now()}`)
+    const cropPath = `${tmpBase}_crop.png`
+
+    // 1. Capture full screen via nut.js
+    const { screen: nutScreen, FileType: FT2 } = await import('@nut-tree-fork/nut-js')
+    const snapDir = tmpdir()
+    const snapName = `jarvisx_ocr_full_${Date.now()}`
+    await nutScreen.capture(snapName, FT2.PNG, snapDir, snapName)
+    const nutOut = pathJoin(snapDir, `${snapName}.png`)
+
+    // 2. Crop to region using ImageMagick convert.
+    const cropGeom = `${width}x${height}+${x}+${y}`
+    const cropRes = spawnSync('convert', [nutOut, '-crop', cropGeom, '+repage', cropPath], {
+      encoding: 'utf8', timeout: 10000,
+    })
+    // Cleanup full screen shot.
+    try { const { unlinkSync } = await import('node:fs'); unlinkSync(nutOut) } catch {}
+    if (cropRes.error) {
+      throw new Error(
+        `ImageMagick convert not found. Install: apt install imagemagick`,
+      )
+    }
+    if (cropRes.status !== 0) {
+      throw new Error(`ImageMagick crop failed: ${cropRes.stderr.trim()}`)
+    }
+
+    // 3. Run tesseract on the cropped image (output to stdout).
+    const tessRes = spawnSync('tesseract', [cropPath, 'stdout', '-l', lang], {
+      encoding: 'utf8', timeout: 30000,
+    })
+    // Cleanup crop.
+    try { const { unlinkSync } = await import('node:fs'); unlinkSync(cropPath) } catch {}
+    if (tessRes.error) {
+      throw new Error(
+        `tesseract not found. Install: apt install tesseract-ocr (Linux) or ` +
+        `winget install Tesseract-OCR (Windows).`,
+      )
+    }
+    if (tessRes.status !== 0 && tessRes.status !== null) {
+      throw new Error(`tesseract failed: ${tessRes.stderr.trim()}`)
+    }
+
+    return {
+      text: tessRes.stdout.trim(),
+      region: { x, y, width, height },
+    }
+  },
 }
 
 // ── Browser-session singleton helpers ───────────────────────────────────

@@ -824,3 +824,104 @@ async def operator_kill_process_async(
         timeout_s=timeout_s + 25.0,
     )
     return result or {}
+
+
+# ── operator_speak ──────────────────────────────────────────────────────
+
+
+async def operator_speak_async(
+    *,
+    text: str,
+    user_id: str,
+    voice: str | None = None,
+    rate: int = 5,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Say text aloud on the operator's machine via TTS (espeak-ng / SAPI)."""
+    args: dict[str, Any] = {"text": str(text), "rate": int(rate)}
+    if voice is not None:
+        args["voice"] = str(voice)
+    result = await _bridge_call(
+        tool="operator_speak",
+        args=args,
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_screenshot_window ──────────────────────────────────────────
+
+
+async def operator_screenshot_window_async(
+    *,
+    user_id: str,
+    title_substring: str | None = None,
+    handle: str | None = None,
+    save_path: str | None = None,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Capture a specific window on the operator's desktop. Returns base64 PNG or saves to path."""
+    args: dict[str, Any] = {}
+    if title_substring is not None:
+        args["title_substring"] = str(title_substring)
+    if handle is not None:
+        args["handle"] = str(handle)
+    if save_path is not None:
+        args["save_path"] = str(save_path)
+    result = await _bridge_call(
+        tool="operator_screenshot_window",
+        args=args,
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_find_image ─────────────────────────────────────────────────
+
+
+async def operator_find_image_async(
+    *,
+    template_path: str,
+    user_id: str,
+    confidence: float = 0.85,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Template-match a small image inside the current screen. Returns {found, x, y, confidence}."""
+    result = await _bridge_call(
+        tool="operator_find_image",
+        args={"template_path": str(template_path), "confidence": float(confidence)},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_ocr_region ─────────────────────────────────────────────────
+
+
+async def operator_ocr_region_async(
+    *,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    user_id: str,
+    lang: str = "eng",
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Extract text from a screen region using Tesseract OCR."""
+    result = await _bridge_call(
+        tool="operator_ocr_region",
+        args={
+            "x": int(x),
+            "y": int(y),
+            "width": int(width),
+            "height": int(height),
+            "lang": str(lang),
+        },
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}

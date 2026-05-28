@@ -1194,6 +1194,112 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "operator_speak",
+            "description": (
+                "Make the OPERATOR'S machine say text aloud via TTS. "
+                "Linux: espeak-ng. Windows: SAPI SpeechSynthesizer. "
+                "Returns {spoken, length}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to speak aloud."},
+                    "voice": {
+                        "type": "string",
+                        "description": "Voice name (optional). Linux: espeak-ng voice name. Windows: SAPI voice name.",
+                    },
+                    "rate": {
+                        "type": "number",
+                        "description": "Speech rate 0-10 (default 5). 0=slow, 10=fast.",
+                    },
+                },
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_screenshot_window",
+            "description": (
+                "Capture a specific window on the OPERATOR'S desktop (not full screen). "
+                "Pass title_substring to match by window title, or handle (X11 hex / Windows HWND). "
+                "Returns {captured, width, height, path, base64?}. "
+                "Requires ImageMagick (Linux: apt install imagemagick) or wmctrl."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title_substring": {
+                        "type": "string",
+                        "description": "Case-insensitive substring of window title to match.",
+                    },
+                    "handle": {
+                        "type": "string",
+                        "description": "Exact window id/handle (X11 hex string like '0x04200003' or Windows numeric handle).",
+                    },
+                    "save_path": {
+                        "type": "string",
+                        "description": "File path to save the PNG to. If omitted, returns base64-encoded PNG.",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_find_image",
+            "description": (
+                "Template-match a small reference image against the current screen on the OPERATOR'S machine. "
+                "Returns {found, x, y, confidence} with the center (x,y) of the match, or {found: false, reason}. "
+                "Requires nut.js image matching."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "template_path": {
+                        "type": "string",
+                        "description": "Absolute path to the reference PNG image on the operator's disk.",
+                    },
+                    "confidence": {
+                        "type": "number",
+                        "description": "Match confidence threshold 0.0–1.0 (default 0.85).",
+                    },
+                },
+                "required": ["template_path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_ocr_region",
+            "description": (
+                "Extract text from a rectangular screen region on the OPERATOR'S machine using Tesseract OCR. "
+                "Returns {text, region: {x, y, width, height}}. "
+                "Requires tesseract binary (apt install tesseract-ocr / winget install Tesseract-OCR). "
+                "Also requires ImageMagick or sharp for cropping."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "x": {"type": "number", "description": "Left edge of region in screen pixels."},
+                    "y": {"type": "number", "description": "Top edge of region in screen pixels."},
+                    "width": {"type": "number", "description": "Width of region in pixels."},
+                    "height": {"type": "number", "description": "Height of region in pixels."},
+                    "lang": {
+                        "type": "string",
+                        "description": "Tesseract language code (default 'eng'). E.g. 'dan' for Danish, 'eng+dan' for both.",
+                    },
+                },
+                "required": ["x", "y", "width", "height"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "operator_browser_open",
             "description": (
                 "Open a URL in a controlled browser session on the OPERATOR'S desktop. "
@@ -4013,6 +4119,88 @@ def _exec_operator_kill_process(args: dict[str, Any]) -> dict[str, Any]:
             timeout_s=30.0,
         ),
         tool_name="operator_kill_process",
+        timeout_s=45.0,
+    )
+
+
+def _exec_operator_speak(args: dict[str, Any]) -> dict[str, Any]:
+    text = args.get("text")
+    if not isinstance(text, str) or not text:
+        return {"error": "text is required (non-empty string)", "status": "error"}
+    rate = int(args.get("rate") or 5)
+    rate = max(0, min(10, rate))
+    voice = args.get("voice")
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_speak_async
+    return _run_operator_async(
+        lambda: operator_speak_async(
+            text=text, user_id=user_id,
+            voice=str(voice) if voice is not None else None,
+            rate=rate, timeout_s=30.0,
+        ),
+        tool_name="operator_speak",
+        timeout_s=40.0,
+    )
+
+
+def _exec_operator_screenshot_window(args: dict[str, Any]) -> dict[str, Any]:
+    title_substring = args.get("title_substring")
+    handle = args.get("handle")
+    if title_substring is None and handle is None:
+        return {"error": "title_substring or handle is required", "status": "error"}
+    save_path = args.get("save_path")
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_screenshot_window_async
+    return _run_operator_async(
+        lambda: operator_screenshot_window_async(
+            user_id=user_id,
+            title_substring=str(title_substring) if title_substring is not None else None,
+            handle=str(handle) if handle is not None else None,
+            save_path=str(save_path) if save_path is not None else None,
+            timeout_s=20.0,
+        ),
+        tool_name="operator_screenshot_window",
+        timeout_s=30.0,
+    )
+
+
+def _exec_operator_find_image(args: dict[str, Any]) -> dict[str, Any]:
+    template_path = args.get("template_path")
+    if not isinstance(template_path, str) or not template_path:
+        return {"error": "template_path is required (string)", "status": "error"}
+    confidence = float(args.get("confidence") or 0.85)
+    confidence = max(0.0, min(1.0, confidence))
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_find_image_async
+    return _run_operator_async(
+        lambda: operator_find_image_async(
+            template_path=template_path, user_id=user_id,
+            confidence=confidence, timeout_s=20.0,
+        ),
+        tool_name="operator_find_image",
+        timeout_s=30.0,
+    )
+
+
+def _exec_operator_ocr_region(args: dict[str, Any]) -> dict[str, Any]:
+    try:
+        x = int(args["x"])
+        y = int(args["y"])
+        width = int(args["width"])
+        height = int(args["height"])
+    except (KeyError, ValueError, TypeError):
+        return {"error": "x, y, width, height are required integers", "status": "error"}
+    if width <= 0 or height <= 0:
+        return {"error": "width and height must be positive", "status": "error"}
+    lang = str(args.get("lang") or "eng")
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_ocr_region_async
+    return _run_operator_async(
+        lambda: operator_ocr_region_async(
+            x=x, y=y, width=width, height=height,
+            user_id=user_id, lang=lang, timeout_s=30.0,
+        ),
+        tool_name="operator_ocr_region",
         timeout_s=45.0,
     )
 
@@ -7445,6 +7633,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "operator_mouse_drag": _exec_operator_mouse_drag,
     "operator_list_processes": _exec_operator_list_processes,
     "operator_kill_process": _exec_operator_kill_process,
+    "operator_speak": _exec_operator_speak,
+    "operator_screenshot_window": _exec_operator_screenshot_window,
+    "operator_find_image": _exec_operator_find_image,
+    "operator_ocr_region": _exec_operator_ocr_region,
     "operator_browser_open": _exec_operator_browser_open,
     "operator_browser_get_text": _exec_operator_browser_get_text,
     "operator_browser_get_links": _exec_operator_browser_get_links,

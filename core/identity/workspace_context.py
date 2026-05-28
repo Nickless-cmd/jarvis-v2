@@ -37,6 +37,7 @@ class _ContextState:
     workspace_name: str
     user_id: str  # discord_id or similar external identifier
     user_display_name: str
+    role: str = ""  # bearer-token role: owner|member|guest, "" = unbound (legacy)
 
 
 # Default: workspace="bjorn" (renamed from "default" in Task 5), user_id="" (owner implicit)
@@ -44,6 +45,7 @@ _DEFAULT_STATE = _ContextState(
     workspace_name="bjorn",
     user_id="",
     user_display_name="",
+    role="",
 )
 
 _current_state: contextvars.ContextVar[_ContextState] = contextvars.ContextVar(
@@ -80,6 +82,7 @@ def set_context(
     workspace_name: str,
     user_id: str = "",
     user_display_name: str = "",
+    role: str = "",
 ) -> contextvars.Token:
     """Set workspace context explicitly. Returns Token for reset.
 
@@ -90,6 +93,7 @@ def set_context(
         workspace_name=str(workspace_name or "bjorn").strip() or "bjorn",
         user_id=str(user_id or "").strip(),
         user_display_name=str(user_display_name or "").strip(),
+        role=str(role or "").strip().lower(),
     )
     return _current_state.set(state)
 
@@ -163,3 +167,10 @@ def bind_context_if_unset(
         user_id=user_id,
         user_display_name=user_display_name,
     )
+
+
+def current_role() -> str:
+    """Return current bearer-token role ("owner"|"member"|"guest"|"").
+    Empty string when no token-backed identity is bound (legacy / single-user dev).
+    """
+    return _current_state.get().role

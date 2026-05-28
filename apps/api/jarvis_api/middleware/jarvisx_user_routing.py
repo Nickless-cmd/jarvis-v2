@@ -184,6 +184,7 @@ async def jarvisx_user_routing_middleware(
                 workspace_name=workspace_name,
                 user_id=bound_user_id,
                 user_display_name=display,
+                role=str((token_claims or {}).get("role") or "").strip().lower(),
             )
         except Exception as exc:
             logger.warning("jarvisx middleware: set_context failed: %s", exc)

@@ -72,6 +72,11 @@ _PUBLIC_PATHS = (
     # handler. Bypass the Bearer-token middleware so the route can
     # apply its own auth.
     "/anthropic",
+    # Blind-test UI (Phase 3) — Bjørn skal kunne tilgå det direkte i
+    # browseren uden et bearer token. Ingen metadata-lækage via UI'et
+    # da selve API-kaldene (/api/next etc) stadig kræver session_id,
+    # ikke en bruger-identitet.
+    "/interlanguage-blind",
 )
 
 

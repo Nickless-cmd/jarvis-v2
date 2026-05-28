@@ -3948,22 +3948,9 @@ def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
     timeout_s = float(args.get("timeout_s") or 30.0)
     thread_timeout = min(timeout_s, 300.0) + 30.0
 
-    # Godkendelse via chat-card (ikke OS-dialog).
-    # Hvis _runtime_trust_all er sat, dispatcher vi direkte.
-    # Ellers returnerer vi approval_needed så visible_runs sender
-    # approval_request SSE til ChatView → inline ApprovalCard.
-    skip_approval = bool(args.get("_runtime_trust_all"))
-    if not skip_approval:
-        cwd_preview = str(args.get("cwd") or "~")
-        return {
-            "status": "approval_needed",
-            "tool_name": "operator_bash",
-            "message": f"Jarvis vil køre en shell-kommando på operatørens maskine: {command}",
-            "command": command,
-            "cwd": cwd_preview,
-        }
-
-    # Allerede godkendt — dispatcher til bridge med skip_approval=True.
+    # Dispatch direkte til bridge — approval er håndteret af
+    # chat-approval-card mekanismen på et højere niveau i flowet.
+    # (screenshot og clipboard gør det samme; OS-dialog er fjernet).
     from core.tools.operator_tools import operator_bash_async
     return _run_operator_async(
         lambda: operator_bash_async(
@@ -3971,7 +3958,7 @@ def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
             cwd=args.get("cwd"),
             timeout_s=timeout_s,
             user_id=user_id,
-            skip_approval=True,  # godkendt i chat; bridge spørger ikke igen
+            skip_approval=True,
         ),
         tool_name="operator_bash",
         timeout_s=thread_timeout,

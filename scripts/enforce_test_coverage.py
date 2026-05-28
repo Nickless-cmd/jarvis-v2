@@ -27,6 +27,7 @@ COVERED_DIRS = ("core/",)
 # Few known modules whose tests live in non-standard locations
 KNOWN_MAPPINGS: dict[str, str] = {
     "core/services/tool_router.py": "tests/services/test_tool_router.py",
+    "core/runtime/workspace_paths.py": "tests/runtime/test_workspace_paths.py",
 }
 
 

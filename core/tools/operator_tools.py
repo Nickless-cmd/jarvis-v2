@@ -653,3 +653,174 @@ async def operator_browser_close_async(
         tool="operator_browser_close", args={}, user_id=user_id, timeout_s=timeout_s,
     )
     return result or {}
+
+
+# ── operator_clipboard_read ─────────────────────────────────────────────
+
+
+async def operator_clipboard_read_async(
+    *,
+    user_id: str,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Return current clipboard text from the operator's desktop."""
+    result = await _bridge_call(
+        tool="operator_clipboard_read",
+        args={},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_clipboard_write ────────────────────────────────────────────
+
+
+async def operator_clipboard_write_async(
+    *,
+    text: str,
+    user_id: str,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Replace the operator's clipboard with the given text."""
+    result = await _bridge_call(
+        tool="operator_clipboard_write",
+        args={"text": str(text)},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_list_windows ───────────────────────────────────────────────
+
+
+async def operator_list_windows_async(
+    *,
+    user_id: str,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """List open windows on the operator's desktop. Returns {windows: [{title, id}]}."""
+    result = await _bridge_call(
+        tool="operator_list_windows",
+        args={},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_focus_window ───────────────────────────────────────────────
+
+
+async def operator_focus_window_async(
+    *,
+    user_id: str,
+    title_substring: str | None = None,
+    handle: int | None = None,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Bring a window to the foreground by title substring or handle/id."""
+    args: dict[str, Any] = {}
+    if title_substring is not None:
+        args["title_substring"] = str(title_substring)
+    if handle is not None:
+        args["handle"] = int(handle)
+    result = await _bridge_call(
+        tool="operator_focus_window",
+        args=args,
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_mouse_scroll ───────────────────────────────────────────────
+
+
+async def operator_mouse_scroll_async(
+    *,
+    direction: str,
+    user_id: str,
+    amount: int = 3,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Scroll the mouse wheel in the given direction."""
+    result = await _bridge_call(
+        tool="operator_mouse_scroll",
+        args={"direction": str(direction), "amount": int(amount)},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_mouse_drag ─────────────────────────────────────────────────
+
+
+async def operator_mouse_drag_async(
+    *,
+    from_x: int,
+    from_y: int,
+    to_x: int,
+    to_y: int,
+    user_id: str,
+    button: str = "left",
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Drag the mouse from (from_x, from_y) to (to_x, to_y)."""
+    result = await _bridge_call(
+        tool="operator_mouse_drag",
+        args={
+            "from_x": int(from_x),
+            "from_y": int(from_y),
+            "to_x": int(to_x),
+            "to_y": int(to_y),
+            "button": str(button),
+        },
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_list_processes ─────────────────────────────────────────────
+
+
+async def operator_list_processes_async(
+    *,
+    user_id: str,
+    filter: str | None = None,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """List running processes on the operator's machine. Returns {processes: [{pid, name, cpu, memMB}]}."""
+    args: dict[str, Any] = {}
+    if filter is not None:
+        args["filter"] = str(filter)
+    result = await _bridge_call(
+        tool="operator_list_processes",
+        args=args,
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_kill_process ───────────────────────────────────────────────
+
+
+async def operator_kill_process_async(
+    *,
+    pid: int,
+    user_id: str,
+    skip_approval: bool = False,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Kill a process by PID. Requires operator approval unless skip_approval=True."""
+    result = await _bridge_call(
+        tool="operator_kill_process",
+        args={"pid": int(pid), "skip_approval": bool(skip_approval)},
+        user_id=user_id,
+        timeout_s=timeout_s + 25.0,
+    )
+    return result or {}

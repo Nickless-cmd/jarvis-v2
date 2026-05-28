@@ -825,6 +825,248 @@ const handlers: Record<string, ToolHandler> = {
     browserSession = null
     return { closed: true }
   },
+
+  // ── Tier-1 wishlist tools ────────────────────────────────────────────
+
+  operator_clipboard_read: async () => {
+    // Electron's built-in clipboard module — cross-platform, no native deps.
+    const { clipboard } = await import('electron')
+    const text = clipboard.readText()
+    return { text }
+  },
+
+  operator_clipboard_write: async (args) => {
+    const text = String(args.text ?? '')
+    const { clipboard } = await import('electron')
+    clipboard.writeText(text)
+    return { written: true, length: text.length }
+  },
+
+  operator_list_windows: async () => {
+    // OS-specific window enumeration. nut.js' Window API was unreliable
+    // across Linux/Windows in the installed version, so we use platform
+    // commands directly — they're well-supported and fast.
+    //   Linux: wmctrl -l (requires wmctrl installed)
+    //   Windows: PowerShell Get-Process | MainWindowTitle filter
+    const platform = osPlatform()
+    if (platform === 'win32') {
+      const res = spawnSync('powershell.exe', [
+        '-NoProfile', '-NonInteractive', '-Command',
+        'Get-Process | Where-Object {$_.MainWindowTitle -ne ""} | Select-Object Id,MainWindowTitle | ConvertTo-Json -Compress',
+      ], { encoding: 'utf8', timeout: 10000 })
+      if (res.error) throw res.error
+      let procs: { Id: number; MainWindowTitle: string }[] = []
+      try {
+        const parsed = JSON.parse(res.stdout.trim() || '[]')
+        procs = Array.isArray(parsed) ? parsed : [parsed]
+      } catch {}
+      const out = procs.map((p) => ({ title: p.MainWindowTitle, id: p.Id }))
+      return { count: out.length, windows: out }
+    } else {
+      // Linux: wmctrl -l  →  "0x00400003  0 hostname  Window Title"
+      const res = spawnSync('wmctrl', ['-l'], { encoding: 'utf8', timeout: 10000 })
+      if (res.error) {
+        throw new Error(
+          `wmctrl failed: ${res.error.message}. ` +
+            `Install wmctrl (apt install wmctrl) on the operator's Linux desktop.`,
+        )
+      }
+      const out: { title: string; id: string }[] = []
+      for (const line of res.stdout.split('\n')) {
+        const m = line.match(/^(0x[0-9a-f]+)\s+\d+\s+\S+\s+(.+)$/)
+        if (m) out.push({ title: m[2].trim(), id: m[1] })
+      }
+      return { count: out.length, windows: out }
+    }
+  },
+
+  operator_focus_window: async (args) => {
+    // Accept handle as either a number (Windows process Id) or a string
+    // (Linux X11 hex like "0x00400003"). On Linux, wmctrl wants the hex
+    // form; on Windows we pass the title to WScript.Shell.AppActivate.
+    const titleSub = args.title_substring != null ? String(args.title_substring) : null
+    const handleRaw = args.handle != null ? String(args.handle) : null
+    if (titleSub === null && handleRaw === null) {
+      throw new Error('title_substring or handle is required')
+    }
+    const platform = osPlatform()
+    if (platform === 'win32') {
+      // AppActivate matches by title substring. If only a numeric handle
+      // was provided, we can't use it directly (PID != HWND) — best we can
+      // do is use the title.
+      const target = titleSub ?? handleRaw ?? ''
+      const res = spawnSync('powershell.exe', [
+        '-NoProfile', '-NonInteractive', '-Command',
+        `(New-Object -ComObject WScript.Shell).AppActivate("${target.replace(/"/g, '\\"')}")`,
+      ], { encoding: 'utf8', timeout: 10000 })
+      if (res.error) throw res.error
+      return { focused: true, title: target, handle: handleRaw }
+    } else {
+      // Linux: wmctrl -a "title substring"  OR  wmctrl -ia <hex_id>
+      if (titleSub !== null) {
+        const res = spawnSync('wmctrl', ['-a', titleSub], { encoding: 'utf8', timeout: 10000 })
+        if (res.error) {
+          throw new Error(
+            `wmctrl failed: ${res.error.message}. ` +
+              `Install wmctrl (apt install wmctrl) on the operator's Linux desktop.`,
+          )
+        }
+        return { focused: res.status === 0, title: titleSub, handle: null }
+      } else {
+        const res = spawnSync('wmctrl', ['-ia', String(handleRaw)], { encoding: 'utf8', timeout: 10000 })
+        if (res.error) throw new Error(`wmctrl failed: ${res.error.message}`)
+        return { focused: res.status === 0, title: '', handle: handleRaw }
+      }
+    }
+  },
+
+  operator_mouse_scroll: async (args) => {
+    const direction = String(args.direction ?? 'down')
+    const amount = Math.max(1, Number(args.amount ?? 3))
+    if (!['up', 'down', 'left', 'right'].includes(direction)) {
+      throw new Error(`direction must be one of: up, down, left, right — got: ${direction}`)
+    }
+    const { mouse } = await import('@nut-tree-fork/nut-js')
+    if (direction === 'up') {
+      await mouse.scrollUp(amount)
+    } else if (direction === 'down') {
+      await mouse.scrollDown(amount)
+    } else if (direction === 'left') {
+      await mouse.scrollLeft(amount)
+    } else {
+      await mouse.scrollRight(amount)
+    }
+    return { scrolled: true, direction, amount }
+  },
+
+  operator_mouse_drag: async (args) => {
+    const fromX = Number(args.from_x)
+    const fromY = Number(args.from_y)
+    const toX = Number(args.to_x)
+    const toY = Number(args.to_y)
+    for (const [name, val] of [['from_x', fromX], ['from_y', fromY], ['to_x', toX], ['to_y', toY]]) {
+      if (!Number.isFinite(val as number)) throw new Error(`${name} must be a finite number`)
+    }
+    const btnName = String(args.button ?? 'left').toLowerCase()
+    const { mouse, Point, Button } = await import('@nut-tree-fork/nut-js')
+    const btn = btnName === 'right' ? Button.RIGHT : Button.LEFT
+    // Move to start → press → move to end → release.
+    await mouse.setPosition(new Point(fromX, fromY))
+    await mouse.pressButton(btn)
+    await mouse.setPosition(new Point(toX, toY))
+    await mouse.releaseButton(btn)
+    return { dragged: true, from_x: fromX, from_y: fromY, to_x: toX, to_y: toY, button: btnName }
+  },
+
+  operator_list_processes: async (args) => {
+    const filterStr = args.filter != null ? String(args.filter).toLowerCase() : null
+    const platform = osPlatform()
+    let procs: { pid: number; name: string; cpu: number; memMB: number }[] = []
+    if (platform === 'win32') {
+      // PowerShell: sorted by CPU descending, top 60.
+      const res = spawnSync('powershell.exe', [
+        '-NoProfile', '-NonInteractive', '-Command',
+        'Get-Process | Select-Object Id,ProcessName,CPU,WorkingSet | Sort-Object CPU -Descending | Select-Object -First 60 | ConvertTo-Json -Compress',
+      ], { encoding: 'utf8', timeout: 15000 })
+      if (res.error) throw res.error
+      let raw: { Id: number; ProcessName: string; CPU: number | null; WorkingSet: number }[] = []
+      try {
+        const parsed = JSON.parse(res.stdout.trim())
+        raw = Array.isArray(parsed) ? parsed : [parsed]
+      } catch {}
+      procs = raw.map((p) => ({
+        pid: p.Id,
+        name: p.ProcessName,
+        cpu: Number(p.CPU ?? 0),
+        memMB: Math.round(Number(p.WorkingSet ?? 0) / 1024 / 1024),
+      }))
+    } else {
+      // Linux: ps -eo pid,comm,pcpu,rss (rss is in KiB), sort by cpu.
+      const res = spawnSync('ps', ['-eo', 'pid,comm,pcpu,rss', '--sort=-pcpu', '--no-headers'], {
+        encoding: 'utf8', timeout: 10000,
+      })
+      if (res.error) throw res.error
+      let count = 0
+      for (const line of res.stdout.split('\n')) {
+        if (count >= 60) break
+        const parts = line.trim().split(/\s+/)
+        if (parts.length < 4) continue
+        procs.push({
+          pid: parseInt(parts[0], 10),
+          name: parts[1],
+          cpu: parseFloat(parts[2]),
+          memMB: Math.round(parseInt(parts[3], 10) / 1024),
+        })
+        count++
+      }
+    }
+    if (filterStr) {
+      procs = procs.filter((p) => p.name.toLowerCase().includes(filterStr))
+    }
+    return { count: procs.length, processes: procs }
+  },
+
+  operator_kill_process: async (args) => {
+    const pid = Number(args.pid)
+    if (!Number.isInteger(pid) || pid <= 0) throw new Error('pid must be a positive integer')
+    const skipApproval = Boolean(args.skip_approval)
+
+    // Find process name for a friendlier approval message.
+    let procName = `PID ${pid}`
+    const platform = osPlatform()
+    try {
+      if (platform === 'win32') {
+        const r = spawnSync('powershell.exe', [
+          '-NoProfile', '-NonInteractive', '-Command',
+          `Get-Process -Id ${pid} | Select-Object -ExpandProperty ProcessName`,
+        ], { encoding: 'utf8', timeout: 5000 })
+        const name = r.stdout.trim()
+        if (name) procName = `${name} (PID ${pid})`
+      } else {
+        const r = spawnSync('ps', ['-p', String(pid), '-o', 'comm='], { encoding: 'utf8', timeout: 5000 })
+        const name = r.stdout.trim()
+        if (name) procName = `${name} (PID ${pid})`
+      }
+    } catch {}
+
+    if (!skipApproval) {
+      const choice = await Promise.race<{ response: number }>([
+        dialog.showMessageBox({
+          type: 'warning',
+          title: 'Jarvis vil afslutte en proces',
+          message: 'Jarvis beder om at lukke følgende proces.',
+          detail: `Proces:\n  ${procName}\n\nDette kan lukke åbne filer og miste ugemte data.\n\nAuto-afviser efter 20 sek hvis du ikke svarer.`,
+          buttons: ['Afvis', 'Afslut proces'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true,
+        }),
+        new Promise<{ response: number }>((resolve) =>
+          setTimeout(() => resolve({ response: 0 }), 20_000),
+        ),
+      ])
+      if (choice.response !== 1) {
+        return { approved: false, killed: false, pid, name: procName }
+      }
+    }
+
+    // Send SIGTERM (Linux) / Stop-Process (Windows).
+    if (platform === 'win32') {
+      const res = spawnSync('powershell.exe', [
+        '-NoProfile', '-NonInteractive', '-Command',
+        `Stop-Process -Id ${pid} -Force`,
+      ], { encoding: 'utf8', timeout: 10000 })
+      if (res.error) throw res.error
+      return { approved: true, killed: true, pid, name: procName }
+    } else {
+      const res = spawnSync('kill', [String(pid)], { encoding: 'utf8', timeout: 5000 })
+      if (res.error) throw res.error
+      if (res.status !== 0) {
+        return { approved: true, killed: false, pid, name: procName, error: res.stderr.trim() }
+      }
+      return { approved: true, killed: true, pid, name: procName }
+    }
+  },
 }
 
 // ── Browser-session singleton helpers ───────────────────────────────────

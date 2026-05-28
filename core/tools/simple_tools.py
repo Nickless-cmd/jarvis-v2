@@ -1036,6 +1036,164 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "operator_clipboard_read",
+            "description": (
+                "Return the current clipboard text from the OPERATOR'S desktop. "
+                "Useful for reading text the operator has copied. Returns {text}."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_clipboard_write",
+            "description": (
+                "Replace the OPERATOR'S clipboard with the given text. "
+                "Useful for pushing output text to the clipboard so the operator "
+                "can paste it. Returns {written, length}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to put on the clipboard."},
+                },
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_list_windows",
+            "description": (
+                "List all open windows on the OPERATOR'S desktop. "
+                "Returns {count, windows: [{title, id}]}. "
+                "Use before operator_focus_window to find the right window."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_focus_window",
+            "description": (
+                "Bring a window to the foreground on the OPERATOR'S desktop. "
+                "Pass title_substring to match by title, or handle (window id) for exact match. "
+                "Returns {focused, title, id}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title_substring": {
+                        "type": "string",
+                        "description": "Case-insensitive substring of the window title to match.",
+                    },
+                    "handle": {
+                        "type": "number",
+                        "description": "Exact window id/handle from operator_list_windows.",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_mouse_scroll",
+            "description": (
+                "Scroll the OPERATOR'S mouse wheel at the current cursor position. "
+                "Returns {scrolled, direction, amount}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "direction": {
+                        "type": "string",
+                        "enum": ["up", "down", "left", "right"],
+                        "description": "Scroll direction.",
+                    },
+                    "amount": {
+                        "type": "number",
+                        "description": "Number of scroll steps (default 3).",
+                    },
+                },
+                "required": ["direction"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_mouse_drag",
+            "description": (
+                "Drag the OPERATOR'S mouse from one screen coordinate to another. "
+                "Useful for drag-and-drop, sliders, and selecting text. "
+                "Returns {dragged, from_x, from_y, to_x, to_y, button}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "from_x": {"type": "number", "description": "Starting X coordinate."},
+                    "from_y": {"type": "number", "description": "Starting Y coordinate."},
+                    "to_x": {"type": "number", "description": "Ending X coordinate."},
+                    "to_y": {"type": "number", "description": "Ending Y coordinate."},
+                    "button": {
+                        "type": "string",
+                        "enum": ["left", "right"],
+                        "description": "Mouse button to hold during drag (default left).",
+                    },
+                },
+                "required": ["from_x", "from_y", "to_x", "to_y"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_list_processes",
+            "description": (
+                "List running processes on the OPERATOR'S machine, sorted by CPU usage. "
+                "Returns {count, processes: [{pid, name, cpu, memMB}]}. "
+                "Pass filter to restrict results to processes whose name contains the substring."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filter": {
+                        "type": "string",
+                        "description": "Optional name substring filter (case-insensitive).",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_kill_process",
+            "description": (
+                "Kill a running process on the OPERATOR'S machine by PID. "
+                "The operator must confirm via dialog (auto-rejects after 20 sec). "
+                "Use operator_list_processes first to find the PID. "
+                "Returns {approved, killed, pid, name?}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pid": {
+                        "type": "number",
+                        "description": "PID of the process to terminate.",
+                    },
+                },
+                "required": ["pid"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "operator_browser_open",
             "description": (
                 "Open a URL in a controlled browser session on the OPERATOR'S desktop. "
@@ -3729,6 +3887,133 @@ def _exec_operator_screen_size(args: dict[str, Any]) -> dict[str, Any]:
         lambda: operator_screen_size_async(user_id=user_id, timeout_s=10.0),
         tool_name="operator_screen_size",
         timeout_s=15.0,
+    )
+
+
+def _exec_operator_clipboard_read(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_clipboard_read_async
+    return _run_operator_async(
+        lambda: operator_clipboard_read_async(user_id=user_id, timeout_s=10.0),
+        tool_name="operator_clipboard_read",
+        timeout_s=15.0,
+    )
+
+
+def _exec_operator_clipboard_write(args: dict[str, Any]) -> dict[str, Any]:
+    text = args.get("text")
+    if not isinstance(text, str):
+        return {"error": "text is required (string)", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_clipboard_write_async
+    return _run_operator_async(
+        lambda: operator_clipboard_write_async(text=text, user_id=user_id, timeout_s=10.0),
+        tool_name="operator_clipboard_write",
+        timeout_s=15.0,
+    )
+
+
+def _exec_operator_list_windows(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_list_windows_async
+    return _run_operator_async(
+        lambda: operator_list_windows_async(user_id=user_id, timeout_s=15.0),
+        tool_name="operator_list_windows",
+        timeout_s=20.0,
+    )
+
+
+def _exec_operator_focus_window(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    title_substring = args.get("title_substring")
+    handle = args.get("handle")
+    if title_substring is None and handle is None:
+        return {"error": "title_substring or handle is required", "status": "error"}
+    from core.tools.operator_tools import operator_focus_window_async
+    return _run_operator_async(
+        lambda: operator_focus_window_async(
+            user_id=user_id,
+            title_substring=str(title_substring) if title_substring is not None else None,
+            handle=int(handle) if handle is not None else None,
+            timeout_s=15.0,
+        ),
+        tool_name="operator_focus_window",
+        timeout_s=20.0,
+    )
+
+
+def _exec_operator_mouse_scroll(args: dict[str, Any]) -> dict[str, Any]:
+    direction = str(args.get("direction") or "down")
+    if direction not in ("up", "down", "left", "right"):
+        return {"error": "direction must be one of: up, down, left, right", "status": "error"}
+    amount = int(args.get("amount") or 3)
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_mouse_scroll_async
+    return _run_operator_async(
+        lambda: operator_mouse_scroll_async(
+            direction=direction, amount=amount, user_id=user_id, timeout_s=10.0,
+        ),
+        tool_name="operator_mouse_scroll",
+        timeout_s=15.0,
+    )
+
+
+def _exec_operator_mouse_drag(args: dict[str, Any]) -> dict[str, Any]:
+    try:
+        from_x = int(args["from_x"])
+        from_y = int(args["from_y"])
+        to_x = int(args["to_x"])
+        to_y = int(args["to_y"])
+    except (KeyError, ValueError, TypeError):
+        return {"error": "from_x, from_y, to_x, to_y are required integers", "status": "error"}
+    button = str(args.get("button") or "left")
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_mouse_drag_async
+    return _run_operator_async(
+        lambda: operator_mouse_drag_async(
+            from_x=from_x, from_y=from_y, to_x=to_x, to_y=to_y,
+            button=button, user_id=user_id, timeout_s=15.0,
+        ),
+        tool_name="operator_mouse_drag",
+        timeout_s=20.0,
+    )
+
+
+def _exec_operator_list_processes(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    filter_str = args.get("filter")
+    from core.tools.operator_tools import operator_list_processes_async
+    return _run_operator_async(
+        lambda: operator_list_processes_async(
+            user_id=user_id,
+            filter=str(filter_str) if filter_str is not None else None,
+            timeout_s=15.0,
+        ),
+        tool_name="operator_list_processes",
+        timeout_s=20.0,
+    )
+
+
+def _exec_operator_kill_process(args: dict[str, Any]) -> dict[str, Any]:
+    pid = args.get("pid")
+    if pid is None:
+        return {"error": "pid is required", "status": "error"}
+    try:
+        pid = int(pid)
+    except (ValueError, TypeError):
+        return {"error": "pid must be an integer", "status": "error"}
+    user_id = _operator_user_id(args)
+    skip_approval = bool(args.get("_runtime_trust_all"))
+    from core.tools.operator_tools import operator_kill_process_async
+    return _run_operator_async(
+        lambda: operator_kill_process_async(
+            pid=pid,
+            user_id=user_id,
+            skip_approval=skip_approval,
+            timeout_s=30.0,
+        ),
+        tool_name="operator_kill_process",
+        timeout_s=45.0,
     )
 
 
@@ -7152,6 +7437,14 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "operator_keyboard_type": _exec_operator_keyboard_type,
     "operator_keyboard_press": _exec_operator_keyboard_press,
     "operator_screen_size": _exec_operator_screen_size,
+    "operator_clipboard_read": _exec_operator_clipboard_read,
+    "operator_clipboard_write": _exec_operator_clipboard_write,
+    "operator_list_windows": _exec_operator_list_windows,
+    "operator_focus_window": _exec_operator_focus_window,
+    "operator_mouse_scroll": _exec_operator_mouse_scroll,
+    "operator_mouse_drag": _exec_operator_mouse_drag,
+    "operator_list_processes": _exec_operator_list_processes,
+    "operator_kill_process": _exec_operator_kill_process,
     "operator_browser_open": _exec_operator_browser_open,
     "operator_browser_get_text": _exec_operator_browser_get_text,
     "operator_browser_get_links": _exec_operator_browser_get_links,

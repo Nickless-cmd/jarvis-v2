@@ -395,7 +395,20 @@ def start_visible_run(
     session_id: str | None = None,
     approval_mode: str = "ask",
     thinking_mode: str = "think",
+    force_user_id: str | None = None,
 ) -> AsyncIterator[str]:
+    """Begin a visible run.
+
+    Args:
+        force_user_id: discord_id captured at request-time by the route
+            handler (chat.py /chat/stream). Passed through to the async
+            streaming generator so it can rebind workspace_context inside
+            its body. CRITICAL: FastAPI's StreamingResponse iterates the
+            generator AFTER the middleware has reset context, so without
+            this rebind current_user_id() inside the generator is empty
+            and operator_* tools dispatch to owner_user_id (Bjørn) by
+            fallback — not the user who actually sent the request.
+    """
     # Mid-run nudge interception (2026-05-13). If a visible run is already
     # active for THIS session, route the new message as a nudge instead of
     # starting a parallel run. Fixes the race: Bjørn sends a midway-followup
@@ -496,7 +509,7 @@ def start_visible_run(
         trust_all=(approval_mode == "trust"),
         thinking_mode=(thinking_mode or "think").strip().lower(),
     )
-    return _stream_visible_run(run)
+    return _stream_visible_run(run, force_user_id=force_user_id)
 
 
 def start_autonomous_run(message: str, session_id: str | None = None) -> None:
@@ -674,7 +687,47 @@ def _handle_compact_command(run: "VisibleRun") -> str:
         return f"Komprimering mislykkedes: {exc}"
 
 
-async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
+async def _stream_visible_run(
+    run: VisibleRun,
+    *,
+    force_user_id: str | None = None,
+) -> AsyncIterator[str]:
+    # Rebind workspace_context if the caller captured user_id at request
+    # time. FastAPI's StreamingResponse iterates this generator AFTER the
+    # jarvisx_user_routing middleware has reset context (the `finally`
+    # block fires when call_next returns the response object, which is
+    # before the body actually streams). Without rebinding here, any
+    # current_user_id() call inside the body returns "" and operator_*
+    # tools fall back to owner_user_id (Bjørn). Result: Mikkel asks Jarvis
+    # to open Facebook → opens on Bjørn's desktop. Bug surfaced 2026-05-28.
+    _ws_token = None
+    if force_user_id:
+        try:
+            from core.identity.users import find_user_by_discord_id
+            from core.identity.workspace_context import set_context
+            user = find_user_by_discord_id(force_user_id)
+            if user is not None:
+                _ws_token = set_context(
+                    workspace_name=user.workspace,
+                    user_id=user.discord_id,
+                    user_display_name=user.name,
+                )
+            else:
+                # Unknown user_id passed — refuse to silently default.
+                # The handler should never call us with a bogus id, but if
+                # it does, we'd rather operator-tools fail loud than dispatch
+                # to owner.
+                _ws_token = set_context(
+                    workspace_name="public",
+                    user_id=force_user_id,
+                    user_display_name="",
+                )
+        except Exception:
+            # Best-effort: if context binding fails, continue without it.
+            # operator-tools will fall through to owner-fallback (existing
+            # behaviour), which is the same as if force_user_id wasn't passed.
+            _ws_token = None
+
     # ── /compact command ──────────────────────────────────────────────────
     if run.user_message.strip().lower() == "/compact":
         run.user_message = _handle_compact_command(run)

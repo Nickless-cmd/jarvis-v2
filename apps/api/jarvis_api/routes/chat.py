@@ -178,6 +178,13 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
             session_id=session_id,
             approval_mode=request.approval_mode,
             thinking_mode=request.thinking_mode,
+            # Pass current user_id explicitly. The streaming generator
+            # body runs AFTER the middleware has reset workspace_context
+            # (call_next returns the response object before the body
+            # streams), so the generator must rebind context itself.
+            # Without this, operator_* tools dispatch to owner via
+            # _operator_user_id fallback. See 2026-05-28 bug investigation.
+            force_user_id=_uid,
         ),
         media_type="text/event-stream",
         headers={

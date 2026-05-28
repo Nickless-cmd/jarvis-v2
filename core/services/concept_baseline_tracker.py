@@ -154,10 +154,9 @@ def _detect_drift(
 
 
 def _workspace_dir():
-    """Return path to active workspace directory. Indirected for tests."""
-    from pathlib import Path
-    from core.runtime.config import WORKSPACES_DIR
-    return Path(WORKSPACES_DIR) / "default"
+    """Return path to Jarvis' shared state directory. Indirected for tests."""
+    from core.runtime.workspace_paths import shared_dir
+    return shared_dir()
 
 
 def _write_concept_baseline_md(

@@ -86,6 +86,17 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/tools/mic_listen_tool.py": "tests/runtime/test_workspace_paths.py",
     "core/tools/pollinations_tools.py": "tests/runtime/test_workspace_paths.py",
     "core/tools/tiktok_content_tools.py": "tests/runtime/test_workspace_paths.py",
+    # Audit-gap fix — remaining 'default' refs migrated to shared_dir().
+    # Pure path refactor; shared_dir() tested via workspace_paths.
+    # Mapping added 2026-05-28.
+    "core/services/arc_rule_extractor.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/candidate_tracking.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/identity_drift_daemon.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/long_arc_synthesizer.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/concept_baseline_tracker.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/identity_composer.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/ground_truth_registry.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/remembered_fact_signal_tracking.py": "tests/runtime/test_workspace_paths.py",
 }
 
 

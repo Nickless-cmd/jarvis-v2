@@ -1,6 +1,6 @@
 """Identity Composer — entity name lookup and signal-driven preamble.
 
-get_entity_name(): reads Name: from workspace/default/IDENTITY.md, lazy cached.
+get_entity_name(): reads Name: from shared/IDENTITY.md, lazy cached.
 build_identity_preamble(): returns "{name}. {bearing}. {energy}." from live signals.
 """
 from __future__ import annotations
@@ -8,14 +8,17 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from core.runtime.config import WORKSPACES_DIR
-
-_IDENTITY_FILE = WORKSPACES_DIR / "default" / "IDENTITY.md"
 _FALLBACK_NAME = "the entity"
 _FALLBACK_PRONOUNS = "they/them"
 
 _name_cache: str | None = None
 _pronouns_cache: str | None = None
+
+
+def _identity_file() -> Path:
+    """Resolve IDENTITY.md path lazily so shared_dir() reads env at call time."""
+    from core.runtime.workspace_paths import shared_dir
+    return shared_dir() / "IDENTITY.md"
 
 
 def get_entity_name() -> str:
@@ -60,7 +63,7 @@ def identity_prompt_prefix() -> str:
 
 def _parse_field_from_identity(field: str, fallback: str) -> str:
     try:
-        text = _IDENTITY_FILE.read_text(encoding="utf-8")
+        text = _identity_file().read_text(encoding="utf-8")
         pattern = re.compile(rf"^{re.escape(field)}:\s*(.+)$")
         for line in text.splitlines():
             m = pattern.match(line.strip())

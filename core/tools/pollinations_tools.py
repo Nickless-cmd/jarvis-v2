@@ -17,7 +17,7 @@ public docs. We expose a placeholder that errors cleanly so Jarvis can
 try it but not silently fail.
 
 All images are saved into the workspace under
-~/.jarvis-v2/workspaces/default/memory/generated/ with a short metadata
+~/.jarvis-v2/shared/memory/generated/ with a short metadata
 JSON sidecar.
 """
 from __future__ import annotations

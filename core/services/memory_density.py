@@ -4,7 +4,7 @@ Jarvis' PLAN_WHO_I_BECOME #4 (2026-04-20): chronicle entries are metadata.
 Density notes carry what happened, what it meant, how it felt, and what
 it changed. The difference between remembering a day and living it twice.
 
-Written to workspaces/default/memory/density/. Format is structured
+Written to shared/memory/density/. Format is structured
 markdown. After a density note is confirmed 3+ times (e.g., re-referenced
 in reflection), it is eligible for promotion to SOUL.md via a proposal.
 """

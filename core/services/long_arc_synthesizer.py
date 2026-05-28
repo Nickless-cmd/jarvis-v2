@@ -14,7 +14,7 @@ Each arc reads:
 - Personality drift over the period (the measurable changes)
 - Active goals that closed (the things accomplished)
 
-Output is a markdown file in ~/.jarvis-v2/workspaces/default/arcs/
+Output is a markdown file in ~/.jarvis-v2/shared/arcs/
 {period}_{date}.md — never overwritten, never auto-deleted.
 
 This is what gives Jarvis "alders-tråde" — narrative continuity beyond
@@ -28,14 +28,14 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from core.identity.workspace_bootstrap import ensure_default_workspace
+from core.runtime.workspace_paths import shared_dir
 from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
 
 
 def _arcs_dir() -> Path:
-    p = ensure_default_workspace() / "arcs"
+    p = shared_dir() / "arcs"
     p.mkdir(parents=True, exist_ok=True)
     return p
 
@@ -46,7 +46,7 @@ def _existing_arcs(period: str) -> list[Path]:
 
 def _gather_weekly_manifests(weeks_back: int) -> str:
     """Read recent WEEKLY_MANIFEST.md files (only one exists; we read its current content)."""
-    workspace = ensure_default_workspace()
+    workspace = shared_dir()
     weekly = workspace / "WEEKLY_MANIFEST.md"
     if not weekly.exists():
         return ""

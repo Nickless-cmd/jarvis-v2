@@ -646,8 +646,11 @@ def mind_snapshot() -> dict[str, Any]:
     # Cognitive layers from heartbeat state
     try:
         import json as _json
-        from core.runtime.config import JARVIS_HOME
-        hb_path = Path(JARVIS_HOME) / "workspaces" / "default" / "runtime" / "HEARTBEAT_STATE.json"
+        from core.runtime.workspace_paths import shared_dir
+        hb_path = shared_dir() / "runtime" / "HEARTBEAT_STATE.json"
+        # Also check legacy flat path (pre-runtime/ subdir era) for compatibility
+        if not hb_path.is_file():
+            hb_path = shared_dir() / "HEARTBEAT_STATE.json"
         if hb_path.is_file():
             hb = _json.loads(hb_path.read_text(encoding="utf-8"))
             ams = hb.get("affective_meta_state") or {}

@@ -141,7 +141,8 @@ def test_brain_paths_resolves_from_workspace(tmp_path, monkeypatch):
     from core.services import jarvis_brain
     monkeypatch.setattr(jarvis_brain, "_workspace_root", lambda: tmp_path)
     p = jarvis_brain.brain_dir()
-    assert p == tmp_path / "default" / "jarvis_brain"
+    # brain_dir() is now under shared/ (Jarvis-state, not per-user workspace)
+    assert p == tmp_path / "shared" / "jarvis_brain"
 
 
 def test_ensure_index_creates_tables(tmp_path, monkeypatch):
@@ -220,8 +221,8 @@ def test_write_and_read_entry_roundtrip(tmp_path, monkeypatch):
     assert e.title == "Test fakta"
     assert e.kind == "fakta"
     assert e.visibility == "personal"
-    # File on disk in expected location
-    p = tmp_path / "ws" / "default" / "jarvis_brain" / "fakta"
+    # File on disk in expected location (brain is now under shared/)
+    p = tmp_path / "ws" / "shared" / "jarvis_brain" / "fakta"
     md_files = list(p.glob("*.md"))
     assert len(md_files) == 1
     assert new_id[-8:] in md_files[0].name  # id_short in filename
@@ -407,8 +408,8 @@ def test_archive_entry_moves_file_and_updates_status(tmp_path, monkeypatch):
     jarvis_brain.archive_entry(eid, reason="test")
     e = jarvis_brain.read_entry(eid)
     assert e.status == "archived"
-    # File is moved to _archive
-    expected = tmp_path / "ws" / "default" / "jarvis_brain" / "_archive" / "observation"
+    # File is moved to _archive (brain is now under shared/)
+    expected = tmp_path / "ws" / "shared" / "jarvis_brain" / "_archive" / "observation"
     assert any(expected.glob("*.md"))
 
 

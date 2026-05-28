@@ -69,13 +69,14 @@ def _sha256(content: str) -> str:
 
 
 def _workspace_dir() -> Path:
-    """Resolve the active workspace dir for identity files."""
+    """Resolve the shared state dir for identity files."""
     try:
-        from core.identity.workspace_paths import ensure_default_workspace
-        return ensure_default_workspace(name="default")
+        from core.runtime.workspace_paths import shared_dir
+        return shared_dir()
     except Exception:
         # Fallback to canonical path so daemon doesn't die on import quirks
-        return Path.home() / ".jarvis-v2" / "workspaces" / "default"
+        import os
+        return Path(os.environ.get("JARVIS_HOME") or Path.home() / ".jarvis-v2") / "shared"
 
 
 def _was_change_logged(filename: str, change_at: datetime) -> bool:

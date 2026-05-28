@@ -15,7 +15,7 @@ Safety:
 - Auto-rollback triggers after 1+ hour when score <= -0.10
 - Auto-adoption triggers after 48+ hours when score >= +0.20
 
-Workspace path resolves to ~/.jarvis-v2/workspaces/default/<file> unless
+Workspace path resolves to ~/.jarvis-v2/shared/<file> unless
 overridden via JARVIS_HOME env var.
 """
 from __future__ import annotations

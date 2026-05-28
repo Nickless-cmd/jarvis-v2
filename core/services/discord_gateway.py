@@ -691,8 +691,18 @@ async def _run_client(config: dict) -> None:
                 workspace_name = registered_user.workspace
                 user_display = registered_user.name
             elif is_owner_id_match:
-                workspace_name = "default"
-                user_display = "Bjørn"
+                # Owner is not in users.json (unlikely but defensive). Look up
+                # the owner record to get the correct workspace; fall back to
+                # "bjorn" rather than "default" so we never recreate the old
+                # workspaces/default/ directory.
+                try:
+                    from core.identity.users import get_owner
+                    _owner = get_owner()
+                    workspace_name = _owner.workspace if _owner else "bjorn"
+                    user_display = _owner.name if _owner else "Bjørn"
+                except Exception:
+                    workspace_name = "bjorn"
+                    user_display = "Bjørn"
             else:
                 workspace_name = "public"
                 user_display = str(getattr(message.author, "name", author_id_str))

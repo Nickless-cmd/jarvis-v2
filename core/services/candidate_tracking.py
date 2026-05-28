@@ -549,6 +549,8 @@ def _is_explicit_repo_context_memory(message: str) -> bool:
             "jarvis-v2",
             "jarvis v2",
             "/media/projects/jarvis-v2",
+            "~/.jarvis-v2/shared",
+            ".jarvis-v2/shared",
             "~/.jarvis-v2/workspaces/default",
             ".jarvis-v2/workspaces/default",
         )
@@ -559,8 +561,8 @@ def _repo_context_memory_line(message: str) -> str:
     normalized = " ".join(str(message or "").split()).strip()
     if "/media/projects/jarvis-v2" in normalized:
         return "- Repo context: current collaboration happens in /media/projects/jarvis-v2."
-    if "~/.jarvis-v2/workspaces/default" in normalized or ".jarvis-v2/workspaces/default" in normalized:
-        return "- Workspace context: active runtime workspace is ~/.jarvis-v2/workspaces/default."
+    if "~/.jarvis-v2/shared" in normalized or ".jarvis-v2/shared" in normalized or "~/.jarvis-v2/workspaces/default" in normalized or ".jarvis-v2/workspaces/default" in normalized:
+        return "- Workspace context: active runtime workspace is ~/.jarvis-v2/shared."
     return "- Repo context: current collaboration happens in the Jarvis v2 repo."
 
 

@@ -8,7 +8,7 @@ Implementation note: the plan proposed `watchdog` + inotify. That library
 is not installed in the ai env, so this daemon uses **mtime polling** on
 heartbeat tick — cheap, dependency-free, good enough at tick cadence.
 
-Scope: ~/.jarvis-v2/workspaces/default/ and code repo root (CLAUDE.md,
+Scope: ~/.jarvis-v2/shared/ and code repo root (CLAUDE.md,
 core/services/*.py). Ignore patterns: .pyc, __pycache__, .tmp, .git.
 
 Emits `file_watch.change` events with {path, change_type, when, diff_preview}.

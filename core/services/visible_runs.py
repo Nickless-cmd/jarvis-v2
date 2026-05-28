@@ -4240,7 +4240,7 @@ def _strip_capability_markup(text: str) -> str:
 # Some models (notably big-pickle/MiniMax and deepseek-v4-flash) emit a
 # preview of their tool call as plain text before the actual response, e.g.
 #   ([deep_analyze]: { "summary": "...", "findings": [...] })
-#   ([read_file]: /home/bs/.jarvis-v2/workspaces/default/SOUL.md)
+#   ([read_file]: /home/bs/.jarvis-v2/shared/SOUL.md)
 #   ([list_recurring]): {" recurring ": [...]}
 # The structured tool_call is already in the response's tool_calls field —
 # this text is purely decorative and looks like garbage in the chat. Strip

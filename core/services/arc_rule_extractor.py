@@ -4,7 +4,7 @@ long_arc_synthesizer.py produces narrative ("Hvor jeg står nu"). This
 module reads each new arc and extracts up to 3 *behavioral rules* —
 counterfactuals Jarvis can apply going forward.
 
-Rules are appended to ~/.jarvis-v2/workspaces/default/arcs/RULES.md
+Rules are appended to ~/.jarvis-v2/shared/arcs/RULES.md
 (append-only, dated, with source-arc reference). Surfaced in prompt
 as awareness section so Jarvis sees his own learned rules.
 
@@ -21,8 +21,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.state_store import load_json, save_json
+from core.runtime.workspace_paths import shared_dir
 from core.services.identity_composer import identity_prompt_prefix
 
 logger = logging.getLogger(__name__)
@@ -31,13 +31,13 @@ _PROCESSED_KEY = "arc_rules_processed"
 
 
 def _rules_path() -> Path:
-    p = ensure_default_workspace() / "arcs" / "RULES.md"
+    p = shared_dir() / "arcs" / "RULES.md"
     p.parent.mkdir(parents=True, exist_ok=True)
     return p
 
 
 def _arcs_dir() -> Path:
-    return ensure_default_workspace() / "arcs"
+    return shared_dir() / "arcs"
 
 
 def _build_extraction_prompt(arc_text: str, period: str) -> str:

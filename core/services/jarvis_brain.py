@@ -253,11 +253,20 @@ CREATE INDEX IF NOT EXISTS idx_brain_relations_to  ON brain_relations(to_id);
 
 
 def _workspace_root() -> Path:
-    """Override target in tests via monkeypatch."""
-    return Path(
-        os.environ.get("JARVIS_WORKSPACES_ROOT")
-        or Path.home() / ".jarvis-v2" / "workspaces"
-    )
+    """Base dir for brain-relative paths. Override in tests via monkeypatch.
+
+    Returns JARVIS_HOME so paths like shared/jarvis_brain/... are correctly
+    relative. Used by brain_dir() and all relative-path storage in the index.
+
+    NOTE: existing DB entries stored paths relative to the old workspaces/ base
+    (e.g. 'default/jarvis_brain/...'). Those are reconstructed via the
+    JARVIS_WORKSPACES_ROOT env override in tests. New entries store paths
+    relative to JARVIS_HOME (e.g. 'shared/jarvis_brain/...').
+    """
+    if os.environ.get("JARVIS_WORKSPACES_ROOT"):
+        # Test override: keep backwards compat for tests that monkeypatch this
+        return Path(os.environ["JARVIS_WORKSPACES_ROOT"])
+    return Path(os.environ.get("JARVIS_HOME") or Path.home() / ".jarvis-v2")
 
 
 def _state_root() -> Path:
@@ -268,7 +277,13 @@ def _state_root() -> Path:
 
 
 def brain_dir() -> Path:
-    return _workspace_root() / "default" / "jarvis_brain"
+    """Return the brain storage dir under JARVIS_HOME/shared/jarvis_brain.
+
+    Uses _workspace_root() as base so tests can monkeypatch it. In production
+    _workspace_root() returns JARVIS_HOME (~/.jarvis-v2), so the final path
+    is ~/.jarvis-v2/shared/jarvis_brain.
+    """
+    return _workspace_root() / "shared" / "jarvis_brain"
 
 
 def index_db_path() -> Path:

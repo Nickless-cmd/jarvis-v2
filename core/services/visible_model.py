@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 from datetime import UTC, datetime, timedelta
 from dataclasses import dataclass
 from decimal import Decimal

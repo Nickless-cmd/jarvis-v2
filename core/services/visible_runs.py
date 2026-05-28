@@ -1014,9 +1014,22 @@ async def _stream_visible_run(
                         "status": "running",
                     })
 
+            # CRITICAL: loop.run_in_executor does NOT propagate ContextVars
+            # to the worker thread by default. Without ctx.run wrapping,
+            # current_user_id() inside _execute_simple_tool_calls returns
+            # "" → operator-tool _runtime_user_id stamping fails → tools
+            # fall back to owner_user_id (Bjørn) via _operator_user_id chain.
+            # Result observed live 2026-05-28: Mikkel asked Jarvis to open
+            # his browser; Jarvis dispatched operator_launch_app to Bjørn's
+            # bridge (Linux), opened google-chrome on Bjørn's desktop with
+            # PID on Bjørn's machine, even though the chat session, user_id
+            # attribution, and visible_run context were all correctly Mikkel.
+            import contextvars as _ctxvars
+            _ctx_for_exec = _ctxvars.copy_context()
             simple_results = await loop.run_in_executor(
                 None,
-                lambda: _execute_simple_tool_calls(
+                lambda: _ctx_for_exec.run(
+                    _execute_simple_tool_calls,
                     _collected_native_tool_calls,
                     force=run.autonomous,
                     run_id=run.run_id,

@@ -97,6 +97,35 @@ function selectShell(): { cmd: string; args: (command: string) => string[] } {
   }
 }
 
+/** Resolve ImageMagick binary path. On Windows the bare `convert` name
+ * collides with a built-in disk-conversion utility; we prefer the unified
+ * `magick.exe` from ImageMagick 7+ and probe well-known install paths
+ * because winget often doesn't refresh PATH for already-running processes. */
+let _imCache: string | null = null
+function findImageMagick(): string {
+  if (_imCache) return _imCache
+  if (osPlatform() !== 'win32') {
+    _imCache = 'magick'
+    return _imCache
+  }
+  const roots = ['C:\\Program Files', 'C:\\Program Files (x86)']
+  for (const root of roots) {
+    try {
+      for (const e of readdirSync(root)) {
+        if (e.startsWith('ImageMagick-')) {
+          const candidate = join(root, e, 'magick.exe')
+          if (existsSync(candidate)) {
+            _imCache = candidate
+            return _imCache
+          }
+        }
+      }
+    } catch {}
+  }
+  _imCache = 'magick.exe'  // last-ditch bare-name lookup via PATH
+  return _imCache
+}
+
 const LOG_PATH = join(homedir(), '.config', 'jarvisx', 'bridge.log')
 
 function fileLog(msg: string): void {
@@ -1202,11 +1231,20 @@ const handlers: Record<string, ToolHandler> = {
     await nutScreen.capture(snapName, FT2.PNG, snapDir, snapName)
     const nutOut = pathJoin(snapDir, `${snapName}.png`)
 
-    // 2. Crop to region using ImageMagick convert.
+    // 2. Crop to region using ImageMagick.
+    // Windows has a built-in `convert.exe` (disk-conversion utility from
+    // MS-DOS) that intercepts the bare `convert` call and fails with
+    // "Invalid Parameter - -crop". ImageMagick 7+ ships a unified
+    // `magick` binary which we prefer everywhere; on win32 we also probe
+    // well-known install locations because winget often doesn't refresh
+    // PATH for already-running processes.
     const cropGeom = `${width}x${height}+${x}+${y}`
-    const cropRes = spawnSync('convert', [nutOut, '-crop', cropGeom, '+repage', cropPath], {
-      encoding: 'utf8', timeout: 10000,
-    })
+    const im = findImageMagick()
+    const useMagick = im.endsWith('magick.exe') || im === 'magick'
+    const imArgs = useMagick
+      ? ['convert', nutOut, '-crop', cropGeom, '+repage', cropPath]
+      : [nutOut, '-crop', cropGeom, '+repage', cropPath]
+    const cropRes = spawnSync(im, imArgs, { encoding: 'utf8', timeout: 10000 })
     // Cleanup full screen shot.
     try { const { unlinkSync } = await import('node:fs'); unlinkSync(nutOut) } catch {}
     if (cropRes.error) {

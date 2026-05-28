@@ -23,6 +23,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Deque
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
 _WATCHED_EXTENSIONS: frozenset[str] = frozenset({".md", ".py", ".json", ".yaml", ".toml"})
@@ -49,9 +51,8 @@ def _should_ignore(path_str: str) -> bool:
 
 def _watched_roots() -> list[Path]:
     roots: list[Path] = []
-    # Workspace
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    ws = Path(base) / "workspaces/default"
+    # Workspace (Jarvis' shared state — not per-user)
+    ws = shared_dir()
     if ws.exists():
         roots.append(ws)
     # Repo root (CLAUDE.md / core/services)

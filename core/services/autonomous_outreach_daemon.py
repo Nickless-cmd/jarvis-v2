@@ -19,15 +19,15 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from collections import deque
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Deque
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/outreach_log.json"
 _LOG_MAX = 200
 
 _COOLDOWN_HOURS = 4
@@ -37,8 +37,7 @@ _MIN_CONTACT_GAP_HOURS = 2  # don't reach out if user was active recently
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    return shared_dir() / "runtime" / "outreach_log.json"
 
 
 def _load_log() -> list[dict[str, Any]]:

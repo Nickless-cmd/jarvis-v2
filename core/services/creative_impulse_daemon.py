@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import random
 import re
 from datetime import UTC, datetime, timedelta
@@ -25,25 +24,21 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/creative_impulse.json"
-_CREATIVE_DIR_REL = "workspaces/default/memory/creative"
 _MIN_INTERVAL_HOURS = 4
 _MAX_INTERVAL_HOURS = 6
 _FORMS = ("essay", "poem", "concept", "snippet")
 
 
-def _jarvis_home() -> Path:
-    return Path(os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2"))
-
-
 def _storage_path() -> Path:
-    return _jarvis_home() / _STORAGE_REL
+    return shared_dir() / "runtime" / "creative_impulse.json"
 
 
 def _creative_dir() -> Path:
-    return _jarvis_home() / _CREATIVE_DIR_REL
+    return shared_dir() / "memory" / "creative"
 
 
 def _load() -> dict[str, Any]:

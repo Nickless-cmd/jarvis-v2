@@ -23,17 +23,17 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/reboot_markers.json"
 _UNCLEAN_GAP_MINUTES = 30  # if last_seen older than 30 min → assume crashed
 _DETECTION_RUN = False
 _EVENT_RESULT: dict[str, Any] | None = None
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    return shared_dir() / "runtime" / "reboot_markers.json"
 
 
 def _load() -> dict[str, Any]:

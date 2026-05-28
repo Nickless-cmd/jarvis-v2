@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 from collections import Counter, defaultdict
 from datetime import UTC, datetime, timedelta
@@ -21,10 +20,10 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/dream_consolidation.json"
-_DREAMS_DIR_REL = "workspaces/default/dreams"
 _TRIGGER_IDLE_MINUTES = 30
 _MIN_COOLDOWN_HOURS = 4  # don't re-dream more than once every 4h
 _LOOKBACK_HOURS = 24
@@ -40,16 +39,12 @@ _STOPWORDS = {
 _WORD_RE = re.compile(r"[a-zæøåA-ZÆØÅ_-]+")
 
 
-def _jarvis_home() -> Path:
-    return Path(os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2"))
-
-
 def _storage_path() -> Path:
-    return _jarvis_home() / _STORAGE_REL
+    return shared_dir() / "runtime" / "dream_consolidation.json"
 
 
 def _dreams_dir() -> Path:
-    return _jarvis_home() / _DREAMS_DIR_REL
+    return shared_dir() / "dreams"
 
 
 def _load() -> dict[str, Any]:

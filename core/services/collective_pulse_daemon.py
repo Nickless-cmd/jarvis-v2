@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import statistics
 from collections import Counter
@@ -23,10 +22,10 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/collective_pulse.json"
-_COLLECTIVE_DIR_REL = "workspaces/default/memory/collective"
 _INTERVAL_DAYS = 7
 _MIN_FRAGMENTS = 10
 _TOP_THEME_COUNT = 8
@@ -41,16 +40,12 @@ _STOPWORDS = {
 _WORD_RE = re.compile(r"[a-zæøåA-ZÆØÅ_-]+")
 
 
-def _jarvis_home() -> Path:
-    return Path(os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2"))
-
-
 def _storage_path() -> Path:
-    return _jarvis_home() / _STORAGE_REL
+    return shared_dir() / "runtime" / "collective_pulse.json"
 
 
 def _collective_dir() -> Path:
-    return _jarvis_home() / _COLLECTIVE_DIR_REL
+    return shared_dir() / "memory" / "collective"
 
 
 def _load() -> dict[str, Any]:

@@ -38,6 +38,19 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/services/relational_warmth.py": "tests/test_affect_and_anchor_surfaces.py",
     "core/services/day_shape_memory.py": "tests/test_signal_and_idea_daemons.py",
     "core/services/memory_resurfacing.py": "tests/test_memory_and_session_surfaces.py",
+    # Group 3b: inner-life daemons migrated to shared_dir()
+    # Pure path refactor — no behavior change. shared_dir() tested via workspace_paths.
+    # Mapping added 2026-05-28.
+    "core/services/creative_impulse_daemon.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/shadow_scan_daemon.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/autonomous_work_daemon.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/file_watch_daemon.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/dream_consolidation_daemon.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/dream_carry_over.py": "tests/test_dream_continuum.py",
+    "core/services/deep_reflection_slot.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/autonomous_outreach_daemon.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/reboot_awareness_daemon.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/collective_pulse_daemon.py": "tests/runtime/test_workspace_paths.py",
 }
 
 

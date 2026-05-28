@@ -23,15 +23,15 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/autonomous_work_log.json"
 _LOG_MAX = 300
 _MAX_PROPOSALS_PER_HOUR = 3
 _LOW_ACTIVITY_MINUTES = 15
@@ -46,8 +46,7 @@ _ALLOWED_TYPES: tuple[str, ...] = (
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    return shared_dir() / "runtime" / "autonomous_work_log.json"
 
 
 def _load() -> list[dict[str, Any]]:

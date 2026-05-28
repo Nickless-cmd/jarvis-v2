@@ -18,30 +18,25 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from collections import Counter
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/shadow_scan.json"
-_SHADOW_LOG_REL = "workspaces/default/SHADOW_LOG.md"
 _SCAN_INTERVAL_HOURS = 24
 
 
-def _jarvis_home() -> Path:
-    return Path(os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2"))
-
-
 def _storage_path() -> Path:
-    return _jarvis_home() / _STORAGE_REL
+    return shared_dir() / "runtime" / "shadow_scan.json"
 
 
 def _shadow_log_path() -> Path:
-    return _jarvis_home() / _SHADOW_LOG_REL
+    return shared_dir() / "SHADOW_LOG.md"
 
 
 def _load() -> dict[str, Any]:

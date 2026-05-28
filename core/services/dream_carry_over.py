@@ -18,11 +18,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from core.eventbus.bus import event_bus
-from core.runtime.config import JARVIS_HOME
+from core.runtime.workspace_paths import shared_dir
 
 logger = logging.getLogger(__name__)
 
-_PERSIST_FILE = Path(JARVIS_HOME) / "workspaces" / "default" / "DREAM_CARRY.json"
+
+def _persist_file() -> Path:
+    return shared_dir() / "DREAM_CARRY.json"
 _LOCK = threading.Lock()
 _LOADED = False
 
@@ -49,8 +51,9 @@ def _ensure_loaded() -> None:
 def _load() -> None:
     global _ACTIVE_DREAMS, _DREAM_ARCHIVE
     try:
-        if _PERSIST_FILE.exists():
-            data = json.loads(_PERSIST_FILE.read_text(encoding="utf-8"))
+        pf = _persist_file()
+        if pf.exists():
+            data = json.loads(pf.read_text(encoding="utf-8"))
             _ACTIVE_DREAMS[:] = list(data.get("active_dreams") or [])
             _DREAM_ARCHIVE[:] = list(data.get("archive") or [])
     except Exception:
@@ -59,8 +62,9 @@ def _load() -> None:
 
 def _save() -> None:
     try:
-        _PERSIST_FILE.parent.mkdir(parents=True, exist_ok=True)
-        _PERSIST_FILE.write_text(
+        pf = _persist_file()
+        pf.parent.mkdir(parents=True, exist_ok=True)
+        pf.write_text(
             json.dumps(
                 {"active_dreams": _ACTIVE_DREAMS, "archive": _DREAM_ARCHIVE[-50:]},
                 indent=2,

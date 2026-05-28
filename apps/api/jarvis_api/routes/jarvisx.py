@@ -264,9 +264,53 @@ def channels_state() -> dict[str, Any]:
     return out
 
 
+_SCHEDULING_USER_KEYS = (
+    "user_id",
+    "for_user_id",
+    "scheduled_for_user_id",
+    "owner_user_id",
+)
+
+
+def _scheduling_visible_to(item: object, user_id: str) -> bool:
+    """True if `item` should be shown to a user with this id.
+
+    An item is considered visible when:
+      - it isn't a mapping (treat as global, surface it)
+      - none of the recognized user-id keys are present (global)
+      - any recognized key matches `user_id` exactly
+    Owners bypass this filter entirely at the call site.
+    """
+    if not isinstance(item, dict):
+        return True
+    matched_any_key = False
+    for k in _SCHEDULING_USER_KEYS:
+        v = item.get(k)
+        if v is None:
+            continue
+        matched_any_key = True
+        if str(v).strip() == user_id:
+            return True
+    # No user-id key present at all -> treat as global (visible)
+    return not matched_any_key
+
+
+def _filter_scheduling_payload(payload: object, user_id: str) -> object:
+    """Recursively filter dicts/lists in a scheduling-state payload."""
+    if isinstance(payload, list):
+        return [p for p in payload if _scheduling_visible_to(p, user_id)]
+    if isinstance(payload, dict):
+        return {k: _filter_scheduling_payload(v, user_id) for k, v in payload.items()}
+    return payload
+
+
 @router.get("/scheduling/state")
 def scheduling_state() -> dict[str, Any]:
-    """Aggregate scheduled tasks + recurring + self-wakeups."""
+    """Aggregate scheduled tasks + recurring + self-wakeups.
+
+    Members and guests see only entries scoped to their own user_id.
+    Owners see everything (debug visibility into all users' scheduling).
+    """
     out: dict[str, Any] = {}
     try:
         from core.services.scheduled_tasks import get_scheduled_tasks_state
@@ -290,6 +334,28 @@ def scheduling_state() -> dict[str, Any]:
     except Exception as exc:
         logger.debug("scheduling_state: wakeups failed: %s", exc)
         out["wakeups"] = {"error": str(exc)}
+
+    # Per-user filtering. Owners bypass entirely -- they need to see
+    # everything for debugging cross-user scheduling. UI gets a flag so
+    # it can render an "owner view -- showing all users" badge.
+    try:
+        from core.identity.workspace_context import current_role, current_user_id
+        role = (current_role() or "").lower()
+        uid = (current_user_id() or "").strip()
+    except Exception:
+        role = ""
+        uid = ""
+    if role == "owner":
+        out["scope"] = {"mode": "owner-all", "user_id": uid or None}
+    elif uid:
+        out = {
+            k: (_filter_scheduling_payload(v, uid) if k != "scope" else v)
+            for k, v in out.items()
+        }
+        out["scope"] = {"mode": "per-user", "user_id": uid}
+    else:
+        # No identity bound (legacy / dev) -- show everything but flag it.
+        out["scope"] = {"mode": "unscoped", "user_id": None}
     return out
 
 

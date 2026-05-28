@@ -1,8 +1,8 @@
 {
   "name": "jarvisx",
   "private": true,
-  "version": "0.1.4-poc",
-  "description": "JarvisX — Electron desktop app wrapping Jarvis V2",
+  "version": "0.1.5-poc",
+  "description": "JarvisX \u2014 Electron desktop app wrapping Jarvis V2",
   "homepage": "https://github.com/Nickless-cmd/jarvis-v2",
   "author": {
     "name": "Nickless",
@@ -24,10 +24,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.6",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/ws": "^8.18.1",
     "electron-updater": "^6.8.3",
     "lucide-react": "^0.460.0",
+    "puppeteer-core": "^25.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
@@ -36,7 +38,6 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
-    "@nut-tree-fork/nut-js": "^4.2.6",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -47,7 +48,6 @@
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
     "postcss": "^8.4.49",
-    "puppeteer-core": "^25.1.0",
     "tailwindcss": "^3.4.16",
     "typescript": "^5.7.2",
     "vite": "^6.0.0",
@@ -62,7 +62,13 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/@nut-tree-fork/**/*",
+      "node_modules/libnut*/**/*",
+      "node_modules/puppeteer-core/**/*"
     ],
     "icon": "assets/icon.png",
     "linux": {

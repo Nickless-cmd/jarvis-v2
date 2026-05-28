@@ -140,6 +140,7 @@ def _fire_due_tasks() -> None:
     if due:
         from core.services.notification_bridge import send_session_notification
         from core.identity.workspace_context import user_context
+        from core.services.scheduled_task_runner import fire_scheduled_task
 
         for task in due:
             task_id = str(task.get("task_id") or "")
@@ -159,19 +160,10 @@ def _fire_due_tasks() -> None:
             except (ValueError, TypeError):
                 pass
 
-            # Multi-user: bind workspace_context to the task's owner BEFORE
-            # dispatching. notification_bridge, initiative_queue and
-            # autonomous_run will all see the correct user/workspace so memory
-            # injection and operator tool routing go to the right bridge.
-            # Tasks without scheduled_for_user_id fall through to owner context
-            # (user_context with no discord_id resolves to default 'bjorn').
-            scheduled_uid = str(task.get("scheduled_for_user_id") or "").strip()
-            if scheduled_uid:
-                _ctx_kwargs = {"discord_id": scheduled_uid}
-            else:
-                _ctx_kwargs = {}
-
-            with user_context(**_ctx_kwargs):
+            # Build the per-task dispatch work as a callback so it can be
+            # injected into fire_scheduled_task (which sets workspace_context
+            # before calling it) or called directly for legacy tasks.
+            def _dispatch(focus: str = focus, task_id: str = task_id, now_iso: str = now_iso, **_kwargs) -> None:
                 try:
                     # Route through outbound_nudges (2026-05-13): scheduled
                     # reminders are INTERNAL signals to Jarvis (not DMs to user).
@@ -263,6 +255,19 @@ def _fire_due_tasks() -> None:
                         )
                 except Exception as exc:
                     logger.error("scheduled_tasks: failed to fire %s: %s", task_id, exc)
+
+            # Multi-user: tasks with scheduled_for_user_id use fire_scheduled_task
+            # which validates the user in users.json and warns+drops for unknown
+            # users (spec: Task 6 of multi-user workspace isolation).
+            # Tasks without scheduled_for_user_id are legacy/owner-default — fire
+            # in current context for backwards compatibility (Task 2 schema
+            # migration pre-dates this; those rows won't have the field set).
+            scheduled_uid = str(task.get("scheduled_for_user_id") or "").strip()
+            if scheduled_uid:
+                fire_scheduled_task(task, runner=_dispatch)
+            else:
+                with user_context():
+                    _dispatch()
 
     try:
         from core.services.agent_runtime import run_due_agent_schedules

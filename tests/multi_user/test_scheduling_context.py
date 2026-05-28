@@ -94,3 +94,57 @@ def test_dispatch_missing_user_logs_and_drops(mu_env, caplog):
     fire_scheduled_task(task, runner=fake_runner)
     assert fired == []
     assert any("not found in users.json" in r.message or "unknown user" in r.message.lower() for r in caplog.records)
+
+
+def test_fire_due_tasks_drops_unknown_user(mu_env, caplog):
+    """The real _fire_due_tasks() loop must use fire_scheduled_task and
+    drop ghost-user tasks. Without this wiring, the warn-and-drop
+    semantics of fire_scheduled_task are unused in production."""
+    import logging
+    import uuid
+    from datetime import UTC, datetime
+    caplog.set_level(logging.WARNING)
+
+    from core.runtime.db import connect, _ensure_scheduled_tasks_table
+    from core.services.scheduled_tasks import _fire_due_tasks
+
+    # Use a unique task_id so this test is idempotent across runs
+    task_id = f"ghost-test-{uuid.uuid4().hex[:8]}"
+
+    # Use a recent past time so the task is due but not expired (expiry=24h)
+    now_iso = datetime.now(UTC).isoformat()
+    due_at = (datetime.now(UTC).replace(second=0, microsecond=0)).isoformat()
+
+    # Insert a task tagged for a non-existent user, due now (past timestamp)
+    with connect() as conn:
+        _ensure_scheduled_tasks_table(conn)
+        conn.execute(
+            """
+            INSERT INTO scheduled_tasks
+                (task_id, focus, source, status, run_at, created_at,
+                 fired_at, cancelled_at, updated_at, scheduled_for_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                task_id,
+                "ghost task — should be dropped",
+                "test",
+                "pending",
+                due_at,   # recent past — due but within 24h expiry window
+                now_iso,
+                "",
+                "",
+                now_iso,
+                "9999999999999999999",  # unknown user, not in users.json
+            ),
+        )
+        conn.commit()
+
+    _fire_due_tasks()
+
+    # Verify warn log about unknown user was emitted (fire_scheduled_task dropped it)
+    assert any(
+        "not found in users.json" in r.message
+        or "unknown user" in r.message.lower()
+        for r in caplog.records
+    ), "Expected warn log about unknown user from fire_scheduled_task"

@@ -2083,7 +2083,16 @@ def _scheduled_task_from_row(row: sqlite3.Row) -> dict[str, object]:
         "fired_at": row["fired_at"],
         "cancelled_at": row["cancelled_at"],
         "updated_at": row["updated_at"],
+        "scheduled_for_user_id": _row_get(row, "scheduled_for_user_id"),
     }
+
+
+def _row_get(row: sqlite3.Row, key: str, default=None):
+    """Safe column access — returns default if column missing from row."""
+    try:
+        return row[key]
+    except (IndexError, KeyError):
+        return default
 
 
 def create_scheduled_task(

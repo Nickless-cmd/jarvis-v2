@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -29,12 +28,12 @@ _COOLDOWN_SECONDS = 60
 _CONFIDENCE_THRESHOLD_INFERRED = 0.75
 _REVIEW_QUEUE_ENABLED = True
 
-_STORAGE_REL = "workspaces/default/runtime/memory_review_queue.json"
+_STORAGE_REL = "runtime/memory_review_queue.json"
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    from core.runtime.workspace_paths import workspace_dir
+    return workspace_dir() / _STORAGE_REL
 
 
 def _load_queue() -> list[dict[str, Any]]:

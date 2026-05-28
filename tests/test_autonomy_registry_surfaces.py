@@ -15,6 +15,9 @@ from core.services import skill_contract_registry as skills
 def isolated_storage(tmp_path, monkeypatch):
     monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
     monkeypatch.setenv("JARVIS_WORKSPACES_DIR", str(tmp_path / "workspaces"))
+    ws = tmp_path / "workspaces" / "default"
+    ws.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("core.runtime.workspace_paths.workspace_dir", lambda user_id=None: ws)
 
 
 def test_automation_dsl_registers_and_expires(isolated_storage):

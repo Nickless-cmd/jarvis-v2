@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import statistics
 from collections import Counter
 from datetime import UTC, datetime
@@ -24,14 +23,14 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/day_shapes.json"
+_STORAGE_REL = "runtime/day_shapes.json"
 _ROLLING_DAYS = 30
 _ANOMALY_MIN_HISTORY = 5  # need at least 5 days to judge "unusual"
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    from core.runtime.workspace_paths import workspace_dir
+    return workspace_dir() / _STORAGE_REL
 
 
 def _load() -> dict[str, Any]:

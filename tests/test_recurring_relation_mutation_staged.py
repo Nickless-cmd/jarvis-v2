@@ -52,8 +52,12 @@ def test_recurring_tasks_create_fire_cancel_and_state(tmp_path, monkeypatch):
     assert recurring.get_recurring_tasks_state()["cancelled_count"] == 1
 
 
-def test_relation_dynamics_reports_trend_and_prompt(monkeypatch):
+def test_relation_dynamics_reports_trend_and_prompt(monkeypatch, tmp_path):
     from core.services import relation_dynamics as dynamics
+
+    ws = tmp_path / "workspaces" / "default"
+    ws.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("core.runtime.workspace_paths.workspace_dir", lambda user_id=None: ws)
 
     now = datetime.now(UTC)
     runs = [

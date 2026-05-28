@@ -8,6 +8,9 @@ def isolated_storage(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
     monkeypatch.setenv("JARVIS_WORKSPACES_DIR", str(tmp_path / "workspaces"))
+    ws = tmp_path / "workspaces" / "default"
+    ws.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("core.runtime.workspace_paths.workspace_dir", lambda user_id=None: ws)
 
 
 def test_memory_write_policy_queues_low_confidence_inferred_writes(isolated_storage):

@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -25,7 +24,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/relational_warmth.json"
+_STORAGE_REL = "runtime/relational_warmth.json"
 _USER_ID = "bjorn"
 _HISTORY_DECAY_DAYS = 30
 
@@ -54,8 +53,8 @@ _CARE_CUES_OUT: tuple[str, ...] = (
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    from core.runtime.workspace_paths import workspace_dir
+    return workspace_dir() / _STORAGE_REL
 
 
 def _load() -> dict[str, Any]:

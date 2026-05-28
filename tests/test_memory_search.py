@@ -4,7 +4,18 @@ Companion to tests/test_memory_search_quarantine.py which covers the
 quarantine filter. This file holds the CANDIDATE-penalty checks added
 2026-05-22.
 """
+import pytest
 from core.services.memory_search import search_memory
+
+# These tests are integration tests that hit the real workspace.
+# workspace_dir() requires user context (Task 3a: multi-user isolation).
+# Patch it to the owner's real workspace for backwards compat.
+_OWNER_WS = __import__("pathlib").Path.home() / ".jarvis-v2" / "workspaces" / "default"
+
+
+@pytest.fixture(autouse=True)
+def _owner_workspace_context(monkeypatch):
+    monkeypatch.setattr("core.runtime.workspace_paths.workspace_dir", lambda user_id=None: _OWNER_WS)
 
 
 def test_search_returns_results_for_known_query():

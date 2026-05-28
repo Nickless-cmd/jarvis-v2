@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import statistics
 from collections import Counter
@@ -22,7 +21,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/relation_dynamics.json"
+_STORAGE_REL = "runtime/relation_dynamics.json"
 _RECOMPUTE_SECONDS = 30 * 60
 _USER_ID = "bjorn"  # primary relation (the owner)
 
@@ -31,8 +30,8 @@ _cached: dict[str, Any] = {}
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    from core.runtime.workspace_paths import workspace_dir
+    return workspace_dir() / _STORAGE_REL
 
 
 def _load() -> dict[str, Any]:

@@ -144,9 +144,10 @@ def classify_question(message: str) -> str:
 
 def _find_memory_path() -> Path:
     """Find MEMORY.md — kig i runtime workspace først, derefter repo."""
+    from core.runtime.workspace_paths import workspace_dir
     from core.runtime.config import JARVIS_HOME
     candidates = [
-        Path(JARVIS_HOME) / "workspaces" / "default" / "MEMORY.md",
+        workspace_dir() / "MEMORY.md",
         Path(JARVIS_HOME) / "MEMORY.md",
     ]
     for candidate in candidates:
@@ -163,8 +164,8 @@ def _find_curated_paths() -> list[tuple[str, Path]]:
     Bjørn?") should consult IDENTITY.md / USER.md, not just MEMORY.md.
     Returns [(label, path), ...] for files that actually exist on disk.
     """
-    from core.runtime.config import JARVIS_HOME
-    base = Path(JARVIS_HOME) / "workspaces" / "default"
+    from core.runtime.workspace_paths import workspace_dir
+    base = workspace_dir()
     candidates = [
         ("MEMORY.md", base / "MEMORY.md"),
         ("IDENTITY.md", base / "IDENTITY.md"),

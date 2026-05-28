@@ -30,6 +30,14 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/runtime/workspace_paths.py": "tests/runtime/test_workspace_paths.py",
     "core/runtime/db.py": "tests/runtime/test_db_schema_multiuser.py",
     "core/services/dream_hypothesis_generator.py": "tests/runtime/test_db_schema_multiuser.py",
+    # Group 3a: memory-layer services migrated to workspace_dir()
+    # Tests live in non-standard files; mapping added 2026-05-28.
+    "core/services/cross_session_threads.py": "tests/test_autonomy_registry_surfaces.py",
+    "core/services/memory_write_policy.py": "tests/test_attention_memory_surfaces.py",
+    "core/services/relation_dynamics.py": "tests/test_recurring_relation_mutation_staged.py",
+    "core/services/relational_warmth.py": "tests/test_affect_and_anchor_surfaces.py",
+    "core/services/day_shape_memory.py": "tests/test_signal_and_idea_daemons.py",
+    "core/services/memory_resurfacing.py": "tests/test_memory_and_session_surfaces.py",
 }
 
 

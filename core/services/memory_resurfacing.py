@@ -31,12 +31,14 @@ import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from core.runtime.config import JARVIS_HOME
 from core.runtime.db import connect
+from core.runtime.workspace_paths import workspace_dir
 
 logger = logging.getLogger(__name__)
 
-MEMORY_MD = Path(JARVIS_HOME) / "workspaces" / "default" / "MEMORY.md"
+
+def _memory_md() -> Path:
+    return workspace_dir() / "MEMORY.md"
 
 _FRESH_DAYS = 7        # headings written/touched within this window are "fresh", skip
 _RECENT_RESURFACE_AVOID = 8   # don't repeat the last N resurfaced headings
@@ -67,9 +69,9 @@ def _normalize(heading: str) -> str:
 
 def _list_memory_headings() -> list[tuple[str, str]]:
     """Return [(level_str, heading_text), ...] from MEMORY.md."""
-    if not MEMORY_MD.exists():
+    if not _memory_md().exists():
         return []
-    text = MEMORY_MD.read_text(encoding="utf-8", errors="replace")
+    text = _memory_md().read_text(encoding="utf-8", errors="replace")
     out = []
     for m in _HEADING_RE.finditer(text):
         level = m.group(1)
@@ -115,9 +117,9 @@ def _recently_resurfaced_headings() -> set[str]:
 
 def _content_for_heading(heading: str) -> str:
     """Return the content under the matching heading (up to next heading or EOF)."""
-    if not MEMORY_MD.exists():
+    if not _memory_md().exists():
         return ""
-    text = MEMORY_MD.read_text(encoding="utf-8", errors="replace")
+    text = _memory_md().read_text(encoding="utf-8", errors="replace")
     norm_target = _normalize(heading)
     headings = list(_HEADING_RE.finditer(text))
     for i, m in enumerate(headings):

@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -20,13 +19,13 @@ from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/thought_threads.json"
+_STORAGE_REL = "runtime/thought_threads.json"
 _VALID_STATUS = ("active", "paused", "closed")
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    from core.runtime.workspace_paths import workspace_dir
+    return workspace_dir() / _STORAGE_REL
 
 
 def _load() -> list[dict[str, Any]]:

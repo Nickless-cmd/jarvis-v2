@@ -149,12 +149,10 @@ class TestMultiSourceCuration:
         (workspace / "IDENTITY.md").write_text("# identity")
         # USER.md and SOUL.md intentionally missing
 
-        # Patch JARVIS_HOME so _find_curated_paths looks in tmp_path
-        monkeypatch.setattr("core.runtime.config.JARVIS_HOME", str(tmp_path))
+        # Patch workspace_dir so _find_curated_paths looks in the tmp workspace
+        monkeypatch.setattr("core.runtime.workspace_paths.workspace_dir", lambda user_id=None: workspace)
 
         from core.services import hallucination_guard
-        import importlib
-        importlib.reload(hallucination_guard)
         found = hallucination_guard._find_curated_paths()
         labels = [label for label, _ in found]
         assert "MEMORY.md" in labels

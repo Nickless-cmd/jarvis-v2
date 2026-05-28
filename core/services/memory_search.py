@@ -30,8 +30,8 @@ class Chunk(NamedTuple):
 
 
 def _workspace_dir() -> Path:
-    from core.runtime.config import JARVIS_HOME
-    return Path(JARVIS_HOME) / "workspaces" / "default"
+    from core.runtime.workspace_paths import workspace_dir as _ws_dir
+    return _ws_dir()
 
 
 def _memory_files() -> list[Path]:

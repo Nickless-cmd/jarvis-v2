@@ -106,7 +106,7 @@ def test_memory_resurfacing_picks_stale_heading(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
-    monkeypatch.setattr(resurfacing, "MEMORY_MD", memory_file)
+    monkeypatch.setattr(resurfacing, "_memory_md", lambda: memory_file)
     monkeypatch.setattr(resurfacing, "_recently_touched_headings", lambda: set())
     monkeypatch.setattr(resurfacing, "_recently_resurfaced_headings", lambda: set())
     logged: list[str] = []

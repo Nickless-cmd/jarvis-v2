@@ -3203,7 +3203,6 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *HF_INFERENCE_TOOL_DEFINITIONS,
     *TIKTOK_CONTENT_TOOL_DEFINITIONS,
     *MIC_LISTEN_TOOL_DEFINITIONS,
-    *SPEAK_TOOL_DEFINITIONS,
     *SCREEN_TOOL_DEFINITIONS,
     *VOICE_JOURNAL_TOOL_DEFINITIONS,
     *WAKE_WORD_TOOL_DEFINITIONS,
@@ -8040,7 +8039,6 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Active mic listening + transcription
     "mic_listen": _exec_mic_listen,
     # Text-to-speech: speak aloud through system speakers
-    "speak": _exec_speak,
     # Screen control: DPMS on/off/standby/status
     "screen_control": _exec_screen_control,
     # Voice journal (30-60s → memory_density)

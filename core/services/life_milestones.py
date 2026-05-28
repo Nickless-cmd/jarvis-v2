@@ -8,21 +8,27 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.runtime.config import JARVIS_HOME
+from core.runtime.workspace_paths import shared_dir
 
-_WORKSPACE = Path(JARVIS_HOME) / "workspaces" / "default"
-_MILESTONES_FILE = _WORKSPACE / "MILESTONES.md"
-_MANIFEST_FILE = _WORKSPACE / "MANIFEST.md"
 _MAX_CHARS = 1200
+
+
+def _milestones_file() -> Path:
+    return shared_dir() / "MILESTONES.md"
+
+
+def _manifest_file() -> Path:
+    return shared_dir() / "MANIFEST.md"
 
 
 def get_milestones_for_prompt(max_chars: int = _MAX_CHARS) -> str | None:
     """Return a formatted milestones block for prompt injection, or None."""
     parts: list[str] = []
 
-    if _MILESTONES_FILE.exists():
+    p = _milestones_file()
+    if p.exists():
         try:
-            text = _MILESTONES_FILE.read_text(encoding="utf-8", errors="replace").strip()
+            text = p.read_text(encoding="utf-8", errors="replace").strip()
             if text:
                 parts.append(text)
         except Exception:
@@ -39,10 +45,11 @@ def get_milestones_for_prompt(max_chars: int = _MAX_CHARS) -> str | None:
 
 def get_manifest_excerpt(max_chars: int = 600) -> str | None:
     """Return first ~600 chars of MANIFEST.md as a first-principles reminder."""
-    if not _MANIFEST_FILE.exists():
+    p = _manifest_file()
+    if not p.exists():
         return None
     try:
-        text = _MANIFEST_FILE.read_text(encoding="utf-8", errors="replace").strip()
+        text = p.read_text(encoding="utf-8", errors="replace").strip()
         if not text:
             return None
         if len(text) > max_chars:
@@ -68,8 +75,9 @@ def append_milestone(text: str) -> bool:
         from datetime import UTC, datetime
         date_str = datetime.now(UTC).strftime("%Y-%m-%d")
         entry = f"\n## {date_str}\n{text.strip()}\n"
-        _MILESTONES_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with _MILESTONES_FILE.open("a", encoding="utf-8") as f:
+        p = _milestones_file()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with p.open("a", encoding="utf-8") as f:
             f.write(entry)
         return True
     except Exception:

@@ -14,9 +14,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from core.runtime.config import JARVIS_HOME
+from core.runtime.workspace_paths import shared_dir
 
-_STATE_FILE = Path(JARVIS_HOME) / "workspaces" / "default" / "runtime" / "DAEMON_STATE.json"
+
+def _state_file() -> Path:
+    return shared_dir() / "runtime" / "DAEMON_STATE.json"
 
 # Registry: daemon name → module path, state var to reset on restart, default cadence.
 _REGISTRY: dict[str, dict[str, Any]] = {
@@ -364,17 +366,19 @@ def get_daemon_names() -> set[str]:
 
 
 def _load_state() -> dict[str, dict[str, Any]]:
-    if not _STATE_FILE.exists():
+    p = _state_file()
+    if not p.exists():
         return {}
     try:
-        return json.loads(_STATE_FILE.read_text(encoding="utf-8"))
+        return json.loads(p.read_text(encoding="utf-8"))
     except Exception:
         return {}
 
 
 def _save_state(state: dict[str, dict[str, Any]]) -> None:
-    _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    p = _state_file()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _get_daemon_state(name: str) -> dict[str, Any]:

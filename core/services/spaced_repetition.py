@@ -31,12 +31,13 @@ _MAX_DIFFICULTY = 0.9
 _TARGET_SCORE = 0.8
 _CONFIDENCE_SCORE_WEIGHT = 0.5
 
-_STORAGE_REL = "workspaces/default/runtime/spaced_repetition.json"
+from core.runtime.workspace_paths import shared_dir
+
+_STORAGE_REL = "runtime/spaced_repetition.json"
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    return shared_dir() / _STORAGE_REL
 
 
 def _load() -> dict[str, Any]:

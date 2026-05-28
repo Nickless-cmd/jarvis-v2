@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -59,12 +61,11 @@ _VALID_TRIGGERS: tuple[str, ...] = ("schedule", "webhook", "event")
 _VALID_ACTIONS: tuple[str, ...] = ("llm_prompt", "call_tool", "post_message")
 _VALID_CHANNELS: tuple[str, ...] = ("webchat", "discord", "telegram", "ntfy", "internal")
 
-_STORAGE_REL = "workspaces/default/runtime/automations.json"
+_STORAGE_REL = "runtime/automations.json"
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    return shared_dir() / _STORAGE_REL
 
 
 def _load() -> list[dict[str, Any]]:

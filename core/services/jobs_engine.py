@@ -23,9 +23,11 @@ from pathlib import Path
 from typing import Any, Callable
 from uuid import uuid4
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/jobs_queue.json"
+_STORAGE_REL = "runtime/jobs_queue.json"
 _HANDLERS: dict[str, Callable[[dict[str, Any]], "JobResult | dict[str, Any]"]] = {}
 
 # 2026-05-17 perf cache: jobs_queue.json er ~16 MB. Uden cache koster hver
@@ -53,8 +55,7 @@ class JobResult:
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    return shared_dir() / _STORAGE_REL
 
 
 def _load() -> list[dict[str, Any]]:

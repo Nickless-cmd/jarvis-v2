@@ -24,10 +24,12 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/creative_instinct.json"
-_INCUBATOR_REL = "workspaces/default/INCUBATOR.md"
+_STORAGE_REL = "runtime/creative_instinct.json"
+_INCUBATOR_REL = "INCUBATOR.md"
 _CADENCE_HOURS = 2
 _MAX_ACTIVE_SEEDS = 12
 _MAX_NEW_PER_TICK = 2
@@ -35,13 +37,11 @@ _WITHER_AFTER_DAYS = 14
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    return shared_dir() / _STORAGE_REL
 
 
 def _incubator_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _INCUBATOR_REL
+    return shared_dir() / _INCUBATOR_REL
 
 
 def _load() -> dict[str, Any]:

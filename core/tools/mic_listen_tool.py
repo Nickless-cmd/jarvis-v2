@@ -37,7 +37,7 @@ _PAREC_BIN_CANDIDATES = (
     "/usr/bin/parec",
     shutil.which("parec") or "",
 )
-_RECORDINGS_REL = "workspaces/default/memory/generated/mic"
+_RECORDINGS_REL = "memory/generated/mic"
 
 # Trigger phrases Jarvis recognizes in transcripts. Matched case-insensitively
 # as substrings. Each trigger maps to a structured action the helper below
@@ -142,8 +142,8 @@ def _route_trigger(action_key: str, transcript: str, metadata: dict[str, Any]) -
         try:
             from datetime import UTC, datetime as _dt
             from pathlib import Path as _Path
-            base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-            notes_path = _Path(base) / "workspaces/default/NOTES.md"
+            from core.runtime.workspace_paths import shared_dir as _shared_dir
+            notes_path = _shared_dir() / "NOTES.md"
             notes_path.parent.mkdir(parents=True, exist_ok=True)
             timestamp = _dt.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
             entry = f"\n- **{timestamp}** (voice): {content}\n"
@@ -176,8 +176,8 @@ def _parec_binary() -> str | None:
 
 
 def _recording_dir() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _RECORDINGS_REL
+    from core.runtime.workspace_paths import shared_dir
+    return shared_dir() / _RECORDINGS_REL
 
 
 # ─── Capture ──────────────────────────────────────────────────────────

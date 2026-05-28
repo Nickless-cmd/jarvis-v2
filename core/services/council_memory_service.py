@@ -10,9 +10,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from core.runtime.config import JARVIS_HOME
+from core.runtime.workspace_paths import shared_dir
 
-_LOG_FILE = Path(JARVIS_HOME) / "workspaces" / "default" / "COUNCIL_LOG.md"
+
+def _log_file() -> Path:
+    return shared_dir() / "COUNCIL_LOG.md"
 
 
 def append_council_conclusion(
@@ -26,7 +28,8 @@ def append_council_conclusion(
     initiative: str | None,
 ) -> None:
     """Append a council conclusion entry to COUNCIL_LOG.md."""
-    _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    p = _log_file()
+    p.parent.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S")
     members_str = ", ".join(members)
     signals_str = ", ".join(signals)
@@ -41,8 +44,8 @@ def append_council_conclusion(
         entry += "\n### Initiative-forslag\n\n"
         entry += initiative.strip() + "\n"
 
-    existing = _LOG_FILE.read_text(encoding="utf-8") if _LOG_FILE.exists() else ""
-    _LOG_FILE.write_text(existing + entry, encoding="utf-8")
+    existing = p.read_text(encoding="utf-8") if p.exists() else ""
+    p.write_text(existing + entry, encoding="utf-8")
 
 
 def read_all_entries() -> list[dict[str, Any]]:
@@ -51,9 +54,10 @@ def read_all_entries() -> list[dict[str, Any]]:
     Each dict has: timestamp, topic, score, members, signals, transcript, conclusion, initiative.
     Returns [] if file does not exist or has no valid entries.
     """
-    if not _LOG_FILE.exists():
+    p = _log_file()
+    if not p.exists():
         return []
-    content = _LOG_FILE.read_text(encoding="utf-8")
+    content = p.read_text(encoding="utf-8")
     return _parse_entries(content)
 
 

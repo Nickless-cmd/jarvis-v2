@@ -51,6 +51,31 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/services/autonomous_outreach_daemon.py": "tests/runtime/test_workspace_paths.py",
     "core/services/reboot_awareness_daemon.py": "tests/runtime/test_workspace_paths.py",
     "core/services/collective_pulse_daemon.py": "tests/runtime/test_workspace_paths.py",
+    # Group 3c: remaining services + tools migrated to shared_dir()
+    # Pure path refactor — no behavior change. shared_dir() tested via workspace_paths.
+    # Mapping added 2026-05-28.
+    "core/services/action_router.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/agent_outcomes_log.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/anticipatory_action_daemon.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/automation_dsl.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/consent_registry.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/creative_instinct_daemon.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/creative_projects.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/jobs_engine.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/life_milestones.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/memory_density.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/memory_maintenance_daemon.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/outcome_learning.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/prompt_mutation_loop.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/scheduled_job_windows.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/spaced_repetition.py": "tests/runtime/test_workspace_paths.py",
+    "core/services/sustained_attention.py": "tests/runtime/test_workspace_paths.py",
+    "core/tools/curiosity_tools.py": "tests/runtime/test_workspace_paths.py",
+    "core/tools/hf_inference_tools.py": "tests/runtime/test_workspace_paths.py",
+    "core/tools/memory_tools.py": "tests/runtime/test_workspace_paths.py",
+    "core/tools/mic_listen_tool.py": "tests/runtime/test_workspace_paths.py",
+    "core/tools/pollinations_tools.py": "tests/runtime/test_workspace_paths.py",
+    "core/tools/tiktok_content_tools.py": "tests/runtime/test_workspace_paths.py",
 }
 
 

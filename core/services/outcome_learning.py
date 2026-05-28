@@ -24,17 +24,18 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/outcome_learning.json"
+_STORAGE_REL = "runtime/outcome_learning.json"
 _HALF_LIFE_DAYS = 30.0
 _DECAY_COEF = math.log(2) / _HALF_LIFE_DAYS  # per day
 _MAX_RECORDS = 5000  # keep most recent — older drop from storage
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    return shared_dir() / _STORAGE_REL
 
 
 def _load() -> list[dict[str, Any]]:

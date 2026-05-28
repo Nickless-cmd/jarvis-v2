@@ -29,9 +29,11 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/prompt_mutations.json"
+_STORAGE_REL = "runtime/prompt_mutations.json"
 _SCORING_WINDOW_HOURS = 24
 _ROLLBACK_SCORE_THRESHOLD = -0.10
 _ADOPTION_SCORE_THRESHOLD = 0.20
@@ -68,16 +70,12 @@ _PROTECTED_FILES: frozenset[str] = frozenset({
 
 # ─── Storage ──────────────────────────────────────────────────────────
 
-def _jarvis_home() -> Path:
-    return Path(os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2"))
-
-
 def _storage_path() -> Path:
-    return _jarvis_home() / _STORAGE_REL
+    return shared_dir() / _STORAGE_REL
 
 
 def _workspace_path(target_file: str) -> Path:
-    return _jarvis_home() / "workspaces/default" / target_file
+    return shared_dir() / target_file
 
 
 def _load() -> list[dict[str, Any]]:

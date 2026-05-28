@@ -31,11 +31,13 @@ from typing import Any, Deque
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
 _LOCAL_TZ = ZoneInfo("Europe/Copenhagen")
 
-_STORAGE_REL = "workspaces/default/runtime/action_router.json"
+_STORAGE_REL = "runtime/action_router.json"
 _LOG_MAX = 300
 _MAX_PROACTIVE_PER_DAY = 3
 _PROACTIVE_COOLDOWN_HOURS = 2  # minimum gap between proactive messages
@@ -45,8 +47,7 @@ _recent_events: Deque[dict[str, Any]] = deque(maxlen=200)
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    return shared_dir() / _STORAGE_REL
 
 
 def _load() -> dict[str, Any]:

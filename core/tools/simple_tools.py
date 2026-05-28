@@ -24,6 +24,7 @@ from core.eventbus.bus import event_bus
 from core.services.self_critique_runtime import read_self_docs
 from core.services.tool_result_store import get_tool_result
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
+from core.runtime.workspace_paths import shared_dir
 from core.tools.browser_tools import (
     BROWSER_TOOL_DEFINITIONS,
     _exec_browser_navigate,
@@ -540,7 +541,7 @@ MAX_FIND_RESULTS = 100
 MAX_BASH_OUTPUT_CHARS = 16000
 MAX_BASH_SECONDS = 15
 MAX_WEB_FETCH_CHARS = 24000
-WORKSPACE_DIR = Path(JARVIS_HOME) / "workspaces" / "default"
+WORKSPACE_DIR = shared_dir()
 
 # Paths that can be written without user approval.
 _AUTO_APPROVE_WRITE_PATHS = {

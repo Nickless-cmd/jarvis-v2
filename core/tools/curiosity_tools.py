@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Callable
 from uuid import uuid4
 
+from core.runtime.workspace_paths import shared_dir
 from core.services.curiosity_budget import (
     curiosity_enabled,
     decrement_budget,
@@ -95,7 +96,7 @@ def _curiosity_wrap(
 
 def _direct_list_skills(_args: dict[str, Any]) -> dict[str, Any]:
     """List skill files in workspace/skills/. Read-only, lightweight."""
-    skills_dir = Path.home() / ".jarvis-v2" / "workspaces" / "default" / "skills"
+    skills_dir = shared_dir() / "skills"
     if not skills_dir.exists():
         skills_dir = Path(__file__).resolve().parents[2] / "workspace" / "skills"
     if not skills_dir.exists():

@@ -15,13 +15,19 @@ from pathlib import Path
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
-from core.runtime.config import JARVIS_HOME
+from core.runtime.workspace_paths import shared_dir
 
-_PERSIST_FILE = Path(JARVIS_HOME) / "workspaces" / "default" / "CONSENT_REGISTRY.json"
 _LOCK = threading.Lock()
 _LOADED = False
 _ENTRIES: list[dict[str, object]] = []
 _MAX_ENTRIES = 50
+
+
+def _persist_file() -> Path:
+    # NOTE: consent is currently owner-scoped (single-user). In Task 5 this
+    # should become workspace_dir(user_id=...) per-user. Using shared_dir()
+    # as transitional to avoid NoUserContextError outside a user session.
+    return shared_dir() / "CONSENT_REGISTRY.json"
 
 
 def _ensure_loaded() -> None:
@@ -38,8 +44,9 @@ def _ensure_loaded() -> None:
 def _load() -> None:
     global _ENTRIES
     try:
-        if _PERSIST_FILE.exists():
-            data = json.loads(_PERSIST_FILE.read_text(encoding="utf-8"))
+        p = _persist_file()
+        if p.exists():
+            data = json.loads(p.read_text(encoding="utf-8"))
             _ENTRIES[:] = list(data.get("entries") or [])
     except Exception:
         pass
@@ -47,8 +54,9 @@ def _load() -> None:
 
 def _save() -> None:
     try:
-        _PERSIST_FILE.parent.mkdir(parents=True, exist_ok=True)
-        _PERSIST_FILE.write_text(
+        p = _persist_file()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(
             json.dumps({"entries": _ENTRIES[-_MAX_ENTRIES:]}, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )

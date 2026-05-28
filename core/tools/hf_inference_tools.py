@@ -29,7 +29,7 @@ from uuid import uuid4
 logger = logging.getLogger(__name__)
 
 _HF_BASE = "https://router.huggingface.co/hf-inference/models"
-_VIDEO_REL = "workspaces/default/memory/generated/video"
+_VIDEO_REL = "memory/generated/video"
 _DEFAULT_VIDEO_MODEL = "Lightricks/LTX-Video-0.9.8-13B-distilled"
 _ALLOWED_VIDEO_MODELS = (
     "Lightricks/LTX-Video-0.9.8-13B-distilled",
@@ -64,8 +64,8 @@ def _auth_headers() -> dict[str, str]:
 
 
 def _video_dir() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _VIDEO_REL
+    from core.runtime.workspace_paths import shared_dir
+    return shared_dir() / _VIDEO_REL
 
 
 def _safe_filename(prompt: str, gen_id: str, ext: str) -> str:

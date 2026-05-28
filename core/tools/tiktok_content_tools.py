@@ -29,10 +29,10 @@ def _exec_tiktok_generate_video(args: dict[str, Any]) -> dict[str, Any]:
     output_path = str(args.get("output_path") or "").strip()
     if not output_path:
         # Default to workspace directory so outputs are tracked
-        import os, uuid
+        import uuid
         from datetime import UTC, datetime
-        base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-        out_dir = Path(base) / "workspaces/default/memory/generated/tiktok"
+        from core.runtime.workspace_paths import shared_dir
+        out_dir = shared_dir() / "memory/generated/tiktok"
         try:
             out_dir.mkdir(parents=True, exist_ok=True)
         except Exception:

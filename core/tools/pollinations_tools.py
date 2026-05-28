@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 
 _IMAGE_ENDPOINT = "https://image.pollinations.ai/prompt"
 _VIDEO_ENDPOINT = "https://gen.pollinations.ai/video"
-_GENERATED_REL = "workspaces/default/memory/generated"
-_VIDEO_REL = "workspaces/default/memory/generated/video"
+_GENERATED_REL = "memory/generated"
+_VIDEO_REL = "memory/generated/video"
 _DEFAULT_MODEL = "flux"  # Options: flux, turbo, variation, anime
 _ALLOWED_MODELS = ("flux", "turbo", "variation", "anime")
 _DEFAULT_VIDEO_MODEL = "wan-fast"
@@ -75,13 +75,13 @@ def _auth_headers() -> dict[str, str]:
 
 
 def _generated_dir() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _GENERATED_REL
+    from core.runtime.workspace_paths import shared_dir
+    return shared_dir() / _GENERATED_REL
 
 
 def _video_dir() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _VIDEO_REL
+    from core.runtime.workspace_paths import shared_dir
+    return shared_dir() / _VIDEO_REL
 
 
 def _clamp(value: int, lo: int, hi: int) -> int:

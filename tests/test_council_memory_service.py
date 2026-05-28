@@ -13,7 +13,7 @@ def _make_service(tmp_path: Path):
 
 def test_append_creates_file_if_missing(tmp_path):
     svc, log_file = _make_service(tmp_path)
-    with patch.object(svc, "_LOG_FILE", log_file):
+    with patch.object(svc, "_log_file", return_value=log_file):
         svc.append_council_conclusion(
             topic="Hvad begrænser mig?",
             score=0.72,
@@ -28,7 +28,7 @@ def test_append_creates_file_if_missing(tmp_path):
 
 def test_append_writes_markdown_structure(tmp_path):
     svc, log_file = _make_service(tmp_path)
-    with patch.object(svc, "_LOG_FILE", log_file):
+    with patch.object(svc, "_log_file", return_value=log_file):
         svc.append_council_conclusion(
             topic="Hvad begrænser mig?",
             score=0.72,
@@ -51,7 +51,7 @@ def test_append_writes_markdown_structure(tmp_path):
 
 def test_append_writes_initiative_when_provided(tmp_path):
     svc, log_file = _make_service(tmp_path)
-    with patch.object(svc, "_LOG_FILE", log_file):
+    with patch.object(svc, "_log_file", return_value=log_file):
         svc.append_council_conclusion(
             topic="Test",
             score=0.60,
@@ -68,7 +68,7 @@ def test_append_writes_initiative_when_provided(tmp_path):
 
 def test_multiple_appends_accumulate(tmp_path):
     svc, log_file = _make_service(tmp_path)
-    with patch.object(svc, "_LOG_FILE", log_file):
+    with patch.object(svc, "_log_file", return_value=log_file):
         for i in range(3):
             svc.append_council_conclusion(
                 topic=f"Emne {i}",
@@ -87,7 +87,7 @@ def test_multiple_appends_accumulate(tmp_path):
 
 def test_read_all_entries_returns_parsed_list(tmp_path):
     svc, log_file = _make_service(tmp_path)
-    with patch.object(svc, "_LOG_FILE", log_file):
+    with patch.object(svc, "_log_file", return_value=log_file):
         svc.append_council_conclusion(
             topic="Parse test",
             score=0.65,
@@ -105,6 +105,6 @@ def test_read_all_entries_returns_parsed_list(tmp_path):
 
 def test_read_all_entries_empty_when_no_file(tmp_path):
     svc, log_file = _make_service(tmp_path)
-    with patch.object(svc, "_LOG_FILE", log_file):
+    with patch.object(svc, "_log_file", return_value=log_file):
         entries = svc.read_all_entries()
     assert entries == []

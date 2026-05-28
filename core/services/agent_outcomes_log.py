@@ -10,9 +10,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from core.runtime.config import JARVIS_HOME
+from core.runtime.workspace_paths import shared_dir
 
-_LOG_FILE = Path(JARVIS_HOME) / "workspaces" / "default" / "AGENT_OUTCOMES.md"
+
+def _log_file() -> Path:
+    return shared_dir() / "AGENT_OUTCOMES.md"
+
+
 _OUTCOME_TRIM = 600
 
 
@@ -25,7 +29,8 @@ def append_agent_outcome(
     execution_mode: str = "solo-task",
 ) -> None:
     """Append a completed agent outcome to AGENT_OUTCOMES.md."""
-    _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    p = _log_file()
+    p.parent.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S")
     label = name or agent_id
     trimmed = outcome[:_OUTCOME_TRIM].strip()
@@ -35,15 +40,16 @@ def append_agent_outcome(
     entry += "### Outcome\n\n"
     entry += trimmed + "\n"
 
-    existing = _LOG_FILE.read_text(encoding="utf-8") if _LOG_FILE.exists() else ""
-    _LOG_FILE.write_text(existing + entry, encoding="utf-8")
+    existing = p.read_text(encoding="utf-8") if p.exists() else ""
+    p.write_text(existing + entry, encoding="utf-8")
 
 
 def get_recent_agent_outcomes(limit: int = 5) -> list[dict[str, Any]]:
     """Return the most recent agent outcomes (newest-first)."""
-    if not _LOG_FILE.exists():
+    p = _log_file()
+    if not p.exists():
         return []
-    content = _LOG_FILE.read_text(encoding="utf-8")
+    content = p.read_text(encoding="utf-8")
     entries = _parse_entries(content)
     return list(reversed(entries))[:limit]
 

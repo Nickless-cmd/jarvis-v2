@@ -5,14 +5,16 @@ import re
 from pathlib import Path
 from typing import Any
 
-from core.runtime.config import JARVIS_HOME
+from core.runtime.workspace_paths import shared_dir
 
-MEMORY_MD = Path(JARVIS_HOME) / "workspaces" / "default" / "MEMORY.md"
+
+def _memory_md() -> Path:
+    return shared_dir() / "MEMORY.md"
 
 
 def _read_memory() -> str:
     try:
-        return MEMORY_MD.read_text(encoding="utf-8")
+        return _memory_md().read_text(encoding="utf-8")
     except FileNotFoundError:
         return ""
 
@@ -108,8 +110,9 @@ def _exec_memory_upsert_section(args: dict[str, Any]) -> dict[str, Any]:
         new_text = text.rstrip() + f"\n\n{full_heading}\n{content}\n"
         action = "added"
 
-    MEMORY_MD.parent.mkdir(parents=True, exist_ok=True)
-    MEMORY_MD.write_text(new_text, encoding="utf-8")
+    p = _memory_md()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(new_text, encoding="utf-8")
 
     # Capture the mood at write time. Fire-and-forget — never break the
     # memory write if the sidecar fails. Future-Jarvis can read this back
@@ -259,7 +262,7 @@ def _exec_memory_consolidate(args: dict[str, Any]) -> dict[str, Any]:
             hashes = "#" * p["level"]
             rm_pattern = rf"(^{re.escape(hashes)}\s+{re.escape(p['section_b'])}\s*\n)(.*?)(?=^#|\Z)"
             cleaned = re.sub(rm_pattern, "", fresh_text, count=1, flags=re.MULTILINE | re.DOTALL)
-            MEMORY_MD.write_text(cleaned, encoding="utf-8")
+            _memory_md().write_text(cleaned, encoding="utf-8")
             merged_headings.append(f"'{p['section_a']}' + '{p['section_b']}'")
         except Exception as e:
             errors.append(f"{p['section_a']} + {p['section_b']}: {e}")

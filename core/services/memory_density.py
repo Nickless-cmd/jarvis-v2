@@ -19,10 +19,12 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/memory_density.json"
-_DENSITY_DIR_REL = "workspaces/default/memory/density"
+_STORAGE_REL = "runtime/memory_density.json"
+_DENSITY_DIR_REL = "memory/density"
 _MAX_RECORDS = 300
 _PROMOTION_CONFIRMATIONS = 3
 
@@ -36,16 +38,12 @@ _TRIGGER_TYPES = (
 )
 
 
-def _jarvis_home() -> Path:
-    return Path(os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2"))
-
-
 def _storage_path() -> Path:
-    return _jarvis_home() / _STORAGE_REL
+    return shared_dir() / _STORAGE_REL
 
 
 def _density_dir() -> Path:
-    return _jarvis_home() / _DENSITY_DIR_REL
+    return shared_dir() / _DENSITY_DIR_REL
 
 
 def _load() -> list[dict[str, Any]]:

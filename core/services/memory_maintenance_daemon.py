@@ -17,7 +17,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
-from core.runtime.config import JARVIS_HOME
+from core.runtime.workspace_paths import shared_dir
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -28,7 +28,9 @@ _TIER_A_HEADING_SIMILARITY = 0.85  # Jaccard threshold for auto-merge
 _TIER_B_CONTENT_SIMILARITY = 0.50  # Jaccard threshold for flagging
 _MIN_SECTION_LINES = 2  # skip sections with fewer lines
 
-MEMORY_MD = Path(JARVIS_HOME) / "workspaces" / "default" / "MEMORY.md"
+
+def _memory_md() -> Path:
+    return shared_dir() / "MEMORY.md"
 
 # ---------------------------------------------------------------------------
 # Module-level state
@@ -113,7 +115,7 @@ def build_memory_maintenance_surface() -> dict:
 
 def _read_memory() -> str:
     try:
-        return MEMORY_MD.read_text(encoding="utf-8")
+        return _memory_md().read_text(encoding="utf-8")
     except FileNotFoundError:
         return ""
 
@@ -288,8 +290,9 @@ def _replace_section_content(heading: str, level: int, new_content: str) -> None
     replacement = f"{hashes} {heading}\n{new_content}\n\n"
     new_text, count = re.subn(pattern, replacement, text, count=1, flags=re.MULTILINE | re.DOTALL)
     if count > 0:
-        MEMORY_MD.parent.mkdir(parents=True, exist_ok=True)
-        MEMORY_MD.write_text(new_text, encoding="utf-8")
+        p = _memory_md()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(new_text, encoding="utf-8")
 
 
 def _remove_section(heading: str) -> None:
@@ -300,5 +303,6 @@ def _remove_section(heading: str) -> None:
     new_text = re.sub(pattern, "", text, count=1, flags=re.MULTILINE | re.DOTALL)
     # Clean up excessive blank lines
     new_text = re.sub(r"\n{3,}", "\n\n", new_text)
-    MEMORY_MD.parent.mkdir(parents=True, exist_ok=True)
-    MEMORY_MD.write_text(new_text, encoding="utf-8")
+    p = _memory_md()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(new_text, encoding="utf-8")

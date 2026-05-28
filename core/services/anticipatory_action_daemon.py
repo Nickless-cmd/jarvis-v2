@@ -23,9 +23,11 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from core.runtime.workspace_paths import shared_dir
+
 logger = logging.getLogger(__name__)
 
-_STORAGE_REL = "workspaces/default/runtime/anticipatory_patterns.json"
+_STORAGE_REL = "runtime/anticipatory_patterns.json"
 _MIN_OBSERVATIONS_FOR_PEAK = 3
 _PEAK_SHARE_THRESHOLD = 0.30  # hour must hold ≥30% of contacts among peaks
 _MIN_CONFIDENCE = 0.6
@@ -35,8 +37,7 @@ _ANTICIPATION_WINDOW_MINUTES = 15
 
 
 def _storage_path() -> Path:
-    base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
-    return Path(base) / _STORAGE_REL
+    return shared_dir() / _STORAGE_REL
 
 
 def _load() -> dict[str, Any]:

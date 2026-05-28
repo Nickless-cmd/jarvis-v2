@@ -469,6 +469,25 @@ def start_visible_run(
                         pass
                 _set_active_visible_run({})
                 active = {}
+        # Same-session, fresh-message safety: if the active_run for THIS
+        # session has no controller in memory anymore, it died without
+        # clearing state. Do not midway-nudge into a dead run -- treat
+        # it as cleared and let the request start a fresh run below.
+        # Bug pattern: user types in webchat, gets "No response content
+        # returned" until 5-min auto-clear OR until Discord race-clears
+        # the global slot. Caught 2026-05-28.
+        if (active and bool(active.get("active"))
+                and not bool(active.get("cancelled"))
+                and normalized_session_id
+                and str(active.get("session_id") or "") == normalized_session_id
+                and str(active.get("run_id") or "") not in _VISIBLE_RUN_CONTROLLERS):
+            logger.warning(
+                "visible_runs: same-session active_run %s has no live controller, "
+                "clearing and proceeding with fresh run",
+                active.get("run_id"),
+            )
+            _set_active_visible_run({})
+            active = {}
         if (active and bool(active.get("active"))
                 and not bool(active.get("cancelled"))
                 and normalized_session_id

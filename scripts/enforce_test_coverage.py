@@ -34,6 +34,9 @@ KNOWN_MAPPINGS: dict[str, str] = {
     # Mapping added 2026-05-28.
     "core/services/cognitive_chronicle.py": "tests/multi_user/test_scope_filters.py",
     "core/services/scheduled_tasks.py": "tests/multi_user/test_scope_filters.py",
+    # Group 5: workspace_context tested thoroughly in test_multi_user.py
+    # Mapping added 2026-05-28.
+    "core/identity/workspace_context.py": "tests/test_multi_user.py",
     # Group 3a: memory-layer services migrated to workspace_dir()
     # Tests live in non-standard files; mapping added 2026-05-28.
     "core/services/cross_session_threads.py": "tests/test_autonomy_registry_surfaces.py",

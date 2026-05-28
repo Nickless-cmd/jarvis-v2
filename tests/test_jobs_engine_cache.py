@@ -19,12 +19,12 @@ from core.services import jobs_engine
 @pytest.fixture
 def tmp_queue(tmp_path, monkeypatch):
     home = tmp_path / "jarvis"
-    (home / "workspaces/default/runtime").mkdir(parents=True)
+    (home / "shared/runtime").mkdir(parents=True)
     monkeypatch.setenv("JARVIS_HOME", str(home))
     # Nulstil cache-state mellem tests
     jobs_engine._LOAD_CACHE_KEY = None
     jobs_engine._LOAD_CACHE_ITEMS = None
-    return home / "workspaces/default/runtime/jobs_queue.json"
+    return home / "shared/runtime/jobs_queue.json"
 
 
 def test_load_caches_on_unchanged_file(tmp_queue):

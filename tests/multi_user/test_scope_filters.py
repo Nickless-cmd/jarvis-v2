@@ -32,7 +32,7 @@ def mu_db(isolated_runtime: SimpleNamespace):
                 "discord_id": BJORN_ID,
                 "name": "Bjørn",
                 "role": "owner",
-                "workspace": "default",
+                "workspace": "bjorn",
                 "created_at": "2026-01-01",
             },
             {
@@ -127,7 +127,7 @@ def test_chronicle_filter_for_owner(mu_db):
     from core.identity.workspace_context import set_context, reset_context
     from core.services.cognitive_chronicle import query_chronicle_for_user
 
-    token = set_context(workspace_name="default", user_id=BJORN_ID)
+    token = set_context(workspace_name="bjorn", user_id=BJORN_ID)
     try:
         rows = query_chronicle_for_user()
         ids = {r["entry_id"] for r in rows}

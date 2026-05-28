@@ -8,9 +8,9 @@ automatisk bruger den rigtige bruger-workspace UDEN at require alle
 
 Design:
 - ContextVar er thread-safe og asyncio-safe
-- Default er "default" (bagudkompatibelt — eksisterende kode virker uændret)
+- Default er "bjorn" (omdøbt fra "default" i Task 5)
 - discord_gateway sætter binding før start_autonomous_run og rydder efter
-- Explicit bypass: pass name="default" eller navngiv eksplicit
+- Explicit bypass: pass name="bjorn" eller navngiv eksplicit
 
 Flow:
     # In discord_gateway.on_message:
@@ -39,9 +39,9 @@ class _ContextState:
     user_display_name: str
 
 
-# Default: workspace="default", user_id="" (owner implicit, bagudkompatibelt)
+# Default: workspace="bjorn" (renamed from "default" in Task 5), user_id="" (owner implicit)
 _DEFAULT_STATE = _ContextState(
-    workspace_name="default",
+    workspace_name="bjorn",
     user_id="",
     user_display_name="",
 )
@@ -87,7 +87,7 @@ def set_context(
     Prefer the user_context() contextmanager for scoped blocks.
     """
     state = _ContextState(
-        workspace_name=str(workspace_name or "default").strip() or "default",
+        workspace_name=str(workspace_name or "bjorn").strip() or "bjorn",
         user_id=str(user_id or "").strip(),
         user_display_name=str(user_display_name or "").strip(),
     )
@@ -113,7 +113,7 @@ def user_context(
     """
     from core.identity.users import find_user_by_discord_id
 
-    workspace_name = "default"
+    workspace_name = "bjorn"
     user_id = ""
     display = ""
 
@@ -148,7 +148,7 @@ def user_context(
 
 def bind_context_if_unset(
     *,
-    workspace_name: str = "default",
+    workspace_name: str = "bjorn",
     user_id: str = "",
     user_display_name: str = "",
 ) -> contextvars.Token | None:
@@ -156,7 +156,7 @@ def bind_context_if_unset(
     without overwriting explicit scopes. Returns Token if binding happened
     (caller must reset), else None."""
     current = _current_state.get()
-    if current.workspace_name != "default" or current.user_id:
+    if current.workspace_name != "bjorn" or current.user_id:
         return None
     return set_context(
         workspace_name=workspace_name,

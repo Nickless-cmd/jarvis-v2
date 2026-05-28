@@ -14,21 +14,19 @@ from core.runtime.workspace_paths import (
 )
 
 
-def test_shared_dir_returns_default_during_transition(monkeypatch, tmp_path):
-    """During migration, shared_dir() returns workspaces/default for
-    backwards compat. Switched to shared/ in Task 5."""
+def test_shared_dir_returns_shared(monkeypatch, tmp_path):
+    """After Task 5, shared_dir() returns ~/.jarvis-v2/shared/ (not workspaces/default)."""
     monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
-    expected = tmp_path / "workspaces" / "default"
+    expected = tmp_path / "shared"
     assert shared_dir() == expected
 
 
 def test_workspace_dir_for_known_owner(monkeypatch, tmp_path, users_json):
-    """Bjørn's discord_id resolves to workspaces/default during
-    transition (renamed to bjorn in Task 5)."""
+    """Bjørn's discord_id resolves to workspaces/bjorn (renamed from default in Task 5)."""
     monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
     # Bjørn's discord_id from users.json
     result = workspace_dir(user_id="1246415163603816499")
-    assert result == tmp_path / "workspaces" / "default"
+    assert result == tmp_path / "workspaces" / "bjorn"
 
 
 def test_workspace_dir_for_member_user(monkeypatch, tmp_path, users_json):
@@ -73,7 +71,7 @@ def users_json(tmp_path, monkeypatch):
     (config_dir / "users.json").write_text("""
 {
   "users": [
-    {"discord_id": "1246415163603816499", "name": "Bjørn", "role": "owner", "workspace": "default", "created_at": "2026-04-22T00:00:00Z"},
+    {"discord_id": "1246415163603816499", "name": "Bjørn", "role": "owner", "workspace": "bjorn", "created_at": "2026-04-22T00:00:00Z"},
     {"discord_id": "238975101381378048", "name": "Mikkel", "role": "member", "workspace": "mikkel", "created_at": "2026-04-30T00:00:00Z"}
   ]
 }

@@ -24,7 +24,7 @@ def test_user_registry_roundtrip(isolated_runtime):
 
     # Seed owner
     owner = add_user(
-        discord_id="1111", name="Bjørn", role="owner", workspace="default",
+        discord_id="1111", name="Bjørn", role="owner", workspace="bjorn",
     )
     assert owner is not None
     assert owner.discord_id == "1111"
@@ -70,12 +70,12 @@ def test_user_registry_rejects_duplicates(isolated_runtime):
     assert dup2 is None
 
 
-def test_workspace_context_default_is_default(isolated_runtime):
-    """Without binding, current_workspace_name returns 'default'."""
+def test_workspace_context_default_is_bjorn(isolated_runtime):
+    """Without binding, current_workspace_name returns 'bjorn' (owner workspace, renamed from 'default' in Task 5)."""
     from core.identity.workspace_context import (
         current_workspace_name, current_user_id,
     )
-    assert current_workspace_name() == "default"
+    assert current_workspace_name() == "bjorn"
     assert current_user_id() == ""
 
 
@@ -88,8 +88,8 @@ def test_workspace_context_binds_and_resets(isolated_runtime):
     with user_context(workspace_override="michelle", user_display_name_override="Michelle"):
         assert current_workspace_name() == "michelle"
 
-    # After exit: back to default
-    assert current_workspace_name() == "default"
+    # After exit: back to bjorn (owner default, renamed from 'default' in Task 5)
+    assert current_workspace_name() == "bjorn"
 
 
 def test_workspace_context_looks_up_user_by_discord_id(isolated_runtime):
@@ -119,18 +119,18 @@ def test_ensure_default_workspace_honors_context(isolated_runtime):
     from core.identity.workspace_bootstrap import ensure_default_workspace
     from core.identity.workspace_context import user_context
 
-    # Without context: default
+    # Without context: bjorn (owner workspace, renamed from 'default' in Task 5)
     ws = ensure_default_workspace()
-    assert ws.name == "default"
+    assert ws.name == "bjorn"
 
     # With context: override
     with user_context(workspace_override="michelle_ws"):
         ws = ensure_default_workspace()
         assert ws.name == "michelle_ws"
 
-    # After exit: back to default
+    # After exit: back to bjorn
     ws = ensure_default_workspace()
-    assert ws.name == "default"
+    assert ws.name == "bjorn"
 
 
 def test_bootstrap_user_workspace_creates_empty_user_and_memory(isolated_runtime):
@@ -169,9 +169,9 @@ def test_cross_user_memory_isolation(isolated_runtime):
     from core.identity.workspace_context import user_context
 
     # Two users
-    add_user(discord_id="1111", name="Bjørn", role="owner", workspace="default")
+    add_user(discord_id="1111", name="Bjørn", role="owner", workspace="bjorn")
     add_user(discord_id="2222", name="Michelle", role="member", workspace="michelle")
-    bootstrap_user_workspace("default", display_name="Bjørn")
+    bootstrap_user_workspace("bjorn", display_name="Bjørn")
     bootstrap_user_workspace("michelle", display_name="Michelle")
 
     # Write to Bjørns MEMORY.md under Bjørn's context
@@ -192,7 +192,7 @@ def test_cross_user_memory_isolation(isolated_runtime):
     with user_context(discord_id="2222"):
         michelle_path = workspace_memory_paths()["curated_memory"]
     assert bjorn_path != michelle_path
-    assert bjorn_path.parent.name == "default"
+    assert bjorn_path.parent.name == "bjorn"
     assert michelle_path.parent.name == "michelle"
 
 
@@ -223,7 +223,7 @@ def test_get_owner_returns_single_owner(isolated_runtime):
 
     assert get_owner() is None
 
-    add_user(discord_id="1111", name="Owner", role="owner", workspace="default")
+    add_user(discord_id="1111", name="Owner", role="owner", workspace="bjorn")
     add_user(discord_id="2222", name="Member", role="member", workspace="other")
 
     owner = get_owner()
@@ -246,7 +246,7 @@ def test_workspace_context_snapshot(isolated_runtime):
     from core.identity.workspace_context import current_context_snapshot, user_context
 
     snap = current_context_snapshot()
-    assert snap["workspace"] == "default"
+    assert snap["workspace"] == "bjorn"
     assert snap["user_id"] == ""
 
     with user_context(workspace_override="x", user_display_name_override="Xenia"):

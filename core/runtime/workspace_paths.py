@@ -4,9 +4,7 @@ Replaces ~75 hardcoded `workspaces/default/` references across services.
 Routes per-user requests to their workspace dir; routes Jarvis-state
 requests to the shared dir.
 
-During the transition (Tasks 1-4), shared_dir() and the owner's
-workspace_dir() both return `workspaces/default/` for backwards compat.
-Task 5 switches shared_dir() to `shared/` and renames default → bjorn.
+Task 5 switched shared_dir() to `shared/` and renamed default → bjorn.
 
 See: docs/superpowers/specs/2026-05-28-multi-user-workspace-isolation-design.md
 """
@@ -35,11 +33,8 @@ def shared_dir() -> Path:
 
     Contains: SOUL.md, IDENTITY.md, MANIFEST.md, INNER_VOICE.md,
     CHRONICLE.md, dreams/, creative_impulse/, shadow_scan/, etc.
-
-    Transition note: until Task 5, returns workspaces/default/ for
-    backwards compat. After Task 5, returns shared/.
     """
-    return _jarvis_home() / "workspaces" / "default"
+    return _jarvis_home() / "shared"
 
 
 def workspace_dir(user_id: str | None = None) -> Path:

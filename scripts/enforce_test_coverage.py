@@ -30,6 +30,10 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/runtime/workspace_paths.py": "tests/runtime/test_workspace_paths.py",
     "core/runtime/db.py": "tests/runtime/test_db_schema_multiuser.py",
     "core/services/dream_hypothesis_generator.py": "tests/runtime/test_db_schema_multiuser.py",
+    # Group 4: permission scope filters — tests live in tests/multi_user/
+    # Mapping added 2026-05-28.
+    "core/services/cognitive_chronicle.py": "tests/multi_user/test_scope_filters.py",
+    "core/services/scheduled_tasks.py": "tests/multi_user/test_scope_filters.py",
     # Group 3a: memory-layer services migrated to workspace_dir()
     # Tests live in non-standard files; mapping added 2026-05-28.
     "core/services/cross_session_threads.py": "tests/test_autonomy_registry_surfaces.py",

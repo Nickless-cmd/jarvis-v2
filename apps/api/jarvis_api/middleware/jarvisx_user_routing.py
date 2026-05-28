@@ -209,3 +209,15 @@ async def jarvisx_user_routing_middleware(
                 reset_project_root(proj_token)
             except Exception:
                 pass
+
+
+def require_owner(token_claims: dict | None) -> None:
+    """Raise 403 if the caller is not the owner. Used by routes that
+    modify Jarvis' shared state (SOUL.md, IDENTITY.md, token mint, etc.).
+
+    Part of multi-user workspace isolation refactor — Task 4.
+    """
+    from fastapi import HTTPException
+    role = (token_claims or {}).get("role", "")
+    if role != "owner":
+        raise HTTPException(status_code=403, detail="owner-only")

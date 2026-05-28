@@ -87,6 +87,36 @@ def edit_scheduled_task(task_id: str, *, focus: str | None = None, delay_minutes
     return {"status": "ok", "task": updated, "text": f"Updated task {task_id}: {updated.get('focus')} — fires at {str(updated.get('run_at',''))[:16]}Z"}
 
 
+def list_pending_for_current_user() -> list[dict]:
+    """Return scheduled tasks where scheduled_for_user_id matches current user.
+
+    Owner with no context binding (empty user_id) sees all pending tasks.
+    Untagged tasks (legacy rows with NULL scheduled_for_user_id) are visible
+    to all users without a user_id filter (i.e. owner in default context).
+
+    Part of multi-user workspace isolation refactor — Task 4.
+    """
+    from core.identity.workspace_context import current_user_id
+    from core.runtime.db import connect, _ensure_scheduled_tasks_table
+
+    uid = current_user_id()
+    with connect() as conn:
+        conn.row_factory = __import__("sqlite3").Row
+        _ensure_scheduled_tasks_table(conn)
+        if uid:
+            rows = conn.execute(
+                "SELECT * FROM scheduled_tasks "
+                "WHERE status='pending' AND scheduled_for_user_id = ? "
+                "ORDER BY run_at ASC",
+                (uid,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM scheduled_tasks WHERE status='pending' ORDER BY run_at ASC"
+            ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def get_scheduled_tasks_state() -> dict[str, object]:
     """Return all scheduled tasks for observability."""
     tasks = runtime_db.list_scheduled_tasks(limit=50)

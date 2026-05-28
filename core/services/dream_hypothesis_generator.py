@@ -369,10 +369,21 @@ def generate_dream_hypothesis() -> dict[str, Any]:
 
 
 def list_dream_hypotheses(*, presented_only: bool = False, limit: int = 20) -> list[dict[str, Any]]:
+    from core.identity.workspace_context import current_user_id as _uid
+    _current_uid = _uid()
     _ensure_table()
     lim = max(1, min(int(limit or 20), 100))
     with connect() as conn:
-        if presented_only:
+        if _current_uid:
+            presented_clause = "AND presented = 1 " if presented_only else ""
+            rows = conn.execute(
+                f"SELECT * FROM cognitive_dream_hypotheses "
+                f"WHERE (relevant_to_users IS NULL OR relevant_to_users LIKE '%' || ? || '%') "
+                f"{presented_clause}"
+                f"ORDER BY id DESC LIMIT ?",
+                (_current_uid, lim),
+            ).fetchall()
+        elif presented_only:
             rows = conn.execute(
                 "SELECT * FROM cognitive_dream_hypotheses WHERE presented = 1 "
                 "ORDER BY id DESC LIMIT ?",

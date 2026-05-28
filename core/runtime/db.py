@@ -11679,6 +11679,8 @@ def list_runtime_dream_hypothesis_signals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    from core.identity.workspace_context import current_user_id as _uid
+    _current_uid = _uid()
     with connect() as conn:
         _ensure_runtime_dream_hypothesis_signal_table(conn)
         clauses: list[str] = []
@@ -11686,6 +11688,11 @@ def list_runtime_dream_hypothesis_signals(
         if status:
             clauses.append("status = ?")
             params.append(status)
+        if _current_uid:
+            clauses.append(
+                "(relevant_to_users IS NULL OR relevant_to_users LIKE '%' || ? || '%')"
+            )
+            params.append(_current_uid)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         rows = conn.execute(
             f"""
@@ -12035,6 +12042,8 @@ def list_runtime_dream_adoption_candidates(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    from core.identity.workspace_context import current_user_id as _uid
+    _current_uid = _uid()
     with connect() as conn:
         _ensure_runtime_dream_adoption_candidate_table(conn)
         clauses: list[str] = []
@@ -12042,6 +12051,11 @@ def list_runtime_dream_adoption_candidates(
         if status:
             clauses.append("status = ?")
             params.append(status)
+        if _current_uid:
+            clauses.append(
+                "(relevant_to_users IS NULL OR relevant_to_users LIKE '%' || ? || '%')"
+            )
+            params.append(_current_uid)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         rows = conn.execute(
             f"""
@@ -12391,6 +12405,8 @@ def list_runtime_dream_influence_proposals(
     status: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, object]]:
+    from core.identity.workspace_context import current_user_id as _uid
+    _current_uid = _uid()
     with connect() as conn:
         _ensure_runtime_dream_influence_proposal_table(conn)
         clauses: list[str] = []
@@ -12398,6 +12414,11 @@ def list_runtime_dream_influence_proposals(
         if status:
             clauses.append("status = ?")
             params.append(status)
+        if _current_uid:
+            clauses.append(
+                "(relevant_to_users IS NULL OR relevant_to_users LIKE '%' || ? || '%')"
+            )
+            params.append(_current_uid)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         rows = conn.execute(
             f"""

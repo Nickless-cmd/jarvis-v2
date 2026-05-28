@@ -1302,6 +1302,173 @@ const handlers: Record<string, ToolHandler> = {
       region: { x, y, width, height },
     }
   },
+
+  // ── Tier-3 wishlist tools ────────────────────────────────────────────
+
+  operator_notify: async (args) => {
+    // Show OS notification toast via Electron's Notification API.
+    // Cross-platform: Linux (requires libnotify/notify-osd), macOS, Windows.
+    const { Notification } = await import('electron')
+    const title = String(args.title ?? '')
+    const body = String(args.body ?? '')
+    if (!title) throw new Error('title is required')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const opts: Record<string, any> = { title, body }
+    if (args.icon != null) opts.icon = String(args.icon)
+    if (!Notification.isSupported()) {
+      // On headless / CI environments notifications may be unavailable.
+      fileLog('operator_notify: Notification not supported on this platform')
+      return { shown: false, reason: 'not_supported' }
+    }
+    new Notification(opts).show()
+    fileLog(`operator_notify: shown title="${title}"`)
+    return { shown: true }
+  },
+
+  operator_watch_folder: async (args) => {
+    // Start watching a folder using Node's fs.watch.
+    // Events are buffered in a module-level map — poll with operator_watch_events.
+    const watchPath = resolveOperatorPath(args.path)
+    const recursive = Boolean(args.recursive ?? false)
+    const debounceMs = Number(args.debounce_ms ?? 500)
+    const { watch: fsWatch } = await import('node:fs')
+    const { randomUUID } = await import('node:crypto')
+    const { join: pathJoin } = await import('node:path')
+
+    const watcherId = randomUUID()
+    const eventBuffer: Array<{ path: string; event_type: string; timestamp: number }> = []
+    const lastSeen = new Map<string, number>()
+
+    let watcher: ReturnType<typeof fsWatch>
+    try {
+      watcher = fsWatch(watchPath, { recursive }, (eventType, filename) => {
+        const now = Date.now()
+        const key = `${eventType}:${filename ?? ''}`
+        const last = lastSeen.get(key) ?? 0
+        if (now - last < debounceMs) return
+        lastSeen.set(key, now)
+        eventBuffer.push({
+          path: filename ? pathJoin(watchPath, filename) : watchPath,
+          event_type: eventType,
+          timestamp: now,
+        })
+        if (eventBuffer.length > 2000) eventBuffer.splice(0, eventBuffer.length - 2000)
+      })
+    } catch (e) {
+      throw new Error(`fs.watch failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+
+    folderWatchers.set(watcherId, { watcher, buffer: eventBuffer })
+    fileLog(`operator_watch_folder: started watcher_id=${watcherId} path=${watchPath} recursive=${recursive}`)
+    return { watching: true, watcher_id: watcherId, path: watchPath }
+  },
+
+  operator_unwatch_folder: async (args) => {
+    const watcherId = String(args.watcher_id ?? '')
+    if (!watcherId) throw new Error('watcher_id is required')
+    const entry = folderWatchers.get(watcherId)
+    if (!entry) return { stopped: false, watcher_id: watcherId, reason: 'not_found' }
+    try { entry.watcher.close() } catch {}
+    folderWatchers.delete(watcherId)
+    fileLog(`operator_unwatch_folder: stopped watcher_id=${watcherId}`)
+    return { stopped: true, watcher_id: watcherId }
+  },
+
+  operator_watch_events: async (args) => {
+    const watcherId = String(args.watcher_id ?? '')
+    if (!watcherId) throw new Error('watcher_id is required')
+    const maxEvents = Math.min(1000, Math.max(1, Number(args.max ?? 100)))
+    const entry = folderWatchers.get(watcherId)
+    if (!entry) return { events: [], count: 0, error: 'watcher_not_found' }
+    const events = entry.buffer.splice(0, maxEvents)
+    return { events, count: events.length }
+  },
+
+  operator_record_audio: async (args) => {
+    // Record audio via arecord (Linux) or ffmpeg (Windows/fallback).
+    // REQUIRES APPROVAL via dialog (auto-rejects after 20 sec).
+    const durationS = Math.max(1, Math.min(300, Number(args.duration_s ?? 10)))
+    const skipApproval = Boolean(args.skip_approval)
+    const deviceArg = args.device != null ? String(args.device) : null
+    const platform = osPlatform()
+
+    // Determine output path
+    const { mkdirSync: mkdirFS, statSync } = await import('node:fs')
+    const { join: pathJoin } = await import('node:path')
+    const recordingsDir = pathJoin(homedir(), '.jarvisx', 'recordings')
+    mkdirFS(recordingsDir, { recursive: true })
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const defaultPath = pathJoin(recordingsDir, `recording-${timestamp}.wav`)
+    const outputPath = args.output_path != null ? String(args.output_path) : defaultPath
+
+    // Approval dialog
+    if (!skipApproval) {
+      const choice = await Promise.race<{ response: number }>([
+        dialog.showMessageBox({
+          type: 'warning',
+          title: 'Jarvis vil optage lyd',
+          message: 'Jarvis beder om at optage fra mikrofonen.',
+          detail: `Varighed: ${durationS} sekunder\nFil: ${outputPath}\n\nAuto-afviser efter 20 sek hvis du ikke svarer.`,
+          buttons: ['Afvis', 'Optag'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true,
+        }),
+        new Promise<{ response: number }>((resolve) =>
+          setTimeout(() => resolve({ response: 0 }), 20_000),
+        ),
+      ])
+      if (choice.response !== 1) {
+        return { recorded: false, reason: 'user_rejected' }
+      }
+    }
+
+    // Record via platform command
+    let recordRes: ReturnType<typeof spawnSync>
+    if (platform === 'win32') {
+      // Windows: use ffmpeg with dshow audio input
+      const deviceStr = deviceArg ?? 'default'
+      recordRes = spawnSync('ffmpeg', [
+        '-y',
+        '-f', 'dshow',
+        '-i', `audio=${deviceStr}`,
+        '-t', String(durationS),
+        outputPath,
+      ], { encoding: 'utf8', timeout: (durationS + 15) * 1000 })
+      if (recordRes.error) {
+        return { recorded: false, reason: 'tool_missing', detail: 'ffmpeg not found. Install: winget install ffmpeg' }
+      }
+    } else {
+      // Linux: try arecord first (ALSA), fall back to parecord (PulseAudio)
+      const arecordArgs = ['-d', String(durationS), '-f', 'cd', '-t', 'wav']
+      if (deviceArg) arecordArgs.push('-D', deviceArg)
+      arecordArgs.push(outputPath)
+      recordRes = spawnSync('arecord', arecordArgs, { encoding: 'utf8', timeout: (durationS + 15) * 1000 })
+      if (recordRes.error) {
+        // Try parecord fallback
+        const parecordArgs = ['--file-format=wav', `--record-time=${durationS}`, outputPath]
+        if (deviceArg) parecordArgs.push(`--device=${deviceArg}`)
+        recordRes = spawnSync('parecord', parecordArgs, { encoding: 'utf8', timeout: (durationS + 15) * 1000 })
+        if (recordRes.error) {
+          return {
+            recorded: false,
+            reason: 'tool_missing',
+            detail: 'arecord / parecord not found. Install: apt install alsa-utils (or pulseaudio-utils)',
+          }
+        }
+      }
+    }
+
+    if (recordRes.status !== 0 && recordRes.status !== null) {
+      const errOut = typeof recordRes.stderr === 'string' ? recordRes.stderr : String(recordRes.stderr ?? '')
+      throw new Error(`recording failed: ${errOut.trim()}`)
+    }
+
+    let sizeBytes = 0
+    try { sizeBytes = statSync(outputPath).size } catch {}
+    fileLog(`operator_record_audio: recorded ${durationS}s → ${outputPath} (${sizeBytes} bytes)`)
+    return { recorded: true, path: outputPath, duration_s: durationS, size_bytes: sizeBytes }
+  },
 }
 
 // ── Browser-session singleton helpers ───────────────────────────────────
@@ -1317,6 +1484,15 @@ interface BrowserSession {
 
 let browserSession: BrowserSession | null = null
 const BROWSER_IDLE_MS = 5 * 60 * 1000  // close session after 5 min idle
+
+// ── Folder-watcher singleton store ──────────────────────────────────────
+
+interface FolderWatcherEntry {
+  watcher: import('node:fs').FSWatcher
+  buffer: Array<{ path: string; event_type: string; timestamp: number }>
+}
+
+const folderWatchers = new Map<string, FolderWatcherEntry>()
 
 function findBrowserExecutable(): string {
   const candidates = [

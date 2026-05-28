@@ -925,3 +925,111 @@ async def operator_ocr_region_async(
         timeout_s=timeout_s,
     )
     return result or {}
+
+
+# ── operator_notify ─────────────────────────────────────────────────────
+
+
+async def operator_notify_async(
+    *,
+    title: str,
+    body: str,
+    user_id: str,
+    icon: str | None = None,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Show an OS notification toast on the operator's machine via Electron Notification."""
+    args: dict[str, Any] = {"title": str(title), "body": str(body)}
+    if icon is not None:
+        args["icon"] = str(icon)
+    result = await _bridge_call(
+        tool="operator_notify",
+        args=args,
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_watch_folder ───────────────────────────────────────────────
+
+
+async def operator_watch_folder_async(
+    *,
+    path: str,
+    user_id: str,
+    recursive: bool = False,
+    debounce_ms: int = 500,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Start watching a folder for changes on the operator's machine. Returns {watcher_id}."""
+    result = await _bridge_call(
+        tool="operator_watch_folder",
+        args={"path": str(path), "recursive": bool(recursive), "debounce_ms": int(debounce_ms)},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_unwatch_folder_async(
+    *,
+    watcher_id: str,
+    user_id: str,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Stop a folder watcher by watcher_id. Returns {stopped: true}."""
+    result = await _bridge_call(
+        tool="operator_unwatch_folder",
+        args={"watcher_id": str(watcher_id)},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_watch_events_async(
+    *,
+    watcher_id: str,
+    user_id: str,
+    max: int = 100,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Poll buffered filesystem events for a watcher. Returns {events: [...]} and clears buffer."""
+    result = await _bridge_call(
+        tool="operator_watch_events",
+        args={"watcher_id": str(watcher_id), "max": int(max)},
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_record_audio ───────────────────────────────────────────────
+
+
+async def operator_record_audio_async(
+    *,
+    duration_s: int,
+    user_id: str,
+    output_path: str | None = None,
+    device: str | None = None,
+    skip_approval: bool = False,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
+) -> dict[str, Any]:
+    """Record N seconds of microphone audio on the operator's machine. Requires approval."""
+    args: dict[str, Any] = {
+        "duration_s": int(duration_s),
+        "skip_approval": bool(skip_approval),
+    }
+    if output_path is not None:
+        args["output_path"] = str(output_path)
+    if device is not None:
+        args["device"] = str(device)
+    result = await _bridge_call(
+        tool="operator_record_audio",
+        args=args,
+        user_id=user_id,
+        timeout_s=timeout_s,
+    )
+    return result or {}

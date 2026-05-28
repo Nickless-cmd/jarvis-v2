@@ -1297,6 +1297,132 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    # ── Tier-3 wishlist tools ────────────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_notify",
+            "description": (
+                "Show an OS notification toast on the OPERATOR'S machine via Electron Notification. "
+                "Works on Linux (requires notify-osd or libnotify), macOS, and Windows. "
+                "Returns {shown: true}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Notification title."},
+                    "body": {"type": "string", "description": "Notification body text."},
+                    "icon": {
+                        "type": "string",
+                        "description": "Optional absolute path to an icon image (.png/.ico) on the operator's machine.",
+                    },
+                },
+                "required": ["title", "body"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_watch_folder",
+            "description": (
+                "Start watching a folder for file-system changes on the OPERATOR'S machine. "
+                "Uses Node fs.watch (polling design: events accumulate in a buffer, "
+                "retrieve with operator_watch_events). Stop with operator_unwatch_folder. "
+                "Returns {watching: true, watcher_id}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Absolute path to folder to watch."},
+                    "recursive": {
+                        "type": "boolean",
+                        "description": "Watch subdirectories too (default false). Note: recursive fs.watch is unreliable on Linux — use false on Linux.",
+                    },
+                    "debounce_ms": {
+                        "type": "number",
+                        "description": "Minimum ms between recording the same event (default 500).",
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_unwatch_folder",
+            "description": (
+                "Stop a folder watcher started by operator_watch_folder. "
+                "Returns {stopped: true, watcher_id}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "watcher_id": {
+                        "type": "string",
+                        "description": "Watcher ID returned by operator_watch_folder.",
+                    },
+                },
+                "required": ["watcher_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_watch_events",
+            "description": (
+                "Poll buffered file-system events for a folder watcher. "
+                "Returns {events: [{path, event_type, timestamp}, ...], count} and clears the buffer. "
+                "Call periodically after operator_watch_folder to get new events."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "watcher_id": {
+                        "type": "string",
+                        "description": "Watcher ID returned by operator_watch_folder.",
+                    },
+                    "max": {
+                        "type": "number",
+                        "description": "Max events to return per call (default 100).",
+                    },
+                },
+                "required": ["watcher_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_record_audio",
+            "description": (
+                "Record N seconds of microphone audio on the OPERATOR'S machine and save to a WAV file. "
+                "REQUIRES APPROVAL via dialog (auto-rejects after 20 sec if not confirmed). "
+                "Linux: uses arecord (alsa-utils) or parecord (pulse). Windows: uses ffmpeg. "
+                "Returns {recorded: true, path, duration_s, size_bytes} or {recorded: false, reason}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "duration_s": {
+                        "type": "number",
+                        "description": "Recording duration in seconds (1–300).",
+                    },
+                    "output_path": {
+                        "type": "string",
+                        "description": "Absolute path for the output WAV file. Defaults to ~/.jarvisx/recordings/recording-<timestamp>.wav.",
+                    },
+                    "device": {
+                        "type": "string",
+                        "description": "Audio input device name (optional). Default: system default mic. Linux: ALSA device e.g. 'hw:0,0'. Windows: dshow device name.",
+                    },
+                },
+                "required": ["duration_s"],
+            },
+        },
+    },
     {
         "type": "function",
         "function": {
@@ -4202,6 +4328,110 @@ def _exec_operator_ocr_region(args: dict[str, Any]) -> dict[str, Any]:
         ),
         tool_name="operator_ocr_region",
         timeout_s=45.0,
+    )
+
+
+# ── Tier-3 exec stubs ────────────────────────────────────────────────────
+
+
+def _exec_operator_notify(args: dict[str, Any]) -> dict[str, Any]:
+    title = args.get("title")
+    body = args.get("body")
+    if not isinstance(title, str) or not title:
+        return {"error": "title is required (non-empty string)", "status": "error"}
+    if not isinstance(body, str):
+        return {"error": "body is required (string)", "status": "error"}
+    icon = args.get("icon")
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_notify_async
+    return _run_operator_async(
+        lambda: operator_notify_async(
+            title=title, body=body, user_id=user_id,
+            icon=str(icon) if icon is not None else None,
+            timeout_s=10.0,
+        ),
+        tool_name="operator_notify",
+        timeout_s=15.0,
+    )
+
+
+def _exec_operator_watch_folder(args: dict[str, Any]) -> dict[str, Any]:
+    path = args.get("path")
+    if not isinstance(path, str) or not path:
+        return {"error": "path is required (non-empty string)", "status": "error"}
+    recursive = bool(args.get("recursive", False))
+    debounce_ms = int(args.get("debounce_ms") or 500)
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_watch_folder_async
+    return _run_operator_async(
+        lambda: operator_watch_folder_async(
+            path=path, user_id=user_id,
+            recursive=recursive, debounce_ms=debounce_ms,
+            timeout_s=15.0,
+        ),
+        tool_name="operator_watch_folder",
+        timeout_s=20.0,
+    )
+
+
+def _exec_operator_unwatch_folder(args: dict[str, Any]) -> dict[str, Any]:
+    watcher_id = args.get("watcher_id")
+    if not isinstance(watcher_id, str) or not watcher_id:
+        return {"error": "watcher_id is required (non-empty string)", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_unwatch_folder_async
+    return _run_operator_async(
+        lambda: operator_unwatch_folder_async(
+            watcher_id=watcher_id, user_id=user_id, timeout_s=10.0,
+        ),
+        tool_name="operator_unwatch_folder",
+        timeout_s=15.0,
+    )
+
+
+def _exec_operator_watch_events(args: dict[str, Any]) -> dict[str, Any]:
+    watcher_id = args.get("watcher_id")
+    if not isinstance(watcher_id, str) or not watcher_id:
+        return {"error": "watcher_id is required (non-empty string)", "status": "error"}
+    max_events = int(args.get("max") or 100)
+    max_events = max(1, min(1000, max_events))
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_watch_events_async
+    return _run_operator_async(
+        lambda: operator_watch_events_async(
+            watcher_id=watcher_id, user_id=user_id, max=max_events, timeout_s=10.0,
+        ),
+        tool_name="operator_watch_events",
+        timeout_s=15.0,
+    )
+
+
+def _exec_operator_record_audio(args: dict[str, Any]) -> dict[str, Any]:
+    duration_s = args.get("duration_s")
+    if duration_s is None:
+        return {"error": "duration_s is required", "status": "error"}
+    try:
+        duration_s = int(duration_s)
+    except (ValueError, TypeError):
+        return {"error": "duration_s must be an integer", "status": "error"}
+    if not (1 <= duration_s <= 300):
+        return {"error": "duration_s must be between 1 and 300", "status": "error"}
+    output_path = args.get("output_path")
+    device = args.get("device")
+    user_id = _operator_user_id(args)
+    skip_approval = bool(args.get("_runtime_trust_all"))
+    from core.tools.operator_tools import operator_record_audio_async
+    return _run_operator_async(
+        lambda: operator_record_audio_async(
+            duration_s=duration_s,
+            user_id=user_id,
+            output_path=str(output_path) if output_path is not None else None,
+            device=str(device) if device is not None else None,
+            skip_approval=skip_approval,
+            timeout_s=float(duration_s) + 30.0,
+        ),
+        tool_name="operator_record_audio",
+        timeout_s=float(duration_s) + 45.0,
     )
 
 
@@ -7637,6 +7867,11 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "operator_screenshot_window": _exec_operator_screenshot_window,
     "operator_find_image": _exec_operator_find_image,
     "operator_ocr_region": _exec_operator_ocr_region,
+    "operator_notify": _exec_operator_notify,
+    "operator_watch_folder": _exec_operator_watch_folder,
+    "operator_unwatch_folder": _exec_operator_unwatch_folder,
+    "operator_watch_events": _exec_operator_watch_events,
+    "operator_record_audio": _exec_operator_record_audio,
     "operator_browser_open": _exec_operator_browser_open,
     "operator_browser_get_text": _exec_operator_browser_get_text,
     "operator_browser_get_links": _exec_operator_browser_get_links,

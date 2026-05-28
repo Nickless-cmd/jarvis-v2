@@ -180,11 +180,19 @@ async def jarvisx_user_routing_middleware(
     ws_token = None
     if workspace_name:
         try:
+            # Channel: derive from X-JarvisX-Client header. Webchat
+            # sends nothing; jarvisx-electron sends e.g.
+            # 'jarvisx-electron/0.1.5-poc'. We normalize to the package
+            # name (everything before the first '/') so downstream code
+            # can match on stable values.
+            _xc_raw = (request.headers.get("x-jarvisx-client") or "").strip()
+            _channel = _xc_raw.split("/", 1)[0].strip().lower() if _xc_raw else "webchat"
             ws_token = set_context(
                 workspace_name=workspace_name,
                 user_id=bound_user_id,
                 user_display_name=display,
                 role=str((token_claims or {}).get("role") or "").strip().lower(),
+                channel=_channel,
             )
         except Exception as exc:
             logger.warning("jarvisx middleware: set_context failed: %s", exc)

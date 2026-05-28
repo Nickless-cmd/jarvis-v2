@@ -38,6 +38,7 @@ class _ContextState:
     user_id: str  # discord_id or similar external identifier
     user_display_name: str
     role: str = ""  # bearer-token role: owner|member|guest, "" = unbound (legacy)
+    channel: str = ""  # transport channel: jarvisx-electron|webchat|discord|telegram|...
 
 
 # Default: workspace="bjorn" (renamed from "default" in Task 5), user_id="" (owner implicit)
@@ -46,6 +47,7 @@ _DEFAULT_STATE = _ContextState(
     user_id="",
     user_display_name="",
     role="",
+    channel="",
 )
 
 _current_state: contextvars.ContextVar[_ContextState] = contextvars.ContextVar(
@@ -83,6 +85,7 @@ def set_context(
     user_id: str = "",
     user_display_name: str = "",
     role: str = "",
+    channel: str = "",
 ) -> contextvars.Token:
     """Set workspace context explicitly. Returns Token for reset.
 
@@ -94,6 +97,7 @@ def set_context(
         user_id=str(user_id or "").strip(),
         user_display_name=str(user_display_name or "").strip(),
         role=str(role or "").strip().lower(),
+        channel=str(channel or "").strip().lower(),
     )
     return _current_state.set(state)
 
@@ -174,3 +178,12 @@ def current_role() -> str:
     Empty string when no token-backed identity is bound (legacy / single-user dev).
     """
     return _current_state.get().role
+
+
+def current_channel() -> str:
+    """Return the transport channel the current request came in on.
+
+    "jarvisx-electron" | "webchat" | "discord" | "telegram" | "" (unbound).
+    Set by the auth middleware from the X-JarvisX-Client header.
+    """
+    return _current_state.get().channel

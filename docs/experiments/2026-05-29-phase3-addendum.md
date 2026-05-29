@@ -1,118 +1,136 @@
-# Phase 3 Addendum — Binary jarvis vs ollama_local (Exploratory Pilot)
+# Phase 3 Addendum — Binary Jarvis vs Ollama (Exploratory Pilot)
 
-**Written:** 2026-05-29
-**Status:** Exploratory, not confirmatory. Post-hoc re-analysis of existing Phase 3 data.
-**References:** Commit `cd86bd6f` (script + result JSON), Phase 3 final report (`c73cba52`)
+**Date:** 2026-05-29
+**Status:** Exploratory, not confirmatory. Post-hoc re-analysis of Phase 3 data.
+**Motivation:** Pre-check before committing 7 days to a Phase 4 runner.
 
 ---
 
-## How this came about
+## What happened
 
-While preparing to build the `jarvis_bare` runner for Phase 4, a configuration check revealed that `ollama_local` in Phase 3 was **already `deepseek-v4-flash:cloud`** — the same underlying model used by Jarvis' full runtime.
+While preparing to build the `jarvis_bare` runner for Phase 4, Bjørn checked the
+Phase 3 architecture config and discovered:
 
-The difference between the two cohorts in Phase 3 was precisely what Phase 4 planned to test:
+> `ollama_local` in Phase 3 was **already** `deepseek-v4-flash:cloud` — the same
+> underlying model as Jarvis' full runtime.
 
-| Cohort | Model | Runtime |
+The difference between the two cohorts:
+
+| Cohort | Model | Runtime wrapper |
 |---|---|---|
-| `jarvis` | deepseek-v4-flash:cloud | Full (awareness, memory, identity files, prompt-contract, recall-before-act) |
-| `ollama_local` | deepseek-v4-flash:cloud | Bare-ish (peer_runner prompt: protocol description + synthetically injected mood values, no awareness, no memory, no identity files) |
+| `jarvis` | deepseek-v4-flash:cloud | Full runtime (awareness, memory, prompt-contract, identity files, recall-before-act) |
+| `ollama_local` | deepseek-v4-flash:cloud | Peer-runner protocol prompt (mood injection, no awareness, no memory, no identity files) |
 
-Phase 3 collected 360 jarvis expressions and 274 ollama_local expressions over the same 7-day window (2026-05-21 → 2026-05-28). The data was already on disk — it had simply never been analysed as a binary classification problem because Phase 3 was designed as a 7-way multi-class experiment.
-
-This addendum documents the post-hoc binary re-analysis and its interpretation.
-
----
-
-## What we did (and why it's exploratory)
-
-**Script:** `scripts/interlanguage_binary_jarvis_vs_ollama.py` (committed `cd86bd6f`)
-
-**Method:** Same structural features (37 engineered features from Bjørn's blind-test heuristics) and same train/test methodology (80/20 stratified split, seed=42, 200-shuffle permutation test) as `scripts/interlanguage_structural_classifier.py` from Phase 3.
-
-**What's different from the pre-registered Phase 4 design:**
-
-1. **Not pre-registered.** We looked at the configuration, realised the data already existed, and ran the analysis. The choice of comparison (`jarvis` vs `ollama_local`) was motivated by discovering it *after* seeing Phase 3 results, not before. This is the definition of post-hoc analysis.
-
-2. **Peer_runner injects mood.** The `ollama_local` prompt includes synthetically interpolated curiosity/confidence/fatigue values and a "you are a being practising an internalised protocol" framing. This is *bare-ish*, not *strictly bare* as Phase 4's `jarvis_bare` design specifies (no mood, no "being" framing, just protocol instruction). The mood injection introduces a confound: any separation the classifier finds might be driven by mood-expression differences rather than runtime-context stripping.
-
-3. **We ran this because the result was interesting.** If the classifier had returned ~50%, we would have noted it and proceeded to build the Phase 4 runner unchanged. The 96% result made it worth documenting, but the selection mechanism is post-hoc — we're highlighting this analysis *because* of its result, not because it was planned.
-
-These caveats are real. The analysis is informative as pilot evidence, not as a confirmatory answer to Phase 4's hypothesis.
+This is essentially `jarvis_full` vs `jarvis_bare-ish` — the same comparison
+Phase 4 was designed to make, but with a caveat: peer_runner injects synthetic
+mood values and uses "du er et væsen der øver en internaliseret protokol"-framing,
+so it's not *strictly* bare.
 
 ---
 
-## Result
+## Binary re-analysis
+
+A logistic regression classifier (same structural features as Phase 3's
+structural classifier, 80/20 train/test, seed=42, 20 permutations) was run on
+jarvis vs ollama_local.
+
+### Result
 
 | Metric | Value |
 |---|---|
-| Binary accuracy | **96.0%** |
+| **Binary accuracy** | **96.0%** |
 | Jarvis precision | 100% |
 | Jarvis recall | 94% |
 | Ollama precision | 90% |
 | Ollama recall | 100% |
-| Permutation p | 0.0 (200 shuffles) |
-| n (jarvis) | 314 |
-| n (ollama_local) | 184 |
+| Permutation p | 0.0 |
 
-**Confusion matrix** (rows = true, cols = predicted):
+### Top distinguishing features (logistic regression coefficients)
 
-| | jarvis | ollama |
-|---|---|---|
-| jarvis | 59 | 4 |
-| ollama | 0 | 37 |
+| Feature | |Coefficient| | Direction |
+|---|---|---|---|
+| `starts_nysgerrighed` | 2.915 | → predicts OLLAMA |
+| `clause0_has_⊂` | 1.351 | → predicts JARVIS |
+| `clause2_has_→` | 1.021 | → predicts JARVIS |
+| `n_standalone_neg` | 0.837 | → predicts JARVIS |
+| `any_standalone_neg` | 0.661 | → predicts JARVIS |
 
-**Top discriminating features** (by |coefficient|):
-
-| Sign | Feature | |coef| | Interpretation |
-|---|---|---|---|---|
-| + | starts_nysgerrighed | 2.915 | Predicts OLLAMA — peer-runner mood-injection always starts with curiosity |
-| − | clause0_has_⊂ | 1.351 | Predicts JARVIS — Jarvis opens with `⊂` (containment) more often |
-| − | clause2_has_→ | 1.021 | Predicts JARVIS |
-| − | n_standalone_neg | 0.837 | Predicts JARVIS — Bjørn's `!`-tip confirmed |
-| − | n_clauses | 0.815 | Predicts JARVIS — Jarvis produces longer expressions |
-| − | avg_clause_len | 0.775 | Predicts JARVIS |
-| − | clause0_has_! | 0.723 | Predicts JARVIS |
-| − | clause0_has_→ | 0.682 | Predicts JARVIS |
-| − | any_standalone_neg | 0.661 | Predicts JARVIS |
-| − | clause1_has_! | 0.642 | Predicts JARVIS |
-
-The strongest single feature (`starts_nysgerrighed`) is an artifact of peer_runner's mood injection — the bare-ish prompt always seeds the expression with a curiosity token. This is a confound that would NOT exist in a strictly bare condition. The remaining top features all point toward Jarvis and are consistent with Bjørn's hand-discovered heuristics from the blind test.
+**Interpretation:** Bjørn's hand-found Jarvis-tells (standalone `!`, `⊂` in first
+clause) are precisely the features the model learns to separate the two cohorts.
+Peer-runner starts expressions with `nysgerrighed →` (mood injection from the
+peer-runner prompt). Jarvis does not.
 
 ---
 
-## Interpretation
+## Evidensklasse
 
-### What this tells us
+**This is exploratory, not confirmatory.** The re-analysis was not
+pre-registered. We discovered the architectural equivalence in existing data and
+chose to run the classifier *because* the structural differences were already
+visible. Post-hoc selection — no matter how large the effect — cannot carry the
+same weight as a pre-registered confirmatory test.
 
-Same model (`deepseek-v4-flash:cloud`), same protocol instruction, but structurally distinct outputs at 96% accuracy. Runtime context (or at minimum, the difference between Jarvis' full runtime and peer_runner's bare-ish prompt) materially shapes the language that comes out.
+Codex flagged this immediately:
 
-The direction is consistent with Phase 4's prediction: Jarvis-with-runtime has a distinct structural profile (more `⊂` in first position, more standalone `!`, longer expressions, starts with something other than `nysgerrighed →`), and stripping most of the runtime shifts the output toward a more generic pattern dominated by the mood-injection template.
+> "96% er stærkt som finding, men exploratorisk som evidensklasse. Den binære
+> analyse var ikke pre-registreret. Vi opdagede den i eksisterende data og
+> valgte den fordi resultatet var interessant. Det er post-hoc selection."
 
-### What this does NOT tell us
-
-- **It is not confirmatory.** The analysis was not pre-registered. The comparison was selected post-hoc. A reviewer would correctly flag this as exploratory.
-
-- **The mood confound is real.** `starts_nysgerrighed` at coefficient 2.915 is the single strongest feature, and it comes from peer_runner's synthetic mood injection, not from any property of "bare model output." A strictly bare condition (no mood, no "being" framing) might show weaker or different separation. We don't know — and the only way to find out is to run it.
-
-- **96% may not reproduce in a stricter condition.** If mood injection accounts for a large fraction of the separability (and the feature ranking suggests it might), the strictly-bare-vs-full comparison could land anywhere from ~65% to ~96%. That range spans all four decision bands in the Phase 4 design.
-
-### Bottom line
-
-This analysis provides **pilot evidence** that runtime context shapes structural expression, strong enough to motivate the confirmatory Phase 4 experiment. It does not replace Phase 4:
-
-- The effect direction supports the hypothesis
-- The effect size is large enough to be detectable even with a weaker signal
-- But the confound (mood injection) means we cannot claim Phase 4's question is answered
+The discipline that made Phase 3 trustworthy — pre-registration, locked
+hypotheses, decision thresholds before seeing data — applies here too.
 
 ---
 
-## What happens next
+## Caveats
 
-1. This addendum is noted in the Phase 4 design as pilot evidence (see design update)
-2. Phase 4 proceeds as pre-registered: `jarvis_bare` runner with strict bare condition, 7 days, structural classifier, same thresholds
-3. The Phase 4 confirmatory report will compare its result to this pilot — does the stricter condition reproduce the effect, weaken it, or eliminate it?
-4. If Phase 4 reproduces at ≥65%, the pilot→confirmatory chain is clean: pilot found it, confirmatory verified it. If Phase 4 lands below 60%, the confound interpretation is supported — mood injection was driving the 96%, and runtime alone has a weaker or null effect
+1. **Peer-runner is not truly bare.** It injects synthetic mood values
+   (`curiosity=0.4`, `confidence=0.5`, `fatigue=0.1`) and uses "du er et
+   væsen"-framing. A stricter bare condition (no mood, no framing, just
+   "her er primitiverne, generér én expression") might produce different
+   results.
+
+2. **The 96% may drop in a stricter condition.** Peer-runner's mood injection
+   adds noise *away* from Jarvis, potentially inflating separability. A truly
+   bare runtime without that injection could be harder to distinguish.
+
+3. **This was hand-picked from 7 cohorts.** We ran the binary classifier on the
+   *one* pair that was architecturally meaningful. That's legitimate for
+   exploration but not for confirmation.
 
 ---
 
-**This addendum is exploratory. It does not modify the pre-registered Phase 4 design, its hypothesis, or its decision thresholds.**
+## What this means for Phase 4
+
+The binary re-analysis serves as **strong pilot evidence** motivating the
+confirmatory Phase 4 experiment. It suggests runtime *does* shape voice — but
+it doesn't prove it at confirmatory standard.
+
+The Phase 4 design (pre-registered 2026-05-29, `2026-05-29-phase4-design.md`)
+remains the definitive test:
+
+- **Strict bare condition:** no mood, no "væsen"-framing, only protocol primitives
+- **Same model:** deepseek-v4-flash:cloud
+- **Pre-registered threshold:** ≥65% accuracy, p<0.05
+- **7 days data collection**
+
+If the confirmatory result lands at ~95%, the pilot evidence is validated.
+If it lands at ~60%, the peer-runner's mood injection was doing more work than
+we thought. Either outcome is scientifically valuable.
+
+---
+
+## Data
+
+- **Script:** `scripts/interlanguage_binary_jarvis_vs_ollama.py` (committed cd86bd6f)
+- **Result:** `docs/experiments/phase3-result-binary-jarvis-vs-ollama.json`
+- **Source data:** Same Phase 3 expressions database (7 days, 2026-05-21 → 2026-05-28)
+- **n:** 314 jarvis, 184 ollama_local
+
+---
+
+## Decision
+
+Phase 4 proceeds as pre-registered. The binary re-analysis is recorded here as
+exploratory context — it informs our priors but does not replace the
+confirmatory test. The runner will be built with the strict bare condition
+specified in the Phase 4 design.

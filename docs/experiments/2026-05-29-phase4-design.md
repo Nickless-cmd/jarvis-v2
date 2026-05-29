@@ -8,7 +8,13 @@
 
 ## Why this experiment exists
 
-Phase 3 closed with the interlanguage-as-transfer-protocol hypothesis falsified. See `2026-05-28-phase3-report.md`. The cleaner question that Phase 3 did not answer:
+Phase 3 closed with the interlanguage-as-transfer-protocol hypothesis falsified. See `2026-05-28-phase3-report.md`.
+
+**Pilot evidence from post-hoc re-analysis:** After Phase 3 publication, a binary classifier (jarvis vs ollama_local — both deepseek-v4-flash, differing only in runtime wrapper) returned 96.0% accuracy (perm p=0.0) using the same structural feature set. This is documented as an exploratory finding in `2026-05-28-phase3-addendum-binary-reanalysis.md`. It motivates the confirmatory test below, but it is not itself confirmatory — the ollama_local peer runner injected synthetic mood values (a confound) and the analysis was not pre-registered.
+
+The Phase 4 confirmatory test removes both confounds and pre-registers the hypothesis before data collection.
+
+The cleaner question that Phase 3 did not answer:
 
 > **Does Jarvis' runtime carry identity?**
 >

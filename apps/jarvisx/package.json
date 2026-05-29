@@ -1,7 +1,7 @@
 {
   "name": "jarvisx",
   "private": true,
-  "version": "0.1.5-poc",
+  "version": "0.1.6-poc",
   "description": "JarvisX \u2014 Electron desktop app wrapping Jarvis V2",
   "homepage": "https://github.com/Nickless-cmd/jarvis-v2",
   "author": {

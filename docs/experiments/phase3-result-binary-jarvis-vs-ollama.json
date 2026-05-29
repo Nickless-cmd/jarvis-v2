@@ -1,0 +1,60 @@
+{
+  "method": "binary_jarvis_vs_ollama_local",
+  "n_jarvis": 314,
+  "n_ollama_local": 184,
+  "accuracy": 0.96,
+  "perm_p": 0.0,
+  "confusion_matrix": [
+    [
+      59,
+      4
+    ],
+    [
+      0,
+      37
+    ]
+  ],
+  "top_features": [
+    {
+      "name": "starts_nysgerrighed",
+      "abs_coef": 2.9145394965511016
+    },
+    {
+      "name": "clause0_has_⊂",
+      "abs_coef": 1.3509242997997972
+    },
+    {
+      "name": "clause2_has_→",
+      "abs_coef": 1.0208745396124936
+    },
+    {
+      "name": "n_standalone_neg",
+      "abs_coef": 0.8369796742057152
+    },
+    {
+      "name": "n_clauses",
+      "abs_coef": 0.8153688174435799
+    },
+    {
+      "name": "avg_clause_len",
+      "abs_coef": 0.7751226929670709
+    },
+    {
+      "name": "clause0_has_!",
+      "abs_coef": 0.7233114348246246
+    },
+    {
+      "name": "clause0_has_→",
+      "abs_coef": 0.6821607661715903
+    },
+    {
+      "name": "any_standalone_neg",
+      "abs_coef": 0.6611224467918966
+    },
+    {
+      "name": "clause1_has_!",
+      "abs_coef": 0.6420549989884923
+    }
+  ],
+  "seed": 42
+}

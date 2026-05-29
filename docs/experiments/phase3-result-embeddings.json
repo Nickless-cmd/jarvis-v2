@@ -1,0 +1,237 @@
+{
+  "run_timestamp": "2026-05-28T22:16:44.659996+00:00",
+  "seed": 42,
+  "raw_rows": 1882,
+  "gap1": {
+    "gap1_dropped_per_peer": {
+      "claude": 1,
+      "claude_jp": 1
+    },
+    "gap1_total_dropped": 2,
+    "gap1_window_utc": [
+      "2026-05-20T08:47:00+00:00",
+      "2026-05-21T20:16:00+00:00"
+    ]
+  },
+  "after_gap_rows": 1880,
+  "after_cleanup_rows": 1795,
+  "cleanup_stats": {
+    "raw_per_peer": {
+      "claude": 140,
+      "claude_jp": 138,
+      "glm": 314,
+      "glm_jp": 314,
+      "jarvis": 360,
+      "ollama_local": 275,
+      "random": 339
+    },
+    "dropped": {
+      "claude": {
+        "dup_within_1h": 50
+      },
+      "claude_jp": {
+        "dup_within_1h": 28
+      },
+      "glm": {
+        "dup_within_1h": 5
+      },
+      "glm_jp": {
+        "dup_within_1h": 1
+      },
+      "ollama_local": {
+        "dup_within_1h": 1
+      }
+    },
+    "kept_per_peer": {
+      "claude": 90,
+      "claude_jp": 110,
+      "glm": 309,
+      "glm_jp": 313,
+      "jarvis": 360,
+      "ollama_local": 274,
+      "random": 339
+    }
+  },
+  "feature_shape": [
+    1795,
+    403
+  ],
+  "accuracy": 0.5933147632311978,
+  "classification_report": {
+    "jarvis": {
+      "precision": 0.4057971014492754,
+      "recall": 0.3888888888888889,
+      "f1-score": 0.3971631205673759,
+      "support": 72.0
+    },
+    "claude": {
+      "precision": 0.75,
+      "recall": 0.8333333333333334,
+      "f1-score": 0.7894736842105263,
+      "support": 18.0
+    },
+    "claude_jp": {
+      "precision": 0.875,
+      "recall": 0.3181818181818182,
+      "f1-score": 0.4666666666666667,
+      "support": 22.0
+    },
+    "glm": {
+      "precision": 0.6153846153846154,
+      "recall": 0.7741935483870968,
+      "f1-score": 0.6857142857142857,
+      "support": 62.0
+    },
+    "glm_jp": {
+      "precision": 0.7457627118644068,
+      "recall": 0.7096774193548387,
+      "f1-score": 0.7272727272727273,
+      "support": 62.0
+    },
+    "ollama_local": {
+      "precision": 0.71875,
+      "recall": 0.8363636363636363,
+      "f1-score": 0.773109243697479,
+      "support": 55.0
+    },
+    "random": {
+      "precision": 0.4098360655737705,
+      "recall": 0.36764705882352944,
+      "f1-score": 0.3875968992248062,
+      "support": 68.0
+    },
+    "accuracy": 0.5933147632311978,
+    "macro avg": {
+      "precision": 0.6457900706102955,
+      "recall": 0.6040408147618773,
+      "f1-score": 0.6038566610505525,
+      "support": 359.0
+    },
+    "weighted avg": {
+      "precision": 0.5954279332947175,
+      "recall": 0.5933147632311978,
+      "f1-score": 0.5837206964321733,
+      "support": 359.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      28,
+      0,
+      0,
+      4,
+      5,
+      2,
+      33
+    ],
+    [
+      0,
+      15,
+      1,
+      0,
+      0,
+      2,
+      0
+    ],
+    [
+      1,
+      5,
+      7,
+      1,
+      1,
+      6,
+      1
+    ],
+    [
+      2,
+      0,
+      0,
+      48,
+      8,
+      3,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      14,
+      44,
+      3,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      8,
+      1,
+      46,
+      0
+    ],
+    [
+      38,
+      0,
+      0,
+      3,
+      0,
+      2,
+      25
+    ]
+  ],
+  "jarvis_recall": 0.3888888888888889,
+  "perm_p": 0.0,
+  "jp_tests": {
+    "claude_jp < claude": {
+      "delta": 0.03229805827140808,
+      "t": 5.099340915679932,
+      "pvalue": 0.9999995231628418
+    },
+    "glm_jp < glm": {
+      "delta": 0.025942981243133545,
+      "t": 6.549130439758301,
+      "pvalue": 1.0
+    }
+  },
+  "centroid_distances": {
+    "claude": {
+      "mean": 0.22828122973442078,
+      "std": 0.028475813567638397,
+      "n": 90
+    },
+    "claude_jp": {
+      "mean": 0.26057928800582886,
+      "std": 0.0581345409154892,
+      "n": 110
+    },
+    "glm": {
+      "mean": 0.28200364112854004,
+      "std": 0.05106360465288162,
+      "n": 309
+    },
+    "glm_jp": {
+      "mean": 0.3079466223716736,
+      "std": 0.04748139902949333,
+      "n": 313
+    },
+    "ollama_local": {
+      "mean": 0.3521050810813904,
+      "std": 0.0850711539387703,
+      "n": 274
+    },
+    "random": {
+      "mean": 0.30252179503440857,
+      "std": 0.0585675872862339,
+      "n": 339
+    }
+  },
+  "critical_confusions": {
+    "jarvis → ollama_local": "2/72 = 2.78%",
+    "ollama_local → jarvis": "0/55 = 0.00%",
+    "claude → claude_jp": "1/18 = 5.56%",
+    "claude_jp → claude": "5/22 = 22.73%",
+    "glm → glm_jp": "8/62 = 12.90%",
+    "glm_jp → glm": "14/62 = 22.58%"
+  },
+  "per_row_interpretation": "Per-row interpretation (REQUIRED under cohort imbalance):\n  jarvis         prec=0.406  rec=0.389  f1=0.397  test_n=72  cohort_n=360\n  claude         prec=0.750  rec=0.833  f1=0.789  test_n=18  cohort_n=90 [FROZEN 2026-05-22]\n  claude_jp      prec=0.875  rec=0.318  f1=0.467  test_n=22  cohort_n=110 [FROZEN 2026-05-22]\n  glm            prec=0.615  rec=0.774  f1=0.686  test_n=62  cohort_n=309\n  glm_jp         prec=0.746  rec=0.710  f1=0.727  test_n=62  cohort_n=313\n  ollama_local   prec=0.719  rec=0.836  f1=0.773  test_n=55  cohort_n=274\n  random         prec=0.410  rec=0.368  f1=0.388  test_n=68  cohort_n=339"
+}

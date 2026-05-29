@@ -1,0 +1,152 @@
+{
+  "method": "structural_features",
+  "n_rows": 1191,
+  "n_features": 37,
+  "accuracy": 0.5941422594142259,
+  "per_peer_recall": {
+    "jarvis": 0.6507936507936508,
+    "claude": 0.0,
+    "claude_jp": 0.0,
+    "glm": 0.8095238095238095,
+    "glm_jp": 0.7674418604651163,
+    "ollama_local": 0.6756756756756757,
+    "random": 0.19148936170212766
+  },
+  "confusion_matrix": [
+    [
+      41,
+      0,
+      0,
+      2,
+      1,
+      0,
+      19
+    ],
+    [
+      0,
+      0,
+      0,
+      2,
+      0,
+      1,
+      0
+    ],
+    [
+      2,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      34,
+      1,
+      5,
+      2
+    ],
+    [
+      1,
+      0,
+      0,
+      4,
+      33,
+      1,
+      4
+    ],
+    [
+      0,
+      0,
+      0,
+      10,
+      2,
+      25,
+      0
+    ],
+    [
+      31,
+      0,
+      3,
+      1,
+      2,
+      1,
+      9
+    ]
+  ],
+  "peers": [
+    "jarvis",
+    "claude",
+    "claude_jp",
+    "glm",
+    "glm_jp",
+    "ollama_local",
+    "random"
+  ],
+  "top_features": [
+    {
+      "name": "starts_nysgerrighed",
+      "importance": 1.097630615368502
+    },
+    {
+      "name": "any_standalone_neg",
+      "importance": 0.7514178973125175
+    },
+    {
+      "name": "n_standalone_neg",
+      "importance": 0.6610744104211524
+    },
+    {
+      "name": "avg_clause_len",
+      "importance": 0.5169829813380418
+    },
+    {
+      "name": "clause0_has_⊂",
+      "importance": 0.49517195665727337
+    },
+    {
+      "name": "unique_starts",
+      "importance": 0.46568657377252265
+    },
+    {
+      "name": "n_clauses",
+      "importance": 0.36119651527965235
+    },
+    {
+      "name": "clause2_has_→",
+      "importance": 0.33605747148162673
+    },
+    {
+      "name": "clause2_has_!",
+      "importance": 0.33323478935909245
+    },
+    {
+      "name": "clause0_has_→",
+      "importance": 0.31740003988458526
+    },
+    {
+      "name": "op_→_total",
+      "importance": 0.31312793370821457
+    },
+    {
+      "name": "text_len",
+      "importance": 0.29850894362976055
+    },
+    {
+      "name": "op_→_per_clause",
+      "importance": 0.29413828821348814
+    },
+    {
+      "name": "clause0_has_↔",
+      "importance": 0.28001399154657247
+    },
+    {
+      "name": "op_≈_total",
+      "importance": 0.2766955051436505
+    }
+  ],
+  "seed": 42
+}

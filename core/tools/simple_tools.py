@@ -2403,10 +2403,10 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "query_why",
             "description": (
-                "Spørg causal graph hvorfor en event skete. Traverser baglæns "
-                "gennem causal_edges. Giv enten event_id (specifik) eller "
-                "event_kind (seneste event af den kind bruges). Returnerer "
-                "kæden af forældre-events op til max_depth."
+                "Query the causal graph for why an event occurred. Traverse backwards "
+                "through causal_edges. Provide either event_id (specific) or "
+                "event_kind (latest event of that kind is used). Returns "
+                "the chain of parent events up to max_depth."
             ),
             "parameters": {
                 "type": "object",
@@ -3149,8 +3149,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "name": "deep_analyze",
             "description": (
                 "Run scoped deep analysis of Jarvis' own codebase. Use when "
-                "investigating 'hvorfor fejler X?', 'hvor er Y håndteret?', "
-                "'er Z sikkert implementeret?'. Returns findings (path+line-ranges), "
+                "investigating 'why is X failing?', 'where is Y handled?', "
+                "'is Z implemented safely?'. Returns findings (path+line-ranges), "
                 "risks, and next_steps. Read-only analysis, no code changes."
             ),
             "parameters": {
@@ -3158,7 +3158,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "properties": {
                     "goal": {
                         "type": "string",
-                        "description": "Hvad vi undersøger (fx 'hvorfor fejler mail_checker auto-responder')",
+                        "description": "What we're investigating (e.g. 'why is mail_checker auto-responder failing')",
                     },
                     "scope": {
                         "type": "string",
@@ -3622,8 +3622,8 @@ def execute_tool_force(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         _record_tool_outcome_memory(name, arguments, result, mode="tool_force")
         return result
 
-    # Emotional gate — kan transformere "execute" til escalate/verify/simplify
-    # baseret på humør-tilstand. Fire-and-forget safe.
+    # Emotional gate — can transform "execute" to escalate/verify/simplify
+    # based on mood state. Fire-and-forget safe.
     try:
         from core.services.emotional_controls import (
             apply_emotional_controls, format_gate_message,

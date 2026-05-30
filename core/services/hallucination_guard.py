@@ -1,8 +1,8 @@
-"""Hallucination Guard — tvungen memory-check før svar.
+"""Hallucination Guard — forced memory-check before answering.
 
-Injectes i visible model prompt som en ekstra system-rolle besked når
-brugerens spørgsmål matcher faktuelle infrastruktur-emner. Tvinger mig
-til at se hvad jeg faktisk ved, i stedet for at gætte.
+Injected into the visible model prompt as an extra system-role message when
+the user's question matches factual infrastructure topics. Forces me
+to look at what I actually know, instead of guessing.
 """
 
 from __future__ import annotations
@@ -14,19 +14,19 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# ── Trigger-mønstre ────────────────────────────────────────────────────
-# Når brugerens besked matcher disse, slår guard'en til.
+# ── Trigger patterns ───────────────────────────────────────────────────
+# When the user's message matches these, the guard activates.
 #
-# 2026-05-22 (Claude): konsistent word-boundary brug. Tidligere version
-# var inkonsistent — nogle patterns havde \b (linje 22/25/32/34), andre
-# ikke (linje 23/24/26-31/33). Substring-match gjorde at "ghost-feature"
-# triggered factual-guard fordi "host" var substring i "ghost", "tip"
-# matchede via "ip", osv. Alle patterns har nu word-boundaries.
+# 2026-05-22 (Claude): consistent word-boundary usage. Previous version
+# was inconsistent — some patterns had \b (line 22/25/32/34), others
+# didn't (line 23/24/26-31/33). Substring-match made "ghost-feature"
+# trigger factual-guard because "host" was a substring in "ghost", "tip"
+# matched via "ip", etc. All patterns now have word-boundaries.
 #
-# Multi-word patterns (linje 30: assets.srvlab) behøver ikke \b på begge
-# sider — de er allerede unike strings der ikke optræder som substring
-# i danske/engelske ord. Hvor-spørgsmål (linje 33) er heller ikke ord-
-# enkeltheder men sætning-mønstre, så \b er irrelevant der.
+# Multi-word patterns (line 30: assets.srvlab) don't need \b on both
+# sides — they're already unique strings that don't appear as substrings
+# in Danish/English words. Where-questions (line 33) are also not word-
+# tokens but sentence patterns, so \b is irrelevant there.
 _FACTUAL_PATTERNS: list[re.Pattern] = [
     re.compile(r"\b(subdomain|subdom[æa]ne|dom[æa]ne|srvlab\.dk)\b", re.IGNORECASE),
     re.compile(r"\b(IP|adresse|adr)\b", re.IGNORECASE),
@@ -46,9 +46,9 @@ _FACTUAL_PATTERNS: list[re.Pattern] = [
     re.compile(r"\b(ollama|deepseek|model|GPU|NVIDIA|lxc)\b", re.IGNORECASE),
 ]
 
-# ── Memory-section keywords (hvad hedder sektionerne i MEMORY.md) ──────
+# ── Memory-section keywords (what the sections are called in MEMORY.md) ──
 
-# Infrastructure-ord der bruges som nøgler til MEMORY-sektion-matching.
+# Infrastructure words used as keys for MEMORY section matching.
 # Hver term er en WORD-token, ikke en substring. Word-boundary check
 # i _section_keywords_for_message sikrer at "ip" ikke matcher "tip",
 # "api" ikke matcher "rapid", osv.
@@ -62,7 +62,7 @@ _INFRA_KEYWORDS: tuple[str, ...] = (
     "ollama", "deepseek", "model", "gpu", "lxc",
 )
 
-# Synonym-map: dansk ↔ engelsk så ét match henter sektionsord på begge sprog
+# Synonym map: Danish ↔ English so one match fetches section words in both languages
 _SYNONYMS: dict[str, list[str]] = {
     "subdomæne": ["subdomain", "subdomæne"],
     "domæne": ["domain", "domæne"],
@@ -99,7 +99,7 @@ def _word_present(word: str, text_lower: str) -> bool:
 
 
 def _section_keywords_for_message(message: str) -> list[str]:
-    """Udled nøgleord fra beskeden så vi kan finde den rette MEMORY-sektion."""
+    """Derive keywords from the message so we can find the right MEMORY section."""
     message_lower = message.lower()
     keywords: list[str] = []
     seen: set[str] = set()
@@ -113,11 +113,11 @@ def _section_keywords_for_message(message: str) -> list[str]:
 
 
 def classify_question(message: str) -> str:
-    """Klassificér beskeden: 'factual' | 'casual' | 'tool_call'.
+    """Classify the message: 'factual' | 'casual' | 'tool_call'.
 
-    'factual' = spørgsmål om infrastruktur, IP, stier, subdomains mv.
-    'tool_call' = brugeren beder om en handling, ikke et fakta-svar.
-    'casual' = alt andet (smalltalk, refleksion, følelser).
+    'factual' = questions about infrastructure, IP, paths, subdomains etc.
+    'tool_call' = user asks for an action, not a fact-answer.
+    'casual' = everything else (smalltalk, reflection, feelings).
     """
     message = message.strip()
 
@@ -135,7 +135,7 @@ def classify_question(message: str) -> str:
         if not has_factual:
             return "casual"
 
-    # Tjek mod fakta-mønstre
+    # Check against factual patterns
     if any(p.search(message) for p in _FACTUAL_PATTERNS):
         return "factual"
 
@@ -143,7 +143,7 @@ def classify_question(message: str) -> str:
 
 
 def _find_memory_path() -> Path:
-    """Find MEMORY.md — kig i runtime workspace først, derefter repo."""
+    """Find MEMORY.md — look in runtime workspace first, then repo."""
     from core.runtime.workspace_paths import workspace_dir
     from core.runtime.config import JARVIS_HOME
     candidates = [
@@ -182,8 +182,8 @@ def _extract_relevant_sections(
 ) -> str:
     """Find MEMORY.md-sektioner der matcher keywords, returnér som tekst.
 
-    2026-05-22 (Claude): keyword-tælling bruger nu word-boundary regex
-    så "host" ikke matcher "ghost", "local" ikke matcher "vocalist"
+    2026-05-22 (Claude): keyword counting now uses word-boundary regex
+    so "host" doesn't match "ghost", "local" doesn't match "vocalist"
     osv. Tidligere `kw in line_lower` substring-tjek oppumpede score
     for irrelevante sektioner.
     """
@@ -222,7 +222,7 @@ def _extract_relevant_sections(
         else:
             current_content.append(line)
 
-        # Tæl word-boundary keyword-matches (én pr keyword per linje)
+        # Count word-boundary keyword matches (one per keyword per line)
         for pat in kw_patterns:
             if pat.search(line):
                 current_score += 1
@@ -265,30 +265,30 @@ def inject_memory_into_prompt(
     *,
     memory_path: str | None = None,
 ) -> list[dict[str, str]]:
-    """Injectér relevant memory som en system-rolle besked i prompten.
+    """Inject relevant memory as a system-role message into the prompt.
 
-    Hvis brugerens besked er klassificeret som 'factual', læser vi de
-    curated workspace-filer (MEMORY/IDENTITY/USER/SOUL) og indsætter
-    relevante sektioner som en system-rolle besked lige efter den
-    primære system instruction.
+    If the user's message is classified as 'factual', we read the
+    curated workspace files (MEMORY/IDENTITY/USER/SOUL) and insert
+    relevant sections as a system-role message right after the
+    primary system instruction.
 
-    2026-05-22 (Claude): udvidet fra MEMORY.md-only til alle curated
-    sources. Spørgsmål om identitet ("hvad er din rolle?") eller
-    bruger-præferencer ("hvad foretrækker Bjørn?") blev tidligere kun
-    matched mod MEMORY.md, hvilket missede de filer der faktisk har
-    svaret.
+    2026-05-22 (Claude): expanded from MEMORY.md-only to all curated
+    sources. Identity questions ("what is your role?") or
+    user preferences ("what does Bjørn prefer?") were previously only
+    matched against MEMORY.md, missing the files that actually have
+    the answer.
 
-    Returnerer den opdaterede chat_messages-liste.
+    Returns the updated chat_messages list.
     """
     classification = classify_question(message)
     if classification != "factual":
-        return chat_messages  # Ingen guard nødvendig
+        return chat_messages  # No guard needed
 
     keywords = _section_keywords_for_message(message)
     if not keywords:
         return chat_messages
 
-    # Læs alle curated sources og udtræk relevante sektioner per fil.
+    # Read all curated sources and extract relevant sections per file.
     # Hvis `memory_path` er givet (test-override), bruges KUN den path.
     if memory_path is not None:
         sources = [("MEMORY.md", Path(memory_path))]
@@ -304,7 +304,7 @@ def inject_memory_into_prompt(
         try:
             text = path.read_text(encoding="utf-8")
         except Exception as exc:
-            logger.warning(f"hallucination_guard: kunne ikke læse {path}: {exc}")
+            logger.warning(f"hallucination_guard: could not read {path}: {exc}")
             continue
         excerpt = _extract_relevant_sections(text, keywords, max_chars=per_source_budget)
         if excerpt:
@@ -314,8 +314,8 @@ def inject_memory_into_prompt(
     if not per_source_excerpts:
         return chat_messages
 
-    # Sammensæt alle excerpts med klart label så Jarvis kan se hvilken fil
-    # citaterne kommer fra
+    # Combine all excerpts with clear labels so Jarvis can see which file
+    # the quotes come from
     relevant = "\n\n".join(
         f"━━━━━ FROM {label} ━━━━━\n{excerpt}"
         for label, excerpt in per_source_excerpts

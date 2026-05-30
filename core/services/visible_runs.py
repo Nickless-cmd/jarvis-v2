@@ -246,8 +246,8 @@ _PENDING_APPROVALS: dict[str, dict] = dict(_load_approvals_state(_APPROVALS_STAT
 def _persist_pending_approvals() -> None:
     _save_approvals_state(_APPROVALS_STATE_KEY, _PENDING_APPROVALS)
 # Run control state — udskilt til visible_runs_sections/run_control_state.py
-# (Boy Scout før jarvis-brain-auto-inject tilføjes nedenfor). Re-eksporteret
-# herfra så eksisterende monkeypatches i tests/test_visible_runs_approval_resolution.py
+# (Boy Scout before jarvis-brain-auto-inject added below). Re-exported
+# from here so existing monkeypatches in tests/test_visible_runs_approval_resolution.py
 # (visible_runs._set_visible_approval_state, etc.) fortsat virker.
 from core.services.visible_runs_sections.run_control_state import (  # noqa: E402
     _VISIBLE_RUN_ACTIVE_KEY,
@@ -411,7 +411,7 @@ def start_visible_run(
     """
     # Mid-run nudge interception (2026-05-13). If a visible run is already
     # active for THIS session, route the new message as a nudge instead of
-    # starting a parallel run. Fixes the race: Bjørn sends a midway-followup
+    # starting a parallel run. Fixes the race: the user sends a midway-followup
     # ("are you still there?"), it starts a new session, Jarvis concludes
     # "he hung", responds, then the original run completes too — two
     # parallel realities on Discord. With this, the followup lands in
@@ -699,7 +699,7 @@ def _handle_compact_command(run: "VisibleRun") -> str:
         if cr:
             return (
                 f"Jeg har netop komprimeret vores samtalehistorik. "
-                f"{cr.freed_tokens} tokens frigjort. Bekræft kort."
+                f"{cr.freed_tokens} tokens freed. Confirm briefly."
             )
         return "Ingen historik at komprimere endnu — samtalen er stadig kort."
     except Exception as exc:
@@ -717,8 +717,8 @@ async def _stream_visible_run(
     # block fires when call_next returns the response object, which is
     # before the body actually streams). Without rebinding here, any
     # current_user_id() call inside the body returns "" and operator_*
-    # tools fall back to owner_user_id (Bjørn). Result: Mikkel asks Jarvis
-    # to open Facebook → opens on Bjørn's desktop. Bug surfaced 2026-05-28.
+    # tools fall back to owner_user_id (owner). Result: another user asks Jarvis
+    # to open Facebook → opens on the owner's desktop. Bug surfaced 2026-05-28.
     _ws_token = None
     if force_user_id:
         try:
@@ -819,7 +819,7 @@ async def _stream_visible_run(
             "type": "working_step",
             "run_id": run.run_id,
             "action": "thinking",
-            "detail": f"Tænker via {run.provider}/{run.model}",
+            "detail": f"Thinking via {run.provider}/{run.model}",
             "step": 0,
             "status": "running",
         },
@@ -1037,12 +1037,12 @@ async def _stream_visible_run(
             # to the worker thread by default. Without ctx.run wrapping,
             # current_user_id() inside _execute_simple_tool_calls returns
             # "" → operator-tool _runtime_user_id stamping fails → tools
-            # fall back to owner_user_id (Bjørn) via _operator_user_id chain.
-            # Result observed live 2026-05-28: Mikkel asked Jarvis to open
-            # his browser; Jarvis dispatched operator_launch_app to Bjørn's
-            # bridge (Linux), opened google-chrome on Bjørn's desktop with
-            # PID on Bjørn's machine, even though the chat session, user_id
-            # attribution, and visible_run context were all correctly Mikkel.
+            # fall back to owner_user_id (owner) via _operator_user_id chain.
+            # Result observed live 2026-05-28: another user asked Jarvis to open
+            # his browser; Jarvis dispatched operator_launch_app to the owner's
+            # bridge (Linux), opened google-chrome on the owner's desktop with
+            # PID on the owner's machine, even though the chat session, user_id
+            # attribution, and visible_run context were all correctly the other user.
             import contextvars as _ctxvars
             _ctx_for_exec = _ctxvars.copy_context()
             simple_results = await loop.run_in_executor(
@@ -1421,12 +1421,12 @@ async def _stream_visible_run(
                 # counter. The threshold chars are deliberately low to only
                 # suppress truly tool-only rounds, not rounds with real prose.
                 _consecutive_tool_only_rounds = 0
-                # Bumpet 8 → 15 (2026-05-07): ægte safety-net, ikke daglig
-                # blokering. Soft loop_nudge (ved round 8) bærer attention-
-                # ansvaret; hård brake skal kun fange runaway-loops, ikke
-                # legitime dybe undersøgelser. Override via
-                # _agentic_budget.max_tool_only_rounds hvis runtime-config
-                # vil have anden værdi.
+                # Bumped 8 → 15 (2026-05-07): genuine safety-net, not daily
+                # blocker. Soft loop_nudge (at round 8) carries attention-
+                # responsibility; hard brake only catches runaway-loops, not
+                # legitimate deep investigations. Override via
+                # _agentic_budget.max_tool_only_rounds if runtime-config
+                # has a different value.
                 _MAX_TOOL_ONLY_ROUNDS = int(_agentic_budget.get("max_tool_only_rounds") or 15)
                 _TOOL_ONLY_TEXT_THRESHOLD = 80  # chars
                 _tool_pause_active = False  # set True after 5 tool-only rounds → withhold tools
@@ -1446,19 +1446,19 @@ async def _stream_visible_run(
                     # Causal graph (2026-05-08): publish round-start sentinel
                     # and set EventContext so all event_bus.publish() calls
                     # inside this iteration auto-link to round-start as parent.
-                    # NB: vi resetter ikke mellem iterationer — næste iteration
-                    # SETter bare til sin nye værdi. Endelig reset sker EFTER
-                    # for-loop'en (se neden). break/continue/exception under
-                    # iteration leaker kort men næste iteration overskriver.
+                    # NB: we don't reset between iterations — next iteration
+                    # just SETs to its new value. Final reset happens AFTER
+                    # the for-loop (see below). break/continue/exception during
+                    # iteration leaks briefly but next iteration overwrites.
                     from core.eventbus.context import set_current_event as _set_round_ctx
                     _round_event_id = _publish_agentic_round_start(
                         run_id=run.run_id, round_num=_agentic_round + 1,
                     )
                     _set_round_ctx(_round_event_id)
                     # Measure inter-round gap: tid fra forrige round-end til
-                    # at denne round faktisk begynder LLM-arbejde. Bjørn
-                    # observerede 7. maj at gap'et nogle gange føles meget
-                    # langt — instrumenteret her så vi kan se hvor tiden går.
+                    # at this round actually starts LLM work. Bjørn
+                    # observed May 7 that the gap sometimes feels very
+                    # long — instrumented here so we can see where time goes.
                     import time as _time_mod
                     _round_loop_start_t = _time_mod.monotonic()
                     _inter_round_gap_ms = (
@@ -1651,8 +1651,8 @@ async def _stream_visible_run(
                             # carries it forward to the next followup round.
                             _a_round_reasoning = str(_a_item.reasoning_content or "")
                             # Track for final persistence: hvis denne round
-                            # producerede reasoning, gem den så vi kan replaye
-                            # den i næste session.
+                            # produced reasoning, store it so we can replay
+                            # it in the next session.
                             if _a_round_reasoning:
                                 _persist_reasoning = _a_round_reasoning
                             continue
@@ -1803,8 +1803,8 @@ async def _stream_visible_run(
                                 },
                             )
                             _empty_guard_msg = (
-                                f"⚠ Jeg kørte {_MAX_EMPTY_TEXT_ROUNDS} runder uden at producere tekst. "
-                                "Noget gik galt — prøv igen."
+                                f"⚠ I ran {_MAX_EMPTY_TEXT_ROUNDS} rounds without producing text. "
+                                "Something went wrong — try again."
                             )
                             yield _sse("delta", {
                                 "type": "delta",
@@ -1867,13 +1867,13 @@ async def _stream_visible_run(
                                 "decision_signal_emitted run_id=%s decision=%s trigger=%s",
                                 run.run_id, _ds_f.decision_id, _ds_f.trigger_name,
                             )
-                            # 2026-05-07: loop_nudge er nu BLØD — kun en
-                            # reminder via decision_signal-prompten. Tool-pause
-                            # var oprindeligt koblet på, men det fjernede
-                            # Jarvis' agency på legitime dybe undersøgelser
-                            # (4-module-port, debug-sessions kræver ofte 10+
-                            # tool-calls). Hård brake på _MAX_TOOL_ONLY_ROUNDS
-                            # er stadig safety-net hvis han kører løbsk.
+                            # 2026-05-07: loop_nudge is now SOFT — just a
+                            # reminder via decision_signal-prompt. Tool-pause
+                            # was originally coupled to it, but this removed
+                            # Jarvis' agency on legitimate deep investigations
+                            # (4-module-port, debug-sessions often need 10+
+                            # tool-calls). Hard brake at _MAX_TOOL_ONLY_ROUNDS
+                            # is still the safety-net if he spins out.
                             # if _ds_f.trigger_name == "loop_nudge_5_rounds":
                             #     _tool_pause_active = True
                     except Exception as _ds_exc:
@@ -2164,7 +2164,7 @@ async def _stream_visible_run(
                                     for i, sr in enumerate(_a_results)
                                 ],
                             ),
-                            next_step="Fortsæt med næste agentic followup round og brug checkpointets tool-resultater.",
+                            next_step="Continue with next agentic followup round and use the checkpoint's tool results.",
                         )
                     except Exception:
                         pass
@@ -2250,8 +2250,8 @@ async def _stream_visible_run(
                 if _final_run_status == "interrupted":
                     _resume_note = (
                         "\n\n⚠ Jeg blev afbrudt i agentic loopet "
-                        f"({_final_run_error or 'ukendt årsag'}). "
-                        "Næste besked kan fortsætte herfra i stedet for at starte forfra."
+                        f"({_final_run_error or 'unknown cause'}). "
+                        "Next message can continue from here instead of starting over."
                     )
                     if _resume_note.strip() not in followup_text:
                         followup_text = (followup_text + _resume_note).strip()
@@ -2280,9 +2280,9 @@ async def _stream_visible_run(
 
                 # Persist the assistant message BEFORE done so loadSession()
                 # finds it immediately (avoids "message disappears" race).
-                # reasoning_content threaded through så thinking-mode-modeller
-                # (Deepseek v4-flash thinking, v4-pro) kan replaye prior
-                # assistant turns med reasoning ved næste run.
+                # reasoning_content threaded through so thinking-mode-models
+                # (Deepseek v4-flash thinking, v4-pro) can replay prior
+                # assistant turns with reasoning on the next run.
                 try:
                     _persist_session_assistant_message(
                         run, followup_text,
@@ -2810,13 +2810,13 @@ async def _stream_visible_run(
         # Message persistence now happens synchronously before done (above).
         import threading
 
-        # 2026-05-16 fix: unregister FØRST, synkront. Tidligere version lod
-        # post_process-thread (daemon=True) være ansvarlig for at clear
-        # active-run state. Hvis api blev restartet mens threaden ventede,
-        # blev unregister aldrig kaldt → active state stuck → nye messages
-        # blev rute't som "midway nudges" og yieldede intet. Bjørn så det
-        # som "No response content returned". Garanti: unregister sker
-        # synkront før vi yielder kontrol til post-processing.
+        # 2026-05-16 fix: unregister FIRST, synchronously. Earlier version let
+        # post_process-thread (daemon=True) be responsible for clearing
+        # active-run state. If api was restarted while thread waited,
+        # unregister was never called → active state stuck → new messages
+        # were routed as "midway nudges" and yielded nothing. Bjørn saw it
+        # as "No response content returned". Guarantee: unregister happens
+        # synchronously before we yield control to post-processing.
         unregister_visible_run(run.run_id)
 
         def _post_process() -> None:
@@ -2830,10 +2830,10 @@ async def _stream_visible_run(
                 _track_runtime_candidates(run, visible_output_text)
                 _run_memory_postprocess(run, visible_output_text)
                 # 2026-05-17: detector + auto-continuation.
-                # Jarvis stopper ofte ved naturlige pause-punkter
-                # ("lad mig først se...") uden at fortsætte. Detector
-                # scanner output for pause-patterns; ved match spawnes
-                # en autonomous-run der vækker ham igen med kontekst.
+                # Jarvis often stops at natural pause-points
+                # ("lad mig først se...") without continuing. Detector
+                # scans output for pause-patterns; on match it spawns
+                # an autonomous-run that wakes him again with context.
                 _maybe_trigger_continuation(run, visible_output_text)
             except Exception:
                 pass
@@ -3164,16 +3164,16 @@ _CONTINUATION_DELAY_SECONDS = 5.0
 
 
 def _maybe_trigger_continuation(run: VisibleRun, assistant_text: str) -> None:
-    """Hvis Jarvis stoppede midt i en opgave, trigger en autonomous-run
-    der vækker ham igen med kontekst.
+    """If Jarvis stopped mid-task, trigger an autonomous-run
+    that wakes him again with context.
 
     Guards:
-    - Kun for visible (ikke-autonomous) runs — undgår infinite continuation-loop
-    - Kun hvis session_id findes (vi har et sted at fortsætte i)
-    - Cooldown 45s per session (undgår spam)
-    - Kun ved match på unfinished_intent.detect_unfinished_intent
-    - Delay 5s før spawn så user kan reagere først hvis de ser problemet
-    - Re-check ved spawn: hvis ny visible-run er aktiv i sessionen, afstå
+    - Only for visible (non-autonomous) runs — prevents infinite continuation-loop
+    - Only if session_id exists (we have somewhere to continue in)
+    - Cooldown 45s per session (prevents spam)
+    - Only on match with unfinished_intent.detect_unfinished_intent
+    - Delay 5s before spawn so user can react first if they see the problem
+    - Re-check at spawn: if new visible-run is active in session, abort
     """
     if run.autonomous:
         return  # autonomous runs spawner ikke continuations (loop-beskyttelse)
@@ -3186,7 +3186,7 @@ def _maybe_trigger_continuation(run: VisibleRun, assistant_text: str) -> None:
             mark_triggered,
         )
 
-        # Cooldown check FØR detection — sparer arbejde
+        # Cooldown check BEFORE detection — saves work
         if is_in_cooldown(run.session_id):
             return
 
@@ -3194,11 +3194,11 @@ def _maybe_trigger_continuation(run: VisibleRun, assistant_text: str) -> None:
         if intent is None:
             return
 
-        # Mark cooldown nu så concurrent _post_process'er ikke begge fires
+        # Mark cooldown now so concurrent _post_process workers don't both fire
         mark_triggered(run.session_id)
 
-        # Publish for observability — Bjørn kan se i Mission Control
-        # hvor ofte detector fires
+        # Publish for observability — Bjørn can see in Mission Control
+        # how often detector fires
         try:
             event_bus.publish(
                 "runtime.continuation_triggered",
@@ -3218,26 +3218,26 @@ def _maybe_trigger_continuation(run: VisibleRun, assistant_text: str) -> None:
         snippet = (last_para or text)[-400:].strip()
 
         continuation_message = (
-            f"[auto-continuation efter pause-pattern '{intent.pattern}'] "
-            "Du skrev netop til Bjørn:\n\n"
+            f"[auto-continuation after pause-pattern '{intent.pattern}'] "
+            "You just wrote to the user:\n\n"
             f"---\n{snippet}\n---\n\n"
-            "Du stoppede her — men opgaven er ikke færdig. Bjørn har "
-            "allerede givet grønt lys. Fortsæt uden at vente på svar. "
-            "Hvis du er færdig, så bekræft det kort."
+            "You stopped here — but the task isn't done. The user "
+            "already green-lit it. Continue without waiting for a reply. "
+            "If you're done, confirm it briefly."
         )
 
-        # Delay spawn så user kan reagere først hvis de ser problemet før vi gør
+        # Delay spawn so user can react first if they see the problem before we do
         import threading as _threading
         def _delayed_spawn() -> None:
             try:
                 import time as _time
                 _time.sleep(_CONTINUATION_DELAY_SECONDS)
-                # Re-check: hvis user har sendt en besked i mellemtiden, så
-                # afstå — de tog over.
+                # Re-check: if user sent a message in the meantime, then
+                # abort — they took over.
                 from core.services.visible_runs import _get_active_visible_run_state
                 active = _get_active_visible_run_state()
                 if active and active.get("session_id") == run.session_id:
-                    # En ny run kører allerede i denne session — skip continuation
+                    # A new run is already active in this session — skip continuation
                     return
                 start_autonomous_run(continuation_message, session_id=run.session_id)
             except Exception:

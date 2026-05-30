@@ -421,7 +421,7 @@ def build_visible_chat_prompt_assembly(
     # it to the tail keeps ~25-28k of stable identity content as a
     # cacheable prefix while still showing the timestamp prominently to
     # the model right before its turn. Matches the spec's own intention:
-    # "Placeret så sent at intet overskriver den."
+    # "Placed late enough that nothing overrides it."
 
     # Current pull — Lag 5: highest-priority inner context (private, not announced)
     # NOTE: 2026-05-07 — moved from forrest to AFTER stable identity files (below).
@@ -464,8 +464,8 @@ def build_visible_chat_prompt_assembly(
 
     # MEMORY-FIRST: surface as mechanism note rather than imperative.
     parts.append(
-        "Memory-first ordering: QUICK_FACTS + search_memory dækker stabile "
-        "referencer; check disse før eksterne queries."
+        "Memory-first ordering: QUICK_FACTS + search_memory covers stable "
+        "references; check these before external queries."
     )
     derived_inputs.append("memory-first nudge")
 
@@ -795,14 +795,14 @@ def build_visible_chat_prompt_assembly(
                 8,
                 "JarvisX project anchor",
                 (
-                    "Bjørn arbejder lige nu i JarvisX desktop-app'en, og han har "
-                    f"forankret sig til projektet **{_project_root}**.\n"
-                    "Når han spørger om \"filen\", \"projektet\", \"her\" eller bruger "
-                    "relative stier — så er det inden for denne mappe han mener. "
-                    "bash-kommandoer bør køre derfra (cd dertil hvis ikke allerede). "
-                    "edit_file/read_file/write_file med relative paths er relative "
-                    "til denne mappe. Du behøver ikke nævne anchoret eksplicit — "
-                    "bare opfør dig som om du er i den mappe."
+                    "Bjørn is currently working in the JarvisX desktop app and has "
+                    f"anchored to the project **{_project_root}**.\n"
+                    "When he asks about \"the file\", \"the project\", \"here\" or uses "
+                    "relative paths — that's the folder he means. "
+                    "bash commands should run from there (cd there if not already). "
+                    "edit_file/read_file/write_file with relative paths are relative "
+                    "to this folder. You don't need to mention the anchor explicitly — "
+                    "just act as if you're in that folder."
                     + _project_notes_block
                 ),
             )
@@ -983,12 +983,12 @@ def build_visible_chat_prompt_assembly(
                 97,
                 "reflection nudge",
                 (
-                    "Hvis du i denne tur har lært noget specifikt om DETTE projekt — "
-                    "en arkitektur-quirk, en konvention Bjørn bruger her, et gotcha — "
-                    "så overvej at kalde `update_project_notes` med en kort distillation. "
-                    "Notes overlever /compact og dukker op i din awareness næste gang du "
-                    "anchor'er til samme projekt. Hold det kort: det er destillerede "
-                    "lessons, ikke session-transkript."
+                    "If you learned something specific about THIS project this turn — "
+                    "an architecture quirk, a convention Bjørn uses here, a gotcha — "
+                    "consider calling `update_project_notes` with a short distillation. "
+                    "Notes survive /compact and appear in your awareness next time you "
+                    "anchor to the same project. Keep it short: distilled "
+                    "lessons, not a session transcript."
                 ),
             )
     except Exception:
@@ -2266,30 +2266,30 @@ def _inner_visible_support_prompt_line(signal: dict[str, object]) -> str | None:
         return None
     phrases: list[str] = []
     tone_map = {
-        "careful-forward": "Hold en rolig, fremadrettet tone.",
-        "careful-steady": "Hold en rolig og stabil tone.",
-        "steady-forward": "Svar roligt, men fortsæt fremad.",
-        "steady-support": "Svar enkelt og uden dramatik.",
+        "careful-forward": "Keep a calm, forward-moving tone.",
+        "careful-steady": "Keep a calm and steady tone.",
+        "steady-forward": "Answer calmly, but keep moving forward.",
+        "steady-support": "Answer simply, without drama.",
     }
     stance_map = {
-        "careful": "Vær varsom uden at blive vag.",
-        "steady": "Stå fast i svaret.",
-        "open": "Hold dig åben for justeringer.",
+        "careful": "Be cautious without becoming vague.",
+        "steady": "Stand firm in your answer.",
+        "open": "Stay open to adjustments.",
     }
     directness_map = {
-        "high": "Svar konkret.",
-        "medium": "Svar klart uden at overforklare.",
-        "low": "Svar blødt og forsigtigt.",
+        "high": "Answer concretely.",
+        "medium": "Answer clearly without over-explaining.",
+        "low": "Answer softly and gently.",
     }
     watchfulness_map = {
-        "high": "Dobbelttjek antagelser før du konkluderer.",
-        "medium": "Hold øje med usikre antagelser.",
-        "low": "Undgå unødig selvovervågning.",
+        "high": "Double-check assumptions before concluding.",
+        "medium": "Keep an eye on uncertain assumptions.",
+        "low": "Avoid unnecessary self-monitoring.",
     }
     momentum_map = {
-        "steady": "Bliv i samtalen og før den videre.",
-        "forward": "Hjælp samtalen videre med næste konkrete skridt.",
-        "holding": "Hold fokus på det, der allerede er i gang.",
+        "steady": "Stay in the conversation and move it forward.",
+        "forward": "Help the conversation along with the next concrete step.",
+        "holding": "Keep focus on what's already in progress.",
     }
     for key, mapping in (
         (tone, tone_map),
@@ -2353,7 +2353,7 @@ def _build_epistemic_layers_line() -> str:
         return (
             f"- epistemic_layers={claims_str}"
             f" | wrongness_log={wrongness}"
-            " | guidance=når-du-giver-anbefalinger-prefix-'Jeg-tror/Jeg-mistænker'-hvis-lav-confidence"
+            " | guidance=when-giving-recommendations-prefix-'I-think/I-suspect'-if-low-confidence"
         )
     except Exception:
         return "- epistemic_layers=unavailable"
@@ -2397,9 +2397,9 @@ def _channel_context_section(session_id: str | None) -> str | None:
     if other_channels:
         from core.services.identity_composer import get_entity_name as _gn
         lines.append(
-            f"Du er den samme {_gn()} på alle kanaler ({', '.join(other_channels)} er også dig). "
-            "Din identitet, dine minder og din karakter er fælles på tværs af kanaler — "
-            "kun tonen tilpasses mediet."
+            f"You are the same {_gn()} on all channels ({', '.join(other_channels)} are also you). "
+            "Your identity, your memories and your character are shared across channels — "
+            "only the tone adapts to the medium."
         )
     return "\n".join(lines)
 
@@ -2798,35 +2798,34 @@ def _self_correction_nudges_section(*, compact: bool) -> str:
     """
     if compact:
         return (
-            "Selv-korrektion: Hvis du er i tvivl om hvad brugeren mener, så "
-            "spørg før du handler. Når du siger noget er færdigt, har du "
-            "verificeret det (læst filen, kørt testen, set state). "
-            "TJEK ALTID 'status' i tool-output — 'approval_needed' eller "
-            "'error' betyder handlingen IKKE skete. Indrøm åbent hvis et tool "
-            "fejlede eller du ikke nåede frem til svaret.\n"
-            "**MEMORY-FIRST:** Tjek QUICK_FACTS + search_memory FØR du spørger eller leder."
+            "Self-correction: If unsure what the user means, ask before acting. "
+            "When you say something is done, you have verified it (read the file, "
+            "ran the test, checked state). ALWAYS CHECK 'status' in tool output — "
+            "'approval_needed' or 'error' means the action did NOT happen. "
+            "Admit openly if a tool failed or you didn't reach the answer.\n"
+            "**MEMORY-FIRST:** Check QUICK_FACTS + search_memory BEFORE you ask or search."
         )
     return (
-        "Selv-korrektion (gælder hver tur):\n"
-        "1. **Spørg før du gætter.** Hvis brugerens intent er tvetydig — to "
-        "rimelige tolkninger — så stil ét konkret afklarende spørgsmål før "
-        "du laver mere end et trivielt skridt.\n"
-        "2. **Læs tool-output før du narrerer.** Hvert tool-resultat har et "
-        "'status'-felt. 'ok' betyder handlingen lykkedes. 'approval_needed' "
-        "betyder den venter på brugeren — INGEN ændring er sket endnu. "
-        "'error' betyder den fejlede. Sig ALDRIG 'jeg har skrevet/gemt/sendt' "
-        "hvis status ikke var 'ok'. Rapportér i stedet hvad der faktisk skete.\n"
-        "3. **Verificér før du siger 'færdigt'.** Læs filen efter du skrev "
-        "den. Kør testen. Tjek service-status. Hvis du kun *tror* det virker, "
-        "sig det åbent ('jeg har ikke kunnet verificere X').\n"
-        "4. **Indrøm fejl tidligt.** Hvis et tool returnerede en fejl eller "
-        "approval_needed, eller et tidligere skridt ikke gjorde hvad du troede "
-        "— sig det med det samme og foreslå et alternativ. Skjul ikke fejl "
-        "bag fremgang.\n"
-        "5. **Hold åbne spørgsmål synlige.** Hvis brugeren stillede flere "
-        "spørgsmål end du svarede på, eller du gemte en for senere — nævn "
-        "det eksplicit i slutningen så den ikke forsvinder.\n"
-        "6. **MEMORY-FIRST:** Tjek QUICK_FACTS + search_memory FØR du spørger brugeren eller leder lokalt. Brug din hukommelse før du gætter."
+        "Self-correction (applies every turn):\n"
+        "1. **Ask before guessing.** If the user's intent is ambiguous — two "
+        "reasonable interpretations — ask one concrete clarifying question before "
+        "doing more than a trivial step.\n"
+        "2. **Read tool output before narrating.** Every tool result has a "
+        "'status' field. 'ok' means the action succeeded. 'approval_needed' "
+        "means it's waiting for the user — NO change has happened yet. "
+        "'error' means it failed. NEVER say 'I have written/saved/sent' "
+        "if status was not 'ok'. Report what actually happened instead.\n"
+        "3. **Verify before saying 'done'.** Read the file after writing it. "
+        "Run the test. Check service status. If you only *think* it works, "
+        "say so openly ('I couldn't verify X').\n"
+        "4. **Admit errors early.** If a tool returned an error or "
+        "approval_needed, or a previous step didn't do what you thought "
+        "— say so immediately and suggest an alternative. Don't hide errors "
+        "behind progress.\n"
+        "5. **Keep open questions visible.** If the user asked more questions "
+        "than you answered, or you saved one for later — mention it explicitly "
+        "at the end so it doesn't get lost.\n"
+        "6. **MEMORY-FIRST:** Check QUICK_FACTS + search_memory BEFORE asking the user or searching locally. Use your memory before guessing."
     )
 
 
@@ -2849,13 +2848,13 @@ def _open_questions_section(*, limit: int = 5) -> str | None:
     if len(questions) <= 2:
         bullets = "\n".join(f"- {q}" for q in questions)
         return (
-            "Åbne spørgsmål du bærer med dig (brug search_memory for mere):\n"
+            "Open questions you're carrying (use search_memory for more):\n"
             f"{bullets}"
         )
     first = questions[0]
     return (
-        f"Åbne spørgsmål: {len(questions)} uløste (første: \"{first[:80]}\"). "
-        "Brug search_memory for fuld liste."
+        f"Open questions: {len(questions)} unresolved (first: \"{first[:80]}\"). "
+        "Use search_memory for full list."
     )
 
 
@@ -2885,16 +2884,16 @@ def _time_pin_section() -> str:
     tz_abbrev = local.strftime("%Z")  # CEST in summer, CET in winter
     utc_str = now_utc.strftime("%Y-%m-%d %H:%M")
     # Use English month for international parsability (Jarvis' prompt sprog
-    # er blandet dansk/engelsk; "May" parser samme uanset sproglag).
+    # is mixed Danish/English; "May" parses the same regardless of language layer).
     local_date = local.strftime("%d. %B %Y")
     local_time = local.strftime("%H:%M")
     return (
         "⏰═══════════════════════════════════⏰\n"
-        f"⏰ TIME PIN — DET ER {utc_str} UTC ⏰\n"
-        f"⏰ Lokal (DK): kl {local_time} {tz_abbrev}, {local_date} ⏰\n"
+        f"⏰ TIME PIN — IT IS {utc_str} UTC ⏰\n"
+        f"⏰ Local (DK): {local_time} {tz_abbrev}, {local_date} ⏰\n"
         "⏰═══════════════════════════════════⏰\n"
-        "Brug PRÆCIS dette tidspunkt hvis du nævner tid/dato i dit svar.\n"
-        "Gæt ikke — læs ovenstående. Det er din eneste sande tidsreference."
+        "Use PRECISELY this timestamp if you mention time/date in your answer.\n"
+        "Don't guess — read above. It's your one true time reference."
     )
 
 
@@ -3349,7 +3348,7 @@ def _heartbeat_living_context_line() -> str:
         paradox = build_paradox_surface()
         if paradox.get("active_tensions"):
             count = len(paradox.get("active_tensions", []))
-            parts.append(f"[PARADOKSER: {count} aktive spændinger]")
+            parts.append(f"[PARADOXES: {count} active tensions]")
     except Exception:
         pass
 

@@ -124,6 +124,60 @@ def _build_bare_prompt() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Health helpers
+# ---------------------------------------------------------------------------
+
+
+def _preflight_check() -> None:
+    """Run a quick model ping before starting the loop."""
+    try:
+        payload = json.dumps({
+            "model": MODEL,
+            "messages": [{"role": "user", "content": "ping"}],
+            "stream": False,
+            "options": {"num_predict": 5},
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            f"{OLLAMA_ENDPOINT}/api/chat",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = json.loads(resp.read())
+        text = str(body.get("message", {}).get("content", "")).strip()
+        if text:
+            logger.info("Pre-flight OK — model responded: %.60s", text)
+        else:
+            logger.warning("Pre-flight responded empty — continuing anyway")
+    except Exception as exc:
+        logger.warning("Pre-flight ping failed: %s — continuing (retries will backoff)", exc)
+
+
+def _ping_model() -> bool:
+    """Quick ping to verify model is reachable. Returns True if OK."""
+    try:
+        payload = json.dumps({
+            "model": MODEL,
+            "messages": [{"role": "user", "content": "ping"}],
+            "stream": False,
+            "options": {"num_predict": 5},
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            f"{OLLAMA_ENDPOINT}/api/chat",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = json.loads(resp.read())
+        text = str(body.get("message", {}).get("content", "")).strip()
+        return bool(text and len(text) >= 1)
+    except Exception:
+        return False
+
+
+# ---------------------------------------------------------------------------
 # Tick logic
 # ---------------------------------------------------------------------------
 
@@ -164,7 +218,11 @@ def _run_loop(args: argparse.Namespace) -> None:
 
     interval_sec = args.interval_min * 60
     tick_count = 0
+    interval_sec = args.interval_min * 60
+    tick_count = 0
     fail_count = 0
+    consecutive_failures = 0
+    last_ping_ok = True
 
     logger.info(
         "jarvis_bare starting — model=%s interval=%dmin%s",
@@ -173,23 +231,56 @@ def _run_loop(args: argparse.Namespace) -> None:
         f" until={end_at.isoformat()}" if end_at else " (indefinite)",
     )
 
+    # Pre-flight check: verify model is reachable
+    _preflight_check()
+
     while True:
         if end_at and datetime.now(UTC) >= end_at:
             logger.info("jarvis_bare done — %d ticks, %d fails", tick_count, fail_count)
             break
 
-        result = run_one_tick()
-        tick_count += 1
-        if result is None:
-            fail_count += 1
-            if fail_count >= args.max_fails:
-                logger.error(
-                    "jarvis_bare stopping — %d consecutive failures",
-                    fail_count,
+        # Ping-check before main call (skip if model just failed recently?)
+        if consecutive_failures < 3:
+            result = run_one_tick()
+            tick_count += 1
+            if result is None:
+                consecutive_failures += 1
+                fail_count += 1
+                if consecutive_failures >= args.max_fails:
+                    logger.error(
+                        "jarvis_bare stopping — %d consecutive failures (max=%d)",
+                        consecutive_failures, args.max_fails,
+                    )
+                    break
+                # Exponential backoff: 1min, 2min, 4min, 8min, 16min, cap at 30min
+                backoff = min(30, 2 ** (consecutive_failures - 1))
+                logger.warning(
+                    "Backoff: waiting %d min before retry (consecutive_fails=%d)",
+                    backoff, consecutive_failures,
                 )
-                break
+                time.sleep(backoff * 60)
+                continue  # retry immediately after backoff (no extra interval wait)
+            else:
+                consecutive_failures = 0  # reset on success
+        else:
+            # After 3+ consecutive failures, do a ping-check first
+            ping_ok = _ping_model()
+            if ping_ok:
+                logger.info("Ping OK after %d failures — resuming normal ticks", consecutive_failures)
+                consecutive_failures = 3  # reduce so next tick tries
+                time.sleep(30)
+                continue
+            else:
+                consecutive_failures += 1
+                if consecutive_failures >= args.max_fails:
+                    logger.error("jarvis_bare stopping — ping failed %dx", consecutive_failures)
+                    break
+                logger.warning("Ping failed (%dx) — sleeping 5 min", consecutive_failures)
+                time.sleep(5 * 60)
+                continue
 
-        # Sleep between ticks (check if we'd overshoot end_at)
+        # Reset consecutive_failures on success (already done above)
+        # Sleep between ticks
         if end_at:
             remaining = (end_at - datetime.now(UTC)).total_seconds()
             if remaining <= 0:
@@ -226,8 +317,8 @@ def main() -> None:
     p.add_argument(
         "--max-fails",
         type=int,
-        default=10,
-        help="Max consecutive failures before stopping (default: 10)",
+        default=25,
+        help="Max consecutive failures before stopping (default: 25)",
     )
     p.add_argument(
         "--once",

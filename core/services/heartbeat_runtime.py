@@ -175,7 +175,7 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     "review_recent_conversations",
     "write_growth_journal",
     "propose_identity_evolution",
-    # Niveau 1 autonomy — actually writes to Jarvis' own territory
+    # Level 1 autonomy — actually writes to Jarvis' own territory
     "autonomous_daily_note",
     # Consciousness roadmap actions
     "analyze_cross_signals",
@@ -185,10 +185,10 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     "run_sleep_batch",
     "generate_curriculum",
     "detect_consent_reaction",
-    # Hjerteslag — wake up dead MC fields
+    # Heartbeat — wake up dead MC fields
     "produce_emergent_signals",
     "progress_lifecycles",
-    # Signal hygiejne
+    # Signal hygiene
     "cleanup_stale_signals",
 }
 _KEY_LINE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.+?)\s*$")
@@ -438,24 +438,24 @@ def _poll_heartbeat_schedule_with_trigger(
 
 
 def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
-    # 2026-05-16 perf fix: surface-build tager ~9.6s + producerer 146KB JSON.
-    # Tidligere brugte vi get_cached_runtime_surface (ContextVar-baseret cache)
-    # der KUN er aktiv inde i en runtime_surface_cache() context. Heartbeat-
-    # scheduler-loop'en kalder denne UDEN context → cache miss hver poll.
-    # Resultat: 9.6s rebuild hver 30s = 32% CPU brændt konstant.
+    # 2026-05-16 perf fix: surface-build takes ~9.6s + produces 146KB JSON.
+    # Previously we used get_cached_runtime_surface (ContextVar-based cache)
+    # which ONLY works inside a runtime_surface_cache() context. The heartbeat
+    # scheduler loop calls this WITHOUT context → cache miss every poll.
+    # Result: 9.6s rebuild every 30s = 32% CPU burned constantly.
     #
-    # Fix: brug get_timed_runtime_surface (modul-level TTL cache) med 25s TTL.
-    # Poll-interval er 30s, så surface bygges 1x per 30s i stedet for hver poll.
-    # Når en faktisk heartbeat-tick kører inde i runtime_surface_cache()-
-    # context-manager, vil ContextVar-cache stadig gælde (get_timed checker
-    # ContextVar først, så ingen redundant deepcopy under tick).
+    # Fix: use get_timed_runtime_surface (module-level TTL cache) with 25s TTL.
+    # Poll interval is 30s, so surface builds 1x per 30s instead of every poll.
+    # When an actual heartbeat tick runs inside the runtime_surface_cache()
+    # context manager, the ContextVar cache still applies (get_timed checks
+    # ContextVar first, so no redundant deepcopy under tick).
     from core.services.runtime_surface_cache import get_timed_runtime_surface
     return get_timed_runtime_surface(
         ("heartbeat_runtime_surface", name),
-        # TTL 60s = 1 rebuild per 2 polls (~5% CPU vs 34% før).
-        # Surface bruges af MC og heartbeat-tick — 60s freshness er fint;
-        # når en faktisk tick sker, kører den inde i runtime_surface_cache()
-        # context der eksplicit invaliderer + rebuilder.
+        # TTL 60s = 1 rebuild per 2 polls (~5% CPU vs 34% before).
+        # Surface used by MC and heartbeat tick — 60s freshness is fine;
+        # when an actual tick fires, it runs inside runtime_surface_cache()
+        # context which explicitly invalidates + rebuilds.
         ttl_seconds=60.0,
         builder=lambda: _heartbeat_runtime_surface_uncached(name=name),
     )
@@ -1226,7 +1226,7 @@ def _run_heartbeat_tick_locked(
     _HEARTBEAT_TICK_COUNTER += 1
     tick_count = _HEARTBEAT_TICK_COUNTER
 
-    # Hjerteslag: cadence producers fire on every tick
+    # Heartbeat: cadence producers fire on every tick
     try:
         from core.services.cadence_producers import (
             produce_emergent_signals_from_history,
@@ -1429,17 +1429,17 @@ def _run_heartbeat_tick_locked(
         except Exception:
             pass
 
-    # Every 30th tick (~15 min @ 30s/tick): generate inter-sprog state-expression.
+    # Every 30th tick (~15 min @ 30s/tick): generate inter-language state-expression.
     # Per spec docs/superpowers/specs/2026-05-16-interlanguage-design.md:
-    # internaliseret protokol-praksis der bæres på tværs af modeller.
-    # Lightweight (no LLM) — render + DB insert only. practice_tick selv
-    # markerer trigger="heartbeat" på record-niveau.
+    # internalized protocol practice carried across models.
+    # Lightweight (no LLM) — render + DB insert only. practice_tick itself
+    # marks trigger="heartbeat" on the record level.
     #
-    # 2026-05-17 fix: skift fra tick_count % 30 til tidsbaseret gating.
-    # _HEARTBEAT_TICK_COUNTER er process-lokal og nulstilles ved restart.
-    # Med 4-5 restarts/dag + ~25 completed ticks/dag når counter aldrig 30
-    # → Jarvis-baseline-expressions blev aldrig genereret. Phase 2 vali-
-    # dering manglede den vigtigste cohort. Nu: fire hvis sidst > 30 min.
+    # 2026-05-17 fix: switch from tick_count % 30 to time-based gating.
+    # _HEARTBEAT_TICK_COUNTER is process-local and resets on restart.
+    # With 4-5 restarts/day + ~25 completed ticks/day the counter never reaches 30
+    # → Jarvis-baseline-expressions were never generated. Phase 2 validation
+    # missed the most important cohort. Now: fire if last > 30 min.
     try:
         import sqlite3 as _sql
         _practice_db = str(Path.home() / ".jarvis-v2" / "state" / "jarvis.db")
@@ -1461,13 +1461,13 @@ def _run_heartbeat_tick_locked(
     except Exception:
         pass
 
-    # Every 30th tick: passive personality drift (decay-pathway uden samtaler).
-    # 2026-05-16 fix til Jarvis' "frosset 14 dage"-rapport. Eksisterende
-    # _deterministic_update var sofistikeret men kørte kun ved visible runs.
-    # tick_personality_drift trigger decay-pathwayen periodisk så drift
-    # sker uafhængigt af samtaler. Internal 30-min debounce sikrer at
-    # decay ikke kører for ofte selv ved hyppige heartbeat-ticks.
-    # outcome_signal kwarg reserveret til fremtidig lag 1 (credit assignment).
+    # Every 30th tick: passive personality drift (decay-pathway without conversations).
+    # 2026-05-16 fix for Jarvis' "frozen 14 days" report. Existing
+    # _deterministic_update was sophisticated but only ran during visible runs.
+    # tick_personality_drift triggers the decay pathway periodically so drift
+    # happens independently of conversations. Internal 30-min debounce ensures
+    # decay doesn't run too often even with frequent heartbeat ticks.
+    # outcome_signal kwarg reserved for future layer 1 (credit assignment).
     if tick_count % 30 == 0:
         try:
             from core.services.personality_vector import tick_personality_drift
@@ -1567,7 +1567,7 @@ def _run_heartbeat_tick_locked(
             pass
 
     # Every 10th tick: auto-cleanup stale agents (hanging waiting/failed)
-    # Tærskler: waiting>2t, failed>30min. Fire-and-forget safe.
+    # Thresholds: waiting>2h, failed>30min. Fire-and-forget safe.
     if tick_count % 10 == 0:
         try:
             from core.services.agent_runtime import cleanup_stale_agents
@@ -2665,7 +2665,7 @@ def _build_influence_trace(
             _dm.record_daemon_tick("thought_stream", _ts_result or {})
             _fragment = get_latest_thought_fragment()
             if _fragment:
-                inputs_present.append(f"tankestrøm: {_fragment[:80]}")
+                inputs_present.append(f"thought-stream: {_fragment[:80]}")
         except Exception:
             pass
 
@@ -3013,7 +3013,7 @@ def _build_influence_trace(
             _dm.record_daemon_tick("absence", _absence_result or {})
             _absence_label = get_latest_absence()
             if _absence_label:
-                inputs_present.append(f"fravær: {_absence_label[:60]}")
+                inputs_present.append(f"absence: {_absence_label[:60]}")
         except Exception:
             pass
 
@@ -4613,7 +4613,7 @@ def _execute_heartbeat_model(
     if provider == "groq":
         return _execute_groq_prompt(prompt=prompt, target=target)
     if provider in {"sambanova", "mistral", "nvidia-nim", "opencode", "deepseek"}:
-        # deepseek tilføjet 2026-05-07 — bruger samme openai-compat shape
+        # deepseek added 2026-05-07 — uses same openai-compat shape
         # som de andre. heartbeat_provider_fallback wrapper handler base_url
         # + auth-profile-lookup pr. provider.
         from core.services.heartbeat_provider_fallback import (
@@ -4911,8 +4911,8 @@ def _active_chat_gate_blocked_result(
         "ping_result": "deferred-active-chat",
         "action_status": "blocked",
         "action_summary": (
-            f"Bjørn er aktiv i chat (sidste {minutes} min) — "
-            f"{decision_type} udsat for ikke at afbryde."
+            f"Bjørn is active in chat (last {minutes} min) — "
+            f"{decision_type} deferred to avoid interrupting."
         ),
         "action_type": "",
         "action_artifact": "",
@@ -7543,7 +7543,7 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "curriculum-error",
             }
 
-    # Hjerteslag: produce emergent signals from history
+    # Heartbeat: produce emergent signals from history
     if action_type == "produce_emergent_signals":
         try:
             from core.services.cadence_producers import (
@@ -7565,7 +7565,7 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "emergent-error",
             }
 
-    # Hjerteslag: lifecycle progression for all signal types
+    # Heartbeat: lifecycle progression for all signal types
     if action_type == "progress_lifecycles":
         try:
             from core.services.cadence_producers import (
@@ -7589,7 +7589,7 @@ def _execute_heartbeat_internal_action(
 
     # 8.5 Consent/samtykke — detect external changes to workspace files
     if action_type == "autonomous_daily_note":
-        # Niveau 1 autonomy: Jarvis writes a short observation to today's
+        # Level 1 autonomy: Jarvis writes a short observation to today's
         # daily memory file without asking. Uses the local lane LLM with
         # a tight prompt grounded in current heartbeat context.
         try:
@@ -7648,12 +7648,12 @@ def _execute_heartbeat_internal_action(
             # The observation lands in daily memory file, so it must be tied
             # to actual runtime signals rather than poetic floskler.
             system_prompt = (
-                "Generér én kort dansk linje (max 20 ord) der refererer til "
-                "et konkret runtime-signal: en åben loop, et event, eller "
-                "noget specifikt fra de oplysninger der følger. Output: ren "
-                "tekst, ingen quotes, ingen bullets, ingen klichéer. "
-                "Undgå generiske vendinger som vag emotion-prose eller "
-                "'alt kører smooth'-formuleringer. Hold dig til substratet."
+                "Generate one short English line (max 20 words) referencing "
+                "a concrete runtime signal: an open loop, an event, or "
+                "something specific from the data that follows. Output: plain "
+                "text, no quotes, no bullets, no clichés. "
+                "Avoid generic phrasing like vague emotion-prose or "
+                "'everything is smooth' formulations. Stick to the substrate."
             )
             user_message = (
                 f"open_loops={loop_count} | "
@@ -7719,7 +7719,7 @@ def _execute_heartbeat_internal_action(
                 for changed_file in changes_detected:
                     propose_identity_change(
                         target_file=changed_file,
-                        proposed_addition=f"[SAMTYKKE-CHECK] {changed_file} blev ændret udefra. Passer det til mig?",
+                        proposed_addition=f"[CONSENT-CHECK] {changed_file} was modified externally. Does this fit me?",
                         rationale="Detected external modification — consent review needed",
                         confidence=0.5,
                     )
@@ -8517,11 +8517,11 @@ def _heartbeat_scheduler_loop(*, name: str, startup_recovery_requested: bool) ->
 
 
 def _value_drifted(expected: object, actual: object) -> bool:
-    """True hvis expected ≠ actual under tolerant sammenligning.
+    """True if expected ≠ actual under tolerant comparison.
 
-    Bools sammenlignes som bools (0/False, 1/True er ens). Andre typer
-    sammenlignes som strenge for at undgå falske positiver mellem fx
-    ``""`` og ``None`` der begge repræsenterer "ingen værdi" i DB-rækken.
+    Bools are compared as bools (0/False, 1/True are equal). Other types
+    are compared as strings to avoid false positives between e.g.
+    ``""`` and ``None`` which both represent "no value" in the DB row.
     """
     if isinstance(expected, bool) or isinstance(actual, bool):
         return bool(expected) != bool(actual)
@@ -8537,14 +8537,14 @@ def _detect_startup_drift(
     overrides: dict[str, object],
     actual_state: dict[str, object],
 ) -> dict[str, dict[str, object]]:
-    """Sammenlign intended overrides mod hvad SELECT-back faktisk returnerede.
+    """Compare intended overrides against what SELECT-back actually returned.
 
-    Hvis upserten fejlede stille (eller skrev til en anden DB), vil
-    actual_state ikke afspejle overrides. Returnerer en mismatch-dict
-    (tom hvis alt landede). Publisher heartbeat.scheduler_startup_drift
-    + logger.error med diagnostisk kontekst hvis drift opdages — så næste
-    incident giver et tydeligt signal i stedet for stille tavshed
-    (bug 2026-05-17: scheduler_health='stopped' overlevede flere restarts).
+    If the upsert failed silently (or wrote to a different DB),
+    actual_state won't reflect the overrides. Returns a mismatch dict
+    (empty if everything landed). Publishes heartbeat.scheduler_startup_drift
+    + logger.error with diagnostic context if drift is detected — so the next
+    incident gives a clear signal instead of silent silence
+    (bug 2026-05-17: scheduler_health='stopped' survived multiple restarts).
     """
     mismatches: dict[str, dict[str, object]] = {}
     for key, expected in overrides.items():
@@ -8603,16 +8603,16 @@ def _persist_runtime_state_with_diagnostics(
     now: datetime,
     overrides: dict[str, object],
 ) -> dict[str, object]:
-    """Wrapper omkring _persist_runtime_state der re-raiser med stack trace
-    og opdager silent write-drift bagefter. Bevidst ikke-swallowing — vi vil
-    have systemd-level signal hvis startup-persist fejler.
+    """Wrapper around _persist_runtime_state that re-raises with stack trace
+    and detects silent write-drift afterwards. Deliberately non-swallowing — we
+    want a systemd-level signal if startup-persist fails.
 
-    Komplementær til Phase 1's fresh-read mismatch-check:
-    - Denne wrapper fanger field-by-field drift mellem intended og actual state
-      (via upsert'ens SELECT-back)
-    - Fresh-read check (caller-side) fanger concurrent-writer-overskrivning
-      efter persist
-    Begge er værd at have; de fanger forskellige failure modes.
+    Complementary to Phase 1's fresh-read mismatch-check:
+    - This wrapper catches field-by-field drift between intended and actual state
+      (via the upsert's SELECT-back)
+    - Fresh-read check (caller-side) catches concurrent-writer-overwrite
+      after persist
+    Both are worth having; they catch different failure modes.
     """
     try:
         actual_state = _persist_runtime_state(

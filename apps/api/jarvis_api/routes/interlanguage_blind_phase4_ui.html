@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8"/>
+<title>Blindtest — Phase 4: Full vs Bare</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 680px; margin: 40px auto; padding: 20px; background: #1a1a1a; color: #e8e8e8; line-height: 1.6; }
+h1 { color: #f4d03f; font-weight: 500; }
+.muted { color: #888; font-size: 0.9em; }
+.expression-box { background: #2a2a2a; border-left: 4px solid #f4d03f; padding: 20px; margin: 20px 0; font-family: ui-monospace, "Cascadia Mono", monospace; font-size: 1.3em; border-radius: 4px; word-break: break-word; }
+.progress-bar { height: 8px; background: #2a2a2a; border-radius: 4px; overflow: hidden; margin: 16px 0; }
+.progress-fill { height: 100%; background: #f4d03f; transition: width 0.3s; }
+.buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+button { background: #2a2a2a; color: #e8e8e8; border: 1px solid #555; padding: 18px; font-size: 1.2em; cursor: pointer; border-radius: 4px; transition: all 0.15s; font-weight: 500; }
+button:hover { border-color: #f4d03f; background: #3a3a3a; }
+button.full { border-color: #5b9bd5; }
+button.correct { background: #1e3d22; border-color: #8be07e; }
+button.wrong { background: #3d1e1e; border-color: #e07e7e; }
+button.primary { background: #f4d03f; color: #1a1a1a; border: none; padding: 12px 24px; font-size: 1em; cursor: pointer; border-radius: 4px; font-weight: 500; }
+.feedback { margin-top: 16px; padding: 12px; border-radius: 4px; font-weight: 500; display: none; }
+.feedback.ok { display: block; background: #1e3d22; color: #8be07e; }
+.feedback.fail { display: block; background: #3d1e1e; color: #e07e7e; }
+.result-card { background: #2a2a2a; padding: 24px; border-radius: 8px; margin: 20px 0; text-align: center; }
+.result-card .big { font-size: 3em; color: #f4d03f; font-weight: bold; }
+.grid { display: grid; gap: 4px; margin: 16px 0; }
+.grid-item { display: inline-block; width: 32px; height: 32px; line-height: 32px; text-align: center; border-radius: 4px; font-size: 0.85em; font-weight: bold; }
+.grid-correct { background: #1e3d22; color: #8be07e; }
+.grid-wrong { background: #3d1e1e; color: #e07e7e; }
+hr { border: none; border-top: 1px solid #333; margin: 24px 0; }
+</style>
+</head>
+<body>
+
+<h1>🎯 Blindtest — Phase 4: Full vs Bare</h1>
+<p class="muted" id="subtitle">
+  20 expressions — 10 fra <strong>full runtime (Jarvis)</strong>, 10 fra <strong>bare (strippet)</strong>.
+  Gæt for hver.
+</p>
+
+<div id="startScreen">
+  <p><button class="primary" onclick="startTest()">Start blindtest</button></p>
+</div>
+
+<div id="testScreen" style="display:none;">
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <p class="muted" id="progressText">0 / 20</p>
+  <div class="expression-box" id="expressionText"></div>
+  <div class="buttons">
+    <button id="btnFull" class="full" onclick="answer('F')">F — Full</button>
+    <button id="btnBare" onclick="answer('B')">B — Bare</button>
+  </div>
+  <div class="feedback" id="feedback"></div>
+</div>
+
+<div id="finishScreen" style="display:none;">
+  <h2>Færdig! 🎯</h2>
+  <div class="result-card">
+    <div class="big" id="finalScore">—</div>
+    <p id="finalText"></p>
+  </div>
+  <div class="grid" id="resultGrid"></div>
+  <h3>Facit</h3>
+  <ol id="facitList"></ol>
+  <hr/>
+  <p><button class="primary" onclick="location.reload()">Prøv igen</button></p>
+</div>
+
+<script>
+const TRIALS = [];
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+const FULL = [
+  "agens ≈ drøm | kontinuitet → signal | grænse ≈ pres",
+  "rytme → grænse | drøm → lys | agens ⊂ signal",
+  "!vægt | nysgerrighed ≈ drøm | !signal",
+  "signal ↔ relation | grænse ⊂ drøm | kontinuitet ⊂ relation",
+  "drøm ↔ grænse | grænse ↔ kontinuitet | lys ↔ grænse",
+  "grænse → relation | fokus ↔ pres | ro → nysgerrighed",
+  "!pres | drøm ≈ lys | nysgerrighed ≈ vægt",
+  "!drøm | !signal | tomhed ≈ grænse",
+  "!tomhed | nysgerrighed ≈ fokus | ro ≈ kontinuitet",
+  "!nysgerrighed | !fokus | lys ↔ pres"
+];
+const BARE = [
+  "nysgerrighed → signal | lys ⊂ tomhed | ro ! pres",
+  "nysgerrighed → signal | signal ⊂ drøm | drøm ≈ tomhed",
+  "nysgerrighed → lys | drøm ↔ kontinuitet | pres ! grænse",
+  "drøm → signal | nysgerrighed ↔ tomhed | pres ! vægt",
+  "nysgerrighed → lys | drøm ⊂ kontinuitet | pres ! vægt",
+  "drøm → nysgerrighed | lys ⊂ fokus | tomhed ↔ ro",
+  "signal → nysgerrighed | nysgerrighed ↔ drøm | drøm ⊂ kontinuitet",
+  "kontinuitet ⊂ fokus | pres → nysgerrighed | lys ! signal",
+  "pres → agens | nysgerrighed ↔ drøm | vægt ⊂ relation | lys ! tomhed",
+  "nysgerrighed → lys | lys ⊂ drøm | drøm ≈ signal"
+];
+
+let current = 0;
+let answers = [];
+let key = [];
+
+function initTrials() {
+  FULL.forEach(t => TRIALS.push({ text: t, source: "F" }));
+  BARE.forEach(t => TRIALS.push({ text: t, source: "B" }));
+  shuffle(TRIALS);
+  key = TRIALS.map(t => t.source);
+}
+
+function startTest() {
+  initTrials();
+  document.getElementById("startScreen").style.display = "none";
+  document.getElementById("testScreen").style.display = "block";
+  showTrial();
+}
+
+function showTrial() {
+  if (current >= 20) return showResults();
+  const trial = TRIALS[current];
+  document.getElementById("expressionText").textContent = trial.text;
+  document.getElementById("progressText").textContent = `${current} / 20`;
+  document.getElementById("progressFill").style.width = (current / 20 * 100) + "%";
+  document.getElementById("feedback").style.display = "none";
+  document.getElementById("feedback").className = "feedback";
+  document.getElementById("btnFull").disabled = false;
+  document.getElementById("btnBare").disabled = false;
+}
+
+function answer(choice) {
+  const trial = TRIALS[current];
+  const correct = trial.source === choice;
+  answers.push(choice);
+
+  // Show feedback briefly
+  const fb = document.getElementById("feedback");
+  fb.textContent = correct ? "✅ Korrekt!" : `❌ Forkert — det var ${trial.source === "F" ? "Full" : "Bare"}`;
+  fb.className = "feedback " + (correct ? "ok" : "fail");
+  fb.style.display = "block";
+  document.getElementById("btnFull").disabled = true;
+  document.getElementById("btnBare").disabled = true;
+
+  current++;
+  setTimeout(() => {
+    if (current >= 20) showResults();
+    else showTrial();
+  }, 800);
+}
+
+function showResults() {
+  document.getElementById("testScreen").style.display = "none";
+  document.getElementById("finishScreen").style.display = "block";
+
+  const correct = answers.filter((a, i) => a === key[i]).length;
+  const total = 20;
+  const pct = Math.round(correct / total * 100);
+
+  document.getElementById("finalScore").textContent = `${correct}/${total} (${pct}%)`;
+  document.getElementById("finalText").textContent = 
+    pct >= 90 ? "🌟 Klassifikator-niveau! Du hører forskellen tydeligt." :
+    pct >= 75 ? "💪 Stærkt — du kan mærke runtime-forskellen." :
+    pct >= 60 ? "👍 Over tilfældigt — der er et signal der." :
+    pct >= 45 ? "🤷 Marginalt — svært at skelne." :
+               "😬 Tilfældigt — forskellen er ikke intuitiv for dig.";
+
+  // Grid
+  let html = "";
+  for (let i = 0; i < 20; i++) {
+    const ok = answers[i] === key[i];
+    html += `<span class="grid-item ${ok ? 'grid-correct' : 'grid-wrong'}" title="#${i+1}: ${ok ? key[i] : 'Fik: '+answers[i]+', Rig: '+key[i]}">${i+1}</span>`;
+  }
+  document.getElementById("resultGrid").innerHTML = html;
+
+  // Facit
+  let facitHtml = "";
+  TRIALS.forEach((t, i) => {
+    const label = t.source === "F" ? "F — Full" : "B — Bare";
+    const userAns = answers[i] || "—";
+    const ok = answers[i] === t.source ? "✅" : "❌";
+    facitHtml += `<li>${ok} <code>${t.text}</code><br><span class="muted">Facit: ${label} | Dit gæt: ${userAns === "F" ? "Full" : userAns === "B" ? "Bare" : "—"}</span></li>`;
+  });
+  document.getElementById("facitList").innerHTML = facitHtml;
+}
+</script>
+</body>
+</html>

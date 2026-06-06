@@ -242,6 +242,22 @@ def confusion(session_id: str = Query(...)) -> JSONResponse:
 
 
 # ---------------------------------------------------------------------------
+# Phase 4 — binary blind test (full vs bare)
+# ---------------------------------------------------------------------------
+
+_PHASE4_HTML_PATH = Path(__file__).parent / "interlanguage_blind_phase4_ui.html"
+
+
+@router.get("/phase4", response_class=HTMLResponse)
+@router.get("/phase4/", response_class=HTMLResponse)
+def serve_phase4_ui() -> HTMLResponse:
+    """Phase 4 binary blind test: jarvis_full vs jarvis_bare."""
+    if not _PHASE4_HTML_PATH.exists():
+        return HTMLResponse("<h1>Phase 4 UI ikke fundet</h1>", status_code=500)
+    return HTMLResponse(_PHASE4_HTML_PATH.read_text(encoding="utf-8"))
+
+
+# ---------------------------------------------------------------------------
 # Static HTML
 # ---------------------------------------------------------------------------
 

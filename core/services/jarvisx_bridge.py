@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # DIAGNOSTIC: enable bridge debug logging
 
 _DEFAULT_TIMEOUT_S = 30.0
 
@@ -83,10 +84,22 @@ class BridgeConnection:
         """
         entry = self._pending.pop(correlation_id, None)
         if entry is None:
+            logger.warning(
+                "[bridge-dispatch] DELIVER_UNKNOWN corr=%s status=%s (no pending future)",
+                correlation_id, status,
+            )
             return
         fut, owning_loop = entry
         if fut.done():
+            logger.warning(
+                "[bridge-dispatch] DELIVER_ALREADY_DONE corr=%s status=%s",
+                correlation_id, status,
+            )
             return
+        logger.debug(
+            "[bridge-dispatch] DELIVER corr=%s status=%s pending=%d",
+            correlation_id, status, len(self._pending),
+        )
         payload = {"status": status, "result": result, "error": error}
         if owning_loop is asyncio.get_event_loop():
             fut.set_result(payload)
@@ -183,6 +196,11 @@ class BridgeRegistry:
         # set_result correctly when WS handler runs on a different loop.
         bridge._pending[correlation_id] = (fut, loop)
 
+        logger.debug(
+            "[bridge-dispatch] START corr=%s tool=%s user=%s timeout=%.1fs pending=%d",
+            correlation_id, tool, user_id, timeout_s, len(bridge._pending),
+        )
+
         try:
             await bridge.send_invoke(
                 correlation_id=correlation_id,
@@ -190,8 +208,10 @@ class BridgeRegistry:
                 args=args,
                 timeout_ms=int(timeout_s * 1000),
             )
+            logger.info("[bridge-dispatch] SENT corr=%s", correlation_id)
         except Exception as exc:
             bridge._pending.pop(correlation_id, None)
+            logger.error("[bridge-dispatch] SEND_FAIL corr=%s err=%s", correlation_id, exc)
             return {
                 "status": "error",
                 "result": None,
@@ -199,9 +219,18 @@ class BridgeRegistry:
             }
 
         try:
-            return await asyncio.wait_for(fut, timeout=timeout_s)
+            result = await asyncio.wait_for(fut, timeout=timeout_s)
+            logger.debug(
+                "[bridge-dispatch] RECV corr=%s status=%s pending=%d",
+                correlation_id, result.get("status"), len(bridge._pending),
+            )
+            return result
         except asyncio.TimeoutError:
             bridge._pending.pop(correlation_id, None)
+            logger.error(
+                "[bridge-dispatch] TIMEOUT corr=%s after %.1fs pending=%d",
+                correlation_id, timeout_s, len(bridge._pending),
+            )
             return {
                 "status": "error",
                 "result": None,

@@ -15,6 +15,8 @@ import os
 import re
 import shlex
 import subprocess
+import threading
+import time
 from pathlib import Path
 from typing import Any
 from urllib import error as urllib_error
@@ -38,6 +40,8 @@ from core.tools.browser_tools import (
 )
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # DIAGNOSTIC: enable bridge debug logging
+
 from core.tools.comfyui_tools import (
     COMFYUI_TOOL_DEFINITIONS,
     _exec_comfyui_status,
@@ -3772,17 +3776,34 @@ def _run_operator_async(coro_fn, *, tool_name: str, timeout_s: float = 35.0) -> 
     if main_loop is not None and main_loop.is_running():
         # Preferred path: submit to the loop that owns the bridge's WS.
         try:
+            logger.debug(
+                "[bridge-dispatch] WORKER-START tool=%s timeout=%.1fs threads=%d",
+                tool_name, timeout_s, threading.active_count(),
+            )
+            t0 = time.monotonic()
             cf_fut = asyncio.run_coroutine_threadsafe(coro_fn(), main_loop)
+            logger.info("[bridge-dispatch] WORKER-SUBMITTED tool=%s", tool_name)
             result = cf_fut.result(timeout=timeout_s)
+            dt = time.monotonic() - t0
+            logger.debug(
+                "[bridge-dispatch] WORKER-RECV tool=%s dt=%.3fs result_status=%s",
+                tool_name, dt, result.get("status") if isinstance(result, dict) else "?",
+            )
             return {"status": "ok", "result": result}
         except TimeoutError:
+            logger.error(
+                "[bridge-dispatch] WORKER-TIMEOUT tool=%s after %.1fs",
+                tool_name, timeout_s,
+            )
             return {
                 "error": f"{tool_name}: dispatcher did not return in {timeout_s}s",
                 "status": "error",
             }
         except RuntimeError as exc:
+            logger.error("[bridge-dispatch] WORKER-RUNTIME-ERR tool=%s err=%s", tool_name, exc)
             return {"error": str(exc), "status": "error"}
         except Exception as exc:
+            logger.error("[bridge-dispatch] WORKER-EXC tool=%s err=%s", tool_name, exc)
             return {"error": f"{tool_name} failed: {exc!s}"[:240], "status": "error"}
 
     # Fallback: standalone loop in a thread. Only used when main loop is

@@ -47,6 +47,7 @@ class BridgeConnection:
     # never wakes up — tool-handler times out even though the bridge
     # replied correctly. See test_dispatch_cross_loop_safe.
     _pending: dict[str, tuple[asyncio.Future, asyncio.AbstractEventLoop]] = field(default_factory=dict)
+    _send_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     async def send_invoke(
         self,
@@ -59,13 +60,14 @@ class BridgeConnection:
         """Send tool_invoke over WS and register the pending future."""
         if self.ws is None:
             raise RuntimeError("bridge_no_transport")
-        await self.ws.send_json({
-            "type": "tool_invoke",
-            "correlation_id": correlation_id,
-            "tool": tool,
-            "args": args,
-            "timeout_ms": timeout_ms,
-        })
+        async with self._send_lock:
+            await self.ws.send_json({
+                "type": "tool_invoke",
+                "correlation_id": correlation_id,
+                "tool": tool,
+                "args": args,
+                "timeout_ms": timeout_ms,
+            })
 
     async def deliver_result(
         self,
@@ -225,6 +227,17 @@ class BridgeRegistry:
                 correlation_id, result.get("status"), len(bridge._pending),
             )
             return result
+        except asyncio.CancelledError:
+            bridge._pending.pop(correlation_id, None)
+            logger.warning(
+                "[bridge-dispatch] CANCELLED corr=%s pending=%d",
+                correlation_id, len(bridge._pending),
+            )
+            return {
+                "status": "error",
+                "result": None,
+                "error": "bridge_call_cancelled",
+            }
         except asyncio.TimeoutError:
             bridge._pending.pop(correlation_id, None)
             logger.error(

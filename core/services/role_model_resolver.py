@@ -63,6 +63,20 @@ def resolve_role_model(*, role: str, goal: str = "") -> dict[str, Any]:
         }
     """
     tier = _classify_goal_tier(goal)
+
+    # ── Lag 1: record model_tier choice ──────────────────────────────
+    try:
+        from core.runtime.db_credit_assignment import record_choice as _rc
+        _rc(
+            kind="model_tier",
+            title=f"Tier for role={role}: {goal[:80] if goal else '(empty)'}",
+            options=["fast", "reasoning", "deep"],
+            decision=tier,
+            why=f"classifier: {tier}",
+        )
+    except Exception:
+        pass
+
     try:
         from core.services.agent_runtime import _load_council_model_config
         role_models = _load_council_model_config() or []

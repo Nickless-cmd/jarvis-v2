@@ -3809,7 +3809,7 @@ def _run_operator_async(coro_fn, *, tool_name: str, timeout_s: float = 35.0) -> 
     # Fallback: standalone loop in a thread. Only used when main loop is
     # unavailable (CLI scripts, tests outside the API process). Has the
     # cross-loop ws.send_json hazard but is the only option here.
-    import threading
+    # threading is already imported at module top (line 18).
     holder: dict[str, Any] = {}
 
     def _runner() -> None:

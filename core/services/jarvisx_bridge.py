@@ -49,6 +49,27 @@ class BridgeConnection:
     _pending: dict[str, tuple[asyncio.Future, asyncio.AbstractEventLoop]] = field(default_factory=dict)
     _send_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
+    async def send_raw(self, data: dict, *, timeout_s: float = 10.0) -> None:
+        """Send raw JSON over WS with lock and timeout.
+
+        Uses _send_lock to prevent concurrent sends (heartbeat vs
+        tool_invoke) and a timeout on the actual send to prevent
+        permanent deadlock when the TCP connection is zombie (client
+        disappeared without closing). Without this timeout,
+        _send_lock is held forever, blocking ALL subsequent dispatches
+        — the 'one-shot bug'.
+        """
+        if self.ws is None:
+            raise RuntimeError("bridge_no_transport")
+        async with self._send_lock:
+            try:
+                await asyncio.wait_for(
+                    self.ws.send_json(data),
+                    timeout=timeout_s,
+                )
+            except asyncio.TimeoutError:
+                raise RuntimeError("bridge_send_timeout")
+
     async def send_invoke(
         self,
         *,
@@ -58,16 +79,13 @@ class BridgeConnection:
         timeout_ms: int,
     ) -> None:
         """Send tool_invoke over WS and register the pending future."""
-        if self.ws is None:
-            raise RuntimeError("bridge_no_transport")
-        async with self._send_lock:
-            await self.ws.send_json({
-                "type": "tool_invoke",
-                "correlation_id": correlation_id,
-                "tool": tool,
-                "args": args,
-                "timeout_ms": timeout_ms,
-            })
+        await self.send_raw({
+            "type": "tool_invoke",
+            "correlation_id": correlation_id,
+            "tool": tool,
+            "args": args,
+            "timeout_ms": timeout_ms,
+        })
 
     async def deliver_result(
         self,

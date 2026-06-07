@@ -1846,10 +1846,19 @@ export class JarvisXBridge {
       try {
         // Per-handler timeout. Without this, a hung handler (browser
         // session stuck, bash command waiting forever) blocks the whole
-        // bridge. Server-side already times out the dispatch at 30s; we
-        // race against a slightly higher deadline (40s) so the server
-        // gives up first when both fire — gives cleaner error reporting.
-        const HANDLER_TIMEOUT_MS = 40_000
+        // bridge. Server-side already times out the dispatch via
+        // asyncio.wait_for(fut, timeout=timeout_s); we race against a
+        // slightly higher deadline so the server gives up FIRST when
+        // both fire — gives cleaner error reporting.
+        //
+        // The server sends timeout_ms in the tool_invoke message; we
+        // use that plus a 10s grace margin. Fallback to 45s if the
+        // server didn't provide a value (legacy).
+        const serverTimeoutMs = Number(msg.timeout_ms) || 35_000
+        const HANDLER_TIMEOUT_MS = Math.min(
+          serverTimeoutMs + 10_000,
+          120_000,  // hard ceiling: 2 min
+        )
         const result = await Promise.race([
           handler(args),
           new Promise((_, reject) =>

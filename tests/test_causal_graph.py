@@ -91,6 +91,7 @@ def test_publish_with_explicit_caused_by_writes_edge():
         caused_by=parent_id,
         edge_kind="triggered",
     )
+    event_bus.flush()
     with connect() as c:
         rows = c.execute(
             "SELECT * FROM causal_edges WHERE parent_event_id = ?",
@@ -116,6 +117,7 @@ def test_publish_auto_pickup_from_event_context():
         c.commit()
     with with_event_context(parent_id):
         event_bus.publish("runtime.ctx_child", {"y": 2})
+    event_bus.flush()
     with connect() as c:
         rows = c.execute(
             "SELECT * FROM causal_edges WHERE parent_event_id = ?",
@@ -149,6 +151,7 @@ def test_publish_explicit_overrides_context():
             {"z": 3},
             caused_by=explicit_id,
         )
+    event_bus.flush()
     with connect() as c:
         rows = c.execute(
             "SELECT parent_event_id FROM causal_edges "
@@ -178,6 +181,7 @@ def test_publish_caused_by_list_creates_multiple_edges():
     event_bus.publish(
         "runtime.multi_child", {"v": 1}, caused_by=[p1, p2],
     )
+    event_bus.flush()
     with connect() as c:
         rows = c.execute(
             "SELECT parent_event_id FROM causal_edges "
@@ -199,12 +203,14 @@ def _setup_chain_a_b_c():
         a = int(c.execute("SELECT last_insert_rowid()").fetchone()[0])
         c.commit()
     event_bus.publish("runtime.chain_b", {}, caused_by=a)
+    event_bus.flush()
     with connect() as c:
         b = int(c.execute(
             "SELECT id FROM events WHERE kind='runtime.chain_b' "
             "ORDER BY id DESC LIMIT 1"
         ).fetchone()[0])
     event_bus.publish("runtime.chain_c", {}, caused_by=b)
+    event_bus.flush()
     with connect() as c:
         ch = int(c.execute(
             "SELECT id FROM events WHERE kind='runtime.chain_c' "
@@ -527,6 +533,7 @@ def test_causal_alerts_section_returns_text_for_recent_failure():
         {"tool": "test_tool", "error": "boom", "severity": "high", "tag": tag},
         caused_by=parent,
     )
+    event_bus.flush()
     out = causal_alerts_section()
     assert "Kausalkæde" in out or "🔗" in out
 
@@ -583,6 +590,7 @@ def test_end_to_end_explicit_inference_query():
         {"context": "test", "trigger": "e2e", "tag": cid},
         caused_by=child,
     )
+    event_bus.flush()
     with connect() as c:
         grandchild_id = int(c.execute(
             "SELECT id FROM events WHERE kind = 'memory.seed_planted' "

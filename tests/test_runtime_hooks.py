@@ -18,6 +18,7 @@ def test_runtime_hooks_dispatch_initiative_events_into_tasks_and_flows(isolated_
             "priority": "high",
         },
     )
+    event_bus.flush()
 
     dispatches = runtime_hooks.dispatch_unhandled_hook_events()
 
@@ -49,6 +50,7 @@ def test_runtime_hooks_dispatch_blocked_heartbeat_ticks_into_followup_work(isola
             "action_status": "blocked",
         },
     )
+    event_bus.flush()
 
     dispatches = runtime_hooks.dispatch_unhandled_hook_events()
 
@@ -77,6 +79,7 @@ def test_runtime_hooks_dispatch_tick_blocked_events_into_followup_work(isolated_
             "trigger": "scheduled",
         },
     )
+    event_bus.flush()
 
     dispatches = runtime_hooks.dispatch_unhandled_hook_events(
         event_kinds={"heartbeat.tick_blocked"}
@@ -112,6 +115,7 @@ def test_runtime_hooks_coalesce_duplicate_blocked_heartbeat_work(isolated_runtim
         "heartbeat.tick_blocked",
         {"tick_id": "heartbeat-tick:two", **payload},
     )
+    event_bus.flush()
 
     dispatches = runtime_hooks.dispatch_unhandled_hook_events(
         event_kinds={"heartbeat.tick_blocked"},

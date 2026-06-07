@@ -87,6 +87,7 @@ def test_eventbus_recent_returns_list():
 def test_eventbus_recent_respects_limit():
     from core.eventbus.bus import event_bus
     event_bus.publish("heartbeat.test", {"source": "test"})
+    event_bus.flush()
     result = _call_handler("eventbus_recent", {"limit": 1})
     assert len(result["events"]) <= 1
 
@@ -94,6 +95,7 @@ def test_eventbus_recent_respects_limit():
 def test_eventbus_recent_filters_by_kind():
     from core.eventbus.bus import event_bus
     event_bus.publish("heartbeat.test_filter", {"source": "filter_test"})
+    event_bus.flush()
     result = _call_handler("eventbus_recent", {"kind": "heartbeat", "limit": 50})
     for event in result["events"]:
         assert event["kind"].startswith("heartbeat")

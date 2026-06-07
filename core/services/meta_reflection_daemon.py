@@ -1,7 +1,7 @@
 """Meta-reflection daemon — cross-signal pattern insight every 30 minutes.
 
-Also checks for unreviewed prompt-variant decisions (Lag 1 credit assignment)
-on each tick — see _check_credit().
+Also checks for unreviewed model_tier and response_style decisions
+(Lag 1 credit assignment) on each tick — see _check_outcomes().
 """
 from __future__ import annotations
 
@@ -12,7 +12,8 @@ from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
 from core.runtime.db_credit_assignment import (
     list_unreviewed_decisions,
-    link_outcome_to_decision,
+    score_tier_outcome,
+    score_response_outcome,
 )
 from core.services.daemon_llm import daemon_llm_call
 from core.services.identity_composer import build_identity_preamble
@@ -31,7 +32,7 @@ def tick_meta_reflection_daemon(cross_snapshot: dict) -> dict[str, object]:
     cross_snapshot keys (all optional): energy_level, inner_voice_mode, latest_fragment,
     last_surprise, last_conflict, last_irony, last_taste, curiosity_signal."""
     # ── Always: check for unreviewed decisions ──────────────────────────
-    credit_result = _check_credit(cross_snapshot)
+    credit_result = _check_outcomes(cross_snapshot)
 
     # ── Cadence-gated: meta-insight ─────────────────────────────────────
     global _last_meta_at
@@ -60,105 +61,112 @@ def tick_meta_reflection_daemon(cross_snapshot: dict) -> dict[str, object]:
     return {"generated": True, "insight": insight, "credit": credit_result}
 
 
-def _check_credit(cross_snapshot: dict) -> dict[str, object]:
-    """Check for unreviewed prompt_variant decisions and score them.
+def _check_outcomes(cross_snapshot: dict) -> dict[str, object]:
+    """Check for unreviewed model_tier and response_style decisions and score them.
 
     Uses the partial index idx_cognitive_decisions_pending for O(log N) pre-check.
     Runs every tick — fast no-op when no pending decisions exist.
 
-    credit_score: 1-5 scale (per Claude review 2026-05-17).
-    evidence_summary: JSON blob with raw context (drift-delta, signals).
+    For model_tier: requires at least 3 subsequent turns to evaluate.
+    For response_style: requires at least 1 user message after the decision.
+    Both query recent session messages to build the outcome evaluation.
     """
+    # ── Score pending model_tier decisions ─────────────────────────────
+    scored_tier = 0
     try:
-        unreviewed = list_unreviewed_decisions(kind="prompt_variant", limit=3)
+        unreviewed = list_unreviewed_decisions(kind="model_tier", limit=3)
     except Exception:
-        return {"checked": False, "error": "list_unreviewed failed (schema may not exist yet)"}
+        unreviewed = []
 
-    if not unreviewed:
-        return {"checked": True, "scored": 0}
-
-    scored = 0
     for dec in unreviewed:
         decision_id = dec["decision_id"]
         try:
-            # Build credit_score (1-5) and evidence (JSON) from available signals
-            score = _estimate_credit_score(dec, cross_snapshot)
-            evidence = _build_evidence_summary(dec, cross_snapshot)
+            tier_used = str(dec.get("decision", "fast"))
+            next_turns = _get_turns_after(dec.get("created_at", ""), min_turns=3)
+            if next_turns is None:
+                continue
 
-            link_outcome_to_decision(
+            score_tier_outcome(
                 decision_id=decision_id,
-                credit_score=score,
-                rationale=f"Automated Lag 1 outcome for {dec.get('title', decision_id)}",
-                evidence_summary=evidence,
-                run_id=f"credit-check-{uuid4().hex[:12]}",
+                tier_used=tier_used,
+                next_turns=next_turns,
             )
-            scored += 1
+            scored_tier += 1
         except Exception:
             continue
 
-    return {"checked": True, "scored": scored}
-
-
-def _estimate_credit_score(decision: dict, cross_snapshot: dict) -> float:
-    """Heuristic credit score 1-5 based on available signals.
-
-    Starts at neutral 3, adjusts ±1 based on signals.
-    Drift-delta is stored in evidence_summary, NOT mixed into score
-    (per Claude review — avoid confounders, keep dimensions separate).
-    """
-    score = 3.0
-
-    raw = cross_snapshot.get("energy_level", "")
+    # ── Score pending response_style decisions ─────────────────────────
+    scored_style = 0
     try:
-        e = float(raw)
-        if 0.35 <= e <= 0.65:
-            score += 1.0
-        elif e < 0.25:
-            score -= 1.0
-    except (TypeError, ValueError):
-        energy = str(raw).lower()
-        if "moderate" in energy:
-            score += 1.0
-        elif "low" in energy:
-            score -= 1.0
+        unreviewed_style = list_unreviewed_decisions(kind="response_style", limit=3)
+    except Exception:
+        unreviewed_style = []
 
-    if cross_snapshot.get("last_conflict"):
-        score -= 1.0
+    for dec in unreviewed_style:
+        decision_id = dec["decision_id"]
+        try:
+            style_used = str(dec.get("decision", "elaborate"))
+            user_reply = _get_next_user_message(dec.get("created_at", ""))
+            if user_reply is None:
+                continue
 
-    if cross_snapshot.get("curiosity_signal"):
-        score += 0.5
+            score_response_outcome(
+                decision_id=decision_id,
+                style_used=style_used,
+                user_reply=user_reply,
+            )
+            scored_style += 1
+        except Exception:
+            continue
 
-    return max(1.0, min(5.0, score))
+    return {"checked": True, "scored": scored_tier + scored_style,
+            "scored_tier": scored_tier, "scored_style": scored_style}
 
 
-def _build_evidence_summary(decision: dict, cross_snapshot: dict) -> str:
-    """Build evidence_summary as JSON blob with raw context signals.
+def _get_turns_after(created_at: str, min_turns: int = 3) -> list[dict] | None:
+    """Get subsequent turns after a decision timestamp.
 
-    Stores drift-delta, energy, conflicts as raw context — NOT mixed into score.
-    Claude rationale: confounders are correlative, not causal.
-    Post-hoc analysis after 100+ records will determine if weighting is warranted.
+    Returns None if not enough turns have passed yet (min_turns not met).
+    Looks at recent chat messages from the latest session.
     """
-    import json as _json
+    if not created_at:
+        return None
+    try:
+        from core.services.chat_sessions import recent_chat_session_messages
+        messages = recent_chat_session_messages(limit=10) or []
+    except Exception:
+        return None
 
-    evidence: dict[str, object] = {
-        "signals": {},
-        "decision_context": {},
-    }
+    after = []
+    for msg in messages:
+        msg_time = str(msg.get("created_at") or msg.get("timestamp") or "")
+        if msg_time and msg_time > created_at:
+            after.append(msg)
 
-    # Signals snapshot (raw, unweighted)
-    for key in ("energy_level", "last_conflict", "curiosity_signal",
-                 "last_surprise", "inner_voice_mode"):
-        val = cross_snapshot.get(key)
-        if val:
-            evidence["signals"][key] = val
+    if len(after) >= min_turns:
+        return after
+    return None
 
-    # Decision context
-    if decision.get("options") and decision.get("options") != "[]":
-        evidence["decision_context"]["options"] = decision["options"]
-    if decision.get("decision"):
-        evidence["decision_context"]["chosen"] = decision["decision"][:120]
 
-    return _json.dumps(evidence, ensure_ascii=False)
+def _get_next_user_message(created_at: str) -> str | None:
+    """Get the first user message after a decision timestamp.
+
+    Returns None if no user message found yet.
+    """
+    if not created_at:
+        return None
+    try:
+        from core.services.chat_sessions import recent_chat_session_messages
+        messages = recent_chat_session_messages(limit=10) or []
+    except Exception:
+        return None
+
+    for msg in messages:
+        msg_time = str(msg.get("created_at") or msg.get("timestamp") or "")
+        role = str(msg.get("role") or "").lower()
+        if msg_time and msg_time > created_at and role == "user":
+            return str(msg.get("content") or msg.get("text") or "")
+    return None
 
 
 def _generate_meta_insight(cross_snapshot: dict) -> str:

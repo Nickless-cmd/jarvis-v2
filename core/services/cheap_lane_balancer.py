@@ -519,6 +519,20 @@ def call_balanced(
         state = _ensure_state(states, slot.slot_id)
         call_started = _time.time()
 
+        # ── Lag 1: record provider_routing choice ──────────────────────
+        _choice_id: str | None = None
+        try:
+            from core.runtime.db_credit_assignment import record_choice as _rc
+            _choice_id = _rc(
+                kind="provider_routing",
+                title=f"Provider for {daemon_name or 'daemon'} (attempt {attempts+1})",
+                options=[s.slot_id for s in eligible_pool[:5]],
+                decision=slot.slot_id,
+                why=f"weight={_compute_weight(slot, state, now):.3f}",
+            )
+        except Exception:
+            _choice_id = None
+
         try:
             result = _call_provider_chat(
                 provider=slot.provider,
@@ -530,6 +544,20 @@ def call_balanced(
             _register_success(state, now=_time.time())
             _save_state_debounced(states)
             latency_ms = int((_time.time() - call_started) * 1000)
+
+            # ── Lag 1: score provider_routing outcome (sync) ────────
+            if _choice_id:
+                try:
+                    from core.runtime.db_credit_assignment import score_provider_outcome as _spo
+                    _spo(_choice_id, {
+                        "status": "ok",
+                        "latency_ms": latency_ms,
+                        "cost_per_token": 0.0,  # TODO: extract from result
+                        "fallback_used": attempts > 1,
+                    })
+                except Exception:
+                    pass
+
             try:
                 from core.eventbus.events import emit  # type: ignore
                 emit("cheap_balancer.call_succeeded", {
@@ -558,6 +586,18 @@ def call_balanced(
                 retry_after_s=getattr(exc, "retry_after_seconds", 0),
                 now=_time.time(),
             )
+            # ── Lag 1: score failed provider_routing ─────────────────
+            if _choice_id:
+                try:
+                    from core.runtime.db_credit_assignment import score_provider_outcome as _spo
+                    _spo(_choice_id, {
+                        "status": "error",
+                        "latency_ms": int((_time.time() - call_started) * 1000),
+                        "cost_per_token": 0.0,
+                        "fallback_used": False,
+                    })
+                except Exception:
+                    pass
             # If this is a DNS / connection-level error, all slots from the
             # same provider are affected — apply provider-wide cooldown so
             # we don't burn retries on the other dead slots.
@@ -587,6 +627,18 @@ def call_balanced(
         except Exception as exc:
             last_error = exc
             _register_failure(state, "unknown", retry_after_s=0, now=_time.time())
+            # ── Lag 1: score failed provider_routing ─────────────────
+            if _choice_id:
+                try:
+                    from core.runtime.db_credit_assignment import score_provider_outcome as _spo
+                    _spo(_choice_id, {
+                        "status": "error",
+                        "latency_ms": int((_time.time() - call_started) * 1000),
+                        "cost_per_token": 0.0,
+                        "fallback_used": False,
+                    })
+                except Exception:
+                    pass
             # Same DNS/connection check for non-CheapProviderError exceptions
             if _is_dns_or_connection_error("", exc):
                 _register_provider_wide_failure(

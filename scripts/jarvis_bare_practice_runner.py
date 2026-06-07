@@ -267,7 +267,7 @@ def _run_loop(args: argparse.Namespace) -> None:
             ping_ok = _ping_model()
             if ping_ok:
                 logger.info("Ping OK after %d failures — resuming normal ticks", consecutive_failures)
-                consecutive_failures = 3  # reduce so next tick tries
+                consecutive_failures = 0  # fully reset so next iteration runs a real tick
                 time.sleep(30)
                 continue
             else:

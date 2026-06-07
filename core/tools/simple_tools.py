@@ -3791,8 +3791,11 @@ def _run_operator_async(coro_fn, *, tool_name: str, timeout_s: float = 35.0) -> 
             )
             return {"status": "ok", "result": result}
         except TimeoutError:
+            # Cancel the future on the main loop so the coroutine doesn't
+            # keep running and potentially block subsequent dispatches.
+            cf_fut.cancel()
             logger.error(
-                "[bridge-dispatch] WORKER-TIMEOUT tool=%s after %.1fs",
+                "[bridge-dispatch] WORKER-TIMEOUT tool=%s after %.1fs (cancelled)",
                 tool_name, timeout_s,
             )
             return {

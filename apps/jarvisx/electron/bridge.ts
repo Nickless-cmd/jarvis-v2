@@ -259,6 +259,58 @@ function* walkDir(root: string, max: number): Generator<string> {
   }
 }
 
+// ── Async spawn helper — does NOT block the event loop ──────────────
+// Critical for WebSocket health: asyncSpawn does not block Node's event loop,
+// so ping/pong fails and the server closes the connection mid-command.
+interface AsyncSpawnResult {
+  stdout: string
+  stderr: string
+  status: number | null
+  signal: string | null
+  timed_out: boolean
+  error?: string
+}
+async function asyncSpawn(
+  cmd: string,
+  args: string[],
+  opts: { cwd?: string; timeout?: number; maxBuffer?: number } = {},
+): Promise<AsyncSpawnResult> {
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, {
+      cwd: opts.cwd,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: false,
+    })
+    const stdoutBuf: Buffer[] = []
+    const stderrBuf: Buffer[] = []
+    child.stdout?.on('data', (d: Buffer) => stdoutBuf.push(d))
+    child.stderr?.on('data', (d: Buffer) => stderrBuf.push(d))
+
+    let timedOut = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    if (opts.timeout && opts.timeout > 0) {
+      timer = setTimeout(() => {
+        timedOut = true
+        child.kill('SIGTERM')
+      }, opts.timeout)
+    }
+
+    child.on('close', (code, sig) => {
+      if (timer) clearTimeout(timer)
+      const maxBuf = opts.maxBuffer ?? 5 * 1024 * 1024
+      let stdout = Buffer.concat(stdoutBuf).toString('utf8')
+      let stderr = Buffer.concat(stderrBuf).toString('utf8')
+      if (stdout.length > maxBuf) stdout = stdout.slice(0, maxBuf)
+      if (stderr.length > maxBuf) stderr = stderr.slice(0, maxBuf)
+      resolve({ stdout, stderr, status: code, signal: sig, timed_out: timedOut })
+    })
+    child.on('error', (err) => {
+      if (timer) clearTimeout(timer)
+      resolve({ stdout: '', stderr: '', status: null, signal: null, timed_out: false, error: err.message })
+    })
+  })
+}
+
 /** Built-in handlers — Phase 1+2: read/write/edit/glob/grep/list_dir. */
 const handlers: Record<string, ToolHandler> = {
   operator_read_file: (args) => {
@@ -436,18 +488,13 @@ const handlers: Record<string, ToolHandler> = {
     const cwd = args.cwd ? resolveOperatorPath(args.cwd) : homedir()
     const timeoutS = Math.min(Math.max(Number(args.timeout_s) || 30, 1), 300)
 
-    // Godkendelse håndteres nu af runtime via chat-card FØR denne handler
-    // kaldes. Når vi når hertil, har brugeren allerede godkendt i chatten.
-    // approvalRace() er fjernet — ingen OS-dialog her.
-
     // Platform-aware shell selection: bash on Linux/macOS, PowerShell
     // on Windows. Same surface for the LLM — shell-features (pipes,
     // redirects, env-vars) work in both.
     const shell = selectShell()
-    const result = spawnSync(shell.cmd, shell.args(command), {
+    const result = await asyncSpawn(shell.cmd, shell.args(command), {
       cwd,
       timeout: timeoutS * 1000,
-      encoding: 'utf8',
       maxBuffer: 5 * 1024 * 1024, // 5 MB stdout cap
     })
 
@@ -457,7 +504,7 @@ const handlers: Record<string, ToolHandler> = {
       stdout: (result.stdout ?? '').slice(0, 100_000),
       stderr: (result.stderr ?? '').slice(0, 50_000),
       exit_code: result.status,
-      timed_out: result.signal === 'SIGTERM' && result.error?.message?.includes('timed out'),
+      timed_out: result.timed_out,
     }
   },
 
@@ -875,11 +922,11 @@ const handlers: Record<string, ToolHandler> = {
     //   Windows: PowerShell Get-Process | MainWindowTitle filter
     const platform = osPlatform()
     if (platform === 'win32') {
-      const res = spawnSync('powershell.exe', [
+      const res = await asyncSpawn('powershell.exe', [
         '-NoProfile', '-NonInteractive', '-Command',
         'Get-Process | Where-Object {$_.MainWindowTitle -ne ""} | Select-Object Id,MainWindowTitle | ConvertTo-Json -Compress',
-      ], { encoding: 'utf8', timeout: 10000 })
-      if (res.error) throw res.error
+      ], { timeout: 10000 })
+      if (res.error) throw new Error(res.error)
       let procs: { Id: number; MainWindowTitle: string }[] = []
       try {
         const parsed = JSON.parse(res.stdout.trim() || '[]')
@@ -889,10 +936,10 @@ const handlers: Record<string, ToolHandler> = {
       return { count: out.length, windows: out }
     } else {
       // Linux: wmctrl -l  →  "0x00400003  0 hostname  Window Title"
-      const res = spawnSync('wmctrl', ['-l'], { encoding: 'utf8', timeout: 10000 })
+      const res = await asyncSpawn('wmctrl', ['-l'], { timeout: 10000 })
       if (res.error) {
         throw new Error(
-          `wmctrl failed: ${res.error.message}. ` +
+          `wmctrl failed: ${res.error}. ` +
             `Install wmctrl (apt install wmctrl) on the operator's Linux desktop.`,
         )
       }
@@ -920,26 +967,26 @@ const handlers: Record<string, ToolHandler> = {
       // was provided, we can't use it directly (PID != HWND) — best we can
       // do is use the title.
       const target = titleSub ?? handleRaw ?? ''
-      const res = spawnSync('powershell.exe', [
+      const res = await asyncSpawn('powershell.exe', [
         '-NoProfile', '-NonInteractive', '-Command',
         `(New-Object -ComObject WScript.Shell).AppActivate("${target.replace(/"/g, '\\"')}")`,
-      ], { encoding: 'utf8', timeout: 10000 })
-      if (res.error) throw res.error
+      ], { timeout: 10000 })
+      if (res.error) throw new Error(res.error)
       return { focused: true, title: target, handle: handleRaw }
     } else {
       // Linux: wmctrl -a "title substring"  OR  wmctrl -ia <hex_id>
       if (titleSub !== null) {
-        const res = spawnSync('wmctrl', ['-a', titleSub], { encoding: 'utf8', timeout: 10000 })
+        const res = await asyncSpawn('wmctrl', ['-a', titleSub], { timeout: 10000 })
         if (res.error) {
           throw new Error(
-            `wmctrl failed: ${res.error.message}. ` +
+            `wmctrl failed: ${res.error}. ` +
               `Install wmctrl (apt install wmctrl) on the operator's Linux desktop.`,
           )
         }
         return { focused: res.status === 0, title: titleSub, handle: null }
       } else {
-        const res = spawnSync('wmctrl', ['-ia', String(handleRaw)], { encoding: 'utf8', timeout: 10000 })
-        if (res.error) throw new Error(`wmctrl failed: ${res.error.message}`)
+        const res = await asyncSpawn('wmctrl', ['-ia', String(handleRaw)], { timeout: 10000 })
+        if (res.error) throw new Error(`wmctrl failed: ${res.error}`)
         return { focused: res.status === 0, title: '', handle: handleRaw }
       }
     }
@@ -989,11 +1036,11 @@ const handlers: Record<string, ToolHandler> = {
     let procs: { pid: number; name: string; cpu: number; memMB: number }[] = []
     if (platform === 'win32') {
       // PowerShell: sorted by CPU descending, top 60.
-      const res = spawnSync('powershell.exe', [
+      const res = await asyncSpawn('powershell.exe', [
         '-NoProfile', '-NonInteractive', '-Command',
         'Get-Process | Select-Object Id,ProcessName,CPU,WorkingSet | Sort-Object CPU -Descending | Select-Object -First 60 | ConvertTo-Json -Compress',
-      ], { encoding: 'utf8', timeout: 15000 })
-      if (res.error) throw res.error
+      ], { timeout: 15000 })
+      if (res.error) throw new Error(res.error)
       let raw: { Id: number; ProcessName: string; CPU: number | null; WorkingSet: number }[] = []
       try {
         const parsed = JSON.parse(res.stdout.trim())
@@ -1007,10 +1054,10 @@ const handlers: Record<string, ToolHandler> = {
       }))
     } else {
       // Linux: ps -eo pid,comm,pcpu,rss (rss is in KiB), sort by cpu.
-      const res = spawnSync('ps', ['-eo', 'pid,comm,pcpu,rss', '--sort=-pcpu', '--no-headers'], {
-        encoding: 'utf8', timeout: 10000,
+      const res = await asyncSpawn('ps', ['-eo', 'pid,comm,pcpu,rss', '--sort=-pcpu', '--no-headers'], {
+        timeout: 10000,
       })
-      if (res.error) throw res.error
+      if (res.error) throw new Error(res.error)
       let count = 0
       for (const line of res.stdout.split('\n')) {
         if (count >= 60) break
@@ -1042,14 +1089,14 @@ const handlers: Record<string, ToolHandler> = {
     const platform = osPlatform()
     try {
       if (platform === 'win32') {
-        const r = spawnSync('powershell.exe', [
+        const r = await asyncSpawn('powershell.exe', [
           '-NoProfile', '-NonInteractive', '-Command',
           `Get-Process -Id ${pid} | Select-Object -ExpandProperty ProcessName`,
-        ], { encoding: 'utf8', timeout: 5000 })
+        ], { timeout: 5000 })
         const name = r.stdout.trim()
         if (name) procName = `${name} (PID ${pid})`
       } else {
-        const r = spawnSync('ps', ['-p', String(pid), '-o', 'comm='], { encoding: 'utf8', timeout: 5000 })
+        const r = await asyncSpawn('ps', ['-p', String(pid), '-o', 'comm='], { timeout: 5000 })
         const name = r.stdout.trim()
         if (name) procName = `${name} (PID ${pid})`
       }
@@ -1057,15 +1104,15 @@ const handlers: Record<string, ToolHandler> = {
 
     // Send SIGTERM (Linux) / Stop-Process (Windows).
     if (platform === 'win32') {
-      const res = spawnSync('powershell.exe', [
+      const res = await asyncSpawn('powershell.exe', [
         '-NoProfile', '-NonInteractive', '-Command',
         `Stop-Process -Id ${pid} -Force`,
-      ], { encoding: 'utf8', timeout: 10000 })
-      if (res.error) throw res.error
+      ], { timeout: 10000 })
+      if (res.error) throw new Error(res.error)
       return { killed: true, pid, name: procName }
     } else {
-      const res = spawnSync('kill', [String(pid)], { encoding: 'utf8', timeout: 5000 })
-      if (res.error) throw res.error
+      const res = await asyncSpawn('kill', [String(pid)], { timeout: 5000 })
+      if (res.error) throw new Error(res.error)
       if (res.status !== 0) {
         return { killed: false, pid, name: procName, error: res.stderr.trim() }
       }
@@ -1110,7 +1157,7 @@ const handlers: Record<string, ToolHandler> = {
         writeFileSync(tmpFile, mp3Bytes)
 
         // ffplay -nodisp -autoexit -loglevel quiet: silent, blocks until
-        // playback ends. spawnSync ensures the bridge reply only fires
+        // playback ends. asyncSpawn ensures the bridge reply only fires
         // once speech actually finished (matches the "spoken" semantics).
         //
         // Anti-stutter flags:
@@ -1122,7 +1169,7 @@ const handlers: Record<string, ToolHandler> = {
         //                     = soft-resample timestamps within ±1s, which
         //                       smooths the small frame-boundary gaps
         //                       between edge-tts chunks ("hakkende" pauses).
-        const play = spawnSync(
+        const play = await asyncSpawn(
           'ffplay',
           [
             '-nodisp',
@@ -1133,7 +1180,7 @@ const handlers: Record<string, ToolHandler> = {
             '-af', 'aresample=async=1000',
             tmpFile,
           ],
-          { encoding: 'utf8', timeout: 60_000 },
+          { timeout: 60_000 },
         )
         try {
           const { unlinkSync } = await import('node:fs')
@@ -1143,7 +1190,7 @@ const handlers: Record<string, ToolHandler> = {
         if (play.error) {
           throw new Error(
             `ffplay not found. Install: winget install Gyan.FFmpeg (Windows) ` +
-              `or apt install ffmpeg (Linux). Underlying: ${play.error.message}`,
+              `or apt install ffmpeg (Linux). Underlying: ${play.error}`,
           )
         }
         if (play.status !== 0) {
@@ -1183,11 +1230,11 @@ const handlers: Record<string, ToolHandler> = {
       const voiceLine = voiceArg
         ? `$s.SelectVoice("${voiceArg.replace(/"/g, '`"')}")`
         : ''
-      const res = spawnSync('powershell.exe', [
+      const res = await asyncSpawn('powershell.exe', [
         '-NoProfile', '-NonInteractive', '-Command',
         `Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; ${voiceLine} $s.Rate = ${sapiRate}; $s.Speak("${safeText}")`,
-      ], { encoding: 'utf8', timeout: 30000 })
-      if (res.error) throw res.error
+      ], { timeout: 30000 })
+      if (res.error) throw new Error(res.error)
       if (res.status !== 0) {
         throw new Error(`SAPI Speak failed: ${res.stderr.trim()}`)
       }
@@ -1198,10 +1245,10 @@ const handlers: Record<string, ToolHandler> = {
       const speakArgs = ['-s', String(wpm)]
       if (voiceArg) speakArgs.push('-v', voiceArg)
       speakArgs.push(text)
-      const res = spawnSync('espeak-ng', speakArgs, { encoding: 'utf8', timeout: 30000 })
+      const res = await asyncSpawn('espeak-ng', speakArgs, { timeout: 30000 })
       if (res.error) {
         // Try plain espeak fallback
-        const res2 = spawnSync('espeak', speakArgs, { encoding: 'utf8', timeout: 30000 })
+        const res2 = await asyncSpawn('espeak', speakArgs, { timeout: 30000 })
         if (res2.error) {
           throw new Error(
             `espeak-ng / espeak not found. Install on Linux: apt install espeak-ng`,
@@ -1238,10 +1285,10 @@ const handlers: Record<string, ToolHandler> = {
       // Windows: focus the window first, then capture full screen, then crop.
       // Simpler than PrintWindow P/Invoke — focus + nut.js screen capture.
       const target = titleSub ?? handleArg ?? ''
-      spawnSync('powershell.exe', [
+      await asyncSpawn('powershell.exe', [
         '-NoProfile', '-NonInteractive', '-Command',
         `(New-Object -ComObject WScript.Shell).AppActivate("${target.replace(/"/g, '\\"')}")`,
-      ], { encoding: 'utf8', timeout: 5000 })
+      ], { timeout: 5000 })
       // Short delay to let the window come to front.
       await new Promise((r) => setTimeout(r, 400))
       const { screen: nutScreen } = await import('@nut-tree-fork/nut-js')
@@ -1266,7 +1313,7 @@ const handlers: Record<string, ToolHandler> = {
 
       if (titleSub !== null) {
         // wmctrl -l to find hex id matching title substring
-        const listRes = spawnSync('wmctrl', ['-l'], { encoding: 'utf8', timeout: 5000 })
+        const listRes = await asyncSpawn('wmctrl', ['-l'], { timeout: 5000 })
         if (listRes.error) {
           throw new Error(
             `wmctrl not found. Install: apt install wmctrl`,
@@ -1285,8 +1332,8 @@ const handlers: Record<string, ToolHandler> = {
       }
 
       // ImageMagick import -window <id>
-      const importRes = spawnSync('import', ['-window', winId!, outPath], {
-        encoding: 'utf8', timeout: 15000,
+      const importRes = await asyncSpawn('import', ['-window', winId!, outPath], {
+        timeout: 15000,
       })
       if (importRes.error) {
         throw new Error(
@@ -1374,7 +1421,7 @@ const handlers: Record<string, ToolHandler> = {
     const imArgs = useMagick
       ? ['convert', nutOut, '-crop', cropGeom, '+repage', cropPath]
       : [nutOut, '-crop', cropGeom, '+repage', cropPath]
-    const cropRes = spawnSync(im, imArgs, { encoding: 'utf8', timeout: 10000 })
+    const cropRes = await asyncSpawn(im, imArgs, { timeout: 10000 })
     // Cleanup full screen shot.
     try { const { unlinkSync } = await import('node:fs'); unlinkSync(nutOut) } catch {}
     if (cropRes.error) {
@@ -1387,8 +1434,8 @@ const handlers: Record<string, ToolHandler> = {
     }
 
     // 3. Run tesseract on the cropped image (output to stdout).
-    const tessRes = spawnSync('tesseract', [cropPath, 'stdout', '-l', lang], {
-      encoding: 'utf8', timeout: 30000,
+    const tessRes = await asyncSpawn('tesseract', [cropPath, 'stdout', '-l', lang], {
+      timeout: 30000,
     })
     // Cleanup crop.
     try { const { unlinkSync } = await import('node:fs'); unlinkSync(cropPath) } catch {}
@@ -1507,7 +1554,7 @@ const handlers: Record<string, ToolHandler> = {
     const outputPath = args.output_path != null ? String(args.output_path) : defaultPath
 
     // Record via platform command
-    let recordRes: ReturnType<typeof spawnSync>
+    let recordRes: AsyncSpawnResult
     if (platform === 'win32') {
       // Windows: ffmpeg dshow requires the EXACT device name (e.g.
       // 'Mikrofon (NOS X500)'). 'default' is not a valid dshow source —
@@ -1523,13 +1570,13 @@ const handlers: Record<string, ToolHandler> = {
             'to list installed mics, then pass the exact name as `device` arg.',
         }
       }
-      recordRes = spawnSync('ffmpeg', [
+      recordRes = await asyncSpawn('ffmpeg', [
         '-y',
         '-f', 'dshow',
         '-i', `audio=${deviceStr}`,
         '-t', String(durationS),
         outputPath,
-      ], { encoding: 'utf8', timeout: (durationS + 15) * 1000 })
+      ], { timeout: (durationS + 15) * 1000 })
       if (recordRes.error) {
         return { recorded: false, reason: 'tool_missing', detail: 'ffmpeg not found. Install: winget install ffmpeg' }
       }
@@ -1538,12 +1585,12 @@ const handlers: Record<string, ToolHandler> = {
       const arecordArgs = ['-d', String(durationS), '-f', 'cd', '-t', 'wav']
       if (deviceArg) arecordArgs.push('-D', deviceArg)
       arecordArgs.push(outputPath)
-      recordRes = spawnSync('arecord', arecordArgs, { encoding: 'utf8', timeout: (durationS + 15) * 1000 })
+      recordRes = await asyncSpawn('arecord', arecordArgs, { timeout: (durationS + 15) * 1000 })
       if (recordRes.error) {
         // Try parecord fallback
         const parecordArgs = ['--file-format=wav', `--record-time=${durationS}`, outputPath]
         if (deviceArg) parecordArgs.push(`--device=${deviceArg}`)
-        recordRes = spawnSync('parecord', parecordArgs, { encoding: 'utf8', timeout: (durationS + 15) * 1000 })
+        recordRes = await asyncSpawn('parecord', parecordArgs, { timeout: (durationS + 15) * 1000 })
         if (recordRes.error) {
           return {
             recorded: false,

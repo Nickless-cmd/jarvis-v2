@@ -121,7 +121,7 @@ async def jarvisx_bridge_ws(ws: WebSocket) -> None:
         while True:
             await asyncio.sleep(_KEEPALIVE_S)
             try:
-                await ws.send_json({"type": "ping"})
+                await conn.send_raw({"type": "ping"}, timeout_s=8.0)
             except Exception:
                 return
 

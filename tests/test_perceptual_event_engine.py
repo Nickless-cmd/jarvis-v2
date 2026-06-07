@@ -47,6 +47,7 @@ def test_observe_recent_changes_scans_eventbus(isolated_runtime) -> None:
     from core.services.perceptual_event_engine import observe_recent_changes
 
     event_bus.publish("tool.completed", {"tool": "bash", "status": "error"})
+    event_bus.flush()
 
     result = observe_recent_changes()
 

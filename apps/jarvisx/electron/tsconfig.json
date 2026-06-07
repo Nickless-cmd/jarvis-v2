@@ -12,5 +12,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["./main.ts"]
+  "include": ["./main.ts", "./bridge.ts"]
 }

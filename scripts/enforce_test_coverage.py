@@ -97,6 +97,10 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/services/identity_composer.py": "tests/runtime/test_workspace_paths.py",
     "core/services/ground_truth_registry.py": "tests/runtime/test_workspace_paths.py",
     "core/services/remembered_fact_signal_tracking.py": "tests/runtime/test_workspace_paths.py",
+    # Identity Sketch — service + tools tested in one file
+    # Mapping added 2026-06-08.
+    "core/services/identity_sketch.py": "tests/test_identity_sketch.py",
+    "core/tools/identity_sketch_tools.py": "tests/test_identity_sketch.py",
 }
 
 

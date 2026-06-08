@@ -1087,7 +1087,17 @@ async def _stream_visible_run(
                 from core.services.ollama_visible_prompt import (
                     serialize_ollama_chat_messages,
                 )
-                visible_input_pre = _build_visible_input(
+                # 2026-06-08: _build_visible_input blocks main_loop for 6-33s
+                # while waiting on relevance/cognitive_state/frame thread-pool
+                # futures (via .result() calls in prompt_contract). When run
+                # synchronously inside this async generator it freezes the
+                # event loop — bridge dispatch coroutines submitted via
+                # run_coroutine_threadsafe can't make progress, so subsequent
+                # tool calls stall (WORKER-SUBMITTED logged but no bridge
+                # START logged, then 60s WORKER-TIMEOUT). asyncio.to_thread
+                # offloads to a worker thread, keeping the loop free.
+                visible_input_pre = await asyncio.to_thread(
+                    _build_visible_input,
                     run.user_message,
                     session_id=run.session_id,
                     provider=run.provider,

@@ -81,45 +81,84 @@ def _warm_tier_snapshot(*, query: str = "") -> dict[str, Any]:
 
 
 def _cold_tier_search(*, query: str, max_results: int = 6) -> dict[str, Any]:
-    """Semantic-search across full archive — only invoked when query is specific.
+    """Semantic-search across full archive with quality scoring.
 
-    2026-05-22 (Claude): scope reduced to truth-bearing sources only.
-    The previous implementation passed ``sources=None`` to unified_recall,
-    which let private_brain (58k+ self-generated rows) compete with
-    curated workspace files for top-k slots in the cold-tier results.
-    A hallucinated note in private_brain could outrank MEMORY.md as
-    "evidence" — the root cause of the assets.srvlab.dk self-
-    reinforcement that Codex documented.
+    2026-06-08 (Memory Fix Phase 1): Replaced hard exclusion of private_brain
+    with quality-scored inclusion. Self-generated content (private_brain) is
+    now searched via ``cold_tier_recall()`` which applies
+    ``compute_recall_score()`` — only records above the quality threshold
+    surface. This preserves the fix against hallucination loops while
+    allowing genuinely useful self-generated memories back into cold tier.
 
-    Now cold-tier searches only ``workspace`` (curated) and ``chronicle``
-    (consolidated weekly narratives). Self-generated content
-    (private_brain, council reasoning) is excluded from cold-tier
-    factual recall. Those sources remain available via explicit
-    recall_memories() calls when continuity / mood context is wanted —
-    not when factual recall is needed.
+    The quality threshold and source weights ensure:
+    - Truth-bearing sources (workspace 2.0, chronicle 1.1) still dominate
+    - Private_brain (weight 0.5) must have high quality_score to compete
+    - Old hard exclusion is replaced by a soft quality gate
+
+    Quality threshold is configurable via runtime.json:
+    ``memory.cold_tier.quality_threshold`` (default 0.25).
     """
     snapshot: dict[str, Any] = {"tier": "cold", "query": query, "results": []}
     if not query or len(query) < 3:
         return snapshot
+
+    # Read quality threshold from runtime config (optional)
+    quality_threshold = 0.25
+    include_pb = True
     try:
-        from core.services.memory_recall_engine import unified_recall
-        result = unified_recall(
+        from core.runtime.settings import load_settings
+        settings = load_settings()
+        memory_cfg = getattr(settings, "memory", {}) or {}
+        cold_cfg = memory_cfg.get("cold_tier", {}) or {}
+        quality_threshold = float(cold_cfg.get("quality_threshold", 0.25))
+        include_pb = bool(cold_cfg.get("include_private_brain", True))
+    except Exception:
+        pass
+
+    try:
+        from core.services.memory_recall_engine import cold_tier_recall
+        result = cold_tier_recall(
             query=query,
-            sources=["workspace", "chronicle"],  # truth-bearing only
-            total_limit=max_results,
-            with_mood=True,
+            max_results=max_results,
+            quality_threshold=quality_threshold,
+            include_private_brain=include_pb,
         )
         snapshot["results"] = [
             {
                 "source": r.get("source"),
                 "text": str(r.get("text", ""))[:240],
                 "score": r.get("weighted_score", r.get("score", 0)),
+                "quality_score": r.get("quality_score"),
+                "entry_id": r.get("entry_id"),
             }
             for r in (result.get("results") or [])
         ]
         snapshot["mood_boosted"] = bool(result.get("mood_boosted"))
+        snapshot["quality_filtered"] = result.get("quality_filtered", 0)
+        snapshot["quality_threshold"] = result.get("quality_threshold", quality_threshold)
     except Exception as exc:
         logger.debug("cold tier search failed: %s", exc)
+        # Fallback: truth-bearing only if cold_tier_recall fails
+        try:
+            from core.services.memory_recall_engine import unified_recall
+            result = unified_recall(
+                query=query,
+                sources=["workspace", "chronicle"],
+                total_limit=max_results,
+                with_mood=True,
+            )
+            snapshot["results"] = [
+                {
+                    "source": r.get("source"),
+                    "text": str(r.get("text", ""))[:240],
+                    "score": r.get("weighted_score", r.get("score", 0)),
+                }
+                for r in (result.get("results") or [])
+            ]
+            snapshot["mood_boosted"] = bool(result.get("mood_boosted"))
+            snapshot["fallback"] = True
+        except Exception:
+            pass
     return snapshot
 
 

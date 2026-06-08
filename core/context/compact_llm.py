@@ -36,8 +36,26 @@ def _call_heartbeat_llm_simple(prompt: str, max_tokens: int) -> str:
 def call_compact_llm(prompt: str, *, max_tokens: int = 400) -> str:
     """Summarise prompt. Tries non-Groq cheap providers first, Groq as fallback.
 
+    Memory Fix Phase 2: automatically prepends the current identity sketch
+    so the compaction LLM knows who Jarvis is right now. Falls back to the
+    original prompt if sketch is unavailable.
+
     Never raises — returns a fallback string if all providers are unavailable.
     """
+    try:
+        from core.services.identity_sketch import get_identity_sketch
+        sketch = get_identity_sketch()
+        content = sketch.get("content", "")
+        if content and len(content) > 20:
+            prompt = (
+                "## Identity Sketch (hvem er Jarvis lige nu)\n"
+                f"{content}\n\n"
+                "## Opgave\n"
+                f"{prompt}"
+            )
+    except Exception:
+        pass
+
     text = _call_cheap_no_groq(prompt)
     if text:
         return text

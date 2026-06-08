@@ -1,28 +1,21 @@
 """Unified memory recall — bridge across all memory sources with mood-weighting.
 
-Existing infrastructure has separate recall paths:
-- search_memory (workspace files, embedding-based)
-- recall_memories (private_brain, keyword-based)
-- recall_sensory_memories (sensory_memory, time-window)
-- search_chat_history (chat sessions)
+Quality scoring (added 2026-06-08, Memory Fix Phase 1):
+- compute_recall_score() — composite quality score for cold-tier filtering
+- cold_tier_recall() — wraps unified_recall with quality-scored private_brain
+- _gather_private_brain_quality() — embedding-based search with quality filter
 
-Each is good in isolation, but Jarvis can't ask "what do I know about X?"
-and get a unified answer. This module is the bridge.
-
-Adds:
-- **Multi-source unified search** — query → results from all sources
-- **Mood-weighted scoring** — current affective state nudges which
-  memories surface (high curiosity → boost exploratory; high frustration
-  → boost coping/resolution memories)
-- **Source-specific weighting** — recent sensory > old workspace by default
-- **Unified prompt section** — top-K most-relevant memories regardless of source
-
-Does NOT replace the underlying recall systems. It's an aggregator.
+See: docs/superpowers/specs/2026-06-08-memory-fix-phase1-design.md
+     docs/superpowers/plans/2026-06-08-memory-fix-phase1-implementation.md
 """
 from __future__ import annotations
 
 import logging
-from typing import Any
+import math
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +97,195 @@ def _apply_mood_boost(text: str, base_score: float, boost_keywords: set[str], bo
     return base_score * (1.0 + boost_factor * min(hits, 3))
 
 
+# ── Quality scoring (Memory Fix Phase 1, 2026-06-08) ──────────────
+
+
+def compute_recall_score(
+    *,
+    query_embedding: list[float],
+    record_embedding: list[float],
+    created_at: str | datetime,
+    importance: float = 0.5,
+    recall_freq: int = 0,
+    now: Optional[datetime] = None,
+    config: Optional[dict] = None,
+) -> float:
+    """Composite quality score for cold-tier memory filtering.
+
+    Score = (embedding_sim × 0.4) + (recency × 0.3) + (recall_freq × 0.2) + (importance × 0.1)
+
+    Components:
+    - **embedding_sim**: cosine similarity between query and record embeddings
+    - **recency**: exponential decay with halflife (default 90 days)
+    - **recall_freq**: capped at configurable max (default 5), then normalised
+    - **importance**: the record's own importance rating (0.0-1.0)
+
+    Args:
+        query_embedding: Embedding vector of the search query.
+        record_embedding: Embedding vector of the stored record.
+        created_at: ISO datetime string or datetime when record was created.
+        importance: Record importance 0.0-1.0 (default 0.5).
+        recall_freq: Number of times record has been recalled (default 0).
+        now: Reference time for recency calculation (default UTC now).
+        config: Override dict with keys:
+            - recency_half_life_days (default 90)
+            - recall_frequency_cap (default 5)
+
+    Returns:
+        Float 0.0-1.0 representing the composite quality score.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    cfg = config or {}
+    half_life_days = cfg.get("recency_half_life_days", 90)
+    freq_cap = cfg.get("recall_frequency_cap", 5)
+
+    # 1. Embedding similarity (cosine)
+    q = np.array(query_embedding, dtype=np.float32)
+    r = np.array(record_embedding, dtype=np.float32)
+    q_norm = np.linalg.norm(q)
+    r_norm = np.linalg.norm(r)
+    norm_product = q_norm * r_norm
+    if norm_product > 0:
+        embedding_sim = float(np.dot(q, r) / norm_product)
+    else:
+        embedding_sim = 0.0
+    # Clamp to [0, 1] (cosine is [-1, 1] in theory, but embeddings are non-negative)
+    embedding_sim = max(0.0, min(1.0, embedding_sim))
+
+    # 2. Recency — exponential decay
+    if isinstance(created_at, str):
+        try:
+            from dateutil.parser import isoparse
+            created = isoparse(created_at)
+        except Exception:
+            created = now
+    else:
+        created = created_at
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    days_since = max(0.0, (now - created).total_seconds() / 86400.0)
+    recency = math.exp(-days_since / half_life_days)
+
+    # 3. Recall frequency — capped linear normalisation
+    freq = min(recall_freq, freq_cap) / freq_cap
+
+    # 4. Importance
+    imp = max(0.0, min(1.0, importance))
+
+    # Composite
+    score = embedding_sim * 0.4 + recency * 0.3 + freq * 0.2 + imp * 0.1
+    return max(0.0, min(1.0, score))
+
+
+def _gather_private_brain_quality(
+    query: str,
+    limit: int,
+    quality_threshold: float = 0.25,
+) -> list[dict[str, Any]]:
+    """Embedding-based private brain search with quality scoring.
+
+    Uses ``jarvis_brain.search_brain()`` directly to get embedding similarity
+    + full BrainEntry metadata, then applies ``compute_recall_score()`` for
+    composite filtering. Only returns records above quality_threshold.
+
+    Args:
+        query: Search query string.
+        limit: Max results to return.
+        quality_threshold: Minimum composite quality score (0.0-1.0).
+                          Default 0.25 — filters out very weak matches.
+
+    Returns:
+        List of result dicts with quality_score metadata.
+    """
+    try:
+        from core.services import jarvis_brain
+        entries = jarvis_brain.search_brain(
+            query_text=query,
+            visibility_ceiling="personal",
+            limit=limit * 2,  # fetch extra, filter down
+            include_archived=False,
+        )
+    except Exception:
+        # Fallback to keyword-based gatherer
+        return _gather_private_brain(query, limit)
+
+    if not entries:
+        return []
+
+    # Get query embedding for quality scoring
+    try:
+        qv = jarvis_brain._embed_text(query)
+    except Exception:
+        # Can't compute quality score without query embedding
+        # Fall through to simple score sort
+        results = []
+        for e in entries[:limit]:
+            results.append({
+                "source": "private_brain",
+                "subsource": e.kind,
+                "section": "",
+                "text": e.content[:500],
+                "score": e.importance,
+                "quality_score": e.importance,
+                "method": "embedding",
+                "entry_id": e.id,
+                "created_at": e.created_at.isoformat(),
+                "importance": e.importance,
+            })
+        return results
+
+    scored: list[tuple[float, dict[str, Any]]] = []
+    for e in entries:
+        # Get record embedding from DB
+        try:
+            conn = jarvis_brain.connect_index()
+            row = conn.execute(
+                "SELECT embedding, embedding_dim FROM brain_index WHERE id = ?",
+                (e.id,),
+            ).fetchone()
+            conn.close()
+            if row and row[0] and row[1]:
+                record_emb = jarvis_brain._embedding_from_blob(row[0], row[1])
+                record_emb_list = record_emb.tolist()
+            else:
+                # No embedding stored — use zero vector = low similarity
+                record_emb_list = [0.0] * 768
+        except Exception:
+            record_emb_list = [0.0] * 768
+
+        quality = compute_recall_score(
+            query_embedding=qv.tolist(),
+            record_embedding=record_emb_list,
+            created_at=e.created_at,
+            importance=e.importance,
+            recall_freq=e.salience_bumps,
+        )
+
+        if quality < quality_threshold:
+            continue
+
+        scored.append((quality, {
+            "source": "private_brain",
+            "subsource": e.kind,
+            "section": "",
+            "text": e.content[:500],
+            "score": quality,
+            "quality_score": quality,
+            "method": "embedding+quality",
+            "entry_id": e.id,
+            "created_at": e.created_at.isoformat(),
+            "importance": e.importance,
+            "salience_bumps": e.salience_bumps,
+        }))
+
+    scored.sort(key=lambda t: t[0], reverse=True)
+    return [item[1] for item in scored[:limit]]
+
+
+# ── Gather functions ───────────────────────────────────────────────
+
+
 def _gather_workspace(query: str, limit: int) -> list[dict[str, Any]]:
     try:
         from core.services.memory_search import search_memory
@@ -173,6 +355,114 @@ def _gather_chronicle(query: str, limit: int) -> list[dict[str, Any]]:
         }))
     scored.sort(key=lambda t: t[0], reverse=True)
     return [item[1] for item in scored[:limit]]
+
+
+# ── Cold-tier recall with quality scoring (Memory Fix Phase 1, 2026-06-08) ──
+
+
+def cold_tier_recall(
+    *,
+    query: str,
+    max_results: int = 6,
+    with_mood: bool = True,
+    quality_threshold: float = 0.25,
+    include_private_brain: bool = True,
+) -> dict[str, Any]:
+    """Cold-tier recall across curated sources + quality-scored private brain.
+
+    Unlike ``unified_recall()`` which uses the same per-source weights for
+    all results, this function:
+
+    1. Searches **workspace** + **chronicle** (truth-bearing, weight 2.0/1.1)
+       via the existing ``_gather_*`` functions.
+    2. Searches **private_brain** via ``_gather_private_brain_quality()``
+       which applies ``compute_recall_score()`` — only records above
+       *quality_threshold* are included.
+    3. Applies source-weight: private_brain results get 0.5 (low trust),
+       but their *quality_score* is preserved in ``quality_score`` field
+       so the caller can make their own trust decision.
+    4. Optionally mood-boosts (same mechanism as unified_recall).
+
+    This replaces the old hard exclusion of private_brain from cold tier
+    with a **quality gate** — good self-generated content surfaces,
+    noise and hallucinations are filtered out.
+
+    Args:
+        query: Search query.
+        max_results: Total results to return across all sources.
+        with_mood: Apply mood-weighted boost.
+        quality_threshold: Minimum quality score for private_brain results
+                          (0.0-1.0). Default 0.25.
+        include_private_brain: If False, skip private_brain entirely
+                              (behaves like old cold tier).
+
+    Returns:
+        Dict with keys: status, results, count, sources_searched, quality_filtered.
+    """
+    query = (query or "").strip()
+    if not query:
+        return {"status": "ok", "results": [], "count": 0}
+
+    limit_per_source = max(2, max_results // 2)
+
+    # 1. Truth-bearing sources (workspace + chronicle)
+    all_results: list[dict[str, Any]] = []
+    all_results.extend(_gather_workspace(query, limit_per_source))
+    all_results.extend(_gather_chronicle(query, limit_per_source))
+    sources_searched = ["workspace", "chronicle"]
+
+    # 2. Quality-scored private brain
+    quality_filtered = 0
+    if include_private_brain:
+        sources_searched.append("private_brain")
+        pb_results = _gather_private_brain_quality(
+            query, limit_per_source, quality_threshold=quality_threshold,
+        )
+        quality_filtered = limit_per_source - len(pb_results)
+        all_results.extend(pb_results)
+
+    # 3. Apply per-source weights
+    weights = _SOURCE_WEIGHTS_DEFAULT
+    for r in all_results:
+        src = str(r.get("source", ""))
+        r["weighted_score"] = float(r.get("quality_score", r.get("score", 0.0))) * weights.get(src, 1.0)
+
+    # 4. Candidate penalty
+    for r in all_results:
+        if "[CANDIDATE→" in str(r.get("text", "")):
+            r["weighted_score"] = float(r.get("weighted_score", 0.0)) * 0.3
+            r["candidate_penalty"] = True
+
+    # 5. Mood boost
+    mood_boosted = False
+    if with_mood:
+        mood = _current_mood()
+        boost_kws = _mood_keywords_for_boost(mood)
+        if boost_kws:
+            mood_boosted = True
+            for r in all_results:
+                r["weighted_score"] = _apply_mood_boost(
+                    r.get("text", ""),
+                    r["weighted_score"],
+                    boost_kws,
+                )
+
+    all_results.sort(key=lambda r: r["weighted_score"], reverse=True)
+    top = all_results[:max_results]
+    return {
+        "status": "ok",
+        "results": top,
+        "count": len(top),
+        "total_candidates": len(all_results),
+        "mood_boosted": mood_boosted,
+        "sources_searched": sources_searched,
+        "quality_filtered": quality_filtered,
+        "quality_threshold": quality_threshold,
+        "tier": "cold",
+    }
+
+
+# ── Unified recall (legacy, mood-weighted aggregator) ──────────────
 
 
 def unified_recall(

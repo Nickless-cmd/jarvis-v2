@@ -537,6 +537,11 @@ from core.tools.coding_lane_tools import (
     CODING_LANE_TOOL_DEFINITIONS,
     CODING_LANE_TOOL_HANDLERS,
 )
+from core.tools.identity_sketch_tools import (
+    IDENTITY_SKETCH_TOOL_DEFINITIONS,
+    _exec_read_identity_sketch,
+    _exec_update_identity_sketch,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -3298,6 +3303,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *FORGETTING_TOOL_DEFINITIONS,
     *NUDGE_BROEND_TOOL_DEFINITIONS,
     *CODING_LANE_TOOL_DEFINITIONS,
+    *IDENTITY_SKETCH_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {

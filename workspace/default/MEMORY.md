@@ -139,6 +139,30 @@ Jarvis — an autonomous agent living on Bjørn's hardware. I build, observe, an
 - Autonomy means: self-organize work, prioritize, maintain momentum
 - "Less gating, more doing" — Bjørn's explicit instruction
 
+## Memory Architecture — Gap Analysis (2026-06-08)
+
+**Spec committed:** `docs/superpowers/specs/2026-06-08-memory-architecture-gap-analysis.md`
+
+**Korrigering:** Procedural memory *findes* — det er **Skills-systemet** (`skill_gate`, `skill_chain`, `skill_invoke`, 50+ skills). Det var en fejl af mig at sige "findes ikke" i tidligere research.
+
+### Vores edge vs Anthropic/Mem0
+- **Identity sketch** (Phase 2) — persistent identitet gennem compaction
+- **Sansernes Arkiv** — sensorisk memory (ingen andre har det)
+- **Chronicles + Dreams** — narrativ selvhistorik + idle-refleksion
+- **Skills med auto-retrieval** — `skill_gate` matcher og invoker automatisk (Anthropic kræver manuelt valg)
+- **Self-wakeups** — planlagte selv-checkpoints
+
+### Prioritisede huller (fase-inddelt)
+
+| Fase | Fokus | Top-priority |
+|------|-------|-------------|
+| A (uge 24) | Memory Fix | Phase 1+2 committed ✅, wakeup cleanup ⏳ |
+| B (uge 25) | Core Retrieval | **Multi-signal retrieval (BM25+entity fusion)** — +29.6 point |
+| C (uge 26) | Skills & Procedural | Meta-tags (30 min), versionering (1 dag) |
+| D (uge 27-28) | Advanced | Benchmarks, dreaming sessions, cost optimization |
+
+**Næste skridt:** B1 (BM25 + entity fusion) giver størst værdi for mindst arbejde — 2-3 dage.
+
 ## Lessons learned
 - **schedule_task vs push_initiative**: `schedule_task` sends message directly to Bjørn — use ONLY for deliberate notifications. Internal tasks use `push_initiative` or workspace files.
 - **REAL MEMORY PATH**: `/media/projects/jarvis-v2/workspace/default/MEMORY.md` — NEVER write to project root!

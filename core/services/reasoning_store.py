@@ -140,7 +140,10 @@ def capture_conclusion(
         conn.commit()
 
         if emit_event:
-            event_bus.emit("reasoning.conclusion.captured", {
+            # 2026-06-08: was event_bus.emit() which doesn't exist —
+            # AttributeError waiting to fire the first time emit_event=True
+            # is passed. Bus exposes publish() only (async since 2c82d5ba).
+            event_bus.publish("reasoning.conclusion.captured", {
                 "conclusion_id": cid,
                 "source": source,
                 "confidence": confidence,

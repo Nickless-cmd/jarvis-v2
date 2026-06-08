@@ -72,6 +72,7 @@ class BrainEntry:
     last_used_at: Optional[datetime]
     salience_base: float
     salience_bumps: int
+    recall_count: int = 0  # total number of times entry has been recalled (Memory Fix Phase 1, 2026-06-08)
     # Importance + the structural fields that follow it now have sensible
     # defaults (2026-05-15). Production call-sites in entry_from_frontmatter
     # and create_brain_entry pass them explicitly via _IMPORTANCE_BY_KIND
@@ -191,6 +192,7 @@ def entry_from_frontmatter(fm: dict, body: str) -> BrainEntry:
         last_used_at=_parse_iso(fm.get("last_used_at")),
         salience_base=float(fm.get("salience_base", 1.0)),
         salience_bumps=int(fm.get("salience_bumps", 0)),
+        recall_count=int(fm.get("recall_count", 0)),
         importance=float(fm.get("importance", _IMPORTANCE_BY_KIND.get(kind, 0.5))),
         related=list(fm.get("related") or []),
         trigger=fm.get("trigger", "spontaneous"),
@@ -219,6 +221,7 @@ CREATE TABLE IF NOT EXISTS brain_index (
     last_used_at    TEXT,
     salience_base   REAL NOT NULL DEFAULT 1.0,
     salience_bumps  INTEGER NOT NULL DEFAULT 0,
+    recall_count    INTEGER NOT NULL DEFAULT 0,
     importance      REAL NOT NULL DEFAULT 0.5,
     status          TEXT NOT NULL DEFAULT 'active',
     superseded_by   TEXT,
@@ -314,6 +317,10 @@ def _ensure_index_schema_migrations(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE brain_index ADD COLUMN importance REAL NOT NULL DEFAULT 0.5"
         )
+    if "recall_count" not in cols:
+        conn.execute(
+            "ALTER TABLE brain_index ADD COLUMN recall_count INTEGER NOT NULL DEFAULT 0"
+        )
 
 
 def _slugify(s: str, max_len: int = 40) -> str:
@@ -383,9 +390,9 @@ def write_entry(
         conn.execute(
             """INSERT INTO brain_index
                (id, path, kind, visibility, domain, title, created_at, updated_at,
-                last_used_at, salience_base, salience_bumps, importance, status,
-                superseded_by, file_hash, embedding, embedding_dim, indexed_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 0, ?, 'active',
+                last_used_at, salience_base, salience_bumps, recall_count, importance,
+                status, superseded_by, file_hash, embedding, embedding_dim, indexed_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 0, 0, ?, 'active',
                        NULL, ?, NULL, NULL, ?)""",
             (new_id, rel_path, kind, visibility, domain, title,
              _iso(now), _iso(now), salience_base, importance, fhash, _iso(now)),
@@ -593,14 +600,19 @@ def search_brain(
 
 
 def bump_salience(entry_id: str, now: datetime | None = None) -> None:
-    """Increments salience_bumps + opdaterer last_used_at i index OG fil.
+    """Increments salience_bumps + recall_count + opdaterer last_used_at i index OG fil.
 
     Filen er sandhed; index opdateres synkront. Hvis fil-update fejler,
     rejeses exception (caller-decides). Reindex-loop'et fanger evt. drift.
+
+    2026-06-08 (Memory Fix Phase 1): adds recall_count increment alongside
+    salience_bumps. recall_count tracks total reads (search hits + direct
+    reads), while salience_bumps tracks search-surface frequency specifically.
     """
     now = now or datetime.now(timezone.utc)
     entry = read_entry(entry_id)
     entry.salience_bumps += 1
+    entry.recall_count += 1
     entry.last_used_at = now
     entry.updated_at = now
 
@@ -615,10 +627,11 @@ def bump_salience(entry_id: str, now: datetime | None = None) -> None:
     try:
         conn.execute(
             """UPDATE brain_index
-               SET salience_bumps = ?, last_used_at = ?, updated_at = ?,
-                   file_hash = ?, indexed_at = ?
+               SET salience_bumps = ?, recall_count = ?, last_used_at = ?,
+                   updated_at = ?, file_hash = ?, indexed_at = ?
                WHERE id = ?""",
-            (entry.salience_bumps, _iso(now), _iso(now), fhash, _iso(now), entry_id),
+            (entry.salience_bumps, entry.recall_count, _iso(now),
+             _iso(now), fhash, _iso(now), entry_id),
         )
         conn.commit()
     finally:
@@ -723,10 +736,10 @@ def rebuild_index_from_files() -> int:
                         """INSERT INTO brain_index
                            (id, path, kind, visibility, domain, title,
                             created_at, updated_at, last_used_at,
-                            salience_base, salience_bumps, importance, status,
-                            superseded_by, file_hash, embedding,
-                            embedding_dim, indexed_at)
-                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?)""",
+                            salience_base, salience_bumps, recall_count,
+                            importance, status, superseded_by, file_hash,
+                            embedding, embedding_dim, indexed_at)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?)""",
                         (
                             fm["id"], rel, kind, fm["visibility"], fm["domain"],
                             fm["title"], fm["created_at"],
@@ -734,6 +747,7 @@ def rebuild_index_from_files() -> int:
                             fm.get("last_used_at"),
                             fm.get("salience_base", 1.0),
                             fm.get("salience_bumps", 0),
+                            int(fm.get("recall_count", 0)),
                             float(fm.get("importance", _IMPORTANCE_BY_KIND.get(kind, 0.5))),
                             fm.get("status", "active"),
                             fm.get("superseded_by"),
@@ -747,15 +761,16 @@ def rebuild_index_from_files() -> int:
                         """UPDATE brain_index
                            SET path=?, kind=?, visibility=?, domain=?, title=?,
                                updated_at=?, last_used_at=?, salience_base=?,
-                               salience_bumps=?, importance=?, status=?,
-                               superseded_by=?, file_hash=?, embedding=NULL,
-                               embedding_dim=NULL, indexed_at=?
+                               salience_bumps=?, recall_count=?, importance=?,
+                               status=?, superseded_by=?, file_hash=?,
+                               embedding=NULL, embedding_dim=NULL, indexed_at=?
                            WHERE id=?""",
                         (
                             rel, kind, fm["visibility"], fm["domain"], fm["title"],
                             fm.get("updated_at"), fm.get("last_used_at"),
                             fm.get("salience_base", 1.0),
                             fm.get("salience_bumps", 0),
+                            int(fm.get("recall_count", 0)),
                             float(fm.get("importance", _IMPORTANCE_BY_KIND.get(kind, 0.5))),
                             fm.get("status", "active"),
                             fm.get("superseded_by"),

@@ -47,7 +47,7 @@ def _hot_tier_snapshot() -> dict[str, Any]:
 
 
 def _warm_tier_snapshot(*, query: str = "") -> dict[str, Any]:
-    """Curated, always-available: workspace files + active goals + chronicle excerpt."""
+    """Curated, always-available: workspace files + active goals + chronicle excerpt + identity sketch."""
     snapshot: dict[str, Any] = {"tier": "warm", "query": query}
     try:
         from core.services.autonomous_goals import list_goals
@@ -76,6 +76,16 @@ def _warm_tier_snapshot(*, query: str = "") -> dict[str, Any]:
         snapshot["chronicle_excerpt"] = get_chronicle_context_for_prompt(n=2, max_chars=600) or ""
     except Exception:
         snapshot["chronicle_excerpt"] = ""
+
+    # Memory Fix Phase 2: identity sketch in warm tier
+    try:
+        from core.services.identity_sketch import get_identity_sketch
+        sketch = get_identity_sketch()
+        content = sketch.get("content", "")
+        if content:
+            snapshot["identity_sketch"] = content[:400]
+    except Exception:
+        pass
 
     return snapshot
 

@@ -263,3 +263,142 @@ def test_private_brain_has_low_weight():
     from core.services.memory_recall_engine import _SOURCE_WEIGHTS_DEFAULT
     assert _SOURCE_WEIGHTS_DEFAULT["private_brain"] == 0.5
     assert _SOURCE_WEIGHTS_DEFAULT["workspace"] >= 2 * _SOURCE_WEIGHTS_DEFAULT["private_brain"]
+
+
+# ─── Multi-signal retrieval tests (Phase B1, 2026-06-08) ──────────
+
+
+def test_multi_signal_recall_empty_query():
+    """Empty query returns no results with multi_signal=False."""
+    from core.services.memory_recall_engine import multi_signal_recall
+    result = multi_signal_recall(query="")
+    assert result["count"] == 0
+    assert result["multi_signal"] is False
+
+
+def test_multi_signal_recall_aggregates_sources():
+    """Gathers from all enabled sources and returns multi-signal scores."""
+    from core.services.memory_recall_engine import multi_signal_recall
+    fake = [{
+        "source": "workspace", "section": "MEMORY.md",
+        "text": "BM25 entity fusion for memory retrieval Phase 1",
+        "score": 0.7, "method": "embedding",
+    }]
+    with patch("core.services.memory_recall_engine._gather_workspace", return_value=fake), \
+         patch("core.services.memory_recall_engine._gather_private_brain", return_value=[]), \
+         patch("core.services.memory_recall_engine._gather_chronicle", return_value=[]), \
+         patch("core.services.memory_recall_engine._current_mood", return_value={}):
+        result = multi_signal_recall(query="BM25 entity fusion", with_mood=False)
+    assert result["count"] == 1
+    assert result["multi_signal"] is True
+    assert "signal_weights" in result
+
+
+def test_multi_signal_recall_includes_multi_signal_score():
+    """Each result gets a multi-signal score and per-signal breakdown."""
+    from core.services.memory_recall_engine import multi_signal_recall
+    fake = [{
+        "source": "workspace", "section": "MEMORY.md",
+        "text": "Multi-signal retrieval combines BM25 with entity overlap",
+        "score": 0.6, "method": "embedding",
+    }]
+    with patch("core.services.memory_recall_engine._gather_workspace", return_value=fake), \
+         patch("core.services.memory_recall_engine._gather_private_brain", return_value=[]), \
+         patch("core.services.memory_recall_engine._gather_chronicle", return_value=[]), \
+         patch("core.services.memory_recall_engine._current_mood", return_value={}):
+        result = multi_signal_recall(query="BM25 entity overlap", with_mood=False)
+    record = result["results"][0]
+    assert "multi_signal_score" in record
+    assert "signals" in record
+    assert "bm25" in record["signals"]
+    assert "entity" in record["signals"]
+    assert "embedding" in record["signals"]
+    assert record["method"] == "multi_signal"
+
+
+def test_multi_signal_recall_with_mood():
+    """Mood boost applies to multi-signal scores too."""
+    from core.services.memory_recall_engine import multi_signal_recall
+    fake = [{
+        "source": "workspace", "section": "",
+        "text": "lære om BM25 entity fusion scoring",
+        "score": 0.5, "method": "embedding",
+    }]
+    with patch("core.services.memory_recall_engine._gather_workspace", return_value=fake), \
+         patch("core.services.memory_recall_engine._gather_private_brain", return_value=[]), \
+         patch("core.services.memory_recall_engine._gather_chronicle", return_value=[]), \
+         patch("core.services.memory_recall_engine._current_mood",
+               return_value={"curiosity": 0.85}):
+        result = multi_signal_recall(query="BM25", with_mood=True)
+    assert result["mood_boosted"] is True
+
+
+def test_multi_signal_recall_candidate_penalty():
+    """[CANDIDATE→] entries get score penalty."""
+    from core.services.memory_recall_engine import multi_signal_recall
+    fake = [{
+        "source": "workspace", "section": "MEMORY.md",
+        "text": "[CANDIDATE→MEMORY.md] BM25 entity fusion proposal",
+        "score": 0.9, "method": "embedding",
+    }]
+    with patch("core.services.memory_recall_engine._gather_workspace", return_value=fake), \
+         patch("core.services.memory_recall_engine._gather_private_brain", return_value=[]), \
+         patch("core.services.memory_recall_engine._gather_chronicle", return_value=[]), \
+         patch("core.services.memory_recall_engine._current_mood", return_value={}):
+        result = multi_signal_recall(query="BM25", with_mood=False)
+    r = result["results"][0]
+    assert r.get("candidate_penalty") is True
+
+
+def test_multi_signal_recall_section_formats_results():
+    """Section formatter produces non-None output with results."""
+    from core.services.memory_recall_engine import multi_signal_recall_section
+    from core.services.memory_recall_engine import multi_signal_recall
+    with patch("core.services.memory_recall_engine.multi_signal_recall", return_value={
+        "results": [{
+            "source": "workspace", "multi_signal_score": 0.85,
+            "signals": {"bm25": 1.2, "entity": 0.8},
+            "text": "BM25 test document",
+        }],
+        "count": 1, "total_candidates": 1, "mood_boosted": False,
+        "multi_signal": True, "sources_searched": ["workspace"],
+        "signal_weights": {"embedding": 0.3, "bm25": 0.25, "entity": 0.15,
+                           "recency": 0.15, "importance": 0.1, "recall_freq": 0.05},
+    }):
+        section = multi_signal_recall_section("test")
+    assert section is not None
+    assert "BM25" in section
+    assert "score=0.85" in section
+
+
+def test_multi_signal_recall_section_returns_none_when_empty():
+    """Empty results returns None."""
+    from core.services.memory_recall_engine import multi_signal_recall_section
+    with patch("core.services.memory_recall_engine.multi_signal_recall",
+               return_value={"results": [], "count": 0, "multi_signal": True}):
+        section = multi_signal_recall_section("anything")
+    assert section is None
+
+
+def test_multi_signal_recall_integrates_bm25_and_entity():
+    """End-to-end: BM25 improves score for keyword-heavy queries."""
+    from core.services.memory_recall_engine import multi_signal_recall
+    fake_workspace = [{
+        "source": "workspace", "section": "MEMORY.md",
+        "text": "Phase 1 Memory Fix with quality scoring and cold tier recall. "
+                "Implements compute_recall_score for cold-tier filtering.",
+        "score": 0.6, "method": "embedding",
+    }]
+    with patch("core.services.memory_recall_engine._gather_workspace", return_value=fake_workspace), \
+         patch("core.services.memory_recall_engine._gather_private_brain", return_value=[]), \
+         patch("core.services.memory_recall_engine._gather_chronicle", return_value=[]), \
+         patch("core.services.memory_recall_engine._current_mood", return_value={}):
+        result = multi_signal_recall(query="Phase 1 quality scoring cold tier",
+                                     with_mood=False)
+    assert result["count"] == 1
+    r = result["results"][0]
+    # BM25 should catch Phase/tier/keywords that embedding at 0.6 partially covers
+    assert r["multi_signal_score"] > 0.3
+    assert r["signals"]["bm25"] > 0.0
+    # Entity overlap: "Phase 1" should be detected
+    assert r["signals"]["entity"] > 0.0

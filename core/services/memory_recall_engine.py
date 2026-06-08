@@ -259,7 +259,7 @@ def _gather_private_brain_quality(
             record_embedding=record_emb_list,
             created_at=e.created_at,
             importance=e.importance,
-            recall_freq=e.salience_bumps,
+            recall_freq=e.recall_count,
         )
 
         if quality < quality_threshold:
@@ -277,6 +277,7 @@ def _gather_private_brain_quality(
             "created_at": e.created_at.isoformat(),
             "importance": e.importance,
             "salience_bumps": e.salience_bumps,
+            "recall_count": e.recall_count,
         }))
 
     scored.sort(key=lambda t: t[0], reverse=True)

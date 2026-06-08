@@ -101,6 +101,10 @@ KNOWN_MAPPINGS: dict[str, str] = {
     # Mapping added 2026-06-08.
     "core/services/identity_sketch.py": "tests/test_identity_sketch.py",
     "core/tools/identity_sketch_tools.py": "tests/test_identity_sketch.py",
+    # Context compaction — both modules tested in test_context_compact.py
+    # Mapping added 2026-06-08.
+    "core/context/session_compact.py": "tests/test_context_compact.py",
+    "core/context/compact_llm.py": "tests/test_context_compact.py",
 }
 
 

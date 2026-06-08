@@ -62,6 +62,13 @@ def compact_session_history(
     freed_chars = sum(len(m.get("content") or "") for m in old_messages)
     freed_tokens = estimate_tokens("x" * freed_chars)
 
+    # Memory Fix Phase 2: pre-compaction identity sketch update
+    try:
+        from core.services.identity_sketch import update_identity_sketch
+        update_identity_sketch(trigger="pre_compact")
+    except Exception as exc:
+        logger.debug("session_compact: identity_sketch update skipped (%s)", exc)
+
     summary_text = summarise_fn(old_messages)
 
     marker_id = _store_marker(session_id, summary_text, git_sha=git_sha)

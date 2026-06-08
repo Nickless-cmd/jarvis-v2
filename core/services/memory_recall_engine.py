@@ -5,6 +5,11 @@ Quality scoring (added 2026-06-08, Memory Fix Phase 1):
 - cold_tier_recall() — wraps unified_recall with quality-scored private_brain
 - _gather_private_brain_quality() — embedding-based search with quality filter
 
+Multi-signal retrieval (added 2026-06-08, Memory Fix Phase B1):
+- multi_signal_recall() — BM25 + entity fusion + embedding + recency
+- fuse_with_bm25_entity() — re-scores gather results with multi-signal fusion
+- Requires: core/services/multi_signal_retrieval.py
+
 See: docs/superpowers/specs/2026-06-08-memory-fix-phase1-design.md
      docs/superpowers/plans/2026-06-08-memory-fix-phase1-implementation.md
 """
@@ -16,6 +21,8 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 import numpy as np
+
+from core.services.multi_signal_retrieval import BM25Index, entity_overlap_score, fuse_signals
 
 logger = logging.getLogger(__name__)
 
@@ -546,6 +553,213 @@ def unified_recall_section(query: str, *, max_results: int = 4) -> str | None:
         src = str(r.get("source", "?"))
         text = str(r.get("text", ""))[:160].replace("\n", " ")
         lines.append(f"  • [{src}] {text}")
+    return "\n".join(lines)
+
+
+# ── Multi-signal retrieval (B1, 2026-06-08) ────────────────────────
+
+_MULTI_SIGNAL_SOURCES = ("workspace", "chronicle", "private_brain")
+
+
+def _compute_multi_signal_scores(
+    query: str,
+    records: list[dict[str, Any]],
+    recency_fn: Any = None,
+) -> list[dict[str, Any]]:
+    """Re-score gathered records with BM25 + entity fusion + embedding."""
+    if not records or not query:
+        return records
+
+    # Build BM25 index from record texts
+    texts = [str(r.get("text", "") or "") for r in records]
+    index = BM25Index(k1=1.2, b=0.5)
+    index.build(texts)
+
+    # Compute recency if callable provided
+    for i, r in enumerate(records):
+        embedding_score = float(r.get("score", 0.0))
+        text = texts[i]
+
+        # BM25
+        bm25_val = index.score(query, i)
+
+        # Entity overlap
+        entity_val = entity_overlap_score(query, text)
+
+        # Recency (use created_at if available)
+        recency_score = 0.5  # default middle value
+        if recency_fn:
+            try:
+                created = r.get("created_at") or r.get("timestamp") or ""
+                if created:
+                    recency_score = recency_fn(created)
+            except Exception:
+                pass
+
+        # Importance
+        importance = float(r.get("importance", 0.5) or 0.5)
+        recall_freq_raw = int(r.get("recall_count", 0) or 0)
+        freq_cap = 5
+        recall_freq = min(recall_freq_raw, freq_cap) / freq_cap
+
+        # Fuse signals
+        composite = fuse_signals(
+            embedding_score=embedding_score,
+            bm25_score=bm25_val,
+            entity_overlap=entity_val,
+            recency_score=recency_score,
+            importance=importance,
+            recall_freq=recall_freq,
+        )
+
+        r["multi_signal_score"] = round(composite, 4)
+        r["signals"] = {
+            "embedding": round(embedding_score, 4),
+            "bm25": round(bm25_val, 4),
+            "entity": round(entity_val, 4),
+            "recency": round(recency_score, 4),
+            "importance": round(importance, 4),
+            "recall_freq": round(recall_freq, 4),
+        }
+        r["method"] = "multi_signal"
+
+    return records
+
+
+def multi_signal_recall(
+    *,
+    query: str,
+    sources: list[str] | None = None,
+    limit_per_source: int = 3,
+    total_limit: int = 8,
+    with_mood: bool = True,
+) -> dict[str, Any]:
+    """Multi-signal recall: BM25 + entity fusion + embedding + recency.
+
+    Gathers records from all enabled sources, then re-scores each using
+    a fused combination of:
+    - **Embedding similarity** (cosine, from gather functions) — 30%
+    - **BM25 keyword score** — 25%
+    - **Entity overlap** — 15%
+    - **Recency** — 15%
+    - **Importance** — 10%
+    - **Recall frequency** — 5%
+
+    This provides more robust retrieval than pure embedding search,
+    especially for keyword-rich queries (e.g. "Phase 1 quality scoring
+    cold tier") where BM25 catches exact terms the embedding might miss.
+
+    Args:
+        query: Search query.
+        sources: Subset of sources to search. Default: workspace + chronicle
+                + private_brain.
+        limit_per_source: Max records per source before fusion (default 3).
+        total_limit: Total results after fusion (default 8).
+        with_mood: Apply mood-weighted boost (default True).
+
+    Returns:
+        Dict with keys: status, results, count, sources_searched,
+        multi_signal, signal_weights.
+    """
+    query = (query or "").strip()
+    if not query:
+        return {
+            "status": "ok", "results": [], "count": 0,
+            "multi_signal": False,
+        }
+
+    enabled = set(sources or _MULTI_SIGNAL_SOURCES)
+    weights = _SOURCE_WEIGHTS_DEFAULT
+
+    # 1. Gather records from all sources (same as unified_recall)
+    all_results: list[dict[str, Any]] = []
+    if "workspace" in enabled:
+        all_results.extend(_gather_workspace(query, limit_per_source))
+    if "chronicle" in enabled:
+        all_results.extend(_gather_chronicle(query, limit_per_source))
+    if "private_brain" in enabled:
+        all_results.extend(_gather_private_brain(query, limit_per_source))
+
+    if not all_results:
+        return {
+            "status": "ok", "results": [], "count": 0,
+            "multi_signal": True,
+            "sources_searched": sorted(enabled),
+            "signal_weights": {
+                "embedding": 0.30,
+                "bm25": 0.25,
+                "entity": 0.15,
+                "recency": 0.15,
+                "importance": 0.10,
+                "recall_freq": 0.05,
+            },
+        }
+
+    # 2. Apply source weights
+    for r in all_results:
+        src = str(r.get("source", ""))
+        r["weighted_score"] = float(r.get("score", 0.0)) * weights.get(src, 1.0)
+
+    # 3. Multi-signal fusion scoring
+    all_results = _compute_multi_signal_scores(query, all_results)
+
+    # 4. Candidate penalty (legacy)
+    for r in all_results:
+        if "[CANDIDATE→" in str(r.get("text", "")):
+            r["multi_signal_score"] = float(r.get("multi_signal_score", 0.0)) * 0.3
+            r["candidate_penalty"] = True
+
+    # 5. Mood boost
+    mood_boosted = False
+    if with_mood:
+        mood = _current_mood()
+        boost_kws = _mood_keywords_for_boost(mood)
+        if boost_kws:
+            mood_boosted = True
+            for r in all_results:
+                r["multi_signal_score"] = _apply_mood_boost(
+                    r.get("text", ""),
+                    r["multi_signal_score"],
+                    boost_kws,
+                )
+
+    # 6. Sort by multi-signal score
+    all_results.sort(key=lambda r: r.get("multi_signal_score", 0.0), reverse=True)
+    top = all_results[:total_limit]
+
+    return {
+        "status": "ok",
+        "results": top,
+        "count": len(top),
+        "total_candidates": len(all_results),
+        "mood_boosted": mood_boosted,
+        "multi_signal": True,
+        "sources_searched": sorted(enabled),
+        "signal_weights": {
+            "embedding": 0.30,
+            "bm25": 0.25,
+            "entity": 0.15,
+            "recency": 0.15,
+            "importance": 0.10,
+            "recall_freq": 0.05,
+        },
+    }
+
+
+def multi_signal_recall_section(query: str, *, max_results: int = 4) -> str | None:
+    """Format multi-signal recall as a prompt-awareness section."""
+    result = multi_signal_recall(query=query, total_limit=max_results, with_mood=True)
+    items = result.get("results") or []
+    if not items:
+        return None
+    lines = ["🔀 Multi-signal hukommelser (BM25 + entity + embedding):"]
+    for r in items:
+        src = str(r.get("source", "?"))
+        ms = r.get("multi_signal_score", 0.0)
+        sig = r.get("signals", {})
+        sig_str = f"B={sig.get('bm25', 0):.2f} E={sig.get('entity', 0):.2f}"
+        text = str(r.get("text", ""))[:120].replace("\n", " ")
+        lines.append(f"  • [{src}] (score={ms:.2f}, {sig_str}) {text}")
     return "\n".join(lines)
 
 

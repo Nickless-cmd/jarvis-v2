@@ -1947,12 +1947,29 @@ async def _stream_visible_run(
                         [str((tc.get("function") or {}).get("name") or tc.get("name") or "?")
                          for tc in _a_tool_calls][:6],
                     )
-                    _a_results = _execute_simple_tool_calls(
-                        _a_tool_calls,
-                        force=run.autonomous,
-                        run_id=run.run_id,
-                        session_id=run.session_id,
-                        user_message=run.user_message,
+                    # 2026-06-08: _execute_simple_tool_calls is fully sync and
+                    # blocks on cf_fut.result() inside _run_operator_async for
+                    # up to the per-tool timeout (45-60s). When called directly
+                    # here from this async generator, a single hanging tool
+                    # (e.g. operator_screenshot stuck in Electron's
+                    # desktopCapturer.getSources) freezes main_loop — bridge
+                    # dispatch coroutines for the *next* batch can't even
+                    # start (WORKER-SUBMITTED logged, no [bridge-dispatch]
+                    # START log). Mirror the first-pass call site at line
+                    # 1048 which already uses run_in_executor + ctx.run for
+                    # the same reason (cross-loop ContextVars propagation).
+                    import contextvars as _ctxvars
+                    _ctx_for_agentic_exec = _ctxvars.copy_context()
+                    _a_results = await loop.run_in_executor(
+                        None,
+                        lambda: _ctx_for_agentic_exec.run(
+                            _execute_simple_tool_calls,
+                            _a_tool_calls,
+                            force=run.autonomous,
+                            run_id=run.run_id,
+                            session_id=run.session_id,
+                            user_message=run.user_message,
+                        ),
                     )
                     logger.info(
                         "agentic-tools-execute-end run_id=%s round=%d duration_ms=%d results=%d",

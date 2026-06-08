@@ -126,3 +126,140 @@ def test_private_brain_below_one():
     """
     from core.services.memory_recall_engine import _SOURCE_WEIGHTS_DEFAULT
     assert _SOURCE_WEIGHTS_DEFAULT["private_brain"] < 1.0
+
+
+# ─── Memory Fix Phase 1 tests (2026-06-08) ─────────────────────────
+
+
+def test_compute_recall_score_perfect_match():
+    """Identical query and record → score near maximum."""
+    from core.services.memory_recall_engine import compute_recall_score
+    emb = [0.1] * 768
+    score = compute_recall_score(
+        query_embedding=emb,
+        record_embedding=emb,
+        created_at="2026-06-08T00:00:00+00:00",
+        importance=1.0,
+        recall_freq=5,
+    )
+    # embedding_sim=1.0 * 0.4 + recency~1.0 * 0.3 + freq=1.0 * 0.2 + importance=1.0 * 0.1
+    assert score > 0.95
+
+
+def test_compute_recall_score_no_match():
+    """Orthogonal vectors → score near minimum (only recency + importance)."""
+    from core.services.memory_recall_engine import compute_recall_score
+    import math
+    q = [1.0] + [0.0] * 767
+    r = [0.0] * 767 + [1.0]
+    score = compute_recall_score(
+        query_embedding=q,
+        record_embedding=r,
+        created_at="2026-06-08T00:00:00+00:00",
+        importance=0.1,
+        recall_freq=0,
+    )
+    # embedding_sim=0.0 * 0.4 + recency~1.0 * 0.3 + freq=0.0 * 0.2 + importance=0.1 * 0.1
+    # = 0 + 0.3 + 0 + 0.01 = 0.31
+    assert abs(score - 0.31) < 0.01
+
+
+def test_compute_recall_score_zero_vectors():
+    """Zero vectors → emb_sim=0, rest still contributes."""
+    from core.services.memory_recall_engine import compute_recall_score
+    score = compute_recall_score(
+        query_embedding=[0.0] * 768,
+        record_embedding=[0.0] * 768,
+        created_at="2026-06-08T00:00:00+00:00",
+        importance=0.5,
+        recall_freq=0,
+    )
+    # emb=0, recency~1.0 * 0.3, freq=0, imp=0.5*0.1=0.05
+    assert 0.3 <= score <= 0.4
+
+
+def test_compute_recall_score_old_record():
+    """Record from long ago → recency component near zero."""
+    from core.services.memory_recall_engine import compute_recall_score
+    from datetime import datetime, timezone, timedelta
+    old = (datetime.now(timezone.utc) - timedelta(days=365)).isoformat()
+    emb = [0.1] * 768
+    score = compute_recall_score(
+        query_embedding=emb,
+        record_embedding=emb,
+        created_at=old,
+        importance=0.5,
+        recall_freq=0,
+    )
+    # emb=1.0*0.4=0.4, recency~0.017*0.3=0.005, freq=0, imp=0.5*0.1=0.05
+    # total ~0.455
+    assert score < 0.6
+    assert score > 0.3
+
+
+def test_compute_recall_score_string_datetime():
+    """Accepts ISO string or datetime object for created_at."""
+    from core.services.memory_recall_engine import compute_recall_score
+    from datetime import datetime, timezone
+    emb = [0.1] * 768
+    score_str = compute_recall_score(
+        query_embedding=emb, record_embedding=emb,
+        created_at="2026-06-08T00:00:00+00:00",
+    )
+    score_dt = compute_recall_score(
+        query_embedding=emb, record_embedding=emb,
+        created_at=datetime(2026, 6, 8, tzinfo=timezone.utc),
+    )
+    assert abs(score_str - score_dt) < 0.01
+
+
+def test_compute_recall_score_without_timezone():
+    """Naive datetime gets treated as UTC."""
+    from core.services.memory_recall_engine import compute_recall_score
+    score = compute_recall_score(
+        query_embedding=[0.1] * 768,
+        record_embedding=[0.1] * 768,
+        created_at="2026-06-08T00:00:00",  # no tz
+        importance=0.5,
+        recall_freq=0,
+    )
+    assert 0.7 <= score <= 1.0
+
+
+def test_cold_tier_recall_empty_query():
+    """Empty query returns no results."""
+    from core.services.memory_recall_engine import cold_tier_recall
+    result = cold_tier_recall(query="")
+    assert result["count"] == 0
+    assert result["status"] == "ok"
+
+
+def test_cold_tier_recall_sources_structure():
+    """Returns expected metadata keys."""
+    from core.services.memory_recall_engine import cold_tier_recall
+    result = cold_tier_recall(query="test", with_mood=False)
+    assert "sources_searched" in result
+    assert "quality_threshold" in result
+    assert "tier" in result
+    assert result["tier"] == "cold"
+
+
+def test_cold_tier_recall_can_exclude_private_brain():
+    """include_private_brain=False → only workspace+chronicle searched."""
+    from core.services.memory_recall_engine import cold_tier_recall
+    result = cold_tier_recall(query="test", with_mood=False, include_private_brain=False)
+    assert "private_brain" not in result.get("sources_searched", [])
+
+
+def test_cold_tier_recall_includes_private_brain_by_default():
+    """Default includes private_brain in searched sources."""
+    from core.services.memory_recall_engine import cold_tier_recall
+    result = cold_tier_recall(query="test", with_mood=False, include_private_brain=True)
+    assert "private_brain" in result.get("sources_searched", [])
+
+
+def test_private_brain_has_low_weight():
+    """Private brain results always have lower weight than workspace."""
+    from core.services.memory_recall_engine import _SOURCE_WEIGHTS_DEFAULT
+    assert _SOURCE_WEIGHTS_DEFAULT["private_brain"] == 0.5
+    assert _SOURCE_WEIGHTS_DEFAULT["workspace"] >= 2 * _SOURCE_WEIGHTS_DEFAULT["private_brain"]

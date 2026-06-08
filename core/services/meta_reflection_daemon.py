@@ -69,12 +69,22 @@ def _check_outcomes(cross_snapshot: dict) -> dict[str, object]:
 
     For model_tier: requires at least 3 subsequent turns to evaluate.
     For response_style: requires at least 1 user message after the decision.
-    Both query recent session messages to build the outcome evaluation.
+    Both query chat_messages directly across sessions.
+
+    TTL: decisions older than 30 min without a usable signal are expired
+    (outcome_aggregate=0.0, rationale='ttl_expired_no_outcome') so they
+    drop out of the pending bucket instead of growing indefinitely.
     """
+    from datetime import timedelta
+    TTL_MINUTES = 30
+    now = datetime.now(UTC)
+    cutoff = (now - timedelta(minutes=TTL_MINUTES)).isoformat()
+
     # ── Score pending model_tier decisions ─────────────────────────────
     scored_tier = 0
+    expired_tier = 0
     try:
-        unreviewed = list_unreviewed_decisions(kind="model_tier", limit=3)
+        unreviewed = list_unreviewed_decisions(kind="model_tier", limit=10)
     except Exception:
         unreviewed = []
 
@@ -84,6 +94,11 @@ def _check_outcomes(cross_snapshot: dict) -> dict[str, object]:
             tier_used = str(dec.get("decision", "fast"))
             next_turns = _get_turns_after(dec.get("created_at", ""), min_turns=3)
             if next_turns is None:
+                # Not enough turns yet — but expire if old enough that we
+                # know we'll never get them (no chat activity post-cutoff).
+                if dec.get("created_at", "") < cutoff:
+                    _expire_decision(decision_id, "ttl_expired_no_turns")
+                    expired_tier += 1
                 continue
 
             score_tier_outcome(
@@ -97,8 +112,9 @@ def _check_outcomes(cross_snapshot: dict) -> dict[str, object]:
 
     # ── Score pending response_style decisions ─────────────────────────
     scored_style = 0
+    expired_style = 0
     try:
-        unreviewed_style = list_unreviewed_decisions(kind="response_style", limit=3)
+        unreviewed_style = list_unreviewed_decisions(kind="response_style", limit=10)
     except Exception:
         unreviewed_style = []
 
@@ -108,6 +124,12 @@ def _check_outcomes(cross_snapshot: dict) -> dict[str, object]:
             style_used = str(dec.get("decision", "elaborate"))
             user_reply = _get_next_user_message(dec.get("created_at", ""))
             if user_reply is None:
+                # Expire stale decisions — most response_style records
+                # come from autonomous runs that will never get a user
+                # reply. Without TTL the pending bucket grows unboundedly.
+                if dec.get("created_at", "") < cutoff:
+                    _expire_decision(decision_id, "ttl_expired_no_user_reply")
+                    expired_style += 1
                 continue
 
             score_response_outcome(
@@ -119,29 +141,56 @@ def _check_outcomes(cross_snapshot: dict) -> dict[str, object]:
         except Exception:
             continue
 
-    return {"checked": True, "scored": scored_tier + scored_style,
-            "scored_tier": scored_tier, "scored_style": scored_style}
+    return {"checked": True,
+            "scored": scored_tier + scored_style,
+            "scored_tier": scored_tier, "scored_style": scored_style,
+            "expired_tier": expired_tier, "expired_style": expired_style}
+
+
+def _expire_decision(decision_id: str, reason: str) -> None:
+    """Mark a stale pending decision as expired so it drops from the
+    pending index. outcome_aggregate=0.0 is the sentinel for
+    'no outcome could be scored'. Downstream analytics should filter
+    `WHERE outcome_aggregate > 0` to exclude expirations.
+    """
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            conn.execute(
+                "UPDATE cognitive_decisions SET outcome_aggregate=0.0 "
+                "WHERE decision_id=? AND outcome_aggregate IS NULL",
+                (decision_id,),
+            )
+            conn.commit()
+    except Exception:
+        pass
 
 
 def _get_turns_after(created_at: str, min_turns: int = 3) -> list[dict] | None:
-    """Get subsequent turns after a decision timestamp.
+    """Get subsequent chat turns after a decision timestamp (any session).
 
     Returns None if not enough turns have passed yet (min_turns not met).
-    Looks at recent chat messages from the latest session.
+
+    2026-06-08 fix: previous version called recent_chat_session_messages()
+    without a required session_id arg — TypeError silently swallowed by
+    try/except, so this always returned None. Now queries chat_messages
+    directly across all sessions, which matches the daemon's original
+    "latest activity" intent.
     """
     if not created_at:
         return None
     try:
-        from core.services.chat_sessions import recent_chat_session_messages
-        messages = recent_chat_session_messages(limit=10) or []
+        from core.runtime.db import connect
+        with connect() as conn:
+            rows = conn.execute(
+                """SELECT role, content, created_at FROM chat_messages
+                   WHERE created_at > ? AND role != 'compact_marker'
+                   ORDER BY created_at ASC LIMIT ?""",
+                (created_at, max(min_turns * 4, 10)),
+            ).fetchall()
+        after = [dict(r) for r in rows]
     except Exception:
         return None
-
-    after = []
-    for msg in messages:
-        msg_time = str(msg.get("created_at") or msg.get("timestamp") or "")
-        if msg_time and msg_time > created_at:
-            after.append(msg)
 
     if len(after) >= min_turns:
         return after
@@ -149,24 +198,28 @@ def _get_turns_after(created_at: str, min_turns: int = 3) -> list[dict] | None:
 
 
 def _get_next_user_message(created_at: str) -> str | None:
-    """Get the first user message after a decision timestamp.
+    """Get the first user message after a decision timestamp (any session).
 
     Returns None if no user message found yet.
+
+    2026-06-08 fix: see _get_turns_after — same TypeError pattern.
     """
     if not created_at:
         return None
     try:
-        from core.services.chat_sessions import recent_chat_session_messages
-        messages = recent_chat_session_messages(limit=10) or []
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(
+                """SELECT content FROM chat_messages
+                   WHERE created_at > ? AND role = 'user'
+                   ORDER BY created_at ASC LIMIT 1""",
+                (created_at,),
+            ).fetchone()
+        if row is None:
+            return None
+        return str(row["content"] or "")
     except Exception:
         return None
-
-    for msg in messages:
-        msg_time = str(msg.get("created_at") or msg.get("timestamp") or "")
-        role = str(msg.get("role") or "").lower()
-        if msg_time and msg_time > created_at and role == "user":
-            return str(msg.get("content") or msg.get("text") or "")
-    return None
 
 
 def _generate_meta_insight(cross_snapshot: dict) -> str:

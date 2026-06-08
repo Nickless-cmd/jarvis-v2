@@ -2829,25 +2829,30 @@ async def _stream_visible_run(
                 )
                 _track_runtime_candidates(run, visible_output_text)
                 # ── Lag 1: record response_style choice ─────
-                try:
-                    from core.runtime.db_credit_assignment import record_choice as _rc_rs
-                    _resp_len = len(visible_output_text or "")
-                    _has_code = "```" in (visible_output_text or "")
-                    if _has_code:
-                        _style = "technical"
-                    elif _resp_len < 300:
-                        _style = "short_direct"
-                    else:
-                        _style = "elaborate"
-                    _rc_rs(
-                        kind="response_style",
-                        title=f"Response style ({_style}, {_resp_len}ch)",
-                        options=["short_direct", "elaborate", "technical"],
-                        decision=_style,
-                        why=f"len={_resp_len}, has_code={_has_code}",
-                    )
-                except Exception:
-                    pass
+                # Only record for runs with a user present — autonomous
+                # heartbeat-triggered runs never get a user reply, so
+                # they can't be scored and would just pile up in the
+                # pending bucket (2026-06-08 fix).
+                if not getattr(run, "autonomous", False):
+                    try:
+                        from core.runtime.db_credit_assignment import record_choice as _rc_rs
+                        _resp_len = len(visible_output_text or "")
+                        _has_code = "```" in (visible_output_text or "")
+                        if _has_code:
+                            _style = "technical"
+                        elif _resp_len < 300:
+                            _style = "short_direct"
+                        else:
+                            _style = "elaborate"
+                        _rc_rs(
+                            kind="response_style",
+                            title=f"Response style ({_style}, {_resp_len}ch)",
+                            options=["short_direct", "elaborate", "technical"],
+                            decision=_style,
+                            why=f"len={_resp_len}, has_code={_has_code}",
+                        )
+                    except Exception:
+                        pass
 
                 _run_memory_postprocess(run, visible_output_text)
                 # 2026-05-17: detector + auto-continuation.

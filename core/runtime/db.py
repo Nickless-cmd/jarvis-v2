@@ -108,6 +108,29 @@ def _ensure_multiuser_columns(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE {tbl} ADD COLUMN relevant_to_users TEXT")
 
 
+def _ensure_skill_audit_table(conn: sqlite3.Connection) -> None:
+    """Create skill_audit_log table for skills versionering (C1)."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS skill_audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            skill_name TEXT NOT NULL,
+            action TEXT NOT NULL,
+            diff_summary TEXT NOT NULL DEFAULT '',
+            reason TEXT NOT NULL DEFAULT '',
+            snapshot_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_skill_audit_log_name
+        ON skill_audit_log(skill_name, id DESC)
+        """
+    )
+
+
 def init_db() -> None:
     with connect() as conn:
         conn.execute(
@@ -1142,6 +1165,7 @@ def init_db() -> None:
         _migrate_chronicle_table_add_affective_signature()
         # Multi-user attribution columns (task 2)
         _ensure_multiuser_columns(conn)
+        _ensure_skill_audit_table(conn)
         conn.commit()
 
 

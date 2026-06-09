@@ -194,6 +194,11 @@ def reload_skills() -> dict[str, Any]:
     with _registry_lock:
         _registry = _scan_skills()
         _last_scan = datetime.now(UTC).isoformat()
+        _record_audit_entry(
+            "__bulk__", "bulk_reloaded",
+            diff_summary=f"{len(_registry)} skills loaded",
+            reason="reload_skills()",
+        )
         return {
             "status": "ok",
             "count": len(_registry),
@@ -479,6 +484,11 @@ def create_skill(
 
     # Reload to pick it up
     reload_skills()
+    _record_audit_entry(
+        name, "created",
+        reason="create_skill()",
+        snapshot=_build_skill_snapshot(name),
+    )
     return {
         "status": "ok",
         "name": name,
@@ -499,6 +509,10 @@ def delete_skill(name: str) -> dict[str, Any]:
         return {"status": "error", "error": f"delete failed: {exc}"}
     # Reload
     reload_skills()
+    _record_audit_entry(
+        name, "deleted",
+        reason="delete_skill()",
+    )
     return {"status": "ok", "name": name, "note": "Skill deleted."}
 
 
@@ -568,6 +582,254 @@ def build_skill_engine_surface() -> dict[str, Any]:
         "all_tags": sorted(all_tags),
         "skills_root": str(SKILLS_ROOT),
         "summary": f"{len(_registry)} skills loaded from {SKILLS_ROOT}",
+    }
+
+
+# ── Audit trail (C1 — Skills versionering) ────────────────────────────
+
+AUDIT_ACTIONS = ("created", "updated", "deleted", "bulk_reloaded")
+
+
+def _ensure_audit_table() -> None:
+    """Idempotent: ensure skill_audit_log table exists."""
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS skill_audit_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    skill_name TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    diff_summary TEXT NOT NULL DEFAULT '',
+                    reason TEXT NOT NULL DEFAULT '',
+                    snapshot_json TEXT NOT NULL DEFAULT '{}',
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_skill_audit_log_name
+                ON skill_audit_log(skill_name, id DESC)
+                """
+            )
+    except Exception as exc:
+        logger.warning("skill_engine: audit table ensure failed: %s", exc)
+
+
+def _build_skill_snapshot(name: str) -> dict[str, Any]:
+    """Build a portable snapshot dict for a skill."""
+    skill = get_skill(name)
+    if not skill:
+        return {}
+    return {
+        "name": skill.name,
+        "description": skill.description,
+        "use_when": skill.use_when,
+        "tags": list(skill.tags),
+        "instructions_len": len(skill.instructions),
+        "instructions_preview": skill.instructions[:200],
+        "has_scripts": skill.has_scripts,
+        "has_templates": skill.has_templates,
+        "has_references": skill.has_references,
+    }
+
+
+def _record_audit_entry(
+    skill_name: str,
+    action: str,
+    *,
+    diff_summary: str = "",
+    reason: str = "",
+    snapshot: dict[str, Any] | None = None,
+) -> None:
+    """Record a skill mutation in the audit log. Never raises."""
+    if action not in AUDIT_ACTIONS:
+        logger.warning("skill_engine: unknown audit action '%s' — skipping", action)
+        return
+    try:
+        import json as _json
+        from core.runtime.db import connect
+        from datetime import UTC, datetime
+        snap = _json.dumps(snapshot or {}, ensure_ascii=False)
+        with connect() as conn:
+            # Self-healing: ensure table exists if init_db hasn't run yet
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS skill_audit_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    skill_name TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    diff_summary TEXT NOT NULL DEFAULT '',
+                    reason TEXT NOT NULL DEFAULT '',
+                    snapshot_json TEXT NOT NULL DEFAULT '{}',
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
+                INSERT INTO skill_audit_log
+                    (skill_name, action, diff_summary, reason, snapshot_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (skill_name, action, diff_summary, reason, snap, datetime.now(UTC).isoformat()),
+            )
+    except Exception as exc:
+        logger.warning("skill_engine: audit log failed for %s/%s: %s", skill_name, action, exc)
+
+
+def get_skill_history(name: str, limit: int = 50) -> dict[str, Any]:
+    """Return audit trail for a single skill, newest first."""
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            # Self-healing: ensure table
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS skill_audit_log ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, skill_name TEXT NOT NULL,"
+                "action TEXT NOT NULL, diff_summary TEXT NOT NULL DEFAULT '',"
+                "reason TEXT NOT NULL DEFAULT '', snapshot_json TEXT NOT NULL DEFAULT '{}',"
+                "created_at TEXT NOT NULL)"
+            )
+            rows = conn.execute(
+                """
+                SELECT id, skill_name, action, diff_summary, reason, snapshot_json, created_at
+                FROM skill_audit_log
+                WHERE skill_name = ?
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (name, max(limit, 1)),
+            ).fetchall()
+        import json as _json
+        entries = []
+        for r in rows:
+            entry = dict(r)
+            try:
+                entry["snapshot"] = _json.loads(entry.pop("snapshot_json", "{}"))
+            except Exception:
+                entry["snapshot"] = {}
+            entries.append(entry)
+        return {"status": "ok", "skill_name": name, "entries": entries, "count": len(entries)}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def list_recent_skill_changes(limit: int = 20) -> dict[str, Any]:
+    """Return most recent skill mutations across all skills."""
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS skill_audit_log ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, skill_name TEXT NOT NULL,"
+                "action TEXT NOT NULL, diff_summary TEXT NOT NULL DEFAULT '',"
+                "reason TEXT NOT NULL DEFAULT '', snapshot_json TEXT NOT NULL DEFAULT '{}',"
+                "created_at TEXT NOT NULL)"
+            )
+            rows = conn.execute(
+                """
+                SELECT id, skill_name, action, diff_summary, reason, created_at
+                FROM skill_audit_log
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (max(limit, 1),),
+            ).fetchall()
+        return {"status": "ok", "entries": [dict(r) for r in rows], "count": len(rows)}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def update_skill(
+    name: str,
+    *,
+    description: str | None = None,
+    instructions: str | None = None,
+    use_when: str | None = None,
+    tags: list[str] | None = None,
+    reason: str = "",
+) -> dict[str, Any]:
+    """Update an existing skill's metadata and/or instructions. Logs audit."""
+    skill = get_skill(name)
+    if not skill:
+        return {"status": "error", "error": f"skill '{name}' not found"}
+
+    old_snapshot = _build_skill_snapshot(name)
+    changes: list[str] = []
+
+    new_description = description if description is not None else skill.description
+    new_use_when = use_when if use_when is not None else skill.use_when
+    new_tags = list(tags) if tags is not None else list(skill.tags)
+    new_instructions = instructions if instructions is not None else skill.instructions
+
+    if new_description != skill.description:
+        changes.append(f"description: {len(skill.description)}ch → {len(new_description)}ch")
+    if new_use_when != skill.use_when:
+        changes.append("use_when changed")
+    if new_tags != list(skill.tags):
+        changes.append(f"tags: {len(skill.tags)} → {len(new_tags)}")
+    if new_instructions != skill.instructions:
+        changes.append(f"instructions: {len(skill.instructions)}ch → {len(new_instructions)}ch")
+
+    if not changes:
+        return {"status": "ok", "name": name, "note": "No changes detected."}
+
+    # Validate with same rules as create
+    validation = validate_skill_proposal(
+        name=name,
+        description=new_description,
+        instructions=new_instructions,
+        use_when=new_use_when,
+        tags=new_tags,
+    )
+    if validation.get("status") != "ok" and "already exists" not in validation.get("error", ""):
+        # "already exists" is expected — we're updating an existing skill
+        return validation
+
+    # Write new SKILL.md
+    try:
+        skill_dir = SKILLS_ROOT / name
+        fm_data = {
+            "name": name,
+            "description": new_description,
+            "use_when": new_use_when or new_description,
+            "tags": list(new_tags),
+        }
+        if _yaml is not None:
+            fm_body = _yaml.safe_dump(
+                fm_data, sort_keys=False, allow_unicode=True, default_flow_style=False
+            )
+        else:
+            def _q(s): return '"' + str(s).replace('\\', '\\\\').replace('"', '\\"') + '"'
+            fm_body = (
+                f"name: {_q(name)}\n"
+                f"description: {_q(new_description)}\n"
+                f"use_when: {_q(new_use_when or new_description)}\n"
+                f"tags: [{', '.join(_q(t) for t in new_tags)}]\n"
+            )
+        fm = f"---\n{fm_body}---\n\n"
+        content = fm + new_instructions.strip() + "\n"
+        (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
+    except OSError as exc:
+        return {"status": "error", "error": f"write failed: {exc}"}
+
+    # Reload + audit
+    reload_skills()
+    diff = "; ".join(changes)
+    _record_audit_entry(
+        name, "updated",
+        diff_summary=diff,
+        reason=reason,
+        snapshot=_build_skill_snapshot(name),
+    )
+    return {
+        "status": "ok",
+        "name": name,
+        "changes": changes,
+        "note": f"Skill '{name}' updated: {diff}",
     }
 
 

@@ -342,6 +342,153 @@ def test_fetch_url_capped_returns_text_under_limit(monkeypatch):
 # ── Registry concurrency safety (smoke) ────────────────────────────────
 
 
+# ── C1 — Skills versionering (audit trail) ────────────────────────────
+
+
+@pytest.fixture
+def isolated_db(monkeypatch, tmp_path):
+    """Point DB_PATH at a clean temp file for audit tests."""
+    from core.runtime import db_core
+    db_file = tmp_path / "test_audit.db"
+    monkeypatch.setattr(db_core, "DB_PATH", db_file)
+    # Wipe the ensure-once cache so our table is actually created
+    from core.runtime.db_core import invalidate_ensure_once_cache
+    invalidate_ensure_once_cache()
+    return db_file
+
+
+def test_audit_create_skill_logs_entry(isolated_skills_root, isolated_db):
+    """Creating a skill must generate an audit entry."""
+    from core.services import skill_engine
+
+    result = skill_engine.create_skill(
+        name="audit-test",
+        description="Test skill for audit",
+        instructions="# Audit\n\nTest instructions.",
+    )
+    assert result["status"] == "ok", result
+
+    history = skill_engine.get_skill_history("audit-test")
+    assert history["status"] == "ok"
+    assert history["count"] >= 1
+    assert any(e["action"] == "created" for e in history["entries"])
+
+
+def test_update_skill_logs_audit_entry(isolated_skills_root, isolated_db):
+    """Updating a skill's description must log a change."""
+    from core.services import skill_engine
+
+    skill_engine.create_skill(
+        name="upd",
+        description="Original description",
+        instructions="# Original\n\nBody.",
+    )
+    skill_engine.reload_skills()
+
+    result = skill_engine.update_skill(
+        "upd",
+        description="Updated description",
+        reason="test update",
+    )
+    assert result["status"] == "ok", result
+    assert "description" in str(result["changes"])
+
+    history = skill_engine.get_skill_history("upd")
+    assert history["count"] >= 2  # created + updated
+    updates = [e for e in history["entries"] if e["action"] == "updated"]
+    assert len(updates) >= 1
+
+
+def test_update_skill_no_changes_returns_ok(isolated_skills_root, isolated_db):
+    """Calling update_skill without changes returns early."""
+    from core.services import skill_engine
+
+    skill_engine.create_skill(
+        name="same",
+        description="Same",
+        instructions="# Same\n\nBody.",
+    )
+    skill_engine.reload_skills()
+
+    result = skill_engine.update_skill("same")  # no changes
+    assert result["status"] == "ok"
+    assert "No changes" in result.get("note", "")
+
+
+def test_delete_skill_logs_audit_entry(isolated_skills_root, isolated_db):
+    """Deleting a skill must generate a 'deleted' audit entry."""
+    from core.services import skill_engine
+
+    skill_engine.create_skill(
+        name="del-me",
+        description="To be deleted",
+        instructions="# Bye\n\nDelete me.",
+    )
+    # Reload so registry knows about it
+    skill_engine.reload_skills()
+    assert skill_engine.get_skill("del-me") is not None
+
+    del_result = skill_engine.delete_skill("del-me")
+    assert del_result["status"] == "ok", del_result
+
+    history = skill_engine.get_skill_history("del-me")
+    assert history["status"] == "ok"
+    assert any(e["action"] == "deleted" for e in history["entries"])
+
+
+def test_update_skill_rejects_missing(isolated_skills_root, isolated_db):
+    """Updating a non-existent skill must fail."""
+    from core.services import skill_engine
+
+    result = skill_engine.update_skill(
+        "does-not-exist",
+        description="anything",
+    )
+    assert result["status"] == "error"
+    assert "not found" in result["error"]
+
+
+def test_get_skill_history_empty_for_unknown(isolated_db):
+    """A skill with no audit entries returns empty list."""
+    from core.services import skill_engine
+
+    history = skill_engine.get_skill_history("never-existed")
+    assert history["status"] == "ok"
+    assert history["count"] == 0
+
+
+def test_list_recent_skill_changes_returns_entries(isolated_skills_root, isolated_db):
+    """list_recent_skill_changes must return recent mutations."""
+    from core.services import skill_engine
+
+    skill_engine.create_skill(name="a", description="A", instructions="# A")
+    skill_engine.create_skill(name="b", description="B", instructions="# B")
+
+    recent = skill_engine.list_recent_skill_changes()
+    assert recent["status"] == "ok"
+    assert recent["count"] >= 2
+
+    # Both skills should appear (order newest first — b then a)
+    names = {e["skill_name"] for e in recent["entries"]}
+    assert "a" in names
+    assert "b" in names
+
+
+def test_bulk_reload_logs_audit(isolated_skills_root, isolated_db):
+    """reload_skills must log a bulk_reloaded audit entry."""
+    from core.services import skill_engine
+
+    # Create a skill first so reload has something to find
+    skill_engine.create_skill(name="bulk-test", description="Bulk", instructions="# Bulk")
+    # reload_skills already logs audit; call it explicitly to verify
+    result = skill_engine.reload_skills()
+    assert result["status"] == "ok"
+
+    recent = skill_engine.list_recent_skill_changes(limit=10)
+    bulk_entries = [e for e in recent["entries"] if e["action"] == "bulk_reloaded"]
+    assert len(bulk_entries) >= 1
+
+
 def test_concurrent_reload_does_not_crash(isolated_skills_root):
     """Smoke test that reload_skills + list_skills running in parallel
     threads don't raise. Doesn't prove correctness under pressure but

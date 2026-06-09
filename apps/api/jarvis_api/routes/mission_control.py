@@ -875,6 +875,165 @@ def mc_approvals(limit: int = 20) -> dict:
     }
 
 
+@router.get("/memory-pipeline")
+def mc_memory_pipeline(limit: int = 10) -> dict:
+    """Memory-pipeline status surface (added 2026-06-09).
+
+    Read-only diagnostisk view over de fire memory-pipes:
+      1. runtime_contract_candidates → MEMORY.md (pending + recent applied)
+      2. auto_remember_subscriber → jarvis_brain (entries today)
+      3. daily_journal daemon (today's journal status)
+      4. jarvis_brain totals (file counts per kind)
+
+    Bruges af Mission Control til at vise om pipen er live, og af Bjørn
+    til at se hvad der står og venter på at blive applied.
+    """
+    import os
+    import sqlite3
+    from datetime import UTC, datetime
+    from pathlib import Path
+
+    jarvis_home = Path(os.environ.get("HOME", "/root")) / ".jarvis-v2"
+    db_path = jarvis_home / "state" / "jarvis.db"
+    today = datetime.now(UTC).date().isoformat()
+    n = max(int(limit), 1)
+
+    # ── 1. MEMORY.md candidate pipeline ───────────────────────────────────
+    try:
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        pending = conn.execute(
+            """SELECT canonical_key, summary, confidence, evidence_class,
+                      created_at, updated_at
+               FROM runtime_contract_candidates
+               WHERE target_file='MEMORY.md' AND status='proposed'
+               ORDER BY updated_at DESC LIMIT ?""",
+            (n,),
+        ).fetchall()
+        pending_count = conn.execute(
+            "SELECT COUNT(*) FROM runtime_contract_candidates "
+            "WHERE target_file='MEMORY.md' AND status='proposed'"
+        ).fetchone()[0]
+        applied_count_total = conn.execute(
+            "SELECT COUNT(*) FROM runtime_contract_candidates "
+            "WHERE target_file='MEMORY.md' AND status='applied'"
+        ).fetchone()[0]
+        applied_today = conn.execute(
+            "SELECT COUNT(*) FROM runtime_contract_candidates "
+            "WHERE target_file='MEMORY.md' AND status='applied' "
+            "AND date(updated_at) = ?",
+            (today,),
+        ).fetchone()[0]
+        recent_applied = conn.execute(
+            """SELECT canonical_key, summary, updated_at
+               FROM runtime_contract_candidates
+               WHERE target_file='MEMORY.md' AND status='applied'
+               ORDER BY updated_at DESC LIMIT ?""",
+            (n,),
+        ).fetchall()
+        last_write = conn.execute(
+            """SELECT target_file, write_status, created_at
+               FROM runtime_contract_file_writes
+               WHERE target_file='MEMORY.md'
+               ORDER BY created_at DESC LIMIT 1"""
+        ).fetchone()
+        conn.close()
+        contract_pipeline = {
+            "pending_count": int(pending_count),
+            "applied_count_total": int(applied_count_total),
+            "applied_today": int(applied_today),
+            "pending_sample": [
+                {
+                    "canonical_key": str(r["canonical_key"]),
+                    "summary": str(r["summary"] or "")[:200],
+                    "confidence": str(r["confidence"]),
+                    "evidence_class": str(r["evidence_class"]),
+                    "updated_at": str(r["updated_at"]),
+                }
+                for r in pending
+            ],
+            "recent_applied": [
+                {
+                    "canonical_key": str(r["canonical_key"]),
+                    "summary": str(r["summary"] or "")[:200],
+                    "applied_at": str(r["updated_at"]),
+                }
+                for r in recent_applied
+            ],
+            "last_write": (
+                {
+                    "target_file": str(last_write["target_file"]),
+                    "write_status": str(last_write["write_status"]),
+                    "created_at": str(last_write["created_at"]),
+                }
+                if last_write else None
+            ),
+        }
+    except Exception as exc:
+        contract_pipeline = {"error": str(exc)}
+
+    # ── 2. jarvis_brain auto-remember activity ────────────────────────────
+    brain_dir = jarvis_home / "shared" / "jarvis_brain"
+    brain_kinds = {}
+    brain_today_count = 0
+    brain_recent: list[dict] = []
+    try:
+        if brain_dir.exists():
+            for kind in ("fakta", "indsigt", "observation", "reference"):
+                kdir = brain_dir / kind
+                if not kdir.exists():
+                    brain_kinds[kind] = 0
+                    continue
+                files = list(kdir.glob("*.md"))
+                brain_kinds[kind] = len(files)
+                for f in files:
+                    if f.name.startswith(today):
+                        brain_today_count += 1
+                        brain_recent.append({
+                            "kind": kind,
+                            "name": f.name,
+                            "size_bytes": f.stat().st_size,
+                        })
+            brain_recent.sort(key=lambda x: x["name"], reverse=True)
+            brain_recent = brain_recent[:n]
+    except Exception as exc:
+        brain_kinds = {"error": str(exc)}
+
+    # ── 3. Daily journal status ───────────────────────────────────────────
+    try:
+        from core.services.daily_journal import journal_exists_for
+        from datetime import date as _date
+        today_date = _date.fromisoformat(today)
+        journal_today = journal_exists_for(today_date)
+        journal_obs_dir = jarvis_home / "shared" / "jarvis_brain" / "observation"
+        recent_journals = []
+        if journal_obs_dir.exists():
+            for f in sorted(journal_obs_dir.glob("*-daily.md"), reverse=True)[:5]:
+                recent_journals.append({
+                    "name": f.name,
+                    "size_bytes": f.stat().st_size,
+                })
+    except Exception as exc:
+        journal_today = False
+        recent_journals = []
+
+    return {
+        "active": True,
+        "as_of": datetime.now(UTC).isoformat(),
+        "memory_md_pipeline": contract_pipeline,
+        "jarvis_brain": {
+            "total_by_kind": brain_kinds,
+            "added_today": brain_today_count,
+            "recent_today": brain_recent,
+        },
+        "daily_journal": {
+            "today_exists": bool(journal_today),
+            "today_date": today,
+            "recent": recent_journals,
+        },
+    }
+
+
 @router.get("/autonomy/proposals")
 def mc_autonomy_proposals(limit: int = 30) -> dict:
     """MC surface for Niveau 2 autonomy proposal queue.

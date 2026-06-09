@@ -358,6 +358,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": True,
         "description": "Associativ hukommelse: dormant memories trigged by context — queries experiential + private brain + sensory DBs, scores candidates, maintains persistent active memories",
     },
+    "wakeup_cleanup": {
+        "module": "core.services.self_wakeup",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 60,
+        "default_enabled": True,
+        "description": "A3: ryd consumed/cancelled/stale-fired wakeups ældre end hhv 7/7/24 dage — forhindrer wakeup-bloat",
+    },
     "memory_write_queue": {
         "module": "core.services.memory_write_queue",
         "reset_var": "_last_tick_at",

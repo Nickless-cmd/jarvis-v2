@@ -243,6 +243,15 @@ def cleanup_old_wakeups(
     return {"removed": removed, "remaining": len(kept)}
 
 
+def tick_wakeup_cleanup() -> dict[str, int]:
+    """Daemon tick — ryd op i gamle wakeups.
+
+    Kører periodisk (default 60 min) for at forhindre wakeup-bloat.
+    Returnerer antal fjernede og tilbageværende.
+    """
+    return cleanup_old_wakeups()
+
+
 def self_wakeup_section() -> str | None:
     """Awareness section showing fired-but-not-consumed wakeups."""
     fired = due_wakeups(include_fired_unconsumed=True)

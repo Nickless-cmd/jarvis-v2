@@ -2461,106 +2461,14 @@ def _recent_daily_memory_lines(*, limit: int = 12, days: int = 7) -> list[str]:
         return _today_daily_memory_lines(limit=limit)
 
 
-def _visible_memory_recall_bundle_section(
-    *,
-    session_id: str | None,
-    user_message: str,
-    compact: bool,
-) -> str | None:
-    lines: list[str] = ["Memory recall bundle:"]
-
-    private_brain = _private_brain_recall_lines(limit=3 if compact else 4)
-    if private_brain:
-        lines.append("- Private continuity:")
-        lines.extend(f"  - {line}" for line in private_brain)
-
-    tool_lines = _recent_tool_recall_lines(session_id, limit=3 if compact else 5)
-    if tool_lines:
-        lines.append("- Internal tool observations (Jarvis-only, not user-visible chat):")
-        lines.extend(f"  - {line}" for line in tool_lines)
-
-    candidate_lines = _memory_candidate_recall_lines(limit=2 if compact else 3)
-    if candidate_lines:
-        lines.append("- Pending memory candidates:")
-        lines.extend(f"  - {line}" for line in candidate_lines)
-
-    if len(lines) == 1:
-        return None
-    lines.append(
-        "Use this only as bounded continuity support. Workspace files and the user's latest message outrank it."
-    )
-    return "\n".join(lines)
-
-
-def _private_brain_recall_lines(*, limit: int) -> list[str]:
-    try:
-        from core.services.session_distillation import (
-            build_private_brain_context,
-        )
-
-        brain = build_private_brain_context(limit=limit)
-    except Exception:
-        return []
-    if not brain.get("active"):
-        return []
-    result: list[str] = []
-    summary = " ".join(str(brain.get("continuity_summary") or "").split()).strip()
-    if summary:
-        result.append(_clip_line(summary, limit=180))
-    for excerpt in list(brain.get("excerpts") or [])[:limit]:
-        text = " ".join(str(excerpt.get("summary") or "").split()).strip()
-        if not text:
-            continue
-        focus = " ".join(str(excerpt.get("focus") or "").split()).strip()
-        prefix = f"{focus}: " if focus else ""
-        result.append(_clip_line(prefix + text, limit=180))
-    return result[:limit]
-
-
-def _recent_tool_recall_lines(session_id: str | None, *, limit: int) -> list[str]:
-    if not session_id:
-        return []
-    try:
-        messages = recent_chat_tool_messages(session_id, limit=limit)
-    except Exception:
-        return []
-    result: list[str] = []
-    for item in messages[-limit:]:
-        content = render_tool_result_for_prompt(
-            str(item.get("content") or ""),
-            expand=False,
-            max_chars=220,
-        )
-        if not content:
-            continue
-        result.append(_clip_line(content, limit=220))
-    return result
-
-
-def _memory_candidate_recall_lines(*, limit: int) -> list[str]:
-    try:
-        candidates = list_runtime_contract_candidates(
-            candidate_type="memory_promotion",
-            target_file="MEMORY.md",
-            status="proposed",
-            limit=limit,
-        )
-    except Exception:
-        return []
-    lines: list[str] = []
-    for candidate in candidates[:limit]:
-        summary = " ".join(str(candidate.get("summary") or "").split()).strip()
-        confidence = str(candidate.get("confidence") or "unknown").strip()
-        if summary:
-            lines.append(_clip_line(f"{summary} (confidence={confidence})", limit=180))
-    return lines
-
-
-def _clip_line(value: str, *, limit: int) -> str:
-    text = " ".join(str(value or "").split()).strip()
-    if len(text) <= limit:
-        return text
-    return text[: limit - 1].rstrip() + "…"
+# Memory recall section helpers — udskilt til core/services/prompt_sections/memory_recall.py
+from core.services.prompt_sections.memory_recall import (  # noqa: E402
+    _clip_line,
+    _memory_candidate_recall_lines,
+    _private_brain_recall_lines,
+    _recent_tool_recall_lines,
+    _visible_memory_recall_bundle_section,
+)
 
 
 def _workspace_memory_entries(path: Path) -> list[str]:

@@ -536,3 +536,131 @@ def test_concurrent_reload_does_not_crash(isolated_skills_root):
         t.join(timeout=2)
 
     assert not errors, errors
+
+
+# ── C5 — Read-only skills ─────────────────────────────────────────────
+
+
+def test_create_readonly_skill_persists(isolated_skills_root):
+    """Creating a skill with readonly=True must preserve the flag."""
+    from core.services import skill_engine
+
+    result = skill_engine.create_skill(
+        name="ro-skill",
+        description="Read-only test",
+        instructions="# RO\n\nImmutable.",
+        readonly=True,
+    )
+    assert result["status"] == "ok", result
+
+    skill_engine.reload_skills()
+    s = skill_engine.get_skill("ro-skill")
+    assert s is not None
+    assert s.readonly is True
+
+    # Must show in list_skills output
+    skills = skill_engine.list_skills()
+    ro = [sk for sk in skills if sk["name"] == "ro-skill"]
+    assert len(ro) == 1
+    assert ro[0]["readonly"] is True
+
+
+def test_create_readonly_defaults_to_false(isolated_skills_root):
+    """A skill created without readonly=True must have readonly=False."""
+    from core.services import skill_engine
+
+    result = skill_engine.create_skill(
+        name="rw-skill",
+        description="Read-write test",
+        instructions="# RW\n\nMutable.",
+    )
+    assert result["status"] == "ok", result
+
+    skill_engine.reload_skills()
+    s = skill_engine.get_skill("rw-skill")
+    assert s is not None
+    assert s.readonly is False
+
+
+def test_update_readonly_skill_rejected(isolated_skills_root, isolated_db):
+    """Updating a read-only skill must be rejected."""
+    from core.services import skill_engine
+
+    skill_engine.create_skill(
+        name="locked",
+        description="Can't touch this",
+        instructions="# Locked\n\nDo not modify.",
+        readonly=True,
+    )
+    skill_engine.reload_skills()
+
+    result = skill_engine.update_skill("locked", description="New desc")
+    assert result["status"] == "error"
+    assert "read-only" in result["error"]
+
+
+def test_delete_readonly_skill_rejected(isolated_skills_root, isolated_db):
+    """Deleting a read-only skill must be rejected without force=True."""
+    from core.services import skill_engine
+
+    skill_engine.create_skill(
+        name="immutable",
+        description="Protected",
+        instructions="# Protected\n\nKeep me.",
+        readonly=True,
+    )
+    skill_engine.reload_skills()
+
+    result = skill_engine.delete_skill("immutable")
+    assert result["status"] == "error"
+    assert "read-only" in result["error"]
+
+
+def test_delete_readonly_skill_with_force(isolated_skills_root, isolated_db):
+    """Deleting a read-only skill with force=True must succeed."""
+    from core.services import skill_engine
+
+    skill_engine.create_skill(
+        name="forced-del",
+        description="Will be force-deleted",
+        instructions="# Bye\n\nForce delete.",
+        readonly=True,
+    )
+    skill_engine.reload_skills()
+    assert skill_engine.get_skill("forced-del") is not None
+
+    result = skill_engine.delete_skill("forced-del", force=True)
+    assert result["status"] == "ok", result
+
+    skill_engine.reload_skills()
+    assert skill_engine.get_skill("forced-del") is None
+
+
+def test_parse_readonly_frontmatter(isolated_skills_root):
+    """Parsing a SKILL.md with readonly: true must set the flag."""
+    from core.services import skill_engine
+
+    _write_skill(
+        isolated_skills_root,
+        "frontmatter-ro",
+        "name: frontmatter-ro\ndescription: RO from frontmatter\nreadonly: true\ntags: []",
+    )
+    skill_engine.reload_skills()
+    s = skill_engine.get_skill("frontmatter-ro")
+    assert s is not None
+    assert s.readonly is True
+
+
+def test_get_skill_instructions_includes_readonly(isolated_skills_root):
+    """get_skill_instructions must include readonly status."""
+    from core.services import skill_engine
+
+    skill_engine.create_skill(
+        name="check-ro",
+        description="Check readonly in instructions",
+        instructions="# Check\n\nBody.",
+        readonly=True,
+    )
+    result = skill_engine.get_skill_instructions("check-ro")
+    assert result["status"] == "ok"
+    assert result.get("readonly") is True

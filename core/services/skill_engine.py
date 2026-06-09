@@ -61,6 +61,7 @@ class Skill:
     has_scripts: bool = False
     has_templates: bool = False
     has_references: bool = False
+    readonly: bool = False
     loaded_at: str = ""
 
 
@@ -131,6 +132,7 @@ def _parse_skill_md(path: Path) -> Skill | None:
     tags = frontmatter.get("tags", [])
     if isinstance(tags, str):
         tags = [tags]
+    readonly = bool(frontmatter.get("readonly", False))
 
     skill_dir = path.parent
     scripts = skill_dir / "scripts"
@@ -151,6 +153,7 @@ def _parse_skill_md(path: Path) -> Skill | None:
         has_scripts=scripts.exists() and any(scripts.iterdir()),
         has_templates=templates.exists() and any(templates.iterdir()),
         has_references=refs.exists() and any(refs.iterdir()),
+        readonly=readonly,
         loaded_at=datetime.now(UTC).isoformat(),
     )
 
@@ -239,6 +242,7 @@ def list_skills(tag: str | None = None) -> list[dict[str, Any]]:
             "description": skill.description,
             "use_when": skill.use_when,
             "tags": skill.tags,
+            "readonly": skill.readonly,
             "has_scripts": skill.has_scripts,
             "has_templates": skill.has_templates,
             "has_references": skill.has_references,
@@ -426,6 +430,7 @@ def create_skill(
     instructions: str,
     use_when: str = "",
     tags: list[str] | None = None,
+    readonly: bool = False,
 ) -> dict[str, Any]:
     """Create a new skill directory with SKILL.md on disk.
 
@@ -454,6 +459,8 @@ def create_skill(
         "use_when": use_when or description,
         "tags": list(tags),
     }
+    if readonly:
+        fm_data["readonly"] = True
     if _yaml is not None:
         fm_body = _yaml.safe_dump(
             fm_data, sort_keys=False, allow_unicode=True, default_flow_style=False
@@ -497,11 +504,23 @@ def create_skill(
     }
 
 
-def delete_skill(name: str) -> dict[str, Any]:
-    """Delete a skill directory from disk."""
+def delete_skill(name: str, *, force: bool = False) -> dict[str, Any]:
+    """Delete a skill directory from disk.
+
+    Args:
+        name: Skill name.
+        force: If True, delete even if skill is read-only. Default False.
+    """
+    # Check read-only (unless force)
+    skill = get_skill(name)
+    if skill and skill.readonly and not force:
+        return {"status": "error", "error": f"skill '{name}' is read-only (use force=True to delete)"}
+
     skill_dir = SKILLS_ROOT / name
     if not skill_dir.exists():
         return {"status": "error", "error": f"skill '{name}' not found"}
+
+    import shutil
     import shutil
     try:
         shutil.rmtree(skill_dir)
@@ -529,6 +548,7 @@ def get_skill_instructions(name: str) -> dict[str, Any]:
         "instructions": skill.instructions,
         "use_when": skill.use_when,
         "tags": skill.tags,
+        "readonly": skill.readonly,
     }
 
     # Include script listings if available
@@ -628,6 +648,7 @@ def _build_skill_snapshot(name: str) -> dict[str, Any]:
         "description": skill.description,
         "use_when": skill.use_when,
         "tags": list(skill.tags),
+        "readonly": skill.readonly,
         "instructions_len": len(skill.instructions),
         "instructions_preview": skill.instructions[:200],
         "has_scripts": skill.has_scripts,
@@ -756,6 +777,8 @@ def update_skill(
     skill = get_skill(name)
     if not skill:
         return {"status": "error", "error": f"skill '{name}' not found"}
+    if skill.readonly:
+        return {"status": "error", "error": f"skill '{name}' is read-only and cannot be modified"}
 
     old_snapshot = _build_skill_snapshot(name)
     changes: list[str] = []

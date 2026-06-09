@@ -1071,16 +1071,13 @@ def infer_temporal_edges(
         # --- 3. Entity signal ---
         # 2026-06-09 (Claude): also catch FileNotFoundError/OSError so
         # stale brain_index rows pointing at deleted markdown files
-        # don't pollute the daemon log. The row will get cleaned up by
-        # the next consolidation pass — meanwhile we just skip it as a
-        # candidate. Logged at debug so we still have a trail.
+        # don't crash the inference loop. The row will get cleaned up
+        # by the next consolidation pass — meanwhile we just skip the
+        # candidate silently. (jarvis_brain.py has no module-level
+        # logger; emitting one here would be a regression.)
         try:
             cand_text = _extract_text_for_entry(cand_id)
-        except (KeyError, FileNotFoundError, OSError) as exc:
-            logger.debug(
-                "infer_temporal_edges: skipping stale candidate %s (%s)",
-                cand_id, exc,
-            )
+        except (KeyError, FileNotFoundError, OSError):
             continue
         entity_score = entity_overlap_score(new_text, cand_text)
 

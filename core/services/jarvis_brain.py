@@ -1027,6 +1027,89 @@ def get_temporal_neighbors(
     return [(row[0], row[1]) for row in rows]
 
 
+def temporal_boost_recall(
+    entry_ids: list[str],
+    *,
+    boost_factor: float = 0.15,
+    min_confidence: float = 0.5,
+) -> dict[str, float]:
+    """Compute temporal boost scores for a set of entry IDs.
+
+    For each entry in ``entry_ids``, finds its temporal neighbors and returns
+    a map ``{neighbor_id: boost_score}`` where:
+      boost_score = boost_factor × edge_confidence
+
+    The boost is only applied if at least one of the queried entries has
+    a temporal edge to the neighbor — this prevents stale/distant relations
+    from artificially inflating scores.
+
+    Returns:
+        Dict mapping neighbor_id (NOT in entry_ids) to boost score.
+    """
+    if not entry_ids:
+        return {}
+
+    if not entry_ids:
+        return {}
+
+    n = len(entry_ids)
+    ph = ",".join("?" * n)
+    # SQL with 4× placeholders + 1× confidence = 4n + 1 params
+    sql = (
+        f"SELECT CASE WHEN from_id IN ({ph}) THEN to_id ELSE from_id END AS neighbor, "
+        f"MAX(confidence) AS best_conf "
+        f"FROM brain_temporal_edges "
+        f"WHERE (from_id IN ({ph}) OR to_id IN ({ph})) "
+        f"AND relation_type = 'combined' AND confidence >= ? "
+        f"AND CASE WHEN from_id IN ({ph}) THEN to_id ELSE from_id END NOT IN ({ph}) "
+        f"GROUP BY neighbor ORDER BY best_conf DESC"
+    )
+    params = (*entry_ids, *entry_ids, *entry_ids, min_confidence, *entry_ids, *entry_ids)
+    # 4n + 1 = 6n... no. Let's verify: ph in {ph} = n params
+    # SQL has 5× {ph}, each = n → 5n params + 1 confidence = 5n + 1
+    # Params: entry_ids(1) + entry_ids(2) + entry_ids(3) + conf + entry_ids(4) + entry_ids(5) = 5n + 1 ✓
+
+    conn = connect_index()
+    try:
+        rows = conn.execute(sql, params).fetchall()
+    finally:
+        conn.close()
+
+    boosts: dict[str, float] = {}
+    for neighbor_id, best_conf in rows:
+        boost = best_conf * boost_factor
+        if boost > 0.0:
+            boosts[neighbor_id] = round(boost, 4)
+    return boosts
+
+
+def prune_stale_edges(
+    *,
+    max_age_days: int = 90,
+    min_confidence: float = 0.2,
+) -> int:
+    """Remove stale temporal edges with low confidence.
+
+    Retains edges where confidence ≥ min_confidence (even if old — high-confidence
+    relations are valuable). Removes old + low-confidence noise.
+
+    Returns number of deleted edges.
+    """
+    cutoff = datetime.now(timezone.utc).isoformat()
+    conn = connect_index()
+    try:
+        result = conn.execute(
+            """DELETE FROM brain_temporal_edges
+               WHERE inferred_at < date('now', ? || ' days')
+                 AND confidence < ?""",
+            (f"-{max_age_days}", min_confidence),
+        )
+        conn.commit()
+        return result.rowcount
+    finally:
+        conn.close()
+
+
 def build_jarvis_brain_surface() -> dict[str, object]:
     """Mission Control surface — read-only meta-projection.
 

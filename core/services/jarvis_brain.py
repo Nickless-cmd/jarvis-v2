@@ -257,6 +257,18 @@ CREATE INDEX IF NOT EXISTS idx_brain_kind_status   ON brain_index(kind, status);
 CREATE INDEX IF NOT EXISTS idx_brain_visibility    ON brain_index(visibility);
 CREATE INDEX IF NOT EXISTS idx_brain_last_used     ON brain_index(last_used_at DESC);
 CREATE INDEX IF NOT EXISTS idx_brain_relations_to  ON brain_relations(to_id);
+
+CREATE TABLE IF NOT EXISTS brain_temporal_edges (
+    from_id       TEXT NOT NULL,
+    to_id         TEXT NOT NULL,
+    relation_type TEXT NOT NULL,  -- temporal|semantic|entity|chain
+    confidence    REAL NOT NULL DEFAULT 0.0,
+    inferred_at   TEXT NOT NULL,
+    PRIMARY KEY (from_id, to_id, relation_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_temporal_edges_from ON brain_temporal_edges(from_id);
+CREATE INDEX IF NOT EXISTS idx_temporal_edges_to   ON brain_temporal_edges(to_id);
 """
 
 
@@ -357,6 +369,7 @@ def write_entry(
     source_chronicle: str | None = None,
     importance: float | None = None,
     now: datetime | None = None,
+    skip_temporal: bool = False,
 ) -> str:
     """Skriver en ny brain-entry til disk og indexerer den (uden embedding endnu).
 
@@ -417,6 +430,14 @@ def write_entry(
         conn.commit()
     finally:
         conn.close()
+
+    # B4 — temporal linking: infer edges to existing entries (2026-06-09)
+    if not skip_temporal:
+        try:
+            infer_temporal_edges(new_id, now=now)
+        except Exception:
+            # Never let inference failure block the write
+            pass
 
     return new_id
 
@@ -811,6 +832,199 @@ def rebuild_index_from_files() -> int:
     finally:
         conn.close()
     return changes
+
+
+# ---------------------------------------------------------------------------
+# B4 — Temporal linking (2026-06-09)
+# ---------------------------------------------------------------------------
+
+
+def _extract_text_for_entry(entry_id: str) -> str:
+    """Read entry content from disk for entity/semantic analysis."""
+    entry = read_entry(entry_id)
+    return f"{entry.title}\n\n{entry.content}"
+
+
+def _temporal_similarity_score(hours_apart: float) -> float:
+    """Score 0.0–1.0 based on temporal proximity. 1.0 at ≤1h, decays to 0 at 24h."""
+    if hours_apart <= 1.0:
+        return 1.0
+    if hours_apart >= 24.0:
+        return 0.0
+    # Exponential decay from 1→0 over the remaining 23h
+    return max(0.0, 1.0 - (hours_apart - 1.0) / 23.0)
+
+
+def _cosine_similarity(a_vec: np.ndarray, b_vec: np.ndarray) -> float:
+    denom = float(np.linalg.norm(a_vec) * np.linalg.norm(b_vec))
+    if denom < 1e-9:
+        return 0.0
+    return float(np.dot(a_vec, b_vec) / denom)
+
+
+def _compute_temporal_confidence(
+    *,
+    temporal: float,
+    semantic: float,
+    entity: float,
+    is_chain: bool,
+) -> float:
+    """Combine four signals into a single confidence score (0.0–1.0).
+
+    Formula: 0.4×temporal + 0.4×semantic + 0.2×entity, +0.15 boost if chain.
+    Cap at 0.98 max.
+    """
+    confidence = 0.4 * temporal + 0.4 * semantic + 0.2 * entity
+    if is_chain:
+        confidence += 0.15
+    return min(confidence, 0.98)
+
+
+def infer_temporal_edges(
+    new_entry_id: str,
+    now: datetime | None = None,
+) -> int:
+    """Run four-signal inference between a new entry and all existing active entries.
+
+    For each candidate pair, computes temporal, semantic, entity and chain signals,
+    combines into a confidence score (0.4×temporal + 0.4×semantic + 0.2×entity
+    +0.15 if chain), and stores qualifying edges (confidence ≥ 0.4) in
+    ``brain_temporal_edges``.
+
+    Returns the number of edges created.
+    """
+    now = now or datetime.now(timezone.utc)
+    from core.services.multi_signal_retrieval import entity_overlap_score
+
+    new_entry = read_entry(new_entry_id)
+    new_text = f"{new_entry.title}\n\n{new_entry.content}"
+    new_created = new_entry.created_at
+
+    # Embed the new entry inline (it was just written — no embedding yet)
+    new_vec = _embed_text(new_text)
+
+    conn = connect_index()
+    try:
+        candidates = conn.execute(
+            """SELECT id, created_at, embedding, embedding_dim, title
+               FROM brain_index
+               WHERE id != ? AND status = 'active'
+                 AND embedding IS NOT NULL""",
+            (new_entry_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    edges_created = 0
+
+    for cand_id, cand_created_str, emb_blob, emb_dim, cand_title in candidates:
+        cand_created = _parse_iso(cand_created_str)
+        if cand_created is None:
+            continue
+
+        # --- 1. Temporal signal ---
+        hours_apart = abs((new_created - cand_created).total_seconds()) / 3600.0
+        temporal_score = _temporal_similarity_score(hours_apart)
+
+        # --- 2. Semantic signal ---
+        if emb_blob is not None and emb_dim is not None:
+            cand_vec = _embedding_from_blob(emb_blob, emb_dim)
+            semantic_score = _cosine_similarity(new_vec, cand_vec)
+        else:
+            semantic_score = 0.0
+
+        # --- 3. Entity signal ---
+        try:
+            cand_text = _extract_text_for_entry(cand_id)
+        except KeyError:
+            continue
+        entity_score = entity_overlap_score(new_text, cand_text)
+
+        # --- 4. Chain signal ---
+        is_chain = hours_apart < 0.083  # 5 minutes
+
+        confidence = _compute_temporal_confidence(
+            temporal=temporal_score,
+            semantic=semantic_score,
+            entity=entity_score,
+            is_chain=is_chain,
+        )
+
+        if confidence < 0.4:
+            continue
+
+        # Reasoning string for audit trail
+        reasoning = (
+            f"t={temporal_score:.2f}/s={semantic_score:.2f}/"
+            f"e={entity_score:.2f}/c={is_chain}"
+        )
+
+        _store_temporal_edge(
+            from_id=new_entry_id,
+            to_id=cand_id,
+            confidence=confidence,
+            reasoning=reasoning,
+            now=now,
+        )
+        edges_created += 1
+
+    return edges_created
+
+
+def _store_temporal_edge(
+    from_id: str,
+    to_id: str,
+    confidence: float,
+    reasoning: str,
+    now: datetime,
+) -> None:
+    """Insert or update a temporal edge with combined confidence.
+
+    Stores a single row per pair with ``relation_type='combined'``.
+    Individual signal breakdown is captured in ``reasoning`` for audit
+    (structure: ``t=0.xx/s=0.xx/e=0.xx/c=True|False``).
+    """
+    conn = connect_index()
+    try:
+        conn.execute(
+            """INSERT OR REPLACE INTO brain_temporal_edges
+               (from_id, to_id, relation_type, confidence, inferred_at)
+               VALUES (?, ?, 'combined', ?, ?)""",
+            (from_id, to_id, round(confidence, 4), _iso(now)),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_temporal_neighbors(
+    entry_id: str,
+    min_confidence: float = 0.4,
+    limit: int = 10,
+) -> list[tuple[str, float]]:
+    """Get tidligere inferred temporal neighbors for an entry.
+
+    Returns a list of (neighbor_id, combined_confidence) sorted descending.
+    Combined confidence = max of individual relation_type confidences for
+    that neighbor pair.
+    """
+    conn = connect_index()
+    try:
+        rows = conn.execute(
+            """SELECT
+                   CASE WHEN from_id = ? THEN to_id ELSE from_id END AS neighbor,
+                   MAX(confidence) AS combined_conf
+               FROM brain_temporal_edges
+               WHERE (from_id = ? OR to_id = ?)
+                 AND confidence >= ?
+               GROUP BY neighbor
+               ORDER BY combined_conf DESC
+               LIMIT ?""",
+            (entry_id, entry_id, entry_id, min_confidence, limit),
+        ).fetchall()
+    finally:
+        conn.close()
+    return [(row[0], row[1]) for row in rows]
 
 
 def build_jarvis_brain_surface() -> dict[str, object]:

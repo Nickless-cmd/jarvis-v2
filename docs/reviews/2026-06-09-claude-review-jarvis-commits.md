@@ -68,6 +68,79 @@ Skills han ikke bruger:
 
 ---
 
+## Endeligt review status — alle workstreams
+
+| Workstream | Status | Note |
+|---|---|---|
+| B1 Multi-signal retrieval | 🔴 Mønster B | Funktion + tests bygget. Aldrig integreret i recall pipeline. |
+| B3 tags | 🟢 OK | Schema + write + search + live callers fra mail_checker_daemon + restart_self_tools |
+| B4 temporal linking | ✅ Fixet | 5 commits af Claude (eb5011e4 → 675d27b2) i går aftes |
+| B5 async write queue | ✅ Hooket op af Claude i dag (`72e09a55`) | Verificeret: 5 pending → 5 done |
+| A3 wakeup cleanup | ✅ Hooket op af Claude i dag | Daemon-blok tilføjet |
+| A4 flash stabilizer | 🟢 OK | `max_tokens=4096` + `read=60` httpx timeout. Lille, sundt fix |
+| C1 skill versioning | 🔴 Mønster B | `get_skill_history`, `list_recent_skill_changes` har 0 callers. Audit trail er bygget men aldrig læst |
+| C2 context_tags filter | 🟢 OK | Integreret i skill_engine + skill_engine_tools |
+| C3 skill chain in heartbeat | 🟡 Halvfærdig | `_propose_skill_chains_in_idle()` kaldes ✅. `format_chain_proposals()` har 0 callers → proposals ses aldrig |
+| C4 auto-learning | 🟡 Halvfærdig | `record_skill_usage()` har 1 caller ✅. `analyze_skill_usage()` har 0 callers → indsigterne læses aldrig |
+| C5 read-only skills | 🟢 OK | `readonly` field + delete guard + force escape hatch |
+| D1 selective consolidation | ✅ Hooket op af Claude i dag | Daemon-blok tilføjet |
+| D2 memory benchmarks | 🟢 OK | Kun tests (379 linjer). Ingen runtime kode. |
+| D4 dreaming + LLM synthesis | 🟢 OK | `tick()` kaldes fra heartbeat_runtime.py:1370 |
+| D5 cost optimization | ✅ Hooket op af Claude i dag | Daemon-blok tilføjet |
+| Prompt-sections refactor (`fae1545d`) | 🟢 OK | 1237 linjer omflytning. memory_recall + capability_markup. Imports er konsistente |
+
+Plus fra i går (Memory Phase 1+2):
+- **identity_sketch periodic trigger** 🟡 — docstring lover "every 6h via heartbeat", aldrig implementeret. Trigger kun ved pre_compact + manuel.
+
+---
+
+## Mønster B oversigt — surface-dead funktioner
+
+Disse er bygget, testet og committed, men deres output har ingen modtager:
+
+| Funktion | Workstream | Hvad output skal bruges til |
+|---|---|---|
+| `multi_signal_recall_section()` | B1 | Prompt section i `prompt_contract.py` |
+| `format_chain_proposals()` | C3 | Awareness surface eller prompt section |
+| `analyze_skill_usage()` | C4 | MC dashboard eller adaptive routing |
+| `get_skill_history()` | C1 | Tool exposé eller MC surface |
+| `list_recent_skill_changes()` | C1 | Tool exposé eller MC surface |
+| `update_identity_sketch(trigger="auto")` | Memory Phase 2 | Heartbeat tick (every 6h som docstring lover) |
+
+**Pattern:** Jarvis bygger output-producerende funktioner men glemmer at de skal
+have en modtager der **bruger** outputtet. Det modsvarer Mønster A (daemon
+registreret, ikke hooked op) — bare med data-flow i stedet for execution-flow.
+
+---
+
+## Mønster A — alle fire daemons er fixet
+
+| Daemon | Hook tilføjet | Verificeret |
+|---|---|---|
+| memory_write_queue (B5) | ✅ | Direkte invocation: 5 → 5 done |
+| wakeup_cleanup (A3) | ✅ | Vil køre ved næste heartbeat tick |
+| selective_consolidation (D1) | ✅ | Vil køre ved næste heartbeat tick |
+| cost_optimization (D5) | ✅ | Vil køre ved næste heartbeat tick |
+
+---
+
+## Næste skridt (Mønster B — 6 funktioner)
+
+Vi går "fra en ende af" som Bjørn sagde. Hver fix:
+1. Identificer hvor outputtet skal modtages (prompt section / awareness surface / tool / MC)
+2. Hook det op
+3. Verificer live at output flyder
+4. Skriv note til Jarvis (samme tone som daemons-not-wired)
+
+Rækkefølge (mest impact først):
+1. **identity_sketch periodic** — Memory Phase 2's lovede mekanisme, simpel hook
+2. **format_chain_proposals** — proposals genereres allerede, blot manglende output-surface
+3. **multi_signal_recall_section** — B1's hele formål, prompt-section integration
+4. **analyze_skill_usage** — kræver design-beslutning om hvor indsigt skal surface
+5. **get_skill_history** + **list_recent_skill_changes** — exposé som tools (par)
+
+---
+
 ---
 
 ## Generelle observationer (opdateres undervejs)

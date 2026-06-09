@@ -245,14 +245,24 @@ class RuntimeSettings:
     # "feature disabled". On-disk entries are preserved.
     jarvis_brain_enabled: bool = True
     # Token budget for always-on summary section in prompt_contract.
-    jarvis_brain_summary_token_budget: int = 350
+    # Bumped 2026-06-09: 350 → 900 for 1M context window. Sammen med
+    # top_k-bump giver det Jarvis langt mere af hans egen hjerne i prompt.
+    jarvis_brain_summary_token_budget: int = 900
     # Number of fakta auto-injected per turn.
-    jarvis_brain_auto_inject_top_k: int = 3
+    # Bumped 2026-06-09: 3 → 8 nu hvor auto_remember_subscriber sørger for
+    # at hjernen faktisk fyldes op løbende. Med top_k=3 var risikoen at
+    # nye relevante fakta blev klemt ud af et lille felt.
+    jarvis_brain_auto_inject_top_k: int = 8
     # Combined cosine+salience threshold below which auto-inject skips.
-    jarvis_brain_auto_inject_threshold: float = 0.55
+    # Sænket 2026-06-09: 0.55 → 0.45. Med top_k=8 har vi råd til at
+    # lade lidt løsere match komme med — bedre at se en svag-relevant
+    # fakta end at miste den helt.
+    jarvis_brain_auto_inject_threshold: float = 0.45
     # remember_this rate caps (per-turn / per-day).
+    # Bumped per-day 2026-06-09: 20 → 40 nu hvor auto_remember_subscriber
+    # kan ramme cap'en på travle dage. Per-turn (5) er stadig fornuftigt.
     jarvis_brain_remember_per_turn_cap: int = 5
-    jarvis_brain_remember_per_day_cap: int = 20
+    jarvis_brain_remember_per_day_cap: int = 40
     # Auto-archive: effective_salience < threshold for >= days → archived.
     jarvis_brain_auto_archive_salience_threshold: float = 0.05
     jarvis_brain_auto_archive_days: int = 90

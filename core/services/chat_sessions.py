@@ -322,6 +322,82 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
     ]
 
 
+def recent_chat_session_messages_by_user_turns(
+    session_id: str,
+    *,
+    user_turns: int = 30,
+    max_total: int = 4000,
+) -> list[dict[str, str]]:
+    """Hent de seneste N *user-turns* og alt der hører til dem.
+
+    Anchor er user-beskeder: vi finder id'et på den N'te-seneste user
+    message og returnerer alt med id >= det (user, assistant, tool —
+    `compact_marker` ekskluderes). Det betyder at "30 turns" rent
+    faktisk = 30 reelle samtale-runder, ikke 30 tilfældige rows hvor
+    de fleste kan være interne tool-resultater fra en enkelt agentic
+    runde.
+
+    Baggrund (2026-06-09): den gamle `recent_chat_session_messages(
+    limit=60)` tællte alle roller. I tool-tunge sessions (3-8 tool
+    calls per assistant-svar) endte 54 ud af 60 slots med at være
+    tool-rows, så kun ~6 ægte user/assistant turns overlevede ud i
+    prompt'en. Det er den arkitektoniske rod til "Jarvis husker kun
+    5-6 beskeder afbag."
+
+    `max_total` er en hård safety-cap der bevarer de *nyeste* rows
+    hvis en enkelt user-turn fylder absurd meget (autonomous loop,
+    skill-chain). 4000 rows × selv 1500 chars gennemsnit = ~6 MB, og
+    derefter rammer vi auto-compact alligevel.
+    """
+    normalized = (session_id or "").strip()
+    if not normalized:
+        return []
+    user_turns = max(user_turns, 1)
+    with connect() as conn:
+        anchor_row = conn.execute(
+            """
+            SELECT id FROM chat_messages
+            WHERE session_id = ? AND role = 'user'
+            ORDER BY id DESC LIMIT 1 OFFSET ?
+            """,
+            (normalized, user_turns - 1),
+        ).fetchone()
+        if anchor_row is None:
+            # Færre user-turns end ønsket — tag bare alle non-marker rows
+            rows = conn.execute(
+                """
+                SELECT role, content, created_at, user_id, reasoning_content
+                FROM chat_messages
+                WHERE session_id = ? AND role != 'compact_marker'
+                ORDER BY id ASC
+                LIMIT ?
+                """,
+                (normalized, max_total),
+            ).fetchall()
+        else:
+            anchor_id = int(anchor_row["id"])
+            rows = conn.execute(
+                """
+                SELECT role, content, created_at, user_id, reasoning_content
+                FROM chat_messages
+                WHERE session_id = ? AND role != 'compact_marker' AND id >= ?
+                ORDER BY id ASC
+                LIMIT ?
+                """,
+                (normalized, anchor_id, max_total),
+            ).fetchall()
+    return [
+        {
+            "role": str(row["role"]),
+            "content": str(row["content"]),
+            "created_at": str(row["created_at"]),
+            "user_id": str(row["user_id"] or ""),
+            "reasoning_content": str(row["reasoning_content"] or ""),
+        }
+        for row in rows
+    ]
+
+
 def _ensure_compact_marker_git_sha_column() -> None:
     """Add git_sha column to chat_messages if it doesn't exist (idempotent migration)."""
     try:

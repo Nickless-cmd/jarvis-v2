@@ -999,11 +999,8 @@ def build_visible_chat_prompt_assembly(
         _awareness_add(90, "active commitments enforcement", enforcement_section())
     except Exception:
         pass
-    try:
-        from core.services.development_sense import development_sense_section
-        _awareness_add(52, "developmental sense", development_sense_section())
-    except Exception:
-        pass
+    # 2026-06-09: development_sense (Vækstpuls med live decimal-tal)
+    # flyttet til tail-anchored — samme cache-breaker årsag.
     try:
         from core.services.pushback import (
             affective_pushback_section,
@@ -1094,16 +1091,17 @@ def build_visible_chat_prompt_assembly(
         _awareness_add(28, "provider health status", health_section())
     except Exception:
         pass
-    try:
-        from core.services.agent_self_evaluation import self_evaluation_section
-        _awareness_add(85, "self-evaluation summary", self_evaluation_section())
-    except Exception:
-        pass
-    try:
-        from core.services.self_model_predictive import predictive_self_model_section
-        _awareness_add(82, "predictive self-model (empirical)", predictive_self_model_section())
-    except Exception:
-        pass
+    # 2026-06-09: self_evaluation_section flyttet til tail-anchored —
+    # samme grund som predictive_self_model (live tick-quality scores
+    # med decimal-precision der ændrer sig per heartbeat). Bevares som
+    # vitalt indre liv men placeres sidst så cachen ikke brydes.
+    # 2026-06-09: predictive_self_model_section flyttet til tail-anchored
+    # (efter time_pin) fordi den indeholder live tick-quality scores der
+    # opdateres hver heartbeat — ÉT decimal-skifte (65.6 → 65.5) brød
+    # 13% af DeepSeek prefix-cache. Live-investigationen viste at det
+    # var den primære cache-breaker. Bevar sektionen som "vital indre
+    # liv" — bare flyt til prompt-end så cachen ikke ødelægges.
+    # Implementeret nedenfor ved siden af time_pin.
     try:
         from core.services.priors_feedback import priors_feedback_section
         _awareness_add(55, "priors from your own data", priors_feedback_section())
@@ -1697,6 +1695,38 @@ def build_visible_chat_prompt_assembly(
     if _wakeup_digest_text:
         parts.append(_wakeup_digest_text)
         derived_inputs.append("eventbus wake-up digest (tail-anchored)")
+
+    # 2026-06-09: Vital-indre-liv block — tre sektioner med live
+    # decimal-tal der ændrer sig per heartbeat (Tick-kvalitet 65.6→65.5,
+    # Vækstpuls 0.39→0.19, decision adherence etc.). Når de stod i
+    # awareness-blokken brød de DeepSeek prefix-cachen ~87% ind i
+    # prompten — kostede 90%+ af cachen pr. tur (8% hit rate observeret).
+    # Tail-anchored bevarer dem synligt for modellen ("vitalt indre liv")
+    # uden at sabotere cache for de stable sections før dem.
+    try:
+        from core.services.self_model_predictive import predictive_self_model_section
+        _empirical_self = predictive_self_model_section()
+        if _empirical_self:
+            parts.append(_empirical_self)
+            derived_inputs.append("predictive self-model empirical (tail-anchored)")
+    except Exception:
+        pass
+    try:
+        from core.services.agent_self_evaluation import self_evaluation_section
+        _self_eval = self_evaluation_section()
+        if _self_eval:
+            parts.append(_self_eval)
+            derived_inputs.append("self-evaluation summary (tail-anchored)")
+    except Exception:
+        pass
+    try:
+        from core.services.development_sense import development_sense_section
+        _dev_sense = development_sense_section()
+        if _dev_sense:
+            parts.append(_dev_sense)
+            derived_inputs.append("developmental sense (tail-anchored)")
+    except Exception:
+        pass
 
     # Time Pin — appended LAST so it sits immediately above the user
     # message in the constructed prompt. Keeps the prefix above it stable

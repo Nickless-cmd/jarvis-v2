@@ -184,6 +184,20 @@ def _exec_skill_invoke(args: dict[str, Any]) -> dict[str, Any]:
         event_bus.publish("cognitive_state.skill_invoked", {"name": name})
     except Exception:
         pass
+
+    # Record usage for C4 auto-learning (2026-06-09 — Claude flagged missing call site)
+    try:
+        skill_engine.record_skill_usage(
+            name,
+            source="skill_invoke",
+            success=True,
+            query="",
+            context_tags="",
+            score=1.0,
+        )
+    except Exception as exc:
+        logger.warning("skill_invoke: record_skill_usage failed for %s: %s", name, exc)
+
     return {
         "status": "ok",
         "skill": result,

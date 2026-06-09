@@ -150,7 +150,21 @@ def _exec_skill_chain(args: dict[str, Any]) -> dict[str, Any]:
     # 7. Build combined instructions
     instructions = _build_combined_instructions(normalized_plan)
 
-    # 8. Publish event (metadata only — no rationale text)
+    # 8. Record usage for each skill in chain (C4 auto-learning)
+    for skill_name in normalized_plan:
+        try:
+            skill_engine.record_skill_usage(
+                skill_name,
+                source="skill_chain",
+                success=True,
+                query="",
+                context_tags="",
+                score=1.0,
+            )
+        except Exception as exc:
+            logger.warning("skill_chain: record_skill_usage failed for %s: %s", skill_name, exc)
+
+    # 9. Publish event (metadata only — no rationale text)
     _publish_chain_event(
         plan=normalized_plan,
         instructions_length=len(instructions),
@@ -158,7 +172,7 @@ def _exec_skill_chain(args: dict[str, Any]) -> dict[str, Any]:
         status="ok",
     )
 
-    # 9. Return success
+    # 10. Return success
     return {
         "status": "ok",
         "chain": normalized_plan,

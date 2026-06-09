@@ -382,6 +382,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": True,
         "description": "D1: daily selective consolidation — archives bottom (100-K)% af dagens sensory/brain/private records; kun top-K% når long-term",
     },
+    "cost_optimization": {
+        "module": "core.services.cost_optimization_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 60,
+        "default_enabled": True,
+        "description": "D5: cost optimization — monitors daily/weekly LLM spend against budget, emits alerts at 80%+ utilization",
+    },
 }
 
 

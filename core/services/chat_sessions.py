@@ -322,6 +322,67 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
     ]
 
 
+def chat_session_messages_since_last_compact(
+    session_id: str,
+    *,
+    max_total: int = 4000,
+) -> list[dict[str, str]]:
+    """Hent ALT efter seneste compact_marker (eller hele session hvis ingen).
+
+    2026-06-09 (cache-fix): den anden variant
+    `recent_chat_session_messages_by_user_turns` har sliding-window adfærd
+    der bryder DeepSeek prefix-cache hver tur (ældste turn dropped + nyeste
+    appended → 0% transcript-cache). Den her er growing-window: prefix er
+    stabilt mellem turns, kun nye beskeder ændrer det. Når compact rammer
+    (200K tokens default), opdateres compact_marker og dette starter forfra
+    med kortere historie.
+
+    Net effekt: cache hit rate på transcript-delen forventes >80% mellem
+    compactions, vs ~0% med sliding-window.
+    """
+    normalized = (session_id or "").strip()
+    if not normalized:
+        return []
+    with connect() as conn:
+        # Find seneste compact_marker id (hvis nogen)
+        marker_row = conn.execute(
+            "SELECT id FROM chat_messages WHERE session_id = ? "
+            "AND role = 'compact_marker' ORDER BY id DESC LIMIT 1",
+            (normalized,),
+        ).fetchone()
+        if marker_row is not None:
+            since_id = int(marker_row["id"])
+            rows = conn.execute(
+                """
+                SELECT role, content, created_at, user_id, reasoning_content
+                FROM chat_messages
+                WHERE session_id = ? AND role != 'compact_marker' AND id > ?
+                ORDER BY id ASC LIMIT ?
+                """,
+                (normalized, since_id, max_total),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT role, content, created_at, user_id, reasoning_content
+                FROM chat_messages
+                WHERE session_id = ? AND role != 'compact_marker'
+                ORDER BY id ASC LIMIT ?
+                """,
+                (normalized, max_total),
+            ).fetchall()
+    return [
+        {
+            "role": str(row["role"]),
+            "content": str(row["content"]),
+            "created_at": str(row["created_at"]),
+            "user_id": str(row["user_id"] or ""),
+            "reasoning_content": str(row["reasoning_content"] or ""),
+        }
+        for row in rows
+    ]
+
+
 def recent_chat_session_messages_by_user_turns(
     session_id: str,
     *,

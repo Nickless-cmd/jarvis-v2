@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from core.services.chat_sessions import (
+    chat_session_messages_since_last_compact,
     recent_chat_session_messages,
     recent_chat_session_messages_by_user_turns,
     recent_chat_tool_messages,
@@ -3724,10 +3725,13 @@ def _recent_transcript_section(
     """Legacy flat-text fallback — used only when structured messages are not viable."""
     if not session_id or not include:
         return None
-    # 2026-06-09: same user-turn anchor som structured-variant.
-    history = recent_chat_session_messages_by_user_turns(
-        session_id, user_turns=max(limit, 1), max_total=4000,
-    )
+    # 2026-06-09: growing-window (cache-fix). Se kommentar i
+    # _build_structured_transcript_messages.
+    history = chat_session_messages_since_last_compact(session_id, max_total=4000)
+    if not history:
+        history = recent_chat_session_messages_by_user_turns(
+            session_id, user_turns=max(limit, 1), max_total=4000,
+        )
     if not history:
         return None
     lines = [
@@ -3794,20 +3798,26 @@ def _build_structured_transcript_messages(
     """
     if not session_id or not include:
         return []
-    # 2026-06-09: Switched from flat row-limit to user-turn-anchored fetch.
-    # Old behavior: recent_chat_session_messages(limit=60) tællte alle roller —
-    # i tool-tunge agentic sessions blev 90% af slots brugt på tool-rows og kun
-    # ~6 ægte user/assistant turns nåede ud i prompt'en. Det er rod-årsagen
-    # til "Jarvis husker kun 5-6 beskeder afbag." Ved at anchor på user-turns
-    # garanterer vi N reelle samtale-runder.
+    # 2026-06-09 (cache-fix revision): switched to growing-window since-compact.
     #
-    # `limit` parameter genfortolket: nu = user-turns at bevare. Vi sigter
-    # højere (50/60 → samme tal som user-turns) fordi visible lane kører
-    # deepseek-v4-flash med 1M context (num_ctx=256k) — vi har masser af
-    # headroom selv ved 60 user-turns × ~10 followup-rows = ~600 rows.
-    history = recent_chat_session_messages_by_user_turns(
-        session_id, user_turns=max(limit, 1), max_total=4000,
-    )
+    # The user-turn-anchored fetch (committed earlier in the day) garanterer
+    # at "60 user-turns" betyder 60 reelle samtale-runder, ikke 60 tool-rows.
+    # MEN den er en *sliding* window — hver ny besked drop'er den ældste, så
+    # transcript-prefix er ALDRIG identisk turn-til-turn. Det dræbte DeepSeek
+    # prompt-cache (live hit rate 3-5% observeret) fordi ~90% af input-tokens
+    # er transcript.
+    #
+    # Growing-window er den korrekte tradeoff: transcript vokser indtil
+    # compact-marker rammer (200K-tærskel), og imellem er prefix stabilt så
+    # cachen rammer ~80%+. Compact-systemet håndterer trimming.
+    #
+    # Fallback til paired-fetch kun hvis growing returnerer ingenting
+    # (defensive).
+    history = chat_session_messages_since_last_compact(session_id, max_total=4000)
+    if not history:
+        history = recent_chat_session_messages_by_user_turns(
+            session_id, user_turns=max(limit, 1), max_total=4000,
+        )
     if not history:
         return []
 

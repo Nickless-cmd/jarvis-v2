@@ -102,6 +102,53 @@ def test_paired_empty_session(isolated_runtime) -> None:
     assert recent_chat_session_messages_by_user_turns("nonexistent", user_turns=10) == []
 
 
+def test_since_last_compact_returns_all_when_no_marker(isolated_runtime) -> None:
+    """Uden compact_marker → hele session (op til safety cap)."""
+    from core.services.chat_sessions import (
+        append_chat_message,
+        chat_session_messages_since_last_compact,
+        create_chat_session,
+    )
+    sess = create_chat_session(title="grow-test")
+    sid = str(sess.get("session_id") or sess.get("id"))
+    for i in range(5):
+        append_chat_message(session_id=sid, role="user", content=f"u{i}")
+        append_chat_message(session_id=sid, role="assistant", content=f"a{i}")
+    msgs = chat_session_messages_since_last_compact(sid)
+    contents = [m["content"] for m in msgs]
+    assert contents == ["u0", "a0", "u1", "a1", "u2", "a2", "u3", "a3", "u4", "a4"]
+
+
+def test_since_last_compact_returns_only_after_marker(isolated_runtime) -> None:
+    """Med compact_marker → kun beskeder efter marker."""
+    from core.services.chat_sessions import (
+        append_chat_message,
+        chat_session_messages_since_last_compact,
+        create_chat_session,
+    )
+    sess = create_chat_session(title="grow-test")
+    sid = str(sess.get("session_id") or sess.get("id"))
+    for i in range(3):
+        append_chat_message(session_id=sid, role="user", content=f"old-u{i}")
+        append_chat_message(session_id=sid, role="assistant", content=f"old-a{i}")
+    append_chat_message(session_id=sid, role="compact_marker", content="[compact]")
+    for i in range(3):
+        append_chat_message(session_id=sid, role="user", content=f"new-u{i}")
+        append_chat_message(session_id=sid, role="assistant", content=f"new-a{i}")
+
+    msgs = chat_session_messages_since_last_compact(sid)
+    contents = [m["content"] for m in msgs]
+    assert all("old-" not in c for c in contents)
+    assert "[compact]" not in contents
+    assert contents == ["new-u0", "new-a0", "new-u1", "new-a1", "new-u2", "new-a2"]
+
+
+def test_since_last_compact_empty_session(isolated_runtime) -> None:
+    """Ingen beskeder → tom liste."""
+    from core.services.chat_sessions import chat_session_messages_since_last_compact
+    assert chat_session_messages_since_last_compact("nonexistent") == []
+
+
 def test_paired_demonstrates_old_bug_avoided(isolated_runtime) -> None:
     """Den oprindelige bug: row-limit=60 i en session med 10 tool/svar
     gav kun ~6 user-turns. Den nye paired-variant garanterer 30 user-turns

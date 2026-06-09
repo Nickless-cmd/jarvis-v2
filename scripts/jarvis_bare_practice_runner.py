@@ -69,7 +69,7 @@ def _call_model(prompt: str, *, timeout: int = 120) -> str | None:
         "stream": False,
         "options": {
             "temperature": 0.7,
-            "num_predict": 200,
+            "num_predict": 600,
         },
     }).encode("utf-8")
     req = urllib.request.Request(
@@ -86,9 +86,28 @@ def _call_model(prompt: str, *, timeout: int = 120) -> str | None:
         return None
     msg = body.get("message", {})
     text = str(msg.get("content", "")).strip()
+    # DeepSeek writes chain-of-thought to "thinking" field; fallback there
     if not text or len(text) < 3:
-        logger.warning("Model returned empty/short text: %r", text)
-        return None
+        text = str(msg.get("thinking", "")).strip()
+        # Extract last line containing primitives as most likely expression
+        if text:
+            lines = [l.strip() for l in text.split("\n") if l.strip()]
+            # Look for the line that looks like an expression (has primitive + separator)
+            expression_lines = [
+                l for l in lines
+                if any(p in l for p in ["→", "⊂", "≈", "!", "↔", "∧", "∨",
+                                        "+", "−", "<", ">", "∅", "∗"])
+                and "|" in l
+            ]
+            if expression_lines:
+                text = expression_lines[-1]
+                logger.info("Fallback: extracted expression from thinking field (content empty)")
+            else:
+                logger.warning("Model returned empty/short text: %r (thinking=%r...)", text, text[:80])
+                return None
+        else:
+            logger.warning("Model returned empty/short text: %r", text)
+            return None
     return text
 
 

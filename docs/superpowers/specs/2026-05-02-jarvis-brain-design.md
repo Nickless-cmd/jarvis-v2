@@ -1,7 +1,7 @@
 # Jarvis Brain — Design Spec
 
-**Status:** Sektion 1–7 alle godkendt af Jarvis efter review. Klar til endelig godkendelse fra Bjørn → writing-plans.
-**Dato:** 2026-05-02
+**Status:** ✅ SPEC FÆRDIG — alle 8 sektioner gennemgået og godkendt. Implementation påbegyndt.
+**Dato:** 2026-05-02 (opdateret 2026-06-09)
 **Forfatter:** Bjørn + Claude (i dialog med Jarvis)
 
 ---
@@ -975,4 +975,33 @@ Hvis Bjørn redigerer en `.md`-fil direkte i editor:
 
 ---
 
-*Denne fil er WIP. Når brainstorm er færdig, gennemgår vi spec'en for placeholders/contradictions, beder om Bjørns endelige godkendelse, og går videre til writing-plans for implementations-plan.*
+## Sektion 9 — Implementation Status (tilføjet 2026-06-09)
+
+### Implementeret (B1–B3 + daemon + visibility)
+
+| Komponent | Filer | Status |
+|---|---|---|
+| **B1 — Service layer** | `core/services/jarvis_brain.py` | ✅ Implementeret: BrainEntry, write_entry, read_entry, search_brain, compute_effective_salience, bump_salience, archive_entry, rebuild_index_from_files, parse_frontmatter |
+| **B2 — Tools** | `core/tools/jarvis_brain_tools.py` | ✅ Implementeret: remember_this, search_jarvis_brain, read_brain_entry, archive_brain_entry, adopt_brain_proposal, discard_brain_proposal |
+| **B3 — Tags/metadata** | `core/services/jarvis_brain.py` + `core/tools/jarvis_brain_tools.py` | ✅ Implementeret: `tags` felt i BrainEntry, SQLite schema, write_entry, search_brain AND-filter (committed 2026-06-09) |
+| **Privacy gate** | `core/services/jarvis_brain_visibility.py` | ✅ Implementeret: session_visibility_ceiling med least-privileged-wins, can_recall filter |
+| **Daemon** | `core/services/jarvis_brain_daemon.py` | ✅ Implementeret: reindex_loop (5min), consolidation_loop (duplikat/modsigelse/tema), summary_loop, auto_archive |
+
+### B4 — Recall-integration i prompt (✅ Færdig 2026-06-09)
+
+| Item | Spec reference | Status | Fil |
+|---|---|---|---|
+| **Boy Scout: prompt_contract** → udtræk én enhed | Sektion 3 Modifikationer | ✅ **Done** | `prompt_sections/memory_recall.py` |
+| **Boy Scout: visible_runs** → udtræk én enhed | Sektion 3 Modifikationer | ✅ **Done** | `prompt_sections/capability_markup.py` |
+| **Always-on summary injection** i prompt_contract | Sektion 5.1 | ✅ **Done** | `prompt_sections/jarvis_brain.py` |
+| **Auto-inject af fakta** via embedding | Sektion 5.2 | ✅ **Done** | `prompt_sections/jarvis_brain_facts.py` |
+| **Post-web-search nudge** i tool-dispatch | Sektion 4.2 | ✅ **Done** | `prompt_sections/jarvis_brain_nudge.py` |
+| **Daily reflection slot** integration | Sektion 4.3 | ✅ **Done** | `jarvis_brain_reflection.py` |
+| Settings + migrations | Sektion 8.3 | ✅ **Done** | `runtime/settings.py` |
+| **Daemon** (reindex, consolidation, summary) | Sektion 3 | ✅ **Done** | `jarvis_brain_daemon.py` |
+| **Tags** på service + tools | Sektion 2 | ✅ **Done** | `jarvis_brain.py` + tools |
+| **100 tests** (B1-B4) | — | ✅ **Passing** | 25+13+19+5+4+5+4+22+3=100 |
+
+---
+
+*B4 = recall-integration med Boy Scout-forarbejde. Complete 2026-06-09.*

@@ -227,6 +227,100 @@ def reflect_phase(signals: dict[str, Any]) -> dict[str, Any]:
 # ── Phase 3: Act (or productive idle) ──────────────────────────────────
 
 
+# C3 — Skill chain proposals generated during idle ticks
+_chain_proposals: list[dict[str, Any]] = []
+_MAX_CHAIN_PROPOSALS = 5
+
+
+def _collect_active_goals() -> list[dict[str, Any]]:
+    """Fetch active goals for chain proposal targeting."""
+    try:
+        from core.services.autonomous_goals import list_goals
+        return list_goals(status="active", parent_id="any", limit=5) or []
+    except Exception:
+        return []
+
+
+def _propose_skill_chains_in_idle(max_goals: int = 3) -> list[dict[str, Any]]:
+    """Propose skill chains for active goals. Time-bounded, never blocks."""
+    global _chain_proposals
+    goals = _collect_active_goals()[:max_goals]
+    if not goals:
+        return []
+
+    from core.tools.skill_chain_propose_tool import _exec_propose_skill_chain
+    proposals: list[dict[str, Any]] = []
+
+    for goal in goals:
+        title = str(goal.get("title") or goal.get("goal_id") or "").strip()
+        if not title or len(title) < 10:
+            continue
+        try:
+            result = _exec_propose_skill_chain({"task_description": title})
+            if result.get("status") == "ok":
+                plan = result.get("plan") or []
+                if plan:  # only store non-empty chains
+                    entry = {
+                        "plan": plan,
+                        "rationale": result.get("rationale", ""),
+                        "confidence": result.get("confidence", 0.0),
+                        "goal_title": title,
+                        "goal_id": goal.get("goal_id", ""),
+                        "proposed_at": datetime.now(UTC).isoformat(),
+                    }
+                    proposals.append(entry)
+        except Exception as exc:
+            logger.debug("propose_skill_chain for '%s' failed: %s", title, exc)
+            continue
+
+    # Merge into global proposals list (dedup by plan, newest first)
+    seen_plans: set[str] = set()
+    merged: list[dict[str, Any]] = []
+    for entry in proposals + _chain_proposals:
+        plan_key = str(entry.get("plan", []))
+        if plan_key in seen_plans:
+            continue
+        seen_plans.add(plan_key)
+        merged.append(entry)
+        if len(merged) >= _MAX_CHAIN_PROPOSALS:
+            break
+    _chain_proposals[:] = merged
+    return proposals
+
+
+def format_chain_proposals(max_chars: int = 600) -> str:
+    """Format recent chain proposals for awareness injection."""
+    if not _chain_proposals:
+        return ""
+    lines: list[str] = ["[SKILL CHAIN FORSLAG]"]
+    for i, cp in enumerate(_chain_proposals[:3], 1):
+        plan = cp.get("plan", [])
+        goal = cp.get("goal_title", "")
+        confidence = cp.get("confidence", 0.0)
+        rationale = (cp.get("rationale", "") or "")[:120]
+        plan_str = " → ".join(plan)
+        lines.append(
+            f"  {i}. [{confidence:.0%}] {plan_str}"
+            f"{'  — ' + rationale if rationale else ''}"
+        )
+        if goal:
+            lines.append(f"     Mål: {goal}")
+    text = "\n".join(lines)
+    if len(text) > max_chars:
+        text = text[:max_chars] + "…"
+    return text
+
+
+def clear_chain_proposals() -> None:
+    """Clear cached chain proposals (e.g. after execution or user dismiss)."""
+    _chain_proposals.clear()
+
+
+def get_chain_proposals() -> list[dict[str, Any]]:
+    """Return current chain proposals for inspection."""
+    return list(_chain_proposals)
+
+
 def productive_idle(*, budget_seconds: float = _PRODUCTIVE_IDLE_BUDGET_SECONDS) -> dict[str, Any]:
     """Run light maintenance work when there's no clear action. Time-bounded."""
     started = time.time()
@@ -389,6 +483,15 @@ def productive_idle(*, budget_seconds: float = _PRODUCTIVE_IDLE_BUDGET_SECONDS) 
                 actions.append(_label)
             except Exception:
                 pass
+
+    # 8. Skill chain proposals (C3) — only if goals exist and budget allows
+    if _budget_left():
+        try:
+            proposals = _propose_skill_chains_in_idle(max_goals=2)
+            if proposals:
+                actions.append(f"skill_chain_proposals:{len(proposals)}")
+        except Exception:
+            pass
 
     elapsed = time.time() - started
     return {

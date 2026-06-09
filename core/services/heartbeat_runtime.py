@@ -8379,7 +8379,7 @@ def _extract_openrouter_text(data: dict[str, Any]) -> str:
     if not choices:
         raise RuntimeError("Heartbeat OpenRouter execution returned no choices")
     message = choices[0].get("message") or {}
-    text = str(message.get("content") or "").strip()
+    text = str(message.get("content") or message.get("reasoning_content") or "").strip()
     if not text:
         raise RuntimeError("Heartbeat OpenRouter execution returned no content")
     return text

@@ -89,9 +89,8 @@ def execute_openai_compat_heartbeat_prompt(
     except Exception as exc:
         raise RuntimeError(str(exc) or type(exc).__name__) from exc
 
-    text = str(
-        (((data.get("choices") or [{}])[0]).get("message") or {}).get("content") or ""
-    ).strip()
+    message = ((data.get("choices") or [{}])[0]).get("message") or {}
+    text = str(message.get("content") or message.get("reasoning_content") or "").strip()
     if not text:
         raise RuntimeError(f"{provider} heartbeat execution returned no response")
 

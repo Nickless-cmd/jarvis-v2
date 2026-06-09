@@ -798,16 +798,34 @@ class OpenAICompatFollowupAdapter:
         ]
         tool_calls = _finalize_openai_tool_calls(tool_calls)
         _total_ms = int((_time.monotonic() - _t0) * 1000)
-        _log.warning(
-            "visible-latency provider=%s round=followup-%d prompt_chars=%d ttfb_ms=%s total_ms=%d text_chars=%d tool_calls=%d",
-            self.provider_id,
-            round_index,
-            _prompt_chars,
-            _ttfb_ms if _ttfb_ms is not None else -1,
-            _total_ms,
-            sum(len(p) for p in parts),
-            len(tool_calls),
-        )
+        text_chars = sum(len(p) for p in parts)
+        tool_call_count = len(tool_calls)
+        if text_chars == 0 and tool_call_count > 0:
+            # DeepSeek thinking-mode sender content i reasoning_content
+            # i stedet for content — så text_chars=0 er normalt når
+            # modellen producerer tool_calls. Nedgrader WARNING til INFO
+            # for at undgå log-støj.
+            _log.info(
+                "visible-latency provider=%s round=followup-%d prompt_chars=%d ttfb_ms=%s total_ms=%d text_chars=%d tool_calls=%d",
+                self.provider_id,
+                round_index,
+                _prompt_chars,
+                _ttfb_ms if _ttfb_ms is not None else -1,
+                _total_ms,
+                text_chars,
+                tool_call_count,
+            )
+        else:
+            _log.warning(
+                "visible-latency provider=%s round=followup-%d prompt_chars=%d ttfb_ms=%s total_ms=%d text_chars=%d tool_calls=%d",
+                self.provider_id,
+                round_index,
+                _prompt_chars,
+                _ttfb_ms if _ttfb_ms is not None else -1,
+                _total_ms,
+                text_chars,
+                tool_call_count,
+            )
         if tool_calls:
             yield FollowupToolCalls(tool_calls=tool_calls)
         yield FollowupDone(

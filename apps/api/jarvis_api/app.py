@@ -72,6 +72,10 @@ from core.services.session_inbox import (
     start_session_inbox,
     stop_session_inbox,
 )
+from core.services.auto_remember_subscriber import (
+    start_auto_remember_subscriber,
+    stop_auto_remember_subscriber,
+)
 from core.services.discord_gateway import (
     start_discord_gateway,
     stop_discord_gateway,
@@ -160,6 +164,7 @@ def create_app() -> FastAPI:
             start_theory_of_mind_tracker()
             start_spatial_entity_ledger()
             start_session_inbox()
+            start_auto_remember_subscriber()
             start_discord_gateway()
             start_telegram_gateway()
             start_voice_daemon()
@@ -331,6 +336,10 @@ def create_app() -> FastAPI:
             stop_scheduled_tasks_service()
             stop_discord_gateway()
             stop_telegram_gateway()
+            try:
+                stop_auto_remember_subscriber()
+            except Exception:
+                pass
             stop_voice_daemon()
             try:
                 from core.services.process_watcher import stop_watcher_daemon

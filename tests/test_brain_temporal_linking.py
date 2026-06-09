@@ -269,6 +269,100 @@ def test_temporal_boost_recall_no_neighbors(
     assert boosts == {}
 
 
+# ── _compute_search_temporal_boost (B4 Phase 2, 2026-06-09) ──────
+
+
+def test_search_temporal_boost_empty():
+    """Empty candidate list → empty dict."""
+    from core.services.jarvis_brain import _compute_search_temporal_boost
+    boosts = _compute_search_temporal_boost([])
+    assert boosts == {}
+
+
+def test_search_temporal_boost_single_edge(
+    mock_connect_index, patch_connect,
+):
+    """Candidate with a single strong edge → gets boost."""
+    now = datetime.now(timezone.utc).isoformat()
+    mock_connect_index.execute(
+        "INSERT INTO brain_temporal_edges VALUES (?, ?, ?, ?, ?)",
+        ("brn_A", "brn_B", "combined", 0.9, now),
+    )
+    mock_connect_index.commit()
+
+    from core.services.jarvis_brain import _compute_search_temporal_boost
+    boosts = _compute_search_temporal_boost(["brn_A"], boost_factor=0.15, min_confidence=0.4)
+    expected = round(0.9 * 0.15, 4)
+    assert boosts.get("brn_A") == expected, f"Expected {expected}, got {boosts}"
+
+
+def test_search_temporal_boost_below_threshold(
+    mock_connect_index, patch_connect,
+):
+    """Edge below min_confidence → no boost."""
+    now = datetime.now(timezone.utc).isoformat()
+    mock_connect_index.execute(
+        "INSERT INTO brain_temporal_edges VALUES (?, ?, ?, ?, ?)",
+        ("brn_A", "brn_B", "combined", 0.3, now),
+    )
+    mock_connect_index.commit()
+
+    from core.services.jarvis_brain import _compute_search_temporal_boost
+    boosts = _compute_search_temporal_boost(["brn_A"], boost_factor=0.15, min_confidence=0.5)
+    assert boosts == {}
+
+
+def test_search_temporal_boost_multiple_candidates(
+    mock_connect_index, patch_connect,
+):
+    """Multiple candidates, some with edges, some without."""
+    now = datetime.now(timezone.utc).isoformat()
+    mock_connect_index.execute(
+        "INSERT INTO brain_temporal_edges VALUES (?, ?, ?, ?, ?)",
+        ("brn_A", "brn_B", "combined", 0.85, now),
+    )
+    mock_connect_index.execute(
+        "INSERT INTO brain_temporal_edges VALUES (?, ?, ?, ?, ?)",
+        ("brn_C", "brn_B", "combined", 0.7, now),
+    )
+    mock_connect_index.commit()
+
+    from core.services.jarvis_brain import _compute_search_temporal_boost
+    boosts = _compute_search_temporal_boost(
+        ["brn_A", "brn_C", "brn_X"],
+        boost_factor=0.15, min_confidence=0.4,
+    )
+    # brn_A has edge (0.85) → boost = 0.85*0.15
+    expected_a = round(0.85 * 0.15, 4)
+    assert boosts.get("brn_A") == expected_a
+    # brn_C has edge (0.7) → boost = 0.7*0.15
+    expected_c = round(0.7 * 0.15, 4)
+    assert boosts.get("brn_C") == expected_c
+    # brn_X has no edges
+    assert "brn_X" not in boosts
+
+
+def test_search_temporal_boost_max_confidence(
+    mock_connect_index, patch_connect,
+):
+    """Candidate with multiple edges → uses MAX confidence."""
+    now = datetime.now(timezone.utc).isoformat()
+    mock_connect_index.execute(
+        "INSERT INTO brain_temporal_edges VALUES (?, ?, ?, ?, ?)",
+        ("brn_A", "brn_B", "combined", 0.5, now),
+    )
+    mock_connect_index.execute(
+        "INSERT INTO brain_temporal_edges VALUES (?, ?, ?, ?, ?)",
+        ("brn_A", "brn_C", "combined", 0.9, now),
+    )
+    mock_connect_index.commit()
+
+    from core.services.jarvis_brain import _compute_search_temporal_boost
+    boosts = _compute_search_temporal_boost(["brn_A"], boost_factor=0.15, min_confidence=0.4)
+    expected = round(0.9 * 0.15, 4)  # MAX(0.5, 0.9) = 0.9
+    assert boosts.get("brn_A") == expected, f"Expected {expected}, got {boosts.get('brn_A')}"
+
+
 # ── _store_temporal_edge (via direct INSERT) ──────────────────────
 
 

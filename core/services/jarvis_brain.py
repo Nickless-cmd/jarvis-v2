@@ -578,11 +578,14 @@ def search_brain(
     tags: list[str] | None = None,
     include_archived: bool = False,
     now: datetime | None = None,
+    use_temporal_boost: bool = True,
 ) -> list[BrainEntry]:
-    """Hybrid embedding search: 0.7*cosine + 0.3*effective_salience.
+    """Hybrid embedding search: 0.7*cosine + 0.3*effective_salience + temporal boost.
 
-    visibility_ceiling filtrerer ud poster med højere visibility-niveau.
-    tags: hvis angivet, returnér kun entries der har ALLE de angivne tags (AND-match).
+    Visibility_ceiling filtrerer ud poster med højere visibility-niveau.
+    Tags: hvis angivet, returnér kun entries der har ALLE de angivne tags (AND-match).
+    Temporal boost (B4 Phase 2, 2026-06-09): entries with strong temporal edges
+    to other entries get a lift of up to +0.15 on their final score.
     """
     now = now or datetime.now(timezone.utc)
     qv = _embed_text(query_text)
@@ -609,6 +612,7 @@ def search_brain(
     finally:
         conn.close()
 
+    candidate_ids: list[str] = []
     scored: list[tuple[float, str]] = []
     for row in rows:
         entry_id, kind, vis, sal_base, bumps, last_used, emb_blob, emb_dim, created_at = row[:9]
@@ -639,10 +643,60 @@ def search_brain(
 
         score = 0.7 * cos + 0.3 * eff
         scored.append((score, entry_id))
+        candidate_ids.append(entry_id)
+
+    # B4 Phase 2 — temporal boost: entries with strong edges get a lift
+    if use_temporal_boost and candidate_ids:
+        temporal_boosts = _compute_search_temporal_boost(candidate_ids)
+        scored = [
+            (s + temporal_boosts.get(eid, 0.0), eid)
+            for s, eid in scored
+        ]
 
     scored.sort(reverse=True)
     top = scored[:limit]
     return [read_entry(eid) for _, eid in top]
+
+
+def _compute_search_temporal_boost(
+    candidate_ids: list[str],
+    *,
+    boost_factor: float = 0.15,
+    min_confidence: float = 0.5,
+) -> dict[str, float]:
+    """Compute temporal boost for search candidates.
+
+    For each candidate, looks up its combined temporal edges and returns
+    a boost value: boost_factor × max(confidence) for edges ≥ min_confidence.
+    Candidates with no qualifying edges get 0.0 boost.
+    """
+    if not candidate_ids:
+        return {}
+    n = len(candidate_ids)
+    ph = ",".join("?" * n)
+    sql = (
+        f"SELECT entry_id, MAX(confidence) AS best_conf FROM ("
+        f"  SELECT from_id AS entry_id, confidence FROM brain_temporal_edges "
+        f"    WHERE from_id IN ({ph}) AND relation_type='combined' AND confidence >= ?"
+        f"  UNION ALL "
+        f"  SELECT to_id AS entry_id, confidence FROM brain_temporal_edges "
+        f"    WHERE to_id IN ({ph}) AND relation_type='combined' AND confidence >= ?"
+        f") GROUP BY entry_id"
+    )
+    params = (*candidate_ids, min_confidence, *candidate_ids, min_confidence)
+
+    conn = connect_index()
+    try:
+        rows = conn.execute(sql, params).fetchall()
+    finally:
+        conn.close()
+
+    boosts: dict[str, float] = {}
+    for entry_id, best_conf in rows:
+        boost = round(best_conf * boost_factor, 4)
+        if boost > 0.0:
+            boosts[entry_id] = boost
+    return boosts
 
 
 def bump_salience(entry_id: str, now: datetime | None = None) -> None:

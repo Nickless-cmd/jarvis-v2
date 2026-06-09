@@ -1029,7 +1029,13 @@ def infer_temporal_edges(
     now = now or datetime.now(timezone.utc)
     from core.services.multi_signal_retrieval import entity_overlap_score
 
-    new_entry = read_entry(new_entry_id)
+    # 2026-06-09 (Claude): if the new entry's markdown file is missing
+    # (stale brain_index row), abort silently rather than crash. The
+    # row will get cleaned up by the next consolidation pass.
+    try:
+        new_entry = read_entry(new_entry_id)
+    except (FileNotFoundError, OSError, KeyError):
+        return 0
     new_text = f"{new_entry.title}\n\n{new_entry.content}"
     new_created = new_entry.created_at
 

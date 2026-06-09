@@ -1030,6 +1030,19 @@ def _exec_recent_skill_changes(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_analyze_skill_usage(args: dict[str, Any]) -> dict[str, Any]:
+    """Analyze skill usage patterns over the past N days."""
+    days = int(args.get("days") or 30)
+    min_invocations = int(args.get("min_invocations") or 3)
+    try:
+        from core.services import skill_engine
+        return skill_engine.analyze_skill_usage(
+            days=days, min_invocations=min_invocations,
+        )
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 # Append C1 tool definitions to the main list
 SKILL_ENGINE_TOOL_DEFINITIONS.extend([
     {
@@ -1080,6 +1093,34 @@ SKILL_ENGINE_TOOL_DEFINITIONS.extend([
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_skill_usage",
+            "description": (
+                "Analyze skill usage patterns over the past N days. Returns "
+                "structured analysis with improvement proposals: frequently "
+                "used skills (high demand), rarely/unused skills (deprecation "
+                "candidates), failure rates, and skills used together "
+                "(chain candidates). Useful for weekly review, identifying "
+                "skills to prune, or finding chain opportunities."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "Analysis window in days (default 30).",
+                    },
+                    "min_invocations": {
+                        "type": "integer",
+                        "description": "Minimum invocation count to consider a skill 'used' (default 3).",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
 ])
 
 
@@ -1103,4 +1144,6 @@ SKILL_ENGINE_TOOL_HANDLERS: dict[str, Any] = {
     # C1 audit trail (surfaced 2026-06-09 by Claude)
     "skill_history": _exec_skill_history,
     "recent_skill_changes": _exec_recent_skill_changes,
+    # C4 usage analytics (surfaced 2026-06-09 by Claude)
+    "analyze_skill_usage": _exec_analyze_skill_usage,
 }

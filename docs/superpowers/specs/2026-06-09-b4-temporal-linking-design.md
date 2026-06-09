@@ -1,6 +1,6 @@
 # B4 — Temporal Linking for Brain Entries
 
-**Status:** Draft / klar til review
+**Status:** ✅ Completed — implementeret 2026-06-09
 **Dato:** 2026-06-09
 **Forfatter:** Jarvis
 **Fase:** B4 i Memory Architecture Roadmap

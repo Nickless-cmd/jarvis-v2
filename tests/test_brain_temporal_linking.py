@@ -446,3 +446,162 @@ def test_write_entry_skip_temporal():
             now=datetime(2026, 6, 9, tzinfo=timezone.utc),
         )
         mock_infer.assert_not_called()
+
+
+# ── full_rebuild (B4 spec, 2026-06-09) ─────────────────────────────
+
+
+def _build_full_rebuild_db(tmp_path):
+    """Build a file-based SQLite DB with both brain_index and brain_temporal_edges tables.
+
+    Uses a temp file so multiple connections can share the same database,
+    which full_rebuild() requires (it opens/closes connections).
+    """
+    import sqlite3
+    db_path = tmp_path / "test_brain.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute(
+        """CREATE TABLE brain_index (
+            id TEXT PRIMARY KEY,
+            path TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            visibility TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            title TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            last_used_at TEXT,
+            salience_base REAL NOT NULL DEFAULT 1.0,
+            salience_bumps INTEGER NOT NULL DEFAULT 0,
+            recall_count INTEGER NOT NULL DEFAULT 0,
+            importance REAL NOT NULL DEFAULT 0.5,
+            tags TEXT NOT NULL DEFAULT '[]',
+            status TEXT NOT NULL DEFAULT 'active',
+            superseded_by TEXT,
+            file_hash TEXT NOT NULL,
+            embedding BLOB,
+            embedding_dim INTEGER,
+            indexed_at TEXT NOT NULL
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE brain_temporal_edges (
+            from_id TEXT NOT NULL,
+            to_id TEXT NOT NULL,
+            relation_type TEXT NOT NULL,
+            confidence REAL NOT NULL DEFAULT 0.0,
+            inferred_at TEXT NOT NULL,
+            PRIMARY KEY (from_id, to_id, relation_type)
+        )"""
+    )
+    now = datetime.now(timezone.utc).isoformat()
+    # Seed 3 active entries with embedding placeholders
+    for i, eid in enumerate(["brn_A", "brn_B", "brn_C"]):
+        conn.execute(
+            """INSERT INTO brain_index
+               (id, path, kind, visibility, domain, title, created_at, updated_at,
+                last_used_at, salience_base, salience_bumps, recall_count, importance,
+                tags, status, superseded_by, file_hash, embedding, embedding_dim, indexed_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                eid, f"test/{eid}.md", "observation", "personal", "test",
+                f"Entry {i}", now, now, None,
+                0.5, 0, 0, 0.5, "[]", "active", None,
+                "hash", b"\x00" * 4, 1, now,
+            ),
+        )
+    conn.commit()
+    conn.close()
+    return db_path
+
+
+def _connect_factory(db_path):
+    """Return a connect_index replacement that opens a fresh connection to db_path."""
+    import sqlite3
+
+    def _connect():
+        return sqlite3.connect(str(db_path))
+    return _connect
+
+
+def test_full_rebuild_truncates_and_iterates(tmp_path):
+    """full_rebuild truncates existing edges and calls infer_temporal_edges per entry."""
+    db_path = _build_full_rebuild_db(tmp_path)
+    # Pre-seed a stale edge
+    conn = _connect_factory(db_path)()
+    now = datetime.now(timezone.utc).isoformat()
+    conn.execute(
+        "INSERT INTO brain_temporal_edges VALUES (?, ?, ?, ?, ?)",
+        ("brn_OLD", "brn_STALE", "combined", 0.1, now),
+    )
+    conn.commit()
+    conn.close()
+
+    with patch("core.services.jarvis_brain.connect_index",
+               side_effect=_connect_factory(db_path)):
+        with patch("core.services.jarvis_brain.infer_temporal_edges") as mock_infer:
+            mock_infer.return_value = 2
+            from core.services.jarvis_brain import full_rebuild
+
+            result = full_rebuild()
+
+            # Verify truncation: old edge should be gone
+            check_conn = _connect_factory(db_path)()
+            remaining = check_conn.execute(
+                "SELECT COUNT(*) FROM brain_temporal_edges"
+            ).fetchone()[0]
+            check_conn.close()
+            assert remaining == 0, "Expected truncated table before infer"
+
+            # Verify infer_temporal_edges called for each entry
+            assert mock_infer.call_count == 3
+            mock_infer.assert_any_call("brn_A")
+            mock_infer.assert_any_call("brn_B")
+            mock_infer.assert_any_call("brn_C")
+
+            # Verify result stats
+            assert result["total_entries"] == 3
+            assert result["edges_created"] == 6
+            assert result["errors"] == []
+
+
+def test_full_rebuild_idempotent(tmp_path):
+    """Kør full_rebuild to gange → samme edges oprettet (via mock)."""
+    db_path = _build_full_rebuild_db(tmp_path)
+
+    with patch("core.services.jarvis_brain.connect_index",
+               side_effect=_connect_factory(db_path)):
+        with patch("core.services.jarvis_brain.infer_temporal_edges") as mock_infer:
+            mock_infer.return_value = 2
+            from core.services.jarvis_brain import full_rebuild
+
+            # First rebuild
+            result1 = full_rebuild()
+            call_count_1 = mock_infer.call_count
+
+            # Second rebuild
+            result2 = full_rebuild()
+            call_count_2 = mock_infer.call_count
+
+            assert result1["edges_created"] == result2["edges_created"]
+            assert result1["total_entries"] == result2["total_entries"]
+            # Each rebuild calls infer per entry, so 2× the calls
+            assert call_count_2 == call_count_1 * 2
+
+
+def test_full_rebuild_empty_db(tmp_path):
+    """full_rebuild on empty DB returns zeroes."""
+    db_path = _build_full_rebuild_db(tmp_path)
+    # Remove all entries
+    conn = _connect_factory(db_path)()
+    conn.execute("DELETE FROM brain_index")
+    conn.commit()
+    conn.close()
+
+    with patch("core.services.jarvis_brain.connect_index",
+               side_effect=_connect_factory(db_path)):
+        from core.services.jarvis_brain import full_rebuild
+        result = full_rebuild()
+        assert result["total_entries"] == 0
+        assert result["edges_created"] == 0
+        assert result["errors"] == []

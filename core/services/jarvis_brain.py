@@ -1235,6 +1235,68 @@ def prune_stale_edges(
         conn.close()
 
 
+def full_rebuild(
+    *,
+    batch_size: int = 20,
+) -> dict:
+    """Genberegn alle temporale edges fra bunden.
+
+    Truncater ``brain_temporal_edges``, kører fuld inferens på tværs af alle
+    aktive entries (dem med embeddings), og returnerer statistik.
+
+    Bruges ved schema-migration, manuel repair, eller efter import af
+    eksisterende entries.
+
+    Idempotent: kørsel to gange producerer samme edges (samme confidence).
+    """
+    conn = connect_index()
+    try:
+        conn.execute("DELETE FROM brain_temporal_edges")
+        conn.commit()
+    finally:
+        conn.close()
+
+    # Hent alle aktive entries med embeddings, sorteret efter created_at
+    conn = connect_index()
+    try:
+        rows = conn.execute(
+            "SELECT id FROM brain_index "
+            "WHERE status = 'active' AND embedding IS NOT NULL "
+            "ORDER BY created_at ASC"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    total = len(rows)
+    if total == 0:
+        return {"total_entries": 0, "edges_created": 0, "errors": []}
+
+    edges_created = 0
+    errors: list[str] = []
+    processed = 0
+
+    for row in rows:
+        eid = row[0]
+        try:
+            n = infer_temporal_edges(eid)
+            edges_created += n
+        except Exception as exc:
+            errors.append(f"{eid}: {exc}")
+        processed += 1
+
+    _emit_jarvis_brain_event("temporal_full_rebuild", {
+        "total_entries": total,
+        "edges_created": edges_created,
+        "errors": len(errors),
+    })
+
+    return {
+        "total_entries": total,
+        "edges_created": edges_created,
+        "errors": errors,
+    }
+
+
 def build_jarvis_brain_surface() -> dict[str, object]:
     """Mission Control surface — read-only meta-projection.
 

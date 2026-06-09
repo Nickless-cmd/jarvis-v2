@@ -29,6 +29,27 @@ def _exec_record_sensory_memory(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": "content is required"}
     if not isinstance(metadata, dict):
         return {"status": "error", "error": "metadata must be an object"}
+
+    # Queue the write for async processing — returns immediately.
+    # The memory_write_queue daemon processes the write in background.
+    from core.services.memory_write_queue import enqueue_write
+    queue_id = enqueue_write(
+        "sensory",
+        {
+            "modality": modality,
+            "content": content,
+            "mood_tone": str(mood_tone).strip() if mood_tone else None,
+            "metadata": metadata,
+        },
+    )
+    if queue_id:
+        return {
+            "status": "ok",
+            "queued": True,
+            "queue_id": queue_id,
+            "text": f"Sensory memory ({modality}) queued for async write.",
+        }
+    # Fallback: direct write if queue is unavailable
     try:
         record = sensory_archive._record(
             modality,

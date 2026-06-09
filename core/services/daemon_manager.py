@@ -358,6 +358,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": True,
         "description": "Associativ hukommelse: dormant memories trigged by context — queries experiential + private brain + sensory DBs, scores candidates, maintains persistent active memories",
     },
+    "memory_write_queue": {
+        "module": "core.services.memory_write_queue",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 2,
+        "default_enabled": True,
+        "description": "B5: async write queue — processes deferred sensory/brain/sidecar writes every 120s for non-blocking memory writes",
+    },
 }
 
 

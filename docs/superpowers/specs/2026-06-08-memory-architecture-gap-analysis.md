@@ -71,14 +71,14 @@
 | B2 | **Entity linking boost** | `entity_boost_score()` / `entity_overlap_score()` i multi-signal pipeline | ✅ **Lukket** (via B1) |
 | B3 | **Metadata filtering** | `tags` felt på BrainEntry + `search_brain(tags=...)` + `visibility_ceiling` | ✅ **Lukket** |
 | B4 | **Temporal linking** | 4-signal inferens, edge-graf, chain-detektion, daemon, `full_rebuild()` — 79 tests | ✅ **Lukket** (2026-06-09) |
-| B5 | **Asynkrone writes** | Queue-baseret memory writes (non-blocking for brugeroplevelse) | ⏳ Åben (2 dage) |
+| B5 | **Asynkrone writes** | Queue-baseret memory writes (non-blocking for brugeroplevelse) | ✅ **Lukket** (SQLite-backed queue + daemon, sensory enqueued, memory sidecar enqueued) |
 
 ### 🟠 Fase C — Skills & Procedural Memory (Uge 26-27)
 
 | # | Hul | Løsning | Estimat |
 |---|-----|---------|---------|
 | C1 | **Skills versionering** | Audit trail af skill-ændringer (hvem, hvornår, diff) | 1 dag |
-| C2 | **Skills meta-tags** | `context:` tag på skills → metadata-filtering ved `skill_gate` | ⏳ **Lavthængende** (30 min) |
+| C2 | **Skills meta-tags** | `context:` tag på skills → metadata-filtering ved `skill_gate` | ✅ **Lukket** — alle 63 skills har tags. `skill_gate` understøtter `context` parameter, `_suggest_skills_for_query` filtrerer på `context_tags`. |
 | C3 | **Skill chain i heartbeat** | Integrér `skill_chain` i heartbeat-routing så komplekse workflows foreslås automatisk | 2 dage |
 | C4 | **Auto-learning** | Log skill usage → foreslå forbedringer baseret på mønstre | 3 dage |
 | C5 | **Read-only skills** | Delt reference-materiale som skills (kan ikke forgiftes) | 1 dag |
@@ -157,11 +157,11 @@ Uge 24 (denne uge):
 └── ⏳ A4: Stabiliser flash model
 
 Uge 25 (næste):
-├── ⏳ C2: Skills meta-tags (30 min win) ← TOP PRIORITY
+├── ✅ B5: Async writes (SQLite queue + daemon + sensory/brain/sidecar)
+├── ✅ C2: Skills meta-tags — alle 63 skills har tags, infrastructuren er på plads
 ├── ⏳ A3: Wakeup cleanup (15 min)
 ├── C1: Skills versionering
-├── C3: Skill chain i heartbeat
-└── B5: Async writes
+└── C3: Skill chain i heartbeat
 
 Uge 26:
 ├── C4: Auto-learning skills

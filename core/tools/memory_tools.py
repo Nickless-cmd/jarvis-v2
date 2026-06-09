@@ -114,22 +114,16 @@ def _exec_memory_upsert_section(args: dict[str, Any]) -> dict[str, Any]:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(new_text, encoding="utf-8")
 
-    # Capture the mood at write time. Fire-and-forget — never break the
-    # memory write if the sidecar fails. Future-Jarvis can read this back
-    # and see *how he felt* when he recorded the fact, not just the fact.
+    # Queue side effects (mood capture + graph ingestion) for async
+    # processing. The memory_write_queue daemon handles these in the
+    # background so the tool call returns immediately.
     try:
-        from core.services.memory_emotional_context import capture_mood_for_heading
-        capture_mood_for_heading(heading, source=f"memory_upsert_section:{action}")
-    except Exception:
-        pass
-
-    # Extract entity-relation triples from the new content so the graph
-    # layer grows with each MEMORY.md update. Best-effort, never blocking.
-    # MEMORY.md is the highest-signal write surface — curated facts about
-    # Bjørn, projects, decisions — exactly what graph memory is for.
-    try:
-        from core.services.memory_graph import ingest_text
-        ingest_text(content, evidence_label=f"memory.md::{heading[:80]}")
+        from core.services.memory_write_queue import enqueue_write
+        enqueue_write(
+            "memory_sidecar",
+            {"heading": heading, "action": action, "content": content},
+            priority=5,  # sidecar is higher priority than sensory/brain
+        )
     except Exception:
         pass
 

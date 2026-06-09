@@ -1039,7 +1039,8 @@ def infer_temporal_edges(
     conn = connect_index()
     try:
         candidates = conn.execute(
-            """SELECT id, created_at, embedding, embedding_dim, title, domain, related
+            """SELECT id, created_at, embedding, embedding_dim, title, domain,
+                      related, kind, visibility
                FROM brain_index
                WHERE id != ? AND status = 'active'
                  AND embedding IS NOT NULL""",
@@ -1050,7 +1051,8 @@ def infer_temporal_edges(
 
     edges_created = 0
 
-    for cand_id, cand_created_str, emb_blob, emb_dim, cand_title, cand_domain, cand_related_raw in candidates:
+    for (cand_id, cand_created_str, emb_blob, emb_dim, cand_title,
+         cand_domain, cand_related_raw, cand_kind, cand_visibility) in candidates:
         cand_created = _parse_iso(cand_created_str)
         if cand_created is None:
             continue
@@ -1080,8 +1082,13 @@ def infer_temporal_edges(
                 cand_related = json.loads(cand_related_raw) if isinstance(cand_related_raw, str) else (cand_related_raw or [])
             except (json.JSONDecodeError, TypeError):
                 cand_related = []
+        # 2026-06-09 (Claude): kind/visibility were hardcoded to ""
+        # which fails BrainEntry.__post_init__ validation. Pull the
+        # actual values from the SELECT — they're cheap.
         cand_entry = BrainEntry(
-            id=cand_id, kind="", visibility="", domain=cand_domain or "",
+            id=cand_id, kind=cand_kind or "indsigt",
+            visibility=cand_visibility or "personal",
+            domain=cand_domain or "",
             title=cand_title, content="",
             created_at=cand_created, updated_at=cand_created,
             last_used_at=None, salience_base=0.5, salience_bumps=0,

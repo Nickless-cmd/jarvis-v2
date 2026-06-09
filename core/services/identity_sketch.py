@@ -272,17 +272,68 @@ def _fallback_sketch(signals: dict[str, Any]) -> str:
     return " ".join(parts)
 
 
-def _is_stale(updated_at: str | None) -> bool:
-    """Check if sketch is older than 24 hours."""
+def _is_stale(updated_at: str | None, *, ttl_seconds: int = 21600) -> bool:
+    """Check if sketch is older than ttl_seconds (default 6 hours).
+
+    2026-06-09 (Claude): TTL was 24h, but module docstring promises
+    "periodic: every 6 hours via heartbeat". Lowered to 6h to match the
+    documented contract. Surface state stays the same — sketch is shown
+    as "stale" if older than 6h, "fresh" otherwise.
+    """
     if not updated_at:
         return True
     try:
         from datetime import datetime, timezone
         ts = datetime.fromisoformat(updated_at)
         age = (datetime.now(timezone.utc) - ts).total_seconds()
-        return age > 86400  # 24 hours
+        return age > ttl_seconds
     except Exception:
         return True
+
+
+def tick_identity_sketch_daemon() -> dict[str, Any]:
+    """Heartbeat daemon tick — refresh the sketch when stale (>6h).
+
+    Cheap path: read current sketch's updated_at, return no-op if fresh.
+    Refresh path: call update_identity_sketch(trigger="auto") to regenerate.
+
+    Returns:
+        {"action": "skipped" | "refreshed", "version": int, "age_seconds": int}
+    """
+    sketch = get_identity_sketch()
+    updated_at = sketch.get("updated_at") if sketch else None
+
+    from datetime import datetime, timezone
+    age_seconds = -1
+    if updated_at:
+        try:
+            ts = datetime.fromisoformat(updated_at)
+            age_seconds = int((datetime.now(timezone.utc) - ts).total_seconds())
+        except Exception:
+            pass
+
+    if not _is_stale(updated_at):
+        return {
+            "action": "skipped",
+            "version": int(sketch.get("version", 0) if sketch else 0),
+            "age_seconds": age_seconds,
+            "reason": "fresh",
+        }
+
+    try:
+        result = update_identity_sketch(trigger="auto")
+        return {
+            "action": "refreshed",
+            "version": int(result.get("version", 0)),
+            "age_seconds": age_seconds,
+        }
+    except Exception as exc:
+        logger.warning("tick_identity_sketch_daemon: update failed (%s)", exc)
+        return {
+            "action": "failed",
+            "error": str(exc),
+            "age_seconds": age_seconds,
+        }
 
 
 def _now_iso() -> str:

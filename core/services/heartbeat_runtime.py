@@ -3352,6 +3352,23 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Identity sketch (Memory Phase 2) — refresh every 6h.
+    # 2026-06-09 (Claude): Jarvis' module docstring promised "periodic:
+    # every 6 hours via heartbeat" but only the pre_compact + manual
+    # triggers were wired. tick_identity_sketch_daemon checks staleness
+    # internally and skips if fresh, so the cost of running every tick
+    # is one DB read.
+    if _dm.is_enabled("identity_sketch"):
+        try:
+            from core.services.identity_sketch import tick_identity_sketch_daemon
+            _is_result = _daemon_tick_with_deadline(
+                "identity_sketch", tick_identity_sketch_daemon,
+                deadline_seconds=30.0,
+            )
+            _dm.record_daemon_tick("identity_sketch", _is_result or {})
+        except Exception:
+            pass
+
     # --- Aesthetic motif accumulation ---
     try:
         from core.services.aesthetic_sense import accumulate_from_daemon

@@ -390,6 +390,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": True,
         "description": "D5: cost optimization — monitors daily/weekly LLM spend against budget, emits alerts at 80%+ utilization",
     },
+    "identity_sketch": {
+        "module": "core.services.identity_sketch",
+        "reset_var": None,
+        "reset_value": None,
+        "default_cadence_minutes": 360,
+        "default_enabled": True,
+        "description": "Memory Phase 2: refresh identity sketch every 6h (auto trigger). Skips if fresh; regenerates from live signals if stale.",
+    },
 }
 
 

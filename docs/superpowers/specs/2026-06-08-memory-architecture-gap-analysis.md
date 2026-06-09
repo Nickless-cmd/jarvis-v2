@@ -59,7 +59,7 @@
 |---|-----|---------|--------|
 | A1 | Cold tier deaktiveret | Genåbn med quality scoring | ✅ **Phase 1 committed** |
 | A2 | Identity tab ved compaction | Persistent identity sketch (pre-compaction hook) | ✅ **Phase 2 committed** |
-| A3 | Wakeup backlog støj | Ryd op i fired wakeups | ⏳ Åben (15 min effort) |
+| A3 | Wakeup backlog støj | Ryd op i fired wakeups | ✅ **Lukket** (daemon: wakeup_cleanup, 60 min cadence) |
 | A4 | Flash model 1-min vindue | Stabiliser køretid | ✅ **Lukket** (read=60 + max_tokens=4096) |
 
 ### 🟡 Fase B — Core Retrieval (Uge 25-26)
@@ -117,7 +117,7 @@
 ### 4.1 Hvad giver mest værdi for mindst arbejde (NU)
 
 1. **Skills meta-tags (C2)** — 30 min arbejde, markant forbedret `skill_gate` præcision.
-2. **Wakeup backlog cleanup (A3)** — 15 min, rydder støj fra awareness.
+2. ~~**Wakeup backlog cleanup (A3)** — 15 min, rydder støj fra awareness.~~ ✅ **Lukket**
 3. **Skills versionering (C1)** — 1 dags arbejde, giver audit trail for alle fremtidige ændringer.
 
 ### 4.2 Hvad kræver mere research
@@ -153,13 +153,13 @@ Uge 24 (denne uge):
 ├── ✅ B1: Multi-signal retrieval (BM25 + entity fusion)
 ├── ✅ B3: Metadata filtering (tags)
 ├── ✅ B4: Temporal linking (alle 4 faser + full_rebuild)
-├── ⏳ A3: Ryd wakeup backlog (15 min)
-└── ⏳ A4: Stabiliser flash model
+├── ✅ A3: Ryd wakeup backlog (15 min) — daemon kører hver 60 min
+└── ✅ A4: Stabiliser flash model
 
 Uge 25 (næste):
 ├── ✅ B5: Async writes (SQLite queue + daemon + sensory/brain/sidecar)
 ├── ✅ C2: Skills meta-tags — alle 63 skills har tags, infrastructuren er på plads
-├── ⏳ A3: Wakeup cleanup (15 min)
+├── ✅ A3: Wakeup cleanup (15 min) — daemon kører hver 60 min
 ├── C1: Skills versionering
 └── C3: Skill chain i heartbeat
 

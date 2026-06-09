@@ -922,16 +922,67 @@ def _compute_temporal_confidence(
     semantic: float,
     entity: float,
     is_chain: bool,
+    chain_score: float = 0.0,
 ) -> float:
     """Combine four signals into a single confidence score (0.0–1.0).
 
-    Formula: 0.4×temporal + 0.4×semantic + 0.2×entity, +0.15 boost if chain.
+    Formula: 0.4×temporal + 0.4×semantic + 0.2×entity, +0.15×chain_score.
     Cap at 0.98 max.
     """
     confidence = 0.4 * temporal + 0.4 * semantic + 0.2 * entity
-    if is_chain:
-        confidence += 0.15
+    chain_bonus = 0.15 * chain_score
+    confidence += chain_bonus
     return min(confidence, 0.98)
+
+
+def _compute_chain_score(
+    *,
+    new_entry: BrainEntry,
+    cand_entry: BrainEntry,
+    hours_apart: float,
+    cand_related: list[str],
+) -> float:
+    """Compute chain signal score (0.0–1.0) between two entries.
+
+    Three sub-signals fused with decreasing weight:
+    1. **Sequence** (0.5): Same domain + close in time (≤2h) → strong chain
+    2. **Topic thread** (0.3): Similar title stems (common prefix ≥4 chars) → moderate
+    3. **Reference overlap** (0.2): Shared entries in ``related`` fields → weak
+
+    Returns a score in [0.0, 1.0].
+    """
+    # --- 1. Sequence detection ---
+    seq_score = 0.0
+    if new_entry.domain == cand_entry.domain and hours_apart <= 2.0:
+        seq_score = 1.0 - (hours_apart / 2.0)  # linear decay 1→0 over 2h
+
+    # --- 2. Topic thread detection ---
+    topic_score = 0.0
+    new_title = new_entry.title.lower()
+    cand_title = cand_entry.title.lower()
+    # Find common prefix of non-empty words
+    new_words = new_title.split()
+    cand_words = cand_title.split()
+    common_prefix_len = 0
+    for a, b in zip(new_words, cand_words):
+        if a == b and len(a) >= 4:
+            common_prefix_len += len(a)
+        else:
+            break
+    if common_prefix_len >= 4 and common_prefix_len >= len(new_title.replace(" ", "")) * 0.3:
+        topic_score = min(1.0, common_prefix_len / 20.0)
+
+    # --- 3. Reference overlap ---
+    ref_score = 0.0
+    new_related = set(new_entry.related or [])
+    if cand_related:
+        shared = new_related & set(cand_related)
+        if shared and new_related:
+            ref_score = len(shared) / max(len(new_related), 1)
+
+    # Fuse with weights
+    chain_score = 0.5 * seq_score + 0.3 * topic_score + 0.2 * ref_score
+    return min(chain_score, 1.0)
 
 
 def infer_temporal_edges(
@@ -960,7 +1011,7 @@ def infer_temporal_edges(
     conn = connect_index()
     try:
         candidates = conn.execute(
-            """SELECT id, created_at, embedding, embedding_dim, title
+            """SELECT id, created_at, embedding, embedding_dim, title, domain, related
                FROM brain_index
                WHERE id != ? AND status = 'active'
                  AND embedding IS NOT NULL""",
@@ -971,7 +1022,7 @@ def infer_temporal_edges(
 
     edges_created = 0
 
-    for cand_id, cand_created_str, emb_blob, emb_dim, cand_title in candidates:
+    for cand_id, cand_created_str, emb_blob, emb_dim, cand_title, cand_domain, cand_related_raw in candidates:
         cand_created = _parse_iso(cand_created_str)
         if cand_created is None:
             continue
@@ -994,14 +1045,34 @@ def infer_temporal_edges(
             continue
         entity_score = entity_overlap_score(new_text, cand_text)
 
-        # --- 4. Chain signal ---
-        is_chain = hours_apart < 0.083  # 5 minutes
+        # --- 4. Chain signal (B4 Phase 4, 2026-06-09) ---
+        cand_related = []
+        if cand_related_raw:
+            try:
+                cand_related = json.loads(cand_related_raw) if isinstance(cand_related_raw, str) else (cand_related_raw or [])
+            except (json.JSONDecodeError, TypeError):
+                cand_related = []
+        cand_entry = BrainEntry(
+            id=cand_id, kind="", visibility="", domain=cand_domain or "",
+            title=cand_title, content="",
+            created_at=cand_created, updated_at=cand_created,
+            last_used_at=None, salience_base=0.5, salience_bumps=0,
+            importance=0.5, related=cand_related, tags=[],
+            trigger="spontaneous", status="active",
+        )
+        chain_score = _compute_chain_score(
+            new_entry=new_entry,
+            cand_entry=cand_entry,
+            hours_apart=hours_apart,
+            cand_related=cand_related,
+        )
 
         confidence = _compute_temporal_confidence(
             temporal=temporal_score,
             semantic=semantic_score,
             entity=entity_score,
-            is_chain=is_chain,
+            is_chain=chain_score >= 0.5,
+            chain_score=chain_score,
         )
 
         if confidence < 0.4:
@@ -1010,7 +1081,7 @@ def infer_temporal_edges(
         # Reasoning string for audit trail
         reasoning = (
             f"t={temporal_score:.2f}/s={semantic_score:.2f}/"
-            f"e={entity_score:.2f}/c={is_chain}"
+            f"e={entity_score:.2f}/c={chain_score:.2f}"
         )
 
         _store_temporal_edge(

@@ -144,11 +144,19 @@ def test_fuse_confidence_all_low():
 
 
 def test_fuse_confidence_chain_boost():
-    """Chain adds +0.15 boost, capped at 0.98."""
+    """Chain_score=1.0 adds +0.15 boost, capped at 0.98."""
     from core.services.jarvis_brain import _compute_temporal_confidence
-    conf = _compute_temporal_confidence(temporal=0.9, semantic=0.9, entity=0.9, is_chain=True)
-    # 0.4*0.9 + 0.4*0.9 + 0.2*0.9 = 0.9, +0.15 chain = 1.05, capped at 0.98
+    conf = _compute_temporal_confidence(temporal=0.9, semantic=0.9, entity=0.9, is_chain=True, chain_score=1.0)
+    # 0.4*0.9 + 0.4*0.9 + 0.2*0.9 = 0.9, +0.15*1.0 chain = 1.05, capped at 0.98
     assert conf == 0.98
+
+
+def test_fuse_confidence_partial_chain():
+    """chain_score=0.5 gives half boost."""
+    from core.services.jarvis_brain import _compute_temporal_confidence
+    conf = _compute_temporal_confidence(temporal=0.5, semantic=0.5, entity=0.5, is_chain=True, chain_score=0.5)
+    # 0.4*0.5 + 0.4*0.5 + 0.2*0.5 = 0.5, +0.15*0.5 = 0.075 → 0.575
+    assert conf == pytest.approx(0.575, abs=0.001)
 
 
 # ── get_temporal_neighbors (with mock DB) ─────────────────────────

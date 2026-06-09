@@ -5,6 +5,7 @@ Loops:
   - consolidation_loop: dagligt, finder duplikater + modsigelser + temaer
   - summary_loop: regenererer always-on summary efter meningsfulde ændringer
   - auto_archive: dagligt, arkiverer entries med low salience >90 dage
+  - b4_edge_maintenance: B4 temporal edge-vedligehold (Phase 3, 2026-06-09)
 
 Spec: docs/superpowers/specs/2026-05-02-jarvis-brain-design.md sektion 7.
 """
@@ -436,6 +437,83 @@ def auto_archive_low_salience() -> int:
 
 
 # ---------------------------------------------------------------------------
+# B4 — Temporal edge maintenance (Phase 3, 2026-06-09)
+# ---------------------------------------------------------------------------
+
+_B4_CATCHUP_BATCH_SIZE = 20
+_B4_CATCHUP_INTERVAL_SECONDS = 3600  # 1h
+_B4_PRUNE_INTERVAL_SECONDS = 86400  # 24h
+
+
+def b4_catchup_infer_once(*, batch_size: int = None) -> int:
+    """Find active entries with no temporal edges and run inference on them.
+
+    Queries brain_index for entries that have NO outgoing or incoming
+    temporal edges, up to ``batch_size`` per pass. Runs
+    ``jarvis_brain.infer_temporal_edges()`` on each and returns the total
+    number of entries processed.
+
+    This catches entries created before B4 was deployed, or entries that
+    were created with ``skip_temporal=True``.
+    """
+    from core.services import jarvis_brain
+
+    batch_size = batch_size or _B4_CATCHUP_BATCH_SIZE
+
+    conn = jarvis_brain.connect_index()
+    try:
+        rows = conn.execute(
+            """SELECT id FROM brain_index
+               WHERE status = 'active'
+                 AND id NOT IN (
+                   SELECT from_id FROM brain_temporal_edges
+                   UNION
+                   SELECT to_id FROM brain_temporal_edges
+                 )
+               LIMIT ?""",
+            (batch_size,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    entry_ids = [r[0] for r in rows]
+    if not entry_ids:
+        return 0
+
+    processed = 0
+    for eid in entry_ids:
+        try:
+            jarvis_brain.infer_temporal_edges(eid)
+            processed += 1
+        except Exception as exc:
+            logger.warning("b4_catchup_infer: inference failed for %s: %s", eid, exc)
+    if processed:
+        logger.info("b4_catchup_infer: processed %s / %s entries", processed, len(entry_ids))
+    return processed
+
+
+def b4_edge_maintenance_once() -> int:
+    """Run one pass of B4 edge maintenance: catchup + prune.
+
+    Returns combined count (catchup_processed + pruned_edges).
+    """
+    catchup = 0
+    pruned = 0
+    try:
+        catchup = b4_catchup_infer_once()
+    except Exception as exc:
+        logger.warning("b4 catchup failed: %s", exc)
+    try:
+        from core.services.jarvis_brain import prune_stale_edges
+        pruned = prune_stale_edges(max_age_days=90, min_confidence=0.2)
+        if pruned:
+            logger.info("b4 prune: removed %s stale edges", pruned)
+    except Exception as exc:
+        logger.warning("b4 prune failed: %s", exc)
+    return catchup + pruned
+
+
+# ---------------------------------------------------------------------------
 # Daemon lifecycle (Task 24): start_brain_daemon / stop_brain_daemon
 # ---------------------------------------------------------------------------
 
@@ -445,18 +523,22 @@ _DAEMON_THREADS: list[threading.Thread] = []
 
 
 def _consolidation_summary_loop(stop_event: threading.Event) -> None:
-    """Daily consolidation + summary scheduler.
+    """Daily consolidation + summary + B4 edge maintenance scheduler.
 
     Cadence:
       - run_consolidation_pass: once per 24h
       - regenerate_summary: once per 1h (debounced; only if entries changed)
       - auto_archive_low_salience: once per 24h
+      - b4_catchup_infer_once: once per 1h (entries missing temporal edges)
+      - b4_prune: once per 24h (stale edges)
     """
     import time
 
     last_consolidation = 0.0
     last_summary = 0.0
     last_archive = 0.0
+    last_b4_catchup = 0.0
+    last_b4_prune = 0.0
     last_index_count = -1
 
     while not stop_event.is_set():
@@ -496,6 +578,25 @@ def _consolidation_summary_loop(stop_event: threading.Event) -> None:
                 last_summary = now_ts
             except Exception:
                 logger.exception("summary regeneration failed")
+
+        # B4 — hourly catchup infer (B4 Phase 3, 2026-06-09)
+        if now_ts - last_b4_catchup > _B4_CATCHUP_INTERVAL_SECONDS:
+            try:
+                b4_catchup_infer_once()
+                last_b4_catchup = now_ts
+            except Exception:
+                logger.exception("b4 catchup infer failed")
+
+        # B4 — daily prune stale edges (B4 Phase 3, 2026-06-09)
+        if now_ts - last_b4_prune > _B4_PRUNE_INTERVAL_SECONDS:
+            try:
+                from core.services.jarvis_brain import prune_stale_edges
+                pruned = prune_stale_edges(max_age_days=90, min_confidence=0.2)
+                if pruned:
+                    logger.info("b4 prune: removed %s stale edges", pruned)
+                last_b4_prune = now_ts
+            except Exception:
+                logger.exception("b4 prune failed")
 
         # Sleep up to 60s between checks
         stop_event.wait(60)

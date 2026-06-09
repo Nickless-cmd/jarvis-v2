@@ -3291,6 +3291,67 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # 2026-06-09 (Claude): Four daemons (B5, D1, D5, A3) were registered
+    # in daemon_manager.DAEMON_REGISTRY by Jarvis but never wired into the
+    # heartbeat executor loop. Their tick_* functions existed and were
+    # tested in isolation, but no one called them in production. Result:
+    # memory_write_queue accumulated 5+ pending items over 3+ hours,
+    # wakeup table grew unbounded, no consolidation, no cost alerts.
+    # See docs/notes/2026-06-09-jarvis-feedback-daemons-not-wired.md.
+
+    # Memory write queue (B5) — async sensory/brain/sidecar writes
+    if _dm.is_enabled("memory_write_queue"):
+        try:
+            from core.services.memory_write_queue import tick_memory_write_queue_daemon
+            _mwq_result = _daemon_tick_with_deadline(
+                "memory_write_queue", tick_memory_write_queue_daemon,
+                deadline_seconds=30.0,
+            )
+            _dm.record_daemon_tick("memory_write_queue", _mwq_result or {})
+        except Exception:
+            pass
+
+    # Wakeup cleanup (A3) — prune stale consumed/cancelled/old-fired wakeups
+    if _dm.is_enabled("wakeup_cleanup"):
+        try:
+            from core.services.self_wakeup import tick_wakeup_cleanup
+            _wuc_result = _daemon_tick_with_deadline(
+                "wakeup_cleanup", tick_wakeup_cleanup,
+                deadline_seconds=10.0,
+            )
+            _dm.record_daemon_tick("wakeup_cleanup", _wuc_result or {})
+        except Exception:
+            pass
+
+    # Selective consolidation (D1) — daily top-K% promotion to long-term
+    if _dm.is_enabled("selective_consolidation"):
+        try:
+            from core.services.selective_consolidation_daemon import (
+                tick_selective_consolidation_daemon,
+            )
+            _sc_result = _daemon_tick_with_deadline(
+                "selective_consolidation", tick_selective_consolidation_daemon,
+                deadline_seconds=60.0,
+            )
+            _dm.record_daemon_tick("selective_consolidation", _sc_result or {})
+        except Exception:
+            pass
+
+    # Cost optimization (D5) — daily/weekly budget alerts.
+    # cost_optimization_daemon exposes its tick as `tick()` (not
+    # `tick_cost_optimization_daemon`). Tracked in note to Jarvis —
+    # naming consistency is part of the missed-pattern feedback.
+    if _dm.is_enabled("cost_optimization"):
+        try:
+            from core.services.cost_optimization_daemon import tick as _co_tick
+            _co_result = _daemon_tick_with_deadline(
+                "cost_optimization", _co_tick,
+                deadline_seconds=20.0,
+            )
+            _dm.record_daemon_tick("cost_optimization", _co_result or {})
+        except Exception:
+            pass
+
     # --- Aesthetic motif accumulation ---
     try:
         from core.services.aesthetic_sense import accumulate_from_daemon

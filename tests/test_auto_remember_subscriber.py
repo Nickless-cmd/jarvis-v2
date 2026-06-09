@@ -169,6 +169,71 @@ def test_evaluate_handles_llm_exception_gracefully() -> None:
     assert result is None  # never raises
 
 
+# ── Trivial-skip gates ────────────────────────────────────────────────────
+
+
+def test_trivial_user_turn_detection() -> None:
+    from core.services.auto_remember_subscriber import _is_trivial_user_turn
+    # Pure acks → trivial
+    assert _is_trivial_user_turn("ok") is True
+    assert _is_trivial_user_turn("OK!") is True
+    assert _is_trivial_user_turn("tak") is True
+    assert _is_trivial_user_turn("👍") is True
+    assert _is_trivial_user_turn("perfekt!") is True
+    assert _is_trivial_user_turn("ja gør det") is True
+    # Real questions / substance → NOT trivial
+    assert _is_trivial_user_turn("kan vi snakke om x?") is False
+    assert _is_trivial_user_turn("husk altid at svare på dansk") is False
+    assert _is_trivial_user_turn("jeg har en præference for at vi gør X") is False
+
+
+def test_trivial_assistant_turn_detection() -> None:
+    from core.services.auto_remember_subscriber import _is_trivial_assistant_turn
+    # Short acks → trivial
+    assert _is_trivial_assistant_turn("Forstået.") is True
+    assert _is_trivial_assistant_turn("Klar.") is True
+    assert _is_trivial_assistant_turn("Done.") is True
+    # Substantive replies → NOT trivial
+    assert _is_trivial_assistant_turn(
+        "Forstået, jeg ændrer cadence til 30 minutter nu og opdaterer config."
+    ) is False
+    assert _is_trivial_assistant_turn(
+        "Det er en god observation. Lad mig kigge på dataen."
+    ) is False
+
+
+def test_evaluate_skips_trivial_user_without_llm_call() -> None:
+    """Trivielle Bjørn-beskeder → ingen LLM-kald, sparet spend."""
+    from core.services.auto_remember_subscriber import evaluate_turn_for_memory
+    import unittest.mock as mock
+
+    with mock.patch(
+        "core.context.compact_llm.call_compact_llm"
+    ) as llm_mock:
+        result = evaluate_turn_for_memory(
+            "ok perfekt!",
+            "Tak — jeg har lagt det ind i hjernen nu, så det er klart til næste tur.",
+        )
+    assert result is None
+    llm_mock.assert_not_called()
+
+
+def test_evaluate_skips_trivial_assistant_without_llm_call() -> None:
+    """Trivielle assistant-svar → ingen LLM-kald."""
+    from core.services.auto_remember_subscriber import evaluate_turn_for_memory
+    import unittest.mock as mock
+
+    with mock.patch(
+        "core.context.compact_llm.call_compact_llm"
+    ) as llm_mock:
+        result = evaluate_turn_for_memory(
+            "Jeg har en vigtig beslutning til dig: skift sprog til dansk.",
+            "Forstået.",
+        )
+    assert result is None
+    llm_mock.assert_not_called()
+
+
 # ── start/stop idempotence ────────────────────────────────────────────────
 
 

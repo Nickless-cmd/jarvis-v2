@@ -44,6 +44,58 @@ DB_PATH = JARVIS_HOME / "state" / "jarvis.db"
 _MIN_USER_CHARS = 10
 _MIN_ASSISTANT_CHARS = 30
 
+# Trivielle acknowledgments fra Bjørn — disse turns har ingen ny info
+# at gemme. Normaliseres til lowercase + stripped før match. Hvis hele
+# beskeden er én af disse (efter trim af emoji/tegnsætning), skip LLM.
+_TRIVIAL_USER_ACKS = frozenset({
+    "ok", "okay", "ja", "nej", "godt", "fint", "perfekt", "klart",
+    "tak", "tak skal du have", "tusind tak", "mange tak",
+    "yes", "no", "yep", "nope", "thanks", "thx", "great", "cool",
+    "hej", "hejsa", "hi", "hello",
+    "god nat", "god morgen", "god aften", "godnat", "godmorgen",
+    "👍", "👌", "❤️", "💙", "🙏", "👏", "🎉", "✨",
+    "bar tag fat", "tag fat", "kør", "kør på", "fortsæt", "continue",
+})
+
+# Hvis assistant-svaret består af KUN en acknowledgment, har vi heller
+# ikke nyt indhold. Disse er typiske "Forstået." pattern svar.
+_TRIVIAL_ASSISTANT_PREFIXES = (
+    "forstået.", "forstået ", "klar.", "klart.", "okay.", "ok.",
+    "done.", "gjort.", "modtaget.",
+)
+
+
+def _is_trivial_user_turn(text: str) -> bool:
+    """True hvis user-beskeden er en ren acknowledgment uden nyt indhold."""
+    if not text:
+        return True
+    # Strip tegnsætning og whitespace; alt-emoji-beskeder rammer 0 chars
+    import re as _re
+    normalized = _re.sub(r"[.,!?;:\"'…\s]+", " ", text.lower()).strip()
+    if not normalized:
+        return True
+    if normalized in _TRIVIAL_USER_ACKS:
+        return True
+    # Beskeder ≤ 3 ord der starter med en triviel ack er sandsynligvis
+    # bare "ok så" eller "ja gør det" — disse beslutter intet konkret
+    words = normalized.split()
+    if len(words) <= 3 and words and words[0] in _TRIVIAL_USER_ACKS:
+        return True
+    return False
+
+
+def _is_trivial_assistant_turn(text: str) -> bool:
+    """True hvis assistant-svaret er en kort acknowledgment uden indhold."""
+    if not text:
+        return True
+    normalized = text.strip().lower()
+    # Short and starts with ack-prefix → trivial
+    if len(normalized) < 60 and any(
+        normalized.startswith(prefix) for prefix in _TRIVIAL_ASSISTANT_PREFIXES
+    ):
+        return True
+    return False
+
 # Skemaet vi forventer LLM returnerer. Alle felter er påkrævede når
 # should_remember=true.
 _VALID_KINDS = {"fakta", "indsigt", "observation", "reference"}
@@ -140,6 +192,14 @@ def evaluate_turn_for_memory(
     user_text = (user_text or "").strip()
     assistant_text = (assistant_text or "").strip()
     if len(user_text) < _MIN_USER_CHARS or len(assistant_text) < _MIN_ASSISTANT_CHARS:
+        return None
+
+    # Pre-LLM trivial-skip (2026-06-09): undgå at brænde LLM-spend og
+    # per-day cap på "ok"/"tak"/"perfekt"-turns. Trivielle brugerbeskeder
+    # ELLER trivielle assistant-svar → skip uden LLM-kald.
+    if _is_trivial_user_turn(user_text) or _is_trivial_assistant_turn(assistant_text):
+        logger.debug("auto_remember: trivial-skip (user=%r, asst=%r)",
+                     user_text[:40], assistant_text[:40])
         return None
 
     prompt = _EVALUATION_PROMPT_TEMPLATE.format(

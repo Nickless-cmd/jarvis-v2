@@ -141,6 +141,35 @@ Rækkefølge (mest impact først):
 
 ---
 
+## Mønster B er nu lukket (alle 5 fix landede 2026-06-09)
+
+| # | Fix | Commit | Note |
+|---|---|---|---|
+| 1 | identity_sketch periodic trigger via heartbeat | `8c9b2607` | TTL 24h → 6h, ny tick-funktion, daemon registreret, heartbeat hook |
+| 2 | format_chain_proposals injected i awareness | `0e2f07c3` | Priority 44, lige under dead_skills |
+| 3 | multi_signal_recall_section injected i awareness | `bd1b1667` | Priority 28, under recall-before-act |
+| 4 | skill_history + recent_skill_changes som tools | `b49c3a05` | C1 audit trail nu læsbar |
+| 5 | analyze_skill_usage som tool | `1261530a` | Plus opdaget sekundær bug: 0 invocations i 7 dage — write path er broken eller sjælden |
+
+## Bonus-fund — sekundær bug afsløret af #5
+
+`record_skill_usage` kaldes formelt fra `skill_gate_tool:202`, men
+live analytics viser 0 invocations på 63 skills over 7 dage. **Write
+path er broken eller for sjælden.** Ikke fikset her — det er en separat
+investigation som Jarvis bør tage. Note til Jarvis i
+`docs/notes/2026-06-09-jarvis-feedback-analyze-skill-usage-orphan.md`.
+
+## Endelig status
+
+| Mønster | Status |
+|---|---|
+| Mønster A (daemons not wired) | ✅ Lukket — 4 daemons hooked op af Claude |
+| Mønster B (orphan outputs) | ✅ Lukket — 5 funktioner hooked op + 1 sekundær bug flagget |
+| Mønster C (schema gaps) | ✅ Lukket i går aftes — 5 commits af Claude |
+
+**Total: 9+ fixes landed på origin/main, 6 feedback-noter til Jarvis,
+1 sekundær bug flagget for Jarvis at tage.**
+
 ---
 
 ## Generelle observationer (opdateres undervejs)

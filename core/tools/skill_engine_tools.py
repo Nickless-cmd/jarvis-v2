@@ -61,6 +61,7 @@ def _suggest_skills_for_query(
     query: str,
     threshold: float = _INTENT_MATCH_THRESHOLD_DEFAULT,
     max_results: int = _INTENT_MATCH_MAX_SUGGESTIONS,
+    context_tags: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Match a user query against all installed skills' use_when + description.
 
@@ -76,10 +77,27 @@ def _suggest_skills_for_query(
 
     Uses hf_embed (sentence-transformers/all-MiniLM-L6-v2) for similarity.
     Returns skills scoring above threshold, ranked by score.
+
+    If context_tags is provided, only skills whose tags contain at least
+    one of the context tags (case-insensitive) are considered. This lets
+    skill_gate pre-filter by domain/context before semantic matching.
     """
     skills = skill_engine.list_skills()
     if not skills:
         return []
+
+    # ── Context tag pre-filter (C2 — Skills meta-tags) ──────────────
+    if context_tags:
+        context_tags_lower = [t.strip().lower() for t in context_tags if t.strip()]
+        if context_tags_lower:
+            filtered: list[dict[str, Any]] = []
+            for s in skills:
+                skill_tags = [t.lower() for t in (s.get("tags") or [])]
+                if any(ct in skill_tags for ct in context_tags_lower):
+                    filtered.append(s)
+            skills = filtered
+            if not skills:
+                return []
 
     # candidate_text -> skill_name (stable; index-based mapping breaks if
     # two skills happen to share a candidate string)

@@ -133,6 +133,15 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
     else:
         threshold = _INVOKE_THRESHOLD
 
+    # ── Context tag pre-filter (C2 — Skills meta-tags) ──────────────
+    raw_context = args.get("context")
+    context_tags: list[str] | None = None
+    if raw_context:
+        if isinstance(raw_context, str):
+            context_tags = [t.strip() for t in raw_context.split(",") if t.strip()]
+        elif isinstance(raw_context, list):
+            context_tags = [str(t).strip() for t in raw_context if str(t).strip()]
+
     # ── Phase 1: Suggest ────────────────────────────────────────────
     # One notch below INVOKE_THRESHOLD so the gate can report `low_match`
     # and `suggestions` for borderline queries. Below this nothing useful
@@ -141,6 +150,7 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
         query=query,
         threshold=0.20,
         max_results=_INTENT_MATCH_MAX_SUGGESTIONS,
+        context_tags=context_tags,
     )
 
     # Lag #4: compute chain candidates from suggestions (always, all return paths)
@@ -157,6 +167,7 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
             "note": "No relevant skills found. Proceed with standard workflow.",
             "chain_candidates": chain_candidates,
             "chain_hint": chain_hint,
+            "context_tags": context_tags,
         }
 
     # ── Phase 2: Select best match ──────────────────────────────────
@@ -182,6 +193,7 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
             ),
             "chain_candidates": chain_candidates,
             "chain_hint": chain_hint,
+            "context_tags": context_tags,
         }
 
     # ── Phase 3: Invoke ─────────────────────────────────────────────
@@ -205,6 +217,7 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
         "score": best_score,
         "suggestions": [s["name"] for s in suggestions],
         "all_matches": suggestions,
+        "context_tags": context_tags,
         "use_as_template": best_score >= _AUTO_USE_THRESHOLD,
         "skill_description": invoke_result.get("description", ""),
         "skill_use_when": invoke_result.get("use_when", ""),
@@ -277,6 +290,16 @@ SKILL_GATE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "skill": {
                         "type": "string",
                         "description": "Optional: force-invoke a specific skill by name, bypassing semantic matching.",
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": (
+                            "Optional context/domain filter: comma-separated tag names, "
+                            "e.g. 'coding,research'. Only skills whose tags match "
+                            "(case-insensitive) are considered. Narrower pool = "
+                            "fewer false positives. Use when the task falls within "
+                            "a known domain."
+                        ),
                     },
                     "threshold": {
                         "type": "number",

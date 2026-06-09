@@ -163,6 +163,132 @@ def test_skill_gate_output_chain_candidates_empty_when_single_match(monkeypatch)
     assert result["chain_hint"] == ""
 
 
+# ── Context tags (C2) ────────────────────────────────────────────────
+
+
+def test_suggest_respects_context_tags(monkeypatch):
+    """context_tags pre-filter skills: kun skills med matching tag overvejes."""
+    from core.tools.skill_engine_tools import _suggest_skills_for_query
+
+    # Mock skill_engine.list_skills to return skills with tags
+    def _mock_list_skills(**kw):
+        return [
+            {"name": "coding-helper", "description": "coding assistant", "use_when": "EN: code tasks", "tags": ["coding"]},
+            {"name": "web-scraper", "description": "scrape websites", "use_when": "EN: web scraping", "tags": ["web"]},
+            {"name": "writer", "description": "write documents", "use_when": "EN: writing tasks", "tags": ["writing"]},
+        ]
+
+    import core.services.skill_engine as se
+    monkeypatch.setattr(se, "list_skills", _mock_list_skills)
+
+    # semantic_similarity er importeret inde i funktionen — mock via modul-path
+    def _mock_similarity(source, candidates):
+        return {
+            "status": "ok",
+            "ranked": [
+                {"candidate": c, "score": 0.50 if "coding" in c.lower() else 0.10}
+                for c in candidates
+            ],
+        }
+
+    # Patch der hvor det importeres — inde i funktions-kroppen
+    # Vi patcher den konkrete import i hf_inference_tools da den bruges derfra
+    import core.tools.hf_inference_tools as hf_tools
+    monkeypatch.setattr(hf_tools, "semantic_similarity", _mock_similarity)
+
+    # Med context_tags=["coding"] — kun coding-helper bør returneres
+    result = _suggest_skills_for_query(
+        query="help me write code",
+        threshold=0.20,
+        context_tags=["coding"],
+    )
+    names = [r["name"] for r in result]
+    assert "coding-helper" in names
+    assert "web-scraper" not in names
+    assert "writer" not in names
+
+
+def test_suggest_context_tags_empty_when_no_match(monkeypatch):
+    """context_tags der ikke matcher nogen skills → tom liste."""
+    from core.tools.skill_engine_tools import _suggest_skills_for_query
+
+    def _mock_list_skills(**kw):
+        return [
+            {"name": "coding-helper", "description": "coding", "use_when": "code", "tags": ["coding"]},
+        ]
+
+    import core.services.skill_engine as se
+    monkeypatch.setattr(se, "list_skills", _mock_list_skills)
+
+    result = _suggest_skills_for_query(
+        query="anything",
+        threshold=0.20,
+        context_tags=["music"],
+    )
+    assert result == []
+
+
+def test_skill_gate_output_includes_context_tags(monkeypatch):
+    """skill_gate returnerer context_tags i output når de angives."""
+    from core.tools import skill_gate_tool
+
+    class _FakeSettings:
+        skill_gate_enabled = True
+    monkeypatch.setattr(
+        "core.runtime.settings.load_settings",
+        lambda: _FakeSettings(),
+    )
+    monkeypatch.setattr(
+        skill_gate_tool, "_suggest_skills_for_query",
+        lambda **kw: [],
+    )
+
+    result = skill_gate_tool._exec_skill_gate({"query": "test", "context": "research,writing"})
+    assert result.get("context_tags") == ["research", "writing"]
+
+
+def test_skill_gate_context_tags_none_when_omitted(monkeypatch):
+    """Uden context i kaldet skal context_tags være None."""
+    from core.tools import skill_gate_tool
+
+    class _FakeSettings:
+        skill_gate_enabled = True
+    monkeypatch.setattr(
+        "core.runtime.settings.load_settings",
+        lambda: _FakeSettings(),
+    )
+    monkeypatch.setattr(
+        skill_gate_tool, "_suggest_skills_for_query",
+        lambda **kw: [],
+    )
+
+    result = skill_gate_tool._exec_skill_gate({"query": "test"})
+    assert result.get("context_tags") is None
+
+
+def test_skill_gate_context_tags_passes_to_suggest(monkeypatch):
+    """context_tags videregives korrekt til _suggest_skills_for_query."""
+    from core.tools import skill_gate_tool
+
+    class _FakeSettings:
+        skill_gate_enabled = True
+    monkeypatch.setattr(
+        "core.runtime.settings.load_settings",
+        lambda: _FakeSettings(),
+    )
+
+    captured = {}
+
+    def _fake_suggest(**kw):
+        captured.update(kw)
+        return []
+
+    monkeypatch.setattr(skill_gate_tool, "_suggest_skills_for_query", _fake_suggest)
+
+    skill_gate_tool._exec_skill_gate({"query": "test", "context": "coding"})
+    assert captured.get("context_tags") == ["coding"]
+
+
 def test_skill_gate_output_chain_candidates_present_in_no_match(monkeypatch):
     from core.tools import skill_gate_tool
 

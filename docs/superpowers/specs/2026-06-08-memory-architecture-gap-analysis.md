@@ -60,7 +60,7 @@
 | A1 | Cold tier deaktiveret | Genåbn med quality scoring | ✅ **Phase 1 committed** |
 | A2 | Identity tab ved compaction | Persistent identity sketch (pre-compaction hook) | ✅ **Phase 2 committed** |
 | A3 | Wakeup backlog støj | Ryd op i fired wakeups | ⏳ Åben (15 min effort) |
-| A4 | Flash model 1-min vindue | Stabiliser køretid | ⏳ Åben |
+| A4 | Flash model 1-min vindue | Stabiliser køretid | ✅ **Lukket** (read=60 + max_tokens=4096) |
 
 ### 🟡 Fase B — Core Retrieval (Uge 25-26)
 *B1+B2+B3+B4 er ALLE lukket — se nedenfor.*

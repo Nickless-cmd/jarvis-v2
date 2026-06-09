@@ -1535,6 +1535,10 @@ def _iter_openai_compatible_chat_events(
         "messages": messages,
         "stream": True,
         "stream_options": {"include_usage": True},
+        # A4: stabiliser flash model med 1-min vindue. Uden max_tokens kan
+        # deepseek-v4-flash generere uendeligt via sit 1M context-vindue.
+        # 4096 er rigeligt til en enkelt visible-reply uden at brænde tokens.
+        "max_tokens": 4096,
     }
     # Lag 10 Phase 1 (2026-05-12): caller may pass modulated values.
     # When None, omit from payload so server-side defaults apply (cheap-lane
@@ -1583,7 +1587,7 @@ def _iter_openai_compatible_chat_events(
         with httpx.stream(
             "POST", f"{root}/chat/completions",
             json=payload, headers=headers,
-            timeout=httpx.Timeout(connect=15, read=None, write=15, pool=15),
+            timeout=httpx.Timeout(connect=15, read=60, write=15, pool=15),
         ) as response:
             if response.status_code == 401:
                 raise CheapProviderError(

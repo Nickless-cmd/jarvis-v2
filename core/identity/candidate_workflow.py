@@ -458,6 +458,25 @@ def _memory_candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> b
         and evidence_class in {"runtime-inference", "explicit_assistant_confirmation"}
     ):
         pass  # eligible — fall through to duplicate check
+    elif (
+        # 2026-06-09 (Bjørn's "han husker ikke en halvdags arbejde" dig):
+        # Åbner pipen for HIGH-confidence single_session_pattern proposals
+        # fra end_of_run consolidation med llm-* canonical keys. Det var
+        # 657+ candidates i backlog (98% af alle proposed MEMORY.md
+        # candidates). Indholdet er konkrete commits, beslutninger og
+        # arbejds-checkpoints — præcis det Jarvis skal huske til næste
+        # session. Ratio'en (98% gated) gjorde pipen i praksis død.
+        #
+        # Vi holder os til HIGH confidence + single_session_pattern (=
+        # assistant confirmed med eksplicit evidens i session). Lavere
+        # tillids-classes (runtime_support_only, low/medium-confidence)
+        # forbliver gated indtil videre.
+        canonical_key.startswith("workspace-memory:remembered-fact:llm-")
+        and source_mode == "end_of_run_memory_consolidation"
+        and confidence == "high"
+        and evidence_class == "single_session_pattern"
+    ):
+        pass  # eligible — fall through to duplicate check
     else:
         return False
     for other in list_runtime_contract_candidates(

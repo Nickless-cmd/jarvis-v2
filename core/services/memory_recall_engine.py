@@ -723,6 +723,33 @@ def multi_signal_recall(
                     boost_kws,
                 )
 
+    # 5b. Temporal boost (B4, 2026-06-09)
+    temporal_boosted = False
+    entry_ids_in_results = [
+        r["entry_id"] for r in all_results
+        if r.get("entry_id") and r.get("source") == "private_brain"
+    ]
+    if entry_ids_in_results:
+        try:
+            from core.services.jarvis_brain import temporal_boost_recall
+            boosts = temporal_boost_recall(
+                entry_ids_in_results,
+                boost_factor=0.15,
+                min_confidence=0.5,
+            )
+            if boosts:
+                temporal_boosted = True
+                for r in all_results:
+                    eid = r.get("entry_id")
+                    if eid and eid in boosts:
+                        r["multi_signal_score"] = round(
+                            r.get("multi_signal_score", 0.0) + boosts[eid], 4
+                        )
+                        r["temporal_boost"] = True
+        except Exception:
+            # Best-effort — never let temporal boost block recall
+            pass
+
     # 6. Sort by multi-signal score
     all_results.sort(key=lambda r: r.get("multi_signal_score", 0.0), reverse=True)
     top = all_results[:total_limit]
@@ -733,6 +760,7 @@ def multi_signal_recall(
         "count": len(top),
         "total_candidates": len(all_results),
         "mood_boosted": mood_boosted,
+        "temporal_boosted": temporal_boosted,
         "multi_signal": True,
         "sources_searched": sorted(enabled),
         "signal_weights": {

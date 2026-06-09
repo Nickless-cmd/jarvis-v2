@@ -1004,6 +1004,85 @@ SKILL_ENGINE_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
 ]
 
+# ── Skill versioning tools (C1, surfaced 2026-06-09 by Claude) ──────────
+
+
+def _exec_skill_history(args: dict[str, Any]) -> dict[str, Any]:
+    """Return audit trail for a single skill."""
+    name = str(args.get("name") or "").strip()
+    if not name:
+        return {"status": "error", "error": "name is required"}
+    limit = int(args.get("limit") or 50)
+    try:
+        from core.services import skill_engine
+        return skill_engine.get_skill_history(name, limit=limit)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _exec_recent_skill_changes(args: dict[str, Any]) -> dict[str, Any]:
+    """Return most recent skill mutations across all skills."""
+    limit = int(args.get("limit") or 20)
+    try:
+        from core.services import skill_engine
+        return skill_engine.list_recent_skill_changes(limit=limit)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+# Append C1 tool definitions to the main list
+SKILL_ENGINE_TOOL_DEFINITIONS.extend([
+    {
+        "type": "function",
+        "function": {
+            "name": "skill_history",
+            "description": (
+                "Get the audit trail (create/update/delete events) for a "
+                "single skill, newest first. Useful when you want to know "
+                "why a skill behaves the way it does, who changed it, or "
+                "when it was last modified. Backed by skill_audit_log."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Skill name (folder name, lowercase).",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max entries to return (default 50).",
+                    },
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "recent_skill_changes",
+            "description": (
+                "Return the most recent skill mutations across the whole "
+                "library. Useful when you want a quick overview of what "
+                "skills have been touched recently — debugging, weekly "
+                "review, or 'hvad lavede jeg sidst med skills?'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max entries to return (default 20).",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+])
+
+
 # ── Handler map ────────────────────────────────────────────────────────
 
 SKILL_ENGINE_TOOL_HANDLERS: dict[str, Any] = {
@@ -1021,4 +1100,7 @@ SKILL_ENGINE_TOOL_HANDLERS: dict[str, Any] = {
     "skill_import_from_url": _exec_skill_import_from_url,
     # Tool Invention Phase 1 (AGI track #9 — 2026-05-12)
     "propose_new_skill": _exec_propose_new_skill,
+    # C1 audit trail (surfaced 2026-06-09 by Claude)
+    "skill_history": _exec_skill_history,
+    "recent_skill_changes": _exec_recent_skill_changes,
 }

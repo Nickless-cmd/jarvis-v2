@@ -1158,6 +1158,15 @@ def build_visible_chat_prompt_assembly(
         _awareness_add(43, "dead skills (never invoked)", dead_skills_section() or None)
     except Exception:
         pass
+    # Skill chain proposals (C3, 2026-06-09) — heartbeat-generated chain
+    # suggestions. Claude 2026-06-09: format_chain_proposals() existed
+    # but had zero callers — generated chains were never surfaced. Hooked
+    # next to dead_skills for logical grouping (both are skill metadata).
+    try:
+        from core.services.heartbeat_phases import format_chain_proposals
+        _awareness_add(44, "skill chain proposals", format_chain_proposals() or None)
+    except Exception:
+        pass
     # Curiosity consolidation (2026-05-13) — weekly synthesis of observations
     try:
         from core.services.curiosity_consolidation import latest_consolidation_for_awareness

@@ -869,3 +869,234 @@ def _emit_skill_engine_event(kind: str, payload: dict[str, object] | None = None
     except Exception:
         pass
 
+
+# ── Usage tracking (C4 — Auto-learning) ─────────────────────────────
+
+def record_skill_usage(
+    skill_name: str,
+    *,
+    source: str = "skill_gate",
+    success: bool = True,
+    query: str = "",
+    context_tags: str = "",
+    score: float = 0.0,
+) -> None:
+    """Record that a skill was used. Never raises.
+
+    Args:
+        skill_name: Name of the skill that was invoked.
+        source: How it was triggered — 'skill_gate', 'skill_invoke', 'skill_chain'.
+        success: Whether the invocation was successful.
+        query: The query/context that triggered it.
+        context_tags: Comma-separated context tags used during matching.
+        score: The semantic match score.
+    """
+    try:
+        from core.runtime.db import connect
+        from datetime import UTC, datetime
+        with connect() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS skill_usage_stats ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "skill_name TEXT NOT NULL,"
+                "source TEXT NOT NULL DEFAULT 'skill_gate',"
+                "success INTEGER NOT NULL DEFAULT 1,"
+                "query_snapshot TEXT NOT NULL DEFAULT '',"
+                "context_tags TEXT NOT NULL DEFAULT '',"
+                "score REAL NOT NULL DEFAULT 0.0,"
+                "created_at TEXT NOT NULL)"
+            )
+            conn.execute(
+                "INSERT INTO skill_usage_stats "
+                "(skill_name, source, success, query_snapshot, context_tags, score, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (skill_name, source, 1 if success else 0,
+                 (query or "")[:200], context_tags, score,
+                 datetime.now(UTC).isoformat()),
+            )
+    except Exception as exc:
+        logger.warning("skill_engine: record_skill_usage failed for %s: %s", skill_name, exc)
+
+
+def analyze_skill_usage(
+    days: int = 30,
+    min_invocations: int = 3,
+) -> dict[str, Any]:
+    """Analyze skill usage patterns and generate improvement proposals.
+
+    Looks for:
+      - Frequently used skills (high demand)
+      - Rarely used skills (possible candidates for removal/deprecation)
+      - Skills often used together (candidates for chain automation)
+      - Skills with high failure/zero-success rate
+
+    Returns structured analysis with improvement suggestions.
+    """
+    try:
+        from core.runtime.db import connect
+        from datetime import UTC, datetime, timedelta
+        import json as _json
+        cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
+
+        with connect() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS skill_usage_stats ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "skill_name TEXT NOT NULL,"
+                "source TEXT NOT NULL DEFAULT 'skill_gate',"
+                "success INTEGER NOT NULL DEFAULT 1,"
+                "query_snapshot TEXT NOT NULL DEFAULT '',"
+                "context_tags TEXT NOT NULL DEFAULT '',"
+                "score REAL NOT NULL DEFAULT 0.0,"
+                "created_at TEXT NOT NULL)"
+            )
+
+            # Total invocations per skill
+            by_skill = conn.execute(
+                """
+                SELECT skill_name, COUNT(*) as total,
+                       SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as ok,
+                       ROUND(AVG(score), 3) as avg_score
+                FROM skill_usage_stats
+                WHERE created_at >= ?
+                GROUP BY skill_name
+                ORDER BY total DESC
+                """,
+                (cutoff,),
+            ).fetchall()
+
+            # Skills that have never been used
+            all_skills = list_skills()
+            used_names = {row["skill_name"] for row in by_skill}
+            unused = [s for s in all_skills if s["name"] not in used_names]
+
+            # Most recent usage timestamps
+            recent = conn.execute(
+                """
+                SELECT skill_name, MAX(created_at) as last_used
+                FROM skill_usage_stats
+                WHERE created_at >= ?
+                GROUP BY skill_name
+                ORDER BY last_used DESC
+                """,
+                (cutoff,),
+            ).fetchall()
+            recent_map = {r["skill_name"]: r["last_used"] for r in recent}
+
+        # Build proposals
+        proposals: list[dict[str, Any]] = []
+        summary = {
+            "total_skills": len(all_skills),
+            "used_skills": len(by_skill),
+            "unused_skills": len(unused),
+            "total_invocations": sum(r["total"] for r in by_skill),
+            "analysis_period_days": days,
+        }
+
+        # Proposals for frequently used skills
+        for row in by_skill:
+            name = row["skill_name"]
+            total = row["total"]
+            ok = row["ok"]
+            avg_score = row["avg_score"]
+            fail_pct = round(100 * (1 - ok / max(total, 1)), 1)
+
+            if total >= min_invocations * 5:
+                proposals.append({
+                    "type": "frequent_use",
+                    "skill_name": name,
+                    "detail": (
+                        f"Used {total}x in {days}d — consider reviewing instructions "
+                        f"for streamlining, or adding it as a default chain candidate."
+                    ),
+                    "data": {"invocations": total, "avg_score": avg_score},
+                    "severity": "suggestion",
+                })
+
+            if fail_pct > 30 and total >= min_invocations:
+                proposals.append({
+                    "type": "high_failure",
+                    "skill_name": name,
+                    "detail": (
+                        f"{fail_pct}% failure rate ({total - ok}/{total}) — "
+                        f"instructions may be ambiguous or the skill may need updating."
+                    ),
+                    "data": {"invocations": total, "failures": total - ok, "fail_pct": fail_pct},
+                    "severity": "warning",
+                })
+
+        # Proposals for unused skills
+        for s in unused[:10]:
+            proposals.append({
+                "type": "unused",
+                "skill_name": s["name"],
+                "detail": (
+                    f"Never used in {days}d — consider deprecating or reviewing "
+                    f"its description/use_when so it matches better."
+                ),
+                "data": {"description": s["description"], "tags": s["tags"]},
+                "severity": "suggestion",
+            })
+
+        return {
+            "status": "ok",
+            "summary": summary,
+            "proposals": proposals,
+            "proposal_count": len(proposals),
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def get_skill_usage_stats(
+    name: str | None = None,
+    days: int = 30,
+    limit: int = 100,
+) -> dict[str, Any]:
+    """Return raw usage stats for a skill (or all skills if name is None)."""
+    try:
+        from core.runtime.db import connect
+        from datetime import UTC, datetime, timedelta
+        cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
+        with connect() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS skill_usage_stats ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "skill_name TEXT NOT NULL,"
+                "source TEXT NOT NULL DEFAULT 'skill_gate',"
+                "success INTEGER NOT NULL DEFAULT 1,"
+                "query_snapshot TEXT NOT NULL DEFAULT '',"
+                "context_tags TEXT NOT NULL DEFAULT '',"
+                "score REAL NOT NULL DEFAULT 0.0,"
+                "created_at TEXT NOT NULL)"
+            )
+            if name:
+                rows = conn.execute(
+                    """
+                    SELECT skill_name, source, success, query_snapshot, score, created_at
+                    FROM skill_usage_stats
+                    WHERE skill_name = ? AND created_at >= ?
+                    ORDER BY id DESC
+                    LIMIT ?
+                    """,
+                    (name, cutoff, limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT skill_name, source, success, query_snapshot, score, created_at
+                    FROM skill_usage_stats
+                    WHERE created_at >= ?
+                    ORDER BY id DESC
+                    LIMIT ?
+                    """,
+                    (cutoff, limit),
+                ).fetchall()
+        return {
+            "status": "ok",
+            "entries": [dict(r) for r in rows],
+            "count": len(rows),
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+

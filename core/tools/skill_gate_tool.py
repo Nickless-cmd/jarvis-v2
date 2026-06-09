@@ -197,6 +197,16 @@ def _exec_skill_gate(args: dict[str, Any]) -> dict[str, Any]:
         }
 
     # ── Phase 3: Invoke ─────────────────────────────────────────────
+    # Track usage (C4 — auto-learning)
+    context_str = ",".join(context_tags) if context_tags else ""
+    skill_engine.record_skill_usage(
+        best_name,
+        source="skill_gate",
+        success=True,
+        query=query,
+        context_tags=context_str,
+        score=best_score,
+    )
     invoke_result = skill_engine.get_skill_instructions(best_name)
     if invoke_result.get("status") != "ok":
         return {

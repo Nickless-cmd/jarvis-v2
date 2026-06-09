@@ -131,6 +131,36 @@ def _ensure_skill_audit_table(conn: sqlite3.Connection) -> None:
     )
 
 
+def _ensure_skill_usage_table(conn: sqlite3.Connection) -> None:
+    """Create skill_usage_stats table for auto-learning (C4)."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS skill_usage_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            skill_name TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'skill_gate',
+            success INTEGER NOT NULL DEFAULT 1,
+            query_snapshot TEXT NOT NULL DEFAULT '',
+            context_tags TEXT NOT NULL DEFAULT '',
+            score REAL NOT NULL DEFAULT 0.0,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_skill_usage_stats_name
+        ON skill_usage_stats(skill_name, created_at DESC)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_skill_usage_stats_created
+        ON skill_usage_stats(created_at DESC)
+        """
+    )
+
+
 def init_db() -> None:
     with connect() as conn:
         conn.execute(
@@ -1166,6 +1196,7 @@ def init_db() -> None:
         # Multi-user attribution columns (task 2)
         _ensure_multiuser_columns(conn)
         _ensure_skill_audit_table(conn)
+        _ensure_skill_usage_table(conn)
         conn.commit()
 
 

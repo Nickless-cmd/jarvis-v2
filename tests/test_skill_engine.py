@@ -664,3 +664,161 @@ def test_get_skill_instructions_includes_readonly(isolated_skills_root):
     result = skill_engine.get_skill_instructions("check-ro")
     assert result["status"] == "ok"
     assert result.get("readonly") is True
+
+
+# ── C4 — Auto-learning (skill usage tracking) ─────────────────────────
+
+
+def test_record_skill_usage_persists(isolated_db):
+    """Recording skill usage must persist to DB without error."""
+    from core.services import skill_engine
+
+    # Should not raise
+    skill_engine.record_skill_usage(
+        "test-skill",
+        source="skill_gate",
+        success=True,
+        query="fact-check this text",
+        context_tags="research",
+        score=0.85,
+    )
+
+    stats = skill_engine.get_skill_usage_stats("test-skill")
+    assert stats["status"] == "ok"
+    assert stats["count"] >= 1
+    entry = stats["entries"][0]
+    assert entry["skill_name"] == "test-skill"
+    assert entry["source"] == "skill_gate"
+    assert entry["success"] == 1
+    assert "fact-check" in entry["query_snapshot"]
+    assert entry["score"] == 0.85
+
+
+def test_record_skill_usage_failure(isolated_db):
+    """Recording a failed invocation must set success=0."""
+    from core.services import skill_engine
+
+    skill_engine.record_skill_usage(
+        "broken-skill",
+        success=False,
+        query="this should fail",
+        score=0.12,
+    )
+
+    stats = skill_engine.get_skill_usage_stats("broken-skill")
+    assert stats["status"] == "ok"
+    entry = stats["entries"][0]
+    assert entry["success"] == 0
+
+
+def test_record_skill_usage_never_raises(isolated_db):
+    """Even with bad args, record_skill_usage must not raise."""
+    from core.services import skill_engine
+
+    # Empty skill_name — should log a warning, not raise
+    skill_engine.record_skill_usage(
+        "",
+        query="x" * 10000,  # oversize query_snapshot
+    )
+    # No assertion except that we got here
+
+
+def test_analyze_skill_usage_empty(isolated_skills_root, isolated_db):
+    """analyze_skill_usage with no data must return empty proposals."""
+    from core.services import skill_engine
+
+    # isolated_skills_root points at empty dir -> no skills loaded -> no proposals
+    result = skill_engine.analyze_skill_usage(days=30)
+    assert result["status"] == "ok"
+    assert result["proposal_count"] == 0
+
+
+def test_analyze_skill_usage_with_data(isolated_skills_root, isolated_db):
+    """With usage data, analyze_skill_usage must generate proposals."""
+    from core.services import skill_engine
+
+    # Create a few skills
+    skill_engine.create_skill(name="frequent", description="Frequent use", instructions="# Frequent\n\nBody.")
+    skill_engine.create_skill(name="rare", description="Rare use", instructions="# Rare\n\nBody.")
+    skill_engine.create_skill(name="unused-skill", description="Never used", instructions="# Unused\n\nBody.")
+
+    # Record 15 invocations for "frequent" (meets min_invocations * 5 = 15 threshold)
+    for i in range(15):
+        skill_engine.record_skill_usage(
+            "frequent",
+            source="skill_gate",
+            success=True,
+            query=f"query {i}",
+            score=0.6,
+        )
+
+    # Record 3 failed invocations for "rare" (60% failure if 2 of 3 fail)
+    skill_engine.record_skill_usage("rare", success=False, query="fail 1", score=0.1)
+    skill_engine.record_skill_usage("rare", success=False, query="fail 2", score=0.1)
+    skill_engine.record_skill_usage("rare", success=True, query="ok", score=0.3)
+
+    result = skill_engine.analyze_skill_usage(days=30, min_invocations=3)
+    assert result["status"] == "ok"
+
+    # Should have at least 3 proposals: frequent_use, high_failure for rare, unused for unused-skill
+    types = {p["type"] for p in result["proposals"]}
+    assert "frequent_use" in types
+    assert "unused" in types
+
+
+def test_get_skill_usage_stats_all_skills(isolated_db):
+    """get_skill_usage_stats without name must return all entries."""
+    from core.services import skill_engine
+
+    skill_engine.record_skill_usage("alpha")
+    skill_engine.record_skill_usage("beta")
+
+    stats = skill_engine.get_skill_usage_stats()
+    assert stats["status"] == "ok"
+    assert stats["count"] >= 2
+
+
+def test_skill_gate_tracks_usage(monkeypatch, isolated_db):
+    """When skill_gate invokes a skill, it must record usage."""
+    from core.tools import skill_gate_tool
+
+    class _FakeSettings:
+        skill_gate_enabled = True
+
+    monkeypatch.setattr(
+        "core.runtime.settings.load_settings",
+        lambda: _FakeSettings(),
+    )
+
+    # Mock suggest to return a fake skill match
+    monkeypatch.setattr(
+        skill_gate_tool, "_suggest_skills_for_query",
+        lambda **kw: [{"name": "fake-skill", "score": 0.85}],
+    )
+    # Mock get_skill_instructions to return an ok result
+    monkeypatch.setattr(
+        skill_gate_tool.skill_engine, "get_skill_instructions",
+        lambda name: {"status": "ok", "instructions": "# Fake\n\nBody.", "description": "Fake"},
+    )
+
+    # We also need to mock the usage recording itself to test it was called
+    calls = []
+    original_record = skill_gate_tool.skill_engine.record_skill_usage
+    def _tracking_record(*args, **kwargs):
+        calls.append((args, kwargs))
+        return original_record(*args, **kwargs)
+    monkeypatch.setattr(
+        skill_gate_tool.skill_engine, "record_skill_usage",
+        _tracking_record,
+    )
+
+    out = skill_gate_tool._exec_skill_gate({"query": "test query"})
+    assert out["gate_result"] == "invoked"
+    assert out["skill_name"] == "fake-skill"
+
+    # Verify record_skill_usage was called
+    assert len(calls) >= 1
+    call_kwargs = calls[0][1] if calls[0][1] else {}
+    call_args = calls[0][0] if calls[0][0] else []
+    skill_name = call_args[0] if call_args else call_kwargs.get("skill_name", "")
+    assert skill_name == "fake-skill"

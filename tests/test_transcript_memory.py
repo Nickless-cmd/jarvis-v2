@@ -38,7 +38,7 @@ def test_structured_transcript_user_assistant_roles() -> None:
         {"role": "assistant", "content": "Hej! Hvad kan jeg hjælpe med?", "created_at": "2026-01-01T00:00:01"},
     ]
     with mock.patch(
-        "core.services.prompt_contract.recent_chat_session_messages",
+        "core.services.prompt_contract.recent_chat_session_messages_by_user_turns",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -62,7 +62,7 @@ def test_structured_transcript_tool_compressed_into_assistant() -> None:
         {"role": "assistant", "content": "Klokken er 14:30.", "created_at": "2026-01-01T00:00:03"},
     ]
     with mock.patch(
-        "core.services.prompt_contract.recent_chat_session_messages",
+        "core.services.prompt_contract.recent_chat_session_messages_by_user_turns",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -87,7 +87,7 @@ def test_structured_transcript_tool_without_preceding_assistant() -> None:
         {"role": "tool", "content": "[bash]: output here", "created_at": "2026-01-01T00:00:01"},
     ]
     with mock.patch(
-        "core.services.prompt_contract.recent_chat_session_messages",
+        "core.services.prompt_contract.recent_chat_session_messages_by_user_turns",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -97,23 +97,25 @@ def test_structured_transcript_tool_without_preceding_assistant() -> None:
 
 
 def test_structured_transcript_truncation() -> None:
-    """Long messages are truncated at 1600 chars."""
+    """Long messages are truncated at 8000 chars (bumped 2026-06-09 for 1M context)."""
     import unittest.mock as mock
     from core.services.prompt_contract import (
         _build_structured_transcript_messages,
     )
-    long_content = "x" * 3000
+    long_content = "x" * 10000
     fake_history = [
         {"role": "user", "content": long_content, "created_at": "2026-01-01T00:00:00"},
     ]
     with mock.patch(
-        "core.services.prompt_contract.recent_chat_session_messages",
+        "core.services.prompt_contract.recent_chat_session_messages_by_user_turns",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
 
     assert len(result) == 1
-    assert len(result[0]["content"]) <= 1600
+    assert len(result[0]["content"]) <= 8000
+    # And it should actually be near the cap (truncation triggered, not pass-through)
+    assert len(result[0]["content"]) >= 7990
 
 
 def test_structured_transcript_no_tool_slot_waste() -> None:
@@ -131,7 +133,7 @@ def test_structured_transcript_no_tool_slot_waste() -> None:
         {"role": "assistant", "content": "All done.", "created_at": "2026-01-01T00:00:05"},
     ]
     with mock.patch(
-        "core.services.prompt_contract.recent_chat_session_messages",
+        "core.services.prompt_contract.recent_chat_session_messages_by_user_turns",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)

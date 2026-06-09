@@ -6,6 +6,7 @@ from pathlib import Path
 
 from core.services.chat_sessions import (
     recent_chat_session_messages,
+    recent_chat_session_messages_by_user_turns,
     recent_chat_tool_messages,
 )
 from core.services.tool_result_store import (
@@ -3693,7 +3694,10 @@ def _recent_transcript_section(
     """Legacy flat-text fallback — used only when structured messages are not viable."""
     if not session_id or not include:
         return None
-    history = recent_chat_session_messages(session_id, limit=max(limit + 1, 1))
+    # 2026-06-09: same user-turn anchor som structured-variant.
+    history = recent_chat_session_messages_by_user_turns(
+        session_id, user_turns=max(limit, 1), max_total=4000,
+    )
     if not history:
         return None
     lines = [
@@ -3701,11 +3705,9 @@ def _recent_transcript_section(
         "Newest line is last.",
         "Tool lines are internal Jarvis-only observations, not user-visible chat.",
     ]
-    window = history[-limit:]
-    # recent_count=6 keeps the last 6 tool calls in expanded form
-    # (full payload up to 1600 chars). 256K context window has plenty
-    # of headroom for richer tool-context.
-    expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=6)
+    window = history
+    # 2026-06-09: 6→20 expanded, 1200→4000 / 800→1200 chars. 1M context.
+    expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=20)
     for index, item in enumerate(window):
         raw_role = item["role"]
         if raw_role == "user":
@@ -3718,7 +3720,7 @@ def _recent_transcript_section(
         content = render_tool_result_for_prompt(
             str(item.get("content") or ""),
             expand=index in expanded_tool_indexes,
-            max_chars=1200 if index in expanded_tool_indexes else 800,
+            max_chars=4000 if index in expanded_tool_indexes else 1200,
         )
         lines.append(f"{role}: {content}")
     return "\n".join(lines)
@@ -3762,17 +3764,31 @@ def _build_structured_transcript_messages(
     """
     if not session_id or not include:
         return []
-    history = recent_chat_session_messages(session_id, limit=max(limit + 1, 1))
+    # 2026-06-09: Switched from flat row-limit to user-turn-anchored fetch.
+    # Old behavior: recent_chat_session_messages(limit=60) tællte alle roller —
+    # i tool-tunge agentic sessions blev 90% af slots brugt på tool-rows og kun
+    # ~6 ægte user/assistant turns nåede ud i prompt'en. Det er rod-årsagen
+    # til "Jarvis husker kun 5-6 beskeder afbag." Ved at anchor på user-turns
+    # garanterer vi N reelle samtale-runder.
+    #
+    # `limit` parameter genfortolket: nu = user-turns at bevare. Vi sigter
+    # højere (50/60 → samme tal som user-turns) fordi visible lane kører
+    # deepseek-v4-flash med 1M context (num_ctx=256k) — vi har masser af
+    # headroom selv ved 60 user-turns × ~10 followup-rows = ~600 rows.
+    history = recent_chat_session_messages_by_user_turns(
+        session_id, user_turns=max(limit, 1), max_total=4000,
+    )
     if not history:
         return []
 
     # Phase 1: Merge consecutive tool messages into the preceding assistant turn.
     # Tool results become a short "[tool_name: status/summary]" annotation.
-    window = history[-limit:]
-    # recent_count=6 keeps the last 6 tool calls in expanded form
-    # (full payload up to 1600 chars). 256K context window has plenty
-    # of headroom for richer tool-context.
-    expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=6)
+    window = history
+    # 2026-06-09: Bumped recent_count 6 → 20 og max_chars 1600 → 4000 for
+    # expanded, 360 → 1200 for older. 1M context window har overflod af
+    # headroom (60 user-turns × ~10 tool-rows × 4000 chars worst case =
+    # ~2.4 MB = ~600k tokens, langt under 1M).
+    expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=20)
     merged: list[dict[str, str]] = []
     for index, item in enumerate(window):
         raw_role = str(item.get("role") or "")
@@ -3787,7 +3803,7 @@ def _build_structured_transcript_messages(
             content = render_tool_result_for_prompt(
                 raw_content,
                 expand=index in expanded_tool_indexes,
-                max_chars=1600 if index in expanded_tool_indexes else 360,
+                max_chars=4000 if index in expanded_tool_indexes else 1200,
             )
         else:
             content = " ".join(raw_content.split()).strip()
@@ -3796,7 +3812,7 @@ def _build_structured_transcript_messages(
 
         if raw_role == "tool":
             # Compress tool result into a short annotation
-            tool_summary = content[:1600] if index in expanded_tool_indexes else content[:300]
+            tool_summary = content[:4000] if index in expanded_tool_indexes else content[:1200]
             if merged and merged[-1]["role"] == "assistant":
                 # Append as annotation to previous assistant message
                 merged[-1]["content"] += f"\n({tool_summary})"
@@ -3806,11 +3822,13 @@ def _build_structured_transcript_messages(
             continue
 
         if raw_role == "user":
-            # Truncate user messages. 2400 chars (~600 tokens) per message
-            # gives Bjørn room to write multi-paragraph briefs without
-            # silent chopping — context window is 256K, we have headroom.
-            if len(content) > 2400:
-                content = content[:2397].rstrip() + "…"
+            # Truncate user messages. 8000 chars (~2000 tokens) per message —
+            # bumped 2026-06-09 fra 2400 nu hvor visible lane kører 1M context.
+            # Giver Bjørn rigelig plads til multi-paragraph briefs uden silent
+            # chopping; selv 60 turns × 8000 chars = 480k chars = ~120k tokens,
+            # langt under 1M-budget.
+            if len(content) > 8000:
+                content = content[:7997].rstrip() + "…"
             # Multi-user awareness: when a user_id is recorded for the message,
             # resolve to display name and prefix the content. Without this, in a
             # shared channel (Discord public, multi-member workspace) the model
@@ -3823,10 +3841,12 @@ def _build_structured_transcript_messages(
                     content = f"{speaker}: {content}"
             merged.append({"role": "user", "content": content})
         else:
-            # assistant — symmetric 2400-char cap so Jarvis' own past replies
-            # don't get truncated mid-sentence in his own working memory.
-            if len(content) > 2400:
-                content = content[:2397].rstrip() + "…"
+            # assistant — symmetric 8000-char cap (bumped 2026-06-09 fra 2400)
+            # så Jarvis' egne tidligere svar ikke truncates mid-sentence i hans
+            # egen working memory. Samme rationale som user-cap: 1M context har
+            # rigelig headroom.
+            if len(content) > 8000:
+                content = content[:7997].rstrip() + "…"
             assistant_msg: dict[str, str] = {"role": "assistant", "content": content}
             # Thinking-mode replay: Deepseek v4-pro/reasoner kræver at
             # reasoning_content fra prior assistant-turns sendes med tilbage.
@@ -3837,8 +3857,8 @@ def _build_structured_transcript_messages(
                 # Capper også reasoning ved 2400 så vi ikke pumper kæmpe
                 # context tilbage. Deepseek bryder sig ikke om hvor langt det
                 # er, kun at det er der.
-                if len(r_content) > 2400:
-                    r_content = r_content[:2397].rstrip() + "…"
+                if len(r_content) > 8000:
+                    r_content = r_content[:7997].rstrip() + "…"
                 assistant_msg["reasoning_content"] = r_content
             merged.append(assistant_msg)
 

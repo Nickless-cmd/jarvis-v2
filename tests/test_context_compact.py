@@ -279,8 +279,8 @@ def test_build_transcript_prepends_compact_marker_when_present(monkeypatch):
 
     monkeypatch.setattr(
         prompt_contract,
-        "recent_chat_session_messages",
-        lambda sid, limit: [
+        "recent_chat_session_messages_by_user_turns",
+        lambda sid, *, user_turns, max_total: [
             {"role": "user", "content": "hello", "created_at": "2026-01-01"},
             {"role": "assistant", "content": "hi", "created_at": "2026-01-01"},
         ],
@@ -310,8 +310,8 @@ def test_build_transcript_no_marker_no_prepend(monkeypatch):
 
     monkeypatch.setattr(
         prompt_contract,
-        "recent_chat_session_messages",
-        lambda sid, limit: [
+        "recent_chat_session_messages_by_user_turns",
+        lambda sid, *, user_turns, max_total: [
             {"role": "user", "content": "hello", "created_at": "2026-01-01"},
             {"role": "assistant", "content": "hi", "created_at": "2026-01-01"},
         ],

@@ -31,6 +31,7 @@ JARVIS_BRAIN_TOOL_DEFINITIONS: list[dict] = [
                     "domain": {"type": "string", "description": "Domæne, fx 'self', 'projects', 'relationships'"},
                     "importance": {"type": "integer", "description": "Vigtighed 0-100. Under 30 = kandidat til hurtig glemsel. Default fra kind."},
                     "related": {"type": "array", "items": {"type": "string"}, "description": "Relaterede emner"},
+                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Metadata tags til filtrering, fx ['memory-fix', 'engineering']"},
                     "source_url": {"type": "string", "description": "Kilde-URL"},
                     "source_chronicle": {"type": "string", "description": "Kilde-chronicle"},
                 },
@@ -50,6 +51,7 @@ JARVIS_BRAIN_TOOL_DEFINITIONS: list[dict] = [
                     "kinds": {"type": "array", "items": {"type": "string"}, "description": "Filtrér på typer"},
                     "limit": {"type": "integer", "description": "Max resultater (default 5)"},
                     "domain": {"type": "string", "description": "Filtrér på domæne"},
+                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Metadata tags — returnér kun entries der har ALLE angivne tags (AND-filter)"},
                     "include_archived": {"type": "boolean", "description": "Inkluder arkiverede"},
                 },
                 "required": ["query"],
@@ -175,6 +177,7 @@ def _exec_remember_this(args: dict[str, Any]) -> dict[str, Any]:
         session_id=session_id,
         turn_id=turn_id,
         related=args.get("related"),
+        tags=args.get("tags"),
         source_url=args.get("source_url"),
         source_chronicle=args.get("source_chronicle"),
         importance=args.get("importance"),
@@ -188,6 +191,7 @@ def _exec_search_jarvis_brain(args: dict[str, Any]) -> dict[str, Any]:
         kinds=args.get("kinds"),
         limit=args.get("limit", 5),
         domain=args.get("domain"),
+        tags=args.get("tags"),
         include_archived=args.get("include_archived", False),
     )
 
@@ -236,6 +240,7 @@ def remember_this(
     session_id: str,
     turn_id: str,
     related: list[str] | None = None,
+    tags: list[str] | None = None,
     source_url: str | None = None,
     source_chronicle: str | None = None,
     importance: int | None = None,
@@ -285,6 +290,7 @@ def remember_this(
             kind=kind, title=title, content=content,
             visibility=visibility, domain=domain,
             trigger="spontaneous", related=related or [],
+            tags=tags or [],
             source_url=source_url, source_chronicle=source_chronicle,
             importance=importance_float,
             now=now,
@@ -306,6 +312,7 @@ def search_jarvis_brain(
     kinds: list[str] | None = None,
     limit: int = 5,
     domain: str | None = None,
+    tags: list[str] | None = None,
     include_archived: bool = False,
 ) -> dict[str, Any]:
     """Søg Jarvis' egen hjerne. Returnerer excerpts; brug read_brain_entry for fuld content.
@@ -322,6 +329,7 @@ def search_jarvis_brain(
             visibility_ceiling=session_visibility_ceiling,
             limit=limit,
             domain=domain,
+            tags=tags,
             include_archived=include_archived,
         )
     except Exception as exc:

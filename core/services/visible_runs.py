@@ -2349,13 +2349,16 @@ async def _stream_visible_run(
 
                 def _persist_tool_result() -> None:
                     try:
+                        # 2026-06-09: fjernet ugyldigt run_id kwarg (record_cost
+                        # accepterer ikke run_id — det smed TypeError der blev
+                        # sluget). Tool-result call site har ikke cache-info så
+                        # vi sender 0/0 — cache måles på den senere primary call.
                         record_cost(
                             provider=_run_ref.provider,
                             model=_run_ref.model,
                             input_tokens=_tokens[0],
                             output_tokens=_tokens[1],
                             cost_usd=0.0,
-                            run_id=_run_ref.run_id,
                             lane="visible",
                         )
                         finished_at = datetime.now(UTC).isoformat()
@@ -2736,6 +2739,8 @@ async def _stream_visible_run(
             input_tokens=total_input_tokens,
             output_tokens=total_output_tokens,
             cost_usd=total_cost_usd,
+            cache_hit_tokens=total_cache_hit_tokens,
+            cache_miss_tokens=total_cache_miss_tokens,
         )
         event_bus.publish(
             "cost.recorded",

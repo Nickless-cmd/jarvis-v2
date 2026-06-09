@@ -9,7 +9,54 @@ from core.costing.ledger import (
     today_cost,
     this_week_cost,
     estimate_savings_if_cheap,
+    record_cost,
 )
+
+
+# ── 2026-06-09 cache_hit_tokens / cache_miss_tokens migration ─────────────
+
+
+class TestRecordCostCacheColumns:
+    def test_record_cost_accepts_cache_kwargs(self, isolated_runtime):
+        """record_cost accepterer nye cache_hit_tokens + cache_miss_tokens."""
+        record_cost(
+            lane="primary",
+            provider="deepseek",
+            model="deepseek-v4-flash",
+            input_tokens=85675,
+            output_tokens=357,
+            cost_usd=0.0114,
+            cache_hit_tokens=5120,
+            cache_miss_tokens=80555,
+        )
+        rows = recent_costs(limit=1)
+        assert rows, "record_cost should have inserted a row"
+        # cache columns roundtrip via DB
+        from core.runtime.db import connect
+        with connect() as conn:
+            r = conn.execute(
+                "SELECT cache_hit_tokens, cache_miss_tokens FROM costs ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        assert int(r["cache_hit_tokens"]) == 5120
+        assert int(r["cache_miss_tokens"]) == 80555
+
+    def test_record_cost_defaults_cache_to_zero(self, isolated_runtime):
+        """Gamle call sites uden cache-info → 0/0 (ingen TypeError)."""
+        record_cost(
+            lane="cheap",
+            provider="ollama",
+            model="local",
+            input_tokens=100,
+            output_tokens=50,
+            cost_usd=0.0,
+        )
+        from core.runtime.db import connect
+        with connect() as conn:
+            r = conn.execute(
+                "SELECT cache_hit_tokens, cache_miss_tokens FROM costs ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        assert int(r["cache_hit_tokens"]) == 0
+        assert int(r["cache_miss_tokens"]) == 0
 
 
 class TestTelemetrySummary:

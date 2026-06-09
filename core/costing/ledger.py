@@ -14,14 +14,23 @@ def record_cost(
     input_tokens: int = 0,
     output_tokens: int = 0,
     cost_usd: float = 0.0,
+    cache_hit_tokens: int = 0,
+    cache_miss_tokens: int = 0,
 ) -> None:
+    """Insert a row into the costs ledger.
+
+    2026-06-09: cache_hit_tokens + cache_miss_tokens added so DeepSeek
+    prompt-cache utilization can be measured historically. Older call
+    sites that don't pass them default to 0 (no cache info known).
+    """
     with connect() as conn:
         conn.execute(
             """
             INSERT INTO costs (
-                lane, provider, model, input_tokens, output_tokens, cost_usd, created_at
+                lane, provider, model, input_tokens, output_tokens, cost_usd,
+                cache_hit_tokens, cache_miss_tokens, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 lane,
@@ -30,6 +39,8 @@ def record_cost(
                 int(input_tokens),
                 int(output_tokens),
                 float(cost_usd),
+                int(cache_hit_tokens),
+                int(cache_miss_tokens),
                 datetime.now(UTC).isoformat(),
             ),
         )
@@ -187,11 +198,16 @@ def estimate_savings_if_cheap(*, days: int = 7) -> dict[str, object]:
             (f"-{days} days",),
         ).fetchall()
     row = rows[0]
+    # 2026-06-09: defend against NULL aggregates when no primary rows exist
+    # (SUM(NULL) returns NULL, not 0). Previously crashed on fresh DBs.
+    calls = int(row["calls"] or 0)
+    total_tokens = int(row["total_tokens"] or 0)
+    total_cost = float(row["total_cost"] or 0.0)
     return {
         "period_days": days,
-        "primary_calls": int(row["calls"]),
-        "primary_tokens": int(row["total_tokens"]),
-        "primary_cost": float(row["total_cost"]),
-        "estimated_cheap_cost": float(row["total_cost"]) * 0.02,  # cheap lane is ~98% cheaper
-        "potential_savings": round(float(row["total_cost"]) * 0.98, 6),
+        "primary_calls": calls,
+        "primary_tokens": total_tokens,
+        "primary_cost": total_cost,
+        "estimated_cheap_cost": total_cost * 0.02,  # cheap lane is ~98% cheaper
+        "potential_savings": round(total_cost * 0.98, 6),
     }

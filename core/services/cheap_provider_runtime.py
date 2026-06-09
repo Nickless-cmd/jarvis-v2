@@ -715,6 +715,10 @@ def execute_cheap_lane_via_pool(
         quality_score=None,
         smoke_test=False,
     )
+    # 2026-06-09: extract cache hit/miss from result if provider surfaced them
+    # (DeepSeek does via prompt_cache_hit_tokens/prompt_cache_miss_tokens).
+    _cache_hit = int(result.get("cache_hit_tokens") or result.get("prompt_cache_hit_tokens") or 0)
+    _cache_miss = int(result.get("cache_miss_tokens") or result.get("prompt_cache_miss_tokens") or 0)
     record_cost(
         lane="cheap",
         provider=provider,
@@ -722,6 +726,8 @@ def execute_cheap_lane_via_pool(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         cost_usd=float(result.get("cost_usd") or 0.0),
+        cache_hit_tokens=_cache_hit,
+        cache_miss_tokens=_cache_miss,
     )
     event_bus.publish(
         "runtime.cheap_lane_provider_completed",

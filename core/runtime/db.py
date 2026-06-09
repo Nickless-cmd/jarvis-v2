@@ -192,10 +192,21 @@ def init_db() -> None:
                 input_tokens INTEGER NOT NULL DEFAULT 0,
                 output_tokens INTEGER NOT NULL DEFAULT 0,
                 cost_usd REAL NOT NULL DEFAULT 0,
+                cache_hit_tokens INTEGER NOT NULL DEFAULT 0,
+                cache_miss_tokens INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL
             )
             """
         )
+        # 2026-06-09 (Bjørn's "8 % er for lidt" — cache rate er dyrt at
+        # ikke kunne måle historisk). Migrate existing costs DBs to add
+        # cache columns. cost.recorded events bærer hit/miss tokens men
+        # de blev kun publiceret, ikke persistet til costs-tabellen.
+        _cost_cols = {row[1] for row in conn.execute("PRAGMA table_info(costs)")}
+        if "cache_hit_tokens" not in _cost_cols:
+            conn.execute("ALTER TABLE costs ADD COLUMN cache_hit_tokens INTEGER NOT NULL DEFAULT 0")
+        if "cache_miss_tokens" not in _cost_cols:
+            conn.execute("ALTER TABLE costs ADD COLUMN cache_miss_tokens INTEGER NOT NULL DEFAULT 0")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS cheap_provider_runtime_state (

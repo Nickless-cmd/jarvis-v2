@@ -374,6 +374,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": True,
         "description": "B5: async write queue — processes deferred sensory/brain/sidecar writes every 120s for non-blocking memory writes",
     },
+    "selective_consolidation": {
+        "module": "core.services.selective_consolidation_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 1440,
+        "default_enabled": True,
+        "description": "D1: daily selective consolidation — archives bottom (100-K)% af dagens sensory/brain/private records; kun top-K% når long-term",
+    },
 }
 
 

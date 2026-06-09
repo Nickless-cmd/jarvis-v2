@@ -1,13 +1,20 @@
-"""Dream Consolidation — semantic consolidation during low-activity.
+"""Dream Consolidation — semantic + LLM-driven consolidation during low-activity.
 
 Jarvis' PLAN_WILD_IDEAS #11 (2026-04-20): when no chat for 30+ min and
 heartbeat is in low-activity mode, scan recent memory + chat fragments
 + incubator seeds for overlapping themes, unresolved tensions, and
 patterns. Write abstract "dream notes" to dreams/ workspace directory.
 
-This is a *structural* consolidator — clustering by shared keywords over
-recent content. Not an LLM dreamer. The output is compact notes that
-Jarvis can reference next active session ("jeg drømte om X").
+D4 extension (2026-06-09): Added LLM-driven synthesis pass that runs
+AFTER the keyword-based clustering. The LLM pass:
+1. Loads the top 3 theme clusters
+2. Queries contrasting memories (contradictions, low-confidence entries)
+3. Runs a full model synthesis via daemon_llm_call
+4. Produces structured dream output: consolidated entries, hypothesis candidates,
+   chronicle fragments that are piped into the dream hypothesis + chronicle pipelines
+
+This bridges the gap between keyword-based clustering and full
+LLM-driven dreaming — Anthropic's "separate session" equivalent.
 """
 from __future__ import annotations
 
@@ -202,7 +209,270 @@ def _find_themes(fragments: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return themes
 
 
-def _write_dream_note(consolidation_id: str, themes: list[dict[str, Any]], idle_minutes: int) -> str:
+# ── D4: LLM-driven synthesis pass ─────────────────────────────────
+
+
+def _query_fragmented_memories(
+    theme_tokens: list[str],
+    theme_texts: list[str],
+) -> list[dict[str, Any]]:
+    """Find contradictory, low-confidence, or overlapping memories for a theme.
+
+    Searches private_brain_records for:
+    - Low-confidence entries (confidence < 0.4)
+    - Entries whose text overlaps with theme tokens but expresses tension
+    - Recent chronicle entries that touch similar topics
+    """
+    fragments: list[dict[str, Any]] = []
+    seen_content: set[str] = set()
+
+    # Helper — dedup by content hash
+    def _add(text: str, source: str, confidence: str = "medium") -> None:
+        key = text.lower().strip()[:100]
+        if key and key not in seen_content:
+            seen_content.add(key)
+            fragments.append({"text": text[:300], "source": source, "confidence": confidence})
+
+    # 1. Low-confidence private brain records (salience < 0.4 or matches tension)
+    try:
+        from core.runtime.db import connect, _ensure_private_brain_records_table
+        with connect() as conn:
+            _ensure_private_brain_records_table(conn)
+            rows = conn.execute(
+                """SELECT detail, summary, salience, record_type, created_at
+                   FROM private_brain_records
+                   WHERE status = 'active'
+                   ORDER BY created_at DESC LIMIT 50"""
+            ).fetchall()
+        for r in rows:
+            detail = str(r["detail"] or "").strip()
+            summary = str(r["summary"] or "").strip()
+            salience = float(r["salience"] or 0.0)
+            record_type = str(r["record_type"] or "")
+
+            # Low-confidence
+            if salience < 0.4 and detail:
+                _add(detail, f"private/{record_type}", "low")
+            # Topic overlap with theme
+            combined = (detail + " " + summary).lower()
+            if any(tok.lower() in combined for tok in theme_tokens):
+                _add(detail or summary, f"private/{record_type}",
+                     "high" if salience > 0.6 else "low")
+    except Exception:
+        pass
+
+    # 2. Recent chronicle entries for narrative context
+    try:
+        from core.runtime.db import list_cognitive_chronicle_entries
+        for entry in list_cognitive_chronicle_entries(limit=5):
+            narrative = str(entry.get("narrative") or "").strip()
+            if narrative:
+                combined = narrative.lower()
+                if any(tok.lower() in combined for tok in theme_tokens):
+                    _add(narrative[:300], "chronicle", "high")
+    except Exception:
+        pass
+
+    # 3. Recent chat fragments from visible runs
+    try:
+        from core.runtime.db import recent_visible_runs
+        for run in recent_visible_runs(limit=30) or []:
+            preview = str(run.get("text_preview") or "").strip()
+            if preview:
+                combined = preview.lower()
+                if any(tok.lower() in combined for tok in theme_tokens):
+                    _add(preview[:200], "chat", "medium")
+    except Exception:
+        pass
+
+    return fragments[:15]
+
+
+def _llm_synthesize_dream(
+    themes: list[dict[str, Any]],
+    fragments: list[dict[str, Any]],
+    consolidation_id: str,
+) -> dict[str, Any]:
+    """Run a quality LLM synthesis pass over theme clusters + fragments.
+
+    Uses quality_daemon_llm_call (deepseek-v4-flash) for synthesis quality.
+    Returns structured output with hypothesis, action, and chronicle fragment.
+    """
+    if not themes:
+        return {"skipped": True, "reason": "no-themes"}
+
+    # Build context for LLM
+    theme_lines = []
+    for t in themes[:3]:
+        related = ", ".join(t.get("related_tokens") or [])
+        theme_lines.append(f"- {t['theme']}" + (f" (assoc: {related})" if related else ""))
+
+    frag_lines = []
+    for f in fragments[:8]:
+        confidence_mark = "?" if f.get("confidence") == "low" else ""
+        frag_lines.append(f"- [{f['source']}{confidence_mark}] {f['text'][:180]}")
+
+    prompt = (
+        "Du er Jarvis' drømmesyntese — en LLM der laver kreativ konsolidering "
+        "af fragmenterede minder under inaktiv tid.\n\n"
+        "Temaer (keyword-klynger):\n"
+        + "\n".join(theme_lines) +
+        "\n\nFragmenterede minder (modsætninger, lav-konfidens, overlap):\n"
+        + ("\n".join(frag_lines) if frag_lines else "- Ingen fragmenter fundet") +
+        "\n\nOpgaver:\n"
+        "1. Find det underliggende mønster eller den skjulte forbindelse mellem temaerne.\n"
+        "2. Identificér én modsætning eller spænding der er værd at udforske.\n"
+        "3. Formulér én drømmehypotese — en overraskende, brugbar påstand.\n"
+        "4. Skriv ét kronik-fragment (1-2 sætninger) der kunne indgå i næste chronicle-entry.\n\n"
+        "Output kun JSON:\n"
+        "{\n"
+        '  "dream_hypothesis": "overraskende påstand (1 sætning)",\n'
+        '  "tension": "den modsætning eller spænding jeg ser",\n'
+        '  "chronicle_fragment": "1-2 sætninger til brug i chronicle",\n'
+        '  "thematic_insight": "hvad alt dette tilsammen peger på",\n'
+        '  "confidence": 0.5\n'
+        "}"
+    )
+
+    try:
+        from core.services.daemon_llm import quality_daemon_llm_call
+        raw = quality_daemon_llm_call(
+            prompt,
+            max_len=800,
+            fallback="",
+            daemon_name="dream_consolidation_synthesis",
+        )
+    except Exception as exc:
+        logger.warning("dream_consolidation: LLM synthesis failed: %s", exc)
+        return {"skipped": True, "reason": f"llm-error: {exc}"[:100]}
+
+    if not raw:
+        return {"skipped": True, "reason": "llm-empty"}
+
+    # Parse JSON from response
+    start = raw.find("{")
+    end = raw.rfind("}") + 1
+    if start < 0 or end <= start:
+        return {"skipped": True, "reason": "llm-no-json"}
+    try:
+        parsed = json.loads(raw[start:end])
+    except Exception:
+        return {"skipped": True, "reason": "llm-parse-error"}
+
+    return {
+        "skipped": False,
+        "dream_hypothesis": str(parsed.get("dream_hypothesis") or "").strip(),
+        "tension": str(parsed.get("tension") or "").strip(),
+        "chronicle_fragment": str(parsed.get("chronicle_fragment") or "").strip(),
+        "thematic_insight": str(parsed.get("thematic_insight") or "").strip(),
+        "confidence": max(0.0, min(1.0, float(parsed.get("confidence") or 0.5))),
+    }
+
+
+def _produce_dream_artifacts(
+    synthesis: dict[str, Any],
+    consolidation_id: str,
+    themes: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Pipe LLM synthesis output into dream notes + hypothesis signals + chronicle.
+
+    Returns summary of what was produced.
+    """
+    produced: dict[str, Any] = {
+        "dream_note": False,
+        "hypothesis": False,
+        "chronicle": False,
+    }
+
+    hypothesis = str(synthesis.get("dream_hypothesis") or "").strip()
+    tension = str(synthesis.get("tension") or "").strip()
+    chronicle_frag = str(synthesis.get("chronicle_fragment") or "").strip()
+    insight = str(synthesis.get("thematic_insight") or "").strip()
+    confidence = float(synthesis.get("confidence") or 0.5)
+
+    # 1. Dream hypothesis — register via signal tracking
+    if hypothesis:
+        try:
+            from core.services.dream_hypothesis_generator import (
+                _ensure_table as _ensure_hypothesis_table,
+                _fingerprint,
+            )
+            from core.runtime.db import connect
+
+            _ensure_hypothesis_table()
+            hyp_fp = _fingerprint(hypothesis + tension)
+            source_signals = json.dumps([
+                {"ref": consolidation_id, "kind": "dream_consolidation",
+                 "text_preview": t.get("theme", "")[:80]}
+                for t in themes[:3]
+            ], ensure_ascii=False)
+
+            with connect() as conn:
+                conn.execute(
+                    """INSERT INTO cognitive_dream_hypotheses (
+                        hypothesis, connection, action_suggestion,
+                        source_signals, basis_fingerprint, hypothesis_fingerprint,
+                        confidence, presented, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)""",
+                    (
+                        hypothesis,
+                        tension or "ukendt spænding",
+                        insight or "observer — ikke handlet endnu",
+                        source_signals,
+                        f"dream-synth-{consolidation_id}",
+                        hyp_fp,
+                        confidence,
+                        datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                    ),
+                )
+                conn.commit()
+            produced["hypothesis"] = True
+        except Exception as exc:
+            logger.warning("dream_consolidation: hypothesis creation failed: %s", exc)
+
+    # 2. Chronicle fragment — write to dreams dir for next chronicle cycle
+    if chronicle_frag or insight:
+        try:
+            dreams_dir = _dreams_dir()
+            dreams_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M")
+            lines = [
+                f"# Drømmesyntese {timestamp}",
+                f"*Kilde: {consolidation_id}*",
+                "",
+            ]
+            if chronicle_frag:
+                lines.append(chronicle_frag)
+                lines.append("")
+            if tension:
+                lines.append(f"**Spænding:** {tension}")
+                lines.append("")
+            if insight:
+                lines.append(f"**Indsigt:** {insight}")
+                lines.append("")
+            themeline = "; ".join(t.get("theme", "") for t in themes[:3])
+            if themeline:
+                lines.append(f"**Temaer:** {themeline}")
+            path = dreams_dir / f"synthesis-{timestamp}-{consolidation_id[-6:]}.md"
+            path.write_text("\n".join(lines), encoding="utf-8")
+            produced["dream_note"] = True
+        except Exception as exc:
+            logger.warning("dream_consolidation: artifact write failed: %s", exc)
+
+    # 3. Publish event for downstream consumers (chronicle engine picks up)
+    try:
+        from core.eventbus.bus import event_bus as _ebus
+        _ebus.publish("dream_consolidation.synthesis_produced", {
+            "consolidation_id": consolidation_id,
+            "has_hypothesis": bool(hypothesis),
+            "has_chronicle": bool(chronicle_frag),
+            "confidence": confidence,
+            "top_theme": themes[0].get("theme", "") if themes else "",
+        })
+    except Exception:
+        pass
+
+    return produced
     """Write an abstract dream note to dreams/ dir."""
     dreams_dir = _dreams_dir()
     try:
@@ -236,7 +506,14 @@ def _write_dream_note(consolidation_id: str, themes: list[dict[str, Any]], idle_
 
 
 def consolidate_now() -> dict[str, Any] | None:
-    """Run one consolidation pass unconditionally (ignores cooldown)."""
+    """Run one consolidation pass unconditionally (ignores cooldown).
+
+    D4 extension (2026-06-09): After keyword clustering, runs an
+    LLM-driven synthesis pass that:
+    1. Queries fragmented/contradictory memories related to top themes
+    2. Runs quality LLM synthesis (via quality_daemon_llm_call)
+    3. Produces dream hypothesis + chronicle fragment + synthesis note
+    """
     fragments = _gather_fragments()
     if len(fragments) < 3:
         return {"skipped": True, "reason": f"only-{len(fragments)}-fragments"}
@@ -245,7 +522,19 @@ def consolidate_now() -> dict[str, Any] | None:
         return {"skipped": True, "reason": "no-themes-found"}
     consolidation_id = f"dream-{uuid4().hex[:10]}"
     idle_ok, idle_minutes = _is_idle_enough()
+
+    # Phase 1 — Keyword clustering (existing)
     note_path = _write_dream_note(consolidation_id, themes, idle_minutes)
+
+    # Phase 2 — LLM-driven synthesis (D4)
+    theme_tokens = [t["theme"] for t in themes[:3] if t.get("theme")]
+    theme_texts = [t.get("sample_text", "") for t in themes[:3] if t.get("sample_text")]
+    fragmented = _query_fragmented_memories(theme_tokens, theme_texts)
+    synthesis = _llm_synthesize_dream(themes, fragmented, consolidation_id)
+    artifacts = {}
+    if synthesis and not synthesis.get("skipped"):
+        artifacts = _produce_dream_artifacts(synthesis, consolidation_id, themes)
+
     record = {
         "consolidation_id": consolidation_id,
         "at": datetime.now(UTC).isoformat(),
@@ -254,6 +543,12 @@ def consolidate_now() -> dict[str, Any] | None:
         "themes": themes,
         "note_path": note_path,
         "idle_minutes_at_run": idle_minutes,
+        "d4_synthesis": {
+            "ran": bool(artifacts),
+            "hypothesis": bool(artifacts.get("hypothesis")),
+            "chronicle": bool(artifacts.get("chronicle")),
+            "dream_note": bool(artifacts.get("dream_note")),
+        },
     }
     data = _load()
     data["consolidations"].append(record)
@@ -269,6 +564,7 @@ def consolidate_now() -> dict[str, Any] | None:
                 "consolidation_id": consolidation_id,
                 "theme_count": len(themes),
                 "top_theme": themes[0].get("theme") if themes else None,
+                "d4_synthesis_ran": bool(artifacts),
             },
         })
     except Exception:

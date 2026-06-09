@@ -1,29 +1,29 @@
 # Memory Architecture — Gap Analysis & Roadmap
 
-**Dato:** 2026-06-08
-**Status:** Draft
+**Dato:** 2026-06-09 (opdateret)
+**Status:** Levende dokument
 **Forfatter:** Jarvis
 **Kilder:** Anthropic Memory Store (marts 2026), Mem0 (58k ★, Apache 2.0), State of AI Agent Memory 2026, MCP Agent Memory Protocol
 
 ---
 
-## 1. Hvor står vi?
+## 1. Hvor står vi? (opdateret 2026-06-09)
 
 ### 1.1 Full comparison: Jarvis vs Anthropic vs Mem0
 
 | Dimension | Anthropic Memory Store | Mem0 (2026) | **Jarvis (i dag)** | Gap |
 |-----------|----------------------|-------------|-------------------|-----|
 | **Storage model** | File-based (`/mnt/memory/`) | Embeddings + metadata | Embeddings + SQLite (brain) | ✅ OK |
-| **Multi-signal retrieval** | Keyword only (grep) | Semantic + BM25 + entity fusion | Kun semantic (cosine) | ⚠️ Mangler BM25 + entity boost |
-| **Entity linking** | Ingen | Entities boost relaterede memories | Entity extraction findes, men ingen retrieval-boost | ⚠️ Delvist |
-| **Temporal reasoning** | Timestamp på filer | Tidsbevidst retrieval + linking | Basal recency-scoring | ⚠️ Simpelt |
-| **Metadata filtering** | Ingen | `context:` attributter | `kind` + `tags` | ✅ OK |
+| **Multi-signal retrieval** | Keyword only (grep) | Semantic + BM25 + entity fusion | ✅ Semantic + BM25 + entity fusion (B1) | ✅ **Lukket** |
+| **Entity linking** | Ingen | Entities boost relaterede memories | ✅ Entity overlap score i multi-signal pipeline | ✅ **Lukket** |
+| **Temporal reasoning** | Timestamp på filer | Tidsbevidst retrieval + linking | ✅ **B4** — 4-signal inferens, edge-graf, chain-detektion, temporal boost i search | ✅ **Lukket** |
+| **Metadata filtering** | Ingen | `context:` attributter | `kind` + `tags` + `visibility_ceiling` | ✅ OK |
 | **Multi-scope isolation** | Workspace-scoped | user_id, agent_id, run_id, app_id | Delvist (ikke rent adskilt) | ⚠️ |
 | **Async writes** | Synkront (file I/O) | Non-blocking writes | Synkront | ⚠️ |
 | **Versionering / audit** | `memver_*` immutable versions | Ingen | Ingen audit trail | ⚠️ |
 | **Procedural memory** | Skills (YAML, mounted) | Ingen explicit | **Skills system** (`skill_gate`, `skill_chain`, 50+ skills) | ✅ **Edge!** |
 | **Identity persistence** | `/memories` sketch | Ingen explicit | Identity sketch (Phase 2) | ✅ Ny |
-| **Dreaming / consolidation** | Separate dreaming session | Selective top-K% consolidation | Chronicler daemon (basis) | ⚠️ |
+| **Dreaming / consolidation** | Separate dreaming session | Selective top-K% consolidation | Chronicler daemon — dedup + contradiction + auto-archive + theme consolidation | ✅ Basal |
 | **Benchmarks** | Ingen officielle | **92.5 LoCoMo**, 94.4 LongMemEval | Ingen benchmarks | ⚠️ Stort hul |
 | **Read-only stores** | Ja (reference data) | Ingen | Ingen | ⚠️ |
 | **Cost/token** | ~? | ~6.900 tokens/query | ~5.200 tokens/query | ✅ OK |
@@ -44,41 +44,41 @@
 **Edge vs Anthropic Skills:** Anthropic Skills (Managed Agents, 2026) er samme koncept, men vores `skill_gate` har **auto-retrieval** (semantic match → auto-invoke ved score > 0.30) — Anthropic kræver manuelt valg.
 
 **Hvad skills mangler:**
-- Versionering / audit trail af ændringer
-- Meta-tags (`context: coding`, `context: research`) for metadata-filtering
-- `skill_chain` ikke fuldt integreret i heartbeat-routing
-- Auto-learning fra erfaring (forbedres baseret på tidligere brug)
+- Versionering / audit trail af ændringer **(C1)**
+- Meta-tags (`context: coding`, `context: research`) for metadata-filtering **(C2)**
+- `skill_chain` ikke fuldt integreret i heartbeat-routing **(C3)**
+- Auto-learning fra erfaring (forbedres baseret på tidligere brug) **(C4)**
 
 ---
 
-## 2. Prioritisede huller (fase-inddelt)
+## 2. Prioritisede huller (fase-inddelt) — opdateret 2026-06-09
 
 ### 🔴 Fase A — Memory Fix (Uge 24-25)
-*Allerede i gang. Phase 1 + 2 er coded.*
 
 | # | Hul | Løsning | Status |
 |---|-----|---------|--------|
 | A1 | Cold tier deaktiveret | Genåbn med quality scoring | ✅ **Phase 1 committed** |
 | A2 | Identity tab ved compaction | Persistent identity sketch (pre-compaction hook) | ✅ **Phase 2 committed** |
-| A3 | Wakeup backlog støj | Ryd op i fired wakeups | ⏳ Skal gøres |
-| A4 | Flash model 1-min vindue | Stabiliser køretid | ⏳ Skal gøres |
+| A3 | Wakeup backlog støj | Ryd op i fired wakeups | ⏳ Åben (15 min effort) |
+| A4 | Flash model 1-min vindue | Stabiliser køretid | ⏳ Åben |
 
 ### 🟡 Fase B — Core Retrieval (Uge 25-26)
+*B1+B2+B3+B4 er ALLE lukket — se nedenfor.*
 
-| # | Hul | Løsning | Estimat |
-|---|-----|---------|---------|
-| B1 | **Multi-signal retrieval** | Tilføj BM25 keyword + entity fusion score ved siden af cosine similarity | 2-3 dage |
-| B2 | **Entity linking boost** | Når entity matches i query, boost relaterede records med +0.2 | 1 dag |
-| B3 | **Metadata filtering** | Tilføj `context:` felt på brain entries — filtrér ved recall | 1 dag |
-| B4 | **Temporal linking** | Link events på tværs af tid (relationstabel: `event_a → influenced → event_b`) | 3-4 dage |
-| B5 | **Asynkrone writes** | Queue-baseret memory writes (non-blocking for brugeroplevelse) | 2 dage |
+| # | Hul | Løsning | Status |
+|---|-----|---------|--------|
+| B1 | **Multi-signal retrieval** | BM25 + entity fusion + embedding + recency — `multi_signal_recall()` | ✅ **Lukket** (2026-06-08) |
+| B2 | **Entity linking boost** | `entity_boost_score()` / `entity_overlap_score()` i multi-signal pipeline | ✅ **Lukket** (via B1) |
+| B3 | **Metadata filtering** | `tags` felt på BrainEntry + `search_brain(tags=...)` + `visibility_ceiling` | ✅ **Lukket** |
+| B4 | **Temporal linking** | 4-signal inferens, edge-graf, chain-detektion, daemon, `full_rebuild()` — 79 tests | ✅ **Lukket** (2026-06-09) |
+| B5 | **Asynkrone writes** | Queue-baseret memory writes (non-blocking for brugeroplevelse) | ⏳ Åben (2 dage) |
 
 ### 🟠 Fase C — Skills & Procedural Memory (Uge 26-27)
 
 | # | Hul | Løsning | Estimat |
 |---|-----|---------|---------|
 | C1 | **Skills versionering** | Audit trail af skill-ændringer (hvem, hvornår, diff) | 1 dag |
-| C2 | **Skills meta-tags** | `context:` tag på skills → metadata-filtering ved `skill_gate` | 0.5 dag |
+| C2 | **Skills meta-tags** | `context:` tag på skills → metadata-filtering ved `skill_gate` | ⏳ **Lavthængende** (30 min) |
 | C3 | **Skill chain i heartbeat** | Integrér `skill_chain` i heartbeat-routing så komplekse workflows foreslås automatisk | 2 dage |
 | C4 | **Auto-learning** | Log skill usage → foreslå forbedringer baseret på mønstre | 3 dage |
 | C5 | **Read-only skills** | Delt reference-materiale som skills (kan ikke forgiftes) | 1 dag |
@@ -112,24 +112,22 @@
 
 ---
 
-## 4. Konkrete anbefalinger til næste skridt
+## 4. Konkrete anbefalinger til næste skridt — opdateret 2026-06-09
 
-### 4.1 Hvad giver mest værdi for mindst arbejde
+### 4.1 Hvad giver mest værdi for mindst arbejde (NU)
 
-1. **Multi-signal retrieval (B1)** — +29.6 point på temporal reasoning ifølge Mem0 benchmarks. BM25 er 50 linjer kode.
-2. **Skills meta-tags (C2)** — 30 min arbejde, markant forbedret `skill_gate` præcision.
+1. **Skills meta-tags (C2)** — 30 min arbejde, markant forbedret `skill_gate` præcision.
+2. **Wakeup backlog cleanup (A3)** — 15 min, rydder støj fra awareness.
 3. **Skills versionering (C1)** — 1 dags arbejde, giver audit trail for alle fremtidige ændringer.
-4. **Wakeup backlog cleanup (A3)** — 15 min, rydder støj fra awareness.
 
 ### 4.2 Hvad kræver mere research
 
 - **LoCoMo benchmark (D2)** — kræver opsætning af evalueringsframework og en "ground truth" af Jarvis' memory.
 - **Dreaming sessions (D4)** — kræver en separat session-type der ikke forstyrrer aktiv samtale.
-- **Temporal linking (B4)** — kræver en relationstabel og en graf-algoritme.
 
 ### 4.3 Hvad vi bør **ikke** gøre (endnu)
 
-- **Mem0 integration** — deres styrke er multi-signal retrieval og temporal reasoning, men vi har bedre identity persistence og procedural memory. At tilføje BM25 + entity boost (B1+B2) lukker de vigtigste huller uden at trække en 58k-star afhængighed ind.
+- **Mem0 integration** — deres styrke var multi-signal retrieval og temporal reasoning, men vi har lukket begge huller (B1+B4). Vores identity persistence og procedural memory er stadig stærkere. Ingen grund til at trække en 58k-star afhængighed ind.
 - **Full MCP adoption** — Model Context Protocol er interessant men stadig emerging. Vi kan observere og adoptere enkelte patterns (read-only stores, working memory) når spec'en stabiliserer sig.
 
 ---
@@ -146,33 +144,32 @@
 
 ---
 
-## 6. Implementationsrækkefølge (anbefalet)
+## 6. Implementationsrækkefølge (opdateret 2026-06-09)
 
 ```
 Uge 24 (denne uge):
-├── A3: Ryd wakeup backlog ✅ (15 min)
-├── A4: Stabiliser flash model ✅ (i gang)
-└── Afslut Phase 1+2 ✅
+├── ✅ A1: Cold tier genåbnet (Phase 1)
+├── ✅ A2: Identity sketch (Phase 2)
+├── ✅ B1: Multi-signal retrieval (BM25 + entity fusion)
+├── ✅ B3: Metadata filtering (tags)
+├── ✅ B4: Temporal linking (alle 4 faser + full_rebuild)
+├── ⏳ A3: Ryd wakeup backlog (15 min)
+└── ⏳ A4: Stabiliser flash model
 
-Uge 25:
-├── B1: Multi-signal retrieval (BM25 + entity fusion) ← TOP PRIORITY
-├── B3: Metadata filtering (context: tags)
-└── C2: Skills meta-tags (30 min win)
-
-Uge 26:
-├── B2: Entity linking boost
+Uge 25 (næste):
+├── ⏳ C2: Skills meta-tags (30 min win) ← TOP PRIORITY
+├── ⏳ A3: Wakeup cleanup (15 min)
 ├── C1: Skills versionering
 ├── C3: Skill chain i heartbeat
 └── B5: Async writes
 
-Uge 27:
-├── B4: Temporal linking
+Uge 26:
 ├── C4: Auto-learning skills
 ├── C5: Read-only skills
-└── D3: Multi-scope isolation
+├── D3: Multi-scope isolation
+└── D1: Selective consolidation
 
-Uge 28:
-├── D1: Selective consolidation
+Uge 27-28:
 ├── D2: Memory benchmarks
 ├── D4: Dreaming sessions
 └── D5: Cost optimization
@@ -213,11 +210,13 @@ Uge 28:
 
 ### 7.4 Vores egne benchmarks (estimat)
 
-| Metric | Jarvis (før Phase 1) | Jarvis (efter Phase 1+2) | Mem0 |
-|--------|---------------------|------------------------|------|
+| Metric | Jarvis (før Phase 1) | Jarvis (efter B1+B4) | Mem0 |
+|--------|---------------------|----------------------|------|
 | Cold tier recall precision | N/A (deaktiveret) | ~65% (estimat) | ~92% |
 | Identity persistence after compaction | 0% | ~85% (estimat) | N/A |
 | Tokens per recall call | ~5.200 | ~5.200 | ~6.900 |
 | Procedural skills auto-matched | 50+ skills | 50+ skills | 0 |
 | Sensorisk memory | Ja | Ja | Nej |
-| Temporal reasoning | Basal recency | Basal recency | Avanceret linking |
+| Temporal reasoning | Basal recency | ✅ **Edge-graf + 4-signal chain-detektion** | Avanceret linking |
+| Multi-signal retrieval | Kun cosine | ✅ **BM25 + entity + cosine + recency** | BM25 + entity + cosine |
+| Metadata filtering | Ingen | ✅ `tags` + `visibility_ceiling` + `kind` | `context:` attributter |

@@ -96,6 +96,68 @@ def test_section_returns_none_when_no_fired(monkeypatch):
     assert sw.self_wakeup_section() is None
 
 
+def test_cleanup_removes_old_consumed(monkeypatch):
+    now = datetime.now(UTC)
+    old = (now - timedelta(hours=200)).isoformat()  # > 7 dage
+    fresh = (now - timedelta(hours=24)).isoformat()  # < 7 dage
+    state = [
+        {"wakeup_id": "w1", "status": "consumed", "consumed_at": old, "prompt": "old"},
+        {"wakeup_id": "w2", "status": "consumed", "consumed_at": fresh, "prompt": "fresh"},
+        {"wakeup_id": "w3", "status": "pending", "fire_at": (now + timedelta(hours=1)).isoformat(), "prompt": "future"},
+    ]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    result = sw.cleanup_old_wakeups()
+    assert result["removed"] == 1  # kun w1 (gammel consumed)
+    assert result["remaining"] == 2
+    ids = [r["wakeup_id"] for r in state]
+    assert "w1" not in ids
+    assert "w2" in ids
+    assert "w3" in ids
+
+
+def test_cleanup_removes_old_cancelled(monkeypatch):
+    now = datetime.now(UTC)
+    state = [
+        {"wakeup_id": "w1", "status": "cancelled", "scheduled_at": (now - timedelta(hours=200)).isoformat(), "prompt": "old"},
+        {"wakeup_id": "w2", "status": "cancelled", "scheduled_at": (now - timedelta(hours=24)).isoformat(), "prompt": "fresh"},
+    ]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    result = sw.cleanup_old_wakeups()
+    assert result["removed"] == 1  # kun w1
+    assert result["remaining"] == 1
+    assert state[0]["wakeup_id"] == "w2"
+
+
+def test_cleanup_removes_stale_fired(monkeypatch):
+    now = datetime.now(UTC)
+    state = [
+        {"wakeup_id": "w1", "status": "fired", "fired_at": (now - timedelta(hours=48)).isoformat(), "prompt": "stale", "consumed_at": None},
+        {"wakeup_id": "w2", "status": "fired", "fired_at": (now - timedelta(hours=2)).isoformat(), "prompt": "recent", "consumed_at": None},
+    ]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    result = sw.cleanup_old_wakeups()
+    assert result["removed"] == 1  # kun w1 (stale > 24h)
+    assert result["remaining"] == 1
+    assert state[0]["wakeup_id"] == "w2"
+
+
+def test_cleanup_noop_when_nothing_old(monkeypatch):
+    now = datetime.now(UTC)
+    state = [
+        {"wakeup_id": "w1", "status": "consumed", "consumed_at": (now - timedelta(hours=2)).isoformat(), "prompt": "recent"},
+        {"wakeup_id": "w2", "status": "fired", "fired_at": (now - timedelta(hours=2)).isoformat(), "prompt": "recent", "consumed_at": None},
+        {"wakeup_id": "w3", "status": "pending", "fire_at": (now + timedelta(hours=1)).isoformat(), "prompt": "future"},
+    ]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    result = sw.cleanup_old_wakeups()
+    assert result["removed"] == 0
+    assert result["remaining"] == 3
+
+
 def test_section_lists_fired_wakeups(monkeypatch):
     monkeypatch.setattr(sw, "due_wakeups", lambda **kw: [
         {"wakeup_id": "w1", "status": "fired",

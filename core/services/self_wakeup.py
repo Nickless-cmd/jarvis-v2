@@ -182,6 +182,67 @@ def list_wakeups(*, status: str | None = None, limit: int = 30) -> list[dict[str
     return records[:limit]
 
 
+def cleanup_old_wakeups(
+    *,
+    consumed_age_hours: int = 168,  # 7 days
+    cancelled_age_hours: int = 168,
+    stale_fired_age_hours: int = 24,
+) -> dict[str, int]:
+    """Ryd op i gamle consumed/cancelled/stale-fired wakeups.
+
+    Args:
+        consumed_age_hours: remove consumed entries older than this (default 7 dage)
+        cancelled_age_hours: remove cancelled entries older than this (default 7 dage)
+        stale_fired_age_hours: remove fired-but-never-consumed entries older than this (default 24h)
+
+    Returns:
+        {removed, remaining} — antal fjernede og tilbageværende wakeups
+    """
+    records = _load()
+    now = datetime.now(UTC)
+    kept: list[dict[str, Any]] = []
+    removed = 0
+
+    for r in records:
+        status = str(r.get("status") or "")
+        if status == "consumed":
+            consumed_at = r.get("consumed_at")
+            if consumed_at:
+                try:
+                    age = (now - datetime.fromisoformat(consumed_at)).total_seconds() / 3600
+                    if age >= consumed_age_hours:
+                        removed += 1
+                        continue
+                except (ValueError, TypeError):
+                    pass
+        elif status == "cancelled":
+            # Brug scheduled_at som proxy hvis cancelled_at ikke findes
+            cancelled_ref = r.get("cancelled_at") or r.get("scheduled_at") or ""
+            if cancelled_ref:
+                try:
+                    age = (now - datetime.fromisoformat(cancelled_ref)).total_seconds() / 3600
+                    if age >= cancelled_age_hours:
+                        removed += 1
+                        continue
+                except (ValueError, TypeError):
+                    pass
+        elif status == "fired" and not r.get("consumed_at"):
+            fired_at = r.get("fired_at") or ""
+            if fired_at:
+                try:
+                    age = (now - datetime.fromisoformat(fired_at)).total_seconds() / 3600
+                    if age >= stale_fired_age_hours:
+                        removed += 1
+                        continue
+                except (ValueError, TypeError):
+                    pass
+        kept.append(r)
+
+    _save(kept)
+    logger.info("cleanup_old_wakeups: removed=%d, remaining=%d", removed, len(kept))
+    return {"removed": removed, "remaining": len(kept)}
+
+
 def self_wakeup_section() -> str | None:
     """Awareness section showing fired-but-not-consumed wakeups."""
     fired = due_wakeups(include_fired_unconsumed=True)

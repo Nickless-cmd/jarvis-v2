@@ -76,6 +76,10 @@ from core.services.auto_remember_subscriber import (
     start_auto_remember_subscriber,
     stop_auto_remember_subscriber,
 )
+from core.services.daily_journal import (
+    start_daily_journal_daemon,
+    stop_daily_journal_daemon,
+)
 from core.services.discord_gateway import (
     start_discord_gateway,
     stop_discord_gateway,
@@ -165,6 +169,7 @@ def create_app() -> FastAPI:
             start_spatial_entity_ledger()
             start_session_inbox()
             start_auto_remember_subscriber()
+            start_daily_journal_daemon()
             start_discord_gateway()
             start_telegram_gateway()
             start_voice_daemon()
@@ -338,6 +343,10 @@ def create_app() -> FastAPI:
             stop_telegram_gateway()
             try:
                 stop_auto_remember_subscriber()
+            except Exception:
+                pass
+            try:
+                stop_daily_journal_daemon()
             except Exception:
                 pass
             stop_voice_daemon()

@@ -493,6 +493,19 @@ def productive_idle(*, budget_seconds: float = _PRODUCTIVE_IDLE_BUDGET_SECONDS) 
         except Exception:
             pass
 
+    # 9. Dreaming session (D4) — full-model consolidation after prolonged idle.
+    # Cheap trigger-check (returns immediately if cooldown/activity not met);
+    # the actual model run fires asynchronously in a background thread.
+    if _budget_left():
+        try:
+            from core.services.dreaming_session import trigger_dream_session
+            result = trigger_dream_session()
+            if result.get("fired"):
+                sid = str(result.get("session_id") or "?")
+                actions.append(f"dreaming_session:{sid}")
+        except Exception:
+            pass
+
     elapsed = time.time() - started
     return {
         "kind": "productive_idle",

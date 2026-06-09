@@ -80,3 +80,118 @@ def recent_costs(limit: int = 50) -> list[dict[str, Any]]:
         }
         for row in rows
     ]
+
+
+# ── D5: Cost optimization utilities ──────────────────────────────────
+
+
+def daily_cost_summary() -> list[dict[str, Any]]:
+    """Cost per day for the last 30 days, broken down by lane."""
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                SUBSTR(created_at, 1, 10) AS day,
+                lane,
+                COUNT(*) AS calls,
+                SUM(input_tokens + output_tokens) AS total_tokens,
+                ROUND(SUM(cost_usd), 6) AS total_cost
+            FROM costs
+            WHERE created_at >= DATE('now', '-30 days')
+            GROUP BY day, lane
+            ORDER BY day DESC, lane
+            """
+        ).fetchall()
+    return [
+        {
+            "day": row["day"],
+            "lane": row["lane"],
+            "calls": int(row["calls"]),
+            "total_tokens": int(row["total_tokens"]),
+            "total_cost": float(row["total_cost"]),
+        }
+        for row in rows
+    ]
+
+
+def weekly_cost_summary() -> list[dict[str, Any]]:
+    """Cost per ISO week for all time."""
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                STRFTIME('%Y-W%W', created_at) AS week,
+                lane,
+                COUNT(*) AS calls,
+                SUM(input_tokens + output_tokens) AS total_tokens,
+                ROUND(SUM(cost_usd), 6) AS total_cost
+            FROM costs
+            GROUP BY week, lane
+            ORDER BY week DESC, lane
+            """
+        ).fetchall()
+    return [
+        {
+            "week": row["week"],
+            "lane": row["lane"],
+            "calls": int(row["calls"]),
+            "total_tokens": int(row["total_tokens"]),
+            "total_cost": float(row["total_cost"]),
+        }
+        for row in rows
+    ]
+
+
+def today_cost() -> float:
+    """Total cost in USD for today (UTC)."""
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT COALESCE(SUM(cost_usd), 0) AS total
+            FROM costs
+            WHERE DATE(created_at) = DATE('now')
+            """
+        ).fetchone()
+    return float(row["total"])
+
+
+def this_week_cost() -> float:
+    """Total cost in USD for this ISO week."""
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT COALESCE(SUM(cost_usd), 0) AS total
+            FROM costs
+            WHERE STRFTIME('%Y-W%W', created_at) = STRFTIME('%Y-W%W', 'now')
+            """
+        ).fetchone()
+    return float(row["total"])
+
+
+def estimate_savings_if_cheap(*, days: int = 7) -> dict[str, object]:
+    """Estimate how much would be saved by routing primary-lane calls to cheap lane.
+
+    Returns dict with estimated savings, calls affected, and token volume.
+    """
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                COUNT(*) AS calls,
+                SUM(input_tokens + output_tokens) AS total_tokens,
+                ROUND(SUM(cost_usd), 6) AS total_cost
+            FROM costs
+            WHERE lane = 'primary'
+              AND created_at >= DATE('now', ?)
+            """,
+            (f"-{days} days",),
+        ).fetchall()
+    row = rows[0]
+    return {
+        "period_days": days,
+        "primary_calls": int(row["calls"]),
+        "primary_tokens": int(row["total_tokens"]),
+        "primary_cost": float(row["total_cost"]),
+        "estimated_cheap_cost": float(row["total_cost"]) * 0.02,  # cheap lane is ~98% cheaper
+        "potential_savings": round(float(row["total_cost"]) * 0.98, 6),
+    }

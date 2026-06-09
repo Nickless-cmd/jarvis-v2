@@ -228,6 +228,7 @@ CREATE TABLE IF NOT EXISTS brain_index (
     recall_count    INTEGER NOT NULL DEFAULT 0,
     importance      REAL NOT NULL DEFAULT 0.5,
     tags            TEXT NOT NULL DEFAULT '[]',  -- JSON array of tag strings (B3, 2026-06-09)
+    related         TEXT NOT NULL DEFAULT '[]',  -- JSON array of related entry IDs (B4, 2026-06-09)
     status          TEXT NOT NULL DEFAULT 'active',
     superseded_by   TEXT,
     file_hash       TEXT NOT NULL,
@@ -342,6 +343,30 @@ def _ensure_index_schema_migrations(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE brain_index ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'"
         )
+    if "related" not in cols:
+        # 2026-06-09 (B4 schema repair, Claude): infer_temporal_edges()
+        # SELECTs `related` directly from brain_index, but the column was
+        # never added — every B4 catchup pass logged
+        # "no such column: related" (~14 errors/hour). Add the column +
+        # backfill from brain_relations so existing entries get their
+        # links the next time the daemon runs.
+        conn.execute(
+            "ALTER TABLE brain_index ADD COLUMN related TEXT NOT NULL DEFAULT '[]'"
+        )
+        try:
+            conn.execute(
+                """UPDATE brain_index
+                   SET related = COALESCE(
+                       (SELECT json_group_array(to_id)
+                        FROM brain_relations
+                        WHERE from_id = brain_index.id),
+                       '[]'
+                   )"""
+            )
+        except sqlite3.OperationalError:
+            # brain_relations may not exist yet on a fresh DB — leave
+            # default '[]' and let write_entry populate it going forward.
+            pass
 
 
 def _slugify(s: str, max_len: int = 40) -> str:
@@ -415,12 +440,12 @@ def write_entry(
             """INSERT INTO brain_index
                (id, path, kind, visibility, domain, title, created_at, updated_at,
                 last_used_at, salience_base, salience_bumps, recall_count, importance,
-                tags, status, superseded_by, file_hash, embedding, embedding_dim, indexed_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 0, 0, ?, ?,
+                tags, related, status, superseded_by, file_hash, embedding, embedding_dim, indexed_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 0, 0, ?, ?, ?,
                        'active', NULL, ?, NULL, NULL, ?)""",
             (new_id, rel_path, kind, visibility, domain, title,
              _iso(now), _iso(now), salience_base, importance,
-             json.dumps(tags), fhash, _iso(now)),
+             json.dumps(tags), json.dumps(related), fhash, _iso(now)),
         )
         for to_id in related:
             conn.execute(
@@ -837,9 +862,9 @@ def rebuild_index_from_files() -> int:
                            (id, path, kind, visibility, domain, title,
                             created_at, updated_at, last_used_at,
                             salience_base, salience_bumps, recall_count,
-                            importance, tags, status, superseded_by, file_hash,
-                            embedding, embedding_dim, indexed_at)
-                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?)""",
+                            importance, tags, related, status, superseded_by,
+                            file_hash, embedding, embedding_dim, indexed_at)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?)""",
                         (
                             fm["id"], rel, kind, fm["visibility"], fm["domain"],
                             fm["title"], fm["created_at"],
@@ -850,6 +875,7 @@ def rebuild_index_from_files() -> int:
                             int(fm.get("recall_count", 0)),
                             float(fm.get("importance", _IMPORTANCE_BY_KIND.get(kind, 0.5))),
                             json.dumps(fm.get("tags") or []),
+                            json.dumps(fm.get("related") or []),
                             fm.get("status", "active"),
                             fm.get("superseded_by"),
                             fhash,
@@ -863,8 +889,9 @@ def rebuild_index_from_files() -> int:
                            SET path=?, kind=?, visibility=?, domain=?, title=?,
                                updated_at=?, last_used_at=?, salience_base=?,
                                salience_bumps=?, recall_count=?, importance=?,
-                               tags=?, status=?, superseded_by=?, file_hash=?,
-                               embedding=NULL, embedding_dim=NULL, indexed_at=?
+                               tags=?, related=?, status=?, superseded_by=?,
+                               file_hash=?, embedding=NULL, embedding_dim=NULL,
+                               indexed_at=?
                            WHERE id=?""",
                         (
                             rel, kind, fm["visibility"], fm["domain"], fm["title"],
@@ -874,6 +901,7 @@ def rebuild_index_from_files() -> int:
                             int(fm.get("recall_count", 0)),
                             float(fm.get("importance", _IMPORTANCE_BY_KIND.get(kind, 0.5))),
                             json.dumps(fm.get("tags") or []),
+                            json.dumps(fm.get("related") or []),
                             fm.get("status", "active"),
                             fm.get("superseded_by"),
                             fhash,

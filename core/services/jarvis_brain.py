@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 import hashlib
+import json
 import math
 import os
 import re
@@ -80,6 +81,7 @@ class BrainEntry:
     # where the caller doesn't care about these axes.
     importance: float = 0.5  # 0.0–1.0, styrer hvor hurtigt entry glemmes
     related: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)  # metadata tags for filtering (B3, 2026-06-09)
     trigger: str = "spontaneous"
     status: str = "active"
     superseded_by: Optional[str] = None
@@ -168,6 +170,7 @@ def render_entry_markdown(entry: BrainEntry) -> str:
         "salience_bumps": entry.salience_bumps,
         "importance": entry.importance,
         "related": entry.related,
+        "tags": entry.tags,
         "status": entry.status,
         "superseded_by": entry.superseded_by,
         "source_chronicle": entry.source_chronicle,
@@ -195,6 +198,7 @@ def entry_from_frontmatter(fm: dict, body: str) -> BrainEntry:
         recall_count=int(fm.get("recall_count", 0)),
         importance=float(fm.get("importance", _IMPORTANCE_BY_KIND.get(kind, 0.5))),
         related=list(fm.get("related") or []),
+        tags=list(fm.get("tags") or []),
         trigger=fm.get("trigger", "spontaneous"),
         status=fm.get("status", "active"),
         superseded_by=fm.get("superseded_by"),
@@ -223,6 +227,7 @@ CREATE TABLE IF NOT EXISTS brain_index (
     salience_bumps  INTEGER NOT NULL DEFAULT 0,
     recall_count    INTEGER NOT NULL DEFAULT 0,
     importance      REAL NOT NULL DEFAULT 0.5,
+    tags            TEXT NOT NULL DEFAULT '[]',  -- JSON array of tag strings (B3, 2026-06-09)
     status          TEXT NOT NULL DEFAULT 'active',
     superseded_by   TEXT,
     file_hash       TEXT NOT NULL,
@@ -321,6 +326,10 @@ def _ensure_index_schema_migrations(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE brain_index ADD COLUMN recall_count INTEGER NOT NULL DEFAULT 0"
         )
+    if "tags" not in cols:
+        conn.execute(
+            "ALTER TABLE brain_index ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'"
+        )
 
 
 def _slugify(s: str, max_len: int = 40) -> str:
@@ -343,6 +352,7 @@ def write_entry(
     domain: str,
     trigger: str = "spontaneous",
     related: list[str] | None = None,
+    tags: list[str] | None = None,
     source_url: str | None = None,
     source_chronicle: str | None = None,
     importance: float | None = None,
@@ -355,6 +365,7 @@ def write_entry(
     now = now or datetime.now(timezone.utc)
     new_id = new_brain_id()
     related = related or []
+    tags = tags or []
 
     # Importance-gate: hvis ikke angivet, brug kind-baseret default
     if importance is None:
@@ -369,7 +380,7 @@ def write_entry(
         title=title, content=content,
         created_at=now, updated_at=now, last_used_at=None,
         salience_base=salience_base, salience_bumps=0,
-        importance=importance, related=related,
+        importance=importance, related=related, tags=tags,
         trigger=trigger, status="active", superseded_by=None,
         source_chronicle=source_chronicle, source_url=source_url,
     )
@@ -391,11 +402,12 @@ def write_entry(
             """INSERT INTO brain_index
                (id, path, kind, visibility, domain, title, created_at, updated_at,
                 last_used_at, salience_base, salience_bumps, recall_count, importance,
-                status, superseded_by, file_hash, embedding, embedding_dim, indexed_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 0, 0, ?, 'active',
-                       NULL, ?, NULL, NULL, ?)""",
+                tags, status, superseded_by, file_hash, embedding, embedding_dim, indexed_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 0, 0, ?, ?,
+                       'active', NULL, ?, NULL, NULL, ?)""",
             (new_id, rel_path, kind, visibility, domain, title,
-             _iso(now), _iso(now), salience_base, importance, fhash, _iso(now)),
+             _iso(now), _iso(now), salience_base, importance,
+             json.dumps(tags), fhash, _iso(now)),
         )
         for to_id in related:
             conn.execute(
@@ -542,19 +554,21 @@ def search_brain(
     visibility_ceiling: str = "personal",
     limit: int = 5,
     domain: str | None = None,
+    tags: list[str] | None = None,
     include_archived: bool = False,
     now: datetime | None = None,
 ) -> list[BrainEntry]:
     """Hybrid embedding search: 0.7*cosine + 0.3*effective_salience.
 
     visibility_ceiling filtrerer ud poster med højere visibility-niveau.
+    tags: hvis angivet, returnér kun entries der har ALLE de angivne tags (AND-match).
     """
     now = now or datetime.now(timezone.utc)
     qv = _embed_text(query_text)
     ceiling_lvl = _VIS_LEVEL[visibility_ceiling]
 
     sql = """SELECT id, kind, visibility, salience_base, salience_bumps,
-                    last_used_at, embedding, embedding_dim, created_at
+                    last_used_at, embedding, embedding_dim, created_at, tags
              FROM brain_index
              WHERE embedding IS NOT NULL"""
     params: list = []
@@ -575,10 +589,21 @@ def search_brain(
         conn.close()
 
     scored: list[tuple[float, str]] = []
-    for (entry_id, kind, vis, sal_base, bumps,
-         last_used, emb_blob, emb_dim, created_at) in rows:
+    for row in rows:
+        entry_id, kind, vis, sal_base, bumps, last_used, emb_blob, emb_dim, created_at = row[:9]
+        entry_tags_raw = row[9] if len(row) > 9 else "[]"
         if _VIS_LEVEL[vis] > ceiling_lvl:
             continue
+
+        # Tags filter: AND-match — alle angivne tags skal være til stede
+        if tags:
+            try:
+                entry_tags = json.loads(entry_tags_raw) if isinstance(entry_tags_raw, str) else (entry_tags_raw or [])
+            except (json.JSONDecodeError, TypeError):
+                entry_tags = []
+            if not all(t in entry_tags for t in tags):
+                continue
+
         v = _embedding_from_blob(emb_blob, emb_dim)
         denom = float(np.linalg.norm(qv) * np.linalg.norm(v)) or 1e-9
         cos = float(np.dot(qv, v) / denom)
@@ -737,9 +762,9 @@ def rebuild_index_from_files() -> int:
                            (id, path, kind, visibility, domain, title,
                             created_at, updated_at, last_used_at,
                             salience_base, salience_bumps, recall_count,
-                            importance, status, superseded_by, file_hash,
+                            importance, tags, status, superseded_by, file_hash,
                             embedding, embedding_dim, indexed_at)
-                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?)""",
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?)""",
                         (
                             fm["id"], rel, kind, fm["visibility"], fm["domain"],
                             fm["title"], fm["created_at"],
@@ -749,6 +774,7 @@ def rebuild_index_from_files() -> int:
                             fm.get("salience_bumps", 0),
                             int(fm.get("recall_count", 0)),
                             float(fm.get("importance", _IMPORTANCE_BY_KIND.get(kind, 0.5))),
+                            json.dumps(fm.get("tags") or []),
                             fm.get("status", "active"),
                             fm.get("superseded_by"),
                             fhash,
@@ -762,7 +788,7 @@ def rebuild_index_from_files() -> int:
                            SET path=?, kind=?, visibility=?, domain=?, title=?,
                                updated_at=?, last_used_at=?, salience_base=?,
                                salience_bumps=?, recall_count=?, importance=?,
-                               status=?, superseded_by=?, file_hash=?,
+                               tags=?, status=?, superseded_by=?, file_hash=?,
                                embedding=NULL, embedding_dim=NULL, indexed_at=?
                            WHERE id=?""",
                         (
@@ -772,6 +798,7 @@ def rebuild_index_from_files() -> int:
                             fm.get("salience_bumps", 0),
                             int(fm.get("recall_count", 0)),
                             float(fm.get("importance", _IMPORTANCE_BY_KIND.get(kind, 0.5))),
+                            json.dumps(fm.get("tags") or []),
                             fm.get("status", "active"),
                             fm.get("superseded_by"),
                             fhash,

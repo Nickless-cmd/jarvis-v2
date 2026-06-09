@@ -1069,9 +1069,18 @@ def infer_temporal_edges(
             semantic_score = 0.0
 
         # --- 3. Entity signal ---
+        # 2026-06-09 (Claude): also catch FileNotFoundError/OSError so
+        # stale brain_index rows pointing at deleted markdown files
+        # don't pollute the daemon log. The row will get cleaned up by
+        # the next consolidation pass — meanwhile we just skip it as a
+        # candidate. Logged at debug so we still have a trail.
         try:
             cand_text = _extract_text_for_entry(cand_id)
-        except KeyError:
+        except (KeyError, FileNotFoundError, OSError) as exc:
+            logger.debug(
+                "infer_temporal_edges: skipping stale candidate %s (%s)",
+                cand_id, exc,
+            )
             continue
         entity_score = entity_overlap_score(new_text, cand_text)
 

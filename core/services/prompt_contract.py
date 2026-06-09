@@ -1049,6 +1049,19 @@ def build_visible_chat_prompt_assembly(
                            recall_before_act_summary(query=user_message))
     except Exception:
         pass
+    # Multi-signal recall (B1, 2026-06-08) — Claude 2026-06-09: B1 module
+    # (multi_signal_retrieval.py + 214 lines integration in
+    # memory_recall_engine.py) was built and tested but never wired into
+    # any prompt section. Now surfaced as a complementary recall using
+    # BM25 + entity + embedding fusion. Lower priority than
+    # recall-before-act since this is "wider net", not user-message-specific.
+    try:
+        from core.services.memory_recall_engine import multi_signal_recall_section
+        if user_message and len(user_message.strip()) >= 8:
+            _awareness_add(28, "multi-signal recall (BM25+entity+embedding)",
+                           multi_signal_recall_section(user_message) or None)
+    except Exception:
+        pass
     # Phase 1 — proactive auto-compact at 70% threshold (best-effort, cooldown-protected)
     try:
         from core.services.proactive_context_governor import auto_compact_if_needed

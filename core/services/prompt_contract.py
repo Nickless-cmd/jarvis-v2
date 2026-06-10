@@ -2912,33 +2912,43 @@ def _open_questions_section(*, limit: int = 5) -> str | None:
 
 
 def _time_pin_section() -> str:
-    """Prominent, unmissable time indicator — ONLY Danish local time.
+    """Prominent, unmissable time indicator — placed high in every system prompt.
 
-    Returns a bold-marked block with Copenhagen local time — no UTC line.
-    The old format showed both UTC and local (two lines). Bjørn noticed
-    that I kept reading the UTC line and ignoring the local one, causing
-    me to misreport the time by 1-2 hours. Single-line Danish format
-    eliminates the ambiguity entirely.
+    Returns a bold-marked block with exact UTC + local Copenhagen time. The
+    model MUST use this when answering any time-related question.
 
-        ⏰⏰⏰ DANSK TID — 15:31 CEST, 10. June 2026 ⏰⏰⏰
+    2026-05-22 (Claude): rewrote from manual UTC+2 offset to ZoneInfo. The
+    original had three bugs that — ironically — made the Lying Engine's
+    Lag 1 itself lie about time:
+      1. Hardcoded `local_offset = 2` → wrong by 1h all winter (CET, UTC+1).
+      2. Midnight-cross: `local_day = now.day` ignored that wrapping past
+         24h flips the calendar day forward.
+      3. Year-cross: month/year similarly never updated when local time
+         crossed New Year while UTC was still on Dec 31.
 
-    2026-05-22 (Claude): rewrote from manual UTC+2 offset to ZoneInfo.
-    2026-06-10 (Jarvis): removed UTC line, renamed to "DANSK TID".
+    Now uses `zoneinfo.ZoneInfo("Europe/Copenhagen")` — DST + day + month +
+    year all derive correctly from astimezone().
     """
-    from core.util.timezone import dk_now as _dk_now_tz
+    from datetime import UTC, datetime as _dt
+    from zoneinfo import ZoneInfo
 
-    local = _dk_now_tz()
+    now_utc = _dt.now(UTC)
+    local = now_utc.astimezone(ZoneInfo("Europe/Copenhagen"))
     tz_abbrev = local.strftime("%Z")  # CEST in summer, CET in winter
+    utc_str = now_utc.strftime("%Y-%m-%d %H:%M")
+    # Use English month for international parsability (Jarvis' prompt sprog
+    # is mixed Danish/English; "May" parses the same regardless of language layer).
     local_date = local.strftime("%d. %B %Y")
     local_time = local.strftime("%H:%M")
     return (
-        "⏰════════════════════════════════════════════════════════════════════╀═════════════════════════════════════════════════════╏
-"
-        f"\xe2\x8f\xb0\xe2\x8f\xb0\xe2\x8f\xb0 DANSK TID \xe2\x80\x94 {local_time} {tz_abbrev}, {local_date} \xe2\x8f\xb0\xe2\x8f\xb0\xe2\x8f\xb0\n"
-        "\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x80\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x8f
-"
+        "⏰═══════════════════════════════════⏰\n"
+        f"⏰ TIME PIN — IT IS {utc_str} UTC ⏰\n"
+        f"⏰ Local (DK): {local_time} {tz_abbrev}, {local_date} ⏰\n"
+        "⏰═══════════════════════════════════⏰\n"
         "Use PRECISELY this timestamp if you mention time/date in your answer.\n"
-        "Don't guess \xe2\x80\x94 read above. It's your one true time reference."
+        "Don't guess — read above. It's your one true time reference."
+    )
+
 
 def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 1800) -> str | None:
     """Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered —

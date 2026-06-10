@@ -351,6 +351,14 @@ export function useUnifiedShell() {
           : current
       )
       streamApprovalMessagesRef.current = []
+      // 2026-06-10 (Claude, Bjørn ghost-bubble bug): ryd isStreaming HER,
+      // FØR await'erne nedenfor. Tidligere ventede vi til finally — men
+      // mellem 'pending: false' og finally var der et 100-500 ms vindue
+      // hvor MessageList.showStandaloneThinking betingelsen var sand
+      // (isStreaming=true && lastAssistantPending=false), så en tom
+      // JARVIS-boks med "komponenter" badge flashede op efter hvert svar.
+      setIsStreaming(false)
+      setStreamingTokenEstimate(0)
       if (assistantMessage.persisted) {
         // Backend persisted before done — safe to reload from DB
         await loadSession(sessionId)

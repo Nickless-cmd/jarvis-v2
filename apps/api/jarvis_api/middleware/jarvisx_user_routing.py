@@ -91,6 +91,14 @@ async def jarvisx_user_routing_middleware(
     request: Request,
     call_next: Callable[[Request], Awaitable[Response]],
 ) -> Response:
+    # CORS preflight (OPTIONS) skal aldrig kræve auth — preflight er
+    # browser-til-server forhandling for at se HVILKE endpoints der er
+    # tilgængelige. CORSMiddleware længere oppe i kæden svarer med
+    # Access-Control-Allow-* headers. Hvis vi blokerer her med 401
+    # ser browseren preflight som fejlet og afviser den faktiske request.
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     project_root = (request.headers.get(PROJECT_HEADER) or "").strip()
     raw_auth = request.headers.get(AUTH_HEADER) or ""
     legacy_user_id = (request.headers.get(USER_HEADER) or "").strip()

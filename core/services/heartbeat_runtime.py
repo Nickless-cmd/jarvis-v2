@@ -3269,6 +3269,17 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # --- Decision Review (6h) — luk adherence-loopen ---
+    if _dm.is_enabled("decision_review"):
+        try:
+            from core.services.decision_review_daemon import tick as _dr_tick
+            _dr_result = _daemon_tick_with_deadline(
+                "decision_review", _dr_tick, deadline_seconds=30.0,
+            )
+            _dm.record_daemon_tick("decision_review", _dr_result or {})
+        except Exception:
+            pass
+
     # --- Associative Recall (2 min) ---
     if _dm.is_enabled("associative_recall"):
         try:

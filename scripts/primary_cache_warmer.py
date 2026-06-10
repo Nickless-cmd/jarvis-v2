@@ -73,42 +73,51 @@ MIN_INTERVAL_SECONDS = 60  # mindst 1 minut mellem kald
 def _fetch_system_prompt() -> str | None:
     """Hent primary lane system prompt.
 
-    Prioriterer fil (hurtig) over core-import (langsom + initierer runtime).
+    2026-06-10 (Claude): rewritten til at bruge build_visible_stable_prefix()
+    der returnerer NØJAGTIG samme stable prefix som live visible-runs.
+    Tidligere snapshot-fil (48K chars) matchede kun 15% af live-prompt.
+    Den nye stable-prefix (~4K chars) matcher 100% — DeepSeek cachen
+    der varmes op er præcis den cachen Bjørns chat hitter.
 
     Rækkefølge:
-      1. Pre-konfigureret fil på ~/.jarvis-v2/config/primary_system_prompt.txt
-      2. Core-import (kun hvis filen ikke findes — f.eks. første kørsel)
-
-    Returnerer None hvis ingen prompt kan hentes.
+      1. build_visible_stable_prefix() — kanonisk live-matching kilde
+      2. Pre-konfigureret fil (legacy fallback hvis core-import fejler)
     """
-    # Hurtig sti: fil
+    # Kanonisk sti: build samme stable prefix som live visible bruger.
+    try:
+        from core.services.prompt_contract import build_visible_stable_prefix
+        prefix = build_visible_stable_prefix(
+            provider="deepseek",
+            model=DEFAULT_MODEL,
+            name="default",
+            compact=False,
+        )
+        if prefix:
+            logger.debug(
+                "Stable prefix bygget via build_visible_stable_prefix (%d bytes)",
+                len(prefix),
+            )
+            # Save snapshot så vi har visibility ift. hvad der bliver warmed
+            try:
+                _save_prompt_to_file(prefix)
+            except Exception:
+                pass
+            return prefix
+    except Exception as exc:
+        logger.debug("build_visible_stable_prefix fejlede: %s", exc)
+
+    # Legacy fallback: pre-konfigureret fil
     if PROMPT_FILE.exists():
         content = PROMPT_FILE.read_text(encoding="utf-8").strip()
         if content:
-            logger.debug("Læste prompt fra %s (%d bytes)", PROMPT_FILE, len(content))
+            logger.warning(
+                "Falder tilbage til stale prompt-fil (%d bytes) — "
+                "build_visible_stable_prefix fejlede",
+                len(content),
+            )
             return content
-        logger.warning("Prompt-fil findes men er tom: %s", PROMPT_FILE)
 
-    # Langsom sti: core-import (første kørsel / regenerering)
-    try:
-        from core.services.visible_model import _build_visible_chat_messages_for_github
-
-        messages = _build_visible_chat_messages_for_github(
-            message="cache_warmer_ping",
-            session_id=None,
-            provider="deepseek",
-            model=DEFAULT_MODEL,
-        )
-        for msg in messages:
-            if msg.get("role") == "system":
-                content = msg.get("content", "")
-                if content:
-                    _save_prompt_to_file(content)
-                    return content
-    except Exception as exc:
-        logger.debug("Core-import fejlede: %s", exc)
-
-    logger.warning("Ingen system prompt tilgængelig — hverken fil eller core")
+    logger.warning("Ingen system prompt tilgængelig")
     return None
 
 

@@ -293,6 +293,87 @@ def _safe_build_self_state_block() -> str | None:
         return None
 
 
+def build_visible_stable_prefix(
+    *,
+    provider: str,
+    model: str,
+    name: str = "default",
+    compact: bool = False,
+) -> str:
+    """Build ONLY the stable cacheable prefix of a visible chat prompt.
+
+    Bygges 2026-06-10 efter Jarvis' analyse: warmer-prompten matchede
+    kun 15% af live visible-prompten fordi de blev konstrueret med
+    forskellige strategier. Denne funktion ekstraherer EXACT samme
+    stable bits som build_visible_chat_prompt_assembly bruger forrest,
+    så warmer-cron og live-runs hitter samme DeepSeek cache-prefix-unit.
+
+    Indhold (deterministisk; ændrer sig kun ved workspace-edit):
+      - lane identity clause
+      - quick facts
+      - model identity awareness
+      - visible chat rules
+      - capability id summary (optional)
+      - self-correction nudges
+      - memory-first nudge
+      - SOUL/IDENTITY/STANDING_ORDERS/USER identity files
+
+    Bevidst udeladt: alt dynamic (wakeup_block, awareness, transcript,
+    time pin) — de hører i den fulde build_visible_chat_prompt_assembly.
+    """
+    workspace_dir = ensure_default_workspace(name=name)
+    parts: list[str] = []
+
+    lane = "local" if compact else "visible"
+    parts.append(_lane_identity_clause(lane))
+
+    quick_facts = _quick_facts_section(workspace_dir=workspace_dir)
+    if quick_facts:
+        parts.append(quick_facts)
+
+    from core.services.identity_composer import get_entity_name as _get_entity_name
+    _entity = _get_entity_name()
+    parts.append(
+        f"You are running as model: {model} via provider: {provider}. "
+        f"You are {_entity} — not Claude, not ChatGPT, not any other assistant. "
+        "Your identity comes from your workspace files, not your training data."
+    )
+
+    visible_rules = _visible_chat_rules_instruction(workspace_dir=workspace_dir)
+    if visible_rules:
+        parts.append(visible_rules)
+
+    if compact:
+        local_rules = _local_model_behavior_instruction(workspace_dir=workspace_dir)
+        if local_rules:
+            parts.append(local_rules)
+
+    capability_ids_line = _visible_capability_id_summary()
+    if capability_ids_line:
+        parts.append(capability_ids_line)
+
+    self_correction = _self_correction_nudges_section(compact=compact)
+    if self_correction:
+        parts.append(self_correction)
+
+    parts.append(
+        "Memory-first ordering: QUICK_FACTS + search_memory covers stable "
+        "references; check these before external queries."
+    )
+
+    for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
+        section = _workspace_file_section(
+            workspace_dir / filename,
+            label=filename,
+            max_lines=3 if compact else 5,
+            max_chars=220 if compact else 340,
+        )
+        if section:
+            parts.append(section)
+
+    return "\n\n".join(part for part in parts if part).strip()
+
+
 def build_visible_chat_prompt_assembly(
     *,
     provider: str,

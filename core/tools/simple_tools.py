@@ -5422,11 +5422,30 @@ def _exec_analyze_image(args: dict[str, Any]) -> dict[str, Any]:
         data=payload,
         headers={"Content-Type": "application/json"},
     )
-    try:
-        with urllib_request.urlopen(req, timeout=60) as resp:
-            result = json.loads(resp.read())
-    except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
-        return {"error": f"Vision model call failed: {exc}", "status": "error"}
+    # 2026-06-10 (Claude): bumpet 60s → 180s + 1 retry. gemma4:31b-cloud
+    # har cold-start latens når den ikke er blevet brugt i et stykke tid
+    # — første kald kan tage 30-60s, store billeder forlænger yderligere.
+    # Bjørn så live: vision model call failed: timed out, men direkte test
+    # 5 min senere virkede på ~5s (modellen blev varm). Retry med længere
+    # timeout giver Ollama Cloud chance for at varme op uden at faile hele
+    # vision-skill.
+    _last_exc: Exception | None = None
+    result = None
+    for _vision_attempt in range(2):
+        try:
+            with urllib_request.urlopen(req, timeout=180) as resp:
+                result = json.loads(resp.read())
+            break
+        except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
+            _last_exc = exc
+            # Retry once for transient timeout/network issues; cold-start
+            # tager typisk 30-60s og næste call kommer på varm cache.
+            continue
+    if result is None:
+        return {
+            "error": f"Vision model call failed after 2 attempts: {_last_exc}",
+            "status": "error",
+        }
 
     answer = result.get("message", {}).get("content", "").strip()
     if not answer:

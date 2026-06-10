@@ -215,13 +215,43 @@ def _touch_last_run() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _fetch_warmer_tools() -> list[dict] | None:
+    """Hent samme pruned tools-array som visible-chats sender.
+
+    2026-06-10 (Claude): DeepSeek's prompt-cache nøgle inkluderer
+    sandsynligvis tools-arrayet. Hvis warmer sender ingen tools mens
+    chats sender 128 tools, ender de to i forskellige cache-segmenter.
+    Ved at sende samme pruned subset (med empty user_message så
+    keyword-scoring ikke varierer) deler warmer og chats samme cache.
+
+    Returnerer None hvis tool-import fejler — warmer kører så uden
+    tools som fallback (samme adfærd som før denne ændring).
+    """
+    try:
+        from core.tools.simple_tools import get_tool_definitions
+        from core.tools.copilot_tool_pruning import select_tools_for_visible
+        all_tools = get_tool_definitions()
+        # Empty user_message + None session_id giver deterministisk subset
+        # (samme tier-1 + tier-2-comfort-defaults uafhængigt af recent
+        # tool usage — den dimension er den eneste der reelt varierer
+        # mellem chats inden for samme bruger).
+        return select_tools_for_visible(
+            all_tools, user_message="", session_id=None,
+        )
+    except Exception as exc:
+        logger.debug("fetch_warmer_tools fejlede: %s", exc)
+        return None
+
+
 def _build_payload(system_prompt: str) -> dict[str, Any]:
     """Byg request body til DeepSeek chat completions.
 
-    Kun system prompt + en minimal time pin som user message.
+    System prompt + minimal user message + tools-array (samme som visible
+    chats). 2026-06-10: tools-array tilføjet for at warmer og chats deler
+    samme cache-segment.
     """
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
-    return {
+    payload: dict[str, Any] = {
         "model": DEFAULT_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
@@ -231,6 +261,10 @@ def _build_payload(system_prompt: str) -> dict[str, Any]:
         "temperature": DEFAULT_TEMPERATURE,
         "stream": False,
     }
+    tools = _fetch_warmer_tools()
+    if tools:
+        payload["tools"] = tools
+    return payload
 
 
 def _build_headers(api_key: str) -> dict[str, str]:

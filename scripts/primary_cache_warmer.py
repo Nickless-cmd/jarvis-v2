@@ -73,15 +73,23 @@ MIN_INTERVAL_SECONDS = 60  # mindst 1 minut mellem kald
 def _fetch_system_prompt() -> str | None:
     """Hent primary lane system prompt.
 
-    Forsøger først at importere core og bygge promptet via
-    ``_build_visible_chat_messages_for_github``.
+    Prioriterer fil (hurtig) over core-import (langsom + initierer runtime).
 
-    Hvis det fejler (core ikke tilgængelig, DB låst, osv.) falder
-    vi tilbage til en pre-konfigureret fil på ~/.jarvis-v2/config/.
+    Rækkefølge:
+      1. Pre-konfigureret fil på ~/.jarvis-v2/config/primary_system_prompt.txt
+      2. Core-import (kun hvis filen ikke findes — f.eks. første kørsel)
 
     Returnerer None hvis ingen prompt kan hentes.
     """
-    # Forsøg core-import
+    # Hurtig sti: fil
+    if PROMPT_FILE.exists():
+        content = PROMPT_FILE.read_text(encoding="utf-8").strip()
+        if content:
+            logger.debug("Læste prompt fra %s (%d bytes)", PROMPT_FILE, len(content))
+            return content
+        logger.warning("Prompt-fil findes men er tom: %s", PROMPT_FILE)
+
+    # Langsom sti: core-import (første kørsel / regenerering)
     try:
         from core.services.visible_model import _build_visible_chat_messages_for_github
 
@@ -98,16 +106,9 @@ def _fetch_system_prompt() -> str | None:
                     _save_prompt_to_file(content)
                     return content
     except Exception as exc:
-        logger.debug("Core-import fejlede: %s — prøver prompt-fil", exc)
+        logger.debug("Core-import fejlede: %s", exc)
 
-    # Fallback til fil
-    if PROMPT_FILE.exists():
-        content = PROMPT_FILE.read_text(encoding="utf-8").strip()
-        if content:
-            logger.debug("Læste prompt fra %s", PROMPT_FILE)
-            return content
-
-    logger.warning("Ingen system prompt tilgængelig — hverken core eller fil")
+    logger.warning("Ingen system prompt tilgængelig — hverken fil eller core")
     return None
 
 
@@ -310,6 +311,33 @@ def _append_log(entry: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _read_key_from_runtime_json() -> str | None:
+    """Læs deepseek_api_key fra ~/.jarvis-v2/config/runtime.json."""
+    path = HOME_DIR / "config" / "runtime.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data.get("deepseek_api_key")
+    except Exception:
+        return None
+
+
+def _resolve_api_key(*, override: str | None = None) -> str | None:
+    """Resolve DeepSeek API key: override > env > runtime.json.
+
+    Prøver (i rækkefølge):
+      1. Eksplicit override (test / programmatisk brug)
+      2. DEEPSEEK_API_KEY miljøvariabel
+      3. OPENAI_API_KEY miljøvariabel (fallback)
+      4. runtime.json → deepseek_api_key
+    """
+    return (
+        override
+        or os.environ.get("DEEPSEEK_API_KEY")
+        or os.environ.get("OPENAI_API_KEY")
+        or _read_key_from_runtime_json()
+    )
+
+
 def warm_primary_cache(
     *,
     api_key: str | None = None,
@@ -338,7 +366,7 @@ def warm_primary_cache(
         }
 
     # Hent API key
-    api_key = api_key or os.environ.get("DEEPSEEK_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    api_key = _resolve_api_key(override=api_key)
     if not api_key:
         return {"status": "error", "reason": "Ingen API key fundet"}
 
@@ -400,10 +428,10 @@ def main(argv: list[str] | None = None) -> int:
         logger.info("Dedup — afbryder")
         return 0
 
-    # Hent API key
-    api_key = os.environ.get("DEEPSEEK_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    # Hent API key (env → runtime.json)
+    api_key = _resolve_api_key()
     if not api_key:
-        logger.error("Ingen DEEPSEEK_API_KEY (eller OPENAI_API_KEY) fundet")
+        logger.error("Ingen DEEPSEEK_API_KEY fundet — prøv runtime.json eller miljøvariabel")
         return 1
 
     # Hent base URL

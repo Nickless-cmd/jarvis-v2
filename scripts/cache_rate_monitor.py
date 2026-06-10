@@ -70,37 +70,38 @@ def _by_lane(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return {lane: _aggregate_events(items) for lane, items in by_lane.items()}
 
 
+def _fetch_costs(con: sqlite3.Connection, since_sql: str) -> list[dict[str, Any]]:
+    """Fetch cost rows from the costs table as dicts with cache_hit/miss keys."""
+    try:
+        rows = con.execute(
+            f"SELECT lane, input_tokens, cache_hit_tokens, cache_miss_tokens, "
+            f"created_at FROM costs "
+            f"WHERE created_at > {since_sql}",
+        ).fetchall()
+    except Exception:
+        return []
+    out = []
+    for r in rows:
+        out.append({
+            "lane": r["lane"],
+            "input_tokens": r["input_tokens"],
+            "cache_hit_tokens": r["cache_hit_tokens"],
+            "cache_miss_tokens": r["cache_miss_tokens"],
+        })
+    return out
+
+
 def collect_snapshot() -> dict[str, Any]:
-    """Read events from DB and produce a rich snapshot."""
+    """Read costs from DB and produce a rich snapshot — ALL lanes."""
     if not DB_PATH.exists():
         return {"ts": datetime.now(UTC).isoformat(), "error": "no DB"}
 
     con = sqlite3.connect(str(DB_PATH))
     con.row_factory = sqlite3.Row
 
-    def _fetch_payloads(since_sql: str) -> list[dict[str, Any]]:
-        try:
-            rows = con.execute(
-                f"SELECT payload_json FROM events "
-                f"WHERE kind='cost.recorded' "
-                f"AND payload_json LIKE '%cache_hit_tokens%' "
-                f"AND created_at > {since_sql}",
-            ).fetchall()
-        except Exception:
-            return []
-        out = []
-        for r in rows:
-            try:
-                p = json.loads(r["payload_json"] or "{}")
-                if isinstance(p, dict):
-                    out.append(p)
-            except (ValueError, TypeError):
-                continue
-        return out
-
-    win_30m = _fetch_payloads("datetime('now', '-30 minutes')")
-    win_6h = _fetch_payloads("datetime('now', '-6 hours')")
-    win_24h = _fetch_payloads("datetime('now', '-1 day')")
+    win_30m = _fetch_costs(con, "datetime('now', '-30 minutes')")
+    win_6h = _fetch_costs(con, "datetime('now', '-6 hours')")
+    win_24h = _fetch_costs(con, "datetime('now', '-1 day')")
 
     con.close()
 

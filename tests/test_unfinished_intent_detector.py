@@ -144,32 +144,37 @@ class TestCliffhanger:
 
 
 class TestApprovalQuestion:
-    def test_vil_du_have_question(self):
-        """Insight fra Jarvis' parallel-build 2026-05-17: når Jarvis ender med
-        et approval-spørgsmål selv om user lige har sagt ja, er han i pause."""
+    """Approval-question detector deaktiveret 2026-06-10.
+
+    Begrundelse: i praksis matchede patternet "Vil du / Skal jeg / Må jeg X?"
+    der per definition betyder Jarvis VENTER på user-input. Auto-continuation
+    fyrede så efter hvert sådan svar og skabte tomme JARVIS-bokse i UI.
+    Patterns lad_mig / jeg_skal / cliffhanger fanger stadig de ægte
+    pause-stops hvor Jarvis ikke ventede på svar.
+    """
+    def test_vil_du_have_question_no_longer_triggers(self):
         text = (
             "Jeg har analyseret det og kan se to mulige veje frem nu. "
             "Vil du have mig til at lave en simpel rengøring af gamle cache-filer?"
         )
         result = detect_unfinished_intent(text)
-        assert result is not None
-        assert result.pattern == "approval_question"
+        assert result is None
 
-    def test_skal_jeg_question(self):
+    def test_skal_jeg_question_no_longer_triggers(self):
         text = (
             "Klar med implementation. Den lever i hovedet og jeg kan "
             "bygge nu. Skal jeg gå i gang med det nu?"
         )
         result = detect_unfinished_intent(text)
-        assert result is not None
+        assert result is None
 
-    def test_maa_jeg_question(self):
+    def test_maa_jeg_question_no_longer_triggers(self):
         text = (
             "Status: planen er klar og jeg har alt jeg skal bruge for "
             "at bygge det færdigt nu. Må jeg fortsætte med implementationen?"
         )
         result = detect_unfinished_intent(text)
-        assert result is not None
+        assert result is None
 
 
 # ── Negative cases (skal IKKE detecte) ──────────────────────────────────

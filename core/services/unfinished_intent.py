@@ -126,12 +126,17 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
     if stripped.rstrip().endswith(":"):
         return UnfinishedIntent(pattern="cliffhanger", matched_text=last30[-10:])
 
-    # 5. Approval-style spørgsmål — Jarvis venter på godkendelse selv om
-    # user allerede har sagt ja. Tjek kun hvis sidste tegn er "?".
-    if stripped.rstrip().endswith("?"):
-        m = _APPROVAL_QUESTION_RE.search(tail)
-        if m:
-            return UnfinishedIntent(pattern="approval_question", matched_text=m.group(0))
+    # 5. Approval-style spørgsmål — DEAKTIVERET 2026-06-10 (Claude).
+    # Bjørn observerede en tom "JARVIS" boks der dukker op efter hvert svar
+    # og forsvinder. Årsag: dette pattern matchede "Vil du have at jeg X?"
+    # som er per definition Jarvis der VENTER på user-input. Auto-fortsætte
+    # uden go-ahead gav forvirret/tom autonomous-run pr. svar. 5 falske
+    # triggers på 2.5 timer i logs. Vi beholder lad_mig/jeg_skal/cliffhanger
+    # som er ægte pause-patterns (Jarvis stoppede uden at vente på svar).
+    # if stripped.rstrip().endswith("?"):
+    #     m = _APPROVAL_QUESTION_RE.search(tail)
+    #     if m:
+    #         return UnfinishedIntent(pattern="approval_question", matched_text=m.group(0))
 
     return None
 

@@ -503,7 +503,15 @@ def start_visible_run(
                 _age_s = (_dt3.now(_UTC3) - _started).total_seconds()
             except Exception:
                 _age_s = 99999.0
-            _stale_threshold_s = 30.0
+            # 2026-06-10 v2 (Claude): bumpet fra 30 → 120 sek. 30 sek var
+            # for kort i praksis — agentic runs med tool-loops (ssh,
+            # subprocess, lange API calls) tager rutinemæssigt 60-90 sek
+            # og var ikke hung. Bjørn så Jarvis-runs dø midt-i-arbejde
+            # når han sendte et "?" check mens Jarvis var i tool-loop.
+            # 120 sek = "to minutter, en visible-run skulle have lukket"
+            # — beholder beskyttelse mod zombie SSE'er der hænger 5+ min,
+            # uden at angribe legitime lange runs.
+            _stale_threshold_s = 120.0
             if _age_s > _stale_threshold_s:
                 logger.warning(
                     "visible_runs: same-session active_run %s is stale "

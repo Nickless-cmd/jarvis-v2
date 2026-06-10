@@ -424,6 +424,31 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="Jarvis V2 API", lifespan=lifespan)
 
+    # CORS for desktop-apps (jarvis-desk, JarvisX) der konsumerer SSE
+    # endpoints fra ikke-samme origin. Tilføjet 2026-06-10 fordi jarvis-desk's
+    # renderer (file:// eller localhost:5174) blev blokeret af browseren med
+    # "No 'Access-Control-Allow-Origin' header" på preflight til
+    # /chat/sessions og /chat/stream/v2.
+    #
+    # Sikkerhed: Authorization Bearer-token tjekkes stadig — CORS giver kun
+    # browseren lov til at LÆSE responsen. Uden gyldigt token får man 401.
+    # allow_origins=["*"] er acceptabelt fordi token-baseret auth altid er
+    # i header (ikke cookie), så CSRF er irrelevant.
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,  # vi bruger Bearer-token, ikke cookies
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=[
+            "X-Stream-Protocol",
+            "Content-Type",
+            "Last-Event-ID",
+        ],
+        max_age=3600,  # cache preflight 1 time
+    )
+
     # JarvisX user-routing — binds workspace ContextVars from the
     # X-JarvisX-User header injected by the desktop app. Webchat / Discord
     # / Telegram paths are unaffected (no header → default context).

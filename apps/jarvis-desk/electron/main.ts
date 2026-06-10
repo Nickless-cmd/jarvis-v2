@@ -161,7 +161,12 @@ function createMainWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      webSecurity: true,
+      // Dev: slå webSecurity fra så CORS ikke blokerer kald til
+      // api.srvlab.dk (browser-side fetch tjekker CORS, men curl gør
+      // ikke — derfor virker API direkte men ikke via renderer).
+      // CSP er stadig aktiv og begrænser hvad der kan eksekveres.
+      // Prod: webSecurity tilbage på true.
+      webSecurity: !isDev,
     },
   })
 
@@ -252,8 +257,26 @@ app.whenReady().then(() => {
       responseHeaders['Content-Security-Policy'] = [csp.join('; ')]
     }
 
-    // Inject CORS for trusted API requests
+    // Inject CORS for trusted API requests.
+    // HTTP headers er case-insensitive — server kan have sendt
+    // 'access-control-allow-origin' (lowercase) som vi ikke overskriver
+    // hvis vi bare sætter 'Access-Control-Allow-Origin'. Browseren
+    // sammenstiller alle casinger → multiple-value error.
+    // Strip ALLE casing-varianter af CORS-headers først.
     if (isApiRequest) {
+      const corsKeys = [
+        'access-control-allow-origin',
+        'access-control-allow-methods',
+        'access-control-allow-headers',
+        'access-control-allow-credentials',
+        'access-control-expose-headers',
+        'access-control-max-age',
+      ]
+      for (const key of Object.keys(responseHeaders)) {
+        if (corsKeys.includes(key.toLowerCase())) {
+          delete responseHeaders[key]
+        }
+      }
       const rendererOrigin = isDev ? 'http://localhost:5174' : '*'
       responseHeaders['Access-Control-Allow-Origin'] = [rendererOrigin]
       responseHeaders['Access-Control-Allow-Methods'] = [

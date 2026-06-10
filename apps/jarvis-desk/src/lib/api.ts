@@ -137,12 +137,17 @@ async function apiFetch<T>(
 }
 
 export async function listSessions(config: ApiConfig): Promise<ChatSession[]> {
-  const data = await apiFetch<{ sessions: ChatSession[] } | ChatSession[]>(
-    config,
-    '/chat/sessions',
-  )
-  // Backend kan returnere enten array eller wrapped object — håndter begge.
-  return Array.isArray(data) ? data : data.sessions
+  const data = await apiFetch<
+    { items: ChatSession[] } | { sessions: ChatSession[] } | ChatSession[]
+  >(config, '/chat/sessions')
+  // Backend kan returnere enten array eller wrapped object — håndter alle:
+  //   - direkte array
+  //   - {sessions: [...]}
+  //   - {items: [...]}  (faktisk format Jarvis bruger)
+  if (Array.isArray(data)) return data
+  if ('items' in data) return data.items
+  if ('sessions' in data) return data.sessions
+  return []
 }
 
 export async function getSession(

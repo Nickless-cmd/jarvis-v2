@@ -10,7 +10,7 @@
     "dev": "vite",
     "dev:electron": "concurrently -k -n vite,electron -c blue,green \"vite\" \"wait-on http://localhost:5174 && npm run build:electron && cross-env NODE_ENV=development electron .\"",
     "build:renderer": "tsc -b && vite build",
-    "build:electron": "tsc -p electron/tsconfig.json",
+    "build:electron": "tsc -p electron/tsconfig.json && node -e \"require('fs').mkdirSync('dist-electron',{recursive:true});require('fs').writeFileSync('dist-electron/package.json','{\\\"type\\\":\\\"commonjs\\\"}')\"",
     "build": "npm run build:renderer && npm run build:electron",
     "lint": "eslint . --ext .ts,.tsx"
   },

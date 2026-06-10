@@ -1998,17 +1998,46 @@ async def _stream_visible_run(
                     # the same reason (cross-loop ContextVars propagation).
                     import contextvars as _ctxvars
                     _ctx_for_agentic_exec = _ctxvars.copy_context()
-                    _a_results = await loop.run_in_executor(
-                        None,
-                        lambda: _ctx_for_agentic_exec.run(
-                            _execute_simple_tool_calls,
-                            _a_tool_calls,
-                            force=run.autonomous,
-                            run_id=run.run_id,
-                            session_id=run.session_id,
-                            user_message=run.user_message,
-                        ),
+                    # 2026-06-10 (Claude, Bjørn live observation): tool-execution
+                    # kunne tage 45-60s og hele tiden var SSE-streamen stille,
+                    # hvilket fik proxies (cloudflare, JarvisX-watchdog etc.) til
+                    # at lukke forbindelsen — Jarvis svaret kom færdigt men nåede
+                    # aldrig klienten. Heartbeat hver 15s holder TCP-forbindelsen
+                    # i live OG giver Bjørn synligt signal at noget arbejder.
+                    _tool_task = asyncio.create_task(
+                        loop.run_in_executor(
+                            None,
+                            lambda: _ctx_for_agentic_exec.run(
+                                _execute_simple_tool_calls,
+                                _a_tool_calls,
+                                force=run.autonomous,
+                                run_id=run.run_id,
+                                session_id=run.session_id,
+                                user_message=run.user_message,
+                            ),
+                        )
                     )
+                    _heartbeat_interval_s = 15.0
+                    _heartbeat_count = 0
+                    while not _tool_task.done():
+                        try:
+                            await asyncio.wait_for(
+                                asyncio.shield(_tool_task),
+                                timeout=_heartbeat_interval_s,
+                            )
+                        except asyncio.TimeoutError:
+                            # Tools still running — keep stream alive.
+                            _heartbeat_count += 1
+                            _elapsed_s = int(time.monotonic() - _a_exec_start)
+                            yield _sse("heartbeat", {
+                                "type": "heartbeat",
+                                "run_id": run.run_id,
+                                "phase": "agentic_tools",
+                                "round": _agentic_round + 1,
+                                "elapsed_s": _elapsed_s,
+                                "beat": _heartbeat_count,
+                            })
+                    _a_results = await _tool_task
                     logger.info(
                         "agentic-tools-execute-end run_id=%s round=%d duration_ms=%d results=%d",
                         run.run_id, _agentic_round + 1,

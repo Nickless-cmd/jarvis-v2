@@ -220,7 +220,8 @@ def _send_via_ntfy(message: str, *, priority: str = "default") -> bool:
 
 def attempt_outreach() -> dict[str, Any]:
     """Consider whether to reach out, do so if appropriate. Returns decision dict."""
-    now_local = datetime.now().astimezone()
+    from core.util.timezone import dk_now as _dk_now
+    now_local = _dk_now()
 
     # Cooldown gate
     last = _last_outreach_sent()

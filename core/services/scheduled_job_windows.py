@@ -23,6 +23,7 @@ from typing import Any, Callable
 from uuid import uuid4
 
 from core.runtime.workspace_paths import shared_dir
+from core.util.timezone import dk_now as _dk_now_sw
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +155,7 @@ def tick_windows(
 
     Returns list of fire events created.
     """
-    now_dt = now or datetime.now(UTC).astimezone()
+    now_dt = now or _dk_now_sw()
     data = _load()
     fires: list[dict[str, Any]] = []
     for w in data["windows"]:
@@ -204,7 +205,7 @@ def build_scheduled_job_windows_surface() -> dict[str, Any]:
     data = _load()
     windows = data["windows"]
     history = data["fire_history"]
-    now = datetime.now(UTC).astimezone()
+    now = _dk_now_sw()
     active_now: list[str] = []
     for w in windows:
         if w.get("active", True) and is_inside_window(now, w["start_hour"], w["end_hour"]):

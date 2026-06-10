@@ -232,12 +232,13 @@ def _quiet_hours() -> tuple[int, int]:
 
 def _in_quiet_hours(now: datetime) -> bool:
     start, end = _quiet_hours()
-    hour = now.astimezone().hour
+    from zoneinfo import ZoneInfo
+    local_hour = now.astimezone(ZoneInfo("Europe/Copenhagen")).hour
     if start == end:
         return False
     if start < end:
-        return start <= hour < end
-    return hour >= start or hour < end
+        return start <= local_hour < end
+    return local_hour >= start or local_hour < end
 
 
 def _state() -> dict[str, Any]:

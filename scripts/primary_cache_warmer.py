@@ -91,10 +91,18 @@ def _fetch_system_prompt() -> str | None:
         sys.path.insert(0, str(_repo_root))
     try:
         from core.services.prompt_contract import build_visible_stable_prefix
+        # 2026-06-10 (Claude): workspace skal være "bjorn" — det er den
+        # eneste aktive bruger pt., og hans chats læser SOUL/IDENTITY fra
+        # workspaces/bjorn/. Warmer kørte tidligere på "default" workspace
+        # (tom/template), så cache-prefix'en matchede ikke Bjørn's faktiske
+        # prompt. Resultat var 3200 hit tokens i visible-chats vs 4992
+        # i warmer — divergens lige hvor identity-files starter.
+        # Multi-user-warmer = fremtidigt arbejde (kør én warmer per aktiv
+        # bruger; konfigurer via runtime.json eller cron).
         prefix = build_visible_stable_prefix(
             provider="deepseek",
             model=DEFAULT_MODEL,
-            name="default",
+            name="bjorn",
             compact=False,
         )
         if prefix:

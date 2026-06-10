@@ -361,12 +361,18 @@ def build_visible_stable_prefix(
         "references; check these before external queries."
     )
 
+    # 2026-06-10 (Claude, Phase 1 cache-grow): bumpe max_chars fra 340 → 2000
+    # på de fire identity-filer. De er allerede i stable prefix; vi var bare
+    # truncated til 8% af filernes faktiske indhold. Mere stable prefix =
+    # højere DeepSeek cache hit rate. ~6 KB ekstra stable.
+    # Identisk bump skal laves i build_visible_chat_prompt_assembly nedenfor
+    # — ellers matcher prefix'erne ikke længere byte-for-byte.
     for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
         section = _workspace_file_section(
             workspace_dir / filename,
             label=filename,
-            max_lines=3 if compact else 5,
-            max_chars=220 if compact else 340,
+            max_lines=20 if compact else 40,
+            max_chars=900 if compact else 2000,
         )
         if section:
             parts.append(section)
@@ -560,12 +566,16 @@ def build_visible_chat_prompt_assembly(
     # forrest (right after the stable rules/nudges) creates a ~5-8k-token
     # cacheable identity prefix and gives identity primacy over operational
     # noise — same content, better placement.
+    # 2026-06-10 (Claude, Phase 1 cache-grow): bumpe max_chars fra 340 → 2000.
+    # Skal være identisk med build_visible_stable_prefix ovenfor — ellers
+    # matcher prefix'erne ikke længere og DeepSeek cache-hitratio rasler ned
+    # i stedet for at stige. Hvis du ændrer her, ændr også der.
     for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
         section = _workspace_file_section(
             workspace_dir / filename,
             label=filename,
-            max_lines=3 if compact else 5,
-            max_chars=220 if compact else 340,
+            max_lines=20 if compact else 40,
+            max_chars=900 if compact else 2000,
         )
         if section:
             parts.append(section)

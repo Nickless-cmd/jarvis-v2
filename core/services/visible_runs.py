@@ -2342,6 +2342,7 @@ async def _stream_visible_run(
                 # Background: status update and cost recording only
                 _run_ref = run
                 _tokens = (total_input_tokens, total_output_tokens)
+                _cache_tokens = (total_cache_hit_tokens, total_cache_miss_tokens)
                 _followup_text = followup_text
                 _outcome_status = _final_run_status
                 _outcome_error = _final_run_error
@@ -2349,10 +2350,12 @@ async def _stream_visible_run(
 
                 def _persist_tool_result() -> None:
                     try:
-                        # 2026-06-09: fjernet ugyldigt run_id kwarg (record_cost
-                        # accepterer ikke run_id — det smed TypeError der blev
-                        # sluget). Tool-result call site har ikke cache-info så
-                        # vi sender 0/0 — cache måles på den senere primary call.
+                        # 2026-06-10: tidligere kommentar sagde "cache måles på
+                        # den senere primary call" — men total_cache_hit_tokens
+                        # er allerede akkumuleret i scope (linje 2529 + 2594 +
+                        # 2647), så vi kan rapportere ægte tal her i stedet for
+                        # 0/0. Resultat: visible-lane dashboard viser nu reel
+                        # hit rate i stedet for misleading "0% af 4.4M".
                         record_cost(
                             provider=_run_ref.provider,
                             model=_run_ref.model,
@@ -2360,6 +2363,8 @@ async def _stream_visible_run(
                             output_tokens=_tokens[1],
                             cost_usd=0.0,
                             lane="visible",
+                            cache_hit_tokens=_cache_tokens[0],
+                            cache_miss_tokens=_cache_tokens[1],
                         )
                         finished_at = datetime.now(UTC).isoformat()
                         if _outcome_status == "completed":

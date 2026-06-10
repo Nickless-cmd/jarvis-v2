@@ -486,27 +486,63 @@ def start_visible_run(
                 and not bool(active.get("cancelled"))
                 and normalized_session_id
                 and str(active.get("session_id") or "") == normalized_session_id):
-            from core.runtime.settings import load_settings as _ls_mr
-            if _ls_mr().nudge_system_enabled:
-                from core.services.outbound_nudges import push_nudge
-                push_nudge(
-                    source="user_midway_followup",
-                    kind="other",
-                    message=str(message or "").strip(),
-                    importance="high",
-                    parent_session_id=normalized_session_id,
-                    parent_message_id=str(active.get("run_id") or ""),
+            # 2026-06-10 (Claude): kun midway-nudge når runet ER ungt nok
+            # til at være levende. Bjørn så i juni 2026 webchat-freezes:
+            # SSE-streamen blev zombie (uden klient-disconnect-signal),
+            # active_run bestod, hans næste besked blev midway-nudge'd
+            # uden synlig respons → han måtte pinge via Discord for at
+            # bryde låsen. Med 30-sek loft starter en ny besked frisk
+            # run hvis det gamle run hænger.
+            try:
+                from datetime import datetime as _dt3, UTC as _UTC3
+                _started = _dt3.fromisoformat(
+                    str(active.get("started_at") or "").replace("Z", "+00:00")
                 )
+                if _started.tzinfo is None:
+                    _started = _started.replace(tzinfo=_UTC3)
+                _age_s = (_dt3.now(_UTC3) - _started).total_seconds()
+            except Exception:
+                _age_s = 99999.0
+            _stale_threshold_s = 30.0
+            if _age_s > _stale_threshold_s:
+                logger.warning(
+                    "visible_runs: same-session active_run %s is stale "
+                    "(age=%.0fs > %.0fs) — clearing and proceeding with fresh run",
+                    active.get("run_id"), _age_s, _stale_threshold_s,
+                )
+                # Cancel the (presumably hung) controller if still in memory
+                _stale_rid = str(active.get("run_id") or "")
+                if _stale_rid in _VISIBLE_RUN_CONTROLLERS:
+                    try:
+                        _ctrl = _VISIBLE_RUN_CONTROLLERS.get(_stale_rid)
+                        if _ctrl is not None:
+                            _ctrl.cancel()
+                    except Exception:
+                        pass
+                _set_active_visible_run({})
+                # Falder igennem til normal run-start nedenfor.
+            else:
+                from core.runtime.settings import load_settings as _ls_mr
+                if _ls_mr().nudge_system_enabled:
+                    from core.services.outbound_nudges import push_nudge
+                    push_nudge(
+                        source="user_midway_followup",
+                        kind="other",
+                        message=str(message or "").strip(),
+                        importance="high",
+                        parent_session_id=normalized_session_id,
+                        parent_message_id=str(active.get("run_id") or ""),
+                    )
 
-                async def _midway_ack() -> AsyncIterator[str]:
-                    # Yield nothing visible — the user message lands in the
-                    # session as normal (via the API's message-append path)
-                    # but no run is started. Jarvis sees it as nudge in his
-                    # awareness when the current run completes its next turn.
-                    if False:
-                        yield ""
-                    return
-                return _midway_ack()
+                    async def _midway_ack() -> AsyncIterator[str]:
+                        # Yield nothing visible — the user message lands in the
+                        # session as normal (via the API's message-append path)
+                        # but no run is started. Jarvis sees it as nudge in his
+                        # awareness when the current run completes its next turn.
+                        if False:
+                            yield ""
+                        return
+                    return _midway_ack()
     except Exception:
         # Never block normal flow on nudge-routing failure
         pass

@@ -70,7 +70,44 @@ MIN_INTERVAL_SECONDS = 60  # mindst 1 minut mellem kald
 # ---------------------------------------------------------------------------
 
 
-def _fetch_system_prompt() -> str | None:
+def _discover_active_workspaces() -> list[str]:
+    """Find aktive bruger-workspaces der skal cache-warmes.
+
+    2026-06-10 (Claude): heuristik — workspace tæller som "aktiv bruger"
+    hvis dir indeholder både SOUL.md OG USER.md. Det filtrerer
+    backup-dirs, projekt-workspaces (freelance, tiktok_videos, ...) og
+    andre ikke-bruger-mapper væk. Returnerer sorteret liste så cron
+    output er deterministisk.
+
+    Fallback: hvis discovery fejler, returnér ["bjorn"] så vi i det
+    mindste varmer den primære bruger.
+    """
+    try:
+        _repo_root = Path(__file__).resolve().parents[1]
+        if str(_repo_root) not in sys.path:
+            sys.path.insert(0, str(_repo_root))
+        from core.runtime.config import WORKSPACES_DIR
+        workspaces_root = Path(WORKSPACES_DIR)
+        if not workspaces_root.exists():
+            return ["bjorn"]
+        active: list[str] = []
+        for entry in sorted(workspaces_root.iterdir()):
+            if not entry.is_dir():
+                continue
+            name = entry.name
+            # Skip backup-dirs og andre special-mapper
+            if name.startswith("default-backup-") or name.startswith("."):
+                continue
+            # Heuristik for "user workspace"
+            if (entry / "SOUL.md").is_file() and (entry / "USER.md").is_file():
+                active.append(name)
+        return active or ["bjorn"]
+    except Exception as exc:
+        logger.debug("discover_active_workspaces fejlede: %s — bruger bjorn-fallback", exc)
+        return ["bjorn"]
+
+
+def _fetch_system_prompt(workspace_name: str = "bjorn") -> str | None:
     """Hent primary lane system prompt.
 
     2026-06-10 (Claude): rewritten til at bruge build_visible_stable_prefix()
@@ -91,18 +128,15 @@ def _fetch_system_prompt() -> str | None:
         sys.path.insert(0, str(_repo_root))
     try:
         from core.services.prompt_contract import build_visible_stable_prefix
-        # 2026-06-10 (Claude): workspace skal være "bjorn" — det er den
-        # eneste aktive bruger pt., og hans chats læser SOUL/IDENTITY fra
-        # workspaces/bjorn/. Warmer kørte tidligere på "default" workspace
-        # (tom/template), så cache-prefix'en matchede ikke Bjørn's faktiske
-        # prompt. Resultat var 3200 hit tokens i visible-chats vs 4992
-        # i warmer — divergens lige hvor identity-files starter.
-        # Multi-user-warmer = fremtidigt arbejde (kør én warmer per aktiv
-        # bruger; konfigurer via runtime.json eller cron).
+        # 2026-06-10 (Claude): workspace_name styres af caller (default
+        # "bjorn"). Multi-user warmer kalder denne én gang per aktiv
+        # bruger så hver brugers cache-prefix holdes varm. Tidligere
+        # "default" workspace cachede en tom template som ikke matchede
+        # nogen ægte bruger.
         prefix = build_visible_stable_prefix(
             provider="deepseek",
             model=DEFAULT_MODEL,
-            name="bjorn",
+            name=workspace_name,
             compact=False,
         )
         if prefix:
@@ -366,6 +400,7 @@ def warm_primary_cache(
     base_url: str | None = None,
     system_prompt: str | None = None,
     force: bool = False,
+    workspace_name: str = "bjorn",
 ) -> dict[str, Any]:
     """Udfør ét cache-warmer kald og returnér resultat.
 
@@ -396,7 +431,7 @@ def warm_primary_cache(
 
     # Hent system prompt
     if system_prompt is None:
-        system_prompt = _fetch_system_prompt()
+        system_prompt = _fetch_system_prompt(workspace_name=workspace_name)
     if not system_prompt:
         return {"status": "error", "reason": "Kunne ikke hente system prompt"}
 
@@ -439,6 +474,80 @@ def warm_primary_cache(
 # ---------------------------------------------------------------------------
 
 
+def _warm_one_workspace(
+    workspace_name: str,
+    *,
+    api_key: str,
+    base_url: str,
+    dry_run: bool,
+) -> None:
+    """Cache-warm én bestemt workspace. Logger separat per workspace."""
+    system_prompt = _fetch_system_prompt(workspace_name=workspace_name)
+    if not system_prompt:
+        logger.error("[%s] Kunne ikke hente system prompt — skip", workspace_name)
+        return
+
+    payload = _build_payload(system_prompt)
+
+    log_entry: dict[str, Any] = {
+        "ts": datetime.now(UTC).isoformat(),
+        "model": DEFAULT_MODEL,
+        "provider": "primary_cache_warmer",
+        "workspace": workspace_name,
+        "dry_run": dry_run,
+        "system_prompt_length": len(system_prompt),
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_hit_tokens": 0,
+        "cache_miss_tokens": 0,
+        "cost_usd": 0.0,
+        "status": "dry_run" if dry_run else "pending",
+    }
+
+    if dry_run:
+        log_entry["status"] = "dry_run"
+        log_entry["note"] = (
+            f"Ville kalde {base_url}/chat/completions for {workspace_name} "
+            f"med {len(payload['messages'][0]['content'])} bytes system prompt"
+        )
+        _append_log(log_entry)
+        logger.info(
+            "[%s] Dry-run: %d bytes system prompt",
+            workspace_name, len(payload["messages"][0]["content"]),
+        )
+        return
+
+    result = _call_api(api_key, base_url, payload)
+    log_entry["status"] = result.get("status", "error")
+    log_entry["cache_hit_tokens"] = result.get("cache_hit_tokens", 0)
+    log_entry["cache_miss_tokens"] = result.get("cache_miss_tokens", 0)
+    log_entry["input_tokens"] = result.get("input_tokens", 0)
+    log_entry["output_tokens"] = result.get("output_tokens", 0)
+    log_entry["cost_usd"] = result.get("cost_usd", 0.0)
+
+    if result.get("status") == "ok":
+        _insert_cost_row(result)
+        total = result.get("cache_hit_tokens", 0) + result.get("cache_miss_tokens", 0)
+        hit_rate = 100 * result.get("cache_hit_tokens", 0) / total if total else 0
+        logger.info(
+            "[%s] OK — hit=%d miss=%d rate=%.1f%% cost=$%.8f",
+            workspace_name,
+            result.get("cache_hit_tokens", 0),
+            result.get("cache_miss_tokens", 0),
+            hit_rate,
+            result.get("cost_usd", 0),
+        )
+        log_entry["hit_rate_pct"] = round(hit_rate, 2)
+    elif result.get("status") == "rate_limited":
+        logger.warning("[%s] Rate limited — springer over", workspace_name)
+        log_entry["error"] = result.get("error", "rate_limited")
+    else:
+        logger.error("[%s] API error: %s", workspace_name, result.get("error"))
+        log_entry["error"] = result.get("error", "unknown")
+
+    _append_log(log_entry)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = argv or sys.argv[1:]
 
@@ -457,78 +566,27 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     # Hent base URL
-    base_url = os.environ.get("DEEPSEEK_BASE_URL") or DEFAULT_BASE_URL
+    base_url = (os.environ.get("DEEPSEEK_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
 
-    # Hent system prompt
-    system_prompt = _fetch_system_prompt()
-    if not system_prompt:
-        logger.error("Kunne ikke hente system prompt — prøv --dry-run for diagnose")
-        return 1
+    # 2026-06-10 (Claude): multi-user warmer — én warm-up per aktiv
+    # workspace, så Mikkel/Michelle/public også får varm cache, ikke
+    # kun Bjørn. Workspaces opdages dynamisk via SOUL.md+USER.md
+    # heuristik.
+    workspaces = _discover_active_workspaces()
+    logger.info("Warmer multi-user run: %d workspaces (%s)",
+                len(workspaces), ", ".join(workspaces))
 
-    # Byg payload
-    payload = _build_payload(system_prompt)
+    for ws in workspaces:
+        try:
+            _warm_one_workspace(
+                ws, api_key=api_key, base_url=base_url, dry_run=dry_run,
+            )
+        except Exception as exc:
+            # En enkelt brugers fejl må ikke afbryde de andre.
+            logger.error("[%s] uventet fejl: %s — fortsætter", ws, exc)
 
-    # Log entry vi skriver uanset udfald
-    log_entry: dict[str, Any] = {
-        "ts": datetime.now(UTC).isoformat(),
-        "model": DEFAULT_MODEL,
-        "provider": "primary_cache_warmer",
-        "dry_run": dry_run,
-        "system_prompt_length": len(system_prompt),
-        "input_tokens": 0,
-        "output_tokens": 0,
-        "cache_hit_tokens": 0,
-        "cache_miss_tokens": 0,
-        "cost_usd": 0.0,
-        "status": "dry_run" if dry_run else "pending",
-    }
-
-    if dry_run:
-        log_entry["status"] = "dry_run"
-        log_entry["note"] = (
-            f"Ville kalde {base_url}/chat/completions "
-            f"med {len(payload['messages'][0]['content'])} bytes system prompt"
-        )
-        _append_log(log_entry)
-        logger.info(
-            "Dry-run: %s/chat/completions | system prompt: %d bytes",
-            base_url,
-            len(payload["messages"][0]["content"]),
-        )
-        return 0
-
-    # Kald API
-    result = _call_api(api_key, base_url, payload)
-
-    # Opdater log entry
-    log_entry["status"] = result.get("status", "error")
-    log_entry["cache_hit_tokens"] = result.get("cache_hit_tokens", 0)
-    log_entry["cache_miss_tokens"] = result.get("cache_miss_tokens", 0)
-    log_entry["input_tokens"] = result.get("input_tokens", 0)
-    log_entry["output_tokens"] = result.get("output_tokens", 0)
-    log_entry["cost_usd"] = result.get("cost_usd", 0.0)
-
-    if result.get("status") == "ok":
-        _insert_cost_row(result)
+    if not dry_run:
         _touch_last_run()
-        total = result.get("cache_hit_tokens", 0) + result.get("cache_miss_tokens", 0)
-        hit_rate = 100 * result.get("cache_hit_tokens", 0) / total if total else 0
-        logger.info(
-            "Warmer OK — hit=%d miss=%d rate=%.1f%% cost=$%.8f",
-            result.get("cache_hit_tokens", 0),
-            result.get("cache_miss_tokens", 0),
-            hit_rate,
-            result.get("cost_usd", 0),
-        )
-        log_entry["hit_rate_pct"] = round(hit_rate, 2)
-    elif result.get("status") == "rate_limited":
-        logger.warning("Rate limited — springer over")
-        log_entry["error"] = result.get("error", "rate_limited")
-    else:
-        logger.error("API error: %s", result.get("error"))
-        log_entry["error"] = result.get("error", "unknown")
-
-    _append_log(log_entry)
     return 0
 
 

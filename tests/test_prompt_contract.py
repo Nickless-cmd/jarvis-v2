@@ -11,10 +11,10 @@ from __future__ import annotations
 class TestTimePinSection:
     """Layer 1: prominent time block in every system prompt."""
 
-    def test_includes_utc_timestamp(self):
+    def test_includes_dansk_tid_not_utc(self):
         from core.services.prompt_contract import _time_pin_section
         out = _time_pin_section()
-        assert "UTC" in out
+        assert "DANSK TID" in out
         # Year 2026+ must appear somewhere in the rendering
         assert "202" in out
 
@@ -29,17 +29,17 @@ class TestTimePinSection:
         )
 
     def test_contains_anchor_marker(self):
-        """The ⏰ emoji + TIME PIN label must be present (visual unmissability)."""
+        """The ⏰ emoji + DANSK TID label must be present (visual unmissability)."""
         from core.services.prompt_contract import _time_pin_section
         out = _time_pin_section()
         assert "⏰" in out
-        assert "TIME PIN" in out
+        assert "DANSK TID" in out
 
     def test_contains_explicit_instruction(self):
         """Must tell the model to use this, not guess."""
         from core.services.prompt_contract import _time_pin_section
         out = _time_pin_section()
-        assert "Gæt ikke" in out or "Brug PRÆCIS" in out
+        assert "PRECISELY" in out or "Brug PRÆCIS" in out
 
 
 class TestQuickFactsSection:

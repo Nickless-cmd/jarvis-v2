@@ -619,11 +619,8 @@ def _preview_text(value: str) -> str:
 
 
 def _time_label(value: str) -> str:
-    try:
-        dt = datetime.fromisoformat(value)
-    except ValueError:
-        return value
-    return dt.astimezone().strftime("%I:%M %p")
+    from core.util.timezone import time_label_dk as _tl
+    return _tl(value)
 
 
 def parse_channel_from_session_title(title: str | None) -> tuple[str, str | None]:

@@ -7,34 +7,37 @@ from datetime import UTC, datetime
 from core.services.prompt_contract import _time_pin_section
 
 
-def test_time_pin_contains_header():
-    """Time Pin should have the ⏰ TIME PIN header block."""
+def test_time_pin_contains_dansk_tid():
+    """Time Pin should have the ⏰⏰⏰ DANSK TID header block (not UTC line)."""
     result = _time_pin_section()
-    assert "TIME PIN" in result
+    assert "DANSK TID" in result
     assert "⏰" in result
+    # Must NOT contain UTC line (removed to avoid confusion)
+    assert "UTC" not in result.split("\n")[1], (
+        "First content line must not be UTC — only Danish time"
+    )
 
 
-def test_time_pin_contains_utc():
-    """Time Pin should contain the current UTC timestamp."""
+def test_time_pin_contains_year():
+    """Time Pin should contain current year."""
     result = _time_pin_section()
     now = datetime.now(UTC)
     year_str = str(now.year)
-    month_str = now.strftime("%m")
     assert year_str in result, f"Expected {year_str} in time pin output"
-    assert "UTC" in result
 
 
-def test_time_pin_contains_lokal():
-    """Time Pin should contain a 'Lokal (DK)' line."""
+def test_time_pin_contains_dansk_label():
+    """Time Pin should contain 'DANSK TID' label (no 'Lokal (DK)' anymore)."""
     result = _time_pin_section()
-    assert "Lokal (DK)" in result
+    assert "DANSK TID" in result
+    assert "Lokal (DK)" not in result
 
 
-def test_time_pin_contains_brug_text():
+def test_time_pin_contains_use_text():
     """Time Pin should contain the instruction to use the pin."""
     result = _time_pin_section()
-    assert "Brug PRÆCIS" in result
-    assert "Gæt ikke" in result
+    assert "PRECISELY" in result
+    assert "Don" in result and "guess" in result
 
 
 def test_time_pin_contains_bordered_block():
@@ -47,24 +50,25 @@ def test_time_pin_contains_bordered_block():
 
 
 def test_time_pin_local_hour_is_reasonable():
-    """Local DK hour (CEST = UTC+2) should be between 0-23."""
+    """Local DK hour should be between 0-23."""
     result = _time_pin_section()
-    # Extract local time line: "⏰ Lokal (DK): kl HH:MM, D. Måned År ⏰"
+    # Extract from "⏰⏰⏰ DANSK TID — HH:MM CEST, ... ⏰⏰⏰"
     for line in result.split("\n"):
-        if "Lokal (DK)" in line:
-            # Find the hour: "kl HH:MM"
-            parts = line.split("kl ")[1].split(":")[0]
+        if "DANSK TID" in line:
+            # Find HH:MM after the em-dash
+            parts = line.split("—")[1].strip().split(":")[0]
             hour = int(parts)
             assert 0 <= hour <= 23, f"Hour {hour} out of range 0-23"
 
 
-def test_time_pin_dato_matches_utc_date():
-    """The date mentioned should be consistent with UTC date."""
-    now = datetime.now(UTC)
+def test_time_pin_includes_timezone_abbrev():
+    """CEST in summer or CET in winter — never both, never neither."""
     result = _time_pin_section()
-    # UTC line contains "YYYY-MM-DD HH:MM UTC"
-    utc_date = now.strftime("%Y-%m-%d")
-    assert utc_date in result, f"Expected {utc_date} in time pin"
+    has_cest = "CEST" in result
+    has_cet_alone = ("CET" in result) and not has_cest
+    assert has_cest or has_cet_alone, (
+        "Time pin must show a Copenhagen timezone abbreviation"
+    )
 
 
 # 2026-05-22 (Claude): regression tests for the 3 bugs in original
@@ -95,8 +99,6 @@ class TestTimePinTimezoneHandling:
             "Time pin must use zoneinfo for DST-correct local time"
         )
         # Hardcoded UTC+2 assignment must be gone from the code body
-        # (docstring may mention it as history — parse AST so we only
-        # check code, not comments).
         tree = ast.parse(src)
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):

@@ -84,6 +84,11 @@ def _fetch_system_prompt() -> str | None:
       2. Pre-konfigureret fil (legacy fallback hvis core-import fejler)
     """
     # Kanonisk sti: build samme stable prefix som live visible bruger.
+    # 2026-06-10: sys.path skal pege på repo-root så core.* kan importeres
+    # når warmer kører som standalone cron-script.
+    _repo_root = Path(__file__).resolve().parents[1]
+    if str(_repo_root) not in sys.path:
+        sys.path.insert(0, str(_repo_root))
     try:
         from core.services.prompt_contract import build_visible_stable_prefix
         prefix = build_visible_stable_prefix(

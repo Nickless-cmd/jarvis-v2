@@ -818,6 +818,61 @@ async def _stream_visible_run(
     controller = register_visible_run(run)
     trace = _start_visible_execution_trace(run)
     _set_orb_phase("think")
+
+    # 2026-06-11 (Bjørn frustration crisis fix D): Discord run-start heartbeat.
+    # Bjørn beskriver Discord-symptomet: "jarvis skriver..." indikator
+    # hænger evigt uden noget der sker. Fix B sendte progress EFTER tools,
+    # men hvis han bare "tænker" i første LLM-kald i 3+ min ser brugeren
+    # ingenting. Vi sender derfor en "💭 modtaget — arbejder på det..."
+    # straks ved run-start så Bjørn ved Jarvis er i live, plus en
+    # baggrunds-watchdog der pusher "(arbejder stadig...)" hvert 30. sek.
+    _discord_watchdog_task: asyncio.Task[None] | None = None
+    try:
+        if run.session_id:
+            from core.services.discord_gateway import (
+                get_discord_channel_for_session,
+                send_discord_message,
+            )
+            _dc_channel_start = get_discord_channel_for_session(run.session_id)
+            if _dc_channel_start:
+                send_discord_message(
+                    _dc_channel_start,
+                    "💭 modtaget — arbejder på det...",
+                )
+                controller._last_discord_status_at = time.monotonic()  # type: ignore[attr-defined]
+
+                # Baggrunds-watchdog: hver 30 sek, hvis runet stadig kører
+                # og vi ikke har sendt noget i 30 sek, send "still alive".
+                async def _discord_alive_watchdog(
+                    cid: int = _dc_channel_start,
+                    ctrl=controller,
+                    rid: str = run.run_id,
+                ) -> None:
+                    try:
+                        while True:
+                            await asyncio.sleep(30.0)
+                            if ctrl.is_cancelled():
+                                return
+                            _last = getattr(ctrl, "_last_discord_status_at", 0.0)
+                            if time.monotonic() - _last >= 30.0:
+                                try:
+                                    send_discord_message(
+                                        cid, "⏳ (arbejder stadig...)",
+                                    )
+                                    ctrl._last_discord_status_at = time.monotonic()
+                                except Exception:
+                                    pass
+                    except asyncio.CancelledError:
+                        return
+
+                _discord_watchdog_task = asyncio.create_task(
+                    _discord_alive_watchdog()
+                )
+    except Exception as _dc_start_exc:
+        logger.debug(
+            "discord-startup-heartbeat fejl run_id=%s: %s",
+            run.run_id, _dc_start_exc,
+        )
     # Phase 5: track in-flight runs so an interruption (crash, restart,
     # cancel) leaves a trail the next visible turn can surface to the user.
     try:
@@ -2963,6 +3018,16 @@ async def _stream_visible_run(
         # Post-processing in finally: status update, candidate tracking, cleanup.
         # Message persistence now happens synchronously before done (above).
         import threading
+
+        # 2026-06-11 (fix D): cancel Discord-heartbeat-watchdog hvis aktiv.
+        # Skal ske før unregister så vi ikke har en zombie-task der
+        # fortsætter med at sende "(arbejder stadig...)" efter runet er
+        # færdigt.
+        try:
+            if _discord_watchdog_task is not None and not _discord_watchdog_task.done():
+                _discord_watchdog_task.cancel()
+        except Exception:
+            pass
 
         # 2026-05-16 fix: unregister FIRST, synchronously. Earlier version let
         # post_process-thread (daemon=True) be responsible for clearing

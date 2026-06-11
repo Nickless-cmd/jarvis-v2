@@ -497,8 +497,14 @@
 }
 /* transcript gror og scroller inde i chatview */
 .chatview .transcript { flex: 1 1 auto; min-height: 0; }
-/* composer bliver i bunden, altid synlig (fix composer-min-height-bug) */
-.chatview .composer { flex: 0 0 auto; margin: 8px 24px 16px; }
+/* composer bliver i bunden, altid synlig, centreret til samme 820px-kolonne
+   som transcript (fix: bevar base-reglens margin:0 auto centrering). */
+.chatview .composer {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 820px;
+  margin: 8px auto 16px;
+}
 
 /* Presence-dot (kun liveness — locked: accent kun til dots) */
 .presence-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }

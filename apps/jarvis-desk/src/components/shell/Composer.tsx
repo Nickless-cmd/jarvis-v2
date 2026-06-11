@@ -39,6 +39,7 @@ export function Composer({
   model,
   thinking,
   config,
+  getSessionId,
 }: {
   streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
@@ -46,6 +47,7 @@ export function Composer({
   model: string
   thinking: string
   config?: ApiConfig
+  getSessionId: () => Promise<string>
 }) {
   const [text, setText] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -58,20 +60,26 @@ export function Composer({
   const fileRef = useRef<HTMLInputElement>(null)
   const dictation = useDictation((t) => setText((cur) => (cur ? cur + ' ' : '') + t))
 
-  // Upload droppede/valgte filer; vis chip straks (object-URL preview), sæt id når uploadet.
-  const addFiles = (files: FileList | File[]) => {
-    for (const file of Array.from(files)) {
-      const localId = `${file.name}-${file.size}-${attachments.length}-${performance.now()}`
+  // Upload droppede/valgte filer; vis chip straks (object-URL preview), sæt id når
+  // uploadet. session_id resolves ÉN gang pr. drop (lazy-opretter ved ny chat).
+  const addFiles = async (files: FileList | File[]) => {
+    const list = Array.from(files)
+    const entries = list.map((file) => {
+      const localId = `${file.name}-${file.size}-${performance.now()}-${Math.round(file.lastModified)}`
       const isImage = file.type.startsWith('image/')
       const src = isImage ? URL.createObjectURL(file) : undefined
       setAttachments((a) => [...a, { localId, name: file.name, src, isImage, uploading: true }])
-      if (!config) {
-        setAttachments((a) => a.map((x) => (x.localId === localId ? { ...x, uploading: false, error: true } : x)))
-        continue
-      }
-      uploadAttachment(config, file)
+      return { file, localId }
+    })
+    const fail = (localId: string) =>
+      setAttachments((a) => a.map((x) => (x.localId === localId ? { ...x, uploading: false, error: true } : x)))
+    if (!config) { entries.forEach((e) => fail(e.localId)); return }
+    let sid: string
+    try { sid = await getSessionId() } catch { entries.forEach((e) => fail(e.localId)); return }
+    for (const { file, localId } of entries) {
+      uploadAttachment(config, file, sid)
         .then((r) => setAttachments((a) => a.map((x) => (x.localId === localId ? { ...x, id: r.id, uploading: false } : x))))
-        .catch(() => setAttachments((a) => a.map((x) => (x.localId === localId ? { ...x, uploading: false, error: true } : x))))
+        .catch(() => fail(localId))
     }
   }
 

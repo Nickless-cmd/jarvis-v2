@@ -125,6 +125,12 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
     !sessionId ||
     (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && !queued)
 
+  const ensureSessionId = async () => {
+    if (sessionId) return sessionId
+    const created = await sessions.create('Ny samtale')
+    return created.id
+  }
+
   const composer = (
     <Composer
       streaming={streaming}
@@ -133,6 +139,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       model="deepseek-flash"
       thinking="think"
       config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
+      getSessionId={ensureSessionId}
     />
   )
 

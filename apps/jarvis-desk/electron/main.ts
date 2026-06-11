@@ -25,7 +25,7 @@ import * as path from 'node:path'
 import * as fs from 'node:fs'
 
 const isDev = process.env.NODE_ENV === 'development'
-const APP_NAME = 'jarvis-desk'
+const APP_NAME = 'Jarvis'
 
 // Suppress dev-only CSP warnings i renderer. Vi VED at vi har 'unsafe-eval'
 // i dev — det er for at Vite kan HMR'e. Prod-CSP er stram.

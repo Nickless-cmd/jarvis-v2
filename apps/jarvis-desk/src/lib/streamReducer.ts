@@ -55,6 +55,11 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       return state
 
     case 'system_event': {
+      // run-event bærer det rigtige run_id (message_start har det tomt).
+      if (event.kind === 'run') {
+        const rp = event.payload as { run_id?: string }
+        return rp.run_id ? { ...state, activeRunId: rp.run_id } : state
+      }
       if (event.kind !== 'working_step') return state // ukendt kind → ignorér gracefully
       const p = event.payload as { tool_id?: string; status?: string; result?: string }
       if (!p.tool_id) return state

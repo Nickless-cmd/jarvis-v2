@@ -243,12 +243,16 @@ export function startStream(
     // Reset ping watchdog ved ENHVER aktivitet, ikke kun ping.
     resetPingWatchdog()
 
-    // R3: fang aktivt run_id fra message_start så caller kan server-cancel.
+    // R3: fang aktivt run_id så caller kan server-cancel. Serveren sender det
+    // tomt i message_start; det rigtige run_id kommer i system_event kind=run.
     if (payload.type === 'message_start') {
       const id = (parsed as { message?: { id?: string } }).message?.id
-      if (id) {
-        activeRunId = id
-        handlers.onRunId?.(id)
+      if (id) { activeRunId = id; handlers.onRunId?.(id) }
+    } else if (payload.type === 'system_event') {
+      const se = parsed as { kind?: string; payload?: { run_id?: string } }
+      if (se.kind === 'run' && se.payload?.run_id) {
+        activeRunId = se.payload.run_id
+        handlers.onRunId?.(se.payload.run_id)
       }
     }
 

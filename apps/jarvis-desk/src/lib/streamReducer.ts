@@ -62,7 +62,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       if (idx < 0) return state
       const blocks = state.blocks.slice()
       const b = blocks[idx]
-      if (b.type === 'tool_use') blocks[idx] = { ...b, status: (p.status as 'running' | 'done' | 'error') ?? b.status, result: p.result ?? b.result }
+      if (b && b.type === 'tool_use') blocks[idx] = { ...b, status: (p.status as 'running' | 'done' | 'error') ?? b.status, result: p.result ?? b.result }
       return { ...state, blocks }
     }
 

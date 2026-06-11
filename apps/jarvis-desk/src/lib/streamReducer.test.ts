@@ -42,8 +42,9 @@ describe('streamReducer', () => {
       { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: 's"}' } },
     ])
     const b = s.blocks[0]
-    expect(b.type).toBe('tool_use')
-    if (b.type === 'tool_use') {
+    expect(b).toBeDefined()
+    expect(b?.type).toBe('tool_use')
+    if (b && b.type === 'tool_use') {
       expect(b.partialJson).toBe('{"cmd":"ls"}')
       expect(b.status).toBe('running')
     }
@@ -88,7 +89,7 @@ describe('streamReducer', () => {
       { type: 'system_event', kind: 'working_step', payload: { tool_id: 'tu1', status: 'done', result: 'ok' } },
     ])
     const b = s.blocks[0]
-    if (b.type === 'tool_use') {
+    if (b && b.type === 'tool_use') {
       expect(b.status).toBe('done')
       expect(b.result).toBe('ok')
     }

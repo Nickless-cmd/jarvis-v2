@@ -108,7 +108,7 @@ export class StreamError extends Error {
 // ─── Reconnect backoff schedule ─────────────────────────────────────────
 
 const RECONNECT_BACKOFF_MS = [1000, 2000, 4000, 8000, 15000, 30000]
-const PING_TIMEOUT_MS = 70_000 // 70s uden ping → død forbindelse
+const PING_TIMEOUT_MS = 90_000 // R2: 90s uden event → hung (synlig prompt, ikke abort)
 const MAX_BODY_BYTES = 50 * 1024 * 1024 // 50MB hard cap på enkelt-event payload
 
 // ─── Hovedklassen ──────────────────────────────────────────────────────
@@ -121,29 +121,47 @@ export interface StreamRequest {
   approvalMode?: 'ask' | 'trust'
   thinkingMode?: 'think' | 'fast'
   attachmentIds?: string[]
+  /** R1: default false for chat-lane. Blind auto-reconnect re-POSTer beskeden →
+   *  duplikerer user-message + nyt run. Kun true hvis serveren understøtter
+   *  ægte resume (fremtidig). */
+  autoReconnect?: boolean
 }
 
 export interface StreamHandlers {
   /** Hvert v2-event leveres her, typet. */
   onEvent: (event: StreamEvent) => void
-  /** Vi forsøger reconnect — UI kan vise "reconnecter..." */
-  onReconnect?: (attempt: number, delayMs: number) => void
+  /** R3: aktivt run_id fra message_start — bruges til server-cancel. */
+  onRunId?: (runId: string) => void
+  /** R2: watchdog 90s uden event — UI viser HangPrompt (genoptag/afbryd). */
+  onHung?: () => void
+  /** R1: stream brudt og autoReconnect=false — bevar partial, vis "genoptag". */
+  onInterrupted?: () => void
   /** Endelig fejl (efter alle retries opbrugt eller non-retryable). */
   onError?: (error: StreamError) => void
   /** Strømmen er endegyldigt færdig (message_stop set eller abort). */
   onComplete?: () => void
 }
 
+/** Kontrol-håndtag returneret af startStream. */
+export interface StreamControl {
+  /** Luk forbindelsen lokalt (netværks-abort). Server-cancel håndteres af
+   *  caller via api.cancelRun(getRunId()). */
+  abort: () => void
+  /** Aktivt run_id fra message_start, eller null hvis endnu ukendt. */
+  getRunId: () => string | null
+}
+
 /**
  * Send en besked og konsumér /chat/stream/v2.
  *
- * Returnerer en abort-funktion. Kald den for at lukke streamen rent.
+ * Returnerer et StreamControl-håndtag (abort + getRunId).
  */
 export function startStream(
   request: StreamRequest,
   handlers: StreamHandlers,
-): () => void {
+): StreamControl {
   const abortController = new AbortController()
+  let activeRunId: string | null = null
   let reconnectAttempt = 0
   let lastEventId: string | null = null
   let userAborted = false
@@ -158,14 +176,11 @@ export function startStream(
   const resetPingWatchdog = (): void => {
     if (pingWatchdogTimer) clearTimeout(pingWatchdogTimer)
     pingWatchdogTimer = setTimeout(() => {
-      log('ping watchdog: no ping in 70s — forcing reconnect')
-      // Force-close den nuværende stream — fetch's signal aborterer
-      // og catch-grenen scheduler reconnect.
-      try {
-        abortController.abort()
-      } catch {
-        // ignore
-      }
+      // R2: 90s uden event → signalér 'hung' til UI (synlig prompt), IKKE
+      // abort. Brugeren beslutter genoptag/afbryd. Tavs reconnect ville
+      // kunne duplikere user-message (R1).
+      log('ping watchdog: no event in 90s — signalling hung')
+      handlers.onHung?.()
     }, PING_TIMEOUT_MS)
   }
 
@@ -227,6 +242,15 @@ export function startStream(
 
     // Reset ping watchdog ved ENHVER aktivitet, ikke kun ping.
     resetPingWatchdog()
+
+    // R3: fang aktivt run_id fra message_start så caller kan server-cancel.
+    if (payload.type === 'message_start') {
+      const id = (parsed as { message?: { id?: string } }).message?.id
+      if (id) {
+        activeRunId = id
+        handlers.onRunId?.(id)
+      }
+    }
 
     // Dispatch til klient. Vi tager nu (efter validering) det validerede
     // payload som StreamEvent — TypeScript-bro er bevidst.
@@ -410,6 +434,14 @@ export function startStream(
           return
         }
 
+        // R1: chat-lane (autoReconnect=false). Blind re-POST ville duplikere
+        // user-message + lave nyt run. Bevar partial lokalt og signalér
+        // 'interrupted' — brugeren beslutter (genoptag = ny tur).
+        if (!request.autoReconnect) {
+          handlers.onInterrupted?.()
+          return
+        }
+
         if (reconnectAttempt >= RECONNECT_BACKOFF_MS.length * 2) {
           // Vi har prøvet rigtig mange gange. Giv op for at undgå
           // uendelig spinning.
@@ -423,12 +455,12 @@ export function startStream(
           return
         }
 
+        // autoReconnect=true (fremtidig resume-lane): backoff og prøv igen.
         const delayMs =
           RECONNECT_BACKOFF_MS[
             Math.min(reconnectAttempt, RECONNECT_BACKOFF_MS.length - 1)
           ] ?? 30000
         reconnectAttempt++
-        handlers.onReconnect?.(reconnectAttempt, delayMs)
 
         await new Promise((resolve) => setTimeout(resolve, delayMs))
       }
@@ -438,10 +470,13 @@ export function startStream(
   // Start hele loopet i baggrunden.
   void runReconnectLoop()
 
-  // Returnér abort-funktion.
-  return () => {
-    userAborted = true
-    stopPingWatchdog()
-    abortController.abort()
+  // Returnér kontrol-håndtag: lokal abort + run_id-getter (R3).
+  return {
+    abort: () => {
+      userAborted = true
+      stopPingWatchdog()
+      abortController.abort()
+    },
+    getRunId: () => activeRunId,
   }
 }

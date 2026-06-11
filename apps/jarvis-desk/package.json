@@ -12,24 +12,35 @@
     "build:renderer": "tsc -b && vite build",
     "build:electron": "tsc -p electron/tsconfig.json && node -e \"require('fs').mkdirSync('dist-electron',{recursive:true});require('fs').writeFileSync('dist-electron/package.json','{\\\"type\\\":\\\"commonjs\\\"}')\"",
     "build": "npm run build:renderer && npm run build:electron",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint . --ext .ts,.tsx",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "katex": "^0.16.47",
     "lucide-react": "^0.460.0",
+    "mermaid": "^11.15.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "shiki": "^1.29.2"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/katex": "^0.16.8",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "electron": "^33.0.0",
+    "jsdom": "^25.0.1",
     "typescript": "^5.5.4",
     "vite": "^5.4.0",
+    "vitest": "^2.1.9",
     "wait-on": "^7.2.0"
   }
 }

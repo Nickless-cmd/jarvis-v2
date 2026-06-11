@@ -438,3 +438,146 @@
   font-weight: 500;
   margin-bottom: 6px;
 }
+
+/* ─── Foundation komponenter (2026-06-11) ────────────────────────────── */
+
+/* ChatView */
+.chatview { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.chatview-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 24px; font-size: 13px; color: var(--fg-2);
+  border-bottom: 1px solid var(--line);
+}
+
+/* Presence-dot (kun liveness — locked: accent kun til dots) */
+.presence-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.presence-dot.green { background: var(--accent); box-shadow: 0 0 6px rgba(110, 231, 168, 0.5); }
+.presence-dot.yellow { background: var(--warn-fg); box-shadow: 0 0 6px rgba(255, 209, 102, 0.5); }
+.presence-dot.red { background: var(--error-fg); }
+
+/* Liveness-indikator */
+.liveness {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 4px; color: var(--fg-3); font-size: 13px;
+}
+.liveness-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--warn-fg);
+  animation: liveness-pulse 1.4s ease-in-out infinite;
+}
+@keyframes liveness-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* Bannere (interrupted / error / hang) */
+.banner {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  font-size: 13px; margin: 6px 0;
+}
+.banner button {
+  background: var(--bg-3); color: var(--fg-1); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 3px 10px; cursor: pointer; font-size: 12.5px;
+}
+.banner button:hover { background: var(--bg-4); }
+.banner-warn { background: rgba(255, 209, 102, 0.08); color: var(--warn-fg); }
+.banner-error { background: rgba(255, 128, 128, 0.08); color: var(--error-fg); justify-content: space-between; }
+
+/* CodeBlock */
+.codeblock {
+  background: var(--code-bg); border: 1px solid var(--line);
+  border-radius: var(--radius-md); overflow: hidden; margin: 8px 0;
+}
+.codeblock-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 10px; background: var(--bg-2); border-bottom: 1px solid var(--line);
+  font-size: 11px; color: var(--fg-3);
+}
+.codeblock-lang { font-family: ui-monospace, monospace; text-transform: lowercase; }
+.codeblock-bar button {
+  background: none; border: none; color: var(--fg-3); cursor: pointer; font-size: 11px;
+}
+.codeblock-bar button:hover { color: var(--fg-1); }
+.codeblock pre, .codeblock > div { margin: 0; padding: 10px 12px; overflow-x: auto; font-size: 13px; }
+.codeblock pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+/* ToolCard (density-aware) */
+.toolcard { border: 1px solid var(--line); border-radius: var(--radius-sm); margin: 6px 0; overflow: hidden; }
+.toolcard-head {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: var(--bg-2); border: none; color: var(--fg-2);
+  padding: 5px 10px; cursor: pointer; font-size: 12.5px; text-align: left;
+}
+.toolcard-name { font-family: ui-monospace, monospace; color: var(--fg-1); }
+.toolcard-status { margin-left: auto; color: var(--fg-3); font-size: 11px; }
+.toolcard-body { padding: 8px 10px; background: var(--bg-1); }
+.toolcard-args, .toolcard-result {
+  font-family: ui-monospace, monospace; font-size: 12px; color: var(--fg-2);
+  white-space: pre-wrap; word-break: break-word; margin: 2px 0;
+}
+
+/* ApprovalCard */
+.approvalcard {
+  border: 1px solid var(--line); border-left: 3px solid var(--warn-fg);
+  border-radius: var(--radius-sm); padding: 10px; margin: 8px 0; background: var(--bg-2);
+}
+.approvalcard.risk-destructive { border-left-color: var(--error-fg); }
+.approvalcard-head { font-size: 12px; color: var(--fg-3); margin-bottom: 6px; }
+.approvalcard-action {
+  font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--fg-1);
+  white-space: pre-wrap; word-break: break-word; margin-bottom: 8px;
+}
+.approvalcard-actions { display: flex; gap: 8px; }
+.approvalcard-actions button {
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 4px 14px; cursor: pointer; font-size: 12.5px;
+  background: var(--bg-3); color: var(--fg-1);
+}
+.approvalcard-readonly { font-size: 12px; color: var(--fg-3); }
+
+/* Thinking-block */
+.thinking { margin: 4px 0; }
+.thinking > button {
+  background: none; border: none; color: var(--fg-3);
+  cursor: pointer; font-size: 12px; padding: 0;
+}
+.thinking > button:hover { color: var(--fg-2); }
+
+/* Image */
+.image-blocked { color: var(--fg-3); font-size: 12.5px; font-style: italic; }
+.jarvis-body img { max-width: 100%; border-radius: var(--radius-sm); }
+
+/* Secondary nav (Memory/Scheduling/Settings) */
+.secondary-nav { display: flex; gap: 4px; }
+.secondary-nav .icon-btn {
+  background: none; border: none; color: var(--fg-3); cursor: pointer;
+  padding: 4px; border-radius: var(--radius-sm); display: grid; place-items: center;
+}
+.secondary-nav .icon-btn:hover { color: var(--fg-1); background: var(--bg-3); }
+.secondary-nav .icon-btn.active { color: var(--accent); }
+
+/* View placeholders + settings */
+.view-placeholder {
+  flex: 1; display: grid; place-items: center; color: var(--fg-3);
+  text-align: center; padding: 40px;
+}
+.view-placeholder h2 { color: var(--fg-2); font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+.settings-view { display: block; place-items: stretch; padding: 32px; }
+.settings-view dl { display: grid; grid-template-columns: 120px 1fr; gap: 8px 16px; font-size: 14px; }
+.settings-view dt { color: var(--fg-3); }
+.settings-view dd { color: var(--fg-1); }
+
+/* SetupScreen */
+.setup {
+  height: 100%; display: flex; flex-direction: column; gap: 16px;
+  max-width: 380px; margin: 0 auto; justify-content: center; padding: 24px;
+}
+.setup h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+.setup label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--fg-2); }
+.setup input {
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  color: var(--fg-1); padding: 8px 10px; font-size: 14px;
+}
+.setup input:focus { outline: none; border-color: var(--bg-4); }
+.setup > button {
+  background: var(--bg-3); color: var(--fg-1); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 9px; cursor: pointer; font-size: 14px; margin-top: 8px;
+}
+.setup > button:hover { background: var(--bg-4); }

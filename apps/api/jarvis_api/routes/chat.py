@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -19,6 +21,35 @@ from core.services.visible_runs import (
 )
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+# ── Preview-panel: path-jailed fil-læsning (jarvis-desk) ──
+_FILE_ROOTS = ("docs", "workspace", "core", "apps", "scripts")
+_LANG_BY_EXT = {
+    ".py": "python", ".ts": "typescript", ".tsx": "tsx", ".js": "javascript",
+    ".json": "json", ".md": "markdown", ".css": "css", ".sh": "bash", ".txt": "text",
+}
+
+
+def _repo_root() -> Path:
+    # chat.py: apps/api/jarvis_api/routes/ → fire niveauer op til repo-rod.
+    return Path(__file__).resolve().parents[4]
+
+
+@router.get("/file")
+async def chat_read_file(path: str = Query(...)) -> dict:
+    """Læs en repo-fil til preview-panelet. Path-jail: kun whitelisted rødder."""
+    root = _repo_root()
+    candidate = (root / path).resolve()
+    try:
+        rel = candidate.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="uden for jail")
+    if not rel.parts or rel.parts[0] not in _FILE_ROOTS:
+        raise HTTPException(status_code=403, detail="ikke-whitelisted rod")
+    if not candidate.is_file():
+        raise HTTPException(status_code=404, detail="ikke fundet")
+    content = candidate.read_text(encoding="utf-8", errors="replace")
+    return {"path": path, "content": content, "language": _LANG_BY_EXT.get(candidate.suffix, "text")}
 
 
 class ChatStreamRequest(BaseModel):

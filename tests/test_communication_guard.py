@@ -209,7 +209,7 @@ class TestCleanup:
         removed = cleanup_expired()
         assert removed == 0
         active = [t for t in list_triggers() if t["kind"] == "permanent"]
-        assert len(active) == 4  # godnat, sov godt, læg dig til at sove, put dig selv
+        assert len(active) == 10  # godnat, sov godt, læg dig til at sove, put dig selv, ...
 
 
 class TestDaemonTick:

@@ -154,10 +154,15 @@ export async function getSession(
   config: ApiConfig,
   sessionId: string,
 ): Promise<{ session: ChatSession; messages: ChatMessage[] }> {
-  return apiFetch<{ session: ChatSession; messages: ChatMessage[] }>(
-    config,
-    `/chat/sessions/${encodeURIComponent(sessionId)}`,
-  )
+  // Server returnerer { session: { ...session, messages: [...] } }
+  // — messages er embedded i session-objektet, ikke flat på top-level.
+  // Vi normaliserer her så App.tsx får den forventede form.
+  const raw = await apiFetch<{
+    session: ChatSession & { messages?: ChatMessage[] }
+  }>(config, `/chat/sessions/${encodeURIComponent(sessionId)}`)
+  const session = raw.session
+  const messages = session?.messages ?? []
+  return { session, messages }
 }
 
 export async function createSession(

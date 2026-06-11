@@ -41,6 +41,36 @@ Code-mode opfører sig som Claude Code (fuld agentic-timeline, diagnostik synlig
 | Tool-rendering | Density-aware komponenter (compact\|full), delt på tværs af modes |
 | Fejl/liveness | Én delt state-maskine, density-konfigureret presentation per mode |
 | Ombygning | Frisk genopbygning af shell'en (App.tsx → ~40 linjer) |
+| Scope-afgrænsning | jarvis-desk = arbejds-app (Chat/Cowork/Code + Memory/Scheduling/Settings). Observability (Mind/Dashboard/Dispatches/Trading/Channels) → Mission Control |
+| Rolle-skopering | Auth giver `role`; flader filtrerer *indhold* efter rolle, ikke kun synlighed |
+
+## Scope-afgrænsning: arbejds-app, ikke observability
+
+jarvis-desk er **relationen og arbejdet** med Jarvis — ikke et vindue ind i hans
+maskineri. Det maskineri (affektiv tilstand, sub-agenter, trading, channels)
+bor i Mission Control (web).
+
+**Inde i jarvis-desk:**
+- Mode-slider (arbejds-modes): **Chat**, **Cowork**, **Code**
+- Sekundær nav (opslags-flader, i sidebar-fod ved bruger-avatar): **Memory**,
+  **Scheduling**, **Settings**
+
+**Ude (→ Mission Control):** Mind, Dashboard, Dispatches, Trading, Channels.
+
+## Rolle-skopering (cross-cutting concern)
+
+Auth/whoami giver `role: 'owner' | 'member' | 'guest'`. Rollen styrer ikke kun
+*om* en flade vises, men *hvad* den viser:
+
+- **Memory**: member ser kun den hukommelse Jarvis har *med ham* (relationen);
+  owner ser Jarvis' fulde indre memory.
+- **Scheduling**: member ser kun hvad Jarvis har planlagt *med ham*; owner ser alt.
+- **Skrive-handlinger** (plan-approval, process-stop, staging-commit) gates til
+  owner; member ser read-only.
+
+Derfor eksponerer auth-laget `role` i context fra dag 1, og hver rolle-følsom
+flade tager rollen som input. Server håndhæver den reelle grænse (workspace-
+isolation via headers); klienten filtrerer for korrekt UX.
 
 ## Hvad der allerede er bygget og genbruges 1:1
 
@@ -71,17 +101,20 @@ src/
     useStream.ts
     useTheme.ts              forberedt til lys/mørk senere
 
-  views/                     ── én pr. mode, rene komponenter ──
-    ChatView.tsx             (denne spec: skelet + Chat virker)
-    CoworkView.tsx           placeholder — egen spec
-    CodeView.tsx             placeholder — egen spec
-    SettingsView.tsx         server, token, tema, model-default, trust-default
+  views/                     ── én pr. flade, rene komponenter ──
+    ChatView.tsx             mode-slider (denne spec: skelet + Chat virker)
+    CoworkView.tsx           mode-slider — placeholder, egen spec
+    CodeView.tsx             mode-slider — placeholder, egen spec
+    MemoryView.tsx           sekundær nav — rolle-skopet, placeholder, egen spec
+    SchedulingView.tsx       sekundær nav — rolle-skopet, placeholder, egen spec
+    SettingsView.tsx         sekundær nav — server, token, tema, defaults
     SetupScreen.tsx          første-gangs: server-URL + token
 
   components/
     shell/
-      Sidebar.tsx
-      ModeSlider.tsx         Chat|Cowork|Code pille-segment
+      Sidebar.tsx            app-navn, mode-slider, sessions, sekundær-nav, bruger-fod
+      ModeSlider.tsx         Chat|Cowork|Code pille-segment (arbejds-modes)
+      SecondaryNav.tsx       Memory|Scheduling|Settings ikoner (sidebar-fod)
       StatusBar.tsx          model · cache · cost · tid
       Composer.tsx           input + kontekst-menu + model/think-pills + send
     rich/                    ── density-aware rendering-bibliotek ──
@@ -131,13 +164,21 @@ Tre contexts, hver eksponeret via én hook. Views rører aldrig context direkte.
     defaultThinking: 'think' | 'fast'
     trustDefault: 'ask' | 'trust'
   } | null
+  auth: {
+    userId: string
+    displayName: string
+    role: 'owner' | 'member' | 'guest'   // driver rolle-skopering
+  } | null
   isConfigured: boolean        // false → vis SetupScreen
   update(partial): Promise<void>   // skriver til Electron-config
 }
 ```
 
 Loader fra Electron-config ved opstart. Mangler apiBaseUrl/token →
-`isConfigured=false` → App viser `SetupScreen` i stedet for shell.
+`isConfigured=false` → App viser `SetupScreen`. Ved boot kaldes whoami
+(cache-first, så offline-boot stadig kender sidste-kendte rolle) → fylder `auth`.
+`role` eksponeres så rolle-følsomme flader (Memory, Scheduling) og skrive-gates
+kan filtrere.
 
 ### SessionContext → useSessions()
 
@@ -349,12 +390,16 @@ App.tsx
       <SessionProvider>
         <StreamProvider>
           <Shell>
-            <Sidebar/> (ModeSlider, sessions, bruger-foot)
+            <Sidebar/> (ModeSlider, sessions, SecondaryNav, bruger-fod)
             <main>
-              mode === 'chat'   → <ChatView/>
-              mode === 'cowork' → <CoworkView/>   (placeholder)
-              mode === 'code'   → <CodeView/>     (placeholder)
-              mode === 'settings' → <SettingsView/>
+              // mode-slider (arbejds-modes)
+              surface === 'chat'       → <ChatView/>
+              surface === 'cowork'     → <CoworkView/>     (placeholder)
+              surface === 'code'       → <CodeView/>       (placeholder)
+              // sekundær nav (opslags-flader, rolle-skopet)
+              surface === 'memory'     → <MemoryView role={auth.role}/>  (placeholder)
+              surface === 'scheduling' → <SchedulingView role={auth.role}/> (placeholder)
+              surface === 'settings'   → <SettingsView/>
             </main>
             <StatusBar/>
           </Shell>
@@ -384,11 +429,16 @@ App.tsx
 
 ## Eksplicit IKKE i denne spec
 
-- Cowork-mode + Code-mode indhold (placeholders kun) → egne specs
+- Cowork/Code/Memory/Scheduling indhold (placeholders kun) → egne specs
 - Chat-mode interaktions-polish (branch/edit-UI, billede-vedhæft-flow) → Chat-spec
+- Observability-flader (Mind/Dashboard/Dispatches/Trading/Channels) → Mission Control, ikke jarvis-desk
 - Lys-tema (forberedt i tokens, ikke bygget)
 - Virtualisering (constraint kun)
 - E2E-tests
+
+Foundationen leverer dog: rolle i auth-context, SecondaryNav-stel, og
+placeholder-views med `role`-prop — så de senere mode/flade-specs kan udfyldes
+uden at røre fundamentet.
 
 ## Næste skridt
 

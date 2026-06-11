@@ -207,13 +207,13 @@ src/
       MessageRow.tsx         bruger/Jarvis boble-layout (locked design)
     feedback/
       LivenessIndicator.tsx  "arbejder — 0:42" (density-aware)
-      ReconnectBanner.tsx    "genopretter..."
+      InterruptedBanner.tsx  "forbindelse afbrudt — [genoptag]" (R1, ny tur)
       ErrorBanner.tsx        typed StreamError → dansk besked
-      HangPrompt.tsx         "svarer ikke — prøv igen / afbryd"
+      HangPrompt.tsx         "svarer ikke — genoptag / afbryd" (R2)
 
-  lib/                       ── uændret, allerede solidt ──
-    streamClient.ts
-    api.ts
+  lib/                       ── genbruges med målrettede ændringer (R1-R3) ──
+    streamClient.ts          + run_id-eksponering, cancel-hook, watchdog→hung
+    api.ts                   + ChatMessage.content→ContentBlock[] + normalisering
     sseProtocol.ts           NY: rene v2 event-typer (udtrukket fra streamClient)
 
   styles/
@@ -281,16 +281,16 @@ green-12.)
 
 ```ts
 {
-  status: 'idle'|'working'|'reconnecting'|'hung'|'error'|'done'
+  status: 'idle'|'working'|'interrupted'|'hung'|'error'|'done'  // R1/R2: ingen 'reconnecting'
   blocks: ContentBlock[]       // text/thinking/tool_use/image, indekseret
+  activeRunId: string | null   // fra message_start.message.id — bruges af abort() (R3)
   elapsedMs: number
   lastEventAt: number
-  reconnectAttempt: number
   error: StreamError | null
-  needsAttention: boolean      // true når working/hung og vindue ude af fokus
+  needsAttention: boolean      // true når working/hung/interrupted og vindue ude af fokus
   send(message, opts): void
-  abort(): void                // POST cancel til server — se #3
-  retry(): void                // fortsætter partial — se #2
+  abort(): void                       // server-cancel (POST /chat/runs/{activeRunId}/cancel) + lokal — R3
+  continueFromPartial(): void         // NY tur der fortsætter samtalen — IKKE resume af dødt run (R1)
 }
 ```
 
@@ -417,9 +417,9 @@ idle → working → done → idle
 app-laget viser dock-badge + notifikation (#5). Særligt vigtigt ved
 `approval_request` — Jarvis venter på dig.
 
-Chat-mode læser maskinen som en rolig liveness-pille + diskret reconnect-banner.
-Code-mode læser samme maskine som en fuld status-linje med elapsed/tokens/
-forbindelse. **Samme `status`, to renderings.**
+Chat-mode læser maskinen som en rolig liveness-pille + diskret InterruptedBanner
+ved afbrydelse. Code-mode læser samme maskine som en fuld status-linje med
+elapsed/tokens/forbindelse. **Samme `status`, to renderings.**
 
 ## De 8 "glemte" ting (folder ind i fundamentet)
 
@@ -549,7 +549,8 @@ App.tsx
 - **Reducer:** ren funktion `(state, v2event) → state` — unit-tests for hele
   event-sekvenser inkl. afbrudt-genoptag, hang, approval midt-i.
 - **Hooks:** mock-providers (useStream med fake event-stream).
-- **streamClient:** findes; tilføj tests for reconnect-grene hvis de mangler.
+- **streamClient:** findes; tilføj tests for de nye R1-R3-grene (watchdog→hung,
+  run_id-eksponering, cancel-hook, ingen blind re-POST).
 - **Stack:** Vitest (matcher Vite). Ingen E2E i denne spec — kommer når Chat-mode
   er fuld.
 

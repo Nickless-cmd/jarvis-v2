@@ -42,20 +42,31 @@ export function SessionProvider({
   const loadSessions = useCallback(async () => {
     const list = await listSessions(config)
     setSessions(list)
+    return list
   }, [config])
-
-  // Init: hent session-liste én gang.
-  useEffect(() => {
-    void loadSessions()
-  }, [loadSessions])
 
   // Hvilken session's beskeder er aktuelt loaded. Forhindrer at select()
   // genindlæser (og dermed wiper optimistiske/streamede beskeder) når ChatView
   // re-kalder select for en session vi allerede har — fx en netop oprettet.
   const loadedRef = useRef<string | null>(null)
 
+  // Init: hent session-liste, og gendan sidst-valgte samtale efter reload
+  // (activeId persisteres i localStorage). Stream kan ikke genoptages (R1),
+  // men den valgte samtale + dens beskeder kommer tilbage.
+  const restoredRef = useRef(false)
+  useEffect(() => {
+    void loadSessions().then((list) => {
+      if (restoredRef.current) return
+      restoredRef.current = true
+      let savedId: string | null = null
+      try { savedId = localStorage.getItem('jarvis-desk:activeSession') } catch { /* ignore */ }
+      if (savedId && list.some((s) => s.id === savedId)) selectRef.current?.(savedId)
+    })
+  }, [loadSessions])
+
   const select = useCallback((id: string) => {
     setActiveId(id)
+    try { localStorage.setItem('jarvis-desk:activeSession', id) } catch { /* ignore */ }
     if (loadedRef.current === id) return // allerede loaded → behold lokale beskeder
     const prevLoaded = loadedRef.current
     loadedRef.current = id
@@ -68,6 +79,8 @@ export function SessionProvider({
       .then(({ messages: server }) => setMessages((prev) => mergeServer(prev, server)))
       .finally(() => setLoading(false))
   }, [config])
+  const selectRef = useRef(select)
+  selectRef.current = select
 
   const refresh = useCallback(async () => {
     if (!activeId) return

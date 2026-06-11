@@ -77,6 +77,32 @@ export function Composer({
 
   const removeAttachment = (localId: string) => setAttachments((a) => a.filter((x) => x.localId !== localId))
 
+  // Electron fanger fil-drops på window-niveau og navigerer væk medmindre vi
+  // preventDefault DER. Håndtér selve droppet globalt (ref → altid nyeste addFiles).
+  const addFilesRef = useRef(addFiles)
+  addFilesRef.current = addFiles
+  useEffect(() => {
+    const onDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+      setDragOver(true)
+    }
+    const onDragLeave = (e: DragEvent) => { if (e.relatedTarget === null) setDragOver(false) }
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault()
+      setDragOver(false)
+      if (e.dataTransfer?.files?.length) addFilesRef.current(e.dataTransfer.files)
+    }
+    window.addEventListener('dragover', onDragOver)
+    window.addEventListener('dragleave', onDragLeave)
+    window.addEventListener('drop', onDrop)
+    return () => {
+      window.removeEventListener('dragover', onDragOver)
+      window.removeEventListener('dragleave', onDragLeave)
+      window.removeEventListener('drop', onDrop)
+    }
+  }, [])
+
   // Luk popovers ved klik udenfor.
   useEffect(() => {
     if (!menuOpen && !permOpen) return
@@ -103,12 +129,7 @@ export function Composer({
   const permLabel = PERMISSIONS.find((p) => p.key === permission)?.label ?? 'Spørg'
 
   return (
-    <div
-      className={`composer ${dragOver ? 'drag-over' : ''}`}
-      onDragOver={(e) => { e.preventDefault(); if (!dragOver) setDragOver(true) }}
-      onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false) }}
-      onDrop={(e) => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files) }}
-    >
+    <div className={`composer ${dragOver ? 'drag-over' : ''}`}>
       {dragOver && <div className="composer-drop-overlay">Slip filer og billeder her</div>}
       {attachments.length > 0 && (
         <div className="composer-attachments">

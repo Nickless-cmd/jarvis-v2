@@ -404,6 +404,10 @@ export function startStream(
     // Parse stream — kaster på protokolfejl.
     await parseSseStream(response)
 
+    // message_stop set parseSseStream userAborted=true og kaldte onComplete →
+    // vi er endegyldigt færdige; kast IKKE (ellers udløses falsk "interrupted").
+    if (userAborted) return
+
     // Hvis vi når herhen uden message_stop, var det en uventet ende.
     // (Stream lukkede uden afslutningsbesked.)
     throw new StreamError('network', 'Stream sluttede uden message_stop', {

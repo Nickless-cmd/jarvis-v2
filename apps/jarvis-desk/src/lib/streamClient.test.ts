@@ -28,6 +28,25 @@ describe('startStream R1-R3', () => {
     expect(runIds).toEqual(['visible-42'])
   })
 
+  it('message_stop → onComplete og IKKE onInterrupted (ingen falsk genoptag)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(sseResponse([
+      'event: message_start\ndata: {"type":"message_start","message":{"id":"","model":"m","provider":"p","lane":"l","session_id":"s","usage":{"input_tokens":0,"output_tokens":0}}}\n\n',
+      'event: content_block_start\ndata: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}\n\n',
+      'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ok"}}\n\n',
+      'event: message_stop\ndata: {"type":"message_stop"}\n\n',
+    ])))
+    let completed = false
+    let interrupted = false
+    await new Promise<void>((resolve) => {
+      startStream(
+        { apiBaseUrl: 'http://t', authToken: null, sessionId: 's', message: 'hi' },
+        { onEvent: () => {}, onComplete: () => { completed = true; resolve() }, onInterrupted: () => { interrupted = true; resolve() } },
+      )
+    })
+    expect(completed).toBe(true)
+    expect(interrupted).toBe(false)
+  })
+
   it('does NOT auto-reconnect (re-POST) on broken stream when autoReconnect=false', async () => {
     const fetchMock = vi.fn().mockResolvedValue(sseResponse([
       'event: message_start\ndata: {"type":"message_start","message":{"id":"r","model":"m","provider":"p","lane":"l","session_id":"s","usage":{"input_tokens":0,"output_tokens":0}}}\n\n',

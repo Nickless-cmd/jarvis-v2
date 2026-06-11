@@ -549,6 +549,14 @@
 .artifact-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 16px 18px; scrollbar-width: none; }
 .artifact-body::-webkit-scrollbar { width: 0; }
 .artifact-loading, .artifact-error { color: var(--fg-3); font-size: 13px; padding: 8px 0; }
+.artifact-empty { color: var(--fg-3); font-size: 13px; line-height: 1.6; padding: 24px 4px; text-align: center; }
+.chatview-head-right { display: flex; align-items: center; gap: 10px; }
+.panel-toggle {
+  display: grid; place-items: center; width: 28px; height: 28px;
+  background: none; border: none; color: var(--fg-3); cursor: pointer; border-radius: 6px;
+}
+.panel-toggle:hover { background: var(--bg-3); color: var(--fg-1); }
+.panel-toggle.active { color: var(--accent); background: rgba(110,231,168,0.1); }
 .artifact-affordance {
   display: inline-flex; align-items: center; gap: 5px; margin: 6px 8px 0 0;
   background: var(--bg-2); border: 1px solid var(--line); color: var(--fg-2);

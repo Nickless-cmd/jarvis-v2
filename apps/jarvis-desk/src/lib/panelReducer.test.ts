@@ -27,4 +27,10 @@ describe('panelReducer', () => {
     const s = panelReducer(initialPanelState(420), { type: 'resize', width: 100 })
     expect(s.width).toBe(MIN_WIDTH)
   })
+  it('toggle flipper open frem og tilbage', () => {
+    const a = panelReducer(initialPanelState(420), { type: 'toggle' })
+    expect(a.open).toBe(true)
+    const b = panelReducer(a, { type: 'toggle' })
+    expect(b.open).toBe(false)
+  })
 })

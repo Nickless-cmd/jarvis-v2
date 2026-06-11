@@ -54,7 +54,7 @@ function ShellWithPanel({ children }: { children: ReactNode }) {
       open={panel.open}
       width={panel.width}
       onResize={panel.resize}
-      panel={panel.artifact ? <ArtifactPanel artifact={panel.artifact} onClose={panel.close} /> : null}
+      panel={<ArtifactPanel artifact={panel.artifact} onClose={panel.close} />}
     >
       {children}
     </SplitLayout>

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowDown } from 'lucide-react'
+import { ArrowDown, PanelRight } from 'lucide-react'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
 import { useSettings } from '../hooks/useSettings'
+import { usePanel } from '../hooks/usePanel'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { PresenceDot } from '../components/shell/PresenceDot'
@@ -21,6 +22,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   const sessions = useSessions()
   const stream = useStream()
   const { settings } = useSettings()
+  const panel = usePanel()
   const reconciledForRun = useRef<string | null>(null)
   const transcriptRef = useRef<HTMLDivElement>(null)
   const [atBottom, setAtBottom] = useState(true)
@@ -108,9 +110,20 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       <div className="chatview-head-left">
         <PresenceDot status={stream.status} /> <span className="chat-title">{chatTitle}</span>
       </div>
-      {settings && (
-        <ConnectionPill config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
-      )}
+      <div className="chatview-head-right">
+        {settings && (
+          <ConnectionPill config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
+        )}
+        <button
+          type="button"
+          className={`panel-toggle ${panel.open ? 'active' : ''}`}
+          aria-label="Vis/skjul panel"
+          title="Panel"
+          onClick={panel.toggle}
+        >
+          <PanelRight size={16} />
+        </button>
+      </div>
     </div>
   )
 

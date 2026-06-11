@@ -5,6 +5,7 @@ import { ChatView } from './ChatView'
 import { SessionProvider } from '../contexts/SessionContext'
 import { StreamProvider } from '../contexts/StreamContext'
 import { SettingsProvider } from '../contexts/SettingsContext'
+import { PanelProvider } from '../contexts/PanelContext'
 
 interface FakeHandlers {
   onEvent: (e: unknown) => void
@@ -32,7 +33,9 @@ describe('ChatView integration', () => {
       <SettingsProvider initialConfig={cfg}>
         <SessionProvider config={cfg}>
           <StreamProvider config={cfg}>
-            <ChatView sessionId="s1" />
+            <PanelProvider defaultWidth={400}>
+              <ChatView sessionId="s1" />
+            </PanelProvider>
           </StreamProvider>
         </SessionProvider>
       </SettingsProvider>,

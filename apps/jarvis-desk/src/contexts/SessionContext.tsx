@@ -1,5 +1,5 @@
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { listSessions, getSession, createSession, type ChatSession, type ChatMessage } from '../lib/api'
+import { listSessions, getSession, createSession, renameSession, deleteSession, type ChatSession, type ChatMessage } from '../lib/api'
 
 type ClientStatus =
   | 'optimistic_user'
@@ -17,7 +17,9 @@ export interface SessionContextValue {
   messages: LocalMessage[]
   loading: boolean
   select: (id: string) => void
-  create: (title: string) => Promise<void>
+  create: (title: string) => Promise<ChatSession>
+  rename: (id: string, title: string) => Promise<void>
+  remove: (id: string) => Promise<void>
   refresh: () => Promise<void>
   appendOptimistic: (msg: ChatMessage) => void
   reconcile: (assistantMsg: ChatMessage) => void
@@ -66,7 +68,20 @@ export function SessionProvider({
     setSessions((prev) => [sess, ...prev])
     setActiveId(sess.id)
     setMessages([])
+    return sess
   }, [config])
+
+  const rename = useCallback(async (id: string, title: string) => {
+    await renameSession(config, id, title)
+    setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title } : s)))
+  }, [config])
+
+  const remove = useCallback(async (id: string) => {
+    await deleteSession(config, id)
+    setSessions((prev) => prev.filter((s) => s.id !== id))
+    setActiveId((cur) => (cur === id ? null : cur))
+    setMessages((prev) => (activeId === id ? [] : prev))
+  }, [config, activeId])
 
   const appendOptimistic = useCallback((msg: ChatMessage) => {
     setMessages((prev) => [...prev, { ...msg, clientStatus: 'optimistic_user' }])
@@ -77,8 +92,8 @@ export function SessionProvider({
   }, [])
 
   const value = useMemo<SessionContextValue>(
-    () => ({ sessions, activeId, messages, loading, select, create, refresh, appendOptimistic, reconcile }),
-    [sessions, activeId, messages, loading, select, create, refresh, appendOptimistic, reconcile],
+    () => ({ sessions, activeId, messages, loading, select, create, rename, remove, refresh, appendOptimistic, reconcile }),
+    [sessions, activeId, messages, loading, select, create, rename, remove, refresh, appendOptimistic, reconcile],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

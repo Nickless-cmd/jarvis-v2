@@ -31,7 +31,6 @@ export function MessageActions({ text, createdAt }: { text: string; createdAt?: 
 
   return (
     <div className="msg-actions">
-      {createdAt && <span className="msg-time">{formatRelativeTime(createdAt)}</span>}
       <button type="button" className="msg-action-btn" title="Kopiér" onClick={copy}>
         {copied ? <Check size={13} /> : <Copy size={13} />}
       </button>
@@ -51,6 +50,7 @@ export function MessageActions({ text, createdAt }: { text: string; createdAt?: 
       >
         <Volume2 size={13} />
       </button>
+      {createdAt && <span className="msg-time">{formatRelativeTime(createdAt)}</span>}
     </div>
   )
 }

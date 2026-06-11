@@ -14,10 +14,10 @@ import { ErrorBanner } from '../components/feedback/ErrorBanner'
 
 const NEAR_BOTTOM_PX = 120
 
-/** Chat-mode: orkestrerer transcript (afsluttede beskeder fra SessionContext),
- *  igangværende stream (StreamContext.blocks), composer-send-flow, reconcile på
- *  done, og feedback-bannere efter status. Density=compact (Claude.ai-stil). */
-export function ChatView({ sessionId }: { sessionId: string }) {
+/** Chat-mode. Ved tom/ny samtale: composer centreret midt på skærmen. Ved
+ *  første besked oprettes session (hvis nødvendigt) og layoutet skifter — composer
+ *  hopper ned i bunden, transcript fylder. */
+export function ChatView({ sessionId }: { sessionId: string | null }) {
   const sessions = useSessions()
   const stream = useStream()
   const { settings } = useSettings()
@@ -26,9 +26,8 @@ export function ChatView({ sessionId }: { sessionId: string }) {
   const [atBottom, setAtBottom] = useState(true)
   const [unread, setUnread] = useState(0)
 
-  useEffect(() => { sessions.select(sessionId) }, [sessionId])
+  useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 
-  // Reconcile når stream når done (kun én gang pr. run).
   useEffect(() => {
     if (stream.status === 'done' && stream.blocks.length > 0 && reconciledForRun.current !== stream.activeRunId) {
       reconciledForRun.current = stream.activeRunId
@@ -56,8 +55,6 @@ export function ChatView({ sessionId }: { sessionId: string }) {
     if (near) setUnread(0)
   }
 
-  // Auto-scroll: spring til bund ved session-load og når man er nær bunden.
-  // Hvis man har scrollet op og der kommer nyt → tæl ulæste (badge) i stedet.
   const lastScrolledSession = useRef<string | null>(null)
   useEffect(() => {
     const el = transcriptRef.current
@@ -69,20 +66,21 @@ export function ChatView({ sessionId }: { sessionId: string }) {
       setUnread(0)
       return
     }
-    if (atBottom) {
-      el.scrollTop = el.scrollHeight
-    } else {
-      setUnread((u) => u + 1)
-    }
+    if (atBottom) el.scrollTop = el.scrollHeight
+    else setUnread((u) => u + 1)
   }, [sessions.messages.length, sessionId])
 
-  // Under streaming: følg bunden hvis man er der.
   useEffect(() => {
     const el = transcriptRef.current
     if (el && atBottom) el.scrollTop = el.scrollHeight
   }, [stream.blocks, atBottom])
 
-  const handleSend = (text: string, opts: ComposerSendOpts) => {
+  const handleSend = async (text: string, opts: ComposerSendOpts) => {
+    let sid = sessionId
+    if (!sid) {
+      const created = await sessions.create('Ny samtale')
+      sid = created.id
+    }
     sessions.appendOptimistic({
       id: `u-${Date.now()}`,
       role: 'user',
@@ -92,10 +90,31 @@ export function ChatView({ sessionId }: { sessionId: string }) {
     })
     setAtBottom(true)
     setUnread(0)
-    stream.send(text, { sessionId, approvalMode: opts.permission })
+    stream.send(text, { sessionId: sid, approvalMode: opts.permission })
   }
 
+  const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   const streaming = stream.status === 'working'
+  const isEmpty =
+    !sessionId ||
+    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0)
+
+  const composer = <Composer disabled={streaming} onSend={handleSend} model="deepseek-flash" thinking="think" />
+
+  // ── Tom/ny samtale: composer centreret midt på skærmen ──
+  if (isEmpty) {
+    return (
+      <div className="chatview empty">
+        <div className="chat-empty">
+          <h2>Hej.</h2>
+          <p>Skriv hvad du arbejder på.</p>
+          {composer}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Aktiv samtale ──
   const activeSession = sessions.sessions.find((s) => s.id === sessionId)
   const chatTitle = activeSession?.title || 'Samtale'
   return (
@@ -109,18 +128,16 @@ export function ChatView({ sessionId }: { sessionId: string }) {
         )}
       </div>
       <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
-        {sessions.messages
-          .filter((m) => m.role === 'user' || m.role === 'assistant')
-          .map((m) => (
-            <MessageRow
-              key={m.id}
-              role={m.role === 'user' ? 'user' : 'assistant'}
-              blocks={m.content}
-              density="compact"
-              streaming={false}
-              createdAt={m.created_at}
-            />
-          ))}
+        {visibleMessages.map((m) => (
+          <MessageRow
+            key={m.id}
+            role={m.role === 'user' ? 'user' : 'assistant'}
+            blocks={m.content}
+            density="compact"
+            streaming={false}
+            createdAt={m.created_at}
+          />
+        ))}
         {streaming && stream.blocks.length > 0 && (
           <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
         )}
@@ -130,12 +147,10 @@ export function ChatView({ sessionId }: { sessionId: string }) {
           <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />
         )}
         {stream.status === 'error' && stream.error && (
-          <ErrorBanner message={stream.error.message} onDismiss={() => { /* banner ryddes ved næste send */ }} />
+          <ErrorBanner message={stream.error.message} onDismiss={() => { /* ryddes ved næste send */ }} />
         )}
       </div>
 
-      {/* Composer-område: scroll-til-bund pil sidder absolut OVER composeren
-          (bottom: 100%), så den følger composer-højden — ikke en fast offset. */}
       <div className="composer-area">
         {!atBottom && (
           <button type="button" className="scroll-bottom-btn" onClick={scrollToBottom} aria-label="Til bund">
@@ -143,7 +158,7 @@ export function ChatView({ sessionId }: { sessionId: string }) {
             {unread > 0 && <span className="scroll-badge">{unread} ny{unread > 1 ? 'e' : ''}</span>}
           </button>
         )}
-        <Composer disabled={streaming} onSend={handleSend} model="deepseek-flash" thinking="think" />
+        {composer}
       </div>
     </div>
   )

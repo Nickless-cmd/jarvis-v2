@@ -38,7 +38,7 @@ export interface ApiConfig {
 }
 
 interface FetchOptions {
-  method?: 'GET' | 'POST' | 'DELETE' | 'PATCH'
+  method?: 'GET' | 'POST' | 'DELETE' | 'PATCH' | 'PUT'
   body?: unknown
   timeoutMs?: number
   retries?: number
@@ -190,6 +190,17 @@ export async function createSession(
     method: 'POST',
     body: { title },
   })
+}
+
+export async function renameSession(config: ApiConfig, sessionId: string, title: string): Promise<void> {
+  await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}/rename`, {
+    method: 'PUT',
+    body: { title },
+  })
+}
+
+export async function deleteSession(config: ApiConfig, sessionId: string): Promise<void> {
+  await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' })
 }
 
 /** Server-cancel af et aktivt run (R3). Idempotent: 200 og 404 (run ukendt/

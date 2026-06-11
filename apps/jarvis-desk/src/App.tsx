@@ -58,7 +58,7 @@ function Shell({
     <div className="window">
       <Sidebar surface={surface} onSurface={setSurface} userName={userName} />
       <main className="main">
-        {surface === 'chat' && (activeId ? <ChatView sessionId={activeId} /> : <EmptyChat />)}
+        {surface === 'chat' && <ChatView sessionId={activeId} />}
         {surface === 'cowork' && <CoworkView />}
         {surface === 'code' && <CodeView />}
         {surface === 'memory' && <MemoryView role={role} />}
@@ -66,17 +66,6 @@ function Shell({
         {surface === 'settings' && <SettingsView />}
         <StatusBar model={model} sessionId={activeId} />
       </main>
-    </div>
-  )
-}
-
-function EmptyChat() {
-  return (
-    <div className="empty-state">
-      <div>
-        <h2>Hej.</h2>
-        <div>Vælg en samtale eller start en ny.</div>
-      </div>
     </div>
   )
 }

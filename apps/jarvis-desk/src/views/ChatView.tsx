@@ -100,6 +100,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   const isEmpty =
     !sessionId ||
     (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0)
+  console.warn('[DIAG] render sessionId=', sessionId, 'msgs=', sessions.messages.length, 'vis=', visibleMessages.length, 'status=', stream.status, 'blocks=', stream.blocks.length, 'isEmpty=', isEmpty)
 
   const composer = <Composer disabled={streaming} onSend={handleSend} model="deepseek-flash" thinking="think" />
 

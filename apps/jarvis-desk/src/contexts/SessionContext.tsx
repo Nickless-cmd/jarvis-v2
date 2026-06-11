@@ -56,6 +56,7 @@ export function SessionProvider({
 
   const select = useCallback((id: string) => {
     setActiveId(id)
+    console.warn('[DIAG] select', id, 'loadedRef=', loadedRef.current, 'skip=', loadedRef.current === id)
     if (loadedRef.current === id) return // allerede loaded → behold lokale beskeder
     const prevLoaded = loadedRef.current
     loadedRef.current = id

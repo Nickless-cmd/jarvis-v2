@@ -47,13 +47,51 @@ def get_discord_channel_for_session(session_id: str) -> int | None:
 
     Returnerer channel_id hvis sessionen blev oprettet via Discord-DM/channel,
     ellers None. Bruges af visible_runs.py til at sende tool-progress status
-    tilbage til Discord under lange agentic loops (Bjørn-frustration fix
-    2026-06-11: Jarvis stilner i tool-loops så bruger tror han er væk).
+    tilbage til Discord under lange agentic loops.
+
+    Opslag-strategi (2026-06-11 fix efter Bjørn observation: in-memory
+    dict tabt efter restart):
+      1. Tjek in-memory _discord_sessions først (hurtigst)
+      2. Hvis ikke fundet: tjek chat_sessions.title for "Discord" præfiks.
+         Hvis ja → returnér owner-DM channel ID (fallback for kendte
+         Discord-bound sessioner, samme strategi som _resolve_channel_
+         for_session bruger til closure-gate notifikationer)
+      3. Ellers: None (sessionen er ikke Discord-bound, send intet)
     """
     if not session_id:
         return None
+    sid = str(session_id)
+
+    # 1. In-memory lookup (hurtigst)
     with _discord_sessions_lock:
-        return _discord_sessions.get(str(session_id))
+        cached = _discord_sessions.get(sid)
+        if cached:
+            return cached
+
+    # 2. DB-fallback: er det en Discord-titled session?
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT title FROM chat_sessions WHERE session_id = ?",
+                (sid,),
+            ).fetchone()
+        if row:
+            title = str(row[0] if not isinstance(row, dict) else row.get("title") or "")
+            if title.startswith("Discord") or "Discord DM" in title:
+                # Owner DM channel — samme fallback som
+                # _resolve_channel_for_session bruger. Hardcoded fordi
+                # Bjørn er eneste Discord-bruger der får DM med Jarvis
+                # i den nuværende deployment.
+                # Cache i in-memory dict så næste opslag er hurtigt.
+                owner_dm = 1474048593219555461
+                with _discord_sessions_lock:
+                    _discord_sessions[sid] = owner_dm
+                return owner_dm
+    except Exception as exc:
+        logger.debug("get_discord_channel_for_session db-lookup fejl: %s", exc)
+
+    return None
 
 # Channels currently typing: cleared when outbound message is sent
 _typing_channels: set[int] = set()

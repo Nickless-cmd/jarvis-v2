@@ -2942,8 +2942,7 @@ def _time_pin_section() -> str:
     local_time = local.strftime("%H:%M")
     return (
         "⏰═══════════════════════════════════⏰\n"
-        f"⏰ TIME PIN — IT IS {utc_str} UTC ⏰\n"
-        f"⏰ Local (DK): {local_time} {tz_abbrev}, {local_date} ⏰\n"
+        f"⏰ DANSK TID — {local_time} {tz_abbrev}, {local_date} ⏰\n"
         "⏰═══════════════════════════════════⏰\n"
         "Use PRECISELY this timestamp if you mention time/date in your answer.\n"
         "Don't guess — read above. It's your one true time reference."

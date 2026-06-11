@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { listSessions, getSession, createSession, renameSession, deleteSession, type ChatSession, type ChatMessage } from '../lib/api'
 
 type ClientStatus =
@@ -49,8 +49,15 @@ export function SessionProvider({
     void loadSessions()
   }, [loadSessions])
 
+  // Hvilken session's beskeder er aktuelt loaded. Forhindrer at select()
+  // genindlæser (og dermed wiper optimistiske/streamede beskeder) når ChatView
+  // re-kalder select for en session vi allerede har — fx en netop oprettet.
+  const loadedRef = useRef<string | null>(null)
+
   const select = useCallback((id: string) => {
     setActiveId(id)
+    if (loadedRef.current === id) return // allerede loaded → behold lokale beskeder
+    loadedRef.current = id
     setLoading(true)
     getSession(config, id)
       .then(({ messages: server }) => setMessages(mergeServer([], server)))
@@ -65,10 +72,12 @@ export function SessionProvider({
 
   const create = useCallback(async (title: string) => {
     const sess = await createSession(config, title)
-    setSessions((prev) => [sess, ...prev])
-    setActiveId(sess.id)
+    const titled = { ...sess, title: sess.title || title } // server kan returnere tom titel
+    loadedRef.current = titled.id // markér som loaded (tom) FØR activeId-skift → select skipper fetch
+    setSessions((prev) => [titled, ...prev])
+    setActiveId(titled.id)
     setMessages([])
-    return sess
+    return titled
   }, [config])
 
   const rename = useCallback(async (id: string, title: string) => {

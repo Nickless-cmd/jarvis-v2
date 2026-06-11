@@ -61,6 +61,24 @@ _FOERST_SKAL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Future-tense action-promises uden faktisk handling.
+# 2026-06-11 (Bjørn frustration crisis): Jarvis sagde "Jeg fikser med
+# et rent sed-kald nu" + "Efter kaldet verificerer jeg øjeblikkeligt"
+# — og afsluttede sit run UDEN at kalde et eneste værktøj. DeepSeek
+# har vane med at love handling og afslutte runden, så next-action
+# kommer aldrig. Matches "Jeg [verb] X nu" → trigger continuation der
+# vækker ham med "du sagde du ville X — gør det nu i stedet for at
+# tale om det".
+_FUTURE_ACTION_PROMISE_RE = re.compile(
+    r"\bjeg\s+(?:fikser|fixer|laver|kører|skriver|opretter|sletter|"
+    r"ændrer|opdaterer|tilføjer|implementerer|bygger|kalder|sender|"
+    r"committer|pusher|verificerer|tjekker|tester|starter|genstarter|"
+    r"deployer|redigerer|patcher|prøver)\b.{0,80}?\b(?:nu|straks|"
+    r"øjeblikkeligt|med\s+det\s+samme|lige\s+nu|først|i\s+et\s+sekund|"
+    r"i\s+et\s+øjeblik|et\s+sekund|et\s+øjeblik)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+
 # Approval-style spørgsmål til user EFTER user allerede har givet go-ahead.
 # Vi kan ikke vide om user sagde ja først — men hvis Jarvis ender sin
 # besked med "vil du have...?" eller "skal jeg...?" så er han i pause-state.
@@ -118,6 +136,16 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
     m = _FOERST_SKAL_RE.search(tail)
     if m:
         return UnfinishedIntent(pattern="foerst_skal", matched_text=m.group(0))
+
+    # 3b. "Jeg fikser/laver/kører X nu" — future-tense action promise.
+    # 2026-06-11 (Bjørn frustration crisis): DeepSeek-vane med at love
+    # handling og afslutte runde uden faktisk tool-kald. Auto-continuation
+    # vækker ham med "du sagde X — gør det nu".
+    m = _FUTURE_ACTION_PROMISE_RE.search(tail)
+    if m:
+        return UnfinishedIntent(
+            pattern="future_action_promise", matched_text=m.group(0),
+        )
 
     # 4. Cliffhanger-endings (på hele stripped tekst, ikke kun tail)
     last30 = stripped[-30:].rstrip()

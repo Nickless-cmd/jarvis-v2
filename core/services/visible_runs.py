@@ -2073,8 +2073,12 @@ async def _stream_visible_run(
                     # at lukke forbindelsen — Jarvis svaret kom færdigt men nåede
                     # aldrig klienten. Heartbeat hver 15s holder TCP-forbindelsen
                     # i live OG giver Bjørn synligt signal at noget arbejder.
-                    _tool_task = asyncio.create_task(
-                        loop.run_in_executor(
+                    # 2026-06-11 fix: loop.run_in_executor returnerer
+                    # en concurrent.futures.Future — asyncio.create_task
+                    # kræver en coroutine. Wrap derfor i en async helper
+                    # så vi får en task vi kan await/wait_for på.
+                    async def _await_executor() -> list[dict]:
+                        return await loop.run_in_executor(
                             None,
                             lambda: _ctx_for_agentic_exec.run(
                                 _execute_simple_tool_calls,
@@ -2085,7 +2089,7 @@ async def _stream_visible_run(
                                 user_message=run.user_message,
                             ),
                         )
-                    )
+                    _tool_task = asyncio.create_task(_await_executor())
                     _heartbeat_interval_s = 15.0
                     _heartbeat_count = 0
                     while not _tool_task.done():

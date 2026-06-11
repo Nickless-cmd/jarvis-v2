@@ -5,8 +5,13 @@ implementation. Skal færdiggøres i de relevante mode-specs (Chat/Cowork/Code/
 Memory/Scheduling) eller egne opgaver. Opdateres løbende.
 
 ## Composer
-- **Tilføj billeder og filer** (`Composer.tsx` `[+]`-menu): åbner fil-vælger, men
-  selve attachment-upload til serveren er ikke wired. → Chat-spec.
+- **Attachment-vision** (drag/drop + upload til `/attachments/upload` VIRKER, og
+  billedet vises i bruger-boblen — MEN): `start_visible_run` i
+  `core/services/visible_runs.py` tager ikke `attachment_ids`, så `/chat/stream/v2`
+  konsumerer dem ikke og Jarvis "ser" ikke billed-indholdet. Kræver: udvid
+  start_visible_run + model-kaldet til at indlæse attachment og sende som
+  image-content. Indtil da: billede-kun send bruger filnavn som fallback-besked
+  (v2 afviser tom besked med 400). → egen backend-vision-opgave.
 - **Plugins** (`[+]`-menu): ren placeholder, lukker bare menuen. → senere.
 - **Planlægningstilstand** (`[+]`-menu toggle): gemmer kun lokal state; backend
   plan-mode-flag findes ikke endnu. → Chat-spec / backend.

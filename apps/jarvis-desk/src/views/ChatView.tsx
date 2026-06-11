@@ -83,10 +83,18 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       const created = await sessions.create('Ny samtale')
       sid = created.id
     }
+    // v2-stream kræver en ikke-tom besked. Ved billede-kun send bruges filnavnene
+    // som fallback-tekst (backend afviser ellers med 400). Jarvis ser endnu ikke
+    // selve billedet — vision-wiring i start_visible_run er en separat backend-opgave.
+    const message = text.trim() || opts.attachments.map((a) => a.name).join(', ') || 'Vedhæftet'
     const imageBlocks = opts.attachments
       .filter((a) => a.isImage && a.src)
       .map((a) => ({ type: 'image' as const, src: a.src as string, alt: a.name }))
-    const content = [...(text ? [{ type: 'text' as const, text }] : []), ...imageBlocks]
+    const content = [
+      ...(text.trim() ? [{ type: 'text' as const, text }] : []),
+      ...imageBlocks,
+      ...(!text.trim() && imageBlocks.length === 0 ? [{ type: 'text' as const, text: message }] : []),
+    ]
     sessions.appendOptimistic({
       id: `u-${Date.now()}`,
       role: 'user',
@@ -96,7 +104,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
     })
     setAtBottom(true)
     setUnread(0)
-    stream.send(text, {
+    stream.send(message, {
       sessionId: sid,
       approvalMode: opts.permission,
       attachmentIds: opts.attachments.map((a) => a.id),

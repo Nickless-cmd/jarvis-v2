@@ -37,3 +37,14 @@ Memory/Scheduling) eller egne opgaver. Opdateres løbende.
 ## Proaktiv outreach
 - jarvis-desk er request-scoped; Jarvis kan ikke nå brugeren proaktivt når appen
   er minimeret. → egen spec (Q1 i foundation-planen).
+
+## v2-stream (observeret i live-test 2026-06-11 aften)
+- **Tool-leak:** `visible_runs_sse_v2.py` er Phase 1 (kun text_delta + working_step).
+  Tool-kald wrappes IKKE som `tool_use`-blokke → tool-output (fx `[read_file]: <fil>`)
+  flyder gennem som tekst og leaker i boblen. jarvis-desk har `ToolCard` klar; v2
+  mangler Phase 2-oversættelsen (tool_use blocks, thinking_delta, input_json_delta).
+  → backend: implementér Phase 2 i visible_runs_sse_v2.
+- **Preview-panel fil-detektion:** `detectArtifacts` fanger fil-stier — men også fra
+  det leaket tool-tekst, så "Åbn xxx.md"-affordances hober sig op. Bliver renere når
+  tool-blokke er strukturerede. Overvej desuden: kun seneste N fil-links, eller knyt
+  panel-åbning til faktiske tool_use-blokke i stedet for tekst-regex.

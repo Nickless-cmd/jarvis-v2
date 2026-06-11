@@ -34,13 +34,19 @@ export function ChatView({ sessionId }: { sessionId: string }) {
     }
   }, [stream.status])
 
-  // Auto-scroll når nær bunden.
+  // Auto-scroll: spring til bund ved session-load OG når man er nær bunden
+  // (nye beskeder / streaming). Ved session-skift tvinges bund uanset position.
+  const lastScrolledSession = useRef<string | null>(null)
   useEffect(() => {
     const el = transcriptRef.current
     if (!el) return
+    const isNewSession = lastScrolledSession.current !== sessionId
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200
-    if (nearBottom) el.scrollTop = el.scrollHeight
-  }, [sessions.messages, stream.blocks])
+    if (isNewSession || nearBottom || stream.status === 'working') {
+      el.scrollTop = el.scrollHeight
+      if (sessions.messages.length > 0) lastScrolledSession.current = sessionId
+    }
+  }, [sessions.messages, stream.blocks, sessionId, stream.status])
 
   const handleSend = (text: string) => {
     sessions.appendOptimistic({
@@ -60,15 +66,17 @@ export function ChatView({ sessionId }: { sessionId: string }) {
         <PresenceDot status={stream.status} /> Jarvis
       </div>
       <div className="transcript" ref={transcriptRef}>
-        {sessions.messages.map((m) => (
-          <MessageRow
-            key={m.id}
-            role={m.role === 'user' ? 'user' : 'assistant'}
-            blocks={m.content}
-            density="compact"
-            streaming={false}
-          />
-        ))}
+        {sessions.messages
+          .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .map((m) => (
+            <MessageRow
+              key={m.id}
+              role={m.role === 'user' ? 'user' : 'assistant'}
+              blocks={m.content}
+              density="compact"
+              streaming={false}
+            />
+          ))}
         {streaming && stream.blocks.length > 0 && (
           <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
         )}

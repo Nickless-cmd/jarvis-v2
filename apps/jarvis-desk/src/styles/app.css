@@ -160,8 +160,13 @@
 
 .transcript {
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 32px 24px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
+.transcript > * { max-width: 820px; width: 100%; margin: 0 auto; }
 .messages {
   max-width: 820px;
   margin: 0 auto;
@@ -222,9 +227,9 @@
 }
 .msg-jarvis {
   display: grid;
-  grid-template-columns: 28px 1fr;
+  grid-template-columns: 28px minmax(0, 1fr);
   gap: 12px;
-  max-width: 92%;
+  min-width: 0;
 }
 .avatar-jarvis {
   width: 28px; height: 28px;
@@ -245,7 +250,47 @@
   color: var(--fg-1);
   font-size: 15.5px;
   line-height: 1.6;
+  min-width: 0;        /* tillad grid 1fr at krympe → ingen vandret overflow */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
+
+/* ── Markdown-indhold i Jarvis' bobler (roligt, læsbart) ── */
+.jarvis-body > * { margin: 0 0 10px; }
+.jarvis-body > *:last-child { margin-bottom: 0; }
+.jarvis-body p { margin: 0 0 10px; }
+.jarvis-body h1, .jarvis-body h2, .jarvis-body h3, .jarvis-body h4 {
+  font-size: 15.5px; font-weight: 600; color: var(--fg-1);
+  margin: 14px 0 6px; line-height: 1.3;
+}
+.jarvis-body h1 { font-size: 17px; }
+.jarvis-body h2 { font-size: 16px; }
+.jarvis-body ul, .jarvis-body ol { margin: 0 0 10px; padding-left: 20px; }
+.jarvis-body li { margin: 2px 0; }
+.jarvis-body a { color: #7fb3ff; text-decoration: none; }
+.jarvis-body a:hover { text-decoration: underline; }
+.jarvis-body blockquote {
+  border-left: 2px solid var(--line); padding-left: 12px;
+  color: var(--fg-2); margin: 0 0 10px;
+}
+/* inline-kode */
+.jarvis-body :not(pre) > code {
+  background: var(--bg-3); border-radius: 4px; padding: 1px 5px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.88em;
+}
+/* tabeller — constrained til container, scroller internt */
+.jarvis-body table {
+  display: block; max-width: 100%; overflow-x: auto;
+  border-collapse: collapse; margin: 0 0 10px; font-size: 13.5px;
+}
+.jarvis-body th, .jarvis-body td {
+  border: 1px solid var(--line); padding: 5px 10px; text-align: left;
+  white-space: nowrap;
+}
+.jarvis-body th { background: var(--bg-2); font-weight: 600; }
+/* billeder + code-blocks må aldrig sprænge bredden */
+.jarvis-body img, .jarvis-body .codeblock { max-width: 100%; }
+.jarvis-body pre { max-width: 100%; }
 .jarvis-body p { margin: 0 0 0.7em 0; white-space: pre-wrap; }
 .jarvis-body p:last-child { margin-bottom: 0; }
 .jarvis-body code {

@@ -1,9 +1,14 @@
+import { memo } from 'react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { BlocksRenderer } from './BlocksRenderer'
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
- *  (avatar + tekst, ingen boble). Density videregives til rich-blocks. */
-export function MessageRow({
+ *  (avatar + tekst, ingen boble). Density videregives til rich-blocks.
+ *
+ *  memo: afsluttede beskeder har stabile props → re-renderer IKKE når
+ *  StreamContext tikker (elapsed-timer hver 500ms). Det er det der gør lange
+ *  samtaler tunge — uden memo highlighter hver CodeBlock forfra 2×/sekund. */
+function MessageRowImpl({
   role,
   blocks,
   density,
@@ -33,3 +38,5 @@ export function MessageRow({
     </div>
   )
 }
+
+export const MessageRow = memo(MessageRowImpl)

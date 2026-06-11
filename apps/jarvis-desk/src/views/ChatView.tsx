@@ -101,10 +101,24 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
 
   const composer = <Composer disabled={streaming} onSend={handleSend} model="deepseek-flash" thinking="think" />
 
-  // ── Tom/ny samtale: composer centreret midt på skærmen ──
+  const activeSession = sessions.sessions.find((s) => s.id === sessionId)
+  const chatTitle = activeSession?.title || (isEmpty ? 'Ny samtale' : 'Samtale')
+  const header = (
+    <div className="chatview-head">
+      <div className="chatview-head-left">
+        <PresenceDot status={stream.status} /> <span className="chat-title">{chatTitle}</span>
+      </div>
+      {settings && (
+        <ConnectionPill config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
+      )}
+    </div>
+  )
+
+  // ── Tom/ny samtale: header øverst, composer centreret midt på skærmen ──
   if (isEmpty) {
     return (
       <div className="chatview empty">
+        {header}
         <div className="chat-empty">
           <h2>Hej.</h2>
           <p>Skriv hvad du arbejder på.</p>
@@ -115,18 +129,9 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   }
 
   // ── Aktiv samtale ──
-  const activeSession = sessions.sessions.find((s) => s.id === sessionId)
-  const chatTitle = activeSession?.title || 'Samtale'
   return (
     <div className="chatview">
-      <div className="chatview-head">
-        <div className="chatview-head-left">
-          <PresenceDot status={stream.status} /> <span className="chat-title">{chatTitle}</span>
-        </div>
-        {settings && (
-          <ConnectionPill config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
-        )}
-      </div>
+      {header}
       <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
         {visibleMessages.map((m) => (
           <MessageRow

@@ -310,6 +310,7 @@ export function startStream(
             // message_stop = endelig færdig. Vi forlader reconnect-loopet.
             if (eventName === 'message_stop') {
               userAborted = true // ikke en bruger-abort, men vi vil ikke reconnecte
+              stopPingWatchdog() // ellers fyrer 90s-watchdog onHung EFTER færdig svar
               handlers.onComplete?.()
               return
             }

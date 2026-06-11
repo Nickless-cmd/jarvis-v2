@@ -47,6 +47,31 @@ describe('startStream R1-R3', () => {
     expect(interrupted).toBe(false)
   })
 
+  it('message_stop stopper ping-watchdog (ingen falsk hung efter svar)', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(sseResponse([
+        'event: message_start\ndata: {"type":"message_start","message":{"id":"","model":"m","provider":"p","lane":"l","session_id":"s","usage":{"input_tokens":0,"output_tokens":0}}}\n\n',
+        'event: message_stop\ndata: {"type":"message_stop"}\n\n',
+      ])))
+      let hung = false
+      let completed = false
+      const done = new Promise<void>((resolve) => {
+        startStream(
+          { apiBaseUrl: 'http://t', authToken: null, sessionId: 's', message: 'hi' },
+          { onEvent: () => {}, onComplete: () => { completed = true; resolve() }, onHung: () => { hung = true } },
+        )
+      })
+      await vi.runAllTimersAsync()
+      await done
+      vi.advanceTimersByTime(120_000) // 2 min efter svar — watchdog må IKKE fyre
+      expect(completed).toBe(true)
+      expect(hung).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('does NOT auto-reconnect (re-POST) on broken stream when autoReconnect=false', async () => {
     const fetchMock = vi.fn().mockResolvedValue(sseResponse([
       'event: message_start\ndata: {"type":"message_start","message":{"id":"r","model":"m","provider":"p","lane":"l","session_id":"s","usage":{"input_tokens":0,"output_tokens":0}}}\n\n',

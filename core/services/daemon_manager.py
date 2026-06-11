@@ -403,8 +403,17 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": None,
         "reset_value": None,
         "default_cadence_minutes": 360,
-        "default_enabled": True,
-        "description": "6t adherence-loop: gennemgår aktive decisions (behavioral), kører LLM-self-review, opdaterer adherence_score. Max 5 per tick.",
+        # 2026-06-11 (Bjørn frustration crisis fix C1): DEAKTIVERET.
+        # Daemonen lod Jarvis selv-bedømme om han holdt sine egne
+        # behavioral_decisions. Resultat: konsekvent "kept"-verdict
+        # med tynd evidens, der gav ham 1.0 adherence_score på
+        # decision #3 ("Verify before I narrate") — samtidig med at
+        # han hallucinerede tool-work i Discord, JarvisX og webchat.
+        # Positiv-bias self-validation feedback loop.
+        # Skal erstattes af external-truth review (læser git-log +
+        # tool-history) i fix C3.
+        "default_enabled": False,
+        "description": "[DEAKTIVERET 2026-06-11 — selv-bias problem] 6t adherence-loop: LLM-self-review af behavioral decisions.",
     },
 }
 

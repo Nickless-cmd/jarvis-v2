@@ -3015,6 +3015,78 @@ async def _stream_visible_run(
                 # scans output for pause-patterns; on match it spawns
                 # an autonomous-run that wakes him again with context.
                 _maybe_trigger_continuation(run, visible_output_text)
+
+                # 2026-06-11 (Bjørn frustration crisis fix C2): claim-
+                # scanner for fabriket work-claims. Sammenligner output
+                # ("fixet er live", "tests grønne", "committet") med
+                # de tools der faktisk blev kørt i samme run. Hvis
+                # mismatch → injicér ekstern feedback til næste turn.
+                try:
+                    from core.services.claim_scanner import (
+                        detect_fabricated_work_claims,
+                        format_fabrication_warning,
+                    )
+                    # Collect tool names eksekveret i alle followup-rounds
+                    _executed_tool_names: list[str] = []
+                    for _ex in _followup_exchanges:
+                        for _tc in (getattr(_ex, "tool_calls", None) or []):
+                            _name = str(
+                                (_tc.get("function") or {}).get("name")
+                                or _tc.get("name") or ""
+                            )
+                            if _name:
+                                _executed_tool_names.append(_name)
+                    _claims = detect_fabricated_work_claims(
+                        visible_output_text, _executed_tool_names,
+                    )
+                    if _claims:
+                        _warning = format_fabrication_warning(_claims)
+                        logger.warning(
+                            "claim-scanner: %d fabricated work-claim(s) detected "
+                            "in run_id=%s session=%s patterns=%s",
+                            len(_claims), run.run_id, run.session_id,
+                            [c.pattern_name for c in _claims],
+                        )
+                        try:
+                            event_bus.publish(
+                                "runtime.claim_fabrication_suspected",
+                                {
+                                    "run_id": run.run_id,
+                                    "session_id": run.session_id,
+                                    "claims": [
+                                        {
+                                            "pattern": c.pattern_name,
+                                            "text": c.matched_text,
+                                            "required_any_of": list(c.required_any_of),
+                                            "actual_tools": list(c.actual_tools),
+                                        }
+                                        for c in _claims
+                                    ],
+                                },
+                            )
+                        except Exception:
+                            pass
+                        # Injicér som high-importance nudge på NÆSTE turn
+                        if run.session_id and _warning:
+                            try:
+                                from core.services.outbound_nudges import (
+                                    push_nudge,
+                                )
+                                push_nudge(
+                                    source="claim_scanner",
+                                    kind="other",
+                                    message=_warning,
+                                    importance="high",
+                                    parent_session_id=run.session_id,
+                                    parent_message_id=str(run.run_id),
+                                )
+                            except Exception as _nudge_exc:
+                                logger.debug(
+                                    "claim-scanner nudge push failed: %s",
+                                    _nudge_exc,
+                                )
+                except Exception as _cs_exc:
+                    logger.debug("claim-scanner failed: %s", _cs_exc)
             except Exception:
                 pass
 

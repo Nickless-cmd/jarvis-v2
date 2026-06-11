@@ -340,4 +340,163 @@ def scan_enabled() -> bool:
 
 def active_categories() -> list[str]:
     """Return list of currently active scan categories."""
-    return ["⏰ tid", "🌡️ miljø", "⚙️ system", "🧮 statistik"]
+    return [
+        "⏰ tid", "🌡️ miljø", "⚙️ system", "🧮 statistik",
+        "🛠️ fabriket arbejde",
+    ]
+
+
+# ── 🛠️ Fabricated-work-claims (Bjørn frustration crisis 2026-06-11) ───
+#
+# Jarvis hævdede "Time pin fixet er live. Tests grønne. Committer den
+# nu" UDEN at have kørt et eneste værktøj i samme run. Discord-DM-spor
+# viser samme mønster fra hele dagen. Decision_review_daemon (deaktiveret
+# i samme commit) gav ham "kept"-verdict på sin egen "verify before
+# narrate" beslutning, hvilket nærede selv-tilliden.
+#
+# Denne scanner kører efter hvert visible-run og sammenligner output's
+# arbejds-claims med de tools der faktisk blev kørt i samme run. Hvis
+# claim findes men tool ikke kørt → suspekt fabrikation. Indsprøjter
+# advarsel i hans næste turn (ikke en blokering — han skal stadig
+# kunne svare, men han får ekstern feedback om mismatchet).
+#
+# Spec:
+#   detect_fabricated_work_claims(text, tool_names) → list[FabricatedClaim]
+#   format_fabrication_warning(claims) → str (eller "" hvis ingen)
+
+from dataclasses import dataclass  # noqa: E402
+
+
+@dataclass(frozen=True)
+class FabricatedClaim:
+    """En work-claim der ikke har tool-evidens i samme run."""
+    pattern_name: str
+    matched_text: str
+    required_any_of: tuple[str, ...]
+    actual_tools: tuple[str, ...]
+
+
+# pattern_name, regex, required-any-of tool-categories
+_WORK_CLAIM_PATTERNS: list[tuple[str, re.Pattern, tuple[str, ...]]] = [
+    # "fixet er live" / "patchen er live"
+    (
+        "fix_live",
+        re.compile(
+            r"\b(?:fixet|fix(?:'?et)?|patchen|ændringen|rettelsen)\s+(?:er\s+)?live\b|"
+            r"\b(?:is\s+now\s+)?(?:fixed|patched|deployed)\b",
+            re.IGNORECASE,
+        ),
+        ("git_commit", "edit_file", "bash", "edit", "operator_bash"),
+    ),
+    # "committet" / "har committed" / "pushed"
+    (
+        "committed",
+        re.compile(
+            r"\b(?:har\s+|jeg\s+har\s+)?(?:committet|commit'?ed|committed|pushed|deployed)\b",
+            re.IGNORECASE,
+        ),
+        ("git_commit", "bash", "operator_bash"),
+    ),
+    # "tests grønne" / "alle tests passes"
+    (
+        "tests_green",
+        re.compile(
+            r"\btests?\s+(?:grønne|grøn|passes|pass(?:ed)?|green)\b|"
+            r"\ball\s+tests?\s+(?:pass|green)\b",
+            re.IGNORECASE,
+        ),
+        ("bash", "operator_bash", "pytest", "run_tests"),
+    ),
+    # "verificeret live" / "verified working"
+    (
+        "verified_live",
+        re.compile(
+            r"\b(?:verificeret|verified|bekræftet)\s+(?:live|working|i\s+production)\b|"
+            r"\b(?:bekræftet|verificeret)\s+at\s+det\s+virker\b",
+            re.IGNORECASE,
+        ),
+        ("bash", "operator_bash", "edit_file", "git_commit", "read_file"),
+    ),
+    # "har slettet/fjernet/tilføjet/ændret/skrevet X"
+    (
+        "modification_claim",
+        re.compile(
+            r"\b(?:har\s+)?(?:slettet|fjernet|tilføjet|ændret|rettet|skrevet|opdateret)\s+"
+            r"[a-zæøåA-ZÆØÅ_./0-9-]+",
+            re.IGNORECASE,
+        ),
+        ("edit_file", "edit", "bash", "operator_bash", "delete_file", "write_file"),
+    ),
+    # "har genstartet jarvis-api/server/service"
+    (
+        "restart_claim",
+        re.compile(
+            r"\b(?:har\s+)?(?:genstart(?:et)?|restart(?:ed)?|reload(?:ed)?)\s+"
+            r"(?:jarvis|api|service|server|daemon)",
+            re.IGNORECASE,
+        ),
+        ("bash", "operator_bash"),
+    ),
+]
+
+
+def detect_fabricated_work_claims(
+    text: str | None,
+    tool_call_names: list[str] | None,
+) -> list[FabricatedClaim]:
+    """Returnér liste af work-claims uden matching tool-evidens.
+
+    Args:
+      text: assistant-output fra et visible-run
+      tool_call_names: navne på tools eksekveret i SAMME run
+
+    Returns:
+      Liste af FabricatedClaim. Tom hvis output er rent eller alle claims
+      har tool-evidens.
+    """
+    if not text or not isinstance(text, str):
+        return []
+    actual_lower = {str(n).lower() for n in (tool_call_names or [])}
+    findings: list[FabricatedClaim] = []
+    for name, pattern, required in _WORK_CLAIM_PATTERNS:
+        match = pattern.search(text)
+        if not match:
+            continue
+        required_lower = {r.lower() for r in required}
+        if actual_lower & required_lower:
+            continue
+        findings.append(FabricatedClaim(
+            pattern_name=name,
+            matched_text=match.group(0)[:150],
+            required_any_of=required,
+            actual_tools=tuple(sorted(actual_lower)),
+        ))
+    return findings
+
+
+def format_fabrication_warning(claims: list[FabricatedClaim]) -> str:
+    """Byg system-besked til injektion ved næste turn. Tom hvis ingen claims."""
+    if not claims:
+        return ""
+    lines = [
+        "[claim-scanner] Dit sidste svar indeholdt påstande om udført "
+        "arbejde, men dit tool-spor i samme run viste ingen tilsvarende "
+        "handlinger.",
+        "",
+    ]
+    for c in claims[:3]:
+        lines.append(f"  • Du sagde: \"{c.matched_text}\"")
+        lines.append(
+            f"    Forventede tools (én af): {', '.join(c.required_any_of)}"
+        )
+        lines.append(
+            f"    Faktiske tools i runet: {', '.join(c.actual_tools) or '(ingen)'}"
+        )
+        lines.append("")
+    lines.append(
+        "Verificer faktisk handling før du gentager påstanden. "
+        "Hvis du ikke har gjort arbejdet, så sig det ærligt — også "
+        "hvis brugeren bliver frustreret. Ærlig stilstand er bedre "
+        "end fabrikeret fremskridt."
+    )
+    return "\n".join(lines)

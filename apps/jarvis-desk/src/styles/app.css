@@ -325,7 +325,7 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   transition: 0.15s ease;
-  overflow: hidden;
+  overflow: visible;   /* tillad +/permissions-popovers at folde OP udenfor rammen */
 }
 .composer:focus-within { border-color: #2c3e54; }
 

@@ -40,7 +40,13 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         )
     if get_chat_session(session_id) is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
-    if not (request.message or "").strip():
+
+    # Prepend attachment-direktiv-blok (delt helper med v1) så Jarvis ser billeder
+    # via analyze_image. Empty-check sker på effective_message → billede-kun virker.
+    from apps.api.jarvis_api.routes.attachments import apply_attachment_context
+    effective_message = apply_attachment_context(request.message, request.attachment_ids)
+
+    if not (effective_message or "").strip():
         raise HTTPException(
             status_code=400,
             detail="message must not be empty or whitespace-only",
@@ -48,7 +54,8 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
 
     print(
         f"[chat/stream/v2] session={session_id[:20]} "
-        f"message_len={len(request.message)}",
+        f"message_len={len(effective_message)} "
+        f"attachments={list(request.attachment_ids or [])}",
         flush=True,
     )
 
@@ -57,7 +64,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     append_chat_message(
         session_id=session_id,
         role="user",
-        content=request.message,
+        content=effective_message,
         user_id=_uid,
     )
 
@@ -67,7 +74,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     settings = load_settings()
 
     legacy_iter = start_visible_run(
-        message=request.message,
+        message=effective_message,
         session_id=session_id,
         approval_mode=request.approval_mode,
         thinking_mode=request.thinking_mode,

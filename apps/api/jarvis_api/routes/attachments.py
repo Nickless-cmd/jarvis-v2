@@ -39,6 +39,46 @@ def get_attachment(attachment_id: str) -> AttachmentMeta | None:
     return _registry.get(attachment_id)
 
 
+def apply_attachment_context(message: str, attachment_ids: list[str] | None) -> str:
+    """Prepend en attachment-direktiv-blok til beskeden, så Jarvis ved HVORDAN han
+    ser filen (analyze_image / read_file med den eksakte server-sti). Delt mellem
+    /chat/stream (v1) og /chat/stream/v2 så vision virker ens begge steder.
+    Uden direktivet læser modellen "[Attached files: ...]" som flavour-tekst og
+    påstår den ikke kan se billeder.
+    """
+    if not attachment_ids:
+        return message
+    image_lines: list[str] = []
+    other_lines: list[str] = []
+    for aid in attachment_ids:
+        meta = get_attachment(aid)
+        if not meta:
+            continue
+        if meta.mime_type.startswith("image/"):
+            image_lines.append(
+                f"To see the image '{meta.filename}', call:\n"
+                f"  analyze_image(image_path={meta.server_path!r})\n"
+                f"Use that exact absolute path verbatim — do not abbreviate it."
+            )
+        else:
+            other_lines.append(
+                f"To read the file '{meta.filename}', call:\n"
+                f"  read_file(path={meta.server_path!r})"
+            )
+    prefix_parts: list[str] = []
+    if image_lines:
+        prefix_parts.append(
+            "[The user attached image(s) to this message. You CAN see images by "
+            "using the analyze_image tool. Do NOT claim you cannot see images — "
+            "the tool exists and works.]\n\n" + "\n\n".join(image_lines)
+        )
+    if other_lines:
+        prefix_parts.append("[The user attached file(s):]\n\n" + "\n\n".join(other_lines))
+    if not prefix_parts:
+        return message
+    return "\n\n".join(prefix_parts) + "\n\n---\n\n" + message
+
+
 @router.post("/upload")
 async def upload_attachment(
     file: UploadFile,

@@ -489,7 +489,7 @@
 /* ─── Foundation komponenter (2026-06-11) ────────────────────────────── */
 
 /* ChatView — fylder .main (flex column), statusbar tager sin egen højde */
-.chatview { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.chatview { display: flex; flex-direction: column; flex: 1; min-height: 0; position: relative; }
 .chatview-head {
   display: flex; align-items: center; gap: 8px; flex: 0 0 auto;
   padding: 8px 24px; font-size: 13px; color: var(--fg-2);
@@ -620,6 +620,75 @@
 .settings-view dl { display: grid; grid-template-columns: 120px 1fr; gap: 8px 16px; font-size: 14px; }
 .settings-view dt { color: var(--fg-3); }
 .settings-view dd { color: var(--fg-1); }
+
+/* ── Composer (Codex-stil): venstre +/permissions, højre pills/mic/send ── */
+.composer-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 8px 8px; gap: 8px;
+}
+.composer-left, .composer-right { display: flex; align-items: center; gap: 6px; }
+.composer-popover-anchor { position: relative; }
+
+.composer-icon-btn {
+  display: grid; place-items: center; width: 30px; height: 30px;
+  background: none; border: none; color: var(--fg-2); cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.composer-icon-btn:hover { background: var(--bg-3); color: var(--fg-1); }
+.composer-icon-btn.listening { color: var(--accent); background: rgba(110,231,168,0.1); }
+
+.composer-perm {
+  display: flex; align-items: center; gap: 5px;
+  background: none; border: none; cursor: pointer; font-size: 12.5px;
+  color: var(--fg-2); padding: 4px 8px; border-radius: var(--radius-sm);
+}
+.composer-perm:hover { background: var(--bg-3); }
+.composer-perm.trust { color: var(--warn-fg); }
+.composer-perm.ask svg:first-child { color: var(--fg-3); }
+
+/* opad-popover menuer */
+.composer-menu {
+  position: absolute; bottom: calc(100% + 6px); left: 0;
+  min-width: 230px; background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius-md); padding: 4px; z-index: 20;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.composer-menu button {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: none; color: var(--fg-1); cursor: pointer;
+  padding: 8px 10px; border-radius: var(--radius-sm); font-size: 13px; text-align: left;
+}
+.composer-menu button:hover { background: var(--bg-3); }
+.composer-menu .menu-chevron { margin-left: auto; color: var(--fg-3); }
+.composer-menu .menu-toggle-row { justify-content: flex-start; }
+.perm-menu { min-width: 180px; }
+.perm-menu button.active { color: var(--accent); }
+
+/* toggle-switch (planlægningstilstand) */
+.toggle {
+  margin-left: auto; width: 32px; height: 18px; border-radius: 9px;
+  background: var(--bg-4); position: relative; transition: 0.15s; flex: 0 0 auto;
+}
+.toggle.on { background: var(--accent); }
+.toggle .knob {
+  position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--fg-1); transition: 0.15s;
+}
+.toggle.on .knob { left: 16px; background: var(--bg-0); }
+
+/* scroll-til-bund pil over composeren (i stedet for scrollbar) */
+.scroll-bottom-btn {
+  position: absolute; bottom: 92px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-3); border: 1px solid var(--line); color: var(--fg-1);
+  border-radius: 16px; padding: 5px 10px; cursor: pointer; font-size: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35); z-index: 10;
+}
+.scroll-bottom-btn:hover { background: var(--bg-4); }
+.scroll-badge {
+  background: var(--accent); color: var(--bg-0); border-radius: 8px;
+  padding: 0 6px; font-size: 11px; font-weight: 600;
+}
 
 /* SetupScreen */
 .setup {

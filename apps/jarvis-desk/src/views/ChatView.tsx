@@ -1,13 +1,16 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowDown } from 'lucide-react'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
 import { MessageRow } from '../components/rich/MessageRow'
-import { Composer } from '../components/shell/Composer'
+import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
+
+const NEAR_BOTTOM_PX = 120
 
 /** Chat-mode: orkestrerer transcript (afsluttede beskeder fra SessionContext),
  *  igangværende stream (StreamContext.blocks), composer-send-flow, reconcile på
@@ -17,6 +20,8 @@ export function ChatView({ sessionId }: { sessionId: string }) {
   const stream = useStream()
   const reconciledForRun = useRef<string | null>(null)
   const transcriptRef = useRef<HTMLDivElement>(null)
+  const [atBottom, setAtBottom] = useState(true)
+  const [unread, setUnread] = useState(0)
 
   useEffect(() => { sessions.select(sessionId) }, [sessionId])
 
@@ -34,21 +39,47 @@ export function ChatView({ sessionId }: { sessionId: string }) {
     }
   }, [stream.status])
 
-  // Auto-scroll: spring til bund ved session-load OG når man er nær bunden
-  // (nye beskeder / streaming). Ved session-skift tvinges bund uanset position.
+  const scrollToBottom = () => {
+    const el = transcriptRef.current
+    if (el) el.scrollTop = el.scrollHeight
+    setUnread(0)
+  }
+
+  const onScroll = () => {
+    const el = transcriptRef.current
+    if (!el) return
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
+    setAtBottom(near)
+    if (near) setUnread(0)
+  }
+
+  // Auto-scroll: spring til bund ved session-load og når man er nær bunden.
+  // Hvis man har scrollet op og der kommer nyt → tæl ulæste (badge) i stedet.
   const lastScrolledSession = useRef<string | null>(null)
   useEffect(() => {
     const el = transcriptRef.current
     if (!el) return
     const isNewSession = lastScrolledSession.current !== sessionId
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200
-    if (isNewSession || nearBottom || stream.status === 'working') {
+    if (isNewSession) {
       el.scrollTop = el.scrollHeight
       if (sessions.messages.length > 0) lastScrolledSession.current = sessionId
+      setUnread(0)
+      return
     }
-  }, [sessions.messages, stream.blocks, sessionId, stream.status])
+    if (atBottom) {
+      el.scrollTop = el.scrollHeight
+    } else {
+      setUnread((u) => u + 1)
+    }
+  }, [sessions.messages.length, sessionId])
 
-  const handleSend = (text: string) => {
+  // Under streaming: følg bunden hvis man er der.
+  useEffect(() => {
+    const el = transcriptRef.current
+    if (el && atBottom) el.scrollTop = el.scrollHeight
+  }, [stream.blocks, atBottom])
+
+  const handleSend = (text: string, opts: ComposerSendOpts) => {
     sessions.appendOptimistic({
       id: `u-${Date.now()}`,
       role: 'user',
@@ -56,7 +87,9 @@ export function ChatView({ sessionId }: { sessionId: string }) {
       created_at: new Date().toISOString(),
       parent_id: null,
     })
-    stream.send(text, { sessionId })
+    setAtBottom(true)
+    setUnread(0)
+    stream.send(text, { sessionId, approvalMode: opts.permission })
   }
 
   const streaming = stream.status === 'working'
@@ -65,7 +98,7 @@ export function ChatView({ sessionId }: { sessionId: string }) {
       <div className="chatview-head">
         <PresenceDot status={stream.status} /> Jarvis
       </div>
-      <div className="transcript" ref={transcriptRef}>
+      <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
         {sessions.messages
           .filter((m) => m.role === 'user' || m.role === 'assistant')
           .map((m) => (
@@ -89,6 +122,16 @@ export function ChatView({ sessionId }: { sessionId: string }) {
           <ErrorBanner message={stream.error.message} onDismiss={() => { /* banner ryddes ved næste send */ }} />
         )}
       </div>
+
+      {/* Scroll-til-bund pil over composeren (i stedet for scrollbar). Bliver til
+          "ny besked"-badge hvis der kom nyt mens man scrollede op. */}
+      {!atBottom && (
+        <button type="button" className="scroll-bottom-btn" onClick={scrollToBottom} aria-label="Til bund">
+          <ArrowDown size={16} />
+          {unread > 0 && <span className="scroll-badge">{unread} ny{unread > 1 ? 'e' : ''}</span>}
+        </button>
+      )}
+
       <Composer disabled={streaming} onSend={handleSend} model="deepseek-flash" thinking="think" />
     </div>
   )

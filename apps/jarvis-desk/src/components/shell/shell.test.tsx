@@ -11,12 +11,12 @@ describe('shell', () => {
     await userEvent.click(screen.getByRole('button', { name: /code/i }))
     expect(onChange).toHaveBeenCalledWith('code')
   })
-  it('Composer sends on Enter, not Shift+Enter', async () => {
+  it('Composer sends on Enter with opts, not Shift+Enter', async () => {
     const onSend = vi.fn()
     render(<Composer disabled={false} onSend={onSend} model="deepseek-flash" thinking="think" />)
     const ta = screen.getByRole('textbox')
     await userEvent.type(ta, 'hej{Enter}')
-    expect(onSend).toHaveBeenCalledWith('hej')
+    expect(onSend).toHaveBeenCalledWith('hej', expect.objectContaining({ permission: 'ask', planMode: false }))
   })
   it('Composer keeps text on Shift+Enter (no send)', async () => {
     const onSend = vi.fn()

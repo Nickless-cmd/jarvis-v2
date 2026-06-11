@@ -1,4 +1,4 @@
-import { createContext, useCallback, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
 import { startStream, type StreamControl } from '../lib/streamClient'
 import { cancelRun } from '../lib/api'
 import { streamReducer, initialStreamState, type StreamStatus } from '../lib/streamReducer'
@@ -36,7 +36,7 @@ export function StreamProvider({
   const controlRef = useRef<StreamControl | null>(null)
   const runIdRef = useRef<string | null>(null)
   const startedAtRef = useRef<number>(0)
-  const [elapsedMs] = useState(0) // elapsed-timer tilføjes i Fase 5 (feedback)
+  const [elapsedMs, setElapsedMs] = useState(0)
   // Status hung/interrupted/error kommer fra streamClient-handlers, ikke reducer.
   const [override, setOverride] = useState<null | 'hung' | 'interrupted' | 'error'>(null)
 
@@ -78,6 +78,14 @@ export function StreamProvider({
   }, [])
 
   const status: StreamStatus = override ?? state.status
+
+  // Elapsed-timer mens status='working'.
+  useEffect(() => {
+    if (status !== 'working') return
+    const id = setInterval(() => setElapsedMs(Date.now() - startedAtRef.current), 500)
+    return () => clearInterval(id)
+  }, [status])
+
   const needsAttention =
     (status === 'working' || status === 'hung' || status === 'interrupted') &&
     typeof document !== 'undefined' &&

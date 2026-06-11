@@ -5,8 +5,15 @@
 **Formål:** Sikre at jarvis-desk når feature-paritet med JarvisX uden at glemme
 noget. Mapper hver bevaret feature → flade → spec → om fundamentet kan holde den.
 
-Baseret på fuld inventering af JarvisX (`/tmp/jarvisx-feature-inventory.md`:
-100+ features, 27 komponenter, 10 views).
+Baseret på fuld inventering af JarvisX
+(`docs/superpowers/specs/2026-06-11-jarvisx-feature-inventory.md`: 100+ features,
+27 komponenter, 10 views).
+
+> **Scope-autoritet:** DETTE katalog (+ foundation-spec'en) definerer hvad
+> jarvis-desk er. Inventerings-dokumentet er en RÅ reference over JarvisX og dets
+> "ensure parity på alle 10 views" gælder IKKE jarvis-desk — fem views er
+> bevidst flyttet til Mission Control (se nedenfor). Brug aldrig inventeringen
+> som implementerings-scope.
 
 ## Princip for hvad der er med
 
@@ -73,16 +80,20 @@ lille tilføjelse i den relevante mode-spec, men ingen foundation-ændring.
 
 | Feature | JarvisX-kilde | Fundament holder? |
 |---------|--------------|-------------------|
-| Member: hukommelse Jarvis har *med brugeren* | MemoryView.tsx | ✅ rolle-skopering i auth-context |
-| Owner: Jarvis' fulde indre memory | MemoryView.tsx | ✅ samme, `role==='owner'` |
+| Member: hukommelse Jarvis har *med brugeren* | MemoryView.tsx | ⚠ klient ✅; **server-kontrakt skal defineres** i Memory-spec |
+| Owner: Jarvis' fulde indre memory | MemoryView.tsx | ⚠ `require_owner` server-side — ikke klient-filter |
 | Browse + redigér workspace-filer | MemoryView.tsx | ➕ Memory-spec |
+
+> ⚠ Rolle-grænsen håndhæves af **serveren**, ikke klienten (se foundation-spec
+> "Serveren er grænsen"). Foundation leverer kun `role` i context; de præcise
+> member-scoped vs owner-only endpoints + 403-adfærd defineres i Memory-spec.
 
 ## SCHEDULING-flade (→ Scheduling-spec, sekundær nav, rolle-skopet)
 
 | Feature | JarvisX-kilde | Fundament holder? |
 |---------|--------------|-------------------|
-| Member: hvad Jarvis har planlagt *med brugeren* | SchedulingView.tsx | ✅ rolle-skopering |
-| Owner: alle planlagte tasks/wakeups | SchedulingView.tsx | ✅ samme |
+| Member: hvad Jarvis har planlagt *med brugeren* | SchedulingView.tsx | ⚠ klient ✅; **server-kontrakt** i Scheduling-spec |
+| Owner: alle planlagte tasks/wakeups | SchedulingView.tsx | ⚠ `require_owner` server-side |
 | Time-to-fire countdown | SchedulingView.tsx | ➕ Scheduling-spec |
 
 ## SETTINGS-flade (→ delvist i denne foundation-spec)
@@ -121,16 +132,33 @@ lille tilføjelse i den relevante mode-spec, men ingen foundation-ændring.
 | Trading View (grid bot PnL) | Domæne-observability |
 | Channels View (Discord/Telegram status) | Multi-channel observability |
 | Mood pill i chat-header | Følger Mind ud (kan genovervejes hvis du vil have et roligt mood-glimt) |
+| Agents Panel (live sub-agenter) | Observability → Mission Control |
+
+### Chat-entrypoints til flyttede flader
+
+Nogle observability-features havde et entrypoint inde i chat (slash-kommando/
+panel). Når fladen flyttes til Mission Control, skal entrypointet håndteres
+eksplicit — ikke efterlades dinglende:
+
+| Entrypoint | JarvisX-kilde | Beslutning |
+|------------|--------------|------------|
+| `/agents` slash → AgentsPanel | ChatView.tsx, AgentsPanel.tsx | **Fjernes** fra jarvis-desk. Sub-agent-indsigt bor i Mission Control. (Evt. senere: deep-link der åbner MC i browser — egen beslutning, ikke nu.) |
+| `/tools` slash → Tool Inventory | ToolInventoryModal.tsx | **Beholdes** men flyttes til Code-mode (Bjørn 2026-06-11). |
+| Mood/presence pills i chat-header | MoodPill/PresencePill.tsx | **Fjernes** (følger Mind/Channels ud). Presence kan evt. genovervejes som roligt glimt. |
 
 ---
 
 ## Dækningskonklusion
 
-- **Alt arbejds-relateret fra JarvisX har en plads** i en af de 6 flader.
+- **Alt arbejds-relateret fra JarvisX har en plads** i en af de 6 flader; alt
+  observability er bevidst flyttet til Mission Control MED dets chat-entrypoints
+  eksplicit afklaret (fjernet eller deep-link), ikke efterladt dinglende.
 - **Fundamentet (App-shell + Rich-rendering) kan bære alle ✅-rækker** uden
-  ændring; ➕-rækker er normalt arbejde i den relevante mode-spec.
-- **Ingen feature falder mellem stolene** — hver er enten placeret (mode/flade)
-  eller bevidst flyttet til Mission Control.
+  ændring; ➕-rækker er normalt arbejde i den relevante mode-spec; ⚠-rækker
+  kræver en server-kontrakt defineret i deres mode-spec før de er "dækket".
+- **Ingen arbejds-feature falder mellem stolene** — hver er enten placeret
+  (mode/flade), eksplicit flyttet til Mission Control (med entrypoint afklaret),
+  eller markeret ⚠ som server-kontrakt-afhængig.
 - De cross-cutting ting fundamentet SKAL levere (og gør): rolle i context,
   density-aware rich-komponenter, liveness-maskine, content-block-datamodel,
   parent_id-søm, Electron-bridge-stel, persistens.

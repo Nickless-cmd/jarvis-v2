@@ -69,8 +69,36 @@ Auth/whoami giver `role: 'owner' | 'member' | 'guest'`. Rollen styrer ikke kun
   owner; member ser read-only.
 
 Derfor eksponerer auth-laget `role` i context fra dag 1, og hver rolle-følsom
-flade tager rollen som input. Server håndhæver den reelle grænse (workspace-
-isolation via headers); klienten filtrerer for korrekt UX.
+flade tager rollen som input.
+
+### Serveren er grænsen — klienten er kun UX
+
+**Kritisk:** klient-filtrering er ALDRIG den arkitektoniske grænse. En member
+der manipulerer sin klient må ikke kunne nå owner-only memory/scheduling. Server
+håndhæver; klienten filtrerer kun for at undgå at vise tomme/forbudte felter.
+
+Konkret kontrakt (detaljeres i Memory-spec og Scheduling-spec; foundation låser
+princippet):
+
+- **Token → rolle:** hvert request bærer bearer-token; server udleder `user_id`
+  + `role` server-side. Klientens `role` er kun et spejl til UX.
+- **Member-scoped reads:** memory/scheduling-endpoints returnerer som default KUN
+  den anmodende brugers egen relations-data (workspace-isolation via det
+  autentificerede user_id — ikke en klient-sendt parameter). En member kan ikke
+  udvide scope ved at ændre query-params.
+- **Owner-only data/felter:** Jarvis' fulde indre memory + alle brugeres
+  scheduling eksponeres kun bag en `require_owner`-dependency (mønster findes
+  allerede i backend, fx `routes/jarvisx.py` dispatches-endpoints). Non-owner →
+  403, ikke filtreret 200.
+- **Write-gates:** plan-approval, process-stop, staging-commit kræver
+  `require_owner` server-side. Klientens skjul af knapper er kosmetik ovenpå.
+- **Eksisterende endpoints at bygge på:** `/jarvisx/workspace/*`,
+  `/jarvisx/scheduling/state` findes; Memory/Scheduling-specs definerer de
+  præcise member-scoped vs owner-scoped varianter + felt-niveau redaktion.
+
+Foundation-spec'en leverer kun klient-siden (role i context, role-prop til
+placeholder-views). Server-kontrakten er et **eksplicit krav** til Memory- og
+Scheduling-specs — den er ikke "dækket" før serveren håndhæver den.
 
 ## Hvad der allerede er bygget og genbruges 1:1
 
@@ -416,6 +444,26 @@ App.tsx
 - Stream-hang (90s ingen event) → `HangPrompt` med fortsæt/afbryd.
 - Send-fejl mister aldrig composer-tekst.
 
+### Server-cancel kontrakt (rigtig STOP, ikke client-abort)
+
+`abort()` må stoppe Jarvis **server-side**, ikke bare lukke vores ende. Kontrakt:
+
+- **Endpoint:** `POST /chat/runs/{run_id}/cancel` (eksisterer i
+  `apps/api/jarvis_api/routes/chat.py:226`).
+- **run_id ejerskab:** klienten kender `run_id` fra `message_start`-eventets
+  `message.id` (fx `visible-xxx`). `StreamContext` gemmer det aktive `run_id`
+  fra message_start; `abort()` POST'er til netop det run.
+- **Payload:** ingen body nødvendig; run_id i path.
+- **Idempotens:** kald på et allerede-afsluttet/-cancelled run er no-op og
+  returnerer `{status: "cancelled"}` eller 404 (run ukendt) — begge behandles af
+  klienten som "stoppet". Gentagne kald er sikre.
+- **Forventet server-event:** efter cancel afslutter den aktive stream med
+  `message_delta(stop_reason="cancelled")` → `message_stop` (via v2-translator),
+  så `useStream` rammer `done`/`idle` rent. Hvis streamen allerede er lukket,
+  forlader klienten bare på POST-svaret.
+- **Rækkefølge:** `abort()` POST'er cancel FØR den lokale `abortController.abort()`,
+  så serveren får signalet selv hvis vi lukker forbindelsen umiddelbart efter.
+
 ## Test-strategi
 
 - **Rich-komponenter:** render-tests med fixtures (markdown→output, ToolCard
@@ -445,4 +493,3 @@ uden at røre fundamentet.
 1. Bjørn reviewer denne spec
 2. writing-plans → bite-sized implementerings-plan
 3. Subagent-driven eksekvering med review mellem tasks
-```

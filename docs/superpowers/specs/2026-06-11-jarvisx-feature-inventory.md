@@ -1,6 +1,14 @@
 # JarvisX Desktop App — Complete Feature Inventory
 
-**Purpose**: Exhaustive catalog of every feature, component, mode, and interaction JarvisX exposes. Used to ensure feature parity in jarvis-desk rebuild.
+> ⚠ **RÅ REFERENCE — IKKE jarvis-desk scope.** Dette dokument katalogiserer
+> JarvisX som det ER. Det definerer IKKE hvad jarvis-desk skal bygge. Afsnit som
+> "ensure parity on all 10 views" (nederst) gælder JarvisX, ikke jarvis-desk —
+> fem views (Mind, Dashboard, Dispatches, Trading, Channels) er bevidst flyttet
+> til Mission Control. **Autoritativ scope for jarvis-desk:**
+> `2026-06-11-jarvis-desk-feature-coverage.md` + `-foundation-design.md`.
+> Brug aldrig dette dokument alene som implementerings-input.
+
+**Purpose**: Exhaustive catalog of every feature, component, mode, and interaction JarvisX exposes. Reference for the jarvis-desk coverage-katalog (which decides scope).
 
 **Generated from**: `/media/projects/jarvis-v2/apps/jarvisx/src/` (as of 2026-05)
 
@@ -414,20 +422,16 @@ App.tsx (root)
 
 ---
 
-## MIGRATION NOTES FOR jarvis-desk
+## MIGRATION NOTES (JarvisX — historisk)
 
-When building jarvis-desk, ensure parity on:
+> ⚠ Nedenstående beskriver JarvisX' egen fuldstændighed. Det er IKKE jarvis-desk
+> scope. jarvis-desk dropper bevidst sub-agent transparency (#7), affective UI
+> (#8) og 5 views → Mission Control. Den autoritative jarvis-desk migrations-
+> tjekliste er `2026-06-11-jarvis-desk-feature-coverage.md`, ikke denne liste.
 
-1. **All 10 views** render with same data source
-2. **All 27 components** replicated or functionally equivalent
-3. **Slash commands** (12 core ones + extensibility)
-4. **Keyboard shortcuts** (40+ combos, all scopes)
-5. **Approval/staging flow** (critical for multi-turn code)
-6. **Token meter & cost observability** (decision-making for long runs)
-7. **Sub-agent transparency** (live agents panel)
-8. **Affective state UI** (mind view + mood pill)
-9. **Role-based filtering** (owner/member/guest)
-10. **localStorage persistence** (UI state across reloads)
+For JarvisX selv gælder paritet på: alle 10 views, 27 komponenter, slash-
+kommandoer, 40+ keyboard shortcuts, approval/staging-flow, token-meter, sub-agent
+transparency, affective state UI, role-based filtering, localStorage-persistens.
 
-Missing any one = feature gap in new app.
+For **jarvis-desk** → se coverage-kataloget for hvad der faktisk skal bygges.
 

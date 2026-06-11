@@ -3280,6 +3280,17 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # --- Communication Guard — cleanup expired TTL triggers (60 min) ---
+    if _dm.is_enabled("communication_guard"):
+        try:
+            from core.services.communication_guard_daemon import tick as _cg_tick
+            _cg_result = _daemon_tick_with_deadline(
+                "communication_guard", _cg_tick, deadline_seconds=5.0,
+            )
+            _dm.record_daemon_tick("communication_guard", _cg_result or {})
+        except Exception:
+            pass
+
     # --- Associative Recall (2 min) ---
     if _dm.is_enabled("associative_recall"):
         try:

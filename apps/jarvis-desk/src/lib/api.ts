@@ -205,6 +205,21 @@ export async function deleteSession(config: ApiConfig, sessionId: string): Promi
   await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' })
 }
 
+/** Upload en fil (drag/drop eller fil-vælger) → returnerer attachment_id. */
+export async function uploadAttachment(
+  config: ApiConfig,
+  file: File,
+): Promise<{ id: string; content_type?: string; name?: string }> {
+  const url = new URL('/attachments/upload', config.apiBaseUrl).toString()
+  const form = new FormData()
+  form.append('file', file, file.name)
+  const headers: Record<string, string> = {}
+  if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
+  const res = await fetch(url, { method: 'POST', headers, body: form })
+  if (!res.ok) throw new StreamError('unknown', `Upload fejlede: HTTP ${res.status}`, { retryable: false })
+  return res.json() as Promise<{ id: string; content_type?: string; name?: string }>
+}
+
 /** Læs en repo-fil til preview-panelet (path-jailed server-side). */
 export async function getFile(
   config: ApiConfig,

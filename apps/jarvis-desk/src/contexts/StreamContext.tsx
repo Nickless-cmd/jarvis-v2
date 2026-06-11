@@ -16,6 +16,7 @@ export interface SendOpts {
   sessionId: string
   approvalMode?: 'ask' | 'trust'
   thinkingMode?: 'think' | 'fast'
+  attachmentIds?: string[]
 }
 
 export interface StreamContextValue {
@@ -62,6 +63,7 @@ export function StreamProvider({
         message,
         approvalMode: opts.approvalMode,
         thinkingMode: opts.thinkingMode,
+        attachmentIds: opts.attachmentIds,
         autoReconnect: false,
       },
       {

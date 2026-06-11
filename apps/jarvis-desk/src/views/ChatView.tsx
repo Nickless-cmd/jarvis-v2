@@ -83,16 +83,24 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       const created = await sessions.create('Ny samtale')
       sid = created.id
     }
+    const imageBlocks = opts.attachments
+      .filter((a) => a.isImage && a.src)
+      .map((a) => ({ type: 'image' as const, src: a.src as string, alt: a.name }))
+    const content = [...(text ? [{ type: 'text' as const, text }] : []), ...imageBlocks]
     sessions.appendOptimistic({
       id: `u-${Date.now()}`,
       role: 'user',
-      content: [{ type: 'text', text }],
+      content,
       created_at: new Date().toISOString(),
       parent_id: null,
     })
     setAtBottom(true)
     setUnread(0)
-    stream.send(text, { sessionId: sid, approvalMode: opts.permission })
+    stream.send(text, {
+      sessionId: sid,
+      approvalMode: opts.permission,
+      attachmentIds: opts.attachments.map((a) => a.id),
+    })
   }
 
   const streaming = stream.status === 'working'
@@ -124,6 +132,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       onStop={() => void stream.abort()}
       model="deepseek-flash"
       thinking="think"
+      config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
     />
   )
 

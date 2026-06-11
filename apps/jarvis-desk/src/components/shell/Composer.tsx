@@ -1,13 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ArrowUp, Square, Plus, Paperclip, ListChecks, Puzzle, ChevronRight,
-  ChevronDown, Mic, ShieldCheck,
+  ChevronDown, Mic, ShieldCheck, FileText, X,
 } from 'lucide-react'
 import { useDictation } from '../../hooks/useDictation'
+import { uploadAttachment, type ApiConfig } from '../../lib/api'
+
+export interface SentAttachment { id: string; src?: string; name: string; isImage: boolean }
 
 export interface ComposerSendOpts {
   planMode: boolean
   permission: 'ask' | 'trust'
+  attachments: SentAttachment[]
+}
+
+interface PendingAttachment {
+  localId: string
+  id?: string
+  name: string
+  src?: string
+  isImage: boolean
+  uploading: boolean
+  error?: boolean
 }
 
 const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string }> = [
@@ -24,21 +38,44 @@ export function Composer({
   onStop,
   model,
   thinking,
+  config,
 }: {
   streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
   onStop: () => void
   model: string
   thinking: string
+  config?: ApiConfig
 }) {
   const [text, setText] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [permOpen, setPermOpen] = useState(false)
   const [planMode, setPlanMode] = useState(false)
   const [permission, setPermission] = useState<'ask' | 'trust'>('ask')
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([])
+  const [dragOver, setDragOver] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const dictation = useDictation((t) => setText((cur) => (cur ? cur + ' ' : '') + t))
+
+  // Upload droppede/valgte filer; vis chip straks (object-URL preview), sæt id når uploadet.
+  const addFiles = (files: FileList | File[]) => {
+    for (const file of Array.from(files)) {
+      const localId = `${file.name}-${file.size}-${attachments.length}-${performance.now()}`
+      const isImage = file.type.startsWith('image/')
+      const src = isImage ? URL.createObjectURL(file) : undefined
+      setAttachments((a) => [...a, { localId, name: file.name, src, isImage, uploading: true }])
+      if (!config) {
+        setAttachments((a) => a.map((x) => (x.localId === localId ? { ...x, uploading: false, error: true } : x)))
+        continue
+      }
+      uploadAttachment(config, file)
+        .then((r) => setAttachments((a) => a.map((x) => (x.localId === localId ? { ...x, id: r.id, uploading: false } : x))))
+        .catch(() => setAttachments((a) => a.map((x) => (x.localId === localId ? { ...x, uploading: false, error: true } : x))))
+    }
+  }
+
+  const removeAttachment = (localId: string) => setAttachments((a) => a.filter((x) => x.localId !== localId))
 
   // Luk popovers ved klik udenfor.
   useEffect(() => {
@@ -51,16 +88,43 @@ export function Composer({
   // Enter sender altid (også under streaming — ChatView lægger den i kø).
   const send = () => {
     const t = text.trim()
-    if (!t) return
-    onSend(t, { planMode, permission })
+    const ready = attachments.filter((a) => a.id && !a.error)
+    if (!t && ready.length === 0) return
+    onSend(t, {
+      planMode,
+      permission,
+      attachments: ready.map((a) => ({ id: a.id as string, src: a.src, name: a.name, isImage: a.isImage })),
+    })
     setText('')
+    setAttachments([])
   }
 
   const stop = (e: React.MouseEvent) => e.stopPropagation()
   const permLabel = PERMISSIONS.find((p) => p.key === permission)?.label ?? 'Spørg'
 
   return (
-    <div className="composer">
+    <div
+      className={`composer ${dragOver ? 'drag-over' : ''}`}
+      onDragOver={(e) => { e.preventDefault(); if (!dragOver) setDragOver(true) }}
+      onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false) }}
+      onDrop={(e) => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files) }}
+    >
+      {dragOver && <div className="composer-drop-overlay">Slip filer og billeder her</div>}
+      {attachments.length > 0 && (
+        <div className="composer-attachments">
+          {attachments.map((a) => (
+            <div key={a.localId} className={`attach-chip ${a.error ? 'error' : ''}`}>
+              {a.isImage && a.src
+                ? <img src={a.src} alt={a.name} className="attach-thumb" />
+                : <FileText size={14} />}
+              <span className="attach-name">{a.error ? 'Fejlede' : a.uploading ? 'Uploader…' : a.name}</span>
+              <button type="button" className="attach-remove" aria-label="Fjern" onClick={() => removeAttachment(a.localId)}>
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <textarea
         ref={ref}
         className="composer-input"
@@ -131,7 +195,7 @@ export function Composer({
             multiple
             accept="image/*,.txt,.md,.pdf,.json,.py,.ts,.tsx"
             style={{ display: 'none' }}
-            onChange={() => { /* attachment-upload: Chat-spec */ }}
+            onChange={(e) => { if (e.target.files?.length) addFiles(e.target.files); e.target.value = '' }}
           />
         </div>
 

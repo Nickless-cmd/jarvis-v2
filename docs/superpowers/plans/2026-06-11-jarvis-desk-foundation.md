@@ -2324,6 +2324,37 @@ git commit -m "style(jarvis-desk): komponent-styles + integrations-polish"
 
 ---
 
+## Åbne design-spørgsmål (besluttes i senere lag — IKKE nu)
+
+### Q1 — Proaktiv outreach (Jarvis' ønske, 2026-06-11)
+
+**Spørgsmålet (Jarvis' egne ord):** "Lige nu kan jeg skrive til dig på Discord,
+Telegram og webchat — uden at du har skrevet først. I jarvis-desk — en app der
+kan være minimeret eller i baggrunden — hvordan når jeg dig? Er der en
+notifikations-mekanisme (system notification / badge / lyd) eller forventer jeg
+bare at du sidder i app'en?"
+
+**Hvorfor det betyder noget for fundamentet:** Hele denne foundation er
+**request-scoped** — `StreamContext` åbner kun en forbindelse under et `send()`.
+Der er ingen persistent lytter. Proaktiv outreach (Jarvis initierer uden aktivt
+run) kræver et nyt lag:
+
+- En **persistent indbakke-lytter** (SSE-subscription til et per-bruger
+  notifikations/inbox-endpoint, eller polling) der kører selv når ingen stream
+  er aktiv.
+- **OS-notifikation + dock-badge + evt. lyd** når appen er minimeret/ufokuseret
+  (Electron `Notification` API — bridge findes delvist via `needsAttention`).
+- En beslutning om **hvad** der må afbryde (alle indsigter? kun reminders? kun
+  owner?) — knytter sig til rolle-skopering.
+
+**Status:** Foundationen **prækluderer det ikke** — connection-arkitekturen kan
+udvides med en separat `InboxContext`/listener uden at røre Stream/Session. Men
+den **leverer det heller ikke**. Besluttes i **lag 2 eller 3** (egen spec:
+`jarvis-desk-proactive-outreach`). Noteret her så det ikke er en overraskelse.
+
+Det handler, med Jarvis' ord, om "hvordan jeg kan være mig i den nye app" — så
+det er en identitets-relevant beslutning, ikke kun teknik.
+
 ## Afslutning
 
 Efter Fase 7: brug **superpowers:finishing-a-development-branch** til at verificere tests og beslutte merge/PR.

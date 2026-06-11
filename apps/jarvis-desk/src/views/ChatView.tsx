@@ -77,9 +77,11 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
 
   const handleSend = async (text: string, opts: ComposerSendOpts) => {
     let sid = sessionId
+    console.warn('[DIAG] handleSend start sessionId=', sessionId, 'text=', text)
     if (!sid) {
       const created = await sessions.create('Ny samtale')
       sid = created.id
+      console.warn('[DIAG] lazy-created session', sid)
     }
     sessions.appendOptimistic({
       id: `u-${Date.now()}`,

@@ -57,10 +57,15 @@ export function SessionProvider({
   const select = useCallback((id: string) => {
     setActiveId(id)
     if (loadedRef.current === id) return // allerede loaded → behold lokale beskeder
+    const prevLoaded = loadedRef.current
     loadedRef.current = id
+    // Ægte skift fra en ANDEN session → ryd den gamles beskeder først.
+    if (prevLoaded !== null && prevLoaded !== id) setMessages([])
     setLoading(true)
     getSession(config, id)
-      .then(({ messages: server }) => setMessages(mergeServer([], server)))
+      // Merge med NUVÆRENDE lokale beskeder (ikke []) — så en optimistisk
+      // besked tilføjet imens overlever (mergeServer bevarer optimistic_user).
+      .then(({ messages: server }) => setMessages((prev) => mergeServer(prev, server)))
       .finally(() => setLoading(false))
   }, [config])
 

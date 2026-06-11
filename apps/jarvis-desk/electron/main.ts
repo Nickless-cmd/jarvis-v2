@@ -65,6 +65,12 @@ let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let appQuitting = false
 
+// R3 / Electron-lifecycle: main-process ejer aktivt run_id så det kan cancelles
+// server-side ved quit (renderer-fetch er upålidelig under shutdown).
+let activeRunId: string | null = null
+let runApiBaseUrl = ''
+let runAuthToken: string | null = null
+
 /**
  * Vis vinduet hvis det er skjult, fokusér det hvis det er bagved.
  */
@@ -206,6 +212,23 @@ ipcMain.handle('config:set', (_event, cfg: AppConfig) => {
   return true
 })
 
+// Eksterne links åbnes i system-browser — kun http/https/mailto (aldrig naviger
+// app-vinduet væk, og bloker farlige schemes).
+ipcMain.handle('shell:openExternal', (_event, url: string) => {
+  if (typeof url === 'string' && /^(https?:|mailto:)/i.test(url)) {
+    void shell.openExternal(url)
+  }
+})
+
+// R3: renderer registrerer aktivt run_id + auth så main kan server-cancelle ved quit.
+ipcMain.handle('run:setActive', (_event, runId: string | null) => {
+  activeRunId = runId
+})
+ipcMain.handle('run:setAuth', (_event, apiBaseUrl: string, authToken: string | null) => {
+  runApiBaseUrl = apiBaseUrl
+  runAuthToken = authToken
+})
+
 // ─── Content Security Policy ──────────────────────────────────────────
 // Renderer må KUN tale med konfigureret API-base-url. Forbyder inline
 // scripts (XSS-beskyttelse), data:-URLs i scripts, og eksterne kald.
@@ -326,6 +349,19 @@ if (!gotSingleInstance) {
 
 app.on('before-quit', () => {
   appQuitting = true
+  // Best-effort server-cancel af aktivt run (renderer kan ikke pålideligt
+  // fetch'e under shutdown). Synkront fire-and-forget.
+  if (activeRunId && runApiBaseUrl) {
+    try {
+      const url = new URL(`/chat/runs/${activeRunId}/cancel`, runApiBaseUrl).toString()
+      void fetch(url, {
+        method: 'POST',
+        headers: runAuthToken ? { Authorization: `Bearer ${runAuthToken}` } : {},
+      }).catch(() => { /* best-effort */ })
+    } catch {
+      /* best-effort */
+    }
+  }
 })
 
 app.on('window-all-closed', () => {

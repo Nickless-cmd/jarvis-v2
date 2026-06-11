@@ -11,6 +11,12 @@ export interface JarvisDeskBridge {
     get: () => Promise<{ apiBaseUrl: string; authToken: string | null }>
     set: (cfg: { apiBaseUrl: string; authToken: string | null }) => Promise<boolean>
   }
+  /** Åbn et eksternt link i system-browseren (main filtrerer til http/https/mailto). */
+  openExternal: (url: string) => Promise<void>
+  /** Registrér aktivt run_id i main-process så det kan cancelles ved quit (R3). */
+  setActiveRun: (runId: string | null) => Promise<void>
+  /** Giv main-process auth så den kan kalde cancel-endpoint ved quit. */
+  setRunAuth: (apiBaseUrl: string, authToken: string | null) => Promise<void>
   platform: NodeJS.Platform
 }
 
@@ -19,6 +25,9 @@ const bridge: JarvisDeskBridge = {
     get: () => ipcRenderer.invoke('config:get'),
     set: (cfg) => ipcRenderer.invoke('config:set', cfg),
   },
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  setActiveRun: (runId) => ipcRenderer.invoke('run:setActive', runId),
+  setRunAuth: (apiBaseUrl, authToken) => ipcRenderer.invoke('run:setAuth', apiBaseUrl, authToken),
   platform: process.platform,
 }
 

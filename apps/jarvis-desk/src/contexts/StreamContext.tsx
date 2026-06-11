@@ -4,6 +4,14 @@ import { cancelRun } from '../lib/api'
 import { streamReducer, initialStreamState, type StreamStatus } from '../lib/streamReducer'
 import type { StreamEvent, ContentBlock } from '../lib/sseProtocol'
 
+interface DeskRunBridge {
+  setActiveRun?: (runId: string | null) => void
+  setRunAuth?: (apiBaseUrl: string, authToken: string | null) => void
+}
+function deskRunBridge(): DeskRunBridge | undefined {
+  return (window as unknown as { jarvisDesk?: DeskRunBridge }).jarvisDesk
+}
+
 export interface SendOpts {
   sessionId: string
   approvalMode?: 'ask' | 'trust'
@@ -45,6 +53,7 @@ export function StreamProvider({
     setOverride(null)
     runIdRef.current = null
     startedAtRef.current = Date.now()
+    deskRunBridge()?.setRunAuth?.(config.apiBaseUrl, config.authToken)
     controlRef.current = startStream(
       {
         apiBaseUrl: config.apiBaseUrl,
@@ -57,11 +66,11 @@ export function StreamProvider({
       },
       {
         onEvent: (e: StreamEvent) => dispatch(e),
-        onRunId: (id) => { runIdRef.current = id },
+        onRunId: (id) => { runIdRef.current = id; deskRunBridge()?.setActiveRun?.(id) },
         onHung: () => setOverride('hung'),
-        onInterrupted: () => setOverride('interrupted'),
-        onError: (err) => { setError(err); setOverride('error') },
-        onComplete: () => { /* status=done sættes af message_stop i reducer */ },
+        onInterrupted: () => { setOverride('interrupted'); deskRunBridge()?.setActiveRun?.(null) },
+        onError: (err) => { setError(err); setOverride('error'); deskRunBridge()?.setActiveRun?.(null) },
+        onComplete: () => { deskRunBridge()?.setActiveRun?.(null) /* status=done sættes af message_stop i reducer */ },
       },
     )
   }, [config])

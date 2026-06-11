@@ -5,13 +5,13 @@ implementation. Skal færdiggøres i de relevante mode-specs (Chat/Cowork/Code/
 Memory/Scheduling) eller egne opgaver. Opdateres løbende.
 
 ## Composer
-- **Attachment-vision** (drag/drop + upload til `/attachments/upload` VIRKER, og
-  billedet vises i bruger-boblen — MEN): `start_visible_run` i
-  `core/services/visible_runs.py` tager ikke `attachment_ids`, så `/chat/stream/v2`
-  konsumerer dem ikke og Jarvis "ser" ikke billed-indholdet. Kræver: udvid
-  start_visible_run + model-kaldet til at indlæse attachment og sende som
-  image-content. Indtil da: billede-kun send bruger filnavn som fallback-besked
-  (v2 afviser tom besked med 400). → egen backend-vision-opgave.
+- ✅ **Attachment-vision LØST 2026-06-11:** v2-stream prepender nu samme
+  `analyze_image`-direktiv som v1 (delt `apply_attachment_context` i
+  `routes/attachments.py`). Jarvis kalder analyze_image(image_path=server_path) og
+  ser billedet via vision-modellen. Deployet til containeren.
+  - Resterende: billed-thumbnails i bruger-boblen bruger blob:-object-URL (kun i
+    denne session); efter reload loades de fra serveren via `/attachments/{id}`.
+    Verificér at getSession returnerer image-blocks for historiske beskeder.
 - **Plugins** (`[+]`-menu): ren placeholder, lukker bare menuen. → senere.
 - **Planlægningstilstand** (`[+]`-menu toggle): gemmer kun lokal state; backend
   plan-mode-flag findes ikke endnu. → Chat-spec / backend.

@@ -168,7 +168,8 @@ def _file_proposal(
 
 def _maybe_propose_memory_consolidate() -> str | None:
     """Propose a daily memory consolidation when ~end of day locally."""
-    now_local = datetime.now().astimezone()
+    from core.util.timezone import dk_now as _dk_now
+    now_local = _dk_now()
     # Trigger window: 22:00-00:00 local, once per day
     if not (22 <= now_local.hour):
         return None

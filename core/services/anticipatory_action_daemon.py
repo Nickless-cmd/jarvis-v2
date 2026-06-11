@@ -139,7 +139,8 @@ def recompute_patterns() -> dict[str, Any]:
 
 
 def _local_now() -> datetime:
-    return datetime.now().astimezone()
+    from core.util.timezone import dk_now as _dk_now
+    return _dk_now()
 
 
 def _minutes_until_hour(now_local: datetime, target_hour: int) -> int:

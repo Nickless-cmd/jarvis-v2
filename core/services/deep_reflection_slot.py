@@ -337,7 +337,8 @@ def _should_run_now() -> tuple[bool, str]:
         except Exception:
             pass
     # Prefer running at night — but if we've been silent >24h, run anyway
-    now_local = datetime.now().astimezone()
+    from core.util.timezone import dk_now as _dk_now
+    now_local = _dk_now()
     start, end = _PREFERRED_HOUR_RANGE
     if start <= now_local.hour < end:
         return True, "preferred-hour"

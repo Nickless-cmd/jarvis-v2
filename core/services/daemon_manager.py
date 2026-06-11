@@ -398,6 +398,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": True,
         "description": "Memory Phase 2: refresh identity sketch every 6h (auto trigger). Skips if fresh; regenerates from live signals if stale.",
     },
+    "decision_review": {
+        "module": "core.services.decision_review_daemon",
+        "reset_var": None,
+        "reset_value": None,
+        "default_cadence_minutes": 360,
+        "default_enabled": True,
+        "description": "6t adherence-loop: gennemgår aktive decisions (behavioral), kører LLM-self-review, opdaterer adherence_score. Max 5 per tick.",
+    },
 }
 
 

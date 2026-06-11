@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MessageRow } from './MessageRow'
+import { PanelProvider } from '../../contexts/PanelContext'
 
 describe('MessageRow', () => {
   it('renders assistant text block as markdown', () => {
@@ -15,5 +16,14 @@ describe('MessageRow', () => {
   it('renders user message as plain bubble text', () => {
     render(<MessageRow role="user" blocks={[{ type: 'text', text: 'hej Jarvis' }]} density="compact" streaming={false} />)
     expect(screen.getByText('hej Jarvis')).toBeInTheDocument()
+  })
+  it('viser "Åbn"-affordance for langt markdown-svar', () => {
+    const long = '# Titel\n' + Array.from({ length: 45 }, (_, i) => `linje ${i}`).join('\n') + '\n## Sektion\nx'
+    render(
+      <PanelProvider defaultWidth={400}>
+        <MessageRow role="assistant" blocks={[{ type: 'text', text: long }]} density="compact" streaming={false} />
+      </PanelProvider>,
+    )
+    expect(screen.getByRole('button', { name: /åbn/i })).toBeTruthy()
   })
 })

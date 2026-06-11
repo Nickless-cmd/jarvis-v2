@@ -2,6 +2,8 @@ import { memo } from 'react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { BlocksRenderer } from './BlocksRenderer'
 import { MessageActions } from './MessageActions'
+import { ArtifactAffordance } from './ArtifactAffordance'
+import { detectArtifacts } from '../../lib/artifacts'
 import { blocksToPlainText } from '../../lib/formatTime'
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
@@ -38,6 +40,9 @@ function MessageRowImpl({
         <div className="avatar-jarvis">J</div>
         <div className="jarvis-body">
           <BlocksRenderer blocks={blocks} density={density} streaming={streaming} />
+          {!streaming && detectArtifacts(blocks).map((a, i) => (
+            <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
+          ))}
         </div>
       </article>
       {!streaming && <MessageActions text={blocksToPlainText(blocks)} createdAt={createdAt} />}

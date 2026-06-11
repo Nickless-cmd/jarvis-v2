@@ -111,7 +111,8 @@ lille tilføjelse i den relevante mode-spec, men ingen foundation-ændring.
 | Feature | JarvisX-kilde | Fundament holder? |
 |---------|--------------|-------------------|
 | Status-bar: backend-health, latency, token-gauge | StatusBar.tsx | ✅ i foundation |
-| Connection pill / presence pill | ConnectionPill.tsx | ➕ shell (presence = let) |
+| Connection pill (localhost/remote/offline status) | ConnectionPill.tsx | ➕ shell (bliver) |
+| Presence pill (hvilke channels Jarvis er live på) | PresencePill.tsx | ❌ ud → følger Channels til Mission Control |
 | Update banner (app-updater) | UpdateBanner.tsx | ➕ system-spec (Electron) |
 | Git hot-reload banner | GitUpdateBanner.tsx | ➕ system-spec |
 | Keyboard shortcuts (40+, layout-uafhængig) | lib/shortcuts.ts | ➕ shell (eget lag) |

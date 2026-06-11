@@ -216,6 +216,9 @@
   border: none;
 }
 .msg-action-btn:hover { background: var(--bg-3); color: var(--fg-1); }
+.msg-action-btn.active { color: var(--accent); }
+/* Jarvis' action-række flugter med boble-teksten (forbi avatar 28px + gap 12px) */
+.msg-jarvis-wrap .msg-actions { margin-left: 40px; }
 .msg-time {
   color: var(--fg-3);
   font-size: 11px;
@@ -284,7 +287,11 @@
 .jarvis-body table {
   display: block; max-width: 100%; overflow-x: auto;
   border-collapse: collapse; margin: 0 0 10px; font-size: 13.5px;
+  scrollbar-width: thin; scrollbar-color: var(--bg-4) transparent;
 }
+.jarvis-body table::-webkit-scrollbar { height: 6px; }
+.jarvis-body table::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 3px; }
+.jarvis-body table::-webkit-scrollbar-track { background: transparent; }
 .jarvis-body th, .jarvis-body td {
   border: 1px solid var(--line); padding: 5px 10px; text-align: left;
   white-space: nowrap;

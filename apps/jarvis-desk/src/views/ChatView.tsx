@@ -118,6 +118,7 @@ export function ChatView({ sessionId }: { sessionId: string }) {
               blocks={m.content}
               density="compact"
               streaming={false}
+              createdAt={m.created_at}
             />
           ))}
         {streaming && stream.blocks.length > 0 && (

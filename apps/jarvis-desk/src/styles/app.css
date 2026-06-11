@@ -522,6 +522,40 @@
 
 /* ─── Foundation komponenter (2026-06-11) ────────────────────────────── */
 
+/* ── Preview-panel / split ── */
+.split-root { display: flex; flex: 1; min-width: 0; min-height: 0; position: relative; }
+.split-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.split-handle {
+  width: 5px; cursor: col-resize; flex: 0 0 auto; background: transparent;
+  border-left: 1px solid var(--line); transition: background 0.12s;
+}
+.split-handle:hover, .split-handle.dragging { background: var(--accent); border-left-color: var(--accent); }
+.split-panel {
+  flex: 0 0 auto; min-width: 0; display: flex; flex-direction: column;
+  background: var(--bg-1); border-left: 1px solid var(--line);
+}
+.split-overlay .split-panel {
+  position: absolute; right: 0; top: 0; bottom: 0; width: min(80%, 560px);
+  box-shadow: -8px 0 24px rgba(0,0,0,0.4); z-index: 40;
+}
+.artifact-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.artifact-head {
+  display: flex; align-items: center; gap: 8px; flex: 0 0 auto;
+  padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--fg-2);
+}
+.artifact-title { color: var(--fg-1); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.artifact-close { background: none; border: none; color: var(--fg-3); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 5px; }
+.artifact-close:hover { background: var(--bg-3); color: var(--fg-1); }
+.artifact-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 16px 18px; scrollbar-width: none; }
+.artifact-body::-webkit-scrollbar { width: 0; }
+.artifact-loading, .artifact-error { color: var(--fg-3); font-size: 13px; padding: 8px 0; }
+.artifact-affordance {
+  display: inline-flex; align-items: center; gap: 5px; margin: 6px 8px 0 0;
+  background: var(--bg-2); border: 1px solid var(--line); color: var(--fg-2);
+  border-radius: 7px; padding: 4px 9px; font-size: 12px; cursor: pointer;
+}
+.artifact-affordance:hover { background: var(--bg-3); color: var(--fg-1); border-color: var(--accent); }
+
 /* ChatView — fylder .main (flex column), statusbar tager sin egen højde */
 .chatview { display: flex; flex-direction: column; flex: 1; min-height: 0; position: relative; }
 

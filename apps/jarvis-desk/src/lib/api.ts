@@ -205,6 +205,14 @@ export async function deleteSession(config: ApiConfig, sessionId: string): Promi
   await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' })
 }
 
+/** Læs en repo-fil til preview-panelet (path-jailed server-side). */
+export async function getFile(
+  config: ApiConfig,
+  path: string,
+): Promise<{ path: string; content: string; language: string }> {
+  return apiFetch(config, `/chat/file?path=${encodeURIComponent(path)}`)
+}
+
 /** Server-cancel af et aktivt run (R3). Idempotent: 200 og 404 (run ukendt/
  *  allerede stoppet) behandles begge som "stoppet". Netværksfejl svælges —
  *  klienten aborter lokalt alligevel. */

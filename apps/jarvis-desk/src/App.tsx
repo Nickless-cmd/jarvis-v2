@@ -49,12 +49,14 @@ export function App() {
 /** Lægger den trækbare split om den aktive view; panel viser det åbne artifact. */
 function ShellWithPanel({ children }: { children: ReactNode }) {
   const panel = usePanel()
+  const { settings } = useSettings()
+  const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   return (
     <SplitLayout
       open={panel.open}
       width={panel.width}
       onResize={panel.resize}
-      panel={<ArtifactPanel artifact={panel.artifact} onClose={panel.close} />}
+      panel={<ArtifactPanel artifact={panel.artifact} onClose={panel.close} config={config} />}
     >
       {children}
     </SplitLayout>

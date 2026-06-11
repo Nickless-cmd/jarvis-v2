@@ -11,7 +11,6 @@ import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
-import { pushDiag, getDiag } from '../lib/diag'
 
 const NEAR_BOTTOM_PX = 120
 
@@ -78,11 +77,9 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
 
   const handleSend = async (text: string, opts: ComposerSendOpts) => {
     let sid = sessionId
-    pushDiag(`handleSend sid=${sessionId} text="${text}"`)
     if (!sid) {
       const created = await sessions.create('Ny samtale')
       sid = created.id
-      pushDiag(`lazy-created ${sid}`)
     }
     sessions.appendOptimistic({
       id: `u-${Date.now()}`,
@@ -91,11 +88,9 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       created_at: new Date().toISOString(),
       parent_id: null,
     })
-    pushDiag(`appendOptimistic done`)
     setAtBottom(true)
     setUnread(0)
     stream.send(text, { sessionId: sid, approvalMode: opts.permission })
-    pushDiag(`stream.send fired sid=${sid}`)
   }
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
@@ -103,12 +98,6 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   const isEmpty =
     !sessionId ||
     (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0)
-  pushDiag(`render sid=${sessionId} msgs=${sessions.messages.length} vis=${visibleMessages.length} status=${stream.status} blocks=${stream.blocks.length} empty=${isEmpty}`)
-  const diagPanel = (
-    <pre style={{ position: 'fixed', top: 4, right: 4, zIndex: 9999, background: 'rgba(0,0,0,0.85)', color: '#6ee7a8', fontSize: 9, padding: 6, maxWidth: 360, maxHeight: 240, overflow: 'auto', borderRadius: 6, pointerEvents: 'none', margin: 0 }}>
-      {getDiag().join('\n')}
-    </pre>
-  )
 
   const composer = <Composer disabled={streaming} onSend={handleSend} model="deepseek-flash" thinking="think" />
 
@@ -116,7 +105,6 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   if (isEmpty) {
     return (
       <div className="chatview empty">
-        {diagPanel}
         <div className="chat-empty">
           <h2>Hej.</h2>
           <p>Skriv hvad du arbejder på.</p>
@@ -131,7 +119,6 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   const chatTitle = activeSession?.title || 'Samtale'
   return (
     <div className="chatview">
-      {diagPanel}
       <div className="chatview-head">
         <div className="chatview-head-left">
           <PresenceDot status={stream.status} /> <span className="chat-title">{chatTitle}</span>

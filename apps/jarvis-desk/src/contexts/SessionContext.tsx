@@ -1,6 +1,5 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { listSessions, getSession, createSession, renameSession, deleteSession, type ChatSession, type ChatMessage } from '../lib/api'
-import { pushDiag } from '../lib/diag'
 
 type ClientStatus =
   | 'optimistic_user'
@@ -57,7 +56,6 @@ export function SessionProvider({
 
   const select = useCallback((id: string) => {
     setActiveId(id)
-    pushDiag(`select ${id} loadedRef=${loadedRef.current} skip=${loadedRef.current === id}`)
     if (loadedRef.current === id) return // allerede loaded → behold lokale beskeder
     const prevLoaded = loadedRef.current
     loadedRef.current = id

@@ -186,10 +186,12 @@ export async function createSession(
   config: ApiConfig,
   title: string,
 ): Promise<ChatSession> {
-  return apiFetch<ChatSession>(config, '/chat/sessions', {
+  // Serveren returnerer { session: {...} } — unwrap så .id ikke bliver undefined.
+  const raw = await apiFetch<{ session: ChatSession } | ChatSession>(config, '/chat/sessions', {
     method: 'POST',
     body: { title },
   })
+  return (raw as { session?: ChatSession }).session ?? (raw as ChatSession)
 }
 
 export async function renameSession(config: ApiConfig, sessionId: string, title: string): Promise<void> {

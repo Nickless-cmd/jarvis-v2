@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { cancelRun, getSession } from './api'
+import { cancelRun, getSession, createSession } from './api'
 
 const cfg = { apiBaseUrl: 'http://test', authToken: 't' }
 
@@ -21,6 +21,16 @@ describe('cancelRun', () => {
   it('swallows network error (aborts locally anyway)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
     await expect(cancelRun(cfg, 'r')).resolves.toBeUndefined()
+  })
+})
+
+describe('createSession unwraps { session: {...} }', () => {
+  it('returns the inner session with a real id (ikke undefined)', async () => {
+    const payload = { session: { id: 'chat-abc', title: 'Ny samtale', updated_at: 'x', message_count: 0 } }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(payload), { status: 200, headers: { 'content-type': 'application/json' } })))
+    const sess = await createSession(cfg, 'Ny samtale')
+    expect(sess.id).toBe('chat-abc')
+    expect(sess.title).toBe('Ny samtale')
   })
 })
 

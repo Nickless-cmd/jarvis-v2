@@ -1443,7 +1443,18 @@ async def _stream_visible_run(
                 # for autonomous work while still catching the actual runaway
                 # pattern (big-pickle 30+ tool-spam still gets caught long
                 # before it balloons the prompt past 200k chars).
-                _MAX_EMPTY_TEXT_ROUNDS = int(_agentic_budget.get("max_empty_text_rounds") or 12)
+                # 2026-06-11 (Bjørn frustration crisis): sænket 12 → 3.
+                # Bjørn observerede over de sidste 16+ timer Jarvis sidde
+                # i Discord/JarvisX/webchat agentic-loops i 5-15 min UDEN
+                # at sende text-svar — han skrev "?", "...", "Helt seriøst!!!!?"
+                # gentagne gange uden at få et ord. Tidligere tærskel på
+                # 12 rounds × ~30s = potentielt 6 min stilhed for brugeren.
+                # 3 rounds tvinger Jarvis tilbage til dialog hurtigt. Lang-
+                # selvstændigt arbejde sker stadig (3 rounds rækker for
+                # at fx læse 3 filer eller køre 3 bash-checks), men hvis
+                # han fortsætter uden at sige noget = forced summary med
+                # synligt svar til brugeren.
+                _MAX_EMPTY_TEXT_ROUNDS = int(_agentic_budget.get("max_empty_text_rounds") or 3)
                 # Dream bias (Lag 2) — loop_persistence shifts how long he stays in loop.
                 # ±2 rounds at intensity=1.0; hard floor 4, cap 20.
                 try:
@@ -1475,7 +1486,10 @@ async def _stream_visible_run(
                 # legitimate deep investigations. Override via
                 # _agentic_budget.max_tool_only_rounds if runtime-config
                 # has a different value.
-                _MAX_TOOL_ONLY_ROUNDS = int(_agentic_budget.get("max_tool_only_rounds") or 15)
+                # 2026-06-11: sænket 15 → 4. Samme begrundelse som
+                # _MAX_EMPTY_TEXT_ROUNDS ovenfor — for at fange "stuck
+                # in tools without telling user" pattern hurtigt.
+                _MAX_TOOL_ONLY_ROUNDS = int(_agentic_budget.get("max_tool_only_rounds") or 4)
                 _TOOL_ONLY_TEXT_THRESHOLD = 80  # chars
                 _tool_pause_active = False  # set True after 5 tool-only rounds → withhold tools
                 _agentic_loop_exit_reason = "completed"
@@ -2044,6 +2058,42 @@ async def _stream_visible_run(
                         int((time.monotonic() - _a_exec_start) * 1000),
                         len(_a_results),
                     )
+                    # 2026-06-11 (Bjørn frustration crisis fix B): hvis dette
+                    # er en Discord-session, send live tool-progress til
+                    # Discord-kanalen så brugeren ser hvad Jarvis arbejder på
+                    # i stedet for total stilhed. Throttled til 1/15s for
+                    # at undgå spam.
+                    try:
+                        if run.session_id:
+                            from core.services.discord_gateway import (
+                                get_discord_channel_for_session,
+                                send_discord_message,
+                            )
+                            _dc_channel = get_discord_channel_for_session(run.session_id)
+                            if _dc_channel:
+                                _last_status_at = getattr(
+                                    controller, "_last_discord_status_at", 0.0,
+                                )
+                                _now_mono = time.monotonic()
+                                if _now_mono - _last_status_at >= 15.0:
+                                    _names = [
+                                        str((tc.get("function") or {}).get("name") or "?")
+                                        for tc in _a_tool_calls[:3]
+                                    ]
+                                    _names_str = ", ".join(_names)
+                                    if len(_a_tool_calls) > 3:
+                                        _names_str += f" (+{len(_a_tool_calls) - 3} flere)"
+                                    _status_text = (
+                                        f"🔧 Runde {_agentic_round + 1}: "
+                                        f"{_names_str} — fortsætter..."
+                                    )
+                                    send_discord_message(_dc_channel, _status_text)
+                                    controller._last_discord_status_at = _now_mono  # type: ignore[attr-defined]
+                    except Exception as _dc_exc:
+                        logger.debug(
+                            "discord-progress-status fejl run_id=%s: %s",
+                            run.run_id, _dc_exc,
+                        )
                     # If any tool call this round was load_more_tools, capture
                     # its added names so the next round's tool_definitions
                     # includes them.

@@ -41,6 +41,20 @@ _outbound_queue: queue.Queue = queue.Queue()  # (channel_id: int, text: str)
 _discord_sessions: dict[str, int] = {}
 _discord_sessions_lock = threading.Lock()
 
+
+def get_discord_channel_for_session(session_id: str) -> int | None:
+    """Lookup which Discord channel (if any) ejer denne session.
+
+    Returnerer channel_id hvis sessionen blev oprettet via Discord-DM/channel,
+    ellers None. Bruges af visible_runs.py til at sende tool-progress status
+    tilbage til Discord under lange agentic loops (Bjørn-frustration fix
+    2026-06-11: Jarvis stilner i tool-loops så bruger tror han er væk).
+    """
+    if not session_id:
+        return None
+    with _discord_sessions_lock:
+        return _discord_sessions.get(str(session_id))
+
 # Channels currently typing: cleared when outbound message is sent
 _typing_channels: set[int] = set()
 _typing_lock = threading.Lock()

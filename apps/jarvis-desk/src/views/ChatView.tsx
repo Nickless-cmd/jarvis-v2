@@ -207,7 +207,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
         {streaming && stream.blocks.length > 0 && (
           <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
         )}
-        <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" />
+        <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} />
         {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
         {stream.status === 'hung' && (
           <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />

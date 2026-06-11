@@ -24,6 +24,7 @@ export interface StreamContextValue {
   blocks: ContentBlock[]
   activeRunId: string | null
   elapsedMs: number
+  workingStep: string | null
   error: Error | null
   needsAttention: boolean
   send: (message: string, opts: SendOpts) => void
@@ -108,13 +109,14 @@ export function StreamProvider({
       blocks: state.blocks,
       activeRunId: state.activeRunId,
       elapsedMs,
+      workingStep: state.workingStep,
       error,
       needsAttention,
       send,
       abort,
       continueFromPartial,
     }),
-    [status, state.blocks, state.activeRunId, elapsedMs, error, needsAttention, send, abort, continueFromPartial],
+    [status, state.blocks, state.activeRunId, elapsedMs, state.workingStep, error, needsAttention, send, abort, continueFromPartial],
   )
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>
 }

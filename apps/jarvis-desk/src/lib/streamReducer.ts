@@ -7,11 +7,12 @@ export interface StreamState {
   status: StreamStatus
   activeRunId: string | null
   blocks: ContentBlock[]
+  workingStep: string | null // nyeste live progress-tekst (fx "Kalder analyze_image")
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
 }
 
 export function initialStreamState(): StreamState {
-  return { status: 'idle', activeRunId: null, blocks: [], usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 } }
+  return { status: 'idle', activeRunId: null, blocks: [], workingStep: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 } }
 }
 
 /**
@@ -28,6 +29,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         status: 'working',
         activeRunId: event.message.id,
         blocks: [],
+        workingStep: null,
         usage: { ...state.usage, input: event.message.usage.input_tokens },
       }
 
@@ -61,14 +63,16 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         return rp.run_id ? { ...state, activeRunId: rp.run_id } : state
       }
       if (event.kind !== 'working_step') return state // ukendt kind → ignorér gracefully
-      const p = event.payload as { tool_id?: string; status?: string; result?: string }
-      if (!p.tool_id) return state
+      const p = event.payload as { tool_id?: string; status?: string; result?: string; detail?: string; action?: string }
+      // Surface seneste progress-tekst (også steps uden tool_id, fx "thinking").
+      const step = p.detail ?? p.action ?? state.workingStep
+      if (!p.tool_id) return { ...state, workingStep: step }
       const idx = state.blocks.findIndex((b) => b.type === 'tool_use' && b.id === p.tool_id)
-      if (idx < 0) return state
+      if (idx < 0) return { ...state, workingStep: step }
       const blocks = state.blocks.slice()
       const b = blocks[idx]
       if (b && b.type === 'tool_use') blocks[idx] = { ...b, status: (p.status as 'running' | 'done' | 'error') ?? b.status, result: p.result ?? b.result }
-      return { ...state, blocks }
+      return { ...state, blocks, workingStep: step }
     }
 
     case 'message_delta':

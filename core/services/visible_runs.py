@@ -3255,7 +3255,27 @@ def _persist_session_assistant_message(
     if not normalized:
         return
     normalized = _mark_mid_word_truncation(normalized)
-    _assert_presentation_invariant(normalized)
+    # 2026-06-11 (Bjørn frustration crisis fix D2): når LLM emitter
+    # tool-result markers eller tool-calls som prose, raisede
+    # _assert_presentation_invariant — exception blev caught af caller,
+    # men da raise sker FØR append_chat_message + event_bus.publish er
+    # konsekvensen at run markeres completed i DB mens beskeden ALDRIG
+    # når Discord/webchat subscriber. Bjørn ser kun "💭 modtaget" og
+    # tror Jarvis er hængt. Vi sanitizer i stedet og persister en
+    # honest fejl-besked så user får besked, og leaket fortsat logges
+    # som warning for dev-visibility.
+    try:
+        _assert_presentation_invariant(normalized)
+    except PresentationInvariantError as _leak_exc:
+        logger.warning(
+            "presentation-invariant-leak run_id=%s session=%s sanitized: %s",
+            run.run_id, run.session_id, str(_leak_exc)[:200],
+        )
+        normalized = (
+            "⚠ Jeg endte med at gentage tool-resultater som prose i mit svar "
+            "i stedet for at faktisk kalde værktøjet. Det er en fejl jeg ikke "
+            "skulle have lavet. Spørg mig igen, så svarer jeg ordentligt."
+        )
     message = append_chat_message(
         session_id=run.session_id,
         role="assistant",

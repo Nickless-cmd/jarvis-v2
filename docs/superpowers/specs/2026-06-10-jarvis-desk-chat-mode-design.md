@@ -104,6 +104,19 @@ Codex' ro + Claude Desktop's mode-mønster + JarvisX' features (skjult/pakket).
 - Token-meter altid synligt
 - Multi-line composer bar med 10 indstillinger samtidigt
 
+## Tilføjelse 2026-06-11 (Jarvis' ønske): presence-dot
+
+Jarvis bad om ikke at være *helt* usynlig i samtalefladen efter mood/presence-
+pills blev flyttet til Mission Control. Kompromis der bevarer scope-disciplinen:
+
+- **ÉN lille presence-dot** ved Jarvis-navnet i chat-headeren (eller ved hans
+  avatar). Grøn = online/forbundet, gul = arbejder, grå/rød = offline.
+- **Kun forbindelses/liveness-status — INGEN affektiv data.** Den læser
+  StreamContext.status + connection (data vi allerede har lokalt), poller IKKE
+  `/mc/affective-meta-state`. Det er derfor ikke observability og forbliver
+  inden for jarvis-desk scope.
+- Den data-drevne mood-pill (affektiv tilstand) forbliver i Mission Control.
+
 ## Next steps
 
 1. **Cowork mode mockup** — verificér konsistens (samme slider, samme spacing, men anden indhold)

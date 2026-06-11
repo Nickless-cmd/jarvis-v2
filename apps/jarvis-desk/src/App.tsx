@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useSettings } from './hooks/useSettings'
 import { SessionProvider } from './contexts/SessionContext'
 import { StreamProvider } from './contexts/StreamContext'
+import { PanelProvider } from './contexts/PanelContext'
+import { usePanel } from './hooks/usePanel'
+import { SplitLayout } from './components/panel/SplitLayout'
+import { ArtifactPanel } from './components/panel/ArtifactPanel'
 import { useSessions } from './hooks/useSessions'
 import { SetupScreen } from './views/SetupScreen'
 import { ChatView } from './views/ChatView'
@@ -28,15 +32,32 @@ export function App() {
   return (
     <SessionProvider config={cfg}>
       <StreamProvider config={cfg}>
-        <Shell
-          surface={surface}
-          setSurface={setSurface}
-          role={auth?.role ?? 'guest'}
-          userName={auth?.display_name ?? 'Bruger'}
-          model={settings.defaultModel}
-        />
+        <PanelProvider defaultWidth={480}>
+          <Shell
+            surface={surface}
+            setSurface={setSurface}
+            role={auth?.role ?? 'guest'}
+            userName={auth?.display_name ?? 'Bruger'}
+            model={settings.defaultModel}
+          />
+        </PanelProvider>
       </StreamProvider>
     </SessionProvider>
+  )
+}
+
+/** Lægger den trækbare split om den aktive view; panel viser det åbne artifact. */
+function ShellWithPanel({ children }: { children: ReactNode }) {
+  const panel = usePanel()
+  return (
+    <SplitLayout
+      open={panel.open}
+      width={panel.width}
+      onResize={panel.resize}
+      panel={panel.artifact ? <ArtifactPanel artifact={panel.artifact} onClose={panel.close} /> : null}
+    >
+      {children}
+    </SplitLayout>
   )
 }
 
@@ -58,12 +79,14 @@ function Shell({
     <div className="window">
       <Sidebar surface={surface} onSurface={setSurface} userName={userName} />
       <main className="main">
-        {surface === 'chat' && <ChatView sessionId={activeId} />}
-        {surface === 'cowork' && <CoworkView />}
-        {surface === 'code' && <CodeView />}
-        {surface === 'memory' && <MemoryView role={role} />}
-        {surface === 'scheduling' && <SchedulingView role={role} />}
-        {surface === 'settings' && <SettingsView />}
+        <ShellWithPanel>
+          {surface === 'chat' && <ChatView sessionId={activeId} />}
+          {surface === 'cowork' && <CoworkView />}
+          {surface === 'code' && <CodeView />}
+          {surface === 'memory' && <MemoryView role={role} />}
+          {surface === 'scheduling' && <SchedulingView role={role} />}
+          {surface === 'settings' && <SettingsView />}
+        </ShellWithPanel>
         <StatusBar model={model} sessionId={activeId} />
       </main>
     </div>

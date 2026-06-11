@@ -1,7 +1,16 @@
 # jarvis-desk — Chat mode visual design
 
-**Status:** approved (Bjørn 2026-06-10)
-**Mockup:** `/tmp/jarvis-desk-mockup.html` (v3)
+> ⚠ **Visuelt design er locked; FEATURE-PLACERING er superseded.** Det visuelle
+> (palette, layout, bobler, composer, typografi) gælder uændret. MEN tabellen
+> "Hvad der ER med" nedenfor placerer Channels/Mind/Dashboard i Cowork/Settings
+> — det er **forældet**. Autoritativ feature-placering:
+> `2026-06-11-jarvis-desk-feature-coverage.md` (Channels/Mind/Dashboard/Trading/
+> Dispatches → Mission Control, ikke jarvis-desk). Brug coverage-kataloget for
+> hvad der bygges; brug dette dokument for hvordan Chat ser ud.
+
+**Status:** visuelt design approved (Bjørn 2026-06-10); feature-placering
+superseded af 2026-06-11 coverage-katalog
+**Mockup:** `2026-06-10-jarvis-desk-chat-mode-mockup-v3.html`
 **Parent project:** ny app sideløbende med JarvisX, taler `/chat/stream/v2`
 
 ## Design-DNA

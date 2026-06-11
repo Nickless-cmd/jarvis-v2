@@ -17,10 +17,11 @@ Notation: hver række er et kanttilfælde + den forventede adfærd + hvor det te
 
 | Kanttilfælde | Forventet adfærd | Test |
 |--------------|------------------|------|
-| Stream dør midt i text-block | Partial text bevares; `status=reconnecting`; `retry()` fortsætter ikke forfra | reducer + useStream |
+| Stream dør midt i text-block | Partial text bevares lokalt; `status=interrupted`; **ingen auto-re-POST** (R1); "genoptag" = ny tur | reducer + useStream |
 | Stream dør midt i tool_use (ufuldstændig input_json) | Tool-block markeres `status:'running'`, partial JSON bevares, ingen crash | reducer |
-| `message_stop` kommer aldrig (stream lukker bare) | streamClient kaster retryable `network`-fejl → reconnect | streamClient |
-| Duplikerede events efter reconnect (Last-Event-ID resume) | Idempotent: samme index opdateres, ikke dubleres | reducer |
+| `message_stop` kommer aldrig (stream lukker bare) | streamClient signalerer `interrupted` (IKKE blind reconnect — ville duplikere user-msg, R1) | streamClient |
+| **Ping-watchdog: ingen event i 90s** (R2) | Watchdog emitter `hung`-status → HangPrompt; kalder IKKE abort→cancelled→onComplete | streamClient (watchdog-path) |
+| Blind reconnect forsøgt på chat-lane | **Forbudt** — assertion at chat-lanen ikke re-POST'er samme besked automatisk | useStream |
 | `content_block_delta` for index uden forudgående `content_block_start` | Ignorér gracefully (log), ingen crash | reducer |
 | Interleaved blocks (text@0, thinking@1, text@2, tool@3) | Hver index holdes adskilt; rækkefølge bevaret | reducer |
 | Ukendt `system_event.kind` | Ignorér gracefully, ingen crash | reducer |
@@ -41,12 +42,14 @@ Notation: hver række er et kanttilfælde + den forventede adfærd + hvor det te
 | KaTeX parse-fejl | Fallback til rå `$$`-tekst | MathBlock |
 | Malformet markdown-tabel | Render bedst muligt eller som tekst, ingen crash | Table |
 | **Rå HTML i markdown** | **Saniteres — ALDRIG dangerouslySetInnerHTML / rehype-raw.** XSS-vektor (tool-resultater kan indeholde fjendtligt indhold, fx web_fetch) | MarkdownRenderer (sikkerhedstest) |
-| **Eksterne links** | Åbnes i system-browser (Electron shell.openExternal), navigerer ALDRIG app-vinduet væk | MarkdownRenderer + Electron-bridge |
-| Billede med brudt/ondsindet src | Vis alt-tekst/placeholder; data-URI størrelses-cap | ImageBlock |
+| **Link-URL policy** (skarp, P2) | **Allowlist:** kun `http:`, `https:`, `mailto:`. **Blokér:** `javascript:`, `file:`, `data:`, `blob:`, custom schemes. Normalisér/parse URL før åbning; malformet URL → render som inert tekst. Klik → `shell.openExternal` med `rel="noopener noreferrer"`. Navigerer ALDRIG WebView/vindue. | MarkdownRenderer (assertion per scheme) |
+| **Billede-kilde policy** (skarp, P2) | **Tilladt:** backend-attachment-URLs + eksplicit `https:`. **Blokér default:** `file:`, `data:` (medmindre internt genereret + type/størrelse-tjekket). SVG-data-URI blokeres (script-vektor). Remote img → bevidsthed om tracking/exfil. | ImageBlock (assertion per kilde) |
+| Billede med brudt src | Vis alt-tekst/placeholder, ingen crash | ImageBlock |
 | Meget langt code-block | Render uden at fryse UI (lazy/virtualiser hvis nødvendigt — constraint-noteret) | CodeBlock |
 | Kopiér code-block | Kopierer rå kildetekst UDEN linjenumre | CodeBlock |
 | Kopiér besked | Kopierer rå markdown, ikke renderet HTML | MessageRow |
 | Thinking-block | Foldet sammen som default ("tænkte 3s"), klik åbner | MessageRow |
+| **Tool-result injection** (P2) | Tool-navn, argumenter, stdout/stderr/result, hentet HTML (web_fetch), OG approval-tekst rendres som **inert tekst/markdown gennem SAMME sanitizer** som chat-tekst. Ingen klikbare spoofede "approve"-links; ApprovalCard-knapper er ægte UI-elementer, ikke renderet fra model/tool-tekst. | ToolCard + ApprovalCard (sikkerhedstest) |
 
 ## 3. Session / state
 
@@ -79,7 +82,7 @@ Notation: hver række er et kanttilfælde + den forventede adfærd + hvor det te
 | `abort()` POST fejler (netværk) | Abort stadig lokalt; UI går til idle | useStream |
 | Hang ved 90s, men event ankommer under HangPrompt | Recover: tilbage til `working`, skjul prompt | liveness-maskine |
 | Elapsed-timer på tværs af reconnect | Akkumulerer korrekt, nulstilles ikke ved reconnect | liveness-maskine |
-| Vindue lukkes midt i stream | Cleanup; cancel run server-side (best-effort POST) | App/window |
+| Vindue lukkes midt i stream (P3 — testbar mekanik) | **Main-process** ejer aktivt `run_id` (renderer sender det via IPC ved run-start/-slut). `before-quit`/`close` i main kalder cancel-endpoint FØR vindue destrueres (renderer-fetch er upålidelig ved shutdown). Fallback: persistér aktivt run_id; ryd op (cancel) ved næste opstart hvis det stadig er åbent. | Electron main (lifecycle) |
 | Window ude af fokus + done/approval | `needsAttention` → dock-badge + notifikation | StreamContext |
 
 ## 6. Approval

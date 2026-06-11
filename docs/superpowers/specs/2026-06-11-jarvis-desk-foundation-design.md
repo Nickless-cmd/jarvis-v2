@@ -100,13 +100,62 @@ Foundation-spec'en leverer kun klient-siden (role i context, role-prop til
 placeholder-views). Server-kontrakten er et **eksplicit krav** til Memory- og
 Scheduling-specs — den er ikke "dækket" før serveren håndhæver den.
 
-## Hvad der allerede er bygget og genbruges 1:1
+## Hvad der genbruges (og hvad der SKAL ændres)
 
-- **`lib/streamClient.ts`** (502 linjer) — prod-grade SSE-konsument: typed errors
-  (network/auth/rate_limit/server/protocol/cancelled), reconnect med exponential
-  backoff, ping-watchdog (70s), abort-support, size-caps. Bliver uændret.
-- **`lib/api.ts`** — REST-wrapper med timeout, auto-retry, typed errors. Uændret.
-- **Backend `/chat/stream/v2`** — Anthropic-style translator, deployed.
+streamClient.ts og api.ts er solide fundamenter, men de er IKKE 1:1 uændrede —
+Codex-review 2026-06-11 afslørede tre transport-realiteter der kræver ændringer.
+Ærlig status:
+
+- **`lib/streamClient.ts`** (502 linjer) — SSE-parsing, typed errors, backoff,
+  size-caps **genbruges**. MEN tre ændringer kræves (se "Transport-realiteter"
+  nedenfor): (1) skeln watchdog-abort fra user-abort, (2) eksponér aktivt
+  `run_id` fra message_start, (3) cancel-hook der POST'er server-cancel. Plus:
+  blind auto-reconnect-re-POST **deaktiveres for chat** (duplikerer user-message).
+- **`lib/api.ts`** — REST-wrapper (timeout, auto-retry, typed errors)
+  **genbruges**. MEN `ChatMessage.content` ændres `string` → `ContentBlock[]`, og
+  `getSession()` får en `stringToBlocks()`-normalisering (se Datamodel).
+- **Backend `/chat/stream/v2`** — Anthropic-style translator, deployed. MEN den
+  har **intet `id:`-felt** på events og **appender user-message ved hver POST** —
+  derfor kan klienten ikke "resume" et run; den kan kun bevare partial lokalt.
+
+## Transport-realiteter (Codex-review 2026-06-11) — låst FØR implementering
+
+Disse tre realiteter afgør hvad der faktisk kan bygges. Specs må ikke kode adfærd
+transporten ikke understøtter.
+
+### R1 — Ingen ægte resume; kun lokal partial-bevarelse
+
+v2-events har intet `id:`-felt (`sse_v2_events.py:30`), og hver
+`POST /chat/stream/v2` **appender user-beskeden + starter et nyt run**
+(`chat_stream_v2.py:55`). Derfor:
+
+- **Blind auto-reconnect (re-POST samme besked) er FORBUDT i chat** — det
+  duplikerer user-message og laver et nyt run. streamClient's nuværende
+  reconnect-loop deaktiveres/omgås for chat-lanen.
+- Ved brudt stream: **bevar partial lokalt**, sæt `status='interrupted'`, og vis
+  "forbindelse afbrudt — [genoptag]". "Genoptag" er en **ny tur** (ærligt: den
+  re-sender ikke; den fortsætter samtalen), ikke et resume af det døde run.
+- **Ægte resume** (re-attach til in-flight run uden re-append) kræver et nyt
+  server-endpoint `GET /chat/runs/{run_id}/stream` + event-`id:` til offset. Det
+  er en **navngiven fremtidig udvidelse**, ikke i denne foundation. streamClient's
+  reconnect-stel er klar til den når endpointet findes.
+
+### R2 — Hang-watchdog → synlig prompt, ikke auto-reconnect
+
+streamClient's ping-watchdog kalder i dag `abortController.abort()`
+(`streamClient.ts:214`), hvilket klassificeres som `cancelled` (non-retryable) →
+`onComplete`. Det er forkert for vores formål. Ændring: watchdog ved 90s emitter
+en **`hung`-status** (ikke abort) → `HangPrompt` (genoptag/afbryd). Brugeren
+beslutter — ingen tavs reconnect der kunne duplikere.
+
+### R3 — Server-cancel kræver run_id + cancel-hook i streamClient
+
+`startStream()` returnerer i dag kun en lokal abort-funktion
+(`streamClient.ts:496`) uden run_id eller cancel-API. Ændring: streamClient
+eksponerer aktivt `run_id` (fra `message_start.message.id`) og får en injiceret
+`cancelRun(runId)` (bruger `api.ts`). `abort()` skelner nu mellem **netværks-
+abort** (luk forbindelse) og **server-cancel** (POST `/chat/runs/{run_id}/cancel`
+FØR lokal abort). Se "Server-cancel kontrakt".
 - **Chat-mode visuelt design** — locked i
   `2026-06-10-jarvis-desk-chat-mode-design.md` (palette, layout, typografi,
   composer, asymmetriske bobler). Genbruges 1:1.
@@ -322,22 +371,49 @@ Composer.send(text)
 Reduceren er en **ren funktion** `(state, v2event) → state` — al stream-logik
 samlet ét sted, fuldt unit-testbar uden netværk.
 
+### Reconcile-state-maskine (eksplicit — P2 Codex)
+
+Hver besked har en `clientStatus` der styrer hvad reconcile gør. En assistant-
+besked får et **temp client-id** under streaming; serverens persisterede
+message-id matches via `(session_id, role, rækkefølge)` + indhold, ikke via et
+delt id (serveren tildeler sit eget). Tilstande:
+
+| clientStatus | Hvornår | Reconcile-adfærd |
+|--------------|---------|------------------|
+| `optimistic_user` | bruger-besked vist straks | erstattes når server-load bekræfter samme indhold; ellers bevares |
+| `streaming_assistant` | mens stream kører (temp id) | StreamContext ejer; ikke i SessionContext endnu |
+| `server_confirmed` | server-load matcher stream-resultat | brug server-id; stream-blocks beholdes som indhold |
+| `server_missing_keep_stream` | `done`, men server-load mangler beskeden endnu (dagens race) | **behold stream-blocks**; re-poll/næste load reconcilerer; blank-load ALDRIG |
+| `server_conflict` | server persisterede *andet* end stream viste (fx `"Generation cancelled."` ved cancel, `visible_runs.py:1024`, eller sanitized fallback) | **server vinder**; erstat stream-blocks med server-indhold (serveren er sandheden om hvad der blev gemt) |
+
+Nøgle-distinktion: ved **normal done** er stream sandhed til server bekræfter
+(beskytter mod race). Ved **cancel/sanitering** er server sandhed (den gemte
+korrigerede tekst vinder). `server_conflict` er derfor ikke en fejl — det er
+forventet ved cancel og fallback.
+
 ## Liveness-state-maskinen (én kilde, density-agnostisk)
 
 ```
 idle → working → done → idle
          │
-         ├─ (forbindelse tabt) → reconnecting → working
-         │     streamClient auto-reconnect; partial blocks BEVARES (#2)
+         ├─ (forbindelse tabt / stream slutter uden message_stop) → interrupted
+         │     partial blocks BEVARES lokalt (R1). INGEN auto-reconnect-re-POST
+         │     (ville duplikere user-message). Vis "afbrudt — [genoptag]".
+         │     → genoptag() : NY tur (fortsætter samtalen), ikke resume af dødt run
+         │     → abort()    : server-cancel + idle
          │
-         ├─ (ingen event 90s) → hung
-         │     → retry()  : fortsætter fra partial (genoptager, starter ikke forfra)
-         │     → abort()  : POST cancel til server (#3) → idle
+         ├─ (ingen event 90s) → hung           (R2: watchdog → synlig prompt)
+         │     → genoptag() : ny tur
+         │     → abort()    : POST /chat/runs/{run_id}/cancel (R3) → idle
          │
          └─ (typed StreamError) → error → ErrorBanner (dansk userMessage())
 ```
 
-`status ∈ {working, hung}` + vindue ude af fokus → `needsAttention=true` →
+> R1/R2/R3 (se Transport-realiteter): `interrupted` og `hung` fører til en
+> **synlig brugerbeslutning**, aldrig tavs reconnect. "Genoptag" er en ny tur —
+> ægte server-resume er en navngiven fremtidig udvidelse.
+
+`status ∈ {working, hung, interrupted}` + vindue ude af fokus → `needsAttention=true` →
 app-laget viser dock-badge + notifikation (#5). Særligt vigtigt ved
 `approval_request` — Jarvis venter på dig.
 
@@ -355,14 +431,16 @@ Indsigter fra produktions-chat/agentic-apps. Alle med i denne spec.
    ufærdige code-fences (` ``` ` uden lukning) og inline-marks (`**` uden anden
    `**`) til de lukker, så rendering ikke blinker mellem brækket/helt layout ved
    hver delta.
-2. **Partial-besked overlever stream-død.** Blocks der allerede er streamet smides
-   ALDRIG væk ved forbindelsestab. `retry()` genoptager fra partial.
-3. **Rigtig STOP, ikke client-abort.** `abort()` POST'er cancel til serverens
-   cancel-endpoint, så Jarvis holder op med at generere server-side (ikke bare
-   lukker vores ende mens han brænder tokens).
-4. **"Besked forsvinder"-race (dagens bug).** `reconcile()` bruger stream-blocks
-   som sandhed indtil server bekræfter via efterfølgende session-load. Klienten
-   blank-loader ALDRIG en session umiddelbart efter `done`.
+2. **Partial-besked overlever stream-død (lokalt).** Blocks der allerede er
+   streamet smides ALDRIG væk ved forbindelsestab; de markeres `interrupted` og
+   vises med en "genoptag"-mulighed. **Ikke** ægte resume (R1) — "genoptag" er en
+   ny tur. Ingen blind re-POST (duplikerer user-message).
+3. **Rigtig STOP, ikke client-abort.** `abort()` POST'er `/chat/runs/{run_id}/
+   cancel` (run_id fra message_start) FØR lokal abort, så Jarvis holder op med at
+   generere server-side. Kræver streamClient-ændring R3.
+4. **"Besked forsvinder"-race (dagens bug) — eksplicit reconcile-state-maskine.**
+   Se "Reconcile-state-maskine" nedenfor. Klienten blank-loader ALDRIG umiddelbart
+   efter `done`.
 5. **Notifikation når vinduet ikke er i fokus.** `needsAttention` driver
    dock-badge + diskret OS-notifikation, særligt ved approval.
 

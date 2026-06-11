@@ -8,6 +8,8 @@
  *   - Auto-retry på transient fejl (network/5xx) op til 2x
  */
 import { StreamError } from './streamClient'
+import type { ContentBlock } from './sseProtocol'
+import { stringToBlocks } from './normalizeMessage'
 
 export interface ChatSession {
   id: string
@@ -19,8 +21,15 @@ export interface ChatSession {
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'tool' | 'system' | 'approval_request'
-  content: string
+  content: ContentBlock[]       // ændret fra string — understøtter tool_use/image
   created_at: string
+  parent_id?: string | null     // branch-søm
+}
+
+export interface WhoAmI {
+  user_id: string
+  display_name: string
+  role: 'owner' | 'member' | 'guest'
 }
 
 export interface ApiConfig {
@@ -154,14 +163,22 @@ export async function getSession(
   config: ApiConfig,
   sessionId: string,
 ): Promise<{ session: ChatSession; messages: ChatMessage[] }> {
-  // Server returnerer { session: { ...session, messages: [...] } }
-  // — messages er embedded i session-objektet, ikke flat på top-level.
-  // Vi normaliserer her så App.tsx får den forventede form.
+  // Server returnerer { session: { ...session, messages: [...] } } hvor hver
+  // beskeds content er en markdown-string. Vi normaliserer til ContentBlock[]
+  // så streamede og loadede beskeder deler samme rendering-pipeline.
   const raw = await apiFetch<{
-    session: ChatSession & { messages?: ChatMessage[] }
+    session: ChatSession & {
+      messages?: Array<{ id: string; role: ChatMessage['role']; content: string; created_at: string; parent_id?: string | null }>
+    }
   }>(config, `/chat/sessions/${encodeURIComponent(sessionId)}`)
   const session = raw.session
-  const messages = session?.messages ?? []
+  const messages: ChatMessage[] = (session?.messages ?? []).map((m) => ({
+    id: m.id,
+    role: m.role,
+    created_at: m.created_at,
+    parent_id: m.parent_id ?? null,
+    content: stringToBlocks(m.content),
+  }))
   return { session, messages }
 }
 
@@ -173,4 +190,24 @@ export async function createSession(
     method: 'POST',
     body: { title },
   })
+}
+
+/** Server-cancel af et aktivt run (R3). Idempotent: 200 og 404 (run ukendt/
+ *  allerede stoppet) behandles begge som "stoppet". Netværksfejl svælges —
+ *  klienten aborter lokalt alligevel. */
+export async function cancelRun(config: ApiConfig, runId: string): Promise<void> {
+  const url = new URL(`/chat/runs/${encodeURIComponent(runId)}/cancel`, config.apiBaseUrl).toString()
+  const headers: Record<string, string> = {}
+  if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
+  try {
+    await fetch(url, { method: 'POST', headers })
+  } catch {
+    // best-effort: netværksfejl ignoreres
+  }
+}
+
+/** Hent authentificeret bruger + rolle. Cache-first-håndtering sker i
+ *  SettingsContext (offline-boot beholder sidste-kendte rolle). */
+export async function whoami(config: ApiConfig): Promise<WhoAmI> {
+  return apiFetch<WhoAmI>(config, '/api/whoami')
 }

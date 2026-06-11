@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  ArrowUp, Plus, Paperclip, ListChecks, Puzzle, ChevronRight,
+  ArrowUp, Square, Plus, Paperclip, ListChecks, Puzzle, ChevronRight,
   ChevronDown, Mic, ShieldCheck,
 } from 'lucide-react'
 import { useDictation } from '../../hooks/useDictation'
@@ -19,13 +19,15 @@ const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string }> = [
  *  think-pill, dikter-mic, send. [+]-menu folder opad med billeder/filer,
  *  planlægnings-toggle og plugins. Enter sender, Shift+Enter ny linje. */
 export function Composer({
-  disabled,
+  streaming,
   onSend,
+  onStop,
   model,
   thinking,
 }: {
-  disabled: boolean
+  streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
+  onStop: () => void
   model: string
   thinking: string
 }) {
@@ -46,9 +48,10 @@ export function Composer({
     return () => window.removeEventListener('click', close)
   }, [menuOpen, permOpen])
 
+  // Enter sender altid (også under streaming — ChatView lægger den i kø).
   const send = () => {
     const t = text.trim()
-    if (!t || disabled) return
+    if (!t) return
     onSend(t, { planMode, permission })
     setText('')
   }
@@ -62,9 +65,8 @@ export function Composer({
         ref={ref}
         className="composer-input"
         rows={2}
-        disabled={disabled}
         value={text}
-        placeholder={disabled ? 'Jarvis svarer…' : 'Skriv en besked til Jarvis...'}
+        placeholder={streaming ? 'Skriv en follow-up (sendes når Jarvis er færdig)…' : 'Skriv en besked til Jarvis...'}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
@@ -150,15 +152,27 @@ export function Composer({
               <Mic size={16} />
             </button>
           )}
-          <button
-            type="button"
-            className="composer-send"
-            disabled={!text.trim() || disabled}
-            onClick={send}
-            aria-label="Send"
-          >
-            <ArrowUp size={14} strokeWidth={2.5} />
-          </button>
+          {streaming ? (
+            <button
+              type="button"
+              className="composer-send composer-stop"
+              onClick={onStop}
+              aria-label="Stop"
+              title="Stop Jarvis"
+            >
+              <Square size={12} strokeWidth={2.5} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="composer-send"
+              disabled={!text.trim()}
+              onClick={send}
+              aria-label="Send"
+            >
+              <ArrowUp size={14} strokeWidth={2.5} />
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -77,7 +77,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
     if (el && atBottom) el.scrollTop = el.scrollHeight
   }, [stream.blocks, atBottom])
 
-  const handleSend = async (text: string, opts: ComposerSendOpts) => {
+  const doSend = async (text: string, opts: ComposerSendOpts) => {
     let sid = sessionId
     if (!sid) {
       const created = await sessions.create('Ny samtale')
@@ -95,13 +95,37 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
     stream.send(text, { sessionId: sid, approvalMode: opts.permission })
   }
 
-  const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   const streaming = stream.status === 'working'
+
+  // Follow-up kø: skriver man mens Jarvis streamer, lægges beskeden i kø og
+  // sendes automatisk når turen er færdig (done). Deterministisk — ikke nudge.
+  const [queued, setQueued] = useState<{ text: string; opts: ComposerSendOpts } | null>(null)
+  const handleSend = (text: string, opts: ComposerSendOpts) => {
+    if (streaming) setQueued({ text, opts })
+    else void doSend(text, opts)
+  }
+  useEffect(() => {
+    if (stream.status === 'done' && queued) {
+      const q = queued
+      setQueued(null)
+      void doSend(q.text, q.opts)
+    }
+  }, [stream.status, queued])
+
+  const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   const isEmpty =
     !sessionId ||
-    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0)
+    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && !queued)
 
-  const composer = <Composer disabled={streaming} onSend={handleSend} model="deepseek-flash" thinking="think" />
+  const composer = (
+    <Composer
+      streaming={streaming}
+      onSend={handleSend}
+      onStop={() => void stream.abort()}
+      model="deepseek-flash"
+      thinking="think"
+    />
+  )
 
   const activeSession = sessions.sessions.find((s) => s.id === sessionId)
   const chatTitle = activeSession?.title || (isEmpty ? 'Ny samtale' : 'Samtale')
@@ -175,6 +199,13 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
             <ArrowDown size={16} />
             {unread > 0 && <span className="scroll-badge">{unread} ny{unread > 1 ? 'e' : ''}</span>}
           </button>
+        )}
+        {queued && (
+          <div className="queued-chip">
+            <span className="queued-label">I kø</span>
+            <span className="queued-text">{queued.text}</span>
+            <button type="button" className="queued-cancel" onClick={() => setQueued(null)} aria-label="Fjern fra kø">×</button>
+          </div>
         )}
         {composer}
       </div>

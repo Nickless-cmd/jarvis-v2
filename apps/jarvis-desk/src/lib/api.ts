@@ -206,8 +206,26 @@ export async function cancelRun(config: ApiConfig, runId: string): Promise<void>
   }
 }
 
-/** Hent authentificeret bruger + rolle. Cache-first-håndtering sker i
- *  SettingsContext (offline-boot beholder sidste-kendte rolle). */
+/** Hent authentificeret bruger + rolle. Serveren returnerer felterne
+ *  user_id / user_display_name / role — normaliseres her til WhoAmI. */
 export async function whoami(config: ApiConfig): Promise<WhoAmI> {
-  return apiFetch<WhoAmI>(config, '/api/whoami')
+  const raw = await apiFetch<{ user_id?: string; user_display_name?: string; role?: string }>(config, '/api/whoami')
+  return {
+    user_id: raw.user_id ?? '',
+    display_name: raw.user_display_name ?? '',
+    role: (raw.role as WhoAmI['role']) ?? 'guest',
+  }
+}
+
+/** Mål forbindelses-latency mod serveren (ping). Returnerer ms eller null hvis nede. */
+export async function pingServer(config: ApiConfig): Promise<number | null> {
+  const url = new URL('/openapi.json', config.apiBaseUrl).toString()
+  const t0 = performance.now()
+  try {
+    const res = await fetch(url, { method: 'GET', cache: 'no-store' })
+    if (!res.ok) return null
+    return Math.round(performance.now() - t0)
+  } catch {
+    return null
+  }
 }

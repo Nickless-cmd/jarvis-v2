@@ -18,10 +18,6 @@ export function Sidebar({
   const { sessions, activeId, select, create } = useSessions()
   return (
     <aside className="sidebar">
-      <div className="sidebar-head">
-        <span className="dot" /> jarvis-desk
-      </div>
-
       <ModeSlider
         active={(['chat', 'cowork', 'code'] as const).includes(surface as Mode) ? (surface as Mode) : 'chat'}
         onChange={(m) => onSurface(m)}

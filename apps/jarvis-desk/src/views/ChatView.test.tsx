@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { ChatView } from './ChatView'
 import { SessionProvider } from '../contexts/SessionContext'
 import { StreamProvider } from '../contexts/StreamContext'
+import { SettingsProvider } from '../contexts/SettingsContext'
 
 interface FakeHandlers {
   onEvent: (e: unknown) => void
@@ -19,6 +20,8 @@ vi.mock('../lib/api', () => ({
   getSession: vi.fn().mockResolvedValue({ session: { id: 's1', title: 'T', updated_at: 'x' }, messages: [] }),
   createSession: vi.fn(),
   cancelRun: vi.fn(),
+  whoami: vi.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' }),
+  pingServer: vi.fn().mockResolvedValue(20),
 }))
 
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
@@ -26,11 +29,13 @@ const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
 describe('ChatView integration', () => {
   it('shows optimistic user msg + streamed assistant text', async () => {
     render(
-      <SessionProvider config={cfg}>
-        <StreamProvider config={cfg}>
-          <ChatView sessionId="s1" />
-        </StreamProvider>
-      </SessionProvider>,
+      <SettingsProvider initialConfig={cfg}>
+        <SessionProvider config={cfg}>
+          <StreamProvider config={cfg}>
+            <ChatView sessionId="s1" />
+          </StreamProvider>
+        </SessionProvider>
+      </SettingsProvider>,
     )
     await userEvent.type(screen.getByRole('textbox'), 'hej{Enter}')
     expect(screen.getByText('hej')).toBeInTheDocument()

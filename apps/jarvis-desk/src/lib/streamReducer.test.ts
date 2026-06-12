@@ -125,3 +125,14 @@ describe('streamReducer — tool_result status (Phase 2)', () => {
     expect(s.blocks[0]).toEqual({ type: 'text', text: 'hej' })
   })
 })
+
+describe('streamReducer — usage.input fra message_delta (context-ring #9)', () => {
+  it('fanger input_tokens fra message_delta', () => {
+    const s = reduce([
+      { type: 'message_start', message: { id: 'r', model: 'm', provider: 'p', lane: 'l', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } },
+      { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { input_tokens: 120000, output_tokens: 50, cache_hit_tokens: 8000, cache_miss_tokens: 0 } },
+    ] as StreamEvent[])
+    expect(s.usage.input).toBe(120000)
+    expect(s.usage.cacheHit).toBe(8000)
+  })
+})

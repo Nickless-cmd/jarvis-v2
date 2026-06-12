@@ -98,6 +98,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         ...state,
         usage: {
           ...state.usage,
+          // input kommer i message_delta (v2 message_start bærer ikke usage) —
+          // bruges af context-ringen (#9). Behold tidligere ved 0.
+          input: event.usage.input_tokens || state.usage.input,
           output: event.usage.output_tokens,
           cacheHit: event.usage.cache_hit_tokens ?? state.usage.cacheHit,
           cacheMiss: event.usage.cache_miss_tokens ?? state.usage.cacheMiss,

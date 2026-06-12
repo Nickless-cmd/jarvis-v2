@@ -1014,3 +1014,6 @@
 .codeview-toolbar-label { color: var(--fg-3); }
 .codeview-toolbar select { background: var(--bg-2); color: var(--fg-1); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font-size: 12.5px; }
 .codeview-panel { width: 380px; border-left: 1px solid var(--line); min-height: 0; }
+
+/* Code-session mode-ikon i sidebar */
+.session-mode-icon { color: var(--accent); margin-right: 4px; flex: 0 0 auto; vertical-align: middle; }

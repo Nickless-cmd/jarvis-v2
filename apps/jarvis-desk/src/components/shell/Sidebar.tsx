@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images, Code } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
 import { useStream } from '../../hooks/useStream'
@@ -124,7 +124,8 @@ export function Sidebar({
                   title={s.title || 'Uden titel'}
                   active={s.id === activeId}
                   working={isWorking(s.id)}
-                  onSelect={() => { select(s.id); onSurface('chat') }}
+                  workspaceKind={s.workspace_kind}
+                  onSelect={() => { select(s.id); onSurface(s.workspace_kind ? 'code' : 'chat') }}
                 />
               ))}
             </>
@@ -149,12 +150,14 @@ function SessionItem({
   title,
   active,
   working,
+  workspaceKind,
   onSelect,
 }: {
   id: string
   title: string
   active: boolean
   working?: boolean
+  workspaceKind?: string | null
   onSelect: () => void
 }) {
   const { rename, remove } = useSessions()
@@ -192,6 +195,7 @@ function SessionItem({
             <span></span><span></span><span></span>
           </span>
         )}
+        {workspaceKind && <Code size={12} className="session-mode-icon" />}
         {title}
       </button>
       <div className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>

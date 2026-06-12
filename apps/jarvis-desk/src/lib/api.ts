@@ -16,6 +16,7 @@ export interface ChatSession {
   title: string
   updated_at: string
   message_count?: number
+  workspace_kind?: string | null
 }
 
 export interface ChatMessage {

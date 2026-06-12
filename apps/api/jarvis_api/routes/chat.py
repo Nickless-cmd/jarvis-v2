@@ -118,13 +118,15 @@ def _parse_git_status(branch_out: str, porcelain_out: str, numstat_out: str) -> 
     return {"branch": branch, "dirty": dirty, "added": added, "removed": removed}
 
 
-@router.get("/git-status")
-async def chat_git_status(kind: str = "container", root: str = "") -> dict:
-    """Git-state for det aktive workspace (header-chip i code-mode). Container:
-    direkte subprocess i repo'et. Workstation: via operator-broen på brugerens maskine."""
+_GIT_NONE = {"branch": "", "dirty": 0, "added": 0, "removed": 0, "is_git": False}
+
+
+def _git_status_sync(kind: str, root: str) -> dict:
+    """BLOKERENDE git-opsamling — KØRES I TRÅD (asyncio.to_thread) så uvicorn-
+    worker'en (--workers 1) ikke fryser på subprocess/bro-kald."""
     if kind == "workstation":
         if not root.strip():
-            return {"branch": "", "dirty": 0, "added": 0, "removed": 0, "is_git": False}
+            return dict(_GIT_NONE)
         cmd = (
             f'git -C "{root}" rev-parse --abbrev-ref HEAD 2>/dev/null; echo "@@@"; '
             f'git -C "{root}" status --porcelain 2>/dev/null; echo "@@@"; '
@@ -134,12 +136,11 @@ async def chat_git_status(kind: str = "container", root: str = "") -> dict:
         out = str(res.get("stdout") or "") if res.get("status") == "ok" else ""
         segs = out.split("@@@")
         if len(segs) < 3 or not segs[0].strip():
-            return {"branch": "", "dirty": 0, "added": 0, "removed": 0, "is_git": False}
+            return dict(_GIT_NONE)
         d = _parse_git_status(segs[0], segs[1], segs[2])
         d["is_git"] = True
         return d
 
-    # Container: subprocess i repo-roden (git'en Jarvis arbejder i).
     import subprocess
     repo = str(_repo_root())
     def _git(*args: str) -> str:
@@ -151,10 +152,18 @@ async def chat_git_status(kind: str = "container", root: str = "") -> dict:
             return ""
     branch = _git("rev-parse", "--abbrev-ref", "HEAD")
     if not branch.strip():
-        return {"branch": "", "dirty": 0, "added": 0, "removed": 0, "is_git": False}
+        return dict(_GIT_NONE)
     d = _parse_git_status(branch, _git("status", "--porcelain"), _git("diff", "--numstat", "HEAD"))
     d["is_git"] = True
     return d
+
+
+@router.get("/git-status")
+async def chat_git_status(kind: str = "container", root: str = "") -> dict:
+    """Git-state for det aktive workspace (header-chip i code-mode). Det blokerende
+    arbejde (subprocess/bro) offloades til en tråd så event-loop'en ikke fryser."""
+    import asyncio
+    return await asyncio.to_thread(_git_status_sync, kind, root)
 
 
 @router.get("/workspace-trust")

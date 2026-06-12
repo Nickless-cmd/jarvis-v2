@@ -4043,6 +4043,19 @@ def _exec_operator_read_file(args: dict[str, Any]) -> dict[str, Any]:
         tool_name="operator_read_file",
     )
     if out.get("status") == "ok":
+        # Phase 1 read-before-write enforcement: record the read so a
+        # later operator_write_file / operator_edit_file on the same
+        # path passes the guard. Best-effort; failure is non-fatal.
+        try:
+            from core.services.read_before_write_guard import record_operator_read
+            _sid = (
+                args.get("_runtime_session_id")
+                or args.get("_session_id")
+                or "default"
+            )
+            record_operator_read(path, session_id=str(_sid))
+        except Exception:
+            pass
         return {"status": "ok", "result": out["result"], "path": path}
     return out
 
@@ -4054,6 +4067,37 @@ def _exec_operator_write_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "path is required", "status": "error"}
     if content is None:
         return {"error": "content is required", "status": "error"}
+    # Phase 1 read-before-write guard: block if this path hasn't been
+    # read in this session. The LLM can bypass legitimately by passing
+    # force=true (e.g. brand-new file creation that doesn't exist yet).
+    if not bool(args.get("force")):
+        try:
+            from core.services.read_before_write_guard import (
+                check_operator_read_before_write,
+            )
+            _sid = (
+                args.get("_runtime_session_id")
+                or args.get("_session_id")
+                or "default"
+            )
+            allowed, reason = check_operator_read_before_write(
+                path, session_id=str(_sid),
+            )
+            if not allowed and reason:
+                return {
+                    "status": "error",
+                    "error": reason,
+                    "blocked_by": "read_before_write_guard",
+                    "path": path,
+                    "hint": (
+                        "Kald operator_read_file('"
+                        + path
+                        + "') først, eller pass force=true hvis "
+                        "filen er helt ny og ikke eksisterer."
+                    ),
+                }
+        except Exception:
+            pass
     user_id = _operator_user_id(args)
     from core.tools.operator_tools import operator_write_file_async
     return _run_operator_async(
@@ -4072,6 +4116,35 @@ def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "path is required", "status": "error"}
     if old_string is None or new_string is None:
         return {"error": "old_string and new_string are required", "status": "error"}
+    # Phase 1 read-before-write guard. edit_file by definition needs an
+    # existing file, so no force bypass — if you're editing, you must
+    # have read it in this session.
+    try:
+        from core.services.read_before_write_guard import (
+            check_operator_read_before_write,
+        )
+        _sid = (
+            args.get("_runtime_session_id")
+            or args.get("_session_id")
+            or "default"
+        )
+        allowed, reason = check_operator_read_before_write(
+            path, session_id=str(_sid), file_exists=True,
+        )
+        if not allowed and reason:
+            return {
+                "status": "error",
+                "error": reason,
+                "blocked_by": "read_before_write_guard",
+                "path": path,
+                "hint": (
+                    "Kald operator_read_file('" + path
+                    + "') først — operator_edit_file kan ikke "
+                    "edite uden at have læst filen i denne session."
+                ),
+            }
+    except Exception:
+        pass
     user_id = _operator_user_id(args)
     from core.tools.operator_tools import operator_edit_file_async
     return _run_operator_async(

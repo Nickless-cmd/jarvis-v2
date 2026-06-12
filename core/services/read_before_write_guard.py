@@ -342,3 +342,102 @@ def _emit_read_before_write_guard_event(
         event_bus.publish(f"read_before_write_guard.{kind}", payload or {})
     except Exception:
         pass
+
+
+# ── Operator-side variant (Phase 1: enforcement on operator_* tools) ─────
+#
+# Same shared_cache TTL model, but paths are NOT resolved (the operator's
+# filesystem is foreign to the backend — Path.resolve() would silently
+# rewrite "~/foo" to /home/bs/foo on the LXC and the cache key wouldn't
+# match what the operator-side handler later sees). We normalize lightly
+# (strip + lowercase drive letter on Windows + forward-slashes) so
+# C:\Users\onkel\x and c:/users/onkel/x track as the same file.
+#
+# Unlike the protected-filename mechanism above, operator_* enforcement
+# is universal: ANY existing file on the operator's machine that hasn't
+# been read in the current session is blocked from write/edit. New files
+# (path doesn't yet exist on operator side — which we can't check from
+# here, so we treat as a separate signal below) pass through.
+
+_OPERATOR_CACHE_KEY_PREFIX = "rbw_operator:"
+
+
+def _normalize_operator_path(path: str) -> str:
+    """Light normalization for cross-OS path consistency."""
+    s = str(path or "").strip()
+    if not s:
+        return s
+    # Forward-slashes everywhere
+    s = s.replace(chr(92) + chr(92), "/").replace(chr(92), "/")
+    # Lowercase Windows drive letter (C:/ → c:/) — keeps the rest as-is
+    if len(s) >= 2 and s[1] == ":" and s[0].isalpha():
+        s = s[0].lower() + s[1:]
+    return s
+
+
+def _operator_cache_key(session_id: str, norm_path: str) -> str:
+    return f"{_OPERATOR_CACHE_KEY_PREFIX}{session_id}:{norm_path}"
+
+
+def record_operator_read(path: str, session_id: str = "default") -> None:
+    """Note that the operator side has read this path. Best-effort."""
+    try:
+        from core.services import shared_cache as _sc
+        norm = _normalize_operator_path(path)
+        if not norm:
+            return
+        _sc.set(
+            _operator_cache_key(session_id, norm),
+            {"path": norm, "session_id": session_id},
+            ttl_seconds=_READ_FRESHNESS_SECONDS,
+        )
+    except Exception as exc:
+        logger.debug("record_operator_read failed: %s", exc)
+
+
+def _operator_was_read(norm_path: str, session_id: str) -> bool:
+    try:
+        from core.services import shared_cache as _sc
+        if _sc.get(_operator_cache_key(session_id, norm_path)) is not None:
+            return True
+        if session_id != "default" and _sc.get(
+            _operator_cache_key("default", norm_path)
+        ) is not None:
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def check_operator_read_before_write(
+    path: str,
+    session_id: str = "default",
+    file_exists: bool | None = None,
+) -> tuple[bool, str | None]:
+    """Block operator_write_file / operator_edit_file on existing files
+    the LLM hasn't read in this session.
+
+    file_exists: pass True for operator_edit_file (which by definition
+    requires an existing file). For operator_write_file the caller can
+    pass None (treated as "we don't know — assume yes if cached read
+    is missing", which is the safer default for an LLM that tends to
+    forget read steps).
+    """
+    norm = _normalize_operator_path(path)
+    if not norm:
+        return True, None  # caller will reject empty path anyway
+    if _operator_was_read(norm, session_id):
+        return True, None
+    # No prior read recorded. For operator_edit_file we know the file
+    # must exist; for operator_write_file the caller may not know but
+    # the cost of one extra read_file call is small and the upside
+    # (preventing accidental clobber) is large.
+    hint = (
+        "operator_read_file('{p}') skal kaldes først i denne session, "
+        "så du arbejder på et bevidst grundlag og ikke ved et "
+        "uheld overskriver indhold du ikke har set."
+    ).format(p=path)
+    reason = (
+        "⚠️ READ-BEFORE-WRITE GUARD (operator): {p}\n\n{hint}"
+    ).format(p=path, hint=hint)
+    return False, reason

@@ -124,6 +124,9 @@ export interface StreamRequest {
   /** UI-mode → backend tool-scope. 'chat' begrænser til samtale-værktøjer.
    *  Default 'chat' (appen er chat-only pt.; cowork/code sender egen mode). */
   mode?: 'chat' | 'cowork' | 'code'
+  /** Code-mode workspace (hvor Jarvis' fil-tools arbejder). */
+  workspaceKind?: 'container' | 'workstation'
+  workspaceRoot?: string
   /** R1: default false for chat-lane. Blind auto-reconnect re-POSTer beskeden →
    *  duplikerer user-message + nyt run. Kun true hvis serveren understøtter
    *  ægte resume (fremtidig). */
@@ -353,6 +356,8 @@ export function startStream(
           approval_mode: request.approvalMode ?? 'ask',
           thinking_mode: request.thinkingMode ?? 'think',
           mode: request.mode ?? 'chat',
+          workspace_kind: request.workspaceKind ?? '',
+          workspace_root: request.workspaceRoot ?? '',
         }),
         signal: abortController.signal,
       })

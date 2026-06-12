@@ -288,6 +288,16 @@ export async function fetchImageObjectUrl(
   return URL.createObjectURL(await res.blob())
 }
 
+export interface TreeEntry { name: string; kind: 'dir' | 'file' }
+/** Mappe-listing til Code-mode fil-træ. */
+export async function getTree(
+  config: ApiConfig, kind: 'container' | 'workstation', root: string, path: string,
+): Promise<TreeEntry[]> {
+  const qs = `kind=${encodeURIComponent(kind)}&root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}`
+  const data = await apiFetch<{ entries: TreeEntry[] }>(config, `/chat/tree?${qs}`)
+  return data.entries ?? []
+}
+
 /** Sessioner med et aktivt visible-run lige nu (#8 — også autonome runs). */
 export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
   const data = await apiFetch<{ session_ids: string[] }>(config, '/chat/active-runs')

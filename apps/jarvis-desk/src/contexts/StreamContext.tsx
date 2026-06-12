@@ -18,6 +18,9 @@ export interface SendOpts {
   approvalMode?: 'ask' | 'trust'
   thinkingMode?: 'think' | 'fast'
   attachmentIds?: string[]
+  mode?: 'chat' | 'cowork' | 'code'
+  workspaceKind?: 'container' | 'workstation'
+  workspaceRoot?: string
 }
 
 export interface StreamContextValue {
@@ -74,6 +77,9 @@ export function StreamProvider({
         approvalMode: opts.approvalMode,
         thinkingMode: opts.thinkingMode,
         attachmentIds: opts.attachmentIds,
+        mode: opts.mode,
+        workspaceKind: opts.workspaceKind,
+        workspaceRoot: opts.workspaceRoot,
         autoReconnect: false,
       },
       {

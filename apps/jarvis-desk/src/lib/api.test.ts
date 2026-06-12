@@ -42,3 +42,19 @@ describe('getSession normalizes string content to blocks', () => {
     expect(messages[0]?.content).toEqual([{ type: 'text', text: '**hi**' }])
   })
 })
+
+describe('getTree', () => {
+  it('henter entries fra /chat/tree med kind+root', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ entries: [{ name: 'src', kind: 'dir' }] }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    ))
+    vi.stubGlobal('fetch', fetchMock)
+    const { getTree } = await import('./api')
+    const out = await getTree(cfg, 'container', 'core', '')
+    expect(out).toEqual([{ name: 'src', kind: 'dir' }])
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/chat/tree?kind=container'), expect.anything(),
+    )
+  })
+})

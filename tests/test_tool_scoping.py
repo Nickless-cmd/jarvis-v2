@@ -100,3 +100,32 @@ class TestAllowlistSanity:
     def test_no_action_tools_in_base(self):
         for t in ("bash", "write_file", "edit_file", "operator_bash", "schedule_recurring"):
             assert t not in CHAT_MODE_TOOLS_BASE
+
+
+class TestCodeScope:
+    CODE_ALL = [
+        "read_file", "write_file", "edit_file", "search", "find_files", "bash",
+        "operator_read_file", "operator_write_file", "operator_bash",
+        "operator_glob", "operator_grep", "operator_list_dir",
+        "dispatch_to_claude_code", "web_search", "godnat_unrelated",
+    ]
+
+    def test_owner_code_gets_container_workstation_dispatch(self):
+        allow = allowed_tool_names(role="owner", scope="code", all_names=self.CODE_ALL)
+        assert {"read_file", "write_file", "edit_file", "bash", "search", "find_files"} <= allow
+        assert {"operator_read_file", "operator_write_file", "operator_bash"} <= allow
+        assert "dispatch_to_claude_code" in allow
+
+    def test_member_code_only_workstation_operator(self):
+        allow = allowed_tool_names(role="member", scope="code", all_names=self.CODE_ALL)
+        assert {"operator_read_file", "operator_write_file", "operator_bash",
+                "operator_glob", "operator_grep", "operator_list_dir"} <= allow
+        assert "read_file" not in allow
+        assert "write_file" not in allow
+        assert "bash" not in allow
+        assert "dispatch_to_claude_code" not in allow
+
+    def test_code_excludes_unrelated(self):
+        for role in ("owner", "member"):
+            allow = allowed_tool_names(role=role, scope="code", all_names=self.CODE_ALL)
+            assert "godnat_unrelated" not in allow

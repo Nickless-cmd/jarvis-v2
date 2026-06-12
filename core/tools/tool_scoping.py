@@ -89,6 +89,17 @@ CHAT_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     "read_file", "search", "find_files",
 })
 
+# Code-mode allowlist. Owner = container + workstation + dispatch; member/guest =
+# kun workstation (operator-bridge, sandboxet til deres egen maskine).
+CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
+    "operator_read_file", "operator_write_file", "operator_edit_file",
+    "operator_bash", "operator_glob", "operator_grep", "operator_list_dir",
+})
+CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
+    "read_file", "write_file", "edit_file", "search", "find_files", "bash",
+    "dispatch_to_claude_code",
+})
+
 
 # --- Scope ContextVar (sættes ved request-entry, læses i get_tool_definitions) ---
 _scope_var: contextvars.ContextVar[str] = contextvars.ContextVar(
@@ -129,6 +140,14 @@ def allowed_tool_names(
     role = (role or "").strip().lower()
     names = set(all_names)
     is_owner = role in ("", "owner")
+
+    if scope == "code":
+        allowed = set(CODE_MODE_TOOLS_BASE)
+        if is_owner:
+            allowed |= CODE_MODE_OWNER_EXTRA
+        else:
+            allowed -= OWNER_ONLY_TOOLS
+        return allowed & names
 
     if scope == "chat":
         allowed = set(CHAT_MODE_TOOLS_BASE)

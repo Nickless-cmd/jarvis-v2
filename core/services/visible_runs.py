@@ -1780,6 +1780,17 @@ async def _stream_visible_run(
                                     "delta": _a_item.delta,
                                 })
                             continue
+                        if isinstance(_a_item, _vf.FollowupReasoningDelta):
+                            # Live reasoning-trace (thinking-mode) → frontend viser
+                            # et foldbart 'tænker…'-felt. Kun visning; persistens
+                            # sker via reasoning_content i FollowupDone.
+                            if _a_item.delta:
+                                yield _sse("reasoning_delta", {
+                                    "type": "reasoning_delta",
+                                    "run_id": run.run_id,
+                                    "delta": _a_item.delta,
+                                })
+                            continue
                         if isinstance(_a_item, _vf.FollowupToolCalls):
                             _a_tool_calls.extend(_a_item.tool_calls)
                             continue

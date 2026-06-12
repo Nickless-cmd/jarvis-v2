@@ -305,3 +305,26 @@ async def test_echo_line_filtered_from_text_stream():
     assert "[read_file]:" not in text
     assert "Resultat:" in text
     assert "Færdig." in text
+
+
+@pytest.mark.asyncio
+async def test_reasoning_delta_becomes_thinking_block_before_text():
+    """Live reasoning_delta → en thinking-block FØR svar-teksten (foldbart felt)."""
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("reasoning_delta", {"type": "reasoning_delta", "run_id": "r", "delta": "Lad mig tænke… "})
+        yield _legacy_sse("reasoning_delta", {"type": "reasoning_delta", "run_id": "r", "delta": "tjek X."})
+        yield _legacy_sse("delta", {"type": "delta", "run_id": "r", "delta": "Svaret."})
+        yield _legacy_sse("done", {"type": "done", "run_id": "r", "status": "completed", "input_tokens": 1, "output_tokens": 1})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="r", model="m", provider="p", lane="l", session_id="s", ping_interval_s=999.0,
+    )))
+
+    # Thinking-block åbnes først, med thinking_delta, og lukkes før text-blocken.
+    starts = [e for e in events if e[0] == "content_block_start"]
+    assert starts[0][1]["content_block"]["type"] == "thinking"
+    assert starts[1][1]["content_block"]["type"] == "text"
+    think_deltas = [e for e in events if e[0] == "content_block_delta" and e[1]["delta"]["type"] == "thinking_delta"]
+    assert "".join(d[1]["delta"]["thinking"] for d in think_deltas) == "Lad mig tænke… tjek X."
+    text_deltas = [e for e in events if e[0] == "content_block_delta" and e[1]["delta"]["type"] == "text_delta"]
+    assert "".join(d[1]["delta"]["text"] for d in text_deltas) == "Svaret."

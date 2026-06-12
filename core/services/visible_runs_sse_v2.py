@@ -201,6 +201,8 @@ async def translate_to_v2(
         "message_started": False,
         "text_block_open": False,
         "text_block_index": 0,
+        "thinking_block_open": False,
+        "thinking_block_index": 0,
         "next_index": 0,
         "input_tokens": 0,
         "output_tokens": 0,
@@ -240,12 +242,26 @@ async def translate_to_v2(
                 str(_state["session_id"]) if _state["session_id"] is not None else None
             ),
         ).to_sse_line())
-        # Åbn første text-block straks så delta'er kan lande
-        await _open_text_block()
+        # Text-block åbnes lazily ved første delta (_ensure_text_block_open) —
+        # så en evt. reasoning/thinking-block kan komme FØR svar-teksten.
 
     async def _ensure_text_block_open() -> None:
         if not _state["text_block_open"]:
             await _open_text_block()
+
+    # ── Thinking/reasoning-block (live deepseek-reasoning) ──
+    async def _open_thinking_block() -> None:
+        idx = _alloc_index()
+        _state["thinking_block_index"] = idx
+        await queue.put(ContentBlockStart(index=idx, block_type="thinking").to_sse_line())
+        _state["thinking_block_open"] = True
+
+    async def _close_thinking_block_if_open() -> None:
+        if _state["thinking_block_open"]:
+            await queue.put(ContentBlockStop(
+                index=int(_state["thinking_block_index"]),
+            ).to_sse_line())
+            _state["thinking_block_open"] = False
 
     async def _close_text_block_if_open() -> None:
         if _state["text_block_open"]:
@@ -284,6 +300,7 @@ async def translate_to_v2(
             if v:
                 tool_input[k] = v
 
+        await _close_thinking_block_if_open()
         await _close_text_block_if_open()
         idx = _alloc_index()
         await queue.put(ContentBlockStart(
@@ -323,8 +340,22 @@ async def translate_to_v2(
                 if event_name == "delta" and payload.get("run_id"):
                     _state["run_id"] = _state["run_id"] or str(payload.get("run_id") or "")
 
-                if event_name == "delta":
+                if event_name == "reasoning_delta":
+                    # Live thinking-trace → foldbart 'tænker…'-felt i frontend.
                     await _emit_message_start_if_needed()
+                    if not _state["thinking_block_open"]:
+                        await _open_thinking_block()
+                    chunk = str(payload.get("delta") or "")
+                    if chunk:
+                        await queue.put(ContentBlockDelta(
+                            index=int(_state["thinking_block_index"]),
+                            delta_type="thinking_delta",
+                            content=chunk,
+                        ).to_sse_line())
+
+                elif event_name == "delta":
+                    await _emit_message_start_if_needed()
+                    await _close_thinking_block_if_open()  # tanke færdig → nu svaret
                     await _ensure_text_block_open()
                     raw_text = str(payload.get("delta") or "")
                     text = echo_filter.feed(raw_text)
@@ -346,6 +377,7 @@ async def translate_to_v2(
 
                 elif event_name == "done":
                     await _emit_message_start_if_needed()
+                    await _close_thinking_block_if_open()
                     await _close_text_block_if_open()
                     _state["input_tokens"] = int(payload.get("input_tokens") or 0)
                     _state["output_tokens"] = int(payload.get("output_tokens") or 0)

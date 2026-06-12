@@ -47,6 +47,16 @@ class FollowupDelta:
 
 
 @dataclass(frozen=True, slots=True)
+class FollowupReasoningDelta:
+    """A chunk of REASONING (thinking-mode trace) streamed token-for-token.
+    Surfaces deepseek's reasoning_content live så frontenden kan vise et
+    foldbart 'tænker…'-felt mens det sker. Akkumuleres stadig til FollowupDone
+    for persistens; dette er kun til live-visning."""
+
+    delta: str
+
+
+@dataclass(frozen=True, slots=True)
 class FollowupToolCalls:
     """Model requested one or more additional tool calls in this round."""
 
@@ -752,6 +762,7 @@ class OpenAICompatFollowupAdapter:
                     reasoning_delta = _extract_chat_completion_reasoning(event)
                     if reasoning_delta:
                         reasoning_parts.append(reasoning_delta)
+                        yield FollowupReasoningDelta(delta=reasoning_delta)
                     _merge_openai_tool_call_deltas(tool_call_accumulator, event)
                     if _chat_completion_stream_is_terminal(event):
                         break

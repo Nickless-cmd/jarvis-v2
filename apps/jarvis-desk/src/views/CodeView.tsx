@@ -12,8 +12,9 @@ import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { ApprovalCard } from '../components/rich/ApprovalCard'
 import { PresenceDot } from '../components/shell/PresenceDot'
+import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { CodePanel } from '../components/panel/CodePanel'
-import { getWorkspaceTrust, setWorkspaceTrust } from '../lib/api'
+import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo } from '../lib/api'
 
 const OWNER_ROOTS = ['docs', 'workspace', 'core', 'apps', 'scripts'] as const
 const MEMBER_ROOTS = ['workspace'] as const
@@ -53,7 +54,15 @@ export function CodeView({
   const [wsPath, setWsPath] = useState<string>(savedWs.wsPath || '') // valgt workstation-mappe
   const [filesOpen, setFilesOpen] = useState(false) // fil-træ foldet ind fra start
   const [trusted, setTrusted] = useState<boolean | null>(null)
+  const [compactAt, setCompactAt] = useState(0)
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+
+  // Context-ring: hent autocompact-tærsklen (samme som chat).
+  useEffect(() => {
+    if (!config) return
+    getContextInfo(config).then((r) => setCompactAt(r.compact_at)).catch(() => setCompactAt(0))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config?.apiBaseUrl, config?.authToken])
 
   // Persistér workspace-valget ved enhver ændring.
   useEffect(() => {
@@ -190,7 +199,7 @@ export function CodeView({
       getSessionId={async () => sessionId ?? (await sessions.create('Kode-session')).id}
       showPermissions={true}
       contextTokens={stream.usage.input + stream.usage.cacheHit}
-      compactAt={0}
+      compactAt={compactAt}
     />
   )
 
@@ -219,6 +228,7 @@ export function CodeView({
         <span className="chat-title">Code · {ready ? effRoot : 'vælg workspace'}</span>
       </div>
       <div className="chatview-head-right">
+        {config && <ConnectionPill config={config} />}
         <button
           type="button"
           className={`panel-toggle ${filesOpen ? 'active' : ''}`}

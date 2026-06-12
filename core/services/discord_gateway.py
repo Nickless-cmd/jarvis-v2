@@ -238,6 +238,16 @@ def send_discord_message(channel_id: int, text: str) -> None:
     Runs locally if this process owns the gateway; otherwise dispatches
     to the runtime process via internal HTTP.
     """
+    # Communication guard — backstop: scrub hård afslutnings-fraser
+    # (godnat/sov godt) før de når Bjørn. Bløde fraser røres ikke.
+    try:
+        from core.services.communication_guard import guard_channel_text
+        scrubbed = guard_channel_text(text, "discord")
+        if text and not scrubbed.strip():
+            return  # hele beskeden var en afslutnings-frase → send ingenting
+        text = scrubbed
+    except Exception:
+        pass
     if _is_gateway_owner():
         _outbound_queue.put_nowait((channel_id, text))
         return

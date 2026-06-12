@@ -77,6 +77,16 @@ def send_session_notification(
     if not content:
         return {"status": "error", "error": "empty content"}
 
+    # Communication guard — backstop: scrub hård afslutnings-fraser fra
+    # proaktive notifikationer (godnat/sov godt). Bløde fraser røres ikke.
+    try:
+        from core.services.communication_guard import guard_channel_text
+        content = guard_channel_text(content, "notification").strip()
+        if not content:
+            return {"status": "blocked", "error": "communication-guard-blocked"}
+    except Exception:
+        pass
+
     # Use the pinned session if set (e.g. the session currently active in the user's browser),
     # otherwise fall back to the most recently updated session that has user messages
     # (to avoid sending to autonomous-run-only sessions which the user may not be watching).

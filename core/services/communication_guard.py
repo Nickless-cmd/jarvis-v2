@@ -347,6 +347,80 @@ def enforce_outgoing(text: str | None) -> dict[str, Any]:
     return {**clean, "soft_matches": soft_matches}
 
 
+def record_breach(channel: str, removed: list[str], *, original: str = "") -> None:
+    """Log en boundary-breach (hård frase fanget ved kanal-dispatch).
+
+    Best-effort: eventbus + logger. Bruges til observability + så Jarvis
+    kan se mønsteret. Aldrig fatal."""
+    if not removed:
+        return
+    try:
+        logger.info(
+            "comm_guard breach: channel=%s removed=%s", channel, removed,
+        )
+    except Exception:
+        pass
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("communication.boundary_breach", {
+            "channel": channel,
+            "removed": removed,
+            "sample": (original or "")[:200],
+        })
+    except Exception:
+        pass
+
+
+def guard_channel_text(text: str | None, channel: str) -> str:
+    """Convenience for kanal-dispatch: scrub hård afslutnings-fraser fra
+    udga°ende tekst, log breach, returnér den rensede tekst.
+
+    Returnerer den oprindelige tekst uændret hvis ingen hård frase findes."""
+    scrubbed, removed = scrub_outgoing(text)
+    if removed:
+        record_breach(channel, removed, original=text or "")
+    return scrubbed
+
+
+def _active_hard_phrases(now: datetime) -> list[str]:
+    return [
+        t["phrase"].lower()
+        for t in _load()
+        if _is_hard(t) and _trigger_active(t, now)
+    ]
+
+
+def scrub_outgoing(text: str | None) -> tuple[str, list[str]]:
+    """Kanal-backstop: fjern den SÆTNING/linje der indeholder en hård
+    afslutnings-frase, behold resten. Bløde fraser røres ikke.
+
+    Returns:
+        (scrubbed_text, removed_phrases)
+    """
+    if not text or not text.strip():
+        return (text or "", [])
+
+    hard = _active_hard_phrases(datetime.now(UTC))
+    if not hard:
+        return (text, [])
+
+    # Split i segmenter på sætnings-/linjeskel, behold afgrænserne så
+    # rekonstruktionen ikke ødelægger formatering for de bevarede dele.
+    segments = re.split(r"(?<=[.!?])\s+|\n+", text)
+    kept: list[str] = []
+    removed: list[str] = []
+    for seg in segments:
+        low = seg.lower()
+        hit = next((p for p in hard if p in low), None)
+        if hit:
+            removed.append(hit)
+        else:
+            kept.append(seg)
+
+    scrubbed = " ".join(s for s in kept if s.strip()).strip()
+    return (scrubbed, removed)
+
+
 def prompt_section() -> str:
     """Bygger en høj-salient påmindelse til system-prompten med de aktive
     grænser. Hårde fraser = 'sig ALDRIG'; bløde = 'omformulér'.

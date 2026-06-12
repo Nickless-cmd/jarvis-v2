@@ -373,3 +373,65 @@ class TestPromptSection:
         for t in list(list_triggers()):
             remove_trigger(t["phrase"])
         assert prompt_section() == ""
+
+
+class TestScrubOutgoing:
+    """scrub_outgoing() er kanal-backstoppen: fjerner den SÆTNING der
+    indeholder en hård afslutnings-frase, men beholder resten. Bløde fraser
+    røres ikke."""
+
+    def test_strips_closing_keeps_content(self):
+        from core.services.communication_guard import scrub_outgoing
+        scrubbed, removed = scrub_outgoing("Opgaven er løst. Godnat, Bjørn.")
+        assert "Opgaven er løst" in scrubbed
+        assert "godnat" not in scrubbed.lower()
+        assert "godnat" in removed
+
+    def test_only_closing_yields_empty(self):
+        from core.services.communication_guard import scrub_outgoing
+        scrubbed, removed = scrub_outgoing("Godnat!")
+        assert scrubbed.strip() == ""
+        assert "godnat" in removed
+
+    def test_soft_phrase_untouched(self):
+        from core.services.communication_guard import scrub_outgoing
+        scrubbed, removed = scrub_outgoing("Lad mig tjekke det for dig.")
+        assert scrubbed == "Lad mig tjekke det for dig."
+        assert removed == []
+
+    def test_safe_text_unchanged(self):
+        from core.services.communication_guard import scrub_outgoing
+        txt = "Cachen kører. Testene er grønne."
+        scrubbed, removed = scrub_outgoing(txt)
+        assert scrubbed == txt
+        assert removed == []
+
+    def test_newline_separated_signoff(self):
+        from core.services.communication_guard import scrub_outgoing
+        scrubbed, removed = scrub_outgoing("Her er rapporten.\nSov godt.")
+        assert "Her er rapporten" in scrubbed
+        assert "sov godt" not in scrubbed.lower()
+
+
+class TestGuardChannelText:
+    """guard_channel_text() er convenience-wrapperen kanalerne kalder."""
+
+    def test_scrubs_and_returns_clean(self):
+        from core.services.communication_guard import guard_channel_text
+        out = guard_channel_text("Klar. Godnat Bjørn.", "discord")
+        assert "godnat" not in out.lower()
+        assert "Klar" in out
+
+    def test_passthrough_safe(self):
+        from core.services.communication_guard import guard_channel_text
+        out = guard_channel_text("Status: alt grønt.", "telegram")
+        assert out == "Status: alt grønt."
+
+    def test_soft_phrase_passthrough(self):
+        from core.services.communication_guard import guard_channel_text
+        out = guard_channel_text("Lad mig tjekke det.", "notification")
+        assert out == "Lad mig tjekke det."
+
+    def test_none_safe(self):
+        from core.services.communication_guard import guard_channel_text
+        assert guard_channel_text(None, "discord") == ""

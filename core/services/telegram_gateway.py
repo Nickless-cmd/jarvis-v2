@@ -270,6 +270,16 @@ def send_message(text: str, chat_id: str | int | None = None, parse_mode: str = 
     if not cfg:
         return {"status": "error", "reason": "telegram-not-configured"}
 
+    # Communication guard — backstop: scrub hård afslutnings-fraser.
+    try:
+        from core.services.communication_guard import guard_channel_text
+        scrubbed = guard_channel_text(text, "telegram")
+        if text and not scrubbed.strip():
+            return {"status": "skipped", "reason": "communication-guard-blocked"}
+        text = scrubbed
+    except Exception:
+        pass
+
     target = str(chat_id) if chat_id else cfg["chat_id"]
     payload: dict = {"chat_id": target, "text": text}
     if parse_mode:

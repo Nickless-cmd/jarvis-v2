@@ -14,10 +14,13 @@ class TestDaemonTick:
         assert "expired_removed" in result
 
     def test_returns_error_on_import_failure(self):
-        """Hvis daemon-import fejler, returneres en fejlstatus uden crash."""
+        """Hvis cleanup_expired fejler, returneres en fejlstatus uden crash.
+
+        Daemon'en importerer cleanup_expired LOKALT inde i tick(), så vi
+        patcher kilde-modulet (communication_guard), ikke daemon-modulet."""
         with mock.patch(
-            "core.services.communication_guard_daemon.cleanup_expired",
-            side_effect=ImportError("fake"),
+            "core.services.communication_guard.cleanup_expired",
+            side_effect=RuntimeError("fake"),
         ):
             from core.services.communication_guard_daemon import tick
 

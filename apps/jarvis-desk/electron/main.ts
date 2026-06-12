@@ -438,15 +438,21 @@ async function bootstrapBridge(): Promise<void> {
       })
       if (r.ok) userId = String((await r.json() as { user_id?: string })?.user_id || '')
     } catch { /* serveren udleder user_id fra token-claims hvis tom */ }
-    const { JarvisXBridge } = await import('./bridge.js')
+    const bridgeMod = await import('./bridge.js')
     if (activeBridge) { try { activeBridge.stop() } catch { /* noop */ } }
-    activeBridge = new JarvisXBridge({
+    activeBridge = new bridgeMod.JarvisXBridge({
       apiBaseUrl: cfg.apiBaseUrl,
       userId,
       authToken: cfg.authToken ?? undefined,
       log: (m: string) => console.log(`[bridge] ${m}`),
     })
     activeBridge.start()
+    // Resurrect any reminders/wakeups left over from previous runs.
+    // Past-due ones fire immediately as catch-up; future ones get fresh
+    // setTimeout entries. Safe to call multiple times — idempotent.
+    try { bridgeMod.loadAndScheduleEvents?.() } catch (e) {
+      console.warn('loadAndScheduleEvents failed:', e)
+    }
   } catch (e) {
     console.warn('bridge bootstrap failed:', e)
   }

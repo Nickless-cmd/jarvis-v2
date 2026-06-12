@@ -80,6 +80,7 @@ export async function approvalRace(
   return choice.response === acceptButtonIndex
 }
 import { spawn } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import WebSocket from 'ws'
 
 // Module-level reference to the currently-connected bridge's config so
@@ -1614,7 +1615,387 @@ const handlers: Record<string, ToolHandler> = {
     fileLog(`operator_record_audio: recorded ${durationS}s → ${outputPath} (${sizeBytes} bytes)`)
     return { recorded: true, path: outputPath, duration_s: durationS, size_bytes: sizeBytes }
   },
+
+  // ── Scheduled events: reminders + wakeups ────────────────────────────
+  // Two tool families that share one underlying timer registry:
+  //   operator_reminder  — fire a toast at time T (Jarvis nudge to user)
+  //   operator_wakeup    — same, but tagged 'wakeup' so future versions
+  //                        can POST back to backend ("Jarvis, you asked
+  //                        me to ping you at 8 — go check chat")
+  // Persisted to userData so events survive app restart. setTimeout caps
+  // at ~25 days, so super-long delays chain via reschedule on tick.
+
+  operator_reminder: async (args) => {
+    const due_at = parseEventWhen(args.when)
+    const ev = createScheduledEvent({
+      kind: 'reminder',
+      due_at,
+      title: String(args.title ?? 'Påmindelse'),
+      message: String(args.message ?? ''),
+    })
+    return scheduledEventToReturn(ev)
+  },
+
+  operator_wakeup: async (args) => {
+    const due_at = parseEventWhen(args.when)
+    const ev = createScheduledEvent({
+      kind: 'wakeup',
+      due_at,
+      title: String(args.title ?? 'Jarvis-wakeup'),
+      message: String(args.message ?? 'Tid til at vågne'),
+    })
+    return scheduledEventToReturn(ev)
+  },
+
+  operator_scheduled_list: async (args) => {
+    const kind = args.kind ? String(args.kind) : null
+    const includeFired = Boolean(args.include_fired)
+    const all = Array.from(_scheduledEvents.values())
+    const filtered = all.filter((e) => {
+      if (kind && e.kind !== kind) return false
+      if (!includeFired && e.fired_at != null) return false
+      return true
+    })
+    return {
+      count: filtered.length,
+      events: filtered.map((e) => ({
+        id: e.id,
+        kind: e.kind,
+        due_at_iso: new Date(e.due_at).toISOString(),
+        title: e.title,
+        message: e.message,
+        created_at_iso: new Date(e.created_at).toISOString(),
+        fired_at_iso: e.fired_at ? new Date(e.fired_at).toISOString() : null,
+      })),
+    }
+  },
+
+  operator_scheduled_cancel: async (args) => {
+    const id = String(args.id ?? '').trim()
+    if (!id) throw new Error('id is required')
+    const t = _eventTimers.get(id)
+    if (t) { clearTimeout(t); _eventTimers.delete(id) }
+    const existed = _scheduledEvents.delete(id)
+    if (existed) saveScheduledEvents()
+    return { cancelled: existed, id }
+  },
+
+  // ── Supervised processes: long-running spawn + status/output/kill ─────
+  // Fills the gap between operator_bash (synchronous, blocks until done)
+  // and operator_launch_app (fire-and-forget, no follow-up). spawn returns
+  // a process_id; status / output / kill use it to query or terminate.
+
+  operator_process_spawn: async (args) => {
+    const cmd = String(args.cmd ?? '').trim()
+    if (!cmd) throw new Error('cmd is required')
+    const cwd = args.cwd ? resolveOperatorPath(args.cwd) : homedir()
+    const label = String(args.label ?? cmd.slice(0, 60))
+    const { randomUUID: ruuid } = await import('node:crypto')
+    const id = ruuid()
+    const { tmpdir: tDir } = await import('node:os')
+    const logDir = join(tDir(), 'jarvisx-processes')
+    mkdirSync(logDir, { recursive: true })
+    const logPath = join(logDir, `${id}.log`)
+    const { createWriteStream } = await import('node:fs')
+    const out = createWriteStream(logPath, { flags: 'a' })
+    out.write(`[jarvisx supervised process ${id}]\ncmd: ${cmd}\ncwd: ${cwd}\nstarted_at: ${new Date().toISOString()}\n──── output ────\n`)
+    const child = spawn(cmd, {
+      cwd,
+      shell: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+      env: process.env,
+    })
+    if (child.stdout) child.stdout.pipe(out, { end: false })
+    if (child.stderr) child.stderr.pipe(out, { end: false })
+    const proc: SupervisedProcess = {
+      id,
+      pid: child.pid ?? null,
+      label,
+      cmd,
+      cwd,
+      started_at: Date.now(),
+      log_path: logPath,
+      child,
+    }
+    child.on('exit', (code, signal) => {
+      proc.exit_code = code
+      proc.finished_at = Date.now()
+      try { out.end(`\n──── exited (code=${code}, signal=${signal}) at ${new Date().toISOString()} ────\n`) } catch {}
+      fileLog(`operator_process: ${id} exited code=${code}`)
+    })
+    child.on('error', (err) => {
+      try { out.write(`\n──── spawn error: ${err.message} ────\n`) } catch {}
+      proc.exit_code = -1
+      proc.finished_at = Date.now()
+      fileLog(`operator_process: ${id} spawn error: ${err.message}`)
+    })
+    _processes.set(id, proc)
+    fileLog(`operator_process_spawn: ${id} pid=${proc.pid} cmd=${cmd.slice(0, 80)}`)
+    return { id, pid: proc.pid, label, log_path: logPath, started_at_iso: new Date(proc.started_at).toISOString() }
+  },
+
+  operator_process_status: async (args) => {
+    const id = String(args.id ?? '').trim()
+    const p = _processes.get(id)
+    if (!p) throw new Error(`unknown process_id: ${id}`)
+    const finished = p.finished_at != null
+    let logSize = 0
+    try { logSize = statSync(p.log_path).size } catch {}
+    return {
+      id: p.id,
+      pid: p.pid,
+      label: p.label,
+      cmd: p.cmd,
+      cwd: p.cwd,
+      started_at_iso: new Date(p.started_at).toISOString(),
+      finished_at_iso: p.finished_at ? new Date(p.finished_at).toISOString() : null,
+      runtime_s: ((p.finished_at ?? Date.now()) - p.started_at) / 1000,
+      running: !finished,
+      exit_code: p.exit_code ?? null,
+      log_path: p.log_path,
+      log_size_bytes: logSize,
+    }
+  },
+
+  operator_process_output: async (args) => {
+    const id = String(args.id ?? '').trim()
+    const p = _processes.get(id)
+    if (!p) throw new Error(`unknown process_id: ${id}`)
+    const since = Math.max(0, Number(args.since_offset ?? 0))
+    const maxBytes = Math.min(Math.max(Number(args.max_bytes ?? 64_000), 500), 1_000_000)
+    const { openSync, readSync, closeSync, statSync: stat2 } = await import('node:fs')
+    let size = 0
+    try { size = stat2(p.log_path).size } catch {}
+    const start = Math.min(since, size)
+    const end = Math.min(start + maxBytes, size)
+    let data = ''
+    if (end > start) {
+      const fd = openSync(p.log_path, 'r')
+      const buf = Buffer.alloc(end - start)
+      readSync(fd, buf, 0, buf.length, start)
+      closeSync(fd)
+      data = buf.toString('utf8')
+    }
+    return {
+      data,
+      next_offset: end,
+      total_size: size,
+      has_more: end < size,
+      running: p.finished_at == null,
+    }
+  },
+
+  operator_process_kill: async (args) => {
+    const id = String(args.id ?? '').trim()
+    const p = _processes.get(id)
+    if (!p) throw new Error(`unknown process_id: ${id}`)
+    const sig = args.signal ? String(args.signal) : 'SIGTERM'
+    try {
+      const killed = p.child.kill(sig as NodeJS.Signals)
+      return { killed, id, signal: sig, was_running: p.finished_at == null }
+    } catch (e) {
+      return { killed: false, id, error: e instanceof Error ? e.message : String(e) }
+    }
+  },
+
+  operator_process_list: async (args) => {
+    const includeFinished = Boolean(args.include_finished ?? true)
+    const procs = Array.from(_processes.values()).filter((p) => includeFinished || p.finished_at == null)
+    return {
+      count: procs.length,
+      processes: procs.map((p) => ({
+        id: p.id,
+        pid: p.pid,
+        label: p.label,
+        cmd: p.cmd.slice(0, 120),
+        started_at_iso: new Date(p.started_at).toISOString(),
+        finished_at_iso: p.finished_at ? new Date(p.finished_at).toISOString() : null,
+        running: p.finished_at == null,
+        exit_code: p.exit_code ?? null,
+      })),
+    }
+  },
 }
+
+// ── Scheduled events store (reminders + wakeups) ──────────────────────
+
+interface ScheduledEvent {
+  id: string
+  kind: 'reminder' | 'wakeup'
+  due_at: number      // ms since epoch
+  title: string
+  message: string
+  created_at: number
+  fired_at?: number
+}
+
+const _scheduledEvents: Map<string, ScheduledEvent> = new Map()
+const _eventTimers: Map<string, NodeJS.Timeout> = new Map()
+
+function scheduledEventsPath(): string {
+  return join(homedir(), '.config', 'jarvisx', 'scheduled-events.json')
+}
+
+function saveScheduledEvents(): void {
+  try {
+    const p = scheduledEventsPath()
+    mkdirSync(dirname(p), { recursive: true })
+    writeFileSync(p, JSON.stringify(Array.from(_scheduledEvents.values()), null, 2), 'utf8')
+  } catch (e) {
+    fileLog(`saveScheduledEvents failed: ${e instanceof Error ? e.message : e}`)
+  }
+}
+
+function scheduleEventTimer(e: ScheduledEvent): void {
+  const existing = _eventTimers.get(e.id)
+  if (existing) clearTimeout(existing)
+  const delay = Math.max(0, e.due_at - Date.now())
+  // setTimeout max ~24.85 days. For longer delays, re-schedule mid-flight.
+  const SAFE_MAX = 2_000_000_000
+  const tickDelay = Math.min(delay, SAFE_MAX)
+  const t = setTimeout(() => {
+    if (Date.now() < e.due_at - 100) {
+      // Long-delay reschedule: not yet due, set next chunk
+      scheduleEventTimer(e)
+    } else {
+      void fireScheduledEvent(e.id)
+    }
+  }, tickDelay)
+  _eventTimers.set(e.id, t)
+}
+
+async function fireScheduledEvent(id: string): Promise<void> {
+  const e = _scheduledEvents.get(id)
+  if (!e || e.fired_at) return
+  e.fired_at = Date.now()
+  saveScheduledEvents()
+  _eventTimers.delete(id)
+  try {
+    const { Notification } = await import('electron')
+    if (Notification.isSupported()) {
+      new Notification({ title: e.title, body: e.message }).show()
+    }
+  } catch (err) {
+    fileLog(`fireScheduledEvent notification failed: ${err instanceof Error ? err.message : err}`)
+  }
+  fileLog(`fired ${e.kind} ${id}: "${e.title}" — "${e.message.slice(0, 60)}"`)
+  // Wakeups additionally try to POST back to the backend so Jarvis-side
+  // can react ("user was pinged via wakeup id X, dispatch greeting").
+  // Best-effort; failure doesn't matter for the local notification.
+  if (e.kind === 'wakeup') {
+    const cfg = _activeBridgeCfg
+    if (cfg?.apiBaseUrl) {
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (cfg.authToken) headers['Authorization'] = `Bearer ${cfg.authToken}`
+        await fetch(`${cfg.apiBaseUrl.replace(/\/$/, '')}/api/operator/wakeup-fired`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ wakeup_id: id, title: e.title, message: e.message, fired_at: e.fired_at }),
+        }).catch(() => undefined)
+      } catch {}
+    }
+  }
+}
+
+// Parse a 'when' arg: ISO string, ms-epoch number, or relative like "+5m",
+// "+1h30m", "+2d". Returns ms-since-epoch.
+function parseEventWhen(when: unknown): number {
+  if (typeof when === 'number' && Number.isFinite(when)) {
+    return when > 1e12 ? when : when * 1000
+  }
+  const str = String(when ?? '').trim()
+  if (!str) throw new Error('when is required')
+  const rel = str.match(/^\+?(?:(\d+)d)?\s*(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:(\d+)s)?$/i)
+  if (rel && (rel[1] || rel[2] || rel[3] || rel[4])) {
+    let ms = 0
+    if (rel[1]) ms += parseInt(rel[1], 10) * 86_400_000
+    if (rel[2]) ms += parseInt(rel[2], 10) * 3_600_000
+    if (rel[3]) ms += parseInt(rel[3], 10) * 60_000
+    if (rel[4]) ms += parseInt(rel[4], 10) * 1000
+    if (ms > 0) return Date.now() + ms
+  }
+  const d = new Date(str)
+  if (isNaN(d.getTime())) throw new Error(`unparseable when: "${when}"`)
+  return d.getTime()
+}
+
+function createScheduledEvent(opts: { kind: ScheduledEvent['kind']; due_at: number; title: string; message: string }): ScheduledEvent {
+  const id = randomUUID()
+  const e: ScheduledEvent = {
+    id,
+    kind: opts.kind,
+    due_at: opts.due_at,
+    title: opts.title,
+    message: opts.message,
+    created_at: Date.now(),
+  }
+  _scheduledEvents.set(id, e)
+  saveScheduledEvents()
+  scheduleEventTimer(e)
+  fileLog(`scheduled ${e.kind} ${id} for ${new Date(e.due_at).toISOString()}`)
+  return e
+}
+
+function scheduledEventToReturn(e: ScheduledEvent): Record<string, unknown> {
+  return {
+    id: e.id,
+    kind: e.kind,
+    due_at_iso: new Date(e.due_at).toISOString(),
+    title: e.title,
+    delay_ms: e.due_at - Date.now(),
+  }
+}
+
+// Called once at app start to resurrect any reminders/wakeups left from
+// previous runs. Past-due ones fire immediately (catch-up), future ones
+// get fresh setTimeout entries.
+export function loadAndScheduleEvents(): void {
+  try {
+    const p = scheduledEventsPath()
+    if (!existsSync(p)) return
+    const raw = readFileSync(p, 'utf8')
+    const arr = JSON.parse(raw) as ScheduledEvent[]
+    if (!Array.isArray(arr)) return
+    const now = Date.now()
+    const PURGE_FIRED_OLDER_THAN_MS = 7 * 86_400_000
+    for (const e of arr) {
+      if (e.fired_at && (now - e.fired_at) > PURGE_FIRED_OLDER_THAN_MS) continue
+      _scheduledEvents.set(e.id, e)
+      if (!e.fired_at) {
+        if (e.due_at <= now) {
+          void fireScheduledEvent(e.id)
+        } else {
+          scheduleEventTimer(e)
+        }
+      }
+    }
+    // Re-save with purged entries
+    saveScheduledEvents()
+    fileLog(`loadAndScheduleEvents: resurrected ${_scheduledEvents.size} entries`)
+  } catch (e) {
+    fileLog(`loadAndScheduleEvents failed: ${e instanceof Error ? e.message : e}`)
+  }
+}
+
+// ── Supervised process registry ───────────────────────────────────────
+
+interface SupervisedProcess {
+  id: string
+  pid: number | null
+  label: string
+  cmd: string
+  cwd: string
+  started_at: number
+  finished_at?: number
+  exit_code?: number | null
+  log_path: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  child: any
+}
+
+const _processes: Map<string, SupervisedProcess> = new Map()
 
 // ── Browser-session singleton helpers ───────────────────────────────────
 

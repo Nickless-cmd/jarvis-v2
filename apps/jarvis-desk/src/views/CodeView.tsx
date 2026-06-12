@@ -42,12 +42,25 @@ export function CodeView({
   const serverRoots = isOwner ? OWNER_ROOTS : MEMBER_ROOTS
   const serverLabel = isOwner ? 'Server' : 'Mit workspace'
 
-  const [kind, setKind] = useState<WsKind>('container')
-  const [root, setRoot] = useState<string>(serverRoots[0])
-  const [wsPath, setWsPath] = useState<string>('') // valgt workstation-mappe
+  // Husk sidste workspace-valg på tværs af genstart (kind/root/sti). Trust ligger
+  // server-side; uden dette mistede man bare SELEKTIONEN og skulle re-vælge mappe.
+  const savedWs = (() => {
+    try { return JSON.parse(localStorage.getItem('jarvis-desk:code-ws') || '{}') } catch { return {} }
+  })() as { kind?: WsKind; root?: string; wsPath?: string }
+
+  const [kind, setKind] = useState<WsKind>(savedWs.kind === 'workstation' ? 'workstation' : 'container')
+  const [root, setRoot] = useState<string>(savedWs.root && serverRoots.includes(savedWs.root as never) ? savedWs.root : serverRoots[0])
+  const [wsPath, setWsPath] = useState<string>(savedWs.wsPath || '') // valgt workstation-mappe
   const [filesOpen, setFilesOpen] = useState(false) // fil-træ foldet ind fra start
   const [trusted, setTrusted] = useState<boolean | null>(null)
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+
+  // Persistér workspace-valget ved enhver ændring.
+  useEffect(() => {
+    try {
+      localStorage.setItem('jarvis-desk:code-ws', JSON.stringify({ kind, root, wsPath }))
+    } catch { /* localStorage utilgængelig — ignorér */ }
+  }, [kind, root, wsPath])
 
   const effRoot = kind === 'container' ? root : wsPath
   const ready = !!effRoot // workstation kræver at en mappe er valgt

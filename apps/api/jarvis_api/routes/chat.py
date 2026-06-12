@@ -94,6 +94,33 @@ async def chat_tree(kind: str = "container", root: str = "", path: str = "") -> 
     raise HTTPException(status_code=400, detail="ukendt kind")
 
 
+@router.get("/workspace-trust")
+async def get_workspace_trust(kind: str = "container", root: str = "") -> dict:
+    """Er det aktuelle workspace betroet for den indloggede bruger?"""
+    from core.identity.workspace_context import current_user_id
+    from core.services.workspace_trust import is_trusted
+    uid = current_user_id() or None
+    return {"kind": kind, "root": root, "trusted": is_trusted(uid, kind, root)}
+
+
+class WorkspaceTrustRequest(BaseModel):
+    kind: str = "container"
+    root: str = ""
+    trusted: bool = True
+
+
+@router.post("/workspace-trust")
+async def set_workspace_trust(request: WorkspaceTrustRequest) -> dict:
+    """Markér/afmarkér et workspace som betroet (skrive/exec-gate i code-mode)."""
+    from core.identity.workspace_context import current_user_id
+    from core.services.workspace_trust import set_trusted
+    if not request.root.strip():
+        raise HTTPException(status_code=400, detail="root må ikke være tom")
+    uid = current_user_id() or None
+    trusted = set_trusted(uid, request.kind, request.root, request.trusted)
+    return {"kind": request.kind, "root": request.root, "trusted": trusted}
+
+
 class ChatStreamRequest(BaseModel):
     message: str = ""
     session_id: str = ""

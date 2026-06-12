@@ -798,6 +798,28 @@ async def _stream_visible_run(
         except Exception:
             pass
 
+    # Trusted-folder kontekst (code-scope): læs session-workspace + trust-tilstand
+    # og sæt request-scopet ContextVar, så execute_tool kan gate skrive/exec.
+    # For alle andre scopes ryddes konteksten, så en tidligere code-runs trust
+    # ikke lækker ind i et chat-run i samme worker-context.
+    try:
+        from core.services.workspace_trust import (
+            set_trust_context, clear_trust_context, is_trusted,
+        )
+        if tool_scope == "code":
+            from core.services.chat_sessions import get_chat_session
+            _sess = get_chat_session(run.session_id) if run.session_id else None
+            _wk = (_sess or {}).get("workspace_kind") or ""
+            _wr = (_sess or {}).get("workspace_root") or ""
+            set_trust_context(
+                kind=_wk, root=_wr,
+                trusted=is_trusted(force_user_id, _wk, _wr),
+            )
+        else:
+            clear_trust_context()
+    except Exception:
+        pass
+
     # ── /compact command ──────────────────────────────────────────────────
     if run.user_message.strip().lower() == "/compact":
         run.user_message = _handle_compact_command(run)

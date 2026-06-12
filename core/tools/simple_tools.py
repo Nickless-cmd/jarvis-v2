@@ -3585,6 +3585,17 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         _record_tool_outcome_memory(name, arguments, result, mode="tool")
         return result
 
+    # Trusted-folder gate: skrive/exec i et ikke-betroet code-workspace blokeres.
+    try:
+        from core.services.workspace_trust import guard_code_write
+        _trust_block = guard_code_write(name)
+    except Exception:
+        _trust_block = None
+    if _trust_block:
+        result = {"error": _trust_block, "status": "error", "blocked": "untrusted_workspace"}
+        _record_tool_outcome_memory(name, arguments, result, mode="tool")
+        return result
+
     event_bus.publish("tool.invoked", {
         "tool": name,
         "arguments": {k: str(v)[:100] for k, v in arguments.items()},

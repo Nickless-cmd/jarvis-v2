@@ -50,7 +50,7 @@
 - Modify: `core/tools/tool_scoping.py`
 - Test: `tests/test_tool_scoping.py`
 
-- [ ] **Step 1: Write the failing tests** — append to `tests/test_tool_scoping.py`:
+- [x] **Step 1: Write the failing tests** — append to `tests/test_tool_scoping.py`:
 
 ```python
 class TestCodeScope:
@@ -82,12 +82,12 @@ class TestCodeScope:
             assert "godnat_unrelated" not in allow
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (`allowed_tool_names` ignores scope="code", returns role-only set)
+- [x] **Step 2: Run — expect FAIL** (`allowed_tool_names` ignores scope="code", returns role-only set)
 
 Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_tool_scoping.py::TestCodeScope -q`
 Expected: FAIL (member gets read_file/bash because scope="code" not handled)
 
-- [ ] **Step 3: Implement** — in `core/tools/tool_scoping.py`, add the sets after `CHAT_MODE_OWNER_EXTRA`:
+- [x] **Step 3: Implement** — in `core/tools/tool_scoping.py`, add the sets after `CHAT_MODE_OWNER_EXTRA`:
 
 ```python
 # Code-mode allowlist. Owner = container + workstation + dispatch.
@@ -115,12 +115,12 @@ Then in `allowed_tool_names`, add a branch BEFORE the existing `if scope == "cha
         return allowed & names
 ```
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
 Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_tool_scoping.py -q`
 Expected: PASS (all, incl. existing chat tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/tools/tool_scoping.py tests/test_tool_scoping.py
@@ -135,7 +135,7 @@ git commit -m "feat(code): tool_scope=code allowlist (owner container+workstatio
 - Modify: `core/runtime/db.py` (near chat_sessions table, ~line 474), `core/services/chat_sessions.py`
 - Test: `tests/test_chat_sessions.py`
 
-- [ ] **Step 1: Write the failing test** — append to `tests/test_chat_sessions.py`:
+- [x] **Step 1: Write the failing test** — append to `tests/test_chat_sessions.py`:
 
 ```python
 def test_create_session_with_workspace(isolated_runtime):
@@ -157,12 +157,12 @@ def test_set_session_workspace(isolated_runtime):
     assert full["workspace_root"] == "/home/bs/proj"
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (`create_chat_session` has no workspace kwargs)
+- [x] **Step 2: Run — expect FAIL** (`create_chat_session` has no workspace kwargs)
 
 Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_chat_sessions.py::test_create_session_with_workspace -q`
 Expected: FAIL (TypeError: unexpected keyword argument 'workspace_kind')
 
-- [ ] **Step 3a: Add columns migration** — in `core/runtime/db.py`, add this function (near other `_ensure_*` helpers) and call it wherever `chat_sessions` is ensured (right after the `CREATE TABLE chat_sessions` block, ~line 482):
+- [x] **Step 3a: Add columns migration** — in `core/runtime/db.py`, add this function (near other `_ensure_*` helpers) and call it wherever `chat_sessions` is ensured (right after the `CREATE TABLE chat_sessions` block, ~line 482):
 
 ```python
 def _ensure_chat_session_workspace_columns(conn) -> None:
@@ -179,7 +179,7 @@ Call it right after the chat_sessions `conn.execute(CREATE TABLE ...)` (in the s
         _ensure_chat_session_workspace_columns(conn)
 ```
 
-- [ ] **Step 3b: Extend chat_sessions service** — in `core/services/chat_sessions.py`:
+- [x] **Step 3b: Extend chat_sessions service** — in `core/services/chat_sessions.py`:
 
 Change `create_chat_session` signature + INSERT:
 
@@ -224,12 +224,12 @@ def set_session_workspace(session_id: str, *, kind: str | None, root: str | None
 
 In `get_chat_session`, ensure the SELECT includes `workspace_kind, workspace_root` and the returned dict carries them (add to the `SELECT` column list + the dict build). Same for `_session_summary` if list should expose them (only `workspace_kind` needed for the sidebar mode-icon — include both, harmless).
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
 Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_chat_sessions.py -q`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/runtime/db.py core/services/chat_sessions.py tests/test_chat_sessions.py
@@ -244,7 +244,7 @@ git commit -m "feat(code): per-session workspace binding (workspace_kind/root co
 - Modify: `apps/api/jarvis_api/routes/chat.py` (ChatStreamRequest, POST /sessions), `apps/api/jarvis_api/routes/chat_stream_v2.py`, `core/services/visible_runs.py` (already accepts tool_scope)
 - Test: `tests/test_chat_routes_workspace.py` (create)
 
-- [ ] **Step 1: Write the failing test** — `tests/test_chat_routes_workspace.py`:
+- [x] **Step 1: Write the failing test** — `tests/test_chat_routes_workspace.py`:
 
 ```python
 from fastapi.testclient import TestClient
@@ -266,12 +266,12 @@ def test_create_session_persists_workspace(isolated_runtime):
 
 (If the app has no `create_app` factory, import the module-level `app` instead: `from apps.api.jarvis_api.app import app`.)
 
-- [ ] **Step 2: Run — expect FAIL** (POST /sessions ignores workspace fields)
+- [x] **Step 2: Run — expect FAIL** (POST /sessions ignores workspace fields)
 
 Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_chat_routes_workspace.py -q`
 Expected: FAIL (workspace_kind is None)
 
-- [ ] **Step 3a: Extend ChatStreamRequest + ChatSessionCreateRequest** in `apps/api/jarvis_api/routes/chat.py`:
+- [x] **Step 3a: Extend ChatStreamRequest + ChatSessionCreateRequest** in `apps/api/jarvis_api/routes/chat.py`:
 
 ```python
 # ChatStreamRequest: add (after mode: str = ""):
@@ -297,7 +297,7 @@ async def chat_create_session(request: ChatSessionCreateRequest) -> dict:
     )}
 ```
 
-- [ ] **Step 3b: Map mode=code → tool_scope="code"** in `apps/api/jarvis_api/routes/chat_stream_v2.py`. Replace the existing scope line:
+- [x] **Step 3b: Map mode=code → tool_scope="code"** in `apps/api/jarvis_api/routes/chat_stream_v2.py`. Replace the existing scope line:
 
 ```python
     _m = (request.mode or "").strip().lower()
@@ -306,12 +306,12 @@ async def chat_create_session(request: ChatSessionCreateRequest) -> dict:
 
 (start_visible_run already takes `tool_scope=_tool_scope` — unchanged.)
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
 Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_chat_routes_workspace.py -q`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/api/jarvis_api/routes/chat.py apps/api/jarvis_api/routes/chat_stream_v2.py tests/test_chat_routes_workspace.py
@@ -330,7 +330,7 @@ git commit -m "feat(code): plumb mode=code→tool_scope + workspace on session c
 - Modify: `apps/api/jarvis_api/routes/chat.py`
 - Test: `tests/test_chat_tree.py` (create)
 
-- [ ] **Step 1: Write the failing test** — `tests/test_chat_tree.py`:
+- [x] **Step 1: Write the failing test** — `tests/test_chat_tree.py`:
 
 ```python
 from fastapi.testclient import TestClient
@@ -352,12 +352,12 @@ def test_tree_container_rejects_outside_jail():
     assert r.status_code == 403
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (no /chat/tree route → 404)
+- [x] **Step 2: Run — expect FAIL** (no /chat/tree route → 404)
 
 Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_chat_tree.py::test_tree_container_lists_root_entries -q`
 Expected: FAIL (404)
 
-- [ ] **Step 3: Implement** — in `apps/api/jarvis_api/routes/chat.py`, reuse `_FILE_ROOTS` + `_repo_root()` (already defined for /chat/file). Add (register BEFORE `/sessions/{session_id}` is irrelevant — `/tree` is its own path; place near `/chat/file`):
+- [x] **Step 3: Implement** — in `apps/api/jarvis_api/routes/chat.py`, reuse `_FILE_ROOTS` + `_repo_root()` (already defined for /chat/file). Add (register BEFORE `/sessions/{session_id}` is irrelevant — `/tree` is its own path; place near `/chat/file`):
 
 ```python
 @router.get("/tree")
@@ -382,12 +382,12 @@ async def chat_tree(kind: str = "container", root: str = "", path: str = "") -> 
     raise HTTPException(status_code=400, detail="ukendt kind (workstation kommer i Task 5)")
 ```
 
-- [ ] **Step 4: Run — expect PASS** (both tests)
+- [x] **Step 4: Run — expect PASS** (both tests)
 
 Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_chat_tree.py -q`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/api/jarvis_api/routes/chat.py tests/test_chat_tree.py
@@ -402,7 +402,7 @@ git commit -m "feat(code): GET /chat/tree container directory listing (path-jail
 - Modify: `apps/api/jarvis_api/routes/chat.py`
 - Test: `tests/test_chat_tree.py` (append)
 
-- [ ] **Step 1: Write the failing test** — append (mocks the operator exec so no live bridge needed):
+- [x] **Step 1: Write the failing test** — append (mocks the operator exec so no live bridge needed):
 
 ```python
 def test_tree_workstation_routes_through_operator(monkeypatch):
@@ -424,12 +424,12 @@ def test_tree_workstation_routes_through_operator(monkeypatch):
     assert kinds["src"] == "dir" and kinds["main.py"] == "file"
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (kind=workstation → 400)
+- [x] **Step 2: Run — expect FAIL** (kind=workstation → 400)
 
 Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_chat_tree.py::test_tree_workstation_routes_through_operator -q`
 Expected: FAIL (400)
 
-- [ ] **Step 3: Implement** — add a thin `_operator_exec` wrapper (testable seam) + the workstation branch in `chat_tree`. In `apps/api/jarvis_api/routes/chat.py`:
+- [x] **Step 3: Implement** — add a thin `_operator_exec` wrapper (testable seam) + the workstation branch in `chat_tree`. In `apps/api/jarvis_api/routes/chat.py`:
 
 ```python
 def _operator_exec(name: str, args: dict) -> dict:
@@ -457,12 +457,12 @@ In `chat_tree`, before the final `raise HTTPException(... ukendt kind ...)`:
 
 (If `operator_list_dir`'s real result shape differs — inspect `core/tools/simple_tools.py::_exec_operator_list_dir` — adapt the `entries` mapping. The test mocks the shape `{status, entries:[{name,is_dir}]}`; match the real one and update both test + code together.)
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
 Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_chat_tree.py -q`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/api/jarvis_api/routes/chat.py tests/test_chat_tree.py
@@ -481,7 +481,7 @@ git commit -m "feat(code): /chat/tree workstation listing via operator bridge"
 - Modify: `apps/jarvis-desk/src/lib/api.ts`, `apps/jarvis-desk/src/lib/streamClient.ts`, `apps/jarvis-desk/src/contexts/StreamContext.tsx`
 - Test: `apps/jarvis-desk/src/lib/api.test.ts`
 
-- [ ] **Step 1: Write the failing test** — append to `src/lib/api.test.ts` (follow existing fetch-mock style in that file):
+- [x] **Step 1: Write the failing test** — append to `src/lib/api.test.ts` (follow existing fetch-mock style in that file):
 
 ```ts
 it('getTree returnerer entries fra /chat/tree', async () => {
@@ -498,12 +498,12 @@ it('getTree returnerer entries fra /chat/tree', async () => {
 })
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (no getTree export)
+- [x] **Step 2: Run — expect FAIL** (no getTree export)
 
 Run: `cd apps/jarvis-desk && npx vitest run src/lib/api.test.ts`
 Expected: FAIL (getTree undefined)
 
-- [ ] **Step 3: Implement** — in `src/lib/api.ts`:
+- [x] **Step 3: Implement** — in `src/lib/api.ts`:
 
 ```ts
 export interface TreeEntry { name: string; kind: 'dir' | 'file' }
@@ -544,12 +544,12 @@ In `src/contexts/StreamContext.tsx` — extend `SendOpts` + pass through in `sen
         workspaceRoot: opts.workspaceRoot,
 ```
 
-- [ ] **Step 4: Run — expect PASS** + typecheck
+- [x] **Step 4: Run — expect PASS** + typecheck
 
 Run: `cd apps/jarvis-desk && npx vitest run src/lib/api.test.ts && npx tsc -b`
 Expected: PASS, tsc exit 0
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/jarvis-desk/src/lib/api.ts apps/jarvis-desk/src/lib/api.test.ts apps/jarvis-desk/src/lib/streamClient.ts apps/jarvis-desk/src/contexts/StreamContext.tsx
@@ -563,7 +563,7 @@ git commit -m "feat(jarvis-desk): getTree + workspace plumbing in stream request
 **Files:**
 - Create: `apps/jarvis-desk/src/lib/diff.ts`, `apps/jarvis-desk/src/lib/diff.test.ts`
 
-- [ ] **Step 1: Write the failing test** — `src/lib/diff.test.ts`:
+- [x] **Step 1: Write the failing test** — `src/lib/diff.test.ts`:
 
 ```ts
 import { describe, it, expect } from 'vitest'
@@ -585,12 +585,12 @@ describe('lineDiff', () => {
 })
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (no lineDiff)
+- [x] **Step 2: Run — expect FAIL** (no lineDiff)
 
 Run: `cd apps/jarvis-desk && npx vitest run src/lib/diff.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: Implement** — `src/lib/diff.ts` (simple LCS-free line diff; sufficient for v1 single-file view):
+- [x] **Step 3: Implement** — `src/lib/diff.ts` (simple LCS-free line diff; sufficient for v1 single-file view):
 
 ```ts
 export type DiffLine = { type: 'same' | 'add' | 'del'; text: string }
@@ -613,12 +613,12 @@ export function lineDiff(oldText: string, newText: string): DiffLine[] {
 }
 ```
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
 Run: `cd apps/jarvis-desk && npx vitest run src/lib/diff.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/jarvis-desk/src/lib/diff.ts apps/jarvis-desk/src/lib/diff.test.ts
@@ -633,7 +633,7 @@ git commit -m "feat(jarvis-desk): pure lineDiff helper for code-mode diffs"
 - Create: `apps/jarvis-desk/src/components/panel/FileTree.tsx`
 - Modify: `apps/jarvis-desk/src/styles/app.css`
 
-- [ ] **Step 1: Write the failing test** — `apps/jarvis-desk/src/components/panel/FileTree.test.tsx`:
+- [x] **Step 1: Write the failing test** — `apps/jarvis-desk/src/components/panel/FileTree.test.tsx`:
 
 ```tsx
 import { describe, it, expect, vi } from 'vitest'
@@ -657,12 +657,12 @@ describe('FileTree', () => {
 })
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (no FileTree)
+- [x] **Step 2: Run — expect FAIL** (no FileTree)
 
 Run: `cd apps/jarvis-desk && npx vitest run src/components/panel/FileTree.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: Implement** — `src/components/panel/FileTree.tsx`:
+- [x] **Step 3: Implement** — `src/components/panel/FileTree.tsx`:
 
 ```tsx
 import { useEffect, useState } from 'react'
@@ -736,12 +736,12 @@ Add CSS to `src/styles/app.css`:
 .filetree-loading { padding: 8px; color: var(--fg-3); }
 ```
 
-- [ ] **Step 4: Run — expect PASS** + tsc
+- [x] **Step 4: Run — expect PASS** + tsc
 
 Run: `cd apps/jarvis-desk && npx vitest run src/components/panel/FileTree.test.tsx && npx tsc -b`
 Expected: PASS, tsc 0
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/jarvis-desk/src/components/panel/FileTree.tsx apps/jarvis-desk/src/components/panel/FileTree.test.tsx apps/jarvis-desk/src/styles/app.css
@@ -756,7 +756,7 @@ git commit -m "feat(jarvis-desk): FileTree component (lazy recursive, container+
 - Create: `apps/jarvis-desk/src/components/panel/CodePanel.tsx`
 - Modify: `apps/jarvis-desk/src/styles/app.css`
 
-- [ ] **Step 1: Write the failing test** — `src/components/panel/CodePanel.test.tsx`:
+- [x] **Step 1: Write the failing test** — `src/components/panel/CodePanel.test.tsx`:
 
 ```tsx
 import { describe, it, expect, vi } from 'vitest'
@@ -777,12 +777,12 @@ describe('CodePanel', () => {
 })
 ```
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
 Run: `cd apps/jarvis-desk && npx vitest run src/components/panel/CodePanel.test.tsx`
 Expected: FAIL (no CodePanel)
 
-- [ ] **Step 3: Implement** — `src/components/panel/CodePanel.tsx`:
+- [x] **Step 3: Implement** — `src/components/panel/CodePanel.tsx`:
 
 ```tsx
 import { useState } from 'react'
@@ -844,12 +844,12 @@ Add CSS to `src/styles/app.css`:
 .codepanel-empty { color: var(--fg-3); font-size: 13px; padding: 12px; }
 ```
 
-- [ ] **Step 4: Run — expect PASS** + tsc
+- [x] **Step 4: Run — expect PASS** + tsc
 
 Run: `cd apps/jarvis-desk && npx vitest run src/components/panel/CodePanel.test.tsx && npx tsc -b`
 Expected: PASS, tsc 0
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/jarvis-desk/src/components/panel/CodePanel.tsx apps/jarvis-desk/src/components/panel/CodePanel.test.tsx apps/jarvis-desk/src/styles/app.css
@@ -864,7 +864,7 @@ git commit -m "feat(jarvis-desk): CodePanel (workspace + tree + file view)"
 - Modify: `apps/jarvis-desk/src/views/CodeView.tsx` (replace stub)
 - Test: `apps/jarvis-desk/src/views/CodeView.test.tsx` (create)
 
-- [ ] **Step 1: Write the failing test** — `src/views/CodeView.test.tsx` (mirror ChatView.test.tsx mocks: mock `../lib/api` incl. getContextInfo/getTree/getFile/listSessions/getSession/whoami/pingServer; wrap in the same providers ChatView.test uses):
+- [x] **Step 1: Write the failing test** — `src/views/CodeView.test.tsx` (mirror ChatView.test.tsx mocks: mock `../lib/api` incl. getContextInfo/getTree/getFile/listSessions/getSession/whoami/pingServer; wrap in the same providers ChatView.test uses):
 
 ```tsx
 import { describe, it, expect, vi } from 'vitest'
@@ -896,12 +896,12 @@ describe('CodeView', () => {
 
 (Replace the trivial assert: copy ChatView.test.tsx's provider wrapper + render CodeView; assert the composer placeholder AND the workspace label render. The point of the test is that CodeView mounts with stream + panel wired.)
 
-- [ ] **Step 2: Run — expect FAIL** (CodeView is the stub, no composer)
+- [x] **Step 2: Run — expect FAIL** (CodeView is the stub, no composer)
 
 Run: `cd apps/jarvis-desk && npx vitest run src/views/CodeView.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: Implement** — replace `src/views/CodeView.tsx`. It mirrors ChatView but: (a) passes `mode='code'` + workspace into `stream.send`; (b) shows permissions in composer (`showPermissions` default true); (c) renders `CodePanel` in the right panel instead of artifact affordances; (d) shows a workspace selector. Reuse ChatView's transcript/stream/composer structure. Minimal v1 workspace state: default `{ kind: 'container', root: 'core' }`, owner can switch root among `_FILE_ROOTS`.
+- [x] **Step 3: Implement** — replace `src/views/CodeView.tsx`. It mirrors ChatView but: (a) passes `mode='code'` + workspace into `stream.send`; (b) shows permissions in composer (`showPermissions` default true); (c) renders `CodePanel` in the right panel instead of artifact affordances; (d) shows a workspace selector. Reuse ChatView's transcript/stream/composer structure. Minimal v1 workspace state: default `{ kind: 'container', root: 'core' }`, owner can switch root among `_FILE_ROOTS`.
 
 ```tsx
 import { useState } from 'react'
@@ -976,12 +976,12 @@ Add the proper `mode`/`workspaceKind`/`workspaceRoot` to `SendOpts` in StreamCon
 
 NOTE: This v1 CodeView is intentionally simpler than ChatView (no session list interplay, no queue/follow-up — those can be lifted from ChatView later). It proves the loop: pick root → ask Jarvis → he uses code tools → files/diffs show in CodePanel. App.tsx already routes `surface === 'code' && <CodeView />`; update that line to pass `sessionId={activeId}`.
 
-- [ ] **Step 4: Run — expect PASS** + tsc + full suite
+- [x] **Step 4: Run — expect PASS** + tsc + full suite
 
 Run: `cd apps/jarvis-desk && npx vitest run && npx tsc -b`
 Expected: PASS, tsc 0
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/jarvis-desk/src/views/CodeView.tsx apps/jarvis-desk/src/views/CodeView.test.tsx apps/jarvis-desk/src/App.tsx apps/jarvis-desk/src/styles/app.css
@@ -996,7 +996,7 @@ git commit -m "feat(jarvis-desk): CodeView — code-mode stream + CodePanel + wo
 - Modify: `apps/jarvis-desk/src/components/shell/Sidebar.tsx`, `apps/jarvis-desk/src/lib/api.ts` (ChatSession type: add `workspace_kind?`)
 - Test: covered by existing Sidebar render; add a focused assertion if a Sidebar test exists, else manual.
 
-- [ ] **Step 1: Implement** — in `src/lib/api.ts`, add `workspace_kind?: string | null` to the `ChatSession` interface. In `Sidebar.tsx` `SessionItem`, when the session has `workspace_kind`, render a small `<Code size={12} />` (lucide) before the title:
+- [x] **Step 1: Implement** — in `src/lib/api.ts`, add `workspace_kind?: string | null` to the `ChatSession` interface. In `Sidebar.tsx` `SessionItem`, when the session has `workspace_kind`, render a small `<Code size={12} />` (lucide) before the title:
 
 ```tsx
 // SessionItem props: add workspaceKind?: string | null
@@ -1006,10 +1006,10 @@ git commit -m "feat(jarvis-desk): CodeView — code-mode stream + CodePanel + wo
 
 Pass `workspaceKind={s.workspace_kind}` from the sessions.map. Add CSS: `.session-mode-icon { color: var(--accent); margin-right: 4px; flex: 0 0 auto; }`.
 
-- [ ] **Step 2: Verify** — `cd apps/jarvis-desk && npx tsc -b && npx vitest run`
+- [x] **Step 2: Verify** — `cd apps/jarvis-desk && npx tsc -b && npx vitest run`
 Expected: tsc 0, tests pass.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/jarvis-desk/src/components/shell/Sidebar.tsx apps/jarvis-desk/src/lib/api.ts apps/jarvis-desk/src/styles/app.css

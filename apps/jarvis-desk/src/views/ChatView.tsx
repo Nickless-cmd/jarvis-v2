@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { approxOutputTokens } from '../lib/sseProtocol'
 import { ArrowDown, PanelRight } from 'lucide-react'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
@@ -237,7 +238,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
         {streaming && stream.blocks.length > 0 && (
           <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
         )}
-        <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} />
+        <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} tokens={approxOutputTokens(stream.blocks)} />
       </div>
 
       <div className="composer-area">

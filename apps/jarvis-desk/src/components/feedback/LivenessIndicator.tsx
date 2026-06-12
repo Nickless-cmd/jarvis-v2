@@ -10,16 +10,24 @@ const VERBS = ['tænker', 'grunder', 'samler trådene', 'regner den ud', 'vejer 
  *  transcript'en — drejer + viser hvad han laver mens han arbejder, og bliver
  *  stående stille med "klar" når turen er slut. "Thinking via <model>"-boilerplate
  *  filtreres væk; uden konkret handling vises et skiftende verbum. */
+/** Kort token-tal: 1234 → "1.2k". */
+function fmtTokens(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+}
+
 export function LivenessIndicator({
   status,
   elapsedMs,
   density,
   workingStep,
+  tokens = 0,
 }: {
   status: string
   elapsedMs: number
   density: 'compact' | 'full'
   workingStep?: string | null
+  /** Estimerede output-tokens indtil videre (live tæller mens han svarer). */
+  tokens?: number
 }) {
   const working = status === 'working'
   const tone = working ? 'working' : status === 'error' || status === 'interrupted' ? 'error' : 'idle'
@@ -45,7 +53,12 @@ export function LivenessIndicator({
     <div className={`liveness liveness-${density} ${working ? 'is-working' : 'is-idle'}`}>
       <JarvisRing size={14} spinning={working} tone={tone} />
       <span className="liveness-label">
-        {working ? <><LiveVerb text={action} /> <span className="liveness-time">· {t}</span></> : action}
+        {working ? (
+          <>
+            <LiveVerb text={action} />
+            <span className="liveness-time">· {t}{tokens > 0 ? ` · ${fmtTokens(tokens)} tokens` : ''}</span>
+          </>
+        ) : action}
       </span>
     </div>
   )

@@ -100,3 +100,14 @@ export function isStreamEvent(value: unknown): value is StreamEvent {
   const t = (value as { type?: unknown }).type
   return typeof t === 'string'
 }
+
+/** Groft estimat af output-tokens fra streamede blokke (≈ tegn/4). Bruges til
+ *  en LIVE token-tæller i liveness-linjen — de rigtige output_tokens kommer
+ *  først i message_delta ved svar-slut. */
+export function approxOutputTokens(blocks: ContentBlock[]): number {
+  const chars = blocks.reduce(
+    (n, b) => n + (b.type === 'text' ? b.text.length : b.type === 'thinking' ? b.thinking.length : 0),
+    0,
+  )
+  return Math.round(chars / 4)
+}

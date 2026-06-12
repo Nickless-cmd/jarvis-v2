@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
+import { useStream } from '../../hooks/useStream'
 import { searchSessions, type SessionSearchResult } from '../../lib/api'
 import { ModeSlider, type Mode } from './ModeSlider'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
@@ -20,6 +21,7 @@ export function Sidebar({
 }) {
   const { sessions, activeId, select, create } = useSessions()
   const { settings } = useSettings()
+  const { workingSessionId } = useStream()
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SessionSearchResult[]>([])
@@ -103,6 +105,7 @@ export function Sidebar({
                   id={s.id}
                   title={s.title || 'Uden titel'}
                   active={s.id === activeId}
+                  working={s.id === workingSessionId}
                   onSelect={() => { select(s.id); onSurface('chat') }}
                 />
               ))}
@@ -127,11 +130,13 @@ function SessionItem({
   id,
   title,
   active,
+  working,
   onSelect,
 }: {
   id: string
   title: string
   active: boolean
+  working?: boolean
   onSelect: () => void
 }) {
   const { rename, remove } = useSessions()
@@ -162,8 +167,15 @@ function SessionItem({
   }
 
   return (
-    <div className={`session-item ${active ? 'active' : ''}`}>
-      <button type="button" className="session-item-label" onClick={onSelect}>{title}</button>
+    <div className={`session-item ${active ? 'active' : ''} ${working ? 'working' : ''}`}>
+      <button type="button" className="session-item-label" onClick={onSelect}>
+        {working && (
+          <span className="session-working" aria-label="Jarvis arbejder" title="Jarvis arbejder her">
+            <span></span><span></span><span></span>
+          </span>
+        )}
+        {title}
+      </button>
       <div className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="session-more" aria-label="Mere" onClick={() => setOpen((o) => !o)}>
           <MoreHorizontal size={15} />

@@ -21,6 +21,8 @@ export interface SendOpts {
 
 export interface StreamContextValue {
   status: StreamStatus
+  /** Session-id for det aktive run (kun mens status==='working'), ellers null. */
+  workingSessionId: string | null
   blocks: ContentBlock[]
   activeRunId: string | null
   elapsedMs: number
@@ -49,10 +51,14 @@ export function StreamProvider({
   const [elapsedMs, setElapsedMs] = useState(0)
   // Status hung/interrupted/error kommer fra streamClient-handlers, ikke reducer.
   const [override, setOverride] = useState<null | 'hung' | 'interrupted' | 'error'>(null)
+  // Hvilken session det aktive run hører til — så Sidebar kan vise en
+  // arbejds-indikator på den, også når en ANDEN session er fremme (#8).
+  const [workingSessionId, setWorkingSessionId] = useState<string | null>(null)
 
   const send = useCallback((message: string, opts: SendOpts) => {
     setError(null)
     setOverride(null)
+    setWorkingSessionId(opts.sessionId)
     runIdRef.current = null
     startedAtRef.current = Date.now()
     deskRunBridge()?.setRunAuth?.(config.apiBaseUrl, config.authToken)
@@ -108,6 +114,7 @@ export function StreamProvider({
       status,
       blocks: state.blocks,
       activeRunId: state.activeRunId,
+      workingSessionId: status === 'working' ? workingSessionId : null,
       elapsedMs,
       workingStep: state.workingStep,
       error,
@@ -116,7 +123,7 @@ export function StreamProvider({
       abort,
       continueFromPartial,
     }),
-    [status, state.blocks, state.activeRunId, elapsedMs, state.workingStep, error, needsAttention, send, abort, continueFromPartial],
+    [status, state.blocks, state.activeRunId, workingSessionId, elapsedMs, state.workingStep, error, needsAttention, send, abort, continueFromPartial],
   )
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>
 }

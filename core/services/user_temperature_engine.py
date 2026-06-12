@@ -264,8 +264,20 @@ def _validate_llm_output(raw: dict) -> dict | None:
 
 
 def combine_streams(*, struct: dict, llm: dict | None) -> dict:
-    """Deterministic merge of structural + LLM streams."""
-    if llm is None or float(llm.get("confidence", 0.0)) < 0.3:
+    """Deterministic merge of structural + LLM streams.
+
+    Rules (2026-06-11 — LLM confidence override added):
+    - If no LLM or LLM confidence < 0.3 → structural wins (unchanged).
+    - If LLM confidence > 0.7 AND structural confidence < 0.3 → LLM wins
+      (structural is too uncertain to veto the more perceptive LLM).
+    - If conflict (valens/arousal distance > threshold or texture mismatch):
+      weighted average favouring whichever has higher confidence.
+    - If no conflict → simple average (unchanged).
+    """
+    llm_conf = float(llm.get("confidence", 0.0)) if llm else 0.0
+    struct_conf = float(struct.get("confidence", 0.0))
+
+    if llm is None or llm_conf < 0.3:
         return {
             "field_valens": struct["valens"],
             "field_arousal": struct["arousal"],
@@ -273,6 +285,17 @@ def combine_streams(*, struct: dict, llm: dict | None) -> dict:
             "field_intensity": min(1.0, abs(struct["valens"]) + abs(struct["arousal"])),
             "field_conflict": False,
         }
+
+    # LLM override: structural too uncertain to veto
+    if llm_conf > 0.7 and struct_conf < 0.3:
+        return {
+            "field_valens": llm["valens"],
+            "field_arousal": llm["arousal"],
+            "field_texture": llm["texture"],
+            "field_intensity": min(1.0, abs(llm["valens"]) + abs(llm["arousal"])),
+            "field_conflict": True,  # marked as conflict so downstream knows
+        }
+
     valens_dist = abs(struct["valens"] - llm["valens"])
     arousal_dist = abs(struct["arousal"] - llm["arousal"])
     conflict = (
@@ -281,11 +304,17 @@ def combine_streams(*, struct: dict, llm: dict | None) -> dict:
         or struct["texture"] != llm["texture"]
     )
     if conflict:
+        # Weighted average — favour higher confidence
+        total_conf = struct_conf + llm_conf
+        w_s = struct_conf / total_conf if total_conf > 0 else 0.5
+        w_l = llm_conf / total_conf if total_conf > 0 else 0.5
+        fv = struct["valens"] * w_s + llm["valens"] * w_l
+        fa = struct["arousal"] * w_s + llm["arousal"] * w_l
         return {
-            "field_valens": struct["valens"],
-            "field_arousal": struct["arousal"],
-            "field_texture": struct["texture"],
-            "field_intensity": min(1.0, abs(struct["valens"]) + abs(struct["arousal"])),
+            "field_valens": fv,
+            "field_arousal": fa,
+            "field_texture": llm["texture"] if w_l > w_s else struct["texture"],
+            "field_intensity": min(1.0, abs(fv) + abs(fa)),
             "field_conflict": True,
         }
     fv = (struct["valens"] + llm["valens"]) / 2

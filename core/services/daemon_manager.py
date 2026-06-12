@@ -398,6 +398,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": True,
         "description": "Memory Phase 2: refresh identity sketch every 6h (auto trigger). Skips if fresh; regenerates from live signals if stale.",
     },
+    "communication_guard": {
+        "module": "core.services.communication_guard_daemon",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 60,
+        "default_enabled": True,
+        "description": "60min cleanup af udløbne TTL-triggers i communication guard (godnat-fraser etc.)",
+    },
     "decision_review": {
         "module": "core.services.decision_review_daemon",
         "reset_var": None,

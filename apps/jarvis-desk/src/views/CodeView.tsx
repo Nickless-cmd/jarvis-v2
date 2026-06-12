@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { approxOutputTokens } from '../lib/sseProtocol'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown } from 'lucide-react'
 import { useStream } from '../hooks/useStream'
 import { useSettings } from '../hooks/useSettings'
@@ -284,7 +283,7 @@ export function CodeView({
           {stream.status === 'working' && stream.blocks.length > 0 && (
             <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
           )}
-          <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} tokens={Math.max(approxOutputTokens(stream.blocks), stream.usage.output)} />
+          <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} tokens={stream.usage.output} />
         </div>
         <div className="composer-area">
           <div className="composer-notices">

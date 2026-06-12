@@ -63,14 +63,19 @@ class ChatStreamRequest(BaseModel):
     # "deep" = max reasoning effort (slowest, hardest problems)
     # Ignored for models that don't support thinking parameters.
     thinking_mode: str = "think"
-    # UI-mode: "chat" begrænser værktøjer til en samtale-allowlist (web/data/
-    # vision + hukommelse + selv-indsigt). "cowork"/"code"/"" = ubegrænset
-    # (rolle-filter gælder stadig). Sættes af jarvis-desk pr. mode.
+    # UI-mode: "chat" begrænser værktøjer til en samtale-allowlist; "code"
+    # låser kode-tools op (tool_scope="code"). "" = ubegrænset (rolle-filter
+    # gælder stadig). Sættes af jarvis-desk pr. mode.
     mode: str = ""
+    # Code-mode workspace (hvor Jarvis' fil-tools arbejder).
+    workspace_kind: str = ""   # "container" | "workstation" | ""
+    workspace_root: str = ""
 
 
 class ChatSessionCreateRequest(BaseModel):
     title: str = "New chat"
+    workspace_kind: str = ""   # "container" | "workstation" | "" (Code mode)
+    workspace_root: str = ""
 
 
 class ChatSessionRenameRequest(BaseModel):
@@ -149,7 +154,11 @@ async def chat_context_info() -> dict:
 
 @router.post("/sessions")
 async def chat_create_session(request: ChatSessionCreateRequest) -> dict:
-    return {"session": create_chat_session(title=request.title)}
+    return {"session": create_chat_session(
+        title=request.title,
+        workspace_kind=request.workspace_kind or None,
+        workspace_root=request.workspace_root or None,
+    )}
 
 
 @router.get("/sessions/{session_id}")

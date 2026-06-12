@@ -76,7 +76,8 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     # Mode → tool-scope. "chat" begrænser værktøjs-listen til samtale-
     # allowlisten (se core.tools.tool_scoping). Andre modes / tom = ubegrænset
     # (rolle-filter gælder stadig).
-    _tool_scope = "chat" if (request.mode or "").strip().lower() == "chat" else ""
+    _m = (request.mode or "").strip().lower()
+    _tool_scope = "chat" if _m == "chat" else "code" if _m == "code" else ""
 
     legacy_iter = start_visible_run(
         message=effective_message,

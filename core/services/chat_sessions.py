@@ -11,17 +11,24 @@ from core.services.tool_result_store import (
 from core.runtime.db import connect
 
 
-def create_chat_session(*, title: str = "New chat") -> dict[str, object]:
+def create_chat_session(
+    *, title: str = "New chat",
+    workspace_kind: str | None = None, workspace_root: str | None = None,
+) -> dict[str, object]:
+    from core.runtime.db import _ensure_chat_session_workspace_columns
     session_id = f"chat-{uuid4().hex}"
     created_at = datetime.now(UTC).isoformat()
     normalized_title = _normalize_title(title) or "New chat"
     with connect() as conn:
+        _ensure_chat_session_workspace_columns(conn)
         conn.execute(
             """
-            INSERT INTO chat_sessions (session_id, title, created_at, updated_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO chat_sessions (session_id, title, created_at, updated_at,
+                                       workspace_kind, workspace_root)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (session_id, normalized_title, created_at, created_at),
+            (session_id, normalized_title, created_at, created_at,
+             (workspace_kind or None), (workspace_root or None)),
         )
     return get_chat_session(session_id) or {
         "session_id": session_id,
@@ -194,7 +201,8 @@ def get_chat_session(session_id: str) -> dict[str, object] | None:
     with connect() as conn:
         session = conn.execute(
             """
-            SELECT session_id, title, created_at, updated_at
+            SELECT session_id, title, created_at, updated_at,
+                   workspace_kind, workspace_root
             FROM chat_sessions
             WHERE session_id = ?
             """,
@@ -230,8 +238,25 @@ def get_chat_session(session_id: str) -> dict[str, object] | None:
     )
     return {
         **summary,
+        "workspace_kind": dict(session).get("workspace_kind"),
+        "workspace_root": dict(session).get("workspace_root"),
         "messages": message_items,
     }
+
+
+def set_session_workspace(session_id: str, *, kind: str | None, root: str | None) -> None:
+    """Bind (eller skift) en sessions Code-mode workspace."""
+    from core.runtime.db import _ensure_chat_session_workspace_columns
+    sid = (session_id or "").strip()
+    if not sid:
+        return
+    with connect() as conn:
+        _ensure_chat_session_workspace_columns(conn)
+        conn.execute(
+            "UPDATE chat_sessions SET workspace_kind = ?, workspace_root = ? WHERE session_id = ?",
+            (kind or None, root or None, sid),
+        )
+        conn.commit()
 
 
 def append_chat_message(

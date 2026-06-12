@@ -236,3 +236,22 @@ def test_search_no_match(isolated_runtime):
     sid = str(s.get("session_id") or s.get("id"))
     append_chat_message(session_id=sid, role="user", content="hej verden")
     assert search_chat_sessions("zzzfindesikkezzz") == []
+
+
+def test_create_session_with_workspace(isolated_runtime):
+    from core.services.chat_sessions import create_chat_session, get_chat_session
+    s = create_chat_session(title="kode", workspace_kind="container", workspace_root="core")
+    sid = str(s.get("session_id") or s.get("id"))
+    full = get_chat_session(sid)
+    assert full["workspace_kind"] == "container"
+    assert full["workspace_root"] == "core"
+
+
+def test_set_session_workspace(isolated_runtime):
+    from core.services.chat_sessions import create_chat_session, set_session_workspace, get_chat_session
+    s = create_chat_session(title="x")
+    sid = str(s.get("session_id") or s.get("id"))
+    set_session_workspace(sid, kind="workstation", root="/home/bs/proj")
+    full = get_chat_session(sid)
+    assert full["workspace_kind"] == "workstation"
+    assert full["workspace_root"] == "/home/bs/proj"

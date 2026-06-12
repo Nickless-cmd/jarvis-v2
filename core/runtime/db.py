@@ -161,6 +161,16 @@ def _ensure_skill_usage_table(conn: sqlite3.Connection) -> None:
     )
 
 
+def _ensure_chat_session_workspace_columns(conn) -> None:
+    """Tilføj nullable workspace-kolonner til chat_sessions (Code-mode binding).
+    Idempotent — kan kaldes ved hver init/connect."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(chat_sessions)").fetchall()}
+    if "workspace_kind" not in cols:
+        conn.execute("ALTER TABLE chat_sessions ADD COLUMN workspace_kind TEXT")
+    if "workspace_root" not in cols:
+        conn.execute("ALTER TABLE chat_sessions ADD COLUMN workspace_root TEXT")
+
+
 def init_db() -> None:
     with connect() as conn:
         conn.execute(
@@ -480,6 +490,7 @@ def init_db() -> None:
             )
             """
         )
+        _ensure_chat_session_workspace_columns(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS chat_messages (

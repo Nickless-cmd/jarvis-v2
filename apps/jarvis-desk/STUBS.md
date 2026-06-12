@@ -38,13 +38,20 @@ Memory/Scheduling) eller egne opgaver. Opdateres løbende.
 - jarvis-desk er request-scoped; Jarvis kan ikke nå brugeren proaktivt når appen
   er minimeret. → egen spec (Q1 i foundation-planen).
 
-## v2-stream (observeret i live-test 2026-06-11 aften)
-- **Tool-leak:** `visible_runs_sse_v2.py` er Phase 1 (kun text_delta + working_step).
-  Tool-kald wrappes IKKE som `tool_use`-blokke → tool-output (fx `[read_file]: <fil>`)
-  flyder gennem som tekst og leaker i boblen. jarvis-desk har `ToolCard` klar; v2
-  mangler Phase 2-oversættelsen (tool_use blocks, thinking_delta, input_json_delta).
-  → backend: implementér Phase 2 i visible_runs_sse_v2.
-- **Preview-panel fil-detektion:** `detectArtifacts` fanger fil-stier — men også fra
-  det leaket tool-tekst, så "Åbn xxx.md"-affordances hober sig op. Bliver renere når
-  tool-blokke er strukturerede. Overvej desuden: kun seneste N fil-links, eller knyt
-  panel-åbning til faktiske tool_use-blokke i stedet for tekst-regex.
+## v2-stream Phase 2 — ✅ LØST 2026-06-12
+- **Tool-leak:** Rod-årsag var IKKE ustrukturerede tool-events (capability-events
+  bærer ingen tekst) — det var **modellen der selv ekkoede** rå tool-format i svaret.
+  Fix: (A1) prompt-instruks mod ekko + (A2) `ToolEchoFilter` i translatoren der dropper
+  `[<kendt_tool>]:`-linjer i streamen. Begge live på containeren.
+- **Phase 2 tool_use-blokke:** `visible_runs_sse_v2.translate_to_v2` oversætter nu
+  capability tool_result/capability → `tool_use` content-blocks (start + input_json_delta
+  + stop) + system_event(tool_result) m. status. ToolCard renderer dem (var allerede wiret).
+- **Preview-panel fil-detektion:** `detectArtifacts` binder nu fil-artifacts til FAKTISKE
+  tool_use-kald (target_path/file_path/path) i stedet for tekst-regex → ingen ophobning
+  af tilfældige prosa-stier.
+  - Spec: docs/superpowers/specs/2026-06-12-v2-stream-phase2-toolblocks-design.md
+
+## v2-stream — resterende (senere)
+- thinking_delta-oversættelse (reasoning-blokke) i translatoren er stadig Phase 1.
+- Mac + Windows builds af jarvis-desk.
+- Ring-only systray (pulsing/dot — Jarvis' ønske).

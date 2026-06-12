@@ -185,3 +185,52 @@ def test_validate_send_path_accepts_valid_file(tmp_path, monkeypatch):
     ok, err = svc.validate_send_path(str(f))
     assert ok
     assert err == ""
+
+
+# ---------------------------------------------------------------------------
+# list_image_attachments + attachment_visible_to_user (#6 galleri)
+# ---------------------------------------------------------------------------
+def _store_attachment(svc, *, aid, sid, filename, mime):
+    svc._db_store(
+        attachment_id=aid, session_id=sid, channel_type="webchat",
+        filename=filename, mime_type=mime, size_bytes=10,
+        local_path=f"/tmp/{aid}", source_url="",
+    )
+
+
+def test_list_image_attachments_filters_and_scopes(isolated_runtime):
+    import core.services.attachment_service as svc
+    from core.services.chat_sessions import create_chat_session, append_chat_message
+
+    s = create_chat_session(title="med billede")
+    sid = str(s.get("session_id") or s.get("id"))
+    append_chat_message(session_id=sid, role="user", content="se her", user_id="u1")
+
+    _store_attachment(svc, aid="img1", sid=sid, filename="a.png", mime="image/png")
+    _store_attachment(svc, aid="doc1", sid=sid, filename="a.pdf", mime="application/pdf")
+
+    # u1 ser kun billedet (ikke pdf'en)
+    imgs = svc.list_image_attachments(user_id="u1")
+    ids = [r["attachment_id"] for r in imgs]
+    assert "img1" in ids and "doc1" not in ids
+
+    # u2 deltog ikke i sessionen → ser intet
+    assert svc.list_image_attachments(user_id="u2") == []
+
+    # None (owner/legacy) ser billedet
+    assert "img1" in [r["attachment_id"] for r in svc.list_image_attachments(user_id=None)]
+
+
+def test_attachment_visible_to_user(isolated_runtime):
+    import core.services.attachment_service as svc
+    from core.services.chat_sessions import create_chat_session, append_chat_message
+
+    s = create_chat_session(title="x")
+    sid = str(s.get("session_id") or s.get("id"))
+    append_chat_message(session_id=sid, role="user", content="hej", user_id="u1")
+    _store_attachment(svc, aid="img9", sid=sid, filename="b.jpg", mime="image/jpeg")
+
+    assert svc.attachment_visible_to_user("img9", "u1") is True
+    assert svc.attachment_visible_to_user("img9", "u2") is False
+    assert svc.attachment_visible_to_user("img9", None) is True   # owner/legacy
+    assert svc.attachment_visible_to_user("findes_ikke", "u1") is False

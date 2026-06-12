@@ -133,6 +133,41 @@ async def upload_attachment(
     }
 
 
+# Registreres FØR /{attachment_id} så "images"/"image" ikke fanges som id.
+@router.get("/images")
+async def list_images(limit: int = 200) -> dict:
+    """Galleri-liste (#6): billed-attachments på tværs af sessioner, user-scopet."""
+    from core.identity.workspace_context import current_user_id
+    from core.services.attachment_service import list_image_attachments
+    uid = current_user_id() or None
+    return {"items": list_image_attachments(user_id=uid, limit=limit)}
+
+
+@router.get("/image/{attachment_id}")
+async def serve_image_from_db(attachment_id: str) -> FileResponse:
+    """Serve et billede fra DB'ens local_path (virker for historiske billeder
+    — i modsætning til /{attachment_id} der kun kender denne sessions registry).
+    User-scopet: kun billeder fra sessioner brugeren deltog i."""
+    from core.identity.workspace_context import current_user_id
+    from core.services.attachment_service import (
+        get_attachment, attachment_visible_to_user,
+    )
+    uid = current_user_id() or None
+    if not attachment_visible_to_user(attachment_id, uid):
+        raise HTTPException(status_code=403, detail="Access denied")
+    row = get_attachment(attachment_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    local_path = str(row.get("local_path") or "")
+    if not local_path or not Path(local_path).exists():
+        raise HTTPException(status_code=404, detail="File missing from disk")
+    return FileResponse(
+        local_path,
+        filename=str(row.get("filename") or "image"),
+        media_type=str(row.get("mime_type") or "application/octet-stream"),
+    )
+
+
 @router.get("/{attachment_id}")
 async def serve_attachment(attachment_id: str, session_id: str) -> FileResponse:
     """Serve an uploaded file for browser display."""

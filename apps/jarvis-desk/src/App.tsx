@@ -13,6 +13,7 @@ import { CoworkView } from './views/CoworkView'
 import { CodeView } from './views/CodeView'
 import { MemoryView } from './views/MemoryView'
 import { SchedulingView } from './views/SchedulingView'
+import { ImageGalleryView } from './views/ImageGalleryView'
 import { SettingsView } from './views/SettingsView'
 import { Sidebar, type Surface } from './components/shell/Sidebar'
 import { StatusBar } from './components/shell/StatusBar'
@@ -86,6 +87,7 @@ function Shell({
           {surface === 'cowork' && <CoworkView />}
           {surface === 'code' && <CodeView />}
           {surface === 'memory' && <MemoryView role={role} />}
+          {surface === 'gallery' && <ImageGalleryView onOpenChat={() => setSurface('chat')} />}
           {surface === 'scheduling' && <SchedulingView role={role} />}
           {surface === 'settings' && <SettingsView />}
         </ShellWithPanel>

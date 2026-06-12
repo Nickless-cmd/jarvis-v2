@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
 import { searchSessions, type SessionSearchResult } from '../../lib/api'
 import { ModeSlider, type Mode } from './ModeSlider'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
-export type Surface = Mode | SecondarySurface
+export type Surface = Mode | SecondarySurface | 'gallery'
 
 /** Sidebar: app-navn, mode-slider, session-liste, sekundær-nav + bruger-fod. */
 export function Sidebar({
@@ -65,6 +65,14 @@ export function Sidebar({
             </button>
           )}
         </div>
+
+        <button
+          type="button"
+          className={`sidebar-nav-row ${surface === 'gallery' ? 'active' : ''}`}
+          onClick={() => onSurface('gallery')}
+        >
+          <Images size={14} /> Billeder
+        </button>
 
         {searching ? (
           <>

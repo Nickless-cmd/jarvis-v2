@@ -105,6 +105,65 @@ def _db_list(session_id: str, limit: int) -> list[dict]:
         return list_channel_attachments(conn=conn, session_id=session_id, limit=limit)
 
 
+def list_image_attachments(*, user_id: str | None = None, limit: int = 200) -> list[dict]:
+    """List billed-attachments på tværs af sessioner til galleriet (#6).
+
+    Scoping pr. bruger som chat_sessions: user_id sat → kun billeder i
+    sessioner brugeren deltog i. user_id=None → alle (owner/legacy).
+    """
+    from core.runtime.db import _ensure_channel_attachments_table, connect
+    uid = (user_id or "").strip()
+    lim = max(1, min(int(limit or 200), 500))
+    with connect() as conn:
+        _ensure_channel_attachments_table(conn)
+        if uid:
+            rows = conn.execute(
+                """
+                SELECT attachment_id, session_id, filename, mime_type, created_at
+                FROM channel_attachments ca
+                WHERE ca.mime_type LIKE 'image/%'
+                  AND EXISTS (
+                      SELECT 1 FROM chat_messages mu
+                      WHERE mu.session_id = ca.session_id AND mu.user_id = ?
+                  )
+                ORDER BY ca.created_at DESC LIMIT ?
+                """,
+                (uid, lim),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT attachment_id, session_id, filename, mime_type, created_at
+                FROM channel_attachments
+                WHERE mime_type LIKE 'image/%'
+                ORDER BY created_at DESC LIMIT ?
+                """,
+                (lim,),
+            ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def attachment_visible_to_user(attachment_id: str, user_id: str | None) -> bool:
+    """Må denne bruger se attachment'et? user_id tom → ja (owner/legacy).
+    Ellers: kun hvis brugeren deltog i attachment'ets session."""
+    uid = (user_id or "").strip()
+    if not uid:
+        return True
+    row = _db_get(attachment_id)
+    if not row:
+        return False
+    sid = str(row.get("session_id") or "")
+    if not sid:
+        return False
+    from core.runtime.db import connect
+    with connect() as conn:
+        hit = conn.execute(
+            "SELECT 1 FROM chat_messages WHERE session_id = ? AND user_id = ? LIMIT 1",
+            (sid, uid),
+        ).fetchone()
+    return hit is not None
+
+
 def _call_vision(image_b64: str, *, model: str, prompt: str | None = None) -> str:
     from core.services.visual_memory import _describe_via_ollama
     return _describe_via_ollama(image_b64, model=model, prompt=prompt)

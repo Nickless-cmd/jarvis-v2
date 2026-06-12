@@ -260,6 +260,34 @@ export async function transcribeAudio(
   return res.json() as Promise<{ status: string; text: string; language?: string; error?: string }>
 }
 
+export interface ImageAttachment {
+  attachment_id: string
+  session_id: string
+  filename: string
+  mime_type: string
+  created_at?: string
+}
+
+/** Galleri-liste (#6): billed-attachments på tværs af sessioner. */
+export async function listImages(config: ApiConfig): Promise<ImageAttachment[]> {
+  const data = await apiFetch<{ items: ImageAttachment[] }>(config, '/attachments/images')
+  return data.items ?? []
+}
+
+/** Hent et billede som object-URL (med Bearer-token, som <img> ikke selv kan
+ *  sende). Kalderen skal URL.revokeObjectURL() når billedet ikke skal bruges. */
+export async function fetchImageObjectUrl(
+  config: ApiConfig,
+  attachmentId: string,
+): Promise<string> {
+  const url = new URL(`/attachments/image/${encodeURIComponent(attachmentId)}`, config.apiBaseUrl).toString()
+  const headers: Record<string, string> = {}
+  if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
+  const res = await fetch(url, { headers })
+  if (!res.ok) throw new StreamError('unknown', `Billede fejlede: HTTP ${res.status}`, { retryable: false })
+  return URL.createObjectURL(await res.blob())
+}
+
 /** Læs en repo-fil til preview-panelet (path-jailed server-side). */
 export async function getFile(
   config: ApiConfig,

@@ -113,28 +113,36 @@ function toggleWindow(): void {
 type TrayState = 'idle' | 'working'
 let trayState: TrayState = 'idle'
 let trayAttention = false
-let trayPulseTimer: ReturnType<typeof setInterval> | null = null
-let trayPulseBright = false
+let traySpinTimer: ReturnType<typeof setInterval> | null = null
+let traySpinFrame = 0
+const TRAY_ROT_FRAMES = 12
 
 function trayAsset(name: 'idle' | 'bright' | 'attention') {
   const img = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', `tray-${name}.png`))
   return process.platform === 'linux' ? img.resize({ width: 22, height: 22 }) : img
 }
 
+function trayRotAsset(frame: number) {
+  const n = String(frame % TRAY_ROT_FRAMES).padStart(2, '0')
+  const img = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', `tray-rot-${n}.png`))
+  return process.platform === 'linux' ? img.resize({ width: 22, height: 22 }) : img
+}
+
 function applyTrayImage(): void {
   if (!tray) return
-  const name = trayAttention ? 'attention' : trayState === 'working' ? (trayPulseBright ? 'bright' : 'idle') : 'idle'
-  tray.setImage(trayAsset(name))
+  if (trayAttention) { tray.setImage(trayAsset('attention')); return }
+  if (trayState === 'working') { tray.setImage(trayRotAsset(traySpinFrame)); return }
+  tray.setImage(trayAsset('idle'))
 }
 
 function refreshTrayState(): void {
   if (!tray) return
-  // Puls kun mens 'working' og IKKE attention (attention er statisk rød prik).
-  const shouldPulse = trayState === 'working' && !trayAttention
-  if (shouldPulse && !trayPulseTimer) {
-    trayPulseTimer = setInterval(() => { trayPulseBright = !trayPulseBright; applyTrayImage() }, 600)
-  } else if (!shouldPulse && trayPulseTimer) {
-    clearInterval(trayPulseTimer); trayPulseTimer = null; trayPulseBright = false
+  // Drej ringen mens 'working' og IKKE attention; ellers står den stille.
+  const shouldSpin = trayState === 'working' && !trayAttention
+  if (shouldSpin && !traySpinTimer) {
+    traySpinTimer = setInterval(() => { traySpinFrame = (traySpinFrame + 1) % TRAY_ROT_FRAMES; applyTrayImage() }, 90)
+  } else if (!shouldSpin && traySpinTimer) {
+    clearInterval(traySpinTimer); traySpinTimer = null; traySpinFrame = 0
   }
   applyTrayImage()
   tray.setToolTip(

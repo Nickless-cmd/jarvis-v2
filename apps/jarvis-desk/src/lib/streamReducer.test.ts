@@ -95,3 +95,33 @@ describe('streamReducer', () => {
     }
   })
 })
+
+describe('streamReducer — tool_result status (Phase 2)', () => {
+  it('tool_result system_event sætter tool_use-blok status til done', () => {
+    const s = reduce([
+      { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'cap_1', name: 'read_file', input: {} } },
+      { type: 'content_block_stop', index: 0 },
+      { type: 'system_event', kind: 'tool_result', payload: { tool_use_id: 'cap_1', tool: 'read_file', status: 'ok' } },
+    ] as StreamEvent[])
+    const b = s.blocks[0]
+    expect(b?.type).toBe('tool_use')
+    if (b && b.type === 'tool_use') expect(b.status).toBe('done')
+  })
+
+  it('tool_result med status error sætter error', () => {
+    const s = reduce([
+      { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'cap_2', name: 'bash', input: {} } },
+      { type: 'system_event', kind: 'tool_result', payload: { tool_use_id: 'cap_2', status: 'failed' } },
+    ] as StreamEvent[])
+    const b = s.blocks[0]
+    if (b && b.type === 'tool_use') expect(b.status).toBe('error')
+  })
+
+  it('tool_result for ukendt id ignoreres gracefully', () => {
+    const s = reduce([
+      { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'hej' } },
+      { type: 'system_event', kind: 'tool_result', payload: { tool_use_id: 'mangler', status: 'ok' } },
+    ] as StreamEvent[])
+    expect(s.blocks[0]).toEqual({ type: 'text', text: 'hej' })
+  })
+})

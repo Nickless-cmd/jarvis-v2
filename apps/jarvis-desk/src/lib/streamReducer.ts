@@ -62,6 +62,24 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         const rp = event.payload as { run_id?: string }
         return rp.run_id ? { ...state, activeRunId: rp.run_id } : state
       }
+      // Phase 2: tool_result formidler en tool_use-blocks udfald (status)
+      // bundet til tool_use_id.
+      if (event.kind === 'tool_result') {
+        const tr = event.payload as { tool_use_id?: string; status?: string }
+        if (!tr.tool_use_id) return state
+        const idx = state.blocks.findIndex((b) => b.type === 'tool_use' && b.id === tr.tool_use_id)
+        if (idx < 0) return state
+        const mapped =
+          tr.status === 'ok' || tr.status === 'executed' || tr.status === 'completed'
+            ? 'done'
+            : tr.status === 'error' || tr.status === 'failed'
+              ? 'error'
+              : undefined
+        const blocks = state.blocks.slice()
+        const b = blocks[idx]
+        if (b && b.type === 'tool_use') blocks[idx] = { ...b, status: mapped ?? b.status }
+        return { ...state, blocks }
+      }
       if (event.kind !== 'working_step') return state // ukendt kind → ignorér gracefully
       const p = event.payload as { tool_id?: string; status?: string; result?: string; detail?: string; action?: string }
       // Surface seneste progress-tekst (også steps uden tool_id, fx "thinking").

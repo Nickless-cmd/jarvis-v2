@@ -238,7 +238,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
         {streaming && stream.blocks.length > 0 && (
           <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
         )}
-        <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} tokens={approxOutputTokens(stream.blocks)} />
+        <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} tokens={Math.max(approxOutputTokens(stream.blocks), stream.usage.output)} />
       </div>
 
       <div className="composer-area">

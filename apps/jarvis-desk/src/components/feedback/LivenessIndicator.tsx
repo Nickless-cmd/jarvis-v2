@@ -49,6 +49,7 @@ export function LivenessIndicator({
   const isBoilerplate = !step || /^thinking via/i.test(step) || /^arbejder$/i.test(step)
   const action = working ? (isBoilerplate ? (VERBS[verbIdx] ?? 'tænker') : step) : tone === 'error' ? 'afbrudt' : 'klar'
 
+  const tokenTail = tokens > 0 ? ` · ${fmtTokens(tokens)} tokens` : ''
   return (
     <div className={`liveness liveness-${density} ${working ? 'is-working' : 'is-idle'}`}>
       <JarvisRing size={14} spinning={working} tone={tone} />
@@ -56,9 +57,11 @@ export function LivenessIndicator({
         {working ? (
           <>
             <LiveVerb text={action} />
-            <span className="liveness-time">· {t}{tokens > 0 ? ` · ${fmtTokens(tokens)} tokens` : ''}</span>
+            <span className="liveness-time">· {t}{tokenTail}</span>
           </>
-        ) : action}
+        ) : (
+          <>{action}{tone === 'idle' && tokenTail ? <span className="liveness-time">{tokenTail}</span> : null}</>
+        )}
       </span>
     </div>
   )

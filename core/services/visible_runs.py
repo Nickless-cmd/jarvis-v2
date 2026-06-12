@@ -14,6 +14,8 @@ from uuid import uuid4
 
 from core.services.orb_phase import set_phase as _set_orb_phase
 
+from core.services.markdown_structure import normalize_markdown_structure
+
 from core.services.chat_sessions import (
     append_chat_message,
     recent_chat_tool_messages,
@@ -3322,6 +3324,11 @@ def _persist_session_assistant_message(
             "i stedet for at faktisk kalde værktøjet. Det er en fejl jeg ikke "
             "skulle have lavet. Spørg mig igen, så svarer jeg ordentligt."
         )
+    # Rekonstruér blokstruktur fra Jarvis' inline-markører (` - `/`**X:**`).
+    # Han emitterer inkonsistent newlines (~50% af svar er én lang linje);
+    # dette gør beskeden konsistent renderbar på ALLE kanaler + i gemt historik.
+    # Ren CPU-funktion → ingen --workers 1 frys-risiko. Se markdown_structure.py.
+    normalized = normalize_markdown_structure(normalized)
     message = append_chat_message(
         session_id=run.session_id,
         role="assistant",

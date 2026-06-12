@@ -859,6 +859,15 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Markdown-formatering. En backend-normalizer retter inline-struktur, men en
+    # nudge reducerer hvor ofte den skal arbejde + holder rå kanal-tekst pæn.
+    _awareness_add(7, "markdown formatting", (
+        "Formatering: brug RIGTIGE linjeskift i markdown. Hvert listepunkt på sin "
+        "egen linje (\\n- punkt), og afsnit adskilt af en blank linje. Skriv ALDRIG "
+        "en hel liste eller flere afsnit som én lang linje med ' - ' inline — det "
+        "rendrer som sammenklistret tekst."
+    ))
+
     try:
         from core.identity.project_context import current_project_root
         _project_root = current_project_root()

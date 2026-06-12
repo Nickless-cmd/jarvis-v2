@@ -32,14 +32,18 @@ function splitProtected(md: string): Array<{ kind: 'text' | 'fence'; body: strin
  *  Header-teksten må ikke selv indeholde `*`, newline, eller pipe (tabel).
  *
  *  Konservativ: vi promoverer KUN hvis linjen ligner en header — dvs. enten
- *  ender med `:` ELLER består af flere ord. Et enkelt kort bold-ord (`**fed**`)
- *  er emphasis, ikke en sektion, og skal forblive `<strong>`. */
+ *  ender med `:` ELLER er flere ord UDEN afsluttende sætningstegn. Et enkelt
+ *  kort bold-ord (`**fed**`) er emphasis; en flerords-bold der ender på `.!?`
+ *  (`**Det er chat.**`) er en udsagn-sætning — begge skal forblive `<strong>`,
+ *  ikke blive til en `<h2>`. */
 function boldOnlyLineToHeader(text: string): string {
   return text.replace(
     /^[ \t]*\*\*([^*\n|]{1,80}?)\*\*[ \t]*$/gm,
     (match, header: string) => {
       const trimmed = header.trim()
-      const headerLike = /:\s*$/.test(trimmed) || /\s/.test(trimmed)
+      const endsColon = /:\s*$/.test(trimmed)
+      const endsSentence = /[.!?]\s*$/.test(trimmed)
+      const headerLike = endsColon || (/\s/.test(trimmed) && !endsSentence)
       if (!headerLike) return match
       const clean = trimmed.replace(/:\s*$/, '').trim()
       return `## ${clean}`
@@ -107,6 +111,50 @@ function flatEmDashLineToBullets(text: string): string {
   return out.join('\n')
 }
 
+// ── Inline-markør-rekonstruktion (spejler core/services/markdown_structure.py) ──
+// Jarvis emitterer ~50% af svar UDEN newlines: hele lister og afsnit på én linje
+// med ` - ` og `**X:**` inline. Backend-normalizer retter gemt/kanal-tekst, men
+// klienten akkumulerer streaming-deltas live og reconciler ikke — så vi spejler
+// samme logik her, så LIVE-visningen også bliver struktureret.
+
+const INLINE_HEADER = /(?<=\S)[ \t]+(\*\*[^*\n]{1,80}?:\*\*)[ \t]+(?=\S)/g
+const INLINE_STATEMENT = /(?<=\S)[ \t]+(\*\*(?=[^*\n]*\s)[^*\n]{1,160}?[.!?]\*\*)[ \t]+(?=\S)/g
+const INLINE_BULLET = /(?<=\S)[ \t]-[ \t](?=\S)/g
+
+/** `**Header:**` midt i en linje → egen blok. */
+function inlineHeaderToBlock(text: string): string {
+  return text.replace(INLINE_HEADER, '\n\n$1\n\n')
+}
+
+/** Flerords-`**sætning.**` midt i en linje → eget afsnit (ikke kort emphasis). */
+function inlineStatementToParagraph(text: string): string {
+  return text.replace(INLINE_STATEMENT, '\n\n$1\n\n')
+}
+
+function isBulletLine(line: string): boolean {
+  const s = line.trimStart()
+  return s.startsWith('- ') || /^\d+\.[ \t]/.test(s)
+}
+
+/** Indsæt blank linje før første bullet i en liste der følger prosa. */
+function blankBeforeLists(text: string): string {
+  const out: string[] = []
+  for (const line of text.split('\n')) {
+    if (isBulletLine(line) && out.length) {
+      const prev = out[out.length - 1] as string
+      if (prev.trim() && !isBulletLine(prev)) out.push('')
+    }
+    out.push(line)
+  }
+  return out.join('\n')
+}
+
+/** ` - ` inline bullets → liste (kun ægte liste: 2+ markører). */
+function inlineBulletsToList(text: string): string {
+  if ((text.match(INLINE_BULLET) || []).length < 2) return text
+  return blankBeforeLists(text.replace(INLINE_BULLET, '\n- '))
+}
+
 /** Hovedfunktion: kør hele kæden over hver text-segment. */
 export function enforceStructure(md: string): string {
   const segs = splitProtected(md)
@@ -114,10 +162,14 @@ export function enforceStructure(md: string): string {
     .map((s) => {
       if (s.kind === 'fence') return s.body
       let t = s.body
+      // Inline → blok FØRST, så de linje-baserede regler ser rigtige linjer.
+      t = inlineHeaderToBlock(t)
+      t = inlineStatementToParagraph(t)
+      t = inlineBulletsToList(t)
       t = boldOnlyLineToHeader(t)
       t = boldPrefixInlineToHeader(t)
       t = flatEmDashLineToBullets(t)
-      return t
+      return t.replace(/\n{3,}/g, '\n\n')
     })
     .join('')
 }

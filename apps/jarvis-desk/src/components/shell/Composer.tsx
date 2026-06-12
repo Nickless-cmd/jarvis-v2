@@ -30,6 +30,15 @@ const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string }> = [
   { key: 'trust', label: 'Fuld adgang' },
 ]
 
+/** Bruger-venligt model-navn: deepseek-flash → "Standard", *-pro → "Pro".
+ *  Folk skal ikke kende deepseek-navnene for at vælge hastighed/kvalitet. */
+function modelLabel(model: string): string {
+  const m = (model || '').toLowerCase()
+  if (m.includes('pro')) return 'Pro'
+  if (m.includes('flash') || m.includes('standard')) return 'Standard'
+  return model
+}
+
 /** Composer (Codex-stil): venstre [+] + permissions-dropdown; højre model-pill,
  *  think-pill, dikter-mic, send. [+]-menu folder opad med billeder/filer,
  *  planlægnings-toggle og plugins. Enter sender, Shift+Enter ny linje. */
@@ -258,7 +267,7 @@ export function Composer({
 
         <div className="composer-right">
           <button type="button" className="model-pill">
-            <span className="dot" />{model}<span className="caret">▾</span>
+            <span className="dot" />{modelLabel(model)}<span className="caret">▾</span>
           </button>
           <button type="button" className="model-pill">
             {thinking}<span className="caret">▾</span>

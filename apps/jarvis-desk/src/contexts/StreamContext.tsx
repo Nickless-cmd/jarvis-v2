@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
 import { startStream, type StreamControl } from '../lib/streamClient'
-import { cancelRun } from '../lib/api'
+import { cancelRun, approveTool, denyTool } from '../lib/api'
 import { streamReducer, initialStreamState, type StreamStatus } from '../lib/streamReducer'
 import type { StreamEvent, ContentBlock } from '../lib/sseProtocol'
 
@@ -24,6 +24,12 @@ export interface SendOpts {
   workspaceRoot?: string
 }
 
+export interface PendingApproval {
+  approvalId: string
+  tool: string
+  action: string
+}
+
 export interface StreamContextValue {
   status: StreamStatus
   /** Session-id for det aktive run (kun mens status==='working'), ellers null. */
@@ -39,6 +45,10 @@ export interface StreamContextValue {
   send: (message: string, opts: SendOpts) => void
   abort: () => Promise<void>
   continueFromPartial: () => void
+  /** Afventende tool-godkendelse (code/cowork, permission=ask), ellers null. */
+  pendingApproval: PendingApproval | null
+  approve: (approvalId: string) => void
+  deny: (approvalId: string) => void
 }
 
 export const StreamContext = createContext<StreamContextValue | null>(null)
@@ -61,10 +71,12 @@ export function StreamProvider({
   // Hvilken session det aktive run hører til — så Sidebar kan vise en
   // arbejds-indikator på den, også når en ANDEN session er fremme (#8).
   const [workingSessionId, setWorkingSessionId] = useState<string | null>(null)
+  const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null)
 
   const send = useCallback((message: string, opts: SendOpts) => {
     setError(null)
     setOverride(null)
+    setPendingApproval(null)
     setWorkingSessionId(opts.sessionId)
     runIdRef.current = null
     startedAtRef.current = Date.now()
@@ -84,7 +96,23 @@ export function StreamProvider({
         autoReconnect: false,
       },
       {
-        onEvent: (e: StreamEvent) => dispatch(e),
+        onEvent: (e: StreamEvent) => {
+          // Fang approval_request (code/cowork, permission=ask) → vis ApprovalCard.
+          // Serveren blokerer streamen indtil approve/deny; ryd ved næste tur-slut.
+          if (e.type === 'system_event' && e.kind === 'approval_request') {
+            const p = (e.payload || {}) as { approval_id?: string; tool?: string; message?: string; detail?: string }
+            if (p.approval_id) {
+              setPendingApproval({
+                approvalId: p.approval_id,
+                tool: p.tool || 'tool',
+                action: [p.message, p.detail].filter(Boolean).join('\n') || p.tool || '',
+              })
+            }
+          } else if (e.type === 'message_stop') {
+            setPendingApproval(null)
+          }
+          dispatch(e)
+        },
         onRunId: (id) => { runIdRef.current = id; deskRunBridge()?.setActiveRun?.(id) },
         onHung: () => setOverride('hung'),
         onInterrupted: () => { setOverride('interrupted'); deskRunBridge()?.setActiveRun?.(null) },
@@ -104,6 +132,15 @@ export function StreamProvider({
     // Rydder override; caller (ChatView) starter en ny tur via send().
     setOverride(null)
   }, [])
+
+  const approve = useCallback((approvalId: string) => {
+    setPendingApproval(null) // optimistisk — streamen fortsætter når serveren resolver
+    void approveTool(config, approvalId).catch((e) => setError(e as Error))
+  }, [config])
+  const deny = useCallback((approvalId: string) => {
+    setPendingApproval(null)
+    void denyTool(config, approvalId).catch((e) => setError(e as Error))
+  }, [config])
 
   const status: StreamStatus = override ?? state.status
 
@@ -152,8 +189,11 @@ export function StreamProvider({
       send,
       abort,
       continueFromPartial,
+      pendingApproval,
+      approve,
+      deny,
     }),
-    [status, state.blocks, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, needsAttention, send, abort, continueFromPartial],
+    [status, state.blocks, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny],
   )
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>
 }

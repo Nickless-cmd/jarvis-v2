@@ -10,6 +10,7 @@ import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
+import { ApprovalCard } from '../components/rich/ApprovalCard'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { CodePanel } from '../components/panel/CodePanel'
 import { getWorkspaceTrust, setWorkspaceTrust } from '../lib/api'
@@ -259,6 +260,17 @@ export function CodeView({
         </div>
         <div className="composer-area">
           <div className="composer-notices">
+            {stream.pendingApproval && (
+              <ApprovalCard
+                approvalId={stream.pendingApproval.approvalId}
+                tool={stream.pendingApproval.tool}
+                action={stream.pendingApproval.action}
+                risk="medium"
+                canApprove={isOwner}
+                onApprove={(id) => stream.approve(id)}
+                onDeny={(id) => stream.deny(id)}
+              />
+            )}
             {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
             {stream.status === 'hung' && (
               <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />

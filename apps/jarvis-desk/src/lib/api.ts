@@ -319,6 +319,16 @@ export async function setWorkspaceTrust(
   return !!data.trusted
 }
 
+/** Godkend et afventende tool-kald (code/cowork approval). */
+export async function approveTool(config: ApiConfig, approvalId: string): Promise<void> {
+  await apiFetch(config, `/chat/approvals/${encodeURIComponent(approvalId)}/approve`, { method: 'POST' })
+}
+
+/** Afvis et afventende tool-kald. */
+export async function denyTool(config: ApiConfig, approvalId: string): Promise<void> {
+  await apiFetch(config, `/chat/approvals/${encodeURIComponent(approvalId)}/deny`, { method: 'POST' })
+}
+
 /** Sessioner med et aktivt visible-run lige nu (#8 — også autonome runs). */
 export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
   const data = await apiFetch<{ session_ids: string[] }>(config, '/chat/active-runs')

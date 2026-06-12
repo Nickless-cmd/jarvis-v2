@@ -11,7 +11,7 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
   const { settings } = useSettings()
   const isOwner = role === 'owner'
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
-  const { queue, plans, channels, resolve } = useCoworkData(config, isOwner)
+  const { queue, plans, todos, channels, resolve } = useCoworkData(config, isOwner)
 
   return (
     <div className="coworkview">
@@ -26,7 +26,7 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
         </section>
         <section className="cowork-pane">
           <div className="cowork-pane-head">Todo &amp; initiativer</div>
-          <TodoPane todos={[]} />
+          <TodoPane todos={todos} />
         </section>
         {isOwner && (
           <section className="cowork-pane">

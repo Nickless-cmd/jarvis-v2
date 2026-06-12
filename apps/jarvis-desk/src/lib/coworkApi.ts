@@ -10,6 +10,7 @@ export interface QueueItem {
 }
 export interface CoworkPlan { id: string; title: string; status: string; steps_done: number; steps_total: number }
 export interface CoworkChannel { name: string; online: boolean; unread: number }
+export interface CoworkTodo { id: string; content: string; status: string }
 
 export async function getCoworkQueue(config: ApiConfig): Promise<QueueItem[]> {
   const d = await apiFetch<{ items: QueueItem[] }>(config, '/cowork/queue')
@@ -18,6 +19,10 @@ export async function getCoworkQueue(config: ApiConfig): Promise<QueueItem[]> {
 export async function getCoworkPlans(config: ApiConfig): Promise<CoworkPlan[]> {
   const d = await apiFetch<{ plans: CoworkPlan[] }>(config, '/cowork/plans')
   return d.plans ?? []
+}
+export async function getCoworkTodos(config: ApiConfig): Promise<CoworkTodo[]> {
+  const d = await apiFetch<{ todos: CoworkTodo[] }>(config, '/cowork/todos')
+  return d.todos ?? []
 }
 export async function getCoworkChannels(config: ApiConfig): Promise<CoworkChannel[]> {
   const d = await apiFetch<{ channels: CoworkChannel[] }>(config, '/cowork/channels')

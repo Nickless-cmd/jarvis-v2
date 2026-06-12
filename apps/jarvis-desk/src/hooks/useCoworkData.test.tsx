@@ -4,6 +4,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 vi.mock('../lib/coworkApi', () => ({
   getCoworkQueue: vi.fn().mockResolvedValue([{ id: 'x', kind: 'initiative', title: 'T', detail: '', source: 'initiative' }]),
   getCoworkPlans: vi.fn().mockResolvedValue([]),
+  getCoworkTodos: vi.fn().mockResolvedValue([{ id: 't1', content: 'x', status: 'pending' }]),
   getCoworkChannels: vi.fn().mockResolvedValue([{ name: 'discord', online: true, unread: 1 }]),
   resolveQueueItem: vi.fn().mockResolvedValue(undefined),
 }))

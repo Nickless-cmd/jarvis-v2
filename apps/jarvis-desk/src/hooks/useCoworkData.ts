@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ApiConfig } from '../lib/api'
 import {
-  getCoworkQueue, getCoworkPlans, getCoworkChannels, resolveQueueItem,
-  type QueueItem, type CoworkPlan, type CoworkChannel,
+  getCoworkQueue, getCoworkPlans, getCoworkTodos, getCoworkChannels, resolveQueueItem,
+  type QueueItem, type CoworkPlan, type CoworkTodo, type CoworkChannel,
 } from '../lib/coworkApi'
 
 const POLL_MS = 6000
@@ -12,6 +12,7 @@ const POLL_MS = 6000
 export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [plans, setPlans] = useState<CoworkPlan[]>([])
+  const [todos, setTodos] = useState<CoworkTodo[]>([])
   const [channels, setChannels] = useState<CoworkChannel[]>([])
   const cfgRef = useRef(config)
   cfgRef.current = config
@@ -22,6 +23,7 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
     await Promise.allSettled([
       getCoworkQueue(cfg).then(setQueue),
       getCoworkPlans(cfg).then(setPlans),
+      getCoworkTodos(cfg).then(setTodos),
       isOwner ? getCoworkChannels(cfg).then(setChannels) : Promise.resolve(),
     ])
   }, [isOwner])
@@ -52,5 +54,5 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
     try { await resolveQueueItem(cfg, id, decision) } finally { void refresh() }
   }, [refresh])
 
-  return { queue, plans, channels, refresh, resolve }
+  return { queue, plans, todos, channels, refresh, resolve }
 }

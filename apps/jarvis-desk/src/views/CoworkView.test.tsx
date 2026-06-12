@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 vi.mock('../lib/coworkApi', () => ({
   getCoworkQueue: vi.fn().mockResolvedValue([]),
   getCoworkPlans: vi.fn().mockResolvedValue([]),
+  getCoworkTodos: vi.fn().mockResolvedValue([]),
   getCoworkChannels: vi.fn().mockResolvedValue([{ name: 'discord', online: true, unread: 0 }]),
   resolveQueueItem: vi.fn(),
 }))

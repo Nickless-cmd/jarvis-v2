@@ -64,6 +64,15 @@ export function Composer({
   const fileRef = useRef<HTMLInputElement>(null)
   const dictation = useDictation((t) => setText((cur) => (cur ? cur + ' ' : '') + t), config)
 
+  // Auto-resize: composer vokser med teksten (op til CSS max-height, derefter
+  // scroller den indvendigt) i stedet for at være en fast 2-rækkers boks.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [text])
+
   // Upload droppede/valgte filer; vis chip straks (object-URL preview), sæt id når
   // uploadet. session_id resolves ÉN gang pr. drop (lazy-opretter ved ny chat).
   const addFiles = async (files: FileList | File[]) => {

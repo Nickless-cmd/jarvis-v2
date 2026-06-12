@@ -449,6 +449,7 @@
   resize: none;
   min-height: 48px;
   max-height: 240px;
+  overflow-y: auto;   /* scroll når indholdet når max-height */
   width: 100%;
   padding: 14px 16px 0;
 }

@@ -51,6 +51,14 @@ export function Sidebar({
           <Plus size={14} /> Ny samtale
         </button>
 
+        <button
+          type="button"
+          className={`sidebar-nav-row ${surface === 'gallery' ? 'active' : ''}`}
+          onClick={() => onSurface('gallery')}
+        >
+          <Images size={14} /> Billeder
+        </button>
+
         <div className="session-search">
           <Search size={13} className="session-search-icon" />
           <input
@@ -65,14 +73,6 @@ export function Sidebar({
             </button>
           )}
         </div>
-
-        <button
-          type="button"
-          className={`sidebar-nav-row ${surface === 'gallery' ? 'active' : ''}`}
-          onClick={() => onSurface('gallery')}
-        >
-          <Images size={14} /> Billeder
-        </button>
 
         {searching ? (
           <>

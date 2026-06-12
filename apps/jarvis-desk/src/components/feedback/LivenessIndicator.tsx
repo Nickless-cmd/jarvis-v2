@@ -49,8 +49,9 @@ export function LivenessIndicator({
   const isBoilerplate = !step || /^thinking via/i.test(step) || /^arbejder$/i.test(step)
   const action = working ? (isBoilerplate ? (VERBS[verbIdx] ?? 'tænker') : step) : tone === 'error' ? 'afbrudt' : 'klar'
 
-  // Rækkefølge: tokens → tid → verbum. tokens er det LÅSTE output-tal (opdateres
-  // først når et run slutter), ikke et live-estimat.
+  // Rækkefølge: tokens → tid → verbum. tokens er live-estimat under
+  // streaming (chars/4 fra text+thinking-deltas) og bliver erstattet
+  // af det rigtige tal når message_delta lander til sidst.
   const tokenPart = tokens > 0 ? `${fmtTokens(tokens)} tokens` : ''
   const prefix = working ? [tokenPart, t].filter(Boolean).join(' · ') : tokenPart
   return (

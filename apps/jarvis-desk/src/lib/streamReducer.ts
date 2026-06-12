@@ -15,6 +15,20 @@ export function initialStreamState(): StreamState {
   return { status: 'idle', activeRunId: null, blocks: [], workingStep: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 } }
 }
 
+/** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
+ * mens streaming kører, fordi Anthropic kun sender det faktiske tal i
+ * `message_delta` (typisk én gang til sidst). Heuristik: ~4 chars/token. */
+function estimateOutputTokens(blocks: ContentBlock[]): number {
+  let chars = 0
+  for (const b of blocks) {
+    if (!b) continue
+    if (b.type === 'text') chars += b.text.length
+    else if (b.type === 'thinking') chars += b.thinking.length
+    else if (b.type === 'tool_use' && b.partialJson) chars += b.partialJson.length
+  }
+  return Math.round(chars / 4)
+}
+
 /**
  * Ren reducer: (state, v2event) → state. Ingen netværk, ingen side-effekter.
  * Akkumulerer content-blocks pr. index og styrer status-overgange.
@@ -24,13 +38,19 @@ export function initialStreamState(): StreamState {
 export function streamReducer(state: StreamState, event: StreamEvent): StreamState {
   switch (event.type) {
     case 'message_start':
+      // Nyt run → output-tokens nulstilles. Live-estimat bygges op via
+      // content_block_delta indtil message_delta lander med det rigtige tal.
       return {
         ...state,
         status: 'working',
         activeRunId: event.message.id,
         blocks: [],
         workingStep: null,
-        usage: { ...state.usage, input: event.message.usage.input_tokens },
+        usage: {
+          ...state.usage,
+          input: event.message.usage.input_tokens,
+          output: 0,
+        },
       }
 
     case 'content_block_start': {
@@ -50,7 +70,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       if (d.type === 'text_delta' && existing.type === 'text') blocks[event.index] = { ...existing, text: existing.text + d.text }
       else if (d.type === 'thinking_delta' && existing.type === 'thinking') blocks[event.index] = { ...existing, thinking: existing.thinking + d.thinking }
       else if (d.type === 'input_json_delta' && existing.type === 'tool_use') blocks[event.index] = { ...existing, partialJson: (existing.partialJson ?? '') + d.partial_json }
-      return { ...state, blocks }
+      // Live-estimer output-tokens fra ny content. Erstattes af det rigtige
+      // tal når message_delta lander til sidst.
+      return { ...state, blocks, usage: { ...state.usage, output: estimateOutputTokens(blocks) } }
     }
 
     case 'content_block_stop':

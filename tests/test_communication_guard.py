@@ -267,3 +267,109 @@ class TestConsumeTurnIntegration:
         for t in list_triggers():
             if t["kind"] == "permanent":
                 assert t.get("ttl_turns") is None
+
+
+# ---------------------------------------------------------------------------
+# Severity-split: hård blok (sove-/afslutnings-fraser) vs blød (stilistisk)
+# ---------------------------------------------------------------------------
+class TestEnforceOutgoing:
+    """enforce_outgoing() er hård-gaten. Den BLOKERER kun på utvetydige
+    afslutnings-/sove-fraser. Stilistiske fraser (lad mig, undskyld, beklager)
+    rapporteres som soft_matches, men blokerer ALDRIG — ellers brækker normal
+    dansk tale ('lad mig tjekke det')."""
+
+    def test_blocks_hard_closing_phrase(self):
+        from core.services.communication_guard import enforce_outgoing
+        r = enforce_outgoing("Færdig med opgaven! Godnat, Bjørn.")
+        assert r["blocked"] is True
+        assert r["matched"] == "godnat"
+        assert r["severity"] == "hard"
+
+    def test_blocks_sov_godt(self):
+        from core.services.communication_guard import enforce_outgoing
+        r = enforce_outgoing("Sov godt — vi tager den i morgen.")
+        assert r["blocked"] is True
+        assert r["severity"] == "hard"
+
+    def test_soft_phrase_does_not_block(self):
+        from core.services.communication_guard import enforce_outgoing
+        # "lad mig" er en almindelig vending — må ALDRIG hård-blokeres.
+        r = enforce_outgoing("Lad mig lige tjekke koden for dig.")
+        assert r["blocked"] is False
+        assert "lad mig" in r["soft_matches"]
+
+    def test_apology_does_not_block(self):
+        from core.services.communication_guard import enforce_outgoing
+        r = enforce_outgoing("Undskyld, jeg misforstod — her er rettelsen.")
+        assert r["blocked"] is False
+        assert "undskyld" in r["soft_matches"]
+
+    def test_safe_text_clean(self):
+        from core.services.communication_guard import enforce_outgoing
+        r = enforce_outgoing("Cachen er fikset og testene kører grønt.")
+        assert r["blocked"] is False
+        assert r["matched"] is None
+        assert r["soft_matches"] == []
+
+    def test_empty_text_not_blocked(self):
+        from core.services.communication_guard import enforce_outgoing
+        for t in ("", None, "   "):
+            r = enforce_outgoing(t)
+            assert r["blocked"] is False
+
+    def test_hard_wins_but_soft_still_reported(self):
+        from core.services.communication_guard import enforce_outgoing
+        # Indeholder både hård (godnat) og blød (lad mig) — hård vinder blok,
+        # men soft_matches skal stadig rapportere den bløde.
+        r = enforce_outgoing("Lad mig runde af. Godnat, Bjørn.")
+        assert r["blocked"] is True
+        assert r["matched"] == "godnat"
+        assert "lad mig" in r["soft_matches"]
+
+    def test_ttl_expired_hard_not_blocking(self):
+        from core.services.communication_guard import (
+            add_trigger, enforce_outgoing, consume_turn, cleanup_expired,
+        )
+        add_trigger("luksluk", kind="ttl", ttl_turns=1, reason="test")
+        # Tilføjede TTL-triggers er soft som default (ikke hård) → blokerer ikke
+        r = enforce_outgoing("sig luksluk")
+        assert r["blocked"] is False
+
+
+class TestSeverityClassification:
+
+    def test_default_hard_phrases_are_hard(self):
+        from core.services.communication_guard import _is_hard
+        for phrase in ("godnat", "sov godt", "laeg dig til at sove", "put dig selv"):
+            assert _is_hard({"phrase": phrase, "kind": "permanent", "severity": "hard"}) is True
+
+    def test_stylistic_phrases_are_soft(self):
+        from core.services.communication_guard import _is_hard
+        for phrase in ("lad mig", "undskyld", "beklager", "jeg gor det"):
+            assert _is_hard({"phrase": phrase, "kind": "permanent", "severity": "soft"}) is False
+
+    def test_legacy_trigger_without_severity_defaults_safely(self):
+        """Gammel persisteret trigger uden severity-felt: kun de kendte
+        hård-fraser hård-blokerer; alt andet behandles som blødt (sikkert)."""
+        from core.services.communication_guard import _is_hard
+        assert _is_hard({"phrase": "godnat", "kind": "permanent"}) is True
+        assert _is_hard({"phrase": "lad mig", "kind": "permanent"}) is False
+        assert _is_hard({"phrase": "et eller andet nyt", "kind": "permanent"}) is False
+
+
+class TestPromptSection:
+
+    def test_prompt_section_lists_hard_and_soft(self):
+        from core.services.communication_guard import prompt_section
+        s = prompt_section()
+        assert s  # ikke tom — defaults er aktive
+        assert "godnat" in s.lower()
+        assert "lad mig" in s.lower()
+
+    def test_prompt_section_empty_when_no_triggers(self):
+        from core.services.communication_guard import (
+            list_triggers, remove_trigger, prompt_section,
+        )
+        for t in list(list_triggers()):
+            remove_trigger(t["phrase"])
+        assert prompt_section() == ""

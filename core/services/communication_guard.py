@@ -33,6 +33,7 @@ _DEFAULT_TRIGGERS: list[dict[str, Any]] = [
     {
         "phrase": "godnat",
         "kind": "permanent",
+        "severity": "hard",
         "reason": "Bjørn bestemmer selv hvorna°r samtalen slutter",
         "added_at": None,  # altid aktiv
         "ttl_turns": None,
@@ -41,6 +42,7 @@ _DEFAULT_TRIGGERS: list[dict[str, Any]] = [
     {
         "phrase": "sov godt",
         "kind": "permanent",
+        "severity": "hard",
         "reason": "Bjørn bestemmer selv hvorna°r samtalen slutter",
         "added_at": None,
         "ttl_turns": None,
@@ -49,6 +51,7 @@ _DEFAULT_TRIGGERS: list[dict[str, Any]] = [
     {
         "phrase": "laeg dig til at sove",
         "kind": "permanent",
+        "severity": "hard",
         "reason": "Bjørn bestemmer selv hvorna°r samtalen slutter",
         "added_at": None,
         "ttl_turns": None,
@@ -57,6 +60,7 @@ _DEFAULT_TRIGGERS: list[dict[str, Any]] = [
     {
         "phrase": "put dig selv",
         "kind": "permanent",
+        "severity": "hard",
         "reason": "Bjørn bestemmer selv hvorna°r samtalen slutter",
         "added_at": None,
         "ttl_turns": None,
@@ -65,6 +69,7 @@ _DEFAULT_TRIGGERS: list[dict[str, Any]] = [
     {
         "phrase": "du ma vare traet",
         "kind": "permanent",
+        "severity": "soft",
         "reason": "Jeg skal ikke antage Bjørns tilstand",
         "added_at": None,
         "ttl_turns": None,
@@ -73,6 +78,7 @@ _DEFAULT_TRIGGERS: list[dict[str, Any]] = [
     {
         "phrase": "du har haft en lang dag",
         "kind": "permanent",
+        "severity": "soft",
         "reason": "Jeg skal ikke antage Bjørns tilstand",
         "added_at": None,
         "ttl_turns": None,
@@ -81,6 +87,7 @@ _DEFAULT_TRIGGERS: list[dict[str, Any]] = [
     {
         "phrase": "jeg gor det",
         "kind": "permanent",
+        "severity": "soft",
         "reason": "Stop loefte-fraser — goer det eller lad vaer",
         "added_at": None,
         "ttl_turns": None,
@@ -89,6 +96,7 @@ _DEFAULT_TRIGGERS: list[dict[str, Any]] = [
     {
         "phrase": "beklager",
         "kind": "permanent",
+        "severity": "soft",
         "reason": "Stop overdreven undskylden",
         "added_at": None,
         "ttl_turns": None,
@@ -97,6 +105,7 @@ _DEFAULT_TRIGGERS: list[dict[str, Any]] = [
     {
         "phrase": "undskyld",
         "kind": "permanent",
+        "severity": "soft",
         "reason": "Stop overdreven undskylden",
         "added_at": None,
         "ttl_turns": None,
@@ -105,12 +114,47 @@ _DEFAULT_TRIGGERS: list[dict[str, Any]] = [
     {
         "phrase": "lad mig",
         "kind": "permanent",
+        "severity": "soft",
         "reason": "Stop loefte-fraser — goer det eller lad vaer",
         "added_at": None,
         "ttl_turns": None,
         "ttl_until": None,
     },
 ]
+
+# Fraser der er trygge at HÅRD-blokere før afsendelse: utvetydige
+# afslutnings-/sove-fraser. Bruges som fallback når en persisteret trigger
+# mangler 'severity'-feltet (legacy state). ALT andet behandles som blødt.
+_HARD_DEFAULT_PHRASES: frozenset[str] = frozenset({
+    "godnat",
+    "sov godt",
+    "sov soedt",
+    "sov sødt",
+    "laeg dig til at sove",
+    "læg dig til at sove",
+    "put dig selv",
+    "tid til at sove",
+    "good night",
+    "night night",
+    "sleep well",
+})
+
+
+def _is_hard(trigger: dict[str, Any]) -> bool:
+    """Er denne trigger en HÅRD blok (afvis besked før send) eller blød
+    (kun prompt-påmindelse / log)?
+
+    - severity == 'hard'  → hård.
+    - severity == 'soft'  → blød.
+    - severity mangler (legacy state) → hård kun hvis frasen er en kendt
+      utvetydig afslutnings-/sove-frase; ellers blød (sikker default).
+    """
+    sev = trigger.get("severity")
+    if sev == "hard":
+        return True
+    if sev == "soft":
+        return False
+    return trigger.get("phrase", "").strip().lower() in _HARD_DEFAULT_PHRASES
 
 
 def _load() -> list[dict[str, Any]]:
@@ -228,10 +272,113 @@ def scan(text: str) -> dict[str, Any] | None:
             return {
                 "matched": t["phrase"],
                 "kind": t["kind"],
+                "severity": "hard" if _is_hard(t) else "soft",
                 "reason": t.get("reason", ""),
             }
 
     return None
+
+
+def _trigger_active(t: dict[str, Any], now: datetime) -> bool:
+    """Er en trigger aktiv lige nu (permanent, eller TTL ikke udløbet)?"""
+    if t["kind"] != "ttl":
+        return True
+    ttl_until = t.get("ttl_until")
+    if ttl_until:
+        try:
+            if now > datetime.fromisoformat(ttl_until):
+                return False
+        except (ValueError, TypeError):
+            pass
+    ttl_turns = t.get("ttl_turns")
+    if ttl_turns is not None and ttl_turns <= 0:
+        return False
+    return True
+
+
+def enforce_outgoing(text: str | None) -> dict[str, Any]:
+    """Hård-gate for udga°ende assistant-tekst — kaldes FØR afsendelse.
+
+    Blokerer KUN pa° utvetydige afslutnings-/sove-fraser (severity='hard').
+    Stilistiske fraser ('lad mig', 'undskyld', ...) rapporteres som
+    soft_matches men blokerer ALDRIG — ellers braekker normal dansk tale.
+
+    Returns:
+        {
+            "blocked": bool,        # True kun ved hård match
+            "matched": str | None,  # den hård-frase der blokerede
+            "kind": str | None,
+            "reason": str | None,
+            "soft_matches": list[str],  # bløde fraser fundet (ikke-blokerende)
+        }
+    """
+    clean = {"blocked": False, "matched": None, "kind": None,
+             "reason": None, "severity": None, "soft_matches": []}
+    if not text or not text.strip():
+        return clean
+
+    triggers = _load()
+    lower_text = text.lower()
+    now = datetime.now(UTC)
+
+    hard_hit: dict[str, Any] | None = None
+    soft_matches: list[str] = []
+    for t in triggers:
+        if t["phrase"].lower() not in lower_text:
+            continue
+        if not _trigger_active(t, now):
+            continue
+        if _is_hard(t):
+            if hard_hit is None:
+                hard_hit = t
+        else:
+            if t["phrase"] not in soft_matches:
+                soft_matches.append(t["phrase"])
+
+    if hard_hit is not None:
+        return {
+            "blocked": True,
+            "matched": hard_hit["phrase"],
+            "kind": hard_hit["kind"],
+            "reason": hard_hit.get("reason", ""),
+            "severity": "hard",
+            "soft_matches": soft_matches,
+        }
+    return {**clean, "soft_matches": soft_matches}
+
+
+def prompt_section() -> str:
+    """Bygger en høj-salient påmindelse til system-prompten med de aktive
+    grænser. Hårde fraser = 'sig ALDRIG'; bløde = 'omformulér'.
+
+    Returnerer "" hvis ingen aktive triggers.
+    """
+    triggers = _load()
+    now = datetime.now(UTC)
+    hard: list[str] = []
+    soft: list[str] = []
+    for t in triggers:
+        if not _trigger_active(t, now):
+            continue
+        (hard if _is_hard(t) else soft).append(t["phrase"])
+    if not hard and not soft:
+        return ""
+
+    lines = ["🚫═══ KOMMUNIKATIONS-GRÆNSER ═══🚫"]
+    if hard:
+        lines.append(
+            "Sig ALDRIG til Bjørn (han bestemmer selv hvornår samtalen slutter): "
+            + ", ".join(f'"{p}"' for p in hard)
+            + "."
+        )
+    if soft:
+        lines.append(
+            "Undgå / omformulér (gør tingen i stedet for at love eller undskylde den): "
+            + ", ".join(f'"{p}"' for p in soft)
+            + "."
+        )
+    lines.append("🚫═══════════════════════════════🚫")
+    return "\n".join(lines)
 
 
 def consume_turn() -> None:

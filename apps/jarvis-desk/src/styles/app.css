@@ -1017,3 +1017,9 @@
 
 /* Code-session mode-ikon i sidebar */
 .session-mode-icon { color: var(--accent); margin-right: 4px; flex: 0 0 auto; vertical-align: middle; }
+
+/* Code-mode empty + header layout */
+.codeview.empty { display: flex; flex-direction: column; height: 100%; }
+.codeview.empty .chat-empty { margin: auto; }
+.codeview-empty-ws { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 16px; font-size: 12.5px; }
+.codeview-empty-ws select { background: var(--bg-2); color: var(--fg-1); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font-size: 12.5px; }

@@ -40,6 +40,19 @@
       "icon": "assets/icon.png",
       "maintainer": "Nickless <admin@srvlab.dk>",
       "executableName": "jarvis-desktop"
+    },
+    "mac": {
+      "target": [
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.png"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.png"
     }
   },
   "dependencies": {

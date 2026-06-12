@@ -18,7 +18,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 _RECOMPUTE_SECONDS = 5 * 60
-_CRITICAL_COOLDOWN_MINUTES = 30  # don't spam critical alerts
+_CRITICAL_COOLDOWN_MINUTES = 360  # 6 hours — kun éngang per døgn i praksis
 
 _last_state: dict[str, Any] = {}
 _last_computed_ts: float = 0.0

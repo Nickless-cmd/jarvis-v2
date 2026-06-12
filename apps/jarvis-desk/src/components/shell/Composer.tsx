@@ -3,6 +3,7 @@ import {
   ArrowUp, Square, Plus, Paperclip, ListChecks, Puzzle, ChevronRight,
   ChevronDown, Mic, ShieldCheck, FileText, X,
 } from 'lucide-react'
+import { emojify } from '../../lib/emojify'
 import { useDictation } from '../../hooks/useDictation'
 import { ContextRing } from './ContextRing'
 import { uploadAttachment, type ApiConfig } from '../../lib/api'
@@ -150,7 +151,7 @@ export function Composer({
 
   // Enter sender altid (også under streaming — ChatView lægger den i kø).
   const send = () => {
-    const t = text.trim()
+    const t = emojify(text.trim())  // :) ;) :P → 🙂 😉 😛 (vises som emoji i boblen)
     const ready = attachments.filter((a) => a.id && !a.error)
     if (!t && ready.length === 0) return
     onSend(t, {

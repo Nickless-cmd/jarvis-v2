@@ -243,7 +243,7 @@
 .msg-action-btn:hover { background: var(--bg-3); color: var(--fg-1); }
 .msg-action-btn.active { color: var(--accent); }
 /* Jarvis' action-række flugter med boble-teksten (forbi avatar 28px + gap 12px) */
-.msg-jarvis-wrap .msg-actions { margin-left: 40px; }
+.msg-jarvis-wrap .msg-actions { margin-left: 0; }
 .msg-time {
   color: var(--fg-3);
   font-size: 11px;
@@ -257,19 +257,8 @@
 }
 .msg-jarvis {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
-}
-.avatar-jarvis {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  display: grid; place-items: center;
-  border: 1px solid var(--fg-3);
-  color: var(--fg-2);
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 1px;
 }
 .jarvis-name {
   font-size: 12.5px;
@@ -343,7 +332,7 @@
   border: 1px solid var(--line);
 }
 .jarvis-body pre code { background: none; padding: 0; color: #c8d2dc; }
-.msg-jarvis-wrap .msg-actions { padding-left: 40px; }
+.msg-jarvis-wrap .msg-actions { padding-left: 0; }
 
 /* ─── Composer ────────────────────────────────────── */
 .composer-wrap {

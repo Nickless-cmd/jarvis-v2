@@ -45,7 +45,6 @@ function MessageRowImpl({
   return (
     <div className="msg-jarvis-wrap">
       <article className="msg-jarvis">
-        <div className="avatar-jarvis">J</div>
         <div className="jarvis-body">
           <BlocksRenderer blocks={blocks} density={density} streaming={streaming} />
           {!streaming && detectArtifacts(blocks).map((a, i) => (

@@ -996,3 +996,13 @@
 .filetree-file, .filetree-dir-row { display: flex; align-items: center; gap: 5px; padding: 3px 6px; cursor: pointer; border-radius: 4px; color: var(--fg-2); white-space: nowrap; }
 .filetree-file:hover, .filetree-dir-row:hover { background: var(--bg-2); color: var(--fg-1); }
 .filetree-loading { padding: 8px; color: var(--fg-3); }
+
+/* Code-mode panel */
+.codepanel { display: flex; flex-direction: column; height: 100%; }
+.codepanel-head { padding: 8px 12px; font-size: 12.5px; color: var(--fg-3); border-bottom: 1px solid var(--line); }
+.codepanel-body { display: flex; flex: 1; min-height: 0; }
+.codepanel-tree { width: 200px; overflow: auto; border-right: 1px solid var(--line); padding: 6px 0; }
+.codepanel-view { flex: 1; overflow: auto; padding: 10px; min-width: 0; }
+.codepanel-filename { font-size: 12px; color: var(--fg-3); margin-bottom: 6px; }
+.codepanel-content { font-size: 12.5px; white-space: pre; overflow-x: auto; color: #c8d2dc; margin: 0; }
+.codepanel-empty { color: var(--fg-3); font-size: 13px; padding: 12px; }

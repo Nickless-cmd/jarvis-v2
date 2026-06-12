@@ -17,6 +17,8 @@ export interface JarvisDeskBridge {
   setActiveRun: (runId: string | null) => Promise<void>
   /** Giv main-process auth så den kan kalde cancel-endpoint ved quit. */
   setRunAuth: (apiBaseUrl: string, authToken: string | null) => Promise<void>
+  /** Tænd/sluk systray attention-prik (Jarvis vil noget mens vinduet er skjult). */
+  setTrayAttention: (on: boolean) => Promise<void>
   platform: NodeJS.Platform
 }
 
@@ -28,6 +30,7 @@ const bridge: JarvisDeskBridge = {
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   setActiveRun: (runId) => ipcRenderer.invoke('run:setActive', runId),
   setRunAuth: (apiBaseUrl, authToken) => ipcRenderer.invoke('run:setAuth', apiBaseUrl, authToken),
+  setTrayAttention: (on) => ipcRenderer.invoke('tray:attention', on),
   platform: process.platform,
 }
 

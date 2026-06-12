@@ -7,6 +7,7 @@ import type { StreamEvent, ContentBlock } from '../lib/sseProtocol'
 interface DeskRunBridge {
   setActiveRun?: (runId: string | null) => void
   setRunAuth?: (apiBaseUrl: string, authToken: string | null) => void
+  setTrayAttention?: (on: boolean) => void
 }
 function deskRunBridge(): DeskRunBridge | undefined {
   return (window as unknown as { jarvisDesk?: DeskRunBridge }).jarvisDesk
@@ -110,6 +111,12 @@ export function StreamProvider({
     (status === 'working' || status === 'hung' || status === 'interrupted') &&
     typeof document !== 'undefined' &&
     document.hidden
+
+  // Systray attention-prik følger needsAttention (Jarvis vil noget mens
+  // vinduet er skjult/ude af fokus).
+  useEffect(() => {
+    deskRunBridge()?.setTrayAttention?.(needsAttention)
+  }, [needsAttention])
 
   const value = useMemo<StreamContextValue>(
     () => ({

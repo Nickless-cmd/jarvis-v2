@@ -107,17 +107,43 @@ function toggleWindow(): void {
  * en tray-udvidelse (AppIndicator etc.). Funktionen returnerer pænt
  * hvis tray ikke kan oprettes (logger advarsel, fortsætter uden tray).
  */
+// ─── Ring-only systray med tilstande (idle / pulsing / attention) ───
+type TrayState = 'idle' | 'working'
+let trayState: TrayState = 'idle'
+let trayAttention = false
+let trayPulseTimer: ReturnType<typeof setInterval> | null = null
+let trayPulseBright = false
+
+function trayAsset(name: 'idle' | 'bright' | 'attention') {
+  const img = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', `tray-${name}.png`))
+  return process.platform === 'linux' ? img.resize({ width: 22, height: 22 }) : img
+}
+
+function applyTrayImage(): void {
+  if (!tray) return
+  const name = trayAttention ? 'attention' : trayState === 'working' ? (trayPulseBright ? 'bright' : 'idle') : 'idle'
+  tray.setImage(trayAsset(name))
+}
+
+function refreshTrayState(): void {
+  if (!tray) return
+  // Puls kun mens 'working' og IKKE attention (attention er statisk rød prik).
+  const shouldPulse = trayState === 'working' && !trayAttention
+  if (shouldPulse && !trayPulseTimer) {
+    trayPulseTimer = setInterval(() => { trayPulseBright = !trayPulseBright; applyTrayImage() }, 600)
+  } else if (!shouldPulse && trayPulseTimer) {
+    clearInterval(trayPulseTimer); trayPulseTimer = null; trayPulseBright = false
+  }
+  applyTrayImage()
+  tray.setToolTip(
+    trayAttention ? 'Jarvis vil dig noget' : trayState === 'working' ? 'Jarvis arbejder…' : 'Jarvis',
+  )
+}
+
 function createTray(): void {
   try {
-    const iconPath = path.join(__dirname, '..', 'assets', 'icon-48.png')
-    const image = nativeImage.createFromPath(iconPath)
-    // Linux: resize til 22x22 (standard panel-størrelse)
-    const trayImage = process.platform === 'linux'
-      ? image.resize({ width: 22, height: 22 })
-      : image
-
-    tray = new Tray(trayImage)
-    tray.setToolTip('jarvis-desk')
+    tray = new Tray(trayAsset('idle'))
+    tray.setToolTip('Jarvis')
 
     const contextMenu = Menu.buildFromTemplate([
       {
@@ -229,6 +255,13 @@ ipcMain.handle('shell:openExternal', (_event, url: string) => {
 // R3: renderer registrerer aktivt run_id + auth så main kan server-cancelle ved quit.
 ipcMain.handle('run:setActive', (_event, runId: string | null) => {
   activeRunId = runId
+  trayState = runId ? 'working' : 'idle'
+  refreshTrayState()
+})
+// Systray attention-prik (Jarvis vil noget mens vinduet er skjult/ude af fokus).
+ipcMain.handle('tray:attention', (_event, on: boolean) => {
+  trayAttention = !!on
+  refreshTrayState()
 })
 ipcMain.handle('run:setAuth', (_event, apiBaseUrl: string, authToken: string | null) => {
   runApiBaseUrl = apiBaseUrl

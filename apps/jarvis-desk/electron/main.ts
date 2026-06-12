@@ -29,11 +29,14 @@ import * as fs from 'node:fs'
 const isDev = process.env.NODE_ENV === 'development'
 const APP_NAME = 'Jarvis'
 
-// GPU-sandbox crasher den pakkede app på nogle Linux-opsætninger
-// ("GPU process isn't usable. Goodbye." / error_code=1002). Undgå GPU-processen
-// helt — en chat-app har ikke brug for HW-accel, og det gør menu-start robust.
-app.disableHardwareAcceleration()
+// GPU-rendering: HW-acceleration er TIL (software-rendering gav glitchy grafik
+// ved view-skift på Linux). disable-gpu-sandbox + ignore-gpu-blocklist gør den
+// pakkede app robust på NVIDIA/Linux uden at ramme den gamle GPU-sandbox-crash
+// ("GPU process isn't usable. Goodbye." / error_code=1002).
+// Hvis den crasher igen: sæt app.disableHardwareAcceleration() tilbage som
+// første linje og fjern de to ignore/blocklist-switches.
 app.commandLine.appendSwitch('disable-gpu-sandbox')
+app.commandLine.appendSwitch('ignore-gpu-blocklist')
 
 // Suppress dev-only CSP warnings i renderer. Vi VED at vi har 'unsafe-eval'
 // i dev — det er for at Vite kan HMR'e. Prod-CSP er stram.

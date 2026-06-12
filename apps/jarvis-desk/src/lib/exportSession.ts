@@ -11,11 +11,23 @@ export async function exportSessionMarkdown(config: ApiConfig, sessionId: string
     lines.push(blocksToPlainText(m.content as { type: string; text?: string }[]))
     lines.push('')
   }
-  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' })
+  const markdown = lines.join('\n')
+  const filename = `${title.replace(/[^a-z0-9æøå ]/gi, '').replace(/\s+/g, '_') || 'samtale'}.md`
+
+  // I Electron er renderer-side blob-download upålidelig — brug native gem-dialog
+  // via IPC. Falder tilbage til blob-download i browser/dev hvor broen ikke findes.
+  const desk = (window as unknown as {
+    jarvisDesk?: { exportMarkdown?: (md: string, name: string) => Promise<boolean> }
+  }).jarvisDesk
+  if (desk?.exportMarkdown) {
+    await desk.exportMarkdown(markdown, filename)
+    return
+  }
+  const blob = new Blob([markdown], { type: 'text/markdown' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${title.replace(/[^a-z0-9æøå ]/gi, '').replace(/\s+/g, '_') || 'samtale'}.md`
+  a.download = filename
   a.click()
   URL.revokeObjectURL(url)
 }

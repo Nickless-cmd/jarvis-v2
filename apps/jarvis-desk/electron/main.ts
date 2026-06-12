@@ -73,6 +73,7 @@ function saveConfig(cfg: AppConfig): void {
 }
 
 let mainWindow: BrowserWindow | null = null
+let lastNotification: Notification | null = null
 let tray: Tray | null = null
 let appQuitting = false
 
@@ -248,6 +249,14 @@ function createMainWindow(): void {
   mainWindow.on('closed', () => {
     mainWindow = null
   })
+
+  // Når appen får fokus: ryd dock/launcher-badge'en og luk en evt. hængende
+  // "opgave færdig"-notifikation. Ellers bliver det grønne tal (1) hængende på
+  // ikonet selv efter man har åbnet appen.
+  mainWindow.on('focus', () => {
+    app.setBadgeCount(0)
+    if (lastNotification) { try { lastNotification.close() } catch { /* ignore */ } lastNotification = null }
+  })
 }
 
 // ─── IPC handlers (only what renderer needs from main) ─────────────────
@@ -291,17 +300,39 @@ ipcMain.handle('dialog:pickFolder', async () => {
   if (res.canceled || !res.filePaths.length) return null
   return res.filePaths[0]
 })
-// Native "opgave færdig"-notifikation når et run slutter (fyrer altid).
+// Native "opgave færdig"-notifikation når et run slutter. Springes over hvis
+// vinduet allerede er i fokus (ingen grund til at notificere/badge når brugeren
+// kigger på appen — det er netop dér det grønne tal blev hængende).
 ipcMain.handle('notify:taskDone', (_event, title: string, body: string) => {
   if (!Notification.isSupported()) return
+  if (mainWindow?.isFocused()) return
   const n = new Notification({
     title: title || 'Jarvis',
     body: body || 'Opgaven er færdig.',
     icon: trayAsset('bright'),
     silent: false,
   })
-  n.on('click', () => { if (mainWindow) { mainWindow.show(); mainWindow.focus() } })
+  n.on('click', () => {
+    app.setBadgeCount(0)
+    if (mainWindow) { mainWindow.show(); mainWindow.focus() }
+  })
+  n.on('close', () => { if (lastNotification === n) lastNotification = null })
+  lastNotification = n
   n.show()
+})
+
+// Eksportér en samtale som markdown — via native gem-dialog (renderer-side blob-
+// download er upålidelig i Electron). Renderer bygger markdown'en, main skriver
+// den til den valgte sti.
+ipcMain.handle('session:exportMarkdown', async (_event, markdown: string, suggestedName: string) => {
+  const res = await dialog.showSaveDialog({
+    title: 'Eksportér samtale',
+    defaultPath: suggestedName || 'samtale.md',
+    filters: [{ name: 'Markdown', extensions: ['md'] }],
+  })
+  if (res.canceled || !res.filePath) return false
+  await fs.promises.writeFile(res.filePath, markdown, 'utf-8')
+  return true
 })
 
 // ─── Content Security Policy ──────────────────────────────────────────

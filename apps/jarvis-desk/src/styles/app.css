@@ -231,6 +231,12 @@
 }
 .session-menu button:hover { background: var(--bg-3); }
 .session-menu button.danger { color: var(--error-fg); }
+/* Inline omdøb-input — fylder samme plads som session-label-knappen. */
+.session-rename-input {
+  flex: 1; min-width: 0; background: var(--bg-1); color: var(--fg-0, #f0f2f7);
+  border: 1px solid var(--accent); border-radius: var(--radius-sm);
+  padding: 5px 8px; font-size: 13px; outline: none;
+}
 .session-item:hover { background: var(--bg-2); }
 .session-item:hover .session-item-label { color: var(--fg-1); }
 .session-item.active { background: var(--bg-3); }

@@ -23,6 +23,8 @@ export interface JarvisDeskBridge {
   notifyTaskDone: (title: string, body: string) => Promise<void>
   /** Åbn native mappe-vælger; returnerer valgt sti eller null. */
   pickFolder: () => Promise<string | null>
+  /** Eksportér markdown til en fil via native gem-dialog; true hvis gemt. */
+  exportMarkdown: (markdown: string, suggestedName: string) => Promise<boolean>
   platform: NodeJS.Platform
 }
 
@@ -37,6 +39,7 @@ const bridge: JarvisDeskBridge = {
   setTrayAttention: (on) => ipcRenderer.invoke('tray:attention', on),
   notifyTaskDone: (title, body) => ipcRenderer.invoke('notify:taskDone', title, body),
   pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),
+  exportMarkdown: (markdown, suggestedName) => ipcRenderer.invoke('session:exportMarkdown', markdown, suggestedName),
   platform: process.platform,
 }
 

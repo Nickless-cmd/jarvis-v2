@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images, Code } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
@@ -163,18 +163,27 @@ function SessionItem({
   const { rename, remove } = useSessions()
   const { settings } = useSettings()
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(title)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
-    const close = () => setOpen(false)
+    const close = () => { setOpen(false); setConfirmDelete(false) }
     window.addEventListener('click', close)
     return () => window.removeEventListener('click', close)
   }, [open])
 
-  const doRename = () => {
-    const next = window.prompt('Omdøb samtale', title)
-    if (next && next.trim() && next.trim() !== title) void rename(id, next.trim())
-    setOpen(false)
+  useEffect(() => {
+    if (editing) { setDraft(title); inputRef.current?.focus(); inputRef.current?.select() }
+  }, [editing, title])
+
+  // Omdøb via INLINE edit — window.prompt() er ikke understøttet i Electron.
+  const commitRename = () => {
+    const next = draft.trim()
+    if (next && next !== title) void rename(id, next)
+    setEditing(false)
   }
   const doExport = async () => {
     setOpen(false)
@@ -182,31 +191,51 @@ function SessionItem({
     const { exportSessionMarkdown } = await import('../../lib/exportSession')
     await exportSessionMarkdown({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }, id, title)
   }
+  // Slet via to-trins INLINE bekræft — window.confirm() er upålidelig i Electron.
   const doDelete = () => {
+    if (!confirmDelete) { setConfirmDelete(true); return }
     setOpen(false)
-    if (window.confirm(`Slet samtalen "${title}"?`)) void remove(id)
+    setConfirmDelete(false)
+    void remove(id)
   }
 
   return (
     <div className={`session-item ${active ? 'active' : ''} ${working ? 'working' : ''}`}>
-      <button type="button" className="session-item-label" onClick={onSelect}>
-        {working && (
-          <span className="session-working" aria-label="Jarvis arbejder" title="Jarvis arbejder her">
-            <span></span><span></span><span></span>
-          </span>
-        )}
-        {workspaceKind && <Code size={12} className="session-mode-icon" />}
-        {title}
-      </button>
+      {editing ? (
+        <input
+          ref={inputRef}
+          className="session-rename-input"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commitRename() }
+            else if (e.key === 'Escape') { e.preventDefault(); setEditing(false) }
+          }}
+          onBlur={commitRename}
+        />
+      ) : (
+        <button type="button" className="session-item-label" onClick={onSelect}>
+          {working && (
+            <span className="session-working" aria-label="Jarvis arbejder" title="Jarvis arbejder her">
+              <span></span><span></span><span></span>
+            </span>
+          )}
+          {workspaceKind && <Code size={12} className="session-mode-icon" />}
+          {title}
+        </button>
+      )}
       <div className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="session-more" aria-label="Mere" onClick={() => setOpen((o) => !o)}>
+        <button type="button" className="session-more" aria-label="Mere" onClick={() => { setOpen((o) => !o); setConfirmDelete(false) }}>
           <MoreHorizontal size={15} />
         </button>
         {open && (
           <div className="session-menu">
-            <button type="button" onClick={doRename}><Pencil size={13} /> Omdøb</button>
+            <button type="button" onClick={() => { setOpen(false); setEditing(true) }}><Pencil size={13} /> Omdøb</button>
             <button type="button" onClick={doExport}><Download size={13} /> Eksportér</button>
-            <button type="button" className="danger" onClick={doDelete}><Trash2 size={13} /> Slet</button>
+            <button type="button" className="danger" onClick={doDelete}>
+              <Trash2 size={13} /> {confirmDelete ? 'Slet for altid?' : 'Slet'}
+            </button>
           </div>
         )}
       </div>

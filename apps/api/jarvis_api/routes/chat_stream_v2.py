@@ -79,6 +79,20 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     _m = (request.mode or "").strip().lower()
     _tool_scope = "chat" if _m == "chat" else "code" if _m == "code" else ""
 
+    # Persistér code-mode workspace-binding på sessionen, så run-enforcement
+    # (trusted-folder gate i visible_runs) læser den AKTUELLE workspace — ikke en
+    # tom/stale binding fra da sessionen blev oprettet. Også det der tænder
+    # code-ikonet i sidebar. Best-effort; må aldrig bryde streamen.
+    if _tool_scope == "code":
+        _wk = (request.workspace_kind or "").strip()
+        _wr = (request.workspace_root or "").strip()
+        if _wk and _wr:
+            try:
+                from core.services.chat_sessions import set_session_workspace
+                set_session_workspace(session_id, kind=_wk, root=_wr)
+            except Exception:
+                pass
+
     legacy_iter = start_visible_run(
         message=effective_message,
         session_id=session_id,

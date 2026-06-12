@@ -52,13 +52,16 @@ function BlockView({
       // Når svaret begynder (thinking er ikke længere sidste blok), folder det
       // sig sammen til "tænkte…". Brugeren kan altid override manuelt.
       const live = streaming && isLast
-      const open = userToggled !== null ? userToggled : live
+      // Live-tænkning vises mens han tænker. De gemte/forbi "tænkte…"-blokke
+      // mellem tool-kald er redundante nu (live-tænkning dækker dem) → skjul dem.
+      if (!live) return null
+      const open = userToggled !== null ? userToggled : true
       return (
-        <div className={`thinking ${live ? 'live' : ''}`}>
+        <div className="thinking live">
           <button type="button" onClick={() => setUserToggled(!open)}>
-            {live ? <LiveVerb text="tænker" /> : open ? 'Skjul tanke' : 'tænkte…'}
+            <LiveVerb text="tænker" />
           </button>
-          {open && <MarkdownRenderer text={block.thinking} streaming={live} />}
+          {open && <MarkdownRenderer text={block.thinking} streaming />}
         </div>
       )
     }

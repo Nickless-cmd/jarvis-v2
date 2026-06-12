@@ -75,8 +75,18 @@ function describeTool(fam: Fam, args: Record<string, unknown>): { Icon: typeof T
     case 'glob': return { Icon: Search, summary: String(args.pattern || args.glob || '') }
     case 'grep': return { Icon: Search, summary: String(args.pattern || args.query || '') }
     case 'list': return { Icon: FolderTree, summary: pathOf(args) }
-    default: return { Icon: Wrench, summary: '' }
+    default: return { Icon: Wrench, summary: genericSummary(args) }
   }
+}
+
+/** Pluk det mest sigende argument til ukendte værktøjer (search_memory,
+ *  search_jarvis_brain, fakta-tjek m.fl.) → vis "navn · <mål>" i stedet for rå JSON. */
+function genericSummary(args: Record<string, unknown>): string {
+  for (const k of ['query', 'q', 'command', 'path', 'file_path', 'pattern', 'text', 'url', 'name', 'topic']) {
+    const v = args[k]
+    if (typeof v === 'string' && v.trim()) return v
+  }
+  return ''
 }
 
 function StatusBadge({ status }: { status: string }) {

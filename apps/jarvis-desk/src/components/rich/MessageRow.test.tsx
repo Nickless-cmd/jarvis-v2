@@ -8,10 +8,12 @@ describe('MessageRow', () => {
     render(<MessageRow role="assistant" blocks={[{ type: 'text', text: '**hej**' }]} density="compact" streaming={false} />)
     expect(screen.getByText('hej').tagName).toBe('STRONG')
   })
-  it('thinking block is collapsed by default', () => {
-    render(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'intern' }]} density="compact" streaming={false} />)
-    expect(screen.queryByText('intern')).toBeNull()
-    expect(screen.getByText(/tænkte/i)).toBeInTheDocument()
+  it('forbi tænkning skjules; live tænkning vises', () => {
+    const { rerender } = render(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'intern' }]} density="compact" streaming={false} />)
+    expect(screen.queryByText(/tænk/i)).toBeNull()
+    rerender(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'intern' }]} density="compact" streaming />)
+    expect(screen.getByText(/tænker/i)).toBeInTheDocument()
+    expect(screen.getByText('intern')).toBeInTheDocument()
   })
   it('renders user message as plain bubble text', () => {
     render(<MessageRow role="user" blocks={[{ type: 'text', text: 'hej Jarvis' }]} density="compact" streaming={false} />)

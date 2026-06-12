@@ -36,8 +36,17 @@ def _repo_root() -> Path:
 
 
 @router.get("/file")
-async def chat_read_file(path: str = Query(...)) -> dict:
-    """Læs en repo-fil til preview-panelet. Path-jail: kun whitelisted rødder."""
+async def chat_read_file(path: str = Query(...), kind: str = "container") -> dict:
+    """Læs en fil til preview-panelet. Container: path-jail til whitelisted rødder.
+    Workstation: via operator-bridgen (operator_read_file) på brugerens computer."""
+    if kind == "workstation":
+        res = _operator_exec("operator_read_file", {"path": path})
+        if res.get("status") != "ok":
+            raise HTTPException(status_code=502, detail=str(res.get("reason") or "operator-read fejlede"))
+        content = str(res.get("content") or res.get("text") or "")
+        ext = ("." + path.rsplit(".", 1)[-1]) if "." in path.rsplit("/", 1)[-1] else ""
+        return {"path": path, "content": content, "language": _LANG_BY_EXT.get(ext, "text")}
+
     root = _repo_root()
     candidate = (root / path).resolve()
     try:

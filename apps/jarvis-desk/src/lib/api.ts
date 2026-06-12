@@ -299,6 +299,26 @@ export async function getTree(
   return data.entries ?? []
 }
 
+/** Er et workspace betroet (skrive/exec-gate i code-mode)? */
+export async function getWorkspaceTrust(
+  config: ApiConfig, kind: 'container' | 'workstation', root: string,
+): Promise<boolean> {
+  const qs = `kind=${encodeURIComponent(kind)}&root=${encodeURIComponent(root)}`
+  const data = await apiFetch<{ trusted: boolean }>(config, `/chat/workspace-trust?${qs}`)
+  return !!data.trusted
+}
+
+/** Markér/afmarkér et workspace som betroet. */
+export async function setWorkspaceTrust(
+  config: ApiConfig, kind: 'container' | 'workstation', root: string, trusted: boolean,
+): Promise<boolean> {
+  const data = await apiFetch<{ trusted: boolean }>(config, '/chat/workspace-trust', {
+    method: 'POST',
+    body: JSON.stringify({ kind, root, trusted }),
+  })
+  return !!data.trusted
+}
+
 /** Sessioner med et aktivt visible-run lige nu (#8 — også autonome runs). */
 export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
   const data = await apiFetch<{ session_ids: string[] }>(config, '/chat/active-runs')

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { FolderTree, PanelRight } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { FolderTree, PanelRight, Lock, ShieldCheck } from 'lucide-react'
 import { useStream } from '../hooks/useStream'
 import { useSettings } from '../hooks/useSettings'
 import { usePanel } from '../hooks/usePanel'
@@ -8,6 +8,7 @@ import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { CodePanel } from '../components/panel/CodePanel'
+import { getWorkspaceTrust, setWorkspaceTrust } from '../lib/api'
 
 const CONTAINER_ROOTS = ['docs', 'workspace', 'core', 'apps', 'scripts'] as const
 
@@ -20,7 +21,38 @@ export function CodeView({ sessionId, userName }: { sessionId: string | null; us
   const panel = usePanel()
   const [root, setRoot] = useState<string>('core')
   const [filesOpen, setFilesOpen] = useState(false) // fil-træ foldet ind fra start
+  const [trusted, setTrusted] = useState<boolean | null>(null)
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+
+  // Trusted-folder gate: tjek om det valgte workspace er betroet (skrive/exec).
+  useEffect(() => {
+    if (!config) return
+    let cancelled = false
+    setTrusted(null)
+    getWorkspaceTrust(config, 'container', root)
+      .then((t) => { if (!cancelled) setTrusted(t) })
+      .catch(() => { if (!cancelled) setTrusted(false) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [root, config?.apiBaseUrl, config?.authToken])
+
+  const trustFolder = async () => {
+    if (!config) return
+    try {
+      const t = await setWorkspaceTrust(config, 'container', root, true)
+      setTrusted(t)
+    } catch { /* lad banneret blive — brugeren kan prøve igen */ }
+  }
+
+  const trustBanner = trusted === false ? (
+    <div className="trust-banner">
+      <Lock size={14} />
+      <span><strong>{root}</strong> er ikke betroet — Jarvis kan læse, men ikke skrive eller køre kommandoer her.</span>
+      <button type="button" className="trust-btn" onClick={trustFolder}>
+        <ShieldCheck size={13} /> Stol på mappen
+      </button>
+    </div>
+  ) : null
 
   const handleSend = (text: string, opts: ComposerSendOpts) => {
     if (!sessionId) return
@@ -84,6 +116,7 @@ export function CodeView({ sessionId, userName }: { sessionId: string | null; us
     return (
       <div className="codeview empty">
         {header}
+        {trustBanner}
         <div className="chat-empty">
           <h2>Hej{userName ? ` ${userName}` : ''}.</h2>
           <p>Hvad skal vi kode? Vælg et workspace, så går vi i gang.</p>
@@ -104,6 +137,7 @@ export function CodeView({ sessionId, userName }: { sessionId: string | null; us
     <div className="codeview">
       <div className="codeview-main">
         {header}
+        {trustBanner}
         <div className="codeview-toolbar">
           <span className="codeview-toolbar-label">Workspace</span>
           <select value={root} onChange={(e) => setRoot(e.target.value)}>

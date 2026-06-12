@@ -1023,3 +1023,9 @@
 .codeview.empty .chat-empty { margin: auto; }
 .codeview-empty-ws { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 16px; font-size: 12.5px; }
 .codeview-empty-ws select { background: var(--bg-2); color: var(--fg-1); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font-size: 12.5px; }
+
+/* Code-mode trusted-folder banner */
+.trust-banner { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(220, 160, 40, 0.12); border-bottom: 1px solid rgba(220, 160, 40, 0.3); color: var(--fg-2); font-size: 12.5px; }
+.trust-banner strong { color: var(--fg-1); }
+.trust-btn { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; background: var(--accent); color: #08110b; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.trust-btn:hover { filter: brightness(1.08); }

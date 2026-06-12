@@ -16,6 +16,8 @@ vi.mock('../lib/api', () => ({
   pingServer: vi.fn().mockResolvedValue(20),
   getTree: vi.fn().mockResolvedValue([{ name: 'x.py', kind: 'file' }]),
   getFile: vi.fn().mockResolvedValue({ path: 'core/x.py', content: 'print(1)', language: 'python' }),
+  getWorkspaceTrust: vi.fn().mockResolvedValue(true),
+  setWorkspaceTrust: vi.fn().mockResolvedValue(true),
 }))
 
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }

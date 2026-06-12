@@ -314,7 +314,7 @@ export async function setWorkspaceTrust(
 ): Promise<boolean> {
   const data = await apiFetch<{ trusted: boolean }>(config, '/chat/workspace-trust', {
     method: 'POST',
-    body: JSON.stringify({ kind, root, trusted }),
+    body: { kind, root, trusted },
   })
   return !!data.trusted
 }

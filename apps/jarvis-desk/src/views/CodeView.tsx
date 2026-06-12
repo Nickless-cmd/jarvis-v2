@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown } from 'lucide-react'
 import { useStream } from '../hooks/useStream'
 import { useSettings } from '../hooks/useSettings'
 import { useSessions } from '../hooks/useSessions'
@@ -47,6 +47,24 @@ export function CodeView({
 
   const effRoot = kind === 'container' ? root : wsPath
   const ready = !!effRoot // workstation kræver at en mappe er valgt
+
+  // Autoscroll + scroll-til-bund-pil (som chat).
+  const transcriptRef = useRef<HTMLDivElement>(null)
+  const [atBottom, setAtBottom] = useState(true)
+  const [unread, setUnread] = useState(0)
+  const NEAR_BOTTOM_PX = 120
+  const scrollToBottom = () => {
+    const el = transcriptRef.current
+    if (el) el.scrollTop = el.scrollHeight
+    setUnread(0)
+  }
+  const onScroll = () => {
+    const el = transcriptRef.current
+    if (!el) return
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
+    setAtBottom(near)
+    if (near) setUnread(0)
+  }
 
   useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 
@@ -160,6 +178,19 @@ export function CodeView({
   )
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+
+  // Autoscroll: ved nye beskeder/stream-tokens, hold bunden hvis vi er nær den.
+  useEffect(() => {
+    const el = transcriptRef.current
+    if (el && atBottom) el.scrollTop = el.scrollHeight
+    else if (!atBottom) setUnread((u) => u + 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleMessages.length, sessionId])
+  useEffect(() => {
+    const el = transcriptRef.current
+    if (el && atBottom) el.scrollTop = el.scrollHeight
+  }, [stream.blocks, atBottom])
+
   const isEmpty =
     !sessionId ||
     (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0)
@@ -214,7 +245,7 @@ export function CodeView({
         {header}
         {trustBanner}
         <div className="codeview-toolbar">{workspaceSelector}</div>
-        <div className="transcript">
+        <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
           {visibleMessages.map((m) => (
             <MessageRow key={m.id} role={m.role === 'user' ? 'user' : 'assistant'} blocks={m.content} density="compact" streaming={false} createdAt={m.created_at} />
           ))}
@@ -223,7 +254,15 @@ export function CodeView({
           )}
           <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} />
         </div>
-        <div className="composer-area">{composer}</div>
+        <div className="composer-area">
+          {!atBottom && (
+            <button type="button" className="scroll-bottom-btn" onClick={scrollToBottom} aria-label="Til bund">
+              <ArrowDown size={16} />
+              {unread > 0 && <span className="scroll-badge">{unread} ny{unread > 1 ? 'e' : ''}</span>}
+            </button>
+          )}
+          {composer}
+        </div>
       </div>
       {config && filesOpen && ready && (
         <div className="codeview-panel">

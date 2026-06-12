@@ -180,3 +180,59 @@ def test_paired_demonstrates_old_bug_avoided(isolated_runtime) -> None:
     new = recent_chat_session_messages_by_user_turns(sid, user_turns=30)
     new_user_count = sum(1 for m in new if m["role"] == "user")
     assert new_user_count == 30
+
+
+# ---------------------------------------------------------------------------
+# search_chat_sessions (#5 — søg i chat/sessioner)
+# ---------------------------------------------------------------------------
+def test_make_snippet_centers_on_match():
+    from core.services.chat_sessions import _make_snippet
+    long = "intro " * 30 + "den hemmelige NØGLE her " + "outro " * 30
+    snip = _make_snippet(long, "nøgle")
+    assert "NØGLE" in snip
+    assert snip.startswith("…") and snip.endswith("…")
+
+
+def test_make_snippet_no_match_truncates():
+    from core.services.chat_sessions import _make_snippet
+    assert _make_snippet("kort tekst", "findesikke") == "kort tekst"
+
+
+def test_search_matches_message_content(isolated_runtime):
+    from core.services.chat_sessions import (
+        create_chat_session, append_chat_message, search_chat_sessions,
+    )
+    s = create_chat_session(title="Tilfældig titel")
+    sid = str(s.get("session_id") or s.get("id"))
+    append_chat_message(session_id=sid, role="user", content="Lad os tale om kvantemekanik")
+    append_chat_message(session_id=sid, role="assistant", content="Gerne!")
+
+    res = search_chat_sessions("kvantemekanik")
+    ids = [r["session_id"] for r in res]
+    assert sid in ids
+    hit = next(r for r in res if r["session_id"] == sid)
+    assert "kvantemekanik" in hit["snippet"].lower()
+
+
+def test_search_matches_title(isolated_runtime):
+    from core.services.chat_sessions import create_chat_session, search_chat_sessions
+    s = create_chat_session(title="Møde med Mikkel")
+    sid = str(s.get("session_id") or s.get("id"))
+    res = search_chat_sessions("mikkel")
+    assert sid in [r["session_id"] for r in res]
+
+
+def test_search_empty_query_returns_empty(isolated_runtime):
+    from core.services.chat_sessions import search_chat_sessions
+    assert search_chat_sessions("") == []
+    assert search_chat_sessions("   ") == []
+
+
+def test_search_no_match(isolated_runtime):
+    from core.services.chat_sessions import (
+        create_chat_session, append_chat_message, search_chat_sessions,
+    )
+    s = create_chat_session(title="Noget")
+    sid = str(s.get("session_id") or s.get("id"))
+    append_chat_message(session_id=sid, role="user", content="hej verden")
+    assert search_chat_sessions("zzzfindesikkezzz") == []

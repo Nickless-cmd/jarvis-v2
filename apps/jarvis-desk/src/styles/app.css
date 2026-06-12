@@ -78,6 +78,58 @@
 }
 .new-chat:hover { background: var(--bg-2); color: var(--fg-1); }
 
+/* ── Session-søgning (#5) ── */
+.session-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 2px;
+  padding: 0 8px;
+  height: 30px;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-2);
+  border: 1px solid transparent;
+}
+.session-search:focus-within { border-color: var(--bg-4); }
+.session-search-icon { color: var(--fg-3); flex: 0 0 auto; }
+.session-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--fg-1);
+  font-size: 13px;
+}
+.session-search input::placeholder { color: var(--fg-3); }
+.session-search-clear {
+  flex: 0 0 auto;
+  display: grid; place-items: center;
+  background: none; border: none; cursor: pointer;
+  color: var(--fg-3); padding: 2px; border-radius: 4px;
+}
+.session-search-clear:hover { color: var(--fg-1); background: var(--bg-3); }
+.session-search-empty { padding: 8px 10px; font-size: 12.5px; color: var(--fg-3); }
+.session-result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm, 6px);
+}
+.session-result:hover { background: var(--bg-2); }
+.session-result.active { background: var(--bg-3); }
+.session-result-title { font-size: 13px; color: var(--fg-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.session-result-snippet {
+  font-size: 11.5px; color: var(--fg-3); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
 .sidebar-label {
   font-size: 11px;
   text-transform: uppercase;

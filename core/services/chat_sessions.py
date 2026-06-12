@@ -108,6 +108,85 @@ def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]
     return [_session_summary(dict(row)) for row in rows]
 
 
+def _make_snippet(content: str, query: str, width: int = 140) -> str:
+    """Byg et kort uddrag centreret om første match (case-insensitive)."""
+    content = (content or "").replace("\n", " ").strip()
+    q = (query or "").strip().lower()
+    if not q:
+        return content[:width].strip()
+    i = content.lower().find(q)
+    if i < 0:
+        return content[:width].strip()
+    start = max(0, i - width // 3)
+    end = min(len(content), i + len(query) + width // 2)
+    snip = content[start:end].strip()
+    return ("…" if start > 0 else "") + snip + ("…" if end < len(content) else "")
+
+
+def search_chat_sessions(
+    query: str, *, user_id: str | None = None, limit: int = 30,
+) -> list[dict[str, object]]:
+    """Søg sessioner på titel ELLER besked-indhold (user/assistant).
+
+    Returnerer [{session_id, title, snippet, updated_at}], nyeste først.
+    Scoping pr. bruger som list_chat_sessions: user_id sat → kun sessioner
+    med mindst én besked stemplet med det user_id. user_id=None → alt.
+    """
+    q = (query or "").strip()
+    if not q:
+        return []
+    like = f"%{q}%"
+    lim = max(1, min(int(limit or 30), 50))
+    uid = (user_id or "").strip()
+
+    base_select = """
+        SELECT s.session_id, s.title, s.updated_at,
+            (SELECT m.content FROM chat_messages m
+             WHERE m.session_id = s.session_id
+               AND m.content LIKE ?
+               AND m.role IN ('user','assistant')
+             ORDER BY m.id DESC LIMIT 1) AS match_snippet
+        FROM chat_sessions s
+        WHERE (
+            s.title LIKE ?
+            OR EXISTS (
+                SELECT 1 FROM chat_messages m2
+                WHERE m2.session_id = s.session_id
+                  AND m2.content LIKE ?
+                  AND m2.role IN ('user','assistant')
+            )
+        )
+    """
+    with connect() as conn:
+        if uid:
+            rows = conn.execute(
+                base_select
+                + """ AND EXISTS (
+                        SELECT 1 FROM chat_messages mu
+                        WHERE mu.session_id = s.session_id AND mu.user_id = ?
+                      )
+                      ORDER BY s.updated_at DESC, s.id DESC LIMIT ?""",
+                (like, like, like, uid, lim),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                base_select + " ORDER BY s.updated_at DESC, s.id DESC LIMIT ?",
+                (like, like, like, lim),
+            ).fetchall()
+
+    out: list[dict[str, object]] = []
+    for row in rows:
+        d = dict(row)
+        snippet_src = str(d.get("match_snippet") or d.get("title") or "")
+        out.append({
+            "session_id": d.get("session_id"),
+            "title": d.get("title") or "Samtale",
+            "snippet": _make_snippet(snippet_src, q),
+            "updated_at": d.get("updated_at"),
+        })
+    return out
+
+
 def get_chat_session(session_id: str) -> dict[str, object] | None:
     normalized = (session_id or "").strip()
     if not normalized:

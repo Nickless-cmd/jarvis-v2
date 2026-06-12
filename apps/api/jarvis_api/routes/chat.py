@@ -93,6 +93,17 @@ async def chat_sessions() -> dict:
     return {"items": list_chat_sessions(user_id=uid)}
 
 
+# Bemærk: defineres FØR /sessions/{session_id} så "search" ikke fanges som id.
+@router.get("/sessions/search")
+async def chat_search_sessions(q: str = "", limit: int = 30) -> dict:
+    """Søg sessioner på titel + besked-indhold. Scopes pr. bruger som
+    /sessions. Returnerer {items: [{session_id, title, snippet, updated_at}]}."""
+    from core.identity.workspace_context import current_user_id
+    from core.services.chat_sessions import search_chat_sessions
+    uid = current_user_id() or None
+    return {"items": search_chat_sessions(q, user_id=uid, limit=limit)}
+
+
 @router.post("/sessions")
 async def chat_create_session(request: ChatSessionCreateRequest) -> dict:
     return {"session": create_chat_session(title=request.title)}

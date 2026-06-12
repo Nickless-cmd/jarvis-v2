@@ -159,6 +159,27 @@ export async function listSessions(config: ApiConfig): Promise<ChatSession[]> {
   return []
 }
 
+export interface SessionSearchResult {
+  session_id: string
+  title: string
+  snippet: string
+  updated_at?: string
+}
+
+/** Søg sessioner på titel + besked-indhold (#5). Returnerer tomt array ved
+ *  tom query. */
+export async function searchSessions(
+  config: ApiConfig,
+  query: string,
+): Promise<SessionSearchResult[]> {
+  const q = query.trim()
+  if (!q) return []
+  const data = await apiFetch<{ items: SessionSearchResult[] }>(
+    config, `/chat/sessions/search?q=${encodeURIComponent(q)}`,
+  )
+  return data.items ?? []
+}
+
 export async function getSession(
   config: ApiConfig,
   sessionId: string,

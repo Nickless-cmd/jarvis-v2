@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Plus, MoreHorizontal, Pencil, Download, Trash2 } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
+import { searchSessions, type SessionSearchResult } from '../../lib/api'
 import { ModeSlider, type Mode } from './ModeSlider'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
@@ -18,6 +19,26 @@ export function Sidebar({
   userName: string
 }) {
   const { sessions, activeId, select, create } = useSessions()
+  const { settings } = useSettings()
+
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<SessionSearchResult[]>([])
+  const searching = query.trim().length > 0
+
+  // Debounced søgning mod backend (titel + besked-indhold).
+  useEffect(() => {
+    const q = query.trim()
+    if (!q || !settings) { setResults([]); return }
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    let cancelled = false
+    const t = setTimeout(() => {
+      void searchSessions(cfg, q)
+        .then((r) => { if (!cancelled) setResults(r) })
+        .catch(() => { if (!cancelled) setResults([]) })
+    }, 220)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [query, settings])
+
   return (
     <aside className="sidebar">
       <ModeSlider
@@ -29,19 +50,56 @@ export function Sidebar({
         <button className="new-chat" type="button" onClick={() => void create('Ny samtale')}>
           <Plus size={14} /> Ny samtale
         </button>
-        {sessions.length > 0 && (
+
+        <div className="session-search">
+          <Search size={13} className="session-search-icon" />
+          <input
+            type="text"
+            placeholder="Søg i samtaler…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && (
+            <button type="button" className="session-search-clear" aria-label="Ryd søgning" onClick={() => setQuery('')}>
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
+        {searching ? (
           <>
-            <div className="sidebar-label">samtaler</div>
-            {sessions.map((s) => (
-              <SessionItem
-                key={s.id}
-                id={s.id}
-                title={s.title || 'Uden titel'}
-                active={s.id === activeId}
-                onSelect={() => { select(s.id); onSurface('chat') }}
-              />
-            ))}
+            <div className="sidebar-label">resultater</div>
+            {results.length === 0 ? (
+              <div className="session-search-empty">Ingen samtaler matcher</div>
+            ) : (
+              results.map((r) => (
+                <button
+                  key={r.session_id}
+                  type="button"
+                  className={`session-result ${r.session_id === activeId ? 'active' : ''}`}
+                  onClick={() => { select(r.session_id); onSurface('chat'); setQuery('') }}
+                >
+                  <span className="session-result-title">{r.title}</span>
+                  {r.snippet && <span className="session-result-snippet">{r.snippet}</span>}
+                </button>
+              ))
+            )}
           </>
+        ) : (
+          sessions.length > 0 && (
+            <>
+              <div className="sidebar-label">samtaler</div>
+              {sessions.map((s) => (
+                <SessionItem
+                  key={s.id}
+                  id={s.id}
+                  title={s.title || 'Uden titel'}
+                  active={s.id === activeId}
+                  onSelect={() => { select(s.id); onSurface('chat') }}
+                />
+              ))}
+            </>
+          )
         )}
       </div>
 

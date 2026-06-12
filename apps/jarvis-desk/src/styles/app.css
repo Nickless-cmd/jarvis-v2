@@ -855,6 +855,22 @@
 .settings-view dl { display: grid; grid-template-columns: 120px 1fr; gap: 8px 16px; font-size: 14px; }
 .settings-view dt { color: var(--fg-3); }
 .settings-view dd { color: var(--fg-1); }
+.settings-form { display: flex; flex-direction: column; gap: 14px; max-width: 440px; margin-top: 10px; }
+.settings-form label { display: flex; flex-direction: column; gap: 5px; }
+.settings-form label > span { font-size: 12.5px; color: var(--fg-3); }
+.settings-form input, .settings-form select {
+  background: var(--bg-2); border: 1px solid var(--bg-4); border-radius: var(--radius-sm, 6px);
+  color: var(--fg-1); font-size: 14px; padding: 9px 11px; outline: none;
+}
+.settings-form input:focus, .settings-form select:focus { border-color: #2c3e54; }
+.settings-meta { font-size: 12.5px; color: var(--fg-3); margin-top: 2px; }
+.settings-actions { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.settings-save {
+  background: var(--accent, #6ee7a8); color: #0d1117; border: none; cursor: pointer;
+  font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: var(--radius-sm, 6px);
+}
+.settings-save:disabled { opacity: 0.4; cursor: default; }
+.settings-saved { font-size: 13px; color: var(--accent, #6ee7a8); }
 
 /* ── Composer (Codex-stil): venstre +/permissions, højre pills/mic/send ── */
 .composer-bar {

@@ -46,7 +46,7 @@ interface FetchOptions {
   signal?: AbortSignal
 }
 
-async function apiFetch<T>(
+export async function apiFetch<T>(
   config: ApiConfig,
   path: string,
   options: FetchOptions = {},

@@ -1,13 +1,15 @@
 import { useState } from 'react'
 
-// Bjørns produktions-backend. Pre-udfyldt så de fleste brugere bare kan
-// klikke videre. Vil man ramme en anden instans (lokal LAN, dev-server)
-// sletter man feltet og skriver sin egen URL.
+// Bjørns produktions-backend. Vises som PLACEHOLDER (ikke forudfyldt værdi) så
+// de fleste brugere bare kan klikke Forbind → vi falder tilbage til default'en.
+// Vil man ramme en anden instans (lokal LAN, dev-server) skriver man bare sin
+// egen URL i det tomme felt. Forudfyldt værdi gav før concatenation-bug:
+// brugerens input blev appendet på default'en (https://api.srvlab.dk/http://…).
 const DEFAULT_API_URL = 'https://api.srvlab.dk/'
 
 /** Første-gangs setup: server-URL + token. Vises når isConfigured=false. */
 export function SetupScreen({ onSave }: { onSave: (cfg: { apiBaseUrl: string; authToken: string }) => void }) {
-  const [url, setUrl] = useState(DEFAULT_API_URL)
+  const [url, setUrl] = useState('')
   const [token, setToken] = useState('')
   return (
     <div className="setup">
@@ -20,7 +22,7 @@ export function SetupScreen({ onSave }: { onSave: (cfg: { apiBaseUrl: string; au
         Token
         <input aria-label="token" type="password" value={token} onChange={(e) => setToken(e.target.value)} />
       </label>
-      <button type="button" onClick={() => onSave({ apiBaseUrl: url.trim(), authToken: token.trim() })}>
+      <button type="button" onClick={() => onSave({ apiBaseUrl: url.trim() || DEFAULT_API_URL, authToken: token.trim() })}>
         Forbind
       </button>
     </div>

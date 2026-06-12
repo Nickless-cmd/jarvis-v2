@@ -332,12 +332,13 @@ export async function getContextInfo(
   return apiFetch(config, '/chat/context-info')
 }
 
-/** Læs en repo-fil til preview-panelet (path-jailed server-side). */
+/** Læs en fil til preview-panelet. Container: path-jailed. Workstation: via bridge. */
 export async function getFile(
   config: ApiConfig,
   path: string,
+  kind: 'container' | 'workstation' = 'container',
 ): Promise<{ path: string; content: string; language: string }> {
-  return apiFetch(config, `/chat/file?path=${encodeURIComponent(path)}`)
+  return apiFetch(config, `/chat/file?path=${encodeURIComponent(path)}&kind=${encodeURIComponent(kind)}`)
 }
 
 /** Server-cancel af et aktivt run (R3). Idempotent: 200 og 404 (run ukendt/

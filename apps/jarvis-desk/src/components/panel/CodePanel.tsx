@@ -16,9 +16,9 @@ export function CodePanel({
 
   const openFile = (rel: string) => {
     setOpenPath(rel)
-    // Container: /chat/file forventer 'root/rel'. Workstation: senere via operator_read_file.
-    const full = kind === 'container' ? `${root}/${rel}` : rel
-    getFile(config, full).then((f) => setContent(f.content)).catch(() => setContent('(kunne ikke læse fil)'))
+    // Container: repo-relativ 'root/rel'. Workstation: absolut sti 'root/rel' via bridge.
+    const full = `${root}/${rel}`
+    getFile(config, full, kind).then((f) => setContent(f.content)).catch(() => setContent('(kunne ikke læse fil)'))
   }
 
   return (

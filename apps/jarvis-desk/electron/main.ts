@@ -21,6 +21,7 @@ import {
   session,
   Tray,
   Notification,
+  dialog,
 } from 'electron'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
@@ -267,6 +268,15 @@ ipcMain.handle('tray:attention', (_event, on: boolean) => {
 ipcMain.handle('run:setAuth', (_event, apiBaseUrl: string, authToken: string | null) => {
   runApiBaseUrl = apiBaseUrl
   runAuthToken = authToken
+})
+// Native mappe-vælger til Code-mode workstation-workspace (brugerens computer).
+ipcMain.handle('dialog:pickFolder', async () => {
+  const res = await dialog.showOpenDialog({
+    title: 'Vælg en mappe på din computer',
+    properties: ['openDirectory', 'createDirectory'],
+  })
+  if (res.canceled || !res.filePaths.length) return null
+  return res.filePaths[0]
 })
 // Native "opgave færdig"-notifikation når et run slutter (fyrer altid).
 ipcMain.handle('notify:taskDone', (_event, title: string, body: string) => {

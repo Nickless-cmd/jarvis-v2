@@ -21,6 +21,8 @@ export interface JarvisDeskBridge {
   setTrayAttention: (on: boolean) => Promise<void>
   /** Native OS-notifikation når et run slutter. */
   notifyTaskDone: (title: string, body: string) => Promise<void>
+  /** Åbn native mappe-vælger; returnerer valgt sti eller null. */
+  pickFolder: () => Promise<string | null>
   platform: NodeJS.Platform
 }
 
@@ -34,6 +36,7 @@ const bridge: JarvisDeskBridge = {
   setRunAuth: (apiBaseUrl, authToken) => ipcRenderer.invoke('run:setAuth', apiBaseUrl, authToken),
   setTrayAttention: (on) => ipcRenderer.invoke('tray:attention', on),
   notifyTaskDone: (title, body) => ipcRenderer.invoke('notify:taskDone', title, body),
+  pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),
   platform: process.platform,
 }
 

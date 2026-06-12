@@ -121,6 +121,9 @@ export interface StreamRequest {
   approvalMode?: 'ask' | 'trust'
   thinkingMode?: 'think' | 'fast'
   attachmentIds?: string[]
+  /** UI-mode → backend tool-scope. 'chat' begrænser til samtale-værktøjer.
+   *  Default 'chat' (appen er chat-only pt.; cowork/code sender egen mode). */
+  mode?: 'chat' | 'cowork' | 'code'
   /** R1: default false for chat-lane. Blind auto-reconnect re-POSTer beskeden →
    *  duplikerer user-message + nyt run. Kun true hvis serveren understøtter
    *  ægte resume (fremtidig). */
@@ -349,6 +352,7 @@ export function startStream(
           attachment_ids: request.attachmentIds ?? [],
           approval_mode: request.approvalMode ?? 'ask',
           thinking_mode: request.thinkingMode ?? 'think',
+          mode: request.mode ?? 'chat',
         }),
         signal: abortController.signal,
       })

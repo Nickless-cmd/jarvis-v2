@@ -8442,62 +8442,30 @@ _FORCE_HANDLERS: dict[str, Any] = {
 # at all -- the LLM only knows about tools its caller is allowed to use.
 # operator_* tools stay available to all (they execute on the caller's
 # own desktop, scoped via the bridge).
-OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
-    # Raw backend shell + file mutation (operator_* counterparts are user-side)
-    "bash",
-    "bash_session_close",
-    "bash_session_list",
-    "bash_session_open",
-    "bash_session_run",
-    "edit_file",
-    "write_file",
-    # Self-modification / identity / proposals
-    "adopt_brain_proposal",
-    "discard_brain_proposal",
-    "archive_brain_entry",
-    "read_brain_entry",
-    "search_jarvis_brain",
-    "append_skill_observation",
-    "generate_improvement_proposals",
-    "identity_mutation_status",
-    "list_identity_mutations",
-    "list_proposals",
-    "my_project_accept_proposal",
-    "propose_identity_drift_update",
-    "read_self_docs",
-    "read_self_state",
-    "rollback_identity_mutation",
-    "approve_plan",
-    "approve_proposal",
-    # Agent dispatch + scheduling control
-    "dispatch_cancel",
-    "dispatch_due_wakeups",
-    "dispatch_status",
-    "dispatch_to_claude_code",
-    "cancel_agent",
-    "cancel_recurring",
-    "cancel_self_wakeup",
-    "cancel_task",
-    "list_recurring",
-    "list_self_wakeups",
-    "mark_wakeup_consumed",
-    "schedule_recurring",
-    "schedule_self_wakeup",
-})
+# OWNER_ONLY_TOOLS + scoping-policy er udskilt til core.tools.tool_scoping
+# (Boy Scout 2026-06-12). Re-eksporteres her for bagudkompatibilitet.
+from core.tools.tool_scoping import OWNER_ONLY_TOOLS  # noqa: E402,F401
 
 
-def get_tool_definitions(role: str | None = None) -> list[dict[str, Any]]:
-    """Return Ollama-compatible tool definitions, filtered by role.
+def get_tool_definitions(
+    role: str | None = None, scope: str | None = None,
+) -> list[dict[str, Any]]:
+    """Return Ollama-compatible tool definitions, filtered by role + scope.
 
-    Owner (or unbound legacy callers -- role=None|"") get everything.
-    Members and guests get TOOL_DEFINITIONS minus OWNER_ONLY_TOOLS, so
-    the LLM never even sees the dangerous tools and can't hallucinate
-    invoking them.
+    role: owner|member|guest|"" — owner/unbound get everything (non-chat);
+    members/guests get OWNER_ONLY_TOOLS stripped. If not passed, reads
+    current_role() from the workspace_context ContextVar.
 
-    If `role` isn't passed explicitly, reads current_role() from the
-    workspace_context ContextVar (set by the auth middleware from the
-    verified bearer token claims).
+    scope: "chat" → samtale-allowlist (web/data/vision + hukommelse + selv-
+    indsigt; owner får ekstra fil-læsning). If not passed, reads
+    current_tool_scope() from the tool_scoping ContextVar (sat ved request-
+    entry, fx af /chat/stream/v2 for jarvis-desk). Filtreringspolitikken bor
+    i core.tools.tool_scoping.
     """
+    from core.tools.tool_scoping import (
+        filter_tool_definitions, current_tool_scope,
+    )
+
     effective_role = role
     if effective_role is None:
         try:
@@ -8505,15 +8473,14 @@ def get_tool_definitions(role: str | None = None) -> list[dict[str, Any]]:
             effective_role = current_role()
         except Exception:
             effective_role = ""
-    effective_role = (effective_role or "").strip().lower()
-    # Owner or unbound (legacy single-user) -> full list.
-    if effective_role in ("", "owner"):
-        return TOOL_DEFINITIONS
-    # Members / guests -> strip owner-only entries.
-    return [
-        td for td in TOOL_DEFINITIONS
-        if str(((td or {}).get("function") or {}).get("name") or "") not in OWNER_ONLY_TOOLS
-    ]
+
+    effective_scope = scope if scope is not None else current_tool_scope()
+
+    return filter_tool_definitions(
+        TOOL_DEFINITIONS,
+        role=(effective_role or ""),
+        scope=(effective_scope or ""),
+    )
 
 
 def _verify_hint_for(tool: str, result: dict[str, Any]) -> str | None:

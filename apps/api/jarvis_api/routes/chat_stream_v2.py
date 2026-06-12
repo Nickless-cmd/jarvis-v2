@@ -73,12 +73,18 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     # "kører på X-model" + til debugging).
     settings = load_settings()
 
+    # Mode → tool-scope. "chat" begrænser værktøjs-listen til samtale-
+    # allowlisten (se core.tools.tool_scoping). Andre modes / tom = ubegrænset
+    # (rolle-filter gælder stadig).
+    _tool_scope = "chat" if (request.mode or "").strip().lower() == "chat" else ""
+
     legacy_iter = start_visible_run(
         message=effective_message,
         session_id=session_id,
         approval_mode=request.approval_mode,
         thinking_mode=request.thinking_mode,
         force_user_id=_uid,
+        tool_scope=_tool_scope,
     )
 
     v2_stream = translate_to_v2(

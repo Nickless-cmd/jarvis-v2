@@ -390,6 +390,7 @@ def start_visible_run(
     approval_mode: str = "ask",
     thinking_mode: str = "think",
     force_user_id: str | None = None,
+    tool_scope: str = "",
 ) -> AsyncIterator[str]:
     """Begin a visible run.
 
@@ -566,7 +567,7 @@ def start_visible_run(
         trust_all=(approval_mode == "trust"),
         thinking_mode=(thinking_mode or "think").strip().lower(),
     )
-    return _stream_visible_run(run, force_user_id=force_user_id)
+    return _stream_visible_run(run, force_user_id=force_user_id, tool_scope=tool_scope)
 
 
 def start_autonomous_run(message: str, session_id: str | None = None) -> None:
@@ -748,6 +749,7 @@ async def _stream_visible_run(
     run: VisibleRun,
     *,
     force_user_id: str | None = None,
+    tool_scope: str = "",
 ) -> AsyncIterator[str]:
     # Rebind workspace_context if the caller captured user_id at request
     # time. FastAPI's StreamingResponse iterates this generator AFTER the
@@ -784,6 +786,17 @@ async def _stream_visible_run(
             # operator-tools will fall through to owner-fallback (existing
             # behaviour), which is the same as if force_user_id wasn't passed.
             _ws_token = None
+
+    # Tool-scope (chat/cowork/code) sættes her — inde i generator-body'en der
+    # kører UNDER iteration — så get_tool_definitions() (kaldt dybt i
+    # visible_model) ser scopet via ContextVar. Samme StreamingResponse-
+    # timing-grund som workspace-rebind ovenfor. "chat" → begrænset allowlist.
+    if tool_scope:
+        try:
+            from core.tools.tool_scoping import set_tool_scope
+            set_tool_scope(tool_scope)
+        except Exception:
+            pass
 
     # ── /compact command ──────────────────────────────────────────────────
     if run.user_message.strip().lower() == "/compact":

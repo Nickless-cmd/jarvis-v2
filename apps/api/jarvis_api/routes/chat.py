@@ -63,6 +63,10 @@ class ChatStreamRequest(BaseModel):
     # "deep" = max reasoning effort (slowest, hardest problems)
     # Ignored for models that don't support thinking parameters.
     thinking_mode: str = "think"
+    # UI-mode: "chat" begrænser værktøjer til en samtale-allowlist (web/data/
+    # vision + hukommelse + selv-indsigt). "cowork"/"code"/"" = ubegrænset
+    # (rolle-filter gælder stadig). Sættes af jarvis-desk pr. mode.
+    mode: str = ""
 
 
 class ChatSessionCreateRequest(BaseModel):

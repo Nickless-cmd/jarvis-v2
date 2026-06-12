@@ -103,6 +103,60 @@ async def chat_tree(kind: str = "container", root: str = "", path: str = "") -> 
     raise HTTPException(status_code=400, detail="ukendt kind")
 
 
+def _parse_git_status(branch_out: str, porcelain_out: str, numstat_out: str) -> dict:
+    """Parse git-output → {branch, dirty, added, removed}."""
+    branch = (branch_out or "").strip().splitlines()[0].strip() if branch_out.strip() else ""
+    dirty = len([ln for ln in (porcelain_out or "").splitlines() if ln.strip()])
+    added = removed = 0
+    for ln in (numstat_out or "").splitlines():
+        parts = ln.split("\t")
+        if len(parts) >= 2:
+            try:
+                added += int(parts[0]); removed += int(parts[1])
+            except ValueError:
+                pass  # binære filer giver "-" — ignorér
+    return {"branch": branch, "dirty": dirty, "added": added, "removed": removed}
+
+
+@router.get("/git-status")
+async def chat_git_status(kind: str = "container", root: str = "") -> dict:
+    """Git-state for det aktive workspace (header-chip i code-mode). Container:
+    direkte subprocess i repo'et. Workstation: via operator-broen på brugerens maskine."""
+    if kind == "workstation":
+        if not root.strip():
+            return {"branch": "", "dirty": 0, "added": 0, "removed": 0, "is_git": False}
+        cmd = (
+            f'git -C "{root}" rev-parse --abbrev-ref HEAD 2>/dev/null; echo "@@@"; '
+            f'git -C "{root}" status --porcelain 2>/dev/null; echo "@@@"; '
+            f'git -C "{root}" diff --numstat HEAD 2>/dev/null'
+        )
+        res = _operator_exec("operator_bash", {"command": cmd})
+        out = str(res.get("stdout") or "") if res.get("status") == "ok" else ""
+        segs = out.split("@@@")
+        if len(segs) < 3 or not segs[0].strip():
+            return {"branch": "", "dirty": 0, "added": 0, "removed": 0, "is_git": False}
+        d = _parse_git_status(segs[0], segs[1], segs[2])
+        d["is_git"] = True
+        return d
+
+    # Container: subprocess i repo-roden (git'en Jarvis arbejder i).
+    import subprocess
+    repo = str(_repo_root())
+    def _git(*args: str) -> str:
+        try:
+            return subprocess.run(
+                ["git", "-C", repo, *args], capture_output=True, text=True, timeout=8,
+            ).stdout
+        except Exception:
+            return ""
+    branch = _git("rev-parse", "--abbrev-ref", "HEAD")
+    if not branch.strip():
+        return {"branch": "", "dirty": 0, "added": 0, "removed": 0, "is_git": False}
+    d = _parse_git_status(branch, _git("status", "--porcelain"), _git("diff", "--numstat", "HEAD"))
+    d["is_git"] = True
+    return d
+
+
 @router.get("/workspace-trust")
 async def get_workspace_trust(kind: str = "container", root: str = "") -> dict:
     """Er det aktuelle workspace betroet for den indloggede bruger?"""

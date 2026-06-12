@@ -378,8 +378,11 @@
   font-size: 15.5px;
   line-height: 1.6;
   min-width: 0;        /* tillad grid 1fr at krympe → ingen vandret overflow */
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  /* Kun bryd lange ord/URL'er ved sidste udvej — IKKE midt i normale
+   * ord. `anywhere` knækker tekst overalt og giver det ujævne, rodede
+   * look hvor sætninger ser "kastet ind" ud. */
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 /* ── Markdown-indhold i Jarvis' bobler (roligt, læsbart) ── */
@@ -416,13 +419,20 @@
 .jarvis-body table::-webkit-scrollbar-track { background: transparent; }
 .jarvis-body th, .jarvis-body td {
   border: 1px solid var(--line); padding: 5px 10px; text-align: left;
-  white-space: nowrap;
+  /* `nowrap` tvang celler til at strække tabellen sidelæns — selv en
+   * 3-kolonne tabel med korte overskrifter blev til en scrollende
+   * blokk. Lad celler wrappe normalt; tabellen forbliver inden i boblen. */
+  vertical-align: top;
 }
 .jarvis-body th { background: var(--bg-2); font-weight: 600; }
 /* billeder + code-blocks må aldrig sprænge bredden */
 .jarvis-body img, .jarvis-body .codeblock { max-width: 100%; }
 .jarvis-body pre { max-width: 100%; }
-.jarvis-body p { margin: 0 0 0.7em 0; white-space: pre-wrap; }
+/* HER var rod-årsagen til "rodet/ulæselig" tekst: `white-space: pre-wrap`
+ * tvang enkelt-newlines i markdown-source til at blive synlige linjeskift
+ * i stedet for ord-mellemrum, så lange afsnit faldt fra hinanden. Markdown
+ * håndterer selv paragraph-flow korrekt — vi skal IKKE tvinge pre-wrap. */
+.jarvis-body p { margin: 0 0 0.7em 0; }
 .jarvis-body p:last-child { margin-bottom: 0; }
 .jarvis-body code {
   background: var(--code-bg);

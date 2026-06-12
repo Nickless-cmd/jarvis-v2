@@ -85,7 +85,7 @@ function Shell({
         <ShellWithPanel>
           {surface === 'chat' && <ChatView sessionId={activeId} />}
           {surface === 'cowork' && <CoworkView />}
-          {surface === 'code' && <CodeView sessionId={activeId} userName={userName} />}
+          {surface === 'code' && <CodeView sessionId={activeId} userName={userName} role={role} />}
           {surface === 'memory' && <MemoryView role={role} />}
           {surface === 'gallery' && <ImageGalleryView onOpenChat={() => setSurface('chat')} />}
           {surface === 'scheduling' && <SchedulingView role={role} />}

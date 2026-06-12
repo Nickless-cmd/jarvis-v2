@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen } from 'lucide-react'
 import { useStream } from '../hooks/useStream'
 import { useSettings } from '../hooks/useSettings'
+import { useSessions } from '../hooks/useSessions'
 import { usePanel } from '../hooks/usePanel'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
@@ -10,9 +11,11 @@ import { PresenceDot } from '../components/shell/PresenceDot'
 import { CodePanel } from '../components/panel/CodePanel'
 import { getWorkspaceTrust, setWorkspaceTrust } from '../lib/api'
 
-const CONTAINER_ROOTS = ['docs', 'workspace', 'core', 'apps', 'scripts'] as const
+const OWNER_ROOTS = ['docs', 'workspace', 'core', 'apps', 'scripts'] as const
+const MEMBER_ROOTS = ['workspace'] as const
 
 type WsKind = 'container' | 'workstation'
+type Role = 'owner' | 'member' | 'guest'
 
 /** Native mappe-vælger (Electron). Returnerer valgt sti eller null udenfor app'en. */
 async function pickFolder(): Promise<string | null> {
@@ -21,23 +24,45 @@ async function pickFolder(): Promise<string | null> {
   return bridge.pickFolder()
 }
 
-/** Code mode: Jarvis koder i et valgt workspace — enten container-repoet eller en
- *  mappe på din egen computer (workstation, via operator-bridgen). Stream i midten;
- *  to foldbare paneler (fil-træ + preview) i højre, slået til via header-ikoner. */
-export function CodeView({ sessionId, userName }: { sessionId: string | null; userName?: string }) {
+/** Code mode: Jarvis koder i et valgt workspace — server (repo/dit workspace) eller
+ *  en mappe på din egen computer (via operator-bridgen). Stream i midten; foldbare
+ *  fil-træ- og preview-paneler i højre. Layout spejler chat (centreret velkomst). */
+export function CodeView({
+  sessionId, userName, role = 'owner',
+}: { sessionId: string | null; userName?: string; role?: Role }) {
   const stream = useStream()
   const { settings } = useSettings()
+  const sessions = useSessions()
   const panel = usePanel()
+  const isOwner = role === 'owner'
+  const serverRoots = isOwner ? OWNER_ROOTS : MEMBER_ROOTS
+  const serverLabel = isOwner ? 'Server' : 'Mit workspace'
+
   const [kind, setKind] = useState<WsKind>('container')
-  const [root, setRoot] = useState<string>('core')
+  const [root, setRoot] = useState<string>(serverRoots[0])
   const [wsPath, setWsPath] = useState<string>('') // valgt workstation-mappe
   const [filesOpen, setFilesOpen] = useState(false) // fil-træ foldet ind fra start
   const [trusted, setTrusted] = useState<boolean | null>(null)
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
 
-  // Effektiv workspace-rod: container bruger repo-undermappe, workstation den valgte sti.
   const effRoot = kind === 'container' ? root : wsPath
   const ready = !!effRoot // workstation kræver at en mappe er valgt
+
+  useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
+
+  // Reconcile assistant-svar ind i transcript når et run slutter (som chat).
+  useEffect(() => {
+    if (stream.status === 'done' && stream.blocks.length > 0) {
+      sessions.reconcile({
+        id: `a-${stream.activeRunId ?? Date.now()}`,
+        role: 'assistant',
+        content: stream.blocks,
+        created_at: new Date().toISOString(),
+        parent_id: null,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream.status])
 
   // Trusted-folder gate: tjek om det valgte workspace er betroet (skrive/exec).
   useEffect(() => {
@@ -64,10 +89,20 @@ export function CodeView({ sessionId, userName }: { sessionId: string | null; us
     if (p) { setKind('workstation'); setWsPath(p) }
   }
 
-  const handleSend = (text: string, opts: ComposerSendOpts) => {
-    if (!sessionId || !ready) return
-    stream.send(text, {
-      sessionId,
+  const doSend = async (text: string, opts: ComposerSendOpts) => {
+    if (!ready) return
+    let sid = sessionId
+    if (!sid) sid = (await sessions.create('Kode-session')).id
+    const message = text.trim() || 'Vedhæftet'
+    sessions.appendOptimistic({
+      id: `u-${Date.now()}`,
+      role: 'user',
+      content: [{ type: 'text', text: message }],
+      created_at: new Date().toISOString(),
+      parent_id: null,
+    })
+    stream.send(message, {
+      sessionId: sid,
       approvalMode: opts.permission,
       attachmentIds: opts.attachments.map((a) => a.id),
       mode: 'code',
@@ -86,17 +121,20 @@ export function CodeView({ sessionId, userName }: { sessionId: string | null; us
     </div>
   ) : null
 
-  // Workspace-vælger (kind-toggle + enten container-select eller workstation-mappe).
   const workspaceSelector = (
     <div className="codeview-empty-ws">
       <div className="codeview-kind">
-        <button type="button" className={kind === 'container' ? 'active' : ''} onClick={() => setKind('container')}>Server</button>
+        <button type="button" className={kind === 'container' ? 'active' : ''} onClick={() => setKind('container')}>{serverLabel}</button>
         <button type="button" className={kind === 'workstation' ? 'active' : ''} onClick={() => setKind('workstation')}>Min computer</button>
       </div>
       {kind === 'container' ? (
-        <select value={root} onChange={(e) => setRoot(e.target.value)}>
-          {CONTAINER_ROOTS.map((r) => <option key={r} value={r}>{r}</option>)}
-        </select>
+        serverRoots.length > 1 ? (
+          <select value={root} onChange={(e) => setRoot(e.target.value)}>
+            {serverRoots.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        ) : (
+          <span className="codeview-toolbar-label">{serverRoots[0]}</span>
+        )
       ) : (
         <button type="button" className="codeview-pick" onClick={choosePath} title={wsPath || 'Vælg mappe'}>
           <FolderOpen size={13} />
@@ -109,19 +147,22 @@ export function CodeView({ sessionId, userName }: { sessionId: string | null; us
   const composer = (
     <Composer
       streaming={stream.status === 'working'}
-      onSend={handleSend}
+      onSend={(t, o) => void doSend(t, o)}
       onStop={() => void stream.abort()}
       model="deepseek-flash"
       thinking="think"
       config={config}
-      getSessionId={async () => sessionId ?? ''}
+      getSessionId={async () => sessionId ?? (await sessions.create('Kode-session')).id}
       showPermissions={true}
       contextTokens={stream.usage.input + stream.usage.cacheHit}
       compactAt={0}
     />
   )
 
-  const isEmpty = !sessionId && stream.status === 'idle' && stream.blocks.length === 0
+  const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  const isEmpty =
+    !sessionId ||
+    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0)
 
   const header = (
     <div className="chatview-head">
@@ -133,8 +174,7 @@ export function CodeView({ sessionId, userName }: { sessionId: string | null; us
         <button
           type="button"
           className={`panel-toggle ${filesOpen ? 'active' : ''}`}
-          aria-label="Vis/skjul fil-træ"
-          title="Filer"
+          aria-label="Vis/skjul fil-træ" title="Filer"
           onClick={() => setFilesOpen((o) => !o)}
         >
           <FolderTree size={16} />
@@ -142,8 +182,7 @@ export function CodeView({ sessionId, userName }: { sessionId: string | null; us
         <button
           type="button"
           className={`panel-toggle ${panel.open ? 'active' : ''}`}
-          aria-label="Vis/skjul preview-panel"
-          title="Preview"
+          aria-label="Vis/skjul preview-panel" title="Preview"
           onClick={panel.toggle}
         >
           <PanelRight size={16} />
@@ -176,10 +215,13 @@ export function CodeView({ sessionId, userName }: { sessionId: string | null; us
         {trustBanner}
         <div className="codeview-toolbar">{workspaceSelector}</div>
         <div className="transcript">
-          {stream.blocks.length > 0 && (
-            <MessageRow role="assistant" blocks={stream.blocks} density="full" streaming={stream.status === 'working'} />
+          {visibleMessages.map((m) => (
+            <MessageRow key={m.id} role={m.role === 'user' ? 'user' : 'assistant'} blocks={m.content} density="compact" streaming={false} createdAt={m.created_at} />
+          ))}
+          {stream.status === 'working' && stream.blocks.length > 0 && (
+            <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
           )}
-          <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="full" workingStep={stream.workingStep} />
+          <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} />
         </div>
         <div className="composer-area">{composer}</div>
       </div>

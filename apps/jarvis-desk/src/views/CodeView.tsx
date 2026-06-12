@@ -13,6 +13,7 @@ import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { ApprovalCard } from '../components/rich/ApprovalCard'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
+import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo } from '../lib/api'
 
@@ -55,6 +56,7 @@ export function CodeView({
   const [filesOpen, setFilesOpen] = useState(false) // fil-træ foldet ind fra start
   const [trusted, setTrusted] = useState<boolean | null>(null)
   const [compactAt, setCompactAt] = useState(0)
+  const [gitRefresh, setGitRefresh] = useState(0) // bumpes når et run slutter → GitChip gen-henter
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
 
   // Context-ring: hent autocompact-tærsklen (samme som chat).
@@ -104,6 +106,7 @@ export function CodeView({
         created_at: new Date().toISOString(),
         parent_id: null,
       })
+      setGitRefresh((k) => k + 1) // Jarvis kan have ændret filer → opdater git-chip
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.status])
@@ -228,6 +231,7 @@ export function CodeView({
         <span className="chat-title">Code · {ready ? effRoot : 'vælg workspace'}</span>
       </div>
       <div className="chatview-head-right">
+        {config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
         {config && <ConnectionPill config={config} />}
         <button
           type="button"

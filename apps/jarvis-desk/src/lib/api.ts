@@ -299,6 +299,22 @@ export async function getTree(
   return data.entries ?? []
 }
 
+export interface GitStatus {
+  branch: string
+  dirty: number
+  added: number
+  removed: number
+  is_git: boolean
+}
+
+/** Git-state for det aktive code-workspace (header-chip). */
+export async function getGitStatus(
+  config: ApiConfig, kind: 'container' | 'workstation', root: string,
+): Promise<GitStatus> {
+  const qs = `kind=${encodeURIComponent(kind)}&root=${encodeURIComponent(root)}`
+  return apiFetch(config, `/chat/git-status?${qs}`)
+}
+
 /** Er et workspace betroet (skrive/exec-gate i code-mode)? */
 export async function getWorkspaceTrust(
   config: ApiConfig, kind: 'container' | 'workstation', root: string,

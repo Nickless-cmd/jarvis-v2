@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { Terminal, FilePen, FilePlus, FileText, Search, FolderTree, Wrench, Check, X, Loader } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
+import { lineDiff } from '../../lib/diff'
 
-/** Density-aware tool-kald visning. compact = kompakt linje, udfold på klik
- *  (Chat-mode); full = altid udfoldet timeline-kort (Code-mode). Argumenter og
- *  resultat rendres som INERT tekst via <pre> — aldrig som markdown/HTML — så
+/** Density-aware, værktøjs-specifik tool-kald-visning (Claude Desktop-stil).
+ *  bash → terminal-blok, write/edit → fil-header + diff, read/glob/grep → kompakt.
+ *  Argumenter og resultat rendres INERT via <pre> — aldrig markdown/HTML — så
  *  fjendtligt tool-output ikke kan injicere klikbare elementer. */
 export function ToolCard({
   block,
@@ -14,22 +16,118 @@ export function ToolCard({
 }) {
   const [open, setOpen] = useState(density === 'full')
   const expanded = density === 'full' || open
+
+  const args = parseArgs(block)
+  const fam = toolFamily(block.name)
+  const { Icon, summary } = describeTool(fam, args)
+  const status = block.status ?? 'running'
+
   return (
-    <div className="toolcard">
+    <div className={`toolcard fam-${fam} status-${status}`}>
       <button
         type="button"
         className="toolcard-head"
         onClick={() => density === 'compact' && setOpen((o) => !o)}
       >
+        <Icon size={13} className="toolcard-icon" />
         <span className="toolcard-name">{block.name}</span>
-        <span className="toolcard-status">{block.status ?? 'running'}</span>
+        {summary && <span className="toolcard-summary">{summary}</span>}
+        <StatusBadge status={status} />
       </button>
       {expanded && (
         <div className="toolcard-body">
-          {block.partialJson && <pre className="toolcard-args">{block.partialJson}</pre>}
-          {block.result && <pre className="toolcard-result">{block.result}</pre>}
+          {renderBody(fam, args, block.result)}
         </div>
       )}
     </div>
+  )
+}
+
+type Fam = 'bash' | 'write' | 'edit' | 'read' | 'glob' | 'grep' | 'list' | 'other'
+
+function toolFamily(name: string): Fam {
+  const n = name.toLowerCase()
+  if (n.includes('bash')) return 'bash'
+  if (n.includes('write_file')) return 'write'
+  if (n.includes('edit_file')) return 'edit'
+  if (n.includes('read_file')) return 'read'
+  if (n.includes('glob') || n.includes('find_files')) return 'glob'
+  if (n.includes('grep') || n === 'search') return 'grep'
+  if (n.includes('list_dir')) return 'list'
+  return 'other'
+}
+
+function parseArgs(block: Extract<ContentBlock, { type: 'tool_use' }>): Record<string, unknown> {
+  if (block.input && Object.keys(block.input).length) return block.input
+  try { return JSON.parse(block.partialJson || '{}') } catch { return {} }
+}
+
+function pathOf(args: Record<string, unknown>): string {
+  return String(args.path || args.target_path || args.file_path || args.dir || '')
+}
+
+function describeTool(fam: Fam, args: Record<string, unknown>): { Icon: typeof Terminal; summary: string } {
+  switch (fam) {
+    case 'bash': return { Icon: Terminal, summary: String(args.command || '') }
+    case 'write': return { Icon: FilePlus, summary: pathOf(args) }
+    case 'edit': return { Icon: FilePen, summary: pathOf(args) }
+    case 'read': return { Icon: FileText, summary: pathOf(args) }
+    case 'glob': return { Icon: Search, summary: String(args.pattern || args.glob || '') }
+    case 'grep': return { Icon: Search, summary: String(args.pattern || args.query || '') }
+    case 'list': return { Icon: FolderTree, summary: pathOf(args) }
+    default: return { Icon: Wrench, summary: '' }
+  }
+}
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === 'done') return <span className="toolcard-status ok"><Check size={11} /></span>
+  if (status === 'error') return <span className="toolcard-status err"><X size={11} /></span>
+  return <span className="toolcard-status run"><Loader size={11} /></span>
+}
+
+function renderBody(fam: Fam, args: Record<string, unknown>, result?: string) {
+  if (fam === 'bash') {
+    return (
+      <div className="tc-term">
+        <div className="tc-term-cmd">$ {String(args.command || '')}</div>
+        {result && <pre className="tc-term-out">{result}</pre>}
+      </div>
+    )
+  }
+  if (fam === 'edit') {
+    const oldS = String(args.old_string ?? args.old ?? '')
+    const newS = String(args.new_string ?? args.new ?? '')
+    if (oldS || newS) {
+      const diff = lineDiff(oldS, newS)
+      const add = diff.filter((d) => d.type === 'add').length
+      const del = diff.filter((d) => d.type === 'del').length
+      return (
+        <div className="tc-diff">
+          <div className="tc-diff-stat"><span className="git-add">+{add}</span> <span className="git-del">−{del}</span></div>
+          <pre className="tc-diff-body">{diff.map((d, i) => (
+            <div key={i} className={`tc-diff-line ${d.type}`}>{d.type === 'add' ? '+' : d.type === 'del' ? '−' : ' '} {d.text}</div>
+          ))}</pre>
+        </div>
+      )
+    }
+  }
+  if (fam === 'write') {
+    const content = String(args.content ?? '')
+    const lines = content ? content.split('\n').length : 0
+    return (
+      <div className="tc-write">
+        <div className="tc-write-stat">Skrev {lines} linjer</div>
+        {content && <pre className="tc-write-body">{content.length > 4000 ? content.slice(0, 4000) + '\n…' : content}</pre>}
+      </div>
+    )
+  }
+  // read / glob / grep / list / other: vis resultat (og args for 'other')
+  return (
+    <>
+      {fam === 'other' && Object.keys(args).length > 0 && (
+        <pre className="toolcard-args">{JSON.stringify(args, null, 2)}</pre>
+      )}
+      {result && <pre className="toolcard-result">{result}</pre>}
+    </>
   )
 }

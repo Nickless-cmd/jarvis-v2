@@ -20,6 +20,7 @@ import {
   shell,
   session,
   Tray,
+  Notification,
 } from 'electron'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
@@ -266,6 +267,18 @@ ipcMain.handle('tray:attention', (_event, on: boolean) => {
 ipcMain.handle('run:setAuth', (_event, apiBaseUrl: string, authToken: string | null) => {
   runApiBaseUrl = apiBaseUrl
   runAuthToken = authToken
+})
+// Native "opgave færdig"-notifikation når et run slutter (fyrer altid).
+ipcMain.handle('notify:taskDone', (_event, title: string, body: string) => {
+  if (!Notification.isSupported()) return
+  const n = new Notification({
+    title: title || 'Jarvis',
+    body: body || 'Opgaven er færdig.',
+    icon: trayAsset('bright'),
+    silent: false,
+  })
+  n.on('click', () => { if (mainWindow) { mainWindow.show(); mainWindow.focus() } })
+  n.show()
 })
 
 // ─── Content Security Policy ──────────────────────────────────────────

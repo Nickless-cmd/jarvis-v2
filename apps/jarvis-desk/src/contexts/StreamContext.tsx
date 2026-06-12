@@ -8,6 +8,7 @@ interface DeskRunBridge {
   setActiveRun?: (runId: string | null) => void
   setRunAuth?: (apiBaseUrl: string, authToken: string | null) => void
   setTrayAttention?: (on: boolean) => void
+  notifyTaskDone?: (title: string, body: string) => void
 }
 function deskRunBridge(): DeskRunBridge | undefined {
   return (window as unknown as { jarvisDesk?: DeskRunBridge }).jarvisDesk
@@ -123,6 +124,19 @@ export function StreamProvider({
   useEffect(() => {
     deskRunBridge()?.setTrayAttention?.(needsAttention)
   }, [needsAttention])
+
+  // Native "opgave færdig"-notifikation: fyrer hver gang et run går
+  // working → done (uanset vindue-fokus, jf. Bjørns valg).
+  const prevStatusRef = useRef<StreamStatus>('idle')
+  useEffect(() => {
+    if (prevStatusRef.current === 'working' && status === 'done') {
+      const lastText = [...state.blocks].reverse().find((b) => b.type === 'text') as
+        | { type: 'text'; text: string } | undefined
+      const body = (lastText?.text || '').trim().slice(0, 140) || 'Opgaven er færdig.'
+      deskRunBridge()?.notifyTaskDone?.('Jarvis er færdig', body)
+    }
+    prevStatusRef.current = status
+  }, [status, state.blocks])
 
   const value = useMemo<StreamContextValue>(
     () => ({

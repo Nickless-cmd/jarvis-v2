@@ -19,6 +19,8 @@ export interface JarvisDeskBridge {
   setRunAuth: (apiBaseUrl: string, authToken: string | null) => Promise<void>
   /** Tænd/sluk systray attention-prik (Jarvis vil noget mens vinduet er skjult). */
   setTrayAttention: (on: boolean) => Promise<void>
+  /** Native OS-notifikation når et run slutter. */
+  notifyTaskDone: (title: string, body: string) => Promise<void>
   platform: NodeJS.Platform
 }
 
@@ -31,6 +33,7 @@ const bridge: JarvisDeskBridge = {
   setActiveRun: (runId) => ipcRenderer.invoke('run:setActive', runId),
   setRunAuth: (apiBaseUrl, authToken) => ipcRenderer.invoke('run:setAuth', apiBaseUrl, authToken),
   setTrayAttention: (on) => ipcRenderer.invoke('tray:attention', on),
+  notifyTaskDone: (title, body) => ipcRenderer.invoke('notify:taskDone', title, body),
   platform: process.platform,
 }
 

@@ -774,10 +774,17 @@
 .presence-dot.red { background: var(--error-fg); }
 
 /* Liveness-indikator */
+/* Delt Jarvis-ring (header + liveness) */
+.jarvis-ring { display: inline-flex; align-items: center; line-height: 0; }
+.jarvis-ring svg { display: block; transform-origin: 50% 50%; }
+.jarvis-ring.spinning svg { animation: presence-spin 1.1s linear infinite; }
+
 .liveness {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 4px; color: var(--fg-3); font-size: 13px;
 }
+.liveness.is-idle { opacity: 0.7; }
+.liveness-label { color: var(--fg-3); }
 .liveness-dot {
   width: 7px; height: 7px; border-radius: 50%; background: var(--warn-fg);
   animation: liveness-pulse 1.4s ease-in-out infinite;

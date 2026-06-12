@@ -9,9 +9,13 @@ describe('feedback', () => {
     render(<LivenessIndicator status="working" elapsedMs={42000} density="compact" />)
     expect(screen.getByText(/0:42/)).toBeInTheDocument()
   })
-  it('LivenessIndicator renders nothing when not working', () => {
-    const { container } = render(<LivenessIndicator status="idle" elapsedMs={0} density="compact" />)
-    expect(container.firstChild).toBeNull()
+  it('LivenessIndicator: altid synlig — "klar" når idle, working-step når aktiv', () => {
+    const { container, rerender } = render(<LivenessIndicator status="idle" elapsedMs={0} density="compact" />)
+    expect(container.querySelector('.liveness.is-idle')).not.toBeNull()
+    expect(container.textContent).toContain('klar')
+    rerender(<LivenessIndicator status="working" elapsedMs={3000} density="compact" workingStep="tænker" />)
+    expect(container.querySelector('.liveness.is-working')).not.toBeNull()
+    expect(container.textContent).toContain('tænker')
   })
   it('HangPrompt fires onResume and onAbort', async () => {
     const onResume = vi.fn(), onAbort = vi.fn()

@@ -3,18 +3,19 @@ import { render } from '@testing-library/react'
 import { PresenceDot } from './PresenceDot'
 
 describe('PresenceDot', () => {
-  it('green when connected/idle', () => {
+  it('idle: ring til stede, drejer ikke', () => {
     const { container } = render(<PresenceDot status="idle" />)
-    expect(container.querySelector('.presence-dot.green')).not.toBeNull()
+    expect(container.querySelector('.presence-mark.idle')).not.toBeNull()
+    expect(container.querySelector('.presence-mark.working')).toBeNull()
   })
-  it('yellow when working', () => {
+  it('working: drejer (working-tone)', () => {
     const { container } = render(<PresenceDot status="working" />)
-    expect(container.querySelector('.presence-dot.yellow')).not.toBeNull()
+    expect(container.querySelector('.presence-mark.working')).not.toBeNull()
   })
-  it('red when interrupted or error', () => {
+  it('error/interrupted: error-tone', () => {
     const { container: c1 } = render(<PresenceDot status="interrupted" />)
-    expect(c1.querySelector('.presence-dot.red')).not.toBeNull()
+    expect(c1.querySelector('.presence-mark.error')).not.toBeNull()
     const { container: c2 } = render(<PresenceDot status="error" />)
-    expect(c2.querySelector('.presence-dot.red')).not.toBeNull()
+    expect(c2.querySelector('.presence-mark.error')).not.toBeNull()
   })
 })

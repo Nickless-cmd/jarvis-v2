@@ -1,5 +1,8 @@
-/** Rolig liveness-indikator mens Jarvis arbejder. Density-aware: compact (Chat)
- *  vs full (Code). Viser forløbet tid m:ss. */
+import { JarvisRing } from '../shell/JarvisRing'
+
+/** Vedvarende liveness-linje (som Claude): Jarvis' ring står ALTID nederst i
+ *  transcript'en — drejer + viser working-step og tid mens han arbejder, og
+ *  bliver stående stille med "klar" når turen er slut. Density-aware. */
 export function LivenessIndicator({
   status,
   elapsedMs,
@@ -11,12 +14,17 @@ export function LivenessIndicator({
   density: 'compact' | 'full'
   workingStep?: string | null
 }) {
-  if (status !== 'working') return null
+  const working = status === 'working'
+  const tone = working ? 'working' : status === 'error' || status === 'interrupted' ? 'error' : 'idle'
   const s = Math.floor(elapsedMs / 1000)
   const t = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  const label = working
+    ? `${workingStep || 'arbejder'} — ${t}`
+    : tone === 'error' ? 'afbrudt' : 'klar'
   return (
-    <div className={`liveness liveness-${density}`}>
-      <span className="liveness-dot" /> {workingStep || 'arbejder'} — {t}
+    <div className={`liveness liveness-${density} ${working ? 'is-working' : 'is-idle'}`}>
+      <JarvisRing size={14} spinning={working} tone={tone} />
+      <span className="liveness-label">{label}</span>
     </div>
   )
 }

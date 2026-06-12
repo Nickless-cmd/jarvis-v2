@@ -55,6 +55,101 @@ _KNOWN_SYSTEM_EVENT_KINDS = {
 }
 
 
+# Echo-mønstre for tool-leak backstop (Del A2 i Phase 2-spec):
+#  - _ECHO_BUILDING: en partiel linje der STADIG kan blive til "[tool]:"
+#    (vi holder den tilbage indtil den enten fuldføres eller diverger).
+#  - _ECHO_FULL: en bekræftet "[tool]:"-præfiks — droppes hvis <tool> er et
+#    kendt registreret toolnavn.
+_ECHO_BUILDING_RE = re.compile(r"^\s*\[[a-z0-9_]*\]?\s*:?\s*$")
+_ECHO_FULL_RE = re.compile(r"^\s*\[([a-z0-9_]+)\]\s*:")
+
+
+class ToolEchoFilter:
+    """Streaming-backstop mod at modellen ekkoer rå tool-output i sit svar.
+
+    Dropper hele linjer der starter med ``[<kendt_tool>]:`` (fx
+    ``[read_file]: <fil-dump>``) men lader al anden tekst flyde igennem
+    token-for-token (minimal latency — vi holder kun tilbage når en linje
+    ved line-start *kunne* blive til en tool-echo).
+
+    Brug: ``feed(text)`` pr. delta, ``flush()`` ved stream-slut.
+    """
+
+    def __init__(self, tool_names=None) -> None:
+        if tool_names is None:
+            try:
+                from core.tools.simple_tools import _TOOL_HANDLERS
+                tool_names = list(_TOOL_HANDLERS.keys())
+            except Exception:
+                tool_names = []
+        self._names = {str(n).lower() for n in tool_names}
+        self._held = ""             # holdt partiel linje (mulig echo)
+        self._at_line_start = True  # er vi ved starten af en ny linje?
+        self._dropping = False      # dropper vi resten af en bekræftet echo-linje?
+
+    def _is_echo_line(self, line: str) -> bool:
+        m = _ECHO_FULL_RE.match(line)
+        return bool(m and m.group(1).lower() in self._names)
+
+    def feed(self, text: str) -> str:
+        if not text:
+            return ""
+        out: list[str] = []
+        buf = self._held + text
+        self._held = ""
+        while buf:
+            if self._dropping:
+                nl = buf.find("\n")
+                if nl == -1:
+                    buf = ""
+                else:
+                    buf = buf[nl + 1:]
+                    self._dropping = False
+                    self._at_line_start = True
+                continue
+            if not self._at_line_start:
+                nl = buf.find("\n")
+                if nl == -1:
+                    out.append(buf)
+                    buf = ""
+                else:
+                    out.append(buf[:nl + 1])
+                    buf = buf[nl + 1:]
+                    self._at_line_start = True
+                continue
+            # Ved line-start.
+            nl = buf.find("\n")
+            if nl != -1:
+                line = buf[:nl + 1]
+                buf = buf[nl + 1:]
+                if not self._is_echo_line(line):
+                    out.append(line)
+                # echo-linje droppes
+                self._at_line_start = True
+                continue
+            # Partiel linje uden newline endnu.
+            line = buf
+            buf = ""
+            if _ECHO_BUILDING_RE.match(line):
+                self._held = line          # endnu uafklaret — hold tilbage
+            elif self._is_echo_line(line):
+                self._dropping = True      # bekræftet echo, drop resten af linjen
+            else:
+                out.append(line)
+                self._at_line_start = False
+            break
+        return "".join(out)
+
+    def flush(self) -> str:
+        held = self._held
+        self._held = ""
+        if not held:
+            return ""
+        if self._is_echo_line(held):
+            return ""
+        return held
+
+
 def _parse_legacy_sse(chunk: str) -> tuple[str, dict] | None:
     """Parse en legacy SSE event-blok til (event_name, payload_dict).
 
@@ -100,10 +195,13 @@ async def translate_to_v2(
     """
     queue: asyncio.Queue[str | None] = asyncio.Queue()
 
+    echo_filter = ToolEchoFilter()
+
     _state = {
         "message_started": False,
         "text_block_open": False,
         "text_block_index": 0,
+        "next_index": 0,
         "input_tokens": 0,
         "output_tokens": 0,
         "cache_hit_tokens": 0,
@@ -115,6 +213,19 @@ async def translate_to_v2(
         "lane": lane,
         "session_id": session_id,
     }
+
+    def _alloc_index() -> int:
+        idx = int(_state["next_index"])
+        _state["next_index"] = idx + 1
+        return idx
+
+    async def _open_text_block() -> None:
+        idx = _alloc_index()
+        _state["text_block_index"] = idx
+        await queue.put(ContentBlockStart(
+            index=idx, block_type="text",
+        ).to_sse_line())
+        _state["text_block_open"] = True
 
     async def _emit_message_start_if_needed() -> None:
         if _state["message_started"]:
@@ -130,18 +241,66 @@ async def translate_to_v2(
             ),
         ).to_sse_line())
         # Åbn første text-block straks så delta'er kan lande
-        await queue.put(ContentBlockStart(
-            index=int(_state["text_block_index"]),
-            block_type="text",
-        ).to_sse_line())
-        _state["text_block_open"] = True
+        await _open_text_block()
+
+    async def _ensure_text_block_open() -> None:
+        if not _state["text_block_open"]:
+            await _open_text_block()
 
     async def _close_text_block_if_open() -> None:
         if _state["text_block_open"]:
+            # Tøm echo-filterets evt. holdte hale ind i den aktive text-block,
+            # før vi lukker den (fx ved et tool-kald der afbryder teksten).
+            tail = echo_filter.flush()
+            if tail:
+                await queue.put(ContentBlockDelta(
+                    index=int(_state["text_block_index"]),
+                    delta_type="text_delta",
+                    content=tail,
+                ).to_sse_line())
             await queue.put(ContentBlockStop(
                 index=int(_state["text_block_index"]),
             ).to_sse_line())
             _state["text_block_open"] = False
+
+    async def _emit_tool_use(payload: dict) -> None:
+        """Oversæt et tool-relateret capability-event til en tool_use-blok.
+
+        Lukker en evt. åben text-block, udsender tool_use start (+ input via
+        input_json_delta) + stop, og videregiver status som system_event så
+        klienten kan markere ToolCard'ens udfald."""
+        ptype = str(payload.get("type") or "")
+        name = str(
+            payload.get("capability_name")
+            or payload.get("tool")
+            or payload.get("capability_id")
+            or ""
+        )
+        tool_id = str(payload.get("capability_id") or payload.get("id") or name or "tool")
+        status = str(payload.get("status") or "")
+        tool_input: dict = {}
+        for k in ("target_path", "command_text", "write_content", "arguments"):
+            v = payload.get(k)
+            if v:
+                tool_input[k] = v
+
+        await _close_text_block_if_open()
+        idx = _alloc_index()
+        await queue.put(ContentBlockStart(
+            index=idx, block_type="tool_use", tool_id=tool_id, tool_name=name,
+        ).to_sse_line())
+        if tool_input:
+            await queue.put(ContentBlockDelta(
+                index=idx,
+                delta_type="input_json_delta",
+                content=json.dumps(tool_input, ensure_ascii=False),
+            ).to_sse_line())
+        await queue.put(ContentBlockStop(index=idx).to_sse_line())
+        # Status/udfald som system_event bundet til tool_use_id.
+        await queue.put(SystemEvent(
+            kind="tool_result",
+            payload={"tool_use_id": tool_id, "tool": name, "status": status, "type": ptype},
+        ).to_sse_line())
 
     async def _ping_loop() -> None:
         try:
@@ -166,13 +325,24 @@ async def translate_to_v2(
 
                 if event_name == "delta":
                     await _emit_message_start_if_needed()
-                    text = str(payload.get("delta") or "")
+                    await _ensure_text_block_open()
+                    raw_text = str(payload.get("delta") or "")
+                    text = echo_filter.feed(raw_text)
                     if text:
                         await queue.put(ContentBlockDelta(
                             index=int(_state["text_block_index"]),
                             delta_type="text_delta",
                             content=text,
                         ).to_sse_line())
+
+                elif event_name == "capability" and str(payload.get("type") or "") in (
+                    "tool_result", "capability"
+                ):
+                    # Phase 2: ægte tool-eksekvering → struktureret tool_use-blok.
+                    # Andre capability-typer (tool_approved, gate_blocked, …)
+                    # falder igennem til system_event nedenfor.
+                    await _emit_message_start_if_needed()
+                    await _emit_tool_use(payload)
 
                 elif event_name == "done":
                     await _emit_message_start_if_needed()

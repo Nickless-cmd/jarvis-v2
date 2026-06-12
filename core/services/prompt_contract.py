@@ -1833,6 +1833,16 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Tool-output hygiejne (A1 i v2-stream Phase 2): deepseek-flash har en
+    # tendens til at papegøje det rå tool-resultat-format ([read_file]: …)
+    # ind i sit synlige svar. Det er kun til modellens egne øjne.
+    parts.append(
+        "🔧 TOOL-OUTPUT: Resultater fra værktøjer (fx '[read_file]: …', rå "
+        "fil-dumps, JSON) er KUN til dig. Gengiv dem ALDRIG ordret i dit svar — "
+        "referer til indholdet med dine egne ord."
+    )
+    derived_inputs.append("tool-output hygiene (tail-anchored)")
+
     # Time Pin — appended LAST so it sits immediately above the user
     # message in the constructed prompt. Keeps the prefix above it stable
     # (cacheable by DeepSeek) while still ensuring the model sees an

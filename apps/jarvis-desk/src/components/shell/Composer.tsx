@@ -40,6 +40,7 @@ export function Composer({
   thinking,
   config,
   getSessionId,
+  showPermissions = true,
 }: {
   streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
@@ -48,6 +49,9 @@ export function Composer({
   thinking: string
   config?: ApiConfig
   getSessionId: () => Promise<string>
+  /** Permissions-dropdown vises kun hvor værktøjs-godkendelse er relevant
+   *  (cowork/code). I ren chat mode er den skjult. Default true. */
+  showPermissions?: boolean
 }) {
   const [text, setText] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -193,7 +197,8 @@ export function Composer({
             )}
           </div>
 
-          {/* permissions dropdown */}
+          {/* permissions dropdown — kun i cowork/code, ikke ren chat */}
+          {showPermissions && (
           <div className="composer-popover-anchor" onClick={stop}>
             <button
               type="button"
@@ -217,6 +222,7 @@ export function Composer({
               </div>
             )}
           </div>
+          )}
 
           <input
             ref={fileRef}

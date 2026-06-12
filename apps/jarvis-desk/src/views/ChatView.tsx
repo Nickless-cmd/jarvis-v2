@@ -148,6 +148,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       thinking="think"
       config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
       getSessionId={ensureSessionId}
+      showPermissions={false}
     />
   )
 

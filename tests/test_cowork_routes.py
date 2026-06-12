@@ -52,3 +52,10 @@ def test_reject_routes_to_resolver(monkeypatch, client):
     monkeypatch.setattr(cowork_routes, "_resolve_item", lambda item_id, decision: {"status": "ok", "decision": decision})
     r = client.post("/cowork/queue/x/reject")
     assert r.json()["decision"] == "reject"
+
+
+def test_todos_returns_list(monkeypatch, client):
+    monkeypatch.setattr(cowork_routes.cowork_feed, "list_todos_feed", lambda **k: [{"id": "t1", "content": "x", "status": "pending"}])
+    r = client.get("/cowork/todos")
+    assert r.status_code == 200
+    assert r.json()["todos"][0]["id"] == "t1"

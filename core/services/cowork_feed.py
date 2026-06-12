@@ -107,11 +107,48 @@ def list_plans(*, user_id: str | None, is_owner: bool) -> list[dict[str, Any]]:
     return plans
 
 
+def _all_todos() -> list[dict[str, Any]]:
+    """Alle todos på tværs af sessioner (agent_todos er session-keyed)."""
+    try:
+        from core.services.agent_todos import _load_all
+        out: list[dict[str, Any]] = []
+        for _sid, items in (_load_all() or {}).items():
+            for t in items:
+                out.append({
+                    "id": str(t.get("id") or ""),
+                    "content": str(t.get("content") or ""),
+                    "status": str(t.get("status") or "pending"),
+                })
+        return out
+    except Exception:
+        return []
+
+
+def list_todos_feed(*, user_id: str | None, is_owner: bool) -> list[dict[str, Any]]:
+    """Todos til cowork. Owner ser alle; member får [] (todos er ikke user-
+    attribuerede endnu — sandboxes i v2)."""
+    if not is_owner:
+        return []
+    return [t for t in _all_todos() if t["id"] and t["content"]]
+
+
 def _raw_channels() -> dict[str, Any]:
-    """Kanal-status. Best-effort; tom dict ved fejl (ruden viser så 'ingen kanaler').
-    v1: ingen samlet kilde i Mission Control endnu — udvides når en kanal-state-
-    surface findes. Returnerer {} indtil da."""
-    return {}
+    """Konfigurerede kanaler (online = konfigureret/aktiv). Live connection-state
+    ligger i gateway-processerne; v1 viser hvilke kanaler der er sat op."""
+    chans: dict[str, Any] = {}
+    try:
+        from core.services.discord_config import is_discord_configured
+        chans["discord"] = {"online": bool(is_discord_configured()), "unread": 0}
+    except Exception:
+        pass
+    try:
+        from core.runtime.secrets import read_runtime_key
+        if read_runtime_key("telegram_bot_token"):
+            chans["telegram"] = {"online": True, "unread": 0}
+    except Exception:
+        pass
+    chans["webchat"] = {"online": True, "unread": 0}
+    return chans
 
 
 def channel_status() -> list[dict[str, Any]]:

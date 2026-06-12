@@ -55,3 +55,23 @@ def test_channel_status_returns_list(monkeypatch):
     monkeypatch.setattr(cowork_feed, "_raw_channels", lambda: {"discord": {"online": True, "unread": 2}})
     chans = cowork_feed.channel_status()
     assert any(c["name"] == "discord" and c["online"] is True for c in chans)
+
+
+def test_list_todos_feed_owner_aggregates(monkeypatch):
+    monkeypatch.setattr(cowork_feed, "_all_todos", lambda: [
+        {"id": "t1", "content": "Byg cowork", "status": "in_progress"},
+        {"id": "", "content": "tom", "status": "pending"},
+    ])
+    todos = cowork_feed.list_todos_feed(user_id="owner", is_owner=True)
+    assert [t["id"] for t in todos] == ["t1"]
+
+
+def test_list_todos_feed_member_empty(monkeypatch):
+    monkeypatch.setattr(cowork_feed, "_all_todos", lambda: [{"id": "t1", "content": "x", "status": "pending"}])
+    assert cowork_feed.list_todos_feed(user_id="mikkel", is_owner=False) == []
+
+
+def test_channel_status_includes_webchat(monkeypatch):
+    monkeypatch.setattr(cowork_feed, "_raw_channels", lambda: {"webchat": {"online": True, "unread": 0}})
+    names = [c["name"] for c in cowork_feed.channel_status()]
+    assert "webchat" in names

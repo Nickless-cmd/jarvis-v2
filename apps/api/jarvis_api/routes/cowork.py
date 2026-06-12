@@ -57,6 +57,13 @@ async def cowork_plans() -> dict:
     return {"plans": plans}
 
 
+@router.get("/todos")
+async def cowork_todos() -> dict:
+    is_owner, uid = _role_owner()
+    todos = await asyncio.to_thread(cowork_feed.list_todos_feed, user_id=uid, is_owner=is_owner)
+    return {"todos": todos}
+
+
 @router.get("/channels")
 async def cowork_channels() -> dict:
     is_owner, _uid = _role_owner()

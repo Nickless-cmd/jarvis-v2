@@ -325,12 +325,28 @@ const handlers: Record<string, ToolHandler> = {
   operator_write_file: (args) => {
     const path = resolveOperatorPath(args.path)
     const content = String(args.content ?? '')
-    // Create parent dirs as needed (mkdir -p style)
+    // Snapshot pre-write so the LLM knows whether this was a fresh
+    // creation or an overwrite (and by how much). Phase 2.
+    let bytes_before: number | null = null
+    let was_new_file = true
+    try {
+      const existing = readFileSync(path, 'utf8')
+      bytes_before = Buffer.byteLength(existing, 'utf8')
+      was_new_file = false
+    } catch { /* file didn't exist — fresh creation */ }
     try {
       mkdirSync(dirname(path), { recursive: true })
     } catch {}
     writeFileSync(path, content, 'utf8')
-    return { bytes_written: Buffer.byteLength(content, 'utf8'), path }
+    const bytes_after = Buffer.byteLength(content, 'utf8')
+    return {
+      bytes_written: bytes_after,
+      bytes_before,
+      bytes_after,
+      was_new_file,
+      delta_bytes: bytes_before == null ? bytes_after : bytes_after - bytes_before,
+      path,
+    }
   },
 
   operator_edit_file: (args) => {
@@ -353,7 +369,28 @@ const handlers: Record<string, ToolHandler> = {
       ? orig.split(oldStr).join(newStr)
       : orig.replace(oldStr, newStr)
     writeFileSync(path, updated, 'utf8')
-    return { replacements: replaceAll ? occurrences : 1, path }
+    // Auto-diff: surface a compact unified diff of the changed region so
+    // the LLM SEES what landed without having to re-read. Phase 2 of the
+    // code-discipline work — "enforce, don't remind".
+    const oldLines = oldStr.split('\n')
+    const newLines = newStr.split('\n')
+    const maxPreviewLines = 30
+    const truncLine = (s: string) => (s.length > 200 ? s.slice(0, 200) + ' …[truncated]' : s)
+    const diff_preview = [
+      `--- ${path} (before)`,
+      `+++ ${path} (after)`,
+      ...oldLines.slice(0, maxPreviewLines).map((l) => '-' + truncLine(l)),
+      ...(oldLines.length > maxPreviewLines ? [`-… (${oldLines.length - maxPreviewLines} more removed lines)`] : []),
+      ...newLines.slice(0, maxPreviewLines).map((l) => '+' + truncLine(l)),
+      ...(newLines.length > maxPreviewLines ? [`+… (${newLines.length - maxPreviewLines} more added lines)`] : []),
+    ].join('\n')
+    return {
+      replacements: replaceAll ? occurrences : 1,
+      path,
+      diff_preview,
+      bytes_before: Buffer.byteLength(orig, 'utf8'),
+      bytes_after: Buffer.byteLength(updated, 'utf8'),
+    }
   },
 
   operator_glob: (args) => {

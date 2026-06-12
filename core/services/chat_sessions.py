@@ -76,7 +76,8 @@ def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]
                         SELECT COUNT(*)
                         FROM chat_messages m2
                         WHERE m2.session_id = s.session_id
-                    ), 0) AS message_count
+                    ), 0) AS message_count,
+                    s.workspace_kind
                 FROM chat_sessions s
                 WHERE EXISTS (
                     SELECT 1 FROM chat_messages mu
@@ -107,7 +108,8 @@ def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]
                     SELECT COUNT(*)
                     FROM chat_messages m2
                     WHERE m2.session_id = s.session_id
-                ), 0) AS message_count
+                ), 0) AS message_count,
+                s.workspace_kind
             FROM chat_sessions s
             ORDER BY s.updated_at DESC, s.id DESC
             """
@@ -705,6 +707,7 @@ def _session_summary(row: dict[str, object]) -> dict[str, object]:
         "updated_at": str(row.get("updated_at") or ""),
         "last_message": _preview_text(str(row.get("last_message") or "")) or "Ready",
         "message_count": int(row.get("message_count") or 0),
+        "workspace_kind": (str(row.get("workspace_kind")) if row.get("workspace_kind") else None),
     }
 
 

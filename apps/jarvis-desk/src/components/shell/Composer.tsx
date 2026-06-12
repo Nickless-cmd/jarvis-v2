@@ -62,7 +62,7 @@ export function Composer({
   const [dragOver, setDragOver] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const dictation = useDictation((t) => setText((cur) => (cur ? cur + ' ' : '') + t))
+  const dictation = useDictation((t) => setText((cur) => (cur ? cur + ' ' : '') + t), config)
 
   // Upload droppede/valgte filer; vis chip straks (object-URL preview), sæt id når
   // uploadet. session_id resolves ÉN gang pr. drop (lazy-opretter ved ny chat).
@@ -244,9 +244,11 @@ export function Composer({
           {dictation.supported && (
             <button
               type="button"
-              className={`composer-icon-btn ${dictation.listening ? 'listening' : ''}`}
-              aria-label="Dikter"
-              onClick={() => (dictation.listening ? dictation.stop() : dictation.start())}
+              className={`composer-icon-btn ${dictation.listening ? 'listening' : ''} ${dictation.transcribing ? 'transcribing' : ''}`}
+              aria-label={dictation.transcribing ? 'Transskriberer…' : dictation.listening ? 'Stop optagelse' : 'Dikter'}
+              title={dictation.transcribing ? 'Transskriberer…' : dictation.listening ? 'Stop optagelse' : 'Dikter'}
+              disabled={dictation.transcribing}
+              onClick={() => (dictation.listening ? dictation.stop() : void dictation.start())}
             >
               <Mic size={16} />
             </button>

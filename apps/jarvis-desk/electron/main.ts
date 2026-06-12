@@ -243,6 +243,14 @@ app.whenReady().then(() => {
   const apiOrigin = new URL(cfg.apiBaseUrl).origin
   const wsOrigin = apiOrigin.replace(/^http/, 'ws')
 
+  // Mikrofon-adgang til dikter-funktionen (getUserMedia i renderer). Vi
+  // grant'er KUN 'media' (mic) — alt andet afvises. Uden dette afviser
+  // Electron getUserMedia i den pakkede app.
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+    callback(permission === 'media')
+  })
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) => permission === 'media')
+
   // Dev mode: Vite skal kunne injecte inline scripts til HMR.
   // Prod mode: stram CSP — kun 'self', ingen inline/eval.
   const csp = isDev

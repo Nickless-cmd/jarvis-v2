@@ -223,6 +223,22 @@ export async function uploadAttachment(
   return res.json() as Promise<{ id: string; filename?: string; mime_type?: string }>
 }
 
+/** Send optaget lyd til /transcribe (lokal faster-whisper) → tekst. */
+export async function transcribeAudio(
+  config: ApiConfig,
+  blob: Blob,
+  filename = 'dictation.webm',
+): Promise<{ status: string; text: string; language?: string; error?: string }> {
+  const url = new URL('/transcribe', config.apiBaseUrl).toString()
+  const form = new FormData()
+  form.append('file', blob, filename)
+  const headers: Record<string, string> = {}
+  if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
+  const res = await fetch(url, { method: 'POST', headers, body: form })
+  if (!res.ok) throw new StreamError('unknown', `Transskription fejlede: HTTP ${res.status}`, { retryable: false })
+  return res.json() as Promise<{ status: string; text: string; language?: string; error?: string }>
+}
+
 /** Læs en repo-fil til preview-panelet (path-jailed server-side). */
 export async function getFile(
   config: ApiConfig,

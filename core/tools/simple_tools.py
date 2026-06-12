@@ -4100,12 +4100,30 @@ def _exec_operator_write_file(args: dict[str, Any]) -> dict[str, Any]:
             pass
     user_id = _operator_user_id(args)
     from core.tools.operator_tools import operator_write_file_async
-    return _run_operator_async(
+    out = _run_operator_async(
         lambda: operator_write_file_async(
             path=path, content=str(content), user_id=user_id, timeout_s=30.0,
         ),
         tool_name="operator_write_file",
     )
+    if isinstance(out, dict) and out.get("status") == "ok":
+        try:
+            from core.services.read_before_write_guard import (
+                record_operator_edit,
+                get_session_edit_summary,
+            )
+            _sid = (
+                args.get("_runtime_session_id")
+                or args.get("_session_id")
+                or "default"
+            )
+            record_operator_edit(path, session_id=str(_sid), kind="write")
+            summary = get_session_edit_summary(session_id=str(_sid))
+            if summary:
+                out["_session_summary"] = summary
+        except Exception:
+            pass
+    return out
 
 
 def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
@@ -4147,7 +4165,7 @@ def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         pass
     user_id = _operator_user_id(args)
     from core.tools.operator_tools import operator_edit_file_async
-    return _run_operator_async(
+    out = _run_operator_async(
         lambda: operator_edit_file_async(
             path=path,
             old_string=str(old_string),
@@ -4158,6 +4176,26 @@ def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         ),
         tool_name="operator_edit_file",
     )
+    # Phase 2/3: record the edit + attach session summary so the LLM
+    # sees the running tally without us building a UI sidebar.
+    if isinstance(out, dict) and out.get("status") == "ok":
+        try:
+            from core.services.read_before_write_guard import (
+                record_operator_edit,
+                get_session_edit_summary,
+            )
+            _sid = (
+                args.get("_runtime_session_id")
+                or args.get("_session_id")
+                or "default"
+            )
+            record_operator_edit(path, session_id=str(_sid), kind="edit")
+            summary = get_session_edit_summary(session_id=str(_sid))
+            if summary:
+                out["_session_summary"] = summary
+        except Exception:
+            pass
+    return out
 
 
 def _exec_operator_glob(args: dict[str, Any]) -> dict[str, Any]:

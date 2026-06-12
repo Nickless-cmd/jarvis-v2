@@ -441,3 +441,73 @@ def check_operator_read_before_write(
         "⚠️ READ-BEFORE-WRITE GUARD (operator): {p}\n\n{hint}"
     ).format(p=path, hint=hint)
     return False, reason
+
+
+# ── Phase 2/3: Session edit/write tracker ─────────────────────────────────
+#
+# After each successful operator_edit_file or operator_write_file, we
+# record what file was touched under a per-session key. Lets us attach
+# a small "so far this session" block to tool results — Jarvis sees
+# the running tally automatically without us building a sidebar that
+# gets banner-blindness.
+#
+# shared_cache backed so all uvicorn workers see the same tally.
+
+_SESSION_EDITS_KEY_PREFIX = "rbw_session_edits:"
+_SESSION_EDITS_TTL_SECONDS = 24 * 60 * 60  # 24h — survives long working sessions
+
+
+def _session_edits_key(session_id: str) -> str:
+    return _SESSION_EDITS_KEY_PREFIX + session_id
+
+
+def record_operator_edit(
+    path: str, session_id: str = "default", kind: str = "edit"
+) -> None:
+    """Record that the operator side mutated this file. kind is 'edit' or 'write'."""
+    try:
+        from datetime import datetime as _dt, UTC as _UTC
+        from core.services import shared_cache as _sc
+        norm = _normalize_operator_path(path)
+        if not norm:
+            return
+        key = _session_edits_key(session_id)
+        existing = _sc.get(key) or {}
+        if not isinstance(existing, dict):
+            existing = {}
+        paths = list(existing.get("paths") or [])
+        # Dedup but keep order — most recent moves to the end
+        if norm in paths:
+            paths.remove(norm)
+        paths.append(norm)
+        # Cap at 50 — long sessions don't need to surface ancient files
+        if len(paths) > 50:
+            paths = paths[-50:]
+        existing["paths"] = paths
+        existing["edits"] = int(existing.get("edits") or 0) + (1 if kind == "edit" else 0)
+        existing["writes"] = int(existing.get("writes") or 0) + (1 if kind == "write" else 0)
+        existing["last_kind"] = kind
+        existing["last_path"] = norm
+        existing["last_iso"] = _dt.now(_UTC).isoformat()
+        _sc.set(key, existing, ttl_seconds=_SESSION_EDITS_TTL_SECONDS)
+    except Exception as exc:
+        logger.debug("record_operator_edit failed: %s", exc)
+
+
+def get_session_edit_summary(session_id: str = "default") -> dict:
+    """Return the running tally for this session. Empty dict if nothing yet."""
+    try:
+        from core.services import shared_cache as _sc
+        data = _sc.get(_session_edits_key(session_id))
+        if isinstance(data, dict):
+            return {
+                "paths_touched": list(data.get("paths") or []),
+                "edit_count": int(data.get("edits") or 0),
+                "write_count": int(data.get("writes") or 0),
+                "last_kind": data.get("last_kind"),
+                "last_path": data.get("last_path"),
+                "last_iso": data.get("last_iso"),
+            }
+    except Exception:
+        pass
+    return {}

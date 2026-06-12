@@ -159,6 +159,11 @@ export function Composer({
   return (
     <div className={`composer ${dragOver ? 'drag-over' : ''}`}>
       {dragOver && <div className="composer-drop-overlay">Slip filer og billeder her</div>}
+      {compactAt > 0 && (
+        <div className="composer-ring-corner">
+          <ContextRing tokens={contextTokens} compactAt={compactAt} />
+        </div>
+      )}
       {attachments.length > 0 && (
         <div className="composer-attachments">
           {attachments.map((a) => (
@@ -251,7 +256,6 @@ export function Composer({
         </div>
 
         <div className="composer-right">
-          {compactAt > 0 && <ContextRing tokens={contextTokens} compactAt={compactAt} />}
           <button type="button" className="model-pill">
             <span className="dot" />{model}<span className="caret">▾</span>
           </button>

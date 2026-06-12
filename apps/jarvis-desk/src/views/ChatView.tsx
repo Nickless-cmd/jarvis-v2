@@ -38,7 +38,22 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       .catch(() => setCompactAt(0))
   }, [settings])
 
-  const contextTokens = stream.usage.input + stream.usage.cacheHit
+  // Context-ring: vis det RIGTIGE niveau fra start. Når en tur slutter kender
+  // vi de ægte kontekst-tokens (usage.input + cache) — vi gemmer dem pr. session
+  // i localStorage, så de vises straks ved genåbning (i stedet for tom ring).
+  const [seededTokens, setSeededTokens] = useState(0)
+  useEffect(() => {
+    const v = sessionId ? Number(localStorage.getItem(`jarvis-desk:ctx:${sessionId}`) || '0') : 0
+    setSeededTokens(Number.isFinite(v) ? v : 0)
+  }, [sessionId])
+  const liveTokens = stream.usage.input + stream.usage.cacheHit
+  useEffect(() => {
+    if (sessionId && liveTokens > 0) {
+      localStorage.setItem(`jarvis-desk:ctx:${sessionId}`, String(liveTokens))
+      setSeededTokens(liveTokens)
+    }
+  }, [liveTokens, sessionId])
+  const contextTokens = Math.max(liveTokens, seededTokens)
 
   useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 

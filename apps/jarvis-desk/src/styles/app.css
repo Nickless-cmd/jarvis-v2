@@ -1117,3 +1117,31 @@
 .git-chip .git-counts { display: inline-flex; gap: 5px; }
 .git-chip .git-add { color: var(--accent); }
 .git-chip .git-del { color: #e2777a; }
+
+/* Cowork dashboard */
+.coworkview { height: 100%; overflow-y: auto; padding: 16px; }
+.cowork-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 1100px; margin: 0 auto; }
+.cowork-pane { background: var(--bg-1); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-height: 160px; }
+.cowork-pane-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--fg-1); margin-bottom: 10px; }
+.cowork-count { font-size: 11px; background: var(--bg-3); color: var(--fg-3); padding: 1px 7px; border-radius: 10px; }
+.cowork-empty { color: var(--fg-3); font-size: 12.5px; padding: 8px 2px; }
+.cowork-item { border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; margin-bottom: 8px; }
+.cowork-item-title { font-size: 12.5px; display: flex; align-items: center; gap: 5px; }
+.cowork-item-detail { font-size: 11.5px; color: var(--fg-3); font-family: ui-monospace, monospace; margin: 3px 0 6px; }
+.cowork-item-actions { display: flex; gap: 6px; }
+.cowork-item-actions button { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 3px 9px; background: var(--bg-2); color: var(--fg-1); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.cowork-item-actions button:hover { border-color: var(--accent); }
+.cowork-diff { margin: 6px 0 0; font-family: ui-monospace, monospace; font-size: 11.5px; white-space: pre-wrap; max-height: 200px; overflow: auto; color: #c8d2dc; }
+.cowork-plan { margin-bottom: 10px; }
+.cowork-plan-title { font-size: 12.5px; font-weight: 500; }
+.cowork-plan-sub { font-size: 11.5px; color: var(--fg-3); margin: 2px 0 5px; }
+.cowork-progress { height: 4px; background: var(--bg-3); border-radius: 3px; }
+.cowork-progress-fill { height: 4px; background: var(--accent); border-radius: 3px; }
+.cowork-todo { display: flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 3px 0; color: var(--fg-2); }
+.cowork-todo.status-completed span { color: var(--fg-3); text-decoration: line-through; }
+.cowork-channel { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 4px 0; }
+.cowork-channel-name { color: var(--fg-2); }
+.cowork-dot { width: 7px; height: 7px; border-radius: 50%; margin-left: auto; }
+.cowork-dot.on { background: var(--accent); }
+.cowork-dot.off { background: var(--fg-3); }
+.cowork-unread { font-size: 11px; color: var(--fg-3); }

@@ -990,3 +990,9 @@
   border-radius: var(--radius-sm); padding: 9px; cursor: pointer; font-size: 14px; margin-top: 8px;
 }
 .setup > button:hover { background: var(--bg-4); }
+
+/* Code-mode fil-træ */
+.filetree { list-style: none; margin: 0; padding: 0 0 0 8px; font-size: 13px; }
+.filetree-file, .filetree-dir-row { display: flex; align-items: center; gap: 5px; padding: 3px 6px; cursor: pointer; border-radius: 4px; color: var(--fg-2); white-space: nowrap; }
+.filetree-file:hover, .filetree-dir-row:hover { background: var(--bg-2); color: var(--fg-1); }
+.filetree-loading { padding: 8px; color: var(--fg-3); }

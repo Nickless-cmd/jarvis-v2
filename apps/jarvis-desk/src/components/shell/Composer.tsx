@@ -157,6 +157,7 @@ export function Composer({
   const permLabel = PERMISSIONS.find((p) => p.key === permission)?.label ?? 'Spørg'
 
   return (
+    <>
     <div className={`composer ${dragOver ? 'drag-over' : ''}`}>
       {dragOver && <div className="composer-drop-overlay">Slip filer og billeder her</div>}
       {compactAt > 0 && (
@@ -298,5 +299,7 @@ export function Composer({
         </div>
       </div>
     </div>
+    <p className="composer-disclaimer">Jarvis kan tage fejl — dobbelttjek vigtige svar.</p>
+    </>
   )
 }

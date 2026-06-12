@@ -238,16 +238,18 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
           <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
         )}
         <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} />
-        {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
-        {stream.status === 'hung' && (
-          <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />
-        )}
-        {stream.status === 'error' && stream.error && (
-          <ErrorBanner message={stream.error.message} onDismiss={() => { /* ryddes ved næste send */ }} />
-        )}
       </div>
 
       <div className="composer-area">
+        <div className="composer-notices">
+          {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
+          {stream.status === 'hung' && (
+            <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />
+          )}
+          {stream.status === 'error' && stream.error && (
+            <ErrorBanner message={stream.error.message} onDismiss={() => { /* ryddes ved næste send */ }} />
+          )}
+        </div>
         {!atBottom && (
           <button type="button" className="scroll-bottom-btn" onClick={scrollToBottom} aria-label="Til bund">
             <ArrowDown size={16} />

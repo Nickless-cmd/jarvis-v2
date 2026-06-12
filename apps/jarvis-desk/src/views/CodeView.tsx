@@ -7,6 +7,9 @@ import { usePanel } from '../hooks/usePanel'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
+import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
+import { HangPrompt } from '../components/feedback/HangPrompt'
+import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { CodePanel } from '../components/panel/CodePanel'
 import { getWorkspaceTrust, setWorkspaceTrust } from '../lib/api'
@@ -255,6 +258,15 @@ export function CodeView({
           <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} />
         </div>
         <div className="composer-area">
+          <div className="composer-notices">
+            {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
+            {stream.status === 'hung' && (
+              <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />
+            )}
+            {stream.status === 'error' && stream.error && (
+              <ErrorBanner message={stream.error.message} onDismiss={() => { /* ryddes ved næste send */ }} />
+            )}
+          </div>
           {!atBottom && (
             <button type="button" className="scroll-bottom-btn" onClick={scrollToBottom} aria-label="Til bund">
               <ArrowDown size={16} />

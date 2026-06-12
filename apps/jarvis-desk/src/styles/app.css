@@ -952,7 +952,14 @@
 .toggle.on .knob { left: 16px; background: var(--bg-0); }
 
 /* composer-område: anker for scroll-pilen (sidder absolut OVER composeren) */
-.composer-area { position: relative; flex: 0 0 auto; }
+.composer-area { position: relative; flex: 0 0 auto; padding-bottom: 6px; }
+/* Disclaimer under composer (begge modes) */
+.composer-disclaimer { max-width: 820px; margin: 6px auto 0; text-align: center; font-size: 11px; color: var(--fg-3); opacity: 0.75; }
+/* Notices (afbrudt/hang/fejl) centreret OVER composeren i stedet for i transcript */
+.composer-notices { max-width: 820px; margin: 0 auto 8px; display: flex; flex-direction: column; gap: 8px; }
+.composer-notices:empty { display: none; }
+/* Code-mode composer: samme bund-luft som chat */
+.codeview .composer { flex: 0 0 auto; width: 100%; max-width: 820px; margin: 8px auto 14px; }
 /* Context-ring (#9): i composerens øverste højre hjørne, altid synlig. */
 .composer-ring-corner { position: absolute; top: 9px; right: 12px; z-index: 4; }
 .context-ring { display: inline-flex; align-items: center; cursor: default; }

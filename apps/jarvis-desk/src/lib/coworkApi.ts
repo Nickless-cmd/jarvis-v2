@@ -2,7 +2,7 @@ import { apiFetch, type ApiConfig } from './api'
 
 export interface QueueItem {
   id: string
-  kind: 'initiative' | 'capability' | 'tool_intent' | 'file_edit'
+  kind: 'initiative' | 'capability' | 'tool_intent' | 'file_edit' | 'proposal'
   title: string
   detail: string
   source: string

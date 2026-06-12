@@ -33,6 +33,14 @@ def _resolve_item(item_id: str, decision: str) -> dict:
     decision: "approve" | "reject". Prøver initiative-queue først, så capability-
     approval. BLOKERENDE — kaldes via to_thread."""
     approved = decision == "approve"
+    # Autonomy-proposals (prop-xxxxxx): commits/planer/prompt-ændringer.
+    try:
+        from core.services.autonomy_proposal_queue import approve_proposal, reject_proposal
+        res = approve_proposal(item_id) if approved else reject_proposal(item_id)
+        if res and str(res.get("status") or "") not in ("not-found", ""):
+            return {"status": "ok", "decision": decision, "via": "proposal"}
+    except Exception:
+        pass
     try:
         from core.services.initiative_queue import approve_initiative, reject_initiative
         res = approve_initiative(item_id) if approved else reject_initiative(item_id)

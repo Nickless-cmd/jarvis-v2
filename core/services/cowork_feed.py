@@ -60,9 +60,33 @@ def _norm_capability(raw: dict[str, Any]) -> dict[str, Any]:
     return item
 
 
+def _proposal_items() -> list[dict[str, Any]]:
+    """Afventende autonomy-proposals (prop-xxxxxx): commits, planer, prompt-
+    ændringer m.m. som Jarvis har lagt til godkendelse. Owner-only."""
+    try:
+        from core.services.autonomy_proposal_queue import list_pending_proposals
+        return [dict(p) for p in list_pending_proposals(limit=50)]
+    except Exception:
+        return []
+
+
+def _norm_proposal(raw: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": str(raw.get("proposal_id") or raw.get("id") or ""),
+        "kind": "proposal",
+        "title": str(raw.get("title") or raw.get("kind") or "Forslag"),
+        "detail": str(raw.get("rationale") or raw.get("kind") or ""),
+        # Owner-only: tom user_id → vises kun for owner (member-filter dropper dem).
+        "user_id": "",
+        "source": "proposal",
+        "proposal_kind": str(raw.get("kind") or ""),
+    }
+
+
 def build_queue(*, user_id: str | None, is_owner: bool) -> list[dict[str, Any]]:
     """Saml + normalisér + rolle-scope den fulde godkendelses-kø."""
     items: list[dict[str, Any]] = []
+    items += [_norm_proposal(r) for r in _proposal_items()]
     items += [_norm_initiative(r) for r in _initiative_items()]
     items += [_norm_capability(r) for r in _capability_items()]
     items = [i for i in items if i["id"]]

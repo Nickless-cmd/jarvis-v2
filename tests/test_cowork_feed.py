@@ -6,6 +6,7 @@ def test_build_queue_includes_pending_initiatives(monkeypatch):
         {"id": "init-1", "title": "Ryd op i logs", "user_id": "owner", "status": "pending"},
     ])
     monkeypatch.setattr(cowork_feed, "_capability_items", lambda: [])
+    monkeypatch.setattr(cowork_feed, "_proposal_items", lambda: [])
     items = cowork_feed.build_queue(user_id="owner", is_owner=True)
     assert any(i["id"] == "init-1" and i["kind"] == "initiative" for i in items)
     one = next(i for i in items if i["id"] == "init-1")
@@ -17,6 +18,7 @@ def test_build_queue_owner_sees_all_users(monkeypatch):
         {"id": "a", "title": "x", "user_id": "mikkel", "status": "pending"},
     ])
     monkeypatch.setattr(cowork_feed, "_capability_items", lambda: [])
+    monkeypatch.setattr(cowork_feed, "_proposal_items", lambda: [])
     assert len(cowork_feed.build_queue(user_id="owner", is_owner=True)) == 1
 
 
@@ -26,6 +28,7 @@ def test_build_queue_member_sees_only_own(monkeypatch):
         {"id": "b", "title": "y", "user_id": "owner", "status": "pending"},
     ])
     monkeypatch.setattr(cowork_feed, "_capability_items", lambda: [])
+    monkeypatch.setattr(cowork_feed, "_proposal_items", lambda: [])
     items = cowork_feed.build_queue(user_id="mikkel", is_owner=False)
     assert [i["id"] for i in items] == ["a"]
 
@@ -75,3 +78,14 @@ def test_channel_status_includes_webchat(monkeypatch):
     monkeypatch.setattr(cowork_feed, "_raw_channels", lambda: {"webchat": {"online": True, "unread": 0}})
     names = [c["name"] for c in cowork_feed.channel_status()]
     assert "webchat" in names
+
+
+def test_build_queue_includes_proposals(monkeypatch):
+    monkeypatch.setattr(cowork_feed, "_proposal_items", lambda: [
+        {"proposal_id": "prop-abc", "kind": "commit", "title": "Commit X", "rationale": "fordi"},
+    ])
+    monkeypatch.setattr(cowork_feed, "_initiative_items", lambda: [])
+    monkeypatch.setattr(cowork_feed, "_capability_items", lambda: [])
+    items = cowork_feed.build_queue(user_id="owner", is_owner=True)
+    one = next(i for i in items if i["id"] == "prop-abc")
+    assert one["kind"] == "proposal" and one["source"] == "proposal"

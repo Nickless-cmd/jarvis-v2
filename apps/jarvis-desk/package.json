@@ -2,7 +2,7 @@
   "name": "jarvis-desktop",
   "productName": "Jarvis",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Jarvis — Calm, robust desktop app for Jarvis. Built on /chat/stream/v2 Anthropic-style protocol.",
   "homepage": "https://github.com/Nickless-cmd/jarvis-v2",
   "main": "dist-electron/main.js",
@@ -62,6 +62,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
+    "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "shiki": "^1.29.2",
     "ws": "^8.21.0"

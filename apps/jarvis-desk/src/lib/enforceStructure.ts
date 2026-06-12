@@ -29,12 +29,19 @@ function splitProtected(md: string): Array<{ kind: 'text' | 'fence'; body: strin
 
 /** `**Header**` eller `**Header:**` på egen linje → `## Header`.
  *  Kun når linjen kun indeholder bold-spannen (intet andet tekst udenom).
- *  Header-teksten må ikke selv indeholde `*`, newline, eller pipe (tabel). */
+ *  Header-teksten må ikke selv indeholde `*`, newline, eller pipe (tabel).
+ *
+ *  Konservativ: vi promoverer KUN hvis linjen ligner en header — dvs. enten
+ *  ender med `:` ELLER består af flere ord. Et enkelt kort bold-ord (`**fed**`)
+ *  er emphasis, ikke en sektion, og skal forblive `<strong>`. */
 function boldOnlyLineToHeader(text: string): string {
   return text.replace(
     /^[ \t]*\*\*([^*\n|]{1,80}?)\*\*[ \t]*$/gm,
-    (_match, header: string) => {
-      const clean = header.replace(/:\s*$/, '').trim()
+    (match, header: string) => {
+      const trimmed = header.trim()
+      const headerLike = /:\s*$/.test(trimmed) || /\s/.test(trimmed)
+      if (!headerLike) return match
+      const clean = trimmed.replace(/:\s*$/, '').trim()
       return `## ${clean}`
     },
   )

@@ -6,6 +6,8 @@ import { useSettings } from '../hooks/useSettings'
 import { usePanel } from '../hooks/usePanel'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
+import { ContextRing } from '../components/shell/ContextRing'
+import { getContextInfo } from '../lib/api'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
@@ -27,6 +29,17 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   const transcriptRef = useRef<HTMLDivElement>(null)
   const [atBottom, setAtBottom] = useState(true)
   const [unread, setUnread] = useState(0)
+  const [compactAt, setCompactAt] = useState(0)
+
+  // Context-ring (#9): hent autocompact-tærsklen én gang.
+  useEffect(() => {
+    if (!settings) return
+    getContextInfo({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken })
+      .then((r) => setCompactAt(r.compact_at))
+      .catch(() => setCompactAt(0))
+  }, [settings])
+
+  const contextTokens = stream.usage.input + stream.usage.cacheHit
 
   useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 
@@ -230,6 +243,11 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
             <span className="queued-label">I kø</span>
             <span className="queued-text">{queued.text}</span>
             <button type="button" className="queued-cancel" onClick={() => setQueued(null)} aria-label="Fjern fra kø">×</button>
+          </div>
+        )}
+        {compactAt > 0 && contextTokens > 0 && (
+          <div className="context-ring-wrap">
+            <ContextRing tokens={contextTokens} compactAt={compactAt} />
           </div>
         )}
         {composer}

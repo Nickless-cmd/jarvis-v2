@@ -288,6 +288,13 @@ export async function fetchImageObjectUrl(
   return URL.createObjectURL(await res.blob())
 }
 
+/** Kontekst-tærskler til composer-ringen (#9). compact_at = autocompact-punkt. */
+export async function getContextInfo(
+  config: ApiConfig,
+): Promise<{ compact_at: number; run_compact_at: number }> {
+  return apiFetch(config, '/chat/context-info')
+}
+
 /** Læs en repo-fil til preview-panelet (path-jailed server-side). */
 export async function getFile(
   config: ApiConfig,

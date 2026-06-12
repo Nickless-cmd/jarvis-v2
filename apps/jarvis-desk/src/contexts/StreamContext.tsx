@@ -23,6 +23,8 @@ export interface StreamContextValue {
   status: StreamStatus
   /** Session-id for det aktive run (kun mens status==='working'), ellers null. */
   workingSessionId: string | null
+  /** Token-forbrug fra seneste/aktive run (til context-ring #9). */
+  usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
   blocks: ContentBlock[]
   activeRunId: string | null
   elapsedMs: number
@@ -115,6 +117,7 @@ export function StreamProvider({
       blocks: state.blocks,
       activeRunId: state.activeRunId,
       workingSessionId: status === 'working' ? workingSessionId : null,
+      usage: state.usage,
       elapsedMs,
       workingStep: state.workingStep,
       error,
@@ -123,7 +126,7 @@ export function StreamProvider({
       abort,
       continueFromPartial,
     }),
-    [status, state.blocks, state.activeRunId, workingSessionId, elapsedMs, state.workingStep, error, needsAttention, send, abort, continueFromPartial],
+    [status, state.blocks, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, needsAttention, send, abort, continueFromPartial],
   )
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>
 }

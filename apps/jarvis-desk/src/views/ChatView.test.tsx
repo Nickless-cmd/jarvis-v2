@@ -23,6 +23,7 @@ vi.mock('../lib/api', () => ({
   cancelRun: vi.fn(),
   whoami: vi.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' }),
   pingServer: vi.fn().mockResolvedValue(20),
+  getContextInfo: vi.fn().mockResolvedValue({ compact_at: 200000, run_compact_at: 240000 }),
 }))
 
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }

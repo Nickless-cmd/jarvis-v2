@@ -104,6 +104,19 @@ async def chat_search_sessions(q: str = "", limit: int = 30) -> dict:
     return {"items": search_chat_sessions(q, user_id=uid, limit=limit)}
 
 
+@router.get("/context-info")
+async def chat_context_info() -> dict:
+    """Kontekst-tærskler til composer-ringen (#9). Kun ægte config-tal:
+    autocompact-punktet (context_compact_threshold_tokens). Klienten holder
+    selv tælleren (usage.input + cache fra streamen)."""
+    from core.runtime.settings import load_settings
+    s = load_settings()
+    return {
+        "compact_at": int(s.context_compact_threshold_tokens or 0),
+        "run_compact_at": int(s.context_run_compact_threshold_tokens or 0),
+    }
+
+
 @router.post("/sessions")
 async def chat_create_session(request: ChatSessionCreateRequest) -> dict:
     return {"session": create_chat_session(title=request.title)}

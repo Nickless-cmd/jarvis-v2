@@ -953,6 +953,11 @@
 
 /* composer-område: anker for scroll-pilen (sidder absolut OVER composeren) */
 .composer-area { position: relative; flex: 0 0 auto; }
+/* Context-ring (#9): lille ring øverst-højre over composeren. */
+.context-ring-wrap { position: absolute; top: -6px; right: 10px; z-index: 3; }
+.context-ring { display: inline-flex; cursor: default; }
+.context-ring.at-compact svg { animation: ctx-pulse 1.1s ease-in-out infinite; }
+@keyframes ctx-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
 /* scroll-til-bund pil over composeren (i stedet for scrollbar) */
 .scroll-bottom-btn {

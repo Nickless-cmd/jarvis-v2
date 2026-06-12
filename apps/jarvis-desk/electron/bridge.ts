@@ -975,6 +975,36 @@ const handlers: Record<string, ToolHandler> = {
       } catch {}
       const out = procs.map((p) => ({ title: p.MainWindowTitle, id: p.Id }))
       return { count: out.length, windows: out }
+    } else if (platform === 'darwin') {
+      // macOS: osascript + System Events to enumerate visible window titles.
+      // Returns lines like "Safari||Jarvis — bridge.ts"  (appName || windowTitle).
+      const script = `
+        tell application "System Events"
+          set vis to every process whose visible is true
+          set output to ""
+          repeat with p in vis
+            set pname to name of p
+            try
+              set wins to title of every window of p
+              repeat with w in wins
+                if w is not "" then
+                  set output to output & pname & "||" & w & linefeed
+                end if
+              end repeat
+            end try
+          end repeat
+          return output
+        end tell`
+      const res = await asyncSpawn('osascript', ['-e', script], { timeout: 10000 })
+      if (res.error) throw new Error(res.error)
+      const out: { title: string; app: string }[] = []
+      for (const line of res.stdout.split('\n').filter(Boolean)) {
+        const sep = line.indexOf('||')
+        if (sep > 0) {
+          out.push({ app: line.slice(0, sep), title: line.slice(sep + 2) })
+        }
+      }
+      return { count: out.length, windows: out }
     } else {
       // Linux: wmctrl -l  →  "0x00400003  0 hostname  Window Title"
       const res = await asyncSpawn('wmctrl', ['-l'], { timeout: 10000 })
@@ -1014,6 +1044,13 @@ const handlers: Record<string, ToolHandler> = {
       ], { timeout: 10000 })
       if (res.error) throw new Error(res.error)
       return { focused: true, title: target, handle: handleRaw }
+    } else if (platform === 'darwin') {
+      // macOS: use `open -a` to activate the app by bundle/process name,
+      // or osascript for more granular window targeting.
+      const appName = titleSub ?? handleRaw ?? ''
+      if (!appName) throw new Error('title_substring or handle is required on macOS')
+      const res = await asyncSpawn('open', ['-a', appName], { timeout: 10000 })
+      return { focused: res.status === 0, title: appName, handle: handleRaw }
     } else {
       // Linux: wmctrl -a "title substring"  OR  wmctrl -ia <hex_id>
       if (titleSub !== null) {

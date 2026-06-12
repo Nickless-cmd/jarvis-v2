@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { JarvisRing } from '../shell/JarvisRing'
+import { LiveVerb } from '../shell/LiveVerb'
 
 /** Skiftende status-verber i Jarvis' stemme (når der ikke er en konkret tool-
  *  handling). Roterer hvert par sekunder så det føles levende. */
@@ -38,13 +39,14 @@ export function LivenessIndicator({
   // til fordel for et skiftende verbum.
   const step = (workingStep || '').trim()
   const isBoilerplate = !step || /^thinking via/i.test(step) || /^arbejder$/i.test(step)
-  const action = working ? (isBoilerplate ? VERBS[verbIdx] : step) : tone === 'error' ? 'afbrudt' : 'klar'
-  const label = working ? `${action} · ${t}` : action
+  const action = working ? (isBoilerplate ? (VERBS[verbIdx] ?? 'tænker') : step) : tone === 'error' ? 'afbrudt' : 'klar'
 
   return (
     <div className={`liveness liveness-${density} ${working ? 'is-working' : 'is-idle'}`}>
       <JarvisRing size={14} spinning={working} tone={tone} />
-      <span className="liveness-label">{label}</span>
+      <span className="liveness-label">
+        {working ? <><LiveVerb text={action} /> <span className="liveness-time">· {t}</span></> : action}
+      </span>
     </div>
   )
 }

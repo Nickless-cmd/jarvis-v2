@@ -3,6 +3,7 @@ import type { ContentBlock } from '../../lib/sseProtocol'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ToolCard } from './ToolCard'
 import { ImageBlock } from './ImageBlock'
+import { LiveVerb } from '../shell/LiveVerb'
 
 /** Dispatcher content-blocks til de rette rich-komponenter. Density-aware:
  *  videregives til ToolCard (compact|full). */
@@ -52,10 +53,11 @@ function BlockView({
       // sig sammen til "tænkte…". Brugeren kan altid override manuelt.
       const live = streaming && isLast
       const open = userToggled !== null ? userToggled : live
-      const label = open ? (live ? 'tænker…' : 'Skjul tanke') : (live ? 'tænker…' : 'tænkte…')
       return (
         <div className={`thinking ${live ? 'live' : ''}`}>
-          <button type="button" onClick={() => setUserToggled(!open)}>{label}</button>
+          <button type="button" onClick={() => setUserToggled(!open)}>
+            {live ? <LiveVerb text="tænker" /> : open ? 'Skjul tanke' : 'tænkte…'}
+          </button>
           {open && <MarkdownRenderer text={block.thinking} streaming={live} />}
         </div>
       )

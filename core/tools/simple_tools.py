@@ -1310,6 +1310,185 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "operator_reminder",
+            "description": (
+                "Schedule a desktop notification on the OPERATOR\'S machine. "
+                "Pops a native toast at the specified time. Persists across "
+                "app restart. Use for 'remind me to X at Y' workflows. Returns "
+                "{id, due_at_iso, delay_ms} — keep the id to cancel later."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "when": {
+                        "type": "string",
+                        "description": "ISO datetime (2026-06-12T20:00:00) or relative offset (+5m, +1h30m, +2d).",
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Body text of the notification.",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Optional notification title (default \"P\u00e5mindelse\").",
+                    },
+                },
+                "required": ["when", "message"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_wakeup",
+            "description": (
+                "Schedule a wakeup ping on the OPERATOR\'S machine: native toast "
+                "PLUS a POST back to the backend so Jarvis can pick up the thread "
+                "('user was wakeup-pinged, dispatch greeting'). Use when YOU "
+                "(Jarvis) want to re-engage with the user at a future time, not "
+                "just remind them of something. Returns {id, due_at_iso, delay_ms}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "when": {
+                        "type": "string",
+                        "description": "ISO datetime or relative offset (+5m, +1h30m, +2d).",
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Body of the notification + payload sent back to backend.",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Optional notification title.",
+                    },
+                },
+                "required": ["when"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_scheduled_list",
+            "description": "List scheduled reminders and wakeups on the operator\'s machine. Filter by kind or include already-fired ones.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": ["reminder", "wakeup"],
+                        "description": "Filter by kind (omit for both).",
+                    },
+                    "include_fired": {
+                        "type": "boolean",
+                        "description": "Include events that have already fired (default false).",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_scheduled_cancel",
+            "description": "Cancel a scheduled reminder or wakeup by id.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "Event id returned from operator_reminder or operator_wakeup."},
+                },
+                "required": ["id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_process_spawn",
+            "description": (
+                "Spawn a long-running command on the OPERATOR\'S MACHINE in the "
+                "background. Unlike operator_bash (which blocks), this returns "
+                "immediately with a process_id you can poll with "
+                "operator_process_status / operator_process_output. Logs stream "
+                "to disk. Use for builds, training runs, anything > 30s."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "cmd": {"type": "string", "description": "Shell command to run."},
+                    "cwd": {"type": "string", "description": "Working directory (default operator\'s home)."},
+                    "label": {"type": "string", "description": "Short label for the process (default first 60 chars of cmd)."},
+                },
+                "required": ["cmd"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_process_status",
+            "description": "Get status of a supervised process: running, exit_code, runtime_s, log_size.",
+            "parameters": {
+                "type": "object",
+                "properties": {"id": {"type": "string", "description": "process_id from operator_process_spawn."}},
+                "required": ["id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_process_output",
+            "description": (
+                "Read accumulated stdout+stderr of a supervised process. Streaming: "
+                "pass since_offset=0 first time, then pass back the next_offset from "
+                "the previous response to get only new bytes. Returns {data, "
+                "next_offset, total_size, has_more, running}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "process_id."},
+                    "since_offset": {"type": "number", "description": "Byte offset to start reading from (default 0)."},
+                    "max_bytes": {"type": "number", "description": "Max bytes to return this call (default 64000, max 1000000)."},
+                },
+                "required": ["id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_process_kill",
+            "description": "Terminate a supervised process. Default SIGTERM, pass signal=SIGKILL for force.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "signal": {"type": "string", "description": "Signal name (SIGTERM, SIGKILL). Default SIGTERM."},
+                },
+                "required": ["id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "operator_process_list",
+            "description": "List all supervised processes on the operator\'s machine. Returns {count, processes: [...]}.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "include_finished": {"type": "boolean", "description": "Include already-exited processes (default true)."},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "operator_notify",
             "description": (
                 "Show an OS notification toast on the OPERATOR'S machine via Electron Notification. "
@@ -4411,6 +4590,152 @@ def _exec_operator_ocr_region(args: dict[str, Any]) -> dict[str, Any]:
 
 
 # ── Tier-3 exec stubs ────────────────────────────────────────────────────
+
+
+def _exec_operator_reminder(args: dict[str, Any]) -> dict[str, Any]:
+    when = str(args.get("when") or "").strip()
+    message = str(args.get("message") or "").strip()
+    if not when:
+        return {"error": "when is required", "status": "error"}
+    if not message:
+        return {"error": "message is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_reminder_async
+    return _run_operator_async(
+        lambda: operator_reminder_async(
+            when=when, message=message,
+            title=str(args.get("title")) if args.get("title") else None,
+            user_id=user_id, timeout_s=15.0,
+        ),
+        tool_name="operator_reminder",
+        timeout_s=25.0,
+    )
+
+
+def _exec_operator_wakeup(args: dict[str, Any]) -> dict[str, Any]:
+    when = str(args.get("when") or "").strip()
+    if not when:
+        return {"error": "when is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_wakeup_async
+    return _run_operator_async(
+        lambda: operator_wakeup_async(
+            when=when,
+            message=str(args.get("message")) if args.get("message") else None,
+            title=str(args.get("title")) if args.get("title") else None,
+            user_id=user_id, timeout_s=15.0,
+        ),
+        tool_name="operator_wakeup",
+        timeout_s=25.0,
+    )
+
+
+def _exec_operator_scheduled_list(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_scheduled_list_async
+    return _run_operator_async(
+        lambda: operator_scheduled_list_async(
+            user_id=user_id,
+            kind=str(args.get("kind")) if args.get("kind") else None,
+            include_fired=bool(args.get("include_fired")),
+            timeout_s=15.0,
+        ),
+        tool_name="operator_scheduled_list",
+        timeout_s=20.0,
+    )
+
+
+def _exec_operator_scheduled_cancel(args: dict[str, Any]) -> dict[str, Any]:
+    id_ = str(args.get("id") or "").strip()
+    if not id_:
+        return {"error": "id is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_scheduled_cancel_async
+    return _run_operator_async(
+        lambda: operator_scheduled_cancel_async(id=id_, user_id=user_id, timeout_s=15.0),
+        tool_name="operator_scheduled_cancel",
+        timeout_s=20.0,
+    )
+
+
+def _exec_operator_process_spawn(args: dict[str, Any]) -> dict[str, Any]:
+    cmd = str(args.get("cmd") or "").strip()
+    if not cmd:
+        return {"error": "cmd is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_process_spawn_async
+    return _run_operator_async(
+        lambda: operator_process_spawn_async(
+            cmd=cmd, user_id=user_id,
+            cwd=str(args.get("cwd")) if args.get("cwd") else None,
+            label=str(args.get("label")) if args.get("label") else None,
+            timeout_s=15.0,
+        ),
+        tool_name="operator_process_spawn",
+        timeout_s=20.0,
+    )
+
+
+def _exec_operator_process_status(args: dict[str, Any]) -> dict[str, Any]:
+    id_ = str(args.get("id") or "").strip()
+    if not id_:
+        return {"error": "id is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_process_status_async
+    return _run_operator_async(
+        lambda: operator_process_status_async(id=id_, user_id=user_id, timeout_s=10.0),
+        tool_name="operator_process_status",
+        timeout_s=15.0,
+    )
+
+
+def _exec_operator_process_output(args: dict[str, Any]) -> dict[str, Any]:
+    id_ = str(args.get("id") or "").strip()
+    if not id_:
+        return {"error": "id is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_process_output_async
+    return _run_operator_async(
+        lambda: operator_process_output_async(
+            id=id_, user_id=user_id,
+            since_offset=int(args.get("since_offset") or 0),
+            max_bytes=int(args.get("max_bytes") or 64_000),
+            timeout_s=15.0,
+        ),
+        tool_name="operator_process_output",
+        timeout_s=20.0,
+    )
+
+
+def _exec_operator_process_kill(args: dict[str, Any]) -> dict[str, Any]:
+    id_ = str(args.get("id") or "").strip()
+    if not id_:
+        return {"error": "id is required", "status": "error"}
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_process_kill_async
+    return _run_operator_async(
+        lambda: operator_process_kill_async(
+            id=id_, user_id=user_id,
+            signal=str(args.get("signal") or "SIGTERM"),
+            timeout_s=10.0,
+        ),
+        tool_name="operator_process_kill",
+        timeout_s=15.0,
+    )
+
+
+def _exec_operator_process_list(args: dict[str, Any]) -> dict[str, Any]:
+    user_id = _operator_user_id(args)
+    from core.tools.operator_tools import operator_process_list_async
+    return _run_operator_async(
+        lambda: operator_process_list_async(
+            user_id=user_id,
+            include_finished=bool(args.get("include_finished", True)),
+            timeout_s=10.0,
+        ),
+        tool_name="operator_process_list",
+        timeout_s=15.0,
+    )
 
 
 def _exec_operator_notify(args: dict[str, Any]) -> dict[str, Any]:
@@ -7991,6 +8316,15 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "operator_find_image": _exec_operator_find_image,
     "operator_ocr_region": _exec_operator_ocr_region,
     "operator_notify": _exec_operator_notify,
+    "operator_reminder": _exec_operator_reminder,
+    "operator_wakeup": _exec_operator_wakeup,
+    "operator_scheduled_list": _exec_operator_scheduled_list,
+    "operator_scheduled_cancel": _exec_operator_scheduled_cancel,
+    "operator_process_spawn": _exec_operator_process_spawn,
+    "operator_process_status": _exec_operator_process_status,
+    "operator_process_output": _exec_operator_process_output,
+    "operator_process_kill": _exec_operator_process_kill,
+    "operator_process_list": _exec_operator_process_list,
     "operator_watch_folder": _exec_operator_watch_folder,
     "operator_unwatch_folder": _exec_operator_unwatch_folder,
     "operator_watch_events": _exec_operator_watch_events,

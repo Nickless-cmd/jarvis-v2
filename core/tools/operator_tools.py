@@ -1033,3 +1033,118 @@ async def operator_record_audio_async(
         timeout_s=timeout_s,
     )
     return result or {}
+
+
+
+# ── operator_reminder / operator_wakeup / operator_scheduled_* ─────────
+
+
+async def operator_reminder_async(
+    *, when: str, message: str, title: str | None = None,
+    user_id: str, timeout_s: float = 15.0,
+) -> dict[str, Any]:
+    args: dict[str, Any] = {"when": str(when), "message": str(message)}
+    if title:
+        args["title"] = str(title)
+    result = await _bridge_call(
+        tool="operator_reminder", args=args, user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_wakeup_async(
+    *, when: str, message: str | None = None, title: str | None = None,
+    user_id: str, timeout_s: float = 15.0,
+) -> dict[str, Any]:
+    args: dict[str, Any] = {"when": str(when)}
+    if message:
+        args["message"] = str(message)
+    if title:
+        args["title"] = str(title)
+    result = await _bridge_call(
+        tool="operator_wakeup", args=args, user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_scheduled_list_async(
+    *, user_id: str, kind: str | None = None, include_fired: bool = False,
+    timeout_s: float = 15.0,
+) -> dict[str, Any]:
+    args: dict[str, Any] = {"include_fired": bool(include_fired)}
+    if kind:
+        args["kind"] = str(kind)
+    result = await _bridge_call(
+        tool="operator_scheduled_list", args=args, user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_scheduled_cancel_async(
+    *, id: str, user_id: str, timeout_s: float = 15.0,
+) -> dict[str, Any]:
+    result = await _bridge_call(
+        tool="operator_scheduled_cancel", args={"id": str(id)},
+        user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+# ── operator_process_spawn / _status / _output / _kill / _list ────────
+
+
+async def operator_process_spawn_async(
+    *, cmd: str, user_id: str, cwd: str | None = None, label: str | None = None,
+    timeout_s: float = 15.0,
+) -> dict[str, Any]:
+    args: dict[str, Any] = {"cmd": str(cmd)}
+    if cwd:
+        args["cwd"] = str(cwd)
+    if label:
+        args["label"] = str(label)
+    result = await _bridge_call(
+        tool="operator_process_spawn", args=args, user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_process_status_async(
+    *, id: str, user_id: str, timeout_s: float = 10.0,
+) -> dict[str, Any]:
+    result = await _bridge_call(
+        tool="operator_process_status", args={"id": str(id)},
+        user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_process_output_async(
+    *, id: str, user_id: str, since_offset: int = 0, max_bytes: int = 64_000,
+    timeout_s: float = 15.0,
+) -> dict[str, Any]:
+    result = await _bridge_call(
+        tool="operator_process_output",
+        args={"id": str(id), "since_offset": int(since_offset), "max_bytes": int(max_bytes)},
+        user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_process_kill_async(
+    *, id: str, user_id: str, signal: str = "SIGTERM", timeout_s: float = 10.0,
+) -> dict[str, Any]:
+    result = await _bridge_call(
+        tool="operator_process_kill", args={"id": str(id), "signal": str(signal)},
+        user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}
+
+
+async def operator_process_list_async(
+    *, user_id: str, include_finished: bool = True, timeout_s: float = 10.0,
+) -> dict[str, Any]:
+    result = await _bridge_call(
+        tool="operator_process_list", args={"include_finished": bool(include_finished)},
+        user_id=user_id, timeout_s=timeout_s,
+    )
+    return result or {}

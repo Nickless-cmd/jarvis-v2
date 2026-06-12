@@ -1744,3 +1744,21 @@ def _trading_inactive_default(reason: str) -> dict[str, Any]:
         "last_updated": None,
         "_inactive_reason": reason,
     }
+
+
+
+@router.post("/operator/wakeup-fired")
+def operator_wakeup_fired(payload: dict) -> dict:
+    """Endpoint hit by jarvis-desk when an operator_wakeup timer fires.
+    Logs receipt so Jarvis can later poll /operator/recent-wakeups if
+    we want him to re-engage. For now it just records and returns OK."""
+    try:
+        logger.info(
+            "operator_wakeup_fired: wakeup_id=%s title=%r message=%r",
+            payload.get("wakeup_id"),
+            (payload.get("title") or "")[:80],
+            (payload.get("message") or "")[:120],
+        )
+    except Exception:
+        pass
+    return {"received": True, "wakeup_id": payload.get("wakeup_id")}

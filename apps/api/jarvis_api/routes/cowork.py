@@ -13,12 +13,19 @@ router = APIRouter(prefix="/cowork", tags=["cowork"])
 
 
 def _role_owner() -> tuple[bool, str | None]:
-    """(is_owner, user_id) for den indloggede bruger. Tom/owner = owner (samme
-    regel som tool_scoping)."""
+    """(is_owner, user_id) for den indloggede bruger. Owner afgøres af bruger-
+    rollen (find_user_by_discord_id().role == "owner"), IKKE en streng-sammenligning
+    — Bjørns user_id er hans Discord-ID, ikke "owner". Ubundet (no-auth) = owner."""
     from core.identity.workspace_context import current_user_id
     uid = current_user_id() or None
-    is_owner = (uid is None) or str(uid) in ("", "owner")
-    return is_owner, uid
+    if uid is None:
+        return True, None
+    try:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(str(uid))
+        return (getattr(u, "role", "") == "owner"), uid
+    except Exception:
+        return False, uid
 
 
 def _resolve_item(item_id: str, decision: str) -> dict:

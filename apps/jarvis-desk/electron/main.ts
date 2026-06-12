@@ -243,6 +243,8 @@ function createMainWindow(): void {
 ipcMain.handle('config:get', () => loadConfig())
 ipcMain.handle('config:set', (_event, cfg: AppConfig) => {
   saveConfig(cfg)
+  // Genstart operator-broen med de nye credentials (token/URL kan have ændret sig).
+  void bootstrapBridge()
   return true
 })
 
@@ -404,7 +406,40 @@ app.whenReady().then(() => {
 
   createMainWindow()
   createTray()
+  void bootstrapBridge()
 })
+
+// ─── Operator-bro (JarvisX-bridge) ──────────────────────────────────────
+// Outbound WS til Jarvis-runtime: lader Jarvis dispatche operator_*-tools
+// (fil, bash, m.m.) tilbage til DENNE maskine. Uden den fejler operator-
+// tools med bridge_not_connected. Port af apps/jarvisx/electron/bridge.ts.
+let activeBridge: { stop(): void; start(): void } | null = null
+
+async function bootstrapBridge(): Promise<void> {
+  try {
+    const cfg = loadConfig()
+    if (!cfg.apiBaseUrl || !cfg.authToken) return // ikke konfigureret endnu
+    // Hent userId via whoami (broen registrerer sig pr. bruger).
+    let userId = ''
+    try {
+      const r = await fetch(new URL('/api/whoami', cfg.apiBaseUrl).toString(), {
+        headers: { Authorization: `Bearer ${cfg.authToken}` },
+      })
+      if (r.ok) userId = String((await r.json() as { user_id?: string })?.user_id || '')
+    } catch { /* serveren udleder user_id fra token-claims hvis tom */ }
+    const { JarvisXBridge } = await import('./bridge.js')
+    if (activeBridge) { try { activeBridge.stop() } catch { /* noop */ } }
+    activeBridge = new JarvisXBridge({
+      apiBaseUrl: cfg.apiBaseUrl,
+      userId,
+      authToken: cfg.authToken ?? undefined,
+      log: (m: string) => console.log(`[bridge] ${m}`),
+    })
+    activeBridge.start()
+  } catch (e) {
+    console.warn('bridge bootstrap failed:', e)
+  }
+}
 
 // Single instance lock — anden start fokuserer eksisterende vindue
 // i stedet for at åbne to vinduer.
@@ -419,6 +454,7 @@ if (!gotSingleInstance) {
 
 app.on('before-quit', () => {
   appQuitting = true
+  try { activeBridge?.stop() } catch { /* best-effort */ }
   // Best-effort server-cancel af aktivt run (renderer kan ikke pålideligt
   // fetch'e under shutdown). Synkront fire-and-forget.
   if (activeRunId && runApiBaseUrl) {

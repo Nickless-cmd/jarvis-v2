@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "module": "CommonJS",
     "moduleResolution": "node",
     "strict": true,
@@ -10,5 +12,9 @@
     "outDir": "../dist-electron",
     "rootDir": "."
   },
-  "include": ["main.ts", "preload.ts"]
+  "include": [
+    "main.ts",
+    "preload.ts",
+    "bridge.ts"
+  ]
 }

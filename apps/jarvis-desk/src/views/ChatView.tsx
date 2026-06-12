@@ -6,7 +6,6 @@ import { useSettings } from '../hooks/useSettings'
 import { usePanel } from '../hooks/usePanel'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
-import { ContextRing } from '../components/shell/ContextRing'
 import { getContextInfo } from '../lib/api'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
@@ -162,6 +161,8 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
       getSessionId={ensureSessionId}
       showPermissions={false}
+      contextTokens={contextTokens}
+      compactAt={compactAt}
     />
   )
 
@@ -243,11 +244,6 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
             <span className="queued-label">I kø</span>
             <span className="queued-text">{queued.text}</span>
             <button type="button" className="queued-cancel" onClick={() => setQueued(null)} aria-label="Fjern fra kø">×</button>
-          </div>
-        )}
-        {compactAt > 0 && contextTokens > 0 && (
-          <div className="context-ring-wrap">
-            <ContextRing tokens={contextTokens} compactAt={compactAt} />
           </div>
         )}
         {composer}

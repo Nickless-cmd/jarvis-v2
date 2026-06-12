@@ -13,8 +13,9 @@ export function ContextRing({
   compactAt: number
   size?: number
 }) {
-  if (!compactAt || compactAt <= 0 || tokens <= 0) return null
-  const frac = Math.min(1, tokens / compactAt)
+  if (!compactAt || compactAt <= 0) return null
+  const safeTokens = Math.max(0, tokens)
+  const frac = Math.min(1, safeTokens / compactAt)
   const pct = Math.round(frac * 100)
 
   const color =
@@ -31,7 +32,9 @@ export function ContextRing({
   return (
     <span
       className={`context-ring ${atCompact ? 'at-compact' : ''}`}
-      title={`Kontekst: ${pct}% (${kTokens(tokens)} / ${kTokens(compactAt)} før autocompact)`}
+      title={safeTokens > 0
+        ? `Kontekst: ${pct}% (${kTokens(safeTokens)} / ${kTokens(compactAt)} før autocompact)`
+        : `Kontekst: tom (op til ${kTokens(compactAt)} før autocompact)`}
       aria-label={`Kontekst ${pct} procent fyldt`}
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>

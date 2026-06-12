@@ -4,6 +4,7 @@ import {
   ChevronDown, Mic, ShieldCheck, FileText, X,
 } from 'lucide-react'
 import { useDictation } from '../../hooks/useDictation'
+import { ContextRing } from './ContextRing'
 import { uploadAttachment, type ApiConfig } from '../../lib/api'
 
 export interface SentAttachment { id: string; src?: string; name: string; isImage: boolean }
@@ -41,6 +42,8 @@ export function Composer({
   config,
   getSessionId,
   showPermissions = true,
+  contextTokens = 0,
+  compactAt = 0,
 }: {
   streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
@@ -52,6 +55,10 @@ export function Composer({
   /** Permissions-dropdown vises kun hvor værktøjs-godkendelse er relevant
    *  (cowork/code). I ren chat mode er den skjult. Default true. */
   showPermissions?: boolean
+  /** Context-ring (#9): tokens i konteksten + autocompact-tærskel. Ringen vises
+   *  altid når compactAt > 0 (tom ved 0 tokens). */
+  contextTokens?: number
+  compactAt?: number
 }) {
   const [text, setText] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -244,6 +251,7 @@ export function Composer({
         </div>
 
         <div className="composer-right">
+          {compactAt > 0 && <ContextRing tokens={contextTokens} compactAt={compactAt} />}
           <button type="button" className="model-pill">
             <span className="dot" />{model}<span className="caret">▾</span>
           </button>

@@ -52,6 +52,48 @@ async def chat_read_file(path: str = Query(...)) -> dict:
     return {"path": path, "content": content, "language": _LANG_BY_EXT.get(candidate.suffix, "text")}
 
 
+def _operator_exec(name: str, args: dict) -> dict:
+    """Kør et operator-tool via simple_tools (router'er til brugerens bridge).
+    Seam til test-mock (workstation fil-træ)."""
+    from core.tools.simple_tools import execute_tool
+    return execute_tool(name, args) or {}
+
+
+@router.get("/tree")
+async def chat_tree(kind: str = "container", root: str = "", path: str = "") -> dict:
+    """Mappe-listing til Code-mode fil-træ. Container: path-jailed til _FILE_ROOTS.
+    Workstation: via operator-bridgen (operator_list_dir)."""
+    if kind == "container":
+        if root not in _FILE_ROOTS:
+            raise HTTPException(status_code=403, detail="root uden for jail")
+        base = (_repo_root() / root).resolve()
+        target = (base / path).resolve() if path else base
+        if not str(target).startswith(str(base)):
+            raise HTTPException(status_code=403, detail="path uden for jail")
+        if not target.is_dir():
+            raise HTTPException(status_code=404, detail="ikke en mappe")
+        entries = []
+        for p in sorted(target.iterdir(), key=lambda x: (x.is_file(), x.name.lower())):
+            if p.name.startswith(".") or p.name in ("__pycache__", "node_modules"):
+                continue
+            entries.append({"name": p.name, "kind": "dir" if p.is_dir() else "file"})
+        return {"entries": entries}
+
+    if kind == "workstation":
+        full = (root.rstrip("/") + "/" + path).rstrip("/") if path else root
+        res = _operator_exec("operator_list_dir", {"path": full})
+        if res.get("status") != "ok":
+            raise HTTPException(status_code=502, detail=str(res.get("reason") or "operator-list fejlede"))
+        entries = [
+            {"name": e.get("name") or "", "kind": "dir" if e.get("is_dir") else "file"}
+            for e in (res.get("entries") or [])
+            if e.get("name") and not str(e.get("name")).startswith(".")
+        ]
+        return {"entries": entries}
+
+    raise HTTPException(status_code=400, detail="ukendt kind")
+
+
 class ChatStreamRequest(BaseModel):
     message: str = ""
     session_id: str = ""

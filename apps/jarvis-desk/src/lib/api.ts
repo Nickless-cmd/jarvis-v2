@@ -288,6 +288,12 @@ export async function fetchImageObjectUrl(
   return URL.createObjectURL(await res.blob())
 }
 
+/** Sessioner med et aktivt visible-run lige nu (#8 — også autonome runs). */
+export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
+  const data = await apiFetch<{ session_ids: string[] }>(config, '/chat/active-runs')
+  return data.session_ids ?? []
+}
+
 /** Kontekst-tærskler til composer-ringen (#9). compact_at = autocompact-punkt. */
 export async function getContextInfo(
   config: ApiConfig,

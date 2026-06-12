@@ -104,6 +104,36 @@ async def chat_search_sessions(q: str = "", limit: int = 30) -> dict:
     return {"items": search_chat_sessions(q, user_id=uid, limit=limit)}
 
 
+@router.get("/active-runs")
+async def chat_active_runs() -> dict:
+    """Sessioner med et aktivt visible-run lige nu (#8 — autonome/baggrunds-runs).
+
+    Bruges af Sidebar til at vise en arbejds-indikator på en session der ikke er
+    fremme. Højst ét aktivt visible-run ad gangen. Friskheds-guard mod phantom-
+    state (et run der døde uden at rydde op): kun med hvis < 10 min gammelt og
+    ikke cancelled."""
+    from datetime import UTC, datetime
+    from core.services.visible_runs import _get_active_visible_run_state
+    out: list[str] = []
+    try:
+        state = _get_active_visible_run_state() or {}
+        sid = str(state.get("session_id") or "").strip()
+        if sid and not state.get("cancelled"):
+            started = str(state.get("started_at") or "")
+            fresh = True
+            if started:
+                try:
+                    age = (datetime.now(UTC) - datetime.fromisoformat(started)).total_seconds()
+                    fresh = age < 600
+                except (ValueError, TypeError):
+                    fresh = True
+            if fresh:
+                out.append(sid)
+    except Exception:
+        pass
+    return {"session_ids": out}
+
+
 @router.get("/context-info")
 async def chat_context_info() -> dict:
     """Kontekst-tærskler til composer-ringen (#9). Kun ægte config-tal:

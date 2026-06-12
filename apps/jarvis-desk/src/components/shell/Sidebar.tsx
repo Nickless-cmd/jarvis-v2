@@ -3,7 +3,7 @@ import { Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images } fro
 import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
 import { useStream } from '../../hooks/useStream'
-import { searchSessions, type SessionSearchResult } from '../../lib/api'
+import { searchSessions, getActiveRuns, type SessionSearchResult } from '../../lib/api'
 import { ModeSlider, type Mode } from './ModeSlider'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
@@ -26,6 +26,24 @@ export function Sidebar({
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SessionSearchResult[]>([])
   const searching = query.trim().length > 0
+
+  // #8: poll backend for sessioner med aktivt run (også autonome baggrunds-runs
+  // som klienten ikke selv driver). Union'es med workingSessionId fra streamen.
+  const [activeRunSessions, setActiveRunSessions] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    if (!settings) return
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    let cancelled = false
+    const tick = () => {
+      void getActiveRuns(cfg)
+        .then((ids) => { if (!cancelled) setActiveRunSessions(new Set(ids)) })
+        .catch(() => { /* behold sidste — ingen flicker ved netværks-blip */ })
+    }
+    tick()
+    const id = setInterval(tick, 4000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [settings])
+  const isWorking = (id: string) => id === workingSessionId || activeRunSessions.has(id)
 
   // Debounced søgning mod backend (titel + besked-indhold).
   useEffect(() => {
@@ -105,7 +123,7 @@ export function Sidebar({
                   id={s.id}
                   title={s.title || 'Uden titel'}
                   active={s.id === activeId}
-                  working={s.id === workingSessionId}
+                  working={isWorking(s.id)}
                   onSelect={() => { select(s.id); onSurface('chat') }}
                 />
               ))}

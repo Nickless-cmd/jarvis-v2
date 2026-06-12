@@ -868,6 +868,16 @@ def build_visible_chat_prompt_assembly(
         "rendrer som sammenklistret tekst."
     ))
 
+    # Tool-echo-leak. Når du har kaldt et værktøj, så FORTOLK resultatet med dine
+    # egne ord — gentag ALDRIG den rå tool-output som prosa i dit svar. Linjer der
+    # starter med '[tool_navn]:' eller '[tool_result:...]' er interne markører og
+    # må aldrig stå i din synlige besked til brugeren.
+    _awareness_add(7, "no tool-result echo", (
+        "Tool-resultater: efter et værktøjskald, sammenfat resultatet med dine EGNE "
+        "ord. Gentag ALDRIG den rå output (fx '[list_proposals]: …' eller "
+        "'[tool_result:…]') i dit synlige svar — det er interne markører."
+    ))
+
     try:
         from core.identity.project_context import current_project_root
         _project_root = current_project_root()

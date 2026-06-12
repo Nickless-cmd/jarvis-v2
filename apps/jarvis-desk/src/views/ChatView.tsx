@@ -67,7 +67,15 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
         created_at: new Date().toISOString(),
         parent_id: null,
       })
+      // Hent serverens GEMTE (rensede + normaliserede) besked og lad den overtage
+      // placeholderen. Backend-guarden kan have erstattet/sanitizeret en tool-echo-
+      // leak, og normalizer'en har struktureret teksten — det er den version der
+      // skal stå, ikke vores rå live-stream. To forsøg dækker persist-latency.
+      const t1 = setTimeout(() => { void sessions.refresh() }, 700)
+      const t2 = setTimeout(() => { void sessions.refresh() }, 2200)
+      return () => { clearTimeout(t1); clearTimeout(t2) }
     }
+    return undefined
   }, [stream.status])
 
   const scrollToBottom = () => {

@@ -134,10 +134,20 @@ export function SessionProvider({
 function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage[] {
   const serverIds = new Set(server.map((m) => m.id))
   const result: LocalMessage[] = server.map((m) => ({ ...m, clientStatus: 'server_confirmed' as ClientStatus }))
+  // Har serveren indhentet løbet? Dvs. er den sidste IKKE-tool-besked en assistant?
+  // Så er den streamede besked persisteret (renset af backend-guarden/normalizer)
+  // og placeholderen 'server_missing_keep_stream' skal DROPPES — ellers hænger den
+  // rå live-stream (med evt. tool-echo-leak) ved siden af serverens rensede version.
+  const lastReal = [...server].reverse().find((m) => m.role === 'user' || m.role === 'assistant')
+  const serverCaughtUp = lastReal?.role === 'assistant'
   for (const lm of local) {
-    if (!serverIds.has(lm.id) && (lm.clientStatus === 'server_missing_keep_stream' || lm.clientStatus === 'optimistic_user')) {
-      result.push(lm)
+    if (serverIds.has(lm.id)) continue
+    if (lm.clientStatus === 'optimistic_user') {
+      result.push(lm) // bruger-besked serveren endnu ikke har → behold
+    } else if (lm.clientStatus === 'server_missing_keep_stream' && !serverCaughtUp) {
+      result.push(lm) // bro indtil serveren persisterer svaret
     }
+    // serverCaughtUp → drop placeholder; serverens rensede besked vises i stedet
   }
   return result
 }

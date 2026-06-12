@@ -3,6 +3,7 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { stabilizeStreamingMarkdown } from '../../lib/streamingMarkdown'
 import { enforceStructure } from '../../lib/enforceStructure'
+import { stripToolEchoes } from '../../lib/stripToolEchoes'
 import { safeLinkHref } from '../../lib/sanitize'
 
 /** Render markdown sikkert. INGEN rehype-raw → rå HTML renderes aldrig
@@ -18,7 +19,7 @@ import { safeLinkHref } from '../../lib/sanitize'
  *  adfærd som claude.ai/Slack/Discord — uafhængigt af hans spacing. */
 export function MarkdownRenderer({ text, streaming }: { text: string; streaming: boolean }) {
   const stabilized = streaming ? stabilizeStreamingMarkdown(text) : text
-  const md = enforceStructure(stabilized)
+  const md = enforceStructure(stripToolEchoes(stabilized))
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkBreaks]}

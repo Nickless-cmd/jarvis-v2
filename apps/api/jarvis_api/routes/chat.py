@@ -327,6 +327,36 @@ async def chat_delete_session(session_id: str) -> dict:
 
 @router.post("/stream")
 async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
+    # ── commit-enforcement-context-inject (Phase C-lite) ────────────────
+    # Hvis session har dirty state med 3+ edits siden sidste commit, prepend
+    # en hård system-besked til chat-konteksten. Jarvis ser den hver tur
+    # indtil han committer. Ikke blokkerende — bare meget højlydt awareness.
+    try:
+        from core.services import shared_cache as _sc_ce
+        from apps.api.jarvis_api.routes.chat import _git_status_sync as _gss_ce
+        _sid_ce = str(request.session_id or "default")
+        _cnt = _sc_ce.get("commit_enforcement:" + _sid_ce)
+        _edits = int(_cnt.get("edits", 0)) if isinstance(_cnt, dict) else 0
+        if _edits >= 3:
+            _g = _gss_ce("container", "")
+            if _g.get("dirty"):
+                _hint = (
+                    f"\n\n[SYSTEM — commit-enforcement]\n"
+                    f"Du har {_edits} mutations-kald siden sidste commit, og "
+                    f"branch {_g.get('branch', '?')} er stadig dirty "
+                    f"({len(_g.get('modified', []))} ændrede filer). "
+                    "Commit FØRST i denne tur før du laver nye mutationer."
+                )
+                # Prepend uden at ændre request-shape: tilføj til besked-feltet
+                # så LLM\'en ser det inline i sin context for denne tur.
+                try:
+                    request.message = (request.message or "") + _hint  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+
     session_id = request.session_id.strip()
     if not session_id:
         raise HTTPException(status_code=400, detail="session_id must be a non-empty string")

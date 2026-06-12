@@ -887,6 +887,12 @@
   cursor: pointer; font-size: 12px; padding: 0;
 }
 .thinking > button:hover { color: var(--fg-2); }
+/* Live-tanke: foldet ud mens han tænker, diskret venstre-kant + pulsende label */
+.thinking.live {
+  border-left: 2px solid var(--warn-fg); padding-left: 8px; margin-left: 1px;
+}
+.thinking.live > button { color: var(--warn-fg); animation: ctx-pulse 1.4s ease-in-out infinite; }
+.thinking.live :is(p, li) { color: var(--fg-3); font-size: 13px; }
 
 /* Image */
 .image-blocked { color: var(--fg-3); font-size: 12.5px; font-style: italic; }

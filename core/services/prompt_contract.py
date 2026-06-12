@@ -1820,6 +1820,19 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Communication Guard — boundary-fraser (godnat, sov godt, ...) Bjørn
+    # ikke vil høre. Høj-salient og tæt på user-turn, fordi STANDING_ORDERS
+    # alene ikke holdt (glemmes over lang prompt). Den bløde defense; hård
+    # blok sker ved kanal-dispatch (enforce_outgoing).
+    try:
+        from core.services.communication_guard import prompt_section as _cg_section
+        _guard = _cg_section()
+        if _guard:
+            parts.append(_guard)
+            derived_inputs.append("communication guard (tail-anchored)")
+    except Exception:
+        pass
+
     # Time Pin — appended LAST so it sits immediately above the user
     # message in the constructed prompt. Keeps the prefix above it stable
     # (cacheable by DeepSeek) while still ensuring the model sees an

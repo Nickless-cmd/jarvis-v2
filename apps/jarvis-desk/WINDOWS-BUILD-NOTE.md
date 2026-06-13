@@ -14,18 +14,18 @@ npm run build               # bygger renderer (vite) + electron (tsc)
 npx electron-builder --win  # producerer NSIS-installer (.exe) i release\
 ```
 
-Resultatet er `release\Jarvis Setup 0.2.6.exe` (NSIS-installer — versionen er
-**0.2.6**, ikke 0.1.0; den blev bumpet da Linux/Mac blev udgivet). Installér den og
+Resultatet er `release\Jarvis Setup 0.2.7.exe` (NSIS-installer — versionen er
+**0.2.7**, ikke 0.1.0; den blev bumpet da Linux/Mac blev udgivet). Installér den og
 verificér at appen starter og kan forbinde til `api.srvlab.dk` (Bjørns backend).
 
 ## Læg den op på GitHub-releasen når den er klar
 
-Linux + Mac er allerede udgivet som release **`jarvis-desktop-v0.2.6`**
-(https://github.com/Nickless-cmd/jarvis-v2/releases/tag/jarvis-desktop-v0.2.6).
+Linux + Mac er allerede udgivet som release **`jarvis-desktop-v0.2.7`**
+(https://github.com/Nickless-cmd/jarvis-v2/releases/tag/jarvis-desktop-v0.2.7).
 Smid Windows-`.exe`'en op på samme release:
 
 ```powershell
-gh release upload jarvis-desktop-v0.2.6 "release\Jarvis Setup 0.2.6.exe"
+gh release upload jarvis-desktop-v0.2.7 "release\Jarvis Setup 0.2.7.exe"
 ```
 
 (Kræver at `gh` er logget ind som `Nickless-cmd`. Så har releasen alle tre platforme.)
@@ -43,7 +43,7 @@ gh release upload jarvis-desktop-v0.2.6 "release\Jarvis Setup 0.2.6.exe"
   **Fil + bash + webfetch + clipboard er ren node** og virker. Du behøver IKKE
   installere nut-js/puppeteer for at bygge.
 - **`ws`** er en runtime-dependency (i `dependencies`) — `npm install` henter den.
-- **Tests** (valgfrit, men rart): `npx vitest run` (138 tests) og `npx tsc -b`
+- **Tests** (valgfrit, men rart): `npx vitest run` (141 tests) og `npx tsc -b`
   skal være grønne før build.
 - **Ingen backend-ændringer** her — det er kun frontend/Electron-pakning. Backend
   kører på Bjørns container (`api.srvlab.dk`), uafhængigt.

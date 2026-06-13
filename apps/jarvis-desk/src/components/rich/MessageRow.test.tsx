@@ -8,11 +8,14 @@ describe('MessageRow', () => {
     render(<MessageRow role="assistant" blocks={[{ type: 'text', text: '**hej**' }]} density="compact" streaming={false} />)
     expect(screen.getByText('hej').tagName).toBe('STRONG')
   })
-  it('forbi tænkning vises som sammenfoldet chip; live tænkning auto-foldes ud', () => {
-    // 2026-06-13: forbi-tænkning skjules ikke længere (Bjørn nåede ikke at læse
-    // dem før de forsvandt) — den vises som en "tænkte…"-chip man kan klikke op.
+  it('forbi tænkning skjules helt; live tænkning viser "tænker…" + content', () => {
+    // 2026-06-13: den hardcodede "tænkte…"-chip var legacy fra før vi havde
+    // ægte thinking-content og rodede mellem tool-kald + i færdige beskeder.
+    // Forbi-tænkning skjules nu HELT (intet label, intet content); kun LIVE
+    // tænkning vises ("tænker…" + den strømmende content).
     const { rerender } = render(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'intern' }]} density="compact" streaming={false} />)
-    expect(screen.getByText(/tænkte/i)).toBeInTheDocument()  // forbi → chip, ikke skjult
+    expect(screen.queryByText(/tænkte/i)).not.toBeInTheDocument()  // forbi → skjult
+    expect(screen.queryByText('intern')).not.toBeInTheDocument()
     rerender(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'intern' }]} density="compact" streaming />)
     expect(screen.getByText(/tænker/i)).toBeInTheDocument()
     expect(screen.getByText('intern')).toBeInTheDocument()

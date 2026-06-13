@@ -76,10 +76,12 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
     if (!settings || !sessionId) { setBgActive(false); return }
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     let cancelled = false
-    let wasActive = false
     // Häng-detektor: antal polls i træk hvor VI tror vi streamer denne session,
     // men serveren IKKE har et aktivt run for den.
     let staleMisses = 0
+    // Efterslæb: bliv ved med at hente et par gange EFTER et baggrunds-run
+    // slutter, så en sent-persisteret besked også fanges (ikke kun én hentning).
+    let cooldown = 0
     const tick = () => {
       void getActiveRuns(cfg)
         .then((ids) => {
@@ -88,8 +90,8 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
           // 'working' = vi driver selv et run → ikke et baggrunds-run.
           const active = serverHasRun && stream.status !== 'working'
           setBgActive(active)
-          if (active || wasActive) void sessions.refresh() // hent nyt indhold (og endelig hentning når det slutter)
-          wasActive = active
+          if (active) { cooldown = 3; void sessions.refresh() }       // mens det kører
+          else if (cooldown > 0) { cooldown -= 1; void sessions.refresh() } // efterslæb
 
           // HÄNG-DETEKTOR (Bjørn 2026-06-13: "han døde midt i et run, tænkte
           // hænger"): hvis vi tror vi streamer DENNE session men serveren ikke
@@ -132,6 +134,15 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
     }
     return undefined
   }, [stream.status])
+
+  // Systray-spinner ved autonomt baggrunds-run (StreamContext styrer egne runs).
+  // Får trayState='working' så ikonet drejer ligesom ved et normalt run.
+  useEffect(() => {
+    if (!bgActive) return
+    const b = (window as unknown as { jarvisDesk?: { setActiveRun?: (id: string | null) => void } }).jarvisDesk
+    b?.setActiveRun?.('autonomous')
+    return () => { b?.setActiveRun?.(null) }
+  }, [bgActive])
 
   const scrollToBottom = () => {
     const el = transcriptRef.current
@@ -252,7 +263,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   const header = (
     <div className="chatview-head">
       <div className="chatview-head-left">
-        <PresenceDot status={stream.status} /> <span className="chat-title">{chatTitle}</span>
+        <PresenceDot status={bgActive && stream.status === 'idle' ? 'working' : stream.status} /> <span className="chat-title">{chatTitle}</span>
       </div>
       <div className="chatview-head-right">
         {settings && (

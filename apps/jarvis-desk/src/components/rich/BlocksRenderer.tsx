@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ToolCard } from './ToolCard'
@@ -37,8 +36,6 @@ function BlockView({
   streaming: boolean
   isLast: boolean
 }) {
-  // null = følg auto-tilstanden (live); true/false = brugeren har selv foldet.
-  const [userToggled, setUserToggled] = useState<boolean | null>(null)
   switch (block.type) {
     case 'text':
       return <MarkdownRenderer text={block.text} streaming={streaming} />
@@ -47,20 +44,18 @@ function BlockView({
     case 'image':
       return <ImageBlock src={block.src} alt={block.alt} />
     case 'thinking': {
-      // "Live" = han tænker lige nu (sidste blok + streamer stadig) → folder
-      // automatisk ud, siger "tænker…".
+      // "Live" = han tænker lige NU (sidste blok + streamer stadig) → vis
+      // "tænker…" + den ægte thinking-content mens den strømmer.
       const live = streaming && isLast
-      // 2026-06-13: forbi-tænkning skjules IKKE længere. Før returnerede vi null
-      // for ikke-live blokke, så hver rundes tænkning forsvandt når næste runde
-      // kom — Bjørn nåede ikke at læse dem. Nu bliver de som sammenfoldede
-      // "tænkte…"-chips man kan klikke op og læse bagefter.
-      const open = userToggled !== null ? userToggled : live
+      // FORBI-tænkning skjules. Den sammenfoldede "tænkte…"-chip var legacy fra
+      // FØR vi havde ægte thinking-content — en hardcoded label der bare stod
+      // tilbage som rod mellem tool-kald og i færdige beskeder (Bjørn 2026-06-13).
+      // Den ægte thinking-content forsvinder som den skal; labelen skal også væk.
+      if (!live) return null
       return (
-        <div className={`thinking ${live ? 'live' : 'past'}`}>
-          <button type="button" onClick={() => setUserToggled(!open)}>
-            <LiveVerb text={live ? 'tænker' : 'tænkte'} />
-          </button>
-          {open && <MarkdownRenderer text={block.thinking} streaming={live} />}
+        <div className="thinking live">
+          <LiveVerb text="tænker" />
+          <MarkdownRenderer text={block.thinking} streaming />
         </div>
       )
     }

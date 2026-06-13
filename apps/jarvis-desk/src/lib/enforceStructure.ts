@@ -155,6 +155,61 @@ function inlineBulletsToList(text: string): string {
   return blankBeforeLists(text.replace(INLINE_BULLET, '\n- '))
 }
 
+/** En tabel-celle der KUN er bindestreger/koloner/whitespace = separator-celle. */
+const SEP_CELL = /^\s*:?-{1,}:?\s*$/
+
+/** Split en `|`-region i celler; drop ydre tomme (før første/efter sidste pipe). */
+function splitCells(region: string): string[] {
+  const parts = region.split('|')
+  if (parts.length && (parts[0] as string).trim() === '') parts.shift()
+  if (parts.length && (parts[parts.length - 1] as string).trim() === '') parts.pop()
+  return parts
+}
+
+/** Hel tabel mast sammen på én linje → rigtige rækker. null hvis ikke crammed. */
+function reflowLineTable(line: string): string | null {
+  const first = line.indexOf('|')
+  const last = line.lastIndexOf('|')
+  if (first < 0 || last <= first) return null
+  const prefix = line.slice(0, first)
+  const region = line.slice(first, last + 1)
+  const suffix = line.slice(last + 1)
+  const cells = splitCells(region)
+  if (cells.length < 4) return null
+  // Find første run af >=2 sammenhængende separator-celler = kolonne-antal.
+  let sepStart = -1
+  let sepLen = 0
+  let i = 0
+  while (i < cells.length) {
+    if (SEP_CELL.test(cells[i] as string)) {
+      let j = i
+      while (j < cells.length && SEP_CELL.test(cells[j] as string)) j++
+      if (j - i >= 2) { sepStart = i; sepLen = j - i; break }
+      i = j
+    } else i++
+  }
+  if (sepStart < 1) return null // header skal være FØR separator på samme linje
+  const n = sepLen
+  const header = cells.slice(0, sepStart).map((c) => c.trim())
+  const data = cells.slice(sepStart + sepLen).map((c) => c.trim())
+  const rows = [`| ${header.join(' | ')} |`, `| ${Array(n).fill('---').join(' | ')} |`]
+  for (let k = 0; k < data.length; k += n) rows.push(`| ${data.slice(k, k + n).join(' | ')} |`)
+  const out: string[] = []
+  if (prefix.trim()) out.push(prefix.replace(/\s+$/, ''))
+  out.push('', rows.join('\n'), '')
+  if (suffix.trim()) out.push(suffix.replace(/^\s+/, ''))
+  return out.join('\n')
+}
+
+/** Genskab tabeller hvis hele rækken er mast sammen på én linje. */
+function reflowCrammedTables(text: string): string {
+  if (!text.includes('|')) return text
+  return text
+    .split('\n')
+    .map((line) => ((line.match(/\|/g) || []).length >= 4 ? reflowLineTable(line) ?? line : line))
+    .join('\n')
+}
+
 /** Hovedfunktion: kør hele kæden over hver text-segment. */
 export function enforceStructure(md: string): string {
   const segs = splitProtected(md)
@@ -162,6 +217,8 @@ export function enforceStructure(md: string): string {
     .map((s) => {
       if (s.kind === 'fence') return s.body
       let t = s.body
+      // Crammed tabeller FØRST → celler på egne linjer før resten af kæden.
+      t = reflowCrammedTables(t)
       // Inline → blok FØRST, så de linje-baserede regler ser rigtige linjer.
       t = inlineHeaderToBlock(t)
       t = inlineStatementToParagraph(t)

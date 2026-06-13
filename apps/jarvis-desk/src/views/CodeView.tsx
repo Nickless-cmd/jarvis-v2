@@ -155,6 +155,8 @@ export function CodeView({
       mode: 'code',
       workspaceKind: kind,
       workspaceRoot: effRoot,
+      model: opts.model,
+      providerChoice: opts.providerChoice,
     })
   }
 
@@ -203,6 +205,7 @@ export function CodeView({
       showPermissions={true}
       contextTokens={stream.usage.input + stream.usage.cacheHit}
       compactAt={compactAt}
+      isOwner={isOwner}
     />
   )
 

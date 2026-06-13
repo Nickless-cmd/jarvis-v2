@@ -33,6 +33,8 @@ const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string }> = [
   { key: 'ask', label: 'Spørg ved værktøjer' },
   { key: 'trust', label: 'Fuld adgang' },
 ]
+/** Permission-valget overlever genstart (Bjørn: "fuld adgang" skal huskes). */
+const PERM_KEY = 'jarvis-desk:permission'
 
 /** Composer (Codex-stil): venstre [+] + permissions-dropdown; højre model-pill,
  *  think-pill, dikter-mic, send. [+]-menu folder opad med billeder/filer,
@@ -70,7 +72,11 @@ export function Composer({
   const [menuOpen, setMenuOpen] = useState(false)
   const [permOpen, setPermOpen] = useState(false)
   const [planMode, setPlanMode] = useState(false)
-  const [permission, setPermission] = useState<'ask' | 'trust'>('ask')
+  const [permission, setPermission] = useState<'ask' | 'trust'>(() => {
+    try {
+      return localStorage.getItem(PERM_KEY) === 'trust' ? 'trust' : 'ask'
+    } catch { return 'ask' }
+  })
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   const [dragOver, setDragOver] = useState(false)
   // Rolle-bevidst model/provider-valg. Owner: provChoice + konkret model.
@@ -93,6 +99,11 @@ export function Composer({
     )
     return () => { alive = false }
   }, [isOwner, provChoice, config, ollamaModels.length])
+
+  // Persistér permission-valget så "fuld adgang" overlever app-genstart.
+  useEffect(() => {
+    try { localStorage.setItem(PERM_KEY, permission) } catch { /* ignore */ }
+  }, [permission])
 
   // Member: standard/pro. Owner: konkret model afhænger af provider.
   const memberTier: 'standard' | 'pro' = selModel === 'pro' ? 'pro' : 'standard'

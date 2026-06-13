@@ -28,8 +28,12 @@ _HEALTH_STATE_KEY = "provider_health"
 
 # Lightweight reachability check — just ensure the host responds.
 # Doesn't do an actual LLM call (would consume quota).
+# 2026-06-13: ollamafreeapi fjernet fra ping-rotationen — provideren er død
+# (sidste succes ~14. maj; runtime-state viste 'Failed to connect / connection
+# timed out / 503 server busy' — IKKE DNS NXDOMAIN, jf. Jarvis' kommentar). De
+# 10 døde model-entries er også fjernet fra provider_router.json. Relevance-
+# referencen i runtime.json er nu en inert forældreløs.
 _PING_ENDPOINTS: dict[str, str] = {
-    "ollamafreeapi": "https://ollamafreeapi.com/",
     "groq": "https://api.groq.com/openai/v1/models",
     "gemini": "https://generativelanguage.googleapis.com/",
     "nvidia-nim": "https://integrate.api.nvidia.com/v1/models",

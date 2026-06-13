@@ -269,7 +269,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   const header = (
     <div className="chatview-head">
       <div className="chatview-head-left">
-        <PresenceDot status={bgActive && stream.status === 'idle' ? 'working' : stream.status} /> <span className="chat-title">{chatTitle}</span>
+        <PresenceDot status={bgActive && stream.status !== 'working' ? 'working' : stream.status} /> <span className="chat-title">{chatTitle}</span>
       </div>
       <div className="chatview-head-right">
         {settings && (
@@ -326,7 +326,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
         {/* Liveness fast lige over composer (ikke i transcript — den scrollede
             væk / sad i toppen ved ny chat). Vises kun når der faktisk sker noget. */}
         {(stream.status !== 'idle' || bgActive) && (
-          <LivenessIndicator status={bgActive && stream.status === 'idle' ? 'working' : stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={bgActive && stream.status === 'idle' ? 'vågner' : stream.workingStep} tokens={stream.usage.output} />
+          <LivenessIndicator status={bgActive && stream.status !== 'working' ? 'working' : stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={bgActive && stream.status !== 'working' ? 'vågner' : stream.workingStep} tokens={stream.usage.output} />
         )}
         <div className="composer-notices">
           {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}

@@ -254,6 +254,7 @@ from core.services.visible_runs_sections.run_control_state import (  # noqa: E40
     _get_visible_run_control,
     _mark_visible_run_cancelled,
     _set_active_visible_run,
+    touch_active_visible_run,
     _set_visible_approval_state,
     _set_visible_run_control,
     _visible_run_approval_key,
@@ -319,15 +320,39 @@ _LAST_VISIBLE_CAPABILITY_USE: dict[str, object] | None = None
 _LAST_VISIBLE_EXECUTION_TRACE: dict[str, object] | None = None
 
 
-def is_visible_run_alive(run_id: str) -> bool:
-    """Den AUTORITATIVE liveness-test: lever runnets controller stadig i denne
-    proces? Et run der er afsluttet/dødt/crashet er IKKE i controllers-dict'en.
+# Cross-proces liveness-vindue: et run regnes dødt hvis dets DB-heartbeat ikke
+# er opdateret i dette antal sekunder. > længste enkelt-runde/tool-timeout (~60s)
+# så et levende men langsomt run ikke fejlagtigt regnes dødt.
+_VISIBLE_RUN_STALE_S = 75.0
 
-    Dette er sandheds-kilden klienten skal afstemme mod (i stedet for at TRO den
-    arbejder indtil en message_stop-frame lander) — så et dødt run ikke efterlader
-    UI'et hængende på 'working' (Bjørn 2026-06-13, robust-streaming-redesign).
+
+def is_visible_run_alive(run_id: str) -> bool:
+    """Den AUTORITATIVE liveness-test — CROSS-PROCES.
+
+    Et autonomt run kører i jarvis-RUNTIME, men /chat/active-runs serveres af
+    jarvis-API. _VISIBLE_RUN_CONTROLLERS er per-proces, så api kan ikke se
+    runtime's controller (Bjørn 2026-06-13 bug). Derfor:
+      1) Samme proces → controlleren lever her (hurtig, sikker).
+      2) Anden proces → den DELTE active-state's heartbeat (last_activity_at) er
+         frisk. Et levende run touch'er den hvert par sekunder; et dødt holder op
+         → udløber inden for _VISIBLE_RUN_STALE_S → klienten rydder hängende UI.
     """
-    return bool(run_id) and run_id in _VISIBLE_RUN_CONTROLLERS
+    if not run_id:
+        return False
+    if run_id in _VISIBLE_RUN_CONTROLLERS:
+        return True
+    try:
+        state = _get_active_visible_run_state() or {}
+        if str(state.get("run_id") or "") != str(run_id) or state.get("cancelled"):
+            return False
+        ts = str(state.get("last_activity_at") or state.get("started_at") or "")
+        if not ts:
+            return False
+        from datetime import UTC, datetime
+        age = (datetime.now(UTC) - datetime.fromisoformat(ts.replace("Z", "+00:00"))).total_seconds()
+        return age < _VISIBLE_RUN_STALE_S
+    except Exception:
+        return False
 
 
 # Run control state functions: re-exported above from visible_runs_sections.run_control_state
@@ -1640,6 +1665,13 @@ async def _stream_visible_run(
                         "agentic-round-start run_id=%s round=%d exchanges=%d inter_round_gap_ms=%d",
                         run.run_id, _agentic_round + 1, len(_followup_exchanges), _inter_round_gap_ms,
                     )
+                    # Cross-proces liveness-heartbeat (hver runde) — så
+                    # /chat/active-runs i api-processen kan se at dette (evt.
+                    # autonome, i runtime-processen) run stadig lever.
+                    try:
+                        touch_active_visible_run(run.run_id)
+                    except Exception:
+                        pass
                     _a_parts = []
                     _a_tool_calls: list[dict] = []
                     _a_round_reasoning: str = ""  # captured from FollowupDone
@@ -2166,6 +2198,12 @@ async def _stream_visible_run(
                         except asyncio.TimeoutError:
                             # Tools still running — keep stream alive.
                             _heartbeat_count += 1
+                            # Cross-proces liveness-heartbeat under lange tool-kald
+                            # (round-start touch'er ikke under en 60s tool-eksekvering).
+                            try:
+                                touch_active_visible_run(run.run_id)
+                            except Exception:
+                                pass
                             _elapsed_s = int(time.monotonic() - _a_exec_start)
                             yield _sse("heartbeat", {
                                 "type": "heartbeat",

@@ -50,6 +50,21 @@ def _get_active_visible_run_state() -> dict[str, object]:
     return payload if isinstance(payload, dict) else {}
 
 
+def touch_active_visible_run(run_id: str) -> None:
+    """Heartbeat: opdatér last_activity_at i den DELTE active-run state (DB),
+    så CROSS-PROCES liveness virker. /chat/active-runs (jarvis-api) kan ikke se
+    et autonomt runs in-memory controller (det lever i jarvis-runtime), men kan
+    se DB-heartbeat'en. Et levende run kalder denne hvert par sekunder; et dødt
+    run holder op → freshness-vinduet udløber → klienten rydder hängende UI.
+    Kun hvis det stadig er DETTE runs active-state (undgå at genoplive en afløst).
+    """
+    state = _get_active_visible_run_state()
+    if str(state.get("run_id") or "") != str(run_id):
+        return
+    state["last_activity_at"] = datetime.now(UTC).isoformat()
+    set_runtime_state_value(_VISIBLE_RUN_ACTIVE_KEY, state)
+
+
 def _visible_run_cancelled(run_id: str) -> bool:
     return bool(_get_visible_run_control(run_id).get("cancelled"))
 

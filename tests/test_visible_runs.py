@@ -202,3 +202,28 @@ def test_is_visible_run_alive_truthful():
     finally:
         vr._VISIBLE_RUN_CONTROLLERS.pop("run-xyz", None)
     assert vr.is_visible_run_alive("run-xyz") is False
+
+
+def test_is_visible_run_alive_cross_process_heartbeat():
+    """Cross-proces: et autonomt run lever i runtime-processen (ikke i api's
+    controller-dict). Liveness skal kunne aflæses fra den DELTE DB-heartbeat
+    (last_activity_at) — frisk = i live, gammel = dødt (Bjørn 2026-06-13)."""
+    from datetime import UTC, datetime, timedelta
+    from unittest.mock import patch
+    from core.services import visible_runs as vr
+
+    fresh = {"run_id": "auto-1", "session_id": "s1",
+             "last_activity_at": datetime.now(UTC).isoformat()}
+    stale = {"run_id": "auto-1", "session_id": "s1",
+             "last_activity_at": (datetime.now(UTC) - timedelta(seconds=200)).isoformat()}
+    cancelled = {"run_id": "auto-1", "session_id": "s1", "cancelled": True,
+                 "last_activity_at": datetime.now(UTC).isoformat()}
+
+    with patch.object(vr, "_get_active_visible_run_state", return_value=fresh):
+        assert vr.is_visible_run_alive("auto-1") is True
+    with patch.object(vr, "_get_active_visible_run_state", return_value=stale):
+        assert vr.is_visible_run_alive("auto-1") is False  # heartbeat for gammel
+    with patch.object(vr, "_get_active_visible_run_state", return_value=cancelled):
+        assert vr.is_visible_run_alive("auto-1") is False
+    with patch.object(vr, "_get_active_visible_run_state", return_value=fresh):
+        assert vr.is_visible_run_alive("other-run") is False  # andet run_id

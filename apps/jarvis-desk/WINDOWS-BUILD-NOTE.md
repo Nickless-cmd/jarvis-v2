@@ -14,19 +14,21 @@ npm run build               # bygger renderer (vite) + electron (tsc)
 npx electron-builder --win  # producerer NSIS-installer (.exe) i release\
 ```
 
-Resultatet er `release\Jarvis Setup 0.2.7.exe` (NSIS-installer — versionen er
-**0.2.7**, ikke 0.1.0; den blev bumpet da Linux/Mac blev udgivet). Installér den og
-verificér at appen starter og kan forbinde til `api.srvlab.dk` (Bjørns backend).
+Resultatet er `release\Jarvis Setup 0.2.22.exe` (NSIS-installer — versionen er
+**0.2.22**). Installér den og verificér at appen starter og kan forbinde til
+`api.srvlab.dk` (Bjørns backend).
 
 ## Læg den op på GitHub-releasen når den er klar
 
-Linux + Mac er allerede udgivet som release **`jarvis-desktop-v0.2.7`**
-(https://github.com/Nickless-cmd/jarvis-v2/releases/tag/jarvis-desktop-v0.2.7).
+Linux er udgivet som release **`jarvis-desktop-v0.2.22`**
+(https://github.com/Nickless-cmd/jarvis-v2/releases/tag/jarvis-desktop-v0.2.22).
 Smid Windows-`.exe`'en op på samme release:
 
 ```powershell
-gh release upload jarvis-desktop-v0.2.7 "release\Jarvis Setup 0.2.7.exe"
+gh release upload jarvis-desktop-v0.2.22 "release\Jarvis Setup 0.2.22.exe"
 ```
+
+(Mac-`.dmg` mangler også — bygges på macOS/CI og uploades til samme tag.)
 
 (Kræver at `gh` er logget ind som `Nickless-cmd`. Så har releasen alle tre platforme.)
 

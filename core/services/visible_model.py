@@ -1131,8 +1131,15 @@ def _execute_ollama_model(
     )
     from core.tools.simple_tools import get_tool_definitions
 
-    target = resolve_provider_router_target(lane="visible")
-    base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
+    # 2026-06-13: resolve OLLAMA-providerens base_url — IKKE visible-lanen (som
+    # peger på deepseek-API). Ellers POST'er vi ollama-format til deepseek → 401.
+    from core.runtime.provider_router import (
+        load_provider_router_registry as _lprr,
+        _provider_base_url as _pburl,
+    )
+    base_url = (
+        _pburl(provider="ollama", registry=_lprr()) or "http://127.0.0.1:11434"
+    ).rstrip("/")
 
     visible_input = _build_visible_input(message, session_id=session_id)
     messages = serialize_ollama_chat_messages(visible_input)
@@ -1385,8 +1392,15 @@ def _stream_ollama_model(
     )
     from core.tools.simple_tools import get_tool_definitions
 
-    target = resolve_provider_router_target(lane="visible")
-    base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
+    # 2026-06-13: resolve OLLAMA-providerens base_url — IKKE visible-lanen (som
+    # peger på deepseek-API). Ellers POST'er vi ollama-format til deepseek → 401.
+    from core.runtime.provider_router import (
+        load_provider_router_registry as _lprr,
+        _provider_base_url as _pburl,
+    )
+    base_url = (
+        _pburl(provider="ollama", registry=_lprr()) or "http://127.0.0.1:11434"
+    ).rstrip("/")
 
     visible_input = _build_visible_input(message, session_id=session_id)
     messages = serialize_ollama_chat_messages(visible_input)

@@ -260,11 +260,15 @@ class OllamaFollowupAdapter:
         round_index: int = 0,
         thinking_mode: str = "think",
     ) -> Iterator[FollowupEvent]:
-        from core.runtime.provider_router import resolve_provider_router_target
-
-        target = resolve_provider_router_target(lane="visible")
+        # 2026-06-13: ollama-followup skal bruge OLLAMA-providerens base_url, ikke
+        # visible-lanen (deepseek-API). Ellers POST'er tool-runden ollama-format til
+        # deepseek → 401, og members' værktøjsbrug brækker.
+        from core.runtime.provider_router import (
+            load_provider_router_registry as _lprr,
+            _provider_base_url as _pburl,
+        )
         base_url = (
-            str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
+            _pburl(provider="ollama", registry=_lprr()) or "http://127.0.0.1:11434"
         ).rstrip("/")
 
         messages = list(base_messages) + self._serialize_exchanges(exchanges)

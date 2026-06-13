@@ -1747,60 +1747,63 @@ def _trading_inactive_default(reason: str) -> dict[str, Any]:
 
 
 
+# Rate-guard for operator-wakeup re-engagements: cost-backstop, men IKKE en hård
+# daglig cap der dræber funktionen TAVST (Bjørn ramte 12/dag under test og
+# "ingenting skete" — wakeup'en fyrede men intet run startede). Rullende time.
+_OP_WAKEUP_TIMES: list[float] = []
+_OP_WAKEUP_MAX_PER_HOUR = 30
+
+
 @router.post("/operator/wakeup-fired")
 def operator_wakeup_fired(payload: dict) -> dict:
     """Hit af jarvis-desk når en operator_wakeup-timer fyrer.
 
-    2026-06-13: gør nu Jarvis VÅGEN igen i stedet for bare at logge. Vi bygger
-    IKKE en ny mekanisme — vi registrerer en self_wakeup (delay 60s = min), så
-    den eksisterende due_wakeups → heartbeat → re-engagement → consume-flow
-    håndterer resten. Cost/kvote-guard: max N operator-triggerede re-engagements
-    pr. dag (hver = et run). self_wakeup's _MAX_PENDING=20 er sekundær guard.
+    2026-06-13 (v2): starter nu STRAKS et autonomt run i samtalen i stedet for
+    at gå via self_wakeup (som havde 60s minimum-delay OG en hård 12/dag-cap der
+    dræbte funktionen tavst). Binder til desk-sessionen; guarder mod Discord-leak.
+    Rate-guard = cost-backstop (max N/rullende time), ikke en daglig dødsdom.
     """
+    import time as _time
     wid = str(payload.get("wakeup_id") or "")
     title = (str(payload.get("title") or ""))[:80]
     message = (str(payload.get("message") or ""))[:200]
+    sess = str(payload.get("session_id") or "").strip() or None
     try:
-        logger.info(
-            "operator_wakeup_fired: wakeup_id=%s title=%r message=%r",
-            wid, title, message[:120],
+        logger.warning(
+            "operator_wakeup_fired: wakeup_id=%s session=%s title=%r",
+            wid, sess, title,
         )
     except Exception:
         pass
 
-    _DAILY_LIMIT = 12  # operator-triggerede re-engagements/dag (cost/kvote)
     re_engaged = False
     skipped = ""
     try:
-        from datetime import UTC, datetime
-        from core.services.self_wakeup import schedule_self_wakeup, _load
-        today = datetime.now(UTC).date().isoformat()
-        todays = sum(
-            1 for r in _load()
-            if str(r.get("reason", "")).startswith("operator-wakeup")
-            and str(r.get("scheduled_at", "")).startswith(today)
+        from core.identity.owner_resolver import (
+            resolve_owner_app_session,
+            session_is_external_channel,
         )
-        if todays >= _DAILY_LIMIT:
-            skipped = f"daily-limit ({_DAILY_LIMIT}) nået — kun notifikation"
+        from core.services.visible_runs import start_autonomous_run
+        now = _time.monotonic()
+        _OP_WAKEUP_TIMES[:] = [t for t in _OP_WAKEUP_TIMES if now - t < 3600]
+        if len(_OP_WAKEUP_TIMES) >= _OP_WAKEUP_MAX_PER_HOUR:
+            skipped = f"rate-limit ({_OP_WAKEUP_MAX_PER_HOUR}/time) nået"
         else:
+            # GUARD: aldrig Discord. Brug desk-sessionen hvis app/ikke-ekstern,
+            # ellers app-resolveren (springer Discord/Telegram over).
+            target = sess if (sess and not session_is_external_channel(sess)) \
+                else (resolve_owner_app_session() or None)
             _prompt = (
-                f"Operator-wakeup fyrede: {title}."
-                + (f" Besked: {message}." if message else "")
-                + " Genengager med Bjørn hvis der er noget at følge op på;"
-                + " ellers er en kort kvittering nok."
+                f"[OPERATOR-WAKEUP FYREDE — wakeup_id={wid}]\n"
+                f"Du planlagde denne wakeup: {title}."
+                + (f" Din besked: {message}." if message else "")
+                + "\nGenengager kort med Bjørn i DENNE samtale NU — skriv "
+                "beskeden / følg op. Når du er færdig er turen slut."
             )
-            # channel="app" → wakeup leveres i jarvis-desk, ALDRIG Discord
-            # (dispatcheren guarder mod ekstern-kanal-leak). session_id fra
-            # desk hvis den sendes med, ellers app-resolveren ved fyring.
-            _sess = str(payload.get("session_id") or "").strip() or None
-            res = schedule_self_wakeup(
-                delay_seconds=60, prompt=_prompt, reason=f"operator-wakeup:{wid}",
-                channel="app", session_id=_sess,
-            )
-            re_engaged = str(res.get("status")) == "ok"
-            if not re_engaged:
-                skipped = str(res.get("error") or "schedule failed")
+            start_autonomous_run(_prompt, session_id=target)
+            _OP_WAKEUP_TIMES.append(now)
+            re_engaged = True
     except Exception as exc:
-        skipped = str(exc)[:120]
+        skipped = str(exc)[:160]
 
     return {"received": True, "wakeup_id": wid, "re_engaged": re_engaged, "skipped": skipped}

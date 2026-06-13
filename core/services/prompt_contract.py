@@ -1455,10 +1455,13 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Beregnes her, men APPENDES i prompt-halen (lige før wakeup-digest + time
+    # pin) — se længere nede. 2026-06-13 (cache-fix): "### Looming-end /
+    # Sessions-alder: N timer" ændrer sig over tid og lå ~6.2k tokens inde i
+    # prompten → det var DeepSeek-cachens første breaker (cap'ede prefix til ~6k
+    # og dræbte caching af resten af system-prompten + HELE historikken). Flyttet
+    # til halen sammen med de øvrige per-turn-variable sektioner.
     finitude_section = _visible_finitude_context_section()
-    if finitude_section:
-        parts.append(finitude_section)
-        derived_inputs.append("finitude and transition context")
 
     dream_residue_section = _visible_dream_residue_section()
     if dream_residue_section:
@@ -1798,6 +1801,13 @@ def build_visible_chat_prompt_assembly(
     # the wakeup digest can both surface bloat. Per-part chars logged so
     # we can see which sections dominate without instrumenting every
     # parts.append site.
+
+    # Finitude / looming-end — tail-anchored (flyttet hertil 2026-06-13, cache-fix).
+    # "Sessions-alder: N timer" ændrer sig over tid; her i halen bryder den kun
+    # time_pin/wakeup (som allerede er dynamiske), ikke den store stabile prefix.
+    if finitude_section:
+        parts.append(finitude_section)
+        derived_inputs.append("finitude and transition context (tail-anchored)")
 
     # Eventbus wake-up digest — appended here (just before time pin) so it
     # lands AFTER all awareness sections. See cache-hit note near line 646

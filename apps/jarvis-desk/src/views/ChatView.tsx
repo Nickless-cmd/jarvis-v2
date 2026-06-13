@@ -6,7 +6,7 @@ import { useSettings } from '../hooks/useSettings'
 import { usePanel } from '../hooks/usePanel'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
-import { getContextInfo } from '../lib/api'
+import { getContextInfo, getActiveRuns } from '../lib/api'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
@@ -29,6 +29,10 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   const [atBottom, setAtBottom] = useState(true)
   const [unread, setUnread] = useState(0)
   const [compactAt, setCompactAt] = useState(0)
+  // Autonomt baggrunds-run (fx operator_wakeup) i NETOP denne session — som
+  // klienten ikke selv driver. Når det opdages, vis at Jarvis arbejder + hent
+  // nye beskeder ind, så han "kalder op" i appen (Bjørn 2026-06-13).
+  const [bgActive, setBgActive] = useState(false)
 
   // Context-ring (#9): hent autocompact-tærsklen én gang.
   useEffect(() => {
@@ -63,6 +67,32 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
     const b = (window as unknown as { jarvisDesk?: { setActiveSession?: (s: string | null) => void } }).jarvisDesk
     b?.setActiveSession?.(sessionId)
   }, [sessionId])
+
+  // Pickup af autonome baggrunds-runs (operator_wakeup mv.): poll backend for
+  // om DENNE session har et aktivt run vi ikke selv driver. Mens det kører:
+  // vis liveness + hent nye beskeder ind, så Jarvis' selv-startede svar dukker
+  // op live i appen i stedet for at kræve et manuelt session-skift.
+  useEffect(() => {
+    if (!settings || !sessionId) { setBgActive(false); return }
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    let cancelled = false
+    let wasActive = false
+    const tick = () => {
+      void getActiveRuns(cfg)
+        .then((ids) => {
+          if (cancelled) return
+          // 'working' = vi driver selv et run → ikke et baggrunds-run.
+          const active = ids.includes(sessionId) && stream.status !== 'working'
+          setBgActive(active)
+          if (active || wasActive) void sessions.refresh() // hent nyt indhold (og endelig hentning når det slutter)
+          wasActive = active
+        })
+        .catch(() => { /* behold sidste — ingen flicker ved netværks-blip */ })
+    }
+    tick()
+    const id = setInterval(tick, 3000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [settings, sessionId, stream.status])
 
   useEffect(() => {
     if (stream.status === 'done' && stream.blocks.length > 0 && reconciledForRun.current !== stream.activeRunId) {
@@ -175,7 +205,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   const isEmpty =
     !sessionId ||
-    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && !queued)
+    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && !queued && !bgActive)
 
   const ensureSessionId = async () => {
     if (sessionId) return sessionId
@@ -260,8 +290,8 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       <div className="composer-area">
         {/* Liveness fast lige over composer (ikke i transcript — den scrollede
             væk / sad i toppen ved ny chat). Vises kun når der faktisk sker noget. */}
-        {stream.status !== 'idle' && (
-          <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} tokens={stream.usage.output} />
+        {(stream.status !== 'idle' || bgActive) && (
+          <LivenessIndicator status={bgActive && stream.status === 'idle' ? 'working' : stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={bgActive && stream.status === 'idle' ? 'vågner' : stream.workingStep} tokens={stream.usage.output} />
         )}
         <div className="composer-notices">
           {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}

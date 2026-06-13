@@ -155,11 +155,14 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
     return () => { b?.setActiveRun?.(null) }
   }, [bgActive])
 
-  // Follow-stream: når et autonomt run kører i DENNE session, attach til dets
-  // token-strøm (/follow-SSE) og fodr ind i follow-reduceren → render token-for-
-  // token. Catch-up dækker hvis vi attacher lidt sent.
+  // Follow-stream MIDLERTIDIGT DEAKTIVERET (2026-06-13): backend-follow er
+  // rullet tilbage (translate-i-tråd brækkede run-livscyklus). Når desk'en åbnede
+  // /follow alligevel, gav den abort-støj ("BodyStreamBuffer was aborted") når
+  // forbindelsen blev lukket — og den hentede aldrig frames. Genaktiveres med
+  // translate-i-ENDPOINT-redesignet (se memory project_autonomous_run_followstream).
+  const FOLLOW_ENABLED = false
   useEffect(() => {
-    if (!bgActive || !sessionId || !settings) return
+    if (!FOLLOW_ENABLED || !bgActive || !sessionId || !settings) return
     if (followCtrlRef.current) return // følger allerede
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     followCtrlRef.current = followRun(

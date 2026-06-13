@@ -35,6 +35,10 @@ const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string }> = [
 ]
 /** Permission-valget overlever genstart (Bjørn: "fuld adgang" skal huskes). */
 const PERM_KEY = 'jarvis-desk:permission'
+/** Provider + model overlever genstart, ellers ryger man tilbage til Deepseek
+ *  default hver gang og oplever de dårligere svar. */
+const PROV_KEY = 'jarvis-desk:provChoice'
+const MODEL_KEY = 'jarvis-desk:model'
 
 /** Composer (Codex-stil): venstre [+] + permissions-dropdown; højre model-pill,
  *  think-pill, dikter-mic, send. [+]-menu folder opad med billeder/filer,
@@ -81,8 +85,14 @@ export function Composer({
   const [dragOver, setDragOver] = useState(false)
   // Rolle-bevidst model/provider-valg. Owner: provChoice + konkret model.
   // Member: kun tier ('standard'|'pro') → backend mapper til ollama flash/pro.
-  const [provChoice, setProvChoice] = useState<'deepseek' | 'ollama'>('deepseek')
-  const [selModel, setSelModel] = useState('')   // konkret model-id (owner) / tier (member)
+  const [provChoice, setProvChoice] = useState<'deepseek' | 'ollama'>(() => {
+    try {
+      return localStorage.getItem(PROV_KEY) === 'ollama' ? 'ollama' : 'deepseek'
+    } catch { return 'deepseek' }
+  })
+  const [selModel, setSelModel] = useState(() => {  // konkret model-id (owner) / tier (member)
+    try { return localStorage.getItem(MODEL_KEY) || '' } catch { return '' }
+  })
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
   const [modelOpen, setModelOpen] = useState(false)
   const [provOpen, setProvOpen] = useState(false)
@@ -104,6 +114,14 @@ export function Composer({
   useEffect(() => {
     try { localStorage.setItem(PERM_KEY, permission) } catch { /* ignore */ }
   }, [permission])
+
+  // Persistér provider + model så man ikke ryger tilbage til Deepseek-default.
+  useEffect(() => {
+    try { localStorage.setItem(PROV_KEY, provChoice) } catch { /* ignore */ }
+  }, [provChoice])
+  useEffect(() => {
+    try { localStorage.setItem(MODEL_KEY, selModel) } catch { /* ignore */ }
+  }, [selModel])
 
   // Member: standard/pro. Owner: konkret model afhænger af provider.
   const memberTier: 'standard' | 'pro' = selModel === 'pro' ? 'pro' : 'standard'

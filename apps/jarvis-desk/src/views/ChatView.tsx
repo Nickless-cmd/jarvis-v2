@@ -82,6 +82,11 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
     // Efterslæb: bliv ved med at hente et par gange EFTER et baggrunds-run
     // slutter, så en sent-persisteret besked også fanges (ikke kun én hentning).
     let cooldown = 0
+    // Latch: et autonomt wakeup-run kan være SÅ kort (~3s, én besked) at det
+    // starter+slutter mellem to polls → ring/systray/header (drevet af bgActive)
+    // ville aldrig nå at reagere. Når et run ses, hold bgActive i ≥6s så
+    // indikatorerne reagerer synligt (Bjørn 2026-06-13).
+    let bgUntil = 0
     const tick = () => {
       void getActiveRuns(cfg)
         .then((ids) => {
@@ -89,7 +94,8 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
           const serverHasRun = ids.includes(sessionId)
           // 'working' = vi driver selv et run → ikke et baggrunds-run.
           const active = serverHasRun && stream.status !== 'working'
-          setBgActive(active)
+          if (active) bgUntil = Date.now() + 6000
+          setBgActive(active || Date.now() < bgUntil)
           if (active) { cooldown = 3; void sessions.refresh() }       // mens det kører
           else if (cooldown > 0) { cooldown -= 1; void sessions.refresh() } // efterslæb
 
@@ -110,7 +116,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
         .catch(() => { /* behold sidste — ingen flicker ved netværks-blip */ })
     }
     tick()
-    const id = setInterval(tick, 3000)
+    const id = setInterval(tick, 1500) // hurtigere → fanger korte autonome runs
     return () => { cancelled = true; clearInterval(id) }
   }, [settings, sessionId, stream.status, stream.workingSessionId])
 

@@ -324,6 +324,16 @@ def _list_visible_providers_sync() -> list[dict]:
         by_provider = {p: ms for p, ms in by_provider.items() if p in ready}
     except Exception:
         pass
+    # github-copilot: kun gpt-4o-familien virker via /chat/completions-stien
+    # (verificeret 2026-06-13). claude-* kræver plan-enablement; gpt-5.x kræver
+    # /responses-endpointet — begge fejler tavst. Filtrér til det der virker, så
+    # vælgeren ikke tilbyder døde modeller. (GPT-5.x: brug openai-codex i stedet.)
+    if "github-copilot" in by_provider:
+        working = [m for m in by_provider["github-copilot"] if "gpt-4o" in m.lower()]
+        if working:
+            by_provider["github-copilot"] = working
+        else:
+            by_provider.pop("github-copilot", None)
     return [{"id": p, "models": sorted(ms)} for p, ms in sorted(by_provider.items()) if ms]
 
 

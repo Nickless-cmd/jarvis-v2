@@ -1909,7 +1909,21 @@ def build_visible_chat_prompt_assembly(
     # Hele awareness-laget (reasoning/verifikation/kalibrering m.m.) — flyttet hertil
     # fra system-prompten (lever #4) så det ikke cap'er cachen før historikken.
     if _awareness_buffer:
+        # 2026-06-13 (Jarvis' egen analyse): selv-referentielle diagnostik-data
+        # (R2-heed-rate, recall-størrelse, metakognition, format-regler) ligger
+        # her og fik ham til at NARRERE briefingen tilbage til brugeren i stedet
+        # for bare at bruge den ("min hjerne er massiv", "51 advarsler..."). En
+        # eksplicit header markerer blokken som stum baggrund. NB: tekst-nudge —
+        # effekt MÅLES, antages ikke (jf. R2-gatens lave heed-rate).
+        _dyn_tail.append(
+            "📊 INTERN DIAGNOSTIK — baggrundsbriefing, IKKE et samtaleemne.\n"
+            "Brug det nedenstående til at forme dit svar. Citér eller kommentér "
+            "det ALDRIG (R2-tal, heed-rate, recall-størrelse, format-regler, "
+            "metakognition, Sansernes Arkiv) medmindre Bjørn eksplicit spørger "
+            "til din tilstand. Det er din motor, ikke din passager."
+        )
         _dyn_tail.extend(_awareness_buffer)
+        derived_inputs.append("diagnostik-header (anti-narration, Jarvis-spec)")
     if finitude_section:
         _dyn_tail.append(finitude_section)
         derived_inputs.append("finitude (user-msg tail)")

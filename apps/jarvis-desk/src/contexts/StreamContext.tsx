@@ -123,7 +123,14 @@ export function StreamProvider({
         onHung: () => setOverride('hung'),
         onInterrupted: () => { setOverride('interrupted'); deskRunBridge()?.setActiveRun?.(null) },
         onError: (err) => { setError(err); setOverride('error'); deskRunBridge()?.setActiveRun?.(null) },
-        onComplete: () => { deskRunBridge()?.setActiveRun?.(null) /* status=done sættes af message_stop i reducer */ },
+        onComplete: () => {
+          deskRunBridge()?.setActiveRun?.(null)
+          // Terminal-garanti klient-side: ved bruger-abort kappes forbindelsen
+          // lokalt, så serverens message_stop aldrig når frem → status ville
+          // hænge på 'working' (liveness/thinking spinner). Tving 'done'.
+          // Idempotent: backendens egen message_stop sætter også 'done'.
+          dispatch({ type: 'message_stop' } as StreamEvent)
+        },
       },
     )
   }, [config])

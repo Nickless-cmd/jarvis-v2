@@ -199,6 +199,7 @@ async def translate_to_v2(
 
     _state = {
         "message_started": False,
+        "message_stopped": False,
         "text_block_open": False,
         "text_block_index": 0,
         "thinking_block_open": False,
@@ -390,6 +391,7 @@ async def translate_to_v2(
                         cache_miss_tokens=int(_state["cache_miss_tokens"]),
                     ).to_sse_line())
                     await queue.put(MessageStop().to_sse_line())
+                    _state["message_stopped"] = True
                     break
 
                 elif event_name == "heartbeat":
@@ -413,6 +415,28 @@ async def translate_to_v2(
         except asyncio.CancelledError:
             pass
         finally:
+            # TERMINAL-GARANTI (Bjørn 2026-06-13: "random hangs"): klientens
+            # status forlader kun 'working' når den ser message_stop. Hvis
+            # runnet sluttede UDEN et 'done'-event (error, exception, cancel,
+            # eller legacy-strømmen bare endte) ville message_stop aldrig blive
+            # sendt → liveness/thinking hænger på 'working' for evigt. Emit den
+            # her hvis et message_start blev sendt men intet message_stop endnu,
+            # så turen ALTID afsluttes rent uanset hvordan den endte.
+            if _state["message_started"] and not _state["message_stopped"]:
+                try:
+                    await _close_thinking_block_if_open()
+                    await _close_text_block_if_open()
+                    await queue.put(MessageDelta(
+                        stop_reason=str(_state.get("stop_reason") or "end_turn"),
+                        input_tokens=int(_state["input_tokens"]),
+                        output_tokens=int(_state["output_tokens"]),
+                        cache_hit_tokens=int(_state["cache_hit_tokens"]),
+                        cache_miss_tokens=int(_state["cache_miss_tokens"]),
+                    ).to_sse_line())
+                    await queue.put(MessageStop().to_sse_line())
+                    _state["message_stopped"] = True
+                except Exception:
+                    pass  # best-effort — sentinel nedenfor lukker uanset hvad
             # Signaler at translation er færdig — ping-loop stoppes via
             # outer cancel, og hovedløkken nedenfor breaker når den ser
             # sentinel.

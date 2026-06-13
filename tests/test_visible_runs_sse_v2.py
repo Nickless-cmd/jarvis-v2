@@ -328,3 +328,55 @@ async def test_reasoning_delta_becomes_thinking_block_before_text():
     assert "".join(d[1]["delta"]["thinking"] for d in think_deltas) == "Lad mig tænke… tjek X."
     text_deltas = [e for e in events if e[0] == "content_block_delta" and e[1]["delta"]["type"] == "text_delta"]
     assert "".join(d[1]["delta"]["text"] for d in text_deltas) == "Svaret."
+
+
+@pytest.mark.asyncio
+async def test_terminal_guarantee_stream_ends_without_done():
+    """Bjørn 2026-06-13 'random hangs': hvis legacy-strømmen slutter UDEN et
+    'done'-event (error/exception/unormal slut), skal translatoren ALLIGEVEL
+    emitte message_stop — ellers hænger klientens status på 'working' for evigt."""
+    async def legacy():
+        yield _legacy_sse("delta", {"type": "delta", "run_id": "v1", "delta": "Halvt svar"})
+        # INGEN done — strømmen slutter bare (som ved en backend-fejl).
+
+    output = await _collect(translate_to_v2(
+        legacy(), run_id="v1", model="m", provider="p", lane="l",
+        session_id="sess", ping_interval_s=999.0,
+    ))
+    names = [e[0] for e in _parse_v2_events(output)]
+    assert "message_start" in names
+    assert "message_stop" in names, "message_stop SKAL emitteres selv uden 'done'"
+    # message_stop er sidste meningsfulde event (turen lukkes rent)
+    assert names[-1] == "message_stop"
+
+
+@pytest.mark.asyncio
+async def test_terminal_guarantee_legacy_error_event():
+    """Et legacy 'error'-event (wrappes som system_event, som klienten ignorerer)
+    må ikke efterlade turen uden afslutning — message_stop emitteres i finally."""
+    async def legacy():
+        yield _legacy_sse("delta", {"type": "delta", "run_id": "v1", "delta": "Starter"})
+        yield _legacy_sse("error", {"type": "error", "run_id": "v1", "message": "boom"})
+
+    output = await _collect(translate_to_v2(
+        legacy(), run_id="v1", model="m", provider="p", lane="l",
+        session_id="sess", ping_interval_s=999.0,
+    ))
+    names = [e[0] for e in _parse_v2_events(output)]
+    assert "message_stop" in names, "error-afsluttet run skal stadig få message_stop"
+
+
+@pytest.mark.asyncio
+async def test_no_message_stop_when_nothing_started():
+    """Hvis intet message_start blev sendt (tom strøm), emitteres heller ikke et
+    forældreløst message_stop (ville være malformet uden message_start)."""
+    async def legacy():
+        if False:
+            yield ""  # tom async generator
+
+    output = await _collect(translate_to_v2(
+        legacy(), run_id="v1", model="m", provider="p", lane="l",
+        session_id="sess", ping_interval_s=999.0,
+    ))
+    names = [e[0] for e in _parse_v2_events(output)]
+    assert "message_stop" not in names

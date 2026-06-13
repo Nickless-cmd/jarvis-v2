@@ -127,6 +127,9 @@ export interface StreamRequest {
   /** Code-mode workspace (hvor Jarvis' fil-tools arbejder). */
   workspaceKind?: 'container' | 'workstation'
   workspaceRoot?: string
+  /** Konkret model-id + provider-valg (rolle-bevidst routing). */
+  model?: string
+  providerChoice?: string
   /** R1: default false for chat-lane. Blind auto-reconnect re-POSTer beskeden →
    *  duplikerer user-message + nyt run. Kun true hvis serveren understøtter
    *  ægte resume (fremtidig). */
@@ -358,6 +361,8 @@ export function startStream(
           mode: request.mode ?? 'chat',
           workspace_kind: request.workspaceKind ?? '',
           workspace_root: request.workspaceRoot ?? '',
+          model: request.model ?? '',
+          provider_choice: request.providerChoice ?? '',
         }),
         signal: abortController.signal,
       })

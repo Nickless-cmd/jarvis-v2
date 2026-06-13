@@ -1028,6 +1028,9 @@
 .composer-menu .menu-toggle-row { justify-content: flex-start; }
 .perm-menu { min-width: 180px; }
 .perm-menu button.active { color: var(--accent); }
+.model-menu { min-width: 200px; max-height: 320px; overflow-y: auto; }
+.model-menu button.active { color: var(--accent); }
+.model-menu button:disabled { color: var(--fg-3); cursor: default; }
 
 /* toggle-switch (planlægningstilstand) */
 .toggle {

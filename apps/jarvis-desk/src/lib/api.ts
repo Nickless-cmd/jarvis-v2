@@ -392,6 +392,17 @@ export async function whoami(config: ApiConfig): Promise<WhoAmI> {
   }
 }
 
+/** Hent tilgængelige ollama-modeller på containeren (owner-only endpoint).
+ *  Bruges af composer's dynamiske model-vælger. Tom liste hvis ikke owner / fejl. */
+export async function getOllamaModels(config: ApiConfig): Promise<string[]> {
+  try {
+    const raw = await apiFetch<{ models?: string[] }>(config, '/chat/ollama-models')
+    return Array.isArray(raw.models) ? raw.models : []
+  } catch {
+    return []
+  }
+}
+
 /** Mål forbindelses-latency mod serveren (ping). Returnerer ms eller null hvis nede. */
 export async function pingServer(config: ApiConfig): Promise<number | null> {
   const url = new URL('/openapi.json', config.apiBaseUrl).toString()

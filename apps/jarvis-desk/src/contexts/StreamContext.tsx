@@ -22,6 +22,10 @@ export interface SendOpts {
   mode?: 'chat' | 'cowork' | 'code'
   workspaceKind?: 'container' | 'workstation'
   workspaceRoot?: string
+  /** Konkret model-id (owner kan vælge enhver; member sender flash/pro). */
+  model?: string
+  /** Provider-valg (KUN owner: "deepseek"|"ollama"). Member ignoreres server-side. */
+  providerChoice?: string
 }
 
 export interface PendingApproval {
@@ -93,6 +97,8 @@ export function StreamProvider({
         mode: opts.mode,
         workspaceKind: opts.workspaceKind,
         workspaceRoot: opts.workspaceRoot,
+        model: opts.model,
+        providerChoice: opts.providerChoice,
         autoReconnect: false,
       },
       {

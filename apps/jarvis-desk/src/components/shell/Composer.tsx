@@ -14,6 +14,9 @@ export interface ComposerSendOpts {
   planMode: boolean
   permission: 'ask' | 'trust'
   attachments: SentAttachment[]
+  /** Rolle-bevidst routing: konkret model-id + provider-valg (owner-only). */
+  model: string
+  providerChoice: string
 }
 
 interface PendingAttachment {
@@ -31,15 +34,6 @@ const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string }> = [
   { key: 'trust', label: 'Fuld adgang' },
 ]
 
-/** Bruger-venligt model-navn: deepseek-flash → "Standard", *-pro → "Pro".
- *  Folk skal ikke kende deepseek-navnene for at vælge hastighed/kvalitet. */
-function modelLabel(model: string): string {
-  const m = (model || '').toLowerCase()
-  if (m.includes('pro')) return 'Pro'
-  if (m.includes('flash') || m.includes('standard')) return 'Standard'
-  return model
-}
-
 /** Composer (Codex-stil): venstre [+] + permissions-dropdown; højre model-pill,
  *  think-pill, dikter-mic, send. [+]-menu folder opad med billeder/filer,
  *  planlægnings-toggle og plugins. Enter sender, Shift+Enter ny linje. */
@@ -47,13 +41,13 @@ export function Composer({
   streaming,
   onSend,
   onStop,
-  model,
   thinking,
   config,
   getSessionId,
   showPermissions = true,
   contextTokens = 0,
   compactAt = 0,
+  isOwner = false,
 }: {
   streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
@@ -69,6 +63,8 @@ export function Composer({
    *  altid når compactAt > 0 (tom ved 0 tokens). */
   contextTokens?: number
   compactAt?: number
+  /** Owner ser provider-vælger + dynamisk model-liste; member ser kun Standard/Pro. */
+  isOwner?: boolean
 }) {
   const [text, setText] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -77,9 +73,40 @@ export function Composer({
   const [permission, setPermission] = useState<'ask' | 'trust'>('ask')
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   const [dragOver, setDragOver] = useState(false)
+  // Rolle-bevidst model/provider-valg. Owner: provChoice + konkret model.
+  // Member: kun tier ('standard'|'pro') → backend mapper til ollama flash/pro.
+  const [provChoice, setProvChoice] = useState<'deepseek' | 'ollama'>('deepseek')
+  const [selModel, setSelModel] = useState('')   // konkret model-id (owner) / tier (member)
+  const [ollamaModels, setOllamaModels] = useState<string[]>([])
+  const [modelOpen, setModelOpen] = useState(false)
+  const [provOpen, setProvOpen] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const dictation = useDictation((t) => setText((cur) => (cur ? cur + ' ' : '') + t), config)
+
+  // Owner + Ollama valgt → hent containerens model-liste (engangs/ved skift).
+  useEffect(() => {
+    if (!isOwner || provChoice !== 'ollama' || !config || ollamaModels.length) return
+    let alive = true
+    import('../../lib/api').then(({ getOllamaModels }) =>
+      getOllamaModels(config).then((m) => { if (alive) setOllamaModels(m) }),
+    )
+    return () => { alive = false }
+  }, [isOwner, provChoice, config, ollamaModels.length])
+
+  // Member: standard/pro. Owner: konkret model afhænger af provider.
+  const memberTier: 'standard' | 'pro' = selModel === 'pro' ? 'pro' : 'standard'
+  const deepseekModels: Array<{ id: string; label: string }> = [
+    { id: 'deepseek-v4-flash', label: 'Standard' },
+    { id: 'deepseek-v4-pro', label: 'Pro' },
+  ]
+  const ownerModelOptions = provChoice === 'ollama'
+    ? ollamaModels.map((m) => ({ id: m, label: m.replace(':cloud', '') }))
+    : deepseekModels
+  const currentModelLabel = isOwner
+    ? (ownerModelOptions.find((o) => o.id === selModel)?.label
+       || (provChoice === 'ollama' ? 'Vælg model' : 'Standard'))
+    : (memberTier === 'pro' ? 'Pro' : 'Standard')
 
   // Auto-resize: composer vokser med teksten (op til CSS max-height, derefter
   // scroller den indvendigt) i stedet for at være en fast 2-rækkers boks.
@@ -143,21 +170,27 @@ export function Composer({
 
   // Luk popovers ved klik udenfor.
   useEffect(() => {
-    if (!menuOpen && !permOpen) return
-    const close = () => { setMenuOpen(false); setPermOpen(false) }
+    if (!menuOpen && !permOpen && !modelOpen && !provOpen) return
+    const close = () => { setMenuOpen(false); setPermOpen(false); setModelOpen(false); setProvOpen(false) }
     window.addEventListener('click', close)
     return () => window.removeEventListener('click', close)
-  }, [menuOpen, permOpen])
+  }, [menuOpen, permOpen, modelOpen, provOpen])
 
   // Enter sender altid (også under streaming — ChatView lægger den i kø).
   const send = () => {
     const t = emojify(text.trim())  // :) ;) :P → 🙂 😉 😛 (vises som emoji i boblen)
     const ready = attachments.filter((a) => a.id && !a.error)
     if (!t && ready.length === 0) return
+    // Rolle-bevidst routing: owner sender provider + konkret model; member sender
+    // kun tier (backend tvinger ollama + flash/pro). Tom = backend-default.
+    const sendModel = isOwner ? selModel : memberTier
+    const sendProvider = isOwner ? provChoice : ''
     onSend(t, {
       planMode,
       permission,
       attachments: ready.map((a) => ({ id: a.id as string, src: a.src, name: a.name, isImage: a.isImage })),
+      model: sendModel,
+      providerChoice: sendProvider,
     })
     setText('')
     setAttachments([])
@@ -267,9 +300,46 @@ export function Composer({
         </div>
 
         <div className="composer-right">
-          <button type="button" className="model-pill">
-            <span className="dot" />{modelLabel(model)}<span className="caret">▾</span>
-          </button>
+          {/* Provider-vælger — KUN owner. Member ser den aldrig → mærker ikke skiftet. */}
+          {isOwner && (
+            <div className="composer-popover-anchor" onClick={stop}>
+              <button type="button" className="model-pill"
+                onClick={() => { setProvOpen((o) => !o); setModelOpen(false) }}>
+                <span className="dot" />{provChoice === 'ollama' ? 'Ollama' : 'Deepseek'}<span className="caret">▾</span>
+              </button>
+              {provOpen && (
+                <div className="composer-menu model-menu">
+                  <button type="button" className={provChoice === 'deepseek' ? 'active' : ''}
+                    onClick={() => { setProvChoice('deepseek'); setSelModel(''); setProvOpen(false) }}>Deepseek API</button>
+                  <button type="button" className={provChoice === 'ollama' ? 'active' : ''}
+                    onClick={() => { setProvChoice('ollama'); setSelModel(''); setProvOpen(false) }}>Ollama (container)</button>
+                </div>
+              )}
+            </div>
+          )}
+          {/* Model-vælger — alle. Owner: dynamisk liste; member: Standard/Pro. */}
+          <div className="composer-popover-anchor" onClick={stop}>
+            <button type="button" className="model-pill"
+              onClick={() => { setModelOpen((o) => !o); setProvOpen(false) }}>
+              <span className="dot" />{currentModelLabel}<span className="caret">▾</span>
+            </button>
+            {modelOpen && (
+              <div className="composer-menu model-menu">
+                {isOwner
+                  ? ownerModelOptions.map((o) => (
+                      <button key={o.id} type="button" className={selModel === o.id ? 'active' : ''}
+                        onClick={() => { setSelModel(o.id); setModelOpen(false) }}>{o.label}</button>
+                    ))
+                  : (['standard', 'pro'] as const).map((tier) => (
+                      <button key={tier} type="button" className={memberTier === tier ? 'active' : ''}
+                        onClick={() => { setSelModel(tier); setModelOpen(false) }}>{tier === 'pro' ? 'Pro' : 'Standard'}</button>
+                    ))}
+                {isOwner && provChoice === 'ollama' && ownerModelOptions.length === 0 && (
+                  <button type="button" disabled>Henter modeller…</button>
+                )}
+              </div>
+            )}
+          </div>
           <button type="button" className="model-pill">
             {thinking}<span className="caret">▾</span>
           </button>

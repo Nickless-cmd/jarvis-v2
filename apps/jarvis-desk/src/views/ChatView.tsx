@@ -22,7 +22,7 @@ const NEAR_BOTTOM_PX = 120
 export function ChatView({ sessionId }: { sessionId: string | null }) {
   const sessions = useSessions()
   const stream = useStream()
-  const { settings } = useSettings()
+  const { settings, auth } = useSettings()
   const panel = usePanel()
   const reconciledForRun = useRef<string | null>(null)
   const transcriptRef = useRef<HTMLDivElement>(null)
@@ -143,6 +143,8 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       sessionId: sid,
       approvalMode: opts.permission,
       attachmentIds: opts.attachments.map((a) => a.id),
+      model: opts.model,
+      providerChoice: opts.providerChoice,
     })
   }
 
@@ -186,6 +188,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       showPermissions={false}
       contextTokens={contextTokens}
       compactAt={compactAt}
+      isOwner={auth?.role === 'owner'}
     />
   )
 

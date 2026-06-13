@@ -1897,29 +1897,29 @@ def _build_visible_input(
             "content": [{"type": "input_text", "text": message}],
         })
 
-    # Cache-fix (2026-06-13, lever #2): flyt time_pin UD af system-beskeden og ned
-    # på den SIDSTE bruger-besked. time_pin er det sidste i system-prompten og
-    # skifter hvert minut — så længe den lå i system-beskeden brød den caching af
-    # HELE samtalehistorikken (dens prefix indeholdt tidsstemplet). Flyttet til den
-    # nye bruger-tur (som alligevel altid er en cache-miss) → [system + historik]
-    # bliver én stor stabil cachebar prefix. Jarvis ser stadig tiden lige før sit
-    # svar — faktisk en mere naturlig placering end midt i identitets-prompten.
+    # Cache-fix (2026-06-13, lever #3): flyt HELE den per-turn-dynamiske hale UD af
+    # system-beskeden og ned på den SIDSTE bruger-besked. prompt_contract markerer
+    # halen (finitude/Sessions-alder, wakeup-digest, kausal-mønstre, counterfactuals,
+    # subagent, rum-entiteter, time_pin) med DYNAMIC_TAIL_SENTINEL. Alt efter den
+    # varierer per turn; lå det i system-beskeden cap'ede det cachen FØR historikken.
+    # Flyttet til den nye bruger-tur (altid en miss) → [system + historik] bliver én
+    # stor stabil cachebar prefix. Jarvis ser de live-felter lige før sit svar.
     if items and items[0].get("role") == "system" and items[0].get("content"):
         try:
+            from core.services.prompt_contract import DYNAMIC_TAIL_SENTINEL
             _sys_text = str(items[0]["content"][0].get("text", ""))
-            _anchor = _sys_text.find("⏰ DANSK TID")
-            if _anchor != -1:
-                _ls = _sys_text.rfind("\n⏰", 0, _anchor)
-                _cut = (_ls + 1) if _ls != -1 else _anchor
-                _time_pin_block = _sys_text[_cut:].strip()
-                items[0]["content"][0]["text"] = _sys_text[:_cut].rstrip()
-                for _it in reversed(items):
-                    if _it.get("role") == "user" and _it.get("content"):
-                        _ut = str(_it["content"][0].get("text", ""))
-                        _it["content"][0]["text"] = (
-                            (_ut.rstrip() + "\n\n" + _time_pin_block) if _ut else _time_pin_block
-                        )
-                        break
+            _sidx = _sys_text.find(DYNAMIC_TAIL_SENTINEL)
+            if _sidx != -1:
+                _tail_block = _sys_text[_sidx + len(DYNAMIC_TAIL_SENTINEL):].strip()
+                items[0]["content"][0]["text"] = _sys_text[:_sidx].rstrip()
+                if _tail_block:
+                    for _it in reversed(items):
+                        if _it.get("role") == "user" and _it.get("content"):
+                            _ut = str(_it["content"][0].get("text", ""))
+                            _it["content"][0]["text"] = (
+                                (_ut.rstrip() + "\n\n" + _tail_block) if _ut else _tail_block
+                            )
+                            break
         except Exception:
             pass
 

@@ -28,6 +28,13 @@ from core.services.prompt_relevance_backend import (
 _RELEVANCE_DECISION_HISTORY: list[dict[str, object]] = []
 _RELEVANCE_DECISION_HISTORY_LIMIT = 8
 
+# Sentinel der markerer starten på den per-turn-dynamiske hale i system-prompten.
+# _build_visible_input (visible_model.py) splitter på denne og flytter alt efter
+# den ud på den sidste bruger-besked, så [system + historik] bliver én stabil
+# cachebar prefix (2026-06-13, deepseek cache-fix lever #3). Unik nok til aldrig
+# at optræde i rigtigt prompt-indhold.
+DYNAMIC_TAIL_SENTINEL = "⟦◆DYNAMIC-TAIL-DO-NOT-CACHE◆⟧"
+
 
 def _track_relevance_decision(decision: PromptRelevanceDecision) -> None:
     global _RELEVANCE_DECISION_HISTORY
@@ -1815,20 +1822,9 @@ def build_visible_chat_prompt_assembly(
     # we can see which sections dominate without instrumenting every
     # parts.append site.
 
-    # Finitude / looming-end — tail-anchored (flyttet hertil 2026-06-13, cache-fix).
-    # "Sessions-alder: N timer" ændrer sig over tid; her i halen bryder den kun
-    # time_pin/wakeup (som allerede er dynamiske), ikke den store stabile prefix.
-    if finitude_section:
-        parts.append(finitude_section)
-        derived_inputs.append("finitude and transition context (tail-anchored)")
-
-    # Eventbus wake-up digest — appended here (just before time pin) so it
-    # lands AFTER all awareness sections. See cache-hit note near line 646
-    # for the rationale: it's the only within-session breaker, so isolating
-    # it at the absolute tail keeps awareness blocks cacheable.
-    if _wakeup_digest_text:
-        parts.append(_wakeup_digest_text)
-        derived_inputs.append("eventbus wake-up digest (tail-anchored)")
+    # finitude_section + _wakeup_digest_text appendes IKKE her længere — de er
+    # per-turn-dynamiske og flyttes til bruger-beskeden via sentinel-blokken
+    # nedenfor (2026-06-13 cache-fix, lever #3). Se den samlede dynamiske hale.
 
     # 2026-06-09: Vital-indre-liv block — tre sektioner med live
     # decimal-tal der ændrer sig per heartbeat (Tick-kvalitet 65.6→65.5,
@@ -1885,22 +1881,26 @@ def build_visible_chat_prompt_assembly(
     )
     derived_inputs.append("tool-output hygiene (tail-anchored)")
 
-    # Tail-anchored dynamiske sektioner (kausal-mønstre, counterfactuals,
-    # subagent-completions, rum-entiteter) — appendes her, EFTER al stabil
-    # tail-tekst og lige før time_pin, så de ikke bryder den store cachebare
-    # prefix når de re-sampler. Se _tail_add ovenfor (2026-06-13 cache-fix).
-    for _td_content in _tail_dynamic:
-        parts.append(_td_content)
-
-    # Time Pin — appended LAST so it sits immediately above the user
-    # message in the constructed prompt. Keeps the prefix above it stable
-    # (cacheable by DeepSeek) while still ensuring the model sees an
-    # up-to-the-minute timestamp right before processing the user turn.
-    # See 2026-05-22 note near top of this function for the cache-hit
-    # rationale.
-    time_pin = _time_pin_section()
-    parts.append(time_pin)
-    derived_inputs.append("time pin (tail-anchored)")
+    # ── Per-turn-dynamisk hale → flyttes til BRUGER-beskeden (2026-06-13, lever #3)
+    # ALT der varierer fra turn til turn samles her, EFTER al stabil tekst, bag en
+    # sentinel. _build_visible_input splitter på sentinel'en og flytter blokken ud
+    # på den sidste bruger-besked. Så bliver HELE system-prompten + historikken én
+    # stabil cachebar prefix; kun den nye tur er en miss.
+    #   Indhold (alt dynamisk): finitude/Sessions-alder, wakeup-digest (events),
+    #   kausal-mønstre/counterfactuals/subagent/rum-entiteter, og time_pin.
+    _dyn_tail: list[str] = []
+    if finitude_section:
+        _dyn_tail.append(finitude_section)
+        derived_inputs.append("finitude (user-msg tail)")
+    if _wakeup_digest_text:
+        _dyn_tail.append(_wakeup_digest_text)
+        derived_inputs.append("wakeup digest (user-msg tail)")
+    _dyn_tail.extend(_tail_dynamic)
+    _dyn_tail.append(_time_pin_section())
+    derived_inputs.append("time pin (user-msg tail)")
+    if _dyn_tail:
+        parts.append(DYNAMIC_TAIL_SENTINEL)
+        parts.extend(_dyn_tail)
 
     _assembled_text = "\n\n".join(part for part in parts if part).strip()
     _total_chars = len(_assembled_text)

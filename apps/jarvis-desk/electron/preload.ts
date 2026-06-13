@@ -17,6 +17,8 @@ export interface JarvisDeskBridge {
   setActiveRun: (runId: string | null) => Promise<void>
   /** Giv main-process auth så den kan kalde cancel-endpoint ved quit. */
   setRunAuth: (apiBaseUrl: string, authToken: string | null) => Promise<void>
+  /** Registrér den aktuelt fremme session så operator_wakeup re-engagerer dér. */
+  setActiveSession: (sessionId: string | null) => Promise<void>
   /** Tænd/sluk systray attention-prik (Jarvis vil noget mens vinduet er skjult). */
   setTrayAttention: (on: boolean) => Promise<void>
   /** Native OS-notifikation når et run slutter. */
@@ -36,6 +38,7 @@ const bridge: JarvisDeskBridge = {
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   setActiveRun: (runId) => ipcRenderer.invoke('run:setActive', runId),
   setRunAuth: (apiBaseUrl, authToken) => ipcRenderer.invoke('run:setAuth', apiBaseUrl, authToken),
+  setActiveSession: (sessionId) => ipcRenderer.invoke('run:setSession', sessionId),
   setTrayAttention: (on) => ipcRenderer.invoke('tray:attention', on),
   notifyTaskDone: (title, body) => ipcRenderer.invoke('notify:taskDone', title, body),
   pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),

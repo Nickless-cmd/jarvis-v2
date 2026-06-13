@@ -57,6 +57,13 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
 
   useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 
+  // Fortæl main-processen hvilken session der er fremme, så en operator_wakeup
+  // re-engagerer i NETOP denne desk-samtale (ikke en frisk/Discord).
+  useEffect(() => {
+    const b = (window as unknown as { jarvisDesk?: { setActiveSession?: (s: string | null) => void } }).jarvisDesk
+    b?.setActiveSession?.(sessionId)
+  }, [sessionId])
+
   useEffect(() => {
     if (stream.status === 'done' && stream.blocks.length > 0 && reconciledForRun.current !== stream.activeRunId) {
       reconciledForRun.current = stream.activeRunId
@@ -248,10 +255,14 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
         {streaming && stream.blocks.length > 0 && (
           <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
         )}
-        <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} tokens={stream.usage.output} />
       </div>
 
       <div className="composer-area">
+        {/* Liveness fast lige over composer (ikke i transcript — den scrollede
+            væk / sad i toppen ved ny chat). Vises kun når der faktisk sker noget. */}
+        {stream.status !== 'idle' && (
+          <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} tokens={stream.usage.output} />
+        )}
         <div className="composer-notices">
           {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
           {stream.status === 'hung' && (

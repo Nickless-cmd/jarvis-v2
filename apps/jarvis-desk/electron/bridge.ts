@@ -93,6 +93,14 @@ export function getActiveBridgeCfg(): BridgeConfig | null {
   return _activeBridgeCfg
 }
 
+// Den session brugeren aktuelt har fremme i jarvis-desk. Renderer pusher den
+// ved hvert session-skift (run:setSession). Bruges så en operator_wakeup kan
+// re-engagere i NETOP den session — ikke en frisk/forkert (Bjørn 2026-06-13).
+let _activeSessionId: string | null = null
+export function setActiveSessionId(sessionId: string | null): void {
+  _activeSessionId = (sessionId || '').trim() || null
+}
+
 /** Resolve which shell to use for operator_bash based on the OS the
  * JarvisX-app is running on. Linux/macOS use bash; Windows defaults to
  * PowerShell (more capable than cmd.exe, still ubiquitous on Windows 10+). */
@@ -1966,7 +1974,12 @@ async function fireScheduledEvent(id: string): Promise<void> {
         await fetch(`${cfg.apiBaseUrl.replace(/\/$/, '')}/api/operator/wakeup-fired`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ wakeup_id: id, title: e.title, message: e.message, fired_at: e.fired_at }),
+          body: JSON.stringify({
+            wakeup_id: id, title: e.title, message: e.message, fired_at: e.fired_at,
+            // Bind re-engagement til den session brugeren har fremme → wakeup
+            // lander i samme desk-samtale, ikke en frisk (eller Discord).
+            session_id: _activeSessionId,
+          }),
         }).catch(() => undefined)
       } catch {}
     }

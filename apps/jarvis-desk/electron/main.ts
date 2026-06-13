@@ -328,6 +328,14 @@ ipcMain.handle('run:setAuth', (_event, apiBaseUrl: string, authToken: string | n
   runApiBaseUrl = apiBaseUrl
   runAuthToken = authToken
 })
+// Renderer pusher den aktuelt fremme session → main kan binde operator_wakeup
+// til netop den desk-samtale (i stedet for en frisk/forkert).
+ipcMain.handle('run:setSession', async (_event, sessionId: string | null) => {
+  try {
+    const m = await import('./bridge.js')
+    m.setActiveSessionId(sessionId)
+  } catch { /* bridge ikke loaded endnu — ignoreres */ }
+})
 // Native mappe-vælger til Code-mode workstation-workspace (brugerens computer).
 ipcMain.handle('dialog:pickFolder', async () => {
   const res = await dialog.showOpenDialog({

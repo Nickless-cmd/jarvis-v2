@@ -125,25 +125,53 @@ export function SessionProvider({
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
 
+/** Saml en bruger-beskeds tekst-indhold til én streng (til indholds-afdublering).
+ *  content kan være en streng eller en blok-liste; vi konkatenerer text-blokke. */
+function userText(m: ChatMessage): string {
+  const c = m.content as unknown
+  if (typeof c === 'string') return c.trim()
+  if (Array.isArray(c)) {
+    return c
+      .filter((b): b is { type: string; text?: string } => !!b && typeof b === 'object')
+      .filter((b) => b.type === 'text')
+      .map((b) => b.text || '')
+      .join('')
+      .trim()
+  }
+  return ''
+}
+
 /**
  * Flet server-beskeder ind. Server-beskeder bliver 'server_confirmed'. Lokale
  * beskeder serveren endnu IKKE har (optimistic_user / server_missing_keep_stream)
  * BEVARES — så en endnu-ikke-persisteret besked aldrig blank-forsvinder
- * (reconcile-race, dagens bug).
+ * (reconcile-race).
+ *
+ * KRITISK afdublering: den optimistiske bruger-besked har et KLIENT-id
+ * (`u-<ts>`) mens serverens persisterede kopi har et ANDET server-id — så
+ * id-only-matchet fanger den ikke, og brugerens besked blev vist BÅDE før
+ * (serverens kopi, kronologisk) OG efter (den optimistiske, push'et til sidst)
+ * Jarvis' svar indtil hard refresh (Bjørn 2026-06-13). Vi afdublerer derfor
+ * også på INDHOLD, og dropper den optimistiske når serveren har indhentet.
  */
 function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage[] {
   const serverIds = new Set(server.map((m) => m.id))
+  const serverUserTexts = new Set(
+    server.filter((m) => m.role === 'user').map(userText).filter(Boolean),
+  )
   const result: LocalMessage[] = server.map((m) => ({ ...m, clientStatus: 'server_confirmed' as ClientStatus }))
   // Har serveren indhentet løbet? Dvs. er den sidste IKKE-tool-besked en assistant?
-  // Så er den streamede besked persisteret (renset af backend-guarden/normalizer)
-  // og placeholderen 'server_missing_keep_stream' skal DROPPES — ellers hænger den
-  // rå live-stream (med evt. tool-echo-leak) ved siden af serverens rensede version.
+  // Så er BÅDE bruger-beskeden OG svaret persisteret (renset af backend-guarden/
+  // normalizer) → både placeholder OG optimistisk bruger-besked skal DROPPES,
+  // ellers hænger lokale kopier ved siden af serverens rensede versioner.
   const lastReal = [...server].reverse().find((m) => m.role === 'user' || m.role === 'assistant')
   const serverCaughtUp = lastReal?.role === 'assistant'
   for (const lm of local) {
     if (serverIds.has(lm.id)) continue
     if (lm.clientStatus === 'optimistic_user') {
-      result.push(lm) // bruger-besked serveren endnu ikke har → behold
+      if (serverCaughtUp) continue // svaret er persisteret → bruger-beskeden er det også
+      if (serverUserTexts.has(userText(lm))) continue // serveren har allerede samme tekst
+      result.push(lm) // bruger-besked serveren endnu ikke har → behold som bro
     } else if (lm.clientStatus === 'server_missing_keep_stream' && !serverCaughtUp) {
       result.push(lm) // bro indtil serveren persisterer svaret
     }
@@ -151,3 +179,5 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
   }
   return result
 }
+
+export { mergeServer, userText }

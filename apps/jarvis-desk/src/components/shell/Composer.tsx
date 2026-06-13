@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowUp, Square, Plus, Paperclip, ListChecks, Puzzle, ChevronRight,
   ChevronDown, Mic, ShieldCheck, FileText, X,
@@ -39,6 +39,33 @@ const PERM_KEY = 'jarvis-desk:permission'
  *  default hver gang og oplever de dårligere svar. */
 const PROV_KEY = 'jarvis-desk:provChoice'
 const MODEL_KEY = 'jarvis-desk:model'
+
+/** Memo'd input — isoleret fra forælderens re-renders. ChatView re-renderer på
+ *  HVERT stream-token (contextTokens/blocks/elapsed), hvilket før nulstillede
+ *  cursoren i en controlled <textarea> midt i indtastning ("som om to skriver",
+ *  Bjørn 2026-06-13). memo + stabile (useCallback) handlers gør at stream-tickets
+ *  IKKE re-renderer inputtet når teksten er uændret → cursoren bliver stående. */
+const ComposerTextArea = memo(function ComposerTextArea({
+  value, placeholder, onChange, onKeyDown, inputRef,
+}: {
+  value: string
+  placeholder: string
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
+  inputRef: React.RefObject<HTMLTextAreaElement | null>
+}) {
+  return (
+    <textarea
+      ref={inputRef}
+      className="composer-input"
+      rows={2}
+      value={value}
+      placeholder={placeholder}
+      onChange={onChange}
+      onKeyDown={onKeyDown}
+    />
+  )
+})
 
 /** Composer (Codex-stil): venstre [+] + permissions-dropdown; højre model-pill,
  *  think-pill, dikter-mic, send. [+]-menu folder opad med billeder/filer,
@@ -216,7 +243,9 @@ export function Composer({
   }, [menuOpen, permOpen, modelOpen, provOpen])
 
   // Enter sender altid (også under streaming — ChatView lægger den i kø).
-  const send = () => {
+  // useCallback så identiteten er stabil mellem stream-tickets (deps ændrer sig
+  // kun ved faktisk input/valg) → den memo'd textarea re-renderer ikke unødigt.
+  const send = useCallback(() => {
     const t = emojify(text.trim())  // :) ;) :P → 🙂 😉 😛 (vises som emoji i boblen)
     const ready = attachments.filter((a) => a.id && !a.error)
     if (!t && ready.length === 0) return
@@ -233,7 +262,13 @@ export function Composer({
     })
     setText('')
     setAttachments([])
-  }
+  }, [text, attachments, isOwner, selModel, memberTier, provChoice, planMode, permission, onSend])
+
+  // Stabile handlers til den memo'd textarea (ellers re-renderer den hvert tick).
+  const onInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value), [])
+  const onInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+  }, [send])
 
   const stop = (e: React.MouseEvent) => e.stopPropagation()
   const permLabel = PERMISSIONS.find((p) => p.key === permission)?.label ?? 'Spørg'
@@ -262,16 +297,12 @@ export function Composer({
           ))}
         </div>
       )}
-      <textarea
-        ref={ref}
-        className="composer-input"
-        rows={2}
+      <ComposerTextArea
+        inputRef={ref}
         value={text}
         placeholder={streaming ? 'Skriv en follow-up (sendes når Jarvis er færdig)…' : 'Skriv en besked til Jarvis...'}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
-        }}
+        onChange={onInputChange}
+        onKeyDown={onInputKeyDown}
       />
       <div className="composer-bar">
         <div className="composer-left">

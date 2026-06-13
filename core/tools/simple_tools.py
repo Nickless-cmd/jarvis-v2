@@ -3765,10 +3765,18 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         result = {"status": "ok", "result": result}
 
     status = str(result.get("status", "ok"))
-    event_bus.publish("tool.completed", {
-        "tool": name,
-        "status": status,
-    })
+    _completed_payload = {"tool": name, "status": status}
+    # R2 noise-reduktion: marker om et shell-kald reelt ændrer state, så
+    # verification_gate kun tæller ægte mutationer (ikke grep/cat/git status).
+    if name in ("bash", "bash_session_run"):
+        try:
+            from core.services.verification_gate import shell_command_is_mutating
+            _completed_payload["mutating"] = shell_command_is_mutating(
+                str(arguments.get("command", ""))
+            )
+        except Exception:
+            pass
+    event_bus.publish("tool.completed", _completed_payload)
 
     # Outcome learning: each tool execution is a datapoint. Context = tool name,
     # outcome = success/error. Fire-and-forget — must never break tool flow.
@@ -3839,10 +3847,18 @@ def execute_tool_force(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         result = {"status": "ok", "result": result}
 
     status = str(result.get("status", "ok"))
-    event_bus.publish("tool.completed", {
-        "tool": name,
-        "status": status,
-    })
+    _completed_payload = {"tool": name, "status": status}
+    # R2 noise-reduktion: marker om et shell-kald reelt ændrer state, så
+    # verification_gate kun tæller ægte mutationer (ikke grep/cat/git status).
+    if name in ("bash", "bash_session_run"):
+        try:
+            from core.services.verification_gate import shell_command_is_mutating
+            _completed_payload["mutating"] = shell_command_is_mutating(
+                str(arguments.get("command", ""))
+            )
+        except Exception:
+            pass
+    event_bus.publish("tool.completed", _completed_payload)
 
     # Outcome learning — same hook as execute_tool so force-path is observed too
     try:

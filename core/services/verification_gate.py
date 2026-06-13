@@ -22,10 +22,96 @@ actions. That's a separate decision after we have data.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# ── Shell-kommando-klassifikator (R2 noise-reduktion, 2026-06-13) ────────
+# Problem: hver bash-kald talte som mutation — også read-only (grep/cat/ls/
+# git status). Det gav ~45 advarsler/dag → banner blindness → 15% heed-rate.
+# Fix: tæl KUN shell-kald der reelt ændrer state. Konservativ: ukendt
+# kommando → mutation (misser aldrig reel risiko; skærer kun kendt støj).
+
+# Kommandoer der ALDRIG ændrer state (hele kommandoen er read-only).
+_RO_CMDS: frozenset[str] = frozenset({
+    "cat", "less", "more", "head", "tail", "bat", "tac", "nl", "zcat",
+    "ls", "ll", "dir", "tree", "find", "fd", "stat", "file", "du", "df", "wc",
+    "realpath", "readlink", "basename", "dirname", "lsblk", "lsof", "blkid",
+    "grep", "rg", "ag", "ack", "egrep", "fgrep", "zgrep",
+    "ps", "pgrep", "pidof", "top", "free", "uptime", "whoami", "id", "hostname",
+    "uname", "env", "printenv", "which", "type", "pwd", "date", "cal", "nproc",
+    "lscpu", "echo", "printf", "jq", "yq", "sort", "uniq", "cut", "tr", "column",
+    "comm", "join", "paste", "fold", "diff", "cmp", "md5sum", "sha256sum",
+    "sha1sum", "cksum", "test", "true", "false", "seq", "nvidia-smi", "netstat",
+    "ss", "ping", "dig", "host", "man", "history", "tldr", "hexdump", "xxd",
+    "strings", "od", "tac", "rev", "expr", "bc", "wc",
+})
+# Kontekst-følsomme: KUN read-only for disse subkommandoer (None = altid RO).
+_RO_SUBCMD: dict[str, frozenset[str] | None] = {
+    "git": frozenset({
+        "status", "log", "diff", "show", "branch", "rev-parse", "ls-files",
+        "blame", "describe", "config", "remote", "shortlog", "reflog",
+        "cat-file", "rev-list", "name-rev", "whatchanged", "grep", "ls-tree",
+        "var", "help", "tag", "stash",  # tag/stash uden args = list (RO nok)
+    }),
+    "systemctl": frozenset({
+        "status", "is-active", "is-enabled", "is-failed", "list-units",
+        "list-unit-files", "show", "cat", "get-default", "list-dependencies",
+    }),
+    "journalctl": None,
+    "docker": frozenset({"ps", "images", "logs", "inspect", "stats", "top",
+                         "version", "info", "port", "diff", "history"}),
+    "kubectl": frozenset({"get", "describe", "logs", "top", "explain",
+                          "api-resources", "version", "config"}),
+    "ollama": frozenset({"list", "show", "ps"}),
+    "npm": frozenset({"list", "ls", "view", "outdated", "audit"}),
+    "pip": frozenset({"list", "show", "freeze"}),
+    "pip3": frozenset({"list", "show", "freeze"}),
+    "conda": frozenset({"list", "info", "env"}),
+}
+# Write-redirect til en rigtig fil (ikke /dev/null eller fd-dup) → mutation.
+_WRITE_REDIRECT = re.compile(r">>?\s*(?!/dev/null|&)\S")
+_SEG_SPLIT = re.compile(r"&&|\|\||;|\|")
+
+
+def shell_command_is_mutating(command: str) -> bool:
+    """True hvis et shell-kald reelt ændrer state; False for read-only.
+
+    Konservativ: ukendt kommando → True (mutation). Skærer kun kendt read-only
+    støj (grep/cat/ls/git status/...) fra R2-gatens mutations-tælling."""
+    c = (command or "").strip()
+    if not c:
+        return False
+    if _WRITE_REDIRECT.search(c):
+        return True
+    for seg in _SEG_SPLIT.split(c):
+        toks = seg.split()
+        i = 0
+        # spring env-assignments + wrappere over (FOO=bar sudo nohup time exec)
+        while i < len(toks) and (
+            ("=" in toks[i] and not toks[i].startswith("-"))
+            or toks[i] in ("sudo", "nohup", "time", "exec", "env", "command", "stdbuf")
+        ):
+            i += 1
+        if i >= len(toks):
+            continue
+        cmd = toks[i].rsplit("/", 1)[-1]
+        sub = toks[i + 1] if i + 1 < len(toks) else ""
+        if cmd in _RO_SUBCMD:
+            allowed = _RO_SUBCMD[cmd]
+            if allowed is None or sub in allowed:
+                continue
+            return True
+        if cmd == "sed":
+            if "-i" in toks:
+                return True
+            continue
+        if cmd in _RO_CMDS:
+            continue
+        return True  # ukendt kommando → konservativt en mutation
+    return False
 
 # Tools that *change state* (file/repo/system/config/memory/comms) and should
 # ideally be paired with a verify before the model claims success.
@@ -149,6 +235,11 @@ def _scan(events: list[dict[str, Any]]) -> dict[str, Any]:
         elif tool in _LIGHT_VERIFY_TOOLS and status == "ok":
             light_verifies.append(item)
         elif tool in _MUTATION_TOOLS and status == "ok":
+            # Shell-kald: tæl kun hvis det reelt ændrer state. Emit-siden
+            # sætter "mutating" på payloaden; default True (gamle events +
+            # sikkerhed). Skærer read-only støj (grep/cat/git status/...).
+            if tool in _MUTATION_TOOLS_SHELL and not payload.get("mutating", True):
+                continue
             mutations.append(item)
 
     return {

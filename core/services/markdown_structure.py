@@ -46,6 +46,81 @@ _INLINE_BULLET_RE = re.compile(r"(?<=\S)[ \t]-[ \t](?=\S)")
 _MULTI_NL_RE = re.compile(r"\n{3,}")
 _ORDERED_RE = re.compile(r"\d+\.[ \t]")
 
+# En tabel-celle der KUN er bindestreger/koloner/whitespace = separator-celle
+# (rækken `| --- | --- |` der adskiller header fra data i en GFM-tabel).
+_SEP_CELL_RE = re.compile(r"^\s*:?-{1,}:?\s*$")
+
+
+def _split_cells(region: str) -> list[str]:
+    """Split en `|`-afgrænset region i celler; drop ydre tomme (før første /
+    efter sidste pipe)."""
+    parts = region.split("|")
+    if parts and parts[0].strip() == "":
+        parts = parts[1:]
+    if parts and parts[-1].strip() == "":
+        parts = parts[:-1]
+    return parts
+
+
+def _reflow_line_table(line: str) -> str | None:
+    """Hvis `line` indeholder en HEL tabel mast sammen på én linje
+    (`| h1 | h2 | --- | --- | a | b | c | d |`), genskab den som rigtige
+    rækker. Returnér None hvis linjen ikke er en crammed tabel."""
+    first = line.find("|")
+    last = line.rfind("|")
+    if first < 0 or last <= first:
+        return None
+    prefix, region, suffix = line[:first], line[first:last + 1], line[last + 1:]
+    cells = _split_cells(region)
+    if len(cells) < 4:
+        return None
+    # Find første run af >=2 sammenhængende separator-celler = kolonne-antal.
+    sep_start, sep_len = -1, 0
+    i = 0
+    while i < len(cells):
+        if _SEP_CELL_RE.match(cells[i]):
+            j = i
+            while j < len(cells) and _SEP_CELL_RE.match(cells[j]):
+                j += 1
+            if j - i >= 2:
+                sep_start, sep_len = i, j - i
+                break
+            i = j
+        else:
+            i += 1
+    # Kræv header-celler FØR separatoren på SAMME linje → det er en crammed
+    # tabel. En korrekt formateret tabel har separatoren alene på sin linje
+    # (sep_start == 0) og røres ikke.
+    if sep_start < 1:
+        return None
+    n = sep_len
+    header = [c.strip() for c in cells[:sep_start]]
+    data = [c.strip() for c in cells[sep_start + sep_len:]]
+    rows = ["| " + " | ".join(header) + " |", "| " + " | ".join(["---"] * n) + " |"]
+    for k in range(0, len(data), n):
+        rows.append("| " + " | ".join(data[k:k + n]) + " |")
+    table = "\n".join(rows)
+    out: list[str] = []
+    if prefix.strip():
+        out.append(prefix.rstrip())
+    out.append("")          # blanklinje før tabel (GFM kræver det)
+    out.append(table)
+    out.append("")          # blanklinje efter
+    if suffix.strip():
+        out.append(suffix.lstrip())
+    return "\n".join(out)
+
+
+def _reflow_crammed_tables(text: str) -> str:
+    """Genskab tabeller hvis hele rækken er mast sammen på én linje."""
+    if "|" not in text:
+        return text
+    out_lines: list[str] = []
+    for line in text.split("\n"):
+        reflowed = _reflow_line_table(line) if line.count("|") >= 4 else None
+        out_lines.append(reflowed if reflowed is not None else line)
+    return "\n".join(out_lines)
+
 
 def _is_bullet_line(line: str) -> bool:
     s = line.lstrip()
@@ -67,6 +142,9 @@ def _ensure_blank_before_lists(text: str) -> str:
 
 
 def _normalize_segment(text: str) -> str:
+    # 0) crammed tabeller (hel tabel på én linje) → rigtige rækker. Kør FØRST
+    #    så cellerne ligger på egne linjer før bullet/header-logikken.
+    text = _reflow_crammed_tables(text)
     # 1) inline `**Header:**` → egen blok
     text = _INLINE_HEADER_RE.sub(r"\n\n\1\n\n", text)
     # 1b) inline flerords-udsagn `**...sætning.**` → eget afsnit

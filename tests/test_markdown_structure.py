@@ -93,3 +93,25 @@ def test_inline_bold_without_punctuation_not_split():
 def test_empty_and_none_safe():
     assert normalize_markdown_structure("") == ""
     assert normalize_markdown_structure("   ") == "   "
+
+
+def test_crammed_table_reflows_into_rows():
+    # Hel tabel mast sammen på én linje → rigtige rækker, én pr. linje.
+    src = ("| Mulighed | Ulempe | Fordel | --- | --- | --- "
+           "| Bliv på DeepSeek | $30 stramt | kender kvalitet "
+           "| Test Ollama | ukendt latency | gratis |")
+    out = normalize_markdown_structure(src)
+    lines = [ln for ln in out.split("\n") if ln.strip().startswith("|")]
+    assert lines[0] == "| Mulighed | Ulempe | Fordel |"
+    assert lines[1] == "| --- | --- | --- |"
+    assert lines[2] == "| Bliv på DeepSeek | $30 stramt | kender kvalitet |"
+    assert lines[3] == "| Test Ollama | ukendt latency | gratis |"
+
+
+def test_proper_table_is_idempotent():
+    src = "| A | B |\n| --- | --- |\n| 1 | 2 |"
+    assert normalize_markdown_structure(src) == src
+
+
+def test_single_pipe_in_prose_untouched():
+    assert normalize_markdown_structure("Kør a | b i shell.") == "Kør a | b i shell."

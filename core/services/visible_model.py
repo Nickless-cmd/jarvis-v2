@@ -1429,6 +1429,7 @@ def _stream_ollama_model(
     )
 
     parts: list[str] = []
+    reasoning_parts: list[str] = []  # ollama `message.thinking` (thinking-modeller)
     terminal_response = ""
     prompt_eval_count = prompt_estimate
     eval_count = 0
@@ -1484,6 +1485,14 @@ def _stream_ollama_model(
                     parts.append(delta)
                     yield VisibleModelDelta(delta=delta)
 
+                # Thinking-modeller (deepseek-v4/GLM/...) via ollama lægger
+                # ræsonneringen i `message.thinking`. Fang den så den FØRSTE
+                # rundes reasoning_content kan replayes på followup-runder
+                # (ellers mister modellen kontinuitet → tool-spam → tabt svar).
+                think = str(msg.get("thinking") or "")
+                if think:
+                    reasoning_parts.append(think)
+
                 tool_calls = msg.get("tool_calls") or []
                 if tool_calls:
                     collected_tool_calls.extend(tool_calls)
@@ -1524,6 +1533,7 @@ def _stream_ollama_model(
             input_tokens=prompt_eval_count,
             output_tokens=eval_count or _estimate_tokens(text),
             cost_usd=0.0,
+            reasoning_content="".join(reasoning_parts),
         )
     )
 

@@ -83,7 +83,9 @@ class FollowupFailed:
     summary: str
 
 
-FollowupEvent = FollowupDelta | FollowupToolCalls | FollowupDone | FollowupFailed
+FollowupEvent = (
+    FollowupDelta | FollowupReasoningDelta | FollowupToolCalls | FollowupDone | FollowupFailed
+)
 
 
 # ── Tool-result carrier ──────────────────────────────────────────────────────
@@ -214,6 +216,7 @@ class OllamaFollowupAdapter:
                     text=exch.text,
                     tool_calls=list(exch.tool_calls),
                     results=results,
+                    reasoning_content=exch.reasoning_content,
                 )
             )
         return compacted
@@ -231,13 +234,18 @@ class OllamaFollowupAdapter:
         """
         messages: list[dict] = []
         for exch in self._compact_exchanges(exchanges):
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": exch.text,
-                    "tool_calls": self._normalize_tool_calls(list(exch.tool_calls)),
-                }
-            )
+            _asst: dict[str, object] = {
+                "role": "assistant",
+                "content": exch.text,
+                "tool_calls": self._normalize_tool_calls(list(exch.tool_calls)),
+            }
+            # Replay thinking-modellens ræsonnering tilbage så deepseek/GLM/...
+            # beholder sin tankerække mellem tool-runder (ellers re-tænker den
+            # forfra hver runde → tool-spam → tabt svar). Ollama accepterer
+            # `thinking` i assistant-beskeder for thinking-modeller.
+            if exch.reasoning_content:
+                _asst["thinking"] = exch.reasoning_content
+            messages.append(_asst)
             for tr in exch.results:
                 tool_msg: dict[str, object] = {
                     "role": "tool",
@@ -301,6 +309,7 @@ class OllamaFollowupAdapter:
         )
 
         parts: list[str] = []
+        reasoning_parts: list[str] = []  # ollama `message.thinking` for thinking-models
         collected_tool_calls: list[dict] = []
         last_exc: BaseException | None = None
 
@@ -377,6 +386,16 @@ class OllamaFollowupAdapter:
                         if delta:
                             parts.append(delta)
                             yield FollowupDelta(delta=delta)
+                        # 2026-06-13: deepseek-v4/GLM/minimax thinking-modeller via
+                        # ollama lægger ræsonneringen i `message.thinking` (separat
+                        # felt), content er TOM under tool-runder. Uden at læse det
+                        # var hver runde text_chars=0, tankerækken gik tabt, og
+                        # modellen mistede kontinuitet mellem runder → tool-spam →
+                        # tabt endeligt svar. Fang + surface + replay (Bjørn fandt det).
+                        think = str(msg.get("thinking") or "")
+                        if think:
+                            reasoning_parts.append(think)
+                            yield FollowupReasoningDelta(delta=think)
                         tc = msg.get("tool_calls") or []
                         if tc:
                             collected_tool_calls.extend(tc)
@@ -436,7 +455,10 @@ class OllamaFollowupAdapter:
 
         if collected_tool_calls:
             yield FollowupToolCalls(tool_calls=collected_tool_calls)
-        yield FollowupDone(text="".join(parts))
+        yield FollowupDone(
+            text="".join(parts),
+            reasoning_content="".join(reasoning_parts),
+        )
 
 
 # ── OpenAI-compatible adapter (GitHub Copilot, and room for openai proper) ──

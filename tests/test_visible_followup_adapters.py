@@ -570,3 +570,30 @@ def test_openai_compat_adapter_caps_tools_to_128_for_copilot(
     body = captured["body"]
     assert isinstance(body, dict)
     assert len(body.get("tools") or []) == 128
+
+
+def test_ollama_serialize_replays_thinking_when_present():
+    """reasoning_content fra en thinking-model replayes som `thinking` i
+    assistant-beskeden, så modellen beholder kontinuitet mellem tool-runder."""
+    adapter = vf.OllamaFollowupAdapter()
+    exch = vf.ToolExchange(
+        text="",
+        tool_calls=[{"function": {"name": "get_time", "arguments": {}}}],
+        results=[vf.ToolResult(tool_call_id="", tool_name="get_time", content="14:30")],
+        reasoning_content="Brugeren vil vide klokken; jeg kalder get_time.",
+    )
+    msgs = adapter._serialize_exchanges([exch])
+    asst = next(m for m in msgs if m["role"] == "assistant")
+    assert asst["thinking"] == "Brugeren vil vide klokken; jeg kalder get_time."
+
+
+def test_ollama_serialize_omits_thinking_when_absent():
+    """Uden reasoning_content sættes intet `thinking`-felt (non-thinking model)."""
+    adapter = vf.OllamaFollowupAdapter()
+    exch = vf.ToolExchange(
+        text="ok",
+        tool_calls=[{"function": {"name": "x", "arguments": {}}}],
+        results=[vf.ToolResult(tool_call_id="", tool_name="x", content="y")],
+    )
+    asst = next(m for m in adapter._serialize_exchanges([exch]) if m["role"] == "assistant")
+    assert "thinking" not in asst

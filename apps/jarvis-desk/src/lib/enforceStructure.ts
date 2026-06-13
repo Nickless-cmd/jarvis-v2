@@ -131,6 +131,13 @@ function inlineStatementToParagraph(text: string): string {
   return text.replace(INLINE_STATEMENT, '\n\n$1\n\n')
 }
 
+/** Inline ATX-header `... : ## Header` midt i en linje → headeren på egen blok.
+ *  2-6 hashes (undgår `C#`, `issue #5`) + content før + content efter. */
+const INLINE_ATX = /(?<=\S)[ \t]+(#{2,6}[ \t]+)(?=\S)/g
+function inlineAtxToBlock(text: string): string {
+  return text.replace(INLINE_ATX, '\n\n$1')
+}
+
 function isBulletLine(line: string): boolean {
   const s = line.trimStart()
   return s.startsWith('- ') || /^\d+\.[ \t]/.test(s)
@@ -222,6 +229,7 @@ export function enforceStructure(md: string): string {
       // Inline → blok FØRST, så de linje-baserede regler ser rigtige linjer.
       t = inlineHeaderToBlock(t)
       t = inlineStatementToParagraph(t)
+      t = inlineAtxToBlock(t)
       t = inlineBulletsToList(t)
       t = boldOnlyLineToHeader(t)
       t = boldPrefixInlineToHeader(t)

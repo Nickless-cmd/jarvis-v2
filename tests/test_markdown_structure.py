@@ -115,3 +115,17 @@ def test_proper_table_is_idempotent():
 
 def test_single_pipe_in_prose_untouched():
     assert normalize_markdown_structure("Kør a | b i shell.") == "Kør a | b i shell."
+
+
+def test_inline_atx_header_broken_out():
+    src = "**Dagens commits** 💙: ### Hovedparten her"
+    out = normalize_markdown_structure(src)
+    assert "\n\n### Hovedparten her" in out
+
+
+def test_csharp_not_broken():
+    assert normalize_markdown_structure("Jeg koder i C# og det går") == "Jeg koder i C# og det går"
+
+
+def test_issue_hash_not_broken():
+    assert normalize_markdown_structure("Se issue #5 for det") == "Se issue #5 for det"

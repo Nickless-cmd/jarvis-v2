@@ -65,3 +65,16 @@ describe('enforceStructure — crammed tabel-reflow', () => {
     expect(enforceStructure('Kør a | b i shell.')).toBe('Kør a | b i shell.')
   })
 })
+
+describe('enforceStructure — inline ATX-header', () => {
+  it('bryder inline ### efter kolon ud på egen blok', () => {
+    const out = enforceStructure('**Dagens commits** 💙: ### Hovedparten her')
+    expect(out).toContain('\n\n### Hovedparten her')
+  })
+  it('rører ikke C#', () => {
+    expect(enforceStructure('Jeg koder i C# og det går')).toBe('Jeg koder i C# og det går')
+  })
+  it('rører ikke issue #5', () => {
+    expect(enforceStructure('Se issue #5 for det')).toBe('Se issue #5 for det')
+  })
+})

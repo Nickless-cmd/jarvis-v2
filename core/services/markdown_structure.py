@@ -43,6 +43,12 @@ _INLINE_STATEMENT_RE = re.compile(
 # Lookbehind \S sikrer at line-start-bullets (`\n- `) ikke matches igen.
 _INLINE_BULLET_RE = re.compile(r"(?<=\S)[ \t]-[ \t](?=\S)")
 
+# Inline ATX-header midt i en linje: `... tekst: ## Header` — modellen sætter
+# tit en `##`/`###`-header efter et kolon i stedet for på egen linje, så
+# CommonMark ser den som literal `##`-tekst. Kræver 2-6 hashes (undgår `C#`,
+# `issue #5`) + content før + content efter → bryd den ud på egen blok.
+_INLINE_ATX_RE = re.compile(r"(?<=\S)[ \t]+(#{2,6}[ \t]+)(?=\S)")
+
 _MULTI_NL_RE = re.compile(r"\n{3,}")
 _ORDERED_RE = re.compile(r"\d+\.[ \t]")
 
@@ -149,6 +155,8 @@ def _normalize_segment(text: str) -> str:
     text = _INLINE_HEADER_RE.sub(r"\n\n\1\n\n", text)
     # 1b) inline flerords-udsagn `**...sætning.**` → eget afsnit
     text = _INLINE_STATEMENT_RE.sub(r"\n\n\1\n\n", text)
+    # 1c) inline ATX-header `... : ## Header` → headeren på egen blok
+    text = _INLINE_ATX_RE.sub(r"\n\n\1", text)
     # 2) inline ` - ` bullets — kun når det er en ægte liste (2+ markører)
     if len(_INLINE_BULLET_RE.findall(text)) >= 2:
         text = _INLINE_BULLET_RE.sub("\n- ", text)

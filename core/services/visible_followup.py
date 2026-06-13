@@ -407,16 +407,26 @@ class OllamaFollowupAdapter:
                 break
             except urllib_error.HTTPError as he:
                 last_exc = he
-                retryable = int(getattr(he, "code", 0) or 0) in {502, 503, 504}
+                code = int(getattr(he, "code", 0) or 0)
+                # 429 = rate-limit (Ollama cloud efter mange hurtige tool-runder).
+                # Tidligere ikke-retryable → runnet aborterede midt i loopet og
+                # tabte det endelige svar. Nu: backoff + retry, respektér
+                # Retry-After-headeren hvis sat (2026-06-13, Bjørn så 429-cutoff).
+                retryable = code in {429, 502, 503, 504}
                 if retryable and attempt < (attempts - 1):
+                    if code == 429:
+                        try:
+                            _ra = float(he.headers.get("Retry-After") or 0)
+                        except (ValueError, TypeError, AttributeError):
+                            _ra = 0.0
+                        backoff = max(_ra, 2.0 * (2**attempt))  # mere generøs for rate-limit
+                    else:
+                        backoff = 0.6 * (2**attempt)
                     _log.warning(
-                        "ollama followup round %d retrying after HTTP %s (attempt %d/%d)",
-                        round_index,
-                        getattr(he, "code", "?"),
-                        attempt + 1,
-                        attempts,
+                        "ollama followup round %d retrying after HTTP %s in %.1fs (attempt %d/%d)",
+                        round_index, code, backoff, attempt + 1, attempts,
                     )
-                    time.sleep(0.6 * (2**attempt))
+                    time.sleep(backoff)
                     continue
                 break
             except urllib_error.URLError as ue:

@@ -2515,6 +2515,13 @@ async def _stream_visible_run(
 
                 total_input_tokens = result.input_tokens * 2
                 total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)
+                # 2026-06-13: denne agentiske completion-gren satte input/output
+                # men IKKE cache-vars — så _cache_tokens-aflæsningen nedenfor
+                # (linje ~2581) kastede UnboundLocalError og crashede HELE visible-
+                # run'et midt i (fremstod som "Jarvis stopper / lyver"). Init dem
+                # her fra result, ligesom hovedstien gør.
+                total_cache_hit_tokens = getattr(result, "cache_hit_tokens", 0)
+                total_cache_miss_tokens = getattr(result, "cache_miss_tokens", 0)
                 visible_output_text = followup_text
 
                 set_last_visible_run_outcome(

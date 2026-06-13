@@ -393,6 +393,8 @@ def start_visible_run(
     thinking_mode: str = "think",
     force_user_id: str | None = None,
     tool_scope: str = "",
+    provider_override: str = "",
+    model_override: str = "",
 ) -> AsyncIterator[str]:
     """Begin a visible run.
 
@@ -559,11 +561,15 @@ def start_visible_run(
         pass
 
     settings = load_settings()
+    # Per-request provider/model-override (rolle-bevidst routing, 2026-06-13):
+    # member→ollama, owner→valg. Route-handleren har allerede rolle-tjekket og
+    # clampet member til ollama+flash/pro:cloud, så her bruger vi bare override'en
+    # hvis sat, ellers global config (daemons/heartbeat påvirkes ikke).
     run = VisibleRun(
         run_id=f"visible-{uuid4().hex}",
         lane=settings.primary_model_lane,
-        provider=settings.visible_model_provider,
-        model=settings.visible_model_name,
+        provider=(provider_override.strip() or settings.visible_model_provider),
+        model=(model_override.strip() or settings.visible_model_name),
         user_message=(message or "").strip() or "Tom synlig forespoergsel",
         session_id=normalized_session_id,
         trust_all=(approval_mode == "trust"),

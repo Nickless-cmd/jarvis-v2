@@ -211,6 +211,74 @@ class ChatStreamRequest(BaseModel):
     # Code-mode workspace (hvor Jarvis' fil-tools arbejder).
     workspace_kind: str = ""   # "container" | "workstation" | ""
     workspace_root: str = ""
+    # Rolle-bevidst model/provider-valg (2026-06-13). provider_choice er KUN
+    # for owner ("deepseek"|"ollama"); members tvinges server-side til ollama.
+    # model = konkret model-id (owner kan vælge enhver ollama-model); members
+    # clampes til deepseek-v4-flash/pro:cloud ud fra om "pro" indgår.
+    provider_choice: str = ""
+    model: str = ""
+
+
+def _resolve_visible_target(uid: str | None, provider_choice: str, model: str) -> tuple[str, str]:
+    """Rolle-bevidst (provider, model)-override for en visible-run.
+
+    - member → ALTID ollama + deepseek-v4-flash:cloud (eller -pro:cloud hvis
+      model'en indeholder "pro"). provider_choice ignoreres (kan ikke eskalere).
+    - owner  → honorér provider_choice ("deepseek"|"ollama") + valgfri model.
+      Tom/ukendt provider_choice → ("","") = fald tilbage til global config.
+
+    Returnerer ("","") når der ikke skal overrides (global config bruges).
+    Ingen uid = lokal/owner-konvention (matcher cowork _role_owner).
+    """
+    role = "owner"
+    if uid:
+        try:
+            from core.identity.users import find_user_by_discord_id
+            u = find_user_by_discord_id(str(uid))
+            role = (getattr(u, "role", "") or "member") if u else "member"
+        except Exception:
+            role = "member"
+    if role != "owner":
+        is_pro = "pro" in (model or "").lower()
+        return ("ollama", "deepseek-v4-pro:cloud" if is_pro else "deepseek-v4-flash:cloud")
+    prov = (provider_choice or "").strip().lower()
+    if prov == "ollama":
+        return ("ollama", (model or "").strip() or "deepseek-v4-flash:cloud")
+    if prov == "deepseek":
+        from core.runtime.settings import load_settings
+        return ("deepseek", (model or "").strip() or load_settings().visible_model_name)
+    return ("", "")
+
+
+def _list_ollama_models_sync() -> list[str]:
+    import json as _json
+    import urllib.request as _ur
+    with _ur.urlopen("http://127.0.0.1:11434/api/tags", timeout=5) as r:
+        data = _json.loads(r.read().decode("utf-8"))
+    return [m.get("name") for m in data.get("models", []) if m.get("name")]
+
+
+@router.get("/ollama-models")
+async def chat_ollama_models() -> dict:
+    """Tilgængelige ollama-modeller på containeren (OWNER-only).
+
+    Bruges af composer'ens dynamiske model-vælger så owner kan teste nye
+    modeller efterhånden som de pulles. Members ser den aldrig (UI-gated +
+    server-gated). Blokerende urlopen → asyncio.to_thread (--workers 1).
+    """
+    import asyncio
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or None
+    if uid:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(str(uid))
+        if not u or getattr(u, "role", "") != "owner":
+            raise HTTPException(status_code=403, detail="owner only")
+    try:
+        models = await asyncio.to_thread(_list_ollama_models_sync)
+        return {"models": models}
+    except Exception as exc:
+        return {"models": [], "error": str(exc)[:200]}
 
 
 class ChatSessionCreateRequest(BaseModel):

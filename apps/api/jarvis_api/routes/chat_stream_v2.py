@@ -93,6 +93,15 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
             except Exception:
                 pass
 
+    # Rolle-bevidst provider/model-routing (2026-06-13): member→ollama,
+    # owner→valg. Helper'en clamper member server-side (kan ikke eskalere).
+    from apps.api.jarvis_api.routes.chat import _resolve_visible_target
+    _prov_override, _model_override = _resolve_visible_target(
+        _uid, request.provider_choice, request.model
+    )
+    _eff_provider = _prov_override or settings.visible_model_provider
+    _eff_model = _model_override or settings.visible_model_name
+
     legacy_iter = start_visible_run(
         message=effective_message,
         session_id=session_id,
@@ -100,13 +109,15 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         thinking_mode=request.thinking_mode,
         force_user_id=_uid,
         tool_scope=_tool_scope,
+        provider_override=_prov_override,
+        model_override=_model_override,
     )
 
     v2_stream = translate_to_v2(
         legacy_iter,
         run_id="",  # plukkes fra første legacy event
-        model=settings.visible_model_name,
-        provider=settings.visible_model_provider,
+        model=_eff_model,
+        provider=_eff_provider,
         lane=settings.primary_model_lane,
         session_id=session_id,
         ping_interval_s=5.0,

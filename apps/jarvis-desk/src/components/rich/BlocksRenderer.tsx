@@ -47,21 +47,20 @@ function BlockView({
     case 'image':
       return <ImageBlock src={block.src} alt={block.alt} />
     case 'thinking': {
-      // "Live" = han tænker lige nu: denne thinking-blok er den sidste OG vi
-      // streamer stadig. Så folder feltet automatisk ud og siger "tænker…".
-      // Når svaret begynder (thinking er ikke længere sidste blok), folder det
-      // sig sammen til "tænkte…". Brugeren kan altid override manuelt.
+      // "Live" = han tænker lige nu (sidste blok + streamer stadig) → folder
+      // automatisk ud, siger "tænker…".
       const live = streaming && isLast
-      // Live-tænkning vises mens han tænker. De gemte/forbi "tænkte…"-blokke
-      // mellem tool-kald er redundante nu (live-tænkning dækker dem) → skjul dem.
-      if (!live) return null
-      const open = userToggled !== null ? userToggled : true
+      // 2026-06-13: forbi-tænkning skjules IKKE længere. Før returnerede vi null
+      // for ikke-live blokke, så hver rundes tænkning forsvandt når næste runde
+      // kom — Bjørn nåede ikke at læse dem. Nu bliver de som sammenfoldede
+      // "tænkte…"-chips man kan klikke op og læse bagefter.
+      const open = userToggled !== null ? userToggled : live
       return (
-        <div className="thinking live">
+        <div className={`thinking ${live ? 'live' : 'past'}`}>
           <button type="button" onClick={() => setUserToggled(!open)}>
-            <LiveVerb text="tænker" />
+            <LiveVerb text={live ? 'tænker' : 'tænkte'} />
           </button>
-          {open && <MarkdownRenderer text={block.thinking} streaming />}
+          {open && <MarkdownRenderer text={block.thinking} streaming={live} />}
         </div>
       )
     }

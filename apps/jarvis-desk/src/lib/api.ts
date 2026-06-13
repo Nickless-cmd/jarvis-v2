@@ -403,6 +403,19 @@ export async function getOllamaModels(config: ApiConfig): Promise<string[]> {
   }
 }
 
+export interface VisibleProvider { id: string; models: string[] }
+
+/** Alle visible-klare providers + deres modeller (owner). Composeren bruger den
+ *  til den universelle provider/model-vælger. Tom liste hvis ikke owner/fejl. */
+export async function getVisibleProviders(config: ApiConfig): Promise<VisibleProvider[]> {
+  try {
+    const raw = await apiFetch<{ providers?: VisibleProvider[] }>(config, '/chat/visible-providers')
+    return Array.isArray(raw.providers) ? raw.providers : []
+  } catch {
+    return []
+  }
+}
+
 /** Mål forbindelses-latency mod serveren (ping). Returnerer ms eller null hvis nede. */
 export async function pingServer(config: ApiConfig): Promise<number | null> {
   const url = new URL('/openapi.json', config.apiBaseUrl).toString()

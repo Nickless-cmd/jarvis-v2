@@ -85,30 +85,29 @@ export function Composer({
   const [dragOver, setDragOver] = useState(false)
   // Rolle-bevidst model/provider-valg. Owner: provChoice + konkret model.
   // Member: kun tier ('standard'|'pro') → backend mapper til ollama flash/pro.
-  const [provChoice, setProvChoice] = useState<'deepseek' | 'ollama'>(() => {
-    try {
-      return localStorage.getItem(PROV_KEY) === 'ollama' ? 'ollama' : 'deepseek'
-    } catch { return 'deepseek' }
+  const [provChoice, setProvChoice] = useState<string>(() => {
+    try { return localStorage.getItem(PROV_KEY) || 'deepseek' } catch { return 'deepseek' }
   })
   const [selModel, setSelModel] = useState(() => {  // konkret model-id (owner) / tier (member)
     try { return localStorage.getItem(MODEL_KEY) || '' } catch { return '' }
   })
-  const [ollamaModels, setOllamaModels] = useState<string[]>([])
+  // Alle visible-klare providers + modeller (owner). Hentes fra /chat/visible-providers.
+  const [providers, setProviders] = useState<Array<{ id: string; models: string[] }>>([])
   const [modelOpen, setModelOpen] = useState(false)
   const [provOpen, setProvOpen] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const dictation = useDictation((t) => setText((cur) => (cur ? cur + ' ' : '') + t), config)
 
-  // Owner + Ollama valgt → hent containerens model-liste (engangs/ved skift).
+  // Owner → hent hele paletten af visible-klare providers (engangs).
   useEffect(() => {
-    if (!isOwner || provChoice !== 'ollama' || !config || ollamaModels.length) return
+    if (!isOwner || !config || providers.length) return
     let alive = true
-    import('../../lib/api').then(({ getOllamaModels }) =>
-      getOllamaModels(config).then((m) => { if (alive) setOllamaModels(m) }),
+    import('../../lib/api').then(({ getVisibleProviders }) =>
+      getVisibleProviders(config).then((p) => { if (alive) setProviders(p) }),
     )
     return () => { alive = false }
-  }, [isOwner, provChoice, config, ollamaModels.length])
+  }, [isOwner, config, providers.length])
 
   // Persistér permission-valget så "fuld adgang" overlever app-genstart.
   useEffect(() => {
@@ -123,18 +122,29 @@ export function Composer({
     try { localStorage.setItem(MODEL_KEY, selModel) } catch { /* ignore */ }
   }, [selModel])
 
-  // Member: standard/pro. Owner: konkret model afhænger af provider.
+  // Member: standard/pro. Owner: konkret model afhænger af valgt provider.
   const memberTier: 'standard' | 'pro' = selModel === 'pro' ? 'pro' : 'standard'
-  const deepseekModels: Array<{ id: string; label: string }> = [
+  // Pæne provider-labels; ukendte vises bare med deres id.
+  const PROVIDER_LABELS: Record<string, string> = {
+    deepseek: 'Deepseek', ollama: 'Ollama', 'github-copilot': 'Copilot', groq: 'Groq',
+    mistral: 'Mistral', sambanova: 'SambaNova', 'nvidia-nim': 'NVIDIA',
+    openrouter: 'OpenRouter', opencode: 'OpenCode', 'openai-codex': 'Codex',
+  }
+  const provLabel = (id: string) => PROVIDER_LABELS[id] || id
+  // Owner-provider-liste: fetchede providers, eller deepseek/ollama indtil de loader.
+  const ownerProviders: string[] = providers.length
+    ? providers.map((p) => p.id)
+    : ['deepseek', 'ollama']
+  const _selProv = providers.find((p) => p.id === provChoice)
+  const _deepseekFallback = [
     { id: 'deepseek-v4-flash', label: 'Standard' },
     { id: 'deepseek-v4-pro', label: 'Pro' },
   ]
-  const ownerModelOptions = provChoice === 'ollama'
-    ? ollamaModels.map((m) => ({ id: m, label: m.replace(':cloud', '') }))
-    : deepseekModels
+  const ownerModelOptions: Array<{ id: string; label: string }> = _selProv
+    ? _selProv.models.map((m) => ({ id: m, label: m.replace(':cloud', '') }))
+    : (provChoice === 'deepseek' ? _deepseekFallback : [])
   const currentModelLabel = isOwner
-    ? (ownerModelOptions.find((o) => o.id === selModel)?.label
-       || (provChoice === 'ollama' ? 'Vælg model' : 'Standard'))
+    ? (ownerModelOptions.find((o) => o.id === selModel)?.label || 'Vælg model')
     : (memberTier === 'pro' ? 'Pro' : 'Standard')
 
   // Auto-resize: composer vokser med teksten (op til CSS max-height, derefter
@@ -329,19 +339,21 @@ export function Composer({
         </div>
 
         <div className="composer-right">
-          {/* Provider-vælger — KUN owner. Member ser den aldrig → mærker ikke skiftet. */}
+          {/* Provider-vælger — KUN owner. Hele paletten af visible-klare providers. */}
           {isOwner && (
             <div className="composer-popover-anchor" onClick={stop}>
               <button type="button" className="model-pill"
                 onClick={() => { setProvOpen((o) => !o); setModelOpen(false) }}>
-                <span className="dot" />{provChoice === 'ollama' ? 'Ollama' : 'Deepseek'}<span className="caret">▾</span>
+                <span className="dot" />{provLabel(provChoice)}<span className="caret">▾</span>
               </button>
               {provOpen && (
                 <div className="composer-menu model-menu">
-                  <button type="button" className={provChoice === 'deepseek' ? 'active' : ''}
-                    onClick={() => { setProvChoice('deepseek'); setSelModel(''); setProvOpen(false) }}>Deepseek API</button>
-                  <button type="button" className={provChoice === 'ollama' ? 'active' : ''}
-                    onClick={() => { setProvChoice('ollama'); setSelModel(''); setProvOpen(false) }}>Ollama (container)</button>
+                  {ownerProviders.map((pid) => (
+                    <button key={pid} type="button" className={provChoice === pid ? 'active' : ''}
+                      onClick={() => { setProvChoice(pid); setSelModel(''); setProvOpen(false) }}>
+                      {provLabel(pid)}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -363,7 +375,7 @@ export function Composer({
                       <button key={tier} type="button" className={memberTier === tier ? 'active' : ''}
                         onClick={() => { setSelModel(tier); setModelOpen(false) }}>{tier === 'pro' ? 'Pro' : 'Standard'}</button>
                     ))}
-                {isOwner && provChoice === 'ollama' && ownerModelOptions.length === 0 && (
+                {isOwner && ownerModelOptions.length === 0 && (
                   <button type="button" disabled>Henter modeller…</button>
                 )}
               </div>

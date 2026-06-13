@@ -8,9 +8,11 @@ describe('MessageRow', () => {
     render(<MessageRow role="assistant" blocks={[{ type: 'text', text: '**hej**' }]} density="compact" streaming={false} />)
     expect(screen.getByText('hej').tagName).toBe('STRONG')
   })
-  it('forbi tænkning skjules; live tænkning vises', () => {
+  it('forbi tænkning vises som sammenfoldet chip; live tænkning auto-foldes ud', () => {
+    // 2026-06-13: forbi-tænkning skjules ikke længere (Bjørn nåede ikke at læse
+    // dem før de forsvandt) — den vises som en "tænkte…"-chip man kan klikke op.
     const { rerender } = render(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'intern' }]} density="compact" streaming={false} />)
-    expect(screen.queryByText(/tænk/i)).toBeNull()
+    expect(screen.getByText(/tænkte/i)).toBeInTheDocument()  // forbi → chip, ikke skjult
     rerender(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'intern' }]} density="compact" streaming />)
     expect(screen.getByText(/tænker/i)).toBeInTheDocument()
     expect(screen.getByText('intern')).toBeInTheDocument()

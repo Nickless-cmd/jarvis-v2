@@ -939,6 +939,10 @@
 }
 .thinking.live > button { color: var(--warn-fg); animation: ctx-pulse 1.4s ease-in-out infinite; }
 .thinking.live :is(p, li) { color: var(--fg-3); font-size: 13px; }
+/* Forbi-tænkning: dæmpet, sammenfoldet chip man kan klikke op og læse. */
+.thinking.past > button { color: var(--fg-3); font-size: 12px; opacity: 0.8; }
+.thinking.past > button:hover { opacity: 1; }
+.thinking.past :is(p, li) { color: var(--fg-3); font-size: 12.5px; }
 
 /* Image */
 .image-blocked { color: var(--fg-3); font-size: 12.5px; font-style: italic; }

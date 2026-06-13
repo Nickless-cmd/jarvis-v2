@@ -30,6 +30,37 @@ logger = logging.getLogger(__name__)
 _dispatch_lock = threading.Lock()
 
 
+def pick_wakeup_run_target(
+    *,
+    channel: str,
+    record_session: str,
+    app_resolver,
+    owner_resolver,
+    is_external,
+) -> str | None:
+    """Beslut hvilken session et wakeup-run skal lande i — med Discord-guard.
+
+    App/operator-wakeups (default, channel != "discord") må ALDRIG ende i en
+    ekstern kanal (Discord/Telegram), heller ikke selv om en eksplicit
+    session_id peger derhen, eller owner-resolveren ville vælge den. Kun
+    eksplicit channel=="discord" tillader ekstern levering (Bjørn 2026-06-13).
+
+    Ren funktion (injicerbare resolvers) → kan testes uden DB.
+    Returnerer en session-id, eller None → kalderen opretter en frisk app-session.
+    """
+    ch = (channel or "app").strip().lower()
+    if ch == "discord":
+        return (record_session or "").strip() or owner_resolver() or None
+    # app/webchat: guard mod eksterne kanaler
+    cand = (record_session or "").strip()
+    if cand and is_external(cand):
+        logger.info("wakeup guard: eksplicit session %s er ekstern kanal — afvist for app-wakeup", cand)
+        cand = ""
+    if not cand:
+        cand = app_resolver() or ""  # springer allerede eksterne over
+    return cand or None
+
+
 def dispatch_due_wakeups() -> dict[str, Any]:
     """Find newly-fired wakeups, push them out via webchat + heartbeat tick."""
     from core.services.self_wakeup import due_wakeups, _load, _save
@@ -53,7 +84,9 @@ def dispatch_due_wakeups() -> dict[str, Any]:
             reason = str(record.get("reason", ""))
 
             # A: route through outbound_nudges
-            wakeup_channel = record.get("channel", "webchat")
+            # Default "app" (jarvis-desk) — wakeups må ALDRIG default'e til
+            # Discord. "webchat" behandles som app (samme in-app destination).
+            wakeup_channel = str(record.get("channel") or "app").strip().lower()
             wakeup_session = record.get("session_id", "")
             nudge_message = (
                 f"Self-wakeup fyrede ({reason or 'no reason'}): {prompt} "
@@ -95,8 +128,21 @@ def dispatch_due_wakeups() -> dict[str, Any]:
             if prompt.strip():
                 try:
                     from core.services.visible_runs import start_autonomous_run
-                    from core.identity.owner_resolver import resolve_owner_target_session
-                    target_session = resolve_owner_target_session()
+                    from core.identity.owner_resolver import (
+                        resolve_owner_app_session,
+                        resolve_owner_target_session,
+                        session_is_external_channel,
+                    )
+                    # GUARD: app/operator-wakeups må ALDRIG re-engagere i en
+                    # ekstern kanal (Discord/Telegram). Kun eksplicit
+                    # channel=="discord" tillader det.
+                    target_session = pick_wakeup_run_target(
+                        channel=wakeup_channel,
+                        record_session=str(wakeup_session or ""),
+                        app_resolver=resolve_owner_app_session,
+                        owner_resolver=resolve_owner_target_session,
+                        is_external=session_is_external_channel,
+                    )
                     self_directive = (
                         f"[SELF-WAKEUP FIRED — wakeup_id={wid}]\n"
                         f"Du bad dig selv: {prompt}\n"

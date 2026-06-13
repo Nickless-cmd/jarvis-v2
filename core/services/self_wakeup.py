@@ -91,6 +91,10 @@ def schedule_self_wakeup(
         "status": "pending",
         "fired_at": None,
         "consumed_at": None,
+        # Leverings-destination. Default "app" (jarvis-desk) — wakeups må ALDRIG
+        # default'e til Discord (Bjørn 2026-06-13). Dispatcheren guarder mod det.
+        "channel": (channel or "app").strip().lower(),
+        "session_id": (session_id or "").strip() or None,
     }
     records.append(record)
     _save(records)

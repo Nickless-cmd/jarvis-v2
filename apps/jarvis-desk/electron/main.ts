@@ -199,6 +199,41 @@ function createTray(): void {
   }
 }
 
+/** Markér + kopiér + højreklik i chat (Bjørn 2026-06-13: kunne markere men
+ *  ikke kopiere). To rod-årsager, begge her:
+ *  1) Uden en application-menu findes standard-acceleratorerne (Ctrl+C/V/X/A)
+ *     ikke i Electron → Ctrl+C gjorde intet. En skjult Edit-menu (autoHideMenuBar)
+ *     registrerer dem globalt uden at fylde i UI'et.
+ *  2) Ingen højreklik-context-menu var wired. Vi viser Kopiér/Markér alt på
+ *     markeret tekst, og Klip/Kopiér/Indsæt/Markér alt i redigerbare felter. */
+function setupEditMenuAndContextMenu(win: BrowserWindow): void {
+  // 1) Edit-roller → acceleratorer (skjult menubar, men funktionel).
+  Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'editMenu' }]))
+
+  // 2) Højreklik-context-menu.
+  win.webContents.on('context-menu', (_e, params) => {
+    const items: Electron.MenuItemConstructorOptions[] = []
+    if (params.isEditable) {
+      items.push(
+        { label: 'Klip', role: 'cut', enabled: params.editFlags.canCut },
+        { label: 'Kopiér', role: 'copy', enabled: params.editFlags.canCopy },
+        { label: 'Indsæt', role: 'paste', enabled: params.editFlags.canPaste },
+        { type: 'separator' },
+        { label: 'Markér alt', role: 'selectAll' },
+      )
+    } else if (params.selectionText && params.selectionText.trim()) {
+      items.push(
+        { label: 'Kopiér', role: 'copy' },
+        { type: 'separator' },
+        { label: 'Markér alt', role: 'selectAll' },
+      )
+    } else {
+      items.push({ label: 'Markér alt', role: 'selectAll' })
+    }
+    Menu.buildFromTemplate(items).popup({ window: win })
+  })
+}
+
 function createMainWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -236,6 +271,8 @@ function createMainWindow(): void {
     }
     return { action: 'deny' }
   })
+
+  setupEditMenuAndContextMenu(mainWindow)
 
   // Når brugeren klikker × → skjul i tray i stedet for at afslutte.
   // Kun hvis tray er oppe — ellers er vi den eneste UI og må lukke for at quit'e.

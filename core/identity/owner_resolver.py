@@ -161,3 +161,67 @@ def resolve_owner_target_session() -> str:
             return sid
 
     return ""
+
+
+def session_is_external_channel(session_id: str | None) -> bool:
+    """True hvis sessionen er en EKSTERN kanal (Discord/Telegram) ud fra titlen.
+
+    Bruges som guard så app/operator-wakeups aldrig kan re-engagere i en
+    Discord-session (Bjørn 2026-06-13: wakeup landede på Discord i stedet for
+    jarvis-desk). Fail-safe: ved tvivl returneres False (behandl som app), så
+    vi ikke ved en fejl smider en legitim app-session væk.
+    """
+    sid = (session_id or "").strip()
+    if not sid:
+        return False
+    try:
+        from core.services.chat_sessions import get_chat_session, parse_channel_from_session_title
+        full = get_chat_session(sid)
+        title = (full or {}).get("title")
+        return parse_channel_from_session_title(title)[0] in ("discord", "telegram")
+    except Exception:
+        return False
+
+
+def resolve_owner_app_session() -> str:
+    """Som resolve_owner_target_session, men returnerer KUN en app/webchat-
+    session — aldrig Discord/Telegram. Til wakeups der SKAL lande i jarvis-desk
+    (operator_wakeup), så en autonom re-engagement ikke kan lække til Discord.
+
+    Returnerer "" hvis ingen app-session findes → kalderen opretter en frisk
+    (stadig in-app). Springer pinned over hvis den er en ekstern kanal.
+    """
+    try:
+        from core.services.chat_sessions import get_chat_session, list_chat_sessions
+        from core.services.notification_bridge import get_pinned_session_id
+    except Exception as exc:
+        logger.warning("owner_resolver(app): imports failed: %s", exc)
+        return ""
+
+    owner_id = get_owner_discord_id()
+
+    pinned = (get_pinned_session_id() or "").strip()
+    if pinned:
+        full = get_chat_session(pinned)
+        if full and is_owner_session(full) and not session_is_external_channel(pinned):
+            return pinned
+        # pinned er ekstern kanal eller ikke owner → fald igennem
+
+    try:
+        scoped = list_chat_sessions(user_id=owner_id) if owner_id else list_chat_sessions()
+    except TypeError:
+        scoped = list_chat_sessions()
+
+    for s in scoped:
+        sid = str((s or {}).get("id") or "").strip()
+        if not sid:
+            continue
+        full = get_chat_session(sid)
+        if not full or not is_owner_session(full):
+            continue
+        if session_is_external_channel(sid):
+            continue  # GUARD: aldrig en ekstern kanal til en app-wakeup
+        if any(m.get("role") == "user" for m in (full.get("messages") or [])):
+            return sid
+
+    return ""

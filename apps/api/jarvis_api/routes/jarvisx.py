@@ -1789,8 +1789,13 @@ def operator_wakeup_fired(payload: dict) -> dict:
                 + " Genengager med Bjørn hvis der er noget at følge op på;"
                 + " ellers er en kort kvittering nok."
             )
+            # channel="app" → wakeup leveres i jarvis-desk, ALDRIG Discord
+            # (dispatcheren guarder mod ekstern-kanal-leak). session_id fra
+            # desk hvis den sendes med, ellers app-resolveren ved fyring.
+            _sess = str(payload.get("session_id") or "").strip() or None
             res = schedule_self_wakeup(
                 delay_seconds=60, prompt=_prompt, reason=f"operator-wakeup:{wid}",
+                channel="app", session_id=_sess,
             )
             re_engaged = str(res.get("status")) == "ok"
             if not re_engaged:

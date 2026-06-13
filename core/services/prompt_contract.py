@@ -715,6 +715,20 @@ def build_visible_chat_prompt_assembly(
             return
         _awareness.append((priority, label, content))
 
+    # ── Tail-anchored dynamiske sektioner (2026-06-13, cache-fix) ──────
+    # Nogle awareness-sektioner re-sampler/ændrer sig per turn (kausal-mønstre,
+    # counterfactuals, subagent-completions, rum-entiteter) og brød DeepSeek-
+    # cachen ~12-13k tokens inde. _tail_add samler dem så de appendes i den
+    # absolutte hale (sammen med finitude/wakeup, lige før time_pin) → den store
+    # stabile prefix forbliver cachebar uanset om de skifter.
+    _tail_dynamic: list[str] = []
+
+    def _tail_add(label: str, content: str | None) -> None:
+        if not content:
+            return
+        _tail_dynamic.append(content)
+        derived_inputs.append(f"{label} (tail-anchored)")
+
     # ── Step-2 cache deferred ──────────────────────────────────────────
     # Conversation continuity, session topics, and current_pull moved
     # here from their original inline parts.append sites further up.
@@ -970,7 +984,7 @@ def build_visible_chat_prompt_assembly(
             from core.services.spatial_entity_ledger import (
                 room_entities_section,
             )
-            _awareness_add(23, "room entities", room_entities_section())
+            _tail_add("room entities", room_entities_section())
         except Exception:
             pass
     except Exception:
@@ -1050,7 +1064,7 @@ def build_visible_chat_prompt_assembly(
         from core.services.prompt_sections.causal_patterns import (
             causal_patterns_section,
         )
-        _awareness_add(22, "causal patterns", causal_patterns_section())
+        _tail_add("causal patterns", causal_patterns_section())
     except Exception:
         pass
     try:
@@ -1061,8 +1075,7 @@ def build_visible_chat_prompt_assembly(
         from core.services.prompt_sections.pattern_counterfactuals import (
             pattern_counterfactuals_section,
         )
-        _awareness_add(20, "pattern counterfactuals",
-                       pattern_counterfactuals_section())
+        _tail_add("pattern counterfactuals", pattern_counterfactuals_section())
     except Exception:
         pass
     try:
@@ -1343,7 +1356,7 @@ def build_visible_chat_prompt_assembly(
         pass
     try:
         from core.services.subagent_digest import subagent_digest_section
-        _awareness_add(50, "subagent completion digest", subagent_digest_section(session_id))
+        _tail_add("subagent completion digest", subagent_digest_section(session_id))
     except Exception:
         pass
     try:
@@ -1871,6 +1884,13 @@ def build_visible_chat_prompt_assembly(
         "referer til indholdet med dine egne ord."
     )
     derived_inputs.append("tool-output hygiene (tail-anchored)")
+
+    # Tail-anchored dynamiske sektioner (kausal-mønstre, counterfactuals,
+    # subagent-completions, rum-entiteter) — appendes her, EFTER al stabil
+    # tail-tekst og lige før time_pin, så de ikke bryder den store cachebare
+    # prefix når de re-sampler. Se _tail_add ovenfor (2026-06-13 cache-fix).
+    for _td_content in _tail_dynamic:
+        parts.append(_td_content)
 
     # Time Pin — appended LAST so it sits immediately above the user
     # message in the constructed prompt. Keeps the prefix above it stable

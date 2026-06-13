@@ -137,7 +137,11 @@ export function StreamProvider({
 
   const abort = useCallback(async () => {
     const runId = controlRef.current?.getRunId() ?? runIdRef.current
-    if (runId) await cancelRun(config, runId) // R3: server-cancel FØR lokal abort
+    // R3: server-cancel FØR lokal abort. Men hvis runnet allerede er dødt
+    // server-side (proces-/loop-død) fejler cancelRun — det MÅ ikke blokere
+    // den lokale oprydning (→ onComplete → message_stop → 'done'), ellers
+    // hænger liveness/thinking videre (Bjørn 2026-06-13). Swallow fejlen.
+    if (runId) { try { await cancelRun(config, runId) } catch { /* allerede død */ } }
     controlRef.current?.abort()
   }, [config])
 

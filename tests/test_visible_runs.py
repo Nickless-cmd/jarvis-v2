@@ -183,3 +183,22 @@ class TestCacheTokenPlumbing:
         )
         assert r.cache_hit_tokens == 0
         assert r.cache_miss_tokens == 0
+
+
+def test_is_visible_run_alive_truthful():
+    """is_visible_run_alive er den autoritative liveness-test (Bjørn 2026-06-13,
+    robust-streaming): kun runs hvis controller faktisk lever i processen.
+    Klienten afstemmer mod denne i stedet for at TRO den arbejder til en
+    message_stop-frame lander → et dødt run efterlader ikke UI'et hængende."""
+    from core.services import visible_runs as vr
+
+    assert vr.is_visible_run_alive("") is False
+    assert vr.is_visible_run_alive("nonexistent-run") is False
+
+    # Indsæt en fake controller → nu "i live"; fjern igen → død.
+    vr._VISIBLE_RUN_CONTROLLERS["run-xyz"] = object()  # type: ignore[assignment]
+    try:
+        assert vr.is_visible_run_alive("run-xyz") is True
+    finally:
+        vr._VISIBLE_RUN_CONTROLLERS.pop("run-xyz", None)
+    assert vr.is_visible_run_alive("run-xyz") is False

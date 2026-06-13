@@ -77,22 +77,40 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     let cancelled = false
     let wasActive = false
+    // Häng-detektor: antal polls i træk hvor VI tror vi streamer denne session,
+    // men serveren IKKE har et aktivt run for den.
+    let staleMisses = 0
     const tick = () => {
       void getActiveRuns(cfg)
         .then((ids) => {
           if (cancelled) return
+          const serverHasRun = ids.includes(sessionId)
           // 'working' = vi driver selv et run → ikke et baggrunds-run.
-          const active = ids.includes(sessionId) && stream.status !== 'working'
+          const active = serverHasRun && stream.status !== 'working'
           setBgActive(active)
           if (active || wasActive) void sessions.refresh() // hent nyt indhold (og endelig hentning når det slutter)
           wasActive = active
+
+          // HÄNG-DETEKTOR (Bjørn 2026-06-13: "han døde midt i et run, tænkte
+          // hænger"): hvis vi tror vi streamer DENNE session men serveren ikke
+          // har noget aktivt run for den i 3 polls i træk (~9s), døde runnet
+          // server-side (proces-/loop-død) UDEN at sende message_stop — så
+          // backendens finally-garanti nåede aldrig at køre. Tving terminal,
+          // så liveness/thinking ikke hænger på 'working'. 9s-vinduet undgår
+          // falsk-positiv lige efter run-start før serveren har registreret det.
+          if (stream.status === 'working' && stream.workingSessionId === sessionId && !serverHasRun) {
+            staleMisses += 1
+            if (staleMisses >= 3) { staleMisses = 0; void stream.abort() }
+          } else {
+            staleMisses = 0
+          }
         })
         .catch(() => { /* behold sidste — ingen flicker ved netværks-blip */ })
     }
     tick()
     const id = setInterval(tick, 3000)
     return () => { cancelled = true; clearInterval(id) }
-  }, [settings, sessionId, stream.status])
+  }, [settings, sessionId, stream.status, stream.workingSessionId])
 
   useEffect(() => {
     if (stream.status === 'done' && stream.blocks.length > 0 && reconciledForRun.current !== stream.activeRunId) {

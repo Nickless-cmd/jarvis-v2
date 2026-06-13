@@ -436,23 +436,18 @@ async def chat_active_runs() -> dict:
     fremme. Højst ét aktivt visible-run ad gangen. Friskheds-guard mod phantom-
     state (et run der døde uden at rydde op): kun med hvis < 10 min gammelt og
     ikke cancelled."""
-    from datetime import UTC, datetime
-    from core.services.visible_runs import _get_active_visible_run_state
+    from core.services.visible_runs import _get_active_visible_run_state, is_visible_run_alive
     out: list[str] = []
     try:
         state = _get_active_visible_run_state() or {}
         sid = str(state.get("session_id") or "").strip()
-        if sid and not state.get("cancelled"):
-            started = str(state.get("started_at") or "")
-            fresh = True
-            if started:
-                try:
-                    age = (datetime.now(UTC) - datetime.fromisoformat(started)).total_seconds()
-                    fresh = age < 600
-                except (ValueError, TypeError):
-                    fresh = True
-            if fresh:
-                out.append(sid)
+        rid = str(state.get("run_id") or "").strip()
+        # AUTORITATIV liveness: medtag KUN hvis runnets controller faktisk lever
+        # i processen. Et dødt/crashet run (controller væk) forsvinder ØJEBLIKKELIGT
+        # — ikke først efter en 10-min freshness-timeout — så klientens reconciler
+        # straks kan rette UI'et fra 'working' til terminal (robust-streaming).
+        if sid and rid and not state.get("cancelled") and is_visible_run_alive(rid):
+            out.append(sid)
     except Exception:
         pass
     return {"session_ids": out}

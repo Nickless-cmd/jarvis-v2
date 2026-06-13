@@ -319,6 +319,17 @@ _LAST_VISIBLE_CAPABILITY_USE: dict[str, object] | None = None
 _LAST_VISIBLE_EXECUTION_TRACE: dict[str, object] | None = None
 
 
+def is_visible_run_alive(run_id: str) -> bool:
+    """Den AUTORITATIVE liveness-test: lever runnets controller stadig i denne
+    proces? Et run der er afsluttet/dødt/crashet er IKKE i controllers-dict'en.
+
+    Dette er sandheds-kilden klienten skal afstemme mod (i stedet for at TRO den
+    arbejder indtil en message_stop-frame lander) — så et dødt run ikke efterlader
+    UI'et hængende på 'working' (Bjørn 2026-06-13, robust-streaming-redesign).
+    """
+    return bool(run_id) and run_id in _VISIBLE_RUN_CONTROLLERS
+
+
 # Run control state functions: re-exported above from visible_runs_sections.run_control_state
 
 

@@ -729,6 +729,12 @@ def build_visible_chat_prompt_assembly(
     # absolutte hale (sammen med finitude/wakeup, lige før time_pin) → den store
     # stabile prefix forbliver cachebar uanset om de skifter.
     _tail_dynamic: list[str] = []
+    # Hukommelses-recall (MEMORY.md-selektion + cold-tier private-brain) er
+    # per-besked-adaptivt og lå midt i prompten → cache-breaker (2026-06-13
+    # lever #4). Samles her og flyttes til bruger-beskeden via den dynamiske
+    # hale, så [system + historik] bliver fuldt cachebar. Jarvis ser de
+    # relevante minder lige før sit svar — naturlig placering for recall.
+    _dyn_memory_recall: list[str] = []
 
     def _tail_add(label: str, content: str | None) -> None:
         if not content:
@@ -1174,8 +1180,12 @@ def build_visible_chat_prompt_assembly(
     try:
         from core.services.memory_hierarchy import recall_before_act_summary
         if user_message and len(user_message.strip()) >= 8:
-            _awareness_add(27, "recall-before-act (user-message memories)",
-                           recall_before_act_summary(query=user_message))
+            # Query-adaptiv recall → bruger-besked-halen (lever #4 cache-fix),
+            # ikke awareness (som rendres før historikken).
+            _rba = recall_before_act_summary(query=user_message)
+            if _rba:
+                _dyn_memory_recall.append(_rba)
+                derived_inputs.append("recall-before-act (user-msg tail)")
     except Exception:
         pass
     # Multi-signal recall (B1, 2026-06-08) — Claude 2026-06-09: B1 module
@@ -1549,7 +1559,9 @@ def build_visible_chat_prompt_assembly(
     if relevance.include_memory:
         memory_selection = _timed_result(future_memory_selection, "memory_selection")
         if memory_selection:
-            parts.append(
+            # Per-besked-adaptivt → flyttes til bruger-beskeden (lever #4 cache-fix),
+            # IKKE parts.append her midt i prompten.
+            _dyn_memory_recall.append(
                 "\n".join(
                     ["MEMORY.md:", *[f"- {line}" for line in memory_selection.lines]]
                 )
@@ -1578,14 +1590,12 @@ def build_visible_chat_prompt_assembly(
 
         recall_bundle = _timed_result(future_recall_bundle, "recall_bundle")
         if recall_bundle:
-            # 2026-05-22 (Claude): defer to tail via _awareness_add. Live cache
-            # diff found Memory recall bundle was the next breaker after the
-            # mood + continuity-snippet fixes — its private-brain excerpts
-            # churn every turn (new inner-notes about current user message)
-            # and were sitting in head/middle of system prompt at byte ~13K.
-            # Moving to tail lets the larger stable head become cache-friendly.
-            _awareness_add(30, "memory recall bundle", recall_bundle)
-            derived_inputs.append("bounded memory recall bundle")
+            # 2026-06-13 (lever #4): flyttet HELT ud af system-beskeden til
+            # bruger-beskeden (var i awareness-tail, men awareness rendres stadig
+            # før historikken → cap'ede live-cachen ved ~14k). Private-brain-
+            # excerpts churner hvert turn; nu sidder de lige før Jarvis' svar.
+            _dyn_memory_recall.append(recall_bundle)
+            derived_inputs.append("bounded memory recall bundle (user-msg tail)")
 
     if relevance.include_guidance:
         for filename in ("TOOLS.md", "SKILLS.md"):
@@ -1768,8 +1778,13 @@ def build_visible_chat_prompt_assembly(
     # ordering maximises DeepSeek prompt-cache hits on the stable prefix
     # while keeping awareness in "handlings-mode" (Jarvis' own framing)
     # immediately above the timestamp + user turn.
-    if _awareness_buffer:
-        parts.extend(_awareness_buffer)
+    # 2026-06-13 (lever #4): awareness-laget appendes IKKE til system-prompten
+    # her længere — det er per-turn-adaptivt (reasoning-tier, verifikations-gates,
+    # kalibrering, hukommelse) og lå ~14k tokens inde → cap'ede DeepSeek-cachen
+    # FØR historikken. Flyttes nu som blok til bruger-beskeden via den dynamiske
+    # hale (se _dyn_tail nedenfor), så [system + historik] bliver fuldt cachebar.
+    # Awareness står nu lige før Jarvis' tur — stadig i "handlings-mode", bare
+    # tættere på selve turen. Måles via R2-gate strict/light-efterlevelse.
 
     executor.shutdown(wait=False)
 
@@ -1889,6 +1904,12 @@ def build_visible_chat_prompt_assembly(
     #   Indhold (alt dynamisk): finitude/Sessions-alder, wakeup-digest (events),
     #   kausal-mønstre/counterfactuals/subagent/rum-entiteter, og time_pin.
     _dyn_tail: list[str] = []
+    # Hukommelses-recall FØRST i halen — mest relevant lige før Jarvis' svar.
+    _dyn_tail.extend(_dyn_memory_recall)
+    # Hele awareness-laget (reasoning/verifikation/kalibrering m.m.) — flyttet hertil
+    # fra system-prompten (lever #4) så det ikke cap'er cachen før historikken.
+    if _awareness_buffer:
+        _dyn_tail.extend(_awareness_buffer)
     if finitude_section:
         _dyn_tail.append(finitude_section)
         derived_inputs.append("finitude (user-msg tail)")

@@ -307,3 +307,42 @@ class TestSystemRepairNoDoublePrefix:
         # Old bug: "[host: host er CheifOne (10.0.0.27)]"
         # Fixed:   "[host er CheifOne (10.0.0.27)]"
         assert "host: host er" not in out, f"Double-prefix bug returned: {out!r}"
+
+
+# ── 🔗 Commit-hash-flag (flag-only, Bjørn 2026-06-13) ────────────────────
+from core.services.claim_scanner import flag_unknown_commit_hashes
+
+
+def test_real_hash_in_commit_context_not_flagged():
+    # e7ab2772 er et ægte commit i dette repo.
+    out = flag_unknown_commit_hashes("Commit `e7ab2772` — time pin fix")
+    assert "[⚠ ikke i repo]" not in out
+
+
+def test_fake_hash_in_commit_context_flagged():
+    out = flag_unknown_commit_hashes("Commit `604874ff` — Output scanner")
+    assert "`604874ff` [⚠ ikke i repo]" in out
+
+
+def test_hex_outside_commit_context_untouched():
+    # Ingen git/commit-ord → vi rører ikke hex (farve-koder, hex-literals).
+    src = "Farve `deadbeef` i CSS"
+    assert flag_unknown_commit_hashes(src) == src
+
+
+def test_pure_digit_in_backticks_not_flagged():
+    # Rent tal i backticks = ID/nummer, ikke en hash-claim.
+    src = "commit nummer `12345678` her"
+    assert flag_unknown_commit_hashes(src) == src
+
+
+def test_no_backticks_untouched():
+    src = "commit 604874ff uden backticks"
+    assert flag_unknown_commit_hashes(src) == src
+
+
+def test_flag_only_never_deletes():
+    # Selv en falsk hash bevares ordret — kun en markør tilføjes.
+    out = flag_unknown_commit_hashes("git: `b96d70d1` her")
+    assert "`b96d70d1`" in out  # hashen er der stadig
+    assert "[⚠ ikke i repo]" in out

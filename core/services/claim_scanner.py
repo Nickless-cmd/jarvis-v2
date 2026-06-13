@@ -282,6 +282,69 @@ def _extract_number(text: str) -> str:
 
 # ── Public API ─────────────────────────────────────────────────────────
 
+# ── 🔗 Commit-hash-claims (Bjørn 2026-06-13) ─────────────────────────────
+# Jarvis citerede opdigtede commit-hashes (`604874ff`, `b96d70d1`) blandet
+# med ægte, og rammede gamle urelaterede commits ind som "R2-arbejde". En
+# commit-hash er 100% mekanisk verificerbar: git rev-parse siger ja/nej.
+#
+# Flag-ONLY: vi markerer hashes der ikke findes i hovedrepoet — vi sletter
+# ALDRIG. Fail-open: enhver tvivl/fejl → ingen markør (en falsk negativ er
+# harmløs; en falsk positiv på den synlige output-sti er det ikke). Kun
+# backtick-wrappede hex i git/commit-kontekst, så vi ikke rører vilkårlig hex
+# (farve-koder, hex-literals, ID'er). Cross-repo-hashes kan ikke verificeres
+# her, men en markør er kun advarende, ikke destruktiv.
+import os as _os
+
+_COMMIT_HASH_RE = re.compile(r"`([0-9a-f]{7,40})`")
+_REPO_ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+_hash_exists_cache: dict[str, bool] = {}
+
+
+def _commit_exists(h: str) -> bool:
+    """True hvis `h` resolver til et commit i hovedrepoet. Fail-open: ved
+    enhver fejl returneres True (= flag IKKE)."""
+    if h in _hash_exists_cache:
+        return _hash_exists_cache[h]
+    ok = True
+    try:
+        import subprocess
+        r = subprocess.run(
+            ["git", "-C", _REPO_ROOT, "rev-parse", "--verify", "--quiet", f"{h}^{{commit}}"],
+            capture_output=True, timeout=3,
+        )
+        ok = r.returncode == 0
+    except Exception:
+        ok = True  # fail-open
+    _hash_exists_cache[h] = ok
+    return ok
+
+
+def flag_unknown_commit_hashes(text: str, *, max_check: int = 20) -> str:
+    """Markér backtick-wrappede commit-hashes der ikke findes i hovedrepoet.
+    Flag-only, aldrig sletning. Kun i git/commit-kontekst."""
+    if "`" not in text:
+        return text
+    low = text.lower()
+    if "git" not in low and "commit" not in low:
+        return text
+    checked = [0]
+
+    def _repl(m: re.Match) -> str:
+        h = m.group(1)
+        if checked[0] >= max_check:
+            return m.group(0)
+        if h.isdigit():  # rent tal i backticks = ID/nummer, ikke en hash-claim
+            return m.group(0)
+        if "[⚠ ikke i repo]" in m.group(0):
+            return m.group(0)
+        checked[0] += 1
+        if _commit_exists(h):
+            return m.group(0)
+        return f"`{h}` [⚠ ikke i repo]"
+
+    return _COMMIT_HASH_RE.sub(_repl, text)
+
+
 def scan_response(text: str) -> str:
     """Scan a response text for unverified factual claims and repair them.
 
@@ -320,6 +383,10 @@ def scan_response(text: str) -> str:
 
         repaired_lines.append(line)
 
+    result = "\n".join(repaired_lines)
+    # 🔗 Commit-hash-flag (flag-only) over hele teksten til sidst.
+    result = flag_unknown_commit_hashes(result)
+
     _elapsed_ms = int((_time.monotonic() - _t_start) * 1000)
     if total_scans > 0 or total_repairs > 0:
         logger.info(
@@ -327,7 +394,7 @@ def scan_response(text: str) -> str:
             total_scans, total_repairs, _elapsed_ms,
         )
 
-    return "\n".join(repaired_lines)
+    return result
 
 
 def scan_enabled() -> bool:
@@ -342,7 +409,7 @@ def active_categories() -> list[str]:
     """Return list of currently active scan categories."""
     return [
         "⏰ tid", "🌡️ miljø", "⚙️ system", "🧮 statistik",
-        "🛠️ fabriket arbejde",
+        "🛠️ fabriket arbejde", "🔗 commit-hash",
     ]
 
 

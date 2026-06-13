@@ -346,3 +346,34 @@ def test_flag_only_never_deletes():
     out = flag_unknown_commit_hashes("git: `b96d70d1` her")
     assert "`b96d70d1`" in out  # hashen er der stadig
     assert "[⚠ ikke i repo]" in out
+
+
+# ── Shadow-mode tool-before-claim gate (måling, Bjørn 2026-06-13) ────────
+from core.services.claim_scanner import detect_shadow_claims
+
+
+def test_shadow_commit_hash_without_git_tool_caught():
+    c = detect_shadow_claims("Commit `604874ff` lavede X", [])
+    assert [x["category"] for x in c] == ["commit_history"]
+    assert c[0]["sharp"] is True
+
+
+def test_shadow_commit_hash_with_evidence_not_caught():
+    # bash kørt i samme run → evidens → ingen shadow-claim.
+    assert detect_shadow_claims("Commit `604874ff` lavede X", ["bash"]) == []
+
+
+def test_shadow_service_status_sharp():
+    c = detect_shadow_claims("jarvis-api kører fint", [])
+    assert c and c[0]["category"] == "service_status" and c[0]["sharp"] is True
+
+
+def test_shadow_item_count_is_advisory():
+    c = detect_shadow_claims("Der er 5 proposals i kø", [])
+    assert c and c[0]["category"] == "item_count" and c[0]["sharp"] is False
+
+
+def test_shadow_natural_language_not_caught():
+    # "ændret min holdning" må ALDRIG fanges (det er pointen med shadow-first).
+    assert detect_shadow_claims("Jeg har ændret min holdning til det", []) == []
+    assert detect_shadow_claims("Jeg har tilføjet en pointe", []) == []

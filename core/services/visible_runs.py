@@ -3169,6 +3169,30 @@ async def _stream_visible_run(
                     _claims = detect_fabricated_work_claims(
                         visible_output_text, _executed_tool_names,
                     )
+                    # Shadow-mode (tool-before-claim gate): mål de NYE kategorier
+                    # uden at ændre adfærd (ingen warning, ingen blok). Promoveres
+                    # til blok efter et døgns data. Separat event til måling.
+                    try:
+                        from core.services.claim_scanner import detect_shadow_claims
+                        _shadow = detect_shadow_claims(
+                            visible_output_text, _executed_tool_names,
+                        )
+                        if _shadow:
+                            event_bus.publish(
+                                "runtime.claim_shadow_detected",
+                                {
+                                    "run_id": run.run_id,
+                                    "session_id": run.session_id,
+                                    "claims": _shadow,
+                                },
+                            )
+                            logger.info(
+                                "claim-shadow: %d shadow-claim(s) run_id=%s cats=%s",
+                                len(_shadow), run.run_id,
+                                [c["category"] for c in _shadow],
+                            )
+                    except Exception:
+                        pass
                     if _claims:
                         _warning = format_fabrication_warning(_claims)
                         logger.warning(

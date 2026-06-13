@@ -541,6 +541,67 @@ def detect_fabricated_work_claims(
     return findings
 
 
+# ── Shadow-mode: tool-before-claim gate (Jarvis-spec, Bjørn 2026-06-13) ──
+# Jarvis foreslog en blokerende gate: påstå ikke fakta der kan verificeres
+# med et tool, før tool'et er kørt. Risiko (Claude flagede, Jarvis enig):
+# uskarpe kategorier ("jeg har ændret holdning") må IKKE blokeres. Derfor:
+# shadow FØRST — detect + event, INGEN warning, INGEN blok — i et døgn.
+# Mål firing + falsk-positiv pr. kategori via runtime.claim_shadow_detected.
+# Skarpe (mekanisk verificerbare) er blok-kandidater; uskarpe forbliver
+# advisory. Promovering først efter data. Samme disciplin som R2.
+#
+# (name, pattern, required-any-of-tools, sharp)
+_SHADOW_PATTERNS: list[tuple[str, "re.Pattern[str]", tuple[str, ...], bool]] = [
+    # Citerer en commit-hash → commit-historik-claim. Skarp: git verificerer.
+    ("commit_history", re.compile(r"`[0-9a-f]{7,40}`"),
+     ("bash", "operator_bash", "git_log"), True),
+    # "jarvis-api kører / servicen er aktiv". Skarp: service_status verificerer.
+    ("service_status", re.compile(
+        r"\b(?:jarvis-api|jarvis-runtime|servicen?|daemon(?:en)?)\s+"
+        r"(?:kører|er\s+(?:aktiv|oppe|nede|stoppet|kørende)|is\s+(?:active|running))\b",
+        re.IGNORECASE),
+     ("bash", "operator_bash", "service_status", "control_daemon"), True),
+    # "N proposals/initiativer/...". Uskarp: kan huskes fra tidligere → advisory.
+    ("item_count", re.compile(
+        r"\b\d+\s+(?:proposals?|initiativ(?:er)?|initiatives?|todos?|opgaver|"
+        r"tasks?|memories|sessioner?|sessions?)\b", re.IGNORECASE),
+     ("list_proposals", "list_initiatives", "list_scheduled_tasks",
+      "search_memory", "db_query", "bash"), False),
+    # "filen indeholder X". Uskarp: kan refereres fra hukommelse → advisory.
+    ("file_content", re.compile(
+        r"\b(?:filen|koden\s+i)\s+\S*\s*(?:indeholder|har|viser|definerer)\b",
+        re.IGNORECASE),
+     ("read_file", "operator_read_file", "bash", "grep"), False),
+]
+
+
+def detect_shadow_claims(
+    text: str | None, tool_call_names: list[str] | None,
+) -> list[dict[str, object]]:
+    """Shadow-mode måling: fakta-påstande (nye kategorier) uden tool-evidens
+    i samme run. Ren observation — kalderen injicerer ingen warning og
+    blokerer ikke. Hver dict: category, sharp, text, required_any_of,
+    actual_tools."""
+    if not text or not isinstance(text, str):
+        return []
+    actual_lower = {str(n).lower() for n in (tool_call_names or [])}
+    out: list[dict[str, object]] = []
+    for name, pattern, required, sharp in _SHADOW_PATTERNS:
+        m = pattern.search(text)
+        if not m:
+            continue
+        if actual_lower & {r.lower() for r in required}:
+            continue
+        out.append({
+            "category": name,
+            "sharp": sharp,
+            "text": m.group(0)[:150],
+            "required_any_of": list(required),
+            "actual_tools": sorted(actual_lower),
+        })
+    return out
+
+
 def format_fabrication_warning(claims: list[FabricatedClaim]) -> str:
     """Byg system-besked til injektion ved næste turn. Tom hvis ingen claims."""
     if not claims:

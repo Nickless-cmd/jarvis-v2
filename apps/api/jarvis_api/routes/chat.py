@@ -296,6 +296,34 @@ def _list_visible_providers_sync() -> list[dict]:
                 ol.append(mdl)
     except Exception:
         pass
+    # Readiness-filter: vis KUN providers der reelt er auth-klare for den
+    # synlige lane (undgå tavse run-fejl). De cheap-only providers (groq,
+    # mistral...) er IKKE klar under visible-profilen → udelades fra chat-
+    # vælgeren (de er til swarm/council). copilot tjekkes mod den profil der
+    # faktisk har dens creds (kan ligge under "copilot", ikke "default").
+    try:
+        from core.runtime.provider_router import _credentials_ready
+        from core.runtime.settings import load_settings
+        prof = (load_settings().visible_auth_profile or "default")
+        ready: set[str] = {"ollama"}
+        for p in list(by_provider):
+            try:
+                if _credentials_ready(provider=p, auth_profile=prof):
+                    ready.add(p)
+            except Exception:
+                pass
+        if "github-copilot" in by_provider:
+            try:
+                from core.auth.profiles import get_provider_state
+                from core.services.visible_model import _resolve_copilot_profile
+                rp = _resolve_copilot_profile(prof)
+                if get_provider_state(profile=rp, provider="github-copilot") is not None:
+                    ready.add("github-copilot")
+            except Exception:
+                pass
+        by_provider = {p: ms for p, ms in by_provider.items() if p in ready}
+    except Exception:
+        pass
     return [{"id": p, "models": sorted(ms)} for p, ms in sorted(by_provider.items()) if ms]
 
 

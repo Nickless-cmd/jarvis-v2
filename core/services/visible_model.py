@@ -1538,11 +1538,31 @@ def _stream_ollama_model(
     )
 
 
+def _resolve_copilot_profile(preferred: str) -> str:
+    """Find profilen der faktisk HAR github-copilot-creds.
+
+    2026-06-13: copilot-auth (VSCode-session-impersonation) gemmes typisk under
+    en EGEN profil ("copilot"), ikke den globale visible_auth_profile ("default").
+    Når owner valgte Copilot i composeren looked vi i "default" → missing-profile
+    → tavst run-fejl, selvom token var gyldigt. Self-healing: brug preferred hvis
+    den har copilot-state; ellers find en profil der har."""
+    try:
+        from core.auth.profiles import get_provider_state, list_auth_profiles
+        if get_provider_state(profile=preferred, provider="github-copilot") is not None:
+            return preferred
+        for p in ["copilot", *list_auth_profiles()]:
+            if p and get_provider_state(profile=p, provider="github-copilot") is not None:
+                return p
+    except Exception:
+        pass
+    return preferred
+
+
 def _stream_github_copilot_model(
     *, message: str, model: str, session_id: str | None = None, controller=None
 ) -> Iterator[VisibleModelDelta | VisibleModelToolCalls | VisibleModelStreamDone]:
     settings = load_settings()
-    profile = settings.visible_auth_profile or "default"
+    profile = _resolve_copilot_profile(settings.visible_auth_profile or "default")
 
     if _is_github_visible_cooled_down(profile):
         raise VisibleModelRateLimited(

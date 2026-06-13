@@ -1,6 +1,18 @@
 // @ts-nocheck — verbatim port af JarvisX bridge.ts (type-checket i jarvisx).
 // GUI/browser-værktøjer bruger valgfri dynamiske imports (nut-js/puppeteer);
 // de fejler pænt ved kald hvis deps mangler. FS/bash/webfetch er pure node.
+//
+// ⚠️ GROUND TRUTH (mod gentagen konfabulering, 2026-06-13): DENNE fil ER
+// integreret i Electron-appen. main.ts importerer den dynamisk (`await
+// import('./bridge.js')`), instantierer `new JarvisXBridge(...)` og kalder
+// `.start()` fra `app.whenReady()` → `bootstrapBridge()`; stoppes ved
+// `before-quit`. Den kører IN-PROCESS i Electrons main-proces — IKKE en separat
+// Node-proces der kan "crashe"/blive "zombie". Den får config FRA appen
+// (apiBaseUrl/userId/authToken), ikke en hardcoded ~/.config/jarvisx-fil (kun
+// bridge.LOG ligger der, kosmetisk). Broen = OPERATOR-tools (operator_*),
+// HELT separat fra chat-streaming (/chat/stream/v2 SSE i streamClient.ts).
+// Søg efter `JarvisXBridge` i electron/, IKKE i src/ (renderer), før du
+// konkluderer "orphaned".
 /**
  * JarvisX tool-bridge client.
  *

@@ -614,12 +614,18 @@ def start_visible_run(
     return _stream_visible_run(run, force_user_id=force_user_id, tool_scope=tool_scope)
 
 
-def start_autonomous_run(message: str, session_id: str | None = None) -> None:
+def start_autonomous_run(message: str, session_id: str | None = None, follow: bool = False) -> None:
     """Trigger an autonomous (heartbeat-initiated) visible run in a background thread.
 
     The run executes the visible model with tools available, persists results to
     the given session (or the dedicated autonomous session), and auto-denies any
     tool that requires user approval (no user is present). Fire-and-forget.
+
+    follow=True: publicér runnets v2-SSE-frames til run_follow-bufferen, så
+    jarvis-desk kan token-streame dem live via /chat/sessions/{id}/follow (i
+    stedet for at "dumpe" beskeden ind når den er færdig). Bruges af
+    operator_wakeup_fired (kører i api-processen → samme proces som follow-
+    endpointet → in-memory buffer virker).
     """
     import threading
 
@@ -666,8 +672,29 @@ def start_autonomous_run(message: str, session_id: str | None = None) -> None:
         try:
             async def _consume() -> None:
                 nonlocal consumed_frames
-                async for _ in _stream_visible_run(run):
-                    consumed_frames += 1
+                if follow:
+                    # Tee runnets frames som v2 → run_follow-buffer (desk-streaming).
+                    from core.services.run_follow import (
+                        begin_follow,
+                        end_follow,
+                        publish_follow_frame,
+                    )
+                    from core.services.visible_runs_sse_v2 import translate_to_v2
+                    begin_follow(resolved_session, run.run_id)
+                    try:
+                        async for frame in translate_to_v2(
+                            _stream_visible_run(run),
+                            run_id=run.run_id, model=run.model, provider=run.provider,
+                            lane=run.lane, session_id=resolved_session,
+                            ping_interval_s=10.0,
+                        ):
+                            consumed_frames += 1
+                            publish_follow_frame(resolved_session, frame)
+                    finally:
+                        end_follow(resolved_session)
+                else:
+                    async for _ in _stream_visible_run(run):
+                        consumed_frames += 1
 
             loop.run_until_complete(_consume())
         except Exception as exc:

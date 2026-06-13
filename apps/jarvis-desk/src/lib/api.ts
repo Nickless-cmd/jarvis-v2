@@ -351,6 +351,53 @@ export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
   return data.session_ids ?? []
 }
 
+/** Token-stream det aktive autonome run i en session (desk-pickup af wakeup).
+ *  GET SSE → v2-events til onEvent. Kortlivet (ingen reconnect): når runnet er
+ *  færdigt lukker serveren, og onDone kaldes. Lader ChatView vise Jarvis'
+ *  wakeup-svar token-for-token i stedet for at "dumpe" det ind. */
+export function followRun(
+  config: ApiConfig,
+  sessionId: string,
+  onEvent: (ev: import('./sseProtocol').StreamEvent) => void,
+  onDone: () => void,
+): { abort: () => void } {
+  const ctrl = new AbortController()
+  const run = async () => {
+    const url = new URL(`/chat/sessions/${encodeURIComponent(sessionId)}/follow`, config.apiBaseUrl).toString()
+    const headers: Record<string, string> = { Accept: 'text/event-stream' }
+    if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
+    let resp: Response
+    try { resp = await fetch(url, { headers, signal: ctrl.signal }) } catch { onDone(); return }
+    if (!resp.ok || !resp.body) { onDone(); return }
+    const reader = resp.body.getReader()
+    const dec = new TextDecoder()
+    let buf = ''
+    try {
+      for (;;) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buf += dec.decode(value, { stream: true })
+        let i: number
+        while ((i = buf.indexOf('\n\n')) !== -1) {
+          const block = buf.slice(0, i); buf = buf.slice(i + 2)
+          if (!block.trim()) continue
+          let data = ''
+          for (const line of block.split('\n')) {
+            if (line.startsWith('data:')) data += (data ? '\n' : '') + line.slice(5).trimStart()
+          }
+          if (!data) continue
+          try { onEvent(JSON.parse(data) as import('./sseProtocol').StreamEvent) } catch { /* skip malformet */ }
+        }
+      }
+    } catch { /* aborted/network */ } finally {
+      try { reader.releaseLock() } catch { /* noop */ }
+      onDone()
+    }
+  }
+  void run()
+  return { abort: () => ctrl.abort() }
+}
+
 /** Kontekst-tærskler til composer-ringen (#9). compact_at = autocompact-punkt. */
 export async function getContextInfo(
   config: ApiConfig,

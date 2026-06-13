@@ -1800,7 +1800,9 @@ def operator_wakeup_fired(payload: dict) -> dict:
                 + "\nGenengager kort med Bjørn i DENNE samtale NU — skriv "
                 "beskeden / følg op. Når du er færdig er turen slut."
             )
-            start_autonomous_run(_prompt, session_id=target)
+            # follow=True → runnets v2-frames publiceres til run_follow-bufferen
+            # så desk'en kan token-streame svaret live (ikke "dumpe" det ind).
+            start_autonomous_run(_prompt, session_id=target, follow=True)
             _OP_WAKEUP_TIMES.append(now)
             re_engaged = True
     except Exception as exc:

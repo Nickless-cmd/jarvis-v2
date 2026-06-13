@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { ArrowDown, PanelRight } from 'lucide-react'
+import { streamReducer, initialStreamState } from '../lib/streamReducer'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
 import { useSettings } from '../hooks/useSettings'
 import { usePanel } from '../hooks/usePanel'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
-import { getContextInfo, getActiveRuns } from '../lib/api'
+import { getContextInfo, getActiveRuns, followRun } from '../lib/api'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
@@ -33,6 +34,10 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   // klienten ikke selv driver. Når det opdages, vis at Jarvis arbejder + hent
   // nye beskeder ind, så han "kalder op" i appen (Bjørn 2026-06-13).
   const [bgActive, setBgActive] = useState(false)
+  // Follow-stream: token-stream et autonomt wakeup-runs svar live (i stedet for
+  // at "dumpe" det ind når det er færdigt). Egen reducer fodret af /follow-SSE'en.
+  const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
+  const followCtrlRef = useRef<{ abort: () => void } | null>(null)
 
   // Context-ring (#9): hent autocompact-tærsklen én gang.
   useEffect(() => {
@@ -150,6 +155,21 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
     return () => { b?.setActiveRun?.(null) }
   }, [bgActive])
 
+  // Follow-stream: når et autonomt run kører i DENNE session, attach til dets
+  // token-strøm (/follow-SSE) og fodr ind i follow-reduceren → render token-for-
+  // token. Catch-up dækker hvis vi attacher lidt sent.
+  useEffect(() => {
+    if (!bgActive || !sessionId || !settings) return
+    if (followCtrlRef.current) return // følger allerede
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    followCtrlRef.current = followRun(
+      cfg, sessionId,
+      (ev) => followDispatch(ev),
+      () => { followCtrlRef.current = null },
+    )
+    return () => { followCtrlRef.current?.abort(); followCtrlRef.current = null }
+  }, [bgActive, sessionId, settings])
+
   const scrollToBottom = () => {
     const el = transcriptRef.current
     if (el) el.scrollTop = el.scrollHeight
@@ -182,7 +202,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   useEffect(() => {
     const el = transcriptRef.current
     if (el && atBottom) el.scrollTop = el.scrollHeight
-  }, [stream.blocks, atBottom])
+  }, [stream.blocks, followState.blocks, atBottom])
 
   const doSend = async (text: string, opts: ComposerSendOpts) => {
     let sid = sessionId
@@ -319,6 +339,12 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
         ))}
         {streaming && stream.blocks.length > 0 && (
           <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
+        )}
+        {/* Autonomt wakeup-run: token-stream live mens det kører. Når det er
+            færdigt (status≠working) overtager serverens persisterede besked via
+            refresh — så vi undgår dobbelt-render. */}
+        {!streaming && bgActive && followState.status === 'working' && followState.blocks.length > 0 && (
+          <MessageRow role="assistant" blocks={followState.blocks} density="compact" streaming />
         )}
       </div>
 

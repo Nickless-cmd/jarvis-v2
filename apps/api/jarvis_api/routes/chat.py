@@ -453,6 +453,41 @@ async def chat_active_runs() -> dict:
     return {"session_ids": out}
 
 
+@router.get("/sessions/{session_id}/follow")
+async def chat_session_follow(session_id: str):
+    """Token-stream det aktive autonome run i sessionen (desk-pickup af wakeup).
+
+    Poller run_follow-bufferen og videresender v2-SSE-frames: catch-up fra start
+    (så en sen attach stadig får hele svaret) + live-tail indtil done. Desk'en
+    fodrer dem ind i SAMME streamReducer → renderer token-for-token i stedet for
+    at "dumpe" den færdige besked ind (Bjørn 2026-06-13)."""
+    import asyncio
+
+    from fastapi.responses import StreamingResponse
+
+    from core.services.run_follow import _snapshot
+
+    async def _gen():
+        idx = 0
+        empty_polls = 0
+        while True:
+            frames, done = _snapshot(session_id, idx)  # hurtig in-memory + lock
+            for f in frames:
+                idx += 1
+                yield f
+            if done:
+                break
+            if frames:
+                empty_polls = 0
+            else:
+                empty_polls += 1
+                if empty_polls > 150:  # ~12s uden frames → intet aktivt run, giv op
+                    break
+            await asyncio.sleep(0.08)
+
+    return StreamingResponse(_gen(), media_type="text/event-stream")
+
+
 @router.get("/context-info")
 async def chat_context_info() -> dict:
     """Kontekst-tærskler til composer-ringen (#9). Kun ægte config-tal:

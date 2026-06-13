@@ -1749,16 +1749,53 @@ def _trading_inactive_default(reason: str) -> dict[str, Any]:
 
 @router.post("/operator/wakeup-fired")
 def operator_wakeup_fired(payload: dict) -> dict:
-    """Endpoint hit by jarvis-desk when an operator_wakeup timer fires.
-    Logs receipt so Jarvis can later poll /operator/recent-wakeups if
-    we want him to re-engage. For now it just records and returns OK."""
+    """Hit af jarvis-desk når en operator_wakeup-timer fyrer.
+
+    2026-06-13: gør nu Jarvis VÅGEN igen i stedet for bare at logge. Vi bygger
+    IKKE en ny mekanisme — vi registrerer en self_wakeup (delay 60s = min), så
+    den eksisterende due_wakeups → heartbeat → re-engagement → consume-flow
+    håndterer resten. Cost/kvote-guard: max N operator-triggerede re-engagements
+    pr. dag (hver = et run). self_wakeup's _MAX_PENDING=20 er sekundær guard.
+    """
+    wid = str(payload.get("wakeup_id") or "")
+    title = (str(payload.get("title") or ""))[:80]
+    message = (str(payload.get("message") or ""))[:200]
     try:
         logger.info(
             "operator_wakeup_fired: wakeup_id=%s title=%r message=%r",
-            payload.get("wakeup_id"),
-            (payload.get("title") or "")[:80],
-            (payload.get("message") or "")[:120],
+            wid, title, message[:120],
         )
     except Exception:
         pass
-    return {"received": True, "wakeup_id": payload.get("wakeup_id")}
+
+    _DAILY_LIMIT = 12  # operator-triggerede re-engagements/dag (cost/kvote)
+    re_engaged = False
+    skipped = ""
+    try:
+        from datetime import UTC, datetime
+        from core.services.self_wakeup import schedule_self_wakeup, _load
+        today = datetime.now(UTC).date().isoformat()
+        todays = sum(
+            1 for r in _load()
+            if str(r.get("reason", "")).startswith("operator-wakeup")
+            and str(r.get("scheduled_at", "")).startswith(today)
+        )
+        if todays >= _DAILY_LIMIT:
+            skipped = f"daily-limit ({_DAILY_LIMIT}) nået — kun notifikation"
+        else:
+            _prompt = (
+                f"Operator-wakeup fyrede: {title}."
+                + (f" Besked: {message}." if message else "")
+                + " Genengager med Bjørn hvis der er noget at følge op på;"
+                + " ellers er en kort kvittering nok."
+            )
+            res = schedule_self_wakeup(
+                delay_seconds=60, prompt=_prompt, reason=f"operator-wakeup:{wid}",
+            )
+            re_engaged = str(res.get("status")) == "ok"
+            if not re_engaged:
+                skipped = str(res.get("error") or "schedule failed")
+    except Exception as exc:
+        skipped = str(exc)[:120]
+
+    return {"received": True, "wakeup_id": wid, "re_engaged": re_engaged, "skipped": skipped}

@@ -241,13 +241,62 @@ def _resolve_visible_target(uid: str | None, provider_choice: str, model: str) -
     if role != "owner":
         is_pro = "pro" in (model or "").lower()
         return ("ollama", "deepseek-v4-pro:cloud" if is_pro else "deepseek-v4-flash:cloud")
+    # Owner: honorér ENHVER visible-klar provider (2026-06-13 — udvidet fra
+    # kun deepseek/ollama). Den valgte (provider, model) sendes igennem som
+    # override; tom provider → global config. Backenden kan eksekvere alle
+    # providers i _VISIBLE_CAPABLE_PROVIDERS (openai-compat + ollama/copilot/codex).
     prov = (provider_choice or "").strip().lower()
-    if prov == "ollama":
-        return ("ollama", (model or "").strip() or "deepseek-v4-flash:cloud")
-    if prov == "deepseek":
-        from core.runtime.settings import load_settings
-        return ("deepseek", (model or "").strip() or load_settings().visible_model_name)
-    return ("", "")
+    if not prov:
+        return ("", "")
+    m = (model or "").strip()
+    if not m:
+        if prov == "ollama":
+            m = "deepseek-v4-flash:cloud"
+        elif prov == "deepseek":
+            from core.runtime.settings import load_settings
+            m = load_settings().visible_model_name
+    return (prov, m)
+
+
+def _visible_capable_providers() -> set[str]:
+    """Providers som stream_visible_model faktisk kan eksekvere til chat."""
+    try:
+        from core.services.cheap_provider_runtime import _OPENAI_COMPATIBLE_PROVIDERS
+        base = set(_OPENAI_COMPATIBLE_PROVIDERS)
+    except Exception:
+        base = {"groq", "nvidia-nim", "openrouter", "mistral", "sambanova", "opencode", "deepseek"}
+    return base | {"ollama", "github-copilot", "openai-codex"}
+
+
+def _list_visible_providers_sync() -> list[dict]:
+    """{id, models[]} for hver visible-klar provider med enabled modeller i
+    provider_router. Ollama suppleres med den live /api/tags-liste."""
+    capable = _visible_capable_providers()
+    by_provider: dict[str, list[str]] = {}
+    try:
+        from core.runtime.provider_router import load_provider_router_registry
+        reg = load_provider_router_registry() or {}
+        for m in reg.get("models", []) or []:
+            if not isinstance(m, dict):
+                continue
+            prov = str(m.get("provider") or "").strip()
+            mdl = str(m.get("model") or "").strip()
+            if prov in capable and mdl and m.get("enabled"):
+                by_provider.setdefault(prov, [])
+                if mdl not in by_provider[prov]:
+                    by_provider[prov].append(mdl)
+    except Exception:
+        pass
+    # Ollama: merge live container-liste (modeller pulles løbende).
+    try:
+        live = _list_ollama_models_sync()
+        ol = by_provider.setdefault("ollama", [])
+        for mdl in live:
+            if mdl and mdl not in ol:
+                ol.append(mdl)
+    except Exception:
+        pass
+    return [{"id": p, "models": sorted(ms)} for p, ms in sorted(by_provider.items()) if ms]
 
 
 def _list_ollama_models_sync() -> list[str]:
@@ -279,6 +328,29 @@ async def chat_ollama_models() -> dict:
         return {"models": models}
     except Exception as exc:
         return {"models": [], "error": str(exc)[:200]}
+
+
+@router.get("/visible-providers")
+async def chat_visible_providers() -> dict:
+    """Alle visible-klare providers + deres modeller (OWNER-only).
+
+    Lader composeren eksponere hele paletten (groq, mistral, gemini-via-compat,
+    nvidia-nim, openrouter, sambanova, opencode, deepseek, ollama, github-
+    copilot...) i stedet for kun deepseek/ollama. Blokerende I/O → to_thread.
+    """
+    import asyncio
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or None
+    if uid:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(str(uid))
+        if not u or getattr(u, "role", "") != "owner":
+            raise HTTPException(status_code=403, detail="owner only")
+    try:
+        providers = await asyncio.to_thread(_list_visible_providers_sync)
+        return {"providers": providers}
+    except Exception as exc:
+        return {"providers": [], "error": str(exc)[:200]}
 
 
 class ChatSessionCreateRequest(BaseModel):

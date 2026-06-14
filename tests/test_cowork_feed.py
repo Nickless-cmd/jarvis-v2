@@ -89,3 +89,30 @@ def test_build_queue_includes_proposals(monkeypatch):
     items = cowork_feed.build_queue(user_id="owner", is_owner=True)
     one = next(i for i in items if i["id"] == "prop-abc")
     assert one["kind"] == "proposal" and one["source"] == "proposal"
+
+
+def test_list_active_agents_shape(monkeypatch) -> None:
+    from core.services import cowork_feed
+    fake_rows = [
+        {"agent_id": "a1", "role": "researcher", "goal": "x" * 200,
+         "status": "active", "parent_agent_id": "jarvis", "tokens_burned": 42},
+    ]
+    monkeypatch.setattr(
+        "core.runtime.db.list_agent_registry_entries",
+        lambda status="", limit=50: fake_rows,
+    )
+    agents = cowork_feed.list_active_agents()
+    assert len(agents) == 1
+    a = agents[0]
+    assert a["agent_id"] == "a1" and a["role"] == "researcher"
+    assert a["status"] == "active" and a["parent"] == "jarvis"
+    assert a["tokens_burned"] == 42
+    assert a["goal"].endswith("…")            # trunkeret til 160
+
+
+def test_list_active_agents_handles_error(monkeypatch) -> None:
+    from core.services import cowork_feed
+    def _boom(*a, **k):
+        raise RuntimeError("db down")
+    monkeypatch.setattr("core.runtime.db.list_agent_registry_entries", _boom)
+    assert cowork_feed.list_active_agents() == []

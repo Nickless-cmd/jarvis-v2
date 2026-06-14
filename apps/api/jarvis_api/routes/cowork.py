@@ -88,6 +88,16 @@ async def cowork_channels() -> dict:
     return {"channels": chans}
 
 
+@router.get("/agents")
+async def cowork_agents() -> dict:
+    """Aktive dispatch-agenter (§19.5 command center). Owner-only."""
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="agenter er kun for owner")
+    agents = await asyncio.to_thread(cowork_feed.list_active_agents)
+    return {"agents": agents}
+
+
 @router.post("/queue/{item_id}/approve")
 async def cowork_approve(item_id: str) -> dict:
     return await asyncio.to_thread(_resolve_item, item_id, "approve")

@@ -40,3 +40,21 @@ describe('buildAgentDispatchView', () => {
     expect(v.entries).toEqual([])
   })
 })
+
+import { activeAgentsToView } from './coworkApi'
+
+describe('activeAgentsToView', () => {
+  it('mapper aktive agent-registry-rækker til view', () => {
+    const v = activeAgentsToView([
+      { agent_id: 'a1', role: 'researcher', goal: 'find', status: 'active', parent: 'jarvis', tokens_burned: 10 },
+      { agent_id: 'a2', role: 'executor', goal: 'impl', status: 'queued', parent: 'a1', tokens_burned: 0 },
+    ])
+    expect(v.mode).toBe('dispatch')
+    expect(v.entries[0]?.status).toBe('running')
+    expect(v.entries[1]?.status).toBe('planned')
+    expect(v.summary.total).toBe(2)
+  })
+  it('tom liste → inline', () => {
+    expect(activeAgentsToView([]).mode).toBe('inline')
+  })
+})

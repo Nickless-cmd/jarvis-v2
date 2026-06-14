@@ -131,6 +131,29 @@ def list_plans(*, user_id: str | None, is_owner: bool) -> list[dict[str, Any]]:
     return plans
 
 
+def list_active_agents(*, limit: int = 50) -> list[dict[str, Any]]:
+    """Aktive dispatch-agenter til cowork command center (§19.5). Læser
+    agent_registry (status="" ekskluderer completed/cancelled/expired). BLOKERENDE —
+    kaldes via to_thread fra routen."""
+    try:
+        from core.runtime.db import list_agent_registry_entries
+        rows = list_agent_registry_entries(status="", limit=limit)
+    except Exception:
+        return []
+    out: list[dict[str, Any]] = []
+    for r in rows or []:
+        goal = str(r.get("goal") or "")
+        out.append({
+            "agent_id": str(r.get("agent_id") or ""),
+            "role": str(r.get("role") or ""),
+            "goal": goal[:160] + ("…" if len(goal) > 160 else ""),
+            "status": str(r.get("status") or ""),
+            "parent": str(r.get("parent_agent_id") or ""),
+            "tokens_burned": int(r.get("tokens_burned") or 0),
+        })
+    return out
+
+
 def _all_todos() -> list[dict[str, Any]]:
     """Alle todos på tværs af sessioner (agent_todos er session-keyed)."""
     try:

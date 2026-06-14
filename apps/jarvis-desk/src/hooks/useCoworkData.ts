@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ApiConfig } from '../lib/api'
 import {
   getCoworkQueue, getCoworkPlans, getCoworkTodos, getCoworkChannels, resolveQueueItem,
-  getShareGuard, resolveShareGuard,
+  getShareGuard, resolveShareGuard, getCoworkAgents,
   type QueueItem, type CoworkPlan, type CoworkTodo, type CoworkChannel, type ShareDecision,
+  type ActiveAgent,
 } from '../lib/coworkApi'
 
 const POLL_MS = 6000
@@ -16,6 +17,7 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
   const [todos, setTodos] = useState<CoworkTodo[]>([])
   const [channels, setChannels] = useState<CoworkChannel[]>([])
   const [shareGuard, setShareGuard] = useState<ShareDecision[]>([])
+  const [agents, setAgents] = useState<ActiveAgent[]>([])
   const cfgRef = useRef(config)
   cfgRef.current = config
 
@@ -28,6 +30,7 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
       getCoworkTodos(cfg).then(setTodos),
       isOwner ? getCoworkChannels(cfg).then(setChannels) : Promise.resolve(),
       isOwner ? getShareGuard(cfg).then(setShareGuard) : Promise.resolve(),
+      isOwner ? getCoworkAgents(cfg).then(setAgents) : Promise.resolve(),
     ])
   }, [isOwner])
 
@@ -65,5 +68,5 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
     try { await resolveShareGuard(cfg, id, shared) } finally { void refresh() }
   }, [refresh])
 
-  return { queue, plans, todos, channels, shareGuard, refresh, resolve, resolveShare }
+  return { queue, plans, todos, channels, shareGuard, agents, refresh, resolve, resolveShare }
 }

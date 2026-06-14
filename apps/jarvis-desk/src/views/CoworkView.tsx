@@ -5,6 +5,8 @@ import { PlansPane } from '../components/cowork/PlansPane'
 import { TodoPane } from '../components/cowork/TodoPane'
 import { ChannelsPane } from '../components/cowork/ChannelsPane'
 import { ShareGuardPane } from '../components/cowork/ShareGuardPane'
+import { AgentDispatchPane } from '../components/cowork/AgentDispatchPane'
+import { activeAgentsToView } from '../lib/coworkApi'
 
 /** Cowork: rolle-bevidst arbejd-sammen-dashboard. Owner ser fire ruder; member
  *  ser tre (ingen kanaler). Ren oversigt + godkend/afvis — ingen chat-lane. */
@@ -12,7 +14,7 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
   const { settings } = useSettings()
   const isOwner = role === 'owner'
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
-  const { queue, plans, todos, channels, shareGuard, resolve, resolveShare } = useCoworkData(config, isOwner)
+  const { queue, plans, todos, channels, shareGuard, agents, resolve, resolveShare } = useCoworkData(config, isOwner)
 
   return (
     <div className="coworkview">
@@ -33,6 +35,14 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
           <section className="cowork-pane">
             <div className="cowork-pane-head">Kanaler</div>
             <ChannelsPane channels={channels} />
+          </section>
+        )}
+        {isOwner && agents.length > 0 && (
+          <section className="cowork-pane">
+            <div className="cowork-pane-head">
+              Agenter <span className="cowork-count">{agents.length}</span>
+            </div>
+            <AgentDispatchPane view={activeAgentsToView(agents)} />
           </section>
         )}
         {isOwner && shareGuard.length > 0 && (

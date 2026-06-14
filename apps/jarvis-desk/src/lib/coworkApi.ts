@@ -119,3 +119,49 @@ export function buildAgentDispatchView(result: Record<string, unknown> | null | 
   }
   return { mode, decision, entries, summary }
 }
+
+// Aktive dispatch-agenter fra /cowork/agents (agent_registry-rækker).
+export interface ActiveAgent {
+  agent_id: string
+  role: string
+  goal: string
+  status: string
+  parent: string
+  tokens_burned: number
+}
+
+export async function getCoworkAgents(config: ApiConfig): Promise<ActiveAgent[]> {
+  const d = await apiFetch<{ agents: ActiveAgent[] }>(config, '/cowork/agents')
+  return d.agents ?? []
+}
+
+function _mapAgentStatus(raw: string): AgentStatus {
+  const s = (raw || '').toLowerCase()
+  if (s === 'active' || s === 'starting' || s === 'running') return 'running'
+  if (s === 'queued' || s === 'pending') return 'planned'
+  if (s === 'completed' || s === 'done') return 'done'
+  if (s === 'failed' || s === 'error' || s === 'cancelled' || s === 'expired') return 'error'
+  return 'running'
+}
+
+export function activeAgentsToView(agents: ActiveAgent[]): AgentDispatchView {
+  const entries: AgentDispatchEntry[] = (agents ?? []).map((a) => ({
+    role: a.role,
+    goal: a.goal,
+    parallel: a.parent === 'jarvis' || !a.parent,
+    status: _mapAgentStatus(a.status),
+    agentId: a.agent_id,
+  }))
+  return {
+    mode: entries.length > 0 ? 'dispatch' : 'inline',
+    decision: `${entries.length} aktive`,
+    entries,
+    summary: {
+      total: entries.length,
+      running: entries.filter((e) => e.status === 'running').length,
+      done: entries.filter((e) => e.status === 'done').length,
+      planned: entries.filter((e) => e.status === 'planned').length,
+      error: entries.filter((e) => e.status === 'error').length,
+    },
+  }
+}

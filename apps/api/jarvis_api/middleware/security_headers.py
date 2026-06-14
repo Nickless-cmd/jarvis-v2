@@ -56,17 +56,14 @@ class HttpsRedirectMiddleware(BaseHTTPMiddleware):
     """
     async def dispatch(self, request: Request, call_next):
         enabled = str(os.environ.get("JARVISX_HTTPS_REDIRECT", "")).strip().lower() in {"1", "true", "yes", "on"}
-        scheme = request.url.scheme
-        xfp = request.headers.get("x-forwarded-proto", "")
-        client = request.client.host if request.client else ""
         if enabled and _should_redirect_to_https(
-            scheme=scheme, x_forwarded_proto=xfp, client=client, path=request.url.path,
+            scheme=request.url.scheme,
+            x_forwarded_proto=request.headers.get("x-forwarded-proto", ""),
+            client=request.client.host if request.client else "",
+            path=request.url.path,
         ):
             return RedirectResponse(str(request.url.replace(scheme="https")), status_code=301)
-        resp = await call_next(request)
-        if str(os.environ.get("JARVISX_HTTPS_REDIRECT_DEBUG", "")).strip() == "1":
-            resp.headers["X-Redir-Debug"] = f"en={int(enabled)} sch={scheme} xfp={xfp or '-'} cli={client}"
-        return resp
+        return await call_next(request)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

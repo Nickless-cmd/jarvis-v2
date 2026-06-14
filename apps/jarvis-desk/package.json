@@ -56,9 +56,11 @@
     }
   },
   "dependencies": {
+    "@types/qrcode": "^1.5.6",
     "katex": "^0.16.47",
     "lucide-react": "^0.460.0",
     "mermaid": "^11.15.0",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",

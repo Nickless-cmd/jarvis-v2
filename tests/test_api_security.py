@@ -113,3 +113,21 @@ def test_https_redirect_health_exempt(monkeypatch) -> None:
     monkeypatch.setenv("JARVISX_HTTPS_REDIRECT", "1")
     c = TestClient(_redirect_app())
     assert c.get("/health", follow_redirects=False).status_code == 200
+
+
+
+
+def test_should_redirect_decision() -> None:
+    from apps.api.jarvis_api.middleware.security_headers import _should_redirect_to_https
+    d = _should_redirect_to_https
+    # ekstern plain HTTP → redirect
+    assert d(scheme="http", x_forwarded_proto="", client="80.71.1.2", path="/api/x") is True
+    # Caddy-proxied (X-Forwarded-Proto https) → nej
+    assert d(scheme="http", x_forwarded_proto="https", client="127.0.0.1", path="/api/x") is False
+    # intern loopback plain HTTP (voice-daemon/fil) → nej
+    assert d(scheme="http", x_forwarded_proto="", client="127.0.0.1", path="/files/x") is False
+    assert d(scheme="http", x_forwarded_proto="", client="::1", path="/api/x") is False
+    # health-probe → nej
+    assert d(scheme="http", x_forwarded_proto="", client="80.71.1.2", path="/health") is False
+    # allerede https → nej
+    assert d(scheme="https", x_forwarded_proto="", client="80.71.1.2", path="/api/x") is False

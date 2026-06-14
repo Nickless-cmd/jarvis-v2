@@ -32,6 +32,20 @@ _BASE_HEADERS = {
 _CSP = "default-src 'none'; frame-ancestors 'none'"
 
 
+def _should_redirect_to_https(*, scheme: str, x_forwarded_proto: str, client: str, path: str) -> bool:
+    """Ren beslutning: skal denne request 301'es til HTTPS? (§20.1)
+
+    Nej hvis: allerede HTTPS (scheme eller X-Forwarded-Proto=https, dvs. Caddy-
+    proxied), loopback-klient (intern localhost-HTTP), eller /health-probe."""
+    if scheme == "https" or x_forwarded_proto.lower() == "https":
+        return False
+    if client in ("127.0.0.1", "::1", "localhost"):
+        return False
+    if path in ("/health",):
+        return False
+    return True
+
+
 class HttpsRedirectMiddleware(BaseHTTPMiddleware):
     """HTTP→HTTPS-redirect i-app (§20.1, lag 1) — uden at binde :80 (det ejer uvicorn).
 
@@ -42,13 +56,13 @@ class HttpsRedirectMiddleware(BaseHTTPMiddleware):
     """
     async def dispatch(self, request: Request, call_next):
         enabled = str(os.environ.get("JARVISX_HTTPS_REDIRECT", "")).strip().lower() in {"1", "true", "yes", "on"}
-        if enabled:
-            xfp = request.headers.get("x-forwarded-proto", "").lower()
-            is_https = request.url.scheme == "https" or xfp == "https"
-            # Health-check undtaget så lokale liveness-probes (HTTP) ikke 301'es.
-            if not is_https and request.url.path not in ("/health",):
-                target = request.url.replace(scheme="https")
-                return RedirectResponse(str(target), status_code=301)
+        if enabled and _should_redirect_to_https(
+            scheme=request.url.scheme,
+            x_forwarded_proto=request.headers.get("x-forwarded-proto", ""),
+            client=request.client.host if request.client else "",
+            path=request.url.path,
+        ):
+            return RedirectResponse(str(request.url.replace(scheme="https")), status_code=301)
         return await call_next(request)
 
 

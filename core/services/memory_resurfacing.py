@@ -69,9 +69,10 @@ def _normalize(heading: str) -> str:
 
 def _list_memory_headings() -> list[tuple[str, str]]:
     """Return [(level_str, heading_text), ...] from MEMORY.md."""
-    if not _memory_md().exists():
+    from core.services.workspace_crypto import read_text_for_path
+    text = read_text_for_path(_memory_md())
+    if text is None:
         return []
-    text = _memory_md().read_text(encoding="utf-8", errors="replace")
     out = []
     for m in _HEADING_RE.finditer(text):
         level = m.group(1)
@@ -117,9 +118,10 @@ def _recently_resurfaced_headings() -> set[str]:
 
 def _content_for_heading(heading: str) -> str:
     """Return the content under the matching heading (up to next heading or EOF)."""
-    if not _memory_md().exists():
+    from core.services.workspace_crypto import read_text_for_path
+    text = read_text_for_path(_memory_md())
+    if text is None:
         return ""
-    text = _memory_md().read_text(encoding="utf-8", errors="replace")
     norm_target = _normalize(heading)
     headings = list(_HEADING_RE.finditer(text))
     for i, m in enumerate(headings):

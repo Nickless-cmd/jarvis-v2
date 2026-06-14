@@ -423,3 +423,42 @@ def build_dream_hypothesis_surface() -> dict[str, Any]:
         "pending": pending,
         "recent_presented": presented,
     }
+
+
+def build_dream_hypothesis_prompt_section() -> tuple[str, int] | None:
+    """Surface the single highest-confidence unpresented dream hypothesis.
+
+    Returns (prompt_text, hypothesis_id) for the top pending hypothesis, or
+    None if there is nothing unpresented. Bounded to ONE hypothesis per call
+    (spec §2.3 / §4: "Start med 1 pr. session") so it never floods the prompt.
+
+    Side-effect-free: the caller is responsible for calling
+    mark_hypothesis_presented() once the section is actually shown to Jarvis
+    on a real turn — so cache-warmer / autonomous builds don't consume it.
+    """
+    pending = [h for h in list_dream_hypotheses(limit=15) if not h.get("presented")]
+    if not pending:
+        return None
+    # Highest confidence first; ties keep DB order (newest id first).
+    top = max(pending, key=lambda h: float(h.get("confidence") or 0.0))
+    hid = int(top.get("id") or 0)
+    if hid <= 0:
+        return None
+    hypothesis = str(top.get("hypothesis") or "").strip()
+    connection = str(top.get("connection") or "").strip()
+    action = str(top.get("action_suggestion") or "").strip()
+    conf = float(top.get("confidence") or 0.0)
+    lines = [
+        "Drøm-hypotese (uudtalt — fra din egen drømme-konsolidering):",
+        f"- hypotese: {hypothesis[:300]}",
+    ]
+    if connection:
+        lines.append(f"- forbindelse: {connection[:240]}")
+    if action:
+        lines.append(f"- mulig handling: {action[:240]}")
+    lines.append(
+        f"- konfidens: {conf:.2f}. Dette er en tanke du selv har formet i en "
+        "drømme-tilstand; væg den frit — den er ikke en ordre, men noget værd "
+        "at overveje hvis det er relevant nu."
+    )
+    return "\n".join(lines), hid

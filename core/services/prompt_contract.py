@@ -863,6 +863,27 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Dream hypothesis surfacing (2026-06-14, Jarvis-authored spec §2.3 "fix C").
+    # Lifts ONE unpresented dream hypothesis from his own dream-consolidation
+    # into the conversation. Gated on a real user turn (user_message truthy) so
+    # cache-warmer / autonomous builds never consume an unpresented hypothesis
+    # Jarvis won't actually see. Low priority (40) — a private/experimental
+    # layer that must never outrank the protected core. Marked presented only
+    # when genuinely surfaced, so each hypothesis reaches him exactly once.
+    if user_message:
+        try:
+            from core.services.dream_hypothesis_generator import (
+                build_dream_hypothesis_prompt_section,
+                mark_hypothesis_presented,
+            )
+            _dream = build_dream_hypothesis_prompt_section()
+            if _dream:
+                _dream_text, _dream_id = _dream
+                _awareness_add(40, "dream hypothesis (unpresented)", _dream_text)
+                mark_hypothesis_presented(hypothesis_id=_dream_id)
+        except Exception:
+            pass
+
     # Output style hint — comes from JarvisX preferences. Concise =
     # short, dense replies; detailed = longer explanations; technical =
     # more code/structure, less prose.

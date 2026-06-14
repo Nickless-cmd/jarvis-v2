@@ -414,6 +414,21 @@ export async function getFile(
   return apiFetch(config, `/chat/file?path=${encodeURIComponent(path)}&kind=${encodeURIComponent(kind)}`)
 }
 
+/** Code-mode terminal (§17), container-side: kør én kommando server-side i
+ *  repo-workspace (owner-only, cwd contained til repo). Returnerer fuld output. */
+export async function runContainerCommand(
+  config: ApiConfig,
+  command: string,
+  cwd = '',
+): Promise<{ stdout: string; stderr: string; exit_code: number }> {
+  return apiFetch(config, '/chat/terminal/run', {
+    method: 'POST',
+    body: { command, cwd },
+    timeoutMs: 65_000,
+    retries: 0,
+  })
+}
+
 /** Server-cancel af et aktivt run (R3). Idempotent: 200 og 404 (run ukendt/
  *  allerede stoppet) behandles begge som "stoppet". Netværksfejl svælges —
  *  klienten aborter lokalt alligevel. */

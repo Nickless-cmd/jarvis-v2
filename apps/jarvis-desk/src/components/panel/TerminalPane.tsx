@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { handleKey, emptyLine, type LineState } from '../../lib/terminalLine'
+import { runContainerCommand, type ApiConfig } from '../../lib/api'
 
 /** Renderer-side type for terminal-broen (udsat via preload). */
 interface TerminalBridge {
@@ -18,18 +19,24 @@ function terminalBridge(): TerminalBridge | null {
 
 let paneSeq = 0
 
-/** Code-mode terminal-rude (§17): lokal kommando-runner på brugerens egen maskine.
- *  Kører KUN i workstation-workspace — kommandoer går via operator-modellen, output
- *  bliver på maskinen. Interaktive TTY-programmer (vim/top) understøttes ikke i v1. */
-export function TerminalPane({ cwd }: { cwd: string }) {
+/** Code-mode terminal-rude (§17): lokal kommando-runner.
+ *  - workstation: kører på brugerens egen maskine via operator-broen (streaming).
+ *  - container: kører server-side i repo-workspace via /chat/terminal/run (owner-only,
+ *    non-streaming — output vises når kommandoen er færdig).
+ *  Interaktive TTY-programmer (vim/top) understøttes ikke i v1. */
+export function TerminalPane({ cwd, kind, config }: {
+  cwd: string
+  kind: 'container' | 'workstation'
+  config: ApiConfig
+}) {
   const hostRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const host = hostRef.current
-    const bridge = terminalBridge()
     if (!host) return
-    if (!bridge) {
-      host.textContent = 'Terminal er kun tilgængelig i den installerede app.'
+    const bridge = kind === 'workstation' ? terminalBridge() : null
+    if (kind === 'workstation' && !bridge) {
+      host.textContent = 'Lokal terminal er kun tilgængelig i den installerede app.'
       return
     }
 
@@ -48,29 +55,47 @@ export function TerminalPane({ cwd }: { cwd: string }) {
 
     let line: LineState = emptyLine
     let running = false
-    const prompt = () => term.write(`\r\n\x1b[36m${cwd}\x1b[0m $ `)
+    const label = kind === 'container' ? `${cwd} (server)` : cwd
+    const prompt = () => term.write(`\r\n\x1b[36m${label}\x1b[0m $ `)
 
-    term.writeln('\x1b[90mLokal terminal — kører kommandoer i den valgte mappe på din computer.\x1b[0m')
+    term.writeln(`\x1b[90mTerminal — ${kind === 'container' ? 'kører på serveren (repo-workspace)' : 'kører på din egen computer'}.\x1b[0m`)
     term.writeln('\x1b[90m(v1: én kommando ad gangen; ingen interaktive TTY-programmer.)\x1b[0m')
     prompt()
 
-    const offData = bridge.onData((e) => {
+    // ── workstation: streaming via operator-broen ──
+    const offData = bridge?.onData((e) => {
       if (e.id !== id) return
-      // stderr i blødt rødt, stdout normalt.
       if (e.stream === 'stderr') term.write(`\x1b[31m${e.chunk}\x1b[0m`)
       else term.write(e.chunk)
     })
-    const offExit = bridge.onExit((e) => {
+    const offExit = bridge?.onExit((e) => {
       if (e.id !== id) return
       running = false
       if (e.code !== 0) term.write(`\r\n\x1b[90m[afsluttet med kode ${e.code}]\x1b[0m`)
       prompt()
     })
 
+    // ── container: non-streaming via server-endpoint ──
+    let alive = true
+    const runContainer = async (cmd: string) => {
+      running = true
+      try {
+        const r = await runContainerCommand(config, cmd, cwd)
+        if (!alive) return
+        if (r.stdout) term.write(r.stdout.endsWith('\n') ? r.stdout : r.stdout + '\n')
+        if (r.stderr) term.write(`\x1b[31m${r.stderr}\x1b[0m${r.stderr.endsWith('\n') ? '' : '\n'}`)
+        if (r.exit_code !== 0) term.write(`\x1b[90m[afsluttet med kode ${r.exit_code}]\x1b[0m`)
+      } catch (err) {
+        if (alive) term.write(`\x1b[31m${err instanceof Error ? err.message : 'fejl'}\x1b[0m`)
+      } finally {
+        if (alive) { running = false; prompt() }
+      }
+    }
+
     const keyDisp = term.onData((key) => {
       if (running) {
-        // Mens en kommando kører: kun Ctrl-C videresendes (afbryd).
-        if (key === String.fromCharCode(3)) void bridge.signal(id, 'SIGINT')
+        // Mens en kommando kører: kun Ctrl-C (afbryd) — kun meningsfuldt for workstation.
+        if (key === String.fromCharCode(3) && kind === 'workstation') void bridge?.signal(id, 'SIGINT')
         return
       }
       const { state, action } = handleKey(line, key)
@@ -91,10 +116,14 @@ export function TerminalPane({ cwd }: { cwd: string }) {
           term.write('\r\n')
           if (!cmd) { prompt(); break }
           if (cmd === 'clear' || cmd === 'cls') { term.clear(); prompt(); break }
-          running = true
-          void bridge.run(id, cmd, cwd).then((r) => {
-            if (!r.ok) { term.write(`\x1b[31m${r.error || 'kunne ikke starte kommando'}\x1b[0m`); running = false; prompt() }
-          })
+          if (kind === 'container') {
+            void runContainer(cmd)
+          } else {
+            running = true
+            void bridge!.run(id, cmd, cwd).then((r) => {
+              if (!r.ok) { term.write(`\x1b[31m${r.error || 'kunne ikke starte kommando'}\x1b[0m`); running = false; prompt() }
+            })
+          }
           break
         }
         default:
@@ -106,14 +135,15 @@ export function TerminalPane({ cwd }: { cwd: string }) {
     window.addEventListener('resize', onResize)
 
     return () => {
+      alive = false
       window.removeEventListener('resize', onResize)
-      offData()
-      offExit()
+      offData?.()
+      offExit?.()
       keyDisp.dispose()
-      void bridge.signal(id, 'SIGTERM')
+      if (kind === 'workstation') void bridge?.signal(id, 'SIGTERM')
       term.dispose()
     }
-  }, [cwd])
+  }, [cwd, kind, config])
 
   return <div className="terminalpane" ref={hostRef} />
 }

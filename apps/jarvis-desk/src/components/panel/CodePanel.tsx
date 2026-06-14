@@ -19,7 +19,8 @@ export function CodePanel({
   const [openPath, setOpenPath] = useState<string | null>(null)
   const [content, setContent] = useState('')
   const [tab, setTab] = useState<PanelTab>('files')
-  const canTerminal = kind === 'workstation'
+  // Terminal: workstation (lokal via bro) + container (server-side, owner-only).
+  const canTerminal = true
 
   const openFile = (rel: string) => {
     setOpenPath(rel)
@@ -55,7 +56,7 @@ export function CodePanel({
       </div>
       {tab === 'terminal' && canTerminal ? (
         <div className="codepanel-terminal">
-          <TerminalPane cwd={root} />
+          <TerminalPane cwd={root} kind={kind} config={config} />
         </div>
       ) : (
         <div className="codepanel-body">

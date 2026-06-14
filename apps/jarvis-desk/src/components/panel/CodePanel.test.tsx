@@ -20,9 +20,12 @@ describe('CodePanel', () => {
     expect(await screen.findByText(/print\(1\)/)).toBeInTheDocument()
   })
 
-  it('viser IKKE terminal-fanen for container-workspace (kun lokal exec)', () => {
+  it('viser terminal-fanen for container (server-side exec) og skifter ved klik', async () => {
     render(<CodePanel config={cfg} kind="container" root="core" />)
-    expect(screen.queryByText('Terminal')).not.toBeInTheDocument()
+    const tab = screen.getByText('Terminal')
+    expect(tab).toBeInTheDocument()
+    fireEvent.click(tab)
+    expect(await screen.findByTestId('terminal-pane')).toHaveTextContent('term:core')
   })
 
   it('viser terminal-fanen for workstation og skifter til den ved klik', async () => {

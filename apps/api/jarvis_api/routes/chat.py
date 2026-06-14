@@ -368,6 +368,53 @@ async def chat_ollama_models() -> dict:
         return {"models": [], "error": str(exc)[:200]}
 
 
+class _TerminalRunBody(BaseModel):
+    command: str
+    cwd: str = ""
+
+
+def _terminal_run_sync(command: str, cwd: str) -> dict:
+    """BLOKERENDE server-side kommando-kørsel — KØRES I TRÅD. cwd contained til
+    repo-roden (ingen escape via .. eller absolut sti udenfor repo)."""
+    import os
+    import subprocess
+    repo = str(_repo_root())
+    raw = (cwd or "").strip()
+    if raw and os.path.isabs(raw):
+        target = os.path.abspath(raw)
+    else:
+        target = os.path.abspath(os.path.join(repo, raw)) if raw else repo
+    if not (target == repo or target.startswith(repo + os.sep)) or not os.path.isdir(target):
+        target = repo
+    try:
+        p = subprocess.run(["bash", "-lc", command], cwd=target,
+                           capture_output=True, text=True, timeout=60)
+        return {"stdout": p.stdout, "stderr": p.stderr, "exit_code": p.returncode}
+    except subprocess.TimeoutExpired:
+        return {"stdout": "", "stderr": "timeout (60s)", "exit_code": -1}
+    except Exception as exc:
+        return {"stdout": "", "stderr": str(exc)[:500], "exit_code": -1}
+
+
+@router.post("/terminal/run")
+async def chat_terminal_run(body: _TerminalRunBody) -> dict:
+    """Code-mode terminal-rude (§17), container-side: kør én kommando server-side
+    i repo-workspace (OWNER-only; cwd contained til repo). Blokerende subprocess →
+    asyncio.to_thread (--workers 1 frys-fælde)."""
+    import asyncio
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or None
+    if uid:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(str(uid))
+        if not u or getattr(u, "role", "") != "owner":
+            raise HTTPException(status_code=403, detail="owner only")
+    cmd = (body.command or "").strip()
+    if not cmd:
+        return {"stdout": "", "stderr": "", "exit_code": 0}
+    return await asyncio.to_thread(_terminal_run_sync, cmd, body.cwd)
+
+
 @router.get("/visible-providers")
 async def chat_visible_providers() -> dict:
     """Alle visible-klare providers + deres modeller (OWNER-only).

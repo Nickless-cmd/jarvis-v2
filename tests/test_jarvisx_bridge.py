@@ -259,3 +259,15 @@ async def test_operator_read_file_propagates_bridge_error():
         await operator_tools.operator_read_file_async(
             path="/x.txt", user_id="no-such-user",
         )
+
+
+def test_list_user_ids_reflects_registry():
+    """list_user_ids() returnerer alle brugere med en aktiv bro (bro_broker)."""
+    from core.services.jarvisx_bridge import BridgeConnection, bridge_registry
+    bridge_registry.clear()
+    assert bridge_registry.list_user_ids() == []
+
+    bridge_registry.register(BridgeConnection(user_id="mikkel"))
+    bridge_registry.register(BridgeConnection(user_id="mor"))
+    assert set(bridge_registry.list_user_ids()) == {"mikkel", "mor"}
+    bridge_registry.clear()

@@ -182,6 +182,10 @@ class BridgeRegistry:
     def get_bridge(self, user_id: str) -> Optional[BridgeConnection]:
         return self._by_user.get(user_id)
 
+    def list_user_ids(self) -> list[str]:
+        """user_id'er med en aktiv bro (til bro_broker / override-switch)."""
+        return list(self._by_user.keys())
+
     def clear(self) -> None:
         """Test helper — drop all registrations."""
         for conn in self._by_user.values():

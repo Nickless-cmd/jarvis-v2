@@ -765,6 +765,17 @@ async def _run_client(config: dict) -> None:
             # user message gets stamped with the correct user_id and workspace
             # (otherwise the worker thread sets context too late, the row gets
             # empty user_id, and the model can't tell speakers apart).
+            # Rolle bindes EKSPLICIT (sikkerhed): uden dette var alle discord-
+            # brugere unbound→owner. Owner→owner; registreret bruger→sin rolle;
+            # ukendt (offentlig kanal)→guest (mest restriktiv). Override kan
+            # elevere en member-session via effective_role (§6.0).
+            if is_owner_id_match:
+                user_role = "owner"
+            elif registered_user is not None:
+                user_role = str(getattr(registered_user, "role", "member") or "member").lower()
+            else:
+                user_role = "guest"
+
             if registered_user is not None:
                 workspace_name = registered_user.workspace
                 user_display = registered_user.name
@@ -814,7 +825,7 @@ async def _run_client(config: dict) -> None:
             # Trigger autonomous run with workspace context bound
             def _run_in_context(
                 _content: str, _session_id: str, _user_id: str,
-                _workspace: str, _display: str,
+                _workspace: str, _display: str, _role: str,
             ) -> None:
                 from core.identity.workspace_context import set_context, reset_context
                 from core.services.visible_runs import start_autonomous_run
@@ -822,6 +833,7 @@ async def _run_client(config: dict) -> None:
                     workspace_name=_workspace,
                     user_id=_user_id,
                     user_display_name=_display,
+                    role=_role,
                     session_id=_session_id,  # → effective_role kan slå override op
                 )
                 try:
@@ -831,7 +843,7 @@ async def _run_client(config: dict) -> None:
 
             threading.Thread(
                 target=_run_in_context,
-                args=(content, session_id, author_id_str, workspace_name, user_display),
+                args=(content, session_id, author_id_str, workspace_name, user_display, user_role),
                 daemon=True,
                 name=f"discord-run-{session_id[-8:]}",
             ).start()

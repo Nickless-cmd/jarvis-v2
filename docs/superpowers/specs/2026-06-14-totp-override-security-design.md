@@ -270,24 +270,22 @@ til "debug" for den specifikke session (kræver eksplicit bekræftelse).
 
 ---
 
-## 7. Operator tools & skills — native vs lokalt
+## 7. Operator tools & skills — lokal eksekvering
 
-**Beslutning (Bjørn 14:xx):** operator tools forbliver **native** (kører i Jarvis'
-runtime via bridge). Skills er **lokale hos brugeren**.
+**Arkitektur-beslutning (2026-06-14):** Operator tools kører LOKALT paa brugerens maskine i code mode. Tool-resultater bliver paa maskinen — kun summaries/metadata sendes til server via cowork-bro. Se §17 for fuld arkitektur.
 
-- **Operator tools = native.** Owner i egen desk-session: fri adgang. Member: kun
-  i code mode (§3), på egen maskine/bro. Owner på fremmed bro: via TOTP-override.
-- **Skills = lokale + bruger-styrede + offline-dygtige.** Som Claude Desktop:
-  en skill ligger lokalt i brugerens app, kan køre **uden Jarvis** (offline), og
-  brugeren styrer den. Det er en sikkerhed: en almindelig bruger risikerer ikke at
-  få Jarvis til at udføre skadelige ting på sig selv eller sit miljø — skills er
-  afgrænsede, lokale, og bruger-kontrollerede.
+- **Operator tools = lokal eksekvering i code mode.** Tool-resultater forlader aldrig brugerens maskine. Kun summaries sendes via cowork-bro.
+- **Skills = lokale + bruger-styrede + offline-dygtige.** Som Claude Desktop: en skill ligger lokalt i brugerens app, kan køre **uden Jarvis** (offline), og brugeren styrer den.
+- **Chat-mode tools = server-side.** Web search, plugins, memory — kører paa server, ikke lokalt.
+- **Mode-routing:** I dag sender bridge.ts alle operator tools uanset mode. Fremtiden: kun code-mode anmodninger rutes til lokal eksekvering.
 
 ---
 
-## 8. Compute use — lokalt styret + UI-panel-kald
+## 8. Compute use — lokalt styret + server-side + UI-panel-kald
 
-### 8.1 Compute use (lokalt, ikke cloud)
+### 8.1 Compute use — lokalt i code mode, server-side i chat/cowork
+
+**Arkitektur-beslutning (2026-06-14):** Code mode kører lokalt. Chat mode kører server-side. Cowork er bindeledet. Se §17.
 
 Claude Desktop løser compute use via skærmbillede-baseret screen vision + mus/
 tastatur. Jarvis' operator tools gør det samme via kommandolinje — allerede lokalt.
@@ -605,3 +603,118 @@ Når Jarvis er i en session med bruger A og har brug for information fra bruger 
 - jarvis_brain metadata — share_guard styrer adgang, kryptering ikke nødvendig
 - Config/runtime.json — operativt, ingen private data
 - Logs — krypterede operationer logges, men key-værdier logges aldrig
+
+## 17. Code mode: lokal eksekvering med cowork-bro
+
+**Tilføjet:** 2026-06-14 (Bjørn + Jarvis)
+**Status:** Designbeslutning — godkendt
+
+### 17.1 Problem
+
+Operator tools kører i dag server-side via WebSocket-bro (jarvis-desk bridge.ts).
+Det betyder at:
+
+- **Tool-resultater** (filindhold, terminal-output, process-lister) passerer serveren
+- **Privatliv**: Hvis serveren kompromitteres, har angriberen adgang til alles maskiner
+- **Sikkerhed**: Fejl i broen (se bridge.ts zombie-bug, 2026-06-13) er svære at isolere
+- **Debugging**: Når noget fejler i broen, er det uigennemskueligt for brugeren
+
+### 17.2 Arkitektur: tre lag, én Jarvis
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    JARVIS (server)                       │
+│                                                         │
+│  Chat mode          Cowork mode          Bro-broker      │
+│  ─────────          ─────────          ──────────        │
+│  Plugins            Plans               TOTP override    │
+│  Memory recall      Todos               Session routing  │
+│  Web search         Approval queue       Cross-user meta  │
+│  Vision             Share guard                           │
+│  Mood/self          Channels                              │
+│  Mail/calendar      Agent monitoring                      │
+│                                                          │
+│  ▲ kun samtale-data    ▲ kun plan/approval    ▲ ruter    │
+│    over netværket       over netværket         til code   │
+└──────────┬──────────────┬──────────────────┬─────────────┘
+           │              │                  │
+           │              │                  │
+    ───────┼──────────────┼──────────────────┼──────────────
+           │              │                  │
+           │              │                  ▼
+           │              │    ┌──────────────────────────┐
+           │              │    │   CODE MODE (lokal)      │
+           │              │    │   ─────────────────      │
+           │              │    │   Operator tools          │
+           │              │    │   Bash, filer, git        │
+           │              │    │   Process monitoring      │
+           │              │    │   Skills (lokal)         │
+           │              │    │   Virus/malware scan     │
+           │              │    │                          │
+           │              │    │   ▲ Tool-resultater       │
+           │              │    │     BLIVER PÅ MASKINEN   │
+           │              └────┤                          │
+           │                   │   Kun metadata/summaries  │
+           │                   │   sendes til server via   │
+           │                   │   cowork-bro              │
+           └───────────────────┘                          │
+                                                          │
+           Brugerens maskine                              │
+```
+
+### 17.3 Data-flow pr. mode
+
+| Mode | Hvor tools kører | Hvad sendes over netværket | Hvad bliver lokalt |
+|------|-------------------|----------------------------|-------------------|
+| **Chat** | Server | Samtale-data, memory, plugin-svar | Intet — alt på server |
+| **Cowork** | Server | Plans, approvals, share guard | Intet — alt på server |
+| **Code** | Lokalt | Kun metadata/summaries via cowork-bro | Bash-output, filindhold, process-lister, git-status |
+
+### 17.4 Hvorfor lokal eksekvering er sikrere
+
+| Risiko | Server-side (i dag) | Lokalt (ny arkitektur) |
+|--------|---------------------|------------------------|
+| **Server kompromitteret** | Angriberen har adgang til alles maskiner via operator tools | Angriberen har kun adgang til server-data (samtaler, memory) — ikke brugernes maskiner |
+| **Bro-fejl** | Alle operator tools fejler (se zombie-bug 2026-06-13) | Kun code mode påvirkes — chat/cowork kører uafhængigt |
+| **Privatliv** | Tool-resultater passerer serveren | Tool-resultater bliver på brugerens maskine |
+| **GDPR** | Tool-resultater potentielt personfølsomme data på server | Personfølsomme data forlader aldrig brugerens maskine |
+| **Debugging** | Fejl i bro er uigennemskuelig | Fejl er synlig lokalt i app'en |
+
+### 17.5 Bro-brokerens rolle
+
+Cowork er den **eneste krydsforbindelse** mellem chat og code. Bro-brokeren ruter:
+
+- **Chat → Code**: Owner beder om at genstarte en service → cowork opretter approval → code eksekverer lokalt
+- **Code → Chat**: Code-mode færdig med opgave → sender summary (ikke rå output) til cowork → chat kan vise resultat
+- **TOTP override**: Owner i anden session → TOTP verificering → bro-broker ruter til korrekt code-mode
+
+### 17.6 Implementeringskrav
+
+1. **bridge.ts skal blive mode-aware**: I dag sender bridge.ts alle operator tools uanset mode. Fremtiden: kun code-mode anmodninger rutes til lokal eksekvering.
+
+2. **Kanal inbound skal understøtte mode-switch**: I dag hardcoded til `modes=["chat"]`. Fremtiden: Discord/Telegram kan sende med `mode="code"` for operator-kommandoer.
+
+3. **Tool-resultater skal filteres før server-send**: Code mode sender kun summaries/metadata til server, ikke rå bash-output eller filindhold.
+
+4. **Skills skal scannes lokalt**: Før en skill eksekveres, scannes den for prompt injection og malware (se §15.3).
+
+5. **Fallback**: Hvis lokal eksekvering fejler (app crash, netværks-tab), falder code mode tilbage til server-side via bro — men med tydelig advarsel til brugeren.
+
+### 17.7 Filer der skal ændres eller oprettes
+
+| Fil | Handling |
+|-----|----------|
+| `apps/jarvis-desk/electron/bridge.ts` | OPDATER — tilføj mode-awareness og tool-filtering |
+| `core/services/channel_inbound.py` | OPDATER — understøt mode-switch (ikke kun hardcoded chat) |
+| `core/runtime/tool_scoping.py` | OPDATER — tilføj code-mode scoping-regler |
+| `core/services/bro_broker.py` | OPDATER — tilføj mode-routing og summary-filtrering |
+| `apps/jarvis-desk/src/lib/streamClient.ts` | OPDATER — code mode sender kun metadata |
+| `apps/jarvis-desk/src/components/CodeMode.tsx` | NY — code mode UI med lokal terminal |
+| `tests/test_code_mode_local.py` | NY — integration tests for lokal eksekvering |
+
+### 17.8 Hvad IKKE ændres
+
+- Chat mode forbliver server-side — ingen ændring i plugin-arkitektur
+- Cowork mode forbliver server-side — ingen ændring i plan/approval flow
+- Operator tools API forbliver det samme — kun routing ændres
+- Jarvis' brain forbliver server-side — krydsreferencer og share_guard påvirkes ikke

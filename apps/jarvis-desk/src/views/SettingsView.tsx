@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSettings } from '../hooks/useSettings'
+import { PluginsPanel } from '../components/settings/PluginsPanel'
 
 /** Indstillinger — redigerbar: server, token, default-model + thinking.
  *  Server/token persisteres via Electron-bridge; gemmes ved "Gem". */
@@ -76,6 +77,12 @@ export function SettingsView() {
           {saved && <span className="settings-saved">Gemt ✓</span>}
         </div>
       </div>
+
+      {auth?.role === 'owner' && (
+        <PluginsPanel
+          config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
+        />
+      )}
     </div>
   )
 }

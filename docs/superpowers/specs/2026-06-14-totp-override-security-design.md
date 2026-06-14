@@ -510,3 +510,98 @@ Hver skill skal verificeres før eksekvering:
 Hvis alle parter taler på samme offentlige Discord-server, er det et offentligt rum.
 Jarvis brain kan krydsreferere frit der — fordi alle kan se hvad alle siger.
 Men DM'er og private sessions forbliver lukkede rum med fuld kryptering.
+
+---
+
+## 16. Kryptering & disk-sikkerhed
+
+### 16.1 Problem
+
+Alt ligger i plain text på disk. Enhver med adgang til `~/.jarvis-v2/workspaces/` kan læse alles MEMORY.md, USER.md, chat-historik, alt. Det er en GDPR-katastrofe når vi tager brugere ind. Private data skal være krypteret selv for Jarvis i andre sessioner.
+
+### 16.2 Hvad krypteres — og hvad ikke
+
+| Lag | Krypteret? | Metode | Begrundelse |
+|-----|-----------|--------|-------------|
+| **Egen workspace (owner)** | Nej | — | Owners maskine, owners filer. Kryptering her giver overhead uden sikkerhedsgevinst |
+| **Andre brugeres workspace** | Ja | AES-256-GCM per user | Mikkels data er hans. Selv Jarvis kan ikke læse det uden at være i hans session |
+| **jarvis_brain (kryds-reference)** | Nej | — | Metadata, ikke indhold. Share_guard styrer adgang |
+| **Chat-historik (DB)** | Ja | Per-session AES-256 | Private samtaler krypteret selv i DB |
+| **Private brain records** | Ja | Per-session AES-256 | Jarvis' indre verden er hans. Krypteret selv for owner i andre sessioner |
+| **Config/runtime.json** | Nej | — | Operativt, ingen private data |
+| **Slettede workspaces (soft delete)** | Ja | Per-user AES-256 | Grace-period kopi bevares krypteret, kun owner kan force-slette |
+
+### 16.3 Key management
+
+**Primær: OS keyring integration**
+
+Når en bruger logger ind i jarvis-desk, hentes deres encryption key fra OS keyring:
+- Linux: `gnome-keyring` / `kwallet`
+- macOS: `Keychain`
+- Windows: `Credential Manager`
+
+Key holdes i memory mens sessionen er aktiv og ryddes ved session-slut.
+
+**Fallback: Password-derived key**
+
+Hvis OS keyring er utilgængelig, derivéres key fra brugerens login-password via PBKDF2 (600.000 iterationer, salt per user). Svagere end OS keyring, men fungerer altid.
+
+**Key lifecycle-regler:**
+1. Nøglen logges ALDRIG — ikke i debug, ikke i metrics, ikke i crash-reports
+2. Nøglen sendes ALDRIG over netværket — kun lokal brug
+3. Nøglen persisteres ALDRIG i plain text — kun i OS keyring eller som hash
+4. Nøglen ryddes fra RAM ved session-slut (explicit memset/zeroing)
+5. Ny nøgle genereres ved user-delete (GDPR sletningsret invaliderer gammel data)
+
+### 16.4 Krypteringsdetaljer
+
+- **Algoritme:** AES-256-GCM (authenticated encryption — både krypteret og tamper-proof)
+- **Key lengde:** 256 bit
+- **IV:** Tilfældig per fil (12 byte), præfikset til krypteret data
+- **File extension:** Krypterede filer får `.enc` suffix (f.eks. `MEMORY.md.enc`)
+- **Directory structure:** Uændret — krypterede filer ligger side om side med plain text i samme mappe. Owners egne filer er plain text, andre brugeres er `.enc`
+
+### 16.5 Session-baseret dekryptering
+
+1. Bruger logger ind → key hentes fra OS keyring
+2. Key holdes i memory (Python `bytearray` med explicit zeroing ved cleanup)
+3. Når Jarvis læser en krypteret fil, dekrypteres den i memory — aldrig skrevet til disk i plain text
+4. Når sessionen lukkes, zeroes key fra memory
+5. Næste session: key hentes igen fra OS keyring (auto-unlock ved login)
+
+### 16.6 Tvær-bruger adgang (share_guard i praksis)
+
+Når Jarvis er i en session med bruger A og har brug for information fra bruger B's workspace:
+
+1. Jarvis' brain slår op: "Jeg har erfaring med B i relation til dette emne"
+2. Share_guard vurderer: Er det metadata (okay at dele) eller privat indhold (ikke okay)?
+3. Hvis metadata → Jarvis kan sige "Jeg har erfaring med dette emne fra en anden samtale"
+4. Hvis privat indhold → Jarvis kan IKKE dekryptere B's filer (mangler B's key)
+5. Selv med owner override kan Jarvis ikke læse krypteret indhold — kun B's key låser op
+
+### 16.7 GDPR-konsekvenser
+
+- **Sletningsret:** Bruger beder om sletning → key slettes først → alle krypterede filer bliver ulæselige → derefter filer slettes fra disk. Ingen gendannelse mulig.
+- **Data-minimering:** Jarvis brain gemmer kun metadata, ikke fuld indhold, for tvær-bruger reference
+- **Samtykke:** Før deling på tværs af sessioner, beder share_guard om samtykke
+- **Særlig beskyttelse:** Ordblinde og blinde brugere får ekstra privacy-lag (automatisk data-minimering + auto-sletning af midlertidige data)
+- **Audit trail:** Alle krypterings- og dekrypteringsoperationer logges (uden key-værdier)
+
+### 16.8 Filer der skal ændres eller oprettes
+
+| Fil | Handling |
+|-----|----------|
+| `core/services/encryption.py` | NY — AES-256-GCM kryptering/dekryptering, key management, zeroing |
+| `core/services/keyring_store.py` | NY — OS keyring integration (Linux/macOS/Windows) |
+| `core/services/workspace_crypto.py` | NY — Per-user workspace kryptering, .enc fil-håndtering |
+| `core/services/brain_crypto.py` | NY — Private brain kryptering per session |
+| `tests/test_encryption.py` | NY — Unit tests for kryptering, key lifecycle, zeroing |
+| `tests/test_keyring_store.py` | NY — Integration tests for OS keyring |
+| `tests/test_workspace_crypto.py` | NY — Integration tests for workspace kryptering |
+
+### 16.9 Hvad IKKE krypteres
+
+- Owners egne workspace-filer (MEMORY.md, USER.md) — plain text på owners maskine
+- jarvis_brain metadata — share_guard styrer adgang, kryptering ikke nødvendig
+- Config/runtime.json — operativt, ingen private data
+- Logs — krypterede operationer logges, men key-værdier logges aldrig

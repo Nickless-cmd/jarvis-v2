@@ -67,3 +67,49 @@ def test_rate_limit_enforced_when_enabled(monkeypatch) -> None:
     codes = [c.get("/x").status_code for _ in range(5)]
     assert codes.count(200) == 3
     assert codes.count(429) == 2
+
+
+# --- §20.1 HTTP→HTTPS redirect (in-app, X-Forwarded-Proto-gated) ---
+
+from apps.api.jarvis_api.middleware.security_headers import HttpsRedirectMiddleware
+
+
+def _redirect_app():
+    app = FastAPI()
+    app.add_middleware(HttpsRedirectMiddleware)
+
+    @app.get("/api/x")
+    def _x():
+        return {"ok": True}
+
+    @app.get("/health")
+    def _h():
+        return {"ok": True}
+    return app
+
+
+def test_https_redirect_off_by_default(monkeypatch) -> None:
+    monkeypatch.delenv("JARVISX_HTTPS_REDIRECT", raising=False)
+    c = TestClient(_redirect_app())
+    assert c.get("/api/x").status_code == 200          # ingen redirect
+
+
+def test_https_redirect_on_plain_http(monkeypatch) -> None:
+    monkeypatch.setenv("JARVISX_HTTPS_REDIRECT", "1")
+    c = TestClient(_redirect_app())
+    r = c.get("/api/x", follow_redirects=False)
+    assert r.status_code == 301
+    assert r.headers["location"].startswith("https://")
+
+
+def test_https_redirect_skips_when_forwarded_https(monkeypatch) -> None:
+    monkeypatch.setenv("JARVISX_HTTPS_REDIRECT", "1")
+    c = TestClient(_redirect_app())
+    r = c.get("/api/x", headers={"X-Forwarded-Proto": "https"}, follow_redirects=False)
+    assert r.status_code == 200                         # Caddy-proxied → ingen redirect
+
+
+def test_https_redirect_health_exempt(monkeypatch) -> None:
+    monkeypatch.setenv("JARVISX_HTTPS_REDIRECT", "1")
+    c = TestClient(_redirect_app())
+    assert c.get("/health", follow_redirects=False).status_code == 200

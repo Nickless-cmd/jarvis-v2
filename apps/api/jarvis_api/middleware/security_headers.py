@@ -17,7 +17,7 @@ from collections import deque
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, RedirectResponse
 
 # §20.4 — altid sikre at sætte på et API.
 _BASE_HEADERS = {
@@ -30,6 +30,26 @@ _BASE_HEADERS = {
 }
 # CSP kun hvis eksplicit slået til (kan brække serveret HTML).
 _CSP = "default-src 'none'; frame-ancestors 'none'"
+
+
+class HttpsRedirectMiddleware(BaseHTTPMiddleware):
+    """HTTP→HTTPS-redirect i-app (§20.1, lag 1) — uden at binde :80 (det ejer uvicorn).
+
+    En request er "allerede HTTPS" hvis Caddy proxy'ede den (X-Forwarded-Proto: https)
+    eller scheme==https. Ellers (direkte plain HTTP til uvicorn :80) → 301 til https.
+    **FRA** medmindre JARVISX_HTTPS_REDIRECT er sat — så plain-HTTP-klienter ikke
+    pludselig 301'es før Bjørn har bekræftet at alle bruger HTTPS.
+    """
+    async def dispatch(self, request: Request, call_next):
+        enabled = str(os.environ.get("JARVISX_HTTPS_REDIRECT", "")).strip().lower() in {"1", "true", "yes", "on"}
+        if enabled:
+            xfp = request.headers.get("x-forwarded-proto", "").lower()
+            is_https = request.url.scheme == "https" or xfp == "https"
+            # Health-check undtaget så lokale liveness-probes (HTTP) ikke 301'es.
+            if not is_https and request.url.path not in ("/health",):
+                target = request.url.replace(scheme="https")
+                return RedirectResponse(str(target), status_code=301)
+        return await call_next(request)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

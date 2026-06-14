@@ -441,10 +441,12 @@ def create_app() -> FastAPI:
     # §20: security-headers (altid) + rate-limit (env-gated) + CORS-whitelist
     # (env-gated; default ["*"] bevarer desk-adgang indtil JARVISX_CORS_ORIGINS sættes).
     from apps.api.jarvis_api.middleware.security_headers import (
-        SecurityHeadersMiddleware, SimpleRateLimitMiddleware, cors_allowed_origins,
+        SecurityHeadersMiddleware, SimpleRateLimitMiddleware, HttpsRedirectMiddleware,
+        cors_allowed_origins,
     )
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(SimpleRateLimitMiddleware)
+    app.add_middleware(HttpsRedirectMiddleware)
 
     from fastapi.middleware.cors import CORSMiddleware
     app.add_middleware(

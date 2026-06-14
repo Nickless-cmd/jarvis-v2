@@ -6,7 +6,10 @@ vi.mock('../lib/coworkApi', () => ({
   getCoworkPlans: vi.fn().mockResolvedValue([]),
   getCoworkTodos: vi.fn().mockResolvedValue([]),
   getCoworkChannels: vi.fn().mockResolvedValue([{ name: 'discord', online: true, unread: 0 }]),
+  getShareGuard: vi.fn().mockResolvedValue([]),
+  getCoworkAgents: vi.fn().mockResolvedValue([]),
   resolveQueueItem: vi.fn(),
+  resolveShareGuard: vi.fn(),
 }))
 vi.mock('../hooks/useSettings', () => ({ useSettings: () => ({ settings: { apiBaseUrl: 'http://t', authToken: 't' } }) }))
 

@@ -21,16 +21,24 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
   const cfgRef = useRef(config)
   cfgRef.current = config
 
+  // Undgå setState efter unmount (async fetch/WS der lander efter teardown).
+  const aliveRef = useRef(true)
+  useEffect(() => {
+    aliveRef.current = true
+    return () => { aliveRef.current = false }
+  }, [])
+  const ifAlive = <T,>(fn: (v: T) => void) => (v: T) => { if (aliveRef.current) fn(v) }
+
   const refresh = useCallback(async () => {
     const cfg = cfgRef.current
     if (!cfg) return
     await Promise.allSettled([
-      getCoworkQueue(cfg).then(setQueue),
-      getCoworkPlans(cfg).then(setPlans),
-      getCoworkTodos(cfg).then(setTodos),
-      isOwner ? getCoworkChannels(cfg).then(setChannels) : Promise.resolve(),
-      isOwner ? getShareGuard(cfg).then(setShareGuard) : Promise.resolve(),
-      isOwner ? getCoworkAgents(cfg).then(setAgents) : Promise.resolve(),
+      getCoworkQueue(cfg).then(ifAlive(setQueue)),
+      getCoworkPlans(cfg).then(ifAlive(setPlans)),
+      getCoworkTodos(cfg).then(ifAlive(setTodos)),
+      isOwner ? getCoworkChannels(cfg).then(ifAlive(setChannels)) : Promise.resolve(),
+      isOwner ? getShareGuard(cfg).then(ifAlive(setShareGuard)) : Promise.resolve(),
+      isOwner ? getCoworkAgents(cfg).then(ifAlive(setAgents)) : Promise.resolve(),
     ])
   }, [isOwner])
 
@@ -49,6 +57,7 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
     try {
       ws = new WebSocket(wsUrl)
       ws.onmessage = () => { void refresh() }
+      ws.onerror = () => { /* polling-fallback dækker; sluger fejl-event så det ikke bobler */ }
     } catch { /* polling-fallback dækker */ }
     return () => { try { ws?.close() } catch { /* noop */ } }
   }, [refresh, config?.apiBaseUrl])

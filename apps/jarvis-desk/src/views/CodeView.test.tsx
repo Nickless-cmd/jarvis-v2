@@ -18,6 +18,7 @@ vi.mock('../lib/api', () => ({
   cancelRun: vi.fn(),
   whoami: vi.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' }),
   pingServer: vi.fn().mockResolvedValue(20),
+  getVisibleProviders: vi.fn().mockResolvedValue([]),
   getTree: vi.fn().mockResolvedValue([{ name: 'x.py', kind: 'file' }]),
   getFile: vi.fn().mockResolvedValue({ path: 'core/x.py', content: 'print(1)', language: 'python' }),
   getWorkspaceTrust: vi.fn().mockResolvedValue(true),

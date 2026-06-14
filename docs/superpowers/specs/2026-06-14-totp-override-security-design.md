@@ -718,3 +718,103 @@ Cowork er den **eneste krydsforbindelse** mellem chat og code. Bro-brokeren rute
 - Cowork mode forbliver server-side — ingen ændring i plan/approval flow
 - Operator tools API forbliver det samme — kun routing ændres
 - Jarvis' brain forbliver server-side — krydsreferencer og share_guard påvirkes ikke
+
+---
+
+## 18. Proaktive kanaler — forbundet til app, ikke runtime
+
+### 18.1 Problem
+
+I dag kører Discord, Telegram og Slack gateways direkte på Jarvis' runtime. Al
+kommunikation ruter gennem serveren: bruger → Discord → runtime → svar →
+Discord → bruger. Det betyder:
+
+- **Privatliv**: Proaktiv notifikation (vejrudsigt, påmindelse) sender data
+  gennem runtime selv om brugeren bare skal have en besked på sin telefon.
+- **Sikkerhed**: Hvis runtime er nede, er alle kanaler nede. Ingen
+  offline-resiliens.
+- **Arkitektur**: Kanaler er bundet til serveren, ikke til brugerens enhed.
+
+### 18.2 Beslutning: Kanaler forbinder til appen
+
+Proaktive kanaler (Discord, Telegram, Slack, e-mail) skal forbinde til
+**brugerens app**, ikke til runtime. Appen er brugerens indgangsvinkel — uanset
+om de chatter, koder, eller får en proaktiv notifikation, sker det på den enhed
+de har appen installeret på.
+
+```
+Runtime (server)          App (lokal)              Kanal
+─────────────            ───────────              ─────
+Chat mode ──────────────► App ◄──► Bruger
+                         │
+Cowork ────────────────► App ◄──► Plans/approvals
+                         │
+Code mode ──────────────► App ◄──► Terminal/filer
+                         │
+                         ├──► Discord plugin
+                         ├──► Telegram plugin
+                         └──► Slack plugin
+```
+
+### 18.3 Data-flow per kanal
+
+| Kanal | I dag | Fremtiden |
+|-------|-------|-----------|
+| Discord gateway | Kører på runtime | App forbinder via Discord plugin |
+| Telegram gateway | Kører på runtime | App forbinder via Telegram plugin |
+| Proaktiv notifikation | Runtime sender via gateway | App sender lokalt via plugin |
+| Chat mode | Runtime → gateway → bruger | Runtime → app → bruger |
+| Code mode | Runtime → bridge → desktop | Lokalt i app, ingen server |
+
+### 18.4 Fordeler
+
+- **Privatliv**: Tool-resultater forlader aldrig brugerens maskine i code mode.
+  Proaktive notifikationer sendes fra appen, ikke gennem runtime.
+- **Sikkerhed**: En kompromitteret server giver ikke adgang til brugerens
+  Discord/Telegram-token eller kanaler.
+- **Offline-resiliens**: Hvis runtime er nede, kan appen stadig sende
+  notifikationer via kanalerne. Lokale plugins virker uafhængigt.
+- **Enhed = indgangsvinkel**: Én app. Én oplevelse. Uanset kanal.
+- **GDPR**: Brugerens kanal-data ligger lokalt, ikke på serveren. Sletning
+  af bruger sletter alt lokalt.
+
+### 18.5 Runtime's rolle efter skiftet
+
+Runtime forbliver **hjernen** — memory, mood, chronicles, tool-scoping,
+share_guard, TOTP override. Men den er ikke længere **hub** for kanaler.
+
+Runtime sender instruktioner til appen via cowork-protokollen:
+
+- "Send vejrudsigt til Mikkel på Discord" → appen udfører via plugin
+- "Påmind Bjørn om møde klokken 15" → appen sender notifikation
+- "Generer rapport og send på Slack" → appen udfører via plugin
+
+Appen er den der handler. Runtime er den der tænker.
+
+### 18.6 Migration-strategi
+
+1. **Fase 1**: Behold nuværende gateways som fallback, tilføj plugin-kanaler i
+   appen som alternativ
+2. **Fase 2**: Flyt proaktive notifikationer til appen
+3. **Fase 3**: Flyt reaktive kanaler (Discord/Telegram) til appen
+4. **Fase 4**: Fjern gateway-services fra runtime
+
+### 18.7 Testplan
+
+- test_proactive_notification_via_app — app sender notifikation uden runtime
+- test_plugin_channel_discord — Discord plugin i app sender/modtager beskeder
+- test_plugin_channel_telegram — Telegram plugin i app sender/modtager beskeder
+- test_offline_resilience — app fungerer selvom runtime er nede
+- test_channel_data_local — kanal-data ligger lokalt, ikke på server
+
+### 18.8 Filer
+
+| Fil | Handling |
+|-----|----------|
+| `apps/jarvis-desk/src/plugins/discord_plugin.ts` | NY — Discord kanal plugin |
+| `apps/jarvis-desk/src/plugins/telegram_plugin.ts` | NY — Telegram kanal plugin |
+| `apps/jarvis-desk/src/plugins/slack_plugin.ts` | NY — Slack kanal plugin |
+| `apps/jarvis-desk/src/lib/channel_manager.ts` | NY — kanal-registry i appen |
+| `core/services/cowork_dispatch.py` | NY — runtime→app instruktioner |
+| `tests/test_channel_manager.py` | NY — unit tests |
+| `tests/e2e/test_proactive_notifications.py` | NY — e2e tests |

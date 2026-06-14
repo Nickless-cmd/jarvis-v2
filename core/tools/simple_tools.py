@@ -5108,197 +5108,15 @@ def _exec_operator_browser_close(args: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
-    path = str(args.get("path") or "").strip()
-    if not path:
-        return {"error": "path is required", "status": "error"}
-
-    target = Path(path).expanduser().resolve()
-    if not target.exists():
-        return {"error": f"File not found: {path}", "status": "error"}
-    if not target.is_file():
-        return {"error": f"Not a file: {path}", "status": "error"}
-
-    try:
-        text = target.read_text(encoding="utf-8", errors="replace")
-    except PermissionError:
-        return {"error": f"Permission denied: {path}", "status": "error"}
-
-    if len(text) > MAX_READ_CHARS:
-        text = text[:MAX_READ_CHARS - 1] + "…"
-
-    # Record read for read-before-write guard
-    # Note: tools receive _runtime_session_id (not _session_id) — fall back
-    # through both keys so the guard tracks reads correctly regardless of
-    # caller convention.
-    try:
-        from core.services.read_before_write_guard import record_read
-        _session_id = (
-            args.get("_runtime_session_id")
-            or args.get("_session_id")
-            or "default"
-        )
-        record_read(str(target), session_id=str(_session_id))
-    except Exception:
-        pass
-
-    return {"text": text, "path": str(target), "size": len(text), "status": "ok"}
-
-
-def _exec_read_tool_result(args: dict[str, Any]) -> dict[str, Any]:
-    result_id = str(args.get("result_id") or "").strip()
-    if not result_id:
-        return {"error": "result_id is required", "status": "error"}
-
-    record = get_tool_result(result_id)
-    if not record:
-        return {"error": f"Tool result not found: {result_id}", "status": "error"}
-
-    return {
-        "status": "ok",
-        "text": str(record.get("result") or "") or "[empty tool result]",
-        "result_id": result_id,
-        "tool_name": str(record.get("tool_name") or ""),
-        "arguments": dict(record.get("arguments") or {}),
-        "summary": str(record.get("summary") or ""),
-        "created_at": str(record.get("created_at") or ""),
-    }
-
-
-def _exec_read_self_docs(args: dict[str, Any]) -> dict[str, Any]:
-    doc_id = str(args.get("doc_id") or "").strip()
-    include_history = bool(args.get("include_history") or False)
-    max_chars_per_doc_raw = args.get("max_chars_per_doc")
-    kwargs: dict[str, Any] = {
-        "doc_id": doc_id,
-        "include_history": include_history,
-    }
-    if max_chars_per_doc_raw is not None:
-        kwargs["max_chars_per_doc"] = max(500, int(max_chars_per_doc_raw))
-    try:
-        return read_self_docs(**kwargs)
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
-
-
-def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
-    path = str(args.get("path") or "").strip()
-    content = str(args.get("content") or "")
-    if not path:
-        return {"error": "path is required", "status": "error"}
-
-    target = Path(path).expanduser().resolve()
-    target, redirected_from = _canonicalize_workspace_target(target)
-    classification = classify_file_write(str(target))
-
-    if classification == "blocked":
-        return {"error": f"Write blocked for safety: {path}", "status": "blocked"}
-
-    if classification == "approval":
-        return {
-            "status": "approval_needed",
-            "message": f"Writing to {path} requires your approval. Please confirm in chat.",
-            "path": str(target),
-            "content_preview": content[:200] + ("…" if len(content) > 200 else ""),
-        }
-
-    # Read-before-write guard: block overwriting protected files without reading first
-    try:
-        from core.services.read_before_write_guard import check_read_before_write
-        _session_id = (
-            args.get("_runtime_session_id")
-            or args.get("_session_id")
-            or "default"
-        )
-        _guard_allowed, _guard_reason = check_read_before_write(
-            str(target), session_id=str(_session_id)
-        )
-        if not _guard_allowed:
-            return {"status": "guard_blocked", "error": _guard_reason}
-    except Exception:
-        pass  # guard failure → allow (fail-open)
-
-    # Auto-approved (workspace files)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(content, encoding="utf-8")
-    result = {"status": "ok", "path": str(target), "bytes_written": len(content.encode("utf-8"))}
-    if redirected_from:
-        result["redirected_from"] = redirected_from
-        result["note"] = f"Path redirected to canonical workspace location: {target}"
-    try:
-        from core.services.self_mutation_lineage import record_self_mutation
-        record_self_mutation(target_path=str(target), change_type="write")
-    except Exception:
-        pass
-    return result
-
-
-def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
-    path = str(args.get("path") or "").strip()
-    old_text = str(args.get("old_text") or "")
-    new_text = str(args.get("new_text") or "")
-    replace_all = bool(args.get("replace_all", False))
-    expected_replacements = args.get("expected_replacements")
-    if not path or not old_text:
-        return {"error": "path and old_text are required", "status": "error"}
-
-    target = Path(path).expanduser().resolve()
-    target, redirected_from = _canonicalize_workspace_target(target)
-    classification = classify_file_write(str(target))
-
-    if classification == "blocked":
-        return {"error": f"Edit blocked for safety: {path}", "status": "blocked"}
-
-    if classification == "approval":
-        return {
-            "status": "approval_needed",
-            "message": f"Editing {path} requires your approval. Please confirm in chat.",
-            "path": str(target),
-            "old_text_preview": old_text[:100],
-            "new_text_preview": new_text[:100],
-        }
-
-    if not target.exists():
-        return {"error": f"File not found: {path}", "status": "error"}
-
-    content = target.read_text(encoding="utf-8", errors="replace")
-    if old_text not in content:
-        return {"error": "old_text not found in file", "status": "error"}
-
-    count = content.count(old_text)
-    if count > 1 and not replace_all:
-        return {
-            "error": f"old_text matches {count} locations — be more specific, "
-                     f"or pass replace_all=true to rename every occurrence",
-            "status": "error",
-            "match_count": count,
-        }
-
-    if expected_replacements is not None:
-        try:
-            expected = int(expected_replacements)
-        except Exception:
-            return {"error": "expected_replacements must be an integer", "status": "error"}
-        if count != expected:
-            return {
-                "error": f"expected {expected} matches but found {count}",
-                "status": "error",
-                "match_count": count,
-            }
-
-    replacements = count if replace_all else 1
-    new_content = content.replace(old_text, new_text, -1 if replace_all else 1)
-    target.write_text(new_content, encoding="utf-8")
-    try:
-        from core.services.self_mutation_lineage import record_self_mutation
-        record_self_mutation(target_path=str(target), change_type="edit")
-    except Exception:
-        pass
-    result = {"status": "ok", "path": str(target), "replacements": replacements}
-    if redirected_from:
-        result["redirected_from"] = redirected_from
-        result["note"] = f"Path redirected to canonical workspace location: {target}"
-    return result
+# Fil-tool executors udskilt til file_tools_exec.py (Boy Scout) + gjort
+# encryption-aware (§16). Re-eksporteret for dispatch-dict + tests.
+from core.tools.file_tools_exec import (  # noqa: E402
+    _exec_edit_file,
+    _exec_read_file,
+    _exec_read_self_docs,
+    _exec_read_tool_result,
+    _exec_write_file,
+)
 
 
 def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
@@ -8777,7 +8595,8 @@ def _force_write_file(args: dict[str, Any]) -> dict[str, Any]:
     if classify_file_write(str(target)) == "blocked":
         return {"error": f"Write blocked for safety: {path}", "status": "blocked"}
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(content, encoding="utf-8")
+    from core.tools.file_tools_exec import _ws_write_text
+    _ws_write_text(target, content)
     result = {"status": "ok", "path": str(target), "size": len(content)}
     if redirected_from:
         result["redirected_from"] = redirected_from
@@ -8796,13 +8615,14 @@ def _force_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     target, redirected_from = _canonicalize_workspace_target(target)
     if classify_file_write(str(target)) == "blocked":
         return {"error": f"Edit blocked for safety: {path}", "status": "blocked"}
-    if not target.exists():
+    from core.tools.file_tools_exec import _ws_read_text, _ws_write_text, _ws_path_exists
+    if not _ws_path_exists(target):
         return {"error": f"File not found: {path}", "status": "error"}
-    content = target.read_text(encoding="utf-8", errors="replace")
+    content = _ws_read_text(target) or ""
     if old_text not in content:
         return {"error": "old_text not found in file", "status": "error"}
     new_content = content.replace(old_text, new_text, 1)
-    target.write_text(new_content, encoding="utf-8")
+    _ws_write_text(target, new_content)
     result = {"status": "ok", "path": str(target), "replacements": 1}
     if redirected_from:
         result["redirected_from"] = redirected_from

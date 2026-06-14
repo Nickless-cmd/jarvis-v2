@@ -137,7 +137,7 @@ def test_resolve_with_shared_fallback_preserves_when_shared_missing(tmp_path, mo
     assert resolved == workspace_path
 
 
-def test_workspace_file_section_decrypts_member_enc(tmp_path, monkeypatch) -> None:
+def test_workspace_file_section_decrypts_member_enc(isolated_runtime, tmp_path, monkeypatch) -> None:
     """Encryption-aware: en member-fil gemt som .enc læses + dekrypteres
     transparent af _workspace_file_section (uafhængigt af ENCRYPT_ON_WRITE)."""
     from core.identity.users import add_user

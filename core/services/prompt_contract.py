@@ -2776,8 +2776,9 @@ def _select_relevant_memory_entries(
         mode=mode,
     )
     ordered: list[str]
+    from core.services.workspace_crypto import read_text_for_path
     prompt_file_used = bool(
-        (workspace_dir / "VISIBLE_MEMORY_SELECTION.md").exists()
+        read_text_for_path(workspace_dir / "VISIBLE_MEMORY_SELECTION.md") is not None
         or (TEMPLATE_DIR / "VISIBLE_MEMORY_SELECTION.md").exists()
     )
 
@@ -3083,13 +3084,15 @@ def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 1800) -> str |
     """Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered —
     stable references (URLs, paths, logins, hosts) must always be in view so
     Jarvis doesn't re-discover them locally every session."""
+    from core.services.workspace_crypto import read_text_for_path
     path = workspace_dir / "QUICK_FACTS.md"
-    if not path.exists():
-        return None
     try:
-        text = path.read_text(encoding="utf-8", errors="replace").strip()
+        raw = read_text_for_path(path)
     except Exception:
         return None
+    if raw is None:
+        return None
+    text = raw.strip()
     if not text:
         return None
     if len(text) > max_chars:

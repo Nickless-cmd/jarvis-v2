@@ -619,11 +619,10 @@ def run_bounded_nl_memory_entry_selection(
 
 
 def load_visible_relevance_prompt(*, workspace_dir: Path) -> str | None:
-    workspace_path = workspace_dir / "VISIBLE_RELEVANCE.md"
-    if workspace_path.exists():
-        return (
-            workspace_path.read_text(encoding="utf-8", errors="replace").strip() or None
-        )
+    from core.services.workspace_crypto import read_text_for_path
+    workspace_text = read_text_for_path(workspace_dir / "VISIBLE_RELEVANCE.md")
+    if workspace_text is not None:
+        return workspace_text.strip() or None
 
     template_path = TEMPLATE_DIR / "VISIBLE_RELEVANCE.md"
     if template_path.exists():
@@ -634,11 +633,10 @@ def load_visible_relevance_prompt(*, workspace_dir: Path) -> str | None:
 
 
 def load_visible_memory_selection_prompt(*, workspace_dir: Path) -> str | None:
-    workspace_path = workspace_dir / "VISIBLE_MEMORY_SELECTION.md"
-    if workspace_path.exists():
-        return (
-            workspace_path.read_text(encoding="utf-8", errors="replace").strip() or None
-        )
+    from core.services.workspace_crypto import read_text_for_path
+    workspace_text = read_text_for_path(workspace_dir / "VISIBLE_MEMORY_SELECTION.md")
+    if workspace_text is not None:
+        return workspace_text.strip() or None
 
     template_path = TEMPLATE_DIR / "VISIBLE_MEMORY_SELECTION.md"
     if template_path.exists():

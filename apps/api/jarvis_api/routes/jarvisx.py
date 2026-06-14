@@ -821,8 +821,9 @@ def mind_snapshot() -> dict[str, Any]:
         from core.identity.workspace_context import current_workspace_name
         ws = current_workspace_name() or "default"
         ms_path = Path(_WORKSPACES_DIR_RAW) / ws / "MILESTONES.md"
-        if ms_path.is_file():
-            raw = ms_path.read_text(encoding="utf-8", errors="replace")
+        from core.services.workspace_crypto import read_text_for_path
+        raw = read_text_for_path(ms_path)
+        if raw is not None:
             out["milestones_preview"] = raw[:1500]
     except Exception:
         pass

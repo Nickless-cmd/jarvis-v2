@@ -1195,3 +1195,137 @@ Dette er direkte fra pitch'en om dansk AI-hjælp til ordblinde og blinde — de 
 - Chat mode for betalende brugere — altid ubegrænset
 - Eksisterende rate limits (memory writes, TOTP) — separate systemer
 - Owner-rettigheder — altid ubegrænset
+
+## 22. Lokalisering, plugin-markedsplads og auto-update
+
+### 22.1 Problem
+
+Jarvis-desk er hardcoded på dansk. For at understøtte ordblinde/blinde brugere (pitch'en fra §21.7) og internationale brugere, skal app'en understøtte flere sprog. Desuden mangler vi et plugin-markedsplads-format med versionsstyring og auto-opdatering, samt en mekanisme for at holde appen opdateret.
+
+Analyse af Claude Desktop og Codex Desktop viser fem områder vi mangler:
+
+1. **Lokalisering (i18n)** — Claude og Codex har begge locale-konfiguration. Vi har hardcoded dansk.
+2. **Plugin-markedsplads** — Claude har installeret plugins med versionering, git-commit SHA og cache. Vi har skills, men ingen auto-opdatering.
+3. **Auto-update** — Codex har version check og auto-update. Vi har ingen mekanisme.
+4. **Refresh token rotation** — Codex lagrer credentials med refresh. Vi har JWT med 30 dages TTL, men ingen rotation.
+5. **MCP (Model Context Protocol)** — Claude understøtter MCP for eksterne modeller. Vi bør overveje om vi vil understøtte det.
+
+### 22.2 Beslutning: Fem forbedringer
+
+| Område | Beslutning | Prioritet |
+|--------|-----------|-----------|
+| **Lokalisering** | i18n med da/en som minimum. Alle UI-tekster i locale-filer, ikke hardcoded | P1 |
+| **Plugin-markedsplads** | Skills-repo med git-baseret auto-opdatering, versionsstyring og security scanning | P2 |
+| **Auto-update** | Electron auto-updater med GitHub releases. Nye versioner downloades og installeres automatisk | P1 |
+| **Refresh token rotation** | JWT med 30 dages TTL + refresh token med 7 dages rotation | P2 |
+| **MCP** | Undtaget — vi understøtter ikke MCP i første version. Kan overvejes senere | P3 |
+
+### 22.3 Lokalisering (i18n)
+
+Alle UI-tekster i jarvis-desk udtrækkes til locale-filer:
+
+```
+locales/
+  da.json    — dansk (standard)
+  en.json    — engelsk
+  da-DK.json — dansk med Dansk Foreningens staveordliste (ordblinde-tilpasning)
+```
+
+Sprog vælges ud fra:
+1. Brugerens indstilling i app'en
+2. OS locale (fallback)
+3. Dansk (default)
+
+Ordblinde-tilpasninger i `da-DK.json`:
+- Simplificerede formuleringer
+- Større font-størrelser som standard
+- Mindre brug af idiomer og metaforer
+- Voice-over kompatible labels
+
+### 22.4 Plugin-markedsplads
+
+Skills installeres fra et centraliseret repo (git-baseret):
+
+```json
+{
+  "id": "weather",
+  "version": "1.2.0",
+  "gitCommitSha": "abc123...",
+  "installedAt": "2026-06-14T10:00:00Z",
+  "lastUpdated": "2026-06-14T10:00:00Z",
+  "source": "jarvis-skills-official"
+}
+```
+
+- **Auto-opdatering**: Skills repo'et poller for nye versioner en gang om dagen
+- **Security scanning**: Før installation scannes skills for prompt injection og malware (§19.8)
+- **Versionsstyring**: Hver skill har semver, git SHA og installationsdato
+- **Blocklist**: Kendte ondsindede skills blokeres (ligesom Claude's blocklist)
+
+### 22.5 Auto-update
+
+Electron auto-updater med GitHub releases:
+
+- **Check**: Ved startup og en gang dagligt
+- **Download**: Nye versioner hentes fra GitHub releases
+- **Installering**: Brugeren kan vælge at installere med det samme eller udskyde
+- **Force**: Sikkerhedsopdateringer kan tvinges (critical flag i release)
+- **Platform**: Linux (.deb), Windows (.exe), Mac (.dmg)
+
+Konfiguration i `config.json`:
+```json
+{
+  "autoUpdate": {
+    "enabled": true,
+    "channel": "stable",
+    "checkIntervalHours": 24,
+    "forceSecurityUpdates": true
+  }
+}
+```
+
+### 22.6 Refresh token rotation
+
+Nuværende JWT-system (30 dages TTL) udvides med:
+
+- **Access token**: 30 minutters TTL, bæres i Authorization header
+- **Refresh token**: 7 dages TTL, bæres i httpOnly cookie
+- **Rotation**: Ved hvert refresh udstedes en ny refresh token (den gamle invalideres)
+- **Revocation**: `!revoke-override` invaliderer alle tokens for brugeren
+
+Dette forhindrer token-tyveri i at give langvarig adgang.
+
+### 22.7 Testplan
+
+| Test | Hvad |
+|------|------|
+| test_i18n_locale_da | Dansk locale loader korrekt |
+| test_i18n_locale_en | Engelsk locale loader korrekt |
+| test_i18n_fallback | Ukendt locale falder tilbage til dansk |
+| test_plugin_install | Skill installeres fra repo med version og SHA |
+| test_plugin_security_scan | Ondsindet skill blokeres af scanner |
+| test_auto_update_check | Appen opdager ny version ved startup |
+| test_auto_update_security | Sikkerhedsopdatering tvinges |
+| test_refresh_token_rotation | Refresh token roterer korrekt |
+| test_refresh_token_revocation | Revocation invaliderer alle tokens |
+
+### 22.8 Filer
+
+| Fil | Handling |
+|-----|----------|
+| `locales/da.json` | NY — dansk locale |
+| `locales/en.json` | NY — engelsk locale |
+| `locales/da-DK.json` | NY — ordblinde-tilpasning |
+| `apps/jarvis-desk/src/lib/i18n.ts` | NY — i18n loader |
+| `core/services/skill_marketplace.py` | NY — skill-repo, versionsstyring, scanning |
+| `core/services/auto_update.py` | NY — version check, download, install |
+| `core/services/auth_refresh.py` | NY — refresh token rotation |
+| `apps/jarvis-desk/electron/updater.ts` | NY — Electron auto-updater |
+
+### 22.9 Hvad IKKE ændres
+
+- Jarvis' kerne-runtime (ingen ændring i chat-engine)
+- Eksisterende skills (bliver ved med at virke, tilføjer blot markedsplads)
+- TOTP-system (uændret)
+- Eksisterende locale-uafhængige tekster i bridge.ts (bliver ved med at virke)
+

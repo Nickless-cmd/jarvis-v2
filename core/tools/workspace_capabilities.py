@@ -691,8 +691,31 @@ def get_capability_invocation_truth() -> dict[str, object]:
     }
 
 
+def _ws_read_text(path: Path) -> str | None:
+    """Læs workspace-fil encryption-aware (member .enc transparent). None hvis
+    hverken plaintext eller .enc findes. Identisk med read_text(errors=replace)
+    for ikke-member-stier."""
+    from core.services.workspace_crypto import read_text_for_path
+    return read_text_for_path(path)
+
+
+def _ws_write_text(path: Path, content: str) -> None:
+    """Skriv workspace-fil encryption-aware (member → .enc når ENCRYPT_ON_WRITE on;
+    ellers plaintext). Identisk med write_text for ikke-member/owner/shared."""
+    from core.services.workspace_crypto import write_text_for_path
+    write_text_for_path(path, content)
+
+
+def _ws_path_exists(path: Path) -> bool:
+    """Eksistens encryption-aware: plaintext eller member .enc."""
+    if path.exists():
+        return True
+    from core.services.workspace_crypto import member_user_id_for_path
+    return bool(member_user_id_for_path(path)) and Path(str(path) + ".enc").exists()
+
+
 def _document_summary(path: Path, *, kind: str) -> dict[str, object]:
-    if not path.exists():
+    if not _ws_path_exists(path):
         return {
             "path": str(path),
             "exists": False,
@@ -705,7 +728,7 @@ def _document_summary(path: Path, *, kind: str) -> dict[str, object]:
             "declared_capabilities": [],
         }
 
-    lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()]
+    lines = [line.strip() for line in (_ws_read_text(path) or "").splitlines()]
     headings = [line.lstrip("#").strip() for line in lines if line.startswith("#")]
     content_lines = [line for line in lines if line and not line.startswith("#")]
     # Bumped from 20 to 30 — 20 was hiding the new code-exploration
@@ -729,14 +752,15 @@ def _document_summary(path: Path, *, kind: str) -> dict[str, object]:
 
 
 def _document_sections(path: Path, *, kind: str) -> list[dict[str, str]]:
-    if not path.exists():
+    text = _ws_read_text(path)
+    if text is None:
         return []
 
     sections: list[dict[str, str]] = []
     current_heading: str | None = None
     current_lines: list[str] = []
 
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
+    for raw_line in text.splitlines():
         line = raw_line.rstrip()
         if line.startswith("## "):
             if current_heading:
@@ -1475,11 +1499,7 @@ def _invoke_runnable_capability(
                 "detail": "Memory write requires explicit write_content. Use block syntax: <capability-call id=\"tool:write-workspace-memory\">\\n# MEMORY\\n(full content)\\n</capability-call>",
             }
         candidate.parent.mkdir(parents=True, exist_ok=True)
-        existing_content = (
-            candidate.read_text(encoding="utf-8", errors="replace")
-            if candidate.exists()
-            else ""
-        )
+        existing_content = _ws_read_text(candidate) or ""
         existing_fingerprint = (
             _content_fingerprint(existing_content) if existing_content else ""
         )
@@ -1488,14 +1508,14 @@ def _invoke_runnable_capability(
             existing_content=existing_content,
             incoming_content=write_content,
         )
-        candidate.write_text(merged_content, encoding="utf-8")
+        _ws_write_text(candidate, merged_content)
         # Read-back verification: re-read the file from disk so we can
         # confirm the bytes Jarvis sees actually match what was written.
         # If the readback differs (filesystem race, encoding issue,
         # external mutation), we surface that explicitly so Jarvis is
         # not lied to about persistence success.
         try:
-            readback_content = candidate.read_text(encoding="utf-8", errors="replace")
+            readback_content = _ws_read_text(candidate) or ""
         except Exception:
             readback_content = ""
         readback_fingerprint = (
@@ -1721,7 +1741,7 @@ def _invoke_runnable_capability(
                 "result": None,
                 "detail": "Memory replace new line must be a single durable bullet line.",
             }
-        if not candidate.exists():
+        if not _ws_path_exists(candidate):
             return {
                 "capability": summary,
                 "status": "blocked-missing-target-file",
@@ -1730,7 +1750,7 @@ def _invoke_runnable_capability(
                 "result": None,
                 "detail": f"Memory replace target file does not exist: {candidate.resolve()}",
             }
-        existing_content = candidate.read_text(encoding="utf-8", errors="replace")
+        existing_content = _ws_read_text(candidate) or ""
         existing_lines = existing_content.splitlines()
         match_indexes = [
             index
@@ -1754,9 +1774,9 @@ def _invoke_runnable_capability(
         ]
         updated_content = "\n".join(updated_lines).rstrip() + "\n"
         existing_bytes = len(existing_content.encode("utf-8"))
-        candidate.write_text(updated_content, encoding="utf-8")
+        _ws_write_text(candidate, updated_content)
         try:
-            readback_content = candidate.read_text(encoding="utf-8", errors="replace")
+            readback_content = _ws_read_text(candidate) or ""
         except Exception:
             readback_content = ""
         new_fingerprint = _content_fingerprint(updated_content)
@@ -1834,7 +1854,7 @@ def _invoke_runnable_capability(
                 "result": None,
                 "detail": "Memory delete only supports exact durable bullet lines from MEMORY.md.",
             }
-        if not candidate.exists():
+        if not _ws_path_exists(candidate):
             return {
                 "capability": summary,
                 "status": "blocked-missing-target-file",
@@ -1843,7 +1863,7 @@ def _invoke_runnable_capability(
                 "result": None,
                 "detail": f"Memory delete target file does not exist: {candidate.resolve()}",
             }
-        existing_content = candidate.read_text(encoding="utf-8", errors="replace")
+        existing_content = _ws_read_text(candidate) or ""
         existing_lines = existing_content.splitlines()
         kept_lines = [line for line in existing_lines if line.strip() != delete_line]
         match_count = len(existing_lines) - len(kept_lines)
@@ -1860,9 +1880,9 @@ def _invoke_runnable_capability(
             }
         updated_content = "\n".join(kept_lines).rstrip() + "\n"
         existing_bytes = len(existing_content.encode("utf-8"))
-        candidate.write_text(updated_content, encoding="utf-8")
+        _ws_write_text(candidate, updated_content)
         try:
-            readback_content = candidate.read_text(encoding="utf-8", errors="replace")
+            readback_content = _ws_read_text(candidate) or ""
         except Exception:
             readback_content = ""
         new_fingerprint = _content_fingerprint(updated_content)
@@ -1951,16 +1971,12 @@ def _invoke_runnable_capability(
                 rejected_lines.append(line)
         filtered_content = "\n".join(filtered_lines).rstrip() + "\n"
         candidate.parent.mkdir(parents=True, exist_ok=True)
-        existing_content = (
-            candidate.read_text(encoding="utf-8", errors="replace")
-            if candidate.exists()
-            else ""
-        )
+        existing_content = _ws_read_text(candidate) or ""
         existing_fingerprint = _content_fingerprint(existing_content) if existing_content else ""
         existing_bytes = len(existing_content.encode("utf-8"))
-        candidate.write_text(filtered_content, encoding="utf-8")
+        _ws_write_text(candidate, filtered_content)
         try:
-            readback_content = candidate.read_text(encoding="utf-8", errors="replace")
+            readback_content = _ws_read_text(candidate) or ""
         except Exception:
             readback_content = ""
         new_fingerprint = _content_fingerprint(filtered_content)
@@ -2205,7 +2221,7 @@ def _invoke_runnable_capability(
                 "detail": "Approved workspace write execution requires explicit write_content.",
             }
         candidate.parent.mkdir(parents=True, exist_ok=True)
-        candidate.write_text(write_content, encoding="utf-8")
+        _ws_write_text(candidate, write_content)
         return {
             "capability": summary,
             "status": "executed",

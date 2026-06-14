@@ -1058,3 +1058,26 @@ def test_mutating_exec_execution_rejects_command_mismatch_against_approved_propo
 
     assert executed["ok"] is False
     assert executed["status"] == "proposal-content-mismatch"
+
+
+def test_ws_helpers_member_enc_roundtrip(isolated_runtime, tmp_path, monkeypatch) -> None:
+    """De udskilte _ws_read_text/_ws_write_text/_ws_path_exists håndterer
+    member .enc transparent (§16 Task 3.2). isolated_runtime → ren DEK-DB."""
+    from core.identity.users import add_user
+    import core.tools.workspace_capabilities as wc
+    import core.services.keyring_store as ks
+
+    monkeypatch.setattr("core.runtime.config.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("core.runtime.config.SETTINGS_FILE", tmp_path / "runtime.json")
+    monkeypatch.setattr(ks, "_keyring", lambda: None)
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    monkeypatch.setenv("JARVISX_ENCRYPT_WORKSPACES", "1")
+    add_user(discord_id="d-mikkel", name="Mikkel", role="member", workspace="mikkel")
+
+    p = tmp_path / "workspaces" / "mikkel" / "MEMORY.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    wc._ws_write_text(p, "- mikkels hemmelige note\n")
+    assert (tmp_path / "workspaces" / "mikkel" / "MEMORY.md.enc").exists()
+    assert not p.exists()                       # plaintext fjernet
+    assert wc._ws_path_exists(p) is True        # .enc-aware
+    assert wc._ws_read_text(p) == "- mikkels hemmelige note\n"

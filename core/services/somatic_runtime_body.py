@@ -1,4 +1,14 @@
-"""Somatic runtime body: turn runtime signals into bodily regulation cues."""
+"""Somatic runtime body: turn runtime signals into bodily regulation cues.
+
+Decay mechanism added 2026-06-14:
+- Stress levels decay naturally over time (seconds since last update).
+- startle decays fastest (fully fades in ~5 min of inactivity)
+- frustration fades in ~7.5 min
+- pressure fades in ~15 min
+- fatigue is stickier (~30 min) — tiredness doesn't vanish quickly
+- Without decay, startle accumulates monotonically from every tool event
+  and posture gets stuck at "startled" permanently.
+"""
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -9,6 +19,36 @@ from core.runtime.db import get_runtime_state_value, set_runtime_state_value
 
 _STATE_KEY = "somatic_runtime_body"
 
+# Decay rates per second for each level.
+# Chosen so that:
+#   - startle 0.9→0.0 in 300s (5 min)
+#   - frustration 0.9→0.0 in 450s (7.5 min)
+#   - pressure 0.9→0.0 in 900s (15 min)
+#   - fatigue 0.9→0.0 in 1800s (30 min)  — fatigue is sticky
+#   - relief 0.9→0.0 in 540s (9 min)     — relief fades as new events arrive
+_DECAY_RATES: dict[str, float] = {
+    "startle": 0.003,
+    "pressure": 0.001,
+    "frustration": 0.002,
+    "fatigue": 0.0005,
+    "relief": 0.0017,
+}
+
+
+def _decay_levels(levels: dict[str, float], age_seconds: float) -> dict[str, float]:
+    """Apply time-based decay to stress/arousal levels.
+
+    The longer since the last somatic update, the more the levels
+    regress toward baseline. This prevents monotonic accumulation.
+    """
+    if age_seconds <= 0:
+        return levels
+    decayed = dict(levels)
+    for key, rate in _DECAY_RATES.items():
+        if key in decayed and decayed[key] > 0:
+            decayed[key] = max(0.0, decayed[key] - (rate * age_seconds))
+    return decayed
+
 
 def update_somatic_body(
     *,
@@ -18,6 +58,16 @@ def update_somatic_body(
 ) -> dict[str, object]:
     state = build_somatic_body_surface()
     levels = dict(state.get("levels") or _base_levels())
+    last_updated_at = state.get("updated_at")
+    if last_updated_at:
+        try:
+            last_dt = datetime.fromisoformat(str(last_updated_at))
+            age = (datetime.now(UTC) - last_dt).total_seconds()
+            if age > 0:
+                levels = _decay_levels(levels, age)
+        except (ValueError, TypeError):
+            pass  # If timestamp is unparseable, skip decay
+
     event = str(event_type or "")
     delta = max(0.0, min(float(intensity), 1.0)) * 0.25
     if event in {"runtime-interruption", "autonomous-interruption"}:
@@ -32,6 +82,9 @@ def update_somatic_body(
     elif event == "long-latency":
         levels["fatigue"] += delta
         levels["pressure"] += delta / 2
+    # No decay for "tool-result" / "channel-message" — they're neutral.
+    # They don't increase stress but they don't trigger decay either;
+    # the time-since-last-update decay handles that naturally.
     levels = {k: round(max(0.0, min(v, 1.0)), 3) for k, v in levels.items()}
     posture = _posture(levels)
     result = {

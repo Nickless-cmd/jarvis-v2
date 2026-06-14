@@ -190,6 +190,7 @@ from core.services.selfhood_proposal_tracking import (
     track_runtime_selfhood_proposals_for_visible_turn,
 )
 from core.services.claim_scanner import scan_response as _scan_response
+from core.services.fact_gate import fact_gate_enforce as _fact_gate_enforce
 from core.services.visible_model import (
     VisibleModelDelta,
     VisibleModelRateLimited,
@@ -3315,10 +3316,71 @@ async def _stream_visible_run(
                                     "claim-scanner nudge push failed: %s",
                                     _nudge_exc,
                                 )
+                        # ── Bloker også beskeden NU (forbedring 2026-06-13) ──
+                        # Promote from nudge-næste-turn → block-nu. Erstatt
+                        # den viste tekst med en forklaring.
+                        try:
+                            _blocked_text = (
+                                f"*[Besked blokeret — uverificeret arbejdspåstand]*\n\n"
+                                f"Jeg prøvede at fortælle dig at jeg havde gjort noget, "
+                                f"men jeg har ikke kaldt et værktøj i dette run der "
+                                f"beviser det.\n\n"
+                                f"**Detektionsdetaljer:**\n"
+                            )
+                            for _c in _claims[:3]:
+                                _blocked_text += (
+                                    f"- Påstand: \"{_c.matched_text}\"\n"
+                                    f"  Forventede tools: `{'`, `'.join(_c.required_any_of)}`\n"
+                                    f"  Faktiske tools: `{'`, `'.join(_c.actual_tools) or 'ingen'}`\n"
+                                )
+                            _blocked_text += (
+                                f"\nJeg bør verificere før jeg taler. "
+                                f"Jeg prøver igen — med data."
+                            )
+                            visible_output_text = _blocked_text
+                            yield _sse(
+                                "scan_correction",
+                                {
+                                    "type": "scan_correction",
+                                    "run_id": run.run_id,
+                                    "corrected": _blocked_text,
+                                },
+                            )
+                        except Exception:
+                            pass
                 except Exception as _cs_exc:
                     logger.debug("claim-scanner failed: %s", _cs_exc)
             except Exception:
                 pass
+
+            # ── Fact-Gate (2026-06-13, Bjørn approve) ─────────────────
+            # Blokerer beskeden hvis den indeholder uverificerbare faktuelle
+            # påstande om commits, tests, services, cache-procenter mv.
+            try:
+                _fg_result = _fact_gate_enforce(
+                    visible_output_text, _executed_tool_names,
+                )
+                if _fg_result.get("blocked"):
+                    logger.warning(
+                        "fact_gate: BLOCKED run_id=%s reasons=%s",
+                        run.run_id,
+                        [r["pattern"] for r in _fg_result.get("block_reasons", [])],
+                    )
+                    visible_output_text = _fg_result.get("replacement", visible_output_text)
+                    # Send scan_correction så UI kan opdatere den viste tekst
+                    try:
+                        yield _sse(
+                            "scan_correction",
+                            {
+                                "type": "scan_correction",
+                                "run_id": run.run_id,
+                                "corrected": visible_output_text,
+                            },
+                        )
+                    except Exception:
+                        pass
+            except Exception as _fg_exc:
+                logger.debug("fact_gate failed: %s", _fg_exc)
 
         # 2026-05-22 (Claude): post-process MUST run even when
         # visible_output_text is empty. Originally guarded by

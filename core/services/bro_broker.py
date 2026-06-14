@@ -13,6 +13,59 @@ from __future__ import annotations
 
 _SWITCHABLE_LEVELS = ("help", "debug")
 
+# §17.3: i code mode bliver rå tool-output (bash-stdout, filindhold, process-lister,
+# grep-matches) PÅ brugerens maskine. Kun metadata/summaries krydser til serveren.
+_LOCAL_ONLY_KEYS = frozenset({
+    "text", "content", "stdout", "stderr", "output", "result", "results",
+    "matches", "files", "entries", "preview", "data", "raw", "lines", "body",
+})
+_SAFE_KEYS = frozenset({
+    "status", "path", "size", "bytes_written", "replacements", "match_count",
+    "exit_code", "returncode", "line_count", "redirected_from", "note",
+    "tool_name", "duration_ms", "truncated", "count", "file_count",
+})
+_MAX_SCALAR_STR = 120
+_MAX_ERROR_CHARS = 200
+
+
+def summarize_tool_result_for_server(tool_name: str, result: object,
+                                     *, max_error_chars: int = _MAX_ERROR_CHARS) -> dict:
+    """Filtrér et code-mode tool-resultat så KUN metadata/summary krydser til
+    serveren (§17.3). Rå output (filindhold, bash-stdout, matches) erstattes med
+    en `_local_only`-markør der kun angiver feltnavn + størrelse, ikke indhold.
+
+    Ren funktion — muterer ikke `result`. Fail-closed: ukendte store felter
+    holdes lokalt.
+    """
+    out: dict[str, object] = {"tool_name": str(tool_name or "")}
+    if not isinstance(result, dict):
+        size = len(result) if hasattr(result, "__len__") else None
+        out["_local_only"] = [{"field": "result", "size": size}]
+        return out
+
+    held: list[dict[str, object]] = []
+    for key, value in result.items():
+        k = str(key)
+        if k.startswith("_"):
+            continue
+        if k in _LOCAL_ONLY_KEYS:
+            held.append({"field": k, "size": len(value) if hasattr(value, "__len__") else None})
+        elif k == "error":
+            err = str(value or "")
+            out["error"] = err[:max_error_chars] + ("…" if len(err) > max_error_chars else "")
+        elif k in _SAFE_KEYS:
+            out[k] = value
+        elif isinstance(value, bool) or isinstance(value, (int, float)):
+            out[k] = value
+        elif isinstance(value, str) and len(value) <= _MAX_SCALAR_STR:
+            out[k] = value
+        else:
+            held.append({"field": k, "size": len(value) if hasattr(value, "__len__") else None})
+
+    if held:
+        out["_local_only"] = held
+    return out
+
 
 def _active_user_ids() -> list[str]:
     """user_id'er med en aktiv bro (process-local registry)."""

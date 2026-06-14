@@ -147,3 +147,12 @@ class TestCodeScope:
         for role in ("owner", "member"):
             allow = allowed_tool_names(role=role, scope="code", all_names=self.CODE_ALL)
             assert "godnat_unrelated" not in allow
+
+
+def test_is_local_execution_tool() -> None:
+    from core.tools.tool_scoping import is_local_execution_tool
+    assert is_local_execution_tool("operator_bash") is True
+    assert is_local_execution_tool("operator_read_file") is True
+    assert is_local_execution_tool("dispatch_to_claude_code") is True
+    assert is_local_execution_tool("web_search") is False
+    assert is_local_execution_tool("") is False

@@ -102,6 +102,16 @@ CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     "dispatch_to_claude_code",
 })
 
+# §17: værktøjer der eksekverer LOKALT på brugerens maskine i code mode. Deres rå
+# resultat bliver på maskinen; kun summary krydser via bro_broker. bridge.ts bruger
+# dette til mode-aware routing (§17.6.1).
+LOCAL_EXECUTION_TOOLS: frozenset[str] = CODE_MODE_TOOLS_BASE | CODE_MODE_OWNER_EXTRA
+
+
+def is_local_execution_tool(name: str) -> bool:
+    """True hvis værktøjet kører lokalt i code mode (resultat forlader ikke maskinen)."""
+    return str(name or "") in LOCAL_EXECUTION_TOOLS
+
 
 # --- Scope ContextVar (sættes ved request-entry, læses i get_tool_definitions) ---
 _scope_var: contextvars.ContextVar[str] = contextvars.ContextVar(

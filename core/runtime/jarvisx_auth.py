@@ -119,6 +119,7 @@ def issue_token(
     user_id: str,
     role: str = "member",
     ttl_days: int = _DEFAULT_TTL_DAYS,
+    ttl_seconds: int = 0,
     app_id: str = "",
     extra_claims: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -137,10 +138,14 @@ def issue_token(
     role = (role or "member").strip().lower()
     if role not in {"owner", "member", "guest"}:
         raise ValueError(f"invalid role: {role!r}")
-    ttl_days = max(1, min(int(ttl_days), 365))  # clamp [1, 365]
-
     now = datetime.now(UTC)
-    exp = now + timedelta(days=ttl_days)
+    # ttl_seconds (§22.6: kortlivede access-tokens, fx 30 min) vinder over ttl_days
+    # når sat. Ellers clamp ttl_days til [1, 365] som før.
+    if ttl_seconds and int(ttl_seconds) > 0:
+        exp = now + timedelta(seconds=int(ttl_seconds))
+    else:
+        ttl_days = max(1, min(int(ttl_days), 365))
+        exp = now + timedelta(days=ttl_days)
     payload: dict[str, Any] = {
         "sub": user_id,
         "role": role,

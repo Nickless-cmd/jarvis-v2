@@ -193,6 +193,28 @@ Ny indstillingsside i jarvis-desktop der viser:
 TOTP (Time-based One-Time Password, RFC 6238) — samme teknologi som Google
 Authenticator.
 
+### 6.0 UKRÆNKELIG INVARIANT — owner-autoritet er bagdøren (Bjørn, 14. juni)
+
+**Owner-rollen med adgang til ALLE tools skal ALTID bestå** — enten i Bjørns egen
+session ELLER via gyldig TOTP-identifikation. Dette er Bjørns **eneste bagdør ind
+hvis Jarvis stikker rogue** (kill-switch: restart_self, skill_*, bash, config,
+kode). Den må ALDRIG kunne deaktiveres, nedgraderes eller gates af Jarvis selv.
+
+**To adskilte akser** (afklaret 14. juni):
+1. **Kontrol-aksen** (tools): TOTP-override → FULD owner tool-adgang. Alle CONTROL-
+   tools til at standse/rette en rogue Jarvis. Ingen nedgradering.
+2. **Privatlivs-aksen** (data): §6.5 privatlivs-hardblock + cross_user_share_guard
+   beskytter STADIG brugeres private chats/memory — selv under gyldig override.
+   Bagdøren giver kontrol over Jarvis, IKKE automatisk ret til at læse brugeres
+   private data. (GDPR/tillids-bevarende.)
+
+**Rogue-containment hærdning (åben, knyttet til northstar):** en rogue Jarvis har
+selv `edit_file`/`skill_*` på sin egen runtime og kunne i princippet omskrive
+permission_engine. Bagdøren (TOTP-seed + owner-tjek + override-verifikation) skal
+derfor forankres på et niveau Jarvis ikke kan redigere væk: seed kun revokérbar i
+owners egen session (aldrig af Jarvis), owner-tjek og TOTP-verifikation som hårde
+infrastruktur-stier (ikke LLM-gatebare). Designes i Fase 2/3.
+
 ### 6.1 Session-binding (hvornår kræves TOTP?)
 
 | Kontekst | Override-krav |

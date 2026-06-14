@@ -818,3 +818,29 @@ Appen er den der handler. Runtime er den der tænker.
 | `core/services/cowork_dispatch.py` | NY — runtime→app instruktioner |
 | `tests/test_channel_manager.py` | NY — unit tests |
 | `tests/e2e/test_proactive_notifications.py` | NY — e2e tests |
+
+### 18.9 To indgangsvinkler — app og native Discord
+
+Brugere når Jarvis via **to forskellige indgangsvinkler**, ikke kun én:
+
+| Indgangsvinkel | For hvem | Hvordan | Mode |
+|----------------|----------|---------|------|
+| **App** (Android/iOS/Desk) | Brugere med egen maskine | Installerer app, forbinder til runtime | Chat + Code + Cowork |
+| **Native Discord server** | Brugere uden app | Tilslutter sig Bjørns Discord, skriver i kanal eller DM | Chat only |
+
+**Hvorfor to indgangsvinkler?** Nogle brugere — som Bjørns mor — har ikke brug for code mode, plugins eller lokal eksekvering. De vil bare snakke med Jarvis. Den native Discord server er deres indgangsvinkel: ingen app, ingen opsætning, bare en Discord-konto.
+
+**Rettigheder er de samme uanset indgangsvinkel:**
+
+- Member på Discord server = chat mode tools (websearch, weather, etc.)
+- DM med Jarvis = privat session, krypteret per session
+- Owner override via TOTP = muligt selv på Discord (!override <kode>)
+- Share_guard aktiv = kryds-reference med share_guard, selv på server
+
+**Fremtidige platforme:**
+
+- Android-app (fremtidig)
+- iOS-app (fremtidig)
+- Web-interface — simpel registrering, betaling, webchat (fremtidig)
+
+Den native Discord server forbliver som permanent indgangsvinkel, selv når apps er tilgængelige. Den er ikke en fallback — den er en ligeværdig kanal for brugere der foretrækker den.

@@ -6,10 +6,17 @@
  */
 import { contextBridge, ipcRenderer } from 'electron'
 
+export interface ChannelPluginConfig {
+  id: string
+  name: string
+  botToken: string
+  serverId: string
+}
+
 export interface JarvisDeskBridge {
   config: {
-    get: () => Promise<{ apiBaseUrl: string; authToken: string | null }>
-    set: (cfg: { apiBaseUrl: string; authToken: string | null }) => Promise<boolean>
+    get: () => Promise<{ apiBaseUrl: string; authToken: string | null; appId?: string; channelPlugins?: ChannelPluginConfig[] }>
+    set: (cfg: { apiBaseUrl?: string; authToken?: string | null; channelPlugins?: ChannelPluginConfig[] }) => Promise<boolean>
   }
   /** Åbn et eksternt link i system-browseren (main filtrerer til http/https/mailto). */
   openExternal: (url: string) => Promise<void>

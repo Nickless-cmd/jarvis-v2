@@ -1045,6 +1045,27 @@
 .plugins-existing-head { color: var(--fg-2); margin-bottom: 6px; }
 .plugins-existing ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
 
+/* Discord-server-management (lokal gateway) */
+.plugins-servers { display: flex; flex-direction: column; gap: 10px; }
+.plugins-servers ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.plugins-server-item {
+  display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--fg-2);
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-sm, 6px); padding: 8px 11px;
+}
+.plugins-server-item > span:first-child { flex: 1; }
+.plugins-status { font-size: 11px; padding: 1px 7px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.plugins-status-connected { background: rgba(110,231,168,0.15); color: var(--accent, #6ee7a8); }
+.plugins-status-failed { background: rgba(224,90,90,0.15); color: #e05a5a; }
+.plugins-status-offline { background: var(--bg-4); color: var(--fg-3); }
+.plugins-add-server { display: flex; flex-wrap: wrap; gap: 8px; }
+.plugins-add-server input { flex: 1; min-width: 120px;
+  background: var(--bg-2); border: 1px solid var(--bg-4); border-radius: var(--radius-sm, 6px);
+  color: var(--fg-1); font-size: 13px; padding: 8px 10px; outline: none; }
+.plugins-add-server input:focus { border-color: #2c3e54; }
+.plugins-add-server button {
+  background: var(--accent, #6ee7a8); color: #0d1117; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: var(--radius-sm, 6px); }
+
 /* Cowork: cross-user share-guard-rude */
 .shareguard-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .shareguard-item {

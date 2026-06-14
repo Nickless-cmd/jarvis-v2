@@ -91,6 +91,18 @@ def generate_seed() -> str:
     return base64.b32encode(raw).decode("ascii").rstrip("=")
 
 
+def provisioning_uri(seed: str, *, account: str, issuer: str = "Jarvis") -> str:
+    """Byg en otpauth://-URI som authenticator-apps (Google Authenticator, Authy,
+    2FAS) kan scanne fra QR eller indtaste. RFC 6238 / Key Uri Format.
+
+    `account` = bruger-label (fx "Bjørn"); `issuer` = tjeneste-navn ("Jarvis").
+    """
+    from urllib.parse import quote
+    label = quote(f"{issuer}:{account}")
+    params = f"secret={seed}&issuer={quote(issuer)}&algorithm=SHA1&digits={_DIGITS}&period={_PERIOD}"
+    return f"otpauth://totp/{label}?{params}"
+
+
 def revoke(_old_seed: str | None = None) -> str:
     """Returnér en ny seed. Caller (owner-session) persisterer den + smider den gamle.
 

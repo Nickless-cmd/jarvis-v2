@@ -82,6 +82,26 @@ def test_rate_limit_three_per_five_min() -> None:
     assert record_attempt(sid, now=T0 + 400) is True
 
 
+def test_provisioning_uri_format() -> None:
+    from core.services.totp_verifier import provisioning_uri
+
+    uri = provisioning_uri(SEED, account="Bjørn", issuer="Jarvis")
+    assert uri.startswith("otpauth://totp/Jarvis")
+    assert f"secret={SEED}" in uri
+    assert "issuer=Jarvis" in uri
+    assert "period=30" in uri and "digits=6" in uri
+
+
+def test_provisioning_uri_code_verifies() -> None:
+    # En authenticator der bruger denne URI's seed skal kunne lave gyldige koder.
+    from core.services.totp_verifier import generate_code, provisioning_uri, verify
+
+    uri = provisioning_uri(SEED, account="Bjørn")
+    assert SEED in uri
+    code = generate_code(SEED, timestamp=T0)
+    assert verify(code, seed=SEED, now=T0) is True
+
+
 def test_rate_limit_is_per_session() -> None:
     from core.services.totp_verifier import record_attempt
 

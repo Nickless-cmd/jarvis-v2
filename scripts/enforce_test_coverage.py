@@ -105,6 +105,9 @@ KNOWN_MAPPINGS: dict[str, str] = {
     # Mapping added 2026-06-08.
     "core/context/session_compact.py": "tests/test_context_compact.py",
     "core/context/compact_llm.py": "tests/test_context_compact.py",
+    # Agent-dispatch tool — test mirrors module path (like claude_dispatch/).
+    # Mapping added 2026-06-14.
+    "core/tools/agent_dispatch_tool/tool.py": "tests/tools/agent_dispatch_tool/test_tool.py",
 }
 
 

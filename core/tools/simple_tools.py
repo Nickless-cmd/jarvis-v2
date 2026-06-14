@@ -140,6 +140,10 @@ from core.tools.claude_dispatch import (
     _exec_dispatch_status,
     _exec_dispatch_cancel,
 )
+from core.tools.agent_dispatch_tool import (
+    AGENT_DISPATCH_TOOL_DEFINITIONS,
+    _exec_dispatch_code_mode_task,
+)
 from core.tools.bash_session import (
     BASH_SESSION_TOOL_DEFINITIONS,
     _exec_bash_session_open,
@@ -3383,6 +3387,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *MATH_TOOL_DEFINITIONS,
     *PROCESS_TOOL_DEFINITIONS,
     *CLAUDE_DISPATCH_TOOL_DEFINITIONS,
+    *AGENT_DISPATCH_TOOL_DEFINITIONS,
     *BASH_SESSION_TOOL_DEFINITIONS,
     *STAGED_EDITS_TOOL_DEFINITIONS,
     *PROJECT_NOTES_TOOL_DEFINITIONS,
@@ -8391,6 +8396,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "run_pytest": _exec_run_pytest,
     # Claude Code dispatch
     "dispatch_to_claude_code": _exec_dispatch_to_claude_code,
+    "dispatch_code_mode_task": _exec_dispatch_code_mode_task,
     "dispatch_status": _exec_dispatch_status,
     "dispatch_cancel": _exec_dispatch_cancel,
     "bash_session_open": _exec_bash_session_open,

@@ -51,6 +51,7 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     "approve_proposal",
     # Agent dispatch + scheduling control
     "dispatch_cancel",
+    "dispatch_code_mode_task",
     "dispatch_due_wakeups",
     "dispatch_status",
     "dispatch_to_claude_code",
@@ -99,7 +100,7 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
 })
 CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     "read_file", "write_file", "edit_file", "search", "find_files", "bash",
-    "dispatch_to_claude_code",
+    "dispatch_to_claude_code", "dispatch_code_mode_task",
 })
 
 # §17: værktøjer der eksekverer LOKALT på brugerens maskine i code mode. Deres rå

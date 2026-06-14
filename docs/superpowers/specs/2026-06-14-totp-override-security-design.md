@@ -958,3 +958,137 @@ Dette er allerede dækket i §15.3 (anti-manipulation) men gentages her for clar
 | `apps/jarvis-desk/src/lib/agentPanel.ts` | NY — agent-status panel i cowork UI |
 | `tests/test_agent_dispatch.py` | NY — unit tests |
 | `tests/test_skill_scanner.py` | NY — skill-scanning tests |
+
+## 20. Offentlig API sikkerhed
+
+### 20.1 Problem
+
+Jarvis' offentlige API (`api.srvlab.dk`) er den eneste indgangsvinkel for eksterne klienter (jarvis-desk, Discord-webhooks, fremtidige mobilapps). Lige nu er den **ikke tilstrækkeligt hærdet**:
+
+| Lag | Status | Problem |
+|-----|--------|---------|
+| **HTTPS** | ✅ | Caddy reverse-proxy med TLS (Cloudflare DNS challenge) |
+| **HTTP→HTTPS redirect** | ⚠️ | **Deaktiveret** — `auto_https disable_redirects` i Caddy |
+| **Uvicorn på :80** | ⚠️ | Kører HTTP på port 80, bag Caddy — ingen redirect |
+| **CORS** | ⚠️ | `allow_origins=["*"]` — tillader alt fra alle domæner |
+| **Rate limiting** | ❌ | Ingen global rate limiting på API-niveau |
+| **Auth** | ✅ | Bearer token på API-ruter (returnerer 401) |
+| **Security headers** | ❌ | Ingen X-Frame-Options, X-Content-Type-Options, CSP, HSTS |
+| **CSRF** | ❌ | Ingen CSRF-beskyttelse |
+| **WebSocket auth** | ⚠️ | Token-baseret, men ikke rate-limited |
+
+### 20.2 Beslutning: API-hærdning i 6 lag
+
+| Lag | Implementering | Prioritet |
+|-----|-----------------|-----------|
+| **1. HTTP→HTTPS redirect** | Fjern `auto_https disable_redirects` i Caddy. Alle HTTP-requests redirectes til HTTPS | P0 — nu |
+| **2. CORS whitelist** | Erstatt `allow_origins=["*"]` med whitelist af kendte domæner (`jarvis.srvlab.dk`, `localhost:5174` for dev) | P0 — nu |
+| **3. Security headers middleware** | FastAPI middleware der tilføjer: X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Strict-Transport-Security: max-age=63072000; includeSubDomains; preload, Content-Security-Policy: default-src 'none', Referrer-Policy: no-referrer | P0 — nu |
+| **4. Global rate limiting** | SlowAPI (eller lignende) — 60 req/min per IP for offentlige ruter, 120 req/min for autentificerede ruter | P1 — næste sprint |
+| **5. HSTS preloading** | Tilføj jarvis.srvlab.dk til HSTS preload-listen | P1 — efter CORS + headers er live |
+| **6. WebSocket auth enforcement** | Rate limiting på WS-connection attempts, connection-level auth validation | P2 — efter rate limiting |
+
+### 20.3 CORS whitelist
+
+```python
+# Erstatter allow_origins=["*"]
+ALLOWED_ORIGINS = [
+    "https://jarvis.srvlab.dk",
+    "https://jarvis.srvlab.dk:8400",  # Mission Control
+    "http://localhost:5174",           # Dev (jarvis-desk)
+    "http://localhost:8400",          # Dev (MC)
+]
+```
+
+Produktionstilføjelser (når mobilapps er live):
+- `https://app.jarvis.srvlab.dk` (webchat)
+- `capacitor://localhost` (Android/iOS)
+- `https://discord.com` (Discord integration)
+
+### 20.4 Security headers middleware
+
+```python
+# Ny middleware i apps/api/jarvis_api/middleware/security_headers.py
+SECURITY_HEADERS = {
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+    "Referrer-Policy": "no-referrer",
+    "X-Permitted-Cross-Domain-Policies": "none",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+}
+```
+
+### 20.5 Rate limiting
+
+```python
+# SlowAPI integration i app.py
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+# Offentlige ruter (status, health)
+@limiter.limit("60/minute")
+# Autentificerede ruter (chat, tools, plugins)
+@limiter.limit("120/minute")
+# TOTP override (ekstra streng)
+@limiter.limit("5/minute")
+# WebSocket connections
+@limiter.limit("10/minute")
+```
+
+### 20.6 Caddy konfiguration
+
+Før (usikker):
+```caddy
+api.srvlab.dk {
+    auto_https disable_redirects  # ← HTTP forbliver HTTP
+    tls { dns cloudflare }
+    reverse_proxy 127.0.0.1:80
+}
+```
+
+Efter (hærdet):
+```caddy
+http://api.srvlab.dk {
+    redir https://api.srvlab.dk{uri} permanent
+}
+
+api.srvlab.dk {
+    tls { dns cloudflare }
+    reverse_proxy 127.0.0.1:80 {
+        flush_interval -1
+        header_up X-Forwarded-Proto https
+    }
+}
+```
+
+### 20.7 Testplan
+
+| Test | Hvad | Forventet resultat |
+|------|------|--------------------|
+| `test_http_redirect` | HTTP-request → HTTPS redirect | 301 → https://api.srvlab.dk |
+| `test_cors_reject` | Request fra `evil.com` origin | 403 Forbidden |
+| `test_cors_accept` | Request fra `jarvis.srvlab.dk` | 200 OK + CORS headers |
+| `test_security_headers` | GET til vilkårlig rute | Alle security headers tilstede |
+| `test_rate_limit_public` | 70 requests på 60 sekunder | 429 Too Many Requests efter 60 |
+| `test_rate_limit_totp` | 6 TOTP-forsøg på 1 minut | 429 Too Many Requests efter 5 |
+| `test_hsts` | HTTPS-request | Strict-Transport-Security header tilstede |
+
+### 20.8 Filer der skal ændres eller oprettes
+
+| Fil | Handling |
+|-----|----------|
+| `apps/api/jarvis_api/middleware/security_headers.py` | NY — security headers middleware |
+| `apps/api/jarvis_api/app.py` | OPDATER — tilføj middleware, CORS whitelist, rate limiter |
+| `apps/api/jarvis_api/routes/totp.py` | OPDATER — rate limiting på override-ruter |
+| `Caddyfile` (på host) | OPDATER — fjern `disable_redirects`, tilføj HTTP→HTTPS redirect |
+| `tests/test_api_security.py` | NY — alle 7 tests |
+
+### 20.9 Hvad IKKE ændres
+
+- Jarvis' interne ruter (heartbeat, eventbus) — køre på localhost, ikke offentligt tilgængelige
+- WebSocket bro-protokollen — auth-mekanismen ændres ikke, kun rate limiting tilføjes
+- TOTP-verifikation — logikken ændres ikke, kun rate limiting ovenpå

@@ -82,6 +82,8 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Selv-indsigt — read
     "read_mood", "read_self_state", "read_chronicles", "read_dreams",
     "read_model_config",
+    # UI-panel-kald (desk) — fremvis noget i preview/højre-panel (§8.2)
+    "open_ui_panel",
 })
 
 # Ekstra værktøjer owner (kun) får i chat — fil-læsning til kode-snak.

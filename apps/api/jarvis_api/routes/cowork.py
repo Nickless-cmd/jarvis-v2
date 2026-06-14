@@ -122,3 +122,20 @@ async def cowork_share_guard_resolve(decision_id: str, shared: bool) -> dict:
     if not ok:
         raise HTTPException(status_code=404, detail="ukendt beslutning")
     return {"status": "ok", "decision_id": decision_id, "shared": shared}
+
+
+# ── UI-panel-kald (§8.2, Fase 6 #3) ─────────────────────────────────────────
+# Jarvis beder desk-appen om at åbne et panel; desk poller her + åbner + ack'er.
+
+@router.get("/ui-panel/pending")
+async def cowork_ui_panel_pending() -> dict:
+    from core.services.ui_panel_store import list_pending
+    items = await asyncio.to_thread(list_pending)
+    return {"pending": items}
+
+
+@router.post("/ui-panel/{request_id}/ack")
+async def cowork_ui_panel_ack(request_id: str) -> dict:
+    from core.services.ui_panel_store import ack
+    ok = await asyncio.to_thread(ack, request_id)
+    return {"status": "ok" if ok else "unknown", "request_id": request_id}

@@ -391,6 +391,21 @@ def validate_skill_proposal(
     if not description or not instructions:
         return {"status": "error", "error": "description and instructions are required"}
 
+    # §19.8: scan skill-indhold for prompt-injection/malware/boundary FØR oprettelse.
+    # En ondsindet skill må aldrig nå disk (hardblock ved high-fund).
+    try:
+        from core.services.skill_scanner import scan_skill
+        scan = scan_skill(f"{description}\n{use_when}\n{instructions}")
+        if not scan.allowed:
+            return {
+                "status": "error",
+                "error": "skill blokeret af sikkerhedsscanner: "
+                         + "; ".join(scan.blocked_reasons[:3]),
+                "scan": scan.as_dict(),
+            }
+    except Exception:
+        pass  # scanner-fejl må ikke blokere legitim oprettelse (fail-open her)
+
     skill_dir = SKILLS_ROOT / name
     if skill_dir.exists():
         return {"status": "error", "error": f"skill '{name}' already exists"}
@@ -550,6 +565,17 @@ def get_skill_instructions(name: str) -> dict[str, Any]:
         "tags": skill.tags,
         "readonly": skill.readonly,
     }
+
+    # §19.8 defense-in-depth: scan ved indlæsning (en skill kan være ændret på disk
+    # efter oprettelse). Advisory — blokerer ikke (undgår at brække legitime skills på
+    # en heuristik-false-positive), men flagger så caller/UI kan reagere.
+    try:
+        from core.services.skill_scanner import scan_skill
+        scan = scan_skill(f"{skill.description}\n{skill.use_when}\n{skill.instructions}")
+        if not scan.allowed:
+            result["security_warning"] = scan.as_dict()
+    except Exception:
+        pass
 
     # Include script listings if available
     if skill.has_scripts and skill.scripts_path:

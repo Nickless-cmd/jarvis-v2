@@ -118,7 +118,9 @@ export class LocalDiscordGateway {
   private async onMessage(cfg: ChannelPluginConfig, msg: Message): Promise<void> {
     try {
       if (msg.author.bot) return // spring bots inkl. os selv over
-      const channelName = ('name' in msg.channel ? (msg.channel as { name?: string }).name : '') || ''
+      const ch = msg.channel
+      if (!ch.isTextBased() || !('send' in ch)) return // kun sendbare tekst-kanaler
+      const channelName = ('name' in ch ? (ch as { name?: string }).name : '') || ''
       const attachmentPrefix = msg.attachments.size
         ? `[vedhæftet: ${[...msg.attachments.values()].map((a) => a.name).join(', ')}] `
         : ''
@@ -143,8 +145,9 @@ export class LocalDiscordGateway {
       const reply = await this.pollResponse(cfg.id, inbound.session_id, baselineTs)
       if (reply) {
         // Discord-beskedgrænse 2000 tegn — del op hvis nødvendigt.
+        const sendable = ch as { send: (c: string) => Promise<unknown> }
         for (const chunk of chunkText(reply, 1900)) {
-          await msg.channel.send(chunk)
+          await sendable.send(chunk)
         }
       }
     } catch (e) {

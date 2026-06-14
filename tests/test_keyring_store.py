@@ -55,9 +55,18 @@ def test_delete_user_key(monkeypatch) -> None:
     assert ks.delete_user_key("mikkel") is False  # væk nu
 
 
-def test_no_backend_raises(monkeypatch) -> None:
+def test_headless_server_kek_dek(isolated_runtime, monkeypatch, tmp_path) -> None:
+    # Headless (intet OS keyring) → server-side KEK/DEK: KEK i runtime.json,
+    # wrapped DEK i DB. Samme bruger → samme DEK; delete → ulæseligt.
     import core.services.keyring_store as ks
-    import pytest
     monkeypatch.setattr(ks, "_keyring", lambda: None)
-    with pytest.raises(RuntimeError):
-        ks.get_user_key("x")
+    # Isolér runtime.json så testen ikke rører den ægte.
+    monkeypatch.setattr("core.runtime.config.SETTINGS_FILE", tmp_path / "runtime.json")
+
+    k1 = ks.get_user_key("mikkel")
+    assert len(k1) == 32
+    k2 = ks.get_user_key("mikkel")          # samme bruger → samme DEK (unwrapped)
+    assert k1 == k2
+    assert ks.get_user_key("mor") != k1      # anden bruger → anden DEK
+    assert ks.delete_user_key("mikkel") is True
+    assert ks.delete_user_key("mikkel") is False  # væk → GDPR-sletning effektiv

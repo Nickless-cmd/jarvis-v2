@@ -50,6 +50,13 @@ if (isDev) {
 const userDataDir = app.getPath('userData')
 const configPath = path.join(userDataDir, 'config.json')
 
+interface ChannelPluginConfig {
+  id: string
+  name: string
+  botToken: string   // KLIENT-side, sendes aldrig til Jarvis-serveren (§5.2)
+  serverId: string
+}
+
 interface AppConfig {
   apiBaseUrl: string
   authToken: string | null
@@ -57,6 +64,8 @@ interface AppConfig {
   // kryptografisk til owner-sessionen: owner i sin egen app (matchende app_id)
   // kræver ingen TOTP; fremmed kontekst gør. Persisteres så det er stabilt.
   appId: string
+  // Lokale kanal-plugins (TOTP Fase 5): brugerens egne Discord-servere, token lokalt.
+  channelPlugins: ChannelPluginConfig[]
 }
 
 function loadConfig(): AppConfig {
@@ -70,6 +79,7 @@ function loadConfig(): AppConfig {
     apiBaseUrl: parsed.apiBaseUrl || 'http://10.0.0.39',
     authToken: parsed.authToken || null,
     appId: parsed.appId || randomUUID(),
+    channelPlugins: Array.isArray(parsed.channelPlugins) ? parsed.channelPlugins : [],
   }
   // Persistér et nygenereret app-ID med det samme, så det overlever genstart.
   if (!parsed.appId) {
@@ -317,9 +327,11 @@ ipcMain.handle('config:set', (_event, cfg: Partial<AppConfig>) => {
     apiBaseUrl: cfg.apiBaseUrl ?? existing.apiBaseUrl,
     authToken: cfg.authToken ?? existing.authToken,
     appId: existing.appId,
+    channelPlugins: cfg.channelPlugins ?? existing.channelPlugins,
   })
-  // Genstart operator-broen med de nye credentials (token/URL kan have ændret sig).
+  // Genstart operator-broen + lokale kanal-gateways med de nye credentials/plugins.
   void bootstrapBridge()
+  void bootstrapLocalDiscord()
   return true
 })
 
@@ -512,6 +524,7 @@ app.whenReady().then(() => {
   createMainWindow()
   createTray()
   void bootstrapBridge()
+  void bootstrapLocalDiscord()
 })
 
 // ─── Operator-bro (JarvisX-bridge) ──────────────────────────────────────
@@ -553,6 +566,29 @@ async function bootstrapBridge(): Promise<void> {
   }
 }
 
+// ─── Lokal Discord-gateway (TOTP Fase 5 §5.2) ───────────────────────────
+// Forbinder til brugerens EGNE Discord-servere (token lokalt). Native server
+// uberørt (server-side). Genstartes ved config:set.
+let activeLocalDiscord: { stop(): void } | null = null
+
+async function bootstrapLocalDiscord(): Promise<void> {
+  try {
+    const cfg = loadConfig()
+    if (activeLocalDiscord) { try { activeLocalDiscord.stop() } catch { /* noop */ } activeLocalDiscord = null }
+    if (!cfg.channelPlugins.length || !cfg.apiBaseUrl) return
+    const mod = await import('./localDiscordGateway.js')
+    const gw = new mod.LocalDiscordGateway({
+      apiBaseUrl: cfg.apiBaseUrl,
+      authToken: cfg.authToken ?? undefined,
+      log: (m: string) => console.log(`[localDiscord] ${m}`),
+    })
+    gw.start(cfg.channelPlugins)
+    activeLocalDiscord = gw
+  } catch (e) {
+    console.warn('localDiscord bootstrap failed:', e)
+  }
+}
+
 // Single instance lock — anden start fokuserer eksisterende vindue
 // i stedet for at åbne to vinduer.
 const gotSingleInstance = app.requestSingleInstanceLock()
@@ -567,6 +603,7 @@ if (!gotSingleInstance) {
 app.on('before-quit', () => {
   appQuitting = true
   try { activeBridge?.stop() } catch { /* best-effort */ }
+  try { activeLocalDiscord?.stop() } catch { /* best-effort */ }
   // Best-effort server-cancel af aktivt run (renderer kan ikke pålideligt
   // fetch'e under shutdown). Synkront fire-and-forget.
   if (activeRunId && runApiBaseUrl) {

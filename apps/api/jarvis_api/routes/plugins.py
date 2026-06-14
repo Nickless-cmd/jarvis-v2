@@ -84,6 +84,28 @@ async def channel_inbound_ep(plugin_id: str, body: dict) -> dict:
     return {"allowed": True, "session_id": session_id, "reason": "dispatched"}
 
 
+@router.get("/channel/{plugin_id}/response")
+async def channel_response(plugin_id: str, session_id: str, after_ts: str = "") -> dict:
+    """Gateway poller: seneste assistant-svar i sessionen nyere end after_ts.
+
+    Returnerer {ready, text, ts}. Gateway capturer baseline-ts FØR inbound, og
+    poller her til en NY assistant-besked dukker op → poster den i Discord."""
+    _require_owner()
+
+    def _latest() -> dict:
+        from core.services.chat_sessions import recent_chat_session_messages
+        msgs = recent_chat_session_messages(session_id, limit=6)
+        for m in reversed(msgs):
+            if m.get("role") == "assistant":
+                ts = str(m.get("created_at") or "")
+                if not after_ts or ts > after_ts:
+                    return {"ready": True, "text": str(m.get("content") or ""), "ts": ts}
+                return {"ready": False, "text": "", "ts": ts}
+        return {"ready": False, "text": "", "ts": ""}
+
+    return await asyncio.to_thread(_latest)
+
+
 @router.get("/rulesets/{plugin_id}")
 async def get_plugin_ruleset(plugin_id: str) -> dict:
     _require_owner()

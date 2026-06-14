@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",
+    "discord.js": "^14.26.4",
     "katex": "^0.16.47",
     "lucide-react": "^0.460.0",
     "mermaid": "^11.15.0",

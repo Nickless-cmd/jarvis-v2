@@ -31,3 +31,23 @@ export async function getCoworkChannels(config: ApiConfig): Promise<CoworkChanne
 export async function resolveQueueItem(config: ApiConfig, id: string, decision: 'approve' | 'reject'): Promise<void> {
   await apiFetch(config, `/cowork/queue/${encodeURIComponent(id)}/${decision}`, { method: 'POST' })
 }
+
+// ── Cross-user share-guard (§4.4) ──────────────────────────────────────────
+export interface ShareDecision {
+  id: string
+  session_id: string
+  current_user_id: string
+  mentioned_users: string[]
+  text_preview: string
+  status: string
+  created_at: string
+}
+
+export async function getShareGuard(config: ApiConfig): Promise<ShareDecision[]> {
+  const d = await apiFetch<{ pending: ShareDecision[] }>(config, '/cowork/share-guard')
+  return d.pending ?? []
+}
+
+export async function resolveShareGuard(config: ApiConfig, id: string, shared: boolean): Promise<void> {
+  await apiFetch(config, `/cowork/share-guard/${encodeURIComponent(id)}/resolve?shared=${shared}`, { method: 'POST' })
+}

@@ -7,6 +7,8 @@ vi.mock('../lib/coworkApi', () => ({
   getCoworkTodos: vi.fn().mockResolvedValue([{ id: 't1', content: 'x', status: 'pending' }]),
   getCoworkChannels: vi.fn().mockResolvedValue([{ name: 'discord', online: true, unread: 1 }]),
   resolveQueueItem: vi.fn().mockResolvedValue(undefined),
+  getShareGuard: vi.fn().mockResolvedValue([]),
+  resolveShareGuard: vi.fn().mockResolvedValue(undefined),
 }))
 
 import { useCoworkData } from './useCoworkData'

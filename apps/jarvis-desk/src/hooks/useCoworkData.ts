@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ApiConfig } from '../lib/api'
 import {
   getCoworkQueue, getCoworkPlans, getCoworkTodos, getCoworkChannels, resolveQueueItem,
-  type QueueItem, type CoworkPlan, type CoworkTodo, type CoworkChannel,
+  getShareGuard, resolveShareGuard,
+  type QueueItem, type CoworkPlan, type CoworkTodo, type CoworkChannel, type ShareDecision,
 } from '../lib/coworkApi'
 
 const POLL_MS = 6000
@@ -14,6 +15,7 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
   const [plans, setPlans] = useState<CoworkPlan[]>([])
   const [todos, setTodos] = useState<CoworkTodo[]>([])
   const [channels, setChannels] = useState<CoworkChannel[]>([])
+  const [shareGuard, setShareGuard] = useState<ShareDecision[]>([])
   const cfgRef = useRef(config)
   cfgRef.current = config
 
@@ -25,6 +27,7 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
       getCoworkPlans(cfg).then(setPlans),
       getCoworkTodos(cfg).then(setTodos),
       isOwner ? getCoworkChannels(cfg).then(setChannels) : Promise.resolve(),
+      isOwner ? getShareGuard(cfg).then(setShareGuard) : Promise.resolve(),
     ])
   }, [isOwner])
 
@@ -54,5 +57,13 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
     try { await resolveQueueItem(cfg, id, decision) } finally { void refresh() }
   }, [refresh])
 
-  return { queue, plans, todos, channels, refresh, resolve }
+  // Cross-user share-guard (§4.4): "okay at dele" (shared=true) / "hold privat" (false).
+  const resolveShare = useCallback(async (id: string, shared: boolean) => {
+    const cfg = cfgRef.current
+    if (!cfg) return
+    setShareGuard((s) => s.filter((d) => d.id !== id))
+    try { await resolveShareGuard(cfg, id, shared) } finally { void refresh() }
+  }, [refresh])
+
+  return { queue, plans, todos, channels, shareGuard, refresh, resolve, resolveShare }
 }

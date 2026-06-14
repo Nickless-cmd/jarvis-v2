@@ -3523,6 +3523,22 @@ def _persist_session_assistant_message(
                     "mentioned_users": _share.get("mentioned_users"),
                     "prompt": _share.get("prompt"),
                 })
+                # Registrér en pending share-beslutning → dukker op som kort i
+                # Cowork-køen (Fase 6 #1). Bevidst IKKE i den live stream-sti.
+                try:
+                    from datetime import UTC, datetime
+                    from uuid import uuid4
+                    from core.services.share_guard_store import record_pending
+                    record_pending(
+                        decision_id=f"share-{uuid4().hex[:12]}",
+                        session_id=run.session_id or "",
+                        current_user_id=_cur,
+                        mentioned_users=list(_share.get("mentioned_users") or []),
+                        text_preview=normalized[:240],
+                        created_at=datetime.now(UTC).isoformat(),
+                    )
+                except Exception:
+                    pass
     except Exception:
         pass
 

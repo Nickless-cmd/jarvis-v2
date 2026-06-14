@@ -96,3 +96,29 @@ async def cowork_approve(item_id: str) -> dict:
 @router.post("/queue/{item_id}/reject")
 async def cowork_reject(item_id: str) -> dict:
     return await asyncio.to_thread(_resolve_item, item_id, "reject")
+
+
+# ── Cross-user share-guard (§4.4, Fase 6 #1) ────────────────────────────────
+# Pending "privat eller del?"-beslutninger. Privatlivs-følsomt → kun owner.
+
+@router.get("/share-guard")
+async def cowork_share_guard() -> dict:
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="share-guard er kun for owner")
+    from core.services.share_guard_store import list_pending
+    items = await asyncio.to_thread(list_pending)
+    return {"pending": items}
+
+
+@router.post("/share-guard/{decision_id}/resolve")
+async def cowork_share_guard_resolve(decision_id: str, shared: bool) -> dict:
+    """Afgør en share-beslutning. shared=true → okay at dele; false → hold privat."""
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="share-guard er kun for owner")
+    from core.services.share_guard_store import resolve as _resolve
+    ok = await asyncio.to_thread(_resolve, decision_id, shared=shared)
+    if not ok:
+        raise HTTPException(status_code=404, detail="ukendt beslutning")
+    return {"status": "ok", "decision_id": decision_id, "shared": shared}

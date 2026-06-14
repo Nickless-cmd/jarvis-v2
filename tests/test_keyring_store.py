@@ -70,3 +70,29 @@ def test_headless_server_kek_dek(isolated_runtime, monkeypatch, tmp_path) -> Non
     assert ks.get_user_key("mor") != k1      # anden bruger → anden DEK
     assert ks.delete_user_key("mikkel") is True
     assert ks.delete_user_key("mikkel") is False  # væk → GDPR-sletning effektiv
+
+
+def test_keyring_probe_detects_fail_backend(monkeypatch) -> None:
+    # Fail-backend (headless): get_password kaster → _keyring() skal returnere None.
+    import core.services.keyring_store as ks
+    import keyring as _kr
+
+    class _FailBackend:
+        def get_password(self, svc, uid):
+            from keyring.errors import NoKeyringError
+            raise NoKeyringError("no backend")
+
+    monkeypatch.setattr(_kr, "get_keyring", lambda: _FailBackend())
+    assert ks._keyring() is None
+
+
+def test_keyring_probe_accepts_working_backend(monkeypatch) -> None:
+    import core.services.keyring_store as ks
+    import keyring as _kr
+
+    class _OkBackend:
+        def get_password(self, svc, uid):
+            return None  # rigtig backend: ukendt key → None (ingen exception)
+
+    monkeypatch.setattr(_kr, "get_keyring", lambda: _OkBackend())
+    assert ks._keyring() is _kr

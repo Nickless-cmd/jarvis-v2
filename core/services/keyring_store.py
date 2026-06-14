@@ -31,8 +31,10 @@ _DEK_DB_PREFIX = "user_dek:"
 def _keyring():
     try:
         import keyring
-        # Tjek at et backend faktisk virker (headless container fejler her).
-        keyring.get_keyring().priority  # type: ignore[attr-defined]
+        # Probe-operation: fail-backenden (headless container) består .priority-
+        # tjekket men kaster NoKeyringError ved FAKTISK brug. En harmløs lookup
+        # afslører det robust → fald tilbage til server-side KEK/DEK.
+        keyring.get_keyring().get_password("jarvis-v2-keyring-probe", "probe")
         return keyring
     except Exception:
         return None

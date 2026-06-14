@@ -119,12 +119,17 @@ def issue_token(
     user_id: str,
     role: str = "member",
     ttl_days: int = _DEFAULT_TTL_DAYS,
+    app_id: str = "",
     extra_claims: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Mint a signed bearer token for a user.
 
     Returns dict with the token string + metadata so callers can
     show the user when the token expires and what role it grants.
+
+    `app_id` (TOTP Fase 2): UUID4 der binder tokenet til en bestemt
+    jarvis-desk-installation. Bruges af session_needs_override til at afgøre
+    om owner opererer fra sin egen app (ingen TOTP) eller en fremmed kontekst.
     """
     user_id = (user_id or "").strip()
     if not user_id:
@@ -143,6 +148,8 @@ def issue_token(
         "iat": int(now.timestamp()),
         "exp": int(exp.timestamp()),
     }
+    if app_id:
+        payload["app_id"] = str(app_id)
     if extra_claims:
         # Merge but don't let extras overwrite reserved claims
         for k, v in extra_claims.items():
@@ -194,7 +201,38 @@ def verify_token(token: str) -> dict[str, Any]:
     if role not in {"owner", "member", "guest"}:
         raise AuthError(f"invalid role in token: {role!r}")
     claims["role"] = role
+    claims["app_id"] = str(claims.get("app_id") or "")
     return claims
+
+
+def session_needs_override(
+    claims: dict[str, Any],
+    *,
+    owner_app_id: str,
+    session_id: str,
+    now: float | None = None,
+) -> bool:
+    """True hvis owner-autoritet i denne session KRÆVER en TOTP-override (§6.1).
+
+    Owner-autoritet uden TOTP gælder KUN i owners egen, app-bundne session:
+    role==owner OG token.app_id == den registrerede owner_app_id. I enhver anden
+    kontekst (fremmed app-ID, member-token, fx Mikkels Discord) kræves TOTP —
+    MEDMINDRE override_store allerede har en aktiv, TOTP-verificeret override.
+
+    Override-state læses fra override_store (DB), ALDRIG fra JWT'et — så et stjålet/
+    forældet token ikke selv kan bære owner-elevation (bagdørs-invariant §6.0).
+    """
+    role = str(claims.get("role") or "").lower()
+    token_app = str(claims.get("app_id") or "")
+    if role == "owner" and owner_app_id and token_app == owner_app_id:
+        return False  # bundet owner-session → fri adgang, ingen TOTP
+    try:
+        from core.services.override_store import is_active
+        if is_active(session_id, now=now):
+            return False  # gyldig TOTP-override aktiv
+    except Exception:
+        pass
+    return True
 
 
 def auth_required() -> bool:

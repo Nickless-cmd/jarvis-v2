@@ -484,6 +484,8 @@ def create_app() -> FastAPI:
     app.include_router(cowork_router)
     app.include_router(plugins_router)
     app.include_router(totp_router)
+    from apps.api.jarvis_api.routes.billing import router as billing_router
+    app.include_router(billing_router)
     app.include_router(transcribe_router)
     app.include_router(health_router)
     app.include_router(jarvisx_router)

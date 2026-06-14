@@ -204,6 +204,8 @@ export interface BridgeConfig {
   userId: string
   /** Optional bearer token (required if runtime has jarvisx_auth_required=true). */
   authToken?: string
+  /** UUID4 der binder denne installation til owner-sessionen (TOTP Fase 2). */
+  appId?: string
   /** Optional logger for diagnostics. */
   log?: (msg: string) => void
 }
@@ -1991,6 +1993,8 @@ async function fireScheduledEvent(id: string): Promise<void> {
             // Bind re-engagement til den session brugeren har fremme → wakeup
             // lander i samme desk-samtale, ikke en frisk (eller Discord).
             session_id: _activeSessionId,
+            // App-ID følger med så serveren kan verificere session-binding.
+            app_id: cfg.appId,
           }),
         }).catch(() => undefined)
       } catch {}

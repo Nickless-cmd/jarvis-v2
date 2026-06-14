@@ -25,6 +25,7 @@ import {
 } from 'electron'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
+import { randomUUID } from 'node:crypto'
 
 const isDev = process.env.NODE_ENV === 'development'
 const APP_NAME = 'Jarvis'
@@ -52,19 +53,29 @@ const configPath = path.join(userDataDir, 'config.json')
 interface AppConfig {
   apiBaseUrl: string
   authToken: string | null
+  // UUID4 sat ved første launch (TOTP Fase 2). Binder denne installation
+  // kryptografisk til owner-sessionen: owner i sin egen app (matchende app_id)
+  // kræver ingen TOTP; fremmed kontekst gør. Persisteres så det er stabilt.
+  appId: string
 }
 
 function loadConfig(): AppConfig {
+  let parsed: Partial<AppConfig> = {}
   try {
-    const raw = fs.readFileSync(configPath, 'utf-8')
-    const parsed = JSON.parse(raw) as Partial<AppConfig>
-    return {
-      apiBaseUrl: parsed.apiBaseUrl || 'http://10.0.0.39',
-      authToken: parsed.authToken || null,
-    }
+    parsed = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as Partial<AppConfig>
   } catch {
-    return { apiBaseUrl: 'http://10.0.0.39', authToken: null }
+    parsed = {}
   }
+  const cfg: AppConfig = {
+    apiBaseUrl: parsed.apiBaseUrl || 'http://10.0.0.39',
+    authToken: parsed.authToken || null,
+    appId: parsed.appId || randomUUID(),
+  }
+  // Persistér et nygenereret app-ID med det samme, så det overlever genstart.
+  if (!parsed.appId) {
+    try { saveConfig(cfg) } catch { /* non-fatal: regenereres næste gang */ }
+  }
+  return cfg
 }
 
 function saveConfig(cfg: AppConfig): void {
@@ -298,8 +309,15 @@ function createMainWindow(): void {
 
 // ─── IPC handlers (only what renderer needs from main) ─────────────────
 ipcMain.handle('config:get', () => loadConfig())
-ipcMain.handle('config:set', (_event, cfg: AppConfig) => {
-  saveConfig(cfg)
+ipcMain.handle('config:set', (_event, cfg: Partial<AppConfig>) => {
+  // Bevar app-ID — renderer sender kun apiBaseUrl/authToken og må ikke kunne
+  // nulstille installationens identitet.
+  const existing = loadConfig()
+  saveConfig({
+    apiBaseUrl: cfg.apiBaseUrl ?? existing.apiBaseUrl,
+    authToken: cfg.authToken ?? existing.authToken,
+    appId: existing.appId,
+  })
   // Genstart operator-broen med de nye credentials (token/URL kan have ændret sig).
   void bootstrapBridge()
   return true
@@ -520,6 +538,7 @@ async function bootstrapBridge(): Promise<void> {
       apiBaseUrl: cfg.apiBaseUrl,
       userId,
       authToken: cfg.authToken ?? undefined,
+      appId: cfg.appId,
       log: (m: string) => console.log(`[bridge] ${m}`),
     })
     activeBridge.start()

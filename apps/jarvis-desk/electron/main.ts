@@ -418,6 +418,11 @@ app.whenReady().then(() => {
   const apiOrigin = new URL(cfg.apiBaseUrl).origin
   const wsOrigin = apiOrigin.replace(/^http/, 'ws')
 
+  // §22.5: auto-update (graceful no-op indtil electron-updater + GitHub-releases er sat op).
+  void import('./autoUpdate').then((m) =>
+    m.initAutoUpdate((cfg as { autoUpdate?: import('./autoUpdate').AutoUpdateConfig }).autoUpdate),
+  ).catch(() => { /* no-op */ })
+
   // Mikrofon-adgang til dikter-funktionen (getUserMedia i renderer). Vi
   // grant'er KUN 'media' (mic) — alt andet afvises. Uden dette afviser
   // Electron getUserMedia i den pakkede app.

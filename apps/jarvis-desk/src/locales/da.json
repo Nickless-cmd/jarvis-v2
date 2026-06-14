@@ -1,0 +1,23 @@
+{
+  "app.title": "Jarvis",
+  "nav.chat": "Chat",
+  "nav.code": "Kode",
+  "nav.cowork": "Samarbejd",
+  "cowork.approvals": "Godkendelser",
+  "cowork.plans": "Planer",
+  "cowork.todos": "Todo & initiativer",
+  "cowork.channels": "Kanaler",
+  "cowork.agents": "Agenter",
+  "cowork.empty.agents": "Ingen agenter kører",
+  "cowork.empty.plans": "Ingen planer",
+  "common.approve": "Godkend",
+  "common.reject": "Afvis",
+  "common.cancel": "Annullér",
+  "common.send": "Send",
+  "common.settings": "Indstillinger",
+  "quota.exceeded": "Du har nået din daglige gratis-kvote. Opgradér for ubegrænset samtale.",
+  "agent.status.planned": "planlagt",
+  "agent.status.running": "kører",
+  "agent.status.done": "færdig",
+  "agent.status.error": "fejl"
+}

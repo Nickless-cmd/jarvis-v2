@@ -1,0 +1,23 @@
+{
+  "app.title": "Jarvis",
+  "nav.chat": "Chat",
+  "nav.code": "Code",
+  "nav.cowork": "Cowork",
+  "cowork.approvals": "Approvals",
+  "cowork.plans": "Plans",
+  "cowork.todos": "Todo & initiatives",
+  "cowork.channels": "Channels",
+  "cowork.agents": "Agents",
+  "cowork.empty.agents": "No agents running",
+  "cowork.empty.plans": "No plans",
+  "common.approve": "Approve",
+  "common.reject": "Reject",
+  "common.cancel": "Cancel",
+  "common.send": "Send",
+  "common.settings": "Settings",
+  "quota.exceeded": "You've reached your daily free quota. Upgrade for unlimited conversation.",
+  "agent.status.planned": "planned",
+  "agent.status.running": "running",
+  "agent.status.done": "done",
+  "agent.status.error": "error"
+}

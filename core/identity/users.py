@@ -49,6 +49,12 @@ class User:
     role: str  # "owner" | "member"
     workspace: str
     created_at: str
+    # Multi-user identitet/auth (tilføjet 2026-06-14, TOTP Fase 2).
+    # app_id: UUID4 sat ved jarvis-desk-install, kryptografisk session-binding.
+    # totp_seed: owner-override-nøgle (base32). SECRET — kun owner-revokérbar,
+    # aldrig af Jarvis (bagdørs-invariant §6.0). Default "" = ikke sat.
+    app_id: str = ""
+    totp_seed: str = ""
 
     def as_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -98,6 +104,8 @@ def load_users() -> list[User]:
             role=role,
             workspace=ws,
             created_at=str(item.get("created_at") or _now_iso()),
+            app_id=str(item.get("app_id") or ""),
+            totp_seed=str(item.get("totp_seed") or ""),
         ))
     return users
 
@@ -197,6 +205,44 @@ def remove_user(*, discord_id: str) -> bool:
     _save_users(kept)
     logger.info("remove_user: removed discord_id=%s", did)
     return True
+
+
+def _update_user_field(discord_id: str, field: str, value: str) -> bool:
+    """Opdatér ét felt på en bruger (immutabel replace) og persistér. False hvis ukendt."""
+    did = str(discord_id or "").strip()
+    if not did:
+        return False
+    from dataclasses import replace
+    existing = load_users()
+    found = False
+    out: list[User] = []
+    for u in existing:
+        if u.discord_id == did:
+            out.append(replace(u, **{field: value}))
+            found = True
+        else:
+            out.append(u)
+    if not found:
+        return False
+    _save_users(out)
+    return True
+
+
+def set_app_id(*, discord_id: str, app_id: str) -> bool:
+    """Bind en jarvis-desk-app (UUID4) til en bruger — kryptografisk session-binding."""
+    return _update_user_field(discord_id, "app_id", str(app_id or ""))
+
+
+def set_totp_seed(*, discord_id: str, seed: str) -> bool:
+    """Sæt/rotér en brugers TOTP-override-seed. SECRET (§6.0): kun owner-session
+    bør kalde dette; aldrig Jarvis selv. Håndhæves i Fase 3/4-dispatch."""
+    return _update_user_field(discord_id, "totp_seed", str(seed or ""))
+
+
+def get_totp_seed(*, discord_id: str) -> str:
+    """Hent en brugers TOTP-seed ("" hvis ikke sat / ukendt bruger)."""
+    u = find_user_by_discord_id(discord_id)
+    return u.totp_seed if u else ""
 
 
 def get_owner() -> User | None:

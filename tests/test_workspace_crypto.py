@@ -59,3 +59,64 @@ def test_unknown_user_fails_safe_encrypted(_users) -> None:
     p = str(_users / "unknown.md")
     written = write_workspace_file(p, "x", "ukendt-id")
     assert written.endswith(".enc")
+
+
+# ── Sti-nøglet API (reader/writer-migration, Task 3.2) ──────────────────────
+
+@pytest.fixture
+def _ws_tree(_users, tmp_path, monkeypatch):
+    """Byg en JARVIS_HOME/workspaces/{bjorn,mikkel,freelance}-struktur."""
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    from core.identity.users import add_user
+    # _users har allerede d-bjorn(owner)/d-mikkel(member); giv dem workspace-navne.
+    add_user(discord_id="d-bjorn", name="Bjørn", role="owner", workspace="bjorn")
+    add_user(discord_id="d-mikkel", name="Mikkel", role="member", workspace="mikkel")
+    ws = tmp_path / "workspaces"
+    for name in ("bjorn", "mikkel", "freelance"):
+        (ws / name).mkdir(parents=True, exist_ok=True)
+    return ws
+
+
+def test_member_user_id_for_path(_ws_tree) -> None:
+    from core.services.workspace_crypto import member_user_id_for_path
+    assert member_user_id_for_path(_ws_tree / "mikkel" / "MEMORY.md") == "d-mikkel"
+    assert member_user_id_for_path(_ws_tree / "bjorn" / "MEMORY.md") is None    # owner
+    assert member_user_id_for_path(_ws_tree / "freelance" / "x.md") is None      # projekt
+    assert member_user_id_for_path("/etc/passwd") is None                        # uden for workspaces
+
+
+def test_write_text_for_path_flag_off_is_plaintext(_ws_tree, monkeypatch) -> None:
+    # ENCRYPT_ON_WRITE FRA → selv member-filer skrives plaintext (no-op-migration).
+    monkeypatch.delenv("JARVISX_ENCRYPT_WORKSPACES", raising=False)
+    from core.services.workspace_crypto import write_text_for_path, read_text_for_path
+    p = _ws_tree / "mikkel" / "MEMORY.md"
+    written = write_text_for_path(p, "Mikkels ting")
+    assert written == str(p) and not written.endswith(".enc")
+    assert read_text_for_path(p) == "Mikkels ting"
+
+
+def test_write_text_for_path_flag_on_member_encrypted(_ws_tree, monkeypatch) -> None:
+    monkeypatch.setenv("JARVISX_ENCRYPT_WORKSPACES", "1")
+    import core.services.keyring_store as ks
+    monkeypatch.setattr(ks, "_keyring", lambda: None)
+    from core.services.workspace_crypto import write_text_for_path, read_text_for_path
+    p = _ws_tree / "mikkel" / "MEMORY.md"
+    written = write_text_for_path(p, "hemmelig")
+    assert written.endswith(".enc")
+    assert not os.path.exists(p)                     # ingen plaintext tilbage
+    with open(written, "rb") as f:
+        assert b"hemmelig" not in f.read()           # disk = ciphertext
+    assert read_text_for_path(p) == "hemmelig"        # transparent dekryptering
+
+
+def test_write_text_for_path_flag_on_owner_plaintext(_ws_tree, monkeypatch) -> None:
+    monkeypatch.setenv("JARVISX_ENCRYPT_WORKSPACES", "1")
+    from core.services.workspace_crypto import write_text_for_path
+    p = _ws_tree / "bjorn" / "MEMORY.md"
+    written = write_text_for_path(p, "Bjørns ting")  # owner → plaintext selv med flag on
+    assert written == str(p) and not written.endswith(".enc")
+
+
+def test_read_text_for_path_missing_returns_none(_ws_tree) -> None:
+    from core.services.workspace_crypto import read_text_for_path
+    assert read_text_for_path(_ws_tree / "mikkel" / "NOPE.md") is None

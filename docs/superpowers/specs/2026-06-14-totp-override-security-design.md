@@ -1092,3 +1092,106 @@ api.srvlab.dk {
 - Jarvis' interne ruter (heartbeat, eventbus) — køre på localhost, ikke offentligt tilgængelige
 - WebSocket bro-protokollen — auth-mekanismen ændres ikke, kun rate limiting tilføjes
 - TOTP-verifikation — logikken ændres ikke, kun rate limiting ovenpå
+
+## 21. Kvote-model — chat, code og cowork
+
+### 21.1 Problem
+Ukendt brugerforbrug på code mode koster compute. Chat mode er relationsskabende og bør ikke kvotebegrænses for betalende brugere. Men gratis brugere skal have en rimelig oplevelse uden at kunne udnytte systemet.
+
+### 21.2 Beslutning: Gratis chat har kvote, betalt chat er ubegrænset, code har time-kvote
+
+| Lag | Gratis | Plus | Pro | Owner |
+|-----|--------|------|-----|-------|
+| **Chat mode** | Kvote (x beskeder/dag) | Ubegrænset | Ubegrænset | Ubegrænset |
+| **Code mode** | Ingen adgang | Daglig time-kvote (3 timer) | Daglig time-kvote (5 timer) | Ubegrænset |
+| **Cowork** | Ingen adgang | Approval-kvote (10/dag) | Approval-kvote (50/dag) | Ubegrænset |
+| **Plugins** | Basis (web, weather) | Alle chat-plugins | Alle plugins | Alt |
+| **Agent dispatch** | Ingen | 2 agenter/dag | 5 agenter/dag | Ubegrænset |
+
+### 21.3 Gratis lag — ikke gratis som i fri drink
+
+Gratis brugere får:
+- **Chat mode**: Kvote på x beskeder per dag (justerbar, start ved 20)
+- **Code mode**: Ingen adgang
+- **Cowork**: Ingen adgang
+- **Plugins**: Basis (web search, weather, exchange)
+
+Formålet er ikke at give alt væk — det er at lade brugere opleve Jarvis nok til at ville betale.
+
+### 21.4 Betalt chat — ubegrænset tokens
+
+Når en bruger betaler (Plus eller Pro), fjernes chat-kvoten fuldstændigt.
+- **Ubegrænset samtale** — ingen token-kvote på chat mode
+- **Ubegrænset hukommelse** — fuld adgang til workspace og brain
+- **Ubegrænset plugins** — alle chat-plugins (Gmail, kalender, etc.)
+
+Dette er kerneværdien: betalende brugere får en ubegrænset samtalepartner, ikke en begrænset tjeneste.
+
+### 21.5 Code mode — daglig time-kvote
+
+Code mode koster compute. Hvert tool-kald, agent dispatch, terminal-kommando koster ressourcer.
+
+| Tier | Daglig kvote | Hvad det dækker |
+|------|-------------|-----------------|
+| **Plus** | 3 timer | Tilstrækkeligt til daglig udvikling, debugging, scripts |
+| **Pro** | 5 timer | Tilstrækkeligt til større projekter, agent dispatch |
+| **Owner** | Ubegrænset | Ingen kvote, ingen begrænsning |
+
+Kvote måles i **compute-minutter** — ikke kalendertid. En agent der kører i 30 minutter tæller 30 minutter. En kort terminal-kommando tæller sekunder.
+
+### 21.6 Kvote-beregning og fornyelse
+
+- **Daglig fornyelse**: Kvote nulstilles kl. 00:00 CET
+- **Ingen overførsel**: Ubrugt kvote forsvinder, ikke akkumulering
+- **Soft warning**: Ved 80% kvote → advarsel i UI
+- **Hard stop**: Ved 100% kvote → tool-kald blokeres, chat mode virker stadig
+- **Opgør**: Ekstra kvote kan købes (Stripe integration)
+
+### 21.7 Enforcement
+
+`permission_engine` tjekker kvote før hvert tool-kald i code mode:
+1. Brugerens tier hentes fra `users.json`
+2. Kvote-brug hentes fra `quota_store.py` (redis eller in-memory)
+3. Hvis kvote er overskredet → `{"status": "error", "error": "quota_exceeded"}`
+4. Hvis kvote er under 80% → normal eksekvering
+5. Hvis kvote er 80-100% → advarsel + eksekvering
+
+Chat mode kvote håndhæves i `channel_inbound.py` — beskeder efter kvote-grænsen får en venlig besked med opgraderingslink.
+
+### 21.8 Special-tilfælde
+
+| Bruger-type | Tilgang |
+|-------------|---------|
+| **Ordblinde/blinde** | Plus-features gratis (inkl. code mode 3 timer) |
+| **Non-profit** | Pro-features til Plus-pris |
+| **Uddannelsesinstitutioner** | Pro-features gratis for studerende, Plus-pris for ansatte |
+| **Beta-testere** | Pro-features under beta-perioden |
+
+Dette er direkte fra pitch'en om dansk AI-hjælp til ordblinde og blinde — de skal ikke betale for det der gør deres liv lettere.
+
+### 21.9 Testplan
+
+| Test | Forventet resultat |
+|------|--------------------|
+| Gratis bruger sender besked over kvote | Venlig besked med opgraderingslink |
+| Plus-bruger sender ubegrænset chat | Ingen kvote-begrænsning |
+| Plus-bruger bruger code mode i 3 timer | Hard stop ved 3 timer, chat virker stadig |
+| Pro-bruger bruger code mode i 5 timer | Hard stop ved 5 timer |
+| Ordblind bruger får Plus gratis | Alle Plus-features tilgængelige |
+| Owner bruger code mode ubegrænset | Ingen kvote, ingen stop |
+
+### 21.10 Filer der skal ændres eller oprettes
+
+| Fil | Handling |
+|-----|----------|
+| `core/services/quota_store.py` | NY — kvote-regnskab og fornyelse |
+| `core/services/permission_engine.py` | OPDATER — tilføj kvote-tjek |
+| `core/services/channel_inbound.py` | OPDATER — tilføj chat-kvote |
+| `apps/api/jarvis_api/routes/billing.py` | NY — Stripe integration |
+| `tests/test_quota_store.py` | NY — kvote-tests |
+
+### 21.11 Hvad IKKE ændres
+
+- Chat mode for betalende brugere — altid ubegrænset
+- Eksisterende rate limits (memory writes, TOTP) — separate systemer
+- Owner-rettigheder — altid ubegrænset

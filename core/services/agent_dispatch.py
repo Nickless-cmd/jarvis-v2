@@ -85,12 +85,14 @@ def scan_skills_before_dispatch(skill_contents: list[str] | None) -> dict:
 def dispatch_code_mode_task(task: str, *, inline: bool | None = None,
                             executor_count: int = 1,
                             skill_contents: list[str] | None = None,
+                            user_id: str = "",
                             dry_run: bool = True) -> dict:
     """Orchestrér en code-mode-opgave (§19.4).
 
     1. Skill-scan-gate (§19.8) — blokér hvis en lokal skill fejler.
     2. Beslut inline vs dispatch.
-    3. Inline → returnér med det samme. Dispatch → byg plan, spawn agenter
+    3. Agent-kvote-gate (§21.7) ved dispatch — owner ubegrænset, fail-open.
+    4. Inline → returnér med det samme. Dispatch → byg plan, spawn agenter
        (kun hvis dry_run=False; default dry_run=True = bivirkningsfri planlægning).
 
     `inline=True/False` tvinger valget; `None` lader heuristikken afgøre.
@@ -103,6 +105,15 @@ def dispatch_code_mode_task(task: str, *, inline: bool | None = None,
     decision = decide_dispatch(task, force=force)
     if not decision["dispatch"]:
         return {"ok": True, "mode": "inline", "decision": decision}
+
+    # §21.7: agent-dispatch tæller mod brugerens daglige agent-kvote (owner ubegrænset).
+    try:
+        from core.services.quota_store import consume_quota
+        q = consume_quota(user_id, "agent")
+        if not q.get("consumed", True):
+            return {"ok": False, "reason": "quota_exceeded", "quota": q, "decision": decision}
+    except Exception:
+        pass  # fail-open
 
     plan = plan_dispatch(task, executor_count=executor_count)
     spawned: list[dict] = []

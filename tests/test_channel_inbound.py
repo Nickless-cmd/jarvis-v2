@@ -69,3 +69,27 @@ def test_route_inbound_includes_resolved_mode(isolated_runtime) -> None:
     r2 = route_inbound(plugin_id="discord-local", channel="general",
                        author_role="owner", text="kør", mode="code")
     assert r2["mode"] == "code" and r2["mode_downgraded"] is False
+
+
+def test_chat_quota_blocks_free_over_limit(isolated_runtime, tmp_path, monkeypatch) -> None:
+    # §21.7: gratis bruger over chat-kvote → blokeret med upgrade-besked.
+    monkeypatch.setattr("core.runtime.config.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("core.runtime.config.SETTINGS_FILE", tmp_path / "runtime.json")
+    from core.services.channel_inbound import route_inbound
+    # ukendt bruger = free tier, chat-kvote 20/dag
+    for _ in range(20):
+        r = route_inbound(plugin_id="discord-local", channel="g", author_role="member",
+                          author_user_id="gæst-x", text="hej")
+        assert r["allowed"] is True
+    blocked = route_inbound(plugin_id="discord-local", channel="g", author_role="member",
+                            author_user_id="gæst-x", text="hej")
+    assert blocked["allowed"] is False and blocked["reason"] == "quota_exceeded"
+    assert "Opgradér" in blocked["quota"]["message"]
+
+
+def test_chat_quota_owner_unlimited(isolated_runtime) -> None:
+    from core.services.channel_inbound import route_inbound
+    # ubundet author_user_id = owner = ubegrænset
+    for _ in range(30):
+        assert route_inbound(plugin_id="discord-local", channel="g",
+                             author_role="owner", author_user_id="", text="x")["allowed"] is True

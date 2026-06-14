@@ -1442,6 +1442,23 @@ class _IssueTokenPayload(BaseModel):
     ttl_days: int = 30
 
 
+class _RefreshTokenPayload(BaseModel):
+    refresh_token: str
+    app_id: str = ""
+
+
+@router.post("/auth/refresh")
+def refresh_auth_token(payload: _RefreshTokenPayload) -> dict[str, Any]:
+    """Veksl en refresh-token til et nyt access+refresh-par (§22.6). PUBLIC —
+    bruges når access-tokenet er udløbet. Den gamle refresh-token roteres væk;
+    401 hvis den er ugyldig/udløbet."""
+    from core.runtime.refresh_tokens import rotate_refresh_token
+    res = rotate_refresh_token(payload.refresh_token, app_id=payload.app_id)
+    if not res.get("ok"):
+        raise HTTPException(status_code=401, detail=res.get("reason", "invalid_refresh_token"))
+    return res
+
+
 @router.post("/auth/issue")
 def issue_auth_token(payload: _IssueTokenPayload) -> dict[str, Any]:
     """Mint a signed bearer token for a user. Owner-only.

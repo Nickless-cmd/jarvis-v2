@@ -54,6 +54,7 @@ AUTH_HEADER = "authorization"
 # inside the route handler.
 _PUBLIC_PATHS = (
     "/health",
+    "/api/auth/refresh",       # §22.6: refresh udløbet access-token (bærer egen refresh-token)
     "/api/auth/whoami-token",  # let clients self-check token validity
     "/docs",
     "/openapi.json",

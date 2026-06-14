@@ -65,17 +65,18 @@ def route_inbound(
     plugin_id: str,
     channel: str,
     author_role: str = "",
+    author_user_id: str = "",
     text: str = "",
     hour: int = -1,
     now: float | None = None,
     mode: str = "chat",
     override_active: bool = False,
 ) -> dict:
-    """Afgør om en indkommende kanal-besked må nå Jarvis (plugin_ruleset hardblock)
-    OG i hvilken mode (§18.9 — code/cowork kun for owner/override).
+    """Afgør om en indkommende kanal-besked må nå Jarvis (plugin_ruleset hardblock),
+    i hvilken mode (§18.9), OG om brugeren har chat-kvote tilbage (§21.7).
 
-    Returnerer {allowed, reason, mode, mode_downgraded}. Endpoint-laget starter en
-    Jarvis-run i `mode` hvis allowed=True.
+    Returnerer {allowed, reason, mode, mode_downgraded, quota?}. Endpoint-laget starter
+    en Jarvis-run i `mode` hvis allowed=True; ellers sendes `reason` (fx upgrade-besked).
     """
     from core.services.plugin_ruleset_store import get_ruleset
     from core.services.plugin_ruleset import is_allowed
@@ -84,9 +85,28 @@ def route_inbound(
     ctx = {"channel": channel, "role": author_role, "hour": hour, "now": now}
     allowed, reason = is_allowed(ctx, rs)
     resolved = resolve_inbound_mode(mode, author_role=author_role, override_active=override_active)
-    return {
+    result = {
         "allowed": bool(allowed),
         "reason": reason,
         "mode": resolved["mode"],
         "mode_downgraded": resolved["downgraded"],
     }
+    if not allowed:
+        return result
+
+    # §21.7: chat-kvote pr. bruger (owner/betalt = ubegrænset). Fail-open ved fejl.
+    try:
+        from core.services.quota_store import consume_quota
+        q = consume_quota(author_user_id, "chat")
+        if not q.get("consumed", True):
+            result["allowed"] = False
+            result["reason"] = "quota_exceeded"
+            result["quota"] = {
+                "used": q.get("used"), "limit": q.get("limit"), "tier": q.get("tier"),
+                "message": "Du har nået din daglige gratis-kvote. Opgradér for ubegrænset samtale.",
+            }
+        elif q.get("warn"):
+            result["quota"] = {"warn": True, "used": q.get("used"), "limit": q.get("limit")}
+    except Exception:
+        pass  # kvote-fejl må aldrig blokere en legitim besked
+    return result

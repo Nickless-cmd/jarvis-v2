@@ -55,3 +55,17 @@ def test_clean_skills_allow_dispatch() -> None:
     res = dispatch_code_mode_task("implementer feature og refaktor og byg tests",
                                   skill_contents=["def f():\n    return 1"])
     assert res["ok"] is True
+
+
+def test_agent_quota_blocks_over_limit(isolated_runtime, tmp_path, monkeypatch) -> None:
+    # §21.7: plus-bruger har 2 agent-dispatches/dag; 3. blokeres.
+    monkeypatch.setattr("core.runtime.config.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("core.runtime.config.SETTINGS_FILE", tmp_path / "runtime.json")
+    from core.identity.users import add_user
+    add_user(discord_id="d-mikkel", name="Mikkel", role="member", workspace="mikkel")
+    from core.services.agent_dispatch import dispatch_code_mode_task
+    task = "implementer feature og refaktor og migrer modul"
+    assert dispatch_code_mode_task(task, user_id="d-mikkel")["ok"] is True
+    assert dispatch_code_mode_task(task, user_id="d-mikkel")["ok"] is True
+    blocked = dispatch_code_mode_task(task, user_id="d-mikkel")
+    assert blocked["ok"] is False and blocked["reason"] == "quota_exceeded"

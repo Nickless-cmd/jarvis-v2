@@ -745,6 +745,22 @@ async def _run_client(config: dict) -> None:
             with _discord_sessions_lock:
                 _discord_sessions[session_id] = channel_id
 
+            # Owner-override (§6.3): `!override <kode>` / `!revoke-override`.
+            # Verificeres mod owners TOTP-seed; aktiverer owner-kontrol for DENNE
+            # session uden normal beskedhåndtering. Thin wire — logikken er ren i
+            # override_command. Best-effort: fejl må aldrig spærre normal chat.
+            try:
+                from core.services.override_command import handle_override_command
+                from core.identity.users import get_owner, get_totp_seed
+                _owner = get_owner()
+                _seed = get_totp_seed(discord_id=_owner.discord_id) if _owner else ""
+                _ov = handle_override_command(content_raw, session_id=session_id, owner_seed=_seed)
+                if _ov is not None:
+                    send_discord_message(channel_id, str(_ov.get("reply") or ""))
+                    return
+            except Exception:
+                logger.exception("discord on_message: override-handler fejlede")
+
             # Resolve workspace + display BEFORE persisting so the inbound
             # user message gets stamped with the correct user_id and workspace
             # (otherwise the worker thread sets context too late, the row gets

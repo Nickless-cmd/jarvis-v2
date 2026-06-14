@@ -353,6 +353,20 @@ def _poll_loop(token: str, owner_chat_id: str) -> None:
                 with _telegram_sessions_lock:
                     _telegram_sessions[session_id] = chat_id
 
+                # Owner-override (§6.3): `!override <kode>` / `!revoke-override`.
+                # Thin wire — ren logik i override_command. Best-effort.
+                try:
+                    from core.services.override_command import handle_override_command
+                    from core.identity.users import get_owner, get_totp_seed
+                    _owner = get_owner()
+                    _seed = get_totp_seed(discord_id=_owner.discord_id) if _owner else ""
+                    _ov = handle_override_command(text, session_id=session_id, owner_seed=_seed)
+                    if _ov is not None:
+                        send_message(str(_ov.get("reply") or ""), chat_id=chat_id)
+                        continue
+                except Exception:
+                    logger.exception("telegram_gateway: override-handler fejlede")
+
                 attachment_prefix = _build_telegram_attachment_prefix(
                     media_items, token=token, session_id=session_id
                 )

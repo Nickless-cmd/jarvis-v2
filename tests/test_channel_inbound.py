@@ -41,3 +41,31 @@ def test_builtin_registration_idempotent(isolated_runtime) -> None:
     assert ids.count("discord-local") == 1
     clear_registry()
     ci._BUILTINS_REGISTERED = False
+
+
+# --- §18.9 mode-switch ---
+
+def test_resolve_mode_default_chat() -> None:
+    from core.services.channel_inbound import resolve_inbound_mode
+    assert resolve_inbound_mode().get("mode") == "chat"
+    assert resolve_inbound_mode("bogus", author_role="owner")["mode"] == "chat"
+
+
+def test_resolve_mode_code_requires_owner_or_override() -> None:
+    from core.services.channel_inbound import resolve_inbound_mode
+    assert resolve_inbound_mode("code", author_role="member")["downgraded"] is True
+    assert resolve_inbound_mode("code", author_role="member")["mode"] == "chat"
+    assert resolve_inbound_mode("code", author_role="owner")["mode"] == "code"
+    assert resolve_inbound_mode("code", author_role="member", override_active=True)["mode"] == "code"
+
+
+def test_route_inbound_includes_resolved_mode(isolated_runtime) -> None:
+    from core.services.channel_inbound import route_inbound
+    # member der beder om code → nedgraderet til chat i route-resultatet
+    r = route_inbound(plugin_id="discord-local", channel="general",
+                      author_role="member", text="hej", mode="code")
+    assert r["mode"] == "chat" and r["mode_downgraded"] is True
+    # owner code → bevares
+    r2 = route_inbound(plugin_id="discord-local", channel="general",
+                       author_role="owner", text="kør", mode="code")
+    assert r2["mode"] == "code" and r2["mode_downgraded"] is False

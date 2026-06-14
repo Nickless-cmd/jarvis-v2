@@ -26,7 +26,7 @@ from core.skills.voice import wake_word
 from core.skills.voice.stt import listen_and_transcribe
 from core.skills.voice.tts import say
 
-API_BASE = "http://localhost:80"
+API_BASE = "http://localhost:8080"  # uvicorn lytter nu KUN på localhost:8080 (Caddy ejer :80/:443)
 
 
 def get_active_session_id() -> str:

@@ -38,7 +38,7 @@ _FACTUAL_PATTERNS: list[re.Pattern] = [
     re.compile(r"\b(fil|file|upload|download|publish|share|drev)\b", re.IGNORECASE),
     re.compile(r"\b(config|konfig|ops[æa]tning|setup|install)\b", re.IGNORECASE),
     # Multi-word URL/path patterns — no \b needed (they don't appear as substring in normal words)
-    re.compile(r"(assets?\.srvlab|jarvis-share|localhost:80/files)", re.IGNORECASE),
+    re.compile(r"(assets?\.srvlab|jarvis-share|localhost:\d+/files)", re.IGNORECASE),
     re.compile(r"\b(mount|nfs|samba|cifs|fileserver|external)\b", re.IGNORECASE),
     re.compile(r"\b(URL|url|link)\b", re.IGNORECASE),  # IP/port/adresse already in line above
     # Question phrases (multi-word) — \b not meaningful

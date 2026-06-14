@@ -8100,7 +8100,7 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
-    url = f"http://localhost:80/files/{safe_name}"
+    url = f"http://localhost:8080/files/{safe_name}"
 
     # Hallucination guard: verificér at URL'en faktisk virker
     url_verified = False

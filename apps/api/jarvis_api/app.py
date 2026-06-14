@@ -438,10 +438,18 @@ def create_app() -> FastAPI:
     # browseren lov til at LÆSE responsen. Uden gyldigt token får man 401.
     # allow_origins=["*"] er acceptabelt fordi token-baseret auth altid er
     # i header (ikke cookie), så CSRF er irrelevant.
+    # §20: security-headers (altid) + rate-limit (env-gated) + CORS-whitelist
+    # (env-gated; default ["*"] bevarer desk-adgang indtil JARVISX_CORS_ORIGINS sættes).
+    from apps.api.jarvis_api.middleware.security_headers import (
+        SecurityHeadersMiddleware, SimpleRateLimitMiddleware, cors_allowed_origins,
+    )
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(SimpleRateLimitMiddleware)
+
     from fastapi.middleware.cors import CORSMiddleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=cors_allowed_origins(),
         allow_credentials=False,  # vi bruger Bearer-token, ikke cookies
         allow_methods=["*"],
         allow_headers=["*"],

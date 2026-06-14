@@ -51,3 +51,22 @@ export async function getShareGuard(config: ApiConfig): Promise<ShareDecision[]>
 export async function resolveShareGuard(config: ApiConfig, id: string, shared: boolean): Promise<void> {
   await apiFetch(config, `/cowork/share-guard/${encodeURIComponent(id)}/resolve?shared=${shared}`, { method: 'POST' })
 }
+
+// ── UI-panel-kald (§8.2) ───────────────────────────────────────────────────
+export interface UiPanelRequest {
+  id: string
+  panel: 'preview' | 'right' | 'files'
+  session_id: string
+  detail: string
+  status: string
+  created_at: string
+}
+
+export async function getUiPanelPending(config: ApiConfig): Promise<UiPanelRequest[]> {
+  const d = await apiFetch<{ pending: UiPanelRequest[] }>(config, '/cowork/ui-panel/pending')
+  return d.pending ?? []
+}
+
+export async function ackUiPanel(config: ApiConfig, id: string): Promise<void> {
+  await apiFetch(config, `/cowork/ui-panel/${encodeURIComponent(id)}/ack`, { method: 'POST' })
+}

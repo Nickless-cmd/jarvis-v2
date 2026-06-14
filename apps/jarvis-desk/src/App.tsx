@@ -3,6 +3,7 @@ import { useSettings } from './hooks/useSettings'
 import { SessionProvider } from './contexts/SessionContext'
 import { StreamProvider } from './contexts/StreamContext'
 import { PanelProvider } from './contexts/PanelContext'
+import { UiPanelWatcher } from './components/UiPanelWatcher'
 import { usePanel } from './hooks/usePanel'
 import { SplitLayout } from './components/panel/SplitLayout'
 import { ArtifactPanel } from './components/panel/ArtifactPanel'
@@ -41,6 +42,7 @@ export function App() {
             userName={auth?.display_name ?? 'Bruger'}
             model={settings.defaultModel}
           />
+          <UiPanelWatcher config={cfg} />
         </PanelProvider>
       </StreamProvider>
     </SessionProvider>

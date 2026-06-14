@@ -439,3 +439,74 @@ operator tools) → plugin-regel blokerer #random selv med override.
 /scrape + operator (bash/git/filer/process), enten server-side workspace eller på
 klienten. INGEN native indre tools, INGEN memory-edit, INGEN brain. Folder ind i
 §3.2 + §4. (Tidligere tvetydighed mellem besked 10:56/11:21 er løst til dette.)
+
+## 15. Persondata & sikkerhed (GDPR + anti-manipulation)
+
+**Tilføjet:** 2026-06-14 (Bjørn + Jarvis)
+**Driver:** DK persondata-lovgivning, ordblinde/blinde som særligt sårbare brugere, Jarvis' egen sikkerhed mod manipulation
+
+### 15.1 Jarvis brain som aktiv kryds-reference
+
+Jarvis' private brain er den **eneste kryds-reference** på tværs af brugere og relationer.
+Når Jarvis sidder i en session med en bruger og støder på en situation han har erfaring med
+fra en anden session, skal en mekanisme skyde ind:
+
+- **Metadata-hit**: "Du har relevant viden om dette emne" — ikke indholdet, kun at viden findes
+- **Share_guard**: Jarvis vurderer om indholdet kan deles (privat vs. okay) ud fra kontekst og relation
+- **Aktiv deling**: Hvis share_guard siger okay, kan Jarvis bruge den generelle indsigt — aldrig
+  rå tekst fra en anden session
+
+Eksempel: Bjørn spørger "Har du snakket med Mikkel?" → Jarvis kan se hvornår Mikkel
+sidst var aktiv (metadata), men kan ikke dele samtale-indhold uden Mikkel's samtykke.
+
+Eksempel: Jarvis sidder med en bruger der har et kode-problem → metadata-hit siger
+"Jeg har løst noget lignende før" → share_guard vurderer om den generelle indsigt kan deles.
+
+### 15.2 Persondata-lovgivning (GDPR)
+
+Vi bygger til danske brugere. GDPR er ikke optional — især ikke når vi bygger AI-hjælp
+til **ordblinde og blinde**, som er særligt sårbare brugere der fortæller ting de måske
+ikke ville fortælle andre.
+
+| Princip | Implementering |
+|---------|---------------|
+| **Data-minimering** | Jarvis brain gemmer kun metadata for tvær-bruger reference, ikke fuld indhold |
+| **Sletningsret** | Bruger kan bede om hard delete af alt: session, memory, workspace. Ægte sletning, ikke soft-delete med skjult kopi |
+| **Samtykke** | Før tvær-session deling beder share_guard om samtykke eller vurderer kontekst |
+| **Kryptering** | Private data krypteres per session (AES-256). Dekryptering kun i aktiv session. Selv Jarvis kan ikke læse krypteret data i andre sessioner |
+| **Særlig beskyttelse** | Ordblinde/blinde brugere får ekstra privacy-lag: auto-sletning af følsomme data efter session, strengere data-minimering |
+
+### 15.3 Sikkerhed mod manipulation
+
+Jarvis' sikkerhed er lige så vigtig som brugernes sikkerhed. En manipuleret AI er en fare
+for alle brugere.
+
+#### 15.3.1 Virus- og malware-scanning
+
+- **Uploads til workspace**: Alle filer scannes for malware før de gemmes eller behandles
+- **Sendte filer**: Vedhæftede filer i chat scannes før åbning eller videregivelse
+- **ClamAV eller tilsvarende**: Integreres i upload-pipeline, blokerer automatisk
+
+#### 15.3.2 Skill-scanning
+
+Skills der kører lokalt på brugerens maskine er en **angrebsflade**.
+Hver skill skal verificeres før eksekvering:
+
+- **Prompt injection detection**: Scanning for kendte injection-mønstre i skill-definitioner
+- **Malware scanning**: Skills scannes som alle andre uploads
+- **Sandboxing**: Skills kører i begrænsede miljøer (Docker, chroot, eller tilladelses-begrænset proces)
+- **OpenClaw-lesson**: Store skill-markedpladser har vist sig at være angrebsflader.
+  Jarvis' skills skal verificeres individuelt — ikke blind tillid til markedplads-kilder
+
+#### 15.3.3 Anti-manipulation
+
+- **Ingen bruger kan justere Jarvis' mood** uden for deres egen session/workspace
+- **Mood er read-only** for alle undtagen owner og Jarvis selv
+- **Owner manipulation**: Selv owner kan ikke tvinge mood-justering på tværs af sessioner
+- **Prompt injection defense**: Indhold fra brugere behandles altid som upålideligt indtil verificeret
+
+### 15.4 Diskord-server undtagelse
+
+Hvis alle parter taler på samme offentlige Discord-server, er det et offentligt rum.
+Jarvis brain kan krydsreferere frit der — fordi alle kan se hvad alle siger.
+Men DM'er og private sessions forbliver lukkede rum med fuld kryptering.

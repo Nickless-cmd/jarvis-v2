@@ -70,3 +70,21 @@ def test_multiple_other_users() -> None:
     )
     assert r["needs_confirmation"] is True
     assert set(r["mentioned_users"]) == {"Mikkel", "Mor"}
+
+
+def test_check_against_registry(tmp_path, monkeypatch) -> None:
+    # Isolér users.json og registrér to brugere.
+    monkeypatch.setattr("core.runtime.config.CONFIG_DIR", tmp_path)
+    from core.identity.users import add_user
+    from core.services.cross_user_share_guard import check_against_registry
+
+    add_user(discord_id="d-bjorn", name="Bjørn", role="owner")
+    add_user(discord_id="d-mikkel", name="Mikkel", role="member")
+
+    # Bjørns session, svar nævner Mikkel → flag
+    r = check_against_registry("Mikkel bad mig sige hej.", current_user_id="d-bjorn")
+    assert r["needs_confirmation"] is True and "Mikkel" in r["mentioned_users"]
+
+    # Svar uden cross-user-omtale → ok
+    r2 = check_against_registry("Klart, det fixer jeg.", current_user_id="d-bjorn")
+    assert r2["needs_confirmation"] is False

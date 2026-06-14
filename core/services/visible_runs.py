@@ -3504,6 +3504,28 @@ def _persist_session_assistant_message(
     # dette gør beskeden konsistent renderbar på ALLE kanaler + i gemt historik.
     # Ren CPU-funktion → ingen --workers 1 frys-risiko. Se markdown_structure.py.
     normalized = normalize_markdown_structure(normalized)
+
+    # Cross-user deling-guard (§4.4, TOTP Fase 4.2): hvis det udgående svar nævner
+    # en ANDEN bruger end samtalepartneren, flag det. Detektion + eventbus-signal
+    # nu (observérbart); det blokerende approval-kort er desk-UI i Fase 6. Best-
+    # effort: en fejl her må ALDRIG spærre svaret.
+    try:
+        from core.identity.workspace_context import current_user_id as _cuid
+        _cur = str(_cuid() or "")
+        if _cur:
+            from core.services.cross_user_share_guard import check_against_registry
+            _share = check_against_registry(normalized, current_user_id=_cur)
+            if _share.get("needs_confirmation"):
+                from core.eventbus.bus import event_bus
+                event_bus.publish("cross_user_share.flagged", {
+                    "session_id": run.session_id,
+                    "current_user_id": _cur,
+                    "mentioned_users": _share.get("mentioned_users"),
+                    "prompt": _share.get("prompt"),
+                })
+    except Exception:
+        pass
+
     message = append_chat_message(
         session_id=run.session_id,
         role="assistant",

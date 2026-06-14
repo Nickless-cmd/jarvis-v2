@@ -54,3 +54,18 @@ def check_outbound(
         "mentioned_users": mentioned,
         "prompt": _PROMPT.format(names=", ".join(mentioned)) if needs else "",
     }
+
+
+def check_against_registry(text: str, *, current_user_id: str) -> dict:
+    """Som check_outbound, men henter kendte brugere fra users-registry.
+
+    Convenience til udgående wiring (visible_runs): loader alle registrerede
+    brugere som {id, name} og tjekker det udgående svar mod dem. Fail-safe: ved
+    fejl i registry-load returneres needs_confirmation=False (blokér ikke chat).
+    """
+    try:
+        from core.identity.users import load_users
+        known = [{"id": u.discord_id, "name": u.name} for u in load_users()]
+    except Exception:
+        known = []
+    return check_outbound(text, current_user_id=current_user_id, known_users=known)

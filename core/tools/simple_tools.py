@@ -9090,8 +9090,10 @@ def get_tool_definitions(
     effective_role = role
     if effective_role is None:
         try:
-            from core.identity.workspace_context import current_role
-            effective_role = current_role()
+            # effective_role() eleverer til 'owner' hvis sessionen har en aktiv
+            # TOTP-override (§6.0) + fornyer 5-min-vinduet (aktivitet, §9).
+            from core.identity.workspace_context import effective_role as _eff_role
+            effective_role = _eff_role()
         except Exception:
             effective_role = ""
 

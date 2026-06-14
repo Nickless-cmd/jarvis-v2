@@ -39,6 +39,7 @@ class _ContextState:
     user_display_name: str
     role: str = ""  # bearer-token role: owner|member|guest, "" = unbound (legacy)
     channel: str = ""  # transport channel: jarvisx-electron|webchat|discord|telegram|...
+    session_id: str = ""  # aktuel session — bruges af effective_role til override-elevering
 
 
 # Default: workspace="bjorn" (renamed from "default" in Task 5), user_id="" (owner implicit)
@@ -86,6 +87,7 @@ def set_context(
     user_display_name: str = "",
     role: str = "",
     channel: str = "",
+    session_id: str = "",
 ) -> contextvars.Token:
     """Set workspace context explicitly. Returns Token for reset.
 
@@ -98,8 +100,36 @@ def set_context(
         user_display_name=str(user_display_name or "").strip(),
         role=str(role or "").strip().lower(),
         channel=str(channel or "").strip().lower(),
+        session_id=str(session_id or "").strip(),
     )
     return _current_state.set(state)
+
+
+def current_session_id() -> str:
+    """Aktuel session-id ("" hvis ikke sat)."""
+    return _current_state.get().session_id
+
+
+def effective_role() -> str:
+    """Rollen efter TOTP-override-elevering (§6.0).
+
+    Returnerer 'owner' hvis sessionen har en AKTIV TOTP-override — så Bjørn
+    får fuld owner tool-adgang fra en fremmed session efter `!override`. Hver
+    elevering FORNYER samtidig override-vinduet til 5 min (aktivitet = fornyelse,
+    spec §9). Owner-sessioner returnerer 'owner' uændret (ingen override-tjek).
+    """
+    base = current_role()
+    if base == "owner":
+        return base
+    try:
+        from core.services.override_store import is_active, touch
+        sid = current_session_id()
+        if sid and is_active(sid):
+            touch(sid)  # 5-min rullende fornyelse
+            return "owner"
+    except Exception:
+        pass
+    return base
 
 
 def reset_context(token: contextvars.Token) -> None:

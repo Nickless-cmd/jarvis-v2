@@ -822,6 +822,7 @@ async def _run_client(config: dict) -> None:
                     workspace_name=_workspace,
                     user_id=_user_id,
                     user_display_name=_display,
+                    session_id=_session_id,  # → effective_role kan slå override op
                 )
                 try:
                     start_autonomous_run(_content, session_id=_session_id)

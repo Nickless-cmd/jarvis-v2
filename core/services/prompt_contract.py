@@ -2695,8 +2695,6 @@ def _workspace_memory_section(
     workspace_dir: Path,
     mode: str = "visible_chat",
 ) -> MemorySectionSelection | None:
-    if not path.exists():
-        return None
     entries = _workspace_memory_entries(path)
     if not entries:
         return None
@@ -2745,8 +2743,12 @@ from core.services.prompt_sections.memory_recall import (  # noqa: E402
 
 
 def _workspace_memory_entries(path: Path) -> list[str]:
+    from core.services.workspace_crypto import read_text_for_path
+    text = read_text_for_path(path)
+    if text is None:
+        return []
     entries: list[str] = []
-    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    for raw in text.splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
             continue

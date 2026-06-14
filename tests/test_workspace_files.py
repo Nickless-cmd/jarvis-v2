@@ -135,3 +135,32 @@ def test_resolve_with_shared_fallback_preserves_when_shared_missing(tmp_path, mo
     workspace_path = tmp_path / "ws" / "SOUL.md"
     resolved = _resolve_with_shared_fallback(workspace_path)
     assert resolved == workspace_path
+
+
+def test_workspace_file_section_decrypts_member_enc(tmp_path, monkeypatch) -> None:
+    """Encryption-aware: en member-fil gemt som .enc læses + dekrypteres
+    transparent af _workspace_file_section (uafhængigt af ENCRYPT_ON_WRITE)."""
+    from core.identity.users import add_user
+    from core.services import workspace_crypto
+    from core.services.prompt_sections.workspace_files import _workspace_file_section
+
+    # Isolér users.json + headless KEK/DEK
+    monkeypatch.setattr("core.runtime.config.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("core.runtime.config.SETTINGS_FILE", tmp_path / "runtime.json")
+    import core.services.keyring_store as ks
+    monkeypatch.setattr(ks, "_keyring", lambda: None)
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    add_user(discord_id="d-mikkel", name="Mikkel", role="member", workspace="mikkel")
+
+    mem = tmp_path / "workspaces" / "mikkel" / "MEMORY.md"
+    mem.parent.mkdir(parents=True, exist_ok=True)
+    # Skriv krypteret (flag on) → producerer .enc, fjerner plaintext
+    monkeypatch.setenv("JARVISX_ENCRYPT_WORKSPACES", "1")
+    written = workspace_crypto.write_text_for_path(
+        mem, "Mikkels hemmelige hukommelse som er rig nok til at undgå stub.\n" + ("x " * 300)
+    )
+    assert written.endswith(".enc") and not mem.exists()
+
+    section = _workspace_file_section(mem, label="MEMORY.md", max_lines=2, max_chars=200)
+    assert section is not None
+    assert "Mikkels hemmelige hukommelse" in section

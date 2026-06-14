@@ -30,25 +30,42 @@ _FALLBACK_FILENAMES = frozenset({
 _STUB_THRESHOLD_BYTES = 500
 
 
+def _effective_size(path: Path) -> int:
+    """Byte-størrelse af workspace-fil, encryption-aware.
+
+    For en krypteret member-fil eksisterer kun `<path>.enc`; her tæller den
+    dekrypterede indholds-længde. Plaintext-filer tæller deres st_size som før,
+    så adfærden er byte-for-byte identisk mens kryptering er slået fra.
+    """
+    from core.services.workspace_crypto import member_user_id_for_path, read_text_for_path
+    enc = Path(str(path) + ".enc")
+    if member_user_id_for_path(path) and enc.exists() and not path.exists():
+        try:
+            txt = read_text_for_path(path)
+            return len(txt.encode("utf-8")) if txt else 0
+        except Exception:
+            return enc.stat().st_size  # konservativt: behandl som "har indhold"
+    return path.stat().st_size if path.exists() else 0
+
+
 def _resolve_with_shared_fallback(path: Path) -> Path:
     """Hvis `path` peger på en stub-tynd identitets-fil og shared/<navn>
     har en større version, returner shared-versionen i stedet.
 
     Garanteret aldrig at returnere en sti der ikke eksisterer hvis den
     oprindelige eksisterede — fallback bruges KUN når shared har mere
-    indhold end workspace.
+    indhold end workspace. Encryption-aware via _effective_size.
     """
     filename = path.name
     if filename not in _FALLBACK_FILENAMES:
         return path
     try:
-        if path.exists() and path.stat().st_size >= _STUB_THRESHOLD_BYTES:
+        own = _effective_size(path)
+        if own >= _STUB_THRESHOLD_BYTES:
             return path  # workspace har rigt indhold — brug det
         shared_dir = Path(os.environ.get("HOME", "/root")) / ".jarvis-v2" / "shared"
         shared_path = shared_dir / filename
-        if shared_path.exists() and shared_path.stat().st_size > (
-            path.stat().st_size if path.exists() else 0
-        ):
+        if shared_path.exists() and shared_path.stat().st_size > own:
             return shared_path
     except Exception:
         pass
@@ -62,11 +79,13 @@ def _workspace_file_section(
     max_lines: int,
     max_chars: int,
 ) -> str | None:
+    from core.services.workspace_crypto import read_text_for_path
     path = _resolve_with_shared_fallback(path)
-    if not path.exists():
+    text = read_text_for_path(path)
+    if text is None:
         return None
     lines: list[str] = []
-    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    for raw in text.splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
@@ -97,6 +116,14 @@ def _workspace_guidance_section(
     return section
 
 
+def _ws_exists(path: Path) -> bool:
+    """Eksistens-tjek encryption-aware (.enc tæller for member-filer)."""
+    if path.exists():
+        return True
+    from core.services.workspace_crypto import member_user_id_for_path
+    return bool(member_user_id_for_path(path)) and Path(str(path) + ".enc").exists()
+
+
 def _workspace_optional_file_section(
     path: Path,
     *,
@@ -105,8 +132,8 @@ def _workspace_optional_file_section(
     max_lines: int,
     max_chars: int,
 ) -> str | None:
-    source = path if path.exists() else fallback_path
-    if source is None or not source.exists():
+    source = path if _ws_exists(path) else fallback_path
+    if source is None or not _ws_exists(source):
         return None
     return _workspace_file_section(
         source,

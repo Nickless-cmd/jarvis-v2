@@ -1352,18 +1352,22 @@ def _apply_thinking_mode(payload: dict, thinking_mode: str) -> None:
     # 'think' (default) → don't add anything; let model use its own default
 
 
-# Visible-lane num_ctx for ollama. deepseek-v4-flash:cloud supports 1M tokens,
-# but full-1M is wasteful (slower attention compute). 256k covers any realistic
-# Jarvis transcript with full identity + memory + tool history + room to grow.
-# Raise here when we move to bigger sessions or longer agentic loops.
-_VISIBLE_OLLAMA_NUM_CTX = 262_144
+# Visible-lane num_ctx for ollama. deepseek-v4-flash:cloud supports 1M tokens.
+# Now configurable via runtime.json (visible_ollama_num_ctx). The hardcoded
+# default here is the fallback when settings aren't loaded yet — it should
+# match the default in core.runtime.settings.JarvisSettings.
+# Bumped from 256k → 512k on 2026-06-14: doubles the effective context
+# window, reduces premature compaction, still well within 1M model capacity.
+_VISIBLE_OLLAMA_NUM_CTX = 524_288  # 512k fallback — settings override this
 
 # Visible-lane num_predict (max output tokens). Ollama's default for cloud
 # models is restrictive — DeepSeek-v4 (and other reasoners) get cut off
 # mid-sentence at ~128–256 tokens. 8192 lets a full coherent answer through
 # without wasting anything: the model still stops at its natural EOS, this
 # is just a ceiling. Bump if we ever see legitimate truncation again.
-_VISIBLE_OLLAMA_NUM_PREDICT = 16384
+# Visible-lane num_predict (max output tokens). Configurable via runtime.json
+# (visible_ollama_num_predict). The hardcoded default here is the fallback.
+_VISIBLE_OLLAMA_NUM_PREDICT = 16_384
 
 
 def _apply_visible_ollama_options(payload: dict) -> None:
@@ -1372,10 +1376,18 @@ def _apply_visible_ollama_options(payload: dict) -> None:
     num_ctx — input context window. Larger costs more attention memory.
     num_predict — output token cap. Without this, Ollama's defaults can
                   cut DeepSeek/Qwen reasoners off mid-thought.
+
+    Both are now configurable via runtime.json (visible_ollama_num_ctx /
+    visible_ollama_num_predict). The module-level constants serve as
+    fallback defaults when settings aren't loaded yet.
     """
+    from core.runtime.settings import load_settings
+    settings = load_settings()
+    num_ctx = settings.visible_ollama_num_ctx or _VISIBLE_OLLAMA_NUM_CTX
+    num_predict = settings.visible_ollama_num_predict or _VISIBLE_OLLAMA_NUM_PREDICT
     options = dict(payload.get("options") or {})
-    options.setdefault("num_ctx", _VISIBLE_OLLAMA_NUM_CTX)
-    options.setdefault("num_predict", _VISIBLE_OLLAMA_NUM_PREDICT)
+    options.setdefault("num_ctx", num_ctx)
+    options.setdefault("num_predict", num_predict)
     payload["options"] = options
 
 

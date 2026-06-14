@@ -232,8 +232,16 @@ class RuntimeSettings:
     relevance_sambanova_timeout: int = 5
     # Emotion decay
     emotion_decay_factor: float = 0.97
+    # Ollama visible-lane context window size (tokens).
+    # deepseek-v4-flash:cloud supports 1M tokens. 512k gives double the
+    # previous 256k window while staying well within model capacity and
+    # GPU memory budget. Configurable via runtime.json so we can tune
+    # without redeploying. Must be a power of 2 multiple of 131072.
+    visible_ollama_num_ctx: int = 524_288  # 512k — bumped from 256k 2026-06-14
+    visible_ollama_num_predict: int = 16_384  # max output tokens per turn
+
     # Context compact thresholds. Bumped from 40k/60k now that visible lane
-    # runs deepseek-v4-flash (1M context) with num_ctx=256k. Auto-compaction
+    # runs deepseek-v4-flash (1M context) with num_ctx=512k. Auto-compaction
     # at 40k was a holdover from when the visible model had a tight 64k
     # context window — premature now and was forcing summarization mid-run.
     context_compact_threshold_tokens: int = 200_000
@@ -384,6 +392,8 @@ class RuntimeSettings:
             "recall_repetition_multiplier": self.recall_repetition_multiplier,
             "cognitive_state_assembly_enabled": self.cognitive_state_assembly_enabled,
             "emotion_decay_factor": self.emotion_decay_factor,
+            "visible_ollama_num_ctx": self.visible_ollama_num_ctx,
+            "visible_ollama_num_predict": self.visible_ollama_num_predict,
             "context_compact_threshold_tokens": self.context_compact_threshold_tokens,
             "context_run_compact_threshold_tokens": self.context_run_compact_threshold_tokens,
             "context_keep_recent": self.context_keep_recent,
@@ -769,6 +779,8 @@ def load_settings() -> RuntimeSettings:
         recall_repetition_multiplier=float(data.get("recall_repetition_multiplier", defaults.recall_repetition_multiplier)),
         cognitive_state_assembly_enabled=bool(data.get("cognitive_state_assembly_enabled", defaults.cognitive_state_assembly_enabled)),
         emotion_decay_factor=float(data.get("emotion_decay_factor", defaults.emotion_decay_factor)),
+        visible_ollama_num_ctx=int(data.get("visible_ollama_num_ctx", defaults.visible_ollama_num_ctx)),
+        visible_ollama_num_predict=int(data.get("visible_ollama_num_predict", defaults.visible_ollama_num_predict)),
         context_compact_threshold_tokens=int(data.get("context_compact_threshold_tokens", defaults.context_compact_threshold_tokens)),
         context_run_compact_threshold_tokens=int(data.get("context_run_compact_threshold_tokens", defaults.context_run_compact_threshold_tokens)),
         context_keep_recent=int(data.get("context_keep_recent", defaults.context_keep_recent)),

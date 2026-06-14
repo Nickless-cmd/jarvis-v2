@@ -142,6 +142,14 @@ def classify_question(message: str) -> str:
     return "casual"
 
 
+def _ws_has_content(path: Path) -> bool:
+    """Eksistens-tjek encryption-aware: plaintext eller member .enc."""
+    if path.exists():
+        return True
+    from core.services.workspace_crypto import member_user_id_for_path
+    return bool(member_user_id_for_path(path)) and Path(str(path) + ".enc").exists()
+
+
 def _find_memory_path() -> Path:
     """Find MEMORY.md — look in runtime workspace first, then repo."""
     from core.runtime.workspace_paths import workspace_dir
@@ -151,7 +159,7 @@ def _find_memory_path() -> Path:
         Path(JARVIS_HOME) / "MEMORY.md",
     ]
     for candidate in candidates:
-        if candidate.exists():
+        if _ws_has_content(candidate):
             return candidate
     return candidates[0]
 
@@ -172,7 +180,7 @@ def _find_curated_paths() -> list[tuple[str, Path]]:
         ("USER.md", base / "USER.md"),
         ("SOUL.md", base / "SOUL.md"),
     ]
-    return [(label, path) for label, path in candidates if path.exists()]
+    return [(label, path) for label, path in candidates if _ws_has_content(path)]
 
 
 def _extract_relevant_sections(
@@ -302,7 +310,10 @@ def inject_memory_into_prompt(
         if total_chars >= 4000:  # samlet cap
             break
         try:
-            text = path.read_text(encoding="utf-8")
+            from core.services.workspace_crypto import read_text_for_path
+            text = read_text_for_path(path)
+            if text is None:
+                continue
         except Exception as exc:
             logger.warning(f"hallucination_guard: could not read {path}: {exc}")
             continue

@@ -870,6 +870,16 @@ async def _stream_visible_run(
         except Exception:
             pass
 
+    # Bind session_id ind i konteksten (bevar role fra middleware/gateway) så
+    # effective_role kan slå en aktiv TOTP-override op under tool-scoping.
+    # Samme generator-timing-grund som tool-scope ovenfor.
+    if run.session_id:
+        try:
+            from core.identity.workspace_context import set_session_id
+            set_session_id(run.session_id)
+        except Exception:
+            pass
+
     # Trusted-folder kontekst (code-scope): læs session-workspace + trust-tilstand
     # og sæt request-scopet ContextVar, så execute_tool kan gate skrive/exec.
     # For alle andre scopes ryddes konteksten, så en tidligere code-runs trust

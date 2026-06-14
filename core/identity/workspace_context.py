@@ -110,6 +110,25 @@ def current_session_id() -> str:
     return _current_state.get().session_id
 
 
+def set_session_id(session_id: str) -> contextvars.Token:
+    """Opdatér KUN session_id på den nuværende kontekst (bevar role/user/workspace).
+
+    Bruges inde i run-generatoren (streaming-kontekst), hvor role allerede er sat
+    af middleware/gateway men session_id mangler — så effective_role kan slå
+    override op. Returnerer Token (caller bør reset, men i streaming-gen er det
+    ofte ok at lade den følge request-konteksten)."""
+    cur = _current_state.get()
+    new = _ContextState(
+        workspace_name=cur.workspace_name,
+        user_id=cur.user_id,
+        user_display_name=cur.user_display_name,
+        role=cur.role,
+        channel=cur.channel,
+        session_id=str(session_id or "").strip(),
+    )
+    return _current_state.set(new)
+
+
 def effective_role() -> str:
     """Rollen efter TOTP-override-elevering (§6.0).
 

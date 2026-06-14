@@ -120,3 +120,11 @@ def test_write_text_for_path_flag_on_owner_plaintext(_ws_tree, monkeypatch) -> N
 def test_read_text_for_path_missing_returns_none(_ws_tree) -> None:
     from core.services.workspace_crypto import read_text_for_path
     assert read_text_for_path(_ws_tree / "mikkel" / "NOPE.md") is None
+
+
+def test_runtime_subdir_excluded_from_encryption(_ws_tree) -> None:
+    # runtime/-filer (daemon-state) må ALDRIG krypteres (§16 scope).
+    from core.services.workspace_crypto import member_user_id_for_path
+    assert member_user_id_for_path(_ws_tree / "mikkel" / "MEMORY.md") == "d-mikkel"
+    assert member_user_id_for_path(_ws_tree / "mikkel" / "runtime" / "HEARTBEAT_STATE.json") is None
+    assert member_user_id_for_path(_ws_tree / "mikkel" / "runtime" / "x.pkl") is None

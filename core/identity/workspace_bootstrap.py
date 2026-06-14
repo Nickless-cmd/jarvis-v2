@@ -318,13 +318,21 @@ def bootstrap_user_workspace(workspace_name: str, *, display_name: str = "") -> 
         "SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md",
         "TOOLS.md", "SKILLS.md", "HEARTBEAT.md",
     )
+    # §16: en krypteret member-fil ligger som <navn>.enc — bootstrap må IKKE
+    # gen-så en plaintext-stub oven på den (stale-stub + shared-fallback-bug).
+    def _ws_exists(p: Path) -> bool:
+        if p.exists():
+            return True
+        from core.services.workspace_crypto import member_user_id_for_path
+        return bool(member_user_id_for_path(p)) and Path(str(p) + ".enc").exists()
+
     for filename in _SHARED_IDENTITY_FILES:
         src = TEMPLATE_DIR / filename
         if not src.exists():
             LOGGER.warning("bootstrap_user_workspace: template missing: %s", filename)
             continue
         dest = workspace_dir / filename
-        if dest.exists():
+        if _ws_exists(dest):
             existing.append(filename)
             continue
         shutil.copy2(src, dest)
@@ -332,7 +340,7 @@ def bootstrap_user_workspace(workspace_name: str, *, display_name: str = "") -> 
 
     # Per-user relation files — EMPTY stubs, not template content
     user_md = workspace_dir / "USER.md"
-    if not user_md.exists():
+    if not _ws_exists(user_md):
         stub = f"# {display_name or name}\n\n_Jeg kender endnu ikke denne bruger._\n"
         user_md.write_text(stub, encoding="utf-8")
         created.append("USER.md")
@@ -340,7 +348,7 @@ def bootstrap_user_workspace(workspace_name: str, *, display_name: str = "") -> 
         existing.append("USER.md")
 
     memory_md = workspace_dir / "MEMORY.md"
-    if not memory_md.exists():
+    if not _ws_exists(memory_md):
         memory_md.write_text("# MEMORY\n\n_Ingen erindringer endnu._\n", encoding="utf-8")
         created.append("MEMORY.md")
     else:
@@ -352,7 +360,7 @@ def bootstrap_user_workspace(workspace_name: str, *, display_name: str = "") -> 
         if not src.exists():
             continue
         dest = workspace_dir / filename
-        if dest.exists():
+        if _ws_exists(dest):
             existing.append(filename)
             continue
         shutil.copy2(src, dest)

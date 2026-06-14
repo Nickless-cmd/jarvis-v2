@@ -124,6 +124,11 @@ def member_user_id_for_path(path: str | os.PathLike) -> str | None:
     if i + 1 >= len(parts):
         return None
     ws_name = parts[i + 1]
+    # Ekskludér daemon-state under runtime/ — disse læses/skrives af daemons med
+    # rå I/O (heartbeat-triggers, pkl-index) og må IKKE krypteres (§16 scope).
+    rest = parts[i + 2:]
+    if rest and rest[0] == "runtime":
+        return None
     try:
         from core.identity.users import find_user_by_workspace
         u = find_user_by_workspace(ws_name)

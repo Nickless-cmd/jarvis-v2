@@ -271,3 +271,26 @@ def test_list_user_ids_reflects_registry():
     bridge_registry.register(BridgeConnection(user_id="mor"))
     assert set(bridge_registry.list_user_ids()) == {"mikkel", "mor"}
     bridge_registry.clear()
+
+
+def test_send_invoke_includes_mode():
+    # §17.6.1: tool_invoke skal medsende mode så broen kan mode-gate lokalt.
+    import asyncio
+    from core.services.jarvisx_bridge import BridgeConnection
+
+    conn = BridgeConnection(user_id="user-x", client="test")
+    captured = {}
+
+    async def _fake_send_raw(data, *, timeout_s=10.0):
+        captured.update(data)
+
+    conn.send_raw = _fake_send_raw  # type: ignore[assignment]
+
+    async def _run():
+        await conn.send_invoke(correlation_id="c1", tool="operator_bash",
+                               args={"command": "ls"}, timeout_ms=5000)
+
+    asyncio.run(_run())
+    assert captured["type"] == "tool_invoke"
+    assert "mode" in captured            # feltet medsendes (tom = legacy)
+    assert captured["tool"] == "operator_bash"

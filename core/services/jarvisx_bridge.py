@@ -79,12 +79,20 @@ class BridgeConnection:
         timeout_ms: int,
     ) -> None:
         """Send tool_invoke over WS and register the pending future."""
+        # §17.6.1: medsend nuværende mode så broen kun eksekverer operator tools
+        # lokalt i code mode. Tom scope → broen behandler det som legacy (tillader).
+        try:
+            from core.tools.tool_scoping import current_tool_scope
+            mode = current_tool_scope() or ""
+        except Exception:
+            mode = ""
         await self.send_raw({
             "type": "tool_invoke",
             "correlation_id": correlation_id,
             "tool": tool,
             "args": args,
             "timeout_ms": timeout_ms,
+            "mode": mode,
         })
 
     async def deliver_result(

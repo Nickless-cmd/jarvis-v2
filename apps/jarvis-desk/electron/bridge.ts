@@ -105,6 +105,14 @@ export function getActiveBridgeCfg(): BridgeConfig | null {
   return _activeBridgeCfg
 }
 
+// §17.6.1: operator tools eksekverer KUN lokalt i code mode. chat/cowork må ikke
+// køre dem på brugerens maskine. Tom mode = legacy (serveren sender endnu ikke mode)
+// → tillad, så bagudkompatibilitet bevares indtil serveren altid sender mode.
+const _LOCAL_EXECUTION_MODES = new Set(['code', ''])
+export function isLocalExecutionMode(mode: string | null | undefined): boolean {
+  return _LOCAL_EXECUTION_MODES.has(String(mode ?? '').toLowerCase())
+}
+
 // Den session brugeren aktuelt har fremme i jarvis-desk. Renderer pusher den
 // ved hvert session-skift (run:setSession). Bruges så en operator_wakeup kan
 // re-engagere i NETOP den session — ikke en frisk/forkert (Bjørn 2026-06-13).
@@ -2364,7 +2372,21 @@ export class JarvisXBridge {
       const correlation_id = String(msg.correlation_id ?? '')
       const tool = String(msg.tool ?? '')
       const args = (msg.args as Record<string, unknown>) || {}
-      this.log(`tool_invoke tool=${tool} args=${JSON.stringify(args).slice(0, 120)}`)
+      const invokeMode = String(msg.mode ?? '').toLowerCase()
+      this.log(`tool_invoke tool=${tool} mode=${invokeMode || '(legacy)'} args=${JSON.stringify(args).slice(0, 120)}`)
+      // §17.6.1: kun code-mode anmodninger eksekveres LOKALT. chat/cowork må ikke
+      // køre operator tools på brugerens maskine. Tom mode = legacy → tillad (bagudkompat).
+      if (!isLocalExecutionMode(invokeMode)) {
+        this.send({
+          type: 'tool_result',
+          correlation_id,
+          status: 'error',
+          result: null,
+          error: `mode_not_local: operator tools kører kun lokalt i code mode (mode=${invokeMode})`,
+        })
+        this.log(`  → afvist (mode=${invokeMode}, ikke code)`)
+        return
+      }
       const handler = handlers[tool]
       if (!handler) {
         this.send({
@@ -2408,6 +2430,8 @@ export class JarvisXBridge {
           status: 'ok',
           result,
           error: null,
+          mode: invokeMode || 'code',
+          local_execution: true,
         })
         const preview = typeof result === 'string' ? result.slice(0, 60) : '(non-string)'
         this.log(`  → replied ok (${preview})`)

@@ -14,3 +14,29 @@ describe('coworkApi', () => {
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/cowork/queue'), expect.anything())
   })
 })
+
+import { buildAgentDispatchView } from './coworkApi'
+
+describe('buildAgentDispatchView', () => {
+  it('mapper plan+spawned til rækker med status', () => {
+    const v = buildAgentDispatchView({
+      mode: 'dispatch',
+      decision: { reason: '3 signaler' },
+      plan: [
+        { role: 'researcher', goal: 'g1', parallel: true },
+        { role: 'planner', goal: 'g2', parallel: false },
+      ],
+      spawned: [{ agent_id: 'a1' }, { error: 'x' }],
+    })
+    expect(v.mode).toBe('dispatch')
+    expect(v.entries[0]?.status).toBe('running')
+    expect(v.entries[1]?.status).toBe('error')
+    expect(v.summary).toEqual({ total: 2, running: 1, done: 0, planned: 0, error: 1 })
+  })
+
+  it('inline uden plan', () => {
+    const v = buildAgentDispatchView({ mode: 'inline', decision: { reason: 'simpel' } })
+    expect(v.mode).toBe('inline')
+    expect(v.entries).toEqual([])
+  })
+})

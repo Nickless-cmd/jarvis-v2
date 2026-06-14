@@ -70,3 +70,52 @@ export async function getUiPanelPending(config: ApiConfig): Promise<UiPanelReque
 export async function ackUiPanel(config: ApiConfig, id: string): Promise<void> {
   await apiFetch(config, `/cowork/ui-panel/${encodeURIComponent(id)}/ack`, { method: 'POST' })
 }
+
+// §19.5: agent dispatch i cowork command center. buildAgentDispatchView mapper
+// resultatet fra backend (agent_dispatch.dispatch_code_mode_task) til visnings-rækker.
+export type AgentStatus = 'planned' | 'running' | 'done' | 'error'
+
+export interface AgentDispatchEntry {
+  role: string
+  goal: string
+  parallel: boolean
+  status: AgentStatus
+  agentId?: string
+}
+
+export interface AgentDispatchView {
+  mode: 'inline' | 'dispatch'
+  decision: string
+  entries: AgentDispatchEntry[]
+  summary: { total: number; running: number; done: number; planned: number; error: number }
+}
+
+export function buildAgentDispatchView(result: Record<string, unknown> | null | undefined): AgentDispatchView {
+  const mode = (result?.mode === 'dispatch' ? 'dispatch' : 'inline') as AgentDispatchView['mode']
+  const decision = String((result?.decision as { reason?: string } | undefined)?.reason ?? '')
+  const plan = Array.isArray(result?.plan) ? (result!.plan as Record<string, unknown>[]) : []
+  const spawned = Array.isArray(result?.spawned) ? (result!.spawned as Record<string, unknown>[]) : []
+
+  const entries: AgentDispatchEntry[] = plan.map((p, i) => {
+    const sp = spawned[i] as { agent_id?: string; error?: string } | undefined
+    let status: AgentStatus = 'planned'
+    if (sp?.error) status = 'error'
+    else if (sp?.agent_id) status = 'running'
+    return {
+      role: String(p.role ?? ''),
+      goal: String(p.goal ?? ''),
+      parallel: Boolean(p.parallel),
+      status,
+      agentId: sp?.agent_id,
+    }
+  })
+
+  const summary = {
+    total: entries.length,
+    running: entries.filter((e) => e.status === 'running').length,
+    done: entries.filter((e) => e.status === 'done').length,
+    planned: entries.filter((e) => e.status === 'planned').length,
+    error: entries.filter((e) => e.status === 'error').length,
+  }
+  return { mode, decision, entries, summary }
+}

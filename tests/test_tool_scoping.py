@@ -31,12 +31,13 @@ class TestChatScope:
         assert "search_jarvis_brain" in allow
 
     def test_member_chat_no_file_reads_no_owner_only(self):
+        # Member chat = permission_engine(member, chat) ∩ navne (matrixen).
         allow = allowed_tool_names(role="member", scope="chat", all_names=ALL)
         assert "web_search" in allow
-        assert "remember_this" in allow       # hukommelse-write tilladt
+        assert "remember_this" in allow       # hukommelse-write tilladt (eget WS)
         assert "read_file" not in allow        # ingen fil-læsning for member
         assert "search" not in allow
-        assert "search_jarvis_brain" not in allow  # owner-only strippet
+        assert "search_jarvis_brain" not in allow  # native/brain er owner-only
 
     def test_chat_blocks_actions_for_all(self):
         for role in ("owner", "member", ""):
@@ -58,13 +59,27 @@ class TestNonChatScope:
         allow = allowed_tool_names(role="owner", scope="", all_names=ALL)
         assert allow == set(ALL)
 
-    def test_member_strips_owner_only(self):
+    def test_member_unbounded_is_fail_closed_cowork(self):
+        # KONSOLIDERET (Fase 4.1): member uden scope → fail-closed til cowork-sættet
+        # (permission_engine), IKKE længere "alt minus owner-only". Cowork-sættet
+        # er plans/todos/proposals/kanal — ingen af test-listens web/fil/handle-tools.
         allow = allowed_tool_names(role="member", scope="", all_names=ALL)
         assert "bash" not in allow
         assert "write_file" not in allow
         assert "search_jarvis_brain" not in allow
-        assert "web_search" in allow
-        assert "read_file" in allow  # ikke owner-only
+        assert "web_search" not in allow   # web er chat/code, ikke cowork
+        assert "read_file" not in allow
+
+    def test_member_cowork_gets_cowork_set(self):
+        from core.services.permission_engine import allowed_tools as _perm
+        cowork = set(_perm(role="member", mode="cowork"))
+        names = list(cowork) + ["bash", "web_search"]
+        allow = allowed_tool_names(role="member", scope="cowork", all_names=names)
+        assert allow == cowork  # præcis permission_engine-sættet, intet andet
+
+    def test_guest_gets_nothing(self):
+        allow = allowed_tool_names(role="guest", scope="chat", all_names=ALL)
+        assert allow == set()
 
 
 class TestFilterDefinitions:
@@ -116,14 +131,17 @@ class TestCodeScope:
         assert {"operator_read_file", "operator_write_file", "operator_bash"} <= allow
         assert "dispatch_to_claude_code" in allow
 
-    def test_member_code_only_workstation_operator(self):
+    def test_member_code_operator_plus_scoped_files_no_server_shell(self):
+        # KONSOLIDERET (Fase 4.1, matrixen): member code = operator_* (egen maskine)
+        # + scoped server-filer (read/write/edit/find, path-jailes i Fase 4-dispatch)
+        # + web. IKKE server-bash, IKKE dispatch (owner-only).
         allow = allowed_tool_names(role="member", scope="code", all_names=self.CODE_ALL)
         assert {"operator_read_file", "operator_write_file", "operator_bash",
                 "operator_glob", "operator_grep", "operator_list_dir"} <= allow
-        assert "read_file" not in allow
-        assert "write_file" not in allow
-        assert "bash" not in allow
+        assert {"read_file", "write_file", "edit_file", "find_files"} <= allow  # scoped 🔒
+        assert "bash" not in allow                  # server-shell = owner-only
         assert "dispatch_to_claude_code" not in allow
+        assert "search" not in allow                # ikke i member-code-sættet
 
     def test_code_excludes_unrelated(self):
         for role in ("owner", "member"):

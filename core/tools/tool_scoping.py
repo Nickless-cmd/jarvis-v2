@@ -134,33 +134,36 @@ def allowed_tool_names(
 ) -> set[str]:
     """Beregn det tilladte sæt tool-navne for (role, scope).
 
-    role: owner|member|guest|"" ("" = unbound legacy → behandles som owner).
-    scope: "chat" → allowlist; alt andet → kun rolle-filter.
+    Konsolideret 2026-06-14 (TOTP Fase 4.1) — **permission_engine er eneste
+    sandhed for sikkerhed** (no-dual-truth):
+
+    - **Owner** (role in {"", "owner"}; "" = unbound legacy): mode-kuration for
+      UX-fokus (chat/code-allowlists), men INGEN sikkerheds-begrænsning. Owner
+      ser alt mode-passende. Bevaret bit-for-bit fra før konsolideringen.
+    - **Member/guest**: `permission_engine.allowed_tools(role, mode)` ER både
+      sikkerhed OG det mode-passende sæt (matrixen er et tæt pr-mode-sæt). Owner-
+      autoritet kan kun nås via TOTP-override (håndteres i kald-laget, ikke her).
+
+    scope "chat"/"code"/"cowork" → mode; alt andet ("") → cowork (fail-closed
+    for non-owner; "alt" for owner).
     """
     role = (role or "").strip().lower()
+    scope = (scope or "").strip().lower()
     names = set(all_names)
     is_owner = role in ("", "owner")
 
-    if scope == "code":
-        allowed = set(CODE_MODE_TOOLS_BASE)
-        if is_owner:
-            allowed |= CODE_MODE_OWNER_EXTRA
-        else:
-            allowed -= OWNER_ONLY_TOOLS
-        return allowed & names
-
-    if scope == "chat":
-        allowed = set(CHAT_MODE_TOOLS_BASE)
-        if is_owner:
-            allowed |= CHAT_MODE_OWNER_EXTRA
-        else:
-            allowed -= OWNER_ONLY_TOOLS
-        return allowed & names
-
-    # Ikke-chat (cowork/code/ubegrænset): kun rolle-filter.
     if is_owner:
-        return names
-    return {n for n in names if n not in OWNER_ONLY_TOOLS}
+        if scope == "code":
+            return (set(CODE_MODE_TOOLS_BASE) | CODE_MODE_OWNER_EXTRA) & names
+        if scope == "chat":
+            return (set(CHAT_MODE_TOOLS_BASE) | CHAT_MODE_OWNER_EXTRA) & names
+        return names  # cowork / ubegrænset: alt mode-passende = alt
+
+    # Non-owner: permission_engine er sandheden (sikkerhed + mode-passende sæt).
+    from core.services.permission_engine import allowed_tools as _perm_allowed
+    mode = scope if scope in ("chat", "code", "cowork") else "cowork"
+    perm = _perm_allowed(role=role, mode=mode)
+    return set(perm) & names
 
 
 def _fn_name(td: dict[str, Any]) -> str:

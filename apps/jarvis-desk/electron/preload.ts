@@ -34,6 +34,15 @@ export interface JarvisDeskBridge {
   pickFolder: () => Promise<string | null>
   /** Eksportér markdown til en fil via native gem-dialog; true hvis gemt. */
   exportMarkdown: (markdown: string, suggestedName: string) => Promise<boolean>
+  /** Code-mode terminal (§17): kør én kommando lokalt, stream output via onTerminalData. */
+  terminal: {
+    run: (id: string, command: string, cwd?: string) => Promise<{ ok: boolean; error?: string }>
+    signal: (id: string, signal?: NodeJS.Signals) => Promise<{ ok: boolean }>
+    /** Abonnér på output-chunks. Returnerer unsubscribe. */
+    onData: (cb: (e: { id: string; stream: 'stdout' | 'stderr'; chunk: string }) => void) => () => void
+    /** Abonnér på proces-exit. Returnerer unsubscribe. */
+    onExit: (cb: (e: { id: string; code: number }) => void) => () => void
+  }
   platform: NodeJS.Platform
 }
 
@@ -50,6 +59,20 @@ const bridge: JarvisDeskBridge = {
   notifyTaskDone: (title, body) => ipcRenderer.invoke('notify:taskDone', title, body),
   pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),
   exportMarkdown: (markdown, suggestedName) => ipcRenderer.invoke('session:exportMarkdown', markdown, suggestedName),
+  terminal: {
+    run: (id, command, cwd) => ipcRenderer.invoke('terminal:run', { id, command, cwd }),
+    signal: (id, signal) => ipcRenderer.invoke('terminal:signal', { id, signal }),
+    onData: (cb) => {
+      const handler = (_e: unknown, data: { id: string; stream: 'stdout' | 'stderr'; chunk: string }) => cb(data)
+      ipcRenderer.on('terminal:data', handler)
+      return () => ipcRenderer.removeListener('terminal:data', handler)
+    },
+    onExit: (cb) => {
+      const handler = (_e: unknown, data: { id: string; code: number }) => cb(data)
+      ipcRenderer.on('terminal:exit', handler)
+      return () => ipcRenderer.removeListener('terminal:exit', handler)
+    },
+  },
   platform: process.platform,
 }
 

@@ -1201,7 +1201,15 @@
 
 /* Code-mode panel */
 .codepanel { display: flex; flex-direction: column; height: 100%; }
-.codepanel-head { padding: 8px 12px; font-size: 12.5px; color: var(--fg-3); border-bottom: 1px solid var(--line); }
+.codepanel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; font-size: 12.5px; color: var(--fg-3); border-bottom: 1px solid var(--line); }
+.codepanel-root { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.codepanel-tabs { display: flex; gap: 4px; flex-shrink: 0; }
+.codepanel-tab { display: inline-flex; align-items: center; gap: 4px; background: transparent; color: var(--fg-3); border: 1px solid transparent; border-radius: 6px; padding: 3px 8px; font-size: 12px; cursor: pointer; }
+.codepanel-tab:hover { background: var(--bg-2); color: var(--fg-1); }
+.codepanel-tab.active { background: var(--bg-2); color: var(--fg-1); border-color: var(--line); }
+.codepanel-terminal { flex: 1; min-height: 0; background: #0d0d0f; padding: 6px; }
+.terminalpane { width: 100%; height: 100%; }
+.terminalpane .xterm { height: 100%; }
 .codepanel-body { display: flex; flex: 1; min-height: 0; }
 .codepanel-tree { width: 200px; overflow: auto; border-right: 1px solid var(--line); padding: 6px 0; }
 .codepanel-view { flex: 1; overflow: auto; padding: 10px; min-width: 0; }

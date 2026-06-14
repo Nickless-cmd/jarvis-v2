@@ -25,6 +25,8 @@ import {
 } from 'electron'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
+import * as os from 'node:os'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -408,6 +410,69 @@ ipcMain.handle('session:exportMarkdown', async (_event, markdown: string, sugges
   if (res.canceled || !res.filePath) return false
   await fs.promises.writeFile(res.filePath, markdown, 'utf-8')
   return true
+})
+
+// ─── Code-mode terminal (§17) ─────────────────────────────────────────
+// Lokal kommando-runner til terminal-ruden i Code mode. Kører KUN på
+// brugerens egen maskine (samme model som operator-bridgen) — én kommando
+// pr. kald via login-shell, output streames linje-for-linje til renderer.
+// Ingen node-pty (undgår native-build i pakning); dækker "kør kommando, se
+// output" som spec'ens §17 beskriver. Interaktive TTY-programmer (vim, top)
+// understøttes bevidst ikke i v1.
+const terminalProcs = new Map<string, ChildProcess>()
+
+function terminalShell(command: string): { cmd: string; args: string[] } {
+  if (process.platform === 'win32') {
+    return { cmd: 'powershell.exe', args: ['-NoProfile', '-NonInteractive', '-Command', command] }
+  }
+  const shell = process.env.SHELL || '/bin/bash'
+  return { cmd: shell, args: ['-lc', command] }
+}
+
+ipcMain.handle('terminal:run', (_event, payload: { id: string; command: string; cwd?: string }) => {
+  const { id, command } = payload || {}
+  if (!id || typeof command !== 'string') return { ok: false, error: 'ugyldig terminal-anmodning' }
+  // Genbrug ikke et kørende id; dræb det gamle først.
+  terminalProcs.get(id)?.kill()
+  let cwd = payload.cwd && fs.existsSync(payload.cwd) ? payload.cwd : os.homedir()
+  try { if (!fs.statSync(cwd).isDirectory()) cwd = os.homedir() } catch { cwd = os.homedir() }
+  const { cmd, args } = terminalShell(command)
+  let child: ChildProcess
+  try {
+    child = spawn(cmd, args, { cwd, env: process.env, windowsHide: true })
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+  terminalProcs.set(id, child)
+  const send = (channel: string, data: unknown) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    mainWindow.webContents.send(channel, data)
+  }
+  child.stdout?.on('data', (b: Buffer) => send('terminal:data', { id, stream: 'stdout', chunk: b.toString('utf-8') }))
+  child.stderr?.on('data', (b: Buffer) => send('terminal:data', { id, stream: 'stderr', chunk: b.toString('utf-8') }))
+  child.on('error', (err) => {
+    send('terminal:data', { id, stream: 'stderr', chunk: `\n[fejl] ${err.message}\n` })
+    send('terminal:exit', { id, code: -1 })
+    terminalProcs.delete(id)
+  })
+  child.on('close', (code) => {
+    send('terminal:exit', { id, code: code ?? 0 })
+    terminalProcs.delete(id)
+  })
+  return { ok: true }
+})
+
+ipcMain.handle('terminal:signal', (_event, payload: { id: string; signal?: NodeJS.Signals }) => {
+  const child = terminalProcs.get(payload?.id)
+  if (!child) return { ok: false }
+  try { child.kill(payload.signal || 'SIGINT') } catch { /* allerede død */ }
+  return { ok: true }
+})
+
+// Ryd op i kørende terminaler ved quit (ingen forældreløse processer).
+app.on('before-quit', () => {
+  for (const child of terminalProcs.values()) { try { child.kill() } catch { /* noop */ } }
+  terminalProcs.clear()
 })
 
 // ─── Content Security Policy ──────────────────────────────────────────

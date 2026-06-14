@@ -444,9 +444,9 @@ def create_app() -> FastAPI:
         SecurityHeadersMiddleware, SimpleRateLimitMiddleware, HttpsRedirectMiddleware,
         cors_allowed_origins,
     )
-    app.add_middleware(SecurityHeadersMiddleware)
-    app.add_middleware(SimpleRateLimitMiddleware)
-    app.add_middleware(HttpsRedirectMiddleware)
+    # BEMÆRK: §20-middlewares tilføjes NEDENFOR (efter auth-middleware'en) så de bliver
+    # OUTERMOST — ellers 401'er auth uautentificerede requests FØR redirect/headers når
+    # at køre. add_middleware: sidst tilføjet = yderst = kører først.
 
     from fastapi.middleware.cors import CORSMiddleware
     app.add_middleware(
@@ -470,6 +470,12 @@ def create_app() -> FastAPI:
         jarvisx_user_routing_middleware,
     )
     app.middleware("http")(jarvisx_user_routing_middleware)
+
+    # §20: tilføjet EFTER auth-middleware'en → outermost. HttpsRedirect kører først
+    # (redirect før auth), SecurityHeaders dækker også 401/error-svar.
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(SimpleRateLimitMiddleware)
+    app.add_middleware(HttpsRedirectMiddleware)
 
     app.include_router(attachments_router)
     app.include_router(files_router)

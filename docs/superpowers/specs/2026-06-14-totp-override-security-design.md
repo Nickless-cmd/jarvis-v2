@@ -844,3 +844,117 @@ Brugere når Jarvis via **to forskellige indgangsvinkler**, ikke kun én:
 - Web-interface — simpel registrering, betaling, webchat (fremtidig)
 
 Den native Discord server forbliver som permanent indgangsvinkel, selv når apps er tilgængelige. Den er ikke en fallback — den er en ligeværdig kanal for brugere der foretrækker den.
+
+## 19. Agent dispatch i code mode
+
+### 19.1 Problem
+
+Når en større opgave lander i code mode (fx implementere en spec, refaktorere et modul, bygge en feature), kan én agent ikke altid håndtere det effektivt. Claude Code løser dette ved at spørge brugeren: *"Skal jeg dispatche agenter eller gøre det inline?"* — og derefter spawne en håndfuld agenter der arbejder parallelt.
+
+Jarvis har allerede en agent pool (researcher, planner, critic, synthesizer, executor, watcher) og 64+ skills — men dispatch er i dag begrænset til `spawn_agent_task` i runtime. Code mode skal have samme evne, men **lokalt**.
+
+### 19.2 Beslutning: Agent dispatch som førsteklasses borgertoj i code mode
+
+Code mode skal have adgang til agent dispatch med samme workflow som Claude Code:
+
+1. **Planlæg** — skriv spec/plan (som TOTP-spec'en)
+2. **Spørg** — *"Skal jeg dispatche agenter eller gøre det inline?"*
+3. **Dispatch** — send agenter afsted med konkrete opgaver
+4. **Synthetiser** — samle resultaterne
+
+Agent dispatch i code mode er **ikke** det samme som i chat mode. I chat mode er jeg begrænset til samtale-værktøjer. I code mode har jeg adgang til operator tools, filsystem, git — og agent dispatch.
+
+### 19.3 Agent-roller i code mode
+
+| Rolle | Ansvar | Parallel? |
+|-------|---------|-----------|
+| **Researcher** | Finder relevante filer, kode, dokumentation | Ja |
+| **Planner** | Bryder opgaven ned i subtasks | Nej (afhænger af researcher) |
+| **Executor** | Implementerer subtasks | Ja (hver executor tager én subtask) |
+| **Critic** | Reviewer kode, finder bugs, checker tests | Ja (parallelt med executor) |
+| **Synthesizer** | Samler resultater, konfliktløsning, merge | Nej (afhænger af executor + critic) |
+| **Watcher** | Overvåger fremskridt, håndterer timeouts | Nej (kører separat) |
+
+### 19.4 Dispatch-flow
+
+```
+Bruger: "Implementer sektion 16 — kryptering & disk-sikkerhed"
+  ↓
+Code mode:
+  1. Skriver spec/plan (eller genbruger eksisterende)
+  2. Spørger: "Dispatch agenter eller inline?"
+     - Hvis dispatch:
+       a. Researcher: finder relevante filer, checker eksisterende kode
+       b. Planner: bryder i subtasks (workspace_crypto, key_manager, tests)
+       c. Executor × N: implementerer hver subtask parallelt
+       d. Critic: reviewer hver implementering
+       e. Synthesizer: merge, konfliktløsning, commit
+     - Hvis inline:
+       Agent gør det selv, sekventielt
+  3. Resultater samles i cowork (command center)
+  4. Bruger godkender i cowork UI
+```
+
+### 19.5 Cowork som command center for dispatch
+
+Agent dispatch er ikke kun et code mode-værktøj. Cowork er **command center** — her kan brugeren:
+
+- Se hvilke agenter der kører
+- Følge fremskridt i realtid
+- Godkende eller afvise resultater
+- Inddrage sig selv i en samtale (owner override)
+- Pause, prioritere eller slette agenter
+
+### 19.6 Agent pool — større end forventet
+
+Jarvis har allerede adgang til en bred pool:
+
+| Kategori | Antal | Eksempler |
+|----------|-------|-----------|
+| **Agent-roller** | 6 | researcher, planner, critic, synthesizer, executor, watcher |
+| **Færdigheder (skills)** | 64+ | web_search, hardware_scanner, memory_graph_query, wolfram_query |
+| **Planer** | Aktiv | provider health check, autonomous tasks |
+| **Dispatch-metode** | `spawn_agent_task` | Allerede eksisterende i runtime |
+
+I code mode udvides denne pool med **lokale operator tools** — bash, git, filsystem — som agenterne kan bruge direkte på brugerens maskine.
+
+### 19.7 Sammenligning med Claude Code
+
+| Aspekt | Claude Code | Jarvis code mode |
+|--------|-------------|-------------------|
+| Dispatch-spørgsmål | "Dispatch agenter eller inline?" | Samme |
+| Agent-roller | Codex-agenter | 6 roller + 64 skills |
+| Execution | Cloud-baseret | Lokalt på brugerens maskine |
+| Resultater | Cloud | Lokale filer, commitet lokalt |
+| Command center | Claude Desktop UI | Cowork (Jarvis Desk) |
+| Godkendelse | Bruger godkender | Owner godkender i cowork |
+
+### 19.8 Skill-scanning (sikkerhed)
+
+Før en skill eksekveres lokalt i code mode, skal den scannes:
+
+- **Prompt injection detection** — skills der indeholder skjulte instruktioner
+- **Malware detection** — skills der forsøger at køre skadelig kode
+- **Boundary check** — skills der forsøger at tilgå filer uden for workspace
+
+Dette er allerede dækket i §15.3 (anti-manipulation) men gentages her for clarity: agent dispatch i code mode er **lokal eksekvering** og skal have samme sikkerhedstjek som enhver anden lokal operation.
+
+### 19.9 Testplan
+
+| Test | Beskrivelse |
+|------|-------------|
+| test_agent_dispatch_inline | Code mode udfører opgave inline uden dispatch |
+| test_agent_dispatch_parallel | Flere agenter kører parallelt i code mode |
+| test_agent_dispatch_cowork | Resultater synliggøres i cowork command center |
+| test_agent_dispatch_approval | Bruger godkender/afviser agent-resultater |
+| test_skill_scanning | Skill-scanning blokerer prompt injection og malware |
+
+### 19.10 Filer
+
+| Fil | Handling |
+|-----|----------|
+| `core/services/agent_dispatch.py` | NY — dispatch-orchestrator for code mode |
+| `core/services/skill_scanner.py` | NY — prompt injection + malware detection |
+| `apps/jarvis-desk/src/lib/agentPanel.ts` | NY — agent-status panel i cowork UI |
+| `tests/test_agent_dispatch.py` | NY — unit tests |
+| `tests/test_skill_scanner.py` | NY — skill-scanning tests |

@@ -2298,6 +2298,10 @@ def _iter_openai_codex_chat_events(
     #      → final commit; we yield the tool_call event then
     # We key by item_id (Responses uses a stable id per output item).
     pending_tool_calls: dict[str, dict] = {}
+    # Track whether the model emitted any tool call. A tool-call-only response
+    # (reasoning models routinely answer a turn purely with a function_call and
+    # NO output_text) is valid — we must surface it, not raise "no text content".
+    tool_calls_emitted = False
 
     try:
         with httpx.stream(
@@ -2401,6 +2405,7 @@ def _iter_openai_codex_chat_events(
                             tc = pending_tool_calls.pop(item_id)
                             # Some servers include the final arguments here too
                             final_args = str(item.get("arguments") or "") or tc["arguments"]
+                            tool_calls_emitted = True
                             yield {
                                 "kind": "tool_call",
                                 "id": tc["id"],
@@ -2430,7 +2435,10 @@ def _iter_openai_codex_chat_events(
         ) from exc
 
     full_text = "".join(text_parts).strip()
-    if not full_text and not text_parts:
+    # Only a genuinely empty response (no text AND no tool call) is an error.
+    # A tool-call-only turn is valid output for reasoning models — surfacing the
+    # tool_call above is the answer; we still emit 'done' so the consumer closes.
+    if not full_text and not text_parts and not tool_calls_emitted:
         raise CheapProviderError(
             provider=_OPENAI_CODEX_PROVIDER,
             code="empty-response",

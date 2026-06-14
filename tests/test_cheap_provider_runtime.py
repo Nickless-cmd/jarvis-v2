@@ -585,3 +585,76 @@ def test_openai_compat_chat_forwards_tools_and_returns_tool_calls(
     assert captured["payload"]["tools"] == tool_defs
     assert len(result["tool_calls"]) == 1
     assert result["tool_calls"][0]["function"]["name"] == "read_file"
+
+
+# ── Regression: Codex tool-call-only svar må IKKE kaste "no text content" ──
+# (Rod-årsag til codex/gpt-5.x tomme svar: function_call-tur har intet output_text.)
+
+class _FakeStreamResponse:
+    def __init__(self, lines: list[str], status_code: int = 200):
+        self._lines = lines
+        self.status_code = status_code
+        self.headers = {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def iter_lines(self):
+        for ln in self._lines:
+            yield ln
+
+
+def test_codex_tool_call_only_does_not_raise(isolated_runtime, monkeypatch) -> None:
+    import core.services.cheap_provider_runtime as cheap
+    import core.auth.openai_oauth as oauth
+
+    monkeypatch.setattr(oauth, "get_openai_bearer_token", lambda **kw: "fake-token")
+
+    sse = [
+        'data: {"type":"response.output_item.added","item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"get_weather","arguments":""}}',
+        'data: {"type":"response.function_call_arguments.delta","item_id":"fc_1","delta":"{\\"city\\":\\"KBH\\"}"}',
+        'data: {"type":"response.function_call_arguments.done","item_id":"fc_1","arguments":"{\\"city\\":\\"KBH\\"}"}',
+        'data: {"type":"response.output_item.done","item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"get_weather","arguments":"{\\"city\\":\\"KBH\\"}"}}',
+        'data: {"type":"response.completed","response":{"usage":{"input_tokens":10,"output_tokens":5}}}',
+        "data: [DONE]",
+    ]
+
+    def _fake_stream(method, url, **kwargs):
+        return _FakeStreamResponse(sse)
+
+    monkeypatch.setattr(cheap.httpx, "stream", _fake_stream)
+
+    tools = [{"type": "function", "name": "get_weather",
+              "parameters": {"type": "object", "properties": {"city": {"type": "string"}}}}]
+    kinds = []
+    tool_calls = []
+    for ev in cheap._iter_openai_codex_chat_events(
+        model="gpt-5.4-mini", auth_profile="codex", base_url="", message="vejr?", tools=tools,
+    ):
+        kinds.append(ev.get("kind"))
+        if ev.get("kind") == "tool_call":
+            tool_calls.append(ev)
+
+    # Før fixet: kastede "no text content" FØR 'done'. Efter: når 'done' + surfacer tool_call.
+    assert "done" in kinds, f"generatoren nåede ikke 'done': {kinds}"
+    assert len(tool_calls) == 1
+    assert tool_calls[0]["name"] == "get_weather"
+
+
+def test_codex_genuinely_empty_still_raises(isolated_runtime, monkeypatch) -> None:
+    # Ingen tekst OG ingen tool-kald = ægte tom → skal stadig fejle.
+    import core.services.cheap_provider_runtime as cheap
+    import core.auth.openai_oauth as oauth
+
+    monkeypatch.setattr(oauth, "get_openai_bearer_token", lambda **kw: "fake-token")
+    sse = ['data: {"type":"response.completed","response":{"usage":{}}}', "data: [DONE]"]
+    monkeypatch.setattr(cheap.httpx, "stream", lambda method, url, **kw: _FakeStreamResponse(sse))
+
+    import pytest
+    with pytest.raises(cheap.CheapProviderError):
+        list(cheap._iter_openai_codex_chat_events(
+            model="gpt-5.4-mini", auth_profile="codex", base_url="", message="hej", tools=None,
+        ))

@@ -19,10 +19,17 @@ _OWNER_ROLES = ("", "owner")  # "" = unbound legacy → owner
 _OWNER_CONFIRMATIONS = 2
 
 
-def resolve_delete_action(*, role: str, is_own_workspace: bool) -> dict:
+def resolve_delete_action(
+    *, role: str, is_own_workspace: bool, gdpr_erasure: bool = False,
+) -> dict:
     """Afgør slette-mode for (rolle, om det er eget workspace).
 
     Returnerer {mode: hard|soft|deny, confirmations: int, reason}.
+
+    `gdpr_erasure=True`: brugeren udøver eksplicit sin GDPR-sletningsret (§15.2)
+    på SINE EGNE data → ægte hard-delete (ingen skjult grace-kopi), 1× bekræftelse
+    af hensigt. Default (soft) er fortryd-venlig; GDPR-erasure er den bevidste,
+    irreversible vej.
     """
     r = (role or "").strip().lower()
 
@@ -32,6 +39,9 @@ def resolve_delete_action(*, role: str, is_own_workspace: bool) -> dict:
 
     if r == "member":
         if is_own_workspace:
+            if gdpr_erasure:
+                return {"mode": "hard", "confirmations": 1,
+                        "reason": "member GDPR-sletningsret (§15.2): ægte sletning af egne data"}
             return {"mode": "soft", "confirmations": 0,
                     "reason": "member: soft-delete med grace-period-kopi"}
         return {"mode": "deny", "confirmations": 0,

@@ -52,6 +52,19 @@ def test_unknown_role_fail_closed() -> None:
     assert resolve_delete_action(role="hacker", is_own_workspace=True)["mode"] == "deny"
 
 
+def test_member_gdpr_erasure_is_real_hard_delete() -> None:
+    # §15.2: member kan udøve GDPR-sletningsret på egne data → ægte hard-delete.
+    from core.services.delete_policy import resolve_delete_action
+
+    a = resolve_delete_action(role="member", is_own_workspace=True, gdpr_erasure=True)
+    assert a["mode"] == "hard"          # ikke soft/skjult-kopi
+    assert a["confirmations"] == 1
+
+    # GDPR-erasure giver IKKE ret til andres data
+    b = resolve_delete_action(role="member", is_own_workspace=False, gdpr_erasure=True)
+    assert b["mode"] == "deny"
+
+
 def test_confirm_count_tracking() -> None:
     # Owner skal bekræfte 2 gange før hard-delete udføres.
     from core.services.delete_policy import is_delete_confirmed

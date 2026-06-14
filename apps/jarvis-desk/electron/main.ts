@@ -334,6 +334,7 @@ ipcMain.handle('config:set', (_event, cfg: Partial<AppConfig>) => {
   // Genstart operator-broen + lokale kanal-gateways med de nye credentials/plugins.
   void bootstrapBridge()
   void bootstrapLocalDiscord()
+  void bootstrapAppDispatch()
   return true
 })
 
@@ -595,6 +596,7 @@ app.whenReady().then(() => {
   createTray()
   void bootstrapBridge()
   void bootstrapLocalDiscord()
+  void bootstrapAppDispatch()
 })
 
 // ─── Operator-bro (JarvisX-bridge) ──────────────────────────────────────
@@ -639,7 +641,8 @@ async function bootstrapBridge(): Promise<void> {
 // ─── Lokal Discord-gateway (TOTP Fase 5 §5.2) ───────────────────────────
 // Forbinder til brugerens EGNE Discord-servere (token lokalt). Native server
 // uberørt (server-side). Genstartes ved config:set.
-let activeLocalDiscord: { stop(): void } | null = null
+let activeLocalDiscord: { stop(): void; sendToChannel(c: string, t: string): Promise<boolean> } | null = null
+let activeAppDispatch: { stop(): void } | null = null
 
 async function bootstrapLocalDiscord(): Promise<void> {
   try {
@@ -659,6 +662,27 @@ async function bootstrapLocalDiscord(): Promise<void> {
   }
 }
 
+// §18.5 Fase 2: poll serveren for runtime→app instruktioner og udfør lokalt
+// (notifikationer + proaktive Discord-beskeder). Genstartes ved config:set.
+async function bootstrapAppDispatch(): Promise<void> {
+  try {
+    const cfg = loadConfig()
+    if (activeAppDispatch) { try { activeAppDispatch.stop() } catch { /* noop */ } activeAppDispatch = null }
+    if (!cfg.apiBaseUrl) return
+    const mod = await import('./appDispatchWatcher.js')
+    const w = new mod.AppDispatchWatcher({
+      apiBaseUrl: cfg.apiBaseUrl,
+      authToken: cfg.authToken ?? undefined,
+      sendDiscord: (c: string, t: string) => activeLocalDiscord?.sendToChannel(c, t) ?? Promise.resolve(false),
+      log: (m: string) => console.log(`[appDispatch] ${m}`),
+    })
+    w.start()
+    activeAppDispatch = w
+  } catch (e) {
+    console.warn('appDispatch bootstrap failed:', e)
+  }
+}
+
 // Single instance lock — anden start fokuserer eksisterende vindue
 // i stedet for at åbne to vinduer.
 const gotSingleInstance = app.requestSingleInstanceLock()
@@ -674,6 +698,7 @@ app.on('before-quit', () => {
   appQuitting = true
   try { activeBridge?.stop() } catch { /* best-effort */ }
   try { activeLocalDiscord?.stop() } catch { /* best-effort */ }
+  try { activeAppDispatch?.stop() } catch { /* best-effort */ }
   // Best-effort server-cancel af aktivt run (renderer kan ikke pålideligt
   // fetch'e under shutdown). Synkront fire-and-forget.
   if (activeRunId && runApiBaseUrl) {

@@ -56,4 +56,10 @@ def dispatch_to_app(*, action: str, target_user: str,
         event_bus.publish("cowork.app_dispatch", dict(instruction))
     except Exception:
         pass
+    # Fase 2: persistér i kø så desk-appen kan polle + udføre + ack'e (cross-proces).
+    try:
+        from core.services.app_dispatch_store import enqueue
+        enqueue(dict(instruction))
+    except Exception:
+        pass
     return {"ok": True, "instruction": instruction}

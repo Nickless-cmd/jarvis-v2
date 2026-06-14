@@ -149,3 +149,21 @@ async def cowork_ui_panel_ack(request_id: str) -> dict:
     from core.services.ui_panel_store import ack
     ok = await asyncio.to_thread(ack, request_id)
     return {"status": "ok" if ok else "unknown", "request_id": request_id}
+
+
+# ── Runtime→app instruktioner (§18.5 Fase 2) ──────────────────────────────
+# Jarvis beder appen handle på brugerens enhed (send besked via kanal-plugin,
+# vis notifikation, send rapport); desk poller her, udfører lokalt + ack'er.
+
+@router.get("/app-dispatch/pending")
+async def cowork_app_dispatch_pending() -> dict:
+    from core.services.app_dispatch_store import list_pending
+    items = await asyncio.to_thread(list_pending)
+    return {"pending": items}
+
+
+@router.post("/app-dispatch/{dispatch_id}/ack")
+async def cowork_app_dispatch_ack(dispatch_id: str) -> dict:
+    from core.services.app_dispatch_store import ack
+    ok = await asyncio.to_thread(ack, dispatch_id)
+    return {"status": "ok" if ok else "unknown", "dispatch_id": dispatch_id}

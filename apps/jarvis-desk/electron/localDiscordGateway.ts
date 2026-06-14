@@ -65,6 +65,28 @@ export class LocalDiscordGateway {
     this.clients.clear()
   }
 
+  /** Proaktiv udgående besked (§18.5 Fase 2): find en tekst-kanal ved navn på
+   *  tværs af forbundne servere og send. Returnerer true ved første succes. */
+  async sendToChannel(channelName: string, text: string): Promise<boolean> {
+    const want = channelName.trim().toLowerCase().replace(/^#/, '')
+    for (const [, client] of this.clients) {
+      const ch = client.channels.cache.find(
+        (c) => 'name' in c && typeof (c as { name?: string }).name === 'string'
+          && (c as { name: string }).name.toLowerCase() === want
+          && c.isTextBased() && 'send' in c,
+      )
+      if (!ch) continue
+      try {
+        const sendable = ch as unknown as { send: (c: string) => Promise<unknown> }
+        for (const chunk of chunkText(text, 1900)) await sendable.send(chunk)
+        return true
+      } catch (e) {
+        this.log(`sendToChannel[${channelName}]: ${String(e).slice(0, 120)}`)
+      }
+    }
+    return false
+  }
+
   private connectServer(cfg: ChannelPluginConfig): void {
     if (this.stopped) return
     const client = new Client({

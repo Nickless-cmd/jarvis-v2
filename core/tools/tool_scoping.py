@@ -85,6 +85,8 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "read_model_config",
     # UI-panel-kald (desk) — fremvis noget i preview/højre-panel (§8.2)
     "open_ui_panel",
+    # App-self-control (desk) — foreslå skift chat→code mode (brugeren godkender)
+    "request_app_action",
 })
 
 # Ekstra værktøjer owner (kun) får i chat — fil-læsning til kode-snak.
@@ -97,6 +99,8 @@ CHAT_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
 CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "operator_read_file", "operator_write_file", "operator_edit_file",
     "operator_bash", "operator_glob", "operator_grep", "operator_list_dir",
+    # App-self-control (desk) — foreslå fuld adgang (trust) i code mode
+    "request_app_action",
 })
 CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     "read_file", "write_file", "edit_file", "search", "find_files", "bash",

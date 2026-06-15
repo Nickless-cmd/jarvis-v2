@@ -1438,11 +1438,13 @@ async def _stream_visible_run(
                         })
                         continue
                     _resolved_result_texts[_idx] = sr["result_text"]
-                    yield _sse("capability", {
-                        "type": "tool_result",
-                        "tool": sr["tool_name"],
-                        "status": sr["status"],
-                    })
+                    from core.services.tool_chip_payload import build_tool_capability_payload
+                    yield _sse("capability", build_tool_capability_payload(
+                        tool=sr["tool_name"],
+                        status=sr["status"],
+                        arguments=sr.get("arguments"),
+                        result_text=sr.get("result_text", ""),
+                    ))
                     yield _sse("working_step", {
                         "type": "working_step",
                         "run_id": run.run_id,
@@ -2435,11 +2437,13 @@ async def _stream_visible_run(
                             })
                             continue
                         _a_resolved[_a_idx] = _a_sr["result_text"]
-                        yield _sse("capability", {
-                            "type": "tool_result",
-                            "tool": _a_sr["tool_name"],
-                            "status": _a_sr["status"],
-                        })
+                        from core.services.tool_chip_payload import build_tool_capability_payload
+                        yield _sse("capability", build_tool_capability_payload(
+                            tool=_a_sr["tool_name"],
+                            status=_a_sr["status"],
+                            arguments=_a_sr.get("arguments"),
+                            result_text=_a_sr.get("result_text", ""),
+                        ))
                         yield _sse("working_step", {
                             "type": "working_step",
                             "run_id": run.run_id,

@@ -297,7 +297,10 @@ async def translate_to_v2(
         tool_id = str(payload.get("capability_id") or payload.get("id") or name or "tool")
         status = str(payload.get("status") or "")
         tool_input: dict = {}
-        for k in ("target_path", "command_text", "write_content", "arguments"):
+        _args = payload.get("arguments")
+        if isinstance(_args, dict):
+            tool_input.update(_args)
+        for k in ("target_path", "command_text", "write_content"):
             v = payload.get(k)
             if v:
                 tool_input[k] = v
@@ -318,7 +321,8 @@ async def translate_to_v2(
         # Status/udfald som system_event bundet til tool_use_id.
         await queue.put(SystemEvent(
             kind="tool_result",
-            payload={"tool_use_id": tool_id, "tool": name, "status": status, "type": ptype},
+            payload={"tool_use_id": tool_id, "tool": name, "status": status, "type": ptype,
+                     "result": str(payload.get("result_text") or "")},
         ).to_sse_line())
 
     async def _ping_loop() -> None:

@@ -14,6 +14,7 @@ import { SprogSection } from '../components/settings/SprogSection'
 import { WorkspaceSection } from '../components/settings/WorkspaceSection'
 import { MemorySection } from '../components/settings/MemorySection'
 import { PermissionsSection } from '../components/settings/PermissionsSection'
+import { JarvisSection } from '../components/settings/JarvisSection'
 import { TotpSetup } from '../components/settings/TotpSetup'
 import { PluginsPanel } from '../components/settings/PluginsPanel'
 import { activeAgentsToView } from '../lib/coworkApi'
@@ -74,6 +75,7 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
       <KvoteSection config={config} />
       <SprogSection config={config} />
       <ThemeSection />
+      {auth?.role === 'owner' && <JarvisSection config={config} />}
       {auth?.role === 'owner' && <TotpSetup config={config} />}
       {auth?.role === 'owner' && <PluginsPanel config={config} />}
     </div>

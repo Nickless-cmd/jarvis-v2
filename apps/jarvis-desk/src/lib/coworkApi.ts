@@ -251,3 +251,14 @@ export async function getAccountPermissions(config: ApiConfig): Promise<Permissi
 export async function setComputerUse(config: ApiConfig, enabled: boolean): Promise<void> {
   await apiFetch(config, '/account/computer-use', { method: 'PATCH', body: { enabled } })
 }
+
+export interface JarvisLane { lane: string; provider: string | null; model: string | null; active: boolean; credentials_ready: boolean }
+export interface JarvisOverview { lanes: JarvisLane[]; visible_options: { provider: string | null; model: string | null }[] }
+
+export async function getJarvisOverview(config: ApiConfig): Promise<JarvisOverview> {
+  return apiFetch<JarvisOverview>(config, '/account/jarvis')
+}
+
+export async function setVisibleModel(config: ApiConfig, provider: string, model: string): Promise<void> {
+  await apiFetch(config, '/account/jarvis/visible-model', { method: 'POST', body: { provider, model } })
+}

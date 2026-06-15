@@ -1401,6 +1401,12 @@
   padding: 8px 10px; font-size: 12px; max-height: 180px; overflow: auto; white-space: pre-wrap; color: var(--fg-2); }
 .memory-results, .memory-sensory { list-style: none; margin: 6px 0; padding: 0; font-size: 12.5px; }
 .memory-results li, .memory-sensory li { padding: 3px 0; border-bottom: 1px solid var(--line); color: var(--fg-2); }
+.cu-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 12px; cursor: pointer; }
+.perm-modes { display: flex; flex-direction: column; gap: 10px; }
+.perm-mode-head { font-size: 12px; font-weight: 600; color: var(--fg-2); margin-bottom: 4px; }
+.perm-all { font-size: 12.5px; color: var(--accent); }
+.perm-tools { display: flex; flex-wrap: wrap; gap: 4px; }
+.perm-tool { font-size: 11px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; color: var(--fg-2); }
 .badge { padding: 1px 8px; border-radius: 10px; font-size: 11px; margin-left: 4px; }
 .badge-ok { background: #1d3a24; color: #6ee7a0; }
 .badge-warn { background: #3a2a1d; color: #e7b96e; }

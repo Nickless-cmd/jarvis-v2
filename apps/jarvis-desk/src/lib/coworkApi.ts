@@ -240,3 +240,14 @@ export async function searchAccountMemory(config: ApiConfig, q: string): Promise
   const d = await apiFetch<{ results: { id: string; content: string }[] }>(config, `/account/memory/search?q=${encodeURIComponent(q)}`)
   return d.results ?? []
 }
+
+export interface PermissionMode { mode: string; all: boolean; tools: string[] }
+export interface PermissionsOverview { role: string; modes: PermissionMode[]; computer_use_enabled: boolean }
+
+export async function getAccountPermissions(config: ApiConfig): Promise<PermissionsOverview> {
+  return apiFetch<PermissionsOverview>(config, '/account/permissions')
+}
+
+export async function setComputerUse(config: ApiConfig, enabled: boolean): Promise<void> {
+  await apiFetch(config, '/account/computer-use', { method: 'PATCH', body: { enabled } })
+}

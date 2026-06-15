@@ -120,3 +120,14 @@ def test_friendly_message_for_429_rate_limit(isolated_runtime) -> None:
     )
     msg = friendly_provider_error_message(Exception("429 Too Many Requests"))
     assert "429" in msg or "rate-limit" in msg.lower()
+
+
+def test_prompt_too_long_gives_actionable_message():
+    from core.services.visible_runs_error_messaging import friendly_provider_error_message
+    exc = RuntimeError(
+        'Ollama HTTP 400: {"error":"The prompt is too long: 208863, '
+        'model maximum context length: 202752"}'
+    )
+    msg = friendly_provider_error_message(exc)
+    assert "for lang" in msg.lower()
+    assert "model" in msg.lower()  # nævner at man kan skifte model

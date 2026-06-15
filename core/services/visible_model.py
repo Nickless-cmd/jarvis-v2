@@ -1478,7 +1478,22 @@ def _stream_ollama_model(
     watchdog.start()
 
     try:
-        with urllib_request.urlopen(req, timeout=INTER_BYTE_BUDGET_S) as response:
+        try:
+            response_cm = urllib_request.urlopen(req, timeout=INTER_BYTE_BUDGET_S)
+        except urllib_error.HTTPError as http_exc:
+            # urllib's HTTPError-str er bare "HTTP Error 400: Bad Request" — den
+            # TABER body'en, hvor Ollama forklarer hvorfor (fx "prompt is too long:
+            # 208863, model maximum context length: 202752" for et model-vindue der
+            # er mindre end den samlede prompt). Læs body'en + re-raise med den, så
+            # friendly_provider_error_message kan give en handlingsanvisende besked.
+            try:
+                detail = http_exc.read().decode("utf-8", errors="replace")[:500]
+            except Exception:
+                detail = ""
+            raise RuntimeError(
+                f"Ollama HTTP {http_exc.code}: {detail or http_exc.reason}"
+            ) from http_exc
+        with response_cm as response:
             watchdog_response["resp"] = response
             if controller is not None:
                 controller.attach_stream(response)

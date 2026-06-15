@@ -29,6 +29,15 @@ def friendly_provider_error_message(exc: Exception) -> str:
             "nede. Prøv igen om et øjeblik."
         )
 
+    # Prompt overstiger modellens kontekstvindue (typisk en lang samtale på en
+    # model med mindre vindue end deepseek-flash, fx GLM/Gemini-flash ~200k).
+    if "prompt is too long" in text or "maximum context length" in text or "context length" in text:
+        return (
+            "Samtalen er blevet for lang til den valgte models kontekstvindue, "
+            "så jeg kunne ikke nå at svare. Skift til en model med større vindue "
+            "(fx Deepseek), eller start en ny samtale, så er der plads igen."
+        )
+
     # HTTP status codes must come before generic SSL/timeout branches because
     # "504 Gateway Timeout" contains both "504" and "timeout".
     if "502" in text or "bad gateway" in text:

@@ -3137,6 +3137,15 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Retention-sweep — bremser ubegrænset vækst (lærings- + telemetri-tabeller).
+    # Selv-throttlende (max 1×/24h); defensiv så den aldrig kan vælte heartbeat.
+    # Rører ALDRIG events/memory/identitet (decay via salience, ikke sletning).
+    try:
+        from core.services.retention import run_retention_sweep
+        run_retention_sweep()
+    except Exception:
+        logger.debug("retention-sweep fejlede i heartbeat", exc_info=True)
+
     # Signal decay daemon — archive and delete stale signals
     if _dm.is_enabled("signal_decay"):
         try:

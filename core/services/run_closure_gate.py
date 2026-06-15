@@ -364,6 +364,13 @@ def _listener_loop(q: "queue.Queue[dict[str, Any] | None]") -> None:
                 _on_run_completed(payload)
             elif kind == "tool.invoked" or kind == "tool.used":
                 _on_tool_used(payload)
+            # Gut-calibration (fodrer cognitive_gut_state — tidligere forældreløs
+            # skrive-sti). Defensiv: må ALDRIG påvirke closure-logikken.
+            try:
+                from core.services import gut_calibration
+                gut_calibration.observe_run_event(kind, payload)
+            except Exception:
+                logger.debug("run_closure_gate: gut observe failed", exc_info=True)
         except queue.Empty:
             continue
         except Exception:

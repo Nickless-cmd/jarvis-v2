@@ -179,3 +179,15 @@ export interface AccountProfile {
 export async function getAccountMe(config: ApiConfig): Promise<AccountProfile> {
   return apiFetch<AccountProfile>(config, '/account/me')
 }
+
+export async function createCoworkTodo(config: ApiConfig, content: string): Promise<void> {
+  await apiFetch(config, '/cowork/todos', { method: 'POST', body: { content } })
+}
+
+export async function setCoworkTodoStatus(config: ApiConfig, id: string, status: string): Promise<void> {
+  await apiFetch(config, `/cowork/todos/${id}/status`, { method: 'POST', body: { status } })
+}
+
+export async function deleteCoworkTodo(config: ApiConfig, id: string): Promise<void> {
+  await apiFetch(config, `/cowork/todos/${id}`, { method: 'DELETE' })
+}

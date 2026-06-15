@@ -33,9 +33,9 @@ describe('TodoPane TTL + pause', () => {
     render(<TodoPane todos={[{ id: 'td-1', content: 'x', status: 'pending' }]} config={cfg} />)
     fireEvent.change(screen.getByLabelText(/udløb/i), { target: { value: 'day' } })
     await waitFor(() => expect(setCoworkTodoExpiry).toHaveBeenCalled())
-    const [, id, iso] = setCoworkTodoExpiry.mock.calls[0]
-    expect(id).toBe('td-1')
-    expect(typeof iso).toBe('string')
+    const call = setCoworkTodoExpiry.mock.calls[0]!
+    expect(call[1]).toBe('td-1')
+    expect(typeof call[2]).toBe('string')
   })
 
   it('TTL-vælger "Ingen" rydder expires_at', async () => {

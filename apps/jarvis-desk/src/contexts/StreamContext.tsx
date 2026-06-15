@@ -34,6 +34,12 @@ export interface PendingApproval {
   action: string
 }
 
+export interface PendingAppAction {
+  action: 'switch_to_code_mode' | 'request_full_access'
+  reason: string
+  originalMessage: string
+}
+
 export interface StreamContextValue {
   status: StreamStatus
   /** Session-id for det aktive run (kun mens status==='working'), ellers null. */
@@ -53,6 +59,16 @@ export interface StreamContextValue {
   pendingApproval: PendingApproval | null
   approve: (approvalId: string) => void
   deny: (approvalId: string) => void
+  /** Afventende app-action-anmodning (mode/permission-skift), ellers null. */
+  pendingAppAction: PendingAppAction | null
+  /** Ryd app-action-kortet (efter approve/deny). */
+  clearAppAction: () => void
+  /** Besked der skal gen-sendes efter et godkendt skift, ellers null. */
+  autoContinue: string | null
+  /** Arm en auto-continue (kaldes af kort-handler ved godkendelse). */
+  armAutoContinue: (message: string) => void
+  /** Forbrug + ryd auto-continue (kaldes af den view der gen-sender). */
+  consumeAutoContinue: () => string | null
 }
 
 export const StreamContext = createContext<StreamContextValue | null>(null)
@@ -76,11 +92,17 @@ export function StreamProvider({
   // arbejds-indikator på den, også når en ANDEN session er fremme (#8).
   const [workingSessionId, setWorkingSessionId] = useState<string | null>(null)
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null)
+  const [pendingAppAction, setPendingAppAction] = useState<PendingAppAction | null>(null)
+  const [autoContinue, setAutoContinue] = useState<string | null>(null)
+  const autoContinueRef = useRef<string | null>(null)
 
   const send = useCallback((message: string, opts: SendOpts) => {
     setError(null)
     setOverride(null)
     setPendingApproval(null)
+    setPendingAppAction(null)
+    autoContinueRef.current = null
+    setAutoContinue(null)
     setWorkingSessionId(opts.sessionId)
     runIdRef.current = null
     startedAtRef.current = Date.now()
@@ -114,7 +136,18 @@ export function StreamProvider({
                 action: [p.message, p.detail].filter(Boolean).join('\n') || p.tool || '',
               })
             }
+          } else if (e.type === 'system_event' && e.kind === 'app_action_request') {
+            const p = (e.payload || {}) as { action?: string; reason?: string; original_message?: string }
+            if (p.action === 'switch_to_code_mode' || p.action === 'request_full_access') {
+              setPendingAppAction({
+                action: p.action,
+                reason: p.reason || '',
+                originalMessage: p.original_message || '',
+              })
+            }
           } else if (e.type === 'message_stop') {
+            // BEMÆRK: pendingAppAction ryddes IKKE her — kortet skal blive
+            // stående efter Jarvis afslutter turen, til brugeren klikker.
             setPendingApproval(null)
           }
           dispatch(e)
@@ -158,6 +191,18 @@ export function StreamProvider({
     setPendingApproval(null)
     void denyTool(config, approvalId).catch((e) => setError(e as Error))
   }, [config])
+
+  const clearAppAction = useCallback(() => setPendingAppAction(null), [])
+  const armAutoContinue = useCallback((message: string) => {
+    autoContinueRef.current = message
+    setAutoContinue(message)
+  }, [])
+  const consumeAutoContinue = useCallback((): string | null => {
+    const msg = autoContinueRef.current
+    autoContinueRef.current = null
+    setAutoContinue(null)
+    return msg
+  }, [])
 
   const status: StreamStatus = override ?? state.status
 
@@ -209,8 +254,13 @@ export function StreamProvider({
       pendingApproval,
       approve,
       deny,
+      pendingAppAction,
+      clearAppAction,
+      autoContinue,
+      armAutoContinue,
+      consumeAutoContinue,
     }),
-    [status, state.blocks, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny],
+    [status, state.blocks, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
   )
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>
 }

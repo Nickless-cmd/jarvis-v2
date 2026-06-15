@@ -57,4 +57,36 @@ describe('StreamContext', () => {
     await act(async () => { await result.current.abort() })
     expect(cancelRunMock).toHaveBeenCalledWith(cfg, 'visible-1')
   })
+
+  it('app_action_request → pendingAppAction; survives message_stop; armable auto-continue', () => {
+    const { result } = renderHook(() => useStream(), { wrapper })
+    act(() => { result.current.send('ret bug i db.py', { sessionId: 's' }) })
+    act(() => {
+      handlersRef.current?.onEvent({
+        type: 'system_event',
+        kind: 'app_action_request',
+        payload: { action: 'switch_to_code_mode', reason: 'kræver filer', original_message: 'ret bug i db.py' },
+      })
+    })
+    expect(result.current.pendingAppAction).toEqual({
+      action: 'switch_to_code_mode',
+      reason: 'kræver filer',
+      originalMessage: 'ret bug i db.py',
+    })
+    // Kortet skal OVERLEVE message_stop (Jarvis afslutter turen; kortet bliver stående).
+    act(() => { handlersRef.current?.onEvent({ type: 'message_stop' }) })
+    expect(result.current.pendingAppAction).not.toBeNull()
+
+    // Auto-continue arm/consume.
+    act(() => { result.current.armAutoContinue('ret bug i db.py') })
+    expect(result.current.autoContinue).toBe('ret bug i db.py')
+    let consumed: string | null = null
+    act(() => { consumed = result.current.consumeAutoContinue() })
+    expect(consumed).toBe('ret bug i db.py')
+    expect(result.current.autoContinue).toBeNull()
+
+    // clearAppAction rydder kortet.
+    act(() => { result.current.clearAppAction() })
+    expect(result.current.pendingAppAction).toBeNull()
+  })
 })

@@ -99,6 +99,7 @@ from apps.api.jarvis_api.routes.chat_stream_v2 import router as chat_stream_v2_r
 from apps.api.jarvis_api.routes.cowork import router as cowork_router
 from apps.api.jarvis_api.routes.plugins import router as plugins_router
 from apps.api.jarvis_api.routes.totp import router as totp_router
+from apps.api.jarvis_api.routes.account import router as account_router
 from apps.api.jarvis_api.routes.transcribe import router as transcribe_router
 from apps.api.jarvis_api.routes.health import router as health_router
 from apps.api.jarvis_api.routes.jarvisx import router as jarvisx_router
@@ -484,6 +485,7 @@ def create_app() -> FastAPI:
     app.include_router(cowork_router)
     app.include_router(plugins_router)
     app.include_router(totp_router)
+    app.include_router(account_router)
     from apps.api.jarvis_api.routes.billing import router as billing_router
     app.include_router(billing_router)
     app.include_router(transcribe_router)

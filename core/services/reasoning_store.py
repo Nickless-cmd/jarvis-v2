@@ -97,6 +97,7 @@ def capture_conclusion(
     source_record_id: str = "",
     metadata: dict[str, Any] | None = None,
     emit_event: bool = True,
+    dedup_key: str = "",
 ) -> str | None:
     """Store a reasoning conclusion and return its conclusion_id.
 
@@ -121,13 +122,22 @@ def capture_conclusion(
     try:
         _ensure_table(conn)
         now = _now()
-        cid = _now().replace(":", "").replace("-", "") + f"_{source[:16]}"
+        # dedup_key (plan A): deterministisk conclusion_id + INSERT OR IGNORE, så
+        # samme logiske konklusion ikke lagres dobbelt (kilde fyrer to gange, eller
+        # både direkte-capture og orchestrator-route). Uden key = som før.
+        if dedup_key:
+            import hashlib
+            cid = "dk_" + hashlib.sha1(f"{source}:{dedup_key}".encode("utf-8")).hexdigest()[:24]
+            insert_sql = "INSERT OR IGNORE INTO"
+        else:
+            cid = _now().replace(":", "").replace("-", "") + f"_{source[:16]}"
+            insert_sql = "INSERT INTO"
         emb_json = json.dumps(embedding or [], ensure_ascii=False)
         meta_json = json.dumps(metadata or {}, ensure_ascii=False)
 
-        conn.execute(
-            """
-            INSERT INTO reasoning_conclusions
+        cur = conn.execute(
+            f"""
+            {insert_sql} reasoning_conclusions
                 (conclusion_id, source, conclusion_text, context,
                  confidence, embedding_json, source_record_id,
                  metadata_json, created_at)
@@ -138,8 +148,9 @@ def capture_conclusion(
              meta_json, now),
         )
         conn.commit()
+        _inserted = cur.rowcount > 0
 
-        if emit_event:
+        if emit_event and _inserted:
             # 2026-06-08: was event_bus.emit() which doesn't exist —
             # AttributeError waiting to fire the first time emit_event=True
             # is passed. Bus exposes publish() only (async since 2c82d5ba).

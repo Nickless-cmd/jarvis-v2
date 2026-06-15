@@ -49,6 +49,21 @@ def simulate_from_episode(episode: dict[str, object]) -> dict[str, object]:
             "preferred_next_policy": preferred,
         },
     )
+    # Generalized-learning capture (#159, plan A): den foretrukne next-policy er
+    # en kontrafaktisk konklusion → fodr den ind i reasoning_store. dedup på episode.
+    try:
+        from core.services.reasoning_store import capture_conclusion
+        _conf = {"high": 0.8, "medium": 0.5, "low": 0.3}.get(
+            str(sim.get("confidence") or "").lower(), 0.4)
+        capture_conclusion(
+            source="counterfactual",
+            conclusion_text=f"foretrukken next-policy: {preferred}"[:600],
+            context=f"counterfactual af run {sim['source_run_id']}"[:200],
+            confidence=_conf,
+            dedup_key=f"counterfactual:{sim['source_run_id']}:{sim['episode_id']}",
+        )
+    except Exception:
+        pass
     _feed_learning(sim)
     return {"created": True, "simulation": sim}
 

@@ -7982,6 +7982,19 @@ def _exec_deep_analyze(args: dict[str, Any]) -> dict[str, Any]:
             paths=paths,
             question_set=question_set,
         )
+        # Generalized-learning capture (#159, plan A): fodr konklusionen ind i
+        # reasoning_store så læringen får input. dedup_key gør det idempotent.
+        try:
+            from core.services.reasoning_store import capture_conclusion
+            capture_conclusion(
+                source="deep_analyze",
+                conclusion_text=str(result.get("summary") or "")[:600],
+                context=f"deep_analyze: {goal}"[:200],
+                confidence=0.5,
+                dedup_key=f"deep_analyze:{goal}:{scope}",
+            )
+        except Exception:
+            pass
         return {**result, "status": "ok"}
     except Exception as exc:
         return {"error": str(exc), "status": "error"}

@@ -366,6 +366,21 @@ def self_evaluation_section() -> str | None:
         except (TypeError, ValueError):
             pass
         parts.append(line)
+        # Generalized-learning capture (#159, plan A): tick-kvalitets-vurderingen er
+        # en selv-evaluerings-konklusion → fodr den ind i reasoning_store. dedup på dag.
+        try:
+            from datetime import datetime, timezone
+            from core.services.reasoning_store import capture_conclusion
+            _day = datetime.now(timezone.utc).date().isoformat()
+            capture_conclusion(
+                source="self_evaluation",
+                conclusion_text=line[:600],
+                context="heartbeat tick-kvalitets-evaluering",
+                confidence=0.5,
+                dedup_key=f"self_evaluation:{_day}:{avg}:{trend}",
+            )
+        except Exception:
+            pass
 
     # Decision adherence
     adherence = decision_adherence_summary()

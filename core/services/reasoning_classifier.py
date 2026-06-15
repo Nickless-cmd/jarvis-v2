@@ -225,10 +225,23 @@ def reasoning_tier_section(message: str) -> str | None:
 
 
 def _exec_reasoning_classify(args: dict[str, Any]) -> dict[str, Any]:
-    return classify_reasoning_tier(
-        str(args.get("message") or ""),
-        task_hint=args.get("task_hint"),
-    )
+    message = str(args.get("message") or "")
+    verdict = classify_reasoning_tier(message, task_hint=args.get("task_hint"))
+    # Generalized-learning capture (#159, plan A): tier-verdiktet er en konklusion
+    # om opgavens karakter — fodr den ind i reasoning_store. dedup på besked+tier.
+    try:
+        from core.services.reasoning_store import capture_conclusion
+        tier = str(verdict.get("tier") or "")
+        capture_conclusion(
+            source="reasoning_classify",
+            conclusion_text=f"tier={tier} score={verdict.get('score')}: {verdict.get('reason', '')}"[:600],
+            context=message[:200],
+            confidence=0.4,
+            dedup_key=f"reasoning_classify:{hash(message) & 0xffffffff}:{tier}",
+        )
+    except Exception:
+        pass
+    return verdict
 
 
 REASONING_CLASSIFIER_TOOL_DEFINITIONS: list[dict[str, Any]] = [

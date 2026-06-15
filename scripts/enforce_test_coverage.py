@@ -30,6 +30,7 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/runtime/workspace_paths.py": "tests/runtime/test_workspace_paths.py",
     "core/runtime/db.py": "tests/runtime/test_db_schema_multiuser.py",
     "core/runtime/db_users.py": "tests/test_user_db.py",
+    "core/eventbus/events.py": "tests/test_learning_capture_wiring.py",
     "core/services/dream_hypothesis_generator.py": "tests/runtime/test_db_schema_multiuser.py",
     # Group 4: permission scope filters — tests live in tests/multi_user/
     # Mapping added 2026-05-28.

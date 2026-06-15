@@ -9,6 +9,7 @@ ALLOWED_EVENT_FAMILIES = {
     "memory",
     "heartbeat",
     "cost",
+    "reasoning",  # reasoning_store.capture_conclusion (#159) — var latent afvist
     "approvals",
     "council",
     "swarm",

@@ -2,6 +2,11 @@ import { useState, type ReactNode } from 'react'
 import { useSettings } from './hooks/useSettings'
 import { SessionProvider } from './contexts/SessionContext'
 import { StreamProvider } from './contexts/StreamContext'
+import { PermissionProvider } from './contexts/PermissionContext'
+import { usePermission } from './hooks/usePermission'
+import { useStream } from './hooks/useStream'
+import { AppActionCard } from './components/rich/AppActionCard'
+import { resolveAppAction } from './lib/appAction'
 import { PanelProvider } from './contexts/PanelContext'
 import { UiPanelWatcher } from './components/UiPanelWatcher'
 import { usePanel } from './hooks/usePanel'
@@ -34,16 +39,18 @@ export function App() {
   return (
     <SessionProvider config={cfg}>
       <StreamProvider config={cfg}>
-        <PanelProvider defaultWidth={480}>
-          <Shell
-            surface={surface}
-            setSurface={setSurface}
-            role={auth?.role ?? 'guest'}
-            userName={auth?.display_name ?? 'Bruger'}
-            model={settings.defaultModel}
-          />
-          <UiPanelWatcher config={cfg} />
-        </PanelProvider>
+        <PermissionProvider>
+          <PanelProvider defaultWidth={480}>
+            <Shell
+              surface={surface}
+              setSurface={setSurface}
+              role={auth?.role ?? 'guest'}
+              userName={auth?.display_name ?? 'Bruger'}
+              model={settings.defaultModel}
+            />
+            <UiPanelWatcher config={cfg} />
+          </PanelProvider>
+        </PermissionProvider>
       </StreamProvider>
     </SessionProvider>
   )
@@ -84,6 +91,7 @@ function Shell({
     <div className="window">
       <Sidebar surface={surface} onSurface={setSurface} userName={userName} />
       <main className="main">
+        <AppActionHost setSurface={setSurface} />
         <ShellWithPanel>
           {surface === 'chat' && <ChatView sessionId={activeId} />}
           {surface === 'cowork' && <CoworkView role={role} />}
@@ -95,6 +103,37 @@ function Shell({
         </ShellWithPanel>
         <StatusBar model={model} sessionId={activeId} />
       </main>
+    </div>
+  )
+}
+
+/** Viser AppActionCard når Jarvis har anmodet om et mode/permission-skift.
+ *  Renderes inde i Shell (har adgang til Stream + Permission + setSurface).
+ *  Jarvis kan kun ANMODE — kun brugerens klik skifter noget. */
+function AppActionHost({ setSurface }: { setSurface: (s: Surface) => void }) {
+  const stream = useStream()
+  const { setPermission } = usePermission()
+  const pending = stream.pendingAppAction
+  if (!pending) return null
+  return (
+    <div className="appaction-host">
+      <AppActionCard
+        action={pending.action}
+        reason={pending.reason}
+        onApprove={() => {
+          resolveAppAction(
+            pending.action,
+            {
+              setSurface: (s) => setSurface(s),
+              setPermission,
+              armAutoContinue: stream.armAutoContinue,
+            },
+            pending.originalMessage,
+          )
+          stream.clearAppAction()
+        }}
+        onReject={() => stream.clearAppAction()}
+      />
     </div>
   )
 }

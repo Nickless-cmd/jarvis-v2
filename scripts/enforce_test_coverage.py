@@ -39,6 +39,7 @@ KNOWN_MAPPINGS: dict[str, str] = {
     # Boy Scout-split fra db.py — testet via #154-isolation + surfaces.
     "core/runtime/db_autonomy.py": "tests/test_user_scope_154.py",
     "core/runtime/db_private_brain.py": "tests/test_user_scope_154.py",
+    "core/runtime/db_scheduled_tasks.py": "tests/test_agent_runtime_phase3_scheduler.py",
     "core/services/dream_hypothesis_generator.py": "tests/runtime/test_db_schema_multiuser.py",
     # Group 4: permission scope filters — tests live in tests/multi_user/
     # Mapping added 2026-05-28.

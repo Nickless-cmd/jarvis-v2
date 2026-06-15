@@ -151,17 +151,27 @@ def _ws_has_content(path: Path) -> bool:
 
 
 def _find_memory_path() -> Path:
-    """Find MEMORY.md — look in runtime workspace first, then repo."""
-    from core.runtime.workspace_paths import workspace_dir
+    """Find MEMORY.md — look in runtime workspace first, then repo.
+
+    2026-06-14 (Jarvis): wrapped workspace_dir() in try/except
+    NoUserContextError. When called from autonomous runs or daemon
+    threads there's no active user session — guard degrades gracefully
+    to repo-level MEMORY.md instead of crashing.
+    """
     from core.runtime.config import JARVIS_HOME
-    candidates = [
-        workspace_dir() / "MEMORY.md",
-        Path(JARVIS_HOME) / "MEMORY.md",
-    ]
-    for candidate in candidates:
-        if _ws_has_content(candidate):
-            return candidate
-    return candidates[0]
+    try:
+        from core.runtime.workspace_paths import workspace_dir
+        ws = workspace_dir()
+        ws_memory = ws / "MEMORY.md"
+        if _ws_has_content(ws_memory):
+            return ws_memory
+    except Exception:
+        logger.debug("hallucination_guard: no user context — falling back to repo MEMORY.md")
+    # Fallback: repo-level MEMORY.md (works for all users in non-user-context calls)
+    repo = Path(JARVIS_HOME) / "MEMORY.md"
+    if _ws_has_content(repo):
+        return repo
+    return repo
 
 
 def _find_curated_paths() -> list[tuple[str, Path]]:
@@ -171,16 +181,31 @@ def _find_curated_paths() -> list[tuple[str, Path]]:
     curated files. Identity questions ("hvad er din rolle?", "hvem er
     Bjørn?") should consult IDENTITY.md / USER.md, not just MEMORY.md.
     Returns [(label, path), ...] for files that actually exist on disk.
+
+    2026-06-14 (Jarvis): wrapped workspace_dir() in try/except
+    NoUserContextError. When called from autonomous runs or daemon
+    threads there's no active user session — guard degrades gracefully
+    to shared/ files instead of crashing.
     """
-    from core.runtime.workspace_paths import workspace_dir
-    base = workspace_dir()
-    candidates = [
-        ("MEMORY.md", base / "MEMORY.md"),
-        ("IDENTITY.md", base / "IDENTITY.md"),
-        ("USER.md", base / "USER.md"),
-        ("SOUL.md", base / "SOUL.md"),
-    ]
-    return [(label, path) for label, path in candidates if _ws_has_content(path)]
+    try:
+        from core.runtime.workspace_paths import workspace_dir
+        base = workspace_dir()
+        candidates = [
+            ("MEMORY.md", base / "MEMORY.md"),
+            ("IDENTITY.md", base / "IDENTITY.md"),
+            ("USER.md", base / "USER.md"),
+            ("SOUL.md", base / "SOUL.md"),
+        ]
+        return [(label, path) for label, path in candidates if _ws_has_content(path)]
+    except Exception:
+        logger.debug("hallucination_guard: no user context for curated paths — falling back to shared/")
+        from core.runtime.workspace_paths import shared_dir
+        shared = shared_dir()
+        candidates = [
+            ("SOUL.md", shared / "SOUL.md"),
+            ("IDENTITY.md", shared / "IDENTITY.md"),
+        ]
+        return [(label, path) for label, path in candidates if _ws_has_content(path)]
 
 
 def _extract_relevant_sections(

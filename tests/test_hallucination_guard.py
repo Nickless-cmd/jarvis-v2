@@ -160,3 +160,56 @@ class TestMultiSourceCuration:
         # Missing files not returned
         assert "USER.md" not in labels
         assert "SOUL.md" not in labels
+
+
+class TestNoUserContextFallback:
+    """2026-06-14: guard must degrade gracefully when workspace_dir() fails."""
+
+    def test_find_curated_paths_returns_shared_dir_on_nousercontext(
+        self, monkeypatch
+    ):
+        """When workspace_dir raises NoUserContextError, fall back to shared/."""
+        def _raise_no_user(*args, **kwargs):
+            from core.runtime.workspace_paths import NoUserContextError
+            raise NoUserContextError("test — no user context")
+
+        monkeypatch.setattr(
+            "core.services.hallucination_guard._ws_has_content",
+            lambda p: p.name in ("SOUL.md", "IDENTITY.md"),
+        )
+
+        # We need to mock workspace_dir to raise.
+        # _find_curated_paths imports workspace_dir inside a try block,
+        # so we patch it before the call.
+        import core.services.hallucination_guard as hg
+        original_fn = hg._find_curated_paths
+
+        # Replace the module-level import inside the function scope
+        import core.runtime.workspace_paths
+        monkeypatch.setattr(
+            core.runtime.workspace_paths, "workspace_dir", _raise_no_user
+        )
+
+        found = hg._find_curated_paths()
+        labels = [label for label, _ in found]
+        # Should fall back to shared/ dir files
+        assert "SOUL.md" in labels or "IDENTITY.md" in labels
+        assert isinstance(found, list)
+
+    def test_find_memory_path_returns_repo_path_on_nousercontext(self, monkeypatch):
+        """When workspace_dir raises, fall back to JARVIS_HOME/MEMORY.md."""
+        def _raise_no_user(*args, **kwargs):
+            from core.runtime.workspace_paths import NoUserContextError
+            raise NoUserContextError("test — no user context")
+
+        import core.runtime.workspace_paths
+        monkeypatch.setattr(
+            core.runtime.workspace_paths, "workspace_dir", _raise_no_user
+        )
+
+        from core.services import hallucination_guard
+        path = hallucination_guard._find_memory_path()
+        # Should return a Path, not crash
+        from pathlib import Path
+        assert isinstance(path, Path)
+        assert path.name == "MEMORY.md"

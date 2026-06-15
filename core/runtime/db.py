@@ -33299,6 +33299,12 @@ def _ensure_session_topics_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_session_topics_session ON session_topics(session_id, last_seen DESC)"
     )
+    # 2026-06-14 (Jarvis): migrate NULL mention_count → 0 for existing rows
+    # that were created before the NOT NULL constraint was enforced.
+    try:
+        conn.execute("UPDATE session_topics SET mention_count = 0 WHERE mention_count IS NULL")
+    except sqlite3.OperationalError:
+        pass
 
 
 def session_topic_accumulate(
@@ -33308,24 +33314,38 @@ def session_topic_accumulate(
     first_seen: str = "",
     last_seen: str = "",
 ) -> None:
-    """Upsert a topic for a session — merge if exists, insert if not."""
-    with connect() as conn:
-        _ensure_session_topics_table(conn)
-        existing = conn.execute(
-            "SELECT id, mention_count FROM session_topics WHERE session_id = ? AND topic_label = ?",
-            (session_id, topic_label),
-        ).fetchone()
-        if existing:
-            conn.execute(
-                "UPDATE session_topics SET mention_count = mention_count + ?, last_seen = ? WHERE id = ?",
-                (mention_count, last_seen, existing["id"]),
-            )
-        else:
-            conn.execute(
-                "INSERT INTO session_topics (session_id, topic_label, mention_count, first_seen, last_seen) VALUES (?, ?, ?, ?, ?)",
-                (session_id, topic_label, mention_count, first_seen or last_seen, last_seen),
-            )
-        conn.commit()
+    """Upsert a topic for a session — merge if exists, insert if not.
+
+    2026-06-14 (Jarvis): added int() coercion + try/except for robust DB
+    persist. The UPDATE crashed with "int too large to convert to SQLITE
+    INTEGER" when mention_count was NULL (migration edge case) or
+    contained an overflow value from a previous bug.
+    """
+    try:
+        with connect() as conn:
+            _ensure_session_topics_table(conn)
+            existing = conn.execute(
+                "SELECT id, mention_count FROM session_topics WHERE session_id = ? AND topic_label = ?",
+                (session_id, topic_label),
+            ).fetchone()
+            if existing:
+                current = int(existing["mention_count"] or 0)
+                new_count = current + int(mention_count)
+                conn.execute(
+                    "UPDATE session_topics SET mention_count = ?, last_seen = ? WHERE id = ?",
+                    (new_count, last_seen, existing["id"]),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO session_topics (session_id, topic_label, mention_count, first_seen, last_seen) VALUES (?, ?, ?, ?, ?)",
+                    (session_id, topic_label, int(mention_count), first_seen or last_seen, last_seen),
+                )
+            conn.commit()
+    except Exception as exc:
+        _logger.warning(
+            "session_topic_accumulate: DB persist failed for session=%s topic=%s — %s",
+            session_id, topic_label, exc,
+        )
 
 
 def session_topics_for_session(session_id: str) -> list[dict[str, object]]:

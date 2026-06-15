@@ -38,11 +38,16 @@ Status-legende: 🔴 ægte hul (kode mangler) · 🟡 hurtig win (kode findes, m
 7. **User-temperature Site 4** — `get_response_style_modifiers()` findes men injiceres ikke i
    visible-run-prompten.
 
-## 🟠 Større, men afgrænset
+## ✅ LUKKET 15. juni (runde 2)
+- **Generalized-learning capture-wiring (item 8)** — plan A (direkte capture m. dedup):
+  deep_analyze/reasoning_classify/self_evaluation/counterfactual kalder nu
+  `capture_conclusion(..., dedup_key=...)` → reasoning_store. learning_policy fungerede
+  allerede via orchestratoren (cognitive_state-familie). Latent-bug fixet: `reasoning`
+  event-familie var afvist af eventbus (publish kastede altid). Live (0a850449).
+- **User Management** (hele spec'en) + app-self-control tool-scope-fix + footer-fix —
+  se [[project_user_management]] / [[project_desk_toolchips_appcontrol]].
 
-8. **Generalized-learning capture-hooks** — 5 kilde-systemer publicerer ikke capture-events
-   (deep_analyze_tool, reasoning_classify, agent_self_evaluation, counterfactual_self_simulation,
-   learning_policy_engine) → læringen får intet input.
+## 🟠 Større, men afgrænset
 
 9. **db-split** — `core/runtime/db.py` er stadig ~33.700 linjer (kun fase 0 udskilt). Fase 1-N
    domæne-splits (runtime_self, private, dream, chronicle…) mangler.

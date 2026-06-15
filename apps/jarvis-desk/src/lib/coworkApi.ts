@@ -224,3 +224,19 @@ export interface WorkspaceOverview {
 export async function getAccountWorkspace(config: ApiConfig): Promise<WorkspaceOverview> {
   return apiFetch<WorkspaceOverview>(config, '/account/workspace')
 }
+
+export interface MemoryOverview {
+  memory_md: string
+  user_md: string
+  recent_sensory: { id: string; content: string; modality?: string }[]
+  brain_count: number
+}
+
+export async function getAccountMemory(config: ApiConfig): Promise<MemoryOverview> {
+  return apiFetch<MemoryOverview>(config, '/account/memory')
+}
+
+export async function searchAccountMemory(config: ApiConfig, q: string): Promise<{ id: string; content: string }[]> {
+  const d = await apiFetch<{ results: { id: string; content: string }[] }>(config, `/account/memory/search?q=${encodeURIComponent(q)}`)
+  return d.results ?? []
+}

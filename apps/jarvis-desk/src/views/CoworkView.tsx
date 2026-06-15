@@ -12,6 +12,7 @@ import { KvoteSection } from '../components/settings/KvoteSection'
 import { ThemeSection } from '../components/settings/ThemeSection'
 import { SprogSection } from '../components/settings/SprogSection'
 import { WorkspaceSection } from '../components/settings/WorkspaceSection'
+import { MemorySection } from '../components/settings/MemorySection'
 import { TotpSetup } from '../components/settings/TotpSetup'
 import { PluginsPanel } from '../components/settings/PluginsPanel'
 import { activeAgentsToView } from '../lib/coworkApi'
@@ -67,6 +68,7 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
     <div className="cowork-settings">
       <AccountSection config={config} />
       <WorkspaceSection config={config} />
+      <MemorySection config={config} />
       <KvoteSection config={config} />
       <SprogSection config={config} />
       <ThemeSection />

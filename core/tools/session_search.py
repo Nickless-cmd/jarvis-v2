@@ -261,11 +261,17 @@ def exec_search_sessions(args: dict[str, Any]) -> dict[str, Any]:
 
     # PRIVATLIVS-GUARD (multi-user northstar): scope til den anmodende bruger, så
     # hverken owner ELLER en autonom-run kan søge i en anden brugers sessions/DMs.
+    # privacy_scoped_user_id() returnerer None under TOTP-override (§6.5: kontrol-
+    # bagdøren må ikke læse en andens private session) → vi returnerer INTET.
     try:
-        from core.identity.workspace_context import current_user_id
-        _uid = (current_user_id() or "").strip()
+        from core.identity.workspace_context import privacy_scoped_user_id
+        _scoped = privacy_scoped_user_id()
     except Exception:
-        _uid = ""
+        _scoped = ""
+    if _scoped is None:
+        return {"status": "ok", "count": 0, "results": [],
+                "text": "Søgning blokeret under owner-override (kontrol-bagdør, ikke data-bagdør)."}
+    _uid = (_scoped or "").strip()
 
     try:
         keyword_results: list[dict] = []

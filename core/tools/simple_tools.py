@@ -7210,13 +7210,17 @@ def _exec_search_chat_history(args: dict[str, Any]) -> dict[str, Any]:
 
     limit = min(int(args.get("limit") or 10), 30)
 
-    # PRIVATLIVS-GUARD (multi-user northstar): scope til den anmodende bruger, så
-    # hverken owner ELLER en autonom-run kan søge i en anden brugers sessions/DMs.
+    # PRIVATLIVS-GUARD (multi-user northstar): scope til den anmodende bruger. Under
+    # TOTP-override returnerer privacy_scoped_user_id() None → INTET (§6.5 kontrol≠data).
     try:
-        from core.identity.workspace_context import current_user_id
-        _uid = (current_user_id() or "").strip()
+        from core.identity.workspace_context import privacy_scoped_user_id
+        _scoped = privacy_scoped_user_id()
     except Exception:
-        _uid = ""
+        _scoped = ""
+    if _scoped is None:
+        return {"status": "ok", "count": 0, "results": [],
+                "text": "Søgning blokeret under owner-override (kontrol-bagdør, ikke data-bagdør)."}
+    _uid = (_scoped or "").strip()
 
     try:
         from core.runtime.db import connect

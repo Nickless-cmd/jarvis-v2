@@ -58,3 +58,30 @@ def test_exec_uses_current_user_scope(isolated_runtime, monkeypatch) -> None:
     res = exec_search_sessions({"query": "pingvin", "mode": "keyword"})
     text = res.get("text", "")
     assert "michelle" not in text.lower()
+
+
+# ── §6.5: override = kontrol-bagdør, IKKE data-bagdør ──
+
+def test_override_blocks_session_search(isolated_runtime, monkeypatch) -> None:
+    """Under TOTP-override må owner IKKE læse en andens private session/DM."""
+    _seed(isolated_runtime)
+    import core.identity.workspace_context as wc
+    # Simulér override aktiv: privacy_scoped_user_id() → None
+    monkeypatch.setattr(wc, "privacy_scoped_user_id", lambda: None)
+    from core.tools.session_search import exec_search_sessions
+    res = exec_search_sessions({"query": "pingvin", "mode": "keyword"})
+    assert res["count"] == 0
+    assert "override" in res["text"].lower()
+
+
+def test_privacy_scoped_uid_none_under_override(monkeypatch) -> None:
+    import core.identity.workspace_context as wc
+    monkeypatch.setattr(wc, "is_override_active", lambda: True)
+    assert wc.privacy_scoped_user_id() is None
+
+
+def test_privacy_scoped_uid_passes_through_normally(monkeypatch) -> None:
+    import core.identity.workspace_context as wc
+    monkeypatch.setattr(wc, "is_override_active", lambda: False)
+    monkeypatch.setattr(wc, "current_user_id", lambda: "1246")
+    assert wc.privacy_scoped_user_id() == "1246"

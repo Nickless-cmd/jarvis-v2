@@ -151,6 +151,37 @@ def effective_role() -> str:
     return base
 
 
+def is_override_active() -> bool:
+    """True hvis sessionen er TOTP-override-elevet (IKKE en native owner-session).
+
+    Native owner (base role = owner) er ikke en override. Kun en non-owner session
+    der er blevet elevet via `!override` + TOTP tæller. Bruges til at håndhæve §6.5:
+    override giver KONTROL (action-tools), men må aldrig løfte privatlivs-scopingen
+    på data-læsninger — ellers er bagdøren en data-bagdør, ikke en kontrol-bagdør.
+    """
+    base = current_role()
+    if base == "owner":
+        return False
+    try:
+        from core.services.override_store import is_active
+        sid = current_session_id()
+        return bool(sid and is_active(sid))
+    except Exception:
+        return False
+
+
+def privacy_scoped_user_id() -> str | None:
+    """user_id til PRIVATLIVS-scopede data-læsninger (session-søgning, chat-historik).
+
+    Returnerer None hvis sessionen er override-elevet → kalderen SKAL returnere INTET
+    (§6.5: kontrol ja, privat-data nej — Bjørn må ikke læse en andens private session
+    via kill-switch-bagdøren). Ellers den faktiske current_user_id().
+    """
+    if is_override_active():
+        return None
+    return current_user_id()
+
+
 def reset_context(token: contextvars.Token) -> None:
     _current_state.reset(token)
 

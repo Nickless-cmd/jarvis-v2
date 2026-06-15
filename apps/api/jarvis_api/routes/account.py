@@ -98,6 +98,59 @@ async def account_set_language(payload: dict = Body(default={})) -> dict[str, An
     return {"status": "ok", "language": lang}
 
 
+def _summarize_dir(path) -> tuple[int, int]:
+    """(antal filer, samlede bytes) under path. Manglende mappe → (0, 0)."""
+    from pathlib import Path
+    p = Path(path)
+    if not p.exists():
+        return (0, 0)
+    files = 0
+    total = 0
+    for f in p.rglob("*"):
+        try:
+            if f.is_file():
+                files += 1
+                total += f.stat().st_size
+        except OSError:
+            continue
+    return (files, total)
+
+
+def build_workspace_overview(
+    user_id: str,
+    *,
+    ws_dir: Callable[[str], Any],
+    should_encrypt: Callable[[str], bool],
+    is_trusted: Callable[..., bool],
+) -> dict[str, Any]:
+    """Self-scope workspace-overblik: fil-antal, disk-forbrug, kryptering, trust."""
+    d = ws_dir(user_id)
+    files, total = _summarize_dir(d)
+    return {
+        "path_name": getattr(d, "name", str(d)),
+        "files": files,
+        "disk_bytes": total,
+        "encrypted": bool(should_encrypt(user_id)),
+        "trusted": bool(is_trusted(user_id, "code", str(d))),
+    }
+
+
+@router.get("/workspace")
+async def account_workspace() -> dict[str, Any]:
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    from core.runtime.workspace_paths import workspace_dir
+    from core.services.workspace_crypto import should_encrypt
+    from core.services.workspace_trust import is_trusted
+    return await asyncio.to_thread(
+        build_workspace_overview,
+        user_id,
+        ws_dir=workspace_dir,
+        should_encrypt=should_encrypt,
+        is_trusted=is_trusted,
+    )
+
+
 @router.get("/quota")
 async def account_quota() -> dict[str, Any]:
     snap = current_context_snapshot()

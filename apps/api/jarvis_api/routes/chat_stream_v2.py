@@ -108,6 +108,13 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         f"model={request.model!r} → eff_provider={_eff_provider} eff_model={_eff_model}",
         flush=True,
     )
+    # Husk den aktive (provider, model) så read_model_config kan vise den faktiske
+    # per-run-override — ikke kun global default (ellers modsiger tool'et prompten).
+    try:
+        from core.services.active_model_state import set_active_visible_target
+        set_active_visible_target(_uid, _eff_provider, _eff_model)
+    except Exception:
+        pass
 
     legacy_iter = start_visible_run(
         message=effective_message,

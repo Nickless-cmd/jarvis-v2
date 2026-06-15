@@ -5920,11 +5920,30 @@ def _exec_read_model_config(_args: dict[str, Any]) -> dict[str, Any]:
                 "credentials_ready": creds,
             }
             status = "ready" if (active and creds) else ("no-creds" if active else "inactive")
-            marker = " ← YOU" if lane == "visible" else ""
-            lines.append(f"  [{lane}] {provider}/{model} ({status}){marker}")
+            suffix = " (global default)" if lane == "visible" else ""
+            lines.append(f"  [{lane}] {provider}/{model} ({status}){suffix}")
         except Exception as exc:
             lane_info[lane] = {"error": str(exc)}
             lines.append(f"  [{lane}] error: {exc}")
+
+    # Den AKTIVE visible-model kan være overridet pr. besked (composer-valg) og
+    # afviger så fra den globale default ovenfor. Vis den eksplicit, så dette tool
+    # IKKE modsiger system-promptens "You are running as model: X" (config-drift-
+    # konfabulationen 2026-06-15).
+    active_target = None
+    try:
+        from core.services.active_model_state import get_active_visible_target
+        from core.identity.workspace_context import current_user_id
+        active_target = get_active_visible_target(current_user_id())
+    except Exception:
+        active_target = None
+    if active_target:
+        ap, am = active_target.get("provider", ""), active_target.get("model", "")
+        gv = lane_info.get("visible", {})
+        overrides = (ap, am) != (gv.get("provider"), gv.get("model"))
+        lane_info["active_visible"] = {"provider": ap, "model": am, "overrides_global": overrides}
+        note = " (overrider global default)" if overrides else ""
+        lines.insert(1, f"  → AKTIV NU (denne samtale): {ap}/{am}{note} ← YOU")
 
     return {
         "status": "ok",

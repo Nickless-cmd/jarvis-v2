@@ -68,3 +68,50 @@ def test_list_users_excludes_soft_deleted_by_default(isolated_runtime) -> None:
     assert ids == {"a"}
     ids_all = {r["user_id"] for r in list_user_rows(include_deleted=True)}
     assert ids_all == {"a", "b"}
+
+
+def test_create_user_roundtrip_decrypts_email(isolated_runtime) -> None:
+    from core.identity.user_db import create_user, get_user
+    u = create_user(email="Bjorn@Example.com ", name="Bjørn", password="hemmelig",
+                    role="owner", workspace="bjorn")
+    assert u["email"] == "bjorn@example.com"
+    assert u["email_verified"] is False
+    got = get_user(u["user_id"])
+    assert got["email"] == "bjorn@example.com"
+    assert got["name"] == "Bjørn"
+
+
+def test_find_user_by_email_is_case_insensitive(isolated_runtime) -> None:
+    from core.identity.user_db import create_user, find_user_by_email
+    create_user(email="a@b.dk", name="A", password="x", role="member", workspace="a")
+    assert find_user_by_email("A@B.DK") is not None
+    assert find_user_by_email("nope@b.dk") is None
+
+
+def test_duplicate_email_rejected(isolated_runtime) -> None:
+    import pytest
+    from core.identity.user_db import create_user
+    create_user(email="dup@b.dk", name="A", password="x", role="member", workspace="a")
+    with pytest.raises(ValueError):
+        create_user(email="DUP@b.dk", name="B", password="y", role="member", workspace="b")
+
+
+def test_verify_login_checks_password(isolated_runtime) -> None:
+    from core.identity.user_db import create_user, verify_login
+    create_user(email="l@b.dk", name="L", password="rigtig", role="member", workspace="l")
+    ok = verify_login("l@b.dk", "rigtig")
+    assert ok is not None and ok["email"] == "l@b.dk"
+    assert verify_login("l@b.dk", "forkert") is None
+    assert verify_login("ukendt@b.dk", "x") is None
+
+
+def test_mute_and_set_quota(isolated_runtime) -> None:
+    from core.identity.user_db import create_user, mute_user, unmute_user, set_quota_tier, get_user
+    u = create_user(email="m@b.dk", name="M", password="x", role="member", workspace="m")
+    uid = u["user_id"]
+    mute_user(uid)
+    assert get_user(uid)["muted"] is True
+    unmute_user(uid)
+    assert get_user(uid)["muted"] is False
+    set_quota_tier(uid, "pro")
+    assert get_user(uid)["tier"] == "pro"

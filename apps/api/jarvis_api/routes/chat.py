@@ -829,40 +829,6 @@ async def chat_context_info() -> dict:
     }
 
 
-# Kuraterede context-vinduer pr. model-familie (substring-match på navn). Bedste
-# bud — registry bærer dem ikke. Owner kan rette tallene her. Default-fallback =
-# autocompact-tærsklen (samme adfærd som før for ukendte modeller).
-_MODEL_CONTEXT_WINDOWS: tuple[tuple[str, int], ...] = (
-    ("flash", 1_000_000),       # deepseek-v4-flash (1M)
-    ("deepseek", 128_000),
-    ("gemini", 1_000_000),
-    ("glm", 200_000),
-    ("opus", 200_000), ("sonnet", 200_000), ("haiku", 200_000), ("claude", 200_000),
-    ("gpt-4o", 128_000),
-    ("gpt-5", 400_000), ("codex", 400_000),
-    ("qwen", 256_000),
-    ("llama", 128_000),
-    ("mistral", 128_000), ("mixtral", 64_000),
-)
-
-
-def _model_context_window(provider: str, model: str) -> int:
-    """Bedste bud på modellens context-vindue (tokens). 0 = ukendt."""
-    m = (model or "").lower()
-    p = (provider or "").lower()
-    for needle, win in _MODEL_CONTEXT_WINDOWS:
-        if needle in m:
-            return win
-    if p == "ollama":
-        # Ollama serveres med visible_ollama_num_ctx (fælles loft for alle lokale).
-        try:
-            from core.runtime.settings import load_settings
-            return int(load_settings().visible_ollama_num_ctx or 0)
-        except Exception:
-            return 0
-    return 0
-
-
 @router.get("/model-context")
 async def chat_model_context(provider: str = "", model: str = "") -> dict:
     """Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt
@@ -870,12 +836,10 @@ async def chat_model_context(provider: str = "", model: str = "") -> dict:
     som ring-nævner, så ringen er nøjagtig for HVER model (deepseek 1M vs et 64k-
     model fylder forskelligt)."""
     from core.runtime.settings import load_settings
+    from core.services.model_context import model_context_window, effective_context_limit
     compact = int(load_settings().context_compact_threshold_tokens or 0)
-    window = _model_context_window(provider, model)
-    if window > 0 and compact > 0:
-        effective = min(window, compact)
-    else:
-        effective = window or compact
+    window = model_context_window(provider, model)
+    effective = effective_context_limit(provider, model, compact)
     return {"window": window, "compact_at": compact, "effective": int(effective)}
 
 

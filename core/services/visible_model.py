@@ -1148,6 +1148,24 @@ def _execute_ollama_model(
         get_tool_definitions(), user_message=message, session_id=session_id,
     )
 
+    # Model-bevidst sikkerhedsnet: trim ældste historik så den samlede prompt
+    # passer i modellens vindue. Uden dette overløber små-vindue-modeller (fx GLM
+    # 200k) på lange samtaler → Ollama HTTP 400 "prompt is too long" → tavst svar.
+    try:
+        from core.services.model_context import fit_messages_to_window
+        from core.runtime.settings import load_settings as _ls
+        _np = int(_ls().visible_ollama_num_predict or 0) or 16_000
+        messages, _dropped = fit_messages_to_window(
+            messages, provider="ollama", model=model, output_budget=_np,
+        )
+        if _dropped:
+            logger.warning(
+                "visible ollama: trimmede %d ældste beskeder så prompten passer i "
+                "%s's kontekstvindue", _dropped, model,
+            )
+    except Exception:
+        pass  # fail-open — hellere et forsøg end ingen
+
     payload: dict[str, object] = {
         "model": model,
         "messages": messages,
@@ -1420,6 +1438,24 @@ def _stream_ollama_model(
     tools = select_tools_for_visible(
         get_tool_definitions(), user_message=message, session_id=session_id,
     )
+
+    # Model-bevidst sikkerhedsnet: trim ældste historik så den samlede prompt
+    # passer i modellens vindue. Uden dette overløber små-vindue-modeller (fx GLM
+    # 200k) på lange samtaler → Ollama HTTP 400 "prompt is too long" → tavst svar.
+    try:
+        from core.services.model_context import fit_messages_to_window
+        from core.runtime.settings import load_settings as _ls
+        _np = int(_ls().visible_ollama_num_predict or 0) or 16_000
+        messages, _dropped = fit_messages_to_window(
+            messages, provider="ollama", model=model, output_budget=_np,
+        )
+        if _dropped:
+            logger.warning(
+                "visible ollama: trimmede %d ældste beskeder så prompten passer i "
+                "%s's kontekstvindue", _dropped, model,
+            )
+    except Exception:
+        pass  # fail-open — hellere et forsøg end ingen
 
     payload: dict[str, object] = {
         "model": model,

@@ -7,6 +7,8 @@ import { emojify } from '../../lib/emojify'
 import { useDictation } from '../../hooks/useDictation'
 import { ContextRing } from './ContextRing'
 import { uploadAttachment, type ApiConfig } from '../../lib/api'
+import { PROV_KEY, MODEL_KEY } from '../../lib/composerPrefs'
+import { usePermission } from '../../hooks/usePermission'
 
 export interface SentAttachment { id: string; src?: string; name: string; isImage: boolean }
 
@@ -33,12 +35,8 @@ const PERMISSIONS: Array<{ key: 'ask' | 'trust'; label: string }> = [
   { key: 'ask', label: 'Spørg ved værktøjer' },
   { key: 'trust', label: 'Fuld adgang' },
 ]
-/** Permission-valget overlever genstart (Bjørn: "fuld adgang" skal huskes). */
-const PERM_KEY = 'jarvis-desk:permission'
-/** Provider + model overlever genstart, ellers ryger man tilbage til Deepseek
- *  default hver gang og oplever de dårligere svar. */
-const PROV_KEY = 'jarvis-desk:provChoice'
-const MODEL_KEY = 'jarvis-desk:model'
+// Permission-valget overlever genstart via PermissionContext (Bjørn: "fuld
+// adgang" skal huskes). Provider/model-nøgler kommer fra composerPrefs.
 
 /** Memo'd input — isoleret fra forælderens re-renders. ChatView re-renderer på
  *  HVERT stream-token (contextTokens/blocks/elapsed), hvilket før nulstillede
@@ -103,11 +101,7 @@ export function Composer({
   const [menuOpen, setMenuOpen] = useState(false)
   const [permOpen, setPermOpen] = useState(false)
   const [planMode, setPlanMode] = useState(false)
-  const [permission, setPermission] = useState<'ask' | 'trust'>(() => {
-    try {
-      return localStorage.getItem(PERM_KEY) === 'trust' ? 'trust' : 'ask'
-    } catch { return 'ask' }
-  })
+  const { permission, setPermission } = usePermission()
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   const [dragOver, setDragOver] = useState(false)
   // Rolle-bevidst model/provider-valg. Owner: provChoice + konkret model.
@@ -136,12 +130,8 @@ export function Composer({
     return () => { alive = false }
   }, [isOwner, config, providers.length])
 
-  // Persistér permission-valget så "fuld adgang" overlever app-genstart.
-  useEffect(() => {
-    try { localStorage.setItem(PERM_KEY, permission) } catch { /* ignore */ }
-  }, [permission])
-
   // Persistér provider + model så man ikke ryger tilbage til Deepseek-default.
+  // (permission persisteres nu i PermissionContext.)
   useEffect(() => {
     try { localStorage.setItem(PROV_KEY, provChoice) } catch { /* ignore */ }
   }, [provChoice])

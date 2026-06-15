@@ -2271,16 +2271,30 @@ def update_scheduled_task(task_id: str, *, focus: str | None = None, run_at: str
 
 
 def list_scheduled_tasks(limit: int = 20) -> list[dict[str, object]]:
+    # PRIVATLIVS-GUARD: scope til brugerens egne tasks (+ NULL/'' = generel/owner),
+    # så list_scheduled_tasks-tool'et ikke afslører en anden brugers schedulede
+    # opgaver. RUNNEREN (get_due_scheduled_tasks) er bevidst U-scopet — den skal fyre
+    # ALLE forfaldne tasks; det er kun den Jarvis-kaldbare LÆSER der scopes.
+    from core.identity.workspace_context import current_user_id as _uid
+    _current_uid = _uid()
     with connect() as conn:
         _ensure_scheduled_tasks_table(conn)
-        rows = conn.execute(
-            """
-            SELECT * FROM scheduled_tasks
-            ORDER BY run_at ASC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
+        if _current_uid:
+            rows = conn.execute(
+                """
+                SELECT * FROM scheduled_tasks
+                WHERE scheduled_for_user_id = ?
+                   OR scheduled_for_user_id IS NULL OR scheduled_for_user_id = ''
+                ORDER BY run_at ASC
+                LIMIT ?
+                """,
+                (_current_uid, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM scheduled_tasks ORDER BY run_at ASC LIMIT ?",
+                (limit,),
+            ).fetchall()
     return [_scheduled_task_from_row(r) for r in rows]
 
 
@@ -29747,12 +29761,26 @@ def get_latest_cognitive_chronicle_entry() -> dict[str, object] | None:
 
 
 def list_cognitive_chronicle_entries(*, limit: int = 10) -> list[dict[str, object]]:
+    # PRIVATLIVS-GUARD (multi-user northstar): scope til den aktuelle bruger som
+    # dream/initiative-læserne — NULL relevant_to_users = generel Jarvis-tilstand
+    # (synlig for alle), ellers kun entries der nævner brugeren. Stopper read_chronicles
+    # i at lække en andens private chronicle på tværs.
+    from core.identity.workspace_context import current_user_id as _uid
+    _current_uid = _uid()
     with connect() as conn:
         _ensure_cognitive_chronicle_entries_table(conn)
-        rows = conn.execute(
-            "SELECT * FROM cognitive_chronicle_entries ORDER BY created_at DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
+        if _current_uid:
+            rows = conn.execute(
+                "SELECT * FROM cognitive_chronicle_entries "
+                "WHERE relevant_to_users IS NULL OR relevant_to_users LIKE '%' || ? || '%' "
+                "ORDER BY created_at DESC LIMIT ?",
+                (_current_uid, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM cognitive_chronicle_entries ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
     return [
         {
             "entry_id": r["entry_id"],

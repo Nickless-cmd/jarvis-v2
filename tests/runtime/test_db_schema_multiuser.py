@@ -196,3 +196,22 @@ def test_existing_rows_have_null_defaults() -> None:
     ).fetchone()
     assert row[0] is None
     assert row[1] is None
+
+
+# ── SECURITY (15. jun): chronicle-læser scopet til bruger (relevant_to_users) ──
+
+def test_chronicle_reader_scopes_to_user(isolated_runtime, monkeypatch) -> None:
+    from core.runtime.db import (
+        connect, _ensure_cognitive_chronicle_entries_table,
+        list_cognitive_chronicle_entries,
+    )
+    import core.identity.workspace_context as wc
+    with connect() as c:
+        _ensure_cognitive_chronicle_entries_table(c)
+        c.execute("INSERT INTO cognitive_chronicle_entries (entry_id,period,narrative,relevant_to_users,created_at,updated_at) VALUES ('m','p','michelle-privat','1313','t','t')")
+        c.execute("INSERT INTO cognitive_chronicle_entries (entry_id,period,narrative,relevant_to_users,created_at,updated_at) VALUES ('b','p','bjorn-privat','1246','t','t')")
+        c.execute("INSERT INTO cognitive_chronicle_entries (entry_id,period,narrative,relevant_to_users,created_at,updated_at) VALUES ('g','p','general',NULL,'t','t')")
+    monkeypatch.setattr(wc, "current_user_id", lambda: "1246")  # Bjørn
+    ids = {r["entry_id"] for r in list_cognitive_chronicle_entries(limit=50)}
+    assert "b" in ids and "g" in ids       # egen + general (NULL)
+    assert "m" not in ids                   # ← Michelles private chronicle IKKE lækket

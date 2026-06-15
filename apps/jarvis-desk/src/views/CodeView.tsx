@@ -17,6 +17,7 @@ import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
+import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo } from '../lib/api'
 
 // Navngivne server-roots (matcher backend _allowed_roots). Owner: hele kodebasen
@@ -69,6 +70,11 @@ export function CodeView({
   const [trusted, setTrusted] = useState<boolean | null>(null)
   const [compactAt, setCompactAt] = useState(0)
   const [gitRefresh, setGitRefresh] = useState(0) // bumpes når et run slutter → GitChip gen-henter
+  // Trækbar bredde på hele fil-/preview-panelet (mod venstre). Bredere default
+  // end før (380→460) så preview-ruden ikke er knald-smal.
+  const codePanelW = useResizableWidth({
+    initial: 460, min: 300, max: 900, side: 'left', storageKey: 'jarvis-desk:code-panel-w',
+  })
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
 
   // Context-ring: hent autocompact-tærsklen (samme som chat).
@@ -350,9 +356,17 @@ export function CodeView({
         </div>
       </div>
       {config && filesOpen && ready && (
-        <div className="codeview-panel">
-          <CodePanel config={config} kind={kind} root={effRoot} />
-        </div>
+        <>
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            className={`codeview-panel-handle ${codePanelW.dragging ? 'dragging' : ''}`}
+            onMouseDown={codePanelW.startDrag}
+          />
+          <div className="codeview-panel" ref={codePanelW.ref} style={{ width: codePanelW.width }}>
+            <CodePanel config={config} kind={kind} root={effRoot} />
+          </div>
+        </>
       )}
     </div>
   )

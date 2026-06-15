@@ -1216,7 +1216,11 @@
 
 /* Code-mode fil-træ */
 .filetree { list-style: none; margin: 0; padding: 0 0 0 8px; font-size: 13px; }
-.filetree-file, .filetree-dir-row { display: flex; align-items: center; gap: 5px; padding: 3px 6px; cursor: pointer; border-radius: 4px; color: var(--fg-2); white-space: nowrap; }
+.filetree-file, .filetree-dir-row { display: flex; align-items: center; gap: 5px; padding: 3px 6px; cursor: pointer; border-radius: 4px; color: var(--fg-2); white-space: nowrap; overflow: hidden; }
+/* Lange filnavne afkortes med ellipsis i stedet for at fremtvinge en vandret
+ * scrollbar (Bjørn: "scroll bar er virkelig irriterende"). Ikonet beholder plads. */
+.filetree-file > svg, .filetree-dir-row > svg { flex: 0 0 auto; }
+.filetree-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .filetree-file:hover, .filetree-dir-row:hover { background: var(--bg-2); color: var(--fg-1); }
 .filetree-loading { padding: 8px; color: var(--fg-3); }
 .filetree-empty { padding: 8px; color: var(--fg-3); font-size: 12px; }
@@ -1234,7 +1238,13 @@
 .terminalpane { width: 100%; height: 100%; }
 .terminalpane .xterm { height: 100%; }
 .codepanel-body { display: flex; flex: 1; min-height: 0; }
-.codepanel-tree { width: 200px; overflow: auto; border-right: 1px solid var(--line); padding: 6px 0; }
+.codepanel-tree { width: 200px; flex: 0 0 auto; overflow: auto; padding: 6px 0; }
+/* Trækbart håndtag mellem fil-træ og fil-visning. */
+.codepanel-handle {
+  width: 5px; flex: 0 0 auto; cursor: col-resize; background: transparent;
+  border-right: 1px solid var(--line); transition: background 0.12s;
+}
+.codepanel-handle:hover, .codepanel-handle.dragging { background: var(--accent); border-right-color: var(--accent); }
 .codepanel-view { flex: 1; overflow: auto; padding: 10px; min-width: 0; }
 .codepanel-filename { font-size: 12px; color: var(--fg-3); margin-bottom: 6px; }
 .codepanel-content { font-size: 12.5px; white-space: pre; overflow-x: auto; color: #c8d2dc; margin: 0; }
@@ -1246,8 +1256,25 @@
 .codeview-toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
 .codeview-toolbar-label { color: var(--fg-3); }
 .codeview-toolbar select { background: var(--bg-2); color: var(--fg-1); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font-size: 12.5px; }
-.codeview-panel { width: 380px; border-left: 1px solid var(--line); min-height: 0; }
+.codeview-panel { width: 460px; flex: 0 0 auto; border-left: 1px solid var(--line); min-height: 0; }
+/* Trækbart håndtag i venstre kant af fil-/preview-panelet. */
+.codeview-panel-handle {
+  width: 5px; flex: 0 0 auto; cursor: col-resize; background: transparent;
+  border-left: 1px solid var(--line); transition: background 0.12s;
+}
+.codeview-panel-handle:hover, .codeview-panel-handle.dragging { background: var(--accent); border-left-color: var(--accent); }
 .codeview .transcript { flex: 1 1 auto; min-height: 0; }
+
+/* Tynde, diskrete scrollbarer i code-mode-panelerne (Bjørn: default-baren er
+ * for fremtrædende). Kun webkit/chromium — Electron er chromium. */
+.codepanel-tree::-webkit-scrollbar, .codepanel-view::-webkit-scrollbar { width: 8px; height: 8px; }
+.codepanel-tree::-webkit-scrollbar-thumb, .codepanel-view::-webkit-scrollbar-thumb {
+  background: var(--line); border-radius: 4px;
+}
+.codepanel-tree::-webkit-scrollbar-thumb:hover, .codepanel-view::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-3);
+}
+.codepanel-tree::-webkit-scrollbar-track, .codepanel-view::-webkit-scrollbar-track { background: transparent; }
 
 /* Code-session mode-ikon i sidebar */
 .session-mode-icon { color: var(--accent); margin-right: 4px; flex: 0 0 auto; vertical-align: middle; }

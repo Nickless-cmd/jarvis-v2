@@ -51,16 +51,16 @@ function TreeNode({
   const [open, setOpen] = useState(false)
   if (entry.kind === 'file') {
     return (
-      <li className="filetree-file" onClick={() => onOpenFile(path)}>
-        <File size={13} /> {entry.name}
+      <li className="filetree-file" onClick={() => onOpenFile(path)} title={entry.name}>
+        <File size={13} /> <span className="filetree-name">{entry.name}</span>
       </li>
     )
   }
   return (
     <li className="filetree-dir">
-      <div className="filetree-dir-row" onClick={() => setOpen((o) => !o)}>
+      <div className="filetree-dir-row" onClick={() => setOpen((o) => !o)} title={entry.name}>
         {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        <Folder size={13} /> {entry.name}
+        <Folder size={13} /> <span className="filetree-name">{entry.name}</span>
       </div>
       {open && <FileTree config={config} kind={kind} root={root} path={path} onOpenFile={onOpenFile} />}
     </li>

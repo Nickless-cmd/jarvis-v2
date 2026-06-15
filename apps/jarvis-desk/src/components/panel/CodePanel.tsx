@@ -3,6 +3,7 @@ import { FileText, TerminalSquare } from 'lucide-react'
 import { FileTree } from './FileTree'
 import { TerminalPane } from './TerminalPane'
 import { CodeBlock } from '../rich/CodeBlock'
+import { useResizableWidth } from './useResizableWidth'
 import { getFile, type ApiConfig } from '../../lib/api'
 
 type PanelTab = 'files' | 'terminal'
@@ -26,6 +27,10 @@ export function CodePanel({
   // Terminal: workstation (lokal via bro) + container (server-side, owner-only).
   const canTerminal = true
   const [tab, setTab] = useState<PanelTab>('files')
+  // Trækbar fil-træ-bredde (mod højre). Vedholdende på tværs af genstart.
+  const tree = useResizableWidth({
+    initial: 200, min: 120, max: 420, side: 'right', storageKey: 'jarvis-desk:code-tree-w',
+  })
 
   const openFile = (rel: string) => {
     setOpenPath(rel)
@@ -69,9 +74,15 @@ export function CodePanel({
         </div>
       ) : (
         <div className="codepanel-body">
-          <div className="codepanel-tree">
+          <div className="codepanel-tree" ref={tree.ref} style={{ width: tree.width }}>
             <FileTree config={config} kind={kind} root={root} onOpenFile={openFile} />
           </div>
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            className={`codepanel-handle ${tree.dragging ? 'dragging' : ''}`}
+            onMouseDown={tree.startDrag}
+          />
           <div className="codepanel-view">
             {openPath ? (
               <>

@@ -12,6 +12,7 @@ dependencies = [
   "uvicorn[standard]>=0.30.0",
   "pydantic>=2.8.0",
   "ollamafreeapi>=0.1.4",
+  "bcrypt>=5.0",
 ]
 
 [tool.setuptools]

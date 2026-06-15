@@ -134,6 +134,13 @@ def set_quota_tier(user_id: str, tier: str) -> bool:
     return db.update_user_row(user_id, {"tier": tier, "updated_at": _now()})
 
 
+def set_language(user_id: str, language: str) -> bool:
+    """Sæt brugerens sprog-præference (da/en/auto). Self-scope via account-route."""
+    if language not in ("da", "en", "auto"):
+        raise ValueError(f"ukendt sprog '{language}'")
+    return db.update_user_row(user_id, {"language": language, "updated_at": _now()})
+
+
 def set_consent(user_id: str, *, data_processing: bool | None = None,
                 marketing: bool | None = None, blind_access: bool | None = None) -> bool:
     fields: dict[str, Any] = {"updated_at": _now()}

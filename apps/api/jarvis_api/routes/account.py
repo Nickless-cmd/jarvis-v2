@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Callable
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Body
 
 from core.identity import user_db
 from core.identity.workspace_context import current_context_snapshot
@@ -79,6 +79,23 @@ def build_quota_overview(
             "warn": bool(q.get("warn")),
         })
     return {"tier": tier or "free", "items": items}
+
+
+_VALID_LANGUAGES = ("da", "en", "auto")
+
+
+@router.patch("/language")
+async def account_set_language(payload: dict = Body(default={})) -> dict[str, Any]:
+    """Self-scope sprogvalg. Owner (uid='') har ingen bruger-række → ingen DB-skrivning
+    (owner bruger default-sproget)."""
+    lang = str((payload or {}).get("language") or "").strip().lower()
+    if lang not in _VALID_LANGUAGES:
+        return {"status": "error", "error": f"sprog skal være en af {_VALID_LANGUAGES}"}
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    if user_id:
+        await asyncio.to_thread(user_db.set_language, user_id, lang)
+    return {"status": "ok", "language": lang}
 
 
 @router.get("/quota")

@@ -38,12 +38,17 @@ def _ensure_users_table(conn: sqlite3.Connection) -> None:
             consent_data_processing INTEGER NOT NULL DEFAULT 0,
             consent_marketing INTEGER NOT NULL DEFAULT 0,
             consent_blind_access INTEGER NOT NULL DEFAULT 0,
+            language TEXT NOT NULL DEFAULT 'da',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             deleted_at TEXT
         )
         """
     )
+    # Idempotent kolonne-tilføjelse for ældre DB'er (language tilføjet 2026-06-15).
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if "language" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN language TEXT NOT NULL DEFAULT 'da'")
     conn.commit()
 
 
@@ -102,7 +107,7 @@ def get_user_row_by_workspace(workspace: str) -> dict[str, object] | None:
 _USER_UPDATABLE = {
     "email_hash", "email_enc", "name", "role", "workspace", "password_hash",
     "discord_id_enc", "totp_seed_enc", "email_verified", "tier",
-    "api_key_enc", "api_key_jti", "muted",
+    "api_key_enc", "api_key_jti", "muted", "language",
     "consent_data_processing", "consent_marketing", "consent_blind_access",
     "updated_at", "deleted_at",
 }

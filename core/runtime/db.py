@@ -108,6 +108,46 @@ def _ensure_multiuser_columns(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE {tbl} ADD COLUMN relevant_to_users TEXT")
 
 
+# SECURITY #154: streng per-bruger-scope på de resterende delte private tabeller.
+_SCOPE_154_TABLES = (
+    "private_brain_records",
+    "sensory_memories",
+    "autonomy_proposals",
+    "recurring_tasks",
+)
+
+
+def _ensure_user_scope_154(conn: sqlite3.Connection) -> None:
+    """Additivt: tilføj user_id-kolonne + BACKFILL eksisterende NULL-rækker til
+    owner (enbruger-æraens data er owner's). Idempotent: efter backfill er der
+    ingen NULL tilbage, så UPDATE rammer 0 rækker. Streng GDPR-scope (#154)."""
+    def _existing_cols(table: str) -> set[str]:
+        try:
+            return {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+        except Exception:
+            return set()
+
+    owner_uid = ""
+    try:
+        from core.identity.owner_resolver import get_owner_discord_id
+        owner_uid = (get_owner_discord_id() or "").strip()
+    except Exception:
+        owner_uid = ""
+
+    for tbl in _SCOPE_154_TABLES:
+        cols = _existing_cols(tbl)
+        if not cols:
+            continue  # ikke oprettet endnu
+        if "user_id" not in cols:
+            conn.execute(f"ALTER TABLE {tbl} ADD COLUMN user_id TEXT")
+        # Backfill: historiske NULL-rækker tilhører owner (enbruger-æra).
+        if owner_uid:
+            conn.execute(
+                f"UPDATE {tbl} SET user_id = ? WHERE user_id IS NULL OR user_id = ''",
+                (owner_uid,),
+            )
+
+
 def _ensure_skill_audit_table(conn: sqlite3.Connection) -> None:
     """Create skill_audit_log table for skills versionering (C1)."""
     conn.execute(
@@ -1218,6 +1258,8 @@ def init_db() -> None:
         _migrate_chronicle_table_add_affective_signature()
         # Multi-user attribution columns (task 2)
         _ensure_multiuser_columns(conn)
+        # SECURITY #154: streng per-bruger-scope + backfill på private tabeller
+        _ensure_user_scope_154(conn)
         _ensure_skill_audit_table(conn)
         _ensure_skill_usage_table(conn)
         conn.commit()
@@ -2105,7 +2147,8 @@ def _ensure_autonomy_proposals_table(conn: sqlite3.Connection) -> None:
             session_id TEXT NOT NULL DEFAULT '',
             run_id TEXT NOT NULL DEFAULT '',
             tick_id TEXT NOT NULL DEFAULT '',
-            canonical_key TEXT NOT NULL DEFAULT ''
+            canonical_key TEXT NOT NULL DEFAULT '',
+            user_id TEXT
         )
         """
     )
@@ -2316,18 +2359,20 @@ def create_autonomy_proposal(
     from datetime import UTC, datetime as _dt
     now = _dt.now(UTC).isoformat()
     payload_str = _json.dumps(payload or {}, ensure_ascii=False, sort_keys=True)
+    from core.services.user_scope import scope_uid
     with connect() as conn:
         conn.execute(
             """
             INSERT OR IGNORE INTO autonomy_proposals (
                 proposal_id, kind, title, rationale, payload_json, status,
                 created_at, updated_at, created_by, session_id, run_id,
-                tick_id, canonical_key
-            ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)
+                tick_id, canonical_key, user_id
+            ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 proposal_id, kind, title, rationale, payload_str,
                 now, now, created_by, session_id, run_id, tick_id, canonical_key,
+                scope_uid() or None,
             ),
         )
         conn.commit()
@@ -2344,9 +2389,14 @@ def list_autonomy_proposals(
     kind: str | None = None,
     limit: int = 50,
 ) -> list[dict[str, object]]:
+    from core.services.user_scope import scope_uid
     query = "SELECT * FROM autonomy_proposals"
     params: list = []
     where: list[str] = []
+    _uid = scope_uid()
+    if _uid:
+        where.append("user_id = ?")  # #154: kun egne forslag
+        params.append(_uid)
     if status:
         where.append("status = ?")
         params.append(status)
@@ -2363,6 +2413,9 @@ def list_autonomy_proposals(
 
 
 def get_autonomy_proposal(proposal_id: str) -> dict[str, object] | None:
+    # Bevidst UScopet: fetch-by-unik-id i approval/execution-pipelinen (kører på
+    # tværs af kontekster). Enumererings-leaket lukkes af list_autonomy_proposals;
+    # uden list kan en bruger ikke gætte en andens proposal_id.
     with connect() as conn:
         row = conn.execute(
             "SELECT * FROM autonomy_proposals WHERE proposal_id = ?",
@@ -29185,7 +29238,8 @@ def _ensure_private_brain_records_table(conn: sqlite3.Connection) -> None:
             salience REAL NOT NULL DEFAULT 1.0,
             domain TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            user_id TEXT
         )
         """
     )
@@ -29230,6 +29284,7 @@ def insert_private_brain_record(
     created_at: str,
     domain: str = "",
 ) -> dict[str, object]:
+    from core.services.user_scope import scope_uid
     with connect() as conn:
         _ensure_private_brain_records_table(conn)
         conn.execute(
@@ -29237,13 +29292,13 @@ def insert_private_brain_record(
             INSERT OR IGNORE INTO private_brain_records
                 (record_id, record_type, layer, session_id, run_id,
                  focus, summary, detail, source_signals, confidence,
-                 status, domain, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
+                 status, domain, created_at, updated_at, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
             """,
             (
                 record_id, record_type, layer, session_id, run_id,
                 focus, summary, detail, source_signals, confidence,
-                domain, created_at, created_at,
+                domain, created_at, created_at, scope_uid() or None,
             ),
         )
         conn.commit()
@@ -29256,10 +29311,15 @@ def list_private_brain_records(
     session_id: str | None = None,
     status: str | None = None,
 ) -> list[dict[str, object]]:
+    from core.services.user_scope import scope_uid
     with connect() as conn:
         _ensure_private_brain_records_table(conn)
         clauses = []
         params: list[object] = []
+        _uid = scope_uid()
+        if _uid:
+            clauses.append("user_id = ?")  # #154: kun egne private-brain-rækker
+            params.append(_uid)
         if session_id:
             clauses.append("session_id = ?")
             params.append(session_id)
@@ -29297,12 +29357,20 @@ def update_private_brain_record_status(
 
 
 def get_private_brain_record(record_id: str) -> dict[str, object] | None:
+    from core.services.user_scope import scope_uid
+    _uid = scope_uid()
     with connect() as conn:
         _ensure_private_brain_records_table(conn)
-        row = conn.execute(
-            "SELECT * FROM private_brain_records WHERE record_id = ?",
-            (record_id,),
-        ).fetchone()
+        if _uid:
+            row = conn.execute(
+                "SELECT * FROM private_brain_records WHERE record_id = ? AND user_id = ?",
+                (record_id, _uid),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT * FROM private_brain_records WHERE record_id = ?",
+                (record_id,),
+            ).fetchone()
     if row is None:
         return None
     return _private_brain_record_from_row(row)
@@ -29345,12 +29413,22 @@ def get_salient_private_brain_records(
     threshold: float = 0.3, limit: int = 20
 ) -> list[dict[str, object]]:
     """Return active records with salience >= threshold, ordered by salience desc."""
+    from core.services.user_scope import scope_uid
+    _uid = scope_uid()
     with connect() as conn:
         _ensure_private_brain_records_table(conn)
-        rows = conn.execute(
-            "SELECT * FROM private_brain_records WHERE status = 'active' AND salience >= ? ORDER BY salience DESC LIMIT ?",
-            (threshold, limit),
-        ).fetchall()
+        if _uid:
+            rows = conn.execute(
+                "SELECT * FROM private_brain_records WHERE status = 'active' AND salience >= ? "
+                "AND user_id = ? ORDER BY salience DESC LIMIT ?",
+                (threshold, _uid, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM private_brain_records WHERE status = 'active' AND salience >= ? "
+                "ORDER BY salience DESC LIMIT ?",
+                (threshold, limit),
+            ).fetchall()
     return [_private_brain_record_from_row(r) for r in rows]
 
 

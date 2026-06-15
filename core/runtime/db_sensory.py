@@ -20,6 +20,12 @@ from core.runtime.db import connect
 _VALID_MODALITIES = {"visual", "audio", "atmosphere", "mixed"}
 
 
+def _scope() -> str:
+    """Bruger-id til streng per-bruger-scope (#154). "" = ingen scope (fallback)."""
+    from core.services.user_scope import scope_uid
+    return scope_uid()
+
+
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
@@ -34,7 +40,8 @@ def _ensure_sensory_memories_table(conn: sqlite3.Connection) -> None:
             content TEXT NOT NULL DEFAULT '',
             embedding TEXT,
             mood_tone TEXT,
-            metadata_json TEXT NOT NULL DEFAULT '{}'
+            metadata_json TEXT NOT NULL DEFAULT '{}',
+            user_id TEXT
         )
         """
     )
@@ -69,9 +76,9 @@ def insert_sensory_memory(
         _ensure_sensory_memories_table(conn)
         conn.execute(
             """INSERT INTO sensory_memories
-               (id, timestamp, modality, content, embedding, mood_tone, metadata_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (memory_id, ts, modality, content, emb_str, mood_tone, meta_str),
+               (id, timestamp, modality, content, embedding, mood_tone, metadata_json, user_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (memory_id, ts, modality, content, emb_str, mood_tone, meta_str, _scope() or None),
         )
     return {
         "id": memory_id,
@@ -107,6 +114,10 @@ def list_sensory_memories(
 ) -> list[dict[str, object]]:
     clauses: list[str] = []
     params: list[object] = []
+    _uid = _scope()
+    if _uid:
+        clauses.append("user_id = ?")
+        params.append(_uid)
     if modality:
         clauses.append("modality = ?")
         params.append(modality)
@@ -140,6 +151,10 @@ def search_sensory_memories(
     like = f"%{query.strip()}%"
     clauses = ["(content LIKE ? OR mood_tone LIKE ?)"]
     params: list[object] = [like, like]
+    _uid = _scope()
+    if _uid:
+        clauses.append("user_id = ?")
+        params.append(_uid)
     if modality:
         clauses.append("modality = ?")
         params.append(modality)
@@ -155,24 +170,33 @@ def search_sensory_memories(
 
 
 def count_sensory_memories(*, modality: str | None = None) -> int:
+    clauses: list[str] = []
+    params: list[object] = []
+    _uid = _scope()
+    if _uid:
+        clauses.append("user_id = ?")
+        params.append(_uid)
+    if modality:
+        clauses.append("modality = ?")
+        params.append(modality)
+    where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
     with connect() as conn:
         _ensure_sensory_memories_table(conn)
-        if modality:
-            row = conn.execute(
-                "SELECT COUNT(*) AS n FROM sensory_memories WHERE modality = ?",
-                (modality,),
-            ).fetchone()
-        else:
-            row = conn.execute(
-                "SELECT COUNT(*) AS n FROM sensory_memories"
-            ).fetchone()
+        row = conn.execute(f"SELECT COUNT(*) AS n FROM sensory_memories{where}", params).fetchone()
     return int(row["n"] if row else 0)
 
 
 def get_sensory_memory(memory_id: str) -> dict[str, object] | None:
+    _uid = _scope()
     with connect() as conn:
         _ensure_sensory_memories_table(conn)
-        row = conn.execute(
-            "SELECT * FROM sensory_memories WHERE id = ?", (memory_id,)
-        ).fetchone()
+        if _uid:
+            row = conn.execute(
+                "SELECT * FROM sensory_memories WHERE id = ? AND user_id = ?",
+                (memory_id, _uid),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT * FROM sensory_memories WHERE id = ?", (memory_id,)
+            ).fetchone()
     return _row_to_dict(row) if row else None

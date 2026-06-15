@@ -38,7 +38,8 @@ def _ensure_table() -> None:
                 last_fired_at TEXT NOT NULL DEFAULT '',
                 fire_count INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                user_id TEXT
             )
             """
         )
@@ -66,15 +67,21 @@ def _row_to_dict(row) -> dict:
     }
 
 
+def _scope() -> str:
+    """Bruger-id til streng per-bruger-scope (#154). "" = ingen scope (fallback)."""
+    from core.services.user_scope import scope_uid
+    return scope_uid()
+
+
 def _create(*, task_id: str, focus: str, source: str, interval_minutes: int, next_fire_at: str, now: str) -> None:
     with runtime_db.connect() as conn:
         conn.execute(
             """
             INSERT INTO recurring_tasks
-              (task_id, focus, source, status, interval_minutes, next_fire_at, created_at, updated_at)
-            VALUES (?, ?, ?, 'active', ?, ?, ?, ?)
+              (task_id, focus, source, status, interval_minutes, next_fire_at, created_at, updated_at, user_id)
+            VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?)
             """,
-            (task_id, focus, source, interval_minutes, next_fire_at, now, now),
+            (task_id, focus, source, interval_minutes, next_fire_at, now, now, _scope() or None),
         )
         conn.commit()
 
@@ -104,26 +111,53 @@ def _advance(task_id: str, interval_minutes: int, now: datetime) -> None:
 
 
 def _cancel(task_id: str, now_iso: str) -> bool:
+    # Bruger-vendt: et medlem må ikke kunne annullere en andens task.
+    uid = _scope()
     with runtime_db.connect() as conn:
-        cur = conn.execute(
-            "UPDATE recurring_tasks SET status = 'cancelled', updated_at = ? WHERE task_id = ? AND status != 'cancelled'",
-            (now_iso, task_id),
-        )
+        if uid:
+            cur = conn.execute(
+                "UPDATE recurring_tasks SET status = 'cancelled', updated_at = ? "
+                "WHERE task_id = ? AND status != 'cancelled' AND user_id = ?",
+                (now_iso, task_id, uid),
+            )
+        else:
+            cur = conn.execute(
+                "UPDATE recurring_tasks SET status = 'cancelled', updated_at = ? "
+                "WHERE task_id = ? AND status != 'cancelled'",
+                (now_iso, task_id),
+            )
         conn.commit()
         return cur.rowcount > 0
 
 
 def _list(limit: int = 50) -> list[dict]:
+    # Bruger-vendt liste → kun egne tasks.
+    uid = _scope()
     with runtime_db.connect() as conn:
-        rows = conn.execute(
-            "SELECT * FROM recurring_tasks ORDER BY created_at DESC LIMIT ?", (limit,)
-        ).fetchall()
+        if uid:
+            rows = conn.execute(
+                "SELECT * FROM recurring_tasks WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+                (uid, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM recurring_tasks ORDER BY created_at DESC LIMIT ?", (limit,)
+            ).fetchall()
     return [_row_to_dict(r) for r in rows]
 
 
 def _get_one(task_id: str) -> dict | None:
+    uid = _scope()
     with runtime_db.connect() as conn:
-        row = conn.execute("SELECT * FROM recurring_tasks WHERE task_id = ?", (task_id,)).fetchone()
+        if uid:
+            row = conn.execute(
+                "SELECT * FROM recurring_tasks WHERE task_id = ? AND user_id = ?",
+                (task_id, uid),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT * FROM recurring_tasks WHERE task_id = ?", (task_id,)
+            ).fetchone()
     return _row_to_dict(row) if row else None
 
 

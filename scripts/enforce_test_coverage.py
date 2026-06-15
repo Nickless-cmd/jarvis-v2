@@ -31,6 +31,11 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/runtime/db.py": "tests/runtime/test_db_schema_multiuser.py",
     "core/runtime/db_users.py": "tests/test_user_db.py",
     "core/eventbus/events.py": "tests/test_learning_capture_wiring.py",
+    # #154 per-bruger DB-scope — isolations-tests samlet i test_user_scope_154.py.
+    "core/runtime/db_sensory.py": "tests/test_user_scope_154.py",
+    "core/services/recurring_tasks.py": "tests/test_user_scope_154.py",
+    "core/services/user_scope.py": "tests/test_user_scope_154.py",
+    "core/services/workspace_crypto.py": "tests/test_workspace_cutover.py",
     "core/services/dream_hypothesis_generator.py": "tests/runtime/test_db_schema_multiuser.py",
     # Group 4: permission scope filters — tests live in tests/multi_user/
     # Mapping added 2026-05-28.

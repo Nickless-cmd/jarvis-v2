@@ -128,19 +128,23 @@ def _model_is_available(tag_names: list[str], model: str) -> bool:
 
 
 def _call_local_ollama(prompt: str) -> dict | None:
-    """Direct local Ollama call — for personal/intimate jobs that must not leak.
+    """Ollama-kald for personal/intimate brain-jobs (summaries + contradiction).
 
-    Fail-fast (2026-06-15): tjek at chat-modellen FAKTISK er pullet på hosten før
-    kaldet. Tidligere bad daemonen om en model der ikke fandtes (fx
-    qwen2.5:7b-instruct) og hang i 120s → gentagne timeouts i journalen. Findes
-    ingen lokal chat-model, springes jobbet rent over (intime jobs må ikke leake
-    til cloud-modeller), med ÉN klar advarsel om hvad der mangler."""
+    Model vælges af provider-router "local"-lane (fallback qwen2.5:7b-instruct).
+    PRIVATLIVS-NOTE (ejer-beslutning 2026-06-15): lanen må pege på en cloud-model
+    (fx deepseek-v4-flash:cloud) — ejeren har accepteret at intime summaries går
+    til en provider mod hurtigere/stabil drift. Vil man holde det 100% lokalt:
+    sæt local-lanen til en pullet lokal model (1070'eren kan køre 7B-q4).
+
+    Robusthed (2026-06-15): tjek model-tilgængelighed før kald (undgå 120s-hæng på
+    manglende model) + 1 retry på timeout (transient cloud-langsomhed gav ~4
+    fejl/dag)."""
     try:
         import httpx
         from core.services.semantic_memory import _ollama_base_url
         base = _ollama_base_url()
         model = _resolve_local_chat_model() or "qwen2.5:7b-instruct"
-        # Verificér model-tilgængelighed (kort timeout) — undgå 120s-hæng.
+        # Verificér model-tilgængelighed (kort timeout) — undgå hæng på manglende model.
         try:
             tags = httpx.get(f"{base}/api/tags", timeout=5.0).json().get("models") or []
             available = [m.get("name") for m in tags]
@@ -148,28 +152,34 @@ def _call_local_ollama(prompt: str) -> dict | None:
             available = []
         if available and not _model_is_available(available, model):
             logger.warning(
-                "local ollama: chat-model '%s' ikke pullet på hosten (har: %s) — "
-                "springer intimt summary-job over. Kør `ollama pull <lokal-chat-model>`.",
+                "ollama: chat-model '%s' ikke tilgængelig (har: %s) — springer "
+                "brain-job over. Pull modellen eller ret local-lanen.",
                 model, available,
             )
             return None
-        resp = httpx.post(
-            f"{base}/api/chat",
-            json={
-                "model": model,
-                "messages": [{"role": "user", "content": prompt}],
-                "stream": False,
-                "format": "json",
-            },
-            timeout=60.0,
-        )
-        if resp.status_code != 200:
-            logger.warning("local ollama HTTP %s", resp.status_code)
-            return None
-        text = str((resp.json().get("message") or {}).get("content") or "")
-        return _parse_json_loose(text)
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "format": "json",
+        }
+        last_exc: Exception | None = None
+        for attempt in range(2):  # 1 forsøg + 1 retry på transient timeout
+            try:
+                resp = httpx.post(f"{base}/api/chat", json=payload, timeout=60.0)
+                if resp.status_code != 200:
+                    logger.warning("ollama HTTP %s (forsøg %d)", resp.status_code, attempt + 1)
+                    return None
+                text = str((resp.json().get("message") or {}).get("content") or "")
+                return _parse_json_loose(text)
+            except httpx.TimeoutException as exc:
+                last_exc = exc
+                logger.warning("ollama timeout (forsøg %d/2) på '%s'", attempt + 1, model)
+                continue
+        logger.warning("ollama call gav op efter retry: %s", last_exc)
+        return None
     except Exception as exc:
-        logger.warning("local ollama call failed: %s", exc)
+        logger.warning("ollama call failed: %s", exc)
         return None
 
 

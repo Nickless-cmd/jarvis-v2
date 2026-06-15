@@ -55,3 +55,34 @@ async def account_me() -> dict[str, Any]:
         get_user=user_db.get_user,
         get_tier=quota_store.get_tier,
     )
+
+
+_QUOTA_KINDS = ("chat", "code", "cowork", "agent")
+
+
+def build_quota_overview(
+    user_id: str,
+    *,
+    check_quota: Callable[[str, str], dict[str, Any]],
+) -> dict[str, Any]:
+    """Self-scope kvote-overblik: tier + forbrug pr. type. Ren — testbar uden HTTP."""
+    items: list[dict[str, Any]] = []
+    tier = ""
+    for kind in _QUOTA_KINDS:
+        q = check_quota(user_id, kind) or {}
+        tier = tier or str(q.get("tier") or "")
+        items.append({
+            "kind": kind,
+            "used": int(q.get("used") or 0),
+            "limit": q.get("limit"),  # None = ubegrænset
+            "remaining": q.get("remaining"),
+            "warn": bool(q.get("warn")),
+        })
+    return {"tier": tier or "free", "items": items}
+
+
+@router.get("/quota")
+async def account_quota() -> dict[str, Any]:
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    return await asyncio.to_thread(build_quota_overview, user_id, check_quota=quota_store.check_quota)

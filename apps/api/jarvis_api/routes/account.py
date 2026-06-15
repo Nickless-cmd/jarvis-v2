@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Callable
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, HTTPException
 
 from core.identity import user_db
 from core.identity.workspace_context import current_context_snapshot
@@ -251,6 +251,66 @@ async def account_set_computer_use(payload: dict = Body(default={})) -> dict[str
     user_id = snap.get("user_id") or ""
     from core.services.computer_use_policy import set_computer_use
     return await asyncio.to_thread(set_computer_use, user_id, enabled)
+
+
+def build_jarvis_overview(*, lane_targets: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+    """Model pr. lane (§4.2). Read-only projektion af provider-router-targets."""
+    targets = lane_targets() or {}
+    lanes = []
+    for lane, t in targets.items():
+        lanes.append({
+            "lane": lane,
+            "provider": t.get("provider"),
+            "model": t.get("model"),
+            "active": bool(t.get("active")),
+            "credentials_ready": bool(t.get("credentials_ready")),
+        })
+    return {"lanes": lanes}
+
+
+@router.get("/jarvis")
+async def account_jarvis() -> dict[str, Any]:
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    if _current_role(user_id) != "owner":
+        raise HTTPException(status_code=403, detail="Jarvis-indstillinger er kun for owner")
+    from core.runtime.provider_router import (
+        list_provider_router_targets,
+        provider_router_lane_targets,
+    )
+
+    def _assemble() -> dict[str, Any]:
+        ov = build_jarvis_overview(lane_targets=provider_router_lane_targets)
+        opts = list_provider_router_targets(lane="visible")
+        ov["visible_options"] = [
+            {"provider": o.get("provider"), "model": o.get("model")} for o in opts
+        ]
+        return ov
+
+    return await asyncio.to_thread(_assemble)
+
+
+@router.post("/jarvis/visible-model")
+async def account_set_visible_model(payload: dict = Body(default={})) -> dict[str, Any]:
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    if _current_role(user_id) != "owner":
+        raise HTTPException(status_code=403, detail="model-valg er kun for owner")
+    provider = str((payload or {}).get("provider") or "").strip()
+    model = str((payload or {}).get("model") or "").strip()
+    if not provider or not model:
+        return {"status": "error", "error": "provider og model er påkrævet"}
+    import core.runtime.provider_router as pr
+
+    def _apply() -> dict[str, Any]:
+        opts = pr.list_provider_router_targets(lane="visible")
+        valid = any(str(o.get("provider")) == provider and str(o.get("model")) == model for o in opts)
+        if not valid:
+            return {"status": "error", "error": "ukendt provider/model for visible-lane"}
+        pr.select_main_agent_target(provider=provider, model=model)
+        return {"status": "ok", "provider": provider, "model": model}
+
+    return await asyncio.to_thread(_apply)
 
 
 @router.get("/quota")

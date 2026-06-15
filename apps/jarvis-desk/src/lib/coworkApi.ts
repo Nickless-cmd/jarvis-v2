@@ -195,3 +195,16 @@ export async function deleteCoworkTodo(config: ApiConfig, id: string): Promise<v
 export async function setCoworkTodoExpiry(config: ApiConfig, id: string, expiresAt: string | null): Promise<void> {
   await apiFetch(config, `/cowork/todos/${id}/expiry`, { method: 'POST', body: { expires_at: expiresAt } })
 }
+
+export interface QuotaItem {
+  kind: 'chat' | 'code' | 'cowork' | 'agent'
+  used: number
+  limit: number | null
+  remaining: number | null
+  warn: boolean
+}
+export interface QuotaOverview { tier: string; items: QuotaItem[] }
+
+export async function getAccountQuota(config: ApiConfig): Promise<QuotaOverview> {
+  return apiFetch<QuotaOverview>(config, '/account/quota')
+}

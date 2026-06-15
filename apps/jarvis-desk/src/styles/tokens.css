@@ -23,6 +23,38 @@
   --radius-lg: 12px;
 }
 
+/* Lyst tema — invertér baggrunds-/forgrunds-rampen. */
+:root[data-theme="light"] {
+  --bg-0: #f4f6fa;
+  --bg-1: #ffffff;
+  --bg-2: #eef1f6;
+  --bg-3: #e3e8f0;
+  --bg-4: #d6dce6;
+  --line: #d8dee8;
+  --fg-1: #1a212d;
+  --fg-2: #46505f;
+  --fg-3: #6b7480;
+  --accent: #1f9d63;
+  --user-bubble: #e6edf6;
+  --code-bg: #f0f2f6;
+}
+
+/* Høj kontrast — maksimal læsbarhed. */
+:root[data-theme="contrast"] {
+  --bg-0: #000000;
+  --bg-1: #000000;
+  --bg-2: #0a0a0a;
+  --bg-3: #161616;
+  --bg-4: #222222;
+  --line: #5a5a5a;
+  --fg-1: #ffffff;
+  --fg-2: #eaeaea;
+  --fg-3: #c8c8c8;
+  --accent: #00ff95;
+  --user-bubble: #1a1a1a;
+  --code-bg: #0a0a0a;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body, #root {

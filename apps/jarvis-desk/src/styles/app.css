@@ -1387,6 +1387,10 @@
 .quota-fill { height: 100%; background: var(--accent, #5b8def); }
 .quota-row.warn .quota-fill { background: var(--danger, #e06c75); }
 .quota-row.warn .quota-num { color: var(--danger, #e06c75); }
+.theme-options { display: flex; gap: 8px; }
+.theme-btn { padding: 6px 14px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg-2); color: var(--fg-2); cursor: pointer; font-size: 13px; }
+.theme-btn.active { background: var(--bg-3); color: var(--fg-1); border-color: var(--accent); font-weight: 600; }
 .badge { padding: 1px 8px; border-radius: 10px; font-size: 11px; margin-left: 4px; }
 .badge-ok { background: #1d3a24; color: #6ee7a0; }
 .badge-warn { background: #3a2a1d; color: #e7b96e; }

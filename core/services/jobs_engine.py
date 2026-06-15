@@ -30,6 +30,25 @@ logger = logging.getLogger(__name__)
 _STORAGE_REL = "runtime/jobs_queue.json"
 _HANDLERS: dict[str, Callable[[dict[str, Any]], "JobResult | dict[str, Any]"]] = {}
 
+# Prune-on-save (2026-06-15): køen voksede ubegrænset (66k jobs, 99,5% færdige →
+# 48 MB JSON genskrevet hvert tick). Færdige jobs læses kun via list_jobs(limit≤50),
+# aldrig poll-by-id, så vi beholder alle ikke-terminale (pending/kørende) + de seneste
+# N terminale (ok/error) og dropper resten. Bounder filen.
+_TERMINAL_STATUSES = ("ok", "error", "completed", "failed")
+_KEEP_TERMINAL = 2000
+
+
+def _prune_completed_jobs(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    terminal = [j for j in items if str(j.get("status") or "") in _TERMINAL_STATUSES]
+    if len(terminal) <= _KEEP_TERMINAL:
+        return items
+    non_terminal = [j for j in items if str(j.get("status") or "") not in _TERMINAL_STATUSES]
+    terminal.sort(
+        key=lambda j: str(j.get("finished_at") or j.get("enqueued_at") or ""),
+        reverse=True,
+    )
+    return non_terminal + terminal[:_KEEP_TERMINAL]
+
 # 2026-05-17 perf cache: jobs_queue.json er ~16 MB. Uden cache koster hver
 # _load() ~235ms JSON-parse. Vi cacher det parsede resultat keyed på
 # (mtime_ns, size). _save() opdaterer cachen direkte, så vi aldrig
@@ -90,6 +109,7 @@ def _load() -> list[dict[str, Any]]:
 
 def _save(items: list[dict[str, Any]]) -> None:
     global _LOAD_CACHE_KEY, _LOAD_CACHE_ITEMS
+    items = _prune_completed_jobs(items)  # bound køen — undgå 48 MB-bloat
     path = _storage_path()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)

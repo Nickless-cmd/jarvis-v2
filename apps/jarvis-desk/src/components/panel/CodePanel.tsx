@@ -31,9 +31,9 @@ export function CodePanel({
     setOpenPath(rel)
     setContent('')
     setLang('')
-    // Container: repo-relativ 'root/rel'. Workstation: absolut sti 'root/rel' via bridge.
-    const full = `${root}/${rel}`
-    getFile(config, full, kind)
+    // `root` er navngivet server-root / workstation trusted folder; `rel` er rel
+    // inde i det root. Backend joiner og jail-tjekker.
+    getFile(config, root, rel, kind)
       .then((f) => { setContent(f.content); setLang(f.language || '') })
       .catch(() => { setContent('(kunne ikke læse fil)'); setLang('') })
   }

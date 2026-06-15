@@ -1,4 +1,8 @@
-"""Path-jailed GET /chat/file til preview-panelet i jarvis-desk."""
+"""Rolle-scopet GET /chat/file til preview-panelet i jarvis-desk.
+
+`root` er det navngivne server-root (owner: repo/jarvis-v2/workspace), `path`
+er relativt inde i det root. Path-jail forhindrer traversal ud af basen.
+"""
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
@@ -8,25 +12,49 @@ from apps.api.jarvis_api.app import app
 client = TestClient(app)
 
 
-def test_reads_whitelisted_doc():
+def test_reads_doc_under_repo_root():
     r = client.get(
         "/chat/file",
-        params={"path": "docs/superpowers/specs/2026-06-11-jarvis-desk-preview-panel-design.md"},
+        params={
+            "root": "repo",
+            "path": "docs/superpowers/specs/2026-06-11-jarvis-desk-preview-panel-design.md",
+        },
     )
     assert r.status_code == 200
     assert "Preview-panel" in r.json()["content"]
 
 
 def test_rejects_path_traversal():
-    r = client.get("/chat/file", params={"path": "../../etc/passwd"})
+    r = client.get("/chat/file", params={"root": "repo", "path": "../../etc/passwd"})
     assert r.status_code == 403
 
 
-def test_rejects_outside_whitelist():
-    r = client.get("/chat/file", params={"path": "/etc/hosts"})
+def test_rejects_unknown_root_name():
+    r = client.get("/chat/file", params={"root": "etc", "path": "hosts"})
     assert r.status_code == 403
 
 
-def test_404_for_missing_whitelisted():
-    r = client.get("/chat/file", params={"path": "docs/does-not-exist-xyz.md"})
+def test_404_for_missing_under_root():
+    r = client.get("/chat/file", params={"root": "repo", "path": "docs/does-not-exist-xyz.md"})
     assert r.status_code == 404
+
+
+def test_workstation_reads_via_operator_result_shape(monkeypatch):
+    # Ægte form: _run_operator_async pakker bro-svaret i {"status","result"};
+    # operator_read_file_async returnerer filindholdet som ren streng.
+    import apps.api.jarvis_api.routes.chat as chatmod
+
+    def fake_exec(name, args):
+        assert name == "operator_read_file"
+        assert args["path"] == "/home/bs/proj/main.py"
+        return {"status": "ok", "result": "print('hej')\n"}
+    monkeypatch.setattr(chatmod, "_operator_exec", fake_exec)
+
+    r = client.get(
+        "/chat/file",
+        params={"kind": "workstation", "root": "/home/bs/proj", "path": "main.py"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["content"] == "print('hej')\n"
+    assert body["language"] == "python"

@@ -26,7 +26,8 @@ export function ArtifactPanel({
     setFileData(null)
     setError(null)
     if (artifact?.kind === 'file' && artifact.filePath && config) {
-      getFile(config, artifact.filePath)
+      // Artifact-stier er repo-relative (specs/kode fra Jarvis) → 'repo'-root.
+      getFile(config, 'repo', artifact.filePath)
         .then((d) => setFileData({ content: d.content, language: d.language }))
         .catch(() => setError('Kunne ikke hente filen'))
     }

@@ -19,8 +19,15 @@ import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo } from '../lib/api'
 
-const OWNER_ROOTS = ['docs', 'workspace', 'core', 'apps', 'scripts'] as const
+// Navngivne server-roots (matcher backend _allowed_roots). Owner: hele kodebasen
+// (repo) + runtime-home (~/.jarvis-v2/) + eget workspace. Member: KUN eget workspace.
+const OWNER_ROOTS = ['repo', 'jarvis-v2', 'workspace'] as const
 const MEMBER_ROOTS = ['workspace'] as const
+
+// Pæne labels til root-vælgeren.
+const ROOT_LABELS: Record<string, string> = {
+  repo: 'Kodebase', 'jarvis-v2': 'Runtime (~/.jarvis-v2)', workspace: 'Mit workspace',
+}
 
 type WsKind = 'container' | 'workstation'
 type Role = 'owner' | 'member' | 'guest'
@@ -45,7 +52,9 @@ export function CodeView({
   const panel = usePanel()
   const isOwner = role === 'owner'
   const serverRoots = isOwner ? OWNER_ROOTS : MEMBER_ROOTS
-  const serverLabel = isOwner ? 'Server' : 'Mit workspace'
+  // Toggle-label: server-side vs egen computer. Det konkrete root (Kodebase/
+  // Runtime/Mit workspace) vises i selve root-vælgeren ved siden af.
+  const serverLabel = 'Server'
 
   // Husk sidste workspace-valg på tværs af genstart (kind/root/sti). Trust ligger
   // server-side; uden dette mistede man bare SELEKTIONEN og skulle re-vælge mappe.
@@ -201,10 +210,10 @@ export function CodeView({
       {kind === 'container' ? (
         serverRoots.length > 1 ? (
           <select value={root} onChange={(e) => setRoot(e.target.value)}>
-            {serverRoots.map((r) => <option key={r} value={r}>{r}</option>)}
+            {serverRoots.map((r) => <option key={r} value={r}>{ROOT_LABELS[r] ?? r}</option>)}
           </select>
         ) : (
-          <span className="codeview-toolbar-label">{serverRoots[0]}</span>
+          <span className="codeview-toolbar-label">{ROOT_LABELS[serverRoots[0]] ?? serverRoots[0]}</span>
         )
       ) : (
         <button type="button" className="codeview-pick" onClick={choosePath} title={wsPath || 'Vælg mappe'}>

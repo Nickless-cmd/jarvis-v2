@@ -23,7 +23,6 @@ from core.services.visible_runs import (
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 # ── Preview-panel: path-jailed fil-læsning (jarvis-desk) ──
-_FILE_ROOTS = ("docs", "workspace", "core", "apps", "scripts")
 _LANG_BY_EXT = {
     ".py": "python", ".ts": "typescript", ".tsx": "tsx", ".js": "javascript",
     ".json": "json", ".md": "markdown", ".css": "css", ".sh": "bash", ".txt": "text",
@@ -35,32 +34,81 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[4]
 
 
-@router.get("/file")
-async def chat_read_file(path: str = Query(...), kind: str = "container") -> dict:
-    """Læs en fil til preview-panelet. Blokerende fs/bro-kald offloades til tråd
-    (--workers 1 frys-fælde: ellers fryser hele API'et mens en fil læses)."""
-    import asyncio
-    return await asyncio.to_thread(_read_file_sync, path, kind)
+def _allowed_roots(role: str, user_id: str) -> dict[str, Path]:
+    """Navngivne server-side roots pr. rolle (spec file-tree-control 2026-06-15).
 
-
-def _read_file_sync(path: str, kind: str) -> dict:
-    """Container: path-jail til whitelisted rødder. Workstation: via operator-bridgen."""
-    if kind == "workstation":
-        res = _operator_exec("operator_read_file", {"path": path})
-        if res.get("status") != "ok":
-            raise HTTPException(status_code=502, detail=str(res.get("reason") or "operator-read fejlede"))
-        content = str(res.get("content") or res.get("text") or "")
-        ext = ("." + path.rsplit(".", 1)[-1]) if "." in path.rsplit("/", 1)[-1] else ""
-        return {"path": path, "content": content, "language": _LANG_BY_EXT.get(ext, "text")}
-
-    root = _repo_root()
-    candidate = (root / path).resolve()
+    owner: kodebasen (repo) + ~/.jarvis-v2/ + eget workspace.
+    member/guest: KUN eget workspace (må ALDRIG browse repoet eller andres data).
+    """
+    from core.runtime.config import JARVIS_HOME
+    from core.runtime.workspace_paths import workspace_dir
+    # Eget workspace kræver bruger-kontekst. Owner-egen-session (ingen uid) har
+    # ikke nødvendigvis en sat kontekst → spring workspace over hvis uresolverbart.
+    ws: Path | None = None
     try:
-        rel = candidate.relative_to(root)
-    except ValueError:
-        raise HTTPException(status_code=403, detail="uden for jail")
-    if not rel.parts or rel.parts[0] not in _FILE_ROOTS:
-        raise HTTPException(status_code=403, detail="ikke-whitelisted rod")
+        ws = workspace_dir(user_id or None).resolve()
+    except Exception:
+        ws = None
+    if (role or "").lower() == "owner":
+        roots = {
+            "repo": _repo_root().resolve(),
+            "jarvis-v2": Path(JARVIS_HOME).resolve(),
+        }
+        if ws is not None:
+            roots["workspace"] = ws
+        return roots
+    return {"workspace": ws} if ws is not None else {}
+
+
+def _resolve_role(uid: str) -> str:
+    """Rolle for request-brugeren. Ingen uid = owner-egen-session (default)."""
+    if not uid:
+        return "owner"
+    try:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(uid)
+        return (getattr(u, "role", "") or "guest") if u else "guest"
+    except Exception:
+        return "guest"
+
+
+@router.get("/file")
+async def chat_read_file(
+    path: str = Query(...), root: str = "", kind: str = "container",
+) -> dict:
+    """Læs en fil til preview-panelet. `root` er det navngivne server-root (owner:
+    repo/jarvis-v2/workspace, member: workspace); `path` er rel inde i det root.
+    Workstation: `root` = trusted folder (absolut), `path` = rel. Blokerende fs/bro-
+    kald offloades til tråd (--workers 1 frys-fælde)."""
+    import asyncio
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
+    role = _resolve_role(uid)
+    return await asyncio.to_thread(_read_file_sync, path, root, kind, role, uid)
+
+
+def _read_file_sync(
+    path: str, root: str, kind: str, role: str = "owner", uid: str = "",
+) -> dict:
+    """Container: navngivne rolle-scopede roots, path-jailed. Workstation: via broen."""
+    if kind == "workstation":
+        full = (root.rstrip("/") + "/" + path) if root else path
+        res = _operator_exec("operator_read_file", {"path": full})
+        if res.get("status") != "ok":
+            raise HTTPException(status_code=502, detail=str(res.get("error") or res.get("reason") or "operator-read fejlede"))
+        # _run_operator_async pakker bro-svaret i {"status","result"}.
+        # operator_read_file_async returnerer filindholdet som ren streng.
+        content = str(res.get("result") if res.get("result") is not None else "")
+        ext = ("." + full.rsplit(".", 1)[-1]) if "." in full.rsplit("/", 1)[-1] else ""
+        return {"path": full, "content": content, "language": _LANG_BY_EXT.get(ext, "text")}
+
+    roots = _allowed_roots(role, uid)
+    base = roots.get(root)
+    if base is None:
+        raise HTTPException(status_code=403, detail=f"root '{root}' ikke tilladt for rollen")
+    candidate = (base / path).resolve()
+    if not str(candidate).startswith(str(base)):
+        raise HTTPException(status_code=403, detail="path uden for jail")
     if not candidate.is_file():
         raise HTTPException(status_code=404, detail="ikke fundet")
     content = candidate.read_text(encoding="utf-8", errors="replace")
@@ -78,17 +126,21 @@ def _operator_exec(name: str, args: dict) -> dict:
 async def chat_tree(kind: str = "container", root: str = "", path: str = "") -> dict:
     """Mappe-listing til Code-mode fil-træ. Blokerende fs/bro-kald offloades til tråd
     (--workers 1 frys-fælde: ellers fryser hele API'et og tree timer ud for BEGGE
-    modes — observeret 2026-06-15)."""
+    modes — observeret 2026-06-15). Server-roots er rolle-scopede."""
     import asyncio
-    return await asyncio.to_thread(_tree_sync, kind, root, path)
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
+    role = _resolve_role(uid)
+    return await asyncio.to_thread(_tree_sync, kind, root, path, role, uid)
 
 
-def _tree_sync(kind: str, root: str, path: str) -> dict:
-    """Container: path-jailed til _FILE_ROOTS. Workstation: via operator-bridgen."""
+def _tree_sync(kind: str, root: str, path: str, role: str = "owner", uid: str = "") -> dict:
+    """Container: navngivne rolle-scopede roots, path-jailed. Workstation: via broen."""
     if kind == "container":
-        if root not in _FILE_ROOTS:
-            raise HTTPException(status_code=403, detail="root uden for jail")
-        base = (_repo_root() / root).resolve()
+        roots = _allowed_roots(role, uid)
+        base = roots.get(root)
+        if base is None:
+            raise HTTPException(status_code=403, detail=f"root '{root}' ikke tilladt for rollen")
         target = (base / path).resolve() if path else base
         if not str(target).startswith(str(base)):
             raise HTTPException(status_code=403, detail="path uden for jail")
@@ -105,10 +157,13 @@ def _tree_sync(kind: str, root: str, path: str) -> dict:
         full = (root.rstrip("/") + "/" + path).rstrip("/") if path else root
         res = _operator_exec("operator_list_dir", {"path": full})
         if res.get("status") != "ok":
-            raise HTTPException(status_code=502, detail=str(res.get("reason") or "operator-list fejlede"))
+            raise HTTPException(status_code=502, detail=str(res.get("error") or res.get("reason") or "operator-list fejlede"))
+        # _run_operator_async pakker bro-svaret i {"status","result"}.
+        # operator_list_dir_async returnerer en liste af {name, type, size} —
+        # type er "file"|"dir"|"symlink" (IKKE is_dir). Symlink behandles som fil.
         entries = [
-            {"name": e.get("name") or "", "kind": "dir" if e.get("is_dir") else "file"}
-            for e in (res.get("entries") or [])
+            {"name": e.get("name") or "", "kind": "dir" if e.get("type") == "dir" else "file"}
+            for e in (res.get("result") or [])
             if e.get("name") and not str(e.get("name")).startswith(".")
         ]
         return {"entries": entries}

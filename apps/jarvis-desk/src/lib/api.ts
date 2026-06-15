@@ -405,13 +405,17 @@ export async function getContextInfo(
   return apiFetch(config, '/chat/context-info')
 }
 
-/** Læs en fil til preview-panelet. Container: path-jailed. Workstation: via bridge. */
+/** Læs en fil til preview-panelet. `root` er navngivet server-root (owner:
+ *  repo/jarvis-v2/workspace, member: workspace) / workstation trusted folder;
+ *  `path` er rel inde i det root. */
 export async function getFile(
   config: ApiConfig,
+  root: string,
   path: string,
   kind: 'container' | 'workstation' = 'container',
 ): Promise<{ path: string; content: string; language: string }> {
-  return apiFetch(config, `/chat/file?path=${encodeURIComponent(path)}&kind=${encodeURIComponent(kind)}`)
+  const qs = `root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}&kind=${encodeURIComponent(kind)}`
+  return apiFetch(config, `/chat/file?${qs}`)
 }
 
 /** Code-mode terminal (§17), container-side: kør én kommando server-side i

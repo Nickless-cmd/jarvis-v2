@@ -57,3 +57,26 @@ def test_autonomy_isolation(isolated_runtime):
         assert {p["proposal_id"] for p in list_autonomy_proposals()} == {"pb"}
     with user_context(discord_id="userA"):
         assert {p["proposal_id"] for p in list_autonomy_proposals()} == {"pa"}
+
+
+def test_recurring_fires_in_owner_context(isolated_runtime, monkeypatch):
+    # #154-followup: en gentagen task affyrer i task-EJERENS kontekst, ikke owner.
+    import core.services.recurring_tasks as rt
+    import core.services.visible_runs as vr
+    from core.identity.user_db import add_user
+    from core.identity.workspace_context import current_user_id
+    u = add_user(email="rec@b.dk", name="R", password="hemmelig123",
+                 role="member", workspace="recws")
+    uid = u["user_id"]
+    rt._ensure_table()
+    with user_context(discord_id=uid):
+        rt._create(task_id="t1", focus="gør det", source="x", interval_minutes=60,
+                   next_fire_at="2000-01-01T00:00:00", now="2026-01-01T00:00:00")
+    captured = {}
+    def fake_run(*, message, session_id=None):
+        captured["uid"] = current_user_id()
+        captured["msg"] = message
+    monkeypatch.setattr(vr, "start_autonomous_run", fake_run)
+    rt._fire_due()
+    assert captured.get("uid") == uid       # kørte i ejerens kontekst
+    assert captured.get("msg") == "gør det"

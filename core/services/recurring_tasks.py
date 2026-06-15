@@ -53,6 +53,7 @@ def _ensure_table() -> None:
 
 
 def _row_to_dict(row) -> dict:
+    keys = row.keys() if hasattr(row, "keys") else []
     return {
         "task_id": row["task_id"],
         "focus": row["focus"],
@@ -64,6 +65,7 @@ def _row_to_dict(row) -> dict:
         "fire_count": row["fire_count"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
+        "user_id": (row["user_id"] if "user_id" in keys else None),
     }
 
 
@@ -242,21 +244,48 @@ def _fire_due() -> None:
         task_id = str(task["task_id"])
         focus = str(task["focus"])
         interval_minutes = int(task["interval_minutes"])
+        # #154-followup: affyr i task-EJERENS kontekst (ikke som owner), så et
+        # medlems gentagne task kører i medlemmets workspace + scopes til deres
+        # egne data. Bruger den offentlige hybrid-resolver (legacy + SQLite).
+        token = _enter_owner_context(str(task.get("user_id") or ""))
         try:
             # Use autonomous run as the PRIMARY execution path.
             # Push to initiative queue only as a fallback signal — but do NOT
             # let both paths produce a user-visible message independently.
-            # Dedup: if start_autonomous_run succeeds, initiative is redundant
-            # for user-facing delivery, so we skip it to avoid double messages.
             start_autonomous_run(message=focus, session_id=None)
             _advance(task_id, interval_minutes, now)
             logger.info(
-                "recurring_tasks: fired %s as autonomous run (every %dm)",
-                task_id,
-                interval_minutes,
+                "recurring_tasks: fired %s as autonomous run (every %dm) user=%s",
+                task_id, interval_minutes, task.get("user_id") or "-",
             )
         except Exception as exc:
             logger.error("recurring_tasks: error firing %s: %s", task_id, exc)
+        finally:
+            _exit_owner_context(token)
+
+
+def _enter_owner_context(user_id: str):
+    """Sæt workspace-konteksten til task-ejeren for affyringen. Returnerer en
+    reset-token (eller None hvis ingen kontekst sættes). Fail-soft."""
+    if not user_id:
+        return None
+    try:
+        from core.identity.workspace_context import set_context
+        from core.runtime.workspace_paths import workspace_dir
+        ws = workspace_dir(user_id).name  # hybrid resolver (legacy + SQLite)
+        return set_context(workspace_name=ws, user_id=user_id, user_display_name="")
+    except Exception:
+        return None
+
+
+def _exit_owner_context(token) -> None:
+    if token is None:
+        return
+    try:
+        from core.identity.workspace_context import reset_context
+        reset_context(token)
+    except Exception:
+        pass
 
 
 def _poller_loop() -> None:

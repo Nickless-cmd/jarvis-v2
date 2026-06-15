@@ -122,6 +122,10 @@ KNOWN_MAPPINGS: dict[str, str] = {
     # Cowork command center Plan 2 — interaktive todo-helpers.
     # Mapping added 2026-06-15.
     "core/services/agent_todos.py": "tests/test_agent_todos_cowork.py",
+    # Liveness-audit 2026-06-15 — un-integrerede ports (doc-only deprecering).
+    "core/services/epistemics.py": "tests/test_liveness_deprecations.py",
+    "core/services/missions_pipeline.py": "tests/test_liveness_deprecations.py",
+    "core/services/negotiation_pipeline.py": "tests/test_liveness_deprecations.py",
 }
 
 

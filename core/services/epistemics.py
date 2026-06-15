@@ -17,6 +17,14 @@ v2-tilpasning: SQLite (cognitive_epistemic_claims + cognitive_wrongness)
 i stedet for JSONL workspace-file. Danske stance-markører tilgængelige.
 
 LLM-path: ingen. Ren klassifikations-logik + persistence.
+
+STATUS 2026-06-15 (liveness-audit): UN-INTEGRERET PORT. reconcile_claim() har
+ingen live-callers — cognitive_epistemic_claims/_wrongness er tomme. Det er en
+GENUIN distinkt evne (claim-niveau sandheds-kalibrering m. lessons), modsat det
+aktive runtime_self_review_outcomes (run-niveau). Kræver ægte integration:
+claim-kilde (Jarvis' faktiske påstande) + outcome-parring — ikke et trivielt hook
+som gut. Bevaret, IKKE wired; kandidat til en rigtig integrations-opgave hvis
+ønsket. Se docs/audits/2026-06-15-cognitive-liveness-audit.md.
 """
 from __future__ import annotations
 

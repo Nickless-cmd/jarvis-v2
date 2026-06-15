@@ -18,6 +18,11 @@ tags). Ingen budget/economic-guardrails (skal kobles til eksisterende
 cost_governance hvis behov). SQLite i stedet for workspace JSON.
 
 Porteret i spirit fra jarvis-ai/agent/orchestration/missions.py (505L → 380L).
+
+STATUS 2026-06-15 (liveness-audit): UN-INTEGRERET PORT. create_mission() har
+ingen live-callers — cognitive_missions/_mission_messages er tomme. Multi-agent-
+orkestrering håndteres i v2 af det AKTIVE agent_dispatch (§19, code-mode). Bevaret
+(ikke slettet), men IKKE wired. Se docs/audits/2026-06-15-cognitive-liveness-audit.md.
 """
 from __future__ import annotations
 

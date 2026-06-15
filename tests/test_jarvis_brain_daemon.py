@@ -401,3 +401,30 @@ def test_run_consolidation_pass_returns_int():
     n = run_consolidation_pass()
     assert isinstance(n, int)
     assert n >= 0
+
+
+# --- 2026-06-15: lokal-model fail-fast (undgå 120s ollama-hæng) ---
+
+
+def test_model_is_available_exact():
+    from core.services.jarvis_brain_daemon import _model_is_available
+    assert _model_is_available(["qwen2.5:7b-instruct", "nomic-embed-text:latest"], "qwen2.5:7b-instruct") is True
+
+
+def test_model_is_available_base_name_ignores_tag():
+    from core.services.jarvis_brain_daemon import _model_is_available
+    assert _model_is_available(["qwen2.5:7b-instruct"], "qwen2.5") is True
+    assert _model_is_available(["qwen2.5:7b-instruct"], "qwen2.5:7b-instruct-q4") is True
+
+
+def test_model_is_available_missing():
+    from core.services.jarvis_brain_daemon import _model_is_available
+    # hostens faktiske situation 15. jun: kun nomic + cloud-modeller
+    avail = ["nomic-embed-text:latest", "gpt-oss:120b-cloud", "gemma4:31b-cloud"]
+    assert _model_is_available(avail, "qwen2.5:7b-instruct") is False
+
+
+def test_model_is_available_empty():
+    from core.services.jarvis_brain_daemon import _model_is_available
+    assert _model_is_available([], "qwen2.5") is False
+    assert _model_is_available(["qwen2.5:7b-instruct"], "") is False

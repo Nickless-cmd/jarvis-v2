@@ -114,16 +114,45 @@ def _call_ollamafreeapi(prompt: str) -> dict | None:
         return None
 
 
+def _model_is_available(tag_names: list[str], model: str) -> bool:
+    """Pure: er `model` til stede blandt Ollamas /api/tags-navne? Matcher både
+    eksakt og uden ':tag'-suffiks (ollama lister fx 'qwen2.5:7b-instruct')."""
+    want = str(model or "").strip()
+    if not want:
+        return False
+    names = {str(n).strip() for n in tag_names}
+    if want in names:
+        return True
+    base_want = want.split(":", 1)[0]
+    return any(str(n).split(":", 1)[0] == base_want for n in names)
+
+
 def _call_local_ollama(prompt: str) -> dict | None:
-    """Direct local Ollama call — for personal/intimate jobs that must not leak."""
+    """Direct local Ollama call — for personal/intimate jobs that must not leak.
+
+    Fail-fast (2026-06-15): tjek at chat-modellen FAKTISK er pullet på hosten før
+    kaldet. Tidligere bad daemonen om en model der ikke fandtes (fx
+    qwen2.5:7b-instruct) og hang i 120s → gentagne timeouts i journalen. Findes
+    ingen lokal chat-model, springes jobbet rent over (intime jobs må ikke leake
+    til cloud-modeller), med ÉN klar advarsel om hvad der mangler."""
     try:
         import httpx
         from core.services.semantic_memory import _ollama_base_url
-        # Use a local-only chat model. Default to qwen2.5:7b-instruct-q4_K_M
-        # but allow override via provider router.
         base = _ollama_base_url()
-        # Find the configured chat model on this Ollama instance.
         model = _resolve_local_chat_model() or "qwen2.5:7b-instruct"
+        # Verificér model-tilgængelighed (kort timeout) — undgå 120s-hæng.
+        try:
+            tags = httpx.get(f"{base}/api/tags", timeout=5.0).json().get("models") or []
+            available = [m.get("name") for m in tags]
+        except Exception:
+            available = []
+        if available and not _model_is_available(available, model):
+            logger.warning(
+                "local ollama: chat-model '%s' ikke pullet på hosten (har: %s) — "
+                "springer intimt summary-job over. Kør `ollama pull <lokal-chat-model>`.",
+                model, available,
+            )
+            return None
         resp = httpx.post(
             f"{base}/api/chat",
             json={
@@ -132,7 +161,7 @@ def _call_local_ollama(prompt: str) -> dict | None:
                 "stream": False,
                 "format": "json",
             },
-            timeout=120.0,
+            timeout=60.0,
         )
         if resp.status_code != 200:
             logger.warning("local ollama HTTP %s", resp.status_code)

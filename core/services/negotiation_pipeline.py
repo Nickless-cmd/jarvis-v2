@@ -16,6 +16,12 @@ Porteret fra jarvis-ai/agent/cognition/negotiation.py (2026-04-22).
 
 v2-tilpasning: SQLite-persisteret i stedet for in-memory dict,
 så outcomes overlever reboots og kan analyseres over tid.
+
+STATUS 2026-06-15 (liveness-audit): UN-INTEGRERET PORT. record_trade_outcome()
+har ingen live-callers — cognitive_trade_outcomes er tom. Indre-stemme-konflikt
+håndteres i v2 af det AKTIVE cognitive_conflict_memories (relationship_texture).
+Bevaret (ikke slettet), men IKKE wired. Se docs/audits/2026-06-15-cognitive-
+liveness-audit.md.
 """
 from __future__ import annotations
 

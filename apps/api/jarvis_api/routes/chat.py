@@ -37,8 +37,14 @@ def _repo_root() -> Path:
 
 @router.get("/file")
 async def chat_read_file(path: str = Query(...), kind: str = "container") -> dict:
-    """Læs en fil til preview-panelet. Container: path-jail til whitelisted rødder.
-    Workstation: via operator-bridgen (operator_read_file) på brugerens computer."""
+    """Læs en fil til preview-panelet. Blokerende fs/bro-kald offloades til tråd
+    (--workers 1 frys-fælde: ellers fryser hele API'et mens en fil læses)."""
+    import asyncio
+    return await asyncio.to_thread(_read_file_sync, path, kind)
+
+
+def _read_file_sync(path: str, kind: str) -> dict:
+    """Container: path-jail til whitelisted rødder. Workstation: via operator-bridgen."""
     if kind == "workstation":
         res = _operator_exec("operator_read_file", {"path": path})
         if res.get("status") != "ok":
@@ -70,8 +76,15 @@ def _operator_exec(name: str, args: dict) -> dict:
 
 @router.get("/tree")
 async def chat_tree(kind: str = "container", root: str = "", path: str = "") -> dict:
-    """Mappe-listing til Code-mode fil-træ. Container: path-jailed til _FILE_ROOTS.
-    Workstation: via operator-bridgen (operator_list_dir)."""
+    """Mappe-listing til Code-mode fil-træ. Blokerende fs/bro-kald offloades til tråd
+    (--workers 1 frys-fælde: ellers fryser hele API'et og tree timer ud for BEGGE
+    modes — observeret 2026-06-15)."""
+    import asyncio
+    return await asyncio.to_thread(_tree_sync, kind, root, path)
+
+
+def _tree_sync(kind: str, root: str, path: str) -> dict:
+    """Container: path-jailed til _FILE_ROOTS. Workstation: via operator-bridgen."""
     if kind == "container":
         if root not in _FILE_ROOTS:
             raise HTTPException(status_code=403, detail="root uden for jail")

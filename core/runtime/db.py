@@ -192,6 +192,7 @@ def init_db() -> None:
             )
             """
         )
+        _ensure_users_table(conn)  # brugerstyring (spec 2026-06-15)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS costs (
@@ -33766,6 +33767,19 @@ def list_channel_attachments(
         (session_id, limit),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+# --- Users-tabel / brugerstyring (split into db_users.py per boy scout rule) ---
+from core.runtime.db_users import (  # noqa: E402,F401
+    _ensure_users_table,
+    insert_user_row,
+    get_user_row,
+    get_user_row_by_email_hash,
+    update_user_row,
+    soft_delete_user_row,
+    hard_delete_user_row,
+    list_user_rows,
+)
 
 
 # --- Emotional memory anchors (split into db_emotional_memory.py per boy scout rule) ---

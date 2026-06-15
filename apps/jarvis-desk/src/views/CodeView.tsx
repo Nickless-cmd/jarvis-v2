@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown } from 'lucide-react'
 import { useStream } from '../hooks/useStream'
+import { usePermission } from '../hooks/usePermission'
 import { useSettings } from '../hooks/useSettings'
 import { useSessions } from '../hooks/useSessions'
 import { usePanel } from '../hooks/usePanel'
+import { readModelPrefs } from '../lib/composerPrefs'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
@@ -37,6 +39,7 @@ export function CodeView({
   sessionId, userName, role = 'owner',
 }: { sessionId: string | null; userName?: string; role?: Role }) {
   const stream = useStream()
+  const { permission } = usePermission()
   const { settings } = useSettings()
   const sessions = useSessions()
   const panel = usePanel()
@@ -159,6 +162,25 @@ export function CodeView({
       providerChoice: opts.providerChoice,
     })
   }
+
+  // Auto-continue: efter et godkendt mode/permission-skift gen-sendes den
+  // oprindelige besked her, så Jarvis fortsætter sømløst i code mode.
+  useEffect(() => {
+    if (!stream.autoContinue || !ready) return
+    const msg = stream.consumeAutoContinue()
+    if (!msg) return
+    const prefs = readModelPrefs()
+    const sendModel = isOwner ? prefs.model : (prefs.model === 'pro' ? 'pro' : 'standard')
+    const sendProvider = isOwner ? prefs.providerChoice : ''
+    void doSend(msg, {
+      planMode: false,
+      permission,
+      attachments: [],
+      model: sendModel,
+      providerChoice: sendProvider,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream.autoContinue, ready])
 
   const trustBanner = trusted === false ? (
     <div className="trust-banner">

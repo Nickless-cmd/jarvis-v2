@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Body, HTTPException
 
 from core.services import cowork_feed
 
@@ -77,6 +77,42 @@ async def cowork_todos() -> dict:
     is_owner, uid = _role_owner()
     todos = await asyncio.to_thread(cowork_feed.list_todos_feed, user_id=uid, is_owner=is_owner)
     return {"todos": todos}
+
+
+_VALID_TODO_STATUSES = ("pending", "in_progress", "completed")
+
+
+@router.post("/todos")
+async def cowork_create_todo(payload: dict = Body(default={})) -> dict:
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="todos er kun for owner")
+    content = str((payload or {}).get("content") or "").strip()
+    if not content:
+        return {"status": "error", "error": "content er påkrævet"}
+    from core.services.agent_todos import add_cowork_todo
+    return await asyncio.to_thread(add_cowork_todo, content)
+
+
+@router.post("/todos/{todo_id}/status")
+async def cowork_set_todo_status(todo_id: str, payload: dict = Body(default={})) -> dict:
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="todos er kun for owner")
+    status = str((payload or {}).get("status") or "").strip().lower()
+    if status not in _VALID_TODO_STATUSES:
+        return {"status": "error", "error": f"status skal være en af {_VALID_TODO_STATUSES}"}
+    from core.services.agent_todos import update_todo_status_anywhere
+    return await asyncio.to_thread(update_todo_status_anywhere, todo_id, status)
+
+
+@router.delete("/todos/{todo_id}")
+async def cowork_delete_todo(todo_id: str) -> dict:
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="todos er kun for owner")
+    from core.services.agent_todos import remove_todo_anywhere
+    return await asyncio.to_thread(remove_todo_anywhere, todo_id)
 
 
 @router.get("/channels")

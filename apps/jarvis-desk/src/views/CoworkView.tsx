@@ -6,54 +6,70 @@ import { TodoPane } from '../components/cowork/TodoPane'
 import { ChannelsPane } from '../components/cowork/ChannelsPane'
 import { ShareGuardPane } from '../components/cowork/ShareGuardPane'
 import { AgentDispatchPane } from '../components/cowork/AgentDispatchPane'
+import { CoworkZones } from '../components/cowork/CoworkZones'
+import { AccountSection } from '../components/settings/AccountSection'
+import { TotpSetup } from '../components/settings/TotpSetup'
+import { PluginsPanel } from '../components/settings/PluginsPanel'
 import { activeAgentsToView } from '../lib/coworkApi'
 
-/** Cowork: rolle-bevidst arbejd-sammen-dashboard. Owner ser fire ruder; member
- *  ser tre (ingen kanaler). Ren oversigt + godkend/afvis — ingen chat-lane. */
+/** Cowork command center: to zoner. Mission Control = rolle-bevidst rude-grid
+ *  (uændret); Indstillinger = konto + (owner) TOTP/plugins. */
 export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'guest' }) {
-  const { settings } = useSettings()
+  const { settings, auth } = useSettings()
   const isOwner = role === 'owner'
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   const { queue, plans, todos, channels, shareGuard, agents, resolve, resolveShare } = useCoworkData(config, isOwner)
 
+  const missionControl = (
+    <div className="cowork-grid">
+      <section className="cowork-pane">
+        <div className="cowork-pane-head">Godkendelser <span className="cowork-count">{queue.length}</span></div>
+        <ApprovalQueue items={queue} onResolve={resolve} />
+      </section>
+      <section className="cowork-pane">
+        <div className="cowork-pane-head">Planer <span className="cowork-count">{plans.length}</span></div>
+        <PlansPane plans={plans} />
+      </section>
+      <section className="cowork-pane">
+        <div className="cowork-pane-head">Todo &amp; initiativer</div>
+        <TodoPane todos={todos} />
+      </section>
+      {isOwner && (
+        <section className="cowork-pane">
+          <div className="cowork-pane-head">Kanaler</div>
+          <ChannelsPane channels={channels} />
+        </section>
+      )}
+      {isOwner && agents.length > 0 && (
+        <section className="cowork-pane">
+          <div className="cowork-pane-head">
+            Agenter <span className="cowork-count">{agents.length}</span>
+          </div>
+          <AgentDispatchPane view={activeAgentsToView(agents)} />
+        </section>
+      )}
+      {isOwner && shareGuard.length > 0 && (
+        <section className="cowork-pane">
+          <div className="cowork-pane-head">
+            Deling-guard <span className="cowork-count">{shareGuard.length}</span>
+          </div>
+          <ShareGuardPane items={shareGuard} onResolve={resolveShare} />
+        </section>
+      )}
+    </div>
+  )
+
+  const settingsZone = (
+    <div className="cowork-settings">
+      <AccountSection config={config} />
+      {auth?.role === 'owner' && <TotpSetup config={config} />}
+      {auth?.role === 'owner' && <PluginsPanel config={config} />}
+    </div>
+  )
+
   return (
     <div className="coworkview">
-      <div className="cowork-grid">
-        <section className="cowork-pane">
-          <div className="cowork-pane-head">Godkendelser <span className="cowork-count">{queue.length}</span></div>
-          <ApprovalQueue items={queue} onResolve={resolve} />
-        </section>
-        <section className="cowork-pane">
-          <div className="cowork-pane-head">Planer <span className="cowork-count">{plans.length}</span></div>
-          <PlansPane plans={plans} />
-        </section>
-        <section className="cowork-pane">
-          <div className="cowork-pane-head">Todo &amp; initiativer</div>
-          <TodoPane todos={todos} />
-        </section>
-        {isOwner && (
-          <section className="cowork-pane">
-            <div className="cowork-pane-head">Kanaler</div>
-            <ChannelsPane channels={channels} />
-          </section>
-        )}
-        {isOwner && agents.length > 0 && (
-          <section className="cowork-pane">
-            <div className="cowork-pane-head">
-              Agenter <span className="cowork-count">{agents.length}</span>
-            </div>
-            <AgentDispatchPane view={activeAgentsToView(agents)} />
-          </section>
-        )}
-        {isOwner && shareGuard.length > 0 && (
-          <section className="cowork-pane">
-            <div className="cowork-pane-head">
-              Deling-guard <span className="cowork-count">{shareGuard.length}</span>
-            </div>
-            <ShareGuardPane items={shareGuard} onResolve={resolveShare} />
-          </section>
-        )}
-      </div>
+      <CoworkZones missionControl={missionControl} settings={settingsZone} />
     </div>
   )
 }

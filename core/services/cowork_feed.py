@@ -157,14 +157,18 @@ def list_active_agents(*, limit: int = 50) -> list[dict[str, Any]]:
 def _all_todos() -> list[dict[str, Any]]:
     """Alle todos på tværs af sessioner (agent_todos er session-keyed)."""
     try:
-        from core.services.agent_todos import _load_all
+        from datetime import UTC, datetime
+
+        from core.services.agent_todos import _load_all, effective_status
+        now_iso = datetime.now(UTC).isoformat()
         out: list[dict[str, Any]] = []
         for _sid, items in (_load_all() or {}).items():
             for t in items:
                 out.append({
                     "id": str(t.get("id") or ""),
                     "content": str(t.get("content") or ""),
-                    "status": str(t.get("status") or "pending"),
+                    "status": effective_status(t, now_iso),
+                    "expires_at": str(t.get("expires_at") or ""),
                 })
         return out
     except Exception:

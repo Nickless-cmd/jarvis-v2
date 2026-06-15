@@ -79,7 +79,7 @@ async def cowork_todos() -> dict:
     return {"todos": todos}
 
 
-_VALID_TODO_STATUSES = ("pending", "in_progress", "completed")
+_VALID_TODO_STATUSES = ("pending", "in_progress", "completed", "paused")
 
 
 @router.post("/todos")
@@ -113,6 +113,17 @@ async def cowork_delete_todo(todo_id: str) -> dict:
         raise HTTPException(status_code=403, detail="todos er kun for owner")
     from core.services.agent_todos import remove_todo_anywhere
     return await asyncio.to_thread(remove_todo_anywhere, todo_id)
+
+
+@router.post("/todos/{todo_id}/expiry")
+async def cowork_set_todo_expiry(todo_id: str, payload: dict = Body(default={})) -> dict:
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="todos er kun for owner")
+    raw = (payload or {}).get("expires_at")
+    expires_at = str(raw).strip() if raw else None
+    from core.services.agent_todos import set_todo_expiry_anywhere
+    return await asyncio.to_thread(set_todo_expiry_anywhere, todo_id, expires_at)
 
 
 @router.get("/channels")

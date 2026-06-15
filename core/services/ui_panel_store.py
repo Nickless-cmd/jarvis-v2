@@ -25,12 +25,15 @@ def _save(items: list[dict]) -> None:
     set_runtime_state_value(_KEY, items[-_MAX:])
 
 
-def request_panel(*, request_id: str, panel: str, session_id: str, detail: str, created_at: str) -> dict:
-    """Registrér en panel-åbnings-forespørgsel. panel clamps til kendte værdier."""
+def request_panel(*, request_id: str, panel: str, session_id: str, detail: str,
+                  created_at: str, action: str = "open") -> dict:
+    """Registrér en panel-forespørgsel (open/close). panel clamps til kendte værdier."""
     p = panel if panel in _VALID_PANELS else "preview"
+    a = action if action in ("open", "close") else "open"
     rec = {
         "id": str(request_id),
         "panel": p,
+        "action": a,
         "session_id": str(session_id or ""),
         "detail": str(detail or "")[:200],
         "status": "pending",

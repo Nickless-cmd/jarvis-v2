@@ -17,8 +17,11 @@ _PANELS = ("preview", "right", "files")
 
 
 def _exec_open_ui_panel(args: dict[str, Any]) -> dict[str, Any]:
+    action = str(args.get("action") or "open").strip().lower()
+    if action not in ("open", "close"):
+        return {"status": "error", "error": f"ukendt action '{action}' (open/close)"}
     panel = str(args.get("panel") or "preview").strip().lower()
-    if panel not in _PANELS:
+    if action == "open" and panel not in _PANELS:
         return {"status": "error", "error": f"ukendt panel '{panel}' (gyldige: {', '.join(_PANELS)})"}
     detail = str(args.get("detail") or "")
     session_id = str(args.get("session_id") or "")
@@ -28,9 +31,11 @@ def _exec_open_ui_panel(args: dict[str, Any]) -> dict[str, Any]:
         session_id=session_id,
         detail=detail,
         created_at=datetime.now(UTC).isoformat(),
+        action=action,
     )
-    return {"status": "ok", "panel": panel, "request_id": rec["id"],
-            "note": "Desk-appen åbner panelet. (Kun synligt i jarvis-desk.)"}
+    verb = "lukker" if action == "close" else "åbner"
+    return {"status": "ok", "panel": panel, "action": action, "request_id": rec["id"],
+            "note": f"Desk-appen {verb} panelet. (Kun synligt i jarvis-desk.)"}
 
 
 UI_PANEL_TOOL_DEFINITIONS: list[dict[str, Any]] = [
@@ -43,22 +48,28 @@ UI_PANEL_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "'preview' (preview-panel), 'right' (højre side-panel) eller 'files' "
                 "(fil-træ). Brug når du vil fremvise et resultat, en fil eller en "
                 "artefakt. Virker kun i desk-appen (ikke Discord/web). Du behøver ikke "
-                "spørge om lov — appen åbner panelet for owner."
+                "spørge om lov — appen åbner panelet for owner. "
+                "Brug action='close' for at lukke panelet igen."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["open", "close"],
+                        "description": "'open' (default) åbner panelet; 'close' lukker det igen",
+                    },
                     "panel": {
                         "type": "string",
                         "enum": list(_PANELS),
-                        "description": "Hvilket panel der skal åbnes",
+                        "description": "Hvilket panel der skal åbnes (ved action='open')",
                     },
                     "detail": {
                         "type": "string",
                         "description": "Valgfri kort note om hvad panelet skal vise",
                     },
                 },
-                "required": ["panel"],
+                "required": [],
             },
         },
     },

@@ -30,3 +30,17 @@ def test_registered_in_global_catalog(isolated_runtime) -> None:
     from core.services.tool_catalog import get_tool_definitions
     names = {d["function"]["name"] for d in get_tool_definitions() if "function" in d}
     assert "open_ui_panel" in names
+
+
+def test_close_action_valid() -> None:
+    from core.tools.ui_panel_tools import _exec_open_ui_panel
+    r = _exec_open_ui_panel({"action": "close"})
+    assert r["status"] == "ok"
+    assert r["action"] == "close"
+
+
+def test_open_is_default_action() -> None:
+    from core.tools.ui_panel_tools import _exec_open_ui_panel
+    r = _exec_open_ui_panel({"panel": "preview"})
+    assert r["status"] == "ok"
+    assert r.get("action", "open") == "open"

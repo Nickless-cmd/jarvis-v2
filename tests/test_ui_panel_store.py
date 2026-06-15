@@ -47,3 +47,18 @@ def test_tool_registered_and_callable(isolated_runtime) -> None:
     from core.tools.ui_panel_tools import _exec_open_ui_panel
     res = _exec_open_ui_panel({"panel": "preview", "detail": "x"})
     assert res["status"] == "ok" and res["panel"] == "preview"
+
+
+def test_request_panel_carries_action_close(isolated_runtime) -> None:
+    from core.services.ui_panel_store import request_panel, list_pending
+    rec = request_panel(request_id="p-close-1", panel="preview", session_id="s",
+                        detail="", created_at="t", action="close")
+    assert rec["action"] == "close"
+    assert any(r["id"] == "p-close-1" and r.get("action") == "close" for r in list_pending())
+
+
+def test_request_panel_defaults_action_open(isolated_runtime) -> None:
+    from core.services.ui_panel_store import request_panel
+    rec = request_panel(request_id="p-open-1", panel="preview", session_id="s",
+                        detail="", created_at="t")
+    assert rec["action"] == "open"

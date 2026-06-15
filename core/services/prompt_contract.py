@@ -2602,7 +2602,7 @@ def _self_mutation_lineage_section() -> str | None:
         return None
 
 
-def _build_epistemic_layers_line() -> str:
+def _build_epistemic_layers_line() -> str | None:
     """Build compact line summarizing epistemic layer-distribution + wrongness.
 
     Tells Jarvis how many claims he has at each level (i_know, i_believe,
@@ -2616,7 +2616,9 @@ def _build_epistemic_layers_line() -> str:
         wrongness = int(surface.get("wrongness_count") or 0)
         total = int(surface.get("total_claims") or 0)
         if total == 0 and wrongness == 0:
-            return "- epistemic_layers=empty | stance=form-your-own-when-asserting"
+            # Un-integreret organ (liveness-audit 15. jun): drop linjen frem for at
+            # injicere et falsk "dødt"-signal i Jarvis' selvmodel. Joinen filtrerer None.
+            return None
         parts = []
         for layer in ("i_know", "i_believe", "i_suspect", "i_dont_know", "i_was_wrong"):
             c = int(counts.get(layer, 0))
@@ -2629,7 +2631,7 @@ def _build_epistemic_layers_line() -> str:
             " | guidance=when-giving-recommendations-prefix-'I-think/I-suspect'-if-low-confidence"
         )
     except Exception:
-        return "- epistemic_layers=unavailable"
+        return None
 
 
 def _channel_workspace_path() -> Path:
@@ -3191,7 +3193,7 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
     loop_runtime = context.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     return "\n".join(
-        [
+        _line for _line in [
             "Heartbeat runtime truth:",
             f"- schedule={schedule} | budget={budget} | kill_switch={kill_switch}",
             (
@@ -3305,7 +3307,7 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
             ),
             "- Heartbeat may only propose or act within runtime-approved scope.",
             _heartbeat_living_context_line(),
-        ]
+        ] if _line
     )
 
 

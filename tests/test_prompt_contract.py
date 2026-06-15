@@ -101,3 +101,37 @@ class TestTimePinPlacement:
             "time_pin appears too far from the prompt assembly tail — "
             f"distance to join: {idx_join - idx_tp} chars"
         )
+
+
+# --- Liveness Stage 1 (2026-06-15): drop falske "dødt organ"-signaler ---
+
+
+def test_epistemic_layers_line_silent_when_empty(monkeypatch):
+    """Un-integreret epistemics-organ må ikke injicere 'epistemic_layers=empty'
+    i Jarvis' selvmodel — linjen skal droppes (None)."""
+    import core.services.prompt_contract as pc
+    monkeypatch.setattr(
+        "core.services.epistemics.build_epistemics_surface",
+        lambda: {"layer_counts": {}, "wrongness_count": 0, "total_claims": 0},
+    )
+    assert pc._build_epistemic_layers_line() is None
+
+
+def test_epistemic_layers_line_present_when_data(monkeypatch):
+    import core.services.prompt_contract as pc
+    monkeypatch.setattr(
+        "core.services.epistemics.build_epistemics_surface",
+        lambda: {"layer_counts": {"i_know": 3}, "wrongness_count": 1, "total_claims": 4},
+    )
+    line = pc._build_epistemic_layers_line()
+    assert line is not None and "i_know=3" in line
+
+
+def test_heartbeat_truth_drops_empty_lines_and_keeps_block():
+    """Joinen filtrerer None-linjer; resten af selvmodel-blokken er intakt."""
+    import core.services.prompt_contract as pc
+    out = pc._heartbeat_runtime_truth_instruction({})
+    assert out.startswith("Heartbeat runtime truth:")
+    assert "epistemic_layers=empty" not in out
+    assert "epistemic_layers=unavailable" not in out
+    assert "tool_intent=" in out  # sikkerheds-selvmodel bevaret

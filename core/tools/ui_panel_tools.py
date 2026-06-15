@@ -50,6 +50,8 @@ UI_PANEL_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "bestemt fil — sæt detail til den repo-relative sti, fx "
                 "'core/tools/ui_panel_tools.py', så scroller appen til filen og "
                 "markerer den). Brug file_tree når brugeren ikke kan finde en fil. "
+                "VIS EN FIL i preview: panel='preview' + detail=den repo-relative "
+                "filsti (fx 'docs/spec.md') → appen loader og renderer filen. "
                 "Virker kun i desk-appen (ikke Discord/web). Du behøver ikke spørge "
                 "om lov — appen åbner panelet for owner. action='close' lukker igen."
             ),

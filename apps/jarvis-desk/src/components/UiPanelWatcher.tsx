@@ -16,6 +16,13 @@ import { emitHighlight } from '../lib/fileTreeHighlight'
  */
 const POLL_MS = 4000
 
+/** En `detail` der ligner en repo-relativ filsti (ingen mellemrum, ender på en
+ *  fil-endelse) → vis filen i preview. Ellers er detail bare en note. */
+function _looksLikeFilePath(detail: string | undefined): boolean {
+  const d = (detail || '').trim()
+  return /^[^\s]+\.[a-z0-9]{1,6}$/i.test(d)
+}
+
 export function UiPanelWatcher({
   config, setSurface,
 }: { config: ApiConfig | undefined; setSurface?: (s: Surface) => void }) {
@@ -42,6 +49,15 @@ export function UiPanelWatcher({
             // Jarvis-styret highlight: vis code-mode + scroll-til + markér filen.
             surfaceRef.current?.('code')
             if (req.detail) emitHighlight(req.detail)
+          } else if (_looksLikeFilePath(req.detail)) {
+            // preview/right med en filsti i detail → load+rendér FILEN (ikke bare
+            // sti-teksten). Repo-relativ sti hentes via /chat/file (root='repo').
+            const fp = req.detail.trim()
+            openRef.current({
+              kind: 'file',
+              title: fp.split('/').pop() || fp,
+              filePath: fp,
+            })
           } else {
             openRef.current({
               kind: 'markdown',

@@ -213,13 +213,30 @@ def is_api_key_revoked(jti: str) -> bool:
     return isinstance(revoked, list) and jti in revoked
 
 
+def _provision_workspace(user: dict[str, Any]) -> None:
+    """Opret + (§16) krypter brugerens workspace ved oprettelse: mappe + baseline-
+    filer (USER.md/MEMORY.md tomme stubs + delt identitet). Idempotent. Member-
+    filer krypteres når ENCRYPT_ON_WRITE er on (bootstrap er encryption-aware).
+    Fail-soft: en registrering kapsejler ikke fordi bootstrap fejler — men logges."""
+    try:
+        from core.identity.workspace_bootstrap import bootstrap_user_workspace
+        bootstrap_user_workspace(str(user.get("workspace") or user["user_id"]),
+                                 display_name=str(user.get("name") or ""))
+    except Exception as exc:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning(
+            "workspace-bootstrap fejlede for %s: %s", user.get("user_id"), exc)
+
+
 def register_user(*, email: str, name: str, password: str, base_url: str,
                   role: str = "member") -> tuple[dict[str, Any], str]:
-    """Selvregistrering (officiel vej): opret bruger (email_verified=0) + send
-    verifikations-mail. API-nøgle oprettes hvis tier kvalificerer (no-op for free).
+    """Selvregistrering (officiel vej): opret bruger (email_verified=0) +
+    provisionér workspace (mappe + krypterede baseline-filer) + send verifikations-
+    mail. API-nøgle oprettes hvis tier kvalificerer (no-op for free).
     Returnerer (user, token)."""
     from core.identity import email_verify
     user = create_user(email=email, name=name, password=password, role=role)
+    _provision_workspace(user)
     create_api_key(user["user_id"])  # no-op hvis tier ikke kvalificerer (free/member)
     token = email_verify.send_verification_email(
         user_id=user["user_id"], email=user["email"], base_url=base_url)
@@ -241,6 +258,7 @@ def add_user(*, email: str, name: str, password: str, role: str = "member",
     (omgår mail-verifikation) og giver en API-nøgle hvis tier kvalificerer."""
     user = create_user(email=email, name=name, password=password, role=role,
                        workspace=workspace)
+    _provision_workspace(user)
     uid = user["user_id"]
     set_email_verified(uid, True)
     if tier in ("free", "plus", "pro", "owner"):

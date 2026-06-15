@@ -405,6 +405,15 @@ export async function getContextInfo(
   return apiFetch(config, '/chat/context-info')
 }
 
+/** Ægte context-ring pr. provider/model: 'effective' = det første loft der rammer
+ *  (modellens vindue vs. autocompact). Bruges som ring-nævner. */
+export async function getModelContext(
+  config: ApiConfig, provider: string, model: string,
+): Promise<{ window: number; compact_at: number; effective: number }> {
+  const qs = `provider=${encodeURIComponent(provider)}&model=${encodeURIComponent(model)}`
+  return apiFetch(config, `/chat/model-context?${qs}`)
+}
+
 /** Læs en fil til preview-panelet. `root` er navngivet server-root (owner:
  *  repo/jarvis-v2/workspace, member: workspace) / workstation trusted folder;
  *  `path` er rel inde i det root. */

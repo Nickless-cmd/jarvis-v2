@@ -326,6 +326,13 @@ def bootstrap_user_workspace(workspace_name: str, *, display_name: str = "") -> 
         from core.services.workspace_crypto import member_user_id_for_path
         return bool(member_user_id_for_path(p)) and Path(str(p) + ".enc").exists()
 
+    # §16: skriv encryption-aware — for et member-workspace bliver filerne
+    # krypteret (.enc) når ENCRYPT_ON_WRITE er on, plaintext ellers. Owner-
+    # "default" bruger bootstrap_workspace (ikke denne), så den er upåvirket.
+    def _ws_write(dest: Path, text: str) -> None:
+        from core.services.workspace_crypto import write_text_for_path
+        write_text_for_path(dest, text)
+
     for filename in _SHARED_IDENTITY_FILES:
         src = TEMPLATE_DIR / filename
         if not src.exists():
@@ -335,21 +342,20 @@ def bootstrap_user_workspace(workspace_name: str, *, display_name: str = "") -> 
         if _ws_exists(dest):
             existing.append(filename)
             continue
-        shutil.copy2(src, dest)
+        _ws_write(dest, src.read_text(encoding="utf-8"))
         created.append(filename)
 
     # Per-user relation files — EMPTY stubs, not template content
     user_md = workspace_dir / "USER.md"
     if not _ws_exists(user_md):
-        stub = f"# {display_name or name}\n\n_Jeg kender endnu ikke denne bruger._\n"
-        user_md.write_text(stub, encoding="utf-8")
+        _ws_write(user_md, f"# {display_name or name}\n\n_Jeg kender endnu ikke denne bruger._\n")
         created.append("USER.md")
     else:
         existing.append("USER.md")
 
     memory_md = workspace_dir / "MEMORY.md"
     if not _ws_exists(memory_md):
-        memory_md.write_text("# MEMORY\n\n_Ingen erindringer endnu._\n", encoding="utf-8")
+        _ws_write(memory_md, "# MEMORY\n\n_Ingen erindringer endnu._\n")
         created.append("MEMORY.md")
     else:
         existing.append("MEMORY.md")
@@ -363,7 +369,7 @@ def bootstrap_user_workspace(workspace_name: str, *, display_name: str = "") -> 
         if _ws_exists(dest):
             existing.append(filename)
             continue
-        shutil.copy2(src, dest)
+        _ws_write(dest, src.read_text(encoding="utf-8"))
         created.append(filename)
 
     ensure_layered_memory_dirs(name=name)

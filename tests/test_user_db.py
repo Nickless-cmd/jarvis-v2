@@ -182,3 +182,33 @@ def test_delete_writes_audit_entry(isolated_runtime) -> None:
     log = read_audit_log()
     assert any(e["user_id"] == u["user_id"] and e["action"] == "delete:soft"
                and e["actor"] == "bjorn" for e in log)
+
+
+def _bootstrapped_ws_dir(workspace: str):
+    # bootstrap skriver til WORKSPACES_DIR/<workspace> direkte (uden users.json-
+    # opslag, som workspace_dir() ellers kræver — det er #154-cutover-gappet).
+    import os
+    from pathlib import Path
+    return Path(os.environ["JARVIS_WORKSPACES_DIR"]) / workspace
+
+
+def test_add_user_provisions_workspace(isolated_runtime) -> None:
+    # add_user skal oprette workspace-mappe + baseline-filer (USER.md/MEMORY.md).
+    from core.identity.user_db import add_user
+    u = add_user(email="ws@b.dk", name="Mikkel", password="hemmelig123", role="member")
+    wsdir = _bootstrapped_ws_dir(u["workspace"])
+    assert wsdir.exists() and wsdir.is_dir()
+    # USER.md findes som plaintext eller krypteret (.enc) afhængigt af flag.
+    has_user = (wsdir / "USER.md").exists() or (wsdir / "USER.md.enc").exists()
+    has_mem = (wsdir / "MEMORY.md").exists() or (wsdir / "MEMORY.md.enc").exists()
+    assert has_user and has_mem
+
+
+def test_register_user_provisions_workspace(isolated_runtime, monkeypatch) -> None:
+    from core.identity import user_db
+    monkeypatch.setattr(user_db, "create_api_key", lambda uid: None)
+    import core.identity.email_verify as ev
+    monkeypatch.setattr(ev, "send_verification_email", lambda **kw: "tok")
+    user, _tok = user_db.register_user(
+        email="reg@b.dk", name="Reg", password="hemmelig123", base_url="http://x")
+    assert _bootstrapped_ws_dir(user["workspace"]).exists()

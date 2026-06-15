@@ -26,6 +26,7 @@ vi.mock('../lib/api', () => ({
   pingServer: vi.fn().mockResolvedValue(20),
   getVisibleProviders: vi.fn().mockResolvedValue([]),
   getContextInfo: vi.fn().mockResolvedValue({ compact_at: 200000, run_compact_at: 240000 }),
+  getModelContext: vi.fn().mockResolvedValue({ window: 1000000, compact_at: 200000, effective: 200000 }),
   getActiveRuns: vi.fn().mockResolvedValue([]),
   followRun: vi.fn(() => ({ abort: vi.fn() })),
 }))

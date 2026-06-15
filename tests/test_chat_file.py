@@ -131,3 +131,19 @@ def test_workstation_reads_via_operator_result_shape(monkeypatch):
     body = r.json()
     assert body["content"] == "print('hej')\n"
     assert body["language"] == "python"
+
+
+def test_model_context_returns_effective():
+    # deepseek-flash (1M) → effective = min(window, compact) = compact-tærsklen.
+    r = client.get("/chat/model-context", params={"provider": "deepseek", "model": "deepseek-v4-flash"})
+    assert r.status_code == 200
+    j = r.json()
+    assert j["window"] == 1_000_000
+    assert j["effective"] == min(j["window"], j["compact_at"]) if j["compact_at"] else j["effective"] == j["window"]
+
+
+def test_model_context_small_model_capped_by_window():
+    # gpt-4o (128k) < compact → effective = 128k (modellens eget loft).
+    r = client.get("/chat/model-context", params={"provider": "github-copilot", "model": "gpt-4o"})
+    assert r.status_code == 200
+    assert r.json()["window"] == 128_000

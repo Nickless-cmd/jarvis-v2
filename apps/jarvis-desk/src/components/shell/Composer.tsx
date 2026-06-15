@@ -139,6 +139,22 @@ export function Composer({
     try { localStorage.setItem(MODEL_KEY, selModel) } catch { /* ignore */ }
   }, [selModel])
 
+  // Ægte context-ring: hent det effektive vindue for den VALGTE provider/model,
+  // så ringens nævner er modellens reelle loft (deepseek 1M ≠ et 64k-model).
+  // Falder tilbage til den globale autocompat-tærskel (compactAt) ved 0/ukendt.
+  const [effectiveCtx, setEffectiveCtx] = useState(0)
+  useEffect(() => {
+    if (!config) return
+    let alive = true
+    import('../../lib/api').then(({ getModelContext }) =>
+      getModelContext(config, provChoice, selModel)
+        .then((r) => { if (alive) setEffectiveCtx(r.effective || 0) })
+        .catch(() => { if (alive) setEffectiveCtx(0) }),
+    )
+    return () => { alive = false }
+  }, [config, provChoice, selModel])
+  const ringDenominator = effectiveCtx || compactAt
+
   // Member: standard/pro. Owner: konkret model afhænger af valgt provider.
   const memberTier: 'standard' | 'pro' = selModel === 'pro' ? 'pro' : 'standard'
   // Pæne provider-labels; ukendte vises bare med deres id.
@@ -267,9 +283,9 @@ export function Composer({
     <>
     <div className={`composer ${dragOver ? 'drag-over' : ''}`}>
       {dragOver && <div className="composer-drop-overlay">Slip filer og billeder her</div>}
-      {compactAt > 0 && (
+      {ringDenominator > 0 && (
         <div className="composer-ring-corner">
-          <ContextRing tokens={contextTokens} compactAt={compactAt} />
+          <ContextRing tokens={contextTokens} compactAt={ringDenominator} modelLabel={currentModelLabel} />
         </div>
       )}
       {attachments.length > 0 && (

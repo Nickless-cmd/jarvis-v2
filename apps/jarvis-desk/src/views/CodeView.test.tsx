@@ -25,6 +25,7 @@ vi.mock('../lib/api', () => ({
   getWorkspaceTrust: vi.fn().mockResolvedValue(true),
   setWorkspaceTrust: vi.fn().mockResolvedValue(true),
   getContextInfo: vi.fn().mockResolvedValue({ compact_at: 200000, run_compact_at: 240000 }),
+  getModelContext: vi.fn().mockResolvedValue({ window: 1000000, compact_at: 200000, effective: 200000 }),
   getGitStatus: vi.fn().mockResolvedValue({ branch: 'main', dirty: 0, added: 0, removed: 0, is_git: true }),
 }))
 

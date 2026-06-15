@@ -8,10 +8,13 @@ export function ContextRing({
   tokens,
   compactAt,
   size = 18,
+  modelLabel,
 }: {
   tokens: number
   compactAt: number
   size?: number
+  /** Navnet på den valgte model — vises i tooltip så ringen er gennemsigtig. */
+  modelLabel?: string
 }) {
   if (!compactAt || compactAt <= 0) return null
   const safeTokens = Math.max(0, tokens)
@@ -32,9 +35,9 @@ export function ContextRing({
   return (
     <span
       className={`context-ring ${atCompact ? 'at-compact' : ''}`}
-      title={safeTokens > 0
-        ? `Kontekst: ${pct}% (${kTokens(safeTokens)} / ${kTokens(compactAt)} før autocompact)`
-        : `Kontekst: tom (op til ${kTokens(compactAt)} før autocompact)`}
+      title={`${modelLabel ? modelLabel + ' · ' : ''}` + (safeTokens > 0
+        ? `Kontekst: ${pct}% (${kTokens(safeTokens)} / ${kTokens(compactAt)} loft)`
+        : `Kontekst: tom (loft ${kTokens(compactAt)})`)}
       aria-label={`Kontekst ${pct} procent fyldt`}
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>

@@ -7210,21 +7210,32 @@ def _exec_search_chat_history(args: dict[str, Any]) -> dict[str, Any]:
 
     limit = min(int(args.get("limit") or 10), 30)
 
+    # PRIVATLIVS-GUARD (multi-user northstar): scope til den anmodende bruger, så
+    # hverken owner ELLER en autonom-run kan søge i en anden brugers sessions/DMs.
+    try:
+        from core.identity.workspace_context import current_user_id
+        _uid = (current_user_id() or "").strip()
+    except Exception:
+        _uid = ""
+
     try:
         from core.runtime.db import connect
+        from core.tools.session_search import _user_scope_clause
+        _user_clause, _user_params = _user_scope_clause(_uid)
         with connect() as conn:
             rows = conn.execute(
-                """
+                f"""
                 SELECT m.role, m.content, m.created_at, m.session_id,
                        s.title AS session_title
                 FROM chat_messages m
                 LEFT JOIN chat_sessions s ON s.session_id = m.session_id
                 WHERE m.content LIKE ?
                   AND m.role IN ('user', 'assistant')
+                  {_user_clause}
                 ORDER BY m.id DESC
                 LIMIT ?
                 """,
-                (f"%{query}%", limit),
+                (f"%{query}%", *_user_params, limit),
             ).fetchall()
 
         if not rows:

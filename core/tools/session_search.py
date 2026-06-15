@@ -83,6 +83,20 @@ def _row_to_result(row: Any, *, match_type: str) -> dict[str, Any]:
     }
 
 
+def _user_scope_clause(user_id: str) -> tuple[str, list[Any]]:
+    """Privatlivs-guard (multi-user northstar): begræns søgningen til sessions der
+    tilhører den anmodende bruger — dvs. har MINDST ÉN besked stemplet med dennes
+    user_id. Medlemmer (rigtige Discord-ID'er) ser kun deres egne; owner kun sine.
+    Tom uid matcher kun user_id='' (legacy/uattribueret owner-æra) — ALDRIG medlemmers
+    data, da medlemsbeskeder altid bærer et ikke-tomt discord-id. Fail-closed.
+    """
+    clause = (
+        "AND EXISTS (SELECT 1 FROM chat_messages mu "
+        "WHERE mu.session_id = m.session_id AND COALESCE(mu.user_id, '') = ?)"
+    )
+    return clause, [str(user_id or "")]
+
+
 def _keyword_search(
     query: str,
     *,
@@ -90,8 +104,10 @@ def _keyword_search(
     since: str | None,
     until: str | None,
     limit: int,
+    user_id: str = "",
 ) -> list[dict[str, Any]]:
     channel_clause, channel_params = _channel_title_filter(channel)
+    user_clause, user_params = _user_scope_clause(user_id)
     date_clauses: list[str] = []
     date_params: list[str] = []
     if since:
@@ -108,12 +124,13 @@ def _keyword_search(
         LEFT JOIN chat_sessions s ON s.session_id = m.session_id
         WHERE m.content LIKE ?
           AND m.role IN ('user', 'assistant')
+          {user_clause}
           {channel_clause}
           {' '.join(date_clauses)}
         ORDER BY m.id DESC
         LIMIT ?
     """
-    params: list[Any] = [f"%{query}%"] + channel_params + date_params + [limit]
+    params: list[Any] = [f"%{query}%"] + user_params + channel_params + date_params + [limit]
 
     with connect() as conn:
         rows = conn.execute(sql, params).fetchall()
@@ -157,12 +174,14 @@ def _semantic_search(
     since: str | None,
     until: str | None,
     limit: int,
+    user_id: str = "",
 ) -> list[dict[str, Any]]:
     query_embedding = _embed_query(query)
     if query_embedding is None:
         return []
 
     channel_clause, channel_params = _channel_title_filter(channel)
+    user_clause, user_params = _user_scope_clause(user_id)
     date_clauses: list[str] = []
     date_params: list[str] = []
     if since:
@@ -178,12 +197,13 @@ def _semantic_search(
         FROM chat_messages m
         LEFT JOIN chat_sessions s ON s.session_id = m.session_id
         WHERE m.role IN ('user', 'assistant')
+          {user_clause}
           {channel_clause}
           {' '.join(date_clauses)}
         ORDER BY m.id DESC
         LIMIT 300
     """
-    params: list[Any] = channel_params + date_params
+    params: list[Any] = user_params + channel_params + date_params
 
     with connect() as conn:
         rows = conn.execute(sql, params).fetchall()
@@ -239,6 +259,14 @@ def exec_search_sessions(args: dict[str, Any]) -> dict[str, Any]:
     until = args.get("until") or None
     limit = min(int(args.get("limit") or 10), 30)
 
+    # PRIVATLIVS-GUARD (multi-user northstar): scope til den anmodende bruger, så
+    # hverken owner ELLER en autonom-run kan søge i en anden brugers sessions/DMs.
+    try:
+        from core.identity.workspace_context import current_user_id
+        _uid = (current_user_id() or "").strip()
+    except Exception:
+        _uid = ""
+
     try:
         keyword_results: list[dict] = []
         semantic_results: list[dict] = []
@@ -246,12 +274,12 @@ def exec_search_sessions(args: dict[str, Any]) -> dict[str, Any]:
 
         if mode in ("keyword", "both"):
             keyword_results = _keyword_search(
-                query, channel=channel, since=since, until=until, limit=limit
+                query, channel=channel, since=since, until=until, limit=limit, user_id=_uid
             )
 
         if mode in ("semantic", "both"):
             semantic_results = _semantic_search(
-                query, channel=channel, since=since, until=until, limit=limit
+                query, channel=channel, since=since, until=until, limit=limit, user_id=_uid
             )
             if not semantic_results and mode == "semantic":
                 fallback_note = " (Ollama unavailable, no semantic results)"

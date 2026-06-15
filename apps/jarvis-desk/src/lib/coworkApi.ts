@@ -166,3 +166,16 @@ export function activeAgentsToView(agents: ActiveAgent[]): AgentDispatchView {
     },
   }
 }
+
+export interface AccountProfile {
+  user_id: string
+  email: string
+  email_verified: boolean
+  language: string
+  role: 'owner' | 'member' | 'guest'
+  tier: string
+}
+
+export async function getAccountMe(config: ApiConfig): Promise<AccountProfile> {
+  return apiFetch<AccountProfile>(config, '/account/me')
+}

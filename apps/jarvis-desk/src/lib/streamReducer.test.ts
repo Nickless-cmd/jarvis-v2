@@ -135,4 +135,17 @@ describe('streamReducer — usage.input fra message_delta (context-ring #9)', ()
     expect(s.usage.input).toBe(120000)
     expect(s.usage.cacheHit).toBe(8000)
   })
+
+  it('system_event tool_result sets result + status on the tool_use block', () => {
+    const s = reduce([
+      { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 't1', name: 'web_search', input: { query: 'vejr' } } },
+      { type: 'system_event', kind: 'tool_result', payload: { tool_use_id: 't1', status: 'ok', result: '3 resultater' } },
+    ] as StreamEvent[])
+    const b = s.blocks[0]
+    expect(b.type).toBe('tool_use')
+    if (b.type === 'tool_use') {
+      expect(b.status).toBe('done')
+      expect(b.result).toBe('3 resultater')
+    }
+  })
 })

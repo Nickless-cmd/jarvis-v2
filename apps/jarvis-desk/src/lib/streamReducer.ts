@@ -87,7 +87,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // Phase 2: tool_result formidler en tool_use-blocks udfald (status)
       // bundet til tool_use_id.
       if (event.kind === 'tool_result') {
-        const tr = event.payload as { tool_use_id?: string; status?: string }
+        const tr = event.payload as { tool_use_id?: string; status?: string; result?: string }
         if (!tr.tool_use_id) return state
         const idx = state.blocks.findIndex((b) => b.type === 'tool_use' && b.id === tr.tool_use_id)
         if (idx < 0) return state
@@ -99,7 +99,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
               : undefined
         const blocks = state.blocks.slice()
         const b = blocks[idx]
-        if (b && b.type === 'tool_use') blocks[idx] = { ...b, status: mapped ?? b.status }
+        if (b && b.type === 'tool_use') blocks[idx] = { ...b, status: mapped ?? b.status, result: tr.result ?? b.result }
         return { ...state, blocks }
       }
       if (event.kind !== 'working_step') return state // ukendt kind → ignorér gracefully

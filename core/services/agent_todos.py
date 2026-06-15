@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 _STATE_KEY = "agent_todos"
 _VALID_STATUSES = ("pending", "in_progress", "completed")
 
+# Stabil session-nøgle for todos oprettet fra cowork-UI'et (ikke en chat-tråd).
+COWORK_SESSION = "_cowork"
+
 
 def _load_all() -> dict[str, list[dict[str, Any]]]:
     raw = load_json(_STATE_KEY, {})
@@ -311,6 +314,35 @@ def remove_todo(session_id: str | None, todo_id: str) -> dict[str, Any]:
     _maybe_dismiss_orphaned_plan(sid, removed_plan_ids, items)
 
     return {"status": "ok", "removed_id": todo_id, "remaining": len(items)}
+
+
+def add_cowork_todo(content: str) -> dict[str, Any]:
+    """Opret en todo i den delte cowork-session (Mission Control UI)."""
+    return add_todo(COWORK_SESSION, content)
+
+
+def _find_session_for_todo(todo_id: str) -> str | None:
+    for sid, items in (_load_all() or {}).items():
+        if any(str(t.get("id")) == str(todo_id) for t in items):
+            return sid
+    return None
+
+
+def update_todo_status_anywhere(todo_id: str, new_status: str) -> dict[str, Any]:
+    """Skift status på en todo uanset hvilken session den lever i (cowork kender
+    ikke session-nøglen). Genbruger update_todo_status' invarianter."""
+    sid = _find_session_for_todo(todo_id)
+    if sid is None:
+        return {"status": "error", "error": f"unknown todo_id {todo_id}"}
+    return update_todo_status(sid, todo_id, new_status)
+
+
+def remove_todo_anywhere(todo_id: str) -> dict[str, Any]:
+    """Slet en todo uanset hvilken session den lever i."""
+    sid = _find_session_for_todo(todo_id)
+    if sid is None:
+        return {"status": "error", "error": f"unknown todo_id {todo_id}"}
+    return remove_todo(sid, todo_id)
 
 
 def clear_session_todos(session_id: str | None) -> dict[str, Any]:

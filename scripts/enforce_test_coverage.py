@@ -119,6 +119,9 @@ KNOWN_MAPPINGS: dict[str, str] = {
     # Agent-dispatch tool — test mirrors module path (like claude_dispatch/).
     # Mapping added 2026-06-14.
     "core/tools/agent_dispatch_tool/tool.py": "tests/tools/agent_dispatch_tool/test_tool.py",
+    # Cowork command center Plan 2 — interaktive todo-helpers.
+    # Mapping added 2026-06-15.
+    "core/services/agent_todos.py": "tests/test_agent_todos_cowork.py",
 }
 
 

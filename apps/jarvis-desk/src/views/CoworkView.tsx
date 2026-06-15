@@ -18,7 +18,7 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
   const { settings, auth } = useSettings()
   const isOwner = role === 'owner'
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
-  const { queue, plans, todos, channels, shareGuard, agents, resolve, resolveShare } = useCoworkData(config, isOwner)
+  const { queue, plans, todos, channels, shareGuard, agents, resolve, resolveShare, refresh } = useCoworkData(config, isOwner)
 
   const missionControl = (
     <div className="cowork-grid">
@@ -32,7 +32,7 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
       </section>
       <section className="cowork-pane">
         <div className="cowork-pane-head">Todo &amp; initiativer</div>
-        <TodoPane todos={todos} />
+        <TodoPane todos={todos} config={isOwner ? config : undefined} onChanged={refresh} />
       </section>
       {isOwner && (
         <section className="cowork-pane">

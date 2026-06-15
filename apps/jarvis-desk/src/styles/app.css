@@ -1388,6 +1388,13 @@
 .cowork-pane-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--fg-1); margin-bottom: 10px; }
 .cowork-count { font-size: 11px; background: var(--bg-3); color: var(--fg-3); padding: 1px 7px; border-radius: 10px; }
 .cowork-empty { color: var(--fg-3); font-size: 12.5px; padding: 8px 2px; }
+.cowork-todo-input { width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 6px 9px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 7px; color: var(--fg-1); font-size: 12.5px; }
+.cowork-todo { display: flex; align-items: center; gap: 6px; }
+.todo-status-btn, .todo-del-btn { background: transparent; border: none; cursor: pointer;
+  color: var(--fg-2); padding: 2px; display: inline-flex; }
+.todo-del-btn { margin-left: auto; color: var(--fg-3); }
+.todo-del-btn:hover { color: var(--danger, #e06c75); }
 .cowork-item { border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; margin-bottom: 8px; }
 .cowork-item-title { font-size: 12.5px; display: flex; align-items: center; gap: 5px; }
 .cowork-item-detail { font-size: 11.5px; color: var(--fg-3); font-family: ui-monospace, monospace; margin: 3px 0 6px; }

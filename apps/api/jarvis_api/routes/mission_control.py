@@ -769,6 +769,17 @@ def _mc_runtime_uncached() -> dict:
     return payload
 
 
+@router.get("/liveness")
+def mc_liveness(table: str = "") -> dict:
+    """Liveness-sandheds-flade (Stage 2, anti-konfabulation): klassificér en tabel
+    (active/replaced/manual_only/orphaned/wired) eller få det aggregerede overblik.
+    Så Mission Control viser 'afløst af X' i stedet for 'tom/død'."""
+    from core.services.liveness_registry import classify_table, liveness_summary
+    if table:
+        return classify_table(table)
+    return liveness_summary()
+
+
 @router.get("/overview")
 def mc_overview() -> dict:
     with connect() as conn:

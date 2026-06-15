@@ -52,6 +52,7 @@ _KNOWN_SYSTEM_EVENT_KINDS = {
     "approval_request",
     "steer_received",
     "turn_changelog",
+    "app_action_request",
 }
 
 

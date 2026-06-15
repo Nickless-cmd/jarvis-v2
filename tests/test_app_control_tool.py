@@ -55,3 +55,16 @@ def test_tool_definition_shape() -> None:
     assert d["function"]["name"] == "request_app_action"
     assert set(d["function"]["parameters"]["properties"]) == {"action", "reason"}
     assert d["function"]["parameters"]["properties"]["action"]["enum"] == list(VALID_APP_ACTIONS)
+
+
+def test_tool_registered_in_simple_tools() -> None:
+    from core.tools.simple_tools import _TOOL_HANDLERS, TOOL_DEFINITIONS
+    assert "request_app_action" in _TOOL_HANDLERS
+    assert any(
+        d.get("function", {}).get("name") == "request_app_action" for d in TOOL_DEFINITIONS
+    )
+
+
+def test_app_action_request_is_known_system_kind() -> None:
+    from core.services.visible_runs_sse_v2 import _KNOWN_SYSTEM_EVENT_KINDS
+    assert "app_action_request" in _KNOWN_SYSTEM_EVENT_KINDS

@@ -187,6 +187,10 @@ from core.tools.ui_panel_tools import (
     UI_PANEL_TOOL_DEFINITIONS,
     UI_PANEL_TOOL_HANDLERS,
 )
+from core.tools.app_control_tool import (
+    APP_CONTROL_TOOL_DEFINITIONS,
+    APP_CONTROL_TOOL_HANDLERS,
+)
 from core.tools.agent_todo_tools import (
     AGENT_TODO_TOOL_DEFINITIONS,
     _exec_todo_list,
@@ -3398,6 +3402,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *WORKTREE_TOOL_DEFINITIONS,
     *IDENTITY_PIN_TOOL_DEFINITIONS,
     *UI_PANEL_TOOL_DEFINITIONS,
+    *APP_CONTROL_TOOL_DEFINITIONS,
     *AGENT_TODO_TOOL_DEFINITIONS,
     *MONITOR_TOOL_DEFINITIONS,
     *VERIFY_TOOL_DEFINITIONS,
@@ -8446,6 +8451,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **WORKTREE_TOOL_HANDLERS,
     **IDENTITY_PIN_TOOL_HANDLERS,
     **UI_PANEL_TOOL_HANDLERS,
+    **APP_CONTROL_TOOL_HANDLERS,
     "todo_list": _exec_todo_list,
     "todo_set": _exec_todo_set,
     "todo_add": _exec_todo_add,

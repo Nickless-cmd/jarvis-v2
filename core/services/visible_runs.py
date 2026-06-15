@@ -1450,6 +1450,21 @@ async def _stream_visible_run(
                         "step": _step_counter - len(simple_results) + _idx + 1,
                         "status": "done",
                     })
+                    # App-self-control (spec 2026-06-15): hvis tool'et bad om et
+                    # app-skift (request_app_action), emit et inline system-event
+                    # som desk viser som godkendelseskort. run.user_message giver
+                    # den besked der skal gen-sendes efter godkendelse.
+                    try:
+                        from core.tools.app_control_tool import build_app_action_event
+                        _app_ev = build_app_action_event(
+                            sr.get("result"),
+                            user_message=run.user_message,
+                            session_id=run.session_id or "",
+                        )
+                        if _app_ev:
+                            yield _sse("app_action_request", _app_ev)
+                    except Exception:
+                        pass
 
                 # Persist tool results to session DB after all approvals are resolved.
                 # 2026-05-24 (Claude): skip when resolve_pending_approval already

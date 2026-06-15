@@ -82,6 +82,23 @@ def get_user_row_by_email_hash(email_hash: str) -> dict[str, object] | None:
     return dict(row) if row else None
 
 
+def get_user_row_by_workspace(workspace: str) -> dict[str, object] | None:
+    """Opslag pr. workspace-mappenavn (omvendt lookup). Bruges af cutover-resolveren
+    + workspace_crypto til at genkende en SQLite-members workspace. Ignorerer
+    soft-slettede."""
+    ws = str(workspace or "").strip()
+    if not ws:
+        return None
+    with connect() as conn:
+        _ensure_users_table(conn)
+        row = conn.execute(
+            "SELECT * FROM users WHERE workspace = ? "
+            "AND (deleted_at IS NULL OR deleted_at = '') LIMIT 1",
+            (ws,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
 _USER_UPDATABLE = {
     "email_hash", "email_enc", "name", "role", "workspace", "password_hash",
     "discord_id_enc", "totp_seed_enc", "email_verified", "tier",

@@ -64,16 +64,36 @@ def workspace_dir(user_id: str | None = None) -> Path:
 
 
 def _user_id_to_workspace_name(user_id: str) -> str:
-    """Resolve discord_id → workspace folder name via users.json.
+    """Resolve user_id → workspace folder name.
 
-    Raises NoUserContextError if user_id is not registered.
+    Hybrid (users.json→SQLite-cutover): legacy users.json prøves FØRST (discord-id-
+    brugere opfører sig 100% uændret — nul regression), SQLite users-tabellen som
+    fallback (nyregistrerede brugere med user_id=UUID). Bevarer den LOUD
+    NoUserContextError hvis ingen af dem kender brugeren (aldrig stille default →
+    ingen data-lækage).
     """
-    from core.identity.users import find_user_by_discord_id
-    user = find_user_by_discord_id(str(user_id).strip())
-    if user is None:
-        raise NoUserContextError(
-            f"user_id={user_id!r} not found in users.json — refusing to default "
-            "to 'default' workspace (would leak owner data). Register the user "
-            "with scripts/users_cli.py add, or pass an explicit user_id."
-        )
-    return user.workspace
+    uid = str(user_id).strip()
+    # 1) Legacy users.json (discord-id). Uændret adfærd for kendte brugere.
+    try:
+        from core.identity.users import find_user_by_discord_id
+        user = find_user_by_discord_id(uid)
+        if user is not None:
+            return user.workspace
+    except Exception:
+        pass
+    # 2) SQLite users-tabel (user_id = UUID). Nyregistrerede selvbetjenings-brugere.
+    try:
+        from core.runtime.db_users import get_user_row
+        row = get_user_row(uid)
+        if row and not row.get("deleted_at"):
+            ws = str(row.get("workspace") or "").strip()
+            if ws:
+                return ws
+    except Exception:
+        pass
+    raise NoUserContextError(
+        f"user_id={user_id!r} ikke fundet i users.json eller SQLite-tabellen — "
+        "nægter at defaulte til 'default'-workspace (ville lække owner-data). "
+        "Registrér brugeren (scripts/users_cli.py add eller register_user), eller "
+        "pass et eksplicit user_id."
+    )

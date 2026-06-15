@@ -129,14 +129,25 @@ def member_user_id_for_path(path: str | os.PathLike) -> str | None:
     rest = parts[i + 2:]
     if rest and rest[0] == "runtime":
         return None
+    # Legacy users.json FØRST (discord-id-brugere). Returnerer discord_id som
+    # krypterings-nøgle-id for members.
     try:
         from core.identity.users import find_user_by_workspace
         u = find_user_by_workspace(ws_name)
     except Exception:
-        return None
-    if u is None or u.role == "owner":
-        return None  # ukendt projekt-mappe eller owner → plaintext
-    return u.discord_id
+        u = None
+    if u is not None:
+        return None if u.role == "owner" else u.discord_id
+    # SQLite-member-fallback (cutover): så en nyregistreret members workspace også
+    # genkendes → krypteres (ellers lå deres filer plaintext). Nøgle-id = user_id.
+    try:
+        from core.runtime.db_users import get_user_row_by_workspace
+        row = get_user_row_by_workspace(ws_name)
+        if row:
+            return None if str(row.get("role")) == "owner" else str(row.get("user_id"))
+    except Exception:
+        pass
+    return None  # ukendt projekt-mappe eller owner → plaintext
 
 
 def read_text_for_path(path: str | os.PathLike, *, encoding: str = "utf-8") -> str | None:

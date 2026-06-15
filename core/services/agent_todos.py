@@ -27,10 +27,23 @@ from core.runtime.state_store import load_json, save_json
 logger = logging.getLogger(__name__)
 
 _STATE_KEY = "agent_todos"
-_VALID_STATUSES = ("pending", "in_progress", "completed")
+_VALID_STATUSES = ("pending", "in_progress", "completed", "paused")
+# Ikke-terminale statuser kan udløbe (paused tæller med — en pauset todo kan stadig løbe ud).
+_EXPIRABLE_STATUSES = ("pending", "in_progress", "paused")
 
 # Stabil session-nøgle for todos oprettet fra cowork-UI'et (ikke en chat-tråd).
 COWORK_SESSION = "_cowork"
+
+
+def effective_status(todo: dict[str, Any], now_iso: str) -> str:
+    """Udledt status: 'expired' hvis expires_at er passeret og todo'en ikke er
+    terminal. Vi GEMMER ikke 'expired' (undgår dual-truth med expires_at) —
+    den udledes ved læsning."""
+    stored = str(todo.get("status") or "pending")
+    exp = str(todo.get("expires_at") or "")
+    if exp and stored in _EXPIRABLE_STATUSES and exp <= now_iso:
+        return "expired"
+    return stored
 
 
 def _load_all() -> dict[str, list[dict[str, Any]]]:
@@ -95,6 +108,7 @@ def set_todos(session_id: str | None, items: list[dict[str, Any]]) -> dict[str, 
             "status": status,
             "plan_id": raw.get("plan_id"),
             "plan_step_index": raw.get("plan_step_index"),
+            "expires_at": raw.get("expires_at") or "",
             "updated_at": now,
         })
 
@@ -345,6 +359,23 @@ def remove_todo_anywhere(todo_id: str) -> dict[str, Any]:
     return remove_todo(sid, todo_id)
 
 
+def set_todo_expiry_anywhere(todo_id: str, expires_at: str | None) -> dict[str, Any]:
+    """Sæt/ryd udløbstidspunkt (ISO) på en todo uanset session. None = intet udløb."""
+    sid = _find_session_for_todo(todo_id)
+    if sid is None:
+        return {"status": "error", "error": f"unknown todo_id {todo_id}"}
+    data = _load_all()
+    items = data.get(sid, [])
+    for it in items:
+        if str(it.get("id")) == str(todo_id):
+            it["expires_at"] = expires_at or ""
+            it["updated_at"] = datetime.now(UTC).isoformat()
+            break
+    data[sid] = items
+    _save_all(data)
+    return {"status": "ok", "todo_id": todo_id, "expires_at": expires_at or ""}
+
+
 def clear_session_todos(session_id: str | None) -> dict[str, Any]:
     sid = _session_key(session_id)
     data = _load_all()
@@ -379,12 +410,17 @@ def todos_prompt_section(session_id: str | None) -> str | None:
         return (order, str(it.get("updated_at", "")))
 
     sorted_items = sorted(todos, key=sort_key)
+    now_iso = datetime.now(UTC).isoformat()
     lines = []
     for it in sorted_items[:12]:
-        s = str(it.get("status", "pending"))
-        g = glyph.get(s, "?")
+        eff = effective_status(it, now_iso)
+        if eff in ("paused", "expired"):
+            continue  # skjult fra Jarvis' arbejdshukommelse (pause/udløb)
+        g = glyph.get(eff, "?")
         c = str(it.get("content", "")).strip()
         lines.append(f"{g} {c}")
+    if not lines:
+        return None
     header = (
         "Aktive todos for denne session "
         "(max ÉN må være ▶ in_progress ad gangen):"

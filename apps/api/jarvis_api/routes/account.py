@@ -313,6 +313,67 @@ async def account_set_visible_model(payload: dict = Body(default={})) -> dict[st
     return await asyncio.to_thread(_apply)
 
 
+def build_apps_overview(
+    *,
+    available: Callable[[], list[Any]],
+    get_status: Callable[[str], dict[str, Any]],
+) -> dict[str, Any]:
+    """Connectede apps (§4.5) = plugin-registry filtreret til kind='connector'.
+    Selve connector-implementationerne (Gmail/Calendar/GitHub OAuth) er separate
+    moduler der registrerer sig — her er management-fladen."""
+    apps = []
+    for m in available() or []:
+        if getattr(m, "kind", "") != "connector":
+            continue
+        st = get_status(getattr(m, "plugin_id", "")) or {}
+        apps.append({
+            "plugin_id": getattr(m, "plugin_id", ""),
+            "name": getattr(m, "name", ""),
+            "status": str(st.get("status") or "offline"),
+            "detail": str(st.get("detail") or ""),
+        })
+    return {"apps": apps}
+
+
+@router.get("/apps")
+async def account_apps() -> dict[str, Any]:
+    from core.plugins.base_plugin import available_plugins, get_status
+
+    def _assemble() -> dict[str, Any]:
+        return build_apps_overview(available=available_plugins, get_status=get_status)
+
+    return await asyncio.to_thread(_assemble)
+
+
+@router.get("/mcp")
+async def account_mcp() -> dict[str, Any]:
+    from core.services.mcp_registry import list_mcp_servers
+    servers = await asyncio.to_thread(list_mcp_servers)
+    return {"servers": servers}
+
+
+@router.post("/mcp")
+async def account_mcp_add(payload: dict = Body(default={})) -> dict[str, Any]:
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    if _current_role(user_id) != "owner":
+        raise HTTPException(status_code=403, detail="MCP-servere kan kun ændres af owner")
+    name = str((payload or {}).get("name") or "")
+    url = str((payload or {}).get("url") or "")
+    from core.services.mcp_registry import add_mcp_server
+    return await asyncio.to_thread(add_mcp_server, name, url)
+
+
+@router.delete("/mcp/{server_id}")
+async def account_mcp_remove(server_id: str) -> dict[str, Any]:
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    if _current_role(user_id) != "owner":
+        raise HTTPException(status_code=403, detail="MCP-servere kan kun ændres af owner")
+    from core.services.mcp_registry import remove_mcp_server
+    return await asyncio.to_thread(remove_mcp_server, server_id)
+
+
 @router.get("/quota")
 async def account_quota() -> dict[str, Any]:
     snap = current_context_snapshot()

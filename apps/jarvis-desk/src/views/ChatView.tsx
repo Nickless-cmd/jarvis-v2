@@ -7,6 +7,8 @@ import { useSettings } from '../hooks/useSettings'
 import { usePanel } from '../hooks/usePanel'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
+import { usePermission } from '../hooks/usePermission'
+import { readModelPrefs } from '../lib/composerPrefs'
 import { getContextInfo, getActiveRuns, followRun } from '../lib/api'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
@@ -24,6 +26,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
   const sessions = useSessions()
   const stream = useStream()
   const { settings, auth } = useSettings()
+  const { permission } = usePermission()
   const panel = usePanel()
   const reconciledForRun = useRef<string | null>(null)
   const transcriptRef = useRef<HTMLDivElement>(null)
@@ -243,6 +246,19 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
     })
   }
 
+  // Gensend: send en tidligere bruger-besked igen uden copy-paste. Bruger
+  // aktuelle composer-præferencer (model/provider/permission).
+  const resend = (text: string) => {
+    const prefs = readModelPrefs()
+    handleSend(text, {
+      planMode: false,
+      permission,
+      attachments: [],
+      model: prefs.model,
+      providerChoice: prefs.providerChoice,
+    })
+  }
+
   const streaming = stream.status === 'working'
 
   // Follow-up kø: skriver man mens Jarvis streamer, lægges beskeden i kø og
@@ -338,6 +354,7 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
             density="compact"
             streaming={false}
             createdAt={m.created_at}
+            onResend={m.role === 'user' ? resend : undefined}
           />
         ))}
         {streaming && stream.blocks.length > 0 && (

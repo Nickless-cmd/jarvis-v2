@@ -18,12 +18,15 @@ function MessageRowImpl({
   density,
   streaming,
   createdAt,
+  onResend,
 }: {
   role: 'user' | 'assistant'
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
   createdAt?: string
+  /** Kun bruger-beskeder: send samme tekst igen (sparer copy-paste). */
+  onResend?: (text: string) => void
 }) {
   if (role === 'user') {
     const text = blocks.map((b) => (b.type === 'text' ? b.text : '')).join('')
@@ -38,7 +41,13 @@ function MessageRowImpl({
           </div>
         )}
         {text && <div className="bubble">{text}</div>}
-        {!streaming && <MessageActions text={text} createdAt={createdAt} />}
+        {!streaming && (
+          <MessageActions
+            text={text}
+            createdAt={createdAt}
+            onResend={onResend && text ? () => onResend(text) : undefined}
+          />
+        )}
       </div>
     )
   }

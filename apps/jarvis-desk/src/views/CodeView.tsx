@@ -73,7 +73,7 @@ export function CodeView({
   // Trækbar bredde på hele fil-/preview-panelet (mod venstre). Bredere default
   // end før (380→460) så preview-ruden ikke er knald-smal.
   const codePanelW = useResizableWidth({
-    initial: 460, min: 300, max: 900, side: 'left', storageKey: 'jarvis-desk:code-panel-w',
+    initial: 560, min: 300, max: 1000, side: 'left', storageKey: 'jarvis-desk:code-panel-w2',
   })
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
 
@@ -197,6 +197,18 @@ export function CodeView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.autoContinue, ready])
 
+  // Gensend en tidligere bruger-besked (sparer copy-paste). Rolle-bevidst model
+  // som auto-continue: owner bruger egne prefs, member tvinges til standard/pro.
+  const resend = (text: string) => {
+    const prefs = readModelPrefs()
+    const sendModel = isOwner ? prefs.model : (prefs.model === 'pro' ? 'pro' : 'standard')
+    const sendProvider = isOwner ? prefs.providerChoice : ''
+    void doSend(text, {
+      planMode: false, permission, attachments: [],
+      model: sendModel, providerChoice: sendProvider,
+    })
+  }
+
   const trustBanner = trusted === false ? (
     <div className="trust-banner">
       <Lock size={14} />
@@ -318,7 +330,7 @@ export function CodeView({
         <div className="codeview-toolbar">{workspaceSelector}</div>
         <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
           {visibleMessages.map((m) => (
-            <MessageRow key={m.id} role={m.role === 'user' ? 'user' : 'assistant'} blocks={m.content} density="compact" streaming={false} createdAt={m.created_at} />
+            <MessageRow key={m.id} role={m.role === 'user' ? 'user' : 'assistant'} blocks={m.content} density="compact" streaming={false} createdAt={m.created_at} onResend={m.role === 'user' ? resend : undefined} />
           ))}
           {stream.status === 'working' && stream.blocks.length > 0 && (
             <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />

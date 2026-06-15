@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 
 /** Trækbar bredde med vedholdenhed (localStorage).
  *
@@ -28,12 +28,18 @@ export function useResizableWidth(opts: {
     return initial
   })
   const [dragging, setDragging] = useState(false)
+  // Persistér KUN efter brugeren faktisk har trukket — ellers ville den initiale
+  // default blive skrevet til localStorage ved mount og fryse fremtidige
+  // default-ændringer (Bjørn så ikke nye proportioner før dette).
+  const touched = useRef(false)
 
   useEffect(() => {
-    if (storageKey) {
+    if (storageKey && touched.current) {
       try { localStorage.setItem(storageKey, String(Math.round(width))) } catch { /* noop */ }
     }
   }, [width, storageKey])
+
+  const startDrag = useCallback(() => { touched.current = true; setDragging(true) }, [])
 
   useEffect(() => {
     if (!dragging) return
@@ -57,5 +63,5 @@ export function useResizableWidth(opts: {
     }
   }, [dragging, side, min, max])
 
-  return { ref, width, dragging, startDrag: () => setDragging(true) }
+  return { ref, width, dragging, startDrag }
 }

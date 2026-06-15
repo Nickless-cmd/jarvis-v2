@@ -29,7 +29,7 @@ export function CodePanel({
   const [tab, setTab] = useState<PanelTab>('files')
   // Trækbar fil-træ-bredde (mod højre). Vedholdende på tværs af genstart.
   const tree = useResizableWidth({
-    initial: 200, min: 120, max: 420, side: 'right', storageKey: 'jarvis-desk:code-tree-w',
+    initial: 190, min: 120, max: 420, side: 'right', storageKey: 'jarvis-desk:code-tree-w2',
   })
 
   const openFile = (rel: string) => {

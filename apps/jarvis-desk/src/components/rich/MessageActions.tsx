@@ -1,11 +1,14 @@
 import { useState } from 'react'
-import { Copy, Pin, Volume2, Check } from 'lucide-react'
+import { Copy, Pin, Volume2, Check, RotateCw } from 'lucide-react'
 import { formatRelativeTime } from '../../lib/formatTime'
 
 /** Action-række under en besked (opacity 0, fader ind ved hover): tid + kopiér +
- *  pin som kapitel + læs op. Kopiér tager RÅ tekst; læs op bruger Web Speech
- *  Synthesis (da-DK); pin er pt. en lokal markering (kapitel-feature kommer). */
-export function MessageActions({ text, createdAt }: { text: string; createdAt?: string }) {
+ *  pin som kapitel + læs op (+ gensend for bruger-beskeder). Kopiér tager RÅ
+ *  tekst; læs op bruger Web Speech Synthesis (da-DK); pin er pt. en lokal
+ *  markering (kapitel-feature kommer). onResend vises kun når den gives. */
+export function MessageActions({
+  text, createdAt, onResend,
+}: { text: string; createdAt?: string; onResend?: () => void }) {
   const [copied, setCopied] = useState(false)
   const [pinned, setPinned] = useState(false)
   const [speaking, setSpeaking] = useState(false)
@@ -31,6 +34,11 @@ export function MessageActions({ text, createdAt }: { text: string; createdAt?: 
 
   return (
     <div className="msg-actions">
+      {onResend && (
+        <button type="button" className="msg-action-btn" title="Send igen" onClick={onResend}>
+          <RotateCw size={13} />
+        </button>
+      )}
       <button type="button" className="msg-action-btn" title="Kopiér" onClick={copy}>
         {copied ? <Check size={13} /> : <Copy size={13} />}
       </button>

@@ -8,6 +8,7 @@ import { ShareGuardPane } from '../components/cowork/ShareGuardPane'
 import { AgentDispatchPane } from '../components/cowork/AgentDispatchPane'
 import { CoworkZones } from '../components/cowork/CoworkZones'
 import { AccountSection } from '../components/settings/AccountSection'
+import { KvoteSection } from '../components/settings/KvoteSection'
 import { TotpSetup } from '../components/settings/TotpSetup'
 import { PluginsPanel } from '../components/settings/PluginsPanel'
 import { activeAgentsToView } from '../lib/coworkApi'
@@ -62,6 +63,7 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
   const settingsZone = (
     <div className="cowork-settings">
       <AccountSection config={config} />
+      <KvoteSection config={config} />
       {auth?.role === 'owner' && <TotpSetup config={config} />}
       {auth?.role === 'owner' && <PluginsPanel config={config} />}
     </div>

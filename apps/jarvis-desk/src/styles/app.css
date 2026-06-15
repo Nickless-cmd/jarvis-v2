@@ -1380,6 +1380,13 @@
 .account-fields { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 13px; }
 .account-fields dt { color: var(--fg-3); }
 .account-fields dd { margin: 0; color: var(--fg-1); }
+.quota-list { display: flex; flex-direction: column; gap: 12px; }
+.quota-row .quota-head { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+.quota-num { color: var(--fg-3); }
+.quota-bar { height: 6px; background: var(--bg-3); border-radius: 4px; overflow: hidden; }
+.quota-fill { height: 100%; background: var(--accent, #5b8def); }
+.quota-row.warn .quota-fill { background: var(--danger, #e06c75); }
+.quota-row.warn .quota-num { color: var(--danger, #e06c75); }
 .badge { padding: 1px 8px; border-radius: 10px; font-size: 11px; margin-left: 4px; }
 .badge-ok { background: #1d3a24; color: #6ee7a0; }
 .badge-warn { background: #3a2a1d; color: #e7b96e; }

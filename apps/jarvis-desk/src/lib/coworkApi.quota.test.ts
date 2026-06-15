@@ -14,6 +14,6 @@ describe('getAccountQuota', () => {
     const ov = await getAccountQuota(cfg)
     expect(fetchMock).toHaveBeenCalledWith(cfg, '/account/quota')
     expect(ov.tier).toBe('plus')
-    expect(ov.items[0].kind).toBe('chat')
+    expect(ov.items[0]!.kind).toBe('chat')
   })
 })

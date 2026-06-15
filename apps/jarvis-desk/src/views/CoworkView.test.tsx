@@ -13,9 +13,11 @@ vi.mock('../hooks/useCoworkData', () => ({
 const getAccountMe = vi.fn().mockResolvedValue({
   user_id: 'u1', email: 'bjorn@x.dk', email_verified: true, language: 'da', role: 'owner', tier: 'owner',
 })
+const getAccountQuota = vi.fn().mockResolvedValue({ tier: 'owner', items: [] })
 vi.mock('../lib/coworkApi', async (orig) => ({
   ...(await orig<typeof import('../lib/coworkApi')>()),
   getAccountMe: (...a: unknown[]) => getAccountMe(...a),
+  getAccountQuota: (...a: unknown[]) => getAccountQuota(...a),
 }))
 // TotpSetup/PluginsPanel laver netværkskald ved mount — stub dem til tomme noder.
 vi.mock('../components/settings/TotpSetup', () => ({ TotpSetup: () => <div>totp</div> }))

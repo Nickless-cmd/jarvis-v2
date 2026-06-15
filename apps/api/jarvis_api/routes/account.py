@@ -151,6 +151,56 @@ async def account_workspace() -> dict[str, Any]:
     )
 
 
+def build_memory_overview(
+    user_id: str,
+    *,
+    ws_dir: Callable[[str], Any],
+    read_text: Callable[[Any], str | None],
+    recent_sensory: Callable[[], list[dict[str, Any]]],
+    brain_count: Callable[[], int],
+) -> dict[str, Any]:
+    """Self-scope memory-overblik: MEMORY.md + USER.md (afkortet) + seneste
+    sansninger + brain-antal. Privatliv: alt scopet til den aktuelle bruger."""
+    d = ws_dir(user_id)
+    return {
+        "memory_md": (read_text(d / "MEMORY.md") or "")[:8000],
+        "user_md": (read_text(d / "USER.md") or "")[:8000],
+        "recent_sensory": recent_sensory(),
+        "brain_count": brain_count(),
+    }
+
+
+@router.get("/memory")
+async def account_memory() -> dict[str, Any]:
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+
+    def _assemble() -> dict[str, Any]:
+        from core.runtime.db_private_brain import list_private_brain_records
+        from core.runtime.db_sensory import list_sensory_memories
+        from core.runtime.workspace_paths import workspace_dir
+        from core.services.workspace_crypto import read_text_for_path
+        return build_memory_overview(
+            user_id,
+            ws_dir=workspace_dir,
+            read_text=lambda p: read_text_for_path(str(p)),
+            recent_sensory=lambda: list_sensory_memories(limit=5),
+            brain_count=lambda: len(list_private_brain_records(limit=500)),
+        )
+
+    return await asyncio.to_thread(_assemble)
+
+
+@router.get("/memory/search")
+async def account_memory_search(q: str = "") -> dict[str, Any]:
+    query = (q or "").strip()
+    if not query:
+        return {"results": []}
+    from core.runtime.db_sensory import search_sensory_memories
+    results = await asyncio.to_thread(search_sensory_memories, query=query, limit=20)
+    return {"results": results}
+
+
 @router.get("/quota")
 async def account_quota() -> dict[str, Any]:
     snap = current_context_snapshot()

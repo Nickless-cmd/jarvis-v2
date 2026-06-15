@@ -212,3 +212,15 @@ export async function getAccountQuota(config: ApiConfig): Promise<QuotaOverview>
 export async function setAccountLanguage(config: ApiConfig, language: string): Promise<void> {
   await apiFetch(config, '/account/language', { method: 'PATCH', body: { language } })
 }
+
+export interface WorkspaceOverview {
+  path_name: string
+  files: number
+  disk_bytes: number
+  encrypted: boolean
+  trusted: boolean
+}
+
+export async function getAccountWorkspace(config: ApiConfig): Promise<WorkspaceOverview> {
+  return apiFetch<WorkspaceOverview>(config, '/account/workspace')
+}

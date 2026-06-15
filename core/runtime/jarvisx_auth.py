@@ -202,6 +202,19 @@ def verify_token(token: str) -> dict[str, Any]:
     # Defensive — make sure required fields are usable
     if not claims.get("sub"):
         raise AuthError("token missing subject")
+    # Per-token revocation (spec 2026-06-15): en API-nøgle med en jti der står på
+    # bloklisten afvises live. JWT'en er ellers selvbærende; dette gør del_user/
+    # revoke_api_key effektiv uden at rotere hele auth-secret'en.
+    jti = str(claims.get("jti") or "")
+    if jti:
+        try:
+            from core.identity.user_db import is_api_key_revoked
+            if is_api_key_revoked(jti):
+                raise AuthError("token revoked")
+        except AuthError:
+            raise
+        except Exception:
+            pass  # bloklist utilgængelig → fail-open (verificeret token bevares)
     role = str(claims.get("role") or "member").lower()
     if role not in {"owner", "member", "guest"}:
         raise AuthError(f"invalid role in token: {role!r}")

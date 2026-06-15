@@ -33,12 +33,26 @@ def _today() -> str:
     return datetime.now(_CET).date().isoformat()
 
 
+def set_user_quota(user_id: str, tier: str) -> bool:
+    """Sæt en brugers eksplicitte tier (autoritativt i user_db). Owner kan give
+    enhver tier; ordblinde/blinde kan få Plus-kvoter gratis via 'plus'."""
+    from core.identity.user_db import set_quota_tier
+    return set_quota_tier(user_id, tier)
+
+
 def get_tier(user_id: str) -> str:
-    """Brugerens tier. Eksplicit users.json-tier vinder (special-tilfælde §21.8);
-    ellers udledt af rolle. Ubundet ("") = owner."""
+    """Brugerens tier. user_db-tier (nyt autoritativt felt) vinder; ellers eksplicit
+    users.json-tier (legacy §21.8); ellers udledt af rolle. Ubundet ("") = owner."""
     uid = str(user_id or "").strip()
     if not uid:
         return "owner"
+    try:
+        from core.identity.user_db import get_user as _udb_get_user
+        _u = _udb_get_user(uid)
+        if _u and _u.get("tier") in _VALID_TIERS:
+            return str(_u["tier"])
+    except Exception:
+        pass
     try:
         from core.identity.users import find_user_by_discord_id
         u = find_user_by_discord_id(uid)

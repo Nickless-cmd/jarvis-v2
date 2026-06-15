@@ -61,3 +61,21 @@ def test_plus_agent_quota(_users) -> None:
     assert consume_quota("d-mikkel", "agent")["consumed"] is True
     assert consume_quota("d-mikkel", "agent")["consumed"] is True
     assert consume_quota("d-mikkel", "agent")["consumed"] is False
+
+
+def test_set_user_quota_then_get_tier(isolated_runtime) -> None:
+    from core.identity.user_db import create_user
+    from core.services.quota_store import set_user_quota, get_tier
+    u = create_user(email="q@b.dk", name="Q", password="x", role="member", workspace="q")
+    uid = u["user_id"]
+    assert set_user_quota(uid, "pro") is True
+    assert get_tier(uid) == "pro"
+
+
+def test_set_user_quota_rejects_unknown_tier(isolated_runtime) -> None:
+    import pytest
+    from core.identity.user_db import create_user
+    from core.services.quota_store import set_user_quota
+    u = create_user(email="q2@b.dk", name="Q", password="x", role="member", workspace="q2")
+    with pytest.raises(ValueError):
+        set_user_quota(u["user_id"], "platinum")

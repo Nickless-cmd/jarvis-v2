@@ -39,6 +39,17 @@ def _ws_path_exists(path: Path) -> bool:
     return bool(member_user_id_for_path(path)) and Path(str(path) + ".enc").exists()
 
 
+def _record_active_file(path: str, op: str, args: dict[str, Any]) -> None:
+    """Live-highlight: notér at Jarvis (i brugerens kontekst) rører `path`, så
+    desk-fil-træet kan markere filen live. Fail-open — må aldrig vælte tool-kaldet."""
+    try:
+        from core.services.active_file_store import set_active_file
+        uid = str(args.get("_runtime_user_id") or args.get("_user_id") or "owner")
+        set_active_file(uid, str(path), op)
+    except Exception:
+        pass
+
+
 def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
     from core.tools.simple_tools import MAX_READ_CHARS
 
@@ -77,6 +88,7 @@ def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         pass
 
+    _record_active_file(str(target), "read", args)
     return {"text": text, "path": str(target), "size": len(text), "status": "ok"}
 
 
@@ -167,6 +179,7 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
         record_self_mutation(target_path=str(target), change_type="write")
     except Exception:
         pass
+    _record_active_file(str(target), "write", args)
     return result
 
 
@@ -237,4 +250,5 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     if redirected_from:
         result["redirected_from"] = redirected_from
         result["note"] = f"Path redirected to canonical workspace location: {target}"
+    _record_active_file(str(target), "write", args)
     return result

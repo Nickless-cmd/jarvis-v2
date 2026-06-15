@@ -3960,6 +3960,16 @@ def _operator_user_id(args: dict[str, Any]) -> str:
         return "1246415163603816499"
 
 
+def _record_active_file(path: str, op: str, args: dict[str, Any]) -> None:
+    """Live-highlight: notér at Jarvis (i brugerens kontekst) rører `path` på sin
+    egen maskine, så desk-fil-træet kan markere den live. Fail-open."""
+    try:
+        from core.services.active_file_store import set_active_file
+        set_active_file(_operator_user_id(args), str(path), op)
+    except Exception:
+        pass
+
+
 def _run_operator_async(coro_fn, *, tool_name: str, timeout_s: float = 35.0) -> dict[str, Any]:
     """Bridge sync tool-handler → async dispatcher.
 
@@ -4061,6 +4071,7 @@ def _exec_operator_read_file(args: dict[str, Any]) -> dict[str, Any]:
             record_operator_read(path, session_id=str(_sid))
         except Exception:
             pass
+        _record_active_file(path, "read", args)
         return {"status": "ok", "result": out["result"], "path": path}
     return out
 
@@ -4128,6 +4139,7 @@ def _exec_operator_write_file(args: dict[str, Any]) -> dict[str, Any]:
                 out["_session_summary"] = summary
         except Exception:
             pass
+        _record_active_file(path, "write", args)
     return out
 
 
@@ -4200,6 +4212,7 @@ def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
                 out["_session_summary"] = summary
         except Exception:
             pass
+        _record_active_file(path, "write", args)
     return out
 
 

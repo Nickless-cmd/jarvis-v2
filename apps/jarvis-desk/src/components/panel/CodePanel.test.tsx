@@ -1,12 +1,16 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { CodePanel } from './CodePanel'
+import { clearTreeCache } from '../../lib/treeCache'
 
 vi.mock('../../lib/api', () => ({
   getTree: vi.fn().mockResolvedValue([{ name: 'x.py', kind: 'file' }]),
   getFile: vi.fn().mockResolvedValue({ path: 'core/x.py', content: 'print(1)', language: 'python' }),
   writeFile: vi.fn().mockResolvedValue({ status: 'ok', path: 'core/x.py' }),
   openExternal: vi.fn().mockResolvedValue({ status: 'ok', path: '/x' }),
+  getActiveFile: vi.fn().mockResolvedValue({ path: '', op: '', ts: null }),
+  commitMessage: vi.fn().mockResolvedValue({ message: 'update x.py', auto: true }),
+  commitFile: vi.fn().mockResolvedValue({ status: 'ok', sha: 'abc123', message: 'update x.py' }),
 }))
 // Stub TerminalPane — xterm rører DOM/canvas som jsdom ikke understøtter.
 vi.mock('./TerminalPane', () => ({
@@ -16,6 +20,8 @@ vi.mock('./TerminalPane', () => ({
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
 
 describe('CodePanel', () => {
+  beforeEach(() => clearTreeCache())
+
   it('åbner en fil i visningen ved klik i træet', async () => {
     render(<CodePanel config={cfg} kind="container" root="core" />)
     fireEvent.click(await screen.findByText('x.py'))
@@ -54,5 +60,26 @@ describe('CodePanel', () => {
   it('Jarvis-highlight åbner filen i preview', async () => {
     render(<CodePanel config={cfg} kind="container" root="repo" highlightPath="x.py" />)
     expect(await screen.findByText(/print\(1\)/)).toBeInTheDocument()
+  })
+
+  it('Gem & commit henter auto-besked og committer', async () => {
+    const api = await import('../../lib/api')
+    render(<CodePanel config={cfg} kind="container" root="repo" />)
+    fireEvent.contextMenu(await screen.findByText('x.py'))
+    fireEvent.click(screen.getByText('Åbn i editor'))
+    await screen.findByDisplayValue('print(1)')
+    fireEvent.click(screen.getByTitle('Gem & commit'))
+    // Auto-besked fyldes i commit-feltet.
+    expect(await screen.findByDisplayValue('update x.py')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Commit'))
+    await waitFor(() => expect(api.commitFile).toHaveBeenCalled())
+  })
+
+  it('ingen Gem & commit udenfor repo-root', async () => {
+    render(<CodePanel config={cfg} kind="container" root="workspace" />)
+    fireEvent.contextMenu(await screen.findByText('x.py'))
+    fireEvent.click(screen.getByText('Åbn i editor'))
+    await screen.findByDisplayValue('print(1)')
+    expect(screen.queryByTitle('Gem & commit')).not.toBeInTheDocument()
   })
 })

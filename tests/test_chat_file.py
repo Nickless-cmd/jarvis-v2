@@ -65,6 +65,53 @@ def test_open_external_rejects_container():
     assert r.status_code == 400
 
 
+def test_commit_message_falls_back_to_template(monkeypatch, tmp_path):
+    # Uden lokal ollama → diff-template "update <basenavn> (+a −b)".
+    import apps.api.jarvis_api.routes.chat as chatmod
+    import core.memory.inner_llm_enrichment as inner
+    monkeypatch.setattr(chatmod, "_resolve_role", lambda uid: "owner")
+    monkeypatch.setattr(chatmod, "_allowed_roots", lambda role, uid: {"repo": tmp_path})
+    monkeypatch.setattr(inner, "_resolve_ollama_fallback_target", lambda: None)
+    (tmp_path / "f.py").write_text("a = 1\n")
+
+    r = client.post("/chat/file/commit-message", json={"root": "repo", "path": "f.py", "content": "a = 2\n"})
+    assert r.status_code == 200
+    assert "f.py" in r.json()["message"]
+
+
+def test_commit_writes_and_commits(monkeypatch, tmp_path):
+    import subprocess
+    import apps.api.jarvis_api.routes.chat as chatmod
+    subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "config", "user.name", "t"], check=True)
+    (tmp_path / "f.py").write_text("a = 1\n")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "commit", "-qm", "init"], check=True)
+    monkeypatch.setattr(chatmod, "_resolve_role", lambda uid: "owner")
+    monkeypatch.setattr(chatmod, "_allowed_roots", lambda role, uid: {"repo": tmp_path})
+
+    r = client.post("/chat/file/commit", json={
+        "root": "repo", "path": "f.py", "content": "a = 2\n", "message": "bump a",
+    })
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "ok" and r.json()["sha"]
+    assert (tmp_path / "f.py").read_text() == "a = 2\n"
+    log = subprocess.run(["git", "-C", str(tmp_path), "log", "-1", "--pretty=%s"],
+                         capture_output=True, text=True).stdout.strip()
+    assert log == "bump a"
+
+
+def test_commit_rejects_non_repo_root(monkeypatch, tmp_path):
+    import apps.api.jarvis_api.routes.chat as chatmod
+    monkeypatch.setattr(chatmod, "_resolve_role", lambda uid: "owner")
+    monkeypatch.setattr(chatmod, "_allowed_roots", lambda role, uid: {"workspace": tmp_path})
+    r = client.post("/chat/file/commit", json={
+        "root": "workspace", "path": "f.py", "content": "x", "message": "m",
+    })
+    assert r.status_code == 400
+
+
 def test_workstation_reads_via_operator_result_shape(monkeypatch):
     # Ægte form: _run_operator_async pakker bro-svaret i {"status","result"};
     # operator_read_file_async returnerer filindholdet som ren streng.

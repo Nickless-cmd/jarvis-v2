@@ -439,6 +439,27 @@ export async function openExternal(
   return apiFetch(config, '/chat/open-external', { method: 'POST', body: { root, path, kind } })
 }
 
+/** Live: den sti Jarvis senest læste/skrev (fil-træ live-highlight). */
+export async function getActiveFile(
+  config: ApiConfig,
+): Promise<{ path: string; op: string; ts: number | null }> {
+  return apiFetch(config, '/chat/active-file')
+}
+
+/** Auto-genereret (redigerbar) commit-besked ud fra diff'en. */
+export async function commitMessage(
+  config: ApiConfig, root: string, path: string, content: string,
+): Promise<{ message: string; auto: boolean }> {
+  return apiFetch(config, '/chat/file/commit-message', { method: 'POST', body: { root, path, content } })
+}
+
+/** Gem & commit (kun repo-root, owner): skriv + git commit på aktuel branch. */
+export async function commitFile(
+  config: ApiConfig, root: string, path: string, content: string, message: string,
+): Promise<{ status: string; sha?: string; message: string }> {
+  return apiFetch(config, '/chat/file/commit', { method: 'POST', body: { root, path, content, message } })
+}
+
 /** Code-mode terminal (§17), container-side: kør én kommando server-side i
  *  repo-workspace (owner-only, cwd contained til repo). Returnerer fuld output. */
 export async function runContainerCommand(

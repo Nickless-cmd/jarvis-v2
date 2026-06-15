@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { FileTree } from './FileTree'
 
+import { clearTreeCache } from '../../lib/treeCache'
+
 const getTreeMock = vi.fn()
 vi.mock('../../lib/api', () => ({
   getTree: (...args: unknown[]) => getTreeMock(...args),
@@ -11,6 +13,7 @@ const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
 
 describe('FileTree', () => {
   beforeEach(() => {
+    clearTreeCache()  // modul-cache persisterer ellers mellem tests
     getTreeMock.mockReset()
     getTreeMock.mockResolvedValue([{ name: 'services', kind: 'dir' }, { name: 'x.py', kind: 'file' }])
   })

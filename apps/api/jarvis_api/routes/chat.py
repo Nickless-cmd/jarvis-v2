@@ -158,6 +158,22 @@ def _write_file_sync(
     return {"status": "ok", "path": path}
 
 
+@router.get("/active-file")
+async def chat_active_file() -> dict:
+    """Live: den sti Jarvis senest læste/skrev (file-tree live-highlight). Desk
+    poller dette når fil-træet er åbent og markerer filen. Pr. bruger."""
+    import asyncio
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or "owner"
+    rec = await asyncio.to_thread(_active_file_sync, uid)
+    return rec or {"path": "", "op": "", "ts": None}
+
+
+def _active_file_sync(uid: str) -> dict | None:
+    from core.services.active_file_store import get_active_file
+    return get_active_file(uid)
+
+
 class _OpenExternalBody(BaseModel):
     root: str = ""
     path: str
@@ -186,6 +202,130 @@ def _open_external_sync(
     if res.get("status") != "ok":
         raise HTTPException(status_code=502, detail=str(res.get("error") or "xdg-open fejlede"))
     return {"status": "ok", "path": full}
+
+
+class _CommitMsgBody(BaseModel):
+    root: str = ""
+    path: str
+    content: str
+    kind: str = "container"
+
+
+def _file_diff_sync(root: str, path: str, new_content: str, role: str, uid: str) -> tuple[str, int, int, bool]:
+    """Unified diff (gammelt indhold vs. nyt) for en jailet container-fil.
+    Returnerer (diff_tekst, added, removed, er_ny_fil)."""
+    import difflib
+    roots = _allowed_roots(role, uid)
+    base = roots.get(root)
+    if base is None:
+        raise HTTPException(status_code=403, detail=f"root '{root}' ikke tilladt for rollen")
+    candidate = (base / path).resolve()
+    if not str(candidate).startswith(str(base)):
+        raise HTTPException(status_code=403, detail="path uden for jail")
+    is_new = not candidate.is_file()
+    old = "" if is_new else candidate.read_text(encoding="utf-8", errors="replace")
+    diff_lines = list(difflib.unified_diff(old.splitlines(), new_content.splitlines(), lineterm="", n=2))
+    added = sum(1 for ln in diff_lines if ln.startswith("+") and not ln.startswith("+++"))
+    removed = sum(1 for ln in diff_lines if ln.startswith("-") and not ln.startswith("---"))
+    return "\n".join(diff_lines[:240]), added, removed, is_new
+
+
+@router.post("/file/commit-message")
+async def chat_commit_message(body: _CommitMsgBody) -> dict:
+    """Auto-genereret (redigerbar) commit-besked til "Gem & commit". Bruger lokal
+    ollama (privat-sikker — repo-kode må ALDRIG til fri/cloud-model) med en
+    diff-template som fallback. Blokerende → to_thread."""
+    import asyncio
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
+    role = _resolve_role(uid)
+    return await asyncio.to_thread(_commit_message_sync, body.path, body.root, body.content, role, uid)
+
+
+def _commit_message_sync(path: str, root: str, content: str, role: str, uid: str) -> dict:
+    diff, added, removed, is_new = _file_diff_sync(root, path, content, role, uid)
+    base_name = path.rsplit("/", 1)[-1]
+    template = f"{'add' if is_new else 'update'} {base_name} (+{added} −{removed})"
+    if not diff.strip():
+        return {"message": template, "auto": True}
+    try:
+        from core.memory.inner_llm_enrichment import (
+            _resolve_ollama_fallback_target, _call_ollama_chat,
+        )
+        tgt = _resolve_ollama_fallback_target()
+        if tgt and tgt.get("model"):
+            sys = (
+                "Du skriver KORTE git commit-beskeder på dansk i imperativ, ÉN linje, "
+                "under 72 tegn, ingen anførselstegn eller punktum. Svar KUN med beskeden."
+            )
+            usr = f"Fil: {path}\nÆndringer (unified diff):\n{diff[:3000]}"
+            txt = _call_ollama_chat(
+                model=str(tgt.get("model") or ""), base_url=str(tgt.get("base_url") or ""),
+                system_prompt=sys, user_message=usr, timeout=8,
+            )
+            if txt:
+                msg = txt.strip().splitlines()[0].strip().strip('"').strip()[:120]
+                if msg:
+                    return {"message": msg, "auto": True}
+    except Exception:
+        pass
+    return {"message": template, "auto": True}
+
+
+class _CommitBody(BaseModel):
+    root: str = ""
+    path: str
+    content: str
+    message: str
+    kind: str = "container"
+
+
+@router.post("/file/commit")
+async def chat_commit_file(body: _CommitBody) -> dict:
+    """"Gem & commit": skriv filen + git add/commit på den AKTUELLE branch (ingen
+    push). KUN repo-root (git findes kun der) og OWNER. Blokerende → to_thread."""
+    import asyncio
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
+    if uid:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(str(uid))
+        if not u or getattr(u, "role", "") != "owner":
+            raise HTTPException(status_code=403, detail="owner only")
+    role = _resolve_role(uid)
+    return await asyncio.to_thread(_commit_file_sync, body.path, body.root, body.content, body.message, role, uid)
+
+
+def _commit_file_sync(path: str, root: str, content: str, message: str, role: str, uid: str) -> dict:
+    import subprocess
+    if root != "repo":
+        raise HTTPException(status_code=400, detail="commit kun for repo-root (git findes kun der)")
+    roots = _allowed_roots(role, uid)
+    base = roots.get("repo")
+    if base is None:
+        raise HTTPException(status_code=403, detail="repo ikke tilladt for rollen")
+    candidate = (base / path).resolve()
+    if not str(candidate).startswith(str(base)):
+        raise HTTPException(status_code=403, detail="path uden for jail")
+    candidate.parent.mkdir(parents=True, exist_ok=True)
+    candidate.write_text(content, encoding="utf-8")
+    repo = str(base)
+    msg = (message or "").strip() or f"update {path}"
+
+    def _git(*a: str) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", "-C", repo, *a], capture_output=True, text=True, timeout=20)
+
+    add = _git("add", "--", path)
+    if add.returncode != 0:
+        raise HTTPException(status_code=500, detail=f"git add fejlede: {add.stderr[:200]}")
+    cm = _git("commit", "-m", msg, "--", path)
+    if cm.returncode != 0:
+        out = (cm.stdout or "") + (cm.stderr or "")
+        if "nothing to commit" in out or "no changes added" in out:
+            return {"status": "nochange", "message": msg}
+        raise HTTPException(status_code=500, detail=f"git commit fejlede: {out[:200]}")
+    sha = _git("rev-parse", "--short", "HEAD").stdout.strip()
+    return {"status": "ok", "sha": sha, "message": msg}
 
 
 def _operator_exec(name: str, args: dict) -> dict:

@@ -1,17 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronRight, ChevronDown, File, Folder } from 'lucide-react'
 import { getTree, type TreeEntry, type ApiConfig } from '../../lib/api'
 
 /** Rekursivt fil-træ for Code-mode. Loader børn lazily ved ekspander. onOpenFile
- *  får den fulde sti (relativt til root). */
+ *  får den fulde sti (relativt til root). highlightPath (Jarvis-styret) får træet
+ *  til at auto-ekspandere stien + scrolle-til + markere filen. onContext åbner
+ *  højreklik-menuen (editor/terminal). */
 export function FileTree({
-  config, kind, root, path = '', onOpenFile,
+  config, kind, root, path = '', onOpenFile, highlightPath, onContext,
 }: {
   config: ApiConfig
   kind: 'container' | 'workstation'
   root: string
   path?: string
   onOpenFile: (fullPath: string) => void
+  highlightPath?: string
+  onContext?: (fullPath: string, x: number, y: number) => void
 }) {
   const [entries, setEntries] = useState<TreeEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -36,22 +40,50 @@ export function FileTree({
     <ul className="filetree">
       {entries.map((e) => (
         <TreeNode key={e.name} config={config} kind={kind} root={root}
-          path={path ? `${path}/${e.name}` : e.name} entry={e} onOpenFile={onOpenFile} />
+          path={path ? `${path}/${e.name}` : e.name} entry={e}
+          onOpenFile={onOpenFile} highlightPath={highlightPath} onContext={onContext} />
       ))}
     </ul>
   )
 }
 
 function TreeNode({
-  config, kind, root, path, entry, onOpenFile,
+  config, kind, root, path, entry, onOpenFile, highlightPath, onContext,
 }: {
   config: ApiConfig; kind: 'container' | 'workstation'; root: string
   path: string; entry: TreeEntry; onOpenFile: (p: string) => void
+  highlightPath?: string
+  onContext?: (p: string, x: number, y: number) => void
 }) {
   const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLLIElement>(null)
+  // Highlight: er denne node selve mål-filen, eller en forfader på stien?
+  const isTarget = !!highlightPath && entry.kind === 'file' && highlightPath === path
+  const onTargetPath = !!highlightPath && entry.kind === 'dir'
+    && (highlightPath === path || highlightPath.startsWith(path + '/'))
+
+  // Forfader-mapper på højlight-stien auto-ekspanderes (kaskaderer ned til filen).
+  useEffect(() => {
+    if (onTargetPath) setOpen(true)
+  }, [onTargetPath])
+
+  // Mål-filen scrolles ind i view når highlight rammer.
+  useEffect(() => {
+    // scrollIntoView findes ikke i jsdom (test) — guard så det ikke vælter.
+    if (isTarget && ref.current?.scrollIntoView) {
+      ref.current.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [isTarget])
+
   if (entry.kind === 'file') {
     return (
-      <li className="filetree-file" onClick={() => onOpenFile(path)} title={entry.name}>
+      <li
+        ref={ref}
+        className={`filetree-file ${isTarget ? 'highlight' : ''}`}
+        onClick={() => onOpenFile(path)}
+        onContextMenu={onContext ? (e) => { e.preventDefault(); onContext(path, e.clientX, e.clientY) } : undefined}
+        title={entry.name}
+      >
         <File size={13} /> <span className="filetree-name">{entry.name}</span>
       </li>
     )
@@ -62,7 +94,10 @@ function TreeNode({
         {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         <Folder size={13} /> <span className="filetree-name">{entry.name}</span>
       </div>
-      {open && <FileTree config={config} kind={kind} root={root} path={path} onOpenFile={onOpenFile} />}
+      {open && (
+        <FileTree config={config} kind={kind} root={root} path={path}
+          onOpenFile={onOpenFile} highlightPath={highlightPath} onContext={onContext} />
+      )}
     </li>
   )
 }

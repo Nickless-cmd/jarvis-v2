@@ -1222,9 +1222,45 @@
 .filetree-file > svg, .filetree-dir-row > svg { flex: 0 0 auto; }
 .filetree-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .filetree-file:hover, .filetree-dir-row:hover { background: var(--bg-2); color: var(--fg-1); }
+/* Jarvis-styret highlight: markér + pulsér kort så øjet fanger filen. */
+.filetree-file.highlight { background: color-mix(in srgb, var(--accent) 26%, transparent); color: var(--fg-1); animation: filetree-pulse 1.1s ease-out 2; }
+@keyframes filetree-pulse {
+  0% { background: color-mix(in srgb, var(--accent) 55%, transparent); }
+  100% { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+}
 .filetree-loading { padding: 8px; color: var(--fg-3); }
 .filetree-empty { padding: 8px; color: var(--fg-3); font-size: 12px; }
 .filetree-error { padding: 8px; color: #e2777a; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+
+/* Højreklik-menu på en fil (editor/terminal) */
+.file-context-menu {
+  position: fixed; z-index: 60; min-width: 160px; padding: 4px;
+  background: var(--bg-1); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; flex-direction: column; gap: 2px;
+}
+.file-context-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  background: transparent; color: var(--fg-2); border: none; border-radius: 5px;
+  padding: 7px 10px; font-size: 12.5px; cursor: pointer;
+}
+.file-context-item:hover { background: var(--bg-2); color: var(--fg-1); }
+
+/* In-app editor (container-side redigér + gem) */
+.codepanel-editor-actions { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; }
+.codepanel-save, .codepanel-cancel {
+  display: inline-flex; align-items: center; gap: 4px; background: var(--bg-2);
+  color: var(--fg-1); border: 1px solid var(--line); border-radius: 5px;
+  padding: 2px 7px; font-size: 11.5px; cursor: pointer;
+}
+.codepanel-save:hover { border-color: var(--accent); color: var(--accent); }
+.codepanel-save-msg { font-size: 11px; color: var(--fg-3); }
+.codepanel-editor {
+  width: 100%; height: calc(100% - 26px); resize: none; box-sizing: border-box;
+  background: #0d0d0f; color: #c8d2dc; border: 1px solid var(--line); border-radius: 6px;
+  padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px; line-height: 1.5; tab-size: 4;
+}
+.codepanel-editor:focus { outline: none; border-color: var(--accent); }
 
 /* Code-mode panel */
 .codepanel { display: flex; flex-direction: column; height: 100%; }

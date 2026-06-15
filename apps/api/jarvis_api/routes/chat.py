@@ -115,6 +115,79 @@ def _read_file_sync(
     return {"path": path, "content": content, "language": _LANG_BY_EXT.get(candidate.suffix, "text")}
 
 
+class _FileWriteBody(BaseModel):
+    root: str = ""
+    path: str
+    content: str
+    kind: str = "container"
+
+
+@router.post("/file")
+async def chat_write_file(body: _FileWriteBody) -> dict:
+    """Gem en redigeret fil fra in-app editoren (code mode). Rolle-scopet + jailet
+    som GET; container skriver direkte (owner: repo/jarvis-v2/workspace, member:
+    workspace), workstation via operator-broen. Blokerende I/O → to_thread."""
+    import asyncio
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
+    role = _resolve_role(uid)
+    return await asyncio.to_thread(
+        _write_file_sync, body.path, body.root, body.content, body.kind, role, uid,
+    )
+
+
+def _write_file_sync(
+    path: str, root: str, content: str, kind: str, role: str = "owner", uid: str = "",
+) -> dict:
+    if kind == "workstation":
+        full = (root.rstrip("/") + "/" + path) if root else path
+        res = _operator_exec("operator_write_file", {"path": full, "content": content, "force": True})
+        if res.get("status") != "ok":
+            raise HTTPException(status_code=502, detail=str(res.get("error") or "operator-write fejlede"))
+        return {"status": "ok", "path": full}
+
+    roots = _allowed_roots(role, uid)
+    base = roots.get(root)
+    if base is None:
+        raise HTTPException(status_code=403, detail=f"root '{root}' ikke tilladt for rollen")
+    candidate = (base / path).resolve()
+    if not str(candidate).startswith(str(base)):
+        raise HTTPException(status_code=403, detail="path uden for jail")
+    candidate.parent.mkdir(parents=True, exist_ok=True)
+    candidate.write_text(content, encoding="utf-8")
+    return {"status": "ok", "path": path}
+
+
+class _OpenExternalBody(BaseModel):
+    root: str = ""
+    path: str
+    kind: str = "container"
+
+
+@router.post("/open-external")
+async def chat_open_external(body: _OpenExternalBody) -> dict:
+    """"Åbn i editor" for workstation-filer: åbn i brugerens lokale OS-editor via
+    xdg-open over operator-broen. Container håndteres af in-app editoren i stedet."""
+    import asyncio
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
+    role = _resolve_role(uid)
+    return await asyncio.to_thread(_open_external_sync, body.path, body.root, body.kind, role, uid)
+
+
+def _open_external_sync(
+    path: str, root: str, kind: str, role: str = "owner", uid: str = "",
+) -> dict:
+    import shlex
+    if kind != "workstation":
+        raise HTTPException(status_code=400, detail="open-external er kun for workstation (container bruger in-app editor)")
+    full = (root.rstrip("/") + "/" + path) if root else path
+    res = _operator_exec("operator_bash", {"command": f"xdg-open {shlex.quote(full)}"})
+    if res.get("status") != "ok":
+        raise HTTPException(status_code=502, detail=str(res.get("error") or "xdg-open fejlede"))
+    return {"status": "ok", "path": full}
+
+
 def _operator_exec(name: str, args: dict) -> dict:
     """Kør et operator-tool via simple_tools (router'er til brugerens bridge).
     Seam til test-mock (workstation fil-træ)."""

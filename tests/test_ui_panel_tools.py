@@ -44,3 +44,14 @@ def test_open_is_default_action() -> None:
     r = _exec_open_ui_panel({"panel": "preview"})
     assert r["status"] == "ok"
     assert r.get("action", "open") == "open"
+
+
+def test_file_tree_panel_with_highlight_path(isolated_runtime) -> None:
+    # Jarvis-styret highlight: panel="file_tree" + detail=sti registreres.
+    from core.tools.ui_panel_tools import _exec_open_ui_panel
+    from core.services.ui_panel_store import list_pending
+
+    r = _exec_open_ui_panel({"panel": "file_tree", "detail": "core/tools/ui_panel_tools.py"})
+    assert r["status"] == "ok" and r["panel"] == "file_tree"
+    pend = [p for p in list_pending() if p["panel"] == "file_tree"]
+    assert pend and pend[-1]["detail"] == "core/tools/ui_panel_tools.py"

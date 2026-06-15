@@ -18,6 +18,7 @@ import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
+import { onHighlight } from '../lib/fileTreeHighlight'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo } from '../lib/api'
 
 // Navngivne server-roots (matcher backend _allowed_roots). Owner: hele kodebasen
@@ -67,6 +68,7 @@ export function CodeView({
   const [root, setRoot] = useState<string>(savedWs.root && serverRoots.includes(savedWs.root as never) ? savedWs.root : serverRoots[0])
   const [wsPath, setWsPath] = useState<string>(savedWs.wsPath || '') // valgt workstation-mappe
   const [filesOpen, setFilesOpen] = useState(false) // fil-træ foldet ind fra start
+  const [highlightPath, setHighlightPath] = useState<string>('') // Jarvis-styret highlight
   const [trusted, setTrusted] = useState<boolean | null>(null)
   const [compactAt, setCompactAt] = useState(0)
   const [gitRefresh, setGitRefresh] = useState(0) // bumpes når et run slutter → GitChip gen-henter
@@ -90,6 +92,16 @@ export function CodeView({
       localStorage.setItem('jarvis-desk:code-ws', JSON.stringify({ kind, root, wsPath }))
     } catch { /* localStorage utilgængelig — ignorér */ }
   }, [kind, root, wsPath])
+
+  // Jarvis-styret highlight (open_ui_panel panel="file_tree"): vis server-repoet
+  // (owner) + åbn fil-træet + scroll-til filen. Stien er repo-relativ.
+  useEffect(() => onHighlight((p) => {
+    setKind('container')
+    if (isOwner) setRoot('repo')
+    setFilesOpen(true)
+    setHighlightPath('')           // nulstil først → samme fil kan highlightes igen
+    requestAnimationFrame(() => setHighlightPath(p))
+  }), [isOwner])
 
   const effRoot = kind === 'container' ? root : wsPath
   const ready = !!effRoot // workstation kræver at en mappe er valgt
@@ -335,9 +347,13 @@ export function CodeView({
           {stream.status === 'working' && stream.blocks.length > 0 && (
             <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
           )}
-          <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} tokens={stream.usage.output} />
         </div>
         <div className="composer-area">
+          {/* Liveness fast lige over composeren (ikke i transcript — den scrollede
+              ellers væk med beskeden, jf. ChatView). Vises kun når noget sker. */}
+          {stream.status !== 'idle' && (
+            <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} tokens={stream.usage.output} />
+          )}
           <div className="composer-notices">
             {stream.pendingApproval && (
               <ApprovalCard
@@ -376,7 +392,7 @@ export function CodeView({
             onMouseDown={codePanelW.startDrag}
           />
           <div className="codeview-panel" ref={codePanelW.ref} style={{ width: codePanelW.width }}>
-            <CodePanel config={config} kind={kind} root={effRoot} />
+            <CodePanel config={config} kind={kind} root={effRoot} highlightPath={highlightPath || undefined} />
           </div>
         </>
       )}

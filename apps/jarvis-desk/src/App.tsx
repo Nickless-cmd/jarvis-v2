@@ -48,7 +48,7 @@ export function App() {
               userName={auth?.display_name ?? 'Bruger'}
               model={settings.defaultModel}
             />
-            <UiPanelWatcher config={cfg} />
+            <UiPanelWatcher config={cfg} setSurface={setSurface} />
           </PanelProvider>
         </PermissionProvider>
       </StreamProvider>

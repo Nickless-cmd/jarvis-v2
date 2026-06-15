@@ -418,6 +418,27 @@ export async function getFile(
   return apiFetch(config, `/chat/file?${qs}`)
 }
 
+/** Gem en redigeret fil (in-app editor). Rolle-scopet + jailet server-side. */
+export async function writeFile(
+  config: ApiConfig,
+  root: string,
+  path: string,
+  content: string,
+  kind: 'container' | 'workstation' = 'container',
+): Promise<{ status: string; path: string }> {
+  return apiFetch(config, '/chat/file', { method: 'POST', body: { root, path, content, kind } })
+}
+
+/** "Åbn i editor" for workstation-filer: xdg-open i brugerens lokale OS-editor. */
+export async function openExternal(
+  config: ApiConfig,
+  root: string,
+  path: string,
+  kind: 'container' | 'workstation' = 'workstation',
+): Promise<{ status: string; path: string }> {
+  return apiFetch(config, '/chat/open-external', { method: 'POST', body: { root, path, kind } })
+}
+
 /** Code-mode terminal (§17), container-side: kør én kommando server-side i
  *  repo-workspace (owner-only, cwd contained til repo). Returnerer fuld output. */
 export async function runContainerCommand(

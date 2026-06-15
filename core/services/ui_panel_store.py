@@ -13,7 +13,7 @@ from core.runtime.db import get_runtime_state_value, set_runtime_state_value
 
 _KEY = "ui_panel_requests"
 _MAX = 50
-_VALID_PANELS = ("preview", "right", "files")
+_VALID_PANELS = ("preview", "right", "files", "file_tree")
 
 
 def _load() -> list[dict]:

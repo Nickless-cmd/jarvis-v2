@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from core.services.ui_panel_store import request_panel
 
-_PANELS = ("preview", "right", "files")
+_PANELS = ("preview", "right", "files", "file_tree")
 
 
 def _exec_open_ui_panel(args: dict[str, Any]) -> dict[str, Any]:
@@ -45,11 +45,13 @@ UI_PANEL_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "name": "open_ui_panel",
             "description": (
                 "Åbn et panel i jarvis-desk-appen for at vise noget for brugeren: "
-                "'preview' (preview-panel), 'right' (højre side-panel) eller 'files' "
-                "(fil-træ). Brug når du vil fremvise et resultat, en fil eller en "
-                "artefakt. Virker kun i desk-appen (ikke Discord/web). Du behøver ikke "
-                "spørge om lov — appen åbner panelet for owner. "
-                "Brug action='close' for at lukke panelet igen."
+                "'preview' (preview-panel), 'right' (højre side-panel), 'files' "
+                "(fil-træ) eller 'file_tree' (åbn code-mode fil-træet og HIGHLIGHT en "
+                "bestemt fil — sæt detail til den repo-relative sti, fx "
+                "'core/tools/ui_panel_tools.py', så scroller appen til filen og "
+                "markerer den). Brug file_tree når brugeren ikke kan finde en fil. "
+                "Virker kun i desk-appen (ikke Discord/web). Du behøver ikke spørge "
+                "om lov — appen åbner panelet for owner. action='close' lukker igen."
             ),
             "parameters": {
                 "type": "object",

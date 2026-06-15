@@ -39,6 +39,32 @@ def test_404_for_missing_under_root():
     assert r.status_code == 404
 
 
+def test_container_write_roundtrip(monkeypatch, tmp_path):
+    # In-app editor gemmer en fil i et rolle-tilladt root (jailet).
+    import apps.api.jarvis_api.routes.chat as chatmod
+    monkeypatch.setattr(chatmod, "_resolve_role", lambda uid: "owner")
+    monkeypatch.setattr(chatmod, "_allowed_roots", lambda role, uid: {"workspace": tmp_path})
+
+    r = client.post("/chat/file", json={"root": "workspace", "path": "sub/note.md", "content": "hej\n"})
+    assert r.status_code == 200
+    assert (tmp_path / "sub" / "note.md").read_text() == "hej\n"
+
+
+def test_container_write_rejects_path_outside_jail(monkeypatch, tmp_path):
+    import apps.api.jarvis_api.routes.chat as chatmod
+    monkeypatch.setattr(chatmod, "_resolve_role", lambda uid: "owner")
+    monkeypatch.setattr(chatmod, "_allowed_roots", lambda role, uid: {"workspace": tmp_path})
+
+    r = client.post("/chat/file", json={"root": "workspace", "path": "../escape.md", "content": "x"})
+    assert r.status_code == 403
+
+
+def test_open_external_rejects_container():
+    # Container har ingen lokal OS-editor — in-app editoren håndterer det.
+    r = client.post("/chat/open-external", json={"root": "repo", "path": "x.py", "kind": "container"})
+    assert r.status_code == 400
+
+
 def test_workstation_reads_via_operator_result_shape(monkeypatch):
     # Ægte form: _run_operator_async pakker bro-svaret i {"status","result"};
     # operator_read_file_async returnerer filindholdet som ren streng.

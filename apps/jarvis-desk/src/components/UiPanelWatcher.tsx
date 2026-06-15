@@ -1,21 +1,31 @@
 import { useEffect, useRef } from 'react'
 import type { ApiConfig } from '../lib/api'
+import type { Surface } from './shell/Sidebar'
 import { usePanel } from '../hooks/usePanel'
 import { getUiPanelPending, ackUiPanel } from '../lib/coworkApi'
+import { emitHighlight } from '../lib/fileTreeHighlight'
 
 /**
  * UI-panel-kald (spec §8.2, Fase 6 #3). Poller for pending panel-forespørgsler
  * fra Jarvis (open_ui_panel-tool) og åbner preview/højre-panelet — owner-session
  * auto-åbner uden approval-kort (§8.2). Renderes inde i <PanelProvider>.
+ *
+ * panel="file_tree" er Jarvis-styret highlight: skift til code-mode + emit stien
+ * til fil-træet (CodeView abonnerer), så han kan pege på en fil brugeren leder
+ * efter (file-tree-control-spec 2026-06-15).
  */
 const POLL_MS = 4000
 
-export function UiPanelWatcher({ config }: { config: ApiConfig | undefined }) {
+export function UiPanelWatcher({
+  config, setSurface,
+}: { config: ApiConfig | undefined; setSurface?: (s: Surface) => void }) {
   const panel = usePanel()
   const openRef = useRef(panel.open_)
   openRef.current = panel.open_
   const closeRef = useRef(panel.close)
   closeRef.current = panel.close
+  const surfaceRef = useRef(setSurface)
+  surfaceRef.current = setSurface
   const busy = useRef(false)
 
   useEffect(() => {
@@ -28,6 +38,10 @@ export function UiPanelWatcher({ config }: { config: ApiConfig | undefined }) {
         for (const req of pending) {
           if (req.action === 'close') {
             closeRef.current()
+          } else if (req.panel === 'file_tree') {
+            // Jarvis-styret highlight: vis code-mode + scroll-til + markér filen.
+            surfaceRef.current?.('code')
+            if (req.detail) emitHighlight(req.detail)
           } else {
             openRef.current({
               kind: 'markdown',

@@ -10,7 +10,7 @@ export interface QueueItem {
 }
 export interface CoworkPlan { id: string; title: string; status: string; steps_done: number; steps_total: number }
 export interface CoworkChannel { name: string; online: boolean; unread: number }
-export interface CoworkTodo { id: string; content: string; status: string }
+export interface CoworkTodo { id: string; content: string; status: string; expires_at?: string }
 
 export async function getCoworkQueue(config: ApiConfig): Promise<QueueItem[]> {
   const d = await apiFetch<{ items: QueueItem[] }>(config, '/cowork/queue')
@@ -190,4 +190,8 @@ export async function setCoworkTodoStatus(config: ApiConfig, id: string, status:
 
 export async function deleteCoworkTodo(config: ApiConfig, id: string): Promise<void> {
   await apiFetch(config, `/cowork/todos/${id}`, { method: 'DELETE' })
+}
+
+export async function setCoworkTodoExpiry(config: ApiConfig, id: string, expiresAt: string | null): Promise<void> {
+  await apiFetch(config, `/cowork/todos/${id}/expiry`, { method: 'POST', body: { expires_at: expiresAt } })
 }

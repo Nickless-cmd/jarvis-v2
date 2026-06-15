@@ -8,15 +8,15 @@ Status-legende: 🔴 ægte hul (kode mangler) · 🟡 hurtig win (kode findes, m
 
 ---
 
-## 🔴 Ægte huller — kode mangler
+## ✅ LUKKET 15. juni
+- **Codex follow-up-adapter** — bygget + live-verificeret (commit 71c1fede). gpt-5.4-mini
+  fuldfører nu tool-ture. Se [[project_codex_toolcall_empty_bug]].
+- **Diagnosis-gate fase 1** — bygget (advisory, commit fe26fece). Logger uverificerede
+  diagnostiske konklusioner; eskalerer til blocking efter data.
+- **read_model_config aktiv-model** (ba292444) + **SIKKERHEDS-fixes** (search-scoping,
+  override-data-guard, chronicle/scheduled-scope) — se [[project_db_table_scope_audit]].
 
-1. **Codex follow-up-adapter** *(blocker for gpt-5.4-mini)* — `core/services/visible_followup.py`
-   har adaptere for ollama + openai-compat, men INGEN for `openai-codex`. Resultat:
-   agentic-loop springer codex over (`agentic-loop-skip reason=provider-not-supported`)
-   → run afbrydes på ENHVER tool-tur. Empty-response-fixet (commit 346ae72c) gjorde tool-
-   kaldet synligt; denne adapter mangler for at *fortsætte* samtalen med tool-resultatet i
-   Responses API-format (function_call + function_call_output items, call_id-koblet).
-   Workaround indtil da: brug deepseek/glm/ollama. Se [[project_codex_toolcall_empty_bug]].
+## 🔴 Ægte huller — kode mangler
 
 2. **Code-mode git-diff** *(v1-krav, jarvis-desk)* — `CodePanel` har ingen diff-rendering.
    Spec 2026-06-12-jarvis-desk-code-mode kræver "write/edit viser en diff i panelet" (v1).
@@ -27,12 +27,8 @@ Status-legende: 🔴 ægte hul (kode mangler) · 🟡 hurtig win (kode findes, m
    emitterer ikke `system_event kind="context"` med live token/compaction-tal. Ringen viser
    localStorage-fallback. Backend: emit context-event i visible_runs_sse_v2.
 
-4. **Diagnosis-gate** *(14. jun, Jarvis' egen spec)* — `diagnosis_gate.py` findes ikke. Guard
-   der kræver verifikation før diagnostiske konklusioner (mod konfabulation). Spec udvidet
-   14. jun (175 linjer), kode aldrig skrevet.
-
 5. **Promise-ledger** *(14. jun, fase 2 af diagnosis-gate)* — ledger + verifier (tjek git/fil
-   for "det er gjort"-løfter). Ikke bygget.
+   for "det er gjort"-løfter). Ikke bygget. Bygger ovenpå diagnosis-gate (nu live).
 
 ## 🟡 Hurtige wins — kode findes, mangler ét wire
 

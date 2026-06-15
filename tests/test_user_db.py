@@ -144,3 +144,15 @@ def test_revoke_api_key_blocklists_jti(isolated_runtime) -> None:
     assert revoke_api_key(u["user_id"]) is True
     assert is_api_key_revoked(jti) is True
     assert get_user(u["user_id"])["has_api_key"] is False
+
+
+def test_register_user_creates_unverified_and_returns_token(isolated_runtime, monkeypatch) -> None:
+    from core.identity import user_db, email_verify
+    sent = {}
+    monkeypatch.setattr(email_verify, "_send_mail", lambda a: sent.update(a) or {"success": True})
+    user, token = user_db.register_user(email="new@b.dk", name="Ny", password="pw",
+                                        base_url="https://jarvis.srvlab.dk")
+    assert user["email_verified"] is False
+    assert token and sent["to"] == "new@b.dk"
+    assert user_db.verify_email_token(token) is True
+    assert user_db.get_user(user["user_id"])["email_verified"] is True

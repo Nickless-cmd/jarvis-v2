@@ -213,6 +213,28 @@ def is_api_key_revoked(jti: str) -> bool:
     return isinstance(revoked, list) and jti in revoked
 
 
+def register_user(*, email: str, name: str, password: str, base_url: str,
+                  role: str = "member") -> tuple[dict[str, Any], str]:
+    """Selvregistrering (officiel vej): opret bruger (email_verified=0) + send
+    verifikations-mail. API-nøgle oprettes hvis tier kvalificerer (no-op for free).
+    Returnerer (user, token)."""
+    from core.identity import email_verify
+    user = create_user(email=email, name=name, password=password, role=role)
+    create_api_key(user["user_id"])  # no-op hvis tier ikke kvalificerer (free/member)
+    token = email_verify.send_verification_email(
+        user_id=user["user_id"], email=user["email"], base_url=base_url)
+    return get_user(user["user_id"]), token  # type: ignore[return-value]
+
+
+def verify_email_token(token: str) -> bool:
+    """Forbrug et verifikations-token → markér brugeren email_verified."""
+    from core.identity import email_verify
+    user_id = email_verify.consume_token(token)
+    if not user_id:
+        return False
+    return set_email_verified(user_id, True)
+
+
 def add_user(*, email: str, name: str, password: str, role: str = "member",
              workspace: str | None = None, tier: str = "") -> dict[str, Any]:
     """Owner/Jarvis' manuelle oprettelse: opretter en FÆRDIG-verificeret bruger

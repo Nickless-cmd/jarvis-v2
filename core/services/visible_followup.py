@@ -881,6 +881,113 @@ class OpenAICompatFollowupAdapter:
         )
 
 
+# ── Codex (OpenAI Responses API) adapter ─────────────────────────────────────
+
+
+class CodexFollowupAdapter:
+    """Follow-up via the OpenAI Codex Responses API (chatgpt.com/backend-api).
+
+    Codex does NOT use chat-completions messages — it uses the Responses API
+    ``input`` array of typed items. Prior tool rounds replay as ``function_call``
+    + ``function_call_output`` items keyed by ``call_id`` (the model's own id for
+    the call). Mirrors :class:`OpenAICompatFollowupAdapter` but in Responses-
+    native shape. Without this adapter the agentic loop skips openai-codex
+    ("provider-not-supported") and ABORTS the run on any tool-calling turn
+    (gpt-5.4-mini empty/aborted-tool bug, 2026-06-15).
+    """
+
+    provider_id = "openai-codex"
+
+    def _build_input(self, base_messages: list[dict], exchanges: list[ToolExchange]) -> list[dict]:
+        items: list[dict] = []
+        for m in base_messages:
+            role = str(m.get("role") or "user")
+            text = str(m.get("content") or "")
+            if not text:
+                continue
+            if role == "assistant":
+                items.append({"role": "assistant", "content": [{"type": "output_text", "text": text}]})
+            else:  # user / system → input_text
+                items.append({"role": role, "content": [{"type": "input_text", "text": text}]})
+        for exch in exchanges:
+            if exch.text:
+                items.append({"role": "assistant", "content": [{"type": "output_text", "text": exch.text}]})
+            for tc in exch.tool_calls:
+                fn = tc.get("function") or {}
+                args = fn.get("arguments")
+                if isinstance(args, (dict, list)):
+                    args = json.dumps(args, ensure_ascii=False)
+                items.append({
+                    "type": "function_call",
+                    "call_id": str(tc.get("id") or ""),
+                    "name": str(fn.get("name") or ""),
+                    "arguments": str(args if args is not None else "{}"),
+                })
+            for tr in exch.results:
+                items.append({
+                    "type": "function_call_output",
+                    "call_id": str(tr.tool_call_id or ""),
+                    "output": str(tr.content or ""),
+                })
+        return items
+
+    def stream_followup(
+        self,
+        *,
+        model: str,
+        base_messages: list[dict],
+        exchanges: list[ToolExchange],
+        tool_definitions: list[dict] | None = None,
+        round_index: int = 0,
+        thinking_mode: str = "think",
+    ) -> Iterator[FollowupEvent]:
+        from core.services.cheap_provider_runtime import (
+            _iter_openai_codex_chat_events,
+            CheapProviderError,
+        )
+        from core.services.visible_model import _provider_router_config
+
+        cfg = _provider_router_config(provider="openai-codex")
+        profile = str(cfg.get("auth_profile") or "").strip() or "codex"
+        base_url = str(cfg.get("base_url") or "").strip()
+
+        input_items = self._build_input(base_messages, exchanges)
+        collected_tool_calls: list[dict] = []
+        try:
+            for ev in _iter_openai_codex_chat_events(
+                model=model, auth_profile=profile, base_url=base_url,
+                message="", tools=tool_definitions or None, input_items=input_items,
+            ):
+                kind = ev.get("kind")
+                if kind == "delta":
+                    d = str(ev.get("text") or "")
+                    if d:
+                        yield FollowupDelta(delta=d)
+                elif kind == "tool_call":
+                    collected_tool_calls.append({
+                        "id": str(ev.get("id") or ""),
+                        "type": "function",
+                        "function": {
+                            "name": str(ev.get("name") or ""),
+                            "arguments": str(ev.get("arguments") or ""),
+                        },
+                    })
+                elif kind == "done":
+                    if collected_tool_calls:
+                        yield FollowupToolCalls(tool_calls=collected_tool_calls)
+                    yield FollowupDone(text=str(ev.get("full_text") or ""), reasoning_content="")
+        except CheapProviderError as exc:
+            yield FollowupFailed(
+                round_index=round_index, error=str(exc),
+                summary=f"followup-round-{round_index + 1}-codex-error:{exc}",
+            )
+        except Exception as exc:  # noqa: BLE001 — surface as clean failure
+            yield FollowupFailed(
+                round_index=round_index, error=str(exc),
+                summary=f"followup-round-{round_index + 1}-codex-error:{exc}",
+            )
+
+
 # ── Registry / dispatcher ────────────────────────────────────────────────────
 
 
@@ -901,6 +1008,9 @@ _ADAPTERS: dict[str, FollowupAdapter] = {
     "nvidia-nim": OpenAICompatFollowupAdapter(provider_id="nvidia-nim"),
     "sambanova": OpenAICompatFollowupAdapter(provider_id="sambanova"),
     "deepseek": OpenAICompatFollowupAdapter(provider_id="deepseek"),
+    # Codex Responses API — own adapter (function_call/function_call_output replay)
+    # so gpt-5.4-mini / gpt-5.x can complete agentic tool-calling turns.
+    "openai-codex": CodexFollowupAdapter(),
 }
 
 

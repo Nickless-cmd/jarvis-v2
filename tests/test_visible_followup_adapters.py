@@ -597,3 +597,55 @@ def test_ollama_serialize_omits_thinking_when_absent():
     )
     asst = next(m for m in adapter._serialize_exchanges([exch]) if m["role"] == "assistant")
     assert "thinking" not in asst
+
+
+# ── Codex follow-up adapter (Responses API tool-replay) ──────────────────────
+
+def test_codex_in_supported_providers() -> None:
+    assert "openai-codex" in vf.supported_followup_providers()
+
+
+def test_codex_build_input_replays_tool_exchange() -> None:
+    adapter = vf.CodexFollowupAdapter()
+    base = [{"role": "user", "content": "hej"}, {"role": "assistant", "content": "hej igen"}]
+    exch = [vf.ToolExchange(
+        text="",
+        tool_calls=[{"id": "call_1", "type": "function",
+                     "function": {"name": "get_weather", "arguments": {"city": "KBH"}}}],
+        results=[vf.ToolResult("call_1", "get_weather", "13°C")],
+    )]
+    items = adapter._build_input(base, exch)
+    kinds = [it.get("type") or it.get("role") for it in items]
+    # user + assistant prose, så function_call, så function_call_output
+    assert kinds == ["user", "assistant", "function_call", "function_call_output"]
+    fc = next(i for i in items if i.get("type") == "function_call")
+    fo = next(i for i in items if i.get("type") == "function_call_output")
+    assert fc["call_id"] == fo["call_id"] == "call_1"   # call_id-kobling
+    assert fc["name"] == "get_weather"
+    assert fc["arguments"] == '{"city": "KBH"}'          # dict → json-string
+    assert fo["output"] == "13°C"
+
+
+def test_codex_adapter_translates_events(monkeypatch) -> None:
+    # Mock generatoren: tekst-delta + tool_call + done.
+    def _fake_iter(*, model, auth_profile, base_url, message, tools=None, input_items=None):
+        yield {"kind": "delta", "text": "ser "}
+        yield {"kind": "delta", "text": "efter"}
+        yield {"kind": "tool_call", "id": "call_9", "name": "search", "arguments": '{"q":"x"}'}
+        yield {"kind": "done", "input_tokens": 5, "output_tokens": 3, "model_used": model, "full_text": "ser efter"}
+
+    import core.services.cheap_provider_runtime as cpr
+    import core.services.visible_model as vm
+    monkeypatch.setattr(cpr, "_iter_openai_codex_chat_events", _fake_iter)
+    monkeypatch.setattr(vm, "_provider_router_config", lambda provider: {"auth_profile": "codex", "base_url": ""})
+
+    events = list(vf.CodexFollowupAdapter().stream_followup(
+        model="gpt-5.4-mini", base_messages=[{"role": "user", "content": "find x"}],
+        exchanges=[], tool_definitions=None, round_index=0,
+    ))
+    deltas = [e for e in events if isinstance(e, vf.FollowupDelta)]
+    tcs = [e for e in events if isinstance(e, vf.FollowupToolCalls)]
+    dones = [e for e in events if isinstance(e, vf.FollowupDone)]
+    assert "".join(d.delta for d in deltas) == "ser efter"
+    assert len(tcs) == 1 and tcs[0].tool_calls[0]["function"]["name"] == "search"
+    assert len(dones) == 1 and dones[0].text == "ser efter"

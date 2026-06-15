@@ -2237,6 +2237,7 @@ def _iter_openai_codex_chat_events(
     base_url: str,
     message: str,
     tools: list[dict] | None = None,
+    input_items: list[dict] | None = None,
 ):
     """Stream raw SSE events from the OpenAI Codex Responses API.
 
@@ -2265,15 +2266,17 @@ def _iter_openai_codex_chat_events(
         "Content-Type": "application/json",
         "Accept": "text/event-stream",
     }
+    # input_items (follow-up): færdigbygget Responses API-input med fuld samtale +
+    # function_call/function_call_output-items (tool-replay). Ellers: enkelt user-tur.
+    _input: list[dict]
+    if input_items is not None:
+        _input = list(input_items)
+    else:
+        _input = [{"role": "user", "content": [{"type": "input_text", "text": message}]}]
     payload: dict[str, object] = {
         "model": model,
         "instructions": "You are a helpful assistant. Respond concisely.",
-        "input": [
-            {
-                "role": "user",
-                "content": [{"type": "input_text", "text": message}],
-            }
-        ],
+        "input": _input,
         "store": False,
         "stream": True,
     }

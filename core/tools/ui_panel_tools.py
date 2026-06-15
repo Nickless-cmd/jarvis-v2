@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from core.services.ui_panel_store import request_panel
 
-_PANELS = ("preview", "right", "files", "file_tree")
+_PANELS = ("preview", "right", "files", "file_tree", "settings")
 
 
 def _exec_open_ui_panel(args: dict[str, Any]) -> dict[str, Any]:
@@ -52,6 +52,8 @@ UI_PANEL_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "markerer den). Brug file_tree når brugeren ikke kan finde en fil. "
                 "VIS EN FIL i preview: panel='preview' + detail=den repo-relative "
                 "filsti (fx 'docs/spec.md') → appen loader og renderer filen. "
+                "ÅBN INDSTILLINGER: panel='settings' → appen skifter til cowork og "
+                "viser indstillingszonen (konto/kvote/tema/permissions m.m.). "
                 "Virker kun i desk-appen (ikke Discord/web). Du behøver ikke spørge "
                 "om lov — appen åbner panelet for owner. action='close' lukker igen."
             ),

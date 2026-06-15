@@ -55,7 +55,7 @@ export async function resolveShareGuard(config: ApiConfig, id: string, shared: b
 // ── UI-panel-kald (§8.2) ───────────────────────────────────────────────────
 export interface UiPanelRequest {
   id: string
-  panel: 'preview' | 'right' | 'files' | 'file_tree'
+  panel: 'preview' | 'right' | 'files' | 'file_tree' | 'settings'
   action?: 'open' | 'close'
   session_id: string
   detail: string

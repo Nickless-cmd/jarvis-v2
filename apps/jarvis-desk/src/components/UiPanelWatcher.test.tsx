@@ -40,4 +40,11 @@ describe('UiPanelWatcher', () => {
     wrap(<UiPanelWatcher config={cfg} />)
     await waitFor(() => expect(panelRef?.artifact?.kind).toBe('markdown'))
   })
+
+  it('panel=settings → skifter surface til cowork', async () => {
+    const surfaces: string[] = []
+    pending.push({ id: 'st1', panel: 'settings', action: 'open', session_id: '', detail: '', status: 'pending', created_at: '' })
+    wrap(<UiPanelWatcher config={cfg} setSurface={(s) => surfaces.push(s)} />)
+    await waitFor(() => expect(surfaces).toContain('cowork'))
+  })
 })

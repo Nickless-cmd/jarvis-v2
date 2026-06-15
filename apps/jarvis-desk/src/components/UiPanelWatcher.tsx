@@ -4,6 +4,7 @@ import type { Surface } from './shell/Sidebar'
 import { usePanel } from '../hooks/usePanel'
 import { getUiPanelPending, ackUiPanel } from '../lib/coworkApi'
 import { emitHighlight } from '../lib/fileTreeHighlight'
+import { emitZone } from '../lib/coworkZone'
 
 /**
  * UI-panel-kald (spec §8.2, Fase 6 #3). Poller for pending panel-forespørgsler
@@ -45,6 +46,10 @@ export function UiPanelWatcher({
         for (const req of pending) {
           if (req.action === 'close') {
             closeRef.current()
+          } else if (req.panel === 'settings') {
+            // Jarvis åbner cowork-indstillinger (§5): skift surface + vis settings-zonen.
+            surfaceRef.current?.('cowork')
+            emitZone('settings')
           } else if (req.panel === 'file_tree') {
             // Jarvis-styret highlight: vis code-mode + scroll-til + markér filen.
             surfaceRef.current?.('code')

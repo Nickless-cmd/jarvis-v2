@@ -101,6 +101,13 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     )
     _eff_provider = _prov_override or settings.visible_model_provider
     _eff_model = _model_override or settings.visible_model_name
+    # Observability: hvad valgte klienten, og hvad resolver det til? Gør provider-
+    # mismatch ("jeg kører ikke ollama") diagnosticerbar uden at gætte.
+    print(
+        f"[chat/stream/v2] provider_choice={request.provider_choice!r} "
+        f"model={request.model!r} → eff_provider={_eff_provider} eff_model={_eff_model}",
+        flush=True,
+    )
 
     legacy_iter = start_visible_run(
         message=effective_message,

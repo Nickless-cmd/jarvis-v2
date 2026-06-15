@@ -38,6 +38,7 @@ def test_fit_trims_oldest_to_fit_glm():
     assert dropped > 0
     assert out[0]["role"] == "system"            # system bevares
     assert len(out) >= 3                          # mindst system + 2 nyeste
-    # Samlet skal nu være under budgettet (200k - 16k - 16k - 4k = 164k).
-    total = sum(len(str(m["content"])) // 4 for m in out)
+    # Samlet skal nu være under budgettet (200k - 16k - 16k - 4k = 164k), målt med
+    # samme konservative ÷3-estimat som funktionen bruger.
+    total = sum(len(str(m["content"])) // 3 for m in out)
     assert total <= 164_000

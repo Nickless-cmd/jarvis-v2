@@ -51,8 +51,15 @@ def effective_context_limit(provider: str, model: str, compact_threshold: int) -
     return window or compact_threshold
 
 
+# Konservativt char→token-forhold. char/4 er standard-heuristikken, men dansk +
+# kode + tool-schemas tokeniserer TÆTTERE: målt 209009 ægte tokens vs 156667 ved
+# char/4 (≈1.33×) på en GLM-overløbet session. ÷3 matcher og over-trimmer hellere
+# en smule end at lade prompten overløbe (→ HTTP 400).
+_CHARS_PER_TOKEN = 3
+
+
 def _est_tokens(text: str) -> int:
-    return max(0, len(str(text or "")) // 4)
+    return max(0, len(str(text or "")) // _CHARS_PER_TOKEN)
 
 
 def fit_messages_to_window(

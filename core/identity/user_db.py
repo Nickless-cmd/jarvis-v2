@@ -148,3 +148,80 @@ def set_consent(user_id: str, *, data_processing: bool | None = None,
 
 def list_users(*, include_deleted: bool = False) -> list[dict[str, Any]]:
     return [_row_to_public(r) for r in db.list_user_rows(include_deleted=include_deleted)]
+
+
+# ── API-nøgle-livscyklus (Bjørns tilføjelse 2026-06-15) ──────────────────────
+# API-nøgle = en langlivet JarvisX-bearer-token (JWT m. jti). Genereres kun hvis
+# tier kvalificerer (plus/pro/owner — over guest/member-gratis). Revokerbar via
+# jti-bloklist. add_user (owner/Jarvis) opretter pre-verificerede brugere.
+
+_API_KEY_TIERS = ("plus", "pro", "owner")
+_REVOKED_KEY = "revoked_api_tokens"
+
+
+def _effective_tier(user: dict[str, Any]) -> str:
+    """Eksplicit tier vinder. Uden eksplicit tier kvalificerer kun owner-rollen
+    (Bjørns regel: API-nøgle kun over guest/member-gratis). Member/guest uden
+    betalt tier → 'free' (ingen nøgle indtil opgradering)."""
+    t = user.get("tier") or ""
+    if t in ("free", "plus", "pro", "owner"):
+        return t
+    return "owner" if (user.get("role") or "") == "owner" else "free"
+
+
+def create_api_key(user_id: str, *, ttl_days: int = 365) -> str | None:
+    """Mint en langlivet API-nøgle (JWT m. jti) hvis brugerens tier kvalificerer.
+    Returnerer token-strengen, eller None hvis tier ikke kvalificerer / ukendt bruger."""
+    user = get_user(user_id)
+    if not user:
+        return None
+    if _effective_tier(user) not in _API_KEY_TIERS:
+        return None
+    from core.runtime.jarvisx_auth import issue_token
+    jti = uuid.uuid4().hex
+    minted = issue_token(user_id=user_id, role=user["role"], ttl_days=ttl_days,
+                         extra_claims={"jti": jti})
+    token = minted["token"]
+    db.update_user_row(user_id, {"api_key_enc": _enc(user_id, token),
+                                 "api_key_jti": jti, "updated_at": _now()})
+    return token
+
+
+def revoke_api_key(user_id: str) -> bool:
+    """Revokér brugerens API-nøgle: bloklist dens jti + ryd den lagrede nøgle."""
+    row = db.get_user_row(user_id)
+    if not row:
+        return False
+    jti = str(row.get("api_key_jti") or "")
+    if jti:
+        from core.runtime.db import get_runtime_state_value, set_runtime_state_value
+        revoked = get_runtime_state_value(_REVOKED_KEY, [])
+        if not isinstance(revoked, list):
+            revoked = []
+        if jti not in revoked:
+            revoked.append(jti)
+            set_runtime_state_value(_REVOKED_KEY, revoked[-5000:])
+    db.update_user_row(user_id, {"api_key_enc": b"", "api_key_jti": "", "updated_at": _now()})
+    return True
+
+
+def is_api_key_revoked(jti: str) -> bool:
+    if not jti:
+        return False
+    from core.runtime.db import get_runtime_state_value
+    revoked = get_runtime_state_value(_REVOKED_KEY, [])
+    return isinstance(revoked, list) and jti in revoked
+
+
+def add_user(*, email: str, name: str, password: str, role: str = "member",
+             workspace: str | None = None, tier: str = "") -> dict[str, Any]:
+    """Owner/Jarvis' manuelle oprettelse: opretter en FÆRDIG-verificeret bruger
+    (omgår mail-verifikation) og giver en API-nøgle hvis tier kvalificerer."""
+    user = create_user(email=email, name=name, password=password, role=role,
+                       workspace=workspace)
+    uid = user["user_id"]
+    set_email_verified(uid, True)
+    if tier in ("free", "plus", "pro", "owner"):
+        db.update_user_row(uid, {"tier": tier, "updated_at": _now()})
+    create_api_key(uid)  # no-op hvis tier ikke kvalificerer
+    return get_user(uid)  # type: ignore[return-value]

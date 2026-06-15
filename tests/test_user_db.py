@@ -115,3 +115,32 @@ def test_mute_and_set_quota(isolated_runtime) -> None:
     assert get_user(uid)["muted"] is False
     set_quota_tier(uid, "pro")
     assert get_user(uid)["tier"] == "pro"
+
+
+def test_add_user_is_pre_verified_and_gets_key_for_owner(isolated_runtime) -> None:
+    from core.identity.user_db import add_user, get_user
+    u = add_user(email="boss@b.dk", name="Boss", password="x", role="owner", tier="owner")
+    assert u["email_verified"] is True
+    assert u["has_api_key"] is True
+    assert u["api_key"]
+    assert get_user(u["user_id"])["api_key_jti"]
+
+
+def test_create_api_key_gated_on_tier(isolated_runtime) -> None:
+    from core.identity.user_db import create_user, create_api_key, get_user, set_quota_tier
+    u = create_user(email="free@b.dk", name="F", password="x", role="member", workspace="f")
+    assert create_api_key(u["user_id"]) is None
+    assert get_user(u["user_id"])["has_api_key"] is False
+    set_quota_tier(u["user_id"], "plus")
+    key = create_api_key(u["user_id"])
+    assert key and get_user(u["user_id"])["has_api_key"] is True
+
+
+def test_revoke_api_key_blocklists_jti(isolated_runtime) -> None:
+    from core.identity.user_db import add_user, revoke_api_key, is_api_key_revoked, get_user
+    u = add_user(email="rev@b.dk", name="R", password="x", role="owner", tier="owner")
+    jti = get_user(u["user_id"])["api_key_jti"]
+    assert is_api_key_revoked(jti) is False
+    assert revoke_api_key(u["user_id"]) is True
+    assert is_api_key_revoked(jti) is True
+    assert get_user(u["user_id"])["has_api_key"] is False

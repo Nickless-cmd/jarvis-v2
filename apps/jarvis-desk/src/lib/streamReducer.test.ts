@@ -14,6 +14,15 @@ describe('streamReducer', () => {
     expect(s.activeRunId).toBe('visible-9')
   })
 
+  it('message_start captures the run model/provider/lane (footer-bug fix)', () => {
+    const s = reduce([
+      { type: 'message_start', message: { id: 'r1', model: 'glm-5.1', provider: 'ollama', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } },
+    ])
+    expect(s.model).toBe('glm-5.1')
+    expect(s.provider).toBe('ollama')
+    expect(s.lane).toBe('primary')
+  })
+
   it('accumulates text deltas into one block', () => {
     const s = reduce([
       { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },

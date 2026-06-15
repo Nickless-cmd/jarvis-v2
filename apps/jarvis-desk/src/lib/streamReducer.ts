@@ -6,13 +6,16 @@ export type StreamStatus =
 export interface StreamState {
   status: StreamStatus
   activeRunId: string | null
+  model: string // den model det aktive/seneste run faktisk bruger (footer)
+  provider: string
+  lane: string
   blocks: ContentBlock[]
   workingStep: string | null // nyeste live progress-tekst (fx "Kalder analyze_image")
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
 }
 
 export function initialStreamState(): StreamState {
-  return { status: 'idle', activeRunId: null, blocks: [], workingStep: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 } }
+  return { status: 'idle', activeRunId: null, model: '', provider: '', lane: '', blocks: [], workingStep: null, usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 } }
 }
 
 /** Estimer output-tokens fra akkumuleret tekst/tænkning i blocks. Bruges
@@ -44,6 +47,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         ...state,
         status: 'working',
         activeRunId: event.message.id,
+        model: event.message.model || state.model,
+        provider: event.message.provider || state.provider,
+        lane: event.message.lane || state.lane,
         blocks: [],
         workingStep: null,
         usage: {

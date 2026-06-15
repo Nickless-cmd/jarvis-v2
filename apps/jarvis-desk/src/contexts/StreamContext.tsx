@@ -42,6 +42,10 @@ export interface PendingAppAction {
 
 export interface StreamContextValue {
   status: StreamStatus
+  /** Model/provider/lane det aktive/seneste run faktisk brugte (til footer). */
+  activeModel: string
+  activeProvider: string
+  activeLane: string
   /** Session-id for det aktive run (kun mens status==='working'), ellers null. */
   workingSessionId: string | null
   /** Token-forbrug fra seneste/aktive run (til context-ring #9). */
@@ -240,6 +244,9 @@ export function StreamProvider({
   const value = useMemo<StreamContextValue>(
     () => ({
       status,
+      activeModel: state.model,
+      activeProvider: state.provider,
+      activeLane: state.lane,
       blocks: state.blocks,
       activeRunId: state.activeRunId,
       workingSessionId: status === 'working' ? workingSessionId : null,
@@ -260,7 +267,7 @@ export function StreamProvider({
       armAutoContinue,
       consumeAutoContinue,
     }),
-    [status, state.blocks, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
+    [status, state.model, state.provider, state.lane, state.blocks, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
   )
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>
 }

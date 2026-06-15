@@ -201,6 +201,58 @@ async def account_memory_search(q: str = "") -> dict[str, Any]:
     return {"results": results}
 
 
+def _current_role(user_id: str) -> str:
+    if not user_id:
+        return "owner"
+    try:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(user_id)
+        return getattr(u, "role", "member") or "member"
+    except Exception:
+        return "member"
+
+
+def build_permissions_overview(
+    role: str,
+    *,
+    allowed_tools: Callable[..., Any],
+) -> dict[str, Any]:
+    """Tool-adgangs-matrix pr. mode for en rolle. Owner → 'all' (sentinel er ikke
+    iterérbar); member → sorteret liste."""
+    modes: list[dict[str, Any]] = []
+    for mode in ("chat", "code", "cowork"):
+        perm = allowed_tools(role=role, mode=mode)
+        try:
+            tools = sorted(perm)
+            is_all = False
+        except TypeError:
+            tools = []
+            is_all = True
+        modes.append({"mode": mode, "all": is_all, "tools": tools})
+    return {"role": role, "modes": modes}
+
+
+@router.get("/permissions")
+async def account_permissions() -> dict[str, Any]:
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    role = _current_role(user_id)
+    from core.services.computer_use_policy import computer_use_enabled
+    from core.services.permission_engine import allowed_tools
+    ov = await asyncio.to_thread(build_permissions_overview, role, allowed_tools=allowed_tools)
+    ov["computer_use_enabled"] = bool(computer_use_enabled(user_id))
+    return ov
+
+
+@router.patch("/computer-use")
+async def account_set_computer_use(payload: dict = Body(default={})) -> dict[str, Any]:
+    enabled = bool((payload or {}).get("enabled"))
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    from core.services.computer_use_policy import set_computer_use
+    return await asyncio.to_thread(set_computer_use, user_id, enabled)
+
+
 @router.get("/quota")
 async def account_quota() -> dict[str, Any]:
     snap = current_context_snapshot()

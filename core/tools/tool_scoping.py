@@ -20,6 +20,12 @@ import contextvars
 from contextlib import contextmanager
 from typing import Any, Iterable, Iterator
 
+try:  # defensiv — undgå circular-import-brud ved boot
+    from core.identity.workspace_context import current_user_id
+except Exception:  # pragma: no cover
+    def current_user_id():  # type: ignore
+        return None
+
 # Værktøjer kun owner (eller unbound legacy) må se — strippes for member/guest.
 # Flyttet hertil fra simple_tools.py; re-eksporteres derfra for bagudkompat.
 OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
@@ -171,16 +177,35 @@ def allowed_tool_names(
 
     if is_owner:
         if scope == "code":
-            return (set(CODE_MODE_TOOLS_BASE) | CODE_MODE_OWNER_EXTRA) & names
-        if scope == "chat":
-            return (set(CHAT_MODE_TOOLS_BASE) | CHAT_MODE_OWNER_EXTRA) & names
-        return names  # cowork / ubegrænset: alt mode-passende = alt
+            result = (set(CODE_MODE_TOOLS_BASE) | CODE_MODE_OWNER_EXTRA) & names
+        elif scope == "chat":
+            result = (set(CHAT_MODE_TOOLS_BASE) | CHAT_MODE_OWNER_EXTRA) & names
+        else:
+            result = names  # cowork / ubegrænset: alt mode-passende = alt
+    else:
+        # Non-owner: permission_engine er sandheden (sikkerhed + mode-passende sæt).
+        from core.services.permission_engine import allowed_tools as _perm_allowed
+        mode = scope if scope in ("chat", "code", "cowork") else "cowork"
+        perm = _perm_allowed(role=role, mode=mode)
+        result = set(perm) & names
 
-    # Non-owner: permission_engine er sandheden (sikkerhed + mode-passende sæt).
-    from core.services.permission_engine import allowed_tools as _perm_allowed
-    mode = scope if scope in ("chat", "code", "cowork") else "cowork"
-    perm = _perm_allowed(role=role, mode=mode)
-    return set(perm) & names
+    return _apply_computer_use_policy(result)
+
+
+def _apply_computer_use_policy(result: set[str]) -> set[str]:
+    """Computer-use-toggle (§4.7): fjern operator/computer-tools hvis brugeren har
+    slået computer-use fra. Defensiv — fejler altid TIL (uændret) for ikke at låse
+    sig selv ude ved fejl."""
+    try:
+        from core.services.computer_use_policy import (
+            computer_use_enabled,
+            is_computer_use_tool,
+        )
+        if not computer_use_enabled(current_user_id() or ""):
+            return {t for t in result if not is_computer_use_tool(t)}
+    except Exception:
+        pass
+    return result
 
 
 def _fn_name(td: dict[str, Any]) -> str:

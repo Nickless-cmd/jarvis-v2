@@ -36,6 +36,8 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/services/recurring_tasks.py": "tests/test_user_scope_154.py",
     "core/services/user_scope.py": "tests/test_user_scope_154.py",
     "core/services/workspace_crypto.py": "tests/test_workspace_cutover.py",
+    # Boy Scout-split af autonomy-CRUD fra db.py — testet via isolation + surfaces.
+    "core/runtime/db_autonomy.py": "tests/test_user_scope_154.py",
     "core/services/dream_hypothesis_generator.py": "tests/runtime/test_db_schema_multiuser.py",
     # Group 4: permission scope filters — tests live in tests/multi_user/
     # Mapping added 2026-05-28.

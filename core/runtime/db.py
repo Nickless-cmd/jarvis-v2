@@ -2109,61 +2109,8 @@ def reject_runtime_initiative(
     return get_runtime_initiative(initiative_id)
 
 
-def _ensure_autonomy_proposals_table(conn: sqlite3.Connection) -> None:
-    """Niveau 2 autonomy: pending proposals from Jarvis awaiting Bjørn approval.
-
-    A proposal is a structured request for a bounded action that Jarvis
-    cannot execute on his own (memory rewrite, source edit, task run,
-    etc). Each proposal has:
-      - proposal_id: unique
-      - kind: memory-rewrite | source-edit | task-run | tool-add | ...
-      - title: short human-readable
-      - rationale: why Jarvis wants this
-      - payload_json: structured body (diff, new content, command, args)
-      - status: pending | approved | rejected | executed | expired | cancelled
-      - created_at / updated_at / resolved_at
-      - created_by: heartbeat-tick | visible-run | inner-voice | ...
-      - resolved_by: bjorn | timeout | superseded | ...
-      - resolution_note: explicit reason
-      - execution_result_json: set when status=executed
-    """
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS autonomy_proposals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            proposal_id TEXT NOT NULL UNIQUE,
-            kind TEXT NOT NULL,
-            title TEXT NOT NULL,
-            rationale TEXT NOT NULL DEFAULT '',
-            payload_json TEXT NOT NULL DEFAULT '{}',
-            status TEXT NOT NULL DEFAULT 'pending',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            resolved_at TEXT,
-            created_by TEXT NOT NULL DEFAULT '',
-            resolved_by TEXT NOT NULL DEFAULT '',
-            resolution_note TEXT NOT NULL DEFAULT '',
-            execution_result_json TEXT NOT NULL DEFAULT '',
-            session_id TEXT NOT NULL DEFAULT '',
-            run_id TEXT NOT NULL DEFAULT '',
-            tick_id TEXT NOT NULL DEFAULT '',
-            canonical_key TEXT NOT NULL DEFAULT '',
-            user_id TEXT
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_autonomy_proposals_status
-        ON autonomy_proposals(status, id DESC)
-        """
-    )
-    conn.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_autonomy_proposals_kind_canonical
-        ON autonomy_proposals(kind, canonical_key, id DESC)
-        """
-    )
+# _ensure_autonomy_proposals_table + autonomy CRUD er udskilt til db_autonomy.py
+# (Boy Scout-reglen) og re-eksporteres i bunden af denne fil.
 
 
 def _ensure_scheduled_tasks_table(conn: sqlite3.Connection) -> None:
@@ -2342,133 +2289,8 @@ def list_scheduled_tasks(limit: int = 20) -> list[dict[str, object]]:
     return [_scheduled_task_from_row(r) for r in rows]
 
 
-def create_autonomy_proposal(
-    *,
-    proposal_id: str,
-    kind: str,
-    title: str,
-    rationale: str = "",
-    payload: dict | None = None,
-    created_by: str = "",
-    session_id: str = "",
-    run_id: str = "",
-    tick_id: str = "",
-    canonical_key: str = "",
-) -> dict[str, object]:
-    import json as _json
-    from datetime import UTC, datetime as _dt
-    now = _dt.now(UTC).isoformat()
-    payload_str = _json.dumps(payload or {}, ensure_ascii=False, sort_keys=True)
-    from core.services.user_scope import scope_uid
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO autonomy_proposals (
-                proposal_id, kind, title, rationale, payload_json, status,
-                created_at, updated_at, created_by, session_id, run_id,
-                tick_id, canonical_key, user_id
-            ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                proposal_id, kind, title, rationale, payload_str,
-                now, now, created_by, session_id, run_id, tick_id, canonical_key,
-                scope_uid() or None,
-            ),
-        )
-        conn.commit()
-        row = conn.execute(
-            "SELECT * FROM autonomy_proposals WHERE proposal_id = ?",
-            (proposal_id,),
-        ).fetchone()
-    return _autonomy_proposal_from_row(row) if row else {}
-
-
-def list_autonomy_proposals(
-    *,
-    status: str | None = None,
-    kind: str | None = None,
-    limit: int = 50,
-) -> list[dict[str, object]]:
-    from core.services.user_scope import scope_uid
-    query = "SELECT * FROM autonomy_proposals"
-    params: list = []
-    where: list[str] = []
-    _uid = scope_uid()
-    if _uid:
-        where.append("user_id = ?")  # #154: kun egne forslag
-        params.append(_uid)
-    if status:
-        where.append("status = ?")
-        params.append(status)
-    if kind:
-        where.append("kind = ?")
-        params.append(kind)
-    if where:
-        query += " WHERE " + " AND ".join(where)
-    query += " ORDER BY id DESC LIMIT ?"
-    params.append(max(int(limit), 1))
-    with connect() as conn:
-        rows = conn.execute(query, params).fetchall()
-    return [_autonomy_proposal_from_row(row) for row in rows]
-
-
-def get_autonomy_proposal(proposal_id: str) -> dict[str, object] | None:
-    # Bevidst UScopet: fetch-by-unik-id i approval/execution-pipelinen (kører på
-    # tværs af kontekster). Enumererings-leaket lukkes af list_autonomy_proposals;
-    # uden list kan en bruger ikke gætte en andens proposal_id.
-    with connect() as conn:
-        row = conn.execute(
-            "SELECT * FROM autonomy_proposals WHERE proposal_id = ?",
-            (proposal_id,),
-        ).fetchone()
-    return _autonomy_proposal_from_row(row) if row else None
-
-
-def resolve_autonomy_proposal(
-    proposal_id: str,
-    *,
-    status: str,
-    resolved_by: str = "",
-    resolution_note: str = "",
-    execution_result: dict | None = None,
-) -> dict[str, object] | None:
-    import json as _json
-    from datetime import UTC, datetime as _dt
-    now = _dt.now(UTC).isoformat()
-    exec_json = _json.dumps(execution_result or {}, ensure_ascii=False, sort_keys=True) if execution_result else ""
-    with connect() as conn:
-        conn.execute(
-            """
-            UPDATE autonomy_proposals
-            SET status = ?, resolved_at = ?, updated_at = ?,
-                resolved_by = ?, resolution_note = ?, execution_result_json = ?
-            WHERE proposal_id = ?
-            """,
-            (status, now, now, resolved_by, resolution_note, exec_json, proposal_id),
-        )
-        conn.commit()
-        row = conn.execute(
-            "SELECT * FROM autonomy_proposals WHERE proposal_id = ?",
-            (proposal_id,),
-        ).fetchone()
-    return _autonomy_proposal_from_row(row) if row else None
-
-
-def _autonomy_proposal_from_row(row) -> dict[str, object]:
-    import json as _json
-    if row is None:
-        return {}
-    data = dict(row)
-    for key in ("payload_json", "execution_result_json"):
-        raw = data.get(key) or ""
-        if not raw:
-            data[key.replace("_json", "")] = {}
-            continue
-        try:
-            data[key.replace("_json", "")] = _json.loads(raw)
-        except Exception:
-            data[key.replace("_json", "")] = {}
-    return data
+# create/list/get/resolve_autonomy_proposal + _autonomy_proposal_from_row er
+# udskilt til db_autonomy.py (Boy Scout-reglen) og re-eksporteres i bunden.
 
 
 def _ensure_private_retained_memory_record_columns(conn: sqlite3.Connection) -> None:
@@ -33857,6 +33679,17 @@ from core.runtime.db_users import (  # noqa: E402,F401
     soft_delete_user_row,
     hard_delete_user_row,
     list_user_rows,
+)
+
+
+# --- Autonomy proposals (split into db_autonomy.py per boy scout rule, 2026-06-15) ---
+from core.runtime.db_autonomy import (  # noqa: E402,F401
+    _ensure_autonomy_proposals_table,
+    _autonomy_proposal_from_row,
+    create_autonomy_proposal,
+    list_autonomy_proposals,
+    get_autonomy_proposal,
+    resolve_autonomy_proposal,
 )
 
 

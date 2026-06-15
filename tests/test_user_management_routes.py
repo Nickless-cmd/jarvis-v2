@@ -52,3 +52,49 @@ def test_patch_unknown_user_404(isolated_runtime) -> None:
     c = _client(isolated_runtime)
     r = c.patch("/api/users/nope", headers={"Authorization": f"Bearer {token}"}, json={"muted": True})
     assert r.status_code == 404
+
+
+# ── Fase C: offentlige auth-routes (register/verify/login) ──
+
+def test_register_then_login_flow(isolated_runtime, monkeypatch) -> None:
+    from core.identity import email_verify
+    captured = {}
+    monkeypatch.setattr(email_verify, "_send_mail",
+                        lambda a: captured.update(a) or {"success": True})
+    c = _client(isolated_runtime)
+
+    r = c.post("/api/auth/register", json={"email": "flow@b.dk", "name": "Flow", "password": "pw123456"})
+    assert r.status_code == 200, r.text
+    assert r.json()["email_verified"] is False
+
+    # Login før verifikation afvises
+    r = c.post("/api/auth/login", json={"email": "flow@b.dk", "password": "pw123456"})
+    assert r.status_code == 403
+
+    token = captured["body"].split("token=")[1].split()[0].strip()
+    r = c.get(f"/api/auth/verify-email?token={token}")
+    assert r.status_code == 200 and r.json()["verified"] is True
+
+    r = c.post("/api/auth/login", json={"email": "flow@b.dk", "password": "pw123456"})
+    assert r.status_code == 200
+    assert r.json()["token"]
+
+
+def test_login_wrong_password_401(isolated_runtime, monkeypatch) -> None:
+    from core.identity import email_verify, user_db
+    monkeypatch.setattr(email_verify, "_send_mail", lambda a: {"success": True})
+    c = _client(isolated_runtime)
+    _user, tok = user_db.register_user(email="w@b.dk", name="W", password="rigtig",
+                                       base_url="http://t")
+    user_db.verify_email_token(tok)
+    r = c.post("/api/auth/login", json={"email": "w@b.dk", "password": "forkert"})
+    assert r.status_code == 401
+
+
+def test_register_duplicate_email_409(isolated_runtime, monkeypatch) -> None:
+    from core.identity import email_verify
+    monkeypatch.setattr(email_verify, "_send_mail", lambda a: {"success": True})
+    c = _client(isolated_runtime)
+    c.post("/api/auth/register", json={"email": "d@b.dk", "name": "A", "password": "pw123456"})
+    r = c.post("/api/auth/register", json={"email": "d@b.dk", "name": "B", "password": "pw123456"})
+    assert r.status_code == 409

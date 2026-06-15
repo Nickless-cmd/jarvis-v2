@@ -56,6 +56,9 @@ _PUBLIC_PATHS = (
     "/health",
     "/api/auth/refresh",       # §22.6: refresh udløbet access-token (bærer egen refresh-token)
     "/api/auth/whoami-token",  # let clients self-check token validity
+    "/api/auth/register",      # selvregistrering (spec 2026-06-15 §5) — public
+    "/api/auth/verify-email",  # email-verifikations-link — public
+    "/api/auth/login",         # login med email+password → bearer-token — public
     "/docs",
     "/openapi.json",
     "/redoc",

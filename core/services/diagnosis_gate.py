@@ -30,6 +30,24 @@ _DIAGNOSIS_PATTERNS: list[re.Pattern] = [
     re.compile(r"\b(er\s+)?(deaktiveret|slået\s+fra|ikke\s+aktiv|aldrig\s+kørt|kører\s+ikke)\b", re.I),
 ]
 
+# Completion-claims (promise-ledger §8): "det er committet/deployet/gjort" — en
+# påstand om FULDFØRT handling. Skal underbygges af et tool der faktisk gjorde det
+# (bash/git, write_file, run_pytest, dispatch…). Uden → uverificeret løfte-påstand.
+_COMPLETION_PATTERNS: list[re.Pattern] = [
+    re.compile(r"\b(er\s+)?(committet|committed|pushet|pushed|deployet|deployed|"
+               r"gemt|skrevet\s+til\s+fil|oprettet|installeret|migreret)\b", re.I),
+    re.compile(r"\b(det\s+er|den\s+er|nu\s+er\s+(det|den))\s+(gjort|færdigt|klaret|"
+               r"på\s+plads|live|oppe)\b", re.I),
+    re.compile(r"\bjeg\s+(har\s+)?(committet|pushet|deployet|gemt|skrevet|oprettet|kørt|installeret)\b", re.I),
+]
+
+# Tools der underbygger en COMPLETION-claim (faktisk udførte handlingen).
+_COMPLETION_TOOLS: frozenset[str] = frozenset({
+    "bash", "operator_bash", "write_file", "operator_write_file", "edit_file",
+    "operator_edit_file", "run_pytest", "dispatch_to_claude_code",
+    "dispatch_code_mode_task", "remember_this", "memory_upsert_section",
+})
+
 # Usikkerheds-signaler → ikke en selvsikker diagnose (spec §2.4).
 _UNCERTAINTY = re.compile(
     r"\b(jeg\s+tror|muligvis|måske|det\s+kan\s+(se\s+ud|være)|det\s+virker\s+som|"
@@ -115,6 +133,40 @@ def analyze_diagnosis(text: str, *, tools_used: list[str] | None = None) -> Diag
                            verified=False, reason="unverified")
 
 
+def analyze_completion_claim(text: str, *, tools_used: list[str] | None = None) -> DiagnosisResult:
+    """Promise-ledger §8: påstår teksten en FULDFØRT handling ('det er committet/
+    deployet/gjort') uden at et tool faktisk udførte den i samme run?
+
+    verified=True hvis et completion-tool (bash/git, write_file, run_pytest…) kørte
+    ELLER teksten har en verifikations-/usikkerheds-reference. Ren — ingen sideeffekt.
+    """
+    t = text or ""
+    tools = {str(x).strip() for x in (tools_used or [])}
+
+    match = None
+    pat = ""
+    for p in _COMPLETION_PATTERNS:
+        m = p.search(t)
+        if m:
+            match, pat = m, p.pattern
+            break
+    if not match:
+        return DiagnosisResult(detected=False)
+    if _UNCERTAINTY.search(t):
+        return DiagnosisResult(detected=False, pattern=pat, reason="uncertainty-signal")
+
+    snippet = t[max(0, match.start() - 40): match.end() + 40].strip()
+    used = sorted(tools & _COMPLETION_TOOLS)
+    if used:
+        return DiagnosisResult(detected=True, pattern=pat, claim_snippet=snippet,
+                               verified=True, reason=f"completion-tool:{used[0]}")
+    if _VERIFICATION_REF.search(t):
+        return DiagnosisResult(detected=True, pattern=pat, claim_snippet=snippet,
+                               verified=True, reason="verification-reference")
+    return DiagnosisResult(detected=True, pattern=pat, claim_snippet=snippet,
+                           verified=False, reason="unverified-completion")
+
+
 def diagnosis_gate_enforce(text: str, *, session_id: str = "", run_id: str = "",
                            tools_used: list[str] | None = None) -> str:
     """Pipeline-hook (spec §3.2): kører efter fact-gate, før append_chat_message.
@@ -141,6 +193,22 @@ def diagnosis_gate_enforce(text: str, *, session_id: str = "", run_id: str = "",
                 event_bus.publish("diagnosis.unverified", {
                     "event_id": ev.event_id, "session_id": session_id, "run_id": run_id,
                     "claim": res.claim_snippet, "pattern": res.pattern,
+                })
+            except Exception:
+                pass
+        # Promise-ledger §8 (advisory): uverificeret completion-claim.
+        promise = analyze_completion_claim(text, tools_used=tools_used)
+        if promise.detected and not promise.verified:
+            logger.warning(
+                "promise-ledger ADVISORY: uverificeret completion-claim run_id=%s "
+                "session=%s claim=%r pattern=%r", run_id, session_id,
+                promise.claim_snippet, promise.pattern,
+            )
+            try:
+                from core.eventbus.bus import event_bus
+                event_bus.publish("promise.unverified", {
+                    "session_id": session_id, "run_id": run_id,
+                    "claim": promise.claim_snippet, "pattern": promise.pattern,
                 })
             except Exception:
                 pass

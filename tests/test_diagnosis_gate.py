@@ -76,3 +76,33 @@ def test_enforce_advisory_returns_unchanged() -> None:
 def test_enforce_never_raises_on_garbage() -> None:
     assert diagnosis_gate_enforce("", run_id="r") == ""
     assert diagnosis_gate_enforce("normal besked uden diagnose") == "normal besked uden diagnose"
+
+
+# ── Promise-ledger §8: uverificerede completion-claims ──
+
+from core.services.diagnosis_gate import analyze_completion_claim  # noqa: E402
+
+
+def test_completion_claim_unverified_without_tool() -> None:
+    r = analyze_completion_claim("Jeg har committet ændringen til main.")
+    assert r.detected and not r.verified
+
+
+def test_completion_claim_verified_with_bash() -> None:
+    r = analyze_completion_claim("Jeg har committet ændringen.", tools_used=["bash"])
+    assert r.detected and r.verified
+
+
+def test_completion_claim_verified_with_reference() -> None:
+    r = analyze_completion_claim("Det er deployet — jeg kørte systemctl og loggen viser active.")
+    assert r.verified
+
+
+def test_completion_claim_exempt_uncertainty() -> None:
+    r = analyze_completion_claim("Jeg tror det er committet, men er ikke sikker.")
+    assert r.detected is False
+
+
+def test_completion_claim_ignores_normal_text() -> None:
+    r = analyze_completion_claim("Det var en god snak, tak.")
+    assert r.detected is False

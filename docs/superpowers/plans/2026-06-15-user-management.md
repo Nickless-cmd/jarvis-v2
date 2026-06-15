@@ -243,6 +243,8 @@ def _ensure_users_table(conn: sqlite3.Connection) -> None:
             totp_seed_enc BLOB NOT NULL DEFAULT x'',
             email_verified INTEGER NOT NULL DEFAULT 0,
             tier TEXT NOT NULL DEFAULT '',
+            api_key_enc BLOB NOT NULL DEFAULT x'',
+            api_key_jti TEXT NOT NULL DEFAULT '',
             muted INTEGER NOT NULL DEFAULT 0,
             consent_data_processing INTEGER NOT NULL DEFAULT 0,
             consent_marketing INTEGER NOT NULL DEFAULT 0,
@@ -293,7 +295,8 @@ def get_user_row_by_email_hash(email_hash: str) -> dict[str, object] | None:
 
 _USER_UPDATABLE = {
     "email_hash", "email_enc", "name", "role", "workspace", "password_hash",
-    "discord_id_enc", "totp_seed_enc", "email_verified", "tier", "muted",
+    "discord_id_enc", "totp_seed_enc", "email_verified", "tier",
+    "api_key_enc", "api_key_jti", "muted",
     "consent_data_processing", "consent_marketing", "consent_blind_access",
     "updated_at", "deleted_at",
 }
@@ -484,6 +487,9 @@ def _row_to_public(row: dict[str, Any]) -> dict[str, Any]:
         "role": row.get("role", "member"),
         "workspace": row.get("workspace", ""),
         "discord_id": _dec(uid, row.get("discord_id_enc")),
+        "api_key": _dec(uid, row.get("api_key_enc")),
+        "api_key_jti": row.get("api_key_jti", "") or "",
+        "has_api_key": bool(row.get("api_key_jti")),
         "email_verified": bool(row.get("email_verified")),
         "tier": row.get("tier", "") or "",
         "muted": bool(row.get("muted")),
@@ -579,6 +585,151 @@ Expected: PASS (alle, inkl. de nye)
 ```bash
 git add core/identity/user_db.py tests/test_user_db.py
 git commit -m "feat(users): user_db adapter — kryptering + email_hash + CRUD"
+```
+
+---
+
+### Task A4: `add_user` (pre-verificeret admin) + API-nøgle-livscyklus
+
+**Files:**
+- Modify: `core/identity/user_db.py`
+- Test: `tests/test_user_db.py` (tilføj)
+
+API-nøglen = en langlivet JarvisX-bearer-token (JWT via `jarvisx_auth.issue_token`),
+mintet med en `jti`-claim så den kan revokeres per-bruger. Den lagres KRYPTERET i
+brugerrækken (`api_key_enc`) + dens `jti` (plaintext, til revocation). Nøglen
+genereres kun hvis tier kvalificerer (plus/pro/owner — over guest/member-gratis).
+`add_user` (owner/Jarvis' manuelle vej) opretter en FÆRDIG-verificeret bruger
+(omgår mail-verifikation). `register_user` (Task B2) er den officielle, mail-ramte vej.
+
+- [ ] **Step 1: Write the failing test**
+
+Tilføj i `tests/test_user_db.py`:
+
+```python
+def test_add_user_is_pre_verified_and_gets_key_for_owner(isolated_runtime) -> None:
+    from core.identity.user_db import add_user, get_user
+    u = add_user(email="boss@b.dk", name="Boss", password="x", role="owner", tier="owner")
+    assert u["email_verified"] is True          # add_user omgår mail-verifikation
+    assert u["has_api_key"] is True              # owner kvalificerer → nøgle
+    assert u["api_key"]                          # dekrypteret token til stede
+    assert get_user(u["user_id"])["api_key_jti"]
+
+
+def test_create_api_key_gated_on_tier(isolated_runtime) -> None:
+    from core.identity.user_db import create_user, create_api_key, get_user
+    u = create_user(email="free@b.dk", name="F", password="x", role="member", workspace="f")
+    # Free/member kvalificerer ikke → ingen nøgle
+    assert create_api_key(u["user_id"]) is None
+    assert get_user(u["user_id"])["has_api_key"] is False
+    # Opgradér til plus → nøgle kan oprettes
+    from core.identity.user_db import set_quota_tier
+    set_quota_tier(u["user_id"], "plus")
+    key = create_api_key(u["user_id"])
+    assert key and get_user(u["user_id"])["has_api_key"] is True
+
+
+def test_revoke_api_key_blocklists_jti(isolated_runtime) -> None:
+    from core.identity.user_db import add_user, revoke_api_key, is_api_key_revoked, get_user
+    u = add_user(email="rev@b.dk", name="R", password="x", role="owner", tier="owner")
+    jti = get_user(u["user_id"])["api_key_jti"]
+    assert is_api_key_revoked(jti) is False
+    assert revoke_api_key(u["user_id"]) is True
+    assert is_api_key_revoked(jti) is True
+    assert get_user(u["user_id"])["has_api_key"] is False
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_user_db.py -q -p no:cacheprovider -k "add_user_is_pre or api_key_gated or revoke_api_key"`
+Expected: FAIL — `module 'core.identity.user_db' has no attribute 'add_user'`
+
+- [ ] **Step 3: Implement add_user + API-key helpers**
+
+Tilføj i `core/identity/user_db.py`:
+
+```python
+_API_KEY_TIERS = ("plus", "pro", "owner")  # over guest/member-gratis (Bjørns regel)
+_REVOKED_KEY = "revoked_api_tokens"
+
+
+def _effective_tier(user: dict[str, Any]) -> str:
+    """Eksplicit tier vinder; ellers udledt af rolle (owner→owner, member→plus)."""
+    t = user.get("tier") or ""
+    if t in ("free", "plus", "pro", "owner"):
+        return t
+    role = user.get("role") or "member"
+    return "owner" if role == "owner" else ("plus" if role == "member" else "free")
+
+
+def create_api_key(user_id: str, *, ttl_days: int = 365) -> str | None:
+    """Mint en langlivet API-nøgle (JWT m. jti) hvis brugerens tier kvalificerer.
+    Returnerer token-strengen, eller None hvis tier ikke kvalificerer / ukendt bruger."""
+    user = get_user(user_id)
+    if not user:
+        return None
+    if _effective_tier(user) not in _API_KEY_TIERS:
+        return None
+    from core.runtime.jarvisx_auth import issue_token
+    jti = uuid.uuid4().hex
+    minted = issue_token(user_id=user_id, role=user["role"], ttl_days=ttl_days,
+                         extra_claims={"jti": jti})
+    token = minted["token"]
+    db.update_user_row(user_id, {"api_key_enc": _enc(user_id, token),
+                                 "api_key_jti": jti, "updated_at": _now()})
+    return token
+
+
+def revoke_api_key(user_id: str) -> bool:
+    """Revokér brugerens API-nøgle: bloklist dens jti + ryd den lagrede nøgle."""
+    row = db.get_user_row(user_id)
+    if not row:
+        return False
+    jti = str(row.get("api_key_jti") or "")
+    if jti:
+        from core.runtime.db import get_runtime_state_value, set_runtime_state_value
+        revoked = get_runtime_state_value(_REVOKED_KEY, [])
+        if not isinstance(revoked, list):
+            revoked = []
+        if jti not in revoked:
+            revoked.append(jti)
+            set_runtime_state_value(_REVOKED_KEY, revoked[-5000:])
+    db.update_user_row(user_id, {"api_key_enc": b"", "api_key_jti": "", "updated_at": _now()})
+    return True
+
+
+def is_api_key_revoked(jti: str) -> bool:
+    if not jti:
+        return False
+    from core.runtime.db import get_runtime_state_value
+    revoked = get_runtime_state_value(_REVOKED_KEY, [])
+    return isinstance(revoked, list) and jti in revoked
+
+
+def add_user(*, email: str, name: str, password: str, role: str = "member",
+             workspace: str | None = None, tier: str = "") -> dict[str, Any]:
+    """Owner/Jarvis' manuelle oprettelse: opretter en FÆRDIG-verificeret bruger
+    (omgår mail-verifikation) og giver en API-nøgle hvis tier kvalificerer."""
+    user = create_user(email=email, name=name, password=password, role=role,
+                       workspace=workspace)
+    uid = user["user_id"]
+    set_email_verified(uid, True)
+    if tier in ("free", "plus", "pro", "owner"):
+        db.update_user_row(uid, {"tier": tier, "updated_at": _now()})
+    create_api_key(uid)  # no-op hvis tier ikke kvalificerer
+    return get_user(uid)  # type: ignore[return-value]
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_user_db.py -q -p no:cacheprovider`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add core/identity/user_db.py tests/test_user_db.py
+git commit -m "feat(users): add_user (pre-verificeret) + API-nøgle-livscyklus (tier-gated, revokerbar)"
 ```
 
 ---
@@ -803,9 +954,10 @@ def register_user(*, email: str, name: str, password: str, base_url: str,
     Returnerer (user, token)."""
     from core.identity import email_verify
     user = create_user(email=email, name=name, password=password, role=role)
+    create_api_key(user["user_id"])  # no-op hvis tier ikke kvalificerer (free/member)
     token = email_verify.send_verification_email(
         user_id=user["user_id"], email=user["email"], base_url=base_url)
-    return user, token
+    return get_user(user["user_id"]), token  # type: ignore[return-value]
 
 
 def verify_email_token(token: str) -> bool:
@@ -1092,6 +1244,7 @@ def delete_user(user_id: str, *, mode: str = "soft", actor: str = "owner") -> bo
     Audit logges altid."""
     if not db.get_user_row(user_id):
         return False
+    revoke_api_key(user_id)  # bloklist + ryd API-nøgle uanset mode
     if mode == "hard":
         try:
             from core.services.keyring_store import delete_user_key
@@ -1408,4 +1561,5 @@ Genstart `jarvis-api` på target (idle-tjekket). Verificér live: `/api/auth/reg
 - **Dual-truth-note:** users-tabellen er autoritativ for de NYE felter (email/password/verified/tier/consent/deleted_at). Den eksisterende `users.json` bevares til legacy Discord-identitet i denne leverance. FOLLOW-UP (separat): migrér `users.json`-brugere ind i tabellen + re-point `users.py`-læsere, så der kun er én kilde. Indtil da: opret ikke samme bruger begge steder uden bevidsthed om det.
 - **Sikkerhed:** klartekst-password forlader aldrig request-scope (hashes straks). SMTP-credential fra runtime.json. Hard-delete sletter keyring-DEK → krypteret data bliver ulæseligt. Owner-only admin via `require_owner`.
 - **TOTP-på-hard-delete (follow-up):** spec §6.2 vil have en frisk owner-TOTP-override ved hard-delete af *andres* data. Denne leverance gater på `require_owner` (gyldig owner-JWT) — tilstrækkeligt som v1-kontrol, men IKKE en per-handling TOTP-challenge. FOLLOW-UP: kræv `totp_verifier.verify` + `record_attempt` i `DELETE`-handleren når `mode='hard'` og target ≠ caller. `delete_policy.resolve_delete_action` kan samtidig wires ind for den fulde mode/bekræftelses-matrix.
+- **API-nøgle = JarvisX-bearer-token (JWT m. jti).** `create_api_key` gates på tier (plus/pro/owner — over guest/member-gratis, Bjørns regel). `add_user` (owner/Jarvis) opretter pre-verificerede brugere + nøgle; `register_user` (officiel, mail-ramt) opretter nøgle hvis tier kvalificerer. `revoke_api_key` bloklister jti'en. **REVOCATION-HÅNDHÆVELSE (follow-up):** `is_api_key_revoked(jti)` findes, men JWT'en er selvbærende — wire et opslag i `jarvisx_auth.verify_token` (eller middlewaren) så bloklistede jti'er afvises live. Indtil da gælder den eksisterende "rotér secret = nuke alle"-nødbremse.
 - **--workers 1 frys-fælde:** rute-handlerne her er lette (DB-opslag); hvis et fremtidigt kald bliver tungt/blokerende, wrap i `asyncio.to_thread`.

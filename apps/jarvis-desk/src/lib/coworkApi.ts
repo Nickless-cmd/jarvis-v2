@@ -208,3 +208,7 @@ export interface QuotaOverview { tier: string; items: QuotaItem[] }
 export async function getAccountQuota(config: ApiConfig): Promise<QuotaOverview> {
   return apiFetch<QuotaOverview>(config, '/account/quota')
 }
+
+export async function setAccountLanguage(config: ApiConfig, language: string): Promise<void> {
+  await apiFetch(config, '/account/language', { method: 'PATCH', body: { language } })
+}

@@ -14,16 +14,24 @@ export function FileTree({
   onOpenFile: (fullPath: string) => void
 }) {
   const [entries, setEntries] = useState<TreeEntry[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     let cancelled = false
+    setError(null)
     getTree(config, kind, root, path)
       .then((e) => { if (!cancelled) setEntries(e) })
-      .catch(() => { if (!cancelled) setEntries([]) })
+      .catch((err) => {
+        // Tidligere blev fejl tavst til en tom liste → "viser ingen filer".
+        // Surfacér i stedet hvad der gik galt (auth/jail/bro), så det kan ses.
+        if (!cancelled) { setEntries([]); setError(err instanceof Error ? err.message : 'ukendt fejl') }
+      })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, root, path])
 
   if (entries === null) return <div className="filetree-loading">…</div>
+  if (error) return <div className="filetree-error">Kunne ikke hente filer: {error}</div>
+  if (entries.length === 0 && !path) return <div className="filetree-empty">Tom mappe.</div>
   return (
     <ul className="filetree">
       {entries.map((e) => (

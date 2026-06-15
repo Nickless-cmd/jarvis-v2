@@ -1219,6 +1219,8 @@
 .filetree-file, .filetree-dir-row { display: flex; align-items: center; gap: 5px; padding: 3px 6px; cursor: pointer; border-radius: 4px; color: var(--fg-2); white-space: nowrap; }
 .filetree-file:hover, .filetree-dir-row:hover { background: var(--bg-2); color: var(--fg-1); }
 .filetree-loading { padding: 8px; color: var(--fg-3); }
+.filetree-empty { padding: 8px; color: var(--fg-3); font-size: 12px; }
+.filetree-error { padding: 8px; color: #e2777a; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
 
 /* Code-mode panel */
 .codepanel { display: flex; flex-direction: column; height: 100%; }

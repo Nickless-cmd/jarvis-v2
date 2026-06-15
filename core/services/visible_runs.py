@@ -3392,6 +3392,20 @@ async def _stream_visible_run(
             except Exception as _fg_exc:
                 logger.debug("fact_gate failed: %s", _fg_exc)
 
+            # Diagnosis-gate (spec 2026-06-14): fanger uverificerede diagnostiske
+            # konklusioner ("er zombie", "X commits bagud", "fyrede ikke") efter
+            # fact-gate. FASE 1 = advisory: logger men ændrer ikke teksten.
+            try:
+                from core.services.diagnosis_gate import diagnosis_gate_enforce
+                visible_output_text = diagnosis_gate_enforce(
+                    visible_output_text,
+                    session_id=getattr(run, "session_id", "") or "",
+                    run_id=run.run_id,
+                    tools_used=_executed_tool_names,
+                )
+            except Exception as _dg_exc:
+                logger.debug("diagnosis_gate failed: %s", _dg_exc)
+
         # 2026-05-22 (Claude): post-process MUST run even when
         # visible_output_text is empty. Originally guarded by
         # `if visible_output_text:` which meant a run that ended after

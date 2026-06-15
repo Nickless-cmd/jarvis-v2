@@ -14,6 +14,8 @@ export function UiPanelWatcher({ config }: { config: ApiConfig | undefined }) {
   const panel = usePanel()
   const openRef = useRef(panel.open_)
   openRef.current = panel.open_
+  const closeRef = useRef(panel.close)
+  closeRef.current = panel.close
   const busy = useRef(false)
 
   useEffect(() => {
@@ -24,11 +26,15 @@ export function UiPanelWatcher({ config }: { config: ApiConfig | undefined }) {
       try {
         const pending = await getUiPanelPending(config)
         for (const req of pending) {
-          openRef.current({
-            kind: 'markdown',
-            title: 'Jarvis åbnede et panel',
-            content: req.detail || 'Jarvis bad om at åbne dette panel.',
-          })
+          if (req.action === 'close') {
+            closeRef.current()
+          } else {
+            openRef.current({
+              kind: 'markdown',
+              title: 'Jarvis åbnede et panel',
+              content: req.detail || 'Jarvis bad om at åbne dette panel.',
+            })
+          }
           await ackUiPanel(config, req.id)
         }
       } catch {

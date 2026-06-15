@@ -56,6 +56,7 @@ export async function resolveShareGuard(config: ApiConfig, id: string, shared: b
 export interface UiPanelRequest {
   id: string
   panel: 'preview' | 'right' | 'files'
+  action?: 'open' | 'close'
   session_id: string
   detail: string
   status: string

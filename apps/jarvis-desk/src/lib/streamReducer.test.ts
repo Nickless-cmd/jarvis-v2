@@ -142,8 +142,8 @@ describe('streamReducer — usage.input fra message_delta (context-ring #9)', ()
       { type: 'system_event', kind: 'tool_result', payload: { tool_use_id: 't1', status: 'ok', result: '3 resultater' } },
     ] as StreamEvent[])
     const b = s.blocks[0]
-    expect(b.type).toBe('tool_use')
-    if (b.type === 'tool_use') {
+    expect(b?.type).toBe('tool_use')
+    if (b?.type === 'tool_use') {
       expect(b.status).toBe('done')
       expect(b.result).toBe('3 resultater')
     }

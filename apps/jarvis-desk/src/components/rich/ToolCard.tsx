@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { Terminal, FilePen, FilePlus, FileText, Search, FolderTree, Wrench, Check, X, Loader } from 'lucide-react'
+import { Check, X, Loader } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { lineDiff } from '../../lib/diff'
+import { lookupTool } from '../../lib/toolRegistry'
+import { diffStat } from '../../lib/diffStat'
 
 /** Density-aware, værktøjs-specifik tool-kald-visning (Claude Desktop-stil).
  *  bash → terminal-blok, write/edit → fil-header + diff, read/glob/grep → kompakt.
@@ -19,8 +21,11 @@ export function ToolCard({
 
   const args = parseArgs(block)
   const fam = toolFamily(block.name)
-  const { Icon, summary } = describeTool(fam, args)
+  const meta = lookupTool(block.name)
+  const summary = meta.summarize(args, block.result)
+  const ds = diffStat(block.name, args)
   const status = block.status ?? 'running'
+  const Icon = meta.Icon
 
   return (
     <div className={`toolcard fam-${fam} status-${status}`}>
@@ -30,8 +35,13 @@ export function ToolCard({
         onClick={() => density === 'compact' && setOpen((o) => !o)}
       >
         <Icon size={13} className="toolcard-icon" />
-        <span className="toolcard-name">{block.name}</span>
+        <span className="toolcard-name">{meta.label}</span>
         {summary && <span className="toolcard-summary">{summary}</span>}
+        {ds && (
+          <span className="toolcard-diffstat">
+            <span className="git-add">+{ds.add}</span> <span className="git-del">−{ds.del}</span>
+          </span>
+        )}
         <StatusBadge status={status} />
       </button>
       {expanded && (
@@ -60,33 +70,6 @@ function toolFamily(name: string): Fam {
 function parseArgs(block: Extract<ContentBlock, { type: 'tool_use' }>): Record<string, unknown> {
   if (block.input && Object.keys(block.input).length) return block.input
   try { return JSON.parse(block.partialJson || '{}') } catch { return {} }
-}
-
-function pathOf(args: Record<string, unknown>): string {
-  return String(args.path || args.target_path || args.file_path || args.dir || '')
-}
-
-function describeTool(fam: Fam, args: Record<string, unknown>): { Icon: typeof Terminal; summary: string } {
-  switch (fam) {
-    case 'bash': return { Icon: Terminal, summary: String(args.command || '') }
-    case 'write': return { Icon: FilePlus, summary: pathOf(args) }
-    case 'edit': return { Icon: FilePen, summary: pathOf(args) }
-    case 'read': return { Icon: FileText, summary: pathOf(args) }
-    case 'glob': return { Icon: Search, summary: String(args.pattern || args.glob || '') }
-    case 'grep': return { Icon: Search, summary: String(args.pattern || args.query || '') }
-    case 'list': return { Icon: FolderTree, summary: pathOf(args) }
-    default: return { Icon: Wrench, summary: genericSummary(args) }
-  }
-}
-
-/** Pluk det mest sigende argument til ukendte værktøjer (search_memory,
- *  search_jarvis_brain, fakta-tjek m.fl.) → vis "navn · <mål>" i stedet for rå JSON. */
-function genericSummary(args: Record<string, unknown>): string {
-  for (const k of ['query', 'q', 'command', 'path', 'file_path', 'pattern', 'text', 'url', 'name', 'topic']) {
-    const v = args[k]
-    if (typeof v === 'string' && v.trim()) return v
-  }
-  return ''
 }
 
 function StatusBadge({ status }: { status: string }) {

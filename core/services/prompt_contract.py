@@ -4839,7 +4839,10 @@ def _visible_response_style_hint_section() -> str | None:
     """
     try:
         from core.services.user_temperature_engine import get_response_style_modifiers
-        mods = get_response_style_modifiers(workspace_id="default")
+        # Brug den AKTIVE brugers workspace, ikke hardcodet "default" — ellers fik en
+        # member (fx Michelle) owner Bjørns temperatur-modifiers (multi-user-fejl).
+        from core.identity.workspace_context import current_workspace_name
+        mods = get_response_style_modifiers(workspace_id=current_workspace_name() or "default")
         non_default = {
             k: v for k, v in mods.items()
             if v not in ("normal", "neutral")

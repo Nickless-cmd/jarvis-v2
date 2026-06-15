@@ -1415,6 +1415,14 @@
 .jarvis-lane { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
 .jarvis-lane-name { min-width: 130px; color: var(--fg-2); }
 .jarvis-lane-model { flex: 1; color: var(--fg-1); }
+.apps-row, .mcp-row { display: flex; align-items: center; gap: 10px; font-size: 12.5px; padding: 4px 0; }
+.apps-name, .mcp-name { min-width: 120px; color: var(--fg-1); }
+.mcp-url { flex: 1; color: var(--fg-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mcp-add { display: flex; gap: 6px; margin-bottom: 10px; }
+.mcp-add input { flex: 1; background: var(--bg-2); border: 1px solid var(--line); border-radius: 7px;
+  color: var(--fg-1); font-size: 12.5px; padding: 5px 8px; }
+.mcp-add button { background: var(--bg-3); border: 1px solid var(--line); border-radius: 7px;
+  color: var(--fg-1); font-size: 12.5px; padding: 5px 12px; cursor: pointer; }
 .badge { padding: 1px 8px; border-radius: 10px; font-size: 11px; margin-left: 4px; }
 .badge-ok { background: #1d3a24; color: #6ee7a0; }
 .badge-warn { background: #3a2a1d; color: #e7b96e; }

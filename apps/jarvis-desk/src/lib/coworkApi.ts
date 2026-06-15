@@ -262,3 +262,21 @@ export async function getJarvisOverview(config: ApiConfig): Promise<JarvisOvervi
 export async function setVisibleModel(config: ApiConfig, provider: string, model: string): Promise<void> {
   await apiFetch(config, '/account/jarvis/visible-model', { method: 'POST', body: { provider, model } })
 }
+
+export interface ConnectedApp { plugin_id: string; name: string; status: string; detail: string }
+export async function getAccountApps(config: ApiConfig): Promise<ConnectedApp[]> {
+  const d = await apiFetch<{ apps: ConnectedApp[] }>(config, '/account/apps')
+  return d.apps ?? []
+}
+
+export interface McpServer { id: string; name: string; url: string }
+export async function getAccountMcp(config: ApiConfig): Promise<McpServer[]> {
+  const d = await apiFetch<{ servers: McpServer[] }>(config, '/account/mcp')
+  return d.servers ?? []
+}
+export async function addMcpServer(config: ApiConfig, name: string, url: string): Promise<void> {
+  await apiFetch(config, '/account/mcp', { method: 'POST', body: { name, url } })
+}
+export async function removeMcpServer(config: ApiConfig, id: string): Promise<void> {
+  await apiFetch(config, `/account/mcp/${id}`, { method: 'DELETE' })
+}

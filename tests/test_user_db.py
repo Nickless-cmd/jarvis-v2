@@ -156,3 +156,29 @@ def test_register_user_creates_unverified_and_returns_token(isolated_runtime, mo
     assert token and sent["to"] == "new@b.dk"
     assert user_db.verify_email_token(token) is True
     assert user_db.get_user(user["user_id"])["email_verified"] is True
+
+
+def test_soft_delete_marks_user(isolated_runtime) -> None:
+    from core.identity.user_db import create_user, delete_user, get_user
+    u = create_user(email="sd@b.dk", name="S", password="x", role="member", workspace="s")
+    assert delete_user(u["user_id"], mode="soft", actor="owner") is True
+    assert get_user(u["user_id"])["deleted_at"] is not None
+
+
+def test_hard_delete_removes_user_and_key(isolated_runtime) -> None:
+    from core.identity.user_db import create_user, delete_user, get_user
+    from core.runtime.db import get_user_row
+    u = create_user(email="hd@b.dk", name="H", password="x", role="member", workspace="h")
+    uid = u["user_id"]
+    assert delete_user(uid, mode="hard", actor="owner") is True
+    assert get_user(uid) is None
+    assert get_user_row(uid) is None
+
+
+def test_delete_writes_audit_entry(isolated_runtime) -> None:
+    from core.identity.user_db import create_user, delete_user, read_audit_log
+    u = create_user(email="au@b.dk", name="A", password="x", role="member", workspace="a")
+    delete_user(u["user_id"], mode="soft", actor="bjorn")
+    log = read_audit_log()
+    assert any(e["user_id"] == u["user_id"] and e["action"] == "delete:soft"
+               and e["actor"] == "bjorn" for e in log)

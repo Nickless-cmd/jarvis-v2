@@ -247,3 +247,43 @@ def add_user(*, email: str, name: str, password: str, role: str = "member",
         db.update_user_row(uid, {"tier": tier, "updated_at": _now()})
     create_api_key(uid)  # no-op hvis tier ikke kvalificerer
     return get_user(uid)  # type: ignore[return-value]
+
+
+# ── GDPR-sletning + audit (spec §6) ──────────────────────────────────────────
+_AUDIT_KEY = "user_audit_log"
+
+
+def _audit(*, user_id: str, action: str, actor: str) -> None:
+    from core.runtime.db import get_runtime_state_value, set_runtime_state_value
+    log = get_runtime_state_value(_AUDIT_KEY, [])
+    if not isinstance(log, list):
+        log = []
+    log.append({"user_id": user_id, "action": action, "actor": actor, "at": _now()})
+    set_runtime_state_value(_AUDIT_KEY, log[-1000:])
+
+
+def read_audit_log() -> list[dict[str, Any]]:
+    from core.runtime.db import get_runtime_state_value
+    log = get_runtime_state_value(_AUDIT_KEY, [])
+    return log if isinstance(log, list) else []
+
+
+def delete_user(user_id: str, *, mode: str = "soft", actor: str = "owner") -> bool:
+    """mode='soft' → deleted_at-timestamp (fortryd-venlig, grace-period).
+    mode='hard' → permanent sletning af user-row + keyring-DEK (GDPR §6.2).
+    API-nøglen revokeres altid; audit logges altid."""
+    if not db.get_user_row(user_id):
+        return False
+    revoke_api_key(user_id)  # bloklist + ryd API-nøgle uanset mode
+    if mode == "hard":
+        try:
+            from core.services.keyring_store import delete_user_key
+            delete_user_key(user_id)
+        except Exception:
+            pass
+        ok = db.hard_delete_user_row(user_id)
+    else:
+        ok = db.soft_delete_user_row(user_id, deleted_at=_now())
+    if ok:
+        _audit(user_id=user_id, action=f"delete:{mode}", actor=actor)
+    return ok

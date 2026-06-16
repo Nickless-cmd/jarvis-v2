@@ -9,6 +9,13 @@ import { emitZone } from '../lib/coworkZone'
 
 const POLL_MS = 4000
 
+/** detail er en filsti hvis den er ÉT token uden mellemrum og slutter på en
+ *  fil-endelse (fx 'docs/spec.md'). Ellers er detail bare en note → markdown. */
+function _looksLikeFilePath(detail: string | undefined): boolean {
+  const d = (detail || '').trim()
+  return /^[^\s]+\.[a-z0-9]{1,6}$/i.test(d)
+}
+
 /**
  * UI-panel-kald (spec §8.2, Fase 6 #3, opdateret 2026-06-16 med scope).
  * Poller for pending panel-forespørgsler fra Jarvis (open_ui_panel-tool) og
@@ -25,10 +32,12 @@ export function UiPanelWatcher({
   config: ApiConfig | null
   setSurface: (s: Surface) => void
 }) {
-  const { open_: openPanel } = usePanel()
+  const panel = usePanel()
   const busy = useRef(false)
-  const openRef = useRef(openPanel)
-  openRef.current = openPanel
+  const openRef = useRef(panel.open_)
+  openRef.current = panel.open_
+  const closeRef = useRef(panel.close)
+  closeRef.current = panel.close
 
   useEffect(() => {
     if (!config) return
@@ -39,6 +48,13 @@ export function UiPanelWatcher({
       try {
         const res = await getUiPanelPending(config)
         for (const req of res) {
+          // close — luk det åbne panel (uanset hvilket)
+          if (req.action === 'close') {
+            closeRef.current()
+            await ackUiPanel(config, req.id)
+            continue
+          }
+
           // file_tree — Jarvis vil highlighte en fil i træet
           if (req.panel === 'file_tree') {
             setSurface('code')
@@ -52,11 +68,11 @@ export function UiPanelWatcher({
           const fp = (req.detail || '').trim()
           if (req.panel === 'preview' && fp) {
             setSurface('code')
-            openRef.current({
-              kind: 'file',
-              title: fp.split('/').pop() || fp,
-              filePath: fp,
-            })
+            openRef.current(
+              _looksLikeFilePath(fp)
+                ? { kind: 'file', title: fp.split('/').pop() || fp, filePath: fp }
+                : { kind: 'markdown', title: 'Jarvis åbnede et panel', content: fp },
+            )
             await ackUiPanel(config, req.id)
             continue
           }

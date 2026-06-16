@@ -152,6 +152,19 @@ motor, Spor A). Default: members må forbinde; owner kan slå en connector fra f
 
 **G. Audit.** Log connect/disconnect/revoke pr. bruger (genbrug user_db-audit-mønster).
 
+**H. 🔴 Cascade-revoke ved bruger-sletning (Jarvis' review, korrekt fanget).** I dag
+revoker `user_db.delete_user` API-nøglen + (hard) keyring, men **rører IKKE
+oauth_store-tokens**. GDPR-hard-delete skal også **revoke + wipe alle brugerens
+connector-tokens** (kald `connectors.delete_for_user` for hver forbundet provider FØR
+keyring slettes — ellers er nøglen væk og tokenet kan ikke dekrypteres til revoke).
+Tilføj til `delete_user`-stien.
+
+**Afklaring (Jarvis' review):** "member får GitHub-adgang uden godkendelse" er en
+MISFORSTÅELSE — OAuth er per-konto: en member forbinder SIN EGEN GitHub, isoleret, og
+rører aldrig owner's/Jarvis' konto. Samtykke-skærmen ER godkendelsen. "Owner tildeler
+connectors" = governance (hvilke connectors *tilbydes*), dækket af §10E — ikke en
+sikkerhedsnødvendighed. "Disconnected state + notifikation" er allerede §10F.
+
 ## 11. Egne MCP-servere (Bjørns ønske — findes som config-lager, mangler klient)
 
 `core/services/mcp_registry.py` (47 l.) + `McpSection.tsx` (owner-only) gemmer KUN

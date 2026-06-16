@@ -101,8 +101,8 @@ def list_for_user(user_id: str) -> list[dict]:
 
 def _audit(event: str, user_id: str, connector_id: str) -> None:
     try:
-        from core.eventbus import publish
-        publish("connector." + event, {"user_id": user_id, "connector": connector_id})
+        from core.eventbus.bus import event_bus
+        event_bus.publish("connector." + event, {"user_id": user_id, "connector": connector_id})
     except Exception:
         pass
 

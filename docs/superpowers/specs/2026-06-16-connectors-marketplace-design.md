@@ -89,3 +89,34 @@ toast efter callback (`oauth.connected`-event).
 
 ## 8. Hvad IKKE ændres
 Kerne-runtime · brain/memory · mode-adgangsregler · den eksisterende OAuth-backend (bygget).
+
+## 9. Connector-katalog (fuld — Codex-verificeret + Jarvis' egne)
+`kind`: **oauth** (egen OAuth, krypteret token) · **local** (wrap eksisterende Jarvis-
+evne, ingen OAuth, vises "Aktiv") · **utility** (ingen OAuth). Marketplace bygger ud fra
+denne tabel. **local = byg IKKE forfra** — pak `operator_*`/TTS/skills ind.
+
+| id | Navn | kind | Kategori | Fase | Note |
+|---|---|---|---|---|---|
+| github | GitHub | oauth | Udvikling | **v1** | issues/PRs — lodret bevis |
+| gmail | Gmail | oauth | Google | v2 | Google-pakke deler én OAuth |
+| google-calendar | Kalender | oauth | Google | v2 | |
+| google-drive | Drive | oauth | Google | v2 | |
+| google-docs | Docs | oauth | Google | v2 | |
+| google-sheets | Sheets | oauth | Google | v2 | |
+| google-slides | Slides | oauth | Google | v2 | |
+| computer-use | Computer Use | local | System | v2 | = `operator_*`-bro (findes) |
+| browser | Browser | local | System | v2 | = `operator_browser_*` (findes) |
+| chrome | Chrome | local | System | v3 | variant af browser |
+| read-aloud | Oplæsning | local | System | v2 | = Jarvis **TTS** (findes) |
+| superpowers | Superpowers | local | Udvikling | v2 | = Jarvis **skills**/dispatch (findes) |
+| pdf | PDF | utility | Produktivitet | v3 | filbehandling, ingen OAuth |
+| build-web-apps | Build Web Apps | utility | Udvikling | v3 | bruger code-mode |
+| hugging-face | Hugging Face | oauth | AI/Modeller | v3 | HF-token |
+| openai-developers | OpenAI Developers | oauth | AI/Modeller | v3 | API-nøgle |
+| notes | Huskesedler | local | Noter | v2 | simpelt lokalt — Jarvis' eget |
+| spotify | Spotify / Musik | oauth | Medier | v3 | Jarvis' eget |
+| slack | Slack | oauth | Kommunikation | v3 | Jarvis' eget |
+| notion | Notion / Obsidian | oauth | Noter | v3 | Jarvis' eget |
+
+**IKKE med:** Claude-mem (vi har eget brain). **Allerede i Jarvis (kun indpakning):**
+computer-use, browser, chrome, read-aloud, superpowers.

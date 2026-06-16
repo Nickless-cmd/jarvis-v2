@@ -120,3 +120,65 @@ denne tabel. **local = byg IKKE forfra** — pak `operator_*`/TTS/skills ind.
 
 **IKKE med:** Claude-mem (vi har eget brain). **Allerede i Jarvis (kun indpakning):**
 computer-use, browser, chrome, read-aloud, superpowers.
+
+## 10. Kritisk review — huller vi havde overset (sikkerhed + renew)
+
+**A. 🔴 Token-renew/refresh — KRITISK, manglede helt.** Tokens gemmes m.
+`expires_at`/`refresh_token`, men der er INGEN refresh-logik. Google-`access_token`
+udløber ~1t → connector dør stille. **Fix:** `oauth_flow.refresh_token(provider,
+refresh_token)` (POST token_url, `grant_type=refresh_token`); gem `obtained_at`+beregn
+`expires_at`. Connector-tool-kald: er token udløbet/<60s tilbage → refresh + re-save +
+brug ny (reaktivt v1; proaktiv baggrunds-refresher senere). GitHub-OAuth-tokens udløber
+ikke (refresh kun hvis `refresh_token` findes). Uden dette virker Google-connectors i 1 time.
+
+**B. Provider-side revoke ved "Afbryd & slet".** I dag wiper vi kun lokalt → token
+forbliver GYLDIG hos GitHub/Google. **Fix:** kald providerens revoke-endpoint
+(Google `oauth2.googleapis.com/revoke`, GitHub `DELETE /applications/{id}/grant`) FØR
+lokal wipe. GDPR + sikkerhed.
+
+**C. State single-use.** `state` er signeret+TTL men kan replays inden for 10 min.
+**Fix:** one-time-nonce — gem brugte nonces (runtime_state, TTL), afvis genbrug.
+
+**D. Scope-minimering + samtykke-transparens.** GitHub default `repo` = fuld
+læse/skrive til ALLE repos — for bredt. **Fix:** mindst-privilegium pr. connector +
+VIS scopes i UI ved "Forbind" ("denne app beder om: repo, read:user").
+
+**E. Owner-gating af member-connectors.** Members forbinder deres EGNE (isoleret) —
+men owner skal kunne **allow-liste / deaktivere** en connector globalt (permission-
+motor, Spor A). Default: members må forbinde; owner kan slå en connector fra for alle.
+
+**F. Token-broke UI-state.** Når token revokes/udløber-uden-refresh: connector viser
+"⚠ Genforbind", og tools fejler pænt ("din Gmail-forbindelse er udløbet — genforbind").
+
+**G. Audit.** Log connect/disconnect/revoke pr. bruger (genbrug user_db-audit-mønster).
+
+## 11. Egne MCP-servere (Bjørns ønske — findes som config-lager, mangler klient)
+
+`core/services/mcp_registry.py` (47 l.) + `McpSection.tsx` (owner-only) gemmer KUN
+`{name,url,id}` — der er **ingen MCP-klient**: ingen forbindelse, intet `list_tools`,
+ingen eksponering til Jarvis. **Tilføj:**
+1. **MCP-klient** — forbind til brugerens MCP-servere (stdio/SSE/HTTP), hent `list_tools`,
+   eksponér dem scopet til mode + Spor A. Kun når server er "enabled".
+2. **"Egne MCP-servere"-kort i Marketplace** — tilføj (URL/kommando + env + navn),
+   status (forbundet/fejl/N tools), fjern. (Løfter `McpSection` op i Marketplace.)
+3. **🔴 Sikkerhed:** en bruger-tilføjet MCP-server er ARBITRÆR kode/endpoint → vet med
+   `skill_scanner` (§19.8: prompt-injection/malware/boundary), kør isoleret, vis
+   "denne server kører med X adgang", **owner-gated** default. En member må ikke
+   tilføje en vilkårlig server der kan eksfiltrere andres data.
+
+## 12. Bruger-forventninger + nemmeste vej + "det der fanger" (Codex/Claude-grounded)
+
+**Forventer:** ét-klik forbind · tydelig status (forbundet/aktiv/genforbind) · let
+afbryd · **se hvad den får adgang til** (scopes) · pr. konto · "det bare virker" ·
+auto-genforbind-prompt når brudt.
+
+**Nemmest for brugeren:** greeting-forslag + ét klik · **kontekst-forslag** (nævner
+bruger "mail" → foreslå Gmail inline i svaret) · nul manuel config for OAuth-connectors
+(modsat MCP-servere der kræver URL).
+
+**Det der FANGER (delight — i samme ånd som tids-greeting):**
+- **Post-connect-hook (stærkest):** lige efter forbindelse siger Jarvis proaktivt
+  "Nu kan jeg kigge i din indbakke — skal jeg tjekke om der er noget vigtigt?" — gør
+  connectoren *levende* med det samme i stedet for en tom "forbundet".
+- "Nyligt forbundet ✓"-mikrofejring (toast) · tal-badge "N forbundet" på rail-punktet ·
+  tids-bevidst random greeting + presence-tint · gennemtænkte tomme/loading/fejl-states.

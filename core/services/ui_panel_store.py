@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from core.runtime import jarvis_db as _jarvis_db
+from core.runtime.db_core import get_runtime_state_value, set_runtime_state_value
 
 _KEY = "ui_panel_requests"
 
@@ -81,7 +81,7 @@ def ack_panel(request_id: str) -> bool:
 
 def _load() -> list[dict[str, Any]]:
     try:
-        raw = _jarvis_db.get(_KEY, "{}")
+        raw = get_runtime_state_value(_KEY) or "{}"
         data = json.loads(raw)
         if isinstance(data, list):
             return data
@@ -93,4 +93,4 @@ def _load() -> list[dict[str, Any]]:
 def _save(state: list[dict[str, Any]]) -> None:
     # Hold kun de seneste 50 entries for at undgå at DB vokser
     trimmed = state[-50:]
-    _jarvis_db.set(_KEY, json.dumps(trimmed, ensure_ascii=False))
+    set_runtime_state_value(_KEY, json.dumps(trimmed, ensure_ascii=False))

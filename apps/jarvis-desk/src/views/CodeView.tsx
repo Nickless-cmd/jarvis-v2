@@ -129,6 +129,7 @@ export function CodeView({
       requestAnimationFrame(() => setHighlightPath(p))
     }
   }), [isOwner])
+  const effRoot = kind === 'container' ? root : wsPath
   const ready = !!effRoot // workstation kræver at en mappe er valgt
 
   // Autoscroll + scroll-til-bund-pil (som chat).

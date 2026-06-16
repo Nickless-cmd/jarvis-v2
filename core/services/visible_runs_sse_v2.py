@@ -169,6 +169,27 @@ def _parse_legacy_sse(chunk: str) -> tuple[str, dict] | None:
     return event_name, payload
 
 
+# D2-leak hang-fix (16. jun 2026): legacy-strømmen kan BLOKERE uden at sende 'done'
+# (presentation-invariant-leak afslutter runnet server-side, men kilde-generatoren
+# hænger), så `async for raw in legacy_iter` venter evigt og når aldrig finally-
+# terminal-garantien → desk hænger i 'working'. Vi venter derfor med en idle-timeout:
+# hvis ingen legacy-event i _IDLE_TICK_S OG runnet ikke længere er aktivt server-side
+# → bryd ud så message_stop fyrer. Hård loft (_MAX_IDLE_TICKS) som sidste værn.
+_IDLE_TICK_S = 20.0          # sekunder uden legacy-event før vi tjekker active-state
+_MAX_IDLE_TICKS = 9          # ~180s total stilhed → kilden er død uanset
+
+
+def _run_still_active(run_id: str) -> bool:
+    """True hvis dette run stadig er det aktive visible-run server-side. Fail-safe:
+    antag AKTIVT ved fejl, så vi aldrig afslutter en levende stream for tidligt."""
+    try:
+        from core.services.visible_runs import _get_active_visible_run_state
+        st = _get_active_visible_run_state() or {}
+        return bool(st.get("active")) and str(st.get("run_id") or "") == str(run_id or "")
+    except Exception:
+        return True
+
+
 async def translate_to_v2(
     legacy_iter: AsyncIterator[str],
     *,
@@ -334,8 +355,27 @@ async def translate_to_v2(
             pass
 
     async def _translation_loop() -> None:
+        _aiter = legacy_iter.__aiter__()
+        _idle_ticks = 0
         try:
-            async for raw in legacy_iter:
+            while True:
+                try:
+                    raw = await asyncio.wait_for(
+                        _aiter.__anext__(), timeout=_IDLE_TICK_S,
+                    )
+                except StopAsyncIteration:
+                    break  # kilden sluttede rent → finally fyrer terminal-garantien
+                except asyncio.TimeoutError:
+                    # Ingen legacy-event i _IDLE_TICK_S. Hvis runnet ikke længere er
+                    # aktivt server-side (fuldført/ryddet/afløst) → kilden er død;
+                    # bryd ud så finally-garantien fyrer message_stop. Hård loft som
+                    # sidste værn hvis active-state aldrig ryddes.
+                    _idle_ticks += 1
+                    _rid = str(_state.get("run_id") or "")
+                    if (_rid and not _run_still_active(_rid)) or _idle_ticks >= _MAX_IDLE_TICKS:
+                        break
+                    continue
+                _idle_ticks = 0
                 parsed = _parse_legacy_sse(raw)
                 if parsed is None:
                     continue

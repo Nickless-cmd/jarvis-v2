@@ -380,3 +380,28 @@ async def test_no_message_stop_when_nothing_started():
     ))
     names = [e[0] for e in _parse_v2_events(output)]
     assert "message_stop" not in names
+
+
+@pytest.mark.asyncio
+async def test_terminal_guarantee_on_blocked_legacy_stream(monkeypatch):
+    """D2-leak hang-fix (16. jun): hvis legacy-strømmen BLOKERER uden at sende
+    'done' (presentation-invariant-leak afslutter runnet server-side men kilde-
+    generatoren hænger), OG runnet ikke længere er aktivt → translatoren skal
+    ALLIGEVEL udsende message_stop i stedet for at hænge desk i 'working'."""
+    import core.services.visible_runs_sse_v2 as sse2
+    monkeypatch.setattr(sse2, "_IDLE_TICK_S", 0.05, raising=False)
+    monkeypatch.setattr(sse2, "_run_still_active", lambda rid: False, raising=False)
+
+    async def legacy() -> AsyncIterator[str]:
+        # tool-event → message_start sendes (message_started=True)
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "run_id": "visible-x", "tool": "operator_bash",
+            "status": "ok", "tool_use_id": "t1", "result_text": "ok",
+        })
+        await asyncio.Event().wait()  # blokér for evigt — INTET 'done'
+
+    output = await asyncio.wait_for(_collect(translate_to_v2(
+        legacy(), run_id="visible-x", model="m", provider="p", lane="l",
+    )), timeout=5)
+    kinds = [e[0] for e in _parse_v2_events(output)]
+    assert "message_stop" in kinds, f"ingen message_stop — desk ville hænge: {kinds}"

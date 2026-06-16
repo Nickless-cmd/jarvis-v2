@@ -30,6 +30,8 @@ jobs:
             platform: linux
           - os: macos-latest
             platform: mac
+          - os: windows-latest
+            platform: win
     defaults:
       run:
         working-directory: apps/jarvis-desk
@@ -66,3 +68,4 @@ jobs:
             apps/jarvis-desk/release/*.AppImage
             apps/jarvis-desk/release/*.dmg
             apps/jarvis-desk/release/*.zip
+            apps/jarvis-desk/release/*.exe

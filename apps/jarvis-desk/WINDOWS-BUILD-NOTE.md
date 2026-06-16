@@ -7,15 +7,17 @@ repo, bare på Windows.
 
 **Version i denne runde: `0.2.24`. Release-tag: `jarvis-desktop-v0.2.24`.**
 
-## Linux + Mac er allerede klaret af CI ✅
+## Alle tre platforme er nu CI-automatiseret ✅ — reboot er IKKE nødvendig
 
-Der er nu en GitHub Actions release-workflow (`.github/workflows/desk-release.yml`)
-der **automatisk bygger Linux (.deb + .AppImage) og macOS (.dmg + .zip)** når
-tag'et `jarvis-desktop-v0.2.24` blev pushet, og uploader dem til releasen. Du skal
-**kun** lave Windows-`.exe`'en — den kan ikke bygges på Linux/CI uden en Windows-runner
-(Bjørn vil bygge den her hos dig).
+GitHub Actions release-workflowen (`.github/workflows/desk-release.yml`) bygger nu
+**Linux (.deb + .AppImage), macOS (.dmg + .zip) OG Windows (.exe via `windows-latest`)**
+automatisk når et `jarvis-desktop-v*`-tag pushes, og uploader alt til releasen. Bjørn
+behøver **ikke** længere reboote til Windows for at få en `.exe`.
 
-## Hvad du skal gøre
+De manuelle trin nedenfor er kun **fallback** (hvis CI-Windows-jobbet fejler, eller man
+vil bygge lokalt på en fysisk Windows-maskine).
+
+## Manuel fallback (kun hvis CI fejler)
 
 ```powershell
 cd apps\jarvis-desk

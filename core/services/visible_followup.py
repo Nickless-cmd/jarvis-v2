@@ -406,6 +406,16 @@ class OllamaFollowupAdapter:
                 last_exc = None
                 break
             except urllib_error.HTTPError as he:
+                # Læs provider-body'en så DEN ÆGTE årsag (fx Geminis
+                # "missing a thought_signature") når frem til brugeren — ikke kun
+                # det nøgne "HTTP Error 400: Bad Request" (Bjørn 2026-06-16).
+                _http_body = ""
+                try:
+                    _http_body = he.read().decode("utf-8", "replace").strip()
+                except Exception:
+                    _http_body = ""
+                if _http_body:
+                    setattr(he, "_jarvis_body", _http_body[:300])
                 last_exc = he
                 code = int(getattr(he, "code", 0) or 0)
                 # 429 = rate-limit (Ollama cloud efter mange hurtige tool-runder).
@@ -447,18 +457,21 @@ class OllamaFollowupAdapter:
                 break
 
         if last_exc is not None:
+            _body = getattr(last_exc, "_jarvis_body", "")
+            _err_text = str(last_exc) or "unknown"
+            if _body:
+                _err_text = f"{_err_text}: {_body}"
             summary = f"followup-round-{round_index + 1}-timeout"
             if "timed out" not in str(last_exc).lower():
                 summary = (
-                    f"followup-round-{round_index + 1}-provider-error: "
-                    f"{str(last_exc) or 'unknown'}"
+                    f"followup-round-{round_index + 1}-provider-error: {_err_text}"
                 )
             _log.error(
-                "ollama followup round %d failed: %s", round_index, last_exc, exc_info=True
+                "ollama followup round %d failed: %s", round_index, _err_text, exc_info=True
             )
             yield FollowupFailed(
                 round_index=round_index,
-                error=str(last_exc) or "unknown",
+                error=_err_text,
                 summary=summary,
             )
             return

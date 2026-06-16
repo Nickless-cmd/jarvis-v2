@@ -2617,6 +2617,17 @@ async def _stream_visible_run(
                         "Next message can continue from here instead of starting over."
                     )
                     if _resume_note.strip() not in followup_text:
+                        # STREAM noten live (interaktive runs), så afbrydelsen lander
+                        # i appen MED DET SAMME — ikke først ved næste genindlæsning/
+                        # app-genstart (Bjørn 2026-06-16: "fejl-beskederne lander først
+                        # når jeg genstarter appen"). Tidligere blev noten kun føjet til
+                        # den persisterede besked → tavst hæng på klienten.
+                        if not run.autonomous:
+                            yield _sse("delta", {
+                                "type": "delta",
+                                "run_id": run.run_id,
+                                "delta": _resume_note,
+                            })
                         followup_text = (followup_text + _resume_note).strip()
 
                 total_input_tokens = result.input_tokens * 2

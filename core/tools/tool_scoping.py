@@ -192,6 +192,19 @@ def allowed_tool_names(
     return _apply_computer_use_policy(result)
 
 
+def is_tool_allowed(*, role: str, scope: str, name: str) -> bool:
+    """Må (role, scope) eksekvere værktøjet `name`? (Spor A — serverside håndhævelse.)
+
+    Owner / unbound ("") → altid True: dig + betroede interne/daemon-kald, der
+    kører uden bundet non-owner-rolle. Non-owner → `allowed_tool_names` (som er
+    permission_engine + computer-use-policy → samme sandhed som model-filteret).
+    """
+    r = (role or "").strip().lower()
+    if r in ("", "owner"):
+        return True
+    return name in allowed_tool_names(role=r, scope=scope, all_names={name})
+
+
 def _apply_computer_use_policy(result: set[str]) -> set[str]:
     """Computer-use-toggle (§4.7): fjern operator/computer-tools hvis brugeren har
     slået computer-use fra. Defensiv — fejler altid TIL (uændret) for ikke at låse

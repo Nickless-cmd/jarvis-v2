@@ -156,3 +156,28 @@ def test_is_local_execution_tool() -> None:
     assert is_local_execution_tool("dispatch_to_claude_code") is True
     assert is_local_execution_tool("web_search") is False
     assert is_local_execution_tool("") is False
+
+
+# ── Spor A: is_tool_allowed (serverside håndhævelses-prædikat) ───────────────
+def test_is_tool_allowed_owner_gets_everything():
+    from core.tools.tool_scoping import is_tool_allowed
+    assert is_tool_allowed(role="owner", scope="chat", name="bash")
+    assert is_tool_allowed(role="owner", scope="code", name="operator_bash")
+
+
+def test_is_tool_allowed_unbound_is_trusted_internal():
+    # role="" = daemon/system/unbound → må alt (interne kald låses ikke ude).
+    from core.tools.tool_scoping import is_tool_allowed
+    assert is_tool_allowed(role="", scope="", name="bash")
+
+
+def test_is_tool_allowed_member_chat_curated():
+    from core.tools.tool_scoping import is_tool_allowed
+    assert is_tool_allowed(role="member", scope="chat", name="web_search")
+    assert not is_tool_allowed(role="member", scope="chat", name="bash")
+
+
+def test_is_tool_allowed_guest_denied_all():
+    from core.tools.tool_scoping import is_tool_allowed
+    assert not is_tool_allowed(role="guest", scope="chat", name="web_search")
+    assert not is_tool_allowed(role="guest", scope="code", name="operator_bash")

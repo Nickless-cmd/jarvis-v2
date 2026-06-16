@@ -3753,6 +3753,32 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         _record_tool_outcome_memory(name, arguments, result, mode="tool")
         return result
 
+    # Serverside rolle-håndhævelse (Spor A, defense-in-depth): selv hvis model-
+    # filteret omgås (prompt-injection, intern bypass, bug), nægter vi her. Owner
+    # og unbound ("" = betroede interne/daemon-kald) slipper igennem. Fail-OPEN
+    # KUN hvis selve tjekken kaster — aldrig låse owner/daemoner ude; model-
+    # filteret er stadig primær gate.
+    try:
+        from core.identity.workspace_context import effective_role as _eff_role
+        from core.tools.tool_scoping import is_tool_allowed as _is_allowed, current_tool_scope as _cur_scope
+        _role = _eff_role()
+        if _role not in ("", "owner") and not _is_allowed(
+            role=_role, scope=(_cur_scope() or ""), name=name,
+        ):
+            result = {
+                "status": "error", "error": "tool_not_permitted",
+                "detail": f"Værktøjet '{name}' er ikke tilladt for rollen '{_role}'.",
+                "role": _role, "tool": name,
+            }
+            try:
+                event_bus.publish("incident.tool_denied", {"tool": name, "role": _role})
+            except Exception:
+                pass
+            _record_tool_outcome_memory(name, arguments, result, mode="tool")
+            return result
+    except Exception:
+        pass  # håndhævelses-fejl må ikke låse owner/daemoner ude
+
     # Trusted-folder gate: skrive/exec i et ikke-betroet code-workspace blokeres.
     try:
         from core.services.workspace_trust import guard_code_write

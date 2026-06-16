@@ -51,3 +51,14 @@ def test_exchange_code_failure(monkeypatch):
         def json(self): return {}
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _R())
     assert of.exchange_code("github", "c") is None
+
+
+def test_exchange_code_adds_expiry(monkeypatch):
+    monkeypatch.setattr(of, "_secret", lambda k, d="": "x")
+    import httpx
+    class _R:
+        status_code = 200
+        def json(self): return {"access_token": "a", "expires_in": 3600, "refresh_token": "r"}
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _R())
+    tok = of.exchange_code("google", "c", now=1000.0)
+    assert tok["expires_at"] == 1000.0 + 3600 and tok["refresh_token"] == "r"

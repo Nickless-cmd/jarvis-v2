@@ -111,7 +111,7 @@ def build_authorize_url(
     return p["authorize_url"] + "?" + urllib.parse.urlencode(q)
 
 
-def exchange_code(provider: str, code: str) -> dict | None:
+def exchange_code(provider: str, code: str, *, now: float | None = None) -> dict | None:
     """Byt authorization code for token (BLOKERENDE netværk — kør i tråd). None ved fejl."""
     prov = (provider or "").strip().lower()
     p = _PROVIDERS.get(prov)
@@ -128,6 +128,11 @@ def exchange_code(provider: str, code: str) -> dict | None:
         if r.status_code != 200:
             return None
         tok = r.json()
-        return tok if isinstance(tok, dict) and tok.get("access_token") else None
+        if not (isinstance(tok, dict) and tok.get("access_token")):
+            return None
+        if tok.get("expires_in"):
+            tok["obtained_at"] = float(now if now is not None else time.time())
+            tok["expires_at"] = tok["obtained_at"] + float(tok["expires_in"])
+        return tok
     except Exception:
         return None

@@ -16,13 +16,20 @@ import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
+import { GreetingHero } from '../components/chat/GreetingHero'
 
 const NEAR_BOTTOM_PX = 120
 
 /** Chat-mode. Ved tom/ny samtale: composer centreret midt på skærmen. Ved
  *  første besked oprettes session (hvis nødvendigt) og layoutet skifter — composer
  *  hopper ned i bunden, transcript fylder. */
-export function ChatView({ sessionId }: { sessionId: string | null }) {
+export function ChatView({
+  sessionId, userName = 'du', onOpenMarketplace,
+}: {
+  sessionId: string | null
+  userName?: string
+  onOpenMarketplace?: () => void
+}) {
   const sessions = useSessions()
   const stream = useStream()
   const { settings, auth } = useSettings()
@@ -333,9 +340,13 @@ export function ChatView({ sessionId }: { sessionId: string | null }) {
       <div className="chatview empty">
         {header}
         <div className="chat-empty">
-          <h2>Hej.</h2>
-          <p>Skriv hvad du arbejder på.</p>
-          {composer}
+          <GreetingHero
+            config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
+            userName={userName}
+            onOpenMarketplace={() => onOpenMarketplace?.()}
+          >
+            {composer}
+          </GreetingHero>
         </div>
       </div>
     )

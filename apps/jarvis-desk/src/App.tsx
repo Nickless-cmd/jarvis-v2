@@ -16,6 +16,7 @@ import { useSessions } from './hooks/useSessions'
 import { SetupScreen } from './views/SetupScreen'
 import { ChatView } from './views/ChatView'
 import { CoworkView } from './views/CoworkView'
+import { emitZone } from './lib/coworkZone'
 import { CodeView } from './views/CodeView'
 import { MemoryView } from './views/MemoryView'
 import { SchedulingView } from './views/SchedulingView'
@@ -93,7 +94,13 @@ function Shell({
       <main className="main">
         <AppActionHost setSurface={setSurface} />
         <ShellWithPanel>
-          {surface === 'chat' && <ChatView sessionId={activeId} />}
+          {surface === 'chat' && (
+            <ChatView
+              sessionId={activeId}
+              userName={userName}
+              onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
+            />
+          )}
           {surface === 'cowork' && <CoworkView role={role} />}
           {surface === 'code' && <CodeView sessionId={activeId} userName={userName} role={role} />}
           {surface === 'memory' && <MemoryView role={role} />}

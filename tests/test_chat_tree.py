@@ -55,6 +55,44 @@ def test_tree_member_can_browse_own_workspace(monkeypatch, tmp_path):
     assert "notes.md" in names
 
 
+def test_tree_workstation_forwards_request_uid_to_bridge(monkeypatch):
+    # REGRESSION (Mikkel 502): workstation-tree MÅ videregive den autentificerede
+    # brugers uid til operator-broen. Ellers falder _operator_user_id tilbage til
+    # owner-id'et og rammer den forkerte/fraværende bro → bridge_not_connected → 502.
+    import apps.api.jarvis_api.routes.chat as chatmod
+    import core.identity.workspace_context as wsctx
+
+    monkeypatch.setattr(wsctx, "current_user_id", lambda: "238975101381378048")
+    captured: dict = {}
+
+    def fake_exec(name, args):
+        captured["args"] = dict(args)
+        return {"status": "ok", "result": []}
+    monkeypatch.setattr(chatmod, "_operator_exec", fake_exec)
+
+    r = client.get("/chat/tree", params={"kind": "workstation", "root": "C:\\Jarvis", "path": ""})
+    assert r.status_code == 200
+    assert captured["args"].get("_user_id") == "238975101381378048"
+
+
+def test_git_status_workstation_forwards_request_uid_to_bridge(monkeypatch):
+    # Samme rod-årsag som tree: git-chip i code-mode skal ramme brugerens egen bro.
+    import apps.api.jarvis_api.routes.chat as chatmod
+    import core.identity.workspace_context as wsctx
+
+    monkeypatch.setattr(wsctx, "current_user_id", lambda: "238975101381378048")
+    captured: dict = {}
+
+    def fake_exec(name, args):
+        captured["args"] = dict(args)
+        return {"status": "ok", "stdout": "main\n@@@\n@@@\n"}
+    monkeypatch.setattr(chatmod, "_operator_exec", fake_exec)
+
+    r = client.get("/chat/git-status", params={"kind": "workstation", "root": "C:\\Jarvis"})
+    assert r.status_code == 200
+    assert captured["args"].get("_user_id") == "238975101381378048"
+
+
 def test_tree_workstation_routes_through_operator(monkeypatch):
     import apps.api.jarvis_api.routes.chat as chatmod
 

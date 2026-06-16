@@ -93,7 +93,7 @@ def _read_file_sync(
     """Container: navngivne rolle-scopede roots, path-jailed. Workstation: via broen."""
     if kind == "workstation":
         full = (root.rstrip("/") + "/" + path) if root else path
-        res = _operator_exec("operator_read_file", {"path": full})
+        res = _operator_exec("operator_read_file", {"path": full, "_user_id": uid})
         if res.get("status") != "ok":
             raise HTTPException(status_code=502, detail=str(res.get("error") or res.get("reason") or "operator-read fejlede"))
         # _run_operator_async pakker bro-svaret i {"status","result"}.
@@ -141,7 +141,7 @@ def _write_file_sync(
 ) -> dict:
     if kind == "workstation":
         full = (root.rstrip("/") + "/" + path) if root else path
-        res = _operator_exec("operator_write_file", {"path": full, "content": content, "force": True})
+        res = _operator_exec("operator_write_file", {"path": full, "content": content, "force": True, "_user_id": uid})
         if res.get("status") != "ok":
             raise HTTPException(status_code=502, detail=str(res.get("error") or "operator-write fejlede"))
         return {"status": "ok", "path": full}
@@ -198,7 +198,7 @@ def _open_external_sync(
     if kind != "workstation":
         raise HTTPException(status_code=400, detail="open-external er kun for workstation (container bruger in-app editor)")
     full = (root.rstrip("/") + "/" + path) if root else path
-    res = _operator_exec("operator_bash", {"command": f"xdg-open {shlex.quote(full)}"})
+    res = _operator_exec("operator_bash", {"command": f"xdg-open {shlex.quote(full)}", "_user_id": uid})
     if res.get("status") != "ok":
         raise HTTPException(status_code=502, detail=str(res.get("error") or "xdg-open fejlede"))
     return {"status": "ok", "path": full}
@@ -368,7 +368,7 @@ def _tree_sync(kind: str, root: str, path: str, role: str = "owner", uid: str = 
 
     if kind == "workstation":
         full = (root.rstrip("/") + "/" + path).rstrip("/") if path else root
-        res = _operator_exec("operator_list_dir", {"path": full})
+        res = _operator_exec("operator_list_dir", {"path": full, "_user_id": uid})
         if res.get("status") != "ok":
             raise HTTPException(status_code=502, detail=str(res.get("error") or res.get("reason") or "operator-list fejlede"))
         # _run_operator_async pakker bro-svaret i {"status","result"}.
@@ -402,7 +402,7 @@ def _parse_git_status(branch_out: str, porcelain_out: str, numstat_out: str) -> 
 _GIT_NONE = {"branch": "", "dirty": 0, "added": 0, "removed": 0, "is_git": False}
 
 
-def _git_status_sync(kind: str, root: str) -> dict:
+def _git_status_sync(kind: str, root: str, uid: str = "") -> dict:
     """BLOKERENDE git-opsamling — KØRES I TRÅD (asyncio.to_thread) så uvicorn-
     worker'en (--workers 1) ikke fryser på subprocess/bro-kald."""
     if kind == "workstation":
@@ -413,7 +413,7 @@ def _git_status_sync(kind: str, root: str) -> dict:
             f'git -C "{root}" status --porcelain 2>/dev/null; echo "@@@"; '
             f'git -C "{root}" diff --numstat HEAD 2>/dev/null'
         )
-        res = _operator_exec("operator_bash", {"command": cmd})
+        res = _operator_exec("operator_bash", {"command": cmd, "_user_id": uid})
         out = str(res.get("stdout") or "") if res.get("status") == "ok" else ""
         segs = out.split("@@@")
         if len(segs) < 3 or not segs[0].strip():
@@ -444,7 +444,9 @@ async def chat_git_status(kind: str = "container", root: str = "") -> dict:
     """Git-state for det aktive workspace (header-chip i code-mode). Det blokerende
     arbejde (subprocess/bro) offloades til en tråd så event-loop'en ikke fryser."""
     import asyncio
-    return await asyncio.to_thread(_git_status_sync, kind, root)
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
+    return await asyncio.to_thread(_git_status_sync, kind, root, uid)
 
 
 @router.get("/workspace-trust")

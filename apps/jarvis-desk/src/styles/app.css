@@ -1376,6 +1376,43 @@
 .cowork-rail .rail-btn.active { background: var(--bg-3); color: var(--fg-1); font-weight: 600; }
 .cowork-zone-body { flex: 1; overflow-y: auto; padding: 16px; }
 .cowork-settings { display: flex; flex-direction: column; gap: 18px; max-width: 720px; margin: 0 auto; }
+
+/* ── Marketplace ───────────────────────────────────────────────────────── */
+.marketplace { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.marketplace-head { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+.marketplace-head h2 { margin: 0; font-size: 18px; font-weight: 600; color: var(--fg-1); }
+.marketplace-search { margin-left: auto; display: flex; align-items: center; gap: 6px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 9px; padding: 6px 10px; color: var(--fg-3); }
+.marketplace-search input { background: transparent; border: none; outline: none; color: var(--fg-1); font-size: 13px; width: 180px; }
+.marketplace-search button { background: none; border: none; color: var(--fg-3); cursor: pointer; display: flex; }
+.marketplace-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; opacity: .5; margin: 8px 0 2px; }
+.marketplace-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.marketplace-empty { opacity: .5; font-size: 13px; padding: 8px; }
+.connector-card { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2); position: relative; }
+.connector-card.is-connected { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.connector-card.is-disabled { opacity: .55; }
+.connector-icon { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+  background: var(--bg-3); color: var(--fg-1); flex-shrink: 0; }
+.connector-body { flex: 1; min-width: 0; }
+.connector-name { font-size: 14px; font-weight: 600; color: var(--fg-1); }
+.connector-desc { font-size: 12px; opacity: .6; }
+.connector-scopes { font-size: 11px; opacity: .5; margin-top: 4px; }
+.connector-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.connector-actions .pill { font-size: 11px; font-weight: 600; border-radius: 999px; padding: 3px 9px; border: none; cursor: default; }
+.connector-actions .pill.connected { color: var(--ok, #5fcf80); background: transparent; }
+.connector-actions .pill.active { color: var(--accent); background: transparent; }
+.connector-actions .pill.connect { color: #fff; background: var(--accent); cursor: pointer; }
+.connector-actions .pill.connect:disabled { opacity: .6; cursor: default; }
+.connector-menu-anchor { position: relative; }
+.connector-menu-anchor > button { background: none; border: none; color: var(--fg-3); cursor: pointer; display: flex; padding: 2px; }
+.connector-menu { position: absolute; right: 0; top: 22px; z-index: 20; min-width: 150px;
+  background: var(--bg-1); border: 1px solid var(--line); border-radius: 9px; padding: 4px; display: flex; flex-direction: column;
+  box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+.connector-menu button { text-align: left; background: none; border: none; color: var(--fg-2); cursor: pointer;
+  font-size: 13px; padding: 7px 9px; border-radius: 6px; }
+.connector-menu button:hover { background: var(--bg-2); color: var(--fg-1); }
+.connector-menu button.danger { color: var(--danger, #e5645f); }
 .settings-section h3 { margin: 0 0 8px; font-size: 14px; color: var(--fg-1); }
 .account-fields { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 13px; }
 .account-fields dt { color: var(--fg-3); }

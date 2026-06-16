@@ -7,6 +7,7 @@ import { ChannelsPane } from '../components/cowork/ChannelsPane'
 import { ShareGuardPane } from '../components/cowork/ShareGuardPane'
 import { AgentDispatchPane } from '../components/cowork/AgentDispatchPane'
 import { CoworkZones } from '../components/cowork/CoworkZones'
+import { MarketplacePane } from '../components/cowork/MarketplacePane'
 import { AccountSection } from '../components/settings/AccountSection'
 import { KvoteSection } from '../components/settings/KvoteSection'
 import { ThemeSection } from '../components/settings/ThemeSection'
@@ -90,7 +91,7 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
       <CoworkZones>
         {(zone) =>
           zone === 'mc' ? missionControl
-          : zone === 'marketplace' ? <div className="cowork-settings">Marketplace…</div>
+          : zone === 'marketplace' ? <MarketplacePane config={config} />
           : settingsZone
         }
       </CoworkZones>

@@ -3988,25 +3988,46 @@ def _recent_transcript_section(
 _SPEAKER_CACHE: dict[str, str] = {}
 
 
-def _resolve_speaker_display(user_id: str) -> str:
-    """Map a chat_messages.user_id (Discord ID, etc.) to a display name.
+_ROLE_LABELS = {"member": "medlem", "guest": "gæst"}
 
-    Cached in-process. Returns empty string if no match — callers should treat
-    that as "no prefix needed". Used only for multi-user prompt awareness in
-    shared channels; never persisted into chat history itself.
+
+def _resolve_speaker_display(user_id: str) -> str:
+    """Map a chat_messages.user_id (Discord ID, etc.) to et afsender-præfiks med
+    navn + rolle (Spor D, 16. jun).
+
+    - Owner → kun navn ("Bjørn") — han ved det er sig selv.
+    - Member/anden kendt rolle → "Navn (medlem)".
+    - Ukendt user_id (ikke i users.json) → "Gæst (ukendt)" — så Jarvis VED at en
+      fremmed taler i en fælleskanal (genkendelse + tillids-kalibrering; Spor A's
+      lås forhindrer at gæsten kan få ham til at handle).
+    - Tom user_id → "" (intet præfiks).
+
+    Cached in-process. Bruges kun til multi-user prompt-bevidsthed i fælleskanaler;
+    persisteres aldrig i selve chat-historikken.
     """
     if not user_id:
         return ""
     if user_id in _SPEAKER_CACHE:
         return _SPEAKER_CACHE[user_id]
+    label = ""
     try:
         from core.identity.users import find_user_by_discord_id
         u = find_user_by_discord_id(user_id)
-        name = (u.name if u is not None else "") or ""
+        if u is None:
+            label = "Gæst (ukendt)"
+        else:
+            name = (getattr(u, "name", "") or "").strip()
+            role = (getattr(u, "role", "") or "").strip().lower()
+            if not name:
+                label = "Gæst (ukendt)"
+            elif role and role != "owner":
+                label = f"{name} ({_ROLE_LABELS.get(role, role)})"
+            else:
+                label = name
     except Exception:
-        name = ""
-    _SPEAKER_CACHE[user_id] = name
-    return name
+        label = ""
+    _SPEAKER_CACHE[user_id] = label
+    return label
 
 
 def _build_structured_transcript_messages(

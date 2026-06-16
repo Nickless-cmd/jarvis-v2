@@ -135,3 +135,38 @@ def test_heartbeat_truth_drops_empty_lines_and_keeps_block():
     assert "epistemic_layers=empty" not in out
     assert "epistemic_layers=unavailable" not in out
     assert "tool_intent=" in out  # sikkerheds-selvmodel bevaret
+
+
+# ── Spor D: afsender-bevidsthed (navn + rolle + gæst-markering) ──────────────
+def test_speaker_display_owner_name_only(monkeypatch):
+    import core.services.prompt_contract as pc
+    import core.identity.users as users
+    pc._SPEAKER_CACHE.clear()
+    class _U:
+        name = "Bjørn"; role = "owner"
+    monkeypatch.setattr(users, "find_user_by_discord_id", lambda uid: _U())
+    assert pc._resolve_speaker_display("1") == "Bjørn"
+
+
+def test_speaker_display_member_tagged(monkeypatch):
+    import core.services.prompt_contract as pc
+    import core.identity.users as users
+    pc._SPEAKER_CACHE.clear()
+    class _U:
+        name = "Rune"; role = "member"
+    monkeypatch.setattr(users, "find_user_by_discord_id", lambda uid: _U())
+    assert pc._resolve_speaker_display("2") == "Rune (medlem)"
+
+
+def test_speaker_display_unknown_is_guest(monkeypatch):
+    import core.services.prompt_contract as pc
+    import core.identity.users as users
+    pc._SPEAKER_CACHE.clear()
+    monkeypatch.setattr(users, "find_user_by_discord_id", lambda uid: None)
+    assert pc._resolve_speaker_display("999") == "Gæst (ukendt)"
+
+
+def test_speaker_display_empty_uid():
+    import core.services.prompt_contract as pc
+    pc._SPEAKER_CACHE.clear()
+    assert pc._resolve_speaker_display("") == ""

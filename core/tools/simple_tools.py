@@ -113,6 +113,7 @@ from core.tools.github_tools import (
     _exec_git_branch,
     _exec_git_blame,
 )
+from core.services.github_connector import GITHUB_CONNECTOR_TOOL_DEFINITIONS
 from core.tools.reasoning_store_tools import (
     REASONING_STORE_TOOL_DEFINITIONS,
     REASONING_STORE_TOOL_HANDLERS,
@@ -3388,6 +3389,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *JARVIS_BRAIN_TOOL_DEFINITIONS,
     *STRIPE_TOOL_DEFINITIONS,
     *GITHUB_TOOL_DEFINITIONS,
+    *GITHUB_CONNECTOR_TOOL_DEFINITIONS,
     *MATH_TOOL_DEFINITIONS,
     *PROCESS_TOOL_DEFINITIONS,
     *CLAUDE_DISPATCH_TOOL_DEFINITIONS,
@@ -8302,9 +8304,29 @@ def _tool_load_more_tools(arguments: dict) -> dict:
     }
 
 
+def _exec_github_list_issues(args: dict[str, Any]) -> dict[str, Any]:
+    """List GitHub-issues via brugerens EGEN connector-token (Spor A)."""
+    from core.services.github_connector import list_issues
+    uid = _operator_user_id(args)
+    repo = str(args.get("repo") or "").strip()
+    state = str(args.get("state") or "open").strip() or "open"
+    return list_issues(uid, repo, state=state)
+
+
+def _exec_github_list_prs(args: dict[str, Any]) -> dict[str, Any]:
+    """List GitHub pull requests via brugerens EGEN connector-token (Spor A)."""
+    from core.services.github_connector import list_prs
+    uid = _operator_user_id(args)
+    repo = str(args.get("repo") or "").strip()
+    state = str(args.get("state") or "open").strip() or "open"
+    return list_prs(uid, repo, state=state)
+
+
 _TOOL_HANDLERS: dict[str, Any] = {
     "read_tool_result": _exec_read_tool_result,
     "read_self_docs": _exec_read_self_docs,
+    "github_list_issues": _exec_github_list_issues,
+    "github_list_prs": _exec_github_list_prs,
     "read_file": _exec_read_file,
     "operator_read_file": _exec_operator_read_file,
     "operator_write_file": _exec_operator_write_file,

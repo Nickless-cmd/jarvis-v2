@@ -76,7 +76,12 @@ _MEMBER_CODE_OPERATOR = frozenset({
 _MEMBER_CODE_WEB = frozenset({"web_search", "web_scrape", "web_fetch", "analyze_image"})
 # 🔒 path-jailed til eget workspace (server-side, IKKE Jarvis' repo)
 _MEMBER_CODE_FILE = frozenset({"read_file", "write_file", "edit_file", "find_files"})
-_MEMBER_CODE = _MEMBER_CODE_OPERATOR | _MEMBER_CODE_WEB | _MEMBER_CODE_FILE
+# 🔒 connector-tools: bruger member'ens EGEN OAuth-token (per-bruger krypteret).
+# Rører aldrig ejerens/Jarvis' GitHub. Yderligere gated af connected+enabled i runtime.
+_MEMBER_CODE_CONNECTOR = frozenset({"github_list_issues", "github_list_prs"})
+_MEMBER_CODE = (
+    _MEMBER_CODE_OPERATOR | _MEMBER_CODE_WEB | _MEMBER_CODE_FILE | _MEMBER_CODE_CONNECTOR
+)
 
 
 # ── Member COWORK ───────────────────────────────────────────────────────────

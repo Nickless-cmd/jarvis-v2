@@ -250,3 +250,27 @@ class TestCooldown:
         mark_triggered("session-A")
         assert is_in_cooldown("session-A") is True
         assert is_in_cooldown("session-B") is False
+
+
+# ── 16. jun: korte løfte-fraser ("jeg går i gang") fanges trods min-len ──
+def test_detects_short_promise_phrase_goes_in_gang():
+    from core.services.unfinished_intent import detect_unfinished_intent
+    r = detect_unfinished_intent("Jeg går i gang!")
+    assert r is not None and r.pattern == "future_action_promise"
+
+
+def test_detects_short_promise_phrase_goer_det():
+    from core.services.unfinished_intent import detect_unfinished_intent
+    r = detect_unfinished_intent("Jeg gør det.")
+    assert r is not None and r.pattern == "future_action_promise"
+
+
+def test_promise_phrase_negation_not_triggered():
+    from core.services.unfinished_intent import detect_unfinished_intent
+    # "jeg gør det ikke" er ikke et løfte om handling → ingen continuation.
+    assert detect_unfinished_intent("Nej, jeg gør det ikke.") is None
+
+
+def test_short_non_promise_still_ignored():
+    from core.services.unfinished_intent import detect_unfinished_intent
+    assert detect_unfinished_intent("Hej, tak for det!") is None

@@ -88,6 +88,19 @@ _APPROVAL_QUESTION_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
+# 16. jun 2026 (Bjørn lie-crisis): bare-bones start-løfter UDEN tidsord, ofte korte
+# ("Jeg går i gang!", "Jeg gør det."). De rammer under _MIN_TEXT_LEN og slap derfor
+# igennem _FUTURE_ACTION_PROMISE_RE. Tjekkes nu SEPARAT og LÆNGDE-uafhængigt — de er
+# høj-signal løfte-fraser. Negation ("jeg gør det ikke") ekskluderes.
+_PROMISE_PHRASE_RE = re.compile(
+    r"\bjeg\s+(?:går\s+i\s+gang|gør\s+det|er\s+i\s+gang\s+med|sætter\s+i\s+gang|"
+    r"kaster\s+mig\s+(?:over|ud\s+i)|tager\s+fat|går\s+straks\s+i\s+gang)\b",
+    re.IGNORECASE,
+)
+_PROMISE_NEGATION_RE = re.compile(
+    r"\bjeg\s+(?:går\s+i\s+gang|gør\s+det)\s+ikke\b", re.IGNORECASE,
+)
+
 # Cliffhanger-endings: tekst der slutter med "..." eller ":" antyder
 # at Jarvis var ved at fortsætte men stoppede.
 _CLIFFHANGER_ELLIPSIS_RE = re.compile(r"[.…]{2,}\s*$")
@@ -117,7 +130,16 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
         return None
 
     stripped = text.strip()
-    if not stripped or len(stripped) < _MIN_TEXT_LEN:
+    if not stripped:
+        return None
+
+    if len(stripped) < _MIN_TEXT_LEN:
+        # Korte beskeder: fang KUN høj-signal start-løfter der ellers ryger under
+        # grænsen ("Jeg går i gang!"). Negation undtaget. Lange beskeder beholder
+        # deres eksisterende klassifikation (ingen reordering).
+        if _PROMISE_PHRASE_RE.search(stripped) and not _PROMISE_NEGATION_RE.search(stripped):
+            m = _PROMISE_PHRASE_RE.search(stripped)
+            return UnfinishedIntent(pattern="future_action_promise", matched_text=m.group(0))
         return None
 
     tail = _tail(stripped)

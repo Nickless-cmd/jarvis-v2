@@ -3877,6 +3877,16 @@ def _maybe_trigger_continuation(run: VisibleRun, assistant_text: str) -> None:
         # Mark cooldown now so concurrent _post_process workers don't both fire
         mark_triggered(run.session_id)
 
+        # Bjørn-gate (16. jun 2026): registrér fremtids-løfter ("jeg gør det /
+        # jeg går i gang") så de rejses prominent i NÆSTE turs prompt og holder
+        # Jarvis ansvarlig. Fail-soft.
+        if intent.pattern == "future_action_promise":
+            try:
+                from core.services.promise_ledger import record_promise
+                record_promise(run.session_id, intent.matched_text)
+            except Exception:
+                pass
+
         # Publish for observability — Bjørn can see in Mission Control
         # how often detector fires
         try:

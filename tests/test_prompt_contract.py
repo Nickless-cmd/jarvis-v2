@@ -170,3 +170,25 @@ def test_speaker_display_empty_uid():
     import core.services.prompt_contract as pc
     pc._SPEAKER_CACHE.clear()
     assert pc._resolve_speaker_display("") == ""
+
+
+# ── Bjørn-gate: _pending_promises_section ──
+def test_pending_promises_section_renders(monkeypatch):
+    import core.services.prompt_contract as pc
+    import core.services.promise_ledger as pl
+    monkeypatch.setattr(pl, "pending_promises", lambda sid, **k: [{"text": "Jeg committer fixet nu"}])
+    out = pc._pending_promises_section("s1")
+    assert out and "Bjørn-gate" in out and "Jeg committer fixet nu" in out
+
+
+def test_pending_promises_section_empty(monkeypatch):
+    import core.services.prompt_contract as pc
+    import core.services.promise_ledger as pl
+    monkeypatch.setattr(pl, "pending_promises", lambda sid, **k: [])
+    assert pc._pending_promises_section("s1") is None
+
+
+def test_pending_promises_section_no_session():
+    import core.services.prompt_contract as pc
+    assert pc._pending_promises_section("") is None
+    assert pc._pending_promises_section(None) is None

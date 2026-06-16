@@ -748,6 +748,10 @@ def build_visible_chat_prompt_assembly(
     # Reason: they're per-chat dynamic, and inlining them at ~7500 chars
     # broke the cache boundary at 2048 tokens. Queued through _awareness_add
     # so they flush at the tail of the prompt, just above Time Pin.
+    # Bjørn-gate (16. jun 2026): åbne løfter ØVERST i awareness-halen (priority 0)
+    # — Jarvis konfronteres med uindfriede løfter før alt andet. Dynamisk →
+    # cache-sikkert her. None hvis ingen åbne løfter.
+    _awareness_add(0, "åbne løfter (Bjørn-gate)", _pending_promises_section(session_id))
     if current_pull_hint:
         _awareness_add(1, "current pull (inner desire)", current_pull_hint)
     try:
@@ -3012,6 +3016,35 @@ def _self_correction_nudges_section(*, compact: bool) -> str:
         "than you answered, or you saved one for later — mention it explicitly "
         "at the end so it doesn't get lost.\n"
         "6. **MEMORY-FIRST:** Check QUICK_FACTS + search_memory BEFORE asking the user or searching locally. Use your memory before guessing."
+    )
+
+
+def _pending_promises_section(session_id: str | None) -> str | None:
+    """Bjørn-gate (16. jun 2026): rejs Jarvis' åbne fremtids-løfter prominent, så
+    han konfronteres med dem NÆSTE tur i stedet for at glide. None hvis ingen.
+
+    Det manglende ansvarligheds-stykke i lie-crisis'en: unfinished_intent fanger
+    løftet i selve turen, men intet holdt ham ansvarlig på tværs af ture. Læser
+    `promise_ledger.pending_promises`. Placeres øverst i den DYNAMISKE assembly."""
+    sid = (session_id or "").strip()
+    if not sid:
+        return None
+    try:
+        from core.services.promise_ledger import pending_promises
+        pend = pending_promises(sid)
+    except Exception:
+        return None
+    if not pend:
+        return None
+    lines = [f'- "{str(p.get("text", "")).strip()}"' for p in pend[-3:] if p.get("text")]
+    if not lines:
+        return None
+    return (
+        "⚠️ ÅBNE LØFTER (Bjørn-gate) — i de seneste ture sagde du at du ville gøre "
+        "følgende. FØR du svarer noget andet: har du FAKTISK gjort det med værktøjer "
+        "i denne tur? Hvis ja, vis beviset (commit-hash fra git log, test-output). "
+        "Hvis nej, så GØR det nu — eller sig ærligt og kort at du ikke har gjort det "
+        "endnu. Ingen flere 'jeg gør det'-løfter uden handling:\n" + "\n".join(lines)
     )
 
 

@@ -1,0 +1,68 @@
+name: desk-release
+
+# Bygger jarvis-desk (Electron-appen "Jarvis") til Linux + macOS når et
+# release-tag pushes, og uploader artefakterne til GitHub-releasen for det tag.
+# Windows bygges manuelt (se apps/jarvis-desk/WINDOWS-BUILD-NOTE.md) og uploades
+# til samme tag. Builds er USIGNEREDE — Gatekeeper/SmartScreen advarer; forventet.
+
+on:
+  push:
+    tags:
+      - "jarvis-desktop-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Eksisterende tag at bygge + uploade til (fx jarvis-desktop-v0.2.24)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build-${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: macos-latest
+            platform: mac
+    defaults:
+      run:
+        working-directory: apps/jarvis-desk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/jarvis-desk/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build renderer + electron
+        run: npm run build
+
+      - name: Package (${{ matrix.platform }})
+        run: npx electron-builder --${{ matrix.platform }} --publish never
+        env:
+          # Ingen Apple-signing/notarisering sat op — byg usigneret.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Upload til GitHub-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          fail_on_unmatched_files: false
+          files: |
+            apps/jarvis-desk/release/*.deb
+            apps/jarvis-desk/release/*.AppImage
+            apps/jarvis-desk/release/*.dmg
+            apps/jarvis-desk/release/*.zip

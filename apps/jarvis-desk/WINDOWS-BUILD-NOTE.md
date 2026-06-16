@@ -5,6 +5,16 @@ Windows-build af **jarvis-desk** (Electron-appen, productName "Jarvis"). Alt er
 committet og pushet til GitHub (`origin`, branch `main`). Du arbejder på samme
 repo, bare på Windows.
 
+**Version i denne runde: `0.2.24`. Release-tag: `jarvis-desktop-v0.2.24`.**
+
+## Linux + Mac er allerede klaret af CI ✅
+
+Der er nu en GitHub Actions release-workflow (`.github/workflows/desk-release.yml`)
+der **automatisk bygger Linux (.deb + .AppImage) og macOS (.dmg + .zip)** når
+tag'et `jarvis-desktop-v0.2.24` blev pushet, og uploader dem til releasen. Du skal
+**kun** lave Windows-`.exe`'en — den kan ikke bygges på Linux/CI uden en Windows-runner
+(Bjørn vil bygge den her hos dig).
+
 ## Hvad du skal gøre
 
 ```powershell
@@ -14,23 +24,20 @@ npm run build               # bygger renderer (vite) + electron (tsc)
 npx electron-builder --win  # producerer NSIS-installer (.exe) i release\
 ```
 
-Resultatet er `release\Jarvis Setup 0.2.22.exe` (NSIS-installer — versionen er
-**0.2.22**). Installér den og verificér at appen starter og kan forbinde til
+Resultatet er `release\Jarvis Setup 0.2.24.exe` (NSIS-installer — versionen er
+**0.2.24**). Installér den og verificér at appen starter og kan forbinde til
 `api.srvlab.dk` (Bjørns backend).
 
 ## Læg den op på GitHub-releasen når den er klar
 
-Linux er udgivet som release **`jarvis-desktop-v0.2.22`**
-(https://github.com/Nickless-cmd/jarvis-v2/releases/tag/jarvis-desktop-v0.2.22).
-Smid Windows-`.exe`'en op på samme release:
-
 ```powershell
-gh release upload jarvis-desktop-v0.2.22 "release\Jarvis Setup 0.2.22.exe"
+gh release upload jarvis-desktop-v0.2.24 "release\Jarvis Setup 0.2.24.exe"
 ```
 
-(Mac-`.dmg` mangler også — bygges på macOS/CI og uploades til samme tag.)
+(Kræver at `gh` er logget ind som `Nickless-cmd`. Så har releasen alle tre platforme:
+Linux + Mac fra CI, Windows fra dig.)
 
-(Kræver at `gh` er logget ind som `Nickless-cmd`. Så har releasen alle tre platforme.)
+Release-URL: https://github.com/Nickless-cmd/jarvis-v2/releases/tag/jarvis-desktop-v0.2.24
 
 ## Vigtigt at vide
 
@@ -38,15 +45,15 @@ gh release upload jarvis-desktop-v0.2.22 "release\Jarvis Setup 0.2.22.exe"
   icon `assets/icon.png`). Du behøver ikke ændre config.
 - **Usigneret build.** Code-signing er ikke sat op → Windows SmartScreen vil
   advare ("Ukendt udgiver"). Det er forventet; Bjørn klikker "Kør alligevel".
-  (Signering kan vi tilføje senere med et cert.)
+  (Signering kan vi tilføje senere med et cert.) — Mac-build'et fra CI er ligeledes
+  usigneret; Gatekeeper advarer, højreklik → Åbn.
 - **Operator-broen** (`electron/bridge.ts`) er en verbatim port fra JarvisX med
   `// @ts-nocheck` øverst. Den bruger **valgfri dynamiske imports** for GUI-værktøjer
   (nut-js mus/tastatur, puppeteer browser) — de fejler pænt hvis deps mangler.
   **Fil + bash + webfetch + clipboard er ren node** og virker. Du behøver IKKE
   installere nut-js/puppeteer for at bygge.
 - **`ws`** er en runtime-dependency (i `dependencies`) — `npm install` henter den.
-- **Tests** (valgfrit, men rart): `npx vitest run` (141 tests) og `npx tsc -b`
-  skal være grønne før build.
+- **Tests** (valgfrit, men rart): `npx vitest run` og `npx tsc -b` skal være grønne før build.
 - **Ingen backend-ændringer** her — det er kun frontend/Electron-pakning. Backend
   kører på Bjørns container (`api.srvlab.dk`), uafhængigt.
 
@@ -59,9 +66,9 @@ gh release upload jarvis-desktop-v0.2.22 "release\Jarvis Setup 0.2.22.exe"
 
 ## Kontekst (hvad appen kan, så du ved hvad du bygger)
 jarvis-desk har tre modes: **chat** (snak), **code** (Jarvis koder i workspace via
-operator-bro), **cowork** (rolle-bevidst dashboard: godkendelser/planer/todo/kanaler).
-Plus live thinking-trace, drejende presence-ring, native notifikationer, emoji-input.
-Alt er bygget og testet på Linux i dag; Windows-build'et er sidste platform.
+operator-bro), **cowork** (rolle-bevidst dashboard: godkendelser/planer/todo/kanaler +
+hele indstillings-zonen). Plus live thinking-trace, drejende presence-ring, native
+notifikationer, emoji-input.
 
 God arbejdslyst — sig til Bjørn hvis noget brokker sig, så finder I ud af det. 💙
 — Linux-Claude

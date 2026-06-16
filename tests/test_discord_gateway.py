@@ -36,3 +36,27 @@ class TestResolveChannelForSession:
         with patch("core.runtime.db.connect", side_effect=RuntimeError("db down")):
             out = _resolve_channel_for_session("any")
         assert out == "1474048593219555461"
+
+
+# ── Spor B: Discord-brugerbesked annoncerer channel.chat_message_appended ────
+def test_user_message_announces_chat_message_appended(monkeypatch):
+    """Discord-brugerbesked SKAL udsende channel.chat_message_appended (source=
+    discord-gateway, role=user), så session_inbox ser sessionen aktiv og daemon-
+    notifikationer køes i stedet for at afbryde midt i et run. Echo-subscriber'en
+    springer den over (kræver source=visible-run + role=assistant)."""
+    import core.services.discord_gateway as dg
+    import core.eventbus.bus as bus
+
+    published: list = []
+    monkeypatch.setattr(
+        bus.event_bus, "publish",
+        lambda kind, payload=None: published.append((kind, payload)),
+    )
+
+    dg._announce_user_message_appended("sess-123", {"role": "user", "content": "hej"})
+
+    evts = [p for (k, p) in published if k == "channel.chat_message_appended"]
+    assert evts, "channel.chat_message_appended blev ikke udsendt"
+    assert evts[0]["session_id"] == "sess-123"
+    assert evts[0]["source"] == "discord-gateway"
+    assert evts[0]["message"]["role"] == "user"

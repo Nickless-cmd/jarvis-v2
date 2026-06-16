@@ -798,13 +798,20 @@ async def _run_client(config: dict) -> None:
 
             # Persist user message with explicit speaker identity
             from core.services.chat_sessions import append_chat_message
-            append_chat_message(
+            _user_msg = append_chat_message(
                 session_id=session_id,
                 role="user",
                 content=content,
                 user_id=author_id_str,
                 workspace_name=workspace_name,
             )
+
+            # Spor B (16. jun): annoncér brugerbeskeden som channel.chat_message_appended,
+            # så session_inbox ser Discord-sessionen som AKTIV (ellers springer daemon-
+            # notifikationer køen over og afbryder midt i et run) + så de kognitive pollere
+            # (theory_of_mind/metacognition/affect) ser Discord-brugerne. Echo-subscriber'en
+            # springer den over (source != visible-run, role != assistant).
+            _announce_user_message_appended(session_id, _user_msg)
 
             # Publish received event
             from core.eventbus.bus import event_bus
@@ -890,6 +897,26 @@ def _discord_thread_func(config: dict) -> None:
         _persist_status()
         _loop.close()
         _loop = None
+
+
+def _announce_user_message_appended(session_id: str, message: dict) -> None:
+    """Udsend channel.chat_message_appended for en Discord-brugerbesked (Spor B).
+
+    session_inbox.is_session_active() + de kognitive pollere (theory_of_mind/
+    metacognition/affect_modulation) læser denne event fra events-tabellen. Discord
+    udsendte den aldrig for brugerbeskeder → sessionen så inaktiv ud → daemon-
+    notifikationer sprang køen over og afbrød midt i runs. Samme form som visible_runs;
+    source="discord-gateway" + role="user" gør at den udgående echo-subscriber
+    (kræver source=visible-run, role=assistant) springer den over. Fail-soft."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("channel.chat_message_appended", {
+            "session_id": session_id,
+            "message": message,
+            "source": "discord-gateway",
+        })
+    except Exception:
+        pass
 
 
 def _eventbus_subscriber_loop() -> None:

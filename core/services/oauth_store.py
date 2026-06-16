@@ -88,6 +88,32 @@ def revoke_token(user_id: str, provider: str) -> bool:
         return False
 
 
+def get_fresh_token(user_id: str, provider: str, *, now: float | None = None) -> dict | None:
+    """Som get_token, men auto-fornyer hvis udløbet (≤60s buffer) og refresh_token findes.
+
+    Gemmer den fornyede token igen, så næste kald er hurtigt. Falder tilbage til den
+    eksisterende token hvis fornyelse ikke er mulig (intet refresh_token / provider-fejl).
+    """
+    tok = get_token(user_id, provider)
+    if not tok:
+        return None
+    import time as _time
+    exp = tok.get("expires_at")
+    refresh = tok.get("refresh_token")
+    if exp and refresh:
+        clock = float(now if now is not None else _time.time())
+        if clock >= float(exp) - 60:
+            try:
+                from core.services.oauth_flow import refresh_token as _rt
+                new = _rt(provider, refresh, now=now)
+            except Exception:
+                new = None
+            if new and new.get("access_token"):
+                save_token(user_id, provider, new)
+                return new
+    return tok
+
+
 def list_providers(user_id: str) -> list[str]:
     """Providere brugeren har forbundet (har en gemt token for)."""
     uid, _ = _norm(user_id, "")

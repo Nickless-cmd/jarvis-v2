@@ -68,6 +68,23 @@ def test_revoke(monkeypatch):
     assert ov.get_token("alice", "github") is None
 
 
+def test_get_fresh_token_refreshes_when_expired(monkeypatch):
+    _setup(monkeypatch)  # in-memory store + distinkt nøgle
+    import core.services.oauth_flow as of
+    ov.save_token("alice", "google", {"access_token": "old", "refresh_token": "r", "expires_at": 100.0})
+    monkeypatch.setattr(of, "refresh_token", lambda prov, refresh, now=None: {"access_token": "new", "refresh_token": refresh, "expires_at": 9999.0})
+    tok = ov.get_fresh_token("alice", "google", now=200.0)  # 200 > 100 → udløbet
+    assert tok["access_token"] == "new"
+    assert ov.get_token("alice", "google")["access_token"] == "new"  # re-saved
+
+
+def test_get_fresh_token_keeps_valid(monkeypatch):
+    _setup(monkeypatch)
+    ov.save_token("alice", "google", {"access_token": "still-good", "refresh_token": "r", "expires_at": 9999.0})
+    tok = ov.get_fresh_token("alice", "google", now=200.0)  # ikke udløbet
+    assert tok["access_token"] == "still-good"
+
+
 def test_blank_inputs_safe(monkeypatch):
     _setup(monkeypatch)
     assert ov.save_token("", "github", {"a": 1}) is False

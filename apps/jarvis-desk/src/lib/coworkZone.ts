@@ -5,7 +5,15 @@
  *  abonnerer og viser indstillingszonen. Modul-niveau fordi watcher (i App) og
  *  CoworkZones (i CoworkView) ikke deler en fælles provider-gren.
  */
-export type Zone = 'mc' | 'settings'
+export type Zone = 'mc' | 'marketplace' | 'settings'
+
+/** Cowork-menupunkterne i rækkefølge — vist i Sidebar (cowork-surface) med ikoner.
+ *  `icon` er navnet på et lucide-react-ikon. */
+export const COWORK_ZONES: ReadonlyArray<{ id: Zone; label: string; icon: string }> = [
+  { id: 'mc', label: 'Mission Control', icon: 'LayoutDashboard' },
+  { id: 'marketplace', label: 'Marketplace', icon: 'Blocks' },
+  { id: 'settings', label: 'Indstillinger', icon: 'Settings' },
+]
 
 type Listener = (zone: Zone) => void
 

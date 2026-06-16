@@ -143,16 +143,24 @@ export function Composer({
   // så ringens nævner er modellens reelle loft (deepseek 1M ≠ et 64k-model).
   // Falder tilbage til den globale autocompat-tærskel (compactAt) ved 0/ukendt.
   const [effectiveCtx, setEffectiveCtx] = useState(0)
+  // Afhæng af de PRIMITIVE værdier — ikke `config`-objektets identitet. ChatView
+  // (m.fl.) genskaber `{apiBaseUrl, authToken}` som et NYT objekt på hver render;
+  // under polling (~2×/sek) gav det en uendelig model-context-refetch-loop der
+  // sultede stream-SSE'en på single-worker-API'et → "spinner drejer, stopper,
+  // intet svar" (Bjørn 2026-06-16). Primitive deps → kun ægte ændringer refetcher.
+  const _apiBaseUrl = config?.apiBaseUrl
+  const _authToken = config?.authToken
   useEffect(() => {
-    if (!config) return
+    if (!_apiBaseUrl) return
     let alive = true
+    const cfg = { apiBaseUrl: _apiBaseUrl, authToken: _authToken ?? null }
     import('../../lib/api').then(({ getModelContext }) =>
-      getModelContext(config, provChoice, selModel)
+      getModelContext(cfg, provChoice, selModel)
         .then((r) => { if (alive) setEffectiveCtx(r.effective || 0) })
         .catch(() => { if (alive) setEffectiveCtx(0) }),
     )
     return () => { alive = false }
-  }, [config, provChoice, selModel])
+  }, [_apiBaseUrl, _authToken, provChoice, selModel])
   const ringDenominator = effectiveCtx || compactAt
 
   // Member: standard/pro. Owner: konkret model afhænger af valgt provider.

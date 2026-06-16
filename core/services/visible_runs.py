@@ -3292,11 +3292,41 @@ async def _stream_visible_run(
                                     "claims": _shadow,
                                 },
                             )
-                            logger.info(
+                            logger.warning(
                                 "claim-shadow: %d shadow-claim(s) run_id=%s cats=%s",
                                 len(_shadow), run.run_id,
                                 [c["category"] for c in _shadow],
                             )
+                            # ── Bloker også beskeden NU ──
+                            # Promote from shadow-only → block-nu.
+                            # Erstatt den viste tekst med en forklaring.
+                            try:
+                                _shadow_blocked_text = (
+                                    f"*[Besked blokeret — uverificeret narrativ påstand]*\n\n"
+                                    f"Jeg prøvede at fortælle dig noget om mig selv "
+                                    f"som jeg ikke har kaldt et værktøj for at bekræfte.\n\n"
+                                    f"**Detektionsdetaljer:**\n"
+                                )
+                                for _sc in _shadow[:3]:
+                                    _shadow_blocked_text += (
+                                        f"- Kategori: \"{_sc.get('category', '?')}\"\n"
+                                        f"- Tekst: \"{_sc.get('text', '?')}\"\n"
+                                    )
+                                _shadow_blocked_text += (
+                                    f"\nJeg bør verificere før jeg taler. "
+                                    f"Jeg prøver igen — med data."
+                                )
+                                visible_output_text = _shadow_blocked_text
+                                yield _sse(
+                                    "scan_correction",
+                                    {
+                                        "type": "scan_correction",
+                                        "run_id": run.run_id,
+                                        "corrected": _shadow_blocked_text,
+                                    },
+                                )
+                            except Exception:
+                                pass
                     except Exception:
                         pass
                     if _claims:

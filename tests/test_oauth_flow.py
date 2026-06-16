@@ -74,3 +74,13 @@ def test_refresh_token(monkeypatch):
     tok = of.refresh_token("google", "refresh-abc", now=1000.0)
     assert tok["access_token"] == "new" and tok["expires_at"] == 4600.0
     assert tok["refresh_token"] == "refresh-abc"  # bevares hvis provider ikke returnerer ny
+
+
+def test_revoke_remote_google(monkeypatch):
+    calls = {}
+    import httpx
+    def _post(url, **k): calls["url"] = url; calls["data"] = k.get("data") or k.get("params")
+    class _R: status_code = 200
+    monkeypatch.setattr(httpx, "post", lambda url, **k: (_post(url, **k), _R())[1])
+    assert of.revoke_remote("google", {"access_token": "tok"}) is True
+    assert "oauth2.googleapis.com/revoke" in calls["url"]

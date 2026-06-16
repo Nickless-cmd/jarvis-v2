@@ -111,6 +111,37 @@ def build_authorize_url(
     return p["authorize_url"] + "?" + urllib.parse.urlencode(q)
 
 
+def revoke_remote(provider: str, token: dict) -> bool:
+    """Tilbagekald token hos provideren (best-effort). True hvis bekræftet revokeret.
+
+    Lokal wipe sker uanset i kalderen — denne returnerer kun om provideren bekræftede.
+    """
+    prov = (provider or "").strip().lower()
+    p = _PROVIDERS.get(prov)
+    if not p or not isinstance(token, dict):
+        return False
+    access = token.get("access_token") or ""
+    if not access:
+        return False
+    try:
+        import httpx
+        if prov == "google":
+            r = httpx.post("https://oauth2.googleapis.com/revoke",
+                           data={"token": access}, timeout=15)
+            return r.status_code == 200
+        if prov == "github":
+            cid = _secret(p["id_key"])
+            csec = _secret(p["secret_key"])
+            r = httpx.request(
+                "DELETE", f"https://api.github.com/applications/{cid}/grant",
+                auth=(cid, csec), json={"access_token": access}, timeout=15,
+            )
+            return r.status_code in (204, 404)  # 404 = allerede væk
+        return False
+    except Exception:
+        return False
+
+
 def refresh_token(provider: str, refresh: str, *, now: float | None = None) -> dict | None:
     """Forny adgangstoken via grant_type=refresh_token. None ved fejl/ukendt provider."""
     prov = (provider or "").strip().lower()

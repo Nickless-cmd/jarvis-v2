@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import { act } from 'react'
+import { emitZone } from '../lib/coworkZone'
 
 vi.mock('../hooks/useSettings', () => ({
   useSettings: () => ({ settings: { apiBaseUrl: 'http://x', authToken: 't' }, auth: { role: 'owner' } }),
@@ -36,9 +38,10 @@ describe('CoworkView command center', () => {
     expect(screen.queryByText('Kanaler')).toBeNull()
   })
 
-  it('skift til Indstillinger viser Account-profilen', async () => {
+  it('skift til Indstillinger-zone (via emitZone) viser Account-profilen', async () => {
     render(<CoworkView role="owner" />)
-    fireEvent.click(screen.getByRole('button', { name: /indstillinger/i }))
+    // Zone-skift kommer nu fra Sidebar via emitZone — ikke en intern rail-knap.
+    act(() => emitZone('settings'))
     await waitFor(() => expect(screen.getByText('bjorn@x.dk')).toBeTruthy())
   })
 })

@@ -87,7 +87,13 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
 
   return (
     <div className="coworkview">
-      <CoworkZones missionControl={missionControl} settings={settingsZone} />
+      <CoworkZones>
+        {(zone) =>
+          zone === 'mc' ? missionControl
+          : zone === 'marketplace' ? <div className="cowork-settings">Marketplace…</div>
+          : settingsZone
+        }
+      </CoworkZones>
     </div>
   )
 }

@@ -1,22 +1,23 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render } from '@testing-library/react'
+import { act } from 'react'
 import { CoworkZones } from './CoworkZones'
+import { emitZone } from '../../lib/coworkZone'
 
 describe('CoworkZones', () => {
-  it('viser Mission Control som default og skifter til Indstillinger', () => {
-    render(
-      <CoworkZones
-        missionControl={<div>MC-INDHOLD</div>}
-        settings={<div>SETTINGS-INDHOLD</div>}
-      />,
-    )
-    // Default = Mission Control synlig
-    expect(screen.getByText('MC-INDHOLD')).toBeTruthy()
-    expect(screen.queryByText('SETTINGS-INDHOLD')).toBeNull()
+  it('har ingen intern rail (ét panel — zone styres fra Sidebar)', () => {
+    const { container } = render(<CoworkZones>{(z) => <div>{z}</div>}</CoworkZones>)
+    expect(container.querySelector('.cowork-rail')).toBeNull()
+  })
 
-    // Klik på Indstillinger-rail-knappen
-    fireEvent.click(screen.getByRole('button', { name: /indstillinger/i }))
-    expect(screen.getByText('SETTINGS-INDHOLD')).toBeTruthy()
-    expect(screen.queryByText('MC-INDHOLD')).toBeNull()
+  it('viser mc-zonen som default', () => {
+    const { getByText } = render(<CoworkZones>{(z) => <div>zone:{z}</div>}</CoworkZones>)
+    expect(getByText('zone:mc')).toBeInTheDocument()
+  })
+
+  it('skifter zone når emitZone kaldes', () => {
+    const { getByText } = render(<CoworkZones>{(z) => <div>zone:{z}</div>}</CoworkZones>)
+    act(() => emitZone('marketplace'))
+    expect(getByText('zone:marketplace')).toBeInTheDocument()
   })
 })

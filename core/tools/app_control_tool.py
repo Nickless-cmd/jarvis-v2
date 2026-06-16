@@ -152,3 +152,8 @@ APP_CONTROL_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         }
     },
 ]
+
+APP_CONTROL_TOOL_HANDLERS: dict[str, Any] = {
+    "request_app_action": _exec_request_app_action,
+    "open_ui_panel": _exec_open_ui_panel,
+}

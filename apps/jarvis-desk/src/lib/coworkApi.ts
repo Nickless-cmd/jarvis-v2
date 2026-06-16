@@ -8,9 +8,11 @@ export interface QueueItem {
   source: string
   diff?: string
 }
-export interface CoworkPlan { id: string; title: string; status: string; steps_done: number; steps_total: number }
+export interface CoworkPlan { id: string; title: string; scope?: string
+  status: string; steps_done: number; steps_total: number }
 export interface CoworkChannel { name: string; online: boolean; unread: number }
-export interface CoworkTodo { id: string; content: string; status: string; expires_at?: string }
+export interface CoworkTodo { id: string; content: string; scope?: string
+  status: string; expires_at?: string }
 
 export async function getCoworkQueue(config: ApiConfig): Promise<QueueItem[]> {
   const d = await apiFetch<{ items: QueueItem[] }>(config, '/cowork/queue')
@@ -39,6 +41,7 @@ export interface ShareDecision {
   current_user_id: string
   mentioned_users: string[]
   text_preview: string
+  scope?: string
   status: string
   created_at: string
 }
@@ -59,6 +62,7 @@ export interface UiPanelRequest {
   action?: 'open' | 'close'
   session_id: string
   detail: string
+  scope?: string
   status: string
   created_at: string
 }
@@ -126,6 +130,7 @@ export interface ActiveAgent {
   agent_id: string
   role: string
   goal: string
+  scope?: string
   status: string
   parent: string
   tokens_burned: number
@@ -263,7 +268,8 @@ export async function setVisibleModel(config: ApiConfig, provider: string, model
   await apiFetch(config, '/account/jarvis/visible-model', { method: 'POST', body: { provider, model } })
 }
 
-export interface ConnectedApp { plugin_id: string; name: string; status: string; detail: string }
+export interface ConnectedApp { plugin_id: string; name: string; scope?: string
+  status: string; detail: string }
 export async function getAccountApps(config: ApiConfig): Promise<ConnectedApp[]> {
   const d = await apiFetch<{ apps: ConnectedApp[] }>(config, '/account/apps')
   return d.apps ?? []

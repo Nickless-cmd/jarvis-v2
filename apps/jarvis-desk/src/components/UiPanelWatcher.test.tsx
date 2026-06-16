@@ -21,7 +21,7 @@ describe('UiPanelWatcher', () => {
 
   it('close-request calls panel.close()', async () => {
     pending.push({ id: 'p1', panel: 'preview', action: 'open', session_id: '', detail: 'x', status: 'pending', created_at: '' })
-    wrap(<UiPanelWatcher config={cfg} />)
+    wrap(<UiPanelWatcher config={cfg} setSurface={vi.fn()} />)
     await waitFor(() => expect(panelRef?.open).toBe(true))
     pending.push({ id: 'p2', panel: 'preview', action: 'close', session_id: '', detail: '', status: 'pending', created_at: '' })
     // watcheren poller hvert 4000ms → giv close-ticket tid til at blive fanget.
@@ -30,14 +30,14 @@ describe('UiPanelWatcher', () => {
 
   it('preview med en filsti i detail → åbner filen (kind=file)', async () => {
     pending.push({ id: 'f1', panel: 'preview', action: 'open', session_id: '', detail: 'docs/spec.md', status: 'pending', created_at: '' })
-    wrap(<UiPanelWatcher config={cfg} />)
+    wrap(<UiPanelWatcher config={cfg} setSurface={vi.fn()} />)
     await waitFor(() => expect(panelRef?.artifact?.kind).toBe('file'))
     expect(panelRef?.artifact?.filePath).toBe('docs/spec.md')
   })
 
   it('preview med en note i detail → markdown (ikke fil)', async () => {
     pending.push({ id: 'n1', panel: 'preview', action: 'open', session_id: '', detail: 'her er resultatet', status: 'pending', created_at: '' })
-    wrap(<UiPanelWatcher config={cfg} />)
+    wrap(<UiPanelWatcher config={cfg} setSurface={vi.fn()} />)
     await waitFor(() => expect(panelRef?.artifact?.kind).toBe('markdown'))
   })
 

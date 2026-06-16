@@ -25,10 +25,10 @@ export function UiPanelWatcher({
   config: ApiConfig | null
   setSurface: (s: Surface) => void
 }) {
-  const { open } = usePanel()
+  const { open_: openPanel } = usePanel()
   const busy = useRef(false)
-  const openRef = useRef(open)
-  openRef.current = open
+  const openRef = useRef(openPanel)
+  openRef.current = openPanel
 
   useEffect(() => {
     if (!config) return
@@ -38,7 +38,7 @@ export function UiPanelWatcher({
       busy.current = true
       try {
         const res = await getUiPanelPending(config)
-        for (const req of res.pending ?? []) {
+        for (const req of res) {
           // file_tree — Jarvis vil highlighte en fil i træet
           if (req.panel === 'file_tree') {
             setSurface('code')

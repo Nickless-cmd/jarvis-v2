@@ -85,6 +85,11 @@ _PUBLIC_PATHS = (
 
 
 def _is_public_path(path: str) -> bool:
+    # OAuth connector-callback rammes af BROWSEREN uden bearer-token (16. jun 2026).
+    # Kun /callback er public — /start kræver auth. State-parameteren er signeret +
+    # binder bruger-id, så callback'en kan ikke forfalskes for en anden bruger.
+    if path.startswith("/api/oauth/") and path.endswith("/callback"):
+        return True
     for p in _PUBLIC_PATHS:
         if path == p or path.startswith(p + "/"):
             return True

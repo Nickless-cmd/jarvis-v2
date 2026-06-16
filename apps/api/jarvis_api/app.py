@@ -484,6 +484,8 @@ def create_app() -> FastAPI:
     app.include_router(chat_stream_v2_router)
     app.include_router(cowork_router)
     app.include_router(plugins_router)
+    from apps.api.jarvis_api.routes.oauth import router as oauth_router
+    app.include_router(oauth_router)
     app.include_router(totp_router)
     app.include_router(account_router)
     from apps.api.jarvis_api.routes.billing import router as billing_router

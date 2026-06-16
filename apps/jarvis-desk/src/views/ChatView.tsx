@@ -344,6 +344,7 @@ export function ChatView({
             config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
             userName={userName}
             onOpenMarketplace={() => onOpenMarketplace?.()}
+            onSuggest={(text) => resend(text)}
           >
             {composer}
           </GreetingHero>

@@ -3,6 +3,7 @@ import type { ApiConfig } from '../../lib/api'
 import { getConnectors, startConnect, type Connector } from '../../lib/connectorsApi'
 import { connectorIcon } from '../../lib/connectorIcon'
 import { greetingFor } from '../../lib/greeting'
+import { takePendingHint } from '../../lib/postConnect'
 
 function openBrowser(url: string): void {
   const b = (window as unknown as { jarvisDesk?: { openExternal?: (u: string) => Promise<void> } }).jarvisDesk
@@ -13,16 +14,20 @@ function openBrowser(url: string): void {
  *  + op til 3 connector-forslag (kun ikke-forbundne) + "Flere apps →". Composeren
  *  gives som children, så den sidder under hilsenen (spec §3.4). */
 export function GreetingHero({
-  config, userName, onOpenMarketplace, children,
+  config, userName, onOpenMarketplace, onSuggest, children,
 }: {
   config?: ApiConfig
   userName: string
   onOpenMarketplace: () => void
+  onSuggest?: (text: string) => void
   children: ReactNode
 }) {
   // Random men stabil pr. mount (seed varierer mellem sessioner — "random greeting").
   const g = useMemo(() => greetingFor(new Date(), Math.floor(Math.random() * 1000)), [])
   const [suggestions, setSuggestions] = useState<Connector[]>([])
+  // Post-connect-hook (engangs): lige forbundet → tilbyd connector-specifikt forslag.
+  const [hint, setHint] = useState<string | null>(null)
+  useEffect(() => { setHint(takePendingHint()) }, [])
 
   useEffect(() => {
     if (!config) return
@@ -49,6 +54,14 @@ export function GreetingHero({
         <div className="greeting-hello">{g.hello}, {userName} {g.glyph}</div>
         <div className="greeting-line">{g.line}</div>
       </div>
+
+      {hint && (
+        <div className="greeting-hint">
+          <span className="greeting-hint-text">{hint}</span>
+          <button type="button" className="greeting-hint-yes" onClick={() => { onSuggest?.(hint); setHint(null) }}>Ja tak</button>
+          <button type="button" className="greeting-hint-no" aria-label="Afvis" onClick={() => setHint(null)}>×</button>
+        </div>
+      )}
 
       {children}
 

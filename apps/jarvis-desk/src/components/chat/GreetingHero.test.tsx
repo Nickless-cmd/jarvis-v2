@@ -16,7 +16,7 @@ const oauthC = (id: string, connected: boolean) => ({
 })
 
 describe('GreetingHero', () => {
-  beforeEach(() => { getConnectors.mockReset(); startConnect.mockClear()
+  beforeEach(() => { getConnectors.mockReset(); startConnect.mockClear(); localStorage.clear()
     ;(window as unknown as { jarvisDesk: { openExternal: ReturnType<typeof vi.fn> } }).jarvisDesk = { openExternal: vi.fn().mockResolvedValue(undefined) }
   })
 
@@ -41,6 +41,16 @@ describe('GreetingHero', () => {
     render(<GreetingHero config={cfg} userName="Bjørn" onOpenMarketplace={onOpen}>c</GreetingHero>)
     fireEvent.click(screen.getByText(/Flere apps/i))
     expect(onOpen).toHaveBeenCalled()
+  })
+
+  it('post-connect-hint: viser chip + Ja tak kalder onSuggest', async () => {
+    getConnectors.mockResolvedValue([])
+    localStorage.setItem('jarvis-desk:post-connect-hint', 'Nu kan jeg kigge i dine GitHub-issues — skal jeg?')
+    const onSuggest = vi.fn()
+    render(<GreetingHero config={cfg} userName="Bjørn" onOpenMarketplace={() => {}} onSuggest={onSuggest}>c</GreetingHero>)
+    expect(screen.getByText(/GitHub-issues/)).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Ja tak'))
+    expect(onSuggest).toHaveBeenCalledWith('Nu kan jeg kigge i dine GitHub-issues — skal jeg?')
   })
 
   it('Forbind kalder startConnect + openExternal', async () => {

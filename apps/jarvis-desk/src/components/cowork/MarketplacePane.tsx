@@ -5,6 +5,7 @@ import {
   getConnectors, setEnabled, deleteConnector, startConnect, type Connector,
 } from '../../lib/connectorsApi'
 import { connectorIcon } from '../../lib/connectorIcon'
+import { setPendingHint } from '../../lib/postConnect'
 
 function openBrowser(url: string): void {
   const b = (window as unknown as { jarvisDesk?: { openExternal?: (u: string) => Promise<void> } }).jarvisDesk
@@ -17,6 +18,7 @@ export function MarketplacePane({ config }: { config?: ApiConfig }) {
   const [items, setItems] = useState<Connector[]>([])
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const refresh = useCallback(async () => {
@@ -41,6 +43,12 @@ export function MarketplacePane({ config }: { config?: ApiConfig }) {
       n += 1
       await refresh()
       const fresh = (await getConnectors(config).catch(() => [])).find((x) => x.id === c.id)
+      if (fresh?.connected) {
+        // Delight: kvittér + gem connector-specifikt hint til næste chat-tom-skærm.
+        setToast(`✅ Forbundet til ${c.name}`)
+        setTimeout(() => setToast(null), 4000)
+        setPendingHint(fresh.post_connect_hint)
+      }
       if (fresh?.connected || n > 60) {
         if (pollRef.current) clearInterval(pollRef.current)
         pollRef.current = null
@@ -70,6 +78,7 @@ export function MarketplacePane({ config }: { config?: ApiConfig }) {
 
   return (
     <div className="marketplace">
+      {toast && <div className="marketplace-toast">{toast}</div>}
       <div className="marketplace-head">
         <h2>Marketplace</h2>
         <div className="marketplace-search">

@@ -41,6 +41,17 @@ _COMPLETION_PATTERNS: list[re.Pattern] = [
     re.compile(r"\bjeg\s+(har\s+)?(committet|pushet|deployet|gemt|skrevet|oprettet|kørt|installeret)\b", re.I),
 ]
 
+# Promise-ledger §8 HÅNDHÆVELSE (16. jun 2026, Bjørn lie-crisis): en uverificeret
+# completion-claim ("det er committet/gjort" uden tool) ERSTATTES nu (ikke kun logges),
+# så løgnen aldrig når Bjørn. Killswitch: sæt _PROMISE_ENFORCE=False → ren advisory.
+_PROMISE_ENFORCE = True
+
+_PROMISE_REPLACEMENT = (
+    "⚠️ Jeg var ved at sige at noget var fuldført — men der er ikke et værktøjs-kald "
+    "i denne tur der underbygger det, så det er IKKE verificeret gjort. Jeg stopper mig "
+    "selv her i stedet for at påstå det. Lad mig faktisk udføre det og vise dig beviset."
+)
+
 # Tools der underbygger en COMPLETION-claim (faktisk udførte handlingen).
 _COMPLETION_TOOLS: frozenset[str] = frozenset({
     "bash", "operator_bash", "write_file", "operator_write_file", "edit_file",
@@ -196,12 +207,15 @@ def diagnosis_gate_enforce(text: str, *, session_id: str = "", run_id: str = "",
                 })
             except Exception:
                 pass
-        # Promise-ledger §8 (advisory): uverificeret completion-claim.
+        # Promise-ledger §8: uverificeret completion-claim. HÅNDHÆVENDE når
+        # _PROMISE_ENFORCE (erstatter løgnen), ellers advisory (logger).
         promise = analyze_completion_claim(text, tools_used=tools_used)
         if promise.detected and not promise.verified:
+            _blocked = bool(_PROMISE_ENFORCE)
             logger.warning(
-                "promise-ledger ADVISORY: uverificeret completion-claim run_id=%s "
-                "session=%s claim=%r pattern=%r", run_id, session_id,
+                "promise-ledger %s: uverificeret completion-claim run_id=%s "
+                "session=%s claim=%r pattern=%r",
+                "BLOCKED" if _blocked else "ADVISORY", run_id, session_id,
                 promise.claim_snippet, promise.pattern,
             )
             try:
@@ -209,9 +223,12 @@ def diagnosis_gate_enforce(text: str, *, session_id: str = "", run_id: str = "",
                 event_bus.publish("promise.unverified", {
                     "session_id": session_id, "run_id": run_id,
                     "claim": promise.claim_snippet, "pattern": promise.pattern,
+                    "blocked": _blocked,
                 })
             except Exception:
                 pass
+            if _blocked:
+                return _PROMISE_REPLACEMENT
     except Exception:
         pass  # fail-open: gate må aldrig spise output
     return text

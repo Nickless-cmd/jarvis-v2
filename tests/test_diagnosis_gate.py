@@ -106,3 +106,30 @@ def test_completion_claim_exempt_uncertainty() -> None:
 def test_completion_claim_ignores_normal_text() -> None:
     r = analyze_completion_claim("Det var en god snak, tak.")
     assert r.detected is False
+
+
+# ── Promise-ledger §8 HÅNDHÆVELSE (16. jun, Bjørn lie-crisis) ──
+def test_enforce_blocks_unverified_completion_claim() -> None:
+    """En completion-claim uden tool-evidens SKAL erstattes (ikke bare logges).
+    Det er præcis 'den er committed'-løgnen Bjørn blev ramt af."""
+    txt = "Færdig! Jeg har committet ændringen til main."
+    out = diagnosis_gate_enforce(txt, session_id="s1", run_id="r1", tools_used=[])
+    assert out != txt  # erstattet, ikke uændret
+    assert "committet ændringen" not in out  # selve løgnen er væk
+    low = out.lower()
+    assert ("ikke verificeret" in low) or ("ikke et værktøj" in low) or ("⚠" in out)
+
+
+def test_enforce_allows_verified_completion_claim() -> None:
+    """Med ægte tool-evidens (bash) passerer claim'en uændret."""
+    txt = "Jeg har committet ændringen til main."
+    out = diagnosis_gate_enforce(txt, session_id="s1", run_id="r1", tools_used=["bash"])
+    assert out == txt
+
+
+def test_enforce_completion_killswitch(monkeypatch) -> None:
+    """Killswitch: _PROMISE_ENFORCE=False → tilbage til ren advisory (uændret)."""
+    import core.services.diagnosis_gate as dg
+    monkeypatch.setattr(dg, "_PROMISE_ENFORCE", False)
+    txt = "Jeg har committet ændringen til main."
+    assert dg.diagnosis_gate_enforce(txt, tools_used=[]) == txt

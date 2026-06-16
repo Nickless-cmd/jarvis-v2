@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images, Code } from 'lucide-react'
+import {
+  Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images, Code,
+  LayoutDashboard, Blocks, Settings, type LucideIcon,
+} from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
 import { useStream } from '../../hooks/useStream'
 import { searchSessions, getActiveRuns, type SessionSearchResult } from '../../lib/api'
+import { COWORK_ZONES, emitZone, onZone, type Zone } from '../../lib/coworkZone'
 import { ModeSlider, type Mode } from './ModeSlider'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
+
+const ZONE_ICONS: Record<string, LucideIcon> = {
+  LayoutDashboard, Blocks, Settings,
+}
 
 export type Surface = Mode | SecondarySurface | 'gallery'
 
@@ -66,6 +74,9 @@ export function Sidebar({
         onChange={(m) => onSurface(m)}
       />
 
+      {surface === 'cowork' ? (
+        <CoworkMenu />
+      ) : (
       <div className="sessions">
         <button className="new-chat" type="button" onClick={() => void create('Ny samtale')}>
           <Plus size={14} /> Ny samtale
@@ -132,6 +143,7 @@ export function Sidebar({
           )
         )}
       </div>
+      )}
 
       <div className="sidebar-foot">
         <div className="who">
@@ -141,6 +153,33 @@ export function Sidebar({
         <SecondaryNav active={surface} onSelect={(s) => onSurface(s)} />
       </div>
     </aside>
+  )
+}
+
+/** Cowork-menu i venstre panel (mode-bevidst): Mission Control / Marketplace /
+ *  Indstillinger med ikoner. Erstatter session-listen i cowork-surface, så vi har
+ *  ÉT panel — ikke et ekstra rail inde i CoworkZones. Zone-skift via emitZone. */
+function CoworkMenu() {
+  const [zone, setZone] = useState<Zone>('mc')
+  // Hold lokal markering i sync med Jarvis-styret zone-skift (open_ui_panel).
+  useEffect(() => onZone(setZone), [])
+  return (
+    <div className="sessions cowork-menu">
+      <div className="sidebar-label">cowork</div>
+      {COWORK_ZONES.map((z) => {
+        const Icon = ZONE_ICONS[z.icon] ?? Blocks
+        return (
+          <button
+            key={z.id}
+            type="button"
+            className={`sidebar-nav-row ${zone === z.id ? 'active' : ''}`}
+            onClick={() => { setZone(z.id); emitZone(z.id) }}
+          >
+            <Icon size={14} /> {z.label}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 

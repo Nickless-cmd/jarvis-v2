@@ -5,7 +5,7 @@ Windows-build af **jarvis-desk** (Electron-appen, productName "Jarvis"). Alt er
 committet og pushet til GitHub (`origin`, branch `main`). Du arbejder på samme
 repo, bare på Windows.
 
-**Version i denne runde: `0.2.24`. Release-tag: `jarvis-desktop-v0.2.24`.**
+**Version i denne runde: `0.2.25`. Release-tag: `jarvis-desktop-v0.2.25`.**
 
 ## Alle tre platforme er nu CI-automatiseret ✅ — reboot er IKKE nødvendig
 
@@ -26,20 +26,20 @@ npm run build               # bygger renderer (vite) + electron (tsc)
 npx electron-builder --win  # producerer NSIS-installer (.exe) i release\
 ```
 
-Resultatet er `release\Jarvis Setup 0.2.24.exe` (NSIS-installer — versionen er
-**0.2.24**). Installér den og verificér at appen starter og kan forbinde til
+Resultatet er `release\Jarvis Setup 0.2.25.exe` (NSIS-installer — versionen er
+**0.2.25**). Installér den og verificér at appen starter og kan forbinde til
 `api.srvlab.dk` (Bjørns backend).
 
 ## Læg den op på GitHub-releasen når den er klar
 
 ```powershell
-gh release upload jarvis-desktop-v0.2.24 "release\Jarvis Setup 0.2.24.exe"
+gh release upload jarvis-desktop-v0.2.25 "release\Jarvis Setup 0.2.25.exe"
 ```
 
 (Kræver at `gh` er logget ind som `Nickless-cmd`. Så har releasen alle tre platforme:
 Linux + Mac fra CI, Windows fra dig.)
 
-Release-URL: https://github.com/Nickless-cmd/jarvis-v2/releases/tag/jarvis-desktop-v0.2.24
+Release-URL: https://github.com/Nickless-cmd/jarvis-v2/releases/tag/jarvis-desktop-v0.2.25
 
 ## Vigtigt at vide
 

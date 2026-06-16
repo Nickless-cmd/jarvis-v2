@@ -95,15 +95,40 @@ export function CodeView({
 
   // Jarvis-styret highlight (open_ui_panel panel="file_tree"): vis server-repoet
   // (owner) + åbn fil-træet + scroll-til filen. Stien er repo-relativ.
-  useEffect(() => onHighlight((p) => {
-    setKind('container')
-    if (isOwner) setRoot('repo')
-    setFilesOpen(true)
-    setHighlightPath('')           // nulstil først → samme fil kan highlightes igen
-    requestAnimationFrame(() => setHighlightPath(p))
+  // Jarvis-styret highlight (open_ui_panel panel="file_tree"):
+  // scope='repo' (default): highlight i serverens repo.
+  // scope='workstation': highlight i brugerens lokale workspace.
+  // Hvis intet workspace er valgt, forsøg at bede brugeren valge via pickFolder-bridge.
+  useEffect(() => onHighlight((p, scope) => {
+    if (scope === 'workstation') {
+      setKind('workstation')
+      if (wsPath) {
+        setFilesOpen(true)
+        setHighlightPath(' ')
+        requestAnimationFrame(() => setHighlightPath(p))
+      } else {
+        // Intet workspace valgt — forsøg pickFolder
+        const bridge = (window as unknown as { jarvisDesk?: { pickFolder?: () => Promise<string | null> } }).jarvisDesk
+        if (bridge?.pickFolder) {
+          bridge.pickFolder().then((folder) => {
+            if (folder) {
+              setWsPath(folder)
+              setFilesOpen(true)
+              setHighlightPath(' ')
+              requestAnimationFrame(() => setHighlightPath(p))
+            }
+          })
+        }
+      }
+    } else {
+      // scope='repo' (default): nuvarende adfaerd
+      setKind('container')
+      if (isOwner) setRoot('repo')
+      setFilesOpen(true)
+      setHighlightPath(' ')
+      requestAnimationFrame(() => setHighlightPath(p))
+    }
   }), [isOwner])
-
-  const effRoot = kind === 'container' ? root : wsPath
   const ready = !!effRoot // workstation kræver at en mappe er valgt
 
   // Autoscroll + scroll-til-bund-pil (som chat).

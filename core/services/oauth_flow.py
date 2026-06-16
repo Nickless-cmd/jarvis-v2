@@ -111,6 +111,34 @@ def build_authorize_url(
     return p["authorize_url"] + "?" + urllib.parse.urlencode(q)
 
 
+def refresh_token(provider: str, refresh: str, *, now: float | None = None) -> dict | None:
+    """Forny adgangstoken via grant_type=refresh_token. None ved fejl/ukendt provider."""
+    prov = (provider or "").strip().lower()
+    p = _PROVIDERS.get(prov)
+    if not p or not (refresh or "").strip():
+        return None
+    data = {
+        "client_id": _secret(p["id_key"]), "client_secret": _secret(p["secret_key"]),
+        "grant_type": "refresh_token", "refresh_token": refresh,
+    }
+    try:
+        import httpx
+        r = httpx.post(p["token_url"], data=data, headers={"Accept": "application/json"}, timeout=20)
+        if r.status_code != 200:
+            return None
+        tok = r.json()
+        if not (isinstance(tok, dict) and tok.get("access_token")):
+            return None
+        tok.setdefault("refresh_token", refresh)  # GitHub/Google sender ikke altid ny
+        if tok.get("expires_in"):
+            base = float(now if now is not None else time.time())
+            tok["obtained_at"] = base
+            tok["expires_at"] = base + float(tok["expires_in"])
+        return tok
+    except Exception:
+        return None
+
+
 def exchange_code(provider: str, code: str, *, now: float | None = None) -> dict | None:
     """Byt authorization code for token (BLOKERENDE netværk — kør i tråd). None ved fejl."""
     prov = (provider or "").strip().lower()

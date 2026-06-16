@@ -62,3 +62,15 @@ def test_exchange_code_adds_expiry(monkeypatch):
     monkeypatch.setattr(httpx, "post", lambda *a, **k: _R())
     tok = of.exchange_code("google", "c", now=1000.0)
     assert tok["expires_at"] == 1000.0 + 3600 and tok["refresh_token"] == "r"
+
+
+def test_refresh_token(monkeypatch):
+    monkeypatch.setattr(of, "_secret", lambda k, d="": "x")
+    import httpx
+    class _R:
+        status_code = 200
+        def json(self): return {"access_token": "new", "expires_in": 3600}
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _R())
+    tok = of.refresh_token("google", "refresh-abc", now=1000.0)
+    assert tok["access_token"] == "new" and tok["expires_at"] == 4600.0
+    assert tok["refresh_token"] == "refresh-abc"  # bevares hvis provider ikke returnerer ny

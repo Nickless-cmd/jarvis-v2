@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
-import { cancelRun } from '../lib/apiClient'
+import { approveTool, cancelRun, denyTool } from '../lib/apiClient'
+import type { ApprovalViewModel } from '../components/ApprovalCard'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { startStream, type StreamControl } from '../lib/streamClient'
 import {
@@ -13,8 +14,11 @@ import { useSessions } from './SessionContext'
 
 interface StreamContextValue {
   state: StreamState
+  approval: ApprovalViewModel | null
   send: (config: ApiConfig, sessionId: string, message: string) => void
   stop: (config: ApiConfig) => Promise<void>
+  approve: (config: ApiConfig) => Promise<void>
+  deny: (config: ApiConfig) => Promise<void>
 }
 
 const StreamContext = createContext<StreamContextValue | null>(null)
@@ -32,6 +36,7 @@ function blocksToAssistantText(blocks: ContentBlock[]): string {
 export function StreamProvider({ children }: { children: ReactNode }) {
   const { appendLocalMessage } = useSessions()
   const [state, setState] = useState(initialStreamState())
+  const [approval, setApproval] = useState<ApprovalViewModel | null>(null)
   const control = useRef<StreamControl | null>(null)
   const stateRef = useRef(state)
   const persistedRunRef = useRef<string | null>(null)
@@ -63,6 +68,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const value = useMemo<StreamContextValue>(
     () => ({
       state,
+      approval,
       send: (config, sessionId, message) => {
         const local: ChatMessage = {
           id: `local-${Date.now()}`,
@@ -73,11 +79,21 @@ export function StreamProvider({ children }: { children: ReactNode }) {
 
         appendLocalMessage(local)
         persistedRunRef.current = null
+        setApproval(null)
         updateState(initialStreamState())
         control.current = startStream(
           { config, sessionId, message, mode: 'chat' },
           {
             onEvent: (event) => {
+              if (event.type === 'system_event' && event.kind === 'approval_request') {
+                setApproval({
+                  approvalId: String(event.payload.approval_id ?? ''),
+                  tool: String(event.payload.tool ?? ''),
+                  message: String(event.payload.message ?? 'Jarvis beder om tilladelse.'),
+                  detail:
+                    typeof event.payload.detail === 'string' ? event.payload.detail : undefined
+                })
+              }
               updateState((prev) => streamReducer(prev, event))
               if (event.type === 'message_stop') {
                 persistAssistantSnapshot('done')
@@ -99,9 +115,19 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             // Local interruption must win even if the server-side cancel request fails.
           }
         }
+      },
+      approve: async (config) => {
+        if (!approval?.approvalId) return
+        await approveTool(config, approval.approvalId)
+        setApproval(null)
+      },
+      deny: async (config) => {
+        if (!approval?.approvalId) return
+        await denyTool(config, approval.approvalId)
+        setApproval(null)
       }
     }),
-    [appendLocalMessage, state]
+    [appendLocalMessage, approval, state]
   )
 
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>

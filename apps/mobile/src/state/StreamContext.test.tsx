@@ -7,6 +7,8 @@ import type { StreamEvent } from '../lib/sseProtocol'
 const mockAppendLocalMessage = jest.fn()
 const mockStartStream = jest.fn()
 const mockCancelRun = jest.fn()
+const mockApproveTool = jest.fn()
+const mockDenyTool = jest.fn()
 
 jest.mock('./SessionContext', () => ({
   useSessions: () => ({
@@ -19,7 +21,9 @@ jest.mock('../lib/streamClient', () => ({
 }))
 
 jest.mock('../lib/apiClient', () => ({
-  cancelRun: (...args: unknown[]) => mockCancelRun(...args)
+  approveTool: (...args: unknown[]) => mockApproveTool(...args),
+  cancelRun: (...args: unknown[]) => mockCancelRun(...args),
+  denyTool: (...args: unknown[]) => mockDenyTool(...args)
 }))
 
 const config = {
@@ -28,14 +32,17 @@ const config = {
 }
 
 function Probe() {
-  const { state, send, stop } = useStream()
+  const { approval, approve, deny, state, send, stop } = useStream()
 
   return (
     <>
       <Text>{state.status}</Text>
       <Text>{state.activeRunId ?? 'no-run'}</Text>
+      <Text>{approval?.message ?? 'no-approval'}</Text>
       <Text onPress={() => send(config, 'session-1', 'Hej Jarvis')}>send</Text>
       <Text onPress={() => void stop(config)}>stop</Text>
+      <Text onPress={() => void approve(config)}>approve</Text>
+      <Text onPress={() => void deny(config)}>deny</Text>
     </>
   )
 }
@@ -46,6 +53,8 @@ beforeEach(() => {
     abort: jest.fn(),
     getRunId: () => 'run-123'
   })
+  mockApproveTool.mockResolvedValue(undefined)
+  mockDenyTool.mockResolvedValue(undefined)
 })
 
 it('appends a local message and updates state from stream events', async () => {
@@ -206,4 +215,46 @@ it('marks the stream interrupted even when server cancel fails', async () => {
   expect(abort).toHaveBeenCalledTimes(1)
   expect(mockCancelRun).toHaveBeenCalledWith(config, 'run-123')
   expect(screen.getByText('interrupted')).toBeTruthy()
+})
+
+it('captures approval requests and posts explicit decisions', async () => {
+  let handlers: StreamHandlers | undefined
+  mockStartStream.mockImplementation((_request: unknown, nextHandlers: StreamHandlers) => {
+    handlers = nextHandlers
+    return {
+      abort: jest.fn(),
+      getRunId: () => 'run-123'
+    }
+  })
+
+  const screen = await render(
+    <StreamProvider>
+      <Probe />
+    </StreamProvider>
+  )
+
+  await act(async () => {
+    screen.getByText('send').props.onPress()
+  })
+  await act(async () => {
+    handlers?.onEvent({
+      type: 'system_event',
+      kind: 'approval_request',
+      payload: {
+        approval_id: 'approval-1',
+        tool: 'shell',
+        message: 'Tillad kommando?',
+        detail: 'pwd'
+      }
+    } satisfies StreamEvent)
+  })
+
+  expect(screen.getByText('Tillad kommando?')).toBeTruthy()
+
+  await act(async () => {
+    await screen.getByText('approve').props.onPress()
+  })
+
+  expect(mockApproveTool).toHaveBeenCalledWith(config, 'approval-1')
+  expect(screen.getByText('no-approval')).toBeTruthy()
 })

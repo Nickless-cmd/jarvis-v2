@@ -1,7 +1,9 @@
 import { useEffect } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
+import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
 import { ConnectionPill } from '../components/ConnectionPill'
+import { ErrorBanner } from '../components/ErrorBanner'
 import { JarvisRing } from '../components/JarvisRing'
 import { MessageList } from '../components/MessageList'
 import { useAuth } from '../state/AuthContext'
@@ -40,15 +42,19 @@ export function ChatScreen() {
       </View>
       <MessageList messages={sessions.messages} blocks={stream.state.blocks} />
       {canRetry ? (
-        <View style={styles.retryBar}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void ensureSessionAndSend(lastUserMessage.content)}
-            style={({ pressed }) => [styles.retryButton, pressed ? styles.retryButtonPressed : null]}
-          >
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </Pressable>
-        </View>
+        <ErrorBanner
+          title={stream.state.status === 'error' ? 'Stream fejlede' : 'Svar stoppet'}
+          detail="Du kan prøve den seneste besked igen."
+          actionLabel="Retry"
+          onAction={() => void ensureSessionAndSend(lastUserMessage.content)}
+        />
+      ) : null}
+      {stream.approval && config ? (
+        <ApprovalCard
+          approval={stream.approval}
+          onApprove={() => void stream.approve(config)}
+          onDeny={() => void stream.deny(config)}
+        />
       ) : null}
       <Composer
         disabled={!config}
@@ -82,28 +88,6 @@ const styles = StyleSheet.create({
   title: {
     color: tokens.color.fg1,
     fontSize: 18,
-    fontWeight: '700'
-  },
-  retryBar: {
-    paddingHorizontal: tokens.spacing.md,
-    paddingVertical: tokens.spacing.sm,
-    borderTopColor: tokens.color.line,
-    borderTopWidth: 1,
-    backgroundColor: tokens.color.bg0
-  },
-  retryButton: {
-    minHeight: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.radius.md,
-    borderColor: tokens.color.accent,
-    borderWidth: 1
-  },
-  retryButtonPressed: {
-    opacity: 0.85
-  },
-  retryButtonText: {
-    color: tokens.color.accent,
     fontWeight: '700'
   }
 })

@@ -10,6 +10,25 @@ const mockRefresh = jest.fn().mockResolvedValue(undefined)
 const mockCreate = jest.fn()
 const mockSend = jest.fn()
 const mockStop = jest.fn()
+const mockApprove = jest.fn()
+const mockDeny = jest.fn()
+
+type MockStream = {
+  state: {
+    status: 'idle' | 'working' | 'interrupted' | 'hung' | 'error' | 'done'
+    blocks: []
+  }
+  approval: null | {
+    approvalId: string
+    tool: string
+    message: string
+    detail?: string
+  }
+  approve: typeof mockApprove
+  deny: typeof mockDeny
+  send: typeof mockSend
+  stop: typeof mockStop
+}
 
 let mockSessions = {
   activeId: 'session-1',
@@ -25,11 +44,14 @@ let mockSessions = {
   create: mockCreate
 }
 
-let mockStream = {
+let mockStream: MockStream = {
   state: {
     status: 'error',
     blocks: []
   },
+  approval: null,
+  approve: mockApprove,
+  deny: mockDeny,
   send: mockSend,
   stop: mockStop
 }
@@ -82,6 +104,9 @@ beforeEach(() => {
       status: 'error',
       blocks: []
     },
+    approval: null,
+    approve: mockApprove,
+    deny: mockDeny,
     send: mockSend,
     stop: mockStop
   }
@@ -91,7 +116,7 @@ it('shows retry after a failed stream and resends the last user message', async 
   const screen = await render(<ChatScreen />)
 
   await waitFor(() => expect(screen.getByText('Retry')).toBeTruthy())
-  fireEvent.press(screen.getByText('Retry'))
+  await fireEvent.press(screen.getByText('Retry'))
 
   expect(mockCreate).not.toHaveBeenCalled()
   expect(mockSend).toHaveBeenCalledWith(config, 'session-1', 'Hej Jarvis')
@@ -109,4 +134,28 @@ it('hides retry while the stream is working', async () => {
   const screen = await render(<ChatScreen />)
 
   expect(screen.queryByText('Retry')).toBeNull()
+})
+
+it('renders approval requests and forwards explicit decisions', async () => {
+  mockStream = {
+    ...mockStream,
+    state: {
+      status: 'working',
+      blocks: []
+    },
+    approval: {
+      approvalId: 'approval-1',
+      tool: 'shell',
+      message: 'Tillad kommando?'
+    }
+  }
+
+  const screen = await render(<ChatScreen />)
+
+  await waitFor(() => expect(screen.getByText('Tillad kommando?')).toBeTruthy())
+  await fireEvent.press(screen.getByText('Tillad'))
+  await fireEvent.press(screen.getByText('Afvis'))
+
+  expect(mockApprove).toHaveBeenCalledWith(config)
+  expect(mockDeny).toHaveBeenCalledWith(config)
 })

@@ -1,4 +1,12 @@
-import { ApiError, createSession, getSession, listSessions, whoami } from './apiClient'
+import {
+  ApiError,
+  approveTool,
+  createSession,
+  denyTool,
+  getSession,
+  listSessions,
+  whoami
+} from './apiClient'
 import type { ApiConfig } from './types'
 
 const config: ApiConfig = {
@@ -93,4 +101,26 @@ it('classifies auth errors', async () => {
   })
 
   await expect(whoami(config)).rejects.toMatchObject(new ApiError('auth', 'HTTP 401', 401))
+})
+
+it('posts explicit approval decisions', async () => {
+  ;(global.fetch as jest.Mock).mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({})
+  })
+
+  await approveTool(config, 'approval 1')
+  await denyTool(config, 'approval 2')
+
+  expect(global.fetch).toHaveBeenNthCalledWith(
+    1,
+    expect.stringContaining('/chat/approvals/approval%201/approve'),
+    expect.objectContaining({ method: 'POST' })
+  )
+  expect(global.fetch).toHaveBeenNthCalledWith(
+    2,
+    expect.stringContaining('/chat/approvals/approval%202/deny'),
+    expect.objectContaining({ method: 'POST' })
+  )
 })

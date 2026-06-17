@@ -126,3 +126,15 @@ export async function cancelRun(config: ApiConfig, runId: string): Promise<void>
     method: 'POST'
   })
 }
+
+export async function approveTool(config: ApiConfig, approvalId: string): Promise<void> {
+  await apiFetch(config, `/chat/approvals/${encodeURIComponent(approvalId)}/approve`, {
+    method: 'POST'
+  })
+}
+
+export async function denyTool(config: ApiConfig, approvalId: string): Promise<void> {
+  await apiFetch(config, `/chat/approvals/${encodeURIComponent(approvalId)}/deny`, {
+    method: 'POST'
+  })
+}

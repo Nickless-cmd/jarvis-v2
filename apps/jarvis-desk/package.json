@@ -60,13 +60,21 @@
         "nsis"
       ],
       "icon": "assets/icon.png"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Nickless-cmd",
+        "repo": "jarvis-v2"
+      }
+    ]
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "discord.js": "^14.26.4",
+    "electron-updater": "^6.8.9",
     "katex": "^0.16.47",
     "lucide-react": "^0.460.0",
     "mermaid": "^11.15.0",

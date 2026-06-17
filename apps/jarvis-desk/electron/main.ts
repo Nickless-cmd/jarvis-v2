@@ -484,10 +484,23 @@ app.whenReady().then(() => {
   const apiOrigin = new URL(cfg.apiBaseUrl).origin
   const wsOrigin = apiOrigin.replace(/^http/, 'ws')
 
-  // §22.5: auto-update (graceful no-op indtil electron-updater + GitHub-releases er sat op).
-  void import('./autoUpdate').then((m) =>
-    m.initAutoUpdate((cfg as { autoUpdate?: import('./autoUpdate').AutoUpdateConfig }).autoUpdate),
-  ).catch(() => { /* no-op */ })
+  // §22.5: auto-update via electron-updater + GitHub releases. autoDownload er
+  // FRA — renderer viser UpdateCard og brugeren beslutter (download/genstart).
+  // Graceful: hvis dep/release-config mangler (fx dev) fanges alt og bliver no-op.
+  void (async () => {
+    try {
+      const updMod = await import('electron-updater')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const up = (updMod as any)?.autoUpdater ?? (updMod as any)?.default?.autoUpdater
+      if (!up) return
+      const { wireUpdater } = await import('./autoUpdate')
+      const api = wireUpdater(up, (ch, p) => mainWindow?.webContents.send(ch, p))
+      ipcMain.handle('update:download', () => api.download())
+      ipcMain.handle('update:install', () => api.installNow())
+      api.check()
+      setInterval(() => api.check(), 6 * 3_600_000)
+    } catch { /* dep/release-config mangler → no-op */ }
+  })()
 
   // Mikrofon-adgang til dikter-funktionen (getUserMedia i renderer). Vi
   // grant'er KUN 'media' (mic) — alt andet afvises. Uden dette afviser

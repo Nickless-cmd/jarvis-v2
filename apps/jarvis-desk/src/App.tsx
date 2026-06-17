@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
+import { UpdateCard } from './components/shell/UpdateCard'
 import { useSettings } from './hooks/useSettings'
 import { SessionProvider } from './contexts/SessionContext'
 import { StreamProvider } from './contexts/StreamContext'
@@ -55,10 +56,43 @@ export function App() {
             />
             <UiPanelWatcher config={cfg} setSurface={setSurface} />
             <AiTransparencyNotice />
+            <UpdateHost />
           </PanelProvider>
         </PermissionProvider>
       </StreamProvider>
     </SessionProvider>
+  )
+}
+
+interface UpdatesBridge {
+  onAvailable: (cb: (i: { version?: string }) => void) => () => void
+  onReady: (cb: (i: { version?: string }) => void) => () => void
+  download: () => Promise<void>
+  install: () => Promise<void>
+}
+function updatesBridge(): UpdatesBridge | undefined {
+  return (window as unknown as { jarvisDesk?: { updates?: UpdatesBridge } }).jarvisDesk?.updates
+}
+
+/** Lytter på app-opdaterings-events fra main og viser UpdateCard (§22.5). */
+function UpdateHost() {
+  const [upd, setUpd] = useState<{ version: string; phase: 'available' | 'ready' } | null>(null)
+  useEffect(() => {
+    const u = updatesBridge()
+    if (!u) return
+    const offA = u.onAvailable((i) => setUpd({ version: i.version ?? '', phase: 'available' }))
+    const offR = u.onReady((i) => setUpd({ version: i.version ?? '', phase: 'ready' }))
+    return () => { offA(); offR() }
+  }, [])
+  if (!upd) return null
+  return (
+    <UpdateCard
+      version={upd.version}
+      phase={upd.phase}
+      onUpdate={() => void updatesBridge()?.download()}
+      onInstall={() => void updatesBridge()?.install()}
+      onDismiss={() => setUpd(null)}
+    />
   )
 }
 

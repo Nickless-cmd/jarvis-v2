@@ -8341,6 +8341,27 @@ def _exec_gmail_list(args: dict[str, Any]) -> dict[str, Any]:
     return list_inbox(uid, max_results=args.get("max_results", 10))
 
 
+def _exec_gmail_send(args: dict[str, Any]) -> dict[str, Any]:
+    """Send mail på brugerens vegne — bag approval-kort (som operator-tools)."""
+    uid = _operator_user_id(args)
+    to = str(args.get("to") or "").strip()
+    subject = str(args.get("subject") or "")
+    body = str(args.get("body") or "")
+    if not to:
+        return {"status": "error", "error": "to_required"}
+    # Godkendelse via chat-card; godkendt genkald sætter _runtime_trust_all.
+    if not bool(args.get("_runtime_trust_all")):
+        preview = (body or "")[:200]
+        return {
+            "status": "approval_needed",
+            "tool_name": "gmail_send",
+            "message": f"Jarvis vil sende en mail til {to} med emnet \"{subject}\".",
+            "command": f"Til: {to} · Emne: {subject}\n\n{preview}",
+        }
+    from core.services.gmail_connector import send_message
+    return send_message(uid, to, subject, body)
+
+
 def _exec_calendar_list_events(args: dict[str, Any]) -> dict[str, Any]:
     """List kommende begivenheder i brugerens primære Google Calendar."""
     from core.services.google_connector import list_events
@@ -8380,6 +8401,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "github_list_prs": _exec_github_list_prs,
     "gmail_search": _exec_gmail_search,
     "gmail_list": _exec_gmail_list,
+    "gmail_send": _exec_gmail_send,
     "calendar_list_events": _exec_calendar_list_events,
     "drive_search": _exec_drive_search,
     "docs_read": _exec_docs_read,

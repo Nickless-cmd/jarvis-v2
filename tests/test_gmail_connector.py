@@ -68,6 +68,31 @@ def test_empty_query_rejected(monkeypatch):
     assert gc.search("bjorn", "   ")["error"] == "query_required"
 
 
+def test_send_message_ok(monkeypatch):
+    monkeypatch.setattr(gc, "get_fresh_token", lambda uid, prov: {"access_token": "tok"})
+    captured = {}
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        captured["url"] = url
+        captured["has_raw"] = "raw" in (json or {})
+        return _Resp(200, {"id": "sent123"})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    res = gc.send_message("bjorn", "ven@x.dk", "Hej", "Hvordan går det?")
+    assert res == {"status": "ok", "id": "sent123"}
+    assert captured["has_raw"] is True and captured["url"].endswith("/messages/send")
+
+
+def test_send_no_token(monkeypatch):
+    monkeypatch.setattr(gc, "get_fresh_token", lambda uid, prov: None)
+    assert gc.send_message("bjorn", "x@x.dk", "s", "b")["error"] == "gmail_not_connected"
+
+
+def test_send_requires_recipient(monkeypatch):
+    monkeypatch.setattr(gc, "get_fresh_token", lambda uid, prov: {"access_token": "tok"})
+    assert gc.send_message("bjorn", "", "s", "b")["error"] == "to_required"
+
+
 def test_max_results_clamped(monkeypatch):
     monkeypatch.setattr(gc, "get_fresh_token", lambda uid, prov: {"access_token": "tok"})
     seen = {}

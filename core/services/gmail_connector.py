@@ -38,6 +38,26 @@ GMAIL_CONNECTOR_TOOL_DEFINITIONS: list[dict] = [
     {
         "type": "function",
         "function": {
+            "name": "gmail_send",
+            "description": (
+                "Send en mail på brugerens vegne via deres EGEN forbundne Gmail. "
+                "KRÆVER brugerens godkendelse (approval-kort) før afsendelse — kald bare "
+                "værktøjet direkte, runtime håndterer godkendelsen. Kræver forbundet Gmail."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "to": {"type": "string", "description": "Modtagerens email-adresse"},
+                    "subject": {"type": "string", "description": "Emnelinje"},
+                    "body": {"type": "string", "description": "Mailens tekst (ren tekst)"},
+                },
+                "required": ["to", "subject", "body"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "gmail_list",
             "description": (
                 "List de nyeste mails i brugerens Gmail-indbakke via deres EGEN forbundne "

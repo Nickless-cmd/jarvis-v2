@@ -24,3 +24,23 @@ def test_commit_all_container_ok():
     assert res["status"] == "ok"
     assert res["sha"] == "abc1234"
     assert res["branch"] == "main"
+
+
+def test_commit_all_workstation_routes_uid():
+    seen = {}
+
+    def fake_exec(name, args):
+        seen["name"] = name
+        seen["args"] = args
+        cmd = args["command"]
+        if "rev-parse" in cmd:
+            return {"status": "ok", "result": {"stdout": "def5678\n", "exit_code": 0}}
+        if "branch --show-current" in cmd:
+            return {"status": "ok", "result": {"stdout": "feat/x\n", "exit_code": 0}}
+        return {"status": "ok", "result": {"stdout": "", "stderr": "", "exit_code": 0}}
+
+    with patch.object(git_actions, "_operator_exec", side_effect=fake_exec):
+        res = git_actions.commit_all_workstation("/home/u/proj", "u123", "msg")
+    assert res["status"] == "ok"
+    assert res["sha"] == "def5678"
+    assert seen["args"]["_user_id"] == "u123"

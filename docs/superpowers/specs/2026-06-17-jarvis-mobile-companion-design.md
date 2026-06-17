@@ -84,6 +84,60 @@ Reference apps: **Claude Android** (4.6★, 10M+ downloads, updated June 16 2026
 ### Vores fordel
 Jarvis Companion sender ALT direkte til Jarvis API på egen server — ingen tredjeparts AI-provider, ingen data deles med OpenAI/Anthropic/Google. Det er en compliance-fordel vi bør kommunikere tydeligt i appen.
 
+## Critical Self-Review — Gaps & Edge Cases (2026-06-17)
+
+### 📐 Structural Gaps
+
+1. **Minimum Android version** — Bestemmer hvilke API'er vi kan bruge: Bubbles API kræver Android 11+, Foreground Service + notification channel kræver Android 8+. Skal defineres før implementation.
+2. **APK-størrelsesbudget** — Brugere sletter apps over 100MB på mobildata. Hvad må appen fylde? Mål: <50MB initial download, <80MB efter brug.
+3. **Sprog/oversættelse** — Appen er dansk nu. Men internationale brugere senere? Alle tekster bør ligge i én i18n-fil fra starten, så oversættelse er plug-and-play.
+4. **Backup & restore** — Hvis brugeren skifter telefon, forsvinder alle chats? Sessioner skal kunne genskabes via token-genkendelse på serveren.
+
+### 🔐 Sikkerhed — Edge Cases
+
+5. **APK-signatur-verifikation ved auto-update** — Hvis appen auto-downloader fra GitHub og installerer, skal den verificere signaturen på den downloadede APK. Uden dette kan en MITM-server smide en malicious APK.
+6. **Secure storage korruption** — Hvis Android Keystore crasher, mister brugeren token. Der skal være et "genopret session"-flow så drafts ikke går tabt.
+7. **Concurrent sessions (samme token på 2 enheder)** — Hvis brugeren logger ind på to telefoner med samme token, kan streams collidere og beskeder duplikeres. Token-binding til device ID eller session-ID bør overvejes.
+8. **Rate limiting UI (HTTP 429)** — Når backend returnerer 429: specen siger "vis wait/retry". Men hvor længe? Hvad vises? Nedtælling? Skal være specifikt defineret.
+9. **Børneprivacy** — Hvis appen nogensinde bruges af mindreårige (fx Michelle), gælder COPPA og særlige GDPR-regler for børn. Skal vi overhovedet tillade børnekonti?
+
+### 📱 Android-specifikke tekniske huller
+
+10. **Adaptive icons** — Android kræver to lag (foreground + background) plus monokrom notification icon til Android 13+. Ikon-sættet skal indeholde alle tre varianter.
+11. **Bubbles API (Android 11+)** — Chatboblen bør bruge Androids native Bubbles API. Custom overlay views kan blokeres af Android 15+ og kræver SYSTEM_ALERT_WINDOW-permission.
+12. **Battery optimization exemptions** — Xiaomi, Huawei, OnePlus dræber foreground services aggressivt. Appen skal guide brugeren til at whiteliste den fra battery optimization.
+13. **Low-battery / Battery saver mode** — Hvad sker der med stream og baggrundskørsel når telefonen går i battery saver? Skal stream pauses? Skal notifikationer stadig komme igennem?
+14. **Split-screen / multi-window** — Android understøtter split-screen. Skal appen kunne køre i en halv skærm? Minimum: read-only mode i split-screen.
+
+### 🧪 Testing — Manglende testområder
+
+15. **Performance tests** — Memory leaks ved lang streaming, batteridræn, payload-size grænser (hvad sker der ved en 50K token besked?).
+16. **Tilgængelighed (accessibility)** — Liveness-animationer skal have reduced motion alternativ. Knapper: minimum 48dp touch-target. Screen reader (TalkBack) kompatibilitet.
+17. **Netværks-skift under stream** — WiFi → mobil data → VPN → flytilstand. Streamen skal overleve alle skift uden at duplikere beskeder.
+18. **Storage pressure** — Hvad sker når telefonen har <100MB fri plads? Skal appen advare? Rense cache?
+
+### 🎨 UX/UI — Manglende detaljer
+
+19. **Onboarding / first-launch experience** — Første gang appen åbnes: hvad ser brugeren? Velkomstskærm? Token-input? QR-scan vejledning? Dette er kritisk for førstehåndsindtryk.
+20. **Light mode** — Specen siger "dark base". Men hvad med brugere der foretrækker light mode? Minimum: følg systemets dark mode-indstilling.
+21. **Emoji picker** — Standard på mobil. Skal appen have sin egen eller stole på systemets? Brug systemets — mindre vedligehold, mere genkendeligt.
+22. **Link previews** — Når et link indsættes i chatten, skal det generere en preview? Claude og ChatGPT gør begge dette.
+23. **Send on Enter vs. Send on button** — Bør være indstilleligt. Nogle brugere vil have Enter = new line, andre Enter = send.
+24. **Max message length** — Hvad er grænsen for én besked? 10K tegn? 100K? Hvad sker når den overskrides? Skal defineres.
+
+### 📦 Roadmap — Manglende faser
+
+25. **Android Widgets (hjemmeskærm)** — Brugere forventer at kunne sætte en widget på startskærmen: "Hvad siger Jarvis?" — vis seneste besked eller status.
+26. **Tablet-layout** — Appen vil se strukket ud på en tablet uden adaptive layouts. Brugere med tablets bør få et optimeret layout (flere paneler, split view).
+27. **Wear OS** — Notifikationsspejl til smartwatch. Nice-to-have, men værd at notere i roadmap.
+28. **Data-eksport** — GDPR-retten til at downloade sine data. Hvor? Hvordan? Skal være i Settings -> Data.
+
+### 📝 Formattering & dokumentation
+
+29. **Versionsstempel & changelog** — Specen er dateret 2026-06-17 men revideres over flere dage. Bør have en changelog-sektion med dato og ændring for hver revision.
+30. **Mermaid dataflow — mangler fejl-stier** — Dataflow diagrammet viser happy path. Mangler: hvad sker der når token er udløbet midt i en stream? Når API er nede? Når upload fejler?
+31. **App permissions tabel** — Appen skal bruge: kamera, mikrofon, notifikationer, overlay (Bubbles), storage. Der bør være en oversigt over hvilke permissions, hvornår de anmodes, og hvorfor (privacy-first).
+
 ## Product Position
 
 Jarvis-desk remains the rich desktop/admin surface. Jarvis Mobile is a direct HTTPS client for the Jarvis API, not a LAN client and not a bridge through the desktop app.

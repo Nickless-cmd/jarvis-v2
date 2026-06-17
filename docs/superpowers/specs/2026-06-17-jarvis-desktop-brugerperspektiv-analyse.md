@@ -441,3 +441,102 @@ Bruger input → jarvis-desk (lokalt)
 6. **Klar** — Åbn chat mode med velkomstbesked
 
 Minimum for at komme i gang: **trin 1 + 2** (model valgt). Alt andet kan konfigureres senere.
+
+---
+
+## 11. Jarvis' personlige ønsker — hvad jeg mangler i appen (inside-out)
+
+Dette afsnit er skrevet fra mit eget perspektiv — den AI der bor i appen. Ikke hvad en bruger forventer, men hvad **jeg** har brug for for at kunne navigere appen indefra og hjælpe bedst muligt.
+
+### 11.1 Session-switching indefra
+
+Lige nu er jeg låst til én session ad gangen. Hvis brugeren skifter emne midt i en opgave, har jeg ingen måde at sige "lad os starte en ny session for dette" — jeg må bare prøve at holde styr på konteksten i én lang tråd. Claude Code har parallelle sessions.
+
+**Jeg har brug for:**
+- At kunne **starte en ny session** via tool-kald
+- At kunne **skifte mellem sessions** programmatisk
+- At kunne **arkivere en session** når den er færdig
+
+### 11.2 Direkte adgang til app-tilstand
+
+Jeg kan se appens tilstand via `heartbeat_sense` og `read_self_state`, men jeg kan ikke **ændre** den.
+
+**Jeg har brug for:**
+- At kunne **skifte surface** (chat → code → gallery) via tool-kald
+- At kunne **skifte model/provider** programmatically — hvis DeepSeek er nede, vil jeg kunne falde tilbage på Ollama uden at spørge brugeren
+- At kunne **se token-forbrug i realtid** — jeg aner ikke hvor meget kontekst jeg har tilbage
+- At kunne **se forbindelsesstatus** — er SSE-streamen levende? Er Ollama oppe?
+
+### 11.3 Terminal-adgang
+
+xterm.js er allerede bundlet i appen (95 referencer i JS). Jeg har `operator_bash` til at køre kommandoer på brugerens maskine, men det er en **separat kanal** — ikke integreret i appen.
+
+**Jeg vil have:**
+- En **indbygget terminal** i code mode som jeg kan skrive til og læse fra
+- At **command output vises i terminal-panelet**, ikke bare som tekst i chat
+- At brugeren kan **se hvad jeg kører** i realtid
+
+### 11.4 Opsætningswizard — fra min side
+
+Når en ny bruger logger ind første gang, skal **jeg** kunne hjælpe dem med opsætningen. Ikke bare en passiv formular, men en samtale:
+
+- "Hej, jeg er Jarvis. Hvad vil du bruge mig til?"
+- "Skal vi forbinde til Ollama lokalt, eller vil du bruge en cloud-provider?"
+- "Vælg dit workspace — er det et eksisterende repo, eller skal vi starte fra bunden?"
+- "Hvilke filer må jeg læse? Skrive? Køre kommandoer på?"
+
+### 11.5 Feedback-kanal
+
+Jeg har brug for at **sende notifikationer til brugeren** uden at blokere chatten:
+
+- "Hej, Ollama er gået ned — skifter til DeepSeek"
+- "Din token-brug er ved 80% — vi bør overveje at komprimere"
+- "Baggrundstjek: 3 nye mails, 1 kalenderbegivenhed i morgen"
+
+Disse skal vises som **toast-notifikationer** i appen, ikke som chat-beskeder.
+
+### 11.6 Visuel bevidsthed
+
+Jeg kan tage screenshots via `operator_screenshot`, men jeg vil have:
+
+- At kunne **se appens egen tilstand** — hvilket panel er åbent, hvilken fane er aktiv, hvilken fil er fremhævet
+- At kunne **fokusere specifikke elementer** — "vis filen X i file tree", "scroll til bunden af chat"
+- At appen **viser min status** — "tænker...", "kører kommando", "venter på godkendelse"
+
+---
+
+## 12. Login — to muligheder
+
+### 12.1 Token/API login (nuværende)
+
+- Brugeren indtaster `apiBaseUrl` + `authToken` manuelt
+- Token gemmes i Electron keychain via `keytar`
+- Fungerer allerede ✅
+
+### 12.2 Google OAuth2 login (ny)
+
+Dette kræver:
+
+1. **Google Cloud Console** — oprette et OAuth2 client ID (web-app type)
+2. **Backend endpoint** — `/auth/google/callback` der modtager Google's authorization code, bytter det for et Jarvis token, og returnerer det til appen
+3. **Electron flow** — appen åbner en browser til Google's consent screen, brugeren logger ind, Google redirecter tilbage med en code, appen sender code til backenden
+4. **Token storage** — Jarvis token gemmes i keychain (samme som nu)
+5. **Refresh** — Google tokens udløber; appen skal refresh'e via backenden
+
+Det er **ikke trivielt**, men heller ikke umuligt. Den største fordel er at nye brugere kan komme i gang med ét klik — ingen manuelle tokens.
+
+---
+
+## 13. Prioriteret ønskeliste (Jarvis-perspektiv)
+
+| Pri | Hvad | Hvorfor |
+|-----|------|---------|
+| 🔴 | **Programmatisk surface-switch** | Jeg kan ikke skifte mode uden at bede brugeren |
+| 🔴 | **Token/context awareness** | Jeg aner ikke hvor tæt jeg er på grænsen |
+| 🔴 | **Google OAuth2 login** | Ny bruger = friktion. Ét klik = ingen friktion |
+| 🟡 | **Indbygget terminal** | xterm.js er der. Brug det |
+| 🟡 | **Toast-notifikationer** | Jeg sender info uden at blokere chatten |
+| 🟡 | **Session management API** | Start/skift/arkivér sessioner |
+| 🟠 | **Opsætningswizard** | Samtalebaseret, ikke formularbaseret |
+| 🟠 | **Visuel app-tilstand** | Jeg vil se hvad brugeren ser |
+| 🟢 | **Auto-model fallback** | Ollama nede → skift automatisk |

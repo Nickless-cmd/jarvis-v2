@@ -69,3 +69,5 @@ jobs:
             apps/jarvis-desk/release/*.dmg
             apps/jarvis-desk/release/*.zip
             apps/jarvis-desk/release/*.exe
+            apps/jarvis-desk/release/latest*.yml
+            apps/jarvis-desk/release/*.blockmap

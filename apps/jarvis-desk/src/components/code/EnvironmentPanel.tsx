@@ -27,6 +27,7 @@ export function EnvironmentPanel({
   config, kind, root, refreshKey = 0,
   working, workingStep, tokens, blocks = [], sessionId, hasHistory = false,
   isOwner = false, onChanged,
+  gitMissing = false, installingTool = '', onInstallTool,
 }: {
   config?: ApiConfig
   kind: 'container' | 'workstation'
@@ -40,6 +41,9 @@ export function EnvironmentPanel({
   hasHistory?: boolean
   isOwner?: boolean
   onChanged?: () => void
+  gitMissing?: boolean
+  installingTool?: string
+  onInstallTool?: (tool: string) => void
 }) {
   const [git, setGit] = useState<GitStatus | null>(null)
   const [collapsed, setCollapsed] = useState(false)
@@ -123,6 +127,14 @@ export function EnvironmentPanel({
       {!collapsed && (
         <>
           <ul className="env-rows">
+            {gitMissing && kind === 'workstation' && (
+              <li className="env-row env-action">
+                <button type="button" className="env-actbtn" disabled={installingTool === 'git'}
+                  onClick={() => onInstallTool?.('git')}>
+                  <GitCompare size={13} /> {installingTool === 'git' ? 'Installerer git…' : 'git mangler — installér'}
+                </button>
+              </li>
+            )}
             {git?.is_git && git.dirty > 0 && (
               <li className="env-row">
                 <span className="env-label"><GitCompare size={13} /> Ændringer</span>

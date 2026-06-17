@@ -85,6 +85,32 @@ export function CodeView({
   }, [])
   const envWide = winW >= 1180 // proxy for "fuld skærm / bredt nok til ikke at overlappe"
   const envOpen = (envManual ?? envWide)
+
+  // Dependency-gate: er git til stede på maskinen? (Electron deps-bro; web → antag ja.)
+  const [gitMissing, setGitMissing] = useState(false)
+  const [installingTool, setInstallingTool] = useState('')
+  const depsBridge = () =>
+    (window as unknown as { jarvisDesk?: { deps?: {
+      detect: () => Promise<{ tool: string; present: boolean }[]>
+      install: (t: string) => Promise<{ ok: boolean }>
+    } } }).jarvisDesk?.deps
+  useEffect(() => {
+    const d = depsBridge()
+    if (!d) return
+    let cancelled = false
+    void d.detect().then((tools) => {
+      const git = tools.find((t) => t.tool === 'git')
+      if (!cancelled && git) setGitMissing(!git.present)
+    }).catch(() => { /* ignore */ })
+    return () => { cancelled = true }
+  }, [])
+  const onInstallTool = (tool: string) => {
+    const d = depsBridge()
+    if (!d || installingTool) return
+    setInstallingTool(tool)
+    void d.install(tool).then((r) => { if (r.ok && tool === 'git') setGitMissing(false) })
+      .finally(() => setInstallingTool(''))
+  }
   // Trækbar bredde på hele fil-/preview-panelet (mod venstre). Bredere default
   // end før (380→460) så preview-ruden ikke er knald-smal.
   const codePanelW = useResizableWidth({
@@ -427,6 +453,9 @@ export function CodeView({
             hasHistory={visibleMessages.length > 0}
             isOwner={isOwner}
             onChanged={() => setGitRefresh((n) => n + 1)}
+            gitMissing={gitMissing}
+            installingTool={installingTool}
+            onInstallTool={onInstallTool}
           />
         )}
         {trustBanner}

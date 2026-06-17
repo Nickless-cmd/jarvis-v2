@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown } from 'lucide-react'
+import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown, Gauge } from 'lucide-react'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
 import { useSettings } from '../hooks/useSettings'
@@ -74,6 +74,17 @@ export function CodeView({
   const [trusted, setTrusted] = useState<boolean | null>(null)
   const [compactAt, setCompactAt] = useState(0)
   const [gitRefresh, setGitRefresh] = useState(0) // bumpes når et run slutter → GitChip gen-henter
+  // Miljø-felt: toggle som panel-ikonerne. null = auto (vis ved fuld skærm / bredt
+  // vindue, skjul når smalt så det ikke dækker chatten). Bruger kan overstyre.
+  const [envManual, setEnvManual] = useState<boolean | null>(null)
+  const [winW, setWinW] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1920)
+  useEffect(() => {
+    const onResize = () => setWinW(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const envWide = winW >= 1180 // proxy for "fuld skærm / bredt nok til ikke at overlappe"
+  const envOpen = (envManual ?? envWide)
   // Trækbar bredde på hele fil-/preview-panelet (mod venstre). Bredere default
   // end før (380→460) så preview-ruden ikke er knald-smal.
   const codePanelW = useResizableWidth({
@@ -331,6 +342,14 @@ export function CodeView({
       {config && <ConnectionPill config={config} />}
       <button
         type="button"
+        className={`panel-toggle ${envOpen ? 'active' : ''}`}
+        aria-label="Vis/skjul miljø-felt" title="Miljø"
+        onClick={() => setEnvManual(!(envManual ?? envWide))}
+      >
+        <Gauge size={16} />
+      </button>
+      <button
+        type="button"
         className={`panel-toggle ${filesOpen ? 'active' : ''}`}
         aria-label="Vis/skjul fil-træ" title="Filer"
         onClick={() => setFilesOpen((o) => !o)}
@@ -394,7 +413,7 @@ export function CodeView({
     <div className="codeview">
       <div className="codeview-main">
         {headerActive}
-        {config && !filesOpen && !panel.open && (
+        {config && envOpen && !filesOpen && !panel.open && (
           <EnvironmentPanel
             config={config}
             kind={kind}

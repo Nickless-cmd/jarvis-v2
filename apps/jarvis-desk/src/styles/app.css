@@ -1779,3 +1779,10 @@
 .setup-google:disabled { opacity: .6; cursor: default; }
 .setup-google-msg { font-size: 12px; color: var(--fg-3, var(--fg)); margin: 4px 0 0; }
 .setup-or { font-size: 11px; color: var(--fg-3, var(--fg)); text-align: center; margin: 12px 0 4px; opacity: .8; }
+
+/* ── Account: forbind Google-konto ── */
+.account-google { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.account-google-btn { background: #fff; color: #1f1f1f; border: 1px solid var(--line); border-radius: 8px; padding: 6px 14px; font-weight: 600; cursor: pointer; }
+.account-google-btn:disabled { opacity: .6; cursor: default; }
+.account-google-hint { font-size: 12px; color: var(--fg-3, var(--fg)); margin: 6px 0 0; }
+.account-google-msg { font-size: 12px; color: var(--accent); margin: 4px 0 0; }

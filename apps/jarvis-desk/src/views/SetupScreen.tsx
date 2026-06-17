@@ -1,18 +1,19 @@
 import { useRef, useState } from 'react'
 import { googleLoginStart, googleLoginResult } from '../lib/api'
 
-const DEFAULT_API_URL = 'https://api.srvlab.dk/'
+// Produktions-backend er HARDCODED — ingen server-URL i login-skærmen (Bjørn
+// 2026-06-17). Vil man ramme en anden instans sættes det via config/env, ikke i UI.
+const API_URL = 'https://api.srvlab.dk/'
 
 function openBrowser(url: string): void {
   const b = (window as unknown as { jarvisDesk?: { openExternal?: (u: string) => Promise<void> } }).jarvisDesk
   void b?.openExternal?.(url)
 }
 
-/** Første-gangs setup: log ind med Google ELLER server-URL + token (§12).
- *  Google-login henter Jarvis-tokenet automatisk fra serveren for en forud-
- *  oprettet konto; ingen self-service. Token-feltet er altid tilgængeligt. */
+/** Første-gangs login: Google ELLER token (§12). Google-login henter Jarvis-
+ *  tokenet automatisk fra serveren for en forud-oprettet konto. Server-URL er
+ *  hardcoded — kun login-metode vælges her. */
 export function SetupScreen({ onSave }: { onSave: (cfg: { apiBaseUrl: string; authToken: string }) => void }) {
-  const [url, setUrl] = useState('')
   const [token, setToken] = useState('')
   const [googleBusy, setGoogleBusy] = useState(false)
   const [googleMsg, setGoogleMsg] = useState('')
@@ -20,23 +21,21 @@ export function SetupScreen({ onSave }: { onSave: (cfg: { apiBaseUrl: string; au
 
   const loginWithGoogle = async () => {
     if (googleBusy) return
-    const apiBaseUrl = url.trim() || DEFAULT_API_URL
     setGoogleBusy(true); setGoogleMsg('Åbner Google…'); cancelRef.current = false
     try {
-      const start = await googleLoginStart(apiBaseUrl)
+      const start = await googleLoginStart(API_URL)
       if (!start.authorize_url || !start.nonce) {
         setGoogleMsg('Google-login er ikke konfigureret på serveren.'); setGoogleBusy(false); return
       }
       openBrowser(start.authorize_url)
       setGoogleMsg('Log ind i browseren — venter…')
       const nonce = start.nonce
-      // Poll resultatet i op til ~2,5 min.
       for (let i = 0; i < 75 && !cancelRef.current; i++) {
         await new Promise((r) => setTimeout(r, 2000))
-        const res = await googleLoginResult(apiBaseUrl, nonce)
+        const res = await googleLoginResult(API_URL, nonce)
           .catch((): Awaited<ReturnType<typeof googleLoginResult>> => ({ status: 'pending' }))
         if (res.status === 'ok' && res.token) {
-          onSave({ apiBaseUrl, authToken: res.token })
+          onSave({ apiBaseUrl: API_URL, authToken: res.token })
           return
         }
         if (res.status === 'error') {
@@ -54,11 +53,7 @@ export function SetupScreen({ onSave }: { onSave: (cfg: { apiBaseUrl: string; au
 
   return (
     <div className="setup">
-      <h1>Forbind til Jarvis</h1>
-      <label>
-        Server-URL
-        <input aria-label="server" value={url} onChange={(e) => setUrl(e.target.value)} placeholder={DEFAULT_API_URL} />
-      </label>
+      <h1>Log ind på Jarvis</h1>
 
       <button type="button" className="setup-google" onClick={loginWithGoogle} disabled={googleBusy}>
         {googleBusy ? 'Forbinder…' : 'Log ind med Google'}
@@ -70,7 +65,7 @@ export function SetupScreen({ onSave }: { onSave: (cfg: { apiBaseUrl: string; au
         Token
         <input aria-label="token" type="password" value={token} onChange={(e) => setToken(e.target.value)} />
       </label>
-      <button type="button" onClick={() => onSave({ apiBaseUrl: url.trim() || DEFAULT_API_URL, authToken: token.trim() })}>
+      <button type="button" onClick={() => onSave({ apiBaseUrl: API_URL, authToken: token.trim() })}>
         Forbind
       </button>
     </div>

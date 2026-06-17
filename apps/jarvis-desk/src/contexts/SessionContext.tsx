@@ -50,18 +50,12 @@ export function SessionProvider({
   // re-kalder select for en session vi allerede har — fx en netop oprettet.
   const loadedRef = useRef<string | null>(null)
 
-  // Init: hent session-liste, og gendan sidst-valgte samtale efter reload
-  // (activeId persisteres i localStorage). Stream kan ikke genoptages (R1),
-  // men den valgte samtale + dens beskeder kommer tilbage.
-  const restoredRef = useRef(false)
+  // Init: hent KUN session-listen (til sidebar). Gendan IKKE sidst-valgte samtale
+  // — appen lander altid på greeting-skærmen ved opstart/genstart (Bjørn 17. jun:
+  // "det ser mere seriøst ud man starter på greetings screen"). De gamle samtaler
+  // er stadig tilgængelige ved at klikke dem i sidebaren.
   useEffect(() => {
-    void loadSessions().then((list) => {
-      if (restoredRef.current) return
-      restoredRef.current = true
-      let savedId: string | null = null
-      try { savedId = localStorage.getItem('jarvis-desk:activeSession') } catch { /* ignore */ }
-      if (savedId && list.some((s) => s.id === savedId)) selectRef.current?.(savedId)
-    })
+    void loadSessions()
   }, [loadSessions])
 
   const select = useCallback((id: string) => {
@@ -79,8 +73,6 @@ export function SessionProvider({
       .then(({ messages: server }) => setMessages((prev) => mergeServer(prev, server)))
       .finally(() => setLoading(false))
   }, [config])
-  const selectRef = useRef(select)
-  selectRef.current = select
 
   const refresh = useCallback(async () => {
     if (!activeId) return

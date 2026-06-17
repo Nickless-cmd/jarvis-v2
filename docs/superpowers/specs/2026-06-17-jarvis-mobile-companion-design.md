@@ -158,6 +158,49 @@ The mobile app owns:
 - push notifications
 - mobile-safe status
 
+## Proactive Channels & Device Awareness
+
+### Companion som proaktiv kanal
+Companion-appen er **ikke bare en chat-app** — den er en **proaktiv kanal på linje med Discord, Telegram og ntfy**. Det betyder:
+
+- Jarvis kan **sende notifikationer proaktivt** — ikke kun som svar på brugerens besked, men når noget kræver opmærksomhed (approval requests, completed runs, vigtige events)
+- Notifikationer kan indeholde **handlingsmuligheder** — godkend/afvis, åbn run, svar direkte fra notifikationen
+- Brugeren kan **stole på** at kanalen altid er åben — ingen tredjepart mellem Jarvis og brugeren
+- Companion-appen er **Jarvis' egen kanal** — ikke en gæst i en anden platform
+
+### Source awareness
+Jeg skal **altid vide hvilken kanal du skriver fra** — og tilpasse mit svar derefter:
+
+- **Discord** — sin egen session, kortere svar, chat-format, ingen rige blocks
+- **Webchat** — desktop-orienteret, fuld rendering, adgang til Mission Control
+- **Desktop-app (Jarvis-desk)** — rigeste oplevelse, code mode, fil-træ, terminal
+- **Mobil (Companion)** — kortere svar, mobil-optimerede blocks, voice-first muligt
+
+Kanalen er **ikke en del af sessionen** — sessionen er samtalen, kanalen er overfladen. Jeg fortsætter samme samtale uanset kanal, men jeg ved hvor du er og tilpasser formatet.
+
+### Discord er sin egen session-kanal
+Discord er **ikke det samme som desktop eller mobil**. Discord er én kanal blandt flere:
+
+- Discord-sessioner har deres eget ID og kontekst
+- Discord har begrænsninger (2000 tegn, ingen rich blocks, ingen code mode)
+- Discord er **en gateway**, ikke hjemmet
+- Companion-appen og desktop-appen er **Jarvis' egne kanaler** — Discord er gæst
+
+Når brugeren skriver fra Discord, ved jeg det. Når brugeren skriver fra companion-appen, ved jeg det. Samme samtale, forskellig overflade.
+
+### Intelligent device awareness
+Runtime skal kunne:
+
+1. **Registrere om desktop er online** — via WebSocket heartbeat, ping-interval, eller device registry
+2. **Registrere om mobil er online** — via FCM token + sidst-set tidsstempel
+3. **Route notifikationer intelligent**:
+   - Desktop tændt + mobil ude → notifikation på mobil
+   - Desktop tændt + mobil hjemme → notifikation på desktop (eller begge)
+   - Desktop slukket → altid mobil
+   - Begge offline → kø til næste online-enhed
+4. **Vise mig hvor brugeren er** — så jeg kan sige "jeg kan se du er ude" eller "velkommen hjem"
+5. **Understøtte handling på tværs** — mobil anmoder om handling → desktop udfører → mobil får resultat
+
 ## Confirmed Constraints
 
 - Default API base URL: `https://api.srvlab.dk/`

@@ -21,7 +21,7 @@ function AppBody() {
   }
 
   return (
-    <SessionProvider key={config.authToken}>
+    <SessionProvider key={JSON.stringify([config.apiBaseUrl, config.authToken])}>
       <View style={styles.center}>
         <Text style={styles.title}>Jarvis chat klar</Text>
       </View>

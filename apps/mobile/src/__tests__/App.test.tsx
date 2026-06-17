@@ -92,3 +92,54 @@ it('remounts session state when the auth token changes', async () => {
   await waitFor(() => expect(screen.queryByText('session-provider-1')).toBeNull())
   expect(screen.getByText('session-provider-2')).toBeTruthy()
 })
+
+it('remounts session state when the api base url changes', async () => {
+  mockAuthState = {
+    config: {
+      apiBaseUrl: 'https://api-a.srvlab.dk/',
+      authToken: 'token-a'
+    },
+    loading: false
+  }
+
+  const screen = await render(<App />)
+
+  expect(screen.getByText('session-provider-1')).toBeTruthy()
+
+  mockAuthState = {
+    config: {
+      apiBaseUrl: 'https://api-b.srvlab.dk/',
+      authToken: 'token-a'
+    },
+    loading: false
+  }
+
+  screen.rerender(<App />)
+
+  await waitFor(() => expect(screen.queryByText('session-provider-1')).toBeNull())
+  expect(screen.getByText('session-provider-2')).toBeTruthy()
+})
+
+it('shows login again when the user signs out', async () => {
+  mockAuthState = {
+    config: {
+      apiBaseUrl: 'https://api.srvlab.dk/',
+      authToken: 'token-a'
+    },
+    loading: false
+  }
+
+  const screen = await render(<App />)
+
+  expect(screen.getByText('session-provider-1')).toBeTruthy()
+
+  mockAuthState = {
+    config: null,
+    loading: false
+  }
+
+  screen.rerender(<App />)
+
+  await waitFor(() => expect(screen.queryByText('session-provider-1')).toBeNull())
+  expect(screen.getByText('Login screen')).toBeTruthy()
+})

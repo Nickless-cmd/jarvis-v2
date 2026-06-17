@@ -28,6 +28,7 @@ jarvis.db
 .agents/
 .codex/
 .worktrees/
+apps/mobile/.expo/
 
 
 # Anthropic-compat API key registry — scrub of secret leaked in a1f1f9ee (2026-05-06)

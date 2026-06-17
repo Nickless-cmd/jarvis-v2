@@ -3,7 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true
+    "noImplicitOverride": true,
+    "types": ["jest", "node"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

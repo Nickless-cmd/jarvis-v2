@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Check, X, Loader } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
-import { lineDiff } from '../../lib/diff'
 import { lookupTool } from '../../lib/toolRegistry'
 import { diffStat } from '../../lib/diffStat'
+import { DiffView } from './DiffView'
 
 /** Density-aware, værktøjs-specifik tool-kald-visning (Claude Desktop-stil).
  *  bash → terminal-blok, write/edit → fil-header + diff, read/glob/grep → kompakt.
@@ -91,17 +91,8 @@ function renderBody(fam: Fam, args: Record<string, unknown>, result?: string) {
     const oldS = String(args.old_string ?? args.old ?? '')
     const newS = String(args.new_string ?? args.new ?? '')
     if (oldS || newS) {
-      const diff = lineDiff(oldS, newS)
-      const add = diff.filter((d) => d.type === 'add').length
-      const del = diff.filter((d) => d.type === 'del').length
-      return (
-        <div className="tc-diff">
-          <div className="tc-diff-stat"><span className="git-add">+{add}</span> <span className="git-del">−{del}</span></div>
-          <pre className="tc-diff-body">{diff.map((d, i) => (
-            <div key={i} className={`tc-diff-line ${d.type}`}>{d.type === 'add' ? '+' : d.type === 'del' ? '−' : ' '} {d.text}</div>
-          ))}</pre>
-        </div>
-      )
+      const file = String(args.file_path ?? args.path ?? '') || undefined
+      return <DiffView oldText={oldS} newText={newS} filename={file} />
     }
   }
   if (fam === 'write') {

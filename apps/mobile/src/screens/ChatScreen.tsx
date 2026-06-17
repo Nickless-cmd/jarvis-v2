@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
 import { ConnectionPill } from '../components/ConnectionPill'
@@ -19,6 +21,12 @@ export function ChatScreen() {
   const stream = useStream()
   const [panelOpen, setPanelOpen] = useState(false)
   const [displayName, setDisplayName] = useState('Jarvis')
+  const keyboardHeight = useKeyboardHeight()
+  const insets = useSafeAreaInsets()
+  // Løft composeren præcis op til tastaturets top. Roden ligger i en
+  // SafeAreaView der allerede padder insets.bottom (navigationslinje), så
+  // vi trækker den fra for ikke at efterlade et hul.
+  const liftPadding = keyboardHeight > 0 ? Math.max(keyboardHeight - insets.bottom, 0) : 0
 
   useEffect(() => {
     if (!config) return
@@ -66,10 +74,7 @@ export function ChatScreen() {
         <ConnectionPill label={stream.state.status} />
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <View style={[styles.flex, { paddingBottom: liftPadding }]}>
         <MessageList messages={sessions.messages} blocks={stream.state.blocks} />
         {canRetry ? (
           <ErrorBanner
@@ -92,7 +97,7 @@ export function ChatScreen() {
           onSend={ensureSessionAndSend}
           onStop={() => (config ? stream.stop(config) : undefined)}
         />
-      </KeyboardAvoidingView>
+      </View>
 
       {config ? (
         <SidePanel

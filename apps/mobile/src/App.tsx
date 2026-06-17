@@ -1,8 +1,10 @@
-import { ActivityIndicator, StatusBar, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { ChatScreen } from './screens/ChatScreen'
 import { LoginScreen } from './screens/LoginScreen'
 import { AuthProvider, useAuth } from './state/AuthContext'
 import { SessionProvider } from './state/SessionContext'
+import { StreamProvider } from './state/StreamContext'
 import { tokens } from './theme/tokens'
 
 function AppBody() {
@@ -22,9 +24,9 @@ function AppBody() {
 
   return (
     <SessionProvider key={JSON.stringify([config.apiBaseUrl, config.authToken])}>
-      <View style={styles.center}>
-        <Text style={styles.title}>Jarvis chat klar</Text>
-      </View>
+      <StreamProvider>
+        <ChatScreen />
+      </StreamProvider>
     </SessionProvider>
   )
 }
@@ -49,10 +51,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center'
-  },
-  title: {
-    color: tokens.color.fg1,
-    fontSize: 20,
-    fontWeight: '700'
   }
 })

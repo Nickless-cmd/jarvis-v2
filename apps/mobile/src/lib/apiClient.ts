@@ -120,3 +120,9 @@ export async function getSession(
     messages: raw.session.messages ?? []
   }
 }
+
+export async function cancelRun(config: ApiConfig, runId: string): Promise<void> {
+  await apiFetch(config, `/chat/runs/${encodeURIComponent(runId)}/cancel`, {
+    method: 'POST'
+  })
+}

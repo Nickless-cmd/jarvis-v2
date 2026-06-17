@@ -47,9 +47,35 @@ jest.mock('../state/SessionContext', () => {
         ReactLib.createElement(Text, null, `session-provider-${instance}`),
         children
       )
-    }
+    },
+    useSessions: () => ({
+      appendLocalMessage: jest.fn()
+    })
   }
 })
+
+jest.mock('../state/StreamContext', () => {
+  const ReactLib = jest.requireActual('react')
+  const { Text } = jest.requireActual('react-native')
+
+  return {
+    StreamProvider: ({ children }: { children: React.ReactNode }) =>
+      ReactLib.createElement(
+        ReactLib.Fragment,
+        null,
+        ReactLib.createElement(Text, null, 'stream-provider'),
+        children
+      )
+  }
+})
+
+jest.mock('../screens/ChatScreen', () => ({
+  ChatScreen: () => {
+    const ReactLib = jest.requireActual('react')
+    const { Text } = jest.requireActual('react-native')
+    return ReactLib.createElement(Text, null, 'Chat screen')
+  }
+}))
 
 beforeEach(() => {
   mockAuthState = {

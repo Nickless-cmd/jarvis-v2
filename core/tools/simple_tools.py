@@ -8394,6 +8394,69 @@ def _exec_slides_read(args: dict[str, Any]) -> dict[str, Any]:
     return slides_read(_operator_user_id(args), str(args.get("presentation_id") or "").strip())
 
 
+def _exec_calendar_create_event(args: dict[str, Any]) -> dict[str, Any]:
+    """Opret kalender-aftale — bag approval-kort."""
+    summary = str(args.get("summary") or "").strip()
+    start = str(args.get("start") or "").strip()
+    if not summary:
+        return {"status": "error", "error": "summary_required"}
+    if not start:
+        return {"status": "error", "error": "start_required"}
+    if not bool(args.get("_runtime_trust_all")):
+        return {
+            "status": "approval_needed",
+            "tool_name": "calendar_create_event",
+            "message": f"Jarvis vil oprette en kalender-aftale: \"{summary}\" ({start}).",
+            "command": f"{summary} · {start}",
+        }
+    from core.services.google_connector import create_event
+    return create_event(_operator_user_id(args), summary, start,
+                        end=str(args.get("end") or ""),
+                        description=str(args.get("description") or ""),
+                        location=str(args.get("location") or ""))
+
+
+def _exec_docs_append(args: dict[str, Any]) -> dict[str, Any]:
+    """Tilføj tekst til et Google-dokument — bag approval-kort."""
+    document_id = str(args.get("document_id") or "").strip()
+    text = str(args.get("text") or "")
+    if not document_id:
+        return {"status": "error", "error": "document_id_required"}
+    if not text:
+        return {"status": "error", "error": "text_required"}
+    if not bool(args.get("_runtime_trust_all")):
+        return {
+            "status": "approval_needed",
+            "tool_name": "docs_append",
+            "message": f"Jarvis vil tilføje tekst til et Google-dokument ({document_id}).",
+            "command": f"Doc {document_id}\n\n{text[:200]}",
+        }
+    from core.services.google_connector import append_doc
+    return append_doc(_operator_user_id(args), document_id, text)
+
+
+def _exec_sheets_write(args: dict[str, Any]) -> dict[str, Any]:
+    """Skriv celler i et Google Sheets-regneark — bag approval-kort."""
+    spreadsheet_id = str(args.get("spreadsheet_id") or "").strip()
+    cell_range = str(args.get("range") or "").strip()
+    values = args.get("values")
+    if not spreadsheet_id:
+        return {"status": "error", "error": "spreadsheet_id_required"}
+    if not cell_range:
+        return {"status": "error", "error": "range_required"}
+    if not isinstance(values, list) or not values:
+        return {"status": "error", "error": "values_required"}
+    if not bool(args.get("_runtime_trust_all")):
+        return {
+            "status": "approval_needed",
+            "tool_name": "sheets_write",
+            "message": f"Jarvis vil skrive {len(values)} række(r) i et regneark ({cell_range}).",
+            "command": f"Sheet {spreadsheet_id} · {cell_range} · {len(values)} rækker",
+        }
+    from core.services.google_connector import write_sheet
+    return write_sheet(_operator_user_id(args), spreadsheet_id, cell_range, values)
+
+
 _TOOL_HANDLERS: dict[str, Any] = {
     "read_tool_result": _exec_read_tool_result,
     "read_self_docs": _exec_read_self_docs,
@@ -8407,6 +8470,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "docs_read": _exec_docs_read,
     "sheets_read": _exec_sheets_read,
     "slides_read": _exec_slides_read,
+    "calendar_create_event": _exec_calendar_create_event,
+    "docs_append": _exec_docs_append,
+    "sheets_write": _exec_sheets_write,
     "read_file": _exec_read_file,
     "operator_read_file": _exec_operator_read_file,
     "operator_write_file": _exec_operator_write_file,

@@ -101,6 +101,67 @@ GOOGLE_CONNECTOR_TOOL_DEFINITIONS: list[dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "calendar_create_event",
+            "description": (
+                "Opret en begivenhed i brugerens primære Google Calendar. KRÆVER brugerens "
+                "godkendelse (approval-kort) — kald bare værktøjet direkte. start/end = ISO-8601 "
+                "(fx '2026-06-18T09:00:00+02:00'); udelades end sættes den til start +1 time."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "summary": {"type": "string", "description": "Titel på aftalen"},
+                    "start": {"type": "string", "description": "Start, ISO-8601 med tidszone"},
+                    "end": {"type": "string", "description": "Slut, ISO-8601 (valgfri)"},
+                    "description": {"type": "string", "description": "Beskrivelse (valgfri)"},
+                    "location": {"type": "string", "description": "Sted (valgfri)"},
+                },
+                "required": ["summary", "start"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "docs_append",
+            "description": (
+                "Tilføj tekst i slutningen af et Google Docs-dokument (document_id). KRÆVER "
+                "brugerens godkendelse (approval-kort) — kald bare værktøjet direkte."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "document_id": {"type": "string", "description": "Docs document-id"},
+                    "text": {"type": "string", "description": "Teksten der tilføjes"},
+                },
+                "required": ["document_id", "text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "sheets_write",
+            "description": (
+                "Skriv celler i et Google Sheets-regneark (overskriver range). KRÆVER brugerens "
+                "godkendelse (approval-kort) — kald bare værktøjet direkte. values = liste af rækker, "
+                "fx [[\"Navn\",\"Beløb\"],[\"Leje\",\"8000\"]]."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "spreadsheet_id": {"type": "string", "description": "Sheets spreadsheet-id"},
+                    "range": {"type": "string", "description": "A1-range, fx 'Ark1!A1:B2'"},
+                    "values": {"type": "array", "description": "Liste af rækker (liste af lister)",
+                               "items": {"type": "array", "items": {"type": "string"}}},
+                },
+                "required": ["spreadsheet_id", "range", "values"],
+            },
+        },
+    },
 ]
 
 
@@ -118,6 +179,27 @@ def _get(user_id: str, url: str, params: dict | None, err_prefix: str) -> dict:
         if r.status_code == 403:
             return {"status": "error", "error": f"{err_prefix}_scope_missing"}
         if r.status_code != 200:
+            return {"status": "error", "error": f"{err_prefix}_http_{r.status_code}"}
+        return {"status": "ok", "data": r.json()}
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "error": f"{err_prefix}_request_failed: {e}"}
+
+
+def _send(user_id: str, method: str, url: str, *, json_body: dict | None = None,
+          params: dict | None = None, err_prefix: str = "google") -> dict:
+    """Skrive-kald (POST/PUT) med brugerens Google-token. Bruges af create/edit-tools."""
+    token = get_fresh_token(user_id, _PROVIDER)
+    if not token or not token.get("access_token"):
+        return {"status": "error", "error": f"{err_prefix}_not_connected"}
+    try:
+        import httpx
+        r = httpx.request(method, url, headers={"Authorization": f"Bearer {token['access_token']}"},
+                          json=json_body, params=params or {}, timeout=20)
+        if r.status_code == 401:
+            return {"status": "error", "error": f"{err_prefix}_not_connected"}
+        if r.status_code == 403:
+            return {"status": "error", "error": f"{err_prefix}_scope_missing"}
+        if r.status_code not in (200, 201):
             return {"status": "error", "error": f"{err_prefix}_http_{r.status_code}"}
         return {"status": "ok", "data": r.json()}
     except Exception as e:  # noqa: BLE001
@@ -236,3 +318,67 @@ def slides_read(user_id: str, presentation_id: str) -> dict:
     d = res["data"]
     slides = _slides_text(d)
     return {"status": "ok", "title": d.get("title", ""), "slide_count": len(slides), "slides": slides}
+
+
+# ── Skrive-tools (kaldes kun efter approval — gating sker i simple_tools) ──
+
+def create_event(user_id: str, summary: str, start: str, *, end: str = "",
+                 description: str = "", location: str = "") -> dict:
+    """Opret en begivenhed i brugerens primære kalender. start/end = ISO-8601."""
+    if not (summary or "").strip():
+        return {"status": "error", "error": "summary_required"}
+    if not (start or "").strip():
+        return {"status": "error", "error": "start_required"}
+    if not end:
+        try:
+            from datetime import datetime, timedelta
+            end = (datetime.fromisoformat(start.replace("Z", "+00:00")) + timedelta(hours=1)).isoformat()
+        except (ValueError, TypeError):
+            end = start
+    body = {
+        "summary": summary,
+        "start": {"dateTime": start},
+        "end": {"dateTime": end},
+    }
+    if description:
+        body["description"] = description
+    if location:
+        body["location"] = location
+    res = _send(user_id, "POST",
+                "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+                json_body=body, err_prefix="calendar")
+    if res["status"] != "ok":
+        return res
+    return {"status": "ok", "id": res["data"].get("id"), "link": res["data"].get("htmlLink", "")}
+
+
+def append_doc(user_id: str, document_id: str, text: str) -> dict:
+    """Tilføj tekst i slutningen af et Google Docs-dokument."""
+    if not (document_id or "").strip():
+        return {"status": "error", "error": "document_id_required"}
+    if not (text or ""):
+        return {"status": "error", "error": "text_required"}
+    body = {"requests": [{"insertText": {"endOfSegmentLocation": {}, "text": text}}]}
+    res = _send(user_id, "POST",
+                f"https://docs.googleapis.com/v1/documents/{document_id}:batchUpdate",
+                json_body=body, err_prefix="docs")
+    if res["status"] != "ok":
+        return res
+    return {"status": "ok", "document_id": document_id}
+
+
+def write_sheet(user_id: str, spreadsheet_id: str, cell_range: str, values: list) -> dict:
+    """Skriv celler i et Google Sheets-regneark (overskriver range). values = liste af rækker."""
+    if not (spreadsheet_id or "").strip():
+        return {"status": "error", "error": "spreadsheet_id_required"}
+    if not (cell_range or "").strip():
+        return {"status": "error", "error": "range_required"}
+    if not isinstance(values, list) or not values:
+        return {"status": "error", "error": "values_required"}
+    res = _send(user_id, "PUT",
+                f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{cell_range}",
+                json_body={"values": values},
+                params={"valueInputOption": "USER_ENTERED"}, err_prefix="sheets")
+    if res["status"] != "ok":
+        return res
+    return {"status": "ok", "updated": res["data"].get("updatedCells", 0)}

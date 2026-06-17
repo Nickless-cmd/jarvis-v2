@@ -80,3 +80,48 @@ def test_required_ids(monkeypatch):
     assert gc.docs_read("bjorn", "")["error"] == "document_id_required"
     assert gc.sheets_read("bjorn", "s", "")["error"] == "range_required"
     assert gc.slides_read("bjorn", "")["error"] == "presentation_id_required"
+
+
+def _ok_send(monkeypatch, payload, capture=None):
+    monkeypatch.setattr(gc, "get_fresh_token", lambda uid, prov: {"access_token": "tok"})
+
+    def fake_request(method, url, headers=None, json=None, params=None, timeout=None):
+        if capture is not None:
+            capture.update({"method": method, "url": url, "json": json, "params": params})
+        return _Resp(200, payload)
+
+    import httpx
+    monkeypatch.setattr(httpx, "request", fake_request)
+
+
+def test_create_event_defaults_end(monkeypatch):
+    cap = {}
+    _ok_send(monkeypatch, {"id": "ev1", "htmlLink": "http://c"}, cap)
+    res = gc.create_event("bjorn", "Møde", "2026-06-18T09:00:00+02:00")
+    assert res["status"] == "ok" and res["id"] == "ev1"
+    # end blev defaulted til start +1 time
+    assert cap["json"]["end"]["dateTime"].startswith("2026-06-18T10:00:00")
+    assert cap["method"] == "POST"
+
+
+def test_append_doc(monkeypatch):
+    cap = {}
+    _ok_send(monkeypatch, {}, cap)
+    res = gc.append_doc("bjorn", "doc1", "Ny linje")
+    assert res["status"] == "ok" and res["document_id"] == "doc1"
+    assert cap["json"]["requests"][0]["insertText"]["text"] == "Ny linje"
+
+
+def test_write_sheet(monkeypatch):
+    cap = {}
+    _ok_send(monkeypatch, {"updatedCells": 4}, cap)
+    res = gc.write_sheet("bjorn", "s1", "Ark1!A1:B2", [["a", "b"], ["1", "2"]])
+    assert res["status"] == "ok" and res["updated"] == 4
+    assert cap["method"] == "PUT" and cap["params"]["valueInputOption"] == "USER_ENTERED"
+
+
+def test_write_validation(monkeypatch):
+    monkeypatch.setattr(gc, "get_fresh_token", lambda uid, prov: {"access_token": "tok"})
+    assert gc.create_event("bjorn", "", "x")["error"] == "summary_required"
+    assert gc.append_doc("bjorn", "d", "")["error"] == "text_required"
+    assert gc.write_sheet("bjorn", "s", "A1", [])["error"] == "values_required"

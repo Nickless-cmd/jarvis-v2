@@ -505,28 +505,6 @@ Jeg kan tage screenshots via `operator_screenshot`, men jeg vil have:
 
 ---
 
-## 12. Login — to muligheder
-
-### 12.1 Token/API login (nuværende)
-
-- Brugeren indtaster `apiBaseUrl` + `authToken` manuelt
-- Token gemmes i Electron keychain via `keytar`
-- Fungerer allerede ✅
-
-### 12.2 Google OAuth2 login (ny)
-
-Dette kræver:
-
-1. **Google Cloud Console** — oprette et OAuth2 client ID (web-app type)
-2. **Backend endpoint** — `/auth/google/callback` der modtager Google's authorization code, bytter det for et Jarvis token, og returnerer det til appen
-3. **Electron flow** — appen åbner en browser til Google's consent screen, brugeren logger ind, Google redirecter tilbage med en code, appen sender code til backenden
-4. **Token storage** — Jarvis token gemmes i keychain (samme som nu)
-5. **Refresh** — Google tokens udløber; appen skal refresh'e via backenden
-
-Det er **ikke trivielt**, men heller ikke umuligt. Den største fordel er at nye brugere kan komme i gang med ét klik — ingen manuelle tokens.
-
----
-
 ## 13. Prioriteret ønskeliste (Jarvis-perspektiv)
 
 | Pri | Hvad | Hvorfor |
@@ -540,3 +518,69 @@ Det er **ikke trivielt**, men heller ikke umuligt. Den største fordel er at nye
 | 🟠 | **Opsætningswizard** | Samtalebaseret, ikke formularbaseret |
 | 🟠 | **Visuel app-tilstand** | Jeg vil se hvad brugeren ser |
 | 🟢 | **Auto-model fallback** | Ollama nede → skift automatisk |
+
+## 12. Login — to muligheder (med sikkerhedsdesign)
+
+Jarvis desk tilbyder to login-metoder, men **ikke alle metoder er lige tilgængelige for alle brugere**. Sikkerhedsmodellen er designet til at forhindre uautoriseret adgang, selv hvis appen downloades og installeres.
+
+### 12.1 Token/API login (nuværende)
+- Brugeren indtaster `apiBaseUrl` + `authToken` manuelt
+- Token gemmes i Electron keychain via `keytar` (ikke localStorage)
+- Fungerer allerede ✅
+- Kræver at brugeren har modtaget et token fra Jarvis-serveren (invitation/admin)
+- **Altid tilgængeligt** — også uden internetforbindelse til Google
+
+### 12.2 Google OAuth2 login (ny)
+Google login er **kun tilgængeligt for brugere med en forud-oprettet konto**. Det er IKKE en registreringsmekanisme.
+
+#### Princip: "Ingen self-service registrering"
+- En ny bruger kan **ikke** downloade appen, klikke "Log ind med Google" og få adgang
+- Google login kræver at brugerens Google-konto **på forhånd er knyttet til en Jarvis-konto** (via admin/web-backend)
+- Uden en pre-lenket konto: Google login viser en fejl: "Ingen konto fundet. Kontakt din administrator."
+- Brugeren er tvunget til API-nøgle som eneste alternativ
+
+#### Flow
+1. **Pre-linking (admin/web-backend)**
+   - Administrator opretter en bruger i Jarvis-backend
+   - Angiver brugerens Google email (fx `bruger@gmail.com`)
+   - Backend gemmer `{google_email: "bruger@gmail.com", status: "pending_link", api_key: "jvs_..."}`  # pragma: allowlist secret
+
+2. **Login flow i appen**
+   - Appen åbner browser til Google consent screen
+   - Brugeren logger ind på Google
+   - Google redirecter til `/auth/google/callback` med authorization code
+   - Backend bytter code for Google tokens + henter brugerens email fra Google
+   - Backend slår email op i `google_email`-feltet:
+     - **Match fundet**: Kontoen linkes permanent. Jarvis-token returneres til appen.
+     - **Intet match**: Fejl returneres. Appen viser "Ingen konto er knyttet til denne Google-konto."
+   - Appen gemmer Jarvis-token i keychain
+
+#### Migration: Eksisterende API-nøgle-konti → Google login
+En bruger der allerede har en API-nøgle skal kunne knytte sin Google-konto:
+```
+1. Bruger logger ind med API-nøgle (eksisterende metode)
+2. Går til Settings → "Forbind Google-konto"
+3. Appen åbner Google OAuth2 flow
+4. Backend modtager Google email + brugerens `user_id` fra API-nøglen
+5. Backend sætter `google_email = bruger@gmail.com` på den eksisterende konto
+6. Fremover kan brugeren logge ind med Google
+```
+
+### 12.3 Sikkerhedsarkitektur — "Ingen vej udenom"
+
+| Sikkerhedslag | Beskrivelse |
+|---|---|
+| **Ingen self-service** | Google login kræver pre-lenket konto. Ingen "Opret konto med Google" knap |
+| **API-nøgle som backup** | Altid tilgængelig. Brugeren er IKKE tvunget til Google |
+| **Keychain storage** | Tokens gemmes i OS keychain (keytar), aldrig i localStorage eller cookies |
+| **Revocation** | Administrator kan fjerne Google-linking. Brugeren mister Google-login-adgang |
+| **Rate limiting** | Max 3 Google login-forsøg pr. email pr. time (forhindrer enumeration) |
+| **Audit log** | Alle login-forsøg logges (timestamp, metode, success/fail, IP) |
+| **Session binding** | Google token bundet til Jarvis session ID — kan ikke bruges på tværs af sessions |
+| **Ingen "glemt adgangskode"** | Der findes intet password-reset flow. Kontakt administrator = eneste recovery |
+
+### 12.4 Web-app (fremtidig)
+Når web-appen oprettes, gælder samme princip:
+- Google login i web-appen kræver samme pre-lenket konto
+- Web-appen distribuerer IKKE API-nøgler — kun appen gør det
+- Web-appen bruger `httpOnly` cookies + CSRF tokens i stedet for keychain

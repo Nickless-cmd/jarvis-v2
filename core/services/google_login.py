@@ -22,6 +22,25 @@ _LINK_PREFIX = "__link__:"
 _RESULTS: dict[str, dict] = {}
 
 
+def _resolve_role(user_id: str) -> str:
+    """Find brugerens faktiske rolle (SQLite-user_db → ellers users.json → member)."""
+    try:
+        from core.identity import user_db
+        u = user_db.get_user(user_id)
+        if u and u.get("role"):
+            return str(u["role"])
+    except Exception:
+        pass
+    try:
+        from core.identity.users import find_user_by_discord_id
+        u2 = find_user_by_discord_id(str(user_id))
+        if u2 and getattr(u2, "role", ""):
+            return str(u2.role)
+    except Exception:
+        pass
+    return "member"
+
+
 def _gc(now: float) -> None:
     for k in [k for k, v in _RESULTS.items() if v.get("exp", 0) < now]:
         _RESULTS.pop(k, None)
@@ -77,7 +96,10 @@ def complete(state_uid: str, google_email: str, *, now: float | None = None) -> 
         if not google_email or not uid:
             _RESULTS[nonce] = {"status": "error", "error": "no_email", "exp": t + _TTL}
             return "Kunne ikke knytte Google-kontoen."
-        user_db.set_google_email(uid, google_email)
+        # Bevar brugerens FAKTISKE rolle (ellers ville en owner blive linket som
+        # member og logge ind med forkert rolle via Google bagefter).
+        role = _resolve_role(uid)
+        user_db.set_google_email(uid, google_email, role=role)
         _RESULTS[nonce] = {"status": "ok", "linked": True, "exp": t + _TTL}
         return "Google-konto knyttet — du kan nu logge ind med Google."
     return "Ukendt login-tilstand."

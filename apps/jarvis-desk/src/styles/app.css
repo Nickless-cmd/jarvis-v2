@@ -1655,3 +1655,7 @@
     scroll-behavior: auto !important;
   }
 }
+
+.banner-actions { display: flex; gap: .5rem; align-items: center; margin-left: auto; }
+.banner-retry { font-size: .8rem; padding: 3px 10px; border-radius: 6px; border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; }
+.banner-retry:hover { background: color-mix(in srgb, currentColor 12%, transparent); }

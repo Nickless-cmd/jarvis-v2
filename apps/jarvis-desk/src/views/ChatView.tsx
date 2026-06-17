@@ -392,7 +392,17 @@ export function ChatView({
             <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />
           )}
           {stream.status === 'error' && stream.error && (
-            <ErrorBanner message={stream.error.message} onDismiss={() => { /* ryddes ved næste send */ }} />
+            <ErrorBanner
+              message={stream.error.message}
+              onDismiss={() => { /* ryddes ved næste send */ }}
+              onRetry={() => {
+                const last = [...visibleMessages].reverse().find((m) => m.role === 'user')
+                const text = Array.isArray(last?.content)
+                  ? last!.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
+                  : ''
+                if (text.trim()) resend(text)
+              }}
+            />
           )}
         </div>
         {!atBottom && (

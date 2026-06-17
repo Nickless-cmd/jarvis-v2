@@ -432,6 +432,55 @@ Jarvis visual identity:
 - **tool result cards** med ikoner og farver — ikke rå tekst
 - **voice visualizer** når der optages — lyd-niveau animation i composeren
 
+## Visual Design — Fancy uden at være overdrevet
+
+Appen skal være **lækker, gennemsigtig og simpel** — med en futuristisk AI-fornemmelse der stadig er brugbar. Animationer og micro-interactions skal guide, ikke imponere. Alt skal kunne slås fra i Settings (reduced motion). Intet må tage længere end 300ms.
+
+### 1. Liveness ring — pulserende, ikke blinkende
+En **cirkulær gradientring** omkring Jarvis-avatar/menu-ikonet. Når Jarvis tænker, pulserer den langsomt — en blød bølge fra accentfarven (Jarvis-blå/grøn) til en dæmpet mørk tone. Når Jarvis svarer, trækker den sig tilbage. Ved fejl bliver den rød i ét sekund og falder tilbage. **Ikke blinkende** — pulserende som en åndedrætsanimation. Signalér **liv** uden at forstyrre.
+
+### 2. Voice visualizer — lydbølger, ikke en mikrofon
+I stedet for en mikrofonknap der bliver rød under optagelse: en blød **lydbølge-animation** der danser i takt med brugerens stemmeniveau. Når brugeren dikterer, fylder bølgerne komponisten bunden. Når Jarvis svarer, danser bølgerne i svar-hastigheden. Gør voice sessionen **visuel** uden at være overvældende.
+
+### 3. Chatboble — et stille svævende overlay
+Boblen er **gennemsigtig glas** (frosted glass, ikke solid farve). Når brugeren trykker, glider den op i en chat-mini-visning med en **blød spring-animation**. Når færdig, glider den tilbage med en **forsvindings-ease**. Skal **føles** i fingrene — ikke bare ses.
+
+### 4. Tool results — kort der folder sig ud
+Når Jarvis tjekker vejr, søger i filer eller laver et kald: resultatet folder sig **blødt ud** fra bunden af beskeden — som et kort der bliver trukket op af lommen. Kortet har en **tynd kantlinje** i accentfarven og en **svævende skygge**. Tryk på kortet → åbner i fuld visning.
+
+### 5. Stream-indikator — en tynd glødende linje
+I stedet for en spinner mens Jarvis streamer: en **tynd, glødende linje** i bunden af chatten der langsomt vokser fra venstre mod højre. Linjen har en **gradient** (accentfarve → transparent) og en **lille prik forrest** der følger skriften. Signalér retning og fremskridt — rolig, ikke stressende.
+
+### 6. Session-skift — en flydende overgang
+Når brugeren skifter session: det gamle chat-indhold **trækker sig blødt til venstre**, det nye **glider ind fra højre** — som at bladre i en fysisk notesbog. Overgangen tager præcis **250ms** med ease-in-out curve. Ingen hak, ingen frys.
+
+### 7. Composer — intelligent plads
+Komponisten **vokser og trækker sig sammen** efter indhold. Når brugeren taler, glider voice visualizeren ind i bunden. Når brugeren skriver, er den en ren tekstlinje. Når et billede vedhæftes, folder en **lille preview** sig ud over komponisten. Skal føles som **levende papir**, ikke en boks.
+
+### 8. Mørk tilstand — dybde, ikke sort
+Baggrunden skal **ikke** være ren sort (`#000`). Brug en **meget mørk blå/grå** (`#0D0D12` eller `#0A0A0F`) med subtile lag — chat-bobler en nuance lysere, kort en nuance lysere igen. Giver **dybde** uden at være "flat design".
+
+### 9. Notifikationsprik — en vågen prik
+Ikonet på startskærmen skal have en **lille prik** (Android Badge API) der pulserer svagt når der er noget nyt — som et hjerte, ikke som en alarm.
+
+### 10. Farvepaletten — én accent, mange neutrale
+**Én** accentfarve — Jarvis-blå/grøn. Alt andet er gråtoner. Gør appen **samlet** og **genkendelig** uden at være overfyldt. Accenten bruges kun til: liveness ring, tool card kanter, voice visualizer, og små highlights. **Ikke** til knapper, baggrunde eller rammer.
+
+### Notifikationer — baggrundsruns og færdige runs
+Når Jarvis **kører et run i baggrunden** (fx en lang analyse, en søgning, et API-kald), og telefonen ligger væk eller brugeren er i en anden app:
+
+- **Run start** — en stille notifikation: "Jarvis arbejder..." med run-ikon og progress-indikator (Android Foreground Service notification)
+- **Run færdig** — en **handlingsnotifikation**: "✅ Din forespørgsel er klar — tryk for at åbne"
+- **Run fejlet** — en **rød notifikation**: "❌ Noget gik galt — tryk for at se detaljer"
+- **Baggrunds-run progress** — periodiske updates hvis run tager lang tid (>30s): "Stadig i gang — trin 3/5"
+- **Ingen dobbelt-notifikation** — hvis brugeren allerede ser appen, kommer notifikationen ikke. Kun når appen er i baggrunden/låst.
+- **iOS (senere)** — Apple Push Notification Service (APNs) via Expo Push, samme logik. iOS Background Modes (limited, ~30s) kræver server-side completion push
+
+Notifikationerne skal være **handlingsbare**:
+- Tryk på notifikation → åbner appen direkte på det pågældende run/svar
+- Approve/deny direkte fra notifikation (hvor muligt)
+- Clear notifikation = marker som set på serveren
+
 ## Failure-Safe Requirements
 
 The app must be designed around failure, because mobile networking is unstable.

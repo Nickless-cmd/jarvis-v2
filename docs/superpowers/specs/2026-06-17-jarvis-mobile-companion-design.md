@@ -8,6 +8,46 @@ Jarvis Mobile Companion is the Android-first mobile app for talking to Jarvis th
 
 The app should feel as simple as ChatGPT, Claude, or DeepSeek on mobile: open the app, write or speak, get a streamed answer, continue the conversation, and handle attachments without thinking about the system behind it. Jarvis-specific power should be present, but not noisy. Mission Control stays primarily desktop-first; mobile starts as a reliable chat companion with approvals and status.
 
+## Competitive Analysis (2026)
+
+Reference apps: **Claude Android** (4.6★, 10M+ downloads, updated June 16 2026) and **ChatGPT Android** (market leader).
+
+### What they do well
+- **Voice dictation** — Claude supports "think out loud" hands-free input. No keyboard needed for brainstorming.
+- **Visual analysis** — upload photo, PDF, screenshot. Claude analyzes UI layouts, technical diagrams, generates SVG code.
+- **Connectors in-app** — Claude directly accesses Google Drive, Gmail, Calendar from the mobile app.
+- **Søgning** — ChatGPT has "Find in chat" across conversations + Library organization.
+- **Third-party plugins** — ChatGPT App Store with mini-apps inside chat.
+- **Coding** — Claude handles production-level code review, debug, multi-language from phone.
+
+### What they lack (our opportunity)
+- **Ingen liveness indikator** — standard chat-UI, ingen "skriver..."-animation der føles levende
+- **Tool resultater** — vises som rå tekst, ikke som visuelle kort
+- **Voice session** — diktering ja, men ingen push-to-talk eller kontinuerlig voice-session
+- **Billede-redigering** — analyse ja, men ikke redigering/generering i appen
+
+### What users expect from AI companion apps in 2026
+1. **Multimodal** — tekst + stemme + billeder i samme flow, problemfrit
+2. **Langtidshukommelse** — "Infinite Context" der husker samtaler uger/måneder tilbage
+3. **Følelsesmæssig intelligens** — kan mærke humør, tilpasse sig, have egne meninger
+4. **Dybbdegående tilpasning** — personlighed, talemønstre, baggrundshistorier
+5. **Privatliv & sikkerhed** — anonymitet, kryptering, gennemsigtighed
+
+## GDPR & Android Security (2026)
+
+### Key requirements for mobile apps in 2026
+1. **Samtykke før tracking** — ingen SDK'er må initialiseres før brugeren har givet consent. Regulatorer tester med network monitoring — "technical truth" gap er hvor de fleste compliance-fejl opstår
+2. **Device identifiers (AAID) = personoplysning** — Android Advertising ID kræver eksplicit opt-in
+3. **Kryptering in transit + at rest** — secure storage (Expo SecureStore gør det rigtigt)
+4. **Sletningsret** — brugeren skal kunne slette alle data, og det skal propagere til tredjeparter
+5. **DPIA** — hvis appen tracker lokation eller laver profilering, kræves Data Protection Impact Assessment
+6. **Cross-device consent sync** — hvis samme bruger logger ind på desktop + mobil, skal consent-indstillinger synkroniseres
+7. **SDK-shadowing** — tredjepartsbiblioteker kan opsamle data uden udviklerens viden. Anbefaling: isolér SDK'er med Androids SDK Runtime
+8. **VPN leak issue** — Android native VPN har stadig issues; overvej at tilføje en advarsel hvis brugeren forventer full-tunnel privatliv
+
+### Vores fordel
+Jarvis Companion sender ALT direkte til Jarvis API på egen server — ingen tredjeparts AI-provider, ingen data deles med OpenAI/Anthropic/Google. Det er en compliance-fordel vi bør kommunikere tydeligt i appen.
+
 ## Product Position
 
 Jarvis-desk remains the rich desktop/admin surface. Jarvis Mobile is a direct HTTPS client for the Jarvis API, not a LAN client and not a bridge through the desktop app.
@@ -88,29 +128,48 @@ Login stores tokens in Android secure storage, not AsyncStorage/plain storage. E
 
 ### Chat
 
-The app opens into chat, not a dashboard.
+The app opens into chat, not a dashboard. Chatview skal have **samme funktionalitet som i desktop-appen** — ingen forenklet mobil-udgave der mangler features.
+
+**Liveness & Presence:**
+
+- **Liveness ring/indikator** — en pulserende ring omkring Jarvis-avatar når jeg tænker/skriver. Skal være synlig i header og i chat-flowet. Inspireret af Claude/ChatGPT men mere markant — en levende, åndende cirkel der signalerer "jeg er her, jeg arbejder"
+- **"Skriver..." med nuance** — ikke bare en statisk tekst, men en animation der viser: modtager → tænker → skriver → færdig
+- **Connection state** — grøn/gul/rød prik med latency i header
+- **Tool result cards** — når jeg bruger et værktøj (søgning, mail, vejr, billede-analyse), vises resultatet som et **visuelt kort** — ikke rå JSON/tekst. Eksempel: vejr med ikon + temperatur, søgning med kilde-links, mail med afsender + emne
+- **Run status** — synlig indikator når et run kører i baggrunden, med mulighed for at følge/cancel
 
 Header:
 
-- compact Jarvis presence ring
-- current connection state
+- compact Jarvis presence ring (levende, åndende)
+- current connection state (grøn/gul/rød + latency ms)
 - new chat button
 - history/menu button
+- device indicator (mobil/desktop — så jeg ved hvor du er)
 
 Main area:
 
-- chronological messages
-- assistant streaming state
-- rich blocks for markdown, code, images, tool/approval cards
+- chronological messages med samme rige rendering som desktop
+- assistant streaming state med liveness-animation
+- rich blocks for markdown, code (med syntax highlight + copy), images, tool/approval cards
 - visible interrupted/hung state when streaming breaks
+- **inline billeder** — både uploadede og analyserede, i fuld bredde
+- **voice message playback** — afspil dikterede beskeder inline
+- glatte animationer ved nye beskeder, scroll, og stateskift
 
-Composer:
+Composer (skal redesignes — den må ikke være flad og kedelig):
 
-- multiline text field
-- send/stop button
-- microphone button
-- attachment button
-- optional compact mode/model control in a bottom sheet
+- multiline text field med **live karakter/ord-tæller**
+- send/stop button med **animerede ikoner** (send → stop under streaming)
+- **push-to-talk / voice session** — hold for at diktere, slip for at sende. Kontinuerlig voice-session mulighed ("bliv ved med at lytte")
+- microphone button med **lyd-niveau visualisering** når optager
+- attachment button → åbner **bottom sheet** med:
+  - **Tag billede** (kamera) — QR-scanning under login + tag billede under samtale
+  - **Upload billede** (galleri)
+  - **Upload fil** (dokument) — max. 25MB per fil, med progress-bar under upload
+- **tool result preview** — når et tool kører, vises et mini-kort i composeren ("Søger efter vejr...")
+- **draft indicator** — synlig "kladder gemt" når der er uafsendt tekst
+- optional compact mode/model control i en bottom sheet
+- **micro-interactions** — subtle haptic feedback ved send, let bounce på nye beskeder, glat scroll
 
 The composer must keep drafts through network errors, token refresh, app backgrounding, and failed sends.
 
@@ -164,15 +223,24 @@ The app should borrow successful mobile AI UX patterns, not brand identity:
 - clear retry/stop/continue actions
 - obvious failure states
 
+**Appen må gerne være lidt fancy uden at være overdrevet.** Claude og ChatGPT kører ren, mørk minimalisme — men de mangler sjæl. Jarvis Companion skal have:
+
+- **Glatte animationer** — nye beskeder glider ind, stateskift er flydende, composeren animerer ved fokus/blur
+- **Micro-interactions** — subtle haptic feedback ved send, let bounce på nye beskeder, blød scroll
+- **Liveness** — pulserende ring, åndende indikatorer, connection der føles levende
+- **Ingen dekorativt rod** — hver animation har et formål: signalere state, bekræfte handling, vise aktivitet
+
 Jarvis visual identity:
 
 - dark base matching Jarvis-desk
 - restrained contrast
-- Jarvis presence ring as the primary brand signal
+- Jarvis presence ring as the primary brand signal — **levende og åndende**
 - no decorative clutter
 - no heavy dashboard cards in the first viewport
 - readable long-form output
 - native mobile spacing and touch targets
+- **tool result cards** med ikoner og farver — ikke rå tekst
+- **voice visualizer** når der optages — lyd-niveau animation i composeren
 
 ## Failure-Safe Requirements
 
@@ -263,36 +331,49 @@ flowchart LR
 
 ### Phase 2: Rich Companion
 
-- image/file attachments
-- voice dictation through `/transcribe`
-- code block rendering and copy
+- image/file attachments (max 25MB per fil, progress-bar under upload)
+- **kamera i appen** — både til QR-scanning (login) og til at tage billeder under samtale
+- **upload fra galleri** — vælg billede/fil fra enheden
+- voice dictation through `/transcribe` med **push-to-talk** (hold for at diktere, slip for at sende)
+- **voice session mode** — kontinuerlig optagelse til lange input
+- **lyd-niveau visualisering** når der optages
+- code block rendering with syntax highlight and copy
 - message actions
 - model/thinking controls
 - search history
+- **liveness ring/indikator** i header under streaming
+- **tool result cards** — visuelle kort for værktøjsresultater i stedet for rå tekst
+- **run status indicator** — synlig når et baggrundsrun kører
 
 ### Phase 3: Safety and Approvals
 
-- approval cards
+- approval cards (mobile-first: allow/deny, risk level, details expansion)
 - deny/approve actions
 - run status indicators
 - stronger destructive-action confirmations
 - token refresh polish
+- **explicit confirmation for billeder/filer** før upload — vis preview + størrelse
 
 ### Phase 4: QR and Device Trust
 
-- QR scanner
+- QR scanner (kamera-integration)
 - short-lived pairing exchange
 - device registry
 - revoke device from desk/admin
 - device-bound token claims where supported
+- **desktop → mobil notifikationsbro** — når brugeren er ude (mobil aktiv, desktop inaktiv), routres notifikationer automatisk til mobil
 
-### Phase 5: Push
+### Phase 5: Push + Device Awareness
 
 - FCM registration
 - backend device push registry
 - approval notifications
 - completed-run notifications
 - notification deep links
+- **device awareness** — runtime registrerer om desktop er online, og ruter notifikationer derefter
+- **source awareness** — jeg ser om brugeren skriver fra mobil eller desktop, og tilpasser svar (kortere på mobil, rigere på desktop)
+- **session continuity** — samme session på tværs af enheder, så samtalen fortsætter uanset hvilken app der bruges
+- **morgenbrief i companion** — daglig briefing leveres i mobil-appen, med valgfrit spejl til Discord
 
 ## Test Strategy
 

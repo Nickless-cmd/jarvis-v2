@@ -1786,3 +1786,7 @@
 .account-google-btn:disabled { opacity: .6; cursor: default; }
 .account-google-hint { font-size: 12px; color: var(--fg-3, var(--fg)); margin: 6px 0 0; }
 .account-google-msg { font-size: 12px; color: var(--accent); margin: 4px 0 0; }
+
+/* Offline-kø-chip (§14.1) — tonet anderledes end normal "i kø". */
+.queued-chip.is-offline { border-color: #e0843a; }
+.queued-chip.is-offline .queued-label { color: #e0843a; }

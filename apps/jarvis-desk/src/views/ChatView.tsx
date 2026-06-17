@@ -8,6 +8,7 @@ import { usePanel } from '../hooks/usePanel'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { usePermission } from '../hooks/usePermission'
+import { useOnline } from '../hooks/useOnline'
 import { readModelPrefs } from '../lib/composerPrefs'
 import { getContextInfo, getActiveRuns, followRun } from '../lib/api'
 import { PresenceDot } from '../components/shell/PresenceDot'
@@ -270,20 +271,23 @@ export function ChatView({
 
   const streaming = stream.status === 'working'
 
-  // Follow-up kø: skriver man mens Jarvis streamer, lægges beskeden i kø og
-  // sendes automatisk når turen er færdig (done). Deterministisk — ikke nudge.
+  // Kø: skriver man mens Jarvis streamer ELLER mens man er offline, lægges beskeden
+  // i kø og sendes automatisk når turen er færdig / forbindelsen er tilbage (§14.1).
+  // Deterministisk — ikke nudge.
+  const online = useOnline()
   const [queued, setQueued] = useState<{ text: string; opts: ComposerSendOpts } | null>(null)
   const handleSend = (text: string, opts: ComposerSendOpts) => {
-    if (streaming) setQueued({ text, opts })
+    if (streaming || !online) setQueued({ text, opts })
     else void doSend(text, opts)
   }
   useEffect(() => {
-    if (stream.status === 'done' && queued) {
+    // Flush når der hverken streames eller er offline (dækker både færdig-tur og reconnect).
+    if (queued && stream.status !== 'working' && online) {
       const q = queued
       setQueued(null)
       void doSend(q.text, q.opts)
     }
-  }, [stream.status, queued])
+  }, [stream.status, queued, online])
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   const isEmpty =
@@ -422,8 +426,8 @@ export function ChatView({
           </button>
         )}
         {queued && (
-          <div className="queued-chip">
-            <span className="queued-label">I kø</span>
+          <div className={`queued-chip ${!online ? 'is-offline' : ''}`}>
+            <span className="queued-label">{!online ? 'Offline — sendes når forbindelsen er tilbage' : 'I kø'}</span>
             <span className="queued-text">{queued.text}</span>
             <button type="button" className="queued-cancel" onClick={() => setQueued(null)} aria-label="Fjern fra kø">×</button>
           </div>

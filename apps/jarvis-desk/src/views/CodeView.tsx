@@ -18,6 +18,7 @@ import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
+import { MessageRail, railLabel } from '../components/chat/MessageRail'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo } from '../lib/api'
@@ -378,13 +379,21 @@ export function CodeView({
         )}
         {trustBanner}
         <div className="codeview-toolbar">{workspaceSelector}</div>
+        <div className="transcript-wrap">
+        <MessageRail
+          containerRef={transcriptRef}
+          anchors={visibleMessages.filter((m) => m.role === 'user').map((m) => ({ id: m.id, label: railLabel(m.content) }))}
+        />
         <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
           {visibleMessages.map((m) => (
-            <MessageRow key={m.id} role={m.role === 'user' ? 'user' : 'assistant'} blocks={m.content} density="compact" streaming={false} createdAt={m.created_at} onResend={m.role === 'user' ? resend : undefined} />
+            <div key={m.id} data-rail-id={m.id} className="msg-block">
+            <MessageRow role={m.role === 'user' ? 'user' : 'assistant'} blocks={m.content} density="compact" streaming={false} createdAt={m.created_at} onResend={m.role === 'user' ? resend : undefined} />
+            </div>
           ))}
           {stream.status === 'working' && stream.blocks.length > 0 && (
             <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
           )}
+        </div>
         </div>
         <div className="composer-area">
           {/* Liveness fast lige over composeren (ikke i transcript — den scrollede

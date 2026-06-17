@@ -1690,3 +1690,11 @@
 .env-live-icon { color: var(--accent); flex: none; }
 .env-step { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .env-tokens { font-size: 11px; color: var(--fg-3, var(--fg)); }
+
+/* ── Besked-rail (venstre kant, hop til besked — chat + code) ── */
+.transcript-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.msg-rail { position: absolute; left: 2px; top: 10px; bottom: 10px; width: 12px; z-index: 5; pointer-events: none; }
+.msg-rail-tick { position: absolute; left: 2px; width: 6px; height: 2px; padding: 0; border: none; border-radius: 2px;
+  background: var(--fg-3, #888); opacity: .35; cursor: pointer; pointer-events: auto; transform: translateY(-50%);
+  transition: opacity .12s, width .12s, background .12s; }
+.msg-rail-tick:hover { opacity: 1; width: 10px; background: var(--accent); }

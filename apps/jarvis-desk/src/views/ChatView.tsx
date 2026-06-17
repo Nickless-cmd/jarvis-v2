@@ -17,6 +17,7 @@ import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { GreetingHero } from '../components/chat/GreetingHero'
+import { MessageRail, railLabel } from '../components/chat/MessageRail'
 
 const NEAR_BOTTOM_PX = 120
 
@@ -359,10 +360,15 @@ export function ChatView({
   return (
     <div className="chatview">
       {header}
+      <div className="transcript-wrap">
+      <MessageRail
+        containerRef={transcriptRef}
+        anchors={visibleMessages.filter((m) => m.role === 'user').map((m) => ({ id: m.id, label: railLabel(m.content) }))}
+      />
       <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
         {visibleMessages.map((m) => (
+          <div key={m.id} data-rail-id={m.id} className="msg-block">
           <MessageRow
-            key={m.id}
             role={m.role === 'user' ? 'user' : 'assistant'}
             blocks={m.content}
             density="compact"
@@ -370,6 +376,7 @@ export function ChatView({
             createdAt={m.created_at}
             onResend={m.role === 'user' ? resend : undefined}
           />
+          </div>
         ))}
         {streaming && stream.blocks.length > 0 && (
           <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
@@ -380,6 +387,7 @@ export function ChatView({
         {!streaming && bgActive && followState.status === 'working' && followState.blocks.length > 0 && (
           <MessageRow role="assistant" blocks={followState.blocks} density="compact" streaming />
         )}
+      </div>
       </div>
 
       <div className="composer-area">

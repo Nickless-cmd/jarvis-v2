@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { clearAuthConfig, loadAuthConfig, saveAuthConfig } from '../lib/authStore'
+import { clearAuthConfig, loadAuthConfig, normalizeApiBaseUrl, saveAuthConfig } from '../lib/authStore'
 import { DEFAULT_API_BASE_URL, type ApiConfig } from '../lib/types'
 
 interface AuthContextValue {
@@ -10,6 +10,25 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+async function validateAuthToken(config: ApiConfig): Promise<void> {
+  let response: Response
+
+  try {
+    response = await fetch(`${config.apiBaseUrl}api/whoami`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${config.authToken}`
+      }
+    })
+  } catch {
+    throw new Error('Kunne ikke kontakte Jarvis API for at validere token')
+  }
+
+  if (!response.ok) {
+    throw new Error('Token blev afvist af Jarvis API')
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<ApiConfig | null>(null)
@@ -26,7 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       config,
       loading,
       signInWithToken: async (apiBaseUrl, authToken) => {
-        const next = { apiBaseUrl: apiBaseUrl || DEFAULT_API_BASE_URL, authToken }
+        const next = {
+          apiBaseUrl: normalizeApiBaseUrl(apiBaseUrl || DEFAULT_API_BASE_URL),
+          authToken: authToken.trim()
+        }
+
+        await validateAuthToken(next)
         await saveAuthConfig(next)
         setConfig(await loadAuthConfig())
       },

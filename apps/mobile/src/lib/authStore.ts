@@ -3,7 +3,7 @@ import { DEFAULT_API_BASE_URL, type ApiConfig } from './types'
 
 const KEY = 'jarvis.mobile.auth'
 
-function normalizeApiBaseUrl(value: string): string {
+export function normalizeApiBaseUrl(value: string): string {
   const trimmed = value.trim() || DEFAULT_API_BASE_URL
   return trimmed.endsWith('/') ? trimmed : `${trimmed}/`
 }
@@ -12,12 +12,25 @@ export async function loadAuthConfig(): Promise<ApiConfig | null> {
   const raw = await SecureStore.getItemAsync(KEY)
   if (!raw) return null
 
-  const parsed = JSON.parse(raw) as Partial<ApiConfig>
-  if (!parsed.authToken || !parsed.apiBaseUrl) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null
+  }
+
+  const { apiBaseUrl, authToken } = parsed as Partial<ApiConfig>
+  if (typeof authToken !== 'string' || typeof apiBaseUrl !== 'string') {
+    return null
+  }
 
   return {
-    apiBaseUrl: normalizeApiBaseUrl(parsed.apiBaseUrl),
-    authToken: parsed.authToken
+    apiBaseUrl: normalizeApiBaseUrl(apiBaseUrl),
+    authToken
   }
 }
 

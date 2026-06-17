@@ -46,16 +46,18 @@ export function EnvironmentPanel({
   const [busy, setBusy] = useState<'' | 'commit' | 'pr'>('')
   const [note, setNote] = useState<{ text: string; url?: string; err?: boolean } | null>(null)
 
-  // Git-actions (commit/PR) er rolle-bestemt: KUN på server-repoet ('repo') og
-  // KUN owner. Members/workstation-stien rutes via operator-broen i en senere
-  // feature (se project_code_git_actions_roadmap).
-  const canGit = isOwner && kind === 'container' && root === 'repo'
+  // Git-actions er rolle-bestemt: server-repoet ('repo') KUN owner; workstation-
+  // repo gælder alle roller på deres EGEN maskine (uid-routet på serveren).
+  const canGit = !!git?.is_git && (
+    (isOwner && kind === 'container' && root === 'repo') || kind === 'workstation'
+  )
+  const target = { kind, root }
 
   const doCommit = async () => {
     if (!config || busy) return
     setBusy('commit'); setNote(null)
     try {
-      const r = await commitAllChanges(config, root)
+      const r = await commitAllChanges(config, target)
       setNote(r.status === 'ok' ? { text: `Committet ${r.sha}` } : { text: 'Ingen ændringer' })
       onChanged?.()
     } catch (e) { setNote({ text: (e as Error).message || 'Commit fejlede', err: true }) }
@@ -65,7 +67,7 @@ export function EnvironmentPanel({
     if (!config || busy) return
     setBusy('pr'); setNote(null)
     try {
-      const r = await createPullRequest(config, root)
+      const r = await createPullRequest(config, target)
       setNote({ text: r.url ? 'Pull request oprettet' : `PR (${r.status})`, url: r.url })
       if (r.url) try { window.open(r.url, '_blank') } catch { /* ignore */ }
       onChanged?.()

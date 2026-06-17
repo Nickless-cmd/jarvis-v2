@@ -315,19 +315,21 @@ export async function getGitStatus(
   return apiFetch(config, `/chat/git-status?${qs}`)
 }
 
-/** Commit ALLE ændringer i code-workspacet (git add -A + commit, ingen push). */
+export interface GitTarget { kind: string; root: string }
+
+/** Commit ALLE ændringer (git add -A + commit, ingen push). Rolle-aware target. */
 export async function commitAllChanges(
-  config: ApiConfig, root: string, message = '',
+  config: ApiConfig, target: GitTarget, message = '',
 ): Promise<{ status: string; sha?: string; branch?: string; message?: string }> {
-  return apiFetch(config, '/chat/git/commit-all', { method: 'POST', body: { root, message } })
+  return apiFetch(config, '/chat/git/commit-all', { method: 'POST', body: { target, message } })
 }
 
-/** Opret en pull request (commit + push + gh pr create). Udadvendt — kun ved
+/** Opret pull request (commit + push + PR via GitHub-API/gh). Udadvendt — kun ved
  *  bruger-klik. Returnerer PR-URL. */
 export async function createPullRequest(
-  config: ApiConfig, root: string, title = '', body = '',
-): Promise<{ status: string; url?: string; branch?: string; base?: string }> {
-  return apiFetch(config, '/chat/git/create-pr', { method: 'POST', body: { root, title, body } })
+  config: ApiConfig, target: GitTarget, title = '', body = '',
+): Promise<{ status: string; url?: string; branch?: string; via?: string }> {
+  return apiFetch(config, '/chat/git/create-pr', { method: 'POST', body: { target, title, body } })
 }
 
 /** Er et workspace betroet (skrive/exec-gate i code-mode)? */

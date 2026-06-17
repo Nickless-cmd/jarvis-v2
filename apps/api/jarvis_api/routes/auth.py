@@ -108,3 +108,38 @@ def google_link_start() -> JSONResponse:
     if not url:
         return JSONResponse({"error": "provider_not_configured"}, status_code=400)
     return JSONResponse({"authorize_url": url, "nonce": nonce})
+
+
+# ── QR device-pairing (mobile companion) ───────────────────────────────────
+
+@router.post("/pair/create")
+def pair_create() -> JSONResponse:
+    """Opret en kort-levende pairing-kode for den INDLOGGEDE bruger. Desktop viser
+    den som QR; mobilen scanner + redeem'er. Kræver auth."""
+    from core.identity.workspace_context import current_user_id
+    from core.services import device_pairing
+    uid = current_user_id() or ""
+    if not uid:
+        return JSONResponse({"error": "not_authenticated"}, status_code=401)
+    role = "owner"
+    try:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(str(uid))
+        role = (getattr(u, "role", "") or "member") if u else "member"
+    except Exception:
+        role = "member"
+    return JSONResponse(device_pairing.create_pairing(uid, role))
+
+
+class PairRedeemReq(BaseModel):
+    code: str
+
+
+@router.post("/pair/redeem")
+def pair_redeem(req: PairRedeemReq) -> JSONResponse:
+    """Indløs en pairing-kode → friskt Jarvis-token. PUBLIC (mobilen har intet token endnu)."""
+    from core.services import device_pairing
+    res = device_pairing.redeem((req.code or "").strip())
+    if not res:
+        return JSONResponse({"status": "error", "error": "invalid_or_expired"}, status_code=404)
+    return JSONResponse(res)

@@ -1,5 +1,4 @@
-import { StatusBar, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, StatusBar, StyleSheet, Text, View } from 'react-native'
 import { tokens } from './theme/tokens'
 
 export default function App() {

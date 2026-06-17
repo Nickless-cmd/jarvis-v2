@@ -2,6 +2,7 @@ import { ActivityIndicator, StatusBar, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LoginScreen } from './screens/LoginScreen'
 import { AuthProvider, useAuth } from './state/AuthContext'
+import { SessionProvider } from './state/SessionContext'
 import { tokens } from './theme/tokens'
 
 function AppBody() {
@@ -29,10 +30,12 @@ function AppBody() {
 export default function App() {
   return (
     <AuthProvider>
-      <SafeAreaView style={styles.root}>
-        <StatusBar barStyle="light-content" />
-        <AppBody />
-      </SafeAreaView>
+      <SessionProvider>
+        <SafeAreaView style={styles.root}>
+          <StatusBar barStyle="light-content" />
+          <AppBody />
+        </SafeAreaView>
+      </SessionProvider>
     </AuthProvider>
   )
 }

@@ -10,3 +10,18 @@ export interface WhoAmI {
   display_name: string
   role: 'owner' | 'member' | 'guest'
 }
+
+export interface ChatSession {
+  id: string
+  title: string
+  updated_at: string
+  message_count?: number
+}
+
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant' | 'tool' | 'system' | 'approval_request'
+  content: string
+  created_at: string
+  parent_id?: string | null
+}

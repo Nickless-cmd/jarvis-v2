@@ -31,7 +31,8 @@ The mobile app owns:
 ## Confirmed Constraints
 
 - Default API base URL: `https://api.srvlab.dk/`
-- Auth V1: email/password login through `/api/auth/login`
+- Auth V1: manual token login, matching Jarvis-desk's current setup flow
+- Email/password login: planned next auth layer when the backend path is verified stable for mobile
 - QR pairing: included for faster setup, backed by a future or existing token issuance flow
 - Google login: explicitly later, not V1 blocking scope
 - App target: Android first
@@ -56,7 +57,8 @@ Native Kotlin + Jetpack Compose remains a valid later rewrite or power-user bran
 The public API already exposes the V1 foundation:
 
 - `GET /health`
-- `POST /api/auth/login`
+- bearer-token authenticated requests matching Jarvis-desk's current auth model
+- `POST /api/auth/login` later, when email/password auth is verified stable for mobile
 - `GET /api/whoami`
 - `GET/POST /chat/sessions`
 - `GET /chat/sessions/{session_id}`
@@ -77,12 +79,12 @@ The Android client should treat `/chat/stream/v2` as the primary streaming contr
 
 The first screen offers two paths:
 
-- email/password login
+- manual token login
 - scan QR from Jarvis-desk
 
-The default API URL is prefilled invisibly as `https://api.srvlab.dk/`. Advanced settings may expose the API URL for dev/self-hosted use.
+Manual token login matches the current Jarvis-desk setup model: the user enters the public API URL and a bearer token. The default API URL is prefilled as `https://api.srvlab.dk/`. Advanced settings may expose the API URL for dev/self-hosted use.
 
-Login stores tokens in Android secure storage, not AsyncStorage/plain storage.
+Login stores tokens in Android secure storage, not AsyncStorage/plain storage. Email/password login is a later auth option once the server flow is ready for mobile.
 
 ### Chat
 
@@ -192,7 +194,7 @@ Required behavior:
 
 ## Security Model
 
-V1 can use email/password login, but tokens should be handled as production credentials:
+V1 starts with manual token login. Tokens should be handled as production credentials:
 
 - access token stored in secure storage
 - refresh token stored in secure storage if refresh is available
@@ -209,7 +211,7 @@ QR pairing should avoid long-lived raw owner tokens in QR codes. Preferred model
 - Android exchanges code for its own device-bound token
 - backend records device name, app id, role, and expiry
 
-If this exchange endpoint is not present when implementation starts, V1 ships email/password first and hides QR pairing behind a disabled feature flag until the backend supports it safely.
+If this exchange endpoint is not present when implementation starts, V1 ships manual token login first and hides QR pairing behind a disabled feature flag until the backend supports it safely.
 
 ## Push Notifications
 
@@ -235,8 +237,7 @@ Approval from notification should require device unlock and should not bypass ba
 
 ```mermaid
 flowchart LR
-  A["Android app"] -->|"email/password"| B["POST /api/auth/login"]
-  B --> C["Secure token storage"]
+  A["Android app"] -->|"manual bearer token"| C["Secure token storage"]
   A -->|"Bearer token"| D["Jarvis API"]
   D --> E["/chat/sessions"]
   D --> F["/chat/stream/v2 SSE"]
@@ -252,7 +253,7 @@ flowchart LR
 
 - Expo app scaffold
 - secure auth storage
-- email/password login
+- manual token login
 - session list
 - create/select chat
 - `/chat/stream/v2` streaming
@@ -307,7 +308,7 @@ Client tests:
 
 Integration tests:
 
-- login against test API
+- token login against test API
 - create session
 - send message and consume stream
 - cancel run
@@ -342,14 +343,15 @@ Manual mobile QA:
 
 These decisions guide the implementation plan:
 
-- Email/password login is required in V1.
-- QR pairing is required, but may be implemented after email/password if the safe pairing exchange endpoint does not exist yet.
+- Manual token login, matching Jarvis-desk, is required in V1.
+- Email/password login follows after the backend path is verified stable for mobile.
+- QR pairing is required, but may be implemented after manual token login if the safe pairing exchange endpoint does not exist yet.
 - Google login is out of V1.
 - Mobile owner sessions should require explicit approval for risky actions; code/terminal-level authority should be gated behind backend policy and TOTP/override where available.
 - Push should be designed around FCM, but implementation can follow chat MVP if needed.
 
 ## Recommendation
 
-Build Jarvis Mobile as a direct public-API Android companion with email/password login first, QR pairing next, and a strict mobile-safe approval model. The first release should optimize for trust: fast chat, clear state, no duplicate sends, preserved drafts, and explicit risky-action approval.
+Build Jarvis Mobile as a direct public-API Android companion with manual token login first, email/password login next, QR pairing after the safe exchange path exists, and a strict mobile-safe approval model. The first release should optimize for trust: fast chat, clear state, no duplicate sends, preserved drafts, and explicit risky-action approval.
 
 The app should feel like a native, focused Jarvis conversation surface, not a compressed desktop dashboard.

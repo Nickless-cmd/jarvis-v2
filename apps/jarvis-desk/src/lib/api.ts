@@ -317,6 +317,31 @@ export async function getGitStatus(
 
 export interface GitTarget { kind: string; root: string }
 
+/** Google app-login (§12): start → få authorize-URL + nonce (ingen auth). */
+export async function googleLoginStart(
+  apiBaseUrl: string, appId = '',
+): Promise<{ authorize_url?: string; nonce?: string; error?: string }> {
+  const url = new URL(`/api/auth/google/start?app_id=${encodeURIComponent(appId)}`, apiBaseUrl).toString()
+  const r = await fetch(url)
+  return r.json()
+}
+
+/** Poll login-resultatet. {status: pending|ok|error|unknown}. */
+export async function googleLoginResult(
+  apiBaseUrl: string, nonce: string,
+): Promise<{ status: string; token?: string; role?: string; user_id?: string; error?: string }> {
+  const url = new URL(`/api/auth/google/result?nonce=${encodeURIComponent(nonce)}`, apiBaseUrl).toString()
+  const r = await fetch(url)
+  return r.json()
+}
+
+/** Start Google-linking for indlogget bruger (migration: knyt Gmail). Kræver auth. */
+export async function googleLinkStart(
+  config: ApiConfig,
+): Promise<{ authorize_url?: string; nonce?: string; error?: string }> {
+  return apiFetch(config, '/api/auth/google/link/start')
+}
+
 /** Commit ALLE ændringer (git add -A + commit, ingen push). Rolle-aware target. */
 export async function commitAllChanges(
   config: ApiConfig, target: GitTarget, message = '',

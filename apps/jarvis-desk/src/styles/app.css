@@ -1773,3 +1773,9 @@
 .dep-btn { background: var(--accent); color: #08110b; border: none; border-radius: 8px; padding: 4px 11px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .dep-btn:disabled { opacity: .55; cursor: default; }
 .dep-dismiss { position: absolute; top: 8px; right: 10px; background: none; border: none; color: var(--fg-3, var(--fg)); font-size: 16px; line-height: 1; cursor: pointer; }
+
+/* ── Setup: Google-login (§12) ── */
+.setup-google { background: #fff; color: #1f1f1f; border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; }
+.setup-google:disabled { opacity: .6; cursor: default; }
+.setup-google-msg { font-size: 12px; color: var(--fg-3, var(--fg)); margin: 4px 0 0; }
+.setup-or { font-size: 11px; color: var(--fg-3, var(--fg)); text-align: center; margin: 12px 0 4px; opacity: .8; }

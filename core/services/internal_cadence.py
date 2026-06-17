@@ -131,6 +131,38 @@ def _evaluate_producer(
 # Tick dispatch
 # ---------------------------------------------------------------------------
 
+def _run_producer_bounded(spec, *, trigger: str, last_visible_at: str, timeout_s: float):
+    """Kør en producer i sin EGEN dæmon-tråd med en hård timeout.
+
+    ROD-FIX (Bjørn 2026-06-17): producers kørte synkront i scheduler-tråden uden
+    timeout. Én producer der hang i et LLM-kald (inner_voice/dreams/witness) frøs
+    HELE cadence-loopet for evigt → warmer + alle private-lag-producers døde.
+    Nu kan én hængende producer ikke vælte de andre — den timeout'er og loopet
+    fortsætter. Den hængende tråd er daemon (dør med processen).
+    """
+    box: dict[str, object] = {}
+
+    def _target() -> None:
+        try:
+            box["r"] = spec.run_fn(trigger=trigger, last_visible_at=last_visible_at)
+        except BaseException as exc:  # noqa: BLE001 — videregiv til kalderen
+            box["e"] = exc
+
+    t = threading.Thread(target=_target, name=f"cadence-prod-{spec.name}", daemon=True)
+    t.start()
+    t.join(timeout_s)
+    if t.is_alive():
+        raise TimeoutError(f"producer '{spec.name}' overskred {timeout_s:.0f}s — sprunget over")
+    if "e" in box:
+        raise box["e"]  # type: ignore[misc]
+    return box.get("r")
+
+
+# Per-producer hård timeout. LLM-producers (inner_voice/dreams) tager ~10-20s;
+# 75s giver rigeligt, men forhindrer en hængende én i at fryse hele cadencen.
+_PRODUCER_TIMEOUT_S = 75.0
+
+
 def run_cadence_tick(
     *,
     trigger: str = "heartbeat",
@@ -175,9 +207,16 @@ def run_cadence_tick(
 
         if status == "due":
             due_names.append(spec.name)
-            # Dispatch
+            # Dispatch — tidsbundet, så én hængende producer ikke fryser cadencen.
             try:
-                result = spec.run_fn(trigger=trigger, last_visible_at=last_visible_at_iso)
+                _prod_t0 = time.monotonic()
+                result = _run_producer_bounded(
+                    spec, trigger=trigger, last_visible_at=last_visible_at_iso,
+                    timeout_s=_PRODUCER_TIMEOUT_S,
+                )
+                _prod_dt = time.monotonic() - _prod_t0
+                if _prod_dt > 10:
+                    logger.warning("cadence producer '%s' tog %.1fs", spec.name, _prod_dt)
                 ran_this_tick.add(spec.name)
                 _last_run_at[spec.name] = now_iso
                 ran_names.append(spec.name)

@@ -10,6 +10,7 @@ import { resolveAppAction } from './lib/appAction'
 import { PanelProvider } from './contexts/PanelContext'
 import { UiPanelWatcher } from './components/UiPanelWatcher'
 import { AiTransparencyNotice } from './components/AiTransparencyNotice'
+import { GlobalShortcuts } from './components/GlobalShortcuts'
 import { usePanel } from './hooks/usePanel'
 import { SplitLayout } from './components/panel/SplitLayout'
 import { ArtifactPanel } from './components/panel/ArtifactPanel'
@@ -94,6 +95,7 @@ function Shell({
     <div className="window">
       <Sidebar surface={surface} onSurface={setSurface} userName={userName} />
       <main className="main">
+        <ShortcutsHost setSurface={setSurface} />
         <AppActionHost setSurface={setSurface} />
         <ShellWithPanel>
           {surface === 'chat' && (
@@ -113,6 +115,18 @@ function Shell({
         <StatusBar model={model} sessionId={activeId} />
       </main>
     </div>
+  )
+}
+
+/** Wirer globale tastaturgenveje med stream-status + surface-skift. */
+function ShortcutsHost({ setSurface }: { setSurface: (s: Surface) => void }) {
+  const stream = useStream()
+  return (
+    <GlobalShortcuts
+      working={stream.status === 'working'}
+      onStop={() => { void stream.abort() }}
+      onSettings={() => setSurface('settings')}
+    />
   )
 }
 

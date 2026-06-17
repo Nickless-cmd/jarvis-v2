@@ -50,3 +50,12 @@ it('returns null for structurally invalid secure-store payloads', async () => {
 
   await expect(loadAuthConfig()).resolves.toBeNull()
 })
+
+it('returns null for whitespace-only stored tokens', async () => {
+  await SecureStore.setItemAsync(
+    'jarvis.mobile.auth',
+    JSON.stringify({ apiBaseUrl: '   ', authToken: '   ' })
+  )
+
+  await expect(loadAuthConfig()).resolves.toBeNull()
+})

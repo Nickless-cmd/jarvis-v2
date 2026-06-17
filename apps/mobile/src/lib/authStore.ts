@@ -28,9 +28,14 @@ export async function loadAuthConfig(): Promise<ApiConfig | null> {
     return null
   }
 
+  const trimmedToken = authToken.trim()
+  if (!trimmedToken) {
+    return null
+  }
+
   return {
     apiBaseUrl: normalizeApiBaseUrl(apiBaseUrl),
-    authToken
+    authToken: trimmedToken
   }
 }
 

@@ -1057,10 +1057,7 @@ async def _stream_visible_run(
             queue: asyncio.Queue = asyncio.Queue()
             loop = asyncio.get_event_loop()
 
-            logger.info("[firstpass-trace] run=%s pump DISPATCHED to executor", run.run_id)
-
             def _pump_model_stream() -> None:
-                logger.info("[firstpass-trace] run=%s pump RUNNING (thread started)", run.run_id)
                 try:
                     for item in stream_visible_model(
                         message=run.user_message,
@@ -1078,15 +1075,8 @@ async def _stream_visible_run(
 
             thread_future = loop.run_in_executor(None, _pump_model_stream)
 
-            _first_item_seen = False
             while True:
                 item = await queue.get()
-                if not _first_item_seen:
-                    _first_item_seen = True
-                    logger.info(
-                        "[firstpass-trace] run=%s FIRST item from queue: %s",
-                        run.run_id, type(item).__name__,
-                    )
                 if item is _sentinel:
                     break
                 if isinstance(item, Exception):

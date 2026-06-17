@@ -100,9 +100,9 @@ _CATALOG: list[dict] = [
         "desc": "Prototype og deploy små webapps", "scopes": [],
     },
     {
-        "id": "huggingface", "name": "Hugging Face", "kind": "oauth", "provider": "huggingface",
-        "category": "AI", "icon": "cpu", "status": "coming_soon",
-        "desc": "Adgang til Hugging Face-modeller", "scopes": ["read"],
+        "id": "huggingface", "name": "Hugging Face", "kind": "local",
+        "category": "AI", "icon": "cpu", "status": "available",
+        "desc": "Søg modeller på Hugging Face Hub", "scopes": [],
     },
     {
         "id": "openai-models", "name": "OpenAI / Andre", "kind": "oauth", "provider": "openai",
@@ -111,7 +111,7 @@ _CATALOG: list[dict] = [
     },
     {
         "id": "pdf", "name": "PDF", "kind": "local",
-        "category": "Dokumenter", "icon": "file", "status": "coming_soon",
+        "category": "Dokumenter", "icon": "file", "status": "available",
         "desc": "Læs, analysér og ekstraher PDF", "scopes": [],
     },
     # ── Langsigtet (P3) ──
@@ -132,7 +132,7 @@ _CATALOG: list[dict] = [
     },
     {
         "id": "notes", "name": "Huskesedler", "kind": "local",
-        "category": "Noter", "icon": "sticky-note", "status": "coming_soon",
+        "category": "Noter", "icon": "sticky-note", "status": "available",
         "desc": "Simple notater", "scopes": [],
     },
 ]

@@ -13,6 +13,7 @@ dependencies = [
   "pydantic>=2.8.0",
   "ollamafreeapi>=0.1.4",
   "bcrypt>=5.0",
+  "pypdf>=6.0",
 ]
 
 [tool.setuptools]

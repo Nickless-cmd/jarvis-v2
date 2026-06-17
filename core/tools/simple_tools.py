@@ -116,6 +116,9 @@ from core.tools.github_tools import (
 from core.services.github_connector import GITHUB_CONNECTOR_TOOL_DEFINITIONS
 from core.services.gmail_connector import GMAIL_CONNECTOR_TOOL_DEFINITIONS
 from core.services.google_connector import GOOGLE_CONNECTOR_TOOL_DEFINITIONS
+from core.services.pdf_connector import PDF_CONNECTOR_TOOL_DEFINITIONS
+from core.services.notes_connector import NOTES_CONNECTOR_TOOL_DEFINITIONS
+from core.services.hf_connector import HF_CONNECTOR_TOOL_DEFINITIONS
 from core.tools.reasoning_store_tools import (
     REASONING_STORE_TOOL_DEFINITIONS,
     REASONING_STORE_TOOL_HANDLERS,
@@ -3394,6 +3397,9 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *GITHUB_CONNECTOR_TOOL_DEFINITIONS,
     *GMAIL_CONNECTOR_TOOL_DEFINITIONS,
     *GOOGLE_CONNECTOR_TOOL_DEFINITIONS,
+    *PDF_CONNECTOR_TOOL_DEFINITIONS,
+    *NOTES_CONNECTOR_TOOL_DEFINITIONS,
+    *HF_CONNECTOR_TOOL_DEFINITIONS,
     *MATH_TOOL_DEFINITIONS,
     *PROCESS_TOOL_DEFINITIONS,
     *CLAUDE_DISPATCH_TOOL_DEFINITIONS,
@@ -8457,6 +8463,42 @@ def _exec_sheets_write(args: dict[str, Any]) -> dict[str, Any]:
     return write_sheet(_operator_user_id(args), spreadsheet_id, cell_range, values)
 
 
+def _exec_pdf_read(args: dict[str, Any]) -> dict[str, Any]:
+    """Læs/ekstraher tekst fra en PDF (sti eller URL)."""
+    from core.services.pdf_connector import read_pdf
+    return read_pdf(str(args.get("source") or "").strip(), max_pages=args.get("max_pages", 20))
+
+
+def _exec_note_add(args: dict[str, Any]) -> dict[str, Any]:
+    from core.services.notes_connector import add_note
+    return add_note(_operator_user_id(args), str(args.get("text") or ""))
+
+
+def _exec_note_list(args: dict[str, Any]) -> dict[str, Any]:
+    from core.services.notes_connector import list_notes
+    return list_notes(_operator_user_id(args), limit=args.get("limit", 20))
+
+
+def _exec_note_search(args: dict[str, Any]) -> dict[str, Any]:
+    from core.services.notes_connector import search_notes
+    return search_notes(_operator_user_id(args), str(args.get("query") or ""))
+
+
+def _exec_note_delete(args: dict[str, Any]) -> dict[str, Any]:
+    from core.services.notes_connector import delete_note
+    return delete_note(_operator_user_id(args), str(args.get("id") or ""))
+
+
+def _exec_hf_search_models(args: dict[str, Any]) -> dict[str, Any]:
+    from core.services.hf_connector import search_models
+    return search_models(str(args.get("query") or ""), limit=args.get("limit", 10))
+
+
+def _exec_hf_model_info(args: dict[str, Any]) -> dict[str, Any]:
+    from core.services.hf_connector import model_info
+    return model_info(str(args.get("model_id") or "").strip())
+
+
 _TOOL_HANDLERS: dict[str, Any] = {
     "read_tool_result": _exec_read_tool_result,
     "read_self_docs": _exec_read_self_docs,
@@ -8473,6 +8515,13 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "calendar_create_event": _exec_calendar_create_event,
     "docs_append": _exec_docs_append,
     "sheets_write": _exec_sheets_write,
+    "pdf_read": _exec_pdf_read,
+    "note_add": _exec_note_add,
+    "note_list": _exec_note_list,
+    "note_search": _exec_note_search,
+    "note_delete": _exec_note_delete,
+    "hf_search_models": _exec_hf_search_models,
+    "hf_model_info": _exec_hf_model_info,
     "read_file": _exec_read_file,
     "operator_read_file": _exec_operator_read_file,
     "operator_write_file": _exec_operator_write_file,

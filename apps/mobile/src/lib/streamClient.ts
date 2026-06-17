@@ -44,13 +44,17 @@ type SsePayloadEvent = { data?: string | null; message?: string | null }
 export function startStream(request: StreamRequest, handlers: StreamHandlers): StreamControl {
   let activeRunId: string | null = null
   const url = new URL('/chat/stream/v2', request.config.apiBaseUrl).toString()
+  const headers: Record<string, string> = {
+    Accept: 'text/event-stream',
+    'Content-Type': 'application/json'
+  }
+  if (request.config.authToken) {
+    headers.Authorization = `Bearer ${request.config.authToken}`
+  }
   const source = new EventSource<StreamEventName>(url, {
     method: 'POST',
-    headers: {
-      Accept: 'text/event-stream',
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${request.config.authToken}`
-    },
+    pollingInterval: 0,
+    headers,
     body: JSON.stringify({
       message: request.message,
       session_id: request.sessionId,
@@ -66,7 +70,17 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
     source.addEventListener(name, (event) => {
       const payload = event as SsePayloadEvent
       if (!payload.data) return
-      const parsed = JSON.parse(String(payload.data)) as StreamEvent
+      let parsed: StreamEvent
+      try {
+        parsed = JSON.parse(String(payload.data)) as StreamEvent
+      } catch (error) {
+        handlers.onInterrupted?.()
+        handlers.onError?.(
+          error instanceof Error ? error : new Error('Malformed stream payload')
+        )
+        source.close()
+        return
+      }
       if (parsed.type === 'message_start' && parsed.message.id) {
         activeRunId = parsed.message.id
         handlers.onRunId?.(parsed.message.id)

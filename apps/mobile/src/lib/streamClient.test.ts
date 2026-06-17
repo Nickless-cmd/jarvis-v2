@@ -109,6 +109,29 @@ it('reports interruption through error handler', () => {
   expect(mockClose).toHaveBeenCalledTimes(1)
 })
 
+it('closes and reports malformed json payloads', () => {
+  const onEvent = jest.fn<void, [StreamEvent]>()
+  const onInterrupted = jest.fn()
+  const onError = jest.fn()
+  startStream(
+    {
+      config,
+      sessionId: 's1',
+      message: 'Hej'
+    },
+    { onEvent, onInterrupted, onError }
+  )
+
+  expect(() => {
+    getListener('message_start')({ data: '{not-json' })
+  }).not.toThrow()
+
+  expect(onEvent).not.toHaveBeenCalled()
+  expect(onInterrupted).toHaveBeenCalledTimes(1)
+  expect(onError).toHaveBeenCalledWith(expect.any(Error))
+  expect(mockClose).toHaveBeenCalledTimes(1)
+})
+
 it('sends the expected request payload and auth header', () => {
   startStream(
     {
@@ -128,6 +151,7 @@ it('sends the expected request payload and auth header', () => {
     'https://api.srvlab.dk/chat/stream/v2',
     expect.objectContaining({
       method: 'POST',
+      pollingInterval: 0,
       headers: expect.objectContaining({
         Accept: 'text/event-stream',
         'Content-Type': 'application/json',
@@ -142,6 +166,27 @@ it('sends the expected request payload and auth header', () => {
         model: 'deepseek-r1',
         provider_choice: 'ollama'
       })
+    })
+  )
+})
+
+it('omits the authorization header when auth token is empty', () => {
+  startStream(
+    {
+      config: { ...config, authToken: '' },
+      sessionId: 's1',
+      message: 'Hej'
+    },
+    { onEvent: jest.fn() }
+  )
+
+  expect(EventSource).toHaveBeenCalledWith(
+    'https://api.srvlab.dk/chat/stream/v2',
+    expect.objectContaining({
+      headers: {
+        Accept: 'text/event-stream',
+        'Content-Type': 'application/json'
+      }
     })
   )
 })

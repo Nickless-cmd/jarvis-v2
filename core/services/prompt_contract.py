@@ -3074,6 +3074,7 @@ def _connected_connectors_section() -> str | None:
     # Per-connector "sådan bruger du den"-hint (tool-navne). Udvid efterhånden.
     _HINTS = {
         "github": "kald github_list_issues(repo='ejer/navn') eller github_list_prs(repo=…)",
+        "gmail": "kald gmail_search(query='is:unread') eller gmail_list() — brugerens egen indbakke",
     }
     lines: list[str] = []
     for c in items:

@@ -114,6 +114,7 @@ from core.tools.github_tools import (
     _exec_git_blame,
 )
 from core.services.github_connector import GITHUB_CONNECTOR_TOOL_DEFINITIONS
+from core.services.gmail_connector import GMAIL_CONNECTOR_TOOL_DEFINITIONS
 from core.tools.reasoning_store_tools import (
     REASONING_STORE_TOOL_DEFINITIONS,
     REASONING_STORE_TOOL_HANDLERS,
@@ -3390,6 +3391,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *STRIPE_TOOL_DEFINITIONS,
     *GITHUB_TOOL_DEFINITIONS,
     *GITHUB_CONNECTOR_TOOL_DEFINITIONS,
+    *GMAIL_CONNECTOR_TOOL_DEFINITIONS,
     *MATH_TOOL_DEFINITIONS,
     *PROCESS_TOOL_DEFINITIONS,
     *CLAUDE_DISPATCH_TOOL_DEFINITIONS,
@@ -8322,11 +8324,28 @@ def _exec_github_list_prs(args: dict[str, Any]) -> dict[str, Any]:
     return list_prs(uid, repo, state=state)
 
 
+def _exec_gmail_search(args: dict[str, Any]) -> dict[str, Any]:
+    """Søg i brugerens Gmail via deres EGEN Google-connector-token."""
+    from core.services.gmail_connector import search
+    uid = _operator_user_id(args)
+    query = str(args.get("query") or "").strip()
+    return search(uid, query, max_results=args.get("max_results", 10))
+
+
+def _exec_gmail_list(args: dict[str, Any]) -> dict[str, Any]:
+    """List nyeste mails i brugerens Gmail-indbakke via deres EGEN connector-token."""
+    from core.services.gmail_connector import list_inbox
+    uid = _operator_user_id(args)
+    return list_inbox(uid, max_results=args.get("max_results", 10))
+
+
 _TOOL_HANDLERS: dict[str, Any] = {
     "read_tool_result": _exec_read_tool_result,
     "read_self_docs": _exec_read_self_docs,
     "github_list_issues": _exec_github_list_issues,
     "github_list_prs": _exec_github_list_prs,
+    "gmail_search": _exec_gmail_search,
+    "gmail_list": _exec_gmail_list,
     "read_file": _exec_read_file,
     "operator_read_file": _exec_operator_read_file,
     "operator_write_file": _exec_operator_write_file,

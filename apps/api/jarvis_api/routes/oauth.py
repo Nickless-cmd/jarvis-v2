@@ -33,12 +33,17 @@ async def oauth_start(provider: str) -> JSONResponse:
     """Returnér authorize-URL for den indloggede bruger. Desk åbner den i browseren."""
     from core.identity.workspace_context import current_user_id
     from core.services.oauth_flow import build_authorize_url, is_known_provider
+    from core.services.connectors import oauth_request_for
     uid = current_user_id() or ""
     if not uid:
         return JSONResponse({"error": "not_authenticated"}, status_code=401)
-    if not is_known_provider(provider):
+    # Map connector-id → (provider, scopes). Fx 'gmail' → ('google', [gmail-scopes]).
+    # Falder tilbage til at behandle path-segmentet som selve provideren (github).
+    req = oauth_request_for(provider)
+    prov, scopes = req if req else (provider, [])
+    if not is_known_provider(prov):
         return JSONResponse({"error": "unknown_provider"}, status_code=404)
-    url = build_authorize_url(provider, uid)
+    url = build_authorize_url(prov, uid, scopes=scopes or None)
     if not url:
         return JSONResponse({"error": "provider_not_configured"}, status_code=400)
     return JSONResponse({"authorize_url": url})

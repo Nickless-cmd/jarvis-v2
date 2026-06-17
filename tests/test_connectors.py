@@ -33,11 +33,34 @@ def test_coming_soon_visible_but_not_connectable(monkeypatch):
     assert {"gmail", "google-calendar", "google-drive", "google-docs",
             "google-sheets", "google-slides"} <= ids
     assert {"build-web-apps", "huggingface", "pdf", "spotify", "slack", "notion"} <= ids
-    gmail = next(i for i in items if i["id"] == "gmail")
-    assert gmail["status"] == "coming_soon"
-    assert gmail["connected"] is False
+    # google-calendar er stadig coming_soon → aldrig connected, selv med token.
+    cal = next(i for i in items if i["id"] == "google-calendar")
+    assert cal["status"] == "coming_soon"
+    assert cal["connected"] is False
     gh = next(i for i in items if i["id"] == "github")
     assert gh["status"] == "available"
+
+
+def test_oauth_request_maps_gmail_to_google(monkeypatch):
+    # gmail-connector deler Google-OAuth: id 'gmail' → provider 'google' + gmail-scopes.
+    req = cx.oauth_request_for("gmail")
+    assert req is not None
+    provider, scopes = req
+    assert provider == "google"
+    assert any("gmail.readonly" in s for s in scopes)
+    # github falder tilbage til sit eget id som provider, ingen eksplicitte scopes.
+    assert cx.oauth_request_for("github") == ("github", [])
+    # lokal connector er ikke oauth → None.
+    assert cx.oauth_request_for("browser") is None
+
+
+def test_gmail_connected_uses_google_token(monkeypatch):
+    _patch_state(monkeypatch)
+    # token gemt under provider 'google' (ikke 'gmail') → gmail viser connected.
+    monkeypatch.setattr(cx, "has_token", lambda uid, pid: pid == "google")
+    items = cx.list_for_user("alice")
+    gmail = next(i for i in items if i["id"] == "gmail")
+    assert gmail["status"] == "available" and gmail["connected"] is True
 
 
 def test_set_enabled_roundtrip(monkeypatch):

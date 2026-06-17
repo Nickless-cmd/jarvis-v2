@@ -48,9 +48,14 @@ _CATALOG: list[dict] = [
     #    status="coming_soon" indtil per-app tools er wired (fase 2). ──
     {
         "id": "gmail", "name": "Gmail", "kind": "oauth", "provider": "google",
-        "category": "Google", "icon": "mail", "status": "coming_soon",
+        "category": "Google", "icon": "mail", "status": "available",
         "desc": "Læs, søg og send mails",
         "scopes": ["gmail.readonly", "gmail.send"],
+        "oauth_scopes": [
+            "https://www.googleapis.com/auth/gmail.readonly",
+            "https://www.googleapis.com/auth/gmail.send",
+        ],
+        "post_connect_hint": "Nu kan jeg kigge i din Gmail — skal jeg tjekke din indbakke?",
     },
     {
         "id": "google-calendar", "name": "Google Calendar", "kind": "oauth", "provider": "google",
@@ -157,10 +162,27 @@ def set_enabled(user_id: str, connector_id: str, enabled: bool) -> bool:
     return True
 
 
+def _provider_of(c: dict) -> str:
+    """OAuth-provider for en connector. Google-pakken deler provider='google'."""
+    return str(c.get("provider") or c["id"])
+
+
 def _connected(user_id: str, c: dict) -> bool:
     if c["kind"] == "local":
         return True
-    return bool(has_token(user_id, c["id"]))
+    return bool(has_token(user_id, _provider_of(c)))
+
+
+def oauth_request_for(connector_id: str) -> tuple[str, list[str]] | None:
+    """Map et connector-id → (oauth_provider, scopes) til /api/oauth/{id}/start.
+
+    Fx 'gmail' → ('google', [gmail-scope-URLs]). Tom scope-liste = brug providerens
+    default. None hvis id'et ikke er en (oauth-)connector.
+    """
+    c = _BY_ID.get((connector_id or "").strip())
+    if not c or c.get("kind") != "oauth":
+        return None
+    return _provider_of(c), list(c.get("oauth_scopes") or [])
 
 
 def list_for_user(user_id: str) -> list[dict]:
@@ -200,13 +222,14 @@ def delete_for_user(user_id: str, connector_id: str) -> bool:
     if not uid or not c:
         return False
     if c["kind"] == "oauth":
+        provider = _provider_of(c)
         try:
-            token = get_fresh_token(uid, connector_id)
+            token = get_fresh_token(uid, provider)
             if token:
-                oauth_flow.revoke_remote(connector_id, token)
+                oauth_flow.revoke_remote(provider, token)
         except Exception:
             pass
-        oauth_store.revoke_token(uid, connector_id)
+        oauth_store.revoke_token(uid, provider)
     # ryd enabled-flag
     store = _enabled_store()
     bucket = store.get(uid)

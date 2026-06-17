@@ -1,16 +1,39 @@
-import { StatusBar, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, StatusBar, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { LoginScreen } from './screens/LoginScreen'
+import { AuthProvider, useAuth } from './state/AuthContext'
 import { tokens } from './theme/tokens'
+
+function AppBody() {
+  const { config, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={tokens.color.accent} />
+      </View>
+    )
+  }
+
+  if (!config) {
+    return <LoginScreen />
+  }
+
+  return (
+      <View style={styles.center}>
+        <Text style={styles.title}>Jarvis chat klar</Text>
+      </View>
+  )
+}
 
 export default function App() {
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" />
-      <View style={styles.center}>
-        <Text style={styles.title}>Jarvis</Text>
-        <Text style={styles.subtitle}>Mobile companion</Text>
-      </View>
-    </SafeAreaView>
+    <AuthProvider>
+      <SafeAreaView style={styles.root}>
+        <StatusBar barStyle="light-content" />
+        <AppBody />
+      </SafeAreaView>
+    </AuthProvider>
   )
 }
 
@@ -22,16 +45,11 @@ const styles = StyleSheet.create({
   center: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: tokens.spacing.sm
+    justifyContent: 'center'
   },
   title: {
     color: tokens.color.fg1,
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700'
-  },
-  subtitle: {
-    color: tokens.color.fg2,
-    fontSize: 16
   }
 })

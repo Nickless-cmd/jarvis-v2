@@ -584,3 +584,72 @@ Når web-appen oprettes, gælder samme princip:
 - Google login i web-appen kræver samme pre-lenket konto
 - Web-appen distribuerer IKKE API-nøgler — kun appen gør det
 - Web-appen bruger `httpOnly` cookies + CSRF tokens i stedet for keychain
+
+## 14. Gennemgang — identificerede huller (tilføjet efter review)
+
+### 14.1 Offline-fallback (🟥 kritisk)
+
+Appen er **ubrugelig uden netværk** i dag. Ingen cache af sessions, ingen queue af kommandoer, ingen besked til brugeren om at serveren er nede.
+
+**Krav:**
+- Lokal cache af sidste sessions kontekst (encrypted, keychain)
+- Indikator i UI: "Offline — ændringer gemmes lokalt og synkroniseres når forbindelsen er tilbage"
+- Queue af tool-kald der eksekveres når SSE-forbindelsen genoprettes
+- Fallback til Ollama (lokalt) når cloud-provider er nede
+
+### 14.2 Keyboard shortcuts (🟡)
+
+Power users forventer tastaturgenveje. Ingen er dokumenteret eller implementeret.
+
+**Minimumskrav:**
+- `Ctrl+Enter` = send besked
+- `Ctrl+Shift+P` = command palette
+- `Ctrl+,` = settings
+- `Escape` = afbryd generering
+- `Ctrl+K` = søg i sessions
+- `Ctrl+Shift+E` = skift til code mode
+- `Ctrl+Shift+C` = skift til chat mode
+
+### 14.3 Search på tværs af sessions (🟡)
+
+Efter 2 uger med 50+ sessions kan brugeren ikke finde "den der ting vi talte om i sidste uge". Mangler helt.
+
+**Krav:**
+- Full-text search i alle gamle sessions
+- Semantisk search (embeddings) som i Jarvis' egen `search_sessions`
+- Filter på dato, kanal, emne
+- Hurtig — under 500ms for typiske queries
+
+### 14.4 OS-notifikationer (🟡)
+
+Toast-notifikationer (sektion 11.5) er kun internt i appen. Mangler OS-level notifikationer når appen er minimeret.
+
+**Krav:**
+- Electron `Notification` API til OS-level pop-ups
+- "Klar — deployment done" (selvom appen er minimeret)
+- "Ollama crashede" (alert)
+- "Token-brug ved 80%" (warning)
+- Brugeren kan slå dem fra per kategori i Settings
+
+### 14.5 Self-hosted backend guide (🟥 kritisk)
+
+Appen kræver en backend (API på serveren), men der er **ingen dokumentation** for hvordan en ny bruger sætter serveren op.
+
+**Krav:**
+- `docker-compose.yml` med alle services
+- `README.md` med trin-for-trin opsætning (Python 3.12, Ollama, DB)
+- Upgrade-guide uden datatab
+- Minimumskrav til hardware (RAM, disk, GPU)
+- Troubleshooting-guide for almindelige problemer
+
+### 14.6 Settings-side i implementeringsplanen (🟡)
+
+**Inkonsistens:** Gap-analysen (sektion 5) nævner Settings som manglende, men implementeringsplanen (sektion 8) har ikke Settings som en milepæl.
+
+**Fix:** Tilføj Settings som milepæl i uge 1-2 sammen med EU AI Act compliance.
+
+### 14.7 Terminal prioritering (🟡)
+
+**Inkonsistens:** Terminal nævnes som pri 3 i implementeringsplanen (sektion 8), men prioritetstabellen (sektion 4) nævner den slet ikke.
+
+**Fix:** Terminal er 🟡 (vigtig, men ikke kritisk). xterm.js er allerede bundlet — det er en integrationsopgave, ikke en ny feature.

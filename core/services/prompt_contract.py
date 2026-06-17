@@ -3075,6 +3075,11 @@ def _connected_connectors_section() -> str | None:
     _HINTS = {
         "github": "kald github_list_issues(repo='ejer/navn') eller github_list_prs(repo=…)",
         "gmail": "kald gmail_search(query='is:unread') eller gmail_list() — brugerens egen indbakke",
+        "google-calendar": "kald calendar_list_events() — brugerens kommende aftaler",
+        "google-drive": "kald drive_search(query=…) — brugerens egne Drive-filer",
+        "google-docs": "kald docs_read(document_id=…) — læs et Google-dokument",
+        "google-sheets": "kald sheets_read(spreadsheet_id=…, range='Ark1!A1:D20')",
+        "google-slides": "kald slides_read(presentation_id=…)",
     }
     lines: list[str] = []
     for c in items:

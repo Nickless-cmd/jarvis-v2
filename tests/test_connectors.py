@@ -33,10 +33,10 @@ def test_coming_soon_visible_but_not_connectable(monkeypatch):
     assert {"gmail", "google-calendar", "google-drive", "google-docs",
             "google-sheets", "google-slides"} <= ids
     assert {"build-web-apps", "huggingface", "pdf", "spotify", "slack", "notion"} <= ids
-    # google-calendar er stadig coming_soon → aldrig connected, selv med token.
-    cal = next(i for i in items if i["id"] == "google-calendar")
-    assert cal["status"] == "coming_soon"
-    assert cal["connected"] is False
+    # spotify er stadig coming_soon → aldrig connected, selv med token.
+    sp = next(i for i in items if i["id"] == "spotify")
+    assert sp["status"] == "coming_soon"
+    assert sp["connected"] is False
     gh = next(i for i in items if i["id"] == "github")
     assert gh["status"] == "available"
 

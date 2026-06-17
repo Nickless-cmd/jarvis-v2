@@ -115,6 +115,7 @@ from core.tools.github_tools import (
 )
 from core.services.github_connector import GITHUB_CONNECTOR_TOOL_DEFINITIONS
 from core.services.gmail_connector import GMAIL_CONNECTOR_TOOL_DEFINITIONS
+from core.services.google_connector import GOOGLE_CONNECTOR_TOOL_DEFINITIONS
 from core.tools.reasoning_store_tools import (
     REASONING_STORE_TOOL_DEFINITIONS,
     REASONING_STORE_TOOL_HANDLERS,
@@ -3392,6 +3393,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *GITHUB_TOOL_DEFINITIONS,
     *GITHUB_CONNECTOR_TOOL_DEFINITIONS,
     *GMAIL_CONNECTOR_TOOL_DEFINITIONS,
+    *GOOGLE_CONNECTOR_TOOL_DEFINITIONS,
     *MATH_TOOL_DEFINITIONS,
     *PROCESS_TOOL_DEFINITIONS,
     *CLAUDE_DISPATCH_TOOL_DEFINITIONS,
@@ -8339,6 +8341,38 @@ def _exec_gmail_list(args: dict[str, Any]) -> dict[str, Any]:
     return list_inbox(uid, max_results=args.get("max_results", 10))
 
 
+def _exec_calendar_list_events(args: dict[str, Any]) -> dict[str, Any]:
+    """List kommende begivenheder i brugerens primære Google Calendar."""
+    from core.services.google_connector import list_events
+    return list_events(_operator_user_id(args), max_results=args.get("max_results", 10))
+
+
+def _exec_drive_search(args: dict[str, Any]) -> dict[str, Any]:
+    """Søg/list filer i brugerens Google Drive."""
+    from core.services.google_connector import drive_search
+    return drive_search(_operator_user_id(args), query=str(args.get("query") or ""),
+                        max_results=args.get("max_results", 10))
+
+
+def _exec_docs_read(args: dict[str, Any]) -> dict[str, Any]:
+    """Læs tekst fra et Google Docs-dokument."""
+    from core.services.google_connector import docs_read
+    return docs_read(_operator_user_id(args), str(args.get("document_id") or "").strip())
+
+
+def _exec_sheets_read(args: dict[str, Any]) -> dict[str, Any]:
+    """Læs celler fra et Google Sheets-regneark."""
+    from core.services.google_connector import sheets_read
+    return sheets_read(_operator_user_id(args), str(args.get("spreadsheet_id") or "").strip(),
+                       str(args.get("range") or "").strip())
+
+
+def _exec_slides_read(args: dict[str, Any]) -> dict[str, Any]:
+    """Læs titler og tekst fra et Google Slides-show."""
+    from core.services.google_connector import slides_read
+    return slides_read(_operator_user_id(args), str(args.get("presentation_id") or "").strip())
+
+
 _TOOL_HANDLERS: dict[str, Any] = {
     "read_tool_result": _exec_read_tool_result,
     "read_self_docs": _exec_read_self_docs,
@@ -8346,6 +8380,11 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "github_list_prs": _exec_github_list_prs,
     "gmail_search": _exec_gmail_search,
     "gmail_list": _exec_gmail_list,
+    "calendar_list_events": _exec_calendar_list_events,
+    "drive_search": _exec_drive_search,
+    "docs_read": _exec_docs_read,
+    "sheets_read": _exec_sheets_read,
+    "slides_read": _exec_slides_read,
     "read_file": _exec_read_file,
     "operator_read_file": _exec_operator_read_file,
     "operator_write_file": _exec_operator_write_file,

@@ -33,7 +33,12 @@ _PROVIDERS: dict[str, dict] = {
         "id_key": "google_oauth_client_id",
         "secret_key": "google_oauth_client_secret",  # pragma: allowlist secret  (runtime.json-nøglenavn, ikke et secret)
         # access_type=offline + prompt=consent → vi får et refresh_token.
-        "extra_authorize": {"access_type": "offline", "prompt": "consent"},
+        # include_granted_scopes=true → nye scopes lægges OVENI tidligere givne
+        # (Google-pakken deler ét token; tilføj Kalender uden at miste Gmail).
+        "extra_authorize": {
+            "access_type": "offline", "prompt": "consent",
+            "include_granted_scopes": "true",
+        },
     },
 }
 

@@ -16,16 +16,23 @@ function Harness({ ids }: { ids: string[] }) {
 describe('MessageRail', () => {
   it('skjuler sig ved <2 ankre', () => {
     render(<Harness ids={['a']} />)
-    expect(screen.queryByLabelText(/Spring til:/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Spring til besked' })).not.toBeInTheDocument()
   })
 
-  it('viser en tick pr. anker (≥2) + klik scroller', () => {
+  it('viser en række pr. anker (≥2) + klik scroller', () => {
     const scroll = vi.fn()
     Element.prototype.scrollIntoView = scroll
     render(<Harness ids={['a', 'b', 'c']} />)
-    const ticks = screen.getAllByLabelText(/Spring til:/)
-    expect(ticks.length).toBe(3)
-    fireEvent.click(ticks[1]!)
+    const rows = screen.getAllByRole('button')
+    expect(rows.length).toBe(3)
+    fireEvent.click(rows[1]!)
     expect(scroll).toHaveBeenCalled()
+  })
+
+  it('markerer det nederste anker som aktivt', () => {
+    render(<Harness ids={['a', 'b', 'c']} />)
+    const rows = screen.getAllByRole('button')
+    expect(rows[2]!.className).toContain('is-active')
+    expect(rows[0]!.className).not.toContain('is-active')
   })
 })

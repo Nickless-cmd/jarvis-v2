@@ -1691,7 +1691,15 @@
 .env-panel { position: absolute; top: 52px; right: 16px; z-index: 50; width: 240px;
   background: var(--bg-1, var(--bg)); border: 1px solid var(--line); border-radius: 12px;
   padding: 12px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.30); font-size: 13px; }
-.env-head { font-size: 12px; letter-spacing: .04em; color: var(--fg-3, var(--fg)); margin-bottom: 8px; }
+.env-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; letter-spacing: .04em; color: var(--fg-3, var(--fg)); margin-bottom: 8px; }
+.env-gear { display: inline-flex; background: none; border: none; padding: 2px; color: var(--fg-3, var(--fg)); opacity: .7; cursor: pointer; border-radius: 6px; }
+.env-gear:hover { opacity: 1; background: var(--bg-2, var(--bg)); }
+.env-divider { height: 1px; background: var(--line); margin: 10px 0; }
+.env-section-head { font-size: 11px; letter-spacing: .04em; color: var(--fg-3, var(--fg)); opacity: .8; margin-bottom: 6px; }
+.env-muted { color: var(--fg-3, var(--fg)); opacity: .7; }
+/* Overlap-beskyttelse: panelet er absolut i højre margin — skjul når vinduet
+ * er for smalt til at det kan stå uden at dække chatten (Bjørn 2026-06-17). */
+@media (max-width: 1180px) { .env-panel { display: none; } }
 .env-rows { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .env-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .env-label { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2, var(--fg)); }
@@ -1711,20 +1719,26 @@
 
 /* ── Besked-rail (venstre kant, hop til besked — chat + code) ── */
 .transcript-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-/* 1:1 med Claudes navigations-rail: tynde vandrette dashes i venstre kant, ét
- * pr. bruger-besked. Rolig i hvile, lyser op når man fører musen over rail-zonen
- * (group-hover); hover på én dash → den vokser + accent + en tooltip-pille med
- * besked-uddraget glider ud til højre. Klik scroller til beskeden. */
-.msg-rail { position: absolute; left: 0; top: 10px; bottom: 10px; width: 22px; z-index: 5; pointer-events: none; }
-.msg-rail-tick { position: absolute; left: 6px; width: 14px; height: 2px; padding: 0; border: none; border-radius: 2px;
-  background: var(--fg-3, #888); opacity: .28; cursor: pointer; pointer-events: auto; transform: translateY(-50%);
-  transition: opacity .12s ease, width .12s ease, background .12s ease; }
-.msg-rail:hover .msg-rail-tick { opacity: .55; }
-.msg-rail-tick:hover { opacity: 1; width: 18px; background: var(--accent); }
-/* Tooltip-pille (custom — ikke native title), som Claudes hover-preview. */
-.msg-rail-tip { position: absolute; left: 24px; top: 50%; transform: translateY(-50%) translateX(-4px);
-  max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  padding: 5px 10px; border-radius: 8px; background: var(--bg-1, var(--bg)); border: 1px solid var(--line);
-  box-shadow: 0 6px 20px rgba(0,0,0,.28); font-size: 12px; color: var(--fg-1, var(--fg));
-  opacity: 0; pointer-events: none; transition: opacity .12s ease, transform .12s ease; }
-.msg-rail-tick:hover .msg-rail-tip { opacity: 1; transform: translateY(-50%) translateX(0); }
+/* 1:1 med Claudes navigations-rail: en lodret indholdsfortegnelse i venstre
+ * kant. I hvile vises kun korte dashes (ét pr. anker). Føres musen over rail-
+ * zonen folder hele titel-listen ud i et panel (bg + ramme + skygge); rækken
+ * under markøren fremhæves, og det aktuelle (nederste) anker står fedt med en
+ * længere/lysere dash. Klik scroller til beskeden. */
+.msg-rail { position: absolute; left: 4px; top: 14px; z-index: 20; max-width: 26px; }
+.msg-rail:hover { max-width: none; }
+.msg-rail-panel { display: flex; flex-direction: column; gap: 2px; padding: 4px;
+  border: 1px solid transparent; border-radius: 10px; max-height: calc(100vh - 200px); overflow: hidden;
+  transition: background .12s ease, border-color .12s ease; }
+.msg-rail:hover .msg-rail-panel { background: var(--bg-1, var(--bg)); border-color: var(--line);
+  box-shadow: 0 12px 34px rgba(0,0,0,.38); padding: 6px; overflow-y: auto; }
+.msg-rail-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 17px;
+  background: none; border: none; padding: 2px 8px; border-radius: 6px; cursor: pointer;
+  text-align: left; color: var(--fg-3, #888); }
+.msg-rail-row:hover { background: var(--bg-2, var(--bg)); color: var(--fg-1, var(--fg)); }
+.msg-rail-dash { flex: none; width: 13px; height: 2px; border-radius: 2px; background: currentColor;
+  opacity: .45; transition: width .12s ease, opacity .12s ease; }
+.msg-rail-row.is-active { color: var(--fg-1, var(--fg)); font-weight: 500; }
+.msg-rail-row.is-active .msg-rail-dash { opacity: 1; width: 17px; }
+.msg-rail-text { display: none; font-size: 12px; line-height: 1.3; max-width: 230px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-rail:hover .msg-rail-text { display: inline; }

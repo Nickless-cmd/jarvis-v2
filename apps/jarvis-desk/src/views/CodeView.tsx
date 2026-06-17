@@ -394,7 +394,7 @@ export function CodeView({
     <div className="codeview">
       <div className="codeview-main">
         {headerActive}
-        {config && (
+        {config && !filesOpen && !panel.open && (
           <EnvironmentPanel
             config={config}
             kind={kind}

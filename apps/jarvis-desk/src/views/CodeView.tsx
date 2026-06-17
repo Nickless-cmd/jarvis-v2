@@ -425,6 +425,8 @@ export function CodeView({
             blocks={stream.blocks}
             sessionId={sessionId}
             hasHistory={visibleMessages.length > 0}
+            isOwner={isOwner}
+            onChanged={() => setGitRefresh((n) => n + 1)}
           />
         )}
         {trustBanner}

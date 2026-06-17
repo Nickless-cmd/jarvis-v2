@@ -315,6 +315,21 @@ export async function getGitStatus(
   return apiFetch(config, `/chat/git-status?${qs}`)
 }
 
+/** Commit ALLE ændringer i code-workspacet (git add -A + commit, ingen push). */
+export async function commitAllChanges(
+  config: ApiConfig, root: string, message = '',
+): Promise<{ status: string; sha?: string; branch?: string; message?: string }> {
+  return apiFetch(config, '/chat/git/commit-all', { method: 'POST', body: { root, message } })
+}
+
+/** Opret en pull request (commit + push + gh pr create). Udadvendt — kun ved
+ *  bruger-klik. Returnerer PR-URL. */
+export async function createPullRequest(
+  config: ApiConfig, root: string, title = '', body = '',
+): Promise<{ status: string; url?: string; branch?: string; base?: string }> {
+  return apiFetch(config, '/chat/git/create-pr', { method: 'POST', body: { root, title, body } })
+}
+
 /** Er et workspace betroet (skrive/exec-gate i code-mode)? */
 export async function getWorkspaceTrust(
   config: ApiConfig, kind: 'container' | 'workstation', root: string,

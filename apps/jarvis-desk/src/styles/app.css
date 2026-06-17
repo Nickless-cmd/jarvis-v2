@@ -1697,6 +1697,17 @@
 .env-divider { height: 1px; background: var(--line); margin: 10px 0; }
 .env-section-head { font-size: 11px; letter-spacing: .04em; color: var(--fg-3, var(--fg)); opacity: .8; margin-bottom: 6px; }
 .env-muted { color: var(--fg-3, var(--fg)); opacity: .7; }
+/* Git-action-rækker (Indsæt / Opret pull request) — som Codex' klikbare rækker. */
+.env-action { padding: 0; }
+.env-actbtn { display: inline-flex; align-items: center; gap: 6px; width: 100%; background: none;
+  border: none; padding: 2px 0; font: inherit; font-size: 13px; color: var(--fg-2, var(--fg));
+  cursor: pointer; border-radius: 6px; }
+.env-actbtn:hover:not(:disabled) { color: var(--accent); }
+.env-actbtn:disabled { opacity: .55; cursor: default; }
+.env-note { margin-top: 8px; font-size: 11.5px; color: var(--fg-3, var(--fg)); }
+.env-note.is-err { color: #e0556b; }
+.env-note a { color: var(--accent); text-decoration: none; }
+.env-note a:hover { text-decoration: underline; }
 .env-rows { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .env-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .env-label { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2, var(--fg)); }

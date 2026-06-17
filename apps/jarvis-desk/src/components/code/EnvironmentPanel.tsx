@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { GitBranch, Monitor, Server, Globe, Bot, Settings, Activity, Wrench, GitCompare } from 'lucide-react'
-import { getGitStatus, type GitStatus, type ApiConfig } from '../../lib/api'
+import { GitBranch, Monitor, Server, Globe, Bot, Settings, Activity, Wrench, GitCompare, GitCommitHorizontal, Github } from 'lucide-react'
+import { getGitStatus, commitAllChanges, createPullRequest, type GitStatus, type ApiConfig } from '../../lib/api'
 import type { ContentBlock } from '../../lib/sseProtocol'
 
 /** Tool-navne der er agent-dispatch (vises som "Underagenter" à la Codex). */
@@ -26,6 +26,7 @@ function prettyTool(name: string): string {
 export function EnvironmentPanel({
   config, kind, root, refreshKey = 0,
   working, workingStep, tokens, blocks = [], sessionId, hasHistory = false,
+  isOwner = false, onChanged,
 }: {
   config?: ApiConfig
   kind: 'container' | 'workstation'
@@ -37,9 +38,40 @@ export function EnvironmentPanel({
   blocks?: ContentBlock[]
   sessionId?: string | null
   hasHistory?: boolean
+  isOwner?: boolean
+  onChanged?: () => void
 }) {
   const [git, setGit] = useState<GitStatus | null>(null)
   const [collapsed, setCollapsed] = useState(false)
+  const [busy, setBusy] = useState<'' | 'commit' | 'pr'>('')
+  const [note, setNote] = useState<{ text: string; url?: string; err?: boolean } | null>(null)
+
+  // Git-actions (commit/PR) er rolle-bestemt: KUN på server-repoet ('repo') og
+  // KUN owner. Members/workstation-stien rutes via operator-broen i en senere
+  // feature (se project_code_git_actions_roadmap).
+  const canGit = isOwner && kind === 'container' && root === 'repo'
+
+  const doCommit = async () => {
+    if (!config || busy) return
+    setBusy('commit'); setNote(null)
+    try {
+      const r = await commitAllChanges(config, root)
+      setNote(r.status === 'ok' ? { text: `Committet ${r.sha}` } : { text: 'Ingen ændringer' })
+      onChanged?.()
+    } catch (e) { setNote({ text: (e as Error).message || 'Commit fejlede', err: true }) }
+    finally { setBusy('') }
+  }
+  const doPr = async () => {
+    if (!config || busy) return
+    setBusy('pr'); setNote(null)
+    try {
+      const r = await createPullRequest(config, root)
+      setNote({ text: r.url ? 'Pull request oprettet' : `PR (${r.status})`, url: r.url })
+      if (r.url) try { window.open(r.url, '_blank') } catch { /* ignore */ }
+      onChanged?.()
+    } catch (e) { setNote({ text: (e as Error).message || 'PR fejlede', err: true }) }
+    finally { setBusy('') }
+  }
 
   const [everRan, setEverRan] = useState(hasHistory)
   const sessionRef = useRef<string | null | undefined>(sessionId)
@@ -103,7 +135,28 @@ export function EnvironmentPanel({
                 <span className="env-label"><GitBranch size={13} /> {git.branch}</span>
               </li>
             )}
+            {canGit && git?.is_git && (
+              <li className="env-row env-action">
+                <button type="button" className="env-actbtn" onClick={doCommit} disabled={!!busy}>
+                  <GitCommitHorizontal size={13} /> {busy === 'commit' ? 'Committer…' : 'Indsæt'}
+                </button>
+              </li>
+            )}
+            {canGit && git?.is_git && (
+              <li className="env-row env-action">
+                <button type="button" className="env-actbtn" onClick={doPr} disabled={!!busy}>
+                  <Github size={13} /> {busy === 'pr' ? 'Opretter…' : 'Opret pull request'}
+                </button>
+              </li>
+            )}
           </ul>
+          {note && (
+            <div className={`env-note ${note.err ? 'is-err' : ''}`}>
+              {note.url
+                ? <a href={note.url} target="_blank" rel="noreferrer">{note.text} →</a>
+                : note.text}
+            </div>
+          )}
 
           {agents.length > 0 && (
             <>

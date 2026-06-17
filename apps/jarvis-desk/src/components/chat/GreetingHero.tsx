@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { getConnectors, startConnect, type Connector } from '../../lib/connectorsApi'
-import { connectorIcon } from '../../lib/connectorIcon'
+import { connectorIcon, connectorBrandColor } from '../../lib/connectorIcon'
 import { greetingFor } from '../../lib/greeting'
 import { takePendingHint } from '../../lib/postConnect'
 
@@ -80,6 +80,7 @@ export function GreetingHero({
             <div className="greeting-connectors-row">
               {suggestions.map((c) => {
                 const Icon = connectorIcon(c.icon)
+                const brand = connectorBrandColor(c.id)
                 return (
                   <button
                     key={c.id}
@@ -88,7 +89,10 @@ export function GreetingHero({
                     onClick={() => onConnect(c)}
                     disabled={c.connected}
                   >
-                    <span className="greeting-connector-icon"><Icon size={16} /></span>
+                    <span
+                      className="greeting-connector-icon"
+                      style={brand ? { background: brand, color: '#fff' } : undefined}
+                    ><Icon size={16} /></span>
                     <span className="greeting-connector-body">
                       <span className="greeting-connector-name">{c.name}</span>
                       <span className="greeting-connector-desc">{c.desc}</span>

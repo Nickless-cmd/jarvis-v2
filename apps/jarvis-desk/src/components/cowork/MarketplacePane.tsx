@@ -4,7 +4,7 @@ import type { ApiConfig } from '../../lib/api'
 import {
   getConnectors, setEnabled, deleteConnector, startConnect, type Connector,
 } from '../../lib/connectorsApi'
-import { connectorIcon } from '../../lib/connectorIcon'
+import { connectorIcon, connectorBrandColor } from '../../lib/connectorIcon'
 import { setPendingHint } from '../../lib/postConnect'
 
 function openBrowser(url: string): void {
@@ -143,6 +143,7 @@ function ConnectorCard({
   const [menu, setMenu] = useState(false)
   const [confirm, setConfirm] = useState(false)
   const Icon = connectorIcon(c.icon)
+  const brand = connectorBrandColor(c.id)
   const isSoon = c.status === 'coming_soon'
 
   useEffect(() => {
@@ -166,7 +167,7 @@ function ConnectorCard({
 
   return (
     <div className={`connector-card ${c.connected ? 'is-connected' : ''} ${!c.enabled ? 'is-disabled' : ''} ${isSoon ? 'is-soon' : ''}`}>
-      <div className="connector-icon"><Icon size={18} /></div>
+      <div className="connector-icon" style={brand ? { background: brand, color: '#fff' } : undefined}><Icon size={18} /></div>
       <div className="connector-body">
         <div className="connector-name">{c.name}</div>
         <div className="connector-desc">{c.desc}</div>

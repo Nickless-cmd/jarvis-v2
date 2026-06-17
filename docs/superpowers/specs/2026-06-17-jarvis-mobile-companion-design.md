@@ -27,11 +27,47 @@ Reference apps: **Claude Android** (4.6★, 10M+ downloads, updated June 16 2026
 - **Billede-redigering** — analyse ja, men ikke redigering/generering i appen
 
 ### What users expect from AI companion apps in 2026
-1. **Multimodal** — tekst + stemme + billeder i samme flow, problemfrit
-2. **Langtidshukommelse** — "Infinite Context" der husker samtaler uger/måneder tilbage
-3. **Følelsesmæssig intelligens** — kan mærke humør, tilpasse sig, have egne meninger
-4. **Dybbdegående tilpasning** — personlighed, talemønstre, baggrundshistorier
-5. **Privatliv & sikkerhed** — anonymitet, kryptering, gennemsigtighed
+
+**Top 5 krav (på tværs af alle analyser):**
+1. **Multimodal** — tekst + stemme + billeder i **samme flow**. Brugere forventer at kunne tale, skrive og sende billeder uden at skifte tilstand. Claude og ChatGPT har begge dette som standard.
+2. **Langtidshukommelse** — "Infinite Context" der husker på tværs af dage/uger. Apps som Nomi.ai og Kupid AI får topkarakter fordi de husker detaljer fra måneder siden.
+3. **Følelsesmæssig intelligens** — AI'en skal kunne mærke humør, tilpasse sig, **have egne meninger**. "Basic bots agree with everything — it gets boring quickly."
+4. **Hurtig respons** — ingen ventetid. Claude Android får kritik når den er langsom, ros når den er lynhurtig.
+5. **Privatliv & sikkerhed** — 2026-brugere er bevidste. Kryptering, anonymitet, gennemsigtighed er must-haves, ikke nice-to-haves.
+
+### Hvad Android-brugere specifikt klager over (fra reelle anmeldelser)
+- **Baggrundskørsel dræner batteri** — Candy AI (4.5★, 550K reviews) får kritik for at skulle have manuel battery optimization
+- **Token-systemer føles som røveri** — Joi AI trækker ned fordi billeder koster tokens OVENPÅ abonnement
+- **Notifikationer der ikke virker** — Android kræver specifikke permissions for pålidelige notifikationer
+- **Chatbobler/overlay** — ChatGPT har genvej via app-ikon (hold nede → Camera/Voice), men ingen flydende chatboble
+
+### Hvad Claude og ChatGPT gør godt på mobil (2026)
+
+| Feature | Claude Android | ChatGPT Android |
+|---|---|---|
+| **Voice** | "Think out loud" — diktering + svar | Advanced Voice Mode med soundwave ikon |
+| **Billeder** | Analyser UI, diagrammer, generer SVG | Upload foto, analyser, transskriber |
+| **Kode** | Fuld editor, debug, multi-sprog | Ikke i samme grad |
+| **Connectors** | Google Drive, Gmail, Calendar | Ingen — lukket økosystem |
+| **Hastighed** | God — 4.6★, 10M+ downloads | Lynhurtig — 4.7★ |
+| **Liveness** | Standard "skriver..."-animation | Standard "skriver..." |
+
+### Vores position i companion-landskabet
+**Vigtig observation:** Alle companion apps på markedet (Candy AI, Kupid AI, Nomi, Replika, Character.AI) er **rollelege- eller romantik-fokuserede**. De er bygget til fantasiforhold, ikke til rigtigt arbejde. Jarvis Companion er fundamentalt anderledes:
+
+- **Virkelige værktøjer** — mails, filer, kode, servere
+- **Virkelig hukommelse** — ikke en scriptet personlighed, men faktisk kontinuitet
+- **Ingen tredjepart** — alt kører på brugerens hardware
+- **Privacy by design** — ikke et salgsargument, men arkitektur
+
+### Hvad brugerne virkelig ønsker (som vi kan levere)
+1. **Liveness der ikke er flad** — en pulserende ring, en "tænker"-indikator der faktisk føles levende
+2. **Tool results som kort** — når Jarvis tjekker vejr, søger i filer, eller laver et kald — vis det som et visuelt kort, ikke rå tekst
+3. **Voice der føles naturligt** — push-to-talk, ikke "optag og send"
+4. **Session kontinuitet** — uanset enhed, samme samtale, samme "varme tråd"
+5. **Chatboble** — så brugeren kan skrive til Jarvis uden at åbne appen
+
+**Konklusion:** Vi er foran på det rigtige (værktøjer, privatliv, kontinuitet) men bagud på overfladen (liveness, animationer, tool cards, voice UX). Det vi mangler er præcis dét Bjørn nævnte: gøre den lidt fancy uden at være overdrevet.
 
 ## GDPR & Android Security (2026)
 
@@ -112,6 +148,63 @@ The public API already exposes the V1 foundation:
 - `GET /chat/visible-providers`
 
 The Android client should treat `/chat/stream/v2` as the primary streaming contract. It should not invent a mobile-only chat protocol unless a concrete mobile failure appears.
+
+## App Icon & Identity
+
+Appen skal have **samme ikon som desktop-appen** — genkendelighed på tværs af enheder.
+
+- **App icon** — identisk med jarvis-desk ikonet på desktop
+- **Menu-ring** — den ring der åbner sessions panelet i appen, skal være samme design som desktop (cirkulær ring, Jarvis-farve, åbner panelet ved tryk)
+- **Brand consistency** — ikon, splash screen, og menu-ring skal matche desktop-appens visuelle identitet
+
+## Mobile-Specific Features
+
+### Baggrundskørsel (Foreground Service)
+Streamen må **ikke dø** når brugeren skifter til en anden app. Appen skal køre som en **Android Foreground Service** med et synligt notifikationskort ("Jarvis kører — tryk for at åbne"), så:
+- SSE streamen overlever app-skift
+- Voice session fortsætter i baggrunden
+- Lange runs kan fuldføres uden at appen er i forgrunden
+- Notifikationskortet opdateres med run-status
+
+### Session Panel & Aktivitetspoller
+Session panelet skal have en **aktivitetspoller** som i desktop-appen — live status-indikator for:
+- Aktivt run (kører/venter/fejlet)
+- Seneste tool-kald
+- Streaming status
+- Connection health
+
+Polleren kører let i baggrunden og opdaterer panelet uden at brugeren skal refreshe manuelt.
+
+### Chatboble (Overlay)
+**Kun brugeren** (owner) skal have en chatboble — en flydende overlay der vises på tværs af apps, så man kan skrive til Jarvis uden at åbne appen:
+- Bubble viser Jarvis presence ring (levende/åndende)
+- Tryk på bubble → åbner quick-chat mini-vindue
+- Besked sendes direkte til aktiv session
+- Bubble kan trækkes rundt på skærmen
+- Slå til/fra i indstillinger
+
+### Save Rail (Mini-udgave)
+En kompakt version af desktop-appens save rail i bunden af chatview:
+- Seneste sessioner (2-3 stk) som hurtige genveje
+- "Gem til senere"-knap på beskeder
+- Viser drafts og gemte kladder
+- Kan swipes væk for mere chat-plads
+
+### Settings vs. Plugins — Omorganisering
+**Plugins skal ikke vises lige efter sessioner i panelet** — det virker kaotisk. I stedet:
+1. **Indstillingsmenu** (gear-ikon) øverst eller i bunden af panelet
+2. **Plugins** ligger gemt inde i indstillinger under "Tilsluttede tjenester"
+3. Sessioner + chat-history er det primære panel-indhold
+4. Plugins har deres egen sektion i settings, ikke i hovedpanelet
+
+### Auto-Updater (GitHub Releases)
+Appen skal selv kunne detektere nye opdateringer:
+1. Tjekker **GitHub releases** ved opstart + periodisk
+2. Sammenligner lokal version med nyeste release
+3. Ved ny version: **prompt brugeren** med "Ny version X.X.X klar — opdatér nu?"
+4. Download + installer automatisk (ingen manuel APK-søgning)
+5. Genstart appen efter opdatering
+6. In-app changelog så brugeren kan se hvad der er ændret
 
 ## V1 Screens
 

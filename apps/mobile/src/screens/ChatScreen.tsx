@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
 import { ConnectionPill } from '../components/ConnectionPill'
 import { ErrorBanner } from '../components/ErrorBanner'
+import { GreetingHero } from '../components/GreetingHero'
 import { JarvisRing } from '../components/JarvisRing'
 import { MessageList } from '../components/MessageList'
 import { SidePanel } from '../components/SidePanel'
 import { whoami } from '../lib/apiClient'
+import { loadLastSession, saveLastSession } from '../lib/sessionStore'
 import { useAuth } from '../state/AuthContext'
 import { useSessions } from '../state/SessionContext'
 import { useStream } from '../state/StreamContext'
@@ -22,11 +23,13 @@ export function ChatScreen() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [displayName, setDisplayName] = useState('Jarvis')
   const keyboardHeight = useKeyboardHeight()
-  const insets = useSafeAreaInsets()
-  // Løft composeren præcis op til tastaturets top. Roden ligger i en
-  // SafeAreaView der allerede padder insets.bottom (navigationslinje), så
-  // vi trækker den fra for ikke at efterlade et hul.
-  const liftPadding = keyboardHeight > 0 ? Math.max(keyboardHeight - insets.bottom, 0) : 0
+  // Løft composeren op over tastaturet med fuld tastaturhøjde. (Tidligere
+  // trak vi insets.bottom fra, men keyboardHeight inkluderer allerede
+  // navigationslinjen i edge-to-edge → det dobbelt-fratrak og lod composeren
+  // ligge lidt skjult. Fuld højde sikrer den altid er fri af tastaturet.)
+  const liftPadding = keyboardHeight
+
+  const didRestore = useRef(false)
 
   useEffect(() => {
     if (!config) return
@@ -34,7 +37,22 @@ export function ChatScreen() {
     whoami(config)
       .then((me) => setDisplayName(me.display_name || 'Jarvis'))
       .catch(() => undefined)
+    // Gendan den session brugeren sidst var i (åbn samme sted som ved app-luk).
+    if (!didRestore.current) {
+      didRestore.current = true
+      loadLastSession().then((id) => {
+        if (id) sessions.select(config, id).catch(() => undefined)
+      })
+    }
   }, [config])
+
+  // Husk aktiv session på tværs af app-luk.
+  useEffect(() => {
+    if (sessions.activeId) void saveLastSession(sessions.activeId)
+  }, [sessions.activeId])
+
+  // Greeting vises når chatten er tom (opstart / ny samtale) — som på desktop.
+  const showGreeting = sessions.messages.length === 0 && !sessions.loading
 
   const ensureSessionAndSend = async (text: string) => {
     if (!config) return
@@ -75,7 +93,11 @@ export function ChatScreen() {
       </View>
 
       <View style={[styles.flex, { paddingBottom: liftPadding }]}>
-        <MessageList messages={sessions.messages} blocks={stream.state.blocks} />
+        {showGreeting ? (
+          <GreetingHero userName={displayName} />
+        ) : (
+          <MessageList messages={sessions.messages} blocks={stream.state.blocks} />
+        )}
         {canRetry ? (
           <ErrorBanner
             title={stream.state.status === 'error' ? 'Stream fejlede' : 'Svar stoppet'}

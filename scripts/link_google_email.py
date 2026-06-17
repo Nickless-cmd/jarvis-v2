@@ -23,6 +23,7 @@ def main() -> int:
     ap.add_argument("--list", action="store_true", help="vis alle brugere + om Google er linket")
     ap.add_argument("--user", default="", help="user_id at linke")
     ap.add_argument("--email", default="", help="Google-email til --user")
+    ap.add_argument("--role", default="member", help="rolle for link (owner/member)")
     ap.add_argument("--all-from-login", action="store_true",
                     help="sæt google_email = login-email for ALLE ikke-linkede brugere")
     args = ap.parse_args()
@@ -38,8 +39,8 @@ def main() -> int:
         return 0
 
     if args.user and args.email:
-        ok = user_db.set_google_email(args.user, args.email)
-        print(f"{'OK' if ok else 'FEJL'}: {args.user} → {args.email}")
+        ok = user_db.set_google_email(args.user, args.email, role=args.role)
+        print(f"{'OK' if ok else 'FEJL'}: {args.user} → {args.email} ({args.role})")
         return 0 if ok else 1
 
     if args.all_from_login:

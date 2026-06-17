@@ -69,6 +69,52 @@ def get_user_row_by_google_email_hash(h: str) -> dict[str, object] | None:
     return dict(row) if row else None
 
 
+# ── Google-login link-tabel (store-agnostisk) ──────────────────────────────
+# Google-login skal virke uanset om brugeren bor i SQLite-user_db ELLER kun i
+# users.json (owner + nogle members). Denne tabel mapper google_email_hash →
+# (user_id, role) frakoblet login-storen. Kun hash gemmes (GDPR).
+
+def _ensure_google_links_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS google_login_links (
+            google_email_hash TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member',
+            updated_at TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
+    conn.commit()
+
+
+def set_google_link(email_hash: str, user_id: str, role: str, updated_at: str) -> bool:
+    if not (email_hash and user_id):
+        return False
+    with connect() as conn:
+        _ensure_google_links_table(conn)
+        conn.execute(
+            "INSERT INTO google_login_links (google_email_hash, user_id, role, updated_at) "
+            "VALUES (?, ?, ?, ?) ON CONFLICT(google_email_hash) DO UPDATE SET "
+            "user_id=excluded.user_id, role=excluded.role, updated_at=excluded.updated_at",
+            (email_hash, user_id, role or "member", updated_at),
+        )
+        conn.commit()
+    return True
+
+
+def get_google_link(email_hash: str) -> dict[str, object] | None:
+    if not (email_hash or "").strip():
+        return None
+    with connect() as conn:
+        _ensure_google_links_table(conn)
+        row = conn.execute(
+            "SELECT user_id, role FROM google_login_links WHERE google_email_hash = ?",
+            (email_hash,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
 def insert_user_row(
     *, user_id: str, email_hash: str, email_enc: bytes, name: str, role: str,
     workspace: str, password_hash: str, discord_id_enc: bytes, totp_seed_enc: bytes,

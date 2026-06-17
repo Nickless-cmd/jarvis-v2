@@ -76,7 +76,6 @@ export function GreetingHero({
       <div className="greeting-connectors">
         {suggestions.length > 0 && (
           <>
-            <div className="greeting-connectors-label">Forbind dine apps</div>
             <div className="greeting-connectors-row">
               {suggestions.map((c) => {
                 const Icon = connectorIcon(c.icon)

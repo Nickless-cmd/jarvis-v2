@@ -66,10 +66,11 @@ export function MessageRail({
           type="button"
           className="msg-rail-tick"
           style={{ top: `${t.top}%` }}
-          title={t.label}
           aria-label={`Spring til: ${t.label}`}
           onClick={() => jump(t.id)}
-        />
+        >
+          <span className="msg-rail-tip">{t.label}</span>
+        </button>
       ))}
     </div>
   )

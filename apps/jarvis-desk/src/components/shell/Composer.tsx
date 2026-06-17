@@ -291,7 +291,7 @@ export function Composer({
   const permLabel = PERMISSIONS.find((p) => p.key === permission)?.label ?? 'Spørg'
 
   return (
-    <>
+    <div className="composer-shell">
     <div className={`composer ${dragOver ? 'drag-over' : ''}`}>
       {dragOver && <div className="composer-drop-overlay">Slip filer og billeder her</div>}
       {ringDenominator > 0 && (
@@ -474,6 +474,6 @@ export function Composer({
         <> · <button type="button" className="composer-privacy-link" onClick={onOpenPrivacy}>Privatliv &amp; cookies</button></>
       )}
     </p>
-    </>
+    </div>
   )
 }

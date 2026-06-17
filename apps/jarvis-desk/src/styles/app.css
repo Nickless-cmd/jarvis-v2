@@ -1220,6 +1220,10 @@
 /* composer-område: anker for scroll-pilen (sidder absolut OVER composeren) */
 .composer-area { position: relative; flex: 0 0 auto; padding-bottom: 6px; }
 /* Disclaimer under composer (begge modes) */
+/* Wrapper om composer + disclaimer, så de tæller som ÉT element i greeting-hero
+ * flex-column (gap:22px) — ellers smider gap'et disclaimer 22px under composeren
+ * (Bjørn 2026-06-17: "der er stadig stort gap, det burde bare stå under composer"). */
+.composer-shell { width: 100%; }
 .composer-disclaimer { max-width: 820px; margin: 6px auto 0; text-align: center; font-size: 11px; color: var(--fg-3); opacity: 0.75; }
 /* Notices (afbrudt/hang/fejl) centreret OVER composeren i stedet for i transcript */
 .composer-notices { max-width: 820px; margin: 0 auto 8px; display: flex; flex-direction: column; gap: 8px; }
@@ -1690,11 +1694,32 @@
 .env-live-icon { color: var(--accent); flex: none; }
 .env-step { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .env-tokens { font-size: 11px; color: var(--fg-3, var(--fg)); }
+.env-idle { color: var(--fg-3, var(--fg)); opacity: .8; }
+/* Live tools/agenter Jarvis kalder (Codex-paritet). */
+.env-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.env-tool-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px;
+  padding: 2px 7px; border-radius: 999px; background: var(--bg-2, var(--bg)); border: 1px solid var(--line);
+  color: var(--fg-2, var(--fg)); max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.env-tool-chip svg { flex: none; color: var(--fg-3, var(--fg)); }
+.env-tool-chip.is-agent { border-color: var(--accent); color: var(--accent); }
+.env-tool-chip.is-agent svg { color: var(--accent); }
 
 /* ── Besked-rail (venstre kant, hop til besked — chat + code) ── */
 .transcript-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.msg-rail { position: absolute; left: 2px; top: 10px; bottom: 10px; width: 12px; z-index: 5; pointer-events: none; }
-.msg-rail-tick { position: absolute; left: 2px; width: 6px; height: 2px; padding: 0; border: none; border-radius: 2px;
-  background: var(--fg-3, #888); opacity: .35; cursor: pointer; pointer-events: auto; transform: translateY(-50%);
-  transition: opacity .12s, width .12s, background .12s; }
-.msg-rail-tick:hover { opacity: 1; width: 10px; background: var(--accent); }
+/* 1:1 med Claudes navigations-rail: tynde vandrette dashes i venstre kant, ét
+ * pr. bruger-besked. Rolig i hvile, lyser op når man fører musen over rail-zonen
+ * (group-hover); hover på én dash → den vokser + accent + en tooltip-pille med
+ * besked-uddraget glider ud til højre. Klik scroller til beskeden. */
+.msg-rail { position: absolute; left: 0; top: 10px; bottom: 10px; width: 22px; z-index: 5; pointer-events: none; }
+.msg-rail-tick { position: absolute; left: 6px; width: 14px; height: 2px; padding: 0; border: none; border-radius: 2px;
+  background: var(--fg-3, #888); opacity: .28; cursor: pointer; pointer-events: auto; transform: translateY(-50%);
+  transition: opacity .12s ease, width .12s ease, background .12s ease; }
+.msg-rail:hover .msg-rail-tick { opacity: .55; }
+.msg-rail-tick:hover { opacity: 1; width: 18px; background: var(--accent); }
+/* Tooltip-pille (custom — ikke native title), som Claudes hover-preview. */
+.msg-rail-tip { position: absolute; left: 24px; top: 50%; transform: translateY(-50%) translateX(-4px);
+  max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding: 5px 10px; border-radius: 8px; background: var(--bg-1, var(--bg)); border: 1px solid var(--line);
+  box-shadow: 0 6px 20px rgba(0,0,0,.28); font-size: 12px; color: var(--fg-1, var(--fg));
+  opacity: 0; pointer-events: none; transition: opacity .12s ease, transform .12s ease; }
+.msg-rail-tick:hover .msg-rail-tip { opacity: 1; transform: translateY(-50%) translateX(0); }

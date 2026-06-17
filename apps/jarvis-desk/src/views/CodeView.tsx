@@ -220,8 +220,17 @@ export function CodeView({
 
   // Auto-continue: efter et godkendt mode/permission-skift gen-sendes den
   // oprindelige besked her, så Jarvis fortsætter sømløst i code mode.
+  //
+  // KRITISK timing-gate (2026-06-17): re-send'et MÅ ikke fyre mens det
+  // oprindelige chat-run stadig kører. Kortet kan klikkes før Jarvis når
+  // message_stop; fyrer vi da, POSTer vi et nyt run i SAMME session mens det
+  // gamle stadig er aktivt server-side → visible_runs' same-session-guard
+  // midway-nudge'r det nye run (yielder intet) → SSE lukker uden message_stop
+  // → klienten viser "Forbindelse afbrudt" efter ~60 tokens (det gamle runs
+  // hale). Vent til status forlader 'working' (gammelt run unregistreres
+  // synkront i sit finally) — så tager guarden "clear & proceed fresh"-stien.
   useEffect(() => {
-    if (!stream.autoContinue || !ready) return
+    if (!stream.autoContinue || !ready || stream.status === 'working') return
     const msg = stream.consumeAutoContinue()
     if (!msg) return
     const prefs = readModelPrefs()
@@ -235,7 +244,7 @@ export function CodeView({
       providerChoice: sendProvider,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stream.autoContinue, ready])
+  }, [stream.autoContinue, ready, stream.status])
 
   // Gensend en tidligere bruger-besked (sparer copy-paste). Rolle-bevidst model
   // som auto-continue: owner bruger egne prefs, member tvinges til standard/pro.
@@ -375,6 +384,8 @@ export function CodeView({
             working={stream.status === 'working'}
             workingStep={stream.workingStep ?? undefined}
             tokens={stream.usage.output}
+            blocks={stream.blocks}
+            sessionId={sessionId}
           />
         )}
         {trustBanner}

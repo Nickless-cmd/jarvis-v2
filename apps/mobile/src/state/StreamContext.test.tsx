@@ -128,3 +128,82 @@ it('aborts and cancels the active run when stopped', async () => {
   expect(mockCancelRun).toHaveBeenCalledWith(config, 'run-123')
   expect(screen.getByText('interrupted')).toBeTruthy()
 })
+
+it('persists partial assistant output when a stream is interrupted', async () => {
+  let handlers: StreamHandlers | undefined
+  mockStartStream.mockImplementation((_request: unknown, nextHandlers: StreamHandlers) => {
+    handlers = nextHandlers
+    return {
+      abort: jest.fn(),
+      getRunId: () => 'run-123'
+    }
+  })
+
+  const screen = await render(
+    <StreamProvider>
+      <Probe />
+    </StreamProvider>
+  )
+
+  await act(async () => {
+    screen.getByText('send').props.onPress()
+  })
+  await act(async () => {
+    handlers?.onEvent({
+      type: 'message_start',
+      message: {
+        id: 'run-123',
+        model: 'deepseek',
+        provider: 'ollama',
+        lane: 'primary',
+        session_id: 'session-1',
+        usage: { input_tokens: 2, output_tokens: 0 }
+      }
+    } satisfies StreamEvent)
+    handlers?.onEvent({
+      type: 'content_block_start',
+      index: 0,
+      content_block: { type: 'text', text: '' }
+    } satisfies StreamEvent)
+    handlers?.onEvent({
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'text_delta', text: 'Delvist svar' }
+    } satisfies StreamEvent)
+    handlers?.onInterrupted?.()
+  })
+
+  expect(mockAppendLocalMessage).toHaveBeenCalledWith(
+    expect.objectContaining({
+      role: 'assistant',
+      content: 'Delvist svar'
+    })
+  )
+  expect(screen.getByText('interrupted')).toBeTruthy()
+})
+
+it('marks the stream interrupted even when server cancel fails', async () => {
+  const abort = jest.fn()
+  mockCancelRun.mockRejectedValueOnce(new Error('cancel failed'))
+  mockStartStream.mockReturnValue({
+    abort,
+    getRunId: () => 'run-123'
+  })
+
+  const screen = await render(
+    <StreamProvider>
+      <Probe />
+    </StreamProvider>
+  )
+
+  await act(async () => {
+    screen.getByText('send').props.onPress()
+  })
+  await act(async () => {
+    await screen.getByText('stop').props.onPress()
+  })
+
+  expect(abort).toHaveBeenCalledTimes(1)
+  expect(mockCancelRun).toHaveBeenCalledWith(config, 'run-123')
+  expect(screen.getByText('interrupted')).toBeTruthy()
+})

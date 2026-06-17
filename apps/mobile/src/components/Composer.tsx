@@ -14,12 +14,21 @@ export function Composer({
   onStop: () => void
 }) {
   const [text, setText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  const submit = () => {
+  const submit = async () => {
     const value = text.trim()
-    if (!value || disabled || working) return
-    onSend(value)
-    setText('')
+    if (!value || disabled || working || submitting) return
+
+    setSubmitting(true)
+    try {
+      await onSend(value)
+      setText('')
+    } catch {
+      // Keep the draft available when session creation or send handoff fails.
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -37,11 +46,11 @@ export function Composer({
       <Pressable
         testID="composer-button"
         accessibilityRole="button"
-        disabled={disabled && !working}
+        disabled={(disabled && !working) || submitting}
         onPress={working ? onStop : submit}
         style={({ pressed }) => [
           styles.button,
-          disabled && !working ? styles.buttonDisabled : null,
+          (disabled && !working) || submitting ? styles.buttonDisabled : null,
           pressed ? styles.buttonPressed : null
         ]}
       >

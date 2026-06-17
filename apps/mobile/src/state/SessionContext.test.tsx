@@ -123,3 +123,40 @@ it('refreshes, selects, creates, and updates local messages', async () => {
 
   await waitFor(() => expect(screen.getByText('replaced')).toBeTruthy())
 })
+
+it('clears sessions, active id, and messages after provider remount', async () => {
+  mockCreateSession.mockResolvedValue({ id: 's3', title: 'Three', updated_at: 'now' })
+
+  const screen = await render(
+    <SessionProvider>
+      <Probe />
+    </SessionProvider>
+  )
+
+  await act(async () => {
+    await screen.getByText('create').props.onPress()
+  })
+
+  await waitFor(() => expect(screen.getAllByText('s3')).toHaveLength(2))
+  await waitFor(() => expect(screen.getByText('empty')).toBeTruthy())
+
+  await act(async () => {
+    await screen.getByText('append').props.onPress()
+  })
+
+  await waitFor(() => expect(screen.getByText('local')).toBeTruthy())
+
+  await act(async () => {
+    screen.unmount()
+  })
+
+  const remounted = await render(
+    <SessionProvider>
+      <Probe />
+    </SessionProvider>
+  )
+
+  await waitFor(() => expect(remounted.getByText('none')).toBeTruthy())
+  expect(remounted.getByText('inactive')).toBeTruthy()
+  expect(remounted.getByText('empty')).toBeTruthy()
+})

@@ -21,21 +21,21 @@ function AppBody() {
   }
 
   return (
+    <SessionProvider key={config.authToken}>
       <View style={styles.center}>
         <Text style={styles.title}>Jarvis chat klar</Text>
       </View>
+    </SessionProvider>
   )
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <SessionProvider>
-        <SafeAreaView style={styles.root}>
-          <StatusBar barStyle="light-content" />
-          <AppBody />
-        </SafeAreaView>
-      </SessionProvider>
+      <SafeAreaView style={styles.root}>
+        <StatusBar barStyle="light-content" />
+        <AppBody />
+      </SafeAreaView>
     </AuthProvider>
   )
 }

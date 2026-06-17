@@ -1579,3 +1579,15 @@
   background: var(--accent); color: #fff; font-weight: 600; font-size: .95rem; cursor: pointer;
 }
 .ai-notice-ok:hover { filter: brightness(1.08); }
+
+/* ── Data & privatliv-panel (GDPR-transparens) ── */
+.data-privacy { margin-top: 1.6rem; padding-top: 1.2rem; border-top: 1px solid var(--line); max-width: 42rem; }
+.data-privacy h3 { font-size: 1.05rem; font-weight: 600; margin: 0 0 .3rem; }
+.data-privacy h4 { font-size: .9rem; font-weight: 600; margin: 1.1rem 0 .4rem; }
+.data-privacy-intro { color: var(--fg-2, var(--fg)); margin: 0 0 .9rem; }
+.data-privacy-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.data-privacy-table th, .data-privacy-table td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid var(--line); }
+.data-privacy-table th { color: var(--fg-3, var(--fg)); font-weight: 600; }
+.data-privacy-scopes, .data-privacy-rights { margin: .3rem 0 0; padding-left: 1.1rem; color: var(--fg-2, var(--fg)); line-height: 1.55; }
+.data-privacy-scopes li, .data-privacy-rights li { margin-bottom: .3rem; }
+.data-privacy-note { margin-top: 1rem; font-size: .82rem; color: var(--fg-3, var(--fg)); font-style: italic; }

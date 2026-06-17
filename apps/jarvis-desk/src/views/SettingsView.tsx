@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSettings } from '../hooks/useSettings'
 import { PluginsPanel } from '../components/settings/PluginsPanel'
 import { TotpSetup } from '../components/settings/TotpSetup'
+import { DataPrivacyPanel } from '../components/DataPrivacyPanel'
 
 /** Indstillinger — redigerbar: server, token, default-model + thinking.
  *  Server/token persisteres via Electron-bridge; gemmes ved "Gem". */
@@ -89,6 +90,8 @@ export function SettingsView() {
           config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
         />
       )}
+
+      <DataPrivacyPanel />
     </div>
   )
 }

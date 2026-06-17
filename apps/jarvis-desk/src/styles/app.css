@@ -1609,3 +1609,11 @@
 .quota-table th { color: var(--fg-3, var(--fg)); font-weight: 600; }
 .quota-table tr.quota-warn td { color: var(--warn, #e0a030); }
 .quota-err { color: var(--fg-3, var(--fg)); font-size: .85rem; }
+
+/* ── Om / system-info-panel ── */
+.about-panel { margin-top: 1.6rem; padding-top: 1.2rem; border-top: 1px solid var(--line); max-width: 42rem; }
+.about-panel h3 { font-size: 1.05rem; font-weight: 600; margin: 0 0 .5rem; }
+.about-table { font-size: .85rem; border-collapse: collapse; }
+.about-table td { padding: .25rem .8rem .25rem 0; color: var(--fg-2, var(--fg)); }
+.about-table td:first-child { color: var(--fg-3, var(--fg)); }
+.about-note { margin-top: .8rem; font-size: .82rem; color: var(--fg-3, var(--fg)); }

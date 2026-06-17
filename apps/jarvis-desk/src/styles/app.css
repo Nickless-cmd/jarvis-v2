@@ -1599,3 +1599,13 @@
 .data-privacy-export button:hover:not(:disabled) { border-color: var(--accent); }
 .data-privacy-export button:disabled { opacity: .6; cursor: default; }
 .data-privacy-export-msg { font-size: .82rem; color: var(--fg-3, var(--fg)); }
+
+/* ── Forbrug & kvote-panel ── */
+.quota-panel { margin-top: 1.6rem; padding-top: 1.2rem; border-top: 1px solid var(--line); max-width: 42rem; }
+.quota-panel h3 { font-size: 1.05rem; font-weight: 600; margin: 0 0 .5rem; }
+.quota-tier { color: var(--fg-2, var(--fg)); margin-bottom: .6rem; font-size: .9rem; }
+.quota-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.quota-table th, .quota-table td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid var(--line); }
+.quota-table th { color: var(--fg-3, var(--fg)); font-weight: 600; }
+.quota-table tr.quota-warn td { color: var(--warn, #e0a030); }
+.quota-err { color: var(--fg-3, var(--fg)); font-size: .85rem; }

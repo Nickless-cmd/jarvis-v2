@@ -3,6 +3,7 @@ import { useSettings } from '../hooks/useSettings'
 import { PluginsPanel } from '../components/settings/PluginsPanel'
 import { TotpSetup } from '../components/settings/TotpSetup'
 import { DataPrivacyPanel } from '../components/DataPrivacyPanel'
+import { QuotaPanel } from '../components/QuotaPanel'
 
 /** Indstillinger — redigerbar: server, token, default-model + thinking.
  *  Server/token persisteres via Electron-bridge; gemmes ved "Gem". */
@@ -90,6 +91,10 @@ export function SettingsView() {
           config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
         />
       )}
+
+      <QuotaPanel
+        config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
+      />
 
       <DataPrivacyPanel
         config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}

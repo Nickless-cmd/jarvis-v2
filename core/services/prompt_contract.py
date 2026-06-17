@@ -808,6 +808,12 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Forbundne plugins/apps — så Jarvis ved han HAR adgang til dem (Bjørn 17. jun).
+    try:
+        _awareness_add(9, "forbundne apps (plugins)", _connected_connectors_section())
+    except Exception:
+        pass
+
     # Loop-compliance self-check (added 2026-05-12). Fires when Jarvis is
     # ignoring his own loop-nudge commitment OR R2-gate heed_rate is low.
     # Priority 7 = right after identity pins so he can't miss it among 50+
@@ -3045,6 +3051,45 @@ def _pending_promises_section(session_id: str | None) -> str | None:
         "i denne tur? Hvis ja, vis beviset (commit-hash fra git log, test-output). "
         "Hvis nej, så GØR det nu — eller sig ærligt og kort at du ikke har gjort det "
         "endnu. Ingen flere 'jeg gør det'-løfter uden handling:\n" + "\n".join(lines)
+    )
+
+
+def _connected_connectors_section() -> str | None:
+    """Surface brugerens FORBUNDNE plugins/connectors så Jarvis ved han har adgang.
+
+    Bjørn 17. jun: "vi skal være sikre på at de apps der er connectet faktisk vises
+    for ham så han ved han har adgang og hvordan han skal bruge dem." Læser
+    connectors.list_for_user(current_user_id) og lister kun OAuth-connectors der er
+    BÅDE connected OG enabled (de lokale som computer-use kender han allerede via tools).
+    """
+    try:
+        from core.identity.workspace_context import current_user_id
+        from core.services.connectors import list_for_user
+        uid = (current_user_id() or "").strip()
+        if not uid:
+            return None
+        items = list_for_user(uid)
+    except Exception:
+        return None
+    # Per-connector "sådan bruger du den"-hint (tool-navne). Udvid efterhånden.
+    _HINTS = {
+        "github": "kald github_list_issues(repo='ejer/navn') eller github_list_prs(repo=…)",
+    }
+    lines: list[str] = []
+    for c in items:
+        if c.get("kind") != "oauth":
+            continue
+        if not (c.get("connected") and c.get("enabled")):
+            continue
+        hint = _HINTS.get(str(c.get("id") or ""))
+        name = str(c.get("name") or c.get("id") or "")
+        lines.append(f"- {name}: forbundet" + (f" — {hint}" if hint else ""))
+    if not lines:
+        return None
+    return (
+        "🔌 FORBUNDNE APPS (plugins) — brugeren har forbundet disse i Marketplace, og "
+        "du HAR adgang til dem lige nu via dine værktøjer. Brug dem når det er relevant "
+        "i stedet for at sige at du ikke kan:\n" + "\n".join(lines)
     )
 
 

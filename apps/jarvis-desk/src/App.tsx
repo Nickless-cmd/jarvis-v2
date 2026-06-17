@@ -189,7 +189,15 @@ function Shell({
             />
           )}
           {surface === 'cowork' && <CoworkView role={role} />}
-          {surface === 'code' && <CodeView sessionId={activeId} userName={userName} role={role} />}
+          {surface === 'code' && (
+            <CodeView
+              sessionId={activeId}
+              userName={userName}
+              role={role}
+              onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
+              onOpenPrivacy={() => setSurface('settings')}
+            />
+          )}
           {surface === 'memory' && <MemoryView role={role} />}
           {surface === 'gallery' && <ImageGalleryView onOpenChat={() => setSurface('chat')} />}
           {surface === 'scheduling' && <SchedulingView role={role} />}

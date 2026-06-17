@@ -19,6 +19,7 @@ import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { MessageRail, railLabel } from '../components/chat/MessageRail'
+import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo } from '../lib/api'
@@ -47,8 +48,8 @@ async function pickFolder(): Promise<string | null> {
  *  en mappe på din egen computer (via operator-bridgen). Stream i midten; foldbare
  *  fil-træ- og preview-paneler i højre. Layout spejler chat (centreret velkomst). */
 export function CodeView({
-  sessionId, userName, role = 'owner',
-}: { sessionId: string | null; userName?: string; role?: Role }) {
+  sessionId, userName, role = 'owner', onOpenMarketplace, onOpenPrivacy,
+}: { sessionId: string | null; userName?: string; role?: Role; onOpenMarketplace?: () => void; onOpenPrivacy?: () => void }) {
   const stream = useStream()
   const { permission } = usePermission()
   const { settings } = useSettings()
@@ -374,6 +375,7 @@ export function CodeView({
       contextTokens={stream.usage.input + stream.usage.cacheHit}
       compactAt={compactAt}
       isOwner={isOwner}
+      onOpenPrivacy={onOpenPrivacy}
     />
   )
 
@@ -458,10 +460,16 @@ export function CodeView({
         {header}
         {trustBanner}
         <div className="chat-empty">
-          <h2>Hej{userName ? ` ${userName}` : ''}.</h2>
-          <p>Hvad skal vi kode? Vælg et workspace, så går vi i gang.</p>
-          {workspaceSelector}
-          {composer}
+          <GreetingHero
+            config={config}
+            userName={userName ?? 'Bruger'}
+            onOpenMarketplace={() => onOpenMarketplace?.()}
+            onSuggest={(text) => resend(text)}
+          >
+            <p className="codeview-empty-hint">Hvad skal vi kode? Vælg et workspace, så går vi i gang.</p>
+            {workspaceSelector}
+            {composer}
+          </GreetingHero>
         </div>
       </div>
     )

@@ -325,32 +325,51 @@ export function CodeView({
     !sessionId ||
     (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0)
 
+  const headerRight = (
+    <div className="chatview-head-right">
+      {config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
+      {config && <ConnectionPill config={config} />}
+      <button
+        type="button"
+        className={`panel-toggle ${filesOpen ? 'active' : ''}`}
+        aria-label="Vis/skjul fil-træ" title="Filer"
+        onClick={() => setFilesOpen((o) => !o)}
+      >
+        <FolderTree size={16} />
+      </button>
+      <button
+        type="button"
+        className={`panel-toggle ${panel.open ? 'active' : ''}`}
+        aria-label="Vis/skjul preview-panel" title="Preview"
+        onClick={panel.toggle}
+      >
+        <PanelRight size={16} />
+      </button>
+    </div>
+  )
+
+  // Tom/ny: simpel titel (vælgeren står stort i midten).
   const header = (
     <div className="chatview-head">
       <div className="chatview-head-left">
         <PresenceDot status={stream.status} />{' '}
         <span className="chat-title">Code · {ready ? effRoot : 'vælg workspace'}</span>
       </div>
-      <div className="chatview-head-right">
-        {config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
-        {config && <ConnectionPill config={config} />}
-        <button
-          type="button"
-          className={`panel-toggle ${filesOpen ? 'active' : ''}`}
-          aria-label="Vis/skjul fil-træ" title="Filer"
-          onClick={() => setFilesOpen((o) => !o)}
-        >
-          <FolderTree size={16} />
-        </button>
-        <button
-          type="button"
-          className={`panel-toggle ${panel.open ? 'active' : ''}`}
-          aria-label="Vis/skjul preview-panel" title="Preview"
-          onClick={panel.toggle}
-        >
-          <PanelRight size={16} />
-        </button>
+      {headerRight}
+    </div>
+  )
+
+  // Aktiv samtale: ALT i headeren i samme stil — workspace-vælgeren foldes ind
+  // ved siden af titlen, så der ikke er en separat bar nedenunder der gentager
+  // stien (Bjørn 2026-06-17).
+  const headerActive = (
+    <div className="chatview-head">
+      <div className="chatview-head-left">
+        <PresenceDot status={stream.status} />{' '}
+        <span className="chat-title">Code ·</span>
+        <div className="code-head-ws">{workspaceSelector}</div>
       </div>
+      {headerRight}
     </div>
   )
 
@@ -374,7 +393,7 @@ export function CodeView({
   return (
     <div className="codeview">
       <div className="codeview-main">
-        {header}
+        {headerActive}
         {config && (
           <EnvironmentPanel
             config={config}
@@ -386,10 +405,10 @@ export function CodeView({
             tokens={stream.usage.output}
             blocks={stream.blocks}
             sessionId={sessionId}
+            hasHistory={visibleMessages.length > 0}
           />
         )}
         {trustBanner}
-        <div className="codeview-toolbar">{workspaceSelector}</div>
         <div className="transcript-wrap">
         <MessageRail
           containerRef={transcriptRef}

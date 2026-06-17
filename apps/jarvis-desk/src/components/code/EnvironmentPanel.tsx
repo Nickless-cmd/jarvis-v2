@@ -19,7 +19,7 @@ function prettyTool(name: string): string {
  *  Nulstilles når sessionen skifter. */
 export function EnvironmentPanel({
   config, kind, root, refreshKey = 0,
-  working, workingStep, tokens, blocks = [], sessionId,
+  working, workingStep, tokens, blocks = [], sessionId, hasHistory = false,
 }: {
   config?: ApiConfig
   kind: 'container' | 'workstation'
@@ -30,16 +30,19 @@ export function EnvironmentPanel({
   tokens?: number
   blocks?: ContentBlock[]
   sessionId?: string | null
+  hasHistory?: boolean
 }) {
   const [git, setGit] = useState<GitStatus | null>(null)
 
-  // Session-latch: panelet vises fra første run og resten af sessionen.
-  const [everRan, setEverRan] = useState(false)
+  // Session-latch: panelet vises fra første run OG når en gammel session med
+  // historik loades (fx ved app-genstart) — resten af sessionen. Nulstilles ved
+  // session-skift, så ny tom samtale starter rent.
+  const [everRan, setEverRan] = useState(hasHistory)
   const sessionRef = useRef<string | null | undefined>(sessionId)
   useEffect(() => {
-    if (sessionRef.current !== sessionId) { sessionRef.current = sessionId; setEverRan(false) }
-  }, [sessionId])
-  useEffect(() => { if (working) setEverRan(true) }, [working])
+    if (sessionRef.current !== sessionId) { sessionRef.current = sessionId; setEverRan(hasHistory) }
+  }, [sessionId, hasHistory])
+  useEffect(() => { if (working || hasHistory) setEverRan(true) }, [working, hasHistory])
 
   useEffect(() => {
     if (!config || !root || !everRan) return

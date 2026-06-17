@@ -1405,6 +1405,11 @@
 .codeview-kind button.active { background: var(--accent); color: #08110b; font-weight: 600; }
 .codeview-pick { display: inline-flex; align-items: center; gap: 5px; background: var(--bg-2); color: var(--fg-1); border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; font-size: 12px; cursor: pointer; max-width: 320px; }
 .codeview-pick:hover { border-color: var(--accent); }
+/* Workspace-vælger foldet ind i code-headeren (aktiv samtale) — kompakt,
+ * uden centrering/margin, så den flugter med titlen i header-stil. */
+.code-head-ws { display: inline-flex; align-items: center; min-width: 0; }
+.code-head-ws .codeview-empty-ws { margin: 0; justify-content: flex-start; flex-wrap: nowrap; gap: 6px; }
+.code-head-ws .codeview-pick { max-width: 360px; }
 .codeview-pick .path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Code-mode trusted-folder banner */

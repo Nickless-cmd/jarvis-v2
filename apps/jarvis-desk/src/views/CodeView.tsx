@@ -17,6 +17,7 @@ import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
+import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo } from '../lib/api'
@@ -364,6 +365,17 @@ export function CodeView({
     <div className="codeview">
       <div className="codeview-main">
         {header}
+        {config && (
+          <EnvironmentPanel
+            config={config}
+            kind={kind}
+            root={effRoot}
+            refreshKey={gitRefresh}
+            working={stream.status === 'working'}
+            workingStep={stream.workingStep ?? undefined}
+            tokens={stream.usage.output}
+          />
+        )}
         {trustBanner}
         <div className="codeview-toolbar">{workspaceSelector}</div>
         <div className="transcript" ref={transcriptRef} onScroll={onScroll}>

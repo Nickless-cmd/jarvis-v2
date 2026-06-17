@@ -1676,3 +1676,17 @@
 
 .composer-privacy-link { background: none; border: none; padding: 0; font: inherit; color: var(--fg-3); text-decoration: underline; cursor: pointer; opacity: .9; }
 .composer-privacy-link:hover { color: var(--accent); }
+
+/* ── Miljø-felt (code mode, vises under run) ── */
+.codeview-main { position: relative; }
+.env-panel { position: absolute; top: 52px; right: 16px; z-index: 50; width: 240px;
+  background: var(--bg-1, var(--bg)); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.30); font-size: 13px; }
+.env-head { font-size: 12px; letter-spacing: .04em; color: var(--fg-3, var(--fg)); margin-bottom: 8px; }
+.env-rows { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.env-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.env-label { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2, var(--fg)); }
+.env-live { display: flex; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--fg-2, var(--fg)); }
+.env-live-icon { color: var(--accent); flex: none; }
+.env-step { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.env-tokens { font-size: 11px; color: var(--fg-3, var(--fg)); }

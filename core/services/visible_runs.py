@@ -1061,8 +1061,6 @@ async def _stream_visible_run(
             _fp_t0 = _fptime.monotonic()
 
             def _pump_model_stream() -> None:
-                logger.warning("[firstpass-trace] run=%s pump RUNNING (thread started efter %.1fs)",
-                               run.run_id, _fptime.monotonic() - _fp_t0)
                 try:
                     for item in stream_visible_model(
                         message=run.user_message,
@@ -1078,7 +1076,6 @@ async def _stream_visible_run(
                 finally:
                     loop.call_soon_threadsafe(queue.put_nowait, _sentinel)
 
-            logger.warning("[firstpass-trace] run=%s pump DISPATCHED til executor", run.run_id)
             thread_future = loop.run_in_executor(None, _pump_model_stream)
 
             _fp_first = False

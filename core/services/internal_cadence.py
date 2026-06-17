@@ -650,7 +650,10 @@ def _ensure_producers_registered() -> None:
         # doesn't publish events to the DB. Cheap line, big diagnostic value.
         logger.info("prompt_assembly_cache_warmer: tick fired (trigger=%s)", trigger)
 
-        out: dict[str, object] = {"rule_conclusions": "skipped", "cognitive_frame": "skipped"}
+        out: dict[str, object] = {
+            "rule_conclusions": "skipped", "cognitive_frame": "skipped",
+            "cognitive_state": "skipped",
+        }
         try:
             from core.services.prompt_sections.rule_conclusions import (
                 invalidate_section_cache, rule_conclusions_section,
@@ -669,9 +672,22 @@ def _ensure_producers_registered() -> None:
             out["cognitive_frame"] = "warmed"
         except Exception as exc:
             out["cognitive_frame"] = f"error: {exc}"
+        # cognitive_state (~5,5s, SQLite-cachet, TTL 120s) blev IKKE varmet før
+        # — den var den dominerende kolde-cache-omkostning i den visible assembly
+        # (Bjørn 2026-06-17). Varm den med compact=False (= visible owner-chat-nøglen)
+        # så ingen tur betaler kold pris. Friskhed = warmer-kadence (~2 min), uændret.
+        try:
+            from core.services.cognitive_state_assembly import (
+                invalidate_cognitive_state_cache, build_cognitive_state_for_prompt,
+            )
+            invalidate_cognitive_state_cache()
+            _ = build_cognitive_state_for_prompt(compact=False)  # rebuild + cache
+            out["cognitive_state"] = "warmed"
+        except Exception as exc:
+            out["cognitive_state"] = f"error: {exc}"
         logger.info(
-            "prompt_assembly_cache_warmer: done rule_conclusions=%s cognitive_frame=%s",
-            out["rule_conclusions"], out["cognitive_frame"],
+            "prompt_assembly_cache_warmer: done rule_conclusions=%s cognitive_frame=%s cognitive_state=%s",
+            out["rule_conclusions"], out["cognitive_frame"], out["cognitive_state"],
         )
         return {"status": "ok", **out}
 

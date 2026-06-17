@@ -27,12 +27,14 @@ describe('GreetingHero', () => {
     expect(screen.getByText('composer')).toBeInTheDocument()
   })
 
-  it('viser kun ikke-forbundne oauth-connectors (max 3)', async () => {
-    getConnectors.mockResolvedValue([oauthC('github', false), oauthC('gmail', false), oauthC('cal', false), oauthC('drive', false), oauthC('done', true)])
+  it('viser oauth-apps med Gmail først + forbundne sidst (max 4) + ✓ på forbundne', async () => {
+    getConnectors.mockResolvedValue([oauthC('github', false), oauthC('gmail', false), oauthC('cal', false), oauthC('drive', false), oauthC('slack', true)])
     render(<GreetingHero config={cfg} userName="Bjørn" onOpenMarketplace={() => {}}>c</GreetingHero>)
-    await waitFor(() => expect(screen.getByText('github')).toBeInTheDocument())
-    expect(screen.queryByText('done')).not.toBeInTheDocument()
-    expect(screen.queryByText('drive')).not.toBeInTheDocument() // 4. forslag klippes
+    await waitFor(() => expect(screen.getByText('gmail')).toBeInTheDocument())
+    // forbundne vises også (med ✓), men kun 4 i alt → en af de ikke-forbundne klippes
+    const names = screen.getAllByText(/^(github|gmail|cal|drive|slack)$/).map((n) => n.textContent)
+    expect(names[0]).toBe('gmail') // Gmail først
+    expect(names.length).toBe(4)
   })
 
   it('Flere apps → kalder onOpenMarketplace', async () => {

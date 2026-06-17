@@ -777,19 +777,22 @@
 .greeting-connectors { width: 100%; max-width: 560px; }
 .greeting-connectors-label { text-transform: uppercase; letter-spacing: .08em; font-size: 11px;
   opacity: .45; margin-bottom: 8px; text-align: left; }
-.greeting-connectors-row { display: flex; gap: 10px; }
-.greeting-connector { flex: 1; display: flex; align-items: center; gap: 10px; padding: 11px 12px;
+.greeting-connectors-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.greeting-connector { display: flex; align-items: center; gap: 10px; padding: 11px 12px; min-width: 0;
   border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2); cursor: pointer; text-align: left; }
-.greeting-connector:hover { background: var(--bg-3); }
+.greeting-connector:hover:not(:disabled) { background: var(--bg-3); }
+.greeting-connector.is-connected { cursor: default; opacity: .62; }
 .greeting-connector-icon { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
   background: var(--bg-3); color: var(--fg-1); flex-shrink: 0; }
 .greeting-connector-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .greeting-connector-name { font-size: 13px; font-weight: 600; color: var(--fg-1); }
-.greeting-connector-desc { font-size: 11px; opacity: .55; }
-.greeting-connector-cta { font-size: 12px; color: var(--accent); font-weight: 600; flex-shrink: 0; }
-.greeting-more { text-align: right; margin-top: 8px; }
-.greeting-more button { background: none; border: none; color: var(--accent); cursor: pointer;
-  font-size: 13px; text-decoration: underline; }
+.greeting-connector-desc { font-size: 11px; opacity: .55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.greeting-connector-cta { font-size: 12px; color: var(--accent); font-weight: 600; flex-shrink: 0; white-space: nowrap; }
+.greeting-connector.is-connected .greeting-connector-cta { color: var(--ok, #5fcf80); }
+.greeting-more { text-align: right; margin-top: 10px; }
+.greeting-more button { background: none; border: none; color: var(--fg-3); cursor: pointer;
+  font-size: 12px; padding: 4px 6px; border-radius: 6px; }
+.greeting-more button:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .greeting-hint { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 560px;
   padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
   border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--bg-2)); }
@@ -1670,3 +1673,6 @@
 .search-hit:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .search-hit-title { font-weight: 600; font-size: .9rem; }
 .search-hit-snippet { font-size: .8rem; color: var(--fg-3, var(--fg)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.composer-privacy-link { background: none; border: none; padding: 0; font: inherit; color: var(--fg-3); text-decoration: underline; cursor: pointer; opacity: .9; }
+.composer-privacy-link:hover { color: var(--accent); }

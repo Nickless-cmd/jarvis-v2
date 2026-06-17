@@ -27,7 +27,7 @@ export function Sidebar({
   onSurface: (s: Surface) => void
   userName: string
 }) {
-  const { sessions, activeId, select, create } = useSessions()
+  const { sessions, activeId, select, newChat } = useSessions()
   const { settings } = useSettings()
   const { workingSessionId } = useStream()
 
@@ -78,7 +78,7 @@ export function Sidebar({
         <CoworkMenu />
       ) : (
       <div className="sessions">
-        <button className="new-chat" type="button" onClick={() => void create('Ny samtale')}>
+        <button className="new-chat" type="button" onClick={() => newChat()}>
           <Plus size={14} /> Ny samtale
         </button>
 

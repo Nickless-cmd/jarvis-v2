@@ -115,6 +115,7 @@ function Shell({
               sessionId={activeId}
               userName={userName}
               onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
+              onOpenPrivacy={() => setSurface('settings')}
             />
           )}
           {surface === 'cowork' && <CoworkView role={role} />}

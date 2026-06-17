@@ -17,6 +17,8 @@ export interface SessionContextValue {
   messages: LocalMessage[]
   loading: boolean
   select: (id: string) => void
+  /** Ryd aktiv samtale → greeting-skærm (session oprettes først ved første send). */
+  newChat: () => void
   create: (title: string) => Promise<ChatSession>
   rename: (id: string, title: string) => Promise<void>
   remove: (id: string) => Promise<void>
@@ -74,6 +76,13 @@ export function SessionProvider({
       .finally(() => setLoading(false))
   }, [config])
 
+  const newChat = useCallback(() => {
+    setActiveId(null)
+    setMessages([])
+    loadedRef.current = null
+    try { localStorage.removeItem('jarvis-desk:activeSession') } catch { /* ignore */ }
+  }, [])
+
   const refresh = useCallback(async () => {
     if (!activeId) return
     const { messages: server } = await getSession(config, activeId)
@@ -111,8 +120,8 @@ export function SessionProvider({
   }, [])
 
   const value = useMemo<SessionContextValue>(
-    () => ({ sessions, activeId, messages, loading, select, create, rename, remove, refresh, appendOptimistic, reconcile }),
-    [sessions, activeId, messages, loading, select, create, rename, remove, refresh, appendOptimistic, reconcile],
+    () => ({ sessions, activeId, messages, loading, select, newChat, create, rename, remove, refresh, appendOptimistic, reconcile }),
+    [sessions, activeId, messages, loading, select, newChat, create, rename, remove, refresh, appendOptimistic, reconcile],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

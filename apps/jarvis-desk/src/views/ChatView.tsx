@@ -24,11 +24,12 @@ const NEAR_BOTTOM_PX = 120
  *  første besked oprettes session (hvis nødvendigt) og layoutet skifter — composer
  *  hopper ned i bunden, transcript fylder. */
 export function ChatView({
-  sessionId, userName = 'du', onOpenMarketplace,
+  sessionId, userName = 'du', onOpenMarketplace, onOpenPrivacy,
 }: {
   sessionId: string | null
   userName?: string
   onOpenMarketplace?: () => void
+  onOpenPrivacy?: () => void
 }) {
   const sessions = useSessions()
   const stream = useStream()
@@ -307,6 +308,7 @@ export function ChatView({
       contextTokens={contextTokens}
       compactAt={compactAt}
       isOwner={auth?.role === 'owner'}
+      onOpenPrivacy={onOpenPrivacy}
     />
   )
 

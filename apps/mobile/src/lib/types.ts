@@ -25,3 +25,15 @@ export interface ChatMessage {
   created_at: string
   parent_id?: string | null
 }
+
+export interface Connector {
+  id: string
+  name: string
+  kind: string
+  category: string
+  icon: string
+  desc: string
+  status: string
+  connected: boolean
+  enabled: boolean
+}

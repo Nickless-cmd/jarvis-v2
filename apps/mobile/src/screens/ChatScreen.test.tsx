@@ -84,6 +84,14 @@ jest.mock('../components/MessageList', () => ({
   }
 }))
 
+jest.mock('../components/SidePanel', () => ({
+  SidePanel: () => null
+}))
+
+jest.mock('../lib/apiClient', () => ({
+  whoami: jest.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' })
+}))
+
 beforeEach(() => {
   jest.clearAllMocks()
   mockSessions = {

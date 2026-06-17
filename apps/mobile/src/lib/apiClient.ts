@@ -1,4 +1,4 @@
-import type { ApiConfig, ChatMessage, ChatSession, WhoAmI } from './types'
+import type { ApiConfig, ChatMessage, ChatSession, Connector, WhoAmI } from './types'
 
 export type ApiErrorKind = 'network' | 'auth' | 'rate_limit' | 'server' | 'unknown'
 
@@ -136,6 +136,22 @@ export async function approveTool(config: ApiConfig, approvalId: string): Promis
 export async function denyTool(config: ApiConfig, approvalId: string): Promise<void> {
   await apiFetch(config, `/chat/approvals/${encodeURIComponent(approvalId)}/deny`, {
     method: 'POST'
+  })
+}
+
+export async function listConnectors(config: ApiConfig): Promise<Connector[]> {
+  const raw = await apiFetch<{ connectors?: Connector[] }>(config, '/api/connectors')
+  return raw.connectors ?? []
+}
+
+export async function setConnectorEnabled(
+  config: ApiConfig,
+  connectorId: string,
+  enabled: boolean
+): Promise<void> {
+  await apiFetch(config, `/api/connectors/${encodeURIComponent(connectorId)}/enabled`, {
+    method: 'POST',
+    body: { enabled }
   })
 }
 

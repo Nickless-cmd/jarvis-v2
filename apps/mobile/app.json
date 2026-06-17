@@ -2,11 +2,13 @@
   "expo": {
     "name": "Jarvis",
     "slug": "jarvis-mobile",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
-      "package": "dk.srvlab.jarvis.mobile"
+      "package": "dk.srvlab.jarvis.mobile",
+      "versionCode": 2,
+      "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": ["expo-secure-store", "expo-camera"]
   }

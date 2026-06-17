@@ -1734,13 +1734,16 @@
  * længere/lysere dash. Klik scroller til beskeden. */
 .msg-rail { position: absolute; left: 4px; top: 14px; z-index: 20; max-width: 26px; }
 .msg-rail:hover { max-width: none; }
-.msg-rail-panel { display: flex; flex-direction: column; gap: 2px; padding: 4px;
-  border: 1px solid transparent; border-radius: 10px; max-height: calc(100vh - 200px); overflow: hidden;
-  transition: background .12s ease, border-color .12s ease; }
+/* Cap til ~12 dashes ad gangen (scroll for resten) + tæt afstand, så rail'en
+ * ikke fylder hele chatview-højden (Bjørn 2026-06-17). Scrollbar skjult. */
+.msg-rail-panel { display: flex; flex-direction: column; gap: 1px; padding: 4px;
+  border: 1px solid transparent; border-radius: 10px; max-height: 150px; overflow-y: auto;
+  scrollbar-width: none; transition: background .12s ease, border-color .12s ease; }
+.msg-rail-panel::-webkit-scrollbar { display: none; }
 .msg-rail:hover .msg-rail-panel { background: var(--bg-1, var(--bg)); border-color: var(--line);
-  box-shadow: 0 12px 34px rgba(0,0,0,.38); padding: 6px; overflow-y: auto; }
-.msg-rail-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 17px;
-  background: none; border: none; padding: 2px 8px; border-radius: 6px; cursor: pointer;
+  box-shadow: 0 12px 34px rgba(0,0,0,.38); padding: 6px; max-height: calc(100vh - 200px); }
+.msg-rail-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 10px;
+  background: none; border: none; padding: 1px 8px; border-radius: 6px; cursor: pointer;
   text-align: left; color: var(--fg-3, #888); }
 .msg-rail-row:hover { background: var(--bg-2, var(--bg)); color: var(--fg-1, var(--fg)); }
 .msg-rail-dash { flex: none; width: 13px; height: 2px; border-radius: 2px; background: currentColor;

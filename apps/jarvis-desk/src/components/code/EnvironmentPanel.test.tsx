@@ -15,12 +15,17 @@ describe('EnvironmentPanel', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('vises under run med branch + ændringer + live-step', async () => {
+  it('vises under run med branch + ændringer + session-totaler', async () => {
     getGitStatus.mockResolvedValue({ is_git: true, branch: 'main', dirty: 3, added: 12, removed: 4 })
-    render(<EnvironmentPanel config={cfg} kind="container" root="/r" working workingStep="redigerer fil" tokens={42} />)
+    render(<EnvironmentPanel config={cfg} kind="container" root="/r" working workingStep="redigerer fil"
+      totalTokens={420} totalToolCalls={7}
+      tools={[{ name: 'operator_bash', input: { command: 'git status' } }]} />)
     expect(screen.getByText('Miljø')).toBeInTheDocument()
     expect(screen.getByText('redigerer fil')).toBeInTheDocument()
-    expect(screen.getByText('42 tokens')).toBeInTheDocument()
+    expect(screen.getByText(/420 tokens/)).toBeInTheDocument()
+    expect(screen.getByText(/7 kald/)).toBeInTheDocument()
+    // operator_bash formateres som "Terminal: git status" (ikke rå navn)
+    expect(screen.getByText('Terminal: git status')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('main')).toBeInTheDocument())
     expect(screen.getByText('+12')).toBeInTheDocument()
   })

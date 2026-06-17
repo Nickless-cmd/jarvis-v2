@@ -111,6 +111,39 @@ export function CodeView({
     void d.install(tool).then((r) => { if (r.ok && tool === 'git') setGitMissing(false) })
       .finally(() => setInstallingTool(''))
   }
+
+  // Session-akkumulering til miljø-feltet: tokens + tool-kald + tool-liste SAMLET
+  // over HELE sessionen (ikke pr. run), så man kan se alt der er lavet (Codex-stil).
+  // Foldes når et run slutter (working → ikke-working); nulstilles ved session-skift.
+  const [sessTokens, setSessTokens] = useState(0)
+  const [sessToolCalls, setSessToolCalls] = useState(0)
+  const [sessTools, setSessTools] = useState<{ name: string; input: Record<string, unknown> }[]>([])
+  const prevStatusRef = useRef(stream.status)
+  useEffect(() => {
+    setSessTokens(0); setSessToolCalls(0); setSessTools([]); prevStatusRef.current = stream.status
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId])
+  useEffect(() => {
+    const prev = prevStatusRef.current
+    prevStatusRef.current = stream.status
+    if (prev === 'working' && stream.status !== 'working') {
+      const tb = stream.blocks
+        .filter((b) => b.type === 'tool_use')
+        .map((b) => ({ name: (b as { name?: string }).name || '', input: ((b as { input?: Record<string, unknown> }).input) || {} }))
+      setSessTokens((t) => t + (stream.usage.output || 0))
+      setSessToolCalls((c) => c + tb.length)
+      if (tb.length) setSessTools((prevT) => [...prevT, ...tb].slice(-50))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream.status])
+  // Live (igangværende run) lægges oven i session-totalerne så tallene er "live".
+  const liveTools = stream.status === 'working'
+    ? stream.blocks.filter((b) => b.type === 'tool_use')
+        .map((b) => ({ name: (b as { name?: string }).name || '', input: ((b as { input?: Record<string, unknown> }).input) || {} }))
+    : []
+  const envTotalTokens = sessTokens + (stream.status === 'working' ? (stream.usage.output || 0) : 0)
+  const envTotalToolCalls = sessToolCalls + liveTools.length
+  const envTools = [...sessTools, ...liveTools]
   // Trækbar bredde på hele fil-/preview-panelet (mod venstre). Bredere default
   // end før (380→460) så preview-ruden ikke er knald-smal.
   const codePanelW = useResizableWidth({
@@ -447,8 +480,9 @@ export function CodeView({
             refreshKey={gitRefresh}
             working={stream.status === 'working'}
             workingStep={stream.workingStep ?? undefined}
-            tokens={stream.usage.output}
-            blocks={stream.blocks}
+            totalTokens={envTotalTokens}
+            totalToolCalls={envTotalToolCalls}
+            tools={envTools}
             sessionId={sessionId}
             hasHistory={visibleMessages.length > 0}
             isOwner={isOwner}

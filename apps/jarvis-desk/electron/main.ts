@@ -338,6 +338,31 @@ ipcMain.handle('config:set', (_event, cfg: Partial<AppConfig>) => {
   return true
 })
 
+// ── Dependency-doctor (§ dep): detektér + installér manglende værktøjer ──
+ipcMain.handle('dep:detect', async () => {
+  const { detectTools } = await import('./depDoctor')
+  return detectTools()
+})
+ipcMain.handle('dep:install', async (_e, tool: string) => {
+  const { installCommand } = await import('./depInstall')
+  const { execFile } = await import('node:child_process')
+  let pkgManager: 'apt' | 'dnf' | 'pacman' | undefined
+  if (process.platform === 'linux') {
+    for (const pm of ['apt', 'dnf', 'pacman'] as const) {
+      const ok = await new Promise<boolean>((res) =>
+        execFile('/bin/sh', ['-c', `command -v ${pm === 'apt' ? 'apt-get' : pm}`], (err) => res(!err)))
+      if (ok) { pkgManager = pm; break }
+    }
+  }
+  const c = installCommand(tool, { platform: process.platform, pkgManager })
+  if (!c) return { ok: false, log: 'ukendt værktøj' }
+  return new Promise<{ ok: boolean; log?: string }>((resolve) => {
+    execFile(c.cmd, c.args, { timeout: 300_000 }, (err, stdout, stderr) => {
+      resolve({ ok: !err, log: ((stdout || '') + (stderr || '')).slice(-500) })
+    })
+  })
+})
+
 // Eksterne links åbnes i system-browser — kun http/https/mailto (aldrig naviger
 // app-vinduet væk, og bloker farlige schemes).
 ipcMain.handle('shell:openExternal', (_event, url: string) => {

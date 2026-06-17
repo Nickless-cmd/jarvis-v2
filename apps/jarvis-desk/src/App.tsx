@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { UpdateCard } from './components/shell/UpdateCard'
+import { DependencyCard } from './components/shell/DependencyCard'
 import { useSettings } from './hooks/useSettings'
 import { SessionProvider } from './contexts/SessionContext'
 import { StreamProvider } from './contexts/StreamContext'
@@ -57,6 +58,7 @@ export function App() {
             <UiPanelWatcher config={cfg} setSurface={setSurface} />
             <AiTransparencyNotice />
             <UpdateHost />
+            <DependencyHost />
           </PanelProvider>
         </PermissionProvider>
       </StreamProvider>
@@ -94,6 +96,40 @@ function UpdateHost() {
       onDismiss={() => setUpd(null)}
     />
   )
+}
+
+interface DepsBridge {
+  detect: () => Promise<{ tool: string; present: boolean }[]>
+  install: (tool: string) => Promise<{ ok: boolean; log?: string }>
+}
+function depsBridge(): DepsBridge | undefined {
+  return (window as unknown as { jarvisDesk?: { deps?: DepsBridge } }).jarvisDesk?.deps
+}
+
+/** Detekterer manglende værktøjer ved opstart og tilbyder at installere dem. */
+function DependencyHost() {
+  const [missing, setMissing] = useState<string[]>([])
+  const [busy, setBusy] = useState('')
+  const [dismissed, setDismissed] = useState(false)
+  useEffect(() => {
+    const d = depsBridge()
+    if (!d) return
+    let cancelled = false
+    void d.detect().then((tools) => {
+      if (!cancelled) setMissing(tools.filter((t) => !t.present).map((t) => t.tool))
+    }).catch(() => { /* ignore */ })
+    return () => { cancelled = true }
+  }, [])
+  if (dismissed) return null
+  const onInstall = (tool: string) => {
+    const d = depsBridge()
+    if (!d || busy) return
+    setBusy(tool)
+    void d.install(tool).then((r) => {
+      if (r.ok) setMissing((m) => m.filter((t) => t !== tool))
+    }).finally(() => setBusy(''))
+  }
+  return <DependencyCard missing={missing} onInstall={onInstall} onDismiss={() => setDismissed(true)} busy={busy} />
 }
 
 /** Lægger den trækbare split om den aktive view; panel viser det åbne artifact. */

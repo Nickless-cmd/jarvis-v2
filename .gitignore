@@ -27,6 +27,7 @@ jarvis.db
 # claiming to be "architecture revision" of associative_recall.
 .agents/
 .codex/
+.worktrees/
 
 
 # Anthropic-compat API key registry — scrub of secret leaked in a1f1f9ee (2026-05-06)

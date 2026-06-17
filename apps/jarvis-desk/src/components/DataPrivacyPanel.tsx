@@ -1,7 +1,29 @@
+import { useState } from 'react'
+import type { ApiConfig } from '../lib/api'
+import { exportMyData, downloadJson } from '../lib/accountApi'
+
 /** Data & privatliv-oplysning (GDPR-transparens + Googles "prominent disclosure").
- *  Statisk tekst — navngiver præcist hvilke data appen rører, hvor de ligger, og
- *  hvilke Google-scopes der bruges. Rent additivt, ingen netkald. */
-export function DataPrivacyPanel() {
+ *  Navngiver præcist hvilke data appen rører + en data-eksport-knap (Art. 20). */
+export function DataPrivacyPanel({ config }: { config?: ApiConfig }) {
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const onExport = async () => {
+    if (!config || busy) return
+    setBusy(true)
+    setMsg(null)
+    try {
+      const data = await exportMyData(config)
+      downloadJson(data, 'jarvis-mine-data.json')
+      setMsg('Dine data blev downloadet ✓')
+    } catch {
+      setMsg('Kunne ikke hente data — prøv igen.')
+    } finally {
+      setBusy(false)
+      setTimeout(() => setMsg(null), 4000)
+    }
+  }
+
   return (
     <section className="data-privacy">
       <h3>Data &amp; privatliv</h3>
@@ -36,10 +58,18 @@ export function DataPrivacyPanel() {
 
       <h4>Dine rettigheder (GDPR)</h4>
       <ul className="data-privacy-rights">
-        <li>Indsigt og dataportabilitet — du kan få dine data udleveret.</li>
+        <li>Indsigt og dataportabilitet — hent dine data som JSON nedenfor.</li>
         <li>Sletning — afbryd en connector for at fjerne dens token; kontakt admin for fuld sletning.</li>
         <li>Tilbagekald — du godkender hver handling der sender eller ændrer noget.</li>
       </ul>
+      {config && (
+        <div className="data-privacy-export">
+          <button type="button" onClick={() => void onExport()} disabled={busy}>
+            {busy ? 'Henter…' : 'Download mine data (JSON)'}
+          </button>
+          {msg && <span className="data-privacy-export-msg">{msg}</span>}
+        </div>
+      )}
       <p className="data-privacy-note">
         Du taler med en AI. Svar kan indeholde fejl — vurdér selv vigtige beslutninger.
       </p>

@@ -1591,3 +1591,11 @@
 .data-privacy-scopes, .data-privacy-rights { margin: .3rem 0 0; padding-left: 1.1rem; color: var(--fg-2, var(--fg)); line-height: 1.55; }
 .data-privacy-scopes li, .data-privacy-rights li { margin-bottom: .3rem; }
 .data-privacy-note { margin-top: 1rem; font-size: .82rem; color: var(--fg-3, var(--fg)); font-style: italic; }
+.data-privacy-export { margin-top: 1rem; display: flex; align-items: center; gap: .8rem; }
+.data-privacy-export button {
+  padding: .55rem .9rem; border: 1px solid var(--line); border-radius: 8px;
+  background: transparent; color: var(--fg); font-size: .85rem; cursor: pointer;
+}
+.data-privacy-export button:hover:not(:disabled) { border-color: var(--accent); }
+.data-privacy-export button:disabled { opacity: .6; cursor: default; }
+.data-privacy-export-msg { font-size: .82rem; color: var(--fg-3, var(--fg)); }

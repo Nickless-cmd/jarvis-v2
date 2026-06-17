@@ -91,7 +91,9 @@ export function SettingsView() {
         />
       )}
 
-      <DataPrivacyPanel />
+      <DataPrivacyPanel
+        config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
+      />
     </div>
   )
 }

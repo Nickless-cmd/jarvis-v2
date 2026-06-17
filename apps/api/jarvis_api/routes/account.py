@@ -379,3 +379,55 @@ async def account_quota() -> dict[str, Any]:
     snap = current_context_snapshot()
     user_id = snap.get("user_id") or ""
     return await asyncio.to_thread(build_quota_overview, user_id, check_quota=quota_store.check_quota)
+
+
+def build_data_export(
+    user_id: str,
+    *,
+    get_user: Callable[[str], dict[str, Any] | None],
+    get_tier: Callable[[str], str],
+) -> dict[str, Any]:
+    """GDPR-dataportabilitet (Art. 20): saml brugerens EGNE data i ét bundt.
+
+    Ren projektion, kun læsning. Connector-tokens udelades (kun status), så
+    eksporten aldrig lækker hemmeligheder.
+    """
+    profile = build_account_profile(user_id, get_user=get_user, get_tier=get_tier)
+    connectors: list[dict[str, Any]] = []
+    try:
+        from core.services.connectors import list_for_user
+        for c in list_for_user(user_id):
+            connectors.append({
+                k: c.get(k) for k in ("id", "name", "kind", "status", "connected", "enabled")
+            })
+    except Exception:
+        pass
+    notes: list[dict[str, Any]] = []
+    try:
+        from core.services.notes_connector import list_notes
+        notes = list_notes(user_id, limit=100).get("notes", [])
+    except Exception:
+        pass
+    return {
+        "exported_for": user_id or "owner",
+        "profile": profile,
+        "connectors": connectors,
+        "notes": notes,
+        "note": (
+            "Chat-historik og hukommelse ligger server-side pr. bruger og kan "
+            "udleveres på forespørgsel. Connector-tokens er bevidst udeladt af eksporten."
+        ),
+    }
+
+
+@router.get("/export")
+async def account_export() -> dict[str, Any]:
+    """Hent ALLE dine egne data som JSON (GDPR-portabilitet). Self-scoped."""
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    return await asyncio.to_thread(
+        build_data_export,
+        user_id,
+        get_user=user_db.get_user,
+        get_tier=quota_store.get_tier,
+    )

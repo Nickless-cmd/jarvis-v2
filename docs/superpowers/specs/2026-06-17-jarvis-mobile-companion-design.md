@@ -201,6 +201,67 @@ Runtime skal kunne:
 4. **Vise mig hvor brugeren er** — så jeg kan sige "jeg kan se du er ude" eller "velkommen hjem"
 5. **Understøtte handling på tværs** — mobil anmoder om handling → desktop udfører → mobil får resultat
 
+## Phase 6: Teams & Multi-User (Future)
+
+Teams gør Discord **100% overflødig** for brugere af Jarvis' økosystem. I stedet for at skulle oprette en Discord-server, invitere medlemmer og håndtere roller der, kan alt ske direkte i desktop- og mobil-appen.
+
+### Hvad teams er
+
+Et team er en **gruppe brugere** der deler adgang til Jarvis' tjenester. Teams har:
+
+- **Team-admin** — kan oprette, slette, invitere, kicke, mute/unmute medlemmer. Styrer teamets permissions og workspace.
+- **Member** — kan deltage i team-chats, se fælles sessions, bruge teamets connectors (hvis admin har givet adgang).
+- **Read-only** — kan læse team-chats men ikke skrive. Godt til børn eller ikke-tekniske brugere.
+
+### Team management (desktop-appen)
+
+Desktop-appen er admin-overfladen for teams:
+
+1. **Opret team** — navn, ikon, beskrivelse
+2. **Inviter brugere** — via email, brugernavn, eller deling af invite-kode
+3. **Rolletildeling** — sæt hver bruger som admin/member/read-only
+4. **Kick** — fjern bruger fra team
+5. **Mute** — brugeren kan ikke skrive i en periode (kan stadig læse)
+6. **Unmute** — genopret skriveadgang
+7. **Permissions per team** — hvem kan:
+   - Se team-chats (read)
+   - Skrive i team-chats (write)
+   - Invitere nye medlemmer (invite)
+   - Administrere teamet (admin)
+   - Binde connectors til teamet (connect)
+8. **Permissions per bruger** — overstyring pr. bruger hvis nødvendigt
+9. **Team workspace** — et fælles workspace hvor teamets filer, sessions og delte noter ligger. Valgfrit — teamet kan fungere uden.
+
+### Team-chats (fælles session)
+
+En team-chat er en **delt session** som alle team-medlemmer kan se og skrive i:
+
+- Oprettes fra team-panelet i desktop- eller mobil-appen
+- Alle medlemmer får notifikation ved nye beskeder (kan slås fra pr. bruger)
+- Jarvis ser alle beskeder og kan svare i tråde
+- Notifikationer kan tagge specifikke brugere: "@Bjørn"
+- Chat-historik er synlig for alle medlemmer (medmindre slettet af admin)
+- Hvert medlem kan skrive fra deres foretrukne enhed (desktop/mobil)
+
+### Tværs af apps
+
+- **Desktop-appen** — team management, team-chats, team workspace
+- **Android/iOS companion** — team-chats (read + write), notifikationer fra team
+- **Jarvis' API** — team-logik som service-lag, så begge apps deler samme backend
+
+### Hvorfor det gør Discord obsolet
+
+| Funktion | Discord | Jarvis Teams |
+|---|---|---|
+| Opret gruppe | ✅ | ✅ (i appen, ikke ekstern service) |
+| Inviter brugere | ✅ | ✅ (via email/brugernavn) |
+| Roller/permissions | ✅ (komplekst) | ✅ (simpelt: admin/member/read-only) |
+| Fælles chat | ✅ | ✅ (delt session) |
+| AI i chatten | ❌ (kun bots) | ✅ (Jarvis er aktiv deltager) |
+| Privatliv | ❌ (data på Discord servere) | ✅ (alt på egen hardware) |
+| Ingen tredjepart | ❌ | ✅ |
+| Samme session på tværs af enheder | ❌ | ✅ |
+
 ## Confirmed Constraints
 
 - Default API base URL: `https://api.srvlab.dk/`

@@ -102,3 +102,30 @@ def list_prs(user_id: str, repo: str, *, state: str = "open") -> dict:
         for p in res["data"] if isinstance(p, dict)
     ]
     return {"status": "ok", "prs": prs}
+
+
+def _post(user_id: str, path: str, payload: dict) -> dict:
+    token = get_fresh_token(user_id, "github")
+    if not token or not token.get("access_token"):
+        return {"status": "error", "error": "github_not_connected"}
+    try:
+        import httpx
+        r = httpx.post(_API + path, headers=_headers(token), json=payload, timeout=30)
+        if r.status_code in (401, 403):
+            return {"status": "error", "error": "github_not_connected"}
+        if r.status_code not in (200, 201):
+            return {"status": "error", "error": f"github_http_{r.status_code}", "detail": r.text[:200]}
+        return {"status": "ok", "data": r.json()}
+    except Exception as e:  # noqa: BLE001
+        return {"status": "error", "error": f"github_request_failed: {e}"}
+
+
+def create_pr(user_id: str, repo: str, *, head: str, base: str, title: str, body: str = "") -> dict:
+    """Opret PR i `repo` (owner/name). head/base = branch-navne."""
+    if not (repo or "").strip():
+        return {"status": "error", "error": "repo_required"}
+    res = _post(user_id, f"/repos/{repo}/pulls",
+                {"title": title or head, "head": head, "base": base, "body": body or title})
+    if res["status"] != "ok":
+        return res
+    return {"status": "ok", "url": res["data"].get("html_url"), "number": res["data"].get("number")}

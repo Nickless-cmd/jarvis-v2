@@ -329,12 +329,12 @@ def _commit_file_sync(path: str, root: str, content: str, message: str, role: st
 
 
 class _CommitAllBody(BaseModel):
-    root: str = "repo"
+    target: dict = {"kind": "container", "root": "repo"}
     message: str = ""
 
 
 class _CreatePrBody(BaseModel):
-    root: str = "repo"
+    target: dict = {"kind": "container", "root": "repo"}
     title: str = ""
     body: str = ""
 
@@ -357,95 +357,38 @@ def _owner_repo_base(root: str) -> Path:
     return base
 
 
+def _git_target_uid(target: dict) -> tuple[str, str]:
+    """Validér target + returnér (container_repo_sti, uid). Rolle-gate:
+    container → owner-only (server-repo); workstation → ejeren af broen (uid)."""
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
+    if (target or {}).get("kind") == "container":
+        base = _owner_repo_base("repo")  # owner-gate + repo-sti
+        return (str(base), uid)
+    return ("", uid)  # workstation: git_actions bruger target.root via broen
+
+
 @router.post("/git/commit-all")
 async def chat_commit_all(body: _CommitAllBody) -> dict:
-    """Commit ALLE ændringer i workspacet (git add -A + commit). Ingen push.
-    Owner + repo-root. Svarer Codex' "Indsæt". Blokerende → to_thread."""
+    """Commit ALLE ændringer (git add -A + commit). Rolle-aware: container=owner+
+    server-repo (subprocess), workstation=brugerens bro. Blokerende → to_thread."""
     import asyncio
-    base = _owner_repo_base(body.root)
-    return await asyncio.to_thread(_commit_all_sync, str(base), body.message)
-
-
-def _commit_all_sync(repo: str, message: str) -> dict:
-    import subprocess
-    msg = (message or "").strip() or "WIP: ændringer fra code mode"
-
-    def _git(*a: str, timeout: int = 30) -> subprocess.CompletedProcess:
-        return subprocess.run(["git", "-C", repo, *a], capture_output=True, text=True, timeout=timeout)
-
-    add = _git("add", "-A")
-    if add.returncode != 0:
-        raise HTTPException(status_code=500, detail=f"git add fejlede: {add.stderr[:200]}")
-    cm = _git("commit", "-m", msg)
-    if cm.returncode != 0:
-        out = (cm.stdout or "") + (cm.stderr or "")
-        if "nothing to commit" in out or "no changes added" in out or "working tree clean" in out:
-            return {"status": "nochange", "message": msg}
-        raise HTTPException(status_code=500, detail=f"git commit fejlede: {out[:200]}")
-    sha = _git("rev-parse", "--short", "HEAD").stdout.strip()
-    branch = _git("branch", "--show-current").stdout.strip()
-    return {"status": "ok", "sha": sha, "branch": branch, "message": msg}
+    from core.services import git_actions
+    repo, uid = _git_target_uid(body.target)
+    return await asyncio.to_thread(git_actions.commit_all, body.target, repo, uid, body.message)
 
 
 @router.post("/git/create-pr")
 async def chat_create_pr(body: _CreatePrBody) -> dict:
-    """Opret en pull request via gh. Hvis man står på default-branchen oprettes
-    en arbejds-branch først. Eventuelle uncommittede ændringer committes, pushes,
-    og `gh pr create` åbner PR'en. Owner + repo-root. Blokerende → to_thread.
+    """Opret pull request: commit → branch (hvis på default) → push → PR via
+    GitHub-OAuth-API (primært) ellers gh CLI. Rolle-aware. Blokerende → to_thread.
 
     BEMÆRK: udadvendt handling — kaldes KUN når brugeren selv trykker på knappen
     i appen (per-handling-godkendelse)."""
     import asyncio
-    base = _owner_repo_base(body.root)
-    return await asyncio.to_thread(_create_pr_sync, str(base), body.title, body.body)
-
-
-def _create_pr_sync(repo: str, title: str, prbody: str) -> dict:
-    import os
-    import subprocess
-
-    def _git(*a: str, timeout: int = 60) -> subprocess.CompletedProcess:
-        return subprocess.run(["git", "-C", repo, *a], capture_output=True, text=True, timeout=timeout)
-
-    # Default-branch (origin/HEAD → fallback main).
-    default = "main"
-    sr = _git("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD")
-    if sr.returncode == 0 and sr.stdout.strip():
-        default = sr.stdout.strip().rsplit("/", 1)[-1] or "main"
-
-    branch = _git("branch", "--show-current").stdout.strip()
-    # Står vi på default → lav en arbejds-branch fra HEAD.
-    if not branch or branch == default:
-        short = _git("rev-parse", "--short", "HEAD").stdout.strip() or "work"
-        branch = f"jarvis/work-{short}"
-        sw = _git("switch", "-c", branch)
-        if sw.returncode != 0:
-            raise HTTPException(status_code=500, detail=f"kunne ikke oprette branch: {sw.stderr[:200]}")
-
-    # Commit eventuelle uncommittede ændringer (ellers har PR'en intet indhold).
-    _git("add", "-A")
-    _git("commit", "-m", (title or "").strip() or "Ændringer fra code mode")
-
-    push = _git("push", "-u", "origin", branch, timeout=120)
-    if push.returncode != 0:
-        raise HTTPException(status_code=500, detail=f"git push fejlede: {(push.stderr or push.stdout)[:200]}")
-
-    args = ["gh", "pr", "create", "--base", default, "--head", branch]
-    if (title or "").strip():
-        args += ["--title", title.strip(), "--body", (prbody or "").strip() or title.strip()]
-    else:
-        args += ["--fill"]
-    env = {**os.environ, "GH_PROMPT_DISABLED": "1"}
-    pr = subprocess.run(args, cwd=repo, capture_output=True, text=True, timeout=120, env=env)
-    if pr.returncode != 0:
-        out = (pr.stderr or "") + (pr.stdout or "")
-        # Findes PR'en allerede? gh skriver url alligevel.
-        if "already exists" in out and "http" in out:
-            url = next((w for w in out.split() if w.startswith("http")), "")
-            return {"status": "exists", "branch": branch, "url": url}
-        raise HTTPException(status_code=500, detail=f"gh pr create fejlede: {out[:250]}")
-    url = (pr.stdout or "").strip().splitlines()[-1].strip() if pr.stdout else ""
-    return {"status": "ok", "branch": branch, "base": default, "url": url}
+    from core.services import git_actions
+    repo, uid = _git_target_uid(body.target)
+    return await asyncio.to_thread(git_actions.create_pr, body.target, repo, uid, body.title, body.body)
 
 
 def _operator_exec(name: str, args: dict) -> dict:

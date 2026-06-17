@@ -44,3 +44,40 @@ def test_commit_all_workstation_routes_uid():
     assert res["status"] == "ok"
     assert res["sha"] == "def5678"
     assert seen["args"]["_user_id"] == "u123"
+
+
+def test_commit_all_dispatch():
+    with patch.object(git_actions, "commit_all_container", return_value={"status": "ok"}) as c, \
+         patch.object(git_actions, "commit_all_workstation", return_value={"status": "ok"}) as w:
+        git_actions.commit_all({"kind": "container", "root": "repo"}, "/repo", "u", "m")
+        git_actions.commit_all({"kind": "workstation", "root": "/p"}, "/repo", "u", "m")
+    c.assert_called_once()
+    w.assert_called_once()
+
+
+def test_parse_remote_owner_repo():
+    assert git_actions.parse_owner_repo("git@github.com:Nickless-cmd/jarvis-v2.git") == "Nickless-cmd/jarvis-v2"
+    assert git_actions.parse_owner_repo("https://github.com/o/r.git") == "o/r"
+    assert git_actions.parse_owner_repo("https://github.com/o/r") == "o/r"
+    assert git_actions.parse_owner_repo("") == ""
+
+
+def test_create_pr_container_api_path():
+    def fake_run(args, **kw):
+        sub = args[3] if len(args) > 3 else ""
+        if sub == "symbolic-ref":
+            return _cp(0, "refs/remotes/origin/main\n")
+        if sub == "branch":
+            return _cp(0, "feat/x\n")  # ikke på default → ingen ny branch
+        if sub == "remote":
+            return _cp(0, "git@github.com:o/r.git\n")
+        return _cp(0, "")
+    with patch("subprocess.run", side_effect=fake_run), \
+         patch("core.services.github_connector.create_pr",
+               return_value={"status": "ok", "url": "https://github.com/o/r/pull/9"}) as cp:
+        res = git_actions.create_pr({"kind": "container", "root": "repo"}, "/repo", "u", "Titel", "B")
+    assert res["status"] == "ok"
+    assert res["url"] == "https://github.com/o/r/pull/9"
+    assert res["via"] == "api"
+    assert cp.call_args.kwargs["head"] == "feat/x"
+    assert cp.call_args.kwargs["base"] == "main"

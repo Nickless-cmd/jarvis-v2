@@ -1643,3 +1643,15 @@
 .diffline-del { background: color-mix(in srgb, var(--err, #e06c75) 14%, transparent); }
 .diffline-gutter { width: 1.2em; flex: none; color: var(--fg-3, var(--fg)); user-select: none; }
 .diffview-empty { padding: .4rem .7rem; color: var(--fg-3, var(--fg)); }
+
+.statusbar-offline { color: var(--err, #e06c75); font-weight: 600; }
+
+/* ── a11y: respektér prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

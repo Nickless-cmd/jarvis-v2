@@ -59,12 +59,12 @@ export function SettingsView() {
             onChange={(e) => setAuthToken(e.target.value)} />
         </label>
         <label>
-          <span>Default model</span>
+          <span>Standardmodel</span>
           <input type="text" value={defaultModel} placeholder="deepseek-v4-flash"
             onChange={(e) => setDefaultModel(e.target.value)} />
         </label>
         <label>
-          <span>Thinking</span>
+          <span>Tænkning</span>
           <select value={defaultThinking} onChange={(e) => setDefaultThinking(e.target.value as 'think' | 'fast')}>
             <option value="think">think (afbalanceret)</option>
             <option value="fast">fast (intuitivt)</option>

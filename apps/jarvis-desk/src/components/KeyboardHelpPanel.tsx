@@ -5,6 +5,7 @@ const SHORTCUTS: { keys: string; desc: string }[] = [
   { keys: 'Shift+Enter', desc: 'Ny linje' },
   { keys: 'Esc', desc: 'Stop igangværende svar' },
   { keys: 'Ctrl/Cmd + ,', desc: 'Åbn indstillinger' },
+  { keys: 'Ctrl/Cmd + K', desc: 'Søg i samtaler' },
 ]
 
 export function KeyboardHelpPanel() {

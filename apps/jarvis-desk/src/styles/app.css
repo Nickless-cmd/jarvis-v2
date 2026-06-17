@@ -1659,3 +1659,14 @@
 .banner-actions { display: flex; gap: .5rem; align-items: center; margin-left: auto; }
 .banner-retry { font-size: .8rem; padding: 3px 10px; border-radius: 6px; border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; }
 .banner-retry:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
+
+/* ── Ctrl+K søge-palette ── */
+.search-overlay { position: fixed; inset: 0; z-index: 8500; display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh; background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(2px); }
+.search-box { width: min(40rem, 92vw); background: var(--bg-1, var(--bg)); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.35); overflow: hidden; }
+.search-input { width: 100%; box-sizing: border-box; padding: .9rem 1.1rem; border: none; border-bottom: 1px solid var(--line); background: transparent; color: var(--fg); font-size: 1rem; outline: none; }
+.search-results { max-height: 50vh; overflow-y: auto; }
+.search-empty { padding: .9rem 1.1rem; color: var(--fg-3, var(--fg)); font-size: .9rem; }
+.search-hit { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: .6rem 1.1rem; border: none; background: transparent; color: var(--fg); cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
+.search-hit:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.search-hit-title { font-weight: 600; font-size: .9rem; }
+.search-hit-snippet { font-size: .8rem; color: var(--fg-3, var(--fg)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

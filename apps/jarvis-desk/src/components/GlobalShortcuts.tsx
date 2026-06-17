@@ -8,10 +8,12 @@ export function GlobalShortcuts({
   working,
   onStop,
   onSettings,
+  onSearch,
 }: {
   working: boolean
   onStop: () => void
   onSettings: () => void
+  onSearch?: () => void
 }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -22,11 +24,16 @@ export function GlobalShortcuts({
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault()
         onSettings()
+        return
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K') && onSearch) {
+        e.preventDefault()
+        onSearch()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [working, onStop, onSettings])
+  }, [working, onStop, onSettings, onSearch])
 
   return null
 }

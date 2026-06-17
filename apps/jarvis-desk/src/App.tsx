@@ -12,6 +12,7 @@ import { UiPanelWatcher } from './components/UiPanelWatcher'
 import { AiTransparencyNotice } from './components/AiTransparencyNotice'
 import { GlobalShortcuts } from './components/GlobalShortcuts'
 import { ApprovalNotifier } from './components/ApprovalNotifier'
+import { SessionSearch } from './components/SessionSearch'
 import { usePanel } from './hooks/usePanel'
 import { SplitLayout } from './components/panel/SplitLayout'
 import { ArtifactPanel } from './components/panel/ArtifactPanel'
@@ -91,12 +92,21 @@ function Shell({
   userName: string
   model: string
 }) {
-  const { activeId } = useSessions()
+  const { activeId, select } = useSessions()
+  const { settings } = useSettings()
+  const cfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+  const [searchOpen, setSearchOpen] = useState(false)
   return (
     <div className="window">
       <Sidebar surface={surface} onSurface={setSurface} userName={userName} />
       <main className="main">
-        <ShortcutsHost setSurface={setSurface} />
+        <ShortcutsHost setSurface={setSurface} onSearch={() => setSearchOpen(true)} />
+        <SessionSearch
+          open={searchOpen}
+          config={cfg}
+          onSelect={(id) => { select(id); setSurface('chat') }}
+          onClose={() => setSearchOpen(false)}
+        />
         <ApprovalNotifierHost />
         <AppActionHost setSurface={setSurface} />
         <ShellWithPanel>
@@ -121,13 +131,14 @@ function Shell({
 }
 
 /** Wirer globale tastaturgenveje med stream-status + surface-skift. */
-function ShortcutsHost({ setSurface }: { setSurface: (s: Surface) => void }) {
+function ShortcutsHost({ setSurface, onSearch }: { setSurface: (s: Surface) => void; onSearch: () => void }) {
   const stream = useStream()
   return (
     <GlobalShortcuts
       working={stream.status === 'working'}
       onStop={() => { void stream.abort() }}
       onSettings={() => setSurface('settings')}
+      onSearch={onSearch}
     />
   )
 }

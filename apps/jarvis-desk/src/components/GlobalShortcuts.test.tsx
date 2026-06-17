@@ -31,6 +31,14 @@ describe('GlobalShortcuts', () => {
     expect(onSettings).toHaveBeenCalled()
   })
 
+
+  it('Ctrl+K åbner søgning', () => {
+    const onSearch = vi.fn()
+    render(<GlobalShortcuts working={false} onStop={vi.fn()} onSettings={vi.fn()} onSearch={onSearch} />)
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    expect(onSearch).toHaveBeenCalled()
+  })
+
   it('afmelder listener ved unmount', () => {
     const onSettings = vi.fn()
     const { unmount } = render(<GlobalShortcuts working={false} onStop={vi.fn()} onSettings={onSettings} />)

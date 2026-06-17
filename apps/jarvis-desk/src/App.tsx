@@ -11,6 +11,7 @@ import { PanelProvider } from './contexts/PanelContext'
 import { UiPanelWatcher } from './components/UiPanelWatcher'
 import { AiTransparencyNotice } from './components/AiTransparencyNotice'
 import { GlobalShortcuts } from './components/GlobalShortcuts'
+import { ApprovalNotifier } from './components/ApprovalNotifier'
 import { usePanel } from './hooks/usePanel'
 import { SplitLayout } from './components/panel/SplitLayout'
 import { ArtifactPanel } from './components/panel/ArtifactPanel'
@@ -96,6 +97,7 @@ function Shell({
       <Sidebar surface={surface} onSurface={setSurface} userName={userName} />
       <main className="main">
         <ShortcutsHost setSurface={setSurface} />
+        <ApprovalNotifierHost />
         <AppActionHost setSurface={setSurface} />
         <ShellWithPanel>
           {surface === 'chat' && (
@@ -126,6 +128,25 @@ function ShortcutsHost({ setSurface }: { setSurface: (s: Surface) => void }) {
       working={stream.status === 'working'}
       onStop={() => { void stream.abort() }}
       onSettings={() => setSurface('settings')}
+    />
+  )
+}
+
+/** Wirer OS-notifikation til afventende godkendelser (Electron gater fokus selv). */
+function ApprovalNotifierHost() {
+  const stream = useStream()
+  const p = stream.pendingApproval
+  return (
+    <ApprovalNotifier
+      approvalId={p?.approvalId ?? null}
+      tool={p?.tool}
+      action={p?.action}
+      notify={(title, body) => {
+        const b = (window as unknown as {
+          jarvisDesk?: { notifyTaskDone?: (t: string, b: string) => Promise<void> }
+        }).jarvisDesk
+        void b?.notifyTaskDone?.(title, body)
+      }}
     />
   )
 }

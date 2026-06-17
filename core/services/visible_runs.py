@@ -1082,8 +1082,30 @@ async def _stream_visible_run(
             thread_future = loop.run_in_executor(None, _pump_model_stream)
 
             _fp_first = False
+            _fp_beat = 0
+            _FP_KEEPALIVE_S = 6.0
             while True:
-                item = await queue.get()
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=_FP_KEEPALIVE_S)
+                except asyncio.TimeoutError:
+                    # Første token ikke kommet endnu — typisk fordi prompt-assembly
+                    # kører ~15s inde i pump-tråden. Send livstegn så klienten IKKE
+                    # timer ud (~20s) og river forbindelsen før første byte
+                    # (Bjørn 2026-06-17 "spinner drejer ~20s → død").
+                    if not _fp_first:
+                        _fp_beat += 1
+                        try:
+                            touch_active_visible_run(run.run_id)
+                        except Exception:
+                            pass
+                        yield _sse("heartbeat", {
+                            "type": "heartbeat",
+                            "run_id": run.run_id,
+                            "phase": "prompt_assembly",
+                            "elapsed_s": int(_fptime.monotonic() - _fp_t0),
+                            "beat": _fp_beat,
+                        })
+                    continue
                 if not _fp_first:
                     _fp_first = True
                     logger.warning("[firstpass-trace] run=%s FIRST item efter %.1fs: %s",

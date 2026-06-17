@@ -1681,6 +1681,14 @@ async def _stream_visible_run(
                 _MAX_TOOL_ONLY_ROUNDS = int(_agentic_budget.get("max_tool_only_rounds") or 4)
                 _TOOL_ONLY_TEXT_THRESHOLD = 80  # chars
                 _tool_pause_active = False  # set True after 5 tool-only rounds → withhold tools
+                # Eskalerende synthese-pause (Bjørn 2026-06-17 "spinner→død"-roden):
+                # når Jarvis spiraler i tavse tool-runder (fx læser filer én-ad-gangen),
+                # tving ham til at OPSUMMERE efter N runder ved at fjerne tools i ÉN runde.
+                # Pausen løftes så snart han producerer tekst (linje ~2185) → han kan
+                # fortsætte legit dybt arbejde, men skal surface'e fremskridt undervejs i
+                # stedet for at ramme den tørre 20-cap med tom skærm.
+                _SYNTH_PAUSE_AFTER = 8
+                _synth_pause_fired_at = -100  # runde hvor vi sidst tvang en pause
                 _agentic_loop_exit_reason = "completed"
                 _prev_round_end_t: float | None = None  # for inter-round-gap metric
                 # Track most-recent assistant reasoning_content for persistence
@@ -1745,6 +1753,11 @@ async def _stream_visible_run(
                         or _consecutive_empty_text_rounds >= _MAX_EMPTY_TEXT_ROUNDS - 1
                         or _consecutive_tool_only_rounds >= _MAX_TOOL_ONLY_ROUNDS - 1
                     )
+                    # Var tools fjernet i DENNE runde KUN pga. synthese-pausen (ikke
+                    # fordi det er sidste runde)? Så er en tom tool-liste en TVUNGET
+                    # opsummering — ikke et naturligt "jeg er færdig". Vi må ikke
+                    # afslutte runnet på den (ellers ryger Jarvis' agency på dybt arbejde).
+                    _round_was_synth_pause = _tool_pause_active and not _is_last_round
                     _round_tool_definitions = None if (_is_last_round or _tool_pause_active) else _agentic_tools
                     # Merge in tools added by load_more_tools in previous rounds
                     if _round_tool_definitions is not None and _round_extra_tools:
@@ -2049,6 +2062,15 @@ async def _stream_visible_run(
                         break
 
                     if not _a_tool_calls:
+                        # Tvungen synthese-pause: tools var fjernet, så manglende
+                        # tool-kald betyder "Jarvis opsummerede" — IKKE "færdig". Løft
+                        # pausen, nulstil spiral-tælleren og fortsæt med tools igen, så
+                        # han kan grave videre hvis opgaven kræver det.
+                        if _round_was_synth_pause and not _is_last_round:
+                            _tool_pause_active = False
+                            _consecutive_tool_only_rounds = 0
+                            _consecutive_empty_text_rounds = 0
+                            continue
                         # No more tool calls — this round produced the final response.
                         break
 
@@ -2091,6 +2113,22 @@ async def _stream_visible_run(
                     # few chars (resetting empty-text) but no real answer. ──
                     if _a_tool_calls and _round_text_total < _TOOL_ONLY_TEXT_THRESHOLD:
                         _consecutive_tool_only_rounds += 1
+                        # Eskalerende synthese-pause: efter N tavse tool-runder, tving
+                        # ÉN runde uden tools → Jarvis MÅ opsummere det han har fundet.
+                        # Fyrer kun én gang pr. spiral (genarmeres når han skriver tekst
+                        # → _consecutive_tool_only_rounds nulstilles på linje ~2191).
+                        if (
+                            _consecutive_tool_only_rounds >= _SYNTH_PAUSE_AFTER
+                            and not _tool_pause_active
+                            and _agentic_round - _synth_pause_fired_at > 1
+                        ):
+                            _tool_pause_active = True
+                            _synth_pause_fired_at = _agentic_round
+                            logger.info(
+                                "synth-pause run_id=%s efter %d tavse tool-runder — "
+                                "fjerner tools i næste runde for at tvinge opsummering",
+                                run.run_id, _consecutive_tool_only_rounds,
+                            )
 
                     # ── Decision-signals evaluation (2026-05-07) ──
                     # Replaces the hardcoded loop-nudge with registry-based

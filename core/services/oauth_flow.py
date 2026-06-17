@@ -200,3 +200,26 @@ def exchange_code(provider: str, code: str, *, now: float | None = None) -> dict
         return tok
     except Exception:
         return None
+
+
+def fetch_google_email(token: dict) -> str:
+    """Hent den verificerede Google-email via userinfo (BLOKERENDE — kør i tråd).
+    Tom streng ved fejl. Bruges af Google app-login til at matche en konto."""
+    access = (token or {}).get("access_token")
+    if not access:
+        return ""
+    try:
+        import httpx
+        r = httpx.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access}"}, timeout=15,
+        )
+        if r.status_code != 200:
+            return ""
+        data = r.json()
+        # email_verified bør være true; vi kræver det for login-match.
+        if not data.get("email") or data.get("email_verified") is False:
+            return ""
+        return str(data.get("email") or "")
+    except Exception:
+        return ""

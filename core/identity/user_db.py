@@ -115,6 +115,25 @@ def verify_login(email: str, password: str) -> dict[str, Any] | None:
     return _row_to_public(row)
 
 
+def set_google_email(user_id: str, google_email: str) -> bool:
+    """Knyt en Google-email til en EKSISTERENDE konto (migration/linking). Gemmer
+    KUN et deterministisk hash (GDPR-dataminimering) — aldrig rå Google-email."""
+    norm = _norm_email(google_email)
+    if not norm:
+        return False
+    return db.update_user_row(user_id, {"google_email_hash": _email_hash(norm), "updated_at": _now()})
+
+
+def find_user_by_google_email(google_email: str) -> dict[str, Any] | None:
+    """Slå en konto op via sin linkede Google-email. None = ingen forud-oprettet
+    konto (Google-login er IKKE self-service registrering)."""
+    norm = _norm_email(google_email)
+    if not norm:
+        return None
+    row = db.get_user_row_by_google_email_hash(_email_hash(norm))
+    return _row_to_public(row) if row else None
+
+
 def set_email_verified(user_id: str, verified: bool = True) -> bool:
     return db.update_user_row(user_id, {"email_verified": 1 if verified else 0,
                                         "updated_at": _now()})

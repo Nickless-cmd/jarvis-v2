@@ -33230,6 +33230,7 @@ from core.runtime.db_users import (  # noqa: E402,F401
     insert_user_row,
     get_user_row,
     get_user_row_by_email_hash,
+    get_user_row_by_google_email_hash,
     update_user_row,
     soft_delete_user_row,
     hard_delete_user_row,

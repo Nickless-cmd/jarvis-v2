@@ -45,11 +45,28 @@ def _ensure_users_table(conn: sqlite3.Connection) -> None:
         )
         """
     )
-    # Idempotent kolonne-tilføjelse for ældre DB'er (language tilføjet 2026-06-15).
+    # Idempotent kolonne-tilføjelse for ældre DB'er.
     cols = {r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
     if "language" not in cols:
         conn.execute("ALTER TABLE users ADD COLUMN language TEXT NOT NULL DEFAULT 'da'")
+    # Google app-login (2026-06-17): deterministisk hash af brugerens Google-email,
+    # så Google-login kan matche en FORUD-oprettet konto uden at gemme rå email.
+    if "google_email_hash" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN google_email_hash TEXT NOT NULL DEFAULT ''")
     conn.commit()
+
+
+def get_user_row_by_google_email_hash(h: str) -> dict[str, object] | None:
+    if not (h or "").strip():
+        return None
+    with connect() as conn:
+        _ensure_users_table(conn)
+        row = conn.execute(
+            "SELECT * FROM users WHERE google_email_hash = ? "
+            "AND (deleted_at IS NULL OR deleted_at = '') LIMIT 1",
+            (h,),
+        ).fetchone()
+    return dict(row) if row else None
 
 
 def insert_user_row(
@@ -107,7 +124,7 @@ def get_user_row_by_workspace(workspace: str) -> dict[str, object] | None:
 _USER_UPDATABLE = {
     "email_hash", "email_enc", "name", "role", "workspace", "password_hash",
     "discord_id_enc", "totp_seed_enc", "email_verified", "tier",
-    "api_key_enc", "api_key_jti", "muted", "language",
+    "api_key_enc", "api_key_jti", "muted", "language", "google_email_hash",
     "consent_data_processing", "consent_marketing", "consent_blind_access",
     "updated_at", "deleted_at",
 }

@@ -179,6 +179,7 @@ export interface AccountProfile {
   language: string
   role: 'owner' | 'member' | 'guest'
   tier: string
+  google_linked?: boolean
 }
 
 export async function getAccountMe(config: ApiConfig): Promise<AccountProfile> {

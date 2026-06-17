@@ -23,8 +23,10 @@ def build_account_profile(
     *,
     get_user: Callable[[str], dict[str, Any] | None],
     get_tier: Callable[[str], str],
+    is_google_linked: Callable[[str], bool] | None = None,
 ) -> dict[str, Any]:
     """Ren projektion — testbar uden HTTP. Owner (uid='') har ingen række."""
+    linked = bool(is_google_linked(user_id)) if is_google_linked else False
     if not user_id:
         return {
             "user_id": "",
@@ -33,6 +35,7 @@ def build_account_profile(
             "language": "da",
             "role": "owner",
             "tier": get_tier("") or "owner",
+            "google_linked": linked,
         }
     row = get_user(user_id) or {}
     return {
@@ -42,6 +45,7 @@ def build_account_profile(
         "language": row.get("language") or "da",
         "role": row.get("role") or "member",
         "tier": get_tier(user_id) or (row.get("tier") or "free"),
+        "google_linked": linked,
     }
 
 
@@ -54,6 +58,7 @@ async def account_me() -> dict[str, Any]:
         user_id,
         get_user=user_db.get_user,
         get_tier=quota_store.get_tier,
+        is_google_linked=user_db.has_google_link,
     )
 
 

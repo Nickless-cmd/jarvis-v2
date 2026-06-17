@@ -10,7 +10,21 @@ def test_owner_profile_defaults():
         "language": "da",
         "role": "owner",
         "tier": "owner",
+        "google_linked": False,
     }
+
+
+def test_google_linked_flag_reflects_callback():
+    prof = build_account_profile(
+        "u_bjorn", get_user=lambda uid: {"role": "owner"}, get_tier=lambda uid: "owner",
+        is_google_linked=lambda uid: uid == "u_bjorn",
+    )
+    assert prof["google_linked"] is True
+    prof2 = build_account_profile(
+        "u_other", get_user=lambda uid: {}, get_tier=lambda uid: "free",
+        is_google_linked=lambda uid: False,
+    )
+    assert prof2["google_linked"] is False
 
 
 def test_member_profile_from_user_db():

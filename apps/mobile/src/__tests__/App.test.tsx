@@ -12,6 +12,18 @@ let mockAuthState: {
 
 let mockProviderInstance = 0
 
+jest.mock('react-native-safe-area-context', () => {
+  const ReactLib = jest.requireActual('react')
+  return {
+    SafeAreaProvider: ({ children }: { children: React.ReactNode }) =>
+      ReactLib.createElement(ReactLib.Fragment, null, children),
+    SafeAreaView: ({ children }: { children: React.ReactNode }) =>
+      ReactLib.createElement(ReactLib.Fragment, null, children),
+    useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+    initialWindowMetrics: null
+  }
+})
+
 jest.mock('../screens/LoginScreen', () => ({
   LoginScreen: () => {
     const ReactLib = jest.requireActual('react')

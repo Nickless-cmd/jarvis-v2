@@ -1,5 +1,5 @@
 import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from 'react-native-safe-area-context'
 import { ChatScreen } from './screens/ChatScreen'
 import { LoginScreen } from './screens/LoginScreen'
 import { AuthProvider, useAuth } from './state/AuthContext'
@@ -33,12 +33,14 @@ function AppBody() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <SafeAreaView style={styles.root}>
-        <StatusBar barStyle="light-content" />
-        <AppBody />
-      </SafeAreaView>
-    </AuthProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <AuthProvider>
+        <SafeAreaView style={styles.root}>
+          <StatusBar barStyle="light-content" />
+          <AppBody />
+        </SafeAreaView>
+      </AuthProvider>
+    </SafeAreaProvider>
   )
 }
 

@@ -28,6 +28,27 @@ def _missing_key_message(key: str) -> str:
     )
 
 
+_perms_enforced = False
+
+
+def ensure_runtime_file_perms() -> None:
+    """Garantér at runtime.json kun er læsbar af ejeren (0600).
+
+    Idempotent + kører reelt kun én gang pr. proces. Defensiv: secrets ligger i
+    klartekst, så filtilladelser er den primære beskyttelse på et delt system.
+    Fejler stille (fx Windows/anden ejer) — bryder aldrig opstart.
+    """
+    global _perms_enforced
+    if _perms_enforced:
+        return
+    _perms_enforced = True
+    try:
+        if SETTINGS_FILE.exists() and (SETTINGS_FILE.stat().st_mode & 0o077):
+            os.chmod(SETTINGS_FILE, 0o600)
+    except OSError:
+        pass
+
+
 def _parse_int(value: object, key: str) -> int:
     try:
         return int(value)
@@ -54,6 +75,7 @@ def read_runtime_key(
         if env_value:
             return _parse_int(env_value, key) if as_int else env_value
 
+    ensure_runtime_file_perms()
     try:
         data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:

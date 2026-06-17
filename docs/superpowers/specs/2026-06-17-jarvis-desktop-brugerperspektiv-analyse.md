@@ -142,10 +142,20 @@ Da vi byggede Gmail- og Drive-connectors tog vi **restricted scopes**
   gør os til **data-controller**. Det kræver behandlingsgrundlag, Art. 30-fortegnelse og en
   privatlivspolitik der præcist navngiver hvilke Google-data vi rører.
 
-### 2.4 Konkret sikkerhedsgæld (vejer tungere end de hypotetiske trusler)
+### 2.4 Konkret sikkerhedsgæld — verificeret (mindre end først antaget)
 
-`~/.jarvis-v2/config/runtime.json` holder Google client secret, HF-token m.fl. i
-**klartekst**. Det er den reelle, nuværende eksponering der bør prioriteres før spekulative trusler.
+`~/.jarvis-v2/config/runtime.json` holder secrets i **klartekst**. Men efter verifikation
+(17. jun) er den praktiske eksponering lav på en enkelt-ejer-maskine:
+- ✅ Filtilladelser er **0600** (kun ejeren kan læse) — på lokal + target.
+- ✅ Gitignored + `detect-secrets`-hook + aldrig i repo (CLAUDE.md).
+- ✅ `read_runtime_key` lækker **aldrig** værdier til logs — kun nøglenavn ved fejl.
+- ✅ **NYT (commit pending):** `ensure_runtime_file_perms()` *garanterer* nu 0600 i kode,
+  så nye installs (Mikkel) ikke afhænger af manuel opsætning.
+
+**Tilbage som DESIGN-beslutning (ikke akut):** ægte kryptering-at-rest kræver et
+nøgle-håndteringsvalg (OS-keyring via `keyring`, eller en separat nøglefil/HSM). Det
+giver først reel merværdi i et fler-maskine/fler-bruger-scenarie — tag det når vi
+beslutter produktions-deployment, ikke som hovedløst hastværk.
 
 ---
 

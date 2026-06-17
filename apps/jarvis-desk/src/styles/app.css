@@ -1628,3 +1628,18 @@
   border: 1px solid var(--line); border-radius: 6px; background: color-mix(in srgb, var(--line) 30%, transparent);
   color: var(--fg);
 }
+
+/* ── DiffView ── */
+.diffview { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: .82rem; }
+.diffview-head { display: flex; align-items: center; gap: 1rem; padding: .4rem .7rem; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--line) 18%, transparent); }
+.diffview-file { font-weight: 600; color: var(--fg); }
+.diffview-stat { color: var(--fg-3, var(--fg)); }
+.diffview-add { color: var(--ok, #5fcf80); }
+.diffview-del { color: var(--err, #e06c75); }
+.diffview-toggle { margin-left: auto; display: flex; align-items: center; gap: .35rem; color: var(--fg-2, var(--fg)); cursor: pointer; font-size: .78rem; }
+.diffview-body { margin: 0; padding: .3rem 0; overflow-x: auto; font-family: ui-monospace, monospace; }
+.diffline { display: flex; padding: 0 .7rem; white-space: pre; }
+.diffline-add { background: color-mix(in srgb, var(--ok, #5fcf80) 14%, transparent); }
+.diffline-del { background: color-mix(in srgb, var(--err, #e06c75) 14%, transparent); }
+.diffline-gutter { width: 1.2em; flex: none; color: var(--fg-3, var(--fg)); user-select: none; }
+.diffview-empty { padding: .4rem .7rem; color: var(--fg-3, var(--fg)); }

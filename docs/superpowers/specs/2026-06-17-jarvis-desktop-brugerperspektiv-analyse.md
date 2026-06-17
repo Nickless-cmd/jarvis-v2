@@ -290,3 +290,154 @@ Uge 5:  Diff viewer
 Uge 6:  Git integration (worktrees)
 Fremtid: Mobile companion + Onboarding + Routines
 ```
+## Test-strategi
+
+Hver feature i implementeringsplanen skal have:
+
+| Feature | Backend tests | Frontend tests | E2E |
+|---|---|---|---|
+| EU AI Act compliance | pytest: transparens-notice endpoint | vitest: notice vises ved opstart | Playwright: first-run flow |
+| Settings panel | pytest: settings CRUD API | vitest: settings komponent | Playwright: model-switch |
+| Multi-session | pytest: session CRUD API | vitest: sessionsliste komponent | Playwright: opret/slet session |
+| Terminal | pytest: shell exec API | vitest: xterm mount/unmount | Playwright: kommando output |
+| Diff viewer | pytest: diff API | vitest: diff rendering | Playwright: store fil diff |
+| Git integration | pytest: git worktree API | vitest: branch switch UI | Playwright: worktree oprettelse |
+| Onboarding | pytest: first-run flag API | vitest: setup wizard steps | Playwright: complete onboarding |
+
+Krav: **mindst 80% coverage** per feature. Kør **både** conda ai-miljø (backend) **og** vitest (frontend) **og** tsc -b før hver commit.
+
+## Edge cases
+
+### Offline / netværk
+- Ollama lokalt = virker uden net. Men API'et kræver server.
+- **Krav:** Appen skal fungere i **offline mode** med begrænsede features (kun lokal Ollama).
+- Vis offline-badge i status bar.
+- Queue outgoing messages for retry when online.
+
+### Streaming timeout
+- SSE-stream kan dø uden message_stop (bug vi allerede har set).
+- **Krav:** Client-side 70s ping watchdog (allerede implementeret i streamClient.ts).
+- Vis fejlmeddelelse + retry-knap hvis stream dør.
+
+### Store filer / fil-træ
+- Repos med 10K+ filer kan gøre tree API langsomt.
+- **Krav:** Lazy loading (allerede implementeret via treeCache).
+- Vis loading-indikator. Virtualisér liste ved > 500 synlige elementer.
+
+### Concurrent brugere
+- To brugere i cowork mode kan redigere samtidig.
+- **Krav:** Optimistic locking via share_guard. Konflikt-dialog ved overlap.
+
+### Corrupt state
+- DB crash midt i skriv kan efterlade corrupt state.
+- **Krav:** WAL-mode i SQLite (allerede aktivt). Auto-repair ved opstart hvis DB integrity check fejler.
+
+## Accessibility (a11y)
+
+| Krav | Standard | Prioritet |
+|---|---|---|
+| Keyboard navigation | WCAG 2.1 AA | 🔴 Must have |
+| Skærmlæser (aria labels) | WCAG 2.1 AA | 🟡 Should have |
+| Farvekontrast (4.5:1 tekst) | WCAG 2.1 AA | 🔴 Must have |
+| Focus management | WCAG 2.1 AA | 🟡 Should have |
+| Reduced motion support | WCAG 2.1 AA | 🟢 Nice to have |
+
+EU AI Act Art. 50 kræver at AI-genereret indhold er tilgængeligt for alle brugere, inkl. med nedsat funktionsevne.
+
+## Internationalisering (i18n)
+
+- Appen er delvist dansk, delvist engelsk = **ikke acceptable** til launch.
+- **Krav:** Fuldt dansk for default, med sprog-valg i settings.
+- EU AI Act kræver transparens-information på brugerens sprog.
+- Brug i18n-framework (react-intl eller lignende).
+- Minimumsordre: da + en. Fr + de som nice-to-have.
+
+## Sikkerhed
+
+### Threat model
+
+| Trussel | Risiko | Mitigation |
+|---|---|---|
+| XSS via AI-genereret markdown | Høj | DOMPurify sanitization (allerede brugt?), CSP headers i Electron |
+| IPC injection | Medium | contextBridge whitelist (allerede brugt), valider alle IPC messages |
+| API key lækage | Høj | Nogengang gemt i plaintext config — krypter med keychain/keyring |
+| Auto-update MITM | Høj | Signatur-verifikation af updates (GitHub release checksums) |
+| Prompt injection via filer | Medium | Sanding af fil-indhold før visning |
+
+### Krav
+- CSP headers i Electron BrowserWindow
+- API keys i system keychain (keytar/libsecret)
+- Auto-update signatur-verifikation
+- Rate limiting på IPC calls
+- Audit log for alle file-write operations
+
+## Performance budget
+
+| Metrik | Mål | Nuværende |
+|---|---|---|
+| Koldt start | < 3 sek | Ukendt — skal måles |
+| Varm start (tray→vindue) | < 1 sek | Ukendt |
+| Memory baseline | < 400 MB | Ukendt — skal måles |
+| JS bundle | < 1 MB | 980 KB ✅ |
+| CSS bundle | < 100 KB | 64 KB ✅ |
+| Streaming first token | < 500 ms | Afhænger af model |
+| File tree load (< 1000 filer) | < 2 sek | Ukendt |
+
+**Krav:** Mål og dokumenter før og efter hver release.
+
+## Data residency
+
+### Data flow
+
+```
+Bruger input → jarvis-desk (lokalt)
+              → /chat/stream/v2 API (server 10.0.0.39)
+              → LLM provider (Ollama lokalt ELLER cloud)
+              → Response stream → jarvis-desk
+```
+
+| Data | Hvor gemmes | Cloud? |
+|---|---|---|
+| Chat historik | Server DB (jarvis.db) | Nej — men kan ses via API |
+| Sensory memory | Server DB | Nej |
+| API keys | Lokal config (runtime.json) | Nej — men ukrypteret ⚠️ |
+| Model prompts | Sendes til provider | Ja (hvis cloud provider) |
+| Token counts | Server DB | Nej |
+| Crash logs | Lokalt + opt/Jarvis | Nej |
+
+**Krav:**
+- Dokumenter præcist hvilken data der sendes til cloud
+- Giv brugeren valg: "Aldrig cloud" (kun lokal Ollama), "Tillad cloud for bedre modeller"
+- Vis data-flow i privacy policy
+
+## Brugertyper
+
+| Type | Behov | Prioritet |
+|---|---|---|
+| **Ny bruger** | Guidet onboarding, simple mode, ingen jargon | 🔴 |
+| **Udvikler (code mode)** | Terminal, file tree, diff, git | 🔴 |
+| **Ikke-teknisk (chat mode)** | Simpel chat, ingen fil-adgang, tydelig AI-identitet | 🟡 |
+| **Cowork/gæst** | Læse-only, begrænsede tools, tydelig "du er gæst" marking | 🟡 |
+| **Admin/owner** | Full access, settings, user management | 🔴 |
+
+## Error handling UX
+
+| Situation | Brugeroplevelse |
+|---|---|
+| API nede | "Kan ikke forbinde til server. Tjekker igen om 5 sek." + auto-retry |
+| Ollama crashet | "Lokal AI er utilgængelig. Skift til cloud provider?" + knap |
+| Disk full | "Ingen diskplads. Slet historik eller ændr workspace." |
+| Session crash | Auto-recovery: genstart session med seneste context |
+| Streaming timeout | "Svaret blev afbrudt. Prøv igen?" + retry-knap |
+| Permission denied | "Du har ikke adgang til denne fil/mappe. Anmod owner?" |
+
+## Onboarding flow (detaljeret)
+
+1. **Velkomst** — "Velkommen til Jarvis" + kort intro
+2. **Vælg model** — Lokal (Ollama) vs Cloud — forklar privacy-implikationer
+3. **Vælg workspace** — Vælg mappe eller brug server-repo
+4. **Trust level** — "Jarvis kan læse/skrive/køre kommandoer?" — tre niveauer
+5. **Privacy consent** — Vis data flow, anmod samtykke
+6. **Klar** — Åbn chat mode med velkomstbesked
+
+Minimum for at komme i gang: **trin 1 + 2** (model valgt). Alt andet kan konfigureres senere.

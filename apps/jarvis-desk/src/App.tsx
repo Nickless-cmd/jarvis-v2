@@ -9,6 +9,7 @@ import { AppActionCard } from './components/rich/AppActionCard'
 import { resolveAppAction } from './lib/appAction'
 import { PanelProvider } from './contexts/PanelContext'
 import { UiPanelWatcher } from './components/UiPanelWatcher'
+import { AiTransparencyNotice } from './components/AiTransparencyNotice'
 import { usePanel } from './hooks/usePanel'
 import { SplitLayout } from './components/panel/SplitLayout'
 import { ArtifactPanel } from './components/panel/ArtifactPanel'
@@ -50,6 +51,7 @@ export function App() {
               model={settings.defaultModel}
             />
             <UiPanelWatcher config={cfg} setSurface={setSurface} />
+            <AiTransparencyNotice />
           </PanelProvider>
         </PermissionProvider>
       </StreamProvider>

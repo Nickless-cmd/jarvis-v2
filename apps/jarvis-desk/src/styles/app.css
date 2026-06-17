@@ -1552,3 +1552,30 @@
 .cowork-dot.on { background: var(--accent); }
 .cowork-dot.off { background: var(--fg-3); }
 .cowork-unread { font-size: 11px; color: var(--fg-3); }
+
+/* ── AI-transparens-notice (EU AI Act Art. 50) ── */
+.ai-notice-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  backdrop-filter: blur(3px);
+}
+.ai-notice-card {
+  max-width: 30rem; margin: 1.5rem;
+  background: var(--bg-1, var(--bg)); border: 1px solid var(--line);
+  border-radius: 14px; padding: 1.6rem 1.8rem;
+  box-shadow: 0 12px 40px rgba(0,0,0,.35);
+}
+.ai-notice-badge {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  color: #fff; background: var(--accent); border-radius: 6px; padding: 2px 8px; margin-bottom: .8rem;
+}
+.ai-notice-card h2 { margin: 0 0 .6rem; font-size: 1.25rem; font-weight: 600; }
+.ai-notice-card p { margin: 0 0 .9rem; color: var(--fg-2, var(--fg)); line-height: 1.5; }
+.ai-notice-points { margin: 0 0 1.3rem; padding-left: 1.1rem; color: var(--fg-2, var(--fg)); line-height: 1.55; }
+.ai-notice-points li { margin-bottom: .35rem; }
+.ai-notice-ok {
+  width: 100%; padding: .7rem 1rem; border: none; border-radius: 9px;
+  background: var(--accent); color: #fff; font-weight: 600; font-size: .95rem; cursor: pointer;
+}
+.ai-notice-ok:hover { filter: brightness(1.08); }

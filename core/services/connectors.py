@@ -44,6 +44,86 @@ _CATALOG: list[dict] = [
         "category": "System", "icon": "sparkles",
         "desc": "Skills til struktureret arbejde", "scopes": [],
     },
+    # ── Google-pakken (P1) — deler ÉN Google-OAuth (provider="google").
+    #    status="coming_soon" indtil per-app tools er wired (fase 2). ──
+    {
+        "id": "gmail", "name": "Gmail", "kind": "oauth", "provider": "google",
+        "category": "Google", "icon": "mail", "status": "coming_soon",
+        "desc": "Læs, søg og send mails",
+        "scopes": ["gmail.readonly", "gmail.send"],
+    },
+    {
+        "id": "google-calendar", "name": "Google Calendar", "kind": "oauth", "provider": "google",
+        "category": "Google", "icon": "calendar", "status": "coming_soon",
+        "desc": "Læs, opret og rediger aftaler",
+        "scopes": ["calendar.events"],
+    },
+    {
+        "id": "google-drive", "name": "Google Drive", "kind": "oauth", "provider": "google",
+        "category": "Google", "icon": "hard-drive", "status": "coming_soon",
+        "desc": "Liste, læs og upload filer",
+        "scopes": ["drive.file"],
+    },
+    {
+        "id": "google-docs", "name": "Google Docs", "kind": "oauth", "provider": "google",
+        "category": "Google", "icon": "file-text", "status": "coming_soon",
+        "desc": "Opret og rediger dokumenter",
+        "scopes": ["documents"],
+    },
+    {
+        "id": "google-sheets", "name": "Google Sheets", "kind": "oauth", "provider": "google",
+        "category": "Google", "icon": "table", "status": "coming_soon",
+        "desc": "Opret og rediger regneark",
+        "scopes": ["spreadsheets"],
+    },
+    {
+        "id": "google-slides", "name": "Google Slides", "kind": "oauth", "provider": "google",
+        "category": "Google", "icon": "presentation", "status": "coming_soon",
+        "desc": "Opret og rediger præsentationer",
+        "scopes": ["presentations"],
+    },
+    # ── Udvidede (P2) ──
+    {
+        "id": "build-web-apps", "name": "Build Web Apps", "kind": "local",
+        "category": "Udvikling", "icon": "code", "status": "coming_soon",
+        "desc": "Prototype og deploy små webapps", "scopes": [],
+    },
+    {
+        "id": "huggingface", "name": "Hugging Face", "kind": "oauth", "provider": "huggingface",
+        "category": "AI", "icon": "cpu", "status": "coming_soon",
+        "desc": "Adgang til Hugging Face-modeller", "scopes": ["read"],
+    },
+    {
+        "id": "openai-models", "name": "OpenAI / Andre", "kind": "oauth", "provider": "openai",
+        "category": "AI", "icon": "brain", "status": "coming_soon",
+        "desc": "Adgang til eksterne model-API'er", "scopes": [],
+    },
+    {
+        "id": "pdf", "name": "PDF", "kind": "local",
+        "category": "Dokumenter", "icon": "file", "status": "coming_soon",
+        "desc": "Læs, analysér og ekstraher PDF", "scopes": [],
+    },
+    # ── Langsigtet (P3) ──
+    {
+        "id": "spotify", "name": "Spotify", "kind": "oauth", "provider": "spotify",
+        "category": "Medier", "icon": "music", "status": "coming_soon",
+        "desc": "Musikstyring", "scopes": ["user-read-playback-state", "user-modify-playback-state"],
+    },
+    {
+        "id": "slack", "name": "Slack", "kind": "oauth", "provider": "slack",
+        "category": "Kommunikation", "icon": "message-square", "status": "coming_soon",
+        "desc": "Læs og skriv i Slack", "scopes": ["chat:write", "channels:read"],
+    },
+    {
+        "id": "notion", "name": "Notion / Obsidian", "kind": "oauth", "provider": "notion",
+        "category": "Noter", "icon": "book-open", "status": "coming_soon",
+        "desc": "Note-synkronisering", "scopes": [],
+    },
+    {
+        "id": "notes", "name": "Huskesedler", "kind": "local",
+        "category": "Noter", "icon": "sticky-note", "status": "coming_soon",
+        "desc": "Simple notater", "scopes": [],
+    },
 ]
 
 _BY_ID = {c["id"]: c for c in _CATALOG}
@@ -88,12 +168,15 @@ def list_for_user(user_id: str) -> list[dict]:
     uid = (user_id or "").strip()
     out: list[dict] = []
     for c in _CATALOG:
+        status = c.get("status", "available")
         out.append({
             "id": c["id"], "name": c["name"], "kind": c["kind"],
             "category": c["category"], "icon": c["icon"], "desc": c["desc"],
             "scopes": list(c.get("scopes") or []),
             "post_connect_hint": c.get("post_connect_hint"),
-            "connected": _connected(uid, c),
+            "status": status,
+            # coming_soon kan ikke forbindes endnu → aldrig "connected".
+            "connected": False if status == "coming_soon" else _connected(uid, c),
             "enabled": is_enabled(uid, c["id"]),
         })
     return out

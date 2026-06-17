@@ -19,9 +19,25 @@ def test_catalog_status(monkeypatch):
     gh = next(i for i in items if i["id"] == "github")
     assert gh["connected"] is True and gh["kind"] == "oauth"
     assert gh["enabled"] is True  # default on
-    # lokale connectors er altid "connected"
-    local = [i for i in items if i["kind"] == "local"]
+    # available lokale connectors er altid "connected" (coming_soon ikke)
+    local = [i for i in items if i["kind"] == "local" and i["status"] == "available"]
     assert local and all(i["connected"] is True for i in local)
+
+
+def test_coming_soon_visible_but_not_connectable(monkeypatch):
+    _patch_state(monkeypatch)
+    # selv hvis et token skulle findes, må coming_soon ALDRIG vise connected.
+    monkeypatch.setattr(cx, "has_token", lambda uid, pid: True)
+    items = cx.list_for_user("alice")
+    ids = {i["id"] for i in items}
+    assert {"gmail", "google-calendar", "google-drive", "google-docs",
+            "google-sheets", "google-slides"} <= ids
+    assert {"build-web-apps", "huggingface", "pdf", "spotify", "slack", "notion"} <= ids
+    gmail = next(i for i in items if i["id"] == "gmail")
+    assert gmail["status"] == "coming_soon"
+    assert gmail["connected"] is False
+    gh = next(i for i in items if i["id"] == "github")
+    assert gh["status"] == "available"
 
 
 def test_set_enabled_roundtrip(monkeypatch):

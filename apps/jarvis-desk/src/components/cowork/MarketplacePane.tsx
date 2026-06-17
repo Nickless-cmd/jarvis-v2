@@ -74,7 +74,8 @@ export function MarketplacePane({ config }: { config?: ApiConfig }) {
     ? items.filter((c) => c.name.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q))
     : items
   const connected = visible.filter((c) => c.connected)
-  const rest = visible.filter((c) => !c.connected)
+  const rest = visible.filter((c) => !c.connected && c.status !== 'coming_soon')
+  const soon = visible.filter((c) => c.status === 'coming_soon')
 
   return (
     <div className="marketplace">
@@ -111,10 +112,21 @@ export function MarketplacePane({ config }: { config?: ApiConfig }) {
         {rest.map((c) => (
           <ConnectorCard key={c.id} c={c} busy={busy === c.id} onConnect={onConnect} onToggle={onToggle} onDelete={onDelete} />
         ))}
-        {rest.length === 0 && connected.length === 0 && (
+        {rest.length === 0 && connected.length === 0 && soon.length === 0 && (
           <div className="marketplace-empty">Ingen connectors matcher.</div>
         )}
       </div>
+
+      {soon.length > 0 && (
+        <>
+          <div className="marketplace-label">Kommer snart · {soon.length}</div>
+          <div className="marketplace-grid">
+            {soon.map((c) => (
+              <ConnectorCard key={c.id} c={c} busy={false} onConnect={onConnect} onToggle={onToggle} onDelete={onDelete} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -131,6 +143,7 @@ function ConnectorCard({
   const [menu, setMenu] = useState(false)
   const [confirm, setConfirm] = useState(false)
   const Icon = connectorIcon(c.icon)
+  const isSoon = c.status === 'coming_soon'
 
   useEffect(() => {
     if (!menu) return
@@ -139,18 +152,20 @@ function ConnectorCard({
     return () => window.removeEventListener('click', close)
   }, [menu])
 
-  const statusPill = c.kind === 'local'
-    ? <span className="pill active">Aktiv</span>
-    : c.connected
-      ? <span className="pill connected">● forbundet</span>
-      : (
-        <button type="button" className="pill connect" disabled={busy} onClick={() => onConnect(c)}>
-          {busy ? 'Forbinder…' : 'Forbind'}
-        </button>
-      )
+  const statusPill = isSoon
+    ? <span className="pill soon">Kommer snart</span>
+    : c.kind === 'local'
+      ? <span className="pill active">Aktiv</span>
+      : c.connected
+        ? <span className="pill connected">● forbundet</span>
+        : (
+          <button type="button" className="pill connect" disabled={busy} onClick={() => onConnect(c)}>
+            {busy ? 'Forbinder…' : 'Forbind'}
+          </button>
+        )
 
   return (
-    <div className={`connector-card ${c.connected ? 'is-connected' : ''} ${!c.enabled ? 'is-disabled' : ''}`}>
+    <div className={`connector-card ${c.connected ? 'is-connected' : ''} ${!c.enabled ? 'is-disabled' : ''} ${isSoon ? 'is-soon' : ''}`}>
       <div className="connector-icon"><Icon size={18} /></div>
       <div className="connector-body">
         <div className="connector-name">{c.name}</div>
@@ -161,7 +176,7 @@ function ConnectorCard({
       </div>
       <div className="connector-actions">
         {statusPill}
-        {(c.connected || c.kind === 'local') && (
+        {!isSoon && (c.connected || c.kind === 'local') && (
           <div className="connector-menu-anchor" onClick={(e) => e.stopPropagation()}>
             <button type="button" aria-label="Mere" onClick={() => { setMenu((m) => !m); setConfirm(false) }}>
               <MoreHorizontal size={15} />

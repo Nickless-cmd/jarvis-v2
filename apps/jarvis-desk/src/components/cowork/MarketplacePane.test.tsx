@@ -47,6 +47,16 @@ describe('MarketplacePane', () => {
     await waitFor(() => expect(bridge.openExternal).toHaveBeenCalled())
   })
 
+  it('coming_soon vises med badge og uden Forbind-knap', async () => {
+    const gmail = { id: 'gmail', name: 'Gmail', kind: 'oauth', category: 'Google', icon: 'mail', desc: 'Mails', scopes: ['gmail.send'], post_connect_hint: null, status: 'coming_soon', connected: false, enabled: true }
+    getConnectors.mockResolvedValue([github, gmail])
+    render(<MarketplacePane config={cfg} />)
+    await waitFor(() => expect(screen.getByText('Gmail')).toBeInTheDocument())
+    expect(screen.getAllByText(/Kommer snart/i).length).toBeGreaterThan(0)
+    // github (available) har stadig Forbind; gmail har det ikke.
+    expect(screen.getAllByText('Forbind')).toHaveLength(1)
+  })
+
   it('⋯ → afbryd & slet (to-trins bekræft) kalder deleteConnector', async () => {
     getConnectors.mockResolvedValue([{ ...github, connected: true }, computer])
     render(<MarketplacePane config={cfg} />)

@@ -1453,6 +1453,9 @@
 .connector-actions .pill.active { color: var(--accent); background: transparent; }
 .connector-actions .pill.connect { color: #fff; background: var(--accent); cursor: pointer; }
 .connector-actions .pill.connect:disabled { opacity: .6; cursor: default; }
+.connector-actions .pill.soon { color: var(--muted); background: color-mix(in srgb, var(--line) 50%, transparent); }
+.connector-card.is-soon { opacity: .62; }
+.connector-card.is-soon .connector-icon { opacity: .8; }
 .connector-menu-anchor { position: relative; }
 .connector-menu-anchor > button { background: none; border: none; color: var(--fg-3); cursor: pointer; display: flex; padding: 2px; }
 .connector-menu { position: absolute; right: 0; top: 22px; z-index: 20; min-width: 150px;

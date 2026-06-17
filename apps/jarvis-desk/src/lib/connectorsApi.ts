@@ -9,6 +9,8 @@ export interface Connector {
   desc: string
   scopes: string[]
   post_connect_hint: string | null
+  /** "available" = kan forbindes nu · "coming_soon" = i kataloget, endnu ikke wired. */
+  status?: 'available' | 'coming_soon'
   connected: boolean
   enabled: boolean
 }

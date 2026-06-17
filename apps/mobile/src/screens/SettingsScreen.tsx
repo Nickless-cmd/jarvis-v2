@@ -1,12 +1,26 @@
 import { useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { health } from '../lib/apiClient'
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+  googleLinkStart,
+  googleLoginResult,
+  health,
+  type GoogleLoginResult
+} from '../lib/apiClient'
 import { useAuth } from '../state/AuthContext'
 import { tokens } from '../theme/tokens'
+
+const GOOGLE_LINK_POLL_ATTEMPTS = 75
+const GOOGLE_LINK_POLL_MS = 2000
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 export function SettingsScreen() {
   const { config, signOut } = useAuth()
   const [diagnostic, setDiagnostic] = useState('Ikke testet')
+  const [googleBusy, setGoogleBusy] = useState(false)
+  const [googleMessage, setGoogleMessage] = useState('')
 
   const checkApi = async () => {
     if (!config) {
@@ -21,6 +35,47 @@ export function SettingsScreen() {
     }
   }
 
+  const linkGoogle = async () => {
+    if (!config || googleBusy) return
+    setGoogleBusy(true)
+    setGoogleMessage('Åbner Google...')
+
+    try {
+      const start = await googleLinkStart(config)
+      if (!start.authorize_url || !start.nonce) {
+        setGoogleMessage('Google-link er ikke konfigureret på serveren.')
+        return
+      }
+
+      await Linking.openURL(start.authorize_url)
+      setGoogleMessage('Godkend i browseren - venter...')
+
+      for (let i = 0; i < GOOGLE_LINK_POLL_ATTEMPTS; i += 1) {
+        const result = await googleLoginResult(config.apiBaseUrl, start.nonce).catch(
+          (): GoogleLoginResult => ({ status: 'pending' })
+        )
+
+        if (result.status === 'ok') {
+          setGoogleMessage('Google-konto forbundet')
+          return
+        }
+
+        if (result.status === 'error') {
+          setGoogleMessage('Kunne ikke forbinde Google-konto.')
+          return
+        }
+
+        await sleep(GOOGLE_LINK_POLL_MS)
+      }
+
+      setGoogleMessage('Timeout - prøv igen.')
+    } catch {
+      setGoogleMessage('Kunne ikke nå serveren.')
+    } finally {
+      setGoogleBusy(false)
+    }
+  }
+
   return (
     <View style={styles.root}>
       <Text style={styles.heading}>Indstillinger</Text>
@@ -31,6 +86,21 @@ export function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.label}>Token</Text>
         <Text style={styles.value}>{config?.authToken ? 'Gemt sikkert' : 'Mangler'}</Text>
+      </View>
+      <View style={styles.section}>
+        <Text style={styles.label}>Google</Text>
+        <Text style={styles.value}>Forbind kontoen for Google-login fremover.</Text>
+        <Pressable
+          accessibilityRole="button"
+          disabled={googleBusy}
+          onPress={linkGoogle}
+          style={[styles.secondaryButton, googleBusy ? styles.buttonDisabled : null]}
+        >
+          <Text style={styles.secondaryButtonText}>
+            {googleBusy ? 'Forbinder...' : 'Forbind Google-konto'}
+          </Text>
+        </Pressable>
+        {googleMessage ? <Text style={styles.message}>{googleMessage}</Text> : null}
       </View>
       <View style={styles.section}>
         <Text style={styles.label}>Diagnostik</Text>
@@ -90,6 +160,13 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: tokens.color.fg1,
     fontWeight: '700'
+  },
+  buttonDisabled: {
+    opacity: 0.6
+  },
+  message: {
+    color: tokens.color.fg3,
+    marginTop: tokens.spacing.sm
   },
   signOutText: {
     color: tokens.color.fg1,

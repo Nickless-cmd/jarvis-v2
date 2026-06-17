@@ -1,8 +1,17 @@
 import { useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { googleLoginResult, googleLoginStart, type GoogleLoginResult } from '../lib/apiClient'
 import { DEFAULT_API_BASE_URL } from '../lib/types'
 import { useAuth } from '../state/AuthContext'
 import { tokens } from '../theme/tokens'
+
+const GOOGLE_LOGIN_APP_ID = 'jarvis-mobile'
+const GOOGLE_LOGIN_POLL_ATTEMPTS = 75
+const GOOGLE_LOGIN_POLL_MS = 2000
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 export function LoginScreen() {
   const { signInWithToken } = useAuth()
@@ -10,6 +19,8 @@ export function LoginScreen() {
   const [token, setToken] = useState('')
   const [error, setError] = useState('')
   const [qrMessage, setQrMessage] = useState('')
+  const [googleBusy, setGoogleBusy] = useState(false)
+  const [googleMessage, setGoogleMessage] = useState('')
   const qrEnabled = process.env.EXPO_PUBLIC_ENABLE_QR_PAIRING === '1'
 
   const submit = async () => {
@@ -30,10 +41,69 @@ export function LoginScreen() {
     )
   }
 
+  const loginWithGoogle = async () => {
+    if (googleBusy) return
+    setError('')
+    setGoogleMessage('Åbner Google...')
+    setGoogleBusy(true)
+
+    try {
+      const start = await googleLoginStart(apiBaseUrl, GOOGLE_LOGIN_APP_ID)
+      if (!start.authorize_url || !start.nonce) {
+        setGoogleMessage('Google-login er ikke konfigureret på serveren.')
+        return
+      }
+
+      await Linking.openURL(start.authorize_url)
+      setGoogleMessage('Log ind i browseren - venter...')
+
+      for (let i = 0; i < GOOGLE_LOGIN_POLL_ATTEMPTS; i += 1) {
+        const result = await googleLoginResult(apiBaseUrl, start.nonce).catch(
+          (): GoogleLoginResult => ({ status: 'pending' })
+        )
+
+        if (result.status === 'ok' && result.token) {
+          await signInWithToken(apiBaseUrl, result.token)
+          setGoogleMessage('')
+          return
+        }
+
+        if (result.status === 'error') {
+          setGoogleMessage(
+            result.error === 'no_account'
+              ? 'Ingen Jarvis-konto er knyttet til denne Google-konto.'
+              : 'Google-login mislykkedes.'
+          )
+          return
+        }
+
+        await sleep(GOOGLE_LOGIN_POLL_MS)
+      }
+
+      setGoogleMessage('Timeout - prøv igen.')
+    } catch {
+      setGoogleMessage('Kunne ikke nå serveren.')
+    } finally {
+      setGoogleBusy(false)
+    }
+  }
+
   return (
     <View style={styles.root}>
       <Text style={styles.title}>Jarvis</Text>
       <Text style={styles.subtitle}>Mobile companion</Text>
+      <Pressable
+        accessibilityRole="button"
+        disabled={googleBusy}
+        onPress={loginWithGoogle}
+        style={[styles.googleButton, googleBusy ? styles.buttonDisabled : null]}
+      >
+        <Text style={styles.googleButtonText}>
+          {googleBusy ? 'Forbinder...' : 'Log ind med Google'}
+        </Text>
+      </Pressable>
+      {googleMessage ? <Text style={styles.googleMessage}>{googleMessage}</Text> : null}
+      <Text style={styles.divider}>eller med token</Text>
       <Text style={styles.label}>API</Text>
       <TextInput
         autoCapitalize="none"
@@ -109,6 +179,30 @@ const styles = StyleSheet.create({
   buttonText: {
     color: tokens.color.bg0,
     fontWeight: '700'
+  },
+  buttonDisabled: {
+    opacity: 0.6
+  },
+  googleButton: {
+    backgroundColor: '#ffffff',
+    borderRadius: tokens.radius.md,
+    padding: tokens.spacing.md,
+    alignItems: 'center',
+    marginBottom: tokens.spacing.sm
+  },
+  googleButtonText: {
+    color: '#1f1f1f',
+    fontWeight: '700'
+  },
+  googleMessage: {
+    color: tokens.color.fg3,
+    textAlign: 'center',
+    marginBottom: tokens.spacing.md
+  },
+  divider: {
+    color: tokens.color.fg3,
+    textAlign: 'center',
+    marginBottom: tokens.spacing.md
   },
   secondary: {
     marginTop: tokens.spacing.md,

@@ -149,3 +149,45 @@ export async function health(apiBaseUrl: string): Promise<boolean> {
 
   return response.ok
 }
+
+export interface GoogleLoginStartResult {
+  authorize_url?: string
+  nonce?: string
+  error?: string
+}
+
+export interface GoogleLoginResult {
+  status: 'pending' | 'ok' | 'error' | 'unknown' | string
+  token?: string
+  role?: string
+  user_id?: string
+  error?: string
+}
+
+export async function googleLoginStart(
+  apiBaseUrl: string,
+  appId = 'jarvis-mobile'
+): Promise<GoogleLoginStartResult> {
+  const url = new URL(
+    `/api/auth/google/start?app_id=${encodeURIComponent(appId)}`,
+    apiBaseUrl
+  ).toString()
+  const response = await fetch(url)
+  return (await response.json()) as GoogleLoginStartResult
+}
+
+export async function googleLoginResult(
+  apiBaseUrl: string,
+  nonce: string
+): Promise<GoogleLoginResult> {
+  const url = new URL(
+    `/api/auth/google/result?nonce=${encodeURIComponent(nonce)}`,
+    apiBaseUrl
+  ).toString()
+  const response = await fetch(url)
+  return (await response.json()) as GoogleLoginResult
+}
+
+export async function googleLinkStart(config: ApiConfig): Promise<GoogleLoginStartResult> {
+  return apiFetch(config, '/api/auth/google/link/start')
+}

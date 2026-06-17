@@ -1,14 +1,24 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native'
+import { Linking } from 'react-native'
 import { DEFAULT_API_BASE_URL } from '../lib/types'
 import { LoginScreen } from './LoginScreen'
 
 const mockSignInWithToken = jest.fn()
+const mockGoogleLoginStart = jest.fn()
+const mockGoogleLoginResult = jest.fn()
 
 jest.mock('../state/AuthContext', () => ({
   useAuth: () => ({
     signInWithToken: mockSignInWithToken
   })
 }))
+
+jest.mock('../lib/apiClient', () => ({
+  googleLoginStart: (...args: unknown[]) => mockGoogleLoginStart(...args),
+  googleLoginResult: (...args: unknown[]) => mockGoogleLoginResult(...args)
+}))
+
+jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined)
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -35,5 +45,46 @@ it('keeps QR pairing disabled by default with a visible message', async () => {
 
   await waitFor(() =>
     expect(screen.getByText('QR pairing er ikke aktiv endnu. Brug bearer token for nu.')).toBeTruthy()
+  )
+})
+
+it('opens Google login and stores the returned Jarvis token', async () => {
+  mockGoogleLoginStart.mockResolvedValue({
+    authorize_url: 'https://accounts.google.com/o/oauth2/v2/auth',
+    nonce: 'nonce-1'
+  })
+  mockGoogleLoginResult.mockResolvedValue({
+    status: 'ok',
+    token: 'jarvis-token'
+  })
+  mockSignInWithToken.mockResolvedValue(undefined)
+
+  const screen = await render(<LoginScreen />)
+
+  await fireEvent.press(screen.getByText('Log ind med Google'))
+
+  expect(mockGoogleLoginStart).toHaveBeenCalledWith(DEFAULT_API_BASE_URL, 'jarvis-mobile')
+  expect(Linking.openURL).toHaveBeenCalledWith('https://accounts.google.com/o/oauth2/v2/auth')
+  await waitFor(() =>
+    expect(mockSignInWithToken).toHaveBeenCalledWith(DEFAULT_API_BASE_URL, 'jarvis-token')
+  )
+})
+
+it('shows a useful message when Google login returns no linked account', async () => {
+  mockGoogleLoginStart.mockResolvedValue({
+    authorize_url: 'https://accounts.google.com/o/oauth2/v2/auth',
+    nonce: 'nonce-1'
+  })
+  mockGoogleLoginResult.mockResolvedValue({
+    status: 'error',
+    error: 'no_account'
+  })
+
+  const screen = await render(<LoginScreen />)
+
+  await fireEvent.press(screen.getByText('Log ind med Google'))
+
+  await waitFor(() =>
+    expect(screen.getByText('Ingen Jarvis-konto er knyttet til denne Google-konto.')).toBeTruthy()
   )
 })

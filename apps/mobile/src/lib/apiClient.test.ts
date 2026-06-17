@@ -4,6 +4,9 @@ import {
   createSession,
   denyTool,
   getSession,
+  googleLinkStart,
+  googleLoginResult,
+  googleLoginStart,
   health,
   listSessions,
   whoami
@@ -137,6 +140,61 @@ it('checks API health without bearer auth', async () => {
     'https://api.srvlab.dk/health',
     expect.objectContaining({
       headers: { Accept: 'application/json' }
+    })
+  )
+})
+
+it('starts Google login without bearer auth and polls the result', async () => {
+  ;(global.fetch as jest.Mock)
+    .mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ authorize_url: 'https://accounts.google.com/o/oauth2/v2/auth', nonce: 'n1' })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'ok', token: 'jarvis-token', role: 'member', user_id: 'u1' })
+    })
+
+  await expect(googleLoginStart('https://api.srvlab.dk/', 'jarvis-mobile')).resolves.toEqual({
+    authorize_url: 'https://accounts.google.com/o/oauth2/v2/auth',
+    nonce: 'n1'
+  })
+  await expect(googleLoginResult('https://api.srvlab.dk/', 'n1')).resolves.toEqual({
+    status: 'ok',
+    token: 'jarvis-token',
+    role: 'member',
+    user_id: 'u1'
+  })
+
+  expect(global.fetch).toHaveBeenNthCalledWith(
+    1,
+    'https://api.srvlab.dk/api/auth/google/start?app_id=jarvis-mobile'
+  )
+  expect(global.fetch).toHaveBeenNthCalledWith(
+    2,
+    'https://api.srvlab.dk/api/auth/google/result?nonce=n1'
+  )
+})
+
+it('starts Google account linking with bearer auth', async () => {
+  ;(global.fetch as jest.Mock).mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ authorize_url: 'https://accounts.google.com/link', nonce: 'link-nonce' })
+  })
+
+  await expect(googleLinkStart(config)).resolves.toEqual({
+    authorize_url: 'https://accounts.google.com/link',
+    nonce: 'link-nonce'
+  })
+  expect(global.fetch).toHaveBeenCalledWith(
+    expect.stringContaining('/api/auth/google/link/start'),
+    expect.objectContaining({
+      headers: expect.objectContaining({
+        Authorization: 'Bearer token'
+      })
     })
   )
 })

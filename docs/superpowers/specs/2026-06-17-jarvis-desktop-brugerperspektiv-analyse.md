@@ -85,41 +85,78 @@ Analysen er baseret på:
 
 ---
 
-## 2. Lovkrav — EU AI Act + GDPR
+## 2. Lovkrav — EU AI Act + GDPR + Google
 
-### 2.1 EU AI Act (træder i kraft 2. august 2026)
+> **Korrektur (2026-06-17, Claude):** §2.1 var oppustet — den blandede limited-risk-
+> forpligtelser sammen med high-risk-krav. Datoen blev web-verificeret og holder.
+> §2.3 (Google restricted scopes) var helt fraværende og er det vigtigste hul efter
+> at vi byggede Gmail/Drive-connectors. Kilder: artificialintelligenceact.eu/transparency-rules-article-50,
+> developers.google.com/terms/api-services-user-data-policy (tjekket juni 2026).
 
-Jarvis desk vurderes at falde i kategorien **limited/generic AI** (ikke high-risk),
-men skal stadig overholde følgende transparensforpligtelser:
+### 2.1 EU AI Act — transparensforpligtelser fra 2. august 2026
 
-| Krav | Implementering | Deadline |
+Jarvis desk falder i **limited-risk** (ikke high-risk). For den kategori er de
+*faktiske* lovkrav SMALLE — kun Art. 50-transparens. Det reelle lovminimum er ~1 dags
+arbejde, ikke en compliance-sprint. Skil must-have fra produkt-ønsker (Settings-panelet
+nedenfor er et *ønske*, ikke et lovkrav).
+
+| Lovkrav (limited-risk) | Implementering | Deadline |
 |---|---|---|
-| **Transparens** (Art. 50) | Brugere skal vide de interagerer med AI — tydeligt markeret i UI | 2. aug 2026 |
-| **AI-genereret indhold** | Output skal kunne identificeres som AI-genereret | 2. aug 2026 |
-| **Gennemsigtighed** | Systemets formål, begrænsninger og kapabiliteter dokumenteret | 2. aug 2026 |
-| **Risk assessment** | Dokumentation af risikovurdering for low-risk systemer | 2. aug 2026 |
-| **Human oversight** | Brugeren skal kunne overrule/stoppe AI-handlinger | 2. aug 2026 |
+| **Art. 50(1)** — brugeren skal vide det er AI | Tydelig "Du taler med AI'en Jarvis"-notice | 2. aug 2026 |
+| **Art. 50(2)** — AI-genereret indhold maskinlæsbart markeret | Markering i output | 2. aug 2026 (*grandfather*: 2. dec 2026 for systemer allerede på markedet) |
+| **Art. 50(4)** — deepfake/syntetisk medie mærkes (hvis relevant) | N/A indtil vi genererer billeder/lyd | — |
 
-**Nuværende status i v0.2.28: INGEN compliance-tekst findes.** Ingen `privacy`,
-`terms`, `consent`, `GDPR`, `cookie`, eller `firstTime` referencer i JS.
+**IKKE lovkrav for limited-risk** (Jarvis' oprindelige tabel var forkert her):
+"Risk assessment" og "Human oversight"-*dokumentation* er high-risk-forpligtelser
+(Art. 9/14) — ikke krævet af os. Approval-gates er god produkt-praksis, ikke en AI-Act-pligt.
+
+**Status i v0.2.28: ingen compliance-tekst.** Ingen `privacy`/`terms`/`consent`-referencer i JS.
 
 ### 2.2 GDPR (gældende siden 2018)
 
 | Krav | Implementering |
 |---|---|
-| **Samtykke** (Art. 6-7) | Data collection kræver eksplicit, informeret samtykke |
+| **Behandlingsgrundlag** (Art. 6) | Eksplicit, informeret samtykke ELLER kontrakt |
 | **Data minimization** | Kun indsamle hvad der er nødvendigt — lokalt hvor muligt |
-| **Right to be forgotten** | Brugerdata skal kunne slettes på forespørgsel |
-| **Dataportabilitet** | Brugeren skal kunne tage sine data med |
-| **Privacy by design** | Privacy indbygget fra starten |
+| **Right to erasure** (Art. 17) | Brugerdata skal kunne slettes på forespørgsel |
+| **Dataportabilitet** (Art. 20) | Brugeren skal kunne tage sine data med |
+| **Fortegnelse** (Art. 30) | Dokumentér hvilke behandlinger vi udfører (kræves når vi behandler andres data) |
+| **Privacy by design** (Art. 25) | Privacy indbygget fra starten |
 
-**Nuværende fordel:** Jarvis desk's lokale-først arkitektur minimerer
-GDPR-risiko. Data kan køre lokalt via Ollama, og sendes kun til cloud
-når brugeren vælger en cloud-provider.
+### 2.3 Google restricted scopes — den nye, hårde forpligtelse ⚠️
+
+Da vi byggede Gmail- og Drive-connectors tog vi **restricted scopes**
+(`gmail.readonly`, `gmail.send`, `drive.readonly`) i brug. Det ændrer billedet markant
+— og det er IKKE dækket i den oprindelige analyse:
+
+- **Lige nu (Testing-mode, <100 test-brugere):** ingen verifikation/CASA krævet. Vi er fri.
+- **I det øjeblik appen går "in production" eller får rigtige eksterne brugere:**
+  - **CASA-sikkerhedsvurdering** kræves — årlig, med *Letter of Assessment* fra en
+    Google-udpeget tredjepart. Dette er en reel omkostning (tid + penge) der rammer
+    præcis ved "vokser stille med brugere".
+  - **Limited Use:** Google-data må KUN bruges til brugervendte features — ikke til
+    træning af modeller, ikke til andet end det brugeren ser. Skal kunne slettes på forespørgsel.
+  - **Årlig re-verifikation** for at beholde adgang.
+- **Konsekvens for roadmap:** GDPR + Google-Limited-Use betyder at en brugers Gmail/
+  Drive-indhold (og dermed deres korrespondenters/mødedeltageres persondata — *tredjeparter*)
+  gør os til **data-controller**. Det kræver behandlingsgrundlag, Art. 30-fortegnelse og en
+  privatlivspolitik der præcist navngiver hvilke Google-data vi rører.
+
+### 2.4 Konkret sikkerhedsgæld (vejer tungere end de hypotetiske trusler)
+
+`~/.jarvis-v2/config/runtime.json` holder Google client secret, HF-token m.fl. i
+**klartekst**. Det er den reelle, nuværende eksponering der bør prioriteres før spekulative trusler.
 
 ---
 
 ## 3. Brugerforventninger i 2026 — benchmark mod Claude Code + Codex
+
+> **Validering (2026-06-17, Claude):** Begge apps er bekræftet *faktisk installeret*
+> på maskinen — Claude desktop (`/usr/bin/claude-desktop`, med embedded claude-code +
+> `claude_desktop_config.json` MCP-config) og Codex Desktop (Electron i `/opt/codex-desktop`
+> med plugin-arkitektur, `openai-bundled`). Benchmarkens *præmis* holder altså — det er ikke
+> opdigtede produkter. Jeg har verificeret eksistens + arkitektur, ikke hver enkelt celle;
+> de retningsgivende krav (multi-session, terminal, MCP/plugins, git) stemmer med begge.
 
 ### 3.1 Kerneforventninger
 
@@ -533,11 +570,18 @@ Jarvis desk tilbyder to login-metoder, men **ikke alle metoder er lige tilgænge
 ### 12.2 Google OAuth2 login (ny)
 Google login er **kun tilgængeligt for brugere med en forud-oprettet konto**. Det er IKKE en registreringsmekanisme.
 
-#### Princip: "Ingen self-service registrering"
+#### Princip: "Ingen self-service registrering" (korrekt for v1 — ikke permanent)
 - En ny bruger kan **ikke** downloade appen, klikke "Log ind med Google" og få adgang
 - Google login kræver at brugerens Google-konto **på forhånd er knyttet til en Jarvis-konto** (via admin/web-backend)
 - Uden en pre-lenket konto: Google login viser en fejl: "Ingen konto fundet. Kontakt din administrator."
 - Brugeren er tvunget til API-nøgle som eneste alternativ
+
+> **Korrektur (2026-06-17, Claude):** Denne admin-pre-linker-model er den RIGTIGE for
+> en lukket v1 (Bjørn + Mikkel). Men den skalerer IKKE med "vokser stille med brugere" —
+> hver ny bruger er et manuelt admin-trin. Frem den derfor ikke som permanent arkitektur:
+> design konto-modellen (felter, status-maskine) så self-service-onboarding (invite-koder
+> eller godkendt-venteliste) kan tilføjes SENERE uden at rive auth-laget ned. "Lukket nu,
+> åbnbar senere" — ikke "lukket for altid".
 
 #### Flow
 1. **Pre-linking (admin/web-backend)**
@@ -576,7 +620,7 @@ En bruger der allerede har en API-nøgle skal kunne knytte sin Google-konto:
 | **Revocation** | Administrator kan fjerne Google-linking. Brugeren mister Google-login-adgang |
 | **Rate limiting** | Max 3 Google login-forsøg pr. email pr. time (forhindrer enumeration) |
 | **Audit log** | Alle login-forsøg logges (timestamp, metode, success/fail, IP) |
-| **Session binding** | Google token bundet til Jarvis session ID — kan ikke bruges på tværs af sessions |
+| **Session binding** | Det er **Jarvis-JWT'en** der bindes til en session/enhed (ikke Google-OAuth-tokenet — det er en backend-detalje). JWT'en kan ikke genbruges på tværs af enheder uden re-auth |
 | **Ingen "glemt adgangskode"** | Der findes intet password-reset flow. Kontakt administrator = eneste recovery |
 
 ### 12.4 Web-app (fremtidig)

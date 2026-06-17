@@ -138,3 +138,14 @@ export async function denyTool(config: ApiConfig, approvalId: string): Promise<v
     method: 'POST'
   })
 }
+
+export async function health(apiBaseUrl: string): Promise<boolean> {
+  const url = new URL('/health', apiBaseUrl).toString()
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json'
+    }
+  })
+
+  return response.ok
+}

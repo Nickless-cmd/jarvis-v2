@@ -9,6 +9,8 @@ export function LoginScreen() {
   const [apiBaseUrl, setApiBaseUrl] = useState(DEFAULT_API_BASE_URL)
   const [token, setToken] = useState('')
   const [error, setError] = useState('')
+  const [qrMessage, setQrMessage] = useState('')
+  const qrEnabled = process.env.EXPO_PUBLIC_ENABLE_QR_PAIRING === '1'
 
   const submit = async () => {
     setError('')
@@ -18,6 +20,14 @@ export function LoginScreen() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kunne ikke gemme token')
     }
+  }
+
+  const startQrPairing = () => {
+    setQrMessage(
+      qrEnabled
+        ? 'QR pairing kræver stadig en kortlivet pairing exchange i Jarvis API.'
+        : 'QR pairing er ikke aktiv endnu. Brug bearer token for nu.'
+    )
   }
 
   return (
@@ -43,9 +53,14 @@ export function LoginScreen() {
       <Pressable accessibilityRole="button" onPress={submit} style={styles.button}>
         <Text style={styles.buttonText}>Forbind</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" disabled style={styles.secondary}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={startQrPairing}
+        style={[styles.secondary, qrEnabled ? null : styles.secondaryDisabled]}
+      >
         <Text style={styles.secondaryText}>Scan QR fra Jarvis-desk</Text>
       </Pressable>
+      {qrMessage ? <Text style={styles.qrMessage}>{qrMessage}</Text> : null}
     </View>
   )
 }
@@ -98,10 +113,16 @@ const styles = StyleSheet.create({
   secondary: {
     marginTop: tokens.spacing.md,
     padding: tokens.spacing.md,
-    alignItems: 'center',
+    alignItems: 'center'
+  },
+  secondaryDisabled: {
     opacity: 0.45
   },
   secondaryText: {
     color: tokens.color.fg2
+  },
+  qrMessage: {
+    color: tokens.color.fg3,
+    textAlign: 'center'
   }
 })

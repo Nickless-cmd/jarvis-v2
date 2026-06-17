@@ -4,6 +4,7 @@ import {
   createSession,
   denyTool,
   getSession,
+  health,
   listSessions,
   whoami
 } from './apiClient'
@@ -122,5 +123,20 @@ it('posts explicit approval decisions', async () => {
     2,
     expect.stringContaining('/chat/approvals/approval%202/deny'),
     expect.objectContaining({ method: 'POST' })
+  )
+})
+
+it('checks API health without bearer auth', async () => {
+  ;(global.fetch as jest.Mock).mockResolvedValue({
+    ok: true,
+    status: 200
+  })
+
+  await expect(health('https://api.srvlab.dk/')).resolves.toBe(true)
+  expect(global.fetch).toHaveBeenCalledWith(
+    'https://api.srvlab.dk/health',
+    expect.objectContaining({
+      headers: { Accept: 'application/json' }
+    })
   )
 })

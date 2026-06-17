@@ -1,4 +1,6 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
+import { UpdateCard } from './components/shell/UpdateCard'
+import { DependencyCard } from './components/shell/DependencyCard'
 import { useSettings } from './hooks/useSettings'
 import { SessionProvider } from './contexts/SessionContext'
 import { StreamProvider } from './contexts/StreamContext'
@@ -10,6 +12,9 @@ import { resolveAppAction } from './lib/appAction'
 import { PanelProvider } from './contexts/PanelContext'
 import { UiPanelWatcher } from './components/UiPanelWatcher'
 import { AiTransparencyNotice } from './components/AiTransparencyNotice'
+import { GlobalShortcuts } from './components/GlobalShortcuts'
+import { ApprovalNotifier } from './components/ApprovalNotifier'
+import { SessionSearch } from './components/SessionSearch'
 import { usePanel } from './hooks/usePanel'
 import { SplitLayout } from './components/panel/SplitLayout'
 import { ArtifactPanel } from './components/panel/ArtifactPanel'
@@ -52,11 +57,79 @@ export function App() {
             />
             <UiPanelWatcher config={cfg} setSurface={setSurface} />
             <AiTransparencyNotice />
+            <UpdateHost />
+            <DependencyHost />
           </PanelProvider>
         </PermissionProvider>
       </StreamProvider>
     </SessionProvider>
   )
+}
+
+interface UpdatesBridge {
+  onAvailable: (cb: (i: { version?: string }) => void) => () => void
+  onReady: (cb: (i: { version?: string }) => void) => () => void
+  download: () => Promise<void>
+  install: () => Promise<void>
+}
+function updatesBridge(): UpdatesBridge | undefined {
+  return (window as unknown as { jarvisDesk?: { updates?: UpdatesBridge } }).jarvisDesk?.updates
+}
+
+/** Lytter på app-opdaterings-events fra main og viser UpdateCard (§22.5). */
+function UpdateHost() {
+  const [upd, setUpd] = useState<{ version: string; phase: 'available' | 'ready' } | null>(null)
+  useEffect(() => {
+    const u = updatesBridge()
+    if (!u) return
+    const offA = u.onAvailable((i) => setUpd({ version: i.version ?? '', phase: 'available' }))
+    const offR = u.onReady((i) => setUpd({ version: i.version ?? '', phase: 'ready' }))
+    return () => { offA(); offR() }
+  }, [])
+  if (!upd) return null
+  return (
+    <UpdateCard
+      version={upd.version}
+      phase={upd.phase}
+      onUpdate={() => void updatesBridge()?.download()}
+      onInstall={() => void updatesBridge()?.install()}
+      onDismiss={() => setUpd(null)}
+    />
+  )
+}
+
+interface DepsBridge {
+  detect: () => Promise<{ tool: string; present: boolean }[]>
+  install: (tool: string) => Promise<{ ok: boolean; log?: string }>
+}
+function depsBridge(): DepsBridge | undefined {
+  return (window as unknown as { jarvisDesk?: { deps?: DepsBridge } }).jarvisDesk?.deps
+}
+
+/** Detekterer manglende værktøjer ved opstart og tilbyder at installere dem. */
+function DependencyHost() {
+  const [missing, setMissing] = useState<string[]>([])
+  const [busy, setBusy] = useState('')
+  const [dismissed, setDismissed] = useState(false)
+  useEffect(() => {
+    const d = depsBridge()
+    if (!d) return
+    let cancelled = false
+    void d.detect().then((tools) => {
+      if (!cancelled) setMissing(tools.filter((t) => !t.present).map((t) => t.tool))
+    }).catch(() => { /* ignore */ })
+    return () => { cancelled = true }
+  }, [])
+  if (dismissed) return null
+  const onInstall = (tool: string) => {
+    const d = depsBridge()
+    if (!d || busy) return
+    setBusy(tool)
+    void d.install(tool).then((r) => {
+      if (r.ok) setMissing((m) => m.filter((t) => t !== tool))
+    }).finally(() => setBusy(''))
+  }
+  return <DependencyCard missing={missing} onInstall={onInstall} onDismiss={() => setDismissed(true)} busy={busy} />
 }
 
 /** Lægger den trækbare split om den aktive view; panel viser det åbne artifact. */
@@ -89,11 +162,22 @@ function Shell({
   userName: string
   model: string
 }) {
-  const { activeId } = useSessions()
+  const { activeId, select } = useSessions()
+  const { settings } = useSettings()
+  const cfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+  const [searchOpen, setSearchOpen] = useState(false)
   return (
     <div className="window">
       <Sidebar surface={surface} onSurface={setSurface} userName={userName} />
       <main className="main">
+        <ShortcutsHost setSurface={setSurface} onSearch={() => setSearchOpen(true)} />
+        <SessionSearch
+          open={searchOpen}
+          config={cfg}
+          onSelect={(id) => { select(id); setSurface('chat') }}
+          onClose={() => setSearchOpen(false)}
+        />
+        <ApprovalNotifierHost />
         <AppActionHost setSurface={setSurface} />
         <ShellWithPanel>
           {surface === 'chat' && (
@@ -101,10 +185,19 @@ function Shell({
               sessionId={activeId}
               userName={userName}
               onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
+              onOpenPrivacy={() => setSurface('settings')}
             />
           )}
           {surface === 'cowork' && <CoworkView role={role} />}
-          {surface === 'code' && <CodeView sessionId={activeId} userName={userName} role={role} />}
+          {surface === 'code' && (
+            <CodeView
+              sessionId={activeId}
+              userName={userName}
+              role={role}
+              onOpenMarketplace={() => { setSurface('cowork'); emitZone('marketplace') }}
+              onOpenPrivacy={() => setSurface('settings')}
+            />
+          )}
           {surface === 'memory' && <MemoryView role={role} />}
           {surface === 'gallery' && <ImageGalleryView onOpenChat={() => setSurface('chat')} />}
           {surface === 'scheduling' && <SchedulingView role={role} />}
@@ -113,6 +206,38 @@ function Shell({
         <StatusBar model={model} sessionId={activeId} />
       </main>
     </div>
+  )
+}
+
+/** Wirer globale tastaturgenveje med stream-status + surface-skift. */
+function ShortcutsHost({ setSurface, onSearch }: { setSurface: (s: Surface) => void; onSearch: () => void }) {
+  const stream = useStream()
+  return (
+    <GlobalShortcuts
+      working={stream.status === 'working'}
+      onStop={() => { void stream.abort() }}
+      onSettings={() => setSurface('settings')}
+      onSearch={onSearch}
+    />
+  )
+}
+
+/** Wirer OS-notifikation til afventende godkendelser (Electron gater fokus selv). */
+function ApprovalNotifierHost() {
+  const stream = useStream()
+  const p = stream.pendingApproval
+  return (
+    <ApprovalNotifier
+      approvalId={p?.approvalId ?? null}
+      tool={p?.tool}
+      action={p?.action}
+      notify={(title, body) => {
+        const b = (window as unknown as {
+          jarvisDesk?: { notifyTaskDone?: (t: string, b: string) => Promise<void> }
+        }).jarvisDesk
+        void b?.notifyTaskDone?.(title, body)
+      }}
+    />
   )
 }
 

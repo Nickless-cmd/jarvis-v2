@@ -5,6 +5,20 @@ export async function exportMyData(config: ApiConfig): Promise<unknown> {
   return apiFetch(config, '/api/account/export')
 }
 
+export interface QuotaItem {
+  kind: string
+  used: number
+  limit: number | null
+  remaining: number | null
+  warn: boolean
+}
+export interface QuotaOverview { tier: string; items: QuotaItem[] }
+
+/** Self-scope kvote-/forbrugs-overblik (tier + brug pr. type). */
+export async function getQuota(config: ApiConfig): Promise<QuotaOverview> {
+  return apiFetch<QuotaOverview>(config, '/api/account/quota')
+}
+
 /** Trigger en browser-download af et JSON-objekt. */
 export function downloadJson(data: unknown, filename: string): void {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })

@@ -16,6 +16,31 @@ export interface AutoUpdateConfig {
 
 interface Updater { checkForUpdatesAndNotify: () => unknown }
 
+interface FullUpdater {
+  autoDownload: boolean
+  on: (ev: string, cb: (info: unknown) => void) => void
+  checkForUpdates: () => unknown
+  downloadUpdate: () => unknown
+  quitAndInstall: () => unknown
+}
+type Send = (channel: string, payload: unknown) => void
+
+/** Kobl electron-updater's events til IPC mod renderer, og returnér handlers
+ *  til bruger-styret download/install. autoDownload slås FRA — vi spørger først
+ *  (in-app UpdateCard), og downloader/genstarter kun ved bruger-ja. */
+export function wireUpdater(up: FullUpdater, send: Send) {
+  up.autoDownload = false
+  up.on('update-available', (info) => send('update:available', info))
+  up.on('download-progress', (p) => send('update:progress', p))
+  up.on('update-downloaded', (info) => send('update:ready', info))
+  up.on('error', (e) => send('update:error', String(e)))
+  return {
+    check: () => { try { up.checkForUpdates() } catch { /* noop */ } },
+    download: () => { try { up.downloadUpdate() } catch { /* noop */ } },
+    installNow: () => { try { up.quitAndInstall() } catch { /* noop */ } },
+  }
+}
+
 export async function initAutoUpdate(cfg?: AutoUpdateConfig): Promise<boolean> {
   if (!cfg?.enabled) return false
   const moduleName = 'electron-updater'  // ikke-literal → tsc resolver ikke statisk

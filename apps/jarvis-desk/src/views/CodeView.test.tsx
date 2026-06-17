@@ -46,9 +46,10 @@ function wrap(ui: ReactNode) {
 }
 
 describe('CodeView', () => {
-  it('tom samtale: centreret hej-hilsen med brugernavn', () => {
+  it('tom samtale: greeting m. brugernavn + composer', () => {
     wrap(<CodeView sessionId={null} userName="Bjørn" />)
-    expect(screen.getByText('Hej Bjørn.')).toBeInTheDocument()
+    // Greeting via GreetingHero (tids-bevidst hilsen) — navnet skal fremgå.
+    expect(screen.getAllByText(/Bjørn/).length).toBeGreaterThan(0)
     // composer + workspace-vælger til stede
     expect(screen.getByRole('textbox')).toBeInTheDocument()
   })

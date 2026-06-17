@@ -243,6 +243,41 @@ python scripts/init_db.py
 
 ---
 
+## ⬆️ Opgradering uden datatab
+
+Al runtime-tilstand ligger i `~/.jarvis-v2/` — **adskilt fra koden**. En opgradering
+rører aldrig dine data, men tag altid backup først.
+
+```bash
+# 1. Backup af tilstand + secrets (gør ALTID dette først)
+cp ~/.jarvis-v2/state/jarvis.db ~/.jarvis-v2/state/jarvis.db.bak-$(date +%F)
+cp ~/.jarvis-v2/config/runtime.json ~/.jarvis-v2/config/runtime.json.bak-$(date +%F)
+
+# 2. Hent ny kode
+cd /media/projects/jarvis-v2
+git pull
+
+# 3. Opdater afhængigheder (hvis pyproject/requirements ændret)
+/sti/til/conda/envs/ai/bin/pip install -e .
+
+# 4. Genstart begge services — DB-migrationer kører automatisk ved opstart
+sudo systemctl restart jarvis-api jarvis-runtime
+
+# 5. Verificér
+systemctl is-active jarvis-api jarvis-runtime
+journalctl -u jarvis-api -n 30 --no-pager
+```
+
+**Vigtigt:**
+- **Spring ikke flere hovedversioner over på én gang** — migrationer er additive og
+  forventer den foregående skemaversion. Opgradér trinvist hvis du er langt bagud.
+- `runtime.json` (secrets) og `jarvis.db` (al operationel tilstand) overlever opgraderinger;
+  de ligger i `~/.jarvis-v2/`, ikke i repoet.
+- Desktop-appen opdateres separat (egen `.deb`/AppImage) — se jarvis-desk.
+- **Rollback:** stop services, `git checkout <forrige-tag>`, læg backup-filerne tilbage, start igen.
+
+---
+
 ## 📚 Næste skridt
 
 - [BRUGERVEJLEDNING.md](./BRUGERVEJLEDNING.md) — Lær at bruge Jarvis

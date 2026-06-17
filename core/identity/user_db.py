@@ -115,6 +115,35 @@ def verify_login(email: str, password: str) -> dict[str, Any] | None:
     return _row_to_public(row)
 
 
+def set_google_email(user_id: str, google_email: str, role: str = "member") -> bool:
+    """Knyt en Google-email til en konto (migration/linking). STORE-AGNOSTISK:
+    skriver til google_login_links så det virker uanset om brugeren bor i SQLite-
+    user_db ELLER kun i users.json (owner + nogle members). Gemmer KUN et
+    deterministisk hash (GDPR-dataminimering) — aldrig rå Google-email."""
+    norm = _norm_email(google_email)
+    if not norm or not user_id:
+        return False
+    eh = _email_hash(norm)
+    # Hvis brugeren OGSÅ har en SQLite-login-række, hold kolonnen i sync (back-compat).
+    if db.get_user_row(user_id):
+        db.update_user_row(user_id, {"google_email_hash": eh, "updated_at": _now()})
+    return db.set_google_link(eh, user_id, role, _now())
+
+
+def find_user_by_google_email(google_email: str) -> dict[str, Any] | None:
+    """Slå en konto op via sin linkede Google-email. Returnerer {user_id, role}.
+    None = ingen forud-oprettet konto (Google-login er IKKE self-service)."""
+    norm = _norm_email(google_email)
+    if not norm:
+        return None
+    link = db.get_google_link(_email_hash(norm))
+    if link:
+        return {"user_id": str(link.get("user_id") or ""), "role": str(link.get("role") or "member")}
+    # Fallback: ældre SQLite-kolonne-link.
+    row = db.get_user_row_by_google_email_hash(_email_hash(norm))
+    return _row_to_public(row) if row else None
+
+
 def set_email_verified(user_id: str, verified: bool = True) -> bool:
     return db.update_user_row(user_id, {"email_verified": 1 if verified else 0,
                                         "updated_at": _now()})

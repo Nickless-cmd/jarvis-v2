@@ -315,6 +315,48 @@ export async function getGitStatus(
   return apiFetch(config, `/chat/git-status?${qs}`)
 }
 
+export interface GitTarget { kind: string; root: string }
+
+/** Google app-login (§12): start → få authorize-URL + nonce (ingen auth). */
+export async function googleLoginStart(
+  apiBaseUrl: string, appId = '',
+): Promise<{ authorize_url?: string; nonce?: string; error?: string }> {
+  const url = new URL(`/api/auth/google/start?app_id=${encodeURIComponent(appId)}`, apiBaseUrl).toString()
+  const r = await fetch(url)
+  return r.json()
+}
+
+/** Poll login-resultatet. {status: pending|ok|error|unknown}. */
+export async function googleLoginResult(
+  apiBaseUrl: string, nonce: string,
+): Promise<{ status: string; token?: string; role?: string; user_id?: string; error?: string }> {
+  const url = new URL(`/api/auth/google/result?nonce=${encodeURIComponent(nonce)}`, apiBaseUrl).toString()
+  const r = await fetch(url)
+  return r.json()
+}
+
+/** Start Google-linking for indlogget bruger (migration: knyt Gmail). Kræver auth. */
+export async function googleLinkStart(
+  config: ApiConfig,
+): Promise<{ authorize_url?: string; nonce?: string; error?: string }> {
+  return apiFetch(config, '/api/auth/google/link/start')
+}
+
+/** Commit ALLE ændringer (git add -A + commit, ingen push). Rolle-aware target. */
+export async function commitAllChanges(
+  config: ApiConfig, target: GitTarget, message = '',
+): Promise<{ status: string; sha?: string; branch?: string; message?: string }> {
+  return apiFetch(config, '/chat/git/commit-all', { method: 'POST', body: { target, message } })
+}
+
+/** Opret pull request (commit + push + PR via GitHub-API/gh). Udadvendt — kun ved
+ *  bruger-klik. Returnerer PR-URL. */
+export async function createPullRequest(
+  config: ApiConfig, target: GitTarget, title = '', body = '',
+): Promise<{ status: string; url?: string; branch?: string; via?: string }> {
+  return apiFetch(config, '/chat/git/create-pr', { method: 'POST', body: { target, title, body } })
+}
+
 /** Er et workspace betroet (skrive/exec-gate i code-mode)? */
 export async function getWorkspaceTrust(
   config: ApiConfig, kind: 'container' | 'workstation', root: string,

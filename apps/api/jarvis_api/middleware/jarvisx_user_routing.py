@@ -59,6 +59,10 @@ _PUBLIC_PATHS = (
     "/api/auth/register",      # selvregistrering (spec 2026-06-15 §5) — public
     "/api/auth/verify-email",  # email-verifikations-link — public
     "/api/auth/login",         # login med email+password → bearer-token — public
+    "/api/auth/google/start",  # Google app-login: start (ingen token endnu) — public
+    "/api/auth/google/result", # Google app-login: poll token-retur (ingen token endnu) — public
+    # BEMÆRK: /api/auth/google/link/start er IKKE public — den kræver den
+    # indloggede brugers token for at vide hvilken konto Google skal knyttes til.
     "/docs",
     "/openapi.json",
     "/redoc",

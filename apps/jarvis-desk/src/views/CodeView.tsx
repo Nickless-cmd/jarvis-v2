@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown } from 'lucide-react'
+import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown, Gauge } from 'lucide-react'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
 import { useSettings } from '../hooks/useSettings'
@@ -17,6 +17,9 @@ import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
+import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
+import { MessageRail, railLabel } from '../components/chat/MessageRail'
+import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo } from '../lib/api'
@@ -45,8 +48,8 @@ async function pickFolder(): Promise<string | null> {
  *  en mappe på din egen computer (via operator-bridgen). Stream i midten; foldbare
  *  fil-træ- og preview-paneler i højre. Layout spejler chat (centreret velkomst). */
 export function CodeView({
-  sessionId, userName, role = 'owner',
-}: { sessionId: string | null; userName?: string; role?: Role }) {
+  sessionId, userName, role = 'owner', onOpenMarketplace, onOpenPrivacy,
+}: { sessionId: string | null; userName?: string; role?: Role; onOpenMarketplace?: () => void; onOpenPrivacy?: () => void }) {
   const stream = useStream()
   const { permission } = usePermission()
   const { settings } = useSettings()
@@ -72,6 +75,76 @@ export function CodeView({
   const [trusted, setTrusted] = useState<boolean | null>(null)
   const [compactAt, setCompactAt] = useState(0)
   const [gitRefresh, setGitRefresh] = useState(0) // bumpes når et run slutter → GitChip gen-henter
+  // Miljø-felt: toggle som panel-ikonerne. null = auto (vis ved fuld skærm / bredt
+  // vindue, skjul når smalt så det ikke dækker chatten). Bruger kan overstyre.
+  const [envManual, setEnvManual] = useState<boolean | null>(null)
+  const [winW, setWinW] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1920)
+  useEffect(() => {
+    const onResize = () => setWinW(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const envWide = winW >= 1180 // proxy for "fuld skærm / bredt nok til ikke at overlappe"
+  const envOpen = (envManual ?? envWide)
+
+  // Dependency-gate: er git til stede på maskinen? (Electron deps-bro; web → antag ja.)
+  const [gitMissing, setGitMissing] = useState(false)
+  const [installingTool, setInstallingTool] = useState('')
+  const depsBridge = () =>
+    (window as unknown as { jarvisDesk?: { deps?: {
+      detect: () => Promise<{ tool: string; present: boolean }[]>
+      install: (t: string) => Promise<{ ok: boolean }>
+    } } }).jarvisDesk?.deps
+  useEffect(() => {
+    const d = depsBridge()
+    if (!d) return
+    let cancelled = false
+    void d.detect().then((tools) => {
+      const git = tools.find((t) => t.tool === 'git')
+      if (!cancelled && git) setGitMissing(!git.present)
+    }).catch(() => { /* ignore */ })
+    return () => { cancelled = true }
+  }, [])
+  const onInstallTool = (tool: string) => {
+    const d = depsBridge()
+    if (!d || installingTool) return
+    setInstallingTool(tool)
+    void d.install(tool).then((r) => { if (r.ok && tool === 'git') setGitMissing(false) })
+      .finally(() => setInstallingTool(''))
+  }
+
+  // Session-akkumulering til miljø-feltet: tokens + tool-kald + tool-liste SAMLET
+  // over HELE sessionen (ikke pr. run), så man kan se alt der er lavet (Codex-stil).
+  // Foldes når et run slutter (working → ikke-working); nulstilles ved session-skift.
+  const [sessTokens, setSessTokens] = useState(0)
+  const [sessToolCalls, setSessToolCalls] = useState(0)
+  const [sessTools, setSessTools] = useState<{ name: string; input: Record<string, unknown> }[]>([])
+  const prevStatusRef = useRef(stream.status)
+  useEffect(() => {
+    setSessTokens(0); setSessToolCalls(0); setSessTools([]); prevStatusRef.current = stream.status
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId])
+  useEffect(() => {
+    const prev = prevStatusRef.current
+    prevStatusRef.current = stream.status
+    if (prev === 'working' && stream.status !== 'working') {
+      const tb = stream.blocks
+        .filter((b) => b.type === 'tool_use')
+        .map((b) => ({ name: (b as { name?: string }).name || '', input: ((b as { input?: Record<string, unknown> }).input) || {} }))
+      setSessTokens((t) => t + (stream.usage.output || 0))
+      setSessToolCalls((c) => c + tb.length)
+      if (tb.length) setSessTools((prevT) => [...prevT, ...tb].slice(-50))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream.status])
+  // Live (igangværende run) lægges oven i session-totalerne så tallene er "live".
+  const liveTools = stream.status === 'working'
+    ? stream.blocks.filter((b) => b.type === 'tool_use')
+        .map((b) => ({ name: (b as { name?: string }).name || '', input: ((b as { input?: Record<string, unknown> }).input) || {} }))
+    : []
+  const envTotalTokens = sessTokens + (stream.status === 'working' ? (stream.usage.output || 0) : 0)
+  const envTotalToolCalls = sessToolCalls + liveTools.length
+  const envTools = [...sessTools, ...liveTools]
   // Trækbar bredde på hele fil-/preview-panelet (mod venstre). Bredere default
   // end før (380→460) så preview-ruden ikke er knald-smal.
   const codePanelW = useResizableWidth({
@@ -218,8 +291,17 @@ export function CodeView({
 
   // Auto-continue: efter et godkendt mode/permission-skift gen-sendes den
   // oprindelige besked her, så Jarvis fortsætter sømløst i code mode.
+  //
+  // KRITISK timing-gate (2026-06-17): re-send'et MÅ ikke fyre mens det
+  // oprindelige chat-run stadig kører. Kortet kan klikkes før Jarvis når
+  // message_stop; fyrer vi da, POSTer vi et nyt run i SAMME session mens det
+  // gamle stadig er aktivt server-side → visible_runs' same-session-guard
+  // midway-nudge'r det nye run (yielder intet) → SSE lukker uden message_stop
+  // → klienten viser "Forbindelse afbrudt" efter ~60 tokens (det gamle runs
+  // hale). Vent til status forlader 'working' (gammelt run unregistreres
+  // synkront i sit finally) — så tager guarden "clear & proceed fresh"-stien.
   useEffect(() => {
-    if (!stream.autoContinue || !ready) return
+    if (!stream.autoContinue || !ready || stream.status === 'working') return
     const msg = stream.consumeAutoContinue()
     if (!msg) return
     const prefs = readModelPrefs()
@@ -233,7 +315,7 @@ export function CodeView({
       providerChoice: sendProvider,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stream.autoContinue, ready])
+  }, [stream.autoContinue, ready, stream.status])
 
   // Gensend en tidligere bruger-besked (sparer copy-paste). Rolle-bevidst model
   // som auto-continue: owner bruger egne prefs, member tvinges til standard/pro.
@@ -293,6 +375,7 @@ export function CodeView({
       contextTokens={stream.usage.input + stream.usage.cacheHit}
       compactAt={compactAt}
       isOwner={isOwner}
+      onOpenPrivacy={onOpenPrivacy}
     />
   )
 
@@ -314,32 +397,59 @@ export function CodeView({
     !sessionId ||
     (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0)
 
+  const headerRight = (
+    <div className="chatview-head-right">
+      {config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
+      {config && <ConnectionPill config={config} />}
+      <button
+        type="button"
+        className={`panel-toggle ${envOpen ? 'active' : ''}`}
+        aria-label="Vis/skjul miljø-felt" title="Miljø"
+        onClick={() => setEnvManual(!(envManual ?? envWide))}
+      >
+        <Gauge size={16} />
+      </button>
+      <button
+        type="button"
+        className={`panel-toggle ${filesOpen ? 'active' : ''}`}
+        aria-label="Vis/skjul fil-træ" title="Filer"
+        onClick={() => setFilesOpen((o) => !o)}
+      >
+        <FolderTree size={16} />
+      </button>
+      <button
+        type="button"
+        className={`panel-toggle ${panel.open ? 'active' : ''}`}
+        aria-label="Vis/skjul preview-panel" title="Preview"
+        onClick={panel.toggle}
+      >
+        <PanelRight size={16} />
+      </button>
+    </div>
+  )
+
+  // Tom/ny: simpel titel (vælgeren står stort i midten).
   const header = (
     <div className="chatview-head">
       <div className="chatview-head-left">
         <PresenceDot status={stream.status} />{' '}
         <span className="chat-title">Code · {ready ? effRoot : 'vælg workspace'}</span>
       </div>
-      <div className="chatview-head-right">
-        {config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
-        {config && <ConnectionPill config={config} />}
-        <button
-          type="button"
-          className={`panel-toggle ${filesOpen ? 'active' : ''}`}
-          aria-label="Vis/skjul fil-træ" title="Filer"
-          onClick={() => setFilesOpen((o) => !o)}
-        >
-          <FolderTree size={16} />
-        </button>
-        <button
-          type="button"
-          className={`panel-toggle ${panel.open ? 'active' : ''}`}
-          aria-label="Vis/skjul preview-panel" title="Preview"
-          onClick={panel.toggle}
-        >
-          <PanelRight size={16} />
-        </button>
+      {headerRight}
+    </div>
+  )
+
+  // Aktiv samtale: ALT i headeren i samme stil — workspace-vælgeren foldes ind
+  // ved siden af titlen, så der ikke er en separat bar nedenunder der gentager
+  // stien (Bjørn 2026-06-17).
+  const headerActive = (
+    <div className="chatview-head">
+      <div className="chatview-head-left">
+        <PresenceDot status={stream.status} />{' '}
+        <span className="chat-title">Code ·</span>
+        <div className="code-head-ws">{workspaceSelector}</div>
       </div>
+      {headerRight}
     </div>
   )
 
@@ -350,10 +460,16 @@ export function CodeView({
         {header}
         {trustBanner}
         <div className="chat-empty">
-          <h2>Hej{userName ? ` ${userName}` : ''}.</h2>
-          <p>Hvad skal vi kode? Vælg et workspace, så går vi i gang.</p>
-          {workspaceSelector}
-          {composer}
+          <GreetingHero
+            config={config}
+            userName={userName ?? 'Bruger'}
+            onOpenMarketplace={() => onOpenMarketplace?.()}
+            onSuggest={(text) => resend(text)}
+          >
+            <p className="codeview-empty-hint">Hvad skal vi kode? Vælg et workspace, så går vi i gang.</p>
+            {workspaceSelector}
+            {composer}
+          </GreetingHero>
         </div>
       </div>
     )
@@ -363,16 +479,43 @@ export function CodeView({
   return (
     <div className="codeview">
       <div className="codeview-main">
-        {header}
+        {headerActive}
+        {config && envOpen && !filesOpen && !panel.open && (
+          <EnvironmentPanel
+            config={config}
+            kind={kind}
+            root={effRoot}
+            refreshKey={gitRefresh}
+            working={stream.status === 'working'}
+            workingStep={stream.workingStep ?? undefined}
+            totalTokens={envTotalTokens}
+            totalToolCalls={envTotalToolCalls}
+            tools={envTools}
+            sessionId={sessionId}
+            hasHistory={visibleMessages.length > 0}
+            isOwner={isOwner}
+            onChanged={() => setGitRefresh((n) => n + 1)}
+            gitMissing={gitMissing}
+            installingTool={installingTool}
+            onInstallTool={onInstallTool}
+          />
+        )}
         {trustBanner}
-        <div className="codeview-toolbar">{workspaceSelector}</div>
+        <div className="transcript-wrap">
+        <MessageRail
+          containerRef={transcriptRef}
+          anchors={visibleMessages.filter((m) => m.role === 'user').map((m) => ({ id: m.id, label: railLabel(m.content) }))}
+        />
         <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
           {visibleMessages.map((m) => (
-            <MessageRow key={m.id} role={m.role === 'user' ? 'user' : 'assistant'} blocks={m.content} density="compact" streaming={false} createdAt={m.created_at} onResend={m.role === 'user' ? resend : undefined} />
+            <div key={m.id} data-rail-id={m.id} className="msg-block">
+            <MessageRow role={m.role === 'user' ? 'user' : 'assistant'} blocks={m.content} density="compact" streaming={false} createdAt={m.created_at} onResend={m.role === 'user' ? resend : undefined} />
+            </div>
           ))}
           {stream.status === 'working' && stream.blocks.length > 0 && (
             <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
           )}
+        </div>
         </div>
         <div className="composer-area">
           {/* Liveness fast lige over composeren (ikke i transcript — den scrollede

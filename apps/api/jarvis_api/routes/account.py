@@ -431,3 +431,24 @@ async def account_export() -> dict[str, Any]:
         get_user=user_db.get_user,
         get_tier=quota_store.get_tier,
     )
+
+
+@router.post("/erase")
+async def account_erase(payload: dict = Body(default={})) -> dict[str, Any]:
+    """GDPR Art. 17: slet dine EGNE data. Self-scoped + email-bekræftelse påkrævet.
+
+    Body: {confirm: "<din-email>", mode: "soft"|"hard"}. Default soft (reversibel).
+    Owner kan ikke self-slettes. Hard kræver eksplicit mode + korrekt email.
+    """
+    snap = current_context_snapshot()
+    uid = snap.get("user_id") or ""
+    if not uid:
+        raise HTTPException(status_code=403, detail="Ejeren kan ikke slettes via app'en")
+    row = user_db.get_user(uid) or {}
+    email = str(row.get("email") or "").strip().lower()
+    confirm = str((payload or {}).get("confirm") or "").strip().lower()
+    if not email or confirm != email:
+        raise HTTPException(status_code=400, detail="Skriv din egen email for at bekræfte sletning")
+    mode = str((payload or {}).get("mode") or "soft")
+    from core.services.data_erasure import erase_user
+    return await asyncio.to_thread(erase_user, uid, mode=mode, actor="self")

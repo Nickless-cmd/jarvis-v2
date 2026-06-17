@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { getConnectors, startConnect, type Connector } from '../../lib/connectorsApi'
-import { connectorIcon } from '../../lib/connectorIcon'
+import { connectorIcon, connectorBrandColor } from '../../lib/connectorIcon'
 import { greetingFor } from '../../lib/greeting'
 import { takePendingHint } from '../../lib/postConnect'
 
@@ -35,14 +35,22 @@ export function GreetingHero({
     void getConnectors(config)
       .then((list) => {
         if (cancelled) return
-        setSuggestions(list.filter((c) => c.kind === 'oauth' && !c.connected).slice(0, 3))
+        // Vis OAuth-apps (både forbundne m. ✓ og ikke-forbundne) — Gmail først,
+        // forbundne sidst. Maks 4 (som Codex).
+        const oauth = list.filter((c) => c.kind === 'oauth' && c.status !== 'coming_soon')
+        oauth.sort((a, b) => {
+          if (a.id === 'gmail') return -1
+          if (b.id === 'gmail') return 1
+          return Number(a.connected) - Number(b.connected)
+        })
+        setSuggestions(oauth.slice(0, 4))
       })
       .catch(() => { /* tom — ingen forslag er fint */ })
     return () => { cancelled = true }
   }, [config])
 
   const onConnect = async (c: Connector) => {
-    if (!config) return
+    if (!config || c.connected) return
     const url = await startConnect(config, c.id).catch(() => null)
     if (url) openBrowser(url)
   }
@@ -68,18 +76,29 @@ export function GreetingHero({
       <div className="greeting-connectors">
         {suggestions.length > 0 && (
           <>
-            <div className="greeting-connectors-label">Forbind dine apps</div>
             <div className="greeting-connectors-row">
               {suggestions.map((c) => {
                 const Icon = connectorIcon(c.icon)
+                const brand = connectorBrandColor(c.id)
                 return (
-                  <button key={c.id} type="button" className="greeting-connector" onClick={() => onConnect(c)}>
-                    <span className="greeting-connector-icon"><Icon size={16} /></span>
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`greeting-connector ${c.connected ? 'is-connected' : ''}`}
+                    onClick={() => onConnect(c)}
+                    disabled={c.connected}
+                  >
+                    <span
+                      className="greeting-connector-icon"
+                      style={brand ? { background: brand, color: '#fff' } : undefined}
+                    ><Icon size={16} /></span>
                     <span className="greeting-connector-body">
                       <span className="greeting-connector-name">{c.name}</span>
                       <span className="greeting-connector-desc">{c.desc}</span>
                     </span>
-                    <span className="greeting-connector-cta">Forbind</span>
+                    <span className="greeting-connector-cta">
+                      {c.connected ? '✓ Forbundet' : 'Forbind'}
+                    </span>
                   </button>
                 )
               })}

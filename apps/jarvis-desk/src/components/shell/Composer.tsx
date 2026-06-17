@@ -79,6 +79,7 @@ export function Composer({
   contextTokens = 0,
   compactAt = 0,
   isOwner = false,
+  onOpenPrivacy,
 }: {
   streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
@@ -87,6 +88,8 @@ export function Composer({
   thinking: string
   config?: ApiConfig
   getSessionId: () => Promise<string>
+  /** Åbner Data & privatliv (Settings) fra disclaimer-linjen. */
+  onOpenPrivacy?: () => void
   /** Permissions-dropdown vises kun hvor værktøjs-godkendelse er relevant
    *  (cowork/code). I ren chat mode er den skjult. Default true. */
   showPermissions?: boolean
@@ -288,7 +291,7 @@ export function Composer({
   const permLabel = PERMISSIONS.find((p) => p.key === permission)?.label ?? 'Spørg'
 
   return (
-    <>
+    <div className="composer-shell">
     <div className={`composer ${dragOver ? 'drag-over' : ''}`}>
       {dragOver && <div className="composer-drop-overlay">Slip filer og billeder her</div>}
       {ringDenominator > 0 && (
@@ -314,7 +317,7 @@ export function Composer({
       <ComposerTextArea
         inputRef={ref}
         value={text}
-        placeholder={streaming ? 'Skriv en follow-up (sendes når Jarvis er færdig)…' : 'Skriv en besked til Jarvis...'}
+        placeholder={streaming ? 'Skriv en follow-up (sendes når Jarvis er færdig)…' : 'Spørg Jarvis om noget…'}
         onChange={onInputChange}
         onKeyDown={onInputKeyDown}
       />
@@ -465,7 +468,12 @@ export function Composer({
         </div>
       </div>
     </div>
-    <p className="composer-disclaimer">Jarvis kan tage fejl — dobbelttjek vigtige svar.</p>
-    </>
+    <p className="composer-disclaimer">
+      Jarvis kan tage fejl — dobbelttjek vigtige svar.
+      {onOpenPrivacy && (
+        <> · <button type="button" className="composer-privacy-link" onClick={onOpenPrivacy}>Privatliv &amp; cookies</button></>
+      )}
+    </p>
+    </div>
   )
 }

@@ -43,6 +43,18 @@ export interface JarvisDeskBridge {
     /** Abonnér på proces-exit. Returnerer unsubscribe. */
     onExit: (cb: (e: { id: string; code: number }) => void) => () => void
   }
+  /** App auto-update (§22.5): lyt på tilgængelig/klar + styr download/install. */
+  updates: {
+    onAvailable: (cb: (info: { version?: string }) => void) => () => void
+    onReady: (cb: (info: { version?: string }) => void) => () => void
+    download: () => Promise<void>
+    install: () => Promise<void>
+  }
+  /** Dependency-doctor: detektér + installér manglende værktøjer (git/gh/node/rg). */
+  deps: {
+    detect: () => Promise<{ tool: string; present: boolean }[]>
+    install: (tool: string) => Promise<{ ok: boolean; log?: string }>
+  }
   platform: NodeJS.Platform
 }
 
@@ -72,6 +84,24 @@ const bridge: JarvisDeskBridge = {
       ipcRenderer.on('terminal:exit', handler)
       return () => ipcRenderer.removeListener('terminal:exit', handler)
     },
+  },
+  updates: {
+    onAvailable: (cb) => {
+      const handler = (_e: unknown, info: { version?: string }) => cb(info)
+      ipcRenderer.on('update:available', handler)
+      return () => ipcRenderer.removeListener('update:available', handler)
+    },
+    onReady: (cb) => {
+      const handler = (_e: unknown, info: { version?: string }) => cb(info)
+      ipcRenderer.on('update:ready', handler)
+      return () => ipcRenderer.removeListener('update:ready', handler)
+    },
+    download: () => ipcRenderer.invoke('update:download'),
+    install: () => ipcRenderer.invoke('update:install'),
+  },
+  deps: {
+    detect: () => ipcRenderer.invoke('dep:detect'),
+    install: (tool) => ipcRenderer.invoke('dep:install', tool),
   },
   platform: process.platform,
 }

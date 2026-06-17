@@ -64,3 +64,47 @@ def login(req: LoginReq) -> JSONResponse:
     tok = issue_token(user_id=user["user_id"], role=user["role"])
     return JSONResponse(content={"ok": True, "token": tok["token"],
                                  "user_id": user["user_id"], "role": user["role"]})
+
+
+# ── Google app-login (§12) ─────────────────────────────────────────────────
+# Login med Google for FORUD-oprettede konti (ingen self-service). Genbruger den
+# allerede-registrerede /api/oauth/google/callback via en login-intent i state.
+
+@router.get("/google/start")
+def google_login_start(app_id: str = Query("")) -> JSONResponse:
+    """Returnér Google authorize-URL + nonce. Appen åbner URL'en i browseren og
+    poller /google/result?nonce for det udstedte Jarvis-token."""
+    from core.services.oauth_flow import build_authorize_url
+    from core.services import google_login
+    nonce, state_uid = google_login.begin_login(app_id=app_id)
+    url = build_authorize_url("google", state_uid, scopes=["openid", "email"])
+    if not url:
+        return JSONResponse({"error": "provider_not_configured"}, status_code=400)
+    return JSONResponse({"authorize_url": url, "nonce": nonce})
+
+
+@router.get("/google/result")
+def google_login_result(nonce: str = Query(...)) -> JSONResponse:
+    """Engangs-hent af login-resultatet. {status: pending|ok|error}."""
+    from core.services import google_login
+    res = google_login.take_result(nonce)
+    if res is None:
+        return JSONResponse({"status": "unknown"}, status_code=404)
+    return JSONResponse(res)
+
+
+@router.get("/google/link/start")
+def google_link_start() -> JSONResponse:
+    """Start Google-linking for den INDLOGGEDE bruger (migration: knyt Gmail til
+    eksisterende konto). Kræver auth. Appen poller /google/result?nonce."""
+    from core.identity.workspace_context import current_user_id
+    from core.services.oauth_flow import build_authorize_url
+    from core.services import google_login
+    uid = current_user_id() or ""
+    if not uid:
+        return JSONResponse({"error": "not_authenticated"}, status_code=401)
+    nonce, state_uid = google_login.begin_link(uid)
+    url = build_authorize_url("google", state_uid, scopes=["openid", "email"])
+    if not url:
+        return JSONResponse({"error": "provider_not_configured"}, status_code=400)
+    return JSONResponse({"authorize_url": url, "nonce": nonce})

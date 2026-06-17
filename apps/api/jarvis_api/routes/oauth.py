@@ -64,6 +64,14 @@ async def oauth_callback(provider: str, code: str = "", state: str = "", error: 
     tok = await asyncio.to_thread(exchange_code, prov, code)
     if not tok:
         return _close_page(False, "Kunne ikke fuldføre forbindelsen.")
+    # Google app-login/link (§12): state bærer login/link-intent (ikke en connector-
+    # uid). Hent verificeret email → match/link konto → stash til app-poll.
+    from core.services import google_login
+    if prov == "google" and google_login.is_login_state(uid):
+        from core.services.oauth_flow import fetch_google_email
+        email = await asyncio.to_thread(fetch_google_email, tok)
+        msg = google_login.complete(uid, email)
+        return _close_page("Logget ind" in msg or "knyttet" in msg, msg)
     save_token(uid, prov, tok)
     try:
         from core.eventbus.bus import event_bus

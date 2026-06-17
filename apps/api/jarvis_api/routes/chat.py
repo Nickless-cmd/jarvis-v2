@@ -328,6 +328,69 @@ def _commit_file_sync(path: str, root: str, content: str, message: str, role: st
     return {"status": "ok", "sha": sha, "message": msg}
 
 
+class _CommitAllBody(BaseModel):
+    target: dict = {"kind": "container", "root": "repo"}
+    message: str = ""
+
+
+class _CreatePrBody(BaseModel):
+    target: dict = {"kind": "container", "root": "repo"}
+    title: str = ""
+    body: str = ""
+
+
+def _owner_repo_base(root: str) -> Path:
+    """Validér owner + repo-root og returnér repo-stien. Deler vagt-logik med
+    commit-file: KUN owner, KUN repo-root (git findes der)."""
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
+    if uid:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(str(uid))
+        if not u or getattr(u, "role", "") != "owner":
+            raise HTTPException(status_code=403, detail="owner only")
+    if root != "repo":
+        raise HTTPException(status_code=400, detail="kun repo-root (git findes der)")
+    base = _allowed_roots(_resolve_role(uid), uid).get("repo")
+    if base is None:
+        raise HTTPException(status_code=403, detail="repo ikke tilladt for rollen")
+    return base
+
+
+def _git_target_uid(target: dict) -> tuple[str, str]:
+    """Validér target + returnér (container_repo_sti, uid). Rolle-gate:
+    container → owner-only (server-repo); workstation → ejeren af broen (uid)."""
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
+    if (target or {}).get("kind") == "container":
+        base = _owner_repo_base("repo")  # owner-gate + repo-sti
+        return (str(base), uid)
+    return ("", uid)  # workstation: git_actions bruger target.root via broen
+
+
+@router.post("/git/commit-all")
+async def chat_commit_all(body: _CommitAllBody) -> dict:
+    """Commit ALLE ændringer (git add -A + commit). Rolle-aware: container=owner+
+    server-repo (subprocess), workstation=brugerens bro. Blokerende → to_thread."""
+    import asyncio
+    from core.services import git_actions
+    repo, uid = _git_target_uid(body.target)
+    return await asyncio.to_thread(git_actions.commit_all, body.target, repo, uid, body.message)
+
+
+@router.post("/git/create-pr")
+async def chat_create_pr(body: _CreatePrBody) -> dict:
+    """Opret pull request: commit → branch (hvis på default) → push → PR via
+    GitHub-OAuth-API (primært) ellers gh CLI. Rolle-aware. Blokerende → to_thread.
+
+    BEMÆRK: udadvendt handling — kaldes KUN når brugeren selv trykker på knappen
+    i appen (per-handling-godkendelse)."""
+    import asyncio
+    from core.services import git_actions
+    repo, uid = _git_target_uid(body.target)
+    return await asyncio.to_thread(git_actions.create_pr, body.target, repo, uid, body.title, body.body)
+
+
 def _operator_exec(name: str, args: dict) -> dict:
     """Kør et operator-tool via simple_tools (router'er til brugerens bridge).
     Seam til test-mock (workstation fil-træ)."""

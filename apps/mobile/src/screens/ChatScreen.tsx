@@ -99,9 +99,22 @@ export function ChatScreen() {
       appStateRef.current = next
       if (prev.match(/inactive|background/) && next === 'active' && config && sessions.activeId) {
         sessions.select(config, sessions.activeId).catch(() => undefined)
+        // Re-attach til sessionens live-stream (delte sessioner): fanger et run
+        // op der stadig kører (vores eget der overlevede baggrunden via A3, eller
+        // en anden enhed/Jarvis der skriver netop nu).
+        stream.follow(config, sessions.activeId)
       }
     })
     return () => sub.remove()
+  }, [config, sessions.activeId])
+
+  // Delte sessioner: følg den aktive sessions live-stream, så transcript +
+  // liveness (pulserende ring + "arbejder") vises live uanset HVEM der skriver —
+  // anden enhed eller Jarvis autonomt. Bygger på broadcast-bufferen (A1/A3).
+  useEffect(() => {
+    if (!config || !sessions.activeId) return
+    stream.follow(config, sessions.activeId)
+    return () => stream.stopFollow()
   }, [config, sessions.activeId])
 
   // Greeting vises når chatten er tom (opstart / ny samtale) — som på desktop.
@@ -180,7 +193,11 @@ export function ChatScreen() {
         {showGreeting ? (
           <GreetingHero userName={displayName} />
         ) : (
-          <MessageList messages={sessions.messages} blocks={stream.state.blocks} />
+          <MessageList
+            messages={sessions.messages}
+            blocks={stream.state.blocks}
+            onResend={(text) => void ensureSessionAndSend(text)}
+          />
         )}
         {canRetry ? (
           <ErrorBanner

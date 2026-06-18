@@ -28,6 +28,8 @@ type MockStream = {
   deny: typeof mockDeny
   send: typeof mockSend
   stop: typeof mockStop
+  follow: () => void
+  stopFollow: () => void
 }
 
 let mockSessions = {
@@ -53,7 +55,9 @@ let mockStream: MockStream = {
   approve: mockApprove,
   deny: mockDeny,
   send: mockSend,
-  stop: mockStop
+  stop: mockStop,
+  follow: jest.fn(),
+  stopFollow: jest.fn()
 }
 
 jest.mock('../state/AuthContext', () => ({
@@ -125,7 +129,9 @@ beforeEach(() => {
     approve: mockApprove,
     deny: mockDeny,
     send: mockSend,
-    stop: mockStop
+    stop: mockStop,
+    follow: jest.fn(),
+    stopFollow: jest.fn()
   }
 })
 

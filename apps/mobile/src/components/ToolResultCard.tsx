@@ -17,28 +17,54 @@ function glyphFor(tool: string): string {
   return '🔧'
 }
 
-/** Tool-output som foldet kort i stedet for rå "[tool_result:…]"-tekst. */
-export function ToolResultCard({ content }: { content: string }) {
+/**
+ * Tool-output som foldet kort i stedet for rå "[tool_result:…]"-tekst.
+ *
+ * To kilder:
+ *  - persisteret tool-besked → `content` (parses).
+ *  - LIVE tool_use-blok under streaming → `toolName` + `body` + `running`
+ *    (renderes med det samme, så aktivitet vises uden app-genstart).
+ */
+export function ToolResultCard({
+  content,
+  toolName,
+  body: bodyProp,
+  running
+}: {
+  content?: string
+  toolName?: string
+  body?: string
+  running?: boolean
+}) {
   const [open, setOpen] = useState(false)
-  const { tool, body } = parseToolMessage(content)
+  const parsed = content != null ? parseToolMessage(content) : null
+  const tool = toolName ?? parsed?.tool ?? 'tool'
+  const body = bodyProp ?? parsed?.body ?? ''
 
   return (
     <View style={styles.wrap}>
       <Pressable
         accessibilityRole="button"
         onPress={() => setOpen((o) => !o)}
-        style={({ pressed }) => [styles.card, pressed ? styles.pressed : null]}
+        style={({ pressed }) => [
+          styles.card,
+          running ? styles.cardRunning : null,
+          pressed ? styles.pressed : null
+        ]}
       >
         <View style={styles.header}>
           <Text style={styles.glyph}>{glyphFor(tool)}</Text>
           <Text style={styles.tool} numberOfLines={1}>
             {tool}
           </Text>
+          {running ? <Text style={styles.running}>● kører…</Text> : null}
           <Text style={styles.chev}>{open ? '▾' : '▸'}</Text>
         </View>
-        <Text style={styles.preview} numberOfLines={open ? undefined : 2}>
-          {open ? body : toolPreview(body)}
-        </Text>
+        {body ? (
+          <Text style={styles.preview} numberOfLines={open ? undefined : 2}>
+            {open ? body : toolPreview(body)}
+          </Text>
+        ) : null}
       </Pressable>
     </View>
   )
@@ -63,7 +89,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2
   },
+  cardRunning: { borderLeftColor: tokens.color.warn },
   pressed: { opacity: 0.8 },
+  running: { color: tokens.color.warn, fontSize: 11, fontWeight: '700' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

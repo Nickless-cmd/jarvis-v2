@@ -15,3 +15,21 @@ export function formatRelativeDate(iso: string | undefined, now: Date): string {
   if (days < 7) return `${days} dage`
   return `${d.getDate()}. ${MONTHS[d.getMonth()]}`
 }
+
+// Minut-granuleret tidsstempel til chatbobler ("nu", "3 min siden", "2 t siden",
+// derefter klokkeslæt / dato).
+export function formatRelativeTime(iso: string | undefined, now: Date): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const secs = Math.floor((now.getTime() - d.getTime()) / 1000)
+  if (secs < 45) return 'nu'
+  const mins = Math.round(secs / 60)
+  if (mins < 60) return `${mins} min siden`
+  const hours = Math.round(mins / 60)
+  if (hours < 6) return `${hours} t siden`
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  if (Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000) <= 0) return `${hh}:${mm}`
+  return `${formatRelativeDate(iso, now)} ${hh}:${mm}`
+}

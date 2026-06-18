@@ -115,3 +115,71 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
     getRunId: () => activeRunId
   }
 }
+
+/**
+ * Følg en sessions live-stream (delte sessioner). Åbner en GET-SSE mod
+ * /chat/sessions/{id}/follow og fodrer de SAMME v2-frames ind i handlers —
+ * så denne klient ser transcript + liveness live uanset HVEM (anden enhed,
+ * eller Jarvis autonomt) der skriver i sessionen. Bygger på run_follow-
+ * bufferen (broadcast A1/A3). Catch-up fra start + live-tail indtil done.
+ */
+export function followSession(
+  config: ApiConfig,
+  sessionId: string,
+  handlers: StreamHandlers
+): StreamControl {
+  let activeRunId: string | null = null
+  const url = new URL(
+    `/chat/sessions/${encodeURIComponent(sessionId)}/follow`,
+    config.apiBaseUrl
+  ).toString()
+  const headers: Record<string, string> = { Accept: 'text/event-stream' }
+  if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
+
+  const source = new EventSource<StreamEventName>(url, {
+    method: 'GET',
+    pollingInterval: 0,
+    headers
+  })
+
+  for (const name of eventNames) {
+    source.addEventListener(name, (event) => {
+      const payload = event as SsePayloadEvent
+      if (!payload.data) return
+      let parsed: StreamEvent
+      try {
+        parsed = JSON.parse(String(payload.data)) as StreamEvent
+      } catch {
+        return // tolerér enkelt-frame-parsefejl i en passiv follow
+      }
+      if (parsed.type === 'message_start' && parsed.message.id) {
+        activeRunId = parsed.message.id
+        handlers.onRunId?.(parsed.message.id)
+      }
+      if (
+        parsed.type === 'system_event' &&
+        parsed.kind === 'run' &&
+        typeof parsed.payload.run_id === 'string'
+      ) {
+        activeRunId = parsed.payload.run_id
+        handlers.onRunId?.(parsed.payload.run_id)
+      }
+      handlers.onEvent(parsed)
+      if (parsed.type === 'message_stop') {
+        handlers.onComplete?.()
+        source.close()
+      }
+    })
+  }
+
+  // En follow der lukker (run færdigt / intet aktivt run) er normalt — ikke en fejl.
+  source.addEventListener('error', () => {
+    handlers.onComplete?.()
+    source.close()
+  })
+
+  return {
+    abort: () => source.close(),
+    getRunId: () => activeRunId
+  }
+}

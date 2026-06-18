@@ -829,21 +829,16 @@ async def chat_active_runs() -> dict:
     fremme. Højst ét aktivt visible-run ad gangen. Friskheds-guard mod phantom-
     state (et run der døde uden at rydde op): kun med hvis < 10 min gammelt og
     ikke cancelled."""
-    from core.services.visible_runs import _get_active_visible_run_state, is_visible_run_alive
-    out: list[str] = []
+    # Autoritativ liveness via run_follow-bufferen (SAMME proces som de afkoblede
+    # runs + dette endpoint) — paalideligt for detached A3-runs og rydder
+    # OEJEBLIKKELIGT op naar et run afsluttes (end_follow). Erstatter det DELTE
+    # active-run-heartbeat, der halter cross-proces for detached runs og fik
+    # desktop-aktivitetsprikkerne til at haenge (Bjoern 2026-06-18).
+    from core.services.run_follow import live_sessions
     try:
-        state = _get_active_visible_run_state() or {}
-        sid = str(state.get("session_id") or "").strip()
-        rid = str(state.get("run_id") or "").strip()
-        # AUTORITATIV liveness: medtag KUN hvis runnets controller faktisk lever
-        # i processen. Et dødt/crashet run (controller væk) forsvinder ØJEBLIKKELIGT
-        # — ikke først efter en 10-min freshness-timeout — så klientens reconciler
-        # straks kan rette UI'et fra 'working' til terminal (robust-streaming).
-        if sid and rid and not state.get("cancelled") and is_visible_run_alive(rid):
-            out.append(sid)
+        return {"session_ids": live_sessions()}
     except Exception:
-        pass
-    return {"session_ids": out}
+        return {"session_ids": []}
 
 
 @router.get("/sessions/{session_id}/follow")

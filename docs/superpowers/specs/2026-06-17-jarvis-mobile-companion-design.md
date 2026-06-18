@@ -217,6 +217,20 @@ Runtime skal kunne:
 4. **Vise mig hvor brugeren er** — så jeg kan sige "jeg kan se du er ude" eller "velkommen hjem"
 5. **Understøtte handling på tværs** — mobil anmoder om handling → desktop udfører → mobil får resultat
 
+## Rolle-gatet tool-adgang + mobil↔desktop-bro (KRITISK arkitektur)
+
+Appen er **rolle-bestemt hele vejen** — ikke kun model-valg, men også hvilke tool-lag brugeren kan nå:
+
+- **Model-valg (composer):** member er LÅST til `Standard`/`Pro` (= ollama deepseek flash/pro, mappes server-side); owner får hele provider-paletten via `/chat/visible-providers` (owner-only endpoint). Spejler desktop-composeren 1:1.
+- **Tool-lag pr. rolle:**
+  - **native tools** (operator/hardware på Jarvis' egen maskine) — owner
+  - **chat tools** (søgning, hukommelse, web osv.) — member + owner
+  - **code-mode tools** (kode/terminal/fil-træ på en maskine) — rolle- + mode-gatet
+- **Mobil↔desktop-bro (meningen med QR-paringen):** Når appen er bygget, scanner brugeren sin **app-QR i desktop-appen** og parrer mobil + desktop. Det lader **Jarvis køre tools på brugerens EGEN maskine** via operator-broen — mobilen sender intentionen, desktoppen udfører lokalt, mobilen får resultatet. En member på mobil får altså chat-tools direkte + operatør-handlinger på sin egen maskine *gennem* sin parrede desktop (ikke på Jarvis' server).
+- **Routing-krav:** workstation/operatør-kald SKAL bære `{_user_id: uid}` så de routes til brugerens egen bro (ikke owner-broen) — ellers `bridge_not_connected`. (Jf. operator-bridge-routing.)
+
+Server-side håndhæves dette allerede i `tool_scoping` + operator-broen; appen skal blot afspejle rollen i UI (composer-palette, hvilke handlinger der tilbydes) og aldrig antage owner-rettigheder.
+
 ## Phase 6: Teams & Multi-User (Future)
 
 Teams gør Discord **100% overflødig** for brugere af Jarvis' økosystem. I stedet for at skulle oprette en Discord-server, invitere medlemmer og håndtere roller der, kan alt ske direkte i desktop- og mobil-appen.

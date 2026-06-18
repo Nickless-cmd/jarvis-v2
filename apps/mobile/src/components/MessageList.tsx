@@ -3,6 +3,7 @@ import type { ContentBlock } from '../lib/sseProtocol'
 import type { ChatMessage } from '../lib/types'
 import { tokens } from '../theme/tokens'
 import { MessageBubble } from './MessageBubble'
+import { ToolResultCard } from './ToolResultCard'
 
 export function MessageList({
   messages,
@@ -41,7 +42,13 @@ export function MessageList({
       inverted
       data={ordered}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <MessageBubble message={item} />}
+      renderItem={({ item }) =>
+        item.role === 'tool' ? (
+          <ToolResultCard content={item.content} />
+        ) : (
+          <MessageBubble message={item} />
+        )
+      }
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     />

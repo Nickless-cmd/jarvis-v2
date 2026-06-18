@@ -13,7 +13,7 @@ describe('Composer', () => {
     })
     await waitFor(() => expect(screen.getByTestId('composer-input').props.value).toBe('  Hej Jarvis  '))
     await act(async () => {
-      fireEvent.press(screen.getByText('Send'))
+      fireEvent.press(screen.getByTestId('composer-button'))
     })
 
     expect(onSend).toHaveBeenCalledWith('Hej Jarvis')
@@ -30,7 +30,7 @@ describe('Composer', () => {
       screen.getByTestId('composer-input').props.onChangeText('Hej Jarvis')
     })
     await act(async () => {
-      fireEvent.press(screen.getByText('Send'))
+      fireEvent.press(screen.getByTestId('composer-button'))
     })
 
     expect(onSend).toHaveBeenCalledWith('Hej Jarvis')
@@ -49,7 +49,7 @@ describe('Composer', () => {
     })
     await waitFor(() => expect(screen.getByTestId('composer-input').props.value).toBe('Hej'))
     await act(async () => {
-      fireEvent.press(screen.getByText('Stop'))
+      fireEvent.press(screen.getByTestId('composer-button'))
     })
 
     expect(onSend).not.toHaveBeenCalled()
@@ -67,14 +67,14 @@ describe('Composer', () => {
     })
     await waitFor(() => expect(screen.getByTestId('composer-input').props.value).toBe('   '))
     await act(async () => {
-      fireEvent.press(screen.getByText('Send'))
+      fireEvent.press(screen.getByTestId('composer-button'))
     })
     await act(async () => {
       screen.getByTestId('composer-input').props.onChangeText('Hej')
     })
     await waitFor(() => expect(screen.getByTestId('composer-input').props.value).toBe('Hej'))
     await act(async () => {
-      fireEvent.press(screen.getByText('Send'))
+      fireEvent.press(screen.getByTestId('composer-button'))
     })
 
     expect(onSend).not.toHaveBeenCalled()

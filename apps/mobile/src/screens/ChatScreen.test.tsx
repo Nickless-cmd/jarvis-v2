@@ -93,7 +93,8 @@ jest.mock('../components/SidePanel', () => ({
 }))
 
 jest.mock('../lib/apiClient', () => ({
-  whoami: jest.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' })
+  whoami: jest.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' }),
+  getModelOptions: jest.fn().mockResolvedValue([])
 }))
 
 beforeEach(() => {
@@ -131,7 +132,8 @@ it('shows retry after a failed stream and resends the last user message', async 
   await fireEvent.press(screen.getByText('Retry'))
 
   expect(mockCreate).not.toHaveBeenCalled()
-  expect(mockSend).toHaveBeenCalledWith(config, 'session-1', 'Hej Jarvis')
+  // 4. arg (model-opts) ignoreres her — testen handler om retry-routing.
+  expect(mockSend.mock.calls[0].slice(0, 3)).toEqual([config, 'session-1', 'Hej Jarvis'])
 })
 
 it('hides retry while the stream is working', async () => {

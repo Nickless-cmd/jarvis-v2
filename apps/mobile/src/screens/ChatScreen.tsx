@@ -1,20 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
 import { ConnectionPill } from '../components/ConnectionPill'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { GreetingHero } from '../components/GreetingHero'
-import { JarvisRing } from '../components/JarvisRing'
+import { LivenessRing } from '../components/LivenessRing'
 import { MessageList } from '../components/MessageList'
+import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
 import { SidePanel } from '../components/SidePanel'
-import { whoami } from '../lib/apiClient'
+import { getModelOptions, whoami } from '../lib/apiClient'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
 import { useAuth } from '../state/AuthContext'
 import { useSessions } from '../state/SessionContext'
 import { useStream } from '../state/StreamContext'
 import { tokens } from '../theme/tokens'
+
+// Rolle-bevidst model-valg (spejler desktop-composeren):
+// member er LÅST til Standard/Pro (= ollama deepseek flash/pro, mappes
+// server-side); owner får hele paletten fra /chat/visible-providers.
+const MEMBER_CHOICES: ModelChoice[] = [
+  { model: 'standard', providerChoice: '', label: 'Standard' },
+  { model: 'pro', providerChoice: '', label: 'Pro' }
+]
+const OWNER_DEFAULT: ModelChoice = { model: '', providerChoice: 'deepseek', label: 'Deepseek' }
 
 export function ChatScreen() {
   const { config, signOut } = useAuth()
@@ -22,6 +32,9 @@ export function ChatScreen() {
   const stream = useStream()
   const [panelOpen, setPanelOpen] = useState(false)
   const [displayName, setDisplayName] = useState('Jarvis')
+  const [modelChoices, setModelChoices] = useState<ModelChoice[]>([])
+  const [model, setModel] = useState<ModelChoice | null>(null)
+  const [modelPickerOpen, setModelPickerOpen] = useState(false)
   const keyboardHeight = useKeyboardHeight()
   // Løft composeren op over tastaturet med fuld tastaturhøjde. (Tidligere
   // trak vi insets.bottom fra, men keyboardHeight inkluderer allerede
@@ -35,7 +48,26 @@ export function ChatScreen() {
     if (!config) return
     sessions.refresh(config).catch(() => undefined)
     whoami(config)
-      .then((me) => setDisplayName(me.display_name || 'Jarvis'))
+      .then((me) => {
+        setDisplayName(me.display_name || 'Jarvis')
+        if (me.role === 'owner') {
+          // Owner: hele paletten (deepseek-default forrest).
+          getModelOptions(config)
+            .then((opts) => {
+              const choices = [OWNER_DEFAULT, ...opts.map((o) => ({ model: o.model, providerChoice: o.provider, label: o.label }))]
+              setModelChoices(choices)
+              setModel((cur) => cur ?? OWNER_DEFAULT)
+            })
+            .catch(() => {
+              setModelChoices([OWNER_DEFAULT])
+              setModel((cur) => cur ?? OWNER_DEFAULT)
+            })
+        } else {
+          // Member/guest: låst til Standard/Pro.
+          setModelChoices(MEMBER_CHOICES)
+          setModel((cur) => cur ?? MEMBER_CHOICES[0]!)
+        }
+      })
       .catch(() => undefined)
     // Gendan den session brugeren sidst var i (åbn samme sted som ved app-luk).
     if (!didRestore.current) {
@@ -57,7 +89,7 @@ export function ChatScreen() {
   const ensureSessionAndSend = async (text: string) => {
     if (!config) return
     const sessionId = sessions.activeId ?? (await sessions.create(config)).id
-    stream.send(config, sessionId, text)
+    stream.send(config, sessionId, text, model ? { model: model.model, providerChoice: model.providerChoice } : undefined)
   }
 
   const handleSelectSession = (sessionId: string) => {
@@ -84,7 +116,15 @@ export function ChatScreen() {
           style={styles.headerTitle}
           hitSlop={8}
         >
-          <JarvisRing />
+          <LivenessRing
+            status={
+              stream.state.status === 'working'
+                ? 'working'
+                : stream.state.status === 'error'
+                  ? 'error'
+                  : 'idle'
+            }
+          />
           <Text style={styles.title} numberOfLines={1}>
             {displayName}
           </Text>
@@ -116,10 +156,22 @@ export function ChatScreen() {
         <Composer
           disabled={!config}
           working={stream.state.status === 'working'}
+          modelLabel={model?.label}
           onSend={ensureSessionAndSend}
           onStop={() => (config ? stream.stop(config) : undefined)}
+          onPressModel={() => setModelPickerOpen(true)}
+          onAttach={() => Alert.alert('Vedhæftninger', 'Billede/fil-upload kommer i næste opdatering.')}
+          onMic={() => Alert.alert('Stemme', 'Diktering kommer i næste opdatering.')}
         />
       </View>
+
+      <ModelPicker
+        open={modelPickerOpen}
+        choices={modelChoices}
+        selectedLabel={model?.label}
+        onSelect={setModel}
+        onClose={() => setModelPickerOpen(false)}
+      />
 
       {config ? (
         <SidePanel

@@ -15,7 +15,12 @@ import { useSessions } from './SessionContext'
 interface StreamContextValue {
   state: StreamState
   approval: ApprovalViewModel | null
-  send: (config: ApiConfig, sessionId: string, message: string) => void
+  send: (
+    config: ApiConfig,
+    sessionId: string,
+    message: string,
+    opts?: { model?: string; providerChoice?: string }
+  ) => void
   stop: (config: ApiConfig) => Promise<void>
   approve: (config: ApiConfig) => Promise<void>
   deny: (config: ApiConfig) => Promise<void>
@@ -69,7 +74,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     () => ({
       state,
       approval,
-      send: (config, sessionId, message) => {
+      send: (config, sessionId, message, opts) => {
         const local: ChatMessage = {
           id: `local-${Date.now()}`,
           role: 'user',
@@ -82,7 +87,14 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         setApproval(null)
         updateState(initialStreamState())
         control.current = startStream(
-          { config, sessionId, message, mode: 'chat' },
+          {
+            config,
+            sessionId,
+            message,
+            mode: 'chat',
+            model: opts?.model,
+            providerChoice: opts?.providerChoice
+          },
           {
             onEvent: (event) => {
               if (event.type === 'system_event' && event.kind === 'approval_request') {

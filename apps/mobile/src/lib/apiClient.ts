@@ -1,4 +1,4 @@
-import type { ApiConfig, ChatMessage, ChatSession, Connector, WhoAmI } from './types'
+import type { ApiConfig, ChatMessage, ChatSession, Connector, ModelOption, VisibleProvider, WhoAmI } from './types'
 
 export type ApiErrorKind = 'network' | 'auth' | 'rate_limit' | 'server' | 'unknown'
 
@@ -137,6 +137,23 @@ export async function denyTool(config: ApiConfig, approvalId: string): Promise<v
   await apiFetch(config, `/chat/approvals/${encodeURIComponent(approvalId)}/deny`, {
     method: 'POST'
   })
+}
+
+export async function getModelOptions(config: ApiConfig): Promise<ModelOption[]> {
+  // Owner-only endpoint; member/guest får 403 → tom liste (skjuler pillen).
+  let raw: { providers?: VisibleProvider[] }
+  try {
+    raw = await apiFetch<{ providers?: VisibleProvider[] }>(config, '/chat/visible-providers')
+  } catch {
+    return []
+  }
+  const out: ModelOption[] = []
+  for (const p of raw.providers ?? []) {
+    for (const model of p.models ?? []) {
+      out.push({ provider: p.id, model, label: `${p.id} · ${model}` })
+    }
+  }
+  return out
 }
 
 export async function listConnectors(config: ApiConfig): Promise<Connector[]> {

@@ -26,6 +26,17 @@ export interface ChatMessage {
   parent_id?: string | null
 }
 
+export interface VisibleProvider {
+  id: string
+  models: string[]
+}
+
+export interface ModelOption {
+  provider: string
+  model: string
+  label: string
+}
+
 export interface Connector {
   id: string
   name: string

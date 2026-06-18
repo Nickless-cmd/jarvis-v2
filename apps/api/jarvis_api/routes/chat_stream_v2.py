@@ -137,8 +137,43 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         ping_interval_s=5.0,
     )
 
+    # Live session-broadcast (A): tee bruger-runnets v2-frames ind i run_follow-
+    # bufferen, så ANDRE klienter på samme session (desk/mobil/webchat) kan
+    # følge token-for-token via GET /chat/sessions/{id}/follow — og en mobil der
+    # mister sin egen SSE (baggrund/skærm sover) kan re-attache og fange op.
+    # Tee'en påvirker ikke den anmodende klients stream; en fejl her må aldrig
+    # bryde svaret, så alt run_follow-arbejde er try/except-indkapslet.
+    async def _broadcast_tee():
+        try:
+            from core.services.run_follow import (
+                begin_follow,
+                end_follow,
+                publish_follow_frame,
+            )
+        except Exception:
+            # run_follow utilgængelig → fald tilbage til ren passthrough.
+            async for frame in v2_stream:
+                yield frame
+            return
+        try:
+            begin_follow(session_id, "")
+        except Exception:
+            pass
+        try:
+            async for frame in v2_stream:
+                try:
+                    publish_follow_frame(session_id, frame)
+                except Exception:
+                    pass
+                yield frame
+        finally:
+            try:
+                end_follow(session_id)
+            except Exception:
+                pass
+
     return StreamingResponse(
-        v2_stream,
+        _broadcast_tee(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

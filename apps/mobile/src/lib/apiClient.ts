@@ -143,27 +143,33 @@ export interface UploadedAttachment {
   id: string
 }
 
-/** Upload et billede (multipart) til en session → attachment_id. */
+/** Upload et billede (multipart) til en session → attachment_id.
+ *  Bruger expo-file-system uploadAsync (robust multipart-fil-upload) i stedet
+ *  for RN FormData+fetch, som fejler tavst klient-side på Android — requesten
+ *  nåede aldrig serveren. Dynamisk import så native-modulet ikke loades i tests. */
 export async function uploadAttachment(
   config: ApiConfig,
   sessionId: string,
   photo: { uri: string; name: string; mime: string }
 ): Promise<UploadedAttachment> {
-  const form = new FormData()
-  form.append('session_id', sessionId)
-  // RN FormData fil-part: {uri, name, type}. Sæt IKKE Content-Type manuelt —
-  // fetch tilføjer multipart-boundary selv.
-  form.append('file', { uri: photo.uri, name: photo.name, type: photo.mime } as unknown as Blob)
+  const FS = await import('expo-file-system/legacy')
   const url = new URL('/attachments/upload', config.apiBaseUrl).toString()
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { Accept: 'application/json', Authorization: `Bearer ${config.authToken}` },
-    body: form
+  const res = await FS.uploadAsync(url, photo.uri, {
+    httpMethod: 'POST',
+    uploadType: FS.FileSystemUploadType.MULTIPART,
+    fieldName: 'file',
+    mimeType: photo.mime,
+    parameters: { session_id: sessionId },
+    headers: { Accept: 'application/json', Authorization: `Bearer ${config.authToken}` }
   })
-  if (!response.ok) {
-    throw new ApiError(response.status === 401 ? 'auth' : 'server', `HTTP ${response.status}`, response.status)
+  if (res.status >= 400) {
+    throw new ApiError(res.status === 401 ? 'auth' : 'server', `HTTP ${res.status}: ${(res.body || '').slice(0, 160)}`, res.status)
   }
-  return (await response.json()) as UploadedAttachment
+  try {
+    return JSON.parse(res.body) as UploadedAttachment
+  } catch {
+    throw new ApiError('server', 'Ugyldigt upload-svar')
+  }
 }
 
 export async function getAccountMe(config: ApiConfig): Promise<AccountProfile> {

@@ -8,6 +8,22 @@ Jarvis Mobile Companion is the Android-first mobile app for talking to Jarvis th
 
 The app should feel as simple as ChatGPT, Claude, or DeepSeek on mobile: open the app, write or speak, get a streamed answer, continue the conversation, and handle attachments without thinking about the system behind it. Jarvis-specific power should be present, but not noisy. Mission Control stays primarily desktop-first; mobile starts as a reliable chat companion with approvals and status.
 
+## Nuværende status (V1 — 0.1.5, 2026-06-18)
+
+Appen er **live på enhed** (Galaxy S24, Android 16) og verificeret via adb. Bygges som prebuilt React Native (android/ committet), arm64 release med debug-keystore (sideload). Følgende er **leveret og virker**:
+
+- ✅ Manuel token-login + Google-login + secure storage
+- ✅ Session-liste, opret/vælg, **husk aktiv session** på tværs af app-luk
+- ✅ `/chat/stream/v2`-streaming med live blocks + markdown
+- ✅ Stop/cancel, retry, interrupted/error-states, draft-bevaring
+- ✅ **Slide-in panel** via presence-ring (sessioner + plugins + log ud)
+- ✅ **Plugins** (`/api/connectors`, per-bruger — deler desktoppens)
+- ✅ **Greeting-skærm** (tids-bevidst, spejlet fra desktop)
+- ✅ **Auto-scroll til nyeste** (inverteret liste) + composer fri af tastatur (edge-to-edge fix)
+- ✅ Approval-kort, ConnectionPill
+
+**Mangler (det der gør den "flad" lige nu):** liveness-ring/animation, tool result cards (vises som rå tekst), voice/push-to-talk, vedhæftninger/kamera, syntax-highlight+copy, micro-interactions, model-vælger, historik søg/omdøb/slet, QR-pairing-frontend, push, baggrundskørsel. Se faserne nedenfor.
+
 ## Competitive Analysis (2026)
 
 Reference apps: **Claude Android** (4.6★, 10M+ downloads, updated June 16 2026) and **ChatGPT Android** (market leader).
@@ -379,7 +395,9 @@ Login stores tokens in Android secure storage, not AsyncStorage/plain storage. E
 
 ### Chat
 
-The app opens into chat, not a dashboard. Chatview skal have **samme funktionalitet som i desktop-appen** — ingen forenklet mobil-udgave der mangler features.
+The app opens into chat, not a dashboard. Chatview skal have **samme chat-rigdom som desktop-appen** — rich blocks, tool result cards, liveness, voice, syntax-highlight og copy. Det er IKKE en forenklet mobil-chat der kun viser rå tekst.
+
+**Men det er ikke samme feature-flade som desktop.** Mobil V1 deler desktoppens *chat-oplevelse*, ikke dens *værktøjsflade*: terminal, code mode, fil-træ og fuld Mission Control bliver på desktop (jf. Non-Goals). Mobilen er den varme, hurtige samtale-overflade — desktop er admin/power-fladen. Når der står "som desktop" i denne spec, menes chat-rendering og liveness, ikke desktoppens paneler.
 
 **Liveness & Presence:**
 
@@ -736,3 +754,16 @@ These decisions guide the implementation plan:
 Build Jarvis Mobile as a direct public-API Android companion with manual token login first, email/password login next, QR pairing after the safe exchange path exists, and a strict mobile-safe approval model. The first release should optimize for trust: fast chat, clear state, no duplicate sends, preserved drafts, and explicit risky-action approval.
 
 The app should feel like a native, focused Jarvis conversation surface, not a compressed desktop dashboard.
+
+## Feasibility-noter (tilføjet ved review 2026-06-18)
+
+- **Ikke ren managed Expo.** Foreground Service (SSE-overlevelse), Bubbles-overlay, FCM-push og kamera kræver native moduler / Expo config-plugins / dev-client. Appen er allerede en **prebuilt RN-app** (android/ committet), så det er muligt — men ingen del af V1.1+ kan bygges i Expo Go.
+- **QR-pairing er afblokeret.** Backend (`/api/auth/pair/create` + `/pair/redeem`) er live på containeren. QR kan derfor rykkes fra "Phase 4 future" frem til **V1.1**.
+- **Backend-fit verificeret 2026-06-18** mod containeren: `/attachments/upload`, `/transcribe`, `/chat/runs/{id}/steer`, `/chat/stream/v2`, `/chat/visible-providers`, `/api/whoami`, `/api/connectors` findes alle. Phase 2 (vedhæftninger + stemme) er ikke blokeret.
+- **Samtidige sessioner (samme token, 2 enheder):** Bjørns "samme samtale ude som hjemme" + token-genbrug betyder at desktop + mobil kan ramme samme session samtidigt. Device-bundne tokens via QR-pairing afhjælper det delvist; stream-kollision skal håndteres eksplicit (edge-case #7).
+
+## Changelog
+
+- **2026-06-18** — Review + korrektion: præciseret mobil-scope (chat-rigdom ≠ feature-flade), tilføjet Nuværende status (0.1.5), feasibility-noter, backend-fit verificeret. (Claude)
+- **2026-06-17 (aften)** — Jarvis udvidede specen autonomt over mobilen: competitive analysis, GDPR, 31 edge-cases, proaktive kanaler + device awareness, Phase 6 Teams & Multi-User, visual design (liveness/voice/tool cards), mobile-specific features (baggrundskørsel, chatboble, save rail, auto-updater). 358→738 linjer. (Jarvis, container)
+- **2026-06-17** — Oprindelig spec + implementeringsplan. (Codex)

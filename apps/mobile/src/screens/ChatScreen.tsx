@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
+import { useConnectivity } from '../lib/useConnectivity'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
 import { ConnectionPill } from '../components/ConnectionPill'
@@ -39,6 +40,7 @@ export function ChatScreen() {
   const [modelChoices, setModelChoices] = useState<ModelChoice[]>([])
   const [model, setModel] = useState<ModelChoice | null>(null)
   const [modelPickerOpen, setModelPickerOpen] = useState(false)
+  const connectivity = useConnectivity(config ?? null)
   const keyboardHeight = useKeyboardHeight()
   // Løft composeren op over tastaturet med fuld tastaturhøjde. (Tidligere
   // trak vi insets.bottom fra, men keyboardHeight inkluderer allerede
@@ -151,6 +153,14 @@ export function ChatScreen() {
         <ConnectionPill label={stream.state.status} />
       </View>
 
+      {connectivity !== 'connected' ? (
+        <View style={[styles.connBanner, connectivity === 'offline' ? styles.connOffline : styles.connReconnect]}>
+          <Text style={styles.connText}>
+            {connectivity === 'offline' ? 'Offline — venter på forbindelse' : 'Genopretter forbindelse til Jarvis…'}
+          </Text>
+        </View>
+      ) : null}
+
       <View style={[styles.flex, { paddingBottom: liftPadding }]}>
         {showGreeting ? (
           <GreetingHero userName={displayName} />
@@ -247,5 +257,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     flexShrink: 1
-  }
+  },
+  connBanner: {
+    paddingVertical: tokens.spacing.xs,
+    alignItems: 'center'
+  },
+  connOffline: { backgroundColor: tokens.color.error },
+  connReconnect: { backgroundColor: tokens.color.warn },
+  connText: { color: tokens.color.bg0, fontSize: 12, fontWeight: '700' }
 })

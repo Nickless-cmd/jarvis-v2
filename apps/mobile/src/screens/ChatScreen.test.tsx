@@ -92,6 +92,10 @@ jest.mock('../components/SidePanel', () => ({
   SidePanel: () => null
 }))
 
+jest.mock('../lib/useConnectivity', () => ({
+  useConnectivity: () => 'connected'
+}))
+
 jest.mock('../lib/apiClient', () => ({
   whoami: jest.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' }),
   getModelOptions: jest.fn().mockResolvedValue([])

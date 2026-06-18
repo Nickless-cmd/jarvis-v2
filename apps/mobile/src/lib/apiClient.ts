@@ -127,6 +127,21 @@ export async function cancelRun(config: ApiConfig, runId: string): Promise<void>
   })
 }
 
+/** Sessioner med et aktivt run lige nu (server-side). Bruges til at vise
+ * "arbejder" og forhindre at man sender ind i et kørende svar (= nudge-swallow). */
+export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
+  const data = await apiFetch<{ session_ids?: string[] }>(config, '/chat/active-runs')
+  return data.session_ids ?? []
+}
+
+/** Afbryd det run der kører for en session (når appen ikke selv streamer det,
+ * fx efter baggrund hvor serveren stadig arbejder). */
+export async function cancelActiveRun(config: ApiConfig, sessionId: string): Promise<void> {
+  await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}/cancel-active`, {
+    method: 'POST'
+  })
+}
+
 export async function approveTool(config: ApiConfig, approvalId: string): Promise<void> {
   await apiFetch(config, `/chat/approvals/${encodeURIComponent(approvalId)}/approve`, {
     method: 'POST'

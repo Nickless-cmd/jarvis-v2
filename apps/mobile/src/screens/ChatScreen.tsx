@@ -13,7 +13,7 @@ import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
 import { SidePanel } from '../components/SidePanel'
 import { SettingsScreen } from './SettingsScreen'
 import { CameraCapture, type CapturedPhoto } from './CameraCapture'
-import { getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
+import { cancelActiveRun, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
 import { useAuth } from '../state/AuthContext'
 import { useSessions } from '../state/SessionContext'
@@ -41,6 +41,12 @@ export function ChatScreen() {
   const [model, setModel] = useState<ModelChoice | null>(null)
   const [modelPickerOpen, setModelPickerOpen] = useState(false)
   const connectivity = useConnectivity(config ?? null)
+  // Server-side run-status for den aktive session (delt sandhed via /chat/active-
+  // runs). Forhindrer at man sender ind i et kørende svar (= nudge-swallow,
+  // "han reagerer ikke"), og henter svaret når runnet er færdigt. Matcher
+  // Claude/ChatGPT: composeren viser "stop" mens serveren arbejder.
+  const [serverBusy, setServerBusy] = useState(false)
+  const serverBusyRef = useRef(false)
   const keyboardHeight = useKeyboardHeight()
   // Løft composeren op over tastaturet med fuld tastaturhøjde. (Tidligere
   // trak vi insets.bottom fra, men keyboardHeight inkluderer allerede
@@ -106,10 +112,40 @@ export function ChatScreen() {
     return () => sub.remove()
   }, [config, sessions.activeId])
 
-  // NB: passiv follow-subscription (delt-session live-view) er midlertidigt
-  // deaktiveret — den forstyrrede den almindelige send-rendering (Bjørn 18. jun
-  // "han reagerer ikke når jeg skriver"). Backenden (A1/A3) understøtter det
-  // stadig; klient-laget skal gentænkes så det ALDRIG rører send-streamens state.
+  // Poll server-side run-status for den aktive session (delt sandhed). Mens et
+  // run kører: vis "arbejder" (composeren blokerer send → ingen nudge-swallow).
+  // Når det skifter fra kørende→færdig: hent sessionen så svaret dukker op (også
+  // svar startet på en anden enhed / efter baggrund). Rører ALDRIG send-streamens
+  // state (modsat den fjernede follow-subscription).
+  useEffect(() => {
+    if (!config || !sessions.activeId) {
+      setServerBusy(false)
+      serverBusyRef.current = false
+      return
+    }
+    const sid = sessions.activeId
+    let cancelled = false
+    const tick = async () => {
+      try {
+        const ids = await getActiveRuns(config)
+        if (cancelled) return
+        const busy = ids.includes(sid)
+        const was = serverBusyRef.current
+        serverBusyRef.current = busy
+        setServerBusy(busy)
+        // kørende → færdig: svaret er nu persisteret → hent det ind.
+        if (was && !busy) sessions.select(config, sid).catch(() => undefined)
+      } catch {
+        /* behold sidste — ingen flicker ved netværks-blip */
+      }
+    }
+    void tick()
+    const id = setInterval(() => void tick(), 2000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [config, sessions.activeId])
 
   // Greeting vises når chatten er tom (opstart / ny samtale) — som på desktop.
   const showGreeting = sessions.messages.length === 0 && !sessions.loading
@@ -161,7 +197,7 @@ export function ChatScreen() {
         >
           <LivenessRing
             status={
-              stream.state.status === 'working'
+              stream.state.status === 'working' || serverBusy
                 ? 'working'
                 : stream.state.status === 'error'
                   ? 'error'
@@ -210,10 +246,19 @@ export function ChatScreen() {
         ) : null}
         <Composer
           disabled={!config}
-          working={stream.state.status === 'working'}
+          working={stream.state.status === 'working' || serverBusy}
           modelLabel={model?.label}
           onSend={ensureSessionAndSend}
-          onStop={() => (config ? stream.stop(config) : undefined)}
+          onStop={() => {
+            if (!config) return
+            // Streamer vi selv → stop lokalt; ellers afbryd serverens run for
+            // sessionen (fx et run der fortsatte mens appen var i baggrunden).
+            if (stream.state.status === 'working') {
+              void stream.stop(config)
+            } else if (serverBusy && sessions.activeId) {
+              void cancelActiveRun(config, sessions.activeId).catch(() => undefined)
+            }
+          }}
           onPressModel={() => setModelPickerOpen(true)}
           onAttach={() => setCameraOpen(true)}
           onMic={() => Alert.alert('Stemme', 'Diktering kommer i næste opdatering.')}

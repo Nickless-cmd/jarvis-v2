@@ -20,3 +20,12 @@ def test_expired(monkeypatch):
     r = dp.create_pairing("u1", now=1000.0)
     # 200s senere → udløbet (TTL 120).
     assert dp.redeem(r["code"], now=1000.0 + 200) is None
+
+
+def test_status_pending_redeemed_expired():
+    r = dp.create_pairing("u9", now=5000.0)
+    code = r["code"]
+    assert dp.status(code, now=5000.0)["state"] == "pending"
+    dp.redeem(code, now=5001.0)
+    assert dp.status(code, now=5001.0)["state"] == "redeemed"
+    assert dp.status("ukendt", now=5001.0)["state"] == "expired"

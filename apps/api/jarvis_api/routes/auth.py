@@ -143,3 +143,12 @@ def pair_redeem(req: PairRedeemReq) -> JSONResponse:
     if not res:
         return JSONResponse({"status": "error", "error": "invalid_or_expired"}, status_code=404)
     return JSONResponse(res)
+
+
+@router.get("/pair/status")
+def pair_status(code: str = "") -> JSONResponse:
+    """Status på en pairing-kode (desktop poller): redeemed=mobil tilsluttet,
+    pending=QR vist men ikke scannet, expired=udløbet. Kræver den indloggede
+    brugers token (desktop har det)."""
+    from core.services import device_pairing
+    return JSONResponse(device_pairing.status((code or "").strip()))

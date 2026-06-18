@@ -11,7 +11,8 @@ import { MessageList } from '../components/MessageList'
 import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
 import { SidePanel } from '../components/SidePanel'
 import { SettingsScreen } from './SettingsScreen'
-import { getModelOptions, whoami } from '../lib/apiClient'
+import { CameraCapture, type CapturedPhoto } from './CameraCapture'
+import { getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
 import { useAuth } from '../state/AuthContext'
 import { useSessions } from '../state/SessionContext'
@@ -33,6 +34,7 @@ export function ChatScreen() {
   const stream = useStream()
   const [panelOpen, setPanelOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [cameraOpen, setCameraOpen] = useState(false)
   const [displayName, setDisplayName] = useState('Jarvis')
   const [modelChoices, setModelChoices] = useState<ModelChoice[]>([])
   const [model, setModel] = useState<ModelChoice | null>(null)
@@ -88,10 +90,25 @@ export function ChatScreen() {
   // Greeting vises når chatten er tom (opstart / ny samtale) — som på desktop.
   const showGreeting = sessions.messages.length === 0 && !sessions.loading
 
+  const modelOpts = () => (model ? { model: model.model, providerChoice: model.providerChoice } : {})
+
   const ensureSessionAndSend = async (text: string) => {
     if (!config) return
     const sessionId = sessions.activeId ?? (await sessions.create(config)).id
-    stream.send(config, sessionId, text, model ? { model: model.model, providerChoice: model.providerChoice } : undefined)
+    stream.send(config, sessionId, text, modelOpts())
+  }
+
+  // In-app kamera → upload billede → send med beskeden (multimodal).
+  const handleCapture = async (photo: CapturedPhoto) => {
+    setCameraOpen(false)
+    if (!config) return
+    try {
+      const sessionId = sessions.activeId ?? (await sessions.create(config)).id
+      const up = await uploadAttachment(config, sessionId, photo)
+      stream.send(config, sessionId, '📷 Billede', { ...modelOpts(), attachmentIds: [up.id] })
+    } catch {
+      Alert.alert('Billede', 'Kunne ikke uploade billedet — prøv igen.')
+    }
   }
 
   const handleSelectSession = (sessionId: string) => {
@@ -162,7 +179,7 @@ export function ChatScreen() {
           onSend={ensureSessionAndSend}
           onStop={() => (config ? stream.stop(config) : undefined)}
           onPressModel={() => setModelPickerOpen(true)}
-          onAttach={() => Alert.alert('Vedhæftninger', 'Billede/fil-upload kommer i næste opdatering.')}
+          onAttach={() => setCameraOpen(true)}
           onMic={() => Alert.alert('Stemme', 'Diktering kommer i næste opdatering.')}
         />
       </View>
@@ -193,6 +210,10 @@ export function ChatScreen() {
 
       <Modal visible={settingsOpen} animationType="slide" onRequestClose={() => setSettingsOpen(false)}>
         <SettingsScreen onClose={() => setSettingsOpen(false)} />
+      </Modal>
+
+      <Modal visible={cameraOpen} animationType="slide" onRequestClose={() => setCameraOpen(false)}>
+        <CameraCapture onCapture={handleCapture} onClose={() => setCameraOpen(false)} />
       </Modal>
     </View>
   )

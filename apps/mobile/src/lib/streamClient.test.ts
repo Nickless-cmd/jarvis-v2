@@ -164,7 +164,8 @@ it('sends the expected request payload and auth header', () => {
         thinking_mode: 'fast',
         mode: 'code',
         model: 'deepseek-r1',
-        provider_choice: 'ollama'
+        provider_choice: 'ollama',
+        attachment_ids: []
       })
     })
   )

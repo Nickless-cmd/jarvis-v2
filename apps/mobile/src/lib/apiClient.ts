@@ -139,6 +139,33 @@ export async function denyTool(config: ApiConfig, approvalId: string): Promise<v
   })
 }
 
+export interface UploadedAttachment {
+  id: string
+}
+
+/** Upload et billede (multipart) til en session → attachment_id. */
+export async function uploadAttachment(
+  config: ApiConfig,
+  sessionId: string,
+  photo: { uri: string; name: string; mime: string }
+): Promise<UploadedAttachment> {
+  const form = new FormData()
+  form.append('session_id', sessionId)
+  // RN FormData fil-part: {uri, name, type}. Sæt IKKE Content-Type manuelt —
+  // fetch tilføjer multipart-boundary selv.
+  form.append('file', { uri: photo.uri, name: photo.name, type: photo.mime } as unknown as Blob)
+  const url = new URL('/attachments/upload', config.apiBaseUrl).toString()
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Accept: 'application/json', Authorization: `Bearer ${config.authToken}` },
+    body: form
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status === 401 ? 'auth' : 'server', `HTTP ${response.status}`, response.status)
+  }
+  return (await response.json()) as UploadedAttachment
+}
+
 export async function getAccountMe(config: ApiConfig): Promise<AccountProfile> {
   return apiFetch<AccountProfile>(config, '/account/me')
 }

@@ -19,7 +19,7 @@ interface StreamContextValue {
     config: ApiConfig,
     sessionId: string,
     message: string,
-    opts?: { model?: string; providerChoice?: string }
+    opts?: { model?: string; providerChoice?: string; attachmentIds?: string[] }
   ) => void
   stop: (config: ApiConfig) => Promise<void>
   approve: (config: ApiConfig) => Promise<void>
@@ -93,7 +93,8 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             message,
             mode: 'chat',
             model: opts?.model,
-            providerChoice: opts?.providerChoice
+            providerChoice: opts?.providerChoice,
+            attachmentIds: opts?.attachmentIds
           },
           {
             onEvent: (event) => {

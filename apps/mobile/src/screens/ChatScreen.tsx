@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, AppState, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
 import { ApprovalCard } from '../components/ApprovalCard'
@@ -88,6 +88,21 @@ export function ChatScreen() {
   useEffect(() => {
     if (sessions.activeId) void saveLastSession(sessions.activeId)
   }, [sessions.activeId])
+
+  // Stream dør når appen baggrunder (Android dræber SSE), men kørslen fortsætter
+  // server-side. Når appen kommer tilbage i forgrunden, gen-synkroniserer vi den
+  // aktive session så svaret der blev færdigt mens man var væk, dukker op.
+  const appStateRef = useRef(AppState.currentState)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      const prev = appStateRef.current
+      appStateRef.current = next
+      if (prev.match(/inactive|background/) && next === 'active' && config && sessions.activeId) {
+        sessions.select(config, sessions.activeId).catch(() => undefined)
+      }
+    })
+    return () => sub.remove()
+  }, [config, sessions.activeId])
 
   // Greeting vises når chatten er tom (opstart / ny samtale) — som på desktop.
   const showGreeting = sessions.messages.length === 0 && !sessions.loading

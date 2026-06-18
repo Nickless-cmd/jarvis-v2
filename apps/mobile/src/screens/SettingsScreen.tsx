@@ -13,7 +13,14 @@ import {
 } from '../lib/apiClient'
 import type { AccountProfile, Connector } from '../lib/types'
 import { useAuth } from '../state/AuthContext'
+import { useConnectivity } from '../lib/useConnectivity'
 import { tokens } from '../theme/tokens'
+
+const CONN_LABEL: Record<string, string> = {
+  connected: 'Forbundet til Jarvis ✓',
+  reconnecting: 'Genopretter forbindelse…',
+  offline: 'Offline'
+}
 
 const GOOGLE_LINK_POLL_ATTEMPTS = 75
 const GOOGLE_LINK_POLL_MS = 2000
@@ -27,6 +34,7 @@ function sleep(ms: number): Promise<void> {
  *  vs Plugins"). Vises som fuldskærms-modal fra panelets tandhjul. */
 export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const { config, signOut, signInWithToken } = useAuth()
+  const connectivity = useConnectivity(config ?? null)
   const [qrOpen, setQrOpen] = useState(false)
   const insets = useSafeAreaInsets()
   const [diagnostic, setDiagnostic] = useState('Ikke testet')
@@ -120,6 +128,9 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
             {profile?.role ? <Text style={styles.badge}>{profile.role}</Text> : null}
             {profile?.tier ? <Text style={styles.badge}>{profile.tier}</Text> : null}
           </View>
+          <Text style={[styles.connLine, connectivity === 'connected' ? styles.ok : connectivity === 'offline' ? styles.connBad : styles.connWarn]}>
+            ● {CONN_LABEL[connectivity]}
+          </Text>
         </View>
 
         {/* Plugins / connectors */}
@@ -180,7 +191,8 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
         {/* Forbind enhed (scan QR fra desktop) */}
         <Text style={styles.sectionTitle}>Forbind enhed</Text>
         <View style={styles.card}>
-          <Text style={styles.muted}>Scan "Forbind mobil-app"-QR'en i Jarvis-desk for at parre denne enhed.</Text>
+          <Text style={styles.value}><Text style={styles.ok}>Denne enhed er forbundet ✓</Text></Text>
+          <Text style={styles.muted}>Skal du parre en ny telefon? Scan "Forbind mobil-app"-QR'en i Jarvis-desk.</Text>
           <Pressable accessibilityRole="button" onPress={() => setQrOpen(true)} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Scan QR</Text>
           </Pressable>
@@ -248,6 +260,9 @@ const styles = StyleSheet.create({
   },
   value: { color: tokens.color.fg1 },
   ok: { color: tokens.color.accent, fontWeight: '700' },
+  connLine: { marginTop: tokens.spacing.sm, fontSize: 13, fontWeight: '700' },
+  connBad: { color: tokens.color.error },
+  connWarn: { color: tokens.color.warn },
   muted: { color: tokens.color.fg3 },
   loader: { paddingVertical: tokens.spacing.sm },
   connectorRow: {

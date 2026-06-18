@@ -505,6 +505,48 @@ def start_visible_run(
                         pass
                 _set_active_visible_run({})
                 active = {}
+        # Same-session zombie-slot clear (2026-06-18 Claude). Hvis active_run
+        # for DENNE session peger på en kørsel der ALLEREDE er afsluttet i DB
+        # (completed/error/finished_at sat), så er slottet en zombie: kørslen
+        # lukkede, men unregister_visible_run() kørte aldrig (typisk fordi
+        # SSE-streamen blev droppet da mobilen baggrundede / skærmen sov, så
+        # generatorens finally ikke nåede at rydde slottet). Resultat: hver
+        # ny besked i de næste 120s blev midway-nudge't ind i en død kørsel →
+        # INTET svar (Bjørn 18. jun, mobil-companion). En afsluttet kørsel må
+        # aldrig blokere → ryd straks og start frisk run nedenfor.
+        if (active and bool(active.get("active"))
+                and not bool(active.get("cancelled"))
+                and normalized_session_id
+                and str(active.get("session_id") or "") == normalized_session_id):
+            _zid = str(active.get("run_id") or "")
+            try:
+                with connect() as _zc:
+                    _zrow = _zc.execute(
+                        "SELECT status, finished_at FROM visible_runs WHERE run_id = ?",
+                        (_zid,),
+                    ).fetchone()
+                _terminal = bool(_zrow) and (
+                    str(_zrow[0] or "").strip().lower()
+                    in ("completed", "error", "failed", "cancelled", "done")
+                    or bool(_zrow[1])
+                )
+            except Exception:
+                _terminal = False
+            if _terminal:
+                logger.warning(
+                    "visible_runs: same-session active_run %s already terminal in DB "
+                    "(zombie slot, unregister missed) — clearing and proceeding fresh",
+                    _zid,
+                )
+                if _zid in _VISIBLE_RUN_CONTROLLERS:
+                    try:
+                        _zctrl = _VISIBLE_RUN_CONTROLLERS.get(_zid)
+                        if _zctrl is not None:
+                            _zctrl.cancel()
+                    except Exception:
+                        pass
+                _set_active_visible_run({})
+                active = {}
         # Same-session, fresh-message safety: if the active_run for THIS
         # session has no controller in memory anymore, it died without
         # clearing state. Do not midway-nudge into a dead run -- treat

@@ -349,6 +349,13 @@ export async function createPairing(
   return apiFetch(config, '/api/auth/pair/create', { method: 'POST', body: {} })
 }
 
+/** Poll pairing-status: pending=QR vist, redeemed=mobil tilsluttet, expired=udløbet. */
+export async function getPairStatus(
+  config: ApiConfig, code: string,
+): Promise<{ state?: 'pending' | 'redeemed' | 'expired' }> {
+  return apiFetch(config, `/api/auth/pair/status?code=${encodeURIComponent(code)}`)
+}
+
 /** Commit ALLE ændringer (git add -A + commit, ingen push). Rolle-aware target. */
 export async function commitAllChanges(
   config: ApiConfig, target: GitTarget, message = '',

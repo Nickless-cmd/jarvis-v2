@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
@@ -10,6 +10,7 @@ import { LivenessRing } from '../components/LivenessRing'
 import { MessageList } from '../components/MessageList'
 import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
 import { SidePanel } from '../components/SidePanel'
+import { SettingsScreen } from './SettingsScreen'
 import { getModelOptions, whoami } from '../lib/apiClient'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
 import { useAuth } from '../state/AuthContext'
@@ -27,10 +28,11 @@ const MEMBER_CHOICES: ModelChoice[] = [
 const OWNER_DEFAULT: ModelChoice = { model: '', providerChoice: 'deepseek', label: 'Deepseek' }
 
 export function ChatScreen() {
-  const { config, signOut } = useAuth()
+  const { config } = useAuth()
   const sessions = useSessions()
   const stream = useStream()
   const [panelOpen, setPanelOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [displayName, setDisplayName] = useState('Jarvis')
   const [modelChoices, setModelChoices] = useState<ModelChoice[]>([])
   const [model, setModel] = useState<ModelChoice | null>(null)
@@ -177,18 +179,21 @@ export function ChatScreen() {
         <SidePanel
           open={panelOpen}
           onClose={() => setPanelOpen(false)}
-          config={config}
           displayName={displayName}
           sessions={sessions.sessions}
           activeId={sessions.activeId}
           onSelectSession={handleSelectSession}
           onNewSession={handleNewSession}
-          onSignOut={() => {
+          onOpenSettings={() => {
             setPanelOpen(false)
-            void signOut()
+            setSettingsOpen(true)
           }}
         />
       ) : null}
+
+      <Modal visible={settingsOpen} animationType="slide" onRequestClose={() => setSettingsOpen(false)}>
+        <SettingsScreen onClose={() => setSettingsOpen(false)} />
+      </Modal>
     </View>
   )
 }

@@ -26,6 +26,16 @@ export interface ChatMessage {
   parent_id?: string | null
 }
 
+export interface AccountProfile {
+  user_id: string
+  email: string
+  email_verified: boolean
+  language: string
+  role: 'owner' | 'member' | 'guest'
+  tier: string
+  google_linked?: boolean
+}
+
 export interface VisibleProvider {
   id: string
   models: string[]

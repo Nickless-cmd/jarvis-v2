@@ -1,4 +1,4 @@
-import type { ApiConfig, ChatMessage, ChatSession, Connector, ModelOption, VisibleProvider, WhoAmI } from './types'
+import type { AccountProfile, ApiConfig, ChatMessage, ChatSession, Connector, ModelOption, VisibleProvider, WhoAmI } from './types'
 
 export type ApiErrorKind = 'network' | 'auth' | 'rate_limit' | 'server' | 'unknown'
 
@@ -137,6 +137,10 @@ export async function denyTool(config: ApiConfig, approvalId: string): Promise<v
   await apiFetch(config, `/chat/approvals/${encodeURIComponent(approvalId)}/deny`, {
     method: 'POST'
   })
+}
+
+export async function getAccountMe(config: ApiConfig): Promise<AccountProfile> {
+  return apiFetch<AccountProfile>(config, '/account/me')
 }
 
 export async function getModelOptions(config: ApiConfig): Promise<ModelOption[]> {

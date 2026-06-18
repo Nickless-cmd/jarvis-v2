@@ -20,7 +20,14 @@ jest.mock('../state/AuthContext', () => ({
 jest.mock('../lib/apiClient', () => ({
   googleLinkStart: jest.fn(),
   googleLoginResult: jest.fn(),
-  health: jest.fn().mockResolvedValue(true)
+  health: jest.fn().mockResolvedValue(true),
+  getAccountMe: jest.fn().mockResolvedValue({ user_id: 'u', email: 'b@x.dk', role: 'owner', tier: 'owner', google_linked: false }),
+  listConnectors: jest.fn().mockResolvedValue([]),
+  setConnectorEnabled: jest.fn().mockResolvedValue(undefined)
+}))
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 })
 }))
 
 jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined)

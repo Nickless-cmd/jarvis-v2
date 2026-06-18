@@ -1,11 +1,16 @@
-import { useState } from 'react'
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
+  getAccountMe,
   googleLinkStart,
   googleLoginResult,
   health,
+  listConnectors,
+  setConnectorEnabled,
   type GoogleLoginResult
 } from '../lib/apiClient'
+import type { AccountProfile, Connector } from '../lib/types'
 import { useAuth } from '../state/AuthContext'
 import { tokens } from '../theme/tokens'
 
@@ -16,18 +21,47 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-export function SettingsScreen() {
+/** Fuld Settings-skærm (Claude-parity): konto · plugins/connectors · Google ·
+ *  diagnostik · log ud. Plugins bor HER — ikke i hovedpanelet (spec §"Settings
+ *  vs Plugins"). Vises som fuldskærms-modal fra panelets tandhjul. */
+export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const { config, signOut } = useAuth()
+  const insets = useSafeAreaInsets()
   const [diagnostic, setDiagnostic] = useState('Ikke testet')
   const [googleBusy, setGoogleBusy] = useState(false)
   const [googleMessage, setGoogleMessage] = useState('')
+  const [profile, setProfile] = useState<AccountProfile | null>(null)
+  const [connectors, setConnectors] = useState<Connector[]>([])
+  const [connectorsLoading, setConnectorsLoading] = useState(false)
+  const [pendingId, setPendingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!config) return
+    let alive = true
+    getAccountMe(config).then((p) => { if (alive) setProfile(p) }).catch(() => undefined)
+    setConnectorsLoading(true)
+    listConnectors(config)
+      .then((items) => { if (alive) setConnectors(items) })
+      .catch(() => undefined)
+      .finally(() => { if (alive) setConnectorsLoading(false) })
+    return () => { alive = false }
+  }, [config])
+
+  const toggleConnector = async (c: Connector, next: boolean) => {
+    if (!config) return
+    setPendingId(c.id)
+    setConnectors((cur) => cur.map((i) => (i.id === c.id ? { ...i, enabled: next } : i)))
+    try {
+      await setConnectorEnabled(config, c.id, next)
+    } catch {
+      setConnectors((cur) => cur.map((i) => (i.id === c.id ? { ...i, enabled: !next } : i)))
+    } finally {
+      setPendingId(null)
+    }
+  }
 
   const checkApi = async () => {
-    if (!config) {
-      setDiagnostic('Ikke forbundet')
-      return
-    }
-
+    if (!config) { setDiagnostic('Ikke forbundet'); return }
     try {
       setDiagnostic((await health(config.apiBaseUrl)) ? 'API svarer' : 'API svarer ikke')
     } catch {
@@ -39,35 +73,22 @@ export function SettingsScreen() {
     if (!config || googleBusy) return
     setGoogleBusy(true)
     setGoogleMessage('Åbner Google...')
-
     try {
       const start = await googleLinkStart(config)
       if (!start.authorize_url || !start.nonce) {
         setGoogleMessage('Google-link er ikke konfigureret på serveren.')
         return
       }
-
       await Linking.openURL(start.authorize_url)
       setGoogleMessage('Godkend i browseren - venter...')
-
       for (let i = 0; i < GOOGLE_LINK_POLL_ATTEMPTS; i += 1) {
         const result = await googleLoginResult(config.apiBaseUrl, start.nonce).catch(
           (): GoogleLoginResult => ({ status: 'pending' })
         )
-
-        if (result.status === 'ok') {
-          setGoogleMessage('Google-konto forbundet')
-          return
-        }
-
-        if (result.status === 'error') {
-          setGoogleMessage('Kunne ikke forbinde Google-konto.')
-          return
-        }
-
+        if (result.status === 'ok') { setGoogleMessage('Google-konto forbundet'); return }
+        if (result.status === 'error') { setGoogleMessage('Kunne ikke forbinde Google-konto.'); return }
         await sleep(GOOGLE_LINK_POLL_MS)
       }
-
       setGoogleMessage('Timeout - prøv igen.')
     } catch {
       setGoogleMessage('Kunne ikke nå serveren.')
@@ -76,78 +97,149 @@ export function SettingsScreen() {
     }
   }
 
+  const linked = !!profile?.google_linked
+
   return (
-    <View style={styles.root}>
-      <Text style={styles.heading}>Indstillinger</Text>
-      <View style={styles.section}>
-        <Text style={styles.label}>API</Text>
-        <Text style={styles.value}>{config?.apiBaseUrl ?? 'Ikke forbundet'}</Text>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <Text style={styles.heading}>Indstillinger</Text>
+        {onClose ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Luk" onPress={onClose} hitSlop={8} style={styles.close}>
+            <Text style={styles.closeX}>✕</Text>
+          </Pressable>
+        ) : null}
       </View>
-      <View style={styles.section}>
-        <Text style={styles.label}>Token</Text>
-        <Text style={styles.value}>{config?.authToken ? 'Gemt sikkert' : 'Mangler'}</Text>
-      </View>
-      <View style={styles.section}>
-        <Text style={styles.label}>Google</Text>
-        <Text style={styles.value}>Forbind kontoen for Google-login fremover.</Text>
-        <Pressable
-          accessibilityRole="button"
-          disabled={googleBusy}
-          onPress={linkGoogle}
-          style={[styles.secondaryButton, googleBusy ? styles.buttonDisabled : null]}
-        >
-          <Text style={styles.secondaryButtonText}>
-            {googleBusy ? 'Forbinder...' : 'Forbind Google-konto'}
-          </Text>
+
+      <ScrollView contentContainerStyle={styles.body}>
+        {/* Konto */}
+        <View style={styles.card}>
+          <Text style={styles.cardEmail}>{profile?.email || config?.apiBaseUrl || 'Konto'}</Text>
+          <View style={styles.badges}>
+            {profile?.role ? <Text style={styles.badge}>{profile.role}</Text> : null}
+            {profile?.tier ? <Text style={styles.badge}>{profile.tier}</Text> : null}
+          </View>
+        </View>
+
+        {/* Plugins / connectors */}
+        <Text style={styles.sectionTitle}>Tilsluttede tjenester</Text>
+        <View style={styles.card}>
+          {connectorsLoading ? (
+            <ActivityIndicator color={tokens.color.accent} style={styles.loader} />
+          ) : connectors.length === 0 ? (
+            <Text style={styles.muted}>Ingen plugins</Text>
+          ) : (
+            connectors.map((c, idx) => (
+              <View key={c.id} style={[styles.connectorRow, idx > 0 ? styles.divider : null]}>
+                <View style={styles.connectorInfo}>
+                  <Text style={styles.connectorName} numberOfLines={1}>{c.name}</Text>
+                  <Text style={styles.connectorMeta} numberOfLines={1}>{c.connected ? 'Forbundet' : c.category}</Text>
+                </View>
+                <Switch
+                  value={c.enabled}
+                  disabled={pendingId === c.id || c.status === 'coming_soon'}
+                  onValueChange={(next) => void toggleConnector(c, next)}
+                  trackColor={{ true: tokens.color.accent, false: tokens.color.bg3 }}
+                />
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* Google */}
+        <Text style={styles.sectionTitle}>Google</Text>
+        <View style={styles.card}>
+          {linked ? (
+            <Text style={styles.value}><Text style={styles.ok}>Google forbundet ✓</Text>  Du kan logge ind med Google.</Text>
+          ) : (
+            <Text style={styles.muted}>Forbind kontoen for Google-login fremover.</Text>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            disabled={googleBusy}
+            onPress={linkGoogle}
+            style={[styles.secondaryButton, googleBusy ? styles.buttonDisabled : null]}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {googleBusy ? 'Forbinder...' : linked ? 'Forbind en anden Google-konto' : 'Forbind Google-konto'}
+            </Text>
+          </Pressable>
+          {googleMessage ? <Text style={styles.message}>{googleMessage}</Text> : null}
+        </View>
+
+        {/* Diagnostik */}
+        <Text style={styles.sectionTitle}>Diagnostik</Text>
+        <View style={styles.card}>
+          <Text style={styles.value}>{diagnostic}</Text>
+          <Pressable accessibilityRole="button" onPress={checkApi} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Test API</Text>
+          </Pressable>
+        </View>
+
+        <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOut}>
+          <Text style={styles.signOutText}>Log ud</Text>
         </Pressable>
-        {googleMessage ? <Text style={styles.message}>{googleMessage}</Text> : null}
-      </View>
-      <View style={styles.section}>
-        <Text style={styles.label}>Diagnostik</Text>
-        <Text style={styles.value}>{diagnostic}</Text>
-        <Pressable accessibilityRole="button" onPress={checkApi} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Test API</Text>
-        </Pressable>
-      </View>
-      <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOut}>
-        <Text style={styles.signOutText}>Log ud</Text>
-      </Pressable>
+      </ScrollView>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: tokens.color.bg0,
-    padding: tokens.spacing.md
-  },
-  heading: {
-    color: tokens.color.fg1,
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: tokens.spacing.md
-  },
-  section: {
+  root: { flex: 1, backgroundColor: tokens.color.bg0 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: tokens.spacing.lg,
     paddingVertical: tokens.spacing.md,
     borderBottomColor: tokens.color.line,
     borderBottomWidth: 1
   },
-  label: {
+  heading: { color: tokens.color.fg1, fontSize: 22, fontWeight: '700' },
+  close: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  closeX: { color: tokens.color.fg2, fontSize: 18 },
+  body: { padding: tokens.spacing.lg, paddingBottom: tokens.spacing.xl, gap: tokens.spacing.sm },
+  card: {
+    backgroundColor: tokens.color.bg1,
+    borderRadius: tokens.radius.lg,
+    padding: tokens.spacing.md,
+    borderWidth: 1,
+    borderColor: tokens.color.line
+  },
+  cardEmail: { color: tokens.color.fg1, fontSize: 16, fontWeight: '700' },
+  badges: { flexDirection: 'row', gap: tokens.spacing.sm, marginTop: tokens.spacing.sm },
+  badge: {
+    color: tokens.color.fg2,
+    backgroundColor: tokens.color.bg3,
+    fontSize: 12,
+    fontWeight: '700',
+    paddingHorizontal: tokens.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: tokens.radius.sm,
+    overflow: 'hidden'
+  },
+  sectionTitle: {
     color: tokens.color.fg3,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginTop: tokens.spacing.md,
     marginBottom: tokens.spacing.xs
   },
-  value: {
-    color: tokens.color.fg1
-  },
-  signOut: {
-    minHeight: 44,
+  value: { color: tokens.color.fg1 },
+  ok: { color: tokens.color.accent, fontWeight: '700' },
+  muted: { color: tokens.color.fg3 },
+  loader: { paddingVertical: tokens.spacing.sm },
+  connectorRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.radius.md,
-    backgroundColor: tokens.color.bg3,
-    marginTop: tokens.spacing.xl
+    justifyContent: 'space-between',
+    paddingVertical: tokens.spacing.sm,
+    gap: tokens.spacing.md
   },
+  divider: { borderTopColor: tokens.color.line, borderTopWidth: 1 },
+  connectorInfo: { flexShrink: 1 },
+  connectorName: { color: tokens.color.fg1, fontWeight: '600' },
+  connectorMeta: { color: tokens.color.fg3, fontSize: 12, marginTop: 2 },
   secondaryButton: {
     minHeight: 40,
     alignItems: 'center',
@@ -157,19 +249,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: tokens.spacing.md
   },
-  secondaryButtonText: {
-    color: tokens.color.fg1,
-    fontWeight: '700'
+  secondaryButtonText: { color: tokens.color.fg1, fontWeight: '700' },
+  buttonDisabled: { opacity: 0.6 },
+  message: { color: tokens.color.fg3, marginTop: tokens.spacing.sm },
+  signOut: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: tokens.radius.md,
+    backgroundColor: tokens.color.bg3,
+    marginTop: tokens.spacing.xl
   },
-  buttonDisabled: {
-    opacity: 0.6
-  },
-  message: {
-    color: tokens.color.fg3,
-    marginTop: tokens.spacing.sm
-  },
-  signOutText: {
-    color: tokens.color.fg1,
-    fontWeight: '700'
-  }
+  signOutText: { color: tokens.color.error, fontWeight: '700' }
 })

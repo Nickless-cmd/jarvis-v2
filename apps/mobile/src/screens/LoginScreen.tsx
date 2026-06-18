@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { googleLoginResult, googleLoginStart, type GoogleLoginResult } from '../lib/apiClient'
 import { DEFAULT_API_BASE_URL } from '../lib/types'
 import { useAuth } from '../state/AuthContext'
 import { tokens } from '../theme/tokens'
+import { QrScanScreen } from './QrScanScreen'
 
 const GOOGLE_LOGIN_APP_ID = 'jarvis-mobile'
 const GOOGLE_LOGIN_POLL_ATTEMPTS = 75
@@ -18,10 +19,9 @@ export function LoginScreen() {
   const [apiBaseUrl, setApiBaseUrl] = useState(DEFAULT_API_BASE_URL)
   const [token, setToken] = useState('')
   const [error, setError] = useState('')
-  const [qrMessage, setQrMessage] = useState('')
+  const [qrOpen, setQrOpen] = useState(false)
   const [googleBusy, setGoogleBusy] = useState(false)
   const [googleMessage, setGoogleMessage] = useState('')
-  const qrEnabled = process.env.EXPO_PUBLIC_ENABLE_QR_PAIRING === '1'
 
   const submit = async () => {
     setError('')
@@ -33,12 +33,14 @@ export function LoginScreen() {
     }
   }
 
-  const startQrPairing = () => {
-    setQrMessage(
-      qrEnabled
-        ? 'QR pairing kræver stadig en kortlivet pairing exchange i Jarvis API.'
-        : 'QR pairing er ikke aktiv endnu. Brug bearer token for nu.'
-    )
+  const onPaired = async (url: string, pairedToken: string) => {
+    setQrOpen(false)
+    setError('')
+    try {
+      await signInWithToken(url, pairedToken)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Kunne ikke gemme token')
+    }
   }
 
   const loginWithGoogle = async () => {
@@ -123,14 +125,13 @@ export function LoginScreen() {
       <Pressable accessibilityRole="button" onPress={submit} style={styles.button}>
         <Text style={styles.buttonText}>Forbind</Text>
       </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        onPress={startQrPairing}
-        style={[styles.secondary, qrEnabled ? null : styles.secondaryDisabled]}
-      >
+      <Pressable accessibilityRole="button" onPress={() => setQrOpen(true)} style={styles.secondary}>
         <Text style={styles.secondaryText}>Scan QR fra Jarvis-desk</Text>
       </Pressable>
-      {qrMessage ? <Text style={styles.qrMessage}>{qrMessage}</Text> : null}
+
+      <Modal visible={qrOpen} animationType="slide" onRequestClose={() => setQrOpen(false)}>
+        <QrScanScreen onPaired={onPaired} onClose={() => setQrOpen(false)} />
+      </Modal>
     </View>
   )
 }

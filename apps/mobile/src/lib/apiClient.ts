@@ -201,6 +201,25 @@ export interface GoogleLoginResult {
   error?: string
 }
 
+export interface PairRedeemResult {
+  status?: string
+  token?: string
+  user_id?: string
+  role?: string
+  error?: string
+}
+
+/** Indløs en QR-pairing-kode → friskt token. PUBLIC (mobilen har intet token endnu). */
+export async function redeemPairingCode(apiBaseUrl: string, code: string): Promise<PairRedeemResult> {
+  const url = new URL('/api/auth/pair/redeem', apiBaseUrl).toString()
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code })
+  })
+  return (await response.json()) as PairRedeemResult
+}
+
 export async function googleLoginStart(
   apiBaseUrl: string,
   appId = 'jarvis-mobile'

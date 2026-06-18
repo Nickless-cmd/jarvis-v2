@@ -15,7 +15,13 @@ jest.mock('../state/AuthContext', () => ({
 
 jest.mock('../lib/apiClient', () => ({
   googleLoginStart: (...args: unknown[]) => mockGoogleLoginStart(...args),
-  googleLoginResult: (...args: unknown[]) => mockGoogleLoginResult(...args)
+  googleLoginResult: (...args: unknown[]) => mockGoogleLoginResult(...args),
+  redeemPairingCode: jest.fn()
+}))
+
+jest.mock('expo-camera', () => ({
+  CameraView: () => null,
+  useCameraPermissions: () => [{ granted: false }, jest.fn()]
 }))
 
 jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined)
@@ -38,14 +44,13 @@ it('defaults to the public Jarvis API and submits token login', async () => {
   expect(mockSignInWithToken).toHaveBeenCalledWith(DEFAULT_API_BASE_URL, 'token-123')
 })
 
-it('keeps QR pairing disabled by default with a visible message', async () => {
+it('opens the QR scanner from the pairing button', async () => {
   const screen = await render(<LoginScreen />)
 
   await fireEvent.press(screen.getByText('Scan QR fra Jarvis-desk'))
 
-  await waitFor(() =>
-    expect(screen.getByText('QR pairing er ikke aktiv endnu. Brug bearer token for nu.')).toBeTruthy()
-  )
+  // Uden kamera-tilladelse viser scanneren tilladelses-promptet.
+  await waitFor(() => expect(screen.getByText('Tillad kamera')).toBeTruthy())
 })
 
 it('opens Google login and stores the returned Jarvis token', async () => {

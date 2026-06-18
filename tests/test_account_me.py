@@ -27,6 +27,27 @@ def test_google_linked_flag_reflects_callback():
     assert prof2["google_linked"] is False
 
 
+def test_role_falls_back_to_identity_when_no_sqlite_row():
+    # users.json-only owner (fx Bjørn) står ikke i SQLite → get_user gav {}.
+    prof = build_account_profile(
+        "1246415163603816499",
+        get_user=lambda uid: None,
+        get_tier=lambda uid: "owner",
+        get_identity_role=lambda uid: "owner",
+    )
+    assert prof["role"] == "owner"
+
+
+def test_sqlite_role_wins_over_identity_fallback():
+    prof = build_account_profile(
+        "u_mikkel",
+        get_user=lambda uid: {"role": "member"},
+        get_tier=lambda uid: "free",
+        get_identity_role=lambda uid: "owner",
+    )
+    assert prof["role"] == "member"
+
+
 def test_member_profile_from_user_db():
     row = {"user_id": "u_mikkel", "email": "m@x.dk", "email_verified": False,
            "role": "member", "tier": "plus", "language": "en"}

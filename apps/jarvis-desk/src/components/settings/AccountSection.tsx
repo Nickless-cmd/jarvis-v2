@@ -115,10 +115,7 @@ export function AccountSection({ config }: { config: ApiConfig | undefined }) {
         {linked ? (
           <>
             <p className="account-google-msg"><span className="badge badge-ok">Google forbundet ✓</span></p>
-            <p className="account-google-hint">Du kan logge ind med Google. Vil du forbinde en anden konto?</p>
-            <button type="button" className="account-google-btn" onClick={linkGoogle} disabled={gBusy}>
-              {gBusy ? 'Forbinder…' : 'Forbind en anden Google-konto'}
-            </button>
+            <p className="account-google-hint">Du kan logge ind med Google. (Maks. én konto pr. bruger.)</p>
           </>
         ) : (
           <>
@@ -134,17 +131,23 @@ export function AccountSection({ config }: { config: ApiConfig | undefined }) {
       <div className="account-google">
         <p className="account-google-hint">Forbind Jarvis-mobil: scan koden i companion-appen.</p>
         {qrPaired ? (
-          <p className="account-google-msg"><span className="badge badge-ok">Mobil tilsluttet ✓</span></p>
-        ) : null}
-        {qrImg ? (
-          <div style={{ textAlign: 'center' }}>
-            <img src={qrImg} alt="QR-pairing-kode" width={220} height={220} style={{ borderRadius: 8, background: '#fff', padding: 8 }} />
-            <p className="account-google-hint">Udløber om {qrLeft}s — scan nu i appen. Venter på scanning…</p>
-          </div>
-        ) : null}
-        <button type="button" className="account-google-btn" onClick={makePairing} disabled={qrBusy}>
-          {qrBusy ? 'Laver kode…' : qrImg ? 'Ny kode' : qrPaired ? 'Forbind en til' : 'Forbind mobil-app'}
-        </button>
+          <>
+            <p className="account-google-msg"><span className="badge badge-ok">Mobil tilsluttet ✓</span></p>
+            <p className="account-google-hint">Mobilen er forbundet. (Maks. én enhed pr. bruger.)</p>
+          </>
+        ) : (
+          <>
+            {qrImg ? (
+              <div style={{ textAlign: 'center' }}>
+                <img src={qrImg} alt="QR-pairing-kode" width={220} height={220} style={{ borderRadius: 8, background: '#fff', padding: 8 }} />
+                <p className="account-google-hint">Udløber om {qrLeft}s — scan nu i appen. Venter på scanning…</p>
+              </div>
+            ) : null}
+            <button type="button" className="account-google-btn" onClick={makePairing} disabled={qrBusy}>
+              {qrBusy ? 'Laver kode…' : qrImg ? 'Ny kode' : 'Forbind mobil-app'}
+            </button>
+          </>
+        )}
         {qrMsg && <p className="account-google-msg">{qrMsg}</p>}
       </div>
     </div>

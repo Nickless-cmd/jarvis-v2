@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import QRCode from 'qrcode'
 import type { ApiConfig } from '../../lib/api'
-import { googleLinkStart, googleLoginResult } from '../../lib/api'
+import { createPairing, googleLinkStart, googleLoginResult } from '../../lib/api'
 import { getAccountMe, type AccountProfile } from '../../lib/coworkApi'
 
 function openBrowser(url: string): void {
@@ -50,6 +51,30 @@ export function AccountSection({ config }: { config: ApiConfig | undefined }) {
     } catch { setGMsg('Kunne ikke nå serveren.'); setGBusy(false) }
   }
 
+  // ── Mobil-pairing (QR) ────────────────────────────────────────────────
+  const [qrImg, setQrImg] = useState('')
+  const [qrLeft, setQrLeft] = useState(0)
+  const [qrBusy, setQrBusy] = useState(false)
+  const [qrMsg, setQrMsg] = useState('')
+  useEffect(() => {
+    if (qrLeft <= 0) return
+    const t = setTimeout(() => setQrLeft((s) => s - 1), 1000)
+    return () => clearTimeout(t)
+  }, [qrLeft])
+  useEffect(() => { if (qrLeft === 0 && qrImg) setQrImg('') }, [qrLeft, qrImg])
+  const makePairing = async () => {
+    if (!config || qrBusy) return
+    setQrBusy(true); setQrMsg('Laver kode…')
+    try {
+      const res = await createPairing(config)
+      if (!res.code) { setQrMsg(res.error === 'not_authenticated' ? 'Log ind først.' : 'Kunne ikke lave kode.'); return }
+      const payload = JSON.stringify({ url: config.apiBaseUrl, code: res.code })
+      const img = await QRCode.toDataURL(payload, { margin: 1, width: 220 })
+      setQrImg(img); setQrLeft(res.expires_in ?? 120); setQrMsg('')
+    } catch { setQrMsg('Kunne ikke nå serveren.') }
+    finally { setQrBusy(false) }
+  }
+
   if (error) return <div className="settings-section">Kunne ikke hente kontoen.</div>
   if (!profile) return <div className="settings-section">Indlæser konto…</div>
 
@@ -88,6 +113,20 @@ export function AccountSection({ config }: { config: ApiConfig | undefined }) {
           </>
         )}
         {gMsg && <p className="account-google-msg">{gMsg}</p>}
+      </div>
+
+      <div className="account-google">
+        <p className="account-google-hint">Forbind Jarvis-mobil: scan koden i companion-appen.</p>
+        {qrImg ? (
+          <div style={{ textAlign: 'center' }}>
+            <img src={qrImg} alt="QR-pairing-kode" width={220} height={220} style={{ borderRadius: 8, background: '#fff', padding: 8 }} />
+            <p className="account-google-hint">Udløber om {qrLeft}s — scan nu i appen</p>
+          </div>
+        ) : null}
+        <button type="button" className="account-google-btn" onClick={makePairing} disabled={qrBusy}>
+          {qrBusy ? 'Laver kode…' : qrImg ? 'Ny kode' : 'Forbind mobil-app'}
+        </button>
+        {qrMsg && <p className="account-google-msg">{qrMsg}</p>}
       </div>
     </div>
   )

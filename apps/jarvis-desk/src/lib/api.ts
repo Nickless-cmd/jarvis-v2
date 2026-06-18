@@ -342,6 +342,13 @@ export async function googleLinkStart(
   return apiFetch(config, '/api/auth/google/link/start')
 }
 
+/** Opret kort-levende QR-pairing-kode (mobil-companion scanner den). Auth kræves. */
+export async function createPairing(
+  config: ApiConfig,
+): Promise<{ status?: string; code?: string; expires_in?: number; error?: string }> {
+  return apiFetch(config, '/api/auth/pair/create', { method: 'POST', body: {} })
+}
+
 /** Commit ALLE ændringer (git add -A + commit, ingen push). Rolle-aware target. */
 export async function commitAllChanges(
   config: ApiConfig, target: GitTarget, message = '',

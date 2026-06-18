@@ -116,7 +116,18 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     except Exception:
         pass
 
-    legacy_iter = start_visible_run(
+    # Live session-broadcast + baggrund-overlevelse (A3): kør runnet AFKOBLET fra
+    # denne forbindelse i en baggrundstråd der tee'er sine v2-frames til run_follow-
+    # bufferen. Routen (og enhver anden klient) FØLGER så bare bufferen. Klientens
+    # forbindelse driver ikke længere runnet → mister mobilen sin SSE (baggrund/
+    # skærm sover) aflyses runnet IKKE; det kører færdigt, persisterer svaret og
+    # unregistrerer sig (zombie-slot kureret ved roden). Reconnect via /follow
+    # fanger op. Se core/services/visible_runs_sections/detached_run.py.
+    from core.services.visible_runs_sections.detached_run import (
+        start_user_run_detached,
+    )
+
+    start_user_run_detached(
         message=effective_message,
         session_id=session_id,
         approval_mode=request.approval_mode,
@@ -125,55 +136,39 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         tool_scope=_tool_scope,
         provider_override=_prov_override,
         model_override=_model_override,
-    )
-
-    v2_stream = translate_to_v2(
-        legacy_iter,
-        run_id="",  # plukkes fra første legacy event
-        model=_eff_model,
-        provider=_eff_provider,
+        eff_model=_eff_model,
+        eff_provider=_eff_provider,
         lane=settings.primary_model_lane,
-        session_id=session_id,
-        ping_interval_s=5.0,
     )
 
-    # Live session-broadcast (A): tee bruger-runnets v2-frames ind i run_follow-
-    # bufferen, så ANDRE klienter på samme session (desk/mobil/webchat) kan
-    # følge token-for-token via GET /chat/sessions/{id}/follow — og en mobil der
-    # mister sin egen SSE (baggrund/skærm sover) kan re-attache og fange op.
-    # Tee'en påvirker ikke den anmodende klients stream; en fejl her må aldrig
-    # bryde svaret, så alt run_follow-arbejde er try/except-indkapslet.
-    async def _broadcast_tee():
-        try:
-            from core.services.run_follow import (
-                begin_follow,
-                end_follow,
-                publish_follow_frame,
-            )
-        except Exception:
-            # run_follow utilgængelig → fald tilbage til ren passthrough.
-            async for frame in v2_stream:
-                yield frame
-            return
-        try:
-            begin_follow(session_id, "")
-        except Exception:
-            pass
-        try:
-            async for frame in v2_stream:
-                try:
-                    publish_follow_frame(session_id, frame)
-                except Exception:
-                    pass
-                yield frame
-        finally:
-            try:
-                end_follow(session_id)
-            except Exception:
-                pass
+    # Følg session-bufferen — samme mekanik som GET /chat/sessions/{id}/follow:
+    # catch-up fra idx 0 + live-tail indtil done. Pings (hver 5s fra translate_to_v2)
+    # holder bufferen "varm", så empty-poll-giveup ikke rammer et langsomt run.
+    async def _follow_response():
+        import asyncio as _a
+
+        from core.services.run_follow import _snapshot
+
+        idx = 0
+        empty = 0
+        while True:
+            frames, done = _snapshot(session_id, idx)
+            for f in frames:
+                idx += 1
+                yield f
+            if done:
+                break
+            if frames:
+                empty = 0
+            else:
+                empty += 1
+                # ~24s total tavshed (pings burde komme hver 5s) → intet run, giv op.
+                if empty > 300:
+                    break
+            await _a.sleep(0.08)
 
     return StreamingResponse(
-        _broadcast_tee(),
+        _follow_response(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

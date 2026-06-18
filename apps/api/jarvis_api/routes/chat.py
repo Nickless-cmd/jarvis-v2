@@ -841,6 +841,26 @@ async def chat_active_runs() -> dict:
         return {"session_ids": []}
 
 
+@router.post("/sessions/{session_id}/cancel-active")
+async def chat_cancel_active(session_id: str) -> dict:
+    """Afbryd det run der kører for sessionen (mobil/desk stop-knap naar klienten
+    ikke selv streamer runnet — fx efter baggrund hvor serveren stadig arbejder)."""
+    from core.services.visible_runs import (
+        _get_active_visible_run_state,
+        cancel_visible_run,
+    )
+    sid = (session_id or "").strip()
+    try:
+        st = _get_active_visible_run_state() or {}
+        if str(st.get("session_id") or "") == sid:
+            rid = str(st.get("run_id") or "")
+            if rid:
+                return {"cancelled": bool(cancel_visible_run(rid)), "run_id": rid}
+    except Exception:
+        pass
+    return {"cancelled": False}
+
+
 @router.get("/sessions/{session_id}/follow")
 async def chat_session_follow(session_id: str):
     """Token-stream det aktive autonome run i sessionen (desk-pickup af wakeup).

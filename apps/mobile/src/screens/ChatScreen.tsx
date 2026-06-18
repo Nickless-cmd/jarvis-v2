@@ -98,24 +98,18 @@ export function ChatScreen() {
       const prev = appStateRef.current
       appStateRef.current = next
       if (prev.match(/inactive|background/) && next === 'active' && config && sessions.activeId) {
+        // Gen-synkronisér: A3 lader runnet køre færdigt server-side mens appen er
+        // i baggrunden → ved retur henter vi sessionen så det færdige svar vises.
         sessions.select(config, sessions.activeId).catch(() => undefined)
-        // Re-attach til sessionens live-stream (delte sessioner): fanger et run
-        // op der stadig kører (vores eget der overlevede baggrunden via A3, eller
-        // en anden enhed/Jarvis der skriver netop nu).
-        stream.follow(config, sessions.activeId)
       }
     })
     return () => sub.remove()
   }, [config, sessions.activeId])
 
-  // Delte sessioner: følg den aktive sessions live-stream, så transcript +
-  // liveness (pulserende ring + "arbejder") vises live uanset HVEM der skriver —
-  // anden enhed eller Jarvis autonomt. Bygger på broadcast-bufferen (A1/A3).
-  useEffect(() => {
-    if (!config || !sessions.activeId) return
-    stream.follow(config, sessions.activeId)
-    return () => stream.stopFollow()
-  }, [config, sessions.activeId])
+  // NB: passiv follow-subscription (delt-session live-view) er midlertidigt
+  // deaktiveret — den forstyrrede den almindelige send-rendering (Bjørn 18. jun
+  // "han reagerer ikke når jeg skriver"). Backenden (A1/A3) understøtter det
+  // stadig; klient-laget skal gentænkes så det ALDRIG rører send-streamens state.
 
   // Greeting vises når chatten er tom (opstart / ny samtale) — som på desktop.
   const showGreeting = sessions.messages.length === 0 && !sessions.loading

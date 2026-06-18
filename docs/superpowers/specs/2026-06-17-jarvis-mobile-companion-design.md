@@ -755,6 +755,27 @@ Build Jarvis Mobile as a direct public-API Android companion with manual token l
 
 The app should feel like a native, focused Jarvis conversation surface, not a compressed desktop dashboard.
 
+## UX-reference: Claude Android-app (studeret på enhed 2026-06-18)
+
+Live-studie af Claude-appen (read-only) for at konkretisere "fancy uden at være overdrevet". Konkrete mønstre vi skal matche/overgå:
+
+**Composer (vores største mangel):** Et **hævet, afrundet kort** med dybde — ikke en flad bjælke. Inline-kontroller: `+` (vedhæft), **model-pille** ("Opus 4.8 Thinking"), mikrofon, og en dedikeret **voice-mode-knap** (waveform-cirkel). Placeholder "Ask Claude anything".
+
+**Navigation:** Venstre-drawer med flader: Chats · Projects · Artifacts · **Code** · **Dispatch** + Recents + "New chat"-FAB. For Jarvis er **Dispatch (async agent-opgaver)** og **Code (fjern-kodesessioner)** det vi er bedst til — de bør være hovedflader, ikke skjult.
+
+**Settings som egen skærm** (bekræfter §"Settings vs Plugins"): konto-kort + plan-badge; Profile/Billing/Usage; **Capabilities / Connectors / Permissions ligger i Settings** (ikke i hovedpanelet); Color mode (**System** — følger OS dark/light); Font; Voice; Haptic-toggle; Notifications; Log ud (rød, nederst).
+
+**Chats-liste:** søgefelt + **datoer pr. samtale** + filter-ikoner. Vi mangler søg + datoer.
+
+**Dybde (det modsatte af "flad"):** subtil **gitter-baggrund** på Dispatch; **dato-skillelinjer** (bølgede) mellem perioder; afrundede kort med let elevation overalt; **labeled status** ("Dispatch ● Idle"); ulæst-prik (blå) + forbindelsesstatus ("Disconnected") + relativ tid ("6d") på Code-sessioner.
+
+**Implikation for Jarvis V1.x prioritering — "afflad"-skive (ren frontend):**
+1. Composer → hævet kort m. inline `+` / model-pille / mic
+2. Dybde-pass: mørk-med-lag baggrund, kort-elevation, besked-bobler m. dybde, dato-dividers
+3. Liveness-ring (ånder under streaming) + labeled connection/run-status i header
+4. Tool result cards (erstat rå `[tool_result:…]`-tekst)
+5. Søg + datoer i session-panelet; flyt plugins ind i en Settings-skærm
+
 ## Feasibility-noter (tilføjet ved review 2026-06-18)
 
 - **Ikke ren managed Expo.** Foreground Service (SSE-overlevelse), Bubbles-overlay, FCM-push og kamera kræver native moduler / Expo config-plugins / dev-client. Appen er allerede en **prebuilt RN-app** (android/ committet), så det er muligt — men ingen del af V1.1+ kan bygges i Expo Go.

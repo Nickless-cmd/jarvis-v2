@@ -66,14 +66,20 @@ export function SidePanel({
           ]}
         >
           <View style={styles.headerRow}>
-            <View style={styles.identity}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Luk panel"
+              onPress={onClose}
+              hitSlop={8}
+              style={styles.identity}
+            >
               <View style={styles.ring}>
                 <View style={styles.ringInner} />
               </View>
               <Text style={styles.name} numberOfLines={1}>
                 {displayName || 'Jarvis'}
               </Text>
-            </View>
+            </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Indstillinger" onPress={onOpenSettings} hitSlop={8} style={styles.gear}>
               <Text style={styles.gearIcon}>⚙</Text>
             </Pressable>

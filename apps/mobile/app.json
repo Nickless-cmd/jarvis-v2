@@ -2,17 +2,22 @@
   "expo": {
     "name": "Jarvis",
     "slug": "jarvis-mobile",
-    "version": "0.1.12",
+    "version": "0.1.13",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
       "package": "dk.srvlab.jarvis.mobile",
-      "versionCode": 13,
-      "softwareKeyboardLayoutMode": "resize"
+      "versionCode": 14,
+      "softwareKeyboardLayoutMode": "resize",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0d1117"
+      }
     },
     "plugins": [
       "expo-secure-store",
       "expo-camera"
-    ]
+    ],
+    "icon": "./assets/icon.png"
   }
 }

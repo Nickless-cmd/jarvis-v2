@@ -340,10 +340,26 @@ def is_visible_run_alive(run_id: str) -> bool:
     """
     if not run_id:
         return False
+    state = _get_active_visible_run_state() or {}
     if run_id in _VISIBLE_RUN_CONTROLLERS:
+        # Selv en registreret controller kan vaere foraeldreloes: et run kan doe
+        # uden at unregistrere (fx en afkoblet A3-traad der fejlede foer sit
+        # finally). Stol derfor IKKE blindt paa registry'et — hvis den DELTE
+        # heartbeat (last_activity_at) er stale ud over taersklen, er det en
+        # zombie. Saa haenger /chat/active-runs ikke paa et doedt run (desktop-
+        # aktivitetsprikker der aldrig slukker, Bjoern 2026-06-18).
+        if str(state.get("run_id") or "") == str(run_id) and not state.get("cancelled"):
+            ts0 = str(state.get("last_activity_at") or state.get("started_at") or "")
+            if ts0:
+                try:
+                    from datetime import UTC as _U, datetime as _dt
+                    age0 = (_dt.now(_U) - _dt.fromisoformat(ts0.replace("Z", "+00:00"))).total_seconds()
+                    if age0 >= _VISIBLE_RUN_STALE_S:
+                        return False
+                except Exception:
+                    pass
         return True
     try:
-        state = _get_active_visible_run_state() or {}
         if str(state.get("run_id") or "") != str(run_id) or state.get("cancelled"):
             return False
         ts = str(state.get("last_activity_at") or state.get("started_at") or "")

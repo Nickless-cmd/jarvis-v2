@@ -91,22 +91,32 @@ def start_user_run_detached(
                 session_id=sid,
                 ping_interval_s=5.0,
             )
-            if fresh:
-                try:
-                    async for frame in gen:
+            # aclose() i finally propagerer GeneratorExit ned gennem translate_to_v2
+            # → legacy_iter (_stream_visible_run) → dens finally kører unregister_
+            # visible_run. Uden dette ville en fejl/tidlig-exit efterlade en
+            # forældreløs controller = zombie active-run (desktop-prikker hænger).
+            try:
+                if fresh:
+                    try:
+                        async for frame in gen:
+                            try:
+                                publish_follow_frame(sid, frame)
+                            except Exception:
+                                pass
+                    finally:
                         try:
-                            publish_follow_frame(sid, frame)
+                            end_follow(sid)
                         except Exception:
                             pass
-                finally:
-                    try:
-                        end_follow(sid)
-                    except Exception:
+                else:
+                    # Nudge: driv iteratoren (så followup'en injiceres i det aktive
+                    # run) men tee IKKE — det aktive runs tråd ejer bufferen.
+                    async for _frame in gen:
                         pass
-            else:
-                # Nudge: driv iteratoren (så followup'en injiceres i det aktive
-                # run) men tee IKKE — det aktive runs tråd ejer bufferen.
-                async for _frame in gen:
+            finally:
+                try:
+                    await gen.aclose()
+                except Exception:
                     pass
 
         try:

@@ -387,6 +387,26 @@ def build_visible_stable_prefix(
     return "\n\n".join(part for part in parts if part).strip()
 
 
+def _device_awareness_on() -> bool:
+    try:
+        from core.runtime.settings import load_settings
+        return bool(load_settings().device_awareness_enabled)
+    except Exception:
+        return False
+
+
+def _device_presence_line(user_id: str) -> str:
+    """Hvilken enhed Bjørn er ved (routing-awareness). Killswitch-gatet, best-effort."""
+    if not _device_awareness_on():
+        return ""
+    try:
+        from core.services import device_presence
+        s = device_presence.summary(user_id)
+        return f"[enheds-presence]: {s}" if s else ""
+    except Exception:
+        return ""
+
+
 def build_visible_chat_prompt_assembly(
     *,
     provider: str,
@@ -1962,6 +1982,14 @@ def build_visible_chat_prompt_assembly(
         _dyn_tail.append(_wakeup_digest_text)
         derived_inputs.append("wakeup digest (user-msg tail)")
     _dyn_tail.extend(_tail_dynamic)
+    try:
+        from core.identity.workspace_context import current_user_id as _cuid
+        _presence_line = _device_presence_line(_cuid() or "")
+        if _presence_line:
+            _dyn_tail.append(_presence_line)
+            derived_inputs.append("device-presence (user-msg tail)")
+    except Exception:
+        pass
     _dyn_tail.append(_time_pin_section())
     derived_inputs.append("time pin (user-msg tail)")
     if _dyn_tail:

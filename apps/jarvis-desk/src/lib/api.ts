@@ -419,7 +419,7 @@ export function followRun(
 ): { abort: () => void } {
   const ctrl = new AbortController()
   const run = async () => {
-    const url = new URL(`/chat/sessions/${encodeURIComponent(sessionId)}/follow`, config.apiBaseUrl).toString()
+    const url = new URL(`/chat/sessions/${encodeURIComponent(sessionId)}/live`, config.apiBaseUrl).toString()
     const headers: Record<string, string> = { Accept: 'text/event-stream' }
     if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
     let resp: Response

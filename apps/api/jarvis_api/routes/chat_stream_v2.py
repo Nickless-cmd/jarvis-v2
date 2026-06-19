@@ -120,13 +120,17 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         # SERVER-AUTORITATIV: kør detached + abonnér på run-loggen fra offset 0.
         # Runnet lever uafhængigt af denne forbindelse → overlever app-baggrund.
         from core.services.visible_runs_sections.detached_run import (
-            start_user_run_detached,
+            start_or_attach_user_run,
         )
         import core.services.run_event_log as rel
 
-        run_id = start_user_run_detached(
+        # Single-flight pr. session: hvis et run allerede er LIVE i sessionen,
+        # spawn ikke et samtidigt run (det klobber via active-run-singletonen →
+        # begge fejler). Helper'en attacher + nudger i stedet. Se helper-docstring.
+        run_id, _attached = start_or_attach_user_run(
             message=effective_message,
             session_id=session_id,
+            nudge_enabled=bool(getattr(settings, "nudge_system_enabled", True)),
             approval_mode=request.approval_mode,
             thinking_mode=request.thinking_mode,
             force_user_id=_uid,
@@ -137,6 +141,12 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
             eff_provider=_eff_provider,
             lane=settings.primary_model_lane,
         )
+        if _attached:
+            print(
+                f"[chat/stream/v2] single-flight: session={session_id[:20]} "
+                f"attached til live run {run_id[:24]} (ingen nyt run)",
+                flush=True,
+            )
 
         async def _subscribe():
             import asyncio as _a

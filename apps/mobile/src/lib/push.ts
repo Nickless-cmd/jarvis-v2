@@ -41,7 +41,7 @@ async function fetchLatest(config: ApiConfig, sessionId: string): Promise<string
   }
 }
 
-async function display(config: ApiConfig, data: PushData) {
+export async function display(config: ApiConfig, data: PushData) {
   const body = data.session_id ? await fetchLatest(config, data.session_id) : null
   const n = buildNotification(data, body)
   const channelId = await notifee.createChannel({

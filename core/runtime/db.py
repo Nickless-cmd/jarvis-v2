@@ -33233,6 +33233,7 @@ from core.runtime.db_users import (  # noqa: E402,F401
     get_user_row_by_google_email_hash,
     set_google_link,
     get_google_link,
+    has_google_link_for_user,
     update_user_row,
     soft_delete_user_row,
     hard_delete_user_row,

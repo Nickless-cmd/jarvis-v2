@@ -130,6 +130,11 @@ def set_google_email(user_id: str, google_email: str, role: str = "member") -> b
     return db.set_google_link(eh, user_id, role, _now())
 
 
+def has_google_link(user_id: str) -> bool:
+    """Har brugeren en Google-konto linket? (vedvarende UI-indikator)."""
+    return db.has_google_link_for_user(user_id)
+
+
 def find_user_by_google_email(google_email: str) -> dict[str, Any] | None:
     """Slå en konto op via sin linkede Google-email. Returnerer {user_id, role}.
     None = ingen forud-oprettet konto (Google-login er IKKE self-service)."""

@@ -23,8 +23,17 @@ def build_account_profile(
     *,
     get_user: Callable[[str], dict[str, Any] | None],
     get_tier: Callable[[str], str],
+    is_google_linked: Callable[[str], bool] | None = None,
+    get_identity_role: Callable[[str], str | None] | None = None,
 ) -> dict[str, Any]:
-    """Ren projektion — testbar uden HTTP. Owner (uid='') har ingen række."""
+    """Ren projektion — testbar uden HTTP. Owner (uid='') har ingen række.
+
+    get_identity_role: fallback-rolle fra users.json (samme kilde som whoami).
+    Nødvendig fordi users.json-only brugere (fx owner Bjørn) IKKE står i
+    SQLite-user-tabellen → get_user gav {} → rollen defaultede fejlagtigt til
+    'member'. Vi konsulterer derfor identitets-laget når SQLite-rækken mangler.
+    """
+    linked = bool(is_google_linked(user_id)) if is_google_linked else False
     if not user_id:
         return {
             "user_id": "",
@@ -33,16 +42,29 @@ def build_account_profile(
             "language": "da",
             "role": "owner",
             "tier": get_tier("") or "owner",
+            "google_linked": linked,
         }
     row = get_user(user_id) or {}
+    role = row.get("role") or (get_identity_role(user_id) if get_identity_role else None) or "member"
     return {
         "user_id": user_id,
         "email": row.get("email", "") or "",
         "email_verified": bool(row.get("email_verified")),
         "language": row.get("language") or "da",
-        "role": row.get("role") or "member",
+        "role": role,
         "tier": get_tier(user_id) or (row.get("tier") or "free"),
+        "google_linked": linked,
     }
+
+
+def _identity_role(user_id: str) -> str | None:
+    """Rolle fra users.json (samme opslag som whoami) — None hvis ukendt."""
+    try:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(str(user_id))
+        return getattr(u, "role", None) if u else None
+    except Exception:
+        return None
 
 
 @router.get("/me")
@@ -54,6 +76,8 @@ async def account_me() -> dict[str, Any]:
         user_id,
         get_user=user_db.get_user,
         get_tier=quota_store.get_tier,
+        is_google_linked=user_db.has_google_link,
+        get_identity_role=_identity_role,
     )
 
 

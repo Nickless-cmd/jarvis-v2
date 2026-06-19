@@ -115,6 +115,18 @@ def get_google_link(email_hash: str) -> dict[str, object] | None:
     return dict(row) if row else None
 
 
+def has_google_link_for_user(user_id: str) -> bool:
+    """Har brugeren (user_id) en Google-konto linket? (vedvarende indikator)."""
+    if not (user_id or "").strip():
+        return False
+    with connect() as conn:
+        _ensure_google_links_table(conn)
+        row = conn.execute(
+            "SELECT 1 FROM google_login_links WHERE user_id = ? LIMIT 1", (user_id,),
+        ).fetchone()
+    return row is not None
+
+
 def insert_user_row(
     *, user_id: str, email_hash: str, email_enc: bytes, name: str, role: str,
     workspace: str, password_hash: str, discord_id_enc: bytes, totp_seed_enc: bytes,

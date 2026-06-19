@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native'
 import { parseToolMessage, toolPreview } from '../lib/toolMessage'
 import { tokens } from '../theme/tokens'
 
@@ -41,8 +41,15 @@ export function ToolResultCard({
   const tool = toolName ?? parsed?.tool ?? 'tool'
   const body = bodyProp ?? parsed?.body ?? ''
 
+  // "Folder op" ved mount (§3.4): translateY 8→0 + opacity 0→1.
+  const enter = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    Animated.timing(enter, { toValue: 1, duration: tokens.motion.durBase, useNativeDriver: true }).start()
+  }, [enter])
+  const translateY = enter.interpolate({ inputRange: [0, 1], outputRange: [8, 0] })
+
   return (
-    <View style={styles.wrap}>
+    <Animated.View style={[styles.wrap, { opacity: enter, transform: [{ translateY }] }]}>
       <Pressable
         accessibilityRole="button"
         onPress={() => setOpen((o) => !o)}
@@ -66,7 +73,7 @@ export function ToolResultCard({
           </Text>
         ) : null}
       </Pressable>
-    </View>
+    </Animated.View>
   )
 }
 
@@ -77,9 +84,9 @@ const styles = StyleSheet.create({
     marginRight: 48
   },
   card: {
-    backgroundColor: tokens.color.bg2,
+    backgroundColor: tokens.color.depth1,
     borderRadius: tokens.radius.lg,
-    borderLeftWidth: 2,
+    borderLeftWidth: 3,
     borderLeftColor: tokens.color.accent,
     padding: tokens.spacing.md,
     // dybde — let svævende skygge (spec §4 "kort der folder sig ud")
@@ -100,7 +107,7 @@ const styles = StyleSheet.create({
   },
   glyph: { fontSize: 14 },
   tool: {
-    color: tokens.color.fg1,
+    color: tokens.color.accent,
     fontWeight: '700',
     fontSize: 13,
     flex: 1

@@ -71,6 +71,9 @@ async function postToken(config: ApiConfig, token: string) {
 /** Registrér token efter login + lyt på rotation. */
 export async function registerForPush(config: ApiConfig): Promise<void> {
   try {
+    // notifee.requestPermission() udløser Android 13+'s POST_NOTIFICATIONS-dialog
+    // (messaging().requestPermission() gør det IKKE pålideligt på Android).
+    await notifee.requestPermission()
     await messaging().requestPermission()
     const token = await messaging().getToken()
     await postToken(config, token)

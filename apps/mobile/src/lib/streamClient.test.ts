@@ -171,6 +171,49 @@ it('sends the expected request payload and auth header', () => {
   )
 })
 
+it('reconnects from offset via subscribe when the socket drops mid-run', () => {
+  jest.useFakeTimers()
+  const onReconnecting = jest.fn()
+  startStream(
+    { config, sessionId: 's1', message: 'Hej' },
+    { onEvent: jest.fn(), onReconnecting }
+  )
+
+  // modtag message_start (offset=1, run_id kendt) + en delta (offset=2)
+  getListener('message_start')({
+    data: JSON.stringify({
+      type: 'message_start',
+      message: {
+        id: 'visible-x',
+        model: 'deepseek',
+        provider: 'ollama',
+        lane: 'primary',
+        session_id: 's1',
+        usage: { input_tokens: 0, output_tokens: 0 }
+      }
+    })
+  })
+  getListener('content_block_delta')({
+    data: JSON.stringify({
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'text_delta', text: 'hi' }
+    })
+  })
+
+  // socket dør (Android-baggrund) → skal planlægge reconnect, ikke fejle
+  getListener('error')({ message: 'software caused connection abort' } as never)
+  expect(onReconnecting).toHaveBeenCalledWith(1)
+
+  jest.runOnlyPendingTimers()
+
+  expect(EventSource).toHaveBeenCalledWith(
+    'https://api.srvlab.dk/chat/runs/visible-x/subscribe?from_idx=2',
+    expect.objectContaining({ method: 'GET' })
+  )
+  jest.useRealTimers()
+})
+
 it('omits the authorization header when auth token is empty', () => {
   startStream(
     {

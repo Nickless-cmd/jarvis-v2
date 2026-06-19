@@ -77,6 +77,9 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     }
 
     updateState((prev) => ({ ...prev, status, blocks: [] }))
+    // Send afsluttet → frigiv send-controlleren, så en passiv live-attach
+    // (delt-session sync) må køre igen. control.current != null ⟺ aktiv send.
+    control.current = null
   }
 
   const value = useMemo<StreamContextValue>(
@@ -162,8 +165,10 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         setApproval(null)
       },
       follow: (config, sessionId) => {
-        // Passiv: kør ikke follow oven på en aktiv send/working stream.
-        if (control.current && stateRef.current.status === 'working') return
+        // Passiv: ALDRIG oven på en aktiv send (control.current != null ⟺ vi
+        // sender selv → vores egen send-stream ER live-visningen). Dette er
+        // værnet der forhindrer den dobbelt-render der knækkede follow før.
+        if (control.current) return
         followControl.current?.abort()
         let skip = false
         followControl.current = followSession(config, sessionId, {

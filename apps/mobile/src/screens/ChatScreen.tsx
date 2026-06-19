@@ -133,8 +133,15 @@ export function ChatScreen() {
         const was = serverBusyRef.current
         serverBusyRef.current = busy
         setServerBusy(busy)
-        // kørende → færdig: svaret er nu persisteret → hent det ind.
-        if (was && !busy) sessions.select(config, sid).catch(() => undefined)
+        // idle → kørende: et run startede i sessionen. Live-attach (delt-session
+        // sync) — stream.follow rører IKKE noget hvis vi selv sender (guard'en
+        // tjekker control.current). Så ser vi en anden enheds/Jarvis' run live.
+        if (!was && busy) stream.follow(config, sid)
+        // kørende → færdig: svaret er nu persisteret → hent det ind (+ stop attach).
+        if (was && !busy) {
+          stream.stopFollow()
+          sessions.select(config, sid).catch(() => undefined)
+        }
       } catch {
         /* behold sidste — ingen flicker ved netværks-blip */
       }

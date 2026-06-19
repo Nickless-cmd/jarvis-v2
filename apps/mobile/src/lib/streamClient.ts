@@ -182,10 +182,10 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
 
 /**
  * Følg en sessions live-stream (delte sessioner). Åbner en GET-SSE mod
- * /chat/sessions/{id}/follow og fodrer de SAMME v2-frames ind i handlers —
- * så denne klient ser transcript + liveness live uanset HVEM (anden enhed,
- * eller Jarvis autonomt) der skriver i sessionen. Bygger på run_follow-
- * bufferen (broadcast A1/A3). Catch-up fra start + live-tail indtil done.
+ * /chat/sessions/{id}/live og fodrer de SAMME v2-frames ind i handlers — så
+ * denne klient ser transcript + liveness live uanset HVEM (anden enhed, eller
+ * Jarvis autonomt) der skriver i sessionen. Læser run_event_log (server-
+ * authoritative, flag ON). 204 hvis intet aktivt run → onComplete med det samme.
  */
 export function followSession(
   config: ApiConfig,
@@ -194,7 +194,7 @@ export function followSession(
 ): StreamControl {
   let activeRunId: string | null = null
   const url = new URL(
-    `/chat/sessions/${encodeURIComponent(sessionId)}/follow`,
+    `/chat/sessions/${encodeURIComponent(sessionId)}/live`,
     config.apiBaseUrl
   ).toString()
   const headers: Record<string, string> = { Accept: 'text/event-stream' }

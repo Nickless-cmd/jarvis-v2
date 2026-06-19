@@ -79,6 +79,11 @@ def start_user_run_detached(
                 except Exception:
                     pass
                 try:
+                    from core.services.push_dispatcher import on_run_done
+                    on_run_done(run_id)
+                except Exception:
+                    pass
+                try:
                     rel.prune()
                 except Exception:
                     pass

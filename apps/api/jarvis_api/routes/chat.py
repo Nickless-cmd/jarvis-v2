@@ -885,22 +885,27 @@ async def chat_run_subscribe(run_id: str, from_idx: int = 0):
         raise HTTPException(status_code=404, detail="run not found")
 
     async def _gen():
-        idx = max(0, int(from_idx))
-        empty = 0
-        while True:
-            frames, done = rel.read(run_id, idx)
-            for f in frames:
-                idx += 1
-                yield f
-            if done:
-                break
-            if frames:
-                empty = 0
-            else:
-                empty += 1
-                if empty > 300:
+        rel.subscriber_opened(run_id)
+        try:
+            idx = max(0, int(from_idx))
+            empty = 0
+            while True:
+                frames, done = rel.read(run_id, idx)
+                for f in frames:
+                    idx += 1
+                    yield f
+                if done:
+                    rel.mark_consumed(run_id)
                     break
-            await asyncio.sleep(0.08)
+                if frames:
+                    empty = 0
+                else:
+                    empty += 1
+                    if empty > 300:
+                        break
+                await asyncio.sleep(0.08)
+        finally:
+            rel.subscriber_closed(run_id)
 
     return StreamingResponse(_gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Run-Id": run_id})
@@ -920,22 +925,27 @@ async def chat_session_live(session_id: str):
         return Response(status_code=204)
 
     async def _gen():
-        idx = 0
-        empty = 0
-        while True:
-            frames, done = rel.read(run_id, idx)
-            for f in frames:
-                idx += 1
-                yield f
-            if done:
-                break
-            if frames:
-                empty = 0
-            else:
-                empty += 1
-                if empty > 300:
+        rel.subscriber_opened(run_id)
+        try:
+            idx = 0
+            empty = 0
+            while True:
+                frames, done = rel.read(run_id, idx)
+                for f in frames:
+                    idx += 1
+                    yield f
+                if done:
+                    rel.mark_consumed(run_id)
                     break
-            await asyncio.sleep(0.08)
+                if frames:
+                    empty = 0
+                else:
+                    empty += 1
+                    if empty > 300:
+                        break
+                await asyncio.sleep(0.08)
+        finally:
+            rel.subscriber_closed(run_id)
 
     return StreamingResponse(_gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Run-Id": run_id})

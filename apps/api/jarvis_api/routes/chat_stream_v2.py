@@ -150,22 +150,27 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
 
         async def _subscribe():
             import asyncio as _a
-            idx = 0
-            empty = 0
-            while True:
-                frames, done = rel.read(run_id, idx)
-                for f in frames:
-                    idx += 1
-                    yield f
-                if done:
-                    break
-                if frames:
-                    empty = 0
-                else:
-                    empty += 1
-                    if empty > 300:  # ~24s helt tavst (pings hver 5s) → giv op
+            rel.subscriber_opened(run_id)
+            try:
+                idx = 0
+                empty = 0
+                while True:
+                    frames, done = rel.read(run_id, idx)
+                    for f in frames:
+                        idx += 1
+                        yield f
+                    if done:
+                        rel.mark_consumed(run_id)  # saa runnet til ende -> undertryk push
                         break
-                await _a.sleep(0.08)
+                    if frames:
+                        empty = 0
+                    else:
+                        empty += 1
+                        if empty > 300:  # ~24s helt tavst (pings hver 5s) → giv op
+                            break
+                    await _a.sleep(0.08)
+            finally:
+                rel.subscriber_closed(run_id)
 
         return StreamingResponse(
             _subscribe(),

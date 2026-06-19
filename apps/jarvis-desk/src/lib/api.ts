@@ -589,6 +589,34 @@ export async function getVisibleProviders(config: ApiConfig): Promise<VisiblePro
   }
 }
 
+/** Device-presence: rapportér denne enheds tilstand (fokus/vågen/interaktion). */
+export async function presencePing(config: ApiConfig, body: object): Promise<void> {
+  try { await apiFetch(config, '/presence/ping', { method: 'POST', body, retries: 0 }) } catch { /* presence er best-effort */ }
+}
+
+export interface PendingNotification {
+  notif_id: string
+  kind: string
+  title: string
+  body: string
+  session_id: string
+}
+
+/** Hent ventende proaktive desktop-notifikationer (drainer server-køen). */
+export async function fetchPendingNotifications(config: ApiConfig): Promise<PendingNotification[]> {
+  try {
+    const r = await apiFetch<{ items?: PendingNotification[] }>(config, '/notifications/pending', { retries: 0 })
+    return Array.isArray(r.items) ? r.items : []
+  } catch {
+    return []
+  }
+}
+
+/** Kvittér en notifikation (vist/åbnet) → annullerer eskalering server-side. */
+export async function ackNotification(config: ApiConfig, notifId: string): Promise<void> {
+  try { await apiFetch(config, '/notifications/ack', { method: 'POST', body: { notif_id: notifId }, retries: 0 }) } catch { /* best-effort */ }
+}
+
 /** Mål forbindelses-latency mod serveren (ping). Returnerer ms eller null hvis nede. */
 export async function pingServer(config: ApiConfig): Promise<number | null> {
   const url = new URL('/openapi.json', config.apiBaseUrl).toString()

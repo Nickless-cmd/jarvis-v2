@@ -10,7 +10,8 @@ import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { usePermission } from '../hooks/usePermission'
 import { useOnline } from '../hooks/useOnline'
 import { readModelPrefs } from '../lib/composerPrefs'
-import { getContextInfo, getActiveRuns, followRun } from '../lib/api'
+import { getContextInfo, getActiveRuns, followRun, presencePing, fetchPendingNotifications, ackNotification } from '../lib/api'
+import { buildPingBody } from '../lib/presence'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
@@ -51,6 +52,10 @@ export function ChatView({
   // at "dumpe" det ind når det er færdigt). Egen reducer fodret af /follow-SSE'en.
   const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
+  // Device-presence: rapportér denne enheds tilstand så Jarvis ruter proaktive
+  // notifikationer til den rigtige enhed. interactedRef sættes ved hvert send.
+  const interactedRef = useRef(false)
+  const deviceKeyRef = useRef<string>('')
 
   // Context-ring (#9): hent autocompact-tærsklen én gang.
   useEffect(() => {
@@ -132,11 +137,66 @@ export function ChatView({
           }
         })
         .catch(() => { /* behold sidste — ingen flicker ved netværks-blip */ })
+      // Proaktive desktop-notifikationer (device-awareness): drain server-køen,
+      // vis native OS-notifikation, og kvittér (annullerer eskalering til mobil).
+      void fetchPendingNotifications(cfg)
+        .then((items) => {
+          if (cancelled || items.length === 0) return
+          const b = (window as unknown as { jarvisDesk?: { notifyShow?: (k: string, t: string, body: string) => void } }).jarvisDesk
+          for (const it of items) {
+            try { b?.notifyShow?.(it.kind, it.title || 'Jarvis', it.body || '') } catch { /* noop */ }
+            void ackNotification(cfg, it.notif_id)
+          }
+        })
+        .catch(() => { /* best-effort */ })
     }
     tick()
     const id = setInterval(tick, 1500) // hurtigere → fanger korte autonome runs
     return () => { cancelled = true; clearInterval(id) }
   }, [settings, sessionId, stream.status, stream.workingSessionId])
+
+  // Device-presence-rapportering (hvert 5s mens appen kører). Lader Jarvis vide
+  // at DENNE desktop er nåbar + om den er i fokus/vågen → routing af proaktive
+  // notifikationer. device_key persisteres i app-config (genereres ved 1. start).
+  useEffect(() => {
+    if (!settings) return
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    const bridge = (window as unknown as {
+      jarvisDesk?: {
+        config?: { get?: () => Promise<{ appId?: string }> }
+        isAwake?: () => Promise<boolean>
+      }
+    }).jarvisDesk
+    let cancelled = false
+    // device_key = installationens stabile appId (persistent UUID4, sat ved 1. launch).
+    const ensureKey = async (): Promise<string> => {
+      if (deviceKeyRef.current) return deviceKeyRef.current
+      try {
+        const c = (await bridge?.config?.get?.()) || {}
+        if (c.appId) { deviceKeyRef.current = c.appId; return c.appId }
+      } catch { /* fald igennem */ }
+      const key = (globalThis.crypto?.randomUUID?.() ?? `desk-${Date.now()}-${Math.floor(Math.random() * 1e9)}`)
+      deviceKeyRef.current = key
+      return key
+    }
+    const ping = async (): Promise<void> => {
+      if (cancelled) return
+      const key = await ensureKey()
+      let awake = true
+      try { awake = (await bridge?.isAwake?.()) ?? true } catch { /* default vågen */ }
+      const body = buildPingBody({
+        deviceKey: key,
+        foreground: typeof document !== 'undefined' ? document.hasFocus() : true,
+        awake,
+        interaction: interactedRef.current,
+      })
+      interactedRef.current = false
+      void presencePing(cfg, body)
+    }
+    void ping()
+    const pid = setInterval(() => { void ping() }, 5000)
+    return () => { cancelled = true; clearInterval(pid) }
+  }, [settings])
 
   useEffect(() => {
     if (stream.status === 'done' && stream.blocks.length > 0 && reconciledForRun.current !== stream.activeRunId) {
@@ -232,6 +292,7 @@ export function ChatView({
   }, [stream.blocks, followState.blocks, atBottom])
 
   const doSend = async (text: string, opts: ComposerSendOpts) => {
+    interactedRef.current = true  // device-presence: markér aktiv interaktion på denne enhed
     let sid = sessionId
     if (!sid) {
       const created = await sessions.create('Ny samtale')

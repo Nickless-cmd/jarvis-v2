@@ -30,6 +30,10 @@ export interface JarvisDeskBridge {
   setTrayAttention: (on: boolean) => Promise<void>
   /** Native OS-notifikation når et run slutter. */
   notifyTaskDone: (title: string, body: string) => Promise<void>
+  /** Proaktiv device-awareness-notifikation (vises altid, også i fokus). */
+  notifyShow: (kind: string, title: string, body: string) => Promise<void>
+  /** Er maskinen vågen (ikke i sleep)? Til device-presence. */
+  isAwake: () => Promise<boolean>
   /** Åbn native mappe-vælger; returnerer valgt sti eller null. */
   pickFolder: () => Promise<string | null>
   /** Eksportér markdown til en fil via native gem-dialog; true hvis gemt. */
@@ -69,6 +73,8 @@ const bridge: JarvisDeskBridge = {
   setActiveSession: (sessionId) => ipcRenderer.invoke('run:setSession', sessionId),
   setTrayAttention: (on) => ipcRenderer.invoke('tray:attention', on),
   notifyTaskDone: (title, body) => ipcRenderer.invoke('notify:taskDone', title, body),
+  notifyShow: (kind, title, body) => ipcRenderer.invoke('notify:show', kind, title, body),
+  isAwake: () => ipcRenderer.invoke('power:isAwake'),
   pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),
   exportMarkdown: (markdown, suggestedName) => ipcRenderer.invoke('session:exportMarkdown', markdown, suggestedName),
   terminal: {

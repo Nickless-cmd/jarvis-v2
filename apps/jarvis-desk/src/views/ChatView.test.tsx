@@ -29,6 +29,9 @@ vi.mock('../lib/api', () => ({
   getModelContext: vi.fn().mockResolvedValue({ window: 1000000, compact_at: 200000, effective: 200000 }),
   getActiveRuns: vi.fn().mockResolvedValue([]),
   followRun: vi.fn(() => ({ abort: vi.fn() })),
+  presencePing: vi.fn().mockResolvedValue(undefined),
+  fetchPendingNotifications: vi.fn().mockResolvedValue([]),
+  ackNotification: vi.fn().mockResolvedValue(undefined),
 }))
 
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }

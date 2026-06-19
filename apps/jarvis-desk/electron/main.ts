@@ -22,6 +22,7 @@ import {
   Tray,
   Notification,
   dialog,
+  powerMonitor,
 } from 'electron'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
@@ -406,12 +407,12 @@ ipcMain.handle('dialog:pickFolder', async () => {
 // Native "opgave færdig"-notifikation når et run slutter. Springes over hvis
 // vinduet allerede er i fokus (ingen grund til at notificere/badge når brugeren
 // kigger på appen — det er netop dér det grønne tal blev hængende).
-ipcMain.handle('notify:taskDone', (_event, title: string, body: string) => {
+function showNativeNotification(title: string, body: string, opts?: { skipWhenFocused?: boolean }): void {
   if (!Notification.isSupported()) return
-  if (mainWindow?.isFocused()) return
+  if (opts?.skipWhenFocused && mainWindow?.isFocused()) return
   const n = new Notification({
     title: title || 'Jarvis',
-    body: body || 'Opgaven er færdig.',
+    body: body || 'Jarvis vil dig noget.',
     icon: trayAsset('bright'),
     silent: false,
   })
@@ -422,7 +423,24 @@ ipcMain.handle('notify:taskDone', (_event, title: string, body: string) => {
   n.on('close', () => { if (lastNotification === n) lastNotification = null })
   lastNotification = n
   n.show()
+}
+
+ipcMain.handle('notify:taskDone', (_event, title: string, body: string) => {
+  // Bagudkompat: spring over når vinduet er i fokus (det grønne tal hænger ellers).
+  showNativeNotification(title, body || 'Opgaven er færdig.', { skipWhenFocused: true })
 })
+
+// Proaktiv device-awareness-notifikation (svar-klar/reminder/initiativ rutet hertil).
+// Vis ALTID — også i fokus — for proaktive beskeder er pointen at nå brugeren.
+ipcMain.handle('notify:show', (_event, _kind: string, title: string, body: string) => {
+  showNativeNotification(title, body)
+})
+
+// Sleep/wake-tilstand til device-presence (sovende desktop = ikke routing-kandidat).
+let _systemAwake = true
+powerMonitor.on('suspend', () => { _systemAwake = false })
+powerMonitor.on('resume', () => { _systemAwake = true })
+ipcMain.handle('power:isAwake', () => _systemAwake)
 
 // Eksportér en samtale som markdown — via native gem-dialog (renderer-side blob-
 // download er upålidelig i Electron). Renderer bygger markdown'en, main skriver

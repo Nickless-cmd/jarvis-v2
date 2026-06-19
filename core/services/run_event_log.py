@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import threading
 import time
+from uuid import uuid4
 
 _lock = threading.Lock()
 # run_id -> {session_id, frames: list[str], done: bool, last_append_at: float, created_at: float}
@@ -151,3 +152,34 @@ def was_consumed_or_active(run_id: str) -> bool:
         if st is None:
             return False
         return bool(st.get("consumed")) or int(st.get("subscribers", 0)) > 0
+
+
+def claim_or_create(session_id: str, stale_cap_s: float = 150.0) -> tuple[str, bool]:
+    """Atomisk find-eller-opret pr. session — under én laas, saa samtidige POSTs
+    (hurtige gen-sends) ikke begge opretter et run (rod-aarsag til hard-block).
+    Stale-cap: et ikke-done run aeldre end stale_cap_s antages doedt/haengt og
+    claimes IKKE -> ny besked starter et frisk run. Returnerer (run_id, is_new)."""
+    sid = (session_id or "").strip()
+    now = time.monotonic()
+    with _lock:
+        existing = None
+        newest = -1.0
+        for rid, st in _RUNS.items():
+            if (st["session_id"] == sid and not st["done"]
+                    and (now - st["created_at"]) < stale_cap_s):
+                if st["created_at"] > newest:
+                    newest = st["created_at"]
+                    existing = rid
+        if existing is not None:
+            return existing, False
+        rid = f"visible-{uuid4().hex}"
+        _RUNS[rid] = {
+            "session_id": sid,
+            "frames": [],
+            "done": False,
+            "last_append_at": now,
+            "created_at": now,
+            "subscribers": 0,
+            "consumed": False,
+        }
+        return rid, True

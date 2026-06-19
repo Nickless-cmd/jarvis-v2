@@ -23,6 +23,7 @@ def start_user_run_detached(
     eff_model: str = "",
     eff_provider: str = "",
     lane: str = "",
+    run_id: str | None = None,
 ) -> str:
     """Start et server-autoritativt run. Returnerer run_id (klienten abonnerer
     via run_event_log gennem /chat/stream/v2 eller /chat/runs/{id}/subscribe)."""
@@ -33,9 +34,11 @@ def start_user_run_detached(
     from core.services.visible_runs import start_visible_run
     from core.services.visible_runs_sse_v2 import translate_to_v2
 
-    run_id = f"visible-{uuid4().hex}"
     sid = (session_id or "").strip()
-    rel.create(run_id, sid)  # synkront FØR retur → straks synlig i live_run_ids
+    if not run_id:
+        run_id = f"visible-{uuid4().hex}"
+        rel.create(run_id, sid)  # synkront FØR retur → straks synlig i live_run_ids
+    # ellers: run_id er allerede claimet+oprettet atomisk af claim_or_create
 
     legacy_iter = start_visible_run(
         message=message,
@@ -130,8 +133,9 @@ def start_or_attach_user_run(
     import core.services.run_event_log as rel
 
     sid = (session_id or "").strip()
-    existing = rel.active_run_for_session(sid)
-    if existing and rel.is_live(existing):
+    # ATOMISK claim (rod-fix mod rapid-resend-race): find-eller-opret under laas.
+    claimed, is_new = rel.claim_or_create(sid)
+    if not is_new:
         if nudge_enabled:
             try:
                 from core.services.outbound_nudges import push_nudge
@@ -145,7 +149,7 @@ def start_or_attach_user_run(
                 )
             except Exception:
                 pass
-        return existing, True
+        return claimed, True
 
-    run_id = start_user_run_detached(message=message, session_id=session_id, **kw)
+    run_id = start_user_run_detached(message=message, session_id=session_id, run_id=claimed, **kw)
     return run_id, False

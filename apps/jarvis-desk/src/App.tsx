@@ -14,6 +14,7 @@ import { UiPanelWatcher } from './components/UiPanelWatcher'
 import { AiTransparencyNotice } from './components/AiTransparencyNotice'
 import { GlobalShortcuts } from './components/GlobalShortcuts'
 import { ApprovalNotifier } from './components/ApprovalNotifier'
+import { PresenceHost } from './components/PresenceHost'
 import { SessionSearch } from './components/SessionSearch'
 import { usePanel } from './hooks/usePanel'
 import { SplitLayout } from './components/panel/SplitLayout'
@@ -171,6 +172,8 @@ function Shell({
       <Sidebar surface={surface} onSurface={setSurface} userName={userName} />
       <main className="main">
         <ShortcutsHost setSurface={setSurface} onSearch={() => setSearchOpen(true)} />
+        <PresenceHost />
+
         <SessionSearch
           open={searchOpen}
           config={cfg}

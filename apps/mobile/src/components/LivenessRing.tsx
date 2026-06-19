@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Animated, Easing, StyleSheet, View } from 'react-native'
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg'
 import { tokens } from '../theme/tokens'
+import { useReducedMotion } from '../lib/useReducedMotion'
 
 type Liveness = 'idle' | 'working' | 'error'
 
@@ -12,9 +13,10 @@ type Liveness = 'idle' | 'working' | 'error'
  */
 export function LivenessRing({ status = 'idle', size = 28 }: { status?: Liveness; size?: number }) {
   const pulse = useRef(new Animated.Value(0)).current
+  const reduced = useReducedMotion()
 
   useEffect(() => {
-    if (status !== 'working') {
+    if (status !== 'working' || reduced) {
       pulse.stopAnimation()
       pulse.setValue(0)
       return
@@ -27,7 +29,7 @@ export function LivenessRing({ status = 'idle', size = 28 }: { status?: Liveness
     )
     loop.start()
     return () => loop.stop()
-  }, [status, pulse])
+  }, [status, pulse, reduced])
 
   const ringColor = status === 'error' ? tokens.color.error : tokens.color.accent
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] })

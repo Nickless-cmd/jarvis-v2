@@ -28,6 +28,7 @@ export function Composer({
 }) {
   const [text, setText] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [focused, setFocused] = useState(false)
 
   const submit = async () => {
     const value = text.trim()
@@ -46,11 +47,13 @@ export function Composer({
 
   return (
     <View style={styles.outer}>
-      <View style={styles.card}>
+      <View style={[styles.card, focused ? styles.cardFocused : null]}>
         <TextInput
           testID="composer-input"
           value={text}
           onChangeText={setText}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           multiline
           editable={!disabled}
           placeholder="Skriv til Jarvis"
@@ -101,7 +104,7 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spacing.md
   },
   card: {
-    backgroundColor: tokens.color.bg1,
+    backgroundColor: tokens.color.depth1,
     borderRadius: 22,
     borderWidth: 1,
     borderColor: tokens.color.line,
@@ -115,6 +118,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4
   },
+  // accent-fokus-kant (§3.7) — subtil glød når man skriver
+  cardFocused: { borderColor: tokens.color.accent },
   input: {
     minHeight: 28,
     maxHeight: 140,

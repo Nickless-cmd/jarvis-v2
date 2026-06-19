@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Animated } from 'react-native'
 import { tokens } from '../theme/tokens'
+import { useReducedMotion } from '../lib/useReducedMotion'
 
 /**
  * Lille accent-prik der pulserer som et HJERTE (to hurtige slag pr. løkke) —
@@ -9,7 +10,9 @@ import { tokens } from '../theme/tokens'
  */
 export function HeartbeatDot({ size = 8, color = tokens.color.accent }: { size?: number; color?: string }) {
   const beat = useRef(new Animated.Value(0)).current
+  const reduced = useReducedMotion()
   useEffect(() => {
+    if (reduced) return
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(beat, { toValue: 1, duration: 140, useNativeDriver: true }),
@@ -21,7 +24,7 @@ export function HeartbeatDot({ size = 8, color = tokens.color.accent }: { size?:
     )
     loop.start()
     return () => loop.stop()
-  }, [beat])
+  }, [beat, reduced])
   const scale = beat.interpolate({ inputRange: [0, 1], outputRange: [1, 1.3] })
   return (
     <Animated.View

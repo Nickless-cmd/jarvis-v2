@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Animated, View } from 'react-native'
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 import { tokens } from '../theme/tokens'
+import { useReducedMotion } from '../lib/useReducedMotion'
 
 /**
  * Tynd glødende linje (svg LinearGradient) der glider venstre→højre mens Jarvis
@@ -9,8 +10,9 @@ import { tokens } from '../theme/tokens'
  */
 export function StreamIndicator({ active, width = 320 }: { active: boolean; width?: number }) {
   const x = useRef(new Animated.Value(0)).current
+  const reduced = useReducedMotion()
   useEffect(() => {
-    if (!active) {
+    if (!active || reduced) {
       x.stopAnimation()
       return
     }
@@ -19,7 +21,7 @@ export function StreamIndicator({ active, width = 320 }: { active: boolean; widt
     )
     loop.start()
     return () => loop.stop()
-  }, [active, x])
+  }, [active, reduced, x])
   if (!active) return null
   const translateX = x.interpolate({ inputRange: [0, 1], outputRange: [-width, width] })
   return (

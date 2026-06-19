@@ -1,26 +1,13 @@
-"""Detached (request-uafhængig) bruger-run → live session-broadcast (A3).
+"""Detached (request-uafhængig) bruger-run → server-autoritativt via run_event_log.
 
-Problem: i den oprindelige sti drev FastAPI's StreamingResponse-generator selve
-runnet — så når en klient mistede forbindelsen (mobil baggrundede, skærm sov)
-blev request-generatoren lukket, hvilket cancellede runnet server-side og
-efterlod en zombie active_run-slot.
-
-Fix: kør runnet i en BAGGRUNDSTRÅD der tee'er sine v2-SSE-frames til
-run_follow-bufferen pr. session. `/chat/stream/v2` (og enhver anden klient)
-*følger* så bare bufferen via run_follow. Klientens forbindelse driver ikke
-længere runnet → disconnect aflyser det ikke; runnet kører færdigt, persisterer
-sit svar og unregistrerer sig selv (zombie-slot kureret ved roden). En mobil der
-vender tilbage re-attacher via GET /chat/sessions/{id}/follow og fanger op.
-
-Nudge-sikkerhed: `start_visible_run` har en midway-nudge-guard (sender man en
-besked mens et run kører, fødes den ind i det aktive run i stedet for at starte
-et nyt). `begin_follow` NULSTILLER bufferen — det må KUN ske ved et ægte nyt
-run. Vi bruger `has_active_follow(session_id)` som signal: er der allerede en
-ikke-afsluttet follow-buffer, er et run i gang → behandl som nudge (nulstil
-IKKE, tee IKKE — det aktive runs egen tråd ejer bufferen; vi driver bare
-iteratoren så followup'en når Jarvis' bevidsthed).
+Runnet kører i en baggrundstråd og tee'er sine v2-frames til run_event_log[run_id].
+HTTP-forbindelser er bare abonnenter. Klient-disconnect aflyser IKKE runnet; det
+kører færdigt, persisterer i DB og unregistrerer sig (via gen.aclose i finally).
+Log keyed pr. RUN → ingen kollision mellem overlappende runs (A3's fejl elimineret).
 """
 from __future__ import annotations
+
+from uuid import uuid4
 
 
 def start_user_run_detached(
@@ -37,34 +24,19 @@ def start_user_run_detached(
     eff_provider: str = "",
     lane: str = "",
 ) -> str:
-    """Start et bruger-run afkoblet fra request-forbindelsen. Returnerer
-    session_id (klienten følger bufferen via run_follow). Fire-and-forget."""
+    """Start et server-autoritativt run. Returnerer run_id (klienten abonnerer
+    via run_event_log gennem /chat/stream/v2 eller /chat/runs/{id}/subscribe)."""
     import contextvars as _ctxvars
     import threading
 
-    from core.services.run_follow import (
-        begin_follow,
-        end_follow,
-        has_active_follow,
-        publish_follow_frame,
-    )
+    import core.services.run_event_log as rel
     from core.services.visible_runs import start_visible_run
     from core.services.visible_runs_sse_v2 import translate_to_v2
 
+    run_id = f"visible-{uuid4().hex}"
     sid = (session_id or "").strip()
+    rel.create(run_id, sid)  # synkront FØR retur → straks synlig i live_run_ids
 
-    # Ægte nyt run vs nudge: en aktiv (ikke-done) follow-buffer betyder at et run
-    # allerede tee'er til denne session → nudge. Kun ved et ægte nyt run nulstiller
-    # vi bufferen (synkront, FØR vi returnerer, så klientens follow-respons ser en
-    # frisk, ikke-done buffer i stedet for at replaye et tidligere afsluttet svar).
-    fresh = not has_active_follow(sid)
-    if fresh:
-        try:
-            begin_follow(sid, "")
-        except Exception:
-            pass
-
-    # Guard'en i start_visible_run kører her (stuck-clear + nudge-interception).
     legacy_iter = start_visible_run(
         message=message,
         session_id=session_id,
@@ -84,61 +56,43 @@ def start_user_run_detached(
         async def _consume() -> None:
             gen = translate_to_v2(
                 legacy_iter,
-                run_id="",
+                run_id=run_id,
                 model=eff_model,
                 provider=eff_provider,
                 lane=lane,
                 session_id=sid,
                 ping_interval_s=5.0,
             )
-            # aclose() i finally propagerer GeneratorExit ned gennem translate_to_v2
-            # → legacy_iter (_stream_visible_run) → dens finally kører unregister_
-            # visible_run. Uden dette ville en fejl/tidlig-exit efterlade en
-            # forældreløs controller = zombie active-run (desktop-prikker hænger).
             try:
-                if fresh:
+                async for frame in gen:
                     try:
-                        async for frame in gen:
-                            try:
-                                publish_follow_frame(sid, frame)
-                            except Exception:
-                                pass
-                    finally:
-                        try:
-                            end_follow(sid)
-                        except Exception:
-                            pass
-                else:
-                    # Nudge: driv iteratoren (så followup'en injiceres i det aktive
-                    # run) men tee IKKE — det aktive runs tråd ejer bufferen.
-                    async for _frame in gen:
+                        rel.append(run_id, frame)
+                    except Exception:
                         pass
             finally:
                 try:
-                    await gen.aclose()
+                    await gen.aclose()  # -> _stream_visible_run finally -> unregister
+                except Exception:
+                    pass
+                try:
+                    rel.mark_done(run_id)
+                except Exception:
+                    pass
+                try:
+                    rel.prune()
                 except Exception:
                     pass
 
         try:
             loop.run_until_complete(_consume())
         except Exception:
-            # Sidste-udvej: hvis et ægte run dør hårdt, markér bufferen done så
-            # følgende klienter ikke poller i det uendelige.
-            if fresh:
-                try:
-                    end_follow(sid)
-                except Exception:
-                    pass
+            try:
+                rel.mark_done(run_id)
+            except Exception:
+                pass
         finally:
             loop.close()
 
-    # ContextVars (workspace_name, user_id) skal propageres ind i tråden — ellers
-    # ser downstream-kode default-workspace uanset hvad routen bandt.
     _ctx = _ctxvars.copy_context()
-    threading.Thread(
-        target=lambda: _ctx.run(_in_thread),
-        name="jarvis-user-run",
-        daemon=True,
-    ).start()
-
-    return sid
+    threading.Thread(target=lambda: _ctx.run(_in_thread), name="jarvis-user-run", daemon=True).start()
+    return run_id

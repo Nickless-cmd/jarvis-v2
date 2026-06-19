@@ -183,7 +183,16 @@ export function ChatView({
     followCtrlRef.current = followRun(
       cfg, sessionId,
       (ev) => followDispatch(ev),
-      () => { followCtrlRef.current = null },
+      () => {
+        followCtrlRef.current = null
+        // Et fulgt (cross-device/autonomt) run er afsluttet → hent den
+        // persisterede + rensede besked ind i den ÅBNE transcript. Uden dette
+        // står visningen tom indtil bruger skifter session (sessions.refresh i
+        // pollet kan misse det sidste run hvis bgActive lige er droppet). To
+        // forsøg dækker persist-latency (jf. den lokale reconcile-effekt).
+        setTimeout(() => { void sessions.refresh() }, 600)
+        setTimeout(() => { void sessions.refresh() }, 2000)
+      },
     )
     return () => { followCtrlRef.current?.abort(); followCtrlRef.current = null }
   }, [bgActive, sessionId, settings])

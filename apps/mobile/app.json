@@ -2,7 +2,7 @@
   "expo": {
     "name": "Jarvis",
     "slug": "jarvis-mobile",
-    "version": "0.1.25",
+    "version": "0.1.26",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {

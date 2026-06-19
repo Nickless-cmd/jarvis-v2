@@ -25,7 +25,9 @@ async function fetchLatest(config: ApiConfig, sessionId: string): Promise<string
     })
     if (!r.ok) return null
     const j = await r.json()
-    const msgs = j.messages ?? []
+    // GET /chat/sessions/{id} returnerer {session: {..., messages: [...]}} —
+    // beskederne ligger NESTED under session (ikke top-niveau).
+    const msgs = j.session?.messages ?? j.messages ?? []
     const last = [...msgs].reverse().find((m: { role?: string }) => m.role === 'assistant')
     if (!last) return null
     const c = last.content

@@ -42,8 +42,21 @@ def test_is_live_and_live_run_ids():
 
 def test_is_live_false_when_stale():
     rel.create("r1", "s1")
+    # Stale kraever BAADE gammelt append OG gammel oprettelse (create-grace
+    # holder et nyt run live i det synkrone assembly-vindue).
     rel._RUNS["r1"]["last_append_at"] = time.monotonic() - 999
+    rel._RUNS["r1"]["created_at"] = time.monotonic() - 999
     assert rel.is_live("r1") is False
+
+
+def test_create_grace_keeps_new_run_live_without_appends():
+    # Et frisk-oprettet run uden appends (det 14-19s sync assembly blokerer
+    # ping-loopet) skal taelle som live i grace-vinduet, ellers flakker
+    # /active-runs + /live og desktop-follow trigger ikke.
+    rel.create("r1", "s1")
+    rel._RUNS["r1"]["last_append_at"] = time.monotonic() - 999  # ingen nylig append
+    assert rel.is_live("r1") is True
+    assert "r1" in rel.live_run_ids()
 
 
 def test_frame_cap():

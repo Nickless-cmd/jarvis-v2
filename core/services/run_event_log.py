@@ -18,6 +18,7 @@ _RUNS: dict[str, dict] = {}
 _MAX_FRAMES = 4000   # runaway-værn pr. run
 _LIVE_IDLE_S = 20.0  # pings hver ~5s holder live under tool-runder
 _KEEP_DONE_PER_SESSION = 1  # behold seneste afsluttede log pr. session til sen reconnect
+_CREATE_GRACE_S = 60.0  # nyt run uden appends taelles live i assembly-vinduet (sync assembly blokerer ping-loop)
 
 
 def create(run_id: str, session_id: str) -> None:
@@ -78,7 +79,10 @@ def is_live(run_id: str) -> bool:
         st = _RUNS.get((run_id or "").strip())
         if not st or st["done"]:
             return False
-        return (time.monotonic() - st["last_append_at"]) < _LIVE_IDLE_S
+        now = time.monotonic()
+        # Live hvis nylig append ELLER for nyligt oprettet (assembly-grace).
+        return ((now - st["last_append_at"]) < _LIVE_IDLE_S
+                or (now - st["created_at"]) < _CREATE_GRACE_S)
 
 
 def live_run_ids() -> list[str]:
@@ -86,7 +90,10 @@ def live_run_ids() -> list[str]:
     with _lock:
         return [
             rid for rid, st in _RUNS.items()
-            if not st["done"] and (now - st["last_append_at"]) < _LIVE_IDLE_S
+            if not st["done"] and (
+                (now - st["last_append_at"]) < _LIVE_IDLE_S
+                or (now - st["created_at"]) < _CREATE_GRACE_S
+            )
         ]
 
 

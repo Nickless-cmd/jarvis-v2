@@ -81,6 +81,27 @@ def start_user_run_detached(
                     rel.mark_done(run_id)
                 except Exception:
                     pass
+                # Ryd den globale active-visible-run-singleton for DENNE session.
+                # Den detached-sti er nu single-flight via run_event_log
+                # (claim_or_create), men start_visible_run's gamle globale slot
+                # bliver IKKE ryddet pålideligt: translate_to_v2 breaker på 'done'
+                # uden at udtømme legacy_iter, så _stream_visible_run's finally
+                # (unregister) aldrig kører — slottet bliver hængende "active".
+                # Næste besked inden for 120s ramte så den gamle midway-nudge-
+                # interception (nudge_system_enabled defaulter True) → _midway_ack
+                # → TOM stream → desktop "Forbindelse afbrudt" (rod-årsag fundet
+                # 2026-06-19). Single-flight garanterer at intet andet run for
+                # sessionen er aktivt når dette run er done → sikkert at rydde.
+                try:
+                    from core.services.visible_runs import (
+                        _get_active_visible_run_state,
+                        _set_active_visible_run,
+                    )
+                    _st = _get_active_visible_run_state() or {}
+                    if str(_st.get("session_id") or "") == sid:
+                        _set_active_visible_run({})
+                except Exception:
+                    pass
                 try:
                     from core.services.push_dispatcher import on_run_done
                     on_run_done(run_id)

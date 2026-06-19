@@ -82,11 +82,11 @@ Disse værdier mirrores 1:1 i `tokens.css` (`--x`) og `tokens.ts`.
 
 ## 3. Komponent-katalog (§3) — alt i jarvis-mobile
 
-Hvert element re-styles på EKSISTERENDE mobil-komponent mod tokens (§2). Animation = RN `Animated` (`useNativeDriver: true`, transform/opacity).
+Hvert element re-styles på EKSISTERENDE mobil-komponent mod tokens (§2). Animation = RN `Animated` (`useNativeDriver: true`, transform/opacity). Gradienter = `react-native-svg` (installeret 15.15.4 → 1:1 med mockuppen).
 
-1. **Liveness-ring** (`§3.1`): den EKSISTERENDE `LivenessRing`/`JarvisRing` er allerede bygget med `<View>` + `Animated` og ånder. **Ingen `react-native-svg`** (ikke installeret → ingen ny dep). Glow opnås med View-baserede koncentriske lag: en ydre ring (`accent-dim` border/baggrund, lav opacity) + indre kerne — forstærk det eksisterende åndedræt: `Animated.loop` skalér 1.0↔1.08 + opacity 0.6↔1.0 over `breath`, `ease`. **Ikke blink.** Tre tilstande: idle (svag), working (stærkere, samme rytme), error (rød-tonet).
+1. **Liveness-ring** (`§3.1`): forbedr den EKSISTERENDE `LivenessRing`/`JarvisRing` (allerede `<View>`+`Animated`, ånder) med en ægte blød glød: `react-native-svg` `<RadialGradient>` (gennemsigtig kerne → `accent-dim` ved ~88% → gennemsigtig kant) i en `<Circle>` bag avataren — som i mockuppen. Åndedræt: `Animated.loop` skalér 1.0↔1.08 + opacity 0.6↔1.0 over `breath`, `ease` (animér en wrapper-`Animated.View`, ikke svg-internals). **Ikke blink.** Tre tilstande: idle (svag), working (stærkere, samme rytme), error (rød-tonet via accent→rød stop).
 
-2. **Stream-indikator** (`§3.5`): 2px linje over composeren. Accent-gradient der glider venstre→højre mens et run streamer (driv af eksisterende `serverBusy`/`stream.status==='working'`). Skjult ellers. `Animated` translateX-loop.
+2. **Stream-indikator** (`§3.5`): 2px linje over composeren via `react-native-svg` `<LinearGradient>` (transparent→`accent`→transparent) i en `<Rect>` — glødende fade som mockuppen. Glider venstre→højre (`Animated` translateX-loop) mens et run streamer (driv af eksisterende `serverBusy`/`stream.status==='working'`). Skjult ellers.
 
 3. **Glas-chatboble** (`§3.3`): bruger-boble (`MessageBubble`) = `glass-fill` + `glass-line`-kant, radius `lg`. Indgang: blød `Animated.spring` (scale 0.96→1.0 + opacity). Assistent-boble forbliver `depth-2` (solid). Frosted = semi-transparent fyld (ægte blur via `@react-native-community/blur` kun hvis allerede tilgængeligt — ellers approksimation; ingen ny native dep).
 
@@ -107,12 +107,13 @@ Hvert element re-styles på EKSISTERENDE mobil-komponent mod tokens (§2). Anima
 | | jarvis-mobile (React Native) |
 |---|---|
 | Tokens | `src/theme/tokens.ts` — udvid med depth/accent/glass/timing |
-| Animation | RN's indbyggede `Animated` med `useNativeDriver: true` |
-| Komponenter | `LivenessRing`, `JarvisRing`, MessageList/MessageRow (bobler + tool-kort), notif-prik, session-overgang, **Composer (re-style, alle funktioner bevaret)**. Alle re-styles på plads — ingen genskrivning. |
+| Animation | RN's indbyggede `Animated` (`useNativeDriver: true`) |
+| Gradienter | `react-native-svg` 15.15.4 (installeret) — RadialGradient/LinearGradient |
+| Komponenter | `LivenessRing`, `JarvisRing`, MessageList/`MessageBubble`/`ToolResultCard`, notif-prik, session-overgang, **Composer (re-style, alle funktioner bevaret)**. Alle re-styles på plads — ingen genskrivning. |
 
 **jarvis-desk:** urørt denne runde. Token-spec'et (§2) skrives så desk SENERE kan adoptere samme værdier i `tokens.css`, men ingen desk-ændringer nu.
 
-**Animations-bibliotek:** `react-native-reanimated` er IKKE installeret. For at undgå endnu en native rebuild bruger vi RN's indbyggede `Animated` med `useNativeDriver: true` (transform/opacity på GPU-tråden — smidigt nok til åndedræt/stream/spring, ingen ny native dep).
+**Native deps:** `react-native-svg` tilføjet (for 1:1-gradienter med mockuppen) → kræver én native rebuild. `react-native-reanimated` bruges IKKE (RN's `Animated` er nok til loops/spring). Build-pipelinen er bevist i dag (RNFirebase+notifee), så svg-rebuild er lav-risiko.
 
 ---
 
@@ -133,9 +134,9 @@ Hvert element re-styles på EKSISTERENDE mobil-komponent mod tokens (§2). Anima
 
 ## 7. Afgrænsning & rækkefølge i plan
 
-Planen faser naturligt (alt i jarvis-mobile, **ingen nye native deps** — `react-native-svg`/blur er ikke installeret, så alt gøres med `<View>` + `Animated` + semi-transparent glas): (1) udvid `tokens.ts`, (2) liveness-ring + stream-indikator (kerne-følelsen), (3) glas-boble + tool-kort, (4) notif-prik + session-overgang + composer-restyle + accent-audit + reduced-motion. Hver fase er selvstændigt testbar; APK bygges + verificeres på enheden til sidst.
+Planen faser naturligt (alt i jarvis-mobile): (1) udvid `tokens.ts` + bekræft `react-native-svg`-autolink (rebuild), (2) liveness-ring + stream-indikator med svg-gradienter (kerne-følelsen, 1:1 mockup), (3) glas-boble + tool-kort, (4) notif-prik + session-overgang + composer-restyle + accent-audit + reduced-motion. Hver fase er selvstændigt testbar; APK bygges + verificeres på enheden.
 
-**Ingen ny native dep = ingen gradle/rebuild-risiko ud over JS** (modsat push-delprojektet) — animationer er ren JS/Animated.
+**Native rebuild kræves** (react-native-svg autolinkes ind) — én gang, pipeline bevist i dag. Bump versionCode ved build.
 
 ---
 

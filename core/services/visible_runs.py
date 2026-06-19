@@ -340,10 +340,26 @@ def is_visible_run_alive(run_id: str) -> bool:
     """
     if not run_id:
         return False
+    state = _get_active_visible_run_state() or {}
     if run_id in _VISIBLE_RUN_CONTROLLERS:
+        # Selv en registreret controller kan vaere foraeldreloes: et run kan doe
+        # uden at unregistrere (fx en afkoblet A3-traad der fejlede foer sit
+        # finally). Stol derfor IKKE blindt paa registry'et — hvis den DELTE
+        # heartbeat (last_activity_at) er stale ud over taersklen, er det en
+        # zombie. Saa haenger /chat/active-runs ikke paa et doedt run (desktop-
+        # aktivitetsprikker der aldrig slukker, Bjoern 2026-06-18).
+        if str(state.get("run_id") or "") == str(run_id) and not state.get("cancelled"):
+            ts0 = str(state.get("last_activity_at") or state.get("started_at") or "")
+            if ts0:
+                try:
+                    from datetime import UTC as _U, datetime as _dt
+                    age0 = (_dt.now(_U) - _dt.fromisoformat(ts0.replace("Z", "+00:00"))).total_seconds()
+                    if age0 >= _VISIBLE_RUN_STALE_S:
+                        return False
+                except Exception:
+                    pass
         return True
     try:
-        state = _get_active_visible_run_state() or {}
         if str(state.get("run_id") or "") != str(run_id) or state.get("cancelled"):
             return False
         ts = str(state.get("last_activity_at") or state.get("started_at") or "")
@@ -501,6 +517,48 @@ def start_visible_run(
                         controller = _VISIBLE_RUN_CONTROLLERS.get(stale_run_id)
                         if controller is not None:
                             controller.cancel()
+                    except Exception:
+                        pass
+                _set_active_visible_run({})
+                active = {}
+        # Same-session zombie-slot clear (2026-06-18 Claude). Hvis active_run
+        # for DENNE session peger på en kørsel der ALLEREDE er afsluttet i DB
+        # (completed/error/finished_at sat), så er slottet en zombie: kørslen
+        # lukkede, men unregister_visible_run() kørte aldrig (typisk fordi
+        # SSE-streamen blev droppet da mobilen baggrundede / skærmen sov, så
+        # generatorens finally ikke nåede at rydde slottet). Resultat: hver
+        # ny besked i de næste 120s blev midway-nudge't ind i en død kørsel →
+        # INTET svar (Bjørn 18. jun, mobil-companion). En afsluttet kørsel må
+        # aldrig blokere → ryd straks og start frisk run nedenfor.
+        if (active and bool(active.get("active"))
+                and not bool(active.get("cancelled"))
+                and normalized_session_id
+                and str(active.get("session_id") or "") == normalized_session_id):
+            _zid = str(active.get("run_id") or "")
+            try:
+                with connect() as _zc:
+                    _zrow = _zc.execute(
+                        "SELECT status, finished_at FROM visible_runs WHERE run_id = ?",
+                        (_zid,),
+                    ).fetchone()
+                _terminal = bool(_zrow) and (
+                    str(_zrow[0] or "").strip().lower()
+                    in ("completed", "error", "failed", "cancelled", "done")
+                    or bool(_zrow[1])
+                )
+            except Exception:
+                _terminal = False
+            if _terminal:
+                logger.warning(
+                    "visible_runs: same-session active_run %s already terminal in DB "
+                    "(zombie slot, unregister missed) — clearing and proceeding fresh",
+                    _zid,
+                )
+                if _zid in _VISIBLE_RUN_CONTROLLERS:
+                    try:
+                        _zctrl = _VISIBLE_RUN_CONTROLLERS.get(_zid)
+                        if _zctrl is not None:
+                            _zctrl.cancel()
                     except Exception:
                         pass
                 _set_active_visible_run({})

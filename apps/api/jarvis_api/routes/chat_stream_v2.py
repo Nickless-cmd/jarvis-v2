@@ -116,6 +116,74 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     except Exception:
         pass
 
+    if settings.server_authoritative_runs:
+        # SERVER-AUTORITATIV: kør detached + abonnér på run-loggen fra offset 0.
+        # Runnet lever uafhængigt af denne forbindelse → overlever app-baggrund.
+        from core.services.visible_runs_sections.detached_run import (
+            start_or_attach_user_run,
+        )
+        import core.services.run_event_log as rel
+
+        # Single-flight pr. session: hvis et run allerede er LIVE i sessionen,
+        # spawn ikke et samtidigt run (det klobber via active-run-singletonen →
+        # begge fejler). Helper'en attacher + nudger i stedet. Se helper-docstring.
+        run_id, _attached = start_or_attach_user_run(
+            message=effective_message,
+            session_id=session_id,
+            nudge_enabled=bool(getattr(settings, "nudge_system_enabled", True)),
+            approval_mode=request.approval_mode,
+            thinking_mode=request.thinking_mode,
+            force_user_id=_uid,
+            tool_scope=_tool_scope,
+            provider_override=_prov_override,
+            model_override=_model_override,
+            eff_model=_eff_model,
+            eff_provider=_eff_provider,
+            lane=settings.primary_model_lane,
+        )
+        if _attached:
+            print(
+                f"[chat/stream/v2] single-flight: session={session_id[:20]} "
+                f"attached til live run {run_id[:24]} (ingen nyt run)",
+                flush=True,
+            )
+
+        async def _subscribe():
+            import asyncio as _a
+            rel.subscriber_opened(run_id)
+            try:
+                idx = 0
+                empty = 0
+                while True:
+                    frames, done = rel.read(run_id, idx)
+                    for f in frames:
+                        idx += 1
+                        yield f
+                    if done:
+                        rel.mark_consumed(run_id)  # saa runnet til ende -> undertryk push
+                        break
+                    if frames:
+                        empty = 0
+                    else:
+                        empty += 1
+                        if empty > 300:  # ~24s helt tavst (pings hver 5s) → giv op
+                            break
+                    await _a.sleep(0.08)
+            finally:
+                rel.subscriber_closed(run_id)
+
+        return StreamingResponse(
+            _subscribe(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Stream-Protocol": "v2-anthropic",
+                "X-Run-Id": run_id,
+            },
+        )
+
+    # FLAG OFF → nuværende stabile A1-tee (uændret).
     legacy_iter = start_visible_run(
         message=effective_message,
         session_id=session_id,
@@ -137,8 +205,43 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         ping_interval_s=5.0,
     )
 
+    # Live session-broadcast (A): tee bruger-runnets v2-frames ind i run_follow-
+    # bufferen, så ANDRE klienter på samme session (desk/mobil/webchat) kan
+    # følge token-for-token via GET /chat/sessions/{id}/follow — og en mobil der
+    # mister sin egen SSE (baggrund/skærm sover) kan re-attache og fange op.
+    # Tee'en påvirker ikke den anmodende klients stream; en fejl her må aldrig
+    # bryde svaret, så alt run_follow-arbejde er try/except-indkapslet.
+    async def _broadcast_tee():
+        try:
+            from core.services.run_follow import (
+                begin_follow,
+                end_follow,
+                publish_follow_frame,
+            )
+        except Exception:
+            # run_follow utilgængelig → fald tilbage til ren passthrough.
+            async for frame in v2_stream:
+                yield frame
+            return
+        try:
+            begin_follow(session_id, "")
+        except Exception:
+            pass
+        try:
+            async for frame in v2_stream:
+                try:
+                    publish_follow_frame(session_id, frame)
+                except Exception:
+                    pass
+                yield frame
+        finally:
+            try:
+                end_follow(session_id)
+            except Exception:
+                pass
+
     return StreamingResponse(
-        v2_stream,
+        _broadcast_tee(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

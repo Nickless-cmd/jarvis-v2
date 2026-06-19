@@ -49,6 +49,18 @@ def get_pinned_session_id() -> str:
     return str(payload.get("session_id") or "").strip()
 
 
+def _push_proactive(session_id: str, text: str) -> None:
+    """Spejl en proaktiv session-notifikation som mobil-push til sessionens ejer."""
+    try:
+        from core.services.chat_sessions import get_session_owner
+        from core.services.push_dispatcher import on_initiative
+        owner = get_session_owner(session_id)
+        if owner:
+            on_initiative(owner, text)
+    except Exception:
+        pass
+
+
 def send_session_notification(
     content: str,
     *,
@@ -150,6 +162,7 @@ def send_session_notification(
             },
         )
         logger.info("notification_bridge: delivered [%s] to session %s", source, session_id)
+        _push_proactive(session_id, content)
         return {"status": "ok", "session_id": session_id, "source": source}
     except Exception as exc:
         logger.error("notification_bridge: delivery failed: %s", exc, exc_info=True)

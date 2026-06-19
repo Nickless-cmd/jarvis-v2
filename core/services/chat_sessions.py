@@ -791,3 +791,19 @@ def _emit_chat_sessions_event(kind: str, payload: dict[str, object] | None = Non
     except Exception:
         pass
 
+
+def get_session_owner(session_id: str) -> str | None:
+    """Ejeren = user_id paa den seneste besked i sessionen der HAR et stempel.
+    Returnerer None for ustemplede (legacy) sessioner."""
+    sid = (session_id or "").strip()
+    if not sid:
+        return None
+    from core.runtime.db import connect
+    with connect() as c:
+        row = c.execute(
+            """SELECT user_id FROM chat_messages
+               WHERE session_id=? AND user_id IS NOT NULL AND user_id<>''
+               ORDER BY rowid DESC LIMIT 1""",
+            (sid,),
+        ).fetchone()
+    return row[0] if row else None

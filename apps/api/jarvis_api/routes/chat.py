@@ -829,21 +829,126 @@ async def chat_active_runs() -> dict:
     fremme. Højst ét aktivt visible-run ad gangen. Friskheds-guard mod phantom-
     state (et run der døde uden at rydde op): kun med hvis < 10 min gammelt og
     ikke cancelled."""
-    from core.services.visible_runs import _get_active_visible_run_state, is_visible_run_alive
-    out: list[str] = []
+    # Autoritativ liveness via run_follow-bufferen (SAMME proces som de afkoblede
+    # runs + dette endpoint) — paalideligt for detached A3-runs og rydder
+    # OEJEBLIKKELIGT op naar et run afsluttes (end_follow). Erstatter det DELTE
+    # active-run-heartbeat, der halter cross-proces for detached runs og fik
+    # desktop-aktivitetsprikkerne til at haenge (Bjoern 2026-06-18).
+    from core.runtime.settings import load_settings
+    if load_settings().server_authoritative_runs:
+        import core.services.run_event_log as rel
+        sids: list[str] = []
+        for rid in rel.live_run_ids():
+            sid = rel.session_for_run(rid)
+            if sid and sid not in sids:
+                sids.append(sid)
+        return {"session_ids": sids}
+    # FLAG OFF -> run_follow.live_sessions (uaendret)
+    from core.services.run_follow import live_sessions
     try:
-        state = _get_active_visible_run_state() or {}
-        sid = str(state.get("session_id") or "").strip()
-        rid = str(state.get("run_id") or "").strip()
-        # AUTORITATIV liveness: medtag KUN hvis runnets controller faktisk lever
-        # i processen. Et dødt/crashet run (controller væk) forsvinder ØJEBLIKKELIGT
-        # — ikke først efter en 10-min freshness-timeout — så klientens reconciler
-        # straks kan rette UI'et fra 'working' til terminal (robust-streaming).
-        if sid and rid and not state.get("cancelled") and is_visible_run_alive(rid):
-            out.append(sid)
+        return {"session_ids": live_sessions()}
+    except Exception:
+        return {"session_ids": []}
+
+
+@router.post("/sessions/{session_id}/cancel-active")
+async def chat_cancel_active(session_id: str) -> dict:
+    """Afbryd det run der kører for sessionen (mobil/desk stop-knap naar klienten
+    ikke selv streamer runnet — fx efter baggrund hvor serveren stadig arbejder)."""
+    from core.services.visible_runs import (
+        _get_active_visible_run_state,
+        cancel_visible_run,
+    )
+    sid = (session_id or "").strip()
+    try:
+        st = _get_active_visible_run_state() or {}
+        if str(st.get("session_id") or "") == sid:
+            rid = str(st.get("run_id") or "")
+            if rid:
+                return {"cancelled": bool(cancel_visible_run(rid)), "run_id": rid}
     except Exception:
         pass
-    return {"session_ids": out}
+    return {"cancelled": False}
+
+
+@router.get("/runs/{run_id}/subscribe")
+async def chat_run_subscribe(run_id: str, from_idx: int = 0):
+    """Gen-abonner paa et server-autoritativt run fra et offset (mobil-reconnect
+    efter socket-drop). Catch-up fra from_idx + live-hale til done. 404 hvis
+    run_id ukendt/pruned -> klient falder tilbage til sessions.select."""
+    import asyncio
+    from fastapi import HTTPException
+    from fastapi.responses import StreamingResponse
+    import core.services.run_event_log as rel
+
+    if rel.session_for_run(run_id) is None:
+        raise HTTPException(status_code=404, detail="run not found")
+
+    async def _gen():
+        rel.subscriber_opened(run_id)
+        try:
+            idx = max(0, int(from_idx))
+            empty = 0
+            while True:
+                frames, done = rel.read(run_id, idx)
+                for f in frames:
+                    idx += 1
+                    yield f
+                if done:
+                    rel.mark_consumed(run_id)
+                    break
+                if frames:
+                    empty = 0
+                else:
+                    empty += 1
+                    if empty > 300:
+                        break
+                await asyncio.sleep(0.08)
+        finally:
+            rel.subscriber_closed(run_id)
+
+    return StreamingResponse(_gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Run-Id": run_id})
+
+
+@router.get("/sessions/{session_id}/live")
+async def chat_session_live(session_id: str):
+    """Attach til sessionens aktive run fra offset 0 (cross-device + foreground-
+    attach). 204 hvis intet aktivt run."""
+    import asyncio
+    from fastapi import Response
+    from fastapi.responses import StreamingResponse
+    import core.services.run_event_log as rel
+
+    run_id = rel.active_run_for_session(session_id)
+    if not run_id:
+        return Response(status_code=204)
+
+    async def _gen():
+        rel.subscriber_opened(run_id)
+        try:
+            idx = 0
+            empty = 0
+            while True:
+                frames, done = rel.read(run_id, idx)
+                for f in frames:
+                    idx += 1
+                    yield f
+                if done:
+                    rel.mark_consumed(run_id)
+                    break
+                if frames:
+                    empty = 0
+                else:
+                    empty += 1
+                    if empty > 300:
+                        break
+                await asyncio.sleep(0.08)
+        finally:
+            rel.subscriber_closed(run_id)
+
+    return StreamingResponse(_gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Run-Id": run_id})
 
 
 @router.get("/sessions/{session_id}/follow")

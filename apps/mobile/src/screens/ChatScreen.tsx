@@ -5,6 +5,7 @@ import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
+import { StreamIndicator } from '../components/StreamIndicator'
 import { ConnectionPill } from '../components/ConnectionPill'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { GreetingHero } from '../components/GreetingHero'
@@ -282,6 +283,7 @@ export function ChatScreen() {
             onDeny={() => void stream.deny(config)}
           />
         ) : null}
+        <StreamIndicator active={stream.state.status === 'working' || serverBusy} />
         <Composer
           disabled={!config}
           working={stream.state.status === 'working' || serverBusy}

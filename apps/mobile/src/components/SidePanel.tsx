@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { formatRelativeDate } from '../lib/relativeDate'
+import { HeartbeatDot } from './HeartbeatDot'
 import type { ChatSession } from '../lib/types'
 import { tokens } from '../theme/tokens'
 
@@ -20,7 +21,9 @@ export function SidePanel({
   activeId,
   onSelectSession,
   onNewSession,
-  onOpenSettings
+  onOpenSettings,
+  workingIds = [],
+  unreadIds = {}
 }: {
   open: boolean
   onClose: () => void
@@ -30,6 +33,8 @@ export function SidePanel({
   onSelectSession: (sessionId: string) => void
   onNewSession: () => void
   onOpenSettings: () => void
+  workingIds?: string[]
+  unreadIds?: Record<string, boolean>
 }) {
   const insets = useSafeAreaInsets()
   const translateX = useRef(new Animated.Value(-PANEL_WIDTH)).current
@@ -125,6 +130,13 @@ export function SidePanel({
                   <Text style={styles.sessionMeta}>
                     {formatRelativeDate(session.updated_at, now)} · {session.message_count ?? 0} beskeder
                   </Text>
+                  <View style={styles.sessionIndicator}>
+                    {workingIds.includes(session.id) ? (
+                      <HeartbeatDot size={8} />
+                    ) : unreadIds[session.id] ? (
+                      <View style={styles.unreadDot} />
+                    ) : null}
+                  </View>
                 </Pressable>
               ))
             )}
@@ -205,6 +217,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1
   },
   sessionActive: { backgroundColor: tokens.color.bg3 },
+  sessionIndicator: { position: 'absolute', right: tokens.spacing.sm, top: tokens.spacing.md, alignItems: 'center', justifyContent: 'center' },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.color.accent },
   sessionTitle: { color: tokens.color.fg1, fontWeight: '700' },
   sessionMeta: { color: tokens.color.fg3, marginTop: tokens.spacing.xs, fontSize: 12 },
   pressed: { opacity: 0.7 }

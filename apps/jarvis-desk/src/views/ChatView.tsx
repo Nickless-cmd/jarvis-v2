@@ -168,12 +168,14 @@ export function ChatView({
     return () => { b?.setActiveRun?.(null) }
   }, [bgActive])
 
-  // Follow-stream MIDLERTIDIGT DEAKTIVERET (2026-06-13): backend-follow er
-  // rullet tilbage (translate-i-tråd brækkede run-livscyklus). Når desk'en åbnede
-  // /follow alligevel, gav den abort-støj ("BodyStreamBuffer was aborted") når
-  // forbindelsen blev lukket — og den hentede aldrig frames. Genaktiveres med
-  // translate-i-ENDPOINT-redesignet (se memory project_autonomous_run_followstream).
-  const FOLLOW_ENABLED = false
+  // Follow-stream GENAKTIVERET (2026-06-19): den server-autoritative /live-
+  // endpoint (server_authoritative_runs flag) er præcis translate-i-ENDPOINT-
+  // redesignet kommentaren ventede på — frames læses fra run_event_log (translate
+  // sker i den detached run-sti, IKKE i follow-endpointet), så den gamle
+  // run-livscyklus-bug + abort-støj er væk. bgActive-guarden (stream.status !==
+  // 'working') sikrer vi ALDRIG følger vores eget aktive send → ingen dobbelt-
+  // render. followRun håndterer 204 (intet aktivt run) + abort rent.
+  const FOLLOW_ENABLED = true
   useEffect(() => {
     if (!FOLLOW_ENABLED || !bgActive || !sessionId || !settings) return
     if (followCtrlRef.current) return // følger allerede

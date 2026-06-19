@@ -25,7 +25,12 @@ export function AccountSection({ config }: { config: ApiConfig | undefined }) {
 
   const [gBusy, setGBusy] = useState(false)
   const [gMsg, setGMsg] = useState('')
+  const [linked, setLinked] = useState(false)
   const cancelRef = useRef(false)
+  // Vedvarende indikator: server-sandheden (/account/me → google_linked).
+  // Uden denne nulstilles knappen til "Forbind Google" ved hver genstart,
+  // selvom kontoen ER linket — det fik det til at ligne et glemt login.
+  useEffect(() => { if (profile) setLinked(!!profile.google_linked) }, [profile])
   const linkGoogle = async () => {
     if (!config || gBusy) return
     setGBusy(true); setGMsg('Åbner Google…'); cancelRef.current = false
@@ -38,7 +43,7 @@ export function AccountSection({ config }: { config: ApiConfig | undefined }) {
         await new Promise((r) => setTimeout(r, 2000))
         const res = await googleLoginResult(config.apiBaseUrl, start.nonce)
           .catch((): Awaited<ReturnType<typeof googleLoginResult>> => ({ status: 'pending' }))
-        if (res.status === 'ok') { setGMsg('Google-konto forbundet ✓'); setGBusy(false); return }
+        if (res.status === 'ok') { setGMsg('Google-konto forbundet ✓'); setLinked(true); setGBusy(false); return }
         if (res.status === 'error') { setGMsg('Kunne ikke forbinde.'); setGBusy(false); return }
       }
       setGMsg('Timeout — prøv igen.'); setGBusy(false)
@@ -66,10 +71,22 @@ export function AccountSection({ config }: { config: ApiConfig | undefined }) {
         <dt>Tier</dt><dd>{profile.tier}</dd>
       </dl>
       <div className="account-google">
-        <button type="button" className="account-google-btn" onClick={linkGoogle} disabled={gBusy}>
-          {gBusy ? 'Forbinder…' : 'Forbind Google-konto'}
-        </button>
-        <p className="account-google-hint">Så kan du logge ind med Google fremover.</p>
+        {linked ? (
+          <>
+            <p className="account-google-msg"><span className="badge badge-ok">Google forbundet ✓</span></p>
+            <p className="account-google-hint">Du kan logge ind med Google. Vil du forbinde en anden konto?</p>
+            <button type="button" className="account-google-btn" onClick={linkGoogle} disabled={gBusy}>
+              {gBusy ? 'Forbinder…' : 'Forbind en anden Google-konto'}
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="account-google-btn" onClick={linkGoogle} disabled={gBusy}>
+              {gBusy ? 'Forbinder…' : 'Forbind Google-konto'}
+            </button>
+            <p className="account-google-hint">Så kan du logge ind med Google fremover.</p>
+          </>
+        )}
         {gMsg && <p className="account-google-msg">{gMsg}</p>}
       </div>
     </div>

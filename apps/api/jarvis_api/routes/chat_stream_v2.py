@@ -116,6 +116,59 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     except Exception:
         pass
 
+    if settings.server_authoritative_runs:
+        # SERVER-AUTORITATIV: kør detached + abonnér på run-loggen fra offset 0.
+        # Runnet lever uafhængigt af denne forbindelse → overlever app-baggrund.
+        from core.services.visible_runs_sections.detached_run import (
+            start_user_run_detached,
+        )
+        import core.services.run_event_log as rel
+
+        run_id = start_user_run_detached(
+            message=effective_message,
+            session_id=session_id,
+            approval_mode=request.approval_mode,
+            thinking_mode=request.thinking_mode,
+            force_user_id=_uid,
+            tool_scope=_tool_scope,
+            provider_override=_prov_override,
+            model_override=_model_override,
+            eff_model=_eff_model,
+            eff_provider=_eff_provider,
+            lane=settings.primary_model_lane,
+        )
+
+        async def _subscribe():
+            import asyncio as _a
+            idx = 0
+            empty = 0
+            while True:
+                frames, done = rel.read(run_id, idx)
+                for f in frames:
+                    idx += 1
+                    yield f
+                if done:
+                    break
+                if frames:
+                    empty = 0
+                else:
+                    empty += 1
+                    if empty > 300:  # ~24s helt tavst (pings hver 5s) → giv op
+                        break
+                await _a.sleep(0.08)
+
+        return StreamingResponse(
+            _subscribe(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Stream-Protocol": "v2-anthropic",
+                "X-Run-Id": run_id,
+            },
+        )
+
+    # FLAG OFF → nuværende stabile A1-tee (uændret).
     legacy_iter = start_visible_run(
         message=effective_message,
         session_id=session_id,

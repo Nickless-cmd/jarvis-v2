@@ -24,17 +24,18 @@ Sub-project: V2 delprojekt 2 af 4 (push ✓ → **visuelt løft** → device awa
 
 ## 1. Mål & princip
 
-**Mål:** Én sammenhængende visuel identitet på tværs af begge apps — grøn-på-dyb-mørk,
-åndedræt frem for blink, glas, én accentfarve. Alle 8 §3-elementer.
+**Mål:** Løft jarvis-mobile til én sammenhængende visuel identitet — grøn-på-dyb-mørk,
+åndedræt frem for blink, glas, én accentfarve. Alle §3-elementer undtagen voice-
+visualizer (afventer mic).
 
-**Princip:** Ét **token-spec** er sandheden (farver, dybde-lag, timing-kurver, ring/glas-
-parametre). Det spejles i hver apps idiom — desk `tokens.css` (CSS-variabler), mobil
-`tokens.ts` (TS-objekt). IKKE en runtime-delt npm-pakke (Electron-CSS vs RN-StyleSheet
-kan ikke dele værdier ved runtime — over-engineering). Komponenterne implementeres
-parallelt pr. apps idiom mod samme tokens.
+**Princip:** Ét **token-spec** (§2) er sandheden. Denne runde implementeres det KUN i
+mobil `tokens.ts` (TS-objekt). Værdierne er noteret app-agnostisk, så jarvis-desk SENERE
+kan adoptere de samme værdier i `tokens.css` — men desk røres ikke nu. Komponenterne
+re-styles på plads mod disse tokens.
 
-**Ikke-mål:** Chatboble-overlay/Bubbles (delprojekt 4), voice-visualizer (kræver
-audio-niveauer — afventer mic), light mode (senere), runtime-delt komponent-pakke.
+**Ikke-mål:** jarvis-desk (urørt denne runde), chatboble-overlay/Bubbles (delprojekt 4),
+voice-visualizer (kræver audio-niveauer — afventer mic), light mode (senere), runtime-
+delt token-pakke (Electron-CSS vs RN-StyleSheet kan ikke dele ved runtime — over-engineering).
 
 ---
 
@@ -79,23 +80,23 @@ Disse værdier mirrores 1:1 i `tokens.css` (`--x`) og `tokens.ts`.
 
 ---
 
-## 3. Komponent-katalog (§3)
+## 3. Komponent-katalog (§3) — alt i jarvis-mobile
 
-Hvert element implementeres i BEGGE apps mod tokens ovenfor. Adfærd specificeret én gang her.
+Hvert element re-styles på EKSISTERENDE mobil-komponent mod tokens (§2). Animation = RN `Animated` (`useNativeDriver: true`, transform/opacity).
 
-1. **Liveness-ring** (`§3.1`): koncentrisk ring om Jarvis-avatar. Radial accent-gradient (gennemsigtig kerne → `accent-dim` ved 88% → gennemsigtig kant). "Ånder": skalér 1.0↔1.08 + opacity 0.6↔1.0 over `breath`, uendelig, `ease`. **Ikke blink.** Tre tilstande: idle (svag, langsom), working (stærkere, samme rytme), error (rød-tonet). Desk: CSS keyframes på eksisterende `LivenessRing`/`PresenceDot`. Mobil: Reanimated loop på `LivenessRing`/`JarvisRing`.
+1. **Liveness-ring** (`§3.1`): den EKSISTERENDE `LivenessRing`/`JarvisRing` er allerede bygget med `<View>` + `Animated` og ånder. **Ingen `react-native-svg`** (ikke installeret → ingen ny dep). Glow opnås med View-baserede koncentriske lag: en ydre ring (`accent-dim` border/baggrund, lav opacity) + indre kerne — forstærk det eksisterende åndedræt: `Animated.loop` skalér 1.0↔1.08 + opacity 0.6↔1.0 over `breath`, `ease`. **Ikke blink.** Tre tilstande: idle (svag), working (stærkere, samme rytme), error (rød-tonet).
 
-2. **Stream-indikator** (`§3.5`): 2px linje over composeren. Lineær accent-gradient (transparent→accent→transparent) der glider venstre→højre mens et run streamer (`working`). Skjult ellers. Desk: CSS `@keyframes` translateX + masked gradient. Mobil: Reanimated translateX.
+2. **Stream-indikator** (`§3.5`): 2px linje over composeren. Accent-gradient der glider venstre→højre mens et run streamer (driv af eksisterende `serverBusy`/`stream.status==='working'`). Skjult ellers. `Animated` translateX-loop.
 
-3. **Glas-chatboble** (`§3.3`): bruger-boble = `glass-fill` + `glass-line`-kant, radius `lg`. Indgang: blød spring (scale 0.96→1.0 + opacity, `dur-base`, `ease`). Assistent-boble forbliver `depth-2` (solid). Desk: CSS. Mobil: RN backgroundColor + Animated spring (frosted = semi-transparent fyld; ægte blur kun hvis billigt — ellers semi-transparent fyld som approksimation).
+3. **Glas-chatboble** (`§3.3`): bruger-boble (`MessageBubble`) = `glass-fill` + `glass-line`-kant, radius `lg`. Indgang: blød `Animated.spring` (scale 0.96→1.0 + opacity). Assistent-boble forbliver `depth-2` (solid). Frosted = semi-transparent fyld (ægte blur via `@react-native-community/blur` kun hvis allerede tilgængeligt — ellers approksimation; ingen ny native dep).
 
-4. **Tool-kort** (`§3.4`): `depth-1` baggrund, 3px `accent` venstre-kant (radius 0 på den side), tool-navn i accent, resultat i `fg-2`, status i `fg-3`. Indgang: "folder op" — translateY 8px→0 + opacity, `dur-base`. Genbruger eksisterende tool-chip-struktur.
+4. **Tool-kort** (`§3.4`): `ToolResultCard` — `depth-1` baggrund, 3px `accent` venstre-kant, tool-navn i accent, resultat i `fg-2`, status i `fg-3`. Indgang: "folder op" — `Animated` translateY 8→0 + opacity, `dur-base`.
 
-5. **Notifikationsprik** (`§3.9`): lille accent-cirkel der pulserer som et hjerte (skala 1.0↔1.3, to hurtige slag pr. `heartbeat`-løkke), ikke en hård alarm-blink.
+5. **Notifikationsprik** (`§3.9`): lille accent-cirkel der pulserer som et hjerte (`Animated.loop` skala 1.0↔1.3, to hurtige slag pr. `heartbeat`), ikke hård alarm-blink.
 
-6. **Session-overgang** (`§3.6`): skift af samtale crossfader/glider indhold `dur-base` `ease` (ikke hårdt klip).
+6. **Session-overgang** (`§3.6`): skift af samtale crossfader/glider `MessageList`-indhold `dur-base` `ease` (ikke hårdt klip).
 
-7. **Composer** (`§3.7`): re-styles til det nye look (depth-0-flade, accent-send-knap, evt. glødende fokus-kant) + højde der vokser/trækker sig med input (`dur-fast`). **ALLE eksisterende funktioner bevares uændret:** vedhæft, kamera, model-vælger, kø/queue, stop-knap, serverBusy/streaming-tilstand, tastatur-løft. Re-style den EKSISTERENDE `Composer`-komponent — genskriv den ikke.
+7. **Composer** (`§3.7`): re-style den EKSISTERENDE `Composer`-komponent til det nye look (depth-0-flade, accent-send-knap, evt. glødende fokus-kant) + højde der vokser/trækker sig (`dur-fast` — komponenten er allerede tænkt som "levende papir"). **ALLE eksisterende funktioner bevares uændret:** vedhæft (`onAttach`), model-pille (`onPressModel`), mic, send/stop (`onSend`/`onStop`), serverBusy/streaming-tilstand, tastatur-løft. Re-style — genskriv ikke.
 
 8. **Én accent + dark=dybde** (`§3.10`/`§3.8`): håndhæv at KUN `accent` er farvet; alt strukturelt bruger depth-lag + gråtoner. Audit alle mobil-komponenter (inkl. composer) for fremmede farver og ret til tokens.
 
@@ -117,7 +118,7 @@ Hvert element implementeres i BEGGE apps mod tokens ovenfor. Adfærd specificere
 
 ## 5. Fejl/robusthed
 
-- **Reduced motion:** respektér `prefers-reduced-motion` (desk) / `AccessibilityInfo.isReduceMotionEnabled` (mobil) → frys åndedræt/stream til statisk tilstand. Tilgængelighed (§7).
+- **Reduced motion:** respektér `AccessibilityInfo.isReduceMotionEnabled()` (+ `addEventListener('reduceMotionChanged')`) → frys åndedræt/stream/spring til statisk slut-tilstand. (Nyt — bruges ikke i appen i dag.)
 - **Performance:** alle løkke-animationer på transform/opacity (GPU-billige) — aldrig layout-egenskaber. Liveness-ring + stream må ikke koste mærkbar batteri/CPU.
 - **Ingen funktionel regression:** rent visuelt løft — rører ikke send/stream-logik, kun styling + animation. Eksisterende tests skal forblive grønne.
 
@@ -125,15 +126,16 @@ Hvert element implementeres i BEGGE apps mod tokens ovenfor. Adfærd specificere
 
 ## 6. Test
 
-- **Desk (vitest):** token-tilstedeværelse (tokens.css parser), komponent-render-smoke (LivenessRing/StreamIndicator rendrer i hver tilstand uden crash), reduced-motion-gren. Eksisterende 333 tests forbliver grønne.
-- **Mobil (jest):** token-objekt-form, komponent-render-smoke, reduced-motion. **Eksisterende 71 tests forbliver grønne = funktions-bevarings-garantien** (Composer/ChatScreen-tests fanger hvis vedhæft/model-vælger/kø/stop-adfærd brækker under re-styling). Tilføj smoke-tests for nye animations-komponenter, men rør ikke de funktionelle tests.
-- **Visuel verifikation (det endelige bevis):** bygget desk + mobil, Bjørn ser åndedræt/stream/glas live på begge — iterativ finjustering (visuelt løft er iterativ pr. natur).
+- **Mobil (jest):** token-objekt-form (nye depth/accent/glass/timing-felter findes), komponent-render-smoke (LivenessRing/stream/MessageBubble/ToolResultCard/Composer rendrer i hver tilstand uden crash), reduced-motion-gren. **Eksisterende 71 tests forbliver grønne = funktions-bevarings-garantien** (Composer/ChatScreen-tests fanger hvis vedhæft/model-vælger/send/stop-adfærd brækker under re-styling). Tilføj smoke-tests for nye animations-komponenter, men rør ikke de funktionelle tests.
+- **Visuel verifikation (det endelige bevis):** bygget mobil-APK på Bjørns S24 — han ser åndedræt/stream/glas live + bekræfter at composer-funktionerne stadig virker — iterativ finjustering (visuelt løft er iterativ pr. natur). Desk testes ikke (urørt).
 
 ---
 
 ## 7. Afgrænsning & rækkefølge i plan
 
-Planen faser naturligt: (1) token-spec i begge apps, (2) liveness-ring + stream (kerne-følelsen), (3) glas-boble + tool-kort, (4) prik + session-overgang + composer + accent-audit. Hver fase er selvstændigt testbar og deploybar.
+Planen faser naturligt (alt i jarvis-mobile, **ingen nye native deps** — `react-native-svg`/blur er ikke installeret, så alt gøres med `<View>` + `Animated` + semi-transparent glas): (1) udvid `tokens.ts`, (2) liveness-ring + stream-indikator (kerne-følelsen), (3) glas-boble + tool-kort, (4) notif-prik + session-overgang + composer-restyle + accent-audit + reduced-motion. Hver fase er selvstændigt testbar; APK bygges + verificeres på enheden til sidst.
+
+**Ingen ny native dep = ingen gradle/rebuild-risiko ud over JS** (modsat push-delprojektet) — animationer er ren JS/Animated.
 
 ---
 

@@ -10,7 +10,8 @@ import { ConnectionPill } from '../components/ConnectionPill'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { GreetingHero } from '../components/GreetingHero'
 import { LivenessRing } from '../components/LivenessRing'
-import { MessageList } from '../components/MessageList'
+import { MessageList, type MessageListHandle } from '../components/MessageList'
+import { SaveRail } from '../components/SaveRail'
 import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
 import { SidePanel } from '../components/SidePanel'
 import { SettingsScreen } from './SettingsScreen'
@@ -51,6 +52,7 @@ export function ChatScreen() {
     return () => { cancelled = true; clearInterval(id) }
   }, [panelOpen, config])
   const unreadIds = computeUnread(sessions.sessions ?? [], lastSeen, sessions.activeId)
+  const listRef = useRef<MessageListHandle>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [displayName, setDisplayName] = useState('Jarvis')
@@ -289,12 +291,23 @@ export function ChatScreen() {
             <GreetingHero userName={displayName} />
           ) : (
             <MessageList
+              ref={listRef}
               messages={sessions.messages}
               blocks={stream.state.blocks}
               onResend={(text) => void ensureSessionAndSend(text)}
             />
           )}
         </Animated.View>
+        {!showGreeting ? (
+          <SaveRail
+            visible={sessions.messages.length >= 2}
+            onJumpTop={() => listRef.current?.jumpTop()}
+            onJumpBottom={() => listRef.current?.jumpBottom()}
+            onOlderUser={() => listRef.current?.jumpOlderUser()}
+            onNewerUser={() => listRef.current?.jumpNewerUser()}
+            onScrub={(f) => listRef.current?.scrubTo(f)}
+          />
+        ) : null}
         {canRetry ? (
           <ErrorBanner
             title={stream.state.status === 'error' ? 'Stream fejlede' : 'Svar stoppet'}

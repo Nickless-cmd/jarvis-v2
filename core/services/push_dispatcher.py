@@ -32,6 +32,19 @@ def _push_to_user(user_id: str, data: dict) -> None:
             logger.warning("push: send-fejl for token: %s", e)
 
 
+def _route_or_blast(user_id: str, data: dict, kind: str) -> None:
+    """Flag ON → intelligent device-routing; OFF → gammel FCM-blast (bagudkompat)."""
+    try:
+        from core.runtime.settings import load_settings
+        if load_settings().device_awareness_enabled:
+            from core.services import proactive_router
+            proactive_router.route(user_id, data, kind)
+            return
+    except Exception as e:
+        logger.warning("push: routing-fejl, falder tilbage til blast: %s", e)
+    _push_to_user(user_id, data)
+
+
 def _dispatch_run_done(run_id: str) -> None:
     from core.services import run_event_log as rel
     if rel.was_consumed_or_active(run_id):
@@ -40,7 +53,7 @@ def _dispatch_run_done(run_id: str) -> None:
     owner = _owner_of_run(run_id)
     if not owner:
         return
-    _push_to_user(owner, {"kind": "answer_ready", "session_id": sid or "", "run_id": run_id})
+    _route_or_blast(owner, {"kind": "answer_ready", "session_id": sid or "", "run_id": run_id}, "answer_ready")
 
 
 def on_run_done(run_id: str) -> None:
@@ -54,10 +67,10 @@ def on_run_done(run_id: str) -> None:
 def on_initiative(user_id: str, text: str) -> None:
     if not user_id:
         return
-    _push_to_user(user_id, {"kind": "initiative", "preview": (text or "")[:80]})
+    _route_or_blast(user_id, {"kind": "initiative", "preview": (text or "")[:80]}, "initiative")
 
 
 def on_reminder(user_id: str, text: str) -> None:
     if not user_id:
         return
-    _push_to_user(user_id, {"kind": "reminder", "preview": (text or "")[:80]})
+    _route_or_blast(user_id, {"kind": "reminder", "preview": (text or "")[:80]}, "reminder")

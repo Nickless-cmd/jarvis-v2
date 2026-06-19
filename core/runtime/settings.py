@@ -248,6 +248,7 @@ class RuntimeSettings:
     context_run_compact_threshold_tokens: int = 240_000
     context_keep_recent: int = 20
     server_authoritative_runs: bool = False
+    device_awareness_enabled: bool = True
     context_keep_recent_pairs: int = 4
     # Jarvis Brain — kurateret vidensjournal (sektion 8.3 i spec).
     # When False, recall paths no-op and remember_this rejects with
@@ -399,6 +400,7 @@ class RuntimeSettings:
             "context_run_compact_threshold_tokens": self.context_run_compact_threshold_tokens,
             "context_keep_recent": self.context_keep_recent,
             "server_authoritative_runs": self.server_authoritative_runs,
+            "device_awareness_enabled": self.device_awareness_enabled,
             "context_keep_recent_pairs": self.context_keep_recent_pairs,
             "jarvis_brain_enabled": self.jarvis_brain_enabled,
             "jarvis_brain_summary_token_budget": self.jarvis_brain_summary_token_budget,
@@ -787,6 +789,7 @@ def load_settings() -> RuntimeSettings:
         context_run_compact_threshold_tokens=int(data.get("context_run_compact_threshold_tokens", defaults.context_run_compact_threshold_tokens)),
         context_keep_recent=int(data.get("context_keep_recent", defaults.context_keep_recent)),
         server_authoritative_runs=bool(data.get("server_authoritative_runs", defaults.server_authoritative_runs)),
+        device_awareness_enabled=bool(data.get("device_awareness_enabled", defaults.device_awareness_enabled)),
         context_keep_recent_pairs=int(data.get("context_keep_recent_pairs", defaults.context_keep_recent_pairs)),
         jarvis_brain_enabled=bool(data.get("jarvis_brain_enabled", defaults.jarvis_brain_enabled)),
         jarvis_brain_summary_token_budget=int(data.get("jarvis_brain_summary_token_budget", defaults.jarvis_brain_summary_token_budget)),

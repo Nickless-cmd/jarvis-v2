@@ -1984,7 +1984,20 @@ def build_visible_chat_prompt_assembly(
     _dyn_tail.extend(_tail_dynamic)
     try:
         from core.identity.workspace_context import current_user_id as _cuid
-        _presence_line = _device_presence_line(_cuid() or "")
+        # uid SKAL matche det presence/routing er keyed under (session-ejeren).
+        # current_user_id() er ofte TOM for owner inde i run-generatoren (samme
+        # grund som operator-tools' owner-fallback) → summary("") gav "Ingen aktiv
+        # enhed" selvom presence havde enheder. Fald tilbage til session-ejeren.
+        _pres_uid = ""
+        if session_id:
+            try:
+                from core.services.chat_sessions import get_session_owner
+                _pres_uid = get_session_owner(session_id) or ""
+            except Exception:
+                pass
+        if not _pres_uid:
+            _pres_uid = _cuid() or ""
+        _presence_line = _device_presence_line(_pres_uid)
         if _presence_line:
             _dyn_tail.append(_presence_line)
             derived_inputs.append("device-presence (user-msg tail)")

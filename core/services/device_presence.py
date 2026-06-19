@@ -136,3 +136,28 @@ def summary(user_id: str) -> str:
     if st and st.platform == "mobile":
         net = {"home": ", hjemme-wifi", "away": ", på mobildata (ude)"}.get(st.network, "")
     return f"Bjørn er ved {where} ({fg}{net})."
+
+
+def debug_snapshot(user_id: str) -> dict:
+    """Diagnostik: live presence-tilstande + rank-resultat for én bruger."""
+    uid = (user_id or "").strip()
+    now = _now()
+    with _lock:
+        devices = [
+            {
+                "device_key": st.device_key[:12],
+                "platform": st.platform,
+                "foreground": st.foreground,
+                "awake": st.awake,
+                "network": st.network,
+                "ping_age_s": round(now - st.last_ping_at, 1),
+                "interaction_age_s": round(now - st.last_interaction_at, 1),
+            }
+            for st in (_PRESENCE.get(uid) or {}).values()
+        ]
+    ranked = [
+        {"device_key": r.device_key[:12], "platform": r.platform,
+         "score": round(r.score, 1), "via": r.reachable_via}
+        for r in rank(uid)
+    ]
+    return {"devices": devices, "ranked": ranked, "summary": summary(uid)}

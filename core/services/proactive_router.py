@@ -72,7 +72,12 @@ def route(user_id: str, payload: dict, kind: str) -> None:
     if not uid:
         return
     ranked = device_presence.rank(uid)
+    logger.warning(
+        "proactive_router.route: kind=%s rank=%s",
+        kind, [(r.platform, round(r.score, 1), r.reachable_via) for r in ranked],
+    )
     if not ranked:
+        logger.warning("proactive_router.route: tom rank -> fallback FCM-blast")
         _fallback_blast(uid, payload)
         return
     notif_id = _new_id()
@@ -81,6 +86,8 @@ def route(user_id: str, payload: dict, kind: str) -> None:
             "user_id": uid, "payload": payload, "kind": kind,
             "remaining": ranked[1:], "timer": None,
         }
+    logger.warning("proactive_router.route: leverer %s til %s/%s",
+                notif_id[:12], ranked[0].platform, ranked[0].reachable_via)
     _deliver(uid, ranked[0], notif_id, payload)
     _arm_timer(notif_id)
 

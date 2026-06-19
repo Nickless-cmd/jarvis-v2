@@ -48,7 +48,9 @@ def _route_or_blast(user_id: str, data: dict, kind: str) -> None:
 def _dispatch_run_done(run_id: str) -> None:
     from core.services import run_event_log as rel
     if rel.was_consumed_or_active(run_id):
+        logger.warning("push: answer_ready UNDERTRYKT (run %s set live)", run_id[:12])
         return  # nogen saa det live
+    logger.warning("push: answer_ready DISPATCH for run %s", run_id[:12])
     sid = rel.session_for_run(run_id)
     owner = _owner_of_run(run_id)
     if not owner:
@@ -72,6 +74,7 @@ def send_companion_push(user_id: str, message: str, title: str = "Jarvis") -> bo
     text = (message or "").strip()
     if not uid or not text:
         return False
+    logger.warning("push: send_companion_push (tool) uid=%s msg=%r", uid[:8], text[:40])
     _route_or_blast(uid, {"kind": "initiative", "preview": text[:140], "title": title}, "initiative")
     return True
 

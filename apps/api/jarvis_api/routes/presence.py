@@ -55,3 +55,33 @@ async def notifications_ack(body: AckBody) -> dict:
     if (body.notif_id or "").strip():
         proactive_router.ack(body.notif_id)
     return {"ok": True}
+
+
+@router.get("/presence/debug")
+async def presence_debug() -> dict:
+    uid = _current_user()
+    if not uid:
+        return {"error": "no user"}
+    snap = device_presence.debug_snapshot(uid)
+    # Dry-run: hvad ville route() levere til (uden at sende noget)?
+    delivered: list[str] = []
+    try:
+        orig_fcm = proactive_router._send_fcm
+        orig_desk = proactive_router._send_desktop
+        orig_blast = proactive_router._fallback_blast
+        orig_timer = proactive_router._arm_timer
+        proactive_router._send_fcm = lambda u, k, d: delivered.append(f"fcm:{k[:10]}")
+        proactive_router._send_desktop = lambda u, i: delivered.append(f"desktop_queue:{i.get('notif_id', '')[:10]}")
+        proactive_router._fallback_blast = lambda u, d: delivered.append("fallback_fcm_blast")
+        proactive_router._arm_timer = lambda n: None
+        proactive_router.route(uid, {"kind": "initiative", "preview": "DRYRUN"}, "initiative")
+    except Exception as e:
+        delivered.append(f"error:{e}")
+    finally:
+        proactive_router._send_fcm = orig_fcm
+        proactive_router._send_desktop = orig_desk
+        proactive_router._fallback_blast = orig_blast
+        proactive_router._arm_timer = orig_timer
+        proactive_router.reset()  # ryd dry-run pending
+    snap["dryrun_delivers_to"] = delivered
+    return snap

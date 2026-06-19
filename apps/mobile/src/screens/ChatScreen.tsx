@@ -16,6 +16,8 @@ import { SidePanel } from '../components/SidePanel'
 import { SettingsScreen } from './SettingsScreen'
 import { CameraCapture, type CapturedPhoto } from './CameraCapture'
 import { cancelActiveRun, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
+import { computeUnread } from '../lib/sessionStatus'
+import { loadLastSeen, markSeen } from '../lib/lastSeen'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
 import { useAuth } from '../state/AuthContext'
 import { useSessions } from '../state/SessionContext'
@@ -36,6 +38,19 @@ export function ChatScreen() {
   const sessions = useSessions()
   const stream = useStream()
   const [panelOpen, setPanelOpen] = useState(false)
+  // Session-panel live-status: arbejder-prik (active-runs mens panel åbent) + ulæst.
+  const [activeRunIds, setActiveRunIds] = useState<string[]>([])
+  const [lastSeen, setLastSeen] = useState<Record<string, number>>({})
+  useEffect(() => { void loadLastSeen().then(setLastSeen) }, [])
+  useEffect(() => {
+    if (!panelOpen || !config) return
+    let cancelled = false
+    const tick = () => { void getActiveRuns(config).then((ids) => { if (!cancelled) setActiveRunIds(ids) }).catch(() => undefined) }
+    tick()
+    const id = setInterval(tick, 2500)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [panelOpen, config])
+  const unreadIds = computeUnread(sessions.sessions ?? [], lastSeen, sessions.activeId)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [displayName, setDisplayName] = useState('Jarvis')
@@ -211,6 +226,10 @@ export function ChatScreen() {
 
   const handleSelectSession = (sessionId: string) => {
     setPanelOpen(false)
+    const s = (sessions.sessions ?? []).find((x) => x.id === sessionId)
+    const count = s?.message_count ?? 0
+    setLastSeen((prev) => ({ ...prev, [sessionId]: count }))
+    void markSeen(sessionId, count)
     if (config) sessions.select(config, sessionId).catch(() => undefined)
   }
 
@@ -242,6 +261,9 @@ export function ChatScreen() {
                   : 'idle'
             }
           />
+          {activeRunIds.length > 0 || Object.values(unreadIds).some(Boolean) ? (
+            <View style={styles.ringBadge} />
+          ) : null}
           <Text style={styles.title} numberOfLines={1}>
             {displayName}
           </Text>
@@ -331,6 +353,8 @@ export function ChatScreen() {
           activeId={sessions.activeId}
           onSelectSession={handleSelectSession}
           onNewSession={handleNewSession}
+          workingIds={activeRunIds}
+          unreadIds={unreadIds}
           onOpenSettings={() => {
             setPanelOpen(false)
             setSettingsOpen(true)
@@ -371,6 +395,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spacing.sm,
     flexShrink: 1
+  },
+  ringBadge: {
+    position: 'absolute',
+    top: 0,
+    left: 18,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: tokens.color.accent
   },
   title: {
     color: tokens.color.fg1,

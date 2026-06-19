@@ -217,6 +217,10 @@ export function ChatScreen() {
             {connectivity === 'offline' ? 'Offline — venter på forbindelse' : 'Genopretter forbindelse til Jarvis…'}
           </Text>
         </View>
+      ) : stream.reconnecting ? (
+        <View style={[styles.connBanner, styles.connReconnect]}>
+          <Text style={styles.connText}>Genforbinder — Jarvis arbejder videre…</Text>
+        </View>
       ) : null}
 
       <View style={[styles.flex, { paddingBottom: liftPadding }]}>

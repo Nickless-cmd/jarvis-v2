@@ -16,6 +16,7 @@ interface StreamContextValue {
   state: StreamState
   approval: ApprovalViewModel | null
   lastError: string | null
+  reconnecting: boolean
   send: (
     config: ApiConfig,
     sessionId: string,
@@ -48,6 +49,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(initialStreamState())
   const [approval, setApproval] = useState<ApprovalViewModel | null>(null)
   const [lastError, setLastError] = useState<string | null>(null)
+  const [reconnecting, setReconnecting] = useState(false)
   const control = useRef<StreamControl | null>(null)
   const followControl = useRef<StreamControl | null>(null)
   const stateRef = useRef(state)
@@ -82,6 +84,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       state,
       approval,
       lastError,
+      reconnecting,
       send: (config, sessionId, message, opts) => {
         const local: ChatMessage = {
           id: `local-${Date.now()}`,
@@ -97,6 +100,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         persistedRunRef.current = null
         setApproval(null)
         setLastError(null)
+        setReconnecting(false)
         updateState(initialStreamState())
         control.current = startStream(
           {
@@ -109,7 +113,9 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             attachmentIds: opts?.attachmentIds
           },
           {
+            onReconnecting: () => setReconnecting(true),
             onEvent: (event) => {
+              if (reconnecting) setReconnecting(false) // forbindelse i live igen
               if (event.type === 'system_event' && event.kind === 'approval_request') {
                 setApproval({
                   approvalId: String(event.payload.approval_id ?? ''),
@@ -126,6 +132,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             },
             onInterrupted: () => persistAssistantSnapshot('interrupted'),
             onError: (err) => {
+              setReconnecting(false)
               setLastError(err?.message ?? 'ukendt')
               persistAssistantSnapshot('error')
             }
@@ -200,7 +207,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         followControl.current = null
       }
     }),
-    [appendLocalMessage, approval, state, lastError]
+    [appendLocalMessage, approval, state, lastError, reconnecting]
   )
 
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>

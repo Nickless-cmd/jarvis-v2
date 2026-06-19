@@ -1,8 +1,9 @@
 import messaging from '@react-native-firebase/messaging'
 import notifee, { AndroidImportance } from '@notifee/react-native'
 import type { ApiConfig } from './types'
+import { ackNotification } from './presence'
 
-export type PushData = { kind: string; session_id?: string; run_id?: string; preview?: string }
+export type PushData = { kind: string; session_id?: string; run_id?: string; preview?: string; notif_id?: string }
 
 /** Pure: byg notifikations-felter ud fra data + (evt.) hentet beskedtekst. Testbar. */
 export function buildNotification(data: PushData, fetchedBody: string | null) {
@@ -54,6 +55,9 @@ async function display(config: ApiConfig, data: PushData) {
     data: n.data as Record<string, string>,
     android: { channelId, pressAction: { id: 'default' }, smallIcon: 'ic_notification' },
   })
+  // Device-awareness: kvittér så serveren ved beskeden nåede mobilen (annullerer
+  // eskalering til en anden enhed). Best-effort.
+  if (data.notif_id) void ackNotification(config, data.notif_id)
 }
 
 async function postToken(config: ApiConfig, token: string) {

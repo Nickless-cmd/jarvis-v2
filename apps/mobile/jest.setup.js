@@ -23,6 +23,14 @@ jest.mock('@react-native-firebase/messaging', () => ({
   }),
 }))
 
+jest.mock('@react-native-community/netinfo', () => ({
+  __esModule: true,
+  default: {
+    addEventListener: jest.fn(() => () => undefined),
+    fetch: jest.fn(async () => ({ type: 'wifi' })),
+  },
+}))
+
 jest.mock('react-native-svg', () => {
   const React = require('react')
   const mk = (name) => (props) => React.createElement(name, props, props.children)

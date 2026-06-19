@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from 'react-nati
 import { ChatScreen } from './screens/ChatScreen'
 import { LoginScreen } from './screens/LoginScreen'
 import { registerForPush, attachForegroundHandler } from './lib/push'
+import { startPresenceReporting } from './lib/presence'
 import { AuthProvider, useAuth } from './state/AuthContext'
 import { SessionProvider } from './state/SessionContext'
 import { StreamProvider } from './state/StreamContext'
@@ -18,8 +19,10 @@ function AppBody() {
     if (!config?.authToken) return
     void registerForPush(config)
     const unsub = attachForegroundHandler(config)
+    const stopPresence = startPresenceReporting(config)
     return () => {
       unsub()
+      stopPresence()
     }
   }, [config?.authToken])
 

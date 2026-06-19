@@ -64,10 +64,11 @@ fcm_gateway ──data-only──► FCM HTTP v1 (Google) ──► app vækkes 
                                                   tap → dyb-link → samtale
 ```
 
-**Genbrug:** `run_event_log` (ved allerede om et run blev streamet til ende),
+**Genbrug:** `run_event_log` (frame-loggen — udvides med let abonnent-sporing, se §5),
 `notification_bridge`/`initiative_queue`/`scheduled_tasks` (eksisterende triggers).
 `fcm_gateway` er parallel til det eksisterende `ntfy_gateway` (ntfy bevares urørt,
-ikke længere den primære vej).
+ikke længere den primære vej). FCM v1 OAuth bruger `google-auth` (allerede i ai-miljøet
+— ingen ny server-dependency).
 
 ---
 
@@ -81,8 +82,11 @@ ikke længere den primære vej).
 | `core/services/device_tokens.py` *(ny)* | DB-helpers mod ny tabel `device_tokens`: `register(user_id, token, platform)`, `list_for_user(user_id)`, `delete(token)`. Egen tabel for at undgå at røre db.py's 33k linjer. |
 | `core/services/push_dispatcher.py` *(ny)* | Orkestrering: `on_run_done(run_id)`, `on_initiative(user_id, payload)`, `on_reminder(user_id, payload)`. Kører suppression-tjek, henter tokens, kalder `fcm_gateway`, rydder døde tokens op. |
 | `apps/api/jarvis_api/routes/push.py` *(ny)* | `POST /push/register {token, platform}` (auth'ed → user_id fra token), `POST /push/unregister {token}`. |
+| `core/services/run_event_log.py` *(udvid)* | Let abonnent-sporing til suppression-signalet (se §5): `subscriber_opened(run_id)` / `subscriber_closed(run_id)` (tæller), `mark_consumed(run_id)` (sat når en subscriber yielder done-framen), `was_consumed_or_active(run_id) -> bool`. |
+| `core/services/chat_sessions.py` *(udvid)* | `get_session_owner(session_id) -> str \| None` — slår ejer op via seneste besked-stempel (`user_id`); bruges af dispatcher til at vælge tokens. |
 
 **Wiring:**
+- `_subscribe`/`/runs/{id}/subscribe`/`/sessions/{id}/live`-generatorerne kalder `subscriber_opened` ved start + `subscriber_closed` i `finally`, og `mark_consumed` når de yielder `message_stop`.
 - `core/services/visible_runs_sections/detached_run.py` `_consume` finally (efter `mark_done`) → `push_dispatcher.on_run_done(run_id)` (best-effort, try/except, må aldrig bryde runnet).
 - `initiative_queue` udgivelse → `on_initiative`.
 - `scheduled_tasks` reminder-fyring → `on_reminder`.
@@ -106,19 +110,26 @@ CREATE INDEX IF NOT EXISTS idx_device_tokens_user ON device_tokens(user_id);
 | `notifee` | Viser den native notifikation; håndterer tap → dyb-link. |
 | `src/lib/push.ts` *(ny)* | `registerForPush()` efter login (hent token → `POST /push/register`, lyt på token-rotation → re-registrér), `onMessage`/`setBackgroundMessageHandler` (data-only → hent indhold fra `/chat/sessions/{id}` → vis via notifee), tap → naviger til samtale. Suppression: vis ikke banner hvis appen er i forgrunden på præcis den samtale. |
 
+**Native rebuild kræves:** `@react-native-firebase/*` + `notifee` er native moduler →
+APK skal genbygges (gradle: google-services-plugin + firebase-bom; `setBackgroundMessageHandler`
+registreres i `index.js` uden for komponent-træet). Ikke en JS-only ændring.
+
 ---
 
 ## 4. Data-flow: svar-klar (primær)
 
-1. Run kører server-autoritativt; `run_event_log` sporer om en levende klient
-   streamer det til `message_stop`.
-2. Run afslutter → `mark_done(run_id)`.
-3. `push_dispatcher.on_run_done(run_id)`:
-   - **Suppression:** blev runnet streamet til ende af en levende subscriber?
-     `JA` → drop (brugeren så det live). `NEJ` → fortsæt.
-   - Slå session→user op (`run_event_log.session_for_run` + session-ejer).
+1. Run kører server-autoritativt; abonnerende HTTP-generatorer registrerer sig via
+   `subscriber_opened`/`subscriber_closed`, og sætter `mark_consumed` når de yielder
+   `message_stop`.
+2. Run afslutter → `mark_done(run_id)` → `push_dispatcher.on_run_done(run_id)`.
+3. `on_run_done` planlægger et tjek efter `PUSH_GRACE_S` (~5s — giver en levende
+   klient tid til at dræne de sidste frames til `message_stop`), og afgør så:
+   - **Suppression:** `run_event_log.was_consumed_or_active(run_id)` → `True` (nogen
+     så/ser det live) → drop. `False` (alle subscribere var droppet, fx baggrundet)
+     → fortsæt.
+   - Slå ejer op: `session_for_run(run_id)` → `chat_sessions.get_session_owner(sid)`.
    - Hent `device_tokens` for brugeren.
-   - Byg data-only payload `{kind: "answer_ready", session_id, run_id}`.
+   - Byg data-only payload `{kind: "answer_ready", session_id, run_id}` (`priority: high`).
    - Send via `fcm_gateway` til hvert token.
 4. Telefon vækkes → henter færdig besked fra `/chat/sessions/{id}` → notifee viser
    "Jarvis svarede" + uddrag.
@@ -131,8 +142,10 @@ trigget af `initiative_queue` / `scheduled_tasks`.
 
 ## 5. Suppression (to lag)
 
-- **Server-lag:** push kun hvis runnet *ikke* blev streamet til ende af en levende
-  subscriber (genbruger `run_event_log`). Dækker "jeg sad og kiggede".
+- **Server-lag:** `on_run_done` venter `PUSH_GRACE_S` (~5s) og pusher kun hvis
+  `was_consumed_or_active(run_id)` er `False` — dvs. ingen levende subscriber så
+  runnet til ende. Grace-vinduet undgår et kapløb hvor en mobil i forgrunden lige
+  er ved at dræne de sidste frames. Dækker "jeg sad og kiggede" (desktop/mobil/webchat).
 - **Klient-lag:** appen viser ikke banner hvis den er i forgrunden på præcis den
   samtale data-only-beskeden gælder (beskeden er der live). Serveren pusher signalet;
   appen beslutter visning.
@@ -149,12 +162,19 @@ trigget af `initiative_queue` / `scheduled_tasks`.
 | Token-registrering fejler | Prøv igen ved næste app-åbning. |
 | Service-account mangler/ugyldig | `fcm_gateway.is_configured()` → False; dispatcher no-op'er stille. |
 
+**Kendt forbehold (data-only leverings-pålidelighed):** data-only FCM-beskeder skal sendes
+med `AndroidConfig.priority = HIGH` for at vække en app i baggrund/doze. Selv da kan
+aggressive OEM-batteri-managers (Xiaomi/Huawei/OnePlus) forsinke/droppe wake når appen er
+*helt dræbt* — det er præcis det batteri-exemption-flow der er udskudt til et senere V2-punkt
+(spec §7). På standard-Android (inkl. Bjørns enhed) er high-priority data-only pålideligt nok.
+
 ---
 
 ## 7. Test
 
 **Server-unit:**
-- `push_dispatcher` suppression: run streamet-til-ende → ingen send; ellers send (mock gateway).
+- `run_event_log` abonnent-sporing: `subscriber_opened`/`closed` tæller korrekt; `mark_consumed` + `was_consumed_or_active` (aktiv subscriber → True; consumed → True; ingen af delene → False).
+- `push_dispatcher` suppression: `was_consumed_or_active=True` → ingen send; `False` → send (mock gateway). Ejer-opslag via `get_session_owner`.
 - `device_tokens` CRUD: register (upsert), list_for_user, delete.
 - `fcm_gateway`: payload-form er data-only (ingen `notification`-felt, kun `data`); mock FCM-HTTP for 200 + UNREGISTERED-oprydning.
 - `routes/push.py`: register/unregister scoper til auth'ed user_id.

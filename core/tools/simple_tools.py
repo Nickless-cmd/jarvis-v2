@@ -287,6 +287,10 @@ from core.tools.notify_out_tools import (
     _exec_notify_channel_list,
     _exec_notify_channel_delete,
 )
+from core.tools.companion_push_tools import (
+    COMPANION_PUSH_TOOL_DEFINITIONS,
+    _exec_send_push_notification,
+)
 from core.tools.daemon_alert_tools import (
     DAEMON_ALERT_TOOL_DEFINITIONS,
     _exec_daemon_health_alert,
@@ -3432,6 +3436,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *MEMORY_TOOL_DEFINITIONS,
     *SEMANTIC_SEARCH_TOOL_DEFINITIONS,
     *NOTIFY_OUT_TOOL_DEFINITIONS,
+    *COMPANION_PUSH_TOOL_DEFINITIONS,
     *DAEMON_ALERT_TOOL_DEFINITIONS,
     *SMART_COMPACT_TOOL_DEFINITIONS,
     *CONTEXT_WINDOW_TOOL_DEFINITIONS,
@@ -8761,6 +8766,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "semantic_search_code": _exec_semantic_search_code,
     # Notify-out pipeline
     "notify_out": _exec_notify_out,
+    "send_push_notification": _exec_send_push_notification,
     "notify_channel_add": _exec_notify_channel_add,
     "notify_channel_list": _exec_notify_channel_list,
     "notify_channel_delete": _exec_notify_channel_delete,

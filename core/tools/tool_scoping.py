@@ -93,6 +93,8 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "open_ui_panel",
     # App-self-control (desk) — foreslå skift chat→code mode (brugeren godkender)
     "request_app_action",
+    # Companion-push — naa brugeren proaktivt paa deres egne enheder (device-routet)
+    "send_push_notification",
 })
 
 # Ekstra værktøjer owner (kun) får i chat — fil-læsning til kode-snak.

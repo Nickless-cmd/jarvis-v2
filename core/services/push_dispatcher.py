@@ -64,6 +64,18 @@ def on_run_done(run_id: str) -> None:
         logger.warning("push: kunne ikke planlaegge run-done-tjek: %s", e)
 
 
+def send_companion_push(user_id: str, message: str, title: str = "Jarvis") -> bool:
+    """Proaktiv push til brugerens companion-enheder (mobil + desktop) via
+    device-routing. Bruges af send_push_notification-tool'et så Jarvis selv kan
+    naa brugeren naar de er vaek fra chatten. Returnerer True hvis afsendt."""
+    uid = (user_id or "").strip()
+    text = (message or "").strip()
+    if not uid or not text:
+        return False
+    _route_or_blast(uid, {"kind": "initiative", "preview": text[:140], "title": title}, "initiative")
+    return True
+
+
 def on_initiative(user_id: str, text: str) -> None:
     if not user_id:
         return

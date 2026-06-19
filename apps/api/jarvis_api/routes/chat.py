@@ -834,6 +834,16 @@ async def chat_active_runs() -> dict:
     # OEJEBLIKKELIGT op naar et run afsluttes (end_follow). Erstatter det DELTE
     # active-run-heartbeat, der halter cross-proces for detached runs og fik
     # desktop-aktivitetsprikkerne til at haenge (Bjoern 2026-06-18).
+    from core.runtime.settings import load_settings
+    if load_settings().server_authoritative_runs:
+        import core.services.run_event_log as rel
+        sids: list[str] = []
+        for rid in rel.live_run_ids():
+            sid = rel.session_for_run(rid)
+            if sid and sid not in sids:
+                sids.append(sid)
+        return {"session_ids": sids}
+    # FLAG OFF -> run_follow.live_sessions (uaendret)
     from core.services.run_follow import live_sessions
     try:
         return {"session_ids": live_sessions()}

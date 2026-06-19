@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Alert, AppState, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, Animated, AppState, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import notifee, { EventType } from '@notifee/react-native'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
@@ -57,6 +57,13 @@ export function ChatScreen() {
   const liftPadding = keyboardHeight
 
   const didRestore = useRef(false)
+
+  // Blød session-overgang (§3.6): fade besked-fladen ind ved samtale-skift.
+  const sessionFade = useRef(new Animated.Value(1)).current
+  useEffect(() => {
+    sessionFade.setValue(0)
+    Animated.timing(sessionFade, { toValue: 1, duration: tokens.motion.durBase, useNativeDriver: true }).start()
+  }, [sessions.activeId, sessionFade])
 
   // Notifikations-tap → åbn den relevante samtale (dyb-link). Dækker både tap
   // mens appen er åben (onForegroundEvent) og koldstart fra en notifikation
@@ -255,15 +262,17 @@ export function ChatScreen() {
       ) : null}
 
       <View style={[styles.flex, { paddingBottom: liftPadding }]}>
-        {showGreeting ? (
-          <GreetingHero userName={displayName} />
-        ) : (
-          <MessageList
-            messages={sessions.messages}
-            blocks={stream.state.blocks}
-            onResend={(text) => void ensureSessionAndSend(text)}
-          />
-        )}
+        <Animated.View style={{ flex: 1, opacity: sessionFade }}>
+          {showGreeting ? (
+            <GreetingHero userName={displayName} />
+          ) : (
+            <MessageList
+              messages={sessions.messages}
+              blocks={stream.state.blocks}
+              onResend={(text) => void ensureSessionAndSend(text)}
+            />
+          )}
+        </Animated.View>
         {canRetry ? (
           <ErrorBanner
             title={stream.state.status === 'error' ? 'Stream fejlede' : 'Svar stoppet'}

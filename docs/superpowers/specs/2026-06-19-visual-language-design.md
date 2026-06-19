@@ -5,10 +5,20 @@ Status: Approved design — ready for implementation plan
 Author: Claude (Opus 4.8) på baggrund af samtale med Bjørn
 Sub-project: V2 delprojekt 2 af 4 (push ✓ → **visuelt løft** → device awareness → chatboble)
 
-> Et fælles visuelt design-sprog for jarvis-desk (Electron/React) + jarvis-mobile
-> (React Native), der løfter §3 i vision-spec'en: "fancy uden at være overdrevet".
-> Frontend-only, uafhængigt af server-flag. Løfter en eksisterende identitet (mørkt
-> tema + grøn accent + ringe), ikke fra nul.
+> Visuelt løft af **jarvis-mobile (React Native) — KUN mobil i denne runde.**
+> jarvis-desk forbliver **urørt** (bevarer sit nuværende design). Løfter §3 i vision-
+> spec'en: "fancy uden at være overdrevet". Frontend-only, uafhængigt af server-flag.
+> Løfter en eksisterende identitet (mørkt tema + grøn accent + ringe), ikke fra nul.
+>
+> **VIGTIGT (Bjørn):** desktop-appens design ændres IKKE (urørt denne runde; token-
+> spec'et skrives så desk SENERE kan adoptere det). HELE mobil-appen — inkl.
+> composeren — får det nye look, MEN al eksisterende funktionalitet bevares.
+>
+> **BÆRENDE PRINCIP:** re-style de EKSISTERENDE komponenter på plads — genskriv ALDRIG
+> fra bunden. Composeren har mange funktioner (vedhæft, kamera, model-vælger, kø/queue,
+> stop-knap, serverBusy-tilstand, tastatur-løft …) der ALLE skal bevares. Vi ændrer
+> styling + animation, ikke struktur eller adfærd. Tabt funktionalitet = dobbelt arbejde
+> og er en spec-fejl.
 
 ---
 
@@ -85,21 +95,23 @@ Hvert element implementeres i BEGGE apps mod tokens ovenfor. Adfærd specificere
 
 6. **Session-overgang** (`§3.6`): skift af samtale crossfader/glider indhold `dur-base` `ease` (ikke hårdt klip).
 
-7. **Composer intelligent plads** (`§3.7`): højde vokser med input (op til ~5 linjer) og trækker sig sammen igen, `dur-fast`.
+7. **Composer** (`§3.7`): re-styles til det nye look (depth-0-flade, accent-send-knap, evt. glødende fokus-kant) + højde der vokser/trækker sig med input (`dur-fast`). **ALLE eksisterende funktioner bevares uændret:** vedhæft, kamera, model-vælger, kø/queue, stop-knap, serverBusy/streaming-tilstand, tastatur-løft. Re-style den EKSISTERENDE `Composer`-komponent — genskriv den ikke.
 
-8. **Én accent + dark=dybde** (`§3.10`/`§3.8`): håndhæv at KUN `accent` er farvet; alt strukturelt bruger depth-lag + gråtoner. Audit eksisterende komponenter for fremmede farver og ret til tokens.
+8. **Én accent + dark=dybde** (`§3.10`/`§3.8`): håndhæv at KUN `accent` er farvet; alt strukturelt bruger depth-lag + gråtoner. Audit alle mobil-komponenter (inkl. composer) for fremmede farver og ret til tokens.
 
 ---
 
-## 4. Per-app implementering
+## 4. Implementering (KUN jarvis-mobile)
 
-| | jarvis-desk (Electron/React) | jarvis-mobile (React Native) |
-|---|---|---|
-| Tokens | `src/styles/tokens.css` (CSS-vars) — udvid med depth/accent/glass/timing | `src/theme/tokens.ts` — udvid samme værdier |
-| Animation | CSS `@keyframes` + `transition` i eksisterende `src/styles/app.css` | RN's indbyggede `Animated` med `useNativeDriver: true` |
-| Komponenter | eksisterende `LivenessRing`, `PresenceDot`, tool-chips, MessageRow, Composer | eksisterende `LivenessRing`, `JarvisRing`, MessageList, Composer |
+| | jarvis-mobile (React Native) |
+|---|---|
+| Tokens | `src/theme/tokens.ts` — udvid med depth/accent/glass/timing |
+| Animation | RN's indbyggede `Animated` med `useNativeDriver: true` |
+| Komponenter | `LivenessRing`, `JarvisRing`, MessageList/MessageRow (bobler + tool-kort), notif-prik, session-overgang, **Composer (re-style, alle funktioner bevaret)**. Alle re-styles på plads — ingen genskrivning. |
 
-**Animations-bibliotek mobil:** `react-native-reanimated` er IKKE installeret. For at undgå endnu en native rebuild bruger vi RN's indbyggede `Animated` med `useNativeDriver: true` (transform/opacity kører på GPU-tråden — smidigt nok til åndedræt/stream/spring, ingen ny native dep, ingen rebuild-risiko ud over JS).
+**jarvis-desk:** urørt denne runde. Token-spec'et (§2) skrives så desk SENERE kan adoptere samme værdier i `tokens.css`, men ingen desk-ændringer nu.
+
+**Animations-bibliotek:** `react-native-reanimated` er IKKE installeret. For at undgå endnu en native rebuild bruger vi RN's indbyggede `Animated` med `useNativeDriver: true` (transform/opacity på GPU-tråden — smidigt nok til åndedræt/stream/spring, ingen ny native dep).
 
 ---
 
@@ -114,7 +126,7 @@ Hvert element implementeres i BEGGE apps mod tokens ovenfor. Adfærd specificere
 ## 6. Test
 
 - **Desk (vitest):** token-tilstedeværelse (tokens.css parser), komponent-render-smoke (LivenessRing/StreamIndicator rendrer i hver tilstand uden crash), reduced-motion-gren. Eksisterende 333 tests forbliver grønne.
-- **Mobil (jest):** token-objekt-form, komponent-render-smoke, reduced-motion. Eksisterende 71 tests forbliver grønne.
+- **Mobil (jest):** token-objekt-form, komponent-render-smoke, reduced-motion. **Eksisterende 71 tests forbliver grønne = funktions-bevarings-garantien** (Composer/ChatScreen-tests fanger hvis vedhæft/model-vælger/kø/stop-adfærd brækker under re-styling). Tilføj smoke-tests for nye animations-komponenter, men rør ikke de funktionelle tests.
 - **Visuel verifikation (det endelige bevis):** bygget desk + mobil, Bjørn ser åndedræt/stream/glas live på begge — iterativ finjustering (visuelt løft er iterativ pr. natur).
 
 ---

@@ -232,7 +232,11 @@ export function ChatScreen() {
         {canRetry ? (
           <ErrorBanner
             title={stream.state.status === 'error' ? 'Stream fejlede' : 'Svar stoppet'}
-            detail="Du kan prøve den seneste besked igen."
+            detail={
+              stream.state.status === 'error' && stream.lastError
+                ? `Årsag: ${stream.lastError}`
+                : 'Du kan prøve den seneste besked igen.'
+            }
             actionLabel="Retry"
             onAction={() => void ensureSessionAndSend(lastUserMessage.content)}
           />

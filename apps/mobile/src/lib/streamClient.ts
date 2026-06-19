@@ -44,6 +44,7 @@ type SsePayloadEvent = { data?: string | null; message?: string | null }
 
 export function startStream(request: StreamRequest, handlers: StreamHandlers): StreamControl {
   let activeRunId: string | null = null
+  let gotStop = false
   const url = new URL('/chat/stream/v2', request.config.apiBaseUrl).toString()
   const headers: Record<string, string> = {
     Accept: 'text/event-stream',
@@ -97,6 +98,7 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
       }
       handlers.onEvent(parsed)
       if (parsed.type === 'message_stop') {
+        gotStop = true
         handlers.onComplete?.()
         source.close()
       }
@@ -104,9 +106,27 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
   }
 
   source.addEventListener('error', (event) => {
-    const message = 'message' in event ? event.message : 'Stream interrupted'
+    // Streamen er allerede afsluttet normalt → ignorér efterfølgende close-event
+    // (react-native-sse fyrer 'error' når serveren lukker forbindelsen).
+    if (gotStop) return
+    // DIAGNOSTIK: udstil den ægte årsag (type/xhr-status/besked) så vi kan se
+    // HVORFOR mobilen taber streamen mens serveren beviseligt streamer fint.
+    const e = event as {
+      type?: string
+      message?: string
+      xhrStatus?: number
+      xhrState?: number
+      error?: { message?: string }
+    }
+    const parts: string[] = []
+    if (e.type) parts.push(e.type)
+    if (typeof e.xhrStatus === 'number') parts.push(`http=${e.xhrStatus}`)
+    if (typeof e.xhrState === 'number') parts.push(`state=${e.xhrState}`)
+    if (e.message) parts.push(e.message)
+    if (e.error?.message) parts.push(e.error.message)
+    const detail = parts.length ? parts.join(' · ') : 'ukendt'
     handlers.onInterrupted?.()
-    handlers.onError?.(new Error(String(message ?? 'Stream interrupted')))
+    handlers.onError?.(new Error(detail))
     source.close()
   })
 

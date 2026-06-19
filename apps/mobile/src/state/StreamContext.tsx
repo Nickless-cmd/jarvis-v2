@@ -15,6 +15,7 @@ import { useSessions } from './SessionContext'
 interface StreamContextValue {
   state: StreamState
   approval: ApprovalViewModel | null
+  lastError: string | null
   send: (
     config: ApiConfig,
     sessionId: string,
@@ -46,6 +47,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const { appendLocalMessage } = useSessions()
   const [state, setState] = useState(initialStreamState())
   const [approval, setApproval] = useState<ApprovalViewModel | null>(null)
+  const [lastError, setLastError] = useState<string | null>(null)
   const control = useRef<StreamControl | null>(null)
   const followControl = useRef<StreamControl | null>(null)
   const stateRef = useRef(state)
@@ -79,6 +81,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     () => ({
       state,
       approval,
+      lastError,
       send: (config, sessionId, message, opts) => {
         const local: ChatMessage = {
           id: `local-${Date.now()}`,
@@ -93,6 +96,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         appendLocalMessage(local)
         persistedRunRef.current = null
         setApproval(null)
+        setLastError(null)
         updateState(initialStreamState())
         control.current = startStream(
           {
@@ -121,7 +125,10 @@ export function StreamProvider({ children }: { children: ReactNode }) {
               }
             },
             onInterrupted: () => persistAssistantSnapshot('interrupted'),
-            onError: () => persistAssistantSnapshot('error')
+            onError: (err) => {
+              setLastError(err?.message ?? 'ukendt')
+              persistAssistantSnapshot('error')
+            }
           }
         )
       },
@@ -193,7 +200,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         followControl.current = null
       }
     }),
-    [appendLocalMessage, approval, state]
+    [appendLocalMessage, approval, state, lastError]
   )
 
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>

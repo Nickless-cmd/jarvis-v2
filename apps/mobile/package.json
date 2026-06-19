@@ -23,7 +23,8 @@
     "react-native": "0.85.3",
     "react-native-markdown-display": "^7.0.2",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-sse": "^1.2.1"
+    "react-native-sse": "^1.2.1",
+    "react-native-svg": "15.15.4"
   },
   "devDependencies": {
     "@react-native/jest-preset": "0.86.0",

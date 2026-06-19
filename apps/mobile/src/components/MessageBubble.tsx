@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-native-markdown-display'
 import MarkdownIt from 'markdown-it'
 import * as Clipboard from 'expo-clipboard'
 import * as Speech from 'expo-speech'
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { formatRelativeTime } from '../lib/relativeDate'
 import type { ChatMessage } from '../lib/types'
 import { tokens } from '../theme/tokens'
@@ -25,6 +25,13 @@ export function MessageBubble({
   const [speaking, setSpeaking] = useState(false)
   const [copied, setCopied] = useState(false)
   const streaming = message.id.startsWith('stream-')
+
+  // Blød spring-ind ved mount (§3.3): scale 0.96→1 + opacity 0→1.
+  const enter = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    Animated.spring(enter, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 6 }).start()
+  }, [enter])
+  const enterScale = enter.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] })
 
   const copy = async () => {
     await Clipboard.setStringAsync(message.content)
@@ -48,7 +55,13 @@ export function MessageBubble({
   }
 
   return (
-    <View style={[styles.root, isUser ? styles.user : styles.assistant]}>
+    <Animated.View
+      style={[
+        styles.root,
+        isUser ? styles.user : styles.assistant,
+        { opacity: enter, transform: [{ scale: enterScale }] }
+      ]}
+    >
       {isUser ? (
         <Text style={styles.userText}>{message.content}</Text>
       ) : (
@@ -78,7 +91,7 @@ export function MessageBubble({
           </View>
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   )
 }
 
@@ -90,8 +103,14 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spacing.sm,
     borderRadius: tokens.radius.md
   },
-  assistant: { marginRight: 40, backgroundColor: tokens.color.bg1 },
-  user: { marginLeft: 40, backgroundColor: tokens.color.userBubble },
+  assistant: { marginRight: 40, backgroundColor: tokens.color.depth2 },
+  user: {
+    marginLeft: 40,
+    backgroundColor: tokens.color.glassFill,
+    borderWidth: 1,
+    borderColor: tokens.color.glassLine,
+    borderRadius: tokens.radius.lg
+  },
   userText: { color: tokens.color.fg1, fontSize: 16, lineHeight: 23 },
   meta: {
     flexDirection: 'row',

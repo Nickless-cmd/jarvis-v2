@@ -75,3 +75,18 @@ def test_prune_keeps_latest_per_session():
     rel.prune()
     assert "r1" not in rel._RUNS
     assert "r2" in rel._RUNS
+
+
+def test_subscriber_tracking_and_consumed():
+    rel.create("rsub1", "s1")
+    assert rel.was_consumed_or_active("rsub1") is False
+    rel.subscriber_opened("rsub1")
+    assert rel.was_consumed_or_active("rsub1") is True
+    rel.subscriber_closed("rsub1")
+    assert rel.was_consumed_or_active("rsub1") is False
+    rel.mark_consumed("rsub1")
+    assert rel.was_consumed_or_active("rsub1") is True
+
+
+def test_consumed_unknown_run_is_false():
+    assert rel.was_consumed_or_active("ukendt-run") is False

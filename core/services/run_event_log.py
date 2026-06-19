@@ -32,6 +32,8 @@ def create(run_id: str, session_id: str) -> None:
             "done": False,
             "last_append_at": time.monotonic(),
             "created_at": time.monotonic(),
+            "subscribers": 0,
+            "consumed": False,
         }
 
 
@@ -118,3 +120,34 @@ def prune() -> None:
                 drop.add(rid)
         for rid in drop:
             _RUNS.pop(rid, None)
+
+
+def subscriber_opened(run_id: str) -> None:
+    with _lock:
+        st = _RUNS.get((run_id or "").strip())
+        if st is not None:
+            st["subscribers"] = int(st.get("subscribers", 0)) + 1
+
+
+def subscriber_closed(run_id: str) -> None:
+    with _lock:
+        st = _RUNS.get((run_id or "").strip())
+        if st is not None:
+            st["subscribers"] = max(0, int(st.get("subscribers", 0)) - 1)
+
+
+def mark_consumed(run_id: str) -> None:
+    """En subscriber yieldede message_stop -> nogen saa runnet til ende."""
+    with _lock:
+        st = _RUNS.get((run_id or "").strip())
+        if st is not None:
+            st["consumed"] = True
+
+
+def was_consumed_or_active(run_id: str) -> bool:
+    """True hvis en levende subscriber saa/ser runnet til ende -> undertryk push."""
+    with _lock:
+        st = _RUNS.get((run_id or "").strip())
+        if st is None:
+            return False
+        return bool(st.get("consumed")) or int(st.get("subscribers", 0)) > 0

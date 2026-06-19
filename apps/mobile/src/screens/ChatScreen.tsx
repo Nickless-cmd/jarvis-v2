@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert, AppState, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import notifee, { EventType } from '@notifee/react-native'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
 import { ApprovalCard } from '../components/ApprovalCard'
@@ -55,6 +56,28 @@ export function ChatScreen() {
   const liftPadding = keyboardHeight
 
   const didRestore = useRef(false)
+
+  // Notifikations-tap → åbn den relevante samtale (dyb-link). Dækker både tap
+  // mens appen er åben (onForegroundEvent) og koldstart fra en notifikation
+  // (getInitialNotification). session_id kommer fra den data-only FCM-besked.
+  useEffect(() => {
+    if (!config) return
+    let cancelled = false
+    const open = (sid: unknown) => {
+      const id = typeof sid === 'string' ? sid : ''
+      if (id) sessions.select(config, id).catch(() => undefined)
+    }
+    const unsub = notifee.onForegroundEvent(({ type, detail }) => {
+      if (type === EventType.PRESS) open(detail.notification?.data?.session_id)
+    })
+    void notifee.getInitialNotification().then((n) => {
+      if (!cancelled) open(n?.notification?.data?.session_id)
+    })
+    return () => {
+      cancelled = true
+      unsub()
+    }
+  }, [config])
 
   useEffect(() => {
     if (!config) return

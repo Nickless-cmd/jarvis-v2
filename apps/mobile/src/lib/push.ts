@@ -84,7 +84,7 @@ export async function registerForPush(config: ApiConfig): Promise<void> {
 
 /** Kald i forgrunden (app åben). Returnerer unsubscribe. */
 export function attachForegroundHandler(config: ApiConfig) {
-  return messaging().onMessage(async (msg: { data?: Record<string, string> }) => {
-    await display(config, (msg.data ?? {}) as PushData)
+  return messaging().onMessage(async (msg) => {
+    await display(config, (msg.data ?? {}) as unknown as PushData)
   })
 }

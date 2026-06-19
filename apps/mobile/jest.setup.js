@@ -22,3 +22,19 @@ jest.mock('@react-native-firebase/messaging', () => ({
     setBackgroundMessageHandler: jest.fn(),
   }),
 }))
+
+jest.mock('react-native-svg', () => {
+  const React = require('react')
+  const mk = (name) => (props) => React.createElement(name, props, props.children)
+  return {
+    __esModule: true,
+    default: mk('Svg'),
+    Svg: mk('Svg'),
+    Circle: mk('Circle'),
+    Rect: mk('Rect'),
+    Defs: mk('Defs'),
+    RadialGradient: mk('RadialGradient'),
+    LinearGradient: mk('LinearGradient'),
+    Stop: mk('Stop'),
+  }
+})

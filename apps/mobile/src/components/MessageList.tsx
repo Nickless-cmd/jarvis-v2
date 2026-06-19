@@ -1,9 +1,25 @@
+import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { FlatList, StyleSheet } from 'react-native'
 import type { ContentBlock } from '../lib/sseProtocol'
 import type { ChatMessage } from '../lib/types'
 import { tokens } from '../theme/tokens'
+import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
 import { ToolResultCard } from './ToolResultCard'
+
+export interface MessageListHandle {
+  jumpTop: () => void       // ældste besked
+  jumpBottom: () => void    // nyeste besked
+  jumpOlderUser: () => void // forrige bruger-besked (op i historik)
+  jumpNewerUser: () => void // næste bruger-besked (ned mod nyeste)
+  scrubTo: (fraction: number) => void // 0=nyeste, 1=ældste
+}
+
+interface MessageListProps {
+  messages: ChatMessage[]
+  blocks: ContentBlock[]
+  onResend?: (text: string) => void
+}
 
 type Row =
   | { kind: 'msg'; key: string; message: ChatMessage }
@@ -63,15 +79,19 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
   return rows
 }
 
-export function MessageList({
-  messages,
-  blocks,
-  onResend
-}: {
-  messages: ChatMessage[]
-  blocks: ContentBlock[]
-  onResend?: (text: string) => void
-}) {
+export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
+  { messages, blocks, onResend },
+  ref
+) {
+  const flatRef = useRef<FlatList>(null)
+  const visibleRef = useRef(0)   // ordered-index øverst i viewport (inverted)
+  const contentLenRef = useRef(0)
+  // Stabil callback — RN kaster hvis onViewableItemsChanged ændrer identitet on-the-fly.
+  const onViewable = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
+    const first = viewableItems[0]
+    if (first && first.index != null) visibleRef.current = first.index
+  }).current
+
   const persisted: Row[] = messages.map((m) =>
     m.role === 'tool'
       ? { kind: 'tool', key: m.id, content: m.content }
@@ -82,12 +102,34 @@ export function MessageList({
 
   // Inverteret liste: nyeste række sidder altid i bunden og er synlig fra start.
   const ordered = [...rows].reverse()
+  // I inverted liste: HØJERE index = ÆLDRE besked, LAVERE index = NYERE.
+  const userFlags = ordered.map((r) => r.kind === 'msg' && r.message.role === 'user')
+
+  useImperativeHandle(ref, () => ({
+    jumpTop: () => flatRef.current?.scrollToEnd({ animated: true }),
+    jumpBottom: () => flatRef.current?.scrollToOffset({ offset: 0, animated: true }),
+    jumpOlderUser: () => {
+      const i = nextUserRow(userFlags, visibleRef.current, 1)
+      if (i != null) flatRef.current?.scrollToIndex({ index: i, animated: true, viewPosition: 0 })
+    },
+    jumpNewerUser: () => {
+      const i = nextUserRow(userFlags, visibleRef.current, -1)
+      if (i != null) flatRef.current?.scrollToIndex({ index: i, animated: true, viewPosition: 0 })
+    },
+    scrubTo: (f: number) => flatRef.current?.scrollToOffset({ offset: f * contentLenRef.current, animated: false }),
+  }), [userFlags])
 
   return (
     <FlatList
+      ref={flatRef}
       inverted
       data={ordered}
       keyExtractor={(item) => item.key}
+      onContentSizeChange={(_w, h) => { contentLenRef.current = h }}
+      onViewableItemsChanged={onViewable}
+      onScrollToIndexFailed={(info) => {
+        flatRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true })
+      }}
       renderItem={({ item }) => {
         if (item.kind === 'tool') return <ToolResultCard content={item.content} />
         if (item.kind === 'live-tool')
@@ -103,7 +145,7 @@ export function MessageList({
       keyboardShouldPersistTaps="handled"
     />
   )
-}
+})
 
 const styles = StyleSheet.create({
   content: {

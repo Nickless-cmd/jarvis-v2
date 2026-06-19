@@ -861,6 +861,76 @@ async def chat_cancel_active(session_id: str) -> dict:
     return {"cancelled": False}
 
 
+@router.get("/runs/{run_id}/subscribe")
+async def chat_run_subscribe(run_id: str, from_idx: int = 0):
+    """Gen-abonner paa et server-autoritativt run fra et offset (mobil-reconnect
+    efter socket-drop). Catch-up fra from_idx + live-hale til done. 404 hvis
+    run_id ukendt/pruned -> klient falder tilbage til sessions.select."""
+    import asyncio
+    from fastapi import HTTPException
+    from fastapi.responses import StreamingResponse
+    import core.services.run_event_log as rel
+
+    if rel.session_for_run(run_id) is None:
+        raise HTTPException(status_code=404, detail="run not found")
+
+    async def _gen():
+        idx = max(0, int(from_idx))
+        empty = 0
+        while True:
+            frames, done = rel.read(run_id, idx)
+            for f in frames:
+                idx += 1
+                yield f
+            if done:
+                break
+            if frames:
+                empty = 0
+            else:
+                empty += 1
+                if empty > 300:
+                    break
+            await asyncio.sleep(0.08)
+
+    return StreamingResponse(_gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Run-Id": run_id})
+
+
+@router.get("/sessions/{session_id}/live")
+async def chat_session_live(session_id: str):
+    """Attach til sessionens aktive run fra offset 0 (cross-device + foreground-
+    attach). 204 hvis intet aktivt run."""
+    import asyncio
+    from fastapi import Response
+    from fastapi.responses import StreamingResponse
+    import core.services.run_event_log as rel
+
+    run_id = rel.active_run_for_session(session_id)
+    if not run_id:
+        return Response(status_code=204)
+
+    async def _gen():
+        idx = 0
+        empty = 0
+        while True:
+            frames, done = rel.read(run_id, idx)
+            for f in frames:
+                idx += 1
+                yield f
+            if done:
+                break
+            if frames:
+                empty = 0
+            else:
+                empty += 1
+                if empty > 300:
+                    break
+            await asyncio.sleep(0.08)
+
+    return StreamingResponse(_gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Run-Id": run_id})
+
+
 @router.get("/sessions/{session_id}/follow")
 async def chat_session_follow(session_id: str):
     """Token-stream det aktive autonome run i sessionen (desk-pickup af wakeup).

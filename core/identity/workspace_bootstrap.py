@@ -250,6 +250,92 @@ def read_recent_daily_memory_lines(
     return list(reversed(collected))
 
 
+def _load_known_sizes(workspace_dir: Path) -> dict[str, int]:
+    """Load last-known-good file sizes from .file_sizes.json in the workspace."""
+    sizes_file = workspace_dir / ".file_sizes.json"
+    if not sizes_file.exists():
+        return {}
+    try:
+        import json
+        data = json.loads(sizes_file.read_text(encoding="utf-8"))
+        return {k: int(v) for k, v in data.items()}
+    except Exception:
+        return {}
+
+
+def _save_known_sizes(workspace_dir: Path, sizes: dict[str, int]) -> None:
+    """Persist current file sizes as last-known-good baseline."""
+    sizes_file = workspace_dir / ".file_sizes.json"
+    try:
+        import json
+        sizes_file.write_text(
+            json.dumps(sizes, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+    except Exception:
+        LOGGER.warning(
+            "Failed to save known sizes baseline",
+            extra={"workspace": str(workspace_dir)},
+            exc_info=True,
+        )
+
+
+# Files that are identity-critical and should never silently shrink to stubs.
+_IDENTITY_CRITICAL_FILES = frozenset({
+    "SOUL.md",
+    "IDENTITY.md",
+    "USER.md",
+    "STANDING_ORDERS.md",
+    "MEMORY.md",
+    "MILESTONES.md",
+})
+
+# Minimum acceptable size (bytes) for identity-critical files.
+# If a workspace file is below this, it's likely a stub and we log a warning.
+_MIN_EXPECTED_SIZE = 500
+
+# If a file shrinks more than this fraction from its last-known-good size, alarm.
+_SHRINK_ALARM_THRESHOLD = 0.50
+
+
+def _check_workspace_file_health(
+    workspace_dir: Path,
+    filename: str,
+    known_sizes: dict[str, int],
+) -> list[str]:
+    """Check a workspace file for suspicious shrinkage or stub-level size.
+
+    Returns a list of warning messages (empty if healthy).
+    """
+    warnings: list[str] = []
+    dest = workspace_dir / filename
+
+    if not dest.exists():
+        return warnings
+
+    current_size = dest.stat().st_size
+
+    # Check 1: absolute minimum for identity-critical files
+    if filename in _IDENTITY_CRITICAL_FILES and current_size < _MIN_EXPECTED_SIZE:
+        warnings.append(
+            f"⚠ {filename} is only {current_size}B — below minimum "
+            f"{_MIN_EXPECTED_SIZE}B for identity-critical files. "
+            f"Likely a stub overwrite. Investigate before restart."
+        )
+
+    # Check 2: relative shrinkage from last-known-good
+    last_known = known_sizes.get(filename)
+    if last_known and last_known > 0:
+        ratio = current_size / last_known
+        if ratio < _SHRINK_ALARM_THRESHOLD:
+            warnings.append(
+                f"🚨 {filename} shrank from {last_known}B to {current_size}B "
+                f"({ratio:.0%} of last-known-good). Possible data loss!"
+            )
+
+    return warnings
+
+
 def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:
     workspace_dir = Path(WORKSPACES_DIR) / name
     workspace_dir.mkdir(parents=True, exist_ok=True)
@@ -257,6 +343,28 @@ def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:
     created_files: list[str] = []
     existing_files: list[str] = []
 
+    # --- Health guard: check existing files for stub-level shrinkage ---
+    known_sizes = _load_known_sizes(workspace_dir)
+    health_warnings: list[str] = []
+    all_files = REQUIRED_WORKSPACE_FILES + OPTIONAL_WORKSPACE_FILES
+    for filename in all_files:
+        health_warnings.extend(
+            _check_workspace_file_health(workspace_dir, filename, known_sizes)
+        )
+    if health_warnings:
+        for w in health_warnings:
+            LOGGER.critical("WORKSPACE HEALTH GUARD: %s", w)
+        # Also publish to eventbus so daemons/heartbeat can pick it up
+        try:
+            from core.services.event_bus import publish as _eb_publish
+            _eb_publish("workspace.health_warning", {
+                "workspace": name,
+                "warnings": health_warnings,
+            })
+        except Exception:
+            pass  # eventbus may not be available in all contexts
+
+    # --- Normal bootstrap: copy missing files from template ---
     for filename in REQUIRED_WORKSPACE_FILES:
         src = TEMPLATE_DIR / filename
         if not src.exists():
@@ -284,6 +392,17 @@ def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:
         created_files.append(filename)
 
     ensure_layered_memory_dirs(name=name)
+
+    # --- Update known-sizes baseline for all identity-critical files ---
+    new_sizes: dict[str, int] = {}
+    for filename in _IDENTITY_CRITICAL_FILES:
+        dest = workspace_dir / filename
+        if dest.exists():
+            new_sizes[filename] = dest.stat().st_size
+    if new_sizes:
+        # Merge with existing (preserve sizes for files not currently present)
+        merged = {**known_sizes, **new_sizes}
+        _save_known_sizes(workspace_dir, merged)
 
     return WorkspaceBootstrapResult(
         workspace_dir=workspace_dir,

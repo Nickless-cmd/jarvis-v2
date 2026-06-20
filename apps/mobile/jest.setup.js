@@ -57,6 +57,13 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(async () => ({ canceled: true, assets: [] })),
 }))
 
+jest.mock('expo-location', () => ({
+  __esModule: true,
+  Accuracy: { Balanced: 3 },
+  requestForegroundPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  getCurrentPositionAsync: jest.fn(async () => ({ coords: { latitude: 55.86, longitude: 10.39 } })),
+}))
+
 jest.mock('react-native-svg', () => {
   const React = require('react')
   const mk = (name) => (props) => React.createElement(name, props, props.children)

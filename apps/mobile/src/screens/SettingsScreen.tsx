@@ -17,6 +17,7 @@ import { useConnectivity } from '../lib/useConnectivity'
 import { tokens } from '../theme/tokens'
 import { bubble } from '../lib/bubbleModule'
 import { loadBubblePersist, saveBubblePersist } from '../lib/bubbleSetting'
+import { loadPrecision, savePrecision, type LocationPrecision } from '../lib/location'
 
 const CONN_LABEL: Record<string, string> = {
   connected: 'Forbundet til Jarvis ✓',
@@ -48,8 +49,10 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [persistBubble, setPersistBubble] = useState(false)
   const [bubbleOk, setBubbleOk] = useState(false)
+  const [locPrecision, setLocPrecision] = useState<LocationPrecision>('off')
   useEffect(() => { void bubble.isSupported().then(setBubbleOk) }, [])
   useEffect(() => { void loadBubblePersist().then(setPersistBubble) }, [])
+  useEffect(() => { void loadPrecision().then(setLocPrecision) }, [])
 
   useEffect(() => {
     if (!config) return
@@ -204,6 +207,32 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
           </Pressable>
         </View>
 
+        <Text style={styles.sectionTitle}>Lokation</Text>
+        <View style={styles.card}>
+          <Text style={styles.value}>Del lokation med Jarvis</Text>
+          <View style={styles.locRow}>
+            {(['off', 'city', 'precise'] as LocationPrecision[]).map((p) => (
+              <Pressable
+                key={p}
+                accessibilityRole="button"
+                onPress={() => { setLocPrecision(p); void savePrecision(p) }}
+                style={[styles.locChip, locPrecision === p && styles.locChipOn]}
+              >
+                <Text style={[styles.locChipText, locPrecision === p && styles.locChipTextOn]}>
+                  {p === 'off' ? 'Fra' : p === 'city' ? 'By' : 'Præcis'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.muted}>
+            {locPrecision === 'off'
+              ? 'Jarvis kan ikke se hvor du er. Ingen GPS- eller IP-opslag.'
+              : locPrecision === 'city'
+                ? 'By-niveau via IP — fx "Svendborg". Batterivenligt, ingen GPS.'
+                : 'Præcis (gade) via GPS — fx "Toftegårdsvej, Svendborg". Kun mens appen er åben.'}
+          </Text>
+        </View>
+
         {bubbleOk ? (
           <>
             <Text style={styles.sectionTitle}>Chatboble</Text>
@@ -246,6 +275,14 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.color.bg0 },
   bubbleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  locRow: { flexDirection: 'row', gap: 8, marginTop: 10, marginBottom: 8 },
+  locChip: {
+    paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999,
+    backgroundColor: tokens.color.bg3, borderWidth: 1, borderColor: tokens.color.bg3,
+  },
+  locChipOn: { backgroundColor: tokens.color.accent, borderColor: tokens.color.accent },
+  locChipText: { color: tokens.color.fg2, fontWeight: '600' },
+  locChipTextOn: { color: '#0d1117' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

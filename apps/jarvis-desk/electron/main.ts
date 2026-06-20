@@ -41,6 +41,14 @@ const APP_NAME = 'Jarvis'
 // første linje og fjern de to ignore/blocklist-switches.
 app.commandLine.appendSwitch('disable-gpu-sandbox')
 app.commandLine.appendSwitch('ignore-gpu-blocklist')
+// KRITISK for cross-device realtime (Bjørn 2026-06-20): Chromium throttler
+// renderer-timere (setInterval) i ufokuserede/okkluderede vinduer → active-runs-
+// pollet + transcript-refresh fryser til ~1/4s når desk-vinduet ikke er i fokus
+// (netop når man tager over fra mobil). webPreferences.backgroundThrottling:false
+// alene var IKKE nok på Linux. Disse switches slår throttlingen helt fra.
+app.commandLine.appendSwitch('disable-background-timer-throttling')
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 
 // Suppress dev-only CSP warnings i renderer. Vi VED at vi har 'unsafe-eval'
 // i dev — det er for at Vite kan HMR'e. Prod-CSP er stram.

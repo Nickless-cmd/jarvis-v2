@@ -14,21 +14,26 @@ from core.runtime.db import connect
 def create_chat_session(
     *, title: str = "New chat",
     workspace_kind: str | None = None, workspace_root: str | None = None,
+    team_id: str | None = None,
 ) -> dict[str, object]:
-    from core.runtime.db import _ensure_chat_session_workspace_columns
+    from core.runtime.db import (
+        _ensure_chat_session_team_column,
+        _ensure_chat_session_workspace_columns,
+    )
     session_id = f"chat-{uuid4().hex}"
     created_at = datetime.now(UTC).isoformat()
     normalized_title = _normalize_title(title) or "New chat"
     with connect() as conn:
         _ensure_chat_session_workspace_columns(conn)
+        _ensure_chat_session_team_column(conn)
         conn.execute(
             """
             INSERT INTO chat_sessions (session_id, title, created_at, updated_at,
-                                       workspace_kind, workspace_root)
-            VALUES (?, ?, ?, ?, ?, ?)
+                                       workspace_kind, workspace_root, team_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (session_id, normalized_title, created_at, created_at,
-             (workspace_kind or None), (workspace_root or None)),
+             (workspace_kind or None), (workspace_root or None), (team_id or None)),
         )
     return get_chat_session(session_id) or {
         "session_id": session_id,

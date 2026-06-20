@@ -110,6 +110,18 @@ def get_team(team_id: str) -> dict | None:
             "created_at": r[3], "workspace_path": r[4]}
 
 
+# ── Team-sessioner (delte chats bundet til et team) ────────────────────────────
+def list_team_sessions(team_id: str) -> list[dict]:
+    """Delte sessioner der hører til et team (nyeste først)."""
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT session_id, title, updated_at FROM chat_sessions "
+            "WHERE team_id = ? ORDER BY updated_at DESC, id DESC",
+            (team_id,),
+        ).fetchall()
+    return [{"session_id": r[0], "title": r[1], "updated_at": r[2]} for r in rows]
+
+
 # ── Invite-token-livscyklus ────────────────────────────────────────────────────
 def create_invite(team_id: str, *, invited_email: str, invited_by: str) -> str:
     """Opret et pending invite-token (gemmer email → muliggør email-onboarding

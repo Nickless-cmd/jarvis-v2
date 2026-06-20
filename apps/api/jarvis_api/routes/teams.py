@@ -78,6 +78,28 @@ async def invite(team_id: str, body: InviteBody) -> dict:
     return {"token": r["token"], "invited": r["invited"], "delivered": r.get("delivered", {})}
 
 
+class TeamSessionBody(BaseModel):
+    title: str = "Team-chat"
+
+
+@router.get("/teams/{team_id}/sessions")
+async def team_sessions(team_id: str) -> dict:
+    uid = _current_user()
+    if not uid or not teams.is_member(team_id, uid):
+        raise HTTPException(status_code=403, detail="ikke medlem af teamet")
+    return {"sessions": teams.list_team_sessions(team_id)}
+
+
+@router.post("/teams/{team_id}/sessions")
+async def create_team_session(team_id: str, body: TeamSessionBody) -> dict:
+    uid = _current_user()
+    if not uid or not teams.is_member(team_id, uid):
+        raise HTTPException(status_code=403, detail="ikke medlem af teamet")
+    from core.services.chat_sessions import create_chat_session
+    s = create_chat_session(title=(body.title or "Team-chat"), team_id=team_id)
+    return {"session_id": s.get("session_id") or s.get("id"), "title": s.get("title")}
+
+
 @router.post("/invites/{token}/accept")
 async def accept(token: str) -> dict:
     uid = _current_user()

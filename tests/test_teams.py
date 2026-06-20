@@ -307,3 +307,22 @@ def test_route_kick_requires_admin(tmp_path, monkeypatch):
     assert ei.value.status_code == 403
     _as(monkeypatch, "bjorn")
     assert asyncio.run(troute.kick(t["team_id"], "mikkel"))["ok"]
+
+
+def test_team_session_create_and_list(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    teams.add_member(t["team_id"], "mikkel")
+    _as(monkeypatch, "bjorn")
+    s = asyncio.run(troute.create_team_session(t["team_id"], troute.TeamSessionBody(title="Sprint")))
+    sid = s["session_id"]
+    # vises i teamets sessioner
+    ls = asyncio.run(troute.team_sessions(t["team_id"]))
+    assert sid in {x["session_id"] for x in ls["sessions"]}
+    # og Mikkel (medlem, har ikke postet) ser den i sin almindelige sessions-liste (regel B)
+    assert sid in {x["id"] for x in cs.list_chat_sessions(user_id="mikkel")}
+    # ikke-medlem afvises på team-sessions-endpoint
+    _as(monkeypatch, "fremmed")
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException):
+        asyncio.run(troute.team_sessions(t["team_id"]))

@@ -118,7 +118,11 @@ export function StreamProvider({ children }: { children: ReactNode }) {
           {
             onReconnecting: () => setReconnecting(true),
             onEvent: (event) => {
-              if (reconnecting) setReconnecting(false) // forbindelse i live igen
+              // Ubetinget: enhver indkommende frame = forbindelsen er i live igen.
+              // (Ikke `if (reconnecting)` — closuren fanger en forældet
+              // reconnecting-værdi fra send-tidspunktet, så guarden ryddede aldrig
+              // banneret. setReconnecting(false) er en no-op hvis allerede false.)
+              setReconnecting(false)
               if (event.type === 'system_event' && event.kind === 'approval_request') {
                 setApproval({
                   approvalId: String(event.payload.approval_id ?? ''),

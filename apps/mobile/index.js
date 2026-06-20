@@ -4,8 +4,6 @@ import notifee, { AndroidImportance } from '@notifee/react-native'
 import App from './src/App'
 import { display } from './src/lib/push'
 import { loadAuthConfig } from './src/lib/authStore'
-import { bubble } from './src/lib/bubbleModule'
-import { shouldFloatOnPush } from './src/lib/bubbleTrigger'
 import './src/bubble/registerBubble'
 
 // FCM data-only baggrunds-handler — SKAL registreres uden for komponent-træet
@@ -18,9 +16,6 @@ messaging().setBackgroundMessageHandler(async (msg) => {
     const config = await loadAuthConfig()
     if (config && config.authToken) {
       await display(config, data)
-      if (shouldFloatOnPush(data)) {
-        bubble.showConversationBubble(data.session_id, data.title ?? 'Jarvis', data.preview ?? 'Nyt svar')
-      }
       return
     }
   } catch {

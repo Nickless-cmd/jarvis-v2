@@ -2,8 +2,6 @@ import messaging from '@react-native-firebase/messaging'
 import notifee, { AndroidImportance } from '@notifee/react-native'
 import type { ApiConfig } from './types'
 import { ackNotification } from './presence'
-import { bubble } from './bubbleModule'
-import { shouldFloatOnPush } from './bubbleTrigger'
 
 export type PushData = { kind: string; session_id?: string; run_id?: string; preview?: string; notif_id?: string }
 
@@ -59,10 +57,6 @@ export async function display(config: ApiConfig, data: PushData) {
     data: n.data as Record<string, string>,
     android: { channelId, pressAction: { id: 'default' }, smallIcon: 'ic_notification' },
   })
-  // Chatboble: gør proaktive Jarvis-beskeder til en floatbar samtale-boble.
-  if (shouldFloatOnPush(data as unknown as Record<string, string>)) {
-    bubble.showConversationBubble(data.session_id ?? '', 'Jarvis', n.body)
-  }
   // Device-awareness: kvittér så serveren ved beskeden nåede mobilen (annullerer
   // eskalering til en anden enhed). Best-effort.
   if (data.notif_id) void ackNotification(config, data.notif_id)

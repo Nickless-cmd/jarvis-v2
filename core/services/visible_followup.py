@@ -33,7 +33,7 @@ from urllib import request as urllib_request
 _log = logging.getLogger(__name__)
 
 _OLLAMA_MAX_FOLLOWUP_EXCHANGES = 10
-_OLLAMA_MAX_TOOL_RESULT_CHARS = 2500
+_OLLAMA_MAX_TOOL_RESULT_CHARS = 8000
 
 
 # ── Event types ──────────────────────────────────────────────────────────────

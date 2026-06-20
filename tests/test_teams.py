@@ -99,3 +99,21 @@ def test_non_member_cannot_see_team_session(tmp_path, monkeypatch):
     t = teams.create_team("Eng", owner_user_id="bjorn")
     _post("team-s2", "bjorn", team_id=t["team_id"])
     assert cs.list_chat_sessions(user_id="fremmed") == []  # ikke-medlem afvist
+
+
+import core.services.cross_user_share_guard as guard  # noqa: E402
+
+
+def test_guard_allows_cross_user_inside_team_session(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    teams.add_member(t["team_id"], "mikkel")
+    _post("team-s3", "bjorn", team_id=t["team_id"])
+    known = [{"id": "mikkel", "name": "Mikkel"}]
+    # Uden team-session ville "Mikkel" flagges:
+    base = guard.check_outbound("Mikkel spurgte om X", current_user_id="bjorn", known_users=known)
+    assert base["needs_confirmation"] is True
+    # I team-sessionen skal det IKKE flagges (delt kontekst):
+    res = guard.check_outbound("Mikkel spurgte om X", current_user_id="bjorn",
+                               known_users=known, session_id="team-s3")
+    assert res["needs_confirmation"] is False

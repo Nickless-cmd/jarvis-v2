@@ -31,6 +31,25 @@ jest.mock('@react-native-community/netinfo', () => ({
   },
 }))
 
+jest.mock('expo-application', () => ({
+  __esModule: true,
+  nativeBuildVersion: '28',
+}))
+
+jest.mock('expo-file-system/legacy', () => ({
+  __esModule: true,
+  documentDirectory: 'file:///doc/',
+  createDownloadResumable: jest.fn(() => ({
+    downloadAsync: jest.fn(async () => ({ uri: 'file:///doc/app.apk' })),
+  })),
+  getContentUriAsync: jest.fn(async () => 'content://app.apk'),
+}))
+
+jest.mock('expo-intent-launcher', () => ({
+  __esModule: true,
+  startActivityAsync: jest.fn(async () => undefined),
+}))
+
 jest.mock('react-native-svg', () => {
   const React = require('react')
   const mk = (name) => (props) => React.createElement(name, props, props.children)

@@ -9444,16 +9444,29 @@ def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
         else:
             # Defense-in-depth: cap the raw JSON fallback so a tool returning a
             # fat payload can't spill thousands of tokens into visible context.
-            _MAX_FALLBACK_CHARS = 1500
+            # Raised from 1500 → 8000 so most tool results show in full.
+            # When still over limit, truncate gracefully — show the actual
+            # partial content rather than a useless "truncated" placeholder.
+            _MAX_FALLBACK_CHARS = 8000
+            _TRUNCATE_NOTICE = 120  # chars reserved for truncation notice
             _filtered = {k: v for k, v in result.items() if k != "status"}
             _dumped = json.dumps(_filtered, ensure_ascii=False, indent=2)
             if len(_dumped) <= _MAX_FALLBACK_CHARS:
                 text = _dumped
             else:
+                # Smart truncation: keep as much real content as fits,
+                # then append a brief notice with the total size + keys.
                 _keys = ", ".join(sorted(_filtered.keys())) or "<none>"
+                _usable = _MAX_FALLBACK_CHARS - _TRUNCATE_NOTICE
+                _sliced = _dumped[:_usable].rsplit("\n", 1)[0]  # don't break mid-line
+                _truncated_count = len(_filtered)
+                # Count how many top-level items were fully shown vs cut
+                _shown_count = _sliced.count('": ')  # rough count of key-value pairs shown
                 text = (
-                    f"[Tool {name} returned {len(_dumped)} chars of unsummarized "
-                    f"data — truncated. Keys: {_keys}. "
+                    f"{_sliced}\n"
+                    f"... [truncated: {_truncated_count} keys, "
+                    f"showing first ~{_shown_count} — "
+                    f"keys: {_keys}. "
                     f"Add a 'text' key in the tool's exec for a clean summary.]"
                 )
 

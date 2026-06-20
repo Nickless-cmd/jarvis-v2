@@ -250,3 +250,60 @@ def test_invite_delivery_in_app_and_email(tmp_path, monkeypatch):
     assert r["delivered"] == {"in_app": True, "email": True}
     assert calls["route"] == [("mikkel", "team_invite")]
     assert calls["mail"] == ["mikkel@x.dk"]
+
+
+import asyncio  # noqa: E402
+import apps.api.jarvis_api.routes.teams as troute  # noqa: E402
+import pytest  # noqa: E402
+
+
+def _as(monkeypatch, uid):
+    monkeypatch.setattr(troute, "_current_user", lambda: uid)
+
+
+def test_route_create_list_members(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    _as(monkeypatch, "bjorn")
+    created = asyncio.run(troute.create_team(troute.CreateTeamBody(name="Eng")))
+    tid = created["team_id"]
+    lst = asyncio.run(troute.list_teams())
+    assert [t["name"] for t in lst["teams"]] == ["Eng"]
+    mem = asyncio.run(troute.team_members(tid))
+    assert [m["user_id"] for m in mem["members"]] == ["bjorn"]  # jarvis skjult
+
+
+def test_route_non_member_cannot_see_members(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    _as(monkeypatch, "fremmed")
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(troute.team_members(t["team_id"]))
+    assert ei.value.status_code == 403
+
+
+def test_route_invite_and_accept(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    # deaktiver faktisk levering i invite
+    import core.tools.team_tools as ttmod
+    monkeypatch.setattr(ttmod, "_deliver_invite", lambda *a, **k: {"in_app": False, "email": False})
+    _as(monkeypatch, "bjorn")
+    r = asyncio.run(troute.invite(t["team_id"], troute.InviteBody(user_id="mikkel")))
+    tok = r["token"]
+    _as(monkeypatch, "mikkel")
+    acc = asyncio.run(troute.accept(tok))
+    assert acc["ok"] and teams.member_role(t["team_id"], "mikkel") == "editor"
+
+
+def test_route_kick_requires_admin(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    teams.add_member(t["team_id"], "mikkel")
+    from fastapi import HTTPException
+    _as(monkeypatch, "mikkel")
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(troute.kick(t["team_id"], "mikkel"))
+    assert ei.value.status_code == 403
+    _as(monkeypatch, "bjorn")
+    assert asyncio.run(troute.kick(t["team_id"], "mikkel"))["ok"]

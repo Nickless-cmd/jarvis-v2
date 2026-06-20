@@ -214,6 +214,41 @@ it('reconnects from offset via subscribe when the socket drops mid-run', () => {
   jest.useRealTimers()
 })
 
+it('treats a 404 on reconnect as benign completion (run finished while away)', () => {
+  const onEvent = jest.fn()
+  const onError = jest.fn()
+  const onReconnecting = jest.fn()
+  const onComplete = jest.fn()
+  startStream(
+    { config, sessionId: 's1', message: 'Hej' },
+    { onEvent, onError, onReconnecting, onComplete }
+  )
+
+  // run startede (run_id kendt) — vi backgrounder herefter
+  getListener('message_start')({
+    data: JSON.stringify({
+      type: 'message_start',
+      message: {
+        id: 'visible-x',
+        model: 'deepseek',
+        provider: 'ollama',
+        lane: 'primary',
+        session_id: 's1',
+        usage: { input_tokens: 0, output_tokens: 0 }
+      }
+    })
+  })
+
+  // socket gen-abonnerer, men runnet er allerede færdigt + ryddet → 404
+  getListener('error')({ xhrStatus: 404, message: 'run not found' } as never)
+
+  // IKKE en fejl, IKKE en reconnect-loop — afslut graccelt som 'done'
+  expect(onError).not.toHaveBeenCalled()
+  expect(onReconnecting).not.toHaveBeenCalled()
+  expect(onComplete).toHaveBeenCalled()
+  expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ type: 'message_stop' }))
+})
+
 it('omits the authorization header when auth token is empty', () => {
   startStream(
     {

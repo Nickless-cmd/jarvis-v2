@@ -125,6 +125,19 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
       } catch {
         /* ignore */
       }
+      // Run-subscribe 404: runnet blev FÆRDIGT + ryddet server-side mens vi var
+      // i baggrunden (Android kappede socket'en, svaret kom imens). Det er IKKE
+      // en fejl — afslut graccelt som et normalt message_stop, så "arbejder"/
+      // "genforbinder"-UI'en rydder. Klienten henter de færdige beskeder via
+      // session-select (notif-tap / foreground-resync). Kun når vi kender run_id.
+      const status = (event as { xhrStatus?: number }).xhrStatus
+      if (activeRunId && status === 404) {
+        gotStop = true
+        closed = true
+        handlers.onEvent({ type: 'message_stop' } as StreamEvent)
+        handlers.onComplete?.()
+        return
+      }
       // Server-autoritativt run: forbindelsen kan dø (Android kapper socket'en
       // ved baggrund), men runnet kører videre server-side. Gen-abonnér fra
       // sidste offset i stedet for at fejle. Kun hvis vi kender run_id.

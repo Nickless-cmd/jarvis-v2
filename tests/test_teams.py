@@ -170,3 +170,24 @@ def test_expired_invite_rejected(tmp_path, monkeypatch):
     tok = teams.create_invite(t["team_id"], invited_email="m@x.dk", invited_by="bjorn")
     with pytest.raises(ValueError):
         teams.accept_invite(tok, accepting_user_id="mikkel")
+
+
+import core.tools.team_tools as tt  # noqa: E402
+
+
+def test_tool_create_and_list(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    r = tt.exec_create_team({"name": "Eng", "_user_id": "bjorn"})
+    assert r["status"] == "ok"
+    lst = tt.exec_list_teams({"_user_id": "bjorn"})
+    assert lst["count"] == 1 and lst["teams"][0]["members"] == ["bjorn"]  # jarvis filtreret væk
+
+
+def test_tool_invite_requires_admin(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    teams.add_member(t["team_id"], "mikkel")  # editor, ikke admin
+    bad = tt.exec_invite_to_team({"team_id": t["team_id"], "email": "x@y.dk", "_user_id": "mikkel"})
+    assert bad["status"] == "error"
+    ok = tt.exec_invite_to_team({"team_id": t["team_id"], "email": "x@y.dk", "_user_id": "bjorn"})
+    assert ok["status"] == "ok" and ok["token"]

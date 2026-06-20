@@ -4,6 +4,7 @@ import {
   LayoutDashboard, Blocks, Settings, type LucideIcon,
 } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
+import { TeamsSection } from './TeamsSection'
 import { useSettings } from '../../hooks/useSettings'
 import { useStream } from '../../hooks/useStream'
 import { searchSessions, getActiveRuns, type SessionSearchResult } from '../../lib/api'
@@ -144,6 +145,8 @@ export function Sidebar({
         )}
       </div>
       )}
+
+      {(surface === 'chat' || surface === 'code') && <TeamsSection />}
 
       <div className="sidebar-foot">
         <div className="who">

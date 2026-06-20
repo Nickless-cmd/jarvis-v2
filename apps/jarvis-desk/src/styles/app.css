@@ -1904,3 +1904,20 @@
 .location-section .loc-save { padding: 6px 14px; border-radius: 6px; cursor: pointer; }
 .location-section .loc-status { color: var(--accent, #2f81f7); }
 .location-section .loc-privacy { opacity: 0.8; }
+
+/* Teams-sektion i sidebar (Teams-feature §6.1) */
+.teams-section { padding: 6px 8px 4px; border-top: 1px solid var(--border, #21262d); margin-top: 4px; }
+.teams-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px; }
+.teams-title { font-size: 11px; letter-spacing: 0.08em; color: var(--fg-3, #8b949e); font-weight: 700; }
+.teams-new { background: none; border: none; color: var(--fg-2, #c9d1d9); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; }
+.teams-empty { font-size: 12px; color: var(--fg-3, #8b949e); padding: 4px 6px; opacity: 0.7; }
+.team-row { margin: 2px 0; }
+.team-name { width: 100%; text-align: left; background: none; border: none; color: var(--fg-1, #e6edf3); cursor: pointer; padding: 4px 6px; border-radius: 6px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.team-name:hover { background: var(--bg-3, #21262d); }
+.team-caret { opacity: 0.6; width: 10px; }
+.team-count { margin-left: auto; font-size: 11px; color: var(--fg-3, #8b949e); background: var(--bg-3, #21262d); border-radius: 999px; padding: 0 6px; }
+.team-body { padding: 2px 6px 6px 22px; }
+.team-members { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+.team-member { font-size: 11px; color: var(--fg-2, #c9d1d9); background: var(--bg-3, #21262d); border-radius: 4px; padding: 1px 6px; }
+.team-invite { font-size: 12px; background: none; border: 1px solid var(--border, #30363d); color: var(--accent, #2f81f7); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+.team-sessions-hint { font-size: 11px; color: var(--fg-3, #8b949e); opacity: 0.6; margin-top: 4px; font-style: italic; }

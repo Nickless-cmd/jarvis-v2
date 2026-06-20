@@ -25,5 +25,14 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
+    <activity
+      android:name=".BubbleActivity"
+      android:exported="true"
+      android:resizeableActivity="true"
+      android:allowEmbedded="true"
+      android:documentLaunchMode="always"
+      android:taskAffinity=""
+      android:theme="@style/AppTheme"
+      android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode|smallestScreenSize" />
   </application>
 </manifest>

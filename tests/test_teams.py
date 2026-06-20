@@ -62,3 +62,40 @@ def test_add_member_default_editor(tmp_path, monkeypatch):
     assert teams.member_role(t["team_id"], "mikkel") == "editor"
     names = {m["user_id"] for m in teams.list_members(t["team_id"])}
     assert names == {"bjorn", "jarvis", "mikkel"}
+
+
+import core.services.chat_sessions as cs  # noqa: E402
+
+
+def _post(session_id, user_id, team_id=None):
+    """Opret session (+ team_id) og en besked stemplet med user_id."""
+    with db.connect() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO chat_sessions (session_id, title, created_at, updated_at, team_id) "
+            "VALUES (?, ?, ?, ?, ?)", (session_id, session_id, "2026", "2026", team_id))
+        conn.execute(
+            "INSERT INTO chat_messages (message_id, session_id, role, content, user_id, created_at) "
+            "VALUES (?, ?, 'user', 'hi', ?, '2026')", (f"m-{session_id}-{user_id}", session_id, user_id))
+
+
+def test_private_session_only_visible_to_author(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    _post("priv1", "bjorn")
+    assert {s["id"] for s in cs.list_chat_sessions(user_id="bjorn")} == {"priv1"}
+    assert cs.list_chat_sessions(user_id="mikkel") == []  # #154 urørt
+
+
+def test_team_session_visible_to_all_members(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    teams.add_member(t["team_id"], "mikkel")
+    _post("team-s1", "bjorn", team_id=t["team_id"])  # kun bjorn har postet
+    # Mikkel har IKKE postet, men er medlem → skal SE den (regel B)
+    assert "team-s1" in {s["id"] for s in cs.list_chat_sessions(user_id="mikkel")}
+
+
+def test_non_member_cannot_see_team_session(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    _post("team-s2", "bjorn", team_id=t["team_id"])
+    assert cs.list_chat_sessions(user_id="fremmed") == []  # ikke-medlem afvist

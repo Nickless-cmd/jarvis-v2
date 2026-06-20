@@ -41,6 +41,12 @@ def create_chat_session(
     }
 
 
+def _teams():
+    """Lazy-import af teams-modulet (undgår import-cyklus ved opstart)."""
+    import core.services.teams as teams
+    return teams
+
+
 def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]:
     """List chat sessions, optionally filtered to one user.
 
@@ -79,14 +85,17 @@ def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]
                     ), 0) AS message_count,
                     s.workspace_kind
                 FROM chat_sessions s
-                WHERE EXISTS (
-                    SELECT 1 FROM chat_messages mu
-                    WHERE mu.session_id = s.session_id
-                      AND mu.user_id = ?
+                WHERE (
+                    EXISTS (
+                        SELECT 1 FROM chat_messages mu
+                        WHERE mu.session_id = s.session_id
+                          AND mu.user_id = ?
+                    )
+                    OR """ + _teams().team_scope_sql("s") + """
                 )
                 ORDER BY s.updated_at DESC, s.id DESC
                 """,
-                (uid,),
+                (uid, uid),
             ).fetchall()
         return [_session_summary(dict(row)) for row in rows]
     with connect() as conn:

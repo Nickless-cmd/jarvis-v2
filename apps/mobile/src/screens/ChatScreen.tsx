@@ -19,7 +19,7 @@ import { CameraCapture, type CapturedPhoto } from './CameraCapture'
 import { cancelActiveRun, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
-import { loadLastSession, saveLastSession } from '../lib/sessionStore'
+import { loadLastSession, saveLastSession, loadModelChoice, saveModelChoice } from '../lib/sessionStore'
 import { bubble } from '../lib/bubbleModule'
 import { submitNotificationReply, REPLY_ACTION_ID } from '../lib/push'
 import { useAuth } from '../state/AuthContext'
@@ -75,6 +75,14 @@ export function ChatScreen() {
   const [modelChoices, setModelChoices] = useState<ModelChoice[]>([])
   const [model, setModel] = useState<ModelChoice | null>(null)
   const [modelPickerOpen, setModelPickerOpen] = useState(false)
+  // FEATURE 1: gendan sidst valgte model på tværs af app-genstart. Sættes
+  // ubetinget når der findes et gemt valg — whoami-defaulten bruger `cur ??`
+  // og bevarer derfor det gemte uanset rækkefølge.
+  useEffect(() => {
+    void loadModelChoice().then((m) => {
+      if (m) setModel(m)
+    })
+  }, [])
   const connectivity = useConnectivity(config ?? null)
   // Server-side run-status for den aktive session (delt sandhed via /chat/active-
   // runs). Forhindrer at man sender ind i et kørende svar (= nudge-swallow,
@@ -374,7 +382,10 @@ export function ChatScreen() {
         open={modelPickerOpen}
         choices={modelChoices}
         selectedLabel={model?.label}
-        onSelect={setModel}
+        onSelect={(m) => {
+          setModel(m)
+          void saveModelChoice(m)
+        }}
         onClose={() => setModelPickerOpen(false)}
       />
 

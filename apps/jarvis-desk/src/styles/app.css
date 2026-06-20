@@ -1816,3 +1816,42 @@
   padding: 0 4px;
 }
 .takeover-dismiss:hover { color: var(--fg); }
+
+/* App-niveau takeover-notits (cross-device-aktivitet mens man er i Code/Cowork). */
+.takeover-toast {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  font-size: 13px;
+  color: var(--fg);
+}
+.takeover-toast-text { color: var(--fg); }
+.takeover-toast-open {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.takeover-toast-x {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.takeover-toast-x:hover { color: var(--fg); }

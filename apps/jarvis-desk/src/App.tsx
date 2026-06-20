@@ -15,6 +15,7 @@ import { AiTransparencyNotice } from './components/AiTransparencyNotice'
 import { GlobalShortcuts } from './components/GlobalShortcuts'
 import { ApprovalNotifier } from './components/ApprovalNotifier'
 import { PresenceHost } from './components/PresenceHost'
+import { TakeoverHost } from './components/shell/TakeoverHost'
 import { SessionSearch } from './components/SessionSearch'
 import { usePanel } from './hooks/usePanel'
 import { SplitLayout } from './components/panel/SplitLayout'
@@ -182,6 +183,7 @@ function Shell({
         />
         <ApprovalNotifierHost />
         <AppActionHost setSurface={setSurface} />
+        <TakeoverHost surface={surface} setSurface={setSurface} />
         <ShellWithPanel>
           {surface === 'chat' && (
             <ChatView

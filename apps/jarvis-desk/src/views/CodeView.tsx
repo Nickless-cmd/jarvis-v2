@@ -116,6 +116,12 @@ export function CodeView({
 
   // Session-akkumulering til miljø-feltet: tokens + tool-kald + tool-liste SAMLET
   // over HELE sessionen (ikke pr. run), så man kan se alt der er lavet (Codex-stil).
+  // Cross-device live-state (effekter wires længere nede): bruges allerede her i
+  // miljø-felt-beregningen, så deklarationen skal stå før den.
+  const [bgActive, setBgActive] = useState(false)
+  const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
+  const followCtrlRef = useRef<{ abort: () => void } | null>(null)
+
   // Foldes når et run slutter (working → ikke-working); nulstilles ved session-skift.
   const [sessTokens, setSessTokens] = useState(0)
   const [sessToolCalls, setSessToolCalls] = useState(0)
@@ -138,12 +144,32 @@ export function CodeView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.status])
-  // Live (igangværende run) lægges oven i session-totalerne så tallene er "live".
-  const liveTools = stream.status === 'working'
-    ? stream.blocks.filter((b) => b.type === 'tool_use')
+  // Fold et CROSS-DEVICE run (followState, fx mobil) ind i session-totalerne når
+  // det slutter — ellers opdaterer miljø-feltet sig aldrig på mobil-landinger.
+  const prevFollowRef = useRef(followState.status)
+  useEffect(() => {
+    const prev = prevFollowRef.current
+    prevFollowRef.current = followState.status
+    if (prev === 'working' && followState.status !== 'working') {
+      const tb = followState.blocks
+        .filter((b) => b.type === 'tool_use')
         .map((b) => ({ name: (b as { name?: string }).name || '', input: ((b as { input?: Record<string, unknown> }).input) || {} }))
-    : []
-  const envTotalTokens = sessTokens + (stream.status === 'working' ? (stream.usage.output || 0) : 0)
+      setSessTokens((t) => t + (followState.usage.output || 0))
+      setSessToolCalls((c) => c + tb.length)
+      if (tb.length) setSessTools((prevT) => [...prevT, ...tb].slice(-50))
+      setGitRefresh((n) => n + 1) // git/diff kan have ændret sig via mobil-runnet
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [followState.status])
+  // Live (igangværende run) lægges oven i session-totalerne så tallene er "live".
+  // Både vores eget lokale run OG et fulgt cross-device run (mobil).
+  const bgWorking = bgActive && stream.status !== 'working'
+  const liveBlocks = stream.status === 'working' ? stream.blocks : (bgWorking ? followState.blocks : [])
+  const liveUsageOut = stream.status === 'working' ? (stream.usage.output || 0) : (bgWorking ? (followState.usage.output || 0) : 0)
+  const liveTools = liveBlocks
+    .filter((b) => b.type === 'tool_use')
+    .map((b) => ({ name: (b as { name?: string }).name || '', input: ((b as { input?: Record<string, unknown> }).input) || {} }))
+  const envTotalTokens = sessTokens + liveUsageOut
   const envTotalToolCalls = sessToolCalls + liveTools.length
   const envTools = [...sessTools, ...liveTools]
   // Trækbar bredde på hele fil-/preview-panelet (mod venstre). Bredere default
@@ -218,9 +244,8 @@ export function CodeView({
   // siden af. Mekanik: poll active-runs (6s-latch så korte runs ikke forsvinder
   // mellem to polls) → bgActive; følg /live → followState (token-stream); hent den
   // persisterede besked ind via sessions.refresh under+efter runnet.
-  const [bgActive, setBgActive] = useState(false)
-  const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
-  const followCtrlRef = useRef<{ abort: () => void } | null>(null)
+  // (bgActive/followState/followCtrlRef deklareres tidligere — miljø-feltet
+  // bruger dem allerede.)
   const [takeoverDismissed, setTakeoverDismissed] = useState(false)
   useEffect(() => { if (!bgActive) setTakeoverDismissed(false) }, [bgActive])
   // Egen sekund-tæller til liveness-linjen: stream.elapsedMs er 0 ved et cross-
@@ -557,8 +582,8 @@ export function CodeView({
             kind={kind}
             root={effRoot}
             refreshKey={gitRefresh}
-            working={stream.status === 'working'}
-            workingStep={stream.workingStep ?? undefined}
+            working={stream.status === 'working' || bgWorking}
+            workingStep={(bgWorking ? followState.workingStep : stream.workingStep) ?? undefined}
             totalTokens={envTotalTokens}
             totalToolCalls={envTotalToolCalls}
             tools={envTools}
@@ -594,17 +619,16 @@ export function CodeView({
         </div>
         </div>
         <div className="composer-area">
-          {/* Liveness fast lige over composeren (ikke i transcript — den scrollede
-              ellers væk med beskeden, jf. ChatView). Vises kun når noget sker. */}
-          {(stream.status !== 'idle' || bgActive) && (
-            <LivenessIndicator
-              status={bgActive && stream.status !== 'working' ? 'working' : stream.status}
-              elapsedMs={bgActive && stream.status !== 'working' ? bgElapsedMs : stream.elapsedMs}
-              density="compact"
-              workingStep={bgActive && stream.status !== 'working' ? (followState.workingStep ?? 'vågner') : stream.workingStep}
-              tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
-            />
-          )}
+          {/* Liveness PERSISTENT lige over composeren (som Claude Code) — står
+              altid, viser "klar" i hvile og lyser op ved et run (lokalt ELLER
+              cross-device fra mobil). */}
+          <LivenessIndicator
+            status={bgActive && stream.status !== 'working' ? 'working' : stream.status}
+            elapsedMs={bgActive && stream.status !== 'working' ? bgElapsedMs : stream.elapsedMs}
+            density="compact"
+            workingStep={bgActive && stream.status !== 'working' ? (followState.workingStep ?? 'vågner') : stream.workingStep}
+            tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
+          />
           <div className="composer-notices">
             {stream.pendingApproval && (
               <ApprovalCard

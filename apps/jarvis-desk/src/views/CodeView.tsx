@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown, Gauge } from 'lucide-react'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
@@ -22,7 +22,8 @@ import { MessageRail, railLabel } from '../components/chat/MessageRail'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
-import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo } from '../lib/api'
+import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getActiveRuns, followRun } from '../lib/api'
+import { streamReducer, initialStreamState } from '../lib/streamReducer'
 
 // Navngivne server-roots (matcher backend _allowed_roots). Owner: hele kodebasen
 // (repo) + runtime-home (~/.jarvis-v2/) + eget workspace. Member: KUN eget workspace.
@@ -210,6 +211,56 @@ export function CodeView({
   const [atBottom, setAtBottom] = useState(true)
   const [unread, setUnread] = useState(0)
   const NEAR_BOTTOM_PX = 120
+
+  // ── Cross-device live (porteret 1:1 fra ChatView) ──────────────────────────
+  // Code mode skal lyse op PRÆCIS som Chat mode når mobilen tager over: header-
+  // spinner, token-tæller og live-transcript i SELVE viewet — ikke en popup ved
+  // siden af. Mekanik: poll active-runs (6s-latch så korte runs ikke forsvinder
+  // mellem to polls) → bgActive; følg /live → followState (token-stream); hent den
+  // persisterede besked ind via sessions.refresh under+efter runnet.
+  const [bgActive, setBgActive] = useState(false)
+  const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
+  const followCtrlRef = useRef<{ abort: () => void } | null>(null)
+  useEffect(() => {
+    if (!settings || !sessionId) { setBgActive(false); return }
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    let cancelled = false
+    let cooldown = 0
+    let bgUntil = 0
+    const tick = () => {
+      void getActiveRuns(cfg)
+        .then((ids) => {
+          if (cancelled) return
+          const serverHasRun = ids.includes(sessionId)
+          const active = serverHasRun && stream.status !== 'working'
+          if (active) bgUntil = Date.now() + 6000
+          setBgActive(active || Date.now() < bgUntil)
+          if (active) { cooldown = 3; void sessions.refresh() }
+          else if (cooldown > 0) { cooldown -= 1; void sessions.refresh() }
+          else if (stream.status !== 'working') { void sessions.refresh() }
+        })
+        .catch(() => { /* behold sidste — ingen flicker */ })
+    }
+    tick()
+    const id = setInterval(tick, 1500)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [settings, sessionId, stream.status])
+  useEffect(() => {
+    if (!bgActive || !sessionId || !settings) return
+    if (followCtrlRef.current) return
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    followCtrlRef.current = followRun(
+      cfg, sessionId,
+      (ev) => followDispatch(ev),
+      () => {
+        followCtrlRef.current = null
+        setTimeout(() => { void sessions.refresh() }, 600)
+        setTimeout(() => { void sessions.refresh() }, 2000)
+      },
+    )
+    return () => { followCtrlRef.current?.abort(); followCtrlRef.current = null }
+  }, [bgActive, sessionId, settings])
+
   const scrollToBottom = () => {
     const el = transcriptRef.current
     if (el) el.scrollTop = el.scrollHeight
@@ -395,7 +446,7 @@ export function CodeView({
 
   const isEmpty =
     !sessionId ||
-    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0)
+    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && !bgActive)
 
   const headerRight = (
     <div className="chatview-head-right">
@@ -432,7 +483,7 @@ export function CodeView({
   const header = (
     <div className="chatview-head">
       <div className="chatview-head-left">
-        <PresenceDot status={stream.status} />{' '}
+        <PresenceDot status={bgActive && stream.status !== 'working' ? 'working' : stream.status} />{' '}
         <span className="chat-title">Code · {ready ? effRoot : 'vælg workspace'}</span>
       </div>
       {headerRight}
@@ -445,7 +496,7 @@ export function CodeView({
   const headerActive = (
     <div className="chatview-head">
       <div className="chatview-head-left">
-        <PresenceDot status={stream.status} />{' '}
+        <PresenceDot status={bgActive && stream.status !== 'working' ? 'working' : stream.status} />{' '}
         <span className="chat-title">Code ·</span>
         <div className="code-head-ws">{workspaceSelector}</div>
       </div>
@@ -515,13 +566,24 @@ export function CodeView({
           {stream.status === 'working' && stream.blocks.length > 0 && (
             <MessageRow role="assistant" blocks={stream.blocks} density="compact" streaming />
           )}
+          {/* Cross-device: live-stream fra et run startet på en anden enhed (mobil).
+              Kun når VI ikke selv streamer, så ingen dobbelt-render. */}
+          {!(stream.status === 'working' && stream.blocks.length > 0) && bgActive && followState.status === 'working' && followState.blocks.length > 0 && (
+            <MessageRow role="assistant" blocks={followState.blocks} density="compact" streaming />
+          )}
         </div>
         </div>
         <div className="composer-area">
           {/* Liveness fast lige over composeren (ikke i transcript — den scrollede
               ellers væk med beskeden, jf. ChatView). Vises kun når noget sker. */}
-          {stream.status !== 'idle' && (
-            <LivenessIndicator status={stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={stream.workingStep} tokens={stream.usage.output} />
+          {(stream.status !== 'idle' || bgActive) && (
+            <LivenessIndicator
+              status={bgActive && stream.status !== 'working' ? 'working' : stream.status}
+              elapsedMs={stream.elapsedMs}
+              density="compact"
+              workingStep={bgActive && stream.status !== 'working' ? (followState.workingStep ?? 'vågner') : stream.workingStep}
+              tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
+            />
           )}
           <div className="composer-notices">
             {stream.pendingApproval && (

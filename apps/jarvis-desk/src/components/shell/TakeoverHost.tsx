@@ -54,7 +54,9 @@ export function TakeoverHost({
         const ids = await getActiveRuns(cfg)
         if (cancelled) return
         for (const d of [...dismissed.current]) if (!ids.includes(d)) dismissed.current.delete(d)
-        if (surface === 'chat') { held = null; setActiveSid(null); return }
+        // Chat OG code har nu native cross-device-liveness i selve viewet → ingen
+        // popup der (Bjørn 2026-06-20). Popup'en er kun for øvrige flader.
+        if (surface === 'chat' || surface === 'code') { held = null; setActiveSid(null); return }
         const cand = ids.find((id) => !dismissed.current.has(id)) ?? null
         if (cand) { held = cand; bgUntil = Date.now() + 6000 }
         else if (Date.now() >= bgUntil) { held = null }

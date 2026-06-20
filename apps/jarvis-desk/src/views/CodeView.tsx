@@ -144,34 +144,55 @@ export function CodeView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.status])
-  // Fold et CROSS-DEVICE run (followState, fx mobil) ind i session-totalerne når
-  // det slutter — ellers opdaterer miljø-feltet sig aldrig på mobil-landinger.
+  // CROSS-DEVICE tool-akkumulator (mobil-run): message_start NULSTILLER
+  // followState.blocks pr. agentisk tur, så en snapshot ved run-slut ser kun
+  // SIDSTE turs blocks → tool-ture tabes. Vi tæller derfor tool_use på
+  // EVENT-niveau (i follow-callbacken nedenfor), uafhængigt af React-batching og
+  // blocks-reset. bgTools vises live i miljø-feltet og foldes ind i session-
+  // totalerne når runnet er HELT slut (bgActive true→false).
+  const [bgTools, setBgTools] = useState<{ name: string; input: Record<string, unknown> }[]>([])
+  // Fold cross-device tokens ind pr. tur (followState.usage.output nulstilles ved
+  // ny tur, så kumulativt = sessTokens + nuværende turs output). Tools håndteres
+  // af bgTools-akkumulatoren, IKKE her.
   const prevFollowRef = useRef(followState.status)
   useEffect(() => {
     const prev = prevFollowRef.current
     prevFollowRef.current = followState.status
     if (prev === 'working' && followState.status !== 'working') {
-      const tb = followState.blocks
-        .filter((b) => b.type === 'tool_use')
-        .map((b) => ({ name: (b as { name?: string }).name || '', input: ((b as { input?: Record<string, unknown> }).input) || {} }))
       setSessTokens((t) => t + (followState.usage.output || 0))
-      setSessToolCalls((c) => c + tb.length)
-      if (tb.length) setSessTools((prevT) => [...prevT, ...tb].slice(-50))
       setGitRefresh((n) => n + 1) // git/diff kan have ændret sig via mobil-runnet
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [followState.status])
+  // Når et cross-device run er HELT slut (latch udløbet): fold de akkumulerede
+  // tools ind i session-historikken og nulstil akkumulatoren til næste run.
+  const prevBgActiveRef = useRef(bgActive)
+  useEffect(() => {
+    const was = prevBgActiveRef.current
+    prevBgActiveRef.current = bgActive
+    if (was && !bgActive && bgTools.length) {
+      setSessToolCalls((c) => c + bgTools.length)
+      setSessTools((prevT) => [...prevT, ...bgTools].slice(-50))
+      setBgTools([])
+    } else if (!was && bgActive) {
+      setBgTools([]) // nyt run → frisk akkumulator
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bgActive])
   // Live (igangværende run) lægges oven i session-totalerne så tallene er "live".
   // Både vores eget lokale run OG et fulgt cross-device run (mobil).
   const bgWorking = bgActive && stream.status !== 'working'
-  const liveBlocks = stream.status === 'working' ? stream.blocks : (bgWorking ? followState.blocks : [])
+  // Lokale tools fra vores egen stream (kun nuværende tur — lokal sti folder pr. tur).
+  const localLiveTools = stream.status === 'working'
+    ? stream.blocks.filter((b) => b.type === 'tool_use')
+        .map((b) => ({ name: (b as { name?: string }).name || '', input: ((b as { input?: Record<string, unknown> }).input) || {} }))
+    : []
+  // Cross-device tools = event-akkumulatoren (alle ture), vist mens runnet kører.
+  const crossLiveTools = bgActive ? bgTools : []
   const liveUsageOut = stream.status === 'working' ? (stream.usage.output || 0) : (bgWorking ? (followState.usage.output || 0) : 0)
-  const liveTools = liveBlocks
-    .filter((b) => b.type === 'tool_use')
-    .map((b) => ({ name: (b as { name?: string }).name || '', input: ((b as { input?: Record<string, unknown> }).input) || {} }))
   const envTotalTokens = sessTokens + liveUsageOut
-  const envTotalToolCalls = sessToolCalls + liveTools.length
-  const envTools = [...sessTools, ...liveTools]
+  const envTotalToolCalls = sessToolCalls + localLiveTools.length + crossLiveTools.length
+  const envTools = [...sessTools, ...localLiveTools, ...crossLiveTools]
   // Trækbar bredde på hele fil-/preview-panelet (mod venstre). Bredere default
   // end før (380→460) så preview-ruden ikke er knald-smal.
   const codePanelW = useResizableWidth({
@@ -290,7 +311,17 @@ export function CodeView({
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     followCtrlRef.current = followRun(
       cfg, sessionId,
-      (ev) => followDispatch(ev),
+      (ev) => {
+        // Akkumulér tool_use på EVENT-niveau (uafhængigt af blocks-reset pr. tur)
+        // så miljø-feltet fanger ALLE tool-kald i et agentisk mobil-run.
+        if (ev && ev.type === 'content_block_start') {
+          const cb = (ev as { content_block?: { type?: string; name?: string; input?: Record<string, unknown> } }).content_block
+          if (cb && cb.type === 'tool_use') {
+            setBgTools((prev) => [...prev, { name: cb.name || '', input: cb.input || {} }].slice(-50))
+          }
+        }
+        followDispatch(ev)
+      },
       () => {
         followCtrlRef.current = null
         setTimeout(() => { void sessions.refresh() }, 600)

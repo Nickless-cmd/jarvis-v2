@@ -71,6 +71,7 @@ def _deliver_invite(team_id: str, invitee: str, token: str, inviter: str) -> dic
             import core.services.proactive_router as pr
             pr.route(target_uid, {
                 "kind": "team_invite",
+                "title": f"Invitation til {team_name}",
                 "preview": f"{inviter} inviterede dig til {team_name}",
                 "team_id": team_id, "token": token,
             }, "team_invite")

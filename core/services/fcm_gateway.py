@@ -51,13 +51,18 @@ def _access_token() -> str | None:
 def _build_message(token: str, data: dict) -> dict:
     # ALLE data-vaerdier skal vaere strenge i FCM v1.
     str_data = {k: str(v) for k, v in (data or {}).items()}
-    return {
-        "message": {
-            "token": token,
-            "data": str_data,
-            "android": {"priority": "high"},
-        }
+    msg: dict = {
+        "token": token,
+        "data": str_data,
+        "android": {"priority": "high"},
     }
+    # Hvis payload har title+preview, tilføj en notification-blok så OS'et
+    # viser en synlig notifikation selv hvis app'en ikke er åben.
+    title = str_data.get("title") or ""
+    body = str_data.get("preview") or str_data.get("body") or ""
+    if title and body:
+        msg["notification"] = {"title": title, "body": body}
+    return {"message": msg}
 
 
 def send(token: str, data: dict) -> tuple[bool, str]:

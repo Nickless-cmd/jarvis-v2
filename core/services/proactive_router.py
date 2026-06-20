@@ -80,6 +80,13 @@ def route(user_id: str, payload: dict, kind: str) -> None:
         logger.warning("proactive_router.route: tom rank -> fallback FCM-blast")
         _fallback_blast(uid, payload)
         return
+    # If best score is 0.0 there's no real presence — treat like empty rank
+    # and blast via FCM so the notification actually reaches a device.
+    if ranked[0].score <= 0.0:
+        logger.warning("proactive_router.route: bedste score %.1f <= 0 -> fallback FCM-blast",
+                        ranked[0].score)
+        _fallback_blast(uid, payload)
+        return
     notif_id = _new_id()
     with _lock:
         _PENDING[notif_id] = {

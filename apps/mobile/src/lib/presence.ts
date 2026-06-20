@@ -75,26 +75,29 @@ export function startPresenceReporting(config: ApiConfig): () => void {
   let network: 'home' | 'away' | 'unknown' = 'unknown'
   let interaction = true // app-åbning tæller som interaktion
   let stopped = false
-  // Lokation: cache sidste fix i 60s så vi ikke poller GPS hvert ping. clearedOff
-  // sikrer at vi sender {} ÉN gang når brugeren slår fra (rydder server-state).
-  let cachedLoc: LocationPayload | null = null
-  let cachedAt = 0
-  let clearedOff = false
 
-  const resolveLocation = async (): Promise<LocationPayload | Record<string, never> | undefined> => {
-    const precision = await loadPrecision()
-    if (precision === 'off') {
-      cachedLoc = null
-      if (clearedOff) return undefined // allerede ryddet → udelad (intet arbejde)
-      clearedOff = true
-      return {} // ryd server-state én gang
+  // Lokation hentes på SIN EGEN cadence (ikke i ping-stien) — getCurrentPositionAsync
+  // kan hænge, og må ALDRIG blokere presence-pinget (det gav stale presence +
+  // ingen ping, Bjørn 2026-06-20). send() læser blot den seneste cachede værdi.
+  // `currentLocation`: undefined = udelad fra ping; {} = ryd; payload = lokation.
+  let currentLocation: LocationPayload | Record<string, never> | undefined
+  let clearedOff = false
+  const refreshLocation = async (): Promise<void> => {
+    try {
+      const precision = await loadPrecision()
+      if (precision === 'off') {
+        if (clearedOff) { currentLocation = undefined; return }
+        clearedOff = true
+        currentLocation = {} // ryd server-state én gang
+        return
+      }
+      clearedOff = false
+      const loc = await getDeviceLocation(precision) // har egen 8s GPS-timeout
+      if (loc) currentLocation = loc
+      // intet fix → behold sidst kendte (rør ikke currentLocation)
+    } catch {
+      /* aldrig hård fejl — behold sidst kendte */
     }
-    clearedOff = false
-    const now = Date.now()
-    if (cachedLoc && now - cachedAt < 60000) return cachedLoc
-    const loc = await getDeviceLocation(precision)
-    if (loc) { cachedLoc = loc; cachedAt = now; return loc }
-    return cachedLoc ?? undefined // intet fix → behold sidst kendte / udelad
   }
 
   const send = async (): Promise<void> => {
@@ -103,28 +106,33 @@ export function startPresenceReporting(config: ApiConfig): () => void {
       try { token = await messaging().getToken() } catch { return }
     }
     const foreground = AppState.currentState === 'active'
-    const location = await resolveLocation()
-    if (stopped) return
-    await post(config, '/presence/ping', buildMobilePing({ token, foreground, network, interaction, location }))
+    await post(config, '/presence/ping',
+      buildMobilePing({ token, foreground, network, interaction, location: currentLocation }))
     interaction = false
   }
 
   const appSub = AppState.addEventListener('change', (s) => {
-    if (s === 'active') interaction = true
+    if (s === 'active') { interaction = true; void refreshLocation() }
     void send()
   })
   const netSub = NetInfo.addEventListener((state: { type?: string }) => {
     network = networkToHint(state.type ?? 'unknown')
     void send()
   })
+  void refreshLocation()
   void send()
   const interval = setInterval(() => {
     if (AppState.currentState === 'active') void send()
   }, 30000)
+  // Egen lokations-cadence: hvert 60s mens aktiv (adskilt fra pinget).
+  const locInterval = setInterval(() => {
+    if (AppState.currentState === 'active') void refreshLocation()
+  }, 60000)
 
   return () => {
     stopped = true
     clearInterval(interval)
+    clearInterval(locInterval)
     try { appSub.remove() } catch { /* noop */ }
     try { netSub() } catch { /* noop */ }
   }

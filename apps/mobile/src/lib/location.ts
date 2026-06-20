@@ -84,11 +84,17 @@ export async function ipLocation(): Promise<LocationPayload | null> {
 export async function getDeviceLocation(precision: LocationPrecision): Promise<LocationPayload | null> {
   if (precision === 'off') return null
   if (precision === 'city') return ipLocation()
-  // precise → GPS
+  // precise → GPS. KRITISK: getCurrentPositionAsync kan hænge i det uendelige
+  // indendørs/uden fix → vi MÅ tids-begrænse den (race mod 8s) så den aldrig
+  // blokerer kalderen. Ved timeout/fejl → IP-fallback.
   try {
     const perm = await Location.requestForegroundPermissionsAsync()
     if (perm.status !== 'granted') return ipLocation()
-    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+    const pos = await Promise.race([
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+    ])
+    if (!pos) return ipLocation()
     const { latitude, longitude } = pos.coords
     const label = await reverseLabel(latitude, longitude, true)
     return { lat: latitude, lon: longitude, label, source: 'gps', precision: 'precise' }

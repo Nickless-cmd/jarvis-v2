@@ -5,10 +5,48 @@ import re
 from pathlib import Path
 from typing import Any
 
-from core.runtime.workspace_paths import shared_dir
+from core.runtime.workspace_paths import NoUserContextError, shared_dir, workspace_dir
 
 
-def _memory_md() -> Path:
+def _resolve_memory_uid(user_id: str | None = None) -> str:
+    """Hvilken brugers MEMORY.md skal vi røre. Best-effort:
+    1) eksplicit user_id (fra tool-args hvis sat),
+    2) current_user_id() (sat for members via set_context i run-body'en),
+    3) session-ejer via bundet session_id — owner har OFTE tom current_user_id()
+       inde i run-generatoren (samme grund som device-presence-fixet brugte
+       get_session_owner). Tom streng → kalderen falder tilbage til shared_dir.
+    """
+    uid = (user_id or "").strip()
+    if uid:
+        return uid
+    try:
+        from core.identity.workspace_context import current_session_id, current_user_id
+        uid = (current_user_id() or "").strip()
+        if uid:
+            return uid
+        sid = (current_session_id() or "").strip()
+        if sid:
+            from core.services.chat_sessions import get_session_owner
+            return (get_session_owner(sid) or "").strip()
+    except Exception:
+        return ""
+    return ""
+
+
+def _memory_md(user_id: str | None = None) -> Path:
+    """Brugerens MEMORY.md (workspace) — IKKE shared. Fald tilbage til shared
+    kun når ingen bruger kan resolves (autonome runs / daemons).
+
+    Rettelse 2026-06-20: skrev tidligere til shared/MEMORY.md → alt tool-skrevet
+    memory var usynligt for prompten (læser fra workspace) + isolation/privacy-bug
+    (alle brugeres memory blandet i shared).
+    """
+    uid = _resolve_memory_uid(user_id)
+    if uid:
+        try:
+            return workspace_dir(uid) / "MEMORY.md"
+        except NoUserContextError:
+            pass
     return shared_dir() / "MEMORY.md"
 
 

@@ -160,9 +160,14 @@ def _find_memory_path() -> Path:
     """
     from core.runtime.config import JARVIS_HOME
     try:
+        # Resolvér brugeren via samme sti som skrive-tools (owner har ofte tom
+        # current_user_id() inde i run-generatoren → resolve via session-ejer),
+        # ellers læser guarden forkert fil og fejl-flagger ægte memory som
+        # hallucination. 2026-06-20.
         from core.runtime.workspace_paths import workspace_dir
-        ws = workspace_dir()
-        ws_memory = ws / "MEMORY.md"
+        from core.tools.memory_tools import _resolve_memory_uid
+        uid = _resolve_memory_uid()
+        ws_memory = (workspace_dir(uid) if uid else workspace_dir()) / "MEMORY.md"
         if _ws_has_content(ws_memory):
             return ws_memory
     except Exception:

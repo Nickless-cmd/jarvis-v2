@@ -125,6 +125,14 @@ export function ChatView({
           setBgActive(active || Date.now() < bgUntil)
           if (active) { cooldown = 3; void sessions.refresh() }       // mens det kører
           else if (cooldown > 0) { cooldown -= 1; void sessions.refresh() } // efterslæb
+          else if (stream.status !== 'working') {
+            // ROBUSTHED (cross-device realtime, Bjørn 2026-06-20): et kort mobil-
+            // svar-run kan starte+slutte mellem to ChatView-polls → vi misser
+            // active-kanten (sidebar fangede den, men transcript'en opdaterede
+            // aldrig). Pluk derfor ALTID den åbne sessions beskeder op når vi
+            // ikke selv streamer. Billig GET; mergeServer dedup'er → ingen flicker.
+            void sessions.refresh()
+          }
 
           // HÄNG-DETEKTOR (Bjørn 2026-06-13: "han døde midt i et run, tænkte
           // hænger"): hvis vi tror vi streamer DENNE session men serveren ikke

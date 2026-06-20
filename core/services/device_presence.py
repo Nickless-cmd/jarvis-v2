@@ -174,8 +174,13 @@ def summary(user_id: str) -> str:
         net = {"home": ", hjemme-wifi", "away": ", på mobildata (ude)"}.get(st.network, "")
     loc = (st.location if st else None) or None
     if loc and loc.get("label"):
-        # Lokation delt → vis hvor brugeren FAKTISK er, ikke bare enheds-tilstand.
-        return f"Bjørn er ved {loc['label']} ({where}, {fg.replace('i ', '')}{net})."
+        # Lokation delt → vis hvor brugeren FAKTISK er. Kort label: sted + enhed +
+        # kort netværk (fx "(mobil, mobildata)"); fokus-tilstand udelades — selve
+        # lokationen er det vigtige, og device-awareness/routing bruger fokus andetsteds.
+        net_short = ""
+        if st and st.platform == "mobile":
+            net_short = {"home": ", wifi", "away": ", mobildata"}.get(st.network, "")
+        return f"Bjørn er ved {loc['label']} ({where}{net_short})."
     return f"Bjørn er ved {where} ({fg}{net})."
 
 

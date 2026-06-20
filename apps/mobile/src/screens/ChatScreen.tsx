@@ -16,6 +16,8 @@ import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
 import { SidePanel } from '../components/SidePanel'
 import { SettingsScreen } from './SettingsScreen'
 import { CameraCapture, type CapturedPhoto } from './CameraCapture'
+import { AttachMenu } from '../components/AttachMenu'
+import { pickImageFromGallery } from '../lib/imagePicker'
 import { cancelActiveRun, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
@@ -71,6 +73,10 @@ export function ChatScreen() {
   useEffect(() => () => { if (railTimer.current) clearTimeout(railTimer.current) }, [])
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false)
+  // FEATURE2/BUG3: valgt/taget billede lægger sig som ventende vedhæftning i
+  // composeren (auto-sendes IKKE) så man kan skrive en besked til.
+  const [pendingAttachment, setPendingAttachment] = useState<{ id: string; uri: string; name: string } | null>(null)
   const [displayName, setDisplayName] = useState('Jarvis')
   const [modelChoices, setModelChoices] = useState<ModelChoice[]>([])
   const [model, setModel] = useState<ModelChoice | null>(null)
@@ -238,20 +244,33 @@ export function ChatScreen() {
   const ensureSessionAndSend = async (text: string) => {
     if (!config) return
     const sessionId = sessions.activeId ?? (await sessions.create(config)).id
-    stream.send(config, sessionId, text, modelOpts())
+    const attachmentIds = pendingAttachment ? [pendingAttachment.id] : undefined
+    stream.send(config, sessionId, text, { ...modelOpts(), attachmentIds })
+    setPendingAttachment(null)
   }
 
-  // In-app kamera → upload billede → send med beskeden (multimodal).
-  const handleCapture = async (photo: CapturedPhoto) => {
-    setCameraOpen(false)
+  // Upload billede (kamera/galleri) → stage som ventende vedhæftning i composeren
+  // (BUG3: ikke auto-send). Sendes når brugeren trykker send, med valgfri besked.
+  const stageAttachment = async (photo: CapturedPhoto) => {
     if (!config) return
     try {
       const sessionId = sessions.activeId ?? (await sessions.create(config)).id
       const up = await uploadAttachment(config, sessionId, photo)
-      stream.send(config, sessionId, '📷 Billede', { ...modelOpts(), attachmentIds: [up.id] })
+      setPendingAttachment({ id: up.id, uri: photo.uri, name: photo.name })
     } catch {
       Alert.alert('Billede', 'Kunne ikke uploade billedet — prøv igen.')
     }
+  }
+
+  const handleCapture = async (photo: CapturedPhoto) => {
+    setCameraOpen(false)
+    await stageAttachment(photo)
+  }
+
+  const handlePickGallery = async () => {
+    setAttachMenuOpen(false)
+    const photo = await pickImageFromGallery()
+    if (photo) await stageAttachment(photo)
   }
 
   const handleSelectSession = (sessionId: string) => {
@@ -373,8 +392,10 @@ export function ChatScreen() {
             }
           }}
           onPressModel={() => setModelPickerOpen(true)}
-          onAttach={() => setCameraOpen(true)}
+          onAttach={() => setAttachMenuOpen(true)}
           onMic={() => Alert.alert('Stemme', 'Diktering kommer i næste opdatering.')}
+          attachment={pendingAttachment ? { uri: pendingAttachment.uri, name: pendingAttachment.name } : null}
+          onRemoveAttachment={() => setPendingAttachment(null)}
         />
       </View>
 
@@ -417,6 +438,16 @@ export function ChatScreen() {
       <Modal visible={settingsOpen} animationType="slide" onRequestClose={() => setSettingsOpen(false)}>
         <SettingsScreen onClose={() => setSettingsOpen(false)} />
       </Modal>
+
+      <AttachMenu
+        visible={attachMenuOpen}
+        onCamera={() => {
+          setAttachMenuOpen(false)
+          setCameraOpen(true)
+        }}
+        onGallery={() => void handlePickGallery()}
+        onClose={() => setAttachMenuOpen(false)}
+      />
 
       <Modal visible={cameraOpen} animationType="slide" onRequestClose={() => setCameraOpen(false)}>
         <CameraCapture onCapture={handleCapture} onClose={() => setCameraOpen(false)} />

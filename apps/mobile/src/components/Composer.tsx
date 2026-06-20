@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { tokens } from '../theme/tokens'
 
 /**
@@ -15,7 +15,9 @@ export function Composer({
   onStop,
   onPressModel,
   onAttach,
-  onMic
+  onMic,
+  attachment,
+  onRemoveAttachment
 }: {
   disabled?: boolean
   working?: boolean
@@ -25,6 +27,8 @@ export function Composer({
   onPressModel?: () => void
   onAttach?: () => void
   onMic?: () => void
+  attachment?: { uri: string; name: string } | null
+  onRemoveAttachment?: () => void
 }) {
   const [text, setText] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -32,7 +36,8 @@ export function Composer({
 
   const submit = async () => {
     const value = text.trim()
-    if (!value || disabled || working || submitting) return
+    // Tillad send når der er en vedhæftning, selv uden tekst.
+    if ((!value && !attachment) || disabled || working || submitting) return
 
     setSubmitting(true)
     try {
@@ -48,6 +53,21 @@ export function Composer({
   return (
     <View style={styles.outer}>
       <View style={[styles.card, focused ? styles.cardFocused : null]}>
+        {attachment ? (
+          <View style={styles.attachChip}>
+            <Image source={{ uri: attachment.uri }} style={styles.attachThumb} />
+            <Text style={styles.attachName} numberOfLines={1}>{attachment.name}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Fjern vedhæftning"
+              onPress={onRemoveAttachment}
+              hitSlop={8}
+              style={styles.attachRemove}
+            >
+              <Text style={styles.attachRemoveText}>×</Text>
+            </Pressable>
+          </View>
+        ) : null}
         <TextInput
           testID="composer-input"
           value={text}
@@ -120,6 +140,19 @@ const styles = StyleSheet.create({
   },
   // accent-fokus-kant (§3.7) — subtil glød når man skriver
   cardFocused: { borderColor: tokens.color.accent },
+  attachChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.sm,
+    backgroundColor: tokens.color.bg2,
+    borderRadius: tokens.radius.md,
+    padding: tokens.spacing.xs,
+    marginBottom: tokens.spacing.xs
+  },
+  attachThumb: { width: 40, height: 40, borderRadius: tokens.radius.sm, backgroundColor: tokens.color.bg3 },
+  attachName: { flex: 1, color: tokens.color.fg2, fontSize: 13 },
+  attachRemove: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.color.bg3 },
+  attachRemoveText: { color: tokens.color.fg1, fontSize: 18, lineHeight: 20 },
   input: {
     minHeight: 28,
     maxHeight: 140,

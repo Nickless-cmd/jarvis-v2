@@ -51,6 +51,12 @@ jest.mock('expo-intent-launcher', () => ({
   startActivityAsync: jest.fn(async () => undefined),
 }))
 
+jest.mock('expo-image-picker', () => ({
+  __esModule: true,
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  launchImageLibraryAsync: jest.fn(async () => ({ canceled: true, assets: [] })),
+}))
+
 jest.mock('react-native-svg', () => {
   const React = require('react')
   const mk = (name) => (props) => React.createElement(name, props, props.children)

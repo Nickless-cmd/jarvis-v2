@@ -59,16 +59,17 @@ export function labelFromAddress(a: Record<string, string>, precise: boolean): s
   return city
 }
 
-/** IP-baseret by-niveau fallback (gratis, ingen nøgle). */
+/** IP-baseret by-niveau fallback. Bruger HTTPS (ipwho.is) — Android blokerer
+ *  cleartext-HTTP (targetSdk 36), så ip-api.com's http-endpoint fejler tavst. */
 export async function ipLocation(): Promise<LocationPayload | null> {
   try {
-    const res = await fetch('http://ip-api.com/json/?fields=status,city,regionName,lat,lon')
+    const res = await fetch('https://ipwho.is/?fields=success,city,region,latitude,longitude')
     const d = (await res.json()) as {
-      status?: string; city?: string; regionName?: string; lat?: number; lon?: number
+      success?: boolean; city?: string; region?: string; latitude?: number; longitude?: number
     }
-    if (d.status !== 'success' || d.lat == null || d.lon == null) return null
-    const label = [d.city, d.regionName].filter(Boolean).join(', ')
-    return { lat: d.lat, lon: d.lon, label, source: 'ip', precision: 'city' }
+    if (!d.success || d.latitude == null || d.longitude == null) return null
+    const label = [d.city, d.region].filter(Boolean).join(', ')
+    return { lat: d.latitude, lon: d.longitude, label, source: 'ip', precision: 'city' }
   } catch {
     return null
   }
@@ -90,10 +91,17 @@ export async function getDeviceLocation(precision: LocationPrecision): Promise<L
   try {
     const perm = await Location.requestForegroundPermissionsAsync()
     if (perm.status !== 'granted') return ipLocation()
-    const pos = await Promise.race([
-      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
-    ])
+    // getLastKnownPositionAsync er INSTANT (cachet fix) — virker indendørs hvor en
+    // frisk getCurrentPositionAsync(Balanced) kan tage >8s eller time ud. Brug det
+    // som hurtig primær; ellers et frisk fix (race mod 8s); ellers IP.
+    let pos: { coords: { latitude: number; longitude: number } } | null =
+      await Location.getLastKnownPositionAsync({ maxAge: 300000 }).catch(() => null)
+    if (!pos) {
+      pos = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+      ])
+    }
     if (!pos) return ipLocation()
     const { latitude, longitude } = pos.coords
     const label = await reverseLabel(latitude, longitude, true)

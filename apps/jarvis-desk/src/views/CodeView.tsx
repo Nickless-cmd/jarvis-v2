@@ -221,6 +221,20 @@ export function CodeView({
   const [bgActive, setBgActive] = useState(false)
   const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
+  const [takeoverDismissed, setTakeoverDismissed] = useState(false)
+  useEffect(() => { if (!bgActive) setTakeoverDismissed(false) }, [bgActive])
+  // Egen sekund-tæller til liveness-linjen: stream.elapsedMs er 0 ved et cross-
+  // device run (vi streamer ikke selv), så den ville stå på 00:00. Tæl fra da
+  // bgActive blev sat.
+  const [bgElapsedMs, setBgElapsedMs] = useState(0)
+  const bgStartRef = useRef(0)
+  useEffect(() => {
+    if (!bgActive) { setBgElapsedMs(0); return }
+    bgStartRef.current = Date.now()
+    setBgElapsedMs(0)
+    const t = setInterval(() => setBgElapsedMs(Date.now() - bgStartRef.current), 1000)
+    return () => clearInterval(t)
+  }, [bgActive])
   useEffect(() => {
     if (!settings || !sessionId) { setBgActive(false); return }
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
@@ -531,6 +545,12 @@ export function CodeView({
     <div className="codeview">
       <div className="codeview-main">
         {headerActive}
+        {bgActive && stream.status !== 'working' && !takeoverDismissed && (
+          <div className="takeover-banner" role="status">
+            <span className="takeover-text">📱→🖥 Aktiv på en anden enhed — følger med her live</span>
+            <button type="button" className="takeover-dismiss" aria-label="Skjul" onClick={() => setTakeoverDismissed(true)}>×</button>
+          </div>
+        )}
         {config && envOpen && !filesOpen && !panel.open && (
           <EnvironmentPanel
             config={config}
@@ -579,7 +599,7 @@ export function CodeView({
           {(stream.status !== 'idle' || bgActive) && (
             <LivenessIndicator
               status={bgActive && stream.status !== 'working' ? 'working' : stream.status}
-              elapsedMs={stream.elapsedMs}
+              elapsedMs={bgActive && stream.status !== 'working' ? bgElapsedMs : stream.elapsedMs}
               density="compact"
               workingStep={bgActive && stream.status !== 'working' ? (followState.workingStep ?? 'vågner') : stream.workingStep}
               tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}

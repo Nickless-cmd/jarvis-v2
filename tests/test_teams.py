@@ -20,3 +20,12 @@ def test_teams_tables_exist_after_init(tmp_path, monkeypatch):
         cols = {r[1] for r in conn.execute("PRAGMA table_info(chat_sessions)").fetchall()}
     assert {"teams", "team_members", "team_invites"} <= names
     assert "team_id" in cols
+
+
+def test_team_dir_creates_git_repo(tmp_path, monkeypatch):
+    import core.runtime.workspace_paths as wp
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    d = wp.team_dir("team-xyz")
+    assert d.exists()
+    assert (d.parent / ".git").exists()  # git-init'et på repo-roden over workspace
+    assert "teams/team-xyz/workspace" in str(d)

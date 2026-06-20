@@ -63,6 +63,30 @@ def workspace_dir(user_id: str | None = None) -> Path:
     return _jarvis_home() / "workspaces" / workspace_name
 
 
+def team_dir(team_id: str) -> Path:
+    """Delt team-workspace som git-repo (Teams-feature, spec 2026-06-20).
+
+    Tredje workspace-art ved siden af shared_dir()/workspace_dir(). Ligger i
+    <home>/teams/<team_id>/workspace/; repoet git-init'es på <home>/teams/<team_id>/
+    (repo-rod OVER workspace, så .git ikke forurener arbejdsfilerne). Gatet på
+    medlemskab i kald-laget — INGEN per-bruger-kryptering (delt repo). Opretter +
+    git-init'er ved første kald; idempotent.
+    """
+    import subprocess
+
+    base = _jarvis_home() / "teams" / team_id
+    ws = base / "workspace"
+    ws.mkdir(parents=True, exist_ok=True)
+    if not (base / ".git").exists():
+        try:
+            subprocess.run(["git", "init", "-q"], cwd=str(base), check=False)
+            subprocess.run(["git", "config", "user.email", "teams@jarvis"], cwd=str(base), check=False)
+            subprocess.run(["git", "config", "user.name", "Jarvis Teams"], cwd=str(base), check=False)
+        except Exception:
+            pass  # git mangler → workspace virker stadig, bare uden rollback
+    return ws
+
+
 def _user_id_to_workspace_name(user_id: str) -> str:
     """Resolve user_id → workspace folder name.
 

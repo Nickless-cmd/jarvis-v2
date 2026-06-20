@@ -15,6 +15,8 @@ import type { AccountProfile, Connector } from '../lib/types'
 import { useAuth } from '../state/AuthContext'
 import { useConnectivity } from '../lib/useConnectivity'
 import { tokens } from '../theme/tokens'
+import { bubble } from '../lib/bubbleModule'
+import { loadBubblePersist, saveBubblePersist } from '../lib/bubbleSetting'
 
 const CONN_LABEL: Record<string, string> = {
   connected: 'Forbundet til Jarvis ✓',
@@ -44,6 +46,10 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const [connectors, setConnectors] = useState<Connector[]>([])
   const [connectorsLoading, setConnectorsLoading] = useState(false)
   const [pendingId, setPendingId] = useState<string | null>(null)
+  const [persistBubble, setPersistBubble] = useState(false)
+  const [bubbleOk, setBubbleOk] = useState(false)
+  useEffect(() => { void bubble.isSupported().then(setBubbleOk) }, [])
+  useEffect(() => { void loadBubblePersist().then(setPersistBubble) }, [])
 
   useEffect(() => {
     if (!config) return
@@ -198,6 +204,27 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
           </Pressable>
         </View>
 
+        {bubbleOk ? (
+          <>
+            <Text style={styles.sectionTitle}>Chatboble</Text>
+            <View style={styles.card}>
+              <View style={styles.bubbleRow}>
+                <Text style={styles.value}>Vedvarende Jarvis-boble</Text>
+                <Switch
+                  value={persistBubble}
+                  onValueChange={(on) => {
+                    setPersistBubble(on)
+                    void saveBubblePersist(on)
+                    bubble.setPersistent(on, '', 'Jarvis')
+                  }}
+                  trackColor={{ true: tokens.color.accent, false: tokens.color.bg3 }}
+                />
+              </View>
+              <Text style={styles.muted}>En flydende chat-head der altid er tilgængelig oven på andre apps.</Text>
+            </View>
+          </>
+        ) : null}
+
         <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOut}>
           <Text style={styles.signOutText}>Log ud</Text>
         </Pressable>
@@ -218,6 +245,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.color.bg0 },
+  bubbleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

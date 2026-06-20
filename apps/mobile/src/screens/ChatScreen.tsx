@@ -20,6 +20,7 @@ import { cancelActiveRun, getActiveRuns, getModelOptions, uploadAttachment, whoa
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
+import { bubble } from '../lib/bubbleModule'
 import { useAuth } from '../state/AuthContext'
 import { useSessions } from '../state/SessionContext'
 import { useStream } from '../state/StreamContext'
@@ -57,6 +58,9 @@ export function ChatScreen() {
   // ~2,8s uden aktivitet (lang nok til at man kan ramme knapperne; rail-tryk/scrub
   // scroller selv → nulstiller timeren).
   const [railVisible, setRailVisible] = useState(false)
+  // Chatboble: kun vis "flyt til boble"-knap hvis enheden understøtter Bubbles API.
+  const [bubbleSupported, setBubbleSupported] = useState(false)
+  useEffect(() => { void bubble.isSupported().then(setBubbleSupported) }, [])
   const railTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bumpRail = () => {
     setRailVisible(true)
@@ -383,6 +387,13 @@ export function ChatScreen() {
           onOpenSettings={() => {
             setPanelOpen(false)
             setSettingsOpen(true)
+          }}
+          bubbleSupported={bubbleSupported}
+          onFloatActive={() => {
+            const id = sessions.activeId
+            if (!id) return
+            const title = (sessions.sessions ?? []).find((s) => s.id === id)?.title || 'Jarvis'
+            bubble.floatCurrentChat(id, title)
           }}
         />
       ) : null}

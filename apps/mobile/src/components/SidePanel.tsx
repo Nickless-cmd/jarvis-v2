@@ -23,7 +23,9 @@ export function SidePanel({
   onNewSession,
   onOpenSettings,
   workingIds = [],
-  unreadIds = {}
+  unreadIds = {},
+  onFloatActive,
+  bubbleSupported = false
 }: {
   open: boolean
   onClose: () => void
@@ -35,6 +37,8 @@ export function SidePanel({
   onOpenSettings: () => void
   workingIds?: string[]
   unreadIds?: Record<string, boolean>
+  onFloatActive?: () => void
+  bubbleSupported?: boolean
 }) {
   const insets = useSafeAreaInsets()
   const translateX = useRef(new Animated.Value(-PANEL_WIDTH)).current
@@ -85,6 +89,17 @@ export function SidePanel({
                 {displayName || 'Jarvis'}
               </Text>
             </Pressable>
+            {bubbleSupported && activeId ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Flyt chat til boble"
+                onPress={onFloatActive}
+                hitSlop={8}
+                style={styles.gear}
+              >
+                <Text style={styles.gearIcon}>🫧</Text>
+              </Pressable>
+            ) : null}
             <Pressable accessibilityRole="button" accessibilityLabel="Indstillinger" onPress={onOpenSettings} hitSlop={8} style={styles.gear}>
               <Text style={styles.gearIcon}>⚙</Text>
             </Pressable>

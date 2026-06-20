@@ -23,6 +23,14 @@ def _new_id() -> str:  # injicerbart i tests
     return f"team-{uuid.uuid4().hex[:12]}"
 
 
+def _new_token() -> str:  # injicerbart i tests
+    return uuid.uuid4().hex
+
+
+def _invite_expiry_iso() -> str:  # injicerbart i tests — udløb 7 dage frem
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + 7 * 86400))
+
+
 def create_team(name: str, *, owner_user_id: str) -> dict:
     """Opret team + git-workspace; opretteren bliver owner, Jarvis bliver deltager."""
     tid = _new_id()
@@ -99,6 +107,52 @@ def get_team(team_id: str) -> dict | None:
         return None
     return {"team_id": r[0], "name": r[1], "owner_user_id": r[2],
             "created_at": r[3], "workspace_path": r[4]}
+
+
+# ── Invite-token-livscyklus ────────────────────────────────────────────────────
+def create_invite(team_id: str, *, invited_email: str, invited_by: str) -> str:
+    """Opret et pending invite-token (gemmer email → muliggør email-onboarding
+    i fase 2). Returnerer token."""
+    tok = _new_token()
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO team_invites (token, team_id, invited_email, invited_by, status, "
+            "created_at, expires_at) VALUES (?, ?, ?, ?, 'pending', ?, ?)",
+            (tok, team_id, (invited_email or "").strip(), invited_by, _now_iso(), _invite_expiry_iso()),
+        )
+    return tok
+
+
+def get_invite(token: str) -> dict | None:
+    with connect() as conn:
+        r = conn.execute(
+            "SELECT token, team_id, invited_email, invited_by, status, created_at, expires_at "
+            "FROM team_invites WHERE token = ?",
+            (token,),
+        ).fetchone()
+    if not r:
+        return None
+    return {"token": r[0], "team_id": r[1], "invited_email": r[2], "invited_by": r[3],
+            "status": r[4], "created_at": r[5], "expires_at": r[6]}
+
+
+def accept_invite(token: str, *, accepting_user_id: str) -> str:
+    """Valider + acceptér et invite. Tilføjer brugeren som editor og markerer
+    token accepted. Returnerer team_id. Rejser ValueError ved ugyldigt/udløbet/
+    allerede-brugt token."""
+    inv = get_invite(token)
+    if not inv:
+        raise ValueError("ukendt invite-token")
+    if inv["status"] != "pending":
+        raise ValueError(f"invite er allerede '{inv['status']}'")
+    if _now_iso() >= inv["expires_at"]:  # ISO-Z er leksikografisk sammenlignelig
+        with connect() as conn:
+            conn.execute("UPDATE team_invites SET status='expired' WHERE token=?", (token,))
+        raise ValueError("invite er udløbet")
+    add_member(inv["team_id"], accepting_user_id)  # default editor
+    with connect() as conn:
+        conn.execute("UPDATE team_invites SET status='accepted' WHERE token=?", (token,))
+    return inv["team_id"]
 
 
 # ── Scoping-regel B (delt mellem chat_sessions + session_search) ───────────────

@@ -138,3 +138,35 @@ def test_kick_requires_admin(tmp_path, monkeypatch):
         teams.remove_member(t["team_id"], "jarvis", acting_user_id="bjorn")  # Jarvis kan ikke fjernes
     teams.remove_member(t["team_id"], "mikkel", acting_user_id="bjorn")
     assert teams.is_member(t["team_id"], "mikkel") is False
+
+
+def test_invite_lifecycle_create_get_accept(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    tok = teams.create_invite(t["team_id"], invited_email="mikkel@x.dk", invited_by="bjorn")
+    inv = teams.get_invite(tok)
+    assert inv["status"] == "pending" and inv["team_id"] == t["team_id"]
+    # accept → bliver medlem (editor) + status accepted
+    tid = teams.accept_invite(tok, accepting_user_id="mikkel")
+    assert tid == t["team_id"]
+    assert teams.member_role(t["team_id"], "mikkel") == "editor"
+    assert teams.get_invite(tok)["status"] == "accepted"
+
+
+def test_invite_cannot_be_accepted_twice(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    tok = teams.create_invite(t["team_id"], invited_email="m@x.dk", invited_by="bjorn")
+    teams.accept_invite(tok, accepting_user_id="mikkel")
+    with pytest.raises(ValueError):
+        teams.accept_invite(tok, accepting_user_id="mikkel")
+
+
+def test_expired_invite_rejected(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    # tving udløb i fortiden
+    monkeypatch.setattr(teams, "_invite_expiry_iso", lambda: "2000-01-01T00:00:00Z")
+    tok = teams.create_invite(t["team_id"], invited_email="m@x.dk", invited_by="bjorn")
+    with pytest.raises(ValueError):
+        teams.accept_invite(tok, accepting_user_id="mikkel")

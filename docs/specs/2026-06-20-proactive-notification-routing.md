@@ -56,12 +56,16 @@ CREATE TABLE notification_preferences (
 
 **Channel values:**
 - `auto` — device awareness decides (default)
-- `app` — deliver in jarvis-desk / mobile app (in-app notification + chat message)
-- `push` — FCM push notification only (no chat message)
+- `webchat` — deliver in-app (mobile app + desktop app share the same webchat session — one channel, two surfaces)
+- `push` — FCM push notification only (no chat message, lands on mobile)
 - `discord` — Discord DM
 - `telegram` — Telegram message
 
+**Note on webchat:** Mobile app and desktop app are the same channel (`webchat`). They share sessions — a message delivered to webchat is visible on both surfaces. This is NOT two separate channels, it's one channel with two entry points.
+
 **Resolution priority:** type-specific override → global → `auto`
+
+**Channel selection UI:** Preferences are settable from both the mobile app and desktop app settings screen. The UI presents a simple picker (dropdown or radio buttons) per notification type. See §6.
 
 ### 3.2. Device Awareness (expanded `device_presence.rank()`)
 
@@ -119,8 +123,8 @@ def route_proactive_notification(
    → Call device_presence.rank(user_id) [now expanded]
    → Pick highest-scored device
    → Map device to channel:
-     - mobile/fcm → "push" (or "app" if app session is active)
-     - desktop → "app"
+     - mobile/fcm → "push" (or "webchat" if webchat session is active)
+     - desktop → "webchat"
      - discord → "discord"
      - telegram → "telegram"
 
@@ -130,7 +134,7 @@ def route_proactive_notification(
      → Return {delivered: False, channel: "queued", reason: "quiet_hours"}
 
 4. Deliver to chosen channel:
-   → "app": enqueue in desktop_notifications + trigger in-app notification
+   → "webchat": enqueue in desktop_notifications + trigger in-app notification
    → "push": send via FCM with notification block
    → "discord": send_dm_to_user via discord_gateway
    → "telegram": send_telegram_message

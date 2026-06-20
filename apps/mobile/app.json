@@ -2,12 +2,12 @@
   "expo": {
     "name": "Jarvis",
     "slug": "jarvis-mobile",
-    "version": "0.1.27",
+    "version": "0.1.28",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
       "package": "dk.srvlab.jarvis.mobile",
-      "versionCode": 24,
+      "versionCode": 29,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",

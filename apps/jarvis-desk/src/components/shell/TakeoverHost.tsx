@@ -2,20 +2,27 @@ import { useEffect, useReducer, useRef, useState } from 'react'
 import { getActiveRuns, followRun, getSession } from '../../lib/api'
 import { streamReducer, initialStreamState } from '../../lib/streamReducer'
 import { MessageRow } from '../rich/MessageRow'
+import { LivenessIndicator } from '../feedback/LivenessIndicator'
 import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
 import type { ChatMessage } from '../../lib/api'
 
 /**
- * App-niveau live takeover-panel: kører på tværs af ALLE faner (Sidebar-stil) — i
- * modsætning til ChatView's poll der kun lever i Chat-fanen. Når en chat-session
- * får et aktivt run (fx man tager over fra mobilen) MENS man er i Code/Cowork,
- * popper et lille FLYDENDE chat-panel.
+ * App-niveau live takeover-panel: kører på tværs af ALLE faner — i modsætning til
+ * ChatView's poll der kun lever i Chat-fanen. Når en chat-session får et aktivt run
+ * (fx man tager over fra mobilen) MENS man er i Code/Cowork, popper et flydende
+ * chat-vindue med PRÆCIS samme liveness som Chat mode: live transcript, spinner og
+ * token-tæller.
  *
- * For at matche Chat-fanens robusthed bruger panelet SAMME to kilder som ChatView:
- * (1) getSession-polling → transcript'en (vokser mens svaret persisteres; race-
- * sikkert selv for korte runs), og (2) /live-follow → token-stream live. Følgen
- * vises når den leverer; ellers den persisterede sidste assistant-besked + spinner.
+ * Mekanikken er kopieret 1:1 fra ChatView (den fungerende reference):
+ * - bgUntil-LATCH (≥6s): et kort mobil-svar-run kan starte+slutte mellem to polls.
+ *   Uden latchen rydder vi activeSid med det samme runnet forlader active-runs →
+ *   panelet popper op og forsvinder igen INDEN follow/transcript når at vise noget
+ *   (det var fejlen: "en notits der forsvinder når svaret er færdigt").
+ * - followRun(/live) → followState: live token-stream (transcript + workingStep +
+ *   output-token-estimat), samme kilde som ChatView's overlay.
+ * - getSession-EFTERSLÆB: polles videre under latchen → fanger den persisterede,
+ *   rensede besked når runnet slutter, så svaret bliver stående.
  */
 export function TakeoverHost({
   surface,
@@ -31,35 +38,47 @@ export function TakeoverHost({
   const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
   const followCtl = useRef<{ abort: () => void } | null>(null)
   const [msgs, setMsgs] = useState<ChatMessage[]>([])
+  const [elapsedMs, setElapsedMs] = useState(0)
+  const startedAt = useRef(0)
 
-  // 1) Find en cross-device-aktiv session at vise (kun udenfor Chat-fanen).
+  // 1) Find en cross-device-aktiv session — med 6s-latch (som ChatView) så korte
+  //    runs ikke forsvinder mellem to polls.
   useEffect(() => {
     if (!settings) { setActiveSid(null); return }
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     let cancelled = false
+    let bgUntil = 0
+    let held: string | null = null
     const tick = async () => {
       try {
         const ids = await getActiveRuns(cfg)
         if (cancelled) return
         for (const d of [...dismissed.current]) if (!ids.includes(d)) dismissed.current.delete(d)
-        if (surface === 'chat') { setActiveSid(null); return }
-        setActiveSid(ids.find((id) => !dismissed.current.has(id)) ?? null)
-      } catch { /* behold sidste */ }
+        if (surface === 'chat') { held = null; setActiveSid(null); return }
+        const cand = ids.find((id) => !dismissed.current.has(id)) ?? null
+        if (cand) { held = cand; bgUntil = Date.now() + 6000 }
+        else if (Date.now() >= bgUntil) { held = null }
+        setActiveSid(held)
+      } catch { /* behold sidste — ingen flicker */ }
     }
     void tick()
-    const t = setInterval(tick, 2000)
+    const t = setInterval(tick, 1500)
     return () => { cancelled = true; clearInterval(t) }
   }, [settings, surface])
 
-  // 2) Følg den aktive session live (token-stream, når den leverer).
+  // 2) Følg den aktive session live (token-stream). Genstart IKKE hvis vi følger.
   useEffect(() => {
-    if (!settings || !activeSid) { followCtl.current?.abort(); followCtl.current = null; return }
+    if (!settings || !activeSid) {
+      followCtl.current?.abort(); followCtl.current = null
+      return
+    }
+    if (followCtl.current) return
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     followCtl.current = followRun(cfg, activeSid, (ev) => followDispatch(ev), () => { followCtl.current = null })
     return () => { followCtl.current?.abort(); followCtl.current = null }
   }, [settings, activeSid])
 
-  // 3) Poll transcript'en (race-sikker kilde — samme som ChatView's sessions.refresh).
+  // 3) Poll transcript'en (efterslæb-kilde — fanger den persisterede besked).
   useEffect(() => {
     if (!settings || !activeSid) { setMsgs([]); return }
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
@@ -75,9 +94,18 @@ export function TakeoverHost({
     return () => { cancelled = true; clearInterval(t) }
   }, [settings, activeSid])
 
+  // 4) Elapsed-tæller til liveness-linjen (nulstil ved ny session).
+  useEffect(() => {
+    if (!activeSid) { setElapsedMs(0); return }
+    startedAt.current = Date.now()
+    setElapsedMs(0)
+    const t = setInterval(() => setElapsedMs(Date.now() - startedAt.current), 1000)
+    return () => clearInterval(t)
+  }, [activeSid])
+
   if (!activeSid) return null
   const title = sessions.find((s) => s.id === activeSid)?.title || 'en samtale'
-  const streaming = followState.status === 'working' && followState.blocks.length > 0
+  const live = followState.status === 'working' && followState.blocks.length > 0
   const lastAssistant = [...msgs].reverse().find((m) => m.role === 'assistant')
   return (
     <div className="takeover-live">
@@ -89,13 +117,18 @@ export function TakeoverHost({
         <button type="button" className="takeover-live-x" aria-label="Skjul" onClick={() => { dismissed.current.add(activeSid); setActiveSid(null) }}>×</button>
       </div>
       <div className="takeover-live-body">
-        {streaming ? (
+        {live ? (
           <MessageRow role="assistant" blocks={followState.blocks} density="compact" streaming />
         ) : lastAssistant ? (
           <MessageRow role="assistant" blocks={lastAssistant.content} density="compact" streaming={false} />
-        ) : (
-          <div className="takeover-live-wait">Jarvis arbejder…</div>
-        )}
+        ) : null}
+        <LivenessIndicator
+          status="working"
+          elapsedMs={elapsedMs}
+          density="compact"
+          workingStep={followState.workingStep ?? 'vågner'}
+          tokens={followState.usage.output}
+        />
       </div>
     </div>
   )

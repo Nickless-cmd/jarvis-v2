@@ -1790,3 +1790,29 @@
 /* Offline-kø-chip (§14.1) — tonet anderledes end normal "i kø". */
 .queued-chip.is-offline { border-color: #e0843a; }
 .queued-chip.is-offline .queued-label { color: #e0843a; }
+
+/* Takeover-banner: cross-device-aktivitet på den åbne session (overtaget fra mobil). */
+.takeover-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 12px 0;
+  padding: 6px 12px;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  color: var(--fg);
+  font-size: 13px;
+}
+.takeover-text { color: var(--muted); }
+.takeover-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.takeover-dismiss:hover { color: var(--fg); }

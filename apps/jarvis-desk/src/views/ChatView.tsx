@@ -48,6 +48,14 @@ export function ChatView({
   // klienten ikke selv driver. Når det opdages, vis at Jarvis arbejder + hent
   // nye beskeder ind, så han "kalder op" i appen (Bjørn 2026-06-13).
   const [bgActive, setBgActive] = useState(false)
+  // Takeover-banner: når den ÅBNE session får cross-device-aktivitet (du tager
+  // over fra mobilen) vises en lille notits "følger med live", så du ved
+  // transcript'en opdaterer sig her — uden at hoppe ud og ind. Nulstilles når
+  // aktiviteten stopper, så næste overtagelse vises igen.
+  const [takeoverDismissed, setTakeoverDismissed] = useState(false)
+  useEffect(() => {
+    if (!bgActive) setTakeoverDismissed(false)
+  }, [bgActive])
   // Follow-stream: token-stream et autonomt wakeup-runs svar live (i stedet for
   // at "dumpe" det ind når det er færdigt). Egen reducer fodret af /follow-SSE'en.
   const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
@@ -374,9 +382,23 @@ export function ChatView({
   }
 
   // ── Aktiv samtale ──
+  const showTakeover = bgActive && stream.status !== 'working' && !takeoverDismissed
   return (
     <div className="chatview">
       {header}
+      {showTakeover && (
+        <div className="takeover-banner" role="status">
+          <span className="takeover-text">📱→🖥 Aktiv på en anden enhed — følger med her live</span>
+          <button
+            type="button"
+            className="takeover-dismiss"
+            aria-label="Skjul"
+            onClick={() => setTakeoverDismissed(true)}
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div className="transcript-wrap">
       <MessageRail
         containerRef={transcriptRef}

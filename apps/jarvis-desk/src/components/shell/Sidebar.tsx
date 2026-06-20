@@ -146,7 +146,9 @@ export function Sidebar({
       </div>
       )}
 
-      {(surface === 'chat' || surface === 'code') && <TeamsSection />}
+      {(surface === 'chat' || surface === 'code') && (
+        <TeamsSection onOpenSession={(id) => { select(id); onSurface('chat') }} />
+      )}
 
       <div className="sidebar-foot">
         <div className="who">

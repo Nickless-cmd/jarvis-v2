@@ -31,3 +31,17 @@ export async function inviteToTeam(
 export async function acceptInvite(config: ApiConfig, token: string): Promise<{ team_id: string }> {
   return apiFetch(config, `/invites/${token}/accept`, { method: 'POST' })
 }
+
+export interface TeamSession {
+  session_id: string
+  title: string
+}
+
+export async function listTeamSessions(config: ApiConfig, teamId: string): Promise<TeamSession[]> {
+  const r = await apiFetch<{ sessions: TeamSession[] }>(config, `/teams/${teamId}/sessions`)
+  return r.sessions ?? []
+}
+
+export async function createTeamSession(config: ApiConfig, teamId: string, title: string): Promise<TeamSession> {
+  return apiFetch(config, `/teams/${teamId}/sessions`, { method: 'POST', body: { title } })
+}

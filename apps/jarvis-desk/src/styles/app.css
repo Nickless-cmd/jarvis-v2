@@ -1921,3 +1921,9 @@
 .team-member { font-size: 11px; color: var(--fg-2, #c9d1d9); background: var(--bg-3, #21262d); border-radius: 4px; padding: 1px 6px; }
 .team-invite { font-size: 12px; background: none; border: 1px solid var(--border, #30363d); color: var(--accent, #2f81f7); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
 .team-sessions-hint { font-size: 11px; color: var(--fg-3, #8b949e); opacity: 0.6; margin-top: 4px; font-style: italic; }
+
+/* Team-sessioner i sidebar */
+.team-session { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--fg-1, #e6edf3); cursor: pointer; padding: 3px 6px; border-radius: 5px; font-size: 12.5px; }
+.team-session:hover { background: var(--bg-3, #21262d); }
+.team-actions { display: flex; gap: 6px; margin: 4px 0; }
+.team-mini { font-size: 11px; background: none; border: 1px solid var(--border, #30363d); color: var(--accent, #2f81f7); border-radius: 6px; padding: 1px 8px; cursor: pointer; }

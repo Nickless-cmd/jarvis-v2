@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useSettings } from '../../hooks/useSettings'
-import { listTeams, createTeam, inviteToTeam, type Team } from '../../lib/teamsApi'
+import {
+  listTeams, createTeam, inviteToTeam, listTeamSessions, createTeamSession,
+  type Team, type TeamSession,
+} from '../../lib/teamsApi'
 
 /** Teams-sektion i sidebar (Teams-feature §6.1). Separat foldbar liste UNDER de
- *  private sessioner. Lister teams + medlemmer; opret nyt team; inviter medlem.
- *  Delte team-sessioner under hvert team kommer når session↔team-binding er wiret
- *  (Fase 2c). MVP: gør Teams synligt + oprettbart fra appen. */
-export function TeamsSection() {
+ *  private sessioner. Lister teams + delte sessioner; opret team/session; inviter.
+ *  En team-session åbnes i chat-fladen via onOpenSession (synlig for alle medlemmer
+ *  via scoping-regel B). */
+export function TeamsSection({ onOpenSession }: { onOpenSession: (sessionId: string) => void }) {
   const { settings } = useSettings()
   const [teams, setTeams] = useState<Team[]>([])
   const [open, setOpen] = useState<Record<string, boolean>>({})
+  const [sessionsByTeam, setSessionsByTeam] = useState<Record<string, TeamSession[]>>({})
   const cfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
 
   const refresh = async () => {
@@ -18,11 +22,38 @@ export function TeamsSection() {
   }
   useEffect(() => { void refresh() }, [settings?.authToken])
 
+  const loadSessions = async (teamId: string) => {
+    if (!cfg) return
+    try {
+      const ss = await listTeamSessions(cfg, teamId)
+      setSessionsByTeam((m) => ({ ...m, [teamId]: ss }))
+    } catch { /* noop */ }
+  }
+
+  const toggle = (teamId: string) => {
+    setOpen((o) => {
+      const next = !o[teamId]
+      if (next) void loadSessions(teamId)
+      return { ...o, [teamId]: next }
+    })
+  }
+
   const onNew = async () => {
     if (!cfg) return
     const name = window.prompt('Navn på nyt team?')?.trim()
     if (!name) return
     try { await createTeam(cfg, name); await refresh() } catch { /* noop */ }
+  }
+
+  const onNewSession = async (t: Team) => {
+    if (!cfg) return
+    const title = window.prompt(`Ny delt session i "${t.name}":`, 'Team-chat')?.trim()
+    if (!title) return
+    try {
+      const s = await createTeamSession(cfg, t.team_id, title)
+      await loadSessions(t.team_id)
+      onOpenSession(s.session_id)
+    } catch { /* noop */ }
   }
 
   const onInvite = async (t: Team) => {
@@ -45,18 +76,23 @@ export function TeamsSection() {
       {teams.length === 0 && <div className="teams-empty">Ingen teams endnu</div>}
       {teams.map((t) => (
         <div key={t.team_id} className="team-row">
-          <button type="button" className="team-name"
-            onClick={() => setOpen((o) => ({ ...o, [t.team_id]: !o[t.team_id] }))}>
+          <button type="button" className="team-name" onClick={() => toggle(t.team_id)}>
             <span className="team-caret">{open[t.team_id] ? '▾' : '▸'}</span> {t.name}
             <span className="team-count">{t.members.length}</span>
           </button>
           {open[t.team_id] && (
             <div className="team-body">
+              {(sessionsByTeam[t.team_id] ?? []).map((s) => (
+                <button key={s.session_id} type="button" className="team-session"
+                  onClick={() => onOpenSession(s.session_id)}># {s.title || 'Team-chat'}</button>
+              ))}
+              <div className="team-actions">
+                <button type="button" className="team-mini" onClick={() => void onNewSession(t)}>+ Session</button>
+                <button type="button" className="team-mini" onClick={() => void onInvite(t)}>+ Inviter</button>
+              </div>
               <div className="team-members">
                 {t.members.map((m) => <span key={m.user_id} className="team-member">{m.user_id}{m.team_role === 'owner' ? ' ⭐' : ''}</span>)}
               </div>
-              <button type="button" className="team-invite" onClick={() => void onInvite(t)}>+ Inviter</button>
-              <div className="team-sessions-hint">Delte sessioner kommer her</div>
             </div>
           )}
         </div>

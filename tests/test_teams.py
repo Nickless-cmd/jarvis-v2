@@ -117,3 +117,24 @@ def test_guard_allows_cross_user_inside_team_session(tmp_path, monkeypatch):
     res = guard.check_outbound("Mikkel spurgte om X", current_user_id="bjorn",
                                known_users=known, session_id="team-s3")
     assert res["needs_confirmation"] is False
+
+
+def test_only_owner_can_admin(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    teams.add_member(t["team_id"], "mikkel")
+    assert teams.can_admin(t["team_id"], "bjorn") is True
+    assert teams.can_admin(t["team_id"], "mikkel") is False
+    assert teams.can_admin(t["team_id"], "jarvis") is False
+
+
+def test_kick_requires_admin(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    teams.add_member(t["team_id"], "mikkel")
+    with pytest.raises(PermissionError):
+        teams.remove_member(t["team_id"], "mikkel", acting_user_id="mikkel")
+    with pytest.raises(PermissionError):
+        teams.remove_member(t["team_id"], "jarvis", acting_user_id="bjorn")  # Jarvis kan ikke fjernes
+    teams.remove_member(t["team_id"], "mikkel", acting_user_id="bjorn")
+    assert teams.is_member(t["team_id"], "mikkel") is False

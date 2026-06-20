@@ -272,6 +272,12 @@ function createMainWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // KRITISK for cross-device realtime (Bjørn 2026-06-20): uden dette
+      // throttler Chromium renderer-timere (setInterval) til ~1/min når vinduet
+      // er ufokuseret/i baggrunden — netop når man "tager over fra mobilen" og
+      // desk-vinduet er i baggrunden. Det frøs active-runs-pollet + transcript-
+      // refresh → mobil→desktop opdaterede aldrig. false = polls kører fuldt.
+      backgroundThrottling: false,
       // Dev: slå webSecurity fra så CORS ikke blokerer kald til
       // api.srvlab.dk (browser-side fetch tjekker CORS, men curl gør
       // ikke — derfor virker API direkte men ikke via renderer).

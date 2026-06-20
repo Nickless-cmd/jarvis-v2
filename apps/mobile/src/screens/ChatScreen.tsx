@@ -21,6 +21,7 @@ import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
 import { bubble } from '../lib/bubbleModule'
+import { submitNotificationReply, REPLY_ACTION_ID } from '../lib/push'
 import { useAuth } from '../state/AuthContext'
 import { useSessions } from '../state/SessionContext'
 import { useStream } from '../state/StreamContext'
@@ -109,6 +110,10 @@ export function ChatScreen() {
     }
     const unsub = notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS) open(detail.notification?.data?.session_id)
+      // Direct Reply mens appen er i forgrunden (bruger trækker shade ned).
+      if (type === EventType.ACTION_PRESS && detail.pressAction?.id === REPLY_ACTION_ID && config) {
+        void submitNotificationReply(config, detail)
+      }
     })
     void notifee.getInitialNotification().then((n) => {
       if (!cancelled) open(n?.notification?.data?.session_id)

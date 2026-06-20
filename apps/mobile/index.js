@@ -1,10 +1,20 @@
 import { registerRootComponent } from 'expo'
 import messaging from '@react-native-firebase/messaging'
-import notifee, { AndroidImportance } from '@notifee/react-native'
+import notifee, { AndroidImportance, EventType } from '@notifee/react-native'
 import App from './src/App'
-import { display } from './src/lib/push'
+import { display, submitNotificationReply, REPLY_ACTION_ID } from './src/lib/push'
 import { loadAuthConfig } from './src/lib/authStore'
 import './src/bubble/registerBubble'
+
+// Direct Reply baggrunds-handler: når brugeren svarer fra statusbaren (uden at
+// åbne appen) sender vi teksten til sessionens run. Svaret kommer tilbage som en
+// ny FCM-notifikation. SKAL registreres uden for komponent-træet.
+notifee.onBackgroundEvent(async ({ type, detail }) => {
+  if (type === EventType.ACTION_PRESS && detail.pressAction?.id === REPLY_ACTION_ID) {
+    const config = await loadAuthConfig()
+    if (config && config.authToken) await submitNotificationReply(config, detail)
+  }
+})
 
 // FCM data-only baggrunds-handler — SKAL registreres uden for komponent-træet
 // (kører når appen er i baggrund/dræbt). For answer_ready HENTER vi det faktiske

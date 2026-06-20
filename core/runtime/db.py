@@ -211,6 +211,43 @@ def _ensure_chat_session_workspace_columns(conn) -> None:
         conn.execute("ALTER TABLE chat_sessions ADD COLUMN workspace_root TEXT")
 
 
+def _ensure_teams_tables(conn) -> None:
+    """Teams-feature (spec 2026-06-20): teams + medlemskab + invites. Idempotent."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS teams (
+            team_id        TEXT PRIMARY KEY,
+            name           TEXT NOT NULL,
+            owner_user_id  TEXT NOT NULL,
+            created_at     TEXT NOT NULL,
+            workspace_path TEXT NOT NULL
+        )""")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS team_members (
+            team_id    TEXT NOT NULL,
+            user_id    TEXT NOT NULL,
+            team_role  TEXT NOT NULL,
+            joined_at  TEXT NOT NULL,
+            PRIMARY KEY (team_id, user_id)
+        )""")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS team_invites (
+            token         TEXT PRIMARY KEY,
+            team_id       TEXT NOT NULL,
+            invited_email TEXT NOT NULL DEFAULT '',
+            invited_by    TEXT NOT NULL,
+            status        TEXT NOT NULL,
+            created_at    TEXT NOT NULL,
+            expires_at    TEXT NOT NULL
+        )""")
+
+
+def _ensure_chat_session_team_column(conn) -> None:
+    """team_id på chat_sessions: NULL = privat (urørt), sat = team-session. Idempotent."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(chat_sessions)").fetchall()}
+    if "team_id" not in cols:
+        conn.execute("ALTER TABLE chat_sessions ADD COLUMN team_id TEXT")
+
+
 def init_db() -> None:
     with connect() as conn:
         conn.execute(
@@ -532,6 +569,8 @@ def init_db() -> None:
             """
         )
         _ensure_chat_session_workspace_columns(conn)
+        _ensure_teams_tables(conn)
+        _ensure_chat_session_team_column(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS chat_messages (

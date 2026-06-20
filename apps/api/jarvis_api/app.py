@@ -486,6 +486,8 @@ def create_app() -> FastAPI:
     app.include_router(push_router)
     from apps.api.jarvis_api.routes.presence import router as presence_router
     app.include_router(presence_router)
+    from apps.api.jarvis_api.routes.mobile_update import router as mobile_update_router
+    app.include_router(mobile_update_router)
     app.include_router(cowork_router)
     app.include_router(plugins_router)
     from apps.api.jarvis_api.routes.oauth import router as oauth_router

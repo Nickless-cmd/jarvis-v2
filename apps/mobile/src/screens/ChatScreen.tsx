@@ -53,6 +53,17 @@ export function ChatScreen() {
   }, [panelOpen, config])
   const unreadIds = computeUnread(sessions.sessions ?? [], lastSeen, sessions.activeId)
   const listRef = useRef<MessageListHandle>(null)
+  // Save Rail: skjult som standard, vises ved scroll-aktivitet, gemmer sig efter
+  // ~2,8s uden aktivitet (lang nok til at man kan ramme knapperne; rail-tryk/scrub
+  // scroller selv → nulstiller timeren).
+  const [railVisible, setRailVisible] = useState(false)
+  const railTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const bumpRail = () => {
+    setRailVisible(true)
+    if (railTimer.current) clearTimeout(railTimer.current)
+    railTimer.current = setTimeout(() => setRailVisible(false), 2800)
+  }
+  useEffect(() => () => { if (railTimer.current) clearTimeout(railTimer.current) }, [])
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [displayName, setDisplayName] = useState('Jarvis')
@@ -295,12 +306,13 @@ export function ChatScreen() {
               messages={sessions.messages}
               blocks={stream.state.blocks}
               onResend={(text) => void ensureSessionAndSend(text)}
+              onScrollActivity={bumpRail}
             />
           )}
         </Animated.View>
         {!showGreeting ? (
           <SaveRail
-            visible={sessions.messages.length >= 2}
+            visible={railVisible && sessions.messages.length >= 2}
             onJumpTop={() => listRef.current?.jumpTop()}
             onJumpBottom={() => listRef.current?.jumpBottom()}
             onOlderUser={() => listRef.current?.jumpOlderUser()}

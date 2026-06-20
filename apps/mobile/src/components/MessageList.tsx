@@ -19,6 +19,8 @@ interface MessageListProps {
   messages: ChatMessage[]
   blocks: ContentBlock[]
   onResend?: (text: string) => void
+  /** Kaldes ved scroll-aktivitet (bruges til at vise Save Rail mens man scroller). */
+  onScrollActivity?: () => void
 }
 
 type Row =
@@ -80,7 +82,7 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, onResend },
+  { messages, blocks, onResend, onScrollActivity },
   ref
 ) {
   const flatRef = useRef<FlatList>(null)
@@ -126,6 +128,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       data={ordered}
       keyExtractor={(item) => item.key}
       onContentSizeChange={(_w, h) => { contentLenRef.current = h }}
+      onScroll={onScrollActivity ? () => onScrollActivity() : undefined}
+      scrollEventThrottle={120}
       onViewableItemsChanged={onViewable}
       onScrollToIndexFailed={(info) => {
         flatRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true })

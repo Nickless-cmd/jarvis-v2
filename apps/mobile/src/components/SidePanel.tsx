@@ -5,6 +5,7 @@ import { formatRelativeDate } from '../lib/relativeDate'
 import { HeartbeatDot } from './HeartbeatDot'
 import type { ChatSession } from '../lib/types'
 import { tokens } from '../theme/tokens'
+import { TeamsPanel } from './TeamsPanel'
 
 const PANEL_WIDTH = Math.min(360, Math.round(Dimensions.get('window').width * 0.86))
 
@@ -25,7 +26,8 @@ export function SidePanel({
   workingIds = [],
   unreadIds = {},
   onFloatActive,
-  bubbleSupported = false
+  bubbleSupported = false,
+  config = null
 }: {
   open: boolean
   onClose: () => void
@@ -39,6 +41,7 @@ export function SidePanel({
   unreadIds?: Record<string, boolean>
   onFloatActive?: () => void
   bubbleSupported?: boolean
+  config?: import('../lib/types').ApiConfig | null
 }) {
   const insets = useSafeAreaInsets()
   const translateX = useRef(new Animated.Value(-PANEL_WIDTH)).current
@@ -155,6 +158,7 @@ export function SidePanel({
                 </Pressable>
               ))
             )}
+            <TeamsPanel config={config} onSelectSession={onSelectSession} />
           </ScrollView>
         </Animated.View>
 

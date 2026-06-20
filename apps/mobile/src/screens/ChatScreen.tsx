@@ -415,6 +415,7 @@ export function ChatScreen() {
           open={panelOpen}
           onClose={() => setPanelOpen(false)}
           displayName={displayName}
+          config={config}
           sessions={sessions.sessions}
           activeId={sessions.activeId}
           onSelectSession={handleSelectSession}

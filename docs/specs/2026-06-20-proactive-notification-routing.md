@@ -42,7 +42,7 @@ New SQLite table `notification_preferences`:
 ```sql
 CREATE TABLE notification_preferences (
     user_id      TEXT PRIMARY KEY,
-    global       TEXT DEFAULT 'auto',       -- auto | app | push | discord | telegram
+    global       TEXT DEFAULT 'auto',       -- auto | mobile | desktop | push | discord | telegram
     briefing     TEXT DEFAULT NULL,         -- override for morgenbriefing
     reminder     TEXT DEFAULT NULL,         -- override for reminders
     reach_out    TEXT DEFAULT NULL,         -- override for reach_out
@@ -56,12 +56,13 @@ CREATE TABLE notification_preferences (
 
 **Channel values:**
 - `auto` — device awareness decides (default)
-- `webchat` — deliver in-app (mobile app + desktop app share the same webchat session — one channel, two surfaces)
+- `mobile` — deliver to mobile app (in-app notification + chat message via webchat session, push if app is closed)
+- `desktop` — deliver to desktop app (in-app notification + chat message via webchat session)
 - `push` — FCM push notification only (no chat message, lands on mobile)
 - `discord` — Discord DM
 - `telegram` — Telegram message
 
-**Note on webchat:** Mobile app and desktop app are the same channel (`webchat`). They share sessions — a message delivered to webchat is visible on both surfaces. This is NOT two separate channels, it's one channel with two entry points.
+**Note on mobile vs desktop:** Mobile app and desktop app share the same webchat session backend, but they are **separate channels** for notification routing. The user can choose to receive proactive notifications on mobile, desktop, or both (via `auto`). When `mobile` is selected, the notification targets the mobile app — if the app is in the foreground, show in-app; if the app is backgrounded, send push. When `desktop` is selected, the notification targets the desktop app via desktop_notifications queue. Both surfaces see the same chat history, but delivery (notification + attention-grabbing) targets only the chosen surface.
 
 **Resolution priority:** type-specific override → global → `auto`
 
@@ -123,8 +124,8 @@ def route_proactive_notification(
    → Call device_presence.rank(user_id) [now expanded]
    → Pick highest-scored device
    → Map device to channel:
-     - mobile/fcm → "push" (or "webchat" if webchat session is active)
-     - desktop → "webchat"
+     - mobile/fcm → "mobile" (in-app if foreground, push if backgrounded)
+     - desktop → "desktop"
      - discord → "discord"
      - telegram → "telegram"
 
@@ -134,7 +135,8 @@ def route_proactive_notification(
      → Return {delivered: False, channel: "queued", reason: "quiet_hours"}
 
 4. Deliver to chosen channel:
-   → "webchat": enqueue in desktop_notifications + trigger in-app notification
+   → "mobile": enqueue in mobile app notifications + FCM push if backgrounded + chat message
+   → "desktop": enqueue in desktop_notifications + trigger in-app notification + chat message
    → "push": send via FCM with notification block
    → "discord": send_dm_to_user via discord_gateway
    → "telegram": send_telegram_message
@@ -168,9 +170,10 @@ ALTER TABLE recurring_tasks ADD COLUMN channel TEXT DEFAULT 'auto';
 When a recurring task fires:
 1. Read `channel` from the task row
 2. If `auto` → use `route_proactive_notification(type="briefing")`
-3. If explicit (`app`, `discord`, `telegram`, `push`) → route directly to that channel
+3. If explicit (`mobile`, `desktop`, `discord`, `telegram`, `push`) → route directly to that channel
 4. Autonomous run's session is selected based on the chosen channel:
-   - `app` → owner's app session
+   - `mobile` → owner's app session (same session as desktop, but notification targets mobile)
+   - `desktop` → owner's app session (same session as mobile, but notification targets desktop)
    - `discord` → owner's Discord session (if gateway connected)
    - `telegram` → telegram session
    - `push` → no autonomous run, just push notification

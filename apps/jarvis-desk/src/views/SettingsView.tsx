@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSettings } from '../hooks/useSettings'
 import { PluginsPanel } from '../components/settings/PluginsPanel'
+import { LocationSection } from '../components/settings/LocationSection'
 import { TotpSetup } from '../components/settings/TotpSetup'
 import { DataPrivacyPanel } from '../components/DataPrivacyPanel'
 import { QuotaPanel } from '../components/QuotaPanel'
@@ -101,6 +102,8 @@ export function SettingsView() {
       <DataPrivacyPanel
         config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
       />
+
+      <LocationSection />
 
       <KeyboardHelpPanel />
 

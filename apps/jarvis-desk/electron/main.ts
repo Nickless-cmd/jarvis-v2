@@ -29,6 +29,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
+import * as geo from './geo'
 
 const isDev = process.env.NODE_ENV === 'development'
 const APP_NAME = 'Jarvis'
@@ -455,6 +456,12 @@ let _systemAwake = true
 powerMonitor.on('suspend', () => { _systemAwake = false })
 powerMonitor.on('resume', () => { _systemAwake = true })
 ipcMain.handle('power:isAwake', () => _systemAwake)
+
+// Geolocation-opslag (Nominatim/ip-api) fra main → renderer kan ikke sætte
+// User-Agent som Nominatim kræver. Logikken bor i electron/geo.ts.
+ipcMain.handle('geo:geocode', (_e, address: string) => geo.geocode(address))
+ipcMain.handle('geo:reverse', (_e, lat: number, lon: number, precise: boolean) => geo.reverse(lat, lon, precise))
+ipcMain.handle('geo:ip', () => geo.ipLookup())
 
 // Eksportér en samtale som markdown — via native gem-dialog (renderer-side blob-
 // download er upålidelig i Electron). Renderer bygger markdown'en, main skriver

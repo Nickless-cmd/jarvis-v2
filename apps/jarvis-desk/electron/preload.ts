@@ -34,6 +34,12 @@ export interface JarvisDeskBridge {
   notifyShow: (kind: string, title: string, body: string) => Promise<void>
   /** Er maskinen vågen (ikke i sleep)? Til device-presence. */
   isAwake: () => Promise<boolean>
+  /** Geolocation-opslag (Nominatim/ip-api) via main — sætter korrekt User-Agent. */
+  geo: {
+    geocode: (address: string) => Promise<{ lat: number; lon: number; label: string } | null>
+    reverse: (lat: number, lon: number, precise: boolean) => Promise<string>
+    ip: () => Promise<{ lat: number; lon: number; label: string } | null>
+  }
   /** Åbn native mappe-vælger; returnerer valgt sti eller null. */
   pickFolder: () => Promise<string | null>
   /** Eksportér markdown til en fil via native gem-dialog; true hvis gemt. */
@@ -75,6 +81,11 @@ const bridge: JarvisDeskBridge = {
   notifyTaskDone: (title, body) => ipcRenderer.invoke('notify:taskDone', title, body),
   notifyShow: (kind, title, body) => ipcRenderer.invoke('notify:show', kind, title, body),
   isAwake: () => ipcRenderer.invoke('power:isAwake'),
+  geo: {
+    geocode: (address: string) => ipcRenderer.invoke('geo:geocode', address),
+    reverse: (lat: number, lon: number, precise: boolean) => ipcRenderer.invoke('geo:reverse', lat, lon, precise),
+    ip: () => ipcRenderer.invoke('geo:ip'),
+  },
   pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),
   exportMarkdown: (markdown, suggestedName) => ipcRenderer.invoke('session:exportMarkdown', markdown, suggestedName),
   terminal: {

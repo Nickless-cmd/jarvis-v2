@@ -55,6 +55,39 @@ def test_rank_offline_desktop_dropped_mobile_stays_fcm(monkeypatch):
     assert ranked[0].reachable_via == "fcm"
 
 
+def test_rank_foreground_desktop_beats_recently_used_background_mobile(monkeypatch):
+    # BUG1: skift mobil→desktop. Desktop har kørt et stykke tid (gammel
+    # interaction → recency 0), men er foreground NU. Mobil blev lige brugt
+    # (frisk recency + away-bonus) men er nu baggrund. Foreground = hvor brugeren
+    # ER, skal vinde — ikke mobilens lingering recency.
+    box = {"t": 0.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp.reset()
+    dp.record_ping("bjorn", "desk", "desktop", foreground=True, awake=True, network="home", interaction=True)
+    box["t"] = 700.0  # desktop-interaction nu > recency-horisont (600s) → recency 0
+    dp.record_ping("bjorn", "desk", "desktop", foreground=True, awake=True, network="home", interaction=False)
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="away", interaction=True)
+    box["t"] = 705.0  # bruger ved desktop: mobil baggrunder (foreground=False)
+    dp.record_ping("bjorn", "desk", "desktop", foreground=True, awake=True, network="home", interaction=False)
+    dp.record_ping("bjorn", "mob", "mobile", foreground=False, awake=True, network="away", interaction=False)
+    ranked = dp.rank("bjorn")
+    assert ranked[0].device_key == "desk"
+
+
+def test_rank_stale_foreground_loses_bonus(monkeypatch):
+    # Hvis en enhed siger foreground=True men er holdt op med at pinge (baggrund,
+    # transition-ping tabt), må den ikke beholde foreground-bonus i det uendelige.
+    box = {"t": 0.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp.reset()
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="away", interaction=True)
+    dp.record_ping("bjorn", "desk", "desktop", foreground=True, awake=True, network="home", interaction=True)
+    box["t"] = 50.0  # mobil pingede sidst ved t=0 (>35s) → stale foreground; desktop pinger videre
+    dp.record_ping("bjorn", "desk", "desktop", foreground=True, awake=True, network="home", interaction=False)
+    ranked = dp.rank("bjorn")
+    assert ranked[0].device_key == "desk"
+
+
 def test_prune_drops_stale_records(monkeypatch):
     box = {"t": 1000.0}
     monkeypatch.setattr(dp, "_now", lambda: box["t"])

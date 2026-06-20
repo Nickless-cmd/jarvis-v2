@@ -15,7 +15,14 @@ _now = time.monotonic  # injicerbart i tests
 _DESKTOP_ONLINE_TTL_S = 12.0   # desktop pinger ~5s; >12s uden ping = offline
 _PRESENCE_TTL_S = 120.0        # ryd state-records ældre end dette
 _RECENCY_HORIZON_S = 600.0     # recency-vægt aftager lineært over 10 min
-_FOREGROUND_BONUS = 100.0
+# Foreground = hvor brugeren FAKTISK er → skal dominere recency (max 100) + away
+# (50), ellers klæber en netop-brugt-men-nu-baggrundet enhed (BUG1: skift mobil↔
+# desktop fulgte ikke med). Stor nok til altid at slå recency+away.
+_FOREGROUND_BONUS = 1000.0
+# Foreground-bonus kræver et FRISK ping. En baggrundet enhed der holdt op med at
+# pinge (mobil pinger hvert 30s; desktop hvert 5s) må ikke beholde sin foreground-
+# bonus i det uendelige hvis transition-pinget (foreground=False) blev tabt.
+_FOREGROUND_FRESH_S = 35.0
 _AWAY_MOBILE_BONUS = 50.0
 
 _lock = threading.Lock()
@@ -101,7 +108,10 @@ def rank(user_id: str) -> list[RankedDevice]:
             else:  # mobile — altid FCM-nåbar
                 reachable_via = "fcm"
             score = _recency_weight(now, st.last_interaction_at)
-            if st.foreground:
+            # Foreground-bonus kun ved frisk ping → en baggrundet enhed der holdt
+            # op med at pinge taber sin foreground-bonus (selv hvis dens sidste
+            # ping sagde foreground=True).
+            if st.foreground and (now - st.last_ping_at) <= _FOREGROUND_FRESH_S:
                 score += _FOREGROUND_BONUS
             if st.platform == "mobile" and st.network == "away":
                 score += _AWAY_MOBILE_BONUS

@@ -81,6 +81,8 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "get_weather", "get_exchange_rate", "wolfram_query",
     # Geolocation (read-only eksterne opslag)
     "geolocation_lookup", "geocode", "reverse_geocode", "route_directions", "nearby_search",
+    # Teams
+    "create_team", "list_teams", "invite_to_team",
     # Vision
     "analyze_image",
     # Hukommelse — read

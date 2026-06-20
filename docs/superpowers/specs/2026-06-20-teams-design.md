@@ -34,7 +34,7 @@ CREATE TABLE teams (
 CREATE TABLE team_members (
     team_id    TEXT NOT NULL,
     user_id    TEXT NOT NULL,
-    team_role  TEXT NOT NULL,               -- 'owner' | 'editor' | 'viewer'
+    team_role  TEXT NOT NULL,               -- 'owner' | 'editor' | 'viewer' | 'jarvis'
     joined_at  TEXT NOT NULL,
     PRIMARY KEY (team_id, user_id)
 );
@@ -110,11 +110,59 @@ Parses fra beskedtekst (regex `@navn`, slås op mod `team_members`):
 - **@jarvis** → ind i `should_jarvis_respond` → run.
 - **@medlem** → `proactive_router.route(medlem)` → notifikation *"X nævnte dig i Team Y · Session Z"* på medlemmets bedste enhed (ren genbrug af presence).
 
+### 5.4 Jarvis som team-medlem (Jarvis' review)
+Når et team oprettes, tilføjes Jarvis automatisk som `team_members`-række med
+`team_role='jarvis'`. Det giver ham session-adgang ensartet via samme medlemskabs-
+opslag (scoping-regel B) — han er **deltager, ikke admin**: kan læse/skrive i team-
+sessioner, men ikke invitere/kicke/slette. `'jarvis'`-rollen tæller ikke som "et
+menneske" i medlems-lister/kvote.
+
+### 5.5 Team-aktivitets-notifikationer (Jarvis' review)
+Et team-rum skal føles levende, ikke passivt. Når nogen skriver i en team-session,
+notificeres de medlemmer der IKKE aktivt kigger på sessionen (away/offline via
+presence — den der allerede ser den spammes ikke), debounced så en hurtig udveksling
+ikke giver 10 notifikationer. **Per-team mute** (sluk aktivitets-notifikationer)
+= v2. Jarvis selv "notificeres" om hver besked via samme hook — det er præcis
+input'et til interjection-motoren (§5.2 v2).
+
+---
+
+## 5.6 Geolocation i team-kontekst (Jarvis' review)
+
+Genbruger geolocation-featuren: i team-session-headeren kan medlemmers delte
+lokation vises ved siden af presence-prikken — *"Mikkel · Svendborgsvej, Svendborg"*
+— **men kun for team-medlemmer**, aldrig udenforstående, og **kun hvis det enkelte
+medlem selv har slået lokationsdeling til** (deres egen toggle respekteres ubetinget;
+team-medlemskab giver ikke adgang til en lokation de ikke deler). Lille tilføjelse
+da presence allerede bærer `location`-feltet. Privacy scoped til teamet.
+
 ---
 
 ## 6. UI
 
 ### 6.1 Desktop (jarvis-desk) — fuld admin
+
+**Session-list UX-beslutning (Jarvis' spørgsmål — "10 private + 3 team-sessioner"):**
+Separat **sektion**, ikke en tab og ikke blandet med badges. Layout ovenfra:
+```
+[ + Ny chat ]
+PRIVATE              ← dine private sessioner (hvor du lever mest), uændret
+  • Markedsføring
+  • Geolocation-debug
+  • … (10)
+TEAMS                ← egen overskrift nedenunder, hvert team foldbart
+  ▾ Engineering   (🟢 Bjørn, 🟢 Mikkel)
+      • Kodeprojekt X
+      • Sprint-planlægning
+  ▸ Familie
+[ + Nyt team ]
+```
+*Hvorfor sektion frem for tab:* du ser begge kontekster på én gang (ingen
+navigation væk fra dine private chats), og foldbare teams holder det ryddeligt selv
+med mange. *Hvorfor ikke badges-i-én-liste:* en delt session har en anden
+sikkerheds- og social-kontekst end en privat — den adskillelse skal være visuelt
+tydelig, ikke en lille markør. Samme mønster på mobil.
+
 - **Venstre panel:** ny **"Teams"-sektion** under sessions-listen. Hvert team foldbart → viser sine sessioner. "+ Nyt team"-knap.
 - **Team-session:** normal chat (genbruger ChatView/CodeView) + medlems-presence-prikker i header, "delt"-indikator, **@mention-autocomplete** i composer (`@` → dropdown med medlemmer + `@jarvis`).
 - **Team-styring** (panel i Settings eller egen visning): opret, inviter (vælg bruger / email), medlemsliste m. roller, kick, forlad.
@@ -154,7 +202,8 @@ Parses fra beskedtekst (regex `@navn`, slås op mod `team_members`):
 
 - **Backend (pytest):** team-CRUD; scoping-reglen A/B (privat urørt, team-medlem ser, ikke-medlem afvist); invite-token livscyklus (pending→accepted/expired/revoked); auto-commit-author; rolle-håndhævelse serverside (editor kan ikke kicke, viewer kan ikke skrive).
 - **Klient (vitest/jest):** @mention-parser; Teams-sidebar-state (fold/udfold, team→sessioner); accept-flow; invite-kort-rendering.
-- **Sikkerhed:** eksplicit test at en ikke-medlem IKKE kan læse en team-session (regressionsværn på #154-grænsen).
+- **Sikkerhed:** eksplicit test at en ikke-medlem IKKE kan læse en team-session (regressionsværn på #154-grænsen); at `'jarvis'`-rollen kan læse/skrive men ikke invitere/kicke; at en team-medlems lokation kun vises hvis hen selv deler den.
+- **Cross-device sync (Jarvis' review):** test at en team-session (via `team_id`) returneres i sessions-listen for ALLE medlemmer på tværs af desktop + mobil — ikke kun den enhed der oprettede den.
 
 ---
 

@@ -191,3 +191,62 @@ def test_tool_invite_requires_admin(tmp_path, monkeypatch):
     assert bad["status"] == "error"
     ok = tt.exec_invite_to_team({"team_id": t["team_id"], "email": "x@y.dk", "_user_id": "bjorn"})
     assert ok["status"] == "ok" and ok["token"]
+
+
+import core.services.team_mentions as tm  # noqa: E402
+
+
+def test_parse_mentions_classifies():
+    r = tm.parse_mentions("hej @mikkel kan du se @jarvis og @ukendt?", ["bjorn", "mikkel"])
+    assert r["jarvis"] is True
+    assert r["members"] == ["mikkel"]  # @ukendt ignoreret, @jarvis ikke i members
+
+
+def test_parse_mentions_no_jarvis():
+    r = tm.parse_mentions("@bjorn tjek lige", ["bjorn", "mikkel"])
+    assert r["jarvis"] is False and r["members"] == ["bjorn"]
+
+
+def test_should_jarvis_respond_summoned():
+    assert tm.should_jarvis_respond("@jarvis hjælp") is True
+    assert tm.should_jarvis_respond("bare en intern besked") is False
+    assert tm.should_jarvis_respond("tak", is_reply_to_jarvis=True) is True
+
+
+def test_mention_word_boundary_no_email():
+    # en email skal ikke fanges som mention
+    assert tm.extract_mentions("skriv til mikkel@x.dk") == []
+
+
+def test_autocommit_records_author(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    import core.runtime.workspace_paths as wp
+    ws = wp.team_dir(t["team_id"])
+    (ws / "rapport.txt").write_text("data")
+    ok = teams.autocommit(t["team_id"], message="upload rapport.txt", author_user_id="mikkel")
+    assert ok is True
+    import subprocess
+    base = ws.parent
+    log = subprocess.run(["git", "log", "-1", "--format=%an|%s"], cwd=str(base),
+                         capture_output=True, text=True).stdout.strip()
+    assert log == "mikkel|upload rapport.txt"
+    # intet nyt → returnerer False (intet at committe)
+    assert teams.autocommit(t["team_id"], message="noop", author_user_id="mikkel") is False
+
+
+def test_invite_delivery_in_app_and_email(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Eng", owner_user_id="bjorn")
+    calls = {"route": [], "mail": []}
+    import core.services.proactive_router as pr
+    import core.tools.mail_tools as mail
+    import core.identity.user_db as udb
+    monkeypatch.setattr(pr, "route", lambda uid, payload, kind: calls["route"].append((uid, kind)))
+    monkeypatch.setattr(mail, "_exec_send_mail", lambda a: calls["mail"].append(a["to"]) or {"success": True})
+    monkeypatch.setattr(udb, "find_user_by_email", lambda e: {"user_id": "mikkel"})
+    r = tt.exec_invite_to_team({"team_id": t["team_id"], "email": "mikkel@x.dk", "_user_id": "bjorn"})
+    assert r["status"] == "ok"
+    assert r["delivered"] == {"in_app": True, "email": True}
+    assert calls["route"] == [("mikkel", "team_invite")]
+    assert calls["mail"] == ["mikkel@x.dk"]

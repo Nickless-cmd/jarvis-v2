@@ -6,6 +6,7 @@ chat_sessions + session_search deler den. 'jarvis'-rollen = deltager, ikke admin
 """
 from __future__ import annotations
 
+import subprocess
 import time
 import uuid
 
@@ -153,6 +154,25 @@ def accept_invite(token: str, *, accepting_user_id: str) -> str:
     with connect() as conn:
         conn.execute("UPDATE team_invites SET status='accepted' WHERE token=?", (token,))
     return inv["team_id"]
+
+
+# ── Auto-commit af team-workspace (rollback + revisionsspor) ───────────────────
+def autocommit(team_id: str, *, message: str, author_user_id: str) -> bool:
+    """Stage alt i team-repoet og commit med den handlende bruger som author.
+    Kaldes når en fil uploades/skrives i team-workspacet. Best-effort: returnerer
+    False (uden at kaste) hvis git mangler eller intet er ændret."""
+    base = team_dir(team_id).parent  # repo-roden (over workspace/)
+    author = f"{author_user_id} <{author_user_id}@jarvis-teams>"
+    try:
+        subprocess.run(["git", "add", "-A"], cwd=str(base), check=False,
+                       capture_output=True)
+        r = subprocess.run(
+            ["git", "commit", "-m", message or "team update", "--author", author, "--no-verify"],
+            cwd=str(base), check=False, capture_output=True,
+        )
+        return r.returncode == 0
+    except Exception:
+        return False
 
 
 # ── Scoping-regel B (delt mellem chat_sessions + session_search) ───────────────

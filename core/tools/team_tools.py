@@ -46,6 +46,55 @@ def exec_list_teams(args: dict[str, Any]) -> dict[str, Any]:
                       for t in mine]}
 
 
+def _looks_like_email(s: str) -> bool:
+    return "@" in s and "." in s.split("@")[-1]
+
+
+def _deliver_invite(team_id: str, invitee: str, token: str, inviter: str) -> dict[str, bool]:
+    """Best-effort levering: in-app proactive-kort til en eksisterende bruger +
+    email hvis invitee er en email-adresse. Kaster aldrig."""
+    delivered = {"in_app": False, "email": False}
+    team = teams.get_team(team_id)
+    team_name = team["name"] if team else "et team"
+
+    # Resolve til eksisterende bruger → in-app-kort via presence-routing.
+    target_uid = invitee
+    if _looks_like_email(invitee):
+        try:
+            from core.identity.user_db import find_user_by_email
+            u = find_user_by_email(invitee)
+            target_uid = (u or {}).get("user_id") or ""
+        except Exception:
+            target_uid = ""
+    if target_uid:
+        try:
+            import core.services.proactive_router as pr
+            pr.route(target_uid, {
+                "kind": "team_invite",
+                "preview": f"{inviter} inviterede dig til {team_name}",
+                "team_id": team_id, "token": token,
+            }, "team_invite")
+            delivered["in_app"] = True
+        except Exception:
+            pass
+
+    # Email hvis invitee er en email-adresse.
+    if _looks_like_email(invitee):
+        try:
+            from core.tools.mail_tools import _exec_send_mail
+            r = _exec_send_mail({
+                "to": invitee,
+                "subject": f"Du er inviteret til {team_name} i Jarvis",
+                "body": (f"{inviter} har inviteret dig til teamet '{team_name}'.\n\n"
+                         f"Åbn Jarvis-appen og acceptér invitationen.\n"
+                         f"Invite-kode: {token}\n"),
+            })
+            delivered["email"] = bool(r.get("success"))
+        except Exception:
+            pass
+    return delivered
+
+
 def exec_invite_to_team(args: dict[str, Any]) -> dict[str, Any]:
     team_id = str(args.get("team_id") or "").strip()
     invitee = str(args.get("email") or args.get("user_id") or "").strip()
@@ -55,6 +104,10 @@ def exec_invite_to_team(args: dict[str, Any]) -> dict[str, Any]:
     if not teams.can_admin(team_id, uid):
         return {"status": "error", "error": "kun team-owner kan invitere"}
     tok = teams.create_invite(team_id, invited_email=invitee, invited_by=uid)
-    # Levering (in-app-kort + email) wires i Fase 2b. Her returneres token'et.
+    delivered = _deliver_invite(team_id, invitee, tok, uid)
+    ways = [k for k, v in delivered.items() if v]
+    msg = (f"Invite sendt til {invitee} via {', '.join(ways)}." if ways
+           else f"Invite oprettet til {invitee}, men kunne ikke leveres automatisk "
+                f"(de skal bruge koden i app'en).")
     return {"status": "ok", "token": tok, "invited": invitee,
-            "message": f"Invite oprettet til {invitee}. (Levering kommer i næste fase.)"}
+            "delivered": delivered, "message": msg}

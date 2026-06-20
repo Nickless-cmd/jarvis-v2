@@ -1,5 +1,5 @@
 import messaging from '@react-native-firebase/messaging'
-import notifee, { AndroidImportance } from '@notifee/react-native'
+import notifee, { AndroidImportance, AndroidStyle } from '@notifee/react-native'
 import type { ApiConfig } from './types'
 import { ackNotification } from './presence'
 import { replyToSession } from './replyToSession'
@@ -41,7 +41,9 @@ async function fetchLatest(config: ApiConfig, sessionId: string): Promise<string
         : Array.isArray(c)
           ? c.map((b: { text?: string }) => b.text ?? '').join('')
           : ''
-    return text.slice(0, 140)
+    // Hent rigeligt til den udfoldede notifikation (BigText). Den sammenfoldede
+    // linje afkortes selv af Android; udfoldet/ved svar ser man hele svaret.
+    return text.slice(0, 500)
   } catch {
     return null
   }
@@ -63,6 +65,9 @@ export async function display(config: ApiConfig, data: PushData) {
       channelId,
       pressAction: { id: 'default' },
       smallIcon: 'ic_notification',
+      // BigText: udfoldet (eller ved svar) vises hele beskeden, ikke kun 1-2 linjer
+      // — så man kan se hvad man svarer på.
+      style: { type: AndroidStyle.BIGTEXT, text: n.body },
       // Direct Reply: svar Jarvis direkte fra statusbaren uden at åbne appen.
       actions: [
         {

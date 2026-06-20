@@ -9,7 +9,8 @@ jest.mock('@notifee/react-native', () => ({
     getInitialNotification: jest.fn(async () => null),
   },
   AndroidImportance: { HIGH: 4 },
-  EventType: { PRESS: 1, DISMISSED: 0 },
+  AndroidStyle: { BIGTEXT: 1 },
+  EventType: { PRESS: 1, DISMISSED: 0, ACTION_PRESS: 2 },
 }))
 
 jest.mock('@react-native-firebase/messaging', () => ({

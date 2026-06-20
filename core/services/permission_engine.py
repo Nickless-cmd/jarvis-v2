@@ -41,6 +41,7 @@ ALL_TOOLS = _AllTools()
 _MEMBER_CHAT_WEB = frozenset({
     "web_search", "web_scrape", "web_fetch", "get_news", "get_weather",
     "get_exchange_rate", "wolfram_query", "analyze_image",
+    "geolocation_lookup", "geocode", "reverse_geocode", "route_directions", "nearby_search",
 })
 _MEMBER_CHAT_UTIL = frozenset({"calculate", "unit_convert", "percentage"})
 # 🔒 path-jailed til eget workspace

@@ -27,6 +27,7 @@ from core.services.self_critique_runtime import read_self_docs
 from core.services.tool_result_store import get_tool_result
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
 from core.runtime.workspace_paths import shared_dir
+from core.tools import geolocation_tools as _geo_tools
 from core.tools.browser_tools import (
     BROWSER_TOOL_DEFINITIONS,
     _exec_browser_navigate,
@@ -2004,6 +2005,82 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["base"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "geolocation_lookup",
+            "description": "Find a user's current location. Reads shared device-presence location first (if the user opted in), falls back to server IP (city-level). Returns 'not available' if the user has location-sharing off. Use for 'where am I?' / 'where is Mikkel?'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "User id to look up. Omit for the current user."},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "geocode",
+            "description": "Convert an address to coordinates (lat/lon) via OpenStreetMap Nominatim. E.g. 'Toftegårdsvej 12, Svendborg' -> {lat, lon, display_name}.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "address": {"type": "string", "description": "Free-form address or place name."},
+                },
+                "required": ["address"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "reverse_geocode",
+            "description": "Convert coordinates to a street address via Nominatim. E.g. (55.86, 10.39) -> 'Toftegårdsvej, 5700 Svendborg'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "lat": {"type": "number", "description": "Latitude."},
+                    "lon": {"type": "number", "description": "Longitude."},
+                },
+                "required": ["lat", "lon"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "route_directions",
+            "description": "Get directions A -> B via OSRM. from/to may be addresses (geocoded automatically) or [lat,lon]. Returns distance_km, duration_min and turn-by-turn steps.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "from": {"type": "string", "description": "Start: address string or 'lat,lon'."},
+                    "to": {"type": "string", "description": "Destination: address string or 'lat,lon'."},
+                    "profile": {"type": "string", "description": "driving | cycling | walking. Default driving.", "enum": ["driving", "cycling", "walking"]},
+                },
+                "required": ["from", "to"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "nearby_search",
+            "description": "Find places near coordinates via OpenStreetMap Overpass. E.g. nearest fuel/pharmacy/supermarket/restaurant/atm. Returns name, type, distance_m, sorted nearest-first.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "lat": {"type": "number", "description": "Latitude of the search center."},
+                    "lon": {"type": "number", "description": "Longitude of the search center."},
+                    "query": {"type": "string", "description": "What to find: e.g. 'tankstation', 'pharmacy', 'supermarket', or a place name."},
+                    "radius": {"type": "integer", "description": "Search radius in meters (default 1500, max 20000)."},
+                },
+                "required": ["lat", "lon", "query"],
             },
         },
     },
@@ -8589,6 +8666,11 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "web_scrape": _exec_web_scrape,
     "web_search": _exec_web_search,
     "get_weather": _exec_get_weather,
+    "geolocation_lookup": _geo_tools.exec_geolocation_lookup,
+    "geocode": _geo_tools.exec_geocode,
+    "reverse_geocode": _geo_tools.exec_reverse_geocode,
+    "route_directions": _geo_tools.exec_route_directions,
+    "nearby_search": _geo_tools.exec_nearby_search,
     "get_exchange_rate": _exec_get_exchange_rate,
     "get_news": _exec_get_news,
     "wolfram_query": _exec_wolfram_query,

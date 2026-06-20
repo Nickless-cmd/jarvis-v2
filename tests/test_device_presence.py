@@ -113,3 +113,47 @@ def test_summary_no_devices(monkeypatch):
     monkeypatch.setattr(dp, "_now", lambda: 1000.0)
     dp.reset()
     assert "ingen" in dp.summary("bjorn").lower()
+
+
+# ── Geolocation (opt-in) ────────────────────────────────────────────────────
+def test_location_stored_and_in_summary(monkeypatch):
+    box = {"t": 1000.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp.reset()
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="away",
+                   interaction=True,
+                   location={"lat": 55.86, "lon": 10.39, "label": "Toftegårdsvej, Svendborg",
+                             "source": "gps", "precision": "precise"})
+    st = dp._PRESENCE["bjorn"]["mob"]
+    assert st.location and st.location["label"] == "Toftegårdsvej, Svendborg"
+    assert "Toftegårdsvej, Svendborg" in dp.summary("bjorn")
+    loc = dp.location_for("bjorn")
+    assert loc["lat"] == 55.86 and loc["source"] == "gps"
+
+
+def test_location_none_preserves_empty_clears(monkeypatch):
+    box = {"t": 1000.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp.reset()
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="home",
+                   interaction=False,
+                   location={"lat": 55.0, "lon": 10.0, "label": "Et sted", "source": "ip",
+                             "precision": "city"})
+    # location=None (default) → bevar sidste kendte
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="home")
+    assert dp._PRESENCE["bjorn"]["mob"].location is not None
+    # location={} → brugeren slog det FRA → ryd
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="home",
+                   location={})
+    assert dp._PRESENCE["bjorn"]["mob"].location is None
+    assert dp.location_for("bjorn") is None
+
+
+def test_invalid_location_rejected(monkeypatch):
+    box = {"t": 1000.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp.reset()
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="home",
+                   location={"lat": 999.0, "lon": 10.0, "label": "Umulig"})
+    # ugyldig lat → sanitize returnerer None → location ryddet (eksplicit {} semantik)
+    assert dp._PRESENCE["bjorn"]["mob"].location is None

@@ -18,6 +18,9 @@ class PingBody(BaseModel):
     awake: bool = True
     network: str = "unknown"
     interaction: bool = False
+    # Opt-in geolocation. None = ingen ændring; {} = brugeren slog det FRA (ryd);
+    # {lat,lon,label,source,precision} = ny lokation.
+    location: dict | None = None
 
 
 class AckBody(BaseModel):
@@ -38,6 +41,7 @@ async def presence_ping(body: PingBody) -> dict:
         uid, body.device_key, body.platform,
         foreground=body.foreground, awake=body.awake,
         network=body.network, interaction=body.interaction,
+        location=body.location,
     )
     return {"ok": True}
 

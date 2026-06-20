@@ -38,6 +38,9 @@ class DeviceState:
     foreground: bool = False
     awake: bool = True
     network: str = "unknown"  # "home" | "away" | "unknown"
+    # Geolocation (opt-in pr. enhed; None når brugeren ikke deler lokation).
+    # {"lat": float, "lon": float, "label": str, "source": str, "precision": str}
+    location: dict | None = None
 
 
 def reset() -> None:
@@ -55,11 +58,13 @@ def record_ping(
     awake: bool,
     network: str,
     interaction: bool = False,
+    location: dict | None = None,
 ) -> None:
     uid, key = (user_id or "").strip(), (device_key or "").strip()
     if not uid or not key:
         return
     now = _now()
+    loc = _sanitize_location(location)
     with _lock:
         devices = _PRESENCE.setdefault(uid, {})
         st = devices.get(key)
@@ -74,8 +79,30 @@ def record_ping(
         st.foreground = bool(foreground)
         st.awake = bool(awake)
         st.network = network or "unknown"
+        # location=None i pinget = "ingen ændring" IKKE "ryd" — så en enhed der
+        # midlertidigt ikke fik fix beholder sidste kendte. Klienten sender
+        # eksplicit {} (tom) når brugeren slår lokation FRA → ryd.
+        if location is not None:
+            st.location = loc or None
         if interaction:
             st.last_interaction_at = now
+
+
+def _sanitize_location(location: dict | None) -> dict | None:
+    """Validér og normalisér en indkommen lokation. Returnerer None ved ugyldigt."""
+    if not isinstance(location, dict):
+        return None
+    try:
+        lat = float(location.get("lat"))
+        lon = float(location.get("lon"))
+    except (TypeError, ValueError):
+        return None
+    if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
+        return None
+    label = str(location.get("label") or "").strip()[:200]
+    source = str(location.get("source") or "unknown").strip()[:20]
+    precision = str(location.get("precision") or "city").strip()[:20]
+    return {"lat": lat, "lon": lon, "label": label, "source": source, "precision": precision}
 
 
 @dataclass
@@ -145,7 +172,31 @@ def summary(user_id: str) -> str:
     net = ""
     if st and st.platform == "mobile":
         net = {"home": ", hjemme-wifi", "away": ", på mobildata (ude)"}.get(st.network, "")
+    loc = (st.location if st else None) or None
+    if loc and loc.get("label"):
+        # Lokation delt → vis hvor brugeren FAKTISK er, ikke bare enheds-tilstand.
+        return f"Bjørn er ved {loc['label']} ({where}, {fg.replace('i ', '')}{net})."
     return f"Bjørn er ved {where} ({fg}{net})."
+
+
+def location_for(user_id: str) -> dict | None:
+    """Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools).
+
+    Vælger den enhed med en lokation der har den friskeste ping. Returnerer None
+    hvis ingen enhed deler lokation (toggle OFF overalt)."""
+    uid = (user_id or "").strip()
+    now = _now()
+    best_loc: dict | None = None
+    best_age = 1e18
+    with _lock:
+        for st in (_PRESENCE.get(uid) or {}).values():
+            if not st.location:
+                continue
+            age = now - st.last_ping_at
+            if age < best_age:
+                best_age = age
+                best_loc = {**st.location, "platform": st.platform, "age_s": round(age, 1)}
+    return best_loc
 
 
 def debug_snapshot(user_id: str) -> dict:
@@ -162,6 +213,7 @@ def debug_snapshot(user_id: str) -> dict:
                 "network": st.network,
                 "ping_age_s": round(now - st.last_ping_at, 1),
                 "interaction_age_s": round(now - st.last_interaction_at, 1),
+                "location": st.location,
             }
             for st in (_PRESENCE.get(uid) or {}).values()
         ]

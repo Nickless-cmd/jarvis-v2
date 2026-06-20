@@ -79,6 +79,8 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "web_search", "web_fetch", "web_scrape", "get_news",
     # Data
     "get_weather", "get_exchange_rate", "wolfram_query",
+    # Geolocation (read-only eksterne opslag)
+    "geolocation_lookup", "geocode", "reverse_geocode", "route_directions", "nearby_search",
     # Vision
     "analyze_image",
     # Hukommelse — read

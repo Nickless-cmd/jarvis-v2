@@ -541,6 +541,7 @@ _ALWAYS_ALLOWED_TOOLS = frozenset({
     "read_file", "read_tool_result", "read_self_docs", "search",
     "find_files", "web_fetch", "web_scrape", "web_search",
     "get_weather", "get_exchange_rate", "get_news", "wolfram_query",
+    "geolocation_lookup", "geocode", "reverse_geocode", "route_directions", "nearby_search",
     "analyze_image", "list_initiatives", "list_proposals",
     "list_scheduled_tasks", "list_plans", "todo_list", "monitor_list",
     "verification_status", "context_pressure", "context_size_check",

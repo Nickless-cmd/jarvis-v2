@@ -1119,6 +1119,40 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
     )
     from core.services.notification_bridge import pin_session
     pin_session(session_id)
+
+    # Owner-override (§6.3) i v1/mobil-stien — samme wiring som v2 (kill-switch skal
+    # virke fra ALLE klienter, ikke kun desk). `!override <TOTP>` kortsluttes med en
+    # legacy-SSE-kvittering (delta+done), ingen LLM-run. Lazy import undgår circular
+    # (chat_stream_v2 importerer ChatStreamRequest herfra). Bjørn 2026-06-21.
+    from apps.api.jarvis_api.routes.chat_stream_v2 import maybe_handle_override
+    _ov = maybe_handle_override(request.message, session_id)
+    if _ov is not None:
+        _reply = str(_ov.get("reply") or "")
+        try:
+            append_chat_message(session_id=session_id, role="assistant",
+                                content=_reply, user_id=None)
+        except Exception:
+            pass
+        print(f"[chat/stream] override-kommando: session={session_id[:20]} "
+              f"ok={_ov.get('ok')} action={_ov.get('action') or _ov.get('reason')}", flush=True)
+        from core.services.visible_runs import _sse as _sse_legacy
+
+        def _ov_gen():
+            yield _sse_legacy("delta", {"type": "delta", "run_id": "override", "delta": _reply})
+            yield _sse_legacy("done", {"type": "done", "run_id": "override",
+                                       "status": "completed", "input_tokens": 0, "output_tokens": 0})
+        return StreamingResponse(_ov_gen(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
+
+    # Normal besked i en ELEVET session → forny override-vinduet (5 min rullende),
+    # så det ikke udløber midt i en operator-sekvens (jf. v2-fix). Korrekt session_id.
+    try:
+        from core.services import override_store as _ovs
+        if _ovs.is_active(session_id):
+            _ovs.touch(session_id)
+    except Exception:
+        pass
+
     return StreamingResponse(
         start_visible_run(
             message=effective_message,

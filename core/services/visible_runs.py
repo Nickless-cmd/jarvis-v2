@@ -3677,7 +3677,33 @@ async def _stream_visible_run(
         # for every completed run; the individual functions already
         # handle empty text gracefully (most early-return on falsy
         # input).
-        threading.Thread(target=_post_process, daemon=True).start()
+        # ── KRITISK guard (2026-06-21) ────────────────────────────────────
+        # _post_process MÅ ikke stille blive en generator. Hvis nogen tilføjer
+        # et `yield` i kroppen, gør Python den til en generator-FUNKTION, og
+        # Thread(target=_post_process) ville bare skabe et generator-OBJEKT uden
+        # at køre kroppen → HELE post-process-pipelinen (memory, continuation,
+        # fact_gate, diagnosis, fabrikations-nudge) dør STILLE. Det skete
+        # 2026-06-14→06-21. Guard: opdag det, log CRITICAL, og drain alligevel
+        # så pipelinen kører. (Yields i en post-done-tråd kan aldrig nå klienten
+        # — brug event_bus/run-follow i stedet. Real-time-blok = pre-done.)
+        import inspect as _inspect_pp
+        if _inspect_pp.isgeneratorfunction(_post_process):
+            logger.critical(
+                "_post_process er en generator (yield i kroppen?) — drainer så "
+                "pipelinen kører; FJERN yield'en og brug event_bus. run_id=%s",
+                run.run_id,
+            )
+
+            def _drain_post_process() -> None:
+                try:
+                    for _ in _post_process():
+                        pass
+                except Exception:
+                    logger.exception("_post_process drain fejlede")
+
+            threading.Thread(target=_drain_post_process, daemon=True).start()
+        else:
+            threading.Thread(target=_post_process, daemon=True).start()
 
         # Phase 5: clear in-flight record. Runs reaching this finally block
         # have either completed, failed cleanly, or been cancelled — all

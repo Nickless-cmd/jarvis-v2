@@ -3300,6 +3300,25 @@ def _approved_sudo_exec_verdict(
     *,
     workspace_dir: Path,
 ) -> dict[str, object]:
+    # Owner-bypass (Bjørn 2026-06-21): på ejerens EGEN container må effektiv-owner
+    # (native owner ELLER !override+TOTP) køre VILKÅRLIG sudo — det er hans maskine,
+    # og composer-permission (ask/full) + approval-flowet gater allerede selve
+    # godkendelsen. Members forbliver i den bundne 4-dels-allowlist nedenfor.
+    # Base-rolle røres ALDRIG → privatlivs-carve-out §6.5 intakt.
+    try:
+        from core.identity.workspace_context import effective_role as _eff_role_sudo
+        if _eff_role_sudo() == "owner":
+            _argv = [str(p) for p in (classification.get("argv") or [])]
+            if len(_argv) >= 2 and _argv[0] == "sudo":
+                return {
+                    "allowed": True,
+                    "argv": _argv,
+                    "workspace_scoped": False,
+                    "external_mutation_permitted": True,
+                    "owner_bypass": True,
+                }
+    except Exception:
+        pass
     if not bool(classification.get("requires_sudo", False)):
         return {
             "allowed": False,

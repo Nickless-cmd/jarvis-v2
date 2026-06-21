@@ -161,4 +161,43 @@ RECURRING_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_recurring_channel",
+            "description": ("Set the delivery channel for a recurring task (e.g. send the "
+                            "morning briefing to mobile instead of desktop). Channels: "
+                            "auto, mobile, desktop, push, discord, telegram."),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "task_id from list_recurring."},
+                    "channel": {"type": "string",
+                                "enum": ["auto", "mobile", "desktop", "push", "discord", "telegram"],
+                                "description": "Delivery channel."},
+                },
+                "required": ["task_id", "channel"],
+            },
+        },
+    },
 ]
+
+
+def _exec_set_recurring_channel(args: dict[str, Any]) -> dict[str, Any]:
+    """Sæt leverings-kanal på en recurring task (notif-routing spec §3.5).
+    Args: task_id, channel (auto|mobile|desktop|push|discord|telegram)."""
+    task_id = str(args.get("task_id") or "").strip()
+    channel = str(args.get("channel") or "").strip().lower()
+    if not task_id:
+        return {"status": "error", "error": "task_id is required"}
+    try:
+        from core.services.recurring_tasks import set_channel
+        ok = set_channel(task_id, channel)
+        if not ok:
+            return {"status": "error", "error": f"Task {task_id!r} not found"}
+        return {"status": "ok", "task_id": task_id, "channel": channel,
+                "text": f"Recurring task {task_id} leverer nu via '{channel}'."}
+    except ValueError as e:
+        return {"status": "error", "error": str(e)}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}

@@ -49,7 +49,29 @@ def _ensure_table() -> None:
             ON recurring_tasks(status, next_fire_at)
             """
         )
+        # Notif-routing spec §3.5: leverings-kanal pr. task (auto|mobile|desktop|
+        # push|discord|telegram). Idempotent ALTER — CREATE IF NOT EXISTS rører
+        # ikke eksisterende tabeller.
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(recurring_tasks)").fetchall()}
+        if "channel" not in cols:
+            conn.execute("ALTER TABLE recurring_tasks ADD COLUMN channel TEXT NOT NULL DEFAULT 'auto'")
         conn.commit()
+
+
+def set_channel(task_id: str, channel: str) -> bool:
+    """Sæt leverings-kanal på en recurring task. Returnerer True hvis opdateret."""
+    from core.services.notification_router import VALID_CHANNELS
+    ch = (channel or "").strip().lower()
+    if ch not in VALID_CHANNELS:
+        raise ValueError(f"ugyldig kanal '{ch}' (skal være {sorted(VALID_CHANNELS)})")
+    _ensure_table()
+    with runtime_db.connect() as conn:
+        cur = conn.execute(
+            "UPDATE recurring_tasks SET channel = ?, updated_at = ? WHERE task_id = ?",
+            (ch, datetime.now(UTC).isoformat(), str(task_id)),
+        )
+        conn.commit()
+        return cur.rowcount > 0
 
 
 def _row_to_dict(row) -> dict:
@@ -244,6 +266,10 @@ def _fire_due() -> None:
         task_id = str(task["task_id"])
         focus = str(task["focus"])
         interval_minutes = int(task["interval_minutes"])
+        channel = str(task.get("channel") or "auto")
+        # channel != 'auto' => brugeren har valgt en specifik leverings-kanal.
+        # Run-completion-notifikationens kanal-routing deles med wakeup-deferral
+        # (run-vs-notification-design, spec §3.5) — kanalen er gemt + settbar nu.
         # #154-followup: affyr i task-EJERENS kontekst (ikke som owner), så et
         # medlems gentagne task kører i medlemmets workspace + scopes til deres
         # egne data. Bruger den offentlige hybrid-resolver (legacy + SQLite).

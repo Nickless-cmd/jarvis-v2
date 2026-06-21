@@ -447,6 +447,7 @@ from core.tools.recurring_scheduler_tools import (
     _exec_schedule_recurring,
     _exec_list_recurring,
     _exec_cancel_recurring,
+    _exec_set_recurring_channel,
 )
 from core.tools.webhook_tools import (
     WEBHOOK_TOOL_DEFINITIONS,
@@ -8963,6 +8964,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,
     "cancel_recurring": _exec_cancel_recurring,
+    "set_recurring_channel": _exec_set_recurring_channel,
     # Webhook tools
     "webhook_register": _exec_webhook_register,
     "webhook_send": _exec_webhook_send,

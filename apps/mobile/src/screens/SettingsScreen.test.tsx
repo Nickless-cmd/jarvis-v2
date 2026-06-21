@@ -23,7 +23,11 @@ jest.mock('../lib/apiClient', () => ({
   health: jest.fn().mockResolvedValue(true),
   getAccountMe: jest.fn().mockResolvedValue({ user_id: 'u', email: 'b@x.dk', role: 'owner', tier: 'owner', google_linked: false }),
   listConnectors: jest.fn().mockResolvedValue([]),
-  setConnectorEnabled: jest.fn().mockResolvedValue(undefined)
+  setConnectorEnabled: jest.fn().mockResolvedValue(undefined),
+  apiFetch: jest.fn().mockResolvedValue({ preferences: {
+    global: 'auto', briefing: null, reminder: null, reach_out: null,
+    team_invite: null, wakeup: null, quiet_start: '23:00', quiet_end: '07:00',
+  } }),
 }))
 
 jest.mock('react-native-safe-area-context', () => ({

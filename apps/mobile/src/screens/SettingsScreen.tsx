@@ -18,6 +18,7 @@ import { tokens } from '../theme/tokens'
 import { bubble } from '../lib/bubbleModule'
 import { loadBubblePersist, saveBubblePersist } from '../lib/bubbleSetting'
 import { loadPrecision, savePrecision, type LocationPrecision } from '../lib/location'
+import { NotificationsSection } from '../components/NotificationsSection'
 
 const CONN_LABEL: Record<string, string> = {
   connected: 'Forbundet til Jarvis ✓',
@@ -253,6 +254,8 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
             </View>
           </>
         ) : null}
+
+        <NotificationsSection config={config ?? null} />
 
         <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOut}>
           <Text style={styles.signOutText}>Log ud</Text>

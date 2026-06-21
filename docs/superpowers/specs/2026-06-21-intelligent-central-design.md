@@ -138,7 +138,62 @@ fail-closed**:
 
 Det er den eneste hårde invariant. Resten må gerne være blødt og lærende.
 
-## 10. Hvad vi allerede har (fundament)
+## 10. Fejl-/debug-catcher (indbygget fra starten — IKKE bagefter)
+
+Vi bolter ikke diagnostik på senere. Den **samme maskine** som Centralen alligevel
+skal have (trace + flag-on-change + kill-switch) ER fundamentet for et ægte
+fejl-fangst-system. Bygget ind fra dag ét får vi fuld kontrol fra starten, de rette
+fejlmeldere automatisk, og edges tænkt igennem på forhånd i stedet for at opdage dem i
+produktion.
+
+### 10.1 Boundary-capture (automatiske fejlmeldere)
+Hvert `decide`/`observe`-kald er wrappet, så **enhver** exception, timeout eller anomali
+fanges på grænsen og rapporteres struktureret med fuld kontekst: `run_id`,
+`session_id`, cluster, nerve, input-signal, verdict, latency, stacktrace. Ingen
+nerve behøver sin egen ad-hoc-diagnostik — Centralen leverer fejlmelderen. Det er det
+modsatte af "læg diagnostik ind hen ad vejen."
+
+### 10.2 Fejl-taksonomi (edges defineret på forhånd)
+| Fejltilstand | Håndtering |
+|---|---|
+| Nerve kaster exception | Fang på grænsen → fail-mode pr. klasse (kognitiv=SKIP/open, sikkerhed=RED/deny) → rapportér |
+| Nerve timer ud | Som ovenfor; per-nerve timeout-budget måles |
+| Malformet signal ind | Normalisér eller afvis med struktureret fejl; aldrig crash nerven |
+| Event-sink nede | Best-effort drop + intern tæller; `decide` påvirkes ALDRIG |
+| Lærings-lag nede | `decide` svarer på statiske defaults; ingen blokering |
+| Kaskade (mange nerver fejler) | Circuit-breaker (§11.2) isolerer den/de fejlende |
+| **Catcheren selv kaster** | Catcheren fanger sin egen fejl → run fortsætter; fejl-fangst må aldrig vælte turen |
+
+### 10.3 Selv-sikker
+Fejl-fangst-laget er selv fail-safe: hvis det fejler, fortsætter runnet. Observabilitet
+må aldrig blive en ny fejlkilde. (Sikkerheds-`decide` er undtaget fra "fail-open" — se §9.)
+
+## 11. Live-kontrol & kredsløbs-isolation (circuit-breaker)
+
+Når en fejl opstår, kan vi **flippe knappen live i Centralen** — uden genstart, uden
+deploy. Og med cluster-ordningen kan en fejlende del **lukkes ude af kredsløbet** før
+den spreder sig — hvad enten noget går galt teknisk, Jarvis stikker rough, eller nogen
+forsøger at gøre ham ondt (også hvis det bare er Bjørn der brækker noget).
+
+### 11.1 Live-switches
+Centralen eksponerer on/off + bypass pr. nerve og pr. cluster, ændrbar live (bygger på
+`gate_kernel`s eksisterende flag-reader). Operatør-synligt (CLI nu, MC-app senere).
+
+### 11.2 Circuit-breaker pr. nerve/cluster
+Hvis en nerve fejler gentagne gange (eller en cluster driver galt), isolerer Centralen
+den **automatisk** ud af kredsløbet — og kan gøre det på kommando. Retningen afhænger
+af klassen (§11.3).
+
+### 11.3 KRITISK invariant: isolation må ikke blive angrebsfladen
+- **Kognitiv nerve:** kan flippes af / isoleres **fail-open** (Jarvis fortsætter uden den).
+- **Sikkerheds-nerve (Auth/Privacy):** kan **kun** isoleres mod **deny** — aldrig slås
+  fra. "Isolér Auth" = deny-all, ikke allow-all. En rogue-aktør eller en uheldig knap
+  må aldrig kunne flippe sikkerhed *af*; containment kan kun stramme, aldrig løsne.
+- Dette binder sammen med eksisterende værn: `identity_guard`, `abuse_monitor`,
+  owner-override/`!unlock`, session-lock, lockdown. Centralen bliver det ene sted de
+  bor og kan ses — men de kan ikke slukkes derfra.
+
+## 12. Hvad vi allerede har (fundament)
 
 - `core/services/gate_kernel.py` — registry + isoleret eksekvering + fail-mode pr.
   klasse + kill-switch/bypass (sikkerheds-exempt) + ét event. **Bliver kernen i
@@ -146,12 +201,15 @@ Det er den eneste hårde invariant. Resten må gerne være blødt og lærende.
 - `core/services/gate_adapters.py` — Truth-trioen som Verdict-returnerende adaptere.
 - `core/services/gate_eval.py` — offline replay/parity/score. **Dette er hvordan vi
   beviser paritet** ved hver instrumentering (afløser den skrøbelige live-shadow).
-- Tests grønne for alle tre.
+- Eksisterende sikkerheds-værn (`identity_guard`, `abuse_monitor`, override/lockdown) —
+  flyttes ikke, men registreres som sikkerheds-nerver i Centralen.
+- Tests grønne for kernel/adapters/eval.
 
-## 11. Migrations-tilgang (én ad gangen, live-verificérbar)
+## 13. Migrations-tilgang (én ad gangen, live-verificérbar)
 
-1. **Byg Centralen** oven på `gate_kernel`: tilføj `observe()`-ansigtet + event-sink +
-   trace-model + flag-on-change-skelet. `decide()` findes allerede (run_phase).
+1. **Byg Centralen + fejl-catcheren SAMTIDIG** oven på `gate_kernel`: `observe()`-ansigtet
+   + event-sink + trace-model + boundary-capture (§10) + flag-on-change + live-switches
+   (§11). `decide()` findes allerede (run_phase). Fejl-fangst er IKKE en senere fase.
 2. **Fit-pass over alle clusters** (samme kortlægning som blev lavet for Loop) → afgør
    pr. nerve: ægte merge vs. instrumentér-på-stedet. Giver os det *reelle* tal.
 3. **Instrumentér cluster for cluster.** For hver: nerverne kalder Centralen; paritet
@@ -160,17 +218,20 @@ Det er den eneste hårde invariant. Resten må gerne være blødt og lærende.
 4. **Mission Control-app** subscriber på sporet (separat plan).
 5. **Surfaces → tools → 30+ daemons** genbruger samme mønster (separate planer).
 
-## 12. Risici & åbne spørgsmål
+## 14. Risici & åbne spørgsmål
 
 - **Volumen:** mange `observe()`-events. Sink skal være volumen-tolerant (batch/ring-buffer).
 - **Synkron `decide()`-latency:** sikkerheds-svar skal være hurtige; mål per-nerve-budget.
 - **Single point of failure:** rapportering er best-effort (må ikke blokere nerven);
   sikkerheds-`decide` skal fungere selv hvis lærings-/trace-laget er nede.
-- **Cluster-grænser:** §5-listen er foreløbig; fit-pass (§11.2) fastlægger den endelige.
+- **Circuit-breaker-tærskler:** hvor mange fejl før isolation? Startes konservativt;
+  må aldrig kunne udløses som DoS mod en sikkerheds-nerve (den isolerer kun mod deny).
+- **Cluster-grænser:** §5-listen er foreløbig; fit-pass (§13.2) fastlægger den endelige.
 - **Flag-on-change-tærskler:** hvad tæller som "noget rykker sig"? Startes konservativt,
   kalibreres mod observeret drift (som R2-gate).
 
 ---
 
-**Næste skridt:** implementeringsplan (writing-plans) der starter med §11.1 (byg
-Centralens andet ansigt + sink + trace) og §11.2 (fit-pass), før nogen cluster røres.
+**Næste skridt:** implementeringsplan (writing-plans) der starter med §13.1 (byg
+Centralens andet ansigt + sink + trace + **fejl-catcher** + live-switches) og §13.2
+(fit-pass), før nogen cluster røres.

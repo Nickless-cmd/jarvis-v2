@@ -43,7 +43,7 @@ User claim ≠ session owner
 
 ```
 !override aktiv + TOTP verified
-    → TTL: 30 minutter, derefter automatisk deaktivering
+    → TTL: 90s initial vindue, fornyes til +5 min ved aktivitet
     → Prompt opdateres: [override: AKTIV — Bjørn (owner) verifieret i session tilhørende: Lotte]
     → Owner kan handler som owner, men session privacy forbliver intakt
     → Privacy blocks (andre brugeres sessioner, data, beskeder) kan IKKE overstyres
@@ -217,7 +217,7 @@ ALTER TABLE chat_sessions ADD COLUMN locked_at TEXT;
 4. **Abuse monitor** — pattern detection service (hybrid: pattern + LLM)
 5. **Prompt injection detection** — pattern library + tool output scanning
 6. **Notification pipeline** — abuse alerts to Bjørn + Jarvis
-7. **Override prompt state** — prompt-assembly update + 30 min TTL
+7. **Override prompt state** — prompt-assembly update + 5 min TTL
 8. **Sudo bypass** — composer decision + runtime respect
 9. **Audit log** — all override/sudo/abuse events persisted
 10. **Rate limiting** — 20 msg/min throttle, 3x throttle = session lock
@@ -237,7 +237,7 @@ ALTER TABLE chat_sessions ADD COLUMN locked_at TEXT;
 ### Rettet i denne revision:
 
 1. **Owner exemption i escalation** — owner kan ikke få account lockdown, kun session lock. Forhindrer self-lockout.
-2. **Override TTL** — `!override` har en **30 minutters TTL**. Efter udløb kræves ny TOTP verification. Override state fjernes fra prompt automatisk.
+2. **Override TTL** — `!override` har et **90s initial vindue**, fornyes til **+5 min ved aktivitet** (touch). Override state fjernes fra prompt når den udløber.
 3. **Audit log** — alle override aktiveringer, sudo executions, og abuse events logges til `audit_log` tabel med timestamp, user_id, action, og IP/device.
 4. **Detection via LLM vs. pattern matching** — identity mismatch detection er **hybrid**: (a) simpel pattern matching ("jeg hedder X", "jeg er X") før LLM kald, (b) LLM-baseret detection som fallback for subtile forsøg. Pattern matching er first-pass filter, ikke komplet løsning.
 5. **Tool output injection** — abuse monitor scanner ikke kun user messages, men også tool results for prompt injection via eksternt indhold (web_fetch, web_search results).
@@ -252,7 +252,47 @@ ALTER TABLE chat_sessions ADD COLUMN locked_at TEXT;
 
 ---
 
-## 11. Security Model Summary
+## 12. Code Analysis vs. Spec (2026-06-21)
+
+### Allerede implementeret i koden (skal ikke bygges)
+
+| Komponent | Fil | Status | Notes |
+|---|---|---|---|
+| Override store (grant/touch/revoke) | `core/services/override_store.py` | ✅ Live | DB-backed, cross-proces. TTL: 90s initial + 5min med aktivitet |
+| JWT auth tokens | `core/runtime/jarvisx_auth.py` | ✅ Live | HS256, role+app_id i claims, `session_needs_override()` |
+| TOTP verifier | `core/services/totp_verifier.py` | ✅ Live | Verificerer 6-cifret kode mod seed |
+| `!override` command handler | `core/services/override_command.py` | ✅ Live | Aktiverer override via TOTP, fornyer ved aktivitet |
+| Sudo allowlist | `core/tools/workspace_capabilities.py` | ✅ Live | `APPROVED_SUDO_EXEC_ALLOWLIST` + `sudo_exec` policy |
+| Forny override fra run-kontekst | `core/services/visible_runs.py` | ✅ Live | Fornyer 5-min vinduet ved aktivitet |
+| Prompt injection patterns (skills) | `core/services/skill_scanner.py` | ✅ Live | Kun for skills, ikke general message pipeline |
+| Basic "ignore previous" detection | `core/services/in_flight_runs.py` | ✅ Live | Limiteret til run-kontekst |
+| app_id binding i JWT | `core/runtime/jarvisx_auth.py` | ✅ Live | Token bundet til specifik app-installation |
+
+### Mangler stadig (skal implementeres)
+
+| Komponent | Hvor | Status | Notes |
+|---|---|---|---|
+| Identity mismatch pushback | Message pipeline → LLM | ❌ Mangler | Ingen detection af "jeg hedder X" ≠ session owner |
+| Override state i visible prompt | `prompt_support_signals.py` | ❌ Mangler | `[override: AKTIV...]` banner findes ikke |
+| Session lock (locked kolonne) | `chat_sessions` DB | ❌ Mangler | Ingen `locked` kolonne i tabellen |
+| Session lock enforcement | Message processing pipeline | ❌ Mangler | Runtime accepterer stadig beskeder til låste sessions |
+| Account lockdown | Cross-session tracking | ❌ Mangler | Ingen mekanisme til at låse alle brugerens sessions |
+| `abuse_monitor.py` | Ny service | ❌ Mangler | Abuse detection service findes ikke |
+| `abuse_events` tabel | DB | ❌ Mangler | Findes ikke |
+| `user_flags` tabel | DB | ❌ Mangler | Findes ikke |
+| `audit_log` tabel | DB | ❌ Mangler | Findes ikke |
+| Abuse notification | Push + Discord + eventbus | ❌ Mangler | Ikke wired |
+| Rate limiting (20 msg/min) | Message pipeline | ❌ Mangler | Ikke implementeret |
+| Prompt injection i gennerelle messages | General message pipeline | ❌ Mangler | Kun for skills (`skill_scanner.py`) |
+| Tool output injection scanning | `web_fetch`/`web_search` resultater | ❌ Mangler | Ikke implementeret |
+
+### TTL-reconciliation (spec vs. kode)
+
+Spec'en siger **30 min** TTL for `!override`. Koden har:
+- **Initial:** 90 sekunder (`_INITIAL_WINDOW = 90.0` i `override_store.py`)
+- **Fornyelse:** +5 minutter ved aktivitet (`_ACTIVITY_WINDOW = 300.0`)
+
+Dette er en **bevidst design-beslutning** fra Claudes commits — kort initial vindue sikrer at override ikke bliver hængende hvis brugeren ikke aktivt bruger den. Ved aktiv brug fornyes den løbende. **Spec opdateret til 5 min** for at matche koden.
 
 ```
 Owner (Bjørn) + !override + TOTP

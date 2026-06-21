@@ -137,6 +137,32 @@ sikkerheds-gates deres NUVÆRENDE adfærd 1:1 (ingen fail-mode-ændring) indtil 
 bevist på et eksplicit sikkerheds-fixturset (member-block, owner-allow, override, sudo,
 privacy-deny). Sikkerhed ændrer adfærd kun efter grøn paritet, aldrig spekulativt.
 
+## 7c. Failure-semantik (rettet — Bjørns spørgsmål)
+
+**Ingen "tag over".** En fejlet gates ansvar overtages IKKE af en nabo — det ville
+genindføre den redundans vi fjerner. Gates er isolerede; en fejl bliver SYNLIG i
+`gate.evaluated` (SKIP/error) → fanges + fixes, ikke tavst dækket.
+
+**Redundans flyttes til check-niveau INDE i en gate.** TruthGate kører N evidens-tjek
+inline; fejler ét, kører de andre videre (graceful degradation pr. check, ikke pr. gate).
+
+**Flere fejler samtidig — asymmetrisk:**
+| Fejler | Reaktion |
+|---|---|
+| Kognitive (Truth/Loop/Commit/Review/Proactivity) | fallback (fail-open → fortsæt) |
+| Sikkerhed (Auth/Privacy) | hård blok (fail-closed → deny) |
+| Systemisk (>N gates fejler i et vindue) | high-alarm til Bjørn + **safe mode**: kun sikkerheds-gates kører, kognitive bypasses |
+
+→ Tilgængelighed for tænkning, sikkerhed for sikkerhed. Systemisk svigt råber.
+
+**Læring/udvikling — aldrig live self-mutation:**
+- Runtime-gaten er DETERMINISTISK (forudsigelig/debugbar).
+- Læring = **ude-af-hot-path forslags-loop:** observér udfald (`gate.evaluated` +
+  ground-truth) → FORESLÅ tærskel/mønster-opdatering → menneske/review godkender →
+  flag-flip. Aldrig live tilpasning i hot-path.
+- **Sikkerheds-gates lærer ALDRIG** — kun deterministisk (AuthGate må ikke "lære" at
+  tillade noget).
+
 ## 8. Succes-kriterier
 
 - Nul cascade-hængte runs (én gates fejl isoleres).

@@ -105,6 +105,38 @@ og stabil. Noteret her så det ikke glemmes.
 | `gate.evaluated`-event-emission fejler | Best-effort; manglende event må aldrig spærre turen (observabilitet ≠ blokade). |
 | Bruger har override aktivt + en RED fra AuthGate | Override-præcedens afklares eksplicit (override løfter handling, men IKKE privacy-RED fra PrivacyGate — §6.5 bevares). |
 
+## 7b. Sikkerhed (KRITISK — rettet efter Bjørn fangede fail-open-hullet)
+
+**Fail-mode er PR. GATE-KLASSE, ikke globalt:**
+
+| Gate-klasse | Fail-mode ved gate-fejl/timeout/kernel-fejl | Begrundelse |
+|---|---|---|
+| Kognitive (Truth, Loop, Commit, Review, Proactivity) | **fail-OPEN** (SKIP → passér) | en bug i en konfab-/loop-tjek må aldrig hænge Jarvis |
+| **Sikkerhed (AuthGate, PrivacyGate)** | **fail-CLOSED (DENY)** | hellere fejlagtigt blokere end fejlagtigt tillade owner-tools/sudo/andres data |
+
+Konsekvens: hvis kernen selv kaster, fail-open'er den de kognitive gates MEN
+fail-closer sikkerheds-gates (deny). "Kernel down" = sikrere, ikke usikrere.
+
+**Bypass-flag (kernel-nødexit) gælder ALDRIG sikkerheds-gates.** AuthGate + PrivacyGate
+kører ALTID — de kan ikke slås fra via kill-switch eller bypass. Kun en eksplicit,
+TOTP-gated owner-handling kan justere dem (og PrivacyGate's data-scope er uforanderlig,
+§6.5). Dvs. ingen flag/bug kan åbne en sikkerheds-bagdør.
+
+**Owner override × AuthGate (eksplicit):**
+- `effective_role()==owner` (native ELLER `!override`+TOTP) → AuthGate giver **handling**
+  (sudo/operator/mutationer). Den per-tool-runde override-fornyelse vi byggede i dag
+  bevares INDE i AuthGate (samme run-kontekst-touch).
+- **PrivacyGate RED kan ALDRIG overstyres af override** — override løfter kontrol, ikke
+  data-adgang (`privacy_scoped_user_id` → None under override). Privatliv er den ene
+  RED der står uanset alt.
+- `!unlock`/`!override`/`!revoke-override` kører FØR gate-kæden (recovery skal altid
+  kunne nå igennem — owner må aldrig kunne låse sig selv ude).
+
+**Migrations-sikkerhed:** AuthGate konsolideres SIDST. Under shadow beholder
+sikkerheds-gates deres NUVÆRENDE adfærd 1:1 (ingen fail-mode-ændring) indtil paritet er
+bevist på et eksplicit sikkerheds-fixturset (member-block, owner-allow, override, sudo,
+privacy-deny). Sikkerhed ændrer adfærd kun efter grøn paritet, aldrig spekulativt.
+
 ## 8. Succes-kriterier
 
 - Nul cascade-hængte runs (én gates fejl isoleres).

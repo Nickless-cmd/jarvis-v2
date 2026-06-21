@@ -66,3 +66,25 @@ def test_debug_level_grant(isolated_runtime) -> None:
     res = handle_override_command(f"!override {_code()}", session_id="s-debug", owner_seed=SEED, level="debug", now=T0)
     assert res["ok"] is True and res["level"] == "debug"
     assert level("s-debug", now=T0) == "debug"
+
+
+def test_unlock_unlocks_session(isolated_runtime) -> None:
+    from core.services.override_command import handle_override_command
+    from core.services import security_guard as sg
+    from core.runtime.db import connect
+
+    with connect() as conn:
+        conn.execute("INSERT OR IGNORE INTO chat_sessions (session_id, title, created_at, updated_at)"
+                     " VALUES ('s-unl','t','x','x')")
+    sg.lock_session("s-unl", "test", user_id="u1")
+    assert sg.is_session_locked("s-unl") is True
+
+    res = handle_override_command(f"!unlock {_code()}", session_id="s-unl", owner_seed=SEED, now=T0)
+    assert res is not None and res["ok"] is True and res["action"] == "unlocked"
+    assert sg.is_session_locked("s-unl") is False
+
+
+def test_unlock_wrong_code_rejected(isolated_runtime) -> None:
+    from core.services.override_command import handle_override_command
+    res = handle_override_command("!unlock 000000", session_id="s-unl2", owner_seed=SEED, now=T0)
+    assert res["ok"] is False and res["reason"] == "invalid_code"

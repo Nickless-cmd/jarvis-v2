@@ -18,6 +18,7 @@ from core.services.totp_verifier import record_attempt, verify
 
 _OVERRIDE_RE = re.compile(r"^\s*!override\s+(\d{6})\b", re.IGNORECASE)
 _REVOKE_RE = re.compile(r"^\s*!revoke-override\b", re.IGNORECASE)
+_UNLOCK_RE = re.compile(r"^\s*!unlock\s+(\d{6})\b", re.IGNORECASE)
 
 
 def handle_override_command(
@@ -41,6 +42,40 @@ def handle_override_command(
         return {"handled": True, "ok": True, "action": "revoked",
                 "reply": "Owner-override tilbagekaldt for denne session."}
 
+    # Unlock (§12.2 appeal) — TOTP-verificeret owner låser en låst session/konto op.
+    mu = _UNLOCK_RE.match(raw)
+    if mu:
+        if not owner_seed:
+            return {"handled": True, "ok": False, "reason": "no_seed",
+                    "reply": "Unlock er ikke konfigureret (ingen TOTP-nøgle sat)."}
+        if not record_attempt(session_id, now=now):
+            return {"handled": True, "ok": False, "reason": "rate_limited",
+                    "reply": "For mange forsøg. Vent 5 minutter."}
+        if not verify(mu.group(1), seed=owner_seed, now=now):
+            return {"handled": True, "ok": False, "reason": "invalid_code",
+                    "reply": "Forkert kode — intet låst op."}
+        try:
+            from core.services import security_guard
+            from core.services.chat_sessions import get_session_owner
+            sowner = get_session_owner(session_id) or ""
+            security_guard.unlock_session(session_id, user_id=sowner)
+            # Ryd også evt. account-lockdown for session-ejeren.
+            from core.runtime.db import connect
+            from datetime import datetime, timezone
+            if sowner:
+                with connect() as conn:
+                    conn.execute(
+                        "UPDATE user_flags SET expires_at=? WHERE user_id=? AND flag_type='locked'"
+                        " AND (expires_at IS NULL OR expires_at > ?)",
+                        (datetime.now(timezone.utc).isoformat(), sowner,
+                         datetime.now(timezone.utc).isoformat()))
+            security_guard.record_audit(sowner or "owner", "unlock", session_id=session_id,
+                                        details="manual !unlock (TOTP)")
+        except Exception:
+            pass
+        return {"handled": True, "ok": True, "action": "unlocked",
+                "reply": "Session/konto låst op."}
+
     m = _OVERRIDE_RE.match(raw)
     if not m:
         return None  # ikke en override-kommando
@@ -58,6 +93,12 @@ def handle_override_command(
     if verify(code, seed=owner_seed, now=now):
         lvl = level if level in ("help", "debug") else "help"
         override_store.grant(session_id, level=lvl, now=now)
+        try:
+            from core.services import security_guard
+            security_guard.record_audit("owner", "override_activated",
+                                        session_id=session_id, details={"level": lvl})
+        except Exception:
+            pass
         return {"handled": True, "ok": True, "action": "granted", "level": lvl,
                 "reply": f"Owner-override aktiveret ({lvl}). Gyldig i denne session."}
 

@@ -76,10 +76,59 @@ parallelt, mål konfabulations-rate + stabilitet før flip.
 lag med on/off pr. kategori. Separat spor — påbegyndes IKKE før gate-migrationen er landet
 og stabil. Noteret her så det ikke glemmes.
 
-## 6. Succes-kriterier
+## 6. Tests
+
+| Komponent | Test-fil | Dækning |
+|---|---|---|
+| GateKernel registry/exec | `tests/test_gate_kernel.py` | register, kør i fase-rækkefølge, verdict-aggregering, præcedens (RED>YELLOW>GREEN>SKIP) |
+| Kernel-isolation | `tests/test_gate_kernel_isolation.py` | gate der kaster → SKIP (ikke crash); gate der hænger → timeout→SKIP; én gates fejl påvirker ikke de andre |
+| Kernel fail-open + bypass | `tests/test_gate_kernel_failopen.py` | kernel-exception → alle gates passerer (fail-open); bypass-flag → kernen springes helt over |
+| Kill-switch pr. gate | `tests/test_gate_flags.py` | flag off → gaten kører ikke + markeres `disabled` i event |
+| Verdict-event | `tests/test_gate_event.py` | præcis ÉT `gate.evaluated`-event pr. tur med alle verdicts + latency |
+| TruthGate (egen sub-spec) | `tests/test_truth_gate.py` | claim m. evidens → GREEN; claim u. evidens → flag (IKKE strip i v1); samtale/ræsonnement → GREEN (ingen falsk-positiv); **aldrig tomt output** |
+| AuthGate | `tests/test_auth_gate.py` | owner/override → allow; member operator → block; sudo-verdict; identity/abuse-eskalering (genbrug eksisterende cases) |
+| LoopGate | `tests/test_loop_gate.py` | tool-only-grænse, capability-cap, run-closure — adfærd uændret vs nu |
+| Per-cluster paritets-test | `tests/test_gate_parity_<cluster>.py` | **shadow:** nyt cluster-gate giver SAMME verdict som de gamle gates på et fixtursæt (før gammelt fjernes) |
+
+## 7. Edge cases
+
+| Edge case | Forventet håndtering |
+|---|---|
+| Kernen selv kaster/hænger | Kernel-niveau fail-open → alle gates GREEN; log `kernel_error`. Bypass-flag findes som nød-exit. |
+| Gate-flag slås om MIDT i et run | Læses pr. tur (ikke pr. run) → næste tur respekterer; igangværende tur uændret. |
+| To gates uenige (RED vs GREEN) | Eksplicit præcedens i kernen (pre_tool RED = hård blok vinder); aldrig "begge gælder". |
+| async ReviewGate-resultat ankommer EFTER turen er slut | Skrives kun til log/store — påvirker ALDRIG en afsluttet tur (ude af hot-path per design). |
+| TruthGate ville strippe HELE svaret (falsk-positiv) | v1 FLAGGER (tilføjer note), stripper ikke. Hård invariant: gaten må aldrig producere tomt synligt svar. |
+| Gate-timeout midt i en tool-batch | Gaten → SKIP for den batch; tool-eksekvering fortsætter (fail-open) — IKKE hængt run (det var bug'en i dag). |
+| Gate A læser Gate B's verdict, men B SKIP'ede | `kernel.verdict(B)` returnerer SKIP/None → A behandler manglende verdict som "ingen indvending". |
+| Migration: gammel gate + nyt cluster-gate begge aktive | Shadow-fasen er **måle-kun** — nyt gate logger sit verdict men har INGEN effekt før paritet er bevist + flag flippet. Ingen dobbelt-effekt. |
+| `gate.evaluated`-event-emission fejler | Best-effort; manglende event må aldrig spærre turen (observabilitet ≠ blokade). |
+| Bruger har override aktivt + en RED fra AuthGate | Override-præcedens afklares eksplicit (override løfter handling, men IKKE privacy-RED fra PrivacyGate — §6.5 bevares). |
+
+## 8. Succes-kriterier
 
 - Nul cascade-hængte runs (én gates fejl isoleres).
 - Ét `gate.evaluated`-event pr. tur som eneste debug-kilde.
 - Konfabulations-rate ↓ efter TruthGate-mekanisme-skift (shadow-målt).
 - Prompt-cache-hit ↑ (færre dynamiske surfaces — surface-sporet).
 - Hver gate kan tændes/slukkes individuelt i runtime.
+
+## 9. Self-review-fund (rev. 2 — efter Bjørn pressede)
+
+1. **TruthGate's evidens-tjek er den svære del, ikke en sammenlægning** — kræver sin
+   EGEN sub-spec (claim-detektion + evidens-mapping er præcis det de 8 gates fejlede).
+   v1 FLAGGER, stripper ikke.
+2. **Gate vs surface-linjen er udflydende** — flere "anti-konfab-gates" er reelt
+   `build_*_surface` (injicerer, blokerer ikke) → de hører i surface-sporet (c), ikke
+   som blokerende gates. TruthGate = "slet surfaces + tilføj 1 output-tjek".
+3. **Fase A "wrap uændret" er IKKE lav-risiko** — det rører de ustabile hot-filer.
+   Justeret: Fase A = tynd **observabilitets-shim** (gates kører hvor de er, rapporterer
+   gennem kernen), ikke fuldt re-route.
+4. **Fase A reducerer ikke dele** — den tilføjer kernen; forenklingen kommer Fase B+.
+   Gevinsten ved A er isolation + observabilitet, ikke færre dele.
+5. **GateKernel = SPOF** → kernel-niveau fail-open + bypass-flag (§7).
+6. **Konfabulations-rate er umåleligt** uden labeler → byg eval-sæt før vi påstår ↓.
+
+**Konsekvens for rækkefølgen:** (0) eval-sæt + måling, (A) observabilitets-shim,
+(B-G) cluster-konsolidering med paritets-test, TruthGet får egen sub-spec før den røres,
+AuthGate sidst. Surfaces er separat spor efter gates.

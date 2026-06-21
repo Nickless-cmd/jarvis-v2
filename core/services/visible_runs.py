@@ -1357,6 +1357,19 @@ async def _stream_visible_run(
                     _reassert_scope(tool_scope)
                 except Exception:
                     pass
+            # Re-assertér session_id i konteksten FØR copy_context, så execute_tool's
+            # effective_role() i executor-tråden kan slå owner-override op.
+            # current_session_id() tabes ellers over executor-grænsen → override
+            # usynlig → operator-tools afvist med tool_not_permitted TRODS en aktiv
+            # override (rod-årsag til "3-4 kald så blok", Bjørn 2026-06-21). Mirrorer
+            # scope-re-asserten ovenfor; rører IKKE base-rollen (privatlivs-carve-out
+            # §6.5 intakt: override forbliver en elevering, ikke en native owner).
+            try:
+                from core.identity.workspace_context import set_session_id as _set_sid
+                if getattr(run, "session_id", ""):
+                    _set_sid(run.session_id)
+            except Exception:
+                pass
             # Forny owner-override (hvis aktiv) fra RUN-konteksten — her er
             # run.session_id pålideligt. effective_role()'s egen touch() kører i den
             # lossy executor-kontekst og fornyer IKKE pålideligt (ved owner-uid-flip

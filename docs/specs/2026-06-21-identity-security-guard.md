@@ -48,7 +48,7 @@ User claim ≠ session owner
     → Owner kan handler som owner, men session privacy forbliver intakt
     → Privacy blocks (andre brugeres sessioner, data, beskeder) kan IKKE overstyres
     → Audit log entry oprettes
-    → Gælder per user_id (cross-device), ikke per device
+    → Gælder per session — aktiveres på ét device, gælder kun dér
 ```
 
 ### 3.3 Sudo med override
@@ -249,7 +249,7 @@ ALTER TABLE chat_sessions ADD COLUMN locked_at TEXT;
 | Override udløber midt i en tool-session | Prompt opdateres, næste tool-kald afvises hvis det kræver override |
 | To samtidige override-forsøg (samme bruger, forskellige devices) | Sidste TOTP vinder — gammel override deaktiveres |
 | Member forsøger at claim owner-status uden override | Pushback hver gang, 3x → session lock |
-| Bruger starter ny session efter lock | Lock er per user_id — alle sessions låst |
+| Bruger starter ny session efter lock | Lock er per user_id — alle sessions låst (override er dog per-session, så hver device kræver egen TOTP) |
 | Prompt injection i tool output (web_fetch) | Scanner fanger det før det når LLM prompt |
 | Bruger sender 20+ beskeder på 1 minut | Rate limited — warning, 3x → session lock |
 | Owner forsøger at læse en anden brugers session via override | Blocker — privacy blocks gælder stadig |
@@ -286,7 +286,7 @@ ALTER TABLE chat_sessions ADD COLUMN locked_at TEXT;
 
 | Scenario | Håndtering |
 |---|---|
-| Bruger aktiverer override, skifter device midt i session | Override gælder per user_id, ikke per device. Følger med til nyt device. |
+| Bruger aktiverer override, skifter device midt i session | Override gælder per session. Skifter bruger device/app, kræves ny TOTP-verifikation. |
 | Bruger aktiverer override, starter ny session | Override gælder på tværs af sessions — prompt opdateres i begge. |
 | Hvad hvis TOTP-koden stjæles? | 90s initial vindue begrænser skade. Aktivitet fornyer, men uden aktivitet udløber den. |
 
@@ -332,7 +332,7 @@ ALTER TABLE chat_sessions ADD COLUMN locked_at TEXT;
 
 8. **Composer → runtime kommunikation** — hvordan sender composer sin sudo-decision til runtime? Nyt felt i message payload? Header? API endpoint? Claude skal designe dette.
 9. **Privacy blocks definition** — skal formaliseres: (a) andre brugeres session-indhold, (b) andre brugeres beskeder, (c) andre brugeres workspace-filer, (d) andre brugeres hjerne/brain entries. Override kan IKKE override nogen af disse.
-10. **Cross-device override** — hvis `!override` aktiveres på desktop, gælder den så også for mobil? Sandsynligvis ja (per user_id, ikke per device), men skal bekræftes.
+10. **Cross-device override** — AFKLARET: override er per-session. Aktiveres på desktop → gælder kun desktop. Mobil kræver separat TOTP. (Besluttet af Claude på baggrund af spec review, juni 2026)
 
 ---
 

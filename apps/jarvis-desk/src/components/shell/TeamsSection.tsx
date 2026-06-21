@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useSettings } from '../../hooks/useSettings'
 import {
   listTeams, createTeam, inviteToTeam, listTeamSessions, createTeamSession,
-  type Team, type TeamSession,
+  listMyInvites, acceptInvite,
+  type Team, type TeamSession, type PendingInvite,
 } from '../../lib/teamsApi'
 
 /** Teams-sektion i sidebar (Teams-feature §6.1). Separat foldbar liste UNDER de
@@ -19,6 +20,7 @@ export function TeamsSection({ onOpenSession }: { onOpenSession: (sessionId: str
   const [teams, setTeams] = useState<Team[]>([])
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const [sessionsByTeam, setSessionsByTeam] = useState<Record<string, TeamSession[]>>({})
+  const [invites, setInvites] = useState<PendingInvite[]>([])
   const [newTeam, setNewTeam] = useState('')
   const [showNew, setShowNew] = useState(false)
   const [sessTitle, setSessTitle] = useState<Record<string, string>>({})
@@ -29,8 +31,15 @@ export function TeamsSection({ onOpenSession }: { onOpenSession: (sessionId: str
   const refresh = async () => {
     if (!cfg) return
     try { setTeams(await listTeams(cfg)) } catch { /* behold */ }
+    try { setInvites(await listMyInvites(cfg)) } catch { /* behold */ }
   }
   useEffect(() => { void refresh() }, [settings?.authToken])
+
+  const onAcceptInvite = async (token: string) => {
+    if (!cfg) return
+    try { await acceptInvite(cfg, token); await refresh() }
+    catch { /* token måske udløbet — refresh fjerner det */ await refresh() }
+  }
 
   const loadSessions = async (teamId: string) => {
     if (!cfg) return
@@ -92,7 +101,13 @@ export function TeamsSection({ onOpenSession }: { onOpenSession: (sessionId: str
           <button type="button" className="team-mini" onClick={() => void onCreateTeam()}>Opret</button>
         </div>
       )}
-      {teams.length === 0 && <div className="teams-empty">Ingen teams endnu</div>}
+      {invites.map((inv) => (
+        <div key={inv.token} className="team-invite-card">
+          <span className="team-invite-text">Du er inviteret til <strong>{inv.team_name}</strong></span>
+          <button type="button" className="team-mini" onClick={() => void onAcceptInvite(inv.token)}>Acceptér</button>
+        </div>
+      ))}
+      {teams.length === 0 && invites.length === 0 && <div className="teams-empty">Ingen teams endnu</div>}
       {teams.map((t) => (
         <div key={t.team_id} className="team-row">
           <button type="button" className="team-name" onClick={() => toggle(t.team_id)}>

@@ -1930,3 +1930,5 @@
 .team-input { flex: 1; min-width: 0; font-size: 12px; background: var(--bg-3, #21262d); border: 1px solid var(--border, #30363d); color: var(--fg-1, #e6edf3); border-radius: 6px; padding: 2px 8px; }
 .team-input::placeholder { color: var(--fg-3, #8b949e); }
 .teams-msg { font-size: 11px; color: var(--accent, #2f81f7); padding: 3px 6px; }
+.team-invite-card { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; margin: 4px 0; border: 1px solid var(--accent, #2f81f7); border-radius: 8px; background: var(--bg-2, #161b22); }
+.team-invite-text { font-size: 12px; color: var(--fg-1, #e6edf3); }

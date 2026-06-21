@@ -27,11 +27,17 @@ _ACTION_PATTERNS: dict[str, re.Pattern] = {
 class ActionClaim:
     kind: str
     matched_text: str
+    payload: str = ""        # for 'output': den citerede kodeblok der påstås at være tool-output
+
+
+# fenced kodeblok: ```lang\n<indhold>```
+_FENCE = re.compile(r"```[\w-]*\n(.*?)```", re.DOTALL)
 
 
 def detect_action_claims(text: str) -> list[ActionClaim]:
     """Deterministisk: find handlings-påstande. commit_hash tæller kun i commit/git/log-
-    kontekst ELLER hvis der OGSÅ er en 'her er output'-påstand (undgå tilfældige hex)."""
+    kontekst ELLER hvis der OGSÅ er en 'her er output'-påstand (undgå tilfældige hex).
+    For 'output' fanges det efterfølgende fenced-block som payload (det citerede output)."""
     out: list[ActionClaim] = []
     if not text:
         return out
@@ -40,9 +46,15 @@ def detect_action_claims(text: str) -> list[ActionClaim]:
         if kind == "commit_hash":
             continue
         m = pat.search(text)
-        if m:
-            out.append(ActionClaim(kind=kind, matched_text=m.group(0)))
-            detected.add(kind)
+        if not m:
+            continue
+        payload = ""
+        if kind == "output":
+            fence = _FENCE.search(text, m.end())
+            if fence:
+                payload = fence.group(1).strip()
+        out.append(ActionClaim(kind=kind, matched_text=m.group(0), payload=payload))
+        detected.add(kind)
     has_ctx = bool(re.search(r"\b(commit|git|log)\b", text, re.IGNORECASE)) or "output" in detected
     if has_ctx:
         m = _ACTION_PATTERNS["commit_hash"].search(text)
@@ -81,7 +93,18 @@ def verify_claim(claim: Any, executed_tool_names: list[str], followup_exchanges:
     if kind == "commit_hash":
         return str(getattr(claim, "matched_text", "")).lower() in _run_result_text(followup_exchanges).lower()
     if kind == "output":
-        return bool((executed_tool_names or []) and _run_result_text(followup_exchanges).strip())
+        rt = _run_result_text(followup_exchanges)
+        payload = str(getattr(claim, "payload", "") or "").strip()
+        if payload:
+            # Citeret output-blok SKAL optræde i de ægte tool-resultater. Kræv at
+            # flertallet af de citerede ikke-trivielle linjer findes i et rigtigt
+            # resultat — ellers er det fremstillet (selv hvis runnet kaldte tools).
+            lines = [ln.strip() for ln in payload.splitlines() if len(ln.strip()) >= 6]
+            if lines:
+                hits = sum(1 for ln in lines if ln in rt)
+                return hits >= max(1, (len(lines) + 1) // 2)
+        # Ingen citeret blok → fald tilbage til 'kørte et tool + der var et resultat'.
+        return bool((executed_tool_names or []) and rt.strip())
     if kind == "called_tool":
         return bool(executed_tool_names)
     if not cats:

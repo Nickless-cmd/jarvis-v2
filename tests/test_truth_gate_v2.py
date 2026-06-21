@@ -76,6 +76,29 @@ def test_truth_gate_v2_green_when_evidence_present():
     assert truth_gate_v2(ctx).decision is Decision.GREEN
 
 
+def test_output_block_not_matching_real_results_is_red_even_with_tools():
+    # Bjørns live-case: runnet kaldte ÆGTE tools, men det citerede output er fabrikeret.
+    ctx = {
+        "text": "Jeg kaldte bash og her er output:\n```\nTRUTH verdict: RED fabrication\n```",
+        "executed_tool_names": ["operator_bash"],
+        "followup_exchanges": [_ex("helt andet ægte output her")],
+        "run_id": "r",
+    }
+    v = truth_gate_v2(ctx)
+    assert v.decision is Decision.RED and (v.evidence or {}).get("severity") == "hard"
+
+
+def test_output_block_matching_real_result_is_green():
+    real = "Sun Jun 21 19:03:00 CEST 2026"
+    ctx = {
+        "text": f"Her er output:\n```\n{real}\n```",
+        "executed_tool_names": ["operator_bash"],
+        "followup_exchanges": [_ex(real)],
+        "run_id": "r",
+    }
+    assert truth_gate_v2(ctx).decision is Decision.GREEN
+
+
 def test_truth_gate_v2_soft_yellow_for_bare_unverified_claim():
     ctx = {"text": "Jeg verificerede det.", "executed_tool_names": [], "followup_exchanges": [], "run_id": "r"}
     v = truth_gate_v2(ctx)

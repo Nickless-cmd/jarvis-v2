@@ -146,6 +146,18 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
             lane=settings.primary_model_lane,
         )
 
+    # Normal besked i en ELEVET session → forny override-vinduet (5 min rullende).
+    # KRITISK (Bjørn 2026-06-21): uden dette udløber 90s-startvinduet midt i en
+    # operator-sekvens og operator-tools/sudo låses igen ("virker én gang, så blok").
+    # effective_role()'s egen touch() kører i den lossy executor-kontekst (session_id/
+    # rolle-flip) og fornyer ikke pålideligt — her har vi det korrekte session_id.
+    try:
+        from core.services import override_store as _ovs
+        if _ovs.is_active(session_id):
+            _ovs.touch(session_id)
+    except Exception:
+        pass
+
     # Mode → tool-scope. "chat" begrænser værktøjs-listen til samtale-
     # allowlisten (se core.tools.tool_scoping). Andre modes / tom = ubegrænset
     # (rolle-filter gælder stadig).

@@ -23,3 +23,13 @@ export async function createTeamSession(config: ApiConfig, teamId: string, title
 export async function acceptInvite(config: ApiConfig, token: string): Promise<{ team_id: string }> {
   return apiFetch(config, `/invites/${encodeURIComponent(token)}/accept`, { method: 'POST' })
 }
+
+export interface PendingInvite {
+  token: string; team_id: string; team_name: string
+  invited_by: string; created_at: string; expires_at: string
+}
+/** Pull-baseret invite-levering: brugerens egne pending invites (uafhængigt af push). */
+export async function listMyInvites(config: ApiConfig): Promise<PendingInvite[]> {
+  const r = await apiFetch<{ invites: PendingInvite[] }>(config, '/invites')
+  return r.invites ?? []
+}

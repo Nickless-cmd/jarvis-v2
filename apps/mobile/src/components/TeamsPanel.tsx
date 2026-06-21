@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import type { ApiConfig } from '../lib/types'
 import {
   listTeams, createTeam, listTeamSessions, createTeamSession, acceptInvite,
-  type Team, type TeamSession,
+  listMyInvites,
+  type Team, type TeamSession, type PendingInvite,
 } from '../lib/teamsApi'
 import { tokens } from '../theme/tokens'
 
@@ -14,6 +15,7 @@ export function TeamsPanel({ config, onSelectSession }: { config: ApiConfig | nu
   const [teams, setTeams] = useState<Team[]>([])
   const [openId, setOpenId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Record<string, TeamSession[]>>({})
+  const [invites, setInvites] = useState<PendingInvite[]>([])
   const [newTeam, setNewTeam] = useState('')
   const [code, setCode] = useState('')
   const [msg, setMsg] = useState('')
@@ -21,8 +23,15 @@ export function TeamsPanel({ config, onSelectSession }: { config: ApiConfig | nu
   const refresh = async () => {
     if (!config) return
     try { setTeams(await listTeams(config)) } catch { /* behold */ }
+    try { setInvites(await listMyInvites(config)) } catch { /* behold */ }
   }
   useEffect(() => { void refresh() }, [config?.authToken])
+
+  const onAcceptInvite = async (token: string) => {
+    if (!config) return
+    try { await acceptInvite(config, token); setMsg('Tilmeldt team ✓'); await refresh() }
+    catch { setMsg('Kunne ikke acceptere'); await refresh() }
+  }
 
   const toggle = async (id: string) => {
     const next = openId === id ? null : id
@@ -68,7 +77,15 @@ export function TeamsPanel({ config, onSelectSession }: { config: ApiConfig | nu
   return (
     <View style={styles.root}>
       <Text style={styles.heading}>TEAMS</Text>
-      {teams.length === 0 && <Text style={styles.muted}>Ingen teams endnu</Text>}
+      {invites.map((inv) => (
+        <View key={inv.token} style={styles.inviteCard}>
+          <Text style={styles.inviteText}>Du er inviteret til {inv.team_name}</Text>
+          <Pressable onPress={() => void onAcceptInvite(inv.token)} style={styles.mini}>
+            <Text style={styles.miniTxt}>Acceptér</Text>
+          </Pressable>
+        </View>
+      ))}
+      {teams.length === 0 && invites.length === 0 && <Text style={styles.muted}>Ingen teams endnu</Text>}
       {teams.map((t) => (
         <View key={t.team_id}>
           <Pressable onPress={() => void toggle(t.team_id)} style={styles.teamRow}>
@@ -117,4 +134,8 @@ const styles = StyleSheet.create({
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   input: { flex: 1, color: tokens.color.fg1, backgroundColor: tokens.color.bg1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   msg: { color: tokens.color.accent, marginTop: 6, fontSize: 12 },
+  inviteCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    gap: 8, paddingVertical: 8, paddingHorizontal: 10, marginVertical: 4,
+    borderWidth: 1, borderColor: tokens.color.accent, borderRadius: 8 },
+  inviteText: { color: tokens.color.fg1, fontSize: 13, flex: 1 },
 })

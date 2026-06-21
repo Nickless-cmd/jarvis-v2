@@ -159,6 +159,13 @@ from core.tools.bash_session import (
     _exec_bash_session_close,
     _exec_bash_session_list,
 )
+from core.tools.operator_bash_session import (
+    OPERATOR_BASH_SESSION_TOOL_DEFINITIONS,
+    _exec_operator_bash_session_open,
+    _exec_operator_bash_session_run,
+    _exec_operator_bash_session_close,
+    _exec_operator_bash_session_list,
+)
 from core.tools.staged_edits_tools import (
     STAGED_EDITS_TOOL_DEFINITIONS,
     STAGED_EDITS_TOOL_HANDLERS,
@@ -3529,6 +3536,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *CLAUDE_DISPATCH_TOOL_DEFINITIONS,
     *AGENT_DISPATCH_TOOL_DEFINITIONS,
     *BASH_SESSION_TOOL_DEFINITIONS,
+    *OPERATOR_BASH_SESSION_TOOL_DEFINITIONS,
     *STAGED_EDITS_TOOL_DEFINITIONS,
     *PROJECT_NOTES_TOOL_DEFINITIONS,
     *PROCESS_SUPERVISOR_TOOL_DEFINITIONS,
@@ -8845,6 +8853,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "bash_session_run": _exec_bash_session_run,
     "bash_session_close": _exec_bash_session_close,
     "bash_session_list": _exec_bash_session_list,
+    "operator_bash_session_open": _exec_operator_bash_session_open,
+    "operator_bash_session_run": _exec_operator_bash_session_run,
+    "operator_bash_session_close": _exec_operator_bash_session_close,
+    "operator_bash_session_list": _exec_operator_bash_session_list,
     **STAGED_EDITS_TOOL_HANDLERS,
     **PROJECT_NOTES_TOOL_HANDLERS,
     **PROCESS_SUPERVISOR_TOOL_HANDLERS,

@@ -111,6 +111,8 @@ CHAT_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
 CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "operator_read_file", "operator_write_file", "operator_edit_file",
     "operator_bash", "operator_glob", "operator_grep", "operator_list_dir",
+    "operator_bash_session_open", "operator_bash_session_run",
+    "operator_bash_session_close", "operator_bash_session_list",
     # App-self-control (desk) — foreslå fuld adgang (trust) i code mode
     "request_app_action",
 })

@@ -3436,6 +3436,12 @@ async def _stream_visible_run(
                 }, _tg2, cluster="truth")
                 _tv2_corr = (_tv2.evidence or {}).get("corrected_text") if _tv2.evidence else None
                 if _tv2.decision.value in ("red", "yellow") and _tv2_corr:
+                    logger.warning(
+                        "TruthGate v2: %s (%s) run_id=%s — konfabulation %s",
+                        _tv2.decision.value.upper(),
+                        (_tv2.evidence or {}).get("severity"), run.run_id,
+                        "blokeret" if _tv2.decision.value == "red" else "markeret",
+                    )
                     visible_output_text = _tv2_corr
                     yield _sse("scan_correction", {
                         "type": "scan_correction", "run_id": run.run_id, "corrected": _tv2_corr,

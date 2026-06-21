@@ -90,13 +90,35 @@ export async function getDeviceLocation(precision: LocationPrecision): Promise<L
   // precise → GPS. KRITISK: getCurrentPositionAsync kan hænge i det uendelige
   // indendørs/uden fix → vi MÅ tids-begrænse den (race mod 8s) så den aldrig
   // blokerer kalderen. Ved timeout/fejl → IP-fallback.
+  // KRITISK (Bjørn 2026-06-21): requestForegroundPermissionsAsync() HÆNGER i det
+  // uendelige når den kaldes fra presence-timeren uden en forgrunds-Activity —
+  // selv når tilladelsen allerede ER givet. Det blokerede getDeviceLocation helt,
+  // så lokationen aldrig nåede serveren (raw_loc=N for evigt). Fix: læs tilladelsen
+  // IKKE-blokerende med getForegroundPermissionsAsync() (rør ikke nogen Activity),
+  // og bind HELE forløbet i en overordnet timeout så funktionen aldrig kan hænge.
+  return Promise.race([
+    _precisePayload(),
+    new Promise<LocationPayload | null>((resolve) => setTimeout(() => resolve(null), 12000)),
+  ]).then((r) => r ?? ipLocation()).catch(() => ipLocation())
+}
+
+/** Indre precise-flow uden timeout-værn (kalderen race'er det mod en deadline). */
+async function _precisePayload(): Promise<LocationPayload | null> {
   try {
-    const perm = await Location.requestForegroundPermissionsAsync()
-    if (perm.status !== 'granted') return ipLocation()
+    // Læs tilladelse uden dialog (getForegroundPermissionsAsync rører ikke en
+    // Activity → hænger ikke). Bed kun aktivt hvis status er ubestemt.
+    let status = 'undetermined'
+    try {
+      status = (await Location.getForegroundPermissionsAsync()).status
+    } catch { status = 'undetermined' }
+    if (status === 'undetermined') {
+      try { status = (await Location.requestForegroundPermissionsAsync()).status } catch { status = 'denied' }
+    }
+    if (status !== 'granted') return ipLocation()
     // precise = brugeren VIL have gaden. En cachet last-known-fix er ofte et groft
-    // celle/netværks-fix → reverse-geocode giver kun by, INTET vejnavn (Bjørn
-    // 2026-06-21). Derfor: hent en FRISK høj-præcisions-GPS-fix FØRST (race mod 10s),
-    // og brug kun last-known som hurtig fallback hvis det friske fix timer ud/fejler.
+    // celle/netværks-fix → reverse-geocode giver kun by, INTET vejnavn. Derfor:
+    // hent en FRISK høj-præcisions-GPS-fix FØRST (race mod 10s), og brug kun
+    // last-known som hurtig fallback hvis det friske fix timer ud/fejler.
     let pos: { coords: { latitude: number; longitude: number } } | null =
       await Promise.race([
         Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),

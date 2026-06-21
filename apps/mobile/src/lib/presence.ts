@@ -92,7 +92,7 @@ export function startPresenceReporting(config: ApiConfig): () => void {
         return
       }
       clearedOff = false
-      const loc = await getDeviceLocation(precision) // har egen 8s GPS-timeout
+      const loc = await getDeviceLocation(precision) // har egen 12s overordnet timeout
       if (loc) currentLocation = loc
       // intet fix → behold sidst kendte (rør ikke currentLocation)
     } catch {

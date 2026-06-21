@@ -1301,6 +1301,29 @@ async def _stream_visible_run(
                 yield failure_chunk
             return
 
+        # ── Prosa-tool-call-redning (tool-leak-fix 2026-06-21) ──────────────
+        # Nogle modeller (deepseek-v4-flash) skriver tool-kald som prosa i teksten
+        # i stedet for strukturerede tool_calls. Konvertér `[navn]: {json}`-kald (kun
+        # for REGISTREREDE tools) til ægte kald så de eksekverer, og fjern dem fra
+        # teksten så presentation_invariant ikke blokerer svaret. Guarded: rører kun
+        # noget når der IKKE var native kald og der faktisk findes prosa-kald.
+        if not _collected_native_tool_calls and result is not None and getattr(result, "text", ""):
+            try:
+                from core.services.prose_tool_calls import extract_prose_tool_calls
+                from core.tools.simple_tools import _TOOL_HANDLERS as _ptc_handlers
+                _cleaned_text, _prose_calls = extract_prose_tool_calls(
+                    result.text, _ptc_handlers.keys(),
+                )
+                if _prose_calls:
+                    _collected_native_tool_calls = _prose_calls
+                    result.text = _cleaned_text
+                    logger.warning(
+                        "prose-tool-call-redning (first-pass): konverterede %d "
+                        "prosa-kald run_id=%s", len(_prose_calls), run.run_id,
+                    )
+            except Exception as _ptc_exc:
+                logger.debug("prose-tool-call-parse fejlede: %s", _ptc_exc)
+
         capability_plan = _extract_capability_plan(result.text)
 
         # ── Native tool_calls: execute directly via simple_tools ──

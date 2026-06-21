@@ -3409,28 +3409,41 @@ async def _stream_visible_run(
             from core.services import shared_cache as _sc_tv2
             _tv2_flag = _sc_tv2.get("flag:central.switch.nerve.truth_v2")
             if isinstance(_tv2_flag, dict) and _tv2_flag.get("enabled"):
-                _tv2_names: list[str] = []
+                # _followup_exchanges/_collected_native_tool_calls kan være UBUNDET for
+                # single-pass-svar (ingen agentic-loop) → guard begge, ellers kaster
+                # ctx-bygningen NameError og hele hooken no-op'er stille.
+                _tv2_fe: list = []
                 try:
-                    for _tc in (_collected_native_tool_calls or []):
+                    _tv2_fe = list(_followup_exchanges)  # type: ignore[has-type]
+                except Exception:
+                    _tv2_fe = []
+                _tv2_ntc: list = []
+                try:
+                    _tv2_ntc = list(_collected_native_tool_calls)  # type: ignore[has-type]
+                except Exception:
+                    _tv2_ntc = []
+                _tv2_names: list[str] = []
+                for _tc in _tv2_ntc:
+                    try:
                         _n = str((_tc.get("function") or {}).get("name") or _tc.get("name") or "")
                         if _n:
                             _tv2_names.append(_n)
-                except Exception:
-                    pass
-                try:
-                    for _ex in (_followup_exchanges or []):
-                        for _tc in (getattr(_ex, "tool_calls", None) or []):
+                    except Exception:
+                        pass
+                for _ex in _tv2_fe:
+                    for _tc in (getattr(_ex, "tool_calls", None) or []):
+                        try:
                             _n = str((_tc.get("function") or {}).get("name") or _tc.get("name") or "")
                             if _n:
                                 _tv2_names.append(_n)
-                except Exception:
-                    pass
+                        except Exception:
+                            pass
                 from core.services.central_core import central as _central_tv2
                 from core.services.truth_gate_v2 import truth_gate_v2 as _tg2
                 _tv2 = _central_tv2().decide("truth", {
                     "text": visible_output_text,
                     "executed_tool_names": _tv2_names,
-                    "followup_exchanges": list(_followup_exchanges or []),
+                    "followup_exchanges": _tv2_fe,
                     "run_id": run.run_id,
                     "session_id": getattr(run, "session_id", "") or "",
                 }, _tg2, cluster="truth")
@@ -3446,8 +3459,9 @@ async def _stream_visible_run(
                     yield _sse("scan_correction", {
                         "type": "scan_correction", "run_id": run.run_id, "corrected": _tv2_corr,
                     })
-        except Exception:
-            pass
+        except Exception as _tv2_exc:
+            logger.warning("TruthGate v2 hook fejlede run_id=%s: %s",
+                           getattr(run, "run_id", "?"), _tv2_exc)
 
         # Persist the assistant message BEFORE sending done so that the
         # frontend's loadSession() call immediately after done finds the

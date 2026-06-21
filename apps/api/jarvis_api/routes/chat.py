@@ -601,6 +601,15 @@ def _resolve_visible_target(uid: str | None, provider_choice: str, model: str) -
         elif prov == "deepseek":
             from core.runtime.settings import load_settings
             m = load_settings().visible_model_name
+    # MIDLERTIDIG bro (2026-06-21): desk-composer-regression viser kun gpt-4/gpt-4.1
+    # for github-copilot — begge cappet til ~12k kontekst, kan IKKE rumme Jarvis'
+    # ~130k prompt → HTTP 400. Substituér disse små Copilot-modeller til den globale
+    # store model (fx gpt-5-mini) indtil composer-vælgeren viser hele kataloget igen.
+    if prov in ("github-copilot", "copilot") and m.lower().startswith("gpt-4"):
+        from core.runtime.settings import load_settings as _ls_bridge
+        _big = (_ls_bridge().visible_model_name or "").strip()
+        if _big and not _big.lower().startswith("gpt-4"):
+            m = _big
     return (prov, m)
 
 

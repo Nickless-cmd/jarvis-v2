@@ -1341,6 +1341,22 @@ async def _stream_visible_run(
             # bridge (Linux), opened google-chrome on the owner's desktop with
             # PID on the owner's machine, even though the chat session, user_id
             # attribution, and visible_run context were all correctly the other user.
+            # Re-assert tool-scope before snapshotting the context. The scope
+            # CtxVar set at generator entry (set_tool_scope, line ~927) does NOT
+            # reliably survive to this point across the async-generator/executor
+            # boundary — role/user_id do, scope does not. Observed live
+            # 2026-06-21: Mikkel (member) in code mode → execute_tool's role-gate
+            # saw role='member' but scope='' → operator_* denied with
+            # tool_not_permitted, even though the tools were OFFERED in code
+            # scope. Re-asserting from the known run scope makes copy_context()
+            # capture it so execute_tool's gate (simple_tools.execute_tool) sees
+            # the correct scope.
+            if tool_scope:
+                try:
+                    from core.tools.tool_scoping import set_tool_scope as _reassert_scope
+                    _reassert_scope(tool_scope)
+                except Exception:
+                    pass
             import contextvars as _ctxvars
             _ctx_for_exec = _ctxvars.copy_context()
             simple_results = await loop.run_in_executor(

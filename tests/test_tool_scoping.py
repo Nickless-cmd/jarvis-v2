@@ -181,3 +181,17 @@ def test_is_tool_allowed_guest_denied_all():
     from core.tools.tool_scoping import is_tool_allowed
     assert not is_tool_allowed(role="guest", scope="chat", name="web_search")
     assert not is_tool_allowed(role="guest", scope="code", name="operator_bash")
+
+
+def test_member_code_scope_allows_operator_but_empty_scope_denies():
+    """Regression (live 2026-06-21): Mikkel (member) i code mode fik
+    operator_bash tilbudt men afvist med tool_not_permitted, fordi
+    tool-scope-ContextVar'en var '' ved execute_tool's rolle-gate (mens
+    rollen propagerede). Gaten SKAL tillade member+code men afvise member+''.
+    Fixet (visible_runs: gen-assertér scope før copy_context) sikrer at
+    scope='code' faktisk når gaten."""
+    from core.tools.tool_scoping import is_tool_allowed
+    assert is_tool_allowed(role="member", scope="code", name="operator_bash")
+    # '' (mistet scope) MÅ afvise — ellers ville code-tools lække til chat:
+    assert not is_tool_allowed(role="member", scope="", name="operator_bash")
+    assert not is_tool_allowed(role="member", scope="chat", name="operator_bash")

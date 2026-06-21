@@ -1,7 +1,7 @@
 """Device-presence + proaktive desktop-notifikationer. Scoper til auth'et bruger."""
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 import core.services.desktop_notifications as desktop_notifications
@@ -59,6 +59,32 @@ async def notifications_ack(body: AckBody) -> dict:
     if (body.notif_id or "").strip():
         proactive_router.ack(body.notif_id)
     return {"ok": True}
+
+
+@router.get("/notifications/preferences")
+async def notification_preferences_get() -> dict:
+    """Notif-routing §6: app-UI læser brugerens kanal-præferencer."""
+    uid = _current_user()
+    if not uid:
+        raise HTTPException(status_code=401, detail="ingen bruger-kontekst")
+    from core.services.notification_router import get_preferences
+    return {"preferences": get_preferences(uid)}
+
+
+@router.post("/notifications/preferences")
+async def notification_preferences_set(body: dict) -> dict:
+    """app-UI sætter kanal-præferencer (global + per-type + quiet hours)."""
+    uid = _current_user()
+    if not uid:
+        raise HTTPException(status_code=401, detail="ingen bruger-kontekst")
+    from core.services.notification_router import set_preferences
+    allowed = {k: body[k] for k in
+               ("global", "briefing", "reminder", "reach_out", "team_invite", "wakeup",
+                "quiet_start", "quiet_end") if k in body and body[k] is not None}
+    try:
+        return {"preferences": set_preferences(uid, **allowed)}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/presence/debug")

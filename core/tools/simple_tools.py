@@ -449,6 +449,11 @@ from core.tools.recurring_scheduler_tools import (
     _exec_cancel_recurring,
     _exec_set_recurring_channel,
 )
+from core.tools.notification_tools import (
+    NOTIFICATION_TOOL_DEFINITIONS,
+    exec_get_notification_preferences,
+    exec_set_notification_preferences,
+)
 from core.tools.webhook_tools import (
     WEBHOOK_TOOL_DEFINITIONS,
     _exec_webhook_register,
@@ -3581,6 +3586,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *IDENTITY_DRIFT_TOOL_DEFINITIONS,
     *LONG_ARC_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
+    *NOTIFICATION_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
     *SENSORY_TOOL_DEFINITIONS,
@@ -8965,6 +8971,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "list_recurring": _exec_list_recurring,
     "cancel_recurring": _exec_cancel_recurring,
     "set_recurring_channel": _exec_set_recurring_channel,
+    "get_notification_preferences": exec_get_notification_preferences,
+    "set_notification_preferences": exec_set_notification_preferences,
     # Webhook tools
     "webhook_register": _exec_webhook_register,
     "webhook_send": _exec_webhook_send,

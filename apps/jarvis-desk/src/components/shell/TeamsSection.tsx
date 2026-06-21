@@ -8,12 +8,22 @@ import {
 /** Teams-sektion i sidebar (Teams-feature §6.1). Separat foldbar liste UNDER de
  *  private sessioner. Lister teams + delte sessioner; opret team/session; inviter.
  *  En team-session åbnes i chat-fladen via onOpenSession (synlig for alle medlemmer
- *  via scoping-regel B). */
+ *  via scoping-regel B).
+ *
+ *  VIGTIGT: Electron understøtter IKKE window.prompt()/window.alert() — de returnerer
+ *  null/no-op, hvilket fik knapperne til at "gøre ingenting uden fejl" (Mikkel-test
+ *  2026-06-20). Derfor bruger sektionen inline input-felter + en status-linje, samme
+ *  mønster som mobil-TeamsPanel. */
 export function TeamsSection({ onOpenSession }: { onOpenSession: (sessionId: string) => void }) {
   const { settings } = useSettings()
   const [teams, setTeams] = useState<Team[]>([])
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const [sessionsByTeam, setSessionsByTeam] = useState<Record<string, TeamSession[]>>({})
+  const [newTeam, setNewTeam] = useState('')
+  const [showNew, setShowNew] = useState(false)
+  const [sessTitle, setSessTitle] = useState<Record<string, string>>({})
+  const [inviteVal, setInviteVal] = useState<Record<string, string>>({})
+  const [msg, setMsg] = useState('')
   const cfg = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
 
   const refresh = async () => {
@@ -38,41 +48,50 @@ export function TeamsSection({ onOpenSession }: { onOpenSession: (sessionId: str
     })
   }
 
-  const onNew = async () => {
-    if (!cfg) return
-    const name = window.prompt('Navn på nyt team?')?.trim()
-    if (!name) return
-    try { await createTeam(cfg, name); await refresh() } catch { /* noop */ }
+  const onCreateTeam = async () => {
+    const name = newTeam.trim()
+    if (!cfg || !name) return
+    try { await createTeam(cfg, name); setNewTeam(''); setShowNew(false); setMsg(''); await refresh() }
+    catch { setMsg('Kunne ikke oprette team') }
   }
 
   const onNewSession = async (t: Team) => {
     if (!cfg) return
-    const title = window.prompt(`Ny delt session i "${t.name}":`, 'Team-chat')?.trim()
-    if (!title) return
+    const title = (sessTitle[t.team_id] ?? '').trim() || 'Team-chat'
     try {
       const s = await createTeamSession(cfg, t.team_id, title)
+      setSessTitle((m) => ({ ...m, [t.team_id]: '' }))
       await loadSessions(t.team_id)
       onOpenSession(s.session_id)
-    } catch { /* noop */ }
+    } catch { setMsg('Kunne ikke oprette session') }
   }
 
   const onInvite = async (t: Team) => {
     if (!cfg) return
-    const v = window.prompt(`Inviter til "${t.name}" — email eller bruger-id:`)?.trim()
+    const v = (inviteVal[t.team_id] ?? '').trim()
     if (!v) return
     try {
       const r = await inviteToTeam(cfg, t.team_id, v.includes('@') ? { email: v } : { user_id: v })
       const ways = Object.entries(r.delivered).filter(([, on]) => on).map(([k]) => k)
-      window.alert(ways.length ? `Invite sendt via ${ways.join(', ')}.` : 'Invite oprettet (kode i app).')
-    } catch { window.alert('Kunne ikke invitere (kun owner kan).') }
+      setInviteVal((m) => ({ ...m, [t.team_id]: '' }))
+      setMsg(ways.length ? `Invite sendt via ${ways.join(', ')}.` : 'Invite oprettet (kode i app).')
+    } catch { setMsg('Kunne ikke invitere (kun owner kan).') }
   }
 
   return (
     <div className="teams-section">
       <div className="teams-head">
         <span className="teams-title">TEAMS</span>
-        <button type="button" className="teams-new" onClick={() => void onNew()} title="Nyt team">＋</button>
+        <button type="button" className="teams-new" onClick={() => setShowNew((s) => !s)} title="Nyt team">＋</button>
       </div>
+      {showNew && (
+        <div className="team-actions">
+          <input className="team-input" value={newTeam} placeholder="Nyt team-navn" aria-label="Nyt team-navn"
+            onChange={(e) => setNewTeam(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void onCreateTeam() }} autoFocus />
+          <button type="button" className="team-mini" onClick={() => void onCreateTeam()}>Opret</button>
+        </div>
+      )}
       {teams.length === 0 && <div className="teams-empty">Ingen teams endnu</div>}
       {teams.map((t) => (
         <div key={t.team_id} className="team-row">
@@ -87,7 +106,17 @@ export function TeamsSection({ onOpenSession }: { onOpenSession: (sessionId: str
                   onClick={() => onOpenSession(s.session_id)}># {s.title || 'Team-chat'}</button>
               ))}
               <div className="team-actions">
+                <input className="team-input" value={sessTitle[t.team_id] ?? ''} placeholder="Session-titel"
+                  aria-label="Session-titel"
+                  onChange={(e) => setSessTitle((m) => ({ ...m, [t.team_id]: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void onNewSession(t) }} />
                 <button type="button" className="team-mini" onClick={() => void onNewSession(t)}>+ Session</button>
+              </div>
+              <div className="team-actions">
+                <input className="team-input" value={inviteVal[t.team_id] ?? ''} placeholder="Email eller bruger-id"
+                  aria-label="Inviter"
+                  onChange={(e) => setInviteVal((m) => ({ ...m, [t.team_id]: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void onInvite(t) }} />
                 <button type="button" className="team-mini" onClick={() => void onInvite(t)}>+ Inviter</button>
               </div>
               <div className="team-members">
@@ -97,6 +126,7 @@ export function TeamsSection({ onOpenSession }: { onOpenSession: (sessionId: str
           )}
         </div>
       ))}
+      {msg && <div className="teams-msg">{msg}</div>}
     </div>
   )
 }

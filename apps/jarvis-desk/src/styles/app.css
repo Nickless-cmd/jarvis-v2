@@ -1926,4 +1926,7 @@
 .team-session { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--fg-1, #e6edf3); cursor: pointer; padding: 3px 6px; border-radius: 5px; font-size: 12.5px; }
 .team-session:hover { background: var(--bg-3, #21262d); }
 .team-actions { display: flex; gap: 6px; margin: 4px 0; }
-.team-mini { font-size: 11px; background: none; border: 1px solid var(--border, #30363d); color: var(--accent, #2f81f7); border-radius: 6px; padding: 1px 8px; cursor: pointer; }
+.team-mini { font-size: 11px; background: none; border: 1px solid var(--border, #30363d); color: var(--accent, #2f81f7); border-radius: 6px; padding: 1px 8px; cursor: pointer; white-space: nowrap; }
+.team-input { flex: 1; min-width: 0; font-size: 12px; background: var(--bg-3, #21262d); border: 1px solid var(--border, #30363d); color: var(--fg-1, #e6edf3); border-radius: 6px; padding: 2px 8px; }
+.team-input::placeholder { color: var(--fg-3, #8b949e); }
+.teams-msg { font-size: 11px; color: var(--accent, #2f81f7); padding: 3px 6px; }

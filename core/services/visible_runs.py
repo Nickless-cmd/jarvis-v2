@@ -3659,7 +3659,13 @@ async def _stream_visible_run(
                 except Exception as _cs_exc:
                     logger.debug("claim-scanner failed: %s", _cs_exc)
             except Exception:
-                pass
+                # 2026-06-21: denne ydre except slugte FØR stille (pass) → enhver
+                # tidlig fejl (fx en closure-variabel ubundet for single-pass-runs)
+                # dræbte response_style + memory + claim-detektion usynligt. Log nu.
+                logger.warning(
+                    "_post_process post-output-blok fejlede run_id=%s",
+                    getattr(run, "run_id", "?"), exc_info=True,
+                )
 
             # ── Truth-cluster → Den Intelligente Central (første ægte cluster-wiring) ──
             # Rut den samlede sandheds-beslutning (claim+fact+diagnosis via truth_gate)

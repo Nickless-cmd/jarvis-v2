@@ -100,6 +100,17 @@ async def create_team_session(team_id: str, body: TeamSessionBody) -> dict:
     return {"session_id": s.get("session_id") or s.get("id"), "title": s.get("title")}
 
 
+@router.get("/invites")
+async def my_pending_invites() -> dict:
+    """Pull-baseret invite-levering: brugerens egne pending invites så app'en kan
+    vise "Du er inviteret til <team>" + Accept — uafhængigt af om en push nåede
+    frem (Mikkel-test 2026-06-20: push landede aldrig, accept-stien virkede)."""
+    uid = _current_user()
+    if not uid:
+        raise HTTPException(status_code=401, detail="ingen bruger-kontekst")
+    return {"invites": teams.list_pending_invites_for(user_id=uid)}
+
+
 @router.post("/invites/{token}/accept")
 async def accept(token: str) -> dict:
     uid = _current_user()

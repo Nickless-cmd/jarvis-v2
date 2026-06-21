@@ -149,6 +149,33 @@ def get_invite(token: str) -> dict | None:
             "status": r[4], "created_at": r[5], "expires_at": r[6]}
 
 
+def list_pending_invites_for(*, user_id: str, email: str = "") -> list[dict]:
+    """Pull-baseret invite-levering: alle pending, ikke-udløbne invites hvor
+    invited_email matcher brugerens user_id ELLER email. invited_email gemmes
+    rå (kan være et discord-id ELLER en email afhængigt af hvordan der blev
+    inviteret), så vi matcher mod begge. Returnerer kort med team-navn så app'en
+    kan vise "Du er inviteret til <navn>" + en Accept-knap. Robust mod at en push
+    aldrig nåede frem (Mikkel-test 2026-06-20)."""
+    ids = [s for s in {(user_id or "").strip(), (email or "").strip()} if s]
+    if not ids:
+        return []
+    now = _now_iso()
+    placeholders = ",".join("?" for _ in ids)
+    with connect() as conn:
+        rows = conn.execute(
+            f"SELECT i.token, i.team_id, t.name, i.invited_by, i.created_at, i.expires_at "
+            f"FROM team_invites i JOIN teams t ON t.team_id = i.team_id "
+            f"WHERE i.status = 'pending' AND i.expires_at > ? "
+            f"AND i.invited_email IN ({placeholders})",
+            (now, *ids),
+        ).fetchall()
+    return [
+        {"token": r[0], "team_id": r[1], "team_name": r[2], "invited_by": r[3],
+         "created_at": r[4], "expires_at": r[5]}
+        for r in rows
+    ]
+
+
 def accept_invite(token: str, *, accepting_user_id: str) -> str:
     """Valider + acceptér et invite. Tilføjer brugeren som editor og markerer
     token accepted. Returnerer team_id. Rejser ValueError ved ugyldigt/udløbet/

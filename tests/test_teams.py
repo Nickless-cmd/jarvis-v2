@@ -326,3 +326,33 @@ def test_team_session_create_and_list(tmp_path, monkeypatch):
     from fastapi import HTTPException
     with pytest.raises(HTTPException):
         asyncio.run(troute.team_sessions(t["team_id"]))
+
+
+def test_list_pending_invites_for_matches_id_or_email(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Familie", owner_user_id="bjorn")
+    # Inviteret ved discord-id (som Mikkel-testen):
+    teams.create_invite(t["team_id"], invited_email="238975101381378048", invited_by="bjorn")
+    # Inviteret ved email:
+    teams.create_invite(t["team_id"], invited_email="ven@example.com", invited_by="bjorn")
+
+    by_id = teams.list_pending_invites_for(user_id="238975101381378048")
+    assert len(by_id) == 1
+    assert by_id[0]["team_name"] == "Familie"
+    assert by_id[0]["token"]
+
+    by_email = teams.list_pending_invites_for(user_id="nope", email="ven@example.com")
+    assert len(by_email) == 1
+
+    # Ingen match:
+    assert teams.list_pending_invites_for(user_id="fremmed") == []
+
+
+def test_list_pending_invites_excludes_accepted(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    t = teams.create_team("Familie", owner_user_id="bjorn")
+    tok = teams.create_invite(t["team_id"], invited_email="mikkel", invited_by="bjorn")
+    assert len(teams.list_pending_invites_for(user_id="mikkel")) == 1
+    teams.accept_invite(tok, accepting_user_id="mikkel")
+    # Efter accept skal den IKKE længere vises som pending:
+    assert teams.list_pending_invites_for(user_id="mikkel") == []

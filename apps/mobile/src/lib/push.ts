@@ -7,7 +7,7 @@ import { replyToSession } from './replyToSession'
 /** id på notifikationens "Svar"-action (Direct Reply / RemoteInput). */
 export const REPLY_ACTION_ID = 'jarvis-reply'
 
-export type PushData = { kind: string; session_id?: string; run_id?: string; preview?: string; notif_id?: string }
+export type PushData = { kind: string; session_id?: string; run_id?: string; title?: string; preview?: string; notif_id?: string }
 
 /** Pure: byg notifikations-felter ud fra data + (evt.) hentet beskedtekst. Testbar. */
 export function buildNotification(data: PushData, fetchedBody: string | null) {
@@ -16,6 +16,11 @@ export function buildNotification(data: PushData, fetchedBody: string | null) {
   }
   if (data.kind === 'initiative') {
     return { title: 'Jarvis', body: data.preview ?? 'Jarvis vil sige noget', data }
+  }
+  if (data.kind === 'team_invite') {
+    // Backend sender title+preview i payload (commit 45eea82f). Uden denne case
+    // faldt team-invites igennem til "Jarvis svarede" (Mikkel-test 2026-06-20).
+    return { title: data.title ?? 'Invitation til team', body: data.preview ?? 'Du er blevet inviteret til et team', data }
   }
   // answer_ready
   return { title: 'Jarvis svarede', body: fetchedBody ?? 'Nyt svar', data }

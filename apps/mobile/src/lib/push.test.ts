@@ -33,4 +33,19 @@ describe('buildNotification', () => {
     expect(n.title).toMatch(/Påmindelse/)
     expect(n.body).toContain('Ring til lægen')
   })
+
+  it('team_invite -> bruger title+preview, IKKE "Jarvis svarede"', () => {
+    const n = buildNotification(
+      { kind: 'team_invite', title: 'Invitation til Familie', preview: 'Bjørn inviterede dig til Familie' },
+      null,
+    )
+    expect(n.title).toBe('Invitation til Familie')
+    expect(n.body).toContain('inviterede dig')
+    expect(n.title).not.toMatch(/svarede/)
+  })
+
+  it('team_invite uden title -> fallback', () => {
+    const n = buildNotification({ kind: 'team_invite' }, null)
+    expect(n.title).toBe('Invitation til team')
+  })
 })

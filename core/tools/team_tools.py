@@ -75,14 +75,17 @@ def _deliver_invite(team_id: str, invitee: str, token: str, inviter: str) -> dic
             target_uid = ""
     if target_uid:
         try:
-            import core.services.proactive_router as pr
-            pr.route(target_uid, {
+            # Phase 2: gå gennem den samlede router (device-aware via udvidet rank()
+            # + per-bruger-præference + quiet hours + fallback) i stedet for direkte
+            # proactive_router. Lukker leverings-hullet fra Mikkel-testen.
+            from core.services.notification_router import route_proactive_notification
+            r = route_proactive_notification(target_uid, "team_invite", {
                 "kind": "team_invite",
                 "title": f"Invitation til {team_name}",
                 "preview": f"{inviter} inviterede dig til {team_name}",
                 "team_id": team_id, "token": token,
-            }, "team_invite")
-            delivered["in_app"] = True
+            }, importance="high")
+            delivered["in_app"] = bool(r.get("delivered"))
         except Exception:
             pass
 

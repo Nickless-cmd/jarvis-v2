@@ -295,3 +295,11 @@ def exec_set_recurring_channel(args: dict) -> dict:
 2. **Should morgenbriefing create a chat message in the app, or just a push notification?** (Current proposal: if `app`, create chat message; if `push`, only notification)
 3. **Should Telegram be a first-class channel or just a fallback?** (Current proposal: first-class, but low priority in auto mode)
 4. **Should we allow per-contact preferences (e.g., Mikkel gets Discord, Bjørn gets app)?** (Current proposal: yes, it's per-user)
+---
+
+## 10. Implementerings-status (opdateres under bygning)
+
+- **Phase 1 ✅** (commit 3bb939cf): `device_presence.rank()` augmenteret med registrerede FCM-tokens (score 50) + guarded Discord/Telegram-hooks. Live-verificeret: Mikkel rank() returnerer nu hans token uden aktivt ping.
+- **Phase 2 ✅ (kerne):** `core/services/notification_router.py` (get/set_preferences, resolve_channel, is_quiet_hours m. midnats-wrap, route_proactive_notification, delayed-kø + fire_due_delayed). `notification_preferences` + `delayed_notifications`-tabeller i db.py. Wiret: `team_tools.exec_invite_to_team` (team_invite) + `action_router._reach_out` (reach_out, ntfy-fallback bevaret).
+  - **Vokabular afklaret:** kanaler = `auto | mobile | desktop | push | discord | telegram` (den gamle `app`-værdi er erstattet). §3.5/§4 skal læses med dette vokabular.
+  - **DEFERRET i Phase 2:** `wakeup_dispatcher`-wiring — wakeups trigger autonome RUNS (ikke kun notifikationer) og har en load-bearing "aldrig-fremmed-session"-invariant; rewiring kræver egen design (run-vs-notification-split, spec §3.5). Tages som separat opgave.

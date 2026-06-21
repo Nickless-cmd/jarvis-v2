@@ -313,7 +313,25 @@ def _reach_out(
         return entry
 
     ntfy_priority = "high" if importance == "high" else "default"
-    sent = _send_ntfy(message, priority=ntfy_priority)
+    # Phase 2: lever via den samlede router (device-aware + præference + fallback)
+    # i stedet for hardcodet ntfy. Routeren falder selv til ntfy hvis intet andet
+    # virker, så adfærden er mindst lige så robust som før.
+    sent = False
+    try:
+        from core.services.notification_router import route_proactive_notification
+        from core.runtime.settings import load_settings as _ls
+        _owner = str(_ls().extra.get("owner_user_id") or "").strip()
+        if _owner:
+            _r = route_proactive_notification(
+                _owner, "reach_out",
+                {"kind": "reach_out", "title": "Jarvis", "preview": message[:240], "body": message},
+                importance=("high" if importance == "high" else "normal"),
+            )
+            sent = bool(_r.get("delivered"))
+    except Exception:
+        sent = False
+    if not sent:
+        sent = _send_ntfy(message, priority=ntfy_priority)
     entry = {
         "at": datetime.now(_LOCAL_TZ).isoformat(),
         "outcome": "sent" if sent else "skipped",

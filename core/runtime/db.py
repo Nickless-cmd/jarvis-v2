@@ -248,6 +248,35 @@ def _ensure_chat_session_team_column(conn) -> None:
         conn.execute("ALTER TABLE chat_sessions ADD COLUMN team_id TEXT")
 
 
+def _ensure_notification_tables(conn) -> None:
+    """Unified notification routing (spec 2026-06-20 §3.1): per-bruger-præferencer
+    + quiet-hours-kø. Idempotent. Kanalværdier: auto|mobile|desktop|push|discord|telegram."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS notification_preferences (
+            user_id      TEXT PRIMARY KEY,
+            pref_global  TEXT NOT NULL DEFAULT 'auto',
+            briefing     TEXT,
+            reminder     TEXT,
+            reach_out    TEXT,
+            team_invite  TEXT,
+            wakeup       TEXT,
+            quiet_start  TEXT NOT NULL DEFAULT '23:00',
+            quiet_end    TEXT NOT NULL DEFAULT '07:00',
+            updated_at   TEXT
+        )""")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS delayed_notifications (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id       TEXT NOT NULL,
+            notif_type    TEXT NOT NULL,
+            payload_json  TEXT NOT NULL,
+            importance    TEXT NOT NULL DEFAULT 'normal',
+            deliver_after TEXT NOT NULL,
+            created_at    TEXT NOT NULL,
+            delivered     INTEGER NOT NULL DEFAULT 0
+        )""")
+
+
 def init_db() -> None:
     with connect() as conn:
         conn.execute(
@@ -570,6 +599,7 @@ def init_db() -> None:
         )
         _ensure_chat_session_workspace_columns(conn)
         _ensure_teams_tables(conn)
+        _ensure_notification_tables(conn)
         _ensure_chat_session_team_column(conn)
         conn.execute(
             """

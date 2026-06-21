@@ -24,6 +24,58 @@ from core.services.visible_runs_sse_v2 import translate_to_v2
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
+def maybe_handle_override(text: str, session_id: str) -> dict | None:
+    """Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` /
+    `!revoke-override`. Wiret her ligesom discord/telegram-gatewayen — ellers
+    aktiverer Bjørns override ALDRIG remote, og operator-tools i en member-session
+    (fx hans mors Mac) forbliver tool_not_permitted (root cause, Bjørn 2026-06-21).
+
+    Thin wire; ren TOTP-logik i override_command. Returnerer handler-dict'et (med
+    `reply`) hvis teksten ER en override-kommando, ellers None (normal tur kører).
+    Best-effort: en fejl må aldrig spærre normal chat → returnér None ved exception.
+    """
+    try:
+        from core.services.override_command import handle_override_command
+        from core.identity.users import get_owner, get_totp_seed
+        _owner = get_owner()
+        _seed = get_totp_seed(discord_id=_owner.discord_id) if _owner else ""
+        return handle_override_command(text or "", session_id=session_id, owner_seed=_seed)
+    except Exception:
+        return None
+
+
+def _override_v2_response(
+    reply: str, *, session_id: str, model: str, provider: str, lane: str
+) -> StreamingResponse:
+    """Byg et minimalt men protokol-korrekt v2-SSE-svar for en override-kvittering,
+    så turen kortsluttes uden et LLM-run (klienten forlader kun 'working' på
+    message_stop — derfor SKAL hele sekvensen emitteres)."""
+    from apps.api.jarvis_api.sse_v2_events import (
+        MessageStart, ContentBlockStart, ContentBlockDelta,
+        ContentBlockStop, MessageDelta, MessageStop,
+    )
+
+    async def _gen():
+        yield MessageStart(run_id="override", model=model, provider=provider,
+                           lane=lane, session_id=session_id).to_sse_line()
+        yield ContentBlockStart(index=0, block_type="text").to_sse_line()
+        yield ContentBlockDelta(index=0, delta_type="text_delta", content=reply).to_sse_line()
+        yield ContentBlockStop(index=0).to_sse_line()
+        yield MessageDelta(stop_reason="end_turn").to_sse_line()
+        yield MessageStop().to_sse_line()
+
+    return StreamingResponse(
+        _gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Stream-Protocol": "v2-anthropic",
+            "X-Run-Id": "override",
+        },
+    )
+
+
 @router.post("/stream/v2")
 async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     """Anthropic-style streaming alternative til /chat/stream.
@@ -72,6 +124,27 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     # message_start metadata (klienten skal bruge dem til at display'e
     # "kører på X-model" + til debugging).
     settings = load_settings()
+
+    # Owner-override (§6.3) — TOTP-verificeret elevering fra denne (evt. member-)
+    # session. SKAL ligge FØR run-start: en `!override <kode>` kortsluttes med en
+    # kvittering og kører ALDRIG et LLM-run. Dette er Bjørns remote kill-switch/
+    # kontrol — uden denne wiring aktiverede den aldrig i app-kanalen.
+    _ov = maybe_handle_override(request.message, session_id)
+    if _ov is not None:
+        _reply = str(_ov.get("reply") or "")
+        try:
+            append_chat_message(session_id=session_id, role="assistant",
+                                content=_reply, user_id=None)
+        except Exception:
+            pass
+        print(f"[chat/stream/v2] override-kommando: session={session_id[:20]} "
+              f"ok={_ov.get('ok')} action={_ov.get('action') or _ov.get('reason')}", flush=True)
+        return _override_v2_response(
+            _reply, session_id=session_id,
+            model=settings.visible_model_name,
+            provider=settings.visible_model_provider,
+            lane=settings.primary_model_lane,
+        )
 
     # Mode → tool-scope. "chat" begrænser værktøjs-listen til samtale-
     # allowlisten (se core.tools.tool_scoping). Andre modes / tom = ubegrænset

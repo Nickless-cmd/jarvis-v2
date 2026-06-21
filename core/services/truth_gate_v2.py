@@ -14,13 +14,21 @@ from core.services.gate_kernel import Decision, GateClass, Verdict
 _ACTION_PATTERNS: dict[str, re.Pattern] = {
     "ran": re.compile(r"\bjeg\s+kører lige\b|\bjeg\s+kørte\b|\bkørte\s+test", re.IGNORECASE),
     "committed": re.compile(r"\b(committe?de|committet|jeg\s+committed?)\b", re.IGNORECASE),
-    "called_tool": re.compile(r"\bjeg\s+kaldte\b", re.IGNORECASE),
+    "called_tool": re.compile(r"\bkaldte\b", re.IGNORECASE),   # 'jeg kaldte' OG 'kaldte jeg'
     "read_file": re.compile(r"\bjeg\s+(læste|åbnede|læser lige)\b.*\b(fil|file)\b", re.IGNORECASE),
     "deployed": re.compile(r"\bjeg\s+(deployede|genstartede|deployer lige)\b", re.IGNORECASE),
     "verified": re.compile(r"\bjeg\s+(verificerede|tjekkede|bekræftede)\b", re.IGNORECASE),
     "output": re.compile(r"\bher\s+er\s+(output|resultat|loggen|svaret)\b", re.IGNORECASE),
     "commit_hash": re.compile(r"\b[0-9a-f]{7,40}\b"),
 }
+
+# Eksekverings-signal: et verbum/kommando der indikerer at en kodeblok i nærheden
+# PÅSTÅS at være tool-output (uanset ordstilling). Robust mod nye formuleringer.
+_EXEC_SIGNAL = re.compile(
+    r"\b(kaldte|kørte|brugte|committe?de|committet|deployede|genstartede|executed|ran|fik)\b"
+    r"|`(git|bash|journalctl|date|ls|cat|grep|python3?|pytest|npm|systemctl|curl|sed|awk)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -43,18 +51,23 @@ def detect_action_claims(text: str) -> list[ActionClaim]:
         return out
     detected: set[str] = set()
     for kind, pat in _ACTION_PATTERNS.items():
-        if kind == "commit_hash":
-            continue
+        if kind in ("commit_hash", "output"):
+            continue          # håndteres specielt nedenfor
         m = pat.search(text)
-        if not m:
-            continue
-        payload = ""
-        if kind == "output":
-            fence = _FENCE.search(text, m.end())
-            if fence:
-                payload = fence.group(1).strip()
-        out.append(ActionClaim(kind=kind, matched_text=m.group(0), payload=payload))
-        detected.add(kind)
+        if m:
+            out.append(ActionClaim(kind=kind, matched_text=m.group(0)))
+            detected.add(kind)
+    # output-påstand: "her er output" ELLER (eksekverings-signal + en kodeblok).
+    # Den efterfølgende fenced-block er det citerede 'tool-output' (payload).
+    _fence = _FENCE.search(text)
+    _output_phrase = _ACTION_PATTERNS["output"].search(text)
+    if _fence and (_output_phrase or _EXEC_SIGNAL.search(text)):
+        out.append(ActionClaim(
+            kind="output",
+            matched_text=(_output_phrase.group(0) if _output_phrase else "exec+block"),
+            payload=_fence.group(1).strip(),
+        ))
+        detected.add("output")
     has_ctx = bool(re.search(r"\b(commit|git|log)\b", text, re.IGNORECASE)) or "output" in detected
     if has_ctx:
         m = _ACTION_PATTERNS["commit_hash"].search(text)

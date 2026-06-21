@@ -88,6 +88,18 @@ def test_output_block_not_matching_real_results_is_red_even_with_tools():
     assert v.decision is Decision.RED and (v.evidence or {}).get("severity") == "hard"
 
 
+def test_inverted_word_order_with_block_is_red():
+    # "Så kaldte jeg journalctl ... ```log```" — omvendt ordstilling, ingen 'her er output'.
+    ctx = {
+        "text": "Så kaldte jeg `journalctl` for at tjekke:\n```\nJun 21 TRUTH verdict RED fabrication\n```",
+        "executed_tool_names": ["operator_bash"],
+        "followup_exchanges": [_ex("helt andet ægte output")],
+        "run_id": "r",
+    }
+    v = truth_gate_v2(ctx)
+    assert v.decision is Decision.RED and (v.evidence or {}).get("severity") == "hard"
+
+
 def test_output_block_matching_real_result_is_green():
     real = "Sun Jun 21 19:03:00 CEST 2026"
     ctx = {

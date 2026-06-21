@@ -212,9 +212,21 @@ af klassen (§11.3).
    (§11). `decide()` findes allerede (run_phase). Fejl-fangst er IKKE en senere fase.
 2. **Fit-pass over alle clusters** (samme kortlægning som blev lavet for Loop) → afgør
    pr. nerve: ægte merge vs. instrumentér-på-stedet. Giver os det *reelle* tal.
-3. **Instrumentér cluster for cluster.** For hver: nerverne kalder Centralen; paritet
-   bevises offline via `gate_eval`; live-verificér; commit. Sikkerheds-clusters sidst,
-   fail-closed, paritet på fuldt sikkerheds-fixturset FØR fail-mode ændres.
+3. **Instrumentér cluster for cluster** — fast afviklings-kontrakt pr. cluster, så vi
+   ALDRIG ender med død kode eller halvt-afviklede gates:
+   1. Byg den nye (merge) eller instrumentér på stedet.
+   2. **Paritet bevises grønt** offline via `gate_eval` (identisk beslutning som de
+      gamle gates på fixtursettet) — FØR noget flippes.
+   3. **Atomisk flip:** ny gate TÆNDES i samme commit som den gamle SLUKKES. Aldrig
+      to gates med effekt på samme tid (intet dobbelt-live-vindue).
+   4. Live-verificér.
+   5. **Fjern den gamle gate-kode** når call-sites er rene — i SAMME cluster, ikke
+      "senere". Fit-kolonnen i `central_catalog` er afviklings-listen: `merge` → gammel
+      fjernes; `instrument` → logik flytter til Centralen, gammel standalone fjernes;
+      `leave` → bliver (daemon/filter/tool/persistens, kun observeret).
+
+   Sikkerheds-clusters sidst, fail-closed, paritet på fuldt sikkerheds-fixturset FØR
+   fail-mode ændres.
 4. **Mission Control-app** subscriber på sporet (separat plan).
 5. **Surfaces → tools → 30+ daemons** genbruger samme mønster (separate planer).
 

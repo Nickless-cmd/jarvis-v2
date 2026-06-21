@@ -2091,6 +2091,29 @@ async def _stream_visible_run(
                                 _persist_reasoning = _a_round_reasoning
                             continue
 
+                    # ── Prosa-tool-call-redning (followup, tool-leak-fix 2026-06-21) ──
+                    # deepseek-v4-flash narrer nogle gange tool-kald som prosa i
+                    # followup-runder ([navn]: {json}) i stedet for strukturerede kald.
+                    # Konvertér dem til ægte kald så denne runde EKSEKVERER dem (i stedet
+                    # for at behandle teksten som det endelige svar og lække/blokere).
+                    if not _a_tool_calls and _a_parts:
+                        try:
+                            from core.services.prose_tool_calls import extract_prose_tool_calls
+                            from core.tools.simple_tools import _TOOL_HANDLERS as _ptc_handlers_fu
+                            _fu_cleaned, _fu_calls = extract_prose_tool_calls(
+                                "".join(_a_parts), _ptc_handlers_fu.keys(),
+                            )
+                            if _fu_calls:
+                                _a_tool_calls.extend(_fu_calls)
+                                _a_parts[:] = [_fu_cleaned] if _fu_cleaned else []
+                                logger.warning(
+                                    "prose-tool-call-redning (followup r%d): konverterede "
+                                    "%d prosa-kald run_id=%s",
+                                    _agentic_round + 1, len(_fu_calls), run.run_id,
+                                )
+                        except Exception as _fu_ptc_exc:
+                            logger.debug("prose-tool-call-parse (followup) fejlede: %s", _fu_ptc_exc)
+
                     # If mid-round steers landed, inject them as user messages
                     # and skip tool execution this round — the LLM call was
                     # abandoned mid-token; we'll re-enter the loop with the

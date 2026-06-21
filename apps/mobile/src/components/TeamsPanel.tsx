@@ -53,6 +53,18 @@ export function TeamsPanel({ config, onSelectSession }: { config: ApiConfig | nu
     catch { setMsg('Ugyldig eller udløbet kode') }
   }
 
+  // Uden config (ingen gyldig auth — fx efter QR-paring der ikke gav et
+  // login-token) ville alle handlers tavst no-oppe. Vis tilstanden i stedet,
+  // så fejlen er synlig (Mikkel-test 2026-06-20: "knapper gør ingenting").
+  if (!config) {
+    return (
+      <View style={styles.root}>
+        <Text style={styles.heading}>TEAMS</Text>
+        <Text style={styles.muted}>Log ind for at bruge teams</Text>
+      </View>
+    )
+  }
+
   return (
     <View style={styles.root}>
       <Text style={styles.heading}>TEAMS</Text>

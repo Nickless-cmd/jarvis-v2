@@ -111,6 +111,14 @@ def guard_incoming(message: str, *, session_id: str, user_id: str) -> dict | Non
             return {"action": "locked", "reply": (
                 "Din konto er midlertidigt låst efter gentagne sikkerheds-hændelser. "
                 "Kontakt ejeren (Bjørn) for at låse op.")}
+        # Rate-limit + prompt-injection-scan (logger/notificerer; rate-limit kan låse).
+        try:
+            from core.services import abuse_monitor
+            _ab = abuse_monitor.process_incoming(message, session_id=sid, user_id=user_id)
+            if _ab is not None:
+                return _ab
+        except Exception:
+            pass
         return check_identity(
             message, session_id=sid, session_user_id=user_id,
             session_display_name=_display_name_for(user_id),

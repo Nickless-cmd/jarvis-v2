@@ -482,6 +482,20 @@ async def translate_to_v2(
                     _state["message_stopped"] = True
                 except Exception:
                     pass  # best-effort — sentinel nedenfor lukker uanset hvad
+            # ── KRITISK (2026-06-21): luk den underliggende legacy-generator ──
+            # _translation_loop BRYDER ud ved 'done' (break) uden at udtømme
+            # legacy_iter. `async for ... break` aclose'r IKKE automatisk → så
+            # _stream_visible_run's finally — der spawner _post_process (fact_gate,
+            # diagnosis, claim-scanner, memory-postprocess, auto-continuation) —
+            # kørte ALDRIG for follow-runs (desk/mobil). aclose() raiser
+            # GeneratorExit ved den suspenderede 'done'-yield → finally kører →
+            # post-process spawnes. Det er roden til "truth-gates fyrer aldrig".
+            try:
+                _aclose = getattr(legacy_iter, "aclose", None)
+                if _aclose is not None:
+                    await _aclose()
+            except Exception:
+                pass
             # Signaler at translation er færdig — ping-loop stoppes via
             # outer cancel, og hovedløkken nedenfor breaker når den ser
             # sentinel.

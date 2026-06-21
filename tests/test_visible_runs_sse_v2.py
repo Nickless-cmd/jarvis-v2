@@ -405,3 +405,25 @@ async def test_terminal_guarantee_on_blocked_legacy_stream(monkeypatch):
     )), timeout=5)
     kinds = [e[0] for e in _parse_v2_events(output)]
     assert "message_stop" in kinds, f"ingen message_stop — desk ville hænge: {kinds}"
+
+
+@pytest.mark.asyncio
+async def test_underlying_generator_aclosed_after_done():
+    """KRITISK regression (2026-06-21): translate_to_v2 BRYDER ud ved 'done' uden
+    at udtømme legacy_iter. Uden eksplicit aclose kører _stream_visible_run's finally
+    (der spawner _post_process: fact_gate/diagnosis/claim/memory) ALDRIG for follow-runs.
+    Verificér at translator'en lukker den underliggende generator → dens finally kører."""
+    finally_ran = {"v": False}
+
+    async def _legacy():
+        try:
+            yield _legacy_sse("delta", {"type": "delta", "run_id": "v1", "delta": "hej"})
+            yield _legacy_sse("done", {"type": "done", "run_id": "v1", "status": "completed"})
+            # frames EFTER done (som _post_process-regionens scan_correction) — translate
+            # breaker ved done og når aldrig hertil; generatoren efterlades suspenderet.
+            yield _legacy_sse("scan_correction", {"type": "scan_correction", "run_id": "v1"})
+        finally:
+            finally_ran["v"] = True
+
+    await _collect(translate_to_v2(_legacy(), run_id="v1"))
+    assert finally_ran["v"] is True, "legacy-generatorens finally kørte ikke — _post_process ville dø"

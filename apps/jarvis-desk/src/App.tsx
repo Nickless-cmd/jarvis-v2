@@ -29,7 +29,6 @@ import { CodeView } from './views/CodeView'
 import { MemoryView } from './views/MemoryView'
 import { SchedulingView } from './views/SchedulingView'
 import { ImageGalleryView } from './views/ImageGalleryView'
-import { SettingsView } from './views/SettingsView'
 import { Sidebar, type Surface } from './components/shell/Sidebar'
 import { StatusBar } from './components/shell/StatusBar'
 import './styles/tokens.css'
@@ -40,6 +39,17 @@ import './styles/app.css'
 export function App() {
   const { settings, auth, isConfigured, update } = useSettings()
   const [surface, setSurface] = useState<Surface>('chat')
+
+  // Konsolidering (Bjørn 2026-06-21): ÉN settings-flade. Tandhjul/genvej/SecondaryNav
+  // navigerede før til en separat SettingsView (dobbelt-truth + ingen scroll). Nu
+  // omdirigeres 'settings' instant til cowork-command-centerets Indstillinger-zone,
+  // hvor ALLE sektioner bor.
+  useEffect(() => {
+    if (surface === 'settings') {
+      emitZone('settings')
+      setSurface('cowork')
+    }
+  }, [surface])
 
   if (!settings) return null
   if (!isConfigured) return <SetupScreen onSave={(cfg) => void update(cfg)} />
@@ -206,7 +216,6 @@ function Shell({
           {surface === 'memory' && <MemoryView role={role} />}
           {surface === 'gallery' && <ImageGalleryView onOpenChat={() => setSurface('chat')} />}
           {surface === 'scheduling' && <SchedulingView role={role} />}
-          {surface === 'settings' && <SettingsView />}
         </ShellWithPanel>
         <StatusBar model={model} sessionId={activeId} />
       </main>

@@ -20,6 +20,12 @@ import { AppsSection } from '../components/settings/AppsSection'
 import { McpSection } from '../components/settings/McpSection'
 import { TotpSetup } from '../components/settings/TotpSetup'
 import { PluginsPanel } from '../components/settings/PluginsPanel'
+import { ConnectionSection } from '../components/settings/ConnectionSection'
+import { LocationSection } from '../components/settings/LocationSection'
+import { NotificationsSection } from '../components/settings/NotificationsSection'
+import { DataPrivacyPanel } from '../components/DataPrivacyPanel'
+import { KeyboardHelpPanel } from '../components/KeyboardHelpPanel'
+import { AboutPanel } from '../components/AboutPanel'
 import { activeAgentsToView } from '../lib/coworkApi'
 
 /** Cowork command center: to zoner. Mission Control = rolle-bevidst rude-grid
@@ -71,18 +77,24 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
 
   const settingsZone = (
     <div className="cowork-settings">
+      <ConnectionSection />
       <AccountSection config={config} />
       <WorkspaceSection config={config} />
       <MemorySection config={config} />
       <PermissionsSection config={config} />
+      <LocationSection />
+      <NotificationsSection config={config} />
       <AppsSection config={config} />
       {auth?.role === 'owner' && <McpSection config={config} />}
       <KvoteSection config={config} />
       <SprogSection config={config} />
       <ThemeSection />
+      <DataPrivacyPanel config={config} />
       {auth?.role === 'owner' && <JarvisSection config={config} />}
       {auth?.role === 'owner' && <TotpSetup config={config} />}
       {auth?.role === 'owner' && <PluginsPanel config={config} />}
+      <KeyboardHelpPanel />
+      <AboutPanel apiBaseUrl={settings?.apiBaseUrl} role={auth?.role} model={settings?.defaultModel} />
     </div>
   )
 

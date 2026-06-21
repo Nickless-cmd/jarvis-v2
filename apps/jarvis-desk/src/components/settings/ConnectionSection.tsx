@@ -1,17 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useSettings } from '../hooks/useSettings'
-import { PluginsPanel } from '../components/settings/PluginsPanel'
-import { LocationSection } from '../components/settings/LocationSection'
-import { NotificationsSection } from '../components/settings/NotificationsSection'
-import { TotpSetup } from '../components/settings/TotpSetup'
-import { DataPrivacyPanel } from '../components/DataPrivacyPanel'
-import { QuotaPanel } from '../components/QuotaPanel'
-import { AboutPanel } from '../components/AboutPanel'
-import { KeyboardHelpPanel } from '../components/KeyboardHelpPanel'
+import { useSettings } from '../../hooks/useSettings'
 
-/** Indstillinger — redigerbar: server, token, default-model + thinking.
- *  Server/token persisteres via Electron-bridge; gemmes ved "Gem". */
-export function SettingsView() {
+/** Forbindelse + standardmodel — server/token/model/tænkning. Udskilt fra den gamle
+ *  SettingsView (konsolidering: ÉN settings-flade i cowork, ingen dobbelt-truth). */
+export function ConnectionSection() {
   const { settings, auth, update } = useSettings()
   const [apiBaseUrl, setApiBaseUrl] = useState('')
   const [authToken, setAuthToken] = useState('')
@@ -19,7 +11,6 @@ export function SettingsView() {
   const [defaultThinking, setDefaultThinking] = useState<'think' | 'fast'>('think')
   const [saved, setSaved] = useState(false)
 
-  // Synk lokale felter når settings loader/ændrer sig.
   useEffect(() => {
     if (!settings) return
     setApiBaseUrl(settings.apiBaseUrl)
@@ -47,8 +38,8 @@ export function SettingsView() {
   }
 
   return (
-    <div className="view-placeholder settings-view">
-      <h2>Indstillinger</h2>
+    <div className="settings-section">
+      <h3>Forbindelse &amp; model</h3>
       <div className="settings-form">
         <label>
           <span>Server (API base URL)</span>
@@ -72,47 +63,14 @@ export function SettingsView() {
             <option value="fast">fast (intuitivt)</option>
           </select>
         </label>
-
         <div className="settings-meta">
           Logget ind som <strong>{auth?.display_name ?? '–'}</strong> ({auth?.role ?? '–'})
         </div>
-
         <div className="settings-actions">
-          <button type="button" className="settings-save" disabled={!dirty} onClick={() => void save()}>
-            Gem
-          </button>
+          <button type="button" className="settings-save" disabled={!dirty} onClick={() => void save()}>Gem</button>
           {saved && <span className="settings-saved">Gemt ✓</span>}
         </div>
       </div>
-
-      {auth?.role === 'owner' && (
-        <TotpSetup
-          config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
-        />
-      )}
-      {auth?.role === 'owner' && (
-        <PluginsPanel
-          config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
-        />
-      )}
-
-      <QuotaPanel
-        config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
-      />
-
-      <DataPrivacyPanel
-        config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
-      />
-
-      <LocationSection />
-
-      <NotificationsSection
-        config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
-      />
-
-      <KeyboardHelpPanel />
-
-      <AboutPanel apiBaseUrl={settings?.apiBaseUrl} role={auth?.role} model={defaultModel} />
     </div>
   )
 }

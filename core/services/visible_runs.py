@@ -3661,6 +3661,30 @@ async def _stream_visible_run(
             except Exception:
                 pass
 
+            # ── Truth-cluster → Den Intelligente Central (første ægte cluster-wiring) ──
+            # Rut den samlede sandheds-beslutning (claim+fact+diagnosis via truth_gate)
+            # gennem Centralens decide-ansigt: ÉT struktureret trace-spor pr. run_id +
+            # live kill-switch + circuit-breaker. OBSERVABILITET nu — de inline-gates
+            # nedenfor beholder effekten indtil pre-done-flip'et (real-time-blokering)
+            # landes som bevidst næste skridt (Truth-cluster Fase 2). Best-effort.
+            try:
+                from core.services.central_core import central as _central_truth
+                from core.services.gate_truth import truth_gate as _truth_gate_fn
+                _central_truth().decide(
+                    "truth",
+                    {
+                        "text": visible_output_text,
+                        "tool_names": list(_executed_tool_names or []),
+                        "tools_used": list(_executed_tool_names or []),
+                        "run_id": run.run_id,
+                        "session_id": getattr(run, "session_id", "") or "",
+                    },
+                    _truth_gate_fn,
+                    cluster="truth",
+                )
+            except Exception:
+                pass
+
             # ── Fact-Gate (2026-06-13, Bjørn approve) ─────────────────
             # Blokerer beskeden hvis den indeholder uverificerbare faktuelle
             # påstande om commits, tests, services, cache-procenter mv.

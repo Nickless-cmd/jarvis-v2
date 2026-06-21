@@ -30,6 +30,13 @@ def exec_create_team(args: dict[str, Any]) -> dict[str, Any]:
     if not uid:
         return {"status": "error", "error": "kunne ikke afgøre hvem der opretter teamet"}
     t = teams.create_team(name, owner_user_id=uid)
+    # Auto-opret én default delt session så teamet straks kan åbnes (ellers
+    # synligt men ikke-klikbart, 0 sessioner — Mikkel-test 2026-06-20).
+    try:
+        from core.services.chat_sessions import create_chat_session
+        create_chat_session(title="Team-chat", team_id=t["team_id"])
+    except Exception:
+        pass
     return {"status": "ok", "team_id": t["team_id"], "name": t["name"],
             "message": f"Team '{t['name']}' oprettet — du er owner."}
 

@@ -51,6 +51,14 @@ async def create_team(body: CreateTeamBody) -> dict:
     if not name:
         raise HTTPException(status_code=400, detail="team-navn mangler")
     t = teams.create_team(name, owner_user_id=uid)
+    # Auto-opret én default delt session så et nyt team STRAKS kan åbnes — uden
+    # den var teamet synligt men "kunne ikke klikkes ind i" (Mikkel-test 2026-06-20,
+    # 0 sessioner). Best-effort: team-oprettelsen lykkes uanset.
+    try:
+        from core.services.chat_sessions import create_chat_session
+        create_chat_session(title="Team-chat", team_id=t["team_id"])
+    except Exception:
+        pass
     return _team_view(t)
 
 

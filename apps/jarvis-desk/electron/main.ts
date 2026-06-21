@@ -50,6 +50,12 @@ app.commandLine.appendSwitch('ignore-gpu-blocklist')
 app.commandLine.appendSwitch('disable-background-timer-throttling')
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+// KRITISK på macOS (Bjørn 2026-06-21): den native occlusion-beregning giver
+// falske positiver → Chromium throttler hele renderer'en til ~0 FPS selv når
+// vinduet ER synligt → CSS-animationer (spinner) dør + streaming/DOM-opdateringer
+// halter. disable-backgrounding-occluded-windows alene rører ikke selve
+// occlusion-DETEKTIONEN. Slå den fra helt.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
 
 // Suppress dev-only CSP warnings i renderer. Vi VED at vi har 'unsafe-eval'
 // i dev — det er for at Vite kan HMR'e. Prod-CSP er stram.
@@ -154,15 +160,27 @@ let traySpinTimer: ReturnType<typeof setInterval> | null = null
 let traySpinFrame = 0
 const TRAY_ROT_FRAMES = 12
 
+// Menulinje-/tray-ikon-størrelse pr. platform. Kilde-PNG er 44×44 (HiDPI). macOS-
+// menulinjen vil have ~18pt (ellers fylder ikonet alt for meget — Bjørn 2026-06-21);
+// Linux-tray ~22px; Windows skalerer selv 44px fint. Uden resize på darwin brugte
+// macOS de rå 44pt → kæmpe ikon.
+function _traySize(): { width: number; height: number } | null {
+  if (process.platform === 'darwin') return { width: 18, height: 18 }
+  if (process.platform === 'linux') return { width: 22, height: 22 }
+  return null
+}
+
 function trayAsset(name: 'idle' | 'bright' | 'attention') {
   const img = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', `tray-${name}.png`))
-  return process.platform === 'linux' ? img.resize({ width: 22, height: 22 }) : img
+  const sz = _traySize()
+  return sz ? img.resize(sz) : img
 }
 
 function trayRotAsset(frame: number) {
   const n = String(frame % TRAY_ROT_FRAMES).padStart(2, '0')
   const img = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', `tray-rot-${n}.png`))
-  return process.platform === 'linux' ? img.resize({ width: 22, height: 22 }) : img
+  const sz = _traySize()
+  return sz ? img.resize(sz) : img
 }
 
 function applyTrayImage(): void {

@@ -837,7 +837,11 @@
 /* Jarvis' presence-mærke (brudt ring) — drejer mens han arbejder, ellers stille. */
 .presence-mark { display: inline-flex; align-items: center; line-height: 0; }
 .presence-mark svg { display: block; transform-origin: 50% 50%; }
-.presence-mark.working svg { animation: presence-spin 1.1s linear infinite; }
+.presence-mark.working svg {
+  animation: presence-spin 1.1s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
 .presence-mark.idle svg { filter: drop-shadow(0 0 3px rgba(110,231,168,0.4)); }
 .presence-mark.error svg { filter: drop-shadow(0 0 3px rgba(226,119,122,0.4)); }
 @keyframes presence-spin { to { transform: rotate(360deg); } }

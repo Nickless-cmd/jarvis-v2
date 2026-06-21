@@ -3644,24 +3644,10 @@ async def _stream_visible_run(
             except Exception as _fg_exc:
                 logger.debug("fact_gate failed: %s", _fg_exc)
 
-            # ── GateKernel shadow (unified-gate A.6) ──────────────────────
-            # OBSERVABILITET KUN: kør post_output-adapterne gennem kernen og emittér
-            # ÉT gate.evaluated-event (hvilke gates fyrede, verdict, latency). Ændrer
-            # INTET i svaret — de eksisterende gates ovenfor har allerede haft effekt.
-            # Shadow-måling før B-H konsoliderer. Best-effort; må aldrig spærre turen.
-            try:
-                from core.services import gate_kernel as _gk, gate_adapters as _ga
-                _k = _gk.kernel()
-                _ga.register_truthgate_adapters_once(_k)
-                _k.run_phase("post_output", {
-                    "text": visible_output_text,
-                    "tool_names": list(_executed_tool_names or []),
-                    "tools_used": list(_executed_tool_names or []),
-                    "run_id": getattr(run, "run_id", ""),
-                    "session_id": getattr(run, "session_id", "") or "",
-                })
-            except Exception:
-                pass
+            # NB: A.6 live-shadow fjernet — placeringen i finally var skrøbelig
+            # (GeneratorExit ved aclose afbrød før shadow). Paritets-måling sker
+            # i stedet offline via core.services.gate_eval (replay/parity/score).
+            # GateKernel + adaptere bevares som fundament for B-H-konsolidering.
 
             # Diagnosis-gate (spec 2026-06-14): fanger uverificerede diagnostiske
             # konklusioner ("er zombie", "X commits bagud", "fyrede ikke") efter

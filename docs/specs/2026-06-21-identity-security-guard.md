@@ -224,7 +224,91 @@ ALTER TABLE chat_sessions ADD COLUMN locked_at TEXT;
 
 ---
 
-## 10. Resolved Decisions
+## 10. Testing
+
+### 10.1 Test coverage per komponent
+
+| Komponent | Test-fil | Coverage-krav |
+|---|---|---|
+| Override store (grant/touch/revoke) | `tests/test_override_store.py` | All 3 operations + TTL expiry + cross-process isolation |
+| TOTP verification | `tests/test_totp_verifier.py` | Valid code, expired code, wrong code, replay attack |
+| Identity mismatch detection | `tests/test_identity_guard.py` | Claim ≠ owner → pushback, 3x → session lock |
+| Session lock | `tests/test_session_lock.py` | Lock/unlock, locked session ignores messages, lock persistence |
+| Account lockdown | `tests/test_account_lockdown.py` | 3 strikes → lockdown, 24h expiry, owner exemption |
+| Abuse monitor (pattern matching) | `tests/test_abuse_monitor.py` | All patterns in §5.1, no false positives on normal messages |
+| Prompt injection detection | `tests/test_prompt_injection.py` | Known patterns encoded/decoded, tool output injection |
+| Rate limiting | `tests/test_rate_limiting.py` | 20 msg/min throttle, 3x → session lock |
+| Sudo with override | `tests/test_sudo_override.py` | Owner+override→sudo, member+override→no sudo, no override→no sudo |
+| Audit log | `tests/test_audit_log.py` | All actions logged, correct fields, queryable |
+| Notification pipeline | `tests/test_abuse_notifications.py` | Bjørn notified on abuse events, format correct |
+
+### 10.2 Edge case tests
+
+| Edge case | Forventet adfærd |
+|---|---|
+| Override udløber midt i en tool-session | Prompt opdateres, næste tool-kald afvises hvis det kræver override |
+| To samtidige override-forsøg (samme bruger, forskellige devices) | Sidste TOTP vinder — gammel override deaktiveres |
+| Member forsøger at claim owner-status uden override | Pushback hver gang, 3x → session lock |
+| Bruger starter ny session efter lock | Lock er per user_id — alle sessions låst |
+| Prompt injection i tool output (web_fetch) | Scanner fanger det før det når LLM prompt |
+| Bruger sender 20+ beskeder på 1 minut | Rate limited — warning, 3x → session lock |
+| Owner forsøger at læse en anden brugers session via override | Blocker — privacy blocks gælder stadig |
+| Bruger unlockes efter 7 dage — gør det igen | Strikes nulstilles efter 7 dage — starter forfra |
+| Team session: locked user forsøger at poste | Locked user kan se men ikke poste i team sessions |
+| Override touch fornyer midt i en lang operation | TTL fornyes ved hvert tool-kald — aktiv brug afbrydes ikke |
+
+### 10.3 Integration tests
+
+- `tests/test_identity_guard_integration.py` — full flow: login → spoof → pushback → !override → verified → sudo → audit
+- `tests/test_abuse_full_flow.py` — abuse detection → session lock → notification → Bjørn notified → unlock
+
+---
+
+## 11. Edge Cases (ikke dækket ovenfor)
+
+### 11.1 Race conditions
+
+| Scenario | Håndtering |
+|---|---|
+| Bruger A sender TOTP-kode samtidig med at override udløber | `override_store.touch()` tjekker først om override er aktiv — hvis nej, returneres error |
+| To admins forsøger at unlock samme locked session | Første unlock vinder — anden får "already unlocked" |
+| Abuse monitor kører samtidig med at session låses | Låsning er idempotent — dobbelt lås er harmless |
+
+### 11.2 Privacy & compliance
+
+| Scenario | Håndtering |
+|---|---|
+| Owner override i en andens session — kan læse deres beskeder? | **Nej.** Privacy blocks forblider hard-blocked. Owner kan kun handle (køre sudo, ændre system), ikke læse data. |
+| Hvad hvis en bruger sletter deres konto med aktive abuse flags? | Abuse flags beholdes i `user_flags` (soft delete). Kan ikke undgå historik ved at slette konto. |
+| GDPR sletning — hvordan håndteres abuse_events? | Abuse events kan anonymiseres (user_id → hash) men ikke slettes — audit trail krav. |
+
+### 11.3 Override edge cases
+
+| Scenario | Håndtering |
+|---|---|
+| Bruger aktiverer override, skifter device midt i session | Override gælder per user_id, ikke per device. Følger med til nyt device. |
+| Bruger aktiverer override, starter ny session | Override gælder på tværs af sessions — prompt opdateres i begge. |
+| Hvad hvis TOTP-koden stjæles? | 90s initial vindue begrænser skade. Aktivitet fornyer, men uden aktivitet udløber den. |
+
+### 11.4 Abuse monitor edge cases
+
+| Scenario | Håndtering |
+|---|---|
+| Falsk positiv — normal samtale flagged som abuse | Abuse monitor logger til `abuse_events` med severity. Kun high severity → session lock. Medium/low gives warning og logges. Bjørn kan manuelt override. |
+| Bruger taler på et andet sprog — trigger pattern matching? | Pattern library er sprog-agnostisk for injection patterns. Normal samtale på dansk/tysk/whatever = no false positive. |
+| Hvad hvis abuse monitor selv fejler (crash)? | Fail-open: hvis abuse_monitor kaster exception, pass — lås ikke session fordi monitoren crashede. Log error til audit. |
+
+### 11.5 Session management
+
+| Scenario | Håndtering |
+|---|---|
+| Bruger har 10 åbne sessions — account lockdown låser dem alle | Alle sessions markeres `locked` i DB. Nye sessions kan ikke oprettes i lockdown-perioden. |
+| Hvad hvis locked session indeholder ulæste beskeder? | Beskeder bevares. Efter unlock kan brugeren læse dem. Lock er mute, ikke sletning. |
+| Unlock sker før 7 dage — hvad med strikes? | Manuelt unlock (Bjørn) nulstiller strikes. Automatisk unlock efter 7 dage nulstiller også. |
+
+---
+
+## 12. Resolved Decisions
 
 1. **Strike reset** — strikes nulstilles efter 7 dage uden nye events. Progressive: 1 strike = 24h, 2 strikes = 48h, 3 strikes = account lockdown 24h.
 2. **Appeal mechanism** — kun owner (Bjørn) kan unlocke en låst session eller account. Manuelt via dashboard eller `!unlock` kommando med TOTP.
@@ -232,7 +316,7 @@ ALTER TABLE chat_sessions ADD COLUMN locked_at TEXT;
 4. **Member rules** — alle members (Michelle, Mikkel, Lotte, etc.) har samme regler. Ingen forskel. Owner er den eneste med elevated rettigheder.
 5. **Guest access** — nye brugere får en 7-dages probation periode med heightened monitoring og lavere tærskel for pushback.
 
-## 11. Self-Review Findings (rettet)
+## 13. Self-Review Findings (rettet)
 
 ### Rettet i denne revision:
 
@@ -252,9 +336,9 @@ ALTER TABLE chat_sessions ADD COLUMN locked_at TEXT;
 
 ---
 
-## 12. Code Analysis vs. Spec (2026-06-21)
+## 14. Code Analysis vs. Spec (2026-06-21)
 
-### Allerede implementeret i koden (skal ikke bygges)
+### 14.1 Allerede implementeret i koden (skal ikke bygges)
 
 | Komponent | Fil | Status | Notes |
 |---|---|---|---|
@@ -268,7 +352,7 @@ ALTER TABLE chat_sessions ADD COLUMN locked_at TEXT;
 | Basic "ignore previous" detection | `core/services/in_flight_runs.py` | ✅ Live | Limiteret til run-kontekst |
 | app_id binding i JWT | `core/runtime/jarvisx_auth.py` | ✅ Live | Token bundet til specifik app-installation |
 
-### Mangler stadig (skal implementeres)
+### 14.2 Mangler stadig (skal implementeres)
 
 | Komponent | Hvor | Status | Notes |
 |---|---|---|---|
@@ -286,7 +370,7 @@ ALTER TABLE chat_sessions ADD COLUMN locked_at TEXT;
 | Prompt injection i gennerelle messages | General message pipeline | ❌ Mangler | Kun for skills (`skill_scanner.py`) |
 | Tool output injection scanning | `web_fetch`/`web_search` resultater | ❌ Mangler | Ikke implementeret |
 
-### TTL-reconciliation (spec vs. kode)
+### 14.3 TTL-reconciliation (spec vs. kode)
 
 Spec'en siger **30 min** TTL for `!override`. Koden har:
 - **Initial:** 90 sekunder (`_INITIAL_WINDOW = 90.0` i `override_store.py`)

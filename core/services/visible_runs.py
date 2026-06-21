@@ -3398,6 +3398,51 @@ async def _stream_visible_run(
                 "status": "done",
             },
         )
+        # ── TruthGate v2 (pre-done, Fase 2) — evidens-baseret konfabulations-blok ──
+        # Kører FØR persist+done så korrektionen er det der gemmes + scan_correction
+        # når klienten. Flag-gated på EKSPLICIT 'truth_v2' (default OFF → deploy-sikker;
+        # tændes via central_switches.set_enabled("nerve","truth_v2",True)). Ruttes
+        # gennem Centralen → trace + live kill-switch ("nerve","truth"). Best-effort +
+        # fail-open: enhver fejl (inkl. ubundet closure-var) → no-op, blokér aldrig
+        # brugeren pga. en gate-fejl.
+        try:
+            from core.services import shared_cache as _sc_tv2
+            _tv2_flag = _sc_tv2.get("flag:central.switch.nerve.truth_v2")
+            if isinstance(_tv2_flag, dict) and _tv2_flag.get("enabled"):
+                _tv2_names: list[str] = []
+                try:
+                    for _tc in (_collected_native_tool_calls or []):
+                        _n = str((_tc.get("function") or {}).get("name") or _tc.get("name") or "")
+                        if _n:
+                            _tv2_names.append(_n)
+                except Exception:
+                    pass
+                try:
+                    for _ex in (_followup_exchanges or []):
+                        for _tc in (getattr(_ex, "tool_calls", None) or []):
+                            _n = str((_tc.get("function") or {}).get("name") or _tc.get("name") or "")
+                            if _n:
+                                _tv2_names.append(_n)
+                except Exception:
+                    pass
+                from core.services.central_core import central as _central_tv2
+                from core.services.truth_gate_v2 import truth_gate_v2 as _tg2
+                _tv2 = _central_tv2().decide("truth", {
+                    "text": visible_output_text,
+                    "executed_tool_names": _tv2_names,
+                    "followup_exchanges": list(_followup_exchanges or []),
+                    "run_id": run.run_id,
+                    "session_id": getattr(run, "session_id", "") or "",
+                }, _tg2, cluster="truth")
+                _tv2_corr = (_tv2.evidence or {}).get("corrected_text") if _tv2.evidence else None
+                if _tv2.decision.value in ("red", "yellow") and _tv2_corr:
+                    visible_output_text = _tv2_corr
+                    yield _sse("scan_correction", {
+                        "type": "scan_correction", "run_id": run.run_id, "corrected": _tv2_corr,
+                    })
+        except Exception:
+            pass
+
         # Persist the assistant message BEFORE sending done so that the
         # frontend's loadSession() call immediately after done finds the
         # message in the DB (avoids the "message disappears" race condition).

@@ -181,7 +181,7 @@ def _default_flag_reader(flag_key: str) -> bool | None:
 
 def _default_emit(kind: str, payload: dict) -> None:
     try:
-        from core.runtime import event_bus
+        from core.eventbus.bus import event_bus
         event_bus.publish(kind, payload)
     except Exception:
         pass

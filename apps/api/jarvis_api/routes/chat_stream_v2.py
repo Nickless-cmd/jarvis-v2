@@ -158,6 +158,31 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     except Exception:
         pass
 
+    # Identity-guard & session-lock (spec 2026-06-21): kør FØR LLM. Låst session/
+    # konto eller et uverificeret identitets-claim ("jeg hedder Bjørn" i en andens
+    # session) → kortslut med kvittering, intet LLM-run. Override-blokken ovenfor
+    # kører FØRST, så owner altid kan komme til (og låse op igen).
+    try:
+        from core.services import identity_guard as _ig
+        _guard = _ig.guard_incoming(request.message, session_id=session_id, user_id=_uid or "")
+    except Exception:
+        _guard = None
+    if _guard is not None:
+        _greply = str(_guard.get("reply") or "")
+        try:
+            append_chat_message(session_id=session_id, role="assistant",
+                                content=_greply, user_id=None)
+        except Exception:
+            pass
+        print(f"[chat/stream/v2] identity-guard: session={session_id[:20]} "
+              f"action={_guard.get('action')}", flush=True)
+        return _override_v2_response(
+            _greply, session_id=session_id,
+            model=settings.visible_model_name,
+            provider=settings.visible_model_provider,
+            lane=settings.primary_model_lane,
+        )
+
     # Mode → tool-scope. "chat" begrænser værktøjs-listen til samtale-
     # allowlisten (se core.tools.tool_scoping). Andre modes / tom = ubegrænset
     # (rolle-filter gælder stadig).

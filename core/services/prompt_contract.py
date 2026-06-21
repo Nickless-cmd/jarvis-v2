@@ -2001,6 +2001,29 @@ def build_visible_chat_prompt_assembly(
         if _presence_line:
             _dyn_tail.append(_presence_line)
             derived_inputs.append("device-presence (user-msg tail)")
+        # Override-banner (spec 2026-06-21 §7): når TOTP-override er aktivt skal Jarvis
+        # VIDE at han er elevet til owner i en andens session — så han handler som
+        # owner (sudo/operator/mutationer), men privatlivs-scoping forbliver intakt.
+        # Kun når aktiv → ingen cache-støj på normale ture.
+        try:
+            from core.services import override_store as _ovs_p
+            if session_id and _ovs_p.is_active(session_id):
+                _owner_nm = ""
+                try:
+                    from core.identity.users import find_user_by_discord_id as _fu
+                    _u = _fu(_pres_uid)
+                    _owner_nm = (getattr(_u, "name", "") or "") if _u else ""
+                except Exception:
+                    pass
+                _dyn_tail.append(
+                    "[override: AKTIV — Bjørn (owner) TOTP-verificeret i session tilhørende: "
+                    f"{_owner_nm or 'anden bruger'}. Du må handle som owner (sudo/operator/"
+                    "mutationer), men privatlivs-scoping forbliver — du kan IKKE læse andres "
+                    "private data.]"
+                )
+                derived_inputs.append("override banner (user-msg tail)")
+        except Exception:
+            pass
     except Exception:
         pass
     _dyn_tail.append(_time_pin_section())

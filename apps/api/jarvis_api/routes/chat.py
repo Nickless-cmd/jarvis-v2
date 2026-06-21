@@ -1153,6 +1153,29 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
     except Exception:
         pass
 
+    # Identity-guard & session-lock (spec 2026-06-21) — samme som v2. Låst session/
+    # konto eller uverificeret identitets-claim → kortslut med legacy-SSE-kvittering.
+    try:
+        from core.services import identity_guard as _ig
+        _guard = _ig.guard_incoming(request.message, session_id=session_id, user_id=_uid or "")
+    except Exception:
+        _guard = None
+    if _guard is not None:
+        _greply = str(_guard.get("reply") or "")
+        try:
+            append_chat_message(session_id=session_id, role="assistant",
+                                content=_greply, user_id=None)
+        except Exception:
+            pass
+        from core.services.visible_runs import _sse as _sse_legacy
+
+        def _guard_gen():
+            yield _sse_legacy("delta", {"type": "delta", "run_id": "guard", "delta": _greply})
+            yield _sse_legacy("done", {"type": "done", "run_id": "guard",
+                                       "status": "completed", "input_tokens": 0, "output_tokens": 0})
+        return StreamingResponse(_guard_gen(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
+
     return StreamingResponse(
         start_visible_run(
             message=effective_message,

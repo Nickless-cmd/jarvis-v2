@@ -277,6 +277,53 @@ def _ensure_notification_tables(conn) -> None:
         )""")
 
 
+def _ensure_security_guard_tables(conn) -> None:
+    """Identity-verification-guard & abuse-monitoring (spec 2026-06-21). Idempotent.
+
+    abuse_events = detektioner (spoofing/injection/manipulation/rate);
+    user_flags   = per-bruger observation/lock/restriction + strike-count;
+    audit_log    = override/sudo/lock/abuse — uudsletteligt revisionsspor;
+    + locked/locked_reason/locked_at på chat_sessions (session-mute)."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS abuse_events (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     TEXT NOT NULL,
+            session_id  TEXT NOT NULL,
+            event_type  TEXT NOT NULL,
+            severity    TEXT NOT NULL,
+            details     TEXT,
+            created_at  TEXT NOT NULL
+        )""")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS user_flags (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      TEXT NOT NULL,
+            flag_type    TEXT NOT NULL,
+            reason       TEXT,
+            flagged_at   TEXT NOT NULL,
+            expires_at   TEXT,
+            strike_count INTEGER NOT NULL DEFAULT 0
+        )""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_user_flags_user ON user_flags(user_id)")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     TEXT NOT NULL,
+            action      TEXT NOT NULL,
+            session_id  TEXT,
+            details     TEXT,
+            device_info TEXT,
+            created_at  TEXT NOT NULL
+        )""")
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(chat_sessions)").fetchall()}
+    if "locked" not in cols:
+        conn.execute("ALTER TABLE chat_sessions ADD COLUMN locked INTEGER NOT NULL DEFAULT 0")
+    if "locked_reason" not in cols:
+        conn.execute("ALTER TABLE chat_sessions ADD COLUMN locked_reason TEXT")
+    if "locked_at" not in cols:
+        conn.execute("ALTER TABLE chat_sessions ADD COLUMN locked_at TEXT")
+
+
 def init_db() -> None:
     with connect() as conn:
         conn.execute(
@@ -601,6 +648,7 @@ def init_db() -> None:
         _ensure_teams_tables(conn)
         _ensure_notification_tables(conn)
         _ensure_chat_session_team_column(conn)
+        _ensure_security_guard_tables(conn)  # identity-guard & abuse (spec 2026-06-21)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS chat_messages (

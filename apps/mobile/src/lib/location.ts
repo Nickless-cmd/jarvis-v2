@@ -53,7 +53,9 @@ export async function reverseLabel(lat: number, lon: number, precise: boolean): 
 export function labelFromAddress(a: Record<string, string>, precise: boolean): string {
   const city = a.city || a.town || a.village || a.municipality || a.county || ''
   if (precise) {
-    const road = a.road || a.suburb || ''
+    // Nominatim lægger gade-navnet i forskellige felter afhængigt af vejtype.
+    const road = a.road || a.pedestrian || a.footway || a.path || a.cycleway
+      || a.neighbourhood || a.suburb || ''
     return [road, city].filter(Boolean).join(', ')
   }
   return city
@@ -91,16 +93,17 @@ export async function getDeviceLocation(precision: LocationPrecision): Promise<L
   try {
     const perm = await Location.requestForegroundPermissionsAsync()
     if (perm.status !== 'granted') return ipLocation()
-    // getLastKnownPositionAsync er INSTANT (cachet fix) — virker indendørs hvor en
-    // frisk getCurrentPositionAsync(Balanced) kan tage >8s eller time ud. Brug det
-    // som hurtig primær; ellers et frisk fix (race mod 8s); ellers IP.
+    // precise = brugeren VIL have gaden. En cachet last-known-fix er ofte et groft
+    // celle/netværks-fix → reverse-geocode giver kun by, INTET vejnavn (Bjørn
+    // 2026-06-21). Derfor: hent en FRISK høj-præcisions-GPS-fix FØRST (race mod 10s),
+    // og brug kun last-known som hurtig fallback hvis det friske fix timer ud/fejler.
     let pos: { coords: { latitude: number; longitude: number } } | null =
-      await Location.getLastKnownPositionAsync({ maxAge: 300000 }).catch(() => null)
+      await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
+      ]).catch(() => null)
     if (!pos) {
-      pos = await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
-      ])
+      pos = await Location.getLastKnownPositionAsync({ maxAge: 300000 }).catch(() => null)
     }
     if (!pos) return ipLocation()
     const { latitude, longitude } = pos.coords

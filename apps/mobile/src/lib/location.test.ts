@@ -18,6 +18,12 @@ describe('labelFromAddress', () => {
     expect(labelFromAddress({ road: 'Toftegårdsvej', city: 'Svendborg' }, true))
       .toBe('Toftegårdsvej, Svendborg')
   })
+  it('precise → bruger pedestrian/neighbourhood når road mangler', () => {
+    expect(labelFromAddress({ pedestrian: 'Gågaden', city: 'Svendborg' }, true))
+      .toBe('Gågaden, Svendborg')
+    expect(labelFromAddress({ neighbourhood: 'Centrum', town: 'Svendborg' }, true))
+      .toBe('Centrum, Svendborg')
+  })
   it('city precision → city only', () => {
     expect(labelFromAddress({ road: 'Toftegårdsvej', city: 'Svendborg' }, false))
       .toBe('Svendborg')

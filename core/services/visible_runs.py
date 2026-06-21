@@ -1357,6 +1357,18 @@ async def _stream_visible_run(
                     _reassert_scope(tool_scope)
                 except Exception:
                     pass
+            # Forny owner-override (hvis aktiv) fra RUN-konteksten — her er
+            # run.session_id pålideligt. effective_role()'s egen touch() kører i den
+            # lossy executor-kontekst og fornyer IKKE pålideligt (ved owner-uid-flip
+            # short-circuit'er den endda før touch). Uden dette udløber 90s-start-
+            # vinduet midt i en lang operator-sekvens → operator-tools låses med
+            # tool_not_permitted efter 3-4 kald ("3-4 så blok", Bjørn 2026-06-21).
+            try:
+                from core.services import override_store as _ovs
+                if getattr(run, "session_id", "") and _ovs.is_active(run.session_id):
+                    _ovs.touch(run.session_id)
+            except Exception:
+                pass
             import contextvars as _ctxvars
             _ctx_for_exec = _ctxvars.copy_context()
             simple_results = await loop.run_in_executor(

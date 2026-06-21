@@ -243,7 +243,22 @@ def _call_visible_model(prompt: str, *, timeout: int = 30) -> str:
 
 
 def _send_message(text: str, *, channel: str) -> dict[str, Any]:
-    """Send the composed message to the user via the chosen channel."""
+    """Send the composed message via the USER's reach_out-kanalvalg (notification_router).
+
+    `channel`-hintet ignoreres nu — brugeren styrer hvor proaktive beskeder lander
+    (auto = app hvis online, ellers Discord; eller eget valg i app-settings). Bjørn
+    2026-06-21: morgenbrief/reach_out var hardcodet til Discord. Falder tilbage til
+    gammel webchat/discord-adfærd hvis owner-id ikke kan resolves."""
+    try:
+        from core.services.notification_router import deliver_message
+        from core.runtime.settings import load_settings
+        uid = str(load_settings().extra.get("owner_user_id") or "").strip()
+        if uid:
+            r = deliver_message(uid, text, "reach_out")
+            return {"sent": bool(r.get("sent")), "channel": r.get("channel", channel)}
+    except Exception as e:
+        logger.warning("outreach_composer: notification_router-levering fejlede: %s", e)
+    # Fallback (owner-id ukendt el. fejl): gammel direkte sti.
     if channel == "discord":
         try:
             from core.services.discord_config import load_discord_config
@@ -251,14 +266,10 @@ def _send_message(text: str, *, channel: str) -> dict[str, Any]:
             cfg = load_discord_config()
             if not cfg or not get_discord_status().get("connected"):
                 return {"sent": False, "reason": "discord not connected"}
-            r = send_discord_message(
-                cfg.get("default_user_id") or cfg.get("notify_user_id") or "",
-                text,
-            )
+            r = send_discord_message(cfg.get("default_user_id") or cfg.get("notify_user_id") or "", text)
             return {"sent": bool(r), "channel": "discord"}
         except Exception as e:
             return {"sent": False, "reason": f"discord error: {e}"}
-    # Default: webchat
     try:
         from core.services.notification_bridge import send_session_notification
         r = send_session_notification(text, source="outreach-composer")

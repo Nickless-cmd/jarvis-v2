@@ -128,7 +128,10 @@ def fire_due_delayed(now_hm: str | None = None) -> int:
         prefs = get_preferences(uid)
         if is_quiet_hours(prefs, now):
             continue  # stadig stille — vent
-        route_proactive_notification(uid, ntype, payload, importance=imp, _skip_quiet=True)
+        if str(ntype).startswith("msg:"):
+            deliver_message(uid, payload.get("body") or "", ntype[4:], importance=imp)
+        else:
+            route_proactive_notification(uid, ntype, payload, importance=imp, _skip_quiet=True)
         with connect() as conn:
             conn.execute("UPDATE delayed_notifications SET delivered = 1 WHERE id = ?", (rid,))
         fired += 1
@@ -317,3 +320,82 @@ def ack(notif_id: str) -> None:
         p = _PENDING.pop(notif_id, None)
         if p and p.get("timer"):
             p["timer"].cancel()
+
+
+# ── Proaktiv INDHOLD-levering (morgenbriefing, reach_out) ──────────────────────
+# Til forskel fra route_device_aware (korte notifikationer) leverer dette selve
+# TEKSTEN dér hvor brugeren ser den: i app-samtalen (webchat, delt mobil↔desktop)
+# hvis han er online på en app — ellers Discord — efter hans præference.
+# Erstatter den hardcodede discord/webchat-hint i outreach_composer (Bjørn 2026-06-21).
+def _discord_connected() -> bool:
+    try:
+        from core.services.discord_gateway import get_discord_status
+        return bool(get_discord_status().get("connected"))
+    except Exception:
+        return False
+
+
+def _app_device_live(uid: str) -> bool:
+    """Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token?"""
+    try:
+        for r in _device_presence.rank(uid):
+            if r.score > _REGISTERED_FCM_SCORE:  # aktivt ping slår en bar registreret token
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _deliver_content(uid: str, channel: str, text: str) -> dict:
+    if channel in ("webchat", "mobile", "desktop"):
+        ok = False
+        try:
+            from core.services.notification_bridge import send_session_notification
+            ok = send_session_notification(text, source="notification-router").get("status") == "ok"
+        except Exception:
+            ok = False
+        try:  # best-effort surface-notifikation så han kigger
+            route_device_aware(uid, {"kind": "proactive", "preview": text[:120], "body": text})
+        except Exception:
+            pass
+        return {"sent": ok, "channel": "webchat"}
+    if channel == "discord":
+        try:
+            from core.services.discord_config import load_discord_config
+            from core.services.discord_gateway import send_discord_message, get_discord_status
+            cfg = load_discord_config() or {}
+            if not get_discord_status().get("connected"):
+                return {"sent": False, "channel": "discord", "reason": "not connected"}
+            send_discord_message(int(cfg.get("default_user_id") or cfg.get("notify_user_id") or 0), text)
+            return {"sent": True, "channel": "discord"}
+        except Exception as e:
+            return {"sent": False, "channel": "discord", "reason": str(e)}
+    if channel in ("push", "telegram"):
+        ok = _deliver_to_channel(uid, channel, {"body": text, "preview": text[:200]}, "reach_out")
+        return {"sent": ok, "channel": channel}
+    return {"sent": False, "channel": channel}
+
+
+def deliver_message(user_id: str, text: str, ntype: str = "reach_out", importance: str = "normal") -> dict:
+    """Lever proaktivt INDHOLD efter brugerens kanal-præference.
+
+    auto = app hvis du er online der (mobil/desktop) → vises i samtalen; ellers
+    Discord; ellers post i webchat-sessionen (ses næste gang app åbnes). Returnerer
+    {sent, channel}."""
+    uid = (user_id or "").strip()
+    text = (text or "").strip()
+    if not uid or not text:
+        return {"sent": False, "channel": "none"}
+    prefs = get_preferences(uid)
+    channel = resolve_channel(prefs, ntype)
+    if importance != "critical" and is_quiet_hours(prefs):
+        _enqueue_delayed(uid, f"msg:{ntype}", {"body": text}, importance, prefs.get("quiet_end") or "07:00")
+        return {"sent": False, "channel": "queued"}
+    if channel == "auto":
+        if _app_device_live(uid):
+            channel = "webchat"
+        elif _discord_connected():
+            channel = "discord"
+        else:
+            channel = "webchat"
+    return _deliver_content(uid, channel, text)

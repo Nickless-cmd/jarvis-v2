@@ -133,3 +133,34 @@ def test_escalate_then_ack_stops(monkeypatch):
     assert "nid-1" not in nr._PENDING
     nr._escalate("nid-1")  # no-op efter ack
     assert len(sent["fcm"]) == 1
+
+
+# ── Proaktiv indhold-levering (deliver_message) — Bjørn 2026-06-21 ──────────────
+def test_deliver_message_auto_picks_app_when_online(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    monkeypatch.setattr(nr, "_app_device_live", lambda uid: True)
+    posted = {}
+    monkeypatch.setattr(nr, "_deliver_content", lambda uid, ch, text: posted.update(ch=ch, text=text) or {"sent": True, "channel": ch})
+    r = nr.deliver_message("bjorn", "Godmorgen Bjørn — her er din brief")
+    assert posted["ch"] == "webchat"  # online på app → vises i samtalen
+    assert r["sent"] is True
+
+
+def test_deliver_message_auto_falls_back_to_discord(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    monkeypatch.setattr(nr, "_app_device_live", lambda uid: False)   # ikke på app
+    monkeypatch.setattr(nr, "_discord_connected", lambda: True)
+    posted = {}
+    monkeypatch.setattr(nr, "_deliver_content", lambda uid, ch, text: posted.update(ch=ch) or {"sent": True, "channel": ch})
+    nr.deliver_message("bjorn", "brief")
+    assert posted["ch"] == "discord"  # fallback discord
+
+
+def test_deliver_message_explicit_pref_overrides_auto(tmp_path, monkeypatch):
+    _fresh_db(tmp_path, monkeypatch)
+    nr.set_preferences("bjorn", **{"reach_out": "discord"})  # eksplicit valg
+    monkeypatch.setattr(nr, "_app_device_live", lambda uid: True)  # selvom online på app
+    posted = {}
+    monkeypatch.setattr(nr, "_deliver_content", lambda uid, ch, text: posted.update(ch=ch) or {"sent": True, "channel": ch})
+    nr.deliver_message("bjorn", "brief")
+    assert posted["ch"] == "discord"  # præference vinder over auto

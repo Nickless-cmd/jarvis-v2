@@ -81,7 +81,10 @@ def extract_prose_tool_calls(
         if not isinstance(parsed, dict):
             continue
         calls.append({
-            "id": "",
+            # KRITISK: id MÅ være ikke-tom. Tom tool_call_id får ALLE providers til at
+            # afvise followup-runden ("invalid request body") — og den persisteres i
+            # historikken, så hele session'en bliver ved at fejle. (Regression 2026-06-21.)
+            "id": f"prose_{len(calls)}_{name}"[:60],
             "type": "function",
             "function": {"name": name, "arguments": json.dumps(parsed, ensure_ascii=False)},
         })

@@ -3459,6 +3459,13 @@ async def _stream_visible_run(
         unregister_visible_run(run.run_id)
 
         def _post_process() -> None:
+            # KRITISK (2026-06-21): _post_process reassigner visible_output_text i
+            # gate-blokkene nedenfor (block-now/fact_gate/diagnosis). Uden nonlocal
+            # gør det visible_output_text til en LOKAL i hele funktionen → det første
+            # read (text_preview nedenfor) kastede UnboundLocalError → den ydre except
+            # slugte det → HELE post-output-blokken (response_style/memory/claim/fact/
+            # diagnosis) døde stille. Samme June-14-commit som generator-yield-bug'en.
+            nonlocal visible_output_text
             try:
                 set_last_visible_run_outcome(
                     run,

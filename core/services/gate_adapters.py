@@ -62,10 +62,16 @@ _TRUTHGATE_ADAPTERS = [
 
 
 def register_truthgate_adapters(k) -> None:
-    """Registrér TruthGate-cluster-adapterne i kernen (post_output, kognitiv).
-
-    Idempotent-agtig: kald én gang ved opstart. Wirer IKKE noget ind i visible_runs —
-    det er A.6. Her gøres de bare kørbare via kernen til shadow/observabilitet."""
+    """Registrér TruthGate-cluster-adapterne i kernen (post_output, kognitiv)."""
     for name, fn in _TRUTHGATE_ADAPTERS:
         k.register(name, "post_output", fn, klass=GateClass.COGNITIVE,
                    timeout_ms=1500, flag_key=f"gate.{name}")
+
+
+def register_truthgate_adapters_once(k) -> None:
+    """Idempotent — registrér KUN hvis ikke allerede registreret (kaldes pr. run i
+    visible_runs A.6; må aldrig duplikere gates)."""
+    have = {g.name for g in k.gates_for("post_output")}
+    if {n for n, _ in _TRUTHGATE_ADAPTERS} <= have:
+        return
+    register_truthgate_adapters(k)

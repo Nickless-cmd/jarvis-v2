@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 import apps.api.jarvis_api.routes.presence as presence_routes
 import core.services.device_presence as dp
 import core.services.desktop_notifications as dn
-import core.services.proactive_router as pr
+import core.services.notification_router as pr
 
 
 def _client(monkeypatch):
@@ -35,7 +35,7 @@ def test_pending_drains_desktop_queue(monkeypatch):
 
 
 def test_ack_cancels_pending(monkeypatch):
-    pr.reset()
+    pr.reset_delivery()
     pr._PENDING["n1"] = {"user_id": "bjorn", "payload": {}, "kind": "x", "remaining": [], "timer": None}
     c = _client(monkeypatch)
     r = c.post("/notifications/ack", json={"notif_id": "n1"})

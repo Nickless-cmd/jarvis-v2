@@ -14,8 +14,8 @@ def test_dispatch_run_done_routes_when_enabled(monkeypatch):
 
 def test_route_or_blast_respects_killswitch(monkeypatch):
     seen = {"router": 0, "blast": 0}
-    import core.services.proactive_router as prr
-    monkeypatch.setattr(prr, "route", lambda uid, data, kind: seen.__setitem__("router", seen["router"] + 1))
+    import core.services.notification_router as prr
+    monkeypatch.setattr(prr, "route_device_aware", lambda uid, data, kind: seen.__setitem__("router", seen["router"] + 1))
     monkeypatch.setattr(pd, "_push_to_user", lambda uid, data: seen.__setitem__("blast", seen["blast"] + 1))
     from core.runtime import settings as st
     monkeypatch.setattr(st, "load_settings", lambda: type("S", (), {"device_awareness_enabled": False})())
@@ -25,8 +25,8 @@ def test_route_or_blast_respects_killswitch(monkeypatch):
 
 def test_route_or_blast_routes_when_enabled(monkeypatch):
     seen = {"router": 0, "blast": 0}
-    import core.services.proactive_router as prr
-    monkeypatch.setattr(prr, "route", lambda uid, data, kind: seen.__setitem__("router", seen["router"] + 1))
+    import core.services.notification_router as prr
+    monkeypatch.setattr(prr, "route_device_aware", lambda uid, data, kind: seen.__setitem__("router", seen["router"] + 1))
     monkeypatch.setattr(pd, "_push_to_user", lambda uid, data: seen.__setitem__("blast", seen["blast"] + 1))
     from core.runtime import settings as st
     monkeypatch.setattr(st, "load_settings", lambda: type("S", (), {"device_awareness_enabled": True})())

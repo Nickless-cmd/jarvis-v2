@@ -4,12 +4,12 @@
 (morgenbriefing, reminders, reach_out, team-invites, wakeups) kalder i stedet for
 hver sin hardcodede sti. Lag-ansvar:
 
-  notification_router  =  POLICY  (per-bruger-præference, quiet hours, kanal-resolve,
-                                    fallback) — DETTE modul
-  proactive_router / push_dispatcher / gateways  =  MEKANIK (faktisk levering)
+  notification_router  =  POLICY (per-bruger-præference, quiet hours, kanal-resolve,
+                           fallback) + MEKANIK (device-aware levering + eskalering,
+                           inlined fra det tidligere proactive_router i Phase 5)
+  push_dispatcher / desktop_notifications / gateways  =  lavniveau-transport
 
 Kanalværdier: auto | mobile | desktop | push | discord | telegram.
-(Phase 5 inliner proactive_router's leverings-mekanik herind og fjerner det.)
 """
 from __future__ import annotations
 
@@ -151,8 +151,7 @@ def _deliver_to_channel(uid: str, channel: str, payload: dict, ntype: str) -> bo
     kind = payload.get("kind") or ntype
     try:
         if channel in ("auto",):
-            import core.services.proactive_router as pr
-            pr.route(uid, payload, kind)  # device-aware (bruger udvidet rank())
+            route_device_aware(uid, payload, kind)  # inlined device-aware (Phase 5)
             return True
         if channel in ("mobile", "push"):
             from core.services import push_dispatcher as pd
@@ -210,3 +209,111 @@ def route_proactive_notification(
     if _deliver_ntfy(payload):
         return {"delivered": True, "channel": "ntfy", "target": uid, "fallback_used": True}
     return {"delivered": False, "channel": "failed", "target": uid, "fallback_used": True}
+
+
+# ── Device-aware levering + eskalering (inlined fra proactive_router, Phase 5) ──
+# Den "auto"-kanal: ranger brugerens enheder, lever til den bedste, og eskalér til
+# næste hvis ingen ack inden _ESCALATE_S. Tom/0-rank → FCM-blast (mister aldrig et
+# signal). ack(notif_id) annullerer eskalering.
+import threading as _threading  # noqa: E402
+from uuid import uuid4 as _uuid4  # noqa: E402
+import core.services.device_presence as _device_presence  # noqa: E402
+
+_ESCALATE_S = 180.0
+_deliv_lock = _threading.Lock()
+_PENDING: dict[str, dict] = {}   # notif_id -> {user_id, payload, kind, remaining, timer}
+
+
+def reset_delivery() -> None:
+    with _deliv_lock:
+        for p in _PENDING.values():
+            t = p.get("timer")
+            if t:
+                t.cancel()
+        _PENDING.clear()
+
+
+def _new_id() -> str:
+    return f"notif-{_uuid4().hex}"
+
+
+def _send_fcm(user_id: str, device_key: str, data: dict) -> None:
+    from core.services import push_dispatcher as pd
+    pd._fcm_send(device_key, data)  # device_key == FCM-token for mobil
+
+
+def _send_desktop(user_id: str, item: dict) -> None:
+    from core.services import desktop_notifications as dn
+    dn.enqueue(user_id, item)
+
+
+def _fallback_blast(user_id: str, data: dict) -> None:
+    from core.services import push_dispatcher as pd
+    pd._push_to_user(user_id, data)
+
+
+def _deliver(user_id: str, target, notif_id: str, payload: dict) -> None:
+    if target.reachable_via == "desktop_queue":
+        _send_desktop(user_id, {
+            "notif_id": notif_id,
+            "kind": payload.get("kind", ""),
+            "title": payload.get("title", "Jarvis"),
+            "body": payload.get("preview", "") or payload.get("body", ""),
+            "session_id": payload.get("session_id", ""),
+        })
+    else:
+        _send_fcm(user_id, target.device_key, {**payload, "notif_id": notif_id})
+
+
+def _arm_timer(notif_id: str) -> None:
+    t = _threading.Timer(_ESCALATE_S, _escalate, args=(notif_id,))
+    t.daemon = True
+    with _deliv_lock:
+        if notif_id in _PENDING:
+            _PENDING[notif_id]["timer"] = t
+    t.start()
+
+
+def route_device_aware(user_id: str, payload: dict, kind: str) -> None:
+    """Lever en notifikation til brugerens bedste enhed + arm eskalering."""
+    uid = (user_id or "").strip()
+    if not uid:
+        return
+    ranked = _device_presence.rank(uid)
+    _log.warning("notification_router.route_device_aware: kind=%s rank=%s",
+                 kind, [(r.platform, round(r.score, 1), r.reachable_via) for r in ranked])
+    if not ranked:
+        _log.warning("notification_router: tom rank -> fallback FCM-blast")
+        _fallback_blast(uid, payload)
+        return
+    if ranked[0].score <= 0.0:
+        _log.warning("notification_router: bedste score %.1f <= 0 -> fallback FCM-blast",
+                     ranked[0].score)
+        _fallback_blast(uid, payload)
+        return
+    notif_id = _new_id()
+    with _deliv_lock:
+        _PENDING[notif_id] = {"user_id": uid, "payload": payload, "kind": kind,
+                              "remaining": ranked[1:], "timer": None}
+    _deliver(uid, ranked[0], notif_id, payload)
+    _arm_timer(notif_id)
+
+
+def _escalate(notif_id: str) -> None:
+    with _deliv_lock:
+        p = _PENDING.get(notif_id)
+        if not p or not p["remaining"]:
+            _PENDING.pop(notif_id, None)
+            return
+        nxt = p["remaining"].pop(0)
+        uid, payload = p["user_id"], p["payload"]
+    _deliver(uid, nxt, notif_id, payload)
+    _arm_timer(notif_id)
+
+
+def ack(notif_id: str) -> None:
+    """Annullér eskalering for en leveret notifikation (kaldt af /notifications/ack)."""
+    with _deliv_lock:
+        p = _PENDING.pop(notif_id, None)
+        if p and p.get("timer"):
+            p["timer"].cancel()

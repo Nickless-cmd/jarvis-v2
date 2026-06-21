@@ -37,8 +37,8 @@ def _route_or_blast(user_id: str, data: dict, kind: str) -> None:
     try:
         from core.runtime.settings import load_settings
         if load_settings().device_awareness_enabled:
-            from core.services import proactive_router
-            proactive_router.route(user_id, data, kind)
+            from core.services import notification_router
+            notification_router.route_device_aware(user_id, data, kind)
             return
     except Exception as e:
         logger.warning("push: routing-fejl, falder tilbage til blast: %s", e)

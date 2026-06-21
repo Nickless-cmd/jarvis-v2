@@ -239,10 +239,11 @@ def test_invite_delivery_in_app_and_email(tmp_path, monkeypatch):
     _fresh_db(tmp_path, monkeypatch)
     t = teams.create_team("Eng", owner_user_id="bjorn")
     calls = {"route": [], "mail": []}
-    import core.services.proactive_router as pr
+    import core.services.notification_router as nr
     import core.tools.mail_tools as mail
     import core.identity.user_db as udb
-    monkeypatch.setattr(pr, "route", lambda uid, payload, kind: calls["route"].append((uid, kind)))
+    monkeypatch.setattr(nr, "route_proactive_notification",
+                        lambda uid, ntype, payload, **k: calls["route"].append((uid, ntype)) or {"delivered": True})
     monkeypatch.setattr(mail, "_exec_send_mail", lambda a: calls["mail"].append(a["to"]) or {"success": True})
     monkeypatch.setattr(udb, "find_user_by_email", lambda e: {"user_id": "mikkel"})
     r = tt.exec_invite_to_team({"team_id": t["team_id"], "email": "mikkel@x.dk", "_user_id": "bjorn"})

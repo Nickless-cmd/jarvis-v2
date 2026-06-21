@@ -79,3 +79,57 @@ def test_route_delivers_to_resolved_channel(tmp_path, monkeypatch):
     assert res["delivered"] is True
     assert res["channel"] == "desktop"
     assert calls and calls[0][1] == "desktop"
+
+
+# ── Device-aware levering (inlined fra proactive_router, Phase 5) ───────────────
+import core.services.device_presence as dp  # noqa: E402
+
+
+def _setup_delivery(monkeypatch):
+    sent = {"fcm": [], "desk": []}
+    monkeypatch.setattr(nr, "_arm_timer", lambda notif_id: None)
+    monkeypatch.setattr(nr, "_send_fcm", lambda uid, key, data: sent["fcm"].append((key, data)))
+    monkeypatch.setattr(nr, "_send_desktop", lambda uid, item: sent["desk"].append(item))
+    monkeypatch.setattr(nr, "_fallback_blast", lambda uid, data: sent.setdefault("blast", []).append(data))
+    monkeypatch.setattr(nr, "_new_id", lambda: "nid-1")
+    nr.reset_delivery()
+    return sent
+
+
+def test_route_device_aware_sends_to_best_desktop(monkeypatch):
+    monkeypatch.setattr(dp, "_now", lambda: 1000.0)
+    dp.reset()
+    dp.record_ping("bjorn", "desk", "desktop", foreground=True, awake=True, network="home", interaction=True)
+    dp.record_ping("bjorn", "mob", "mobile", foreground=False, awake=True, network="home")
+    sent = _setup_delivery(monkeypatch)
+    nr.route_device_aware("bjorn", {"kind": "answer_ready", "session_id": "s1"}, "answer_ready")
+    assert len(sent["desk"]) == 1 and sent["desk"][0]["notif_id"] == "nid-1"
+    assert sent["fcm"] == []
+    assert "nid-1" in nr._PENDING
+
+
+def test_route_device_aware_empty_presence_falls_back(monkeypatch):
+    monkeypatch.setattr(dp, "_now", lambda: 1000.0)
+    dp.reset()
+    import core.services.device_tokens as dt
+    monkeypatch.setattr(dt, "list_for_user", lambda uid: [])  # ingen registrerede tokens
+    sent = _setup_delivery(monkeypatch)
+    nr.route_device_aware("bjorn", {"kind": "reminder", "preview": "hej"}, "reminder")
+    assert sent.get("blast") == [{"kind": "reminder", "preview": "hej"}]
+    assert nr._PENDING == {}
+
+
+def test_escalate_then_ack_stops(monkeypatch):
+    monkeypatch.setattr(dp, "_now", lambda: 1000.0)
+    dp.reset()
+    dp.record_ping("bjorn", "desk", "desktop", foreground=True, awake=True, network="home", interaction=True)
+    dp.record_ping("bjorn", "mob", "mobile", foreground=False, awake=True, network="home")
+    sent = _setup_delivery(monkeypatch)
+    nr.route_device_aware("bjorn", {"kind": "answer_ready", "session_id": "s1"}, "answer_ready")
+    assert len(sent["desk"]) == 1 and sent["fcm"] == []
+    nr._escalate("nid-1")
+    assert len(sent["fcm"]) == 1 and sent["fcm"][0][0] == "mob"
+    nr.ack("nid-1")
+    assert "nid-1" not in nr._PENDING
+    nr._escalate("nid-1")  # no-op efter ack
+    assert len(sent["fcm"]) == 1

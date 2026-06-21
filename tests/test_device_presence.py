@@ -157,3 +157,32 @@ def test_invalid_location_rejected(monkeypatch):
                    location={"lat": 999.0, "lon": 10.0, "label": "Umulig"})
     # ugyldig lat → sanitize returnerer None → location ryddet (eksplicit {} semantik)
     assert dp._PRESENCE["bjorn"]["mob"].location is None
+
+
+def test_rank_includes_registered_fcm_token_without_ping(monkeypatch):
+    """Mikkel-scenariet: ingen aktivt ping, men en registreret FCM-token → rank()
+    SKAL returnere den som nåbar fallback (ellers tom rank → invite-push fejler)."""
+    box = {"t": 1000.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp.reset()
+    import core.services.device_tokens as dt
+    monkeypatch.setattr(dt, "list_for_user", lambda uid: ["fcm-tok-1"] if uid == "mikkel" else [])
+    ranked = dp.rank("mikkel")
+    assert len(ranked) == 1
+    assert ranked[0].device_key == "fcm-tok-1"
+    assert ranked[0].reachable_via == "fcm"
+    assert ranked[0].score > 0
+
+
+def test_rank_does_not_duplicate_token_with_active_ping(monkeypatch):
+    """En FCM-token der OGSÅ har et aktivt ping (device_key == token) må ikke
+    tælles to gange; det aktive foreground-ping skal vinde."""
+    box = {"t": 1000.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp.reset()
+    import core.services.device_tokens as dt
+    monkeypatch.setattr(dt, "list_for_user", lambda uid: ["mob"])
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="home", interaction=True)
+    ranked = dp.rank("bjorn")
+    assert len(ranked) == 1
+    assert ranked[0].score >= dp._FOREGROUND_BONUS

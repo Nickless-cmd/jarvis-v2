@@ -24,6 +24,13 @@ _FOREGROUND_BONUS = 1000.0
 # bonus i det uendelige hvis transition-pinget (foreground=False) blev tabt.
 _FOREGROUND_FRESH_S = 35.0
 _AWAY_MOBILE_BONUS = 50.0
+# Spec 2026-06-20 §3.2: en REGISTRERET men inaktiv enhed skal stadig være en nåbar
+# fallback-kandidat (lavt score, under enhver aktiv enhed) — så rank() ALDRIG er tom
+# når brugeren har en registreret enhed. Hullet der fik Mikkels invite-push til at
+# fejle (tom rank → ingen levering).
+_REGISTERED_FCM_SCORE = 50.0   # mobil-token uden aktivt ping
+_DISCORD_ONLINE_SCORE = 100.0  # discord-gateway rapporterer online
+_TELEGRAM_SCORE = 30.0         # altid-tilgængelig, lav prioritet (async)
 
 _lock = threading.Lock()
 _PRESENCE: dict[str, dict[str, "DeviceState"]] = {}
@@ -143,6 +150,38 @@ def rank(user_id: str) -> list[RankedDevice]:
             if st.platform == "mobile" and st.network == "away":
                 score += _AWAY_MOBILE_BONUS
             out.append(RankedDevice(st.device_key, st.platform, score, reachable_via))
+
+    # Augmentér med REGISTREREDE enheder uden aktivt ping (spec §3.2), så rank()
+    # altid har ≥1 nåbar kandidat. Dedup mod allerede-rangerede device_keys (for
+    # mobil ER device_key == FCM-token, så et aktivt ping vinder over sin egen token).
+    seen = {r.device_key for r in out}
+    # (a) registrerede FCM-tokens
+    try:
+        from core.services.device_tokens import list_for_user as _list_tokens
+        for tok in _list_tokens(uid):
+            if tok and tok not in seen:
+                out.append(RankedDevice(tok, "mobile", _REGISTERED_FCM_SCORE, "fcm"))
+                seen.add(tok)
+    except Exception:
+        pass
+    # (b) Discord online — best-effort; aktiveres når gateway eksponerer en
+    #     is_user_online()-kilde (findes ikke endnu → no-op).
+    try:
+        from core.services.discord_gateway import is_user_online as _disc_online  # type: ignore
+        if _disc_online(uid) and f"discord:{uid}" not in seen:
+            out.append(RankedDevice(f"discord:{uid}", "discord", _DISCORD_ONLINE_SCORE, "discord"))
+            seen.add(f"discord:{uid}")
+    except Exception:
+        pass
+    # (c) Telegram — best-effort lav-prioritets-fallback hvis brugeren har en binding.
+    try:
+        from core.services.telegram_gateway import chat_id_for_user as _tg_chat  # type: ignore
+        if _tg_chat(uid) and f"telegram:{uid}" not in seen:
+            out.append(RankedDevice(f"telegram:{uid}", "telegram", _TELEGRAM_SCORE, "telegram"))
+            seen.add(f"telegram:{uid}")
+    except Exception:
+        pass
+
     out.sort(key=lambda r: r.score, reverse=True)
     return out
 

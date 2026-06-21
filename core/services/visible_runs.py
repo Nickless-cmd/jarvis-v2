@@ -2385,6 +2385,31 @@ async def _stream_visible_run(
                     # 1048 which already uses run_in_executor + ctx.run for
                     # the same reason (cross-loop ContextVars propagation).
                     import contextvars as _ctxvars
+                    # Re-assertér session_id + scope + forny override FØR copy_context
+                    # — ELLERS er sid/scope TOMME i denne agentiske-loop-executor (round
+                    # 2+) → execute_tool's effective_role() kan ikke se override'et →
+                    # operator-tools afvist med tool_not_permitted efter første runde
+                    # (GATE_DEBUG live på mors Mac: kald 6+ havde sid='' scope=''
+                    # override_active=False mens uid overlevede, Bjørn 2026-06-21).
+                    # Spejler første kald-site (~1360). Base-rolle urørt → §6.5 intakt.
+                    try:
+                        from core.identity.workspace_context import set_session_id as _set_sid2
+                        if getattr(run, "session_id", ""):
+                            _set_sid2(run.session_id)
+                    except Exception:
+                        pass
+                    if tool_scope:
+                        try:
+                            from core.tools.tool_scoping import set_tool_scope as _reassert_scope2
+                            _reassert_scope2(tool_scope)
+                        except Exception:
+                            pass
+                    try:
+                        from core.services import override_store as _ovs2
+                        if getattr(run, "session_id", "") and _ovs2.is_active(run.session_id):
+                            _ovs2.touch(run.session_id)
+                    except Exception:
+                        pass
                     _ctx_for_agentic_exec = _ctxvars.copy_context()
                     # 2026-06-10 (Claude, Bjørn live observation): tool-execution
                     # kunne tage 45-60s og hele tiden var SSE-streamen stille,

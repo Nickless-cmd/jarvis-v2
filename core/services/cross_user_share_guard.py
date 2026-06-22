@@ -11,7 +11,10 @@ needs_confirmation=True. Håndhæves i Fase 4 (udgående sti → approval-kort).
 """
 from __future__ import annotations
 
+import logging
 import re
+
+logger = logging.getLogger(__name__)
 
 _PROMPT = (
     "Det her nævner en anden bruger ({names}). Er det privat information om dem, "
@@ -84,6 +87,18 @@ def check_against_registry(text: str, *, current_user_id: str) -> dict:
     try:
         from core.identity.users import load_users
         known = [{"id": u.discord_id, "name": u.name} for u in load_users()]
-    except Exception:
-        known = []
+    except Exception as exc:
+        # FAIL-CLOSED (2026-06-22, Bjørn): hvis bruger-registret IKKE kan loades, kan vi
+        # ikke verificere cross-user-sikkerhed → flag til bekræftelse (læk ALDRIG i
+        # stilhed). Tidligere fail-OPEN (known=[] → ingen flag) var en potentiel læk.
+        logger.warning(
+            "cross_user_share registry-load fejlede — fail-CLOSED flag (læk ikke i stilhed): %s",
+            exc,
+        )
+        return {
+            "needs_confirmation": True,
+            "mentioned_users": [],
+            "prompt": ("Kunne ikke verificere cross-user-sikkerhed (bruger-registret kunne "
+                       "ikke loades) — bekræft før deling."),
+        }
     return check_outbound(text, current_user_id=current_user_id, known_users=known)

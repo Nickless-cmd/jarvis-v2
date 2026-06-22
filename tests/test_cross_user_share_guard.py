@@ -88,3 +88,16 @@ def test_check_against_registry(tmp_path, monkeypatch) -> None:
     # Svar uden cross-user-omtale → ok
     r2 = check_against_registry("Klart, det fixer jeg.", current_user_id="d-bjorn")
     assert r2["needs_confirmation"] is False
+
+
+def test_check_against_registry_fail_closed_on_load_error(monkeypatch):
+    """FAIL-CLOSED (2026-06-22): hvis bruger-registret ikke kan loades, skal udgående
+    flagges til bekræftelse (læk ikke i stilhed). Tidligere var det fail-open."""
+    from core.services.cross_user_share_guard import check_against_registry
+
+    def _boom():
+        raise RuntimeError("registry nede")
+
+    monkeypatch.setattr("core.identity.users.load_users", _boom)
+    r = check_against_registry("hvad som helst", current_user_id="d-bjorn")
+    assert r["needs_confirmation"] is True  # fail-CLOSED, ikke False

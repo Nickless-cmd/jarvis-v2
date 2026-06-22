@@ -393,6 +393,19 @@ CLUSTER_PRIORITY: tuple[str, ...] = (
 )
 
 
+_NERVE_LOCATION: dict[str, str] = {n.name: n.location for n in CATALOG}
+_NERVE_CLUSTER: dict[str, str] = {n.name: n.cluster for n in CATALOG}
+
+
+def nerve_location(name: str) -> str:
+    """Fil:linje for en nerve (til cross-cluster korrelation: hvilke filer relaterer til et run)."""
+    return _NERVE_LOCATION.get(str(name or ""), "")
+
+
+def nerve_cluster(name: str) -> str:
+    return _NERVE_CLUSTER.get(str(name or ""), "")
+
+
 def cluster_rank(cluster: str) -> int:
     """Lavere = højere prioritet. Ukendt cluster → bagest (lavest prioritet)."""
     try:

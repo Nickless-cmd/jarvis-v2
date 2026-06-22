@@ -3820,9 +3820,18 @@ def _persist_session_assistant_message(
         from core.identity.workspace_context import current_user_id as _cuid
         _cur = str(_cuid() or "")
         if _cur:
-            from core.services.cross_user_share_guard import check_against_registry
-            _share = check_against_registry(normalized, current_user_id=_cur)
-            if _share.get("needs_confirmation"):
+            # ── Privacy-cluster 🔒 GENNEM Den Intelligente Central (SECURITY, fail-closed) ──
+            # YELLOW = nævner en anden bruger → kræver bekræftelse. RED = fail-closed
+            # (gate-exception) → flag ALLIGEVEL (ved tvivl lækker vi aldrig i stilhed —
+            # modsat det gamle except:pass). Security-nerve: kan ikke slås fra, kun isoleres.
+            from core.services.central_core import central as _central_priv
+            from core.services.gate_privacy import privacy_gate as _privacy_gate
+            from core.services.gate_kernel import Decision as _PvDec, GateClass as _PvGK
+            _pvv = _central_priv().decide(
+                "cross_user_share", {"text": normalized, "current_user_id": _cur},
+                _privacy_gate, cluster="privacy", klass=_PvGK.SECURITY)
+            if _pvv.decision in (_PvDec.YELLOW, _PvDec.RED):
+                _share = _pvv.evidence or {}
                 from core.eventbus.bus import event_bus
                 event_bus.publish("cross_user_share.flagged", {
                     "session_id": run.session_id,

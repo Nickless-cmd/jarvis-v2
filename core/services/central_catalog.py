@@ -134,8 +134,12 @@ CATALOG: tuple[NerveSpec, ...] = (
     # Fit-pass: ALLE nerver fejler closed (deny). 3 request-path-gates = merge
     # (kun med fail-closed paritet); crypto/scoping/kø = leave. ÉT stille fejl-hul:
     # visible_runs.py:~3817 record_pending except:pass (trace-kontrakt skal attache).
-    NerveSpec("cross_user_share", "privacy", GateClass.SECURITY, "verdict", "merge",
-              "core/services/cross_user_share_guard.py:22-89"),
+    # cross_user_share KONSOLIDERET 2026-06-22: routet gennem central().decide som
+    # SECURITY (fail-CLOSED, kan ikke slås fra), graderet (YELLOW=bekræftelse/GREEN=ren),
+    # paritet bevaret (49 sikkerheds-tests grøn). gate_privacy.py. visibility_ceiling/
+    # brain_recall = fail-closed filtre i recall-stien (leave — ikke request-path-blok).
+    NerveSpec("cross_user_share", "privacy", GateClass.SECURITY, "verdict", "merged",
+              "core/services/gate_privacy.py"),
     NerveSpec("visibility_ceiling", "privacy", GateClass.SECURITY, "verdict", "merge",
               "core/services/jarvis_brain_visibility.py:35-63"),
     NerveSpec("brain_recall_gate", "privacy", GateClass.SECURITY, "filter", "merge",

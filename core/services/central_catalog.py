@@ -357,6 +357,15 @@ CATALOG: tuple[NerveSpec, ...] = (
     # = den adaptive del, bevidst udskudt (samme som §6-læring).
     NerveSpec("autonomous_run", "autonomous", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/visible_runs.py:_observe_autonomous_run (run-udfald → observe)"),
+    # ── Connections-cluster KONSOLIDERET 2026-06-22 — forbindelses-livscyklus → Centralen ──
+    # Hvem/hvad er forbundet til API'en (jarvis-desk/mobile companion/MC-websocket/members)
+    # hvornår, fra hvilken enhed. Komplementerer endpoint-usage (request) + stream (SSE) med
+    # selve FORBINDELSEN. Metadata-only (user/device/platform/event — IKKE indhold, kryptering
+    # urørt). Grundlag for adaptiv læring (kontekst: hvem var aktiv da X).
+    NerveSpec("device_presence", "connections", GateClass.COGNITIVE, "inline", "instrument",
+              "apps/api/.../presence.py (jarvis-desk/mobile-pings → observe)"),
+    NerveSpec("ws_connection", "connections", GateClass.COGNITIVE, "inline", "instrument",
+              "apps/api/.../live.py (MC-websocket connect/disconnect → observe)"),
 )
 
 

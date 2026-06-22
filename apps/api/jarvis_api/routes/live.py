@@ -28,6 +28,11 @@ async def websocket_stream(ws: WebSocket) -> None:
         client_label,
         len(items),
     )
+    try:
+        from core.services.connections import note_ws
+        note_ws("connected", client_label)
+    except Exception:
+        pass
 
     for item in items:
         await ws.send_json(item)
@@ -79,6 +84,11 @@ async def websocket_stream(ws: WebSocket) -> None:
             client_label,
             last_seen_id,
         )
+        try:
+            from core.services.connections import note_ws
+            note_ws("disconnected", client_label)
+        except Exception:
+            pass
     except* Exception as eg:
         for exc in eg.exceptions:
             if not isinstance(exc, WebSocketDisconnect):

@@ -43,6 +43,13 @@ async def presence_ping(body: PingBody) -> dict:
         network=body.network, interaction=body.interaction,
         location=body.location,
     )
+    # Connections-cluster: forbindelses-livscyklus synlig i Centralen (metadata-only).
+    try:
+        from core.services.connections import note_presence
+        note_presence(uid, body.device_key, body.platform,
+                      foreground=body.foreground, network=body.network)
+    except Exception:
+        pass
     return {"ok": True}
 
 

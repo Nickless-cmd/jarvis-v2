@@ -800,6 +800,24 @@ def _ensure_producers_registered() -> None:
         priority=36,
     ))
 
+    def _run_db_health_scan(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """DB-cluster (2026-06-22): daglig table-census + vækst-flag via db_sentinel.observe.
+        ALDRIG destruktiv — kun observe + flag (tom tabel = kandidat til review, ikke drop)."""
+        from core.services.db_sentinel import observe
+        report = observe()
+        return {"status": "ok", "tables": report.get("tables"),
+                "total_rows": report.get("total_rows"),
+                "flagged_growth": len(report.get("flagged_growth") or []),
+                "empty_candidates": len(report.get("empty") or [])}
+
+    register_producer(ProducerSpec(
+        name="db_health_scan",
+        cooldown_minutes=1440,  # daily
+        visible_grace_minutes=0,
+        run_fn=_run_db_health_scan,
+        priority=36,
+    ))
+
 
 def run_cadence_tick_with_bootstrap(
     *,

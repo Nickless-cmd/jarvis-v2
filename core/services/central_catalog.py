@@ -294,6 +294,18 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/prompt_observer.py (build-trace) + prompt_contract.py:791 _awareness_add"),
     NerveSpec("section_switch", "prompt", GateClass.COGNITIVE, "filter", "instrument",
               "core/services/prompt_observer.py:section_enabled (live on/off pr. label, erstatter blacklist)"),
+    # ── DB-cluster KONSOLIDERET 2026-06-22 (observabilitet + flag, ALDRIG destruktiv) ──
+    # Centralen ser jarvis.db's struktur+vækst og flagger uregelmæssigheder, men dropper/
+    # ændrer ALDRIG noget. Daglig census (db_sentinel.observe via internal_cadence-producer):
+    # row-counts + vækst-delta. Egregious vækst (fordobling+stor abs. tilvækst) → incident.
+    # Autoclean = FORESLÅ-til-review (tom tabel = kandidat, ikke handling — cognitive_*-lektien:
+    # 'død' var afløst, ikke død). Intet DDL/DML i modulet.
+    NerveSpec("census", "db", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/db_sentinel.py (daglig table-census + total-rows)"),
+    NerveSpec("table_growth", "db", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/db_sentinel.py (egregious-vækst-flag → incident)"),
+    NerveSpec("dead_table_review", "db", GateClass.COGNITIVE, "validation", "leave",
+              "core/services/db_sentinel.py:dead_table_candidates (review-liste, ALDRIG auto-drop)"),
 )
 
 

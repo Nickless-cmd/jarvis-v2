@@ -32,6 +32,27 @@ def is_enabled(scope: str, name: str) -> bool:
     return True   # default ON
 
 
+def set_cluster_enabled(cluster: str, enabled: bool) -> dict:
+    """Slå et HELT cluster on/off live (Jarvis' idé). Sikkerheds-cluster + enabled=False
+    afvises (kan ikke slukkes, kun isoleres mod deny). Cognitive clusters kan frit slås fra
+    → alle deres nerver SKIP'er i central().decide indtil de slås til igen (ingen genstart)."""
+    if not enabled:
+        try:
+            from core.services.central_catalog import is_security_cluster
+            if is_security_cluster(cluster):
+                return {"ok": False, "scope": "cluster", "name": cluster,
+                        "reason": "sikkerheds-cluster kan ikke slås fra (kun isoleres mod deny)"}
+        except Exception:
+            pass
+    shared_cache.set(_key("cluster", cluster), {"enabled": bool(enabled)}, ttl_seconds=_FLAG_TTL)
+    return {"ok": True, "scope": "cluster", "name": cluster, "enabled": bool(enabled)}
+
+
+def is_cluster_enabled(cluster: str) -> bool:
+    """True medmindre clusteret er EKSPLICIT slået fra. Default ON."""
+    return is_enabled("cluster", cluster)
+
+
 class CircuitBreaker:
     """Tæl fejl pr. nerve; isolér efter `threshold` på stribe. Nulstil ved succes."""
 

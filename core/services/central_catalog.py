@@ -273,6 +273,21 @@ def clusters() -> list[str]:
     return sorted({n.cluster for n in CATALOG})
 
 
+# Et cluster er SIKKERHEDS-cluster hvis mindst én af dets nerver er SECURITY — så kan det
+# ALDRIG slås helt fra (§11.3-invariant: sikkerhed isoleres kun mod deny, slukkes ikke).
+_SECURITY_CLUSTERS: frozenset[str] = frozenset(
+    n.cluster for n in CATALOG if n.klass is GateClass.SECURITY)
+
+
+def is_security_cluster(cluster: str) -> bool:
+    """True hvis clusteret har mindst én SECURITY-nerve (→ kan ikke slås fra)."""
+    return str(cluster or "") in _SECURITY_CLUSTERS
+
+
+def security_clusters() -> list[str]:
+    return sorted(_SECURITY_CLUSTERS)
+
+
 def by_cluster(cluster: str) -> list[NerveSpec]:
     return [n for n in CATALOG if n.cluster == cluster]
 

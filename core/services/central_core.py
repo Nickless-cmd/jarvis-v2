@@ -125,6 +125,11 @@ class Central:
             if klass is GateClass.SECURITY:
                 return self._isolated_verdict(nerve, klass)
             return Verdict(nerve, Decision.SKIP, "disabled", klass=klass)
+        # cluster-level live-switch (Jarvis' idé): et HELT cluster kan slås fra. KUN cognitive —
+        # sikkerheds-cluster ignorerer dette (kan ikke slukkes; set_cluster_enabled afviser også).
+        if (cluster and klass is not GateClass.SECURITY
+                and not central_switches.is_enabled("cluster", cluster)):
+            return Verdict(nerve, Decision.SKIP, "cluster-disabled", klass=klass)
         # circuit-breaker allerede åben (§11.2) → isolér uden at kalde nerven
         if self._breaker.is_open(nerve):
             return self._isolated_verdict(nerve, klass)

@@ -195,3 +195,18 @@ def test_member_code_scope_allows_operator_but_empty_scope_denies():
     # '' (mistet scope) MÅ afvise — ellers ville code-tools lække til chat:
     assert not is_tool_allowed(role="member", scope="", name="operator_bash")
     assert not is_tool_allowed(role="member", scope="chat", name="operator_bash")
+
+
+def test_computer_use_policy_failopen_is_logged(caplog):
+    """Auth-cluster trace (2026-06-22): hvis computer-use-policy kaster, må
+    operator-tools IKKE filtreres (fail-open backstop) — men det skal nu LOGGES,
+    ikke ske stille."""
+    import logging
+    from unittest.mock import patch
+    from core.tools import tool_scoping as ts
+    with patch("core.services.computer_use_policy.computer_use_enabled",
+               side_effect=RuntimeError("boom")):
+        with caplog.at_level(logging.WARNING):
+            out = ts._apply_computer_use_policy({"operator_bash", "web_search"})
+    assert out == {"operator_bash", "web_search"}  # fail-open: uændret sæt
+    assert any("computer-use-policy fejlede" in r.message for r in caplog.records)

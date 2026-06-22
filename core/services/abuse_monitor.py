@@ -13,8 +13,11 @@ Designprincipper:
 """
 from __future__ import annotations
 
+import logging
 import re
 import time
+
+logger = logging.getLogger(__name__)
 
 from core.runtime.db import get_runtime_state_value, set_runtime_state_value
 from core.services import security_guard
@@ -128,6 +131,13 @@ def process_incoming(message: str, *, session_id: str, user_id: str) -> dict | N
             _notify_owner(f"prompt-injection-mønstre {hits[:3]} fra {uid or 'ukendt'} (session {sid[:12]})")
         return None
     except Exception:
+        # Fail-open (sikkerhed ≠ DoS, jf. docstring) MEN ikke længere stille: en fejl
+        # her betyder rate-limit + injection-scan blev IKKE kørt for beskeden.
+        # (Auth-cluster trace-kontrakt, 2026-06-22.)
+        logger.warning(
+            "abuse_monitor.process_incoming fejlede — besked passerer USCANNET "
+            "(fail-open)", exc_info=True,
+        )
         return None
 
 

@@ -36,3 +36,16 @@ def test_process_incoming_injection_logs_not_locks(isolated_runtime):
 
 def test_process_incoming_clean_passes(isolated_runtime):
     assert am.process_incoming("hej, hvad er klokken?", session_id="s-ok", user_id="u-ok") is None
+
+
+def test_process_incoming_failopen_is_logged(isolated_runtime, caplog):
+    """Auth-cluster trace (2026-06-22): hvis abuse-monitor kaster internt, passerer
+    beskeden (fail-open, sikkerhed ≠ DoS) — men det skal nu LOGGES, ikke ske stille."""
+    import logging
+    from unittest.mock import patch
+    with patch("core.services.abuse_monitor.check_rate_limit",
+               side_effect=RuntimeError("boom")):
+        with caplog.at_level(logging.WARNING):
+            res = am.process_incoming("hej", session_id="s-x", user_id="u-x")
+    assert res is None  # fail-open
+    assert any("fejlede" in r.message for r in caplog.records)

@@ -17,8 +17,11 @@ get_tool_definitions()-call-sites i visible_model ikke skal ændres.
 from __future__ import annotations
 
 import contextvars
+import logging
 from contextlib import contextmanager
 from typing import Any, Iterable, Iterator
+
+logger = logging.getLogger(__name__)
 
 try:  # defensiv — undgå circular-import-brud ved boot
     from core.identity.workspace_context import current_user_id
@@ -225,7 +228,15 @@ def _apply_computer_use_policy(result: set[str]) -> set[str]:
         if not computer_use_enabled(current_user_id() or ""):
             return {t for t in result if not is_computer_use_tool(t)}
     except Exception:
-        pass
+        # Fail-open (defensivt, jf. docstring) MEN ikke længere stille: en fejl her
+        # betyder operator/computer-tools IKKE blev filtreret. Primær gate er
+        # permission_engine member-listen; dette er en backstop. (Auth-cluster
+        # trace-kontrakt, 2026-06-22 — fail-retning ændres bevidst først ved
+        # sikkerheds-migrationen med fail-closed paritet.)
+        logger.warning(
+            "computer-use-policy fejlede — operator-tools blev IKKE filtreret "
+            "(fail-open backstop)", exc_info=True,
+        )
     return result
 
 

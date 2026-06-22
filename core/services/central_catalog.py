@@ -95,6 +95,56 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/r2_5_blocking_gate.py:72-194"),
     NerveSpec("action_router", "proactivity", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/action_router.py:250-345"),
+    # ── Memory-cluster (skrive/recall/promotion, fit-passet 2026-06-22) ──
+    # INGEN request-path-gates → pointen er TRACE, ikke enforcement. Recall/promotion
+    # = instrument (fejler stille → prompt bygges uden memory); skrivning = leave.
+    NerveSpec("memory_write", "memory", GateClass.COGNITIVE, "persistence", "leave",
+              "core/services/jarvis_brain.py:383-467"),
+    NerveSpec("memory_embed", "memory", GateClass.COGNITIVE, "daemon", "leave",
+              "core/services/jarvis_brain.py:565-590"),
+    NerveSpec("memory_search", "memory", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/jarvis_brain.py:596-722"),
+    NerveSpec("memory_unified_recall", "memory", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/memory_recall_engine.py:476-543"),
+    NerveSpec("memory_candidate_promotion", "memory", GateClass.COGNITIVE, "inline", "instrument",
+              "core/identity/candidate_workflow.py:250-287"),
+    NerveSpec("memory_distill", "memory", GateClass.COGNITIVE, "daemon", "leave",
+              "core/services/session_distillation.py:164-363"),
+    NerveSpec("memory_associative_recall", "memory", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/associative_recall.py:196-250"),
+    # ── Privacy-cluster 🔒 (SIKKERHED, fail-CLOSED — migreres SIDST) ──
+    # Fit-pass: ALLE nerver fejler closed (deny). 3 request-path-gates = merge
+    # (kun med fail-closed paritet); crypto/scoping/kø = leave. ÉT stille fejl-hul:
+    # visible_runs.py:~3817 record_pending except:pass (trace-kontrakt skal attache).
+    NerveSpec("cross_user_share", "privacy", GateClass.SECURITY, "verdict", "merge",
+              "core/services/cross_user_share_guard.py:22-89"),
+    NerveSpec("visibility_ceiling", "privacy", GateClass.SECURITY, "verdict", "merge",
+              "core/services/jarvis_brain_visibility.py:35-63"),
+    NerveSpec("brain_recall_gate", "privacy", GateClass.SECURITY, "filter", "merge",
+              "core/services/jarvis_brain.py:616-648"),
+    NerveSpec("share_guard_store", "privacy", GateClass.SECURITY, "persistence", "leave",
+              "core/services/share_guard_store.py:28-72"),
+    NerveSpec("workspace_encryption", "privacy", GateClass.SECURITY, "inline", "leave",
+              "core/services/workspace_crypto.py:46-193"),
+    NerveSpec("private_brain_scoping", "privacy", GateClass.SECURITY, "filter", "leave",
+              "core/runtime/db_private_brain.py:88-150"),
+    # ── Auth-cluster 🔒 (SIKKERHED, fail-CLOSED — migreres SIDST) ──
+    # Kerne-gates (tool_scoping/permission_engine/override) fejler CLOSED. identity_guard/
+    # abuse_monitor fejler OPEN BEVIDST (sikkerhed ≠ selvmål-DoS). simple_tools.py:3925
+    # except:pass = BEVIDST defense-in-depth-backstop (primær gate = model-tool-filter).
+    # 2 utilsigtede fail-opens noteret: tool_scoping:216 computer_use-policy, abuse-scan.
+    NerveSpec("tool_scoping", "auth", GateClass.SECURITY, "filter", "merge",
+              "core/tools/tool_scoping.py:203-243"),
+    NerveSpec("permission_engine", "auth", GateClass.SECURITY, "filter", "merge",
+              "core/services/permission_engine.py:112-138"),
+    NerveSpec("override_command", "auth", GateClass.SECURITY, "verdict", "merge",
+              "core/services/override_command.py:24-106"),
+    NerveSpec("identity_guard", "auth", GateClass.SECURITY, "verdict", "merge",
+              "core/services/identity_guard.py:100-196"),
+    NerveSpec("abuse_monitor", "auth", GateClass.SECURITY, "verdict", "merge",
+              "core/services/abuse_monitor.py:101-131"),
+    NerveSpec("security_guard", "auth", GateClass.SECURITY, "persistence", "leave",
+              "core/services/security_guard.py:54-210"),
 )
 
 

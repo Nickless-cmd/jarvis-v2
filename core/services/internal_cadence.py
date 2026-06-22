@@ -817,6 +817,22 @@ def _ensure_producers_registered() -> None:
         priority=36,
     ))
 
+    def _run_config_drift(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """§7 (2026-06-22): config↔runtime-drift-check (port). Fanger 8010/8011-typen — settings
+        siger én port, API'en svarer på en anden → observe + incident. Read-only probe."""
+        from core.services.config_drift import observe_config_drift
+        rep = observe_config_drift()
+        return {"status": "ok", "declared_port": rep.get("declared_port"),
+                "actual_port": rep.get("actual_port"), "drift": rep.get("drift")}
+
+    register_producer(ProducerSpec(
+        name="config_drift_check",
+        cooldown_minutes=1440,  # daily — drift opstår kun ved deploy/config-skift
+        visible_grace_minutes=0,
+        run_fn=_run_config_drift,
+        priority=36,
+    ))
+
     def _run_db_health_scan(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         """DB-cluster (2026-06-22): daglig table-census + vækst-flag via db_sentinel.observe.
         ALDRIG destruktiv — kun observe + flag (tom tabel = kandidat til review, ikke drop)."""

@@ -345,6 +345,10 @@ CATALOG: tuple[NerveSpec, ...] = (
     # escalation-path ud over logging.
     NerveSpec("central_health", "system", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/central_health.py:observe_and_escalate (Centralen prober sig selv)"),
+    # §7 config-drift (2026-06-22): fang når deklareret config ≠ runtime (8010/8011-buggen kostede
+    # DAGE — settings.port vs faktisk lyttende port). Daglig probe → observe + incident. Read-only.
+    NerveSpec("config_drift", "system", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/config_drift.py:observe_config_drift (port-drift declared↔runtime)"),
 )
 
 

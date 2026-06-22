@@ -1911,6 +1911,14 @@ async def _stream_visible_run(
                         "agentic-round-start run_id=%s round=%d exchanges=%d inter_round_gap_ms=%d",
                         run.run_id, _agentic_round + 1, len(_followup_exchanges), _inter_round_gap_ms,
                     )
+                    # Followup-cluster: runde synlig i Centralen (self-safe).
+                    try:
+                        from core.services import followup_observer as _fu_obs
+                        _fu_obs.note_round(run.run_id, _agentic_round + 1,
+                                           run.provider, run.model,
+                                           exchanges=len(_followup_exchanges))
+                    except Exception:
+                        pass
                     # Cross-proces liveness-heartbeat (hver runde) — så
                     # /chat/active-runs i api-processen kan se at dette (evt.
                     # autonome, i runtime-processen) run stadig lever.
@@ -2123,6 +2131,14 @@ async def _stream_visible_run(
                                 "error": _a_item.error,
                                 "summary": _a_item.summary,
                             }
+                            # Followup-cluster: round-fejl synlig (copilot-400/thinking-bug).
+                            try:
+                                from core.services import followup_observer as _fu_obs
+                                _fu_obs.note_round_failed(
+                                    run.run_id, _a_item.round_index + 1,
+                                    run.provider, str(_a_item.error or _a_item.summary or ""))
+                            except Exception:
+                                pass
                             continue
                         if isinstance(_a_item, _vf.FollowupDone):
                             if _a_item.text and not _a_parts:
@@ -2879,6 +2895,15 @@ async def _stream_visible_run(
                     run.run_id, _agentic_loop_exit_reason,
                     locals().get("_agentic_round", -1) + 1,
                 )
+                # Followup-cluster: loop-complete synlig (runder + exit-grund).
+                try:
+                    from core.services import followup_observer as _fu_obs
+                    _fu_obs.note_loop_complete(
+                        run.run_id, rounds=locals().get("_agentic_round", -1) + 1,
+                        exit_reason=str(_agentic_loop_exit_reason or ""),
+                        provider=run.provider, model=run.model)
+                except Exception:
+                    pass
                 # Causal graph: clear EventContext after the loop so
                 # subsequent code outside doesn't auto-link to a stale
                 # round_event_id from the last iteration.

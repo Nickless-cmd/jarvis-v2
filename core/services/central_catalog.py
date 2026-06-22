@@ -278,6 +278,11 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/provider_health_check.py (B7: ping-helbred pr. provider)"),
     NerveSpec("scheduled_task_fire", "loop", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/scheduled_tasks.py (B6: påmindelse fyret/dispatch-fejl)"),
+    # B-batch 2 (2026-06-22): heartbeat-producer-helbred + notifikations-levering synlige.
+    NerveSpec("cadence_producers", "stream", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/cadence_producers.py (heartbeat-producer-fire pr. tick)"),
+    NerveSpec("notification_route", "stream", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/notification_router.py:route_proactive_notification (delivery-udfald)"),
     # ── Prompt-cluster KONSOLIDERET 2026-06-22 (Phase 1: live on/off + trace) ──
     # prompt_contract.py byggede ~73 sektioner blindt og skar støj via HARDCODET blacklist
     # (_DIAGNOSTIC_NOISE_LABELS) — ændring krævede kode+deploy, ingen trace af HVORFOR droppet.

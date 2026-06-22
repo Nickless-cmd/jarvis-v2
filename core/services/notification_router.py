@@ -186,6 +186,30 @@ def route_proactive_notification(
     *,
     _skip_quiet: bool = False,
 ) -> dict:
+    """Samlet routing for alle proaktive notifikationer — B-batch 2: leverings-udfald
+    synligt i Centralen (delivery-fejl/fallback var stille). Tynd self-safe observe-wrapper."""
+    result = _route_proactive_notification_impl(
+        user_id, notification_type, payload, importance, _skip_quiet=_skip_quiet)
+    try:
+        from core.services.central_core import central
+        central().observe({"cluster": "stream", "nerve": "notification_route",
+                           "notif_type": str(notification_type or ""),
+                           "delivered": bool(result.get("delivered")),
+                           "channel": str(result.get("channel") or ""),
+                           "fallback_used": bool(result.get("fallback_used"))})
+    except Exception:
+        pass
+    return result
+
+
+def _route_proactive_notification_impl(
+    user_id: str,
+    notification_type: str,
+    payload: dict,
+    importance: str = "normal",
+    *,
+    _skip_quiet: bool = False,
+) -> dict:
     """Samlet routing for alle proaktive notifikationer.
 
     Returnerer {delivered, channel, target, fallback_used}.

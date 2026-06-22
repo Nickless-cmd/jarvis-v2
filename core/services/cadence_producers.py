@@ -552,6 +552,17 @@ def produce_signals_from_run(
 
     event_bus.publish("cognitive_state.cadence_producers_fired",
                      {"run_id": run_id, "counts": counts})
+    # B-batch 2: heartbeat-producer-helbred pr. tick synligt i Centralen. Cadence-frysning
+    # ([[reference_cadence_scheduler_frozen]]: én hængende producer dræbte hele kadencen) var
+    # før helt stille — nu ser vi hvor mange signaler hver fire producerede. Self-safe.
+    try:
+        from core.services.central_core import central
+        _produced = sum(int(v) for v in (counts or {}).values()
+                        if isinstance(v, (int, float)))
+        central().observe({"cluster": "stream", "nerve": "cadence_producers",
+                           "run_id": run_id, "produced": _produced, "counts": counts})
+    except Exception:
+        pass
     return counts
 
 

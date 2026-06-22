@@ -269,6 +269,15 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/stream_sentinel.py (message_start uden message_stop >300s → incident)"),
     NerveSpec("stream_event", "stream", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/stream_sentinel.py (idle/cancel/error/zombie_slot/subscriber_timeout)"),
+    # ── Kategori-B observe (2026-06-22): stille daemon/provider-fejl gjort synlige ──
+    NerveSpec("provider_call", "stream", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/heartbeat_provider_fallback.py (B10: provider-fejl pr. kald)"),
+    NerveSpec("provider_fallback", "stream", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/heartbeat_provider_fallback.py (B10: alle providers udtømt)"),
+    NerveSpec("provider_health", "stream", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/provider_health_check.py (B7: ping-helbred pr. provider)"),
+    NerveSpec("scheduled_task_fire", "loop", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/scheduled_tasks.py (B6: påmindelse fyret/dispatch-fejl)"),
     # ── Prompt-cluster KONSOLIDERET 2026-06-22 (Phase 1: live on/off + trace) ──
     # prompt_contract.py byggede ~73 sektioner blindt og skar støj via HARDCODET blacklist
     # (_DIAGNOSTIC_NOISE_LABELS) — ændring krævede kode+deploy, ingen trace af HVORFOR droppet.

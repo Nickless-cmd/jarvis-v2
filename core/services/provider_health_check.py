@@ -96,6 +96,15 @@ def health_check_all_providers() -> dict[str, Any]:
     except Exception:
         pass
 
+    # B7: provider-helbred synlig i Centralen (degraderede providers var kun i en JSON-fil).
+    try:
+        from core.services.central_core import central
+        central().observe({"cluster": "stream", "nerve": "provider_health",
+                           "reachable": snapshot["reachable_count"],
+                           "total": snapshot["total_count"], "unreachable": unreachable})
+    except Exception:
+        pass
+
     return snapshot
 
 

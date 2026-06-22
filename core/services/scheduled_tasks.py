@@ -241,11 +241,26 @@ def _fire_due_tasks() -> None:
                                     session_id=target_session or None,
                                 )
                                 logger.info("scheduled_tasks: dispatched %s as autonomous run", task_id)
+                                # B6: påmindelse fyrede OG blev dispatchet — synligt i Centralen.
+                                try:
+                                    from core.services.central_core import central
+                                    central().observe({"cluster": "loop", "nerve": "scheduled_task_fire",
+                                                       "task_id": task_id, "outcome": "dispatched"})
+                                except Exception:
+                                    pass
                             except Exception as run_exc:
                                 logger.warning(
                                     "scheduled_tasks: autonomous run trigger failed for %s: %s",
                                     task_id, run_exc,
                                 )
+                                # B6: påmindelse fyrede men handlede IKKE (var stille) → flag i Centralen.
+                                try:
+                                    from core.services.central_core import central
+                                    central().observe({"cluster": "loop", "nerve": "scheduled_task_fire",
+                                                       "task_id": task_id, "outcome": "dispatch_failed",
+                                                       "error": type(run_exc).__name__})
+                                except Exception:
+                                    pass
                     else:
                         # Delivery failed (no active session etc.) — leave pending, retry next poll
                         logger.warning(

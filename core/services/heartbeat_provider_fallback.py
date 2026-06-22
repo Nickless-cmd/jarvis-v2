@@ -181,5 +181,20 @@ def try_heartbeat_cheap_fallback(prompt: str) -> dict[str, object] | None:
                 "heartbeat_fallback: %s/%s failed (%s), trying next",
                 provider, model, exc,
             )
+            # B10: provider-fejl synlig i Centralen (var stille logger.warning).
+            try:
+                from core.services.central_core import central
+                central().observe({"cluster": "stream", "nerve": "provider_call",
+                                   "provider": provider, "model": model,
+                                   "outcome": "failed", "error": type(exc).__name__})
+            except Exception:
+                pass
 
+    # Alle usable providers fejlede → udtømning er et oppetids-signal (var helt stille).
+    try:
+        from core.services.central_core import central
+        central().observe({"cluster": "stream", "nerve": "provider_fallback",
+                           "outcome": "exhausted", "tried": len(usable)})
+    except Exception:
+        pass
     return None

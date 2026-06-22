@@ -402,3 +402,36 @@ def test_multi_signal_recall_integrates_bm25_and_entity():
     assert r["signals"]["bm25"] > 0.0
     # Entity overlap: "Phase 1" should be detected
     assert r["signals"]["entity"] > 0.0
+
+
+def test_gather_private_brain_scores_real_records():
+    """FIX 2026-06-22: _gather_private_brain importerede et dødt modul → recall så
+    aldrig de 92k private_brain-records. Nu læser den den ægte store + scorer."""
+    from unittest.mock import patch
+    from core.services import memory_recall_engine as mre
+    fake = [
+        {"focus": "tool truncation", "summary": "tool results get cut", "detail": "",
+         "record_type": "insight"},
+        {"focus": "weather", "summary": "it is sunny", "detail": "", "record_type": "note"},
+    ]
+    with patch("core.runtime.db_private_brain.list_private_brain_records",
+               return_value=fake):
+        hits = mre._gather_private_brain("tool truncation problem", 4)
+    assert hits and hits[0]["source"] == "private_brain"
+    assert "tool" in hits[0]["text"].lower()
+    assert hits[0]["method"] == "keyword-overlap"
+
+
+def test_gather_failed_is_fail_soft():
+    """_gather_failed: observerbar (log+central-trace) men fail-soft — returnerer []
+    og kaster aldrig."""
+    from core.services import memory_recall_engine as mre
+    assert mre._gather_failed("private_brain", RuntimeError("boom")) == []
+
+
+def test_gather_private_brain_dead_store_returns_empty_not_raise():
+    from unittest.mock import patch
+    from core.services import memory_recall_engine as mre
+    with patch("core.runtime.db_private_brain.list_private_brain_records",
+               side_effect=RuntimeError("db down")):
+        assert mre._gather_private_brain("noget", 4) == []  # fail-soft via _gather_failed

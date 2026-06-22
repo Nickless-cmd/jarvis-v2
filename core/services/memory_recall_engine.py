@@ -294,6 +294,22 @@ def _gather_private_brain_quality(
 # ── Gather functions ───────────────────────────────────────────────
 
 
+def _gather_failed(source: str, exc: Exception) -> list[dict[str, Any]]:
+    """Memory-cluster trace (2026-06-22): en recall-kilde fejlede. FØR sluttede
+    gather-funktionerne stille (`return []` / debug-log som filtreres i runtime) →
+    'prompten bygges uden den kilde' var USYNLIGT. NU: WARNING + central-trace, så
+    en brækket recall-kilde ses. Returnerer [] (fail-soft bevaret)."""
+    logger.warning("recall-kilde '%s' fejlede — udeladt fra recall: %s", source, exc)
+    try:
+        from core.services.central_core import central as _central_recall
+        _central_recall().observe({
+            "cluster": "memory", "nerve": f"recall_{source}", "kind": "gather_error",
+        })
+    except Exception:
+        pass
+    return []
+
+
 def _gather_workspace(query: str, limit: int) -> list[dict[str, Any]]:
     try:
         from core.services.memory_search import search_memory
@@ -310,36 +326,57 @@ def _gather_workspace(query: str, limit: int) -> list[dict[str, Any]]:
             for r in results
         ]
     except Exception as exc:
-        logger.debug("recall: workspace fetch failed: %s", exc)
-        return []
+        return _gather_failed("workspace", exc)
 
 
 def _gather_private_brain(query: str, limit: int) -> list[dict[str, Any]]:
+    # FIX 2026-06-22: importerede et IKKE-eksisterende modul (core.services.
+    # private_brain.search_private_brain) → kastede ModuleNotFoundError på HVERT
+    # kald → recall så ALDRIG de ~92k private_brain-records (Memory-clusterens
+    # største kilde var død+usynlig). Nu: list seneste aktive records (auto-scopet
+    # til bruger via scope_uid i list_private_brain_records) + keyword-overlap-score,
+    # samme mønster som _gather_chronicle. Bounded (recency), fail-soft.
+    # NB: recency-bounded (de N seneste aktive records scores i Python). Dækker
+    # ikke gamle records — den rigtige fremtidige fix er FTS5/LIKE-søgning i SQL
+    # over hele private_brain_records. Dette er v1: virker + bounded + scopet.
     try:
-        from core.services.private_brain import search_private_brain  # type: ignore
-        results = search_private_brain(query=query, limit=limit) or []
-        return [
-            {
-                "source": "private_brain",
-                "subsource": str(r.get("kind", "")),
-                "section": "",
-                "text": str(r.get("text") or r.get("content") or "")[:500],
-                "score": float(r.get("score") or 0.5),
-                "method": "keyword",
-            }
-            for r in results
-        ]
-    except Exception:
-        # private_brain may not have this exact API — try alternative
+        from core.runtime.db_private_brain import list_private_brain_records
+        records = list_private_brain_records(limit=200, status="active") or []
+    except Exception as exc:
+        return _gather_failed("private_brain", exc)
+    words = {w for w in query.lower().split() if len(w) > 3}
+    if not words:
         return []
+    scored: list[tuple[float, dict[str, Any]]] = []
+    for r in records:
+        text = " ".join(
+            str(r.get(k) or "") for k in ("focus", "summary", "detail")
+        ).strip()
+        if not text:
+            continue
+        tl = text.lower()
+        hits = sum(1 for w in words if w in tl)
+        if hits == 0:
+            continue
+        score = min(1.0, hits / max(1, len(words)))
+        scored.append((score, {
+            "source": "private_brain",
+            "subsource": str(r.get("record_type") or ""),
+            "section": "",
+            "text": text[:500],
+            "score": score,
+            "method": "keyword-overlap",
+        }))
+    scored.sort(key=lambda t: t[0], reverse=True)
+    return [item[1] for item in scored[:limit]]
 
 
 def _gather_chronicle(query: str, limit: int) -> list[dict[str, Any]]:
     try:
         from core.services.chronicle_engine import list_cognitive_chronicle_entries
         entries = list_cognitive_chronicle_entries(limit=20) or []
-    except Exception:
-        return []
+    except Exception as exc:
+        return _gather_failed("chronicle", exc)
     q_lower = query.lower()
     scored: list[tuple[float, dict[str, Any]]] = []
     for e in entries:

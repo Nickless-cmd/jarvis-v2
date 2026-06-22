@@ -4197,8 +4197,18 @@ def _recent_transcript_section(
         "Tool lines are internal Jarvis-only observations, not user-visible chat.",
     ]
     window = history
-    # 2026-06-09: 6→20 expanded, 1200→4000 / 800→1200 chars. 1M context.
+    # 2026-06-09: 6→20 expanded. Lofterne er nu konfigurerbare (Tools-cluster
+    # 2026-06-22) — recent default 3000 (sænket fra 4000 for at trimme bloat),
+    # older default 1200. Justér via runtime.json uden kode-deploy. Hentes ÉN
+    # gang her, ikke per tool-resultat.
     expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=20)
+    try:
+        from core.runtime.settings import load_settings as _ls_render
+        _rs = _ls_render()
+        _chars_recent = int(_rs.tool_result_render_chars_recent)
+        _chars_older = int(_rs.tool_result_render_chars_older)
+    except Exception:
+        _chars_recent, _chars_older = 3000, 1200
     for index, item in enumerate(window):
         raw_role = item["role"]
         if raw_role == "user":
@@ -4211,7 +4221,7 @@ def _recent_transcript_section(
         content = render_tool_result_for_prompt(
             str(item.get("content") or ""),
             expand=index in expanded_tool_indexes,
-            max_chars=4000 if index in expanded_tool_indexes else 1200,
+            max_chars=_chars_recent if index in expanded_tool_indexes else _chars_older,
         )
         lines.append(f"{role}: {content}")
     return "\n".join(lines)

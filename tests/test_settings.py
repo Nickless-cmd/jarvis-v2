@@ -6,6 +6,21 @@ Hvis de ved et uheld bliver sat tilbage, fanger denne test det.
 from __future__ import annotations
 
 
+def test_tool_result_render_limits_configurable_with_defaults() -> None:
+    """Tools-cluster 2026-06-22: tool-resultat-render-lofterne er konfigurerbare
+    settings. Default recent=3000 (sænket fra hardcoded 4000 for at trimme bloat),
+    older=1200. Override via runtime.json skal honoreres."""
+    from core.runtime.settings import RuntimeSettings, load_settings
+    d = RuntimeSettings()
+    assert d.tool_result_render_chars_recent == 3000
+    assert d.tool_result_render_chars_older == 1200
+    # load_settings skal eksponere dem (læser fil eller defaults — begge gyldige)
+    s = load_settings()
+    assert isinstance(s.tool_result_render_chars_recent, int)
+    assert isinstance(s.tool_result_render_chars_older, int)
+    assert s.tool_result_render_chars_recent >= s.tool_result_render_chars_older
+
+
 def test_jarvis_brain_auto_inject_defaults_for_1m_context() -> None:
     """Defaults reflekterer 1M-context-vinduet + aktiv auto-remember pipe."""
     from core.runtime.settings import load_settings

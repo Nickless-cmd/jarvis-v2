@@ -19,6 +19,14 @@ class RuntimeSettings:
     visible_model_provider: str = "phase1-runtime"
     visible_model_name: str = "visible-placeholder"
     visible_auth_profile: str = ""
+    # ── Tool-resultat prompt-render-lofter (Tools-cluster, 2026-06-22) ──
+    # Hvor mange tegn af et tool-resultat der vises i prompten næste runde.
+    # Konfigurerbart så lofterne kan justeres uden kode-deploy (Bjørn: hold
+    # støjen nede). 'recent' = de seneste tool-resultater (vist mere fyldigt),
+    # 'older' = ældre resultater (komprimeret til summary). Sænket fra 4000→3000
+    # for at trimme prompt-bloat uden at tabe brugbart output.
+    tool_result_render_chars_recent: int = 3000
+    tool_result_render_chars_older: int = 1200
     heartbeat_model_provider: str = ""
     heartbeat_model_name: str = ""
     heartbeat_auth_profile: str = ""
@@ -485,6 +493,12 @@ def load_settings() -> RuntimeSettings:
         ),
         visible_auth_profile=str(
             data.get("visible_auth_profile", defaults.visible_auth_profile)
+        ),
+        tool_result_render_chars_recent=int(
+            data.get("tool_result_render_chars_recent", defaults.tool_result_render_chars_recent)
+        ),
+        tool_result_render_chars_older=int(
+            data.get("tool_result_render_chars_older", defaults.tool_result_render_chars_older)
         ),
         heartbeat_model_provider=str(
             data.get("heartbeat_model_provider", defaults.heartbeat_model_provider)

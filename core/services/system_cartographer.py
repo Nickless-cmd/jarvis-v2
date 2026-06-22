@@ -127,10 +127,41 @@ def stop_system_cartographer_daemon() -> None:
     _STOP.set()
 
 
+def _observe_to_central(surface: dict[str, Any]) -> None:
+    """System-cluster: MELD kartografens kort til Den Intelligente Central (self-safe).
+
+    Kartografen kortlagde + triagerede allerede systemet (dark edges, auto-enqueued repair-
+    tasks til Jarvis) — men Centralen så det aldrig. Nu ser den systemkortet ÉT sted: services,
+    dark edges, health, theater-risiko, og hvilket hul der blev auto-enqueued vs anbefalet.
+    Det er hele pointen: Centralen kortlægger systemet for os og Jarvis."""
+    try:
+        from core.services.central_core import central
+        summary = surface.get("summary") or {}
+        health = surface.get("systemHealth") or {}
+        auto = surface.get("autoTask") or {}
+        rec = surface.get("recommendedObservabilityTask") or {}
+        central().observe({
+            "cluster": "system", "nerve": "cartographer",
+            "services": summary.get("services"),
+            "daemons": summary.get("daemons"),
+            "dark_edges": summary.get("dark_edges"),
+            "low_coverage": summary.get("low_coverage_services"),
+            "theater_high_risk": summary.get("theater_high_risk"),
+            "tools": summary.get("tools"),
+            "health_state": health.get("state"),
+            "auto_task_status": auto.get("status"),
+            "auto_task_id": auto.get("task_id"),
+            "recommended_next": rec.get("title"),
+        })
+    except Exception:
+        pass
+
+
 def _loop() -> None:
     while not _STOP.is_set():
         try:
-            build_system_cartographer_surface(auto_enqueue=True)
+            surface = build_system_cartographer_surface(auto_enqueue=True)
+            _observe_to_central(surface)
         except Exception as exc:
             logger.debug("system_cartographer: scan failed: %s", exc)
         _STOP.wait(_SCAN_INTERVAL_SECONDS)

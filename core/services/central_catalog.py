@@ -323,6 +323,16 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/tool_usage_store.py:observe_stats (daglig forbrugs-summary + døde-flag)"),
     NerveSpec("tool_usage_order", "tools", GateClass.COGNITIVE, "validation", "leave",
               "core/services/tool_usage_store.py:tool_order/dead_tools (katalog-rækkefølge, Phase 2b-wiring)"),
+    # ── System-cluster KONSOLIDERET 2026-06-22 (kartografen MELDER til Centralen) ──
+    # system_cartographer kortlagde ALLEREDE systemet (services/daemons/surfaces/dark-edges/
+    # theater/coverage/health) + auto-triagerede (enqueuer observability+theater-repair-tasks
+    # til Jarvis over score-tærskler) — men meldte ALDRIG til Centralen. Nu: daemon-loopet
+    # (hver 15. min) → central.observe af systemkortet, så vi kun skal kigge ÉT sted.
+    # Read-only statisk analyse — ALDRIG destruktiv.
+    NerveSpec("cartographer", "system", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/system_cartographer.py:_observe_to_central (systemkort → Centralen)"),
+    NerveSpec("cartographer_autotask", "system", GateClass.COGNITIVE, "persistence", "leave",
+              "core/services/system_cartographer.py:_maybe_enqueue_* (auto-triage: huller→runtime_tasks)"),
 )
 
 

@@ -77,6 +77,21 @@ def sign_state(user_id: str, provider: str, *, now: float | None = None) -> str:
 
 
 def verify_state(state: str, *, now: float | None = None) -> tuple[str, str] | None:
+    """Auth-cluster GENNEM Centralen (observe): anti-CSRF state-validering synlig — en fejlet
+    validering (None) kan være et CSRF-/replay-angreb og er nu i Centralen. Self-safe; selve
+    state-strengen logges ALDRIG (kun valid/invalid + provider)."""
+    result = _verify_state_impl(state, now=now)
+    try:
+        from core.services.central_core import central
+        central().observe({"cluster": "auth", "nerve": "oauth_state",
+                           "valid": result is not None,
+                           "provider": (result[1] if result else "")})
+    except Exception:
+        pass
+    return result
+
+
+def _verify_state_impl(state: str, *, now: float | None = None) -> tuple[str, str] | None:
     """→ (user_id, provider) hvis gyldig+ikke-udløbet, ellers None."""
     try:
         body, sig = (state or "").split(".", 1)

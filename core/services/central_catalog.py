@@ -163,6 +163,9 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/workspace_crypto.py:46-193"),
     NerveSpec("private_brain_scoping", "privacy", GateClass.SECURITY, "filter", "leave",
               "core/runtime/db_private_brain.py:88-150"),
+    # A3 2026-06-22: cross-user attachment-adgang (clean security-bool → observe ved roden).
+    NerveSpec("attachment_access", "privacy", GateClass.SECURITY, "filter", "instrument",
+              "core/services/attachment_service.py:attachment_visible_to_user (observe wrapper)"),
     # ── Auth-cluster 🔒 KONSOLIDERET 2026-06-22 (SIDSTE cluster) ──
     # Hoved-enforcement = tool_access (rolle-backstop i execute_tool) routet gennem
     # central().decide som SECURITY (gate_auth): RED=deny / GREEN=tilladt. Backstoppens
@@ -191,6 +194,12 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/abuse_monitor.py:101-131 (sub-komponent af guard_incoming)"),
     NerveSpec("security_guard", "auth", GateClass.SECURITY, "persistence", "leave",
               "core/services/security_guard.py:54-210"),
+    # A2+A4 2026-06-22: plugin-inbound hardblock + kvote-udfald (orchestrator-dict → observe).
+    NerveSpec("plugin_inbound", "auth", GateClass.SECURITY, "verdict", "instrument",
+              "core/services/channel_inbound.py:route_inbound (observe wrapper)"),
+    # A5 2026-06-22: anti-CSRF oauth-state-validering (fejlet = muligt angreb → observe).
+    NerveSpec("oauth_state", "auth", GateClass.SECURITY, "validation", "instrument",
+              "core/services/oauth_flow.py:verify_state (observe wrapper)"),
     # ── Execution-cluster 🔒 KONSOLIDERET 2026-06-22 (tools-lanens fail-open hul) ──
     # Seks spredte rå inline-checks (hver med egen except:pass + ingen trace) smeltet til
     # ÉN graderet SECURITY-gate (gate_execution) routet gennem central().decide:

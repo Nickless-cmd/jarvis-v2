@@ -60,7 +60,28 @@ def resolve_inbound_mode(requested_mode: str = "chat", *, author_role: str = "",
     return {"mode": "chat", "downgraded": True, "reason": "mode_requires_owner"}
 
 
-def route_inbound(
+def route_inbound(**kwargs) -> dict:
+    """Auth-cluster GENNEM Den Intelligente Central (observe). A2+A4: plugin-hardblock +
+    kvote-udfald + mode-downgrade synligt pr. plugin/kanal i Centralen — UDEN at røre
+    logikken (orchestrator returnerer rigt dict → observe, ikke decide). Self-safe."""
+    result = _route_inbound_impl(**kwargs)
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "auth", "nerve": "plugin_inbound",
+            "plugin": str(kwargs.get("plugin_id") or ""),
+            "channel": str(kwargs.get("channel") or ""),
+            "allowed": bool(result.get("allowed")),
+            "reason": str(result.get("reason") or ""),
+            "mode_downgraded": bool(result.get("mode_downgraded")),
+            "quota_blocked": result.get("reason") == "quota_exceeded",
+        })
+    except Exception:
+        pass
+    return result
+
+
+def _route_inbound_impl(
     *,
     plugin_id: str,
     channel: str,

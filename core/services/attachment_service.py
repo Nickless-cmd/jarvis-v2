@@ -144,6 +144,22 @@ def list_image_attachments(*, user_id: str | None = None, limit: int = 200) -> l
 
 
 def attachment_visible_to_user(attachment_id: str, user_id: str | None) -> bool:
+    """Privacy-cluster GENNEM Centralen (observe): cross-user attachment-adgangs-beslutning
+    synlig pr. attachment/bruger — UDEN at røre logikken. Self-safe."""
+    visible = _attachment_visible_to_user_impl(attachment_id, user_id)
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "privacy", "nerve": "attachment_access",
+            "attachment_id": str(attachment_id or ""),
+            "user_id": str(user_id or ""), "visible": bool(visible),
+        })
+    except Exception:
+        pass
+    return visible
+
+
+def _attachment_visible_to_user_impl(attachment_id: str, user_id: str | None) -> bool:
     """Må denne bruger se attachment'et? user_id tom → ja (owner/legacy).
     Ellers: kun hvis brugeren deltog i attachment'ets session."""
     uid = (user_id or "").strip()

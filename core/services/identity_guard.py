@@ -98,6 +98,26 @@ def _display_name_for(user_id: str) -> str:
 
 
 def guard_incoming(message: str, *, session_id: str, user_id: str) -> dict | None:
+    """Samlet gate FØR LLM-kald — Auth-cluster GENNEM Den Intelligente Central (observe).
+
+    Tynd wrapper: kører den uændrede sikkerheds-orchestrering (_impl) og observerer udfaldet
+    (pass/locked/pushback/abuse) i Centralen så incoming-security-beslutninger bliver synlige
+    pr. session — UDEN at røre selve logikken (orchestratoren returnerer et rigt {action,reply}-
+    dict, ikke en allow/block-Verdict → observe, ikke decide). Self-safe."""
+    result = _guard_incoming_impl(message, session_id=session_id, user_id=user_id)
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "auth", "nerve": "guard_incoming",
+            "session_id": session_id,
+            "action": str((result or {}).get("action") or "pass"),
+        })
+    except Exception:
+        pass
+    return result
+
+
+def _guard_incoming_impl(message: str, *, session_id: str, user_id: str) -> dict | None:
     """Samlet gate FØR LLM-kald: (1) låst session/konto → mute, (2) identity-mismatch
     → pushback/lock. Returnerer None hvis beskeden må passere normalt.
 

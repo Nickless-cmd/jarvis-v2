@@ -29,6 +29,34 @@ def handle_override_command(
     level: str = "help",
     now: float | None = None,
 ) -> dict | None:
+    """Håndtér `!override <kode>` / `!revoke-override` — Auth-cluster GENNEM Centralen (observe).
+
+    Tynd wrapper: kører den uændrede TOTP-håndtering (_impl) og observerer udfaldet (ok +
+    action/reason — IKKE koden eller reply-teksten) så override-FORSØG bliver synlige pr.
+    session (fejlede forsøg = muligt angrebs-signal). Self-safe; rører ikke logikken."""
+    result = _handle_override_command_impl(
+        text, session_id=session_id, owner_seed=owner_seed, level=level, now=now)
+    if result is not None:  # var faktisk en override-kommando
+        try:
+            from core.services.central_core import central
+            central().observe({
+                "cluster": "auth", "nerve": "override_command",
+                "session_id": session_id, "ok": bool(result.get("ok")),
+                "action": str(result.get("action") or result.get("reason") or ""),
+            })
+        except Exception:
+            pass
+    return result
+
+
+def _handle_override_command_impl(
+    text: str,
+    *,
+    session_id: str,
+    owner_seed: str,
+    level: str = "help",
+    now: float | None = None,
+) -> dict | None:
     """Håndtér `!override <kode>` / `!revoke-override`.
 
     Returnerer None hvis teksten IKKE er en override-kommando (lad normal

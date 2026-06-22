@@ -174,14 +174,21 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/gate_auth.py"),
     NerveSpec("tool_scoping", "auth", GateClass.SECURITY, "filter", "leave",
               "core/tools/tool_scoping.py:203-243 (is_tool_allowed = detektor for gate_auth)"),
-    NerveSpec("permission_engine", "auth", GateClass.SECURITY, "filter", "merge",
-              "core/services/permission_engine.py:112-138"),
-    NerveSpec("override_command", "auth", GateClass.SECURITY, "verdict", "merge",
-              "core/services/override_command.py:24-106"),
-    NerveSpec("identity_guard", "auth", GateClass.SECURITY, "verdict", "merge",
-              "core/services/identity_guard.py:100-196"),
-    NerveSpec("abuse_monitor", "auth", GateClass.SECURITY, "verdict", "merge",
-              "core/services/abuse_monitor.py:101-131"),
+    # KORRIGERET 2026-06-22 (ærlig fit efter kode-læsning): permission_engine = kanonisk
+    # tool-access-matrix-DETEKTOR som gate_auth allerede kalder (leave, som tool_scoping).
+    NerveSpec("permission_engine", "auth", GateClass.SECURITY, "filter", "leave",
+              "core/services/permission_engine.py:112-138 (matrix-detektor for gate_auth)"),
+    # override_command + identity_guard = request-path security ved incoming-grænsen.
+    # Returnerer rige {action,reply}/{ok,...}-dicts (ikke allow/block-Verdicts) → INSTRUMENT
+    # (central.observe via tynd wrapper), ikke decide. Incoming-security nu synlig pr. session.
+    NerveSpec("override_command", "auth", GateClass.SECURITY, "verdict", "instrument",
+              "core/services/override_command.py:handle_override_command (observe wrapper)"),
+    NerveSpec("identity_guard", "auth", GateClass.SECURITY, "verdict", "instrument",
+              "core/services/identity_guard.py:guard_incoming (observe wrapper)"),
+    # abuse_monitor = sub-komponent KALDT inde i guard_incoming (rate-limit+injection);
+    # dens udfald fanges via guard_incoming's observe → leave (ikke selvstændig request-gate).
+    NerveSpec("abuse_monitor", "auth", GateClass.SECURITY, "verdict", "leave",
+              "core/services/abuse_monitor.py:101-131 (sub-komponent af guard_incoming)"),
     NerveSpec("security_guard", "auth", GateClass.SECURITY, "persistence", "leave",
               "core/services/security_guard.py:54-210"),
     # ── Execution-cluster 🔒 KONSOLIDERET 2026-06-22 (tools-lanens fail-open hul) ──

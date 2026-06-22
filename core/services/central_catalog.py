@@ -366,6 +366,12 @@ CATALOG: tuple[NerveSpec, ...] = (
               "apps/api/.../presence.py (jarvis-desk/mobile-pings → observe)"),
     NerveSpec("ws_connection", "connections", GateClass.COGNITIVE, "inline", "instrument",
               "apps/api/.../live.py (MC-websocket connect/disconnect → observe)"),
+    # Fuld fejl-catcher for forbindelses-laget (Bjørn): forbindelses-fejl + UAUTORISERET adgang
+    # (tool-deny/spoof) → observe + severe incident; session_activity = tool-liste+fejl pr. session.
+    NerveSpec("connection_error", "connections", GateClass.COGNITIVE, "inline", "instrument",
+              "apps/api/.../live.py:ws-error (forbindelses-fejl → observe)"),
+    NerveSpec("unauthorized", "connections", GateClass.SECURITY, "inline", "instrument",
+              "core/services/connections.py:note_unauthorized (uautoriseret adgang → severe incident)"),
 )
 
 

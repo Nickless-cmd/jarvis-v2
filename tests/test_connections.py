@@ -73,3 +73,50 @@ def test_connections_cluster_in_catalog():
     assert "connections" in cc.clusters()
     names = [n.name for n in cc.by_cluster("connections")]
     assert "device_presence" in names and "ws_connection" in names
+
+
+# ── Udvidelse: fejl-catcher + uautoriseret + session-aktivitet ───────────
+def test_note_unauthorized_flags_incident(monkeypatch):
+    from core.services import connections as cn
+    obs = []
+    monkeypatch.setattr(cn, "_observe", lambda nerve, data: obs.append({"nerve": nerve, **data}))
+    flagged = {}
+    monkeypatch.setattr("core.runtime.db_central_incidents.record_central_incident",
+                        lambda **k: flagged.update(k))
+    cn.note_unauthorized("member", "s9", "tool:operator_bash", "tool_not_permitted")
+    assert obs[0]["nerve"] == "unauthorized" and obs[0]["resource"] == "tool:operator_bash"
+    assert flagged["severity"] == "severe" and flagged["nerve"] == "unauthorized"
+
+
+def test_session_activity_combines_tools_and_unauthorized(monkeypatch):
+    from core.services import connections as cn
+    # tool_observer-del
+    monkeypatch.setattr("core.services.tool_observer.recent_tool_calls",
+                        lambda session_id=None, limit=300: [
+                            {"tool": "read_file", "kind": "native", "status": "ok"},
+                            {"tool": "operator_bash", "kind": "operator", "status": "error",
+                             "error": "bridge_not_connected"},
+                        ])
+
+    class _Rec:
+        def __init__(self, nerve, payload):
+            self.cluster = "connections"; self.nerve = nerve; self.payload = payload
+
+    class _Sink:
+        def recent(self):
+            return [_Rec("unauthorized", {"session_id": "s1", "resource": "tool:x",
+                                          "reason": "tool_not_permitted"})]
+
+    monkeypatch.setattr("core.services.central_trace.sink", lambda: _Sink())
+    a = cn.session_activity("s1")
+    assert {"tool": "read_file", "kind": "native"} in a["tools"]
+    assert a["failed_tools"][0]["tool"] == "operator_bash"
+    assert a["unauthorized"][0]["resource"] == "tool:x"
+
+
+def test_connection_error_observed(monkeypatch):
+    from core.services import connections as cn
+    obs = []
+    monkeypatch.setattr(cn, "_observe", lambda nerve, data: obs.append({"nerve": nerve, **data}))
+    cn.note_connection_error("1.2.3.4:9", "ConnectionReset: broken pipe")
+    assert obs[0]["nerve"] == "connection_error" and "broken pipe" in obs[0]["reason"]

@@ -3982,6 +3982,15 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
                 event_bus.publish("incident.tool_denied", {"tool": name, "role": _role})
             except Exception:
                 pass
+            # Connections-cluster: uautoriseret tool-adgang → fang+flag (severe incident) +
+            # bind til session, så vi ser hvem/hvad forsøgte uautoriseret hvor.
+            try:
+                from core.services.connections import note_unauthorized
+                _ua_sid = str(arguments.get("_runtime_session_id")
+                              or arguments.get("_session_id") or "")
+                note_unauthorized(_role, _ua_sid, f"tool:{name}", "tool_not_permitted")
+            except Exception:
+                pass
             _record_tool_outcome_memory(name, arguments, result, mode="tool")
             return result
 

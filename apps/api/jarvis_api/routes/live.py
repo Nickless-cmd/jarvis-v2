@@ -97,6 +97,11 @@ async def websocket_stream(ws: WebSocket) -> None:
                     client_label,
                     exc,
                 )
+                try:
+                    from core.services.connections import note_connection_error
+                    note_connection_error(client_label, f"{type(exc).__name__}: {exc}")
+                except Exception:
+                    pass
     finally:
         logger.info(
             "mission-control websocket cleanup client=%s last_seen_id=%s",

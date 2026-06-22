@@ -38,6 +38,66 @@ def note_ws(event: str, client: str = "", **meta: Any) -> None:
         k: v for k, v in meta.items() if k in ("user_id", "reason")}})
 
 
+def note_connection_error(client: str, reason: str, **meta: Any) -> None:
+    """Forbindelses-FEJL (WS-error, broken pipe, abort). → observe (synlig, ikke severe)."""
+    _observe("connection_error", {"client": str(client or ""), "reason": str(reason or "")[:160]})
+
+
+def note_unauthorized(user_id: str, session_id: str, resource: str, reason: str) -> None:
+    """UAUTORISERET adgang (tool-deny / identity-spoof / rate-limit) på en forbindelse →
+    observe + SEVERE incident (sikkerheds-relevant: skal fanges + flagges, ikke kun logges).
+    Self-safe."""
+    _observe("unauthorized", {
+        "user_id": str(user_id or ""), "session_id": str(session_id or ""),
+        "resource": str(resource or ""), "reason": str(reason or "")[:120],
+    })
+    try:
+        from core.runtime.db_central_incidents import record_central_incident
+        record_central_incident(
+            cluster="connections", nerve="unauthorized", kind="access", severity="severe",
+            message=f"uautoriseret adgang: {resource} ({reason}) user={user_id}",
+            session_id=str(session_id or ""),
+        )
+    except Exception:
+        pass
+
+
+def session_activity(session_id: str, *, limit: int = 300) -> dict[str, Any]:
+    """Forbindelses-debugging pr. session: hvilke tools blev brugt, hvilke FEJLEDE (+ årsag),
+    og uautoriserede forsøg. Kombinerer tool_observer (tool-laget) + connections-trace. Når en
+    bruger melder en forbindelses-/adgangs-fejl ser vi PRÆCIST hvad der skete i sessionen."""
+    out: dict[str, Any] = {"session_id": str(session_id or ""), "tools": [],
+                           "failed_tools": [], "unauthorized": [], "connection_errors": []}
+    try:
+        from core.services.tool_observer import recent_tool_calls
+        seen: set[str] = set()
+        for c in recent_tool_calls(session_id=session_id, limit=limit):
+            t = c.get("tool")
+            if t and t not in seen:
+                seen.add(t)
+                out["tools"].append({"tool": t, "kind": c.get("kind")})
+            if c.get("status") not in ("ok", None, ""):
+                out["failed_tools"].append({"tool": t, "kind": c.get("kind"),
+                                            "error": c.get("error")})
+    except Exception:
+        pass
+    try:
+        from core.services import central_trace
+        for r in central_trace.sink().recent():
+            if r.cluster != "connections":
+                continue
+            p = r.payload or {}
+            if str(p.get("session_id") or "") != str(session_id or ""):
+                continue
+            if r.nerve == "unauthorized":
+                out["unauthorized"].append({"resource": p.get("resource"), "reason": p.get("reason")})
+            elif r.nerve == "connection_error":
+                out["connection_errors"].append({"reason": p.get("reason")})
+    except Exception:
+        pass
+    return out
+
+
 def active_summary(*, window: int = 500) -> dict[str, Any]:
     """Read-only: hvem/hvad har været forbundet i den seneste trace (til MC/adaptiv-læring).
     Aggregerer connections-observes fra ring-bufferen. Self-safe."""

@@ -156,6 +156,21 @@ def create_app() -> FastAPI:
             set_main_loop(_asyncio_mod.get_running_loop())
         except Exception:
             pass
+        # Tools-cluster: snapshot registrerede ruter → dead-endpoint-detektion cross-proces.
+        # UDENFOR runtime_services_enabled-gaten: skal køre i API-processen (den der serverer
+        # de ~412 ruter), ikke kun runtime-processen. Begge skriver samme data — harmløst.
+        try:
+            from core.services.endpoint_usage_store import store_registered_routes
+            _routes = []
+            for _r in app.routes:
+                _p = getattr(_r, "path", None)
+                for _m in (getattr(_r, "methods", None) or set()):
+                    if _p:
+                        _routes.append((_m, _p))
+            store_registered_routes(_routes)
+            logger.info("endpoint_usage: %d registrerede ruter snapshottet", len(_routes))
+        except Exception as _exc:
+            logger.warning("endpoint_usage route snapshot failed: %s", _exc)
         if runtime_services_enabled:
             start_runtime_hook_runtime()
             start_approval_feedback_subscriber()
@@ -223,19 +238,6 @@ def create_app() -> FastAPI:
                 logger.info("system_cartographer daemon started")
             except Exception as _exc:
                 logger.warning("system_cartographer start failed: %s", _exc)
-            try:
-                # Tools-cluster: snapshot registrerede ruter → dead-endpoint-detektion cross-proces.
-                from core.services.endpoint_usage_store import store_registered_routes
-                _routes = []
-                for _r in app.routes:
-                    _p = getattr(_r, "path", None)
-                    for _m in (getattr(_r, "methods", None) or set()):
-                        if _p:
-                            _routes.append((_m, _p))
-                store_registered_routes(_routes)
-                logger.info("endpoint_usage: %d registrerede ruter snapshottet", len(_routes))
-            except Exception as _exc:
-                logger.warning("endpoint_usage route snapshot failed: %s", _exc)
             try:
                 from core.services.jarvis_brain_daemon import start_brain_daemon
                 start_brain_daemon()

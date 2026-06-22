@@ -207,6 +207,25 @@ def apply_runtime_contract_candidate(
     }
 
 
+def _should_auto_apply(candidate: dict[str, object], kind: str) -> bool:
+    """Memory-cluster (2026-06-22): rut promotion-beslutningen gennem den GRADEREDE
+    Centralen-gate (gate_memory.memory_promotion_gate) → fuld catch+flag+notify+trace.
+    GREEN = sikker → auto-apply (True). YELLOW (kø til review) / RED (injection-afvist)
+    → False. Fail-CLOSED: ved enhver tvivl/fejl skriver vi IKKE til identitets-filen.
+    """
+    try:
+        from core.services.central_core import central
+        from core.services.gate_memory import memory_promotion_gate
+        from core.services.gate_kernel import Decision
+        v = central().decide(
+            "memory_promotion", {"candidate": candidate, "kind": kind},
+            memory_promotion_gate, cluster="memory",
+        )
+        return v.decision is Decision.GREEN
+    except Exception:
+        return False  # skrive-gate → fail-closed (skriv ikke ved tvivl)
+
+
 def auto_apply_safe_user_md_candidates() -> dict[str, object]:
     considered = 0
     auto_applied = 0
@@ -220,7 +239,7 @@ def auto_apply_safe_user_md_candidates() -> dict[str, object]:
         limit=12,
     ):
         considered += 1
-        if not _candidate_eligible_for_auto_apply(candidate):
+        if not _should_auto_apply(candidate, "user_md"):
             skipped += 1
             continue
         approved = approve_runtime_contract_candidate(
@@ -260,7 +279,7 @@ def auto_apply_safe_memory_md_candidates() -> dict[str, object]:
         limit=12,
     ):
         considered += 1
-        if not _memory_candidate_eligible_for_auto_apply(candidate):
+        if not _should_auto_apply(candidate, "memory_md"):
             skipped += 1
             continue
         approved = approve_runtime_contract_candidate(

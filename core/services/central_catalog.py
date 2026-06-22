@@ -99,9 +99,14 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/proactive_question_gate_tracking.py (tracker, ej enforcement)"),
     NerveSpec("proactive_loop_lifecycle", "proactivity", GateClass.COGNITIVE, "persistence", "leave",
               "core/services/proactive_loop_lifecycle_tracking.py (tracker, ej enforcement)"),
-    # ── Memory-cluster (skrive/recall/promotion, fit-passet 2026-06-22) ──
-    # INGEN request-path-gates → pointen er TRACE, ikke enforcement. Recall/promotion
-    # = instrument (fejler stille → prompt bygges uden memory); skrivning = leave.
+    # ── Memory-cluster (KONSOLIDERET 2026-06-22) ──
+    # Mest observabilitet (recall/write fejler stille → instrument/leave). ÉN ægte
+    # enforcement-gate: memory_promotion — gater hvad der auto-SKRIVES til identitets-
+    # filer. De to tidligere eligibility-gates (USER.md + MEMORY.md) konsolideret til
+    # ÉN graderet gate (gate_memory): RED=injection-afvist / GREEN=auto-apply / YELLOW=
+    # kø-review, routet gennem central().decide. Fail-CLOSED (skriv ikke ved tvivl).
+    NerveSpec("memory_promotion", "memory", GateClass.COGNITIVE, "verdict", "merged",
+              "core/services/gate_memory.py"),
     NerveSpec("memory_write", "memory", GateClass.COGNITIVE, "persistence", "leave",
               "core/services/jarvis_brain.py:383-467"),
     NerveSpec("memory_embed", "memory", GateClass.COGNITIVE, "daemon", "leave",
@@ -109,9 +114,7 @@ CATALOG: tuple[NerveSpec, ...] = (
     NerveSpec("memory_search", "memory", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/jarvis_brain.py:596-722"),
     NerveSpec("memory_unified_recall", "memory", GateClass.COGNITIVE, "inline", "instrument",
-              "core/services/memory_recall_engine.py:476-543"),
-    NerveSpec("memory_candidate_promotion", "memory", GateClass.COGNITIVE, "inline", "instrument",
-              "core/identity/candidate_workflow.py:250-287"),
+              "core/services/memory_recall_engine.py (gather-fejl via central observe)"),
     NerveSpec("memory_distill", "memory", GateClass.COGNITIVE, "daemon", "leave",
               "core/services/session_distillation.py:164-363"),
     NerveSpec("memory_associative_recall", "memory", GateClass.COGNITIVE, "inline", "instrument",

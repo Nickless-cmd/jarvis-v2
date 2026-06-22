@@ -26,7 +26,14 @@ class NerveSpec:
 # Mangler: Tools, Memory, Privacy🔒, Auth🔒 (Tools-fitpass findes som note; sikkerheds-
 # clustrene tages SIDST med fail-closed paritet). Se reference_central_cluster_taxonomy.
 CATALOG: tuple[NerveSpec, ...] = (
-    # ── Loop-cluster ──
+    # ── Loop-cluster (KONSOLIDERET 2026-06-22) ──
+    # Enforcement = agentisk loop-kontrol (stop/fortsæt). De spredte stop-betingelser
+    # (max runder / tomme-tekst / tool-only / synthese-pause) konsolideret til ÉN graderet
+    # gate (gate_loop): RED=hård stop / YELLOW=blød synthese-brems / GREEN=fortsæt, routet
+    # gennem central().decide. FAIL-SAFE (gate-fejl→stop, ikke uendelig løkke). Paritet med
+    # gammel _is_last_round bevaret. Resten = instrument/leave.
+    NerveSpec("loop_control", "loop", GateClass.COGNITIVE, "verdict", "merged",
+              "core/services/gate_loop.py"),
     NerveSpec("run_closure", "loop", GateClass.COGNITIVE, "daemon", "leave",
               "core/services/run_closure_gate.py"),
     NerveSpec("tool_budget", "loop", GateClass.COGNITIVE, "inline", "instrument",

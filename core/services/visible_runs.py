@@ -1899,11 +1899,32 @@ async def _stream_visible_run(
                     # Without this, eager models (big-pickle/MiniMax) keep
                     # calling tools forever and the user never gets a coherent
                     # closing answer — only fragmented progress text.
-                    _is_last_round = (
-                        _agentic_round == _AGENTIC_MAX_ROUNDS - 1
-                        or _consecutive_empty_text_rounds >= _MAX_EMPTY_TEXT_ROUNDS - 1
-                        or _consecutive_tool_only_rounds >= _MAX_TOOL_ONLY_ROUNDS - 1
-                    )
+                    # ── Loop-cluster GENNEM Den Intelligente Central (graderet, 2026-06-22) ──
+                    # Hard-stop-beslutningen ruttes gennem central().decide → graderet
+                    # (RED=hård stop, YELLOW=blød synthese-brems, GREEN=fortsæt) + catch/
+                    # flag/notify/trace. Konsoliderer de spredte stop-betingelser i ÉN gate.
+                    # FAIL-SAFE for en loop-gate: gate-fejl (SKIP) → hård stop; og hvis hele
+                    # central-stien fejler → lokal backstop-beregning (loop aldrig i det uendelige).
+                    try:
+                        from core.services.central_core import central as _central_loop
+                        from core.services.gate_loop import loop_gate as _loop_gate_fn
+                        from core.services.gate_kernel import Decision as _LDec, GateClass as _LGK
+                        _lv = _central_loop().decide("loop_control", {
+                            "round": _agentic_round, "max_rounds": _AGENTIC_MAX_ROUNDS,
+                            "consecutive_empty": _consecutive_empty_text_rounds,
+                            "max_empty": _MAX_EMPTY_TEXT_ROUNDS,
+                            "consecutive_tool_only": _consecutive_tool_only_rounds,
+                            "max_tool_only": _MAX_TOOL_ONLY_ROUNDS,
+                            "tool_pause": _tool_pause_active,
+                            "run_id": run.run_id,
+                        }, _loop_gate_fn, cluster="loop", klass=_LGK.COGNITIVE)
+                        _is_last_round = _lv.decision in (_LDec.RED, _LDec.SKIP)
+                    except Exception:
+                        _is_last_round = (
+                            _agentic_round == _AGENTIC_MAX_ROUNDS - 1
+                            or _consecutive_empty_text_rounds >= _MAX_EMPTY_TEXT_ROUNDS - 1
+                            or _consecutive_tool_only_rounds >= _MAX_TOOL_ONLY_ROUNDS - 1
+                        )
                     # Var tools fjernet i DENNE runde KUN pga. synthese-pausen (ikke
                     # fordi det er sidste runde)? Så er en tom tool-liste en TVUNGET
                     # opsummering — ikke et naturligt "jeg er færdig". Vi må ikke

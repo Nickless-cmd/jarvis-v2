@@ -16,21 +16,26 @@ from core.services.gate_kernel import Decision, GateClass, Verdict
 
 
 def commit_gate(ctx: dict[str, Any]) -> Verdict:
-    """Kør Commit-clusterens decision-conflict-check og returnér ét Verdict.
+    """Kør Commit-clusterens decision-conflict-check og returnér ét GRADERET Verdict.
 
     ctx: {tool_name, tool_args, user_message, run_id, session_id}.
-    Tool-kald i konflikt med en aktiv beslutning → RED (block). For nu = decision_gate
-    alene; flere delgates kan kombineres via worst-decision senere.
+    Grader af blok (som TruthGate):
+      hård konflikt (høj-prioritets-beslutning) → RED  (block — tool kører ikke)
+      blød konflikt (lav-prioritet)             → YELLOW (warn — tool kører, advarsel surfaces)
+      ingen konflikt                            → GREEN (pass)
+    For nu = decision_gate alene; flere delgates kan kombineres via worst-decision senere.
     """
-    from core.services.decision_gate import check_decision_gate
+    from core.services.decision_gate import evaluate_decision_conflict
 
-    allowed, reason = check_decision_gate(
+    severity, reason = evaluate_decision_conflict(
         str(ctx.get("tool_name") or ""),
         tool_args=ctx.get("tool_args") or {},
         user_message=str(ctx.get("user_message") or ""),
     )
-    if not allowed:
-        return Verdict("decision_gate", Decision.RED,
-                       str(reason or "decision-konflikt"),
+    if severity == "hard":
+        return Verdict("decision_gate", Decision.RED, str(reason or "decision-konflikt"),
                        action="block", klass=GateClass.COGNITIVE)
+    if severity == "soft":
+        return Verdict("decision_gate", Decision.YELLOW, str(reason or "blød decision-tension"),
+                       action="warn", klass=GateClass.COGNITIVE)
     return Verdict("decision_gate", Decision.GREEN, "ok", klass=GateClass.COGNITIVE)

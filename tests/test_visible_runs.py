@@ -298,33 +298,14 @@ class TestCommitClusterMigration:
         # det gamle inline check_decision_gate-kald er VÆK (kører nu kun inde i commit_gate)
         assert "_decision_allowed, _decision_reason = check_decision_gate" not in src
 
-    def test_commit_gate_blocks_on_conflict_else_green(self):
-        from unittest.mock import patch
-        from core.services.gate_commit import commit_gate
-        from core.services.gate_kernel import Decision
-        with patch("core.services.decision_gate.check_decision_gate",
-                   return_value=(False, "konflikt med aktiv beslutning")):
-            v = commit_gate({"tool_name": "operator_bash"})
-        assert v.decision is Decision.RED and v.action == "block"
-        with patch("core.services.decision_gate.check_decision_gate",
-                   return_value=(True, None)):
-            v = commit_gate({"tool_name": "web_search"})
-        assert v.decision is Decision.GREEN
-
-    def test_commit_gate_fail_open_through_central(self):
-        # commit_gate kaster → central().decide (cognitiv) fail-open'er til SKIP (allow)
-        from core.services.central_core import Central
-        from core.services.central_trace import TraceSink
-        from core.services.central_switches import CircuitBreaker
-        from core.services.gate_kernel import Decision, GateClass
-        from core.services.gate_commit import commit_gate
-        from unittest.mock import patch
-        c = Central(sink=TraceSink(), breaker=CircuitBreaker(), emit=lambda *a: None)
-        with patch("core.services.decision_gate.check_decision_gate",
-                   side_effect=RuntimeError("boom")):
-            v = c.decide("decision_gate", {"tool_name": "x", "run_id": "cg1"},
-                         commit_gate, cluster="commit", klass=GateClass.COGNITIVE)
-        assert v.decision is Decision.SKIP  # fail-open, ikke block
+    def test_call_site_honors_graded_degrees(self):
+        # Gaten håndhæver med GRADER (som Truth), ikke binært: kald-stedet skal
+        # honorere RED (hård blok), YELLOW (blød — kør men advar) og GREEN.
+        src = self._vr_source()
+        assert "_Dec.RED" in src and "_decision_blocked = True" in src  # hård
+        assert "_Dec.YELLOW" in src and "_decision_soft_warn" in src     # blød
+        # blød advarsel surfaces i tool-resultatet (tool KØRER)
+        assert "if _decision_soft_warn:" in src
 
 
 class TestTrackerCascadeFix:

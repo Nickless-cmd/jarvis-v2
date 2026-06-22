@@ -4854,6 +4854,7 @@ def _execute_simple_tool_calls(
         # 2. Decision gate: active decisions conflict blocks execution
         _decision_blocked = False
         _decision_reason = None
+        _decision_soft_warn = None  # YELLOW: blød grad — tool kører, advarsel surfaces
         # ── Commit-cluster GENNEM Den Intelligente Central (ÆGTE migration 2026-06-22) ──
         # decision_gate's enforcement ruttes nu GENNEM central().decide → ét eksekverings-
         # pas med boundary-capture (cognitiv→fail-open ved fejl) + circuit-breaker +
@@ -4872,8 +4873,10 @@ def _execute_simple_tool_calls(
                 _commit_gate_fn, cluster="commit", klass=_GK.COGNITIVE,
             )
             if _cv.decision is _Dec.RED:
-                _decision_blocked = True
+                _decision_blocked = True          # hård grad → blokér (tool kører ikke)
                 _decision_reason = _cv.reason
+            elif _cv.decision is _Dec.YELLOW:
+                _decision_soft_warn = _cv.reason  # blød grad → kør, men surfacer advarsel
         except Exception:
             pass  # central self-safe; gate-fejl → allow (fail-open)
 
@@ -4904,6 +4907,9 @@ def _execute_simple_tool_calls(
 
         result = _exec(name, arguments)
         result_text = format_tool_result_for_model(name, result)
+        if _decision_soft_warn:
+            # YELLOW (blød decision-tension): tool kørte, men gør Jarvis opmærksom.
+            result_text = f"⚠ {_decision_soft_warn}\n\n{result_text}"
         # Only mark as "seen" if the call genuinely succeeded. Including
         # `approval_needed` here was a bug: when approval is later denied
         # OR the approval flow fails silently, the signature stays in the

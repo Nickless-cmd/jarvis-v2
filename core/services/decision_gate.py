@@ -91,6 +91,67 @@ def check_decision_gate(
     return False, reason
 
 
+# Grader af blok (Commit-cluster, 2026-06-22): en konflikt med en HØJ-prioritets-
+# beslutning hård-blokerer (RED); en konflikt med kun lav-prioritets-beslutninger blød-
+# advarer men tillader (YELLOW). Tærskel = 50 (= create_decision-default), så nuværende
+# blokerings-adfærd bevares for normale beslutninger; kun eksplicit lav-prioritet softer.
+_HARD_BLOCK_PRIORITY = 50
+
+
+def evaluate_decision_conflict(
+    tool_name: str,
+    tool_args: dict[str, Any] | None = None,
+    user_message: str = "",
+) -> tuple[str, str | None]:
+    """Graderet decision-conflict. Returnerer (severity, reason):
+      'hard' → RED (blokér; konflikt med beslutning ≥ tærskel-prioritet)
+      'soft' → YELLOW (advar men tillad; kun lav-prioritets-konflikt)
+      'none' → GREEN (ingen konflikt)
+    """
+    if tool_name in _META_TOOLS:
+        return "none", None
+    try:
+        from core.services.behavioral_decisions import list_active_decisions
+        decisions = list_active_decisions(limit=10) or []
+    except Exception:
+        return "none", None
+    if not decisions:
+        return "none", None
+
+    context = _build_context(tool_name, tool_args, user_message)
+    conflicts: list[str] = []
+    max_priority = 0
+    for d in decisions:
+        directive = str(d.get("directive") or "").strip()
+        if not directive:
+            continue
+        if _detect_conflict(directive, context, d):
+            decision_id = str(d.get("decision_id") or "unknown")
+            conflicts.append(f"[{decision_id[:8]}] {directive[:60]}")
+            max_priority = max(max_priority, int(d.get("priority") or 0))
+
+    if not conflicts:
+        return "none", None
+
+    severity = "hard" if max_priority >= _HARD_BLOCK_PRIORITY else "soft"
+    top = " | ".join(conflicts[:2])
+    if severity == "hard":
+        reason = (f"DECISION GATE (blok): {len(conflicts)} forpligtelse(r) i konflikt "
+                  f"— {top} — Sig 'alligevel' for at gennemtvinge.")
+    else:
+        reason = (f"DECISION GATE (blød advarsel): tangerer {len(conflicts)} lav-prioritets-"
+                  f"forpligtelse(r) — {top}. Kører, men vær opmærksom.")
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("decision_gate.conflict", {
+            "tool_name": tool_name, "severity": severity,
+            "conflict_count": len(conflicts), "max_priority": max_priority,
+        })
+    except Exception:
+        pass
+    return severity, reason
+
+
 def _build_context(
     tool_name: str,
     tool_args: dict[str, Any] | None,

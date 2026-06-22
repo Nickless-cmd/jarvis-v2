@@ -63,6 +63,9 @@ class Central:
 
     # ── interne verdict-hjælpere ────────────────────────────────────────
     def _fail_verdict(self, nerve: str, klass: GateClass, reason: str) -> Verdict:
+        # §8 "demokrati"-invariant (EKSPLICIT): et COGNITIVE-cluster der fejler returnerer SKIP
+        # — ALDRIG RED. Det kan derfor aldrig blokere andre clusters via en fejl. KUN SECURITY-
+        # clusters fail-closer til RED. Dette er reglen, ikke bare en konsekvens.
         if klass is GateClass.SECURITY:
             return Verdict(nerve, Decision.RED, reason, action="block", klass=klass)
         return Verdict(nerve, Decision.SKIP, reason, action="none", klass=klass)
@@ -143,6 +146,7 @@ class Central:
                 else self._fail_verdict(nerve, klass, err.message)
         self._breaker.record(nerve, ok=True)
         v = _coerce_verdict(nerve, result, klass)
+        v.cluster = cluster  # §4 arbitrage: bær cluster-tilhør med verdiktet
         try:
             cdict = ctx if isinstance(ctx, dict) else {}
             self._sink.record(central_trace.TraceRecord(

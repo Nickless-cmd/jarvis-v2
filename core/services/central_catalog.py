@@ -360,6 +360,27 @@ CATALOG: tuple[NerveSpec, ...] = (
 )
 
 
+# §4 DEKLARERET cluster-prioritet (højest først). Når to gates konflikter på samme handling,
+# afgør arbitragen deterministisk hvem der vinder — i stedet for implicit via call-order.
+# SIKKERHEDS-clusters først (de outranker ALTID kognitive ved konflikt); derefter kognitive
+# efter kritikalitet. Ukendt cluster → lavest prioritet.
+CLUSTER_PRIORITY: tuple[str, ...] = (
+    # sikkerhed (fail-closed, kan ikke slås fra)
+    "auth", "privacy", "execution", "mutation", "skill",
+    # kognitive efter kritikalitet
+    "truth", "commit", "loop", "memory", "review", "proactivity",
+    "prompt", "tools", "stream", "system", "autonomous", "db",
+)
+
+
+def cluster_rank(cluster: str) -> int:
+    """Lavere = højere prioritet. Ukendt cluster → bagest (lavest prioritet)."""
+    try:
+        return CLUSTER_PRIORITY.index(str(cluster or ""))
+    except ValueError:
+        return len(CLUSTER_PRIORITY) + 1
+
+
 def clusters() -> list[str]:
     return sorted({n.cluster for n in CATALOG})
 

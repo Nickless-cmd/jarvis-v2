@@ -44,6 +44,7 @@ class Verdict:
     latency_ms: int = 0
     klass: GateClass = GateClass.COGNITIVE
     evidence: dict[str, Any] | None = None
+    cluster: str = ""             # §4 arbitrage: hvilket cluster talte (sat af central.decide)
 
     def is_blocking(self) -> bool:
         return self.decision is Decision.RED

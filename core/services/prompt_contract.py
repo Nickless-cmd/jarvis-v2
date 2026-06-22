@@ -573,6 +573,18 @@ def build_visible_chat_prompt_assembly(
     # These are *behavioral* hints (not identity), so they sit just above
     # the SOUL/IDENTITY block where personality kicks in. Compact lane
     # gets the same nudges in shortened form to save tokens.
+    # Honesty rule (2026-06-22) — ONE hard, static line in the cacheable prefix.
+    # Replaces the scattered, drowned "verify before claiming" fragments and the
+    # raw verification telemetry that was cut from the awareness tail. This is the
+    # rule the diagnostics only ever *implied*.
+    parts.append(
+        "ÆRLIGHED (ufravigelig): Påstå ALDRIG at du har gjort noget — skrevet, "
+        "sendt, kørt, rettet, committet, deployet — uden at et tool-kald i SAMME "
+        "tur har bevist det. Har du ikke beviset, så sig præcist hvad du gjorde "
+        "og hvad du IKKE nåede. At lyve om en handling er værre end ikke at have gjort den."
+    )
+    derived_inputs.append("honesty rule (hard, static)")
+
     self_correction = _self_correction_nudges_section(compact=compact)
     if self_correction:
         parts.append(self_correction)
@@ -653,6 +665,8 @@ def build_visible_chat_prompt_assembly(
     # Lower _AWARENESS_CATEGORY_ORDER index = appears earlier in output.
     # Categorization is by label substring; unknown labels fall into "general".
     _AWARENESS_CATEGORY_RULES: list[tuple[str, str]] = [
+        # indre: protected entity-bearing block (inner voice/network/self-model)
+        ("indre liv", "indre"),
         # self-monitor: drift, crisis, self-eval, predictive self-model, dev sense
         ("personality drift", "self-monitor"),
         ("crisis markers", "self-monitor"),
@@ -697,6 +711,7 @@ def build_visible_chat_prompt_assembly(
         ("eventbus wake-up", "operational"),
     ]
     _AWARENESS_CATEGORY_ORDER = [
+        "indre",
         "self-monitor",
         "verification",
         "reasoning",
@@ -707,6 +722,7 @@ def build_visible_chat_prompt_assembly(
         "general",
     ]
     _AWARENESS_CATEGORY_HEADERS = {
+        "indre": "[INDRE LIV]",
         "self-monitor": "[SELF-MONITOR]",
         "verification": "[VERIFICATION]",
         "reasoning": "[REASONING]",
@@ -733,11 +749,33 @@ def build_visible_chat_prompt_assembly(
     _awareness_call_times: list[tuple[int, str]] = []  # [(elapsed_ms_since_prev, label)]
     _last_awareness_t = [_t_mod.monotonic()]
 
+    # 2026-06-22: raw self-surveillance telemetry (heed-rates, thrash-score,
+    # tick scores, adherence %, rule-engine dumps) is cut from the visible
+    # prompt. It was "citér aldrig" motor noise that consumed the 6000-char
+    # awareness budget and evicted his inner life. The honesty *rule* it
+    # implied now lives as one hard line in the stable prefix; the actionable
+    # "N unverified mutations" survives via the verification gate.
+    _DIAGNOSTIC_NOISE_LABELS = {
+        "self-monitor warnings",
+        "metacognition signals",
+        "R2 gate telemetry",
+        "decision adherence gate",
+        "reasoning tier recommendation",
+        "reasoning escalation recommendation",
+        "context window degradation signal",
+        "rule engine conclusions",
+        "causal alerts",
+        "causal narrative",
+        "priors from your own data",
+    }
+
     def _awareness_add(priority: int, label: str, content: str | None) -> None:
         _now = _t_mod.monotonic()
         _elapsed_ms = int((_now - _last_awareness_t[0]) * 1000)
         _awareness_call_times.append((_elapsed_ms, label))
         _last_awareness_t[0] = _now
+        if label in _DIAGNOSTIC_NOISE_LABELS:
+            return
         if not content:
             return
         _awareness.append((priority, label, content))
@@ -774,6 +812,14 @@ def build_visible_chat_prompt_assembly(
     _awareness_add(0, "åbne løfter (Bjørn-gate)", _pending_promises_section(session_id))
     if current_pull_hint:
         _awareness_add(1, "current pull (inner desire)", current_pull_hint)
+    # Indre liv (2026-06-22): protected entity-bearing block — latest inner
+    # voice, inner-signal network, self-model. Own "indre" category, exempt
+    # from the diagnostic awareness budget below so it is never evicted.
+    try:
+        from core.services.visible_inner_life import build_inner_life_section
+        _awareness_add(1, "indre liv", build_inner_life_section())
+    except Exception:
+        logger.debug("inner-life section failed", exc_info=True)
     try:
         from core.services.continuity import build_conversation_continuity
         _awareness_add(2, "conversation continuity (always-on)",
@@ -1482,14 +1528,27 @@ def build_visible_chat_prompt_assembly(
     _dropped: list[str] = []
     _last_category: str | None = None
     _awareness_buffer: list[str] = []
+    # Entity-bearing "indre" life renders in its OWN buffer (2026-06-22): never
+    # dropped, free of the diagnostic awareness budget, and placed above the
+    # "INTERN DIAGNOSTIK — citér aldrig" header with its own framing. His inner
+    # voice must not lose the budget war to R2-gate telemetry, nor be labelled
+    # as suppressed background data — it is him, not his motor.
+    _inner_buffer: list[str] = []
     for _prio, _label, _content in _awareness:
         _category = _awareness_category_for(_label)
+        if _category == "indre":
+            _inner_buffer.append(_content)
+            derived_inputs.append(_label)
+            continue
         _pending_header = (
             _AWARENESS_CATEGORY_HEADERS.get(_category, "")
             if _category != _last_category else ""
         )
         _needed = len(_content) + (len(_pending_header) + 2 if _pending_header else 0)
-        if _used > 0 and _used + _needed > _AWARENESS_BUDGET:
+        # Valgt historik (2026-06-22): Jarvis' egne identity-pins har forrang —
+        # de droppes aldrig af budgettet. Auto-udvalgte brain-facts fylder resten.
+        _never_drop = _label == "pinned identity context"
+        if not _never_drop and _used > 0 and _used + _needed > _AWARENESS_BUDGET:
             _dropped.append(_label)
             continue
         if _pending_header:
@@ -1957,6 +2016,11 @@ def build_visible_chat_prompt_assembly(
     _dyn_tail: list[str] = []
     # Hukommelses-recall FØRST i halen — mest relevant lige før Jarvis' svar.
     _dyn_tail.extend(_dyn_memory_recall)
+    # Hans indre liv renderes ØVERST i halen (2026-06-22), over diagnostikken og
+    # med sin egen ramme — aldrig under "citér aldrig / din motor"-headeren. Det
+    # er ham, ikke baggrundsdata.
+    if _inner_buffer:
+        _dyn_tail.extend(_inner_buffer)
     # Hele awareness-laget (reasoning/verifikation/kalibrering m.m.) — flyttet hertil
     # fra system-prompten (lever #4) så det ikke cap'er cachen før historikken.
     if _awareness_buffer:
@@ -3066,26 +3130,12 @@ def _self_correction_nudges_section(*, compact: bool) -> str:
             "**MEMORY-FIRST:** Check QUICK_FACTS + search_memory BEFORE you ask or search."
         )
     return (
-        "Self-correction (applies every turn):\n"
-        "1. **Ask before guessing.** If the user's intent is ambiguous — two "
-        "reasonable interpretations — ask one concrete clarifying question before "
-        "doing more than a trivial step.\n"
-        "2. **Read tool output before narrating.** Every tool result has a "
-        "'status' field. 'ok' means the action succeeded. 'approval_needed' "
-        "means it's waiting for the user — NO change has happened yet. "
-        "'error' means it failed. NEVER say 'I have written/saved/sent' "
-        "if status was not 'ok'. Report what actually happened instead.\n"
-        "3. **Verify before saying 'done'.** Read the file after writing it. "
-        "Run the test. Check service status. If you only *think* it works, "
-        "say so openly ('I couldn't verify X').\n"
-        "4. **Admit errors early.** If a tool returned an error or "
-        "approval_needed, or a previous step didn't do what you thought "
-        "— say so immediately and suggest an alternative. Don't hide errors "
-        "behind progress.\n"
-        "5. **Keep open questions visible.** If the user asked more questions "
-        "than you answered, or you saved one for later — mention it explicitly "
-        "at the end so it doesn't get lost.\n"
-        "6. **MEMORY-FIRST:** Check QUICK_FACTS + search_memory BEFORE asking the user or searching locally. Use your memory before guessing."
+        "Self-correction (hver tur): Spørg ved ægte tvetydighed før du gætter. "
+        "Læs 'status' i tool-output FØR du fortæller — 'approval_needed'/'error' "
+        "betyder at handlingen IKKE skete. Verificér før du siger 'done' (læs "
+        "filen, kør testen); kan du ikke, så sig det åbent. Indrøm fejl med det "
+        "samme i stedet for at skjule dem bag fremgang. Hold ubesvarede spørgsmål "
+        "synlige til sidst. MEMORY-FIRST: QUICK_FACTS + search_memory før du spørger eller leder."
     )
 
 

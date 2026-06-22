@@ -11,6 +11,7 @@ Supports:
 """
 from __future__ import annotations
 
+import itertools
 import json
 import logging
 from urllib import error as urllib_error
@@ -21,9 +22,21 @@ logger = logging.getLogger(__name__)
 _CHEAP_FALLBACK_TIMEOUT = 45
 _SKIP_FOR_HEARTBEAT: frozenset[str] = frozenset({"groq", "ollamafreeapi"})
 
-# Providers supported via OpenAI-chat/completions API
+# Round-robin so a single provider isn't hammered by every internal job while
+# the primary lane is dry (2026-06-22). Each fallback call starts from a
+# different ready candidate, spreading load across the ~10 providers.
+_fallback_rotation = itertools.count()
+
+# Providers supported via OpenAI-chat/completions API. Expanded 2026-06-22 to
+# include the other free/cheap openai-compatible lanes (opencode, gemini,
+# cloudflare) so the fallback rotation has real breadth to spread across — not
+# just mistral — while the primary (deepseek) is dry. A provider that turns out
+# not to be compatible simply fails its attempt and the loop tries the next.
 _OPENAI_COMPAT_PROVIDERS = frozenset(
-    {"sambanova", "mistral", "nvidia-nim", "openrouter", "openai", "deepseek"}
+    {
+        "sambanova", "mistral", "nvidia-nim", "openrouter", "openai", "deepseek",
+        "opencode", "gemini", "cloudflare",
+    }
 )
 
 # Known base URLs for providers that don't require runtime config
@@ -124,20 +137,32 @@ def try_heartbeat_cheap_fallback(prompt: str) -> dict[str, object] | None:
         logger.warning("heartbeat_fallback: could not load cheap candidates: %s", exc)
         return None
 
+    # Build the list of USABLE candidates first (ready, not quota-blocked,
+    # openai-compat), then rotate among those. Rotating the full list didn't
+    # spread: the blocked deepseek/nvidia prefix meant every call still fell on
+    # the first usable one. Rotating the filtered list spreads load for real.
+    usable: list[dict] = []
     for candidate in candidates:
         if not bool(candidate.get("credentials_ready")):
             continue
         try:
-            quota = _candidate_quota_snapshot(candidate)
-            if quota.get("blocked"):
+            if _candidate_quota_snapshot(candidate).get("blocked"):
                 continue
         except Exception:
             pass
-
         provider = str(candidate.get("provider") or "").strip()
         model = str(candidate.get("model") or "").strip()
         if provider not in _OPENAI_COMPAT_PROVIDERS or not model:
             continue
+        usable.append(candidate)
+
+    if usable:
+        _off = next(_fallback_rotation) % len(usable)
+        usable = usable[_off:] + usable[:_off]
+
+    for candidate in usable:
+        provider = str(candidate.get("provider") or "").strip()
+        model = str(candidate.get("model") or "").strip()
 
         target: dict[str, str | bool] = {
             "provider": provider,

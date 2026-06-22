@@ -664,13 +664,34 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
     policy = _load_heartbeat_policy()
     target = _resolve_heartbeat_target(policy=policy)
 
-    result = _execute_heartbeat_model(
-        prompt=full_prompt,
-        target=target,
-        policy=policy,
-        open_loops=[],
-        liveness=None,
-    )
+    try:
+        result = _execute_heartbeat_model(
+            prompt=full_prompt,
+            target=target,
+            policy=policy,
+            open_loops=[],
+            liveness=None,
+        )
+        if not str(result.get("text") or "").strip():
+            raise RuntimeError("empty heartbeat result")
+    except Exception as exc:
+        # 2026-06-22: the primary heartbeat provider (deepseek) can be dry /
+        # rate-limited. Without a fallback the inner-voice render failed every
+        # turn and the daemon emitted a [fallback-trace] stub instead of his
+        # actual voice — starving the inner life the prompt now surfaces. The
+        # cheap-lane fallback chain (sambanova/mistral/nvidia-nim/openrouter/
+        # ollama...) already exists; wire it in here so a single dry provider
+        # no longer silences him.
+        from core.services.heartbeat_provider_fallback import (
+            try_heartbeat_cheap_fallback,
+        )
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "inner-voice: primary heartbeat failed (%s); trying cheap fallback", exc
+        )
+        result = try_heartbeat_cheap_fallback(full_prompt)
+        if not result:
+            return None
 
     raw = str(result.get("text") or "").strip()
     if not raw:

@@ -4713,23 +4713,41 @@ def _execute_heartbeat_model(
             liveness=liveness,
             prompt=prompt,
         )
-    if provider == "ollama":
-        return _execute_ollama_prompt(prompt=prompt, target=target)
-    if provider == "openai":
-        return _execute_openai_prompt(prompt=prompt, target=target)
-    if provider == "openrouter":
-        return _execute_openrouter_prompt(prompt=prompt, target=target)
-    if provider == "groq":
-        return _execute_groq_prompt(prompt=prompt, target=target)
-    if provider in {"sambanova", "mistral", "nvidia-nim", "opencode", "deepseek"}:
-        # deepseek added 2026-05-07 — uses same openai-compat shape
-        # som de andre. heartbeat_provider_fallback wrapper handler base_url
-        # + auth-profile-lookup pr. provider.
+    # 2026-06-22: wrap the provider dispatch so that when the configured
+    # heartbeat provider is dry / rate-limited (e.g. deepseek out of credits),
+    # ALL internal producers — inner voice, dreams, meta-reflection, witness,
+    # ... — fall back to the load-spread cheap-lane chain instead of degrading
+    # to stub traces. The fallback module rotates providers so a single lane
+    # isn't hammered. phase1-runtime is rule-based and never reaches here.
+    # NOTE (tech debt): the full Boy-Scout extraction of this 7000+ line file
+    # is consciously deferred; the fallback concern itself already lives in the
+    # extracted heartbeat_provider_fallback.py.
+    try:
+        if provider == "ollama":
+            return _execute_ollama_prompt(prompt=prompt, target=target)
+        if provider == "openai":
+            return _execute_openai_prompt(prompt=prompt, target=target)
+        if provider == "openrouter":
+            return _execute_openrouter_prompt(prompt=prompt, target=target)
+        if provider == "groq":
+            return _execute_groq_prompt(prompt=prompt, target=target)
+        if provider in {"sambanova", "mistral", "nvidia-nim", "opencode", "deepseek"}:
+            # deepseek added 2026-05-07 — uses same openai-compat shape
+            # som de andre. heartbeat_provider_fallback wrapper handler base_url
+            # + auth-profile-lookup pr. provider.
+            from core.services.heartbeat_provider_fallback import (
+                execute_openai_compat_heartbeat_prompt,
+            )
+            return execute_openai_compat_heartbeat_prompt(prompt=prompt, target=target)
+        raise RuntimeError(f"Heartbeat provider not supported: {provider}")
+    except Exception:
         from core.services.heartbeat_provider_fallback import (
-            execute_openai_compat_heartbeat_prompt,
+            try_heartbeat_cheap_fallback,
         )
-        return execute_openai_compat_heartbeat_prompt(prompt=prompt, target=target)
-    raise RuntimeError(f"Heartbeat provider not supported: {provider}")
+        result = try_heartbeat_cheap_fallback(prompt)
+        if result:
+            return result
+        raise
 
 
 def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, object]:

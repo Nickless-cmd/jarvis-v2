@@ -14,9 +14,22 @@ from typing import Optional
 from core.tools.simple_tools import get_tool_definitions
 
 _HEADER = (
-    "TOOL CATALOG (use load_more_tools(names=[...]) or "
-    "load_more_tools(query=\"...\") to fetch full schemas):\n"
+    "KERNE-VÆRKTØJER (de mest brugte). Du ser de relevante som native "
+    "function-defs hver tur; resten findes via load_more_tools(query=\"...\"):\n"
 )
+
+# 2026-06-22: the full ~445-tool text catalog was 59% of the visible system
+# prompt (~7.5k tokens) and fully redundant with the native tool definitions
+# sent on every turn. Replaced with a curated core set + a load_more_tools
+# pointer. Discoverability is preserved (native defs + query-based fetch);
+# the token cost is not.
+_CORE_TOOLS = [
+    "read_file", "write_file", "edit_file", "search", "find_files",
+    "bash", "run_pytest", "db_query",
+    "web_search", "web_fetch",
+    "search_memory", "recall_memories", "remember_this",
+    "schedule_self_wakeup", "notify_user", "git_status",
+]
 
 _cached_text: Optional[str] = None
 _cached_hash: Optional[str] = None
@@ -58,13 +71,24 @@ def build_catalog_text() -> str:
     if _cached_text is not None and _cached_hash == h:
         return _cached_text
     defs = get_tool_definitions() or []
+    by_name = {
+        ((d.get("function") or {}).get("name") or d.get("name") or ""): d
+        for d in defs
+    }
     lines = [_HEADER]
-    for d in sorted(
-        defs,
-        key=lambda dd: ((dd.get("function") or {}).get("name") or dd.get("name") or ""),
-    ):
-        name = (d.get("function") or {}).get("name") or d.get("name") or "?"
-        lines.append(f"- {name}: {_short_desc(d)}")
+    shown = 0
+    for name in _CORE_TOOLS:
+        d = by_name.get(name)
+        if d:
+            lines.append(f"- {name}: {_short_desc(d)}")
+            shown += 1
+    remaining = max(0, len(defs) - shown)
+    if remaining:
+        lines.append(
+            f"\n+ {remaining} flere værktøjer (operator-desktop, kalender, mail, "
+            "discord, billede/video, hjerne, skills, git, home-assistant m.fl.). "
+            "Brug load_more_tools(query=\"…\") for at finde dem du mangler ved navn."
+        )
     text = "\n".join(lines)
     _cached_text = text
     _cached_hash = h

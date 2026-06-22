@@ -2333,6 +2333,15 @@ async def _stream_visible_run(
                             agentic_round_seq=_agentic_round + 1,
                         )
                         _ds_fired = evaluate_decision_triggers(_ds_ctx)
+                        # Commit-cluster instrument: decision_signals → central observe
+                        try:
+                            from core.services.central_core import central as _central_ds
+                            _central_ds().observe({
+                                "cluster": "commit", "nerve": "decision_signals",
+                                "run_id": run.run_id, "fired": len(_ds_fired or []),
+                            })
+                        except Exception:
+                            pass
                         for _ds_f in _ds_fired:
                             _ds_msg = (
                                 f"\n\n[decision-signal: {_ds_f.decision_id} "

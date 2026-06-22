@@ -43,3 +43,10 @@ def test_create_decision_creates_when_directive_is_new(monkeypatch) -> None:
 
     assert result["decision_id"] == "dec-new"
     assert result.get("deduped") is None
+
+
+def test_commit_observe_is_self_safe():
+    """Commit-cluster instrument: _commit_observe må aldrig kaste (best-effort)."""
+    from core.services.behavioral_decisions import _commit_observe
+    _commit_observe("created", "decision-xyz")  # kaster ikke
+    _commit_observe("deduped", None)

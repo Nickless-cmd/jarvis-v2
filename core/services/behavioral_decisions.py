@@ -35,6 +35,18 @@ def _normalize_directive(value: str) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip().lower())
 
 
+def _commit_observe(outcome: str, decision_id: Any) -> None:
+    """Commit-cluster instrument: decision_create → central observe (best-effort)."""
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "commit", "nerve": "decision_create",
+            "outcome": outcome, "decision_id": str(decision_id or ""),
+        })
+    except Exception:
+        pass
+
+
 def create_decision(
     *,
     directive: str,
@@ -63,6 +75,7 @@ def create_decision(
                 )
             except Exception as exc:
                 logger.debug("behavioral_decisions: publish deduped failed: %s", exc)
+            _commit_observe("deduped", deduped.get("decision_id"))
             return deduped
 
     decision = _db_create(
@@ -86,6 +99,7 @@ def create_decision(
         )
     except Exception as exc:
         logger.debug("behavioral_decisions: publish created failed: %s", exc)
+    _commit_observe("created", decision.get("decision_id"))
     return decision
 
 

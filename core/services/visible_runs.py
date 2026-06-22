@@ -12,6 +12,18 @@ from dataclasses import dataclass, field
 from typing import AsyncIterator
 from uuid import uuid4
 
+
+class _C2GateSkip(Exception):
+    """Intern sentinel (TruthGate C2, 2026-06-22): rejses for at springe en
+    gammel post-done effekt-gate over når TruthGate v2 (pre-done) er TÆNDT.
+
+    Bruges KUN i claim-blokken i ``_post_process`` for at undgå at re-indentere
+    ~140 linjer i den skrøbelige generator-region (samme region som
+    generator-i-tråd-fælden dræbte i en uge). Fanges af et dedikeret
+    ``except _C2GateSkip`` FØR den brede except, så skip aldrig logges som fejl.
+    """
+
+
 from core.services.orb_phase import set_phase as _set_orb_phase
 
 from core.services.markdown_structure import normalize_markdown_structure
@@ -3573,18 +3585,27 @@ async def _stream_visible_run(
                 # an autonomous-run that wakes him again with context.
                 _maybe_trigger_continuation(run, visible_output_text)
 
-                # 2026-06-11 (Bjørn frustration crisis fix C2): claim-
-                # scanner for fabriket work-claims. Sammenligner output
-                # ("fixet er live", "tests grønne", "committet") med
-                # de tools der faktisk blev kørt i samme run. Hvis
-                # mismatch → injicér ekstern feedback til næste turn.
+                # ── TruthGate C2 (2026-06-22) ─────────────────────────────
+                # Når TruthGate v2 (pre-done, ~linje 3408) er TÆNDT, blokerer/
+                # retter den konfabulation ÉN gang FØR done. De gamle post-done
+                # effekt-gates her (claim-block/fact_gate/diagnosis) kører ellers
+                # OVERFLØDIGT sideløbende → dobbelt-arbejde + dobbelt-blok-risiko.
+                # Gate dem bag `_tv2_on`. central().decide nedenfor er ren
+                # OBSERVABILITET → bevares uanset flag.
+                _tv2_on = False
                 try:
-                    from core.services.claim_scanner import (
-                        detect_fabricated_work_claims,
-                        format_fabrication_warning,
-                    )
-                    # Collect tool names eksekveret i alle followup-rounds
-                    _executed_tool_names: list[str] = []
+                    from core.services import shared_cache as _sc_c2
+                    _f_c2 = _sc_c2.get("flag:central.switch.nerve.truth_v2")
+                    _tv2_on = isinstance(_f_c2, dict) and bool(_f_c2.get("enabled"))
+                except Exception:
+                    _tv2_on = False
+
+                # _executed_tool_names bruges af BÅDE de gamle gates OG
+                # central().decide (observabilitet). Byg den ALTID — hoistet ud
+                # af claim-blokken så observabiliteten overlever når v2 er ON.
+                # Guard: _followup_exchanges kan være ubundet for single-pass-svar.
+                _executed_tool_names: list[str] = []
+                try:
                     for _ex in _followup_exchanges:
                         for _tc in (getattr(_ex, "tool_calls", None) or []):
                             _name = str(
@@ -3593,6 +3614,23 @@ async def _stream_visible_run(
                             )
                             if _name:
                                 _executed_tool_names.append(_name)
+                except Exception:
+                    _executed_tool_names = []
+
+                # 2026-06-11 (Bjørn frustration crisis fix C2): claim-
+                # scanner for fabriket work-claims. Sammenligner output
+                # ("fixet er live", "tests grønne", "committet") med
+                # de tools der faktisk blev kørt i samme run. Hvis
+                # mismatch → injicér ekstern feedback til næste turn.
+                # C2: hele blokken gated bag `_tv2_on` via sentinel-skip (undgår
+                # re-indent af den skrøbelige region).
+                try:
+                    from core.services.claim_scanner import (
+                        detect_fabricated_work_claims,
+                        format_fabrication_warning,
+                    )
+                    if _tv2_on:
+                        raise _C2GateSkip()
                     _claims = detect_fabricated_work_claims(
                         visible_output_text, _executed_tool_names,
                     )
@@ -3728,6 +3766,8 @@ async def _stream_visible_run(
                             )
                         except Exception:
                             pass
+                except _C2GateSkip:
+                    pass  # C2: v2 (pre-done) håndterer konfabulations-blok
                 except Exception as _cs_exc:
                     logger.debug("claim-scanner failed: %s", _cs_exc)
             except Exception:
@@ -3742,9 +3782,9 @@ async def _stream_visible_run(
             # ── Truth-cluster → Den Intelligente Central (første ægte cluster-wiring) ──
             # Rut den samlede sandheds-beslutning (claim+fact+diagnosis via truth_gate)
             # gennem Centralens decide-ansigt: ÉT struktureret trace-spor pr. run_id +
-            # live kill-switch + circuit-breaker. OBSERVABILITET nu — de inline-gates
-            # nedenfor beholder effekten indtil pre-done-flip'et (real-time-blokering)
-            # landes som bevidst næste skridt (Truth-cluster Fase 2). Best-effort.
+            # live kill-switch + circuit-breaker. REN OBSERVABILITET → kører ALTID,
+            # uafhængigt af _tv2_on (C2 gater kun effekt-gates, ikke dette spor).
+            # Best-effort.
             try:
                 from core.services.central_core import central as _central_truth
                 from core.services.gate_truth import truth_gate as _truth_gate_fn
@@ -3766,7 +3806,10 @@ async def _stream_visible_run(
             # ── Fact-Gate (2026-06-13, Bjørn approve) ─────────────────
             # Blokerer beskeden hvis den indeholder uverificerbare faktuelle
             # påstande om commits, tests, services, cache-procenter mv.
+            # C2: gated bag _tv2_on — v2 (pre-done) dækker dette når tændt.
             try:
+                if _tv2_on:
+                    raise _C2GateSkip()
                 _fg_result = _fact_gate_enforce(
                     visible_output_text, _executed_tool_names,
                 )
@@ -3789,6 +3832,8 @@ async def _stream_visible_run(
                         )
                     except Exception:
                         pass
+            except _C2GateSkip:
+                pass  # C2: v2 (pre-done) dækker fact-gate
             except Exception as _fg_exc:
                 logger.debug("fact_gate failed: %s", _fg_exc)
 
@@ -3800,7 +3845,10 @@ async def _stream_visible_run(
             # Diagnosis-gate (spec 2026-06-14): fanger uverificerede diagnostiske
             # konklusioner ("er zombie", "X commits bagud", "fyrede ikke") efter
             # fact-gate. FASE 1 = advisory: logger men ændrer ikke teksten.
+            # C2: gated bag _tv2_on — v2 (pre-done) dækker dette når tændt.
             try:
+                if _tv2_on:
+                    raise _C2GateSkip()
                 from core.services.diagnosis_gate import diagnosis_gate_enforce
                 visible_output_text = diagnosis_gate_enforce(
                     visible_output_text,
@@ -3808,6 +3856,8 @@ async def _stream_visible_run(
                     run_id=run.run_id,
                     tools_used=_executed_tool_names,
                 )
+            except _C2GateSkip:
+                pass  # C2: v2 (pre-done) dækker diagnosis-gate
             except Exception as _dg_exc:
                 logger.debug("diagnosis_gate failed: %s", _dg_exc)
 

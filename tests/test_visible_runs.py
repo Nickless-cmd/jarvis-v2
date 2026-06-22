@@ -75,7 +75,7 @@ class TestVisibleRunsModuleSurface:
             "visible_model_provider": "deepseek",
             "visible_model_name": "test",
         })())
-        monkeypatch.setattr(visible_runs, "_stream_visible_run", lambda run: iter([]))
+        monkeypatch.setattr(visible_runs, "_stream_visible_run", lambda run, **_kw: iter([]))
 
         # Call site of interest — the stale state should be cleared, NOT
         # routed as a midway nudge.
@@ -130,7 +130,7 @@ class TestVisibleRunsModuleSurface:
             "visible_model_provider": "deepseek",
             "visible_model_name": "test",
         })())
-        monkeypatch.setattr(visible_runs, "_stream_visible_run", lambda run: iter([]))
+        monkeypatch.setattr(visible_runs, "_stream_visible_run", lambda run, **_kw: iter([]))
 
         _ = visible_runs.start_visible_run(
             message="hello",
@@ -227,3 +227,54 @@ def test_is_visible_run_alive_cross_process_heartbeat():
         assert vr.is_visible_run_alive("auto-1") is False
     with patch.object(vr, "_get_active_visible_run_state", return_value=fresh):
         assert vr.is_visible_run_alive("other-run") is False  # andet run_id
+
+
+class TestTruthGateC2Gating:
+    """TruthGate C2 (2026-06-22): når v2 (pre-done) er TÆNDT skal de GAMLE
+    post-done effekt-gates (claim/fact/diagnosis) springes over, så de ikke
+    blokerer DOBBELT. central().decide (observabilitet) skal køre uanset.
+
+    _post_process er en dybt-nestet generator i den skrøbelige region der
+    dræbte pipelinen i en uge — den kan ikke drives isoleret uden en stor
+    fake-harness. Paritets-suiten (test_truth_gate_v2_parity) beviser
+    dæknings-ækvivalens; her låser vi STRUKTUR-invarianten via kildeinspektion
+    så ingen ved et uheld fjerner gatingen eller gater observabiliteten væk."""
+
+    def _post_process_source(self):
+        import inspect
+        from core.services import visible_runs as vr
+        src = inspect.getsource(vr)
+        # isolér _post_process-kroppen (fra def til næste dedent på finally-niveau)
+        start = src.index("def _post_process(")
+        return src[start:]
+
+    def test_sentinel_is_private_exception(self):
+        from core.services.visible_runs import _C2GateSkip
+        assert issubclass(_C2GateSkip, Exception)
+
+    def test_executed_tool_names_hoisted_before_claim_block(self):
+        body = self._post_process_source()
+        # _executed_tool_names skal bygges FØR claim-importen så central().decide
+        # (observabilitet) har den selv når claim-blokken skippes under v2.
+        hoist = body.index("_executed_tool_names: list[str] = []")
+        claim_import = body.index("from core.services.claim_scanner import")
+        assert hoist < claim_import
+
+    def test_three_old_gates_guarded_by_tv2_on(self):
+        body = self._post_process_source()
+        # alle tre gamle effekt-gates skal være gated bag _tv2_on
+        assert body.count("raise _C2GateSkip()") == 3  # claim + fact + diagnosis
+        assert body.count("except _C2GateSkip:") == 3
+
+    def test_observability_decide_not_gated(self):
+        body = self._post_process_source()
+        # central().decide("truth", ...) må IKKE stå bag _tv2_on / _C2GateSkip —
+        # det er ren observabilitet og skal køre hver tur.
+        decide_at = body.index('.decide(\n                    "truth"')
+        # nærmeste raise _C2GateSkip før decide hører til fact-gaten EFTER decide,
+        # ikke før — verificér at decide ligger mellem claim-skip og fact-skip
+        first_skip = body.index("raise _C2GateSkip()")  # claim
+        assert first_skip < decide_at  # decide kommer efter claim-blokken
+        # og decide-kaldet selv indeholder ingen _tv2_on-guard i sit try:
+        decide_try = body.rindex("try:", 0, decide_at)
+        assert "_tv2_on" not in body[decide_try:decide_at]

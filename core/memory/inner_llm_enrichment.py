@@ -314,6 +314,17 @@ def call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
 def _call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
     """Call Groq-first LLM with local Ollama fallback."""
     target = _resolve_enrichment_target()
+    # KRITISK (2026-06-22, Bjørn): spring den BETALTE primary over når den er quota-
+    # blokeret (fx deepseek tør til d. 1). Ellers hamrer enrichment-daemonsne den døde
+    # betalte deepseek-API hvert ~2s (drænede Bjørns konto). Load-spredningen nedenfor
+    # bruger de ~10 providers + auto-resume når deepseek fyldes op.
+    if target and str(target.get("provider") or "").strip() not in ("ollama", ""):
+        try:
+            from core.services.cheap_provider_runtime import _candidate_quota_snapshot
+            if _candidate_quota_snapshot(target).get("blocked"):
+                target = None
+        except Exception:
+            pass
     if target and str(target.get("provider") or "").strip():
         provider = str(target.get("provider") or "").strip()
         model = str(target.get("model") or "").strip()
@@ -350,34 +361,22 @@ def _call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
                 exc,
             )
 
-    # Try cheap cloud providers before falling back to local Ollama
-    for cloud_target in _resolve_cheap_cloud_fallback_targets():
-        cloud_provider = str(cloud_target.get("provider") or "").strip()
-        cloud_model = str(cloud_target.get("model") or "").strip()
-        started = time.monotonic()
-        try:
-            text = _call_remote_chat(
-                target=cloud_target,
-                system_prompt=system_prompt,
-                user_message=user_message,
-                timeout=_GROQ_TIMEOUT_SECONDS,
-            )
-            if text:
-                elapsed = time.monotonic() - started
-                logger.info(
-                    "inner-llm-enrichment: via %s/%s (%.1fs)",
-                    cloud_provider,
-                    cloud_model,
-                    elapsed,
-                )
-                return text
-        except Exception as exc:
-            logger.warning(
-                "inner-llm-enrichment: cloud fallback %s/%s failed (%s)",
-                cloud_provider,
-                cloud_model,
-                exc,
-            )
+    # Load-SPREDT cheap-fallback over de ~10 providers FØR Ollama (2026-06-22, Bjørn).
+    # Genbruger heartbeat-mekanismen: bygger USABLE candidates (credentials_ready + IKKE
+    # quota-blokeret → springer tør deepseek over), filtrerer til openai-compat, og
+    # ROTÉRER for at sprede load. Så vi hverken hamrer den betalte deepseek-API ELLER
+    # dumper alt på Ollama (= dræner cloud-kvoten med daemon-2-sek-ræset). Auto-resume
+    # når deepseek fyldes op (quota-snapshot self-healer).
+    try:
+        from core.services.heartbeat_provider_fallback import try_heartbeat_cheap_fallback
+        _combined = f"{system_prompt}\n\n{user_message}" if system_prompt else user_message
+        _res = try_heartbeat_cheap_fallback(_combined)
+        if _res and _res.get("text"):
+            logger.info("inner-llm-enrichment: via load-spredt cheap-fallback (%s)",
+                        _res.get("provider") or "?")
+            return str(_res["text"])
+    except Exception as exc:
+        logger.warning("inner-llm-enrichment: load-spredt cheap-fallback fejlede (%s)", exc)
 
     fallback = _resolve_ollama_fallback_target()
     if not fallback:

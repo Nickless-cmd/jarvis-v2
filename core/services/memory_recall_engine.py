@@ -336,12 +336,13 @@ def _gather_private_brain(query: str, limit: int) -> list[dict[str, Any]]:
     # største kilde var død+usynlig). Nu: list seneste aktive records (auto-scopet
     # til bruger via scope_uid i list_private_brain_records) + keyword-overlap-score,
     # samme mønster som _gather_chronicle. Bounded (recency), fail-soft.
-    # NB: recency-bounded (de N seneste aktive records scores i Python). Dækker
-    # ikke gamle records — den rigtige fremtidige fix er FTS5/LIKE-søgning i SQL
-    # over hele private_brain_records. Dette er v1: virker + bounded + scopet.
+    # SQL-tekst-søgning over HELE tabellen (de ~92k) — IKKE kun de seneste/aktive.
+    # search_private_brain_records LIKE-matcher focus/summary/detail, auto-scopet til
+    # bruger, ekskl. 'released'. Python re-scorer for ranking. (FTS5 = perf-fix hvis
+    # recall-latency bliver et problem.)
     try:
-        from core.runtime.db_private_brain import list_private_brain_records
-        records = list_private_brain_records(limit=200, status="active") or []
+        from core.runtime.db_private_brain import search_private_brain_records
+        records = search_private_brain_records(query, limit=60) or []
     except Exception as exc:
         return _gather_failed("private_brain", exc)
     words = {w for w in query.lower().split() if len(w) > 3}

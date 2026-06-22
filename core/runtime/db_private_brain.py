@@ -150,6 +150,53 @@ def list_private_brain_records(
     return [_private_brain_record_from_row(row) for row in rows]
 
 
+def search_private_brain_records(
+    query: str,
+    *,
+    limit: int = 60,
+    exclude_status: str = "released",
+) -> list[dict[str, Any]]:
+    """Tekst-søgning (LIKE) over HELE private_brain_records — focus/summary/detail.
+
+    Til recall (memory_recall_engine._gather_private_brain). Auto-scopet til
+    scope_uid() (#154 — et medlem ser ikke owners private lag). Matcher records der
+    indeholder MINDST ét signifikant query-ord (>3 tegn). Ekskluderer 'released'
+    (bevidst glemte records genoplives ikke). Recency-orden; kalderen re-scorer.
+
+    NB: LIKE-scan uden indeks. For en stor tabel (~92k) er FTS5 den rigtige
+    perf-optimering hvis recall-latency bliver et problem.
+    """
+    from core.services.user_scope import scope_uid
+    words = [w for w in query.lower().split() if len(w) > 3][:8]
+    if not words:
+        return []
+    clauses: list[str] = []
+    params: list[object] = []
+    _uid = scope_uid()
+    if _uid:
+        clauses.append("user_id = ?")
+        params.append(_uid)
+    if exclude_status:
+        clauses.append("status != ?")
+        params.append(exclude_status)
+    word_or: list[str] = []
+    for w in words:
+        like = f"%{w}%"
+        word_or.append(
+            "(LOWER(focus) LIKE ? OR LOWER(summary) LIKE ? OR LOWER(detail) LIKE ?)"
+        )
+        params.extend([like, like, like])
+    clauses.append("(" + " OR ".join(word_or) + ")")
+    where = "WHERE " + " AND ".join(clauses)
+    with connect() as conn:
+        _ensure_private_brain_records_table(conn)
+        rows = conn.execute(
+            f"SELECT * FROM private_brain_records {where} ORDER BY id DESC LIMIT ?",
+            (*params, limit),
+        ).fetchall()
+    return [_private_brain_record_from_row(row) for row in rows]
+
+
 def update_private_brain_record_status(
     record_id: str,
     *,

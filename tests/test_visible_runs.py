@@ -281,29 +281,50 @@ class TestTruthGateC4Removal:
         assert "_executed_tool_names" in body
 
 
-class TestCommitClusterTrace:
-    """Commit-cluster migration (2026-06-22): decision_gate ruttes gennem
-    central().observe for ÉT trace-spore (additivt; enforcement bevaret inline).
-    Bruger observe() ikke decide() for at undgå dobbelt DB-read i hot-løkken."""
+class TestCommitClusterMigration:
+    """Commit-cluster ÆGTE migration (2026-06-22): decision_gate's enforcement ruttes
+    GENNEM central().decide → fuld catch+flag+notify+trace i ÉT pas (erstatter det inline
+    check_decision_gate-kald, intet dobbelt-run). Ikke længere en tynd observe-spore."""
 
     def _vr_source(self):
         import inspect
         from core.services import visible_runs as vr
         return inspect.getsource(vr)
 
-    def test_commit_observe_wired_at_decision_gate(self):
+    def test_decision_gate_routed_through_central_decide(self):
         src = self._vr_source()
-        assert '"cluster": "commit"' in src
-        assert '"nerve": "decision_gate"' in src
-        assert ".observe(" in src
+        assert "from core.services.gate_commit import commit_gate" in src
+        assert 'cluster="commit"' in src
+        # det gamle inline check_decision_gate-kald er VÆK (kører nu kun inde i commit_gate)
+        assert "_decision_allowed, _decision_reason = check_decision_gate" not in src
 
-    def test_central_observe_records_commit_trace(self):
-        # central().observe på en commit-event skal kunne køre uden at kaste
-        from core.services.central_core import central
-        central().observe({
-            "cluster": "commit", "nerve": "decision_gate", "run_id": "t-commit",
-            "decision": "green", "tool_name": "web_search", "reason": "",
-        })  # best-effort, kaster aldrig
+    def test_commit_gate_blocks_on_conflict_else_green(self):
+        from unittest.mock import patch
+        from core.services.gate_commit import commit_gate
+        from core.services.gate_kernel import Decision
+        with patch("core.services.decision_gate.check_decision_gate",
+                   return_value=(False, "konflikt med aktiv beslutning")):
+            v = commit_gate({"tool_name": "operator_bash"})
+        assert v.decision is Decision.RED and v.action == "block"
+        with patch("core.services.decision_gate.check_decision_gate",
+                   return_value=(True, None)):
+            v = commit_gate({"tool_name": "web_search"})
+        assert v.decision is Decision.GREEN
+
+    def test_commit_gate_fail_open_through_central(self):
+        # commit_gate kaster → central().decide (cognitiv) fail-open'er til SKIP (allow)
+        from core.services.central_core import Central
+        from core.services.central_trace import TraceSink
+        from core.services.central_switches import CircuitBreaker
+        from core.services.gate_kernel import Decision, GateClass
+        from core.services.gate_commit import commit_gate
+        from unittest.mock import patch
+        c = Central(sink=TraceSink(), breaker=CircuitBreaker(), emit=lambda *a: None)
+        with patch("core.services.decision_gate.check_decision_gate",
+                   side_effect=RuntimeError("boom")):
+            v = c.decide("decision_gate", {"tool_name": "x", "run_id": "cg1"},
+                         commit_gate, cluster="commit", klass=GateClass.COGNITIVE)
+        assert v.decision is Decision.SKIP  # fail-open, ikke block
 
 
 class TestTrackerCascadeFix:

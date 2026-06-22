@@ -4845,34 +4845,28 @@ def _execute_simple_tool_calls(
         # 2. Decision gate: active decisions conflict blocks execution
         _decision_blocked = False
         _decision_reason = None
-        try:
-            from core.services.decision_gate import check_decision_gate
-            _decision_allowed, _decision_reason = check_decision_gate(
-                name,
-                tool_args=arguments,
-                user_message=user_message,
-            )
-            if not _decision_allowed:
-                _decision_blocked = True
-        except Exception:
-            pass  # gate failure → allow (fail-open)
-
-        # ── Commit-cluster → Den Intelligente Central (trace-spore, 2026-06-22) ──
-        # observe() — IKKE decide() — fordi enforcement allerede er kørt inline
-        # ovenfor, og check_decision_gate laver en DB-read (list_active_decisions);
-        # et decide()-re-run pr. tool-kald ville doble den i hot-løkken. Den DECIDE-
-        # baserede enforcement-merge (flag + circuit-breaker) er et bevidst senere
-        # skridt m. fail-closed-fri paritet. Best-effort: kaster aldrig.
+        # ── Commit-cluster GENNEM Den Intelligente Central (ÆGTE migration 2026-06-22) ──
+        # decision_gate's enforcement ruttes nu GENNEM central().decide → ét eksekverings-
+        # pas med boundary-capture (cognitiv→fail-open ved fejl) + circuit-breaker +
+        # incident-log+notifikation + trace. Erstatter det gamle inline check_decision_gate-
+        # kald (intet dobbelt-run — gaten kører ÉN gang, inde i commit_gate). central er
+        # selv-sikker; enhver fejl → allow (fail-open), som det gamle inline-except.
         try:
             from core.services.central_core import central as _central_commit
-            _central_commit().observe({
-                "cluster": "commit", "nerve": "decision_gate", "run_id": run_id,
-                "decision": "red" if _decision_blocked else "green",
-                "tool_name": name,
-                "reason": (_decision_reason or "")[:200],
-            })
+            from core.services.gate_commit import commit_gate as _commit_gate_fn
+            from core.services.gate_kernel import Decision as _Dec, GateClass as _GK
+            _cv = _central_commit().decide(
+                "decision_gate",
+                {"tool_name": name, "tool_args": arguments,
+                 "user_message": user_message, "run_id": run_id,
+                 "session_id": getattr(run, "session_id", "") or ""},
+                _commit_gate_fn, cluster="commit", klass=_GK.COGNITIVE,
+            )
+            if _cv.decision is _Dec.RED:
+                _decision_blocked = True
+                _decision_reason = _cv.reason
         except Exception:
-            pass
+            pass  # central self-safe; gate-fejl → allow (fail-open)
 
         if _veto_blocked or _decision_blocked:
             _gate_reason = _veto_reason or _decision_reason or "Ukendt gate-blokering"

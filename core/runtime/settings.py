@@ -27,6 +27,17 @@ class RuntimeSettings:
     # for at trimme prompt-bloat uden at tabe brugbart output.
     tool_result_render_chars_recent: int = 3000
     tool_result_render_chars_older: int = 1200
+    # ── Proactivity-tunables (Tools/Proactivity-cluster, 2026-06-22) ──
+    # Hardcodede tærskler gjort konfigurerbare så de kan justeres uden kode-deploy.
+    # R2.5-verifikations-gate: soft-blok når 24t heed_rate < threshold; tier-aware
+    # unverified-count-lofter (deep blokerer hurtigst, fast tolererer mest).
+    r2_5_heed_rate_threshold: float = 0.4
+    r2_5_unverified_threshold_deep: int = 3
+    r2_5_unverified_threshold_reasoning: int = 5
+    r2_5_unverified_threshold_fast: int = 8
+    # Proaktivitets-cap: max uopfordrede beskeder pr. dag + min timer mellem dem.
+    max_proactive_per_day: int = 3
+    proactive_cooldown_hours: int = 2
     heartbeat_model_provider: str = ""
     heartbeat_model_name: str = ""
     heartbeat_auth_profile: str = ""
@@ -499,6 +510,24 @@ def load_settings() -> RuntimeSettings:
         ),
         tool_result_render_chars_older=int(
             data.get("tool_result_render_chars_older", defaults.tool_result_render_chars_older)
+        ),
+        r2_5_heed_rate_threshold=float(
+            data.get("r2_5_heed_rate_threshold", defaults.r2_5_heed_rate_threshold)
+        ),
+        r2_5_unverified_threshold_deep=int(
+            data.get("r2_5_unverified_threshold_deep", defaults.r2_5_unverified_threshold_deep)
+        ),
+        r2_5_unverified_threshold_reasoning=int(
+            data.get("r2_5_unverified_threshold_reasoning", defaults.r2_5_unverified_threshold_reasoning)
+        ),
+        r2_5_unverified_threshold_fast=int(
+            data.get("r2_5_unverified_threshold_fast", defaults.r2_5_unverified_threshold_fast)
+        ),
+        max_proactive_per_day=int(
+            data.get("max_proactive_per_day", defaults.max_proactive_per_day)
+        ),
+        proactive_cooldown_hours=int(
+            data.get("proactive_cooldown_hours", defaults.proactive_cooldown_hours)
         ),
         heartbeat_model_provider=str(
             data.get("heartbeat_model_provider", defaults.heartbeat_model_provider)

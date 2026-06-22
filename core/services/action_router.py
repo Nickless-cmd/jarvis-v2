@@ -42,6 +42,24 @@ _LOG_MAX = 300
 _MAX_PROACTIVE_PER_DAY = 3
 _PROACTIVE_COOLDOWN_HOURS = 2  # minimum gap between proactive messages
 
+
+def _max_proactive_per_day() -> int:
+    """Settings-backed cap (config uden deploy, 2026-06-22); konstant = fallback."""
+    try:
+        from core.runtime.settings import load_settings
+        return int(load_settings().max_proactive_per_day)
+    except Exception:
+        return _MAX_PROACTIVE_PER_DAY
+
+
+def _proactive_cooldown_hours() -> int:
+    """Settings-backed cooldown (config uden deploy); konstant = fallback."""
+    try:
+        from core.runtime.settings import load_settings
+        return int(load_settings().proactive_cooldown_hours)
+    except Exception:
+        return _PROACTIVE_COOLDOWN_HOURS
+
 # In-memory queue of recent events we've observed (for rate-limit inspection)
 _recent_events: Deque[dict[str, Any]] = deque(maxlen=200)
 
@@ -234,7 +252,7 @@ def _within_cooldown() -> bool:
     last = _last_proactive_ts()
     if last is None:
         return False
-    return (datetime.now(_LOCAL_TZ) - last) < timedelta(hours=_PROACTIVE_COOLDOWN_HOURS)
+    return (datetime.now(_LOCAL_TZ) - last) < timedelta(hours=_proactive_cooldown_hours())
 
 
 def _send_ntfy(message: str, *, title: str | None = None, priority: str = "default") -> bool:
@@ -293,11 +311,12 @@ def _reach_out(
 
     # ── Direct-send path (critical only, or fallback) ──
     today_count = _proactive_messages_today()
-    if today_count >= _MAX_PROACTIVE_PER_DAY:
+    _daily_cap = _max_proactive_per_day()
+    if today_count >= _daily_cap:
         entry = {
             "at": datetime.now(_LOCAL_TZ).isoformat(),
             "outcome": "skipped",
-            "reason": f"daily-cap-{today_count}/{_MAX_PROACTIVE_PER_DAY}",
+            "reason": f"daily-cap-{today_count}/{_daily_cap}",
             "source": source,
         }
         _append_proactive(entry)
@@ -306,7 +325,7 @@ def _reach_out(
         entry = {
             "at": datetime.now(_LOCAL_TZ).isoformat(),
             "outcome": "skipped",
-            "reason": f"cooldown-{_PROACTIVE_COOLDOWN_HOURS}h",
+            "reason": f"cooldown-{_proactive_cooldown_hours()}h",
             "source": source,
         }
         _append_proactive(entry)
@@ -593,8 +612,8 @@ def build_action_router_surface() -> dict[str, Any]:
         "by_class": by_class,
         "proactive_today": proactive_today,
         "proactive_sent_today": proactive_sent_today,
-        "proactive_daily_cap": _MAX_PROACTIVE_PER_DAY,
-        "cooldown_hours": _PROACTIVE_COOLDOWN_HOURS,
+        "proactive_daily_cap": _max_proactive_per_day(),
+        "cooldown_hours": _proactive_cooldown_hours(),
         "recent_actions": actions[-5:][::-1],
         "recent_proactive": proactive[-5:][::-1],
         "summary": _surface_summary(actions, proactive_today, proactive_sent_today),
@@ -609,7 +628,7 @@ def _surface_summary(
     if not actions:
         return "Ingen handlinger endnu"
     return (
-        f"{len(actions)} handlinger, {proactive_sent_today}/{_MAX_PROACTIVE_PER_DAY} "
+        f"{len(actions)} handlinger, {proactive_sent_today}/{_max_proactive_per_day()} "
         f"proaktive beskeder sendt i dag ({proactive_today} forsøg)"
     )
 
@@ -622,4 +641,4 @@ def build_action_router_prompt_section() -> str | None:
     if not sent:
         return None
     last = sent[-1]
-    return f"Jeg rakte ud i dag ({len(sent)}/{_MAX_PROACTIVE_PER_DAY}): \"{str(last.get('message', ''))[:120]}\""
+    return f"Jeg rakte ud i dag ({len(sent)}/{_max_proactive_per_day()}): \"{str(last.get('message', ''))[:120]}\""

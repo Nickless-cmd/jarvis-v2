@@ -54,6 +54,22 @@ _HEED_RATE_THRESHOLD = 0.4
 _BLOCK_COOLDOWN_SECONDS = 60
 
 
+def _live_thresholds() -> tuple[dict[str, int], float]:
+    """Settings-backed tærskler (config uden deploy, 2026-06-22); modul-konstanterne
+    ovenfor er fallback hvis settings ikke kan læses."""
+    try:
+        from core.runtime.settings import load_settings
+        s = load_settings()
+        tiers = {
+            "deep": int(s.r2_5_unverified_threshold_deep),
+            "reasoning": int(s.r2_5_unverified_threshold_reasoning),
+            "fast": int(s.r2_5_unverified_threshold_fast),
+        }
+        return tiers, float(s.r2_5_heed_rate_threshold)
+    except Exception:
+        return dict(_UNVERIFIED_THRESHOLD_BY_TIER), _HEED_RATE_THRESHOLD
+
+
 _last_block_at: datetime | None = None
 
 
@@ -100,14 +116,15 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
     unverified_effective = int(
         gate.get("unverified_effective", gate.get("unverified_count")) or 0
     )
-    threshold = _UNVERIFIED_THRESHOLD_BY_TIER[tier]
+    _tier_thresholds, _heed_threshold = _live_thresholds()
+    threshold = _tier_thresholds[tier]
     if failed < _MIN_FAILED_VERIFIES and unverified_effective < threshold:
         return None
 
     heed_rate = _heed_rate_24h()
     # Only escalate to block when we have evidence the model ignores warnings.
     # If heed_rate is None (insufficient data) we don't block — soft R2 surfaces.
-    if heed_rate is None or heed_rate >= _HEED_RATE_THRESHOLD:
+    if heed_rate is None or heed_rate >= _heed_threshold:
         return None
 
     suggestions = list(gate.get("suggestions") or [])
@@ -182,7 +199,7 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
             f"R2.5 conditional block (tier={tier}, threshold={threshold}): "
             f"{failed} fejlede verifies, {unverified_effective} mutation(er) "
             f"uden ÉT kig tilbage. 24t effective heed_rate="
-            f"{int(heed_rate*100)}% under {int(_HEED_RATE_THRESHOLD*100)}%-"
+            f"{int(heed_rate*100)}% under {int(_heed_threshold*100)}%-"
             f"grænsen.\n{action_line}"
         ),
         "suggestions": suggestions,

@@ -34,6 +34,9 @@ class Central:
         self._sink = sink or central_trace.sink()
         self._breaker = breaker or central_switches.CircuitBreaker()
         self._emit = emit or _default_emit
+        # §7 flag-on-change: aktiv drift-detektion pr. nerve (deterministisk, read-only).
+        from core.services.central_drift import NerveDriftMonitor
+        self._drift = NerveDriftMonitor()
 
     # ── observe (asynkront-agtigt telemetri-ansigt) ─────────────────────
     def observe(self, event: Any) -> None:
@@ -130,6 +133,7 @@ class Central:
         if err is not None:
             opened = self._breaker.record(nerve, ok=False)
             self._record_error(err, severe=opened)
+            self._maybe_flag_drift(nerve, cluster, is_error=True, is_red=False)
             return self._isolated_verdict(nerve, klass) if opened \
                 else self._fail_verdict(nerve, klass, err.message)
         self._breaker.record(nerve, ok=True)
@@ -142,7 +146,27 @@ class Central:
                 decision=v.decision.value, reason=v.reason, latency_ms=v.latency_ms))
         except Exception:
             pass
+        self._maybe_flag_drift(nerve, cluster, is_error=False, is_red=(v.decision is Decision.RED))
         return v
+
+    def _maybe_flag_drift(self, nerve: str, cluster: str, *, is_error: bool, is_red: bool) -> None:
+        """§7 flag-on-change: opdatér drift-monitor; hvis nervens fejl-/red-rate netop drev
+        ud over baseline → FLAG det (persistent incident + trace). Selv-sikker, read-only."""
+        try:
+            flag = self._drift.record(nerve, is_error=is_error, is_red=is_red)
+            if not flag:
+                return
+            msg = (f"drift: {flag.get('metric')} {flag.get('baseline')}→{flag.get('value')} "
+                   f"(Δ{flag.get('delta')})")
+            self.observe({"cluster": cluster, "nerve": nerve, "kind": "drift", **flag})
+            try:
+                from core.runtime.db_central_incidents import record_central_incident
+                record_central_incident(cluster=cluster, nerve=nerve, kind="drift",
+                                        severity="error", message=msg)
+            except Exception:
+                pass
+        except Exception:
+            pass
 
     # ── registry-passthrough til kernen ─────────────────────────────────
     def register(self, name: str, phase: str, fn: Callable[[dict], Any], *,

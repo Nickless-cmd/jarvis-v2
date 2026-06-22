@@ -1,6 +1,7 @@
 """Fit-pass-katalog (§13.2): det maskinlæsbare resultat af kortlægningen af hver nerve.
 Bruges senere som kilde til registrering. Fit = 'merge' (homogen, kan smelte sammen),
-'instrument' (kald Centralen på stedet), 'leave' (er ikke en request-path-gate)."""
+'merged' (smeltningen ER gennemført — gammel effekt-kode fjernet, kører nu kun via
+Centralen), 'instrument' (kald Centralen på stedet), 'leave' (er ikke en request-path-gate)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,7 +9,7 @@ from dataclasses import dataclass
 from core.services.gate_kernel import GateClass
 
 _MECHANISMS = {"verdict", "inline", "daemon", "filter", "tool", "persistence", "validation"}
-_FITS = {"merge", "instrument", "leave"}
+_FITS = {"merge", "merged", "instrument", "leave"}
 
 
 @dataclass(frozen=True)
@@ -37,12 +38,15 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/agentic_checkpoints.py"),
     NerveSpec("presentation_invariant", "loop", GateClass.COGNITIVE, "validation", "instrument",
               "core/services/visible_runs.py:5758-5806"),
-    # ── Truth-cluster (allerede adaptere) ──
-    NerveSpec("claim_scanner", "truth", GateClass.COGNITIVE, "verdict", "merge",
+    # ── Truth-cluster (MERGED 2026-06-22, C4) — gamle post-done effekt-gates
+    # fjernet fra visible_runs._post_process; detektorerne kører nu kun via
+    # central().decide → gate_truth-adaptere (observabilitet). Enforcement =
+    # TruthGate v2 pre-done. ──
+    NerveSpec("claim_scanner", "truth", GateClass.COGNITIVE, "verdict", "merged",
               "core/services/claim_scanner.py"),
-    NerveSpec("fact_gate", "truth", GateClass.COGNITIVE, "verdict", "merge",
+    NerveSpec("fact_gate", "truth", GateClass.COGNITIVE, "verdict", "merged",
               "core/services/fact_gate.py"),
-    NerveSpec("diagnosis", "truth", GateClass.COGNITIVE, "verdict", "merge",
+    NerveSpec("diagnosis", "truth", GateClass.COGNITIVE, "verdict", "merged",
               "core/services/diagnosis_gate.py"),
 )
 

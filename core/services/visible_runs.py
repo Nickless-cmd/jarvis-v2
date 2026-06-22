@@ -12,18 +12,6 @@ from dataclasses import dataclass, field
 from typing import AsyncIterator
 from uuid import uuid4
 
-
-class _C2GateSkip(Exception):
-    """Intern sentinel (TruthGate C2, 2026-06-22): rejses for at springe en
-    gammel post-done effekt-gate over når TruthGate v2 (pre-done) er TÆNDT.
-
-    Bruges KUN i claim-blokken i ``_post_process`` for at undgå at re-indentere
-    ~140 linjer i den skrøbelige generator-region (samme region som
-    generator-i-tråd-fælden dræbte i en uge). Fanges af et dedikeret
-    ``except _C2GateSkip`` FØR den brede except, så skip aldrig logges som fejl.
-    """
-
-
 from core.services.orb_phase import set_phase as _set_orb_phase
 
 from core.services.markdown_structure import normalize_markdown_structure
@@ -202,7 +190,6 @@ from core.services.selfhood_proposal_tracking import (
     track_runtime_selfhood_proposals_for_visible_turn,
 )
 from core.services.claim_scanner import scan_response as _scan_response
-from core.services.fact_gate import fact_gate_enforce as _fact_gate_enforce
 from core.services.visible_model import (
     VisibleModelDelta,
     VisibleModelRateLimited,
@@ -3585,25 +3572,16 @@ async def _stream_visible_run(
                 # an autonomous-run that wakes him again with context.
                 _maybe_trigger_continuation(run, visible_output_text)
 
-                # ── TruthGate C2 (2026-06-22) ─────────────────────────────
-                # Når TruthGate v2 (pre-done, ~linje 3408) er TÆNDT, blokerer/
-                # retter den konfabulation ÉN gang FØR done. De gamle post-done
-                # effekt-gates her (claim-block/fact_gate/diagnosis) kører ellers
-                # OVERFLØDIGT sideløbende → dobbelt-arbejde + dobbelt-blok-risiko.
-                # Gate dem bag `_tv2_on`. central().decide nedenfor er ren
-                # OBSERVABILITET → bevares uanset flag.
-                _tv2_on = False
-                try:
-                    from core.services import shared_cache as _sc_c2
-                    _f_c2 = _sc_c2.get("flag:central.switch.nerve.truth_v2")
-                    _tv2_on = isinstance(_f_c2, dict) and bool(_f_c2.get("enabled"))
-                except Exception:
-                    _tv2_on = False
-
-                # _executed_tool_names bruges af BÅDE de gamle gates OG
-                # central().decide (observabilitet). Byg den ALTID — hoistet ud
-                # af claim-blokken så observabiliteten overlever når v2 er ON.
-                # Guard: _followup_exchanges kan være ubundet for single-pass-svar.
+                # ── TruthGate C4 (2026-06-22) ─────────────────────────────
+                # De gamle post-done effekt-gates (claim-block/fact_gate/diagnosis)
+                # er FJERNET her: TruthGate v2 (pre-done, ~linje 3390) gør hele
+                # enforcement ÉN gang FØR done. Detektions-logikken lever videre via
+                # central().decide nedenfor (gate_truth = claim+fact+diagnosis-adaptere
+                # → ÉT observabilitets-Verdict). C2 (flag-gating) → C4 (fjern kode).
+                #
+                # _executed_tool_names fodrer central().decide-observabiliteten.
+                # Byg den robust — _followup_exchanges kan være ubundet for
+                # single-pass-svar.
                 _executed_tool_names: list[str] = []
                 try:
                     for _ex in _followup_exchanges:
@@ -3617,159 +3595,6 @@ async def _stream_visible_run(
                 except Exception:
                     _executed_tool_names = []
 
-                # 2026-06-11 (Bjørn frustration crisis fix C2): claim-
-                # scanner for fabriket work-claims. Sammenligner output
-                # ("fixet er live", "tests grønne", "committet") med
-                # de tools der faktisk blev kørt i samme run. Hvis
-                # mismatch → injicér ekstern feedback til næste turn.
-                # C2: hele blokken gated bag `_tv2_on` via sentinel-skip (undgår
-                # re-indent af den skrøbelige region).
-                try:
-                    from core.services.claim_scanner import (
-                        detect_fabricated_work_claims,
-                        format_fabrication_warning,
-                    )
-                    if _tv2_on:
-                        raise _C2GateSkip()
-                    _claims = detect_fabricated_work_claims(
-                        visible_output_text, _executed_tool_names,
-                    )
-                    # Shadow-mode (tool-before-claim gate): mål de NYE kategorier
-                    # uden at ændre adfærd (ingen warning, ingen blok). Promoveres
-                    # til blok efter et døgns data. Separat event til måling.
-                    try:
-                        from core.services.claim_scanner import detect_shadow_claims
-                        _shadow = detect_shadow_claims(
-                            visible_output_text, _executed_tool_names,
-                        )
-                        if _shadow:
-                            event_bus.publish(
-                                "runtime.claim_shadow_detected",
-                                {
-                                    "run_id": run.run_id,
-                                    "session_id": run.session_id,
-                                    "claims": _shadow,
-                                },
-                            )
-                            logger.warning(
-                                "claim-shadow: %d shadow-claim(s) run_id=%s cats=%s",
-                                len(_shadow), run.run_id,
-                                [c["category"] for c in _shadow],
-                            )
-                            # ── Bloker også beskeden NU ──
-                            # Promote from shadow-only → block-nu.
-                            # Erstatt den viste tekst med en forklaring.
-                            try:
-                                _shadow_blocked_text = (
-                                    f"*[Besked blokeret — uverificeret narrativ påstand]*\n\n"
-                                    f"Jeg prøvede at fortælle dig noget om mig selv "
-                                    f"som jeg ikke har kaldt et værktøj for at bekræfte.\n\n"
-                                    f"**Detektionsdetaljer:**\n"
-                                )
-                                for _sc in _shadow[:3]:
-                                    _shadow_blocked_text += (
-                                        f"- Kategori: \"{_sc.get('category', '?')}\"\n"
-                                        f"- Tekst: \"{_sc.get('text', '?')}\"\n"
-                                    )
-                                _shadow_blocked_text += (
-                                    f"\nJeg bør verificere før jeg taler. "
-                                    f"Jeg prøver igen — med data."
-                                )
-                                visible_output_text = _shadow_blocked_text
-                                yield _sse(
-                                    "scan_correction",
-                                    {
-                                        "type": "scan_correction",
-                                        "run_id": run.run_id,
-                                        "corrected": _shadow_blocked_text,
-                                    },
-                                )
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
-                    if _claims:
-                        _warning = format_fabrication_warning(_claims)
-                        logger.warning(
-                            "claim-scanner: %d fabricated work-claim(s) detected "
-                            "in run_id=%s session=%s patterns=%s",
-                            len(_claims), run.run_id, run.session_id,
-                            [c.pattern_name for c in _claims],
-                        )
-                        try:
-                            event_bus.publish(
-                                "runtime.claim_fabrication_suspected",
-                                {
-                                    "run_id": run.run_id,
-                                    "session_id": run.session_id,
-                                    "claims": [
-                                        {
-                                            "pattern": c.pattern_name,
-                                            "text": c.matched_text,
-                                            "required_any_of": list(c.required_any_of),
-                                            "actual_tools": list(c.actual_tools),
-                                        }
-                                        for c in _claims
-                                    ],
-                                },
-                            )
-                        except Exception:
-                            pass
-                        # Injicér som high-importance nudge på NÆSTE turn
-                        if run.session_id and _warning:
-                            try:
-                                from core.services.outbound_nudges import (
-                                    push_nudge,
-                                )
-                                push_nudge(
-                                    source="claim_scanner",
-                                    kind="other",
-                                    message=_warning,
-                                    importance="high",
-                                    parent_session_id=run.session_id,
-                                    parent_message_id=str(run.run_id),
-                                )
-                            except Exception as _nudge_exc:
-                                logger.debug(
-                                    "claim-scanner nudge push failed: %s",
-                                    _nudge_exc,
-                                )
-                        # ── Bloker også beskeden NU (forbedring 2026-06-13) ──
-                        # Promote from nudge-næste-turn → block-nu. Erstatt
-                        # den viste tekst med en forklaring.
-                        try:
-                            _blocked_text = (
-                                f"*[Besked blokeret — uverificeret arbejdspåstand]*\n\n"
-                                f"Jeg prøvede at fortælle dig at jeg havde gjort noget, "
-                                f"men jeg har ikke kaldt et værktøj i dette run der "
-                                f"beviser det.\n\n"
-                                f"**Detektionsdetaljer:**\n"
-                            )
-                            for _c in _claims[:3]:
-                                _blocked_text += (
-                                    f"- Påstand: \"{_c.matched_text}\"\n"
-                                    f"  Forventede tools: `{'`, `'.join(_c.required_any_of)}`\n"
-                                    f"  Faktiske tools: `{'`, `'.join(_c.actual_tools) or 'ingen'}`\n"
-                                )
-                            _blocked_text += (
-                                f"\nJeg bør verificere før jeg taler. "
-                                f"Jeg prøver igen — med data."
-                            )
-                            visible_output_text = _blocked_text
-                            yield _sse(
-                                "scan_correction",
-                                {
-                                    "type": "scan_correction",
-                                    "run_id": run.run_id,
-                                    "corrected": _blocked_text,
-                                },
-                            )
-                        except Exception:
-                            pass
-                except _C2GateSkip:
-                    pass  # C2: v2 (pre-done) håndterer konfabulations-blok
-                except Exception as _cs_exc:
-                    logger.debug("claim-scanner failed: %s", _cs_exc)
             except Exception:
                 # 2026-06-21: denne ydre except slugte FØR stille (pass) → enhver
                 # tidlig fejl (fx en closure-variabel ubundet for single-pass-runs)
@@ -3779,12 +3604,13 @@ async def _stream_visible_run(
                     getattr(run, "run_id", "?"), exc_info=True,
                 )
 
-            # ── Truth-cluster → Den Intelligente Central (første ægte cluster-wiring) ──
+            # ── Truth-cluster → Den Intelligente Central ──────────────────────
             # Rut den samlede sandheds-beslutning (claim+fact+diagnosis via truth_gate)
             # gennem Centralens decide-ansigt: ÉT struktureret trace-spor pr. run_id +
-            # live kill-switch + circuit-breaker. REN OBSERVABILITET → kører ALTID,
-            # uafhængigt af _tv2_on (C2 gater kun effekt-gates, ikke dette spor).
-            # Best-effort.
+            # live kill-switch + circuit-breaker. REN OBSERVABILITET — det ENESTE
+            # post-done truth-spor efter C4 (enforcement gøres pre-done af v2,
+            # ~linje 3390). Detektions-logikken (claim_scanner/fact_gate/diagnosis)
+            # lever videre HER som gate_truth-adaptere. Best-effort.
             try:
                 from core.services.central_core import central as _central_truth
                 from core.services.gate_truth import truth_gate as _truth_gate_fn
@@ -3803,63 +3629,9 @@ async def _stream_visible_run(
             except Exception:
                 pass
 
-            # ── Fact-Gate (2026-06-13, Bjørn approve) ─────────────────
-            # Blokerer beskeden hvis den indeholder uverificerbare faktuelle
-            # påstande om commits, tests, services, cache-procenter mv.
-            # C2: gated bag _tv2_on — v2 (pre-done) dækker dette når tændt.
-            try:
-                if _tv2_on:
-                    raise _C2GateSkip()
-                _fg_result = _fact_gate_enforce(
-                    visible_output_text, _executed_tool_names,
-                )
-                if _fg_result.get("blocked"):
-                    logger.warning(
-                        "fact_gate: BLOCKED run_id=%s reasons=%s",
-                        run.run_id,
-                        [r["pattern"] for r in _fg_result.get("block_reasons", [])],
-                    )
-                    visible_output_text = _fg_result.get("replacement", visible_output_text)
-                    # Send scan_correction så UI kan opdatere den viste tekst
-                    try:
-                        yield _sse(
-                            "scan_correction",
-                            {
-                                "type": "scan_correction",
-                                "run_id": run.run_id,
-                                "corrected": visible_output_text,
-                            },
-                        )
-                    except Exception:
-                        pass
-            except _C2GateSkip:
-                pass  # C2: v2 (pre-done) dækker fact-gate
-            except Exception as _fg_exc:
-                logger.debug("fact_gate failed: %s", _fg_exc)
-
-            # NB: A.6 live-shadow fjernet — placeringen i finally var skrøbelig
-            # (GeneratorExit ved aclose afbrød før shadow). Paritets-måling sker
-            # i stedet offline via core.services.gate_eval (replay/parity/score).
-            # GateKernel + adaptere bevares som fundament for B-H-konsolidering.
-
-            # Diagnosis-gate (spec 2026-06-14): fanger uverificerede diagnostiske
-            # konklusioner ("er zombie", "X commits bagud", "fyrede ikke") efter
-            # fact-gate. FASE 1 = advisory: logger men ændrer ikke teksten.
-            # C2: gated bag _tv2_on — v2 (pre-done) dækker dette når tændt.
-            try:
-                if _tv2_on:
-                    raise _C2GateSkip()
-                from core.services.diagnosis_gate import diagnosis_gate_enforce
-                visible_output_text = diagnosis_gate_enforce(
-                    visible_output_text,
-                    session_id=getattr(run, "session_id", "") or "",
-                    run_id=run.run_id,
-                    tools_used=_executed_tool_names,
-                )
-            except _C2GateSkip:
-                pass  # C2: v2 (pre-done) dækker diagnosis-gate
-            except Exception as _dg_exc:
-                logger.debug("diagnosis_gate failed: %s", _dg_exc)
+            # C4 (2026-06-22): de gamle post-done effekt-gates (fact_gate +
+            # diagnosis + claim-block) er FJERNET her — enforcement gøres pre-done
+            # af TruthGate v2. Detektorerne lever videre via central().decide ovenfor.
 
         # 2026-05-22 (Claude): post-process MUST run even when
         # visible_output_text is empty. Originally guarded by

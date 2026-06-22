@@ -229,52 +229,53 @@ def test_is_visible_run_alive_cross_process_heartbeat():
         assert vr.is_visible_run_alive("other-run") is False  # andet run_id
 
 
-class TestTruthGateC2Gating:
-    """TruthGate C2 (2026-06-22): når v2 (pre-done) er TÆNDT skal de GAMLE
-    post-done effekt-gates (claim/fact/diagnosis) springes over, så de ikke
-    blokerer DOBBELT. central().decide (observabilitet) skal køre uanset.
+class TestTruthGateC4Removal:
+    """TruthGate C4 (2026-06-22): de gamle post-done effekt-gates (claim-block,
+    fact_gate, diagnosis) er FJERNET fra _post_process — enforcement gøres pre-done
+    af TruthGate v2. Detektions-logikken lever videre via central().decide
+    (gate_truth-adaptere = ren observabilitet).
 
-    _post_process er en dybt-nestet generator i den skrøbelige region der
-    dræbte pipelinen i en uge — den kan ikke drives isoleret uden en stor
-    fake-harness. Paritets-suiten (test_truth_gate_v2_parity) beviser
-    dæknings-ækvivalens; her låser vi STRUKTUR-invarianten via kildeinspektion
-    så ingen ved et uheld fjerner gatingen eller gater observabiliteten væk."""
+    To load-bearing invarianter låses her via kildeinspektion + AST:
+    1. _post_process er IKKE længere en generator (alle yields forsvandt med de
+       gamle gates) → den køres som normal Thread, ikke drainet. Dét dræber
+       CRITICAL-generator-støjen og fjerner generator-i-tråd-fælde-risikoen.
+    2. central().decide('truth') (observabilitet) består — det ENESTE post-done
+       truth-spor efter C4."""
+
+    def _vr(self):
+        from core.services import visible_runs as vr
+        return vr
 
     def _post_process_source(self):
         import inspect
-        from core.services import visible_runs as vr
-        src = inspect.getsource(vr)
-        # isolér _post_process-kroppen (fra def til næste dedent på finally-niveau)
-        start = src.index("def _post_process(")
-        return src[start:]
+        src = inspect.getsource(self._vr())
+        return src[src.index("def _post_process("):]
 
-    def test_sentinel_is_private_exception(self):
-        from core.services.visible_runs import _C2GateSkip
-        assert issubclass(_C2GateSkip, Exception)
+    def test_post_process_is_not_a_generator(self):
+        import ast
+        import inspect
+        src = inspect.getsource(self._vr())
+        tree = ast.parse(src)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "_post_process":
+                yields = [n for n in ast.walk(node)
+                          if isinstance(n, (ast.Yield, ast.YieldFrom))]
+                assert yields == [], "C4: _post_process må ikke have yields (generator)"
+                return
+        raise AssertionError("_post_process ikke fundet")
 
-    def test_executed_tool_names_hoisted_before_claim_block(self):
+    def test_old_effect_gates_removed(self):
         body = self._post_process_source()
-        # _executed_tool_names skal bygges FØR claim-importen så central().decide
-        # (observabilitet) har den selv når claim-blokken skippes under v2.
-        hoist = body.index("_executed_tool_names: list[str] = []")
-        claim_import = body.index("from core.services.claim_scanner import")
-        assert hoist < claim_import
+        # ingen rester af de gamle effekt-gates eller C2-sentinel-stilladset
+        assert "_C2GateSkip" not in body
+        assert "_tv2_on" not in body
+        assert "_fact_gate_enforce" not in body
+        assert "diagnosis_gate_enforce" not in body
+        assert "detect_fabricated_work_claims" not in body
 
-    def test_three_old_gates_guarded_by_tv2_on(self):
+    def test_observability_decide_preserved(self):
         body = self._post_process_source()
-        # alle tre gamle effekt-gates skal være gated bag _tv2_on
-        assert body.count("raise _C2GateSkip()") == 3  # claim + fact + diagnosis
-        assert body.count("except _C2GateSkip:") == 3
-
-    def test_observability_decide_not_gated(self):
-        body = self._post_process_source()
-        # central().decide("truth", ...) må IKKE stå bag _tv2_on / _C2GateSkip —
-        # det er ren observabilitet og skal køre hver tur.
-        decide_at = body.index('.decide(\n                    "truth"')
-        # nærmeste raise _C2GateSkip før decide hører til fact-gaten EFTER decide,
-        # ikke før — verificér at decide ligger mellem claim-skip og fact-skip
-        first_skip = body.index("raise _C2GateSkip()")  # claim
-        assert first_skip < decide_at  # decide kommer efter claim-blokken
-        # og decide-kaldet selv indeholder ingen _tv2_on-guard i sit try:
-        decide_try = body.rindex("try:", 0, decide_at)
-        assert "_tv2_on" not in body[decide_try:decide_at]
+        # central().decide('truth', ...) + det hoistede _executed_tool_names der
+        # fodrer den skal bestå — det er nu det eneste post-done truth-spor.
+        assert '.decide(' in body and '"truth"' in body
+        assert "_executed_tool_names" in body

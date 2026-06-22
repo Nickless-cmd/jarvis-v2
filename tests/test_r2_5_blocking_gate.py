@@ -36,3 +36,18 @@ def test_default_thresholds_match_documented_baseline():
     tiers, heed = gate._live_thresholds()
     assert tiers["deep"] <= tiers["reasoning"] <= tiers["fast"]
     assert 0.0 < heed < 1.0
+
+
+def test_block_path_emits_central_trace_and_returns_block():
+    """Proactivity-cluster trace (2026-06-22): når R2.5 faktisk soft-blokerer, skal
+    den returnere en block-dict OG emittere central observe (best-effort) uden at kaste."""
+    from unittest.mock import patch
+    gate._last_block_at = None  # nulstil cooldown
+    fake_gate = {"failed_verify_count": 2, "unverified_effective": 99,
+                 "suggestions": ["read_file X"]}
+    with patch("core.services.verification_gate.evaluate_verification_gate",
+               return_value=fake_gate), \
+         patch.object(gate, "_heed_rate_24h", return_value=0.05):
+        out = gate.should_block_for_verification(reasoning_tier="fast")
+    assert out is not None and "reason" in out
+    assert out["tier"] == "fast"

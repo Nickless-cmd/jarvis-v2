@@ -213,3 +213,17 @@ def test_awareness_surfaces_when_repeating(tmp_db):
     assert section is not None
     assert "gentaget" in section
     assert "×4" in section
+
+
+# ── Scaffolding-filter (2026-06-22): runtime-injicerede resume-noter må ikke ind i ledger ──
+def test_scaffolding_resume_note_not_recorded_as_fact():
+    from core.services.theory_of_mind import _split_factual_sentences
+    scaffold = ("Jeg blev afbrudt i agentic loopet (timeout). "
+                "Next message can continue from here instead of starting over.")
+    assert _split_factual_sentences(scaffold) == []
+
+
+def test_real_claim_still_recorded():
+    from core.services.theory_of_mind import _split_factual_sentences
+    real = "Jarvis kører nu på localhost og bruger nomic-embed-text til embeddings."
+    assert real in _split_factual_sentences(real)

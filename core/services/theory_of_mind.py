@@ -62,6 +62,16 @@ _CLAIM_MARKER_RE = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+# Runtime-injiceret scaffolding (resume-noter ved afbrudte runs, interruption-markører)
+# der APPENDES til Jarvis' beskeder af systemet — ikke hans egen kommunikation. De må ALDRIG
+# ind i kommunikations-ledger'en, ellers oppustes de til "×29 gentaget"-støj (2026-06-22:
+# "Next message can continue from here" stod ×29 i Jarvis' prompt). Matchet → droppet.
+_SCAFFOLDING_RE = re.compile(
+    r"next message can continue from here"
+    r"|instead of starting over"
+    r"|jeg blev afbrudt i agentic loopet",
+    re.IGNORECASE,
+)
 _SENT_SPLIT_RE = re.compile(r"(?<=[\.\!\?])\s+|\n+")
 _NORMALIZE_RE = re.compile(r"[^a-zæøå0-9 ]", re.IGNORECASE)
 _WHITESPACE_RE = re.compile(r"\s+")
@@ -144,6 +154,8 @@ def _split_factual_sentences(text: str) -> list[str]:
             continue
         if s.endswith("?"):
             continue  # questions aren't claims
+        if _SCAFFOLDING_RE.search(s):
+            continue  # runtime-injiceret scaffolding, ikke Jarvis' kommunikation
         if _CLAIM_MARKER_RE.search(s):
             result.append(s)
     return result

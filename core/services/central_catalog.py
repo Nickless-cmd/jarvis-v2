@@ -339,6 +339,12 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/system_cartographer.py:_observe_to_central (systemkort → Centralen)"),
     NerveSpec("cartographer_autotask", "system", GateClass.COGNITIVE, "persistence", "leave",
               "core/services/system_cartographer.py:_maybe_enqueue_* (auto-triage: huller→runtime_tasks)"),
+    # §1 self-helbred (2026-06-22): "hvem overvåger Centralen?" Den prober SIG SELV hver time
+    # (decide+observe-probe + åbne breakers + uløste-severe-tæller) → observe + eskalér (ntfy +
+    # incident) hvis degraded. #5: breakers in-memory→nulstilles ved genstart (bevidst). #6:
+    # escalation-path ud over logging.
+    NerveSpec("central_health", "system", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/central_health.py:observe_and_escalate (Centralen prober sig selv)"),
 )
 
 

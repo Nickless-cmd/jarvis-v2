@@ -173,6 +173,35 @@ class Central:
         except Exception:
             pass
 
+    # ── §1 self-helbred: hvem overvåger Centralen? Den prober sig selv ──
+    def self_diagnose(self) -> dict[str, Any]:
+        """Meta-helbreds-check: virker Centralen SELV? Probe decide+observe, rapportér åbne
+        breakers + sink-aktivitet. Self-safe — kaster aldrig. degraded=True hvis decide eller
+        observe ikke fungerer (= Centralen er ved at fejle og skal eskaleres)."""
+        out: dict[str, Any] = {"decide_ok": False, "observe_ok": False,
+                               "open_breakers": [], "trace_records": 0}
+        try:
+            v = self.decide("central_self_probe", {"run_id": "health"},
+                            lambda c: None, cluster="system", klass=GateClass.COGNITIVE)
+            out["decide_ok"] = v.decision is Decision.GREEN
+        except Exception:
+            pass
+        try:
+            self.observe({"cluster": "system", "nerve": "central_self_probe", "kind": "health"})
+            out["observe_ok"] = True
+        except Exception:
+            pass
+        try:
+            out["open_breakers"] = self._breaker.open_nerves()
+        except Exception:
+            pass
+        try:
+            out["trace_records"] = len(self._sink.recent())
+        except Exception:
+            pass
+        out["degraded"] = not (out["decide_ok"] and out["observe_ok"])
+        return out
+
     # ── registry-passthrough til kernen ─────────────────────────────────
     def register(self, name: str, phase: str, fn: Callable[[dict], Any], *,
                  klass: GateClass = GateClass.COGNITIVE, timeout_ms: int = 1500,

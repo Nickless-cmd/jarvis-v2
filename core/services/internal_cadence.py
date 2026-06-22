@@ -800,6 +800,23 @@ def _ensure_producers_registered() -> None:
         priority=36,
     ))
 
+    def _run_central_self_health(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """§1 (2026-06-22): Centralen prober SIG SELV hver time → observe + eskalér hvis
+        decide/observe fejler, breakers er åbne, eller for mange uløste severe incidents."""
+        from core.services.central_health import observe_and_escalate
+        rep = observe_and_escalate()
+        return {"status": "ok", "decide_ok": rep.get("decide_ok"),
+                "observe_ok": rep.get("observe_ok"), "degraded": rep.get("degraded"),
+                "open_breakers": len(rep.get("open_breakers") or [])}
+
+    register_producer(ProducerSpec(
+        name="central_self_health",
+        cooldown_minutes=60,  # hver time — self-helbred skal fanges hurtigt
+        visible_grace_minutes=0,
+        run_fn=_run_central_self_health,
+        priority=36,
+    ))
+
     def _run_db_health_scan(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         """DB-cluster (2026-06-22): daglig table-census + vækst-flag via db_sentinel.observe.
         ALDRIG destruktiv — kun observe + flag (tom tabel = kandidat til review, ikke drop)."""

@@ -74,6 +74,13 @@ class CircuitBreaker:
         with self._lock:
             return self._fails.get(nerve, 0) >= self.threshold
 
+    def open_nerves(self) -> list[str]:
+        """Nerver hvis kreds NETOP er åben/isoleret (til Centralens self-helbreds-check).
+        NB: in-memory pr. proces → nulstilles ved genstart (bevidst: genstart = recovery,
+        en evigt-trippet breaker ville være værre end en frisk start)."""
+        with self._lock:
+            return sorted(n for n, c in self._fails.items() if c >= self.threshold)
+
     def reset(self, nerve: str) -> None:
         with self._lock:
             self._fails[nerve] = 0

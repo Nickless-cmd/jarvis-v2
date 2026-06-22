@@ -4831,6 +4831,23 @@ def _execute_simple_tool_calls(
         except Exception:
             pass  # gate failure → allow (fail-open)
 
+        # ── Commit-cluster → Den Intelligente Central (trace-spore, 2026-06-22) ──
+        # observe() — IKKE decide() — fordi enforcement allerede er kørt inline
+        # ovenfor, og check_decision_gate laver en DB-read (list_active_decisions);
+        # et decide()-re-run pr. tool-kald ville doble den i hot-løkken. Den DECIDE-
+        # baserede enforcement-merge (flag + circuit-breaker) er et bevidst senere
+        # skridt m. fail-closed-fri paritet. Best-effort: kaster aldrig.
+        try:
+            from core.services.central_core import central as _central_commit
+            _central_commit().observe({
+                "cluster": "commit", "nerve": "decision_gate", "run_id": run_id,
+                "decision": "red" if _decision_blocked else "green",
+                "tool_name": name,
+                "reason": (_decision_reason or "")[:200],
+            })
+        except Exception:
+            pass
+
         if _veto_blocked or _decision_blocked:
             _gate_reason = _veto_reason or _decision_reason or "Ukendt gate-blokering"
             _gate_type = "veto_gate" if _veto_blocked else "decision_gate"

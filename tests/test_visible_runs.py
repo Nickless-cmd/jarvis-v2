@@ -279,3 +279,28 @@ class TestTruthGateC4Removal:
         # fodrer den skal bestå — det er nu det eneste post-done truth-spor.
         assert '.decide(' in body and '"truth"' in body
         assert "_executed_tool_names" in body
+
+
+class TestCommitClusterTrace:
+    """Commit-cluster migration (2026-06-22): decision_gate ruttes gennem
+    central().observe for ÉT trace-spore (additivt; enforcement bevaret inline).
+    Bruger observe() ikke decide() for at undgå dobbelt DB-read i hot-løkken."""
+
+    def _vr_source(self):
+        import inspect
+        from core.services import visible_runs as vr
+        return inspect.getsource(vr)
+
+    def test_commit_observe_wired_at_decision_gate(self):
+        src = self._vr_source()
+        assert '"cluster": "commit"' in src
+        assert '"nerve": "decision_gate"' in src
+        assert ".observe(" in src
+
+    def test_central_observe_records_commit_trace(self):
+        # central().observe på en commit-event skal kunne køre uden at kaste
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "commit", "nerve": "decision_gate", "run_id": "t-commit",
+            "decision": "green", "tool_name": "web_search", "reason": "",
+        })  # best-effort, kaster aldrig

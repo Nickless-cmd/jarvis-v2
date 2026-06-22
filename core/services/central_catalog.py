@@ -210,6 +210,17 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/gate_mutation.py (auto_improvement_proposer._is_safe_target)"),
     NerveSpec("infrastructure_blocklist", "mutation", GateClass.SECURITY, "filter", "leave",
               "core/services/gate_mutation.py (kanonisk liste — var dual-truth)"),
+    # ── Skill-Safety-cluster 🔒 KONSOLIDERET 2026-06-22 ──
+    # scan_skill-detektoren (injection/malware/boundary) lå wired på 3 spredte call-sites
+    # (skill_engine create=hard-block · skill_engine read=advisory · agent_dispatch=dispatch-
+    # blok), hver med eget except:pass + ingen trace. Nu ÉN graderet SECURITY-gate (gate_skill)
+    # routet gennem central().decide: RED=blokeret (≥high)/YELLOW=advisory-fund/GREEN=ren →
+    # trace + breaker + incident. Fail-CLOSED (uscanbar skill oprettes ikke). check_permissions
+    # = manifest-scope-detektor uden live call-site (leave).
+    NerveSpec("skill_scan", "skill", GateClass.SECURITY, "verdict", "merged",
+              "core/services/gate_skill.py (skill_scanner.scan_skill, 3 call-sites)"),
+    NerveSpec("skill_contract", "skill", GateClass.SECURITY, "validation", "leave",
+              "core/services/skill_contract_registry.py:67 (check_permissions — ingen live caller)"),
 )
 
 

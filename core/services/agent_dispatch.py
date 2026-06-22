@@ -73,10 +73,11 @@ def plan_dispatch(task: str, *, executor_count: int = 1) -> list[dict]:
 def scan_skills_before_dispatch(skill_contents: list[str] | None) -> dict:
     """Kør skill_scanner på hver skill der vil eksekvere lokalt (§19.8). Blokerer
     dispatch hvis nogen skill fejler scanningen."""
-    from core.services.skill_scanner import scan_skill
+    # Skill-Safety-cluster 🔒 GENNEM Den Intelligente Central (SECURITY, traced).
+    from core.services.gate_skill import check_skill_scan
     blocked: list[dict] = []
     for i, content in enumerate(skill_contents or []):
-        result = scan_skill(content)
+        result = check_skill_scan(content)
         if not result.allowed:
             blocked.append({"index": i, "reasons": result.blocked_reasons})
     return {"allowed": not blocked, "blocked": blocked}

@@ -393,9 +393,10 @@ def validate_skill_proposal(
 
     # §19.8: scan skill-indhold for prompt-injection/malware/boundary FØR oprettelse.
     # En ondsindet skill må aldrig nå disk (hardblock ved high-fund).
+    # Skill-Safety-cluster 🔒 GENNEM Den Intelligente Central (SECURITY, traced).
     try:
-        from core.services.skill_scanner import scan_skill
-        scan = scan_skill(f"{description}\n{use_when}\n{instructions}")
+        from core.services.gate_skill import check_skill_scan
+        scan = check_skill_scan(f"{description}\n{use_when}\n{instructions}")
         if not scan.allowed:
             return {
                 "status": "error",
@@ -404,7 +405,7 @@ def validate_skill_proposal(
                 "scan": scan.as_dict(),
             }
     except Exception:
-        pass  # scanner-fejl må ikke blokere legitim oprettelse (fail-open her)
+        pass  # gate-stien er selv-sikker; outer-guard mod uventet kald-fejl
 
     skill_dir = SKILLS_ROOT / name
     if skill_dir.exists():
@@ -570,8 +571,8 @@ def get_skill_instructions(name: str) -> dict[str, Any]:
     # efter oprettelse). Advisory — blokerer ikke (undgår at brække legitime skills på
     # en heuristik-false-positive), men flagger så caller/UI kan reagere.
     try:
-        from core.services.skill_scanner import scan_skill
-        scan = scan_skill(f"{skill.description}\n{skill.use_when}\n{skill.instructions}")
+        from core.services.gate_skill import check_skill_scan
+        scan = check_skill_scan(f"{skill.description}\n{skill.use_when}\n{skill.instructions}")
         if not scan.allowed:
             result["security_warning"] = scan.as_dict()
     except Exception:

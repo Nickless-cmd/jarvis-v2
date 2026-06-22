@@ -755,6 +755,16 @@ def build_visible_chat_prompt_assembly(
     # awareness budget and evicted his inner life. The honesty *rule* it
     # implied now lives as one hard line in the stable prefix; the actionable
     # "N unverified mutations" survives via the verification gate.
+    # ── Prompt-cluster (Den Intelligente Central, Phase 1, 2026-06-22) ──
+    # Den hardcodede _DIAGNOSTIC_NOISE_LABELS-blacklist bliver nu en DEFAULT der kan
+    # overstyres LIVE pr. sektion uden genstart (central_switches scope="prompt_section"),
+    # og hver drop traces i Centralen. Overrides loades ÉN gang pr. build (prefix-query) →
+    # tom i normaltilfældet = nul ekstra latency + uændret adfærd (paritet). INGEN per-sektion
+    # decide() (latency) og INGEN ændret sektions-INDHOLD (cache-prefix urørt) — de to risici
+    # Jarvis selv flagged er bevidst undgået i Phase 1; gradering/kondensering er Phase 2+.
+    from core.services import prompt_observer as _prompt_observer
+    _section_overrides = _prompt_observer.load_overrides()
+    _dropped_disabled: list[str] = []
     _DIAGNOSTIC_NOISE_LABELS = {
         "self-monitor warnings",
         "metacognition signals",
@@ -793,7 +803,11 @@ def build_visible_chat_prompt_assembly(
         _elapsed_ms = int((_now - _last_awareness_t[0]) * 1000)
         _awareness_call_times.append((_elapsed_ms, label))
         _last_awareness_t[0] = _now
-        if label in _DIAGNOSTIC_NOISE_LABELS:
+        # Prompt-cluster: live on/off pr. sektion (override vinder over hardcoded blacklist).
+        if not _prompt_observer.section_enabled(
+                label, blacklisted=label in _DIAGNOSTIC_NOISE_LABELS,
+                overrides=_section_overrides):
+            _dropped_disabled.append(label)
             return
         if not content:
             return
@@ -816,7 +830,10 @@ def build_visible_chat_prompt_assembly(
     def _tail_add(label: str, content: str | None) -> None:
         if not content:
             return
-        if label in _TAIL_NOISE_LABELS:
+        if not _prompt_observer.section_enabled(
+                label, blacklisted=label in _TAIL_NOISE_LABELS,
+                overrides=_section_overrides):
+            _dropped_disabled.append(label)
             return
         _tail_dynamic.append(content)
         derived_inputs.append(f"{label} (tail-anchored)")
@@ -1595,6 +1612,14 @@ def build_visible_chat_prompt_assembly(
         _last_category = _category
     if _dropped:
         derived_inputs.append(f"awareness budget dropped: {', '.join(_dropped)}")
+    # Prompt-cluster: ét central.observe pr. build → trace af hvad der kom med + hvorfor noget
+    # blev droppet (disabled via switch vs budget-evicted). Self-safe; ingen latency-effekt.
+    try:
+        _prompt_observer.observe_build(
+            lane="visible", included=len(_awareness_buffer),
+            dropped_disabled=_dropped_disabled, dropped_budget=list(_dropped))
+    except Exception:
+        pass
 
     # SOUL/IDENTITY/STANDING_ORDERS/USER.md were moved forrest (2026-05-07)
     # to fix Deepseek prefix-caching. See block above the awareness budget

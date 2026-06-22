@@ -255,6 +255,17 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/stream_sentinel.py (message_start uden message_stop >300s → incident)"),
     NerveSpec("stream_event", "stream", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/stream_sentinel.py (idle/cancel/error/zombie_slot/subscriber_timeout)"),
+    # ── Prompt-cluster KONSOLIDERET 2026-06-22 (Phase 1: live on/off + trace) ──
+    # prompt_contract.py byggede ~73 sektioner blindt og skar støj via HARDCODET blacklist
+    # (_DIAGNOSTIC_NOISE_LABELS) — ændring krævede kode+deploy, ingen trace af HVORFOR droppet.
+    # Phase 1: hver sektion er nu live-styrbar pr. label (central_switches scope=prompt_section)
+    # + ÉT central.observe pr. build (assembly) med included/dropped_disabled/dropped_budget.
+    # BEVIDST UDEN per-sektion decide() (latency) og uden ændret indhold (cache-prefix urørt) —
+    # de to risici Jarvis flagged. Gradering/kondensering/8→1-konsolidering = Phase 2+.
+    NerveSpec("assembly", "prompt", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/prompt_observer.py (build-trace) + prompt_contract.py:791 _awareness_add"),
+    NerveSpec("section_switch", "prompt", GateClass.COGNITIVE, "filter", "instrument",
+              "core/services/prompt_observer.py:section_enabled (live on/off pr. label, erstatter blacklist)"),
 )
 
 

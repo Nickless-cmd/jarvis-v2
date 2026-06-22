@@ -818,6 +818,28 @@ def _ensure_producers_registered() -> None:
         priority=36,
     ))
 
+    def _run_tool_usage_stats(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Tools-cluster Phase 2 (2026-06-22): daglig forbrugs-statistik via tool_usage_store
+        → central.observe (mest/ofte/nogle-gange/sjældent/aldrig) + flag antal døde tools.
+        Grundlag for at ordne kataloget (mest-brugt først, døde sidst). Observe-only."""
+        from core.services.tool_usage_store import observe_stats
+        try:
+            from core.tools.simple_tools import _TOOL_HANDLERS
+            registered = list(_TOOL_HANDLERS.keys())
+        except Exception:
+            registered = []
+        summary = observe_stats(registered)
+        return {"status": "ok", "tracked": summary.get("tracked"),
+                "never": summary.get("never"), "registered": len(registered)}
+
+    register_producer(ProducerSpec(
+        name="tool_usage_stats",
+        cooldown_minutes=1440,  # daily
+        visible_grace_minutes=0,
+        run_fn=_run_tool_usage_stats,
+        priority=36,
+    ))
+
 
 def run_cadence_tick_with_bootstrap(
     *,

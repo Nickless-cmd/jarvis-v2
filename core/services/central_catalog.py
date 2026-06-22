@@ -315,6 +315,14 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/tools/simple_tools.py:execute_tool (observe pr. kald, native/operator+session)"),
     NerveSpec("tool_query", "tools", GateClass.COGNITIVE, "validation", "leave",
               "core/services/tool_observer.py (recent_tool_failures — debugging-indgang)"),
+    # Phase 2 (2026-06-22): persistent forbrugs-statistik (DB, cross-proces api↔runtime).
+    # Centralen tæller mest/ofte/nogle-gange/sjældent/ALDRIG → ordn katalog (mest-først, døde-
+    # sidst) + flag døde tools. Daglig observe via internal_cadence-producer. Katalog-omrække-
+    # følge = Phase 2b (afventer akkumuleret data + cache-håndtering i tool_catalog).
+    NerveSpec("tool_usage_stats", "tools", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/tool_usage_store.py:observe_stats (daglig forbrugs-summary + døde-flag)"),
+    NerveSpec("tool_usage_order", "tools", GateClass.COGNITIVE, "validation", "leave",
+              "core/services/tool_usage_store.py:tool_order/dead_tools (katalog-rækkefølge, Phase 2b-wiring)"),
 )
 
 

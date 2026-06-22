@@ -3923,6 +3923,15 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         })
     except Exception:
         pass
+    # Tools-cluster Phase 2: persistent forbrugs-tæller (DB, cross-proces api↔runtime) →
+    # Centralen kan ordne kataloget (mest-brugt først, døde sidst) + flagge døde tools.
+    try:
+        from core.services.tool_usage_store import record_use
+        _ok = isinstance(result, dict) and str(result.get("status") or "ok") == "ok"
+        record_use(name, kind="operator" if str(name).startswith("operator_") else "native",
+                   ok=_ok)
+    except Exception:
+        pass
     return result
 
 

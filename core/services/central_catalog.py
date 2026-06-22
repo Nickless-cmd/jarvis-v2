@@ -145,10 +145,18 @@ CATALOG: tuple[NerveSpec, ...] = (
     # brain_recall = fail-closed filtre i recall-stien (leave — ikke request-path-blok).
     NerveSpec("cross_user_share", "privacy", GateClass.SECURITY, "verdict", "merged",
               "core/services/gate_privacy.py"),
-    NerveSpec("visibility_ceiling", "privacy", GateClass.SECURITY, "verdict", "merge",
-              "core/services/jarvis_brain_visibility.py:35-63"),
-    NerveSpec("brain_recall_gate", "privacy", GateClass.SECURITY, "filter", "merge",
-              "core/services/jarvis_brain.py:616-648"),
+    # outbound_scrub = kanal-egress-scrubbing (hård afslutnings-fraser i discord/telegram/
+    # notification). Tekst-TRANSFORMATION (ikke allow/block) → passer observe, ikke decide.
+    # Instrumenteret 2026-06-22: guard_channel_text → central.observe.
+    NerveSpec("outbound_scrub", "privacy", GateClass.SECURITY, "filter", "instrument",
+              "core/services/communication_guard.py:374 guard_channel_text (observe)"),
+    # KORRIGERET 2026-06-22 merge→leave: visibility_ceiling + brain_recall er fail-closed
+    # filtre i RECALL-stien (hvad der hentes/surfaces), IKKE request-path allow/block-gates.
+    # Surveyets dybere analyse bekræftede leave. De bevarer deres fail-closed adfærd in-situ.
+    NerveSpec("visibility_ceiling", "privacy", GateClass.SECURITY, "filter", "leave",
+              "core/services/jarvis_brain_visibility.py:35-63 (recall-filter, ej request-path)"),
+    NerveSpec("brain_recall_gate", "privacy", GateClass.SECURITY, "filter", "leave",
+              "core/services/jarvis_brain.py:616-648 (recall-filter, ej request-path)"),
     NerveSpec("share_guard_store", "privacy", GateClass.SECURITY, "persistence", "leave",
               "core/services/share_guard_store.py:28-72"),
     NerveSpec("workspace_encryption", "privacy", GateClass.SECURITY, "inline", "leave",

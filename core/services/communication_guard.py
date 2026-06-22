@@ -379,6 +379,15 @@ def guard_channel_text(text: str | None, channel: str) -> str:
     scrubbed, removed = scrub_outgoing(text)
     if removed:
         record_breach(channel, removed, original=text or "")
+        # Privacy-cluster: outbound-scrubbing synlig i Den Intelligente Central
+        # (kanal-egress-stien — komplementær til cross_user_share i visible-stien).
+        # Self-safe observe (tekst-transformation passer ikke decide-modellen → observe).
+        try:
+            from core.services.central_core import central
+            central().observe({"cluster": "privacy", "nerve": "outbound_scrub",
+                               "channel": channel, "removed_count": len(removed)})
+        except Exception:
+            pass
     return scrubbed
 
 

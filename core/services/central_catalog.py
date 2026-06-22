@@ -306,6 +306,15 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/db_sentinel.py (egregious-vækst-flag → incident)"),
     NerveSpec("dead_table_review", "db", GateClass.COGNITIVE, "validation", "leave",
               "core/services/db_sentinel.py:dead_table_candidates (review-liste, ALDRIG auto-drop)"),
+    # ── Tools-cluster KONSOLIDERET 2026-06-22 (Phase 1: observe + kategorisering) ──
+    # 400+ tools (mange overlap) routes alle gennem execute_tool-chokepunktet. Phase 1: ÉT
+    # observe pr. kald tagger native vs operator + chat/code-scope + rolle + session + udfald
+    # → debugging af "fejl ude af huset" (hvilket operator-/chat-tool i hvilken session).
+    # tool_observer.py = query-helpers. Phase 2 = konsolidering 20→1 på forbrugs/overlap-data.
+    NerveSpec("tool_call", "tools", GateClass.COGNITIVE, "inline", "instrument",
+              "core/tools/simple_tools.py:execute_tool (observe pr. kald, native/operator+session)"),
+    NerveSpec("tool_query", "tools", GateClass.COGNITIVE, "validation", "leave",
+              "core/services/tool_observer.py (recent_tool_failures — debugging-indgang)"),
 )
 
 

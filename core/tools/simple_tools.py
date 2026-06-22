@@ -3904,13 +3904,31 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     # og unbound ("" = betroede interne/daemon-kald) slipper igennem. Fail-OPEN
     # KUN hvis selve tjekken kaster — aldrig låse owner/daemoner ude; model-
     # filteret er stadig primær gate.
+    # ── Auth-cluster 🔒 GENNEM Den Intelligente Central (SECURITY, fail-CLOSED) ──
+    # Rolle bestemmes OWNER-SIKKERT (fejl → unbound "" → ingen deny). Kun ægte member/
+    # guest-roller går gennem den fail-closed Auth-gate; owner/unbound låses ALDRIG ude.
     try:
         from core.identity.workspace_context import effective_role as _eff_role
-        from core.tools.tool_scoping import is_tool_allowed as _is_allowed, current_tool_scope as _cur_scope
+        from core.tools.tool_scoping import current_tool_scope as _cur_scope
         _role = _eff_role()
-        if _role not in ("", "owner") and not _is_allowed(
-            role=_role, scope=(_cur_scope() or ""), name=name,
-        ):
+        _scope = _cur_scope() or ""
+    except Exception:
+        _role, _scope = "", ""
+    if _role not in ("", "owner"):
+        _auth_denied = False
+        try:
+            from core.services.central_core import central as _central_auth
+            from core.services.gate_auth import auth_gate as _auth_gate
+            from core.services.gate_kernel import Decision as _ADec, GateClass as _AGK
+            _av = _central_auth().decide(
+                "tool_access", {"role": _role, "scope": _scope, "name": name},
+                _auth_gate, cluster="auth", klass=_AGK.SECURITY)
+            # RED = deny — INKL. fail-closed når is_tool_allowed kaster (modsat det gamle
+            # except:pass der tillod stille). Sikkerheds-nerve kan ikke slås fra.
+            _auth_denied = _av.decision is _ADec.RED
+        except Exception:
+            _auth_denied = False  # central-sti-katastrofe → model-tool-filteret er primær gate
+        if _auth_denied:
             result = {
                 "status": "error", "error": "tool_not_permitted",
                 "detail": f"Værktøjet '{name}' er ikke tilladt for rollen '{_role}'.",
@@ -3922,8 +3940,6 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
                 pass
             _record_tool_outcome_memory(name, arguments, result, mode="tool")
             return result
-    except Exception:
-        pass  # håndhævelses-fejl må ikke låse owner/daemoner ude
 
     # Trusted-folder gate: skrive/exec i et ikke-betroet code-workspace blokeres.
     try:

@@ -150,13 +150,17 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/workspace_crypto.py:46-193"),
     NerveSpec("private_brain_scoping", "privacy", GateClass.SECURITY, "filter", "leave",
               "core/runtime/db_private_brain.py:88-150"),
-    # ── Auth-cluster 🔒 (SIKKERHED, fail-CLOSED — migreres SIDST) ──
-    # Kerne-gates (tool_scoping/permission_engine/override) fejler CLOSED. identity_guard/
-    # abuse_monitor fejler OPEN BEVIDST (sikkerhed ≠ selvmål-DoS). simple_tools.py:3925
-    # except:pass = BEVIDST defense-in-depth-backstop (primær gate = model-tool-filter).
-    # 2 utilsigtede fail-opens noteret: tool_scoping:216 computer_use-policy, abuse-scan.
-    NerveSpec("tool_scoping", "auth", GateClass.SECURITY, "filter", "merge",
-              "core/tools/tool_scoping.py:203-243"),
+    # ── Auth-cluster 🔒 KONSOLIDERET 2026-06-22 (SIDSTE cluster) ──
+    # Hoved-enforcement = tool_access (rolle-backstop i execute_tool) routet gennem
+    # central().decide som SECURITY (gate_auth): RED=deny / GREEN=tilladt. Backstoppens
+    # gamle except:pass (silent fail-open) er nu fail-CLOSED (gate-exception→RED deny);
+    # owner/unbound låses ALDRIG ude. permission_engine = kanonisk matrix-detektor (leave).
+    # override/identity_guard/abuse_monitor = separate auth-koncerner (verdict, bevidst
+    # fail-open hvor de er det ≠ DoS). PARITET 41 tool-scoping/auth-tests grøn.
+    NerveSpec("tool_access", "auth", GateClass.SECURITY, "verdict", "merged",
+              "core/services/gate_auth.py"),
+    NerveSpec("tool_scoping", "auth", GateClass.SECURITY, "filter", "leave",
+              "core/tools/tool_scoping.py:203-243 (is_tool_allowed = detektor for gate_auth)"),
     NerveSpec("permission_engine", "auth", GateClass.SECURITY, "filter", "merge",
               "core/services/permission_engine.py:112-138"),
     NerveSpec("override_command", "auth", GateClass.SECURITY, "verdict", "merge",

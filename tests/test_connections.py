@@ -99,13 +99,14 @@ def test_session_activity_combines_tools_and_unauthorized(monkeypatch):
                         ])
 
     class _Rec:
-        def __init__(self, nerve, payload):
-            self.cluster = "connections"; self.nerve = nerve; self.payload = payload
+        def __init__(self, nerve, session_id, payload):
+            self.cluster = "connections"; self.nerve = nerve
+            self.session_id = session_id; self.payload = payload
 
     class _Sink:
         def recent(self):
-            return [_Rec("unauthorized", {"session_id": "s1", "resource": "tool:x",
-                                          "reason": "tool_not_permitted"})]
+            return [_Rec("unauthorized", "s1", {"resource": "tool:x",
+                                                "reason": "tool_not_permitted"})]
 
     monkeypatch.setattr("core.services.central_trace.sink", lambda: _Sink())
     a = cn.session_activity("s1")

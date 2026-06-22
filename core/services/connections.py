@@ -86,9 +86,10 @@ def session_activity(session_id: str, *, limit: int = 300) -> dict[str, Any]:
         for r in central_trace.sink().recent():
             if r.cluster != "connections":
                 continue
-            p = r.payload or {}
-            if str(p.get("session_id") or "") != str(session_id or ""):
+            # central.observe flytter session_id til record-feltet (reserveret), ikke payload.
+            if str(getattr(r, "session_id", "") or "") != str(session_id or ""):
                 continue
+            p = r.payload or {}
             if r.nerve == "unauthorized":
                 out["unauthorized"].append({"resource": p.get("resource"), "reason": p.get("reason")})
             elif r.nerve == "connection_error":

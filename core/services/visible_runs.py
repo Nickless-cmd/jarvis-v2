@@ -4146,6 +4146,32 @@ def _maybe_trigger_continuation(run: VisibleRun, assistant_text: str) -> None:
         pass
 
 
+def _track_step_failed() -> None:
+    """En tracker i _track_runtime_candidates fejlede.
+
+    FØR (kaskade-bug, 2026-06-22): hver tracker-blok afsluttede med `except: return`
+    — et `return` forlod HELE funktionen, så ALLE downstream-trackers (self_review-
+    kaskaden, memory-promotion, proactive-gates...) blev sprunget over for den tur,
+    USYNLIGT. Én fejlende mellem-led dræbte resten.
+
+    NU (Review/Memory/Proactivity fælles fejl-catcher): log med traceback (stakken
+    identificerer den fejlende tracker) + central-trace, og FORTSÆT til næste tracker.
+    Best-effort: kaster aldrig.
+    """
+    logger.warning(
+        "_track_runtime_candidates: en tracker fejlede — fortsætter med resten",
+        exc_info=True,
+    )
+    try:
+        from core.services.central_core import central as _central_track
+        _central_track().observe({
+            "cluster": "review", "nerve": "candidate_tracker",
+            "kind": "tracker_error",
+        })
+    except Exception:
+        pass
+
+
 def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
     if not run.session_id:
         return
@@ -4157,7 +4183,7 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
             assistant_message=assistant_text,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_development_focuses_for_visible_turn(
             session_id=run.session_id,
@@ -4165,7 +4191,7 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
             user_message=run.user_message,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_reflective_critics_for_visible_turn(
             session_id=run.session_id,
@@ -4173,7 +4199,7 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
             user_message=run.user_message,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_world_model_signals_for_visible_turn(
             session_id=run.session_id,
@@ -4181,7 +4207,7 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
             user_message=run.user_message,
         )
     except Exception:
-        return
+        _track_step_failed()
     # World Model loop Phase 1 (2026-05-12): scan Jarvis' OWN response
     # (not the user message) for prediction/resolution language and
     # persist nudges. Jarvis sees them in next session's awareness.
@@ -4231,7 +4257,7 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
             user_message=run.user_message,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_goal_signals_for_visible_turn(
             session_id=run.session_id,
@@ -4239,14 +4265,14 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
             user_message=run.user_message,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_awareness_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_reflection_signals_for_visible_turn(
             session_id=run.session_id,
@@ -4254,91 +4280,91 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
             user_message=run.user_message,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_temporal_recurrence_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_witness_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_internal_opposition_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_self_review_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_self_review_records_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_self_review_runs_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_self_review_outcomes_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_self_review_cadence_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_dream_hypothesis_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_dream_adoption_candidates_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_dream_influence_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_self_authored_prompt_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_user_understanding_signals_for_visible_turn(
             session_id=run.session_id,
@@ -4346,7 +4372,7 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
             user_message=run.user_message,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_remembered_fact_signals_for_visible_turn(
             session_id=run.session_id,
@@ -4354,280 +4380,280 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
             user_message=run.user_message,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_private_inner_note_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_private_initiative_tension_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_private_inner_interplay_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_private_state_snapshots_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_diary_synthesis_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_private_temporal_curiosity_states_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_executive_contradiction_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_inner_visible_support_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_regulation_homeostasis_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_open_loop_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_relation_state_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_private_temporal_promotion_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_chronicle_consolidation_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_chronicle_consolidation_briefs_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_relation_continuity_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_chronicle_consolidation_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_meaning_significance_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_temperament_tendency_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_self_narrative_continuity_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_metabolism_state_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_release_marker_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_consolidation_target_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_selective_forgetting_candidates_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_attachment_topology_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_loyalty_gradient_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_contract_candidates_from_chronicle_consolidation_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_contract_candidates_from_self_authored_prompt_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_user_md_update_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_memory_md_update_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         auto_apply_safe_memory_md_candidates_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         auto_apply_safe_user_md_candidates_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_selfhood_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_open_loop_closure_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_autonomy_pressure_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_proactive_loop_lifecycle_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
     try:
         track_runtime_proactive_question_gates_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )
     except Exception:
-        return
+        _track_step_failed()
 
 
 # Capability markup functions — udskilt til core/services/prompt_sections/capability_markup.py

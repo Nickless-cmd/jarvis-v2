@@ -304,3 +304,37 @@ class TestCommitClusterTrace:
             "cluster": "commit", "nerve": "decision_gate", "run_id": "t-commit",
             "decision": "green", "tool_name": "web_search", "reason": "",
         })  # best-effort, kaster aldrig
+
+
+class TestTrackerCascadeFix:
+    """Kaskade-bug-fix (2026-06-22): FØR afsluttede hver tracker-blok i
+    _track_runtime_candidates med `except: return` → én fejlende tracker forlod HELE
+    funktionen og sprang alle downstream-trackers over, usynligt. NU: _track_step_failed()
+    logger + central-trace og FORTSÆTTER. Review/Memory/Proactivity fælles fejl-catcher."""
+
+    def _fn_source(self):
+        import inspect
+        from core.services import visible_runs as vr
+        src = inspect.getsource(vr)
+        start = src.index("def _track_runtime_candidates(")
+        return src[start:]
+
+    def test_no_cascade_return_remains(self):
+        body = self._fn_source()
+        # ingen 'except: return' (kaskade) tilbage i funktionen
+        assert "    except Exception:\n        return" not in body
+        # hver except-blok kalder nu fejl-catcheren
+        assert body.count("_track_step_failed()") == 61
+
+    def test_step_failed_continues_does_not_raise(self):
+        # _track_step_failed må ALDRIG kaste (ellers genindføres kaskaden)
+        from core.services import visible_runs as vr
+        try:
+            raise RuntimeError("simuleret tracker-fejl")
+        except Exception:
+            vr._track_step_failed()  # skal sluge + logge, ikke re-raise
+
+    def test_early_guard_return_preserved(self):
+        # den ene legitime return (session_id-guard) skal bestå
+        body = self._fn_source()
+        assert "if not run.session_id:\n        return" in body

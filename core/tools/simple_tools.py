@@ -3892,6 +3892,41 @@ def classify_file_write(path: str) -> str:
 # ── Tool execution handlers ────────────────────────────────────────────
 
 def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Execute a tool call — Tools-cluster (Den Intelligente Central, Phase 1).
+
+    Tynd wrapper: kører den uændrede tool-dispatch (_impl) og observerer ALT-udfaldet ved
+    chokepunktet — OGSÅ de tidlige returns (ukendt tool / auth-nægtet / untrusted workspace),
+    som er de vigtigste fejl-cases. Tagger native vs operator + chat/code-scope + rolle +
+    session + status/error → debugging af "fejl ude af huset": når en bruger melder en fejl
+    ser vi PRÆCIST hvilket operator-/chat-tool i hvilken session der fejlede. Self-safe.
+    Konsolidering 20→1 = Phase 2 (på forbrugs/overlap-trace-dataen)."""
+    result = _execute_tool_impl(name, arguments)
+    try:
+        from core.services.central_core import central as _central_tools
+        try:
+            from core.identity.workspace_context import effective_role as _er
+            from core.tools.tool_scoping import current_tool_scope as _cs
+            _role_obs = _er() or ""
+            _scope_obs = _cs() or ""
+        except Exception:
+            _role_obs, _scope_obs = "", ""
+        _status = str(result.get("status") or "ok") if isinstance(result, dict) else "ok"
+        _central_tools().observe({
+            "cluster": "tools", "nerve": "tool_call", "tool": name,
+            "kind": "operator" if str(name).startswith("operator_") else "native",
+            "role": _role_obs, "scope": _scope_obs,
+            "session_id": str(arguments.get("_runtime_session_id")
+                              or arguments.get("_session_id") or ""),
+            "status": _status,
+            "error": (str(result.get("error") or "")[:160]
+                      if isinstance(result, dict) and _status != "ok" else ""),
+        })
+    except Exception:
+        pass
+    return result
+
+
+def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """Execute a tool call and return the result."""
     handler = _TOOL_HANDLERS.get(name)
     if not handler:
@@ -3982,26 +4017,6 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         except Exception:
             pass
     event_bus.publish("tool.completed", _completed_payload)
-
-    # ── Tools-cluster (Den Intelligente Central, Phase 1) ──────────────────
-    # Ét observe pr. tool-kald ved chokepunktet → hvert af de 400+ tools tagges med
-    # native vs operator, chat vs code (scope), rolle, session og udfald. Når en bruger
-    # melder en fejl "ude af huset" kan vi se PRÆCIST hvilket operator-/chat-tool i hvilken
-    # session der fejlede. Self-safe; samme billige profil som tool.completed-event'et.
-    # Konsolidering (20→1) er Phase 2 — først når trace-dataen viser overlap/forbrug.
-    try:
-        from core.services.central_core import central as _central_tools
-        _central_tools().observe({
-            "cluster": "tools", "nerve": "tool_call", "tool": name,
-            "kind": "operator" if name.startswith("operator_") else "native",
-            "role": _role or "", "scope": _scope or "",
-            "session_id": str(arguments.get("_runtime_session_id")
-                              or arguments.get("_session_id") or ""),
-            "status": status,
-            "error": (str(result.get("error") or "")[:160] if status != "ok" else ""),
-        })
-    except Exception:
-        pass
 
     # Outcome learning: each tool execution is a datapoint. Context = tool name,
     # outcome = success/error. Fire-and-forget — must never break tool flow.

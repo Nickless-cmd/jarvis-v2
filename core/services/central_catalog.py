@@ -194,6 +194,22 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/read_before_write_guard.py (detektor for exec_file/command/operator)"),
     NerveSpec("workspace_trust", "execution", GateClass.SECURITY, "filter", "leave",
               "core/services/workspace_trust.py:92 (detektor for exec_workspace_trust)"),
+    # ── Mutation-cluster 🔒 KONSOLIDERET 2026-06-22 (autonom selv-mutations-sikkerhed) ──
+    # DUAL-TRUTH fjernet: INFRASTRUCTURE_BLOCKED_MODULES lå byte-identisk i identity_mutation_log
+    # OG auto_improvement_proposer; prompt_mutation_loop havde egen _PROTECTED_FILES. Nu ÉN
+    # kanonisk kilde (gate_mutation) + ÉN graderet SECURITY-gate routet gennem central().decide.
+    # Tre håndhævelses-funktioner (record_mutation/audit · _check_target/prompt-fil · _is_safe_
+    # target/kode-modul) beholder signaturer (dict/raise/bool) men DECISIONEN + trace + breaker
+    # + incident sker centralt. Fail-CLOSED (blokér selv-mutation ved tvivl). De gamle lister
+    # re-eksporteres for bagudkompat.
+    NerveSpec("mut_record", "mutation", GateClass.SECURITY, "verdict", "merged",
+              "core/services/gate_mutation.py (identity_mutation_log.record_mutation)"),
+    NerveSpec("mut_prompt", "mutation", GateClass.SECURITY, "verdict", "merged",
+              "core/services/gate_mutation.py (prompt_mutation_loop._check_target)"),
+    NerveSpec("mut_module", "mutation", GateClass.SECURITY, "verdict", "merged",
+              "core/services/gate_mutation.py (auto_improvement_proposer._is_safe_target)"),
+    NerveSpec("infrastructure_blocklist", "mutation", GateClass.SECURITY, "filter", "leave",
+              "core/services/gate_mutation.py (kanonisk liste — var dual-truth)"),
 )
 
 

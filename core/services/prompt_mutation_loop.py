@@ -42,30 +42,12 @@ _MAX_RECORDS = 500
 _PER_FILE_COOLDOWN_HOURS = 24
 _MAX_SNAPSHOT_BYTES = 200_000  # safety: refuse mutating huge files
 
-# Work-prompt files that Jarvis may mutate autonomously
-_EVOLVABLE_FILES: frozenset[str] = frozenset({
-    "HEARTBEAT.md",
-    "AFFECTIVE_STATE.md",
-    "STANDING_ORDERS.md",
-    "INNER_VOICE.md",
-    "DREAM_LANGUAGE.md",
-    "SELF_CRITIQUE.md",
-})
-
-# Core identity files — never auto-mutated
-_PROTECTED_FILES: frozenset[str] = frozenset({
-    "SOUL.md",
-    "IDENTITY.md",
-    "MANIFEST.md",
-    "MILESTONES.md",
-    "INHERITANCE_SEED.md",
-    "CONSENT_REGISTRY.json",
-    "MEMORY.md",  # MEMORY.md has its own write-policy
-    "USER.md",   # 2026-05-17: blev autonomt komprimeret af compaction-LLM
-                 # — mistede ~70 linjer rich context om Bjørns arbejdsstil.
-                 # Restaureret + låst. Skal aldrig auto-muteres.
-    "jarvis.db",
-})
+# Sikkerhedslisterne ejes nu KANONISK af gate_mutation (var spredt — egen _PROTECTED_FILES).
+# Re-eksporteret for bagudkompat. USER.md/jarvis.db er bevidst protected (2026-05-17-incident).
+from core.services.gate_mutation import (
+    EVOLVABLE_FILES as _EVOLVABLE_FILES,
+    PROTECTED_IDENTITY_FILES as _PROTECTED_FILES,
+)
 
 
 # ─── Storage ──────────────────────────────────────────────────────────
@@ -111,19 +93,16 @@ class PromptMutationError(Exception):
 
 
 def _check_target(target_file: str) -> None:
-    """Raise PromptMutationError if the target is not safely mutable."""
+    """Raise PromptMutationError if the target is not safely mutable.
+
+    Mutation-cluster 🔒 GENNEM Den Intelligente Central (SECURITY): empty/path-traversal/
+    protected/whitelist konsolideret til gaten (eksakte beskeder bevaret via Verdict.reason);
+    eksistens-precondition tjekkes lokalt bagefter (filsystem, ikke en sikkerhedsliste)."""
+    from core.services.gate_mutation import check_prompt_target
+    _mc = check_prompt_target(target_file)
+    if not _mc.allowed:
+        raise PromptMutationError(_mc.reason)
     name = str(target_file or "").strip()
-    if not name:
-        raise PromptMutationError("target_file is empty")
-    # Normalize — no path traversal, no directories
-    if "/" in name or "\\" in name or ".." in name:
-        raise PromptMutationError(f"target_file must be a bare filename: {name}")
-    if name in _PROTECTED_FILES:
-        raise PromptMutationError(f"{name} is protected — cannot auto-mutate")
-    if name not in _EVOLVABLE_FILES:
-        raise PromptMutationError(
-            f"{name} is not in evolvable whitelist (allowed: {sorted(_EVOLVABLE_FILES)})"
-        )
     path = _workspace_path(name)
     if not path.exists() or not path.is_file():
         raise PromptMutationError(f"{name} does not exist at {path}")

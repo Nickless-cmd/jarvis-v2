@@ -37,22 +37,12 @@ _STATE_KEY = "identity_mutation_log"
 _AUTH_PATH = Path.home() / ".jarvis-v2" / "config" / "identity_mutation_authorization.json"
 
 # These ARE auto-mutable per user authorization 2026-04-27
-TIER_3_AUTHORIZED_FILES: frozenset[str] = frozenset({
-    "SOUL.md", "IDENTITY.md", "MANIFEST.md", "STANDING_ORDERS.md", "USER.md",
-})
+# Sikkerhedslisterne ejes nu KANONISK af gate_mutation (var dual-truth — dubleret i
+# auto_improvement_proposer). Re-eksporteret her for bagudkompat (status-surface m.fl.).
+from core.services import gate_mutation as _gm
 
-# These remain hard-blocked for STABILITY reasons (not safety):
-# - auto_improvement_proposer self-mod could create recursive bugs
-# - plan_proposals mod could break the approval mechanism that gates everything
-# - approvals mod could bypass authorization
-# - identity_mutation_log self-mod could rewrite the audit trail
-INFRASTRUCTURE_BLOCKED_MODULES: frozenset[str] = frozenset({
-    "core.services.auto_improvement_proposer",
-    "core.services.plan_proposals",
-    "core.services.approvals",
-    "core.services.identity_mutation_log",
-    "core.runtime.policy",
-})
+TIER_3_AUTHORIZED_FILES = _gm.TIER_3_AUTHORIZED_FILES
+INFRASTRUCTURE_BLOCKED_MODULES = _gm.INFRASTRUCTURE_BLOCKED_MODULES
 
 
 def is_auto_mutation_enabled() -> dict[str, Any]:
@@ -116,13 +106,13 @@ def record_mutation(
     only. (Separation: file-write happens via approved infrastructure
     like write_file with approval_mode; this module witnesses.)
     """
-    auth = is_auto_mutation_enabled()
-    if not auth.get("enabled"):
-        return {"status": "blocked", "reason": "auto-mutation disabled in authorization file"}
-    if not is_target_authorized(target_path) and not target_path.startswith("/tmp"):
-        return {"status": "blocked", "reason": f"target not in authorized scope: {target_path}"}
-    if is_infrastructure_blocked(target_path):
-        return {"status": "blocked", "reason": "infrastructure-protected module — never auto-mutable"}
+    # Mutation-cluster 🔒 GENNEM Den Intelligente Central (SECURITY, fail-CLOSED):
+    # kill-switch + tier-3-autorisation + infrastructure-blok konsolideret til ÉT traced
+    # gate-kald. Eksakte blok-grunde bevaret via Verdict.reason.
+    from core.services.gate_mutation import check_record
+    _mc = check_record(target_path)
+    if not _mc.allowed:
+        return {"status": "blocked", "reason": _mc.reason}
 
     mutation_id = f"imut-{uuid4().hex[:12]}"
     record = {

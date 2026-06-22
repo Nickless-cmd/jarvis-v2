@@ -294,6 +294,8 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/prompt_observer.py (build-trace) + prompt_contract.py:791 _awareness_add"),
     NerveSpec("section_switch", "prompt", GateClass.COGNITIVE, "filter", "instrument",
               "core/services/prompt_observer.py:section_enabled (live on/off pr. label, erstatter blacklist)"),
+    NerveSpec("section_error", "prompt", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/prompt_observer.py:observe_section_error — sektion-builder kastede (før tavs except: pass)"),
     # ── DB-cluster KONSOLIDERET 2026-06-22 (observabilitet + flag, ALDRIG destruktiv) ──
     # Centralen ser jarvis.db's struktur+vækst og flagger uregelmæssigheder, men dropper/
     # ændrer ALDRIG noget. Daglig census (db_sentinel.observe via internal_cadence-producer):

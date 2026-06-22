@@ -765,38 +765,23 @@ def build_visible_chat_prompt_assembly(
     from core.services import prompt_observer as _prompt_observer
     _section_overrides = _prompt_observer.load_overrides()
     _dropped_disabled: list[str] = []
-    _DIAGNOSTIC_NOISE_LABELS = {
-        "self-monitor warnings",
-        "metacognition signals",
-        "R2 gate telemetry",
-        "decision adherence gate",
-        "reasoning tier recommendation",
-        "reasoning escalation recommendation",
-        "context window degradation signal",
-        "rule engine conclusions",
-        "causal alerts",
-        "causal narrative",
-        "priors from your own data",
-        # 2026-06-22 round 2 — cut per Jarvis' own review of his prompt:
-        "conversation continuity (always-on)",  # "Ny samtale ×5" tells him nothing
-        "loop-compliance self-check",          # heed-rate telemetry, not for him
-        "cross-session arc",                    # "Ny samtale ×5" tells him nothing
-        "session topics (always-on)",           # keyword counts ("NEJ ×14") ≠ awareness
-        "forgetting nudge",                     # a rule, belongs in guidance not signal
-        "meta-learning weekly retrospective teaser",  # unread memo, don't burn tokens
-        "rules learned from arcs",              # repeated retrospective noise
-        "markdown formatting",                  # already in guidance rules
-        "no tool-result echo",                  # already in guidance rules
-        # 2026-06-22 round 3 — Jarvis' second review:
-        "curiosity-budget idle-window invitation",  # "5/5 tilbage" = mikrostyring; gør implicit
-        "jarvis brain summary",  # merged into "brain facts" (one relevance-ranked section)
-    }
-    # Tail-anchored sections that are likewise noise (handled via _tail_add).
-    _TAIL_NOISE_LABELS = {
-        "causal patterns",          # "agentic_round_start → tool.completed (803×)"
-        "pattern counterfactuals",  # same family of self-evident repetition
-        "room entities",            # entity *counts*; real room-sense now in [INDRE LIV]
-    }
+    # Sektion-policy udskilt til prompt_observer (Boy Scout 2026-06-23): al noise-
+    # policy bor nu ét sted ved siden af section_enabled.
+    _DIAGNOSTIC_NOISE_LABELS = _prompt_observer.DIAGNOSTIC_NOISE_LABELS
+    _TAIL_NOISE_LABELS = _prompt_observer.TAIL_NOISE_LABELS
+    # Prompt-cluster fejl-kanal (2026-06-23): en sektion-builder der kaster fanges
+    # lokalt (except pr. sektion, så én dårlig sektion ikke dræber hele prompten) —
+    # men var FØR tavs (except: pass). _sec_err gør hvert drop synligt i Centralen.
+    _dropped_error: list[tuple[str, str]] = []
+
+    def _sec_err(label: str, exc: BaseException) -> None:
+        """En prompt-sektion-builder kastede → synlig i Centralen i stedet for tavst
+        drop. Paritet: sektionen kommer stadig ikke med (kun observabilitet ændres)."""
+        try:
+            _dropped_error.append((label, f"{type(exc).__name__}: {exc}"[:200]))
+            _prompt_observer.observe_section_error(label, exc, lane="visible")
+        except Exception:
+            pass
 
     def _awareness_add(priority: int, label: str, content: str | None) -> None:
         _now = _t_mod.monotonic()
@@ -856,20 +841,20 @@ def build_visible_chat_prompt_assembly(
     try:
         from core.services.visible_inner_life import build_inner_life_section
         _awareness_add(1, "indre liv", build_inner_life_section())
-    except Exception:
-        logger.debug("inner-life section failed", exc_info=True)
+    except Exception as _e:
+        _sec_err("indre liv", _e)
     try:
         from core.services.continuity import build_conversation_continuity
         _awareness_add(2, "conversation continuity (always-on)",
                        build_conversation_continuity(limit=3))
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("conversation continuity (always-on)", _e)
     try:
         from core.services.session_topic_tracker import build_session_topics_prompt_section
         _awareness_add(3, "session topics (always-on)",
                        build_session_topics_prompt_section(session_id=session_id))
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("session topics (always-on)", _e)
 
     # Eventbus wake-up digest — DEFERRED to tail (just before time pin).
     # 2026-05-26 (Claude): empirically the only within-session cache breaker
@@ -898,8 +883,8 @@ def build_visible_chat_prompt_assembly(
         _pin_text = _id_pin_section()
         if _pin_text:
             _awareness_add(5, "pinned identity context", _pin_text)
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("pinned identity context", _e)
 
     # Pending nudges from daemons (added 2026-05-13). Closes the spejlsal-
     # bug: heartbeat/outreach/inner-voice/boredom daemons now route through
@@ -909,14 +894,14 @@ def build_visible_chat_prompt_assembly(
     try:
         from core.services.outbound_nudges import format_pending_for_awareness
         _awareness_add(4, "pending outbound nudges", format_pending_for_awareness() or None)
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("pending outbound nudges", _e)
 
     # Forbundne plugins/apps — så Jarvis ved han HAR adgang til dem (Bjørn 17. jun).
     try:
         _awareness_add(9, "forbundne apps (plugins)", _connected_connectors_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("forbundne apps (plugins)", _e)
 
     # Loop-compliance self-check (added 2026-05-12). Fires when Jarvis is
     # ignoring his own loop-nudge commitment OR R2-gate heed_rate is low.
@@ -925,8 +910,8 @@ def build_visible_chat_prompt_assembly(
     try:
         from core.services.prompt_sections.loop_compliance import loop_compliance_section
         _awareness_add(7, "loop-compliance self-check", loop_compliance_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("loop-compliance self-check", _e)
 
     # Jarvis Brain — always-on summary af hans egen vidensjournal.
     # Priority 6 = lige efter identity. Repræsenterer "hvad jeg ved nu",
@@ -974,10 +959,10 @@ def build_visible_chat_prompt_assembly(
                 _nudge = build_brain_post_web_nudge(recent_tool_messages=_recent_tools)
                 if _nudge:
                     _awareness_add(45, "post-web-search brain nudge", _nudge)
-            except Exception:
-                pass
-    except Exception:
-        pass
+            except Exception as _e:
+                _sec_err("post-web-search brain nudge", _e)
+    except Exception as _e:
+        _sec_err("jarvis brain summary", _e)
 
     # Dream hypothesis surfacing (2026-06-14, Jarvis-authored spec §2.3 "fix C").
     # Lifts ONE unpresented dream hypothesis from his own dream-consolidation
@@ -997,8 +982,8 @@ def build_visible_chat_prompt_assembly(
                 _dream_text, _dream_id = _dream
                 _awareness_add(40, "dream hypothesis (unpresented)", _dream_text)
                 mark_hypothesis_presented(hypothesis_id=_dream_id)
-        except Exception:
-            pass
+        except Exception as _e:
+            _sec_err("dream hypothesis (unpresented)", _e)
 
     # Output style hint — comes from JarvisX preferences. Concise =
     # short, dense replies; detailed = longer explanations; technical =
@@ -1020,8 +1005,8 @@ def build_visible_chat_prompt_assembly(
             _hint = _style_hints.get(_style)
             if _hint:
                 _awareness_add(7, "output style preference", _hint)
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("output style preference", _e)
 
     # Markdown-formatering. En backend-normalizer retter inline-struktur, men en
     # nudge reducerer hvor ofte den skal arbejde + holder rå kanal-tekst pæn.
@@ -1082,8 +1067,8 @@ def build_visible_chat_prompt_assembly(
                     + _project_notes_block
                 ),
             )
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("JarvisX project anchor", _e)
     try:
         from core.services.in_flight_runs import interruption_prompt_section
         _awareness_add(
@@ -1091,18 +1076,18 @@ def build_visible_chat_prompt_assembly(
             "resume-after-interrupt notice",
             interruption_prompt_section(session_id, user_message=user_message),
         )
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("resume-after-interrupt notice", _e)
     try:
         from core.services.plan_proposals import pending_plan_section
         _awareness_add(15, "pending plan awaiting approval", pending_plan_section(session_id))
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("pending plan awaiting approval", _e)
     try:
         from core.services.plan_proposals import all_pending_plans_section
         _awareness_add(17, "all pending plans (incl. auto-proposals)", all_pending_plans_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("all pending plans (incl. auto-proposals)", _e)
     try:
         from core.services.self_monitor import self_monitor_section
         _awareness_add(20, "self-monitor warnings", self_monitor_section())
@@ -1115,8 +1100,8 @@ def build_visible_chat_prompt_assembly(
                 latest_signals_section,
             )
             _awareness_add(21, "metacognition signals", latest_signals_section())
-        except Exception:
-            pass
+        except Exception as _e:
+            _sec_err("metacognition signals", _e)
         # 2026-05-23 (Claude, Step A.v1): theory-of-mind communication
         # ledger. Quiet by default — surfaces only when Jarvis has
         # repeated the same fact 3+ times to partner within 1 hour.
@@ -1125,8 +1110,8 @@ def build_visible_chat_prompt_assembly(
                 communication_ledger_section,
             )
             _awareness_add(22, "communication ledger", communication_ledger_section())
-        except Exception:
-            pass
+        except Exception as _e:
+            _sec_err("communication ledger", _e)
         # 2026-05-23 (Claude, Step D.v1): spatial entity ledger.
         # Surfaces top-observed room entities from Sansernes Arkiv when
         # ≥3 entities have been observed.
@@ -1135,43 +1120,43 @@ def build_visible_chat_prompt_assembly(
                 room_entities_section,
             )
             _tail_add("room entities", room_entities_section())
-        except Exception:
-            pass
-    except Exception:
-        pass
+        except Exception as _e:
+            _sec_err("room entities", _e)
+    except Exception as _e:
+        _sec_err("self-monitor warnings", _e)
     try:
         from core.services.clarification_classifier import clarification_prompt_section
         _awareness_add(25, "clarification ambiguity flag", clarification_prompt_section(user_message))
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("clarification ambiguity flag", _e)
     try:
         from core.services.reasoning_classifier import reasoning_tier_section
         _awareness_add(22, "reasoning tier recommendation", reasoning_tier_section(user_message))
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("reasoning tier recommendation", _e)
     # NB: R2 (verification_gate_section) er FLYTTET ind i den konsoliderede graderede
     # Proactivity-gate nedenfor (central().decide → YELLOW @ slot 23). Ikke længere en
     # separat injektion her. (Proactivity-cluster konsolidering 2026-06-22.)
     try:
         from core.services.verification_gate_telemetry import telemetry_section
         _awareness_add(24, "R2 gate telemetry", telemetry_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("R2 gate telemetry", _e)
     try:
         from core.services.decision_adherence_gate import decision_adherence_section
         _awareness_add(25, "decision adherence gate", decision_adherence_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("decision adherence gate", _e)
     try:
         from core.services.memory_consolidation_nudge import memory_consolidation_nudge_section
         _awareness_add(24, "memory consolidation nudge", memory_consolidation_nudge_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("memory consolidation nudge", _e)
     try:
         from core.services.prompt_sections.forgetting_nudge import forgetting_nudge_section
         _awareness_add(24, "forgetting nudge", forgetting_nudge_section(session_id))
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("forgetting nudge", _e)
     try:
         # Wire forward-chaining symbolic rule_engine into prompt (2026-05-08).
         # Engine + 36 rules existed since 8860301 but weren't reaching the LLM.
@@ -1181,8 +1166,8 @@ def build_visible_chat_prompt_assembly(
             rule_conclusions_section,
         )
         _awareness_add(28, "rule engine conclusions", rule_conclusions_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("rule engine conclusions", _e)
     try:
         # Causal alerts — surface failure-event chains for recent failures.
         # Phase 1 of causal graph wiring (2026-05-08).
@@ -1190,8 +1175,8 @@ def build_visible_chat_prompt_assembly(
             causal_alerts_section,
         )
         _awareness_add(30, "causal alerts", causal_alerts_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("causal alerts", _e)
     try:
         # Causal narrative — surface "how you landed here" backward chain
         # from the most recent narrative-worthy anchor event. Phase 2 of
@@ -1201,8 +1186,8 @@ def build_visible_chat_prompt_assembly(
             causal_narrative_section,
         )
         _awareness_add(25, "causal narrative", causal_narrative_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("causal narrative", _e)
     try:
         # Causal patterns — surface recurring (parent → child) flows over
         # the last 7 days. Phase 3 of causal graph wiring (2026-05-08):
@@ -1213,8 +1198,8 @@ def build_visible_chat_prompt_assembly(
             causal_patterns_section,
         )
         _tail_add("causal patterns", causal_patterns_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("causal patterns", _e)
     try:
         # Pattern counterfactuals — surface "what if this pattern stopped?"
         # hypotheses generated by pattern_counterfactual_daemon (Phase 3.5,
@@ -1224,8 +1209,8 @@ def build_visible_chat_prompt_assembly(
             pattern_counterfactuals_section,
         )
         _tail_add("pattern counterfactuals", pattern_counterfactuals_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("pattern counterfactuals", _e)
     try:
         # Cross-session arc — last N user-facing chat sessions as a
         # chronological arc, so Jarvis can sense "we've been working
@@ -1235,8 +1220,8 @@ def build_visible_chat_prompt_assembly(
             cross_session_arc_section,
         )
         _awareness_add(18, "cross-session arc", cross_session_arc_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("cross-session arc", _e)
     try:
         # ── Proactivity-cluster: R2/R2.5 verifikations-disciplin GENNEM Centralen ──
         # Konsolideret GRADERET gate (R2 blød = YELLOW @ slot 23, R2.5 hård = RED @
@@ -1256,8 +1241,8 @@ def build_visible_chat_prompt_assembly(
             _plabel = ("R2.5 conditional block" if _pv.decision is _PDec.RED
                        else "verification gate signals")
             _awareness_add(_pprio, _plabel, _ptext)
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("verification gate (R2/R2.5)", _e)
 
     # Reflection nudge — runs only when a project is anchored AND the
     # current turn looks substantive (we cap noise by only firing when
@@ -1278,13 +1263,13 @@ def build_visible_chat_prompt_assembly(
                     "lessons, not a session transcript."
                 ),
             )
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("reflection nudge", _e)
     try:
         from core.services.decision_enforcement import enforcement_section
         _awareness_add(90, "active commitments enforcement", enforcement_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("active commitments enforcement", _e)
     # 2026-06-09: development_sense (Vækstpuls med live decimal-tal)
     # flyttet til tail-anchored — samme cache-breaker årsag.
     try:
@@ -1309,20 +1294,20 @@ def build_visible_chat_prompt_assembly(
             _affect_mod_section = _affect_mod()
             if _affect_mod_section:
                 _awareness_add(80, "affect modulation", _affect_mod_section)
-        except Exception:
-            pass
-    except Exception:
-        pass
+        except Exception as _e:
+            _sec_err("affect modulation", _e)
+    except Exception as _e:
+        _sec_err("doubt signal", _e)
     try:
         from core.services.reasoning_escalation import escalation_section
         _awareness_add(24, "reasoning escalation recommendation", escalation_section(user_message))
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("reasoning escalation recommendation", _e)
     try:
         from core.services.context_window_manager import context_window_section
         _awareness_add(26, "context window degradation signal", context_window_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("context window degradation signal", _e)
     # Fix 2 (2026-04-27): recall_before_act in visible runs — was only used
     # in heartbeat phases. Surface relevant memories tied to user_message so
     # Jarvis answers from memory, not stub-context.
@@ -1348,8 +1333,8 @@ def build_visible_chat_prompt_assembly(
         if user_message and len(user_message.strip()) >= 8:
             _awareness_add(28, "multi-signal recall (BM25+entity+embedding)",
                            multi_signal_recall_section(user_message) or None)
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("multi-signal recall (BM25+entity+embedding)", _e)
     # Phase 1 — proactive auto-compact at 70% threshold (best-effort, cooldown-protected)
     try:
         from core.services.proactive_context_governor import auto_compact_if_needed
@@ -1359,28 +1344,28 @@ def build_visible_chat_prompt_assembly(
     try:
         from core.services.autonomous_goals import goals_prompt_section
         _awareness_add(35, "active autonomous goals", goals_prompt_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("active autonomous goals", _e)
     try:
         from core.services.self_wakeup import self_wakeup_section
         _awareness_add(12, "fired self-wakeups", self_wakeup_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("fired self-wakeups", _e)
     try:
         from core.services.personality_drift import personality_drift_section
         _awareness_add(45, "personality drift signal", personality_drift_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("personality drift signal", _e)
     try:
         from core.services.crisis_marker_detector import crisis_marker_section
         _awareness_add(48, "crisis markers (last 7 days)", crisis_marker_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("crisis markers (last 7 days)", _e)
     try:
         from core.services.provider_health_check import health_section
         _awareness_add(28, "provider health status", health_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("provider health status", _e)
     # 2026-06-09: self_evaluation_section flyttet til tail-anchored —
     # samme grund som predictive_self_model (live tick-quality scores
     # med decimal-precision der ændrer sig per heartbeat). Bevares som
@@ -1395,13 +1380,13 @@ def build_visible_chat_prompt_assembly(
     try:
         from core.services.priors_feedback import priors_feedback_section
         _awareness_add(55, "priors from your own data", priors_feedback_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("priors from your own data", _e)
     try:
         from core.services.arc_rule_extractor import arc_rules_section
         _awareness_add(60, "rules learned from arcs", arc_rules_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("rules learned from arcs", _e)
     # Removed 2026-04-29: redundant unconditional recall_before_act_summary() call.
     # With no query, that function returns only the "active goals" hot-tier slice,
     # which is already surfaced separately at prio 35 via goals_prompt_section().
@@ -1410,8 +1395,8 @@ def build_visible_chat_prompt_assembly(
     try:
         from core.services.agent_todos import todos_prompt_section
         _awareness_add(30, "active todos", todos_prompt_section(session_id))
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("active todos", _e)
     # Multi-step planner Phase 1 (added 2026-05-12) — other-session plan resumption
     try:
         from core.services.plan_proposals import format_cross_session_plans_for_awareness
@@ -1420,8 +1405,8 @@ def build_visible_chat_prompt_assembly(
             "cross-session plans awaiting resumption",
             format_cross_session_plans_for_awareness(session_id) or None,
         )
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("cross-session plans awaiting resumption", _e)
     # World Model loop Phase 1 (2026-05-12) — prediction/resolution nudges
     try:
         from core.services.world_model_signal_tracking import (
@@ -1432,8 +1417,8 @@ def build_visible_chat_prompt_assembly(
             "world-model prediction/resolution nudges",
             format_world_model_nudges_for_awareness(session_id=session_id) or None,
         )
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("world-model prediction/resolution nudges", _e)
     # World Model loop Phase 1 (2026-05-12) — calibration milestone (one-shot)
     try:
         from core.services.world_model_signal_tracking import (
@@ -1444,22 +1429,22 @@ def build_visible_chat_prompt_assembly(
             "world-model calibration milestone",
             format_world_model_milestone_for_awareness() or None,
         )
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("world-model calibration milestone", _e)
     # Plan-revision patterns (2026-05-13) — recurring reasons cluster
     try:
         from core.services.prompt_sections.plan_revision_patterns import (
             plan_revision_patterns_section,
         )
         _awareness_add(44, "plan-revision recurring patterns", plan_revision_patterns_section() or None)
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("plan-revision recurring patterns", _e)
     # Dead-skill detector (2026-05-13) — Tool Invention adoption tracking
     try:
         from core.services.prompt_sections.dead_skills import dead_skills_section
         _awareness_add(43, "dead skills (never invoked)", dead_skills_section() or None)
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("dead skills (never invoked)", _e)
     # Skill chain proposals (C3, 2026-06-09) — heartbeat-generated chain
     # suggestions. Claude 2026-06-09: format_chain_proposals() existed
     # but had zero callers — generated chains were never surfaced. Hooked
@@ -1467,8 +1452,8 @@ def build_visible_chat_prompt_assembly(
     try:
         from core.services.heartbeat_phases import format_chain_proposals
         _awareness_add(44, "skill chain proposals", format_chain_proposals() or None)
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("skill chain proposals", _e)
     # Curiosity consolidation (2026-05-13) — weekly synthesis of observations
     try:
         from core.services.curiosity_consolidation import latest_consolidation_for_awareness
@@ -1477,8 +1462,8 @@ def build_visible_chat_prompt_assembly(
             "curiosity consolidation (weekly)",
             latest_consolidation_for_awareness() or None,
         )
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("curiosity consolidation (weekly)", _e)
     # Meta-læring Phase 2 (2026-05-13) — active hypotheses Jarvis is testing
     try:
         from core.services.meta_learning_hypotheses import (
@@ -1489,8 +1474,8 @@ def build_visible_chat_prompt_assembly(
             "active hypotheses (meta-learning)",
             format_active_hypotheses_for_awareness() or None,
         )
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("active hypotheses (meta-learning)", _e)
     # Curiosity-budget Phase 1 (2026-05-12) — idle-window invitation (AGI #6)
     try:
         from core.services.curiosity_budget import (
@@ -1501,8 +1486,8 @@ def build_visible_chat_prompt_assembly(
             "curiosity-budget idle-window invitation",
             format_curiosity_window_for_awareness() or None,
         )
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("curiosity-budget idle-window invitation", _e)
     # Meta-læring Phase 1 (2026-05-12) — weekly retrospective teaser (AGI #3)
     try:
         from core.services.meta_learning_retrospective import (
@@ -1513,23 +1498,23 @@ def build_visible_chat_prompt_assembly(
             "meta-learning weekly retrospective teaser",
             format_latest_unacknowledged_memo_for_awareness() or None,
         )
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("meta-learning weekly retrospective teaser", _e)
     try:
         from core.services.turn_changelog import previous_turn_changelog_section
         _awareness_add(40, "previous turn changelog (ground truth)", previous_turn_changelog_section(session_id))
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("previous turn changelog (ground truth)", _e)
     try:
         from core.services.subagent_digest import subagent_digest_section
         _tail_add("subagent completion digest", subagent_digest_section(session_id))
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("subagent completion digest", _e)
     try:
         from core.services.monitor_streams import monitor_digest_section
         _awareness_add(60, "pinned monitor digest", monitor_digest_section(session_id))
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("pinned monitor digest", _e)
     try:
         from core.services.scheduled_tasks import get_scheduled_tasks_state
         sched_state = get_scheduled_tasks_state()
@@ -1545,13 +1530,13 @@ def build_visible_chat_prompt_assembly(
             _awareness_add(70, "upcoming scheduled tasks",
                 "Kommende self-scheduled wake-ups (du har sat dem selv):\n"
                 + "\n".join(lines) + extra)
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("upcoming scheduled tasks", _e)
     try:
         from core.services.side_tasks import side_tasks_prompt_section
         _awareness_add(80, "flagged side-tasks", side_tasks_prompt_section())
-    except Exception:
-        pass
+    except Exception as _e:
+        _sec_err("flagged side-tasks", _e)
 
     # Apply the budget cap. Highest-priority sections always survive (even
     # if alone they exceed the budget); later/lower-priority entries are
@@ -1617,7 +1602,8 @@ def build_visible_chat_prompt_assembly(
     try:
         _prompt_observer.observe_build(
             lane="visible", included=len(_awareness_buffer),
-            dropped_disabled=_dropped_disabled, dropped_budget=list(_dropped))
+            dropped_disabled=_dropped_disabled, dropped_budget=list(_dropped),
+            dropped_error=_dropped_error)
     except Exception:
         pass
 

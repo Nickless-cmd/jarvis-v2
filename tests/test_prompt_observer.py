@@ -65,3 +65,28 @@ def test_catalog_validates_with_prompt():
     from core.services import central_catalog as cc
     assert cc.validate() == []
     assert "prompt" in cc.clusters()
+
+
+# ── Fejl-kanal (2026-06-23): sektion-builder der kaster bliver synlig ─────
+def test_noise_labels_extracted_to_observer():
+    """Boy Scout: noise-policy bor nu her (udskilt fra prompt_contract)."""
+    assert "R2 gate telemetry" in po.DIAGNOSTIC_NOISE_LABELS
+    assert "room entities" in po.TAIL_NOISE_LABELS
+
+
+def test_observe_section_error_self_safe(monkeypatch):
+    import core.services.central_core as cc
+    monkeypatch.setattr(cc, "central", lambda: (_ for _ in ()).throw(RuntimeError("nede")))
+    po.observe_section_error("indre liv", RuntimeError("boom"))  # må ikke kaste
+
+
+def test_observe_build_emits_error_channel(monkeypatch):
+    seen = {}
+    class _C:
+        def observe(self, ev): seen.update(ev)
+    import core.services.central_core as cc
+    monkeypatch.setattr(cc, "central", lambda: _C())
+    po.observe_build(lane="visible", included=5, dropped_disabled=[], dropped_budget=[],
+                     dropped_error=[("indre liv", "RuntimeError: boom")])
+    assert seen["error_count"] == 1
+    assert seen["dropped_error"][0]["section"] == "indre liv"

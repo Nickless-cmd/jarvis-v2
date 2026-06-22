@@ -466,6 +466,16 @@ def route(event_kind: str, payload: dict[str, Any] | None = None) -> dict[str, A
     if len(data["actions"]) > _LOG_MAX:
         data["actions"] = data["actions"][-_LOG_MAX:]
     _save(data)
+    # Proactivity-cluster instrument: action-routing → central observe.
+    try:
+        from core.services.central_core import central as _central_act
+        _central_act().observe({
+            "cluster": "proactivity", "nerve": "action_router",
+            "event_kind": event_kind, "class": cls,
+            "outcome": str(decision.get("outcome") or ""),
+        })
+    except Exception:
+        pass
     return record
 
 

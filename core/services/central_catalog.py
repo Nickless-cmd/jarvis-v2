@@ -76,25 +76,29 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/self_review_outcome_tracking.py"),
     NerveSpec("self_review_cadence", "review", GateClass.COGNITIVE, "inline", "leave",
               "core/services/self_review_cadence_signal_tracking.py"),
-    # ── Proactivity-cluster (uopfordret initiativ, fit-passet 2026-06-22) ──
-    # request-path-gates (question/loop) = merge; tærskel-bærende nerver = instrument
-    # (mange hardcodede tunables → config-kandidater); filtre/køer = leave.
-    NerveSpec("signal_noise", "proactivity", GateClass.COGNITIVE, "filter", "leave",
-              "core/services/signal_noise_guard.py:140-169"),
+    # ── Proactivity-cluster (KONSOLIDERET 2026-06-22) ──
+    # Præcis kortlægning: KUN ÉN request-path enforcement-gate (R2/R2.5 verifikations-
+    # disciplin). R2 (blød surface) + R2.5 (hård blok) konsolideret til ÉN graderet gate
+    # (gate_proactivity, nerve="verification") routet gennem central().decide → MERGED.
+    # verification_gate = data-kilde (R2-detektor). Resten = daemon-instrument / leave.
+    NerveSpec("verification", "proactivity", GateClass.COGNITIVE, "verdict", "merged",
+              "core/services/gate_proactivity.py"),
+    NerveSpec("verification_gate", "proactivity", GateClass.COGNITIVE, "inline", "leave",
+              "core/services/verification_gate.py (R2-data-kilde til gate_proactivity)"),
     NerveSpec("pressure_threshold", "proactivity", GateClass.COGNITIVE, "daemon", "instrument",
-              "core/services/pressure_threshold_gate.py:235-292"),
+              "core/services/pressure_threshold_gate.py:169 (observe)"),
+    NerveSpec("action_router", "proactivity", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/action_router.py:439 (observe)"),
     NerveSpec("longing_signal", "proactivity", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/longing_signal_daemon.py"),
+    NerveSpec("signal_noise", "proactivity", GateClass.COGNITIVE, "filter", "leave",
+              "core/services/signal_noise_guard.py:140-169 (daemon-input-filter)"),
     NerveSpec("initiative_queue", "proactivity", GateClass.COGNITIVE, "persistence", "leave",
               "core/services/initiative_queue.py:29-127"),
-    NerveSpec("proactive_question_gate", "proactivity", GateClass.COGNITIVE, "inline", "merge",
-              "core/services/proactive_question_gate_tracking.py:52-72"),
-    NerveSpec("proactive_loop_lifecycle", "proactivity", GateClass.COGNITIVE, "inline", "merge",
-              "core/services/proactive_loop_lifecycle_tracking.py:73-93"),
-    NerveSpec("r2_5_blocking_gate", "proactivity", GateClass.COGNITIVE, "inline", "instrument",
-              "core/services/r2_5_blocking_gate.py:72-194"),
-    NerveSpec("action_router", "proactivity", GateClass.COGNITIVE, "daemon", "instrument",
-              "core/services/action_router.py:250-345"),
+    NerveSpec("proactive_question_gate", "proactivity", GateClass.COGNITIVE, "persistence", "leave",
+              "core/services/proactive_question_gate_tracking.py (tracker, ej enforcement)"),
+    NerveSpec("proactive_loop_lifecycle", "proactivity", GateClass.COGNITIVE, "persistence", "leave",
+              "core/services/proactive_loop_lifecycle_tracking.py (tracker, ej enforcement)"),
     # ── Memory-cluster (skrive/recall/promotion, fit-passet 2026-06-22) ──
     # INGEN request-path-gates → pointen er TRACE, ikke enforcement. Recall/promotion
     # = instrument (fejler stille → prompt bygges uden memory); skrivning = leave.

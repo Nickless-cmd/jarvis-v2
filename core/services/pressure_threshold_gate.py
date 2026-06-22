@@ -174,6 +174,15 @@ def evaluate_pressures(pressures: list) -> list[Impulse]:
                 "pressure_accumulated": round(pv.accumulated, 3),
                 "threshold": round(threshold, 3),
             })
+            # Proactivity-cluster instrument: impulse-generering → central observe.
+            try:
+                from core.services.central_core import central as _central_imp
+                _central_imp().observe({
+                    "cluster": "proactivity", "nerve": "pressure_threshold",
+                    "direction": pv.direction, "strength": round(strength, 3),
+                })
+            except Exception:
+                pass
         else:
             # Did not cross — adapt threshold slightly upward (harder next time)
             _adapt_threshold(pv.direction, crossed=False)

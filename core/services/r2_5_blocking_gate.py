@@ -146,18 +146,9 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
     except Exception:
         pass
 
-    # ── Proactivity-cluster → Den Intelligente Central (trace-spore, 2026-06-22) ──
-    # observe() når R2.5 faktisk soft-blokerer (den rare, signal-bærende event) →
-    # ÉT trace-spor i Centralen ved siden af event_bus. Best-effort, kaster aldrig.
-    try:
-        from core.services.central_core import central as _central_r25
-        _central_r25().observe({
-            "cluster": "proactivity", "nerve": "r2_5_blocking_gate",
-            "decision": "block", "tier": tier, "heed_rate": heed_rate,
-            "unverified_effective": unverified_effective, "urgency": urgency,
-        })
-    except Exception:
-        pass
+    # NB (2026-06-22): den tidligere observe()-spore her er FJERNET — R2.5 routes nu
+    # gennem den konsoliderede graderede proactivity_gate via central().decide (fuld
+    # catch+flag+notify+trace). Dobbelt-trace ikke nødvendig.
 
     # Phase 2.4 finding (2026-05-14): R2.5 itself sits at 17% heed-rate
     # because the previous block message ended with "STOP og kig tilbage"

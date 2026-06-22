@@ -1132,11 +1132,9 @@ def build_visible_chat_prompt_assembly(
         _awareness_add(22, "reasoning tier recommendation", reasoning_tier_section(user_message))
     except Exception:
         pass
-    try:
-        from core.services.verification_gate import verification_gate_section
-        _awareness_add(23, "verification gate signals", verification_gate_section())
-    except Exception:
-        pass
+    # NB: R2 (verification_gate_section) er FLYTTET ind i den konsoliderede graderede
+    # Proactivity-gate nedenfor (central().decide → YELLOW @ slot 23). Ikke længere en
+    # separat injektion her. (Proactivity-cluster konsolidering 2026-06-22.)
     try:
         from core.services.verification_gate_telemetry import telemetry_section
         _awareness_add(24, "R2 gate telemetry", telemetry_section())
@@ -1223,10 +1221,24 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
-        from core.services.r2_5_blocking_gate import r2_5_block_section
+        # ── Proactivity-cluster: R2/R2.5 verifikations-disciplin GENNEM Centralen ──
+        # Konsolideret GRADERET gate (R2 blød = YELLOW @ slot 23, R2.5 hård = RED @
+        # slot 95) routet gennem central().decide → fuld catch+flag+notify+trace.
+        # Erstatter de to tidligere SEPARATE injektioner (R2 @ slot 23 + R2.5 @ slot 95).
         from core.services.reasoning_classifier import classify_reasoning_tier
+        from core.services.central_core import central as _central_prov
+        from core.services.gate_proactivity import proactivity_gate as _prov_gate
+        from core.services.gate_kernel import Decision as _PDec
         _tier = str(classify_reasoning_tier(user_message).get("tier") or "fast")
-        _awareness_add(95, "R2.5 conditional block", r2_5_block_section(_tier))
+        _pv = _central_prov().decide("verification", {"reasoning_tier": _tier},
+                                     _prov_gate, cluster="proactivity")
+        _ptext = (_pv.evidence or {}).get("text")
+        if _ptext and _pv.decision in (_PDec.RED, _PDec.YELLOW):
+            _pprio = int((_pv.evidence or {}).get("priority")
+                         or (95 if _pv.decision is _PDec.RED else 23))
+            _plabel = ("R2.5 conditional block" if _pv.decision is _PDec.RED
+                       else "verification gate signals")
+            _awareness_add(_pprio, _plabel, _ptext)
     except Exception:
         pass
 

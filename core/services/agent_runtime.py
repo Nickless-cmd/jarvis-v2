@@ -389,6 +389,13 @@ def spawn_agent_task(
         model = str(model or selected.get("model") or "")
     agent_id = f"agent-{uuid4().hex}"
     thread_id = f"agent-thread-{uuid4().hex}"
+    # Agents-cluster: agent-spawn synligt i Centralen (pool/swarm/council). Self-safe.
+    try:
+        from core.services.agents import note_agent_spawn
+        note_agent_spawn(agent_id, role, parent=str(parent_agent_id or ""),
+                         council_id=str(council_id or ""), mode=str(execution_mode or ""))
+    except Exception:
+        pass
     next_wake_at = ""
     if persistent and ttl_seconds > 0:
         next_wake_at = (datetime.now(UTC) + timedelta(seconds=int(ttl_seconds))).isoformat()

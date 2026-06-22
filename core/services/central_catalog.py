@@ -371,6 +371,16 @@ CATALOG: tuple[NerveSpec, ...] = (
     # fang løgn (truth-RED), loop, forbindelsesfejl (retryable) → observe + flag. Phase 1.
     NerveSpec("supervision", "autonomous", GateClass.COGNITIVE, "verdict", "instrument",
               "core/services/autonomous_supervisor.py:supervise (vurdér run: clean/lied/looped/conn)"),
+    # ── Agents-cluster KONSOLIDERET 2026-06-23 — multi-agent-systemerne → Centralen ──
+    # agent-pool/swarm (agent_runtime.spawn_agent_task) + council (deliberation_controller) var
+    # HELT usynlige. Nu observe pr. lifecycle: agent spawn/error + council-udfald (rounds/
+    # deadlock/escalation/recruitment). Grundlag for adaptiv læring (er swarm/council stabilt?).
+    NerveSpec("agent_spawn", "agents", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/agent_runtime.py:spawn_agent_task (agent spawnet → observe)"),
+    NerveSpec("agent_error", "agents", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/agents.py:note_agent_error (agent-fejl → observe)"),
+    NerveSpec("council_session", "agents", GateClass.COGNITIVE, "verdict", "instrument",
+              "core/services/council_deliberation_controller.py:run (deliberation-udfald → observe)"),
     # ── Connections-cluster KONSOLIDERET 2026-06-22 — forbindelses-livscyklus → Centralen ──
     # Hvem/hvad er forbundet til API'en (jarvis-desk/mobile companion/MC-websocket/members)
     # hvornår, fra hvilken enhed. Komplementerer endpoint-usage (request) + stream (SSE) med

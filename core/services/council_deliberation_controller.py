@@ -187,6 +187,14 @@ class DeliberationController:
                 break
 
         conclusion = self._synthesize(forced=force_conclude)
+        # Agents-cluster: council-deliberation-udfald synligt i Centralen (self-safe).
+        try:
+            from core.services.agents import note_council
+            note_council(getattr(self, "topic", ""), rounds=len(self._round_outputs),
+                         deadlocked=self._deadlock_occurred,
+                         escalated=self._witness_escalated, recruited=self._recruited)
+        except Exception:
+            pass
         return DeliberationResult(
             transcript="\n".join(self._transcript_lines),
             conclusion=conclusion,

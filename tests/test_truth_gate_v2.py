@@ -70,6 +70,23 @@ def test_truth_gate_v2_hard_block_on_fabricated_git_log():
     assert (v.evidence or {}).get("corrected_text")
 
 
+def test_hard_block_on_fabricated_commit_via_inflected_verb():
+    """C3-verifikation 2026-06-22: en opdigtet commit formuleret med det bøjede
+    verbum ("Jeg committede <hash>") — uden ordet 'commit'/'git'/'log' som
+    selvstændigt ord — skal stadig HÅRD-blokeres. Tidligere slap den igennem som
+    blød YELLOW fordi \\bcommit\\b ikke matcher 'committede' og hashen derfor
+    blev ignoreret."""
+    # detektion: hashen fanges nu pga. 'committed'-konteksten
+    kinds = {c.kind for c in detect_action_claims("Jeg committede fe28cc67 til main og pushede.")}
+    assert "committed" in kinds and "commit_hash" in kinds
+    # gate: hård blok, intet git-tool kørt
+    ctx = {"text": "Jeg committede fe28cc67 til main og pushede.",
+           "executed_tool_names": [], "followup_exchanges": [], "run_id": "rZ"}
+    v = truth_gate_v2(ctx)
+    assert v.decision is Decision.RED and v.action == "block"
+    assert (v.evidence or {}).get("severity") == "hard"
+
+
 def test_truth_gate_v2_green_when_evidence_present():
     ctx = {"text": "Jeg committede det.", "executed_tool_names": ["operator_bash"],
            "followup_exchanges": [], "run_id": "rX"}

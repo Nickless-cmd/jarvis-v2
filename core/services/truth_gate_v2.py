@@ -68,7 +68,16 @@ def detect_action_claims(text: str) -> list[ActionClaim]:
             payload=_fence.group(1).strip(),
         ))
         detected.add("output")
-    has_ctx = bool(re.search(r"\b(commit|git|log)\b", text, re.IGNORECASE)) or "output" in detected
+    # has_ctx: en hex-hash tæller kun som commit-hash i commit/git/log-kontekst.
+    # NB: det bøjede danske verbum "committede"/"committet" matcher IKKE \bcommit\b
+    # (ingen ordgrænse efter "commit") → en allerede-detekteret 'committed'-påstand
+    # SKAL også tælle som kontekst, ellers slipper "Jeg committede <hash>" igennem
+    # som blød advarsel i stedet for hård blok (fundet via C3-verifikation 2026-06-22).
+    has_ctx = (
+        bool(re.search(r"\b(commit|git|log)\b", text, re.IGNORECASE))
+        or "output" in detected
+        or "committed" in detected
+    )
     if has_ctx:
         m = _ACTION_PATTERNS["commit_hash"].search(text)
         if m:

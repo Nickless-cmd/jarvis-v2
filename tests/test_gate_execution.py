@@ -184,3 +184,39 @@ def test_catalog_validates_with_execution():
     from core.services import central_catalog as cc
     assert cc.validate() == []
     assert "execution" in cc.clusters()
+
+
+# ── A1: upload malware-scan (2026-06-22) ─────────────────────────────────
+def test_upload_scan_infected_blocks(monkeypatch):
+    import core.services.malware_scan as ms
+    rep = ms.ScanReport("infected", signature="Eicar-Test", detail="fundet")
+    monkeypatch.setattr(ms, "is_upload_allowed", lambda path, block_on_unavailable=False: (False, rep))
+    v = g("upload_scan", path="/tmp/x")
+    assert v.decision is Decision.RED
+    assert v.evidence["classification"] == "infected"
+    assert "Eicar" in v.reason
+
+
+def test_upload_scan_clean_allows(monkeypatch):
+    import core.services.malware_scan as ms
+    rep = ms.ScanReport("clean")
+    monkeypatch.setattr(ms, "is_upload_allowed", lambda path, block_on_unavailable=False: (True, rep))
+    v = g("upload_scan", path="/tmp/x")
+    assert v.decision is Decision.GREEN
+
+
+def test_upload_scan_unavailable_fail_open(monkeypatch):
+    import core.services.malware_scan as ms
+    rep = ms.ScanReport("unavailable")
+    monkeypatch.setattr(ms, "is_upload_allowed", lambda path, block_on_unavailable=False: (True, rep))
+    ec = ge.check_upload("/tmp/x")  # default block_on_unavailable=False → tilladt
+    assert ec.allowed is True
+
+
+def test_upload_scan_unavailable_fail_closed(monkeypatch):
+    import core.services.malware_scan as ms
+    rep = ms.ScanReport("unavailable")
+    monkeypatch.setattr(ms, "is_upload_allowed",
+                        lambda path, block_on_unavailable=False: (not block_on_unavailable, rep))
+    ec = ge.check_upload("/tmp/x", block_on_unavailable=True)  # member-upload → blokeret
+    assert ec.allowed is False

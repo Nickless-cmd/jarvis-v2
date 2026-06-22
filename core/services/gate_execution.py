@@ -136,6 +136,20 @@ def execution_gate(ctx: dict[str, Any]) -> Verdict:
             pass
         return _green("exec_operator", "auto")
 
+    # ── upload-malware-scan (ClamAV) — A1: scanneren var bygget men UWIRET (uploads
+    # blev skrevet til disk uscannede). Infected → RED (blok+slet); clean/unavailable/
+    # error(fail-open) → GREEN. block_on_unavailable=True giver fail-CLOSED (member-uploads). ──
+    if action == "upload_scan":
+        path = str(ctx.get("path") or "")
+        block_on_unavailable = bool(ctx.get("block_on_unavailable"))
+        from core.services.malware_scan import is_upload_allowed
+        allowed, report = is_upload_allowed(path, block_on_unavailable=block_on_unavailable)
+        if not allowed:
+            cls = "infected" if report.status == "infected" else "scan_blocked"
+            return _red("exec_upload_scan",
+                        f"{report.status}: {report.signature or report.detail}", cls)
+        return _green("exec_upload_scan", report.status)
+
     # ukendt action → ingen indvending (gaten kaldes kun fra kendte kald-steder)
     return _green("execution", "unknown_action")
 
@@ -205,3 +219,12 @@ def check_operator(path: str, session_id: str = "default", *,
     return _to_check(_decide("exec_operator", {
         "action": "operator", "path": path,
         "session_id": session_id, "file_exists": file_exists}))
+
+
+def check_upload(path: str, *, block_on_unavailable: bool = False) -> ExecCheck:
+    """Malware-scan en uploadet fil GENNEM Centralen (SECURITY). .allowed=False ⇔ infected/
+    blokeret; .classification ∈ {clean/unavailable/error/infected/scan_blocked}; .reason bærer
+    signatur/detalje. ClamAV-utilgængelig → fail-open (medmindre block_on_unavailable=True)."""
+    return _to_check(_decide("exec_upload_scan", {
+        "action": "upload_scan", "path": path,
+        "block_on_unavailable": block_on_unavailable}))

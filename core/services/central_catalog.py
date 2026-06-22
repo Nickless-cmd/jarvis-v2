@@ -214,6 +214,11 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/read_before_write_guard.py (detektor for exec_file/command/operator)"),
     NerveSpec("workspace_trust", "execution", GateClass.SECURITY, "filter", "leave",
               "core/services/workspace_trust.py:92 (detektor for exec_workspace_trust)"),
+    # A1 2026-06-22: malware-scan på uploads — scanneren (malware_scan.is_upload_allowed) var
+    # bygget men UWIRET (0 call-sites → uploads uscannede). Nu wiret i /attachments/upload
+    # gennem central().decide: infected → RED (slet+afvis), clean/unavailable → GREEN (fail-open).
+    NerveSpec("exec_upload_scan", "execution", GateClass.SECURITY, "verdict", "merged",
+              "core/services/gate_execution.py (malware_scan.is_upload_allowed, /upload)"),
     # ── Mutation-cluster 🔒 KONSOLIDERET 2026-06-22 (autonom selv-mutations-sikkerhed) ──
     # DUAL-TRUTH fjernet: INFRASTRUCTURE_BLOCKED_MODULES lå byte-identisk i identity_mutation_log
     # OG auto_improvement_proposer; prompt_mutation_loop havde egen _PROTECTED_FILES. Nu ÉN

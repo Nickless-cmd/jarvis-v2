@@ -114,6 +114,24 @@ async def upload_attachment(
     dest_path = dest_dir / f"{attachment_id}_{safe_name}"
     dest_path.write_bytes(data)
 
+    # A1 (2026-06-22): malware-scan GENNEM Den Intelligente Central (execution🔒, SECURITY).
+    # Scanneren var bygget men UWIRET — uploads blev skrevet til disk uscannede. Infected →
+    # slet filen + afvis. ClamAV-utilgængelig → fail-open (blokerer ikke legitime uploads).
+    try:
+        from core.services.gate_execution import check_upload
+        _scan = check_upload(str(dest_path))
+    except Exception:
+        _scan = None
+    if _scan is not None and not _scan.allowed:
+        try:
+            dest_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=400,
+            detail=f"Upload afvist af malware-scan: {_scan.reason or 'infected'}",
+        )
+
     meta = AttachmentMeta(
         id=attachment_id,
         session_id=session_id,

@@ -268,6 +268,28 @@ def run_self_review(*, period: str = "ad-hoc") -> dict[str, Any]:
     except Exception:
         pass
 
+    # ── Review-cluster GENNEM Den Intelligente Central (graderet, 2026-06-22) ──
+    # Selv-review-vurderingen graderes (RED=høj-risiko / YELLOW=med / GREEN=lav) og
+    # ruttes gennem central().decide → trace + catch/flag. Høj-risiko (RED) flagges som
+    # incident (self-review er sjælden, 24t-kadence → ingen spam) så Bjørn/Claude kan
+    # fange en selv-flagget risiko. Best-effort.
+    try:
+        from core.services.central_core import central as _central_review
+        from core.services.gate_review import review_gate as _review_gate
+        from core.services.gate_kernel import Decision as _RDec
+        _rv = _central_review().decide(
+            "self_review", {"review": review, "run_id": str(review_id)},
+            _review_gate, cluster="review",
+        )
+        if _rv.decision is _RDec.RED:
+            from core.runtime.db_central_incidents import record_central_incident
+            record_central_incident(
+                cluster="review", nerve="self_review", kind="high_risk",
+                severity="error", message=str(_rv.reason), run_id=str(review_id),
+            )
+    except Exception:
+        pass
+
     # Auto-propose reflective plan if review flagged follow-up
     if review.get("requires_follow_up") and review.get("lessons"):
         try:

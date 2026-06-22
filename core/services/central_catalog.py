@@ -68,11 +68,15 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/runtime/db_decisions.py:119-184"),
     NerveSpec("credit_assignment", "commit", GateClass.COGNITIVE, "persistence", "leave",
               "core/runtime/db_credit_assignment.py:105-157"),
-    # ── Review-cluster (selv-review + trackers, async ud af hot-path) ──
-    # Ingen request-path-gates → alle leave; trace-kontrakt attaches på de stille
-    # except:return-trackere i _track_runtime_candidates. self_review_unified = daemon.
-    NerveSpec("self_review_unified", "review", GateClass.COGNITIVE, "daemon", "leave",
-              "core/services/self_review_unified.py:200-300"),
+    # ── Review-cluster (KONSOLIDERET 2026-06-22) — selv-review + trackers, async ──
+    # Ingen request-path-blok-gate. Enforcement-ÆKVIVALENT = selv-review-VURDERINGEN:
+    # self_review graderes (RED=høj-risiko/YELLOW=med/GREEN=lav) gennem central().decide
+    # (gate_review) → trace + flag (høj-risiko → incident). Cascade-trackerne forbundet
+    # via _track_step_failed → central observe (kaskade-fix 9c6c1813).
+    NerveSpec("self_review", "review", GateClass.COGNITIVE, "verdict", "merged",
+              "core/services/gate_review.py"),
+    NerveSpec("self_review_unified", "review", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/self_review_unified.py:200-300 (graderet via gate_review)"),
     NerveSpec("self_review_signal", "review", GateClass.COGNITIVE, "inline", "leave",
               "core/services/self_review_signal_tracking.py"),
     NerveSpec("self_review_record", "review", GateClass.COGNITIVE, "inline", "leave",

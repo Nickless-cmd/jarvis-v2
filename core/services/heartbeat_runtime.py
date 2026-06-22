@@ -4478,10 +4478,33 @@ def _select_heartbeat_target(policy: dict | None = None) -> dict[str, str | bool
     ).strip()
     heartbeat_local_only = bool(getattr(settings, "heartbeat_local_only", False))
 
+    # 2026-06-22: skip the configured primary while it is quota-blocked (e.g.
+    # deepseek "Insufficient Balance" → 1h cooldown) and fall through to the
+    # local/router lane (ollama) instead. Self-healing & no manual flag: when the
+    # cooldown expires and the account is topped up, the snapshot reports
+    # unblocked and we return deepseek again automatically. _register_provider_
+    # failure in _execute_heartbeat_model re-blocks it if it's still dry.
+    _primary_blocked = False
+    if heartbeat_provider and heartbeat_model and not heartbeat_local_only:
+        try:
+            from core.services.cheap_provider_runtime import _candidate_quota_snapshot
+            _primary_blocked = bool(
+                _candidate_quota_snapshot(
+                    {
+                        "provider": heartbeat_provider,
+                        "model": heartbeat_model,
+                        "auth_profile": heartbeat_auth_profile,
+                    }
+                ).get("blocked")
+            )
+        except Exception:
+            _primary_blocked = False
+
     if (
         heartbeat_provider
         and heartbeat_model
         and heartbeat_provider in supported_providers
+        and not _primary_blocked
     ):
         return {
             "lane": "heartbeat",
@@ -4740,7 +4763,35 @@ def _execute_heartbeat_model(
             )
             return execute_openai_compat_heartbeat_prompt(prompt=prompt, target=target)
         raise RuntimeError(f"Heartbeat provider not supported: {provider}")
-    except Exception:
+    except Exception as exc:
+        # Re-block the primary on balance/quota/rate failures so the resolver
+        # skips it next tick (self-healing; the cooldown auto-expires). Only for
+        # those error classes — a transient blip shouldn't sideline deepseek.
+        try:
+            _m = str(exc).lower()
+            if any(k in _m for k in (
+                "insufficient balance", "credits", "quota", "rate limit",
+                "rate-limited", "429", "402",
+            )):
+                from core.services.cheap_provider_runtime import (
+                    _register_provider_failure,
+                    CheapProviderError,
+                )
+                _code = (
+                    "credits-exhausted"
+                    if any(k in _m for k in ("balance", "credits", "402"))
+                    else "rate-limited"
+                )
+                _register_provider_failure(
+                    provider=provider,
+                    model=model,
+                    auth_profile=str(target.get("auth_profile") or ""),
+                    error=CheapProviderError(
+                        provider=provider, code=_code, message=str(exc)[:200]
+                    ),
+                )
+        except Exception:
+            pass
         from core.services.heartbeat_provider_fallback import (
             try_heartbeat_cheap_fallback,
         )

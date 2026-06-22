@@ -265,6 +265,15 @@ async def translate_to_v2(
                 str(_state["session_id"]) if _state["session_id"] is not None else None
             ),
         ).to_sse_line())
+        # Stream-cluster: lanen synlig i Centralen (self-safe, kaster aldrig).
+        try:
+            from core.services import stream_sentinel
+            stream_sentinel.note_start(
+                str(_state["run_id"] or ""),
+                str(_state["session_id"] or ""),
+                model=str(_state["model"] or ""), lane=str(_state["lane"] or ""))
+        except Exception:
+            pass
         # Text-block åbnes lazily ved første delta (_ensure_text_block_open) —
         # så en evt. reasoning/thinking-block kan komme FØR svar-teksten.
 
@@ -437,6 +446,11 @@ async def translate_to_v2(
                     ).to_sse_line())
                     await queue.put(MessageStop().to_sse_line())
                     _state["message_stopped"] = True
+                    try:
+                        from core.services import stream_sentinel
+                        stream_sentinel.note_stop(str(_state["run_id"] or ""), reason="done")
+                    except Exception:
+                        pass
                     break
 
                 elif event_name == "heartbeat":
@@ -482,6 +496,15 @@ async def translate_to_v2(
                     _state["message_stopped"] = True
                 except Exception:
                     pass  # best-effort — sentinel nedenfor lukker uanset hvad
+            # Stream-cluster: terminal-garanti-stop (run sluttede uden 'done'-event).
+            try:
+                from core.services import stream_sentinel
+                if _state["message_started"]:
+                    stream_sentinel.note_stop(
+                        str(_state["run_id"] or ""),
+                        reason="fallback" if _state["message_stopped"] else "no_stop")
+            except Exception:
+                pass
             # ── KRITISK (2026-06-21): luk den underliggende legacy-generator ──
             # _translation_loop BRYDER ud ved 'done' (break) uden at udtømme
             # legacy_iter. `async for ... break` aclose'r IKKE automatisk → så

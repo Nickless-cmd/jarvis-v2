@@ -221,6 +221,20 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/gate_skill.py (skill_scanner.scan_skill, 3 call-sites)"),
     NerveSpec("skill_contract", "skill", GateClass.SECURITY, "validation", "leave",
               "core/services/skill_contract_registry.py:67 (check_permissions — ingen live caller)"),
+    # ── Stream-cluster KONSOLIDERET 2026-06-22 (observabilitet, IKKE en blokerende gate) ──
+    # Streaming er en LANE, ikke en beslutning: ~18 fejl-punkter + ~25 tavse except:pass i
+    # SSE-pipelinen hvor hængende streams/zombie-slots/manglende message_stop levede USYNLIGT.
+    # Nu emitterer hver lane-overgang central.observe pr. run_id (stream_sentinel), + en
+    # stall-backstop (300s > translatorens 180s idle-oprydning) der flagger ægte zombier som
+    # incident (severity='error', pollbar). Alle COGNITIVE/instrument — ingen håndhævelse.
+    NerveSpec("stream_start", "stream", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/stream_sentinel.py (visible_runs_sse_v2 message_start)"),
+    NerveSpec("stream_stop", "stream", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/stream_sentinel.py (message_stop: done/fallback)"),
+    NerveSpec("stream_stall", "stream", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/stream_sentinel.py (message_start uden message_stop >300s → incident)"),
+    NerveSpec("stream_event", "stream", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/stream_sentinel.py (idle/cancel/error/zombie_slot/subscriber_timeout)"),
 )
 
 

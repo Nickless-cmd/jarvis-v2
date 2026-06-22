@@ -3941,10 +3941,12 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             _record_tool_outcome_memory(name, arguments, result, mode="tool")
             return result
 
-    # Trusted-folder gate: skrive/exec i et ikke-betroet code-workspace blokeres.
+    # Trusted-folder gate: skrive/exec i ikke-betroet code-workspace → Execution-cluster 🔒
+    # GENNEM Centralen (SECURITY, traced). Owner-sikkert (fail-open ved central-katastrofe).
     try:
-        from core.services.workspace_trust import guard_code_write
-        _trust_block = guard_code_write(name)
+        from core.services.gate_execution import check_workspace_trust
+        _wt = check_workspace_trust(name)
+        _trust_block = _wt.reason if _wt.classification == "untrusted" else None
     except Exception:
         _trust_block = None
     if _trust_block:
@@ -4276,21 +4278,17 @@ def _exec_operator_write_file(args: dict[str, Any]) -> dict[str, Any]:
     # force=true (e.g. brand-new file creation that doesn't exist yet).
     if not bool(args.get("force")):
         try:
-            from core.services.read_before_write_guard import (
-                check_operator_read_before_write,
-            )
+            from core.services.gate_execution import check_operator
             _sid = (
                 args.get("_runtime_session_id")
                 or args.get("_session_id")
                 or "default"
             )
-            allowed, reason = check_operator_read_before_write(
-                path, session_id=str(_sid),
-            )
-            if not allowed and reason:
+            _ec = check_operator(path, session_id=str(_sid))
+            if _ec.classification == "guard_blocked" and _ec.reason:
                 return {
                     "status": "error",
-                    "error": reason,
+                    "error": _ec.reason,
                     "blocked_by": "read_before_write_guard",
                     "path": path,
                     "hint": (
@@ -4343,21 +4341,17 @@ def _exec_operator_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     # existing file, so no force bypass — if you're editing, you must
     # have read it in this session.
     try:
-        from core.services.read_before_write_guard import (
-            check_operator_read_before_write,
-        )
+        from core.services.gate_execution import check_operator
         _sid = (
             args.get("_runtime_session_id")
             or args.get("_session_id")
             or "default"
         )
-        allowed, reason = check_operator_read_before_write(
-            path, session_id=str(_sid), file_exists=True,
-        )
-        if not allowed and reason:
+        _ec = check_operator(path, session_id=str(_sid), file_exists=True)
+        if _ec.classification == "guard_blocked" and _ec.reason:
             return {
                 "status": "error",
-                "error": reason,
+                "error": _ec.reason,
                 "blocked_by": "read_before_write_guard",
                 "path": path,
                 "hint": (
@@ -5497,31 +5491,24 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     if not command:
         return {"error": "command is required", "status": "error"}
 
-    # Read-before-write guard for bash: detect cp/mv/redirect/tee/sed
-    # patterns targeting protected files (SOUL.md, IDENTITY.md, USER.md,
-    # MEMORY.md, ...). 2026-05-14 hardening after SOUL.md + USER.md
-    # were overwritten via `bash cp` that bypassed the write_file guard.
-    try:
-        from core.services.read_before_write_guard import check_bash_command_safe
-        _session_id = (
-            args.get("_runtime_session_id")
-            or args.get("_session_id")
-            or "default"
-        )
-        _guard_allowed, _guard_reason = check_bash_command_safe(
-            command, session_id=str(_session_id)
-        )
-        if not _guard_allowed:
-            return {"status": "guard_blocked", "error": _guard_reason}
-    except Exception:
-        pass  # guard failure → allow (fail-open)
+    # Execution-cluster 🔒 GENNEM Den Intelligente Central (SECURITY): read-before-write
+    # (cp/mv/redirect/tee/sed mod protected-filer) + kommando-klassifikation konsolideret
+    # til ÉT traced gate-kald. Rå-signalet bæres tilbage så svar-formerne er uændrede.
+    _session_id = (
+        args.get("_runtime_session_id")
+        or args.get("_session_id")
+        or "default"
+    )
+    from core.services.gate_execution import check_command
+    _ec = check_command(command, session_id=str(_session_id))
 
-    classification = classify_command(command)
+    if _ec.classification == "guard_blocked":
+        return {"status": "guard_blocked", "error": _ec.reason}
 
-    if classification == "blocked":
+    if _ec.classification == "blocked":
         return {"error": f"Command blocked for safety: {command}", "status": "blocked"}
 
-    if classification == "destructive":
+    if _ec.classification == "destructive":
         return {
             "status": "approval_needed",
             "message": f"Destructive command requires explicit approval: {command}",
@@ -5529,7 +5516,7 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
             "classification": "destructive",
         }
 
-    if classification == "approval":
+    if _ec.classification == "approval":
         return {
             "status": "approval_needed",
             "message": f"This command may modify the system. Please confirm: {command}",
@@ -9093,7 +9080,8 @@ def _force_write_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "path is required", "status": "error"}
     target = Path(path).expanduser().resolve()
     target, redirected_from = _canonicalize_workspace_target(target)
-    if classify_file_write(str(target)) == "blocked":
+    from core.services.gate_execution import check_file as _check_file
+    if _check_file(str(target), kind="write", blocked_only=True).classification == "blocked":
         return {"error": f"Write blocked for safety: {path}", "status": "blocked"}
     target.parent.mkdir(parents=True, exist_ok=True)
     from core.tools.file_tools_exec import _ws_write_text
@@ -9114,7 +9102,8 @@ def _force_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "path and old_text are required", "status": "error"}
     target = Path(path).expanduser().resolve()
     target, redirected_from = _canonicalize_workspace_target(target)
-    if classify_file_write(str(target)) == "blocked":
+    from core.services.gate_execution import check_file as _check_file
+    if _check_file(str(target), kind="edit", blocked_only=True).classification == "blocked":
         return {"error": f"Edit blocked for safety: {path}", "status": "blocked"}
     from core.tools.file_tools_exec import _ws_read_text, _ws_write_text, _ws_path_exists
     if not _ws_path_exists(target):
@@ -9136,7 +9125,8 @@ def _force_bash(args: dict[str, Any]) -> dict[str, Any]:
     command = str(args.get("command") or "").strip()
     if not command:
         return {"error": "command is required", "status": "error"}
-    if classify_command(command) == "blocked":
+    from core.services.gate_execution import check_command as _check_command
+    if _check_command(command, blocked_only=True).classification == "blocked":
         return {"error": f"Command blocked: {command}", "status": "blocked"}
     try:
         result = subprocess.run(

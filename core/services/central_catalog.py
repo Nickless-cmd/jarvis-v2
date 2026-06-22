@@ -171,6 +171,29 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/abuse_monitor.py:101-131"),
     NerveSpec("security_guard", "auth", GateClass.SECURITY, "persistence", "leave",
               "core/services/security_guard.py:54-210"),
+    # ── Execution-cluster 🔒 KONSOLIDERET 2026-06-22 (tools-lanens fail-open hul) ──
+    # Seks spredte rå inline-checks (hver med egen except:pass + ingen trace) smeltet til
+    # ÉN graderet SECURITY-gate (gate_execution) routet gennem central().decide:
+    # RED=blocked/read-before-write/untrusted → DENY · YELLOW=destructive/approval → kort ·
+    # GREEN=auto. 8 call-sites (bash/write/edit/force×3/operator×2/workspace-trust) går nu
+    # gennem Centralen → trace + circuit-breaker + drift + incident. classify_*/rbw/trust =
+    # detektorer kaldt internt (leave). Lukker observabilitets-hullet ("bugs i blinde").
+    NerveSpec("exec_command", "execution", GateClass.SECURITY, "verdict", "merged",
+              "core/services/gate_execution.py (bash: rbw+classify)"),
+    NerveSpec("exec_file", "execution", GateClass.SECURITY, "verdict", "merged",
+              "core/services/gate_execution.py (write/edit: classify+rbw)"),
+    NerveSpec("exec_workspace_trust", "execution", GateClass.SECURITY, "verdict", "merged",
+              "core/services/gate_execution.py (guard_code_write)"),
+    NerveSpec("exec_operator", "execution", GateClass.SECURITY, "verdict", "merged",
+              "core/services/gate_execution.py (operator read-before-write)"),
+    NerveSpec("classify_command", "execution", GateClass.SECURITY, "filter", "leave",
+              "core/tools/simple_tools.py:3786 (detektor for exec_command)"),
+    NerveSpec("classify_file_write", "execution", GateClass.SECURITY, "filter", "leave",
+              "core/tools/simple_tools.py:3874 (detektor for exec_file)"),
+    NerveSpec("read_before_write", "execution", GateClass.SECURITY, "filter", "leave",
+              "core/services/read_before_write_guard.py (detektor for exec_file/command/operator)"),
+    NerveSpec("workspace_trust", "execution", GateClass.SECURITY, "filter", "leave",
+              "core/services/workspace_trust.py:92 (detektor for exec_workspace_trust)"),
 )
 
 

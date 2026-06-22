@@ -129,7 +129,7 @@ def _exec_read_self_docs(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
-    from core.tools.simple_tools import _canonicalize_workspace_target, classify_file_write
+    from core.tools.simple_tools import _canonicalize_workspace_target
 
     path = str(args.get("path") or "").strip()
     content = str(args.get("content") or "")
@@ -138,12 +138,21 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
 
     target = Path(path).expanduser().resolve()
     target, redirected_from = _canonicalize_workspace_target(target)
-    classification = classify_file_write(str(target))
 
-    if classification == "blocked":
+    # Execution-cluster 🔒 GENNEM Den Intelligente Central (SECURITY): fil-klassifikation
+    # + read-before-write konsolideret til ÉT traced gate-kald (classify FØR rbw, paritet).
+    _session_id = (
+        args.get("_runtime_session_id")
+        or args.get("_session_id")
+        or "default"
+    )
+    from core.services.gate_execution import check_file
+    _ec = check_file(str(target), session_id=str(_session_id), kind="write")
+
+    if _ec.classification == "blocked":
         return {"error": f"Write blocked for safety: {path}", "status": "blocked"}
 
-    if classification == "approval":
+    if _ec.classification == "approval":
         return {
             "status": "approval_needed",
             "message": f"Writing to {path} requires your approval. Please confirm in chat.",
@@ -151,21 +160,8 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
             "content_preview": content[:200] + ("…" if len(content) > 200 else ""),
         }
 
-    # Read-before-write guard: block overwriting protected files without reading first
-    try:
-        from core.services.read_before_write_guard import check_read_before_write
-        _session_id = (
-            args.get("_runtime_session_id")
-            or args.get("_session_id")
-            or "default"
-        )
-        _guard_allowed, _guard_reason = check_read_before_write(
-            str(target), session_id=str(_session_id)
-        )
-        if not _guard_allowed:
-            return {"status": "guard_blocked", "error": _guard_reason}
-    except Exception:
-        pass  # guard failure → allow (fail-open)
+    if _ec.classification == "guard_blocked":
+        return {"status": "guard_blocked", "error": _ec.reason}
 
     # Auto-approved (workspace files)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -184,7 +180,7 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
-    from core.tools.simple_tools import _canonicalize_workspace_target, classify_file_write
+    from core.tools.simple_tools import _canonicalize_workspace_target
 
     path = str(args.get("path") or "").strip()
     old_text = str(args.get("old_text") or "")
@@ -196,12 +192,16 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
 
     target = Path(path).expanduser().resolve()
     target, redirected_from = _canonicalize_workspace_target(target)
-    classification = classify_file_write(str(target))
 
-    if classification == "blocked":
+    # Execution-cluster 🔒 GENNEM Centralen (SECURITY): klassifikation via gate (edit har
+    # historisk ingen read-before-write — bevaret med kind="edit").
+    from core.services.gate_execution import check_file
+    _ec = check_file(str(target), kind="edit")
+
+    if _ec.classification == "blocked":
         return {"error": f"Edit blocked for safety: {path}", "status": "blocked"}
 
-    if classification == "approval":
+    if _ec.classification == "approval":
         return {
             "status": "approval_needed",
             "message": f"Editing {path} requires your approval. Please confirm in chat.",

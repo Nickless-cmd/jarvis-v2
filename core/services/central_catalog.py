@@ -323,6 +323,12 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/tool_usage_store.py:observe_stats (daglig forbrugs-summary + døde-flag)"),
     NerveSpec("tool_usage_order", "tools", GateClass.COGNITIVE, "validation", "leave",
               "core/services/tool_usage_store.py:tool_order/dead_tools (katalog-rækkefølge, Phase 2b-wiring)"),
+    # API-endpoint forbrugs-statistik (2026-06-22, parallel til tool_usage): middleware tæller
+    # de ~412 endpoints → most/aldrig + flag DØDE (registreret men aldrig kaldt). Daglig observe.
+    NerveSpec("endpoint_usage_stats", "tools", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/endpoint_usage_store.py:observe_stats (endpoint-forbrug + døde-flag)"),
+    NerveSpec("endpoint_call", "tools", GateClass.COGNITIVE, "inline", "instrument",
+              "apps/api/jarvis_api/app.py:_endpoint_usage_middleware (tæl pr. request)"),
     # ── System-cluster KONSOLIDERET 2026-06-22 (kartografen MELDER til Centralen) ──
     # system_cartographer kortlagde ALLEREDE systemet (services/daemons/surfaces/dark-edges/
     # theater/coverage/health) + auto-triagerede (enqueuer observability+theater-repair-tasks

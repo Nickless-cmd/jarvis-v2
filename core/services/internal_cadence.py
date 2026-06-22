@@ -840,6 +840,22 @@ def _ensure_producers_registered() -> None:
         priority=36,
     ))
 
+    def _run_endpoint_usage_stats(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Tools-cluster (2026-06-22): daglig API-endpoint forbrugs-statistik → central.observe
+        (mest/aldrig) + flag antal døde endpoints (registreret men aldrig kaldt). Observe-only."""
+        from core.services.endpoint_usage_store import observe_stats
+        summary = observe_stats()
+        return {"status": "ok", "tracked": summary.get("tracked"),
+                "registered": summary.get("registered"), "dead": summary.get("dead")}
+
+    register_producer(ProducerSpec(
+        name="endpoint_usage_stats",
+        cooldown_minutes=1440,  # daily
+        visible_grace_minutes=0,
+        run_fn=_run_endpoint_usage_stats,
+        priority=36,
+    ))
+
 
 def run_cadence_tick_with_bootstrap(
     *,

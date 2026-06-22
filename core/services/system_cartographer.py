@@ -20,7 +20,13 @@ _AUTO_TASK_ORIGIN = "system-cartographer"
 _THEATER_AUTO_TASK_MIN_SCORE = 120
 _THEATER_AUTO_TASK_KIND = "theater_refactor"
 _THEATER_AUTO_TASK_ORIGIN = "theater-audit"
-_SCAN_INTERVAL_SECONDS = 900
+_SCAN_INTERVAL_SECONDS = 86400  # 1×/døgn (var 900s/15min — tung 632-service-analyse 96×/dag)
+
+# TRUST-GATE (Bjørn 2026-06-22): indtil vi VED systemet virker, må kartografen IKKE selv give
+# Jarvis opgaver der laver ÆNDRINGER. Han notificeres (via central.observe + kortet) og kan
+# komme med FORSLAG — men auto-enqueue af repair-tasks er slået FRA. Flip til True når vi har
+# bevist at triagen er pålidelig (og evt. gjort den "virkelig smart"). Indtil da: kun notits.
+_AUTO_ENQUEUE_ENABLED = False
 
 logger = logging.getLogger(__name__)
 _THREAD: threading.Thread | None = None
@@ -160,7 +166,9 @@ def _observe_to_central(surface: dict[str, Any]) -> None:
 def _loop() -> None:
     while not _STOP.is_set():
         try:
-            surface = build_system_cartographer_surface(auto_enqueue=True)
+            # auto_enqueue gated bag _AUTO_ENQUEUE_ENABLED (trust-gate): kun NOTITS til Jarvis
+            # via central.observe + kortet — ingen auto-ændringer indtil vi stoler på triagen.
+            surface = build_system_cartographer_surface(auto_enqueue=_AUTO_ENQUEUE_ENABLED)
             _observe_to_central(surface)
         except Exception as exc:
             logger.debug("system_cartographer: scan failed: %s", exc)

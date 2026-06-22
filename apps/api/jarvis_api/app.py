@@ -224,6 +224,19 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("system_cartographer start failed: %s", _exc)
             try:
+                # Tools-cluster: snapshot registrerede ruter → dead-endpoint-detektion cross-proces.
+                from core.services.endpoint_usage_store import store_registered_routes
+                _routes = []
+                for _r in app.routes:
+                    _p = getattr(_r, "path", None)
+                    for _m in (getattr(_r, "methods", None) or set()):
+                        if _p:
+                            _routes.append((_m, _p))
+                store_registered_routes(_routes)
+                logger.info("endpoint_usage: %d registrerede ruter snapshottet", len(_routes))
+            except Exception as _exc:
+                logger.warning("endpoint_usage route snapshot failed: %s", _exc)
+            try:
                 from core.services.jarvis_brain_daemon import start_brain_daemon
                 start_brain_daemon()
                 logger.info("jarvis_brain daemon started")
@@ -471,6 +484,24 @@ def create_app() -> FastAPI:
         jarvisx_user_routing_middleware,
     )
     app.middleware("http")(jarvisx_user_routing_middleware)
+
+    # Tools-cluster: endpoint-usage-tæller (parallel til tool-statistik). Offloadet til tråd
+    # — sync DB-UPSERT må ALDRIG blokere event-loopet med --workers 1 (blocking-freeze-mønstret).
+    # Fire-and-forget; rute-TEMPLATE (request.scope["route"].path) så alle kald til samme
+    # endpoint aggregeres. Self-safe.
+    @app.middleware("http")
+    async def _endpoint_usage_middleware(request, call_next):
+        response = await call_next(request)
+        try:
+            import asyncio
+            from core.services.endpoint_usage_store import record_request
+            _route = request.scope.get("route")
+            _path = getattr(_route, "path", None) or request.url.path
+            asyncio.get_running_loop().run_in_executor(
+                None, record_request, request.method, _path, response.status_code)
+        except Exception:
+            pass
+        return response
 
     # §20: tilføjet EFTER auth-middleware'en → outermost. HttpsRedirect kører først
     # (redirect før auth), SecurityHeaders dækker også 401/error-svar.

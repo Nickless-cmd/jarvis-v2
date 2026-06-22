@@ -26,7 +26,13 @@ def set_enabled(scope: str, name: str, enabled: bool, *,
 
 
 def is_enabled(scope: str, name: str) -> bool:
-    val = shared_cache.get(_key(scope, name))
+    # #9 (2026-06-22): switch-læsning må ALDRIG vælte decide(). shared_cache.get er allerede
+    # self-safe (returnerer None ved fejl), men vi wrapper defensivt → fail-OPEN til ON, så
+    # en cache-katastrofe disabler ikke en gate (sikkerheds-gates fail-closer selv på gate-niveau).
+    try:
+        val = shared_cache.get(_key(scope, name))
+    except Exception:
+        return True
     if isinstance(val, dict) and "enabled" in val:
         return bool(val["enabled"])
     return True   # default ON

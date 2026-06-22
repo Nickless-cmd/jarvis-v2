@@ -349,6 +349,14 @@ CATALOG: tuple[NerveSpec, ...] = (
     # DAGE — settings.port vs faktisk lyttende port). Daglig probe → observe + incident. Read-only.
     NerveSpec("config_drift", "system", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/config_drift.py:observe_config_drift (port-drift declared↔runtime)"),
+    # ── Autonomous-cluster KONSOLIDERET 2026-06-22 (#10: autonome runs → Centralen) ──
+    # Dream-sessions/idle-refleksion/proaktive runs var USYNLIGE for Centralen — ingen cluster
+    # fangede en autonom run der fejlede/loopede/brændte tokens. Phase A: observe pr. run-udfald
+    # (failed/interrupted/completed + provider/model/frames/error). Phase B (graderet decide) +
+    # C (akkumuleret deterministisk læring pr. run-type, fx 'dream >30k tokens hallucinerer 40%')
+    # = den adaptive del, bevidst udskudt (samme som §6-læring).
+    NerveSpec("autonomous_run", "autonomous", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/visible_runs.py:_observe_autonomous_run (run-udfald → observe)"),
 )
 
 

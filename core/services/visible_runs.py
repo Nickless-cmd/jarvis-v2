@@ -672,6 +672,25 @@ def start_visible_run(
     return _stream_visible_run(run, force_user_id=force_user_id, tool_scope=tool_scope)
 
 
+def _observe_autonomous_run(*, run, session_id: str, outcome: str,
+                            frames: int = 0, error: str = "") -> None:
+    """#10 (Phase A): gør autonome runs (dream/idle/proaktiv) synlige som ENHED i Den
+    Intelligente Central. Før fangede INGEN cluster en autonom run der fejlede/loopede/brændte
+    tokens — ingen trace, ingen flag. Nu observe pr. run-udfald. Self-safe. Phase B/C (gradering
+    + akkumuleret deterministisk læring pr. run-type) er den adaptive del — bygges bevidst senere."""
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "autonomous", "nerve": "autonomous_run",
+            "run_id": getattr(run, "run_id", ""), "session_id": str(session_id or ""),
+            "provider": getattr(run, "provider", ""), "model": getattr(run, "model", ""),
+            "outcome": outcome, "frames": int(frames or 0),
+            "error": str(error or "")[:160],
+        })
+    except Exception:
+        pass
+
+
 def start_autonomous_run(message: str, session_id: str | None = None, follow: bool = False) -> None:
     """Trigger an autonomous (heartbeat-initiated) visible run in a background thread.
 
@@ -769,6 +788,8 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                     "consumed_frames": consumed_frames,
                 },
             )
+            _observe_autonomous_run(run=run, session_id=resolved_session,
+                                    outcome="failed", frames=consumed_frames, error=str(exc))
         finally:
             if not failed:
                 outcome = get_last_visible_run_outcome() or {}
@@ -789,6 +810,9 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                             "consumed_frames": consumed_frames,
                         },
                     )
+                    _observe_autonomous_run(run=run, session_id=resolved_session,
+                                            outcome="interrupted", frames=consumed_frames,
+                                            error=str(outcome.get("error") or ""))
                     loop.close()
                     return
                 event_bus.publish(
@@ -802,6 +826,8 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                         "consumed_frames": consumed_frames,
                     },
                 )
+                _observe_autonomous_run(run=run, session_id=resolved_session,
+                                        outcome="completed", frames=consumed_frames)
             loop.close()
 
     # Propagate ContextVars (workspace_name, user_id) into the new thread.

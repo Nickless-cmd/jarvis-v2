@@ -108,3 +108,15 @@ def test_decide_security_ignores_cluster_disable():
         assert v.decision is not Decision.SKIP  # security håndhæver uanset
     finally:
         shared_cache.delete("flag:central.switch.cluster.auth")
+
+
+# ── #9: is_enabled må aldrig vælte decide() (defensiv fail-open) ──────────
+def test_is_enabled_fail_open_on_cache_crash(monkeypatch):
+    from core.services import central_switches as cs
+    import core.services.shared_cache as sc
+    def boom(k):
+        raise RuntimeError("cache nede")
+    monkeypatch.setattr(sc, "get", boom)
+    # switch-læsefejl → fail-OPEN til ON (disabler ikke en gate)
+    assert cs.is_enabled("nerve", "x") is True
+    assert cs.is_cluster_enabled("loop") is True

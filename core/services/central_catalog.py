@@ -362,6 +362,10 @@ CATALOG: tuple[NerveSpec, ...] = (
     # = den adaptive del, bevidst udskudt (samme som §6-læring).
     NerveSpec("autonomous_run", "autonomous", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/visible_runs.py:_observe_autonomous_run (run-udfald → observe)"),
+    # #3 supervision (2026-06-22): vurdér hvert autonomt run via korrelation + gate-signaler →
+    # fang løgn (truth-RED), loop, forbindelsesfejl (retryable) → observe + flag. Phase 1.
+    NerveSpec("supervision", "autonomous", GateClass.COGNITIVE, "verdict", "instrument",
+              "core/services/autonomous_supervisor.py:supervise (vurdér run: clean/lied/looped/conn)"),
     # ── Connections-cluster KONSOLIDERET 2026-06-22 — forbindelses-livscyklus → Centralen ──
     # Hvem/hvad er forbundet til API'en (jarvis-desk/mobile companion/MC-websocket/members)
     # hvornår, fra hvilken enhed. Komplementerer endpoint-usage (request) + stream (SSE) med

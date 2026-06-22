@@ -3,14 +3,17 @@ from __future__ import annotations
 
 
 def test_observe_autonomous_run_emits(monkeypatch):
-    captured = {}
+    events = []
 
     class _Central:
         def observe(self, event):
-            captured.update(event)
+            events.append(dict(event))
 
     import core.services.central_core as cc
     monkeypatch.setattr(cc, "central", lambda: _Central())
+    # supervise() kaldes også nu (#3) — neutralisér dens incident-skrivning
+    monkeypatch.setattr("core.runtime.db_central_incidents.record_central_incident",
+                        lambda **k: None)
 
     from core.services.visible_runs import _observe_autonomous_run
 
@@ -19,9 +22,11 @@ def test_observe_autonomous_run_emits(monkeypatch):
 
     _observe_autonomous_run(run=_Run(), session_id="s1", outcome="failed",
                             frames=3, error="loopede")
-    assert captured["cluster"] == "autonomous" and captured["nerve"] == "autonomous_run"
-    assert captured["outcome"] == "failed" and captured["frames"] == 3
-    assert captured["provider"] == "deepseek"
+    # autonomous_run-observen skal være blandt de emitterede (supervision kommer også)
+    run_ev = next(e for e in events if e.get("nerve") == "autonomous_run")
+    assert run_ev["cluster"] == "autonomous"
+    assert run_ev["outcome"] == "failed" and run_ev["frames"] == 3
+    assert run_ev["provider"] == "deepseek"
 
 
 def test_observe_autonomous_self_safe():

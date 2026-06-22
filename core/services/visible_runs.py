@@ -689,6 +689,12 @@ def _observe_autonomous_run(*, run, session_id: str, outcome: str,
         })
     except Exception:
         pass
+    # #3 supervision: vurdér runnet (korrelér + fang løgn/loop/forbindelsesfejl) + flag.
+    try:
+        from core.services.autonomous_supervisor import supervise
+        supervise(getattr(run, "run_id", ""), outcome, error=str(error or ""))
+    except Exception:
+        pass
 
 
 def start_autonomous_run(message: str, session_id: str | None = None, follow: bool = False) -> None:

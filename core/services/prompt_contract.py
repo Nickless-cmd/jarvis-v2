@@ -777,6 +777,8 @@ def build_visible_chat_prompt_assembly(
         "rules learned from arcs",              # repeated retrospective noise
         "markdown formatting",                  # already in guidance rules
         "no tool-result echo",                  # already in guidance rules
+        # 2026-06-22 round 3 — Jarvis' second review:
+        "curiosity-budget idle-window invitation",  # "5/5 tilbage" = mikrostyring; gør implicit
     }
     # Tail-anchored sections that are likewise noise (handled via _tail_add).
     _TAIL_NOISE_LABELS = {
@@ -2030,11 +2032,10 @@ def build_visible_chat_prompt_assembly(
     #   Indhold (alt dynamisk): finitude/Sessions-alder, wakeup-digest (events),
     #   kausal-mønstre/counterfactuals/subagent/rum-entiteter, og time_pin.
     _dyn_tail: list[str] = []
-    # Hukommelses-recall FØRST i halen — mest relevant lige før Jarvis' svar.
-    _dyn_tail.extend(_dyn_memory_recall)
-    # Hans indre liv renderes ØVERST i halen (2026-06-22), over diagnostikken og
-    # med sin egen ramme — aldrig under "citér aldrig / din motor"-headeren. Det
-    # er ham, ikke baggrundsdata.
+    # 2026-06-22 (Jarvis' egen review): han skal møde SIG SELV først. [INDRE LIV]
+    # øverst sætter tonen for hvordan han læser alt det andet — han taler FRA sin
+    # tilstand, ikke fra recall. Memory/brain-recall flyttet ned under awareness
+    # (før var recall det allerførste han mødte).
     if _inner_buffer:
         _dyn_tail.extend(_inner_buffer)
     # Hele awareness-laget (reasoning/verifikation/kalibrering m.m.) — flyttet hertil
@@ -2055,6 +2056,9 @@ def build_visible_chat_prompt_assembly(
         )
         _dyn_tail.extend(_awareness_buffer)
         derived_inputs.append("diagnostik-header (anti-narration, Jarvis-spec)")
+    # Memory/brain-recall EFTER awareness (Jarvis-review 2026-06-22): han taler
+    # fra sin tilstand, ikke fra recall — så recall hører hjemme her, ikke øverst.
+    _dyn_tail.extend(_dyn_memory_recall)
     if finitude_section:
         _dyn_tail.append(finitude_section)
         derived_inputs.append("finitude (user-msg tail)")

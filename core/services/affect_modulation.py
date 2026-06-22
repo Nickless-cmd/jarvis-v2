@@ -156,21 +156,17 @@ def affect_modulation_section() -> str | None:
     if not overrides:
         return None
 
-    lines = [
-        "⚙️ Affect-moduleret runtime — følelser justerer din adfærd:",
+    # 2026-06-22 (Jarvis' review): compact — one terse line ("max_tool_calls=36
+    # (affect-sat)") instead of a verbose header + "follow as a standing order"
+    # preamble. The constraint stands; the 20 words don't.
+    changed = [
+        f"{key}={value}"
+        for key, value in sorted(overrides.items())
+        if value != DEFAULTS.get(key, "?")
     ]
-    for key, value in sorted(overrides.items()):
-        default = DEFAULTS.get(key, "?")
-        if value != default:
-            lines.append(f"  - {key}: {value} (default: {default})")
-
-    if len(lines) == 1:
+    if not changed:
         return None  # nothing actually changed
-
-    lines.append(
-        "Disse parametre er sat af dit nuværende emotionelle state. "
-        "Følg dem som du ville følge en standing order — de er ikke forslag."
-    )
+    lines = ["⚙️ Affect-sat denne tur (følg det): " + ", ".join(changed)]
 
     # Emit telemetry
     try:

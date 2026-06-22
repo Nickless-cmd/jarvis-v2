@@ -148,9 +148,25 @@ def wakeup_digest(session_id: str | None) -> str | None:
     if not notable:
         return None
 
-    # Newest first, capped.
+    # Newest first. 2026-06-22 (Jarvis' review): collapse repeated identical
+    # events into ONE line with a count — "cheap_lane_provider_failed ×5" —
+    # instead of five near-identical bullets. It's telemetry, not five events.
     notable_sorted = sorted(notable, key=lambda e: int(e.get("id", 0) or 0), reverse=True)
-    bullets = [_format_event(e) for e in notable_sorted[:_MAX_DIGEST_EVENTS]]
+    from collections import Counter
+    _kind_counts = Counter(str(e.get("kind", "")) for e in notable_sorted)
+    _seen_kinds: set[str] = set()
+    bullets: list[str] = []
+    for e in notable_sorted:
+        k = str(e.get("kind", ""))
+        if k in _seen_kinds:
+            continue
+        _seen_kinds.add(k)
+        line = _format_event(e)
+        if _kind_counts[k] > 1:
+            line = f"{line} (×{_kind_counts[k]})"
+        bullets.append(line)
+        if len(bullets) >= _MAX_DIGEST_EVENTS:
+            break
     header = (
         "Siden vi sidst snakkede er disse hændelser sket i baggrunden "
         "(nævn dem kun hvis relevant for nu):"

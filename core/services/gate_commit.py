@@ -39,3 +39,28 @@ def commit_gate(ctx: dict[str, Any]) -> Verdict:
         return Verdict("decision_gate", Decision.YELLOW, str(reason or "blød decision-tension"),
                        action="warn", klass=GateClass.COGNITIVE)
     return Verdict("decision_gate", Decision.GREEN, "ok", klass=GateClass.COGNITIVE)
+
+
+def veto_gate(ctx: dict[str, Any]) -> Verdict:
+    """Commit-cluster: affektiv bruger-pushback gater tool-eksekvering.
+
+    Hører til commit (pre-execution-disciplin ved siden af decision_gate), IKKE truth —
+    veto = 'brugeren vil ikke det her', ikke claim-falsifikation. Routes nu gennem Centralen
+    så det får samme trace + circuit-breaker + incident som decision_gate.
+
+    ctx: {tool_name, user_message, session_id}.
+      veto fundet → RED (block — tool erstattes med bekræftelses-besked)
+      ellers      → GREEN (pass)
+    COGNITIVE → fail-OPEN (paritet med det gamle inline except:pass: gate-fejl må aldrig
+    blokere en legitim handling)."""
+    from core.services.veto_gate import check_veto
+
+    allowed, reason = check_veto(
+        str(ctx.get("tool_name") or ""),
+        user_message=str(ctx.get("user_message") or ""),
+        session_id=ctx.get("session_id"),
+    )
+    if not allowed:
+        return Verdict("veto", Decision.RED, str(reason or "vetoed"), action="block",
+                       klass=GateClass.COGNITIVE, evidence={"reason": str(reason or "")})
+    return Verdict("veto", Decision.GREEN, "tilladt", klass=GateClass.COGNITIVE)

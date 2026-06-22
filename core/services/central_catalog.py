@@ -60,6 +60,11 @@ CATALOG: tuple[NerveSpec, ...] = (
     # decision_gate = eneste request-path-gate → merge. Resten instrument/leave.
     NerveSpec("decision_gate", "commit", GateClass.COGNITIVE, "verdict", "merge",
               "core/services/decision_gate.py:27-92"),
+    # veto = affektiv bruger-pushback, pre-execution-disciplin ved siden af decision_gate
+    # (IKKE truth — surveyet foreslog truth, men det er en commit-beslutning). MERGED
+    # 2026-06-22: var rå inline fail-open i visible_runs:4869 → nu gennem central().decide.
+    NerveSpec("veto", "commit", GateClass.COGNITIVE, "verdict", "merged",
+              "core/services/gate_commit.py:veto_gate (check_veto)"),
     NerveSpec("decision_create", "commit", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/behavioral_decisions.py:38-89"),
     NerveSpec("decision_signals", "commit", GateClass.COGNITIVE, "inline", "instrument",

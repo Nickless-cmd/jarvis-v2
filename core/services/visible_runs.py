@@ -4867,19 +4867,26 @@ def _execute_simple_tool_calls(
 
         # ── Pre-execution gates ──────────────────────────────────────
         # 1. Veto gate: affective pushback with evidence blocks execution
+        #    → Commit-cluster GENNEM Den Intelligente Central (trace + breaker + incident).
+        #    Veto hører til commit (pre-execution-disciplin ved siden af decision_gate), ikke
+        #    truth. COGNITIVE fail-open (gate-fejl → allow, paritet med gammelt inline except).
         _veto_blocked = False
         _veto_reason = None
         try:
-            from core.services.veto_gate import check_veto
-            _veto_allowed, _veto_reason = check_veto(
-                name,
-                user_message=user_message,
-                session_id=session_id,
+            from core.services.central_core import central as _central_veto
+            from core.services.gate_commit import veto_gate as _veto_gate_fn
+            from core.services.gate_kernel import Decision as _VDec, GateClass as _VGK
+            _vv = _central_veto().decide(
+                "veto",
+                {"tool_name": name, "user_message": user_message,
+                 "session_id": session_id, "run_id": run_id},
+                _veto_gate_fn, cluster="commit", klass=_VGK.COGNITIVE,
             )
-            if not _veto_allowed:
+            if _vv.decision is _VDec.RED:
                 _veto_blocked = True
+                _veto_reason = (_vv.evidence or {}).get("reason") or _vv.reason
         except Exception:
-            pass  # gate failure → allow (fail-open)
+            pass  # central self-safe; gate-fejl → allow (fail-open)
 
         # 2. Decision gate: active decisions conflict blocks execution
         _decision_blocked = False

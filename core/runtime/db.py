@@ -15830,7 +15830,12 @@ def upsert_diary_synthesis_signal(
             }
 
         was_created = False
-        old_merge_count = existing[15] if len(existing) > 15 else 0
+        # Sikker int-cast (2026-06-22): merge_count kunne komme tilbage som str fra DB →
+        # `old_merge_count + 1` kastede TypeError (str+int) og dræbte diary-synthesis-trackeren.
+        try:
+            old_merge_count = int(existing[15] or 0) if len(existing) > 15 else 0
+        except (TypeError, ValueError):
+            old_merge_count = 0
         conn.execute(
             """
             UPDATE runtime_diary_synthesis_signals

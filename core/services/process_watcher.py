@@ -563,6 +563,11 @@ def _watcher_loop() -> None:
             _evaluate_watches_once()
         except Exception as exc:
             logger.warning("process_watcher: evaluate pass failed: %s", exc)
+            try:
+                from core.services.daemon_health import note_error
+                note_error("process_watcher", exc)
+            except Exception:
+                pass
         # Sleep with cancel-awareness so stop() returns promptly
         _DAEMON_STOP.wait(_POLL_INTERVAL_S)
     logger.info("process_watcher: daemon thread stopped")

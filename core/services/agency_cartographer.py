@@ -213,6 +213,11 @@ def _loop() -> None:
             build_cartographer_snapshot(auto_enqueue=True)
         except Exception as exc:
             logger.debug("agency_cartographer: scan failed: %s", exc)
+            try:
+                from core.services.daemon_health import note_error
+                note_error("agency_cartographer", exc)
+            except Exception:
+                pass
         _STOP.wait(_SCAN_INTERVAL_SECONDS)
     logger.info("agency_cartographer: daemon stopped")
 

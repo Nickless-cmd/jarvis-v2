@@ -345,6 +345,11 @@ CATALOG: tuple[NerveSpec, ...] = (
     # escalation-path ud over logging.
     NerveSpec("central_health", "system", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/central_health.py:observe_and_escalate (Centralen prober sig selv)"),
+    # Daemon-Fase-1 (2026-06-22): gør standalone-tråde + silent eventbus-listeners synlige.
+    # De 25 cadence-producers + 81 heartbeat-tickede er allerede observable; daemon_health
+    # dækker resten (~9 tråde + ~16 listeners der fejler i stilhed). note_error i except-stier.
+    NerveSpec("daemon_health", "system", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/daemon_health.py (standalone/listener-fejl → observe; mekanisme til adoption)"),
     # §7 config-drift (2026-06-22): fang når deklareret config ≠ runtime (8010/8011-buggen kostede
     # DAGE — settings.port vs faktisk lyttende port). Daglig probe → observe + incident. Read-only.
     NerveSpec("config_drift", "system", GateClass.COGNITIVE, "daemon", "instrument",

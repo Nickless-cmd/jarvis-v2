@@ -350,6 +350,11 @@ CATALOG: tuple[NerveSpec, ...] = (
     # dækker resten (~9 tråde + ~16 listeners der fejler i stilhed). note_error i except-stier.
     NerveSpec("daemon_health", "system", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/daemon_health.py (standalone/listener-fejl → observe; mekanisme til adoption)"),
+    # #4 adaptiv læring (2026-06-22): DETERMINISTISK pr. cluster fra incident-historikken →
+    # degraderende clusters (trender mod nedbrud) + Jarvis' autonomi-modenhed. Hver time.
+    # Bidirektional auto-reaktion (preemptiv isolering) = Phase 2 (tillid+data). Read-only nu.
+    NerveSpec("learning", "system", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/central_learning.py:observe_learning (mønstre/degradering/autonomi-modenhed)"),
     # §7 config-drift (2026-06-22): fang når deklareret config ≠ runtime (8010/8011-buggen kostede
     # DAGE — settings.port vs faktisk lyttende port). Daglig probe → observe + incident. Read-only.
     NerveSpec("config_drift", "system", GateClass.COGNITIVE, "daemon", "instrument",

@@ -817,6 +817,23 @@ def _ensure_producers_registered() -> None:
         priority=36,
     ))
 
+    def _run_central_learning(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """#4 (2026-06-22): adaptiv læring pr. cluster fra incident-historikken → observe +
+        flag degraderende clusters (trender mod nedbrud) + vurdér Jarvis' autonomi-modenhed.
+        Deterministisk, read-only — akkumulerer over tid (fx overnight)."""
+        from core.services.central_learning import observe_learning
+        s = observe_learning()
+        return {"status": "ok", "degrading": len(s.get("degrading") or []),
+                "autonomy": (s.get("autonomy") or {}).get("verdict")}
+
+    register_producer(ProducerSpec(
+        name="central_learning",
+        cooldown_minutes=60,  # hver time — lær kontinuerligt
+        visible_grace_minutes=0,
+        run_fn=_run_central_learning,
+        priority=36,
+    ))
+
     def _run_config_drift(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         """§7 (2026-06-22): config↔runtime-drift-check (port). Fanger 8010/8011-typen — settings
         siger én port, API'en svarer på en anden → observe + incident. Read-only probe."""

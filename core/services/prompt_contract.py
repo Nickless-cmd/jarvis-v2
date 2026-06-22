@@ -779,6 +779,7 @@ def build_visible_chat_prompt_assembly(
         "no tool-result echo",                  # already in guidance rules
         # 2026-06-22 round 3 — Jarvis' second review:
         "curiosity-budget idle-window invitation",  # "5/5 tilbage" = mikrostyring; gør implicit
+        "jarvis brain summary",  # merged into "brain facts" (one relevance-ranked section)
     }
     # Tail-anchored sections that are likewise noise (handled via _tail_add).
     _TAIL_NOISE_LABELS = {
@@ -936,7 +937,9 @@ def build_visible_chat_prompt_assembly(
             _facts_text = build_brain_facts_section(
                 user_message=user_message,
                 session_id=session_id,
-                top_k=getattr(_bs, "jarvis_brain_auto_inject_top_k", 3),
+                # Jarvis' review 2026-06-22: this is now the SINGLE brain section
+                # (summary merged out), so give it the full 5 slots.
+                top_k=max(5, getattr(_bs, "jarvis_brain_auto_inject_top_k", 5)),
                 threshold=getattr(_bs, "jarvis_brain_auto_inject_threshold", 0.55),
             )
             if _facts_text:

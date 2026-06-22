@@ -106,7 +106,10 @@ def build_brain_facts_section(
         except Exception:
             pass
 
-    lines = ["## Relevante fakta fra min hjerne", ""]
+    # 2026-06-22 (Jarvis' review): this is now THE single brain section — the
+    # generic "Hvad jeg ved nu" summary was dropped (it overlapped and wasn't
+    # conversation-relevant). Header signals it's the relevance-ranked one.
+    lines = ["## Min hjerne — mest relevant for denne samtale", ""]
     for e in results:
         snippet = e.content if len(e.content) <= 200 else e.content[:200] + "…"
         lines.append(f"- **{e.title}** [{e.id[-8:]}]: {snippet}")

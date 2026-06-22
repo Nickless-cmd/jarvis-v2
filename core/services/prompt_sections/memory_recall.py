@@ -80,16 +80,32 @@ def _recent_tool_recall_lines(session_id: str | None, *, limit: int) -> list[str
         messages = recent_chat_tool_messages(session_id, limit=limit)
     except Exception:
         return []
+    # 2026-06-22 (Jarvis' review): tool observations are historical bash-output
+    # noise from earlier debugging. Only surface ones from the last 30 minutes,
+    # and condense hard to a one-line summary (was 220 chars). Old runs drop out.
+    from datetime import datetime, timezone, timedelta
+
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=30)
     result: list[str] = []
     for item in messages[-limit:]:
+        ts_raw = str(item.get("created_at") or "").strip()
+        if ts_raw:
+            try:
+                ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                if ts < cutoff:
+                    continue  # older than 30 min — historical, not "now"
+            except Exception:
+                pass
         content = render_tool_result_for_prompt(
             str(item.get("content") or ""),
             expand=False,
-            max_chars=220,
+            max_chars=100,
         )
         if not content:
             continue
-        result.append(_clip_line(content, limit=220))
+        result.append(_clip_line(content, limit=100))
     return result
 
 

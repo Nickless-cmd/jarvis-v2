@@ -767,6 +767,22 @@ def build_visible_chat_prompt_assembly(
         "causal alerts",
         "causal narrative",
         "priors from your own data",
+        # 2026-06-22 round 2 — cut per Jarvis' own review of his prompt:
+        "conversation continuity (always-on)",  # "Ny samtale ×5" tells him nothing
+        "loop-compliance self-check",          # heed-rate telemetry, not for him
+        "cross-session arc",                    # "Ny samtale ×5" tells him nothing
+        "session topics (always-on)",           # keyword counts ("NEJ ×14") ≠ awareness
+        "forgetting nudge",                     # a rule, belongs in guidance not signal
+        "meta-learning weekly retrospective teaser",  # unread memo, don't burn tokens
+        "rules learned from arcs",              # repeated retrospective noise
+        "markdown formatting",                  # already in guidance rules
+        "no tool-result echo",                  # already in guidance rules
+    }
+    # Tail-anchored sections that are likewise noise (handled via _tail_add).
+    _TAIL_NOISE_LABELS = {
+        "causal patterns",          # "agentic_round_start → tool.completed (803×)"
+        "pattern counterfactuals",  # same family of self-evident repetition
+        "room entities",            # entity *counts*; real room-sense now in [INDRE LIV]
     }
 
     def _awareness_add(priority: int, label: str, content: str | None) -> None:
@@ -796,6 +812,8 @@ def build_visible_chat_prompt_assembly(
 
     def _tail_add(label: str, content: str | None) -> None:
         if not content:
+            return
+        if label in _TAIL_NOISE_LABELS:
             return
         _tail_dynamic.append(content)
         derived_inputs.append(f"{label} (tail-anchored)")
@@ -1608,11 +1626,9 @@ def build_visible_chat_prompt_assembly(
         parts.append(dream_residue_section)
         derived_inputs.append("dream residue carry-over")
 
-    # Visual memory — Lag 6: latest room description from webcam (quiet background hint)
-    visual_memory_hint = _visible_visual_memory_section()
-    if visual_memory_hint:
-        parts.append(visual_memory_hint)
-        derived_inputs.append("visual room memory")
+    # Visual memory — Lag 6: cut from the prefix 2026-06-22. The room now lives
+    # in the [INDRE LIV] block (visible_inner_life._room_line) where Jarvis
+    # actually attends, instead of duplicated as a quiet background hint up here.
 
     channel_section = _channel_context_section(session_id)
     if channel_section:

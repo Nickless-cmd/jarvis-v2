@@ -140,6 +140,22 @@ def _somatic_line() -> Optional[str]:
     return None
 
 
+def _room_line() -> Optional[str]:
+    """The room around him, from Sansernes Arkiv (latest visual memory). He asked
+    to *feel* the room, not just read a somatic vector — this is presence, not data."""
+    try:
+        from core.services.visual_memory import build_visual_memory_surface
+
+        d = build_visual_memory_surface()
+        if isinstance(d, dict) and d.get("enabled"):
+            desc = str(d.get("latest_description") or "").strip()
+            if desc:
+                return f"Rum (omkring dig nu): {desc[:180]}"
+    except Exception:
+        logger.debug("inner-life: room failed", exc_info=True)
+    return None
+
+
 def _voice_line() -> Optional[str]:
     """Latest protected inner voice. The producer currently emits degraded
     [fallback-trace] entries; extract the meaningful experiential narrative
@@ -195,8 +211,8 @@ def build_inner_life_section() -> str | None:
     """Compose the structured [INDRE LIV] block, or None if nothing is live."""
     lines: list[str] = []
 
-    # State — mood baseline + somatic body.
-    for fn in (_mood_line, _somatic_line):
+    # State — mood baseline, somatic body, and the room around him.
+    for fn in (_mood_line, _somatic_line, _room_line):
         line = fn()
         if line:
             lines.append("· " + line)

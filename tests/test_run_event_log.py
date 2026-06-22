@@ -90,3 +90,43 @@ def test_subscriber_tracking_and_consumed():
 
 def test_consumed_unknown_run_is_false():
     assert rel.was_consumed_or_active("ukendt-run") is False
+
+
+# ── REGRESSION (2026-06-22): tool-kald bryder SSE pa runde 2-3 ───────────────
+# Bjorn-symptom: pa glm-5.2 via ollama (alle providers) bryder followup-loopet —
+# hvert tool-kald dropper SSE-sessionen, nogen gange efter 1 kald, andre 2-3.
+# Server-side fuldforer runnet (status=completed), sa det er IKKE followup der
+# crasher: klientens hang-detektor (ChatView staleMisses>=3, ~4.5s) aborterer
+# sin EGEN stream fordi /chat/active-runs (= live_run_ids) transient dropper
+# sessionen. Drop sker nar ping-loopet sultes >20s pa det detached event-loop
+# (synkront arbejde blokerer det) OG create-grace (60s) er udlobet.
+#
+# create-grace (commit b7cf3992) daekker KUN forste assembly-vindue via
+# created_at<60s. Efter grace afhaenger liveness 100% af en frame <20s. Disse
+# tests pinner praecist hvornar et langt tool-run dropper ud.
+
+def test_drops_when_ping_starved_after_grace_expires():
+    """Roden: efter 60s create-grace dropper et run UD af live_run_ids hvis
+    ping-loopet har varet sultet >20s (synkront arbejde blokerede det detached
+    loop under en tool-runde). Det er praecis det /active-runs-drop der far
+    desk-klienten til at aborte sin egen stream pa runde 2-3."""
+    rel.create("r-long", "s1")
+    now = time.monotonic()
+    # Run har koert > grace-vindue (flere tool-runder) ...
+    rel._RUNS["r-long"]["created_at"] = now - (rel._CREATE_GRACE_S + 30.0)
+    # ... og ping-loopet har ikke appendet i > idle-vindue (sultet under sync-blok).
+    rel._RUNS["r-long"]["last_append_at"] = now - (rel._LIVE_IDLE_S + 5.0)
+    assert rel.is_live("r-long") is False
+    assert "r-long" not in rel.live_run_ids()
+
+
+def test_stays_live_after_grace_when_pings_keep_flowing():
+    """Kontrast: samme gamle run, men ping-loopet HAR appendet for nylig (5s
+    pings naar igennem) → forbliver live. Beviser at fejlen er ping-sult, ikke
+    runnets alder i sig selv."""
+    rel.create("r-long2", "s1")
+    now = time.monotonic()
+    rel._RUNS["r-long2"]["created_at"] = now - (rel._CREATE_GRACE_S + 30.0)
+    rel._RUNS["r-long2"]["last_append_at"] = now - 3.0  # frisk ping
+    assert rel.is_live("r-long2") is True
+    assert "r-long2" in rel.live_run_ids()

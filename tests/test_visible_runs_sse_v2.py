@@ -427,3 +427,26 @@ async def test_underlying_generator_aclosed_after_done():
 
     await _collect(translate_to_v2(_legacy(), run_id="v1"))
     assert finally_ran["v"] is True, "legacy-generatorens finally kørte ikke — _post_process ville dø"
+
+
+@pytest.mark.asyncio
+async def test_stream_error_observed_and_still_terminates(monkeypatch):
+    """Stream-cluster (2026-06-23): en ÆGTE fejl i translations-loopet skal
+    OBSERVERES i Centralen (synlig) OG stadig afslutte rent med message_stop
+    (finally-garanti). Før forsvandt fejlen tavst."""
+    import core.services.stream_sentinel as ss
+    events: list[dict] = []
+    monkeypatch.setattr(ss, "note_event",
+                        lambda rid, kind, sid="", **d: events.append({"rid": rid, "kind": kind, **d}))
+
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("delta", {"type": "delta", "run_id": "ve", "delta": "hej"})
+        raise RuntimeError("provider blæste op midt i stream")
+
+    output = await _collect(translate_to_v2(
+        legacy(), run_id="ve", model="m", provider="p", lane="l",
+    ))
+    kinds = [e[0] for e in _parse_v2_events(output)]
+    assert "message_stop" in kinds, f"fejl-stream afsluttede ikke rent: {kinds}"
+    errs = [e for e in events if e["kind"] == "error"]
+    assert errs and "RuntimeError" in errs[0].get("error", ""), f"fejl ikke observeret: {events}"

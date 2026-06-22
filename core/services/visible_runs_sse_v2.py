@@ -472,7 +472,30 @@ async def translate_to_v2(
                         kind=kind, payload=payload,
                     ).to_sse_line())
         except asyncio.CancelledError:
-            pass
+            # Stream-cluster: lanen blev afbrudt (klient-disconnect / outer cancel).
+            try:
+                from core.services import stream_sentinel
+                if _state["message_started"] and not _state["message_stopped"]:
+                    stream_sentinel.note_event(
+                        str(_state["run_id"] or ""), "cancel",
+                        str(_state["session_id"] or ""),
+                        message_stopped=bool(_state["message_stopped"]))
+            except Exception:
+                pass
+            raise
+        except Exception as _loop_exc:
+            # Stream-cluster: ÆGTE fejl i translations-loopet. Før forsvandt den
+            # tavst (kun finally-garantien kørte, ingen kunne pege på hvad der
+            # gik galt). Nu synlig i Centralen — finally lukker stadig rent.
+            try:
+                from core.services import stream_sentinel
+                stream_sentinel.note_event(
+                    str(_state["run_id"] or ""), "error",
+                    str(_state["session_id"] or ""),
+                    error=f"{type(_loop_exc).__name__}: {_loop_exc}"[:200],
+                    message_started=bool(_state["message_started"]))
+            except Exception:
+                pass
         finally:
             # TERMINAL-GARANTI (Bjørn 2026-06-13: "random hangs"): klientens
             # status forlader kun 'working' når den ser message_stop. Hvis

@@ -93,3 +93,25 @@ def test_register_passes_through_to_kernel():
 def test_central_singleton_is_stable():
     from core.services.central_core import central
     assert central() is central()
+
+
+def test_decide_error_persists_severe_incident(isolated_runtime):
+    """Notifikation begge veje (2026-06-22): en grebet security-fejl persisteres til
+    central_incidents som 'severe' (Bjørn push + Claude poller). Cognitive-fejl der
+    åbner breakeren = også severe."""
+    from core.services.central_core import Central
+    from core.services.central_trace import TraceSink
+    from core.services.central_switches import CircuitBreaker
+    from core.services.gate_kernel import GateClass
+    from core.runtime.db_central_incidents import list_central_incidents
+
+    c = Central(sink=TraceSink(), breaker=CircuitBreaker(), emit=lambda *a: None)
+
+    def boom(ctx):
+        raise RuntimeError("nerve-boom")
+
+    # security-fejl → severe persisteret
+    c.decide("ci_sec", {"run_id": "ci-1"}, boom, cluster="auth", klass=GateClass.SECURITY)
+    rows = [r for r in list_central_incidents(limit=30) if r["run_id"] == "ci-1"]
+    assert rows and rows[0]["nerve"] == "ci_sec"
+    assert rows[0]["severity"] == "severe"

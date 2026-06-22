@@ -69,11 +69,12 @@ class Central:
             return Verdict(nerve, Decision.RED, "isoleret-deny", action="block", klass=klass)
         return Verdict(nerve, Decision.SKIP, "isoleret", action="none", klass=klass)
 
-    def _record_error(self, err: "central_capture.ErrorRecord") -> None:
+    def _record_error(self, err: "central_capture.ErrorRecord", *, severe: bool = False) -> None:
+        run_id = str((err.signal or {}).get("run_id") or "")
+        session_id = str((err.signal or {}).get("session_id") or "")
         try:
             self._sink.record(central_trace.TraceRecord(
-                run_id=str((err.signal or {}).get("run_id") or ""),
-                session_id=str((err.signal or {}).get("session_id") or ""),
+                run_id=run_id, session_id=session_id,
                 cluster=err.cluster, nerve=err.nerve, kind="error",
                 reason=err.message, latency_ms=err.latency_ms,
                 payload={"kind": err.kind, "klass": err.klass.value, "stack": err.stack},
@@ -84,6 +85,32 @@ class Central:
             })
         except Exception:
             pass
+        # ── Persistent incident-log (notifikation begge veje, 2026-06-22) ──
+        # Ring-bufferen tabes ved genstart + er per-proces; persistér så incidenten
+        # kan fanges live på tværs af processer + overlever genstart. Claude poller
+        # central_incidents; Bjørn (owner) push-notificeres ved ALVORLIGE (circuit-
+        # breaker-åbning eller sikkerheds-fejl). Selv-sikker — central må aldrig vælte.
+        severity = "severe" if (severe or err.klass is GateClass.SECURITY) else "error"
+        try:
+            from core.runtime.db_central_incidents import record_central_incident
+            record_central_incident(
+                cluster=err.cluster, nerve=err.nerve, kind=err.kind,
+                severity=severity, message=err.message,
+                run_id=run_id, session_id=session_id,
+            )
+        except Exception:
+            pass
+        if severity == "severe":
+            try:
+                from core.services.ntfy_gateway import send_notification
+                send_notification(
+                    f"⚠ Central greb ALVORLIG fejl: {err.cluster}/{err.nerve} — "
+                    f"{str(err.message)[:160]}",
+                    title="Den Intelligente Central",
+                    priority="high",
+                )
+            except Exception:
+                pass
 
     # ── decide (synkront beslutnings-ansigt) ────────────────────────────
     def decide(self, nerve: str, ctx: Any, fn: Callable[[dict], Any], *,
@@ -102,7 +129,7 @@ class Central:
         result, err = central_capture.safe_call(fn, ctx, nerve=nerve, cluster=cluster, klass=klass)
         if err is not None:
             opened = self._breaker.record(nerve, ok=False)
-            self._record_error(err)
+            self._record_error(err, severe=opened)
             return self._isolated_verdict(nerve, klass) if opened \
                 else self._fail_verdict(nerve, klass, err.message)
         self._breaker.record(nerve, ok=True)

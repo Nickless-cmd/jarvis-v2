@@ -2106,6 +2106,17 @@ def build_visible_chat_prompt_assembly(
             pass
     except Exception:
         pass
+    # Behavioral anchor (2026-06-22) — echoed into the dynamic tail right before
+    # the user message because Jarvis reported he attends to the tail (his "now")
+    # and didn't *feel* the honesty/tool rule sitting in the cacheable prefix.
+    # Compact, point-of-action reminder; the full rule still lives in the prefix.
+    _dyn_tail.append(
+        "⚖️ FØR DU SVARER: Påstå ALDRIG du gjorde noget (skrev/sendte/kørte/"
+        "rettede) uden et tool-kald i SAMME tur der beviser det — ellers sig "
+        "præcist hvad du gjorde og hvad du IKKE nåede. Kald værktøjer struktureret "
+        "(tool_calls), aldrig som inline-tekst. Gør, lov ikke."
+    )
+    derived_inputs.append("behavioral anchor (user-msg tail)")
     _dyn_tail.append(_time_pin_section())
     derived_inputs.append("time pin (user-msg tail)")
     if _dyn_tail:

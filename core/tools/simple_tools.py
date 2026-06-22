@@ -8441,10 +8441,30 @@ def _tool_load_more_tools(arguments: dict) -> dict:
     except Exception:
         pass
 
+    # 2026-06-22: return the FULL schema for each resolved tool so the model can
+    # call it correctly *immediately* — params, types, required, enums — instead
+    # of getting only the name and guessing at the call shape ("try 10 times").
+    schemas: list[dict] = []
+    for d in (TOOL_DEFINITIONS or []):
+        fn = d.get("function") or d
+        nm = (fn.get("name") or d.get("name") or "")
+        if nm in resolved:
+            schemas.append(
+                {
+                    "name": nm,
+                    "description": fn.get("description"),
+                    "parameters": fn.get("parameters"),
+                }
+            )
+
     return {
         "status": "ok",
         "added": resolved,
-        "message": f"Added {len(resolved)} tool(s); available next round.",
+        "schemas": schemas,
+        "message": (
+            f"Added {len(resolved)} tool(s). Full schema below — call directly "
+            "using exactly these parameter names; do not guess."
+        ),
     }
 
 

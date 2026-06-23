@@ -2120,6 +2120,7 @@ async def _stream_visible_run(
                     _round_overall_timeout_s = float(_agentic_budget.get("round_total_timeout_s") or 300.0)
                     _round_silence_timeout_s = float(_agentic_budget.get("round_silence_timeout_s") or 180.0)
                     _last_provider_progress_t = _round_start_t
+                    _fu_last_beat = _round_start_t  # keepalive under followup-model-vent
                     _mid_round_steers: list[dict[str, object]] = []
                     while True:
                         try:
@@ -2133,6 +2134,24 @@ async def _stream_visible_run(
                                 max_total_s=_round_overall_timeout_s,
                                 max_silence_s=_round_silence_timeout_s,
                             )
+                            # Keepalive-heartbeat under followup-rundens model-vent
+                            # (PROVIDER-AGNOSTISK idle-gap-fix, Bjørn 2026-06-23): first-
+                            # pass havde keepalive, followup IKKE → enhver models TTFT/
+                            # stille-vent gjorde SSE'en tavs → mobil/desk droppede
+                            # forbindelsen → det (gemte) svar forsvandt. Nu dækket her
+                            # ligesom first-pass. Hvert ~5s tavshed.
+                            if not _watchdog_reason and (_now_t - _fu_last_beat) >= 5.0:
+                                _fu_last_beat = _now_t
+                                try:
+                                    touch_active_visible_run(run.run_id)
+                                except Exception:
+                                    pass
+                                yield _sse("heartbeat", {
+                                    "type": "heartbeat",
+                                    "run_id": run.run_id,
+                                    "phase": "agentic_followup",
+                                    "round": _agentic_round + 1,
+                                })
                             if _watchdog_reason:
                                 if not _a_failure:
                                     _a_failure.update({

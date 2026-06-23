@@ -369,6 +369,12 @@ CATALOG: tuple[NerveSpec, ...] = (
     # DAGE — settings.port vs faktisk lyttende port). Daglig probe → observe + incident. Read-only.
     NerveSpec("config_drift", "system", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/config_drift.py:observe_config_drift (port-drift declared↔runtime)"),
+    # Selv-instrumenterings-motor (2026-06-23, Jarvis-forfattet spec): scanner HELE kodebasen
+    # (AST, ikke grep) for silent-failure-mønstre (bare except / except:pass / try uden observe /
+    # error-return uden trace / lange uafskærmede funktioner / TODO), scorer efter risiko+kontekst,
+    # observerer, og filer reviewbare proposals (score≥3) — ALDRIG auto-merged. Hver 6. time.
+    NerveSpec("central_instrument", "system", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/central_instrument.py:run_instrument_scan (AST silent-failure-scan → proposals)"),
     # Unified fejl-meddelelses-system (2026-06-23): Centralen ejer hvad brugeren ser når noget
     # knækker. Intern fejl → ÉT envelope {severity/da-besked/retryable/correlation_id} → samme
     # form til desk (SSE system_event kind=error) + companion/UI (notification_router).

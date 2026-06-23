@@ -19,7 +19,7 @@ _BUDGET_CHARS = 4000  # pr. response (Bjørn: ikke 2000 — Jarvis skal kunne l�
 _MAX_LIMIT = 100
 
 _READ_ACTIONS = {"status", "incidents", "trace", "cluster_health", "nerve_detail",
-                 "autonomy", "learning", "drift", "breakers"}
+                 "autonomy", "learning", "drift", "breakers", "instrument"}
 _TOGGLE_ACTIONS = {"toggle_nerve", "toggle_cluster"}
 
 
@@ -210,6 +210,20 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
             data = {"open": [{"nerve": n, "cluster": nerve_cluster(n) or ""} for n in open_n]}
             return _envelope("ok", action, data, None, "central_switches", t0,
                              count=len(open_n))
+
+        # ── instrument: selv-instrumenterings-fund (on-demand scan) ──────
+        if action == "instrument":
+            from core.runtime import db_instrument as dbi
+            do_scan = bool((args or {}).get("scan"))
+            scan_rep = None
+            if do_scan:
+                from core.services.central_instrument import run_instrument_scan
+                scan_rep = run_instrument_scan(trigger="central_query", changed_only=True)
+            items = dbi.list_findings(status="open", min_score=0, limit=limit)
+            paged, meta = _paginate(items, offset, limit)
+            data = {"summary": dbi.summary(), "findings": paged,
+                    "scanned": (scan_rep or {}).get("scanned") if scan_rep else None}
+            return _envelope("ok", action, data, None, "central_instrument", t0, **meta)
 
         # ── toggle_nerve (owner-only, security låst) ─────────────────────
         if action == "toggle_nerve":

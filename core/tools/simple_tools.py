@@ -3339,12 +3339,13 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "type": "string",
                         "enum": ["status", "incidents", "trace", "cluster_health",
                                  "nerve_detail", "toggle_nerve", "toggle_cluster",
-                                 "autonomy", "learning", "drift", "breakers"],
+                                 "autonomy", "learning", "drift", "breakers", "instrument"],
                         "description": ("status=snapshot, incidents=aktive fejl, trace=seneste "
                                         "fyringer, cluster_health=pr-cluster, nerve_detail=én "
                                         "nerve dybt, toggle_nerve/cluster=on/off, autonomy=autonom "
                                         "modenhed, learning=adaptiv læring, drift=config-drift, "
-                                        "breakers=åbne circuit-breakers"),
+                                        "breakers=åbne circuit-breakers, instrument=silent-failure-"
+                                        "scan af koden (scan=true for frisk scan)"),
                     },
                     "cluster": {"type": "string", "description": "(trace/cluster_health/toggle_cluster) cluster-navn"},
                     "nerve": {"type": "string", "description": "(nerve_detail/toggle_nerve) nerve-navn"},

@@ -867,6 +867,23 @@ def _ensure_producers_registered() -> None:
         priority=36,
     ))
 
+    def _run_instrument_scan(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Selv-instrumenterings-motor (2026-06-23): AST-scan af kodebasen for silent-failure-
+        mønstre → score → observe → reviewbare proposals (score≥3). Incremental (kun ændrede
+        filer). ALDRIG auto-merged, instrumenterer aldrig sig selv."""
+        from core.services.central_instrument import run_instrument_scan
+        rep = run_instrument_scan(trigger=trigger, changed_only=True)
+        return {"status": "ok", "scanned": rep.get("scanned"), "changed": rep.get("changed"),
+                "findings": rep.get("findings"), "new_proposals": rep.get("new_proposals")}
+
+    register_producer(ProducerSpec(
+        name="instrument_scan",
+        cooldown_minutes=360,  # hver 6. time (Jarvis-spec); incremental → billigt
+        visible_grace_minutes=0,
+        run_fn=_run_instrument_scan,
+        priority=38,
+    ))
+
     def _run_db_health_scan(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         """DB-cluster (2026-06-22): daglig table-census + vækst-flag via db_sentinel.observe.
         ALDRIG destruktiv — kun observe + flag (tom tabel = kandidat til review, ikke drop)."""

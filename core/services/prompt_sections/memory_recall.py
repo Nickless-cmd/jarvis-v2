@@ -24,12 +24,17 @@ _VAGUE_MARKERS = (
     "recent expressions", "recent activity", "no notable",
 )
 
-# Semantisk dedup-cache: MEMORY.md-linje-embeddings, keyet på fil-mtime → genberegnes
-# kun når filen ændrer sig (så per-build er det 1 embedding-kald: selve kandidaten).
-_MD_EMB_CACHE: dict[str, object] = {"mtime": None, "vecs": [], "lines": []}
+# MEMORY.md-linjer cached på fil-mtime (KUN tekst, ingen embeddings → ingen cold-start-
+# latency). Semantisk match bruger leksikalsk pre-filter: vi embedder kun kandidaten +
+# de få linjer der deler nøgleord, ikke alle ~500 linjer (det tog 15-20s/build).
+_MD_LINES_CACHE: dict[str, object] = {"mtime": None, "lines": []}
+_MD_STOPWORDS = frozenset({
+    "jeg", "du", "han", "den", "det", "der", "som", "med", "for", "til", "på", "af", "og",
+    "er", "var", "en", "et", "har", "ikke", "kun", "via", "ved", "via", "the", "and", "now",
+    "uses", "with", "system", "fra", "via",
+})
 # Kalibreret mod ægte data: "Cluster-priority auth(0)<loop(7)"-kandidaten matcher sin
 # danske MEMORY.md-tvilling på 0.777, mens næste (urelaterede) linje er 0.629 → klart gap.
-# 0.73 fanger dubletten med margin, godt over støjen (lavere risiko for falsk-positiv).
 _SEMANTIC_DUP_THRESHOLD = 0.73
 
 
@@ -50,29 +55,27 @@ def _resolve_user_id(session_id: str = "") -> str:
         return ""
 
 
-def _memory_md_line_vectors(user_id: str = ""):
-    """Cached embeddings af MEMORY.md-linjer (genberegnes kun ved fil-ændring)."""
+def _memory_md_lines(user_id: str = "") -> list[str]:
+    """Cached MEMORY.md-LINJER (kun tekst, ingen embedding → nul cold-start-cost)."""
     try:
         from core.runtime.workspace_paths import workspace_dir
-        from core.services.jarvis_brain import _embed_text
         md = (workspace_dir(user_id) if user_id else workspace_dir()) / "MEMORY.md"
         if not md.exists():
             return []
         mtime = md.stat().st_mtime
-        if _MD_EMB_CACHE.get("mtime") == mtime:
-            return _MD_EMB_CACHE.get("vecs") or []
+        if _MD_LINES_CACHE.get("mtime") == mtime:
+            return _MD_LINES_CACHE.get("lines") or []
         lines = [ln.lstrip("-* ").strip() for ln in md.read_text(encoding="utf-8").splitlines()
                  if len(ln.strip()) > 25]
-        vecs = []
-        for ln in lines:
-            try:
-                vecs.append(_embed_text(ln))
-            except Exception:
-                vecs.append(None)
-        _MD_EMB_CACHE.update(mtime=mtime, vecs=vecs, lines=lines)
-        return vecs
+        _MD_LINES_CACHE.update(mtime=mtime, lines=lines)
+        return lines
     except Exception:
         return []
+
+
+def _keywords(text: str) -> set:
+    return {w for w in __import__("re").sub(r"[^0-9a-zæøå ]", " ", str(text or "").lower()).split()
+            if len(w) >= 4 and w not in _MD_STOPWORDS}
 
 
 _CROSS_DEDUP_THRESHOLD = 0.80  # near-dup samme budskab, anden ordlyd (kalibreres mod data)
@@ -114,17 +117,28 @@ def _semantic_dedup_lines(lines: list[str], threshold: float = _CROSS_DEDUP_THRE
 
 
 def _is_semantic_dup_of_memory(text: str, user_id: str = "") -> bool:
-    """True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd)."""
+    """True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd).
+    LEKSIKALSK PRE-FILTER: embedder kun kandidaten + de MEMORY.md-linjer der deler ≥2
+    nøgleord (typisk 0-3 linjer), ikke alle ~500 → ingen latency-eksplosion."""
     try:
         import numpy as np
         from core.services.jarvis_brain import _embed_text
-        vecs = _memory_md_line_vectors(user_id)
-        if not vecs:
+        lines = _memory_md_lines(user_id)
+        if not lines:
+            return False
+        kw = _keywords(text)
+        if len(kw) < 2:
+            return False
+        # Kun linjer med tilstrækkelig nøgleord-overlap er dublet-kandidater.
+        candidates = [ln for ln in lines if len(kw & _keywords(ln)) >= 2]
+        if not candidates:
             return False
         qv = _embed_text(text)
         qn = float(np.linalg.norm(qv)) or 1e-9
-        for v in vecs:
-            if v is None:
+        for ln in candidates[:12]:          # hård loft: aldrig mere end 12 embeddings
+            try:
+                v = _embed_text(ln)
+            except Exception:
                 continue
             d = qn * (float(np.linalg.norm(v)) or 1e-9)
             if float(np.dot(qv, v) / d) >= _SEMANTIC_DUP_THRESHOLD:

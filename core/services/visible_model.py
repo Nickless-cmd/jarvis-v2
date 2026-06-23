@@ -1202,9 +1202,13 @@ def _execute_ollama_model(
     try:
         from core.services.model_context import fit_messages_to_window
         from core.runtime.settings import load_settings as _ls
-        _np = int(_ls().visible_ollama_num_predict or 0) or 16_000
+        _s = _ls()
+        _np = int(_s.visible_ollama_num_predict or 0) or 16_000
+        # + headroom (Bjørn 2026-06-23): hold ekstra plads fri ud over output, så
+        # transcripten ikke fylder hele vinduet → undgår loop/cut-off på lange sessioner.
+        _budget = _np + int(getattr(_s, "visible_context_headroom_tokens", 0) or 0)
         messages, _dropped = fit_messages_to_window(
-            messages, provider="ollama", model=model, output_budget=_np,
+            messages, provider="ollama", model=model, output_budget=_budget,
         )
         if _dropped:
             logger.warning(
@@ -1462,6 +1466,17 @@ def _apply_visible_ollama_options(payload: dict) -> None:
     settings = load_settings()
     num_ctx = settings.visible_ollama_num_ctx or _VISIBLE_OLLAMA_NUM_CTX
     num_predict = settings.visible_ollama_num_predict or _VISIBLE_OLLAMA_NUM_PREDICT
+    # Model-bevidst loft (Bjørn 2026-06-23): send ALDRIG et num_ctx større end modellens
+    # reelle vindue. glm-5.2 er 200k men num_ctx-defaulten var 512k → 2.5× modellens kapacitet
+    # (vildledende + spildt attention-allokering). Cap til vinduet; større-vindue-modeller
+    # (deepseek-v4-flash 1M) påvirkes ikke. 0/ukendt vindue → behold konfigureret værdi.
+    try:
+        from core.services.model_context import model_context_window
+        _win = int(model_context_window("ollama", str(payload.get("model") or "")) or 0)
+        if _win > 0:
+            num_ctx = min(int(num_ctx), _win)
+    except Exception:
+        pass
     options = dict(payload.get("options") or {})
     options.setdefault("num_ctx", num_ctx)
     options.setdefault("num_predict", num_predict)
@@ -1504,9 +1519,13 @@ def _stream_ollama_model(
     try:
         from core.services.model_context import fit_messages_to_window
         from core.runtime.settings import load_settings as _ls
-        _np = int(_ls().visible_ollama_num_predict or 0) or 16_000
+        _s = _ls()
+        _np = int(_s.visible_ollama_num_predict or 0) or 16_000
+        # + headroom (Bjørn 2026-06-23): hold ekstra plads fri ud over output, så
+        # transcripten ikke fylder hele vinduet → undgår loop/cut-off på lange sessioner.
+        _budget = _np + int(getattr(_s, "visible_context_headroom_tokens", 0) or 0)
         messages, _dropped = fit_messages_to_window(
-            messages, provider="ollama", model=model, output_budget=_np,
+            messages, provider="ollama", model=model, output_budget=_budget,
         )
         if _dropped:
             logger.warning(

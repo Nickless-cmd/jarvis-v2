@@ -56,3 +56,17 @@ def test_rate_limited_self_safe(monkeypatch):
     monkeypatch.setattr(cc, "central", lambda: (_ for _ in ()).throw(RuntimeError("nede")))
     # må ikke kaste fra __init__ (observabilitet må aldrig forstyrre fejl-stien)
     vm.VisibleModelRateLimited("boom")
+
+
+def test_apply_visible_ollama_options_caps_num_ctx_to_model_window():
+    """Bjørn 2026-06-23: num_ctx må ALDRIG overstige modellens reelle vindue.
+    glm (200k) cappes selv om settings siger 512k; deepseek-flash (1M) urøres."""
+    import core.services.visible_model as vm
+    pg = {"model": "glm-5.2:cloud"}
+    vm._apply_visible_ollama_options(pg)
+    assert pg["options"]["num_ctx"] <= 200_000  # cappet til glm-vinduet
+
+    pf = {"model": "deepseek-v4-flash:cloud"}
+    vm._apply_visible_ollama_options(pf)
+    # flash er 1M → num_ctx-settingen (≤512k) består uændret
+    assert pf["options"]["num_ctx"] >= 200_000

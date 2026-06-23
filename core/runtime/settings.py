@@ -256,8 +256,12 @@ class RuntimeSettings:
     # previous 256k window while staying well within model capacity and
     # GPU memory budget. Configurable via runtime.json so we can tune
     # without redeploying. Must be a power of 2 multiple of 131072.
-    visible_ollama_num_ctx: int = 524_288  # 512k — bumped from 256k 2026-06-14
+    visible_ollama_num_ctx: int = 524_288  # 512k — model-cappet til vinduet ved afsendelse
     visible_ollama_num_predict: int = 16_384  # max output tokens per turn
+    # Ekstra headroom (ud over num_predict) som trimmen holder fri i modellens vindue, så
+    # transcripten IKKE fylder hele vinduet (Bjørn 2026-06-23: near-fuldt vindue → loop/cut-off).
+    # glm 200k - 16k output - 44k headroom = ~140k effektivt input. 0 = ingen ekstra headroom.
+    visible_context_headroom_tokens: int = 44_000
 
     # Context compact thresholds. Bumped from 40k/60k now that visible lane
     # runs deepseek-v4-flash (1M context) with num_ctx=512k. Auto-compaction
@@ -415,6 +419,7 @@ class RuntimeSettings:
             "emotion_decay_factor": self.emotion_decay_factor,
             "visible_ollama_num_ctx": self.visible_ollama_num_ctx,
             "visible_ollama_num_predict": self.visible_ollama_num_predict,
+            "visible_context_headroom_tokens": self.visible_context_headroom_tokens,
             "context_compact_threshold_tokens": self.context_compact_threshold_tokens,
             "context_run_compact_threshold_tokens": self.context_run_compact_threshold_tokens,
             "context_keep_recent": self.context_keep_recent,
@@ -828,6 +833,7 @@ def load_settings() -> RuntimeSettings:
         emotion_decay_factor=float(data.get("emotion_decay_factor", defaults.emotion_decay_factor)),
         visible_ollama_num_ctx=int(data.get("visible_ollama_num_ctx", defaults.visible_ollama_num_ctx)),
         visible_ollama_num_predict=int(data.get("visible_ollama_num_predict", defaults.visible_ollama_num_predict)),
+        visible_context_headroom_tokens=int(data.get("visible_context_headroom_tokens", defaults.visible_context_headroom_tokens)),
         context_compact_threshold_tokens=int(data.get("context_compact_threshold_tokens", defaults.context_compact_threshold_tokens)),
         context_run_compact_threshold_tokens=int(data.get("context_run_compact_threshold_tokens", defaults.context_run_compact_threshold_tokens)),
         context_keep_recent=int(data.get("context_keep_recent", defaults.context_keep_recent)),

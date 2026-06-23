@@ -458,7 +458,7 @@ export async function runCentralCommand(
  *  failures/rod-årsager). Owner-only. */
 export interface CentralDiagnostics {
   incidents: { severity: string; kind: string; cluster: string; nerve: string; message: string; ts: string; run_id?: string }[]
-  anomalies: { signature: string; importance: string; category: string; count: number; sample: string; last_seen: string }[]
+  anomalies: { signature: string; importance: string; category: string; count: number; sample: string; last_seen: string; location?: string }[]
   instrument: { kind: string; severity: string; score: number; file: string; line: number; snippet: string }[]
   root_causes: { cluster: string; nerve: string; count: number }[]
   degrading: { cluster: string; nerve: string; recent_rate_hr?: number }[]

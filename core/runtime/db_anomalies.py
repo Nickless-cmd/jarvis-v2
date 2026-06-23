@@ -31,10 +31,16 @@ def _ensure_anomalies_table(conn: sqlite3.Connection) -> None:
             first_seen TEXT NOT NULL DEFAULT '',
             last_seen TEXT NOT NULL DEFAULT '',
             sample TEXT NOT NULL DEFAULT '',
+            location TEXT NOT NULL DEFAULT '',
             resolved INTEGER NOT NULL DEFAULT 0
         )
         """
     )
+    # Tilføj location til ældre tabeller (HVOR fejlede den: fil:linje + exc-type). Self-safe.
+    try:
+        conn.execute("ALTER TABLE central_anomalies ADD COLUMN location TEXT NOT NULL DEFAULT ''")
+    except Exception:
+        pass
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_anomalies_live "
         "ON central_anomalies (resolved, importance, last_seen DESC)"
@@ -43,6 +49,7 @@ def _ensure_anomalies_table(conn: sqlite3.Connection) -> None:
 
 def record_anomaly_signature(
     *, signature: str, category: str, importance: str, source: str, sample: str,
+    location: str = "",
 ) -> bool:
     """UPSERT en anomali-signatur. Returnerer True hvis det er FØRSTE gang (ny fejl-type
     Centralen netop definerede), ellers False (recurring → tæller bumpet). Selv-sikker."""
@@ -57,17 +64,18 @@ def record_anomaly_signature(
             if row is None:
                 conn.execute(
                     "INSERT INTO central_anomalies "
-                    "(signature, category, importance, source, count, first_seen, last_seen, sample) "
-                    "VALUES (?, ?, ?, ?, 1, ?, ?, ?)",
+                    "(signature, category, importance, source, count, first_seen, last_seen, sample, location) "
+                    "VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)",
                     (signature, str(category or ""), imp, str(source or ""),
-                     now, now, str(sample or "")[:500]),
+                     now, now, str(sample or "")[:500], str(location or "")[:200]),
                 )
                 return True
-            # recurring: bump tæller + last_seen, og eskalér importance hvis denne
-            # sigtning er alvorligere end den hidtil registrerede.
+            # recurring: bump tæller + last_seen (+ frisk location/sample), og eskalér importance
+            # hvis denne sigtning er alvorligere end den hidtil registrerede.
             conn.execute(
-                "UPDATE central_anomalies SET count = count + 1, last_seen = ? WHERE signature = ?",
-                (now, signature),
+                "UPDATE central_anomalies SET count = count + 1, last_seen = ?, "
+                "location = CASE WHEN ? != '' THEN ? ELSE location END WHERE signature = ?",
+                (now, str(location or ""), str(location or "")[:200], signature),
             )
             cur = conn.execute(
                 "SELECT importance FROM central_anomalies WHERE signature = ?", (signature,)
@@ -99,13 +107,14 @@ def list_anomalies(*, limit: int = 50, unresolved_only: bool = True,
             _ensure_anomalies_table(conn)
             rows = conn.execute(
                 f"SELECT signature, category, importance, source, count, first_seen, "
-                f"last_seen, sample FROM central_anomalies {where} "
+                f"last_seen, sample, location FROM central_anomalies {where} "
                 f"ORDER BY last_seen DESC LIMIT ?",
                 (*params, int(limit)),
             ).fetchall()
         return [
             {"signature": r[0], "category": r[1], "importance": r[2], "source": r[3],
-             "count": int(r[4]), "first_seen": r[5], "last_seen": r[6], "sample": r[7]}
+             "count": int(r[4]), "first_seen": r[5], "last_seen": r[6], "sample": r[7],
+             "location": r[8] if len(r) > 8 else ""}
             for r in rows
         ]
     except Exception:

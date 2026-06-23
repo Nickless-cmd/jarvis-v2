@@ -43,3 +43,24 @@ def test_reentrancy_guard_blocks_nested(monkeypatch):
         assert calls == []  # blokeret af reentrancy-guard
     finally:
         ca._guard.busy = False
+
+
+def test_tb_location_extracts_file_line():
+    import core.services.central_anomaly as ca
+    try:
+        raise ValueError("boom")
+    except ValueError:
+        import sys
+        loc = ca._tb_location(sys.exc_info()[2])
+    assert "test_central_anomaly.py:" in loc and " in " in loc
+
+
+def test_record_anomaly_stores_location(isolated_runtime, monkeypatch):
+    import core.services.central_anomaly as ca
+    captured = {}
+    monkeypatch.setattr("core.runtime.db_anomalies.record_anomaly_signature",
+                        lambda **k: captured.update(k) or True)
+    ca._cooldown.clear()
+    ca.record_anomaly(source="test", exc_type="KeyError", message="missing",
+                      location="core/x.py:42 in foo")
+    assert captured.get("location") == "core/x.py:42 in foo"

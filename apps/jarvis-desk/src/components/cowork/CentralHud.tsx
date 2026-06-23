@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { ToggleLeft, CheckCheck, Radar, ServerCog, RefreshCw, Zap, Flag, TerminalSquare, Stethoscope, type LucideIcon } from 'lucide-react'
 import type { ApiConfig, CentralFeedItem, CentralProvider } from '../../lib/api'
 import { getCentralRealtime, getCentralProviders, getCentralDiagnostics, runCentralCommand } from '../../lib/api'
 import type { CentralDiagnostics } from '../../lib/api'
@@ -15,14 +16,23 @@ export function CentralHud({ config }: { config?: ApiConfig }) {
 
   const [feed, setFeed] = useState<CentralFeedItem[]>([])
   const [live, setLive] = useState(false)
+  const [filter, setFilter] = useState<'vigtige' | 'fejl' | 'alle'>('vigtige')
   const pausedRef = useRef(false)  // pause-på-hover: frys feed'et så man kan nå at læse
   useEffect(() => {
     if (!config) return
     setLive(true)
     const unsub = subscribeCentralStream(config,
-      (it) => { if (!pausedRef.current) setFeed((f) => [it, ...f].slice(0, 60)) }, () => setLive(false))
+      (it) => { if (!pausedRef.current) setFeed((f) => [it, ...f].slice(0, 150)) }, () => setLive(false))
     return () => { unsub(); setLive(false) }
   }, [config])
+  // Filtrér støjen væk (central_self_probe/observe-telemetri) → vis det MENINGSFULDE:
+  // beslutninger (gates), fejl, røde/gule domme — helt ud i clusterne. Med begrundelse + run-id.
+  const shownFeed = feed.filter((f) => {
+    const isErr = f.kind === 'error' || f.decision === 'red'
+    if (filter === 'fejl') return isErr || f.decision === 'yellow'
+    if (filter === 'vigtige') return isErr || f.decision === 'red' || f.decision === 'yellow' || f.kind === 'decide'
+    return true
+  }).slice(0, 40)
 
   const cov = snap?.coverage ?? {}
   const status = snap?.status ?? 'green'
@@ -76,20 +86,31 @@ export function CentralHud({ config }: { config?: ApiConfig }) {
 
       <div className="ch-mid">
         <div className="ch-panel">
-          <div className="ch-plabel"><span>LEVENDE NERVE-FEED</span><span className="ch-rt">● realtime · hold musen for at læse</span></div>
+          <div className="ch-plabel">
+            <span>NERVE-FEED <span className="ch-rt">● realtime</span></span>
+            <span className="ch-ffilter">
+              {(['vigtige', 'fejl', 'alle'] as const).map((m) => (
+                <button key={m} type="button" className={`ch-fbtn ${filter === m ? 'on' : ''}`} onClick={() => setFilter(m)}>{m}</button>
+              ))}
+            </span>
+          </div>
           <div className="ch-feed ch-scrolly"
             onMouseEnter={() => { pausedRef.current = true }}
             onMouseLeave={() => { pausedRef.current = false }}>
-            {feed.length === 0 && <div className="ch-dim">{live ? 'lytter på nervesystemet…' : 'forbinder…'}</div>}
-            {feed.map((f, i) => {
-              const tone = f.decision === 'red' ? 'red' : f.decision === 'yellow' ? 'amber'
-                : f.decision === 'green' ? 'green' : 'cyan'
+            {shownFeed.length === 0 && <div className="ch-dim">{live ? (filter === 'alle' ? 'lytter på nervesystemet…' : 'ingen beslutninger/fejl endnu — alt nominelt') : 'forbinder…'}</div>}
+            {shownFeed.map((f, i) => {
+              const tone = f.kind === 'error' ? 'red' : f.decision === 'red' ? 'red'
+                : f.decision === 'yellow' ? 'amber' : f.decision === 'green' ? 'green'
+                : f.kind === 'decide' ? 'cyan' : 'dim'
+              const verdict = f.kind === 'error' ? 'FEJL' : f.decision === 'red' ? 'HARD-BLOK'
+                : f.decision === 'yellow' ? 'advar' : f.decision || f.kind
               return (
-                <div key={i} className="ch-frow">
-                  <span className="ch-ftime">{new Date().toLocaleTimeString('da-DK')}</span>
+                <div key={i} className={`ch-frow tone-line-${tone}`}>
                   <span className="ch-fcl">{f.cluster}</span><span className="ch-sep">/</span>
                   <span className="ch-fnv">{f.nerve}</span>
-                  <span className={`ch-fval tone-${tone}`}>{f.decision || f.kind}</span>
+                  <span className={`ch-fval tone-${tone}`}>{verdict}</span>
+                  {f.run_id && <span className="ch-frun" title={`run ${f.run_id}`}>#{f.run_id.slice(-6)}</span>}
+                  {f.reason && <div className="ch-freason">{f.reason}</div>}
                 </div>
               )
             })}
@@ -110,7 +131,7 @@ export function CentralHud({ config }: { config?: ApiConfig }) {
           </div>
           <div className={`ch-panel ${incidents.length ? 'ch-flag' : ''}`}>
             <div className="ch-plabel" style={{ color: incidents.length ? '#f5a14a' : '#6b8295' }}>
-              <span><i className="ti ti-flag" aria-hidden="true" /> FLAG</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><Flag size={13} aria-hidden="true" /> FLAG</span>
               <span className={incidents.length ? 'ch-flagcount' : 'ch-dim'}>{incidents.length}</span>
             </div>
             {incidents.length === 0
@@ -124,12 +145,12 @@ export function CentralHud({ config }: { config?: ApiConfig }) {
 
       <div className="ch-label">BETJENING — DU STYRER ALT HERFRA</div>
       <div className="ch-ctrl">
-        <CtrlBtn config={config} prefill="toggle " icon="ti-toggle-left" label="tænd/sluk nerve" />
-        <CtrlBtn config={config} cmd="resolve" icon="ti-checks" label="resolve flag" />
-        <CtrlBtn config={config} cmd="scan" icon="ti-radar-2" label="kør scan" />
-        <CtrlBtn config={config} cmd="providers" icon="ti-server-cog" label="provider-styring" />
-        <CtrlBtn config={config} cmd="model" icon="ti-refresh" label="model-skift" />
-        <CtrlBtn config={config} cmd="daemons" icon="ti-bolt" label="daemon-kontrol" />
+        <CtrlBtn config={config} prefill="toggle " Icon={ToggleLeft} label="tænd/sluk nerve" />
+        <CtrlBtn config={config} cmd="resolve" Icon={CheckCheck} label="resolve flag" />
+        <CtrlBtn config={config} cmd="scan" Icon={Radar} label="kør scan" />
+        <CtrlBtn config={config} cmd="providers" Icon={ServerCog} label="provider-styring" />
+        <CtrlBtn config={config} cmd="model" Icon={RefreshCw} label="model-skift" />
+        <CtrlBtn config={config} cmd="daemons" Icon={Zap} label="daemon-kontrol" />
       </div>
 
       <Console config={config} />
@@ -155,7 +176,7 @@ function Clock() {
   return <span className="ch-clock">{t}</span>
 }
 
-function CtrlBtn({ config, cmd, prefill, icon, label }: { config?: ApiConfig; cmd?: string; prefill?: string; icon: string; label: string }) {
+function CtrlBtn({ config, cmd, prefill, Icon, label }: { config?: ApiConfig; cmd?: string; prefill?: string; Icon: LucideIcon; label: string }) {
   const [busy, setBusy] = useState(false)
   return (
     <button type="button" className={`ch-btn ${busy ? 'busy' : ''}`} disabled={!config}
@@ -166,7 +187,7 @@ function CtrlBtn({ config, cmd, prefill, icon, label }: { config?: ApiConfig; cm
         window.dispatchEvent(new CustomEvent('central-cmd', { detail: cmd }))
         setTimeout(() => setBusy(false), 400)
       }}>
-      <i className={`ti ${icon}`} aria-hidden="true" /> {label}
+      <Icon size={14} aria-hidden="true" /> {label}
     </button>
   )
 }
@@ -178,10 +199,10 @@ function Console({ config }: { config?: ApiConfig }) {
     <div className="ch-console">
       <div className="ch-cnav">
         <button type="button" className={`ch-cnavb ${mode === 'terminal' ? 'on' : ''}`} onClick={() => setMode('terminal')}>
-          <i className="ti ti-terminal-2" aria-hidden="true" /> terminal
+          <TerminalSquare size={14} aria-hidden="true" /> terminal
         </button>
         <button type="button" className={`ch-cnavb ${mode === 'diag' ? 'on' : ''}`} onClick={() => setMode('diag')}>
-          <i className="ti ti-stethoscope" aria-hidden="true" /> diagnostik
+          <Stethoscope size={14} aria-hidden="true" /> diagnostik
         </button>
       </div>
       {mode === 'terminal' ? <Terminal config={config} /> : <Diagnostics config={config} />}
@@ -211,6 +232,7 @@ function Diagnostics({ config }: { config?: ApiConfig }) {
           <div key={i} className="ch-drow">
             <span className={`ch-dtag tone-${impTone(a.importance)}`}>{a.importance}</span>
             <span className="ch-dim">×{a.count} {a.category}</span>
+            {a.location && <span className="ch-dloc">{a.location}</span>}
             <div className="ch-dmsg">{a.sample}</div>
           </div>
         ))}

@@ -76,8 +76,26 @@ def _classify(exc_type: str, message: str, source: str) -> tuple[str, str]:
     return category, importance
 
 
-def record_anomaly(*, source: str, exc_type: str, message: str, module: str = "") -> None:
-    """Klassificér + registrér én udefineret fejl. Self-safe + reentrancy-beskyttet."""
+def _tb_location(tb: Any) -> str:
+    """Sidste frame i et traceback → 'fil:linje in funktion' (HVOR fejlede den). Self-safe."""
+    try:
+        import traceback as _tbmod
+        frames = _tbmod.extract_tb(tb)
+        if not frames:
+            return ""
+        last = frames[-1]
+        fn = str(last.filename or "")
+        # kort repo-relativ sti
+        if "/jarvis-v2/" in fn:
+            fn = fn.split("/jarvis-v2/", 1)[1]
+        return f"{fn}:{last.lineno} in {last.name}"
+    except Exception:
+        return ""
+
+
+def record_anomaly(*, source: str, exc_type: str, message: str, module: str = "",
+                   location: str = "") -> None:
+    """Klassificér + registrér én udefineret fejl + HVOR (lokation). Self-safe + reentrancy-beskyttet."""
     if getattr(_guard, "busy", False):
         return
     _guard.busy = True
@@ -96,13 +114,14 @@ def record_anomaly(*, source: str, exc_type: str, message: str, module: str = ""
         from core.runtime.db_anomalies import record_anomaly_signature
         is_new = record_anomaly_signature(
             signature=sig, category=category, importance=importance,
-            source=str(source or ""), sample=str(message or "")[:480])
-        # observe (synligt i Centralen som anomali-cluster)
+            source=str(source or ""), sample=str(message or "")[:480],
+            location=str(location or ""))
+        # observe (synligt i Centralen som anomali-cluster) — nu MED hvor (lokation)
         try:
             from core.services.central_core import central
             central().observe({"cluster": "anomaly", "nerve": "undefined_error",
                                "category": category, "importance": importance,
-                               "is_new": is_new, "source": source})
+                               "is_new": is_new, "source": source, "location": location})
         except Exception:
             pass
         # Eskalér til persistent incident KUN ved første sigtning af high/critical
@@ -110,10 +129,11 @@ def record_anomaly(*, source: str, exc_type: str, message: str, module: str = ""
         if is_new and importance in ("high", "critical"):
             try:
                 from core.runtime.db_central_incidents import record_central_incident
+                _loc = f" @ {location}" if location else ""
                 record_central_incident(
                     cluster="anomaly", nerve=category, kind="undefined_error",
                     severity="severe" if importance == "critical" else "error",
-                    message=f"NY udefineret fejl ({importance}): {message}"[:400])
+                    message=f"NY udefineret fejl ({importance}){_loc}: {message}"[:400])
             except Exception:
                 pass
     except Exception:
@@ -133,10 +153,18 @@ class _AnomalyLogHandler(logging.Handler):
             if any(name.startswith(p) for p in _SKIP_PREFIXES):
                 return
             exc_type = "Error"
+            loc = ""
             if record.exc_info and record.exc_info[0] is not None:
                 exc_type = record.exc_info[0].__name__
+                loc = _tb_location(record.exc_info[2])   # hvor exception'en faktisk skete
+            if not loc:
+                # ellers: hvor log-linjen blev emitteret fra (stadig HVOR)
+                fn = str(getattr(record, "pathname", "") or "")
+                if "/jarvis-v2/" in fn:
+                    fn = fn.split("/jarvis-v2/", 1)[1]
+                loc = f"{fn}:{getattr(record, 'lineno', '?')}" if fn else ""
             record_anomaly(source="log", exc_type=exc_type,
-                           message=record.getMessage(), module=name)
+                           message=record.getMessage(), module=name, location=loc)
         except Exception:
             pass
 
@@ -153,8 +181,9 @@ def install_hooks() -> dict[str, Any]:
         def _excepthook(exc_type, exc, tb):
             try:
                 record_anomaly(source="uncaught", exc_type=getattr(exc_type, "__name__", "Error"),
-                               message=str(exc), module=getattr(getattr(tb, "tb_frame", None),
-                                                                "f_globals", {}).get("__name__", ""))
+                               message=str(exc), location=_tb_location(tb),
+                               module=getattr(getattr(tb, "tb_frame", None),
+                                              "f_globals", {}).get("__name__", ""))
             except Exception:
                 pass
             try:
@@ -172,7 +201,8 @@ def install_hooks() -> dict[str, Any]:
             try:
                 record_anomaly(source="thread",
                                exc_type=getattr(args.exc_type, "__name__", "Error"),
-                               message=str(args.exc_value))
+                               message=str(args.exc_value),
+                               location=_tb_location(getattr(args, "exc_traceback", None)))
             except Exception:
                 pass
             if _prev_thook:
@@ -205,7 +235,8 @@ def install_asyncio_hook(loop) -> None:
                 exc = context.get("exception")
                 record_anomaly(source="asyncio",
                                exc_type=type(exc).__name__ if exc else "Error",
-                               message=str(exc) if exc else str(context.get("message") or ""))
+                               message=str(exc) if exc else str(context.get("message") or ""),
+                               location=_tb_location(getattr(exc, "__traceback__", None)) if exc else "")
             except Exception:
                 pass
             if _prev:

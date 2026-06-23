@@ -54,3 +54,23 @@ def test_status_yellow_on_foreign_process_degraded():
 def test_snapshot_has_processes_key():
     s = cr.realtime_snapshot()
     assert "processes" in s and isinstance(s["processes"], list)
+
+
+def test_balanced_feed_does_not_starve_low_volume_process():
+    # api fyrer 100 records (nyeste ts), runtime kun 3 (ældre) — runtime må IKKE sultes ud
+    recs = [{"process": "api", "nerve": f"a{i}", "ts": 1000.0 + i} for i in range(100)]
+    recs += [{"process": "runtime", "nerve": f"r{i}", "ts": 10.0 + i} for i in range(3)]
+    out = cr._balanced_feed(recs, 24)
+    procs = {f["process"] for f in out}
+    assert "runtime" in procs and "api" in procs
+    # alle 3 runtime-records overlever (færre end kvoten)
+    assert sum(1 for f in out if f["process"] == "runtime") == 3
+    assert len(out) == 24
+
+
+def test_balanced_feed_single_process_unaffected():
+    recs = [{"process": "api", "nerve": f"a{i}", "ts": float(i)} for i in range(10)]
+    out = cr._balanced_feed(recs, 5)
+    assert len(out) == 5 and all(f["process"] == "api" for f in out)
+    # nyeste først
+    assert out[0]["ts"] >= out[-1]["ts"]

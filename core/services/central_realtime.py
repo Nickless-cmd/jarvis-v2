@@ -90,10 +90,11 @@ def realtime_snapshot(*, trace_limit: int = 24) -> dict[str, Any]:
                 "process": own_role,
             })
         merged.extend(_safe(central_xproc.foreign_feeds, own_role) or [])  # andre processer
-        # nyeste først på tværs af processer; sikkerheds-flag pr. record
-        merged.sort(key=lambda f: f.get("ts") or 0.0, reverse=True)
+        # Balanceret fletning: api fyrer konstant (self_probe/endpoint_call) og ville ellers
+        # sulte runtime-processens sparsomme daemon-fyringer ud af top-N. Giv hver proces en
+        # garanteret andel, flet så efter tid → owner ser BEGGE lanes uanset volumen-forskel.
         feed = []
-        for f in merged[:trace_limit]:
+        for f in _balanced_feed(merged, trace_limit):
             f["security"] = bool(_safe(is_security_cluster, f.get("cluster") or ""))
             feed.append(f)
         snap["feed"] = feed
@@ -169,6 +170,35 @@ def realtime_snapshot(*, trace_limit: int = 24) -> dict[str, Any]:
                                   snap.get("anomalies", {}).get("counts", {}),
                                   snap.get("processes", []))
     return snap
+
+
+def _balanced_feed(records: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    """Flet feed-records på tværs af processer UDEN at en højvolumen-proces (api) sulter en
+    lavvolumen-proces (runtime) ud. Hver proces får en garanteret kvote af sine NYESTE; resten
+    fyldes op efter tid. Endeligt sorteret nyeste-først. Self-safe-agtig (ren funktion)."""
+    by_proc: dict[str, list[dict[str, Any]]] = {}
+    for r in records:
+        by_proc.setdefault(str(r.get("process") or "?"), []).append(r)
+    if not by_proc:
+        return []
+    for recs in by_proc.values():
+        recs.sort(key=lambda f: f.get("ts") or 0.0, reverse=True)
+    nproc = len(by_proc)
+    quota = max(1, limit // nproc)  # garanteret andel pr. proces
+    picked: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for recs in by_proc.values():           # først hver proces' kvote
+        for r in recs[:quota]:
+            picked.append(r); seen.add(id(r))
+    # fyld resten op med de globalt nyeste der ikke allerede er valgt
+    rest = sorted((r for r in records if id(r) not in seen),
+                  key=lambda f: f.get("ts") or 0.0, reverse=True)
+    for r in rest:
+        if len(picked) >= limit:
+            break
+        picked.append(r)
+    picked.sort(key=lambda f: f.get("ts") or 0.0, reverse=True)
+    return picked[:limit]
 
 
 def _cluster_grid(feed: list, incidents: list, open_breakers: list,

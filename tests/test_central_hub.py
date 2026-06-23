@@ -9,9 +9,10 @@ def test_index_lists_all_sections():
     keys = [s["section"] for s in idx]
     assert "overview" in keys and "mind" in keys and "observability" in keys
     assert len(idx) == 10
-    # ready-flag matcher byggerne
+    # ready-flag matcher byggerne (udvides efterhånden som faner fyldes)
     ready = {s["section"] for s in idx if s["ready"]}
-    assert ready == {"overview", "mind", "observability"}
+    assert {"overview", "mind", "observability"} <= ready
+    assert "council" not in ready  # endnu pending
 
 
 def test_pending_section_is_marked_not_error():

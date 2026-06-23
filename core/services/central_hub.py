@@ -77,12 +77,26 @@ def _build_mind() -> dict[str, Any]:
     return build_cognitive_architecture_surface()
 
 
+def _build_agency() -> dict[str, Any]:
+    """Agentur-kort: forbundne/manglende agency-broer (loops/agenter/kanaler)."""
+    from core.services.agency_map import build_agency_map_surface
+    return build_agency_map_surface()
+
+
+def _build_skills() -> dict[str, Any]:
+    """Skills-motor + kontrakt-registry."""
+    from core.services.skill_engine import build_skill_engine_surface
+    return build_skill_engine_surface()
+
+
 _BUILDERS: dict[str, Callable[[], dict[str, Any]]] = {
     "overview": _build_overview,
     "observability": _build_observability,
     "mind": _build_mind,
-    # agency/memory/council/skills/reflection/lab/hardening: fyldes tab-for-tab (læser deres
-    # eksisterende MC-surface-builders), så hub'en forbliver ét ground truth.
+    "agency": _build_agency,
+    "skills": _build_skills,
+    # memory/council/reflection/lab/hardening: fyldes tab-for-tab (læser deres eksisterende
+    # service-surface-builders), så hub'en forbliver ét ground truth.
 }
 
 

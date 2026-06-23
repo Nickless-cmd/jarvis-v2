@@ -3,6 +3,8 @@ import { Code2 } from 'lucide-react'
 import type { ApiConfig, MindIndexEntry, CentralFeedItem } from '../../lib/api'
 import { getMindIndex, getMindSection, streamCentral } from '../../lib/api'
 import { usePollWhenVisible } from '../../hooks/usePollWhenVisible'
+import { PresenceDot } from '../shell/PresenceDot'
+import { ConnectionPill } from '../shell/ConnectionPill'
 
 /** Jarvis Mind — ÉT live-vindue mod Centralen (ét ground truth), ikke 190 MC-polls.
  *
@@ -25,8 +27,33 @@ export function JarvisMind({ config }: { config?: ApiConfig }) {
   const [tab, setTab] = useState<string>('mind')
   const active = sections.find((s) => s.section === tab) ?? sections[0]
 
+  // Levende puls fra Centralens SSE-stream — driver BÅDE header-prikken og pulse-linjen.
+  const [items, setItems] = useState<CentralFeedItem[]>([])
+  const [live, setLive] = useState(false)
+  const streamRef = useRef<{ abort: () => void } | null>(null)
+  useEffect(() => {
+    if (!config) return
+    setLive(true)
+    streamRef.current = streamCentral(
+      config,
+      (it) => setItems((prev) => [it, ...prev].slice(0, 6)),
+      () => setLive(false),
+    )
+    return () => { streamRef.current?.abort(); setLive(false) }
+  }, [config])
+  const latest = items[0]
+
   return (
     <div className="jarvis-mind">
+      {/* Samme app-header som chat/code mode (Bjørn 2026-06-23) — sub-navbar UNDER den. */}
+      <div className="chatview-head">
+        <div className="chatview-head-left">
+          <PresenceDot status={live ? 'working' : 'idle'} /> <span className="chat-title">Jarvis Mind</span>
+        </div>
+        <div className="chatview-head-right">
+          {config && <ConnectionPill config={{ apiBaseUrl: config.apiBaseUrl, authToken: config.authToken ?? null }} />}
+        </div>
+      </div>
       <nav className="jm-tabs" role="tablist" aria-label="Jarvis Mind">
         {sections.map((s) => (
           <button
@@ -41,38 +68,17 @@ export function JarvisMind({ config }: { config?: ApiConfig }) {
           </button>
         ))}
       </nav>
-      <LivePulse config={config} />
+      <div className="jm-pulse" aria-live="polite">
+        <span className={`jm-pulse-dot ${live ? 'live' : ''}`} />
+        <span className="jm-pulse-text">
+          {latest
+            ? <><b>{latest.cluster}</b>/{latest.nerve} <span className="jm-dim">{latest.decision || latest.kind}</span></>
+            : <span className="jm-dim">{live ? 'lytter på nervesystemet…' : 'forbinder…'}</span>}
+        </span>
+      </div>
       <div className="jm-body">
         <Section key={tab} config={config} section={tab} ready={active?.ready ?? false} />
       </div>
-    </div>
-  )
-}
-
-/** Levende puls fra Centralens SSE-stream: pulserende prik + rullende seneste nerve-fyringer. */
-function LivePulse({ config }: { config?: ApiConfig }) {
-  const [items, setItems] = useState<CentralFeedItem[]>([])
-  const [live, setLive] = useState(false)
-  const ref = useRef<{ abort: () => void } | null>(null)
-  useEffect(() => {
-    if (!config) return
-    setLive(true)
-    ref.current = streamCentral(
-      config,
-      (it) => setItems((prev) => [it, ...prev].slice(0, 6)),
-      () => setLive(false),
-    )
-    return () => { ref.current?.abort(); setLive(false) }
-  }, [config])
-  const latest = items[0]
-  return (
-    <div className="jm-pulse" aria-live="polite">
-      <span className={`jm-pulse-dot ${live ? 'live' : ''}`} />
-      <span className="jm-pulse-text">
-        {latest
-          ? <><b>{latest.cluster}</b>/{latest.nerve} <span className="jm-dim">{latest.decision || latest.kind}</span></>
-          : <span className="jm-dim">{live ? 'lytter på nervesystemet…' : 'forbinder…'}</span>}
-      </span>
     </div>
   )
 }

@@ -18,6 +18,7 @@ vi.mock('../../lib/api', () => ({
       : Promise.resolve({ status: 'green', coverage: { nerves: 116, clusters: 20 } }),
   ),
   streamCentral: vi.fn(() => ({ abort: vi.fn() })),
+  pingServer: vi.fn().mockResolvedValue(20),  // ConnectionPill › useConnection
 }))
 
 import { JarvisMind } from './JarvisMind'

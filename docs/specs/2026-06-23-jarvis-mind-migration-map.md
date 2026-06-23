@@ -142,12 +142,21 @@ Alle observeres nu OGSÅ til Centralen (cluster=cognition) via `_safe_surface` (
 3. Cheap-balancer-router skal lokaliseres+bekræftes (uden for de to mission_control-filer).
 4. Skal nogle MC-surfaces SLÅS SAMMEN i Jarvis Mind (MC er rodet — det er chancen for at rydde op)?
 
+## ARKITEKTUR (Bjørn): Centralen = ÉT ground truth
+Jarvis Mind poller IKKE de ~190 MC-endpoints. I stedet er **Centralen samlingspunktet** —
+`central_hub.py` projicerer hver sektion fra de eksisterende (cachede) builders (læser, opfinder
+ikke en anden sandhed — CLAUDE.md Eventbus Rule). Jarvis Mind = ét live-vindue: `/central/mind`
+(index + sektions-data) + `/central/stream` (levende nerve-puls). Stream-when-visible.
+
 ## Fremdrift
 - ✅ **Dæknings-kontrakt** (dette dokument).
-- ✅ **Load-fix:** cache cognitive surfaces (75s TTL) — 431ms→2.5ms pr. poll (commit 65f79820).
-- ✅ **poll-when-visible** (`usePollWhenVisible`) — Jarvis Mind poller kun aktiv fane + kun mens synlig.
-- ✅ **Jarvis Mind-skal** i cowork (owner-zone, sub-navbar under header, INGEN ekstra menu) — desk 0.2.98.
-- ◑ **Sind** + **Oversigt** sektioner (ægte data); resten placeholders.
+- ✅ **Load-fix:** cache cognitive surfaces (75s TTL) — 431ms→2.5ms pr. poll.
+- ✅ **poll/stream-when-visible** (`usePollWhenVisible` + stream lukkes ved unmount).
+- ✅ **Central-hub** (`central_hub.py` + `/central/mind`) — ét ground truth, projektions-hub.
+- ✅ **Jarvis Mind-skal** i cowork (owner-zone, sub-navbar under header, INGEN ekstra menu).
+- ✅ **Streamer fra Centralen** — levende puls (SSE) + avanceret-reveal-toggle pr. fane. Desk 0.2.99.
+- ◑ **Sind/Oversigt/Observabilitet** projiceret (ægte); agency/memory/council/skills/reflection/
+  lab/hardening = `pending` i hub'en (fyldes ved at tilføje deres builder i `_BUILDERS`).
 
 ## Næste skridt
 1. Fyld sektionerne én ad gangen fra DEL A-tabellen (Observabilitet/Agentur/Memory/Council/… ).

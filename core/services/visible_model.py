@@ -111,6 +111,22 @@ class VisibleModelStreamCancelled(RuntimeError):
     pass
 
 
+def _observe_visible_provider_error(provider: str, model: str, status_code: int,
+                                    detail: str) -> None:
+    """Gør en VISIBLE-lane provider-fejl synlig i Centralen (stream-cluster). Self-safe.
+    Samler ollama-lanens HTTP-fejl + tomme svar — de var FØR tavse ("spinner→stop→intet")."""
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "stream",
+            "nerve": "provider_rate_limited" if status_code == 429 else "provider_error",
+            "lane": "visible", "provider": str(provider or ""), "model": str(model or ""),
+            "status_code": int(status_code), "detail": str(detail or "")[:200],
+        })
+    except Exception:
+        pass
+
+
 class VisibleModelRateLimited(RuntimeError):
     """Visible-lanens provider er rate-limited (429) eller returnerede en
     midlertidig HTTP-fejl. Instrumenteret i __init__ så HVER rate-limit på tværs
@@ -1213,12 +1229,23 @@ def _execute_ollama_model(
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib_request.urlopen(req, timeout=120) as response:
-        data = json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib_request.urlopen(req, timeout=120) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except urllib_error.HTTPError as _http_exc:
+        try:
+            _d = _http_exc.read().decode("utf-8", errors="replace")[:300]
+        except Exception:
+            _d = ""
+        _observe_visible_provider_error("ollama", model, int(_http_exc.code),
+                                        f"Ollama HTTP {_http_exc.code}: {_d or _http_exc.reason}")
+        raise RuntimeError(f"Ollama HTTP {_http_exc.code}: {_d or _http_exc.reason}") from _http_exc
 
     msg = data.get("message") or {}
     text = str(msg.get("content") or "").strip()
     if not text:
+        # Tomt svar = "spinner→stop→intet". Gør det SYNLIGT i Centralen (var tavst).
+        _observe_visible_provider_error("ollama", model, 0, "Ollama returnerede tomt svar")
         raise RuntimeError("Ollama visible execution returned no response")
 
     prompt_estimate = sum(len(str(m.get("content", ""))) for m in messages) // 4
@@ -1558,6 +1585,13 @@ def _stream_ollama_model(
                 detail = http_exc.read().decode("utf-8", errors="replace")[:500]
             except Exception:
                 detail = ""
+            # Stream-cluster (2026-06-23, HUL fundet via Centralen): ollama-lanens HTTP-fejl
+            # (særligt 400 "prompt is too long" → ELLERS TAVST svar = "spinner→stop→intet")
+            # gik gennem en generisk RuntimeError der IKKE ramte nogen nerve. GLM/deepseek-
+            # via-ollama er DEFAULT visible-lane → cut-offs var usynlige for Centralen. Observe nu.
+            _observe_visible_provider_error(
+                "ollama", model, int(http_exc.code),
+                f"Ollama HTTP {http_exc.code}: {detail or http_exc.reason}")
             raise RuntimeError(
                 f"Ollama HTTP {http_exc.code}: {detail or http_exc.reason}"
             ) from http_exc

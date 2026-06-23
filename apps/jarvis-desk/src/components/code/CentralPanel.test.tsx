@@ -15,6 +15,9 @@ const snap = {
 
 vi.mock('../../lib/api', () => ({
   getCentralRealtime: vi.fn(() => Promise.resolve(snap)),
+  streamCentral: vi.fn(() => ({ abort: vi.fn() })),
+  getCentralNerve: vi.fn(() => Promise.resolve({ nerve: 'tool_access', cluster: 'auth', security: true, location: 'x.py', enabled: true, recent: [] })),
+  toggleCentralNerve: vi.fn(() => Promise.resolve({})),
 }))
 
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }

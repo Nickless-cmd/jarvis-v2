@@ -1,17 +1,24 @@
-import { useEffect, useRef, useState } from 'react'
-import { Activity, ChevronDown, ChevronRight, ShieldAlert, Zap, Brain } from 'lucide-react'
-import { getCentralRealtime, type CentralSnapshot, type ApiConfig } from '../../lib/api'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Activity, ChevronDown, ChevronRight, ShieldAlert, Zap, Brain, X } from 'lucide-react'
+import {
+  getCentralRealtime, streamCentral, getCentralNerve, toggleCentralNerve,
+  type CentralSnapshot, type CentralFeedItem, type CentralNerveDetail, type ApiConfig,
+} from '../../lib/api'
 
 /** Real-time owner-vindue ind i Den Intelligente Central. Sidder under miljø-feltet i
- *  code mode. Poller /central/realtime (~2s). Kun owner (serveren 403'er ellers; vi viser
- *  intet). Collapse-ikon i header som miljø-feltet. */
+ *  code mode. Snapshot-poll (~2s) for status/clusters/flag/læring + SSE-live-feed for
+ *  nerve-fyringer. Klik en nerve → spor + lokation + tænd/sluk. Kun owner (403 ellers). */
 export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?: boolean }) {
   const [snap, setSnap] = useState<CentralSnapshot | null>(null)
+  const [liveFeed, setLiveFeed] = useState<CentralFeedItem[]>([])
   const [collapsed, setCollapsed] = useState(false)
   const [showLearning, setShowLearning] = useState(false)
   const [denied, setDenied] = useState(false)
+  const [detail, setDetail] = useState<CentralNerveDetail | null>(null)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const sse = useRef<{ abort: () => void } | null>(null)
 
+  // Snapshot-poll (alt undtagen feed'en).
   useEffect(() => {
     if (!config || !isOwner || collapsed || denied) return
     let cancelled = false
@@ -25,12 +32,36 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
     return () => { cancelled = true; if (timer.current) clearInterval(timer.current) }
   }, [config, isOwner, collapsed, denied])
 
+  // SSE-live-feed (ægte realtid). Reconnect ved drop.
+  useEffect(() => {
+    if (!config || !isOwner || collapsed || denied) return
+    let stopped = false
+    const connect = () => {
+      if (stopped) return
+      sse.current = streamCentral(config,
+        (item) => setLiveFeed((f) => [item, ...f].slice(0, 26)),
+        () => { if (!stopped) setTimeout(connect, 1500) })
+    }
+    connect()
+    return () => { stopped = true; sse.current?.abort() }
+  }, [config, isOwner, collapsed, denied])
+
+  const openNerve = useCallback((nerve: string) => {
+    if (!config) return
+    getCentralNerve(config, nerve).then(setDetail).catch(() => undefined)
+  }, [config])
+
+  const doToggle = useCallback((nerve: string, enabled: boolean) => {
+    if (!config) return
+    toggleCentralNerve(config, nerve, enabled).then(() => openNerve(nerve)).catch(() => undefined)
+  }, [config, openNerve])
+
   if (!isOwner || denied) return null
 
   const status = snap?.status ?? 'green'
   const cov = snap?.coverage ?? {}
   const diag = snap?.diagnose ?? {}
-  const feed = snap?.feed ?? []
+  const feed = liveFeed.length > 0 ? liveFeed : (snap?.feed ?? [])
   const incidents = snap?.incidents ?? []
   const breakers = snap?.open_breakers ?? []
   const drift = snap?.config_drift
@@ -125,7 +156,8 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
           <ul className="central-feed">
             {feed.length === 0 && <li className="central-feed-empty">— stille —</li>}
             {feed.map((f, n) => (
-              <li key={`feed-${n}`} className="central-feed-row">
+              <li key={`feed-${n}`} className="central-feed-row central-feed-clickable"
+                onClick={() => openNerve(f.nerve)} title="Klik → spor + lokation">
                 <span className={`central-verdict central-v-${f.decision || f.kind}`} />
                 <span className="central-feed-nerve">
                   {f.security && <span className="central-lock" title="sikkerheds-cluster">🔒</span>}
@@ -162,6 +194,41 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
                   <span>{(learn.root_causes ?? []).map((g) => `${g.target}×${g.count}`).join(', ')}</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Lag 5 — nerve-detalje (spor + lokation + tænd/sluk) */}
+          {detail && (
+            <div className="central-detail">
+              <div className="central-detail-head">
+                <span>{detail.security && '🔒 '}{detail.cluster}/<b>{detail.nerve}</b></span>
+                <button type="button" className="central-detail-close" aria-label="luk"
+                  onClick={() => setDetail(null)}><X size={13} /></button>
+              </div>
+              {detail.location && <div className="central-detail-loc" title={detail.location}>{detail.location}</div>}
+              <div className="central-detail-toggle">
+                <span className={detail.enabled ? 'is-on' : 'is-off'}>
+                  {detail.enabled ? 'aktiv' : 'slået fra'}
+                </span>
+                {!detail.security ? (
+                  <button type="button" onClick={() => doToggle(detail.nerve, !detail.enabled)}>
+                    {detail.enabled ? 'Sluk' : 'Tænd'}
+                  </button>
+                ) : (
+                  <span className="central-detail-locked" title="sikkerheds-nerve kan ikke slås fra">låst 🔒</span>
+                )}
+              </div>
+              <div className="central-detail-feed-head">Seneste spor ({detail.recent.length})</div>
+              <ul className="central-detail-feed">
+                {detail.recent.length === 0 && <li className="central-feed-empty">— intet spor i bufferen —</li>}
+                {detail.recent.map((r, n) => (
+                  <li key={`d-${n}`} className="central-feed-row">
+                    <span className={`central-verdict central-v-${r.decision || r.kind}`} />
+                    <span className="central-feed-kind">{r.decision || r.kind}</span>
+                    <span className="central-detail-reason" title={r.reason}>{r.reason || r.run_id || '—'}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </>

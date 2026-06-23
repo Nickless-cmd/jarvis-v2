@@ -446,6 +446,59 @@ export async function getCentralRealtime(config: ApiConfig): Promise<CentralSnap
   return apiFetch<CentralSnapshot>(config, '/central/realtime')
 }
 
+/** SSE-live-feed af nerve-fyringer (ægte realtid). fetch-baseret (EventSource kan ikke
+ *  sende Authorization). onItem pr. fyring. Returnér {abort}. */
+export function streamCentral(
+  config: ApiConfig,
+  onItem: (item: CentralFeedItem) => void,
+  onError?: () => void,
+): { abort: () => void } {
+  const ctrl = new AbortController()
+  const run = async () => {
+    const url = new URL('/central/stream', config.apiBaseUrl).toString()
+    const headers: Record<string, string> = { Accept: 'text/event-stream' }
+    if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
+    let resp: Response
+    try { resp = await fetch(url, { headers, signal: ctrl.signal }) } catch { onError?.(); return }
+    if (!resp.ok || !resp.body) { onError?.(); return }
+    const reader = resp.body.getReader()
+    const dec = new TextDecoder()
+    let buf = ''
+    try {
+      for (;;) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buf += dec.decode(value, { stream: true })
+        let i: number
+        while ((i = buf.indexOf('\n\n')) !== -1) {
+          const block = buf.slice(0, i); buf = buf.slice(i + 2)
+          for (const line of block.split('\n')) {
+            if (line.startsWith('data:')) {
+              try { onItem(JSON.parse(line.slice(5).trim()) as CentralFeedItem) } catch { /* skip */ }
+            }
+          }
+        }
+      }
+    } catch { /* aborted/network */ } finally {
+      try { reader.releaseLock() } catch { /* noop */ }
+      onError?.()
+    }
+  }
+  void run()
+  return { abort: () => ctrl.abort() }
+}
+
+export interface CentralNerveDetail {
+  nerve: string; cluster: string; security: boolean; location: string
+  enabled: boolean; recent: CentralFeedItem[]
+}
+export async function getCentralNerve(config: ApiConfig, nerve: string): Promise<CentralNerveDetail> {
+  return apiFetch<CentralNerveDetail>(config, `/central/nerve/${encodeURIComponent(nerve)}`)
+}
+export async function toggleCentralNerve(config: ApiConfig, nerve: string, enabled: boolean): Promise<unknown> {
+  return apiFetch(config, `/central/nerve/${encodeURIComponent(nerve)}/toggle?enabled=${enabled}`, { method: 'POST' })
+}
+
 /** Token-stream det aktive autonome run i en session (desk-pickup af wakeup).
  *  GET SSE → v2-events til onEvent. Kortlivet (ingen reconnect): når runnet er
  *  færdigt lukker serveren, og onDone kaldes. Lader ChatView vise Jarvis'

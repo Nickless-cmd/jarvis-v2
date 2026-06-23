@@ -127,12 +127,25 @@ def run_command(line: str) -> dict[str, Any]:
             return {"ok": True, "command": cmd,
                     "lines": [f"lukkede {total} flag ({len(pairs)} nerver)"] if total else ["ingen uløste flag"]}
         if cmd in ("daemons", "daemon"):
-            from core.services.internal_cadence import _last_run_at, _producers
-            specs = sorted(_producers.values(), key=lambda p: p.priority)
-            lines = [f"{len(specs)} cadence-daemons:"]
-            for spec in specs[:30]:
-                last = _last_run_at.get(spec.name, "")
-                lines.append(f"  {spec.name:26} hver {spec.cooldown_minutes}min · sidst {last[:19] or 'aldrig'}")
+            # Daemons kører i runtime-processen → læs cross-proces-snapshot fra shared_cache;
+            # fald tilbage til lokale producers (hvis vi ER i runtime-processen).
+            snap: dict[str, Any] = {}
+            try:
+                from core.services import shared_cache
+                snap = shared_cache.get("cadence:daemons") or {}
+            except Exception:
+                snap = {}
+            if not snap:
+                from core.services.internal_cadence import _last_run_at, _producers
+                snap = {n: {"cooldown_minutes": s.cooldown_minutes, "priority": s.priority,
+                            "last_run": _last_run_at.get(n, "")} for n, s in _producers.items()}
+            items = sorted(snap.items(), key=lambda kv: kv[1].get("priority", 99))
+            lines = [f"{len(items)} cadence-daemons:"]
+            for name, d in items[:30]:
+                last = str(d.get("last_run") or "")[:19] or "afventer"
+                lines.append(f"  {name:26} hver {d.get('cooldown_minutes','?')}min · sidst {last}")
+            if not items:
+                lines.append("  (afventer første cadence-tik)")
             return {"ok": True, "command": cmd, "lines": lines}
         if cmd == "model":
             import json

@@ -280,6 +280,18 @@ def run_cadence_tick(
         },
     )
 
+    # Cross-proces (Bjørn 2026-06-23): daemons kører i runtime-processen; Central-terminalen
+    # i api-processen. Publicér producer-snapshot til shared_cache så 'daemons'-kommandoen kan
+    # se dem på tværs. Self-safe — en publish-fejl må aldrig røre cadence-tikket.
+    try:
+        from core.services import shared_cache as _sc
+        _snap = {name: {"cooldown_minutes": s.cooldown_minutes, "priority": s.priority,
+                        "last_run": _last_run_at.get(name, "")}
+                 for name, s in _producers.items()}
+        _sc.set("cadence:daemons", _snap, ttl_seconds=3600)
+    except Exception:
+        pass
+
     return {
         "tick_at": now_iso,
         "trigger": trigger,

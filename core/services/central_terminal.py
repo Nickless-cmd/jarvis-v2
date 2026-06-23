@@ -23,7 +23,10 @@ _HELP = [
     "  toggle <nerve> on|off   — tænd/sluk en nerve (sikkerheds-nerver låst)",
     "  scan                    — kør silent-failure-scan (instrument)",
     "  instrument [n]          — top fund fra seneste scan",
+    "  resolve [cluster nerve] — luk flag (uden args: alle uløste)",
     "  providers               — provider-helbred (ping/tør/drift)",
+    "  daemons                 — cadence-daemons + sidste kørsel",
+    "  model                   — nuværende visible-model + kontekst",
     "  learning | drift | breakers | autonomy",
     "  help                    — denne liste",
 ]
@@ -110,6 +113,39 @@ def run_command(line: str) -> dict[str, Any]:
             n = int(args[0]) if args and args[0].isdigit() else 10
             env = _q("instrument", scan=do_scan, limit=n)
             return {"ok": True, "command": cmd, "lines": _fmt_envelope(env)}
+        if cmd == "resolve":
+            from core.runtime.db_central_incidents import (
+                list_central_incidents,
+                resolve_central_incidents,
+            )
+            if len(args) >= 2:
+                n = resolve_central_incidents(cluster=args[0], nerve=args[1])
+                return {"ok": True, "command": cmd, "lines": [f"lukkede {n} flag for {args[0]}/{args[1]}"]}
+            incs = list_central_incidents(unresolved_only=True, limit=200)
+            pairs = {(str(i.get("cluster")), str(i.get("nerve"))) for i in incs}
+            total = sum(resolve_central_incidents(cluster=c, nerve=nv) for c, nv in pairs)
+            return {"ok": True, "command": cmd,
+                    "lines": [f"lukkede {total} flag ({len(pairs)} nerver)"] if total else ["ingen uløste flag"]}
+        if cmd in ("daemons", "daemon"):
+            from core.services.internal_cadence import _last_run_at, _producers
+            specs = sorted(_producers.values(), key=lambda p: p.priority)
+            lines = [f"{len(specs)} cadence-daemons:"]
+            for spec in specs[:30]:
+                last = _last_run_at.get(spec.name, "")
+                lines.append(f"  {spec.name:26} hver {spec.cooldown_minutes}min · sidst {last[:19] or 'aldrig'}")
+            return {"ok": True, "command": cmd, "lines": lines}
+        if cmd == "model":
+            import json
+            from core.runtime.config import SETTINGS_FILE
+            try:
+                d = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+                return {"ok": True, "command": cmd, "lines": [
+                    f"visible: {d.get('visible_model_provider','?')} / {d.get('visible_model_name','?')}",
+                    f"num_ctx={d.get('visible_ollama_num_ctx','default')} "
+                    f"compact={d.get('context_compact_threshold_tokens','default')}",
+                ]}
+            except Exception as exc:
+                return {"ok": False, "command": cmd, "lines": [f"! {exc}"[:120]]}
         if cmd in ("providers", "provider"):
             from core.services.provider_health_check import build_provider_health_surface
             surf = build_provider_health_surface() or {}

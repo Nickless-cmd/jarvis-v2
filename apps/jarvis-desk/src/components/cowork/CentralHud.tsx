@@ -77,13 +77,18 @@ export function CentralHud({ config }: { config?: ApiConfig }) {
           <div className="ch-plabel"><span>LEVENDE NERVE-FEED</span><span className="ch-rt">● realtime</span></div>
           <div className="ch-feed">
             {feed.length === 0 && <div className="ch-dim">{live ? 'lytter på nervesystemet…' : 'forbinder…'}</div>}
-            {feed.map((f, i) => (
-              <div key={i} className="ch-frow">
-                <span className={`ch-fd tone-${f.decision === 'red' ? 'red' : f.decision === 'yellow' ? 'amber' : 'green'}`} />
-                <b>{f.cluster}</b><span className="ch-sep">/</span>{f.nerve}
-                <span className="ch-dim"> {f.decision || f.kind}</span>
-              </div>
-            ))}
+            {feed.map((f, i) => {
+              const tone = f.decision === 'red' ? 'red' : f.decision === 'yellow' ? 'amber'
+                : f.decision === 'green' ? 'green' : 'cyan'
+              return (
+                <div key={i} className="ch-frow">
+                  <span className="ch-ftime">{new Date().toLocaleTimeString('da-DK')}</span>
+                  <span className="ch-fcl">{f.cluster}</span><span className="ch-sep">/</span>
+                  <span className="ch-fnv">{f.nerve}</span>
+                  <span className={`ch-fval tone-${tone}`}>{f.decision || f.kind}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
         <div className="ch-side">
@@ -99,25 +104,28 @@ export function CentralHud({ config }: { config?: ApiConfig }) {
               {dry.length > 0 && <div className="ch-dry">tørre: {dry.join(', ')}</div>}
             </div>
           </div>
-          {incidents.length > 0 && (
-            <div className="ch-panel ch-flag">
-              <div className="ch-plabel" style={{ color: '#f5a14a' }}>FLAG</div>
-              {incidents.slice(0, 3).map((it, i) => (
-                <div key={i} className="ch-flagrow">{it.nerve}: {(it.message || '').slice(0, 60)}</div>
-              ))}
+          <div className={`ch-panel ${incidents.length ? 'ch-flag' : ''}`}>
+            <div className="ch-plabel" style={{ color: incidents.length ? '#f5a14a' : '#6b8295' }}>
+              <span><i className="ti ti-flag" aria-hidden="true" /> FLAG</span>
+              <span className={incidents.length ? 'ch-flagcount' : 'ch-dim'}>{incidents.length}</span>
             </div>
-          )}
+            {incidents.length === 0
+              ? <div className="ch-dim" style={{ fontSize: '12px' }}>ingen uløste flag</div>
+              : incidents.slice(0, 4).map((it, i) => (
+                  <div key={i} className="ch-flagrow"><b>{it.nerve}</b> {(it.message || '').slice(0, 54)}</div>
+                ))}
+          </div>
         </div>
       </div>
 
-      <div className="ch-label">BETJENING</div>
+      <div className="ch-label">BETJENING — DU STYRER ALT HERFRA</div>
       <div className="ch-ctrl">
-        <CtrlBtn config={config} cmd="status" icon="ti-activity" label="status" />
-        <CtrlBtn config={config} cmd="incidents" icon="ti-flag" label="flag" />
+        <CtrlBtn config={config} prefill="toggle " icon="ti-toggle-left" label="tænd/sluk nerve" />
+        <CtrlBtn config={config} cmd="resolve" icon="ti-checks" label="resolve flag" />
         <CtrlBtn config={config} cmd="scan" icon="ti-radar-2" label="kør scan" />
-        <CtrlBtn config={config} cmd="providers" icon="ti-server-cog" label="providers" />
-        <CtrlBtn config={config} cmd="clusters" icon="ti-grid-dots" label="clusters" />
-        <CtrlBtn config={config} cmd="breakers" icon="ti-bolt" label="breakers" />
+        <CtrlBtn config={config} cmd="providers" icon="ti-server-cog" label="provider-styring" />
+        <CtrlBtn config={config} cmd="model" icon="ti-refresh" label="model-skift" />
+        <CtrlBtn config={config} cmd="daemons" icon="ti-bolt" label="daemon-kontrol" />
       </div>
 
       <Terminal config={config} />
@@ -143,15 +151,16 @@ function Clock() {
   return <span className="ch-clock">{t}</span>
 }
 
-function CtrlBtn({ config, cmd, icon, label }: { config?: ApiConfig; cmd: string; icon: string; label: string }) {
+function CtrlBtn({ config, cmd, prefill, icon, label }: { config?: ApiConfig; cmd?: string; prefill?: string; icon: string; label: string }) {
   const [busy, setBusy] = useState(false)
   return (
-    <button type="button" className={`ch-btn ${busy ? 'busy' : ''}`} disabled={!config || busy}
-      onClick={async () => {
-        if (!config) return
+    <button type="button" className={`ch-btn ${busy ? 'busy' : ''}`} disabled={!config}
+      onClick={() => {
+        if (prefill) { window.dispatchEvent(new CustomEvent('central-prefill', { detail: prefill })); return }
+        if (!cmd) return
         setBusy(true)
-        try { await runCentralCommand(config, cmd); window.dispatchEvent(new CustomEvent('central-cmd', { detail: cmd })) } catch { /* ignore */ }
-        setTimeout(() => setBusy(false), 350)
+        window.dispatchEvent(new CustomEvent('central-cmd', { detail: cmd }))
+        setTimeout(() => setBusy(false), 400)
       }}>
       <i className={`ti ${icon}`} aria-hidden="true" /> {label}
     </button>
@@ -176,10 +185,13 @@ function Terminal({ config }: { config?: ApiConfig }) {
       setLog((l) => [...l, { cmd: line, lines: [`! ${e instanceof Error ? e.message : 'fejl'}`], ok: false }].slice(-30))
     }
   }
+  const inputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     const h = (e: Event) => { const d = (e as CustomEvent).detail as string; void run(d) }
+    const p = (e: Event) => { setVal((e as CustomEvent).detail as string); inputRef.current?.focus?.() }
     window.addEventListener('central-cmd', h)
-    return () => window.removeEventListener('central-cmd', h)
+    window.addEventListener('central-prefill', p)
+    return () => { window.removeEventListener('central-cmd', h); window.removeEventListener('central-prefill', p) }
   })
 
   return (
@@ -197,7 +209,7 @@ function Terminal({ config }: { config?: ApiConfig }) {
       </div>
       <div className="ch-terminput">
         <span className="ch-prompt">$</span>
-        <input value={val} placeholder="status · incidents · trace truth · toggle <nerve> off · scan · providers · help"
+        <input ref={inputRef} value={val} placeholder="status · incidents · trace truth · toggle <nerve> off · scan · providers · help"
           onChange={(e) => setVal(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') { void run(val); setVal('') }

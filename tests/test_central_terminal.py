@@ -45,3 +45,28 @@ def test_toggle_security_nerve_refused():
 def test_nerve_requires_name():
     r = run_command("nerve")
     assert r["ok"] is False and "nerve <navn>" in r["lines"][0]
+
+
+def test_model_reads_runtime_json():
+    r = run_command("model")
+    assert r["ok"] and any("visible:" in ln for ln in r["lines"])
+
+
+def test_daemons_lists_producers():
+    r = run_command("daemons")
+    assert r["ok"] and "cadence-daemons" in r["lines"][0]
+
+
+def test_resolve_all_self_safe(monkeypatch):
+    import core.runtime.db_central_incidents as db
+    monkeypatch.setattr(db, "list_central_incidents",
+                        lambda **k: [{"cluster": "system", "nerve": "x"}, {"cluster": "system", "nerve": "x"}])
+    monkeypatch.setattr(db, "resolve_central_incidents", lambda **k: 2)
+    r = run_command("resolve")
+    assert r["ok"] and "lukkede" in r["lines"][0]
+
+
+def test_help_includes_new_commands():
+    r = run_command("help")
+    txt = "\n".join(r["lines"])
+    assert "resolve" in txt and "daemons" in txt and "model" in txt

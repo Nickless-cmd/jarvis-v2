@@ -19,8 +19,24 @@ permissions:
   contents: write
 
 jobs:
+  # Opretter releasen ÉN gang før build-matrixen, så de 3 parallelle platform-jobs
+  # ikke racer om at CREATE'e samme tag (det gav "already_exists" → Linux-artefakter
+  # tabt på 0.2.94). Bagefter UPLOADER build-jobs kun til den eksisterende release.
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" \
+              --notes "Automated desk release $tag"
+
   build:
     name: build-${{ matrix.platform }}
+    needs: prepare
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

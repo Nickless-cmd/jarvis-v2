@@ -3916,13 +3916,20 @@ def _persist_session_assistant_message(
                 _privacy_gate, cluster="privacy", klass=_PvGK.SECURITY)
             if _pvv.decision in (_PvDec.YELLOW, _PvDec.RED):
                 _share = _pvv.evidence or {}
-                from core.eventbus.bus import event_bus
-                event_bus.publish("cross_user_share.flagged", {
-                    "session_id": run.session_id,
-                    "current_user_id": _cur,
-                    "mentioned_users": _share.get("mentioned_users"),
-                    "prompt": _share.get("prompt"),
-                })
+                # Event-publicering i SIN EGEN try/except: et publish-problem (fx ukendt
+                # event-familie, som tidligere væltede HELE guarden og sprang record_pending
+                # over → tavst cross-user-læk) må ALDRIG forhindre at den pending share-
+                # beslutning registreres. Observabilitet er sekundært til approval-kortet.
+                try:
+                    from core.eventbus.bus import event_bus
+                    event_bus.publish("cross_user_share.flagged", {
+                        "session_id": run.session_id,
+                        "current_user_id": _cur,
+                        "mentioned_users": _share.get("mentioned_users"),
+                        "prompt": _share.get("prompt"),
+                    })
+                except Exception:
+                    pass
                 # Registrér en pending share-beslutning → dukker op som kort i
                 # Cowork-køen (Fase 6 #1). Bevidst IKKE i den live stream-sti.
                 try:

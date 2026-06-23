@@ -157,6 +157,8 @@ ALLOWED_EVENT_FAMILIES = {
     "self_repair",        # emotion_repair_bridge_daemon (added 2026-05-11)
     "credit_assignment",  # Lag 1 — choice recording & outcome linking (added 2026-05-17)
     "coding_lane",  # auto-reviewer + future code-gen (added 2026-05-17)
+    "cross_user_share",  # privacy-guard flag (§4.4) — var latent afvist → guarden fejlede
+                         # ÅBENT (svar sendt + approval-kort aldrig registreret) (added 2026-06-23)
 }
 
 

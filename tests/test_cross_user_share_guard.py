@@ -101,3 +101,13 @@ def test_check_against_registry_fail_closed_on_load_error(monkeypatch):
     monkeypatch.setattr("core.identity.users.load_users", _boom)
     r = check_against_registry("hvad som helst", current_user_id="d-bjorn")
     assert r["needs_confirmation"] is True  # fail-CLOSED, ikke False
+
+
+def test_cross_user_share_event_family_accepted():
+    """Regression (2026-06-23): familien 'cross_user_share' var latent afvist af eventbus'en
+    → guarden kastede 'Unsupported event family' og fejlede ÅBENT (svar sendt + approval-kort
+    aldrig registreret). Familien skal nu accepteres af Event.validate()."""
+    from core.eventbus.events import ALLOWED_EVENT_FAMILIES, Event
+    assert "cross_user_share" in ALLOWED_EVENT_FAMILIES
+    ev = Event.create("cross_user_share.flagged", {"current_user_id": "u1"})  # må ikke kaste
+    assert ev.family == "cross_user_share"

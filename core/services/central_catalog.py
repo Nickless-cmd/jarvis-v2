@@ -369,6 +369,11 @@ CATALOG: tuple[NerveSpec, ...] = (
     # DAGE — settings.port vs faktisk lyttende port). Daglig probe → observe + incident. Read-only.
     NerveSpec("config_drift", "system", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/config_drift.py:observe_config_drift (port-drift declared↔runtime)"),
+    # Unified fejl-meddelelses-system (2026-06-23): Centralen ejer hvad brugeren ser når noget
+    # knækker. Intern fejl → ÉT envelope {severity/da-besked/retryable/correlation_id} → samme
+    # form til desk (SSE system_event kind=error) + companion/UI (notification_router).
+    NerveSpec("user_error", "system", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/central_error_envelope.py:emit (bruger-vendt fejl, sporbar pr. correlation_id=run_id)"),
     # ── Autonomous-cluster KONSOLIDERET 2026-06-22 (#10: autonome runs → Centralen) ──
     # Dream-sessions/idle-refleksion/proaktive runs var USYNLIGE for Centralen — ingen cluster
     # fangede en autonom run der fejlede/loopede/brændte tokens. Phase A: observe pr. run-udfald

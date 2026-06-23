@@ -2252,6 +2252,20 @@ async def _stream_visible_run(
                             "runtime.visible_run_interrupted",
                             _interruption,
                         )
+                        # Unified fejl-system (2026-06-23): ÉN konsistent bruger-vendt fejl
+                        # i stedet for tavst-hæng. Centralen mapper reason→envelope, gør den
+                        # sporbar (user_error pr. correlation_id) og leverer samme form til
+                        # desk (synkron system_event her) som companion/UI får. Self-safe.
+                        try:
+                            from core.services import central_error_envelope as _cee
+                            _env = _cee.for_interruption(
+                                reason=str(_interruption.get("interruption_reason") or "runtime-error"),
+                                run_id=run.run_id,
+                                detail=str(_interruption.get("error") or ""))
+                            _cee.emit(_env, session_id=run.session_id)
+                            yield _sse("error", _env.to_client_event())
+                        except Exception:
+                            pass
                         try:
                             from core.services.in_flight_runs import mark_interrupted
                             mark_interrupted(

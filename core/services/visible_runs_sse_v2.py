@@ -53,6 +53,9 @@ _KNOWN_SYSTEM_EVENT_KINDS = {
     "steer_received",
     "turn_changelog",
     "app_action_request",
+    # Unified fejl-system (2026-06-23): konsistent bruger-vendt fejl-event
+    # (central_error_envelope.to_client_event). Alle klienter renderer samme form.
+    "error",
 }
 
 

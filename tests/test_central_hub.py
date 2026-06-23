@@ -1,7 +1,17 @@
 """Tests for central_hub — Jarvis Mind-projektions-hub (ét ground truth)."""
 from __future__ import annotations
 
+import pytest
+
 from core.services import central_hub as h
+
+
+@pytest.fixture(autouse=True)
+def _clear_section_cache():
+    """Hub'en cacher sektioner 12s — ryd mellem tests så monkeypatch'ede bygger ses."""
+    h._section_cache.clear()
+    yield
+    h._section_cache.clear()
 
 
 def test_index_lists_all_sections():

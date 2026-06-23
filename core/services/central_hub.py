@@ -14,6 +14,8 @@ puls/feed (nerve-fyringer) + henter den aktive sektions snapshot herfra (stream-
 """
 from __future__ import annotations
 
+import threading
+import time
 from typing import Any, Callable
 
 # Sektioner = Jarvis Mind-faner. label vises i sub-navbaren; ready=False → endnu ikke projiceret
@@ -119,8 +121,11 @@ def mind_index() -> list[dict[str, Any]]:
 
 # Pr.-sektion TTL-cache (12s): capper hvor ofte en builder kører uanset poll-frekvens, så
 # agency/skills/overview ikke genbygges friskt hver poll. Streamen giver realtid; ≤12s
-# snapshot-staleness er fint. (mind har desuden sin egen 75s-cache i kilden.)
+# snapshot-staleness er fint. (mind har desuden sin egen 75s-cache i kilden.) Eksplicit
+# modul-cache (ingen ContextVar/deepcopy) — resultaterne er read-only (serialiseres til JSON).
 _SECTION_TTL = 12.0
+_section_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+_section_cache_lock = threading.Lock()
 
 
 def mind_section(section: str) -> dict[str, Any]:
@@ -134,15 +139,16 @@ def mind_section(section: str) -> dict[str, Any]:
             return {"section": key, "pending": True, "active": False}
         return {"section": key, "error": "ukendt sektion", "active": False}
 
-    def _build() -> dict[str, Any]:
-        d = _safe(builder)
-        d.setdefault("section", key)
-        return d
-    try:
-        from core.services.runtime_surface_cache import get_timed_runtime_surface
-        return get_timed_runtime_surface(f"mind_section:{key}", _SECTION_TTL, _build)
-    except Exception:
-        return _build()
+    now = time.monotonic()
+    with _section_cache_lock:
+        hit = _section_cache.get(key)
+        if hit and hit[0] > now:
+            return hit[1]
+    data = _safe(builder)
+    data.setdefault("section", key)
+    with _section_cache_lock:
+        _section_cache[key] = (now + _SECTION_TTL, data)
+    return data
 
 
 def mind_snapshot(*, sections: list[str] | None = None) -> dict[str, Any]:

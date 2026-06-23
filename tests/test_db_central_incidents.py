@@ -29,3 +29,36 @@ def test_record_is_self_safe_on_bad_input(isolated_runtime):
     rid = record_central_incident(cluster="x", nerve="y", kind="error",
                                   severity="nonsense", message="m")
     assert rid
+
+
+def test_resolve_central_incidents_batch(isolated_runtime):
+    from core.runtime.db_central_incidents import (
+        record_central_incident, resolve_central_incidents, list_central_incidents,
+    )
+    for i in range(3):
+        record_central_incident(cluster="system", nerve="config_drift", kind="drift",
+                                severity="severe", message=f"drift {i}")
+    record_central_incident(cluster="other", nerve="x", kind="error", message="keep")
+    n = resolve_central_incidents(cluster="system", nerve="config_drift")
+    assert n == 3
+    unresolved = list_central_incidents(unresolved_only=True)
+    # config_drift væk, men 'keep' fra andet cluster står
+    assert all(r["nerve"] != "config_drift" for r in unresolved)
+    assert any(r["nerve"] == "x" for r in unresolved)
+
+
+def test_has_unresolved_message_dedup(isolated_runtime):
+    from core.runtime.db_central_incidents import (
+        record_central_incident, has_unresolved_message, resolve_central_incidents,
+    )
+    msg = "config-drift: settings.port=8010 men API svarer på 8080"
+    assert has_unresolved_message(cluster="system", nerve="config_drift", message=msg) is False
+    record_central_incident(cluster="system", nerve="config_drift", kind="drift",
+                            severity="severe", message=msg)
+    assert has_unresolved_message(cluster="system", nerve="config_drift", message=msg) is True
+    # andre beskeder matcher ikke
+    assert has_unresolved_message(cluster="system", nerve="config_drift",
+                                  message="anden besked") is False
+    # når resolved → ikke længere en dublet-blokering
+    resolve_central_incidents(cluster="system", nerve="config_drift")
+    assert has_unresolved_message(cluster="system", nerve="config_drift", message=msg) is False

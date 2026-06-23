@@ -110,6 +110,51 @@ def resolve_central_incident(incident_id: int) -> bool:
         return False
 
 
+def resolve_central_incidents(*, cluster: str, nerve: str) -> int:
+    """Auto-resolve ALLE uløste incidents for én (cluster, nerve). Returnerer antal lukkede.
+
+    Bruges når en tilstand er rettet (fx config-drift forsvundet efter runtime.json-fix) —
+    centralen lukker selv de forældede flag i stedet for at lade dem hænge uløst. Selv-sikker.
+    """
+    try:
+        with connect() as conn:
+            _ensure_central_incidents_table(conn)
+            cur = conn.execute(
+                "UPDATE central_incidents SET resolved = 1 "
+                "WHERE resolved = 0 AND cluster = ? AND nerve = ?",
+                (str(cluster or ""), str(nerve or "")),
+            )
+            return int(cur.rowcount or 0)
+    except Exception:
+        return 0
+
+
+def has_unresolved_message(
+    *, cluster: str, nerve: str, message: str, within_seconds: int = 3600
+) -> bool:
+    """True hvis en uløst incident med SAMME besked allerede findes inden for tidsvinduet.
+
+    Dedup-gate (rate-limit): forhindrer at samme drift-besked oprettes igen og igen pr. check.
+    Sammenligner på den fulde (trunkerede) besked-streng + tidsvindue. Selv-sikker → False
+    (ved fejl hellere oprette end tabe et flag).
+    """
+    try:
+        from datetime import timedelta
+
+        cutoff = (datetime.now(UTC) - timedelta(seconds=int(within_seconds))).isoformat()
+        with connect() as conn:
+            _ensure_central_incidents_table(conn)
+            row = conn.execute(
+                "SELECT 1 FROM central_incidents "
+                "WHERE resolved = 0 AND cluster = ? AND nerve = ? AND message = ? AND ts >= ? "
+                "LIMIT 1",
+                (str(cluster or ""), str(nerve or ""), str(message or "")[:1000], cutoff),
+            ).fetchone()
+            return row is not None
+    except Exception:
+        return False
+
+
 def count_unresolved(*, min_severity: str | None = None) -> int:
     """Antal uhåndterede incidents (til hurtig live-status). Selv-sikker → 0."""
     try:

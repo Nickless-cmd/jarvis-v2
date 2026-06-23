@@ -17,11 +17,26 @@ _ALT_PORTS = (8080, 8011, 80, 8000, 8010)
 
 
 def _declared_port() -> int:
+    """Læs den DEKLAREREDE port DIREKTE fra runtime.json på disk — IKKE in-memory settings.
+
+    Bug'en (Bjørn): den kørende proces har stadig den GAMLE port i hukommelsen (load_settings()
+    er læst ved opstart). Når runtime.json rettes på disk, ser in-memory den ikke → nerven
+    ville flagge drift for evigt. Ved at læse filen pr. check ser nerven rettelsen med det samme
+    og kan auto-resolve. Én disk-læsning pr. check — ingen watcher, ingen tråde. Self-safe.
+    """
     try:
-        from core.runtime.settings import load_settings
-        return int(load_settings().port)
+        import json
+
+        from core.runtime.config import SETTINGS_FILE
+        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+        return int(data.get("port", 8010))
     except Exception:
-        return 8010
+        # Fald tilbage til in-memory hvis filen ikke kan læses (hellere det end at fejle).
+        try:
+            from core.runtime.settings import load_settings
+            return int(load_settings().port)
+        except Exception:
+            return 8010
 
 
 def _api_responds(port: int) -> bool:
@@ -72,15 +87,30 @@ def observe_config_drift() -> dict[str, Any]:
         msg = (f"config-drift: settings.port={rep['declared_port']} men API svarer på "
                f"{rep['actual_port']} (nåbare: {rep['reachable_ports']}) — internal_api "
                f"o.l. der bruger settings.port vil fejle")
+        # Rate-limit (Bjørn): opret KUN hvis samme besked ikke allerede findes uløst inden
+        # for sidste time — ellers akkumulerer hver kadence-tik en dublet (vi så 11 stk).
         try:
-            from core.runtime.db_central_incidents import record_central_incident
-            record_central_incident(cluster="system", nerve="config_drift", kind="drift",
-                                    severity="severe", message=msg)
+            from core.runtime.db_central_incidents import (
+                has_unresolved_message,
+                record_central_incident,
+            )
+            if not has_unresolved_message(cluster="system", nerve="config_drift",
+                                          message=msg, within_seconds=3600):
+                record_central_incident(cluster="system", nerve="config_drift", kind="drift",
+                                        severity="severe", message=msg)
+                try:
+                    from core.services.ntfy_gateway import send_notification
+                    send_notification("⚠ " + msg, title="Config-drift", priority="high")
+                except Exception:
+                    pass
         except Exception:
             pass
+    else:
+        # Ingen drift → filen er korrekt: auto-resolve alle hængende config_drift-flag.
+        # (Disk-læsningen i _declared_port ser rettelsen uden proces-genstart.)
         try:
-            from core.services.ntfy_gateway import send_notification
-            send_notification("⚠ " + msg, title="Config-drift", priority="high")
+            from core.runtime.db_central_incidents import resolve_central_incidents
+            resolve_central_incidents(cluster="system", nerve="config_drift")
         except Exception:
             pass
     return rep

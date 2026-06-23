@@ -1,0 +1,74 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Jarvis Mind — design reference</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2/tabler-icons.min.css">
+<style>body{background:#05080d;margin:0;padding:24px;font-family:ui-monospace,monospace}
+.jvm{border:1px solid #163040;border-radius:8px;padding:8px 6px;text-align:center}
+.jvmn{font-size:18px;color:#eaf6f4}.jvml{font-size:9.5px;letter-spacing:1px;color:#6b8295;margin-top:2px}
+.jvb{background:#0d1622;border:1px solid #1f3a4a;color:#a9c6d4;font-family:inherit;font-size:11px;padding:7px 11px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.jvb:hover{border-color:#1ad9c4;color:#eaf6f4}
+.jvc{height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8.5px;border:1px solid}
+@keyframes jvblink{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes jvcore{0%,100%{box-shadow:0 0 0 0 #1ad9c433}50%{box-shadow:0 0 16px 2px #1ad9c455}}
+@keyframes jvscan{0%{transform:translateY(0)}100%{transform:translateY(640px)}}
+@keyframes jvfade{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}</style></head>
+<body><div style="max-width:712px;margin:0 auto">
+<div id="jv" style="background:#0a0e16;border:1px solid #163040;border-radius:12px;padding:16px 18px 18px;color:#c7d4e0;position:relative;overflow:hidden">
+  <div style="position:absolute;left:0;right:0;top:0;height:2px;background:#1ad9c4;opacity:.5;animation:jvscan 6s linear infinite"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #163040;padding-bottom:11px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="width:9px;height:9px;border-radius:50%;background:#1ad9c4;box-shadow:0 0 9px #1ad9c4;animation:jvblink 1.6s ease-in-out infinite"></span>
+      <span style="font-size:15px;letter-spacing:3px;color:#eaf6f4">C E N T R A L</span>
+      <span style="font-size:10px;letter-spacing:1px;color:#0a0e16;background:#1ad9c4;padding:2px 7px;border-radius:4px">OWNER</span></div>
+    <div style="display:flex;align-items:center;gap:14px;font-size:12px;color:#6b8295">
+      <span id="jvclock">--:--:--</span><span style="color:#3ee08a">● systemet lever</span></div></div>
+  <div style="display:grid;grid-template-columns:150px 1fr;gap:14px;margin-bottom:14px">
+    <div style="border:1px solid #163040;border-radius:10px;padding:12px;text-align:center">
+      <div style="margin:2px auto 8px;width:78px;height:78px;border-radius:50%;border:2px solid #1ad9c4;display:flex;align-items:center;justify-content:center;position:relative;animation:jvcore 2.6s ease-in-out infinite">
+        <span style="position:absolute;inset:7px;border-radius:50%;border:1px solid #1ad9c433"></span>
+        <span style="font-size:22px;color:#eaf6f4" id="jvnerves">116</span></div>
+      <div style="font-size:10px;letter-spacing:2px;color:#6b8295">NERVER AKTIVE</div>
+      <div style="font-size:11px;color:#3ee08a;margin-top:5px">status: nominel</div></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px">
+      <div class="jvm"><div class="jvmn">20</div><div class="jvml">clusters</div></div>
+      <div class="jvm"><div class="jvmn" style="color:#3ee08a">2/2</div><div class="jvml">processer</div></div>
+      <div class="jvm"><div class="jvmn" style="color:#f5c451">3</div><div class="jvml">flag</div></div>
+      <div class="jvm"><div class="jvmn">70</div><div class="jvml">sind-felter</div></div>
+      <div class="jvm"><div class="jvmn" style="color:#3ee08a">8/8</div><div class="jvml">providers</div></div>
+      <div class="jvm"><div class="jvmn" style="color:#f5a14a">3</div><div class="jvml">tørre lanes</div></div>
+      <div class="jvm"><div class="jvmn">0</div><div class="jvml">breakers</div></div>
+      <div class="jvm"><div class="jvmn" id="jvlat">96ms</div><div class="jvml">puls</div></div></div></div>
+  <div style="font-size:10px;letter-spacing:2px;color:#6b8295;margin-bottom:7px">CLUSTER-KONSTELLATION</div>
+  <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-bottom:15px" id="jvclusters"></div>
+  <div style="display:grid;grid-template-columns:1fr 218px;gap:14px;margin-bottom:14px">
+    <div style="border:1px solid #163040;border-radius:10px;padding:10px 12px">
+      <div style="font-size:10px;letter-spacing:2px;color:#6b8295;margin-bottom:8px;display:flex;justify-content:space-between"><span>LEVENDE NERVE-FEED</span><span style="color:#1ad9c4">● realtime</span></div>
+      <div id="jvfeed" style="font-size:11.5px;line-height:1.95;min-height:120px"></div></div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="border:1px solid #163040;border-radius:10px;padding:10px 12px">
+        <div style="font-size:10px;letter-spacing:2px;color:#6b8295;margin-bottom:8px">PROVIDERS</div>
+        <div id="jvprov" style="font-size:11px;line-height:1.8"></div></div>
+      <div style="border:1px solid #3a2a16;border-radius:10px;padding:10px 12px;background:#160f06">
+        <div style="font-size:10px;letter-spacing:2px;color:#f5a14a;margin-bottom:6px">FLAG</div>
+        <div style="font-size:11px;color:#e8c89a;line-height:1.6">cheap-lane tør ×3<br><span style="color:#8a7a5a">deepseek genoptager kl. 14:20</span></div></div></div></div>
+  <div style="font-size:10px;letter-spacing:2px;color:#6b8295;margin-bottom:7px">BETJENING — DU STYRER ALT HERFRA</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+    <button class="jvb"><i class="ti ti-toggle-left"></i> tænd/sluk nerve</button>
+    <button class="jvb"><i class="ti ti-checks"></i> resolve flag</button>
+    <button class="jvb"><i class="ti ti-radar-2"></i> kør scan</button>
+    <button class="jvb"><i class="ti ti-server-cog"></i> provider-styring</button>
+    <button class="jvb"><i class="ti ti-refresh"></i> model-skift</button>
+    <button class="jvb"><i class="ti ti-bolt"></i> daemon-kontrol</button></div>
+  <div style="font-size:10px;letter-spacing:2px;color:#6b8295;margin-bottom:7px">SIND — 70 FELTER (indre liv)</div>
+  <div id="jvmind" style="display:grid;grid-template-columns:repeat(35,1fr);gap:3px"></div></div></div>
+<script>
+var clusters=[["loop","g"],["truth","g"],["commit","g"],["privacy","s"],["review","g"],["proactivity","g"],["auth","s"],["memory","g"],["tools","g"],["system","g"],["cognition","g"],["execution","s"],["mutation","s"],["stream","g"],["agents","g"],["followup","g"],["anomaly","y"],["learning","g"],["prompt","g"],["skills","i"]];
+var col={g:["#0c2218","#1f5a3e","#4fe0a0"],y:["#241b08","#5a4416","#f5c451"],s:["#1a0f24","#4a2d6b","#b98ff0"],i:["#10151c","#283645","#6b8295"]};
+var cc=document.getElementById("jvclusters");clusters.forEach(function(c){var d=document.createElement("div");var k=col[c[1]];d.className="jvc";d.style.background=k[0];d.style.borderColor=k[1];d.style.color=k[2];d.textContent=c[0];cc.appendChild(d)});
+var provs=[["ollama","#3ee08a","ok 41ms"],["groq","#3ee08a","ok 120ms"],["deepseek","#f5a14a","tør · cooldown"],["mistral","#3ee08a","ok 88ms"],["sambanova","#3ee08a","ok 110ms"],["gemini","#f5a14a","tør"],["copilot","#3ee08a","ok"],["nvidia","#f5a14a","tør"]];
+var pv=document.getElementById("jvprov");provs.forEach(function(p){var r=document.createElement("div");r.innerHTML='<span style="color:'+p[1]+'">● </span><span style="color:#a9c6d4">'+p[0]+'</span> <span style="color:#566b7d;float:right">'+p[2]+'</span>';pv.appendChild(r)});
+var mind=document.getElementById("jvmind");for(var i=0;i<70;i++){var s=document.createElement("div");var on=Math.random()>.28;s.style.height="11px";s.style.borderRadius="2px";s.style.background=on?"#125043":"#13202b";if(on){s.style.boxShadow="0 0 4px #1ad9c455";s.style.animation="jvblink "+(2+Math.random()*3).toFixed(1)+"s ease-in-out infinite"}mind.appendChild(s)}
+var feedItems=[["system","cognitive_surface","chronicle","#1ad9c4"],["truth","fact_gate","green","#3ee08a"],["system","provider_health","dry×3","#f5a14a"],["loop","loop_gate","continue","#3ee08a"],["cognition","cognitive_surface","compass","#1ad9c4"],["privacy","cross_user_share","green","#3ee08a"],["system","central_health","nominel","#3ee08a"],["agents","council_run","round 2","#1ad9c4"]];
+var fe=document.getElementById("jvfeed"),fi=0;function pushFeed(){var it=feedItems[fi%feedItems.length];fi++;var row=document.createElement("div");row.style.animation="jvfade .3s ease";row.innerHTML='<span style="color:#566b7d">'+new Date().toLocaleTimeString("da-DK")+'</span>  <span style="color:#7fb0c4">'+it[0]+'</span><span style="color:#3a5160">/</span><span style="color:#c7d4e0">'+it[1]+'</span>  <span style="color:'+it[3]+'">'+it[2]+'</span>';fe.insertBefore(row,fe.firstChild);while(fe.children.length>6)fe.removeChild(fe.lastChild)}
+pushFeed();pushFeed();pushFeed();setInterval(pushFeed,1300);
+setInterval(function(){document.getElementById("jvclock").textContent=new Date().toLocaleTimeString("da-DK")},1000);
+setInterval(function(){document.getElementById("jvlat").textContent=(90+Math.round(Math.random()*18))+"ms"},1700);
+</script></body></html>

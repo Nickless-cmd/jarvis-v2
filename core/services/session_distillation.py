@@ -623,8 +623,14 @@ def run_private_brain_continuity(
     # Classify continuity intention semantically
     continuity_mode = _classify_continuity_mode(excerpts, by_type)
 
-    # Build a consolidation summary from excerpts
-    focus_parts = [e["focus"] for e in excerpts[:3] if e.get("focus")]
+    # Build a consolidation summary from excerpts. Filtrér snake_case maskin-id-foci
+    # (fx "Known limitation: forgetting_to_stage_changes_before_commit") fra — de er
+    # lækkede self-model event-navne, ikke menneskelæsbar fokus (Jarvis-spec #2).
+    def _is_machine_focus(f: str) -> bool:
+        core = str(f or "").split(":", 1)[-1].strip()
+        return bool(core) and " " not in core and core.count("_") >= 2
+    focus_parts = [e["focus"] for e in excerpts[:3]
+                   if e.get("focus") and not _is_machine_focus(str(e["focus"]))]
     summary_parts = [e["summary"] for e in excerpts[:3] if e.get("summary")]
     consolidated_focus = " + ".join(focus_parts[:3]) if focus_parts else "private continuity"
 

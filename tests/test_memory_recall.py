@@ -196,14 +196,18 @@ class TestMemoryCandidateRecallLines:
             assert result == []
 
     def test_returns_lines_from_candidates(self) -> None:
+        # Summaries skal være ≥5 ord (vag-filter) og ikke-vage/dubletter.
         candidates = [
-            {"summary": "Remember to check X", "confidence": "high"},
-            {"summary": "Consider Y pattern", "confidence": "medium"},
+            {"summary": "Bjørn foretrækker korte svar på simple repo-opgaver", "confidence": "high"},
+            {"summary": "Brug altid conda activate ai til Python-miljøet her", "confidence": "medium"},
         ]
-
         with patch(
             "core.services.prompt_sections.memory_recall.list_runtime_contract_candidates",
             return_value=candidates,
+        ), patch(
+            "core.services.prompt_sections.memory_recall._resolve_user_id", return_value="",
+        ), patch(
+            "core.services.prompt_sections.memory_recall._is_semantic_dup_of_memory", return_value=False,
         ):
             result = _module()._memory_candidate_recall_lines(limit=3)
             assert len(result) == 2
@@ -212,13 +216,16 @@ class TestMemoryCandidateRecallLines:
 
     def test_respects_limit(self) -> None:
         candidates = [
-            {"summary": f"Candidate {i}", "confidence": "low"}
+            {"summary": f"Konkret lærings-kandidat nummer {i} med nok ord her", "confidence": "low"}
             for i in range(10)
         ]
-
         with patch(
             "core.services.prompt_sections.memory_recall.list_runtime_contract_candidates",
             return_value=candidates,
+        ), patch(
+            "core.services.prompt_sections.memory_recall._resolve_user_id", return_value="",
+        ), patch(
+            "core.services.prompt_sections.memory_recall._is_semantic_dup_of_memory", return_value=False,
         ):
             result = _module()._memory_candidate_recall_lines(limit=2)
             assert len(result) == 2

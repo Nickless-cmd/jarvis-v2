@@ -112,7 +112,24 @@ class VisibleModelStreamCancelled(RuntimeError):
 
 
 class VisibleModelRateLimited(RuntimeError):
-    pass
+    """Visible-lanens provider er rate-limited (429) eller returnerede en
+    midlertidig HTTP-fejl. Instrumenteret i __init__ så HVER rate-limit på tværs
+    af ALLE providers (copilot + openai-compat streaming) bliver synlig i
+    Centralen — også en FIRST-pass 429 (hver chat-tur, uden for followup-loopet,
+    var pt. usynlig). Self-safe: observabilitet må aldrig forstyrre fejl-stien."""
+
+    def __init__(self, *args: object, provider: str = "", model: str = "") -> None:
+        super().__init__(*args)
+        try:
+            from core.services.central_core import central
+            central().observe({
+                "cluster": "stream", "nerve": "provider_rate_limited",
+                "lane": "visible", "provider": str(provider or ""),
+                "model": str(model or ""),
+                "detail": str(args[0] if args else "")[:200],
+            })
+        except Exception:
+            pass
 
 
 def _normalize_github_models_model_id(model: str) -> str:
@@ -632,9 +649,24 @@ def _stream_openai_compatible_model(
                 return
     except VisibleModelStreamCancelled:
         raise
-    except Exception:
+    except Exception as _prov_exc:
         if controller is not None and controller.is_cancelled():
             raise VisibleModelStreamCancelled("visible-run-cancelled")
+        # Stream-cluster: visible-lanens DEFAULT-provider-sti (deepseek/glm/openai-
+        # compat) var blind — en 429/4xx/timeout her forsvandt mod visible_runs uden
+        # spor i Centralen. Nu synlig (rate-limit vs øvrig fejl). Self-safe, re-raiser.
+        try:
+            from core.services.central_core import central
+            _sc = getattr(_prov_exc, "status_code", None)
+            central().observe({
+                "cluster": "stream",
+                "nerve": "provider_rate_limited" if _sc == 429 else "provider_error",
+                "lane": "visible", "provider": str(provider or ""),
+                "model": str(model or ""), "status_code": _sc,
+                "detail": f"{type(_prov_exc).__name__}: {_prov_exc}"[:200],
+            })
+        except Exception:
+            pass
         raise
 
 

@@ -282,6 +282,10 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/heartbeat_provider_fallback.py (B10: alle providers udtømt)"),
     NerveSpec("provider_health", "stream", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/provider_health_check.py (B7: ping-helbred pr. provider)"),
+    NerveSpec("provider_rate_limited", "stream", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/visible_model.py — VISIBLE-lane 429 (copilot VisibleModelRateLimited + deepseek/glm openai-compat); FIRST-pass var blind"),
+    NerveSpec("provider_error", "stream", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/visible_model.py — VISIBLE-lane provider-fejl (4xx/timeout), _stream_openai_compatible_model"),
     NerveSpec("scheduled_task_fire", "loop", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/scheduled_tasks.py (B6: påmindelse fyret/dispatch-fejl)"),
     # B-batch 2 (2026-06-22): heartbeat-producer-helbred + notifikations-levering synlige.

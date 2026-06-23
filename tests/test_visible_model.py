@@ -32,3 +32,27 @@ class TestVisibleModelResultSurface:
             text="x", input_tokens=10, output_tokens=2, cost_usd=0.0,
         )
         assert r.reasoning_content == ""
+
+
+# ── Stream-cluster: VISIBLE-lane provider-fejl synlige (2026-06-23) ──────────
+def test_rate_limited_exception_observes(monkeypatch):
+    """VisibleModelRateLimited.__init__ observerer HVER rate-limit (også first-pass)."""
+    import core.services.visible_model as vm
+    seen = {}
+    class _C:
+        def observe(self, ev): seen.update(ev)
+    import core.services.central_core as cc
+    monkeypatch.setattr(cc, "central", lambda: _C())
+    exc = vm.VisibleModelRateLimited("GitHub Copilot visible lane is rate-limited",
+                                     provider="github-copilot", model="gpt-5.4")
+    assert isinstance(exc, RuntimeError)
+    assert seen["nerve"] == "provider_rate_limited" and seen["lane"] == "visible"
+    assert seen["provider"] == "github-copilot"
+
+
+def test_rate_limited_self_safe(monkeypatch):
+    import core.services.visible_model as vm
+    import core.services.central_core as cc
+    monkeypatch.setattr(cc, "central", lambda: (_ for _ in ()).throw(RuntimeError("nede")))
+    # må ikke kaste fra __init__ (observabilitet må aldrig forstyrre fejl-stien)
+    vm.VisibleModelRateLimited("boom")

@@ -43,9 +43,9 @@ def _resolve_user_id(session_id: str = "") -> str:
             uid = str(sess.get("user_id") or "").strip()
             if uid:
                 return uid
-        from core.identity.users import get_owner
-        owner = get_owner()
-        return str(getattr(owner, "user_id", "") or "")
+        # Owner-user_id ER discord_id i dette system (owner_resolver: sess_user_id==owner_id).
+        from core.identity.owner_resolver import get_owner_discord_id
+        return str(get_owner_discord_id() or "").strip()
     except Exception:
         return ""
 

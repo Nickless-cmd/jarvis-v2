@@ -1,7 +1,26 @@
 from __future__ import annotations
 
+# MC poller cognitive-arkitekturen (~70 surfaces) hvert 60s, og DEN byggede FØR friskt hver
+# gang (ingen cache) → stor backend-load (Bjørn 2026-06-23). TTL-cache (75s) collapser
+# samtidige pollere til ÉN build og capper rebuild-raten uanset poll-frekvens. Surfaces
+# afspejler indre tilstand der ændrer sig på minut-kadence → 75s staleness er fint.
+# Kontrakt (get_timed_runtime_surface): callers MÅ IKKE mutere returværdien (kun læse).
+_SURFACE_TTL_SECONDS = 75.0
+
 
 def build_cognitive_architecture_surface() -> dict[str, object]:
+    """Cached MC/self-model cognitive-architecture-surface. Self-safe → falder til fersk build."""
+    try:
+        from core.services.runtime_surface_cache import get_timed_runtime_surface
+        return get_timed_runtime_surface(
+            "cognitive_architecture_surface", _SURFACE_TTL_SECONDS,
+            _build_cognitive_architecture_surface_uncached,
+        )
+    except Exception:
+        return _build_cognitive_architecture_surface_uncached()
+
+
+def _build_cognitive_architecture_surface_uncached() -> dict[str, object]:
     """Build a shared cognitive architecture surface for MC and self-model."""
     from core.services.heartbeat_runtime import _build_cognitive_surfaces
     from core.services.cognitive_core_experiments import (

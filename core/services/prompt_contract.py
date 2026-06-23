@@ -903,6 +903,13 @@ def build_visible_chat_prompt_assembly(
     except Exception as _e:
         _sec_err("forbundne apps (plugins)", _e)
 
+    # Central-notices (spec 2026-06-23 §2): medium-niveau incidents Jarvis bør se da han
+    # altid er ved systemet (severe ntfy'es, low er trace-only). Tom = 0 tokens. Prio 10.
+    try:
+        _awareness_add(10, "central notices", _central_notices_section())
+    except Exception as _e:
+        _sec_err("central notices", _e)
+
     # Loop-compliance self-check (added 2026-05-12). Fires when Jarvis is
     # ignoring his own loop-nudge commitment OR R2-gate heed_rate is low.
     # Priority 7 = right after identity pins so he can't miss it among 50+
@@ -3194,6 +3201,37 @@ def _self_correction_nudges_section(*, compact: bool) -> str:
         "samme i stedet for at skjule dem bag fremgang. Hold ubesvarede spørgsmål "
         "synlige til sidst. MEMORY-FIRST: QUICK_FACTS + search_memory før du spørger eller leder."
     )
+
+
+def _central_notices_section() -> str | None:
+    """Medium-niveau Central-notices til Jarvis (spec 2026-06-23 §2). IKKE severe (dem
+    ntfy'er Centralen), IKKE low (dem er trace-only). Kompakt: max 3, max 1 pr. nerve.
+    Returnerer None (tom sektion) når ingen notices → brænder 0 tokens. Selv-sikker."""
+    try:
+        from core.runtime.db_central_incidents import list_central_incidents
+        incidents = list_central_incidents(unresolved_only=True, limit=40)
+        medium = [
+            i for i in incidents
+            if str(i.get("severity")) == "error"        # ikke "severe"
+            and str(i.get("kind")) != "fail_open"        # ikke sikkerhed
+        ]
+        if not medium:
+            return None
+        seen: set[str] = set()
+        lines: list[str] = []
+        for i in medium[:12]:
+            nerve = f"{i.get('cluster')}/{i.get('nerve')}"
+            if nerve in seen:
+                continue
+            seen.add(nerve)
+            lines.append(f"  • {nerve}: {str(i.get('message') or '')[:80]}")
+            if len(lines) >= 3:
+                break
+        if not lines:
+            return None
+        return "[CENTRAL-NOTICE] medium:\n" + "\n".join(lines)
+    except Exception:
+        return None  # selv-sikker: crash = tom sektion, ikke crashet prompt
 
 
 def _pending_promises_section(session_id: str | None) -> str | None:

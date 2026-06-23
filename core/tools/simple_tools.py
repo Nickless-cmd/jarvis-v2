@@ -3323,6 +3323,42 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "central_query",
+            "description": (
+                "Spørg Den Intelligente Central direkte — live status, incidents, trace, "
+                "cluster health, autonom run-historik, læring, drift, breakers, eller toggle "
+                "en nerve/cluster on/off. Pull on-demand: Centralen lever i baggrunden; dette "
+                "tool giver dig adgang når du har brug for det. Returnerer ALTID status=ok "
+                "eller status=error med meta (latency/source/truncated) — aldrig stille fejl, "
+                "aldrig trunkeret output uden meta.truncated. Paginer med offset ved has_more."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["status", "incidents", "trace", "cluster_health",
+                                 "nerve_detail", "toggle_nerve", "toggle_cluster",
+                                 "autonomy", "learning", "drift", "breakers"],
+                        "description": ("status=snapshot, incidents=aktive fejl, trace=seneste "
+                                        "fyringer, cluster_health=pr-cluster, nerve_detail=én "
+                                        "nerve dybt, toggle_nerve/cluster=on/off, autonomy=autonom "
+                                        "modenhed, learning=adaptiv læring, drift=config-drift, "
+                                        "breakers=åbne circuit-breakers"),
+                    },
+                    "cluster": {"type": "string", "description": "(trace/cluster_health/toggle_cluster) cluster-navn"},
+                    "nerve": {"type": "string", "description": "(nerve_detail/toggle_nerve) nerve-navn"},
+                    "enabled": {"type": "boolean", "description": "(toggle_*) True=til, False=fra"},
+                    "limit": {"type": "integer", "description": "max resultater (default 20, max 100)"},
+                    "offset": {"type": "integer", "description": "pagina-offset (brug meta.next_offset ved has_more)"},
+                },
+                "required": ["action"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "db_query",
             "description": (
                 "Run a read-only SQL SELECT query against Jarvis' own database. "
@@ -8253,6 +8289,19 @@ def _exec_deep_analyze(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": str(exc), "status": "error"}
 
 
+def _exec_central_query(args: dict[str, Any]) -> dict[str, Any]:
+    """Jarvis' direkte adgang til Den Intelligente Central (impl. i central_query_tool —
+    holdt ude af denne monolit, Boy Scout). HÅRD invariant: returnerer ALTID status=ok/error."""
+    try:
+        from core.tools.central_query_tool import central_query
+        return central_query(args or {})
+    except Exception as exc:
+        # Selv en import-katastrofe må returnere et struktureret svar (aldrig stille fejl).
+        return {"status": "error", "action": str((args or {}).get("action") or ""),
+                "data": None, "error": f"central_query unavailable: {type(exc).__name__}: {exc}",
+                "meta": {"latency_ms": 0, "source": "central_query", "truncated": False}}
+
+
 def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
     """Run a read-only SELECT query against Jarvis' database."""
     sql = str(args.get("sql") or "").strip()
@@ -8867,6 +8916,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "analyze_image": _exec_analyze_image,
     "read_archive": _exec_read_archive,
     "internal_api": _exec_internal_api,
+    "central_query": _exec_central_query,
     "db_query": _exec_db_query,
     "compact_context": _exec_compact_context,
     "queue_followup": _exec_queue_followup,

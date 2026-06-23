@@ -1409,6 +1409,37 @@ async def _stream_visible_run(
             except Exception as _ptc_exc:
                 logger.debug("prose-tool-call-parse fejlede: %s", _ptc_exc)
 
+        # ── Resend-på-tom (2026-06-23, Bjørn option 1 — runtime KURERER) ─────
+        # Provider-AGNOSTISK: en transient tom first-pass (intet svar, ingen tools,
+        # ingen prosa-kald) gen-spørges ÉN gang. Idempotent — intet blev eksekveret.
+        # Transient → lykkes oftest. execute_visible_model er SYNKRON → kør i tråd
+        # (ellers fryser --workers 1 API'et). Bærer fuld kontekst via session_id.
+        if (result is not None and not _collected_native_tool_calls
+                and not (getattr(result, "text", "") or "").strip()):
+            try:
+                from core.services.visible_model import (
+                    execute_visible_model as _exec_rs,
+                )
+                _rs = await asyncio.to_thread(
+                    _exec_rs, message=run.user_message, provider=run.provider,
+                    model=run.model, session_id=run.session_id)
+                _rs_text = (getattr(_rs, "text", "") or "").strip()
+                try:
+                    from core.services import followup_observer as _fo_rs
+                    _fo_rs.note_resend(run.run_id, provider=run.provider,
+                                       model=run.model, recovered=bool(_rs_text))
+                except Exception:
+                    pass
+                if _rs_text:
+                    result = _rs
+                    logger.warning(
+                        "resend-recovered tom first-pass run_id=%s (%d tegn)",
+                        run.run_id, len(_rs_text))
+                    yield _sse("delta", {"type": "delta", "run_id": run.run_id,
+                                         "delta": _rs_text})
+            except Exception as _rs_exc:
+                logger.debug("resend-på-tom fejlede: %s", _rs_exc)
+
         capability_plan = _extract_capability_plan(result.text)
 
         # ── Native tool_calls: execute directly via simple_tools ──
@@ -3955,6 +3986,18 @@ def _persist_session_assistant_message(
     normalized = str(text or "").strip()
     if not normalized:
         return
+    # ── Leak/dump-guard (2026-06-23) ────────────────────────────────────────
+    # Model echoer et råt (kæmpe) tool-result som svar i stedet for at opsummere
+    # (Bjørns 27KB-dumps). Observe-only → synlig i Centralen, raffineres med data.
+    # Markør-leaks ([tool_result:/[bash]:) fanges separat af presentation_invariant.
+    if len(normalized) > 8000:
+        try:
+            from core.services import followup_observer as _fo_leak
+            _fo_leak.note_leak(
+                run.run_id, provider=run.provider, model=run.model,
+                chars=len(normalized), reason="svar > 8000 tegn (sandsynlig dump)")
+        except Exception:
+            pass
     normalized = _mark_mid_word_truncation(normalized)
     # 2026-06-11 (Bjørn frustration crisis fix D2): når LLM emitter
     # tool-result markers eller tool-calls som prose, raisede

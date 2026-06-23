@@ -48,6 +48,12 @@ CATALOG: tuple[NerveSpec, ...] = (
     NerveSpec("degeneration", "loop", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/stream_degeneration.py — MODEL-LOOP: runaway-repetition (147KB "
               "probe_ollama-skrald-klassen) dræbt ved kilden i streaming-laget; provider-agnostisk"),
+    NerveSpec("resend", "loop", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/visible_runs.py — RESEND-PÅ-TOM: transient tom first-pass gen-spurgt "
+              "ÉN gang (runtime kurerer, ikke bare fanger); recovered=lykkedes"),
+    NerveSpec("leak", "loop", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/visible_runs.py — LEAK/DUMP: råt tool-result echoet som svar "
+              "(>8000 tegn) i stedet for opsummeret; observe + incident"),
     NerveSpec("capability_cap", "loop", GateClass.COGNITIVE, "filter", "leave",
               "core/tools/tool_scoping.py"),
     NerveSpec("good_enough", "loop", GateClass.COGNITIVE, "tool", "leave",

@@ -82,6 +82,34 @@ def note_empty_completion(run_id: str, *, provider: str = "", model: str = "",
         pass
 
 
+def note_resend(run_id: str, *, provider: str = "", model: str = "",
+                recovered: bool = False) -> None:
+    """RESEND-PÅ-TOM (Bjørn option 1): runtimen fangede en transient tom completion
+    og gen-spurgte modellen ÉN gang. recovered=True hvis gen-forsøget gav et svar.
+    Telemetri — viser hvor ofte tomme svar er transiente (og kureres) vs vedholdende."""
+    _observe("resend", run_id, provider=str(provider or ""),
+             model=str(model or ""), recovered=bool(recovered))
+
+
+def note_leak(run_id: str, *, provider: str = "", model: str = "",
+              chars: int = 0, reason: str = "") -> None:
+    """LEAK/DUMP: modellen echoede et råt (kæmpe) tool-result som prosa-svar i stedet
+    for at opsummere (Bjørns 27KB-dumps). Synlig + dedup'et incident."""
+    _observe("leak", run_id, provider=str(provider or ""), model=str(model or ""),
+             chars=int(chars or 0), reason=str(reason or ""))
+    try:
+        from core.runtime.db_central_incidents import (
+            record_central_incident, has_open_incident)
+        if not has_open_incident(cluster=_CLUSTER, nerve="leak"):
+            record_central_incident(
+                cluster=_CLUSTER, nerve="leak", kind="tool_result_dump",
+                severity="warn", run_id=str(run_id or ""),
+                message=(f"Leak/dump: råt tool-result som svar ({chars} tegn) — "
+                         f"{provider}/{model}: {reason}"))
+    except Exception:
+        pass
+
+
 def note_degeneration(run_id: str, *, provider: str = "", model: str = "",
                       reason: str = "", chars: int = 0) -> None:
     """MODEL-LOOP: streaming-laget fangede en runaway-repetition og dræbte den ved

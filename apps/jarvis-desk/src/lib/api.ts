@@ -446,6 +446,18 @@ export async function getCentralRealtime(config: ApiConfig): Promise<CentralSnap
   return apiFetch<CentralSnapshot>(config, '/central/realtime')
 }
 
+/** Jarvis Mind-hub (Centralen som ÉT samlingspunkt). Uden section → index af alle faner. */
+export interface MindIndexEntry { section: string; label: string; ready: boolean }
+export async function getMindIndex(config: ApiConfig): Promise<{ index: MindIndexEntry[] }> {
+  return apiFetch(config, '/central/mind')
+}
+/** Én Jarvis Mind-sektions projektion (læst fra Centralens cachede kilde — ét ground truth). */
+export async function getMindSection(
+  config: ApiConfig, section: string,
+): Promise<Record<string, unknown>> {
+  return apiFetch(config, `/central/mind?section=${encodeURIComponent(section)}`)
+}
+
 /** SSE-live-feed af nerve-fyringer (ægte realtid). fetch-baseret (EventSource kan ikke
  *  sende Authorization). onItem pr. fyring. Returnér {abort}. */
 export function streamCentral(

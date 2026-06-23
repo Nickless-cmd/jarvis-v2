@@ -1494,6 +1494,36 @@
 .jm-raw { font-size: 11px; color: var(--fg-2); background: var(--bg-1); border: 1px solid var(--line);
   border-radius: 10px; padding: 12px; overflow: auto; max-height: 70vh; white-space: pre-wrap; }
 .jm-placeholder { color: var(--fg-2); font-size: 14px; gap: 6px; padding: 24px 4px; }
+.jm-tab.pending { opacity: 0.55; }
+
+/* Levende puls fra Centralens SSE-stream */
+.jm-pulse { display: flex; align-items: center; gap: 9px; padding: 7px 11px; margin-bottom: 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--bg-1); font-size: 12px; }
+.jm-pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bg-4); flex: none; }
+.jm-pulse-dot.live { background: #34d399; box-shadow: 0 0 0 0 #34d39966; animation: jm-pulse-ring 1.8s ease-out infinite; }
+@keyframes jm-pulse-ring { 0% { box-shadow: 0 0 0 0 #34d39977; } 70% { box-shadow: 0 0 0 7px #34d39900; } 100% { box-shadow: 0 0 0 0 #34d39900; } }
+.jm-pulse-text { color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Avanceret-toggle (magi tilladt, men synlig når man vil) */
+.jm-adv { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border: 1px solid var(--line);
+  border-radius: 7px; background: transparent; color: var(--fg-3); cursor: pointer; font-size: 12px; }
+.jm-adv:hover { color: var(--fg-1); }
+.jm-adv.on { background: var(--bg-3); color: var(--fg-1); }
+.jm-section-sub { font-size: 12px; color: var(--fg-3); margin-bottom: 8px; }
+
+/* Stat-rude (Oversigt) */
+.jm-stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.jm-stat { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-1); text-align: center; }
+.jm-stat-value { font-size: 24px; font-weight: 600; color: var(--fg-1); text-transform: capitalize; }
+.jm-stat-label { font-size: 11px; color: var(--fg-3); margin-top: 3px; }
+.jm-stat.tone-red .jm-stat-value { color: #ef4444; }
+.jm-stat.tone-yellow .jm-stat-value { color: #eab308; }
+.jm-stat.tone-green .jm-stat-value { color: #34d399; }
+
+/* Feed (Observabilitet) */
+.jm-feed { display: flex; flex-direction: column; gap: 2px; }
+.jm-feed-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 7px; font-size: 12px; color: var(--fg-2); }
+.jm-feed-row:hover { background: var(--bg-1); }
 
 /* ── Marketplace ───────────────────────────────────────────────────────── */
 .marketplace { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }

@@ -1513,7 +1513,8 @@
 .ch-fbtn.on { background:#0d1622; border-color:#1f3a4a; color:#1ad9c4; }
 .ch-frun { color:#3a5160; font-size:11px; margin-left:7px; }
 .ch-freason { color:#7a8fa0; font-size:11.5px; margin:1px 0 3px 4px; padding-left:8px; border-left:1px solid #1f3a4a; }
-.ch-frow { padding:3px 0 3px 8px; border-left:2px solid transparent; }
+.ch-frow { display:block; width:100%; text-align:left; background:transparent; border:none; border-left:2px solid transparent; padding:3px 0 3px 8px; cursor:pointer; font-family:var(--font-mono); font-size:13px; color:#c7d4e0; border-radius:0 5px 5px 0; }
+.ch-frow:hover { background:#0d1622; }
 .ch-frow.tone-line-red { border-left-color:#ff5d5d; background:#1a0d0d33; }
 .ch-frow.tone-line-amber { border-left-color:#f5c451; }
 .ch-frow.tone-line-cyan { border-left-color:#1ad9c455; }
@@ -1562,6 +1563,11 @@
 .ch-dtag.tone-cyan { color:#1ad9c4; border-color:#1f3a4a; background:#0d1622; }
 .ch-dmsg { color:#8aa0b2; font-size:12px; margin-top:3px; word-break:break-word; }
 .ch-dloc { color:#1ad9c4; font-size:11px; margin-left:8px; }
+.ch-foldlabel { display:flex; align-items:center; gap:6px; background:transparent; border:none; cursor:pointer; padding:0; margin-bottom:10px; }
+.ch-foldsum { margin-left:8px; font-size:11px; }
+.ch-foldsum .tone-red{color:#ff8a87} .ch-foldsum .tone-amber{color:#f5c451} .ch-foldsum .tone-green{color:#3ee08a}
+.ch-focus { border:1px solid #1f3a4a; border-radius:8px; padding:9px 11px; margin-bottom:12px; background:#0d1622; }
+.tone-red { color:#ff8a87; }
 .ch-termcmd { color:#1ad9c4; margin-top:6px; }
 .ch-termout { color:#a9c6d4; white-space:pre-wrap; }
 .ch-termerr { color:#ff8a87; }

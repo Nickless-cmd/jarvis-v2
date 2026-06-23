@@ -25,11 +25,14 @@ const CFG = { apiBaseUrl: 'http://x', authToken: 't' }
 describe('CentralHud', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
-  it('renderer reaktorkernen med nerve-tal + cluster-konstellation', async () => {
+  it('renderer reaktorkernen + foldbar cluster-konstellation', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
     render(<CentralHud config={CFG} />)
     await waitFor(() => expect(screen.getByText('116')).toBeTruthy())
     expect(screen.getByText('C E N T R A L')).toBeTruthy()
-    expect(screen.getByText('truth')).toBeTruthy()
+    // clusters starter foldet → udfold
+    await userEvent.click(screen.getByText(/CLUSTER-KONSTELLATION/))
+    await waitFor(() => expect(screen.getByText('truth')).toBeTruthy())
     expect(screen.getByTitle('auth 🔒')).toBeTruthy()  // sikkerheds-cluster markeret
   })
 

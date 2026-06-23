@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ToggleLeft, CheckCheck, Radar, ServerCog, RefreshCw, Zap, Flag, TerminalSquare, Stethoscope, type LucideIcon } from 'lucide-react'
+import { ToggleLeft, CheckCheck, Radar, ServerCog, RefreshCw, Zap, Flag, TerminalSquare, Stethoscope, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react'
 import type { ApiConfig, CentralFeedItem, CentralProvider } from '../../lib/api'
-import { getCentralRealtime, getCentralProviders, getCentralDiagnostics, runCentralCommand } from '../../lib/api'
+import { getCentralRealtime, getCentralProviders, getCentralDiagnostics, getCentralNerve, runCentralCommand } from '../../lib/api'
 import type { CentralDiagnostics } from '../../lib/api'
 import { subscribeCentralStream } from '../../lib/centralStream'
 import { usePollWhenVisible } from '../../hooks/usePollWhenVisible'
@@ -14,25 +14,7 @@ export function CentralHud({ config }: { config?: ApiConfig }) {
   const { data: snap } = usePollWhenVisible(() => getCentralRealtime(config!), 5000, !!config)
   const { data: prov } = usePollWhenVisible(() => getCentralProviders(config!), 15000, !!config)
 
-  const [feed, setFeed] = useState<CentralFeedItem[]>([])
   const [live, setLive] = useState(false)
-  const [filter, setFilter] = useState<'vigtige' | 'fejl' | 'alle'>('vigtige')
-  const pausedRef = useRef(false)  // pause-på-hover: frys feed'et så man kan nå at læse
-  useEffect(() => {
-    if (!config) return
-    setLive(true)
-    const unsub = subscribeCentralStream(config,
-      (it) => { if (!pausedRef.current) setFeed((f) => [it, ...f].slice(0, 150)) }, () => setLive(false))
-    return () => { unsub(); setLive(false) }
-  }, [config])
-  // Filtrér støjen væk (central_self_probe/observe-telemetri) → vis det MENINGSFULDE:
-  // beslutninger (gates), fejl, røde/gule domme — helt ud i clusterne. Med begrundelse + run-id.
-  const shownFeed = feed.filter((f) => {
-    const isErr = f.kind === 'error' || f.decision === 'red'
-    if (filter === 'fejl') return isErr || f.decision === 'yellow'
-    if (filter === 'vigtige') return isErr || f.decision === 'red' || f.decision === 'yellow' || f.kind === 'decide'
-    return true
-  }).slice(0, 40)
 
   const cov = snap?.coverage ?? {}
   const status = snap?.status ?? 'green'
@@ -77,45 +59,11 @@ export function CentralHud({ config }: { config?: ApiConfig }) {
         </div>
       </div>
 
-      <div className="ch-label">CLUSTER-KONSTELLATION</div>
-      <div className="ch-clusters">
-        {clusters.map((c) => (
-          <div key={c.cluster} className={`ch-cl ${c.security ? 'sec' : `s-${c.status}`}`} title={c.cluster + (c.security ? ' 🔒' : '')}>{c.cluster}</div>
-        ))}
-      </div>
+      <ClusterGrid clusters={clusters} />
+
 
       <div className="ch-mid">
-        <div className="ch-panel">
-          <div className="ch-plabel">
-            <span>NERVE-FEED <span className="ch-rt">● realtime</span></span>
-            <span className="ch-ffilter">
-              {(['vigtige', 'fejl', 'alle'] as const).map((m) => (
-                <button key={m} type="button" className={`ch-fbtn ${filter === m ? 'on' : ''}`} onClick={() => setFilter(m)}>{m}</button>
-              ))}
-            </span>
-          </div>
-          <div className="ch-feed ch-scrolly"
-            onMouseEnter={() => { pausedRef.current = true }}
-            onMouseLeave={() => { pausedRef.current = false }}>
-            {shownFeed.length === 0 && <div className="ch-dim">{live ? (filter === 'alle' ? 'lytter på nervesystemet…' : 'ingen beslutninger/fejl endnu — alt nominelt') : 'forbinder…'}</div>}
-            {shownFeed.map((f, i) => {
-              const tone = f.kind === 'error' ? 'red' : f.decision === 'red' ? 'red'
-                : f.decision === 'yellow' ? 'amber' : f.decision === 'green' ? 'green'
-                : f.kind === 'decide' ? 'cyan' : 'dim'
-              const verdict = f.kind === 'error' ? 'FEJL' : f.decision === 'red' ? 'HARD-BLOK'
-                : f.decision === 'yellow' ? 'advar' : f.decision || f.kind
-              return (
-                <div key={i} className={`ch-frow tone-line-${tone}`}>
-                  <span className="ch-fcl">{f.cluster}</span><span className="ch-sep">/</span>
-                  <span className="ch-fnv">{f.nerve}</span>
-                  <span className={`ch-fval tone-${tone}`}>{verdict}</span>
-                  {f.run_id && <span className="ch-frun" title={`run ${f.run_id}`}>#{f.run_id.slice(-6)}</span>}
-                  {f.reason && <div className="ch-freason">{f.reason}</div>}
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        <FeedPanel config={config} onLive={setLive} />
         <div className="ch-side">
           <div className="ch-panel">
             <div className="ch-plabel">PROVIDERS</div>
@@ -166,6 +114,110 @@ export function CentralHud({ config }: { config?: ApiConfig }) {
   )
 }
 
+// Støj-nerver (ren telemetri/health) — skjules i 'vigtige'/'fejl' så feed'et viser MENING.
+const FEED_NOISE = new Set([
+  'central_self_probe', 'central_health', 'device_presence', 'endpoint_call', 'cognitive_surface',
+  'tool_usage_stats', 'endpoint_usage_stats', 'provider_health', 'census', 'learning', 'config_drift',
+])
+
+/** Isoleret feed: ejer sin egen state + stream (primitive deps → ingen drop-loop fra config-
+ *  identitet), så de konstante fyringer kun re-renderer HER, ikke hele HUD'en. Klikbare rækker
+ *  åbner fuld info i diagnostik. Støj filtreret; pause-på-hover. */
+function FeedPanel({ config, onLive }: { config?: ApiConfig; onLive: (v: boolean) => void }) {
+  const [feed, setFeed] = useState<CentralFeedItem[]>([])
+  const [filter, setFilter] = useState<'vigtige' | 'fejl' | 'alle'>('vigtige')
+  const pausedRef = useRef(false)
+  const apiBaseUrl = config?.apiBaseUrl
+  const authToken = config?.authToken
+  useEffect(() => {
+    if (!apiBaseUrl) return
+    onLive(true)
+    const cfg = { apiBaseUrl, authToken: authToken ?? null }
+    const unsub = subscribeCentralStream(cfg,
+      (it) => { if (!pausedRef.current) setFeed((f) => [it, ...f].slice(0, 200)) },
+      () => onLive(false))
+    return () => { unsub() }
+  }, [apiBaseUrl, authToken, onLive])
+  const shown = feed.filter((f) => {
+    if (filter === 'alle') return true
+    const isErr = f.kind === 'error' || f.decision === 'red'
+    if (filter === 'fejl') return isErr || f.decision === 'yellow'
+    // vigtige: ægte beslutninger + fejl, men IKKE støj-nerverne
+    if (FEED_NOISE.has(f.nerve)) return isErr || f.decision === 'red' || f.decision === 'yellow'
+    return isErr || f.decision === 'red' || f.decision === 'yellow' || f.kind === 'decide'
+  }).slice(0, 50)
+  return (
+    <div className="ch-panel">
+      <div className="ch-plabel">
+        <span>NERVE-FEED <span className="ch-rt">● realtime</span></span>
+        <span className="ch-ffilter">
+          {(['vigtige', 'fejl', 'alle'] as const).map((m) => (
+            <button key={m} type="button" className={`ch-fbtn ${filter === m ? 'on' : ''}`} onClick={() => setFilter(m)}>{m}</button>
+          ))}
+        </span>
+      </div>
+      <div className="ch-feed ch-scrolly"
+        onMouseEnter={() => { pausedRef.current = true }} onMouseLeave={() => { pausedRef.current = false }}>
+        {shown.length === 0 && <div className="ch-dim">{filter === 'alle' ? 'lytter på nervesystemet…' : 'intet vigtigt lige nu — alt nominelt (skift til ALLE for telemetri)'}</div>}
+        {shown.map((f, i) => {
+          const tone = f.kind === 'error' || f.decision === 'red' ? 'red'
+            : f.decision === 'yellow' ? 'amber' : f.decision === 'green' ? 'green'
+            : f.kind === 'decide' ? 'cyan' : 'dim'
+          const verdict = f.kind === 'error' ? 'FEJL' : f.decision === 'red' ? 'HARD-BLOK'
+            : f.decision === 'yellow' ? 'advar' : f.decision || f.kind
+          return (
+            <button type="button" key={i} className={`ch-frow tone-line-${tone}`}
+              onClick={() => window.dispatchEvent(new CustomEvent('central-detail', { detail: f.nerve }))}
+              title="klik for fuld info i diagnostik">
+              <span className="ch-fcl">{f.cluster}</span><span className="ch-sep">/</span>
+              <span className="ch-fnv">{f.nerve}</span>
+              <span className={`ch-fval tone-${tone}`}>{verdict}</span>
+              {f.run_id && <span className="ch-frun">#{f.run_id.slice(-6)}</span>}
+              {f.reason && <div className="ch-freason">{f.reason}</div>}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** Cluster-konstellation — foldbar, starter sammenfoldet med smart resumé (røde/gule/sikkerhed
+ *  fremhævet). Udfold for det fulde grid. */
+function ClusterGrid({ clusters }: { clusters: { cluster: string; status: string; security: boolean }[] }) {
+  const [open, setOpen] = useState(false)
+  const red = clusters.filter((c) => c.status === 'red')
+  const yellow = clusters.filter((c) => c.status === 'yellow')
+  const sec = clusters.filter((c) => c.security)
+  return (
+    <div>
+      <button type="button" className="ch-label ch-foldlabel" onClick={() => setOpen((o) => !o)}>
+        {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />} CLUSTER-KONSTELLATION
+        <span className="ch-foldsum">
+          {red.length > 0 && <span className="tone-red">{red.length} rød</span>}
+          {yellow.length > 0 && <span className="tone-amber"> {yellow.length} gul</span>}
+          {red.length === 0 && yellow.length === 0 && <span className="tone-green">{clusters.length} nominelle</span>}
+          <span className="ch-dim"> · {sec.length} sikkerhed</span>
+        </span>
+      </button>
+      {!open && (red.length > 0 || yellow.length > 0) && (
+        <div className="ch-clusters" style={{ marginBottom: '12px' }}>
+          {[...red, ...yellow].map((c) => (
+            <div key={c.cluster} className={`ch-cl s-${c.status}`} title={c.cluster}>{c.cluster}</div>
+          ))}
+        </div>
+      )}
+      {open && (
+        <div className="ch-clusters">
+          {clusters.map((c) => (
+            <div key={c.cluster} className={`ch-cl ${c.security ? 'sec' : `s-${c.status}`}`} title={c.cluster + (c.security ? ' 🔒' : '')}>{c.cluster}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Metric({ n, l, tone }: { n: unknown; l: string; tone?: string }) {
   return <div className="ch-m"><div className={`ch-mn ${tone ? `tone-${tone}` : ''}`}>{String(n ?? '—')}</div><div className="ch-ml">{l}</div></div>
 }
@@ -195,6 +247,13 @@ function CtrlBtn({ config, cmd, prefill, Icon, label }: { config?: ApiConfig; cm
 /** Konsol med mode-skift: Terminal (command-line) ↔ Diagnostik (fuldt debug-sted). */
 function Console({ config }: { config?: ApiConfig }) {
   const [mode, setMode] = useState<'terminal' | 'diag'>('terminal')
+  const [focus, setFocus] = useState<string>('')
+  // Klik på en feed-række → åbn fuld info i diagnostik (fokus på den nerve).
+  useEffect(() => {
+    const h = (e: Event) => { setFocus((e as CustomEvent).detail as string); setMode('diag') }
+    window.addEventListener('central-detail', h)
+    return () => window.removeEventListener('central-detail', h)
+  }, [])
   return (
     <div className="ch-console">
       <div className="ch-cnav">
@@ -205,12 +264,12 @@ function Console({ config }: { config?: ApiConfig }) {
           <Stethoscope size={14} aria-hidden="true" /> diagnostik
         </button>
       </div>
-      {mode === 'terminal' ? <Terminal config={config} /> : <Diagnostics config={config} />}
+      {mode === 'terminal' ? <Terminal config={config} /> : <Diagnostics config={config} focus={focus} onClearFocus={() => setFocus('')} />}
     </div>
   )
 }
 
-function Diagnostics({ config }: { config?: ApiConfig }) {
+function Diagnostics({ config, focus, onClearFocus }: { config?: ApiConfig; focus?: string; onClearFocus?: () => void }) {
   const { data, loading } = usePollWhenVisible(() => getCentralDiagnostics(config!), 8000, !!config)
   const d: CentralDiagnostics | null = data
   if (!d) return <div className="ch-diag ch-dim">{loading ? 'henter diagnostik…' : 'ingen data'}</div>
@@ -218,6 +277,7 @@ function Diagnostics({ config }: { config?: ApiConfig }) {
   const impTone = (s: string) => s === 'critical' || s === 'high' ? 'red' : s === 'medium' ? 'amber' : 'cyan'
   return (
     <div className="ch-diag ch-scrolly">
+      {focus && <NerveFocus config={config} nerve={focus} onClose={onClearFocus} />}
       <DSec n={d.incidents.length} label="ULØSTE FLAG">
         {d.incidents.map((it, i) => (
           <div key={i} className="ch-drow">
@@ -250,6 +310,45 @@ function Diagnostics({ config }: { config?: ApiConfig }) {
         <DSec n={d.root_causes.length} label="ROD-ÅRSAGER (gentagne)">
           {d.root_causes.map((r, i) => <div key={i} className="ch-drow"><b>{r.cluster}/{r.nerve}</b> <span className="ch-dim">×{r.count}</span></div>)}
         </DSec>
+      )}
+    </div>
+  )
+}
+
+/** Fuld info om ÉN nerve (åbnet ved klik i feed'et): lokation + on/off + seneste fyringer. */
+function NerveFocus({ config, nerve, onClose }: { config?: ApiConfig; nerve: string; onClose?: () => void }) {
+  const [d, setD] = useState<import('../../lib/api').CentralNerveDetail | null>(null)
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    if (!config || !nerve) return
+    let alive = true
+    getCentralNerve(config, nerve).then((r) => alive && setD(r)).catch((e) => alive && setErr(String(e)))
+    return () => { alive = false }
+  }, [config, nerve])
+  return (
+    <div className="ch-focus">
+      <div className="ch-dlabel" style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <span>FOKUS: {nerve}</span>
+        <button type="button" className="ch-fbtn" onClick={onClose}>luk</button>
+      </div>
+      {err && <div className="ch-dmsg tone-red">{err}</div>}
+      {d && (
+        <>
+          <div className="ch-drow">
+            <b>{d.cluster}/{d.nerve}</b> {d.security && <span className="ch-dtag tone-red">🔒 sikkerhed</span>}
+            <span className={`ch-dtag tone-${d.enabled ? 'cyan' : 'amber'}`}>{d.enabled ? 'aktiv' : 'slået fra'}</span>
+            {d.location && <div className="ch-dloc">{d.location}</div>}
+          </div>
+          <div className="ch-dlabel" style={{ marginTop: '8px' }}>SENESTE FYRINGER</div>
+          {(d.recent ?? []).slice(0, 12).map((r, i) => (
+            <div key={i} className="ch-drow" style={{ fontSize: '12px' }}>
+              <span className={`ch-fval tone-${r.decision === 'red' ? 'red' : r.decision === 'yellow' ? 'amber' : 'green'}`}>{r.decision || r.kind}</span>
+              {r.reason && <span className="ch-dim"> {r.reason}</span>}
+              {r.run_id && <span className="ch-frun">#{r.run_id.slice(-6)}</span>}
+            </div>
+          ))}
+          {(d.recent ?? []).length === 0 && <div className="ch-dim" style={{ fontSize: '12px' }}>ingen nylige fyringer i bufferen</div>}
+        </>
       )}
     </div>
   )

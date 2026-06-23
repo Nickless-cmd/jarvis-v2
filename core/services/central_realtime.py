@@ -16,14 +16,16 @@ from typing import Any
 
 
 def _status_from(diag: dict, incidents: list, open_breakers: list, drift: dict,
-                 degrading: list) -> str:
+                 degrading: list, anomaly_counts: dict | None = None) -> str:
     """🔴 red / 🟡 yellow / 🟢 green — værst-vinder."""
+    ac = anomaly_counts or {}
     severe = [i for i in incidents if str(i.get("severity")) == "severe"]
     fail_open = [i for i in incidents if str(i.get("kind")) == "fail_open"]
-    if open_breakers or severe or fail_open:
+    if open_breakers or severe or fail_open or int(ac.get("critical") or 0) > 0:
         return "red"
     errors = [i for i in incidents if str(i.get("severity")) in ("error", "severe")]
-    if diag.get("degraded") or errors or degrading or (drift or {}).get("drift"):
+    if (diag.get("degraded") or errors or degrading or (drift or {}).get("drift")
+            or int(ac.get("high") or 0) > 0):
         return "yellow"
     return "green"
 
@@ -123,8 +125,60 @@ def realtime_snapshot(*, trace_limit: int = 24) -> dict[str, Any]:
     except Exception:
         pass
 
-    snap["status"] = _status_from(diag, incidents, snap["open_breakers"], drift, degrading)
+    # ── Anomalier: de udefinerede fejl Centralen fangede (uden for de 113 nerver) ──
+    try:
+        from core.services.central_anomaly import anomaly_summary
+        snap["anomalies"] = anomaly_summary(limit=6)
+    except Exception:
+        snap["anomalies"] = {"counts": {"total": 0}, "recent": []}
+
+    # ── Cluster-grid: grøn/gul/rød/idle pr. cluster (se når ét cluster brækker/går offline)
+    try:
+        snap["clusters"] = _cluster_grid(snap["feed"], incidents, snap["open_breakers"], degrading)
+    except Exception:
+        snap["clusters"] = []
+
+    snap["status"] = _status_from(diag, incidents, snap["open_breakers"], drift, degrading,
+                                  snap.get("anomalies", {}).get("counts", {}))
     return snap
+
+
+def _cluster_grid(feed: list, incidents: list, open_breakers: list,
+                  degrading: list) -> list[dict[str, Any]]:
+    """Pr. cluster: grøn (fyrer), gul (fejl/degraderer), rød (breaker/severe/fail-open),
+    idle (stille). Lader owner se ÉT cluster brække/gå offline med ét blik."""
+    from core.services import central_catalog as cc
+    from core.services.central_catalog import nerve_cluster
+    clusters = sorted(cc.clusters())
+    # breaker-nerver → deres cluster
+    broken = {nerve_cluster(b) for b in open_breakers if nerve_cluster(b)}
+    red_clusters: set = set(broken)
+    yellow_clusters: set = set()
+    for i in incidents:
+        c = str(i.get("cluster") or "")
+        if str(i.get("severity")) == "severe" or str(i.get("kind")) == "fail_open":
+            red_clusters.add(c)
+        elif str(i.get("severity")) in ("error",):
+            yellow_clusters.add(c)
+    for d in degrading:
+        yellow_clusters.add(str(d.get("cluster") or ""))
+    active = {str(f.get("cluster") or "") for f in feed}
+    out = []
+    for c in clusters:
+        if c in red_clusters:
+            st = "red"
+        elif c in yellow_clusters:
+            st = "yellow"
+        elif c in active:
+            st = "green"
+        else:
+            st = "idle"
+        out.append({"cluster": c, "status": st,
+                    "security": bool(_safe(cc.is_security_cluster, c))})
+    # rød/gul først (så de mest kritiske er øverst i grid'et)
+    _order = {"red": 0, "yellow": 1, "green": 2, "idle": 3}
+    out.sort(key=lambda x: (_order.get(x["status"], 9), x["cluster"]))
+    return out
 
 
 def _safe(fn, *a):

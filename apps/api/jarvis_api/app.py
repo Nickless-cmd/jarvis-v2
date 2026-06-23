@@ -156,6 +156,17 @@ def create_app() -> FastAPI:
             set_main_loop(_asyncio_mod.get_running_loop())
         except Exception:
             pass
+        # Anomali-detektor: sikkerhedsnettet under nettet — fang de fejl Centralen IKKE
+        # har en nerve til (uhåndterede exceptions + ERROR-logs ingen cluster dækker),
+        # klassificér + kategoriser dem, så usynlige fejl bliver synlige. UDENFOR runtime-
+        # gaten: skal køre i API-processen (den serverer brugerne). Self-safe.
+        try:
+            import asyncio as _aio
+            from core.services.central_anomaly import install_hooks, install_asyncio_hook
+            install_hooks()
+            install_asyncio_hook(_aio.get_running_loop())
+        except Exception:
+            pass
         # Tools-cluster: snapshot registrerede ruter → dead-endpoint-detektion cross-proces.
         # UDENFOR runtime_services_enabled-gaten: skal køre i API-processen (den der serverer
         # de ~412 ruter), ikke kun runtime-processen. Begge skriver samme data — harmløst.

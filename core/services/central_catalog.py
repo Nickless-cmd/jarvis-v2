@@ -374,6 +374,12 @@ CATALOG: tuple[NerveSpec, ...] = (
     # form til desk (SSE system_event kind=error) + companion/UI (notification_router).
     NerveSpec("user_error", "system", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/central_error_envelope.py:emit (bruger-vendt fejl, sporbar pr. correlation_id=run_id)"),
+    # ── Anomaly-cluster (2026-06-23): sikkerhedsnettet under nettet ──
+    # Fanger de fejl Centralen IKKE har en nerve til endnu (uhåndterede exceptions + ERROR-
+    # logs ingen cluster dækker), klassificerer + kategoriserer dem efter importance, og
+    # DEFINERER nye fejl-typer pr. signatur → usynlige fejl bliver synlige+lærbare.
+    NerveSpec("undefined_error", "anomaly", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/central_anomaly.py (global excepthook + ERROR-log → klassificér/kategoriser/definér)"),
     # ── Autonomous-cluster KONSOLIDERET 2026-06-22 (#10: autonome runs → Centralen) ──
     # Dream-sessions/idle-refleksion/proaktive runs var USYNLIGE for Centralen — ingen cluster
     # fangede en autonom run der fejlede/loopede/brændte tokens. Phase A: observe pr. run-udfald

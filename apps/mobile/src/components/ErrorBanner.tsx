@@ -5,12 +5,15 @@ export function ErrorBanner({
   title,
   detail,
   actionLabel,
-  onAction
+  onAction,
+  onDismiss
 }: {
   title: string
   detail?: string
   actionLabel?: string
   onAction?: () => void
+  /** Luk-knap (×). Når sat, vises en virkende dismiss. */
+  onDismiss?: () => void
 }) {
   return (
     <View style={styles.root}>
@@ -21,6 +24,11 @@ export function ErrorBanner({
       {actionLabel && onAction ? (
         <Pressable accessibilityRole="button" onPress={onAction} style={styles.action}>
           <Text style={styles.actionText}>{actionLabel}</Text>
+        </Pressable>
+      ) : null}
+      {onDismiss ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="luk" onPress={onDismiss} style={styles.dismiss}>
+          <Text style={styles.dismissText}>×</Text>
         </Pressable>
       ) : null}
     </View>
@@ -61,5 +69,16 @@ const styles = StyleSheet.create({
   actionText: {
     color: tokens.color.accent,
     fontWeight: '700'
+  },
+  dismiss: {
+    minHeight: 38,
+    minWidth: 38,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  dismissText: {
+    color: tokens.color.fg3,
+    fontSize: 22,
+    lineHeight: 24
   }
 })

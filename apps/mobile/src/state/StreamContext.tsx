@@ -16,6 +16,10 @@ interface StreamContextValue {
   state: StreamState
   approval: ApprovalViewModel | null
   lastError: string | null
+  /** Struktureret bruger-vendt fejl (unified fejl-system). Render i ErrorBanner. */
+  streamError: StreamErrorInfo | null
+  /** Ryd fejlen (luk-knap). */
+  clearError: () => void
   reconnecting: boolean
   send: (
     config: ApiConfig,
@@ -30,6 +34,42 @@ interface StreamContextValue {
    * live uanset hvem der skriver. Passiv — afbrydes automatisk af send(). */
   follow: (config: ApiConfig, sessionId: string) => void
   stopFollow: () => void
+}
+
+/** Struktureret bruger-vendt fejl (unified fejl-system, central_error_envelope).
+ *  Fra backendens `error`-system_event ELLER en terminal klient-fejl. */
+export interface StreamErrorInfo {
+  code: string
+  severity: 'info' | 'warning' | 'error' | 'critical'
+  message: string
+  fixHint: string
+  retryable: boolean
+  correlationId: string
+}
+
+/** Backendens `error`-payload (central_error_envelope) → UI-form. */
+function eventToErrorInfo(payload: Record<string, unknown>): StreamErrorInfo {
+  const sev = String(payload.severity ?? 'error')
+  return {
+    code: String(payload.code ?? 'unknown'),
+    severity: (['info', 'warning', 'error', 'critical'].includes(sev) ? sev : 'error') as StreamErrorInfo['severity'],
+    message: String(payload.message ?? 'Der opstod en fejl.'),
+    fixHint: String(payload.fix_hint ?? ''),
+    retryable: Boolean(payload.retryable ?? true),
+    correlationId: String(payload.correlation_id ?? '')
+  }
+}
+
+/** Terminal klient-fejl (efter at den indbyggede reconnect er opbrugt) → UI-form. */
+function clientErrorToInfo(_err: Error | undefined): StreamErrorInfo {
+  return {
+    code: 'stream',
+    severity: 'error',
+    message: 'Forbindelsen til Jarvis blev afbrudt.',
+    fixHint: 'Tjek din forbindelse og prøv igen.',
+    retryable: true,
+    correlationId: ''
+  }
 }
 
 const StreamContext = createContext<StreamContextValue | null>(null)
@@ -49,6 +89,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(initialStreamState())
   const [approval, setApproval] = useState<ApprovalViewModel | null>(null)
   const [lastError, setLastError] = useState<string | null>(null)
+  const [streamError, setStreamError] = useState<StreamErrorInfo | null>(null)
   const [reconnecting, setReconnecting] = useState(false)
   const control = useRef<StreamControl | null>(null)
   const followControl = useRef<StreamControl | null>(null)
@@ -87,6 +128,8 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       state,
       approval,
       lastError,
+      streamError,
+      clearError: () => { setStreamError(null); setLastError(null) },
       reconnecting,
       send: (config, sessionId, message, opts) => {
         const local: ChatMessage = {
@@ -103,6 +146,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         persistedRunRef.current = null
         setApproval(null)
         setLastError(null)
+        setStreamError(null)
         setReconnecting(false)
         updateState(initialStreamState())
         control.current = startStream(
@@ -131,6 +175,11 @@ export function StreamProvider({ children }: { children: ReactNode }) {
                   detail:
                     typeof event.payload.detail === 'string' ? event.payload.detail : undefined
                 })
+              } else if (event.type === 'system_event' && event.kind === 'error') {
+                // Unified fejl-system: backendens envelope → struktureret bruger-fejl.
+                const info = eventToErrorInfo(event.payload as Record<string, unknown>)
+                setStreamError(info)
+                setLastError(info.message)
               }
               updateState((prev) => streamReducer(prev, event))
               if (event.type === 'message_stop') {
@@ -139,8 +188,12 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             },
             onInterrupted: () => persistAssistantSnapshot('interrupted'),
             onError: (err) => {
+              // Fyrer FØRST når den indbyggede reconnect (offset-baseret re-attach)
+              // er opbrugt → ægte terminal fejl. Struktureret + retryable.
               setReconnecting(false)
-              setLastError(err?.message ?? 'ukendt')
+              const info = clientErrorToInfo(err)
+              setStreamError(info)
+              setLastError(err?.message ?? info.message)
               persistAssistantSnapshot('error')
             }
           }
@@ -216,7 +269,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         followControl.current = null
       }
     }),
-    [appendLocalMessage, approval, state, lastError, reconnecting]
+    [appendLocalMessage, approval, state, lastError, streamError, reconnecting]
   )
 
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>

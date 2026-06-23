@@ -258,3 +258,43 @@ it('captures approval requests and posts explicit decisions', async () => {
   expect(mockApproveTool).toHaveBeenCalledWith(config, 'approval-1')
   expect(screen.getByText('no-approval')).toBeTruthy()
 })
+
+function ErrorProbe() {
+  const { streamError, clearError, send } = useStream()
+  return (
+    <>
+      <Text>{streamError ? `err:${streamError.code}:${streamError.severity}` : 'no-err'}</Text>
+      <Text>{streamError?.retryable ? 'retryable' : 'not-retryable'}</Text>
+      <Text onPress={() => send(config, 'session-1', 'Hej')}>send</Text>
+      <Text onPress={() => clearError()}>clear</Text>
+    </>
+  )
+}
+
+it('fanger backendens error-system_event som struktureret streamError; clearError rydder', async () => {
+  let handlers: StreamHandlers | undefined
+  mockStartStream.mockImplementation((_r: unknown, h: StreamHandlers) => {
+    handlers = h
+    return { abort: jest.fn(), getRunId: () => 'run-123' }
+  })
+  const screen = await render(
+    <StreamProvider>
+      <ErrorProbe />
+    </StreamProvider>
+  )
+  await act(async () => { screen.getByText('send').props.onPress() })
+  await act(async () => {
+    handlers?.onEvent({
+      type: 'system_event',
+      kind: 'error',
+      payload: { type: 'error', code: 'provider_rate_limited', severity: 'warning',
+                 message: 'Rate-limited', fix_hint: 'Vent', retryable: true,
+                 correlation_id: 'run-123' }
+    } as StreamEvent)
+  })
+  await waitFor(() => expect(screen.getByText('err:provider_rate_limited:warning')).toBeTruthy())
+  expect(screen.getByText('retryable')).toBeTruthy()
+  // FIX: dismiss/clearError virker.
+  await act(async () => { screen.getByText('clear').props.onPress() })
+  await waitFor(() => expect(screen.getByText('no-err')).toBeTruthy())
+})

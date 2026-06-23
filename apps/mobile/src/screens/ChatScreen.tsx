@@ -358,14 +358,28 @@ export function ChatScreen() {
         ) : null}
         {canRetry ? (
           <ErrorBanner
-            title={stream.state.status === 'error' ? 'Stream fejlede' : 'Svar stoppet'}
+            title={
+              stream.streamError
+                ? stream.streamError.message
+                : stream.state.status === 'interrupted'
+                  ? 'Svar stoppet'
+                  : 'Stream fejlede'
+            }
             detail={
-              stream.state.status === 'error' && stream.lastError
-                ? `Årsag: ${stream.lastError}`
+              stream.streamError?.fixHint
+                ? stream.streamError.fixHint
                 : 'Du kan prøve den seneste besked igen.'
             }
-            actionLabel="Retry"
-            onAction={() => void ensureSessionAndSend(lastUserMessage.content)}
+            actionLabel={!stream.streamError || stream.streamError.retryable ? 'Prøv igen' : undefined}
+            onAction={
+              !stream.streamError || stream.streamError.retryable
+                ? () => {
+                    stream.clearError()
+                    void ensureSessionAndSend(lastUserMessage.content)
+                  }
+                : undefined
+            }
+            onDismiss={stream.streamError ? () => stream.clearError() : undefined}
           />
         ) : null}
         {stream.approval && config ? (

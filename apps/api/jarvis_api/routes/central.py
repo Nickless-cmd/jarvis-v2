@@ -55,6 +55,17 @@ async def central_realtime() -> dict:
     return await asyncio.to_thread(realtime_snapshot)
 
 
+@router.post("/command")
+async def central_command(payload: dict) -> dict:
+    """Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/
+    toggle/scan/providers/…). Owner-only. Genbruger central_query (sikkerheds-gating bevaret).
+    Self-safe via central_terminal."""
+    _require_owner()
+    line = str((payload or {}).get("line") or "")
+    from core.services.central_terminal import run_command
+    return await asyncio.to_thread(run_command, line)
+
+
 @router.get("/mind")
 async def central_mind(section: str = "") -> dict:
     """Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only.

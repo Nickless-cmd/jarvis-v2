@@ -257,6 +257,29 @@ def observe_and_flag() -> dict[str, Any]:
             "proactive_cooldowns": spread}
 
 
+def build_provider_health_surface() -> dict[str, Any]:
+    """Read-only provider-helbreds-surface til Jarvis Mind / terminal: ÉT kald → ping + tør +
+    model-antal pr. provider. Self-safe."""
+    snap = latest_health_snapshot()
+    results = snap.get("results") if isinstance(snap.get("results"), dict) else {}
+    dry = _cheap_dry_providers()
+    providers: list[dict[str, Any]] = []
+    for name, r in results.items():
+        if not isinstance(r, dict):
+            continue
+        providers.append({
+            "provider": name, "ok": bool(r.get("reachable")),
+            "degraded": bool(r.get("reachable") and int(r.get("latency_ms") or 0) > _LATENCY_WARN_MS),
+            "latency_ms": int(r.get("latency_ms") or 0),
+            "model_count": 0,  # ping-surface bærer ikke model-antal (model_drift gør)
+        })
+    ok = sum(1 for p in providers if p["ok"])
+    return {"active": True, "mode": "provider_health",
+            "providers": providers, "dry_cheap": dry,
+            "checked_at": snap.get("checked_at"),
+            "summary": f"{ok}/{len(providers)} providers sunde" if providers else "ingen check endnu"}
+
+
 def latest_health_snapshot() -> dict[str, Any]:
     """Read most-recent stored snapshot."""
     try:

@@ -716,6 +716,12 @@
 .composer-send.composer-stop { background: var(--fg-1); color: var(--bg-0); }
 .composer-send.composer-stop:hover { background: var(--error-fg); }
 
+/* Compaction-pause: send-knappen viser en roterende loader mens sessionen komprimeres.
+   Når en besked er i kø (queued) pulserer den, så det er tydeligt at den afsendes bagefter. */
+.composer-send.composer-compacting { background: var(--bg-4); color: var(--fg-2); cursor: progress; }
+.composer-send.composer-compacting.queued { background: var(--accent, #5b9bd5); color: var(--bg-0); animation: liveness-pulse 1.4s ease-in-out infinite; }
+.spin { animation: presence-spin 0.9s linear infinite; transform-origin: center; }
+
 /* drag/drop overlay + attachment-chips */
 .composer { position: relative; }
 .composer.drag-over { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(110,231,168,0.25); }

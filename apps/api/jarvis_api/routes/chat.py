@@ -1008,6 +1008,68 @@ async def chat_context_info() -> dict:
     }
 
 
+@router.get("/context-usage")
+async def chat_context_usage(
+    session_id: str = "", provider: str = "", model: str = "",
+) -> dict:
+    """ÆGTE kontekst-fyld for en session — backend-autoritativt.
+
+    Returnerer `tokens` = estimat af det FAKTISKE transcript der sendes til modellen siden
+    sidste compact (præcis det tal autocompact selv måler mod context_compact_threshold_tokens).
+    DERFOR harmonerer ringen med autocompact: den vokser mod loftet og FALDER når compaction
+    fyrer — i stedet for den gamle per-tur stream-usage der nulstilledes hver besked.
+
+    Plus `compacting` (baggrunds-compaction kører lige nu) + `compacted` (en summary findes)
+    til liveness/compaction-indikatoren over composeren.
+    """
+    import asyncio
+
+    from core.runtime.settings import load_settings
+    s = load_settings()
+    compact_at = int(s.context_compact_threshold_tokens or 0)
+
+    tokens = 0
+    compacted = False
+    if session_id:
+        try:
+            from core.context.token_estimate import estimate_messages_tokens
+            from core.services.prompt_contract import _build_structured_transcript_messages
+            msgs = await asyncio.to_thread(
+                _build_structured_transcript_messages, session_id, limit=60, include=True,
+            )
+            tokens = int(estimate_messages_tokens(msgs))
+        except Exception:
+            tokens = 0
+        try:
+            from core.services.chat_sessions import get_compact_marker
+            compacted = bool(await asyncio.to_thread(get_compact_marker, session_id))
+        except Exception:
+            compacted = False
+
+    effective = compact_at
+    if provider or model:
+        try:
+            from core.services.model_context import effective_context_limit
+            effective = int(effective_context_limit(provider, model, compact_at) or compact_at)
+        except Exception:
+            effective = compact_at
+
+    compacting = False
+    try:
+        from core.services import prompt_contract as _pc
+        compacting = bool(session_id) and session_id in getattr(_pc, "_compact_inflight", set())
+    except Exception:
+        compacting = False
+
+    return {
+        "tokens": tokens,
+        "compact_at": compact_at,
+        "effective": effective,
+        "compacting": compacting,
+        "compacted": compacted,
+    }
+
+
 @router.get("/model-context")
 async def chat_model_context(provider: str = "", model: str = "") -> dict:
     """Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt

@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowUp, Square, Plus, Paperclip, ListChecks, Puzzle, ChevronRight,
-  ChevronDown, Mic, ShieldCheck, FileText, X,
+  ChevronDown, Mic, ShieldCheck, FileText, X, Loader2,
 } from 'lucide-react'
 import { emojify } from '../../lib/emojify'
 import { useDictation } from '../../hooks/useDictation'
@@ -78,6 +78,7 @@ export function Composer({
   showPermissions = true,
   contextTokens = 0,
   compactAt = 0,
+  compacting = false,
   isOwner = false,
   onOpenPrivacy,
 }: {
@@ -97,6 +98,8 @@ export function Composer({
    *  altid når compactAt > 0 (tom ved 0 tokens). */
   contextTokens?: number
   compactAt?: number
+  /** Compaction kører lige nu → composeren pauses (som i Claude Code) indtil den er færdig. */
+  compacting?: boolean
   /** Owner ser provider-vælger + dynamisk model-liste; member ser kun Standard/Pro. */
   isOwner?: boolean
 }) {
@@ -262,7 +265,7 @@ export function Composer({
   // Enter sender altid (også under streaming — ChatView lægger den i kø).
   // useCallback så identiteten er stabil mellem stream-tickets (deps ændrer sig
   // kun ved faktisk input/valg) → den memo'd textarea re-renderer ikke unødigt.
-  const send = useCallback(() => {
+  const doSend = useCallback(() => {
     const t = emojify(text.trim())  // :) ;) :P → 🙂 😉 😛 (vises som emoji i boblen)
     const ready = attachments.filter((a) => a.id && !a.error)
     if (!t && ready.length === 0) return
@@ -280,6 +283,23 @@ export function Composer({
     setText('')
     setAttachments([])
   }, [text, attachments, isOwner, selModel, memberTier, provChoice, planMode, permission, onSend])
+
+  // Pause under compaction (som Claude Code): mens sessionen komprimeres holdes en send i kø
+  // og afsendes AUTOMATISK når compaction er overstået. Teksten bevares imens.
+  const [queuedDuringCompact, setQueuedDuringCompact] = useState(false)
+  const send = useCallback(() => {
+    if (compacting) {
+      if (text.trim() || attachments.some((a) => a.id && !a.error)) setQueuedDuringCompact(true)
+      return
+    }
+    doSend()
+  }, [compacting, doSend, text, attachments])
+  useEffect(() => {
+    if (!compacting && queuedDuringCompact) {
+      setQueuedDuringCompact(false)
+      doSend()
+    }
+  }, [compacting, queuedDuringCompact, doSend])
 
   // Stabile handlers til den memo'd textarea (ellers re-renderer den hvert tick).
   const onInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value), [])
@@ -317,7 +337,7 @@ export function Composer({
       <ComposerTextArea
         inputRef={ref}
         value={text}
-        placeholder={streaming ? 'Skriv en follow-up (sendes når Jarvis er færdig)…' : 'Spørg Jarvis om noget…'}
+        placeholder={compacting ? 'Komprimerer kontekst — din besked sendes når den er færdig…' : streaming ? 'Skriv en follow-up (sendes når Jarvis er færdig)…' : 'Spørg Jarvis om noget…'}
         onChange={onInputChange}
         onKeyDown={onInputKeyDown}
       />
@@ -453,6 +473,16 @@ export function Composer({
               title="Stop Jarvis"
             >
               <Square size={12} strokeWidth={2.5} />
+            </button>
+          ) : compacting ? (
+            <button
+              type="button"
+              className={`composer-send composer-compacting ${queuedDuringCompact ? 'queued' : ''}`}
+              onClick={send}
+              aria-label={queuedDuringCompact ? 'I kø — sendes efter compaction' : 'Komprimerer kontekst'}
+              title={queuedDuringCompact ? 'Din besked sendes når komprimeringen er færdig' : 'Komprimerer kontekst — vent et øjeblik'}
+            >
+              <Loader2 size={14} strokeWidth={2.5} className="spin" />
             </button>
           ) : (
             <button

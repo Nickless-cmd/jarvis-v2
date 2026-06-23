@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
-import { ArrowDown, PanelRight } from 'lucide-react'
+import { ArrowDown, PanelRight, Loader2 } from 'lucide-react'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
@@ -10,7 +10,7 @@ import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { usePermission } from '../hooks/usePermission'
 import { useOnline } from '../hooks/useOnline'
 import { readModelPrefs } from '../lib/composerPrefs'
-import { getContextInfo, getActiveRuns, followRun } from '../lib/api'
+import { getContextInfo, getContextUsage, getActiveRuns, followRun } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
@@ -69,22 +69,25 @@ export function ChatView({
       .catch(() => setCompactAt(0))
   }, [settings])
 
-  // Context-ring: vis det RIGTIGE niveau fra start. Når en tur slutter kender
-  // vi de ægte kontekst-tokens (usage.input + cache) — vi gemmer dem pr. session
-  // i localStorage, så de vises straks ved genåbning (i stedet for tom ring).
-  const [seededTokens, setSeededTokens] = useState(0)
+  // Context-ring: BACKEND-AUTORITATIVT fyld. Den gamle ring fodredes af per-tur stream-usage
+  // (usage.input) der nulstilledes mellem ture og hoppede ulogisk (1 besked = 40%, næste =
+  // tom — Bjørn 2026-06-23). Nu poller vi det ÆGTE transcript-estimat siden sidste compact —
+  // præcis det tal autocompact selv måler mod. Persistent + harmonerer med compaction (vokser
+  // mod loftet, falder når den fyrer). Re-poll ved session-skift + når stream-status skifter
+  // (tur-grænser) + langsom interval.
+  const [contextTokens, setContextTokens] = useState(0)
+  const [compacting, setCompacting] = useState(false)
   useEffect(() => {
-    const v = sessionId ? Number(localStorage.getItem(`jarvis-desk:ctx:${sessionId}`) || '0') : 0
-    setSeededTokens(Number.isFinite(v) ? v : 0)
-  }, [sessionId])
-  const liveTokens = stream.usage.input + stream.usage.cacheHit
-  useEffect(() => {
-    if (sessionId && liveTokens > 0) {
-      localStorage.setItem(`jarvis-desk:ctx:${sessionId}`, String(liveTokens))
-      setSeededTokens(liveTokens)
-    }
-  }, [liveTokens, sessionId])
-  const contextTokens = Math.max(liveTokens, seededTokens)
+    if (!settings || !sessionId) { setContextTokens(0); setCompacting(false); return }
+    let alive = true
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    const poll = () => getContextUsage(cfg, sessionId)
+      .then((r) => { if (alive) { setContextTokens(r.tokens || 0); setCompacting(!!r.compacting) } })
+      .catch(() => { /* behold sidste kendte ved netværksfejl */ })
+    poll()
+    const id = setInterval(poll, compacting ? 1200 : 6000)
+    return () => { alive = false; clearInterval(id) }
+  }, [settings, sessionId, stream.status, compacting])
 
   useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 
@@ -341,6 +344,7 @@ export function ChatView({
       showPermissions={false}
       contextTokens={contextTokens}
       compactAt={compactAt}
+      compacting={compacting}
       isOwner={auth?.role === 'owner'}
       onOpenPrivacy={onOpenPrivacy}
     />
@@ -442,6 +446,14 @@ export function ChatView({
             væk / sad i toppen ved ny chat). Vises kun når der faktisk sker noget. */}
         {(stream.status !== 'idle' || bgActive) && (
           <LivenessIndicator status={bgActive && stream.status !== 'working' ? 'working' : stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={bgActive && stream.status !== 'working' ? 'vågner' : stream.workingStep} tokens={stream.usage.output} />
+        )}
+        {/* Compaction-pause (som Claude Code): mens sessionen komprimeres pauses composeren
+            og en linje viser status. En besked skrevet imens sendes automatisk bagefter. */}
+        {compacting && (
+          <div className="liveness liveness-compact is-working" role="status" aria-live="polite">
+            <Loader2 size={14} className="spin" />
+            <span className="liveness-label">Komprimerer kontekst — sessionen er pauset et øjeblik…</span>
+          </div>
         )}
         <div className="composer-notices">
           {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}

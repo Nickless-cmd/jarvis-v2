@@ -562,6 +562,17 @@ export async function getModelContext(
   return apiFetch(config, `/chat/model-context?${qs}`)
 }
 
+/** ÆGTE kontekst-fyld for en session (backend-autoritativt): `tokens` = estimat af det
+ *  faktiske transcript siden sidste compact — præcis det autocompact måler mod. Persistent
+ *  + harmonerer med compaction (vokser mod loftet, falder når den fyrer). `compacting` =
+ *  baggrunds-compaction kører nu (til liveness-indikatoren). */
+export async function getContextUsage(
+  config: ApiConfig, sessionId: string, provider = '', model = '',
+): Promise<{ tokens: number; compact_at: number; effective: number; compacting: boolean; compacted: boolean }> {
+  const qs = new URLSearchParams({ session_id: sessionId, provider, model }).toString()
+  return apiFetch(config, `/chat/context-usage?${qs}`)
+}
+
 /** Læs en fil til preview-panelet. `root` er navngivet server-root (owner:
  *  repo/jarvis-v2/workspace, member: workspace) / workstation trusted folder;
  *  `path` er rel inde i det root. */

@@ -123,6 +123,16 @@ def _memory_candidate_recall_lines(*, limit: int) -> list[str]:
         from core.services.candidate_tracking import _candidate_already_applied
     except Exception:
         _candidate_already_applied = None  # type: ignore[assignment]
+    # Læs MEMORY.md-indhold ÉN gang (normaliseret) → skip kandidater hvis tekst allerede
+    # står der (de DB-baserede applied-checks misser kandidater anvendt via andre stier).
+    memory_md = ""
+    try:
+        from core.identity.workspace_context import workspace_dir
+        _md = workspace_dir() / "MEMORY.md"
+        if _md.exists():
+            memory_md = " ".join(_md.read_text(encoding="utf-8").lower().split())
+    except Exception:
+        memory_md = ""
     lines: list[str] = []
     for candidate in candidates[:limit]:
         summary = " ".join(str(candidate.get("summary") or "").split()).strip()
@@ -141,6 +151,12 @@ def _memory_candidate_recall_lines(*, limit: int) -> list[str]:
                     continue
             except Exception:
                 pass
+        # Indholds-tjek mod MEMORY.md: hvis et tilstrækkeligt langt uddrag af summary'en
+        # allerede står i filen → den ER gemt (uanset DB-status). Skip dubletten.
+        if memory_md:
+            probe = " ".join(summary.lower().split()[:8])
+            if len(probe) >= 20 and probe in memory_md:
+                continue
         lines.append(_clip_line(f"{summary} (confidence={confidence})", limit=180))
     return lines
 

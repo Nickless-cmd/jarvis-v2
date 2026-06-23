@@ -605,6 +605,7 @@ def search_brain(
     now: datetime | None = None,
     use_temporal_boost: bool = True,
     min_score: float = 0.0,
+    min_cosine: float = 0.0,
 ) -> list[BrainEntry]:
     """Hybrid embedding search: 0.7*cosine + 0.3*effective_salience + temporal boost.
 
@@ -658,6 +659,14 @@ def search_brain(
         v = _embedding_from_blob(emb_blob, emb_dim)
         denom = float(np.linalg.norm(qv) * np.linalg.norm(v)) or 1e-9
         cos = float(np.dot(qv, v) / denom)
+
+        # Relevans-floor på COS-komponenten (Jarvis-spec 2026-06-23 #3, runde 2):
+        # min_score på den KOMBINEREDE score virkede ikke — 0.3*salience lod høj-salience
+        # men irrelevante fakta (nyligt-committet Counterfactuals, cos=0.37) klatre op.
+        # Filtrér på ren embedding-relevans i stedet, så salience ikke kan redde et
+        # topisk irrelevant faktum. (nomic har høj baseline-cos → ~0.52 skærer halen.)
+        if min_cosine > 0.0 and cos < min_cosine:
+            continue
 
         # Effektiv salience uden at læse fil (genberegnet inline)
         last = _parse_iso(last_used) if last_used else _parse_iso(created_at)

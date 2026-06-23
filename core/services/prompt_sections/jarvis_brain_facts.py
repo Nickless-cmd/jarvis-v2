@@ -83,8 +83,12 @@ def build_brain_facts_section(
             query_text=user_message,
             kinds=["fakta"],
             visibility_ceiling=ceiling,
-            limit=max(1, top_k),
-            min_score=threshold,
+            # top_k sænket (8→ ≤4): færre, mest relevante fakta. min_cosine =
+            # relevans-floor på EMBEDDING-komponenten (ikke salience-inflateret score),
+            # kalibreret til nomics høje baseline. Skærer topisk irrelevante fakta
+            # (Counterfactuals/daymade/Phase2+3) men beholder relevante (CheifOne).
+            limit=min(max(1, top_k), 4),
+            min_cosine=max(0.5, float(threshold)),
         )
     except Exception as exc:
         logger.warning("brain auto-inject search failed: %s", exc)

@@ -3,11 +3,13 @@ af strukturerede records nøglet på run_id. Slip ALDRIG en exception ud (selv-s
 from __future__ import annotations
 
 import collections
+import queue as _queue
 import threading
 from dataclasses import dataclass
 from typing import Any
 
 _MAX = 2000
+_SUB_MAX = 256  # pr. subscriber-kø; ældre droppes hvis konsumenten ikke følger med
 
 
 @dataclass
@@ -27,6 +29,8 @@ class TraceSink:
     def __init__(self, maxlen: int = _MAX) -> None:
         self._buf: "collections.deque[TraceRecord]" = collections.deque(maxlen=maxlen)
         self._lock = threading.Lock()
+        self._subs: "list[_queue.Queue]" = []   # live SSE-abonnenter (owner-stream)
+        self._sublock = threading.Lock()
         self.dropped = 0
 
     def record(self, rec: TraceRecord) -> None:
@@ -35,6 +39,32 @@ class TraceSink:
                 self._buf.append(rec)
         except Exception:
             self.dropped += 1
+        # Push til live-abonnenter (SSE) — non-blocking, self-safe: en langsom konsument
+        # taber gamle records (put_nowait → Full ignoreres), aldrig den hotte sti.
+        try:
+            with self._sublock:
+                subs = list(self._subs)
+            for q in subs:
+                try:
+                    q.put_nowait(rec)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def subscribe(self) -> "_queue.Queue":
+        q: "_queue.Queue" = _queue.Queue(maxsize=_SUB_MAX)
+        with self._sublock:
+            self._subs.append(q)
+        return q
+
+    def unsubscribe(self, q: "_queue.Queue") -> None:
+        try:
+            with self._sublock:
+                if q in self._subs:
+                    self._subs.remove(q)
+        except Exception:
+            pass
 
     def records_for_run(self, run_id: str) -> list[TraceRecord]:
         with self._lock:

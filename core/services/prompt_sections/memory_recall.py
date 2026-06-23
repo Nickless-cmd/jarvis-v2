@@ -75,6 +75,44 @@ def _memory_md_line_vectors(user_id: str = ""):
         return []
 
 
+_CROSS_DEDUP_THRESHOLD = 0.80  # near-dup samme budskab, anden ordlyd (kalibreres mod data)
+
+
+def _semantic_dedup_lines(lines: list[str], threshold: float = _CROSS_DEDUP_THRESHOLD) -> list[str]:
+    """Drop linjer der semantisk dublerer en TIDLIGERE beholdt linje (samme budskab,
+    anden ordlyd — fx 2× 'No active runtime loop'). Order-preserving → DETERMINISTISK
+    (samme input → samme output), så prompt-cachen ikke brydes. Self-safe."""
+    if len(lines) < 2:
+        return lines
+    try:
+        import numpy as np
+        from core.services.jarvis_brain import _embed_text
+    except Exception:
+        return lines
+    kept: list[str] = []
+    kept_vecs: list[object] = []
+    for ln in lines:
+        try:
+            v = _embed_text(ln)
+            vn = float(np.linalg.norm(v)) or 1e-9
+        except Exception:
+            kept.append(ln)
+            kept_vecs.append(None)
+            continue
+        is_dup = False
+        for kv in kept_vecs:
+            if kv is None:
+                continue
+            d = vn * (float(np.linalg.norm(kv)) or 1e-9)
+            if float(np.dot(v, kv) / d) >= threshold:
+                is_dup = True
+                break
+        if not is_dup:
+            kept.append(ln)
+            kept_vecs.append(v)
+    return kept
+
+
 def _is_semantic_dup_of_memory(text: str, user_id: str = "") -> bool:
     """True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd)."""
     try:
@@ -149,7 +187,9 @@ def _private_brain_recall_lines(*, limit: int) -> list[str]:
         focus = " ".join(str(excerpt.get("focus") or "").split()).strip()
         prefix = f"{focus}: " if focus else ""
         result.append(_clip_line(prefix + text, limit=180))
-    return result[:limit]
+    # Semantisk within-dedup: collapse near-dup continuity-linjer (2× "No active runtime
+    # loop" med forskellig ordlyd). Deterministisk → cache-sikkert.
+    return _semantic_dedup_lines(result[:limit])
 
 
 def _recent_tool_recall_lines(session_id: str | None, *, limit: int) -> list[str]:

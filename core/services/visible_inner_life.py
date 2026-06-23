@@ -171,6 +171,41 @@ def _truncate_clean(text: str, cap: int) -> str:
     return (head[:space].rstrip() if space > 0 else head).rstrip() + " …"
 
 
+def _voice_as_prose(text: str) -> Optional[str]:
+    """Stemme-feltet SKAL være prosa, ikke rå JSON (Jarvis-spec 2026-06-23): produceren
+    lækkede nogle gange `json {"thought": "..."}` direkte ind. _truncate_clean hjælper
+    ikke på et JSON-fragment. Hvis det ER JSON, træk prosa-feltet ud; ellers afvis."""
+    import json
+    import re as _re
+
+    t = (text or "").strip()
+    if not t:
+        return None
+    # Strip ledende 'json'/kodehegn-markør.
+    body = _re.sub(r"^(?:```\s*)?json\b\s*|^```\s*", "", t, flags=_re.IGNORECASE).strip()
+    if body[:1] in ("{", "["):
+        # JSON-lækage → forsøg at udtrække et kendt prosa-felt.
+        prose_keys = ("thought", "voice", "voice_line", "narrative", "text",
+                      "content", "reflection", "felt_sense", "stemme")
+        try:
+            obj = json.loads(body)
+            if isinstance(obj, dict):
+                for k in prose_keys:
+                    v = obj.get(k)
+                    if isinstance(v, str) and v.strip():
+                        return v.strip()
+        except Exception:
+            m = _re.search(r'"(?:' + "|".join(prose_keys) + r')"\s*:\s*"([^"]+)"',
+                           body, _re.IGNORECASE)
+            if m:
+                return m.group(1).strip()
+        return None  # JSON uden brugbar prosa → ingen stemme-linje (bedre end at lække)
+    # Ingen JSON-markør, men afvis stadig hvis det ligner struktureret data (key:"value").
+    if '{"' in t or ('":' in t and t.count('"') >= 4):
+        return None
+    return t
+
+
 def _voice_line() -> Optional[str]:
     """Latest protected inner voice. The producer currently emits degraded
     [fallback-trace] entries; extract the meaningful experiential narrative
@@ -187,11 +222,14 @@ def _voice_line() -> Optional[str]:
         if voice.lower().startswith("[fallback"):
             marker = "experiential_influence_narrative="
             if marker in voice:
-                narr = voice.split(marker, 1)[1].split("|", 1)[0].strip()
+                narr = _voice_as_prose(voice.split(marker, 1)[1].split("|", 1)[0].strip())
                 if narr:
                     return f"Stemme (afledt): {_truncate_clean(narr, 220)}"
             return None
-        return f"Stemme: {_truncate_clean(voice, 260)}"
+        prose = _voice_as_prose(voice)
+        if not prose:
+            return None  # JSON-lækage eller ikke-prosa → ingen stemme-linje
+        return f"Stemme: {_truncate_clean(prose, 260)}"
     except Exception:
         logger.debug("inner-life: voice failed", exc_info=True)
     return None

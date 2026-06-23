@@ -208,12 +208,13 @@ def recall_before_act_summary(query: str = "") -> str | None:
 
     cold = bundle.get("cold", {})
     if cold.get("results"):
-        # Cross-section dedup (Jarvis-spec 2026-06-23 #5): "jarvis brain facts" ejer
-        # private_brain RELEVANS-RANGERET. Cold-tier-prompt-sektionen tog SAMME records
-        # (ChiefOne-hardware + skill_suggest stod begge steder) → drop private_brain her
-        # i den synlige prompt. Tool-stien (_exec_recall_before_act) er urørt.
+        # Cross-section dedup (Jarvis-spec 2026-06-23 #5 + runde 4): "jarvis brain facts"
+        # ejer private_brain RELEVANS-RANGERET, og multi-signal-sektionen ejer CHRONICLE
+        # (med BM25+entity+embedding-scoring). Cold-tier-prompt-sektionen tog SAMME records
+        # → drop private_brain OG chronicle her i den synlige prompt (partition). Tool-stien
+        # (_exec_recall_before_act) er urørt.
         results = [r for r in cold["results"]
-                   if str(r.get("source", "")) != "private_brain"]
+                   if str(r.get("source", "")) not in ("private_brain", "chronicle")]
         if results:
             parts.append(f"🔍 Cold-tier ({len(results)}):")
             for r in results[:2]:

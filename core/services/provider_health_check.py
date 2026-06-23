@@ -163,6 +163,51 @@ def _model_drift() -> list[dict[str, Any]]:
     return drift
 
 
+_PROACTIVE_CODE = "proactive_health"        # mærker cooldowns VI satte (så vi kun rydder vores egne)
+_PROACTIVE_COOLDOWN_S = 360                 # 6 min — lige forbi næste 5-min-check (self-korrigerer)
+
+
+def _spread_load_proactively(reports: dict[str, dict], unreachable: list[str]) -> int:
+    """Daemon-load-spredning (Jarvis-spec): sæt PROAKTIVT en kort cooldown på nede providers, så
+    cheap-lane-pool'en (der allerede roterer på cooldown) skipper dem FØR en daemon rammer fejlen
+    — i stedet for at alle 50 daemons fryser på en tør primær. Ved recovery ryddes KUN vores egen
+    proaktive cooldown (ægte quota-cooldowns røres ikke). Self-safe → 0."""
+    changed = 0
+    try:
+        from datetime import timedelta
+        from core.runtime.db import (
+            get_cheap_provider_runtime_state,
+            upsert_cheap_provider_runtime_state,
+        )
+        now = datetime.now(UTC)
+        for provider in reports:
+            st = get_cheap_provider_runtime_state(provider=provider) or {}
+            cur_cd = str(st.get("cooldown_until") or "").strip()
+            cur_code = str(st.get("last_error_code") or "")
+            if provider in unreachable:
+                # sæt kun proaktiv cooldown hvis der IKKE allerede er en (ægte) cooldown
+                if not cur_cd:
+                    upsert_cheap_provider_runtime_state(
+                        provider=provider, lane="cheap", status="unreachable",
+                        cooldown_until=(now + timedelta(seconds=_PROACTIVE_COOLDOWN_S)).isoformat(),
+                        last_error_code=_PROACTIVE_CODE,
+                        last_error_message="proaktiv health-cooldown: ping fejlede → rut udenom",
+                    )
+                    changed += 1
+            else:
+                # genoprettet → ryd KUN hvis det var VORES proaktive cooldown
+                if cur_cd and cur_code == _PROACTIVE_CODE:
+                    upsert_cheap_provider_runtime_state(
+                        provider=provider, lane="cheap", status="ok",
+                        cooldown_until=None, last_error_code="",
+                        last_error_message="", last_success_at=now.isoformat(),
+                    )
+                    changed += 1
+    except Exception:
+        pass
+    return changed
+
+
 def observe_and_flag() -> dict[str, Any]:
     """Kadence-entry (Jarvis-spec 2026-06-23): ping + model-drift + cheap-dry → observe + FLAG
     (nede/degraderet/tør/model-drift) + auto-resolve genoprettede. Bygger på config_drift-mekanik.
@@ -174,12 +219,14 @@ def observe_and_flag() -> dict[str, Any]:
                 if isinstance(r, dict) and r.get("reachable") and int(r.get("latency_ms") or 0) > _LATENCY_WARN_MS]
     dry = _cheap_dry_providers()
     drift = _model_drift()
+    spread = _spread_load_proactively(results, unreachable)
 
     try:
         from core.services.central_core import central
         central().observe({"cluster": "system", "nerve": "provider_health",
                            "unreachable": unreachable, "degraded": degraded,
-                           "dry_cheap": dry, "model_drift": [d["provider"] for d in drift]})
+                           "dry_cheap": dry, "model_drift": [d["provider"] for d in drift],
+                           "proactive_cooldowns": spread})
     except Exception:
         pass
 
@@ -206,7 +253,8 @@ def observe_and_flag() -> dict[str, Any]:
 
     return {"status": "ok", "checked": snap.get("total_count"),
             "unreachable": len(unreachable), "degraded": len(degraded),
-            "dry_cheap": len(dry), "model_drift": len(drift)}
+            "dry_cheap": len(dry), "model_drift": len(drift),
+            "proactive_cooldowns": spread}
 
 
 def latest_health_snapshot() -> dict[str, Any]:

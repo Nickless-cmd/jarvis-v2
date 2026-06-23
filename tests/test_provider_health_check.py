@@ -82,3 +82,34 @@ def test_catalog_has_provider_health():
     from core.services import central_catalog as cc
     assert cc.validate() == []
     assert cc.nerve_cluster("provider_health") == "system"
+
+
+def test_proactive_cooldown_sets_on_unreachable_clears_on_recovery(monkeypatch):
+    """Load-spredning: nede provider UDEN eksisterende cooldown får en proaktiv cooldown så
+    pool'en roterer udenom; recovery rydder KUN vores egen (ægte quota-cooldown røres ikke)."""
+    import core.services.provider_health_check as ph
+    state = {}
+    def _get(provider): return state.get(provider, {})
+    def _upsert(*, provider, cooldown_until=None, last_error_code="", **k):
+        state[provider] = {"cooldown_until": cooldown_until, "last_error_code": last_error_code}
+    monkeypatch.setattr("core.runtime.db.get_cheap_provider_runtime_state", lambda *, provider, **k: _get(provider))
+    monkeypatch.setattr("core.runtime.db.upsert_cheap_provider_runtime_state", _upsert)
+
+    # groq nede + ingen cooldown → proaktiv sættes
+    ph._spread_load_proactively({"groq": {}}, ["groq"])
+    assert state["groq"]["cooldown_until"] and state["groq"]["last_error_code"] == ph._PROACTIVE_CODE
+
+    # næste runde: groq oppe igen → vores proaktive ryddes
+    ph._spread_load_proactively({"groq": {}}, [])
+    assert state["groq"]["cooldown_until"] is None
+
+
+def test_proactive_does_not_touch_real_quota_cooldown(monkeypatch):
+    import core.services.provider_health_check as ph
+    state = {"deepseek": {"cooldown_until": "2030-01-01T00:00:00+00:00", "last_error_code": "429"}}
+    touched = []
+    monkeypatch.setattr("core.runtime.db.get_cheap_provider_runtime_state", lambda *, provider, **k: state.get(provider, {}))
+    monkeypatch.setattr("core.runtime.db.upsert_cheap_provider_runtime_state", lambda **k: touched.append(k))
+    # deepseek "oppe" (ikke i unreachable) men har ÆGTE 429-cooldown → må IKKE ryddes
+    ph._spread_load_proactively({"deepseek": {}}, [])
+    assert touched == []

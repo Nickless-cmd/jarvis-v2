@@ -14,7 +14,7 @@ from typing import Optional
 from core.tools.simple_tools import get_tool_definitions
 
 _HEADER = (
-    "KERNE-VÆRKTØJER (de mest brugte). Du ser de relevante som native "
+    "KERNE-VÆRKTØJER (grupperet — de mest brugte). Du ser de relevante som native "
     "function-defs hver tur; resten findes via load_more_tools(query=\"...\"):\n"
 )
 
@@ -23,13 +23,34 @@ _HEADER = (
 # sent on every turn. Replaced with a curated core set + a load_more_tools
 # pointer. Discoverability is preserved (native defs + query-based fetch);
 # the token cost is not.
-_CORE_TOOLS = [
-    "read_file", "write_file", "edit_file", "search", "find_files",
-    "bash", "run_pytest", "db_query",
-    "web_search", "web_fetch",
-    "search_memory", "recall_memories", "remember_this",
-    "schedule_self_wakeup", "notify_user", "git_status",
+#
+# 2026-06-23 (Bjørn): Jarvis kunne ikke huske NOGEN af sine værktøjer — den
+# flade 16-liste manglede hans selv-styrings- og operator-evner. Udvidet til en
+# grupperet, kategoriseret kerne så han kender sine vigtigste kapabiliteter
+# (især self_restart/self_wakeup + operator-desktop). Navnene SKAL matche de
+# faktisk registrerede tool-navne, ellers skjules de stille.
+_CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
+    ("Filer & kode", [
+        "read_file", "write_file", "edit_file", "search", "find_files",
+        "bash", "run_pytest", "db_query", "git_status",
+    ]),
+    ("Web", ["web_search", "web_fetch"]),
+    ("Hukommelse", ["search_memory", "recall_memories", "remember_this"]),
+    ("Selv-styring", [
+        "restart_self", "read_self_state", "read_self_docs",
+        "schedule_self_wakeup", "list_self_wakeups", "cancel_self_wakeup",
+        "schedule_task", "schedule_recurring",
+    ]),
+    ("Operator (din egen maskine/desktop)", [
+        "operator_bash", "operator_read_file", "operator_write_file",
+        "operator_list_dir", "operator_launch_app", "operator_screenshot",
+        "operator_browser_open", "operator_keyboard_type", "operator_mouse_click",
+        "operator_reminder", "operator_wakeup", "operator_speak", "operator_notify",
+    ]),
+    ("Notifikation", ["notify_user", "notify_out"]),
 ]
+# Flad liste (bevarer bagudkompatibilitet for evt. eksterne kald + dedup-tælling).
+_CORE_TOOLS = [name for _grp, names in _CORE_TOOL_GROUPS for name in names]
 
 _cached_text: Optional[str] = None
 _cached_hash: Optional[str] = None
@@ -77,11 +98,16 @@ def build_catalog_text() -> str:
     }
     lines = [_HEADER]
     shown = 0
-    for name in _CORE_TOOLS:
-        d = by_name.get(name)
-        if d:
-            lines.append(f"- {name}: {_short_desc(d)}")
-            shown += 1
+    for group_name, names in _CORE_TOOL_GROUPS:
+        group_lines: list[str] = []
+        for name in names:
+            d = by_name.get(name)
+            if d:
+                group_lines.append(f"- {name}: {_short_desc(d)}")
+                shown += 1
+        if group_lines:
+            lines.append(f"\n{group_name}:")
+            lines.extend(group_lines)
     remaining = max(0, len(defs) - shown)
     if remaining:
         lines.append(

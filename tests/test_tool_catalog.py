@@ -35,6 +35,35 @@ def test_catalog_is_compact():
     assert len(bullet_lines) <= len(tool_catalog._CORE_TOOLS)
 
 
+def test_includes_self_management_and_operator_tools():
+    # Bjørn 2026-06-23: Jarvis skal kunne huske sine self-styrings- + operator-værktøjer.
+    defs = _fake_defs([
+        "read_file", "restart_self", "schedule_self_wakeup", "operator_bash",
+        "operator_screenshot", "operator_reminder",
+    ])
+    with patch.object(tool_catalog, "get_tool_definitions", return_value=defs):
+        tool_catalog.invalidate_cache()
+        text = tool_catalog.build_catalog_text()
+    for must in ("restart_self", "schedule_self_wakeup", "operator_bash",
+                 "operator_screenshot", "operator_reminder"):
+        assert f"- {must}:" in text, must
+    # grupperet med kategori-overskrifter
+    assert "Selv-styring:" in text
+    assert "Operator" in text
+
+
+def test_core_tools_are_real_registered_names():
+    # katalogen skjuler stille et tool hvis navnet ikke matcher en registreret def —
+    # vagter mod at en omdøbning efterlader self/operator-tools usynlige igen.
+    from core.tools.simple_tools import get_tool_definitions as _real
+    registered = {
+        ((d.get("function") or {}).get("name") or d.get("name") or "")
+        for d in (_real() or [])
+    }
+    missing = [n for n in tool_catalog._CORE_TOOLS if n not in registered]
+    assert missing == [], f"katalog-navne uden registreret tool: {missing}"
+
+
 def test_token_estimate_positive():
     defs = _fake_defs(["read_file", "bash"])
     with patch.object(tool_catalog, "get_tool_definitions", return_value=defs):

@@ -54,9 +54,51 @@ def test_observe_and_escalate_self_safe(monkeypatch):
                         lambda msg, **k: sent.update({"msg": msg}))
     monkeypatch.setattr("core.runtime.db_central_incidents.record_central_incident",
                         lambda **k: None)
+    monkeypatch.setattr("core.runtime.db_central_incidents.has_open_incident",
+                        lambda **k: False)
     rep = ch.observe_and_escalate()
     assert rep["degraded"] is True
     assert "self-helbred" in sent.get("msg", "")
+
+
+def test_check_excludes_own_nerve_from_severe_count(monkeypatch):
+    # self-helbreds-tælleren må IKKE tælle sine egne self_health-incidents → bryder loopet
+    from core.services import central_health as ch
+    seen = {}
+    monkeypatch.setattr("core.runtime.db_central_incidents.count_unresolved",
+                        lambda **k: seen.update(k) or 0)
+    ch.check()
+    assert seen.get("exclude_nerve") == "central_health"
+
+
+def test_escalate_dedups_when_alarm_already_open(monkeypatch):
+    # alarm allerede åben → opret IKKE ny incident + ntfy (ingen stabling/spam)
+    from core.services import central_health as ch
+    monkeypatch.setattr(ch, "check", lambda: {"degraded": True, "open_breakers": ["x"],
+                                              "unresolved_severe": 9, "decide_ok": False,
+                                              "observe_ok": True})
+    monkeypatch.setattr("core.runtime.db_central_incidents.has_open_incident",
+                        lambda **k: True)
+    calls = []
+    monkeypatch.setattr("core.runtime.db_central_incidents.record_central_incident",
+                        lambda **k: calls.append(k))
+    monkeypatch.setattr("core.services.ntfy_gateway.send_notification",
+                        lambda *a, **k: calls.append("ntfy"))
+    ch.observe_and_escalate()
+    assert calls == []  # dedup undertrykte både incident og ntfy
+
+
+def test_escalate_auto_resolves_when_healthy(monkeypatch):
+    # ingen reasons (rask) → luk hængende self_health-flag
+    from core.services import central_health as ch
+    monkeypatch.setattr(ch, "check", lambda: {"degraded": False, "open_breakers": [],
+                                              "unresolved_severe": 0, "decide_ok": True,
+                                              "observe_ok": True})
+    resolved = {}
+    monkeypatch.setattr("core.runtime.db_central_incidents.resolve_central_incidents",
+                        lambda **k: resolved.update(k) or 1)
+    ch.observe_and_escalate()
+    assert resolved.get("nerve") == "central_health"
 
 
 def test_catalog_has_central_health():

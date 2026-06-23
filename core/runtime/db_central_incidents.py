@@ -155,18 +155,46 @@ def has_unresolved_message(
         return False
 
 
-def count_unresolved(*, min_severity: str | None = None) -> int:
-    """Antal uhåndterede incidents (til hurtig live-status). Selv-sikker → 0."""
+def count_unresolved(*, min_severity: str | None = None,
+                     exclude_nerve: str | None = None) -> int:
+    """Antal uhåndterede incidents (til hurtig live-status). Selv-sikker → 0.
+
+    exclude_nerve: udelad en bestemt nerve fra optællingen. Bruges af central_health så
+    self-helbreds-alarmen IKKE tæller SINE EGNE severe self_health-incidents med (ellers
+    avler hver alarm den næste — en selv-forstærkende loop).
+    """
     try:
         clause = "resolved = 0"
+        params: list[object] = []
         if min_severity == "severe":
             clause += " AND severity = 'severe'"
         elif min_severity == "error":
             clause += " AND severity IN ('error', 'severe')"
+        if exclude_nerve:
+            clause += " AND nerve <> ?"
+            params.append(str(exclude_nerve))
         with connect() as conn:
             _ensure_central_incidents_table(conn)
             return int(conn.execute(
-                f"SELECT COUNT(*) FROM central_incidents WHERE {clause}"
+                f"SELECT COUNT(*) FROM central_incidents WHERE {clause}", tuple(params)
             ).fetchone()[0])
     except Exception:
         return 0
+
+
+def has_open_incident(*, cluster: str, nerve: str) -> bool:
+    """True hvis der allerede findes en uløst incident for (cluster, nerve). Selv-sikker.
+
+    Dedup-gate uafhængig af besked-tekst (bruges af central_health hvor beskeden ændrer sig
+    pr. tik, men vi kun vil have ÉN åben self_health-alarm ad gangen)."""
+    try:
+        with connect() as conn:
+            _ensure_central_incidents_table(conn)
+            row = conn.execute(
+                "SELECT 1 FROM central_incidents "
+                "WHERE resolved = 0 AND cluster = ? AND nerve = ? LIMIT 1",
+                (str(cluster or ""), str(nerve or "")),
+            ).fetchone()
+            return row is not None
+    except Exception:
+        return False

@@ -31,7 +31,10 @@ def check() -> dict[str, Any]:
         pass
     try:
         from core.runtime.db_central_incidents import count_unresolved
-        rep["unresolved_severe"] = int(count_unresolved(min_severity="severe"))
+        # Tæl IKKE central_health's egne self_health-incidents med — ellers tæller alarmen
+        # sig selv som det den alarmerer om → selv-forstærkende loop (6→7→8 …).
+        rep["unresolved_severe"] = int(
+            count_unresolved(min_severity="severe", exclude_nerve="central_health"))
     except Exception:
         rep["unresolved_severe"] = 0
     return rep
@@ -65,15 +68,29 @@ def observe_and_escalate() -> dict[str, Any]:
     reasons = _escalation_reasons(rep)
     if reasons:
         msg = "Den Intelligente Central self-helbred: " + "; ".join(reasons)
+        # Dedup (rate-limit): kun ÉN åben self_health-alarm ad gangen — undgå stabling +
+        # ntfy-spam hver kadence-tik mens tilstanden består.
         try:
-            from core.services.ntfy_gateway import send_notification
-            send_notification("⚠ " + msg, title="Central self-helbred", priority="high")
+            from core.runtime.db_central_incidents import (
+                has_open_incident,
+                record_central_incident,
+            )
+            if not has_open_incident(cluster="system", nerve="central_health"):
+                record_central_incident(cluster="system", nerve="central_health",
+                                        kind="self_health", severity="severe", message=msg)
+                try:
+                    from core.services.ntfy_gateway import send_notification
+                    send_notification("⚠ " + msg, title="Central self-helbred",
+                                      priority="high")
+                except Exception:
+                    pass
         except Exception:
             pass
+    else:
+        # Centralen er rask igen → luk hængende self_health-flag (auto-resolve).
         try:
-            from core.runtime.db_central_incidents import record_central_incident
-            record_central_incident(cluster="system", nerve="central_health",
-                                    kind="self_health", severity="severe", message=msg)
+            from core.runtime.db_central_incidents import resolve_central_incidents
+            resolve_central_incidents(cluster="system", nerve="central_health")
         except Exception:
             pass
     return rep

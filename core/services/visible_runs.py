@@ -1138,6 +1138,9 @@ async def _stream_visible_run(
     _final_run_error: str | None = None
     markup_buffer = _CapabilityMarkupBuffer()
     _collected_native_tool_calls: list[dict] = []
+    _fp_deg_accum = ""              # akkumuleret first-pass-tekst (degenerations-guard)
+    _fp_deg_since = 0               # tegn siden sidste degenerations-tjek
+    _degenerated_reason: str | None = None
     try:
         try:
             # Run the synchronous model stream in a thread so SSE
@@ -1206,6 +1209,36 @@ async def _stream_visible_run(
                     await thread_future
                     return
                 if isinstance(item, VisibleModelDelta):
+                    # ── Degenerations-guard (2026-06-23) ───────────────────────
+                    # Provider-agnostisk: dræb model-repetitions-løkker ved kilden
+                    # (var 147KB "probe_ollama"-skrald streamet+persisteret). Tjek
+                    # periodisk (billigt) på akkumuleret first-pass-tekst.
+                    _fp_deg_accum += item.delta
+                    _fp_deg_since += len(item.delta)
+                    if _fp_deg_since >= 1500:
+                        _fp_deg_since = 0
+                        from core.services.stream_degeneration import (
+                            check_degeneration as _chk_deg,
+                        )
+                        _is_deg, _deg_why = _chk_deg(_fp_deg_accum)
+                        if _is_deg:
+                            try:
+                                controller.cancel()
+                            except Exception:
+                                pass
+                            try:
+                                from core.services import followup_observer as _fo_deg
+                                _fo_deg.note_degeneration(
+                                    run.run_id, provider=run.provider,
+                                    model=run.model, reason=_deg_why,
+                                    chars=len(_fp_deg_accum))
+                            except Exception:
+                                pass
+                            logger.warning(
+                                "degeneration-abort run_id=%s: %s",
+                                run.run_id, _deg_why)
+                            _degenerated_reason = _deg_why
+                            break
                     safe_text = markup_buffer.feed(item.delta)
                     if safe_text:
                         _set_orb_phase("speak")
@@ -1309,6 +1342,27 @@ async def _stream_visible_run(
                 status="failed",
                 error=stage_error,
             )
+            for failure_chunk in _fail_visible_run(run, stage_error):
+                yield failure_chunk
+            return
+
+        if result is None and _degenerated_reason:
+            # Degenerations-guard dræbte streamen ved kilden (model-loop). Ærligt,
+            # synligt svar i stedet for 147KB skrald ELLER en kryptisk provider-fejl.
+            stage_error = f"degeneration-aborted: {_degenerated_reason}"
+            _deg_user_msg = (
+                "Jeg kørte i en gentagelses-løkke og stoppede mig selv før det "
+                "blev til skrald. Spørg igen, så svarer jeg rent.")
+            _update_visible_execution_trace(
+                run,
+                {
+                    "provider_first_pass_status": "degeneration_aborted",
+                    "provider_error_summary": _degenerated_reason,
+                    "provider_call_count": 1,
+                },
+            )
+            _persist_session_assistant_message(run, _deg_user_msg)
+            set_last_visible_run_outcome(run, status="failed", error=stage_error)
             for failure_chunk in _fail_visible_run(run, stage_error):
                 yield failure_chunk
             return
@@ -2948,6 +3002,52 @@ async def _stream_visible_run(
                     # declines to persist. NEVER emit synthetic internal
                     # markers like "[Completed: ...]" to the user.
                     followup_text = (getattr(result, "text", "") or "").strip()
+
+                # ── Tavs cut-off-vagt (2026-06-23, udvidet) ────────────────────
+                # Provider-AGNOSTISK fejlklasse (Bjørn: "cutter random på tværs af
+                # ALLE modeller/providers"): et 'completed' run der IKKE producerede
+                # et ÆGTE svar. To former, begge verificeret via rå-SSE-reproduktion:
+                #   1) tom-efter-tools — first-pass kaldte et tool, followup-runden
+                #      gav 0 tokens → followup_text faldt tilbage til placeholderen
+                #      "[tool calls only]" (linje ~1680) → IKKE tom → glap forbi den
+                #      gamle guard → persist afviste markøren → tavst hæng.
+                #   2) helt-tom first-pass — provideren returnerede intet (ingen tekst,
+                #      ingen tools) → _followup_exchanges tomt → tool-gaten fejlede.
+                # Transient (samme tur lykkes nogle gange). Nu: behandl placeholder
+                # SOM tom + fyr uanset tools → ALDRIG tavst; bruger får ÉT svar +
+                # Centralen ser klassen. (Den ægte kur = retry; foreslået separat.)
+                _real_answer = str(followup_text or "").strip()
+                if _real_answer in ("[tool calls only]", "[Completed]", "[tool calls only]."):
+                    _real_answer = ""
+                if not _real_answer and _final_run_status == "completed":
+                    _fu_ex = locals().get("_followup_exchanges") or []
+                    _tools_ct = sum(len(getattr(_ex, "tool_calls", []) or [])
+                                    for _ex in _fu_ex)
+                    try:
+                        from core.services import followup_observer as _fu_obs
+                        _fu_obs.note_empty_completion(
+                            run.run_id, provider=run.provider, model=run.model,
+                            rounds=locals().get("_agentic_round", -1) + 1,
+                            tools_executed=_tools_ct)
+                    except Exception:
+                        pass
+                    if _tools_ct:
+                        _empty_cutoff_note = (
+                            "Jeg kørte værktøjerne, men nåede ikke at formulere et "
+                            "færdigt svar. Sig til, så fortsætter jeg derfra.")
+                    else:
+                        _empty_cutoff_note = (
+                            "Jeg fik ikke formuleret et svar den gang — spørg mig "
+                            "gerne igen.")
+                    # Kun interaktive runs får en synlig fallback (autonome må gerne
+                    # ende tomt uden at persistere støj); nerven fyrer i begge.
+                    if not run.autonomous:
+                        yield _sse("delta", {
+                            "type": "delta", "run_id": run.run_id,
+                            "delta": _empty_cutoff_note,
+                        })
+                        followup_text = _empty_cutoff_note
+
                 if _final_run_status == "interrupted":
                     _resume_note = (
                         "\n\n⚠ Jeg blev afbrudt i agentic loopet "
@@ -6551,6 +6651,23 @@ def set_last_visible_run_outcome(
     if text_preview:
         outcome["text_preview"] = text_preview
     _LAST_VISIBLE_RUN_OUTCOME = outcome
+    # ── Tur-integritets-verifikator (2026-06-23, Bjørn: ÉT runtime-checkpoint) ──
+    # ALLE terminale stier (tool/no-tool/agentisk/non-agentisk) lander her med
+    # status+preview. Et 'completed' run UDEN noget ægte svar = empty completion,
+    # uanset sti/provider/model. Den agentiske guard fangede KUN den agentiske gren
+    # → GLM's tekstløse-uden-tools cut smuttede udenom (verificeret 23. jun). Nu
+    # fanget CENTRALT, det ene sted alle stier konvergerer. Self-safe; fyrer aldrig
+    # på fejl/interrupted (egen håndtering) eller når preview faktisk har indhold.
+    try:
+        _ti_prev = str(text_preview or "").strip()
+        if _ti_prev in ("[tool calls only]", "[Completed]", "[tool calls only]."):
+            _ti_prev = ""
+        if status == "completed" and not _ti_prev:
+            from core.services import followup_observer as _fo_ti
+            _fo_ti.note_empty_completion(
+                run.run_id, provider=run.provider, model=run.model)
+    except Exception:
+        pass
     _persist_visible_run_outcome(
         run,
         status=status,

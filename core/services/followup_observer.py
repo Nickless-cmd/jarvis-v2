@@ -55,6 +55,52 @@ def note_loop_complete(run_id: str, *, rounds: int = 0, exit_reason: str = "",
              model=str(model or ""))
 
 
+def note_empty_completion(run_id: str, *, provider: str = "", model: str = "",
+                          rounds: int = 0, tools_executed: int = 0) -> None:
+    """TAVS CUT-OFF: loopet sluttede 'completed' men producerede INTET synligt svar
+    efter at have eksekveret værktøjer. Provider-AGNOSTISK — fejlen bor i loopets
+    håndtering af en tom sidste runde (modellen gav ingen afsluttende tekst efter
+    tool-runden), ikke i nogen providers wire-format. Var fuldstændig usynlig:
+    status=completed, ingen fejl, intet i Centralen → klienten så et tavst hæng som
+    bruger oplever som "afbrudt". Nu en førsteklasses nerve + dedup'et incident."""
+    _observe("empty_completion", run_id, provider=str(provider or ""),
+             model=str(model or ""), rounds=int(rounds or 0),
+             tools_executed=int(tools_executed or 0))
+    try:
+        from core.runtime.db_central_incidents import (
+            record_central_incident, has_open_incident)
+        # Dedup: én stående incident ad gangen (observe-strømmen viser frekvensen).
+        if not has_open_incident(cluster=_CLUSTER, nerve="empty_completion"):
+            record_central_incident(
+                cluster=_CLUSTER, nerve="empty_completion", kind="silent_cutoff",
+                severity="error", run_id=str(run_id or ""),
+                message=(f"Tavs cut-off: {int(tools_executed or 0)} værktøj(er) kørt, "
+                         f"men intet svar (status=completed) — {provider}/{model}, "
+                         f"{int(rounds or 0)} runde(r). Modellen producerede ingen "
+                         f"afsluttende tekst efter tool-runden. Provider-agnostisk."))
+    except Exception:
+        pass
+
+
+def note_degeneration(run_id: str, *, provider: str = "", model: str = "",
+                      reason: str = "", chars: int = 0) -> None:
+    """MODEL-LOOP: streaming-laget fangede en runaway-repetition og dræbte den ved
+    kilden (var 147KB skrald der forgiftede sessionen). Synlig nerve + dedup'et incident."""
+    _observe("degeneration", run_id, provider=str(provider or ""),
+             model=str(model or ""), reason=str(reason or ""), chars=int(chars or 0))
+    try:
+        from core.runtime.db_central_incidents import (
+            record_central_incident, has_open_incident)
+        if not has_open_incident(cluster=_CLUSTER, nerve="degeneration"):
+            record_central_incident(
+                cluster=_CLUSTER, nerve="degeneration", kind="runaway_repetition",
+                severity="error", run_id=str(run_id or ""),
+                message=(f"Model-repetitions-løkke dræbt ved kilden ({chars} tegn) — "
+                         f"{provider}/{model}: {reason}. Var 147KB-skrald-klassen."))
+    except Exception:
+        pass
+
+
 def followup_summary(*, window: int = 500) -> dict[str, Any]:
     """Read-only: nylig followup-loop-aktivitet (til MC). Self-safe."""
     rounds = 0

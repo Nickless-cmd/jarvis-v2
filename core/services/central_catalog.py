@@ -42,6 +42,12 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/followup_observer.py — round-fejl (copilot-400/thinking-bug), pollbar i Centralen"),
     NerveSpec("followup_loop_complete", "loop", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/followup_observer.py — loop-exit (runder kørt + exit-grund)"),
+    NerveSpec("empty_completion", "loop", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/followup_observer.py — TAVS CUT-OFF: tools kørt men intet svar "
+              "(status=completed), provider-agnostisk; var usynlig, nu nerve+incident"),
+    NerveSpec("degeneration", "loop", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/stream_degeneration.py — MODEL-LOOP: runaway-repetition (147KB "
+              "probe_ollama-skrald-klassen) dræbt ved kilden i streaming-laget; provider-agnostisk"),
     NerveSpec("capability_cap", "loop", GateClass.COGNITIVE, "filter", "leave",
               "core/tools/tool_scoping.py"),
     NerveSpec("good_enough", "loop", GateClass.COGNITIVE, "tool", "leave",

@@ -171,17 +171,48 @@ class OllamaFollowupAdapter:
     provider_id = "ollama"
 
     def _normalize_tool_calls(self, tool_calls: list[dict]) -> list[dict]:
-        """Pass through tool_calls untouched.
+        """Replay tool_calls — men REPARÉR afkortede/malformede argument-strenge først.
 
-        Unlike the OpenAI-compat adapter (which JSON-encodes args for
-        Copilot/MiniMax), Ollama's /api/chat accepts ``arguments`` as a
-        dict. We don't re-serialize.
+        Ollama's /api/chat accepterer ``arguments`` som dict. MEN hvis et tidligere tool-kald
+        blev cuttet midt i stream'en (model-output afbrudt) er ``arguments`` en AFKORTET streng
+        som ``{"path": "/foo`` — ollama afviser så HELE followup-request-body'en med HTTP 400
+        'Value looks like object, but can't find closing "}" symbol'. Det dræber hele runden
+        (cut-off: "spinner → stop → intet"). Tool'et er ALLEREDE kørt; argumenterne er kun
+        replay-kontekst → ved uparselig streng falder vi tilbage til {} fremfor at vælte runden.
         """
         out: list[dict] = []
         for raw in tool_calls:
-            if isinstance(raw, dict):
-                out.append(dict(raw))
+            if not isinstance(raw, dict):
+                continue
+            tc = dict(raw)
+            # arguments kan ligge top-level (tc["arguments"]) eller under function-dict'en.
+            self._repair_arguments(tc)
+            fn = tc.get("function")
+            if isinstance(fn, dict):
+                fn = dict(fn)            # kopiér så vi ikke muterer kilde-exchanges
+                self._repair_arguments(fn)
+                tc["function"] = fn
+            out.append(tc)
         return out
+
+    @staticmethod
+    def _repair_arguments(container: dict) -> None:
+        """Hvis container['arguments'] er en STRENG der ikke er gyldig JSON → erstat med {}.
+        Dict-argumenter (ollama-native) og gyldige JSON-strenge røres ikke."""
+        if "arguments" not in container:
+            return
+        args = container.get("arguments")
+        if not isinstance(args, str):
+            return
+        s = args.strip()
+        if not s:
+            container["arguments"] = {}
+            return
+        try:
+            import json as _json
+            _json.loads(s)               # gyldig JSON-streng → lad stå
+        except Exception:
+            container["arguments"] = {}  # afkortet/malformet → safe fallback
 
     def _compact_exchanges(self, exchanges: list[ToolExchange]) -> list[ToolExchange]:
         """Bound Ollama follow-up replay so long tool loops do not 400.

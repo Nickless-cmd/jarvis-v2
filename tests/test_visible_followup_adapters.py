@@ -291,11 +291,13 @@ def test_ollama_adapter_bounds_followup_exchange_payload(
         lambda *, lane: {"base_url": "http://ollama.test:11434"},
     )
 
+    # Tool-resultater STØRRE end _OLLAMA_MAX_TOOL_RESULT_CHARS (8000) så trunkering rammer.
+    # (Var 3000 fra dengang cap'en var 2500; cap hævet til 8000 i b484595e uden test-opdatering.)
     exchanges = [
         vf.ToolExchange(
             text=f"round-{idx}",
             tool_calls=[],
-            results=[vf.ToolResult("", "read_file", "x" * 3000)],
+            results=[vf.ToolResult("", "read_file", "x" * 9000)],
         )
         for idx in range(12)
     ]
@@ -319,7 +321,7 @@ def test_ollama_adapter_bounds_followup_exchange_payload(
     assert len(assistant_messages) == 10
     assert assistant_messages[0]["content"] == "round-2"
     assert len(tool_messages) == 10
-    assert len(str(tool_messages[-1]["content"])) < 2700
+    assert len(str(tool_messages[-1]["content"])) < 8200  # 8000 cap + trunkerings-markør
     assert "truncated for follow-up context" in str(tool_messages[-1]["content"])
     assert all(
         "Continue." not in str(m.get("content", "")) for m in body["messages"]
@@ -597,6 +599,47 @@ def test_ollama_serialize_omits_thinking_when_absent():
     )
     asst = next(m for m in adapter._serialize_exchanges([exch]) if m["role"] == "assistant")
     assert "thinking" not in asst
+
+
+def test_ollama_normalize_repairs_truncated_arguments():
+    """REGRESSION (2026-06-23): et tool-kald cuttet midt i stream'en efterlader en AFKORTET
+    arguments-STRENG (fx '{\"path\": \"/foo') → ollama afviser HELE followup-body'en med
+    HTTP 400 'looks like object, can't find closing }'. _normalize_tool_calls skal nu erstatte
+    den uparselige streng med {} så runden ikke væltes."""
+    adapter = vf.OllamaFollowupAdapter()
+    tcs = [
+        {"function": {"name": "read_file", "arguments": '{"path": "/foo'}},   # afkortet
+        {"function": {"name": "ok", "arguments": '{"q": "hej"}'}},            # gyldig JSON-streng
+        {"function": {"name": "native", "arguments": {"a": 1}}},             # dict → urørt
+        {"function": {"name": "empty", "arguments": "   "}},                  # tom
+    ]
+    out = adapter._normalize_tool_calls(tcs)
+    assert out[0]["function"]["arguments"] == {}        # afkortet → repareret
+    assert out[1]["function"]["arguments"] == '{"q": "hej"}'  # gyldig → bevaret
+    assert out[2]["function"]["arguments"] == {"a": 1}  # dict → urørt
+    assert out[3]["function"]["arguments"] == {}        # tom → {}
+
+
+def test_ollama_normalize_does_not_mutate_source():
+    """Reparationen må ikke mutere kilde-exchanges (de bruges andre steder)."""
+    adapter = vf.OllamaFollowupAdapter()
+    src = {"function": {"name": "f", "arguments": '{"broken'}}
+    adapter._normalize_tool_calls([src])
+    assert src["function"]["arguments"] == '{"broken'  # kilden urørt
+
+
+def test_ollama_serialize_full_run_with_broken_args_is_json_safe():
+    """Hele replay-kæden m. et brækket tool-kald skal kunne json.dumps'es (ollama-body)."""
+    import json
+    adapter = vf.OllamaFollowupAdapter()
+    exch = vf.ToolExchange(
+        text="", tool_calls=[{"function": {"name": "x", "arguments": '{"p": "/a'}}],
+        results=[vf.ToolResult(tool_call_id="t1", tool_name="x", content="ok")],
+    )
+    msgs = adapter._serialize_exchanges([exch])
+    json.dumps(msgs)  # må ikke kaste — og argumenterne er nu et gyldigt objekt
+    asst = next(m for m in msgs if m["role"] == "assistant")
+    assert asst["tool_calls"][0]["function"]["arguments"] == {}
 
 
 # ── Codex follow-up adapter (Responses API tool-replay) ──────────────────────

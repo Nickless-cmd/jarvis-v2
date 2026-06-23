@@ -112,6 +112,22 @@ def list_anomalies(*, limit: int = 50, unresolved_only: bool = True,
         return []
 
 
+def resolve_anomaly(signature: str) -> bool:
+    """Markér én anomali-signatur som håndteret (forsvinder fra det live register). Selv-sikker.
+
+    Bruges når en signatur er afklaret (rettet, eller en testartefakt der skal væk)."""
+    try:
+        with connect() as conn:
+            _ensure_anomalies_table(conn)
+            conn.execute(
+                "UPDATE central_anomalies SET resolved = 1 WHERE signature = ?",
+                (str(signature or ""),),
+            )
+        return True
+    except Exception:
+        return False
+
+
 def anomaly_counts() -> dict[str, int]:
     """Hurtig optælling pr. importance (til realtime-panelet). Selv-sikker."""
     out = {"critical": 0, "high": 0, "medium": 0, "low": 0, "total": 0}

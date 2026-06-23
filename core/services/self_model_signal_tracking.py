@@ -141,9 +141,20 @@ def build_self_model_signal_prompt_section(*, limit: int = 4) -> str | None:
     )
 
 
+def _is_machine_id_title(title: str) -> bool:
+    """En self-model-titel der er et log/event-navn (snake_case maskin-id som
+    'Strength: sensory_archive_analysis' / 'Known limitation: forgetting_to_stage_...')
+    er IKKE menneskelæsbar identitet og må aldrig nå den synlige prompt."""
+    core = str(title or "").split(":", 1)[-1].strip()
+    return bool(core) and " " not in core and core.count("_") >= 2
+
+
 def build_runtime_self_model_signal_surface(*, limit: int = 8) -> dict[str, object]:
     refresh_runtime_self_model_signal_statuses()
     items = list_runtime_self_model_signals(limit=max(limit, 1))
+    # Chokepoint-filter (Jarvis-spec 2026-06-23 #2): drop allerede-gemte maskin-id-
+    # titler ÉT sted → dækker ALLE consumers (inner-life + cognitive_state-assembly).
+    items = [it for it in items if not _is_machine_id_title(str(it.get("title") or ""))]
     active = [item for item in items if str(item.get("status") or "") == "active"]
     uncertain = [item for item in items if str(item.get("status") or "") == "uncertain"]
     corrected = [item for item in items if str(item.get("status") or "") == "corrected"]

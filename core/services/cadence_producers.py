@@ -691,14 +691,19 @@ def sync_personality_to_self_model() -> dict[str, int]:
 
         # And one per recurring mistake (as limitation)
         for mistake in mistakes[:3]:
+            m = str(mistake).strip()
+            # Samme guard som strengths: afvis snake_case maskin-id (fx
+            # 'forgetting_to_stage_changes_before_commit') — ikke menneskelæsbart.
+            if " " not in m and m.count("_") >= 2:
+                continue
             try:
                 upsert_runtime_self_model_signal(
                     signal_id=f"sm-{uuid4().hex[:10]}",
                     signal_type="known_limitation",
-                    canonical_key=f"self-model:limitation:{mistake[:30]}",
+                    canonical_key=f"self-model:limitation:{m[:30]}",
                     status="active",
-                    title=f"Known limitation: {mistake[:60]}",
-                    summary=str(mistake)[:200],
+                    title=f"Known limitation: {m[:60]}",
+                    summary=m[:200],
                     rationale="From personality_vector recurring_mistakes",
                     source_kind="personality_vector",
                     confidence="medium",

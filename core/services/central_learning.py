@@ -119,23 +119,126 @@ def assess_autonomy(*, hours: float = 24, incidents: list | None = None) -> dict
     return {"verdict": verdict, "reason": reason, "reliability": rel, "dishonest": dishonest}
 
 
+import re
+
+# Rod-årsag: en gentaget fejl-signatur skal optræde mindst så mange gange i vinduet.
+_ROOTCAUSE_MIN = 3
+_RE_HEXID = re.compile(r"\b[0-9a-f]{8,}\b", re.I)   # run-id'er/hashes
+_RE_NUM = re.compile(r"\d+")
+_RE_QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")
+
+
+def _signature(message: str) -> str:
+    """Normalisér en incident-besked til en stabil signatur så GENTAGNE fejl grupperes:
+    strip run-id'er/hashes/tal/citerede værdier → kernen tilbage. Det er broen fra
+    symptom (mange enkelt-incidents) til ROD (ét mønster)."""
+    s = str(message or "")
+    s = _RE_HEXID.sub("<id>", s)
+    s = _RE_QUOTED.sub("<v>", s)
+    s = _RE_NUM.sub("<n>", s)
+    return " ".join(s.split())[:160]
+
+
+def root_causes(*, hours: float = 48, min_count: int = _ROOTCAUSE_MIN,
+                incidents: list | None = None) -> list[dict[str, Any]]:
+    """Gruppér incidents efter (cluster/nerve/signatur) → rangerede GENTAGNE rod-årsager
+    (ikke symptomer). Hver med antal + først/sidst set + et eksempel. Det er "identificér
+    den enkelte fejl helt ind ved roden" (Bjørn). Deterministisk."""
+    now = datetime.now(UTC)
+    inc = incidents if incidents is not None else _load()
+    groups: dict[tuple, dict[str, Any]] = {}
+    for r in inc:
+        if not _within(r.get("ts"), hours, now):
+            continue
+        sig = _signature(str(r.get("message") or ""))
+        key = (str(r.get("cluster") or ""), str(r.get("nerve") or ""), sig)
+        g = groups.setdefault(key, {"cluster": key[0], "nerve": key[1], "signature": sig,
+                                    "count": 0, "severe": 0, "first": None, "last": None,
+                                    "sample": str(r.get("message") or "")[:200]})
+        g["count"] += 1
+        if str(r.get("severity")) == "severe":
+            g["severe"] += 1
+        ts = str(r.get("ts") or "")
+        if g["first"] is None or ts < g["first"]:
+            g["first"] = ts
+        if g["last"] is None or ts > g["last"]:
+            g["last"] = ts
+    out = [g for g in groups.values() if g["count"] >= min_count]
+    out.sort(key=lambda d: (-d["severe"], -d["count"]))
+    return out
+
+
+def propose_adjustments(*, incidents: list | None = None) -> list[dict[str, Any]]:
+    """DETERMINISTISKE, reviewbare FORSLAG (aldrig auto-anvendt — Bjørn: "forslag ikke
+    ændringer"). Udledt af degrading-trends + rod-årsager + autonomi-modenhed. Hver bærer
+    en handling Bjørn/Claude/Jarvis kan tage stilling til + hvor i koden roden ligger."""
+    inc = incidents if incidents is not None else _load()
+    proposals: list[dict[str, Any]] = []
+
+    # 1. Degraderende nerver → foreslå undersøgelse/midlertidig isolering (ikke auto).
+    for d in degrading(incidents=inc):
+        proposals.append({
+            "kind": "investigate_degrading", "priority": 2,
+            "target": f"{d['cluster']}/{d['nerve']}",
+            "action": (f"{d['cluster']}/{d['nerve']} trender mod nedbrud "
+                       f"({d['recent_rate_hr']}/t vs baseline {d['baseline_rate_hr']}/t) — "
+                       f"undersøg roden; overvej midlertidig isolering via central_switches "
+                       f"hvis det eskalerer (manuelt valg)."),
+        })
+
+    # 2. Gentagne rod-årsager → foreslå fix ved kilden (med lokation fra kataloget).
+    for g in root_causes(incidents=inc):
+        loc = ""
+        try:
+            from core.services.central_catalog import nerve_location
+            loc = nerve_location(g["nerve"]) or ""
+        except Exception:
+            pass
+        proposals.append({
+            "kind": "fix_root_cause", "priority": 1 if g["severe"] else 3,
+            "target": f"{g['cluster']}/{g['nerve']}",
+            "action": (f"Rod-årsag ramt {g['count']}× ({g['severe']} severe): "
+                       f"\"{g['signature']}\" — fix ved kilden{f' ({loc})' if loc else ''}."),
+            "sample": g["sample"],
+        })
+
+    # 3. Autonomi-modenhed → forslag om hvilke todos Jarvis kan få (ingen auto-tildeling).
+    a = assess_autonomy(incidents=inc)
+    if a["verdict"] == "moden":
+        proposals.append({"kind": "autonomy_ready", "priority": 4, "target": "jarvis",
+                          "action": "Jarvis viser intet løgn/loop-mønster — kan få lav/middel-risiko "
+                                    "autonome todos (manuel tildeling, ikke auto)."})
+    elif a["verdict"] in ("ikke_moden", "forsigtig"):
+        proposals.append({"kind": "autonomy_hold", "priority": 2, "target": "jarvis",
+                          "action": f"Hold autonome todos tilbage: {a['reason']}."})
+
+    proposals.sort(key=lambda p: p["priority"])
+    return proposals
+
+
 def learning_summary() -> dict[str, Any]:
     inc = _load()
     return {
         "cluster_health_24h": cluster_health(hours=24, incidents=inc),
         "degrading": degrading(incidents=inc),
+        "root_causes": root_causes(incidents=inc),
+        "proposals": propose_adjustments(incidents=inc),
         "autonomy": assess_autonomy(incidents=inc),
     }
 
 
 def observe_learning() -> dict[str, Any]:
-    """Kadence: beregn læring + observe + flag degraderende clusters. ALDRIG auto-reaktion (Ph2)."""
+    """Kadence: beregn læring + observe + flag degraderende clusters + emit FORSLAG.
+    ALDRIG auto-reaktion/-mutation (Phase 2). Forslag er reviewbare, ikke handlinger."""
     summary = learning_summary()
     try:
         from core.services.central_core import central
         central().observe({
             "cluster": "system", "nerve": "learning",
             "degrading": summary["degrading"][:15],
+            "root_causes": [{"target": f"{g['cluster']}/{g['nerve']}", "count": g["count"]}
+                            for g in summary["root_causes"][:10]],
+            "proposals": [{"kind": p["kind"], "target": p["target"]} for p in summary["proposals"][:15]],
             "autonomy_verdict": summary["autonomy"]["verdict"],
         })
     except Exception:
@@ -151,3 +254,12 @@ def observe_learning() -> dict[str, Any]:
         except Exception:
             pass
     return summary
+
+
+def poll_proposals(*, limit: int = 20) -> list[dict[str, Any]]:
+    """Reviewbar liste af deterministiske lærings-forslag (til Bjørn/Claude/MC/Jarvis).
+    Pollbar — handler ALDRIG selv. Bjørn: notificér + foreslå, ingen auto-ændringer."""
+    try:
+        return propose_adjustments()[:limit]
+    except Exception:
+        return []

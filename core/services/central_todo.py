@@ -92,6 +92,18 @@ def build_todo(*, max_items: int = 60) -> list[dict[str, Any]]:
     except Exception:
         pass
 
+    # §6 lærings-forslag (deterministiske, reviewbare — aldrig auto): rod-årsager +
+    # degraderings-undersøgelser + autonomi-vurdering. Prioritet fra forslagets egen.
+    try:
+        from core.services.central_learning import propose_adjustments
+        _PRI = {1: _P_CRITICAL, 2: _P_HIGH, 3: _P_MEDIUM, 4: _P_CLEANUP}
+        for p in propose_adjustments():
+            items.append(_item(_PRI.get(int(p.get("priority") or 3), _P_MEDIUM),
+                               "learning", str(p.get("action") or ""),
+                               kind=p.get("kind"), target=p.get("target")))
+    except Exception:
+        pass
+
     items.sort(key=lambda it: (it["priority"], it["source"]))
     return items[:max_items]
 

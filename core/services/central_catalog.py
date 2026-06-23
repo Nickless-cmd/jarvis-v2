@@ -364,7 +364,7 @@ CATALOG: tuple[NerveSpec, ...] = (
     # degraderende clusters (trender mod nedbrud) + Jarvis' autonomi-modenhed. Hver time.
     # Bidirektional auto-reaktion (preemptiv isolering) = Phase 2 (tillid+data). Read-only nu.
     NerveSpec("learning", "system", GateClass.COGNITIVE, "daemon", "instrument",
-              "core/services/central_learning.py:observe_learning (mønstre/degradering/autonomi-modenhed)"),
+              "core/services/central_learning.py:observe_learning (§6: degradering + rod-årsags-klyngning + reviewbare tærskel-forslag + autonomi-modenhed; ALDRIG auto-mutation)"),
     # §7 config-drift (2026-06-22): fang når deklareret config ≠ runtime (8010/8011-buggen kostede
     # DAGE — settings.port vs faktisk lyttende port). Daglig probe → observe + incident. Read-only.
     NerveSpec("config_drift", "system", GateClass.COGNITIVE, "daemon", "instrument",

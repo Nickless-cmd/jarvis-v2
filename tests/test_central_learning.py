@@ -61,3 +61,48 @@ def test_catalog_has_learning():
     from core.services import central_catalog as cc
     assert cc.validate() == []
     assert "learning" in [n.name for n in cc.by_cluster("system")]
+
+
+# ── §6: root-cause-klyngning + reviewbare forslag (2026-06-23) ───────────────
+def _ts(mins_ago: float) -> str:
+    return (datetime.now(UTC) - timedelta(minutes=mins_ago)).isoformat()
+
+
+def test_signature_strips_ids_numbers():
+    s = cl._signature("deepseek HTTP 500 on run visible-d8d4a161e826429fbcc7573372e3f8ae")
+    s2 = cl._signature("deepseek HTTP 503 on run visible-aaaabbbbccccddddeeeeffff00001111")
+    assert "<id>" in s and "<n>" in s and s == s2
+
+
+def test_root_causes_groups_recurring():
+    inc = [{"cluster": "stream", "nerve": "provider_error", "severity": "error",
+            "message": f"deepseek HTTP 500 on run visible-{'a'*32}", "ts": _ts(5 + i)}
+           for i in range(3)]
+    rc = cl.root_causes(incidents=inc)
+    assert len(rc) == 1 and rc[0]["count"] == 3 and rc[0]["nerve"] == "provider_error"
+
+
+def test_root_causes_respects_min_count():
+    inc = [{"cluster": "x", "nerve": "y", "severity": "error",
+            "message": f"fejl {'a'*16}", "ts": _ts(5)} for _ in range(2)]
+    assert cl.root_causes(incidents=inc) == []
+
+
+def test_propose_root_cause_severe_is_top_priority():
+    inc = [{"cluster": "auth", "nerve": "tool_access", "severity": "severe",
+            "kind": "fail_open", "message": f"auth backstop kastede {'a'*12}", "ts": _ts(3 + i)}
+           for i in range(3)]
+    root = [p for p in cl.propose_adjustments(incidents=inc) if p["kind"] == "fix_root_cause"]
+    assert root and root[0]["priority"] == 1 and root[0]["target"] == "auth/tool_access"
+
+
+def test_propose_autonomy_hold_on_lie():
+    inc = [{"cluster": "autonomous", "nerve": "supervision", "kind": "lied",
+            "severity": "error", "message": "run løj", "ts": _ts(10)}]
+    assert any(p["kind"] == "autonomy_hold" for p in cl.propose_adjustments(incidents=inc))
+
+
+def test_poll_proposals_self_safe(monkeypatch):
+    monkeypatch.setattr(cl, "propose_adjustments",
+                        lambda **k: (_ for _ in ()).throw(RuntimeError("nede")))
+    assert cl.poll_proposals() == []

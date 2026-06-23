@@ -161,12 +161,21 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
     server.filter((m) => m.role === 'user').map(userText).filter(Boolean),
   )
   const result: LocalMessage[] = server.map((m) => ({ ...m, clientStatus: 'server_confirmed' as ClientStatus }))
-  // Har serveren indhentet løbet? Dvs. er den sidste IKKE-tool-besked en assistant?
-  // Så er BÅDE bruger-beskeden OG svaret persisteret (renset af backend-guarden/
-  // normalizer) → både placeholder OG optimistisk bruger-besked skal DROPPES,
-  // ellers hænger lokale kopier ved siden af serverens rensede versioner.
-  const lastReal = [...server].reverse().find((m) => m.role === 'user' || m.role === 'assistant')
-  const serverCaughtUp = lastReal?.role === 'assistant'
+  // Har serveren indhentet løbet? = er turen FULDT færdig server-side?
+  //
+  // KRITISK (Bjørn 2026-06-23, "svar lander → forsvinder i samme sekund"): vi
+  // tjekkede før den sidste IKKE-tool-besked. Men i et multi-runde tool-tur
+  // persisterer backend mellem-rundes assistant-tekst FØR de efterfølgende
+  // tool-resultater → transcript'en står midlertidigt [...user, assistant(mellem),
+  // tool, tool] mens det ENDELIGE svar endnu ikke er gemt. "Sidste ikke-tool"
+  // landede så på mellem-rundens assistant → serverCaughtUp=true → bro-beskeden
+  // (server_missing_keep_stream) der holdt det streamede endelige svar blev
+  // DROPPET → svaret forsvandt. Ren timing-race (en refresh i det vindue) → kun
+  // ved tool-ture (plain svar har ingen tool-hale). Nu: turen er først færdig når
+  // ALLERSIDSTE besked (inkl. tools) er en assistant — slutter den på en tool,
+  // kører en runde stadig, og broen SKAL bevares.
+  const lastMsg = server.length > 0 ? server[server.length - 1] : undefined
+  const serverCaughtUp = lastMsg?.role === 'assistant'
   for (const lm of local) {
     if (serverIds.has(lm.id)) continue
     if (lm.clientStatus === 'optimistic_user') {

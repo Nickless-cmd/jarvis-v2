@@ -6,6 +6,7 @@ import { useSessions } from '../hooks/useSessions'
 
 const userMsg = (id: string, text: string) => ({ id, role: 'user' as const, content: [{ type: 'text' as const, text }], created_at: 'now', parent_id: null })
 const asstMsg = (id: string, text: string) => ({ id, role: 'assistant' as const, content: [{ type: 'text' as const, text }], created_at: 'now', parent_id: null })
+const toolMsg = (id: string) => ({ id, role: 'tool' as const, content: [{ type: 'text' as const, text: 'tool-resultat' }], created_at: 'now', parent_id: null })
 
 describe('mergeServer afdublering', () => {
   it('dropper optimistisk bruger-besked når serveren har indhentet svaret (ingen dublet før+efter)', () => {
@@ -27,6 +28,26 @@ describe('mergeServer afdublering', () => {
     const local = [{ ...userMsg('u-7', 'ny'), clientStatus: 'optimistic_user' as const }]
     const merged = mergeServer(local, [])
     expect(merged.some((m) => m.id === 'u-7')).toBe(true) // må ikke blank-forsvinde
+  })
+
+  it('BEVARER streamet svar mens en tool-runde stadig kører (transcript slutter på tool)', () => {
+    // Regression (Bjørn 2026-06-23 "svar lander → forsvinder"): midt i et multi-
+    // runde tool-tur står serverens transcript [user, assistant(mellem), tool, tool]
+    // mens det ENDELIGE svar streamer i broen. Før droppede serverCaught_up (sidste
+    // IKKE-tool = assistant(mellem)) broen → svaret forsvandt. Nu: slutter på en
+    // tool → turen kører → broen SKAL overleve.
+    const local = [{ ...asstMsg('a-final', 'det endelige svar'), clientStatus: 'server_missing_keep_stream' as const }]
+    const server = [userMsg('srv-u', 'spm'), asstMsg('srv-a-mid', 'lad mig tjekke'), toolMsg('srv-t1'), toolMsg('srv-t2')]
+    const merged = mergeServer(local, server)
+    expect(merged.some((m) => m.id === 'a-final')).toBe(true) // broen overlever
+  })
+
+  it('dropper broen når turen ER færdig (transcript slutter på den persisterede assistant)', () => {
+    const local = [{ ...asstMsg('a-final', 'svar'), clientStatus: 'server_missing_keep_stream' as const }]
+    const server = [userMsg('srv-u', 'spm'), toolMsg('srv-t1'), asstMsg('srv-a', 'svar')]
+    const merged = mergeServer(local, server)
+    expect(merged.some((m) => m.id === 'a-final')).toBe(false) // serverens rensede version overtager
+    expect(merged.filter((m) => m.role === 'assistant').length).toBe(1)
   })
 })
 

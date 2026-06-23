@@ -816,13 +816,50 @@ def multi_signal_recall(
     }
 
 
+# Hård deadline for recall under prompt-assembly (Bjørn 2026-06-23, CUT-OFF-RODEN):
+# multi_signal_recall query-encoder mod ollama nomic-embed — SAMME ollama der genererer
+# det synlige svar. Når ollama er optaget kø'er embed-kaldet 28-91s. Med --workers 1
+# fryser det HELE API'en → run hænger længe før modellen kaldes → cut-off midt i run
+# (p90=32s, max=91s målt). Recall er BERIGELSE, ikke load-bearing → spring den over hvis
+# den hænger, i stedet for at fryse turen. Daemon-tråd (samme mønster som cadence-fixet).
+_RECALL_DEADLINE_S = 4.0
+
+
 def multi_signal_recall_section(query: str, *, max_results: int = 4) -> str | None:
-    """Format multi-signal recall as a prompt-awareness section."""
-    # Ekskludér private_brain — det surfacer ALLEREDE i "private continuity"-sektionen
-    # (dublet: "No active runtime loop" / "Du dør hver gang du bruger tools" stod begge
-    #  steder). Cutoff under 0.32 fjerner støj-poster. (Jarvis-spec 2026-06-23 #4 + #6.)
-    result = multi_signal_recall(query=query, total_limit=max_results, with_mood=True,
-                                 sources=["workspace", "chronicle"], min_score=0.32)
+    """Format multi-signal recall as a prompt-awareness section.
+
+    Hård 4s deadline: hænger recall (ollama-embed-kontention), springes sektionen
+    over så prompt-assembly ikke fryser den enlige worker i op til 91s (cut-off-roden).
+    """
+    import threading as _threading
+    _box: dict[str, Any] = {}
+
+    def _do_recall() -> None:
+        try:
+            _box["result"] = multi_signal_recall(
+                query=query, total_limit=max_results, with_mood=True,
+                sources=["workspace", "chronicle"], min_score=0.32)
+        except Exception as _exc:
+            _box["error"] = _exc
+
+    _t = _threading.Thread(target=_do_recall, name="recall-section", daemon=True)
+    _t.start()
+    _t.join(_RECALL_DEADLINE_S)
+    if _t.is_alive():
+        # Recall overskred deadline (ollama-embed hænger) → SPRING OVER + gør synlig
+        # i Centralen så hænget kan poll'es (Bjørn: Centralen skal fange cut-off-roden).
+        try:
+            from core.services.central_core import central
+            central().observe({
+                "cluster": "prompt", "nerve": "recall_timeout",
+                "deadline_s": _RECALL_DEADLINE_S, "query_len": len(query or ""),
+            })
+        except Exception:
+            pass
+        return None
+    if _box.get("error") is not None:
+        return None
+    result = _box.get("result") or {}
     items = result.get("results") or []
     if not items:
         return None

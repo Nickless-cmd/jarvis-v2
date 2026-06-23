@@ -1,7 +1,7 @@
 import type { StreamEvent, ContentBlock } from './sseProtocol'
 
 export type StreamStatus =
-  | 'idle' | 'working' | 'interrupted' | 'hung' | 'error' | 'done'
+  | 'idle' | 'working' | 'interrupted' | 'hung' | 'error' | 'done' | 'reconnecting'
 
 export interface StreamState {
   status: StreamStatus

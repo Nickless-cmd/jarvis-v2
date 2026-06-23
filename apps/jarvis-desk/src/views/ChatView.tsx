@@ -448,17 +448,26 @@ export function ChatView({
           {stream.status === 'hung' && (
             <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />
           )}
-          {stream.status === 'error' && stream.error && (
+          {stream.status === 'reconnecting' && (
+            <div className="banner banner-reconnecting" role="status">
+              <span className="banner-message">Forbindelsen røg — genforbinder…</span>
+              <button type="button" className="banner-dismiss" aria-label="afbryd" onClick={() => void stream.abort()}>×</button>
+            </div>
+          )}
+          {stream.status === 'error' && stream.streamError && (
             <ErrorBanner
-              message={stream.error.message}
-              onDismiss={() => { /* ryddes ved næste send */ }}
-              onRetry={() => {
+              message={stream.streamError.message}
+              severity={stream.streamError.severity}
+              fixHint={stream.streamError.fixHint}
+              onDismiss={() => stream.clearError()}
+              onRetry={stream.streamError.retryable ? () => {
                 const last = [...visibleMessages].reverse().find((m) => m.role === 'user')
                 const text = Array.isArray(last?.content)
                   ? last!.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
                   : ''
+                stream.clearError()
                 if (text.trim()) resend(text)
-              }}
+              } : undefined}
             />
           )}
         </div>

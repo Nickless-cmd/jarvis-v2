@@ -908,6 +908,26 @@
 .banner-warn { background: rgba(255, 209, 102, 0.08); color: var(--warn-fg); }
 .banner-error { background: rgba(255, 128, 128, 0.08); color: var(--error-fg); justify-content: space-between; }
 
+/* Unified fejl-banner (central_error_envelope): severity-farvet + fix-hint + virkende X. */
+.banner-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.banner-message { font-weight: 500; }
+.banner-hint { font-size: 12px; opacity: 0.78; }
+.banner-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.banner-dismiss { line-height: 1; padding: 2px 8px; font-size: 15px; }
+.banner-sev-info { background: rgba(120, 180, 255, 0.08); color: var(--fg-1); }
+.banner-sev-warning { background: rgba(255, 209, 102, 0.10); color: var(--warn-fg); }
+.banner-sev-error { background: rgba(255, 128, 128, 0.10); color: var(--error-fg); }
+.banner-sev-critical { background: rgba(255, 90, 90, 0.16); color: var(--error-fg); border: 1px solid rgba(255, 90, 90, 0.4); }
+.banner-reconnecting {
+  background: rgba(255, 209, 102, 0.08); color: var(--warn-fg);
+  justify-content: space-between;
+}
+.banner-reconnecting .banner-message::before {
+  content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 7px;
+  border-radius: 50%; background: var(--warn-fg); animation: banner-pulse 1.1s ease-in-out infinite;
+}
+@keyframes banner-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
 /* CodeBlock */
 .codeblock {
   background: var(--code-bg); border: 1px solid var(--line);

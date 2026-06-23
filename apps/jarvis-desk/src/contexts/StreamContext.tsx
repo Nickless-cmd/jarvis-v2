@@ -1,8 +1,54 @@
 import { createContext, useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
-import { startStream, type StreamControl } from '../lib/streamClient'
-import { cancelRun, approveTool, denyTool } from '../lib/api'
+import { startStream, type StreamControl, type StreamError } from '../lib/streamClient'
+import { cancelRun, approveTool, denyTool, followRun } from '../lib/api'
 import { streamReducer, initialStreamState, type StreamStatus } from '../lib/streamReducer'
 import type { StreamEvent, ContentBlock } from '../lib/sseProtocol'
+
+/** Struktureret bruger-vendt fejl (unified fejl-system, central_error_envelope).
+ *  Kommer fra backendens `error`-system_event ELLER klient-side StreamError. */
+export interface StreamErrorInfo {
+  code: string
+  severity: 'info' | 'warning' | 'error' | 'critical'
+  message: string
+  fixHint: string
+  retryable: boolean
+  correlationId: string
+}
+
+/** Klient-side StreamError → samme envelope-form, så UI kun kender ÉN fejl-type. */
+function errorToInfo(err: StreamError): StreamErrorInfo {
+  const net = err.category === 'network'
+  return {
+    code: err.category,
+    severity: net ? 'warning' : 'error',
+    message: net
+      ? 'Forbindelsen til Jarvis blev afbrudt.'
+      : err.category === 'auth'
+        ? 'Din session er udløbet — log ind igen.'
+        : err.category === 'rate_limit'
+          ? 'For mange forespørgsler lige nu. Prøv igen om lidt.'
+          : 'Der opstod en fejl i forbindelsen til Jarvis.',
+    fixHint: net ? 'Jeg genforbinder automatisk — eller prøv igen.' : 'Prøv igen.',
+    retryable: err.retryable,
+    correlationId: '',
+  }
+}
+
+/** Backendens `error`-system_event payload (central_error_envelope) → UI-form. */
+function eventToErrorInfo(payload: Record<string, unknown>): StreamErrorInfo {
+  const sev = String(payload.severity ?? 'error')
+  return {
+    code: String(payload.code ?? 'unknown'),
+    severity: (['info', 'warning', 'error', 'critical'].includes(sev) ? sev : 'error') as StreamErrorInfo['severity'],
+    message: String(payload.message ?? 'Der opstod en fejl.'),
+    fixHint: String(payload.fix_hint ?? ''),
+    retryable: Boolean(payload.retryable ?? true),
+    correlationId: String(payload.correlation_id ?? ''),
+  }
+}
+
+const _RECONNECT_BACKOFF_MS = [1000, 2000, 4000, 8000, 15000, 30000]
+const _RECONNECT_MAX = 6
 
 interface DeskRunBridge {
   setActiveRun?: (runId: string | null) => void
@@ -55,6 +101,10 @@ export interface StreamContextValue {
   elapsedMs: number
   workingStep: string | null
   error: Error | null
+  /** Struktureret bruger-vendt fejl (unified fejl-system). Render i ErrorBanner. */
+  streamError: StreamErrorInfo | null
+  /** Ryd fejlen (X-knap). FIX: tidligere var dismiss en no-op. */
+  clearError: () => void
   needsAttention: boolean
   send: (message: string, opts: SendOpts) => void
   abort: () => Promise<void>
@@ -86,12 +136,18 @@ export function StreamProvider({
 }) {
   const [state, dispatch] = useReducer(streamReducer, undefined, initialStreamState)
   const [error, setError] = useState<Error | null>(null)
+  const [streamError, setStreamError] = useState<StreamErrorInfo | null>(null)
   const controlRef = useRef<StreamControl | null>(null)
   const runIdRef = useRef<string | null>(null)
   const startedAtRef = useRef<number>(0)
   const [elapsedMs, setElapsedMs] = useState(0)
-  // Status hung/interrupted/error kommer fra streamClient-handlers, ikke reducer.
-  const [override, setOverride] = useState<null | 'hung' | 'interrupted' | 'error'>(null)
+  // Status hung/interrupted/error/reconnecting kommer fra streamClient-handlers, ikke reducer.
+  const [override, setOverride] = useState<null | 'hung' | 'interrupted' | 'error' | 'reconnecting'>(null)
+  // Netværks-reconnect (re-attach til det LEVENDE run via followRun — IKKE re-POST).
+  const reconnectCtrlRef = useRef<{ abort: () => void } | null>(null)
+  const reconnectAttemptRef = useRef(0)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sessionRef = useRef<string | null>(null)
   // Hvilken session det aktive run hører til — så Sidebar kan vise en
   // arbejds-indikator på den, også når en ANDEN session er fremme (#8).
   const [workingSessionId, setWorkingSessionId] = useState<string | null>(null)
@@ -100,8 +156,77 @@ export function StreamProvider({
   const [autoContinue, setAutoContinue] = useState<string | null>(null)
   const autoContinueRef = useRef<string | null>(null)
 
+  // Netværks-reconnect: re-attach til det LEVENDE run via followRun (GET /live SSE)
+  // i stedet for at re-POSTe beskeden (= dublet). Backoff 1s→30s, vent på 'online'
+  // hvis vi er offline. Serverens run kører videre detached (A3) → vi følger det bare.
+  const reattach = useCallback((sessionId: string) => {
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
+    const delay = _RECONNECT_BACKOFF_MS[Math.min(reconnectAttemptRef.current, _RECONNECT_BACKOFF_MS.length - 1)]
+    setOverride('reconnecting')
+    const arm = () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        const onOnline = () => { window.removeEventListener('online', onOnline); reattach(sessionId) }
+        window.addEventListener('online', onOnline, { once: true })
+        return
+      }
+      let sawStop = false
+      reconnectCtrlRef.current = followRun(
+        { apiBaseUrl: config.apiBaseUrl, authToken: config.authToken },
+        sessionId,
+        (e: StreamEvent) => {
+          if (e.type === 'message_start' || e.type === 'content_block_delta') {
+            reconnectAttemptRef.current = 0
+            setOverride(null) // genforbundet og streamer igen
+          }
+          if (e.type === 'system_event' && e.kind === 'error') {
+            setStreamError(eventToErrorInfo((e.payload || {}) as Record<string, unknown>))
+            setOverride('error')
+          }
+          if (e.type === 'message_stop') sawStop = true
+          dispatch(e)
+        },
+        () => {
+          reconnectCtrlRef.current = null
+          if (sawStop) {
+            reconnectAttemptRef.current = 0
+            setOverride(null)
+            dispatch({ type: 'message_stop' } as StreamEvent)
+            deskRunBridge()?.setActiveRun?.(null)
+          } else if (reconnectAttemptRef.current < _RECONNECT_MAX) {
+            reconnectAttemptRef.current += 1
+            reattach(sessionId)
+          } else {
+            // Opgivet: ChatView's active-runs-polling henter et evt. færdigt svar
+            // alligevel — vis blød netværks-fejl med retry.
+            reconnectAttemptRef.current = 0
+            setStreamError({ code: 'network', severity: 'warning',
+              message: 'Kunne ikke genforbinde til Jarvis.',
+              fixHint: 'Tjek din forbindelse og prøv igen.', retryable: true, correlationId: '' })
+            setOverride('error')
+          }
+        },
+      )
+    }
+    reconnectTimerRef.current = setTimeout(arm, delay)
+  }, [config])
+
+  // FIX (Bjørn 2026-06-23): X-knappen på fejl-banneret var en no-op. Ryd nu fejlen
+  // RIGTIGT — afbryd evt. reconnect og forlad error/reconnecting-status.
+  const clearError = useCallback(() => {
+    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null }
+    reconnectCtrlRef.current?.abort()
+    reconnectCtrlRef.current = null
+    reconnectAttemptRef.current = 0
+    setError(null)
+    setStreamError(null)
+    setOverride((o) => (o === 'error' || o === 'reconnecting' ? null : o))
+  }, [])
+
   const send = useCallback((message: string, opts: SendOpts) => {
     setError(null)
+    setStreamError(null)
+    sessionRef.current = opts.sessionId
+    reconnectAttemptRef.current = 0
     setOverride(null)
     setPendingApproval(null)
     setPendingAppAction(null)
@@ -149,6 +274,10 @@ export function StreamProvider({
                 originalMessage: p.original_message || '',
               })
             }
+          } else if (e.type === 'system_event' && e.kind === 'error') {
+            // Unified fejl-system: backendens envelope → struktureret bruger-fejl.
+            setStreamError(eventToErrorInfo((e.payload || {}) as Record<string, unknown>))
+            setOverride('error')
           } else if (e.type === 'message_stop') {
             // BEMÆRK: pendingAppAction ryddes IKKE her — kortet skal blive
             // stående efter Jarvis afslutter turen, til brugeren klikker.
@@ -159,7 +288,19 @@ export function StreamProvider({
         onRunId: (id) => { runIdRef.current = id; deskRunBridge()?.setActiveRun?.(id) },
         onHung: () => setOverride('hung'),
         onInterrupted: () => { setOverride('interrupted'); deskRunBridge()?.setActiveRun?.(null) },
-        onError: (err) => { setError(err); setOverride('error'); deskRunBridge()?.setActiveRun?.(null) },
+        onError: (err) => {
+          // Netværksfejl → genforbind AUTOMATISK til det levende run (re-attach,
+          // ikke re-POST). Andre fejl → vis struktureret fejl-banner.
+          if (err.category === 'network' && err.retryable && sessionRef.current) {
+            reconnectAttemptRef.current = 0
+            reattach(sessionRef.current)
+          } else {
+            setError(err)
+            setStreamError(errorToInfo(err))
+            setOverride('error')
+            deskRunBridge()?.setActiveRun?.(null)
+          }
+        },
         onComplete: () => {
           deskRunBridge()?.setActiveRun?.(null)
           // Terminal-garanti klient-side: ved bruger-abort kappes forbindelsen
@@ -170,7 +311,7 @@ export function StreamProvider({
         },
       },
     )
-  }, [config])
+  }, [config, reattach])
 
   const abort = useCallback(async () => {
     const runId = controlRef.current?.getRunId() ?? runIdRef.current
@@ -180,6 +321,11 @@ export function StreamProvider({
     // hænger liveness/thinking videre (Bjørn 2026-06-13). Swallow fejlen.
     if (runId) { try { await cancelRun(config, runId) } catch { /* allerede død */ } }
     controlRef.current?.abort()
+    // Stop også en evt. igangværende reconnect (bruger valgte at afbryde).
+    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null }
+    reconnectCtrlRef.current?.abort()
+    reconnectCtrlRef.current = null
+    reconnectAttemptRef.current = 0
   }, [config])
 
   const continueFromPartial = useCallback(() => {
@@ -254,6 +400,8 @@ export function StreamProvider({
       elapsedMs,
       workingStep: state.workingStep,
       error,
+      streamError,
+      clearError,
       needsAttention,
       send,
       abort,
@@ -267,7 +415,7 @@ export function StreamProvider({
       armAutoContinue,
       consumeAutoContinue,
     }),
-    [status, state.model, state.provider, state.lane, state.blocks, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
+    [status, state.model, state.provider, state.lane, state.blocks, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, streamError, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
   )
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>
 }

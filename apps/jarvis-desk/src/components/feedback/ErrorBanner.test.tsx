@@ -22,4 +22,12 @@ describe('ErrorBanner', () => {
     fireEvent.click(screen.getByText('Prøv igen'))
     expect(onRetry).toHaveBeenCalled()
   })
+
+  it('severity-klasse + fix-hint vises', () => {
+    const { container } = render(
+      <ErrorBanner message="Rate-limited" severity="warning" fixHint="Vent lidt" onDismiss={vi.fn()} />,
+    )
+    expect(container.querySelector('.banner-sev-warning')).toBeInTheDocument()
+    expect(screen.getByText('Vent lidt')).toBeInTheDocument()
+  })
 })

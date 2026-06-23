@@ -278,8 +278,12 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/heartbeat_provider_fallback.py (B10: provider-fejl pr. kald)"),
     NerveSpec("provider_fallback", "stream", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/heartbeat_provider_fallback.py (B10: alle providers udtømt)"),
-    NerveSpec("provider_health", "stream", GateClass.COGNITIVE, "daemon", "instrument",
-              "core/services/provider_health_check.py (B7: ping-helbred pr. provider)"),
+    # provider_health (B7 + 2026-06-23 Jarvis-spec-udvidelse): proaktiv provider-overvågning på
+    # 5-min-cadence. Ping (latency/reachability) + model-drift (model udfaset/omdøbt → 0 modeller)
+    # + cheap-lane-dry (cooldown der frøs daemons 53t). Flag+auto-resolve (config_drift-mekanik).
+    # ALDRIG destruktiv — flagger + foreslår, retter ikke config selv (auto-config = senere fase).
+    NerveSpec("provider_health", "system", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/provider_health_check.py:observe_and_flag (proaktiv ping+drift+dry → flag)"),
     NerveSpec("provider_rate_limited", "stream", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/visible_model.py — VISIBLE-lane 429 (copilot VisibleModelRateLimited + deepseek/glm openai-compat); FIRST-pass var blind"),
     NerveSpec("provider_error", "stream", GateClass.COGNITIVE, "inline", "instrument",

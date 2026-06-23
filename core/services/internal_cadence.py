@@ -884,6 +884,23 @@ def _ensure_producers_registered() -> None:
         priority=38,
     ))
 
+    def _run_provider_health(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """provider_health (2026-06-23, Jarvis-spec): proaktiv provider-ping → flag nede/
+        degraderet/tør + model-drift. Bygger på config_drift-mekanik (observe+flag+auto-resolve).
+        ALDRIG destruktiv — retter ikke config selv."""
+        from core.services.provider_health_check import observe_and_flag
+        rep = observe_and_flag()
+        return {"status": "ok", "checked": rep.get("checked"), "down": rep.get("unreachable"),
+                "degraded": rep.get("degraded"), "model_drift": rep.get("model_drift")}
+
+    register_producer(ProducerSpec(
+        name="provider_health_check",
+        cooldown_minutes=5,  # hvert 5. min (Jarvis-spec) — proaktiv, fanger drift før kritisk
+        visible_grace_minutes=0,
+        run_fn=_run_provider_health,
+        priority=37,
+    ))
+
     def _run_db_health_scan(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         """DB-cluster (2026-06-22): daglig table-census + vækst-flag via db_sentinel.observe.
         ALDRIG destruktiv — kun observe + flag (tom tabel = kandidat til review, ikke drop)."""

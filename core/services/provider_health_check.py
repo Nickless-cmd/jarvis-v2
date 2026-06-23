@@ -99,13 +99,114 @@ def health_check_all_providers() -> dict[str, Any]:
     # B7: provider-helbred synlig i Centralen (degraderede providers var kun i en JSON-fil).
     try:
         from core.services.central_core import central
-        central().observe({"cluster": "stream", "nerve": "provider_health",
+        central().observe({"cluster": "system", "nerve": "provider_health",
                            "reachable": snapshot["reachable_count"],
                            "total": snapshot["total_count"], "unreachable": unreachable})
     except Exception:
         pass
 
     return snapshot
+
+
+_PREV_MODELS_KEY = "provider_health:model_counts"
+_LATENCY_WARN_MS = 8000
+
+
+def _cheap_dry_providers() -> list[str]:
+    """Providers i cheap-lane-cooldown (tør/quota-blokeret) — fra runtime-state. Self-safe.
+    Det er DENNE tilstand der frøs alle daemons i 53t da DeepSeek løb tør (Jarvis-spec)."""
+    try:
+        from core.runtime.db import list_cheap_provider_runtime_states
+        now = datetime.now(UTC)
+        dry: list[str] = []
+        for s in (list_cheap_provider_runtime_states(lane="cheap") or []):
+            cu = str(s.get("cooldown_until") or "").strip()
+            if cu:
+                try:
+                    if datetime.fromisoformat(cu) > now:
+                        dry.append(str(s.get("provider") or ""))
+                except Exception:
+                    pass
+        return [d for d in dry if d]
+    except Exception:
+        return []
+
+
+def _model_drift() -> list[dict[str, Any]]:
+    """Model-drift: en provider der FØR havde modeller men nu har 0 (model udfaset/omdøbt — den
+    risiko der har deaktiveret providers). Henter model-lister via list_provider_models, sammen-
+    ligner med sidste-set antal i shared_cache. Self-safe → []."""
+    drift: list[dict[str, Any]] = []
+    try:
+        from core.services.cheap_provider_runtime import list_provider_models
+        from core.services import shared_cache
+        prev = shared_cache.get(_PREV_MODELS_KEY)
+        prev = prev if isinstance(prev, dict) else {}
+        cur: dict[str, int] = {}
+        for provider in _PING_ENDPOINTS:
+            try:
+                r = list_provider_models(provider=provider) or {}
+                models = r.get("models") if isinstance(r.get("models"), list) else []
+                status = str(r.get("status") or "").lower()
+            except Exception:
+                continue
+            n = len(models)
+            cur[provider] = n
+            before = int(prev.get(provider) or 0)
+            if before > 0 and n == 0 and status != "error":
+                drift.append({"provider": provider, "had": before, "now": 0})
+        if cur:
+            merged = {**prev, **cur}
+            shared_cache.set(_PREV_MODELS_KEY, merged, ttl_seconds=7 * 24 * 3600)
+    except Exception:
+        pass
+    return drift
+
+
+def observe_and_flag() -> dict[str, Any]:
+    """Kadence-entry (Jarvis-spec 2026-06-23): ping + model-drift + cheap-dry → observe + FLAG
+    (nede/degraderet/tør/model-drift) + auto-resolve genoprettede. Bygger på config_drift-mekanik.
+    ALDRIG destruktiv — retter ikke config selv. Self-safe."""
+    snap = health_check_all_providers()  # eksisterende ping + observe
+    results = snap.get("results") or {}
+    unreachable = list(snap.get("unreachable") or [])
+    degraded = [p for p, r in results.items()
+                if isinstance(r, dict) and r.get("reachable") and int(r.get("latency_ms") or 0) > _LATENCY_WARN_MS]
+    dry = _cheap_dry_providers()
+    drift = _model_drift()
+
+    try:
+        from core.services.central_core import central
+        central().observe({"cluster": "system", "nerve": "provider_health",
+                           "unreachable": unreachable, "degraded": degraded,
+                           "dry_cheap": dry, "model_drift": [d["provider"] for d in drift]})
+    except Exception:
+        pass
+
+    # ── flag + auto-resolve (config_drift-mønster) ──────────────────────
+    try:
+        from core.runtime.db_central_incidents import (
+            has_unresolved_message, record_central_incident, resolve_central_incidents,
+        )
+        for p in unreachable:
+            msg = f"provider {p} unreachable — proaktiv ping fejlede (før et brugervendt kald)"
+            if not has_unresolved_message(cluster="system", nerve="provider_health", message=msg):
+                record_central_incident(cluster="system", nerve="provider_health",
+                                        kind="provider_down", severity="error", message=msg)
+        if not unreachable:
+            resolve_central_incidents(cluster="system", nerve="provider_health")
+        for d in drift:
+            msg = (f"model-drift: provider {d['provider']} havde {d['had']} modeller, nu 0 "
+                   f"— model muligvis udfaset/omdøbt; tjek runtime-config")
+            if not has_unresolved_message(cluster="system", nerve="provider_health", message=msg):
+                record_central_incident(cluster="system", nerve="provider_health",
+                                        kind="model_drift", severity="error", message=msg)
+    except Exception:
+        pass
+
+    return {"status": "ok", "checked": snap.get("total_count"),
+            "unreachable": len(unreachable), "degraded": len(degraded),
+            "dry_cheap": len(dry), "model_drift": len(drift)}
 
 
 def latest_health_snapshot() -> dict[str, Any]:

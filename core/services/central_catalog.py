@@ -323,6 +323,9 @@ CATALOG: tuple[NerveSpec, ...] = (
     NerveSpec("recall_timeout", "prompt", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/memory_recall_engine.py — CUT-OFF-RODEN: multi_signal_recall hang >4s "
               "(ollama-embed-kontention) → sprunget over så --workers 1 ikke fryser i op til 91s"),
+    NerveSpec("phase_timeout", "prompt", GateClass.COGNITIVE, "inline", "instrument",
+              "core/services/prompt_contract.py:_timed_result — CUT-OFF-RODEN: en phase-future "
+              "(frame/cognitive_state/recall/relevance) hang >10s (ollama-kontention) → sprunget over"),
     # ── DB-cluster KONSOLIDERET 2026-06-22 (observabilitet + flag, ALDRIG destruktiv) ──
     # Centralen ser jarvis.db's struktur+vækst og flagger uregelmæssigheder, men dropper/
     # ændrer ALDRIG noget. Daglig census (db_sentinel.observe via internal_cadence-producer):

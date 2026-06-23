@@ -251,6 +251,26 @@ class PromptRelevanceDecision:
     backend_status: str
 
 
+# Hård deadline for HVER prompt-assembly phase-future (Bjørn 2026-06-23 cut-off-rod):
+# ollama-bundne futures (frame/cognitive_state/recall/relevance) kø'er 28-91s under
+# kontention → med --workers 1 fryser ÉN hængende future HELE API'en → cut-off. 10s loft:
+# legit faser (≤7s målt) passerer, hængninger dræbes og sektionen springes over.
+_PHASE_DEADLINE_S = 10.0
+
+
+def _permissive_relevance(mode: str = "visible_chat") -> "PromptRelevanceDecision":
+    """All-on relevance-default når relevance-futuren timer ud — inkludér ALT (berigelse
+    > tomt) i stedet for at brække prompten."""
+    return PromptRelevanceDecision(
+        mode=mode, memory_relevant=True, guidance_relevant=True,
+        transcript_relevant=True, continuity_relevant=True,
+        include_memory=True, include_guidance=True, include_transcript=True,
+        include_continuity=True, include_support_signals=True,
+        backend_attempted=True, backend_success=False, fallback_used=True,
+        backend_name=None, backend_provider=None, backend_model=None,
+        backend_status="phase_timeout")
+
+
 @dataclass(slots=True)
 class MemorySectionSelection:
     lines: list[str]
@@ -468,11 +488,29 @@ def build_visible_chat_prompt_assembly(
                     _phase_timings[_name] = _elapsed
         return executor.submit(_wrapped)
 
-    def _timed_result(_future, _name: str):
-        """Resolve a future. Timing is recorded inside the wrapped fn now,
-        so this is just a wait point. Kept as a name-preserving shim.
+    def _timed_result(_future, _name: str, *, default=None):
+        """Resolve a future MED hård deadline (Bjørn 2026-06-23, CUT-OFF-RODEN).
+
+        Hænget flytter mellem ALLE phase-futures (frame/cognitive_state/recall/
+        relevance) fordi de hver laver et ollama/LLM-kald der kø'er 28-91s når ollama
+        er optaget af det synlige svar. Med --workers 1 fryser ÉN hængende future hele
+        API'en → cut-off. Cap derfor HVER future: hænger den >deadline, brug `default`
+        (sektionen springes over — berigelse, ikke load-bearing) og fortsæt turen.
+        Synlig i Centralen via prompt/phase_timeout. Ægte exceptions propagerer som før.
         """
-        return _future.result()
+        import concurrent.futures as _cf
+        try:
+            return _future.result(timeout=_PHASE_DEADLINE_S)
+        except _cf.TimeoutError:
+            try:
+                from core.services.central_core import central
+                central().observe({
+                    "cluster": "prompt", "nerve": "phase_timeout",
+                    "phase": _name, "deadline_s": _PHASE_DEADLINE_S,
+                })
+            except Exception:
+                pass
+            return default
 
     frame_fn = _micro_cognitive_frame_section if compact else _cognitive_frame_section
 
@@ -993,6 +1031,11 @@ def build_visible_chat_prompt_assembly(
         except Exception as _e:
             _sec_err("dream hypothesis (unpresented)", _e)
 
+    # Diagnostik (2026-06-23, Bjørn cut-off-jagt): splitter sync_before_relevance_
+    # resolve så vi ser om 29s-hænget er i den embedding-tunge brain/facts/dream-blok
+    # ovenfor eller i de senere inline-sektioner. Pinpoint → cap som recall.
+    _mark("seg_brain_dream_done")
+
     # Output style hint — comes from JarvisX preferences. Concise =
     # short, dense replies; detailed = longer explanations; technical =
     # more code/structure, less prose.
@@ -1278,6 +1321,10 @@ def build_visible_chat_prompt_assembly(
         _awareness_add(90, "active commitments enforcement", enforcement_section())
     except Exception as _e:
         _sec_err("active commitments enforcement", _e)
+    # Bisektions-markør (2026-06-23, cut-off-jagt): splitter 995-1679 så næste cut
+    # isolerer 28,7s-hænget til [causal/rule/clarification-halvdel] vs [pushback/
+    # escalation/channel-halvdel].
+    _mark("seg_mid_done")
     # 2026-06-09: development_sense (Vækstpuls med live decimal-tal)
     # flyttet til tail-anchored — samme cache-breaker årsag.
     try:
@@ -1508,6 +1555,7 @@ def build_visible_chat_prompt_assembly(
         )
     except Exception as _e:
         _sec_err("meta-learning weekly retrospective teaser", _e)
+    _mark("seg_q3_done")  # bisektion #3 (cut-off-jagt): 1286-1520 vs 1520-1679
     try:
         from core.services.turn_changelog import previous_turn_changelog_section
         _awareness_add(40, "previous turn changelog (ground truth)", previous_turn_changelog_section(session_id))
@@ -1679,7 +1727,7 @@ def build_visible_chat_prompt_assembly(
     _mark("before_relevance_resolve")
     # Resolve relevance — blocks until the bounded NL prompt relevance call
     # returns, but happens concurrently with fast file reads above.
-    relevance = _timed_result(future_relevance, "relevance")
+    relevance = _timed_result(future_relevance, "relevance", default=_permissive_relevance(mode="visible_chat"))
     _mark("after_relevance_resolve")
 
     # --- Phase 2: launch relevance-dependent Ollama calls in parallel ---
@@ -1958,6 +2006,9 @@ def build_visible_chat_prompt_assembly(
     # are wall-clock-from-start, so deltas show elapsed-since-prev.
     _ordered_marks = [
         "after_phase1_submit",
+        "seg_brain_dream_done",
+        "seg_mid_done",
+        "seg_q3_done",
         "before_relevance_resolve",
         "after_relevance_resolve",
         "before_heavy_resolves",

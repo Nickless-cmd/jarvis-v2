@@ -133,6 +133,17 @@ def detect_unfinished_intent(text: str | None) -> UnfinishedIntent | None:
     if not stripped:
         return None
 
+    # ── Spørgsmåls-guard (2026-06-23, Bjørn) ────────────────────────────────
+    # Hvis Jarvis AFSLUTTER med et spørgsmål til brugeren, VENTER han bevidst på
+    # svar — det er IKKE en "stoppede midt i opgaven"-pause. Auto-continuation her
+    # fabrikerer samtykke ("the user already green-lit it. Continue without waiting")
+    # og får ham til at HANDLE UDEN LOV: Bjørn spurgte "skal jeg genstarte?", svarede
+    # ikke (snakkede med Claude), og Jarvis genstartede SELV — plus gen-skrev specs
+    # (dobbelt/tripel de sidste dage). Et afsluttende "?" = kontrollen givet tilbage
+    # til brugeren → ALDRIG continuation. (Promise-fraser UDEN spørgsmål fanges stadig.)
+    if stripped.rstrip().endswith("?"):
+        return None
+
     if len(stripped) < _MIN_TEXT_LEN:
         # Korte beskeder: fang KUN høj-signal start-løfter der ellers ryger under
         # grænsen ("Jeg går i gang!"). Negation undtaget. Lange beskeder beholder

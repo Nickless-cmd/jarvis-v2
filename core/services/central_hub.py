@@ -70,11 +70,20 @@ def _build_observability() -> dict[str, Any]:
 
 
 def _build_mind() -> dict[str, Any]:
-    """De ~70 cognitive surfaces (server-cachet 75s) — Jarvis' indre liv."""
+    """De ~70 cognitive surfaces — Jarvis' indre liv. Sender KUN den lette projektion (systems-
+    liste + tællere), IKKE den fulde 140KB surfaces-dict (Bjørn: 'lidt tung'). Den underliggende
+    build er server-cachet 75s; her trimmer vi payloaden så fanen er let at hente+rendere."""
     from core.services.cognitive_architecture_surface import (
         build_cognitive_architecture_surface,
     )
-    return build_cognitive_architecture_surface()
+    s = build_cognitive_architecture_surface()
+    return {
+        "systems": s.get("systems"),
+        "active_count": s.get("active_count"),
+        "total_count": s.get("total_count"),
+        "summary": s.get("summary"),
+        "active": True,
+    }
 
 
 def _build_agency() -> dict[str, Any]:
@@ -108,8 +117,14 @@ def mind_index() -> list[dict[str, Any]]:
     ]
 
 
+# Pr.-sektion TTL-cache (12s): capper hvor ofte en builder kører uanset poll-frekvens, så
+# agency/skills/overview ikke genbygges friskt hver poll. Streamen giver realtid; ≤12s
+# snapshot-staleness er fint. (mind har desuden sin egen 75s-cache i kilden.)
+_SECTION_TTL = 12.0
+
+
 def mind_section(section: str) -> dict[str, Any]:
-    """Projektionen for ÉN sektion (læser den cachede kilde). Self-safe.
+    """Projektionen for ÉN sektion (læser den cachede kilde, TTL-capped). Self-safe.
     Ukendt/endnu-ikke-projiceret sektion → {pending:True}."""
     key = str(section or "").strip()
     builder = _BUILDERS.get(key)
@@ -118,9 +133,16 @@ def mind_section(section: str) -> dict[str, Any]:
         if key in known:
             return {"section": key, "pending": True, "active": False}
         return {"section": key, "error": "ukendt sektion", "active": False}
-    data = _safe(builder)
-    data.setdefault("section", key)
-    return data
+
+    def _build() -> dict[str, Any]:
+        d = _safe(builder)
+        d.setdefault("section", key)
+        return d
+    try:
+        from core.services.runtime_surface_cache import get_timed_runtime_surface
+        return get_timed_runtime_surface(f"mind_section:{key}", _SECTION_TTL, _build)
+    except Exception:
+        return _build()
 
 
 def mind_snapshot(*, sections: list[str] | None = None) -> dict[str, Any]:

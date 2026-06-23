@@ -36,8 +36,6 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/gate_loop.py"),
     NerveSpec("run_closure", "loop", GateClass.COGNITIVE, "daemon", "leave",
               "core/services/run_closure_gate.py"),
-    NerveSpec("tool_budget", "loop", GateClass.COGNITIVE, "inline", "instrument",
-              "core/services/visible_runs.py:1754-2351"),
     NerveSpec("followup_round", "loop", GateClass.COGNITIVE, "inline", "instrument",
               "core/services/followup_observer.py — agentisk followup-runde start (provider/model/dybde)"),
     NerveSpec("followup_failed", "loop", GateClass.COGNITIVE, "inline", "instrument",
@@ -133,14 +131,14 @@ CATALOG: tuple[NerveSpec, ...] = (
               "core/services/jarvis_brain.py:383-467"),
     NerveSpec("memory_embed", "memory", GateClass.COGNITIVE, "daemon", "leave",
               "core/services/jarvis_brain.py:565-590"),
-    NerveSpec("memory_search", "memory", GateClass.COGNITIVE, "inline", "instrument",
-              "core/services/jarvis_brain.py:596-722"),
+    NerveSpec("memory_search", "memory", GateClass.COGNITIVE, "inline", "leave",
+              "core/services/jarvis_brain.py:596 search_brain — fejl surfacer via tools.tool_call (search-værktøjet går gennem execute_tool); ingen egen observe (audit 2026-06-23)"),
     NerveSpec("memory_unified_recall", "memory", GateClass.COGNITIVE, "inline", "instrument",
-              "core/services/memory_recall_engine.py (gather-fejl via central observe)"),
+              "core/services/memory_recall_engine.py:306 — gather-fejl emitteres pr. kilde som nerve=recall_<source> (IKKE memory_unified_recall; dynamisk navn pr. kilde)"),
     NerveSpec("memory_distill", "memory", GateClass.COGNITIVE, "daemon", "leave",
               "core/services/session_distillation.py:164-363"),
     NerveSpec("memory_associative_recall", "memory", GateClass.COGNITIVE, "inline", "instrument",
-              "core/services/associative_recall.py:196-250"),
+              "core/services/associative_recall.py:723 tick_associative_recall — scan-fejl → observe (audit 2026-06-23)"),
     # ── Privacy-cluster 🔒 (SIKKERHED, fail-CLOSED — migreres SIDST) ──
     # Fit-pass: ALLE nerver fejler closed (deny). 3 request-path-gates = merge
     # (kun med fail-closed paritet); crypto/scoping/kø = leave. ÉT stille fejl-hul:

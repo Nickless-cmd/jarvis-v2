@@ -722,6 +722,17 @@ def tick_associative_recall() -> dict[str, Any]:
                             refreshed += 1
         except Exception as exc:
             logger.debug("associative_recall: tick scan failed: %s", exc)
+            # Memory-cluster: brækket associativ-recall-scan SYNLIG i Centralen
+            # (var katalogiseret instrument men emitterede aldrig). Self-safe.
+            try:
+                from core.services.central_core import central
+                central().observe({
+                    "cluster": "memory", "nerve": "memory_associative_recall",
+                    "kind": "scan_error",
+                    "error": f"{type(exc).__name__}: {exc}"[:160],
+                })
+            except Exception:
+                pass
 
     active_count = len(_active_memories)
     result = {

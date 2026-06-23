@@ -243,6 +243,18 @@ def run_longing_signal_daemon_tick() -> dict[str, Any]:
         intensity,
         signal["context"]["hours_since_last_user_message"],
     )
+    # Proactivity-cluster: longing-signalet SYNLIGT i Centralen (var katalogiseret
+    # instrument men emitterede aldrig — kun indirekte synligt via pressure_threshold).
+    # Self-safe.
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "proactivity", "nerve": "longing_signal",
+            "intensity": round(intensity, 3),
+            "hours_since_user": float(signal["context"].get("hours_since_last_user_message") or 0.0),
+        })
+    except Exception:
+        pass
 
     return {
         "status": "ok",

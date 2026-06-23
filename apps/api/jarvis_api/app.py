@@ -501,6 +501,15 @@ def create_app() -> FastAPI:
             _path = getattr(_route, "path", None) or request.url.path
             asyncio.get_running_loop().run_in_executor(
                 None, record_request, request.method, _path, response.status_code)
+            # Tools-cluster: REALTID endpoint-anomali (4xx/5xx) → observe nu, ikke
+            # først ved daglig aggregering. Kun fejl-svar (succes ville støje). Self-safe.
+            if int(response.status_code) >= 400:
+                from core.services.central_core import central
+                central().observe({
+                    "cluster": "tools", "nerve": "endpoint_call",
+                    "method": str(request.method or ""), "path": str(_path or ""),
+                    "status_code": int(response.status_code),
+                })
         except Exception:
             pass
         return response

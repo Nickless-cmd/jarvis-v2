@@ -3858,6 +3858,19 @@ def _persist_session_assistant_message(
             "presentation-invariant-leak run_id=%s session=%s sanitized: %s",
             run.run_id, run.session_id, str(_leak_exc)[:200],
         )
+        # Loop-cluster: tool-marker/tool-call-as-prose-leak SYNLIG i Centralen
+        # (var kun en log-warning → usynlig). Det er en ægte svar-kvalitets-anomali
+        # (Bjørns frustrations-krise). Self-safe.
+        try:
+            from core.services.central_core import central
+            central().observe({
+                "cluster": "loop", "nerve": "presentation_invariant",
+                "run_id": str(run.run_id or ""), "session_id": str(run.session_id or ""),
+                "leak": str(_leak_exc)[:160], "provider": str(run.provider or ""),
+                "model": str(run.model or ""),
+            })
+        except Exception:
+            pass
         normalized = (
             "⚠ Jeg endte med at gentage tool-resultater som prose i mit svar "
             "i stedet for at faktisk kalde værktøjet. Det er en fejl jeg ikke "

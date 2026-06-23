@@ -749,6 +749,13 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             failure_increment=1,
             last_error=message,
         )
+        # Agents-cluster: agent-fejl SYNLIG i Centralen (var blind — note_agent_error
+        # var defineret men aldrig kaldt, så ALLE spawn/exec-fejl smuttede forbi). Self-safe.
+        try:
+            from core.services.agents import note_agent_error
+            note_agent_error(agent_id, exc, run_id=str(run_id or ""))
+        except Exception:
+            pass
         # Retry backoff for persistent agents
         refreshed = get_agent_registry_entry(agent_id)
         if refreshed and bool(refreshed.get("persistent")):

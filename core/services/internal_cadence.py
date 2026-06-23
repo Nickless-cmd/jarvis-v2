@@ -834,6 +834,23 @@ def _ensure_producers_registered() -> None:
         priority=36,
     ))
 
+    def _run_stream_stall_sweep(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        """Stream-cluster (audit 2026-06-23): stream_stall sweepede FØR kun opportunistisk
+        ved næste note_start → en zombie-stream i en HELT stille periode (ingen nye streams)
+        blev aldrig flagget. Denne producer kalder sweep() på kadence så zombier fanges også
+        i stilhed. Read-only (flagger, dropper aldrig)."""
+        from core.services import stream_sentinel
+        live = stream_sentinel.sweep()
+        return {"status": "ok", "live_streams": int(live)}
+
+    register_producer(ProducerSpec(
+        name="stream_stall_sweep",
+        cooldown_minutes=5,  # hvert 5. min — zombie skal fanges selv uden ny aktivitet
+        visible_grace_minutes=0,
+        run_fn=_run_stream_stall_sweep,
+        priority=37,
+    ))
+
     def _run_config_drift(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         """§7 (2026-06-22): config↔runtime-drift-check (port). Fanger 8010/8011-typen — settings
         siger én port, API'en svarer på en anden → observe + incident. Read-only probe."""

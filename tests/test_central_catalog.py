@@ -13,7 +13,7 @@ def test_catalog_nonempty_and_has_loop_cluster():
 def test_by_cluster_filters():
     loop = cat.by_cluster("loop")
     names = {n.name for n in loop}
-    assert "presentation_invariant" in names and "tool_budget" in names
+    assert "presentation_invariant" in names and "loop_control" in names
 
 
 def test_validate_is_green():

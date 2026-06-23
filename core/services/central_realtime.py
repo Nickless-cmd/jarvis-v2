@@ -94,15 +94,16 @@ def realtime_snapshot(*, trace_limit: int = 24) -> dict[str, Any]:
         ]
     except Exception:
         pass
+    # Config-drift: udled fra de PERSISTEREDE incidents (config_drift-cadence-produceren
+    # skriver dem) — KALD IKKE observe_config_drift() live: dens port-probe blokerer ~10s
+    # (connect-timeout mod port 80), og panelet poller hvert 2s → ville hænge endpointet.
     drift: dict[str, Any] = {}
     try:
-        from core.services.config_drift import observe_config_drift
-        drift = observe_config_drift() or {}
-        if drift.get("drift"):
-            snap["config_drift"] = {
-                "declared_port": drift.get("declared_port"),
-                "actual_port": drift.get("actual_port"),
-            }
+        _drift_inc = next((i for i in incidents
+                           if str(i.get("nerve")) == "config_drift"), None)
+        if _drift_inc:
+            drift = {"drift": True}
+            snap["config_drift"] = {"message": str(_drift_inc.get("message") or "")[:120]}
     except Exception:
         pass
 

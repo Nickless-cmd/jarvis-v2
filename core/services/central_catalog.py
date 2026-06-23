@@ -375,6 +375,12 @@ CATALOG: tuple[NerveSpec, ...] = (
     # observerer, og filer reviewbare proposals (score≥3) — ALDRIG auto-merged. Hver 6. time.
     NerveSpec("central_instrument", "system", GateClass.COGNITIVE, "daemon", "instrument",
               "core/services/central_instrument.py:run_instrument_scan (AST silent-failure-scan → proposals)"),
+    # Kognition-cluster (2026-06-23, Bjørn): Centralen skal SE Jarvis' indre liv — ikke kun
+    # gates+fejl. Hver MC cognitive-surface (bevidsthed/sjæl/kognition/relationer/drømme/…)
+    # observeres throttled (5 min/surface) via _safe_surface, så nervesystemet rummer hans
+    # indre tilstand lige så vel som hans håndhævelse. Observe-only, aldrig en gate.
+    NerveSpec("cognitive_surface", "cognition", GateClass.COGNITIVE, "daemon", "instrument",
+              "core/services/heartbeat_runtime.py:_safe_surface (alle MC cognitive-surfaces → observe)"),
     # Unified fejl-meddelelses-system (2026-06-23): Centralen ejer hvad brugeren ser når noget
     # knækker. Intern fejl → ÉT envelope {severity/da-besked/retryable/correlation_id} → samme
     # form til desk (SSE system_event kind=error) + companion/UI (notification_router).

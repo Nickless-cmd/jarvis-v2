@@ -1129,12 +1129,38 @@ def _build_cognitive_surfaces() -> dict[str, object]:
     return surfaces
 
 
+# Throttle pr. surface: lad Centralen SE hver cognitive-surface uden at drukne trace-ringen.
+_SURFACE_OBSERVE_AT: dict[str, float] = {}
+_SURFACE_OBSERVE_INTERVAL = 300.0  # 5 min pr. surface
+
+
 def _safe_surface(target: dict, key: str, builder) -> None:
-    """Call builder and store result; swallow any errors."""
+    """Call builder and store result; swallow any errors.
+
+    2026-06-23 (Bjørn): hver MC cognitive-surface observeres OGSÅ til Den Intelligente Central
+    — så nervesystemet rummer Jarvis' INDRE liv (bevidsthed/sjæl/kognition/relationer/drømme),
+    ikke kun gates og fejl. Throttlet pr. surface (5 min) så de ~25 surfaces ikke flooder
+    trace-ringen. Self-safe: en observe-fejl må aldrig røre surface-bygningen.
+    """
     try:
         target[key] = builder()
     except Exception:
         target[key] = {"active": False, "error": "surface-build-failed"}
+    try:
+        import time as _t
+        now = _t.monotonic()
+        if now - _SURFACE_OBSERVE_AT.get(key, 0.0) >= _SURFACE_OBSERVE_INTERVAL:
+            _SURFACE_OBSERVE_AT[key] = now
+            surf = target.get(key)
+            failed = isinstance(surf, dict) and (surf.get("active") is False or surf.get("error"))
+            from core.services.central_core import central
+            central().observe({
+                "cluster": "cognition", "nerve": "cognitive_surface",
+                "surface": key, "active": not bool(failed),
+                "error": (surf.get("error") if isinstance(surf, dict) else None),
+            })
+    except Exception:
+        pass
 
 
 def run_heartbeat_tick(

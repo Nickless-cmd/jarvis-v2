@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images, Code,
-  LayoutDashboard, Blocks, Settings, type LucideIcon,
+  LayoutDashboard, Blocks, Settings, Brain, type LucideIcon,
 } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
 import { TeamsSection } from './TeamsSection'
@@ -13,7 +13,7 @@ import { ModeSlider, type Mode } from './ModeSlider'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
-  LayoutDashboard, Blocks, Settings,
+  LayoutDashboard, Blocks, Settings, Brain,
 }
 
 export type Surface = Mode | SecondarySurface | 'gallery'
@@ -166,12 +166,14 @@ export function Sidebar({
  *  ÉT panel — ikke et ekstra rail inde i CoworkZones. Zone-skift via emitZone. */
 function CoworkMenu() {
   const [zone, setZone] = useState<Zone>('mc')
+  const { auth } = useSettings()
+  const isOwner = auth?.role === 'owner'
   // Hold lokal markering i sync med Jarvis-styret zone-skift (open_ui_panel).
   useEffect(() => onZone(setZone), [])
   return (
     <div className="sessions cowork-menu">
       <div className="sidebar-label">cowork</div>
-      {COWORK_ZONES.map((z) => {
+      {COWORK_ZONES.filter((z) => isOwner || !z.ownerOnly).map((z) => {
         const Icon = ZONE_ICONS[z.icon] ?? Blocks
         return (
           <button

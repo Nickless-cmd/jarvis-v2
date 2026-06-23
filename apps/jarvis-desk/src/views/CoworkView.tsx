@@ -7,6 +7,7 @@ import { ChannelsPane } from '../components/cowork/ChannelsPane'
 import { ShareGuardPane } from '../components/cowork/ShareGuardPane'
 import { AgentDispatchPane } from '../components/cowork/AgentDispatchPane'
 import { CoworkZones } from '../components/cowork/CoworkZones'
+import { JarvisMind } from '../components/cowork/JarvisMind'
 import { MarketplacePane } from '../components/cowork/MarketplacePane'
 import { AccountSection } from '../components/settings/AccountSection'
 import { KvoteSection } from '../components/settings/KvoteSection'
@@ -103,6 +104,7 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
       <CoworkZones>
         {(zone) =>
           zone === 'mc' ? missionControl
+          : zone === 'jarvisMind' ? (isOwner ? <JarvisMind config={config} /> : missionControl)
           : zone === 'marketplace' ? <MarketplacePane config={config} />
           : settingsZone
         }

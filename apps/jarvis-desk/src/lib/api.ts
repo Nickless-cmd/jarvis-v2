@@ -562,6 +562,21 @@ export async function getModelContext(
   return apiFetch(config, `/chat/model-context?${qs}`)
 }
 
+/** Jarvis Mind (cowork owner-menu): cognitive-arkitektur — de ~70 surfaces (server-cachet 75s).
+ *  systems = [{system, active, summary}]; surfaces = den fulde dict. */
+export async function getCognitiveArchitecture(
+  config: ApiConfig,
+): Promise<{ systems?: { system: string; active: boolean; summary?: string }[]; active_count?: number; total_count?: number; summary?: string; surfaces?: Record<string, unknown> }> {
+  return apiFetch(config, '/mc/cognitive-architecture')
+}
+
+/** Jarvis Mind: runtime-oversigt (aktive runs, seneste events, approvals, valgt model). */
+export async function getMcOverview(
+  config: ApiConfig,
+): Promise<Record<string, unknown>> {
+  return apiFetch(config, '/mc/overview')
+}
+
 /** Session-milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter.
  *  Hvert anker = en user-besked der starter et kapitel + en kort titel. Cached server-side. */
 export async function getSessionMilestones(

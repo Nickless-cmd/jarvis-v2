@@ -127,10 +127,11 @@ def _memory_candidate_recall_lines(*, limit: int) -> list[str]:
     # står der (de DB-baserede applied-checks misser kandidater anvendt via andre stier).
     memory_md = ""
     try:
-        from core.identity.workspace_context import workspace_dir
+        from core.runtime.workspace_paths import workspace_dir
         _md = workspace_dir() / "MEMORY.md"
         if _md.exists():
-            memory_md = " ".join(_md.read_text(encoding="utf-8").lower().split())
+            # Normalisér: fjern backticks/markdown-støj så matchet er formaterings-robust.
+            memory_md = " ".join(_md.read_text(encoding="utf-8").lower().replace("`", "").split())
     except Exception:
         memory_md = ""
     lines: list[str] = []
@@ -154,7 +155,7 @@ def _memory_candidate_recall_lines(*, limit: int) -> list[str]:
         # Indholds-tjek mod MEMORY.md: hvis et tilstrækkeligt langt uddrag af summary'en
         # allerede står i filen → den ER gemt (uanset DB-status). Skip dubletten.
         if memory_md:
-            probe = " ".join(summary.lower().split()[:8])
+            probe = " ".join(summary.lower().replace("`", "").split()[:6])
             if len(probe) >= 20 and probe in memory_md:
                 continue
         lines.append(_clip_line(f"{summary} (confidence={confidence})", limit=180))

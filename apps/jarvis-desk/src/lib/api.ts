@@ -407,6 +407,36 @@ export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
   return data.session_ids ?? []
 }
 
+// ─── Den Intelligente Central — real-time owner-vindue (code mode) ───────────
+export interface CentralFeedItem {
+  cluster: string; nerve: string; kind: string; decision: string
+  reason: string; run_id: string; security: boolean
+}
+export interface CentralIncident {
+  cluster: string; nerve: string; kind: string; severity: string; message: string; ts: string
+}
+export interface CentralSnapshot {
+  status: 'green' | 'yellow' | 'red'
+  coverage: { nerves?: number; clusters?: number; security_clusters?: number; trace_buffer?: number }
+  diagnose: { decide_ok?: boolean; observe_ok?: boolean; degraded?: boolean }
+  feed: CentralFeedItem[]
+  incidents: CentralIncident[]
+  open_breakers: string[]
+  config_drift: { declared_port?: unknown; actual_port?: unknown } | null
+  learning: {
+    degrading?: { target: string; rate_hr?: number }[]
+    autonomy?: string
+    autonomy_reason?: string
+    proposals?: number
+    root_causes?: { target: string; count: number }[]
+  }
+}
+
+/** Snapshot af Centralens live-tilstand (owner-only; 403 for ikke-ejere). */
+export async function getCentralRealtime(config: ApiConfig): Promise<CentralSnapshot> {
+  return apiFetch<CentralSnapshot>(config, '/central/realtime')
+}
+
 /** Token-stream det aktive autonome run i en session (desk-pickup af wakeup).
  *  GET SSE → v2-events til onEvent. Kortlivet (ingen reconnect): når runnet er
  *  færdigt lukker serveren, og onDone kaldes. Lader ChatView vise Jarvis'

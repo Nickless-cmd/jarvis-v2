@@ -18,6 +18,7 @@ import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
+import { CentralPanel } from '../components/code/CentralPanel'
 import { MessageRail, railLabel } from '../components/chat/MessageRail'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
@@ -608,24 +609,27 @@ export function CodeView({
           </div>
         )}
         {config && envOpen && !filesOpen && !panel.open && (
-          <EnvironmentPanel
-            config={config}
-            kind={kind}
-            root={effRoot}
-            refreshKey={gitRefresh}
-            working={stream.status === 'working' || bgWorking}
-            workingStep={(bgWorking ? followState.workingStep : stream.workingStep) ?? undefined}
-            totalTokens={envTotalTokens}
-            totalToolCalls={envTotalToolCalls}
-            tools={envTools}
-            sessionId={sessionId}
-            hasHistory={visibleMessages.length > 0}
-            isOwner={isOwner}
-            onChanged={() => setGitRefresh((n) => n + 1)}
-            gitMissing={gitMissing}
-            installingTool={installingTool}
-            onInstallTool={onInstallTool}
-          />
+          <div className="code-right-stack">
+            <EnvironmentPanel
+              config={config}
+              kind={kind}
+              root={effRoot}
+              refreshKey={gitRefresh}
+              working={stream.status === 'working' || bgWorking}
+              workingStep={(bgWorking ? followState.workingStep : stream.workingStep) ?? undefined}
+              totalTokens={envTotalTokens}
+              totalToolCalls={envTotalToolCalls}
+              tools={envTools}
+              sessionId={sessionId}
+              hasHistory={visibleMessages.length > 0}
+              isOwner={isOwner}
+              onChanged={() => setGitRefresh((n) => n + 1)}
+              gitMissing={gitMissing}
+              installingTool={installingTool}
+              onInstallTool={onInstallTool}
+            />
+            {isOwner && <CentralPanel config={config} isOwner={isOwner} />}
+          </div>
         )}
         {trustBanner}
         <div className="transcript-wrap">

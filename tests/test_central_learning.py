@@ -32,6 +32,29 @@ def test_no_degrading_when_below_min():
     assert cl.degrading(incidents=inc) == []
 
 
+def test_degrading_excludes_own_learning_meta_nerve():
+    # system/learning er Centralens EGEN meta-observation → må ALDRIG flagge sig selv
+    # (ellers selv-forstærkende loop). Selv en spike skal ignoreres.
+    inc = [_inc("system", "learning", age_hours=0.2) for _ in range(20)]
+    assert cl.degrading(incidents=inc) == []
+
+
+def test_observe_learning_does_not_persist_degrading_incidents(monkeypatch):
+    # degradering er en live projektion — observe_learning må IKKE skrive den tilbage som
+    # incidents (dual-truth + feedback-loop). Verificér at record_central_incident ikke kaldes.
+    calls = []
+    monkeypatch.setattr("core.runtime.db_central_incidents.record_central_incident",
+                        lambda **k: calls.append(k))
+    monkeypatch.setattr(cl, "learning_summary", lambda: {
+        "degrading": [{"cluster": "stream", "nerve": "provider_call",
+                       "recent_rate_hr": 5.0, "baseline_rate_hr": 0.1}],
+        "root_causes": [], "proposals": [],
+        "autonomy": {"verdict": "hold"},
+    })
+    cl.observe_learning()
+    assert calls == []  # ingen persistering af afledt signal
+
+
 def test_autonomous_reliability_from_supervision():
     inc = [_inc("autonomous", "supervision", kind="lied", age_hours=1),
            _inc("autonomous", "supervision", kind="connection_error", age_hours=2),

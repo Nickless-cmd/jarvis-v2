@@ -73,10 +73,15 @@ def degrading(*, recent_hours: float = 6, baseline_hours: float = 48,
     for key, rc in recent.items():
         if rc < _DEGRADE_MIN_RECENT:
             continue
+        cluster, _, nerve = key.partition("/")
+        # Ekskludér Centralens EGEN meta-observation (system/learning) fra degraderings-
+        # analysen: ellers ville lærings-signalet om degradering selv tælle som degradering
+        # → selv-forstærkende loop ("learning trender mod nedbrud").
+        if cluster == "system" and nerve == "learning":
+            continue
         recent_rate = rc / recent_hours
         baseline_rate = base.get(key, rc) / baseline_hours
         if recent_rate > baseline_rate * _DEGRADE_FACTOR:
-            cluster, _, nerve = key.partition("/")
             out.append({"cluster": cluster, "nerve": nerve, "recent": rc,
                         "recent_rate_hr": round(recent_rate, 3),
                         "baseline_rate_hr": round(baseline_rate, 3)})
@@ -243,16 +248,11 @@ def observe_learning() -> dict[str, Any]:
         })
     except Exception:
         pass
-    for d in summary["degrading"]:
-        try:
-            from core.runtime.db_central_incidents import record_central_incident
-            record_central_incident(
-                cluster="system", nerve="learning", kind="degrading", severity="error",
-                message=(f"{d['cluster']}/{d['nerve']} trender mod nedbrud: "
-                         f"{d['recent_rate_hr']}/t vs baseline {d['baseline_rate_hr']}/t"),
-            )
-        except Exception:
-            pass
+    # Degradering er en LIVE projektion (beregnet on-demand af degrading() til både panelet
+    # og observe()-telemetrien ovenfor). Vi persisterer den IKKE som incidents: at skrive et
+    # afledt signal tilbage i kilde-incident-tabellen er dual-truth (MC læser projektioner,
+    # opfinder ikke en anden sandhed) OG skabte en feedback-loop (system/learning-incidents
+    # hævede learning-raten → learning flaggede sig selv) + ubegrænset ophobning uden dedup.
     return summary
 
 

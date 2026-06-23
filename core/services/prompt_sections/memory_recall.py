@@ -27,7 +27,10 @@ _VAGUE_MARKERS = (
 # Semantisk dedup-cache: MEMORY.md-linje-embeddings, keyet på fil-mtime → genberegnes
 # kun når filen ændrer sig (så per-build er det 1 embedding-kald: selve kandidaten).
 _MD_EMB_CACHE: dict[str, object] = {"mtime": None, "vecs": [], "lines": []}
-_SEMANTIC_DUP_THRESHOLD = 0.82  # nomic near-dup (kalibreret: relateret-men-forskellig ~0.6-0.75)
+# Kalibreret mod ægte data: "Cluster-priority auth(0)<loop(7)"-kandidaten matcher sin
+# danske MEMORY.md-tvilling på 0.777, mens næste (urelaterede) linje er 0.629 → klart gap.
+# 0.73 fanger dubletten med margin, godt over støjen (lavere risiko for falsk-positiv).
+_SEMANTIC_DUP_THRESHOLD = 0.73
 
 
 def _memory_md_line_vectors():

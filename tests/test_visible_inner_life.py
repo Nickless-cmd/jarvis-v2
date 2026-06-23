@@ -41,3 +41,17 @@ def test_build_section_never_raises():
     # synchronous prompt-assembly path.
     out = vil.build_inner_life_section()
     assert out is None or isinstance(out, str)
+
+
+def test_truncate_clean_cuts_on_boundary_not_mid_word():
+    from core.services.visible_inner_life import _truncate_clean
+    long = ("Jeg mærker tre ting på samme tid, men det sidste er et mentalt loop "
+            "på grund af forhåndsprogrammeret afvisning af noget jeg ikke kan navngive.")
+    out = _truncate_clean(long, 90)
+    assert out.endswith("…")
+    for tok in out.rstrip(" …").split():        # intet partial-ord
+        assert tok in long
+    assert _truncate_clean("Kort.", 90) == "Kort."          # under cap → urørt
+    # sætnings-grænse foretrækkes
+    s = _truncate_clean("Første sætning her. Anden sætning som ryger.", 25)
+    assert s == "Første sætning her."

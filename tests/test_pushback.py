@@ -27,7 +27,10 @@ def test_affective_pushback_firm_when_feeling_and_evidence_align(monkeypatch):
     assert "Følelser må starte pushback" in section
 
 
-def test_affective_pushback_checks_when_feeling_has_weak_evidence(monkeypatch):
+def test_affective_pushback_omits_when_feeling_has_no_evidence(monkeypatch):
+    # Jarvis-spec 2026-06-23 #8: affect UDEN evidens er ren "tøv"-struktur der
+    # brænder tokens uden at forme svaret → sektionen droppes nu (return None),
+    # i stedet for at rendere "action=ask_or_check / evidence: weak/none".
     from core.services import pushback
 
     monkeypatch.setattr(
@@ -41,13 +44,11 @@ def test_affective_pushback_checks_when_feeling_has_weak_evidence(monkeypatch):
         ),
     )
     monkeypatch.setattr(pushback, "_conflict_with_decisions", lambda _message: [])
+    monkeypatch.setattr(pushback, "_request_risk_evidence", lambda _message: [])
 
     section = pushback.affective_pushback_section("hvad tænker du?")
 
-    assert section is not None
-    assert "feeling=unease" in section
-    assert "action=ask_or_check" in section
-    assert "evidence: weak/none" in section
+    assert section is None
 
 
 def test_affective_pushback_omits_when_no_affective_pressure(monkeypatch):

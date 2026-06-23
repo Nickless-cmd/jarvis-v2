@@ -156,6 +156,21 @@ def _room_line() -> Optional[str]:
     return None
 
 
+def _truncate_clean(text: str, cap: int) -> str:
+    """Trunkér på en SÆTNINGS- eller ord-grænse i stedet for en hård char-slice
+    (som skar Jarvis' stemme midt i 'forhåndsprogrammeret afvisning af'). Falder
+    tilbage til ord-grænse, og kun til hård slice hvis intet mellemrum findes."""
+    text = (text or "").strip()
+    if len(text) <= cap:
+        return text
+    head = text[:cap]
+    cut = max(head.rfind(". "), head.rfind("! "), head.rfind("? "))
+    if cut >= cap * 0.5:
+        return head[:cut + 1].rstrip()          # ren sætnings-afslutning, intet ellipsis nødvendigt
+    space = head.rfind(" ")
+    return (head[:space].rstrip() if space > 0 else head).rstrip() + " …"
+
+
 def _voice_line() -> Optional[str]:
     """Latest protected inner voice. The producer currently emits degraded
     [fallback-trace] entries; extract the meaningful experiential narrative
@@ -174,9 +189,9 @@ def _voice_line() -> Optional[str]:
             if marker in voice:
                 narr = voice.split(marker, 1)[1].split("|", 1)[0].strip()
                 if narr:
-                    return f"Stemme (afledt): {narr[:160]}"
+                    return f"Stemme (afledt): {_truncate_clean(narr, 220)}"
             return None
-        return f"Stemme: {voice[:200]}"
+        return f"Stemme: {_truncate_clean(voice, 260)}"
     except Exception:
         logger.debug("inner-life: voice failed", exc_info=True)
     return None
@@ -223,7 +238,7 @@ def build_inner_life_section() -> str | None:
 
         desc = (describe_inner_network() or "").strip()
         if desc and desc != "Mit indre netværk er stille":
-            lines.append(f"· Indre netværk: {desc[:160]}")
+            lines.append(f"· Indre netværk: {_truncate_clean(desc, 200)}")
     except Exception:
         logger.debug("inner-life: network failed", exc_info=True)
 
@@ -253,7 +268,7 @@ def build_inner_life_section() -> str | None:
             first = next((l.strip("- ").strip() for l in sm.splitlines()
                           if l.strip().startswith("-")), "")
             if first:
-                lines.append(f"· Selv-model: {first[:120]}")
+                lines.append(f"· Selv-model: {_truncate_clean(first, 160)}")
     except Exception:
         logger.debug("inner-life: self_model failed", exc_info=True)
 

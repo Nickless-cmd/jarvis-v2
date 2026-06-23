@@ -277,36 +277,34 @@ def affective_pushback_section(user_message: str) -> str | None:
     evidence.extend(_conflict_with_decisions(user_message))
     evidence = evidence[:4]
 
-    if evidence and strength >= 0.75:
+    # Uden evidens er signalet ren "tøv"-struktur der brænder tokens uden at forme
+    # svaret (Jarvis: "evidence: weak/none — strukturen siger tøv, men der er intet").
+    # Drop hele ask_or_check-grenen; affect uden evidens er ikke en pushback-grund.
+    if not evidence:
+        _emit_pushback_telemetry("affective_pushback", triggered=False, reason="no_evidence")
+        return None
+
+    if strength >= 0.75:
         action = "firm_pushback"
         instruction = (
             "Klassifikation: firm_pushback band — affect-intensity ≥0.75 + "
             "evidence-match. Forventet output-shape: navngivet følelse + "
             "evidence-binding + alternativ handling."
         )
-    elif evidence:
+    else:
         action = "soft_pushback"
         instruction = (
             "Klassifikation: soft_pushback band — evidence-match uden høj intensity. "
             "Forventet output-shape: markeret resistance + evidence-binding + "
             "verification-step."
         )
-    else:
-        action = "ask_or_check"
-        instruction = (
-            "Klassifikation: ask_or_check band — affect uden evidence. "
-            "Forventet output-shape: fakta-/risiko-check før affect handles."
-        )
 
     lines = [
         "Affective pushback signal:",
         f"  feeling={feeling} intensity={strength:.2f} action={action}",
     ]
-    if evidence:
-        for item in evidence:
-            lines.append(f"  - evidence: {item}")
-    else:
-        lines.append("  - evidence: weak/none")
+    for item in evidence:
+        lines.append(f"  - evidence: {item}")
     lines.append(
         "Følelser må starte pushback, men ikke alene afgøre sagen. "
         + instruction

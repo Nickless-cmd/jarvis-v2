@@ -119,12 +119,29 @@ def _memory_candidate_recall_lines(*, limit: int) -> list[str]:
         )
     except Exception:
         return []
+    try:
+        from core.services.candidate_tracking import _candidate_already_applied
+    except Exception:
+        _candidate_already_applied = None  # type: ignore[assignment]
     lines: list[str] = []
     for candidate in candidates[:limit]:
         summary = " ".join(str(candidate.get("summary") or "").split()).strip()
         confidence = str(candidate.get("confidence") or "unknown").strip()
-        if summary:
-            lines.append(_clip_line(f"{summary} (confidence={confidence})", limit=180))
+        if not summary:
+            continue
+        # Skip vage kandidater ("Recent log indicates recent expressions or errors")
+        # — under 5 ord bærer ikke konkret viden, brænder bare tokens.
+        if len(summary.split()) < 5:
+            continue
+        # Skip kandidater der ALLEREDE er gemt (samme canonical_key med status=applied)
+        # — de står allerede i MEMORY.md; at vise dem som "pending" er forvirrende dublet.
+        if _candidate_already_applied is not None:
+            try:
+                if _candidate_already_applied(candidate):
+                    continue
+            except Exception:
+                pass
+        lines.append(_clip_line(f"{summary} (confidence={confidence})", limit=180))
     return lines
 
 

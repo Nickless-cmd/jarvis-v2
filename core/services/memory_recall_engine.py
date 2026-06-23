@@ -671,6 +671,7 @@ def multi_signal_recall(
     limit_per_source: int = 3,
     total_limit: int = 8,
     with_mood: bool = True,
+    min_score: float = 0.0,
 ) -> dict[str, Any]:
     """Multi-signal recall: BM25 + entity fusion + embedding + recency.
 
@@ -788,7 +789,10 @@ def multi_signal_recall(
             # Best-effort — never let temporal boost block recall
             pass
 
-    # 6. Sort by multi-signal score
+    # 6. Cutoff under tærskel (støj som "No active runtime loop" score=0.28 slap FØR
+    #    igennem — multi_signal_score brugtes kun til sort, aldrig som filter), så sortér.
+    if min_score > 0.0:
+        all_results = [r for r in all_results if r.get("multi_signal_score", 0.0) >= min_score]
     all_results.sort(key=lambda r: r.get("multi_signal_score", 0.0), reverse=True)
     top = all_results[:total_limit]
 
@@ -814,7 +818,11 @@ def multi_signal_recall(
 
 def multi_signal_recall_section(query: str, *, max_results: int = 4) -> str | None:
     """Format multi-signal recall as a prompt-awareness section."""
-    result = multi_signal_recall(query=query, total_limit=max_results, with_mood=True)
+    # Ekskludér private_brain — det surfacer ALLEREDE i "private continuity"-sektionen
+    # (dublet: "No active runtime loop" / "Du dør hver gang du bruger tools" stod begge
+    #  steder). Cutoff under 0.32 fjerner støj-poster. (Jarvis-spec 2026-06-23 #4 + #6.)
+    result = multi_signal_recall(query=query, total_limit=max_results, with_mood=True,
+                                 sources=["workspace", "chronicle"], min_score=0.32)
     items = result.get("results") or []
     if not items:
         return None

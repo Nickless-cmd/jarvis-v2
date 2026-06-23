@@ -75,11 +75,16 @@ def build_brain_facts_section(
     ceiling = _ceiling_from_session_id(session_id)
 
     try:
+        # min_score AKTIVERET (Jarvis-spec 2026-06-23 #3): search_brain dropper nu
+        # entries under tærsklen i stedet for at returnere top-K uanset relevans —
+        # 6 af 8 brain-fakta var irrelevante for samtalen (NOS X500-mik, skill_suggest,
+        # Discord-routing for Mikkel...). Kun det samtale-relevante slipper igennem nu.
         results = jarvis_brain.search_brain(
             query_text=user_message,
             kinds=["fakta"],
             visibility_ceiling=ceiling,
             limit=max(1, top_k),
+            min_score=threshold,
         )
     except Exception as exc:
         logger.warning("brain auto-inject search failed: %s", exc)
@@ -87,16 +92,6 @@ def build_brain_facts_section(
 
     if not results:
         return ""
-
-    # Filter by threshold using a re-score (search_brain doesn't expose scores;
-    # we approximate by re-computing via embedding match). Simpler: trust
-    # search_brain's ordering and just take top_k. Apply threshold filter via
-    # cosine on the front-runner (approximate).
-    # For v1 we trust search_brain's ranking. Threshold becomes an effective
-    # min_results gate — if even top entry is irrelevant, search returns it
-    # but we drop everything if user_message has no embedding overlap.
-    # TODO v2: expose scores from search_brain for proper thresholding.
-    _ = threshold  # currently unused; v1 trusts search_brain ordering
 
     # Bump salience (use-it-or-lose-it)
     now = datetime.now(timezone.utc)

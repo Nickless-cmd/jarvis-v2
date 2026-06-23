@@ -117,6 +117,11 @@ def build_self_model_signal_prompt_section(*, limit: int = 4) -> str | None:
         confidence = str(item.get("confidence") or "").strip()
         if not title:
             continue
+        # Hærdning mod allerede-gemte log/event-navne (snake_case maskin-id) der
+        # lækker som "Strength: plugin_container_process_kill_..._success". Drop dem.
+        _core = title.split(":", 1)[-1].strip()
+        if " " not in _core and _core.count("_") >= 2:
+            continue
         if confidence:
             rendered.append(f"{title} ({confidence})")
         else:

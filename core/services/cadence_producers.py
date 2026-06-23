@@ -659,14 +659,20 @@ def sync_personality_to_self_model() -> dict[str, int]:
 
         # Fire one signal per strong area
         for strength in strengths[:3]:
+            s = str(strength).strip()
+            # Afvis log/event-navne (snake_case maskin-id som
+            # 'plugin_container_process_kill_load_reduction_success') — de er IKKE
+            # menneskelæsbare selv-egenskaber og lækkede til den synlige prompt.
+            if " " not in s and s.count("_") >= 2:
+                continue
             try:
                 upsert_runtime_self_model_signal(
                     signal_id=f"sm-{uuid4().hex[:10]}",
                     signal_type="recognized_strength",
-                    canonical_key=f"self-model:strength:{strength[:30]}",
+                    canonical_key=f"self-model:strength:{s[:30]}",
                     status="active",
-                    title=f"Strength: {strength[:60]}",
-                    summary=str(strength)[:200],
+                    title=f"Strength: {s[:60]}",
+                    summary=s[:200],
                     rationale="From personality_vector strengths_discovered",
                     source_kind="personality_vector",
                     confidence="high",

@@ -624,10 +624,9 @@ def all_pending_plans_section() -> str | None:
         lines.append(f"  • {plan_id}: {title}{sid_label}")
     if len(all_pending) > 5:
         lines.append(f"  ... og {len(all_pending) - 5} mere")
-    lines.append(
-        "Brug `list_plans` for detaljer, `approve_plan` for at godkende, "
-        "`dismiss_plan` for at afvise."
-    )
+    # (Vane-hale "Brug list_plans for detaljer..." fjernet 2026-06-23 — Jarvis kender
+    #  værktøjerne efter 67 dage; plan-id'erne ovenfor er nok til at handle. Værktøjs-
+    #  definitionerne ligger allerede i kataloget.)
     return "\n".join(lines)
 
 

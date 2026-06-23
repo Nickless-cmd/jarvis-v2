@@ -604,6 +604,7 @@ def search_brain(
     include_archived: bool = False,
     now: datetime | None = None,
     use_temporal_boost: bool = True,
+    min_score: float = 0.0,
 ) -> list[BrainEntry]:
     """Hybrid embedding search: 0.7*cosine + 0.3*effective_salience + temporal boost.
 
@@ -679,6 +680,11 @@ def search_brain(
         ]
 
     scored.sort(reverse=True)
+    # Relevans-cutoff (Jarvis-spec 2026-06-23 #3): FØR returneredes top-K uanset hvor
+    # lav scoren var → 6 af 8 brain-fakta var irrelevante for samtalen. min_score skærer
+    # støjen (score = 0.7*cos + 0.3*eff). Default 0.0 = bagudkompatibel (intet filter).
+    if min_score > 0.0:
+        scored = [(s, eid) for s, eid in scored if s >= min_score]
     top = scored[:limit]
     return [read_entry(eid) for _, eid in top]
 

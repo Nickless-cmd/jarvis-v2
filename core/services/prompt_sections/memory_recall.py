@@ -33,12 +33,29 @@ _MD_EMB_CACHE: dict[str, object] = {"mtime": None, "vecs": [], "lines": []}
 _SEMANTIC_DUP_THRESHOLD = 0.73
 
 
-def _memory_md_line_vectors():
+def _resolve_user_id(session_id: str = "") -> str:
+    """Resolve user_id eksplicit (recall-sektionerne kører UDEN current_user_id()-kontekst
+    i fuld-build → workspace_dir() ville fejle). Fra session → ellers owner."""
+    try:
+        if session_id:
+            from core.services.chat_sessions import get_chat_session
+            sess = get_chat_session(session_id) or {}
+            uid = str(sess.get("user_id") or "").strip()
+            if uid:
+                return uid
+        from core.identity.users import get_owner
+        owner = get_owner()
+        return str(getattr(owner, "user_id", "") or "")
+    except Exception:
+        return ""
+
+
+def _memory_md_line_vectors(user_id: str = ""):
     """Cached embeddings af MEMORY.md-linjer (genberegnes kun ved fil-ændring)."""
     try:
         from core.runtime.workspace_paths import workspace_dir
         from core.services.jarvis_brain import _embed_text
-        md = workspace_dir() / "MEMORY.md"
+        md = (workspace_dir(user_id) if user_id else workspace_dir()) / "MEMORY.md"
         if not md.exists():
             return []
         mtime = md.stat().st_mtime
@@ -58,12 +75,12 @@ def _memory_md_line_vectors():
         return []
 
 
-def _is_semantic_dup_of_memory(text: str) -> bool:
+def _is_semantic_dup_of_memory(text: str, user_id: str = "") -> bool:
     """True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd)."""
     try:
         import numpy as np
         from core.services.jarvis_brain import _embed_text
-        vecs = _memory_md_line_vectors()
+        vecs = _memory_md_line_vectors(user_id)
         if not vecs:
             return False
         qv = _embed_text(text)
@@ -97,7 +114,7 @@ def _visible_memory_recall_bundle_section(
         lines.append("- Internal tool observations (Jarvis-only, not user-visible chat):")
         lines.extend(f"  - {line}" for line in tool_lines)
 
-    candidate_lines = _memory_candidate_recall_lines(limit=2 if compact else 3)
+    candidate_lines = _memory_candidate_recall_lines(limit=2 if compact else 3, session_id=session_id)
     if candidate_lines:
         lines.append("- Pending memory candidates:")
         lines.extend(f"  - {line}" for line in candidate_lines)
@@ -171,7 +188,7 @@ def _recent_tool_recall_lines(session_id: str | None, *, limit: int) -> list[str
     return result
 
 
-def _memory_candidate_recall_lines(*, limit: int) -> list[str]:
+def _memory_candidate_recall_lines(*, limit: int, session_id: str = "") -> list[str]:
     try:
         candidates = list_runtime_contract_candidates(
             candidate_type="memory_promotion",
@@ -185,12 +202,14 @@ def _memory_candidate_recall_lines(*, limit: int) -> list[str]:
         from core.services.candidate_tracking import _candidate_already_applied
     except Exception:
         _candidate_already_applied = None  # type: ignore[assignment]
+    # Recall kører UDEN current_user_id()-kontekst i fuld-build → resolve user_id eksplicit.
+    user_id = _resolve_user_id(session_id)
     # Læs MEMORY.md-indhold ÉN gang (normaliseret) → skip kandidater hvis tekst allerede
     # står der (de DB-baserede applied-checks misser kandidater anvendt via andre stier).
     memory_md = ""
     try:
         from core.runtime.workspace_paths import workspace_dir
-        _md = workspace_dir() / "MEMORY.md"
+        _md = (workspace_dir(user_id) if user_id else workspace_dir()) / "MEMORY.md"
         if _md.exists():
             # Normalisér: fjern backticks/markdown-støj så matchet er formaterings-robust.
             memory_md = " ".join(_md.read_text(encoding="utf-8").lower().replace("`", "").split())
@@ -223,7 +242,7 @@ def _memory_candidate_recall_lines(*, limit: int) -> list[str]:
         # Semantisk dedup: fanger konceptuelle dubletter med ANDEN ordlyd (det literal
         # match misser, fx "Cluster-priority auth(0)<loop(7)" der allerede er i MEMORY.md
         # med andre ord). 1 embedding-kald pr. kandidat mod cached MEMORY.md-vektorer.
-        if _is_semantic_dup_of_memory(summary):
+        if _is_semantic_dup_of_memory(summary, user_id):
             continue
         lines.append(_clip_line(f"{summary} (confidence={confidence})", limit=180))
     return lines

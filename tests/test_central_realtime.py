@@ -36,3 +36,21 @@ def test_status_yellow_on_degrading():
 def test_status_green_when_clean():
     st = cr._status_from({"degraded": False}, [], [], {}, [])
     assert st == "green"
+
+
+def test_status_red_on_foreign_process_breaker():
+    # en åben breaker i RUNTIME-processen (ikke api) skal hæve status til rød
+    procs = [{"process": "runtime", "open_breakers": ["loop/runaway"], "degraded": True}]
+    st = cr._status_from({"degraded": False}, [], [], {}, [], None, procs)
+    assert st == "red"
+
+
+def test_status_yellow_on_foreign_process_degraded():
+    procs = [{"process": "runtime", "open_breakers": [], "degraded": True}]
+    st = cr._status_from({"degraded": False}, [], [], {}, [], None, procs)
+    assert st == "yellow"
+
+
+def test_snapshot_has_processes_key():
+    s = cr.realtime_snapshot()
+    assert "processes" in s and isinstance(s["processes"], list)

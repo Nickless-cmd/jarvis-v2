@@ -5,6 +5,7 @@ from __future__ import annotations
 import collections
 import queue as _queue
 import threading
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -23,6 +24,7 @@ class TraceRecord:
     reason: str = ""
     latency_ms: int = 0
     payload: dict[str, Any] | None = None
+    ts: float = 0.0                 # wall-clock ved record (cross-proces feed-fletning)
 
 
 class TraceSink:
@@ -34,6 +36,11 @@ class TraceSink:
         self.dropped = 0
 
     def record(self, rec: TraceRecord) -> None:
+        try:
+            if not rec.ts:
+                rec.ts = time.time()
+        except Exception:
+            pass
         try:
             with self._lock:
                 self._buf.append(rec)
@@ -49,6 +56,14 @@ class TraceSink:
                     q.put_nowait(rec)
                 except Exception:
                     pass
+        except Exception:
+            pass
+        # Cross-proces tee: publicér (throttled) denne proces' feed+sundhed til shared_cache
+        # så owner-snapshottet kan flette runtime- OG api-processens fyringer. Lazy import
+        # (undgår cyklus) + fuldt self-safe (en tee-fejl må aldrig røre den hotte sti).
+        try:
+            from core.services import central_xproc
+            central_xproc.maybe_publish()
         except Exception:
             pass
 

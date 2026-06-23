@@ -14,18 +14,27 @@ from __future__ import annotations
 
 from typing import Any
 
+_FEED_CAP = 80  # hvor mange records vi trækker pr. proces før fletning/limit
+
 
 def _status_from(diag: dict, incidents: list, open_breakers: list, drift: dict,
-                 degrading: list, anomaly_counts: dict | None = None) -> str:
-    """🔴 red / 🟡 yellow / 🟢 green — værst-vinder."""
+                 degrading: list, anomaly_counts: dict | None = None,
+                 processes: list | None = None) -> str:
+    """🔴 red / 🟡 yellow / 🟢 green — værst-vinder. Inkluderer ALLE processers helbred
+    (api + runtime): en åben breaker eller degradering i runtime-processen tæller lige
+    så meget som i api-processen."""
     ac = anomaly_counts or {}
+    procs = processes or []
+    any_proc_breaker = any((p.get("open_breakers") or []) for p in procs)
+    any_proc_degraded = any(p.get("degraded") for p in procs)
     severe = [i for i in incidents if str(i.get("severity")) == "severe"]
     fail_open = [i for i in incidents if str(i.get("kind")) == "fail_open"]
-    if open_breakers or severe or fail_open or int(ac.get("critical") or 0) > 0:
+    if (open_breakers or any_proc_breaker or severe or fail_open
+            or int(ac.get("critical") or 0) > 0):
         return "red"
     errors = [i for i in incidents if str(i.get("severity")) in ("error", "severe")]
-    if (diag.get("degraded") or errors or degrading or (drift or {}).get("drift")
-            or int(ac.get("high") or 0) > 0):
+    if (diag.get("degraded") or any_proc_degraded or errors or degrading
+            or (drift or {}).get("drift") or int(ac.get("high") or 0) > 0):
         return "yellow"
     return "green"
 
@@ -60,26 +69,43 @@ def realtime_snapshot(*, trace_limit: int = 24) -> dict[str, Any]:
     except Exception:
         pass
 
-    # ── Lag 2: feed (de seneste fyringer) ────────────────────────────────
+    # ── Lag 2: feed (de seneste fyringer) — BÅDE denne proces OG de andre ─
+    # central_trace er per-proces; vi fletter vores egen in-memory ring (friskest) med
+    # de andre processers publicerede feeds (via central_xproc/shared_cache) → ét vindue
+    # der fanger runtime-processens daemons/autonome runs lige så vel som api-lanen.
     try:
-        from core.services import central_trace
-        from core.services.central_catalog import is_security_cluster, nerve_location
-        recs = central_trace.sink().recent(limit=trace_limit)
-        feed = []
-        for r in reversed(recs):  # nyeste først
-            cluster = str(getattr(r, "cluster", "") or "")
-            nerve = str(getattr(r, "nerve", "") or "")
-            feed.append({
-                "cluster": cluster, "nerve": nerve,
+        from core.services import central_trace, central_xproc
+        from core.services.central_catalog import is_security_cluster
+        own_role = _safe(central_xproc.process_role) or "api"
+        merged: list[dict[str, Any]] = []
+        for r in central_trace.sink().recent(limit=_FEED_CAP):  # egen proces
+            merged.append({
+                "cluster": str(getattr(r, "cluster", "") or ""),
+                "nerve": str(getattr(r, "nerve", "") or ""),
                 "kind": str(getattr(r, "kind", "") or ""),       # decide|observe|error
                 "decision": str(getattr(r, "decision", "") or ""),  # red|yellow|green|skip
                 "reason": str(getattr(r, "reason", "") or "")[:120],
                 "run_id": str(getattr(r, "run_id", "") or ""),
-                "security": bool(_safe(is_security_cluster, cluster)),
+                "ts": float(getattr(r, "ts", 0.0) or 0.0),
+                "process": own_role,
             })
+        merged.extend(_safe(central_xproc.foreign_feeds, own_role) or [])  # andre processer
+        # nyeste først på tværs af processer; sikkerheds-flag pr. record
+        merged.sort(key=lambda f: f.get("ts") or 0.0, reverse=True)
+        feed = []
+        for f in merged[:trace_limit]:
+            f["security"] = bool(_safe(is_security_cluster, f.get("cluster") or ""))
+            feed.append(f)
         snap["feed"] = feed
     except Exception:
         pass
+
+    # ── Per-proces sundhed: ser owner BÅDE api- og runtime-processens Central-helbred ──
+    try:
+        from core.services import central_xproc
+        snap["processes"] = central_xproc.all_health()
+    except Exception:
+        snap["processes"] = []
 
     # ── Lag 3: flag ──────────────────────────────────────────────────────
     incidents: list[dict[str, Any]] = []
@@ -140,7 +166,8 @@ def realtime_snapshot(*, trace_limit: int = 24) -> dict[str, Any]:
         snap["clusters"] = []
 
     snap["status"] = _status_from(diag, incidents, snap["open_breakers"], drift, degrading,
-                                  snap.get("anomalies", {}).get("counts", {}))
+                                  snap.get("anomalies", {}).get("counts", {}),
+                                  snap.get("processes", []))
     return snap
 
 

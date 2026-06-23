@@ -4365,9 +4365,26 @@ def _build_structured_transcript_messages(
     # (defensive).
     history = chat_session_messages_since_last_compact(session_id, max_total=4000)
     if not history:
-        history = recent_chat_session_messages_by_user_turns(
-            session_id, user_turns=max(limit, 1), max_total=4000,
-        )
+        # "Siden compact" er tomt. To tilfælde:
+        #  (a) Sessionen ER compacted (et compact_marker findes) men intet ligger EFTER det —
+        #      markøren skrives med højeste id, så lige efter compaction er vinduet tomt. Her må
+        #      vi IKKE loade hele 60-user-turn-vinduet: summary'en (prepended nedenfor) dækker
+        #      det gamle, og et ubundet load er cache-uvenligt + redundant (Bjørn 2026-06-23).
+        #      Load kun et lille bundet recent-vindue (2× keep_recent verbatim-turns).
+        #  (b) Aldrig-compacted session → behold det fulde 60-turn-fallback.
+        from core.services.chat_sessions import get_compact_marker
+        _keep_recent = 20
+        try:
+            from core.runtime.settings import load_settings as _ls_keep
+            _keep_recent = int(_ls_keep().context_keep_recent or 20)
+        except Exception:
+            pass
+        if get_compact_marker(session_id):
+            history = recent_chat_session_messages(session_id, limit=2 * _keep_recent)
+        else:
+            history = recent_chat_session_messages_by_user_turns(
+                session_id, user_turns=max(limit, 1), max_total=4000,
+            )
     if not history:
         return []
 

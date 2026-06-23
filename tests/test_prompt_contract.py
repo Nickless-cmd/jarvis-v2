@@ -192,3 +192,48 @@ def test_pending_promises_section_no_session():
     import core.services.prompt_contract as pc
     assert pc._pending_promises_section("") is None
     assert pc._pending_promises_section(None) is None
+
+
+def test_transcript_bounded_fallback_when_compacted(monkeypatch):
+    """Bjørn 2026-06-23: når en session ER compacted (marker findes) men 'siden compact' er tomt
+    (markøren skrives sidst), må vi IKKE loade hele 60-user-turn-vinduet — kun et bundet recent-
+    vindue. Ellers eksploderer transcripten (578k målt) og cache brydes."""
+    import core.services.prompt_contract as pc
+    import core.services.chat_sessions as cs
+
+    monkeypatch.setattr(pc, "chat_session_messages_since_last_compact", lambda *a, **k: [])
+    monkeypatch.setattr(cs, "get_compact_marker", lambda sid: "[SAMMENDRAG] gammelt")
+    bounded_called = {}
+
+    def _bounded(sid, *, limit):
+        bounded_called["limit"] = limit
+        return [{"role": "user", "content": "ny", "created_at": "t",
+                 "user_id": "", "reasoning_content": ""}]
+    monkeypatch.setattr(pc, "recent_chat_session_messages", _bounded)
+
+    def _must_not_run(*a, **k):
+        raise AssertionError("ubundet 60-turn-fallback kaldt på en compacted session")
+    monkeypatch.setattr(pc, "recent_chat_session_messages_by_user_turns", _must_not_run)
+
+    out = pc._build_structured_transcript_messages("sid-x", limit=60, include=True)
+    assert bounded_called.get("limit") is not None  # bundet loader brugt
+    assert isinstance(out, list)
+
+
+def test_transcript_full_fallback_when_never_compacted(monkeypatch):
+    """Aldrig-compacted session (intet marker) → behold det fulde 60-turn-fallback."""
+    import core.services.prompt_contract as pc
+    import core.services.chat_sessions as cs
+
+    monkeypatch.setattr(pc, "chat_session_messages_since_last_compact", lambda *a, **k: [])
+    monkeypatch.setattr(cs, "get_compact_marker", lambda sid: None)
+    full_called = {}
+
+    def _full(sid, **k):
+        full_called["hit"] = True
+        return [{"role": "user", "content": "x", "created_at": "t",
+                 "user_id": "", "reasoning_content": ""}]
+    monkeypatch.setattr(pc, "recent_chat_session_messages_by_user_turns", _full)
+
+    pc._build_structured_transcript_messages("sid-y", limit=60, include=True)
+    assert full_called.get("hit") is True

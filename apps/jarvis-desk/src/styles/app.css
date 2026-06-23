@@ -1762,6 +1762,28 @@
 .central-learn-row > span:first-child { color: var(--fg-3, var(--fg)); opacity: .8; }
 .central-learn-row > span:last-child { text-align: right; overflow: hidden; text-overflow: ellipsis; }
 .central-autonomy-moden { color: #41d18a; } .central-autonomy-forsigtig { color: #ffd166; } .central-autonomy-ikke_moden { color: #ff6b6b; }
+
+/* Cluster-grid: én celle pr. cluster (online/offline-blik) */
+.central-grid { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 9px; }
+.central-cell { width: 13px; height: 13px; border-radius: 3px; position: relative; opacity: .92; }
+.central-cell-green { background: #41d18a; }
+.central-cell-yellow { background: #ffd166; }
+.central-cell-red { background: #ff6b6b; box-shadow: 0 0 6px rgba(255,107,107,.7); }
+.central-cell-idle { background: var(--bg-3, #3a3a3a); border: 1px solid var(--line); }
+.central-cell-lock { position: absolute; inset: 0; border: 1.5px solid rgba(255,255,255,.55); border-radius: 3px; }
+
+/* Anomalier — udefinerede fejl */
+.central-anom { background: rgba(255,138,76,.08); border: 1px solid rgba(255,138,76,.25); border-radius: 8px; padding: 7px 9px; margin-bottom: 9px; }
+.central-anom-head { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--warn-fg, #ffae6b); margin-bottom: 5px; }
+.central-anom-badges { display: flex; gap: 4px; align-items: center; }
+.central-badge.is-red { background: #ff6b6b; } .central-badge.is-yellow { background: #ffd166; color: #1a1a1a; }
+.central-anom-total { font-size: 10px; color: var(--fg-3, var(--fg)); opacity: .7; }
+.central-anom-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.central-anom-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; }
+.central-anom-cat { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.central-anom-row.imp-critical .central-anom-cat { color: #ff8e8e; font-weight: 600; }
+.central-anom-row.imp-high .central-anom-cat { color: #ffd166; }
+.central-anom-cnt { color: var(--fg-3, var(--fg)); opacity: .7; flex-shrink: 0; }
 .env-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; letter-spacing: .04em; color: var(--fg-3, var(--fg)); margin-bottom: 8px; }
 .env-gear { display: inline-flex; background: none; border: none; padding: 2px; color: var(--fg-3, var(--fg)); opacity: .7; cursor: pointer; border-radius: 6px; }
 .env-gear:hover { opacity: 1; background: var(--bg-2, var(--bg)); }

@@ -415,6 +415,13 @@ export interface CentralFeedItem {
 export interface CentralIncident {
   cluster: string; nerve: string; kind: string; severity: string; message: string; ts: string
 }
+export interface CentralClusterStatus {
+  cluster: string; status: 'green' | 'yellow' | 'red' | 'idle'; security: boolean
+}
+export interface CentralAnomaly {
+  signature: string; category: string; importance: string; source: string
+  count: number; first_seen: string; last_seen: string; sample: string
+}
 export interface CentralSnapshot {
   status: 'green' | 'yellow' | 'red'
   coverage: { nerves?: number; clusters?: number; security_clusters?: number; trace_buffer?: number }
@@ -423,6 +430,8 @@ export interface CentralSnapshot {
   incidents: CentralIncident[]
   open_breakers: string[]
   config_drift: { declared_port?: unknown; actual_port?: unknown } | null
+  clusters?: CentralClusterStatus[]
+  anomalies?: { counts?: Record<string, number>; recent?: CentralAnomaly[] }
   learning: {
     degrading?: { target: string; rate_hr?: number }[]
     autonomy?: string

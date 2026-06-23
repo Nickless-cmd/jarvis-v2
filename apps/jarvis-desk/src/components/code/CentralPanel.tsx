@@ -35,6 +35,10 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
   const breakers = snap?.open_breakers ?? []
   const drift = snap?.config_drift
   const learn = snap?.learning ?? {}
+  const clusters = snap?.clusters ?? []
+  const anomalies = snap?.anomalies ?? {}
+  const anomCounts = anomalies.counts ?? {}
+  const anomRecent = anomalies.recent ?? []
 
   return (
     <aside className="central-panel" aria-label="Den Intelligente Central">
@@ -56,6 +60,40 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
               {diag.degraded ? 'degraderet' : 'decide+observe ✓'}
             </span>
           </div>
+
+          {/* Cluster-grid — grøn/gul/rød/idle pr. cluster (se ét cluster brække/gå offline) */}
+          {clusters.length > 0 && (
+            <div className="central-grid" title="Clusters — grøn=fyrer · gul=fejl · rød=brækket · grå=stille">
+              {clusters.map((c) => (
+                <span key={c.cluster} className={`central-cell central-cell-${c.status}`}
+                  title={`${c.cluster}${c.security ? ' 🔒' : ''} — ${c.status}`}>
+                  {c.security && <i className="central-cell-lock" />}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Anomalier — de udefinerede fejl Centralen fangede uden for sine nerver */}
+          {(anomCounts.total ?? 0) > 0 && (
+            <div className="central-anom">
+              <div className="central-anom-head">
+                <span>⚠ Udefinerede fejl</span>
+                <span className="central-anom-badges">
+                  {(anomCounts.critical ?? 0) > 0 && <span className="central-badge is-red">{anomCounts.critical} kritisk</span>}
+                  {(anomCounts.high ?? 0) > 0 && <span className="central-badge is-yellow">{anomCounts.high} høj</span>}
+                  <span className="central-anom-total">{anomCounts.total} i alt</span>
+                </span>
+              </div>
+              <ul className="central-anom-list">
+                {anomRecent.slice(0, 4).map((a) => (
+                  <li key={a.signature} className={`central-anom-row imp-${a.importance}`} title={a.sample}>
+                    <span className="central-anom-cat">{a.category}</span>
+                    <span className="central-anom-cnt">×{a.count}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Lag 3 — flag (kun når der er noget) */}
           {(breakers.length > 0 || incidents.length > 0 || drift) && (

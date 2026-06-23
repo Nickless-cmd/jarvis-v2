@@ -34,7 +34,15 @@ def fact_gate_adapter(ctx: dict[str, Any]) -> Verdict:
     from core.services.fact_gate import fact_gate_enforce
     res = fact_gate_enforce(text, list(tools)) or {}
     if res.get("blocked"):
-        reason = "; ".join(res.get("block_reasons") or [])[:200] or "fact-gate blok"
+        # block_reasons er en liste af DICTS ({pattern, matched, description, …}) — IKKE
+        # strings. Et rå "; ".join(...) kastede 'expected str instance, dict found' og væltede
+        # HELE truth-decide (fail-incident). Udtræk en læsbar streng pr. reason i stedet.
+        _reasons = res.get("block_reasons") or []
+        reason = "; ".join(
+            str(br.get("description") or br.get("pattern") or br) if isinstance(br, dict)
+            else str(br)
+            for br in _reasons
+        )[:200] or "fact-gate blok"
         return Verdict("fact_gate", Decision.RED, reason, action="strip")
     return Verdict("fact_gate", Decision.GREEN, "ok")
 

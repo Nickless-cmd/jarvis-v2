@@ -26,6 +26,26 @@ def test_fact_gate_adapter(monkeypatch):
     assert v.decision is Decision.RED and "fabricated" in v.reason
 
 
+def test_fact_gate_adapter_block_reasons_are_dicts(monkeypatch):
+    # REGRESSION (2026-06-23): fact_gate.block_reasons er DICTS, ikke strings. Et rå join
+    # kastede 'expected str instance, dict found' og væltede hele truth-decide. Adapteren
+    # skal nu udtrække en læsbar streng UDEN at kaste.
+    import core.services.fact_gate as fg
+    monkeypatch.setattr(fg, "fact_gate_enforce", lambda t, n=None: {
+        "blocked": True,
+        "block_reasons": [{
+            "pattern": "claimed_file_write",
+            "matched": "jeg har oprettet filen",
+            "description": "fil-skrivning",
+            "required_tools": ["write_file"],
+            "actual_tools": [],
+        }],
+    })
+    v = ga.fact_gate_adapter({"text": "x", "tool_names": ["foo"]})
+    assert v.decision is Decision.RED
+    assert "fil-skrivning" in v.reason  # description udtrukket, ingen TypeError
+
+
 def test_diagnosis_adapter(monkeypatch):
     import core.services.diagnosis_gate as dg
     monkeypatch.setattr(dg, "analyze_completion_claim",

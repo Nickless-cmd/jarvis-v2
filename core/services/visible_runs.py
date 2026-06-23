@@ -3939,8 +3939,20 @@ def _persist_session_assistant_message(
                     )
                 except Exception:
                     pass
-    except Exception:
-        pass
+    except Exception as _share_exc:
+        # Audit-remediation 2026-06-23: en fejl her spærrer ALDRIG svaret (Bjørns
+        # availability-valg) — MEN den kollapsede privacy-guard er et potentielt
+        # tavst cross-user-læk. Gør den LYD (severe incident) i stedet for except:pass.
+        try:
+            from core.runtime.db_central_incidents import record_central_incident
+            record_central_incident(
+                cluster="privacy", nerve="cross_user_share", kind="fail_open",
+                severity="severe", run_id=str(run.run_id or ""), session_id=str(run.session_id or ""),
+                message=f"cross_user_share-guard kastede → svaret sendt UDEN deling-tjek: "
+                        f"{type(_share_exc).__name__}: {_share_exc}"[:300],
+            )
+        except Exception:
+            pass
 
     message = append_chat_message(
         session_id=run.session_id,

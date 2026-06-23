@@ -3970,8 +3970,20 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             # RED = deny — INKL. fail-closed når is_tool_allowed kaster (modsat det gamle
             # except:pass der tillod stille). Sikkerheds-nerve kan ikke slås fra.
             _auth_denied = _av.decision is _ADec.RED
-        except Exception:
+        except Exception as _auth_exc:
             _auth_denied = False  # central-sti-katastrofe → model-tool-filteret er primær gate
+            # Audit-remediation 2026-06-23: fail-open er availability-valg, men det MÅ
+            # ikke være TAVST — en kollapset auth-sti er en sikkerheds-hændelse. Gør den LYD.
+            try:
+                from core.runtime.db_central_incidents import record_central_incident
+                record_central_incident(
+                    cluster="auth", nerve="tool_access", kind="fail_open",
+                    severity="severe",
+                    message=f"auth-backstop central-sti kastede → fail-OPEN for rolle={_role} tool={name}: "
+                            f"{type(_auth_exc).__name__}: {_auth_exc}"[:300],
+                )
+            except Exception:
+                pass
         if _auth_denied:
             result = {
                 "status": "error", "error": "tool_not_permitted",

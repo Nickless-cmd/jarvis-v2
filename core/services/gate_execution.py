@@ -189,7 +189,20 @@ def _decide(nerve: str, ctx: dict[str, Any]) -> Verdict:
     except Exception:
         try:
             return execution_gate(ctx)
-        except Exception:
+        except Exception as _exec_exc:
+            # Audit-remediation 2026-06-23: sidste-udvej GREEN er et bevidst availability-
+            # valg, men det er enforcement-TAB på en SECURITY-gate — det MÅ ikke være tavst.
+            # Gør det LYD (severe incident) så et exec-gate-kollaps fanges, ikke smutter.
+            try:
+                from core.runtime.db_central_incidents import record_central_incident
+                record_central_incident(
+                    cluster="execution", nerve=str(nerve or "exec"), kind="fail_open",
+                    severity="severe",
+                    message=f"exec-gate kollaps (central+direkte) → sidste-udvej GREEN (enforcement-tab): "
+                            f"{type(_exec_exc).__name__}: {_exec_exc}"[:300],
+                )
+            except Exception:
+                pass
             return Verdict(nerve, Decision.GREEN, "exec-gate-error", klass=_SEC,
                            evidence={"classification": ""})
 

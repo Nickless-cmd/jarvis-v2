@@ -432,6 +432,7 @@ export interface CentralSnapshot {
   config_drift: { declared_port?: unknown; actual_port?: unknown } | null
   clusters?: CentralClusterStatus[]
   anomalies?: { counts?: Record<string, number>; recent?: CentralAnomaly[] }
+  processes?: { process: string; degraded?: boolean; open_breakers?: string[] }[]
   learning: {
     degrading?: { target: string; rate_hr?: number }[]
     autonomy?: string
@@ -444,6 +445,21 @@ export interface CentralSnapshot {
 /** Snapshot af Centralens live-tilstand (owner-only; 403 for ikke-ejere). */
 export async function getCentralRealtime(config: ApiConfig): Promise<CentralSnapshot> {
   return apiFetch<CentralSnapshot>(config, '/central/realtime')
+}
+
+/** Live owner-terminal ind i Centralen: kør en kommando-linje, få terminal-linjer retur. */
+export async function runCentralCommand(
+  config: ApiConfig, line: string,
+): Promise<{ ok: boolean; command: string; lines: string[] }> {
+  return apiFetch(config, '/central/command', { method: 'POST', body: JSON.stringify({ line }) })
+}
+
+/** Provider-helbred til Central-HUD'en (læser gemt ping-snapshot — billigt). */
+export interface CentralProvider { provider: string; ok: boolean; degraded: boolean; latency_ms: number; model_count: number }
+export async function getCentralProviders(
+  config: ApiConfig,
+): Promise<{ providers: CentralProvider[]; dry_cheap: string[]; summary: string }> {
+  return apiFetch(config, '/central/providers')
 }
 
 /** Jarvis Mind-hub (Centralen som ÉT samlingspunkt). Uden section → index af alle faner. */

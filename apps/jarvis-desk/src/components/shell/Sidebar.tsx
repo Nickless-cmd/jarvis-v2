@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images, Code,
-  LayoutDashboard, Blocks, Settings, Brain, type LucideIcon,
+  LayoutDashboard, Blocks, Settings, Brain, Cpu, type LucideIcon,
 } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
 import { TeamsSection } from './TeamsSection'
@@ -13,7 +13,7 @@ import { ModeSlider, type Mode } from './ModeSlider'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
-  LayoutDashboard, Blocks, Settings, Brain,
+  LayoutDashboard, Blocks, Settings, Brain, Cpu,
 }
 
 export type Surface = Mode | SecondarySurface | 'gallery'

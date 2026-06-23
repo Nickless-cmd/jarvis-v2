@@ -1468,6 +1468,75 @@
 .cowork-zone-body { flex: 1; overflow-y: auto; padding: 16px; }
 .cowork-settings { display: flex; flex-direction: column; gap: 18px; max-width: 720px; margin: 0 auto; }
 
+/* ── Central HUD (JARVIS-design 1:1 — docs/design/jarvis-mind-design-tokens.md) ── */
+.central-hud { background:#0a0e16; border:1px solid #163040; border-radius:12px; padding:16px 18px 18px;
+  color:#c7d4e0; font-family:var(--font-mono); position:relative; overflow:hidden; min-height:100%; }
+.ch-scan { position:absolute; left:0; right:0; top:0; height:2px; background:#1ad9c4; opacity:.45; animation:ch-scan 6s linear infinite; pointer-events:none; }
+@keyframes ch-scan { 0%{transform:translateY(0)} 100%{transform:translateY(900px)} }
+.ch-head { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #163040; padding-bottom:11px; margin-bottom:14px; }
+.ch-title { display:flex; align-items:center; gap:10px; }
+.ch-dot { width:9px; height:9px; border-radius:50%; background:#2a3a48; }
+.ch-dot.on { background:#1ad9c4; box-shadow:0 0 9px #1ad9c4; animation:ch-blink 1.6s ease-in-out infinite; }
+.ch-name { font-size:15px; letter-spacing:3px; color:#eaf6f4; }
+.ch-owner { font-size:10px; letter-spacing:1px; color:#0a0e16; background:#1ad9c4; padding:2px 7px; border-radius:4px; }
+.ch-headr { display:flex; align-items:center; gap:14px; font-size:12px; color:#6b8295; }
+.ch-stat.tone-green{color:#3ee08a} .ch-stat.tone-yellow{color:#f5c451} .ch-stat.tone-red{color:#ff5d5d}
+.ch-top { display:grid; grid-template-columns:150px 1fr; gap:14px; margin-bottom:14px; }
+.ch-core { border:1px solid #163040; border-radius:10px; padding:12px; text-align:center; }
+.ch-ring { margin:2px auto 8px; width:78px; height:78px; border-radius:50%; border:2px solid #1ad9c4; display:flex; align-items:center; justify-content:center; animation:ch-core 2.6s ease-in-out infinite; }
+.ch-ring.tone-yellow{border-color:#f5c451} .ch-ring.tone-red{border-color:#ff5d5d}
+.ch-ring span { font-size:22px; color:#eaf6f4; }
+.ch-corel { font-size:10px; letter-spacing:2px; color:#6b8295; }
+.ch-cores { font-size:11px; margin-top:5px; }
+.ch-cores.tone-green{color:#3ee08a} .ch-cores.tone-yellow{color:#f5c451} .ch-cores.tone-red{color:#ff5d5d}
+.ch-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; }
+.ch-m { border:1px solid #163040; border-radius:8px; padding:8px 6px; text-align:center; }
+.ch-mn { font-size:18px; color:#eaf6f4; }
+.ch-mn.tone-green{color:#3ee08a} .ch-mn.tone-amber{color:#f5c451} .ch-mn.tone-dry{color:#f5a14a} .ch-mn.tone-red{color:#ff5d5d}
+.ch-ml { font-size:9.5px; letter-spacing:1px; color:#6b8295; margin-top:2px; }
+.ch-label { font-size:10px; letter-spacing:2px; color:#6b8295; margin:0 0 7px; }
+.ch-clusters { display:grid; grid-template-columns:repeat(10,1fr); gap:6px; margin-bottom:15px; }
+.ch-cl { height:22px; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:8.5px; border:1px solid; overflow:hidden; cursor:default; }
+.ch-cl.s-green{background:#0c2218;border-color:#1f5a3e;color:#4fe0a0}
+.ch-cl.s-yellow{background:#241b08;border-color:#5a4416;color:#f5c451}
+.ch-cl.s-red{background:#24100f;border-color:#5a201f;color:#ff8a87}
+.ch-cl.s-idle{background:#10151c;border-color:#283645;color:#6b8295}
+.ch-cl.sec{background:#1a0f24;border-color:#4a2d6b;color:#b98ff0}
+.ch-mid { display:grid; grid-template-columns:1fr 218px; gap:14px; margin-bottom:14px; }
+.ch-panel { border:1px solid #163040; border-radius:10px; padding:10px 12px; }
+.ch-plabel { font-size:10px; letter-spacing:2px; color:#6b8295; margin-bottom:8px; display:flex; justify-content:space-between; }
+.ch-rt { color:#1ad9c4; }
+.ch-feed { font-size:11.5px; line-height:1.95; min-height:120px; }
+.ch-frow b{color:#7fb0c4;font-weight:400} .ch-sep{color:#3a5160}
+.ch-fd { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; }
+.ch-fd.tone-green{background:#3ee08a} .ch-fd.tone-amber{background:#f5c451} .ch-fd.tone-red{background:#ff5d5d}
+.ch-dim { color:#566b7d; }
+.ch-side { display:flex; flex-direction:column; gap:10px; }
+.ch-prov { font-size:11px; line-height:1.8; }
+.ch-prow { color:#a9c6d4; } .ch-prow .ch-dim{ float:right; }
+.ch-dry { color:#f5a14a; margin-top:4px; font-size:10.5px; }
+.ch-flag { border-color:#3a2a16; background:#160f06; }
+.ch-flagrow { font-size:11px; color:#e8c89a; line-height:1.5; }
+.ch-ctrl { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.ch-btn { background:#0d1622; border:1px solid #1f3a4a; color:#a9c6d4; font-family:var(--font-mono); font-size:11px; padding:7px 11px; border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all .15s; }
+.ch-btn:hover:not(:disabled){ border-color:#1ad9c4; color:#eaf6f4; }
+.ch-btn.busy{ border-color:#1ad9c4; color:#eaf6f4; }
+.ch-term { border:1px solid #163040; border-radius:10px; padding:10px 12px; margin-bottom:14px; }
+.ch-termlog { font-size:11.5px; line-height:1.7; max-height:200px; overflow-y:auto; margin-bottom:8px; }
+.ch-termcmd { color:#1ad9c4; margin-top:6px; }
+.ch-termout { color:#a9c6d4; white-space:pre-wrap; }
+.ch-termerr { color:#ff8a87; }
+.ch-terminput { display:flex; align-items:center; gap:8px; border-top:1px solid #163040; padding-top:8px; }
+.ch-prompt { color:#1ad9c4; }
+.ch-terminput input { flex:1; background:transparent; border:none; outline:none; color:#eaf6f4; font-family:var(--font-mono); font-size:12px; }
+.ch-terminput input::placeholder { color:#3a5160; }
+.ch-mind { display:grid; grid-template-columns:repeat(35,1fr); gap:3px; }
+.ch-cell { height:11px; border-radius:2px; background:#13202b; }
+.ch-cell.on { background:#125043; box-shadow:0 0 4px #1ad9c455; animation:ch-blink 2.6s ease-in-out infinite; }
+@keyframes ch-blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes ch-core { 0%,100%{box-shadow:0 0 0 0 #1ad9c433} 50%{box-shadow:0 0 16px 2px #1ad9c455} }
+.ch-clock{font-variant-numeric:tabular-nums}
+
 /* ── Jarvis Mind (cowork owner-zone): sub-navbar under app-headeren + sektioner ── */
 .jarvis-mind { display: flex; flex-direction: column; height: 100%; }
 .jm-tabs { display: flex; gap: 2px; flex-wrap: wrap; padding-bottom: 10px; margin-bottom: 12px;

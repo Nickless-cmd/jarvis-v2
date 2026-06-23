@@ -55,6 +55,15 @@ async def central_realtime() -> dict:
     return await asyncio.to_thread(realtime_snapshot)
 
 
+@router.get("/providers")
+async def central_providers() -> dict:
+    """Provider-helbred til Central-HUD'en — læser DET GEMTE ping-snapshot (billigt, ingen live
+    ping; selve pinget kører på 5-min-cadence). Owner-only."""
+    _require_owner()
+    from core.services.provider_health_check import build_provider_health_surface
+    return await asyncio.to_thread(build_provider_health_surface)
+
+
 @router.post("/command")
 async def central_command(payload: dict) -> dict:
     """Live owner-terminal ind i Centralen — skriv+test kommandoer (status/incidents/trace/nerve/

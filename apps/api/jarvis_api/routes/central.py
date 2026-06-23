@@ -55,6 +55,44 @@ async def central_realtime() -> dict:
     return await asyncio.to_thread(realtime_snapshot)
 
 
+@router.get("/diagnostics")
+async def central_diagnostics() -> dict:
+    """Fuldt diagnostik-sted til Central-HUD'ens Diagnostik-mode (Bjørn 2026-06-23: 'mangler et
+    fuldt diagnostisk sted til at debugge og læse logs'). Samler Centralens grebne fejl-data:
+    uløste incidents (fuld besked+ts+run), anomalier (udefinerede fejl), silent-failure-fund,
+    rod-årsager + degraderende. Owner-only, billigt (læser DB). Self-safe."""
+    _require_owner()
+
+    def _build() -> dict:
+        out: dict = {"incidents": [], "anomalies": [], "instrument": [],
+                     "root_causes": [], "degrading": []}
+        try:
+            from core.runtime.db_central_incidents import list_central_incidents
+            out["incidents"] = list_central_incidents(unresolved_only=True, limit=40)
+        except Exception:
+            pass
+        try:
+            from core.runtime.db_anomalies import list_anomalies
+            out["anomalies"] = list_anomalies(limit=25)
+        except Exception:
+            pass
+        try:
+            from core.runtime import db_instrument as dbi
+            out["instrument"] = dbi.list_findings(status="open", min_score=3, limit=15)
+        except Exception:
+            pass
+        try:
+            from core.services import central_learning as cl
+            inc = cl._load()
+            out["root_causes"] = cl.root_causes(incidents=inc)[:8]
+            out["degrading"] = cl.degrading(incidents=inc)[:8]
+        except Exception:
+            pass
+        return out
+
+    return await asyncio.to_thread(_build)
+
+
 @router.get("/providers")
 async def central_providers() -> dict:
     """Provider-helbred til Central-HUD'en — læser DET GEMTE ping-snapshot (billigt, ingen live

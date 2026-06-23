@@ -1496,7 +1496,8 @@
 .ch-ml { font-size:11px; letter-spacing:1px; color:#6b8295; margin-top:3px; }
 .ch-label { font-size:11px; letter-spacing:2px; color:#6b8295; margin:0 0 8px; }
 .ch-clusters { display:grid; grid-template-columns:repeat(10,1fr); gap:6px; margin-bottom:15px; }
-.ch-cl { height:24px; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:9.5px; border:1px solid; overflow:hidden; cursor:default; }
+.ch-clusters { grid-template-columns:repeat(8,1fr) !important; }
+.ch-cl { height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; border:1px solid; overflow:hidden; cursor:default; }
 .ch-cl.s-green{background:#0c2218;border-color:#1f5a3e;color:#4fe0a0}
 .ch-cl.s-yellow{background:#241b08;border-color:#5a4416;color:#f5c451}
 .ch-cl.s-red{background:#24100f;border-color:#5a201f;color:#ff8a87}
@@ -1506,7 +1507,13 @@
 .ch-panel { border:1px solid #163040; border-radius:10px; padding:10px 12px; }
 .ch-plabel { font-size:11px; letter-spacing:2px; color:#6b8295; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
 .ch-rt { color:#1ad9c4; }
-.ch-feed { font-size:13px; line-height:1.95; min-height:124px; }
+.ch-feed { font-size:13px; line-height:1.85; height:230px; overflow-y:auto; }
+/* Skjult/temaet scroll — matcher HUD'en (smal cyan-tonet, ingen klodset bar) */
+.ch-scrolly { scrollbar-width:thin; scrollbar-color:#1f3a4a transparent; }
+.ch-scrolly::-webkit-scrollbar { width:6px; }
+.ch-scrolly::-webkit-scrollbar-track { background:transparent; }
+.ch-scrolly::-webkit-scrollbar-thumb { background:#1f3a4a; border-radius:3px; }
+.ch-scrolly::-webkit-scrollbar-thumb:hover { background:#1ad9c455; }
 .ch-frow { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ch-ftime { color:#566b7d; margin-right:8px; }
 .ch-fcl { color:#7fb0c4; } .ch-sep{ color:#3a5160; } .ch-fnv { color:#eaf6f4; }
@@ -1526,8 +1533,24 @@
 .ch-btn { background:#0d1622; border:1px solid #1f3a4a; color:#a9c6d4; font-family:var(--font-mono); font-size:12px; padding:8px 12px; border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all .15s; }
 .ch-btn:hover:not(:disabled){ border-color:#1ad9c4; color:#eaf6f4; }
 .ch-btn.busy{ border-color:#1ad9c4; color:#eaf6f4; }
-.ch-term { border:1px solid #163040; border-radius:10px; padding:11px 13px; margin-bottom:14px; }
-.ch-termlog { font-size:12.5px; line-height:1.7; max-height:220px; overflow-y:auto; margin-bottom:8px; }
+/* Konsol: mode-nav (terminal/diagnostik) + indhold */
+.ch-console { margin-bottom:14px; }
+.ch-cnav { display:flex; gap:2px; margin-bottom:8px; }
+.ch-cnavb { background:transparent; border:1px solid #163040; border-bottom:none; color:#6b8295; font-family:var(--font-mono); font-size:12px; padding:6px 14px; border-radius:7px 7px 0 0; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.ch-cnavb.on { background:#0d1622; color:#1ad9c4; border-color:#1f3a4a; }
+.ch-term { border:1px solid #163040; border-radius:0 10px 10px 10px; padding:11px 13px; }
+.ch-termlog { font-size:12.5px; line-height:1.7; height:108px; overflow-y:auto; margin-bottom:8px; }
+/* Diagnostik-mode: fuldt debug-sted, scrollbart */
+.ch-diag { border:1px solid #163040; border-radius:0 10px 10px 10px; padding:11px 13px; max-height:340px; overflow-y:auto; }
+.ch-dsec { margin-bottom:14px; }
+.ch-dlabel { font-size:11px; letter-spacing:2px; color:#6b8295; margin-bottom:7px; }
+.ch-drow { padding:6px 0; border-bottom:1px solid #11202a; font-size:12.5px; color:#c7d4e0; }
+.ch-drow b { color:#7fb0c4; font-weight:400; }
+.ch-dtag { display:inline-block; font-size:10.5px; padding:1px 7px; border-radius:4px; margin-right:8px; border:1px solid; }
+.ch-dtag.tone-red { color:#ff8a87; border-color:#5a201f; background:#24100f; }
+.ch-dtag.tone-amber { color:#f5c451; border-color:#5a4416; background:#241b08; }
+.ch-dtag.tone-cyan { color:#1ad9c4; border-color:#1f3a4a; background:#0d1622; }
+.ch-dmsg { color:#8aa0b2; font-size:12px; margin-top:3px; word-break:break-word; }
 .ch-termcmd { color:#1ad9c4; margin-top:6px; }
 .ch-termout { color:#a9c6d4; white-space:pre-wrap; }
 .ch-termerr { color:#ff8a87; }

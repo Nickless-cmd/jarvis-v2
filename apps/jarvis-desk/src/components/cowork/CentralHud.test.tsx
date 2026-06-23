@@ -9,6 +9,10 @@ vi.mock('../../lib/api', () => ({
   }),
   getCentralProviders: vi.fn().mockResolvedValue({ providers: [{ provider: 'ollama', ok: true, degraded: false, latency_ms: 41, model_count: 3 }], dry_cheap: [], summary: '1/1' }),
   runCentralCommand: vi.fn().mockResolvedValue({ ok: true, command: 'status', lines: ['status: GREEN nerver=116'] }),
+  getCentralDiagnostics: vi.fn().mockResolvedValue({
+    incidents: [{ severity: 'error', kind: 'x', cluster: 'system', nerve: 'config_drift', message: 'port-drift', ts: '2026-06-23T10:00:00' }],
+    anomalies: [], instrument: [], root_causes: [], degrading: [],
+  }),
 }))
 vi.mock('../../lib/centralStream', () => ({ subscribeCentralStream: vi.fn(() => () => {}) }))
 
@@ -48,5 +52,13 @@ describe('CentralHud', () => {
     render(<CentralHud config={CFG} />)
     await userEvent.click(screen.getByRole('button', { name: /kør scan/ }))
     await waitFor(() => expect(runCentralCommand).toHaveBeenCalledWith(CFG, 'scan'))
+  })
+
+  it('skifter til diagnostik-mode og viser flag-detaljer', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    render(<CentralHud config={CFG} />)
+    await userEvent.click(screen.getByRole('button', { name: /diagnostik/ }))
+    await waitFor(() => expect(screen.getByText(/port-drift/)).toBeTruthy())
+    expect(screen.getByText(/ULØSTE FLAG/)).toBeTruthy()
   })
 })

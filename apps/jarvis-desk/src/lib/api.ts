@@ -451,7 +451,20 @@ export async function getCentralRealtime(config: ApiConfig): Promise<CentralSnap
 export async function runCentralCommand(
   config: ApiConfig, line: string,
 ): Promise<{ ok: boolean; command: string; lines: string[] }> {
-  return apiFetch(config, '/central/command', { method: 'POST', body: JSON.stringify({ line }) })
+  return apiFetch(config, '/central/command', { method: 'POST', body: { line } })
+}
+
+/** Fuldt diagnostik-data til Central-HUD'ens Diagnostik-mode (incidents/anomalier/silent-
+ *  failures/rod-årsager). Owner-only. */
+export interface CentralDiagnostics {
+  incidents: { severity: string; kind: string; cluster: string; nerve: string; message: string; ts: string; run_id?: string }[]
+  anomalies: { signature: string; importance: string; category: string; count: number; sample: string; last_seen: string }[]
+  instrument: { kind: string; severity: string; score: number; file: string; line: number; snippet: string }[]
+  root_causes: { cluster: string; nerve: string; count: number }[]
+  degrading: { cluster: string; nerve: string; recent_rate_hr?: number }[]
+}
+export async function getCentralDiagnostics(config: ApiConfig): Promise<CentralDiagnostics> {
+  return apiFetch(config, '/central/diagnostics')
 }
 
 /** Provider-helbred til Central-HUD'en (læser gemt ping-snapshot — billigt). */

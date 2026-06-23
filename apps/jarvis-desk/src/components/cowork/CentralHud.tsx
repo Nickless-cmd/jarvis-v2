@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { ApiConfig, CentralFeedItem, CentralProvider } from '../../lib/api'
-import { getCentralRealtime, getCentralProviders, runCentralCommand } from '../../lib/api'
+import { getCentralRealtime, getCentralProviders, getCentralDiagnostics, runCentralCommand } from '../../lib/api'
+import type { CentralDiagnostics } from '../../lib/api'
 import { subscribeCentralStream } from '../../lib/centralStream'
 import { usePollWhenVisible } from '../../hooks/usePollWhenVisible'
 
@@ -14,11 +15,12 @@ export function CentralHud({ config }: { config?: ApiConfig }) {
 
   const [feed, setFeed] = useState<CentralFeedItem[]>([])
   const [live, setLive] = useState(false)
+  const pausedRef = useRef(false)  // pause-på-hover: frys feed'et så man kan nå at læse
   useEffect(() => {
     if (!config) return
     setLive(true)
     const unsub = subscribeCentralStream(config,
-      (it) => setFeed((f) => [it, ...f].slice(0, 7)), () => setLive(false))
+      (it) => { if (!pausedRef.current) setFeed((f) => [it, ...f].slice(0, 60)) }, () => setLive(false))
     return () => { unsub(); setLive(false) }
   }, [config])
 
@@ -74,8 +76,10 @@ export function CentralHud({ config }: { config?: ApiConfig }) {
 
       <div className="ch-mid">
         <div className="ch-panel">
-          <div className="ch-plabel"><span>LEVENDE NERVE-FEED</span><span className="ch-rt">● realtime</span></div>
-          <div className="ch-feed">
+          <div className="ch-plabel"><span>LEVENDE NERVE-FEED</span><span className="ch-rt">● realtime · hold musen for at læse</span></div>
+          <div className="ch-feed ch-scrolly"
+            onMouseEnter={() => { pausedRef.current = true }}
+            onMouseLeave={() => { pausedRef.current = false }}>
             {feed.length === 0 && <div className="ch-dim">{live ? 'lytter på nervesystemet…' : 'forbinder…'}</div>}
             {feed.map((f, i) => {
               const tone = f.decision === 'red' ? 'red' : f.decision === 'yellow' ? 'amber'
@@ -128,7 +132,7 @@ export function CentralHud({ config }: { config?: ApiConfig }) {
         <CtrlBtn config={config} cmd="daemons" icon="ti-bolt" label="daemon-kontrol" />
       </div>
 
-      <Terminal config={config} />
+      <Console config={config} />
 
       <div className="ch-label">SIND — indre liv</div>
       <div className="ch-mind">
@@ -164,6 +168,77 @@ function CtrlBtn({ config, cmd, prefill, icon, label }: { config?: ApiConfig; cm
       }}>
       <i className={`ti ${icon}`} aria-hidden="true" /> {label}
     </button>
+  )
+}
+
+/** Konsol med mode-skift: Terminal (command-line) ↔ Diagnostik (fuldt debug-sted). */
+function Console({ config }: { config?: ApiConfig }) {
+  const [mode, setMode] = useState<'terminal' | 'diag'>('terminal')
+  return (
+    <div className="ch-console">
+      <div className="ch-cnav">
+        <button type="button" className={`ch-cnavb ${mode === 'terminal' ? 'on' : ''}`} onClick={() => setMode('terminal')}>
+          <i className="ti ti-terminal-2" aria-hidden="true" /> terminal
+        </button>
+        <button type="button" className={`ch-cnavb ${mode === 'diag' ? 'on' : ''}`} onClick={() => setMode('diag')}>
+          <i className="ti ti-stethoscope" aria-hidden="true" /> diagnostik
+        </button>
+      </div>
+      {mode === 'terminal' ? <Terminal config={config} /> : <Diagnostics config={config} />}
+    </div>
+  )
+}
+
+function Diagnostics({ config }: { config?: ApiConfig }) {
+  const { data, loading } = usePollWhenVisible(() => getCentralDiagnostics(config!), 8000, !!config)
+  const d: CentralDiagnostics | null = data
+  if (!d) return <div className="ch-diag ch-dim">{loading ? 'henter diagnostik…' : 'ingen data'}</div>
+  const sevTone = (s: string) => s === 'severe' ? 'red' : s === 'error' ? 'amber' : 'cyan'
+  const impTone = (s: string) => s === 'critical' || s === 'high' ? 'red' : s === 'medium' ? 'amber' : 'cyan'
+  return (
+    <div className="ch-diag ch-scrolly">
+      <DSec n={d.incidents.length} label="ULØSTE FLAG">
+        {d.incidents.map((it, i) => (
+          <div key={i} className="ch-drow">
+            <span className={`ch-dtag tone-${sevTone(it.severity)}`}>{it.severity}</span>
+            <b>{it.cluster}/{it.nerve}</b> <span className="ch-dim">{(it.ts || '').slice(11, 19)}</span>
+            <div className="ch-dmsg">{it.message}</div>
+          </div>
+        ))}
+      </DSec>
+      <DSec n={d.anomalies.length} label="UDEFINEREDE FEJL (anomalier)">
+        {d.anomalies.map((a, i) => (
+          <div key={i} className="ch-drow">
+            <span className={`ch-dtag tone-${impTone(a.importance)}`}>{a.importance}</span>
+            <span className="ch-dim">×{a.count} {a.category}</span>
+            <div className="ch-dmsg">{a.sample}</div>
+          </div>
+        ))}
+      </DSec>
+      <DSec n={d.instrument.length} label="SILENT-FAILURE-FUND (top)">
+        {d.instrument.map((f, i) => (
+          <div key={i} className="ch-drow">
+            <span className={`ch-dtag tone-${f.severity === 'critical' ? 'red' : 'amber'}`}>{f.score}</span>
+            <b>{f.kind}</b> <span className="ch-dim">{f.file}:{f.line}</span>
+            <div className="ch-dmsg">{f.snippet}</div>
+          </div>
+        ))}
+      </DSec>
+      {d.root_causes.length > 0 && (
+        <DSec n={d.root_causes.length} label="ROD-ÅRSAGER (gentagne)">
+          {d.root_causes.map((r, i) => <div key={i} className="ch-drow"><b>{r.cluster}/{r.nerve}</b> <span className="ch-dim">×{r.count}</span></div>)}
+        </DSec>
+      )}
+    </div>
+  )
+}
+
+function DSec({ n, label, children }: { n: number; label: string; children: ReactNode }) {
+  return (
+    <div className="ch-dsec">
+      <div className="ch-dlabel">{label} <span className={n ? 'ch-flagcount' : 'ch-dim'}>{n}</span></div>
+      {n === 0 ? <div className="ch-dim" style={{ fontSize: '12px', padding: '2px 0 6px' }}>ingen</div> : children}
+    </div>
   )
 }
 

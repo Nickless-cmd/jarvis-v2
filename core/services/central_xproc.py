@@ -22,7 +22,9 @@ from typing import Any
 _FEED_KEY = "central:xproc:feed:"      # + proces-rolle
 _HEALTH_KEY = "central:xproc:health:"  # + proces-rolle
 _ROLES = ("api", "runtime")            # kendte proces-roller (api kører --workers 1)
-_TTL = 30                              # sek. — udløb fjerner en død proces fra panelet
+_TTL = 600                             # sek. — runtime-daemons fyrer på kadence (minutter);
+                                       # hold sidst-kendte feed i 10 min (records bærer ts,
+                                       # så staleness ses på tidsstempel) frem for at blinke væk
 _PUBLISH_EVERY = 2.0                   # throttle: max én skrivning pr. proces pr. 2s
 _FEED_CAP = 80                         # seneste N records publiceres
 

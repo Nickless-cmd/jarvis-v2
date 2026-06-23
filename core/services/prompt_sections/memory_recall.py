@@ -16,6 +16,65 @@ from core.services.chat_sessions import recent_chat_tool_messages
 from core.services.tool_result_store import render_tool_result_for_prompt
 from core.runtime.db import list_runtime_contract_candidates
 
+# Vage telemetri-fraser (Jarvis-spec #7): kandidater der bare beskriver "der skete noget"
+# uden konkret viden. Substring-match → skip (de brænder tokens uden værdi).
+_VAGUE_MARKERS = (
+    "recent log indicates", "log indicates recent", "expressions or errors",
+    "may indicate", "appears to indicate", "seems to", "various recent",
+    "recent expressions", "recent activity", "no notable",
+)
+
+# Semantisk dedup-cache: MEMORY.md-linje-embeddings, keyet på fil-mtime → genberegnes
+# kun når filen ændrer sig (så per-build er det 1 embedding-kald: selve kandidaten).
+_MD_EMB_CACHE: dict[str, object] = {"mtime": None, "vecs": [], "lines": []}
+_SEMANTIC_DUP_THRESHOLD = 0.82  # nomic near-dup (kalibreret: relateret-men-forskellig ~0.6-0.75)
+
+
+def _memory_md_line_vectors():
+    """Cached embeddings af MEMORY.md-linjer (genberegnes kun ved fil-ændring)."""
+    try:
+        from core.runtime.workspace_paths import workspace_dir
+        from core.services.jarvis_brain import _embed_text
+        md = workspace_dir() / "MEMORY.md"
+        if not md.exists():
+            return []
+        mtime = md.stat().st_mtime
+        if _MD_EMB_CACHE.get("mtime") == mtime:
+            return _MD_EMB_CACHE.get("vecs") or []
+        lines = [ln.lstrip("-* ").strip() for ln in md.read_text(encoding="utf-8").splitlines()
+                 if len(ln.strip()) > 25]
+        vecs = []
+        for ln in lines:
+            try:
+                vecs.append(_embed_text(ln))
+            except Exception:
+                vecs.append(None)
+        _MD_EMB_CACHE.update(mtime=mtime, vecs=vecs, lines=lines)
+        return vecs
+    except Exception:
+        return []
+
+
+def _is_semantic_dup_of_memory(text: str) -> bool:
+    """True hvis `text` semantisk matcher en MEMORY.md-linje (allerede gemt, anden ordlyd)."""
+    try:
+        import numpy as np
+        from core.services.jarvis_brain import _embed_text
+        vecs = _memory_md_line_vectors()
+        if not vecs:
+            return False
+        qv = _embed_text(text)
+        qn = float(np.linalg.norm(qv)) or 1e-9
+        for v in vecs:
+            if v is None:
+                continue
+            d = qn * (float(np.linalg.norm(v)) or 1e-9)
+            if float(np.dot(qv, v) / d) >= _SEMANTIC_DUP_THRESHOLD:
+                return True
+        return False
+    except Exception:
+        return False
+
 
 def _visible_memory_recall_bundle_section(
     *,
@@ -140,9 +199,10 @@ def _memory_candidate_recall_lines(*, limit: int) -> list[str]:
         confidence = str(candidate.get("confidence") or "unknown").strip()
         if not summary:
             continue
-        # Skip vage kandidater ("Recent log indicates recent expressions or errors")
-        # — under 5 ord bærer ikke konkret viden, brænder bare tokens.
-        if len(summary.split()) < 5:
+        # Skip vage kandidater — under 5 ord ELLER vag telemetri-frase ("Recent log
+        # indicates recent expressions or errors" = 7 ord men intetsigende).
+        low = summary.lower()
+        if len(summary.split()) < 5 or any(mk in low for mk in _VAGUE_MARKERS):
             continue
         # Skip kandidater der ALLEREDE er gemt (samme canonical_key med status=applied)
         # — de står allerede i MEMORY.md; at vise dem som "pending" er forvirrende dublet.
@@ -152,12 +212,16 @@ def _memory_candidate_recall_lines(*, limit: int) -> list[str]:
                     continue
             except Exception:
                 pass
-        # Indholds-tjek mod MEMORY.md: hvis et tilstrækkeligt langt uddrag af summary'en
-        # allerede står i filen → den ER gemt (uanset DB-status). Skip dubletten.
+        # Indholds-tjek mod MEMORY.md: literalt uddrag-match (hurtigt, fanger ordrette).
         if memory_md:
             probe = " ".join(summary.lower().replace("`", "").split()[:6])
             if len(probe) >= 20 and probe in memory_md:
                 continue
+        # Semantisk dedup: fanger konceptuelle dubletter med ANDEN ordlyd (det literal
+        # match misser, fx "Cluster-priority auth(0)<loop(7)" der allerede er i MEMORY.md
+        # med andre ord). 1 embedding-kald pr. kandidat mod cached MEMORY.md-vektorer.
+        if _is_semantic_dup_of_memory(summary):
+            continue
         lines.append(_clip_line(f"{summary} (confidence={confidence})", limit=180))
     return lines
 

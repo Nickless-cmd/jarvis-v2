@@ -7,9 +7,38 @@ Spec: docs/superpowers/specs/2026-05-02-jarvis-brain-design.md sektion 5.2.
 """
 from __future__ import annotations
 import logging
+import re
 from datetime import datetime, timezone
 
 logger = logging.getLogger("prompt_sections.jarvis_brain_facts")
+
+# Indholdsløse hilsner/pleasantries (Jarvis-spec 2026-06-23 #3 runde 3): ved
+# "godmorgen"/"hvordan har du det?" er der INTET at være relevant TIL — tom
+# brain-sektion er bedre end 4 irrelevante fakta. Embeddings kan ikke skelne
+# CheifOne fra Discord-Mikkel uden samtale-indhold, så vi skjuler hele sektionen.
+_GREETING_PHRASES = (
+    "hvordan har du det", "hvordan går det", "hvordan står det til", "hvordan kører det",
+    "hvad så", "hvad nyt", "hvad laver du", "godmorgen", "god morgen", "godaften",
+    "god aften", "godnat", "god nat", "goddag", "god dag", "good morning", "good evening",
+    "how are you", "how is it going", "how's it going", "whats up", "what's up", "how do you do",
+)
+_GREETING_TOKENS = {
+    "hej", "hejsa", "halløj", "halloj", "dav", "davs", "mojn", "yo", "hello", "hi", "hey",
+    "heya", "jarvis", "du", "der", "min", "ven", "kammerat", "igen", "så", "godt", "tak",
+    "og", "med", "dig", "om",
+}
+
+
+def _is_contentless_greeting(message: str) -> bool:
+    """True hvis beskeden kun er hilsen/pleasantry uden noget emne at være relevant til."""
+    m = re.sub(r"[^0-9a-zæøå ]", " ", str(message or "").lower())
+    m = " ".join(m.split())
+    if not m:
+        return True
+    for p in _GREETING_PHRASES:
+        m = m.replace(p, " ")
+    leftover = [w for w in m.split() if w not in _GREETING_TOKENS]
+    return len(leftover) == 0
 
 
 def _ceiling_from_session_id(session_id: str | None) -> str:
@@ -67,6 +96,10 @@ def build_brain_facts_section(
     Bumper salience for hver returneret entry (use-it-or-lose-it).
     Fail-soft: any exception → return "" (recall must never block prompt).
     """
+    # #3 runde 3: indholdsløs hilsen → ingen brain-sektion (intet at være relevant til).
+    if _is_contentless_greeting(user_message):
+        return ""
+
     try:
         from core.services import jarvis_brain
     except Exception:

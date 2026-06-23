@@ -55,6 +55,20 @@ async def central_realtime() -> dict:
     return await asyncio.to_thread(realtime_snapshot)
 
 
+@router.get("/mind")
+async def central_mind(section: str = "") -> dict:
+    """Jarvis Mind-hub: Centralen som ÉT samlingspunkt for alt MC viser. Owner-only.
+
+    Uden `section` → index (alle faner + om de er projiceret). Med `section` → den ENE sektions
+    projektion (læser den cachede kilde — ingen anden sandhed). Self-safe via central_hub.
+    """
+    _require_owner()
+    from core.services import central_hub
+    if section:
+        return await asyncio.to_thread(central_hub.mind_section, section)
+    return {"index": await asyncio.to_thread(central_hub.mind_index)}
+
+
 @router.get("/stream")
 async def central_stream() -> StreamingResponse:
     """SSE-live-feed af nerve-fyringer (ægte realtid i stedet for 2s-poll). Owner-only.

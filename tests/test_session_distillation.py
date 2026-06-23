@@ -699,3 +699,16 @@ def test_visible_self_knowledge_lines_produce_output() -> None:
     assert any(
         "truth_boundary" in line or "self_knowledge_active" in line for line in lines
     )
+
+
+def test_scrub_continuity_drops_machine_ids_and_dedups():
+    from core.services.session_distillation import _scrub_continuity_text
+    s = ("No active runtime loop + No active runtime loop + "
+         "Known limitation: forgetting_to_stage_changes_before_commit + "
+         "Strength: sensory_archive_analysis + Jeg vender tilbage med belastet kognition")
+    out = _scrub_continuity_text(s)
+    assert "sensory_archive_analysis" not in out
+    assert "forgetting_to_stage_changes_before_commit" not in out
+    assert out.count("No active runtime loop") == 1
+    assert "Jeg vender tilbage med belastet kognition" in out
+    assert _scrub_continuity_text("ren enkelt fokus") == "ren enkelt fokus"

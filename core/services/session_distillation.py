@@ -440,6 +440,33 @@ _BRAIN_CONTEXT_LIMIT = 6
 _BRAIN_CONTEXT_MAX_CHARS_PER_RECORD = 200
 
 
+def _scrub_continuity_text(text: str) -> str:
+    """Read-time-rens af LAGRET continuity-tekst (Jarvis-spec 2026-06-23 #2): ældre
+    consolidated_focus blev gemt med lækkede snake_case self-model event-navne og
+    gentagelser ("No active runtime loop + No active runtime loop + Known limitation:
+    forgetting_to_stage_changes_before_commit + Strength: sensory_archive_analysis").
+    Split på ' + ', drop maskin-id-segmenter, dedupliker, saml igen — så ingen historisk
+    garbage når den synlige prompt selvom skrive-guards først renser fremadrettet."""
+    raw = str(text or "")
+    if " + " not in raw:
+        return raw
+    seen: set[str] = set()
+    keep: list[str] = []
+    for seg in raw.split(" + "):
+        s = seg.strip()
+        if not s:
+            continue
+        core = s.split(":", 1)[-1].strip()
+        if core and " " not in core and core.count("_") >= 2:
+            continue  # snake_case maskin-id-segment → drop
+        key = s.lower()
+        if key in seen:
+            continue  # dedup gentagelser ("No active runtime loop + No active runtime loop")
+        seen.add(key)
+        keep.append(s)
+    return " + ".join(keep)
+
+
 def build_private_brain_context(*, limit: int = _BRAIN_CONTEXT_LIMIT) -> dict[str, object]:
     """Build a bounded read of recent private brain records suitable for
     heartbeat context or continuity ingestion.
@@ -462,12 +489,12 @@ def build_private_brain_context(*, limit: int = _BRAIN_CONTEXT_LIMIT) -> dict[st
     for record in records:
         record_type = str(record.get("record_type") or "unknown")
         types_seen[record_type] = types_seen.get(record_type, 0) + 1
-        summary = str(record.get("summary") or "")
+        summary = _scrub_continuity_text(str(record.get("summary") or ""))
         if len(summary) > _BRAIN_CONTEXT_MAX_CHARS_PER_RECORD:
             summary = summary[:_BRAIN_CONTEXT_MAX_CHARS_PER_RECORD] + "…"
         excerpts.append({
             "type": record_type,
-            "focus": str(record.get("focus") or ""),
+            "focus": _scrub_continuity_text(str(record.get("focus") or "")),
             "summary": summary,
             "confidence": str(record.get("confidence") or "medium"),
         })

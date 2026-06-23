@@ -30,13 +30,13 @@ mission-control/` + `MCTabBar.jsx` + `lib/adapters.js`.
 
 | MC-view | Viser | Endpoints | Jarvis Mind-hjem | Status |
 |---|---|---|---|---|
-| Overview | aktive runs, events, approvals-kø, valgt model | `/mc/overview` `/mc/approvals` `/mc/events` `/mc/runs` `/mc/main-agent-selection` | — | □ |
+| Overview | aktive runs, events, approvals-kø, valgt model | `/mc/overview` `/mc/approvals` `/mc/events` `/mc/runs` `/mc/main-agent-selection` | Jarvis Mind › Oversigt | ◑ (rå /mc/overview vist; pæn projektion mangler) |
 | Ops › Operations | runs/sessioner/approvals/tool-intent/thought-proposals | `/mc/operations` `/mc/tool-intent` | — | □ |
 | Ops › Agents | runtime-agenter: spawn/besked/schedule/run-due/peer | `/mc/agents` (+ `/mc/agents/{id}/*`) | — | □ |
 | Observability | event-timeline + cost-feed pr. family | `/mc/events` `/mc/costs` `/mc/operations` | — | □ |
 | Mind › Consciousness (LivingMindTab) | indre stemme, somatik, mood, alle private-lag-signaler | `getMissionControlJarvis` (~33 endpoints, se Del C) | — | □ |
 | Mind › Soul (SoulTab) | SOUL/identitet | `/mc/cognitive-architecture`-surfaces | — | □ |
-| Mind › Cognitive (CognitiveStateTab) | kognitiv arkitektur + state-injektion | `/mc/cognitive-architecture` `/mc/cognitive-state-injection` | — | □ |
+| Mind › Cognitive (CognitiveStateTab) | kognitiv arkitektur + state-injektion | `/mc/cognitive-architecture` `/mc/cognitive-state-injection` | Jarvis Mind › Sind | ◑ (70 surfaces som grid; state-injektion mangler) |
 | Agency Map | hele agentur-inventaret (loops/agenter/kanaler) | `/mc/agency-map` | — | □ |
 | Proprioception | kropslig selv-sansning | surface `proprioception_metrics` | — | □ |
 | Threads | tværsessions-tråde | surface `cross_session_threads` | — | □ |
@@ -142,8 +142,15 @@ Alle observeres nu OGSÅ til Centralen (cluster=cognition) via `_safe_surface` (
 3. Cheap-balancer-router skal lokaliseres+bekræftes (uden for de to mission_control-filer).
 4. Skal nogle MC-surfaces SLÅS SAMMEN i Jarvis Mind (MC er rodet — det er chancen for at rydde op)?
 
+## Fremdrift
+- ✅ **Dæknings-kontrakt** (dette dokument).
+- ✅ **Load-fix:** cache cognitive surfaces (75s TTL) — 431ms→2.5ms pr. poll (commit 65f79820).
+- ✅ **poll-when-visible** (`usePollWhenVisible`) — Jarvis Mind poller kun aktiv fane + kun mens synlig.
+- ✅ **Jarvis Mind-skal** i cowork (owner-zone, sub-navbar under header, INGEN ekstra menu) — desk 0.2.98.
+- ◑ **Sind** + **Oversigt** sektioner (ægte data); resten placeholders.
+
 ## Næste skridt
-1. **(load, kan gøres nu uafhængigt)** cache cognitive surfaces + poll-when-visible-mønster.
-2. Jarvis Mind-skal i cowork (owner-only) med venstre-menu; fyld sektion for sektion fra tabellen.
-3. Pr. sektion: byg → Bjørn verificerer mod gammel MC-tab → marker `✅`.
-4. Når hele tabellen er `✅` → deaktivér MC-tabs (behold backend-endpoints til Jarvis Mind bruger dem).
+1. Fyld sektionerne én ad gangen fra DEL A-tabellen (Observabilitet/Agentur/Memory/Council/… ).
+2. Pr. sektion: byg → Bjørn verificerer mod gammel MC-tab → marker `✅`.
+3. Afklar de åbne beslutninger ovenfor (parkerede tabs · oprydning vs 1:1 · cheap-balancer-router).
+4. Når hele tabellen er `✅` → deaktivér MC-tabs (behold backend-endpoints Jarvis Mind bruger).

@@ -263,11 +263,12 @@ class RuntimeSettings:
     # glm 200k - 16k output - 44k headroom = ~140k effektivt input. 0 = ingen ekstra headroom.
     visible_context_headroom_tokens: int = 44_000
 
-    # Context compact thresholds. Bumped from 40k/60k now that visible lane
-    # runs deepseek-v4-flash (1M context) with num_ctx=512k. Auto-compaction
-    # at 40k was a holdover from when the visible model had a tight 64k
-    # context window — premature now and was forcing summarization mid-run.
-    context_compact_threshold_tokens: int = 200_000
+    # Context compact thresholds.
+    # 2026-06-23 (Bjørn): sænket 200k→130k. 200k var tunet til deepseek-flash (1M), men
+    # på glm-5.2 (200k vindue) betød 200k-tærsklen at en session kunne sidde på ~173k tokens
+    # (87% af vinduet) UDEN nogensinde at compacte → near-fuldt vindue → loop/cut-off. 130k
+    # rammer overgroede sessioner men lader sunde (~80k) være, og giver glm ~70k headroom.
+    context_compact_threshold_tokens: int = 130_000
     context_run_compact_threshold_tokens: int = 240_000
     context_keep_recent: int = 20
     server_authoritative_runs: bool = False

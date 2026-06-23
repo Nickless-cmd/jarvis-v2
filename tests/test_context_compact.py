@@ -45,10 +45,9 @@ def test_estimate_messages_tokens_list_content():
 def test_settings_compact_threshold_default():
     from core.runtime.settings import RuntimeSettings
     s = RuntimeSettings()
-    # Bumped from 40k to 200k when DeepSeek-v4-flash became the visible
-    # model (context window 200k). Update preserves the test's intent:
-    # the default tracks the configured visible model's context budget.
-    assert s.context_compact_threshold_tokens == 200_000
+    # 2026-06-23 (Bjørn): sænket 200k→130k. På glm-5.2 (200k vindue) lod 200k en session
+    # sidde på ~173k (87% af vinduet) uden at compacte → loop/cut-off. 130k giver headroom.
+    assert s.context_compact_threshold_tokens == 130_000
 
 
 def test_settings_run_compact_threshold_default():
@@ -68,7 +67,7 @@ def test_settings_serialise_round_trip():
     from core.runtime.settings import RuntimeSettings
     s = RuntimeSettings()
     d = s.to_dict()
-    assert d["context_compact_threshold_tokens"] == 200_000
+    assert d["context_compact_threshold_tokens"] == 130_000
     assert d["context_run_compact_threshold_tokens"] == 240_000
     assert d["context_keep_recent"] == 20
     assert d["context_keep_recent_pairs"] == 4
@@ -779,3 +778,42 @@ def test_compact_healthcheck_daemon_tick_with_unresolved(monkeypatch):
     assert result[0]["session_id"] == "session-x"
     assert result[0]["regenerated"] is True
     assert result[0]["new_marker_id"] == "new-marker-42"
+
+
+def test_auto_compact_is_async_and_deduped(monkeypatch):
+    """Bjørn 2026-06-23: compaction må IKKE blokere prompt-assembly. _maybe_auto_compact_session
+    skal returnere straks (spawn baggrundstråd) og dedup'e pr. session."""
+    import core.services.prompt_contract as pc
+
+    class _S:
+        context_compact_threshold_tokens = 100
+        context_keep_recent = 20
+
+    started = []
+    monkeypatch.setattr(pc, "_run_session_compaction",
+                        lambda sid, kr: started.append(sid))
+    # Stor besked → over tærskel (100 tokens)
+    msgs = [{"role": "user", "content": "x" * 5000}]
+    pc._compact_inflight.discard("s1")
+    pc._maybe_auto_compact_session("s1", msgs, _S())
+    # tråden spawnes; vent kort på den
+    import time
+    for _ in range(50):
+        if started:
+            break
+        time.sleep(0.01)
+    assert started == ["s1"]
+
+
+def test_auto_compact_skips_below_threshold(monkeypatch):
+    import core.services.prompt_contract as pc
+
+    class _S:
+        context_compact_threshold_tokens = 1_000_000
+        context_keep_recent = 20
+
+    called = []
+    monkeypatch.setattr(pc, "_run_session_compaction", lambda sid, kr: called.append(sid))
+    pc._maybe_auto_compact_session("s2", [{"role": "user", "content": "kort"}], _S())
+    import time; time.sleep(0.05)
+    assert called == []  # under tærskel → ingen compaction

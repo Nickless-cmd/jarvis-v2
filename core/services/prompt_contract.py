@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading as _threading_mod
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -4540,25 +4541,24 @@ def _get_compact_marker_for_transcript(session_id: str) -> str | None:
         return None
 
 
-def _maybe_auto_compact_session(
-    session_id: str,
-    current_messages: list[dict],
-    settings,
-) -> None:
-    """Trigger session compact if transcript tokens exceed threshold."""
-    from core.context.token_estimate import estimate_messages_tokens
-    if estimate_messages_tokens(current_messages) < settings.context_compact_threshold_tokens:
-        return
+# Dedup: kun én baggrunds-compaction ad gangen pr. session.
+_compact_inflight: set[str] = set()
+_compact_inflight_lock = _threading_mod.Lock()
+
+
+def _run_session_compaction(session_id: str, keep_recent: int) -> None:
+    """Selve summariserings-arbejdet (baggrundstråd). Skriver compact_marker via det
+    eksisterende session_compact-system. Self-safe."""
     try:
-        from core.context.session_compact import compact_session_history
         from core.context.compact_llm import call_compact_llm
+        from core.context.session_compact import compact_session_history
         import logging as _log
         _log.getLogger(__name__).info(
-            "prompt_contract: auto-compact triggered for session %s", session_id
+            "prompt_contract: auto-compact (baggrund) for session %s", session_id
         )
         result = compact_session_history(
             session_id,
-            keep_recent=settings.context_keep_recent,
+            keep_recent=keep_recent,
             summarise_fn=lambda msgs: call_compact_llm(
                 "Komprimér denne dialog til max 400 ord. Bevar fakta, beslutninger og kontekst:\n\n"
                 + "\n".join(f"{m['role']}: {m.get('content', '')}" for m in msgs),
@@ -4568,7 +4568,6 @@ def _maybe_auto_compact_session(
         if result is not None:
             try:
                 from core.services.finitude_runtime import note_context_compaction
-
                 note_context_compaction(
                     session_id=session_id,
                     freed_tokens=int(result.freed_tokens or 0),
@@ -4579,6 +4578,39 @@ def _maybe_auto_compact_session(
     except Exception as exc:
         import logging as _log
         _log.getLogger(__name__).warning("auto_compact_session failed: %s", exc)
+    finally:
+        with _compact_inflight_lock:
+            _compact_inflight.discard(session_id)
+
+
+def _maybe_auto_compact_session(
+    session_id: str,
+    current_messages: list[dict],
+    settings,
+) -> None:
+    """Trigger session compact hvis transcript-tokens overstiger tærsklen — i BAGGRUNDEN.
+
+    2026-06-23 (Bjørn): summariserings-LLM-kaldet kørte FØR synkront på prompt-assembly-
+    hot-path → blokerede brugerens tur i flere sekunder når det udløstes. Nu spawnes det i
+    en baggrundstråd (deduppet pr. session): den nuværende tur fortsætter uændret (trimmen
+    beskytter den), og den NÆSTE tur nyder godt af det skrevne compact_marker.
+    """
+    from core.context.token_estimate import estimate_messages_tokens
+    if estimate_messages_tokens(current_messages) < settings.context_compact_threshold_tokens:
+        return
+    keep_recent = int(getattr(settings, "context_keep_recent", 20) or 20)
+    with _compact_inflight_lock:
+        if session_id in _compact_inflight:
+            return
+        _compact_inflight.add(session_id)
+    try:
+        _threading_mod.Thread(
+            target=_run_session_compaction, args=(session_id, keep_recent),
+            name=f"compact-{str(session_id)[:12]}", daemon=True,
+        ).start()
+    except Exception:
+        with _compact_inflight_lock:
+            _compact_inflight.discard(session_id)
 
 
 def _visible_finitude_context_section() -> str | None:

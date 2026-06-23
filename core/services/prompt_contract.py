@@ -256,6 +256,10 @@ class PromptRelevanceDecision:
 # kontention → med --workers 1 fryser ÉN hængende future HELE API'en → cut-off. 10s loft:
 # legit faser (≤7s målt) passerer, hængninger dræbes og sektionen springes over.
 _PHASE_DEADLINE_S = 10.0
+# Hårdt TOTAL-budget for ALLE phase-futures tilsammen (Bjørn 2026-06-23): flere
+# sekventielle faser lagde sig sammen til 16-26s selvom hver var <10s. _timed_result
+# capper mod RESTEN af dette → assembly capper hårdt uanset hvor mange der hænger.
+_ASSEMBLY_BUDGET_S = 12.0
 
 
 def _permissive_relevance(mode: str = "visible_chat") -> "PromptRelevanceDecision":
@@ -499,14 +503,21 @@ def build_visible_chat_prompt_assembly(
         Synlig i Centralen via prompt/phase_timeout. Ægte exceptions propagerer som før.
         """
         import concurrent.futures as _cf
+        # Globalt budget: cap mod RESTEN af _ASSEMBLY_BUDGET_S, ikke 10s pr. future.
+        # Flere sekventielle faser lagde sig før sammen til 16-26s selvom hver var
+        # <10s. Nu: når totalbudgettet er brugt, returnerer resterende futures default
+        # straks → hele assembly capper hårdt (~12s) uanset hvor mange der hænger.
+        _elapsed = _t_mod.monotonic() - _t_assembly_start
+        _timeout = max(0.3, min(_PHASE_DEADLINE_S, _ASSEMBLY_BUDGET_S - _elapsed))
         try:
-            return _future.result(timeout=_PHASE_DEADLINE_S)
+            return _future.result(timeout=_timeout)
         except _cf.TimeoutError:
             try:
                 from core.services.central_core import central
                 central().observe({
                     "cluster": "prompt", "nerve": "phase_timeout",
-                    "phase": _name, "deadline_s": _PHASE_DEADLINE_S,
+                    "phase": _name, "timeout_s": round(_timeout, 1),
+                    "elapsed_s": round(_elapsed, 1),
                 })
             except Exception:
                 pass

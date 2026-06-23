@@ -1070,6 +1070,23 @@ async def chat_context_usage(
     }
 
 
+@router.get("/session-milestones")
+async def chat_session_milestones(session_id: str = "") -> dict:
+    """Milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter. Segmenterer
+    samtalen i titlede kapitler ankret på user-beskeder, i stedet for ét anker pr. besked. Cached
+    + cheap-lane; self-safe → tom liste ved fejl."""
+    import asyncio
+
+    if not session_id:
+        return {"milestones": []}
+    try:
+        from core.services.session_milestones import get_session_milestones
+        ms = await asyncio.to_thread(get_session_milestones, session_id)
+        return {"milestones": ms or []}
+    except Exception:
+        return {"milestones": []}
+
+
 @router.get("/model-context")
 async def chat_model_context(provider: str = "", model: str = "") -> dict:
     """Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt

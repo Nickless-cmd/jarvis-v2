@@ -27,6 +27,8 @@ vi.mock('../lib/api', () => ({
   getVisibleProviders: vi.fn().mockResolvedValue([]),
   getContextInfo: vi.fn().mockResolvedValue({ compact_at: 200000, run_compact_at: 240000 }),
   getModelContext: vi.fn().mockResolvedValue({ window: 1000000, compact_at: 200000, effective: 200000 }),
+  getContextUsage: vi.fn().mockResolvedValue({ tokens: 0, compact_at: 130000, effective: 130000, compacting: false, compacted: false }),
+  getSessionMilestones: vi.fn().mockResolvedValue({ milestones: [] }),
   getActiveRuns: vi.fn().mockResolvedValue([]),
   followRun: vi.fn(() => ({ abort: vi.fn() })),
   presencePing: vi.fn().mockResolvedValue(undefined),

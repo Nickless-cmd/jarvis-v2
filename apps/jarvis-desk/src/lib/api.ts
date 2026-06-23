@@ -562,6 +562,15 @@ export async function getModelContext(
   return apiFetch(config, `/chat/model-context?${qs}`)
 }
 
+/** Session-milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter.
+ *  Hvert anker = en user-besked der starter et kapitel + en kort titel. Cached server-side. */
+export async function getSessionMilestones(
+  config: ApiConfig, sessionId: string,
+): Promise<{ milestones: { anchor_id: string; title: string }[] }> {
+  const qs = new URLSearchParams({ session_id: sessionId }).toString()
+  return apiFetch(config, `/chat/session-milestones?${qs}`)
+}
+
 /** ÆGTE kontekst-fyld for en session (backend-autoritativt): `tokens` = estimat af det
  *  faktiske transcript siden sidste compact — præcis det autocompact måler mod. Persistent
  *  + harmonerer med compaction (vokser mod loftet, falder når den fyrer). `compacting` =

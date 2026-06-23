@@ -580,7 +580,10 @@ app.whenReady().then(() => {
       ipcMain.handle('update:download', () => api.download())
       ipcMain.handle('update:install', () => api.installNow())
       api.check()
-      setInterval(() => api.check(), 6 * 3_600_000)
+      // Poll hver 15. min så en ny release dukker op LIVE i appen (UpdateCard) mens den
+      // kører — ikke kun ved opstart (Bjørn 2026-06-23). checkForUpdates henter blot latest.yml
+      // fra GitHub-releasen (få KB) → billigt. autoDownload er stadig FRA; brugeren beslutter.
+      setInterval(() => api.check(), 15 * 60_000)
     } catch { /* dep/release-config mangler → no-op */ }
   })()
 

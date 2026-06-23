@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { ArrowDown, PanelRight, Loader2 } from 'lucide-react'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
 import { useSessions } from '../hooks/useSessions'
@@ -10,7 +10,7 @@ import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { usePermission } from '../hooks/usePermission'
 import { useOnline } from '../hooks/useOnline'
 import { readModelPrefs } from '../lib/composerPrefs'
-import { getContextInfo, getContextUsage, getActiveRuns, followRun } from '../lib/api'
+import { getContextInfo, getContextUsage, getSessionMilestones, getActiveRuns, followRun } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
@@ -88,6 +88,21 @@ export function ChatView({
     const id = setInterval(poll, compacting ? 1200 : 6000)
     return () => { alive = false; clearInterval(id) }
   }, [settings, sessionId, stream.status, compacting])
+
+  // Saved rail = MILEPÆLE (kapitler), ikke ét anker pr. besked (Bjørn 2026-06-23). Backend
+  // segmenterer samtalen i titlede kapitler (cheap-lane, cached). Vi poller ved session-skift
+  // + når en tur slutter. Indtil milepæle er klar (eller ved fejl) falder rail'en tilbage til
+  // user-beskederne, så den aldrig forsvinder.
+  const [milestones, setMilestones] = useState<{ anchor_id: string; title: string }[]>([])
+  useEffect(() => {
+    if (!settings || !sessionId) { setMilestones([]); return }
+    let alive = true
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    getSessionMilestones(cfg, sessionId)
+      .then((r) => { if (alive) setMilestones(r.milestones || []) })
+      .catch(() => { /* behold sidste — fallback til user-beskeder nedenfor */ })
+    return () => { alive = false }
+  }, [settings, sessionId, stream.status === 'idle'])
 
   useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 
@@ -322,6 +337,16 @@ export function ChatView({
   }, [stream.status, queued, online])
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  // Rail-ankre: MILEPÆLE (kapitler) når de findes (≥2 der matcher synlige beskeder), ellers
+  // fallback til user-beskederne så rail'en aldrig er tom mens milepæle genereres.
+  const railAnchors = useMemo(() => {
+    const ids = new Set(visibleMessages.map((m) => m.id))
+    const fromMilestones = milestones
+      .filter((m) => ids.has(m.anchor_id))
+      .map((m) => ({ id: m.anchor_id, label: m.title }))
+    if (fromMilestones.length >= 2) return fromMilestones
+    return visibleMessages.filter((m) => m.role === 'user').map((m) => ({ id: m.id, label: railLabel(m.content) }))
+  }, [milestones, visibleMessages])
   const isEmpty =
     !sessionId ||
     (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && !queued && !bgActive)
@@ -414,7 +439,7 @@ export function ChatView({
       <div className="transcript-wrap">
       <MessageRail
         containerRef={transcriptRef}
-        anchors={visibleMessages.filter((m) => m.role === 'user').map((m) => ({ id: m.id, label: railLabel(m.content) }))}
+        anchors={railAnchors}
       />
       <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
         {visibleMessages.map((m) => (

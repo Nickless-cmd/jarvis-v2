@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /** Poll en async-fetcher KUN mens fanen faktisk er synlig (Bjørn 2026-06-23: Jarvis Mind
  *  må ikke hamre backenden konstant som det gamle MC). Polling pauser når:
@@ -17,6 +17,13 @@ export function usePollWhenVisible<T>(
   const [error, setError] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
 
+  // KRITISK (Bjørn 2026-06-23): hold fetcheren i en ref, så effekten IKKE afhænger af dens
+  // identitet. Ellers river hver forælder-re-render (fx den konstante live-puls) poll'en ned
+  // før fetch'en fuldfører → data sættes aldrig → evig "Henter…". Nu kører poll-cyklussen
+  // stabilt; fetcherRef bruges altid med den nyeste closure.
+  const fetcherRef = useRef(fetcher)
+  fetcherRef.current = fetcher
+
   useEffect(() => {
     if (!enabled) return
     let alive = true
@@ -26,7 +33,7 @@ export function usePollWhenVisible<T>(
       if (document.visibilityState === 'hidden') return  // skjult → spring over
       setLoading(true)
       try {
-        const r = await fetcher()
+        const r = await fetcherRef.current()
         if (alive) { setData(r); setError(null) }
       } catch (e) {
         if (alive) setError(e instanceof Error ? e.message : 'fetch-fejl')
@@ -45,8 +52,8 @@ export function usePollWhenVisible<T>(
       if (timer) clearInterval(timer)
       document.removeEventListener('visibilitychange', onVis)
     }
-    // tick tvinger en frisk poll ved refresh()
-  }, [fetcher, intervalMs, enabled, tick])
+    // IKKE fetcher i deps — kun det der faktisk skal genstarte poll-cyklussen.
+  }, [intervalMs, enabled, tick])
 
   return { data, loading, error, refresh: () => setTick((t) => t + 1) }
 }

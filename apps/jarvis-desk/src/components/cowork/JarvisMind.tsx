@@ -28,21 +28,9 @@ export function JarvisMind({ config }: { config?: ApiConfig }) {
   const [tab, setTab] = useState<string>('mind')
   const active = sections.find((s) => s.section === tab) ?? sections[0]
 
-  // Levende puls fra den DELTE Central-stream (singleton — deler forbindelse med Central-feltet
-  // i code mode, så de ikke sulter hinanden på single-worker'en). Driver header-prik + pulse-linje.
-  const [items, setItems] = useState<CentralFeedItem[]>([])
+  // `live` ændrer sig SJÆLDENT (connect/disconnect) → drives op fra pulse-linjen, så de KONSTANTE
+  // nerve-fyringer (items) bliver isoleret i LivePulseLine og IKKE re-renderer sektionerne.
   const [live, setLive] = useState(false)
-  useEffect(() => {
-    if (!config) return
-    setLive(true)
-    const unsub = subscribeCentralStream(
-      config,
-      (it) => setItems((prev) => [it, ...prev].slice(0, 6)),
-      () => setLive(false),
-    )
-    return () => { unsub(); setLive(false) }
-  }, [config])
-  const latest = items[0]
 
   return (
     <div className="jarvis-mind">
@@ -69,17 +57,39 @@ export function JarvisMind({ config }: { config?: ApiConfig }) {
           </button>
         ))}
       </nav>
-      <div className="jm-pulse" aria-live="polite">
-        <span className={`jm-pulse-dot ${live ? 'live' : ''}`} />
-        <span className="jm-pulse-text">
-          {latest
-            ? <><b>{latest.cluster}</b>/{latest.nerve} <span className="jm-dim">{latest.decision || latest.kind}</span></>
-            : <span className="jm-dim">{live ? 'lytter på nervesystemet…' : 'forbinder…'}</span>}
-        </span>
-      </div>
+      <LivePulseLine config={config} onLive={setLive} />
       <div className="jm-body">
         <Section key={tab} config={config} section={tab} ready={active?.ready ?? false} />
       </div>
+    </div>
+  )
+}
+
+/** Den levende puls fra den DELTE Central-stream. Ejer sin EGEN items-state (konstant
+ *  opdateret) så de hyppige fyringer kun re-renderer DENNE linje — ikke sektionerne. Løfter
+ *  kun `live` op (connect/disconnect = sjældent). */
+function LivePulseLine({ config, onLive }: { config?: ApiConfig; onLive: (v: boolean) => void }) {
+  const [items, setItems] = useState<CentralFeedItem[]>([])
+  const [live, setLive] = useState(false)
+  useEffect(() => {
+    if (!config) return
+    setLive(true); onLive(true)
+    const unsub = subscribeCentralStream(
+      config,
+      (it) => setItems((prev) => [it, ...prev].slice(0, 6)),
+      () => { setLive(false); onLive(false) },
+    )
+    return () => { unsub(); setLive(false); onLive(false) }
+  }, [config, onLive])
+  const latest = items[0]
+  return (
+    <div className="jm-pulse" aria-live="off">
+      <span className={`jm-pulse-dot ${live ? 'live' : ''}`} />
+      <span className="jm-pulse-text">
+        {latest
+          ? <><b>{latest.cluster}</b>/{latest.nerve} <span className="jm-dim">{latest.decision || latest.kind}</span></>
+          : <span className="jm-dim">{live ? 'lytter på nervesystemet…' : 'forbinder…'}</span>}
+      </span>
     </div>
   )
 }

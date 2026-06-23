@@ -140,6 +140,23 @@ def update_personality_vector_from_run(
     # Merge with existing
     merged = _merge_vector(current or {}, updates)
 
+    # Write-guard (Jarvis-spec 2026-06-23 #2): LLM-opdateringen skrev systematisk
+    # snake_case event-navne ('sensory_archive_analysis', 'forgetting_to_stage_changes_
+    # before_commit') ind som strengths/mistakes — ROD-kilden til maskin-id-lækken i
+    # den synlige prompt (cognitive_state læser vektoren direkte). Strip dem her, ved
+    # den ENE skrive-sti, så ingen consumer ser dem. Menneskelæsbare (m. mellemrum) består.
+    def _human(items: object) -> list:
+        out = []
+        for x in (items if isinstance(items, list) else []):
+            s = str(x).strip()
+            core = s.split(":", 1)[-1].strip()
+            if core and " " not in core and core.count("_") >= 2:
+                continue  # snake_case maskin-id → drop
+            out.append(x)
+        return out
+    merged["strengths_discovered"] = _human(merged.get("strengths_discovered", []))
+    merged["recurring_mistakes"] = _human(merged.get("recurring_mistakes", []))
+
     result = upsert_cognitive_personality_vector(
         confidence_by_domain=json.dumps(merged.get("confidence_by_domain", {}), ensure_ascii=False),
         communication_style=json.dumps(merged.get("communication_style", {}), ensure_ascii=False),

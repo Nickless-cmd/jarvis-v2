@@ -84,7 +84,10 @@ async def central_stream() -> StreamingResponse:
                 yield f"data: {json.dumps(_rec_to_item(r))}\n\n"
             while True:
                 try:
-                    rec = await asyncio.to_thread(q.get, True, 15)
+                    # Kortere blok (5s, var 15s): en disconnect-et klient holder kun en
+                    # thread-pool-tråd i ≤5s → mindre kontention på single-worker'en når flere
+                    # streams (Central-felt + Jarvis Mind) skifter (Bjørn 2026-06-23).
+                    rec = await asyncio.to_thread(q.get, True, 5)
                 except Exception:
                     yield ": ping\n\n"  # timeout → keepalive
                     continue

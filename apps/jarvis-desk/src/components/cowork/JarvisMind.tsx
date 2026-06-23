@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Code2 } from 'lucide-react'
 import type { ApiConfig, MindIndexEntry, CentralFeedItem } from '../../lib/api'
-import { getMindIndex, getMindSection, streamCentral } from '../../lib/api'
+import { getMindIndex, getMindSection } from '../../lib/api'
+import { subscribeCentralStream } from '../../lib/centralStream'
 import { usePollWhenVisible } from '../../hooks/usePollWhenVisible'
 import { PresenceDot } from '../shell/PresenceDot'
 import { ConnectionPill } from '../shell/ConnectionPill'
@@ -27,19 +28,19 @@ export function JarvisMind({ config }: { config?: ApiConfig }) {
   const [tab, setTab] = useState<string>('mind')
   const active = sections.find((s) => s.section === tab) ?? sections[0]
 
-  // Levende puls fra Centralens SSE-stream — driver BÅDE header-prikken og pulse-linjen.
+  // Levende puls fra den DELTE Central-stream (singleton — deler forbindelse med Central-feltet
+  // i code mode, så de ikke sulter hinanden på single-worker'en). Driver header-prik + pulse-linje.
   const [items, setItems] = useState<CentralFeedItem[]>([])
   const [live, setLive] = useState(false)
-  const streamRef = useRef<{ abort: () => void } | null>(null)
   useEffect(() => {
     if (!config) return
     setLive(true)
-    streamRef.current = streamCentral(
+    const unsub = subscribeCentralStream(
       config,
       (it) => setItems((prev) => [it, ...prev].slice(0, 6)),
       () => setLive(false),
     )
-    return () => { streamRef.current?.abort(); setLive(false) }
+    return () => { unsub(); setLive(false) }
   }, [config])
   const latest = items[0]
 

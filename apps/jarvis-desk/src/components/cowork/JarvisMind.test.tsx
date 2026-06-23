@@ -17,12 +17,15 @@ vi.mock('../../lib/api', () => ({
         ] })
       : Promise.resolve({ status: 'green', coverage: { nerves: 116, clusters: 20 } }),
   ),
-  streamCentral: vi.fn(() => ({ abort: vi.fn() })),
   pingServer: vi.fn().mockResolvedValue(20),  // ConnectionPill › useConnection
+}))
+vi.mock('../../lib/centralStream', () => ({
+  subscribeCentralStream: vi.fn(() => () => {}),
 }))
 
 import { JarvisMind } from './JarvisMind'
-import { getMindIndex, getMindSection, streamCentral } from '../../lib/api'
+import { getMindIndex, getMindSection } from '../../lib/api'
+import { subscribeCentralStream } from '../../lib/centralStream'
 
 const CFG = { apiBaseUrl: 'http://x', authToken: 't' }
 
@@ -36,9 +39,9 @@ describe('JarvisMind', () => {
     expect(screen.getByRole('tab', { name: 'Council' })).toBeTruthy()
   })
 
-  it('åbner Central-streamen for den levende puls', () => {
+  it('åbner den DELTE Central-stream for den levende puls', () => {
     render(<JarvisMind config={CFG} />)
-    expect(streamCentral).toHaveBeenCalled()
+    expect(subscribeCentralStream).toHaveBeenCalled()
   })
 
   it('default-fanen Sind henter sektion fra hub og viser surfaces', async () => {

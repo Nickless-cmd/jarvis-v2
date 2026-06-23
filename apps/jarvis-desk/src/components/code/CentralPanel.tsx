@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, ChevronDown, ChevronRight, ShieldAlert, Zap, Brain, X } from 'lucide-react'
 import {
-  getCentralRealtime, streamCentral, getCentralNerve, toggleCentralNerve,
+  getCentralRealtime, getCentralNerve, toggleCentralNerve,
   type CentralSnapshot, type CentralFeedItem, type CentralNerveDetail, type ApiConfig,
 } from '../../lib/api'
+import { subscribeCentralStream } from '../../lib/centralStream'
 
 /** Real-time owner-vindue ind i Den Intelligente Central. Sidder under miljø-feltet i
  *  code mode. Snapshot-poll (~2s) for status/clusters/flag/læring + SSE-live-feed for
@@ -16,34 +17,36 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
   const [denied, setDenied] = useState(false)
   const [detail, setDetail] = useState<CentralNerveDetail | null>(null)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
-  const sse = useRef<{ abort: () => void } | null>(null)
 
-  // Snapshot-poll (alt undtagen feed'en).
+  // Snapshot-poll (alt undtagen feed'en). 5s (var 2s) + PAUSER når vinduet er skjult, så
+  // Central-feltet ikke hamrer single-worker'en mens du er i en anden flade (Bjørn 2026-06-23).
   useEffect(() => {
     if (!config || !isOwner || collapsed || denied) return
     let cancelled = false
     const tick = () => {
+      if (document.visibilityState === 'hidden') return
       getCentralRealtime(config)
         .then((s) => { if (!cancelled) setSnap(s) })
         .catch((e) => { if (!cancelled && String(e).includes('403')) setDenied(true) })
     }
     tick()
-    timer.current = setInterval(tick, 2000)
-    return () => { cancelled = true; if (timer.current) clearInterval(timer.current) }
+    timer.current = setInterval(tick, 5000)
+    const onVis = () => { if (document.visibilityState === 'visible') tick() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      cancelled = true
+      if (timer.current) clearInterval(timer.current)
+      document.removeEventListener('visibilitychange', onVis)
+    }
   }, [config, isOwner, collapsed, denied])
 
-  // SSE-live-feed (ægte realtid). Reconnect ved drop.
+  // SSE-live-feed via den DELTE Central-stream (singleton) — deler ÉN forbindelse med Jarvis
+  // Mind i stedet for at åbne sin egen + reconnecte i 1.5s-storm. Lukker ved unmount/collapse.
   useEffect(() => {
     if (!config || !isOwner || collapsed || denied) return
-    let stopped = false
-    const connect = () => {
-      if (stopped) return
-      sse.current = streamCentral(config,
-        (item) => setLiveFeed((f) => [item, ...f].slice(0, 26)),
-        () => { if (!stopped) setTimeout(connect, 1500) })
-    }
-    connect()
-    return () => { stopped = true; sse.current?.abort() }
+    const unsub = subscribeCentralStream(config,
+      (item) => setLiveFeed((f) => [item, ...f].slice(0, 26)))
+    return () => { unsub() }
   }, [config, isOwner, collapsed, denied])
 
   const openNerve = useCallback((nerve: string) => {

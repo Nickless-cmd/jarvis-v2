@@ -6692,6 +6692,47 @@ def get_last_visible_execution_trace() -> dict[str, object] | None:
     return dict(_LAST_VISIBLE_EXECUTION_TRACE) if _LAST_VISIBLE_EXECUTION_TRACE else None
 
 
+_EMPTY_RUN_FALLBACK = (
+    "Jeg nåede ikke at formulere et færdigt svar den gang — spørg mig gerne "
+    "igen, så tager jeg den forfra."
+)
+
+
+def _session_last_role(session_id: str) -> str:
+    """Sidste persisterede besked-rolle for en session (idempotens for invarianten)."""
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT role FROM chat_messages WHERE session_id = ? "
+                "ORDER BY id DESC LIMIT 1", (str(session_id or ""),)).fetchone()
+        if not row:
+            return ""
+        return str((row[0] if not isinstance(row, dict) else row.get("role")) or "")
+    except Exception:
+        return ""
+
+
+def _guarantee_visible_outcome(run: "VisibleRun") -> None:
+    """LIVSCYKLUS-INVARIANT (Bjørn 29. jun, #1): en completed INTERAKTIV run må ALDRIG
+    ende uden synligt output. Når et run lukker 'completed' uden at have persisteret et
+    assistant-svar (tavs cut — uanset hvilket lag der svigtede: tom first-pass,
+    kortslutning, tom followup-runde), persistér en ærlig fallback så brugeren ALDRIG
+    ser tomhed. Det dræber HELE den tavse-cut-klasse ved konvergens-punktet, uafhængigt
+    af rod-årsag (#2 gjorde den synlig — dette gør den ufarlig).
+
+    Idempotent: springer over hvis sidste besked allerede er assistant (bruger fik svar).
+    Autonome runs må gerne ende tomt. ALDRIG kaste ind i run-finaliseringen."""
+    try:
+        if run.autonomous or not run.session_id:
+            return
+        if _session_last_role(run.session_id) == "assistant":
+            return
+        _persist_session_assistant_message(run, _EMPTY_RUN_FALLBACK)
+    except Exception:
+        pass
+
+
 def set_last_visible_run_outcome(
     run: VisibleRun,
     *,
@@ -6730,6 +6771,9 @@ def set_last_visible_run_outcome(
             _fo_ti.note_empty_completion(
                 run.run_id, provider=run.provider, model=run.model,
                 session_id=run.session_id or "", path="unified_checkpoint")
+            # #1 LIVSCYKLUS-INVARIANT: aldrig tavs tomhed — persistér fallback hvis
+            # brugeren ikke fik et svar (idempotent + self-safe).
+            _guarantee_visible_outcome(run)
     except Exception:
         pass
     _persist_visible_run_outcome(

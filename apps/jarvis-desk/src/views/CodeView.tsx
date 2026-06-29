@@ -128,6 +128,11 @@ export function CodeView({
   const [sessToolCalls, setSessToolCalls] = useState(0)
   const [sessTools, setSessTools] = useState<{ name: string; input: Record<string, unknown> }[]>([])
   const prevStatusRef = useRef(stream.status)
+  // Per-run dedup-vagt for reconcile (D1, 29. jun): uden den kan en re-render mens
+  // status stadig er 'done' (eller onComplete's message_stop-gendispatch) reconcile
+  // SAMME assistant-svar to gange → dublet i transcript. ChatView har haft denne
+  // vagt; code-mode manglede den.
+  const reconciledForRun = useRef<string | null>(null)
   useEffect(() => {
     setSessTokens(0); setSessToolCalls(0); setSessTools([]); prevStatusRef.current = stream.status
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -349,7 +354,9 @@ export function CodeView({
 
   // Reconcile assistant-svar ind i transcript når et run slutter (som chat).
   useEffect(() => {
-    if (stream.status === 'done' && stream.blocks.length > 0) {
+    if (stream.status === 'done' && stream.blocks.length > 0
+        && reconciledForRun.current !== stream.activeRunId) {
+      reconciledForRun.current = stream.activeRunId
       sessions.reconcile({
         id: `a-${stream.activeRunId ?? Date.now()}`,
         role: 'assistant',

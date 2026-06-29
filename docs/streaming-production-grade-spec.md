@@ -290,13 +290,14 @@ ingen main-tree-kopi). Edge-audit (29. jun):
   retry-udløst `select` kan wipe det live snapshot midt i halen. **De planlagte retry-events (§4.1) udløser
   denne race OFTERE** (flere mid-turn-frames → flere refresh-triggers). → **Fase 1-BLOKERENDE prerequisite for
   at sende de nye streaming-ændringer til mobil.** Resten af partial-edges bunder i denne.
-- **G2 — desk har INGEN live token-follow for et run den ikke selv driver** (kun poll→refresh; mobil HAR
-  `/sessions/{id}/live`). Når mobil/autonom Jarvis driver en delt session ser desk kun en spinner + færdigt svar,
-  aldrig live tokens. Server understøtter det allerede — desk skal bare kalde `/sessions/{id}/live` på busy-kanten.
+- **G2 — ~~desk mangler live token-follow~~ → RETTET af desk-audit: HANDLED.** `followRun` → `/sessions/{id}/live`
+  ER wired i både ChatView (`:213`) og CodeView. Cross-device-audit'en var stale her. Rest: follow'ens egen
+  resiliens (desk D4).
 - **G3 — retry-under-resync-flimmer:** lukkes af G1's merge; indtil da gør de nye retry-events G1 værre.
 - **G4 — dual-finalize:** fallback-besked (#1/§Fase 5) skal være `run_id`-keyet + reconciled, så to enheder ikke
   begge injicerer den. Mobil deduper intra-device (`persistedRunRef`) men mangler cross-device merge (= G1 igen).
-- **G5 — ingen eksplicit "svarer på en anden enhed"-banner** (begge viser kun generisk working-indikator). UX, lav prioritet.
+- **G5 — ~~ingen takeover-banner~~ → RETTET af desk-audit: HANDLED på desk** (`ChatView.tsx:422` "📱→🖥 Aktiv på
+  en anden enhed — følger med her live"). Mobil mangler stadig en eksplicit. UX, lav prioritet.
 - **G6 — H1 rammer ALLE TRE relay-endpoints, ikke kun POST:** `chat_stream_v2.py:279`, `chat.py:913`
   (`/runs/{id}/subscribe`), `chat.py:953` (`/sessions/{id}/live`) gør alle `if empty>300: break` UDEN syntetisk
   `message_stop`/fejl-frame. En anden enhed der følger et stallet run får en bar socket-luk. I2-bruddet er
@@ -311,3 +312,24 @@ ingen main-tree-kopi). Edge-audit (29. jun):
 
 **Net:** edges 3+6 HANDLED; 1,2,4,5,7,8 PARTIAL med G1 som den fælles rod. **G1 er Fase-1-gate for mobil:**
 vi sender ikke retry-events til mobil før merge-broen er på plads, ellers forværrer vi wipe-racen.
+
+### 10b. Desk-specifik audit (29. jun) — desk er den HÆRDEDE klient
+
+**Dom: desk er produktions-klar for streaming-kernen. INGEN hul på niveau med mobilens G1.** Terminal-garantien
+er tripel-backstoppet (message_stop-gendispatch / 9s stale-detektor / 90s watchdog), `mergeServer` +
+`server_missing_keep_stream` dedup'er korrekt (det mobil mangler), og de nye `retry`-events tolereres uden at
+brække reduceren (verificeret + testet `streamReducer.ts:111`). Code-mode deler SAMME stream-klient som chat
+(ingen separat sti). Når serverens H1/I2 syntetiske `message_stop` lander, forbruger desk den uden ændringer.
+
+| ID | Hul | Severity | Fase |
+|----|-----|----------|------|
+| **D1** | **CodeView reconcile manglede `reconciledForRun`-dedup-vagt → code-mode kunne dobbelt-finalisere svar (dublet). RETTET 29. jun (tsc grøn) — afventer desk-rebuild for at shippe.** | Medium (korrekthed) | **FIKSET** |
+| D2 | Desks eget-drop-resume re-subscriber via `followRun` UDEN `Last-Event-ID`/`from_idx` → frame-0-replay (taber intet i dag pga. reducer-reset, men kan ikke bruge §4.6 før desk sender offset) | Lav | Fase 5 |
+| D3 | Approval-POST-fejl rydder `pendingApproval` optimistisk + surfacer som generisk error; server-stream blokeret → degraderer til 90s onHung-hæng | Lav-Medium | Fase 2.5 |
+| D4 | `followRun` (live-follow) har ingen intern reconnect; mid-follow-drop falder til poll-refresh, frame-0 på næste bgActive-kant | Lav | Fase 2.5 |
+| D5 | Nye `retry`/"Reconnecting n/m"-events renderer harmløst men USYNLIGT (reducer ignorerer ukendte kinds) → kræver en reducer-case + UI for faktisk at vise "Reconnecting n/m" | Lav (UX) | Fase 2.5/4 |
+| D6 | Ingen `powerMonitor.on('resume')` → re-sync efter sleep er poll-baseret (1.5s), ikke event-drevet | Lav | Fase 3 |
+| D7 | `onHung` prompter i stedet for auto-reattach (inkonsistent med netværks-drop-stien). Bevidst, forsvarligt | Triviel (UX) | Fase 4 |
+
+**Net desk:** kun D1 var en ægte bug (nu fikset, afventer rebuild). D2-D7 er lav-severity polish eller rene
+afhængigheder af allerede-planlagte server-faser. Desk kræver **ingen** ændring for H1/I2-fixet.

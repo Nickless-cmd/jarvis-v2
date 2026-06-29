@@ -183,8 +183,10 @@ dæknings-assertion-test. Ingen hot-loop-ændring uden dette. Reproducér en æg
 → Forventet effekt: forbigående mid-turn-blip dræber ikke længere turen. Den primære cut-klasse lukket.
 
 **Fase 2 — Luk lydløse huller (I4):**
-H1 subscriber-give-up (nerve + terminal-frame) · watchdog-timeout-nerve · persisterings-fejl-nerve (H5) ·
-provider-error-observe for responses/codex (H4) · buffer-trunkerings-nerve (H6). + ryd døde nerver.
+H1 subscriber-give-up (nerve + syntetisk `message_stop` + fejl-frame) på **ALLE TRE relay-endpoints**
+(`chat_stream_v2.py:279` POST + `chat.py:913` /runs/subscribe + `chat.py:953` /sessions/live — G6, rammer
+cross-device) · watchdog-timeout-nerve · persisterings-fejl-nerve (H5) · provider-error-observe for
+responses/codex (H4) · buffer-trunkerings-nerve (H6). + ryd døde nerver.
 
 **Fase 2.5 — Klient-integritet (P4, "ingen hemmelige bræk" på klient-siden):**
 Mobil `mergeServer`-bro (luk wholesale-replace-race der får svar til at forsvinde) · desk+mobil ignorerer
@@ -265,4 +267,47 @@ Resume-from-offset (4.6) · empty-completion 1× retry før fallback · per-prov
 **Konklusion på reviews:** spec'ens RETNING er solid (transport-garantier + codex-loop-mønster + nul-lydløs),
 men den var ikke produktions-klar uden: total-retry-loft (S2), re-sample-ikke-re-exec-invariant (S3),
 circuit-breaker (S6), kill-switch (P1), SLO (P2), proaktiv alerting (P3), mobil-merge-fix (P4) og
-fejl-injektion-først (P7). Disse er nu indarbejdet. **MED dem er vi klar til at bygge Fase 1.**
+fejl-injektion-først (P7). Disse er nu indarbejdet. **MED dem + §10 (cross-device) er vi klar til Fase 1.**
+
+---
+
+## 10. Cross-device edges (jarvis-desk ↔ mobile companion) — eksplicit dækning
+
+Multi-device er hvor "lukket en gang for alle" holder eller falder. Mobil-kilden er worktree
+`.worktrees/jarvis-mobile-companion-v1/apps/mobile` (vc52, omskrevet 23-29 jun — MERE hærdet end ventet;
+ingen main-tree-kopi). Edge-audit (29. jun):
+
+**Ægte HANDLED (rør ikke):**
+- **Samtidig drive:** server-single-flight `claim_or_create` (`run_event_log.py:157`) + frame-0-replay → begge
+  enheder ser samme run, intet dobbelt-run.
+- **FCM vs live-stream:** push undertrykkes når en subscriber så/ser runnet (`was_consumed_or_active`,
+  `run_event_log.py:140`) → ingen dobbelt/tab ved foreground.
+
+**Hullerne (G1-G6):**
+- **G1 (LOAD-BEARING) — mobilen wholesale-replacer beskeder uden merge-bro.** `SessionContext.tsx:46`
+  `setMessages(result.messages)` uden merge; `mergeServer`/`server_missing_keep_stream` (som desk BEVISTE
+  virker, `desk/SessionContext.tsx:158`) blev aldrig porteret. HVER foreground-resync / busy→idle / notif-tap /
+  retry-udløst `select` kan wipe det live snapshot midt i halen. **De planlagte retry-events (§4.1) udløser
+  denne race OFTERE** (flere mid-turn-frames → flere refresh-triggers). → **Fase 1-BLOKERENDE prerequisite for
+  at sende de nye streaming-ændringer til mobil.** Resten af partial-edges bunder i denne.
+- **G2 — desk har INGEN live token-follow for et run den ikke selv driver** (kun poll→refresh; mobil HAR
+  `/sessions/{id}/live`). Når mobil/autonom Jarvis driver en delt session ser desk kun en spinner + færdigt svar,
+  aldrig live tokens. Server understøtter det allerede — desk skal bare kalde `/sessions/{id}/live` på busy-kanten.
+- **G3 — retry-under-resync-flimmer:** lukkes af G1's merge; indtil da gør de nye retry-events G1 værre.
+- **G4 — dual-finalize:** fallback-besked (#1/§Fase 5) skal være `run_id`-keyet + reconciled, så to enheder ikke
+  begge injicerer den. Mobil deduper intra-device (`persistedRunRef`) men mangler cross-device merge (= G1 igen).
+- **G5 — ingen eksplicit "svarer på en anden enhed"-banner** (begge viser kun generisk working-indikator). UX, lav prioritet.
+- **G6 — H1 rammer ALLE TRE relay-endpoints, ikke kun POST:** `chat_stream_v2.py:279`, `chat.py:913`
+  (`/runs/{id}/subscribe`), `chat.py:953` (`/sessions/{id}/live`) gør alle `if empty>300: break` UDEN syntetisk
+  `message_stop`/fejl-frame. En anden enhed der følger et stallet run får en bar socket-luk. I2-bruddet er
+  identisk på alle tre — H1-fixet skal dække alle tre, ikke kun POST.
+
+**Fase-tilknytning:**
+- **G1** → **Fase 2.5, men Fase-1-BLOKERENDE for mobil-rollout** (porter desk's mergeServer-bro). Højeste cross-device-prioritet.
+- **G6** → **Fase 2** (udvid H1 til alle tre relay-endpoints).
+- **G2** → **Fase 2.5** (desk live-follow-paritet; server-støtte findes).
+- **G3, G4** → **Fase 2.5 / Fase 5** (følger G1).
+- **G5** → **Fase 4** (UX-polish).
+
+**Net:** edges 3+6 HANDLED; 1,2,4,5,7,8 PARTIAL med G1 som den fælles rod. **G1 er Fase-1-gate for mobil:**
+vi sender ikke retry-events til mobil før merge-broen er på plads, ellers forværrer vi wipe-racen.

@@ -4647,7 +4647,7 @@ def _persist_session_assistant_message(
         except Exception:
             pass
 
-    message = append_chat_message(
+    message = _append_chat_message_with_retry(
         session_id=run.session_id,
         role="assistant",
         content=normalized,
@@ -4662,6 +4662,48 @@ def _persist_session_assistant_message(
         })
     except Exception:
         pass
+
+
+def _append_chat_message_with_retry(
+    *,
+    session_id: str,
+    role: str,
+    content: str,
+    reasoning_content: str = "",
+    _backoffs: tuple[float, ...] = (0.2, 0.5),
+) -> dict[str, object]:
+    """H5 persist-retry (spec §11.2 P5): persistering må ALDRIG tabes tavst pga.
+    et FORBIGÅENDE DB-blip. "Vist live, væk ved reload" er data-integritet, ikke
+    bare en nerve. ``connect()`` har sqlite's default-busy_timeout (~5s), så dette
+    er primært en bælte-og-seler mod ikke-lock-transienter (kortvarig I/O-glitch
+    under WAL-checkpoint mv.); for ægte locks dækker busy_timeout det meste.
+
+    Vi retry'er KUN forbigående sqlite-fejl (database is locked/busy). Permanente
+    fejl (ValueError "chat session not found", IntegrityError, disk full) propageres
+    UÆNDRET ved første forsøg — retry på dem ville bare spilde tid. Den endelige
+    fejl (efter udtømte retries, eller en ikke-transient fejl) propageres til
+    caller, som fyrer ``persist_failed``-nerven (backstop). Selv-sikker: kaster
+    aldrig en NY fejl-type ud over hvad ``append_chat_message`` selv ville kaste."""
+    import sqlite3
+
+    attempt = 0
+    while True:
+        try:
+            return append_chat_message(
+                session_id=session_id,
+                role=role,
+                content=content,
+                reasoning_content=reasoning_content,
+            )
+        except sqlite3.OperationalError as exc:
+            text = str(exc).lower()
+            transient = ("database is locked" in text) or ("database is busy" in text)
+            if not transient or attempt >= len(_backoffs):
+                # Ikke-transient ELLER retries udtømte → lad caller fyre
+                # persist_failed-nerven (final-failure backstop).
+                raise
+            time.sleep(_backoffs[attempt])
+            attempt += 1
 
 
 def _recent_internal_tool_context(session_id: str | None, *, limit: int = 6) -> str:

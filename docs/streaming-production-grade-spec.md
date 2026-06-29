@@ -440,3 +440,24 @@ Fase 0 bygget + verificeret (13 tests grønne, flag fail-closed OFF, hook streng
 - En **YIELDED** `FollowupFailed` fyrer `note_round_failed`.
 → Fase 1/2 skal wire `note_round_retry`/`note_round_failed` præcis på den **raised-exception-sti** (`:2090`).
 I2 holder dog selv på den tavse sti (terminal `done`/`interrupted` leveres altid) — det er kun runde-fejl-NERVEN der mangler.
+
+### 11.5 Fase 1 B11 leveret + KRITISK diagnose: empty-first-pass = thinking-felt-parse-hul (ikke transient)
+B11 leveret (45 tests grønne): `core/services/stream_failure_kind.py` (én sandhedskilde `classify_failure` —
+retryable {transient_drop, http_5xx, http_429, malformed_stream_payload} · `provider_stall` IKKE auto-retryable
+(D11) · fatal {http_400_overflow, http_4xx, invalid_request, user_cancel}); `failure_kind`+`http_status` på
+`FollowupFailed` (alle 10 steder); **silent-nerve fixet** — raised-drop-stien (`visible_runs.py:2123`) fyrer nu
+`note_round_failed(raised=True)`. Self-safe (try/except + finally).
+
+**DIAGNOSE-VERDIKT (Part B, kode-only): empty-first-pass på reasoning-modeller = (b) THINKING-FELT-PARSE-HUL —
+en re-sample HELER det IKKE.** Bjørns live-cut (`empty_completion [sti=unified_checkpoint] 0 værktøj 0 runder —
+glm-5.2:cloud`) er en reasoning-model der svarer i `message.thinking`-kanalen mens `message.content` er tom:
+- First-pass (`visible_model.py:1666`): `text` bygges KUN fra `message.content`; `message.thinking` fanges til
+  *replay* (`reasoning_content`) men bidrager ALDRIG til `text`. Thinking-only svar → `:1673` raiser
+  "returned no streamed response" → empty_completion.
+- Resend-stien (`_execute_ollama_model:1248`): også content-only → en re-sample gentager bare hullet.
+
+→ **Det er LOKALT og MODEL-AGNOSTISK** (rammer ALLE reasoning-modeller, ikke glm-5.2 specifikt — præcis Bjørns
+tese). **REFRAME I1-heal:** den ægte kur er en **thinking-felt-parse-fix** (når `content` tom + `thinking` har
+svaret → surface thinking som svar-tekst), IKKE bare resample. Resample uden parse-fix recovery'er ikke
+thinking-only svar. **Træk thinking-parse-fix FØR resample i I1-rækkefølgen.** Dette er højeste-immediate-værdi —
+det stopper Bjørns nuværende empty-cuts på reasoning-modeller.

@@ -31,6 +31,8 @@ from typing import Iterator, Protocol, runtime_checkable
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
+from core.services.stream_failure_kind import FailureKind, classify_failure
+
 _log = logging.getLogger(__name__)
 
 _OLLAMA_MAX_FOLLOWUP_EXCHANGES = 10
@@ -77,11 +79,23 @@ class FollowupDone:
 
 @dataclass(frozen=True, slots=True)
 class FollowupFailed:
-    """The round failed before completing (network error, HTTP 5xx, timeout, etc.)."""
+    """The round failed before completing (network error, HTTP 5xx, timeout, etc.).
+
+    ``failure_kind`` + ``http_status`` are the STRUCTURED taxonomy (spec B11/I5)
+    that Fase 1's round-retry depends on — the single source of truth for
+    retryability, replacing substring-matching on ``summary``. Both are OPTIONAL
+    (default ""/None) so legacy construction sites and pickled/serialized callers
+    keep working; populate via ``classify_failure`` at every raise/yield site.
+    ``error``/``summary`` remain for backward-compat + human-readable context.
+    """
 
     round_index: int
     error: str
     summary: str
+    # Structured taxonomy (B11). "" = unclassified (legacy / not yet wired).
+    failure_kind: str = ""
+    # HTTP status when known (urllib/httpx); None for transport drops / local exc.
+    http_status: int | None = None
 
 
 FollowupEvent = (
@@ -501,10 +515,18 @@ class OllamaFollowupAdapter:
             _log.error(
                 "ollama followup round %d failed: %s", round_index, _err_text, exc_info=True
             )
+            _status = (
+                int(getattr(last_exc, "code", 0) or 0)
+                if isinstance(last_exc, urllib_error.HTTPError)
+                else None
+            )
+            _kind, _ = classify_failure(http_status=_status, error_text=_err_text)
             yield FollowupFailed(
                 round_index=round_index,
                 error=_err_text,
                 summary=summary,
+                failure_kind=_kind,
+                http_status=_status,
             )
             return
 
@@ -808,6 +830,9 @@ class OpenAICompatFollowupAdapter:
                 round_index=round_index,
                 error=str(e) or "build-failed",
                 summary=f"followup-round-{round_index + 1}-build-error: {e}",
+                # A request-build failure is a local/config fault — never retry.
+                failure_kind=FailureKind.INVALID_REQUEST,
+                http_status=None,
             )
             return
 
@@ -863,8 +888,11 @@ class OpenAICompatFollowupAdapter:
                 exc.code,
                 body,
             )
+            _status = int(getattr(exc, "code", 0) or 0) or None
+            _kind, _ = classify_failure(http_status=_status, error_text=f"{summary} {body}")
             yield FollowupFailed(
-                round_index=round_index, error=summary, summary=summary
+                round_index=round_index, error=summary, summary=summary,
+                failure_kind=_kind, http_status=_status,
             )
             return
         except Exception as exc:
@@ -878,10 +906,13 @@ class OpenAICompatFollowupAdapter:
                 exc,
                 exc_info=True,
             )
+            _kind, _ = classify_failure(http_status=None, error_text=str(exc))
             yield FollowupFailed(
                 round_index=round_index,
                 error=str(exc) or "unknown",
                 summary=summary,
+                failure_kind=_kind,
+                http_status=None,
             )
             return
 
@@ -1022,14 +1053,18 @@ class CodexFollowupAdapter:
                         yield FollowupToolCalls(tool_calls=collected_tool_calls)
                     yield FollowupDone(text=str(ev.get("full_text") or ""), reasoning_content="")
         except CheapProviderError as exc:
+            _kind, _ = classify_failure(http_status=None, error_text=str(exc))
             yield FollowupFailed(
                 round_index=round_index, error=str(exc),
                 summary=f"followup-round-{round_index + 1}-codex-error:{exc}",
+                failure_kind=_kind, http_status=None,
             )
         except Exception as exc:  # noqa: BLE001 — surface as clean failure
+            _kind, _ = classify_failure(http_status=None, error_text=str(exc))
             yield FollowupFailed(
                 round_index=round_index, error=str(exc),
                 summary=f"followup-round-{round_index + 1}-codex-error:{exc}",
+                failure_kind=_kind, http_status=None,
             )
 
 
@@ -1101,6 +1136,9 @@ def stream_visible_followup(
             round_index=round_index,
             error=f"unsupported-provider:{provider}",
             summary=f"followup-round-{round_index + 1}-unsupported-provider:{provider}",
+            # No adapter exists for this provider — re-sampling cannot heal it.
+            failure_kind=FailureKind.INVALID_REQUEST,
+            http_status=None,
         )
         return
     # Only the OllamaFollowupAdapter currently honors thinking_mode; the
@@ -1302,7 +1340,9 @@ def _yield_injected_fault(fault: dict, round_index: int) -> Iterator[FollowupEve
     if shape == FAULT_CLEAN_FAIL_BEFORE_DELTA:
         # (a) HTTP 502-klasse FØR nogen delta — clean fail, ingen partiel tekst.
         summary = f"followup-round-{round_index + 1}-provider-error: HTTP 502"
-        yield FollowupFailed(round_index=round_index, error=summary, summary=summary)
+        _kind, _ = classify_failure(http_status=502, error_text=summary)
+        yield FollowupFailed(round_index=round_index, error=summary, summary=summary,
+                             failure_kind=_kind, http_status=502)
         return
     if shape == FAULT_PARTIAL_DELTAS_THEN_DROP:
         # (b) PRIMÆR: stream N deltas, så et forbigående drop. Dette er trigger
@@ -1317,7 +1357,9 @@ def _yield_injected_fault(fault: dict, round_index: int) -> Iterator[FollowupEve
             # men fyrer IKKE note_round_failed (yielded-FollowupFailed-stien gør).
             raise ConnectionError("simulated transient stream drop after partial deltas")
         summary = f"followup-round-{round_index + 1}-provider-error: transient stream drop"
-        yield FollowupFailed(round_index=round_index, error=summary, summary=summary)
+        _kind, _ = classify_failure(http_status=None, error_text=summary)
+        yield FollowupFailed(round_index=round_index, error=summary, summary=summary,
+                             failure_kind=_kind, http_status=None)
         return
     if shape == FAULT_HTTP_400_OVERFLOW:
         # (c) Context-window-overløb: HTTP 400 "prompt too long" — distinkt fra et
@@ -1326,7 +1368,9 @@ def _yield_injected_fault(fault: dict, round_index: int) -> Iterator[FollowupEve
         status = int(fault["http_status"])
         body = "context_length_exceeded: prompt too long for model context window"
         summary = f"followup-round-{round_index + 1}-provider-error: HTTP {status}: {body[:180]}"
-        yield FollowupFailed(round_index=round_index, error=summary, summary=summary)
+        _kind, _ = classify_failure(http_status=status, error_text=f"{summary} {body}")
+        yield FollowupFailed(round_index=round_index, error=summary, summary=summary,
+                             failure_kind=_kind, http_status=status)
         return
     # Ukendt shape (bør ikke ske — inject_fault validerer): no-op.
     return

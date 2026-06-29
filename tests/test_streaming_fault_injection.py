@@ -30,6 +30,11 @@ import core.services.ollama_visible_prompt as ovp
 import core.services.visible_runs as vr
 from core.services import followup_observer as fo
 from core.services import visible_followup as vf
+from core.services.stream_failure_kind import (
+    FailureKind,
+    classify_failure,
+    is_retryable_kind,
+)
 from core.services.visible_model import (
     VisibleModelResult,
     VisibleModelStreamDone,
@@ -283,30 +288,30 @@ def test_partial_then_drop_C11_partial_text_persists(monkeypatch) -> None:
     assert res.done_status == "interrupted"
 
 
-def test_partial_then_drop_raised_is_centrally_SILENT(monkeypatch) -> None:
-    """§2-HUL BASELINE (dokumenterer den nuværende tavshed):
+def test_partial_then_drop_raised_no_longer_centrally_silent(monkeypatch) -> None:
+    """§2-HUL LUKKET (B11 step 3 — denne assertion var tidligere baseline-SILENT):
 
     Et transport-drop som RÅ exception (mest realistisk for en socket-drop)
-    fanges af _pump_agentic's except (visible_runs.py:2090) → sætter _a_failure
-    men fyrer ALDRIG note_round_failed (kun den yielded-FollowupFailed-sti gør,
-    visible_runs.py:2241). Så den PRIMÆRE cut-klasse er i dag CENTRALT USYNLIG
-    på round-failure-niveau.
+    fanges af _pump_agentic's except (visible_runs.py:2090). Det satte før
+    _a_failure men fyrede ALDRIG note_round_failed → den PRIMÆRE cut-klasse var
+    CENTRALT USYNLIG på round-failure-niveau.
 
-    Fase 1/2 skal lukke dette (note_round_failed/note_round_retry på pump-except-
-    stien). Denne assertion markerer hullet — den FLIPPES da."""
+    Nu fyrer pump-except-stien note_round_failed med den klassificerede
+    failure_kind (B11). Break/retry-adfærd er UÆNDRET (turen dør stadig — retry-
+    loopet 4.1 bygges senere); det er KUN nerven der er tilføjet."""
     res = _drive(monkeypatch, vf.FAULT_PARTIAL_DELTAS_THEN_DROP,
                  run_id="partial-drop-silent",
                  drop_as_exception=True)
 
     names = res.nerve_names()
-    # BASELINE: round-failure er SILENT på den raise-baserede drop-sti.
-    assert "followup_failed" not in names, \
-        ("BASELINE §2-hul: raised transport-drop fyrer IKKE followup_failed "
-         "(pump-except bypasser note_round_failed) — Fase 1/2 lukker dette")
-    # Loop-complete fyrer dog stadig (turen afsluttes observerbart på tur-niveau).
+    # FIX: round-failure er ikke længere tavs på den raise-baserede drop-sti.
+    assert "followup_failed" in names, \
+        ("B11-fix: raised transport-drop fyrer nu followup_failed "
+         "(pump-except wirer note_round_failed)")
+    # Loop-complete fyrer stadig (turen afsluttes observerbart på tur-niveau).
     assert "followup_loop_complete" in names, \
         "turen afsluttes observerbart på loop-niveau (note_loop_complete)"
-    # … og en terminal-frame når stadig klienten (I2 holder selv på den tavse sti).
+    # … og en terminal-frame når stadig klienten (I2).
     assert res.has_terminal_frame()
     assert res.done_status == "interrupted"
 
@@ -361,3 +366,176 @@ def _no_fault_leak():
     vf.clear_faults()
     yield
     vf.clear_faults()
+
+
+# ── B11: struktureret failure-taksonomi (single source of truth for I5) ──────
+
+
+@pytest.mark.parametrize(
+    "http_status, error_text, kind_hint, expect_kind, expect_retryable",
+    [
+        # ── retryable på samme provider ──
+        (502, "HTTP 502 Bad Gateway", "", FailureKind.HTTP_5XX, True),
+        (503, "service unavailable", "", FailureKind.HTTP_5XX, True),
+        (504, "gateway timeout", "", FailureKind.HTTP_5XX, True),
+        (500, "internal server error", "", FailureKind.HTTP_5XX, True),
+        (429, "rate limited", "", FailureKind.HTTP_429, True),
+        (None, "ConnectionError: connection reset by peer", "",
+         FailureKind.TRANSIENT_DROP, True),
+        (None, "stream closed before completed", "",
+         FailureKind.TRANSIENT_DROP, True),
+        (None, "<urlopen error [Errno 104] connection aborted>", "",
+         FailureKind.TRANSIENT_DROP, True),
+        (None, "JSONDecodeError: Expecting value: line 1", "",
+         FailureKind.MALFORMED_STREAM_PAYLOAD, True),
+        (None, "UnicodeDecodeError: 'utf-8' codec can't decode byte", "",
+         FailureKind.MALFORMED_STREAM_PAYLOAD, True),
+        # ── provider_stall: retryable-LOOKING men IKKE auto-retry (D11) ──
+        (None, "round-silence-timeout: timed out waiting for provider stream item", "",
+         FailureKind.PROVIDER_STALL, False),
+        (None, "first-byte budget exceeded — no bytes", "",
+         FailureKind.PROVIDER_STALL, False),
+        # ── fatal ──
+        (400, "context_length_exceeded: prompt too long for model context window", "",
+         FailureKind.HTTP_400_OVERFLOW, False),
+        (400, "prompt is too long: 208863, model maximum context length: 202752", "",
+         FailureKind.HTTP_400_OVERFLOW, False),
+        (400, "invalid_request_body", "", FailureKind.HTTP_4XX, False),
+        (401, "unauthorized", "", FailureKind.HTTP_4XX, False),
+        (403, "forbidden", "", FailureKind.HTTP_4XX, False),
+        (404, "not found", "", FailureKind.HTTP_4XX, False),
+        (422, "unprocessable entity", "", FailureKind.HTTP_4XX, False),
+        (None, "generation cancelled by user", "", FailureKind.USER_CANCEL, False),
+        # ── kind_hint vinder over alt ──
+        (None, "whatever", FailureKind.USER_CANCEL, FailureKind.USER_CANCEL, False),
+        (502, "HTTP 502", FailureKind.PROVIDER_STALL, FailureKind.PROVIDER_STALL, False),
+        # ── ukendt → konservativt fatal ──
+        (None, "something we have never seen", "", FailureKind.UNKNOWN, False),
+        # ── status udledt fra fri-tekst når struktureret mangler ──
+        (None, "followup-round-2-provider-error: HTTP 503", "",
+         FailureKind.HTTP_5XX, True),
+    ],
+)
+def test_classify_failure_taxonomy(
+    http_status, error_text, kind_hint, expect_kind, expect_retryable
+) -> None:
+    """classify_failure er DEN ENE retryable/kind-sandhedskilde (I5).
+
+    Spejler codex' split: transient_drop/5xx/429/malformed = retryable;
+    provider_stall = retryable-LOOKING men IKKE auto-retry på samme provider
+    (D11); 4xx/overflow/invalid/cancel = fatal."""
+    kind, retryable = classify_failure(
+        http_status=http_status, error_text=error_text, kind_hint=kind_hint)
+    assert kind == expect_kind, f"{error_text!r} → {kind} (forventet {expect_kind})"
+    assert retryable is expect_retryable
+    # is_retryable_kind skal være konsistent med klassifikatorens retryable-flag.
+    assert is_retryable_kind(kind) is expect_retryable
+
+
+def test_classify_failure_provider_stall_is_not_retryable() -> None:
+    """D11-invariant: provider_stall er ALDRIG retryable på samme provider
+    (re-trigger blot samme timeout → circuit-breaker/failover, ikke retry)."""
+    assert is_retryable_kind(FailureKind.PROVIDER_STALL) is False
+    _, retryable = classify_failure(
+        http_status=None, kind_hint=FailureKind.PROVIDER_STALL)
+    assert retryable is False
+
+
+def test_classify_failure_overflow_distinct_from_generic_400() -> None:
+    """S5: context-window-overløb er en EGEN navngivet kind, ikke et tavst 400."""
+    k_overflow, _ = classify_failure(
+        http_status=400, error_text="prompt too long for context window")
+    k_generic, _ = classify_failure(
+        http_status=400, error_text="invalid_request_body")
+    assert k_overflow == FailureKind.HTTP_400_OVERFLOW
+    assert k_generic == FailureKind.HTTP_4XX
+    assert k_overflow != k_generic
+
+
+# ── B11: FollowupFailed bærer failure_kind + http_status ─────────────────────
+
+
+def test_followup_failed_has_structured_fields_defaults() -> None:
+    """Bagudkompat: de nye felter er OPTIONAL (default ""/None) så legacy-
+    konstruktion (kun round_index/error/summary) ikke brækker."""
+    f = vf.FollowupFailed(round_index=0, error="e", summary="s")
+    assert f.failure_kind == ""
+    assert f.http_status is None
+
+
+def test_unsupported_provider_carries_invalid_request_kind() -> None:
+    """Dispatcherens unsupported-provider-sti bærer nu failure_kind."""
+    events = list(vf.stream_visible_followup(
+        provider="__nope__", model="m",
+        base_messages=[], exchanges=[], round_index=0))
+    assert isinstance(events[0], vf.FollowupFailed)
+    assert events[0].failure_kind == FailureKind.INVALID_REQUEST
+    assert events[0].http_status is None
+
+
+def test_injected_clean_fail_carries_http_5xx_kind() -> None:
+    """Den injicerede HTTP-502-fejl bærer http_status=502 + http_5xx-kind
+    (beviser populeringen på en yielded FollowupFailed-sti)."""
+    with vf.fault_injection(vf.FAULT_CLEAN_FAIL_BEFORE_DELTA):
+        events = list(vf.stream_visible_followup(
+            provider="deepseek", model="m",
+            base_messages=[], exchanges=[], round_index=0))
+    failed = [e for e in events if isinstance(e, vf.FollowupFailed)]
+    assert failed
+    assert failed[0].http_status == 502
+    assert failed[0].failure_kind == FailureKind.HTTP_5XX
+
+
+def test_injected_overflow_carries_overflow_kind() -> None:
+    """Det injicerede context-overløb (HTTP 400 'prompt too long') bærer
+    http_400_overflow-kind (S5) — distinkt fra et transport-drop."""
+    with vf.fault_injection(vf.FAULT_HTTP_400_OVERFLOW):
+        events = list(vf.stream_visible_followup(
+            provider="deepseek", model="m",
+            base_messages=[], exchanges=[], round_index=0))
+    failed = [e for e in events if isinstance(e, vf.FollowupFailed)]
+    assert failed
+    assert failed[0].http_status == 400
+    assert failed[0].failure_kind == FailureKind.HTTP_400_OVERFLOW
+
+
+# ── B11 step 3: raised-drop pump-except-sti FYRER nu note_round_failed ────────
+
+
+def test_raised_drop_now_fires_followup_failed_nerve(monkeypatch) -> None:
+    """§11.4-FIX (B11 step 3): et RAISED transport-drop (pump-except-stien,
+    visible_runs.py:2090) fyrer nu note_round_failed med den klassificerede
+    failure_kind. Tidligere var den PRIMÆRE cut-klasse CENTRALT TAVS på round-
+    failure-niveau (kun den yielded-FollowupFailed-sti fyrede nerven).
+
+    Dette INVERTERER baseline-assertionen i
+    test_partial_then_drop_raised_is_centrally_SILENT (samme scenarie)."""
+    res = _drive(monkeypatch, vf.FAULT_PARTIAL_DELTAS_THEN_DROP,
+                 run_id="raised-drop-nerve", drop_as_exception=True)
+
+    names = res.nerve_names()
+    assert "followup_failed" in names, \
+        "B11-fix: raised transport-drop fyrer nu note_round_failed (ikke længere tavs)"
+    # Nerven bærer den klassificerede failure_kind (transient_drop = retryable)
+    # + raised=True-markøren, så Centralen kan skelne pump-except fra yielded.
+    failed_payloads = [d for n, d in res.nerves if n == "followup_failed"]
+    assert any(
+        d.get("failure_kind") == FailureKind.TRANSIENT_DROP and d.get("raised") is True
+        for d in failed_payloads
+    ), f"nerve skal bære transient_drop + raised=True; fik {failed_payloads}"
+    # Break/retry-adfærd er UÆNDRET: turen dør stadig (ingen retry-loop endnu).
+    assert res.done_status == "interrupted"
+    assert res.has_terminal_frame()
+
+
+def test_yielded_failed_nerve_carries_structured_kind(monkeypatch) -> None:
+    """Den yielded-FollowupFailed-sti bærer nu også failure_kind i nerven
+    (clean HTTP 502 → http_5xx, raised=False)."""
+    res = _drive(monkeypatch, vf.FAULT_CLEAN_FAIL_BEFORE_DELTA,
+                 run_id="yielded-kind-nerve")
+    failed_payloads = [d for n, d in res.nerves if n == "followup_failed"]
+    assert failed_payloads
+    assert any(
+        d.get("failure_kind") == FailureKind.HTTP_5XX and d.get("raised") is False
+        for d in failed_payloads
+    ), f"yielded-sti skal bære http_5xx + raised=False; fik {failed_payloads}"

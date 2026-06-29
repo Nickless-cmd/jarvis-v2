@@ -2088,13 +2088,44 @@ async def _stream_visible_run(
                             ):
                                 loop.call_soon_threadsafe(q.put_nowait, _event)
                         except Exception as _ae:
+                            # §11.4-finding: a RAISED transient drop (the PRIMARY
+                            # cut class — most realistic socket-drop) is caught
+                            # here and sets _a_failure WITHOUT firing
+                            # note_round_failed, so the round failure was centrally
+                            # SILENT (only the yielded-FollowupFailed path fired the
+                            # nerve). Classify (B11 taxonomy = single retryability
+                            # source) and fire the nerve so the raised socket-drop
+                            # is no longer invisible. Self-safe: classification +
+                            # nerve are wrapped, never throw back into the pump.
+                            # NOTE: this only ADDS the nerve — break/retry behavior
+                            # is unchanged (Fase 1 4.1 builds the retry loop later).
+                            _err = str(_ae) or "unknown"
+                            try:
+                                from core.services.stream_failure_kind import (
+                                    classify_failure as _classify_fk,
+                                )
+                                _fk, _retry = _classify_fk(
+                                    http_status=None, error_text=_err)
+                            except Exception:
+                                _fk, _retry = "", False
                             failure.update(
                                 {
                                     "round": rnd + 1,
-                                    "error": str(_ae) or "unknown",
-                                    "summary": f"followup-round-{rnd + 1}-provider-error: {str(_ae) or 'unknown'}",
+                                    "error": _err,
+                                    "summary": f"followup-round-{rnd + 1}-provider-error: {_err}",
+                                    "failure_kind": _fk,
+                                    "http_status": None,
+                                    "retryable": bool(_retry),
                                 }
                             )
+                            try:
+                                from core.services import followup_observer as _fu_obs_raise
+                                _fu_obs_raise.note_round_failed(
+                                    run.run_id, rnd + 1, run.provider, _err,
+                                    failure_kind=_fk, retryable=bool(_retry),
+                                    raised=True)
+                            except Exception:
+                                pass
                         finally:
                             loop.call_soon_threadsafe(q.put_nowait, sentinel)
 
@@ -2230,17 +2261,27 @@ async def _stream_visible_run(
                             _a_tool_calls.extend(_a_item.tool_calls)
                             continue
                         if isinstance(_a_item, _vf.FollowupFailed):
+                            # Carry the B11 structured taxonomy (failure_kind +
+                            # http_status) forward — the single retryability source
+                            # Fase 1's round-retry (4.1) will read. Both default
+                            # ""/None so legacy adapters that don't populate them
+                            # are unaffected.
+                            _yk = getattr(_a_item, "failure_kind", "") or ""
+                            _ys = getattr(_a_item, "http_status", None)
                             _a_failure = {
                                 "round": _a_item.round_index + 1,
                                 "error": _a_item.error,
                                 "summary": _a_item.summary,
+                                "failure_kind": _yk,
+                                "http_status": _ys,
                             }
                             # Followup-cluster: round-fejl synlig (copilot-400/thinking-bug).
                             try:
                                 from core.services import followup_observer as _fu_obs
                                 _fu_obs.note_round_failed(
                                     run.run_id, _a_item.round_index + 1,
-                                    run.provider, str(_a_item.error or _a_item.summary or ""))
+                                    run.provider, str(_a_item.error or _a_item.summary or ""),
+                                    failure_kind=_yk, http_status=_ys, raised=False)
                             except Exception:
                                 pass
                             continue

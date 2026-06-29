@@ -3490,8 +3490,9 @@ async def _stream_visible_run(
                         run, followup_text,
                         reasoning_content=_persist_reasoning,
                     )
-                except Exception:
-                    pass
+                except Exception as _persist_exc:
+                    # H5: svaret er vist live, men gemmes ikke → væk ved reload.
+                    _observe_persist_failed(run, _persist_exc)
 
                 _set_orb_phase("idle")
                 # Phase E6: emit a per-turn changelog as its own SSE event
@@ -4055,8 +4056,9 @@ async def _stream_visible_run(
                     run, visible_output_text,
                     reasoning_content=str(locals().get("_persist_reasoning", "") or ""),
                 )
-            except Exception:
-                pass
+            except Exception as _persist_exc2:
+                # H5: svaret er vist live, men gemmes ikke → væk ved reload.
+                _observe_persist_failed(run, _persist_exc2)
         yield _sse(
             "done",
             {
@@ -4325,6 +4327,29 @@ def _mark_mid_word_truncation(text: str) -> str:
     # Mid-word — annotate. The "…" stays inside the chat-display invariant
     # (no internal markers) and looks natural to the reader.
     return stripped + "…"
+
+
+def _observe_persist_failed(run: VisibleRun, exc: BaseException) -> None:
+    """H5 (spec §2/§4.5): persistering af assistant-beskeden fejlede MENS svaret
+    allerede var vist live → "vist live, VÆK ved reload". Det er en DISTINKT klasse
+    (svaret er IKKE tabt for brugeren nu, men forsvinder ved næste loadSession()).
+    FØR forsvandt det tavst i ``except: pass`` — ingen nerve, ingen trace.
+
+    Dette er KUN observabilitet — den faktiske persist-retry/transaktionelle HEAL
+    er et senere Fase 2.5/5-punkt. Her gør vi blot fejlen synlig i Centralen.
+    Self-safe: må aldrig kaste videre ind i stream-stien."""
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "stream", "nerve": "persist_failed",
+            "run_id": getattr(run, "run_id", ""),
+            "session_id": str(getattr(run, "session_id", "") or ""),
+            "provider": getattr(run, "provider", ""),
+            "model": getattr(run, "model", ""),
+            "error": str(exc or "")[:200],
+        })
+    except Exception:
+        pass
 
 
 def _persist_session_assistant_message(

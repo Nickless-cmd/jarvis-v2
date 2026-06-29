@@ -1189,9 +1189,16 @@ def _stream_openai_codex_model(
             # full tool_call lands.
     except VisibleModelStreamCancelled:
         raise
-    except Exception:
+    except Exception as _codex_exc:
         if controller is not None and controller.is_cancelled():
             raise VisibleModelStreamCancelled("visible-run-cancelled")
+        # H4 (spec §2/§4.5): openai-codex-banen kastede UDEN nogen Central-observe
+        # (modsat ollama-lanen). En GPT-5.x/codex stream-fejl surfacede men var
+        # USYNLIG i Centralen → cut-offs på den bane kunne ikke tælles. Observe nu
+        # FØR re-raise. Self-safe: _observe_visible_provider_error sluger selv alt,
+        # så den kan aldrig maskere/erstatte den oprindelige fejl.
+        _observe_visible_provider_error(
+            "openai-codex", model, 0, f"codex stream error: {_codex_exc}")
         raise
 
 
@@ -1464,9 +1471,15 @@ def _stream_openai_model(
                     raise RuntimeError(
                         f"OpenAI visible streaming failed: {event.get('message', 'unknown-error')}"
                     )
-    except Exception:
+    except Exception as _resp_exc:
         if controller is not None and controller.is_cancelled():
             raise VisibleModelStreamCancelled("visible-run-cancelled")
+        # H4 (spec §2/§4.5): openai-responses-banen (GPT-5.x via /v1/responses)
+        # kastede UDEN nogen Central-observe (modsat ollama-lanen). Stream-fejl
+        # surfacede men var USYNLIG i Centralen. Observe nu FØR re-raise.
+        # Self-safe: helper'en sluger selv alt → kan ikke maskere fejlen.
+        _observe_visible_provider_error(
+            "openai", model, 0, f"responses stream error: {_resp_exc}")
         raise
     finally:
         if controller is not None:
@@ -1563,6 +1576,14 @@ def _apply_visible_ollama_options(payload: dict) -> None:
     payload["options"] = options
 
 
+# H3 (spec §2): two-stage ollama stream-deadline. Module-level så de er
+# overskrivbare i tests (det re-armende inter-byte-watchdog er ellers svært at
+# verificere hermetisk uden at vente 30s). FIRST_BYTE = warmup+first-token,
+# INTER_BYTE = max-idle MELLEM to linjer når streamen først er i live.
+_OLLAMA_FIRST_BYTE_BUDGET_S = 90
+_OLLAMA_INTER_BYTE_BUDGET_S = 30
+
+
 def _stream_ollama_model(
     *,
     message: str,
@@ -1648,15 +1669,28 @@ def _stream_ollama_model(
     #   INTER_BYTE_BUDGET (30s):  per-read deadline once stream is
     #     alive. Mid-stream freeze fails fast instead of waiting full
     #     180s like the previous single-stage timeout did.
+    #
+    # H3 (spec §2, 2026-06-29): FØR disarmede watchdog'en PERMANENT efter byte 1
+    # (``got_first_byte`` blev sat → ``wait`` returnerede → tråden døde). En FRYS
+    # MIDT i streamen (mellem to tokens) var derfor UBUNDET — kun en ydre ~180s
+    # timeout fangede den til sidst. Nu RE-ARMER watchdog'en på HVER modtaget linje:
+    # den tracker ``last_activity`` (monotonic) og force-lukker socketen hvis der går
+    # mere end INTER_BYTE_BUDGET_S uden ny linje. Samme force-close-mekanisme som
+    # før (r.close() → URLError) → classify_failure ser en transient → komponerer med
+    # rund-retry. Ren tilføjelse: control-flow på happy-path er uændret.
     import threading as _threading
-    FIRST_BYTE_BUDGET_S = 90
-    INTER_BYTE_BUDGET_S = 30
+    import time as _wd_time
+    FIRST_BYTE_BUDGET_S = _OLLAMA_FIRST_BYTE_BUDGET_S
+    INTER_BYTE_BUDGET_S = _OLLAMA_INTER_BYTE_BUDGET_S
     got_first_byte = _threading.Event()
+    stream_finished = _threading.Event()  # sættes når loopet er HELT færdigt
     watchdog_response: dict[str, object] = {"resp": None}
+    # Monotonic tidsstempel for seneste aktivitet (sat ved hver linje). Læses kun
+    # af watchdog-tråden; CPython-attribut-write er atomisk nok til dette formål.
+    last_activity: dict[str, float] = {"ts": _wd_time.monotonic()}
+    watchdog_fired: dict[str, bool] = {"inter_byte": False}
 
-    def _first_byte_watchdog() -> None:
-        if got_first_byte.wait(timeout=FIRST_BYTE_BUDGET_S):
-            return
+    def _force_close_stream() -> None:
         r = watchdog_response.get("resp")
         if r is not None:
             try:
@@ -1664,9 +1698,31 @@ def _stream_ollama_model(
             except Exception:
                 pass
 
+    def _stream_watchdog() -> None:
+        # Fase 1: vent på første byte inden FIRST_BYTE_BUDGET_S.
+        if not got_first_byte.wait(timeout=FIRST_BYTE_BUDGET_S):
+            _force_close_stream()  # første-byte-timeout (uændret adfærd)
+            return
+        # Fase 2: re-armende inter-byte-deadline. Poll med kort interval; hvis der
+        # ikke er kommet en ny linje inden INTER_BYTE_BUDGET_S → force-close.
+        poll = min(1.0, float(INTER_BYTE_BUDGET_S))
+        while not stream_finished.wait(timeout=poll):
+            idle = _wd_time.monotonic() - float(last_activity.get("ts") or 0.0)
+            if idle >= INTER_BYTE_BUDGET_S:
+                watchdog_fired["inter_byte"] = True
+                # H3: gør den ellers-tavse mid-stream-frys MÅLBAR i Centralen FØR
+                # vi river socketen ned (den resulterende URLError klassificeres
+                # som transient af det højere lag). Self-safe.
+                _observe_visible_provider_error(
+                    "ollama", model, 0,
+                    f"ollama_inter_byte_stall: ingen ny linje i {INTER_BYTE_BUDGET_S}s "
+                    f"midt i streamen (idle={idle:.0f}s)")
+                _force_close_stream()
+                return
+
     watchdog = _threading.Thread(
-        target=_first_byte_watchdog,
-        name="ollama-first-byte-watchdog",
+        target=_stream_watchdog,
+        name="ollama-stream-watchdog",
         daemon=True,
     )
     watchdog.start()
@@ -1704,6 +1760,9 @@ def _stream_ollama_model(
             if controller is not None:
                 controller.attach_stream(response)
             for raw_line in response:
+                # H3: re-arm inter-byte-deadlinen — hver modtaget linje nulstiller
+                # idle-uret, så watchdog'en kun fyrer ved en ÆGTE mid-stream-frys.
+                last_activity["ts"] = _wd_time.monotonic()
                 if not got_first_byte.is_set():
                     got_first_byte.set()
                 # A11 pkt. 1: decode UDEN at rejse (split æøå/emoji → U+FFFD,
@@ -1752,6 +1811,7 @@ def _stream_ollama_model(
                     eval_count = int(event.get("eval_count") or eval_count)
                     break
         got_first_byte.set()  # let watchdog exit on early-break
+        stream_finished.set()  # H3: stop den re-armende inter-byte-poll
         # A11: streamen sluttede UDEN terminal/done EFTER vi sprang malformet(e)
         # chunk(s) over → trunkeret final-JSON. Bær op som typed retryable, så
         # 4.1's rund-retry kan fange den (i stedet for det generiske "no streamed
@@ -1764,10 +1824,15 @@ def _stream_ollama_model(
                 "Ollama stream ended malformed (truncated final JSON)")
     except Exception:
         got_first_byte.set()  # always release watchdog
+        stream_finished.set()  # H3: stop den re-armende inter-byte-poll
         if controller is not None and controller.is_cancelled():
             raise VisibleModelStreamCancelled("visible-run-cancelled")
         raise
     finally:
+        # H3: garantér at watchdog-tråden ALTID slipper (også ved early return/
+        # GeneratorExit), så den ikke kan force-lukke en socket efter vi er færdige.
+        got_first_byte.set()
+        stream_finished.set()
         if controller is not None:
             controller.clear_stream()
 

@@ -28,6 +28,7 @@ funktionen + de kanoniske konstanter. Wiring sker additivt.
 """
 from __future__ import annotations
 
+import json
 import random
 import re
 from typing import Final
@@ -271,3 +272,71 @@ def compute_backoff_with_jitter(
         # Respektér cooldown'en (gulv) men spred stadig med lidt jitter ovenpå.
         delay = max(delay, floor + random.uniform(0.0, min(raw, 1.0)))
     return delay
+
+
+# ── A11: hærdet line/SSE-decode (spec §1A + §11.1 A11) ───────────────────────
+#
+# Den EGNE SSE/NDJSON-decoder kunne FØR dræbe streamen mid-turn på to måder:
+#   (1) et UTF-8 multibyte-codepoint splittet over en netværks-chunk-grænse
+#       (æøå/emoji = Jarvis' normale stemme) → ``raw_line.decode("utf-8")``
+#       rejste ``UnicodeDecodeError`` ud af generatoren.
+#   (2) en HTTP-200-så-malformet/trunkeret JSON ``data:``-linje → ``json.loads``
+#       rejste ``JSONDecodeError`` ud af generatoren.
+# Begge var USYNLIGE for rund-niveau-retry'en (4.1): det er generator-exceptions,
+# ikke ``FollowupFailed``. Disse to helpers er den ENE delte, self-safe sti, så
+# ALLE parse-sites (first-pass ollama, _iter_sse_events, followup-adapteren)
+# opfører sig ens.
+
+
+class MalformedStreamPayload(Exception):
+    """Streamen sluttede malformet (trunkeret final-JSON / ingen terminal/``done``)
+    EFTER vi har sprunget ≥1 dårlig chunk over. Bæres op som typed retryable
+    ``malformed_stream_payload`` så 4.1's rund-retry kan fange den — i modsætning
+    til en enkelt-chunk-skip der bare fortsætter på en ellers sund stream."""
+
+
+def safe_decode_line(raw_line: bytes | str) -> str:
+    """Decode én rå stream-linje UDEN nogensinde at rejse.
+
+    ``errors="replace"`` betyder at et split multibyte-codepoint bliver til ét
+    erstatnings-tegn (U+FFFD) i stedet for at dræbe hele streamen — et erstattet
+    tegn er uendeligt bedre end et dødt svar (spec §11.1 A11, pkt. 1). De fleste
+    splits heler desuden af sig selv på næste linje fordi providerne sender hele
+    JSON-objekter pr. NDJSON-linje / komplette ``data:``-blokke."""
+    if isinstance(raw_line, str):
+        return raw_line
+    try:
+        return raw_line.decode("utf-8", errors="replace")
+    except Exception:
+        # Bytes der ikke engang kan replace-decodes (ekstremt sjældent) — fald
+        # tilbage til latin-1 som ALDRIG rejser, hellere mojibake end dødt stream.
+        try:
+            return raw_line.decode("latin-1", errors="replace")
+        except Exception:
+            return ""
+
+
+def try_parse_json_line(data: str) -> tuple[dict | None, bool]:
+    """Parse én JSON ``data:``-streng → ``(payload, ok)``, ALDRIG rejsende.
+
+    - ``(dict, True)``  : gyldigt objekt.
+    - ``(None, True)``  : tom/whitespace-streng (ingen fejl — bare ikke noget at parse).
+    - ``(None, False)`` : malformet/trunkeret JSON. Kalderen afgør skip-vs-fail:
+        en enkelt dårlig chunk midt i en ellers sund stream → SKIP (continue) +
+        let observe; men hvis streamen SLUTTER uden terminal/``done`` efter ≥1 skip
+        → bæres op som :class:`MalformedStreamPayload` (retryable).
+
+    Returnerer kun ``(dict, True)`` for ægte objekter; en JSON der parser til en
+    ikke-dict (liste/tal) tæller som malformet for vores formål."""
+    if data is None:
+        return None, True
+    stripped = data.strip()
+    if not stripped:
+        return None, True
+    try:
+        parsed = json.loads(stripped)
+    except (json.JSONDecodeError, ValueError):
+        return None, False
+    if isinstance(parsed, dict):
+        return parsed, True
+    return None, False

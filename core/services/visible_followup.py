@@ -33,11 +33,40 @@ from urllib import request as urllib_request
 
 from core.services.stream_failure_kind import (
     FailureKind,
+    MalformedStreamPayload,
     classify_failure,
     compute_backoff_with_jitter,
+    safe_decode_line,
+    try_parse_json_line,
 )
 
 _log = logging.getLogger(__name__)
+
+
+def _observe_malformed_stream_payload(
+    provider: str, model: str, round_index: int, *, ended_malformed: bool,
+    detail: str = "",
+) -> None:
+    """A11 (spec §11.1): followup-adapterens NDJSON/SSE-decoder mødte en malformet
+    chunk eller et split UTF-8-codepoint. Self-safe nerve i Centralen (stream-cluster).
+
+    ``ended_malformed=False`` = vi sprang ÉN dårlig chunk over (lav severity, stream
+    overlevede); ``True`` = streamen sluttede uden ``done`` efter et skip → den
+    retryable :class:`MalformedStreamPayload` 4.1's rund-retry fanger (høj severity)."""
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "stream",
+            "nerve": "malformed_stream_payload",
+            "lane": "visible", "provider": str(provider or ""), "model": str(model or ""),
+            "path": f"followup_round_{int(round_index) + 1}",
+            "severity": "fail" if ended_malformed else "skip",
+            "ended_malformed": bool(ended_malformed),
+            "detail": str(detail or "")[:200],
+        })
+    except Exception:
+        pass
+
 
 _OLLAMA_MAX_FOLLOWUP_EXCHANGES = 10
 _OLLAMA_MAX_TOOL_RESULT_CHARS = 8000
@@ -417,6 +446,11 @@ class OllamaFollowupAdapter:
                 )
                 watchdog.start()
 
+                # A11 (spec §11.1): saw_done = nåede terminal; saw_malformed = sprang
+                # ≥1 dårlig chunk over. Slutter streamen uden done EFTER et skip →
+                # typed retryable MalformedStreamPayload (4.1's rund-retry fanger den).
+                saw_done = False
+                saw_malformed = False
                 with urllib_request.urlopen(req, timeout=INTER_BYTE_BUDGET_S) as resp:
                     watchdog_response["resp"] = resp
                     for raw_line in resp:
@@ -427,10 +461,20 @@ class OllamaFollowupAdapter:
                         # truly silent follow-up round.
                         if not got_first_byte.is_set():
                             got_first_byte.set()
-                        line = raw_line.decode("utf-8").strip()
+                        # A11 pkt. 1: decode UDEN at rejse (split æøå/emoji → U+FFFD).
+                        line = safe_decode_line(raw_line).strip()
                         if not line:
                             continue
-                        event = json.loads(line)
+                        # A11 pkt. 2: én malformet NDJSON-linje må IKKE dræbe streamen.
+                        event, _ok = try_parse_json_line(line)
+                        if not _ok:
+                            saw_malformed = True
+                            _observe_malformed_stream_payload(
+                                "ollama", model, round_index,
+                                ended_malformed=False, detail=line[:120])
+                            continue
+                        if event is None:
+                            continue
                         msg = event.get("message") or {}
                         delta = str(msg.get("content") or "")
                         if delta:
@@ -450,9 +494,20 @@ class OllamaFollowupAdapter:
                         if tc:
                             collected_tool_calls.extend(tc)
                         if event.get("done"):
+                            saw_done = True
                             break
                 # Make sure watchdog exits cleanly even on early-break
                 got_first_byte.set()
+                # A11: streamen sluttede UDEN done EFTER et malformet-skip →
+                # trunkeret final-JSON. Rejs typed retryable så den klassificeres
+                # som malformed_stream_payload (caught af except Exception nedenfor
+                # → FollowupFailed → 4.1's rund-retry).
+                if not saw_done and saw_malformed:
+                    _observe_malformed_stream_payload(
+                        "ollama", model, round_index, ended_malformed=True,
+                        detail="stream ended without done after malformed chunk")
+                    raise MalformedStreamPayload(
+                        "Ollama followup stream ended malformed (truncated final JSON)")
                 last_exc = None
                 break
             except urllib_error.HTTPError as he:

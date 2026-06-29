@@ -31,6 +31,11 @@ from core.services.cheap_provider_runtime import (
     list_provider_models as list_live_provider_models,
     supported_cheap_providers,
 )
+from core.services.stream_failure_kind import (
+    MalformedStreamPayload,
+    safe_decode_line,
+    try_parse_json_line,
+)
 from core.services.prompt_contract import (
     build_visible_chat_prompt_assembly,
 )
@@ -122,6 +127,33 @@ def _observe_visible_provider_error(provider: str, model: str, status_code: int,
             "nerve": "provider_rate_limited" if status_code == 429 else "provider_error",
             "lane": "visible", "provider": str(provider or ""), "model": str(model or ""),
             "status_code": int(status_code), "detail": str(detail or "")[:200],
+        })
+    except Exception:
+        pass
+
+
+def _observe_malformed_stream_payload(
+    provider: str, model: str, path: str, *, ended_malformed: bool, detail: str = "",
+) -> None:
+    """A11 (spec §11.1): den egne SSE/NDJSON-decoder mødte en malformet/trunkeret
+    ``data:``-linje eller et split UTF-8-codepoint. Gør det MÅLBART i Centralen.
+
+    To severities, BEVIDST adskilt så vi kan måle hvor ofte streamen FAKTISK dør:
+      - ``ended_malformed=False`` → vi sprang ÉN dårlig chunk over på en ellers sund
+        stream (lav severity — streamen overlevede, intet svar tabt).
+      - ``ended_malformed=True``  → streamen sluttede uden terminal/``done`` efter et
+        skip = den retryable ``malformed_stream_payload`` 4.1 kan retrye (høj severity).
+    Self-safe: observabilitet må aldrig forstyrre stream-stien."""
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "stream",
+            "nerve": "malformed_stream_payload",
+            "lane": "visible", "provider": str(provider or ""), "model": str(model or ""),
+            "path": str(path or ""),
+            "severity": "fail" if ended_malformed else "skip",
+            "ended_malformed": bool(ended_malformed),
+            "detail": str(detail or "")[:200],
         })
     except Exception:
         pass
@@ -1418,7 +1450,7 @@ def _stream_openai_model(
         with urllib_request.urlopen(req, timeout=60) as response:
             if controller is not None:
                 controller.attach_stream(response)
-            for event in _iter_sse_events(response):
+            for event in _iter_sse_events(response, provider="openai", model=model):
                 event_type = str(event.get("type", ""))
                 if event_type == "response.output_text.delta":
                     delta = str(event.get("delta", ""))
@@ -1662,6 +1694,11 @@ def _stream_ollama_model(
             raise RuntimeError(
                 f"Ollama HTTP {http_exc.code}: {detail or http_exc.reason}"
             ) from http_exc
+        # A11 (spec §11.1): hærdet NDJSON-parse. saw_done = streamen nåede et
+        # terminalt event; saw_malformed = vi sprang ≥1 dårlig chunk over. Hvis
+        # streamen slutter uden done EFTER et skip → typed retryable malformed.
+        saw_done = False
+        saw_malformed = False
         with response_cm as response:
             watchdog_response["resp"] = response
             if controller is not None:
@@ -1669,10 +1706,22 @@ def _stream_ollama_model(
             for raw_line in response:
                 if not got_first_byte.is_set():
                     got_first_byte.set()
-                line = raw_line.decode("utf-8").strip()
+                # A11 pkt. 1: decode UDEN at rejse (split æøå/emoji → U+FFFD,
+                # ikke et dødt stream).
+                line = safe_decode_line(raw_line).strip()
                 if not line:
                     continue
-                event = json.loads(line)
+                # A11 pkt. 2: én malformet NDJSON-linje må IKKE dræbe streamen.
+                event, _ok = try_parse_json_line(line)
+                if not _ok:
+                    # Lone bad chunk på en ellers sund stream → skip + let observe.
+                    saw_malformed = True
+                    _observe_malformed_stream_payload(
+                        "ollama", model, "stream_first_pass",
+                        ended_malformed=False, detail=line[:120])
+                    continue
+                if event is None:
+                    continue
                 msg = event.get("message") or {}
 
                 delta = str(msg.get("content") or "")
@@ -1694,6 +1743,7 @@ def _stream_ollama_model(
                     collected_tool_calls.extend(tool_calls)
 
                 if event.get("done"):
+                    saw_done = True
                     if not parts and delta:
                         terminal_response = delta
                     prompt_eval_count = int(
@@ -1702,6 +1752,16 @@ def _stream_ollama_model(
                     eval_count = int(event.get("eval_count") or eval_count)
                     break
         got_first_byte.set()  # let watchdog exit on early-break
+        # A11: streamen sluttede UDEN terminal/done EFTER vi sprang malformet(e)
+        # chunk(s) over → trunkeret final-JSON. Bær op som typed retryable, så
+        # 4.1's rund-retry kan fange den (i stedet for det generiske "no streamed
+        # response" der så ud som en fatal/tom-completion).
+        if not saw_done and saw_malformed:
+            _observe_malformed_stream_payload(
+                "ollama", model, "stream_first_pass", ended_malformed=True,
+                detail="stream ended without done after malformed chunk")
+            raise MalformedStreamPayload(
+                "Ollama stream ended malformed (truncated final JSON)")
     except Exception:
         got_first_byte.set()  # always release watchdog
         if controller is not None and controller.is_cancelled():
@@ -1819,7 +1879,7 @@ def _stream_github_copilot_model(
         with urllib_request.urlopen(req, timeout=180) as response:
             if controller is not None:
                 controller.attach_stream(response)
-            for event in _iter_sse_events(response):
+            for event in _iter_sse_events(response, provider="github-copilot", model=model):
                 delta = _extract_chat_completion_delta(event)
                 if delta:
                     parts.append(delta)
@@ -2799,12 +2859,26 @@ def _chat_completion_stream_is_terminal(event: dict) -> bool:
     )
 
 
-def _iter_sse_events(response) -> Iterator[dict]:
+def _iter_sse_events(
+    response, *, provider: str = "openai", model: str = "",
+) -> Iterator[dict]:
+    """Hærdet SSE-decoder (spec §1A + §11.1 A11).
+
+    Buffer'er ``data:``-linjer til en komplet event-blok før parse (multi-line
+    data) og — afgørende — dræber ALDRIG streamen mid-turn:
+      - decode med ``errors="replace"`` så et split UTF-8-codepoint (æøå/emoji)
+        bliver til U+FFFD i stedet for en ``UnicodeDecodeError`` ud af generatoren.
+      - ``json.loads`` i try/except: en enkelt malformet ``data:``-blok midt i en
+        ellers sund stream → SKIP + let observe; men slutter streamen uden
+        ``[DONE]`` EFTER et skip → typed retryable :class:`MalformedStreamPayload`."""
     event_name = "message"
     data_lines: list[str] = []
+    saw_done = False
+    saw_malformed = False
 
     for raw_line in response:
-        line = raw_line.decode("utf-8").strip()
+        # A11 pkt. 1: decode UDEN at rejse.
+        line = safe_decode_line(raw_line).strip()
         if not line:
             if not data_lines:
                 event_name = "message"
@@ -2812,8 +2886,20 @@ def _iter_sse_events(response) -> Iterator[dict]:
             data = "\n".join(data_lines)
             data_lines = []
             if data == "[DONE]":
+                saw_done = True
                 break
-            payload = json.loads(data)
+            # A11 pkt. 2: én malformet event-blok må IKKE dræbe streamen.
+            payload, _ok = try_parse_json_line(data)
+            if not _ok:
+                saw_malformed = True
+                _observe_malformed_stream_payload(
+                    provider, model, "sse_decoder",
+                    ended_malformed=False, detail=data[:120])
+                event_name = "message"
+                continue
+            if payload is None:
+                event_name = "message"
+                continue
             if "type" not in payload:
                 payload["type"] = event_name
             yield payload
@@ -2823,6 +2909,15 @@ def _iter_sse_events(response) -> Iterator[dict]:
             event_name = line[6:].strip()
         elif line.startswith("data:"):
             data_lines.append(line[5:].strip())
+
+    # A11: streamen sluttede uden [DONE] EFTER et malformet-skip → trunkeret
+    # final-event. Bær op som typed retryable (caller's except → fejl-stien).
+    if not saw_done and saw_malformed:
+        _observe_malformed_stream_payload(
+            provider, model, "sse_decoder", ended_malformed=True,
+            detail="stream ended without [DONE] after malformed block")
+        raise MalformedStreamPayload(
+            "OpenAI SSE stream ended malformed (truncated final event)")
 
 
 def build_visible_model_surface() -> dict[str, object]:

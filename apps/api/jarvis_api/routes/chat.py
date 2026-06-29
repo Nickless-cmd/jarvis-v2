@@ -911,6 +911,10 @@ async def chat_run_subscribe(run_id: str, from_idx: int = 0):
                 else:
                     empty += 1
                     if empty > 300:
+                        # H1/G6: syntetisk terminal-frame + subscriber_timeout-nerve.
+                        yield rel.synthetic_terminal_frame(
+                            run_id, reason="run_subscribe_idle"
+                        )
                         break
                 await asyncio.sleep(0.08)
         finally:
@@ -951,6 +955,10 @@ async def chat_session_live(session_id: str):
                 else:
                     empty += 1
                     if empty > 300:
+                        # H1/G6: syntetisk terminal-frame + subscriber_timeout-nerve.
+                        yield rel.synthetic_terminal_frame(
+                            run_id, session_id, reason="session_live_idle"
+                        )
                         break
                 await asyncio.sleep(0.08)
         finally:
@@ -973,6 +981,7 @@ async def chat_session_follow(session_id: str):
     from fastapi.responses import StreamingResponse
 
     from core.services.run_follow import _snapshot
+    import core.services.run_event_log as rel
 
     async def _gen():
         idx = 0
@@ -989,6 +998,12 @@ async def chat_session_follow(session_id: str):
             else:
                 empty_polls += 1
                 if empty_polls > 150:  # ~12s uden frames → intet aktivt run, giv op
+                    # H1/G6 (§11.2 4. site): syntetisk terminal-frame + nerve så en
+                    # desk-follow ikke hænger i 'working' når runnet aldrig dukker op.
+                    run_id = rel.active_run_for_session(session_id) or ""
+                    yield rel.synthetic_terminal_frame(
+                        run_id, session_id, reason="session_follow_idle"
+                    )
                     break
             await asyncio.sleep(0.08)
 

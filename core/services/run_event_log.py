@@ -17,9 +17,46 @@ _lock = threading.Lock()
 # run_id -> {session_id, frames: list[str], done: bool, last_append_at: float, created_at: float}
 _RUNS: dict[str, dict] = {}
 _MAX_FRAMES = 4000   # runaway-værn pr. run
+
+
+def _is_terminal_frame(frame: str) -> bool:
+    """Er denne SSE-frame en TERMINAL-frame (message_stop)? Klienterne forlader kun
+    'working' på message_stop — derfor MÅ den ALDRIG falde for frame-cap'en (F11)."""
+    return "event: message_stop" in frame or '"type": "message_stop"' in frame \
+        or '"type":"message_stop"' in frame
+
+
+def _is_ephemeral_frame(frame: str) -> bool:
+    """ping/retry-frames er KEEPALIVE-støj på den direkte stream — de er irrelevante
+    at replaye til en sen re-subscriber og må ikke æde cap-budgettet på lange runs
+    (F11). last_append_at opdateres uanset, så liveness-detektion er upåvirket."""
+    return "event: ping" in frame or '"type": "ping"' in frame \
+        or '"type":"ping"' in frame or frame.startswith("retry:")
 _LIVE_IDLE_S = 20.0  # pings hver ~5s holder live under tool-runder
 _KEEP_DONE_PER_SESSION = 1  # behold seneste afsluttede log pr. session til sen reconnect
 _CREATE_GRACE_S = 60.0  # nyt run uden appends taelles live i assembly-vinduet (sync assembly blokerer ping-loop)
+
+
+# Eksakt samme SSE-form som anthropic_sse_emitter.message_stop — klienterne
+# (desk/mobil) forlader KUN 'working' på message_stop. Vi opfinder ikke et nyt event.
+SYNTHETIC_MESSAGE_STOP = 'event: message_stop\ndata: {"type": "message_stop"}\n\n'
+
+
+def synthetic_terminal_frame(
+    run_id: str = "", session_id: str = "", reason: str = "subscriber_timeout"
+) -> str:
+    """H1/G6: byg en syntetisk terminal-SSE-frame til en subscriber der GIVER OP uden
+    at have set 'done'. Fyrer samtidig den (ellers døde) subscriber_timeout-nerve.
+    SELV-SIKKER: kaster ALDRIG — en fejl her må ikke ramme den hotte SSE-generator;
+    værst-fald returneres frame'en alligevel så klienten stadig forlader 'working'."""
+    try:
+        from core.services import stream_sentinel
+        stream_sentinel.note_event(
+            run_id, "subscriber_timeout", session_id, reason=reason,
+        )
+    except Exception:
+        pass
+    return SYNTHETIC_MESSAGE_STOP
 
 
 def create(run_id: str, session_id: str) -> None:
@@ -35,6 +72,7 @@ def create(run_id: str, session_id: str) -> None:
             "created_at": time.monotonic(),
             "subscribers": 0,
             "consumed": False,
+            "cap_hit": False,  # F11: har vi allerede emitteret truncation-nerven for runnet?
         }
 
 
@@ -42,13 +80,47 @@ def append(run_id: str, frame: str) -> None:
     rid = (run_id or "").strip()
     if not rid or not frame:
         return
+    cap_just_hit = False
     with _lock:
         st = _RUNS.get(rid)
         if st is None:
             return
+        st["last_append_at"] = time.monotonic()
+        # Ephemeral keepalive (ping/retry): opdater liveness men persistér IKKE i
+        # replay-bufferen — så de ikke æder cap-budgettet (F11).
+        if _is_ephemeral_frame(frame):
+            return
+        terminal = _is_terminal_frame(frame)
         if len(st["frames"]) < _MAX_FRAMES:
             st["frames"].append(frame)
-        st["last_append_at"] = time.monotonic()
+        elif terminal:
+            # F11: TERMINAL-frame ankom EFTER cap'en. Den MÅ aldrig droppes —
+            # ellers ser hver re-subscriber intet 'done' → H1 bare-break → hæng.
+            # Reservér en hale-plads: tilføj den uanset cap (det er højst én frame
+            # i praksis, så bufferen vokser ikke ubegrænset).
+            st["frames"].append(frame)
+        else:
+            # F11: ikke-terminal frame over cap → DROPPES. Emit truncation-nerven
+            # ÉN gang pr. run, FØR vi taber den første over-cap frame.
+            if not st.get("cap_hit"):
+                st["cap_hit"] = True
+                cap_just_hit = True
+    if cap_just_hit:
+        _emit_cap_nerve(rid)
+
+
+def _emit_cap_nerve(run_id: str) -> None:
+    """Observe (cluster='stream', nerve='relay_frame_cap') at relay-bufferen ramte
+    cap'en og begynder at droppe ikke-terminale frames. Selv-sikker."""
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "stream", "nerve": "relay_frame_cap",
+            "run_id": str(run_id or ""), "max_frames": _MAX_FRAMES,
+            "detail": "relay-buffer over cap — dropper ikke-terminale frames; terminal-frame reserveres",
+        })
+    except Exception:
+        pass
 
 
 def mark_done(run_id: str) -> None:
@@ -181,5 +253,6 @@ def claim_or_create(session_id: str, stale_cap_s: float = 150.0) -> tuple[str, b
             "created_at": now,
             "subscribers": 0,
             "consumed": False,
+            "cap_hit": False,
         }
         return rid, True

@@ -72,6 +72,11 @@ def note_stop(run_id: str, *, reason: str = "done") -> None:
         pass
 
 
+# NOTE (zombie_slot): nerven 'stream_zombie_slot' er BEVIDST uwired her. Den ægte
+# zombie-detektion (message_start uden message_stop) dækkes allerede af _sweep_stalled
+# → 'stream_stall' + persistent incident. Et separat zombie_slot-kald ville være
+# dobbelt-observabilitet for samme tilstand. Wires først hvis en NY zombie-kilde
+# (fx run_event_log active-slot der aldrig ryddes) får et entydigt call-site.
 def note_event(run_id: str, kind: str, session_id: str = "", **data: Any) -> None:
     """Andre lane-fejl/edge-cases: idle / cancel / error / zombie_slot / subscriber_timeout."""
     try:

@@ -277,6 +277,11 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                     else:
                         empty += 1
                         if empty > 300:  # ~24s helt tavst (pings hver 5s) → giv op
+                            # H1/G6: aldrig bare break — emit syntetisk terminal-frame
+                            # så klienten forlader 'working', + fyr subscriber_timeout-nerve.
+                            yield rel.synthetic_terminal_frame(
+                                run_id, session_id, reason="relay_subscriber_idle"
+                            )
                             break
                     await _a.sleep(0.08)
             finally:

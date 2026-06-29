@@ -102,6 +102,10 @@ buffer-trunkering · persisterings-fejl · ollama inter-byte-frys · agentic-wat
   må afslutte/trunkere et run uden en nerve.
 - **I5 — Typed taksonomi:** én retryable/fatal-sandhedskilde (ikke substring-matching).
 - **I6 — Per-provider config:** retry-budgetter + idle-timeout pr. provider, ikke globale konstanter.
+- **I7 — Bounded kontekst i agentic loop:** lean prompt for runde ≥2 + overløb som navngivet failure_kind,
+  så lange/autonome loops ikke bloater sig ihjel (§4.7).
+- **SLO (P2):** ≥99,5% interaktive tool-runs når terminal-besked · p99 rund-retry < 2 · 0 tavse stops/døgn.
+  Retry må ALDRIG re-eksekvere tools (S3) · hårdt total-retry-loft pr. tur (S2) · kill-switch pr. risikabel fase (P1).
 
 ---
 
@@ -141,25 +145,60 @@ loop-niveau stream-budget, der wrapper adapter-niveau request-budget — Codex' 
 HTTP-route accepterer klient-offset/`Last-Event-ID` → re-subscribe genoptager fra idx i stedet for at
 replaye fra frame 0. Hæv/nerve 4000-frame-cap.
 
+### 4.7 Lean agentic-round-prompt (I7 — ny; Bjørns spørgsmål 29. jun)
+**Verificeret problem:** `visible_followup.py:313` sender `list(base_messages) + exchanges` HVER runde —
+dvs. hele den tunge assembly-prompt (~26k tegn/6.5k tokens: system + 45-dels awareness/inner-life/somatik)
+re-sendes hver agentic-runde, plus de voksende tool-exchanges. Konsekvens:
+- **Kontekst-bloat → overløb** (lange/autonome runs rammer model-vinduet → Ollama 400 "prompt too long"
+  → tavst svar, [[reference_model_context_windows]]). Reel cut-årsag i lange agentic loops.
+- **Flere fejl for thinking-modeller** (mere at ræsonnere over) + unødig latency + token-kost.
+
+**Design:** introducér en LEAN prompt for runde ≥2 af et agentic loop:
+- BEHOLD: identitet-kerne (hvem han er, kort), tool-katalog, den oprindelige bruger-opgave, ALLE tool-resultater.
+- DROP: tung per-turn awareness-berigelse (inner-life/somatik/mood/digests/causal/nudges) — den framer kun
+  *første* svar, ikke opgave-eksekvering.
+- BEVAR de 2 load-bearing anti-løgn-rækker (fact-grounding) hvis de er billige.
+- **Cache-interaktion:** selv hvis prefix er cachet (billig kost) tæller den STADIG mod kontekst-vinduet og
+  fortyndes — så trimning hjælper fejl+overløb uanset cache. Mål token-besparelsen pr. runde.
+- **Risiko at respektere:** dropper man for meget mister Jarvis personlighed midt i et loop. Test at lean-prompten
+  bevarer stemme + at tool-resultater aldrig trimmes væk.
+
+Dette er et selvstændigt arbejde der KAN reducere både agentic-cuts (overløb) OG autonom-looping. Egen fase.
+
 ---
 
 ## 5. Implementerings-plan (faser, prioriteret efter cut-impact)
 
+**Fase 0 — Fundament FØR vi rører den hotte loop (P7, S1):**
+Fejl-injektions-harness (mock 502/stream-drop/overløb i runde K) + kill-switch-flag-mønster + central-
+dæknings-assertion-test. Ingen hot-loop-ændring uden dette. Reproducér en ægte cut via #2-observabilitet først.
+
 **Fase 1 — Stop blødningen (rammer cut-roden direkte):**
-1. Rund-niveau stream-retry der bevarer turen (4.1).
-2. Retryable/fatal-taksonomi (4.2).
-3. Split budgetter + retry på default-adapteren (4.3 + H2).
-4. `note_round_retry`-nerve (4.5).
+1. Rund-niveau stream-retry der bevarer turen (4.1) — bag `AGENTIC_ROUND_RETRY_ENABLED`-flag (P1).
+2. Retryable/fatal-taksonomi (4.2) — inkl. context-window-overløb som navngivet kind (S5).
+3. Split budgetter + retry på default-adapteren (4.3 + H2) + **hårdt total-retry-loft pr. tur** (S2).
+4. Invariant: retry re-sampler KUN, re-eksekverer ALDRIG tools (S3).
+5. Keepalive + "Reconnecting n/m"-event under backoff (S4).
+6. `note_round_retry`-nerve med `recovered`/`exhausted`-udfald (4.5 + S7).
 → Forventet effekt: forbigående mid-turn-blip dræber ikke længere turen. Den primære cut-klasse lukket.
 
 **Fase 2 — Luk lydløse huller (I4):**
 H1 subscriber-give-up (nerve + terminal-frame) · watchdog-timeout-nerve · persisterings-fejl-nerve (H5) ·
 provider-error-observe for responses/codex (H4) · buffer-trunkerings-nerve (H6). + ryd døde nerver.
 
-**Fase 3 — Transport-hærdning (4.4):**
-httpx på resterende urllib-baner + granulær timeout + retry+jitter first-pass + erstat watchdog-socket-close.
+**Fase 2.5 — Klient-integritet (P4, "ingen hemmelige bræk" på klient-siden):**
+Mobil `mergeServer`-bro (luk wholesale-replace-race der får svar til at forsvinde) · desk+mobil ignorerer
+ukendte SSE-events graциøst (verificér mod nye retry-events) · persisterings-pålidelighed/-retry (H5/P5).
 
-**Fase 4 — Resilience-polish:**
+**Fase 3 — Transport-hærdning (4.4) + circuit-breaker:**
+httpx på resterende urllib-baner + granulær timeout + retry+jitter first-pass + erstat watchdog-socket-close.
+\+ provider-helbreds-cirkelbryder (S6): N fejl i træk → kort-slut + observér + valgfri fallback-provider.
+
+**Fase 4 — Lean agentic-prompt (4.7, I7) + operabilitet:**
+Lean prompt for runde ≥2 (reducér overløb/fejl i lange+autonome loops) · operator cut-overblik + proaktiv
+alerting (P3) · SLO-instrumentering (P2).
+
+**Fase 5 — Resilience-polish:**
 Resume-from-offset (4.6) · empty-completion 1× retry før fallback · per-provider-config-surface · frame-cap hævet.
 
 ---
@@ -177,4 +216,53 @@ Resume-from-offset (4.6) · empty-completion 1× retry før fallback · per-prov
 - Reproducér mid-turn-fejl ved fejl-injektion (mock 502/stream-drop i runde 2 af 3) → turen skal overleve + retry synlig i Central.
 - Last-fuzz: mange samtidige tool-runs → ingen tavs cut, hver afslutter med terminal-frame.
 - Central-dækningstest: hver fejl-sti i §2-tabellen skal producere en nerve (automatiseret assertion).
-- Acceptkriterier I1-I6 som tjekliste pr. PR.
+- Acceptkriterier I1-I7 som tjekliste pr. PR.
+
+---
+
+## 8. Self-review (korrekthed/fuldstændighed) — fundne huller i spec'en
+
+- **S1 — Roden er en HYPOTESE, ikke bevist.** 8 reproduktioner kørte rent; mid-turn-retry-teorien er
+  stærk + kode-funderet men IKKE bekræftet ved reproduktion. **Krav:** Fase 1 skal være korrekt UANSET
+  om hypotesen holder (den hærder loopet generelt), og vi erklærer IKKE sejr før #2-observabiliteten viser
+  en `note_round_retry`/`empty_completion`-sti der matcher en ægte cut. Byg fejl-injektion (S-verifikation) FØRST.
+- **S2 — Kompounderende retries.** Rund-retry (3) × adapter-retry (3) = op til 9 provider-kald pr. runde,
+  og × runder = eksplosion. **Krav:** hårdt TOTAL-loft (samlet forsøg + samlet wall-clock pr. tur), ikke kun pr. lag.
+- **S3 — Retry må KUN re-sample, ALDRIG re-eksekvere tools.** Tools har side-effekter (memory_upsert, bash).
+  Codex bevarer tool-resultater i history og re-sampler kun. **Krav:** eksplicit invariant — retry genbruger
+  `_followup_exchanges` (tool-output bevaret), kører ALDRIG et tool igen.
+- **S4 — Backoff blokerer streamen.** Under retry-backoff flyder ingen tokens. **Krav:** keepalive +
+  "Reconnecting n/m"-event SKAL fyre under backoff, ellers genindfører vi et tavst gap.
+- **S5 — Manglende failure_kind: context-window-overløb.** §4.7 afslørede det. **Krav:** overløb er en
+  navngivet (fatal-men-actionable) failure_kind med egen nerve + lean-prompt-mitigering, ikke et tavst 400.
+- **S6 — Intet circuit-breaker / provider-failover.** Mod en DØD provider piler 3× retry × mange runs op
+  (thundering herd trods jitter). Codex har transport+provider-failover; vi har intet. **Krav:** provider-helbreds-
+  cirkelbryder (efter N fejl i træk → kort-slut + observér + evt. fald til fallback-provider) — mindst Fase 3.
+- **S7 — "Reddet" vs "opbrugt" skal være distinkte signaler.** `note_round_retry(attempt)` + et separat
+  `recovered`/`exhausted`-udfald, så Centralen viser om retry FAKTISK redder eller bare udskyder døden.
+
+## 9. Production-readiness review (set fra en der skal DRIVE det) — operabilitets-huller
+
+- **P1 — Kill-switch.** Fase 1 rører den hotte loop. **Krav:** env/config-flag (`AGENTIC_ROUND_RETRY_ENABLED`)
+  så vi kan slå rund-retry FRA uden redeploy hvis den opfører sig forkert. Gælder hver risikabel fase.
+- **P2 — Udefineret SLO = udefineret "færdig".** "Produktions-grade" kræver et mål. **Forslag:**
+  ≥99,5% af interaktive tool-runs når en terminal-besked; p99 rund-retry < 2; 0 tavse stops/døgn (terminal-frame
+  garanteret). Uden tal kan vi ikke sige "lukket en gang for alle".
+- **P3 — Operator-view + alerting, ikke kun passiv central.** I dag skal man poll'e incidents. **Krav:**
+  ét "cut-overblik" (recurrence-rate pr. failure_kind/provider) + PROAKTIV alert når empty_completion/round-retry-
+  exhausted spiker over tærskel. Ellers opdager vi næste regression for sent (præcis Bjørns "ingen hemmelige bræk").
+- **P4 — Klient-kompat for nye events + den uafsluttede mobil-bug.** Nye `retry`/round-retry-SSE: desk+mobil SKAL
+  ignorere ukendte events grациøst (verificér). Og: **mobilens wholesale-replace** (`sessions.select` →
+  `setMessages(server)` racer post-svar-halen → svar forsvinder, fundet 29. jun) er et "hemmeligt bræk" i scope
+  for "intet må fejle lydløst" — skal med (port desk's `mergeServer`-bro til mobil).
+- **P5 — Persisterings-pålidelighed (H5), ikke kun en nerve.** "Vist live, væk ved reload" er data-integritet.
+  **Krav:** persist-retry/transaktionel garanti — en nerve fortæller os det skete, men brugeren har stadig tabt svaret.
+- **P6 — Total-run wall-clock SLA.** Retries må ikke gøre en tur til minutters hæng. **Krav:** hård total-tur-deadline
+  (degradér til "jeg brugte for lang tid, her er hvad jeg nåede" — aldrig uendeligt).
+- **P7 — Rollout-disciplin.** Byg fejl-injektions-harness (mock 502/drop/overløb) FØR den hotte loop røres;
+  hver fase bag flag; verificér mod I1-I7 + SLO før næste fase. Ingen big-bang.
+
+**Konklusion på reviews:** spec'ens RETNING er solid (transport-garantier + codex-loop-mønster + nul-lydløs),
+men den var ikke produktions-klar uden: total-retry-loft (S2), re-sample-ikke-re-exec-invariant (S3),
+circuit-breaker (S6), kill-switch (P1), SLO (P2), proaktiv alerting (P3), mobil-merge-fix (P4) og
+fejl-injektion-først (P7). Disse er nu indarbejdet. **MED dem er vi klar til at bygge Fase 1.**

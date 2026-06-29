@@ -127,6 +127,42 @@ def _observe_visible_provider_error(provider: str, model: str, status_code: int,
         pass
 
 
+def _observe_content_empty_thinking_fallback(
+    provider: str, model: str, path: str, thinking_len: int,
+) -> None:
+    """Reasoning-model svarede i `message.thinking` mens `message.content` var TOM
+    (glm-5.2:cloud, deepseek thinking, ...). Vi surfacer thinking som svar i stedet
+    for at raise empty_completion. Gør det MÅLBART i Centralen — vi kan ikke altid
+    skelne (a) modellen lagde svaret i thinking by design fra (b) stream droppede
+    efter thinking før content (transient). Begge surfaces, men signalet lader det
+    højere lag måle hyppighed + evt. retrye. Self-safe."""
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "stream",
+            "nerve": "content_empty_thinking_fallback",
+            "lane": "visible", "provider": str(provider or ""), "model": str(model or ""),
+            "path": str(path or ""), "thinking_len": int(thinking_len),
+        })
+    except Exception:
+        pass
+
+
+def _strip_thinking_delimiters(text: str) -> str:
+    """Fjern løse thinking-delimiter-tokens hvis et thinking-felt surfaces som svar.
+    Nogle modeller lækker rå tags (<think>...</think>, ◁think▷, [THINK]) ind i
+    thinking-feltet. Vi rydder dem så brugeren ikke ser stilladset, men bevarer
+    selve teksten."""
+    import re
+    if not text:
+        return ""
+    cleaned = re.sub(
+        r"</?\s*think(?:ing)?\s*>|◁/?\s*think▷|\[/?\s*think(?:ing)?\s*\]",
+        "", text, flags=re.IGNORECASE,
+    )
+    return cleaned.strip()
+
+
 class VisibleModelRateLimited(RuntimeError):
     """Visible-lanens provider er rate-limited (429) eller returnerede en
     midlertidig HTTP-fejl. Instrumenteret i __init__ så HVER rate-limit på tværs
@@ -1248,9 +1284,21 @@ def _execute_ollama_model(
     msg = data.get("message") or {}
     text = str(msg.get("content") or "").strip()
     if not text:
-        # Tomt svar = "spinner→stop→intet". Gør det SYNLIGT i Centralen (var tavst).
-        _observe_visible_provider_error("ollama", model, 0, "Ollama returnerede tomt svar")
-        raise RuntimeError("Ollama visible execution returned no response")
+        # I1-heal (spec §11.5): SAMME thinking-felt-parse-hul som streaming-stien.
+        # En resend (re-sample) helbreder IKKE et thinking-only svar af sig selv —
+        # content er stadig tom. Surface thinking som svaret hvis det har indhold,
+        # i stedet for at raise empty. FALLBACK: når content er til stede er adfærden
+        # uændret. Fyr nerve så hyppigheden er målbar.
+        think = _strip_thinking_delimiters(str(msg.get("thinking") or ""))
+        if think:
+            _observe_content_empty_thinking_fallback(
+                "ollama", model, "resend", len(str(msg.get("thinking") or "")),
+            )
+            text = think
+        else:
+            # Tomt svar = "spinner→stop→intet". Gør det SYNLIGT i Centralen (var tavst).
+            _observe_visible_provider_error("ollama", model, 0, "Ollama returnerede tomt svar")
+            raise RuntimeError("Ollama visible execution returned no response")
 
     prompt_estimate = sum(len(str(m.get("content", ""))) for m in messages) // 4
     prompt_eval_count = int(data.get("prompt_eval_count") or prompt_estimate)
@@ -1667,6 +1715,23 @@ def _stream_ollama_model(
     if not text:
         text = terminal_response.strip()
 
+    reasoning_text = "".join(reasoning_parts)
+
+    # I1-heal (thinking-felt-parse-hul, spec §11.5): reasoning-modeller (glm-5.2:cloud,
+    # deepseek thinking, ...) lægger NOGLE GANGE hele svaret i `message.thinking` mens
+    # `message.content` er TOM. FØR raiste vi "returned no streamed response" → empty_
+    # completion → brugeren fik fallback i stedet for et svar. Nu: HVIS content-text er
+    # tom OG ingen tool_calls MEN thinking har indhold → surface thinking som svaret.
+    # FALLBACK, ikke default: når content er til stede, er adfærden UÆNDRET (thinking
+    # forbliver reasoning-only til replay, præcis som før). Vi kan ikke altid skelne
+    # (a) svar-i-thinking-by-design fra (b) trunkeret stream — begge surfaces (bedre end
+    # blankt), men vi fyrer et nerve så det højere lag kan måle/retrye.
+    if not text and not collected_tool_calls and reasoning_text.strip():
+        text = _strip_thinking_delimiters(reasoning_text)
+        _observe_content_empty_thinking_fallback(
+            "ollama", model, "stream_first_pass", len(reasoning_text),
+        )
+
     if collected_tool_calls:
         yield VisibleModelToolCalls(tool_calls=collected_tool_calls)
 
@@ -1681,7 +1746,7 @@ def _stream_ollama_model(
             input_tokens=prompt_eval_count,
             output_tokens=eval_count or _estimate_tokens(text),
             cost_usd=0.0,
-            reasoning_content="".join(reasoning_parts),
+            reasoning_content=reasoning_text,
         )
     )
 

@@ -1,6 +1,6 @@
 # Production-Grade Streaming Spec
 
-**Status:** Draft 1 — 2026-06-29. Author: Claude (research-grounded). Owner: Bjørn.
+**Status:** Draft 2 — 2026-06-29 (adversarisk valideret, §11 blokerende tilføjelser foldet ind). Owner: Bjørn.
 **Mål:** Jarvis' streaming skal være lige så robust som OpenAI SDK / Codex på transport-laget,
 ALDRIG fejle lydløst, og være fuldt integreret i Den Intelligente Central.
 
@@ -333,3 +333,96 @@ brække reduceren (verificeret + testet `streamReducer.ts:111`). Code-mode deler
 
 **Net desk:** kun D1 var en ægte bug (nu fikset, afventer rebuild). D2-D7 er lav-severity polish eller rene
 afhængigheder af allerede-planlagte server-faser. Desk kræver **ingen** ændring for H1/I2-fixet.
+
+---
+
+## 11. Adversarisk validering (5 røde-hold + synteser, 29. jun) — dom + blokerende tilføjelser
+
+**Dom: GO-med-tilføjelser.** Kerne-diagnosen + retningen er kode-verificeret korrekte (cut-roden, retry-seamet,
+Fase-0-først). MEN spec'en var som skrevet **IKKE failsafe-complete** og matchede **IKKE** SDK+codex endnu.
+Seks blokerende huller (alle verificeret mod kode) — to af dem betyder at fixet som specificeret enten er
+**umuligt** (B) eller **aktivt korrumperende** (C). Disse er ægte blockers, ikke polish.
+
+### 11.1 Blokerende (skal foldes ind FØR/SOM-DEL-AF de berørte faser)
+
+- **B11 — I5 typed-taksonomi er UTILFREDSSTILLELIG som-er → skal bygges FØR 4.1.**
+  `FollowupFailed` (`visible_followup.py:78`) bærer kun `round_index:int, error:str, summary:str`; HTTP-koden
+  stringificeres ind i `summary` ("provider-error: HTTP 502"), og watchdog'en føder en ANDEN streng
+  (`visible_runs.py:2157`). 4.1's retryable-beslutning afhænger af et struktureret `failure_kind`+`http_status`
+  der ikke findes. **FIX: tilføj `failure_kind(enum)`+`http_status(int|None)` til `FollowupFailed` OG watchdog-
+  `_a_failure`, populér ved ALLE 5+ raise/yield-steder. Sekvens: FØR 4.1 i Fase 1.**
+
+- **C11 — 4.1-retry DOBBELT-emitter/-persisterer partielle deltas (NY regression fixet selv indfører).**
+  Deltas yieldes til klient OG appendes til `_all_followup_parts` (`visible_runs.py:2210`); ved retry nulstilles
+  kun `_a_parts` (2014), IKKE `_all_followup_parts` (som føder det persisterede svar, 3043). En runde der
+  streamer partiel tekst og så fejler → teksten står live + i persistering; 4.1's re-run re-yielder friske deltas
+  → **dubleret synlig tekst + dobbelt-tællet persistering på præcis "tænker-lidt-BANG"-casen.** **FIX: snapshot
+  `len(_all_followup_parts)` ved runde-start; ved retry trunkér tilbage til den grænse + emit typed
+  `round_restart_discard_partial`-SSE; spec desk/mobil-reducer-discard-kontrakt i Fase 1 (ikke 2.5). FØR hot-loop.**
+
+- **D11 — Forældreløs samtidig provider-stream + silence-timeout fejl-klassificeret.**
+  4.1-retry spawner en ANDEN `_pump_agentic` mens den første executor-tråd er ukancellérbar (`visible_runs.py:2107`)
+  → to samtidige streams/runde (dobbelt last/kost + hængende forbindelse). OG: silence-timeout (GLM 44-102s TTFT-
+  klasse) er listet retryable, men retry af en stallet provider re-trigger samme timeout → brænder budget for
+  ~nul recovery. **FIX: split retryable i `transient_drop` (retry samme provider) vs `provider_stall` (skip retry →
+  S6 circuit-breaker/failover); fence den døde pump (epoch-token + force-close socket) FØR retry. FØR hot-loop.**
+
+- **A11 — Egen SSE-decoder uhærdet (split-UTF-8 / malformet JSON dræber streamen mid-turn).**
+  `_iter_sse_events` (`visible_model.py:2737`) gør `raw_line.decode("utf-8")` uden `errors=` + `json.loads` uden
+  guard; DELT af first-pass OG hver followup-adapter. Et split multibyte-codepoint (æøå/emoji = Jarvis' normale
+  stemme) eller 200-så-malformet-JSON-chunk → exception ud af generatoren → stream dræbt. **Usynlig for 4.1's retry
+  (generator-exception, ikke FollowupFailed)** og et medlem af den EKSAKTE symptom-klasse. §1A påstår den dækket,
+  §4/§5 planlægger den intetsteds. **FIX: byte-buffer-til-event-grænse + `errors="replace"` + `json.loads` try/except
+  → typed retryable `malformed_stream_payload`; ind i §2-tabel + nerve + Fase-0-fejlcase.**
+
+- **E11 — Tur-scoped total-retry-loft ikke wired ind i 4.1 (900-kald worst-case).**
+  S2/P6 påstår total-loft, men 4.1 introducerer kun per-runde `_round_retry_count`; med `_AGENTIC_MAX_ROUNDS=100`
+  (`visible_runs.py:1799`) → 9×100. **FIX: `_turn_total_retries`+`_turn_started_at` som førsteklasses del af 4.1
+  (init ved for-loop 1965), tjekket i retry-grenen, konkrete tal (≤12 stream-retries/tur, ~600s wall-clock = P6).
+  Afklar eksplicit om ollama's interne attempts=3 fjernes eller beholdes.**
+
+- **F11 — 4000-frame-cap dropper TERMINAL-frames lydløst på lange runs → DETERMINISTISK I2-brud.**
+  `run_event_log.append` (`run_event_log.py:49`) dropper frames over cap uden nerve. En lang agentic/autonom run
+  (>4000 frames = §4.7-målet) taber sit `message_stop` → hver re-subscriber/cross-device-følger (chat.py:913/953)
+  ser intet 'done' → H1's bare break → **I2-brud på HVER lang run, ikke intermittent.** De nye retry/heartbeat-frames
+  accelererer cap'en. **FIX: terminal-frames ALDRIG underlagt cap (reserveret hale-slot) + trunkerings-nerve FØR drop;
+  heartbeat/retry-frames live-only (ikke persisteret til replay-log). Træk ind i Fase 1/2, ikke Fase 5.**
+
+### 11.2 Ikke-blokerende, men skal med (heal-ikke-bare-observér + faktuelle rettelser)
+
+- **I1 var OVERSTATED:** `_guarantee_visible_outcome` (`visible_runs.py:6716`) skriver en STATISK undskyldnings-streng,
+  den re-sampler IKKE. Reframe I1 som "ingen LYDLØS tom completion (observér + ærlig fallback)" — IKKE en heal.
+  **Træk empty-completion 1× re-sample fra Fase 5 til Fase 1** (genbrug `note_resend`-primitivet `visible_runs.py:1429`);
+  undskyldning fyrer kun EFTER re-sample fejler. I1's SLO = recovered-rate.
+- **S6 faktuelt forkert:** der FINDES en circuit-breaker (ofa/arko, `cheap_provider_runtime.py:1890`). **Fase 3 = LØFT
+  den til en delt per-provider-breaker** (ikke greenfield — respektér konsoliderings-reglen). Og: visible-lane
+  provider-**failover** (mindst deepseek-v4-flash som fallback) skal være KRÆVET, ellers er S6 stop-ikke-heal.
+- **Jitter i den DELTE backoff-helper** (`visible_followup.py:463` er ren eksponentiel uden jitter) — så BÅDE den
+  løftede ollama-retry og 4.1 arver den; ellers genskaber vi den thundering-herd S6 skal dæmpe.
+- **Retry-After:** håndtér RFC-7231 HTTP-date-form (ikke kun numerisk; `:460` `float(...or 0)` nuller date-form →
+  øjeblikkelig retry der defeater cooldown). Én delt parser; uparselbar → default-backoff, ikke 0.
+- **P6 graceful-degrade ind i 4.1-udmattelse:** emit den checkpointede partial (`_all_followup_parts`) + ærlig note
+  FØR interruption-nerven — udmattelse må ALDRIG være et tomt tab (partiel tekst findes allerede).
+- **H5 persist-retry (P5)** → tildel Fase 2.5 (heal, ikke kun nerve; `_persist_session_assistant_message` er i `except:pass`).
+- **§4.6:** fraværende/ugyldig Last-Event-ID → replay fra frame 0 (bevarer §10 cross-device HANDLED); offset er ren
+  optimering, aldrig en korrekthедs-afhængighed. `read(from_idx)` findes allerede (`run_event_log.py:61`) → scope =
+  klient-sender-offset + cap-hævning.
+- **SLO-målbarhed:** "0 tavse stops/døgn" er gated på Fase-2-nerver → kan ikke validere Fase-1-exit. Træk H1+watchdog-
+  nerve-sliven ind i Fase 1, ELLER nedgradér Fase-1-exit til `note_round_retry` recovered-rate. Angiv hvilken nerve
+  bakker hvert SLO-tal.
+- **Fase 0-harness 3 former** (ikke kun clean-fail): clean-fail-før-delta · **partial-deltas-så-drop (PRIMÆR
+  accept-scenarie** — trigger for C11+D11) · HTTP-400-overflow-body (context-window). Assertér: ingen dubleret
+  persisteret tekst, ingen anden samtidig pump.
+- **Retry-prompt-identitet (4.1/4.7):** en retry SKAL sende byte-identiske messages som original (samme lean/fuld-
+  beslutning, samme exchange-snapshot) — snapshot messages ÉN gang/runde, recompute ALDRIG lean-vs-fuld i retry-loopet.
+- **Kill-switch (P1):** at slå retry FRA må ALDRIG slå terminal-frame (I2) eller nerve (I4) fra — de er ubetingede.
+  Land watchdog→`note_round_failed`-wiring i Fase 1 (flag-off falder til den nerve-blinde watchdog-sti).
+- **Minor:** fjerde give-up-sted `chat.py:991` (`empty_polls>150`) ind i H1/I2-revisionen · relay-GC/TTL for done-runs
+  i `_RUNS` (in-proc dict, ingen eviction → memory-pressure på --workers 1) · idempotency-key som eksplicit
+  forsvarligt ikke-mål (retries er sampling-only + history-keyed via S3).
+
+### 11.3 Revideret rækkefølge (blokere foldet ind)
+**Fase 1 bliver:** B11 (struktureret failure_kind) → C11+D11 (partial-discard + pump-fence, FØR hot-loop) →
+4.1 rund-retry → A11 (decoder-hærdning i taksonomi) → E11 (tur-total-loft) → I1-resample → SLO-nerve-slice +
+kill-switch-I2/I4-garanti. **Fase 0-harness's primære scenarie = partial-then-drop.** Først NÅR disse er inde +
+verificeret mod harness, er designet failsafe-complete og på SDK-transport + codex-app-paritet.

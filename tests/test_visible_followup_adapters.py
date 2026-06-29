@@ -615,7 +615,9 @@ def test_ollama_normalize_repairs_truncated_arguments():
     ]
     out = adapter._normalize_tool_calls(tcs)
     assert out[0]["function"]["arguments"] == {}        # afkortet → repareret
-    assert out[1]["function"]["arguments"] == '{"q": "hej"}'  # gyldig → bevaret
+    # 2026-06-29: gyldig JSON-streng PARSES nu til dict (ollama-native) i stedet for at stå
+    # som streng → ollama re-parser aldrig en streng → "looks like object"-400'en er umulig.
+    assert out[1]["function"]["arguments"] == {"q": "hej"}    # gyldig → parset til dict
     assert out[2]["function"]["arguments"] == {"a": 1}  # dict → urørt
     assert out[3]["function"]["arguments"] == {}        # tom → {}
 

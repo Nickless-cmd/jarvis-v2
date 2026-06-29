@@ -411,7 +411,14 @@ class OllamaFollowupAdapter:
             return
         try:
             import json as _json
-            _json.loads(s)               # gyldig JSON-streng → lad stå
+            parsed = _json.loads(s)
+            # Gyldig JSON-streng → PARSE til dict (ollama-native: /api/chat foretrækker
+            # ``arguments`` som dict, jf. docstring). FØR (2026-06-29) lod vi strengen stå
+            # → ollama RE-PARSER den selv, og en afkortet/grænse-ramt streng (fx write_file
+            # med en KÆMPE spec som content) → HTTP 400 'Value looks like object, but can't
+            # find closing "}" symbol' → hele runden dør. Sender vi en færdig dict, re-parser
+            # ollama aldrig en streng → fejlen er umulig. Ikke-dict (liste/skalar) → {}.
+            container["arguments"] = parsed if isinstance(parsed, dict) else {}
         except Exception:
             container["arguments"] = {}  # afkortet/malformet → safe fallback
 
@@ -674,6 +681,32 @@ class OllamaFollowupAdapter:
                     _http_body = ""
                 if _http_body:
                     setattr(he, "_jarvis_body", _http_body[:300])
+                # Diagnostik (Bjørn 29. jun): malformet JSON i request-body'en
+                # ("Value looks like object, but can't find closing '}'"). Find hvilke
+                # tool_calls der STADIG har streng-arguments (burde være dicts efter
+                # _repair_arguments) — så hvis fejlen overlever fixet ved vi hvor den bor.
+                if _http_body and ("looks like object" in _http_body or "closing" in _http_body
+                                   or "can't find" in _http_body):
+                    try:
+                        _bad = []
+                        for _m in (payload.get("messages") or []):
+                            if not isinstance(_m, dict):
+                                continue
+                            for _tc in (_m.get("tool_calls") or []):
+                                _fn = _tc.get("function") if isinstance(_tc, dict) else None
+                                for _src in (_tc, _fn):
+                                    if isinstance(_src, dict) and isinstance(_src.get("arguments"), str):
+                                        _bad.append({"name": (_fn or {}).get("name") if isinstance(_fn, dict) else None,
+                                                     "len": len(_src["arguments"]),
+                                                     "head": _src["arguments"][:80]})
+                        _log.warning("ollama-400-malformed-json round=%d str_arg_tool_calls=%s body=%s",
+                                     round_index, _bad[:5], _http_body[:160])
+                        from core.services.central_core import central
+                        central().observe({"cluster": "loop", "nerve": "malformed_request_body",
+                                           "round": int(round_index or 0), "str_arg_count": len(_bad),
+                                           "model": str(model or "")})
+                    except Exception:
+                        pass
                 last_exc = he
                 code = int(getattr(he, "code", 0) or 0)
                 # 429 = rate-limit (Ollama cloud efter mange hurtige tool-runder).

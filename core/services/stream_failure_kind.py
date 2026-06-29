@@ -28,6 +28,7 @@ funktionen + de kanoniske konstanter. Wiring sker additivt.
 """
 from __future__ import annotations
 
+import random
 import re
 from typing import Final
 
@@ -223,3 +224,50 @@ def classify_failure(
 def is_retryable_kind(failure_kind: str) -> bool:
     """Er ``failure_kind`` retryable på SAMME provider? (provider_stall = False.)"""
     return (failure_kind or "").strip().lower() in _RETRYABLE_KINDS
+
+
+# ── Delt backoff-helper (spec §11.2: ÉN sandhedskilde med jitter) ────────────
+#
+# Spec'en flaggede at den eksisterende ollama-backoff (visible_followup.py) er
+# ren eksponentiel UDEN jitter → thundering-herd mod en haltende provider når
+# mange runs retry'er i lås. Denne helper er den ENE kilde: både den løftede
+# ollama-retry OG Fase 1's rund-niveau-retry (4.1) arver jitter herfra.
+
+# OpenAI-SDK-paritet: min(base · 2^n, cap) + fuld jitter.
+_BACKOFF_BASE_S: Final = 0.6
+_BACKOFF_CAP_S: Final = 8.0
+
+
+def compute_backoff_with_jitter(
+    attempt: int,
+    *,
+    base: float = _BACKOFF_BASE_S,
+    cap: float = _BACKOFF_CAP_S,
+    retry_after: float | None = None,
+) -> float:
+    """Eksponentiel backoff MED jitter (spec §11.2, OpenAI-SDK-mønster).
+
+    - ``attempt``: 0-indekseret forsøgsnummer (0 = første retry).
+    - ``base``/``cap``: ``min(base · 2^attempt, cap)``.
+    - ``retry_after``: hvis serveren sendte en (allerede-parset) Retry-After i
+      sekunder, brug den som GULV (vi venter mindst så længe), men læg stadig
+      jitter på så samtidige runs ikke rammer i lås.
+
+    Returnerer ventetiden i sekunder (≥0). Fuld jitter: et tilfældigt punkt
+    mellem 0 og det beregnede tag, så retries spredes (anti-thundering-herd).
+    """
+    try:
+        a = max(0, int(attempt))
+    except (TypeError, ValueError):
+        a = 0
+    raw = min(float(base) * (2 ** a), float(cap))
+    # Fuld jitter (AWS "Exponential Backoff And Jitter"): uniform(0, raw).
+    delay = random.uniform(0.0, raw) if raw > 0 else 0.0
+    if retry_after is not None:
+        try:
+            floor = max(0.0, float(retry_after))
+        except (TypeError, ValueError):
+            floor = 0.0
+        # Respektér cooldown'en (gulv) men spred stadig med lidt jitter ovenpå.
+        delay = max(delay, floor + random.uniform(0.0, min(raw, 1.0)))
+    return delay

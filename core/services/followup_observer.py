@@ -46,6 +46,24 @@ def note_round_failed(run_id: str, round_num: int, provider: str = "",
              provider=str(provider or ""), error=str(error or "")[:200], **data)
 
 
+def note_round_retry(run_id: str, round_num: int, attempt: int, reason: str = "",
+                     *, outcome: str = "", **data: Any) -> None:
+    """RUND-NIVEAU RETRY (spec §4.1/S7): en forbigående runde-fejl blev retry'et
+    i stedet for at dræbe turen — og om retry'en FAKTISK reddede den eller bare
+    udskød døden.
+
+    ``outcome`` ∈ {recovered, exhausted}:
+      - ``recovered``  — retry'en lykkedes; turen overlevede et mid-turn-blip.
+      - ``exhausted``  — total/runde-budget opbrugt; vi faldt til interruption
+                         (men med checkpointed partial + ærlig note, aldrig tomt).
+
+    Distinkte signaler så Centralen kan se om rund-retry redder (recovered-rate
+    op) eller bare maskerer en haltende provider (exhausted-rate op). Self-safe."""
+    _observe("round_retry", run_id, round_num=int(round_num or 0),
+             attempt=int(attempt or 0), reason=str(reason or "")[:200],
+             outcome=str(outcome or ""), **data)
+
+
 def note_loop_complete(run_id: str, *, rounds: int = 0, exit_reason: str = "",
                        provider: str = "", model: str = "") -> None:
     """Followup-loopet sluttede → observe runder kørt + exit-grund (completed/

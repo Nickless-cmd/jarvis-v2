@@ -31,7 +31,11 @@ from typing import Iterator, Protocol, runtime_checkable
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
-from core.services.stream_failure_kind import FailureKind, classify_failure
+from core.services.stream_failure_kind import (
+    FailureKind,
+    classify_failure,
+    compute_backoff_with_jitter,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -475,9 +479,13 @@ class OllamaFollowupAdapter:
                             _ra = float(he.headers.get("Retry-After") or 0)
                         except (ValueError, TypeError, AttributeError):
                             _ra = 0.0
-                        backoff = max(_ra, 2.0 * (2**attempt))  # mere generøs for rate-limit
+                        # Delt jitter-helper (spec §11.2): mere generøs base for
+                        # rate-limit + respektér Retry-After som gulv, men med
+                        # jitter så samtidige runs ikke retry'er i lås.
+                        backoff = compute_backoff_with_jitter(
+                            attempt, base=2.0, retry_after=_ra or None)
                     else:
-                        backoff = 0.6 * (2**attempt)
+                        backoff = compute_backoff_with_jitter(attempt)
                     _log.warning(
                         "ollama followup round %d retrying after HTTP %s in %.1fs (attempt %d/%d)",
                         round_index, code, backoff, attempt + 1, attempts,
@@ -495,7 +503,7 @@ class OllamaFollowupAdapter:
                         attempt + 1,
                         attempts,
                     )
-                    time.sleep(0.6 * (2**attempt))
+                    time.sleep(compute_backoff_with_jitter(attempt))
                     continue
                 break
             except Exception as e:
@@ -1257,6 +1265,8 @@ def inject_fault(
     drop_as_exception: bool = True,
     http_status: int = 400,
     fire_once: bool = True,
+    fail_times: int | None = None,
+    recover_text: str = "recovered-final-answer",
 ) -> None:
     """Registrér en fejl-injektion for NÆSTE ``stream_visible_followup``-kald.
 
@@ -1271,6 +1281,12 @@ def inject_fault(
       dokumenterer §2-hullet) eller et yielded FollowupFailed (observer fyrer).
     - ``http_status``: for http_400_overflow — HTTP-koden (default 400).
     - ``fire_once``: ryd registreringen efter første injektion (én runde).
+    - ``fail_times``: Fase 1 retry-harness. Hvis sat: fejl de FØRSTE ``fail_times``
+      dispatch-kald (samme runde re-samples via round-retry), og lad kald nr.
+      ``fail_times+1`` LYKKES med en clean FollowupDone(``recover_text``). Kræver
+      ``fire_once=False`` (injektionen skal overleve flere dispatch-kald). Med
+      ``fail_times=None`` (default) er adfærden uændret (fire-once enkelt-fejl).
+    - ``recover_text``: den endelige tekst det recoverede kald yielder.
     """
     if shape not in _KNOWN_FAULTS:
         raise ValueError(f"ukendt fault-shape: {shape!r} (kendte: {sorted(_KNOWN_FAULTS)})")
@@ -1282,6 +1298,9 @@ def inject_fault(
             "drop_as_exception": bool(drop_as_exception),
             "http_status": int(http_status),
             "fire_once": bool(fire_once),
+            "fail_times": (None if fail_times is None else int(fail_times)),
+            "recover_text": str(recover_text),
+            "_calls": 0,  # dispatch-tæller (til fail_times-recovery)
         }
 
 
@@ -1329,7 +1348,21 @@ def _maybe_inject_fault(round_index: int) -> Iterator[FollowupEvent] | None:
         active = _active_fault
         if active is None:
             return None
-        if active.get("fire_once"):
+        # fail_times-mode (Fase 1 retry-harness): fejl de første N kald, lad
+        # kald N+1 lykkes. Tæl dispatch-kald under lås så det er deterministisk.
+        _fail_times = active.get("fail_times")
+        if _fail_times is not None:
+            _n = int(active.get("_calls") or 0)
+            active["_calls"] = _n + 1
+            if _n >= int(_fail_times):
+                # Dette kald skal RECOVERE → clean done med recover_text.
+                _recover = {"shape": "__recover__",
+                            "recover_text": str(active.get("recover_text") or "")}
+                if active.get("fire_once"):
+                    _active_fault = None
+                return _yield_injected_fault(_recover, round_index)
+            # ellers: fald igennem og fejl som normalt (uden at rydde).
+        elif active.get("fire_once"):
             _active_fault = None
     return _yield_injected_fault(active, round_index)
 
@@ -1337,6 +1370,15 @@ def _maybe_inject_fault(round_index: int) -> Iterator[FollowupEvent] | None:
 def _yield_injected_fault(fault: dict, round_index: int) -> Iterator[FollowupEvent]:
     """Generér event-strømmen for en given injektion (test-only)."""
     shape = fault["shape"]
+    if shape == "__recover__":
+        # Fase 1 retry-harness: et CLEAN done der lykkes på retry-attempt'et
+        # (simulerer at det forbigående blip er væk anden gang). Yielder en
+        # delta + done så turen kan fortsætte (recovered).
+        _txt = str(fault.get("recover_text") or "")
+        if _txt:
+            yield FollowupDelta(delta=_txt)
+        yield FollowupDone(text="")
+        return
     if shape == FAULT_CLEAN_FAIL_BEFORE_DELTA:
         # (a) HTTP 502-klasse FØR nogen delta — clean fail, ingen partiel tekst.
         summary = f"followup-round-{round_index + 1}-provider-error: HTTP 502"

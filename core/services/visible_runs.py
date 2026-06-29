@@ -1962,6 +1962,20 @@ async def _stream_visible_run(
                 # Track most-recent assistant reasoning_content for persistence
                 # (Deepseek thinking-mode replay). Starter med first-pass-result.
                 _persist_reasoning: str = str(getattr(result, "reasoning_content", "") or "")
+                # ── Fase 1 (spec §4.1/E11): rund-niveau stream-retry der bevarer
+                # turen. ALT bag kill-switch `agentic_round_retry_enabled()`
+                # (default OFF → byte-identisk med i dag). Caps initialiseres ved
+                # for-loop-entry (E11/S2/P6):
+                #   - _round_stream_max_retries : per-runde retry-loft (separat fra
+                #     _AGENTIC_MAX_ROUNDS-budgettet — en retry forbruger IKKE en runde).
+                #   - _turn_total_retries       : HÅRDT total-loft over HELE turen
+                #     (lukker 9×100-worst-case-eksplosionen).
+                #   - _turn_started_at          : wall-clock-deadline pr. tur (P6).
+                _round_stream_max_retries = int(_agentic_budget.get("round_stream_max_retries") or 3)
+                _turn_total_retry_cap = int(_agentic_budget.get("turn_total_stream_retries") or 12)
+                _turn_wall_clock_cap_s = float(_agentic_budget.get("turn_total_wall_clock_s") or 600.0)
+                _turn_total_retries = 0
+                _turn_started_at = time.monotonic()
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
                     if not _provider_supports_followup:
                         logger.warning(
@@ -2017,6 +2031,26 @@ async def _stream_visible_run(
                     _a_queue: asyncio.Queue = asyncio.Queue()
                     _a_sentinel = object()
                     _a_failure: dict[str, object] = {}
+                    # ── C11 partial-discard snapshot (spec §11.1) ────────────────
+                    # Snapshot the persisted-answer accumulator length at round-
+                    # ENTRY, BEFORE any pump attempt streams deltas into it. On a
+                    # retry (4.1) we TRUNCATE _all_followup_parts back to this
+                    # boundary so the partial text from a FAILED attempt is
+                    # discarded and the re-run's fresh deltas don't double-emit /
+                    # double-persist (the exact "thinks-a-bit-BANG" regression the
+                    # retry would otherwise introduce). Snapshot is taken ONCE per
+                    # round and is stable across attempts.
+                    _round_partial_snapshot = len(_all_followup_parts)
+                    # Per-round stream-retry counter (separate from _AGENTIC_MAX_
+                    # ROUNDS — a retry never consumes a round budget). _round_epoch
+                    # is the D11 fence token: each attempt bumps it; the pump
+                    # closure captures its own epoch and the drain ignores any late
+                    # queue puts from a superseded attempt.
+                    _round_retry_count = 0
+                    _round_epoch = 0
+                    # Set when an attempt retries; consumed (→ recovered nerve) when
+                    # a later attempt of the SAME round succeeds. Reset per round.
+                    _pending_recovered_attempt = 0
 
                     # On the final allowed round (or when we are 1 round away
                     # from the empty-text or tool-only early-exit threshold),
@@ -2069,240 +2103,497 @@ async def _stream_visible_run(
                             if _xn in _extra_set and _xn not in _existing_names:
                                 _round_tool_definitions = list(_round_tool_definitions) + [_xd]
 
-                    def _pump_agentic(
-                        q=_a_queue,
-                        sentinel=_a_sentinel,
-                        rnd=_agentic_round,
-                        failure=_a_failure,
-                        tool_defs=_round_tool_definitions,
-                    ) -> None:
+                    # ── Fase 1 inner attempt-loop (spec §4.1): re-runs THIS round's
+                    # model-sampling on a retryable transient failure (round-retry that
+                    # PRESERVES the turn — codex run_sampling_request semantics). The
+                    # loop body spawns the pump + drains it; on a retryable _a_failure
+                    # under budget it fences the dead pump (D11), discards the failed
+                    # attempt's partial (C11) and `continue`s to re-sample. On success,
+                    # non-retryable failure, or exhausted budget it `break`s out with the
+                    # existing _a_failure semantics intact. When the kill-switch is OFF
+                    # the body runs EXACTLY ONCE (break at the bottom) → byte-identical.
+                    while True:
+                        # Per-attempt state. Round-entry already initialized these;
+                        # we rebind fresh objects each attempt so a retry's pump
+                        # gets a clean queue/sentinel/failure (the old attempt's
+                        # abandoned queue is the D11 fence — late puts from the dead
+                        # pump go to a queue we no longer drain). _a_parts /
+                        # _a_tool_calls / _a_round_reasoning are reset so the re-run
+                        # streams from scratch (paired with the C11 truncate below).
+                        _a_parts = []
+                        _a_tool_calls = []
+                        _a_round_reasoning = ""
+                        _a_queue = asyncio.Queue()
+                        _a_sentinel = object()
+                        _a_failure = {}
+                        # D11 fence: holder for the live provider generator of the
+                        # CURRENT attempt, so a retry can force-close the failed
+                        # attempt's stream (no orphaned concurrent provider stream when
+                        # the retry spawns a fresh pump). Re-bound per spawn below.
+                        _pump_gen_holder: dict[str, object] = {}
+
+                        def _pump_agentic(
+                            q=_a_queue,
+                            sentinel=_a_sentinel,
+                            rnd=_agentic_round,
+                            failure=_a_failure,
+                            tool_defs=_round_tool_definitions,
+                            epoch=_round_epoch,
+                            gen_holder=_pump_gen_holder,
+                        ) -> None:
+                            try:
+                                _gen = _vf.stream_visible_followup(
+                                    provider=run.provider,
+                                    model=run.model,
+                                    base_messages=base_messages,
+                                    exchanges=_followup_exchanges,
+                                    tool_definitions=tool_defs,
+                                    round_index=rnd,
+                                    thinking_mode=run.thinking_mode,
+                                )
+                                # Expose this attempt's generator so a retry can
+                                # force-close it (D11). Keyed by epoch so a stale
+                                # close from a superseded attempt is a no-op.
+                                gen_holder[epoch] = _gen
+                                for _event in _gen:
+                                    loop.call_soon_threadsafe(q.put_nowait, _event)
+                            except Exception as _ae:
+                                # §11.4-finding: a RAISED transient drop (the PRIMARY
+                                # cut class — most realistic socket-drop) is caught
+                                # here and sets _a_failure WITHOUT firing
+                                # note_round_failed, so the round failure was centrally
+                                # SILENT (only the yielded-FollowupFailed path fired the
+                                # nerve). Classify (B11 taxonomy = single retryability
+                                # source) and fire the nerve so the raised socket-drop
+                                # is no longer invisible. Self-safe: classification +
+                                # nerve are wrapped, never throw back into the pump.
+                                # NOTE: this only ADDS the nerve — break/retry behavior
+                                # is unchanged (Fase 1 4.1 builds the retry loop later).
+                                _err = str(_ae) or "unknown"
+                                try:
+                                    from core.services.stream_failure_kind import (
+                                        classify_failure as _classify_fk,
+                                    )
+                                    _fk, _retry = _classify_fk(
+                                        http_status=None, error_text=_err)
+                                except Exception:
+                                    _fk, _retry = "", False
+                                failure.update(
+                                    {
+                                        "round": rnd + 1,
+                                        "error": _err,
+                                        "summary": f"followup-round-{rnd + 1}-provider-error: {_err}",
+                                        "failure_kind": _fk,
+                                        "http_status": None,
+                                        "retryable": bool(_retry),
+                                    }
+                                )
+                                try:
+                                    from core.services import followup_observer as _fu_obs_raise
+                                    _fu_obs_raise.note_round_failed(
+                                        run.run_id, rnd + 1, run.provider, _err,
+                                        failure_kind=_fk, retryable=bool(_retry),
+                                        raised=True)
+                                except Exception:
+                                    pass
+                            finally:
+                                loop.call_soon_threadsafe(q.put_nowait, sentinel)
+
+                        logger.info(
+                            "agentic-followup-pump-start run_id=%s round=%d provider=%s model=%s "
+                            "tool_defs=%s",
+                            run.run_id, _agentic_round + 1, run.provider, run.model,
+                            "yes" if _round_tool_definitions else "no(force-summary)",
+                        )
+                        loop.run_in_executor(None, _pump_agentic)
+
+                        # Mid-stream steer support: poll the queue with a short
+                        # timeout so we can also check for steers between chunks.
+                        # If a steer arrives mid-token, we abandon the in-flight
+                        # provider call (executor thread completes in background;
+                        # its later events go to a queue we no longer drain) and
+                        # restart the next round with the steer in base_messages.
+                        _round_start_t = time.monotonic()
+                        # Watchdog has two clocks:
+                        # - total round ceiling prevents endless provider calls
+                        # - silence ceiling catches stalled streams while allowing
+                        #   long rounds that keep producing deltas/tool calls.
+                        _round_overall_timeout_s = float(_agentic_budget.get("round_total_timeout_s") or 300.0)
+                        _round_silence_timeout_s = float(_agentic_budget.get("round_silence_timeout_s") or 180.0)
+                        _last_provider_progress_t = _round_start_t
+                        _fu_last_beat = _round_start_t  # keepalive under followup-model-vent
+                        _mid_round_steers: list[dict[str, object]] = []
+                        while True:
+                            try:
+                                _a_item = await asyncio.wait_for(_a_queue.get(), timeout=1.0)
+                            except asyncio.TimeoutError:
+                                _now_t = time.monotonic()
+                                _watchdog_reason = _agentic_watchdog_timeout_reason(
+                                    started_at=_round_start_t,
+                                    last_progress_at=_last_provider_progress_t,
+                                    now=_now_t,
+                                    max_total_s=_round_overall_timeout_s,
+                                    max_silence_s=_round_silence_timeout_s,
+                                )
+                                # Keepalive-heartbeat under followup-rundens model-vent
+                                # (PROVIDER-AGNOSTISK idle-gap-fix, Bjørn 2026-06-23): first-
+                                # pass havde keepalive, followup IKKE → enhver models TTFT/
+                                # stille-vent gjorde SSE'en tavs → mobil/desk droppede
+                                # forbindelsen → det (gemte) svar forsvandt. Nu dækket her
+                                # ligesom first-pass. Hvert ~5s tavshed.
+                                if not _watchdog_reason and (_now_t - _fu_last_beat) >= 5.0:
+                                    _fu_last_beat = _now_t
+                                    try:
+                                        touch_active_visible_run(run.run_id)
+                                    except Exception:
+                                        pass
+                                    yield _sse("heartbeat", {
+                                        "type": "heartbeat",
+                                        "run_id": run.run_id,
+                                        "phase": "agentic_followup",
+                                        "round": _agentic_round + 1,
+                                    })
+                                if _watchdog_reason:
+                                    if not _a_failure:
+                                        # D11: a silence/idle-timeout is a
+                                        # provider_stall — NOT retryable on the same
+                                        # provider (re-sampling just re-stalls). Tag
+                                        # it explicitly so the Fase 1 retry-decision
+                                        # routes it to the interruption path, never a
+                                        # retry. failure_kind/retryable are the single
+                                        # retryability source (B11).
+                                        from core.services.stream_failure_kind import (
+                                            FailureKind as _FK_stall,
+                                        )
+                                        _a_failure.update({
+                                            "round": _agentic_round + 1,
+                                            "error": f"{_watchdog_reason}: timed out waiting for provider stream item",
+                                            "summary": f"agentic-round-{_agentic_round + 1}-{_watchdog_reason}",
+                                            "failure_kind": _FK_stall.PROVIDER_STALL,
+                                            "retryable": False,
+                                        })
+                                    break
+                                # Check for mid-stream steers
+                                try:
+                                    _new_steers = consume_visible_run_steers(run.run_id)
+                                except Exception:
+                                    _new_steers = []
+                                # Check for controller cancellation (Cancel button)
+                                if controller.is_cancelled():
+                                    _agentic_loop_exit_reason = "user-cancelled"
+                                    _final_run_status = "interrupted"
+                                    _final_run_error = "user-cancelled-during-agentic-loop"
+                                    try:
+                                        from core.services.agentic_checkpoints import save_checkpoint as _save_agentic_checkpoint
+                                        _save_agentic_checkpoint(
+                                            run_id=run.run_id,
+                                            session_id=run.session_id,
+                                            user_message=run.user_message,
+                                            provider=run.provider,
+                                            model=run.model,
+                                            round_index=_agentic_round + 1,
+                                            phase="user-cancelled",
+                                            exchanges=_followup_exchanges,
+                                            partial_text="".join(_all_followup_parts),
+                                            exit_reason="user-cancelled",
+                                        )
+                                    except Exception:
+                                        pass
+                                    break
+                                if _new_steers:
+                                    _mid_round_steers.extend(_new_steers)
+                                    yield _sse("steer_received", {
+                                        "type": "steer_received",
+                                        "run_id": run.run_id,
+                                        "mid_stream": True,
+                                        "count": len(_new_steers),
+                                        "content": str(_new_steers[0].get("content") or "")[:200],
+                                    })
+                                    logger.info(
+                                        "agentic-mid-stream-interrupt run_id=%s round=%d steers=%d",
+                                        run.run_id, _agentic_round + 1, len(_new_steers),
+                                    )
+                                    break
+                                continue
+                            if _a_item is _a_sentinel:
+                                break
+                            _last_provider_progress_t = time.monotonic()
+                            if isinstance(_a_item, _vf.FollowupDelta):
+                                if _a_item.delta:
+                                    _a_parts.append(_a_item.delta)
+                                    _all_followup_parts.append(_a_item.delta)
+                                    yield _sse("delta", {
+                                        "type": "delta",
+                                        "run_id": run.run_id,
+                                        "delta": _a_item.delta,
+                                    })
+                                continue
+                            if isinstance(_a_item, _vf.FollowupReasoningDelta):
+                                # Live reasoning-trace (thinking-mode) → frontend viser
+                                # et foldbart 'tænker…'-felt. Kun visning; persistens
+                                # sker via reasoning_content i FollowupDone.
+                                if _a_item.delta:
+                                    yield _sse("reasoning_delta", {
+                                        "type": "reasoning_delta",
+                                        "run_id": run.run_id,
+                                        "delta": _a_item.delta,
+                                    })
+                                continue
+                            if isinstance(_a_item, _vf.FollowupToolCalls):
+                                _a_tool_calls.extend(_a_item.tool_calls)
+                                continue
+                            if isinstance(_a_item, _vf.FollowupFailed):
+                                # Carry the B11 structured taxonomy (failure_kind +
+                                # http_status) forward — the single retryability source
+                                # Fase 1's round-retry (4.1) will read. Both default
+                                # ""/None so legacy adapters that don't populate them
+                                # are unaffected.
+                                _yk = getattr(_a_item, "failure_kind", "") or ""
+                                _ys = getattr(_a_item, "http_status", None)
+                                # Resolve retryability via the single source (B11)
+                                # so the Fase 1 retry-decision can read it directly.
+                                try:
+                                    from core.services.stream_failure_kind import (
+                                        is_retryable_kind as _is_retry_yk,
+                                    )
+                                    _yr = _is_retry_yk(_yk) if _yk else False
+                                except Exception:
+                                    _yr = False
+                                _a_failure = {
+                                    "round": _a_item.round_index + 1,
+                                    "error": _a_item.error,
+                                    "summary": _a_item.summary,
+                                    "failure_kind": _yk,
+                                    "http_status": _ys,
+                                    "retryable": _yr,
+                                }
+                                # Followup-cluster: round-fejl synlig (copilot-400/thinking-bug).
+                                try:
+                                    from core.services import followup_observer as _fu_obs
+                                    _fu_obs.note_round_failed(
+                                        run.run_id, _a_item.round_index + 1,
+                                        run.provider, str(_a_item.error or _a_item.summary or ""),
+                                        failure_kind=_yk, http_status=_ys, raised=False)
+                                except Exception:
+                                    pass
+                                continue
+                            if isinstance(_a_item, _vf.FollowupDone):
+                                if _a_item.text and not _a_parts:
+                                    _a_parts.append(_a_item.text)
+                                    _all_followup_parts.append(_a_item.text)
+                                    yield _sse("delta", {
+                                        "type": "delta",
+                                        "run_id": run.run_id,
+                                        "delta": _a_item.text,
+                                    })
+                                # Stash reasoning so the ToolExchange built below
+                                # carries it forward to the next followup round.
+                                _a_round_reasoning = str(_a_item.reasoning_content or "")
+                                # Track for final persistence: hvis denne round
+                                # produced reasoning, store it so we can replay
+                                # it in the next session.
+                                if _a_round_reasoning:
+                                    _persist_reasoning = _a_round_reasoning
+                                continue
+
+                        # ── Fase 1 retry-decision (spec §4.1/C11/D11/E11) ────────
+                        # The drain loop has ended for THIS attempt. Decide whether
+                        # to RETRY the same round (preserving the turn) or break out
+                        # to the existing post-drain handling (prose-redning, steer,
+                        # tool-exec, or the interruption path). EVERYTHING here is
+                        # gated behind the kill-switch: with it OFF we break
+                        # immediately → the body ran exactly once → byte-identical.
+                        if not _a_failure:
+                            break  # success / clean round → proceed (no retry).
                         try:
-                            for _event in _vf.stream_visible_followup(
-                                provider=run.provider,
-                                model=run.model,
-                                base_messages=base_messages,
-                                exchanges=_followup_exchanges,
-                                tool_definitions=tool_defs,
-                                round_index=rnd,
-                                thinking_mode=run.thinking_mode,
-                            ):
-                                loop.call_soon_threadsafe(q.put_nowait, _event)
-                        except Exception as _ae:
-                            # §11.4-finding: a RAISED transient drop (the PRIMARY
-                            # cut class — most realistic socket-drop) is caught
-                            # here and sets _a_failure WITHOUT firing
-                            # note_round_failed, so the round failure was centrally
-                            # SILENT (only the yielded-FollowupFailed path fired the
-                            # nerve). Classify (B11 taxonomy = single retryability
-                            # source) and fire the nerve so the raised socket-drop
-                            # is no longer invisible. Self-safe: classification +
-                            # nerve are wrapped, never throw back into the pump.
-                            # NOTE: this only ADDS the nerve — break/retry behavior
-                            # is unchanged (Fase 1 4.1 builds the retry loop later).
-                            _err = str(_ae) or "unknown"
+                            _retry_enabled = _vf.agentic_round_retry_enabled()
+                        except Exception:
+                            _retry_enabled = False
+                        if not _retry_enabled:
+                            break  # kill-switch OFF → today's behavior (interruption).
+
+                        # Classify via the structured failure_kind/retryable already
+                        # attached to _a_failure (B11). provider_stall is NOT
+                        # retryable (D11) → it falls through to the interruption path
+                        # (re-sampling a stalled provider just re-stalls).
+                        _fk = str(_a_failure.get("failure_kind") or "")
+                        _retryable = bool(_a_failure.get("retryable"))
+                        if not _retryable and _fk:
                             try:
                                 from core.services.stream_failure_kind import (
-                                    classify_failure as _classify_fk,
+                                    is_retryable_kind as _is_retry_kind,
                                 )
-                                _fk, _retry = _classify_fk(
-                                    http_status=None, error_text=_err)
+                                _retryable = _is_retry_kind(_fk)
                             except Exception:
-                                _fk, _retry = "", False
-                            failure.update(
-                                {
-                                    "round": rnd + 1,
-                                    "error": _err,
-                                    "summary": f"followup-round-{rnd + 1}-provider-error: {_err}",
-                                    "failure_kind": _fk,
-                                    "http_status": None,
-                                    "retryable": bool(_retry),
-                                }
-                            )
-                            try:
-                                from core.services import followup_observer as _fu_obs_raise
-                                _fu_obs_raise.note_round_failed(
-                                    run.run_id, rnd + 1, run.provider, _err,
-                                    failure_kind=_fk, retryable=bool(_retry),
-                                    raised=True)
-                            except Exception:
-                                pass
-                        finally:
-                            loop.call_soon_threadsafe(q.put_nowait, sentinel)
+                                _retryable = False
 
-                    logger.info(
-                        "agentic-followup-pump-start run_id=%s round=%d provider=%s model=%s "
-                        "tool_defs=%s",
-                        run.run_id, _agentic_round + 1, run.provider, run.model,
-                        "yes" if _round_tool_definitions else "no(force-summary)",
-                    )
-                    loop.run_in_executor(None, _pump_agentic)
+                        # Budget checks (E11/S2/P6): per-round cap, hard turn-total
+                        # retry cap, and a turn wall-clock deadline. Any exhaustion →
+                        # graceful-degrade (emit checkpointed partial + honest note)
+                        # then fall to the interruption path — NEVER an empty loss.
+                        _under_round_budget = _round_retry_count < _round_stream_max_retries
+                        _under_turn_budget = _turn_total_retries < _turn_total_retry_cap
+                        _under_wall_clock = (
+                            time.monotonic() - _turn_started_at) < _turn_wall_clock_cap_s
+                        _can_retry = (
+                            _retryable and _under_round_budget
+                            and _under_turn_budget and _under_wall_clock)
 
-                    # Mid-stream steer support: poll the queue with a short
-                    # timeout so we can also check for steers between chunks.
-                    # If a steer arrives mid-token, we abandon the in-flight
-                    # provider call (executor thread completes in background;
-                    # its later events go to a queue we no longer drain) and
-                    # restart the next round with the steer in base_messages.
-                    _round_start_t = time.monotonic()
-                    # Watchdog has two clocks:
-                    # - total round ceiling prevents endless provider calls
-                    # - silence ceiling catches stalled streams while allowing
-                    #   long rounds that keep producing deltas/tool calls.
-                    _round_overall_timeout_s = float(_agentic_budget.get("round_total_timeout_s") or 300.0)
-                    _round_silence_timeout_s = float(_agentic_budget.get("round_silence_timeout_s") or 180.0)
-                    _last_provider_progress_t = _round_start_t
-                    _fu_last_beat = _round_start_t  # keepalive under followup-model-vent
-                    _mid_round_steers: list[dict[str, object]] = []
-                    while True:
+                        if not _can_retry:
+                            # Exhausted (or non-retryable). If we DID retry at least
+                            # once and ran out of budget, mark it exhausted so the
+                            # Central can see retry merely deferred the death (S7).
+                            if _retryable and _round_retry_count > 0:
+                                _exhaust_reason = (
+                                    "round-budget" if not _under_round_budget
+                                    else "turn-budget" if not _under_turn_budget
+                                    else "wall-clock")
+                                try:
+                                    from core.services import followup_observer as _fu_ex
+                                    _fu_ex.note_round_retry(
+                                        run.run_id, _agentic_round + 1,
+                                        _round_retry_count,
+                                        str(_a_failure.get("summary") or _fk),
+                                        outcome="exhausted",
+                                        failure_kind=_fk, reason_detail=_exhaust_reason)
+                                except Exception:
+                                    pass
+                                # P6 graceful-degrade: surface the checkpointed
+                                # partial (already in _all_followup_parts, NOT
+                                # truncated on the exhausting attempt) + an honest
+                                # note so the user never gets a blank loss. The
+                                # interruption nerve still fires below.
+                                _exhaust_note = (
+                                    "\n\n_(Forbindelsen blev ved med at glippe — "
+                                    "jeg prøvede igen et par gange men måtte give op. "
+                                    "Her er hvad jeg nåede; sig til, så fortsætter jeg.)_")
+                                _a_parts.append(_exhaust_note)
+                                _all_followup_parts.append(_exhaust_note)
+                                yield _sse("delta", {
+                                    "type": "delta",
+                                    "run_id": run.run_id,
+                                    "delta": _exhaust_note,
+                                })
+                            break  # → existing interruption path (with partial intact).
+
+                        # ── We WILL retry this round ─────────────────────────────
+                        _round_retry_count += 1
+                        _turn_total_retries += 1
+                        _attempt_no = _round_retry_count
+
+                        # D11 pump-fence: force-close the failed attempt's provider
+                        # generator so there is no orphaned concurrent provider
+                        # stream when we spawn a fresh pump. The dead pump's late
+                        # queue puts target _a_queue, which we REBIND at the top of
+                        # the next iteration → they go to a queue we no longer drain
+                        # (the epoch is realized as a fresh queue + bumped token).
                         try:
-                            _a_item = await asyncio.wait_for(_a_queue.get(), timeout=1.0)
-                        except asyncio.TimeoutError:
-                            _now_t = time.monotonic()
-                            _watchdog_reason = _agentic_watchdog_timeout_reason(
-                                started_at=_round_start_t,
-                                last_progress_at=_last_provider_progress_t,
-                                now=_now_t,
-                                max_total_s=_round_overall_timeout_s,
-                                max_silence_s=_round_silence_timeout_s,
+                            _dead_gen = _pump_gen_holder.get(_round_epoch)
+                            if _dead_gen is not None and hasattr(_dead_gen, "close"):
+                                _dead_gen.close()  # force-close provider socket/stream
+                        except Exception:
+                            pass
+                        _round_epoch += 1  # bump fence token (stale puts ignored)
+
+                        # C11 partial-discard: truncate _all_followup_parts back to
+                        # the round-entry snapshot so the partial text streamed by the
+                        # FAILED attempt is discarded (the re-run streams fresh deltas;
+                        # without this we double-emit/double-persist on the exact
+                        # "thinks-a-bit-BANG" case). Emit a typed SSE so desk/mobile
+                        # reducers discard the on-screen partial for this run.
+                        #
+                        # CLIENT CONTRACT — `round_restart_discard_partial`:
+                        #   { type, run_id, round } → on receipt the client MUST drop
+                        #   any not-yet-finalized streamed delta text for this run's
+                        #   CURRENT round and await fresh deltas. It is advisory: a
+                        #   client that ignores it stays correct because the SERVER's
+                        #   persisted answer (_all_followup_parts) is already truncated;
+                        #   only the live on-screen partial would briefly duplicate.
+                        del _all_followup_parts[_round_partial_snapshot:]
+                        yield _sse("round_restart_discard_partial", {
+                            "type": "round_restart_discard_partial",
+                            "run_id": run.run_id,
+                            "round": _agentic_round + 1,
+                        })
+
+                        # S3 invariant: a retry RE-SAMPLES the model ONLY. The
+                        # sampling failure occurs BEFORE this round's tools run (tool
+                        # execution is below the `if _a_failure: break` post-drain
+                        # block, ~line 2660), so _followup_exchanges is unchanged and
+                        # NO tool is ever re-executed on the retry path. The re-run
+                        # sends byte-identical messages (same base_messages + same
+                        # _followup_exchanges snapshot, same tool_defs decision).
+
+                        # Backoff with jitter (shared single-source helper, S4/§11.2).
+                        # Keepalive keeps flowing DURING backoff (no silent gap): emit
+                        # a "Reconnecting" signal + heartbeats while we wait.
+                        try:
+                            from core.services.stream_failure_kind import (
+                                compute_backoff_with_jitter as _backoff_fn,
                             )
-                            # Keepalive-heartbeat under followup-rundens model-vent
-                            # (PROVIDER-AGNOSTISK idle-gap-fix, Bjørn 2026-06-23): first-
-                            # pass havde keepalive, followup IKKE → enhver models TTFT/
-                            # stille-vent gjorde SSE'en tavs → mobil/desk droppede
-                            # forbindelsen → det (gemte) svar forsvandt. Nu dækket her
-                            # ligesom first-pass. Hvert ~5s tavshed.
-                            if not _watchdog_reason and (_now_t - _fu_last_beat) >= 5.0:
-                                _fu_last_beat = _now_t
-                                try:
-                                    touch_active_visible_run(run.run_id)
-                                except Exception:
-                                    pass
-                                yield _sse("heartbeat", {
-                                    "type": "heartbeat",
-                                    "run_id": run.run_id,
-                                    "phase": "agentic_followup",
-                                    "round": _agentic_round + 1,
-                                })
-                            if _watchdog_reason:
-                                if not _a_failure:
-                                    _a_failure.update({
-                                        "round": _agentic_round + 1,
-                                        "error": f"{_watchdog_reason}: timed out waiting for provider stream item",
-                                        "summary": f"agentic-round-{_agentic_round + 1}-{_watchdog_reason}",
-                                    })
+                            _backoff_s = _backoff_fn(_round_retry_count - 1)
+                        except Exception:
+                            _backoff_s = min(0.6 * (2 ** (_round_retry_count - 1)), 8.0)
+
+                        # note_round_retry(recovered) is fired AFTER the next attempt
+                        # succeeds; here we emit the visible "Reconnecting n/m" signal.
+                        yield _sse("retry", {
+                            "type": "retry",
+                            "run_id": run.run_id,
+                            "round": _agentic_round + 1,
+                            "attempt": _attempt_no,
+                            "max_attempts": _round_stream_max_retries,
+                            "failure_kind": _fk,
+                            "message": (
+                                f"Reconnecting runde {_agentic_round + 1}, "
+                                f"forsøg {_attempt_no}/{_round_stream_max_retries}"),
+                        })
+                        logger.warning(
+                            "agentic-round-retry run_id=%s round=%d attempt=%d/%d "
+                            "kind=%s turn_total=%d backoff=%.1fs",
+                            run.run_id, _agentic_round + 1, _attempt_no,
+                            _round_stream_max_retries, _fk, _turn_total_retries,
+                            _backoff_s,
+                        )
+                        # Sleep in short slices so the keepalive heartbeat keeps the
+                        # SSE alive during backoff (S4: backoff must not reintroduce a
+                        # silent gap that drops mobile/desk sockets).
+                        _bo_deadline = time.monotonic() + max(0.0, _backoff_s)
+                        while True:
+                            _remaining = _bo_deadline - time.monotonic()
+                            if _remaining <= 0:
                                 break
-                            # Check for mid-stream steers
+                            await asyncio.sleep(min(_remaining, 4.0))
                             try:
-                                _new_steers = consume_visible_run_steers(run.run_id)
-                            except Exception:
-                                _new_steers = []
-                            # Check for controller cancellation (Cancel button)
-                            if controller.is_cancelled():
-                                _agentic_loop_exit_reason = "user-cancelled"
-                                _final_run_status = "interrupted"
-                                _final_run_error = "user-cancelled-during-agentic-loop"
-                                try:
-                                    from core.services.agentic_checkpoints import save_checkpoint as _save_agentic_checkpoint
-                                    _save_agentic_checkpoint(
-                                        run_id=run.run_id,
-                                        session_id=run.session_id,
-                                        user_message=run.user_message,
-                                        provider=run.provider,
-                                        model=run.model,
-                                        round_index=_agentic_round + 1,
-                                        phase="user-cancelled",
-                                        exchanges=_followup_exchanges,
-                                        partial_text="".join(_all_followup_parts),
-                                        exit_reason="user-cancelled",
-                                    )
-                                except Exception:
-                                    pass
-                                break
-                            if _new_steers:
-                                _mid_round_steers.extend(_new_steers)
-                                yield _sse("steer_received", {
-                                    "type": "steer_received",
-                                    "run_id": run.run_id,
-                                    "mid_stream": True,
-                                    "count": len(_new_steers),
-                                    "content": str(_new_steers[0].get("content") or "")[:200],
-                                })
-                                logger.info(
-                                    "agentic-mid-stream-interrupt run_id=%s round=%d steers=%d",
-                                    run.run_id, _agentic_round + 1, len(_new_steers),
-                                )
-                                break
-                            continue
-                        if _a_item is _a_sentinel:
-                            break
-                        _last_provider_progress_t = time.monotonic()
-                        if isinstance(_a_item, _vf.FollowupDelta):
-                            if _a_item.delta:
-                                _a_parts.append(_a_item.delta)
-                                _all_followup_parts.append(_a_item.delta)
-                                yield _sse("delta", {
-                                    "type": "delta",
-                                    "run_id": run.run_id,
-                                    "delta": _a_item.delta,
-                                })
-                            continue
-                        if isinstance(_a_item, _vf.FollowupReasoningDelta):
-                            # Live reasoning-trace (thinking-mode) → frontend viser
-                            # et foldbart 'tænker…'-felt. Kun visning; persistens
-                            # sker via reasoning_content i FollowupDone.
-                            if _a_item.delta:
-                                yield _sse("reasoning_delta", {
-                                    "type": "reasoning_delta",
-                                    "run_id": run.run_id,
-                                    "delta": _a_item.delta,
-                                })
-                            continue
-                        if isinstance(_a_item, _vf.FollowupToolCalls):
-                            _a_tool_calls.extend(_a_item.tool_calls)
-                            continue
-                        if isinstance(_a_item, _vf.FollowupFailed):
-                            # Carry the B11 structured taxonomy (failure_kind +
-                            # http_status) forward — the single retryability source
-                            # Fase 1's round-retry (4.1) will read. Both default
-                            # ""/None so legacy adapters that don't populate them
-                            # are unaffected.
-                            _yk = getattr(_a_item, "failure_kind", "") or ""
-                            _ys = getattr(_a_item, "http_status", None)
-                            _a_failure = {
-                                "round": _a_item.round_index + 1,
-                                "error": _a_item.error,
-                                "summary": _a_item.summary,
-                                "failure_kind": _yk,
-                                "http_status": _ys,
-                            }
-                            # Followup-cluster: round-fejl synlig (copilot-400/thinking-bug).
-                            try:
-                                from core.services import followup_observer as _fu_obs
-                                _fu_obs.note_round_failed(
-                                    run.run_id, _a_item.round_index + 1,
-                                    run.provider, str(_a_item.error or _a_item.summary or ""),
-                                    failure_kind=_yk, http_status=_ys, raised=False)
+                                touch_active_visible_run(run.run_id)
                             except Exception:
                                 pass
-                            continue
-                        if isinstance(_a_item, _vf.FollowupDone):
-                            if _a_item.text and not _a_parts:
-                                _a_parts.append(_a_item.text)
-                                _all_followup_parts.append(_a_item.text)
-                                yield _sse("delta", {
-                                    "type": "delta",
-                                    "run_id": run.run_id,
-                                    "delta": _a_item.text,
-                                })
-                            # Stash reasoning so the ToolExchange built below
-                            # carries it forward to the next followup round.
-                            _a_round_reasoning = str(_a_item.reasoning_content or "")
-                            # Track for final persistence: hvis denne round
-                            # produced reasoning, store it so we can replay
-                            # it in the next session.
-                            if _a_round_reasoning:
-                                _persist_reasoning = _a_round_reasoning
-                            continue
+                            yield _sse("heartbeat", {
+                                "type": "heartbeat",
+                                "run_id": run.run_id,
+                                "phase": "agentic_round_retry_backoff",
+                                "round": _agentic_round + 1,
+                                "attempt": _attempt_no,
+                            })
+                        # Stash the attempt number so the NEXT successful drain can
+                        # fire note_round_retry(recovered).
+                        _pending_recovered_attempt = _attempt_no
+                        continue  # re-enter the attempt loop → re-sample this round.
+
+                    # If we got here via a successful retry (the attempt that just
+                    # broke out had no failure but a prior attempt retried), fire the
+                    # recovered nerve (S7) so the Central sees retry actually rescued
+                    # the turn. Only when the final attempt SUCCEEDED (no _a_failure).
+                    if (not _a_failure) and locals().get("_pending_recovered_attempt"):
+                        try:
+                            from core.services import followup_observer as _fu_rec
+                            _fu_rec.note_round_retry(
+                                run.run_id, _agentic_round + 1,
+                                int(_pending_recovered_attempt), "",
+                                outcome="recovered", provider=run.provider)
+                        except Exception:
+                            pass
+                        _pending_recovered_attempt = 0
 
                     # ── Prosa-tool-call-redning (followup, tool-leak-fix 2026-06-21) ──
                     # deepseek-v4-flash narrer nogle gange tool-kald som prosa i

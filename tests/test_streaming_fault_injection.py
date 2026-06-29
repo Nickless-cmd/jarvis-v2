@@ -91,6 +91,13 @@ class _DriveResult:
     def nerve_names(self) -> list[str]:
         return [n for n, _ in self.nerves]
 
+    def events_of(self, event_name: str) -> list[str]:
+        """Alle SSE-chunks der bærer ``event: <event_name>``."""
+        return [c for c in self.chunks if f"event: {event_name}" in c]
+
+    def round_retry_nerves(self) -> list[dict]:
+        return [d for n, d in self.nerves if n == "round_retry"]
+
 
 def _drive(monkeypatch, shape: str, *, run_id: str, **inject_kwargs) -> _DriveResult:
     """Driv ÉT minimalt agentisk followup-run gennem det ægte spor med en aktiv
@@ -539,3 +546,195 @@ def test_yielded_failed_nerve_carries_structured_kind(monkeypatch) -> None:
         d.get("failure_kind") == FailureKind.HTTP_5XX and d.get("raised") is False
         for d in failed_payloads
     ), f"yielded-sti skal bære http_5xx + raised=False; fik {failed_payloads}"
+
+
+# ── Fase 1: rund-niveau retry der bevarer turen (spec §4.1/C11/D11/E11) ──────
+#
+# Disse tests kører med kill-switchen ON (JARVIS_AGENTIC_ROUND_RETRY=1) og
+# INVERTERER baseline-assertionerne ovenfor: turen OVERLEVER et forbigående
+# mid-turn-blip, partiel tekst KASSERES (ingen dublet), pumpen FENCES (ingen
+# orphan), og note_round_retry(recovered/exhausted) fyrer.
+
+
+@pytest.fixture
+def _retry_on(monkeypatch):
+    """Slå kill-switchen ON via env (vinder over config)."""
+    monkeypatch.setenv(vf._AGENTIC_ROUND_RETRY_ENV, "1")
+    assert vf.agentic_round_retry_enabled() is True
+    yield
+
+
+def test_PRIMARY_partial_then_drop_retry_survives_no_dup(monkeypatch, _retry_on) -> None:
+    """PRIMÆR Fase 1-accept (spec §11.3): partial-deltas-så-drop med retry ON.
+
+    (i)  turen SURVIVER (completed, ikke interrupted),
+    (ii) INGEN dubleret persisteret tekst — den partielle tekst fra det FEJLEDE
+         forsøg er KASSERET (C11 snapshot+trunkér); kun recover-teksten persisteres,
+    (iii) en round_restart_discard_partial-SSE blev emitteret (klient-discard-kontrakt),
+    (iv) note_round_retry(outcome=recovered) fyrede."""
+    partials = ("partial-", "svar-", "før-drop")
+    res = _drive(monkeypatch, vf.FAULT_PARTIAL_DELTAS_THEN_DROP,
+                 run_id="f1-primary",
+                 partial_deltas=partials, drop_as_exception=True,
+                 fire_once=False, fail_times=1, recover_text="DET-ÆGTE-SVAR")
+
+    # (i) turen overlever.
+    assert res.done_status == "completed", \
+        "Fase 1: retry skal lade turen OVERLEVE et forbigående drop"
+
+    # (ii) ingen dubleret tekst: den partielle (fejlede) tekst er kasseret;
+    #      kun recover-teksten står i persisteringen.
+    joined_partial = "".join(partials)
+    assert "DET-ÆGTE-SVAR" in res.persisted_text, "recover-svaret skal persisteres"
+    assert joined_partial not in res.persisted_text, \
+        "C11: den partielle tekst fra det fejlede forsøg skal være KASSERET"
+    # Recover-teksten må ikke dukke op to gange (ingen dobbelt-persist).
+    assert res.persisted_text.count("DET-ÆGTE-SVAR") == 1
+
+    # (iii) discard-kontrakten blev signaleret til klienten.
+    assert res.events_of("round_restart_discard_partial"), \
+        "C11: round_restart_discard_partial-SSE skal emitteres ved retry"
+
+    # (iv) recovered-nerven fyrede.
+    recovered = [d for d in res.round_retry_nerves() if d.get("outcome") == "recovered"]
+    assert recovered, f"note_round_retry(recovered) skal fyre; fik {res.round_retry_nerves()}"
+
+    # En "Reconnecting n/m"-retry-SSE blev også sendt (S4 synligt signal).
+    assert res.events_of("retry"), "retry/Reconnecting-SSE skal emitteres"
+
+
+def test_retry_no_second_concurrent_pump_fence(monkeypatch, _retry_on) -> None:
+    """D11-fence: ingen anden SAMTIDIG pump / ingen orphan.
+
+    Vi tæller hvor mange gange stream_visible_followup faktisk DISPATCHES og at
+    den dødde generators ``close()`` blev kaldt (force-close af det fejlede
+    forsøgs provider-stream) FØR det nye forsøg spawnes. Med fail_times=1 →
+    præcis 2 dispatches (forsøg 1 fejler + close, forsøg 2 recoverer)."""
+    closed: list[bool] = []
+    real_dispatch = vf.stream_visible_followup
+    dispatch_count = {"n": 0}
+
+    def _counting_dispatch(**kw):
+        dispatch_count["n"] += 1
+        gen = real_dispatch(**kw)
+
+        # Wrap generatoren så vi kan registrere close() (D11 force-close).
+        class _TrackingGen:
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                return next(gen)
+
+            def close(self):
+                closed.append(True)
+                return gen.close()
+
+        return _TrackingGen()
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _counting_dispatch)
+
+    res = _drive(monkeypatch, vf.FAULT_PARTIAL_DELTAS_THEN_DROP,
+                 run_id="f1-fence",
+                 drop_as_exception=True, fire_once=False,
+                 fail_times=1, recover_text="OK")
+
+    assert res.done_status == "completed"
+    # Præcis 2 dispatches: ingen tredje samtidig pump.
+    assert dispatch_count["n"] == 2, \
+        f"forventede 2 dispatches (1 fejl + 1 recover); fik {dispatch_count['n']}"
+    # Det fejlede forsøgs generator blev force-lukket (fence) før recover-spawn.
+    assert closed, "D11: det fejlede forsøgs provider-stream skal force-closes (close())"
+
+
+def test_exhaustion_emits_partial_and_interrupts_never_blank(monkeypatch, _retry_on) -> None:
+    """E11/P6/S7-udmattelse: gentagne fejl udtømmer budgettet →
+    note_round_retry(outcome=exhausted) + checkpointed partial + interruption —
+    ALDRIG blank. Vi sætter fail_times højere end round_stream_max_retries (3),
+    så ingen recover nogensinde lander."""
+    # Tving et lavt budget så testen er hurtig+deterministisk.
+    monkeypatch.setattr("core.services.affect_modulation.compute_agentic_loop_budget",
+                        lambda **_k: {"max_rounds": 5,
+                                      "round_stream_max_retries": 2,
+                                      "turn_total_stream_retries": 12,
+                                      "turn_total_wall_clock_s": 600.0,
+                                      "round_total_timeout_s": 300.0,
+                                      "round_silence_timeout_s": 180.0})
+
+    res = _drive(monkeypatch, vf.FAULT_PARTIAL_DELTAS_THEN_DROP,
+                 run_id="f1-exhaust",
+                 partial_deltas=("nåede-", "lidt"), drop_as_exception=True,
+                 fire_once=False, fail_times=99, recover_text="(uopnåelig)")
+
+    # Udmattelse → interruption (ikke completed).
+    assert res.done_status == "interrupted", \
+        "udmattet retry-budget → interruption (de eksisterende semantikker)"
+    # exhausted-nerven fyrede.
+    exhausted = [d for d in res.round_retry_nerves() if d.get("outcome") == "exhausted"]
+    assert exhausted, f"note_round_retry(exhausted) skal fyre; fik {res.round_retry_nerves()}"
+    # ALDRIG blank: den ærlige udmattelses-note nåede klienten + persisteringen.
+    assert "måtte give op" in res.persisted_text, \
+        "P6: checkpointed partial + ærlig note må aldrig blive et tomt tab"
+    assert res.has_terminal_frame()
+    # Vi retry'ede præcis round_stream_max_retries (2) gange før vi gav op.
+    assert any(int(d.get("attempt") or 0) == 2
+               for d in res.round_retry_nerves()), \
+        "skal have retry'et op til per-runde-loftet (2) før udmattelse"
+
+
+def test_provider_stall_is_not_retried(monkeypatch, _retry_on) -> None:
+    """D11: provider_stall (silence/idle-timeout) er IKKE retryable på samme
+    provider → den skal gå direkte til interruption, ALDRIG retry.
+
+    Vi simulerer en stall ved at lade pumpen hænge (ingen events, intet drop)
+    indtil round-silence-watchdog'en fyrer. Vi sætter et meget lavt
+    silence-timeout så testen er hurtig."""
+    monkeypatch.setattr("core.services.affect_modulation.compute_agentic_loop_budget",
+                        lambda **_k: {"max_rounds": 5,
+                                      "round_stream_max_retries": 3,
+                                      "turn_total_stream_retries": 12,
+                                      "turn_total_wall_clock_s": 600.0,
+                                      "round_total_timeout_s": 6.0,
+                                      "round_silence_timeout_s": 2.0})
+
+    # Stub stream_visible_followup til at hænge (yield intet, sov forbi
+    # silence-timeout). Watchdog'en fyrer → provider_stall.
+    def _stalling_dispatch(**_kw):
+        import time as _t
+        _t.sleep(4.0)  # > silence_timeout (2s) → watchdog fyrer
+        return
+        yield  # pragma: no cover (gør funktionen til en generator)
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _stalling_dispatch)
+
+    res = _drive(monkeypatch, vf.FAULT_CLEAN_FAIL_BEFORE_DELTA,  # injektion ryddes ikke pga. stub
+                 run_id="f1-stall")
+
+    # Stall → interruption, og INGEN retry-nerve (provider_stall retries aldrig).
+    assert res.done_status == "interrupted"
+    assert not res.round_retry_nerves(), \
+        "D11: provider_stall må ALDRIG udløse en round_retry"
+    assert not res.events_of("retry"), \
+        "D11: ingen Reconnecting-retry-SSE for en stall"
+
+
+def test_flag_off_partial_then_drop_identical_to_baseline(monkeypatch) -> None:
+    """Kill-switch OFF (eksplicit): partial-then-drop opfører sig BYTE-IDENTISK
+    med baseline — turen dør, partiel tekst persisteres, INGEN retry-nerve/SSE.
+    Spejler test_partial_then_drop_C11_partial_text_persists men asserter
+    EKSPLICIT fraværet af enhver Fase-1-bivirkning."""
+    monkeypatch.setenv(vf._AGENTIC_ROUND_RETRY_ENV, "0")
+    assert vf.agentic_round_retry_enabled() is False
+
+    partials = ("partial-", "svar-", "før-drop")
+    res = _drive(monkeypatch, vf.FAULT_PARTIAL_DELTAS_THEN_DROP,
+                 run_id="f1-flag-off",
+                 partial_deltas=partials, drop_as_exception=True)
+
+    assert res.done_status == "interrupted", "flag OFF → turen dør (baseline)"
+    assert "".join(partials) in res.persisted_text, \
+        "flag OFF → partiel tekst persisteres (baseline C11)"
+    assert not res.round_retry_nerves(), "flag OFF → INGEN round_retry-nerve"
+    assert not res.events_of("retry"), "flag OFF → INGEN retry-SSE"
+    assert not res.events_of("round_restart_discard_partial"), \
+        "flag OFF → INGEN discard-SSE"

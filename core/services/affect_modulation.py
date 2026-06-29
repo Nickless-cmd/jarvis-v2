@@ -43,6 +43,18 @@ AGENTIC_BUDGET_DEFAULTS: dict[str, Any] = {
     "max_empty_text_rounds": 20,
     "round_total_timeout_s": 300.0,
     "round_silence_timeout_s": 180.0,
+    # ── Rund-niveau stream-retry budgetter (spec §4.1/§4.3/E11) ──────────────
+    # round_stream_max_retries  = per-runde stream-retry-loft (Codex'
+    #                             stream_max_retries; wrapper adapter-niveau
+    #                             request-retry). Forbruger IKKE max_rounds.
+    # turn_total_stream_retries = HÅRDT total-loft pr. TUR (E11/S2) — summen af
+    #                             rund-retries over alle runder. 9×100-worst-case-
+    #                             eksplosionen lukkes her.
+    # turn_total_wall_clock_s   = hård total-tur-deadline (E11/P6): retries må
+    #                             aldrig gøre en tur til minutters hæng.
+    "round_stream_max_retries": 3,
+    "turn_total_stream_retries": 12,
+    "turn_total_wall_clock_s": 600.0,
 }
 
 

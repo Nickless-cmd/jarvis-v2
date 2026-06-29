@@ -1851,33 +1851,32 @@ def _list_openai_codex_models() -> list[dict[str, object]]:
     return [{"id": m, "label": m} for m in static_models]
 
 
-_OFA_CB_FAILURES = 0
-_OFA_CB_OPEN_UNTIL = 0.0
-_OFA_CB_THRESHOLD = 3        # open after 3 consecutive fails
-_OFA_CB_OPEN_DURATION_S = 300.0  # stay open 5 minutes
-_OFA_CB_LOCK = __import__("threading").Lock()
+# ── OllamaFreeAPI circuit breaker — LØFTET til den delte per-provider breaker ──
+# Spec §11.2: de tidligere ofa/arko-specifikke breakers er nu BAKKET af den delte
+# per-provider store (provider_circuit_breaker.pp_*), keyed på provider_id="ollamafreeapi".
+# Vi bevarer ofa's historiske adfærd (3 fejl i træk → åben 5 min) via pp_configure.
+_OFA_CB_THRESHOLD = 3            # open after 3 consecutive fails (bevaret)
+_OFA_CB_OPEN_DURATION_S = 300.0  # stay open 5 minutes (bevaret)
+_OFA_PROVIDER_ID = "ollamafreeapi"
 
 
 def _ofa_circuit_open() -> bool:
-    import time as _t
-    with _OFA_CB_LOCK:
-        return _t.time() < _OFA_CB_OPEN_UNTIL
+    from core.services import provider_circuit_breaker as _cb
+    _cb.pp_configure(_OFA_PROVIDER_ID, threshold=_OFA_CB_THRESHOLD,
+                     cooldown_s=_OFA_CB_OPEN_DURATION_S)
+    return _cb.pp_is_open(_OFA_PROVIDER_ID)
 
 
 def _ofa_circuit_record_failure() -> None:
-    import time as _t
-    global _OFA_CB_FAILURES, _OFA_CB_OPEN_UNTIL
-    with _OFA_CB_LOCK:
-        _OFA_CB_FAILURES += 1
-        if _OFA_CB_FAILURES >= _OFA_CB_THRESHOLD:
-            _OFA_CB_OPEN_UNTIL = _t.time() + _OFA_CB_OPEN_DURATION_S
-            _OFA_CB_FAILURES = 0  # reset for next window
+    from core.services import provider_circuit_breaker as _cb
+    _cb.pp_configure(_OFA_PROVIDER_ID, threshold=_OFA_CB_THRESHOLD,
+                     cooldown_s=_OFA_CB_OPEN_DURATION_S)
+    _cb.pp_record_failure(_OFA_PROVIDER_ID)
 
 
 def _ofa_circuit_record_success() -> None:
-    global _OFA_CB_FAILURES
-    with _OFA_CB_LOCK:
-        _OFA_CB_FAILURES = 0
+    from core.services import provider_circuit_breaker as _cb
+    _cb.pp_record_success(_OFA_PROVIDER_ID)
 
 
 def _execute_ollamafreeapi_chat(
@@ -1916,36 +1915,31 @@ def _execute_ollamafreeapi_chat(
     }
 
 
-# ── Arko circuit breaker (mirror of the OllamaFreeAPI one) ────────────────
-_ARKO_CB_THRESHOLD = 3        # consecutive failures before opening
-_ARKO_CB_OPEN_DURATION_S = 180  # stay open for 3 minutes before retrying
-_arko_cb_failures = 0
-_arko_cb_opened_at: float = 0.0
+# ── Arko circuit breaker — LØFTET til den delte per-provider breaker ──────────
+# Spec §11.2: bakket af den delte per-provider store, keyed provider_id="arko".
+# Bevarer arko's historiske adfærd (3 fejl i træk → åben 3 min) via pp_configure.
+_ARKO_CB_THRESHOLD = 3          # consecutive failures before opening (bevaret)
+_ARKO_CB_OPEN_DURATION_S = 180  # stay open for 3 minutes (bevaret)
+_ARKO_PROVIDER_ID = "arko"
 
 
 def _arko_circuit_open() -> bool:
-    global _arko_cb_failures, _arko_cb_opened_at
-    if _arko_cb_failures < _ARKO_CB_THRESHOLD:
-        return False
-    if (time.time() - _arko_cb_opened_at) >= _ARKO_CB_OPEN_DURATION_S:
-        # Cooldown elapsed — let one probe through.
-        _arko_cb_failures = 0
-        _arko_cb_opened_at = 0.0
-        return False
-    return True
+    from core.services import provider_circuit_breaker as _cb
+    _cb.pp_configure(_ARKO_PROVIDER_ID, threshold=_ARKO_CB_THRESHOLD,
+                     cooldown_s=float(_ARKO_CB_OPEN_DURATION_S))
+    return _cb.pp_is_open(_ARKO_PROVIDER_ID)
 
 
 def _arko_circuit_record_failure() -> None:
-    global _arko_cb_failures, _arko_cb_opened_at
-    _arko_cb_failures += 1
-    if _arko_cb_failures >= _ARKO_CB_THRESHOLD and _arko_cb_opened_at == 0.0:
-        _arko_cb_opened_at = time.time()
+    from core.services import provider_circuit_breaker as _cb
+    _cb.pp_configure(_ARKO_PROVIDER_ID, threshold=_ARKO_CB_THRESHOLD,
+                     cooldown_s=float(_ARKO_CB_OPEN_DURATION_S))
+    _cb.pp_record_failure(_ARKO_PROVIDER_ID)
 
 
 def _arko_circuit_record_success() -> None:
-    global _arko_cb_failures, _arko_cb_opened_at
-    _arko_cb_failures = 0
-    _arko_cb_opened_at = 0.0
+    from core.services import provider_circuit_breaker as _cb
+    _cb.pp_record_success(_ARKO_PROVIDER_ID)
 
 
 def _execute_arko_chat(*, message: str) -> dict[str, object]:

@@ -1976,6 +1976,18 @@ async def _stream_visible_run(
                 _turn_wall_clock_cap_s = float(_agentic_budget.get("turn_total_wall_clock_s") or 600.0)
                 _turn_total_retries = 0
                 _turn_started_at = time.monotonic()
+                # ── Fase 3 (spec §4 S6, §11.2): provider-failover-state ──────────
+                # Den provider/model det AGENTISKE loop sampler igennem. Starter på
+                # run's egen visible-provider; en failover (åben breaker / fatal-men-
+                # failover-bar fejl) REBINDER disse for RESTEN af turen (S6). Pumpen
+                # læser dem som default-args så hvert forsøgs pump fanger den
+                # aktuelle (evt. failover'ede) provider. Flag-OFF → aldrig rebundet
+                # → byte-identisk med i dag.
+                _active_provider = run.provider
+                _active_model = run.model
+                # True når denne tur ALLEREDE er failet over én gang (vi failer ikke
+                # over i en uendelig kæde — én fallback, så graceful exhaustion).
+                _did_failover = False
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
                     if not _provider_supports_followup:
                         logger.warning(
@@ -2175,11 +2187,16 @@ async def _stream_visible_run(
                             # full snapshot as a default arg so every attempt's pump
                             # captures byte-identical messages — never recompute lean.
                             round_base_messages=_round_base_messages,
+                            # Fase 3 (S6/§11.2): bind the CURRENT (possibly failed-
+                            # over) provider/model. Flag OFF → these equal run's own
+                            # → byte-identical dispatch.
+                            pump_provider=_active_provider,
+                            pump_model=_active_model,
                         ) -> None:
                             try:
                                 _gen = _vf.stream_visible_followup(
-                                    provider=run.provider,
-                                    model=run.model,
+                                    provider=pump_provider,
+                                    model=pump_model,
                                     base_messages=round_base_messages,
                                     exchanges=_followup_exchanges,
                                     tool_definitions=tool_defs,
@@ -2438,19 +2455,34 @@ async def _stream_visible_run(
                         # tool-exec, or the interruption path). EVERYTHING here is
                         # gated behind the kill-switch: with it OFF we break
                         # immediately → the body ran exactly once → byte-identical.
-                        if not _a_failure:
-                            break  # success / clean round → proceed (no retry).
                         try:
                             _retry_enabled = _vf.agentic_round_retry_enabled()
                         except Exception:
                             _retry_enabled = False
-                        if not _retry_enabled:
-                            break  # kill-switch OFF → today's behavior (interruption).
+                        try:
+                            _failover_enabled = _vf.provider_failover_enabled()
+                        except Exception:
+                            _failover_enabled = False
+                        if not _a_failure:
+                            # Success / clean round. Fase 3 (S6): record_success on the
+                            # active provider so a transient blip earlier this turn
+                            # closes the breaker. Gated so flag-OFF stays byte-identical.
+                            if _retry_enabled or _failover_enabled:
+                                try:
+                                    from core.services import (
+                                        provider_circuit_breaker as _cb_ok,
+                                    )
+                                    _cb_ok.pp_record_success(_active_provider)
+                                except Exception:
+                                    pass
+                            break  # success / clean round → proceed (no retry).
+                        if not _retry_enabled and not _failover_enabled:
+                            break  # both kill-switches OFF → today's behavior.
 
                         # Classify via the structured failure_kind/retryable already
                         # attached to _a_failure (B11). provider_stall is NOT
-                        # retryable (D11) → it falls through to the interruption path
-                        # (re-sampling a stalled provider just re-stalls).
+                        # retryable (D11) on the SAME provider, but it DOES count
+                        # toward opening the breaker (a stalling provider is failing).
                         _fk = str(_a_failure.get("failure_kind") or "")
                         _retryable = bool(_a_failure.get("retryable"))
                         if not _retryable and _fk:
@@ -2462,6 +2494,102 @@ async def _stream_visible_run(
                             except Exception:
                                 _retryable = False
 
+                        # ── Fase 3 (S6/§11.2): per-provider circuit-breaker ──────────
+                        # Record this round failure against the ACTIVE provider's
+                        # shared breaker. provider_stall counts too (a stalling
+                        # provider is down). Then check: is the provider's breaker
+                        # OPEN? If so, the provider is DEAD — do NOT retry-storm it;
+                        # fail over (if enabled) or fall to graceful exhaustion.
+                        _breaker_open = False
+                        try:
+                            from core.services import provider_circuit_breaker as _cb_fail
+                            _cb_fail.pp_record_failure(_active_provider)
+                            _breaker_open = _cb_fail.pp_is_open(_active_provider)
+                        except Exception:
+                            _breaker_open = False
+
+                        # ── Provider failover (S6, REQUIRED) ─────────────────────────
+                        # When the active provider is unavailable (breaker OPEN) we do
+                        # NOT retry the same provider. If failover is enabled, we have
+                        # NOT already failed over this turn, and a reliable fallback
+                        # exists → rebind the active provider/model for the REST of the
+                        # turn and re-sample (S3: tools are NOT re-executed — the pump
+                        # re-uses _followup_exchanges unchanged). Emit a provider_failover
+                        # nerve (from→to). One failover per turn → no infinite chain.
+                        if _breaker_open and _failover_enabled and not _did_failover:
+                            try:
+                                _fo_target = _vf.pick_failover_target(
+                                    _active_provider, _active_model)
+                            except Exception:
+                                _fo_target = None
+                            if _fo_target is not None:
+                                _fo_from_p, _fo_from_m = _active_provider, _active_model
+                                _active_provider, _active_model = _fo_target
+                                _did_failover = True
+                                # Budget: a failover consumes a turn-retry slot so the
+                                # whole turn stays bounded even if the fallback also dies.
+                                _turn_total_retries += 1
+                                # Observe the failover edge to the Central (stream).
+                                try:
+                                    from core.services.central_core import (
+                                        central as _central_fo,
+                                    )
+                                    _central_fo().observe({
+                                        "cluster": "stream",
+                                        "nerve": "provider_failover",
+                                        "run_id": str(run.run_id or ""),
+                                        "round": _agentic_round + 1,
+                                        "from_provider": str(_fo_from_p or ""),
+                                        "from_model": str(_fo_from_m or ""),
+                                        "to_provider": str(_active_provider or ""),
+                                        "to_model": str(_active_model or ""),
+                                        "failure_kind": _fk,
+                                    })
+                                except Exception:
+                                    pass
+                                logger.warning(
+                                    "provider-failover run_id=%s round=%d %s/%s -> %s/%s "
+                                    "(breaker open, kind=%s)",
+                                    run.run_id, _agentic_round + 1, _fo_from_p,
+                                    _fo_from_m, _active_provider, _active_model, _fk,
+                                )
+                                # Emit a visible failover signal so desk/mobile can
+                                # surface "switched to a backup provider".
+                                yield _sse("provider_failover", {
+                                    "type": "provider_failover",
+                                    "run_id": run.run_id,
+                                    "round": _agentic_round + 1,
+                                    "to_provider": str(_active_provider or ""),
+                                })
+                                # C11: discard the failed attempt's partial before the
+                                # fallback re-streams fresh deltas (same contract as a
+                                # round-retry). Then re-enter the attempt loop on the
+                                # NEW provider — no same-provider retry-storm.
+                                try:
+                                    _dead_gen_fo = _pump_gen_holder.get(_round_epoch)
+                                    if _dead_gen_fo is not None and hasattr(
+                                            _dead_gen_fo, "close"):
+                                        _dead_gen_fo.close()
+                                except Exception:
+                                    pass
+                                _round_epoch += 1
+                                del _all_followup_parts[_round_partial_snapshot:]
+                                yield _sse("round_restart_discard_partial", {
+                                    "type": "round_restart_discard_partial",
+                                    "run_id": run.run_id,
+                                    "round": _agentic_round + 1,
+                                })
+                                continue  # re-sample this round on the fallback provider.
+
+                        # Breaker OPEN but no failover available (flag off / already
+                        # failed over / no target) → the active provider is dead and
+                        # we have nowhere to go. Force exhaustion: do NOT retry-storm
+                        # a known-dead provider. _retryable→False routes us into the
+                        # graceful-degrade exhaustion path below (checkpointed partial
+                        # + honest note + interruption nerve — never a blank loss).
+                        if _breaker_open:
+                            _retryable = False
+
                         # Budget checks (E11/S2/P6): per-round cap, hard turn-total
                         # retry cap, and a turn wall-clock deadline. Any exhaustion →
                         # graceful-degrade (emit checkpointed partial + honest note)
@@ -2470,8 +2598,11 @@ async def _stream_visible_run(
                         _under_turn_budget = _turn_total_retries < _turn_total_retry_cap
                         _under_wall_clock = (
                             time.monotonic() - _turn_started_at) < _turn_wall_clock_cap_s
+                        # Same-provider retry requires the round-retry kill-switch ON.
+                        # (With only failover enabled, a non-failover-able failure must
+                        # NOT trigger same-provider retries — flag isolation.)
                         _can_retry = (
-                            _retryable and _under_round_budget
+                            _retry_enabled and _retryable and _under_round_budget
                             and _under_turn_budget and _under_wall_clock)
 
                         if not _can_retry:

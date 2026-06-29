@@ -1451,6 +1451,80 @@ def agentic_round_retry_enabled() -> bool:
 _AGENTIC_LEAN_PROMPT_ENV = "JARVIS_AGENTIC_LEAN_PROMPT"
 
 
+# ── Kill-switch: PROVIDER_FAILOVER (spec §4 S6, §11.2) ───────────────────────
+#
+# Den ENE sandhedskilde for om visible-lane PROVIDER-FAILOVER (Fase 3) er aktiv.
+# DEFAULT OFF (fail-closed) → byte-identisk med i dag (ingen failover-re-sample;
+# en åben breaker / fatal-men-failover-bar fejl falder til graceful exhaustion).
+# UAFHÆNGIGT af ``agentic_round_retry_enabled()`` så failover kan slås til separat.
+# Dual-læsning (samme mønster):
+#   1. env ``JARVIS_PROVIDER_FAILOVER`` vinder når sat til en sandheds-værdi.
+#   2. ellers runtime-config ``settings.extra["provider_failover_enabled"]``.
+# At slå failover FRA må ALDRIG slå terminal-frame (I2) / nerve (I4) / circuit-
+# breaker-observabilitet fra — flaget styrer KUN selve re-sample-på-fallback-grenen.
+
+_PROVIDER_FAILOVER_ENV = "JARVIS_PROVIDER_FAILOVER"
+
+# Den dokumenterede pålidelige fallback (reference_glm52_ttft_cancel: deepseek-
+# v4-flash:cloud, TTFT 11-17s). Ét sted så failover-målet er entydigt.
+_FAILOVER_FALLBACK_PROVIDER = "deepseek"
+_FAILOVER_FALLBACK_MODEL = "deepseek-v4-flash:cloud"
+
+
+def provider_failover_enabled() -> bool:
+    """Er visible-lane provider-failover (Fase 3, spec §11.2) slået til? Default False.
+
+    Env-override (``JARVIS_PROVIDER_FAILOVER``) vinder over runtime-config.
+    Selv-sikker: enhver fejl → False (fail-closed; ingen failover-re-sample)."""
+    env_value = os.environ.get(_PROVIDER_FAILOVER_ENV)
+    if env_value is not None:
+        val = env_value.strip().lower()
+        if val in _TRUTHY:
+            return True
+        if val in _FALSY:
+            return False
+    try:
+        from core.runtime.settings import load_settings
+        return bool(load_settings().extra.get("provider_failover_enabled", False))
+    except Exception:
+        return False
+
+
+def pick_failover_target(
+    current_provider: str, current_model: str
+) -> tuple[str, str] | None:
+    """Vælg en kendt-pålidelig fallback-provider for RESTEN af denne tur (S6/§11.2).
+
+    Returnerer ``(provider, model)`` eller ``None`` hvis ingen meningsfuld failover
+    findes (fx vi er ALLEREDE på fallback'en → undgå at faile over til os selv,
+    eller fallback'ens EGEN breaker er åben → den er også død).
+
+    Default-målet er ``deepseek``/``deepseek-v4-flash:cloud`` (den dokumenterede
+    reliable default). Self-safe: enhver fejl → None (→ graceful exhaustion)."""
+    try:
+        cur_p = (current_provider or "").strip().lower()
+        fb_p = _FAILOVER_FALLBACK_PROVIDER.strip().lower()
+        # Allerede på fallback'en (samme provider) → ingen meningsfuld failover.
+        if cur_p == fb_p:
+            return None
+        # Fallback'en skal selv være en understøttet followup-provider.
+        try:
+            if fb_p not in {p.strip().lower() for p in supported_followup_providers()}:
+                return None
+        except Exception:
+            pass
+        # Fallback'ens EGEN breaker åben → den er også død; ingen failover.
+        try:
+            from core.services import provider_circuit_breaker as _cb
+            if _cb.pp_is_open(fb_p):
+                return None
+        except Exception:
+            pass
+        return (_FAILOVER_FALLBACK_PROVIDER, _FAILOVER_FALLBACK_MODEL)
+    except Exception:
+        return None
+
+
 def agentic_lean_prompt_enabled() -> bool:
     """Er lean agentic-round-prompt (runde ≥2, spec §4.7) slået til? Default False.
 

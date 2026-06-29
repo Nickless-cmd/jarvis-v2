@@ -99,9 +99,15 @@ class _DriveResult:
         return [d for n, d in self.nerves if n == "round_retry"]
 
 
-def _drive(monkeypatch, shape: str, *, run_id: str, **inject_kwargs) -> _DriveResult:
+def _drive(monkeypatch, shape: str, *, run_id: str,
+           provider: str = "deepseek", model: str = "deepseek-v4-flash",
+           central_nerves: list | None = None, **inject_kwargs) -> _DriveResult:
     """Driv ÉT minimalt agentisk followup-run gennem det ægte spor med en aktiv
-    fejl-injektion. Returnerer opsamlet udfald."""
+    fejl-injektion. Returnerer opsamlet udfald.
+
+    ``provider``/``model``: override run's visible-provider (til failover-tests).
+    ``central_nerves``: hvis givet (en liste), opsamles ALLE ``central().observe``-
+    payloads heri (breaker open/close + provider_failover lever her, ikke i fo._observe)."""
 
     # First-pass: ét tool-kald, så stream-done med tom prosa (→ agentic loop).
     def _fake_stream_model(**_kw):
@@ -151,9 +157,19 @@ def _drive(monkeypatch, shape: str, *, run_id: str, **inject_kwargs) -> _DriveRe
     monkeypatch.setattr(fo, "_observe",
                         lambda nerve, run_id, **d: nerves.append((nerve, d)))
 
+    # Fang breaker/failover-nerver der ruter gennem central().observe (cluster=
+    # "stream") i stedet for fo._observe — kun hvis kalderen bad om det.
+    if central_nerves is not None:
+        class _CapCentral:
+            def observe(self, payload):
+                central_nerves.append(dict(payload or {}))
+        # central() er importeret lazily inde i hot-stien → patch begge moduler.
+        monkeypatch.setattr("core.services.central_core.central",
+                            lambda: _CapCentral())
+
     run = vr.VisibleRun(
-        run_id=run_id, lane="primary", provider="deepseek",
-        model="deepseek-v4-flash", user_message="hej",
+        run_id=run_id, lane="primary", provider=provider,
+        model=model, user_message="hej",
         session_id=f"s-{run_id}")
 
     async def _run() -> list[str]:
@@ -738,3 +754,224 @@ def test_flag_off_partial_then_drop_identical_to_baseline(monkeypatch) -> None:
     assert not res.events_of("retry"), "flag OFF → INGEN retry-SSE"
     assert not res.events_of("round_restart_discard_partial"), \
         "flag OFF → INGEN discard-SSE"
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Fase 3 (spec §4 S6, §11.2): per-provider circuit-breaker + provider-failover
+# wired ind i den synlige rund-retry-beslutning. Komponerer med fail_times-
+# harnessen: en DØD/vedvarende-fejlende provider skal kort-sluttes (breaker
+# åbner) og faile over — IKKE retry-storme gennem tur-budgettet.
+# ═════════════════════════════════════════════════════════════════════════════
+import core.services.provider_circuit_breaker as _cbmod  # noqa: E402
+
+
+@pytest.fixture
+def _breaker_clean():
+    """Frisk breaker-state før og efter hver Fase-3-test."""
+    _cbmod.pp_reset_all()
+    yield
+    _cbmod.pp_reset_all()
+
+
+@pytest.fixture
+def _failover_on(monkeypatch):
+    """Slå BÅDE round-retry OG provider-failover ON (failover bygger på begge)."""
+    monkeypatch.setenv(vf._AGENTIC_ROUND_RETRY_ENV, "1")
+    monkeypatch.setenv(vf._PROVIDER_FAILOVER_ENV, "1")
+    assert vf.agentic_round_retry_enabled() is True
+    assert vf.provider_failover_enabled() is True
+    yield
+
+
+def test_failover_flag_default_off(monkeypatch) -> None:
+    """provider_failover_enabled er DEFAULT OFF (uafhængig kill-switch)."""
+    monkeypatch.delenv(vf._PROVIDER_FAILOVER_ENV, raising=False)
+
+    class _S:
+        extra: dict = {}
+    monkeypatch.setattr("core.runtime.settings.load_settings", lambda: _S())
+    assert vf.provider_failover_enabled() is False
+
+
+def test_failover_flag_env_override(monkeypatch) -> None:
+    monkeypatch.setenv(vf._PROVIDER_FAILOVER_ENV, "1")
+    assert vf.provider_failover_enabled() is True
+    monkeypatch.setenv(vf._PROVIDER_FAILOVER_ENV, "off")
+    assert vf.provider_failover_enabled() is False
+
+
+def test_pick_failover_target_basic(_breaker_clean) -> None:
+    """pick_failover_target → deepseek for en anden (supported) primær."""
+    tgt = vf.pick_failover_target("groq", "some-model")
+    assert tgt is not None
+    assert tgt[0] == "deepseek"
+    assert "deepseek" in tgt[1]
+
+
+def test_pick_failover_target_none_when_already_fallback(_breaker_clean) -> None:
+    """Ingen failover fra deepseek → deepseek (kan ikke faile over til sig selv)."""
+    assert vf.pick_failover_target("deepseek", "deepseek-v4-flash") is None
+
+
+def test_pick_failover_target_none_when_fallback_breaker_open(_breaker_clean) -> None:
+    """Hvis fallback'ens (deepseek) EGEN breaker er åben → ingen failover."""
+    # Brug REAL monotonic (ingen now=) så pp_is_open()'s egen monotonic ser den åben.
+    _cbmod.pp_configure("deepseek", threshold=4, cooldown_s=60.0)
+    for _ in range(4):
+        _cbmod.pp_record_failure("deepseek")
+    assert _cbmod.pp_is_open("deepseek") is True
+    assert vf.pick_failover_target("groq", "m") is None
+
+
+def test_breaker_opens_and_no_retry_storm(monkeypatch, _failover_on, _breaker_clean) -> None:
+    """KOMPOSITION: en provider der bliver ved med at fejle (fail_times=99) åbner
+    breakeren og bliver IKKE retry-stormet. Med en LAV breaker-threshold (2) på
+    den aktive provider åbner breakeren FØR round-retry-budgettet (3) er brugt →
+    vi falder til graceful exhaustion uden at hamre videre. provider_circuit_open-
+    nerven fyrer (cluster=stream). Run-provider = deepseek → ingen failover-target
+    (kan ikke faile over til sig selv) → ren breaker-stop-sti."""
+    # Lav threshold så breakeren åbner hurtigt og deterministisk.
+    _cbmod.pp_configure("deepseek", threshold=2, cooldown_s=60.0)
+
+    real_dispatch = vf.stream_visible_followup
+    dispatch_count = {"n": 0}
+
+    def _counting(**kw):
+        dispatch_count["n"] += 1
+        return real_dispatch(**kw)
+    monkeypatch.setattr(vf, "stream_visible_followup", _counting)
+
+    central_nerves: list[dict] = []
+    res = _drive(monkeypatch, vf.FAULT_PARTIAL_DELTAS_THEN_DROP,
+                 run_id="f3-breaker", provider="deepseek",
+                 model="deepseek-v4-flash",
+                 central_nerves=central_nerves,
+                 partial_deltas=("p-",), drop_as_exception=True,
+                 fire_once=False, fail_times=99, recover_text="(uopnåelig)")
+
+    # Breakeren åbnede → provider_circuit_open-nerve fyrede (cluster=stream).
+    opens = [n for n in central_nerves if n.get("nerve") == "provider_circuit_open"]
+    assert opens, f"provider_circuit_open skal fyre; fik {central_nerves}"
+    assert opens[0]["cluster"] == "stream"
+    assert opens[0]["provider_id"] == "deepseek"
+
+    # INGEN retry-storm: vi stoppede ved/omkring breaker-tærsklen, IKKE det fulde
+    # round-retry-budget (som ellers ville give 1 + 3 = 4 dispatches). Med
+    # threshold=2 åbner breakeren efter 2 fejl → klart < 4.
+    assert dispatch_count["n"] <= 3, \
+        f"breakeren skal stoppe retry-storm; fik {dispatch_count['n']} dispatches"
+
+    # Aldrig blankt: turen ender med en terminal-frame.
+    assert res.has_terminal_frame()
+    assert res.done_status == "interrupted"
+
+
+def test_failover_picks_deepseek_when_primary_breaker_open(
+        monkeypatch, _failover_on, _breaker_clean) -> None:
+    """En primær (groq) hvis breaker åbner → failer over til deepseek for resten
+    af turen, og deepseek's første kald RECOVERER. provider_failover-nerven fyrer
+    (from=groq → to=deepseek). Vi modellerer det via per-provider fail-styring:
+    groq fejler altid, deepseek lykkes."""
+    # Groq's breaker åbner hurtigt (threshold 2); deepseek er sund.
+    _cbmod.pp_configure("groq", threshold=2, cooldown_s=60.0)
+
+    # Provider-bevidst dispatch-stub: groq → transport-drop (raise), deepseek →
+    # clean FollowupDone. Vi behøver ikke fault-injektoren her.
+    real_dispatch = vf.stream_visible_followup
+    seen_providers: list[str] = []
+
+    def _provider_aware(**kw):
+        prov = (kw.get("provider") or "").lower()
+        seen_providers.append(prov)
+
+        def _gen():
+            if prov == "deepseek":
+                yield vf.FollowupDelta(delta="FAILOVER-SVAR")
+                yield vf.FollowupDone(text="")
+            else:
+                raise ConnectionError("groq socket closed before done")
+        return _gen()
+    monkeypatch.setattr(vf, "stream_visible_followup", _provider_aware)
+
+    central_nerves: list[dict] = []
+    res = _drive(monkeypatch, vf.FAULT_CLEAN_FAIL_BEFORE_DELTA,  # injektion uvirksom (stub overstyrer)
+                 run_id="f3-failover", provider="groq", model="groq-model",
+                 central_nerves=central_nerves)
+
+    # provider_failover-nerven fyrede (from groq → to deepseek).
+    fos = [n for n in central_nerves if n.get("nerve") == "provider_failover"]
+    assert fos, f"provider_failover skal fyre; fik {central_nerves}"
+    assert fos[0]["from_provider"] == "groq"
+    assert fos[0]["to_provider"] == "deepseek"
+    assert fos[0]["cluster"] == "stream"
+
+    # Vi failede faktisk over: deepseek blev dispatchet EFTER groq.
+    assert "groq" in seen_providers and "deepseek" in seen_providers
+    assert seen_providers.index("deepseek") > seen_providers.index("groq")
+
+    # En provider_failover-SSE nåede klienten.
+    assert res.events_of("provider_failover"), "provider_failover-SSE skal emitteres"
+
+    # Turen OVERLEVEDE via fallback'en.
+    assert res.done_status == "completed"
+    assert "FAILOVER-SVAR" in res.persisted_text
+
+
+def test_failover_off_breaker_open_no_failover(
+        monkeypatch, _breaker_clean) -> None:
+    """Round-retry ON men failover OFF: en åben breaker stopper retry-storm men
+    failer IKKE over (flag-isolation) → graceful exhaustion, ingen provider_
+    failover-nerve."""
+    monkeypatch.setenv(vf._AGENTIC_ROUND_RETRY_ENV, "1")
+    monkeypatch.setenv(vf._PROVIDER_FAILOVER_ENV, "0")
+    _cbmod.pp_configure("groq", threshold=2, cooldown_s=60.0)
+
+    central_nerves: list[dict] = []
+    res = _drive(monkeypatch, vf.FAULT_PARTIAL_DELTAS_THEN_DROP,
+                 run_id="f3-no-failover", provider="groq", model="groq-model",
+                 central_nerves=central_nerves,
+                 partial_deltas=("p-",), drop_as_exception=True,
+                 fire_once=False, fail_times=99, recover_text="(uopnåelig)")
+
+    assert not [n for n in central_nerves if n.get("nerve") == "provider_failover"], \
+        "failover OFF → INGEN provider_failover-nerve"
+    assert not res.events_of("provider_failover")
+    # Breakeren observeres stadig (open er ubetinget af failover-flaget).
+    assert [n for n in central_nerves if n.get("nerve") == "provider_circuit_open"]
+    assert res.has_terminal_frame()
+
+
+def test_provider_stall_counts_toward_breaker(
+        monkeypatch, _failover_on, _breaker_clean) -> None:
+    """provider_stall tæller MOD at åbne breakeren (en stallende provider FEJLER)
+    selvom den ikke retries på samme provider. Vi driver gentagne stalls og
+    verificerer at breaker-failures akkumulerer for den aktive provider."""
+    _cbmod.pp_configure("deepseek", threshold=2, cooldown_s=60.0)
+    monkeypatch.setattr("core.services.affect_modulation.compute_agentic_loop_budget",
+                        lambda **_k: {"max_rounds": 3,
+                                      "round_stream_max_retries": 3,
+                                      "turn_total_stream_retries": 12,
+                                      "turn_total_wall_clock_s": 600.0,
+                                      "round_total_timeout_s": 6.0,
+                                      "round_silence_timeout_s": 2.0})
+
+    def _stalling(**_kw):
+        import time as _t
+        _t.sleep(4.0)  # > silence-timeout → watchdog → provider_stall
+        return
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _stalling)
+
+    central_nerves: list[dict] = []
+    res = _drive(monkeypatch, vf.FAULT_CLEAN_FAIL_BEFORE_DELTA,
+                 run_id="f3-stall-breaker", provider="deepseek",
+                 model="deepseek-v4-flash", central_nerves=central_nerves)
+
+    # En stall-fejl blev registreret mod breakeren (consecutive ≥ 1).
+    snap = _cbmod.pp_snapshot("deepseek")
+    assert snap.get("consecutive", 0) >= 1, \
+        f"provider_stall skal tælle mod breakeren; snap={snap}"
+    # provider_stall retries ALDRIG på samme provider (D11 bevaret).
+    assert not res.round_retry_nerves()
+    assert res.has_terminal_frame()

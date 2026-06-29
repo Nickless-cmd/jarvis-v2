@@ -112,6 +112,24 @@ function userText(message: ChatMessage): string {
   return ''
 }
 
+/** Normalisér en assistant-beskeds synlige tekst til run-afdublering (parity med
+ *  desk's assistantNorm). Bro-kopien og serverens normaliserede kopi af SAMME
+ *  svar genkendes som ÉT. Konservativ: kun ren tekst — afviger indholdet er det
+ *  IKKE et match, og broen bevares. */
+function assistantNorm(message: ChatMessage): string {
+  const content = message.content as unknown
+  let raw = ''
+  if (typeof content === 'string') raw = content
+  else if (Array.isArray(content)) {
+    raw = content
+      .filter((b): b is { type: string; text?: string } => !!b && typeof b === 'object')
+      .filter((b) => b.type === 'text')
+      .map((b) => b.text || '')
+      .join('')
+  }
+  return raw.replace(/\s+/g, ' ').trim()
+}
+
 /**
  * Flet server-beskeder ind. Server-beskeder bliver 'server_confirmed'. Lokale
  * beskeder serveren endnu IKKE har (optimistic_user / server_missing_keep_stream)
@@ -136,16 +154,28 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
   }))
   const lastMsg = server.length > 0 ? server[server.length - 1] : undefined
   const serverCaughtUp = lastMsg?.role === 'assistant'
+  // RUN-AFDUBLERING (Bjørn 2026-06-29, "3 svar lander samtidig"; porteret fra
+  // desk): én bro-kopi og serverens persisterede kopi af SAMME run er ÉT svar.
+  // I en multi-runde tool-tur står transcript'en transient [...assistant(svar),
+  // tool, tool] (næste runde startede), så serverCaughtUp=false selvom svaret
+  // ALLEREDE er persisteret → broen blev holdt ved siden af serverens kopi →
+  // dublet. Nu: så snart serveren har en assistant hvis normaliserede tekst
+  // matcher broens, er svaret persisteret → drop broen uanset tool-halen.
+  // Konservativt: kræver tekst-match (intet match → distinkt svar → broen bevares).
+  const serverAsstTexts = new Set(
+    server.filter((m) => m.role === 'assistant').map(assistantNorm).filter(Boolean)
+  )
   for (const lm of local) {
     if (serverIds.has(lm.id)) continue
     if (lm.clientStatus === 'optimistic_user') {
       if (serverCaughtUp) continue // svaret er persisteret → bruger-beskeden er det også
       if (serverUserTexts.has(userText(lm))) continue // serveren har allerede samme tekst
       result.push(lm) // bruger-besked serveren endnu ikke har → behold som bro
-    } else if (lm.clientStatus === 'server_missing_keep_stream' && !serverCaughtUp) {
-      result.push(lm) // bro indtil serveren persisterer svaret
+    } else if (lm.clientStatus === 'server_missing_keep_stream') {
+      const persisted = serverCaughtUp || serverAsstTexts.has(assistantNorm(lm))
+      if (!persisted) result.push(lm) // bro indtil serveren persisterer svaret
     }
-    // serverCaughtUp → drop placeholder; serverens rensede besked vises i stedet
+    // persisteret → drop placeholder; serverens rensede besked vises i stedet
   }
   return result
 }

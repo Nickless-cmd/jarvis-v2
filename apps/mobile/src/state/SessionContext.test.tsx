@@ -239,6 +239,36 @@ describe('mergeServer afdublering', () => {
     expect(merged.some((m) => m.id === 'a-final')).toBe(false)
     expect(merged.filter((m) => m.role === 'assistant').length).toBe(1)
   })
+
+  // REGRESSION (Bjørn 2026-06-29, "3 svar lander samtidig"; porteret fra desk):
+  // bro + serverens persisterede kopi af SAMME run kollapser til ÉT — også med tool-hale.
+  it('RUN-DEDUP: bro + serverens persisterede kopi af samme run kollapser til ÉT (selv med tool-hale)', () => {
+    const local = [
+      { ...asstMsg('a-run1', 'her er svaret'), clientStatus: 'server_missing_keep_stream' as const }
+    ]
+    const server = [userMsg('srv-u', 'spm'), asstMsg('srv-a', 'her er svaret'), toolMsg('srv-t1'), toolMsg('srv-t2')]
+    const merged = mergeServer(local, server)
+    expect(merged.some((m) => m.id === 'a-run1')).toBe(false)
+    expect(merged.filter((m) => m.role === 'assistant' && m.content === 'her er svaret').length).toBe(1)
+  })
+
+  it('RUN-DEDUP: distinkt endeligt svar bevares når serveren kun har mellem-rundens tekst', () => {
+    const local = [
+      { ...asstMsg('a-final', 'det endelige svar'), clientStatus: 'server_missing_keep_stream' as const }
+    ]
+    const server = [userMsg('srv-u', 'spm'), asstMsg('srv-mid', 'lad mig tjekke'), toolMsg('srv-t1')]
+    const merged = mergeServer(local, server)
+    expect(merged.some((m) => m.id === 'a-final')).toBe(true)
+  })
+
+  it('RUN-DEDUP: normaliserer whitespace så rå bro matcher serverens rensede kopi', () => {
+    const local = [
+      { ...asstMsg('a-ws', 'linje  et\n\nlinje to'), clientStatus: 'server_missing_keep_stream' as const }
+    ]
+    const server = [userMsg('srv-u', 'spm'), asstMsg('srv-a', 'linje et linje to'), toolMsg('srv-t1')]
+    const merged = mergeServer(local, server)
+    expect(merged.some((m) => m.id === 'a-ws')).toBe(false)
+  })
 })
 
 it('select() bevarer local-assistant-snapshot når serveren endnu ikke har indhentet (G1)', async () => {

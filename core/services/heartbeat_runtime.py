@@ -4836,7 +4836,10 @@ def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, 
         "format": "json",
         "options": {
             "temperature": 0.7,
-            "num_predict": 512,
+            # 512 trunkerede beslutnings-JSON'en når reasoning-modeller (glm/deepseek)
+            # emitterede thinking-præambel før objektet → "Unterminated JSON object"
+            # → parse-fejl → regel-baseret fallback (13/16 fejl over 5 dage, 29. jun).
+            "num_predict": 1536,
         },
     }
     req = urllib_request.Request(
@@ -4942,7 +4945,7 @@ def _execute_groq_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, ob
                 "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
                 "temperature": 0.7,
-                "max_tokens": 512,
+                "max_tokens": 1536,  # var 512 → trunkerede beslutnings-JSON (29. jun)
             }
         ).encode("utf-8"),
         headers={
@@ -8548,18 +8551,31 @@ def _parse_int(value: str | None, *, default: int, minimum: int) -> int:
 
 
 def _extract_json_object(text: str) -> str:
-    start = text.find("{")
-    if start < 0:
-        raise json.JSONDecodeError("No JSON object found", text, 0)
+    # Scan for ALL balanced top-level {...} objects and return the LAST one.
+    # Reasoning models (glm/deepseek) emit thinking-præambel — som kan indeholde
+    # løse '{' (kode/eksempler) — FØR det egentlige beslutnings-objekt. Den gamle
+    # "første '{' + brace-match" startede så på et forkert objekt eller ramte
+    # "Unterminated". Det egentlige svar kommer sidst → returnér sidste komplette
+    # balancerede objekt (29. jun, sammen med token-cap-hævningen).
+    objects: list[str] = []
     depth = 0
-    for index, char in enumerate(text[start:], start=start):
+    obj_start = -1
+    for index, char in enumerate(text):
         if char == "{":
+            if depth == 0:
+                obj_start = index
             depth += 1
         elif char == "}":
-            depth -= 1
-            if depth == 0:
-                return text[start : index + 1]
-    raise json.JSONDecodeError("Unterminated JSON object", text, start)
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and obj_start >= 0:
+                    objects.append(text[obj_start : index + 1])
+                    obj_start = -1
+    if objects:
+        return objects[-1]
+    if text.find("{") < 0:
+        raise json.JSONDecodeError("No JSON object found", text, 0)
+    raise json.JSONDecodeError("Unterminated JSON object", text, max(text.find("{"), 0))
 
 
 def _extract_openai_text(data: dict[str, Any]) -> str:

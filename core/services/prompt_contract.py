@@ -1382,7 +1382,34 @@ def build_visible_chat_prompt_assembly(
         if user_message and len(user_message.strip()) >= 8:
             # Query-adaptiv recall → bruger-besked-halen (lever #4 cache-fix),
             # ikke awareness (som rendres før historikken).
-            _rba = recall_before_act_summary(query=user_message)
+            # Hård 4s deadline (29. jun, CUT-OFF-ROD): denne recall laver embed/DB-
+            # kald der UNDER ollama-kontention (baggrunds frame/cognitive_state-
+            # futures mætter samme ollama) kø'ede 20-26s INLINE i q3-segmentet →
+            # frøs --workers 1 → cut-off for ALLE brugere (verificeret på Mikkels
+            # session). Var den ENESTE uncappede recall i q3 (multi_signal har
+            # allerede 4s-cap). Samme tråd-deadline-mønster; synlig i Centralen.
+            import threading as _thr_rba
+            _rba_box: dict = {}
+
+            def _do_rba() -> None:
+                try:
+                    _rba_box["v"] = recall_before_act_summary(query=user_message)
+                except Exception:
+                    pass
+
+            _rt = _thr_rba.Thread(target=_do_rba, name="recall-before-act", daemon=True)
+            _rt.start()
+            _rt.join(4.0)
+            if _rt.is_alive():
+                try:
+                    from core.services.central_core import central
+                    central().observe({
+                        "cluster": "prompt", "nerve": "phase_timeout",
+                        "phase": "recall_before_act", "timeout_s": 4.0,
+                    })
+                except Exception:
+                    pass
+            _rba = _rba_box.get("v")
             if _rba:
                 _dyn_memory_recall.append(_rba)
                 derived_inputs.append("recall-before-act (user-msg tail)")

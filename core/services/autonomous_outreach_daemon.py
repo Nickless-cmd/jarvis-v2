@@ -87,8 +87,17 @@ def _is_quiet_hours(now_local: datetime) -> bool:
 def _hours_since_last_user_contact() -> float:
     try:
         from core.runtime.db import recent_visible_runs
-        runs = recent_visible_runs(limit=10) or []
+        runs = recent_visible_runs(limit=40) or []
         for r in runs:
+            # Only REAL user-initiated runs count as contact. Jarvis' own
+            # autonomous/heartbeat runs (run_id "autonomous-*") share the same
+            # lane ("primary") and land in visible_runs too — counting them made
+            # the daemon blind: it always saw "user active ~0.1h ago" because
+            # Jarvis had just run, so 168/200 decisions skipped as
+            # "user-active-recently" and absence was never detected.
+            # Bug fixed 2026-06-29. User runs are "visible-*".
+            if not str(r.get("run_id") or "").startswith("visible-"):
+                continue
             ts = str(r.get("started_at") or "")
             try:
                 dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
@@ -97,7 +106,7 @@ def _hours_since_last_user_contact() -> float:
                 continue
     except Exception:
         pass
-    return 999.0  # unknown → treat as "long ago"
+    return 999.0  # unknown / no user run in window → treat as "long ago"
 
 
 def _gather_interesting_events() -> list[dict[str, Any]]:
@@ -206,16 +215,38 @@ def _log_decision(
     _save_log(log)
 
 
-def _send_via_ntfy(message: str, *, priority: str = "default") -> bool:
-    """Send outreach via ntfy. Returns True on success."""
+def _owner_uid() -> str:
     try:
-        from core.services.ntfy_gateway import send_notification
-        # title=None → ntfy_gateway resolves from identity_composer.
-        result = send_notification(message, title=None, priority=priority)
-        return bool(result.get("status") == "sent")
+        from core.identity.owner_resolver import get_owner_discord_id
+        return (get_owner_discord_id() or "").strip()
+    except Exception:
+        return ""
+
+
+def _send_outreach(message: str, *, priority: str = "default") -> dict:
+    """Deliver outreach via the canonical proactive router — device-aware
+    (app / mobile-FCM / Discord / webchat), with ntfy only as last-resort
+    fallback, and delivery outcome observed in the Central.
+
+    Previously ntfy-ONLY: outreach POSTed to an ntfy topic the owner wasn't
+    subscribed to on his real devices, so 11 sent messages over a month
+    silently never reached him. Now routed to wherever he actually is.
+    Fixed 2026-06-29. Returns {sent, channel}."""
+    try:
+        from core.services.notification_router import route_proactive_notification
+        uid = _owner_uid()
+        if not uid:
+            return {"sent": False, "channel": "no-owner"}
+        importance = "high" if priority == "high" else "normal"
+        res = route_proactive_notification(
+            uid, "reach_out", {"body": message, "title": None}, importance=importance)
+        return {
+            "sent": bool(res.get("delivered")),
+            "channel": str(res.get("channel") or ""),
+        }
     except Exception as exc:
-        logger.debug("autonomous_outreach: ntfy send failed: %s", exc)
-        return False
+        logger.debug("autonomous_outreach: delivery failed: %s", exc)
+        return {"sent": False, "channel": "error"}
 
 
 def attempt_outreach() -> dict[str, Any]:
@@ -278,16 +309,16 @@ def attempt_outreach() -> dict[str, Any]:
         _log_decision(**decision)
         return decision
 
-    ntfy_priority = "high" if priority == "high" else "low"
-    sent = _send_via_ntfy(message, priority=ntfy_priority)
-    if sent:
+    delivery = _send_outreach(message, priority=priority)
+    if delivery.get("sent"):
+        channel = delivery.get("channel") or "router"
         decision = {
             "outcome": "sent",
             "reason": "outreach-delivered",
             "events": events,
             "message": message,
             "priority": priority,
-            "channel": "ntfy",
+            "channel": channel,
         }
         _log_decision(**decision)
         try:
@@ -297,7 +328,7 @@ def attempt_outreach() -> dict[str, Any]:
                 "payload": {
                     "message": message[:240],
                     "priority": priority,
-                    "channel": "ntfy",
+                    "channel": channel,
                 },
             })
         except Exception:

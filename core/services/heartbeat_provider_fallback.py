@@ -77,7 +77,7 @@ def execute_openai_compat_heartbeat_prompt(
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
             "temperature": 0.7,
-            "max_tokens": 512,
+            "max_tokens": 1536,  # var 512 → trunkerede beslutnings-JSON (29. jun)
         }
     ).encode("utf-8")
     req = urllib_request.Request(

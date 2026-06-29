@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import time
 from dataclasses import dataclass
@@ -1088,6 +1089,12 @@ def stream_visible_followup(
     For unsupported providers a single :class:`FollowupFailed` is yielded so
     the caller can record a trace event and fall back cleanly.
     """
+    # Fejl-injektions-hook (Fase 0) — STRENGT prod-no-op når intet er registreret
+    # (returnerer None øjeblikkeligt). Test/repro-script registrerer via inject_fault().
+    _injected = _maybe_inject_fault(round_index)
+    if _injected is not None:
+        yield from _injected
+        return
     adapter = _ADAPTERS.get((provider or "").strip().lower())
     if adapter is None:
         yield FollowupFailed(
@@ -1137,4 +1144,190 @@ def _emit_visible_followup_event(kind: str, payload: dict[str, object] | None = 
         )
     except Exception:
         pass
+
+
+# ── Kill-switch: AGENTIC_ROUND_RETRY_ENABLED (Fase 0, P1) ────────────────────
+#
+# Den ENE sandhedskilde for om rund-niveau stream-retry (§4.1, Fase 1) er aktiv.
+# I dag DEFAULT OFF — selve retry-logikken er ikke bygget endnu; flaget eksisterer
+# så Fase 1 kan gate på det og vi kan slå retry FRA uden redeploy hvis den opfører
+# sig forkert (spec §9 P1). At slå retry FRA må ALDRIG slå terminal-frame (I2) eller
+# en nerve (I4) fra — de er ubetingede; flaget styrer KUN retry-grenen.
+#
+# Læses dual (samme mønster som ``read_runtime_key(env_override=...)``):
+#   1. env ``JARVIS_AGENTIC_ROUND_RETRY`` vinder når sat til en sandheds-værdi.
+#   2. ellers runtime-config ``settings.extra["agentic_round_retry_enabled"]``.
+# Begge fejl-sikre → False (retry findes ikke endnu, så fail-closed er korrekt).
+
+_AGENTIC_ROUND_RETRY_ENV = "JARVIS_AGENTIC_ROUND_RETRY"
+_TRUTHY = ("1", "true", "yes", "on")
+_FALSY = ("0", "false", "no", "off")
+
+
+def agentic_round_retry_enabled() -> bool:
+    """Er rund-niveau stream-retry (Fase 1) slået til? Default False.
+
+    Env-override (``JARVIS_AGENTIC_ROUND_RETRY``) vinder over runtime-config.
+    Selv-sikker: enhver fejl → False (fail-closed; retry findes ikke endnu)."""
+    env_value = os.environ.get(_AGENTIC_ROUND_RETRY_ENV)
+    if env_value is not None:
+        val = env_value.strip().lower()
+        if val in _TRUTHY:
+            return True
+        if val in _FALSY:
+            return False
+        # Ukendt env-værdi → fald tilbage til config (ignorér uparselbart env).
+    try:
+        from core.runtime.settings import load_settings
+        return bool(load_settings().extra.get("agentic_round_retry_enabled", False))
+    except Exception:
+        return False
+
+
+# ── Fejl-injektions-harness (Fase 0, P7) — TEST-ONLY, prod-no-op ─────────────
+#
+# Tvinger ``stream_visible_followup`` til at producere de tre fejl-former spec'en
+# kræver (§11.2 "Fase 0-harness 3 former"). STRENGT NO-OP i produktion: hvis intet
+# er registreret returnerer ``_maybe_inject_fault`` øjeblikkeligt uden allokering
+# eller latency. Et MODUL-NIVEAU registry (ikke ContextVar) er valgt med vilje:
+# pumpen kører i en ``run_in_executor``-tråd UDEN ``copy_context`` (visible_runs.py
+# ~2107), så en ContextVar sat i test-tråden ville være usynlig i pump-tråden.
+# Et proces-globalt registry er trådsynligt + deterministisk + trivielt at rydde.
+#
+# Genbrugelig af BÅDE pytest OG en manuel repro-scriptet via inject_fault()/clear.
+
+# Tre kanoniske fejl-former (spec §11.2 / Fase 0):
+FAULT_CLEAN_FAIL_BEFORE_DELTA = "clean_fail_before_delta"
+FAULT_PARTIAL_DELTAS_THEN_DROP = "partial_deltas_then_drop"  # PRIMÆR (trigger for C11/D11)
+FAULT_HTTP_400_OVERFLOW = "http_400_overflow"
+
+_KNOWN_FAULTS = frozenset({
+    FAULT_CLEAN_FAIL_BEFORE_DELTA,
+    FAULT_PARTIAL_DELTAS_THEN_DROP,
+    FAULT_HTTP_400_OVERFLOW,
+})
+
+# Aktiv injektion (kun ÉN ad gangen — turen er sekventiel). None = prod-no-op.
+_active_fault: dict | None = None
+_fault_lock = threading.Lock()
+
+
+def inject_fault(
+    shape: str,
+    *,
+    partial_deltas: tuple[str, ...] = ("partial-", "svar-", "før-drop"),
+    drop_as_exception: bool = True,
+    http_status: int = 400,
+    fire_once: bool = True,
+) -> None:
+    """Registrér en fejl-injektion for NÆSTE ``stream_visible_followup``-kald.
+
+    TEST-ONLY. Skal altid parres med ``clear_faults()`` (brug context-manageren
+    ``fault_injection()`` for garanteret oprydning).
+
+    - ``shape``: én af FAULT_* (clean_fail_before_delta / partial_deltas_then_drop /
+      http_400_overflow).
+    - ``partial_deltas``: for partial_deltas_then_drop — teksten der streames FØR drop.
+    - ``drop_as_exception``: for partial_deltas_then_drop — om drop'et er en RÅ
+      exception (transport-drop, fanges af pumpens except → ingen note_round_failed;
+      dokumenterer §2-hullet) eller et yielded FollowupFailed (observer fyrer).
+    - ``http_status``: for http_400_overflow — HTTP-koden (default 400).
+    - ``fire_once``: ryd registreringen efter første injektion (én runde).
+    """
+    if shape not in _KNOWN_FAULTS:
+        raise ValueError(f"ukendt fault-shape: {shape!r} (kendte: {sorted(_KNOWN_FAULTS)})")
+    with _fault_lock:
+        global _active_fault
+        _active_fault = {
+            "shape": shape,
+            "partial_deltas": tuple(partial_deltas),
+            "drop_as_exception": bool(drop_as_exception),
+            "http_status": int(http_status),
+            "fire_once": bool(fire_once),
+        }
+
+
+def clear_faults() -> None:
+    """Fjern enhver aktiv injektion. Idempotent. TEST-ONLY."""
+    with _fault_lock:
+        global _active_fault
+        _active_fault = None
+
+
+class fault_injection:
+    """Context-manager der registrerer en injektion + RYDDER den ved exit
+    (også ved exception). Foretrukne måde at bruge harnessen i pytest/repro.
+
+    Eksempel::
+
+        with fault_injection(FAULT_PARTIAL_DELTAS_THEN_DROP):
+            ... drive et agentisk run ...
+    """
+
+    def __init__(self, shape: str, **kwargs) -> None:
+        self._shape = shape
+        self._kwargs = kwargs
+
+    def __enter__(self) -> "fault_injection":
+        inject_fault(self._shape, **self._kwargs)
+        return self
+
+    def __exit__(self, *_exc) -> bool:
+        clear_faults()
+        return False
+
+
+def _maybe_inject_fault(round_index: int) -> Iterator[FollowupEvent] | None:
+    """Prod-no-op hook: returnér en event-iterator hvis en injektion er aktiv,
+    ellers None (øjeblikkeligt — ingen latency/allokering i den varme prod-sti).
+
+    Kaldt fra ``stream_visible_followup`` FØR adapter-dispatch. Dette er den ENE
+    produktions-rørende ændring (clearly-marked, self-safe)."""
+    global _active_fault
+    fault = _active_fault  # atomisk læsning af modul-global; intet lås i prod-stien
+    if fault is None:
+        return None
+    with _fault_lock:
+        active = _active_fault
+        if active is None:
+            return None
+        if active.get("fire_once"):
+            _active_fault = None
+    return _yield_injected_fault(active, round_index)
+
+
+def _yield_injected_fault(fault: dict, round_index: int) -> Iterator[FollowupEvent]:
+    """Generér event-strømmen for en given injektion (test-only)."""
+    shape = fault["shape"]
+    if shape == FAULT_CLEAN_FAIL_BEFORE_DELTA:
+        # (a) HTTP 502-klasse FØR nogen delta — clean fail, ingen partiel tekst.
+        summary = f"followup-round-{round_index + 1}-provider-error: HTTP 502"
+        yield FollowupFailed(round_index=round_index, error=summary, summary=summary)
+        return
+    if shape == FAULT_PARTIAL_DELTAS_THEN_DROP:
+        # (b) PRIMÆR: stream N deltas, så et forbigående drop. Dette er trigger
+        # for C11 (partiel tekst i _all_followup_parts/persistering trods fejl)
+        # og D11 (en retry ville spawne en anden pump).
+        for chunk in fault["partial_deltas"]:
+            if chunk:
+                yield FollowupDelta(delta=chunk)
+        if fault["drop_as_exception"]:
+            # Transport-drop = rå exception ud af generatoren (mest realistisk for
+            # en socket-drop). Fanges af _pump_agentic's except → sætter _a_failure
+            # men fyrer IKKE note_round_failed (yielded-FollowupFailed-stien gør).
+            raise ConnectionError("simulated transient stream drop after partial deltas")
+        summary = f"followup-round-{round_index + 1}-provider-error: transient stream drop"
+        yield FollowupFailed(round_index=round_index, error=summary, summary=summary)
+        return
+    if shape == FAULT_HTTP_400_OVERFLOW:
+        # (c) Context-window-overløb: HTTP 400 "prompt too long" — distinkt fra et
+        # transport-drop (fatal, ikke retryable). Body-formen matcher den ægte
+        # openai-compat-adapter (visible_followup.py:855).
+        status = int(fault["http_status"])
+        body = "context_length_exceeded: prompt too long for model context window"
+        summary = f"followup-round-{round_index + 1}-provider-error: HTTP {status}: {body[:180]}"
+        yield FollowupFailed(round_index=round_index, error=summary, summary=summary)
+        return
+    # Ukendt shape (bør ikke ske — inject_fault validerer): no-op.
+    return
 

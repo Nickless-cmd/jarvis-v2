@@ -426,3 +426,17 @@ Seks blokerende huller (alle verificeret mod kode) — to af dem betyder at fixe
 4.1 rund-retry → A11 (decoder-hærdning i taksonomi) → E11 (tur-total-loft) → I1-resample → SLO-nerve-slice +
 kill-switch-I2/I4-garanti. **Fase 0-harness's primære scenarie = partial-then-drop.** Først NÅR disse er inde +
 verificeret mod harness, er designet failsafe-complete og på SDK-transport + codex-app-paritet.
+
+### 11.4 Fase 0 leveret + forfining (29. jun)
+Fase 0 bygget + verificeret (13 tests grønne, flag fail-closed OFF, hook streng prod-no-op):
+`core/services/visible_followup.py` (flag `agentic_round_retry_enabled()` + injector + `_maybe_inject_fault`),
+`tests/test_streaming_fault_injection.py`, `scripts/repro_streaming_fault.py`. visible_runs.py URØRT.
+
+**Forfining af §2/H2 (kode-bekræftet via harness):** den lydløse runde-fejl er **raise-vs-yield-specifik**:
+- En **RAISED** transient drop (mest realistisk socket-drop) fanges af `_pump_agentic`'s `except`
+  (`visible_runs.py:2090`) → sætter `_a_failure` men fyrer **ALDRIG `note_round_failed`** → runde-fejlen er
+  **centralt TAVS** (kun `followup_round` + `followup_loop_complete` fyrer). **Dette er den PRIMÆRE cut-klasse og
+  den er usynlig på runde-fejl-niveau i dag.**
+- En **YIELDED** `FollowupFailed` fyrer `note_round_failed`.
+→ Fase 1/2 skal wire `note_round_retry`/`note_round_failed` præcis på den **raised-exception-sti** (`:2090`).
+I2 holder dog selv på den tavse sti (terminal `done`/`interrupted` leveres altid) — det er kun runde-fejl-NERVEN der mangler.

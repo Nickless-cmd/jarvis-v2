@@ -2,10 +2,29 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from 're
 import { createSession, getSession, listSessions } from '../lib/apiClient'
 import type { ApiConfig, ChatMessage, ChatSession } from '../lib/types'
 
+// G1 (spec §10) — porteret fra desk's bevist-virkende mergeServer-bro
+// (apps/jarvis-desk/src/contexts/SessionContext.tsx:158). Mobilen wholesale-
+// replacede før beskeder uden merge (`setMessages(result.messages)`), så HVER
+// foreground-resync / busy→idle-poll / notif-tap der kaldte select() midt i
+// svar-halen kunne wipe det netop-streamede local-assistant-snapshot →
+// "svaret forsvinder ved reload". De nye retry-events (§4.1) udløser racen
+// OFTERE (flere refresh-triggers). Broen bevarer det lokale snapshot indtil
+// serverens transcript har INDHENTET (sidste server-besked = assistant).
+
+type ClientStatus =
+  | 'optimistic_user'
+  | 'streaming_assistant'
+  | 'server_confirmed'
+  | 'server_missing_keep_stream'
+
+export interface LocalMessage extends ChatMessage {
+  clientStatus?: ClientStatus
+}
+
 interface SessionContextValue {
   sessions: ChatSession[]
   activeId: string | null
-  messages: ChatMessage[]
+  messages: LocalMessage[]
   loading: boolean
   refresh: (config: ApiConfig) => Promise<void>
   select: (config: ApiConfig, sessionId: string) => Promise<void>
@@ -19,7 +38,7 @@ const SessionContext = createContext<SessionContextValue | null>(null)
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<LocalMessage[]>([])
   const [loading, setLoading] = useState(false)
 
   const value = useMemo<SessionContextValue>(
@@ -43,7 +62,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         try {
           const result = await getSession(config, sessionId)
           setActiveId(result.session.id)
-          setMessages(result.messages)
+          // G1: flet i stedet for at wholesale-replace, så et endnu-ikke-
+          // persisteret local-assistant-snapshot ikke blank-forsvinder når en
+          // resync/poll-select rammer midt i svar-halen.
+          setMessages((local) => mergeServer(local, result.messages))
         } finally {
           setLoading(false)
         }
@@ -56,7 +78,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return session
       },
       appendLocalMessage: (message) => {
-        setMessages((current) => [...current, message])
+        // Markér klient-status efter rolle (mirror af desk's appendOptimistic/
+        // reconcile-split): bruger-beskeder er optimistiske; lokalt-streamede
+        // assistant-snapshots er "server_missing_keep_stream" — broen der holdes
+        // i live indtil serveren har persisteret svaret.
+        const clientStatus: ClientStatus =
+          message.role === 'assistant' ? 'server_missing_keep_stream' : 'optimistic_user'
+        setMessages((current) => [...current, { ...message, clientStatus }])
       },
       replaceMessages: (nextMessages) => {
         setMessages(nextMessages)
@@ -67,6 +95,62 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
+
+/** Saml en bruger-beskeds tekst-indhold (til indholds-afdublering). Mobil-content
+ *  er en streng, men vi tåler en blok-liste defensivt (parity med desk). */
+function userText(message: ChatMessage): string {
+  const content = message.content as unknown
+  if (typeof content === 'string') return content.trim()
+  if (Array.isArray(content)) {
+    return content
+      .filter((b): b is { type: string; text?: string } => !!b && typeof b === 'object')
+      .filter((b) => b.type === 'text')
+      .map((b) => b.text || '')
+      .join('')
+      .trim()
+  }
+  return ''
+}
+
+/**
+ * Flet server-beskeder ind. Server-beskeder bliver 'server_confirmed'. Lokale
+ * beskeder serveren endnu IKKE har (optimistic_user / server_missing_keep_stream)
+ * BEVARES — så en endnu-ikke-persisteret besked aldrig blank-forsvinder.
+ *
+ * Porteret 1:1 fra desk (SessionContext.tsx:158). serverCaughtUp = sidste
+ * server-besked er assistant: i et multi-runde tool-tur persisterer backend
+ * mellem-rundes assistant-tekst FØR de efterfølgende tool-resultater, så
+ * transcript'en kan stå [...user, assistant(mellem), tool, tool] mens det
+ * ENDELIGE svar endnu ikke er gemt. Slutter den på en tool/non-assistant kører
+ * en runde stadig → broen SKAL bevares. Afdublering på BÅDE id og bruger-tekst
+ * (klient-id ≠ server-id for den persisterede kopi).
+ */
+function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage[] {
+  const serverIds = new Set(server.map((m) => m.id))
+  const serverUserTexts = new Set(
+    server.filter((m) => m.role === 'user').map(userText).filter(Boolean)
+  )
+  const result: LocalMessage[] = server.map((m) => ({
+    ...m,
+    clientStatus: 'server_confirmed' as ClientStatus
+  }))
+  const lastMsg = server.length > 0 ? server[server.length - 1] : undefined
+  const serverCaughtUp = lastMsg?.role === 'assistant'
+  for (const lm of local) {
+    if (serverIds.has(lm.id)) continue
+    if (lm.clientStatus === 'optimistic_user') {
+      if (serverCaughtUp) continue // svaret er persisteret → bruger-beskeden er det også
+      if (serverUserTexts.has(userText(lm))) continue // serveren har allerede samme tekst
+      result.push(lm) // bruger-besked serveren endnu ikke har → behold som bro
+    } else if (lm.clientStatus === 'server_missing_keep_stream' && !serverCaughtUp) {
+      result.push(lm) // bro indtil serveren persisterer svaret
+    }
+    // serverCaughtUp → drop placeholder; serverens rensede besked vises i stedet
+  }
+  return result
+}
+
+export { mergeServer, userText }
 
 export function useSessions(): SessionContextValue {
   const context = useContext(SessionContext)

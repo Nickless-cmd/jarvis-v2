@@ -54,7 +54,15 @@ const eventNames = [
   'message_delta',
   'message_stop',
   'ping',
-  'system_event'
+  'system_event',
+  // §4.1 round-niveau-retry: serveren emitter disse som EGNE SSE-event-navne
+  // (event: retry / event: round_restart_discard_partial). De skal registreres
+  // her, ellers leverer react-native-sse dem aldrig til reduceren. Desk modtager
+  // dem allerede (manuel SSE-reader). `retry` tolereres no-op; discard rydder den
+  // live on-screen partial (advisory — serveren har allerede trunkeret det
+  // persisterede svar, så en klient der ignorerer det forbliver korrekt).
+  'retry',
+  'round_restart_discard_partial'
 ] as const
 
 type StreamEventName = (typeof eventNames)[number]

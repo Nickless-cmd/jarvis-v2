@@ -58,6 +58,27 @@ export interface SystemEvent {
   payload: Record<string, unknown>
 }
 
+// §4.1 round-niveau-retry — serveren emitter disse som EGNE top-level events
+// (ikke system_event-kinds). `retry` er ren signalering ("Reconnecting n/m");
+// `round_restart_discard_partial` instruerer klienten i at droppe den ikke-
+// finaliserede on-screen partial for denne rundes run (advisory — serverens
+// persisterede svar er allerede trunkeret).
+export interface RetryEvent {
+  type: 'retry'
+  run_id: string
+  round: number
+  attempt: number
+  max_attempts: number
+  failure_kind?: string
+  message?: string
+}
+
+export interface RoundRestartDiscardPartialEvent {
+  type: 'round_restart_discard_partial'
+  run_id: string
+  round: number
+}
+
 export type StreamEvent =
   | MessageStartEvent
   | ContentBlockStartEvent
@@ -67,6 +88,8 @@ export type StreamEvent =
   | MessageStopEvent
   | PingEvent
   | SystemEvent
+  | RetryEvent
+  | RoundRestartDiscardPartialEvent
 
 export type ContentBlock =
   | { type: 'text'; text: string }

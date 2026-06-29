@@ -115,6 +115,17 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
     case 'message_stop':
       return { ...state, status: 'done' }
 
+    case 'round_restart_discard_partial':
+      // §4.1 CLIENT CONTRACT: en runde fejlede mid-stream og re-køres. Drop den
+      // ikke-finaliserede on-screen partial (blocks) for dette run, så den
+      // friske re-run-stream ikke render'es OVENPÅ den fejlede partial (dublet).
+      // Advisory: serverens persisterede svar er allerede trunkeret, så selv en
+      // klient der ignorerede dette ville forblive korrekt i historikken — kun
+      // den live visning ville kortvarigt vise dubleret tekst. `retry`-eventet
+      // (ren "Reconnecting n/m"-signalering) falder gennem default = no-op,
+      // præcis som desk's reducer.
+      return { ...state, status: 'working', blocks: [] }
+
     default:
       return state
   }

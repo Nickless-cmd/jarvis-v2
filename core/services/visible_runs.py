@@ -1758,7 +1758,18 @@ async def _stream_visible_run(
                                     continue
                             except Exception:
                                 pass
-                        append_chat_message(
+                        # 2026-06-29 (loop-not-blocked): append_chat_message er en
+                        # SYNKRON DB-skrivning (save_tool_result + INSERT + et par
+                        # fire-and-forget signal-motorer). Den kørte direkte på
+                        # translate_to_v2's event-loop-tråd lige EFTER tool-eksekvering
+                        # → frøs loopet → _ping_loop kunne ikke fyre → last_append_at
+                        # frøs → active-runs flippede runnet not-live (rod bag
+                        # "desk-spinner/mobil-takeover" under tool-runder). Offload til
+                        # en worker-tråd så ping/keepalive bliver ved. Samme exception-
+                        # type propageres til samme handler (to_thread re-raiser i den
+                        # ventende frame); rækkefølge + semantik uændret.
+                        await asyncio.to_thread(
+                            append_chat_message,
                             session_id=run.session_id,
                             role="tool",
                             content=result_text,
@@ -3402,7 +3413,11 @@ async def _stream_visible_run(
                                         continue
                                 except Exception:
                                     pass
-                            append_chat_message(
+                            # 2026-06-29 (loop-not-blocked): se første-pass-stedet.
+                            # Synkron DB-skrivning på event-loop-tråden midt i en
+                            # agentisk runde frøs _ping_loop. Offload til worker-tråd.
+                            await asyncio.to_thread(
+                                append_chat_message,
                                 session_id=run.session_id,
                                 role="tool",
                                 content=_a_rt,
@@ -3423,7 +3438,13 @@ async def _stream_visible_run(
                         )
                     )
                     try:
-                        _save_agentic_checkpoint(
+                        # 2026-06-29 (loop-not-blocked): round-complete-checkpoint
+                        # er synkron fil/DB-I/O (_load + _save af hele record-settet)
+                        # og fyrer HVER agentisk runde på event-loop-tråden. Offload
+                        # til worker-tråd så _ping_loop ikke fryser mellem runder.
+                        # Best-effort (try/except) bevaret uændret.
+                        await asyncio.to_thread(
+                            _save_agentic_checkpoint,
                             run_id=run.run_id,
                             session_id=run.session_id,
                             user_message=run.user_message,

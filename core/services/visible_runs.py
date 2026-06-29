@@ -2041,6 +2041,37 @@ async def _stream_visible_run(
                     # retry would otherwise introduce). Snapshot is taken ONCE per
                     # round and is stable across attempts.
                     _round_partial_snapshot = len(_all_followup_parts)
+                    # ── Lean agentic-prompt snapshot (spec §4.7, I7) ─────────────
+                    # RETRY-IDENTITY-INVARIANT: lean-vs-full-beslutningen + de
+                    # resulterende messages snapshottes HER, ÉN gang pr. runde, FØR
+                    # retry-loopet (`while True` nedenfor). En retry af runde K skal
+                    # sende BYTE-IDENTISKE messages som runde K's første forsøg →
+                    # transformen må ALDRIG genberegnes inde i retry-loopet. Pumpen
+                    # bruger udelukkende ``_round_base_messages`` (dette snapshot).
+                    #
+                    # Runde 0 (første pass) = ALTID full prompt (den framer svaret).
+                    # Runde ≥1 + flag ON = lean (drop tung per-turn-hale). Flag OFF
+                    # → ``_round_base_messages is base_messages`` (byte-identisk i dag).
+                    _round_base_messages = base_messages
+                    try:
+                        if _agentic_round >= 1 and _vf.agentic_lean_prompt_enabled():
+                            _lean_msgs, _lean_metrics = _vf.build_lean_base_messages(
+                                base_messages)
+                            _round_base_messages = _lean_msgs
+                            try:
+                                from core.services import followup_observer as _fu_lean
+                                _fu_lean.note_lean_prompt(
+                                    run.run_id, _agentic_round + 1,
+                                    provider=run.provider, model=run.model,
+                                    before_chars=int(_lean_metrics.get("before_chars") or 0),
+                                    after_chars=int(_lean_metrics.get("after_chars") or 0),
+                                    saved_tokens=int(_lean_metrics.get("saved_tokens") or 0),
+                                    applied=bool(_lean_metrics.get("changed")))
+                            except Exception:
+                                pass
+                    except Exception:
+                        # Fail-open mod bloat — fald til full prompt, aldrig et brud.
+                        _round_base_messages = base_messages
                     # Per-round stream-retry counter (separate from _AGENTIC_MAX_
                     # ROUNDS — a retry never consumes a round budget). _round_epoch
                     # is the D11 fence token: each attempt bumps it; the pump
@@ -2140,12 +2171,16 @@ async def _stream_visible_run(
                             tool_defs=_round_tool_definitions,
                             epoch=_round_epoch,
                             gen_holder=_pump_gen_holder,
+                            # Retry-identity (spec §4.7): bind the ONCE-per-round lean/
+                            # full snapshot as a default arg so every attempt's pump
+                            # captures byte-identical messages — never recompute lean.
+                            round_base_messages=_round_base_messages,
                         ) -> None:
                             try:
                                 _gen = _vf.stream_visible_followup(
                                     provider=run.provider,
                                     model=run.model,
-                                    base_messages=base_messages,
+                                    base_messages=round_base_messages,
                                     exchanges=_followup_exchanges,
                                     tool_definitions=tool_defs,
                                     round_index=rnd,

@@ -64,6 +64,20 @@ def note_round_retry(run_id: str, round_num: int, attempt: int, reason: str = ""
              outcome=str(outcome or ""), **data)
 
 
+def note_lean_prompt(run_id: str, round_num: int, *, provider: str = "",
+                     model: str = "", before_chars: int = 0, after_chars: int = 0,
+                     saved_tokens: int = 0, applied: bool = False) -> None:
+    """LEAN AGENTIC-PROMPT (spec §4.7/I7): på runde ≥2 trimmede vi den tunge per-turn-
+    hale (awareness/inder-liv/somatik/diagnostik) af base-prompten og målte
+    besparelsen. ``applied=True`` = halen blev faktisk skåret; ``False`` = lean var
+    aktiv men der var intet at skære (konservativ no-op). Char/token-reduktionen
+    gør Centralen i stand til at se den faktiske bloat-besparelse pr. runde."""
+    _observe("lean_prompt_round", run_id, round_num=int(round_num or 0),
+             provider=str(provider or ""), model=str(model or ""),
+             before_chars=int(before_chars or 0), after_chars=int(after_chars or 0),
+             saved_tokens=int(saved_tokens or 0), applied=bool(applied))
+
+
 def note_loop_complete(run_id: str, *, rounds: int = 0, exit_reason: str = "",
                        provider: str = "", model: str = "") -> None:
     """Followup-loopet sluttede → observe runder kørt + exit-grund (completed/

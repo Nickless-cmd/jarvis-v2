@@ -69,6 +69,52 @@ def record_central_incident(
         return None
 
 
+def bump_open_incident(
+    *, cluster: str, nerve: str, run_id: str = "", session_id: str = "", note: str = "",
+) -> bool:
+    """Refresh den STÅENDE åbne incident for (cluster, nerve) i stedet for at dedup'e
+    en gentagelse til usynlighed. Bumper en recurrence-tæller i message, opdaterer ts +
+    seneste run/session, så et GENTAGET problem vises som LIVE og hyppigt i incident-
+    panelet (ikke som én støvet incident fra i går). Selv-sikker. Returnerer True hvis
+    en åben incident blev opdateret.
+
+    Roden (Bjørn 29. jun): tavse cut-offs blev observeret men incidenten dedup'et væk →
+    panelet viste én gammel → så ud som om Centralen ikke fangede det. Den gjorde — men
+    skjulte frekvensen. Nu er recurrence + sti synlig."""
+    try:
+        import re as _re
+        with connect() as conn:
+            _ensure_central_incidents_table(conn)
+            row = conn.execute(
+                "SELECT id, message FROM central_incidents WHERE resolved = 0 "
+                "AND cluster = ? AND nerve = ? ORDER BY id DESC LIMIT 1",
+                (str(cluster or ""), str(nerve or "")),
+            ).fetchone()
+            if not row:
+                return False
+            iid = row["id"] if not isinstance(row, tuple) else row[0]
+            msg = str((row["message"] if not isinstance(row, tuple) else row[1]) or "")
+            m = _re.search(r"\(gentaget ×(\d+)[^)]*\)\s*$", msg)
+            if m:
+                n = int(m.group(1)) + 1
+                base = msg[: m.start()].rstrip()
+            else:
+                n = 2
+                base = msg.rstrip()
+            stamp = datetime.now(UTC).isoformat()[11:19]
+            tail = f" (gentaget ×{n}, sidst {stamp}{(' · ' + note) if note else ''})"
+            new_msg = (base + tail)[:1000]
+            conn.execute(
+                "UPDATE central_incidents SET ts = ?, run_id = ?, session_id = ?, "
+                "message = ? WHERE id = ?",
+                (datetime.now(UTC).isoformat(), str(run_id or ""),
+                 str(session_id or ""), new_msg, int(iid)),
+            )
+        return True
+    except Exception:
+        return False
+
+
 def list_central_incidents(
     *,
     limit: int = 50,

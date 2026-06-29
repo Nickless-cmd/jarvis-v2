@@ -56,28 +56,40 @@ def note_loop_complete(run_id: str, *, rounds: int = 0, exit_reason: str = "",
 
 
 def note_empty_completion(run_id: str, *, provider: str = "", model: str = "",
-                          rounds: int = 0, tools_executed: int = 0) -> None:
-    """TAVS CUT-OFF: loopet sluttede 'completed' men producerede INTET synligt svar
-    efter at have eksekveret værktøjer. Provider-AGNOSTISK — fejlen bor i loopets
-    håndtering af en tom sidste runde (modellen gav ingen afsluttende tekst efter
-    tool-runden), ikke i nogen providers wire-format. Var fuldstændig usynlig:
-    status=completed, ingen fejl, intet i Centralen → klienten så et tavst hæng som
-    bruger oplever som "afbrudt". Nu en førsteklasses nerve + dedup'et incident."""
+                          rounds: int = 0, tools_executed: int = 0,
+                          session_id: str = "", path: str = "") -> None:
+    """TAVS CUT-OFF: loopet sluttede 'completed' men producerede INTET synligt svar.
+    Provider-AGNOSTISK — fejlen bor i loopets håndtering af en tom sidste runde, ikke i
+    nogen providers wire-format. Var fuldstændig usynlig: status=completed, ingen fejl
+    → klienten så et tavst hæng bruger oplever som "afbrudt".
+
+    `path` mærker HVOR runnet døde tomt (agentic_block | unified_checkpoint | …) så vi
+    kan se hvilken terminal-sti der knækker. Ved gentagelse BUMPES den stående incident
+    (recurrence + sti + tid) i stedet for at dedup'e den væk — så panelet viser et LIVE,
+    hyppigt problem (Bjørn 29. jun: 'centralen fanger det ikke' = dedup skjulte frekvensen)."""
     _observe("empty_completion", run_id, provider=str(provider or ""),
              model=str(model or ""), rounds=int(rounds or 0),
-             tools_executed=int(tools_executed or 0))
+             tools_executed=int(tools_executed or 0),
+             session_id=str(session_id or ""), path=str(path or ""))
     try:
         from core.runtime.db_central_incidents import (
-            record_central_incident, has_open_incident)
-        # Dedup: én stående incident ad gangen (observe-strømmen viser frekvensen).
-        if not has_open_incident(cluster=_CLUSTER, nerve="empty_completion"):
+            record_central_incident, has_open_incident, bump_open_incident)
+        _p = str(path or "ukendt-sti")
+        if has_open_incident(cluster=_CLUSTER, nerve="empty_completion"):
+            # Gentagelse → refresh + tæl op (ikke usynlig dedup).
+            bump_open_incident(
+                cluster=_CLUSTER, nerve="empty_completion",
+                run_id=str(run_id or ""), session_id=str(session_id or ""),
+                note=f"sti={_p} {provider}/{model}")
+        else:
             record_central_incident(
                 cluster=_CLUSTER, nerve="empty_completion", kind="silent_cutoff",
                 severity="error", run_id=str(run_id or ""),
-                message=(f"Tavs cut-off: {int(tools_executed or 0)} værktøj(er) kørt, "
-                         f"men intet svar (status=completed) — {provider}/{model}, "
-                         f"{int(rounds or 0)} runde(r). Modellen producerede ingen "
-                         f"afsluttende tekst efter tool-runden. Provider-agnostisk."))
+                session_id=str(session_id or ""),
+                message=(f"Tavs cut-off [sti={_p}]: {int(tools_executed or 0)} "
+                         f"værktøj(er) kørt, men intet svar (status=completed) — "
+                         f"{provider}/{model}, {int(rounds or 0)} runde(r). "
+                         f"Provider-agnostisk."))
     except Exception:
         pass
 

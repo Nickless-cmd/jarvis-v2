@@ -3078,7 +3078,8 @@ async def _stream_visible_run(
                         _fu_obs.note_empty_completion(
                             run.run_id, provider=run.provider, model=run.model,
                             rounds=locals().get("_agentic_round", -1) + 1,
-                            tools_executed=_tools_ct)
+                            tools_executed=_tools_ct,
+                            session_id=run.session_id or "", path="agentic_block")
                     except Exception:
                         pass
                     if _tools_ct:
@@ -6727,7 +6728,8 @@ def set_last_visible_run_outcome(
         if status == "completed" and not _ti_prev:
             from core.services import followup_observer as _fo_ti
             _fo_ti.note_empty_completion(
-                run.run_id, provider=run.provider, model=run.model)
+                run.run_id, provider=run.provider, model=run.model,
+                session_id=run.session_id or "", path="unified_checkpoint")
     except Exception:
         pass
     _persist_visible_run_outcome(

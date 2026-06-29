@@ -61,6 +61,25 @@ export function ChatView({
   const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
 
+  // Debounced refresh (Bjørn 2026-06-29): vi havde FIRE stablede sessions.refresh()-
+  // timere (700/2200ms efter eget done + 600/2000ms efter et fulgt run sluttede).
+  // De ramte mergeServer i hurtig rækkefølge midt i bro/server/follow-vinduet og
+  // forstørrede "3 svar lander samtidig"-racen. Nu coalescer alle persist-latency-
+  // hentninger til ÉN refresh: hvert kald nulstiller en kort timer, så en byge af
+  // triggere bliver præcis én GET. Dækker stadig sen persistering (sidste kald
+  // vinder) men krymper race-vinduet markant.
+  const debouncedRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const debouncedRefresh = (delayMs = 800) => {
+    if (debouncedRefreshTimer.current) clearTimeout(debouncedRefreshTimer.current)
+    debouncedRefreshTimer.current = setTimeout(() => {
+      debouncedRefreshTimer.current = null
+      void sessions.refresh()
+    }, delayMs)
+  }
+  useEffect(() => () => {
+    if (debouncedRefreshTimer.current) clearTimeout(debouncedRefreshTimer.current)
+  }, [])
+
   // Context-ring (#9): hent autocompact-tærsklen én gang.
   useEffect(() => {
     if (!settings) return
@@ -152,16 +171,23 @@ export function ChatView({
             void sessions.refresh()
           }
 
-          // HÄNG-DETEKTOR (Bjørn 2026-06-13: "han døde midt i et run, tænkte
-          // hænger"): hvis vi tror vi streamer DENNE session men serveren ikke
-          // har noget aktivt run for den i 3 polls i træk (~9s), døde runnet
-          // server-side (proces-/loop-død) UDEN at sende message_stop — så
-          // backendens finally-garanti nåede aldrig at køre. Tving terminal,
-          // så liveness/thinking ikke hænger på 'working'. 9s-vinduet undgår
-          // falsk-positiv lige efter run-start før serveren har registreret det.
+          // HÄNG-DETEKTOR — NEUTRALISERET (Bjørn 2026-06-29: "mobil tog over /
+          // desk hænger"). Vi aborterede før vores EGEN stadig-levende stream
+          // når /active-runs missede sessionen 3 polls i træk (~4.5s). Men det
+          // miss er et FALSK negativt under en langsom tool-runde: ping-loopet på
+          // det detached event-loop sultes når tool'et arbejder synkront →
+          // last_append_at fryser → live_run_ids dropper sessionen kortvarigt,
+          // selvom runnet er i bedste velgående (server-autoritativt). Vores abort
+          // dræbte så den levende stream → spinner hænger → takeover-banner, mens
+          // mobilen (passiv follower) blev ved at vise broadcast'en. Et ÆGTE dødt
+          // run dækkes nu udelukkende af stream-klientens 90s ping-watchdog
+          // (streamClient PING_TIMEOUT_MS → onHung → synlig prompt). At tabe en
+          // ægte abort er ufarligt (watchdog'en fanger den); en FALSK abort var
+          // selve fejlen. Server-side er _LIVE_IDLE_S samtidig hævet 20→45s så
+          // active-runs-misset bliver sjældnere overhovedet. Vi tæller stadig
+          // miss'ene (observerbarhed/fremtidig brug) men handler ikke på dem.
           if (stream.status === 'working' && stream.workingSessionId === sessionId && !serverHasRun) {
             staleMisses += 1
-            if (staleMisses >= 3) { staleMisses = 0; void stream.abort() }
           } else {
             staleMisses = 0
           }
@@ -186,10 +212,9 @@ export function ChatView({
       // Hent serverens GEMTE (rensede + normaliserede) besked og lad den overtage
       // placeholderen. Backend-guarden kan have erstattet/sanitizeret en tool-echo-
       // leak, og normalizer'en har struktureret teksten — det er den version der
-      // skal stå, ikke vores rå live-stream. To forsøg dækker persist-latency.
-      const t1 = setTimeout(() => { void sessions.refresh() }, 700)
-      const t2 = setTimeout(() => { void sessions.refresh() }, 2200)
-      return () => { clearTimeout(t1); clearTimeout(t2) }
+      // skal stå, ikke vores rå live-stream. Én debounced refresh (var 2 stablede
+      // timere) dækker persist-latency uden at forstørre bro/server-racen.
+      debouncedRefresh(2000)
     }
     return undefined
   }, [stream.status])
@@ -223,10 +248,9 @@ export function ChatView({
         // Et fulgt (cross-device/autonomt) run er afsluttet → hent den
         // persisterede + rensede besked ind i den ÅBNE transcript. Uden dette
         // står visningen tom indtil bruger skifter session (sessions.refresh i
-        // pollet kan misse det sidste run hvis bgActive lige er droppet). To
-        // forsøg dækker persist-latency (jf. den lokale reconcile-effekt).
-        setTimeout(() => { void sessions.refresh() }, 600)
-        setTimeout(() => { void sessions.refresh() }, 2000)
+        // pollet kan misse det sidste run hvis bgActive lige er droppet). Én
+        // debounced refresh (var 2 stablede timere) dækker persist-latency.
+        debouncedRefresh(2000)
       },
     )
     return () => { followCtrlRef.current?.abort(); followCtrlRef.current = null }
@@ -337,6 +361,25 @@ export function ChatView({
   }, [stream.status, queued, online])
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+
+  // ÉN kilde pr. run (Bjørn 2026-06-29, "3 svar"): når et fulgt run's svar
+  // ALLEREDE står i transcript'en (serveren har persisteret det, eller bro-kopien
+  // er flettet ind) må vi IKKE samtidig rendere followState.blocks som en tredje
+  // kopi. Sammenlign followState's normaliserede tekst med den sidste synlige
+  // assistant-besked; matcher de, er det samme svar → undertryk follow-renderen.
+  const followText = followState.blocks
+    .map((b) => (b.type === 'text' ? b.text : b.type === 'thinking' ? '' : '')).join('')
+    .replace(/\s+/g, ' ').trim()
+  const lastVisibleAsst = [...visibleMessages].reverse().find((m) => m.role === 'assistant')
+  const lastVisibleAsstText = lastVisibleAsst
+    ? (Array.isArray(lastVisibleAsst.content)
+        ? lastVisibleAsst.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
+        : String(lastVisibleAsst.content || '')
+      ).replace(/\s+/g, ' ').trim()
+    : ''
+  const followAlreadyInTranscript =
+    followText.length > 0 && lastVisibleAsstText.length > 0 &&
+    (lastVisibleAsstText === followText || lastVisibleAsstText.startsWith(followText) || followText.startsWith(lastVisibleAsstText))
   // Rail-ankre: MILEPÆLE (kapitler) når de findes (≥2 der matcher synlige beskeder), ellers
   // fallback til user-beskederne så rail'en aldrig er tom mens milepæle genereres.
   const railAnchors = useMemo(() => {
@@ -459,8 +502,9 @@ export function ChatView({
         )}
         {/* Autonomt wakeup-run: token-stream live mens det kører. Når det er
             færdigt (status≠working) overtager serverens persisterede besked via
-            refresh — så vi undgår dobbelt-render. */}
-        {!streaming && bgActive && followState.status === 'working' && followState.blocks.length > 0 && (
+            refresh — så vi undgår dobbelt-render. ÉN kilde pr. run: undertryk
+            follow-renderen hvis svaret allerede står i transcript'en (server/bro). */}
+        {!streaming && bgActive && followState.status === 'working' && followState.blocks.length > 0 && !followAlreadyInTranscript && (
           <MessageRow role="assistant" blocks={followState.blocks} density="compact" streaming />
         )}
       </div>

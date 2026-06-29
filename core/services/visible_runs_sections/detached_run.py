@@ -166,7 +166,11 @@ def start_or_attach_user_run(
                     message=(message or "").strip(),
                     importance="high",
                     parent_session_id=sid,
-                    parent_message_id=existing,
+                    # Korrelér nudgen til det LIVE run vi hægtede os på. Før refererede
+                    # dette en udefineret `existing` → NameError slugt af bare-except →
+                    # nudgen mistede sin parent-reference. `claimed` er run_id'et
+                    # claim_or_create returnerede (det kørende run).
+                    parent_message_id=claimed,
                 )
             except Exception:
                 pass

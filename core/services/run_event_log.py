@@ -32,7 +32,16 @@ def _is_ephemeral_frame(frame: str) -> bool:
     (F11). last_append_at opdateres uanset, så liveness-detektion er upåvirket."""
     return "event: ping" in frame or '"type": "ping"' in frame \
         or '"type":"ping"' in frame or frame.startswith("retry:")
-_LIVE_IDLE_S = 20.0  # pings hver ~5s holder live under tool-runder
+# Liveness-loft: et run regnes live så længe en frame (inkl. 5s-pings) er kommet
+# inden for dette vindue. Hævet 20→45s (2026-06-29): ping-loopet kører på det
+# detached event-loop og SULTES når en tool-runde udfører synkront/blokerende
+# arbejde der ikke giver kontrol tilbage til loopet (jf. reference_async_blocking_
+# worker) → last_append_at fryser i hele tool-runden. Med 20s droppede et langt
+# tool-run ud af live_run_ids midt i runden → desk-klienten aborterede sin EGEN
+# stadig-levende stream ("mobil tog over / desk hænger"). 45s er et sikkert gulv
+# der dækker realistiske blokerende tool-runder uden at forsinke død-detektion
+# nævneværdigt (klientens 90s ping-watchdog er den egentlige død-garanti).
+_LIVE_IDLE_S = 45.0
 _KEEP_DONE_PER_SESSION = 1  # behold seneste afsluttede log pr. session til sen reconnect
 _CREATE_GRACE_S = 60.0  # nyt run uden appends taelles live i assembly-vinduet (sync assembly blokerer ping-loop)
 
@@ -121,6 +130,21 @@ def _emit_cap_nerve(run_id: str) -> None:
         })
     except Exception:
         pass
+
+
+def touch_liveness(run_id: str) -> None:
+    """Opdatér et runs liveness (last_append_at) UDEN at persistere en frame.
+
+    Til en tool-eksekverings-heartbeat der vil holde runnet i live_run_ids mens en
+    lang tool-runde kører, men ikke har en SSE-frame at appende. Selv-sikker: gør
+    intet hvis runnet ikke findes eller allerede er done. Bemærk: hjælper KUN hvis
+    den kaldes fra en tråd der faktisk kører mens tool'et arbejder — et heartbeat
+    på det samme blokerede event-loop sultes ligesom ping-loopet, og da er
+    _LIVE_IDLE_S-gulvet det reelle værn."""
+    with _lock:
+        st = _RUNS.get((run_id or "").strip())
+        if st is not None and not st["done"]:
+            st["last_append_at"] = time.monotonic()
 
 
 def mark_done(run_id: str) -> None:

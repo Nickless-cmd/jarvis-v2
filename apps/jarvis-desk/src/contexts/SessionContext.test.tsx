@@ -49,6 +49,39 @@ describe('mergeServer afdublering', () => {
     expect(merged.some((m) => m.id === 'a-final')).toBe(false) // serverens rensede version overtager
     expect(merged.filter((m) => m.role === 'assistant').length).toBe(1)
   })
+
+  // REGRESSION (Bjørn 2026-06-29, "3 svar lander samtidig"): bro-kopi + serverens
+  // persisterede kopi af SAMME run skal kollapse til ÉT svar — også når serverens
+  // transcript transient slutter på en tool (næste runde startede) så serverCaughtUp
+  // er false. Tidligere holdt vi broen ved siden af serverens kopi → dublet.
+  it('RUN-DEDUP: bro + serverens persisterede kopi af samme run kollapser til ÉT (selv med tool-hale)', () => {
+    const local = [{ ...asstMsg('a-run1', 'her er svaret'), clientStatus: 'server_missing_keep_stream' as const }]
+    // Serveren HAR persisteret det samme svar, men en ny runde startede → tool-hale.
+    const server = [userMsg('srv-u', 'spm'), asstMsg('srv-a', 'her er svaret'), toolMsg('srv-t1'), toolMsg('srv-t2')]
+    const merged = mergeServer(local, server)
+    expect(merged.some((m) => m.id === 'a-run1')).toBe(false) // broen droppet — samme svar er persisteret
+    // Kun ÉN kopi af svaret (serverens), ingen dublet.
+    expect(merged.filter((m) => m.role === 'assistant' && (m.content[0] as { text: string }).text === 'her er svaret').length).toBe(1)
+  })
+
+  // En tool-tur-afsluttende transcript (slutter på tool) hvor broens svar IKKE
+  // matcher noget persisteret (det er det ENDELIGE svar, server har kun mellem-
+  // rundens tekst) må stadig BEVARE broen — ingen falsk drop.
+  it('RUN-DEDUP: distinkt endeligt svar bevares når serveren kun har mellem-rundens tekst', () => {
+    const local = [{ ...asstMsg('a-final', 'det endelige svar'), clientStatus: 'server_missing_keep_stream' as const }]
+    const server = [userMsg('srv-u', 'spm'), asstMsg('srv-mid', 'lad mig tjekke'), toolMsg('srv-t1')]
+    const merged = mergeServer(local, server)
+    expect(merged.some((m) => m.id === 'a-final')).toBe(true) // distinkt svar → broen bevares
+  })
+
+  // Whitespace-variation mellem bro (rå stream) og server (normaliseret) må stadig
+  // genkendes som samme svar → drop broen.
+  it('RUN-DEDUP: normaliserer whitespace så rå bro matcher serverens rensede kopi', () => {
+    const local = [{ ...asstMsg('a-ws', 'linje  et\n\nlinje to'), clientStatus: 'server_missing_keep_stream' as const }]
+    const server = [userMsg('srv-u', 'spm'), asstMsg('srv-a', 'linje et linje to'), toolMsg('srv-t1')]
+    const merged = mergeServer(local, server)
+    expect(merged.some((m) => m.id === 'a-ws')).toBe(false) // whitespace-normaliseret match → droppet
+  })
 })
 
 vi.mock('../lib/api', () => ({

@@ -130,3 +130,46 @@ def test_stays_live_after_grace_when_pings_keep_flowing():
     rel._RUNS["r-long2"]["last_append_at"] = now - 3.0  # frisk ping
     assert rel.is_live("r-long2") is True
     assert "r-long2" in rel.live_run_ids()
+
+
+# ── BUG2 server-mitigation (2026-06-29): _LIVE_IDLE_S hævet 20→45s ──────────
+def test_live_idle_floor_raised_to_safe_floor():
+    """Liveness-gulvet skal være >= 45s så en realistisk blokerende tool-runde
+    (der sulter ping-loopet) ikke falsk-dropper runnet ud af live_run_ids →
+    desk aborterer sin egen levende stream ('mobil tog over')."""
+    assert rel._LIVE_IDLE_S >= 45.0
+
+
+def test_run_stays_live_through_long_tool_round_within_floor():
+    """Et run hvis sidste frame er ~40s gammelt (lang sync tool-runde, ping-loop
+    sultet) skal STADIG regnes live efter create-grace — under det nye 45s-gulv."""
+    rel.create("r-tool", "s1")
+    now = time.monotonic()
+    rel._RUNS["r-tool"]["created_at"] = now - (rel._CREATE_GRACE_S + 30.0)
+    rel._RUNS["r-tool"]["last_append_at"] = now - 40.0  # 40s siden sidste ping
+    assert rel.is_live("r-tool") is True
+    assert "r-tool" in rel.live_run_ids()
+
+
+# ── touch_liveness helper ───────────────────────────────────────────────────
+def test_touch_liveness_revives_stale_run_without_frame():
+    """touch_liveness opdaterer last_append_at uden at persistere en frame →
+    et ellers-stale run regnes igen live, og buffer-længden er uændret."""
+    rel.create("r-touch", "s1")
+    now = time.monotonic()
+    rel._RUNS["r-touch"]["created_at"] = now - (rel._CREATE_GRACE_S + 30.0)
+    rel._RUNS["r-touch"]["last_append_at"] = now - (rel._LIVE_IDLE_S + 10.0)
+    assert rel.is_live("r-touch") is False
+    rel.touch_liveness("r-touch")
+    assert rel.is_live("r-touch") is True
+    frames, _ = rel.read("r-touch", 0)
+    assert frames == []  # ingen frame persisteret
+
+
+def test_touch_liveness_noop_on_done_or_unknown():
+    """Selv-sikker: done eller ukendt run påvirkes ikke (og kaster ikke)."""
+    rel.create("r-done", "s1")
+    rel.mark_done("r-done")
+    rel.touch_liveness("r-done")
+    assert rel.is_live("r-done") is False
+    rel.touch_liveness("nope")  # ukendt → ingen exception

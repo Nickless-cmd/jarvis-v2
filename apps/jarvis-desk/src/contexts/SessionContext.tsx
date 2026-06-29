@@ -142,6 +142,26 @@ function userText(m: ChatMessage): string {
   return ''
 }
 
+/** Normalisér en assistant-beskeds synlige tekst til run-afdublering. Samler
+ *  text-blokke (ikke thinking/tool_use) og fjerner whitespace-variation, så
+ *  den lokale bro-kopi og serverens normaliserede/rensede kopi af SAMME svar
+ *  kan genkendes som ÉT svar. Konservativ: matcher kun ren tekst — afviger
+ *  indholdet (fx bro=endeligt svar mens server kun har mellem-rundens tekst)
+ *  er det IKKE et match, og broen bevares. */
+function assistantNorm(m: ChatMessage): string {
+  const c = m.content as unknown
+  let raw = ''
+  if (typeof c === 'string') raw = c
+  else if (Array.isArray(c)) {
+    raw = c
+      .filter((b): b is { type: string; text?: string } => !!b && typeof b === 'object')
+      .filter((b) => b.type === 'text')
+      .map((b) => b.text || '')
+      .join('')
+  }
+  return raw.replace(/\s+/g, ' ').trim()
+}
+
 /**
  * Flet server-beskeder ind. Server-beskeder bliver 'server_confirmed'. Lokale
  * beskeder serveren endnu IKKE har (optimistic_user / server_missing_keep_stream)
@@ -176,16 +196,33 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
   // kører en runde stadig, og broen SKAL bevares.
   const lastMsg = server.length > 0 ? server[server.length - 1] : undefined
   const serverCaughtUp = lastMsg?.role === 'assistant'
+  // RUN-AFDUBLERING (Bjørn 2026-06-29, "3 svar lander samtidig"): én bro-kopi
+  // (server_missing_keep_stream) og serverens persisterede kopi af SAMME run er
+  // ÉT svar. Det gamle "behold broen til serverCaughtUp" droppede den FØRST når
+  // ALLERSIDSTE server-besked var en assistant — men i en multi-runde tool-tur
+  // står transcript'en transient [...assistant(svar), tool, tool] (næste runde
+  // startede), så serverCaughtUp=false selvom svaret ALLEREDE er persisteret →
+  // broen blev holdt VED SIDEN AF serverens kopi → bruger så 2-3 kopier af samme
+  // svar lande sammen (selv-heler ved næste refresh). Nu: så snart serveren har
+  // en assistant-besked hvis NORMALISEREDE tekst matcher broens, er svaret
+  // persisteret → drop broen uanset tool-halen. Konservativt: kræver tekst-match
+  // (intet match → distinkt svar → broen bevares, jf. 2026-06-23-regressionen).
+  const serverAsstTexts = new Set(
+    server.filter((m) => m.role === 'assistant').map(assistantNorm).filter(Boolean),
+  )
   for (const lm of local) {
     if (serverIds.has(lm.id)) continue
     if (lm.clientStatus === 'optimistic_user') {
       if (serverCaughtUp) continue // svaret er persisteret → bruger-beskeden er det også
       if (serverUserTexts.has(userText(lm))) continue // serveren har allerede samme tekst
       result.push(lm) // bruger-besked serveren endnu ikke har → behold som bro
-    } else if (lm.clientStatus === 'server_missing_keep_stream' && !serverCaughtUp) {
-      result.push(lm) // bro indtil serveren persisterer svaret
+    } else if (lm.clientStatus === 'server_missing_keep_stream') {
+      // Drop broen hvis serveren allerede har persisteret SAMME svar (run-dedup
+      // på indhold) ELLER turen er fuldt færdig (serverCaughtUp). Ellers behold.
+      const persisted = serverCaughtUp || serverAsstTexts.has(assistantNorm(lm))
+      if (!persisted) result.push(lm) // bro indtil serveren persisterer svaret
     }
-    // serverCaughtUp → drop placeholder; serverens rensede besked vises i stedet
+    // persisteret → drop placeholder; serverens rensede besked vises i stedet
   }
   return result
 }

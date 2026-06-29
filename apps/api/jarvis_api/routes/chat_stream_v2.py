@@ -261,6 +261,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         async def _subscribe():
             import asyncio as _a
             rel.subscriber_opened(run_id)
+            saw_stop = False
             try:
                 idx = 0
                 empty = 0
@@ -268,8 +269,21 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                     frames, done = rel.read(run_id, idx)
                     for f in frames:
                         idx += 1
+                        if "message_stop" in f:
+                            saw_stop = True
                         yield f
                     if done:
+                        # TERMINAL-GARANTI (Bjørn 29. jun, stream_stall-roden): runnet er
+                        # 'done', men hvis INGEN message_stop-frame nåede relayet (glm-5.2
+                        # stall/abnorm/tom completion → central-nerve stream_stall) ville vi
+                        # bare bryde → klienten får ALDRIG en terminal → hænger på 'working'
+                        # → onHung (90s) → reattach (timer NULSTILLER til 0) → "anden enhed
+                        # følger med"-banner → resten kører som follow på mobil. Vi syntetiserer
+                        # message_stop så desk's egen stream ALTID ender rent (status=done).
+                        if not saw_stop:
+                            yield rel.synthetic_terminal_frame(
+                                run_id, session_id, reason="run_done_no_stop"
+                            )
                         rel.mark_consumed(run_id)  # saa runnet til ende -> undertryk push
                         break
                     if frames:

@@ -895,6 +895,7 @@ async def chat_run_subscribe(run_id: str, from_idx: int = 0):
 
     async def _gen():
         rel.subscriber_opened(run_id)
+        saw_stop = False
         try:
             idx = max(0, int(from_idx))
             empty = 0
@@ -902,8 +903,14 @@ async def chat_run_subscribe(run_id: str, from_idx: int = 0):
                 frames, done = rel.read(run_id, idx)
                 for f in frames:
                     idx += 1
+                    if "message_stop" in f:
+                        saw_stop = True
                     yield f
                 if done:
+                    # Terminal-garanti: run done UDEN message_stop → syntetisér (ellers
+                    # hænger en re-subscriber/reattach på 'working'). Se chat_stream_v2.
+                    if not saw_stop:
+                        yield rel.synthetic_terminal_frame(run_id, reason="run_done_no_stop")
                     rel.mark_consumed(run_id)
                     break
                 if frames:
@@ -939,6 +946,7 @@ async def chat_session_live(session_id: str):
 
     async def _gen():
         rel.subscriber_opened(run_id)
+        saw_stop = False
         try:
             idx = 0
             empty = 0
@@ -946,8 +954,13 @@ async def chat_session_live(session_id: str):
                 frames, done = rel.read(run_id, idx)
                 for f in frames:
                     idx += 1
+                    if "message_stop" in f:
+                        saw_stop = True
                     yield f
                 if done:
+                    if not saw_stop:
+                        yield rel.synthetic_terminal_frame(
+                            run_id, session_id, reason="run_done_no_stop")
                     rel.mark_consumed(run_id)
                     break
                 if frames:
@@ -986,12 +999,19 @@ async def chat_session_follow(session_id: str):
     async def _gen():
         idx = 0
         empty_polls = 0
+        saw_stop = False
         while True:
             frames, done = _snapshot(session_id, idx)  # hurtig in-memory + lock
             for f in frames:
                 idx += 1
+                if "message_stop" in f:
+                    saw_stop = True
                 yield f
             if done:
+                if not saw_stop:
+                    run_id = rel.active_run_for_session(session_id) or ""
+                    yield rel.synthetic_terminal_frame(
+                        run_id, session_id, reason="run_done_no_stop")
                 break
             if frames:
                 empty_polls = 0

@@ -290,6 +290,22 @@ export function ChatView({
     if (el && atBottom) el.scrollTop = el.scrollHeight
   }, [stream.blocks, followState.blocks, atBottom])
 
+  // Re-pin til bund når transcript-containerens HØJDE ændrer sig (Bjørn 29. jun):
+  // takeover-banneret ("anden enhed følger med") + liveness-indikatoren sidder UDENFOR
+  // scroll-containeren, så når de dukker op krymper .transcript → nederste nye besked
+  // falder under folden, og auto-scroll-effekten ovenfor (der kun lytter på blocks/atBottom)
+  // fyrer ikke → det SER stille ud selvom streamen kører. ResizeObserver dækker ALLE
+  // layout-ændringer generisk; respekterer at brugeren har scrollet op (kun ved atBottom).
+  useEffect(() => {
+    const el = transcriptRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      if (atBottom) el.scrollTop = el.scrollHeight
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [atBottom])
+
   const doSend = async (text: string, opts: ComposerSendOpts) => {
     markInteraction()  // device-presence: markér aktiv interaktion på denne enhed
     let sid = sessionId

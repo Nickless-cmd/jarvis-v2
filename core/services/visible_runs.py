@@ -2182,7 +2182,20 @@ async def _stream_visible_run(
                     # opsummering — ikke et naturligt "jeg er færdig". Vi må ikke
                     # afslutte runnet på den (ellers ryger Jarvis' agency på dybt arbejde).
                     _round_was_synth_pause = _tool_pause_active and not _is_last_round
-                    _round_tool_definitions = None if (_is_last_round or _tool_pause_active) else _agentic_tools
+                    # ── CACHE-FIX (2026-06-30): hold tools-arrayet BYTE-IDENTISK på
+                    # ALLE runder ───────────────────────────────────────────────────
+                    # FØR satte synthese-pausen/sidste runde tools=None for at tvinge
+                    # prosa. Men tools-blokken ligger LIGE EFTER system i deepseek-
+                    # templaten → fjerner du den, brækker prefix-cachen ved ~7k (system
+                    # cachet, ~80k tools+historik missset). Verificeret rod til 7%/90%-
+                    # mønstret på multi-runde-ture (first-pass-tools ER byte-stabile).
+                    # NU: behold tools på hver runde, tving prosa via tool_choice="none"
+                    # (en sampling-param, IKKE i den cachede prompt-prefix) → cachen
+                    # holder hele turen. _round_was_synth_pause-semantikken (må ikke
+                    # afslutte på en tvunget tom runde) er uændret.
+                    _force_summary = _is_last_round or _tool_pause_active
+                    _round_tool_definitions = _agentic_tools
+                    _round_tool_choice = "none" if _force_summary else None
                     # Merge in tools added by load_more_tools in previous rounds
                     if _round_tool_definitions is not None and _round_extra_tools:
                         _all_defs = _get_tool_defs() or []
@@ -2244,6 +2257,7 @@ async def _stream_visible_run(
                             pump_model=_active_model,
                             pump_temp=_agentic_temp,
                             pump_top_p=_agentic_top_p,
+                            pump_tool_choice=_round_tool_choice,
                         ) -> None:
                             try:
                                 _gen = _vf.stream_visible_followup(
@@ -2256,6 +2270,7 @@ async def _stream_visible_run(
                                     thinking_mode=run.thinking_mode,
                                     temperature=pump_temp,
                                     top_p=pump_top_p,
+                                    tool_choice=pump_tool_choice,
                                 )
                                 # Expose this attempt's generator so a retry can
                                 # force-close it (D11). Keyed by epoch so a stale
@@ -2307,9 +2322,10 @@ async def _stream_visible_run(
 
                         logger.info(
                             "agentic-followup-pump-start run_id=%s round=%d provider=%s model=%s "
-                            "tool_defs=%s",
+                            "tools=%d tool_choice=%s",
                             run.run_id, _agentic_round + 1, run.provider, run.model,
-                            "yes" if _round_tool_definitions else "no(force-summary)",
+                            len(_round_tool_definitions or []),
+                            _round_tool_choice or "auto",
                         )
                         loop.run_in_executor(None, _pump_agentic)
 

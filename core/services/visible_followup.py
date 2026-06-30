@@ -837,6 +837,7 @@ class OpenAICompatFollowupAdapter:
     def _build_request(
         self, *, model: str, messages: list[dict], tool_definitions: list[dict] | None,
         temperature: float | None = None, top_p: float | None = None,
+        tool_choice: str | None = None,
     ) -> urllib_request.Request:
         if self.provider_id == "github-copilot":
             # Lazy imports: these modules pull in auth state we don't want to
@@ -926,6 +927,11 @@ class OpenAICompatFollowupAdapter:
         if tool_definitions:
             from core.services.cheap_provider_runtime import _normalize_tools_for_openai_chat
             payload["tools"] = _normalize_tools_for_openai_chat(list(tool_definitions))
+            # tool_choice="none" tvinger prosa-svar uden at fjerne tools-arrayet →
+            # cache-prefixet [system,tools] forbliver stabilt. Kun meningsfuldt når
+            # der ER tools at vælge fra.
+            if tool_choice is not None:
+                payload["tool_choice"] = tool_choice
         return urllib_request.Request(
             f"{base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
@@ -993,6 +999,7 @@ class OpenAICompatFollowupAdapter:
         thinking_mode: str = "think",
         temperature: float | None = None,
         top_p: float | None = None,
+        tool_choice: str | None = None,
     ) -> Iterator[FollowupEvent]:
         from core.services.visible_model import (
             _chat_completion_stream_is_terminal,
@@ -1085,7 +1092,7 @@ class OpenAICompatFollowupAdapter:
         try:
             req = self._build_request(
                 model=model, messages=messages, tool_definitions=tool_definitions,
-                temperature=temperature, top_p=top_p,
+                temperature=temperature, top_p=top_p, tool_choice=tool_choice,
             )
         except Exception as e:
             _log.error(
@@ -1384,6 +1391,7 @@ def stream_visible_followup(
     thinking_mode: str = "think",
     temperature: float | None = None,
     top_p: float | None = None,
+    tool_choice: str | None = None,
 ) -> Iterator[FollowupEvent]:
     """Dispatch to the provider's follow-up adapter; yield FollowupEvents.
 
@@ -1430,6 +1438,11 @@ def stream_visible_followup(
             _kwargs["temperature"] = temperature
         if top_p is not None:
             _kwargs["top_p"] = top_p
+    # tool_choice="none" tvinger prosa UDEN at fjerne tools-arrayet → [system,tools]-
+    # prefixet forbliver byte-stabilt på tværs af runder (cache-fix). Kun openai-
+    # compat (deepseek-stien) honorerer det i payloaden.
+    if isinstance(adapter, OpenAICompatFollowupAdapter) and tool_choice is not None:
+        _kwargs["tool_choice"] = tool_choice
     yield from adapter.stream_followup(**_kwargs)
 
 

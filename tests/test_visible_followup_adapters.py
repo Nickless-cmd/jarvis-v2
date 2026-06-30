@@ -816,3 +816,35 @@ def test_rescue_returns_empty_when_synthesis_empty(monkeypatch: pytest.MonkeyPat
         provider="deepseek", model="deepseek-v4-flash", base_messages=[], exchanges=[],
     )
     assert out == ""
+
+
+def test_tool_choice_none_lands_in_deepseek_payload_keeping_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CACHE-FIX (2026-06-30): synthese-runder skal sende tool_choice="none" UDEN
+    at fjerne tools-arrayet → [system,tools]-prefixet forbliver byte-stabilt."""
+    from core.runtime import provider_router
+
+    monkeypatch.setattr(provider_router, "resolve_provider_router_target",
+                        lambda *, lane: {"base_url": "http://ollama.test:11434"}, raising=False)
+    # Stub credentials + base_url for deepseek openai-compat path.
+    import core.services.cheap_provider_runtime as cpr
+    monkeypatch.setattr(cpr, "provider_runtime_defaults",
+                        lambda pid: {"base_url": "https://api.deepseek.com/v1"}, raising=False)
+    monkeypatch.setattr(cpr, "_require_credentials",
+                        lambda **kw: {"api_key": "fake-test-key"}, raising=False)  # pragma: allowlist secret
+
+    sse = [b'data: {"choices":[{"delta":{"content":"ok"}}]}\n', b"\n",
+           b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n', b"\n",
+           b"data: [DONE]\n", b"\n"]
+    with _patched_urlopen(monkeypatch, sse) as captured:
+        list(vf.stream_visible_followup(
+            provider="deepseek", model="deepseek-v4-flash",
+            base_messages=[{"role": "user", "content": "hi"}],
+            exchanges=[],
+            tool_definitions=[{"type": "function", "function": {"name": "f", "parameters": {}}}],
+            tool_choice="none",
+        ))
+    body = captured["body"]
+    assert body["tool_choice"] == "none"
+    assert body["tools"], "tools-arrayet SKAL stadig være der (kun valget er none)"

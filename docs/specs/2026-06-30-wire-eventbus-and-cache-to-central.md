@@ -1127,3 +1127,111 @@ Dette var et high-urgency 2-rolle-council (critic + planner). En dybere runde me
 ethical + architect + dreamer vil sandsynligvis tilføje: sikkerheds-rammen for autonom
 heling (ethical), den konkrete data-model for outcome/sensitivity (architect), og
 længere-sigtede selv-udviklings-mønstre (dreamer). Anbefales kørt FØR Lag 3-4 bygges.
+
+---
+
+## §22 — Råds-dom: super-intelligent central (6 roller + ordfører)
+
+Fuldt 6-rolle-råd (arkitekt, kritiker, planlægger, drømmer, etiker, forsker), grundet
+i den faktiske kode. **Dom: opnåelig, ambitiøs — men kun i den rigtige rækkefølge med
+`learning.enabled=false` fra dag ét.** Alle seks roller peger på de SAMME fysiske
+mangler (ikke fantasi): `TraceRecord` mangler `parent_event_id` + `outcome`; ring-bufferen
+er per-run (maxlen=2000), ikke per-nerve tidsserie; og `ingest_event`, `adjust_threshold`
+samt selve broen (`eventbus_central_bridge.py`) **eksisterer ikke endnu**. Lag 0 er IKKE
+bygget. Visionen er ikke truet af for høj ambition — kun af ÉN fælde: at sende P0 med
+lærings-hooks (§18.3) tændt FØR outcome-lukning og rollback findes.
+
+### 22.1 Forenet vision
+Fra OBSERVERE → FORSTÅ → HANDLE → UDVIKLE SIG, uden at skjule ét skridt. Hver nerve
+bærer en kausal-kæde (parent_event_id) + et udfald (true/false-positive lukket senere),
+så centralen svarer ikke bare HVAD den besluttede men HVORFOR — i dansk, 2-3 sætninger.
+Oven på: forudser kaskader, foreslår heling Bjørn godkender med ét klik, lærer hvad der
+virkede, drømmer rædsler den aldrig har set for at træne sig proaktivt. Kerne: en
+gennemsigtig, reversibel, menneske-styret partner — aldrig en black-box der lærer
+hurtigere end den kan auditeres.
+
+### 22.2 Bærende arkitektur (5 kapabiliteter)
+1. **Kausal-kontinuitet** — `parent_event_id: int|None` på TraceRecord; broen tråder
+   `event.caused_by` gennem `observe(parent_event_id=...)`; `central_query(trace_causal)`
+   går grafen begge veje. 1 INT-kolonne + 1 JOIN. Lavest risiko, højest ROI.
+2. **Tidsserie pr. nerve + outcome-lukning** — nyt `central_timeseries.py`
+   (deque ~100/nerve, ikke 2000 globalt); `close_observation(handle, outcome, confidence)`;
+   `ingest_event()` append-only på hot-path, læst på cadence. Fundament for prædiktion OG læring.
+3. **Probabilistisk kausal-inferens** — `causal_confidence` (0-1) på incidents; Bayesiansk
+   fault-graf (kun ved query-tid). Start hånd-kodet DAG, lær kun HIGH-confidence-kanter post-deploy.
+4. **Negativ feedback for detektor-tuning** — konfusionsmatrix pr. nerve (TP/FP/TN/FN);
+   `new_threshold = old*(1+0.1*(FP_rate-target))`, cap ±20%; auto-closure-heuristik
+   (symptom reverseret <2 min = sandsynlig FP); Welford-streaming-baseline erstatter
+   hårdkodede tærskler. **KRITISK: uden dette forstærker §18.3 false positives.**
+5. **Forhandlet selv-heling + prædiktiv simulering** — `central_simulator` fremskriver
+   trends → `central.forecast` (WHAT-IF); `central_healing` foreslår 2-3 rangerede actions
+   → ét-kliks godkendelse → måler udfald 60s senere → retræner rangering.
+
+### 22.3 De hårdeste problemer (med mitigering)
+- **Feedback-oscillation/runaway:** §18.3 lader learning justere tærskler UDEN
+  outcome-lukning → nerve sænker tærskel → false positives → known_signals springer
+  observe over → korrektionen ses aldrig → "hysterisk central". **Mit:** P0 med
+  `enabled_auto_threshold=false`; hver adjust UUID+TTL, REVERSÉR hvis FP-rate steg >30%;
+  cap 3 justeringer/nerve/time; `learning_quality_score` skal være >0.7 i 3 dage før auto.
+- **Observabilitets-paradoks:** broen hård-filtrerer `central.*` → blind for sine egne
+  fejl. **Mit:** dediker `eventbus/bridge_health`-nerve (uden for filter, READ-ONLY,
+  udløser aldrig learn) med heartbeat + dropped_count + sidste 10 routing-beslutninger;
+  watchdog genstarter ved 3 manglende beats.
+- **Autonom mutation af farlige domæner:** 122 nerver, en justering kan ramme auth/cost/
+  session. **Mit:** hardkodet `SAFE_HEALING_ACTIONS` + `FORBIDDEN_MUTATIONS` (user_*/auth_*/
+  token_*/session_*/severity/budget); `NerveSpec.risk_class` enum; learning-mutationer kan
+  ALDRIG påvirke learning-motoren selv; uafhængig read-only audit-engine.
+- **Sampling-bias dræber læring stille:** rate-limiter dropper events → skæv læring.
+  **Mit:** `central.bridge.dropped_event_summary` hvert 60s → `eventbus/sampling_bias`-nerve
+  flagger >50% drop.
+- **Prædiktive false-alarms:** trend bouncer tilbage. **Mit:** `predictive=True`+confidence+
+  ETA; auto-resolve hvis ikke materialiseret inden ETA.
+
+### 22.4 Sikkerheds-invarianter (ufravigelige)
+- ALDRIG autonom mutation af auth/tokens/sessions/identitet/budget/severity — hardkodet NO-TOUCH.
+- `learning.enabled_auto_threshold=false` default; tændes først efter Lag 2 bevist + 3 dage score>0.7.
+- Total reversibilitet: `adjustment_log` (UUID+TTL+reason, >30d); `rollback(id)`; auto-rollback ved >30% incident-rate-stigning.
+- Kill-switch uden genstart (`toggle_nerve`); `allow_autonomous_adjustments=false` default.
+- Human-in-the-loop for Lag 3-4: `approval_queue` + ét-kliks godkendelse (web/Discord), timeout-eskalering.
+- Outcome-attestation før meta-læring: sensitivity justeres ALDRIG uden 2/3 kilder (nerve + outcome-tidsserie + human-gate ved >20%) — ellers kan centralen lære at SKJULE symptomer.
+- Fuld auditérbarhed: hver mutation bærer parent_event_id-kæde + dansk narrativ; Bjørn har hård VETO.
+- Self-safe ≠ stille-sluge: kritiske except-fangster logges til stderr+disk; dropped_count er en aktiv nerve.
+
+### 22.5 Roadmap (overlappende shadow, IKKE serielt)
+- **M0 — Fundament (Lag 0, ~3-4t):** byg broen + anomaly→eventbus + cache→central +
+  cache_health-nerve. De 3 røde guards FØRST (startup-sekvens, queue-policy, known_signals-filter).
+  Whitelist-filter (ikke blacklist). Kill-switch fra dag ét. *SLO før M1: <0.1% event-loss,
+  <5ms/observe, heartbeat/60s, 1 uge stabil.*
+- **M1 — Observabilitet (Lag 1+2, 2-3 uger, shadow):** parent_event_id; central_timeseries +
+  ingest_event; trend-detektor + trace_causal. Centralen svarer HVORFOR. Lav risiko (kun observation).
+- **M2 — Forhandlet heling (Lag 3 + Hul B, 3-4 uger):** healing-registry (3 sikre klasser),
+  outcome-lukning, ét-kliks-godkendelse, konfusionsmatrix→sensitivity (cap ±20%). adjust_threshold
+  KUN her, gated. Første reelle selv-forbedring — menneske-styret.
+- **M3 — Selv-udvikling (Lag 4 + Hul A + cross-nerve, 4-6 uger):** Bayesiansk kausal-inferens,
+  cross-nerve mønster-mining (offline), bandit-valg, generalisering. Den fulde vision.
+
+### 22.6 Sci-fi men byggbart
+- **Bidirektionel kausal-narrator** — nerve-verdicts får 2-3 danske forklarings-sætninger i
+  TraceRecord, eksponeret via `central_query(action='explain')`. Opfylder "ingen skjulte mellemrum".
+- **Selv-simulerende central** — `central_simulator` fremskriver trends 30 min → `central.forecast`
+  WHAT-IF, scores mod virkeligheden. Forudviser, ikke bare reagerer.
+- **Forhandlet selv-heling som dialog** — rangerede actions m. historisk succes-%, ét-kliks, måles, retrænes.
+- **Drømme-løkken** — `central_dreamer` komponerer sjældne sammensatte fejl-scenarier, kører dem
+  gennem nerve-motoren UDEN at eksekvere verdicts, scorer mod kendt-godt, justerer sensitivity
+  (trace kind='dream'). Rører ikke prod-state. Forbereder forsvar mod fejl den aldrig har set.
+- **Nerve-omskrivnings-motor** — ved systematisk fejl-klassifikation genererer centralen en
+  minimal én-betingelses guard-patch, sandbox+VETO+outcome-scoret før commit, auto-revert.
+  Mest ambitiøs/risikabel — KUN efter M3 med streng sandbox.
+
+### 22.7 Konkrete spec-tilføjelser rådet kræver (implementerings-checklist)
+- §10: M0 stabil 1 uge (SLO) FØR M1; M0→M1→M2 OVERLAPPENDE i shadow, ikke serielt.
+- §18.3: `enabled_auto_threshold=false` default + `adjust_threshold_policy` (max 3/nerve/time, TTL, revert_if_rate_increase 0.3, log-og-spørg ved >5x/<0.2x).
+- §19.2: kode i broen der mapper `event.caused_by`→`observe(parent_event_id)`; nullable kolonne på TraceRecord.
+- §21.2: outcome-LUKNINGS-infra til P0 (before/after incident-rate-vindue) selvom justering er FRA; konfusionsmatrix-skema + ny tabel `central_nerve_sensitivity` (nerve→float, init 1.0, audit).
+- Ny §: `NerveOutcomeAttestor` + `approval_queue`-datamodel (timeout-eskalering, web/Discord-gate).
+- Ny §: hardkodet `SAFE_HEALING_ACTIONS` + `FORBIDDEN_MUTATIONS` + `NerveSpec.risk_class` enum i central_catalog.py.
+- §15.1: `central.bridge.dropped_event_summary`/60s → `eventbus/sampling_bias`-nerve.
+- §8.1: bro-heartbeat i OBSERVABILITETS-modellen (`eventbus/bridge_health`, read-only) + unit-test: INGEN central.* routes tilbage selv ved fejl-filter.
+- §15.3: `KnownSignalsCache` i RAM (TTL 5 min), ikke DB/event; definér hvor checket kører + om known tæller som observed.
+- §3.2/§3.6: state-storage for cache-nerve (last_sha persisteret over restart); cheap-lane-cache-sti (split record_visible_cache eller egen JSONL).
+- §7.3/§7.4: parallel-event-stress (1000/10 tråde), bro-crash+restart+in-flight, re-entrans/deadlock-test (bro = subscriber OG publisher).

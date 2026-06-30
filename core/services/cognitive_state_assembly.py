@@ -167,12 +167,20 @@ def _get_cached_state(cache_key: str) -> str | None:
         stored_snap = entry.get("invalidation_snapshot")
         if isinstance(stored_snap, dict) and stored_snap:
             fresh_snap = _build_invalidation_snapshot()
-            if fresh_snap and fresh_snap != stored_snap:
-                logger.info(
-                    "cognitive_state_cache: STALE (indre tilstand ændret) %s → rebuild",
-                    cache_key,
-                )
-                return None
+            if fresh_snap:
+                # Sammenlign JSON-normaliseret: shared_cache (SQLite/JSON) konverterer
+                # tuples → lists (pv_mood_fingerprint er en tuple), så et rå dict-!= ville
+                # ALTID matche falsk-stale → cachen ville aldrig hitte. sort_keys+default=str
+                # giver en kanonisk form begge veje.
+                import json as _json
+                _a = _json.dumps(fresh_snap, sort_keys=True, default=str)
+                _b = _json.dumps(stored_snap, sort_keys=True, default=str)
+                if _a != _b:
+                    logger.info(
+                        "cognitive_state_cache: STALE (indre tilstand ændret) %s → rebuild",
+                        cache_key,
+                    )
+                    return None
     except Exception:
         pass
     # Frisk (TTL OK + tilstand uændret) — returnér med det samme

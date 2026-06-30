@@ -10,16 +10,21 @@ from core.services import cognitive_state_assembly as cs
 
 
 class _FakeCache:
-    """Minimal shared_cache-stand-in (in-memory, ingen TTL-udløb i testen)."""
+    """shared_cache-stand-in der — som den ægte SQLite/JSON-backede cache —
+    JSON-round-tripper værdien (så tuples bliver til lists). Det er KRITISK for
+    at fange tuple/list-mismatch-bug'en i snapshot-sammenligningen."""
 
     def __init__(self):
-        self.store: dict[str, dict] = {}
+        import json
+        self._json = json
+        self.store: dict[str, str] = {}
 
     def set(self, key, value, ttl_seconds=0):
-        self.store[key] = value
+        self.store[key] = self._json.dumps(value, default=str)
 
     def get(self, key):
-        return self.store.get(key)
+        raw = self.store.get(key)
+        return self._json.loads(raw) if raw is not None else None
 
     def invalidate_prefix(self, prefix):
         for k in [k for k in self.store if k.startswith(prefix)]:
@@ -42,8 +47,12 @@ def test_default_ttl_raised_to_600(monkeypatch):
     assert cs._cache_ttl_seconds() >= 600
 
 
-def test_hit_when_state_unchanged(monkeypatch):
-    snap = {"pv_version": 5, "pv_bearing": "rolig", "rhythm_phase": "wake"}
+def test_hit_when_state_unchanged_with_tuple_fingerprint(monkeypatch):
+    # pv_mood_fingerprint er en TUPLE i den ægte snapshot → bliver list gennem
+    # JSON-cachen. Hit-path'en SKAL stadig matche (JSON-normaliseret), ellers
+    # hitter cachen aldrig (regressionen der gjorde det værre end før).
+    snap = {"pv_version": 5, "pv_bearing": "rolig", "rhythm_phase": "wake",
+            "pv_mood_fingerprint": (0.5, 0.3, 0.8)}
     _patch(monkeypatch, snap)
     cs._set_cached_state("visible_full", "indre tilstand A", ["self"])
     assert cs._get_cached_state("visible_full") == "indre tilstand A"

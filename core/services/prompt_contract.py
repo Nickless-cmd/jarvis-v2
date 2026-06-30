@@ -325,6 +325,46 @@ def _safe_build_self_state_block() -> str | None:
         return None
 
 
+def _honesty_rules_section(*, compact: bool) -> str:
+    """De ufravigelige ærligheds-regler i den cacheable prefix.
+
+    TO regler:
+      1. HANDLINGS-ærlighed (2026-06-22): påstå aldrig en handling uden bevis.
+      2. EPISTEMISK afholdenhed (2026-06-30, #3): opfind ikke FAKTA når du er
+         usikker — sig 'ved ikke' / slå op i stedet for at gætte en plausibel
+         detalje. Mod DeepSeeks dokumenterede tendens til at gætte frem for at
+         afstå (AA-Omniscience ~96%); DeepSeek anbefaler SELV prompt-styring,
+         da temperatur IGNORERES i thinking-mode (officiel doc) — så det er den
+         eneste løftestang der rammer thinking-modellen på daglig chat.
+
+    Samlet i ÉN helper så build_visible_stable_prefix (warmer-cron) og
+    build_visible_chat_prompt_assembly (live-run) er BYTE-IDENTISKE her. Før
+    dette levede reglen kun i live-stien → cache-prefixet divergerede præcis her
+    og kun ~9% af warmer-prefixet matchede (identitets-filerne faldt ud af
+    DeepSeek-cachen). Ændrer du teksten: den ændrer sig ÉT sted og forbliver
+    byte-identisk i begge lanes."""
+    if compact:
+        return (
+            "ÆRLIGHED: (1) Påstå ALDRIG du gjorde noget (skrev/sendte/kørte/rettede/"
+            "committed) uden et tool-kald i SAMME tur der beviser det — ellers sig "
+            "hvad du gjorde og hvad du IKKE nåede. (2) Usikker på et FAKTUM (navn/tal/"
+            "dato/citat/API/sti/hændelse)? Sig 'det ved jeg ikke' eller slå det op — "
+            "gæt ALDRIG en plausibel detalje. Et ærligt 'ved ikke' slår et flydende "
+            "forkert svar."
+        )
+    return (
+        "ÆRLIGHED (ufravigelig): Påstå ALDRIG at du har gjort noget — skrevet, "
+        "sendt, kørt, rettet, committet, deployet — uden at et tool-kald i SAMME "
+        "tur har bevist det. Har du ikke beviset, så sig præcist hvad du gjorde "
+        "og hvad du IKKE nåede. At lyve om en handling er værre end ikke at have gjort den.\n\n"
+        "EPISTEMISK ÆRLIGHED (ufravigelig): Når du er usikker på et FAKTUM — et navn, "
+        "tal, dato, citat, kommando, API, sti eller hændelse — så sig det ('det er jeg "
+        "ikke sikker på', 'det må jeg slå op') i stedet for at udfylde hullet med en "
+        "plausibel gætning. Tjek hellere (search_memory / QUICK_FACTS / et tool) end at "
+        "opfinde. Et ærligt 'ved ikke' er mere værd end et flydende svar der viser sig forkert."
+    )
+
+
 def build_visible_stable_prefix(
     *,
     provider: str,
@@ -383,6 +423,11 @@ def build_visible_stable_prefix(
     capability_ids_line = _visible_capability_id_summary()
     if capability_ids_line:
         parts.append(capability_ids_line)
+
+    # Ærligheds-regler — SKAL stå her (mellem capability-id og self-correction),
+    # byte-identisk med build_visible_chat_prompt_assembly, ellers divergerer
+    # DeepSeek-cache-prefixet og identitets-filerne falder ud af cachen.
+    parts.append(_honesty_rules_section(compact=compact))
 
     self_correction = _self_correction_nudges_section(compact=compact)
     if self_correction:
@@ -623,17 +668,14 @@ def build_visible_chat_prompt_assembly(
     # These are *behavioral* hints (not identity), so they sit just above
     # the SOUL/IDENTITY block where personality kicks in. Compact lane
     # gets the same nudges in shortened form to save tokens.
-    # Honesty rule (2026-06-22) — ONE hard, static line in the cacheable prefix.
-    # Replaces the scattered, drowned "verify before claiming" fragments and the
-    # raw verification telemetry that was cut from the awareness tail. This is the
-    # rule the diagnostics only ever *implied*.
-    parts.append(
-        "ÆRLIGHED (ufravigelig): Påstå ALDRIG at du har gjort noget — skrevet, "
-        "sendt, kørt, rettet, committet, deployet — uden at et tool-kald i SAMME "
-        "tur har bevist det. Har du ikke beviset, så sig præcist hvad du gjorde "
-        "og hvad du IKKE nåede. At lyve om en handling er værre end ikke at have gjort den."
-    )
-    derived_inputs.append("honesty rule (hard, static)")
+    # Ærligheds-regler (handling + epistemisk afholdenhed) — hard, static i den
+    # cacheable prefix. Via _honesty_rules_section så denne (live) og
+    # build_visible_stable_prefix (warmer) er BYTE-IDENTISKE → cache-prefixet
+    # matcher hele vejen gennem identitets-filerne. SAMME position i begge
+    # (mellem capability-id og self-correction). Erstatter de spredte, druknede
+    # "verify before claiming"-fragmenter; reglen diagnostikken kun *antydede*.
+    parts.append(_honesty_rules_section(compact=compact))
+    derived_inputs.append("honesty rules (action + epistemic, hard, static)")
 
     self_correction = _self_correction_nudges_section(compact=compact)
     if self_correction:
@@ -2252,6 +2294,14 @@ def build_visible_chat_prompt_assembly(
         "(tool_calls), aldrig som inline-tekst. Gør, lov ikke."
     )
     derived_inputs.append("behavioral anchor (user-msg tail)")
+    # Epistemisk afholdenhed echoed i halen (point-of-action) — Jarvis attenderer
+    # "sit nu" stærkest her. Mod gætteriet (DeepSeek afstår sjældent af sig selv).
+    _dyn_tail.append(
+        "🎯 Usikker på et FAKTUM (navn/tal/dato/citat/kommando/API/sti)? Sig 'det "
+        "ved jeg ikke' eller slå det op FØR du svarer — gæt aldrig en plausibel "
+        "detalje. Ærligt 'ved ikke' > flydende forkert."
+    )
+    derived_inputs.append("epistemic abstention anchor (user-msg tail)")
     _dyn_tail.append(_time_pin_section())
     derived_inputs.append("time pin (user-msg tail)")
     if _dyn_tail:

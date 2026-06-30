@@ -237,3 +237,62 @@ def test_transcript_full_fallback_when_never_compacted(monkeypatch):
 
     pc._build_structured_transcript_messages("sid-y", limit=60, include=True)
     assert full_called.get("hit") is True
+
+
+class TestHonestyRulesSection:
+    """Ærligheds-regler (handling + epistemisk afholdenhed, #3 2026-06-30)."""
+
+    def test_full_lane_has_both_action_and_epistemic_rules(self):
+        from core.services.prompt_contract import _honesty_rules_section
+        out = _honesty_rules_section(compact=False)
+        # Handlings-ærlighed (eksisterende).
+        assert "Påstå ALDRIG" in out
+        assert "committet" in out
+        # Epistemisk afholdenhed (ny #3) — mod gætteriet.
+        assert "EPISTEMISK" in out
+        assert "FAKTUM" in out
+        assert "ved ikke" in out.lower()
+
+    def test_compact_lane_is_shorter_but_covers_both(self):
+        from core.services.prompt_contract import _honesty_rules_section
+        full = _honesty_rules_section(compact=False)
+        compact = _honesty_rules_section(compact=True)
+        assert len(compact) < len(full)
+        assert "Påstå ALDRIG" in compact      # handling
+        assert "FAKTUM" in compact            # epistemisk
+
+
+class TestCachePrefixInvariant:
+    """REGRESSIONSVAGT: warmer-prefixet (build_visible_stable_prefix) SKAL være
+    et byte-identisk prefix af den fulde live-assembly — ellers divergerer
+    DeepSeek-cache-prefixet og identitets-filerne falder ud af cachen. Præcis
+    denne invariant brød 22. jun (ærligheds-reglen var kun i live-stien) og
+    kostede ~91% af det cacheable prefix indtil 30. jun."""
+
+    def _build_both(self):
+        from core.services.prompt_contract import (
+            build_visible_stable_prefix,
+            build_visible_chat_prompt_assembly,
+        )
+        warm = build_visible_stable_prefix(
+            provider="deepseek", model="deepseek-v4-flash")
+        full = build_visible_chat_prompt_assembly(
+            provider="deepseek", model="deepseek-v4-flash",
+            user_message="hej", session_id="cache-invariant-test")
+        full = getattr(full, "text", None) or str(full)
+        return warm, full
+
+    def test_warmer_prefix_is_byte_identical_prefix_of_live(self):
+        warm, full = self._build_both()
+        assert warm, "warmer-prefix tomt"
+        assert full.startswith(warm), (
+            "warmer-prefix er IKKE et byte-identisk prefix af live-assembly — "
+            "cache-prefixet divergerer. Tjek at ærligheds-reglen (og alt andet "
+            "stable) står på SAMME position i begge bygge-funktioner."
+        )
+
+    def test_honesty_rules_inside_the_shared_prefix(self):
+        # Den epistemiske regel skal ligge i den DELTE (cachede) del — ikke kun
+        # i live-halen — så warmer-cron pre-varmer den.
+        warm, _ = self._build_both()
+        assert "EPISTEMISK" in warm

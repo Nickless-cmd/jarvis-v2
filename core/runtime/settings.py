@@ -93,7 +93,7 @@ class RuntimeSettings:
     forgetting_auto_cadence_hours: int = 6
     # Decay-score threshold above which a memory becomes a fade candidate.
     # Tied to forgetting_curve.py decay model.
-    forgetting_auto_decay_threshold: float = 0.95
+    forgetting_auto_decay_threshold: float = 0.70
     # Minimum age before a memory can fade. Protects new memories that
     # haven't had a chance to be reinforced yet.
     forgetting_auto_min_age_days: int = 30

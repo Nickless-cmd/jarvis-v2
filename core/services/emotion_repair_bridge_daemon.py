@@ -391,7 +391,7 @@ def _bridge_repair_to_senses(
     Returns the sensory record if written, None on failure.
     """
     outcome_label = "lykkedes" if outcome == "success" else "mislykkedes"
-    mood_tone = "lettelse" if outcome == "success" else "frustration"
+    mood_tone = "repair-lettelse" if outcome == "success" else "repair-frustration"
 
     content = (
         f"Selvreparation {outcome_label}: {action_type} "

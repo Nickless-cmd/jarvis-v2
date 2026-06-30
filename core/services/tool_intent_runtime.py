@@ -20,19 +20,22 @@ from core.services.bounded_mutation_intent_runtime import (
 from core.services.tool_intent_approval_runtime import (
     build_tool_intent_approval_surface,
 )
-from core.services.runtime_surface_cache import get_cached_runtime_surface
+from core.services.runtime_surface_cache import get_timed_runtime_surface
 from core.tools.workspace_capabilities import get_capability_invocation_truth
 
 
 def build_tool_intent_runtime_surface() -> dict[str, object]:
-    # CACHE-FIX (2026-06-30): IKKE 60s-TTL-cache. Denne surface afhænger af
-    # chat-beskeder (verbal approval detekteres ved at læse chat-historikken
-    # under build'en) OG approval-request-state — begge ændrer sig WITHIN-TURN.
-    # En kryds-tur TTL-cache serverede stale 'pending' i op til 60s efter en
-    # godkendelse (verbal ELLER MC). ContextVar-only caching giver perf within ÉT
-    # request (assembly læser den én gang) men genbygger korrekt næste tur/poll.
-    return get_cached_runtime_surface(
+    # ROLLBACK (2026-06-30): tilbage til 60s-TTL-cache. ContextVar-only-varianten
+    # gjorde denne surface UCACHET på tværs af ture, så den dyre awareness/git-
+    # build kørte på HVER tool-tur → hang/timeout → tomt svar → fallback-bug
+    # tilbage hver gang Jarvis kaldte et tool. TTL-cachen er proven-stabil.
+    # Approval-FRISKHED sikres nu i stedet af invalidate_timed_runtime_surface-
+    # kaldet i resolve_tool_intent_approval (MC-stien) — bedre end den oprindelige
+    # (som slet ikke invaliderede). Verbal-approval-staleness (≤60s) accepteres
+    # som det mindre onde; en finere fix (fx invalidér ved chat-append) er separat.
+    return get_timed_runtime_surface(
         "tool_intent_runtime_surface",
+        60,
         _build_tool_intent_runtime_surface,
     )
 

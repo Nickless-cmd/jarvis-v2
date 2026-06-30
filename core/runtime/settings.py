@@ -287,6 +287,16 @@ class RuntimeSettings:
     context_compact_threshold_tokens: int = 130_000
     context_run_compact_threshold_tokens: int = 240_000
     context_keep_recent: int = 20
+    # ── Tool-result history-rendering (2026-06-30, cache-fix) ────────────────
+    # Historiske tool-results renderes med ÉT fast tegn-budget, recency-UAFHÆNGIGT.
+    # Før: seneste 20 fik 4000 tegn (fuldt resultat), ældre 1200 (summary) — så et
+    # resultat der gled fra "seneste 20" til "ældre" gen-renderedes fra 4000→1200
+    # tegn → historik-bytes ændrede sig hver tur → DeepSeek-cache-prefixet brækkede
+    # (verificeret rod-årsag). Nu: ALLE historiske tool-results = stabil summary med
+    # fast cap → byte-identiske tur efter tur → cachen holder. Fuldt resultat ligger
+    # på disk (read_tool_result); den nuværende turs resultater er stadig fulde via
+    # followup-exchanges (Claude Codes hot-tail/cold-storage-mønster).
+    tool_result_history_max_chars: int = 1500
     server_authoritative_runs: bool = False
     device_awareness_enabled: bool = True
     context_keep_recent_pairs: int = 4

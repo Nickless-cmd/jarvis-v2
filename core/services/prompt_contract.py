@@ -4406,18 +4406,14 @@ def _recent_transcript_section(
         "Tool lines are internal Jarvis-only observations, not user-visible chat.",
     ]
     window = history
-    # 2026-06-09: 6→20 expanded. Lofterne er nu konfigurerbare (Tools-cluster
-    # 2026-06-22) — recent default 3000 (sænket fra 4000 for at trimme bloat),
-    # older default 1200. Justér via runtime.json uden kode-deploy. Hentes ÉN
-    # gang her, ikke per tool-resultat.
-    expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=20)
+    # CACHE-FIX (2026-06-30): recency-UAFHÆNGIG rendering (samme rod-årsag som
+    # _build_structured_transcript_messages — se dér). Alle tool-results: stabil
+    # summary, ét fast budget → byte-identiske tur efter tur → cachen holder.
     try:
         from core.runtime.settings import load_settings as _ls_render
-        _rs = _ls_render()
-        _chars_recent = int(_rs.tool_result_render_chars_recent)
-        _chars_older = int(_rs.tool_result_render_chars_older)
+        _tool_hist_cap = int(getattr(_ls_render(), "tool_result_history_max_chars", 1500))
     except Exception:
-        _chars_recent, _chars_older = 3000, 1200
+        _tool_hist_cap = 1500
     for index, item in enumerate(window):
         raw_role = item["role"]
         if raw_role == "user":
@@ -4429,8 +4425,8 @@ def _recent_transcript_section(
             role = _gnr()
         content = render_tool_result_for_prompt(
             str(item.get("content") or ""),
-            expand=index in expanded_tool_indexes,
-            max_chars=_chars_recent if index in expanded_tool_indexes else _chars_older,
+            expand=False,
+            max_chars=_tool_hist_cap,
         )
         lines.append(f"{role}: {content}")
     return "\n".join(lines)
@@ -4538,11 +4534,22 @@ def _build_structured_transcript_messages(
     # Phase 1: Merge consecutive tool messages into the preceding assistant turn.
     # Tool results become a short "[tool_name: status/summary]" annotation.
     window = history
-    # 2026-06-09: Bumped recent_count 6 → 20 og max_chars 1600 → 4000 for
-    # expanded, 360 → 1200 for older. 1M context window har overflod af
-    # headroom (60 user-turns × ~10 tool-rows × 4000 chars worst case =
-    # ~2.4 MB = ~600k tokens, langt under 1M).
-    expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=20)
+    # ── CACHE-FIX (2026-06-30): recency-UAFHÆNGIG tool-result-rendering ───────
+    # FØR (2026-06-09): seneste 20 tool-results fik expand=True/4000 tegn, ældre
+    # expand=False/1200. Et resultat der gled fra "seneste 20" → "ældre" (bare
+    # fordi samtalen voksede én tur) gen-renderedes fra 4000→1200 → DE SAMME
+    # historik-bytes ændrede sig hver tur → DeepSeek-cache-prefixet brækkede fra
+    # det punkt (verificeret rod-årsag: tool-tunge sessioner ~28% hit vs ~90% loft).
+    # NU: ALLE historiske tool-results renderes ens (stabil summary, ét fast
+    # budget) → byte-identiske tur efter tur → cachen holder. Fuldt resultat er på
+    # disk (read_tool_result); nuværende turs resultater er fulde via followup-
+    # exchanges. Append-only-immutabilitet = forskningskonsensus (Manus/Anthropic/
+    # arXiv "Don't Break the Cache"). Budget er tunbart via settings.
+    try:
+        from core.runtime.settings import load_settings as _ld_trh
+        _tool_hist_cap = int(getattr(_ld_trh(), "tool_result_history_max_chars", 1500))
+    except Exception:
+        _tool_hist_cap = 1500
     merged: list[dict[str, str]] = []
     for index, item in enumerate(window):
         raw_role = str(item.get("role") or "")
@@ -4556,8 +4563,8 @@ def _build_structured_transcript_messages(
         if raw_role == "tool":
             content = render_tool_result_for_prompt(
                 raw_content,
-                expand=index in expanded_tool_indexes,
-                max_chars=4000 if index in expanded_tool_indexes else 1200,
+                expand=False,            # stabil summary-form (fuldt på disk)
+                max_chars=_tool_hist_cap,  # recency-UAFHÆNGIGT fast budget
             )
         else:
             content = " ".join(raw_content.split()).strip()
@@ -4565,8 +4572,8 @@ def _build_structured_transcript_messages(
             continue
 
         if raw_role == "tool":
-            # Compress tool result into a short annotation
-            tool_summary = content[:4000] if index in expanded_tool_indexes else content[:1200]
+            # Compress tool result into a short annotation (samme faste cap)
+            tool_summary = content[:_tool_hist_cap]
             if merged and merged[-1]["role"] == "assistant":
                 # Append as annotation to previous assistant message
                 merged[-1]["content"] += f"\n({tool_summary})"
@@ -4657,20 +4664,6 @@ def _build_structured_transcript_messages(
             pass
 
     return result
-
-
-def _recent_tool_reference_indexes(
-    history: list[dict[str, str]],
-    *,
-    recent_count: int,
-) -> set[int]:
-    indexes = [
-        index
-        for index, item in enumerate(history)
-        if str(item.get("role") or "") == "tool"
-        and parse_tool_result_reference(str(item.get("content") or "")) is not None
-    ]
-    return set(indexes[-max(recent_count, 0):])
 
 
 def _get_compact_marker_for_transcript(session_id: str) -> str | None:

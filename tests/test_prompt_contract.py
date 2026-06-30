@@ -296,3 +296,58 @@ class TestCachePrefixInvariant:
         # i live-halen — så warmer-cron pre-varmer den.
         warm, _ = self._build_both()
         assert "EPISTEMISK" in warm
+
+
+class TestToolResultRenderingIsRecencyIndependent:
+    """CACHE-FIX (2026-06-30): historiske tool-results SKAL rendere byte-identisk
+    uanset deres position i samtalen. FØR brød recency-splittet (seneste 20 @4000
+    tegn, ældre @1200) cachen: et resultat der gled fra 'seneste 20' → 'ældre'
+    gen-renderedes → historik-bytes ændrede sig hver tur → DeepSeek-cache-prefix
+    brækkede. Denne test fanger en tilbagevenden."""
+
+    def _render(self, monkeypatch, history):
+        from core.services import prompt_contract as pc
+        monkeypatch.setattr(pc, "chat_session_messages_since_last_compact",
+                            lambda session_id, max_total=4000: list(history))
+        return pc._build_structured_transcript_messages(
+            "sess-x", limit=60, include=True)
+
+    def test_old_tool_result_renders_identically_as_history_grows(self, monkeypatch):
+        # User-beskeder imellem hver runde, så carrieren for det fulgte resultat
+        # IKKE absorberer senere ture (consecutive-assistant-merge er append-only
+        # og cache-sikkert). Vi tester at det SAMME resultats rendering ikke ændrer
+        # sig når det glider fra 'seneste' til 'ældre'.
+        big = "X" * 2500  # > fast cap, så trunkering ER i spil
+        base = [
+            {"role": "user", "content": "q0"},
+            {"role": "assistant", "content": "svar et"},
+            {"role": "tool", "content": big},   # det resultat vi følger
+        ]
+        grown = base + [
+            m for i in range(25) for m in (
+                {"role": "user", "content": f"q{i+1}"},
+                {"role": "assistant", "content": f"runde {i}"},
+                {"role": "tool", "content": f"resultat {i}"},
+            )
+        ]
+        short_out = self._render(monkeypatch, base)
+        long_out = self._render(monkeypatch, grown)
+
+        def carrier(out):
+            return next(m["content"] for m in out if m["content"].startswith("svar et"))
+        # Byte-identisk uanset at 25 tool-runder kom efter → cachen holder.
+        assert carrier(short_out) == carrier(long_out)
+
+    def test_render_does_not_depend_on_recent_count_slice(self, monkeypatch):
+        # Samme resultat som #1 i tool-rækken vs efter 40 senere runder.
+        marker = "Y" * 3000
+        few = [{"role": "user", "content": "u"},
+               {"role": "assistant", "content": "A"},
+               {"role": "tool", "content": marker}]
+        many = few + [m for i in range(40) for m in (
+            {"role": "user", "content": f"u{i}"},
+            {"role": "assistant", "content": f"a{i}"},
+            {"role": "tool", "content": f"r{i}"})]
+        a = next(m["content"] for m in self._render(monkeypatch, few) if m["content"].startswith("A"))
+        b = next(m["content"] for m in self._render(monkeypatch, many) if m["content"].startswith("A"))
+        assert a == b

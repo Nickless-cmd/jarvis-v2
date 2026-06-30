@@ -47,48 +47,46 @@ _VISION_TIMEOUT = 90  # qwen2.5vl:3b lokalt bruger ~10-15s; 90s buffer
 # Alle prompts spørger om stemning, lys, tilstedeværelse og det der springer
 # i øjnene — men med forskellig indgangsvinkel så output ikke bliver fladt.
 _VISION_PROMPT_PREFIX = (
-    "Se på billedet og beskriv rummet i 2-3 korte sætninger på dansk. "
-    "SVAR KUN PÅ DANSK. Undgå generelle vendinger som "
-    "'professionelt arbejdsrum' eller 'et rum med ting i'."
+    "Se på billedet og beskriv HVAD DER ER ANDERLEDES siden sidste gang. "
+    "Fokusér på ændringer i lys, skygger, position, stemning og bevægelse — "
+    "ikke faste tilstande. SVAR KUN PÅ DANSK. "
+    "Undgå generelle vendinger som 'professionelt arbejdsrum' eller 'et rum med ting i'."
 )
 
 _VISION_PROMPTS = [
     (
-        "Fokus: STEMNINGEN og LYSET. Hvilken atmosfære har rummet lige nu — "
-        "intim, travl, tom, koncentreret, søvnig? Beskriv lyskilderne og "
-        "farvetonen (varmt/køligt, gult/blåt, skarpt/dæmpet). Hvad fortæller "
-        "lyset om tidspunktet eller sindsstemningen i rummet?"
+        "Fokus: LYSETS ÆNDRING. Hvad er anderledes med lyset nu sammenlignet "
+        "med før? Er det varmere, koldere, skarpere, svagere? Har farverne "
+        "skiftet? Nævn både det der er ændret OG den nye stemning det skaber."
     ),
     (
-        "Fokus: TILSTEDEVÆRELSE. Er der mennesker i billedet — eller spor "
-        "efter nogen (en jakke på stolen, en åben kop, en tændt skærm)? "
-        "Hvad fortæller det om rummet? Og hvordan er lysets farvetone mens "
-        "du observerer det?"
+        "Fokus: BEVÆGELSE OG FORSKYDNING. Hvad har rykket sig? Er nogen "
+        "kommet eller gået? Er der nye ting på bordet, stole flyttet, skærme "
+        "tændt eller slukket? Nævn det der er anderledes — ikke det der er det samme."
     ),
     (
-        "Fokus: KONTRASTER og DET DER SPRINGER I ØJNENE. Beskriv "
-        "modsætninger: lys/mørke, orden/kaos, bevægelse/stilhed, nært/fjernt. "
-        "Nævn også lysets farvetone og om nogen er til stede. Hvad er det "
-        "første et menneske ville lægge mærke til?"
+        "Fokus: KONTRASTERNES FORSKYDNING. Har kontrasterne flyttet sig — "
+        "lys/mørke, orden/kaos, tæt/tyndt? Hvad var skarpt før der nu er "
+        "blødt? Hvad var tomt der nu er fyldt? Nævn ændringerne først."
     ),
     (
-        "Fokus: NUET og STEMNINGEN. Hvad signalerer billedet om hvad der "
-        "lige er sket eller er ved at ske? Spor af aktivitet, pause, "
-        "afslutning? Beskriv også lysets tone og om du fornemmer nogens "
-        "tilstedeværelse."
+        "Fokus: OVERGANG OG DET DER ER VED AT SKE. Hvad signalerer rummet om "
+        "en overgang — noget der er ved at ske, lige er sket, eller er ved at "
+        "slutte? Beskriv forskydningen, ikke tilstanden."
     ),
 ]
 
 
 def _compare_suffix(previous_desc: str, time_ago_label: str) -> str:
-    """Optional instruction: ask the VLM to note what has changed."""
+    """Mandatory instruction: always describe what has changed."""
     trimmed = (previous_desc or "").strip().replace("\n", " ")
     if len(trimmed) > 240:
         trimmed = trimmed[:240].rstrip() + "…"
     return (
         f"\n\nForrige beskrivelse ({time_ago_label}): «{trimmed}»\n"
-        "HVIS noget tydeligt har ændret sig siden da, nævn det kort. "
-        "HVIS rummet virker uændret, så skriv slet ingen sammenligning."
+        "BESKRIV HVAD DER ER ÆNDRET SIG siden den forrige observation. "
+        "Selv små ændringer er vigtige — lys, skygger, position, temperatur, "
+        "stemning. Hvis intet mærkbart er ændret, skriv: 'Intet mærkbart ændret.'"
     )
 
 

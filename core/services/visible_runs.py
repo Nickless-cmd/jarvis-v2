@@ -3617,6 +3617,21 @@ async def _stream_visible_run(
                         except Exception:
                             followup_text = _reasoning_join
 
+                if not followup_text:
+                    # DAG-ÉT DIVERGENS-FIX (sidste udvej, agentisk gren): hvis
+                    # first-pass streamede ægte prosa (brugeren SÅ den) men den
+                    # senere followup-runde endte tom OG result.text/reasoning også
+                    # var tomme, så er de streamede first-pass-bytes stadig det
+                    # eneste sande billede af hvad brugeren så. Genbrug dem frem for
+                    # at lade fallback'en wipe svaret. Spejler first-pass-stien
+                    # (~4125). No-op hvis intet streamede.
+                    _streamed_fp_ag = str(_fp_deg_accum or "").strip()
+                    if _streamed_fp_ag:
+                        followup_text = _streamed_fp_ag
+                        _observe_streamed_text_recovered(
+                            run, chars=len(_fp_deg_accum), source="agentic_first_pass_stream",
+                        )
+
                 # ── Tavs cut-off-vagt (2026-06-23, udvidet) ────────────────────
                 # Provider-AGNOSTISK fejlklasse (Bjørn: "cutter random på tværs af
                 # ALLE modeller/providers"): et 'completed' run der IKKE producerede
@@ -4126,6 +4141,29 @@ async def _stream_visible_run(
                 result.text,
                 had_markup=bool(capability_plan["had_markup"]),
             )
+            # ── DAG-ÉT DIVERGENS-FIX (2026-06-30, Bjørn: provider-AGNOSTISK, fra
+            # dag ét) ────────────────────────────────────────────────────────────
+            # Persisteringen brugte KUN result.text som kilde. Men det brugeren SER
+            # kommer fra de live-streamede deltas (akkumuleret i _fp_deg_accum,
+            # linje ~1216) — en HELT anden kilde. Hvis adapteren streamede ægte
+            # bytes til klienten (brugeren SÅ svaret) men result.text endte tom
+            # (thinking-content, adapter-bug, race på StreamDone — verificeret tomt
+            # på tværs af deepseek native/cloud, glm-5.1/5.2, kimi 30. jun), så blev
+            # visible_output_text tom → ingen persist (linje ~4285) → unified
+            # checkpoint så 'completed' + tom preview → fyrede fallback'en der
+            # WIPEDE det viste svar ("BANG, væk"). Sandhedskilden for hvad brugeren
+            # faktisk så ER de streamede bytes. Brug dem når result.text svigter.
+            # Model-agnostisk pr. konstruktion: ligegyldigt HVORFOR result.text er
+            # tom — streamede vi tekst, gemmer vi tekst. No-op hvis intet streamede.
+            if not visible_output_text.strip():
+                _streamed_fp = _visible_text_without_capability_markup(
+                    _fp_deg_accum, had_markup=bool(capability_plan["had_markup"]),
+                )
+                if _streamed_fp.strip():
+                    visible_output_text = _streamed_fp
+                    _observe_streamed_text_recovered(
+                        run, chars=len(_fp_deg_accum), source="first_pass_stream",
+                    )
             # Deltas already streamed live — no need to re-send the full text.
             # 2026-05-22 (Claude): Claim-scanner first-pass global coverage.
             # Previously the scanner only ran in the capability-followup paths
@@ -4561,27 +4599,13 @@ def _mark_mid_word_truncation(text: str) -> str:
     return stripped + "…"
 
 
-def _observe_persist_failed(run: VisibleRun, exc: BaseException) -> None:
-    """H5 (spec §2/§4.5): persistering af assistant-beskeden fejlede MENS svaret
-    allerede var vist live → "vist live, VÆK ved reload". Det er en DISTINKT klasse
-    (svaret er IKKE tabt for brugeren nu, men forsvinder ved næste loadSession()).
-    FØR forsvandt det tavst i ``except: pass`` — ingen nerve, ingen trace.
-
-    Dette er KUN observabilitet — den faktiske persist-retry/transaktionelle HEAL
-    er et senere Fase 2.5/5-punkt. Her gør vi blot fejlen synlig i Centralen.
-    Self-safe: må aldrig kaste videre ind i stream-stien."""
-    try:
-        from core.services.central_core import central
-        central().observe({
-            "cluster": "stream", "nerve": "persist_failed",
-            "run_id": getattr(run, "run_id", ""),
-            "session_id": str(getattr(run, "session_id", "") or ""),
-            "provider": getattr(run, "provider", ""),
-            "model": getattr(run, "model", ""),
-            "error": str(exc or "")[:200],
-        })
-    except Exception:
-        pass
+# Boy Scout-udtrækning (2026-06-30): stream-observabilitets-nerverne bor nu i
+# visible_runs_sections.stream_observers (én testbar enhed). Re-eksporteret her
+# som de gamle navne så call-sites/monkeypatches ikke knækker.
+from core.services.visible_runs_sections.stream_observers import (  # noqa: E402
+    observe_persist_failed as _observe_persist_failed,
+    observe_streamed_text_recovered as _observe_streamed_text_recovered,
+)
 
 
 def _persist_session_assistant_message(

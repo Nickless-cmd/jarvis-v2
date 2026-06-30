@@ -2271,6 +2271,8 @@ async def _stream_visible_run(
                                     temperature=pump_temp,
                                     top_p=pump_top_p,
                                     tool_choice=pump_tool_choice,
+                                    run_id=run.run_id,
+                                    autonomous=run.autonomous,
                                 )
                                 # Expose this attempt's generator so a retry can
                                 # force-close it (D11). Keyed by epoch so a stale

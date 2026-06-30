@@ -917,6 +917,11 @@ class OpenAICompatFollowupAdapter:
             # follow-up turn while staying within the free quota.
             "max_tokens": 4096,
         }
+        # include_usage → DeepSeek sender en afsluttende chunk med usage (inkl.
+        # prompt_cache_hit/miss_tokens) så cache_telemetri kan måle hver RUNDE.
+        # Kun deepseek (native cache); andre providere rører vi ikke.
+        if self.provider_id == "deepseek":
+            payload["stream_options"] = {"include_usage": True}
         # Lav agentisk temperatur (anti-hallucination). DeepSeek thinking-modeller
         # ignorerer den server-side; non-thinking (deepseek-chat) + andre compat-
         # providere honorerer den. None = udeladt (provider-default).
@@ -1000,6 +1005,8 @@ class OpenAICompatFollowupAdapter:
         temperature: float | None = None,
         top_p: float | None = None,
         tool_choice: str | None = None,
+        run_id: str = "",
+        autonomous: bool = False,
     ) -> Iterator[FollowupEvent]:
         from core.services.visible_model import (
             _chat_completion_stream_is_terminal,
@@ -1126,12 +1133,17 @@ class OpenAICompatFollowupAdapter:
         _t0 = _time.monotonic()
         _ttfb_ms: int | None = None
         _prompt_chars = sum(len(str(m.get("content", ""))) for m in messages)
+        _usage: dict | None = None
 
         try:
             with urllib_request.urlopen(req, timeout=180) as response:
                 for event in _iter_sse_events(response):
                     if _ttfb_ms is None:
                         _ttfb_ms = int((_time.monotonic() - _t0) * 1000)
+                    # include_usage: DeepSeek sender en afsluttende chunk med usage.
+                    _u = event.get("usage") if isinstance(event, dict) else None
+                    if _u:
+                        _usage = _u
                     delta = _extract_chat_completion_delta(event)
                     if delta:
                         _dsml_buffer += delta
@@ -1225,6 +1237,30 @@ class OpenAICompatFollowupAdapter:
                 text_chars,
                 tool_call_count,
             )
+        # ── Per-runde cache-telemetri (2026-06-30) ───────────────────────────
+        # Skriv ÉN linje pr. agentisk runde med prefix-hash + faktiske cache-tal,
+        # så vi kan verificere RUNDE FOR RUNDE at [system,tools]-prefixet er
+        # stabilt (tool_choice-fixet) og at cachen holder. Self-safe.
+        try:
+            if self.provider_id == "deepseek":
+                from core.services.cache_telemetry import (
+                    prefix_signature, record_visible_cache,
+                )
+                _sys = ""
+                for _m in messages:
+                    if _m.get("role") == "system":
+                        _sys = str(_m.get("content") or "")
+                        break
+                _sha, _plen = prefix_signature(_sys, payload.get("tools"))
+                _ch = int((_usage or {}).get("prompt_cache_hit_tokens") or 0)
+                _cm = int((_usage or {}).get("prompt_cache_miss_tokens") or 0)
+                record_visible_cache(
+                    run_id=run_id, round_index=round_index, autonomous=autonomous,
+                    lane="visible", provider=self.provider_id, model=model,
+                    prefix_sha=_sha, prefix_len=_plen, cache_hit=_ch, cache_miss=_cm,
+                )
+        except Exception:
+            pass
         if tool_calls:
             yield FollowupToolCalls(tool_calls=tool_calls)
         yield FollowupDone(
@@ -1392,6 +1428,8 @@ def stream_visible_followup(
     temperature: float | None = None,
     top_p: float | None = None,
     tool_choice: str | None = None,
+    run_id: str = "",
+    autonomous: bool = False,
 ) -> Iterator[FollowupEvent]:
     """Dispatch to the provider's follow-up adapter; yield FollowupEvents.
 
@@ -1443,6 +1481,10 @@ def stream_visible_followup(
     # compat (deepseek-stien) honorerer det i payloaden.
     if isinstance(adapter, OpenAICompatFollowupAdapter) and tool_choice is not None:
         _kwargs["tool_choice"] = tool_choice
+    # Cache-telemetri-kontekst (kun openai-compat-adapteren bruger det i dag).
+    if isinstance(adapter, OpenAICompatFollowupAdapter):
+        _kwargs["run_id"] = run_id
+        _kwargs["autonomous"] = autonomous
     yield from adapter.stream_followup(**_kwargs)
 
 

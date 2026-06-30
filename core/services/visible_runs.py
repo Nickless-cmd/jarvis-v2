@@ -1828,6 +1828,11 @@ async def _stream_visible_run(
                 except Exception:
                     pass  # keep full list on any error
                 _all_followup_parts: list[str] = []
+                # I1-heal (2026-06-30): thinking-modeller (deepseek-v4-flash m.fl.) lægger
+                # nogle gange HELE svaret i reasoning. Vi akkumulerer reasoning-deltaerne
+                # parallelt så vi kan surface dem som svar hvis content-parts er tomme —
+                # ellers falsk empty_completion → fallback wiper det streamede svar.
+                _all_followup_reasoning_parts: list[str] = []
                 _a_parts: list[str] = []
 
                 def _to_followup_results(
@@ -2396,6 +2401,7 @@ async def _stream_visible_run(
                                 # et foldbart 'tænker…'-felt. Kun visning; persistens
                                 # sker via reasoning_content i FollowupDone.
                                 if _a_item.delta:
+                                    _all_followup_reasoning_parts.append(_a_item.delta)
                                     yield _sse("reasoning_delta", {
                                         "type": "reasoning_delta",
                                         "run_id": run.run_id,
@@ -3587,6 +3593,29 @@ async def _stream_visible_run(
                     # declines to persist. NEVER emit synthetic internal
                     # markers like "[Completed: ...]" to the user.
                     followup_text = (getattr(result, "text", "") or "").strip()
+
+                if not followup_text:
+                    # I1-heal (2026-06-30 — DEN ægte cutoff-rod): thinking-modeller
+                    # (deepseek-v4-flash/v4-pro/reasoner) lægger NOGLE GANGE hele svaret i
+                    # reasoning mens content er tomt. Reasoning-deltaerne ER streamet til
+                    # klienten (brugeren SÅ teksten), men content-accumulatoren var tom →
+                    # falsk empty_completion → fallback wiper det ægte svar. Sidste udvej:
+                    # surfacér det akkumulerede reasoning (denne runde + first-pass) som svaret.
+                    _reasoning_join = "".join(_all_followup_reasoning_parts).strip()
+                    if not _reasoning_join:
+                        _reasoning_join = str(getattr(result, "reasoning_content", "") or "").strip()
+                    if _reasoning_join:
+                        try:
+                            from core.services.visible_model import (
+                                _strip_thinking_delimiters,
+                                _observe_content_empty_thinking_fallback,
+                            )
+                            followup_text = _strip_thinking_delimiters(_reasoning_join).strip()
+                            _observe_content_empty_thinking_fallback(
+                                run.provider, run.model, "agentic_followup", len(_reasoning_join),
+                            )
+                        except Exception:
+                            followup_text = _reasoning_join
 
                 # ── Tavs cut-off-vagt (2026-06-23, udvidet) ────────────────────
                 # Provider-AGNOSTISK fejlklasse (Bjørn: "cutter random på tværs af

@@ -713,6 +713,21 @@ def _stream_openai_compatible_model(
                 if collected_tool_calls:
                     yield VisibleModelToolCalls(tool_calls=collected_tool_calls)
                 full_text = str(ev.get("full_text") or "")
+                _reasoning = str(ev.get("reasoning_content") or "")
+                # I1-heal (port fra ollama-stien linje 1854, 2026-06-30 — DEN ægte
+                # cutoff-rod): deepseek-v4-flash/v4-pro/reasoner (thinking) lægger NOGLE
+                # GANGE hele svaret i reasoning_content mens content er TOM. reasoning-
+                # deltaerne streames til klienten (brugeren SER teksten), men content-
+                # accumulatoren forblev tom → text_preview='' → falsk empty_completion →
+                # fallback wiper det ægte (streamede) svar. Denne openai-compat-sti (native
+                # deepseek) MANGLEDE heal'en ollama-stien har. Nu: tom content + ingen
+                # tools + reasoning har indhold → surfacér reasoning som svaret. Fallback,
+                # ikke default: uændret når content er til stede.
+                if not full_text and not collected_tool_calls and _reasoning.strip():
+                    full_text = _strip_thinking_delimiters(_reasoning)
+                    _observe_content_empty_thinking_fallback(
+                        provider, model, "openai_compat_first_pass", len(_reasoning),
+                    )
                 # 2026-05-22 (Claude): pull cache_hit/miss from the streaming
                 # done-event. cheap_provider_runtime already yields them
                 # (search for "cache_hit_tokens" in that file's done-yield),

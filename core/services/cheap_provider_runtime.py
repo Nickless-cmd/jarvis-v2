@@ -1697,6 +1697,31 @@ def _iter_openai_compatible_chat_events(
     output_tokens = int(final_usage.get("completion_tokens") or final_usage.get("output_tokens") or 0)
     cache_hit = int(final_usage.get("prompt_cache_hit_tokens") or 0)
     cache_miss = int(final_usage.get("prompt_cache_miss_tokens") or 0)
+    # ── UNIVERSEL per-kald cache-telemetri (2026-06-30) ──────────────────────
+    # DETTE er det punkt ALLE deepseek-streaming-kald passerer (first-pass OG
+    # agentiske runder, uanset hvilket højere lag der driver dem) — i modsætning
+    # til followup-adapteren der viste sig IKKE at være på deepseeks agentiske sti.
+    # Logger prefix-hash + cache pr. kald så vi kan se RUNDE FOR RUNDE om
+    # [system,tools]-prefixet er stabilt og cachen holder. Gated på visible tool-
+    # tunge kald (tools-sæt ≥ 20) så interne cheap-jobs ikke flooder. Self-safe.
+    try:
+        if provider == "deepseek" and tools and len(tools) >= 20:
+            from core.services.cache_telemetry import (
+                prefix_signature, record_visible_cache,
+            )
+            _sys_c = ""
+            for _m in (messages or []):
+                if _m.get("role") == "system":
+                    _sys_c = str(_m.get("content") or "")
+                    break
+            _psha, _plen = prefix_signature(_sys_c, tools)
+            record_visible_cache(
+                lane="visible-call", provider=provider, model=model,
+                prefix_sha=_psha, prefix_len=_plen,
+                cache_hit=cache_hit, cache_miss=cache_miss,
+            )
+    except Exception:
+        pass
     enriched_usage = dict(final_usage)
     if provider == "deepseek":
         enriched_usage.setdefault("model", model)

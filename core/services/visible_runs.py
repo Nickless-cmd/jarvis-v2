@@ -2004,6 +2004,21 @@ async def _stream_visible_run(
                 # True når denne tur ALLEREDE er failet over én gang (vi failer ikke
                 # over i en uendelig kæde — én fallback, så graceful exhaustion).
                 _did_failover = False
+                # Lav agentisk temperatur (anti-hallucination, 2026-06-30): faktuelt
+                # tool-arbejde sampler deterministisk lavt. Negativ værdi = frakoblet
+                # (provider-default). Læst ÉN gang før loopet; thinking-modeller
+                # ignorerer den server-side (no-op).
+                try:
+                    from core.runtime.settings import load_settings as _ld_temp
+                    _st_temp = _ld_temp()
+                    _agentic_temp = float(getattr(_st_temp, "agentic_followup_temperature", 0.3))
+                    _agentic_top_p = float(getattr(_st_temp, "agentic_followup_top_p", 0.9))
+                    if _agentic_temp < 0:
+                        _agentic_temp = None
+                    if _agentic_top_p < 0:
+                        _agentic_top_p = None
+                except Exception:
+                    _agentic_temp, _agentic_top_p = 0.3, 0.9
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
                     if not _provider_supports_followup:
                         logger.warning(
@@ -2208,6 +2223,8 @@ async def _stream_visible_run(
                             # → byte-identical dispatch.
                             pump_provider=_active_provider,
                             pump_model=_active_model,
+                            pump_temp=_agentic_temp,
+                            pump_top_p=_agentic_top_p,
                         ) -> None:
                             try:
                                 _gen = _vf.stream_visible_followup(
@@ -2218,6 +2235,8 @@ async def _stream_visible_run(
                                     tool_definitions=tool_defs,
                                     round_index=rnd,
                                     thinking_mode=run.thinking_mode,
+                                    temperature=pump_temp,
+                                    top_p=pump_top_p,
                                 )
                                 # Expose this attempt's generator so a retry can
                                 # force-close it (D11). Keyed by epoch so a stale
@@ -3616,6 +3635,40 @@ async def _stream_visible_run(
                             )
                         except Exception:
                             followup_text = _reasoning_join
+
+                if not followup_text:
+                    # #1453-RESCUE (2026-06-30 — verificeret DeepSeek-bug): thinking-
+                    # modellerne (v4-flash/v4-pro/reasoner) returnerer INTERMITTENT helt
+                    # tomt efter tool-kald (content+reasoning tomme, HTTP 200) og bliver
+                    # ved at være tomme ved retry i SAMME thinking-kontekst (GitHub
+                    # DeepSeek-V3 #1453). Eneste kendte kur = omgå thinking-maskineriet.
+                    # Kør ÉN frisk syntese-runde med non-thinking deepseek-chat (force-
+                    # prose, fuld tool-kontekst). Rent additivt: kun når loopet ALLEREDE
+                    # endte tomt EFTER tool-kald; værste fald er rescue også tom → vi
+                    # falder igennem til de eksisterende fallbacks. Idempotent (ingen
+                    # tools eksekveres). await via to_thread så event-loopet ikke blokeres.
+                    _fu_ex_r = locals().get("_followup_exchanges") or []
+                    _had_tools_r = any(
+                        getattr(_ex, "tool_calls", None) for _ex in _fu_ex_r)
+                    if _had_tools_r and run.provider == "deepseek":
+                        try:
+                            _rescued = await asyncio.to_thread(
+                                _vf.synthesize_nonthinking_rescue,
+                                provider=run.provider, model=run.model,
+                                base_messages=locals().get("base_messages") or [],
+                                exchanges=_fu_ex_r,
+                            )
+                        except Exception:
+                            _rescued = ""
+                        if _rescued:
+                            followup_text = _rescued
+                            if not run.autonomous:
+                                yield _sse("delta", {
+                                    "type": "delta", "run_id": run.run_id,
+                                    "delta": _rescued,
+                                })
+                            _observe_streamed_text_recovered(
+                                run, chars=len(_rescued), source="nonthinking_rescue")
 
                 if not followup_text:
                     # DAG-ÉT DIVERGENS-FIX (sidste udvej, agentisk gren): hvis

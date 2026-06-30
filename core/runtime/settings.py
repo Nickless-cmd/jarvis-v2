@@ -204,6 +204,16 @@ class RuntimeSettings:
     unconscious_modulation_temp_ceiling: float = 1.2
     unconscious_modulation_top_p_floor: float = 0.7
     unconscious_modulation_top_p_ceiling: float = 1.0
+    # ── Agentisk followup-temperatur (2026-06-30, anti-hallucination) ────
+    # Forskning (OpenAI o3-systemkort + Vectara + AA-Omniscience): reasoning/
+    # agentiske loops hallucinerer MERE ved høj temperatur. First-pass beholder
+    # sin personligheds-modulation, men agentiske followup-runder (faktuelt
+    # arbejde + tool-syntese) kører deterministisk lavt. Gælder providere der
+    # honorerer temperatur (deepseek-chat/non-thinking, glm via ollama); DeepSeek
+    # thinking-modeller IGNORERER den server-side (no-op, harmløst). Sæt til en
+    # negativ værdi for at lade provideren bruge sin egen default (frakobl).
+    agentic_followup_temperature: float = 0.3
+    agentic_followup_top_p: float = 0.9
     # ── Tool invention (AGI track #9 — added 2026-05-12) ─────────────────
     # When True, propose_new_skill tool is exposed and active. When False,
     # the tool returns an error immediately (kill-switch).

@@ -694,3 +694,125 @@ def test_codex_adapter_translates_events(monkeypatch) -> None:
     assert "".join(d.delta for d in deltas) == "ser efter"
     assert len(tcs) == 1 and tcs[0].tool_calls[0]["function"]["name"] == "search"
     assert len(dones) == 1 and dones[0].text == "ser efter"
+
+
+# ── Agentisk temperatur (#2, 2026-06-30) ─────────────────────────────────────
+
+
+def test_ollama_followup_threads_temperature_into_options(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Lav agentisk temp/top_p skal lande i ollama-payloadens 'options'."""
+    ndjson_lines = [
+        (json.dumps({"message": {"content": "ok"}}) + "\n").encode("utf-8"),
+        (json.dumps({"done": True}) + "\n").encode("utf-8"),
+    ]
+    with _patched_urlopen(monkeypatch, ndjson_lines) as captured:
+        list(
+            vf.stream_visible_followup(
+                provider="ollama",
+                model="glm-5.1:cloud",
+                base_messages=[{"role": "user", "content": "hi"}],
+                exchanges=[],
+                temperature=0.2,
+                top_p=0.85,
+            )
+        )
+    opts = captured["body"]["options"]
+    assert opts["temperature"] == 0.2
+    assert opts["top_p"] == 0.85
+    # num_ctx bevaret ved siden af.
+    assert opts["num_ctx"] == 262_144
+
+
+def test_ollama_followup_omits_temperature_when_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Uden temp (default) skal 'options' IKKE indeholde temperature/top_p."""
+    ndjson_lines = [(json.dumps({"done": True}) + "\n").encode("utf-8")]
+    with _patched_urlopen(monkeypatch, ndjson_lines) as captured:
+        list(
+            vf.stream_visible_followup(
+                provider="ollama",
+                model="glm-5.1:cloud",
+                base_messages=[{"role": "user", "content": "hi"}],
+                exchanges=[],
+            )
+        )
+    opts = captured["body"]["options"]
+    assert "temperature" not in opts
+    assert "top_p" not in opts
+
+
+# ── #1453 non-thinking rescue (#1, 2026-06-30) ───────────────────────────────
+
+
+def test_rescue_swaps_to_nonthinking_chat_and_collects_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rescue skal kalde deepseek-chat (non-thinking), UDEN tools, og returnere
+    den syntetiserede tekst."""
+    seen: dict[str, object] = {}
+
+    def _fake_stream(*, provider, model, base_messages, exchanges,
+                     tool_definitions=None, round_index=0, thinking_mode="think",
+                     temperature=None, top_p=None):
+        seen.update(
+            provider=provider, model=model, tool_definitions=tool_definitions,
+            thinking_mode=thinking_mode, temperature=temperature,
+        )
+        yield vf.FollowupDelta(delta="Her er ")
+        yield vf.FollowupDelta(delta="svaret.")
+        # Done.text == "".join(deltas) i adapterne — rescue må ikke doble.
+        yield vf.FollowupDone(text="Her er svaret.", reasoning_content="")
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _fake_stream)
+
+    out = vf.synthesize_nonthinking_rescue(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hej"}],
+        exchanges=[],
+    )
+    assert out == "Her er svaret."          # ikke doblet
+    assert seen["model"] == "deepseek-chat"  # swappet til non-thinking
+    assert seen["tool_definitions"] is None  # force-prose
+    assert seen["thinking_mode"] == "fast"
+
+
+def test_rescue_skips_non_deepseek_providers(monkeypatch: pytest.MonkeyPatch) -> None:
+    called = {"n": 0}
+
+    def _fake_stream(**_kw):
+        called["n"] += 1
+        yield vf.FollowupDone(text="should not run")
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _fake_stream)
+    out = vf.synthesize_nonthinking_rescue(
+        provider="ollama", model="glm-5.2:cloud", base_messages=[], exchanges=[],
+    )
+    assert out == ""
+    assert called["n"] == 0  # aldrig kaldt for ikke-deepseek
+
+
+def test_rescue_is_self_safe_on_stream_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _boom(**_kw):
+        raise RuntimeError("provider down")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _boom)
+    out = vf.synthesize_nonthinking_rescue(
+        provider="deepseek", model="deepseek-v4-flash", base_messages=[], exchanges=[],
+    )
+    assert out == ""
+
+
+def test_rescue_returns_empty_when_synthesis_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hvis non-thinking-runden OGSÅ er tom → "" (vi falder igennem til fallback)."""
+    def _empty(**_kw):
+        yield vf.FollowupDone(text="", reasoning_content="")
+
+    monkeypatch.setattr(vf, "stream_visible_followup", _empty)
+    out = vf.synthesize_nonthinking_rescue(
+        provider="deepseek", model="deepseek-v4-flash", base_messages=[], exchanges=[],
+    )
+    assert out == ""

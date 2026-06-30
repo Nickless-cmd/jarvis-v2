@@ -506,6 +506,8 @@ class OllamaFollowupAdapter:
         tool_definitions: list[dict] | None = None,
         round_index: int = 0,
         thinking_mode: str = "think",
+        temperature: float | None = None,
+        top_p: float | None = None,
     ) -> Iterator[FollowupEvent]:
         # 2026-06-13: ollama-followup skal bruge OLLAMA-providerens base_url, ikke
         # visible-lanen (deepseek-API). Ellers POST'er tool-runden ollama-format til
@@ -520,6 +522,13 @@ class OllamaFollowupAdapter:
 
         messages = list(base_messages) + self._serialize_exchanges(exchanges)
 
+        _options: dict[str, object] = {"num_ctx": 262_144}
+        # Lav agentisk temperatur (anti-hallucination). Ollama læser sampling-
+        # parametre fra "options". None = udeladt (model-default).
+        if temperature is not None:
+            _options["temperature"] = float(temperature)
+        if top_p is not None:
+            _options["top_p"] = float(top_p)
         payload: dict[str, object] = {
             "model": model,
             "messages": messages,
@@ -527,7 +536,7 @@ class OllamaFollowupAdapter:
             # Match the first-pass num_ctx so accumulated tool-result rounds
             # don't get truncated. See _VISIBLE_OLLAMA_NUM_CTX in
             # core/services/visible_model.py.
-            "options": {"num_ctx": 262_144},
+            "options": _options,
         }
         # Mirror first-pass thinking-mode controls so subsequent rounds
         # respect the user's choice (Fast/Think/Deep) for reasoning models
@@ -826,7 +835,8 @@ class OpenAICompatFollowupAdapter:
         return normalized
 
     def _build_request(
-        self, *, model: str, messages: list[dict], tool_definitions: list[dict] | None
+        self, *, model: str, messages: list[dict], tool_definitions: list[dict] | None,
+        temperature: float | None = None, top_p: float | None = None,
     ) -> urllib_request.Request:
         if self.provider_id == "github-copilot":
             # Lazy imports: these modules pull in auth state we don't want to
@@ -906,6 +916,13 @@ class OpenAICompatFollowupAdapter:
             # follow-up turn while staying within the free quota.
             "max_tokens": 4096,
         }
+        # Lav agentisk temperatur (anti-hallucination). DeepSeek thinking-modeller
+        # ignorerer den server-side; non-thinking (deepseek-chat) + andre compat-
+        # providere honorerer den. None = udeladt (provider-default).
+        if temperature is not None:
+            payload["temperature"] = float(temperature)
+        if top_p is not None:
+            payload["top_p"] = float(top_p)
         if tool_definitions:
             from core.services.cheap_provider_runtime import _normalize_tools_for_openai_chat
             payload["tools"] = _normalize_tools_for_openai_chat(list(tool_definitions))
@@ -974,6 +991,8 @@ class OpenAICompatFollowupAdapter:
         tool_definitions: list[dict] | None = None,
         round_index: int = 0,
         thinking_mode: str = "think",
+        temperature: float | None = None,
+        top_p: float | None = None,
     ) -> Iterator[FollowupEvent]:
         from core.services.visible_model import (
             _chat_completion_stream_is_terminal,
@@ -1065,7 +1084,8 @@ class OpenAICompatFollowupAdapter:
 
         try:
             req = self._build_request(
-                model=model, messages=messages, tool_definitions=tool_definitions
+                model=model, messages=messages, tool_definitions=tool_definitions,
+                temperature=temperature, top_p=top_p,
             )
         except Exception as e:
             _log.error(
@@ -1362,6 +1382,8 @@ def stream_visible_followup(
     tool_definitions: list[dict] | None = None,
     round_index: int = 0,
     thinking_mode: str = "think",
+    temperature: float | None = None,
+    top_p: float | None = None,
 ) -> Iterator[FollowupEvent]:
     """Dispatch to the provider's follow-up adapter; yield FollowupEvents.
 
@@ -1401,7 +1423,97 @@ def stream_visible_followup(
     )
     if isinstance(adapter, OllamaFollowupAdapter):
         _kwargs["thinking_mode"] = thinking_mode
+    # Temperatur/top_p honoreres af de to sampling-providere (ollama + openai-
+    # compat). Codex/Copilot-adapterne tager dem ikke → send kun hvor de findes.
+    if isinstance(adapter, (OllamaFollowupAdapter, OpenAICompatFollowupAdapter)):
+        if temperature is not None:
+            _kwargs["temperature"] = temperature
+        if top_p is not None:
+            _kwargs["top_p"] = top_p
     yield from adapter.stream_followup(**_kwargs)
+
+
+def synthesize_nonthinking_rescue(
+    *,
+    provider: str,
+    model: str,
+    base_messages: list[dict],
+    exchanges: list["ToolExchange"],
+) -> str:
+    """Sidste-udvejs synteseturn der OMGÅR DeepSeek #1453 (tom completion efter
+    tool-kald).
+
+    DeepSeek-V3 issue #1453 (verificeret 2026-06-30): thinking-modellerne
+    (deepseek-v4-flash/v4-pro/reasoner) returnerer INTERMITTENT et helt tomt svar
+    (content="", reasoning_content="", completion_tokens=0, HTTP 200) når tool-
+    resultater fødes tilbage — og bliver ved at være tomme ved retry i SAMME
+    thinking-kontekst. Den eneste kendte kur er at undgå thinking-maskineriet.
+
+    Denne funktion kører ÉN frisk syntese-runde med den NON-thinking compat-alias
+    (deepseek-chat) UDEN tools (force-prose), med fuld kontekst (base_messages +
+    tool-exchanges). deepseek-chat har ikke reasoning_content-protokollen der
+    trigger #1453, så den kan formulere svaret når thinking-stien choker. Kaldes
+    KUN når den agentiske loop allerede ENDTE tom efter tool-kald — derfor rent
+    additiv: værste fald er den også returnerer tom, og vi falder igennem til den
+    eksisterende fallback. Idempotent: ingen tools eksekveres, kun syntese.
+
+    Returnerer den syntetiserede tekst (strippet) eller "" ved enhver fejl/tomhed.
+    Synkron (dran den interne generator) — kald via asyncio.to_thread fra async-
+    stien så event-loopet ikke blokeres. Self-safe: kaster aldrig."""
+    try:
+        _pid = (provider or "").strip().lower()
+        # Kun DeepSeek thinking-modeller rammes af #1453. Andre providere (eller
+        # deepseek-chat selv) har ikke bug'en → ingen rescue (undgå dobbelt-svar).
+        if _pid != "deepseek":
+            return ""
+        if model not in ("deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner"):
+            return ""
+        from core.services.cheap_provider_runtime import deepseek_model_for_thinking_mode
+        _chat_model = deepseek_model_for_thinking_mode(model, "fast")
+        if _chat_model == model:
+            # Intet ægte swap (uventet) → drop hellere end at gentage thinking-kaldet.
+            return ""
+        # FollowupDone.text == "".join(deltas) i adapterne — så brug Done.text som
+        # autoritativ (undgå dobling), fald tilbage på akkumulerede deltas hvis
+        # runden afsluttede uden et eksplicit Done (fejl/afbrud).
+        # Lav temp til den faktuelle syntese (samme anti-hallucination-setting
+        # som de agentiske runder). Frakoblet ved negativ værdi.
+        _r_temp: float | None = 0.3
+        _r_top_p: float | None = 0.9
+        try:
+            from core.runtime.settings import load_settings as _ld_r
+            _st_r = _ld_r()
+            _r_temp = float(getattr(_st_r, "agentic_followup_temperature", 0.3))
+            _r_top_p = float(getattr(_st_r, "agentic_followup_top_p", 0.9))
+            if _r_temp < 0:
+                _r_temp = None
+            if _r_top_p < 0:
+                _r_top_p = None
+        except Exception:
+            pass
+        _delta_parts: list[str] = []
+        _done_text = ""
+        for _ev in stream_visible_followup(
+            provider=provider,
+            model=_chat_model,
+            base_messages=base_messages,
+            exchanges=exchanges,
+            tool_definitions=None,   # force-prose: ingen flere tool-runder
+            round_index=900,         # rescue-marker (uden for normalt rundetal)
+            thinking_mode="fast",
+            temperature=_r_temp,
+            top_p=_r_top_p,
+        ):
+            if isinstance(_ev, FollowupDelta):
+                _delta_parts.append(_ev.delta)
+            elif isinstance(_ev, FollowupDone):
+                _done_text = str(_ev.text or "")
+            elif isinstance(_ev, FollowupFailed):
+                # Rescue fejlede selv → giv op (den ydre fallback tager over).
+                break
+        return (_done_text or "".join(_delta_parts)).strip()
+    except Exception:
+        return ""
 
 
 def build_visible_followup_surface() -> dict[str, object]:

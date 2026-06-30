@@ -894,8 +894,15 @@ async def chat_run_subscribe(run_id: str, from_idx: int = 0):
         raise HTTPException(status_code=404, detail="run not found")
 
     async def _gen():
+        import time as _xt
+        from apps.api.jarvis_api.sse_v2_events import Ping as _Ping
         rel.subscriber_opened(run_id)
         saw_stop = False
+        # Klient-keepalive: egen ping hvert _PING_GAP_S i content-gap, så klientens
+        # 90s ping-watchdog ikke fyrer mens et langt run/tool-runde er stille
+        # (detached-pings droppes fra relay-bufferen → når aldrig klienten). Se chat_stream_v2.
+        _PING_GAP_S = 5.0
+        _last_emit = _xt.monotonic()
         try:
             idx = max(0, int(from_idx))
             empty = 0
@@ -906,6 +913,7 @@ async def chat_run_subscribe(run_id: str, from_idx: int = 0):
                     if "message_stop" in f:
                         saw_stop = True
                     yield f
+                    _last_emit = _xt.monotonic()
                 if done:
                     # Terminal-garanti: run done UDEN message_stop → syntetisér (ellers
                     # hænger en re-subscriber/reattach på 'working'). Se chat_stream_v2.
@@ -917,7 +925,12 @@ async def chat_run_subscribe(run_id: str, from_idx: int = 0):
                     empty = 0
                 else:
                     empty += 1
-                    if empty > 300:
+                    if (_xt.monotonic() - _last_emit) >= _PING_GAP_S:
+                        yield _Ping().to_sse_line()
+                        _last_emit = _xt.monotonic()
+                    if empty > 300 and rel.is_live(run_id):
+                        empty = 0  # run lever stadig (langsom) → bliv ved (se chat_stream_v2)
+                    elif empty > 300:
                         # H1/G6: syntetisk terminal-frame + subscriber_timeout-nerve.
                         yield rel.synthetic_terminal_frame(
                             run_id, reason="run_subscribe_idle"
@@ -945,8 +958,12 @@ async def chat_session_live(session_id: str):
         return Response(status_code=204)
 
     async def _gen():
+        import time as _xt
+        from apps.api.jarvis_api.sse_v2_events import Ping as _Ping
         rel.subscriber_opened(run_id)
         saw_stop = False
+        _PING_GAP_S = 5.0          # klient-keepalive i content-gap (se chat_stream_v2)
+        _last_emit = _xt.monotonic()
         try:
             idx = 0
             empty = 0
@@ -957,6 +974,7 @@ async def chat_session_live(session_id: str):
                     if "message_stop" in f:
                         saw_stop = True
                     yield f
+                    _last_emit = _xt.monotonic()
                 if done:
                     if not saw_stop:
                         yield rel.synthetic_terminal_frame(
@@ -967,7 +985,12 @@ async def chat_session_live(session_id: str):
                     empty = 0
                 else:
                     empty += 1
-                    if empty > 300:
+                    if (_xt.monotonic() - _last_emit) >= _PING_GAP_S:
+                        yield _Ping().to_sse_line()
+                        _last_emit = _xt.monotonic()
+                    if empty > 300 and rel.is_live(run_id):
+                        empty = 0  # run lever stadig (langsom) → bliv ved (se chat_stream_v2)
+                    elif empty > 300:
                         # H1/G6: syntetisk terminal-frame + subscriber_timeout-nerve.
                         yield rel.synthetic_terminal_frame(
                             run_id, session_id, reason="session_live_idle"

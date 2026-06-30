@@ -260,8 +260,18 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
 
         async def _subscribe():
             import asyncio as _a
+            import time as _xt
+            from apps.api.jarvis_api.sse_v2_events import Ping as _Ping
             rel.subscriber_opened(run_id)
             saw_stop = False
+            # Klient-keepalive: emit vores EGEN ping hvert _PING_GAP_S når der ikke
+            # flyder relay-frames. Det detached runs ping-loop kører på et separat
+            # (evt. blokeret) event-loop OG dets pings droppes fra relay-bufferen
+            # (ephemeral) → de når ALDRIG klienten. Denne ping kører på den sunde
+            # API-loop og er den eneste klienten ser i et content-gap → desk's 90s
+            # ping-watchdog fyrer ikke mens et langt run/tool-runde er stille.
+            _PING_GAP_S = 5.0
+            _last_emit = _xt.monotonic()
             try:
                 idx = 0
                 empty = 0
@@ -272,6 +282,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                         if "message_stop" in f:
                             saw_stop = True
                         yield f
+                        _last_emit = _xt.monotonic()
                     if done:
                         # TERMINAL-GARANTI (Bjørn 29. jun, stream_stall-roden): runnet er
                         # 'done', men hvis INGEN message_stop-frame nåede relayet (glm-5.2
@@ -290,7 +301,19 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                         empty = 0
                     else:
                         empty += 1
-                        if empty > 300:  # ~24s helt tavst (pings hver 5s) → giv op
+                        # Klient-keepalive ping i content-gap (se _PING_GAP_S ovenfor).
+                        if (_xt.monotonic() - _last_emit) >= _PING_GAP_S:
+                            yield _Ping().to_sse_line()
+                            _last_emit = _xt.monotonic()
+                        if empty > 300 and rel.is_live(run_id):
+                            # ROD (Bjørn 29. jun, instrumenterings-bevist): glm-5.2's tænke/assembly-
+                            # fase producerer ~ingen relay-frames i ~24s (ping-starvation) →
+                            # give-up'en fyrede MENS runnet stadig var LIVE → syntetisk
+                            # message_stop → desk's stream døde ved 24s → /live (mobil)
+                            # overtog → ALT content (kom efter 24s) gik til mobil. Giv KUN op
+                            # hvis runnet er ÆGTE dødt (ikke is_live); ellers bliv ved at vente.
+                            empty = 0
+                        elif empty > 300:  # ~24s tavst OG run ikke længere live → giv op
                             # H1/G6: aldrig bare break — emit syntetisk terminal-frame
                             # så klienten forlader 'working', + fyr subscriber_timeout-nerve.
                             yield rel.synthetic_terminal_frame(

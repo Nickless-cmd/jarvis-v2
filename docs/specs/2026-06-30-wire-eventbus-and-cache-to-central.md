@@ -1063,3 +1063,67 @@ handling (kræver sikkerheds-gates). Anbefalet: byg Lag 0 nu (denne spec), så L
   Spec'en dækker nu BÅDE Lag 0-implementeringen (prod-klar efter P0) OG den fulde
   super-intelligente vision. Skrevet færdig af Claude efter Jarvis' tool-calling cutoff
   blokerede ham (#1453-empty på agentisk sti — separat fix undervejs).
+
+---
+
+## §21 — Council-fund (high-urgency: critic + planner)
+
+Jarvis kørte council på spørgsmålet *"hvad mangler centralen for at blive en ægte
+intelligent, selv-udviklende kerne?"*. Fundene bekræfter §19's retning og tilføjer to
+SKARPERE, fundamentale huller (§21.2) som §18-19 kun delvist dækkede.
+
+### 21.1 Critic's 5 kritiske kapabiliteter (mapping til spec)
+| # | Kapabilitet | Dækket af | Status |
+|---|---|---|---|
+| 1 | Auto-capture af UKENDTE fejl-signaturer (ikke kun kendte mønstre) | §3.0 anomaly→eventbus + §15.3 known_signals-routing + central_anomaly | ✅ delvist — udvid: ukendte signaturer skal AUTO-promoveres til kandidat-signaler, ikke dø i støjen |
+| 2 | Fuld bi-direktionel live trace (signal→nerve→handling OG tilbage: hvilken nerve, hvorfor, med hvilken effekt) | §3.4 CentralEventPublisher + §19.2 kausal kæde | ⚠️ HUL: i dag mangler "hvilken nerve reagerede + effekt" som traced led |
+| 3 | Læring PÅ TVÆRS af alt (generalisér over nerves/clusters/incidents — ikke isoleret pr. nerve) | §18 ingest_event giver rådata, men §19 lærer pr. nerve | ⚠️ HUL: cross-nerve-generalisering mangler (se §21.2) |
+| 4 | Self-heal + self-escalate (ikke bare flagge) | §19.3 autonom heling | ✅ specificeret (mangler implementering) |
+| 5 | Fuld transparens (ingen skjulte mellemrum i beslutnings-kæden) | §19.2 kausal + §3.4 begge-veje | ⚠️ HUL: "hvorfor blev DENNE beslutning truffet" skal være queryable ende-til-ende |
+
+### 21.2 Planner's 2 fundamentale arkitektur-huller (NYE krav)
+
+**Hul A — Meta-læring (lære at lære af egne beslutninger).**
+Systemet lærer ikke af sine EGNE klassifikationer/handlinger. Når en nerve
+fejlklassificerer, eller en incident håndteres forkert, skal en feedback-loop
+JUSTERE nerve-sensitiviteten automatisk.
+- **Krav:** hver nerve får en `sensitivity`-parameter + en meta-læringssløjfe der
+  observerer nervens egne udfald og regulerer sensitiviteten op/ned. Dette er et lag
+  OVER §18 (som justerer tærskler fra mønstre) — her lærer centralen at justere SELVE
+  sin lære-mekanisme baseret på hvor god den var.
+- **Kobling:** §19.4 (selvbevidst læring) er per-incident; meta-læring er per-NERVE og
+  per-KLASSIFIKATOR. Sammen lukker de loopet på begge niveauer.
+
+**Hul B — Negativ feedback (korrigér nerve-adfærd ud fra udfald).**
+Der er INGEN mekanisme til at korrigere en nerve baseret på resultatet af dens
+handlinger. Hvis en nerve siger "dette er en anomali" og det viser sig at være normalt
+(falsk positiv), lærer den intet.
+- **Krav:** hver nerve-fyring får et `outcome`-felt der lukkes senere (true_positive /
+  false_positive / true_negative). En negativ-feedback-sløjfe sænker nervens
+  følsomhed ved gentagne falske positiver og hæver den ved missede ægte hændelser
+  (false negatives fra senere incidents).
+- **Mekanisme:** outcome bestemmes via §19.1's tidsserie (skete det forudsagte?) +
+  §19.2's kausal-kæde (var anomalien faktisk roden?) → fodres tilbage som negativ/positiv
+  forstærkning. Bandit-strategien fra §19.4 vælger handlinger; negativ feedback træner
+  selve DETEKTOREN.
+
+### 21.3 Revideret afhængigheds-billede
+```
+Lag 0 (fundament)                                   ← §1-18
+  ├─ Lag 1 Prædiktiv          (tidsserie)
+  ├─ Lag 2 Kausal             (parent_event_id + nerve→effekt-trace = Critic #2/#5)
+  ├─ Lag 3 Autonom heling     (self-heal + self-escalate = Critic #4)
+  ├─ Lag 4 Selvbevidst læring (per-incident what-worked)
+  ├─ Hul A Meta-læring        (per-nerve sensitivity-regulering)   ← NYT, Planner
+  └─ Hul B Negativ feedback   (outcome-lukket false-positive-korrektion) ← NYT, Planner
+       └─ Cross-nerve-generalisering (Critic #3) = Hul A+B anvendt på tværs af nerver
+```
+Meta-læring (A) + negativ feedback (B) er de to der gør centralen SELV-udviklende
+frem for blot selv-observerende. De er fundamentet de øvrige (self-heal, fuld trace,
+auto-capture) hviler på — præcis som Planner konkluderede.
+
+### 21.4 Åbent: fuld 5-rolle-council
+Dette var et high-urgency 2-rolle-council (critic + planner). En dybere runde med
+ethical + architect + dreamer vil sandsynligvis tilføje: sikkerheds-rammen for autonom
+heling (ethical), den konkrete data-model for outcome/sensitivity (architect), og
+længere-sigtede selv-udviklings-mønstre (dreamer). Anbefales kørt FØR Lag 3-4 bygges.

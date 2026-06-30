@@ -1420,21 +1420,36 @@ async def _stream_visible_run(
                 from core.services.visible_model import (
                     execute_visible_model as _exec_rs,
                 )
+                # #1453-KUR (2026-06-30): en tom first-pass (content+reasoning=0)
+                # er DeepSeeks dokumenterede tom-completion-bug på thinking-modeller
+                # — og den er STICKY: re-spørg med SAMME thinking-model → bliver tom
+                # igen (verificeret på Bjørns council-spørgsmål, tomt 2×). Resend nu
+                # med den NON-thinking compat-alias (deepseek-chat) som ikke har
+                # #1453 → den formulerer svaret. Andre providere: uændret resend.
+                _rs_model = run.model
+                try:
+                    if (run.provider or "").strip().lower() == "deepseek":
+                        from core.services.cheap_provider_runtime import (
+                            deepseek_model_for_thinking_mode,
+                        )
+                        _rs_model = deepseek_model_for_thinking_mode(run.model, "fast")
+                except Exception:
+                    _rs_model = run.model
                 _rs = await asyncio.to_thread(
                     _exec_rs, message=run.user_message, provider=run.provider,
-                    model=run.model, session_id=run.session_id)
+                    model=_rs_model, session_id=run.session_id)
                 _rs_text = (getattr(_rs, "text", "") or "").strip()
                 try:
                     from core.services import followup_observer as _fo_rs
                     _fo_rs.note_resend(run.run_id, provider=run.provider,
-                                       model=run.model, recovered=bool(_rs_text))
+                                       model=_rs_model, recovered=bool(_rs_text))
                 except Exception:
                     pass
                 if _rs_text:
                     result = _rs
                     logger.warning(
-                        "resend-recovered tom first-pass run_id=%s (%d tegn)",
-                        run.run_id, len(_rs_text))
+                        "resend-recovered tom first-pass run_id=%s model=%s (%d tegn)",
+                        run.run_id, _rs_model, len(_rs_text))
                     yield _sse("delta", {"type": "delta", "run_id": run.run_id,
                                          "delta": _rs_text})
             except Exception as _rs_exc:

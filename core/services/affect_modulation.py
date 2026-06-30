@@ -38,7 +38,12 @@ DEFAULTS: dict[str, Any] = {
 }
 
 AGENTIC_BUDGET_DEFAULTS: dict[str, Any] = {
-    "max_rounds": 100,
+    # 2026-06-30: sænket 100 → 30. 100 var et absurd backstop — loop-gaten
+    # (consecutive_empty/tool_only) + syntese-pausen afslutter normale runs på
+    # få runder, og sidste runde tvinger prosa (ingen tools). 30 giver rigelig
+    # plads til ægte dybt arbejde uden at tillade 100-runde-spiraler. Affekt-
+    # modulering sænker yderligere til 12-20 under pres.
+    "max_rounds": 30,
     "max_tool_only_rounds": 24,
     "max_empty_text_rounds": 20,
     "round_total_timeout_s": 300.0,

@@ -2068,6 +2068,25 @@ async def _stream_visible_run(
                         touch_active_visible_run(run.run_id)
                     except Exception:
                         pass
+                    # ── Synlig runde-progress (2026-06-30, #4) ─────────────────
+                    # Tidligere så brugeren KUN tool-trin — de agentiske runder
+                    # selv var usynlige, så lange loops føltes som tavshed ("den
+                    # forsvinder"). Emit et let working_step pr. runde (fra runde 2,
+                    # så korte 1-runde-svar ikke klyttes) så klienten ser at loopet
+                    # lever og skrider frem. Kun interaktive runs; self-safe.
+                    if not run.autonomous and _agentic_round >= 1:
+                        try:
+                            _step_counter += 1
+                            yield _sse("working_step", {
+                                "type": "working_step",
+                                "run_id": run.run_id,
+                                "action": "thinking",
+                                "detail": f"Tænker videre · runde {_agentic_round + 1}",
+                                "step": _step_counter,
+                                "status": "running",
+                            })
+                        except Exception:
+                            pass
                     _a_parts = []
                     _a_tool_calls: list[dict] = []
                     _a_round_reasoning: str = ""  # captured from FollowupDone

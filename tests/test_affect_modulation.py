@@ -29,3 +29,17 @@ def test_section_none_when_nothing_changed():
         return_value={"max_tool_calls_per_turn": 40},
     ), patch.dict(am.DEFAULTS, {"max_tool_calls_per_turn": 40}, clear=False):
         assert am.affect_modulation_section() is None
+
+
+def test_default_max_rounds_is_sane_backstop():
+    """2026-06-30 (#4): default-cap sænket 100 → 30. Loop-gaten + syntese-pausen
+    afslutter normale runs langt tidligere; dette er kun et backstop mod
+    runaway-spiraler. Må aldrig krybe tilbage mod 100."""
+    budget = am.compute_agentic_loop_budget()
+    assert budget["max_rounds"] == 30
+
+
+def test_resume_and_pressure_cap_below_default():
+    """Resume- og pres-modulering skal stadig sænke UNDER default (ikke hæve)."""
+    resume = am.compute_agentic_loop_budget(resume_context=True)
+    assert resume["max_rounds"] <= 30

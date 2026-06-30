@@ -156,7 +156,26 @@ def _get_cached_state(cache_key: str) -> str | None:
     entry = _sc.get(full_key)
     if not entry:
         return None
-    # Within shared_cache TTL — return immediately
+    # Tilstands-bevidst invalidering (2026-06-30): cachen holdt før KUN på TTL —
+    # `invalidation_snapshot` blev gemt men aldrig sammenlignet (død maskineri).
+    # Nu sammenligner vi de centrale state-signaler (pv-version+bearing+mood,
+    # chronicle-timestamp, rhythm-fase) ved HVERT opslag: hvis tilstanden har
+    # ændret sig siden cachen blev bygget → stale uanset TTL → behandl som miss
+    # (rebuild med frisk indre tilstand). 3 hurtige DB-reads (~ms), forsvindende
+    # billigt mod 4-6s LLM. Self-safe: en snapshot-fejl må ALDRIG vælte et hit.
+    try:
+        stored_snap = entry.get("invalidation_snapshot")
+        if isinstance(stored_snap, dict) and stored_snap:
+            fresh_snap = _build_invalidation_snapshot()
+            if fresh_snap and fresh_snap != stored_snap:
+                logger.info(
+                    "cognitive_state_cache: STALE (indre tilstand ændret) %s → rebuild",
+                    cache_key,
+                )
+                return None
+    except Exception:
+        pass
+    # Frisk (TTL OK + tilstand uændret) — returnér med det samme
     text = str(entry.get("text") or "")
     logger.debug("cognitive_state_cache: HIT for %s", cache_key)
     return text
@@ -168,8 +187,12 @@ def _set_cached_state(cache_key: str, text: str, sources: list[str]) -> None:
     if not _cache_enabled():
         return
 
-    if not _CACHE_INVALIDATION_SNAPSHOT:
-        _CACHE_INVALIDATION_SNAPSHOT = _build_invalidation_snapshot()
+    # Frisk snapshot ved WRITE-tid: det er den tilstand cachen repræsenterer.
+    # Hit-path'en (_get_cached_state) sammenligner mod en frisk snapshot → ægte
+    # tilstands-bevidst invalidering på tværs af workers. (Før: en gammel global
+    # der aldrig blev opdateret → snapshotten var meningsløs.)
+    snap = _build_invalidation_snapshot()
+    _CACHE_INVALIDATION_SNAPSHOT = snap
 
     from core.services import shared_cache as _sc
     ttl = _cache_ttl_seconds()
@@ -180,10 +203,9 @@ def _set_cached_state(cache_key: str, text: str, sources: list[str]) -> None:
             "sources": sources,
             "cached_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "chars": len(text),
-            # Snapshot is captured per-process; it's not used for the
-            # cross-worker hit-path (shared_cache TTL handles freshness),
-            # but kept here for telemetry / future state-aware invalidation.
-            "invalidation_snapshot": dict(_CACHE_INVALIDATION_SNAPSHOT),
+            # Tilstanden cachen blev bygget på — sammenlignes ved hvert hit så
+            # cachen invaliderer på ÆGTE ændring (ikke kun TTL).
+            "invalidation_snapshot": dict(snap),
         },
         ttl_seconds=ttl,
     )
@@ -261,8 +283,12 @@ def get_cognitive_state_cache_status() -> dict[str, object]:
     }
 
 
-def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
+def build_cognitive_state_for_prompt(*, compact: bool = False, force: bool = False) -> str | None:
     """Build the [COGNITIVE STATE] section for visible chat prompt injection.
+
+    ``force=True`` springer cache-læsningen over og bygger frisk (bruges af
+    heartbeat-warmeren, #2 2026-06-30) — den gamle cache serveres uændret indtil
+    den nye er sat, så der ALDRIG er et tomt cache-vindue en visible-tur kan ramme.
 
     Reads from all accumulation sources and produces a compact text block
     that fits within the attention budget (250 chars compact, 500 chars full).
@@ -281,9 +307,9 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     except Exception:
         pass
 
-    # --- Option 2: Cache lookup ---
+    # --- Option 2: Cache lookup (springes over ved force = heartbeat-warmer) ---
     cache_key = "visible_compact" if compact else "visible_full"
-    cached = _get_cached_state(cache_key)
+    cached = None if force else _get_cached_state(cache_key)
     if cached is not None:
         # Update MC transparency to reflect cache hit
         _LAST_COGNITIVE_INJECTION = {

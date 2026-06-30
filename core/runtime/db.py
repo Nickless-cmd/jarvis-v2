@@ -29154,6 +29154,17 @@ def upsert_cognitive_personality_vector(
              learned_preferences, recurring_mistakes, strengths_discovered,
              current_bearing, emotional_baseline, now),
         )
+    # Event-bro (#3, 2026-06-30): personality_vector er det centrale signal for
+    # Jarvis' indre tilstand. Alle opdaterere (council/emotion_repair/adjust_mood/
+    # run-læring) går her igennem → invalidér cognitive_state-cachen STRAKS, så et
+    # ægte indre-liv-skift afspejles i næste prompt assembly i stedet for at vente
+    # på TTL/snapshot-detektion. Lazy import (undgår cirkulær) + self-safe: en
+    # cache-invalidering må ALDRIG vælte en personality-write.
+    try:
+        from core.services.cognitive_state_assembly import invalidate_cognitive_state_cache
+        invalidate_cognitive_state_cache()
+    except Exception:
+        pass
     return {"vector_id": vector_id, "version": new_version, "updated_at": now}
 
 

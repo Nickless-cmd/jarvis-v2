@@ -379,6 +379,34 @@ def _ensure_producers_registered() -> None:
         priority=1,  # runs first — others may depend on its output
     ))
 
+    # Cognitive-state warmer (#2, 2026-06-30): pre-byg cognitive_state-cachen i
+    # baggrunden hvert ~3 min, så den ENE dominante blokerende LLM-omkostning
+    # (recall_for_message) betales HER i stedet for synkront under prompt assembly.
+    # force=True → bygger frisk uden cache-gap (gammel cache serveres til ny er sat).
+    # Visible-turen rammer så altid en varm cache (0 blokerende LLM). Den tilstands-
+    # bevidste invalidering sikrer at den fanger ægte indre-liv-skift uafhængigt.
+    def _run_cognitive_state_warm(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        warmed = 0
+        try:
+            from core.services.cognitive_state_assembly import build_cognitive_state_for_prompt
+            for _compact in (False, True):
+                try:
+                    if build_cognitive_state_for_prompt(compact=_compact, force=True) is not None:
+                        warmed += 1
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return {"warmed": warmed}
+
+    register_producer(ProducerSpec(
+        name="cognitive_state_warm",
+        cooldown_minutes=3,
+        visible_grace_minutes=0,  # kører uanset visible — varm cache ER pointen (lokal lane, kolliderer ikke med deepseek-visible)
+        run_fn=_run_cognitive_state_warm,
+        priority=2,
+    ))
+
     def _run_sleep_consolidation(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.idle_consolidation import (
             run_idle_consolidation,

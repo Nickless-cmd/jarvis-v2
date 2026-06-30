@@ -51,7 +51,13 @@ class RuntimeSettings:
     # Cognitive state assembly toggle
     cognitive_state_assembly_enabled: bool = True
     # Cognitive state cache TTL (seconds). 0 = disabled.
-    cognitive_state_cache_ttl: int = 120
+    # 2026-06-30: hævet 120→600. Cachen er nu TILSTANDS-BEVIDST (invalidation-
+    # snapshot sammenlignes ved hvert hit i cognitive_state_assembly) — så en
+    # ægte mood/bearing/chronicle/rhythm-ændring invaliderer STRAKS uanset TTL.
+    # Derfor er en høj TTL sikker: den beskytter kun STABILE perioder (0 LLM-kald),
+    # mens ægte indre-liv-skift stadig fanges øjeblikkeligt. Heartbeat re-varmer
+    # hvert ~3 min (cognitive_state_warm-producer), så hit-raten er ~konstant.
+    cognitive_state_cache_ttl: int = 600
     # Cognitive state cache on/off toggle (independent of TTL).
     cognitive_state_cache_enabled: bool = True
     # Bounded relevance/memory-selection LLM backend.

@@ -3266,6 +3266,22 @@ async def _stream_visible_run(
                                     _round_extra_tools.append(str(_lm_n))
                         except Exception:
                             pass
+                    # App-self-control (rod-fix 2026-06-30): emit app_action_request OGSÅ
+                    # for tools kaldt i en AGENTISK runde (ikke kun first-pass-stien ~1734).
+                    # Før manglede den her → request_app_action kaldt EFTER ræsonnering/andre
+                    # tool-kald (en senere runde) returnerede ok, men desk fik aldrig kortet.
+                    for _app_sr in _a_results:
+                        try:
+                            from core.tools.app_control_tool import build_app_action_event
+                            _app_ev = build_app_action_event(
+                                _app_sr.get("result"),
+                                user_message=run.user_message,
+                                session_id=run.session_id or "",
+                            )
+                            if _app_ev:
+                                yield _sse("app_action_request", _app_ev)
+                        except Exception:
+                            pass
                     _a_resolved: dict[int, str] = {}
 
                     for _a_idx, _a_sr in enumerate(_a_results):

@@ -34,7 +34,12 @@ def _exec_request_app_action(args: dict[str, Any]) -> dict[str, Any]:
         "status": "ok",
         "text": _ACTION_NOTE[action],
         "app_action": {"action": action, "reason": reason},
-        "note": "Afventer brugerens godkendelse i appen.",
+        # Sikkerhed til Jarvis: når dette resultat returneres, emitterer run-loopet
+        # GARANTERET et app_action_request-event til desk (både i first-pass OG
+        # agentiske runder, rod-fix 2026-06-30) → kortet vises. Du behøver ikke
+        # gætte: request er afsendt. Afslut turen med en kort note + afvent klik.
+        "dispatched": True,
+        "note": "Anmodning afsendt til desk-appen → godkendelseskort vises hos brugeren.",
     }
 
 

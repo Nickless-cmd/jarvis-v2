@@ -56,6 +56,9 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "list_initiatives", "list_plans", "list_proposals", "list_recurring",
     "list_scheduled_tasks", "list_self_wakeups", "list_signal_surfaces", "look_around",
     "load_more_tools",  # escape-hatch til de ~316 ikke-sendte tools — SKAL altid være på
+    # App-self-control: Jarvis styrer jarvis-desk indefra (skift mode, åbn paneler).
+    # Kernede kontrol-værktøjer = altid native, så han aldrig skal loade+gætte schema.
+    "request_app_action", "open_ui_panel",
     "mark_wakeup_consumed", "memory_check_duplicate", "memory_list_headings", "memory_upsert_section",
     "my_project_journal_write", "my_project_status", "notify_user", "propose_git_commit",
     "propose_source_edit", "publish_file", "push_initiative", "quick_council_check",

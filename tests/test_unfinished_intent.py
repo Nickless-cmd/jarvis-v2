@@ -1,10 +1,12 @@
 """Coverage-gate alias: real tests live in test_unfinished_intent_detector.py.
 
 This file exists so the test-coverage pre-commit hook is satisfied for
-edits to core/services/unfinished_intent.py — the actual test suite is
-in test_unfinished_intent_detector.py and is imported here.
+edits to core/services/unfinished_intent.py. The bulk of the suite lives
+in test_unfinished_intent_detector.py (collected on its own); this file
+holds the question-ending regression directly so the two never depend on
+a cross-test-module ``import *`` (which broke full-suite collection —
+``tests`` is not a package).
 """
-from tests.test_unfinished_intent_detector import *  # noqa: F401,F403
 
 
 def test_question_ending_suppresses_continuation():

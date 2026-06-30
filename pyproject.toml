@@ -22,3 +22,15 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["apps*", "core*"]
+
+[tool.pytest.ini_options]
+# importlib-mode: behandl test-filer med SAMME basename i forskellige mapper
+# (fx tests/test_tool_catalog.py + tests/services/test_tool_catalog.py) som
+# DISTINKTE moduler. Default 'prepend'-mode indsætter test-mappen i sys.path og
+# importerer pr. basename → "import file mismatch" → hele suiten afbrydes ved
+# collection (5 kollisioner pr. 2026-06-30). importlib er den anbefalede mode og
+# kræver ingen __init__.py i tests/. Ingen sibling-bare-name-imports i suiten.
+addopts = "--import-mode=importlib"
+markers = [
+    "dirty_state: test muterer delt tilstand; isolér ved behov",
+]

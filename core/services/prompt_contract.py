@@ -4753,7 +4753,27 @@ def _maybe_auto_compact_session(
     beskytter den), og den NÆSTE tur nyder godt af det skrevne compact_marker.
     """
     from core.context.token_estimate import estimate_messages_tokens
-    if estimate_messages_tokens(current_messages) < settings.context_compact_threshold_tokens:
+    # Model-BEVIDST tærskel (2026-06-30): fraction × det konfigurerede visible-
+    # models kontekstvindue, så v4-flash (1M) ikke compacter ved 13% (for tidligt
+    # cache-reset). Fallback til den flade værdi hvis opslag fejler / fraction ≤0.
+    _compact_threshold = int(getattr(settings, "context_compact_threshold_tokens", 130_000) or 130_000)
+    try:
+        _frac = float(getattr(settings, "context_compact_threshold_fraction", 0.0) or 0.0)
+        if _frac > 0:
+            from core.services.model_context import model_context_window
+            _win = int(model_context_window(
+                str(getattr(settings, "visible_model_provider", "") or ""),
+                str(getattr(settings, "visible_model_name", "") or ""),
+            ))
+            if _win > 0:
+                # max(): fraktionen må kun HÆVE tærsklen for store-vindue-modeller
+                # (v4-flash 1M → 650k), ALDRIG sænke under den flade værdi (en model
+                # der i mappingen falder til et lille vindue, fx v4-pro→128k, holder
+                # de 130k frem for at compacte for aggressivt).
+                _compact_threshold = max(_compact_threshold, int(_frac * _win))
+    except Exception:
+        pass
+    if estimate_messages_tokens(current_messages) < _compact_threshold:
         return
     keep_recent = int(getattr(settings, "context_keep_recent", 20) or 20)
     with _compact_inflight_lock:

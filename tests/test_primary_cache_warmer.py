@@ -350,7 +350,8 @@ class TestMainEntryPoint:
         """Mock _fetch_system_prompt so main() doesn't try to import core (12s delay)."""
         monkeypatch.setattr(
             "scripts.primary_cache_warmer._fetch_system_prompt",
-            lambda: "Du er Jarvis. Dette er en test prompt til cache warmer.",
+            # **kwargs: warmeren er multi-user → kalder med workspace_name=...
+            lambda *a, **kw: "Du er Jarvis. Dette er en test prompt til cache warmer.",
         )
 
     def test_main_ok(self, _fake_home, _fake_env, _patch_urllib):
@@ -390,3 +391,25 @@ class TestMainEntryPoint:
 
         exit_code = main()
         assert exit_code == 1
+
+
+def test_fetch_warmer_tools_are_normalized_with_type(monkeypatch):
+    """REGRESSION (2026-06-30): warmeren sendte RÅ tools (uden {"type":"function"}
+    wrapper) → DeepSeek 400'ede ("tools[N]: missing field `type`") og warming
+    stoppede HELT (død siden 09:10). Den SKAL normalisere som live-lanen, både for
+    at undgå 400 OG for byte-identisk cache-match."""
+    import scripts.primary_cache_warmer as w
+    # Rå (u-normaliserede) tool-defs som select_tools_for_visible kan returnere.
+    raw = [{"name": "t1", "description": "d", "parameters": {}},
+           {"function": {"name": "t2"}}]  # mangler 'type'
+    monkeypatch.setattr(w, "_fetch_warmer_tools", w._fetch_warmer_tools)  # ensure real
+    import core.tools.simple_tools as st
+    import core.tools.copilot_tool_pruning as ctp
+    monkeypatch.setattr(st, "get_tool_definitions", lambda: raw)
+    monkeypatch.setattr(ctp, "select_tools_for_visible",
+                        lambda tools, **kw: list(tools))
+    out = w._fetch_warmer_tools()
+    assert out, "warmer tools tomt"
+    # ALLE tools skal nu have 'type' (ellers 400 på DeepSeek).
+    assert all("type" in t for t in out), f"u-normaliseret: {[t for t in out if 'type' not in t]}"
+    assert all(t.get("type") == "function" for t in out)

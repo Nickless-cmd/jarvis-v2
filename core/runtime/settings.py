@@ -285,6 +285,15 @@ class RuntimeSettings:
     # (87% af vinduet) UDEN nogensinde at compacte → near-fuldt vindue → loop/cut-off. 130k
     # rammer overgroede sessioner men lader sunde (~80k) være, og giver glm ~70k headroom.
     context_compact_threshold_tokens: int = 130_000
+    # 2026-06-30: model-BEVIDST compaction-tærskel. 130k flat var GLM-æra (200k-
+    # vindue) — på deepseek-v4-flash (1M-vindue) betød det compaction ved ~13% af
+    # vinduet = unødigt tidligt cache-reset hver gang en session voksede lidt. Hver
+    # compaction er ÉT cache-reset (prefixet skiftes), så for tidlig compaction
+    # koster cache-effektivitet. Nu: tærskel = fraction × det KONFIGUREREDE visible-
+    # models vindue → v4-flash ~650k, glm ~130k (uændret, sikkert). Den flade værdi
+    # ovenfor er fallback hvis model-opslag fejler. Sæt fraction ≤0 for at tvinge
+    # den flade værdi.
+    context_compact_threshold_fraction: float = 0.65
     context_run_compact_threshold_tokens: int = 240_000
     context_keep_recent: int = 20
     # ── Tool-result history-rendering (2026-06-30, cache-fix) ────────────────

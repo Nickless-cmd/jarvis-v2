@@ -235,9 +235,19 @@ def _fetch_warmer_tools() -> list[dict] | None:
         # (samme tier-1 + tier-2-comfort-defaults uafhængigt af recent
         # tool usage — den dimension er den eneste der reelt varierer
         # mellem chats inden for samme bruger).
-        return select_tools_for_visible(
+        pruned = select_tools_for_visible(
             all_tools, user_message="", session_id=None,
         )
+        # KRITISK (2026-06-30): live-lanen sender tools gennem
+        # _normalize_tools_for_openai_chat (cheap_provider_runtime:1351/1557) som
+        # wrapper hvert tool i {"type":"function","function":{…}}. Warmeren sendte
+        # det RÅ subset → (a) DeepSeek 400'ede ("tools[N]: missing field `type`")
+        # så warming HELT stoppede (verificeret død siden 09:10 30. jun), og (b)
+        # selv uden 400 ville et u-normaliseret tools-array IKKE byte-matche live
+        # → warmer + chats i forskellige cache-segmenter. Normalisér med PRÆCIS
+        # samme funktion som live → fixer 400 + garanterer byte-match.
+        from core.services.cheap_provider_runtime import _normalize_tools_for_openai_chat
+        return _normalize_tools_for_openai_chat(pruned)
     except Exception as exc:
         logger.debug("fetch_warmer_tools fejlede: %s", exc)
         return None

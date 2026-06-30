@@ -11,12 +11,92 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 
-from core.services.jarvisx_bridge import BridgeConnection, bridge_registry
+from core.services.jarvisx_bridge import (
+    BridgeConnection,
+    bridge_registry,
+    internal_dispatch_token,
+    _INTERNAL_TOKEN_HEADER,
+)
 
 router = APIRouter()
 logger = logging.getLogger("uvicorn.error")
+
+# Localhost-værter der må kalde det interne dispatch-endpoint. Endpointet
+# kører bash/file-ops på ejerens maskine via broen → RCE-overflade. api'en
+# binder 127.0.0.1:8080 (ikke eksternt nåbar), men vi tjekker host'en
+# defensivt OGSÅ, så en fejlkonfigureret proxy/bind ikke eksponerer den.
+_LOCALHOST_HOSTS = {"127.0.0.1", "::1", "localhost"}
+
+
+@router.post("/api/internal/jarvisx-bridge/dispatch")
+async def internal_dispatch(request: Request) -> JSONResponse:
+    """Intern cross-process dispatch (runtime-proces → api-proces).
+
+    Ligger under ``/api/internal/`` → fritaget bearer-token-middleware'en
+    (jarvisx_user_routing._PUBLIC_PATHS): runtime-processen er en service,
+    ikke en bruger, og kan ikke bære et bruger-token. Hver /api/internal/-
+    rute håndhæver SELV loopback-only (konvention, jf. internal_discord.py).
+
+    SIKKERHED (kritisk — kører bash på ejerens maskine):
+      1. Localhost-only: afvis enhver klient-host ≠ 127.0.0.1/::1/localhost.
+      2. Afvis proxy-forwarded (X-Forwarded-For/Forwarded) — ville betyde
+         at Caddy/en proxy videresendte et eksternt kald.
+      3. Shared-secret: kræv korrekt X-Jarvis-Internal-Token-header
+         (constant-time-sammenligning). Begge processer udleder samme token.
+
+    Kalder dispatch med allow_cross_process=False → api forwarder ALDRIG
+    videre → ingen uendelig løkke. Returnerer dispatch-dict'en som JSON.
+    """
+    # 1) Localhost-only host-tjek.
+    client_host = request.client.host if request.client else None
+    if client_host not in _LOCALHOST_HOSTS:
+        logger.warning(
+            "internal-dispatch: rejected non-localhost host=%s", client_host,
+        )
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    # 2) Afvis proxy-videresendte kald (loopback-bind alene narres af en
+    # fejlkonfigureret proxy; X-Forwarded-For/Forwarded afslører den).
+    if request.headers.get("x-forwarded-for") or request.headers.get("forwarded"):
+        logger.warning("internal-dispatch: rejected proxy-forwarded request")
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    # 3) Shared-secret-header (constant-time).
+    import hmac as _hmac
+
+    expected = internal_dispatch_token()
+    provided = request.headers.get(_INTERNAL_TOKEN_HEADER, "")
+    if not expected or not provided or not _hmac.compare_digest(provided, expected):
+        logger.warning("internal-dispatch: rejected bad/missing token")
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "bad_json"}, status_code=400)
+
+    user_id = str(body.get("user_id") or "").strip()
+    tool = str(body.get("tool") or "").strip()
+    args = body.get("args") or {}
+    if not user_id or not tool or not isinstance(args, dict):
+        return JSONResponse({"error": "bad_request"}, status_code=400)
+    try:
+        timeout_s = float(body.get("timeout_s") or 30.0)
+    except (TypeError, ValueError):
+        timeout_s = 30.0
+
+    # allow_cross_process=False → ingen videre-forward (løkke-spærre).
+    result = await bridge_registry.dispatch(
+        user_id=user_id,
+        tool=tool,
+        args=args,
+        timeout_s=timeout_s,
+        allow_cross_process=False,
+    )
+    return JSONResponse(result, status_code=200)
 
 _KEEPALIVE_S = 25.0
 # Server-side receive watchdog. If no message (incl. ping/pong) arrives

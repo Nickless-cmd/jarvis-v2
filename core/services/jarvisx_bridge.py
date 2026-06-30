@@ -18,7 +18,10 @@ Design notes:
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import logging
+import os
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Optional
@@ -27,6 +30,70 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # DIAGNOSTIC: enable bridge debug logging
 
 _DEFAULT_TIMEOUT_S = 30.0
+
+# ── Cross-process dispatch (runtime-proces → api-proces) ────────────────
+#
+# bridge_registry er PER-PROCES. Desk-broens WS forbinder til jarvis-api
+# (port 8080) og registreres KUN dér. Autonome/wakeup-runs kører i
+# jarvis-runtime (port 8011) med sit EGET tomme registry → dispatch
+# returnerer bridge_not_connected. Løsning: når en proces ikke har en
+# lokal bro, HTTP-forwarder den dispatchen til api-procesen over localhost,
+# beskyttet af localhost-only + shared-secret-header.
+
+_INTERNAL_DISPATCH_PATH = "/api/internal/jarvisx-bridge/dispatch"
+_INTERNAL_TOKEN_HEADER = "X-Jarvis-Internal-Token"
+
+
+def internal_dispatch_token() -> str:
+    """Shared-secret som BEGGE processer kan udlede ens.
+
+    Foretræk en eksplicit konfigureret top-level ``internal_dispatch_token``
+    i runtime.json. Hvis den mangler, udled en stabil token via HMAC over
+    ``jarvisx_auth_secret`` (som begge processer allerede deler) — så ingen
+    fil-skrivning er nødvendig og api/runtime når frem til SAMME værdi.
+    """
+    try:
+        from core.runtime.secrets import read_runtime_key
+
+        explicit = str(
+            read_runtime_key(
+                "internal_dispatch_token",
+                env_override="JARVIS_INTERNAL_DISPATCH_TOKEN",
+            )
+        ).strip()
+        if explicit:
+            return explicit
+    except Exception:
+        pass
+
+    # Udled stabilt fra et eksisterende delt secret.
+    try:
+        from core.runtime.secrets import read_runtime_key
+
+        base = str(read_runtime_key("jarvisx_auth_secret")).strip()
+    except Exception:
+        base = ""
+    if not base:
+        # Sidste udvej: env (sat af opstart) eller tomt → dispatch fail-safe.
+        base = os.environ.get("JARVIS_INTERNAL_DISPATCH_TOKEN", "")
+    if not base:
+        return ""
+    return hmac.new(
+        base.encode("utf-8"),
+        b"jarvisx-internal-dispatch-v1",
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _api_port() -> int:
+    """Port for jarvis-api-procesen (hvor broen lever). Default 8080."""
+    raw = os.environ.get("JARVIS_API_PORT", "").strip()
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            pass
+    return 8080
 
 
 @dataclass
@@ -207,14 +274,29 @@ class BridgeRegistry:
         tool: str,
         args: dict[str, Any],
         timeout_s: float = _DEFAULT_TIMEOUT_S,
+        allow_cross_process: bool = True,
     ) -> dict[str, Any]:
         """Send tool_invoke to user's bridge, await result or timeout.
 
         Returns {"status": "ok"|"error", "result": ..., "error": ...}.
         Never raises — errors are returned in the dict.
+
+        ``allow_cross_process``: når der ikke findes en LOKAL bro for
+        user_id, forward'es dispatchen over localhost-HTTP til api-procesen
+        (hvor desk-broen lever). Det interne endpoint kalder dispatch med
+        allow_cross_process=False, så api ALDRIG forwarder videre → ingen
+        uendelig løkke. Fail-safe: enhver forward-fejl degraderer til
+        bridge_not_connected (uændret adfærd når api reelt mangler broen).
         """
         bridge = self.get_bridge(user_id)
         if bridge is None:
+            if allow_cross_process:
+                return await self._forward_cross_process(
+                    user_id=user_id,
+                    tool=tool,
+                    args=args,
+                    timeout_s=timeout_s,
+                )
             return {
                 "status": "error",
                 "result": None,
@@ -279,6 +361,69 @@ class BridgeRegistry:
                 "result": None,
                 "error": f"bridge_timeout after {timeout_s}s",
             }
+
+    async def _forward_cross_process(
+        self,
+        *,
+        user_id: str,
+        tool: str,
+        args: dict[str, Any],
+        timeout_s: float,
+    ) -> dict[str, Any]:
+        """HTTP-forward dispatch til api-procesens interne endpoint.
+
+        Self-safe: fanger ALT og degraderer til bridge_not_connected, så en
+        forward-fejl (api nede, connection refused, timeout) aldrig hænger
+        den autonome løkke og bevarer uændret adfærd når broen reelt mangler.
+        """
+        token = internal_dispatch_token()
+        if not token:
+            # Uden delt secret kan vi ikke forwarde sikkert → uændret adfærd.
+            logger.warning(
+                "[bridge-dispatch] CROSS_PROCESS_NO_TOKEN user=%s — bridge_not_connected",
+                user_id,
+            )
+            return {"status": "error", "result": None, "error": "bridge_not_connected"}
+
+        url = f"http://127.0.0.1:{_api_port()}{_INTERNAL_DISPATCH_PATH}"
+        # Læse-timeout en anelse længere end operator-timeouten, så bro-rundturen
+        # i api-procesen kan nå at fuldføre før vores HTTP-klient giver op.
+        read_timeout = float(timeout_s) + 10.0
+        try:
+            import httpx
+
+            timeout = httpx.Timeout(connect=3.0, read=read_timeout, write=5.0, pool=3.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.post(
+                    url,
+                    json={
+                        "user_id": user_id,
+                        "tool": tool,
+                        "args": args,
+                        "timeout_s": timeout_s,
+                    },
+                    headers={_INTERNAL_TOKEN_HEADER: token},
+                )
+            if resp.status_code != 200:
+                logger.warning(
+                    "[bridge-dispatch] CROSS_PROCESS_HTTP_%s user=%s — bridge_not_connected",
+                    resp.status_code, user_id,
+                )
+                return {"status": "error", "result": None, "error": "bridge_not_connected"}
+            data = resp.json()
+            if not isinstance(data, dict) or "status" not in data:
+                return {"status": "error", "result": None, "error": "bridge_not_connected"}
+            logger.info(
+                "[bridge-dispatch] CROSS_PROCESS_OK user=%s tool=%s status=%s",
+                user_id, tool, data.get("status"),
+            )
+            return data
+        except Exception as exc:
+            logger.warning(
+                "[bridge-dispatch] CROSS_PROCESS_FAIL user=%s err=%s — bridge_not_connected",
+                user_id, exc,
+            )
+            return {"status": "error", "result": None, "error": "bridge_not_connected"}
 
 
 # Module-level singleton — one registry per Python process

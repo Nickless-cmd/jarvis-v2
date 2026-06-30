@@ -126,6 +126,9 @@ KNOWN_MAPPINGS: dict[str, str] = {
     "core/services/epistemics.py": "tests/test_liveness_deprecations.py",
     "core/services/missions_pipeline.py": "tests/test_liveness_deprecations.py",
     "core/services/negotiation_pipeline.py": "tests/test_liveness_deprecations.py",
+    # Approval-resolution (cache-invalidering 2026-06-30) er integrationstestet
+    # via mc_approve_tool_intent → surface reflekterer godkendelsen.
+    "core/services/tool_intent_approval_runtime.py": "tests/test_mission_control_operations_route.py",
 }
 
 

@@ -7,9 +7,7 @@ HANDLERS (samme mønster som de øvrige tool-moduler).
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Any
-from uuid import uuid4
 
 from core.services.ui_panel_store import request_panel
 
@@ -17,6 +15,12 @@ _PANELS = ("preview", "right", "files", "file_tree", "settings")
 
 
 def _exec_open_ui_panel(args: dict[str, Any]) -> dict[str, Any]:
+    # RUNTIME-FIX (2026-06-30): request_panel-signaturen ændredes til
+    # request_panel(panel, *, detail, scope, session_id) — den auto-genererer id
+    # og har hverken request_id/created_at/action længere. Det gamle kald sendte
+    # netop de fjernede kwargs → TypeError → open_ui_panel var BRÆKKET i runtime
+    # (ikke kun i test). Brug den nye signatur; 'close' er nu et tool-niveau-signal
+    # til desk'en (store'n persisterer kun åbne-forespørgsler).
     action = str(args.get("action") or "open").strip().lower()
     if action not in ("open", "close"):
         return {"status": "error", "error": f"ukendt action '{action}' (open/close)"}
@@ -25,17 +29,13 @@ def _exec_open_ui_panel(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": f"ukendt panel '{panel}' (gyldige: {', '.join(_PANELS)})"}
     detail = str(args.get("detail") or "")
     session_id = str(args.get("session_id") or "")
-    rec = request_panel(
-        request_id=f"panel-{uuid4().hex[:12]}",
-        panel=panel,
-        session_id=session_id,
-        detail=detail,
-        created_at=datetime.now(UTC).isoformat(),
-        action=action,
-    )
-    verb = "lukker" if action == "close" else "åbner"
-    return {"status": "ok", "panel": panel, "action": action, "request_id": rec["id"],
-            "note": f"Desk-appen {verb} panelet. (Kun synligt i jarvis-desk.)"}
+    if action == "close":
+        # Ingen persisteret panel-request — signalér blot desk'en at lukke.
+        return {"status": "ok", "panel": panel, "action": "close",
+                "note": "Desk-appen lukker panelet. (Kun synligt i jarvis-desk.)"}
+    rec = request_panel(panel, detail=detail, session_id=session_id)
+    return {"status": "ok", "panel": panel, "action": "open", "request_id": rec["id"],
+            "note": "Desk-appen åbner panelet. (Kun synligt i jarvis-desk.)"}
 
 
 UI_PANEL_TOOL_DEFINITIONS: list[dict[str, Any]] = [

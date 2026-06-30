@@ -537,6 +537,17 @@ def _persist_proactive_loop_lifecycle_signals(
             },
         )
         persisted.append({**view, "superseded_count": superseded_count})
+    # CACHE-FIX (2026-06-30): build_runtime_proactive_loop_lifecycle_surface er
+    # 60s-TTL-cached (key=(navn, limit)). Da et tidligt within-turn read kan cache
+    # en TOM surface mens tabellen endnu er tom, lækkede den tomme cache 60s og
+    # gjorde nyligt persisterede signaler usynlige (autonomi-tryk/proactive-loops).
+    # Drop alle entries med dette prefix efter persist → næste read genbygger.
+    if persisted:
+        try:
+            from core.services.runtime_surface_cache import invalidate_timed_runtime_surface
+            invalidate_timed_runtime_surface("runtime_proactive_loop_lifecycle_surface")
+        except Exception:
+            pass
     return persisted
 
 

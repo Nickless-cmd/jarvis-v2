@@ -82,8 +82,16 @@ def _curiosity_wrap(
             "observation_id": obs_id,
         }
 
+    # RUNTIME-FIX (2026-06-30): propagér en indre fejl til den YDRE status. Før
+    # returnerede wrapperen ALTID status='ok' selv når underlying_call fejlede
+    # (fx SQL-fejl) — fejlen lå begravet i result og blev aldrig set af caller/
+    # awareness. (Observationen + budget-forbruget bevares — kiget ER taget.)
+    _inner_status = (
+        str((underlying_result or {}).get("status") or "ok")
+        if isinstance(underlying_result, dict) else "ok"
+    )
     return {
-        "status": "ok",
+        "status": "error" if _inner_status == "error" else "ok",
         "observation_id": obs_id,
         "remaining": dec["remaining"],
         "result": underlying_result,
@@ -138,13 +146,19 @@ def _direct_search_events(args: dict[str, Any]) -> dict[str, Any]:
     where: list[str] = []
     params: list[Any] = []
     if family:
-        where.append("family = ?")
+        # RUNTIME-FIX (2026-06-30): det kanoniske events-skema (db.py:331) er
+        # (id, kind, payload_json, created_at) — INGEN event_id/family-kolonne.
+        # Den gamle query 'SELECT event_id, family, ...' fejlede 'no such column'
+        # mod ægte DB (sluget som status=ok). 'family' = eventbus-familien =
+        # kind-prefixet (fx kind='runtime.tick' → 'runtime'); udled via prefix.
+        where.append("(kind = ? OR kind LIKE ?)")
         params.append(family)
+        params.append(family + ".%")
     if kind:
         where.append("kind = ?")
         params.append(kind)
 
-    sql = "SELECT event_id, family, kind, created_at FROM events"
+    sql = "SELECT id AS event_id, kind, payload_json, created_at FROM events"
     if where:
         sql += " WHERE " + " AND ".join(where)
     sql += " ORDER BY created_at DESC LIMIT ?"

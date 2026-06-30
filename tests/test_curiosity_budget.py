@@ -297,21 +297,22 @@ def test_curiosity_search_events_returns_rows(clean_state):
     from core.runtime.db import connect
     from core.tools.curiosity_tools import _exec_curiosity_search_events
 
-    # Seed at least one event row so the query has something to return
+    # Seed et event mod det KANONISKE events-skema (id, kind, payload_json,
+    # created_at) — IKKE den gamle phantom 5-kolonne-tabel. 'family' udledes nu
+    # af kind-prefixet, så kind='cognitive_state.test_event' matcher family=
+    # 'cognitive_state'.
     with connect() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS events (
-              event_id TEXT PRIMARY KEY,
-              family TEXT,
-              kind TEXT,
-              created_at TEXT,
-              payload_json TEXT
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              kind TEXT NOT NULL,
+              payload_json TEXT NOT NULL,
+              created_at TEXT NOT NULL
             )
         """)
         conn.execute(
-            "INSERT INTO events VALUES (?, ?, ?, ?, ?)",
-            ("evt-1", "cognitive_state", "test_event",
-             datetime.now(UTC).isoformat(), "{}"),
+            "INSERT INTO events (kind, payload_json, created_at) VALUES (?, ?, ?)",
+            ("cognitive_state.test_event", "{}", datetime.now(UTC).isoformat()),
         )
         conn.commit()
 

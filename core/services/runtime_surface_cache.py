@@ -81,3 +81,23 @@ def get_timed_runtime_surface(
     if cache is not None:
         cache[key] = stored
     return stored  # type: ignore[return-value]
+
+
+def invalidate_timed_runtime_surface(*keys_or_prefixes: object) -> int:
+    """Drop matchende entries fra den KRYDS-TUR TIMED-cache (2026-06-30).
+
+    Den 60s-TTL-cache er rigtig for surfaces der KUN ændrer sig langsomt — men
+    forkert for per-tur-surfaces (tool-godkendelser, proactive-loop-signaler) der
+    ændrer sig within-turn. Uden invalidering serverede den stale data i op til
+    60s (verbal/MC tool-approval reflekteredes ikke). Kald denne på ENHVER mutation
+    af den underliggende state. Matcher eksakt key ELLER en tuple-key hvis dens
+    FØRSTE element == et givet prefix (proactive-loop-keyen er (navn, limit)).
+    Returnerer antal droppede entries. Self-safe-mønster: kald-stedet wrapper i try."""
+    dropped = 0
+    with _TIMED_CACHE_LOCK:
+        for target in keys_or_prefixes:
+            for k in list(_TIMED_CACHE.keys()):
+                if k == target or (isinstance(k, tuple) and k and k[0] == target):
+                    _TIMED_CACHE.pop(k, None)
+                    dropped += 1
+    return dropped

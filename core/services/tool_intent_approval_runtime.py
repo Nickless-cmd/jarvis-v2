@@ -348,6 +348,16 @@ def resolve_tool_intent_approval(
         session_id=str(resolved_request.get("session_id") or session_id),
         tool_name=_intent_tool_name(intent_surface),
     )
+    # CACHE-FIX (2026-06-30): tool_intent_runtime_surface er 60s-TTL-cached
+    # (runtime_surface_cache._TIMED_CACHE). Uden invalidering her ville Mission
+    # Control / chat fortsætte med at vise approval_state='pending' i op til 60s
+    # EFTER godkendelse/afvisning — verbal/MC-approval blev ikke runtime-sandhed
+    # within-turn. Drop cache-entryen nu så næste read genbygger fra DB.
+    try:
+        from core.services.runtime_surface_cache import invalidate_timed_runtime_surface
+        invalidate_timed_runtime_surface("tool_intent_runtime_surface")
+    except Exception:
+        pass
     return resolved_request
 
 

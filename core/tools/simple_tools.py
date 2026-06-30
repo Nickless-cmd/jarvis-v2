@@ -4368,6 +4368,45 @@ def _exec_operator_read_file(args: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _operator_file_exists(path: str, user_id: str) -> bool | None:
+    """Best-effort: does `path` exist on the operator's machine?
+
+    Returns True/False, or None if undeterminable (bridge error, bare
+    filename, or parent we can't list). Used to disambiguate a NEW-file
+    write (nothing to clobber → safe) from an overwrite. Cheap, read-only,
+    no approval dialog — lists the parent dir and checks the basename.
+    Handles both POSIX and Windows separators.
+    """
+    p = str(path or "").strip()
+    if not p:
+        return None
+    norm = p.replace(chr(92), "/")  # backslash → forward slash
+    if "/" not in norm:
+        return None  # bare filename — no parent to list
+    parent_norm, _, base = norm.rpartition("/")
+    if not base:
+        return None
+    parent = parent_norm or "/"
+    try:
+        from core.tools.operator_tools import operator_list_dir_async
+        out = _run_operator_async(
+            lambda: operator_list_dir_async(path=parent, user_id=user_id, timeout_s=15.0),
+            tool_name="operator_list_dir",
+        )
+    except Exception:
+        return None
+    if not isinstance(out, dict) or out.get("status") != "ok":
+        return None  # parent unlistable (missing/denied) — stay conservative
+    entries = out.get("result")
+    if not isinstance(entries, list):
+        return None
+    try:
+        names = {str(e.get("name")) for e in entries if isinstance(e, dict)}
+    except Exception:
+        return None
+    return base in names
+
+
 def _exec_operator_write_file(args: dict[str, Any]) -> dict[str, Any]:
     path = str(args.get("path") or "").strip()
     content = args.get("content")
@@ -4388,18 +4427,27 @@ def _exec_operator_write_file(args: dict[str, Any]) -> dict[str, Any]:
             )
             _ec = check_operator(path, session_id=str(_sid))
             if _ec.classification == "guard_blocked" and _ec.reason:
-                return {
-                    "status": "error",
-                    "error": _ec.reason,
-                    "blocked_by": "read_before_write_guard",
-                    "path": path,
-                    "hint": (
-                        "Kald operator_read_file('"
-                        + path
-                        + "') først, eller pass force=true hvis "
-                        "filen er helt ny og ikke eksisterer."
-                    ),
-                }
+                # The guard wants to block — but a brand-new file can't
+                # clobber anything, and you can't read what doesn't exist
+                # (ENOENT → deadlock → LLM bypasses via `bash cat >`).
+                # Probe existence on the operator side ONLY now (cheap,
+                # read-only) to disambiguate new-file from overwrite.
+                _exists = _operator_file_exists(path, _operator_user_id(args))
+                if _exists is not False:
+                    # Exists, or couldn't determine → keep the guard.
+                    return {
+                        "status": "error",
+                        "error": _ec.reason,
+                        "blocked_by": "read_before_write_guard",
+                        "path": path,
+                        "hint": (
+                            "Kald operator_read_file('"
+                            + path
+                            + "') først, eller pass force=true hvis "
+                            "filen er helt ny og ikke eksisterer."
+                        ),
+                    }
+                # _exists is False → brand-new file → allow, fall through.
         except Exception:
             pass
     user_id = _operator_user_id(args)

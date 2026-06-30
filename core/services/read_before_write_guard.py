@@ -426,6 +426,14 @@ def check_operator_read_before_write(
     norm = _normalize_operator_path(path)
     if not norm:
         return True, None  # caller will reject empty path anyway
+    # Brand-new file: nothing to clobber, and you can't read what doesn't
+    # exist (read → ENOENT → permanent deadlock that pushes the LLM to
+    # bypass the guard via `bash cat >`). The caller (operator_write_file)
+    # determines existence on the operator side and passes file_exists=False
+    # for new files. Honor it — this is what the module docstring promises
+    # ("New files ... pass through").
+    if file_exists is False:
+        return True, None
     if _operator_was_read(norm, session_id):
         return True, None
     # No prior read recorded. For operator_edit_file we know the file

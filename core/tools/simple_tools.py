@@ -3325,12 +3325,14 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "central_query",
             "description": (
-                "Spørg Den Intelligente Central direkte — live status, incidents, trace, "
-                "cluster health, autonom run-historik, læring, drift, breakers, eller toggle "
-                "en nerve/cluster on/off. Pull on-demand: Centralen lever i baggrunden; dette "
-                "tool giver dig adgang når du har brug for det. Returnerer ALTID status=ok "
-                "eller status=error med meta (latency/source/truncated) — aldrig stille fejl, "
-                "aldrig trunkeret output uden meta.truncated. Paginer med offset ved has_more."
+                "Din direkte kanal til Den Intelligente Central — jeres fælles terminal. LÆS: "
+                "status (nu MED seneste anomalier+kendte signaler), incidents, trace, cluster_health, "
+                "nerve_detail, autonomy, learning, drift, breakers, known_signals, instrument. "
+                "SKRIV (owner-only): resolve_and_route (rout en ukendt fejl-signatur til rette nerve "
+                "så den ikke længere står som anomali), depromote (angre det), resolve_incident (luk "
+                "incident N), nerve_observe (injicér en observation til en nerve), note (fri-tekst ind "
+                "i Centralens bevidsthed), toggle_nerve/cluster. Returnerer ALTID status=ok/error med "
+                "meta — aldrig stille fejl. Paginer med offset ved has_more."
             ),
             "parameters": {
                 "type": "object",
@@ -3338,18 +3340,28 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "action": {
                         "type": "string",
                         "enum": ["status", "incidents", "trace", "cluster_health",
-                                 "nerve_detail", "toggle_nerve", "toggle_cluster",
-                                 "autonomy", "learning", "drift", "breakers", "instrument"],
-                        "description": ("status=snapshot, incidents=aktive fejl, trace=seneste "
-                                        "fyringer, cluster_health=pr-cluster, nerve_detail=én "
-                                        "nerve dybt, toggle_nerve/cluster=on/off, autonomy=autonom "
-                                        "modenhed, learning=adaptiv læring, drift=config-drift, "
-                                        "breakers=åbne circuit-breakers, instrument=silent-failure-"
-                                        "scan af koden (scan=true for frisk scan)"),
+                                 "nerve_detail", "autonomy", "learning", "drift",
+                                 "breakers", "instrument", "known_signals",
+                                 "toggle_nerve", "toggle_cluster",
+                                 "resolve_and_route", "depromote", "resolve_incident",
+                                 "nerve_observe", "note"],
+                        "description": ("LÆS: status, incidents, trace, cluster_health, nerve_detail, "
+                                        "autonomy, learning, drift, breakers, known_signals (promoverede "
+                                        "signaler), instrument. SKRIV (owner-only): resolve_and_route "
+                                        "(kræver signature+nerve, valgfri cluster/action_type/notes), "
+                                        "depromote (signature), resolve_incident (incident_id), "
+                                        "nerve_observe (nerve+cluster+text), note (text), toggle_*"),
                     },
-                    "cluster": {"type": "string", "description": "(trace/cluster_health/toggle_cluster) cluster-navn"},
-                    "nerve": {"type": "string", "description": "(nerve_detail/toggle_nerve) nerve-navn"},
+                    "cluster": {"type": "string", "description": "(trace/cluster_health/toggle_cluster/resolve_and_route/nerve_observe) cluster-navn"},
+                    "nerve": {"type": "string", "description": "(nerve_detail/toggle_nerve/resolve_and_route/nerve_observe) nerve-navn"},
                     "enabled": {"type": "boolean", "description": "(toggle_*) True=til, False=fra"},
+                    "signature": {"type": "string", "description": "(resolve_and_route/depromote) anomali-signaturen (fra status.anomalies.recent eller known_signals)"},
+                    "action_type": {"type": "string", "enum": ["observe", "log_as_known", "route_to_nerve"], "description": "(resolve_and_route) håndtering af fremtidige forekomster (default route_to_nerve)"},
+                    "notes": {"type": "string", "description": "(resolve_and_route) valgfri note om hvorfor"},
+                    "incident_id": {"type": "integer", "description": "(resolve_incident) incident-ID at lukke"},
+                    "text": {"type": "string", "description": "(nerve_observe/note) fri-tekst observation/note"},
+                    "importance": {"type": "string", "enum": ["low", "medium", "high", "critical"], "description": "(nerve_observe) vigtighed (default medium)"},
+                    "category": {"type": "string", "description": "(nerve_observe) valgfri kategori-tag"},
                     "limit": {"type": "integer", "description": "max resultater (default 20, max 100)"},
                     "offset": {"type": "integer", "description": "pagina-offset (brug meta.next_offset ved has_more)"},
                 },

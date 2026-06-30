@@ -19,8 +19,12 @@ _BUDGET_CHARS = 4000  # pr. response (Bjørn: ikke 2000 — Jarvis skal kunne l�
 _MAX_LIMIT = 100
 
 _READ_ACTIONS = {"status", "incidents", "trace", "cluster_health", "nerve_detail",
-                 "autonomy", "learning", "drift", "breakers", "instrument"}
+                 "autonomy", "learning", "drift", "breakers", "instrument", "known_signals"}
 _TOGGLE_ACTIONS = {"toggle_nerve", "toggle_cluster"}
+# Muterende skrive-actions — Jarvis' skrive-kanal til Centralen (§10). ALLE owner-gatet
+# (R2): kun ejeren (eller unbound legacy) må mutere control-planet. member/guest fail-closer.
+_WRITE_ACTIONS = {"resolve_and_route", "depromote", "resolve_incident",
+                  "nerve_observe", "note"}
 
 
 def _envelope(status: str, action: str, data: Any, error: str | None,
@@ -83,20 +87,52 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
     cluster = str((args or {}).get("cluster") or "").strip()
     nerve = str((args or {}).get("nerve") or "").strip()
     enabled = bool((args or {}).get("enabled"))
+    # §10 skrive-params
+    signature = str((args or {}).get("signature") or "").strip()
+    action_type = str((args or {}).get("action_type") or "route_to_nerve").strip()
+    notes = str((args or {}).get("notes") or "")
+    text = str((args or {}).get("text") or "")
+    importance = str((args or {}).get("importance") or "medium").strip()
+    category = str((args or {}).get("category") or "").strip()
+    try:
+        incident_id = int((args or {}).get("incident_id") or 0)
+    except Exception:
+        incident_id = 0
 
+    _all_actions = _READ_ACTIONS | _TOGGLE_ACTIONS | _WRITE_ACTIONS
     if not action:
         return _envelope("error", "", None, "manglende 'action'", "central_query", t0)
-    if action not in (_READ_ACTIONS | _TOGGLE_ACTIONS):
+    if action not in _all_actions:
         return _envelope("error", action, None,
                          f"ukendt action '{action}' (gyldige: "
-                         f"{', '.join(sorted(_READ_ACTIONS | _TOGGLE_ACTIONS))})",
+                         f"{', '.join(sorted(_all_actions))})",
                          "central_query", t0)
+    # R2 — owner-gating: kun ejeren (eller unbound legacy '') må MUTERE Centralen.
+    # central_query er ikke i OWNER_ONLY_TOOLS, og central_switches håndhæver kun
+    # sikkerheds-invarianten — så gaten SKAL ligge her. Read-actions forbliver åbne.
+    if action in (_TOGGLE_ACTIONS | _WRITE_ACTIONS):
+        try:
+            from core.identity.workspace_context import effective_role
+            _role = effective_role()
+        except Exception:
+            _role = ""
+        if _role not in ("owner", ""):
+            return _envelope("error", action, None,
+                             "owner-only: kun ejeren må mutere Centralen", "central_query", t0)
 
     try:
         # ── status: kompakt snapshot ─────────────────────────────────────
         if action == "status":
             from core.services.central_realtime import realtime_snapshot
             s = realtime_snapshot(trace_limit=8)
+            _anom = s.get("anomalies") or {}
+            # §3.7 — vis de FAKTISKE seneste anomalier (signatur+lokation+count), ikke kun "16".
+            _recent = [
+                {"signature": a.get("signature"), "category": a.get("category"),
+                 "importance": a.get("importance"), "count": a.get("count"),
+                 "location": a.get("location"), "last_seen": a.get("last_seen")}
+                for a in (_anom.get("recent") or [])[:6]
+            ]
             data = {
                 "status": s.get("status"),
                 "coverage": s.get("coverage"),
@@ -104,7 +140,8 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
                              for k in ("decide_ok", "observe_ok", "degraded")},
                 "open_breakers": len(s.get("open_breakers") or []),
                 "unresolved_incidents": len(s.get("incidents") or []),
-                "anomalies": (s.get("anomalies") or {}).get("counts"),
+                "anomalies": {"counts": _anom.get("counts", {}), "recent": _recent},
+                "known_signals": s.get("known_signals") or [],
                 "config_drift": bool(s.get("config_drift")),
                 "clusters": {c["cluster"]: c["status"] for c in (s.get("clusters") or [])},
             }
@@ -247,6 +284,66 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
                 return _envelope("error", action, res, str(res.get("reason") or "afvist"),
                                  "central_switches", t0)
             return _envelope("ok", action, res, None, "central_switches", t0)
+
+        # ── known_signals (read): promoverede signaler ───────────────────
+        if action == "known_signals":
+            from core.runtime.db_anomalies import list_known_signals
+            items = list_known_signals(limit=limit)
+            page, pmeta = _paginate(items, offset, limit)
+            return _envelope("ok", action, {"items": page}, None, "db_anomalies", t0, **pmeta)
+
+        # ── resolve_and_route (write): rout signatur til nerve + resolve ──
+        if action == "resolve_and_route":
+            if not signature:
+                return _envelope("error", action, None, "manglende 'signature'", "central_query", t0)
+            if not nerve:
+                return _envelope("error", action, None, "manglende 'nerve'", "central_query", t0)
+            from core.runtime.db_anomalies import route_anomaly_to_nerve, resolve_anomaly
+            ok = route_anomaly_to_nerve(signature=signature, cluster=cluster, nerve=nerve,
+                                        action=action_type, notes=notes, promoted_by="manual")
+            resolve_anomaly(signature)
+            return _envelope("ok" if ok else "error", action, {"routed": ok},
+                             None if ok else "routing fejlede", "db_anomalies", t0)
+
+        # ── depromote (write): angre en promotion ────────────────────────
+        if action == "depromote":
+            if not signature:
+                return _envelope("error", action, None, "manglende 'signature'", "central_query", t0)
+            from core.runtime.db_anomalies import depromote_known_signal
+            ok = depromote_known_signal(signature)
+            return _envelope("ok" if ok else "error", action, {"depromoted": ok},
+                             None if ok else "ingen known-række slettet", "db_anomalies", t0)
+
+        # ── resolve_incident (write): luk en incident ────────────────────
+        if action == "resolve_incident":
+            if incident_id <= 0:
+                return _envelope("error", action, None, "manglende/ugyldig 'incident_id'", "central_query", t0)
+            from core.runtime.db_central_incidents import resolve_central_incident
+            ok = resolve_central_incident(incident_id)
+            return _envelope("ok" if ok else "error", action, {"resolved": ok, "incident_id": incident_id},
+                             None if ok else "resolve fejlede", "db_central_incidents", t0)
+
+        # ── nerve_observe (write): injicér en observation til en nerve ───
+        if action == "nerve_observe":
+            if not nerve:
+                return _envelope("error", action, None, "manglende 'nerve'", "central_query", t0)
+            from core.services.central_core import central
+            central().observe({"cluster": cluster or "anomaly", "nerve": nerve,
+                               "importance": importance, "source": "jarvis_write",
+                               "category": category or "manual", "text": text[:500],
+                               "manual": True})
+            return _envelope("ok", action, {"observed": True, "nerve": nerve,
+                                            "cluster": cluster or "anomaly"},
+                             None, "central_core", t0)
+
+        # ── note (write): fri-tekst note ind i Centralens bevidsthed ─────
+        if action == "note":
+            if not text.strip():
+                return _envelope("error", action, None, "manglende 'text'", "central_query", t0)
+            from core.services.central_core import central
+            central().observe({"cluster": "central", "nerve": "owner_note",
+                               "text": text[:500], "source": "jarvis_write", "manual": True})
+            return _envelope("ok", action, {"noted": True}, None, "central_core", t0)
 
         return _envelope("error", action, None, "uimplementeret action", "central_query", t0)
     except Exception as exc:

@@ -159,6 +159,12 @@ def realtime_snapshot(*, trace_limit: int = 24) -> dict[str, Any]:
         snap["anomalies"] = anomaly_summary(limit=6)
     except Exception:
         snap["anomalies"] = {"counts": {"total": 0}, "recent": []}
+    # ── Kendte signaler: anomalier promoveret til routet/kendt status (§3.12) ──
+    try:
+        from core.runtime.db_anomalies import list_known_signals
+        snap["known_signals"] = list_known_signals(limit=8)
+    except Exception:
+        snap["known_signals"] = []
 
     # ── Cluster-grid: grøn/gul/rød/idle pr. cluster (se når ét cluster brækker/går offline)
     try:

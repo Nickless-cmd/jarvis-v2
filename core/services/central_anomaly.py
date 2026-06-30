@@ -93,9 +93,25 @@ def _tb_location(tb: Any) -> str:
         return ""
 
 
+def _full_trace(tb: Any) -> str:
+    """Fuld stack trace (sidste 15 frames) som formateret streng, max 2000 tegn. Self-safe.
+    R1: dokumentér ALT ved en ukendt fejl — ikke kun sidste frame — så rod-årsagen kan
+    diagnosticeres uden manuelt gravearbejde."""
+    try:
+        import traceback as _tbmod
+        frames = _tbmod.extract_tb(tb)
+        if not frames:
+            return ""
+        return "".join(_tbmod.format_list(frames[-15:]))[:2000]
+    except Exception:
+        return ""
+
+
 def record_anomaly(*, source: str, exc_type: str, message: str, module: str = "",
-                   location: str = "") -> None:
-    """Klassificér + registrér én udefineret fejl + HVOR (lokation). Self-safe + reentrancy-beskyttet."""
+                   location: str = "", trace: str = "") -> None:
+    """Klassificér + registrér én udefineret fejl + HVOR (lokation) + fuld trace. Self-safe +
+    reentrancy-beskyttet. Hvis signaturen allerede er et KENDT signal (§4), routes/optælles den
+    i stedet for at logge som ukendt anomali."""
     if getattr(_guard, "busy", False):
         return
     _guard.busy = True
@@ -111,10 +127,44 @@ def record_anomaly(*, source: str, exc_type: str, message: str, module: str = ""
         _cooldown[sig] = now
         if len(_cooldown) > 4000:        # soft cap
             _cooldown.clear()
+        # ── KENDT SIGNAL? (§4 — tjek FØR anomaly-log) ────────────────────────
+        # En promoveret signatur skal ikke længere stå som "ukendt". Afhængig af
+        # action route'es den til den rigtige nerve / optælles bare / falder igennem.
+        try:
+            from core.runtime.db_anomalies import (
+                get_known_signal, bump_known_signal_count,
+            )
+            known = get_known_signal(sig)
+        except Exception:
+            known = None
+        if known:
+            act = str(known.get("action") or "observe")
+            if act in ("route_to_nerve", "log_as_known"):
+                try:
+                    bump_known_signal_count(sig)
+                except Exception:
+                    pass
+                if act == "route_to_nerve":
+                    try:
+                        from core.services.central_core import central
+                        central().observe({
+                            "cluster": str(known.get("cluster") or "anomaly"),
+                            "nerve": str(known.get("nerve") or category),
+                            "category": category, "importance": importance,
+                            "source": source, "location": location,
+                            "known_signal": True})
+                    except Exception:
+                        pass
+                return  # håndteret som kendt signal → IKKE som anomali
+            # act == "observe" → "under observation": fald igennem til normal anomaly-log
+        # ── Ukendt → normal anomaly-log (dokumentér ALT: trace + location) ───
+        _sample = str(message or "")[:480]
+        if trace:
+            _sample = (_sample + "\n--- trace ---\n" + str(trace))[:2000]
         from core.runtime.db_anomalies import record_anomaly_signature
         is_new = record_anomaly_signature(
             signature=sig, category=category, importance=importance,
-            source=str(source or ""), sample=str(message or "")[:480],
+            source=str(source or ""), sample=_sample,
             location=str(location or ""))
         # observe (synligt i Centralen som anomali-cluster) — nu MED hvor (lokation)
         try:
@@ -154,9 +204,11 @@ class _AnomalyLogHandler(logging.Handler):
                 return
             exc_type = "Error"
             loc = ""
+            trace = ""
             if record.exc_info and record.exc_info[0] is not None:
                 exc_type = record.exc_info[0].__name__
                 loc = _tb_location(record.exc_info[2])   # hvor exception'en faktisk skete
+                trace = _full_trace(record.exc_info[2])
             if not loc:
                 # ellers: hvor log-linjen blev emitteret fra (stadig HVOR)
                 fn = str(getattr(record, "pathname", "") or "")
@@ -164,7 +216,7 @@ class _AnomalyLogHandler(logging.Handler):
                     fn = fn.split("/jarvis-v2/", 1)[1]
                 loc = f"{fn}:{getattr(record, 'lineno', '?')}" if fn else ""
             record_anomaly(source="log", exc_type=exc_type,
-                           message=record.getMessage(), module=name, location=loc)
+                           message=record.getMessage(), module=name, location=loc, trace=trace)
         except Exception:
             pass
 
@@ -181,7 +233,7 @@ def install_hooks() -> dict[str, Any]:
         def _excepthook(exc_type, exc, tb):
             try:
                 record_anomaly(source="uncaught", exc_type=getattr(exc_type, "__name__", "Error"),
-                               message=str(exc), location=_tb_location(tb),
+                               message=str(exc), location=_tb_location(tb), trace=_full_trace(tb),
                                module=getattr(getattr(tb, "tb_frame", None),
                                               "f_globals", {}).get("__name__", ""))
             except Exception:
@@ -202,7 +254,8 @@ def install_hooks() -> dict[str, Any]:
                 record_anomaly(source="thread",
                                exc_type=getattr(args.exc_type, "__name__", "Error"),
                                message=str(args.exc_value),
-                               location=_tb_location(getattr(args, "exc_traceback", None)))
+                               location=_tb_location(getattr(args, "exc_traceback", None)),
+                               trace=_full_trace(getattr(args, "exc_traceback", None)))
             except Exception:
                 pass
             if _prev_thook:
@@ -236,7 +289,8 @@ def install_asyncio_hook(loop) -> None:
                 record_anomaly(source="asyncio",
                                exc_type=type(exc).__name__ if exc else "Error",
                                message=str(exc) if exc else str(context.get("message") or ""),
-                               location=_tb_location(getattr(exc, "__traceback__", None)) if exc else "")
+                               location=_tb_location(getattr(exc, "__traceback__", None)) if exc else "",
+                               trace=_full_trace(getattr(exc, "__traceback__", None)) if exc else "")
             except Exception:
                 pass
             if _prev:

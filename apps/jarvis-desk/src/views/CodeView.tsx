@@ -123,20 +123,60 @@ export function CodeView({
   const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
 
+  // Hjælper: indlæs gemte session-stats fra localStorage.
+  function _loadStats(sid: string | null): { tokens: number; toolCalls: number; tools: { name: string; input: Record<string, unknown> }[] } {
+    if (!sid) return { tokens: 0, toolCalls: 0, tools: [] }
+    try {
+      const raw = localStorage.getItem(`jarvis-desk:session-stats:${sid}`)
+      return raw ? JSON.parse(raw) : { tokens: 0, toolCalls: 0, tools: [] }
+    } catch { return { tokens: 0, toolCalls: 0, tools: [] } }
+  }
+  // Hjælper: gem session-stats til localStorage.
+  function _saveStats(sid: string, tokens: number, toolCalls: number, tools: { name: string; input: Record<string, unknown> }[]) {
+    try { localStorage.setItem(`jarvis-desk:session-stats:${sid}`, JSON.stringify({ tokens, toolCalls, tools })) }
+    catch { /* localStorage utilgængelig — ignorér */ }
+  }
+
   // Foldes når et run slutter (working → ikke-working); nulstilles ved session-skift.
-  const [sessTokens, setSessTokens] = useState(0)
-  const [sessToolCalls, setSessToolCalls] = useState(0)
-  const [sessTools, setSessTools] = useState<{ name: string; input: Record<string, unknown> }[]>([])
+  // PERSISTENT: gemmes i localStorage pr. sessionId, så miljø-feltets historik
+  // overlever app-genstart. Loades ved mount + session-skift; skrives ved hver opdatering.
+  const initStats = useRef(_loadStats(sessionId))
+  const [sessTokens, setSessTokens] = useState(initStats.current.tokens)
+  const [sessToolCalls, setSessToolCalls] = useState(initStats.current.toolCalls)
+  const [sessTools, setSessTools] = useState<{ name: string; input: Record<string, unknown> }[]>(initStats.current.tools)
   const prevStatusRef = useRef(stream.status)
   // Per-run dedup-vagt for reconcile (D1, 29. jun): uden den kan en re-render mens
   // status stadig er 'done' (eller onComplete's message_stop-gendispatch) reconcile
   // SAMME assistant-svar to gange → dublet i transcript. ChatView har haft denne
   // vagt; code-mode manglede den.
   const reconciledForRun = useRef<string | null>(null)
+  // Anonym ref til at gemme FORRIGE sessionsId (så vi kan gemme dens stats ved skift).
+  const prevSessionRef = useRef<string | null>(sessionId)
   useEffect(() => {
-    setSessTokens(0); setSessToolCalls(0); setSessTools([]); prevStatusRef.current = stream.status
+    const prev = prevSessionRef.current
+    prevSessionRef.current = sessionId
+    if (prev && prev !== sessionId) {
+      // Gem forrige sessions stats inden vi rydder.
+      _saveStats(prev, sessTokens, sessToolCalls, sessTools)
+    }
+    const loaded = _loadStats(sessionId)
+    setSessTokens(loaded.tokens)
+    setSessToolCalls(loaded.toolCalls)
+    setSessTools(loaded.tools)
+    prevStatusRef.current = stream.status
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
+  // Persistér session-stats ved enhver ændring (akkumulerede tokens/tools).
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!sessionId) return
+    // Debounced: skriv til localStorage max 1 gang pr. 500ms for at undgå
+    // skrive-storm under en tool-tung tur.
+    if (persistTimer.current) clearTimeout(persistTimer.current)
+    persistTimer.current = setTimeout(() => _saveStats(sessionId, sessTokens, sessToolCalls, sessTools), 500)
+    return () => { if (persistTimer.current) clearTimeout(persistTimer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessTokens, sessToolCalls, sessTools])
   useEffect(() => {
     const prev = prevStatusRef.current
     prevStatusRef.current = stream.status

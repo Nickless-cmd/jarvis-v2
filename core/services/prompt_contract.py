@@ -1854,7 +1854,15 @@ def build_visible_chat_prompt_assembly(
                 max_chars=180 if compact else 240,
             )
             if section:
-                parts.append(section)
+                # 2026-06-30 (cache-fix): include_guidance er relevans-gatet
+                # (per-besked). At appende guidance i system-blokken indsatte en
+                # VARIABEL sektion midt i det ellers stabile prefix og forskød alt
+                # efter → brød DeepSeek-cachen ~23k tegn inde (system-blok 82%
+                # stabil → realistisk per-tur-hit kun 71%, ceiling 99.7%). Flyt til
+                # den dynamiske hale: [system + tools + historik] forbliver fuldt
+                # byte-stabilt/cachebart, og guidance vises stadig lige før Jarvis'
+                # svar når beskeden er tool/skill-relevant — naturlig placering.
+                _tail_add(f"{filename} guidance", section)
                 conditional_files.append(filename)
 
     # --- Budget-controlled runtime sections ---

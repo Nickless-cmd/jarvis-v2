@@ -2361,6 +2361,34 @@ def _build_visible_chat_messages_for_github(
         logger.warning("hallucination_guard inject failed", exc_info=True)
 
     messages.append({"role": "user", "content": message})
+
+    # Cache-fix (2026-06-30): port DYNAMIC_TAIL_SENTINEL-splittet fra
+    # _build_visible_input til DENNE builder. Den betjener ALLE openai-compat
+    # visible-providere (deepseek/groq/openrouter/…). Uden splittet sad HELE
+    # den per-tur-dynamiske hale (recall, mood, continuity, time_pin, anchor)
+    # inde i system-beskeden → brød DeepSeek-cachen ~5-15k tokens inde og fik
+    # hele historikken til at misse (målt 2-10% hit i produktion vs 92% potentiale).
+    # Flyt halen efter sentinel'en ud på den SIDSTE bruger-besked → [system +
+    # tools + historik] bliver byte-stabil og cachebar; kun halen+turen misser.
+    if messages and messages[0].get("role") == "system":
+        try:
+            from core.services.prompt_contract import DYNAMIC_TAIL_SENTINEL
+            _sys_text = str(messages[0].get("content") or "")
+            _sidx = _sys_text.find(DYNAMIC_TAIL_SENTINEL)
+            if _sidx != -1:
+                _tail_block = _sys_text[_sidx + len(DYNAMIC_TAIL_SENTINEL):].strip()
+                messages[0]["content"] = _sys_text[:_sidx].rstrip()
+                if _tail_block:
+                    for _it in reversed(messages):
+                        if _it.get("role") == "user":
+                            _ut = str(_it.get("content") or "")
+                            _it["content"] = (
+                                (_ut.rstrip() + "\n\n" + _tail_block) if _ut else _tail_block
+                            )
+                            break
+        except Exception:
+            pass
+
     return messages
 
 

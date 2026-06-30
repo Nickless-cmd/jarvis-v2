@@ -55,6 +55,7 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "home_assistant", "internal_api", "list_agents", "list_events",
     "list_initiatives", "list_plans", "list_proposals", "list_recurring",
     "list_scheduled_tasks", "list_self_wakeups", "list_signal_surfaces", "look_around",
+    "load_more_tools",  # escape-hatch til de ~316 ikke-sendte tools — SKAL altid være på
     "mark_wakeup_consumed", "memory_check_duplicate", "memory_list_headings", "memory_upsert_section",
     "my_project_journal_write", "my_project_status", "notify_user", "propose_git_commit",
     "propose_source_edit", "publish_file", "push_initiative", "quick_council_check",
@@ -211,6 +212,7 @@ def select_tools_for_copilot(
     user_message: str = "",
     session_id: str | None = None,
     max_tools: int = MAX_TOOLS,
+    stable_only: bool = False,
 ) -> list[dict]:
     """Return at most ``max_tools`` tool definitions, prioritised for this call.
 
@@ -219,6 +221,15 @@ def select_tools_for_copilot(
     - Remaining slots go to Tier 2 tools scored by user-message keywords
       and recent usage (last ~10 min).
     - If the full catalog already fits, returns it unchanged (order preserved).
+
+    ``stable_only`` (2026-06-30, deepseek cache-fix): når True ignoreres de to
+    DYNAMISKE scoring-inputs (keyword_scores fra user_message + _recent_tool_counts
+    fra sidste ~10 min). Tier-2 fyldes da rent deterministisk (comfort-defaults +
+    stabil katalog-rækkefølge), så det SENDTE tool-sæt er byte-identisk hver tur →
+    den ~17k-token tool-blok forbliver i DeepSeeks cachebare prefix. Den keyword-
+    routing var redundant med ``load_more_tools`` (Jarvis henter sjældne tools
+    on-demand) men brød cachen på keyword-tunge ture (hit 92%→~30%). Brugt af den
+    cache-følsomme visible-lane.
     """
     if len(tools) <= max_tools:
         return list(tools)
@@ -242,9 +253,11 @@ def select_tools_for_copilot(
     if remaining <= 0:
         return [by_name[n] for n in selected_names[:max_tools]]
 
-    # Tier 2 scoring
-    keyword_scores = _keyword_score_for_categories(user_message)
-    recent_counts = _recent_tool_counts()
+    # Tier 2 scoring. In stable_only mode the two per-call-variable inputs
+    # (keyword match on user_message + recent usage) are zeroed → the fill
+    # reduces to comfort-default boost + stable catalog index = deterministic.
+    keyword_scores = {} if stable_only else _keyword_score_for_categories(user_message)
+    recent_counts = {} if stable_only else _recent_tool_counts()
 
     tier2_candidates: list[tuple[int, int, str]] = []
     for name in by_name:
@@ -299,4 +312,5 @@ def select_tools_for_visible(
     """
     return select_tools_for_copilot(
         tools, user_message=user_message, session_id=session_id, max_tools=max_tools,
+        stable_only=True,
     )

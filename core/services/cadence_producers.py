@@ -795,6 +795,18 @@ def tick_frozen_detectors(tick_count: int) -> dict[str, int]:
             _observe_frozen("contradiction", {"found": out["contradiction"]})
         except Exception:
             logger.debug("tick_frozen_detectors: contradiction failed", exc_info=True)
+    if tick_count % 15 == 0:
+        # boredom_engine: forced tick + synlighed. Beregner rig restlessness men døde i module-global
+        # (heartbeat-LLM valgte den kun tilfældigt). Centralen ser nu rastløsheden (metadata: restlessness/
+        # desire-flag, ALDRIG desire-teksten). NB: desire-output har endnu ingen action-consumer (Fase D).
+        try:
+            from core.services.boredom_engine import update_boredom_state, get_boredom_state
+            update_boredom_state(tick_monotony=tick_count % 100)
+            st = get_boredom_state() or {}
+            out["boredom"] = 1
+            _observe_frozen("boredom", {"restlessness": st.get("restlessness"), "has_desire": bool(st.get("desire"))})
+        except Exception:
+            logger.debug("tick_frozen_detectors: boredom failed", exc_info=True)
     return out
 
 

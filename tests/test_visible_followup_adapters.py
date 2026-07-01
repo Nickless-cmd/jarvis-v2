@@ -848,3 +848,25 @@ def test_tool_choice_none_lands_in_deepseek_payload_keeping_tools(
     body = captured["body"]
     assert body["tool_choice"] == "none"
     assert body["tools"], "tools-arrayet SKAL stadig være der (kun valget er none)"
+
+
+def test_normalize_assistant_tool_calls_always_adds_type_function() -> None:
+    """CUTOFF-ROD (2026-06-30): et tool_call i den agentiske exchange UDEN
+    type:"function" fik DeepSeek til at 400'e ('messages[N]: missing field type')
+    på HVER followup-runde → tomt svar → cutoff-fallback hver gang Jarvis kaldte
+    et tool. _normalize_assistant_tool_calls SKAL altid sætte type + JSON-string-args."""
+    a = vf.OpenAICompatFollowupAdapter(provider_id="deepseek")
+    # tool_call UDEN type (præcis den malformede form fra den agentiske loop)
+    out = a._normalize_assistant_tool_calls([
+        {"id": "c1", "function": {"name": "bash", "arguments": {"cmd": "ls"}}},
+    ])
+    assert out[0]["type"] == "function"
+    # arguments re-kodet til JSON-string (openai-spec)
+    assert isinstance(out[0]["function"]["arguments"], str)
+    # flad name/arguments-form flyttes ind i function + får type
+    flat = a._normalize_assistant_tool_calls([
+        {"id": "c2", "name": "search", "arguments": {"q": "x"}},
+    ])
+    assert flat[0]["type"] == "function"
+    assert flat[0]["function"]["name"] == "search"
+    assert "name" not in flat[0]  # flyttet ind i function

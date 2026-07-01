@@ -825,11 +825,24 @@ class OpenAICompatFollowupAdapter:
         normalized: list[dict] = []
         for raw in tool_calls:
             tc = dict(raw or {})
+            # CUTOFF-ROD (2026-06-30, verificeret): DeepSeek (og openai-spec)
+            # KRÆVER type:"function" på HVERT tool_call. Manglede det i den
+            # agentiske exchange → HTTP 400 "messages[N]: missing field `type`"
+            # → HVER deepseek-followup-runde fejlede → tomt svar → cutoff-fallback
+            # (Bjørns "dør hver gang han kalder et tool"). Sæt det altid.
+            tc["type"] = "function"
             fn = dict(tc.get("function") or {})
+            # Nogle modeller lægger name/arguments FLADT i stedet for i 'function'.
+            if not fn and (tc.get("name") or tc.get("arguments") is not None):
+                fn = {"name": tc.get("name") or "", "arguments": tc.get("arguments")}
+                tc.pop("name", None)
+                tc.pop("arguments", None)
             if fn:
                 args = fn.get("arguments")
                 if isinstance(args, dict):
                     fn["arguments"] = json.dumps(args, ensure_ascii=False)
+                elif args is None:
+                    fn["arguments"] = "{}"
                 tc["function"] = fn
             normalized.append(tc)
         return normalized

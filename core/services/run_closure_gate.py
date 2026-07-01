@@ -268,6 +268,18 @@ def _on_run_completed(payload: dict[str, Any]) -> None:
 
     tool_calls = _pop_tool_calls(run_id)
 
+    # LivingNeuron Fase B (surface-only): udled kandidat-procedure fra kørslens tool-sekvens.
+    # Defensiv — må ALDRIG påvirke closure-logikken (som gut_calibration nedenfor).
+    try:
+        from core.services.procedure_bank_pipeline import maybe_record_procedure_from_run
+        rec = maybe_record_procedure_from_run(session_id=session_id, tool_calls=tool_calls)
+        if rec:
+            from core.services.central_core import central as _central
+            _central().observe({"cluster": "cognition", "nerve": "procedure_bank",
+                                "recorded": rec.get("name", "")[:60]})
+    except Exception:
+        logger.debug("run_closure_gate: procedure_bank feed failed", exc_info=True)
+
     if touched_paths:
         # Build a fake "porcelain lines" set from the paths so the
         # existing _summarize_unstaged formatter works unchanged.

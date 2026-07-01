@@ -239,6 +239,39 @@ def match_procedures_for_text(text: str, *, limit: int = 3) -> list[dict[str, An
     return matched
 
 
+def maybe_record_procedure_from_run(*, session_id: str, tool_calls: list[str]) -> dict[str, Any] | None:
+    """LivingNeuron Fase B (surface-only): udled en NAVNGIVEN kandidat-procedure fra en kørsel der
+    gjorde meningsfuldt multi-tool-arbejde. Byg-og-forladt: banken havde hverken feed eller læser.
+
+    Anti-skrald: kræver ≥2 DISTINKTE tools OG et meningsfuldt session-topic (ellers skip — ingen
+    støj-procedurer). Navn = topic'et, procedure = tool-sekvensen. PROMPT-INJECTION er IKKE wired
+    (gated bag budget-grading, §Fase B) — banken fyldes+vises kun (surface-only). Self-safe."""
+    try:
+        tools = [str(t).strip() for t in (tool_calls or []) if str(t).strip()]
+        distinct = list(dict.fromkeys(tools))  # unikke, bevar rækkefølge
+        if len(distinct) < 2:
+            return None
+        from core.services.session_topic_tracker import load_session_topics
+        topic = ""
+        for t in (load_session_topics(session_id) or []):
+            if isinstance(t, dict):
+                cand = str(t.get("label") or t.get("topic") or "").strip()
+            else:
+                cand = str(t or "").strip()
+            if cand:
+                topic = cand
+                break
+        if not topic:
+            return None  # intet meningsfuldt navn → skip (undgå skrald)
+        return upsert_procedure(
+            name=f"Sådan: {topic}"[:80],
+            trigger=topic,
+            procedure=" → ".join(distinct[:8]),
+        )
+    except Exception:
+        return None
+
+
 def build_procedure_bank_surface() -> dict[str, Any]:
     _ensure_table()
     all_procs = list_procedures(limit=50)

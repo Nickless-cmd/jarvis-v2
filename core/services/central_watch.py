@@ -31,7 +31,6 @@ _INNER_SILENCE_MIN = 3        # inner-daemon-fejl/tomme i træk før det er en b
 _CACHE_COLD_PCT = 10.0        # prefix-cache hit-rate under dette (vedvarende) = brækket cache
 _TOOL_ERROR_RATE = 0.35       # tool-fejlrate over dette (vedvarende) = tools i problemer
 _TOOL_MIN_SAMPLE = 8          # min tool-kald før fejlrate er meningsfuld
-_HEED_MIN_RATE = 0.40         # §23.3 #5: heed_rate under 40% = advarsler ignoreres
 _HEED_MIN_SAMPLE = 5          # min advarsler før heed_rate er meningsfuld
 _CHEAP_FAIL_RATE = 0.50       # cheap-lane-failover over dette = gratis-økologi degraderer
 _CHEAP_MIN_SAMPLE = 6         # min cheap-lane-kald før failover-rate er meningsfuld
@@ -179,19 +178,11 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
     except Exception:
         pass
 
-    # ── F. Recall svigter (§23.3 #4): memory returnerer VEDVARENDE intet = recall brudt ──
-    # Cross-proces (recall kører også i api-processen) → læs fra eventbus.
-    try:
-        counts = _recent_recall_counts(limit=6)
-        if len(counts) >= 3:
-            breached = all(c == 0 for c in counts[:3])  # seneste 3 recalls alle tomme
-            if central_noise_filter.is_real_signal("recall_empty", breached):
-                flags.append(_raise_flag(
-                    "memory", "recall", severity="error",
-                    message="Recall returnerer intet over de seneste kald (memory-recall brudt?)",
-                    importance="medium"))
-    except Exception:
-        pass
+    # ── F. Recall: BEVIDST INGEN flag (rettet 1. jul — var false-positive). Recall der
+    # returnerer 0 er NORMALT (berigelse, ikke load-bearing; springes over hvis den hænger,
+    # jf. _RECALL_DEADLINE). Vi kan ikke skelne "kørte, fandt intet" (normalt) fra "brudt" ud
+    # fra counts alene → ingen incident. Recall-kvalitet observeres i memory_recall_engine;
+    # ægte recall-FEJL fanges som central-error/anomali.
 
     # ── G. Tool-fejlrate (§23.3 #5 outcome): tools fejler vedvarende ──
     # Cross-proces (tools kører i api-processen) → læs tool.completed fra eventbus.
@@ -229,12 +220,9 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
                 pass
             central_timeseries.record("tools", "verification_heed", value=round(strict, 3),
                                       meta={"surfaced": surfaced})
-            if central_noise_filter.is_real_signal("heed_low", strict < _HEED_MIN_RATE):
-                flags.append(_raise_flag(
-                    "tools", "verification_heed", severity="error",
-                    message=f"Verifikations-advarsler ignoreres: heed_rate {strict*100:.0f}% "
-                            f"over {surfaced} advarsler (<40% = mutationer ikke tjekket)",
-                    importance="medium"))
+            # BEVIDST INGEN flag (rettet 1. jul): heed_rate er en LANGSOM behavioral kvalitets-
+            # metrik i steady-state, ikke en akut fejl → observe/trend, ikke incident. En
+            # REGRESSION i heed (fald) kan fanges af det prædiktive skygge-lag senere.
     except Exception:
         pass
 
@@ -340,22 +328,6 @@ def _heed_summary() -> dict:
         return get_telemetry_summary(hours=24)
     except Exception:
         return {}
-
-
-def _recent_recall_counts(*, limit: int = 6) -> list[int]:
-    """Læs seneste recall-result-counts fra eventbussen (cross-proces). Self-safe."""
-    out: list[int] = []
-    try:
-        from core.eventbus.bus import event_bus
-        for r in event_bus.recent_by_family("memory", limit=limit):
-            if r.get("kind") != "memory.recall":
-                continue
-            rc = (r.get("payload") or {}).get("result_count")
-            if rc is not None:
-                out.append(int(rc))
-    except Exception:
-        pass
-    return out
 
 
 def _recent_cache_pcts(*, limit: int = 6) -> list[float]:

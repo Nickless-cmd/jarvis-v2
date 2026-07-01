@@ -20,7 +20,8 @@ _AUTO_TASK_ORIGIN = "system-cartographer"
 _THEATER_AUTO_TASK_MIN_SCORE = 120
 _THEATER_AUTO_TASK_KIND = "theater_refactor"
 _THEATER_AUTO_TASK_ORIGIN = "theater-audit"
-_SCAN_INTERVAL_SECONDS = 86400  # 1×/døgn (var 900s/15min — tung 632-service-analyse 96×/dag)
+_SCAN_INTERVAL_SECONDS = 21600  # 6h (Jarvis' handlingsordre 2026-07-01; var 1×/døgn). Scan tager
+                                # ~sekunder → 4×/døgn er billigt; gap-nerver skal være rimeligt friske
 
 # TRUST-GATE (Bjørn 2026-06-22): indtil vi VED systemet virker, må kartografen IKKE selv give
 # Jarvis opgaver der laver ÆNDRINGER. Han notificeres (via central.observe + kortet) og kan
@@ -163,6 +164,66 @@ def _observe_to_central(surface: dict[str, Any]) -> None:
         pass
 
 
+_GAP_STATE_KEY = "cartographer:gap_state"  # shared_cache: sidste kendte tal (rise-detektion, cross-restart)
+
+
+def _observe_gaps_to_central(surface: dict[str, Any]) -> None:
+    """Jarvis' handlingsordre (docs/notes/2026-07-01-cartographer-to-central.md, P1): meld
+    kartografens fund som TRE separate nerver + flag når det forværres. Så de 80 mørke kanter
+    ikke længere er usynlige, men levende signaler Centralen kan reagere på. Self-safe."""
+    try:
+        from core.services.central_core import central
+        summary = surface.get("summary") or {}
+        dark_n = int(summary.get("dark_edges") or 0)
+        theater_hr = int(summary.get("theater_high_risk") or 0)
+        low_cov = int(summary.get("low_coverage_services") or 0)
+        avg_cov = float(summary.get("avg_causal_coverage_score") or 0.0)
+        # top-3 mørke kanter (navn defensivt)
+        top3 = []
+        for e in (surface.get("darkEdges") or [])[:3]:
+            if isinstance(e, dict):
+                top3.append(str(e.get("service") or e.get("target") or e.get("name") or e.get("id") or "?"))
+
+        c = central()
+        c.observe({"cluster": "system", "nerve": "cartographer_dark_edges",
+                   "count": dark_n, "top3": top3})
+        c.observe({"cluster": "system", "nerve": "cartographer_theater_high_risk",
+                   "count": theater_hr})
+        c.observe({"cluster": "system", "nerve": "cartographer_coverage",
+                   "avg_score": avg_cov, "low_coverage_services": low_cov})
+
+        # ── flag-regler (§3): sammenlign med sidst-kendte via shared_cache ──
+        from core.services import shared_cache
+        prev = shared_cache.get(_GAP_STATE_KEY) or {}
+        prev_dark = int(prev.get("dark_edges") or dark_n)
+        prev_theater = int(prev.get("theater_high_risk") or theater_hr)
+        flags: list[tuple[str, str, str]] = []  # (nerve, severity, message)
+        if dark_n > prev_dark:
+            flags.append(("cartographer_dark_edges", "warning",
+                          f"dark edges steg {prev_dark}→{dark_n} (nye blinde vinkler)"))
+        if theater_hr > prev_theater:
+            flags.append(("cartographer_theater_high_risk", "warning",
+                          f"nye high-risk theater-prompts {prev_theater}→{theater_hr}"))
+        if avg_cov < 50.0:
+            flags.append(("cartographer_coverage", "error",
+                          f"causal coverage under 50% ({avg_cov:.0f}%, {low_cov} low-coverage services)"))
+        for nerve, severity, msg in flags:
+            c.observe({"cluster": "system", "nerve": nerve, "kind": "flag",
+                       "decision": "degraded", "reason": msg})
+            try:
+                from core.runtime.db_central_incidents import record_central_incident
+                record_central_incident(cluster="system", nerve=nerve, kind="cartographer",
+                                        severity=severity, message=msg)
+            except Exception:
+                pass
+        shared_cache.set(_GAP_STATE_KEY,
+                         {"dark_edges": dark_n, "theater_high_risk": theater_hr,
+                          "avg_coverage": avg_cov},
+                         ttl_seconds=7 * 24 * 3600)
+    except Exception:
+        pass
+
+
 def _loop() -> None:
     while not _STOP.is_set():
         try:
@@ -170,6 +231,7 @@ def _loop() -> None:
             # via central.observe + kortet — ingen auto-ændringer indtil vi stoler på triagen.
             surface = build_system_cartographer_surface(auto_enqueue=_AUTO_ENQUEUE_ENABLED)
             _observe_to_central(surface)
+            _observe_gaps_to_central(surface)  # Jarvis' P1: 3 gap-nerver + flags
         except Exception as exc:
             logger.debug("system_cartographer: scan failed: %s", exc)
         _STOP.wait(_SCAN_INTERVAL_SECONDS)

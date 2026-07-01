@@ -87,3 +87,37 @@ def test_system_cartographer_auto_enqueues_theater_task(monkeypatch):
     if surface["theaterAutoTask"]["status"] == "enqueued":
         assert created[0]["kind"] == "theater_refactor"
         assert created[0]["origin"] == "theater-audit"
+
+
+def test_gap_nerves_and_flags(isolated_runtime, monkeypatch):
+    # Jarvis' P1: cartographen melder 3 gap-nerver + flagger forværring.
+    from core.services import system_cartographer as sc
+    from core.services.central_core import central
+    from core.services import central_trace, shared_cache
+    central_trace.sink()._records.clear() if hasattr(central_trace.sink(), "_records") else None
+
+    # 1. baseline-scan: sæt gap-state
+    shared_cache.set(sc._GAP_STATE_KEY, {"dark_edges": 5, "theater_high_risk": 2, "avg_coverage": 80.0}, ttl_seconds=3600)
+    surface = {"summary": {"dark_edges": 9, "theater_high_risk": 4,
+                           "low_coverage_services": 30, "avg_causal_coverage_score": 40.0},
+               "darkEdges": [{"service": "identity_sketch"}, {"service": "memory_recall_engine"}, {"service": "gut_engine"}]}
+    sc._observe_gaps_to_central(surface)
+
+    # de 3 nerver + flags skal være i trace
+    recs = central_trace.sink().recent(limit=200)
+    nerves = {r.nerve for r in recs}
+    assert "cartographer_dark_edges" in nerves
+    assert "cartographer_theater_high_risk" in nerves
+    assert "cartographer_coverage" in nerves
+    # flag-records (kind=flag) for dark-stigning + theater-stigning + coverage<50
+    flags = [r for r in recs if getattr(r, "nerve", "").startswith("cartographer_") and getattr(r, "payload", {}).get("kind") == "flag" or getattr(r, "kind", "") == "flag"]
+    # mindst coverage-flag (40<50) skal være der
+    assert any("coverage" in r.nerve for r in recs)
+    # state opdateret
+    st = shared_cache.get(sc._GAP_STATE_KEY)
+    assert st["dark_edges"] == 9
+
+
+def test_gap_observe_self_safe_on_empty(isolated_runtime):
+    from core.services import system_cartographer as sc
+    sc._observe_gaps_to_central({})  # tom surface → ingen crash

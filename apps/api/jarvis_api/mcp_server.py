@@ -365,6 +365,59 @@ def jarvis_memory_search(query: str, limit: int = 20) -> str:
     return json.dumps(out, ensure_ascii=False, indent=2, default=str)
 
 
+@mcp.tool
+def jarvis_central_command(line: str) -> str:
+    """FULD central-terminal (write): status/incidents/trace/nerve/toggle/resolve/scan/providers.
+    Fx 'resolve', 'toggle nerve <navn> off', 'scan', 'nerve <navn>'. Owner-only, self-safe.
+    Sikkerheds-gating i central_terminal bevaret (sikkerheds-nerver kan ikke slukkes, kun isoleres)."""
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_central_command"})
+    try:
+        from core.services.central_terminal import run_command
+        out = run_command(str(line or ""))
+    except Exception as exc:
+        out = {"error": str(exc)}
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_central_command"})
+    return json.dumps(out, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.tool
+def jarvis_central_shadow() -> str:
+    """M1 skygge-lag: hvad Centralen VILLE gøre (reaktioner fra lærings-forslag) + prædiktioner
+    (trends mod tærskel). ANVENDER ALDRIG (ACTIVE_APPLY=False) — ren indsigt i dømmekraften."""
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_central_shadow"})
+    try:
+        from core.services import central_shadow as sh
+        out = {"active_apply": sh.ACTIVE_APPLY,
+               "would_do": sh.shadow_reactions(),
+               "predictions": sh.predict_trends()}
+    except Exception as exc:
+        out = {"error": str(exc)}
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_central_shadow"})
+    return json.dumps(out, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.tool
+def jarvis_chat_search(query: str, limit: int = 20) -> str:
+    """Søg Jarvis' chat-historik (samtaler med Bjørn) på tekst. Sparer manuel DB-gravning."""
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_chat_search"})
+    try:
+        from core.runtime.db import connect
+        like = f"%{query}%"
+        with connect() as c:
+            rows = c.execute(
+                "SELECT role, content, created_at, session_id FROM chat_messages "
+                "WHERE content LIKE ? AND role IN ('user','assistant') "
+                "ORDER BY id DESC LIMIT ?", (like, int(limit))
+            ).fetchall()
+        hits = [{"role": r[0], "content": str(r[1])[:400], "ts": r[2], "session": r[3]}
+                for r in rows]
+        out = {"query": query, "results": hits}
+    except Exception as exc:
+        out = {"error": str(exc)}
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_chat_search"})
+    return json.dumps(out, ensure_ascii=False, indent=2, default=str)
+
+
 def _safe_dict(obj: dict | None) -> dict:
     """Convert a DB record to a JSON-safe dict."""
     if obj is None:

@@ -1026,6 +1026,14 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Det aktive lag (§25). Vagten flagger+lærer+notificerer på de fodrede streams,
+    # gated af støjfangeren. Ingen mutation (aktiv ændring kommer til sidst).
+    try:
+        from core.services.central_watch import register_watch_producer
+        register_watch_producer()
+    except Exception:
+        pass
+
 
 def run_cadence_tick_with_bootstrap(
     *,

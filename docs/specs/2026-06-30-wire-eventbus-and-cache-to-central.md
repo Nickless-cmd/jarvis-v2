@@ -1449,3 +1449,48 @@ selv-modificerende) påstår infrastruktur der ikke findes endnu OG bærer de re
 **M0 = poll-bro + read-only trace + per-nerve tidsserie + inner-life-isolation + hardkodede
 sikkerheds-defaults — nul læring, nul heling, nul mutation.** Alt farligt er skubbet bag egne
 specs og fejl-lukkede gates. Klar til at bygge M0 når Bjørn siger til.
+
+---
+
+## §25 — Det aktive lag: flag + lær + notificér + støjfang (Bjørns retning 1. jul)
+
+§24 satte M0 = "ren observabilitet, nul læring". Bjørn korrigerede: **ren observe er kun
+det halve.** Ligesom clusterne skal Centralen kunne **flagge, notificere, logge, debugge,
+fuld live-trace begge veje** — anomaly-scanneren skal vinkles ind i det hele, og den
+**allerede eksisterende adaptive lærings-engine** (`central_learning`) skal fodres med
+*alt* der kommer ind, så den **faktisk lærer og ikke bare kigger**. Plus en **støjfanger**.
+Aktiv selv-ÆNDRING kommer stadig til sidst — men læring + flagging starter NU.
+
+### 25.1 Revision af §24.3
+M0's invariant er ikke længere "nul læring". Den præcise linje går nu mellem **læring/
+flagging (TÆNDT nu)** og **autonom adfærds-MUTATION (til sidst)**:
+- **TÆNDT nu:** observe → flag → incident → `central_learning` (degrading/root_causes/
+  propose_adjustments) → notifikation til owner. Centralen lærer mønstre og foreslår.
+- **STADIG SLUKKET (§22.4/§24.3):** `adjust_threshold`, autonom heling, nerve-omskrivning,
+  self-modifikation. Forslag forbliver reviewbare (`poll_proposals`), aldrig auto-handlinger.
+`enabled_auto_threshold=false` og forbudte mutationer står ved magt. Det farlige er ikke at
+lære — det er at *ændre sig selv* på det lærte uden menneske. Den grænse er intakt.
+
+### 25.2 Leveret (deployes som del af M0)
+- **`central_noise_filter.py` (støjfangeren).** Et signal slipper KUN igennem hvis det (1)
+  PERSISTERER (bryder tærsklen ≥N tick i træk — ét blip = støj) OG (2) ikke er en GENTAGELSE
+  (dedup via cooldown — vedvarende tilstand giver ÉT signal, ikke ét pr. tick). Gater ALT
+  flag/læring/notifikation → Centralen lærer aldrig af støj (direkte modgift mod §24.3 K1/K2).
+- **`central_watch.py` (det aktive lag).** Cadence-vagt der læser de fodrede streams
+  (per-nerve tidsserie + central-meta) og for hvert støjfanget signal:
+  * **FLAGGER** → `observe(kind=flag)` (synligt begge veje: owner-HUD + Jarvis' feed),
+  * **LÆRER** → `record_central_incident` → som `central_learning` LÆSER (samme incident-
+    pipeline som anomaly-scanneren eskalerer til → anomaly-scanneren ER vinklet ind),
+  * **NOTIFICERER** → `route_proactive_notification` til owner ved high/critical,
+  * **LOGGER** → per-nerve tidsserie (debugbar trend).
+  Vagter i dag: bro-observe-fejl (high), åbne circuit-breakers (critical), inner-life-daemon-
+  stilstand (medium, fodrer læring men pusher ikke), og Centralens egen decide-latency-drift.
+- **§24.5 bevaret:** central-meta-drift flagges + notificeres MEN skaber INGEN lærings-incident
+  (selv-refererende incident → learning-feedback-loop). Kun observe + notify for Centralens eget.
+
+### 25.3 Hvad "landet" betyder
+Fase 0-2 (bro + selv-observation + inner-life) + det aktive lag (§25.2) udgør nu en HEL sløjfe:
+event → observe → per-nerve trace → støjfang → flag → incident → adaptiv læring → forslag +
+notifikation → owner. Centralen ser, lærer og siger til — begge veje — uden at ændre sig selv.
+Det er M0 landet efter Bjørns definition. Resterende faser (§23.4 Fase 3-5: memory/consolidation,
+tool-outcome, cost/council/channels) udvider dækningen gennem præcis samme sløjfe.

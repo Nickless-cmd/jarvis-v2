@@ -10,9 +10,11 @@ import { ShareGuardPane } from '../ShareGuardPane'
 import { SummaryBar } from './SummaryBar'
 import { RunsTable } from './RunsTable'
 import { AgentRoster } from './AgentRoster'
+import { CostPanel } from './CostPanel'
+import { EventStream } from './EventStream'
 import { StatusChip } from './StatusChip'
 
-type Tab = 'oversigt' | 'runs' | 'agenter' | 'godkendelser' | 'opgaver' | 'planlagt'
+type Tab = 'oversigt' | 'runs' | 'agenter' | 'godkendelser' | 'opgaver' | 'planlagt' | 'cost' | 'haendelser'
 
 const TABS: { id: Tab; label: string; ownerOnly?: boolean }[] = [
   { id: 'oversigt', label: 'Oversigt' },
@@ -21,6 +23,8 @@ const TABS: { id: Tab; label: string; ownerOnly?: boolean }[] = [
   { id: 'godkendelser', label: 'Godkendelser' },
   { id: 'opgaver', label: 'Opgaver' },
   { id: 'planlagt', label: 'Planlagt' },
+  { id: 'cost', label: 'Cost', ownerOnly: true },
+  { id: 'haendelser', label: 'Hændelser', ownerOnly: true },
 ]
 
 export interface CoworkExtras {
@@ -138,6 +142,8 @@ export function MissionControl({
             )}
           </div>
         )}
+        {tab === 'cost' && isOwner && <CostPanel config={config} />}
+        {tab === 'haendelser' && isOwner && <EventStream config={config} />}
         {tab === 'planlagt' && (
           scheduled.length === 0 ? (
             <div className="cowork-empty">Ingen planlagte opgaver</div>

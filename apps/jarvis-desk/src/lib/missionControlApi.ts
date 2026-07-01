@@ -79,17 +79,32 @@ export async function getMcScheduledTasks(config: ApiConfig, limit = 20): Promis
   return r.items ?? []
 }
 
+/** Faktisk form fra ledger.daily_cost_summary: én række pr. dag PR. lane. */
 export interface McDailyCost {
   day?: string
-  date?: string
-  cost_usd?: number
-  input_tokens?: number
-  output_tokens?: number
+  lane?: string
+  calls?: number
+  total_tokens?: number
+  total_cost?: number
 }
 
 export async function getMcCostsDaily(config: ApiConfig, days = 30): Promise<McDailyCost[]> {
   const r = await apiFetch<{ days?: McDailyCost[] }>(config, `/mc/costs/daily?days=${days}`)
   return r.days ?? []
+}
+
+export interface McEvent {
+  id?: number
+  kind?: string
+  family?: string
+  payload?: Record<string, unknown>
+  created_at?: string
+}
+
+export async function getMcEvents(config: ApiConfig, limit = 50, family?: string): Promise<McEvent[]> {
+  const q = family ? `?limit=${limit}&family=${encodeURIComponent(family)}` : `?limit=${limit}`
+  const r = await apiFetch<{ items?: McEvent[] }>(config, `/mc/events${q}`)
+  return r.items ?? []
 }
 
 export interface McOverview {

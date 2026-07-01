@@ -29,6 +29,10 @@ from core.services.central_core import central
 _LATENCY_DRIFT_MS = 250.0     # decide-latency-drift der tæller som ægte regression
 _INNER_SILENCE_MIN = 3        # inner-daemon-fejl/tomme i træk før det er en bekymring
 _CACHE_COLD_PCT = 10.0        # prefix-cache hit-rate under dette (vedvarende) = brækket cache
+_TOOL_ERROR_RATE = 0.35       # tool-fejlrate over dette (vedvarende) = tools i problemer
+_TOOL_MIN_SAMPLE = 8          # min tool-kald før fejlrate er meningsfuld
+_HEED_MIN_RATE = 0.40         # §23.3 #5: heed_rate under 40% = advarsler ignoreres
+_HEED_MIN_SAMPLE = 5          # min advarsler før heed_rate er meningsfuld
 
 
 def _owner_uid() -> str:
@@ -186,7 +190,77 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
     except Exception:
         pass
 
+    # ── G. Tool-fejlrate (§23.3 #5 outcome): tools fejler vedvarende ──
+    # Cross-proces (tools kører i api-processen) → læs tool.completed fra eventbus.
+    try:
+        total, errors = _tool_outcome_counts(limit=40)
+        if total >= _TOOL_MIN_SAMPLE:
+            rate = errors / total
+            # observe outcome-summary (synligt + læringsbart) hver tick
+            try:
+                central().observe({"cluster": "tools", "nerve": "outcome", "kind": "telemetry",
+                                   "total": total, "errors": errors, "error_rate": round(rate, 3)})
+            except Exception:
+                pass
+            central_timeseries.record("tools", "outcome", value=round(rate, 3),
+                                      meta={"total": total, "errors": errors})
+            if central_noise_filter.is_real_signal("tool_error_rate", rate > _TOOL_ERROR_RATE):
+                flags.append(_raise_flag(
+                    "tools", "outcome", severity="error",
+                    message=f"Tool-fejlrate {rate*100:.0f}% ({errors}/{total} seneste kald)",
+                    importance="high"))
+    except Exception:
+        pass
+
+    # ── H. Verification-heed (§23.3 #5): advarsler ignoreres (heed_rate<40%) ──
+    try:
+        summary = _heed_summary()
+        surfaced = int(summary.get("surfaced_total") or 0)
+        strict = float(summary.get("strict_heed_rate") or 0.0)
+        if surfaced >= _HEED_MIN_SAMPLE:
+            try:
+                central().observe({"cluster": "tools", "nerve": "verification_heed",
+                                   "kind": "telemetry", "surfaced": surfaced,
+                                   "strict_heed_rate": round(strict, 3)})
+            except Exception:
+                pass
+            central_timeseries.record("tools", "verification_heed", value=round(strict, 3),
+                                      meta={"surfaced": surfaced})
+            if central_noise_filter.is_real_signal("heed_low", strict < _HEED_MIN_RATE):
+                flags.append(_raise_flag(
+                    "tools", "verification_heed", severity="error",
+                    message=f"Verifikations-advarsler ignoreres: heed_rate {strict*100:.0f}% "
+                            f"over {surfaced} advarsler (<40% = mutationer ikke tjekket)",
+                    importance="medium"))
+    except Exception:
+        pass
+
     return {"status": "ok", "flags": flags, "flag_count": len(flags)}
+
+
+def _tool_outcome_counts(*, limit: int = 40) -> tuple[int, int]:
+    """(total, errors) fra seneste tool.completed-events på eventbussen. Cross-proces."""
+    total = errors = 0
+    try:
+        from core.eventbus.bus import event_bus
+        for r in event_bus.recent_by_family("tool", limit=limit):
+            if r.get("kind") != "tool.completed":
+                continue
+            total += 1
+            if str((r.get("payload") or {}).get("status")) == "error":
+                errors += 1
+    except Exception:
+        pass
+    return total, errors
+
+
+def _heed_summary() -> dict:
+    """Verification-heed-aggregat (fil-backet = cross-proces). Self-safe."""
+    try:
+        from core.services.verification_gate_telemetry import get_telemetry_summary
+        return get_telemetry_summary(hours=24)
+    except Exception:
+        return {}
 
 
 def _recent_recall_counts(*, limit: int = 6) -> list[int]:

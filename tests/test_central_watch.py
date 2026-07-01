@@ -35,6 +35,11 @@ def wired(monkeypatch):
                         lambda **k: incidents.append(k) or 1)
     monkeypatch.setattr(cw, "_notify_owner",
                         lambda title, message, importance: notifs.append((importance, message)) or True)
+    # Stub cross-proces-læsere til sunde defaults → tests deterministiske; enkelt-tests overrider.
+    monkeypatch.setattr(cw, "_recent_cache_pcts", lambda limit=6: [])
+    monkeypatch.setattr(cw, "_recent_recall_counts", lambda limit=6: [])
+    monkeypatch.setattr(cw, "_tool_outcome_counts", lambda limit=40: (0, 0))
+    monkeypatch.setattr(cw, "_heed_summary", lambda: {})
     return central, incidents, notifs
 
 
@@ -140,6 +145,46 @@ def test_recall_healthy_no_flag(wired, monkeypatch):
     cw.run_watch_tick()
     cw.run_watch_tick()
     assert not any(inc["nerve"] == "recall" for inc in incidents)
+
+
+def test_tool_error_rate_flags_high(wired, monkeypatch):
+    central, incidents, notifs = wired
+    monkeypatch.setattr(cw, "_tool_outcome_counts", lambda limit=40: (20, 10))  # 50%
+    monkeypatch.setattr(cw, "_heed_summary", lambda: {})
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert any(inc["cluster"] == "tools" and inc["nerve"] == "outcome" for inc in incidents)
+    assert any(n[0] == "high" for n in notifs)
+
+
+def test_tool_low_error_no_flag(wired, monkeypatch):
+    central, incidents, notifs = wired
+    monkeypatch.setattr(cw, "_tool_outcome_counts", lambda limit=40: (20, 1))  # 5%
+    monkeypatch.setattr(cw, "_heed_summary", lambda: {})
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert not any(inc["nerve"] == "outcome" for inc in incidents)
+
+
+def test_heed_low_flags_medium(wired, monkeypatch):
+    central, incidents, notifs = wired
+    monkeypatch.setattr(cw, "_tool_outcome_counts", lambda limit=40: (0, 0))
+    monkeypatch.setattr(cw, "_heed_summary",
+                        lambda: {"surfaced_total": 10, "strict_heed_rate": 0.2})
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert any(inc["nerve"] == "verification_heed" for inc in incidents)
+    assert notifs == []  # medium → ingen push
+
+
+def test_heed_healthy_no_flag(wired, monkeypatch):
+    central, incidents, notifs = wired
+    monkeypatch.setattr(cw, "_tool_outcome_counts", lambda limit=40: (0, 0))
+    monkeypatch.setattr(cw, "_heed_summary",
+                        lambda: {"surfaced_total": 10, "strict_heed_rate": 0.9})
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert not any(inc["nerve"] == "verification_heed" for inc in incidents)
 
 
 def test_healthy_streams_produce_no_flags(wired):

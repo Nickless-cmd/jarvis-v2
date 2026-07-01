@@ -759,6 +759,45 @@ def progress_signal_lifecycles() -> dict[str, int]:
     return counts
 
 
+def _observe_frozen(nerve: str, meta: dict[str, object]) -> None:
+    """Egress-fri liveness for en vækket frossen detektor (LivingNeuron Fase B). Self-safe."""
+    try:
+        from core.services.central_core import central as _central
+        _central().observe({"cluster": "cognition", "nerve": nerve, **meta})
+    except Exception:
+        pass
+
+
+def tick_frozen_detectors(tick_count: int) -> dict[str, int]:
+    """LivingNeuron Fase B: væk de frosne detektorer på LAV cadence (deres consumers sultede på
+    tom surface — 'ligger stille og dør'). Bevidst sjælden (tunge queries) + fuldt self-safe efter
+    dagens CPU-brand. Egress-fri observe. Emergence hver 30. tick, contradiction hver 20.
+
+    - emergence.detect_and_score_patterns: frossen writer; build_emergence_surface-consumers
+      (visible_inner_life/identity) fik konstant tom data indtil nu.
+    - contradiction_engine.run_contradiction_tick: defineret+publisher men aldrig kaldt; detekterer
+      Jarvis' EGNE beslutnings-modsigelser (decision vs self-review). Read-only detektion.
+    """
+    out = {"emergence": 0, "contradiction": 0}
+    if tick_count % 30 == 0:
+        try:
+            from core.services.emergence import detect_and_score_patterns
+            pats = detect_and_score_patterns(window_days=21)
+            out["emergence"] = len(pats) if isinstance(pats, list) else 0
+            _observe_frozen("emergence", {"patterns": out["emergence"]})
+        except Exception:
+            logger.debug("tick_frozen_detectors: emergence failed", exc_info=True)
+    if tick_count % 20 == 0:
+        try:
+            from core.services.contradiction_engine import run_contradiction_tick
+            res = run_contradiction_tick()
+            out["contradiction"] = int((res or {}).get("contradictions", 0)) if isinstance(res, dict) else 0
+            _observe_frozen("contradiction", {"found": out["contradiction"]})
+        except Exception:
+            logger.debug("tick_frozen_detectors: contradiction failed", exc_info=True)
+    return out
+
+
 def build_cadence_producers_surface() -> dict[str, object]:
     """MC surface for cadence producer status."""
     return {

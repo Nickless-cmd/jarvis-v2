@@ -1272,6 +1272,12 @@ def _run_heartbeat_tick_locked(
         # Every 5th tick: adoption pipelines
         if tick_count % 5 == 0:
             run_adoption_pipelines()
+        # LivingNeuron Fase B: væk frosne detektorer (emergence/contradiction) på lav cadence
+        try:
+            from core.services.cadence_producers import tick_frozen_detectors
+            tick_frozen_detectors(tick_count)
+        except Exception:
+            pass
         # Every 4th tick: idle thinking (only fires in dreaming/reflection phases)
         if tick_count % 4 == 0:
             try:

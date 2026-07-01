@@ -86,14 +86,19 @@ def test_liveness_error_status():
 
 # ── cadence-hook: kun inner-life ──
 
-def test_cadence_hook_only_inner_producers(sink):
-    # inner-life producer → observeres
+def test_cadence_hook_routes_inner_egressfree_operational_normal(sink, monkeypatch):
+    # inner-life producer → EGRESS-FRI (direkte til lokal sink, cluster=inner)
     cpo.observe_cadence_liveness("self_critique_runtime", "ran", {"produced": 1})
     assert len(sink.records) == 1
-    # operationel producer → NO-OP (ikke privat)
-    cpo.observe_cadence_liveness("eventbus_central_bridge", "ran", {"observed": 9})
+    assert sink.records[0].cluster == "inner"
+    # operationel producer → NORMAL observe (cluster=system), IKKE via den egress-frie sink
+    observed = []
+    import core.services.central_core as cc
+    monkeypatch.setattr(cc, "central",
+                        lambda: type("C", (), {"observe": lambda s, e: observed.append(dict(e))})())
     cpo.observe_cadence_liveness("db_health_scan", "ran", {})
-    assert len(sink.records) == 1  # uændret
+    assert len(sink.records) == 1  # egress-fri sink uændret
+    assert observed and observed[0]["cluster"] == "system" and observed[0]["nerve"] == "db_health_scan"
 
 
 def test_timeseries_recorded_under_inner(sink):

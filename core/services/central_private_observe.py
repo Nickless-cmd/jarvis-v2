@@ -96,13 +96,38 @@ def observe_liveness(nerve: str, *, ok: bool, status: str = "",
         pass
 
 
-def observe_cadence_liveness(spec_name: str, status: str, result: Any) -> None:
-    """Cadence-hook (§23.3 #3 — ét sted for alle ~35). Observer KUN inner-life-producers;
-    alt andet er no-op. Egress-frit. Kaster aldrig."""
+def observe_operational_liveness(spec_name: str, status: str, result: Any) -> None:
+    """Operationel (ikke-privat) cadence-daemon liveness → NORMAL observe (cluster=system,
+    egress OK). §23.3 #13: provider_health/db_health/config_drift/stream_stall/tool_usage m.fl.
+    får dermed samme dækning som inner-life. Self-safe."""
     try:
-        if spec_name not in INNER_LIFE_PRODUCERS:
-            return
         ok, produced, empty = _liveness_from_result(status, result)
-        observe_liveness(spec_name, ok=ok, status=status, produced=produced, empty=empty)
+        payload: dict[str, Any] = {"cluster": "system", "nerve": spec_name,
+                                   "kind": "observe", "ok": bool(ok)}
+        if status:
+            payload["status"] = str(status)
+        if produced is not None:
+            payload["produced"] = int(produced)
+        from core.services.central_core import central
+        central().observe(payload)
+    except Exception:
+        pass
+    try:
+        central_timeseries.record("system", spec_name, value=(1.0 if status == "ran" else 0.0),
+                                  meta={"status": status})
+    except Exception:
+        pass
+
+
+def observe_cadence_liveness(spec_name: str, status: str, result: Any) -> None:
+    """Cadence-hook (§23.3 #3 — ÉT sted for ALLE ~137 cadence-daemons). Router:
+    inner-life → EGRESS-FRI (lokal trace, §24.4); operationelt → NORMAL observe (§23.3 #13).
+    Kaster aldrig."""
+    try:
+        if spec_name in INNER_LIFE_PRODUCERS:
+            ok, produced, empty = _liveness_from_result(status, result)
+            observe_liveness(spec_name, ok=ok, status=status, produced=produced, empty=empty)
+        else:
+            observe_operational_liveness(spec_name, status, result)
     except Exception:
         pass

@@ -47,6 +47,8 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     # ville dublere. (spec §3.3 — direkte observe afløser metadata-broen for cache.)
     "council": ("agents", "council"),
     "channel": ("channel", "delivery"),
+    "discord": ("channel", "discord"),      # §23.3 #10: discord.message_received/sent
+    "telegram": ("channel", "telegram"),    # §23.3 #10: telegram inbound/outbound
     "anomaly": ("system", "anomaly"),
     "stream": ("stream", "event"),
     "heartbeat": ("system", "heartbeat"),

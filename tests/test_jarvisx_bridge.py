@@ -294,3 +294,44 @@ def test_send_invoke_includes_mode():
     assert captured["type"] == "tool_invoke"
     assert "mode" in captured            # feltet medsendes (tom = legacy)
     assert captured["tool"] == "operator_bash"
+
+
+# ── Bro-diagnose: HVORFOR bridge_not_connected (mobil-bro-fix, 2026-07-01) ──
+
+
+def test_diagnose_user_id_mismatch(isolated_runtime, monkeypatch):
+    """Bro findes under user A, men dispatch beder om user B → user_id_mismatch."""
+    monkeypatch.setenv("JARVIS_ENABLE_RUNTIME_SERVICES", "0")
+    from core.services import bridge_presence
+    from core.services.jarvisx_bridge import bridge_registry
+    bridge_registry.clear()
+    bridge_presence.publish({"owner-A": {"client": "jarvis-desk"}})
+    diag = bridge_registry._diagnose_no_bridge("owner-B", stage="test")
+    assert diag["reason"] == "user_id_mismatch"
+    assert diag["requesting_user_id"] == "owner-B"
+    assert "owner-A" in diag["presence_user_ids"]
+
+
+def test_diagnose_no_bridge_anywhere(isolated_runtime, monkeypatch):
+    monkeypatch.setenv("JARVIS_ENABLE_RUNTIME_SERVICES", "0")
+    from core.services.jarvisx_bridge import bridge_registry
+    bridge_registry.clear()
+    diag = bridge_registry._diagnose_no_bridge("owner-X", stage="test")
+    assert diag["reason"] == "no_bridge_anywhere"
+
+
+def test_dispatch_api_side_returns_diagnosis(isolated_runtime, monkeypatch):
+    """api-siden (allow_cross_process=False) uden bro → error m. diagnosis-felt."""
+    import asyncio
+    monkeypatch.setenv("JARVIS_ENABLE_RUNTIME_SERVICES", "0")
+    from core.services.jarvisx_bridge import bridge_registry
+    bridge_registry.clear()
+
+    async def _run():
+        return await bridge_registry.dispatch(
+            user_id="owner-Y", tool="operator_bash", args={}, allow_cross_process=False)
+
+    out = asyncio.run(_run())
+    assert out["error"] == "bridge_not_connected"
+    assert "diagnosis" in out
+    assert out["diagnosis"]["reason"] in {"no_bridge_anywhere", "user_id_mismatch", "forward_failed"}

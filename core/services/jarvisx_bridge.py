@@ -244,6 +244,7 @@ class BridgeRegistry:
             "jarvisx_bridge: registered user=%s client=%s capabilities=%s",
             conn.user_id, conn.client, conn.capabilities,
         )
+        self._publish_presence()
 
     def unregister(self, conn: BridgeConnection) -> None:
         """Remove ONLY if the registered bridge for this user IS this conn.
@@ -253,6 +254,59 @@ class BridgeRegistry:
             conn.cancel_all_pending()
             del self._by_user[conn.user_id]
             logger.info("jarvisx_bridge: unregistered user=%s", conn.user_id)
+            self._publish_presence()
+
+    def _publish_presence(self) -> None:
+        """Publicér dette registrys bro'er til shared_cache, så DEN ANDEN proces (og
+        diagnosen) kan se hvilke user_id'er har en levende bro og hvor. Self-safe."""
+        try:
+            from core.services import bridge_presence
+            bridge_presence.publish({
+                uid: {
+                    "client": c.client, "platform": c.platform, "version": c.version,
+                    "capabilities": list(c.capabilities),
+                }
+                for uid, c in self._by_user.items()
+            })
+        except Exception:  # pragma: no cover - presence er blødt
+            pass
+
+    def _diagnose_no_bridge(self, user_id: str, *, stage: str) -> dict[str, Any]:
+        """Fastslå HVORFOR der ikke er en bro for user_id (i stedet for et blindt
+        'bridge_not_connected'): user_id-mismatch, ingen bro nogen steder, eller
+        forward-fejl. Observeres i Centralen + logges, så vi ser den ægte grund når
+        Bjørn reproducerer fra mobil. Self-safe."""
+        try:
+            from core.services import bridge_presence
+            presence = bridge_presence.all_presence()
+        except Exception:
+            presence = {}
+        local = list(self._by_user.keys())
+        token = bool(internal_dispatch_token())
+        if presence and user_id not in presence:
+            reason = "user_id_mismatch"   # bro FINDES, men under et andet user_id
+        elif not presence and not local:
+            reason = "no_bridge_anywhere"  # ingen bro overhovedet (desk ikke forbundet)
+        else:
+            reason = "forward_failed"      # bro burde være nåelig, men rundturen fejlede
+        detail = {
+            "reason": reason, "stage": stage, "requesting_user_id": user_id,
+            "token_present": token, "local_bridges": local,
+            "presence_user_ids": list(presence.keys()),
+        }
+        try:
+            from core.services.central_core import central
+            central().observe({
+                "cluster": "channel", "nerve": "bridge_dispatch_fail", "kind": "observe",
+                "decision": "degraded", "reason": reason, **detail,
+            })
+        except Exception:  # pragma: no cover
+            pass
+        logger.warning(
+            "[bridge-dispatch] NO_BRIDGE reason=%s stage=%s user=%s local=%s presence=%s token=%s",
+            reason, stage, user_id, local, list(presence.keys()), token,
+        )
+        return detail
 
     def get_bridge(self, user_id: str) -> Optional[BridgeConnection]:
         return self._by_user.get(user_id)
@@ -291,16 +345,32 @@ class BridgeRegistry:
         bridge = self.get_bridge(user_id)
         if bridge is None:
             if allow_cross_process:
+                # Deterministisk forward MEN konservativ: spring KUN forward over hvis
+                # presence er populeret OG user_id definitivt fraværende (ægte mismatch/
+                # ingen bro). Er presence tom/utilgængelig → bevar gammel adfærd (forward
+                # til api), så den fungerende autonome-forward ikke brækkes.
+                try:
+                    from core.services import bridge_presence
+                    presence = bridge_presence.all_presence()
+                except Exception:
+                    presence = {}
+                if presence and user_id not in presence:
+                    diag = self._diagnose_no_bridge(user_id, stage="pre_forward")
+                    return {"status": "error", "result": None,
+                            "error": "bridge_not_connected", "diagnosis": diag}
                 return await self._forward_cross_process(
                     user_id=user_id,
                     tool=tool,
                     args=args,
                     timeout_s=timeout_s,
                 )
+            # api-siden (allow_cross_process=False): definitiv registry-opslag fejlede.
+            diag = self._diagnose_no_bridge(user_id, stage="api_lookup")
             return {
                 "status": "error",
                 "result": None,
                 "error": "bridge_not_connected",
+                "diagnosis": diag,
             }
 
         correlation_id = str(uuid.uuid4())

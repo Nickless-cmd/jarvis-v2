@@ -1,3 +1,5 @@
+import { type ReactNode } from 'react'
+import { normalizeZone, type Zone } from '../lib/coworkZone'
 import { useSettings } from '../hooks/useSettings'
 import { useCoworkData } from '../hooks/useCoworkData'
 import { ApprovalQueue } from '../components/cowork/ApprovalQueue'
@@ -77,39 +79,58 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
     </div>
   )
 
-  const settingsZone = (
-    <div className="cowork-settings">
-      <ConnectionSection />
-      <AccountSection config={config} />
-      <WorkspaceSection config={config} />
-      <MemorySection config={config} />
-      <PermissionsSection config={config} />
-      <LocationSection />
-      <NotificationsSection config={config} />
-      <AppsSection config={config} />
-      {auth?.role === 'owner' && <McpSection config={config} />}
-      <KvoteSection config={config} />
-      <SprogSection config={config} />
-      <ThemeSection />
-      <DataPrivacyPanel config={config} />
-      {auth?.role === 'owner' && <JarvisSection config={config} />}
-      {auth?.role === 'owner' && <TotpSetup config={config} />}
-      {auth?.role === 'owner' && <PluginsPanel config={config} />}
-      <KeyboardHelpPanel />
-      <AboutPanel apiBaseUrl={settings?.apiBaseUrl} role={auth?.role} model={settings?.defaultModel} />
-    </div>
-  )
+  const ownerAuth = auth?.role === 'owner'
+  const wrap = (children: ReactNode) => <div className="cowork-settings">{children}</div>
+
+  // Hver zone = ÉN klar destination (flad simpel navigation, Bjørn 2026-07-01). Sektions-
+  // komponenterne genbruges uændret — de er blot flyttet til hver sin zone i stedet for én
+  // samlet scroll. 'settings' (legacy-alias) og ukendte → Konto.
+  const zoneContent = (raw: Zone): ReactNode => {
+    switch (normalizeZone(raw)) {
+      case 'mc': return missionControl
+      case 'marketplace': return <MarketplacePane config={config} />
+
+      case 'konto': return wrap(<>
+        <AccountSection config={config} />
+        <KvoteSection config={config} />
+        {ownerAuth && <TotpSetup config={config} />}
+      </>)
+      case 'privacy': return wrap(<>
+        <DataPrivacyPanel config={config} />
+        <PermissionsSection config={config} />
+      </>)
+      case 'notifications': return wrap(<NotificationsSection config={config} />)
+
+      case 'appearance': return wrap(<ThemeSection />)
+      case 'sprog': return wrap(<SprogSection config={config} />)
+      case 'location': return wrap(<LocationSection />)
+
+      case 'memory': return wrap(<MemorySection config={config} />)
+      case 'workspace': return wrap(<WorkspaceSection config={config} />)
+      case 'connections': return wrap(<>
+        {ownerAuth && <McpSection config={config} />}
+        <AppsSection config={config} />
+        {ownerAuth && <PluginsPanel config={config} />}
+      </>)
+
+      case 'central': return isOwner ? <CentralHud config={config} /> : missionControl
+      case 'jarvisMind': return isOwner ? <JarvisMind config={config} /> : missionControl
+      case 'jarvis': return ownerAuth ? wrap(<JarvisSection config={config} />) : missionControl
+
+      case 'about': return wrap(<>
+        <AboutPanel apiBaseUrl={settings?.apiBaseUrl} role={auth?.role} model={settings?.defaultModel} />
+        <KeyboardHelpPanel />
+        <ConnectionSection />
+      </>)
+
+      default: return wrap(<AccountSection config={config} />)
+    }
+  }
 
   return (
     <div className="coworkview">
       <CoworkZones>
-        {(zone) =>
-          zone === 'mc' ? missionControl
-          : zone === 'central' ? (isOwner ? <CentralHud config={config} /> : missionControl)
-          : zone === 'jarvisMind' ? (isOwner ? <JarvisMind config={config} /> : missionControl)
-          : zone === 'marketplace' ? <MarketplacePane config={config} />
-          : settingsZone
-        }
+        {(zone) => zoneContent(zone)}
       </CoworkZones>
     </div>
   )

@@ -1,19 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, Fragment } from 'react'
 import {
   Plus, MoreHorizontal, Pencil, Download, Trash2, Search, X, Images, Code,
-  LayoutDashboard, Blocks, Settings, Brain, Cpu, type LucideIcon,
+  LayoutDashboard, Blocks, Settings, Brain, Cpu,
+  User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
+  type LucideIcon,
 } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
 import { TeamsSection } from './TeamsSection'
 import { useSettings } from '../../hooks/useSettings'
 import { useStream } from '../../hooks/useStream'
 import { searchSessions, getActiveRuns, type SessionSearchResult } from '../../lib/api'
-import { COWORK_ZONES, emitZone, onZone, type Zone } from '../../lib/coworkZone'
+import { COWORK_ZONES, emitZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
 import { ModeSlider, type Mode } from './ModeSlider'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
+  User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
 }
 
 export type Surface = Mode | SecondarySurface | 'gallery'
@@ -161,29 +164,34 @@ export function Sidebar({
   )
 }
 
-/** Cowork-menu i venstre panel (mode-bevidst): Mission Control / Marketplace /
- *  Indstillinger med ikoner. Erstatter session-listen i cowork-surface, så vi har
- *  ÉT panel — ikke et ekstra rail inde i CoworkZones. Zone-skift via emitZone. */
+/** Cowork-menu i venstre panel (mode-bevidst): en FLAD liste af klare destinationer —
+ *  hver indstillings-sektion sit eget punkt, grupperet med scanbare overskrifter (Bjørn
+ *  2026-07-01: simpelhed slår kompakthed; Mikkel skal bæres igennem). Zone-skift via emitZone. */
 function CoworkMenu() {
   const [zone, setZone] = useState<Zone>('mc')
   const { auth } = useSettings()
   const isOwner = auth?.role === 'owner'
-  // Hold lokal markering i sync med Jarvis-styret zone-skift (open_ui_panel).
-  useEffect(() => onZone(setZone), [])
+  // Hold lokal markering i sync med Jarvis-styret zone-skift (open_ui_panel); 'settings' → 'konto'.
+  useEffect(() => onZone((z) => setZone(normalizeZone(z))), [])
+  const visible = COWORK_ZONES.filter((z) => isOwner || !z.ownerOnly)
+  let lastGroup = ''
   return (
     <div className="sessions cowork-menu">
-      <div className="sidebar-label">cowork</div>
-      {COWORK_ZONES.filter((z) => isOwner || !z.ownerOnly).map((z) => {
+      {visible.map((z) => {
         const Icon = ZONE_ICONS[z.icon] ?? Blocks
+        const header = z.group !== lastGroup ? z.group : null
+        lastGroup = z.group
         return (
-          <button
-            key={z.id}
-            type="button"
-            className={`sidebar-nav-row ${zone === z.id ? 'active' : ''}`}
-            onClick={() => { setZone(z.id); emitZone(z.id) }}
-          >
-            <Icon size={14} /> {z.label}
-          </button>
+          <Fragment key={z.id}>
+            {header && <div className="sidebar-label">{header}</div>}
+            <button
+              type="button"
+              className={`sidebar-nav-row ${zone === z.id ? 'active' : ''}`}
+              onClick={() => { setZone(z.id); emitZone(z.id) }}
+            >
+              <Icon size={14} /> {z.label}
+            </button>
+          </Fragment>
         )
       })}
     </div>

@@ -83,6 +83,11 @@ class RuntimeSettings:
     # foundation) keeps running for observability but produces no user-
     # facing actions while this is False. Default off — opt-in.
     generative_autonomy_enabled: bool = False
+    # LivingNeuron Fase D graderet tier (2026-07-01): tænder KUN den EGRESS-FRI kognitive delmængde
+    # (emotional_chords/resonance_decay/precision_bias/metacognitive_integration/selective_attention)
+    # — indre kognition der former Jarvis' egen tænkning UDEN at nå ud (ingen outreach/longing/impulse-
+    # handling). De egress-tunge forbliver bag det fulde generative_autonomy_enabled. Aldrig bulk.
+    generative_autonomy_cognitive_enabled: bool = False
     # Skill-gate kill-switch. When False, the skill_gate tool returns a
     # short "disabled" stub immediately — no embedding call, no skill
     # invocation. Use to temporarily silence over-eager gating without
@@ -614,6 +619,10 @@ def load_settings() -> RuntimeSettings:
         ),
         generative_autonomy_enabled=bool(
             data.get("generative_autonomy_enabled", defaults.generative_autonomy_enabled)
+        ),
+        generative_autonomy_cognitive_enabled=bool(
+            data.get("generative_autonomy_cognitive_enabled",
+                     defaults.generative_autonomy_cognitive_enabled)
         ),
         skill_gate_enabled=bool(
             data.get("skill_gate_enabled", defaults.skill_gate_enabled)

@@ -40,7 +40,8 @@ def _autonomy_enabled() -> bool:
     """Check the generative autonomy killswitch."""
     try:
         from core.runtime.settings import load_settings
-        return bool(load_settings().generative_autonomy_enabled)
+        _s = load_settings()  # Fase D graderet: egress-fri kognitiv tier honorerer også cognitive-flaget
+        return bool(_s.generative_autonomy_enabled or _s.generative_autonomy_cognitive_enabled)
     except Exception:
         return False
 

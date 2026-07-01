@@ -256,7 +256,8 @@ def _autonomy_enabled() -> bool:
     try:
         from core.runtime.settings import load_settings
         settings = load_settings()
-        return bool(settings.generative_autonomy_enabled)
+        # Fase D graderet: egress-fri kognitiv tier honorerer også cognitive-flaget
+        return bool(settings.generative_autonomy_enabled or settings.generative_autonomy_cognitive_enabled)
     except Exception:
         return False
 

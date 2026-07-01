@@ -261,6 +261,110 @@ def _get_or_create_mcp_session() -> str:
     return _MCP_SESSION_ID
 
 
+# ---------------------------------------------------------------------------
+# Central-adgang + søgning (til Claude/owner-tooling, 2026-07-01) — fuld
+# indsigt i Den Intelligente Central + Jarvis' hukommelse uden SSH-gymnastik.
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool
+def jarvis_central_status() -> str:
+    """Central-helbred: status (green/yellow/red), uløste flag/incidents, degrading-clusters,
+    åbne circuit-breakers. Merger både api- og runtime-processen. Owner/Claude-observabilitet."""
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_central_status"})
+    try:
+        from core.services.central_realtime import realtime_snapshot
+        snap = realtime_snapshot()
+        out = {
+            "status": snap.get("status"),
+            "open_breakers": snap.get("open_breakers"),
+            "degrading": (snap.get("learning") or {}).get("degrading"),
+            "incidents": [
+                {"severity": i.get("severity"), "cluster": i.get("cluster"),
+                 "nerve": i.get("nerve"), "message": str(i.get("message"))[:200]}
+                for i in (snap.get("incidents") or [])
+            ],
+            "anomaly_counts": (snap.get("anomalies") or {}).get("counts"),
+        }
+    except Exception as exc:
+        out = {"error": str(exc)}
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_central_status"})
+    return json.dumps(out, ensure_ascii=False, indent=2)
+
+
+@mcp.tool
+def jarvis_central_diagnostics() -> str:
+    """Fuld central-diagnostik: uløste incidents (fuld besked), anomalier, root-causes,
+    degrading. Til at debugge hvad Centralen har fanget."""
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_central_diagnostics"})
+    out: dict = {}
+    try:
+        from core.runtime.db_central_incidents import list_central_incidents
+        out["incidents"] = list_central_incidents(unresolved_only=True, limit=40)
+    except Exception as exc:
+        out["incidents_error"] = str(exc)
+    try:
+        from core.services import central_learning as cl
+        out["root_causes"] = cl.root_causes()
+        out["degrading"] = cl.degrading()
+    except Exception:
+        pass
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_central_diagnostics"})
+    return json.dumps(out, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.tool
+def jarvis_central_nerve(nerve: str) -> str:
+    """Seneste observationer/beslutninger for én central-nerve (fx central_meta, lifecycle,
+    recall, outcome). NB: viser api-processens trace; cadence-nerver lever i runtime-processen."""
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_central_nerve"})
+    try:
+        from core.services import central_trace
+        recent = [
+            {"cluster": r.cluster, "nerve": r.nerve, "kind": r.kind,
+             "decision": r.decision, "reason": r.reason, "payload": r.payload}
+            for r in central_trace.sink().recent(limit=400) if r.nerve == nerve
+        ][-30:]
+        out = {"nerve": nerve, "recent": recent}
+    except Exception as exc:
+        out = {"error": str(exc)}
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_central_nerve"})
+    return json.dumps(out, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.tool
+def jarvis_central_resolve() -> str:
+    """Luk (resolve) alle uløste central-flag/incidents. Rydder tavlen efter review."""
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_central_resolve"})
+    try:
+        from core.runtime.db_central_incidents import (
+            list_central_incidents,
+            resolve_central_incidents,
+        )
+        incs = list_central_incidents(unresolved_only=True, limit=500)
+        pairs = {(i.get("cluster"), i.get("nerve")) for i in incs}
+        n = sum(resolve_central_incidents(cluster=c, nerve=nv) for c, nv in pairs)
+        out = {"resolved": n}
+    except Exception as exc:
+        out = {"error": str(exc)}
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_central_resolve"})
+    return json.dumps(out, ensure_ascii=False)
+
+
+@mcp.tool
+def jarvis_memory_search(query: str, limit: int = 20) -> str:
+    """Søg Jarvis' sansninger/hukommelse (sensory memory) semantisk. Sparer at grave manuelt."""
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_memory_search"})
+    try:
+        from core.runtime.db_sensory import search_sensory_memories
+        results = search_sensory_memories(query=query, limit=limit)
+        out = {"query": query, "results": results}
+    except Exception as exc:
+        out = {"error": str(exc)}
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_memory_search"})
+    return json.dumps(out, ensure_ascii=False, indent=2, default=str)
+
+
 def _safe_dict(obj: dict | None) -> dict:
     """Convert a DB record to a JSON-safe dict."""
     if obj is None:

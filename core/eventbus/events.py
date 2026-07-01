@@ -19,6 +19,8 @@ ALLOWED_EVENT_FAMILIES = {
     "self_model_signal",
     "goal_signal",
     "runtime_awareness_signal",
+    "reboot",         # reboot_awareness_daemon (reboot.imminent/first_boot/{direction}) — var latent afvist
+    "inner_voice",    # desperation_awareness (inner_voice.signal) — var latent afvist (dict-som-kind + ikke-registreret)
     "reflection_signal",
     "temporal_recurrence_signal",
     "witness_signal",

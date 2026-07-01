@@ -86,13 +86,10 @@ def _signal_handler(signum: int, _frame: Any) -> None:
     _graceful_shutdown_marker()
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "reboot.imminent",
-            "payload": {
-                "signal": signum,
-                "graceful": True,
-                "at": datetime.now(UTC).isoformat(),
-            },
+        event_bus.publish("reboot.imminent", {
+            "signal": signum,
+            "graceful": True,
+            "at": datetime.now(UTC).isoformat(),
         })
     except Exception:
         pass
@@ -183,7 +180,7 @@ def detect_reboot() -> dict[str, Any] | None:
     # Publish event
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({"kind": result["kind"], "payload": result})
+        event_bus.publish(result["kind"], result)
     except Exception:
         pass
 

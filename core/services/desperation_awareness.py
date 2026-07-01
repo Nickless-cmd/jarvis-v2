@@ -168,7 +168,7 @@ def _emit_crossing_event(state: dict[str, Any], *, direction: str) -> None:
             "reasons": state["reasons"],
             "text": _narrative_for(state, direction),
         }
-        event_bus.publish({"kind": "inner_voice.signal", "payload": payload})
+        event_bus.publish("inner_voice.signal", payload)
     except Exception as exc:
         logger.debug("desperation_awareness: could not publish crossing event: %s", exc)
 

@@ -86,6 +86,14 @@ def narrativize_tension(tension: dict[str, object]) -> str:
 
 
 def build_paradox_surface() -> dict[str, object]:
+    # Fase C konsolidering (2026-07-01): den statiske akse-liste er afløst af paradoxes_capture (ægte
+    # detekterede paradokser). Deleger → begge MC-ruter viser LEVENDE data (dual-truth væk). Fald tilbage
+    # til den statiske akse-visning hvis capture utilgængelig.
+    try:
+        from core.services.paradoxes_capture import build_paradoxes_surface
+        return build_paradoxes_surface()
+    except Exception:
+        pass
     return {
         "active": True,
         "axes": [a["label"] for a in _PARADOX_AXES],

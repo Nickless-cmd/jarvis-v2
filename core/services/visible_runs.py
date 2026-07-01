@@ -7790,18 +7790,9 @@ def _update_cognitive_systems_async(
         except Exception:
             pass
 
-        try:
-            from core.services.habit_tracker import track_habit_from_run
-            # Use first 50 chars of user message as task signature
-            sig = user_message[:50].strip() if user_message else ""
-            if sig:
-                track_habit_from_run(
-                    run_id=run_id,
-                    task_signature=sig,
-                    outcome_status=outcome_status,
-                )
-        except Exception:
-            pass
+        # Fase C konsolidering (2026-07-01): habit_tracker.track_habit_from_run (88L stub uden friction/
+        # suggestion) er AFLØST af habits_pipeline.record_habit_signal (kaldt nedenfor). Dual-write fjernet
+        # så kun det levende pipeline-lag skriver — dual-truth væk.
 
         try:
             from core.services.shared_language import scan_for_shared_terms

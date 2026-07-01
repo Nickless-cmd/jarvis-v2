@@ -55,6 +55,14 @@ def propose_trade(
 
 
 def build_negotiation_surface() -> dict[str, object]:
+    # Fase C konsolidering (2026-07-01): in-memory _TRADE_HISTORY (tabt ved restart) er AFLØST af den
+    # DB-backede negotiation_pipeline. Deleger → /negotiations viser samme LEVENDE data (dual-truth væk).
+    # Lazy import undgår cyklus; fald tilbage til lokal in-memory hvis pipeline utilgængelig.
+    try:
+        from core.services.negotiation_pipeline import build_negotiation_surface as _live
+        return _live()
+    except Exception:
+        pass
     with _TRADE_LOCK:
         recent = list(_TRADE_HISTORY[-10:])
     return {

@@ -1521,8 +1521,8 @@ AND cache") er nu wired.
 | Spec-del | Hvad | Prioritet |
 |---|---|---|
 | §23.4 Fase 3 (rest) | consolidation-EVENTS (judge/dream/selective) → observe (cadence-daemons dækket af §24.4-hook) | P1 |
-| §23.4 Fase 4 | tool approval-feedback + outcome + verification-heed | P1 |
-| §23.4 Fase 5 | cost-ledger/quota, council, channels/devices, impulse/emergent, runtime-helbred | P1→P2 |
+| ~~§23.4 Fase 4~~ | ✅ LIVE (tools/outcome + verification_heed) | — |
+| ~~§23.4 Fase 5~~ | ✅ LIVE (cost/cheap-lane/council/channels/runtime-helbred); impulse=privat, semantic-indexer=deferred | — |
 | §18.3 | `adjust_threshold` closed loop | M2 (bag gate) |
 | §19 | 4 intelligens-lag (prædiktiv/kausal/heling/selv-bevidst) | M1-M3 (egne specs) |
 | §22.6 | nerve-omskrivning + drømme-løkke (self-modifikation) | egen spec, human opt-in |
@@ -1545,3 +1545,55 @@ proces**. Konsekvens der SKAL respekteres af alle fremtidige vagter:
 - Tommelfinger: **eventbussen/DB er den eneste cross-proces sandhed.** In-process-tidsserie er
   kun gyldig for signaler født i samme proces som vagten. Fase 4-5 (tool-outcome i api-processen)
   skal følge samme regel.
+
+---
+
+## §27 — Gap-listens endelige dækning (1. jul, alle faser deployet+verificeret)
+
+Krydstjek af §23.3's 13 rangerede dark-systemer + de 5 største huller + de 3 Jarvis missede.
+Alt bygget, testet, deployet på containeren (10.0.0.39) og nerve-fyring verificeret live.
+
+### 27.1 §23.3 — 13 rangerede dark-systemer
+| # | System | Status | Hvor |
+|---|---|---|---|
+| 1 | Eventbus→Central-bro (KEYSTONE) | ✅ LIVE | Fase 0 (loop/lifecycle: 20 obs) |
+| 2 | Central self-observation | ✅ LIVE | Fase 1 (system/central_meta) |
+| 3 | Inner life ~35 daemons | ✅ LIVE | Fase 2 egress-fri + Fase 5c (alle ~137) |
+| 4 | Memory recall + vægte | ✅ LIVE | Fase 3 (memory/recall: 4 obs) |
+| 5 | Tool approval + outcome + heed | ✅ LIVE | Fase 4 (tools/outcome + verification_heed) |
+| 6 | Consolidation-familie | ✅ DÆKKET | Daemon-liveness (Fase 2); event-detail bevidst privat (§24.4) |
+| 7 | Council/deliberation | ✅ LIVE | Fase 5b (agents/council deadlock-vagt) |
+| 8 | Cost ledger + quota + cheap-lane | ✅ LIVE | Fase 5a (cost/ledger: 2 obs, cheap-lane-vagt) |
+| 9 | Cache-telemetri | ✅ LIVE | Cache-halvdel (cost/prefix_cache) |
+| 10 | Channels & Devices | ✅ LIVE | Fase 5c (discord/telegram bro-routes) |
+| 11 | Impulse/pressure/emergent/counterfactual | ⚠️ BEVIDST PRIVAT | Inner-drives, ikke routet (§24.4); emergent-liveness via inner-hook |
+| 12 | Runtime lifecycle | ✅ LIVE | Bro (runtime→loop/lifecycle) |
+| 13 | Runtime-helbred-daemons | ✅ LIVE | Fase 5c operationel cadence-liveness (cluster=system) |
+
+### 27.2 De 5 største huller
+1. KEYSTONE-bro → ✅ Fase 0. 2. Inner life mørkt → ✅ Fase 2. 3. Lærings-substrat → ✅ recall
+(Fase 3); consolidation dækket-by-design; **semantic_indexer DEFERRED** (event-drevet, ikke cadence;
+helbred synligt indirekte via recall-kvalitet der ER wired). 4. Tool-outcome → ✅ Fase 4.
+5. Cost/provider-økologi → ✅ Fase 5a.
+
+### 27.3 De 3 huller Jarvis missede
+1. Centralen døv for sig selv → ✅ Fase 1 (central_meta). 2. Inner life mørkt → ✅ Fase 2.
+3. Tool-outcome-loop brudt → ✅ Fase 4.
+
+### 27.4 Bevidst udestående (dokumenteret, ikke glemt)
+- **impulse/pressure** (§23.3 #11): private inner-drives. Egress-fri routing kræves før wiring;
+  emergent_signal-daemon-liveness ER dækket. Ikke et hul — en privatlags-beslutning (§24.4).
+- **semantic_indexer**: event-drevet indekser; downstream-helbred (recall-kvalitet) ER wired.
+  Direkte instrumentering = lav værdi nu, deferred.
+- **M1+ intelligens** (§18.3 adjust_threshold, §19 prædiktiv/kausal/heling, §22.6 self-modifikation):
+  bevidst bag egne specs + fejl-lukkede gates. Aktiv ÆNDRING kommer til sidst (Bjørn).
+
+### 27.5 Verifikation (∀-trin)
+- capability_audit 1. jul: 661 services, 480 LIVE (72.6%), 0 stale, 0 orphan, 7 suspicious.
+- Nerve-fyring live-verificeret på container: lifecycle/central_meta/prefix_cache/recall/outcome/
+  verification_heed/ledger + inner-nerver + system-op-liveness.
+- central_learning.degrading()=0 = ægte sundt (intet degraderer), ikke støj — sløjfen fodrer korrekt.
+
+**KONKLUSION: M0 (observabilitet + aktivt lag) er KOMPLET. Hele §23.3-gap-listen er dækket eller
+eksplicit privatlags-/M1-deferred. Sløjfen event/cache→observe→støjfang→flag→incident→læring→
+notifikation kører live begge veje.**

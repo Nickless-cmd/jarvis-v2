@@ -70,3 +70,18 @@ def test_all_self_safe_on_broken_cache(monkeypatch):
     assert xp.foreign_feeds("api") == []
     assert xp.all_health() == []
     xp._publish_now()  # må ikke kaste
+
+
+def test_reentrancy_guard_breaks_publish_recursion(monkeypatch):
+    # Simulér rekursionen: _publish_now kalder (via self_diagnose→record) maybe_publish igen.
+    # Uden guard = uendelig løkke; MED guard = _publish_now kaldes præcis én gang.
+    calls = {"n": 0}
+    xp._last_publish = 0.0
+
+    def _recursing_publish():
+        calls["n"] += 1
+        xp.maybe_publish()  # den indre publish (som record() ville udløse under self_diagnose)
+
+    monkeypatch.setattr(xp, "_publish_now", _recursing_publish)
+    xp.maybe_publish()
+    assert calls["n"] == 1  # guarden stoppede genindtræden

@@ -16,6 +16,7 @@ Publicerede feeds har TTL → en død proces forsvinder af sig selv fra panelet.
 from __future__ import annotations
 
 import os
+import threading
 import time
 from typing import Any
 
@@ -30,6 +31,7 @@ _PUBLISH_EVERY = 2.0                   # throttle: max én skrivning pr. proces 
 _FEED_CAP = 80                         # seneste N records publiceres
 
 _last_publish = 0.0
+_publishing = threading.local()  # re-entrancy-guard mod publish→self_diagnose→record→publish-løkke
 
 
 def process_role() -> str:
@@ -40,7 +42,14 @@ def process_role() -> str:
 
 def maybe_publish() -> None:
     """Throttled publish af denne proces' feed + sundhed. Kaldt fra trace-record (hot path)
-    → derfor billig monotonic-throttle + fuld self-safety."""
+    → derfor billig monotonic-throttle + fuld self-safety.
+
+    RE-ENTRANCY-GUARD (kritisk, 2026-07-01): _publish_now() kalder self_diagnose() som kalder
+    decide()/observe() som SELV record()'er trace → som kalder maybe_publish() igen. Uden
+    guarden blev det en rekursiv løkke der pegged 6 kerner på Jarvis-containeren (py-spy-bekræftet).
+    Guarden sikrer at en publish ALDRIG kan udløse endnu en publish i samme tråd."""
+    if getattr(_publishing, "active", False):
+        return
     global _last_publish
     try:
         now = time.monotonic()
@@ -49,10 +58,13 @@ def maybe_publish() -> None:
         _last_publish = now
     except Exception:
         return
+    _publishing.active = True
     try:
         _publish_now()
     except Exception:
         pass
+    finally:
+        _publishing.active = False
 
 
 def _publish_now() -> None:

@@ -29,6 +29,7 @@ from core.services.central_core import central
 _LATENCY_DRIFT_MS = 250.0     # decide-latency-drift der tæller som ægte regression
 _INNER_SILENCE_MIN = 3        # inner-daemon-fejl/tomme i træk før det er en bekymring
 _CACHE_COLD_PCT = 10.0        # prefix-cache hit-rate under dette (vedvarende) = brækket cache
+_INFRA_DISK_PCT = 90.0        # disk-brug over dette på en infra-host = pres/flag
 _TOOL_ERROR_RATE = 0.35       # tool-fejlrate over dette (vedvarende) = tools i problemer
 _TOOL_MIN_SAMPLE = 8          # min tool-kald før fejlrate er meningsfuld
 _HEED_MIN_SAMPLE = 5          # min advarsler før heed_rate er meningsfuld
@@ -282,6 +283,30 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
                     "infra", nv, severity="error",
                     message=f"Host '{host}' er UNREACHABLE ({tgt}) — en del af huset svarer ikke",
                     importance="high"))
+    except Exception:
+        pass
+
+    # ── L. Infra dyb-health: disk-pres eller services nede (ingen blinde vinkler) ──
+    try:
+        for (cl, nv) in central_timeseries.nerves():
+            if cl != "infra":
+                continue
+            if nv.endswith("_disk"):
+                s = central_timeseries.recent(cl, nv, limit=1)
+                if s and (s[-1].value or 0) >= _INFRA_DISK_PCT:
+                    host = nv[:-len("_disk")]
+                    if central_noise_filter.is_real_signal(f"infra_disk:{host}", True):
+                        flags.append(_raise_flag("infra", nv, severity="error",
+                            message=f"Disk-pres på '{host}': {int(s[-1].value)}% brugt",
+                            importance="high"))
+            elif nv.endswith("_svc_down"):
+                s = central_timeseries.recent(cl, nv, limit=1)
+                if s and (s[-1].value or 0) > 0:
+                    host = nv[:-len("_svc_down")]
+                    if central_noise_filter.is_real_signal(f"infra_svc:{host}", True):
+                        flags.append(_raise_flag("infra", nv, severity="error",
+                            message=f"{int(s[-1].value)} service(s) nede på '{host}'",
+                            importance="high"))
     except Exception:
         pass
 

@@ -78,6 +78,47 @@ def test_tick_self_safe(monkeypatch):
     assert res["status"] == "ok" and res["hosts"] == 1
 
 
+def test_parse_kv():
+    kv = isense._parse_kv("disk=87 svc_down=0 smb=active")
+    assert kv == {"disk": 87, "svc_down": 0, "smb": "active"}
+
+
+def test_poll_ssh_hosts_observes(monkeypatch):
+    central = _FakeCentral()
+    monkeypatch.setattr(isense, "central", lambda: central)
+    fake = {"root@10.0.0.2": "guests_running=6 guests_total=6 maxdisk=45 load1=1.8",
+            "root@192.168.50.32": "disk=19 svc_down=0",
+            "root@10.0.0.10": "disk=24 smb=active"}
+    monkeypatch.setattr(isense, "_ssh_run", lambda t, c, timeout=8.0: fake.get(t))
+    res = isense.poll_ssh_hosts()
+    assert res["pve"]["guests_running"] == 6
+    assert res["webservice"]["svc_down"] == 0
+    # observe pr. host + disk-tidsserie
+    assert any(o["nerve"] == "pve_health" for o in central.observed)
+    assert central_timeseries.recent("infra", "pve_disk")[-1].value == 45.0
+    assert central_timeseries.recent("infra", "webservice_svc_down")[-1].value == 0.0
+
+
+def test_poll_ssh_hosts_down_host_skipped(monkeypatch):
+    monkeypatch.setattr(isense, "central", lambda: _FakeCentral())
+    monkeypatch.setattr(isense, "_ssh_run", lambda t, c, timeout=8.0: None)  # alle nede
+    assert isense.poll_ssh_hosts() == {}  # ingen crash, ingen data
+
+
+def test_poll_ha_observes(monkeypatch):
+    central = _FakeCentral()
+    monkeypatch.setattr(isense, "central", lambda: central)
+    import core.runtime.secrets as sec
+    monkeypatch.setattr(sec, "read_runtime_key", lambda k: "ha-token")
+    states = [{"entity_id": "person.bjorn", "state": "home"},
+              {"entity_id": "sensor.temp", "state": "21.5"},
+              {"entity_id": "light.stue", "state": "unavailable"}]
+    monkeypatch.setattr(isense, "_http_json", lambda *a, **k: states)
+    out = isense.poll_ha()
+    assert out["persons_home"] == 1 and out["unavailable"] == 1 and out["entities"] == 3
+    assert central_timeseries.recent("infra", "ha_unavailable")[-1].value == 1.0
+
+
 def test_tick_never_raises(monkeypatch):
     def boom(*a, **k):
         raise RuntimeError("net down")

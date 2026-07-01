@@ -233,6 +233,33 @@ def test_infra_host_up_no_flag(wired):
     assert not any(inc["nerve"] == "reach_pve" for inc in incidents)
 
 
+def test_infra_disk_high_flags(wired):
+    central, incidents, notifs = wired
+    central_timeseries.record("infra", "fileserver_disk", value=94.0)
+    central_timeseries.record("infra", "fileserver_disk", value=95.0)
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert any(inc["cluster"] == "infra" and inc["nerve"] == "fileserver_disk" for inc in incidents)
+
+
+def test_infra_svc_down_flags(wired):
+    central, incidents, notifs = wired
+    central_timeseries.record("infra", "webservice_svc_down", value=2.0)
+    central_timeseries.record("infra", "webservice_svc_down", value=2.0)
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert any(inc["nerve"] == "webservice_svc_down" for inc in incidents)
+
+
+def test_infra_disk_ok_no_flag(wired):
+    central, incidents, notifs = wired
+    central_timeseries.record("infra", "pve_disk", value=45.0)
+    central_timeseries.record("infra", "pve_disk", value=46.0)
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert not any(inc["nerve"] == "pve_disk" for inc in incidents)
+
+
 def test_healthy_streams_produce_no_flags(wired):
     central, incidents, notifs = wired
     central_timeseries.record("system", "bridge_observe_failures", value=0.0)

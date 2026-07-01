@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import socket
 import ssl
+import subprocess
 import time
 import urllib.request
 from typing import Any
@@ -144,6 +145,92 @@ def poll_pfsense() -> dict[str, Any]:
     return out
 
 
+# ── SSH dyb-health-pollers (disk/services/guests) — read-only bundlede kommandoer ──
+# Kører fra Jarvis-containeren (bs har nøgler). Hver kommando udskriver ÉN linje key=value.
+SSH_HOSTS: list[tuple[str, str, str]] = [
+    ("pve", "root@10.0.0.2",
+     "R=$(( $(pct list 2>/dev/null|tail -n+2|grep -cw running) + $(qm list 2>/dev/null|tail -n+2|grep -cw running) ));"
+     "T=$(( $(pct list 2>/dev/null|tail -n+2|wc -l) + $(qm list 2>/dev/null|tail -n+2|wc -l) ));"
+     "echo guests_running=$R guests_total=$T maxdisk=$(df --output=pcent 2>/dev/null|tail -n+2|tr -d ' %'|sort -n|tail -1) load1=$(cut -d' ' -f1 /proc/loadavg)"),
+    ("webservice", "root@192.168.50.32",
+     "echo disk=$(df --output=pcent / 2>/dev/null|tail -1|tr -d ' %') "
+     "svc_down=$(systemctl is-active apache2 postfix dovecot mariadb clamav-daemon fail2ban cloudflared 2>/dev/null|grep -vc '^active')"),
+    ("fileserver", "root@10.0.0.10",
+     "echo disk=$(df --output=pcent /mnt/shares 2>/dev/null|tail -1|tr -d ' %') "
+     "smb=$(systemctl is-active smbd 2>/dev/null||echo inactive)"),
+]
+
+
+def _ssh_run(target: str, remote_cmd: str, timeout: float = 8.0) -> str | None:
+    try:
+        p = subprocess.run(
+            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
+             "-o", "StrictHostKeyChecking=accept-new", target, remote_cmd],
+            capture_output=True, text=True, timeout=timeout)
+        return p.stdout.strip() if p.returncode == 0 else None
+    except Exception:
+        return None
+
+
+def _parse_kv(s: str) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for tok in (s or "").split():
+        if "=" in tok:
+            k, v = tok.split("=", 1)
+            try:
+                out[k] = int(v)
+            except ValueError:
+                out[k] = v
+    return out
+
+
+def poll_ssh_hosts() -> dict[str, Any]:
+    """Dyb health (disk/services/guests) via read-only SSH. Self-safe pr. host."""
+    results: dict[str, Any] = {}
+    for name, target, cmd in SSH_HOSTS:
+        kv = _parse_kv(_ssh_run(target, cmd) or "")
+        if not kv:
+            continue
+        results[name] = kv
+        try:
+            central().observe({"cluster": "infra", "nerve": f"{name}_health", "kind": "observe", **kv})
+        except Exception:
+            pass
+        # disk-tidsserie (health-proxy, higher=worse) pr. host
+        disk = kv.get("maxdisk", kv.get("disk"))
+        if isinstance(disk, int):
+            central_timeseries.record("infra", f"{name}_disk", value=float(disk), meta=dict(kv))
+        if "svc_down" in kv:
+            central_timeseries.record("infra", f"{name}_svc_down", value=float(kv["svc_down"]))
+    return results
+
+
+def poll_ha() -> dict[str, Any]:
+    """Home Assistant: tilstedeværelse + enheder offline (netværks-/device-signal). Self-safe."""
+    try:
+        from core.runtime.secrets import read_runtime_key
+        tok = read_runtime_key("home_assistant_token")
+    except Exception:
+        tok = None
+    if not tok:
+        return {}
+    states = _http_json("http://10.0.0.34:8123/api/states",
+                        headers={"Authorization": "Bearer " + tok})
+    if not isinstance(states, list):
+        return {}
+    unavailable = sum(1 for e in states if e.get("state") in ("unavailable", "unknown"))
+    persons_home = sum(1 for e in states
+                       if str(e.get("entity_id", "")).startswith("person.") and e.get("state") == "home")
+    out = {"entities": len(states), "unavailable": unavailable, "persons_home": persons_home}
+    try:
+        central().observe({"cluster": "infra", "nerve": "home_assistant", "kind": "observe", **out})
+    except Exception:
+        pass
+    central_timeseries.record("infra", "ha_unavailable", value=float(unavailable),
+                              meta={"entities": len(states), "persons_home": persons_home})
+    return out
+
+
 def _safe(fn) -> dict:
     try:
         return fn() or {}
@@ -156,10 +243,13 @@ def run_infra_sense_tick(*, trigger: str = "cadence", last_visible_at: str = "")
     reach = _safe(poll_reachability)
     pihole = _safe(poll_pihole)
     pfsense = _safe(poll_pfsense)
+    ssh_hosts = _safe(poll_ssh_hosts)
+    ha = _safe(poll_ha)
     down = [n for n, r in reach.items() if not (r or {}).get("up")]
     return {"status": "ok", "hosts": len(reach), "down": down,
             "pihole_block_pct": pihole.get("block_pct"),
-            "pfsense_reachable": bool(pfsense)}
+            "pfsense_reachable": bool(pfsense),
+            "ssh_polled": list(ssh_hosts), "ha_unavailable": ha.get("unavailable")}
 
 
 def register_infra_sense_producer() -> None:

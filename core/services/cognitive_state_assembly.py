@@ -329,6 +329,11 @@ def build_cognitive_state_for_prompt(*, compact: bool = False, force: bool = Fal
             "from_cache": True,
         }
         _LAST_COGNITIVE_INJECTION_AT = _LAST_COGNITIVE_INJECTION["assembled_at"]
+        try:
+            from core.services.central_private_observe import observe_hub
+            observe_hub("cognitive_state_assembly", meta={"from_cache": True})
+        except Exception:
+            pass
         return cached
 
     parts: list[str] = []
@@ -986,6 +991,13 @@ def build_cognitive_state_for_prompt(*, compact: bool = False, force: bool = Fal
     cache_key = "visible_compact" if compact else "visible_full"
     _set_cached_state(cache_key, result, sources_used)
 
+    # LivingNeuron HUB 2: [COGNITIVE STATE]-prompt-tragten (importerer 53 moduler) — ét egress-frit
+    # observe gør hele tragtens bidrag synligt (kun kilde-tælling, aldrig prompt-teksten).
+    try:
+        from core.services.central_private_observe import observe_hub
+        observe_hub("cognitive_state_assembly", meta={"from_cache": False, "sources": len(sources_used)})
+    except Exception:
+        pass
     return result
 
 

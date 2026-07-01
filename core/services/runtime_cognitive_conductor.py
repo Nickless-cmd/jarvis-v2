@@ -644,6 +644,14 @@ def build_cognitive_frame(
             *constraints_summary,
         ][:5]
 
+    # LivingNeuron HUB 1: kognitions-dirigenten samler HELE cognitive-frame'en hver tur — ét egress-frit
+    # observe her gør frame'ens richness synlig for Centralen (kun tællere, aldrig indhold).
+    try:
+        from core.services.central_private_observe import observe_hub
+        observe_hub("cognitive_conductor", meta={
+            "mode": str(mode), "salient": len(salient), "affordances": len(affordances)})
+    except Exception:
+        pass
     return {
         "mode": mode,
         "salient_items": salient,

@@ -5240,6 +5240,13 @@ def _track_step_failed() -> None:
 def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
     if not run.session_id:
         return
+    # LivingNeuron HUB 4: den 106-kald per-tur tracking-pipeline (største enkelt-blindzone) synlig for
+    # Centralen egress-frit — ét observe gør hele per-tur-produktions-planet legibelt uden at røre de 106.
+    try:
+        from core.services.central_private_observe import observe_hub
+        observe_hub("visible_turn_tracking", meta={"session": bool(run.session_id)})
+    except Exception:
+        pass
     try:
         track_runtime_contract_candidates_for_visible_turn(
             session_id=run.session_id,

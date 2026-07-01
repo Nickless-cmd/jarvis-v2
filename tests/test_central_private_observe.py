@@ -118,3 +118,11 @@ def test_inner_life_set_excludes_infra():
     for infra in ("eventbus_central_bridge", "central_self_observe", "db_health_scan",
                   "provider_health_check", "config_drift_check", "shared_cache_cleanup"):
         assert infra not in cpo.INNER_LIFE_PRODUCERS
+
+
+def test_observe_hub_egress_free(isolated_runtime):
+    # HUB-observe skriver til trace, ALDRIG central().observe (egress-fri)
+    from core.services import central_private_observe as cpo, central_trace
+    cpo.observe_hub("signal_surface_router", meta={"surfaces": 35, "errors": 0})
+    recs = [r for r in central_trace.sink().recent(limit=30) if r.nerve == "signal_surface_router"]
+    assert recs and recs[-1].payload.get("surfaces") == 35

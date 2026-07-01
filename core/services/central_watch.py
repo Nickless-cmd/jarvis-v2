@@ -35,6 +35,7 @@ _HEED_MIN_RATE = 0.40         # §23.3 #5: heed_rate under 40% = advarsler ignor
 _HEED_MIN_SAMPLE = 5          # min advarsler før heed_rate er meningsfuld
 _CHEAP_FAIL_RATE = 0.50       # cheap-lane-failover over dette = gratis-økologi degraderer
 _CHEAP_MIN_SAMPLE = 6         # min cheap-lane-kald før failover-rate er meningsfuld
+_COUNCIL_FORCED_MIN = 3       # forced-conclusions nyligt over dette = deliberation sidder fast
 
 
 def _owner_uid() -> str:
@@ -264,7 +265,32 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
     except Exception:
         pass
 
+    # ── J. Council deadlock-frekvens (§23.3 #7): multi-agent-laget sidder fast ──
+    try:
+        forced = _council_forced_count(limit=40)
+        if central_noise_filter.is_real_signal("council_deadlock", forced >= _COUNCIL_FORCED_MIN):
+            flags.append(_raise_flag(
+                "agents", "council", severity="error",
+                message=f"Council nåede forced-conclusion {forced} gange nyligt "
+                        f"(deliberation sidder fast — multi-agent-lag usundt)",
+                importance="medium"))
+    except Exception:
+        pass
+
     return {"status": "ok", "flags": flags, "flag_count": len(flags)}
+
+
+def _council_forced_count(*, limit: int = 40) -> int:
+    """Antal council.deadlock_forced_conclusion på eventbussen nyligt. Cross-proces."""
+    n = 0
+    try:
+        from core.eventbus.bus import event_bus
+        for r in event_bus.recent_by_family("council", limit=limit):
+            if r.get("kind") == "council.deadlock_forced_conclusion":
+                n += 1
+    except Exception:
+        pass
+    return n
 
 
 def _today_cost_usd() -> float | None:

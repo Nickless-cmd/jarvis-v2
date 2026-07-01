@@ -53,6 +53,13 @@ def consolidate_run_memory(
             session_id=session_id,
             run_id=run_id,
         )
+        # LivingNeuron HUKOMMELSE: Centralen ser at et minde blev KONSOLIDERET (egress-frit, kun status).
+        try:
+            from core.services.central_private_observe import observe_hub
+            observe_hub("memory_consolidation",
+                        meta={"status": str(result.get("status") or "")}, cluster="memory")
+        except Exception:
+            pass
         return result
 
     if len(user_message) < 12 and len(assistant_response) < 40:

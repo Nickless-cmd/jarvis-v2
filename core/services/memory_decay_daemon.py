@@ -84,6 +84,12 @@ def tick_memory_decay_daemon() -> dict:
     except Exception:
         pass
 
+    # LivingNeuron HUKOMMELSE: Centralen ser at minder FORFALDER (egress-frit, kun antal).
+    try:
+        from core.services.central_private_observe import observe_hub
+        observe_hub("memory_decay", meta={"records_updated": int(updated)}, cluster="memory")
+    except Exception:
+        pass
     return {"decayed": True, "records_updated": updated, "domain_counts": domain_counts}
 
 

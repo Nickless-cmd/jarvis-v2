@@ -464,6 +464,14 @@ def write_entry(
             # Never let inference failure block the write
             pass
 
+    # LivingNeuron HUKOMMELSE: Centralen ser nu at noget HUSKES (92k-rækkers private_brain, var 0 observe).
+    # Egress-frit, kun metadata (kind + vigtighed — ALDRIG selve minde-teksten).
+    try:
+        from core.services.central_private_observe import observe_hub
+        observe_hub("brain_write", meta={"kind": str(kind), "importance": round(float(importance), 2)},
+                    cluster="memory")
+    except Exception:
+        pass
     return new_id
 
 

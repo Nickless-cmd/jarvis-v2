@@ -65,7 +65,7 @@ def _liveness_from_result(status: str, result: Any) -> tuple[bool, int | None, b
     return ok, produced, empty
 
 
-def observe_hub(nerve: str, *, meta: dict[str, Any] | None = None) -> None:
+def observe_hub(nerve: str, *, meta: dict[str, Any] | None = None, cluster: str = "cognition") -> None:
     """EGRESS-FRI observe af en kognitions-HUB (aggregator på hot-path). De 4 load-bearing hubs
     (cognitive_conductor/cognitive_state_assembly/signal_surface_router/visible-turn-tracking) samler
     ~50 engines til prompten hver tur; ét observe her gør hele planet synligt for Centralen UDEN at
@@ -74,10 +74,10 @@ def observe_hub(nerve: str, *, meta: dict[str, Any] | None = None) -> None:
     try:
         m = {k: v for k, v in (meta or {}).items() if isinstance(v, (int, float, bool, str))}
         central_trace.sink().record(central_trace.TraceRecord(
-            run_id="", session_id="", cluster="cognition", nerve=str(nerve),
+            run_id="", session_id="", cluster=str(cluster), nerve=str(nerve),
             kind="observe", payload=m,
         ))
-        central_timeseries.record("cognition", str(nerve), value=1.0, meta=m)
+        central_timeseries.record(str(cluster), str(nerve), value=1.0, meta=m)
     except Exception:
         pass
 

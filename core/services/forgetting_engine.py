@@ -233,6 +233,14 @@ def run_auto_cycle(*, workspace_id: str) -> dict[str, Any]:
     except Exception as exc:
         logger.debug("forgetting: publish cycle_complete failed: %s", exc)
 
+    # LivingNeuron HUKOMMELSE: Centralen ser at Jarvis GLEMMER (egress-frit, kun antal — hvad der glemmes
+    # former hvem han bliver).
+    try:
+        from core.services.central_private_observe import observe_hub
+        observe_hub("forgetting", meta={"soft_deleted": int(soft_deleted), "hard_deleted": int(hard_deleted)},
+                    cluster="memory")
+    except Exception:
+        pass
     return {
         "workspace_id": workspace_id,
         "soft_deleted": soft_deleted,

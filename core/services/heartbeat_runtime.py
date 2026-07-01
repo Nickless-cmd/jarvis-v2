@@ -2098,6 +2098,18 @@ def _run_heartbeat_tick_locked(
     # LLM calls — deadline-guard so a slow provider can't freeze the
     # heartbeat. They self-throttle via _CADENCE_SECONDS internally, so
     # being skipped on a slow tick is harmless (next tick will retry).
+    # LivingNeuron Fase B: causal_inference (Phase 2) fylder INFERRED-tier i causal_edges som
+    # narrative_summary (2.5) + pattern_counterfactual (3.5) bygger PÅ — men den var registreret i
+    # daemon_manager og ALDRIG kaldt herfra → inferred-tier stod tom, kun eksplicitte edges blev
+    # skrevet. Bjørns 'neuro-symbolsk #1', det ene ægte døde lag. Self-throttler internt (15min).
+    # Deadline-guard OBLIGATORISK: tre-tier matching + causal_edges-skrivning kan spike DB.
+    try:
+        from core.services.causal_inference_daemon import tick_causal_inference_daemon
+        _daemon_tick_with_deadline(
+            "causal_inference", tick_causal_inference_daemon, deadline_seconds=15.0,
+        )
+    except Exception:
+        pass
     try:
         from core.services.narrative_summary_daemon import tick_narrative_summary_daemon
         _daemon_tick_with_deadline(

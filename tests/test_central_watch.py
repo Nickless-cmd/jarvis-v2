@@ -212,6 +212,27 @@ def test_council_healthy_no_flag(wired, monkeypatch):
     assert not any(inc["nerve"] == "council" for inc in incidents)
 
 
+def test_infra_host_down_flags_high(wired):
+    central, incidents, notifs = wired
+    # host nede 2 tick i træk (value=-1) → flag high + push
+    for _ in range(2):
+        central_timeseries.record("infra", "reach_fileserver", value=-1.0,
+                                  meta={"target": "10.0.0.10:22"})
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert any(inc["cluster"] == "infra" and inc["nerve"] == "reach_fileserver" for inc in incidents)
+    assert any(n[0] == "high" for n in notifs)
+
+
+def test_infra_host_up_no_flag(wired):
+    central, incidents, notifs = wired
+    for _ in range(2):
+        central_timeseries.record("infra", "reach_pve", value=3.5, meta={"target": "10.0.0.2:22"})
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert not any(inc["nerve"] == "reach_pve" for inc in incidents)
+
+
 def test_healthy_streams_produce_no_flags(wired):
     central, incidents, notifs = wired
     central_timeseries.record("system", "bridge_observe_failures", value=0.0)

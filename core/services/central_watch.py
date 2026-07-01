@@ -265,6 +265,26 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
     except Exception:
         pass
 
+    # ── K. Infra host unreachable (husets puls) — en host svarer ikke ──
+    # infra_sense kører i samme proces (cadence) → in-process tidsserie.
+    try:
+        for (cl, nv) in central_timeseries.nerves():
+            if cl != "infra" or not nv.startswith("reach_"):
+                continue
+            recent = central_timeseries.recent(cl, nv, limit=2)
+            if len(recent) < 2:
+                continue
+            down = all((r.value if r.value is not None else -1.0) < 0 for r in recent)
+            host = nv[len("reach_"):]
+            if central_noise_filter.is_real_signal(f"infra_down:{host}", down):
+                tgt = (recent[-1].meta or {}).get("target", "")
+                flags.append(_raise_flag(
+                    "infra", nv, severity="error",
+                    message=f"Host '{host}' er UNREACHABLE ({tgt}) — en del af huset svarer ikke",
+                    importance="high"))
+    except Exception:
+        pass
+
     return {"status": "ok", "flags": flags, "flag_count": len(flags)}
 
 

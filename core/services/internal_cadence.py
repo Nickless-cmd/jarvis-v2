@@ -1049,6 +1049,14 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # INFRA-SANSNING: Centralen som husets nervesystem — reachability + PiHole + pfSense
+    # read-only fra Jarvis-containeren. Miljø-modalitet til LivingNeuron.
+    try:
+        from core.services.infra_sense import register_infra_sense_producer
+        register_infra_sense_producer()
+    except Exception:
+        pass
+
 
 def run_cadence_tick_with_bootstrap(
     *,

@@ -233,6 +233,13 @@ def run_cadence_tick(
                         _dm.record_daemon_tick(spec.name, result if isinstance(result, dict) else {})
                 except Exception:
                     pass
+                # Fase 2 (§23.3 #3 / §24.4): ÉT hook → alle ~35 inner-life-daemons. Egress-frit,
+                # kun aggregeret liveness. No-op for ikke-inner producers.
+                try:
+                    from core.services import central_private_observe as _cpo
+                    _cpo.observe_cadence_liveness(spec.name, "ran", result)
+                except Exception:
+                    pass
             except Exception as exc:
                 error_names.append(spec.name)
                 logger.warning("cadence producer %s failed: %s", spec.name, exc)
@@ -241,6 +248,11 @@ def run_cadence_tick(
                     status="error",
                     reason=f"dispatch-error:{type(exc).__name__}",
                 ))
+                try:
+                    from core.services import central_private_observe as _cpo
+                    _cpo.observe_cadence_liveness(spec.name, "error", None)
+                except Exception:
+                    pass
         elif status == "cooling_down":
             cooling_names.append(spec.name)
             results.append(ProducerTickResult(

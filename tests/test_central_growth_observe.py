@@ -86,6 +86,35 @@ def test_tick_returns_ok(monkeypatch):
     assert "inner_drives" in res
 
 
+def test_sensory_activity_egress_free(monkeypatch):
+    """Sansernes Arkiv → cluster=sensory EGRESS-FRIT: scalar-metadata (total/rate/modalitet),
+    ALDRIG indhold, ALDRIG central().observe/eventbus."""
+    sink = _FakeSink()
+    monkeypatch.setattr(go.central_trace, "sink", lambda: sink)
+    import core.runtime.db_sensory as dbs
+    monkeypatch.setattr(dbs, "count_sensory_memories",
+                        lambda modality=None: {"visual": 10, "audio": 3, "atmosphere": 2,
+                                               "mixed": 1}.get(modality, 16))
+    import core.services.sensory_archive as sa
+    monkeypatch.setattr(sa, "list_recent",
+                        lambda limit=100: [{"timestamp": "2099-01-01T00:00:00Z", "content": "HEMMELIG SANSNING"}])
+
+    published, observed = [], []
+    import core.eventbus.bus as bus
+    monkeypatch.setattr(bus.event_bus, "publish", lambda *a, **k: published.append(a), raising=False)
+    import core.services.central_core as cc
+    monkeypatch.setattr(cc, "central",
+                        lambda: type("C", (), {"observe": lambda s, e: observed.append(e)})())
+
+    out = go.observe_sensory_activity()
+    assert out["total"] == 16 and out["mod_visual"] == 10 and out["recent_1h"] == 1
+    # egress-frit: lokal sink under cluster=sensory
+    assert sink.records and sink.records[0].cluster == "sensory"
+    # ALDRIG egress + intet indhold lækket
+    assert published == [] and observed == []
+    assert "HEMMELIG" not in str(sink.records[0].payload)
+
+
 def test_never_raises(monkeypatch):
     monkeypatch.setattr(go.central_trace, "sink",
                         lambda: (_ for _ in ()).throw(RuntimeError("boom")))

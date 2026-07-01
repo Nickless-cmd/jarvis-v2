@@ -79,11 +79,58 @@ def observe_index_activity() -> int:
     return n
 
 
+_SENSORY_MODALITIES = ("visual", "audio", "atmosphere", "mixed")
+
+
+def observe_sensory_activity() -> dict[str, Any]:
+    """Sansernes Arkiv → Centralen EGRESS-FRIT (§24.4): sansnings-AKTIVITET (rate + modalitet +
+    total), ALDRIG indhold. Kerne LivingNeuron-modalitet: ser om Jarvis SANSER, og hvad.
+    Sansning er privat perception → lokal trace + tidsserie (cluster=sensory), ingen egress/læring."""
+    out: dict[str, Any] = {}
+    try:
+        from core.runtime.db_sensory import count_sensory_memories
+        total = count_sensory_memories()
+        by_mod = {m: count_sensory_memories(modality=m) for m in _SENSORY_MODALITIES}
+        # rate: sansninger seneste time (er perceptionen levende?)
+        recent_1h = 0
+        try:
+            from datetime import datetime, timedelta, timezone
+            from core.services import sensory_archive
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+            for r in sensory_archive.list_recent(limit=100):
+                ts = str(r.get("timestamp") or "")
+                try:
+                    t = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                    if t.tzinfo is None:
+                        t = t.replace(tzinfo=timezone.utc)
+                    if t >= cutoff:
+                        recent_1h += 1
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        out = {"total": total, "recent_1h": recent_1h, **{f"mod_{m}": by_mod[m] for m in _SENSORY_MODALITIES}}
+        # EGRESS-FRI: direkte til sinken (owner-only), ALDRIG central().observe (→ _emit).
+        try:
+            central_trace.sink().record(central_trace.TraceRecord(
+                run_id="", session_id="", cluster="sensory", nerve="archive",
+                kind="observe", payload=dict(out)))
+        except Exception:
+            pass
+        central_timeseries.record("sensory", "archive", value=float(recent_1h),
+                                  meta={"total": total, **by_mod})
+    except Exception:
+        pass
+    return out
+
+
 def run_growth_observe_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
-    """Cadence-producer: sampl vækst-kapacitet (inner-drives egress-frit + indexer). Self-safe."""
+    """Cadence-producer: sampl vækst-kapacitet (inner-drives + indexer + Sansernes Arkiv). Self-safe."""
     drives = observe_inner_drive_activity()
     idx = observe_index_activity()
-    return {"status": "ok", "inner_drives": drives, "index_activity": idx}
+    sensory = observe_sensory_activity()
+    return {"status": "ok", "inner_drives": drives, "index_activity": idx,
+            "sensory_recent_1h": sensory.get("recent_1h"), "sensory_total": sensory.get("total")}
 
 
 def register_growth_observe_producer() -> None:

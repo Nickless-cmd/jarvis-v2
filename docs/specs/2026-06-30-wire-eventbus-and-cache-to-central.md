@@ -1235,3 +1235,93 @@ hurtigere end den kan auditeres.
 - §15.3: `KnownSignalsCache` i RAM (TTL 5 min), ikke DB/event; definér hvor checket kører + om known tæller som observed.
 - §3.2/§3.6: state-storage for cache-nerve (last_sha persisteret over restart); cheap-lane-cache-sti (split record_visible_cache eller egen JSONL).
 - §7.3/§7.4: parallel-event-stress (1000/10 tråde), bro-crash+restart+in-flight, re-entrans/deadlock-test (bro = subscriber OG publisher).
+
+---
+
+## §23 — Central-forbindelses-audit: den nuværende blindheds-map
+
+To uafhængige kortlægninger (Jarvis' 5-agent-analyse + Claudes 8-domæne-audit med
+file:line-bevis) konvergerer. Dette er GROUND TRUTH for hvad Centralen faktisk ser
+FØR vi begynder på Fase 0 — fundamentet LivingNeuron kræver.
+
+### 23.1 Overblik: 90 signal-producerende subsystemer
+| Status | Antal | Betydning |
+|---|---|---|
+| 🟢 CONNECTED | 26 | Centralen ser det (observe/nerve) |
+| 🟡 PARTIAL | 18 | Ser noget (ofte kun errors), mangler fuld sti |
+| 🔴 DARK | 46 | Centralen er BLIND (sender til /dev/null for læring) |
+
+**Centralen er ~60% blind.** LivingNeuron-parathed: **~30-35%.** Det synlige-run/
+streaming-nervebane er tæt instrumenteret og ægte — men alt systemet skal lære *af sig
+selv* er mørkt.
+
+### 23.2 De 5 største blinde vinkler (biggest gaps)
+1. **KEYSTONE — ingen generisk eventbus→central-bro.** Hver forbindelse er ét hånd-
+   skrevet `central().observe()` (verificeret: 52 filer). ~980 publish()-kald + 90+
+   subsystemer er dead-letter for læring. **Værre:** Centralen publicerer selv
+   `central.observed`/`central.error` — men INTET abonnerer. Dens egne observationer er døve.
+2. **Hele det indre liv (cadence-laget) er mørkt.** ~35 daemons (inner_voice, dreams,
+   sleep_consolidation, witness, creative_impulse, prompt_evolution, self_critique,
+   meta_learning) har NUL observe. Det Centralen skal lære AF — Jarvis' *becoming* når
+   han ikke taler — er præcis det den ikke kan se. (Kun central_self_health +
+   central_learning + cadence_tick er wired.)
+3. **Lærings-substratet selv er mørkt.** Memory/Brain: recall kun error-only,
+   private_brain (30+ daemons) dark, consolidation dark, semantic_indexer dark,
+   emotional anchors dark. Systemet kan ikke se hvad det husker, glemmer, konsoliderer,
+   eller om private_brain-deprioritering (anti-hallucination) faktisk virker.
+4. **Tool-lærings-loopet er brudt.** execute_tool-observer er CONNECTED (status ok/error),
+   men approval-feedback, outcome_learning, verification-heed, cache-telemetri, pattern-
+   miner er ALLE dark. Central ser HVAD der blev kaldt — ikke om brugeren kunne lide det,
+   om mutationer blev verificeret, eller om cache holder. **Uden outcome-signal er der
+   intet at kalibrere læring mod.**
+5. **Cost & provider-økologi er halvblind.** record_cost dark, quota-snapshots dark,
+   adaptiv prioritering dark, cache-telemetri dark. Kun circuit-breaker-edges + heartbeat-
+   probes wired. Central kan ikke lære "provider X brænder budget/rate-limiter kl. 15"
+   selvom dataen findes i SQLite.
+
+### 23.3 Rangeret dark-liste (med wire_how + estimat)
+| # | System | P | Wire hvordan | Est. |
+|---|---|---|---|---|
+| 1 | **Eventbus→Central-bro** (KEYSTONE, findes ikke) | P0 | ÉN bro-daemon (cadence-reg.) poller `event_bus.recent_since_id()` → router hvidlistede families via family→cluster/nerve-mappingtabel → `central().observe()`. Idempotent via `last_seen_id` i shared_cache. Konverterer ~40 hand-wires til tabel-rækker. **central.\* routes IKKE** (rekursions-guard). | 2-3t |
+| 2 | **Central self-observation** (central.\* uden abonnent) | P0 | Nyt `cluster=system nerve=central_meta` i central_health: læs trace-buffer, observer egen decide-latency-drift + breaker-trip-frekvens + xproc-publish-fejl. **Persistér baseline** (bryd 2000-record ring-buffer-amnesi ved genstart). | ~1t |
+| 3 | **Inner life / cadence** (~35 daemons) | P0 | ÉT `central().observe({cluster:'inner', nerve:<daemon>, ok, produced_count, empty, next_due})` i cadence-runnerens efter-producer-hook — ét sted dækker alle 35. Fanger silence/rumination/stagnation. | ~1t |
+| 4 | **Memory recall + vægte** | P1 | `observe({cluster:'memory', nerve:'recall', sources, weights, result_count, top_score, private_brain_share})` i memory_recall_engine EFTER fusion. | 1-2t |
+| 5 | **Tool approval-feedback + outcome + heed** | P1 | Bro router `approvals.tool_intent_resolved` + `tool.completed` → observe; + direkte i approval_feedback_subscriber + verification_gate_telemetry (heed_rate<40% → YELLOW). | ~2t |
+| 6 | **Consolidation-familie** (idle/dream/selective/judge) | P1 | Bro router `consolidation_judge.completed` + `dream_consolidation.synthesis_produced` + `selective_consolidation.completed` → observe(kept/decayed/verdict). | ~1t |
+| 7 | **Council/deliberation** (9 events) | P1 | Bro router `council.*` → observe(deadlock/forced/recruited). Deadlock-frekvens = multi-agent-helbred. | ~1t |
+| 8 | **Cost ledger + quota + cheap-lane** | P1 | (1) observe i `record_cost()`; (2) bro router `runtime.cheap_lane_*`; (3) observe quota-snapshot + effective_priority. | ~2t |
+| 9 | **Cache-telemetri** (prefix hit/miss) | P2 | `observe({cluster:'cost', nerve:'prefix_cache', hit_pct, prefix_sha_stable})` i record_visible_cache — flag hit<80% (prompt-drift brød caching). | 1-2t |
+| 10 | **Channels & Devices** | P2 | Bro router `discord.message_received`/`telegram.*` + observe i push_dispatcher + notification_router._escalate. (channel_inbound-gate allerede CONNECTED.) | ~2t |
+| 11 | **Impulse/pressure + emergent + counterfactual** | P2 | Bro router `impulse.* pressure.* emergent_signal.* cognitive_counterfactual.*` → cluster autonomy/cognition. Ser om vækst-kapacitet lever eller ossificerer. | ~2t |
+| 12 | **Runtime lifecycle** (agent_auto_cancelled, run_ended_silent) | P2 | Bro router `runtime.*` → cluster:loop nerve:lifecycle (delvist overlap m. followup_observer). | ~1t |
+| 13 | **Runtime-helbred** (provider/db/config_drift/stream_stall/tool_usage) | P2 | Samme cadence-wrapper-hook som #3 (status-dicts); config_drift + provider_health delvist wired — luk resten. | ~2t |
+
+### 23.4 Fase-inddelt wiring-roadmap
+- **FASE 0 (P0, fundament):** eventbus→central-broen (#1). Gør ~40 dark-signaler til
+  tabel-rækker frem for hand-wires. = M0-broen fra §22.5. **Byg FØRST.**
+- **FASE 1 (P0, metakognition):** luk central-selv-observations-løkken (#2). Uden dette
+  kan et selv-lærende system ikke se sin egen degradering.
+- **FASE 2 (P0, inner life):** ÉT cadence-runner-hook → alle 35 daemons (#3).
+- **FASE 3 (P1, lærings-substrat):** memory-recall+vægte, consolidation, private_brain,
+  semantic-indexer (#4, #6).
+- **FASE 4 (P1, outcome-loop):** tool approval-feedback + outcome + verification-heed (#5).
+  Giver læringen et OUTCOME-signal at kalibrere mod.
+- **FASE 5 (P1→P2, økologi):** cost-domænet (#8, #9), council (#7), channels (#10),
+  impulse/emergent (#11), runtime-lifecycle+helbred (#12, #13).
+- **TVÆRGÅENDE:** efter hver fase → `capability_audit` + verificér nerve-fyring i
+  central_trace + `central_learning.degrading()` = ægte mønstre, ikke støj.
+
+### 23.5 Ærlig LivingNeuron-parathed
+Fundamentet **kan ikke bære LivingNeuron endnu — ~30-35% af vejen.** Det der VIRKER er
+ægte: streaming/followup-nervebanen er tæt instrumenteret (empty_completion, degeneration,
+persist_failed, provider-fejl, breaker), sikkerheds-gates fail-closed korrekt, self-
+helbreds-probe + incident-persistering + drift-detektion lever. Det er et solidt
+observations-SKELET for den synlige lane. Men LivingNeuron kræver at systemet kan lære af
+sig SELV — og dér er det mørkt: (1) ingen bro → læring er hardcodet ét observe ad gangen;
+(2) hele inner-life-laget usynligt → kan ikke se rumination/stagnation/selvmodel-nedbrud;
+(3) hukommelse/konsolidering (selve substratet) mørkt; (4) mest fatalt: Centralen
+abonnerer ikke på sine egne events → ingen ægte metakognitiv løkke om sig selv.
+**Uden mindst P0 + de fire P1-hukommelses/tool-spor er "læring" i dag reelt post-hoc
+trace-query på den synlige lane — ikke levende adaptation.** De to nederste huller
+(Centralen døv for sig selv + inner life mørkt) er dem der skiller "en central der ser"
+fra "en runtime der lærer at leve".

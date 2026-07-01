@@ -163,6 +163,20 @@ def tool_scope(scope: str) -> Iterator[None]:
         reset_tool_scope(token)
 
 
+def _owner_has_live_bridge() -> bool:
+    """True hvis der findes en levende desk-bro for nuværende bruger (presence, cross-proces).
+    Grundlaget for 'operator-tools i owner-chat KUN når paret'. Self-safe → False ved tvivl."""
+    try:
+        from core.identity.workspace_context import current_user_id
+        from core.services import bridge_presence
+        uid = current_user_id()
+        if not uid:
+            return False
+        return bridge_presence.process_for_user(str(uid)) is not None
+    except Exception:
+        return False
+
+
 def allowed_tool_names(
     *, role: str, scope: str, all_names: Iterable[str],
 ) -> set[str]:
@@ -191,6 +205,12 @@ def allowed_tool_names(
             result = (set(CODE_MODE_TOOLS_BASE) | CODE_MODE_OWNER_EXTRA) & names
         elif scope == "chat":
             result = (set(CHAT_MODE_TOOLS_BASE) | CHAT_MODE_OWNER_EXTRA) & names
+            # Bjørn 2026-07-01: owner skal kunne nå sin EGEN paret desktop fra mobil chat
+            # (bro-tools kører på hans maskine). Men KUN når en desk-bro faktisk er forbundet
+            # (presence) — så mobil-chat får operator-tools uden at skulle i code mode, og
+            # overfladen udvides ikke når intet er paret. Godkendelses-kort gater risiko.
+            if _owner_has_live_bridge():
+                result |= set(CODE_MODE_TOOLS_BASE) & names
         else:
             result = names  # cowork / ubegrænset: alt mode-passende = alt
     else:

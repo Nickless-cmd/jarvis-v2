@@ -204,6 +204,12 @@ async def jarvisx_bridge_ws(ws: WebSocket) -> None:
                 await conn.send_raw({"type": "ping"}, timeout_s=8.0)
             except Exception:
                 return
+            # Hold bro-presence frisk mens broen er forbundet, så owner-chat-mode-
+            # gaten (operator-tools kun-når-paret) ikke taber broen når desktop er idle.
+            try:
+                bridge_registry._publish_presence()
+            except Exception:
+                pass
 
     heartbeat_task = asyncio.create_task(_heartbeat())
 

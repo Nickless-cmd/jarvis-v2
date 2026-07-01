@@ -210,3 +210,26 @@ def test_computer_use_policy_failopen_is_logged(caplog):
             out = ts._apply_computer_use_policy({"operator_bash", "web_search"})
     assert out == {"operator_bash", "web_search"}  # fail-open: uændret sæt
     assert any("computer-use-policy fejlede" in r.message for r in caplog.records)
+
+
+class TestOwnerMobileBridgeGate:
+    """Bjørn 2026-07-01: owner får operator/bro-tools i chat KUN når en desk-bro er paret."""
+
+    def test_owner_chat_no_bridge_no_operator(self, monkeypatch):
+        import core.tools.tool_scoping as ts
+        monkeypatch.setattr(ts, "_owner_has_live_bridge", lambda: False)
+        allow = allowed_tool_names(role="owner", scope="chat", all_names=ALL)
+        assert "operator_bash" not in allow
+
+    def test_owner_chat_with_bridge_gets_operator(self, monkeypatch):
+        import core.tools.tool_scoping as ts
+        monkeypatch.setattr(ts, "_owner_has_live_bridge", lambda: True)
+        allow = allowed_tool_names(role="owner", scope="chat", all_names=ALL)
+        assert "operator_bash" in allow           # broen er paret → tilladt i chat
+        assert "web_search" in allow              # normale chat-tools uændret
+
+    def test_member_chat_with_bridge_still_no_operator(self, monkeypatch):
+        import core.tools.tool_scoping as ts
+        monkeypatch.setattr(ts, "_owner_has_live_bridge", lambda: True)
+        allow = allowed_tool_names(role="member", scope="chat", all_names=ALL)
+        assert "operator_bash" not in allow       # gaten er KUN for owner

@@ -273,6 +273,14 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("cadence_scheduler start failed: %s", _exc)
             try:
+                # pfSense syslog-lytter (UDP 5514) — realtids-sikkerhedsdetektion.
+                # Kun runtime-processen (under gaten) → ingen dobbelt-bind.
+                from core.services.pfsense_syslog import start_syslog_listener
+                start_syslog_listener()
+                logger.info("pfsense_syslog listener started (udp:5514)")
+            except Exception as _exc:
+                logger.warning("pfsense_syslog start failed: %s", _exc)
+            try:
                 from core.services.counterfactual_engine_runtime import start_counterfactual_runtime
                 start_counterfactual_runtime()
                 logger.info("counterfactual_runtime daemon started")

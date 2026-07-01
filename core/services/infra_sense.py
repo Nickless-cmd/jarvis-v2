@@ -231,6 +231,54 @@ def poll_ha() -> dict[str, Any]:
     return out
 
 
+def _notify_owner_security(title: str, message: str) -> None:
+    try:
+        from core.identity.owner_resolver import get_owner_discord_id
+        uid = (get_owner_discord_id() or "").strip()
+        if not uid:
+            return
+        from core.services.notification_router import route_proactive_notification
+        route_proactive_notification(uid, "infra_security",
+                                     {"title": title, "message": message}, importance="high")
+    except Exception:
+        pass
+
+
+def poll_syslog() -> dict[str, Any]:
+    """Dræn pfSense-syslog-detektioner (port-scan/brute-force) → Centralen: observe + incident
+    + notifikation. Plus lytter-liveness. READ-ONLY detektion. Self-safe."""
+    out: dict[str, Any] = {}
+    try:
+        from core.services import pfsense_syslog
+        dets = pfsense_syslog.drain_detections()
+        stats = pfsense_syslog.syslog_stats()
+        out = {"detections": len(dets), "packets": stats.get("packets"),
+               "blocks": stats.get("blocks")}
+        # liveness/tidsserie (så vi ser om syslog overhovedet flyder ind)
+        central_timeseries.record("infra", "pfsense_syslog",
+                                  value=float(len(dets)), meta={"packets": stats.get("packets")})
+        for d in dets:
+            src = d.get("src"); kind = d.get("kind")
+            msg = (f"{kind} fra {src}: {d.get('blocks')} blokke, "
+                   f"{d.get('distinct_ports')} porte (mål {d.get('sample_dst')})")
+            try:
+                central().observe({"cluster": "infra", "nerve": "pfsense_security",
+                                   "kind": "flag", "severity": "severe", "src": src,
+                                   "detection": kind, "message": msg[:300]})
+            except Exception:
+                pass
+            try:
+                from core.runtime.db_central_incidents import record_central_incident
+                record_central_incident(cluster="infra", nerve="pfsense_security",
+                                        kind="security", severity="severe", message=msg[:300])
+            except Exception:
+                pass
+            _notify_owner_security(f"⚠️ Netværks-trussel: {kind}", msg)
+    except Exception:
+        pass
+    return out
+
+
 def _safe(fn) -> dict:
     try:
         return fn() or {}
@@ -245,11 +293,13 @@ def run_infra_sense_tick(*, trigger: str = "cadence", last_visible_at: str = "")
     pfsense = _safe(poll_pfsense)
     ssh_hosts = _safe(poll_ssh_hosts)
     ha = _safe(poll_ha)
+    syslog = _safe(poll_syslog)
     down = [n for n, r in reach.items() if not (r or {}).get("up")]
     return {"status": "ok", "hosts": len(reach), "down": down,
             "pihole_block_pct": pihole.get("block_pct"),
             "pfsense_reachable": bool(pfsense),
-            "ssh_polled": list(ssh_hosts), "ha_unavailable": ha.get("unavailable")}
+            "ssh_polled": list(ssh_hosts), "ha_unavailable": ha.get("unavailable"),
+            "syslog_detections": syslog.get("detections"), "syslog_packets": syslog.get("packets")}
 
 
 def register_infra_sense_producer() -> None:

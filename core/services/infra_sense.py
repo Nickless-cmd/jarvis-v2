@@ -254,7 +254,14 @@ def poll_syslog() -> dict[str, Any]:
         stats = pfsense_syslog.syslog_stats()
         out = {"detections": len(dets), "packets": stats.get("packets"),
                "blocks": stats.get("blocks")}
-        # liveness/tidsserie (så vi ser om syslog overhovedet flyder ind)
+        # liveness: ALTID observe (så vi SER at syslog-strømmen flyder + akkumulerede tal),
+        # ikke kun ved detektioner. Read-only tælling — intet indhold.
+        try:
+            central().observe({"cluster": "infra", "nerve": "pfsense_syslog", "kind": "observe",
+                               "packets": stats.get("packets"), "blocks": stats.get("blocks"),
+                               "detections_total": stats.get("detections")})
+        except Exception:
+            pass
         central_timeseries.record("infra", "pfsense_syslog",
                                   value=float(len(dets)), meta={"packets": stats.get("packets")})
         for d in dets:

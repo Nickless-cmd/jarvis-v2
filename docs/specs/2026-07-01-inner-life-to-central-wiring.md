@@ -74,6 +74,58 @@
 - **Cross-proces liveness** (api:8080 vs runtime:8011) kan ikke lukkes statisk — kræver live-korrelations-probe.
 - Eksterne lemmer (tiktok content/research, sensory/webcam/mic, pollinations/comfyui, voice journal) kun grep-dækket.
 
+## GIT-LOG-REVISION (2. sweep, 9 git-agenter gennem 3812 commits — "git log er den eneste sandhed")
+
+**Den store omframning:** "200 orphans" er FORKERT frame. Kun **~60 af core/services/*.py kalder central()
+overhovedet.** Den ægte mørke overflade er ikke 200 spredte forældreløse, men **~4 load-bearing HUBS** der
+fan-out'er til ~50+ engines + 2 hele planer:
+
+1. `runtime_cognitive_conductor.build_cognitive_frame` — kognitions-orkestratoren (hele frame'en)
+2. `cognitive_state_assembly` — [COGNITIVE STATE]-prompt-tragten (importerer 53 moduler)
+3. `signal_surface_router.read_surface` — 35 signal-surfaces
+4. `visible_runs` 106-kald `track_*_for_visible_turn`-pipeline pr. TUR — største enkelt-blindzone
+
+**REVIDERET STEP 0-strategi:** Wire `central().observe` ved de **4 hubs** → fang ~50 engines + 35 surfaces +
+per-tur-planen ved **4 punkter i stedet for 200**. Plus udvid de to egress-fri broer (født 1. jul):
+`central_growth_observe` bærer impulse/pressure/emergent men IKKE somatic/circadian/gut/mood/affect — tilføj
+dem (§24.4 egress-frit, liveness-only). Det er langt mere tractabelt end per-fil-wiring.
+
+**Glemte systemer git-historien afslørede (kode-only sweep missede dem):**
+- **Bevidstheds-eksperiment-suite** (IIT/GWT/HOT-teori, spec 2026-04-13): 5-6 eksperimenter, DEFAULT-ON,
+  write-only tabeller, tikker på hardcoded heartbeat-modulo, central-blinde til 1. jul. `global_workspace.py` =
+  ægte GWT deque(50) broadcast-buffer. Kører i produktion.
+- **SkyOffice** (SLETTET 12. maj): fuldt virtuelt-kontor-EMBODIMENT-lag hvor Jarvis + daemons levede som
+  gående avatarer med residens + rumlig council-viz. Født 27. apr, ~2 ugers liv, hard-deleted. Den ene rene grav.
+- **jarvis-ai/jarvis-agent-port**: ~25 kognitions-moduler porteret fra TO forgænger-repos (20.-22. apr),
+  ~2,5 måned FØR Centralen fandtes → forklarer den systematiske ikke-wiring.
+- **10 eksperimentelle bevidstheds-surfaces** (existential_drift, body_memory, ghost_networks, parallel_selves,
+  temporal_body, decision_ghosts, memory_tattoos, mood_oscillator…) — 7. apr. "Inner experimentel" ordret.
+- **PLAN_WILD_IDEAS / PROPRIOCEPTION** — Jarvis-forfattede sjæle-daemons (20. apr): autonomous_work,
+  creative_instinct, mortality_awareness, shadow_scan, proprioception_metrics…
+- **Neuro-symbolsk lag** (causal_graph + rule_engine 36 regler), **AGI 9-track-program**, **witness-slægten**
+  (ældste inner-life-primitiv, 25. marts, nu mest load-bearing).
+
+**Dvale/glemt (levende-døde, ikke begravede — intet inner/private blev hard-deleted):** negotiation_engine,
+missions_pipeline, epistemics claim-reconciliation ("genuinely distinct capability never integrated"),
+procedure_bank, emergence.py, interlanguage-engine, boredom_engine, impulse_executor (living-executive-loopet
+der aldrig når Centralen), ~17 frosne eksperiment-services (urørt siden 17. apr-renamingen).
+
+**db.py-sandhed:** REN storage — 171 CREATE TABLE, NUL event_bus.publish, NUL central(). Append-only (ingen
+DROP/RENAME nogensinde). Ikke en emit-kilde; observabilitet bor ét lag oppe. Kun `db_credit_assignment` emitterer.
+3 write-only bevidstheds-ledgers (experiment_broadcast_events/meta_cognition_records/attention_blink_results)
+akkumulerer data ingen læser.
+
+**Dual-truth-risiko:** `user_contradiction_tracker.py` er en håndkopieret reimplementering af
+`contradiction_engine.py`s algoritme — to divergerende kopier af kontradiktion-detektion. Konsolidér.
+
+**Fælde for fremtidige sweeps:** rename-commit dfcb0e12 (17. apr, apps/api→core) får ~35 signal_tracking +
+engines til falsk at se "født 17. apr" ud. Brug `git log --follow`.
+
+**3 UAFKLAREDE spørgsmål til Bjørn (arkitektoniske):**
+(a) Er kognition-til-prompt-planen MENT central-blind (privatliv) eller et uwiret hul? Egress-fri-bro-designet
+antyder bevidst isolation. (b) Skal de ~17 frosne eksperiment-services pensioneres eller er de load-bearing
+personlighed? (c) causal_inference_daemon + interlanguage runtime-liveness ubekræftet.
+
 ## Metode-note
 
 Prioritér efter **EVENT-FAMILY**, ikke fil/komponent (dedup-naturligt). Man wirer `cognitive_state` ÉN gang og

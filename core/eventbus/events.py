@@ -26,6 +26,11 @@ ALLOWED_EVENT_FAMILIES = {
     "experiment",        # recurrence_loop + meta_cognition (experiment.*) — bevidstheds-eksperimenter, var uregistreret
     "affect_modulation", # affekt-modulator (affect_modulation.active) — ændrer max_tool_calls/pause, var uregistreret
     "completion_satisfaction",  # belønnings-signal (completion_satisfaction.detected) — var uregistreret
+    "trading",           # governance: grid_bot (rigtige penge) — var uregistreret + emitterede intet
+    # LivingNeuron "lange skygge" (2026-07-01): resterende inner-life-familier der publicerede men var
+    # uregistrerede (droppet) → nu persisterer + routes egress-frit nedenfor.
+    "cognitive_personal_project", "regret", "cognitive_reflective_plan", "cognitive_mission",
+    "cognitive_blind_spot", "living_executive", "self_wakeup", "consolidation_judge", "cognitive_dream",
     "reflection_signal",
     "temporal_recurrence_signal",
     "witness_signal",

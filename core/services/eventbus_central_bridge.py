@@ -57,6 +57,10 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     # forwarding (aldrig payload). Første ægte LivingNeuron-nerve: hvor daemonerne mødes.
     "global_workspace": ("cognition", "global_broadcast"),
     "experiment": ("cognition", "experiment_tick"),  # recurrence_loop + meta_cognition (bevidsthets-eksperimenter)
+    # LivingNeuron governance (2026-07-01): autonome HANDLINGER i verden (ikke privat inner-life →
+    # egress-OK operationel sti). Jarvis' lemmer: self-reparation + trading (rigtige penge).
+    "self_repair": ("system", "self_repair"),  # self_repair_engine.action_executed/failed (autonom reparation)
+    "trading": ("system", "trading"),          # grid_bot cycle (BTC/ETH/SOL — rigtige penge)
 }
 
 # ── PRIVATE_NO_EGRESS (§24.4 keystone, 2026-07-01): privat inner-life observeres EGRESS-FRIT ──
@@ -75,6 +79,23 @@ PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
     "somatic": ("cognition", "somatic"),
     "cognitive_gut": ("cognition", "gut"),
     "circadian": ("cognition", "circadian"),
+    # "lange skygge" (2026-07-01): resterende inner-life — egress-frit. Lukker halen: personlige
+    # projekter, fortrydelse, mål, planer, procedurer, missioner, vaner, overraskelse, blinde vinkler,
+    # den udøvende vilje, selv-opvågning, konsoliderings-dom, drømme.
+    "cognitive_personal_project": ("cognition", "personal_project"),
+    "regret": ("cognition", "regret"),
+    "goal": ("cognition", "goal"),
+    "cognitive_reflective_plan": ("cognition", "reflective_plan"),
+    "cognitive_procedure": ("cognition", "procedure"),
+    "cognitive_mission": ("cognition", "mission"),
+    "cognitive_habit": ("cognition", "habit"),
+    "cognitive_surprise": ("cognition", "surprise"),
+    "cognitive_counterfactual": ("cognition", "counterfactual"),
+    "cognitive_blind_spot": ("cognition", "blind_spot"),
+    "living_executive": ("cognition", "living_executive"),
+    "self_wakeup": ("cognition", "self_wakeup"),
+    "consolidation_judge": ("memory", "consolidation_judge"),
+    "cognitive_dream": ("cognition", "dream_signal"),
 }
 
 # Dokumenteret liste over families der BEVIDST holdes dark i M0 (privatlags-isolation,
@@ -88,6 +109,10 @@ PRIVATE_FAMILIES_EXCLUDED_M0: frozenset[str] = frozenset({
     "cognitive_seed",  # seed_system: frø/intentioner — privat inner-life (routes egress-frit nedenfor)
     # felt-krop-planet (2026-07-01): Jarvis' FØLTE krop/affekt — privat, routes egress-frit
     "affect_modulation", "completion_satisfaction", "somatic", "cognitive_gut", "circadian",
+    # "lange skygge" (2026-07-01): resterende inner-life-familier — privat, routes egress-frit
+    "cognitive_personal_project", "regret", "goal", "cognitive_reflective_plan", "cognitive_procedure",
+    "cognitive_mission", "cognitive_habit", "cognitive_surprise", "cognitive_blind_spot",
+    "living_executive", "self_wakeup", "consolidation_judge", "cognitive_dream",
 })
 
 _BRIDGE_NERVE = "eventbus_bridge"

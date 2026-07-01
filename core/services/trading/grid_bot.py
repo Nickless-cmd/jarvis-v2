@@ -325,7 +325,19 @@ class GridBotV2:
 
     def run_once(self) -> list:
         """Alias for run_simulation — bruges af loop."""
-        return self.run_simulation()
+        trades = self.run_simulation()
+        # LivingNeuron governance: rapportér trading-cyklen så Centralen ser den penge-flyttende gren
+        # (var HELT usynlig — nul signal). Defensiv: må ALDRIG vælte botten.
+        try:
+            from core.eventbus.bus import event_bus
+            event_bus.publish("trading.cycle", {
+                "symbol": str(getattr(self.config, "symbol", "?")),
+                "trades": len(trades) if isinstance(trades, list) else 0,
+                "testnet": bool(getattr(self, "testnet", True)),
+            })
+        except Exception:
+            pass
+        return trades
 
 
 # ---------------------------------------------------------------------------

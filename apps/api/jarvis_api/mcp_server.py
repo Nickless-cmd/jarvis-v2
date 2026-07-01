@@ -314,6 +314,22 @@ def jarvis_central_diagnostics() -> str:
 
 
 @mcp.tool
+def jarvis_central_timeseries() -> str:
+    """Per-nerve tidsserie MERGET på tværs af processer (runtime+api). Lukker cross-proces-
+    blindzonen som jarvis_central_nerve har: cadence-nerverne (infra/sensory/inner/system/
+    autonomy) lever i runtime-processen og er usynlige for api-trace'en. Her ses de ALLE:
+    nerve → {proces: {latest, count, recent, meta}}."""
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_central_timeseries"})
+    try:
+        from core.services.central_xproc import merged_timeseries
+        out = {"series": merged_timeseries()}
+    except Exception as exc:
+        out = {"error": str(exc)}
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_central_timeseries"})
+    return json.dumps(out, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.tool
 def jarvis_central_nerve(nerve: str) -> str:
     """Seneste observationer/beslutninger for én central-nerve (fx central_meta, lifecycle,
     recall, outcome). NB: viser api-processens trace; cadence-nerver lever i runtime-processen."""

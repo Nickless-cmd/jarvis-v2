@@ -84,8 +84,17 @@ export function MissionControl({
     </>
   )
 
+  const liveNow = running > 0
   return (
     <div className="mc">
+      <div className="mc-header">
+        <div className="mc-header-title">
+          <span className={`mc-live-dot ${liveNow ? 'on' : ''}`} />
+          <h2>Mission Control</h2>
+          <span className="mc-header-sub">{liveNow ? `${running} kører nu` : 'alt roligt'}</span>
+        </div>
+      </div>
+
       <SummaryBar counts={counts} onPick={(t) => setTab(t)} />
 
       <div className="mc-tabs">

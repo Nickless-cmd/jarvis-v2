@@ -99,12 +99,12 @@ def _spawn_curiosity() -> Curiosity | None:
     ]
 
     chosen = random.choice(curiosities)
-    # LivingNeuron Fase A: egress-fri liveness — Centralen ser kedsomhed spawne nysgerrighed (metadata).
+    # LivingNeuron Fase A: EGRESS-FRI liveness (rettet 2026-07-01: var central().observe).
     try:
-        from core.services.central_core import central as _central
-        _central().observe({"cluster": "cognition", "nerve": "boredom_curiosity",
-                            "type": chosen.curiosity_type, "strength": round(chosen.strength, 2),
-                            "boredom": round(_boredom_accumulator, 2)})
+        from core.services.central_private_observe import observe_hub
+        observe_hub("boredom_curiosity", meta={"type": chosen.curiosity_type,
+                    "strength": round(chosen.strength, 2), "boredom": round(_boredom_accumulator, 2)},
+                    cluster="cognition")
     except Exception:
         pass
     return chosen

@@ -40,11 +40,11 @@ def register_hypothesis_debt(
         "cognitive_state.curiosity_hypothesis_debt_registered",
         {"debt_id": item["debt_id"], "priority": item["priority"], "hypothesis": item["hypothesis"]},
     )
-    # LivingNeuron Fase A: egress-fri liveness (kun metadata — prioritet + antal åbne, ALDRIG hypotese-teksten).
+    # LivingNeuron Fase A: EGRESS-FRI liveness (prioritet + antal åbne, ALDRIG hypotese-teksten).
     try:
-        from core.services.central_core import central as _central
-        _central().observe({"cluster": "cognition", "nerve": "curiosity_debt",
-                            "priority": item["priority"], "open_count": len(state.get("items") or [])})
+        from core.services.central_private_observe import observe_hub
+        observe_hub("curiosity_debt", meta={"priority": item["priority"],
+                    "open_count": len(state.get("items") or [])}, cluster="cognition")
     except Exception:
         pass
     return item

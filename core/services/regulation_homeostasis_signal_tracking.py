@@ -95,11 +95,10 @@ def build_runtime_regulation_homeostasis_signal_surface(*, limit: int = 8) -> di
     # LivingNeuron Fase A: egress-fri liveness (kun tællere + regulerings-tilstand, ikke privat indhold).
     # Repoets første homeostase-lag — en rule pauser ALLEREDE proaktivitet ved imbalance; nu ser Centralen det.
     try:
-        from core.services.central_core import central as _central
-        _central().observe({"cluster": "cognition", "nerve": "regulation_homeostasis",
-                            "active": len(active), "stale": len(stale),
-                            "state": str((latest or {}).get("regulation_state") or "none"),
-                            "pressure": str((latest or {}).get("regulation_pressure") or "low")})
+        from core.services.central_private_observe import observe_hub
+        observe_hub("regulation_homeostasis", meta={"active": len(active), "stale": len(stale),
+                    "state": str((latest or {}).get("regulation_state") or "none"),
+                    "pressure": str((latest or {}).get("regulation_pressure") or "low")}, cluster="cognition")
     except Exception:
         pass
     return {

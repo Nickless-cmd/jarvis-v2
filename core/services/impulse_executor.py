@@ -342,13 +342,12 @@ def _action_compose_outreach(direction: str, topic: str, strength: float) -> tup
 # ---------------------------------------------------------------------------
 
 def _observe_impulse_tick(*, pending: int, executed: int, starved: bool) -> None:
-    """Egress-fri liveness til Centralen (proactivity-cluster). Fire-and-forget, kaster aldrig."""
+    """EGRESS-FRI liveness til Centralen (rettet 2026-07-01: var central().observe). Kaster aldrig."""
     try:
-        from core.services.central_core import central as _central
-        _central().observe({
-            "cluster": "proactivity", "nerve": "impulse_executor",
+        from core.services.central_private_observe import observe_hub
+        observe_hub("impulse_executor", meta={
             "pending": int(pending), "executed": int(executed), "starved": bool(starved),
-        })
+        }, cluster="proactivity")
     except Exception:
         pass
 

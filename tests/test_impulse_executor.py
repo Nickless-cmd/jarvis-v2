@@ -9,10 +9,10 @@ def test_observe_impulse_tick_self_safe():
 
 
 def test_starved_tick_observes(isolated_runtime, monkeypatch):
-    seen = []
-    import core.services.central_core as cc
-    monkeypatch.setattr(cc.central(), "observe", lambda ev: seen.append(ev))
+    # Egress-fri: observe_hub skriver til trace-sinken (ikke central().observe).
+    from core.services import central_trace
     monkeypatch.setattr("core.services.pressure_threshold_gate.get_pending_impulses", lambda: [])
     out = ie.run_impulse_executor_tick()
     assert out["impulses_executed"] == 0
-    assert any(e.get("nerve") == "impulse_executor" and e.get("starved") for e in seen)
+    recs = [r for r in central_trace.sink().recent(limit=50) if r.nerve == "impulse_executor"]
+    assert recs and recs[-1].payload.get("starved") is True

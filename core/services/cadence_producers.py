@@ -760,10 +760,10 @@ def progress_signal_lifecycles() -> dict[str, int]:
 
 
 def _observe_frozen(nerve: str, meta: dict[str, object]) -> None:
-    """Egress-fri liveness for en vækket frossen detektor (LivingNeuron Fase B). Self-safe."""
+    """EGRESS-FRI liveness for en vækket frossen detektor (rettet 2026-07-01: var central().observe)."""
     try:
-        from core.services.central_core import central as _central
-        _central().observe({"cluster": "cognition", "nerve": nerve, **meta})
+        from core.services.central_private_observe import observe_hub
+        observe_hub(nerve, meta=dict(meta), cluster="cognition")
     except Exception:
         pass
 

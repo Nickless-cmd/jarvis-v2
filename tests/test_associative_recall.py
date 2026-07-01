@@ -238,3 +238,39 @@ def test_cognitive_state_includes_recall_section(isolated_runtime) -> None:
     result = csa.build_cognitive_state_for_prompt(compact=False)
     assert result is not None
     assert "concurrency" in result or "race condition" in result
+
+
+def test_observe_assoc_recall_scalar_only(monkeypatch):
+    """Fase 3 (§23.3 #4): hot-path recall melder scalar-metadata (aldrig indhold) →
+    memory/recall observe + eventbus. private_brain_share korrekt."""
+    from core.services import associative_recall as ar
+    import core.services.central_core as cc
+    import core.eventbus.bus as bus
+
+    observed, published = [], []
+    monkeypatch.setattr(cc, "central",
+                        lambda: type("C", (), {"observe": lambda s, e: observed.append(dict(e))})())
+    monkeypatch.setattr(bus.event_bus, "publish", lambda k, p=None, **kw: published.append((k, p)))
+
+    memories = [
+        {"score": 0.8, "source_table": "experiential_memory", "narrative": "HEMMELIG NARRATIV"},
+        {"score": 0.4, "source_table": "private_brain_records", "narrative": "mere"},
+    ]
+    ar._observe_assoc_recall(memories)
+
+    ev = observed[0]
+    assert (ev["cluster"], ev["nerve"]) == ("memory", "recall")
+    assert ev["result_count"] == 2 and ev["top_score"] == 0.8
+    assert ev["private_brain_share"] == 0.5
+    assert "HEMMELIG" not in str(ev)  # intet indhold lækket
+    assert any(k == "memory.recall" for k, _ in published)
+
+
+def test_observe_assoc_recall_empty(monkeypatch):
+    from core.services import associative_recall as ar
+    import core.services.central_core as cc
+    seen = []
+    monkeypatch.setattr(cc, "central",
+                        lambda: type("C", (), {"observe": lambda s, e: seen.append(e)})())
+    ar._observe_assoc_recall([])
+    assert seen[0]["result_count"] == 0 and seen[0]["private_brain_share"] == 0.0

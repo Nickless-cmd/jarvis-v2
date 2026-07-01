@@ -249,6 +249,36 @@ def recall_for_session(session_context: dict[str, Any]) -> list[dict[str, Any]]:
     return activated
 
 
+def _observe_assoc_recall(memories: list[dict[str, Any]]) -> None:
+    """Fase 3 (§23.3 #4): meld recall-KVALITET til Centralen — KUN scalar-metadata, aldrig
+    memory-indhold/narrativer. private_brain_share = load-bearing (ser om deprioriteringen
+    af selv-genereret tro virker). Publiceres cross-proces til eventbus (central_watch i
+    runtime-proces kan flagge recall-svigt selvom recall kørte i api-processen). Self-safe."""
+    n = len(memories)
+    scores = [float(m.get("score") or 0) for m in memories]
+    top_score = max(scores) if scores else 0.0
+    pb = sum(1 for m in memories if "private_brain" in str(m.get("source_table") or ""))
+    pb_share = round(pb / n, 3) if n else 0.0
+    meta = {"result_count": n, "top_score": round(top_score, 4),
+            "private_brain_share": pb_share, "path": "associative"}
+    try:
+        from core.services.central_core import central
+        central().observe({"cluster": "memory", "nerve": "recall", "kind": "telemetry", **meta})
+    except Exception:
+        pass
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("memory.recall", meta)
+    except Exception:
+        pass
+    try:
+        from core.services import central_timeseries
+        central_timeseries.record("memory", "recall", value=float(n),
+                                  meta={"top_score": round(top_score, 4), "pb_share": pb_share})
+    except Exception:
+        pass
+
+
 def recall_for_message(
     message_text: str,
     emotional_state: dict[str, Any],
@@ -288,6 +318,7 @@ def recall_for_message(
                 pass
 
     if not candidates:
+        _observe_assoc_recall([])  # recall fandt intet → synligt for Centralen (§23.3 #4)
         return []
 
     scores = score_memories_by_relevance(
@@ -331,6 +362,7 @@ def recall_for_message(
         "associative_recall message: activated=%d weak=%d candidates_evaluated=%d topic_hint=%r",
         len(activated), len(weak), len(candidates), topic_hint,
     )
+    _observe_assoc_recall(activated)  # recall-kvalitet → Centralen (§23.3 #4)
     return activated
 
 

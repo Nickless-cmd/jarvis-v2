@@ -72,6 +72,7 @@ ALLOWED_EVENT_FAMILIES = {
     "incident",
     "private_brain",
     "session_distillation",
+    "life_projects",  # life_projects.reassessment_due — var latent afvist → daemon crashede (1. jul)
     # Generative autonomy (2026-04-29 — Jarvis-built foundation + Spor-1)
     "pressure",
     "impulse",

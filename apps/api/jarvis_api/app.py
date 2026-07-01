@@ -569,6 +569,8 @@ def create_app() -> FastAPI:
     app.include_router(status_router)
     app.include_router(sensory_router)
     app.include_router(mc_router)
+    from apps.api.jarvis_api.routes.mission_control_dashboard import router as mc_dashboard_router
+    app.include_router(mc_dashboard_router, prefix="/mc")
     app.include_router(interlanguage_blind_router)
     app.include_router(cheap_balancer_router)
     app.include_router(agentic_guards_router)

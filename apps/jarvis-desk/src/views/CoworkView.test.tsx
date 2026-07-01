@@ -28,14 +28,16 @@ vi.mock('../components/settings/PluginsPanel', () => ({ PluginsPanel: () => <div
 import { CoworkView } from './CoworkView'
 
 describe('CoworkView command center', () => {
-  it('owner: Mission Control default viser kanal-ruden', () => {
+  it('owner: Mission Control viser kontrolcenter med faner (inkl. Agenter)', () => {
     render(<CoworkView role="owner" />)
-    expect(screen.getByText('Kanaler')).toBeTruthy()
+    expect(screen.getByText('Oversigt')).toBeTruthy()
+    expect(screen.getAllByText('Agenter').length).toBeGreaterThan(0)  // owner-only fane+rude
   })
 
-  it('member: ingen kanal-rude', () => {
+  it('member: ingen Agenter (owner-only)', () => {
     render(<CoworkView role="member" />)
-    expect(screen.queryByText('Kanaler')).toBeNull()
+    expect(screen.getByText('Oversigt')).toBeTruthy()
+    expect(screen.queryAllByText('Agenter').length).toBe(0)
   })
 
   it('skift til Indstillinger-zone (via emitZone) viser Account-profilen', async () => {

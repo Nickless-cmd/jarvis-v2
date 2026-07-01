@@ -106,16 +106,17 @@ def test_routes_only_whitelisted(wired):
     bind_bus([
         _ev(1, "tool.called"),          # → observes (tools/event)
         _ev(2, "central.observed"),     # → skip (rekursions-guard)
-        _ev(3, "inner_voice.spoke"),    # → skip (privat, ikke i allowlist)
+        _ev(3, "inner_voice.spoke"),    # → skip (privat, hverken allowlist ELLER no-egress)
         _ev(4, "runtime.run_ended"),    # → observes (loop/lifecycle)
-        _ev(5, "cognitive_state.shift"),# → skip (privat)
+        _ev(5, "cognitive_state.shift"),# → PRIVATE_NO_EGRESS: observeres EGRESS-FRIT (ikke i central.observed)
     ])
     res = br.run_bridge_tick()
-    assert res["observed"] == 2
-    assert res["skipped"] == 3
+    assert res["observed"] == 3   # cognitive_state tælles med, men egress-frit
+    assert res["skipped"] == 2    # central-guard + inner_voice
     assert res["last_seen_id"] == 5
+    # KRITISK egress-invariant: den private cognitive_state-event nåede ALDRIG central().observe
     kinds = {o["event_kind"] for o in central.observed}
-    assert kinds == {"tool.called", "runtime.run_ended"}
+    assert kinds == {"tool.called", "runtime.run_ended"}, "privat event må ALDRIG egress'e via central().observe"
     clusters = {(o["cluster"], o["nerve"]) for o in central.observed}
     assert clusters == {("tools", "event"), ("loop", "lifecycle")}
 
@@ -187,3 +188,21 @@ def test_global_workspace_keystone_routed():
     from core.services.eventbus_central_bridge import FAMILY_ROUTES, PRIVATE_FAMILIES_EXCLUDED_M0
     assert FAMILY_ROUTES.get("global_workspace") == ("cognition", "global_broadcast")
     assert "global_workspace" not in PRIVATE_FAMILIES_EXCLUDED_M0
+
+
+def test_private_no_egress_invariant():
+    # §24.4 keystone: PRIVATE_NO_EGRESS-families må ALDRIG stå i FAMILY_ROUTES (som kan egress'e),
+    # og de SKAL være dokumenteret som private (i excluded-listen).
+    from core.services.eventbus_central_bridge import (
+        PRIVATE_NO_EGRESS_ROUTES, FAMILY_ROUTES, PRIVATE_FAMILIES_EXCLUDED_M0)
+    for fam in PRIVATE_NO_EGRESS_ROUTES:
+        assert fam not in FAMILY_ROUTES, f"{fam} i FAMILY_ROUTES = egress-læk-risiko!"
+        assert fam in PRIVATE_FAMILIES_EXCLUDED_M0, f"{fam} bør dokumenteres som privat"
+
+
+def test_observe_private_writes_egress_free():
+    # _observe_private skriver til trace+timeseries men kalder ALDRIG central().observe.
+    from core.services import eventbus_central_bridge as b
+    ok = b._observe_private("cognition", "cognitive_state",
+                            {"kind": "cognitive_state.emergent_goal_created", "id": 1})
+    assert ok is True

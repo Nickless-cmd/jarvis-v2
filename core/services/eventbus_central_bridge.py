@@ -56,6 +56,17 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     # det er tvær-daemon salience-clustering, ikke privat inner-life-indhold. Metadata-only
     # forwarding (aldrig payload). Første ægte LivingNeuron-nerve: hvor daemonerne mødes.
     "global_workspace": ("cognition", "global_broadcast"),
+    "experiment": ("cognition", "experiment_tick"),  # recurrence_loop + meta_cognition (bevidsthets-eksperimenter)
+}
+
+# ── PRIVATE_NO_EGRESS (§24.4 keystone, 2026-07-01): privat inner-life observeres EGRESS-FRIT ──
+# Disse families ER i PRIVATE_FAMILIES_EXCLUDED_M0 (må ALDRIG i FAMILY_ROUTES, som kan egress'e).
+# Her routes de via _observe_private → skriver KUN til trace-sink + tidsserie, ALDRIG
+# central().observe/_emit → kan aldrig lække til Discord/abonnenter. Metadata-only (kind, aldrig
+# payload-tekst). Dette låser inner-life-synlighed op UDEN at bryde privatlags-invarianten.
+PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
+    "cognitive_state": ("cognition", "cognitive_state"),  # 59 subtyper (emergent_goal/flow/gratitude/...)
+    "cognitive_seed": ("cognition", "seed"),              # seed_system: frø/intentioner
 }
 
 # Dokumenteret liste over families der BEVIDST holdes dark i M0 (privatlags-isolation,
@@ -66,6 +77,7 @@ PRIVATE_FAMILIES_EXCLUDED_M0: frozenset[str] = frozenset({
     "prompt_evolution", "self_critique", "meta_learning", "private_brain", "impulse",
     "pressure", "emergent_signal", "cognitive_counterfactual", "cognitive_state",
     "thought_stream", "memory", "consolidation", "selective_consolidation",
+    "cognitive_seed",  # seed_system: frø/intentioner — privat inner-life (routes egress-frit nedenfor)
 })
 
 _BRIDGE_NERVE = "eventbus_bridge"
@@ -118,6 +130,24 @@ def _observe_one(cluster: str, nerve: str, ev: dict[str, Any]) -> bool:
             "event_kind": ev.get("kind"),
             "family": ev.get("family"),
         })
+        central_timeseries.record(cluster, nerve, value=1.0, meta={"kind": ev.get("kind")})
+        return True
+    except Exception:
+        return False
+
+
+def _observe_private(cluster: str, nerve: str, ev: dict[str, Any]) -> bool:
+    """EGRESS-FRI observe af privat inner-life-event (§24.4 keystone): skriver KUN til trace-sink
+    + tidsserie — ALDRIG central().observe/_emit, så det ALDRIG kan egress'e til Discord/abonnenter.
+    Metadata-only: event-KIND (fx 'cognitive_state.emergent_goal_created' = subtype-navn, ikke
+    indhold) — payload (der kan bære privat desire/tanke-tekst) rører aldrig trace. Returnerer
+    False ved fejl (så kalderen kan tælle — vi sluger IKKE stille, §24.3)."""
+    try:
+        from core.services import central_trace
+        central_trace.sink().record(central_trace.TraceRecord(
+            run_id="", session_id="", cluster=cluster, nerve=nerve, kind="observe",
+            reason=str(ev.get("kind") or "")[:60],
+        ))
         central_timeseries.record(cluster, nerve, value=1.0, meta={"kind": ev.get("kind")})
         return True
     except Exception:
@@ -186,14 +216,24 @@ def run_bridge_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> d
                 skipped += 1
                 continue
             route = FAMILY_ROUTES.get(family)
-            if route is None:  # allowlist: alt ikke-hvidlistet (inkl. private) skippes
-                skipped += 1
+            if route is not None:
+                cluster, nerve = route
+                if _observe_one(cluster, nerve, ev):
+                    observed += 1
+                else:
+                    failures += 1
                 continue
-            cluster, nerve = route
-            if _observe_one(cluster, nerve, ev):
-                observed += 1
-            else:
-                failures += 1
+            # Privat inner-life: observeres EGRESS-FRIT (kun trace+tidsserie, §24.4) — låser
+            # inner-life-synlighed op uden at bryde privatlags-invarianten.
+            proute = PRIVATE_NO_EGRESS_ROUTES.get(family)
+            if proute is not None:
+                pcluster, pnerve = proute
+                if _observe_private(pcluster, pnerve, ev):
+                    observed += 1
+                else:
+                    failures += 1
+                continue
+            skipped += 1  # allowlist: alt ikke-hvidlistet skippes
         if len(rows) < _BATCH_LIMIT:
             break
 

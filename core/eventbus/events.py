@@ -23,6 +23,7 @@ ALLOWED_EVENT_FAMILIES = {
     "inner_voice",    # desperation_awareness (inner_voice.signal) — var latent afvist (dict-som-kind + ikke-registreret)
     "global_workspace",  # GWT-broadcast (global_workspace.*) — LivingNeuron keystone: clustrede salience hver
                          # 2. tick men broadcasten blev DROPPET (ikke-registreret). Nu persisterer + routes til Central.
+    "experiment",        # recurrence_loop + meta_cognition (experiment.*) — bevidstheds-eksperimenter, var uregistreret
     "reflection_signal",
     "temporal_recurrence_signal",
     "witness_signal",

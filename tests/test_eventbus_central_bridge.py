@@ -179,3 +179,11 @@ def test_timeseries_recorded(wired):
     bind_bus([_ev(1, "tool.x")])
     br.run_bridge_tick()
     assert len(central_timeseries.recent("tools", "event")) == 1
+
+
+def test_global_workspace_keystone_routed():
+    # LivingNeuron keystone: GWT-broadcast SKAL routes til Central (cognition/global_broadcast)
+    # og må ALDRIG være privat-ekskluderet (det er tvær-daemon salience, ikke privat indhold).
+    from core.services.eventbus_central_bridge import FAMILY_ROUTES, PRIVATE_FAMILIES_EXCLUDED_M0
+    assert FAMILY_ROUTES.get("global_workspace") == ("cognition", "global_broadcast")
+    assert "global_workspace" not in PRIVATE_FAMILIES_EXCLUDED_M0

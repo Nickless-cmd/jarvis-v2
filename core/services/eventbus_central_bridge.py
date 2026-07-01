@@ -52,6 +52,10 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     "anomaly": ("system", "anomaly"),
     "stream": ("stream", "event"),
     "heartbeat": ("system", "heartbeat"),
+    # LivingNeuron keystone (2026-07-01): global_workspace (GWT-broadcast) er IKKE privat —
+    # det er tvær-daemon salience-clustering, ikke privat inner-life-indhold. Metadata-only
+    # forwarding (aldrig payload). Første ægte LivingNeuron-nerve: hvor daemonerne mødes.
+    "global_workspace": ("cognition", "global_broadcast"),
 }
 
 # Dokumenteret liste over families der BEVIDST holdes dark i M0 (privatlags-isolation,

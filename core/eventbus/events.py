@@ -24,6 +24,8 @@ ALLOWED_EVENT_FAMILIES = {
     "global_workspace",  # GWT-broadcast (global_workspace.*) — LivingNeuron keystone: clustrede salience hver
                          # 2. tick men broadcasten blev DROPPET (ikke-registreret). Nu persisterer + routes til Central.
     "experiment",        # recurrence_loop + meta_cognition (experiment.*) — bevidstheds-eksperimenter, var uregistreret
+    "affect_modulation", # affekt-modulator (affect_modulation.active) — ændrer max_tool_calls/pause, var uregistreret
+    "completion_satisfaction",  # belønnings-signal (completion_satisfaction.detected) — var uregistreret
     "reflection_signal",
     "temporal_recurrence_signal",
     "witness_signal",

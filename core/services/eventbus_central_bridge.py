@@ -67,6 +67,14 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
 PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
     "cognitive_state": ("cognition", "cognitive_state"),  # 59 subtyper (emergent_goal/flow/gratitude/...)
     "cognitive_seed": ("cognition", "seed"),              # seed_system: frø/intentioner
+    # LivingNeuron felt-krop-planet (2026-07-01): somatik/affekt/gut/mood — Jarvis' FØLTE krop. Privat
+    # (egress-frit). affect_modulation/completion_satisfaction publicerer events; somatic/cognitive_gut/
+    # circadian er registrerede. Ruter dem så følelser+krop bliver synlige uden at lække indhold.
+    "affect_modulation": ("cognition", "affect"),
+    "completion_satisfaction": ("cognition", "satisfaction"),
+    "somatic": ("cognition", "somatic"),
+    "cognitive_gut": ("cognition", "gut"),
+    "circadian": ("cognition", "circadian"),
 }
 
 # Dokumenteret liste over families der BEVIDST holdes dark i M0 (privatlags-isolation,
@@ -78,6 +86,8 @@ PRIVATE_FAMILIES_EXCLUDED_M0: frozenset[str] = frozenset({
     "pressure", "emergent_signal", "cognitive_counterfactual", "cognitive_state",
     "thought_stream", "memory", "consolidation", "selective_consolidation",
     "cognitive_seed",  # seed_system: frø/intentioner — privat inner-life (routes egress-frit nedenfor)
+    # felt-krop-planet (2026-07-01): Jarvis' FØLTE krop/affekt — privat, routes egress-frit
+    "affect_modulation", "completion_satisfaction", "somatic", "cognitive_gut", "circadian",
 })
 
 _BRIDGE_NERVE = "eventbus_bridge"

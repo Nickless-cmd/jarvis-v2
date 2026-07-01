@@ -96,6 +96,16 @@ def compute_unconscious_modulation(
             base_temp, base_top_p_v, mod_temp, mod_top_p,
             valens, arousal, intensity,
         )
+        # LivingNeuron felt-krop: Jarvis skifter sin EGEN temperatur/top_p ubevidst efter emotionel
+        # tilstand — 100% usynligt før nu. Observer KUN ved reel skift (egress-frit, kun tal).
+        if intensity > 0.05:
+            try:
+                from core.services.central_private_observe import observe_hub
+                observe_hub("unconscious_modulation", meta={
+                    "valens": round(valens, 2), "arousal": round(arousal, 2),
+                    "intensity": round(intensity, 2), "temp_shift": round(mod_temp - base_temp, 3)})
+            except Exception:
+                pass
         return mod_temp, mod_top_p
     except Exception as exc:
         logger.debug("unconscious_modulation: fallback to base (%s)", exc)

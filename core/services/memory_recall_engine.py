@@ -664,6 +664,34 @@ def _compute_multi_signal_scores(
     return records
 
 
+def _observe_recall_quality(top: list[dict[str, Any]], sources: list[str]) -> None:
+    """Fase 3 (§23.3 #4): meld recall-KVALITET til Centralen — kun scalar-metadata, aldrig
+    indhold. Publiceres OGSÅ til eventbus (cross-proces → central_watch i runtime-proces
+    kan flagge recall-svigt selvom recall kørte i api-processen). Self-safe."""
+    n = len(top)
+    top_score = float(top[0].get("multi_signal_score", 0.0)) if top else 0.0
+    pb = sum(1 for r in top if str(r.get("source", "")) == "private_brain")
+    pb_share = round(pb / n, 3) if n else 0.0
+    meta = {"result_count": n, "top_score": round(top_score, 4),
+            "private_brain_share": pb_share, "sources": sources}
+    try:
+        from core.services.central_core import central
+        central().observe({"cluster": "memory", "nerve": "recall", "kind": "telemetry", **meta})
+    except Exception:
+        pass
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("memory.recall", meta)
+    except Exception:
+        pass
+    try:
+        from core.services import central_timeseries
+        central_timeseries.record("memory", "recall", value=float(n),
+                                  meta={"top_score": round(top_score, 4), "pb_share": pb_share})
+    except Exception:
+        pass
+
+
 def multi_signal_recall(
     *,
     query: str,
@@ -795,6 +823,14 @@ def multi_signal_recall(
         all_results = [r for r in all_results if r.get("multi_signal_score", 0.0) >= min_score]
     all_results.sort(key=lambda r: r.get("multi_signal_score", 0.0), reverse=True)
     top = all_results[:total_limit]
+
+    # Fase 3 (§23.3 #4): fodr Centralen med recall-KVALITET — KUN scalar-metadata, aldrig
+    # indhold. private_brain_share er load-bearing (ser om deprioriteringen af selv-genereret
+    # tro faktisk virker = anti-hallucination). Self-safe.
+    try:
+        _observe_recall_quality(top, sorted(enabled))
+    except Exception:
+        pass
 
     return {
         "status": "ok",

@@ -125,6 +125,23 @@ def test_warm_cache_no_flag(wired, monkeypatch):
     assert not any(inc["nerve"] == "prefix_cache" for inc in incidents)
 
 
+def test_recall_empty_flags_medium(wired, monkeypatch):
+    central, incidents, notifs = wired
+    monkeypatch.setattr(cw, "_recent_recall_counts", lambda limit=6: [0, 0, 0, 0])
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert any(inc["cluster"] == "memory" and inc["nerve"] == "recall" for inc in incidents)
+    assert notifs == []  # medium → ingen push
+
+
+def test_recall_healthy_no_flag(wired, monkeypatch):
+    central, incidents, notifs = wired
+    monkeypatch.setattr(cw, "_recent_recall_counts", lambda limit=6: [4, 0, 3])
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert not any(inc["nerve"] == "recall" for inc in incidents)
+
+
 def test_healthy_streams_produce_no_flags(wired):
     central, incidents, notifs = wired
     central_timeseries.record("system", "bridge_observe_failures", value=0.0)

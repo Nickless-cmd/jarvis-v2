@@ -435,3 +435,41 @@ def test_gather_private_brain_dead_store_returns_empty_not_raise():
     with patch("core.runtime.db_private_brain.list_private_brain_records",
                side_effect=RuntimeError("db down")):
         assert mre._gather_private_brain("noget", 4) == []  # fail-soft via _gather_failed
+
+
+def test_observe_recall_quality_scalar_only(monkeypatch):
+    """Fase 3 (§23.3 #4): recall-metadata er scalar-only (aldrig indhold) → memory/recall
+    observe + eventbus. private_brain_share korrekt beregnet."""
+    from core.services import memory_recall_engine as mre
+    import core.services.central_core as cc
+    import core.eventbus.bus as bus
+
+    observed, published = [], []
+    monkeypatch.setattr(cc, "central",
+                        lambda: type("C", (), {"observe": lambda s, e: observed.append(dict(e))})())
+    monkeypatch.setattr(bus.event_bus, "publish", lambda k, p=None, **kw: published.append((k, p)))
+
+    top = [
+        {"source": "workspace", "multi_signal_score": 0.9, "text": "HEMMELIGT INDHOLD"},
+        {"source": "private_brain", "multi_signal_score": 0.4, "text": "mere indhold"},
+    ]
+    mre._observe_recall_quality(top, ["workspace", "private_brain"])
+
+    ev = observed[0]
+    assert (ev["cluster"], ev["nerve"]) == ("memory", "recall")
+    assert ev["result_count"] == 2 and ev["top_score"] == 0.9
+    assert ev["private_brain_share"] == 0.5  # 1 af 2
+    assert "HEMMELIGT" not in str(ev)  # KRITISK: intet indhold lækket
+    assert set(ev) <= {"cluster", "nerve", "kind", "result_count", "top_score",
+                       "private_brain_share", "sources"}
+    assert any(k == "memory.recall" for k, _ in published)
+
+
+def test_observe_recall_quality_empty(monkeypatch):
+    from core.services import memory_recall_engine as mre
+    import core.services.central_core as cc
+    seen = []
+    monkeypatch.setattr(cc, "central",
+                        lambda: type("C", (), {"observe": lambda s, e: seen.append(e)})())
+    mre._observe_recall_quality([], [])
+    assert seen[0]["result_count"] == 0 and seen[0]["private_brain_share"] == 0.0

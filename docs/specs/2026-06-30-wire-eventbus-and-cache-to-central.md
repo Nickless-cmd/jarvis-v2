@@ -1510,7 +1510,8 @@ Sporing af HELE spec'en (ikke kun §23.4-faserne). Bjørn: "det er ikke hele eve
 | §23.3 #3 / §24.4 (inner life) | ~35 daemons liveness EGRESS-FRIT | `central_private_observe.py` | 10556a96 |
 | §25 (aktive lag) | flag+lær+notificér, støjfanger | `central_watch.py` + `central_noise_filter.py` | aed49c92 |
 | §3.0 (anomaly→eventbus) | `anomaly.captured` publiceres | `central_anomaly.py` | (denne) |
-| §3.2/§3.3 (**cache→central**) | prefix-cache hit/miss → observe + cache-kold-flag | `cache_telemetry.py` + `central_watch.py` | (denne) |
+| §3.2/§3.3 (**cache→central**) | prefix-cache hit/miss → observe + cache-kold-flag | `cache_telemetry.py` + `central_watch.py` | d5231698 |
+| §23.4 Fase 3 (**memory-recall**) | recall-kvalitet (count/top_score/private_brain_share) → observe + recall-svigt-flag, cross-proces | `memory_recall_engine.py` + `central_watch.py` | (denne) |
 
 **Sløjfen er hel:** event/cache → observe → per-nerve trace → støjfang → flag → incident →
 `central_learning` → forslag + notifikation → owner. Begge halvdele af titlen ("eventbus
@@ -1519,7 +1520,7 @@ AND cache") er nu wired.
 ### 26.2 Specificeret, endnu IKKE bygget
 | Spec-del | Hvad | Prioritet |
 |---|---|---|
-| §23.4 Fase 3 | memory-recall + vægte + consolidation → observe (IKKE threshold, §24.4) | P1 |
+| §23.4 Fase 3 (rest) | consolidation-EVENTS (judge/dream/selective) → observe (cadence-daemons dækket af §24.4-hook) | P1 |
 | §23.4 Fase 4 | tool approval-feedback + outcome + verification-heed | P1 |
 | §23.4 Fase 5 | cost-ledger/quota, council, channels/devices, impulse/emergent, runtime-helbred | P1→P2 |
 | §18.3 | `adjust_threshold` closed loop | M2 (bag gate) |

@@ -172,7 +172,37 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
     except Exception:
         pass
 
+    # ── F. Recall svigter (§23.3 #4): memory returnerer VEDVARENDE intet = recall brudt ──
+    # Cross-proces (recall kører også i api-processen) → læs fra eventbus.
+    try:
+        counts = _recent_recall_counts(limit=6)
+        if len(counts) >= 3:
+            breached = all(c == 0 for c in counts[:3])  # seneste 3 recalls alle tomme
+            if central_noise_filter.is_real_signal("recall_empty", breached):
+                flags.append(_raise_flag(
+                    "memory", "recall", severity="error",
+                    message="Recall returnerer intet over de seneste kald (memory-recall brudt?)",
+                    importance="medium"))
+    except Exception:
+        pass
+
     return {"status": "ok", "flags": flags, "flag_count": len(flags)}
+
+
+def _recent_recall_counts(*, limit: int = 6) -> list[int]:
+    """Læs seneste recall-result-counts fra eventbussen (cross-proces). Self-safe."""
+    out: list[int] = []
+    try:
+        from core.eventbus.bus import event_bus
+        for r in event_bus.recent_by_family("memory", limit=limit):
+            if r.get("kind") != "memory.recall":
+                continue
+            rc = (r.get("payload") or {}).get("result_count")
+            if rc is not None:
+                out.append(int(rc))
+    except Exception:
+        pass
+    return out
 
 
 def _recent_cache_pcts(*, limit: int = 6) -> list[float]:

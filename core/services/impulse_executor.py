@@ -341,6 +341,18 @@ def _action_compose_outreach(direction: str, topic: str, strength: float) -> tup
 # Daemon runner
 # ---------------------------------------------------------------------------
 
+def _observe_impulse_tick(*, pending: int, executed: int, starved: bool) -> None:
+    """Egress-fri liveness til Centralen (proactivity-cluster). Fire-and-forget, kaster aldrig."""
+    try:
+        from core.services.central_core import central as _central
+        _central().observe({
+            "cluster": "proactivity", "nerve": "impulse_executor",
+            "pending": int(pending), "executed": int(executed), "starved": bool(starved),
+        })
+    except Exception:
+        pass
+
+
 def run_impulse_executor_tick() -> dict[str, Any]:
     """Run one tick of the impulse executor.
 
@@ -352,6 +364,9 @@ def run_impulse_executor_tick() -> dict[str, Any]:
 
     pending = get_pending_impulses()
     if not pending:
+        # LivingNeuron Fase A: gør SULTEN synlig. Loopet ticker hver 30s men er input-sultet
+        # (upstream longing_signal killswitchet) → Centralen så aldrig at viljen dør stille.
+        _observe_impulse_tick(pending=0, executed=0, starved=True)
         return {"impulses_executed": 0, "actions": []}
 
     executed = []
@@ -364,6 +379,7 @@ def run_impulse_executor_tick() -> dict[str, Any]:
                 "action": result.action_type,
                 "result": result.result,
             })
+    _observe_impulse_tick(pending=len(pending), executed=len(executed), starved=False)
 
     # Persist
     snap = {

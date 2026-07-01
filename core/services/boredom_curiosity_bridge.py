@@ -98,7 +98,16 @@ def _spawn_curiosity() -> Curiosity | None:
         ),
     ]
 
-    return random.choice(curiosities)
+    chosen = random.choice(curiosities)
+    # LivingNeuron Fase A: egress-fri liveness — Centralen ser kedsomhed spawne nysgerrighed (metadata).
+    try:
+        from core.services.central_core import central as _central
+        _central().observe({"cluster": "cognition", "nerve": "boredom_curiosity",
+                            "type": chosen.curiosity_type, "strength": round(chosen.strength, 2),
+                            "boredom": round(_boredom_accumulator, 2)})
+    except Exception:
+        pass
+    return chosen
 
 
 def should_spawn_curiosity() -> bool:

@@ -31,6 +31,14 @@ def track_gratitude(*, trigger_event: str, detail: str = "") -> dict[str, object
     )
     event_bus.publish("cognitive_state.gratitude_felt",
                      {"trigger": trigger_event, "intensity": intensity})
+    # LivingNeuron Fase A: egress-fri liveness (kun metadata — trigger/intensitet, ikke privat detalje).
+    # cognitive_state-familien er privat-ekskluderet fra broen, så direkte observe er eneste vej til Central.
+    try:
+        from core.services.central_core import central as _central
+        _central().observe({"cluster": "cognition", "nerve": "gratitude",
+                            "trigger": trigger_event, "intensity": intensity})
+    except Exception:
+        pass
     return result
 
 

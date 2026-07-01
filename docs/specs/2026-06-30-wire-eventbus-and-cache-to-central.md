@@ -1530,3 +1530,17 @@ AND cache") er nu wired.
 - Læring + flagging: **TÆNDT** (§25.1). Autonom mutation/heling/self-modifikation: **SLUKKET**.
 - Privatlags-egress: inner-life **lokal-only** (§24.4). Central-selv-meta: **ingen selv-incident** (§24.5).
 - Alt gated af støjfangeren. Forslag reviewbare (`poll_proposals`), aldrig auto-handling.
+
+### 26.4 Cross-proces-invariant (opdaget 1. jul under cache-verifikation)
+Jarvis kører i TO processer: **runtime (8011)** ejer cadence/schedulers/broen; **api (8080)**
+ejer den synlige chat-sti. `central_timeseries` + trace-ring-bufferen er **in-memory pr.
+proces**. Konsekvens der SKAL respekteres af alle fremtidige vagter:
+- Signaler produceret i **8011** (bro, central-selv-obs, inner-life-cadence) → læs via
+  in-process `central_timeseries`. OK.
+- Signaler produceret i **8080** (fx `record_visible_cache` på den synlige sti) → `central_watch`
+  (der kører i 8011) ser dem ALDRIG in-process. De skal læses **cross-proces via eventbussen**
+  (DB-backet: `event_bus.recent_by_family(...)`) eller shared_cache/DB. Cache-kold-vagten (§3.2)
+  blev rettet til at læse `cache.telemetry` fra eventbussen af netop denne grund.
+- Tommelfinger: **eventbussen/DB er den eneste cross-proces sandhed.** In-process-tidsserie er
+  kun gyldig for signaler født i samme proces som vagten. Fase 4-5 (tool-outcome i api-processen)
+  skal følge samme regel.

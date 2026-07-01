@@ -105,10 +105,10 @@ def test_inner_life_stall_flags_medium_no_push(wired):
     assert notifs == []
 
 
-def test_cache_cold_flags_medium(wired):
+def test_cache_cold_flags_medium(wired, monkeypatch):
     central, incidents, notifs = wired
-    central_timeseries.record("cost", "prefix_cache", value=4.0,
-                              meta={"prefix_sha": "abc", "lane": "visible"})
+    # cache læses cross-proces fra eventbus; selv de varmeste kald er kolde → flag
+    monkeypatch.setattr(cw, "_recent_cache_pcts", lambda limit=6: [4.0, 3.0, 5.0])
     cw.run_watch_tick()
     cw.run_watch_tick()
     # kold cache fodrer læring (incident) men pusher ikke owner (medium)
@@ -116,9 +116,10 @@ def test_cache_cold_flags_medium(wired):
     assert notifs == []
 
 
-def test_warm_cache_no_flag(wired):
+def test_warm_cache_no_flag(wired, monkeypatch):
     central, incidents, notifs = wired
-    central_timeseries.record("cost", "prefix_cache", value=85.0, meta={"prefix_sha": "abc"})
+    # første-kald-miss (13%) er normalt så længe varme kald hitter (83%) → INGEN flag
+    monkeypatch.setattr(cw, "_recent_cache_pcts", lambda limit=6: [13.0, 83.0, 13.0])
     cw.run_watch_tick()
     cw.run_watch_tick()
     assert not any(inc["nerve"] == "prefix_cache" for inc in incidents)

@@ -154,19 +154,39 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
         pass
 
     # ── E. Cache kold (spec §3.2): prefix-cache hit-rate kollapset = ~10x omkostning ──
+    # VIGTIGT (cross-proces): cache produceres i api-processen (record_visible_cache), men
+    # vagten kører i runtime-processen. In-process-tidsserien ser den derfor IKKE. Vi læser
+    # i stedet cache.telemetry fra EVENTBUSSEN (DB-backet = cross-proces sandhed).
     try:
-        s = _latest("cost", "prefix_cache")
-        if s is not None and s.value is not None:
-            breached = float(s.value) < _CACHE_COLD_PCT
+        pcts = _recent_cache_pcts(limit=6)
+        if pcts:
+            # Flag kun hvis SELV de varmeste kald er kolde (max<tærskel = caching reelt død;
+            # første-kald-miss er normalt og skal ikke flagge en sund cache).
+            breached = max(pcts) < _CACHE_COLD_PCT
             if central_noise_filter.is_real_signal("cache_cold", breached):
                 flags.append(_raise_flag(
                     "cost", "prefix_cache", severity="error",
-                    message=f"Cache kold: {float(s.value):.0f}% hit-rate (prefix-cache brækket → ~10x omkostning)",
+                    message=f"Cache kold: bedste hit-rate {max(pcts):.0f}% over {len(pcts)} kald "
+                            f"(prefix-cache brækket → ~10x omkostning)",
                     importance="medium"))  # incident+læring, ingen push (undgå cache-spam)
     except Exception:
         pass
 
     return {"status": "ok", "flags": flags, "flag_count": len(flags)}
+
+
+def _recent_cache_pcts(*, limit: int = 6) -> list[float]:
+    """Læs seneste cache-hit-rater fra eventbussen (cross-proces). Self-safe."""
+    out: list[float] = []
+    try:
+        from core.eventbus.bus import event_bus
+        for r in event_bus.recent_by_family("cache", limit=limit):
+            pct = (r.get("payload") or {}).get("pct")
+            if pct is not None:
+                out.append(float(pct))
+    except Exception:
+        pass
+    return out
 
 
 def register_watch_producer() -> None:

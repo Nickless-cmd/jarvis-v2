@@ -40,6 +40,8 @@ def wired(monkeypatch):
     monkeypatch.setattr(cw, "_recent_recall_counts", lambda limit=6: [])
     monkeypatch.setattr(cw, "_tool_outcome_counts", lambda limit=40: (0, 0))
     monkeypatch.setattr(cw, "_heed_summary", lambda: {})
+    monkeypatch.setattr(cw, "_today_cost_usd", lambda: None)
+    monkeypatch.setattr(cw, "_cheap_lane_stats", lambda limit=40: (0, 0))
     return central, incidents, notifs
 
 
@@ -185,6 +187,29 @@ def test_heed_healthy_no_flag(wired, monkeypatch):
     cw.run_watch_tick()
     cw.run_watch_tick()
     assert not any(inc["nerve"] == "verification_heed" for inc in incidents)
+
+
+def test_cheap_lane_failover_flags(wired, monkeypatch):
+    central, incidents, notifs = wired
+    monkeypatch.setattr(cw, "_cheap_lane_stats", lambda limit=40: (2, 8))  # 80% fejl
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert any(inc["cluster"] == "cost" and inc["nerve"] == "cheap_lane" for inc in incidents)
+
+
+def test_cheap_lane_healthy_no_flag(wired, monkeypatch):
+    central, incidents, notifs = wired
+    monkeypatch.setattr(cw, "_cheap_lane_stats", lambda limit=40: (9, 1))  # 10% fejl
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert not any(inc["nerve"] == "cheap_lane" for inc in incidents)
+
+
+def test_cost_observed_each_tick(wired, monkeypatch):
+    central, incidents, notifs = wired
+    monkeypatch.setattr(cw, "_today_cost_usd", lambda: 1.23)
+    cw.run_watch_tick()
+    assert any(o.get("nerve") == "ledger" and o.get("usd_today") == 1.23 for o in central.observed)
 
 
 def test_healthy_streams_produce_no_flags(wired):

@@ -33,6 +33,8 @@ _TOOL_ERROR_RATE = 0.35       # tool-fejlrate over dette (vedvarende) = tools i 
 _TOOL_MIN_SAMPLE = 8          # min tool-kald før fejlrate er meningsfuld
 _HEED_MIN_RATE = 0.40         # §23.3 #5: heed_rate under 40% = advarsler ignoreres
 _HEED_MIN_SAMPLE = 5          # min advarsler før heed_rate er meningsfuld
+_CHEAP_FAIL_RATE = 0.50       # cheap-lane-failover over dette = gratis-økologi degraderer
+_CHEAP_MIN_SAMPLE = 6         # min cheap-lane-kald før failover-rate er meningsfuld
 
 
 def _owner_uid() -> str:
@@ -235,7 +237,58 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
     except Exception:
         pass
 
+    # ── I. Cost-økologi (§23.3 #8): aggregeret spend (observe) + cheap-lane-failover (flag) ──
+    # Cost pr. kald er for hot til per-kald-observe → aggregér fra ledger (DB=cross-proces).
+    try:
+        usd = _today_cost_usd()
+        if usd is not None:
+            try:
+                central().observe({"cluster": "cost", "nerve": "ledger", "kind": "telemetry",
+                                   "usd_today": round(usd, 4)})
+            except Exception:
+                pass
+            central_timeseries.record("cost", "ledger", value=round(usd, 4))
+    except Exception:
+        pass
+    try:
+        completed, failed = _cheap_lane_stats(limit=40)
+        tot = completed + failed
+        if tot >= _CHEAP_MIN_SAMPLE:
+            rate = failed / tot
+            if central_noise_filter.is_real_signal("cheap_lane_failover", rate > _CHEAP_FAIL_RATE):
+                flags.append(_raise_flag(
+                    "cost", "cheap_lane", severity="error",
+                    message=f"Cheap-lane-failover {rate*100:.0f}% ({failed}/{tot}) — "
+                            f"gratis-provider-økologi degraderer (presser dyr lane)",
+                    importance="medium"))
+    except Exception:
+        pass
+
     return {"status": "ok", "flags": flags, "flag_count": len(flags)}
+
+
+def _today_cost_usd() -> float | None:
+    try:
+        from core.costing.ledger import today_cost
+        return float(today_cost())
+    except Exception:
+        return None
+
+
+def _cheap_lane_stats(*, limit: int = 40) -> tuple[int, int]:
+    """(completed, failed) fra seneste cheap-lane-events på eventbussen (cross-proces)."""
+    completed = failed = 0
+    try:
+        from core.eventbus.bus import event_bus
+        for r in event_bus.recent_by_family("runtime", limit=limit):
+            k = r.get("kind") or ""
+            if k == "runtime.cheap_lane_provider_completed":
+                completed += 1
+            elif k in ("runtime.cheap_lane_provider_failed", "runtime.cheap_lane_provider_failed_over"):
+                failed += 1
+    except Exception:
+        pass
+    return completed, failed
 
 
 def _tool_outcome_counts(*, limit: int = 40) -> tuple[int, int]:

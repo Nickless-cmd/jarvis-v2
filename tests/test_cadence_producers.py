@@ -27,10 +27,11 @@ def test_cadence_producers_nerve_in_catalog():
 def test_tick_frozen_detectors_cadence(isolated_runtime):
     # LivingNeuron Fase B: emergence hver 30., contradiction hver 20., ellers no-op. Self-safe.
     from core.services.cadence_producers import tick_frozen_detectors
-    off = tick_frozen_detectors(7)   # hverken 20 el. 30
+    off = tick_frozen_detectors(7)   # hverken 15, 20 el. 30
     assert off == {"emergence": 0, "contradiction": 0}
-    both = tick_frozen_detectors(60)  # både 20 og 30
-    assert set(both) == {"emergence", "contradiction"}
+    both = tick_frozen_detectors(60)  # 15, 20 OG 30 → emergence+contradiction+boredom
+    assert {"emergence", "contradiction"} <= set(both)
+    assert both.get("boredom") == 1
     # må aldrig kaste selv på skæve tal
     tick_frozen_detectors(0)
     tick_frozen_detectors(20)

@@ -1325,3 +1325,127 @@ abonnerer ikke på sine egne events → ingen ægte metakognitiv løkke om sig s
 trace-query på den synlige lane — ikke levende adaptation.** De to nederste huller
 (Centralen døv for sig selv + inner life mørkt) er dem der skiller "en central der ser"
 fra "en runtime der lærer at leve".
+
+---
+
+## §24 — Hårdt self-review: fund, bindende beslutninger, korrektioner
+
+Tre uafhængige adversariske reviews (bygbarhed+kode-verifikation · sikkerhed/AI-safety ·
+fuldstændighed/kohærens) kørt mod HELE spec'en §1-23, med mandat til at verificere
+påstande mod faktisk kode. De konvergerede. Dette afsnit er BINDENDE og overstyrer
+tidligere tvetydighed hvor de strider mod hinanden.
+
+### 24.1 Den vigtigste enkelt-beslutning: broen er POLL, ikke push
+Alle tre reviews fangede en reel arkitektur-modsigelse: §3.1 beskriver en `subscribe()`-
+push-daemon; §23.3 #1 beskriver en `recent_since_id()`-**poll**-løkke med `last_seen_id`.
+Det er to forskellige fejl-modeller (push=backpressure-tab; poll=idempotent, ingen tab,
+lidt latency). **BINDENDE: broen er POLL.** Verificeret bygbar: `event_bus.recent_since_id()`
+findes (`core/eventbus/bus.py:188`), id er monotont i writer-commit-rækkefølge (én writer-
+tråd). §3.1's subscribe-formulering er hermed underordnet §23.3 #1. Konsekvens der SKAL
+respekteres: broen må IKKE også subscribe (undgå dobbelt-indtag); al `subscribe()`/
+`put_nowait`-tale i §6.1/§8.1 gælder ikke broen. `last_seen_id` persisteres i shared_cache
+(`get`/`set`, IKKE et ikke-eksisterende `get_flag`).
+
+### 24.2 Status-korrektion: "prod-klar" betyder DESIGNET, ikke BYGGET
+§12/§16/§17 stempler "🟢 Prod-klar / Løst". §22 siger nøgternt at broen, `ingest_event`,
+`adjust_threshold`, `cache`-cluster **ikke eksisterer i koden endnu** (verificeret: ingen
+`eventbus_central_bridge.py`, ingen `cache`-cluster i central_catalog). **BINDENDE: alle
+"prod-klar/løst"-stempler før §22 betyder "specificeret + review-lukket", IKKE "deployet".
+Lag 0 er ubygget.** Ingen kode fra denne spec er i produktion.
+
+### 24.3 Sikkerhed: M0 wires UDEN en eneste lære-/heal-/mutations-sti
+Sikkerheds-reviewet var skarpest her og har ret. **BINDENDE invarianter for M0:**
+- **M0 = ren observabilitet + read-only trace.** Ingen `adjust_threshold`, ingen `try_heal`,
+  ingen sensitivity-mutation wired. §18.3 (closed-loop threshold) er **M2-materiale, ikke P0**
+  — den nu-eksplicitte modsigelse mellem §18.3 ("deltager, ikke observatør") og §22.4
+  ("send ikke P0 med lære-hooks tændt") lukkes til fordel for §22.4.
+- **`enabled_auto_threshold=false` er en HARDKODET konstant, ikke et config-flag** (config
+  drifter — jf. vores egen config-drift-historik). Samme for `forbidden_mutations`
+  (auth/token/session) og `allow_autonomous_adjustments=false`.
+- **known_signals-filteret må ALDRIG gate lærings-/outcome-indtag.** Split: incident-
+  suppression må filtrere (undgå spam); lærings-ingest + outcome-attestation får AL rådata.
+  Ellers opstår den selvforstærkende sensitivitets-kollaps K1+K2 (learning sænker tærskel →
+  nye false positives markeres "kendte" → droppes før de tæller → tærskel kollapser). Retter
+  §15.3.
+- **`except: pass` på bro/observe-stier erstattes af tælle+`bridge_observe_failures`-nerve**
+  (read-only, uden for filter). Stille-slugte observe-fejl = systemet lærer på tomt signal og
+  konkluderer falsk "alt roligt" — præcis vores `post_process_generator_death`-mønster.
+- **Autonom heling (§19.3) og selv-modifikation (§22.6 nerve-omskrivning + drømme-løkke)
+  udskilles til EGNE specs med eget review.** Kode der committer til sit eget sikkerhedslag
+  kræver menneske-**opt-in** (ikke VETO-opt-out) + registreret invers + auto-revert-på-
+  outcome-forværring + hardkodet rate-limit på selve action'en. Ikke i denne spec's byggescope.
+
+### 24.4 Privatlags-grænsen: inner life observes LOKALT, aldrig med egress
+CLAUDE.md: private layers "must never outrank the protected core" og skal forblive private.
+§23.3 #3/#4 wirer inner_voice/dreams/private_brain/self_critique + `private_brain_share`/
+`weights`/`top_score`. **BINDENDE: inner-life- og private_brain-nerver må KUN observe til
+centralens lokale trace (read-only). De må ALDRIG publiceres via CentralEventPublisher til
+eventbus/Discord (ny `PRIVATE_NO_EGRESS`-routing-klasse), og må ALDRIG fodre `ingest_event`/
+threshold-justering.** Kun aggregeret liveness (kørte daemon ja/nej, tom/ikke-tom) — aldrig
+indhold/fingerprint — må krydse grænsen. Ellers får det private lag en udgående kanal OG lov
+at påvirke protected core's adfærd = den inversion CLAUDE.md forbyder.
+
+### 24.5 Central-selv-observation er strengt READ-ONLY og udløser-fri
+§23.3 #2 læser centralens egen trace-buffer. **BINDENDE: ingen central-meta-nerve må trigge
+learning, healing eller threshold-adjust** (ellers ændrer målingen det målte + en støjende
+latency-spike kan amplificeres til falsk "central degraderer"→heling). Baseline persisteres
+over restart MEN med outlier-clipping så én spike ikke bliver baseline. Feedback-guarden der
+dropper `central.*` fra routing gælder eventbus-stien; self-observation læser trace DIREKTE
+og skal have sin egen udløser-fri-garanti.
+
+### 24.6 Bygbarheds-korrektioner (verificeret mod kode)
+- **Kausal-laget (§19.2/§22.2 #1) er dyrere end beskrevet.** `observe()` (`central_core.py:42`)
+  har intet `parent_event_id`; `TraceRecord` (`central_trace.py:17`) har intet parent/outcome-
+  felt; og `recent_since_id`/serialiseringen (`bus.py:188/306/325`) surfacer IKKE `caused_by`
+  (den ligger i separat `causal_edges`-tabel, `bus.py:274`). Lag 2 kræver derfor ≥3 ændringer
+  (ny TraceRecord-kolonne + ny observe-param + bus-serialisering henter caused_by), ikke "1
+  INT + 1 JOIN". Retter §19.2/§22.2 #1. **Hører til M2, ikke M0.**
+- **Navne-fix:** §15.3's `is_known_signal` findes ikke → det er `get_known_signal(signature)`
+  (`db_anomalies.py:296`), returnerer dict/None = ét DB-opslag pr. event. §22.7's `KnownSignalsCache`
+  (RAM, TTL 5min) er derfor en **forudsætning** for hot-path-gennemløb, ikke en optimering — skal
+  specificeres før "prod-klar".
+- **Kill-switch-mekanisme konsolideres:** §15.4/§15.9/§22.4 beskriver tre stier
+  (`central_switches`, `shared_cache.get_flag`, `toggle_nerve`). **BINDENDE: én sti —
+  `central_switches.is_enabled("nerve","bridge")`** (`central_switches.py:18`). `get_flag`
+  findes ikke.
+- **Per-nerve tidsserie er M0-forudsætning, ikke M1.** `central_trace._MAX=2000` er ÉN global
+  deque (`central_trace.py:12`); ét støjende cluster evict'er alle andres historik på sekunder →
+  prædiktion (§19.1) og "bryd ring-buffer-amnesi" (§23.3 #2) umulige. `central_timeseries.py`
+  (per-nerve ~100) ryk ind i M0-fundamentet.
+- **No-ops fjernet:** `record_visible_cache` HAR allerede `lane`-param (`cache_telemetry.py:45`)
+  → §10 step 1 er intet arbejde. Diverse linjenumre i §1.2/§3.3/§8.1 peger på kode der ikke
+  matcher den 78-linjers cache_telemetry.py — verificér før implementering.
+
+### 24.7 Fuldstændigheds-korrektioner (Bjørns "få det hele med")
+- **De to roadmaps mapper nu eksplicit.** §23.4 (FASE 0-5, domæne-akse) og §22.5 (M0-M3,
+  risiko/lag-akse) er ORTOGONALE. **BINDENDE mapping: HELE §23.4 Fase 0-5 er Lag-0/M0-
+  observabilitet** (bare bredere scope end §22.5's oprindelige M0 = "bro+cache" → nu "bro + alle
+  46 dark-systemer, observe-only"). M1 (prædiktiv/kausal) · M2 (heling+threshold) · M3 (selv-
+  udvikling) bygger OVENPÅ, efter M0's SLO er målt en uge. Ingen læring/heling i §23.4-faserne.
+- **Manglende dark-rækker tilføjes til §23.3:** `semantic_indexer`, `private_brain`-daemons
+  (30+), emotional anchors, og **`malware_scan`** (verificeret dark security-signal fra tidligere
+  survey: uploads scannes aldrig) manglede egen række/wire_how/estimat trods at være del af
+  "biggest gap #3"/security. De skal have rækker, ikke kun optræde i FASE 3-prosaen.
+- **`_LEARNING_FAMILIES` (§18.2) udvides** med `memory`, `consolidation`, `council`, `impulse`
+  — ellers wires de i FASE 3-5 til observe men når ALDRIG trend-motoren, og gap #3's
+  "kan systemet se om private_brain-deprioritering virker" forbliver nej selv efter wiring.
+  (memory-familien fodrer trace/observabilitet, IKKE threshold-adjust — jf. §24.4.)
+- **Central self-observation forfremmes til de største blinde vinkler** ("6 største", ikke 5):
+  §23.5 kalder den "mest fatalt" men §23.2 listede den ikke blandt de 5 — inkonsistens lukket.
+- **Proveniens noteres:** §23.3-tabellen har 13 rækker (Jarvis' liste var 12). De 3 huller
+  audit'en fangede EKSTRA ud over Jarvis' liste = central-selv-observation (#2), inner-life-
+  som-ét-hook-indsigt (#3's wire_how), og tool-OUTCOME-loop (ikke bare tool-status, #5). Merge
+  er additiv — intet fra Jarvis' 12 blev tabt.
+- **Definér subsystem vs nerve:** §23.1 tæller 90 signal-PRODUCERENDE subsystemer; centralen har
+  122 NERVER (konsument-endepunkter). Mange subsystemer er i dag dark = producerer uden en nerve
+  der lytter. 90≠122 er ikke en fejl — det er præcis gap'et.
+
+### 24.8 Samlet review-dom
+Spec'ens Lag-0 observations-fundament (§1-17) er reelt bygbart — kerne-API'erne findes og er
+modne (`recent_since_id`, self-safe `observe()` der aldrig kaster, `central_learning.degrading()`,
+`get_known_signal`, causal_edges-tabellen). Overbygningen (§18-22: prædiktiv/kausal/lærende/
+selv-modificerende) påstår infrastruktur der ikke findes endnu OG bærer de reelle farer. Med
+§24's bindende korrektioner er spec'en nu intern-konsistent og sikker at bygge M0 fra:
+**M0 = poll-bro + read-only trace + per-nerve tidsserie + inner-life-isolation + hardkodede
+sikkerheds-defaults — nul læring, nul heling, nul mutation.** Alt farligt er skubbet bag egne
+specs og fejl-lukkede gates. Klar til at bygge M0 når Bjørn siger til.

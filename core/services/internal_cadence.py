@@ -1041,6 +1041,14 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
+    # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
+    try:
+        from core.services.central_shadow import register_shadow_producer
+        register_shadow_producer()
+    except Exception:
+        pass
+
 
 def run_cadence_tick_with_bootstrap(
     *,

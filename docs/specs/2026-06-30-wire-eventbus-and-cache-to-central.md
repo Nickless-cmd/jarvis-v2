@@ -1597,3 +1597,37 @@ helbred synligt indirekte via recall-kvalitet der ER wired). 4. Tool-outcome →
 **KONKLUSION: M0 (observabilitet + aktivt lag) er KOMPLET. Hele §23.3-gap-listen er dækket eller
 eksplicit privatlags-/M1-deferred. Sløjfen event/cache→observe→støjfang→flag→incident→læring→
 notifikation kører live begge veje.**
+
+---
+
+## §28 — M1 shadow-mode: reaktion i skygge (Bjørn 1. jul: "begræns aktiv ændring i starten")
+
+Første skridt fra "Centralen ser + lærer" mod "Centralen reagerer" — men reaktionen er ren
+SKYGGE. Centralen beregner hvad den VILLE gøre og gør det synligt, så vi validerer dens
+dømmekraft mod virkeligheden FØR nogen anvendelse tændes.
+
+⛔ HÅRD INVARIANT: `central_shadow.ACTIVE_APPLY = False` (hardkodet). Der findes INGEN kode-sti
+i shadow-laget der anvender en justering/heling/mutation. At tænde anvendelse er en bevidst
+fremtidig beslutning der kræver egen spec + fejl-lukket gate + menneske-opt-in (§22.4/§24.3).
+
+`central_shadow.py` (cadence-producer ~5min) pr. tick:
+1. **Shadow-reaktioner** — læser `central_learning.propose_adjustments()` (reviewbare forslag,
+   findes allerede) → logger hver som `system/shadow_reaction` med `applied:False`. Hvad Centralen
+   VILLE justere, gjort synligt i owner-HUD.
+2. **Prædiktioner** — tidlig-varsel: nerver hvis value-trend (central_meta latency, tool-fejlrate)
+   forværres MOD en tærskel, FØR de bryder → `system/shadow_prediction`. Simpel, deterministisk
+   (seneste-halvdel vs tidligere-halvdel, ≥15% bevægelse + ≥60% af vej mod tærskel).
+3. **Summary** `system/shadow` pr. tick med `active_apply:False` = synligt bevis på at laget lever
+   OG at anvendelse er slået fra.
+
+Dette er M1's fundament: læring→forslag→SKYGGE-reaktion+prædiktion→(fremtid: gated apply).
+Valideringsperiode: se shadow-reaktionerne rulle ind, sammenlign med hvad der faktisk skete,
+og tænd først apply når dømmekraften er bevist. 12 tests inkl. hård no-apply-invariant.
+
+### 28.1 Status efter M1-shadow + C
+- **C (LivingNeuron-data):** `central_growth_observe` — inner-drives (impulse/pressure/emergent)
+  EGRESS-FRIT (cluster=autonomy) + semantic-indexer operationelt. Vækst-kapacitets-data til teorien.
+- **A (klient):** flag surfacer allerede som incidents i CentralHud (cowork+terminal) + CentralPanel
+  (code-mode) — amber, m. resolve-knap. Ingen ny wiring nødvendig.
+- **Tilbage mod fuld M1:** tænd gated apply (egen spec) · timeseries-baseret kausal-graf (§19.2) ·
+  så M2 heling/M3 self-modifikation. Aktiv ÆNDRING forbliver slukket til dømmekraft er valideret.

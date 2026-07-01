@@ -997,6 +997,15 @@ def _ensure_producers_registered() -> None:
         priority=36,
     ))
 
+    # Eventbus→Central KEYSTONE-bro (M0, spec §23.3 #1 / §24.1). Poll-bro, observe-only:
+    # konverterer hvidlistede event-families til central().observe. Registreres via egen
+    # modul-funktion (holder internal_cadence fri for bro-logikken).
+    try:
+        from core.services.eventbus_central_bridge import register_bridge_producer
+        register_bridge_producer()
+    except Exception:
+        pass
+
 
 def run_cadence_tick_with_bootstrap(
     *,

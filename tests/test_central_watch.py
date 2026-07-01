@@ -105,6 +105,25 @@ def test_inner_life_stall_flags_medium_no_push(wired):
     assert notifs == []
 
 
+def test_cache_cold_flags_medium(wired):
+    central, incidents, notifs = wired
+    central_timeseries.record("cost", "prefix_cache", value=4.0,
+                              meta={"prefix_sha": "abc", "lane": "visible"})
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    # kold cache fodrer læring (incident) men pusher ikke owner (medium)
+    assert any(inc["cluster"] == "cost" and inc["nerve"] == "prefix_cache" for inc in incidents)
+    assert notifs == []
+
+
+def test_warm_cache_no_flag(wired):
+    central, incidents, notifs = wired
+    central_timeseries.record("cost", "prefix_cache", value=85.0, meta={"prefix_sha": "abc"})
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert not any(inc["nerve"] == "prefix_cache" for inc in incidents)
+
+
 def test_healthy_streams_produce_no_flags(wired):
     central, incidents, notifs = wired
     central_timeseries.record("system", "bridge_observe_failures", value=0.0)

@@ -42,7 +42,9 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     "tool": ("tools", "event"),
     "approvals": ("tools", "approval"),
     "cost": ("cost", "ledger"),
-    "cache": ("cost", "prefix_cache"),
+    # 'cache' routes IKKE her: cache_telemetry.record_visible_cache observer direkte til
+    # cost/prefix_cache MED fuld payload (pct/prefix_sha), som bro'ens metadata-only ellers
+    # ville dublere. (spec §3.3 — direkte observe afløser metadata-broen for cache.)
     "council": ("agents", "council"),
     "channel": ("channel", "delivery"),
     "anomaly": ("system", "anomaly"),

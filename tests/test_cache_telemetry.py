@@ -55,3 +55,42 @@ def test_zero_total_pct_is_zero(tmp_path, monkeypatch):
     ct.record_visible_cache(run_id="r", cache_hit=0, cache_miss=0)
     row = json.loads((tmp_path / "logs" / "cache_telemetry.jsonl").read_text().strip())
     assert row["pct"] == 0.0
+
+
+def test_cache_feeds_central_when_active(tmp_path, monkeypatch):
+    # spec §3.3: reel cache-aktivitet → observe til cost/prefix_cache + eventbus + tidsserie
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    observed, published, series = [], [], []
+
+    class _FakeCentral:
+        def observe(self, ev):
+            observed.append(dict(ev))
+
+    import core.services.central_core as cc
+    import core.services.central_timeseries as cts
+    import core.eventbus.bus as bus
+    monkeypatch.setattr(cc, "central", lambda: _FakeCentral())
+    monkeypatch.setattr(cts, "record", lambda c, n, value=None, meta=None: series.append((c, n, value)))
+    monkeypatch.setattr(bus.event_bus, "publish", lambda k, p=None, **kw: published.append(k))
+
+    ct.record_visible_cache(run_id="r1", lane="visible", prefix_sha="ab",
+                            cache_hit=80, cache_miss=20)
+    assert observed and observed[0]["cluster"] == "cost" and observed[0]["nerve"] == "prefix_cache"
+    assert observed[0]["pct"] == 80.0
+    assert "cache.telemetry" in published
+    assert series and series[0][:2] == ("cost", "prefix_cache")
+
+
+def test_cache_no_central_feed_when_idle(tmp_path, monkeypatch):
+    # _in==0 (ingen cache-aktivitet) → INTET signal til Centralen (undgå støj)
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    observed = []
+
+    class _FakeCentral:
+        def observe(self, ev):
+            observed.append(ev)
+
+    import core.services.central_core as cc
+    monkeypatch.setattr(cc, "central", lambda: _FakeCentral())
+    ct.record_visible_cache(run_id="r0", cache_hit=0, cache_miss=0)
+    assert observed == []

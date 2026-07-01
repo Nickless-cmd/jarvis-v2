@@ -1494,3 +1494,39 @@ event → observe → per-nerve trace → støjfang → flag → incident → ad
 notifikation → owner. Centralen ser, lærer og siger til — begge veje — uden at ændre sig selv.
 Det er M0 landet efter Bjørns definition. Resterende faser (§23.4 Fase 3-5: memory/consolidation,
 tool-outcome, cost/council/channels) udvider dækningen gennem præcis samme sløjfe.
+
+---
+
+## §26 — Implementerings-status (levende, 1. jul)
+
+Sporing af HELE spec'en (ikke kun §23.4-faserne). Bjørn: "det er ikke hele event-central-specen."
+
+### 26.1 Bygget + deployet + verificeret på containeren (10.0.0.39)
+| Spec-del | Hvad | Modul | Commit |
+|---|---|---|---|
+| §3.1 (eventbus-bro) | POLL-bro, hvidlistede families → observe | `eventbus_central_bridge.py` | 9a7e9256 |
+| §24.6 (per-nerve trace) | Bryder 2000-global-amnesi | `central_timeseries.py` | 9a7e9256 |
+| §23.3 #2 (central-selv-obs) | decide-latency-drift, breakers, udløser-fri | `central_self_observe.py` | bbd49d00 |
+| §23.3 #3 / §24.4 (inner life) | ~35 daemons liveness EGRESS-FRIT | `central_private_observe.py` | 10556a96 |
+| §25 (aktive lag) | flag+lær+notificér, støjfanger | `central_watch.py` + `central_noise_filter.py` | aed49c92 |
+| §3.0 (anomaly→eventbus) | `anomaly.captured` publiceres | `central_anomaly.py` | (denne) |
+| §3.2/§3.3 (**cache→central**) | prefix-cache hit/miss → observe + cache-kold-flag | `cache_telemetry.py` + `central_watch.py` | (denne) |
+
+**Sløjfen er hel:** event/cache → observe → per-nerve trace → støjfang → flag → incident →
+`central_learning` → forslag + notifikation → owner. Begge halvdele af titlen ("eventbus
+AND cache") er nu wired.
+
+### 26.2 Specificeret, endnu IKKE bygget
+| Spec-del | Hvad | Prioritet |
+|---|---|---|
+| §23.4 Fase 3 | memory-recall + vægte + consolidation → observe (IKKE threshold, §24.4) | P1 |
+| §23.4 Fase 4 | tool approval-feedback + outcome + verification-heed | P1 |
+| §23.4 Fase 5 | cost-ledger/quota, council, channels/devices, impulse/emergent, runtime-helbred | P1→P2 |
+| §18.3 | `adjust_threshold` closed loop | M2 (bag gate) |
+| §19 | 4 intelligens-lag (prædiktiv/kausal/heling/selv-bevidst) | M1-M3 (egne specs) |
+| §22.6 | nerve-omskrivning + drømme-løkke (self-modifikation) | egen spec, human opt-in |
+
+### 26.3 Invariant-status (håndhævet)
+- Læring + flagging: **TÆNDT** (§25.1). Autonom mutation/heling/self-modifikation: **SLUKKET**.
+- Privatlags-egress: inner-life **lokal-only** (§24.4). Central-selv-meta: **ingen selv-incident** (§24.5).
+- Alt gated af støjfangeren. Forslag reviewbare (`poll_proposals`), aldrig auto-handling.

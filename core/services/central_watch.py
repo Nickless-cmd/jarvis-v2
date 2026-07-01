@@ -28,6 +28,7 @@ from core.services.central_core import central
 # Tærskler (bevidst konservative — støjfangeren kræver desuden persistens oveni).
 _LATENCY_DRIFT_MS = 250.0     # decide-latency-drift der tæller som ægte regression
 _INNER_SILENCE_MIN = 3        # inner-daemon-fejl/tomme i træk før det er en bekymring
+_CACHE_COLD_PCT = 10.0        # prefix-cache hit-rate under dette (vedvarende) = brækket cache
 
 
 def _owner_uid() -> str:
@@ -149,6 +150,19 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
                     "inner", nv, severity="error",
                     message=f"Inner-life-daemon '{nv}' har fejlet/tiet {_INNER_SILENCE_MIN} tick i træk",
                     importance="medium"))
+    except Exception:
+        pass
+
+    # ── E. Cache kold (spec §3.2): prefix-cache hit-rate kollapset = ~10x omkostning ──
+    try:
+        s = _latest("cost", "prefix_cache")
+        if s is not None and s.value is not None:
+            breached = float(s.value) < _CACHE_COLD_PCT
+            if central_noise_filter.is_real_signal("cache_cold", breached):
+                flags.append(_raise_flag(
+                    "cost", "prefix_cache", severity="error",
+                    message=f"Cache kold: {float(s.value):.0f}% hit-rate (prefix-cache brækket → ~10x omkostning)",
+                    importance="medium"))  # incident+læring, ingen push (undgå cache-spam)
     except Exception:
         pass
 

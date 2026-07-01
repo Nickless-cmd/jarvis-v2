@@ -174,6 +174,15 @@ def record_anomaly(*, source: str, exc_type: str, message: str, module: str = ""
                                "is_new": is_new, "source": source, "location": location})
         except Exception:
             pass
+        # anomaly.captured → eventbus (spec §3.0): så andre subscribers + både-veje ser
+        # signalet i realtid (bro'en router 'anomaly'-familien). Self-safe.
+        try:
+            from core.eventbus.bus import event_bus
+            event_bus.publish("anomaly.captured", {
+                "signature": sig, "category": category, "importance": importance,
+                "is_new": is_new, "location": str(location or ""), "source": str(source or "")})
+        except Exception:
+            pass
         # Eskalér til persistent incident KUN ved første sigtning af high/critical
         # (så incident-loggen ikke spammes; registeret holder det fulde billede).
         if is_new and importance in ("high", "critical"):

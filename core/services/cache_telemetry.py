@@ -74,5 +74,27 @@ def record_visible_cache(
         }
         with path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(line, ensure_ascii=False) + "\n")
+        # Cache→Central (spec §3.2/§3.3): fodr Centralen med prefix-cache-helbred, så
+        # central_watch kan flagge når caching brækker (kold hit-rate = ~10x omkostning).
+        # Kun ved reel cache-aktivitet (_in>0) — første/tomme kald er ikke et signal.
+        if _in > 0:
+            try:
+                from core.eventbus.bus import event_bus
+                event_bus.publish("cache.telemetry", line)
+            except Exception:
+                pass
+            try:
+                from core.services import central_timeseries
+                from core.services.central_core import central
+                central().observe({
+                    "cluster": "cost", "nerve": "prefix_cache", "kind": "telemetry",
+                    "run_id": run_id, "pct": line["pct"], "prefix_sha": prefix_sha,
+                    "lane": lane, "provider": provider,
+                    "hit": int(cache_hit), "miss": int(cache_miss),
+                })
+                central_timeseries.record("cost", "prefix_cache", value=float(line["pct"]),
+                                          meta={"prefix_sha": prefix_sha, "lane": lane})
+            except Exception:
+                pass
     except Exception:
         pass

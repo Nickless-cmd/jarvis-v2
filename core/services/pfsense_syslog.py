@@ -66,9 +66,25 @@ def _parse_filterlog(line: str) -> dict | None:
     return {"action": action, "src": src, "dst": dst, "dport": dport}
 
 
+def _is_noise_dst(dst: str) -> bool:
+    """Multicast/broadcast er normal netværks-støj (mDNS/SSDP/LLMNR/DHCP), IKKE angreb.
+    Rigtige scans/brute-force rammer unicast-hosts. Ekskludér så vi ikke får false-positives."""
+    try:
+        first = int(dst.split(".", 1)[0])
+        if 224 <= first <= 239:            # multicast (224.0.0.0/4)
+            return True
+        if dst == "255.255.255.255" or dst.endswith(".255"):  # broadcast
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def _ingest(rec: dict, now: float) -> None:
     if rec.get("action") != "block":
         return
+    if _is_noise_dst(str(rec.get("dst") or "")):
+        return  # multicast/broadcast-støj — ikke et angreb
     src = rec.get("src") or ""
     if not src:
         return

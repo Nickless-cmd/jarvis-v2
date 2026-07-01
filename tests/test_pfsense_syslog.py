@@ -68,6 +68,24 @@ def test_cooldown_dedup():
     assert ps.drain_detections() == []
 
 
+def test_multicast_broadcast_excluded():
+    # multicast (mDNS 224.0.0.251) + broadcast = normal støj, ikke brute-force
+    for i in range(ps._BRUTE_BLOCKS + 5):
+        ps._ingest(ps._parse_filterlog(_line("block", "100.75.136.21", "224.0.0.251", 5353, 5353)), now=1.0)
+    for i in range(ps._BRUTE_BLOCKS + 5):
+        ps._ingest(ps._parse_filterlog(_line("block", "10.0.0.9", "10.0.0.255", 138, 138)), now=1.0)
+    assert ps.drain_detections() == []  # ingen false-positive
+    assert ps._is_noise_dst("239.255.255.250") is True   # SSDP multicast
+    assert ps._is_noise_dst("8.8.8.8") is False          # unicast = ægte
+
+
+def test_unicast_brute_force_still_detected():
+    # ægte: unicast-host, mange blokke → stadig fanget
+    for i in range(ps._BRUTE_BLOCKS + 1):
+        ps._ingest(ps._parse_filterlog(_line("block", "45.1.2.3", "10.0.0.1", 2000 + i, 22)), now=1.0)
+    assert any(d["kind"] == "brute_force" for d in ps.drain_detections())
+
+
 def test_stats_count_packets_via_ingest():
     ps._ingest(ps._parse_filterlog(_line("block", "1.1.1.1", "10.0.0.1", 5, 80)), now=1.0)
     assert ps.syslog_stats()["blocks"] == 1

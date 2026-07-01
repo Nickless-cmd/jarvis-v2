@@ -103,6 +103,30 @@ def stats() -> dict[str, Any]:
         return {"nerve_count": 0, "total_samples": 0, "per_nerve_max": _PER_NERVE_MAX, "counts": {}}
 
 
+def snapshot(*, recent: int = 3) -> dict[str, Any]:
+    """Kompakt cross-proces-snapshot: pr. nerve seneste værdi(er) + count. Read-only, self-safe.
+    Bruges af central_xproc til at tee tidsserien til shared_cache (cross-proces-læsbarhed)."""
+    try:
+        with _lock:
+            items = list(_series.items())
+        out: dict[str, Any] = {}
+        n = max(int(recent), 1)
+        for (c, nv), dq in items:
+            data = list(dq)[-n:]
+            if not data:
+                continue
+            out[f"{c}:{nv}"] = {
+                "count": len(dq),
+                "latest": data[-1].value,
+                "meta": dict(data[-1].meta or {}),
+                "ts": data[-1].ts,
+                "recent": [s.value for s in data],
+            }
+        return out
+    except Exception:
+        return {}
+
+
 def _reset_for_tests() -> None:
     """Testhjælper — ryd al state. Ikke til produktionsbrug."""
     with _lock:

@@ -21,6 +21,7 @@ from typing import Any
 
 _FEED_KEY = "central:xproc:feed:"      # + proces-rolle
 _HEALTH_KEY = "central:xproc:health:"  # + proces-rolle
+_TS_KEY = "central:xproc:timeseries:"  # + proces-rolle (per-nerve tidsserie-snapshot)
 _ROLES = ("api", "runtime")            # kendte proces-roller (api kører --workers 1)
 _TTL = 600                             # sek. — runtime-daemons fyrer på kadence (minutter);
                                        # hold sidst-kendte feed i 10 min (records bærer ts,
@@ -77,6 +78,17 @@ def _publish_now() -> None:
     except Exception:
         pass
 
+    # ── per-nerve tidsserie (cross-proces-læsbarhed: runtime-processens infra/sensory/
+    #    shadow/central_meta var USYNLIGE udefra fordi central_timeseries er in-memory) ──
+    try:
+        from core.services import central_timeseries
+        shared_cache.set(_TS_KEY + role,
+                         {"process": role, "ts": time.time(),
+                          "series": central_timeseries.snapshot()},
+                         ttl_seconds=_TTL)
+    except Exception:
+        pass
+
     # ── sundhed (per-proces self-diagnose) ──────────────────────────────
     try:
         from core.services.central_core import central
@@ -107,6 +119,28 @@ def foreign_feeds(own_role: str) -> list[dict[str, Any]]:
                 for f in v["feed"]:
                     if isinstance(f, dict):
                         out.append({**f, "process": role})
+    except Exception:
+        pass
+    return out
+
+
+def merged_timeseries() -> dict[str, Any]:
+    """Alle processers per-nerve tidsserie merget: nerve-key → {proces: {latest,count,meta,recent}}.
+    Egen proces læses in-memory (friskest); andre fra shared_cache. Self-safe → {}."""
+    out: dict[str, Any] = {}
+    try:
+        from core.services import central_timeseries, shared_cache
+        own = process_role()
+        snaps: dict[str, dict] = {own: central_timeseries.snapshot()}
+        for role in _ROLES:
+            if role == own:
+                continue
+            v = shared_cache.get(_TS_KEY + role)
+            if isinstance(v, dict) and isinstance(v.get("series"), dict):
+                snaps[role] = v["series"]
+        for role, series in snaps.items():
+            for key, data in (series or {}).items():
+                out.setdefault(key, {})[role] = data
     except Exception:
         pass
     return out

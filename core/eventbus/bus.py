@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import queue
+import sqlite3
 import threading
 import time
 from typing import Any
@@ -234,6 +235,17 @@ class EventBus:
 
             try:
                 self._write_event(item)
+            except sqlite3.OperationalError as exc:
+                # Rygraden: DB-lås trods busy_timeout (fx lang checkpoint) → ét retry efter
+                # kort pause før vi opgiver. Undgår at tabe events på kortvarig kontention.
+                time.sleep(0.2)
+                try:
+                    self._write_event(item)
+                except Exception:
+                    logger.warning(
+                        "eventbus-writer: dropped event efter retry kind=%s (%s)",
+                        item.get("kind", "?"), exc,
+                    )
             except Exception:
                 logger.exception(
                     "eventbus-writer: failed to write event kind=%s",

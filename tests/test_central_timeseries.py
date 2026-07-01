@@ -59,3 +59,19 @@ def test_stats_and_nerves():
     assert st["nerve_count"] == 2
     assert st["total_samples"] == 2
     assert set(ts.nerves()) == {("a", "1"), ("b", "2")}
+
+
+def test_snapshot_compact_per_nerve():
+    for v in (1.0, 2.0, 3.0):
+        ts.record("infra", "reach_pve", v, meta={"up": True})
+    ts.record("sensory", "archive", 5.0)
+    snap = ts.snapshot(recent=2)
+    assert set(snap) == {"infra:reach_pve", "sensory:archive"}
+    pve = snap["infra:reach_pve"]
+    assert pve["count"] == 3 and pve["latest"] == 3.0
+    assert pve["recent"] == [2.0, 3.0]  # seneste 2
+    assert pve["meta"] == {"up": True}
+
+
+def test_snapshot_empty_and_safe():
+    assert ts.snapshot() == {}  # ingen data → tom, ingen crash

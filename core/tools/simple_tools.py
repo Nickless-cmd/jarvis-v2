@@ -4318,8 +4318,15 @@ def _run_operator_async(coro_fn, *, tool_name: str, timeout_s: float = 35.0) -> 
                 "status": "error",
             }
         except RuntimeError as exc:
-            logger.error("[bridge-dispatch] WORKER-RUNTIME-ERR tool=%s err=%s", tool_name, exc)
-            return {"error": str(exc), "status": "error"}
+            msg = str(exc)
+            # Forventede MILJØ-udfald er ikke runtime-bugs → WARNING (ellers fanger anomaly-
+            # catcheren dem som falske anomalier): desk ikke forbundet, operator i forkert mode,
+            # fil findes ikke, bro-timeout. Kun UVENTEDE fejl skal være ERROR.
+            _expected = ("bridge_not_connected", "mode_not_local", "bridge_timeout",
+                         "ENOENT", "no such file")
+            _log = logger.warning if any(k in msg for k in _expected) else logger.error
+            _log("[bridge-dispatch] WORKER-RUNTIME-ERR tool=%s err=%s", tool_name, exc)
+            return {"error": msg, "status": "error"}
         except Exception as exc:
             logger.error("[bridge-dispatch] WORKER-EXC tool=%s err=%s", tool_name, exc)
             return {"error": f"{tool_name} failed: {exc!s}"[:240], "status": "error"}

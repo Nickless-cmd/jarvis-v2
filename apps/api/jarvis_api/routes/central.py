@@ -55,6 +55,16 @@ async def central_realtime() -> dict:
     return await asyncio.to_thread(realtime_snapshot)
 
 
+@router.get("/timeseries")
+async def central_timeseries_merged() -> dict:
+    """Per-nerve tidsserie merget PÅ TVÆRS af processer (runtime+api). Lukker cross-proces-
+    blindzonen: infra/sensory/shadow/central_meta lever i runtime-processen og var før usynlige
+    udefra. Nerve-key → {proces: {latest, count, meta, recent}}. Owner-only, self-safe."""
+    _require_owner()
+    from core.services.central_xproc import merged_timeseries
+    return await asyncio.to_thread(lambda: {"series": merged_timeseries()})
+
+
 @router.get("/diagnostics")
 async def central_diagnostics() -> dict:
     """Fuldt diagnostik-sted til Central-HUD'ens Diagnostik-mode (Bjørn 2026-06-23: 'mangler et

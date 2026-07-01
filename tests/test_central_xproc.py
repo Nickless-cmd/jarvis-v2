@@ -46,6 +46,22 @@ def test_maybe_publish_is_throttled(isolated_runtime, monkeypatch):
     assert calls["n"] == 1
 
 
+def test_merged_timeseries_crossprocess_roundtrip(isolated_runtime, monkeypatch):
+    # runtime-processen optager en infra-nerve i tidsserien + publicerer;
+    # api-processen læser den MERGET (cross-proces-blindzonen lukket).
+    from core.services import central_timeseries
+    central_timeseries._reset_for_tests()
+    monkeypatch.setenv("JARVIS_ENABLE_RUNTIME_SERVICES", "1")  # vi ER runtime
+    central_timeseries.record("infra", "reach_pve", 4.2, meta={"up": True})
+    xp._publish_now()  # publicér runtime-tidsserie til shared_cache
+    # api-processen har egen (tom) in-memory → læser runtime's via shared_cache
+    central_timeseries._reset_for_tests()
+    monkeypatch.setenv("JARVIS_ENABLE_RUNTIME_SERVICES", "0")  # vi ER api nu
+    merged = xp.merged_timeseries()
+    assert "infra:reach_pve" in merged
+    assert merged["infra:reach_pve"].get("runtime", {}).get("latest") == 4.2
+
+
 def test_all_self_safe_on_broken_cache(monkeypatch):
     # shared_cache nede → ingen kast, tomme lister
     import core.services.shared_cache as sc

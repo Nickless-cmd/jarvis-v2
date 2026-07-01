@@ -66,6 +66,13 @@ def connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH, factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
+    # Vent på DB-lås i stedet for at fejle ØJEBLIKKELIGT (OperationalError: database is locked).
+    # Rygraden (eventbus-writer-tråd) + mange samtidige læsere/skrivere på tværs af to processer
+    # → uden dette fejler skriv ved kortvarig kontention. 5s rider enhver normal lås af. (1. jul)
+    try:
+        conn.execute("PRAGMA busy_timeout = 5000")
+    except Exception:
+        pass
     global _DB_CONNECT_LOGGED
     if not _DB_CONNECT_LOGGED:
         rows = conn.execute("PRAGMA database_list").fetchall()

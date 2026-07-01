@@ -1034,6 +1034,13 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # C (LivingNeuron-data): vækst-kapacitet — inner-drives egress-frit + semantic-indexer.
+    try:
+        from core.services.central_growth_observe import register_growth_observe_producer
+        register_growth_observe_producer()
+    except Exception:
+        pass
+
 
 def run_cadence_tick_with_bootstrap(
     *,

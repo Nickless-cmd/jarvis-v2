@@ -1006,6 +1006,14 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Central-selv-observation (Fase 1, spec §23.3 #2 / §24.5). Måler Centralens EGEN
+    # decide-latency-drift + breaker-frekvens — udløser-frit (ingen eskalering/heling).
+    try:
+        from core.services.central_self_observe import register_self_observe_producer
+        register_self_observe_producer()
+    except Exception:
+        pass
+
 
 def run_cadence_tick_with_bootstrap(
     *,

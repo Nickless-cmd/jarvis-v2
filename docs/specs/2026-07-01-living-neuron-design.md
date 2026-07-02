@@ -148,10 +148,14 @@ Kanoniske detaljer: `docs/specs/2026-07-01-inner-life-to-central-wiring.md`. Rå
 
 ² `visible_turn_tracking` (HUB 4) fyrer kun på ægte visible-ture → **uverificeret i drift**. Kræver meta-liveness (§7).
 
-³ **"36 edges/tick" er FJERNET som mål.** Daemonens egen Tier 3 (conf 0.4) = ren temporal co-occurrence
-  (samme session ≤30s), IKKE kausalitet. Antal-edges måler aktivitet, ikke korrekthed. Erstattes af en
-  **tier-opdelt** metrik (Tier-1 kind-rule 0.9 / Tier-2 shared-id 0.8 / Tier-3 temporal 0.4) + en løbende
-  precision-audit. Kun Tier-1/2 er meningsfuldt kausalt signal.
+³ **"36 edges/tick" er erstattet af tier-fordeling + precision (Fase 1d — `central_causal_quality.py`).**
+  Rådet frygtede grafen var domineret af Tier-3 temporal-støj (conf 0.4, samme session ≤30s = ikke kausalitet).
+  **LIVE-MÅLT PÅ CONTAINEREN 2. jul MODBEVISER frygten:** af **86.493 kanter** er **86.020 (99,5%) `explicit`**
+  (instrumenteret, højeste tillid), Tier-1=305, Tier-2=166, **Tier-3=kun 2**. `tier3_ratio=0.0`, `meaningful_ratio=1.0`.
+  De "36 edges/tick" daemonen skaber er en forsvindende transient andel; den akkumulerede graf er reelt ren.
+  Broen signal→hypotese (Lag 3) hviler altså IKKE på temporal-sand. Precision-proxy: en Tier-3-kant tælles
+  korroboreret hvis dens (parent→child)-kind-par også findes som Tier-1-regel/-kant; måles løbende (30-min-cadence
+  → tidsserie). Med kun 2 Tier-3-kanter er spørgsmålet i praksis irrelevant nu, men målt og plotbart hvis det ændrer sig.
 
 **Dæknings-tal (RUNTIME-MÅLT, Fase 1c — `core/services/central_coverage.py`):** det gamle gæt "~85-90% synlig"
 er erstattet af to reproducerbare mål over et eksplicit event-vindue:
@@ -370,7 +374,7 @@ ellers er den poesi — visionen forankres i §falsifikationskriterier, ikke ved
 | 1 | Mood/affekt → Centralen | ✅ live |
 | 2 | Gut → Centralen (egress-frit via PRIVATE_NO_EGRESS) | ✅ live |
 | 2 | Boredom → Centralen | ✅ (egress-fri efter 5bca29f0) |
-| 2 | causal_edges **precision** (ikke volumen): Tier-1/2-andel + manuel audit | ⬜ MÅL FØR Lag 3 |
+| 2 | causal_edges **precision** (ikke volumen): tier-fordeling + Tier-3-korroboration | ✅ MÅLT (Fase 1d): 99,5% explicit, Tier-3=2, meaningful=1.0 |
 | 2 | signal-KORREKTHED: produced-count ↔ faktisk DB-skrivning for ≥1 somatisk nerve | ⬜ |
 | 3 | hypotese fødes m. provenance + falsifikations-forudsigelse + TTL + null-hypotese | ⬜ Blueprint (§8 FØRST) |
 | 3 | H0: hypotese-genererede convergence-signaler forudsiger downstream-incidents IKKE bedre end shuffle-baseline (afvis hvis AUC > baseline, p<0.05 over ≥N resolved) | ⬜ ægte null-model |

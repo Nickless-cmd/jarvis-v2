@@ -65,52 +65,56 @@ def _liveness_from_result(status: str, result: Any) -> tuple[bool, int | None, b
     return ok, produced, empty
 
 
+def record_private(cluster: str, nerve: str, *, value: float = 1.0,
+                   meta: dict[str, Any] | None = None, reason: str = "") -> bool:
+    """KANONISK egress-fri sink-kontrakt (§24.4 — LivingNeuron v3 §7). ÉT sted for ALT inner-life/
+    privat observabilitet. Garanterer: skriv KUN til trace-sink (owner-only, lokal) + per-nerve
+    tidsserie, ALDRIG central().observe/_emit → kan aldrig egress'e til Discord/abonnenter.
+    Meta filtreres til SKALARER (tal/bool/str-navne — aldrig lister/nested/indhold-blobs).
+    Returnerer False ved fejl så kalderen kan tælle (§24.3 — vi sluger ikke stille).
+
+    Alle tre egress-fri mekanismer (bro-poll, growth-sampling, hub/liveness-hooks) går gennem
+    denne → Lag 3-hypotesegeneratoren læser ÉT sammenhængende signal-substrat, ikke tre
+    uforenelige dataformater."""
+    ok = True
+    m = {k: v for k, v in (meta or {}).items() if isinstance(v, (int, float, bool, str))}
+    try:
+        central_trace.sink().record(central_trace.TraceRecord(
+            run_id="", session_id="", cluster=str(cluster), nerve=str(nerve),
+            kind="observe", reason=str(reason)[:60], payload=m,
+        ))
+    except Exception:
+        ok = False
+    try:
+        central_timeseries.record(str(cluster), str(nerve), value=float(value), meta=m)
+    except Exception:
+        ok = False
+    return ok
+
+
 def observe_hub(nerve: str, *, meta: dict[str, Any] | None = None, cluster: str = "cognition") -> None:
     """EGRESS-FRI observe af en kognitions-HUB (aggregator på hot-path). De 4 load-bearing hubs
     (cognitive_conductor/cognitive_state_assembly/signal_surface_router/visible-turn-tracking) samler
     ~50 engines til prompten hver tur; ét observe her gør hele planet synligt for Centralen UDEN at
-    røre de 50 enkeltvis. Metadata-only (kun skalarer — aldrig prompt-indhold). Skriver KUN til trace-
-    sink + tidsserie, ALDRIG central().observe/_emit → egress-fri. Kaster aldrig."""
-    try:
-        m = {k: v for k, v in (meta or {}).items() if isinstance(v, (int, float, bool, str))}
-        central_trace.sink().record(central_trace.TraceRecord(
-            run_id="", session_id="", cluster=str(cluster), nerve=str(nerve),
-            kind="observe", payload=m,
-        ))
-        central_timeseries.record(str(cluster), str(nerve), value=1.0, meta=m)
-    except Exception:
-        pass
+    røre de 50 enkeltvis. Metadata-only (kun skalarer — aldrig prompt-indhold). Går via den kanoniske
+    egress-fri sink-kontrakt (record_private). Kaster aldrig."""
+    record_private(str(cluster), str(nerve), value=1.0, meta=meta)
 
 
 def observe_liveness(nerve: str, *, ok: bool, status: str = "",
                      produced: int | None = None, empty: bool | None = None) -> None:
     """Registrér én inner-life-daemons liveness EGRESS-FRIT (§24.4).
 
-    Skriver direkte til trace-sinken (owner-only) + per-nerve tidsserien. Kalder ALDRIG
-    central().observe (som ville _emit til eventbus). Kaster aldrig."""
-    try:
-        payload: dict[str, Any] = {"ok": bool(ok)}
-        if status:
-            payload["status"] = str(status)
-        if produced is not None:
-            payload["produced"] = int(produced)
-        if empty is not None:
-            payload["empty"] = bool(empty)
-        # DIREKTE til sinken — ingen _emit, ingen eventbus, ingen egress.
-        central_trace.sink().record(central_trace.TraceRecord(
-            run_id="", session_id="", cluster="inner", nerve=str(nerve),
-            kind="observe", payload=payload,
-        ))
-    except Exception:
-        pass
-    try:
-        central_timeseries.record(
-            "inner", str(nerve),
-            value=(1.0 if ok else 0.0),
-            meta={"status": status, "empty": empty, "produced": produced},
-        )
-    except Exception:
-        pass
+    Går via den kanoniske egress-fri sink-kontrakt (record_private) → cluster="inner".
+    Kalder ALDRIG central().observe (som ville _emit til eventbus). Kaster aldrig."""
+    record_private(
+        "inner", str(nerve),
+        value=(1.0 if ok else 0.0),
+        meta={"ok": bool(ok),
+              "status": str(status) if status else None,
+              "produced": int(produced) if produced is not None else None,
+              "empty": bool(empty) if empty is not None else None},
+    )
 
 
 def observe_operational_liveness(spec_name: str, status: str, result: Any) -> None:

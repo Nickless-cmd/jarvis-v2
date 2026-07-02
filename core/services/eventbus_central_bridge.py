@@ -172,21 +172,16 @@ def _observe_one(cluster: str, nerve: str, ev: dict[str, Any]) -> bool:
 
 
 def _observe_private(cluster: str, nerve: str, ev: dict[str, Any]) -> bool:
-    """EGRESS-FRI observe af privat inner-life-event (§24.4 keystone): skriver KUN til trace-sink
-    + tidsserie — ALDRIG central().observe/_emit, så det ALDRIG kan egress'e til Discord/abonnenter.
-    Metadata-only: event-KIND (fx 'cognitive_state.emergent_goal_created' = subtype-navn, ikke
-    indhold) — payload (der kan bære privat desire/tanke-tekst) rører aldrig trace. Returnerer
-    False ved fejl (så kalderen kan tælle — vi sluger IKKE stille, §24.3)."""
-    try:
-        from core.services import central_trace
-        central_trace.sink().record(central_trace.TraceRecord(
-            run_id="", session_id="", cluster=cluster, nerve=nerve, kind="observe",
-            reason=str(ev.get("kind") or "")[:60],
-        ))
-        central_timeseries.record(cluster, nerve, value=1.0, meta={"kind": ev.get("kind")})
-        return True
-    except Exception:
-        return False
+    """EGRESS-FRI observe af privat inner-life-event (§24.4 keystone) via den KANONISKE sink-
+    kontrakt (record_private) — skriver KUN til trace-sink + tidsserie, ALDRIG central().observe/
+    _emit, så det ALDRIG kan egress'e. Metadata-only: KUN event-KIND (fx 'cognitive_state.
+    emergent_goal_created' = subtype-navn, ikke indhold). Selve event-payloaden (der kan bære
+    privat desire/tanke-tekst) videregives ALDRIG. Returnerer False ved fejl (kalderen tæller —
+    vi sluger IKKE stille, §24.3)."""
+    from core.services.central_private_observe import record_private
+    return record_private(cluster, nerve, value=1.0,
+                          meta={"kind": ev.get("kind")},
+                          reason=str(ev.get("kind") or "")[:60])
 
 
 def _observe_failure_summary(count: int) -> None:

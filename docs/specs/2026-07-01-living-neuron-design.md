@@ -258,13 +258,14 @@ Det er præcis det, hærdningen lukker.
   (1) `assert "central" not in ALLOWED_EVENT_FAMILIES` (load-bearing membran); (2) `Event.create("central.observed")`
   rejser `ValueError` (gaten sidder før subscriber); (3) `observe()` sit emit stripper indhold-strenge; (4)
   `central_private_observe` rører ALDRIG `event_bus.publish`; (5) regression: owner-trace-sink får stadig FULD payload.
-- ⬜ **Konsolidér de TRE parallelle egress-fri mekanismer** til ÉN kanonisk sink-kontrakt før Lag 3:
-  (1) `bridge.PRIVATE_NO_EGRESS_ROUTES` (id-cursor, per-event), (2) `central_growth_observe` (count-window sampling),
-  (3) `central_private_observe.observe_hub` (call-site hooks). Tre cluster-navne + tre tidssemantikker → Lag 3
-  arver ellers tre uforenelige dataformater.
-- ⬜ **Ret `central_growth_observe`'s måle-semantik:** den bruger `recent_by_family(limit=50)` (mætter ved 50,
-  dobbelttæller, intet tidsvindue) → kan ikke bære et rate-/metabolisme-signal. Skift til cursor-baseret delta
-  (events siden sidste tick, som broen allerede gør).
+- ✅ **Konsolideret (Fase 1b):** ÉN kanonisk egress-fri sink-kontrakt = `central_private_observe.record_private()`.
+  Alle tre mekanismer går nu gennem den: bro-poll (`_observe_private`), growth-sampling (`observe_inner_drive_activity`
+  + sensory), og hub/liveness-hooks (`observe_hub`/`observe_liveness`). Ét dataformat (skalar-filtreret meta, trace-sink +
+  timeseries, aldrig `_emit`) → Lag 3 læser ét substrat. Meta filtreres til skalarer i ét sted, ikke tre.
+- ✅ **Growth-gauge rettet til delta (Fase 1b):** `_family_delta()` bruger en cursor (max event-id, delt cross-proces via
+  `shared_cache`) → rapporterer NYE events siden sidste tick (ægte rate-/metabolisme-signal), ikke `len(seneste-50)`
+  (der mættede ved 50 + dobbelttalte). Første tick = delta 0 (sætter cursor, ingen falsk opstarts-spike); `_DELTA_CAP=500`
+  med `saturated`-flag (ingen stille cap). Sansernes Arkiv beholder sit korrekte 1-times-tidsvindue.
 
 ---
 

@@ -17,37 +17,58 @@ from __future__ import annotations
 
 from typing import Any
 
-from core.services import central_timeseries, central_trace
+from core.services import central_timeseries, central_trace, shared_cache
+from core.services.central_private_observe import record_private
 
 # Private inner-drive-families — observeres EGRESS-FRIT (cluster=autonomy).
 _INNER_DRIVE_FAMILIES = ("impulse", "pressure", "emergent_signal")
 
+# Cursor lever rigeligt mellem 5-min-ticks; deles cross-proces via shared_cache.
+_GROWTH_CURSOR_TTL = 24 * 3600
+_DELTA_CAP = 500  # loft på ét-tick-delta (rate-signal); flag hvis ramt (ingen stille cap).
 
-def observe_inner_drive_activity() -> dict[str, int]:
-    """Sampl inner-drive-aktivitet EGRESS-FRIT → lokal trace + tidsserie (cluster=autonomy).
-    LivingNeuron-data: lever vækst-kapaciteten? Ingen egress, ingen læring. Self-safe."""
-    counts: dict[str, int] = {}
+
+def _family_delta(fam: str) -> tuple[int, int, bool]:
+    """ÆGTE rate-signal: antal NYE events i familien siden sidste tick (cursor-baseret delta),
+    IKKE len(seneste-50) — som mætter ved 50, dobbelttæller samme event hvert tick og mangler
+    tidsvindue (rådets korrektion, v3 §7). Cursor (max event-id set) deles cross-proces via
+    shared_cache. Returnerer (delta, window, saturated). Første observation (ingen cursor) giver
+    delta=0 + sætter cursor (undgå falsk opstarts-spike). Self-safe → (0, 0, False)."""
     try:
         from core.eventbus.bus import event_bus
-        for fam in _INNER_DRIVE_FAMILIES:
-            try:
-                counts[fam] = len(event_bus.recent_by_family(fam, limit=50))
-            except Exception:
-                counts[fam] = 0
+        rows = event_bus.recent_by_family(fam, limit=_DELTA_CAP)
     except Exception:
-        return counts
-    for fam, n in counts.items():
-        # EGRESS-FRI: direkte til sinken (owner-only), ALDRIG central().observe (→ _emit).
+        return 0, 0, False
+    window = len(rows)
+    ids = [int(r.get("id") or 0) for r in rows]
+    max_id = max(ids) if ids else 0
+    key = f"growth:cursor:{fam}"
+    try:
+        prev = shared_cache.get(key)
+        prev_id = int(prev) if prev is not None else 0
+    except Exception:
+        prev_id = 0
+    delta = 0 if prev_id <= 0 else sum(1 for i in ids if i > prev_id)
+    saturated = prev_id > 0 and delta >= _DELTA_CAP
+    if max_id > prev_id:
         try:
-            central_trace.sink().record(central_trace.TraceRecord(
-                run_id="", session_id="", cluster="autonomy", nerve=fam,
-                kind="observe", payload={"activity": int(n)}))
+            shared_cache.set(key, int(max_id), ttl_seconds=_GROWTH_CURSOR_TTL)
         except Exception:
             pass
-        try:
-            central_timeseries.record("autonomy", fam, value=float(n))
-        except Exception:
-            pass
+    return delta, window, saturated
+
+
+def observe_inner_drive_activity() -> dict[str, int]:
+    """Sampl inner-drive-aktivitet EGRESS-FRIT → kanonisk sink (cluster=autonomy). Rapporterer
+    et ÆGTE rate-signal (delta = nye events siden sidste tick), ikke et mættende last-50-gauge.
+    LivingNeuron-data: bygger drivet OP før et autonomt run? Ingen egress, ingen læring. Self-safe."""
+    counts: dict[str, int] = {}
+    for fam in _INNER_DRIVE_FAMILIES:
+        delta, window, saturated = _family_delta(fam)
+        counts[fam] = delta
+        # EGRESS-FRI kanonisk kontrakt: rate (delta) som value; window/saturated som kontekst.
+        record_private("autonomy", fam, value=float(delta),
+                       meta={"delta": delta, "window": window, "saturated": saturated})
     return counts
 
 
@@ -110,15 +131,8 @@ def observe_sensory_activity() -> dict[str, Any]:
         except Exception:
             pass
         out = {"total": total, "recent_1h": recent_1h, **{f"mod_{m}": by_mod[m] for m in _SENSORY_MODALITIES}}
-        # EGRESS-FRI: direkte til sinken (owner-only), ALDRIG central().observe (→ _emit).
-        try:
-            central_trace.sink().record(central_trace.TraceRecord(
-                run_id="", session_id="", cluster="sensory", nerve="archive",
-                kind="observe", payload=dict(out)))
-        except Exception:
-            pass
-        central_timeseries.record("sensory", "archive", value=float(recent_1h),
-                                  meta={"total": total, **by_mod})
+        # EGRESS-FRI kanonisk kontrakt (rate = recent_1h, tidsvinduet er allerede korrekt her).
+        record_private("sensory", "archive", value=float(recent_1h), meta=dict(out))
     except Exception:
         pass
     return out

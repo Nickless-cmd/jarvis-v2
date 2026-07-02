@@ -219,18 +219,28 @@ Blueprintets ægte tese: intelligens-organerne findes allerede, men er dømt til
 fra 2 forgænger-repos (jarvis-ai / jarvis-agent-port) ~2,5 måned FØR Centralen fandtes. **Centralen er det første
 sted de kan tale sammen.** Kolonne (c) "taler med de andre" er i dag **altid NEJ**.
 
-| Organ | Fil | Hvad det gør | Central-synlig? | Taler m. andre? |
-|---|---|---|---|---|
-| Hypotese-lifecycle | `meta_learning_hypotheses.py` | register → sample → auto-resolve (supported≥60% / contradicted<40% / uncertain) | nej | **nej** |
-| Drøm-hypoteser | `dream_hypothesis_generator.py` | genererer hypoteser fra drømme-materiale | nej | **nej** |
-| Nysgerrigheds-gæld | `curiosity_hypothesis_debt.py` | uafklarede hypoteser som "gæld" | dels | **nej** |
-| Gut-kalibrering | `gut_engine.record_gut_outcome` | predicted → actual → calibration_score (Lag 4 i miniature) | dels | **nej** |
-| Procedure-bank | `procedure_bank.py` | ekstraherer genbrugelige procedurer fra gentagen succes | nej | **nej** |
-| Kausalitets-graf | `causal_inference_daemon.py` / causal_edges | bygger årsags-kanter (tier-opdelt) | ja | delvist |
-| Trend/degradering | `central_learning.degrading` | detekterer trend-mod-nedbrud, foreslår (aldrig auto-anvender) | ja | **nej** |
-| Modsigelse | `contradiction_engine` (+ dual-truth-kopi at rydde) | finder inkonsistens | dels | **nej** |
-| Retrospektiv | `meta_learning_retrospective.py` | bagud-analyse af hypoteser | nej | **nej** |
-| Adaptiv runtime | `adaptive_learning_runtime.py` | dormant | nej | **nej** |
+**Verificeret ved kildekode-scan 2. jul** (live/dormant + lifecycle bekræftet mod runtime-call-sites):
+
+| Organ | Fil | Status | Lifecycle | DB-tabel | Hvad det gør |
+|---|---|---|---|---|---|
+| Hypotese-lifecycle | `meta_learning_hypotheses.py` | **LIVE** | ✅ register→sample→auto-resolve (60/40) | `meta_learning_hypotheses(_samples)` | RYGRAD-kandidat: hypotese-eksperimenter fra memos |
+| Drøm-hypoteser | `dream_hypothesis_generator.py` | **LIVE** | ⚠️ generate→present, INGEN resolution | `cognitive_dream_hypotheses` | overraskelses-forbindelser fra 3 signaler (u-testet) |
+| Nysgerrigheds-gæld | `curiosity_hypothesis_debt.py` | **LIVE** | ⚠️ register→open, manuel resolution | `runtime_state_kv` | "hvad hvis"-gæld, ingen auto-luk |
+| Gut-kalibrering | `gut_engine.record_gut_outcome` | **LIVE** | ✅ derive→outcome→calibrate (Lag 4 miniature) | `cognitive_gut_state` | maven-følelse kalibreret mod udfald |
+| Procedure-bank (stub) | `procedure_bank.py` | **DORMANT** | ❌ in-memory stub | (ingen) | ⚠️ DEDUP: pensionér til fordel for pipeline |
+| Procedure-bank (rigtig) | `procedure_bank_pipeline.py` | **DORMANT** | ⚠️ upsert→pin, hit_count, ingen outcome | `cognitive_procedures` | CRUD + trigger-match for lærte rutiner |
+| Kausalitets-graf | `causal_inference_daemon.py` | **LIVE** | ✅ infer→edge→prune (86k, 99,5% explicit) | `causal_edges` | årsags-kanter (tier-opdelt, Fase 1d) |
+| Trend/degradering | `central_learning.degrading` | **LIVE** | ❌ read-only forslag (aldrig auto) | (læser `central_incidents`) | degrading-trends + forslag |
+| Modsigelse (system) | `contradiction_engine.py` | **LIVE** | ✅ detect→event | (læser decisions/reviews) | ⚠️ DELT ALGORITME m. bruger-tracker |
+| Modsigelse (bruger) | `user_contradiction_tracker.py` | **LIVE** | ✅ scan→record→detect→status | `user_statements`, `user_contradictions` | ⚠️ samme token+negation-kerne = konsolidér |
+| Retrospektiv | `meta_learning_retrospective.py` | **LIVE** | ✅ ugentligt memo→hypotese-kandidater | `learning_memos` | KILDE til meta_learning_hypotheses |
+| Adaptiv runtime | `adaptive_learning_runtime.py` | **LIVE** | ❌ read-only projektion (8 kilder) | (ingen) | aggregator, ikke duplikat |
+
+**Kolonne "taler med de andre" er stadig NEJ for alle** — ingen deler hypotese-skema; det er hullet Lag 3 lukker.
+
+**To konsoliderings-fund (undgå dual-truth-fælder):** (1) `contradiction_engine` + `user_contradiction_tracker` deler
+PRÆCIS samme token+negation-algoritme → udskil `semantic_contradiction_detector` som fælles kerne. (2) `procedure_bank.py`
+(dorm stub) vs `procedure_bank_pipeline.py` (rigtig, DB) → pensionér stubben. **Ingen organer er DØDE** — alle 12 findes, de fleste LIVE.
 
 **Lag 3-arbejdet er derfor KONSOLIDERING, ikke genopfindelse:** saml disse under én hypotese-tabel med
 `provenance`-felt (hvilket organ + hvilken family + hvilket cursor-id/event-interval) og et `falsifiable_by`-felt

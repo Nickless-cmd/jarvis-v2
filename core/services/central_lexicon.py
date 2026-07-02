@@ -123,6 +123,7 @@ RELATION_OPERATORS = {
     "subset": "⊂",
     "resonance": "≈",
     "salience": "!",
+    "prediction_error": "!",       # sekvens-modellen blev overrasket (Tråd 4)
 }
 
 _SCHEMA_READY = False

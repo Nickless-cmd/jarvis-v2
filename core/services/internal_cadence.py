@@ -1097,6 +1097,14 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Tråd 4: Centralen TRÆNER SIG SELV — lokal Markov-model over event-strømmen (ikke LLM'en).
+    # Prediktions-fejl = overraskelse; transition-vægte = adaptation lært fra erfaring. §8-gated.
+    try:
+        from core.services.central_sequence import register_sequence_producer
+        register_sequence_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

@@ -103,6 +103,9 @@ def _notation_for(source: str, provenance: dict[str, Any]) -> str | None:
             parent = fam.split(":", 1)[0]
             t = central_lexicon.to_term(parent)
             return f"{t} ↔ !udfald" if t else None
+        if source == "prediction_error" and "->" in fam:
+            x, y = fam.split("->", 1)
+            return central_lexicon.render_relation(x, y, relation="prediction_error")
     except Exception:
         pass
     return None
@@ -398,6 +401,38 @@ def formulate_stance_divergence_hypothesis(t: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def detect_prediction_error_candidates() -> list[dict[str, Any]]:
+    """Tråd 4-bro: overraskelser fra den lokale sekvens-model (Markov) — overgange den forudsagde
+    som usandsynlige men som SKETE. Prediktions-fejl = hypotese-signal (§6). Self-safe."""
+    try:
+        from core.services import central_sequence as seq
+        return seq.detect_surprises()
+    except Exception:
+        return []
+
+
+def formulate_prediction_error_hypothesis(s: dict[str, Any]) -> dict[str, Any]:
+    """Overraskelse (X→Y som modellen troede usandsynlig) → falsificerbar hypotese om at modellen
+    mangler et regime: verden har en overgang vægtene ikke kendte. Testbar = gentager X→Y sig over
+    baseline i friske data (samme conditional-rate-test som causal-korrelation)."""
+    x, y = s["from_family"], s["to_family"]
+    p = s.get("prob", 0.0)
+    return {
+        "source": "prediction_error",
+        "statement": f"Sekvens-modellen blev overrasket: '{x}' → '{y}' skete, men modellen gav P={p}",
+        "prediction": f"Overgangen '{x}'→'{y}' er IKKE støj — den gentager sig OVER baseline i friske "
+                      f"data (modellen manglede et regime)",
+        "null_hypothesis": f"'{x}'→'{y}' var et engangstilfælde uden forhøjet rate (ren støj)",
+        "success_criterion": f">= {_DEFAULT_SAMPLE_SIZE} jordede observationer af at overgangen "
+                             f"gentager sig over baseline",
+        "sample_size": _DEFAULT_SAMPLE_SIZE,
+        "ttl_seconds": _DEFAULT_TTL_S,
+        "provenance": {"mechanism": "prediction_error", "family": f"{x}->{y}",
+                       "cursor_id": int(s.get("cursor") or 0)},
+        "confidence": _INITIAL_CONFIDENCE,
+    }
+
+
 def _active_provenance_families() -> set[str]:
     try:
         from core.runtime.db import connect
@@ -423,7 +458,8 @@ def run_hypothesis_generation_tick(*, trigger: str = "cadence",
     conv = [formulate_correlation_hypothesis(c) for c in detect_causal_convergence_candidates()]
     div = [formulate_divergence_hypothesis(c) for c in detect_outcome_divergence_candidates()]
     stance = [formulate_stance_divergence_hypothesis(t) for t in detect_stance_divergence_candidates()]
-    candidates = conv + div + stance
+    perr = [formulate_prediction_error_hypothesis(s) for s in detect_prediction_error_candidates()]
+    candidates = conv + div + stance + perr
     existing = _active_provenance_families()
     registered, rejected, dup, divergence = 0, 0, 0, 0
     for hyp in candidates:

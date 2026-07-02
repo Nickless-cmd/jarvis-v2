@@ -126,6 +126,11 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
         if mech == "causal_edges" and "->" in fam:
             x_fam, y_fam = fam.split("->", 1)
             res = test_causal_hypothesis(x_fam, y_fam)
+        elif mech == "prediction_error" and "->" in fam:
+            # Tråd 4: overraskelsen holder KUN hvis overgangen faktisk er prædiktiv over baseline —
+            # samme conditional-rate-test. Ellers falsificeres den (det var støj). §8.4.
+            x_fam, y_fam = fam.split("->", 1)
+            res = test_causal_hypothesis(x_fam, y_fam)
         elif mech == "causal_divergence" and ":" in fam:
             res = test_divergence_persistence(fam)
         elif mech == "stance_divergence":

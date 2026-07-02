@@ -132,6 +132,32 @@ def test_stance_divergence_becomes_hypothesis(isolated_runtime, monkeypatch):
     assert "UENIGE" in stmts and "kroppen bremser" in stmts
 
 
+def test_prediction_error_surprise_becomes_hypothesis(isolated_runtime, monkeypatch):
+    """Tråd 4-bro (§6): en overraskelse fra sekvens-modellen → governed prediction_error-hypotese,
+    fuldt pre-registreret + notation via lexicon (runtime→cost er bundne familier)."""
+    monkeypatch.setattr(gen, "detect_causal_convergence_candidates", lambda **k: [])
+    monkeypatch.setattr(gen, "detect_outcome_divergence_candidates", lambda **k: [])
+    monkeypatch.setattr(gen, "detect_stance_divergence_candidates", lambda **k: [])
+    monkeypatch.setattr(gen, "detect_prediction_error_candidates",
+                        lambda: [{"from_family": "memory", "to_family": "somatic",
+                                  "prob": 0.01, "from_total": 101, "cursor": 42}])
+    res = gen.run_hypothesis_generation_tick()
+    assert res["registered"] >= 1
+    active = gen.list_active_hypotheses(limit=10)
+    perr = [h for h in active if "overrasket" in h["statement"]]
+    assert perr, "prediction_error-hypotese blev ikke registreret"
+    # provenance-mekanisme + notation sat korrekt → sampleren kan finde test-stien
+    import json as _json
+    from core.runtime.db import connect
+    with connect() as c:
+        row = c.execute("SELECT source, provenance_json, notation_il FROM central_hypotheses "
+                        "WHERE source='prediction_error'").fetchone()
+    prov = _json.loads(row["provenance_json"] or "{}")
+    assert prov.get("mechanism") == "prediction_error" and prov.get("family") == "memory->somatic"
+    # memory→somatic er bundne (kontinuitet, krop) → rendret via lexicon med stød-operatoren
+    assert row["notation_il"] and "!" in row["notation_il"]
+
+
 def test_awareness_surface_shows_generated_hypotheses(isolated_runtime):
     _seed_edges(isolated_runtime, [("memory.recall_fail", "somatic.stress", 4, "inferred-kind")])
     gen.run_hypothesis_generation_tick()

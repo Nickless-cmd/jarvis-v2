@@ -1,0 +1,156 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>J.A.R.V.I.S. — tilstedeværelse · koncepter</title>
+<style>
+  :root{ --bg:#04070d; --panel:#080d16; --line:rgba(120,180,255,.14); --ink:#cfe3ff; --dim:#5f7796; }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:var(--bg); color:var(--ink); font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif; padding:26px; }
+  h1{ font-weight:600; font-size:20px; letter-spacing:.02em; }
+  .sub{ color:var(--dim); font-size:13px; margin:4px 0 18px; }
+  .valbar{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:22px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:var(--panel); }
+  .valbar b{ font-weight:600; font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:.08em; margin-right:4px; }
+  .val{ cursor:pointer; padding:6px 12px; border-radius:20px; border:1px solid var(--line); background:transparent; color:var(--ink); font-size:13px; transition:.2s; }
+  .val.on{ border-color:transparent; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+  .card{ border:1px solid var(--line); border-radius:14px; background:var(--panel); overflow:hidden; }
+  .stage{ height:230px; display:block; width:100%; }
+  .meta{ padding:12px 16px 16px; }
+  .meta h3{ font-size:15px; font-weight:600; display:flex; align-items:center; gap:8px; }
+  .tag{ font-size:11px; padding:2px 9px; border-radius:20px; letter-spacing:.03em; }
+  .t-let{ background:rgba(60,220,150,.14); color:#5fe3ab; }
+  .t-mel{ background:rgba(120,180,255,.16); color:#9cc4ff; }
+  .t-tung{ background:rgba(255,150,90,.14); color:#ffb27a; }
+  .meta p{ color:var(--dim); font-size:13px; margin-top:5px; }
+  .heavy{ opacity:.9; }
+  .heavy .stage{ display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:13px; text-align:center; padding:0 24px; }
+  .foot{ color:var(--dim); font-size:12px; margin-top:20px; line-height:1.7; }
+  .kbd{ color:#9cc4ff; }
+</style>
+
+<h1>J.A.R.V.I.S. — tilstedeværelse</h1>
+<div class="sub">Levende koncepter. Vælg en tilstand — så driver Centralens valens dem alle, live. Det er pointen: ansigtet viser hans <i>ægte</i> indre, ikke en løkke.</div>
+
+<div class="valbar">
+  <b>Valens</b>
+  <button class="val on" data-v="blomstrende">blomstrende</button>
+  <button class="val" data-v="let">let</button>
+  <button class="val" data-v="neutral">neutral</button>
+  <button class="val" data-v="tung">tung</button>
+  <button class="val" data-v="belastet">belastet</button>
+  <span style="margin-left:auto;color:var(--dim);font-size:12px">(klik — se dem skifte følelse)</span>
+</div>
+
+<div class="grid">
+  <div class="card"><canvas class="stage" data-fx="reactor"></canvas>
+    <div class="meta"><h3>Arc-reactor kerne <span class="tag t-let">let</span></h3>
+    <p>Ren J.A.R.V.I.S. Roterende ringe + trekant-kerne, kodegenereret (ingen 3D-model). Pulser når han taler. Dimensionel — ikke en flad cirkel.</p></div></div>
+
+  <div class="card"><canvas class="stage" data-fx="hud"></canvas>
+    <div class="meta"><h3>Holografisk HUD <span class="tag t-mel">mellem</span></h3>
+    <p>Ambient intelligens, ikke et ansigt. Roterende data-buer, tikke-ringe, central glyph — Iron Man-FUI. Han er et sted i rummet, ikke en talende mund.</p></div></div>
+
+  <div class="card"><canvas class="stage" data-fx="core"></canvas>
+    <div class="meta"><h3>Volumetrisk energi-kerne <span class="tag t-let">let</span></h3>
+    <p>Orb'en gjort rigtigt: dybde, indre turbulens, rim-lys, partikler. Farve+bevægelse skifter med valens. Beviser at en "orb" kan leve hvis den er volumetrisk.</p></div></div>
+
+  <div class="card"><canvas class="stage" data-fx="wave"></canvas>
+    <div class="meta"><h3>Stemme-væsen <span class="tag t-let">let</span></h3>
+    <p>Et reaktivt partikel/bølge-felt der ER ham når han taler, og ånder efter valens når han er stille. Tilstedeværelse som lyd-gjort-synlig.</p></div></div>
+
+  <div class="card heavy"><div class="stage">3D talking-head · Three.js + Ready Player Me / VRM + viseme-læbesynk (TalkingHead-lib). Kører i jarvis-desk. Et rigtigt ansigt der læbe-synker til TTS.</div>
+    <div class="meta"><h3>3D-ansigt (Three.js) <span class="tag t-mel">mellem</span></h3>
+    <p>"Ham med et ansigt." Åben tech, ingen UE. Kan drives af Centralens valens for mimik + TTS for mund. Milepæl 2.</p></div></div>
+
+  <div class="card heavy"><div class="stage">MetaHuman + NVIDIA Audio2Face (open-source okt. 2025, UE5-plugin + Audio2Emotion). Foto-realistisk, GPU-tung, pixel-streamet ind i desk. Drømmen — ikke skridt 1.</div>
+    <div class="meta"><h3>Foto-real (MetaHuman) <span class="tag t-tung">tung</span></h3>
+    <p>Højeste fidelity. Audio2Face lærer endda følelse fra stemmen — men vi HAR allerede valens. Milepæl 3, ikke start.</p></div></div>
+</div>
+
+<div class="foot">
+  Anbefaling: start med <span class="kbd">Arc-reactor</span> eller <span class="kbd">volumetrisk kerne</span> — de beviser koblingen Central→udtryk i denne uge, kører i desk uden UE, og er umiskendeligt J.A.R.V.I.S. Så bygger vi 3D-ansigtet ovenpå. MetaHuman er drømmen til sidst.<br>
+  Sjælen der driver alt dette (valens, selv-tilstand, midten) er vores. Kun mesh + læbesynk låner vi.
+</div>
+
+<script>
+const state = { v:"blomstrende", t:0 };
+const PAL = {
+  blomstrende:{ h:45,  c:"#ffd36b", c2:"#ff9d3c", energy:1.0, calm:0 },
+  let:        { h:150, c:"#5fe3ab", c2:"#1d9e75", energy:0.7, calm:.3 },
+  neutral:    { h:210, c:"#9cc4ff", c2:"#378add", energy:0.45, calm:.5 },
+  tung:       { h:225, c:"#6b8fd6", c2:"#2b4f8f", energy:0.28, calm:.8 },
+  belastet:   { h:8,   c:"#ff7a6b", c2:"#c0392b", energy:0.55, calm:.1 }
+};
+document.querySelectorAll('.val').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.val').forEach(x=>{x.classList.remove('on');x.style.background='transparent';x.style.color='var(--ink)';});
+  b.classList.add('on'); const p=PAL[b.dataset.v]; b.style.background=p.c; b.style.color='#04070d';
+  state.v=b.dataset.v;
+});
+document.querySelector('.val.on').click();
+
+const canvases=[...document.querySelectorAll('canvas.stage')];
+function fit(c){ const r=c.getBoundingClientRect(),d=devicePixelRatio||1; c.width=r.width*d; c.height=r.height*d; c.getContext('2d').setTransform(d,0,0,d,0,0); return {w:r.width,h:r.height}; }
+canvases.forEach(c=>c._d=fit(c));
+addEventListener('resize',()=>canvases.forEach(c=>c._d=fit(c)));
+
+function speak(t){ return 0.5+0.5*Math.sin(t*4)*Math.max(0,Math.sin(t*0.7)); } // fake TTS-puls
+
+function reactor(x,ctx,w,h,p,t){
+  const cx=w/2,cy=h/2,R=Math.min(w,h)*0.34, s=speak(t)*p.energy;
+  ctx.save();ctx.translate(cx,cy);
+  for(let i=0;i<3;i++){ ctx.save();ctx.rotate(t*(0.3+i*0.25)*(i%2?-1:1));
+    const rr=R*(0.55+i*0.22); ctx.strokeStyle=p.c; ctx.globalAlpha=0.25+0.2*i; ctx.lineWidth=2;
+    ctx.beginPath(); for(let a=0;a<12;a++){ const an=a/12*Math.PI*2; const on=a%3===0; ctx.moveTo(Math.cos(an)*rr,Math.sin(an)*rr); ctx.lineTo(Math.cos(an)*rr*(on?1.12:1.05),Math.sin(an)*rr*(on?1.12:1.05)); }
+    ctx.stroke(); ctx.beginPath(); ctx.arc(0,0,rr,0,Math.PI*2); ctx.globalAlpha=0.12+0.08*i; ctx.stroke(); ctx.restore(); }
+  const cr=R*0.42*(1+0.12*s); const g=ctx.createRadialGradient(0,0,0,0,0,cr*2.4);
+  g.addColorStop(0,p.c);g.addColorStop(.4,p.c2);g.addColorStop(1,'transparent');
+  ctx.globalAlpha=0.55+0.35*s; ctx.fillStyle=g; ctx.beginPath();ctx.arc(0,0,cr*2.4,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1; ctx.fillStyle='#eaf4ff'; ctx.save();ctx.rotate(-t*0.6);
+  ctx.beginPath();for(let a=0;a<3;a++){const an=a/3*Math.PI*2-Math.PI/2;a?ctx.lineTo(Math.cos(an)*cr,Math.sin(an)*cr):ctx.moveTo(Math.cos(an)*cr,Math.sin(an)*cr);}ctx.closePath();ctx.fill();ctx.restore();
+  ctx.restore();
+}
+function hud(x,ctx,w,h,p,t){
+  const cx=w/2,cy=h/2,R=Math.min(w,h)*0.4,s=speak(t)*p.energy;
+  ctx.save();ctx.translate(cx,cy);ctx.strokeStyle=p.c;
+  for(let i=0;i<4;i++){ ctx.save();ctx.rotate(t*(0.15+i*0.1)*(i%2?-1:1));
+    const rr=R*(0.35+i*0.2),arc=[0.7,1.4,0.5,2.1][i]; ctx.globalAlpha=0.3+0.12*i;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(0,0,rr,i*0.5,i*0.5+arc);ctx.stroke();
+    ctx.beginPath();ctx.arc(0,0,rr,i*0.5+arc+0.4,i*0.5+arc+0.4+arc*0.6);ctx.stroke();ctx.restore(); }
+  ctx.rotate(-t*0.4);ctx.globalAlpha=0.5;
+  for(let a=0;a<40;a++){const an=a/40*Math.PI*2,r1=R*0.95,r2=R*(a%5===0?1.06:1.01);ctx.beginPath();ctx.moveTo(Math.cos(an)*r1,Math.sin(an)*r1);ctx.lineTo(Math.cos(an)*r2,Math.sin(an)*r2);ctx.stroke();}
+  ctx.rotate(t*0.4);const cr=R*0.16*(1+0.25*s);const g=ctx.createRadialGradient(0,0,0,0,0,cr*3);g.addColorStop(0,p.c);g.addColorStop(1,'transparent');
+  ctx.globalAlpha=0.6+0.3*s;ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,cr*3,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=0.9;ctx.strokeStyle='#eaf4ff';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,cr,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+}
+function core(x,ctx,w,h,p,t){
+  const cx=w/2,cy=h/2,R=Math.min(w,h)*0.32,s=speak(t)*p.energy;
+  ctx.save();ctx.translate(cx,cy);
+  for(let l=6;l>=0;l--){ const rr=R*(0.5+l*0.12)*(1+0.05*s*Math.sin(t*2+l));
+    const g=ctx.createRadialGradient(Math.sin(t+l)*R*0.1,Math.cos(t*0.7+l)*R*0.1,0,0,0,rr);
+    g.addColorStop(0,l<2?'#fff':p.c);g.addColorStop(.5,p.c2);g.addColorStop(1,'transparent');
+    ctx.globalAlpha=0.14+0.03*l;ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,rr,0,Math.PI*2);ctx.fill(); }
+  for(let i=0;i<26;i++){ const a=i/26*Math.PI*2+t*(0.4+p.calm*0.3), rr=R*(1.05+0.5*((i*97)%10)/10);
+    const px=Math.cos(a)*rr, py=Math.sin(a)*rr; ctx.globalAlpha=0.5-p.calm*0.3;ctx.fillStyle=p.c;
+    ctx.beginPath();ctx.arc(px,py,1.4,0,Math.PI*2);ctx.fill(); }
+  ctx.globalAlpha=0.9;const rim=ctx.createRadialGradient(0,0,R*0.7,0,0,R);rim.addColorStop(0,'transparent');rim.addColorStop(1,p.c);
+  ctx.strokeStyle=p.c;ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,0,R,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+}
+function wave(x,ctx,w,h,p,t){
+  const cy=h/2,s=p.energy; ctx.save();ctx.strokeStyle=p.c;ctx.lineWidth=2;ctx.globalAlpha=0.85;
+  for(let layer=0;layer<3;layer++){ ctx.beginPath();ctx.globalAlpha=0.7-layer*0.2;
+    for(let px=0;px<=w;px+=4){ const n=Math.sin(px*0.02+t*3+layer)+Math.sin(px*0.05-t*2+layer*2)*0.5;
+      const amp=(h*0.22)*s*(0.4+0.6*speak(t))*Math.exp(-Math.pow((px-w/2)/(w*0.4),2));
+      const y=cy+n*amp*(layer?0.5:1); px?ctx.lineTo(px,y):ctx.moveTo(px,y);} ctx.stroke(); }
+  const g=ctx.createRadialGradient(w/2,cy,0,w/2,cy,h*0.3);g.addColorStop(0,p.c);g.addColorStop(1,'transparent');
+  ctx.globalAlpha=0.25+0.2*speak(t)*s;ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+  ctx.restore();
+}
+const FX={reactor,hud,core,wave};
+function loop(now){ state.t=now/1000;
+  canvases.forEach(c=>{ const fx=c.dataset.fx; if(!fx)return; const ctx=c.getContext('2d'),{w,h}=c._d,p=PAL[state.v];
+    ctx.clearRect(0,0,w,h); FX[fx](null,ctx,w,h,p,state.t); });
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>

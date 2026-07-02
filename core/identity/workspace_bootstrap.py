@@ -302,12 +302,16 @@ def _check_workspace_file_health(
     workspace_dir: Path,
     filename: str,
     known_sizes: dict[str, int],
-) -> list[str]:
+) -> list[tuple[str, str]]:
     """Check a workspace file for suspicious shrinkage or stub-level size.
 
-    Returns a list of warning messages (empty if healthy).
+    Returns a list of (level, message) hvor level ∈ {"critical", "warning"}. Skelnen (så en
+    LEGITIM kuratering ikke farver Centralen rød): et STUB-kollaps (identitets-fil under minimum)
+    er CRITICAL; en relativ formindskelse af en fil der STADIG er substantiel (≥ minimum) er en
+    WARNING — værd at bemærke (gul), men ikke system-brud (rød). Fx MEMORY.md kurateret 140KB→4KB
+    mens den ægte hukommelse ligger i memory/-subdir + DB.
     """
-    warnings: list[str] = []
+    warnings: list[tuple[str, str]] = []
     dest = workspace_dir / filename
 
     if not dest.exists():
@@ -315,23 +319,29 @@ def _check_workspace_file_health(
 
     current_size = dest.stat().st_size
 
-    # Check 1: absolute minimum for identity-critical files
+    # Check 1: absolute minimum for identity-critical files → STUB-kollaps = CRITICAL
     if filename in _IDENTITY_CRITICAL_FILES and current_size < _MIN_EXPECTED_SIZE:
-        warnings.append(
+        warnings.append((
+            "critical",
             f"⚠ {filename} is only {current_size}B — below minimum "
             f"{_MIN_EXPECTED_SIZE}B for identity-critical files. "
-            f"Likely a stub overwrite. Investigate before restart."
-        )
+            f"Likely a stub overwrite. Investigate before restart.",
+        ))
 
-    # Check 2: relative shrinkage from last-known-good
+    # Check 2: relativ formindskelse fra last-known-good. Stadig substantiel (≥ min) → WARNING;
+    # under min (allerede fanget som stub af Check 1) → CRITICAL.
     last_known = known_sizes.get(filename)
     if last_known and last_known > 0:
         ratio = current_size / last_known
         if ratio < _SHRINK_ALARM_THRESHOLD:
-            warnings.append(
+            level = "warning" if current_size >= _MIN_EXPECTED_SIZE else "critical"
+            warnings.append((
+                level,
                 f"🚨 {filename} shrank from {last_known}B to {current_size}B "
-                f"({ratio:.0%} of last-known-good). Possible data loss!"
-            )
+                f"({ratio:.0%} of last-known-good). "
+                + ("Verificér (ægte hukommelse ligger typisk i memory/ + DB)."
+                   if level == "warning" else "Possible data loss!"),
+            ))
 
     return warnings
 
@@ -352,14 +362,19 @@ def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:
             _check_workspace_file_health(workspace_dir, filename, known_sizes)
         )
     if health_warnings:
-        for w in health_warnings:
-            LOGGER.critical("WORKSPACE HEALTH GUARD: %s", w)
+        for level, w in health_warnings:
+            # CRITICAL kun ved ægte stub-kollaps (→ rød Central). Substantiel formindskelse =
+            # WARNING (gul) — så en LEGITIM kuratering ikke false-positiv-farver Centralen rød.
+            if level == "critical":
+                LOGGER.critical("WORKSPACE HEALTH GUARD: %s", w)
+            else:
+                LOGGER.warning("WORKSPACE HEALTH GUARD: %s", w)
         # Also publish to eventbus so daemons/heartbeat can pick it up
         try:
             from core.services.event_bus import publish as _eb_publish
             _eb_publish("workspace.health_warning", {
                 "workspace": name,
-                "warnings": health_warnings,
+                "warnings": [w for _lvl, w in health_warnings],
             })
         except Exception:
             pass  # eventbus may not be available in all contexts

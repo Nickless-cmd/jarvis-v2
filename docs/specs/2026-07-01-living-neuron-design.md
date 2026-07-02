@@ -192,7 +192,15 @@ Rå indtryk → meningsfulde data.
   emergence, contradiction.
 - **Krav før Lag 3:** causal-grafens tier-fordeling + precision skal måles — broen fra signal til hypotese går HERIGENNEM.
 
-### Lag 3 — Hypotese (✅ GENERATOR BYGGET 2. jul — observe-only, governed)
+### Lag 3 — Hypotese (✅ LØKKE LUKKET 2. jul — generér→test→resolve, observe-only, governed)
+**LOOP-LUKNING (`central_hypothesis_sampler.py`):** hypoteserne blev DANNET men aldrig TESTET (0/sample_size). Samleren
+tester nu hver aktiv causal-hypotese (X→Y) mod event-strømmen med ÆGTE baseline-sammenligning (betinget rate P(Y følger
+X ≤60s) vs. baseline P(Y)), registrerer ét grounded sample/tick (source=world_consequence, ground_ref=event-id) →
+resolver via §8. **FØRSTE LIVE-TEST 2. jul:** `runtime→tool` BEKRÆFTET (tiltro 0.30→0.335); `runtime→decision_signal`
+MODSAGT (Popper trak 0.30→0.15 — falsificeres mod virkeligheden); `conflict→counterfactual` sprunget over (for få
+conflict-events → ærlig skip). **Centralen skifter nu mening om sig selv baseret på DATA, ikke prompt.** Steg (a)+(b)+(c)
+af LivingNeuron-definitionen er LIVE; kun (d) justér-tilbøjelighed (Lag 4) mangler.
+
 **`core/services/central_hypothesis_generator.py`.** Danner FALSIFICERBARE korrelations-hypoteser fra det målte
 substrat (causal-grafen, Tier-1/2 meningsfulde kanter — bygger på Fase 1d) og router ALT gennem §8-dødsmekanismen
 (`evaluate()` + `gate_learning_input()`). Konsoliderer under ÉN governed tabel (`central_hypotheses`) — kilde-organerne

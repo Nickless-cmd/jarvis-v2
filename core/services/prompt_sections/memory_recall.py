@@ -303,7 +303,6 @@ def _memory_candidate_recall_lines(*, limit: int, session_id: str = "") -> list[
 
 
 def _clip_line(value: str, *, limit: int) -> str:
-    text = " ".join(str(value or "").split()).strip()
-    if len(text) <= limit:
-        return text
-    return text[: limit - 1].rstrip() + "…"
+    # Ord-sikker (mod "død ved tusinde snit") — klipper ved sætnings/ord-grænse, ikke midt i ordet.
+    from core.services.text_clip import clip_text
+    return clip_text(value, limit=limit)

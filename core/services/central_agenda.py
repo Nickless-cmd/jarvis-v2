@@ -86,7 +86,8 @@ def _read_initiatives() -> list[dict[str, Any]]:
             if isinstance(i, dict):
                 txt = i.get("focus") or i.get("why_text") or i.get("action_summary") or ""
                 if str(txt).strip():
-                    out.append({"text": str(txt)[:160], "source": "initiative",
+                    from core.services.text_clip import clip_text
+                    out.append({"text": clip_text(txt, limit=240), "source": "initiative",
                                 "initiative_id": i.get("initiative_id")})
     except Exception:
         pass
@@ -130,7 +131,8 @@ def choose_next_intention(agenda: dict[str, Any]) -> dict[str, Any] | None:
             steps = ap.get("steps") or []
             nxt = next((s for s in steps if isinstance(s, dict) and not s.get("completed")), None)
             if nxt:
-                return {"kind": "plan_step", "text": str(nxt.get("text") or nxt.get("title") or "")[:200],
+                from core.services.text_clip import clip_text
+                return {"kind": "plan_step", "text": clip_text(nxt.get("text") or nxt.get("title"), limit=240),
                         "source": "plan", "plan_id": ap.get("plan_id")}
         if agenda.get("top_want"):
             return {"kind": "want", "text": agenda["top_want"].get("text", ""), "source": "want"}

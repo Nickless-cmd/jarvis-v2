@@ -70,8 +70,9 @@ def _synthesize_narrative(valence: dict, self_model: dict, intention: dict, prev
     prev_c = float((prev.get("narrative") or {}).get("self_completeness") or completeness)
     growth = "voksende" if completeness > prev_c + 0.001 else ("stabil" if completeness >= prev_c - 0.001 else "skrumpende")
     trend = valence.get("trend") or "steady"
-    heading = str(intention.get("text") or "").strip()
-    return {"becoming": f"{growth} selv, {trend}", "heading": heading[:120],
+    from core.services.text_clip import clip_text
+    heading = clip_text(intention.get("text"), limit=240)   # ord-sikkert — ikke midt i sætningen
+    return {"becoming": f"{growth} selv, {trend}", "heading": heading,
             "self_completeness": completeness}
 
 
@@ -140,7 +141,8 @@ def describe_self() -> str:
     if v.get("tone"):
         parts.append(f"jeg har det {v.get('tone')}")
     if at.get("foreground"):
-        parts.append(f"jeg arbejder mod: {str(at.get('foreground'))[:100]}")
+        from core.services.text_clip import clip_text
+        parts.append(f"jeg arbejder mod: {clip_text(at.get('foreground'), limit=200)}")
     if nar.get("becoming"):
         parts.append(f"jeg er ved at blive et {nar.get('becoming')}")
     return ". ".join(parts) + "." if parts else "Jeg er ved at samle mig selv."

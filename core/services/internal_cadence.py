@@ -1048,6 +1048,13 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Fase 1d: causal-grafens tier-fordeling + precision (broen signal→hypotese) → tidsserie.
+    try:
+        from core.services.central_causal_quality import register_causal_quality_producer
+        register_causal_quality_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

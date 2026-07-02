@@ -1163,6 +1163,14 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Spec D / D3: SYNTESEN (MIDTEN) — integrér agenda(D1)+valens(D2)+selv-model(spejl)+opmærksomhed+
+    # fortælling til ÉT durabelt "jeg" der overlever død. Selvets hjerteslag. Egress-frit.
+    try:
+        from core.services.central_self_state import register_self_state_producer
+        register_self_state_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

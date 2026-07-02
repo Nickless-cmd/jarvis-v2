@@ -84,8 +84,10 @@ def _read_initiatives() -> list[dict[str, Any]]:
         from core.services.initiative_queue import get_pending_initiatives
         for i in (get_pending_initiatives() or []):
             if isinstance(i, dict):
-                out.append({"text": str(i.get("summary") or i.get("text") or i.get("title") or "")[:160],
-                            "source": "initiative"})
+                txt = i.get("focus") or i.get("why_text") or i.get("action_summary") or ""
+                if str(txt).strip():
+                    out.append({"text": str(txt)[:160], "source": "initiative",
+                                "initiative_id": i.get("initiative_id")})
     except Exception:
         pass
     return out[:5]

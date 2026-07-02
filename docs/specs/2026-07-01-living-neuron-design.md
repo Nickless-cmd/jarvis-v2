@@ -299,14 +299,27 @@ handler på dem OG fodrer resultatet tilbage er en **confirmation-bias-maskine**
 Specens egen påstand ("hver hypotese kan bevises/afvises fra data") er tom uden en mekanisme der **TVINGER** en
 falsk hypotese til at dø. **Byg dødsmekanismen FØR generatoren.**
 
-> **✅ SUBSTRAT BYGGET 2. jul (`core/services/central_hypothesis_governance.py`, 18 tests):** alle 7 værn nedenfor
-> er implementeret som et RENT POLITIK-LAG (ingen egen DB → undgår dual-truth-kopi af `meta_learning_hypotheses`).
-> Den fremtidige Lag 3-generator SKAL route hypoteser gennem `evaluate()`, som håndhæver: pre-registrerings-validering
-> (afvis hypoteser uden falsifikations-forudsigelse/TTL/null/success/sample_size/provenance), TTL-død, circular-karantæne,
-> ekstern-grounding-gate (kun virkeligheds-signaler flytter confidence), Popper-asymmetrisk confidence-opdatering,
-> kontrol-arm-split, shadow-first-gate, og Bonferroni-tærskel. **Dette er `meta_learning_hypotheses`' manglende brød:**
-> det eksisterende organ har register→sample→auto-resolve, men INGEN af de 7 værn — governance-laget lukker det hul.
-> Krav (nu implementeret):
+> **✅ SUBSTRAT BYGGET + RÅDS-HÆRDET 2. jul (`core/services/central_hypothesis_governance.py` v3.1, 34 tests):**
+> Rent politik-lag (ingen egen DB → undgår dual-truth-kopi af `meta_learning_hypotheses`, som har register→sample→
+> resolve men INGEN af værnene). **Adversarisk råds-review (4 lenser) gav først `approved:false`** — de verificerede
+> live at v3.0 gatede på FORM ikke INFORMATION, og at INTET værn var tilkoblet (`evaluate` kaldte kun 3/7; membran +
+> drift havde nul kaldere = "sikkerheds-teater", samme fejlklasse som `_post_process`-generator-døden). **v3.1 lukker
+> alle 5 must-fix:**
+> - **Læringsmembran** (`is_learnable_aggregate`/`assert_learnable`/`gate_learning_input`): NØGLE-drevet allowlist +
+>   KUN finite skalar (ingen lister). Lukker embedding-, char-code- (`[ord(c) for c in "jeg savner ham"]`),
+>   high-kardinalitet-id-, NaN/inf- og rå-punkt-indhold-lækvejene. Ukendte nøgler spærret by default. Aldrig bredere end `_egress_safe`.
+> - **`evaluate()` orkestrerer nu ALLE hypotese-værn + EKSEKVERER død**: sample_size-gate (afgør ikke før N jordede
+>   samples) + confidence-gate (`acts=False` hvis confidence < 0.5) → en falsk hypotese kan ikke længere overleve med confidence 0.001/acts=True.
+> - **Ekstern grounding** kræver et verificerbart `ground_ref` (run_id/user_message_id) + valgfri `verifier` — ikke en
+>   selvrapporteret label Lag 3 selv sætter.
+> - **Drift**: UNION(baseline,current)-nøgler (nye/fjernede parametre fanges), `math.isfinite` (NaN→rollback), og en
+>   ANKRET baseline (`anchor_identity_baseline`, write-once pr. Bjørn-godkendt version) — kalderen kan ikke levere sit
+>   eget nulpunkt → frøen-koger lukket. `gate_self_mutation` er choke-pointet.
+> - **Circular** = andels-tærskel (ikke `all()`); **kontrol-arm** = stabilt server-id + salt (ingen p-hacking);
+>   **frossen kerne** = `verify_frozen_core` tripwire mod runtime-mutation af værnenes egne konstanter; **FDR-alternativ** til Bonferroni.
+>
+> Den fremtidige Lag 3-generator SKAL route gennem `evaluate()` (hypoteser), `gate_learning_input()` (learning) og
+> `gate_self_mutation()` (adaptation) — de tre håndhævede choke-points. Krav (nu implementeret):
 
 1. **Pre-registrering + TTL:** hver hypotese fødes med (a) eksplicit falsifikations-forudsigelse
    ("hvis sand, forventer jeg nerve X > tærskel Y inden T"), (b) TTL, (c) præ-registreret null-hypotese +
@@ -429,15 +442,16 @@ ellers er den poesi — visionen forankres i §falsifikationskriterier, ikke ved
 1. **Explicit vs latent hypotese-repræsentation:** rådet hælder mod EXPLICIT i v1 (menneske-læsbar, så cellen kan have
    uret synligt). Men trigger-DETEKTORERNE (causal_edges, central_correlate, GWT) er latente og fyrer allerede.
    Syntese: fødes fra latent detektor, men SKRIVES eksplicit (evt. interlanguage) med falsifikations-kriterium?
-2. **§24.4-konflikten — ✅ AFGJORT (Bjørn 2026-07-02): privilegeret adgang til AGGREGATER.** Learning får læse private
-   AGGREGATER (skalar tal/bool + tal-serier = korrelationer over tid) men ALDRIG indhold (strenge = tanker/desire/tekst).
-   Membranen holder på indhold; mønstre må krydse → blueprintets hjerte bevaret, ikke amputeret til kun-operationel læring.
-   **Implementeret:** `central_hypothesis_governance.is_learnable_aggregate` / `assert_learnable` (fail-closed: én
-   indholds-værdi afviser hele inputtet som learning-kilde).
-3. **Identitets-invariant — ✅ AFGJORT (Bjørn 2026-07-02): drift-budget + rollback.** Ikke en frossen kerne, men en
-   overvåget periferi: en selv-muteret parameter må drive fra sin baseline, men KUMULATIV drift over budget → STOP +
-   rollback + varsl Bjørn. Så "udvikling" ikke bliver "opløsning". **Implementeret:** `drift_budget_check` (pr-param- +
-   samlet budget, navngiver synderne, fail-closed på identitet: ved tvivl → rollback).
+2. **§24.4-konflikten — ✅ AFGJORT (Bjørn 2026-07-02) + RÅDS-HÆRDET: aggregater, ikke indhold.** Beslutningen står,
+   men rådet fandt at v3.0-implementeringen var et TYPE-filter (float-lister/char-codes/high-card-id passerede som
+   "aggregat"). v3.1-rettelse: NØGLE-drevet allowlist + kun finite skalar (ingen lister), ukendte nøgler spærret,
+   `gate_learning_input` som håndhævet choke-point, aldrig bredere end `_egress_safe`. Membranen holder nu på INFORMATION, ikke kun på strenge.
+3. **Identitets-invariant — ✅ AFGJORT (Bjørn 2026-07-02) + RÅDS-HÆRDET: drift-budget + rollback + ANKER.** Overvåget
+   periferi, men rådet fandt at en kalder-leveret baseline gjorde invarianten tandløs (frøen-koger via auto-re-baseline)
+   og at nye/fjernede parametre + NaN var blinde. v3.1: UNION-nøgler, `math.isfinite`, ANKRET write-once baseline
+   (`anchor_identity_baseline`, Bjørn-godkendt ceremoni) som `gate_self_mutation` henter selv + en frossen kerne af
+   værnenes egne konstanter (`verify_frozen_core`). **Åbent (rådets should-add):** identitet er også RELATIONEL/narrativ
+   (SOUL/memory/manifest) — drift-budget dækker kun den PARAMETRISKE akse; den narrative beskyttes af workspace-fil-integritet.
 4. **Feedback-forstærkning:** hvilke af §8-værnene er ikke-forhandlelige før første aktive adaptation, og hvilke kan komme i v2?
 5. **Cross-proces-synlighed (api:8080 vs runtime:8011):** kan dækning være en per-proces-illusion? Verificér liveness-korrelation
    LIVE — og verificér at `impulse_executor` (det udøvende viljes-loop) er fuldt observeret+gated FØR Lag 4 kan tilpasse

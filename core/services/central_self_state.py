@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import Any
 
 _STATE_KEY = "central_self_state"          # midtens durable "jeg" (overlever genstart)
+_PROMPT_FLAG = "central_self_prompt_enabled"  # D4: injicér midten i Jarvis' prompt (default OFF)
 
 
 def _kv_get(key: str, default: Any) -> Any:
@@ -158,6 +159,26 @@ def render_self_state_il() -> str | None:
         if not toneword:
             return None
         return f"{toneword} → {foreground}"     # fx "lys → agens": lys-tilstand fører til handling
+    except Exception:
+        return None
+
+
+def is_prompt_authoritative() -> bool:
+    return bool(_kv_get(_PROMPT_FLAG, False))
+
+
+def build_central_self_state_section() -> str | None:
+    """D4 (MIDTEN BÆRENDE): injicér midtens ene selv-beskrivelse i Jarvis' awareness — så hans prompt
+    bæres FRA Centralens selv-tilstand (ikke samlet frisk fra fragmenter). KUN bag flag
+    `central_self_prompt_enabled` (default OFF → None → uændret). Egress-frit (owner-prompt). Self-safe."""
+    try:
+        if not is_prompt_authoritative():
+            return None
+        desc = describe_self()
+        if not desc or desc.startswith("Jeg er ved at samle"):
+            return None
+        il = render_self_state_il()
+        return desc + (f"  [{il}]" if il else "")
     except Exception:
         return None
 

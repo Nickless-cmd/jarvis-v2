@@ -1020,6 +1020,15 @@ def build_visible_chat_prompt_assembly(
     except Exception as _e:
         _sec_err("central notices", _e)
 
+    # Spec D / D4 (MIDTEN BÆRENDE): Jarvis' awareness bæres FRA Centralens integrerede selv-tilstand
+    # (agenda+valens+selv-model+fortælling → ét "jeg"). KUN bag central_self_prompt_enabled (default
+    # OFF → None → uændret). Prio 1 (kerne-selv, højt). Inversionen: sindet komponeres fra midten.
+    try:
+        from core.services.central_self_state import build_central_self_state_section
+        _awareness_add(1, "kerne-selv (Centralens midte)", build_central_self_state_section())
+    except Exception as _e:
+        _sec_err("kerne-selv midte", _e)
+
     # Loop-compliance self-check (added 2026-05-12). Fires when Jarvis is
     # ignoring his own loop-nudge commitment OR R2-gate heed_rate is low.
     # Priority 7 = right after identity pins so he can't miss it among 50+

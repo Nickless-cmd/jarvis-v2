@@ -85,9 +85,39 @@ def test_egress_free(monkeypatch, isolated_runtime):
     import core.eventbus.bus as bus_mod
     monkeypatch.setattr(bus_mod.event_bus, "publish", lambda *a, **k: published.append((a, k)))
     ss.run_self_state_tick()
-    assert published == []                       # selvet er privat — aldrig til bussen
+    # selvets INDHOLD (tone/agenda-tekst) må ALDRIG nå bussen. (Centralens egen self-probe med TOM
+    # payload er metadata, ikke indhold — og blokeres downstream af den uregistrerede central-familie.)
+    blob = repr(published)
+    assert "blomstrende" not in blob and "awareness" not in blob and "Fortsæt" not in blob
 
 
 def test_self_safe_empty(isolated_runtime):
     assert ss.describe_self() == "Jeg er ved at samle mig selv."
     assert ss.run_self_state_tick()["status"] == "ok"
+
+
+# ── D4: MIDTEN BÆRENDE — prompt-injektion bag flag ───────────────────────────────────
+def test_prompt_section_none_in_shadow(monkeypatch, isolated_runtime):
+    """Default OFF: build_central_self_state_section returnerer None → prompten uændret."""
+    _full(monkeypatch)
+    ss.run_self_state_tick()
+    ss._kv_set(ss._PROMPT_FLAG, False)
+    assert ss.is_prompt_authoritative() is False
+    assert ss.build_central_self_state_section() is None
+
+
+def test_prompt_section_injects_self_when_live(monkeypatch, isolated_runtime):
+    """LIVE: Jarvis' awareness bæres FRA midten — selv-beskrivelsen injiceres i prompten."""
+    _full(monkeypatch)
+    ss.run_self_state_tick()
+    ss._kv_set(ss._PROMPT_FLAG, True)
+    sec = ss.build_central_self_state_section()
+    assert sec and "85 lag" in sec and "blomstrende" in sec
+    assert "→" in sec                              # interlanguage-notation vedhæftet
+
+
+def test_prompt_section_none_when_self_unformed(monkeypatch, isolated_runtime):
+    """Fail-safe: uden en samlet selv-tilstand injiceres intet (selv med flag ON)."""
+    ss._kv_set(ss._STATE_KEY, {})
+    ss._kv_set(ss._PROMPT_FLAG, True)
+    assert ss.build_central_self_state_section() is None

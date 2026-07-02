@@ -732,10 +732,11 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     resolved_session = (session_id or "").strip() or _get_or_create_autonomous_session()
 
     settings = load_settings()
-    # Tråd 1-konsument: autonome runs honorerer også lært routing-præference (bag flag, default OFF).
+    # Tråd 1-konsument: autonome runs honorerer lært routing-præference OG eksplorations-armen
+    # (sampler occasionelt en alternativ model for at skabe kontrast — begge bag flag, default OFF).
     from core.services.central_router_adapt import resolve_visible_model as _resolve_vm
     _auto_provider, _auto_model = _resolve_vm(
-        provider_override="", model_override="",
+        provider_override="", model_override="", autonomous=True,
         default_provider=settings.visible_model_provider, default_model=settings.visible_model_name)
     run = VisibleRun(
         run_id=f"autonomous-{uuid4().hex}",

@@ -183,18 +183,27 @@ def get_live_preference(lane: str = "visible") -> dict[str, Any] | None:
 
 
 def resolve_visible_model(*, provider_override: str = "", model_override: str = "",
-                          default_provider: str, default_model: str) -> tuple[str, str]:
+                          default_provider: str, default_model: str,
+                          autonomous: bool = False) -> tuple[str, str]:
     """KONSUMENTEN (Tråd 1 live-wire): afgør (provider, model) for et visible-run. Centraliserer den
-    tidligere inline-dublerede selektion + anvender den LÆRTE routing-præference — men KUN når:
+    tidligere inline-dublerede selektion + anvender (a) EKSPLORATIONS-ARMEN (kun autonome runs, skaber
+    kontrast) og (b) den LÆRTE routing-præference — men KUN når:
       * en eksplicit override IKKE er sat (rolle-clampet member-override vinder ALTID — sikkerhed), OG
-      * flaget er ON + præferencen er grounded/konfigureret/ikke-deep-tier (get_live_preference-værn).
+      * flag er ON + grounded/konfigureret/ikke-deep-tier.
     Default/shadow → uændret adfærd (base). Kaster ALDRIG — fail-safe til base."""
     base_provider = (str(provider_override or "").strip() or default_provider)
     base_model = (str(model_override or "").strip() or default_model)
     try:
-        # eksplicit override (fx member→ollama-clamp) er ukrænkelig — præference må ikke røre den
+        # eksplicit override (fx member→ollama-clamp) er ukrænkelig — intet må røre den
         if str(provider_override or "").strip() or str(model_override or "").strip():
             return base_provider, base_model
+        # (a) EKSPLORATION: kun autonome runs — sample occasionelt en alternativ model (skab kontrast)
+        if autonomous:
+            from core.services import central_router_explore as _explore
+            alt = _explore.pick_exploration_model(base_provider, base_model)
+            if alt:
+                return alt
+        # (b) LÆRT PRÆFERENCE
         pref = get_live_preference("visible")     # None i shadow/uden flag
         if pref and pref.get("model") and "/" in str(pref["model"]):
             p, m = str(pref["model"]).split("/", 1)

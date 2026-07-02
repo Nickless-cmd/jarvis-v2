@@ -787,13 +787,21 @@ export async function ackNotification(config: ApiConfig, notifId: string): Promi
 
 /** Mål forbindelses-latency mod serveren (ping). Returnerer ms eller null hvis nede. */
 export async function pingServer(config: ApiConfig): Promise<number | null> {
-  const url = new URL('/openapi.json', config.apiBaseUrl).toString()
+  // /health er let (200 uden stor payload). AbortController-timeout: uden den HÆNGER fetch'en på
+  // OS'ets TCP-timeout (~74s) når API'en er unåbar → app'en gik "grøn med 74000ms" når den hængende
+  // request endelig lykkedes. Nu fejler et ping hurtigt (6s) → 10s-intervallet prøver igen → grøn
+  // inden for ~10s af at API'en kommer tilbage, med ægte (lav) latency.
+  const url = new URL('/health', config.apiBaseUrl).toString()
   const t0 = performance.now()
+  const ac = new AbortController()
+  const timer = setTimeout(() => ac.abort(), 6000)
   try {
-    const res = await fetch(url, { method: 'GET', cache: 'no-store' })
+    const res = await fetch(url, { method: 'GET', cache: 'no-store', signal: ac.signal })
     if (!res.ok) return null
     return Math.round(performance.now() - t0)
   } catch {
     return null
+  } finally {
+    clearTimeout(timer)
   }
 }

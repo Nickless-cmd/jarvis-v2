@@ -58,3 +58,25 @@ def test_surface_shows_would_drop():
     pc._kv_set(pc._WEIGHTS_KEY, {"kode|somatik": 0.1, "kode|mood": 0.9})
     surf = pc.build_central_prompt_composer_surface()
     assert "kode|somatik" in surf["would_drop"] and "kode|mood" not in surf["would_drop"]
+
+
+def test_frequency_substrate_and_candidates(isolated_runtime):
+    # observér 25 kode-ture hvor 'somatik' altid var med → høj-frekvens kandidat
+    for _ in range(25):
+        pc.observe_composition("kode", sections_total=10, sections_included=2,
+                               included_labels=["somatik", "markdown formatting"])
+    cands = pc.build_relevance_candidates(min_count=20)
+    keys = {(c["turn_type"], c["section"]) for c in cands}
+    assert ("kode", "somatik") in keys
+    # kandidat bærer interlanguage-notation (sektion ⊂ kald)
+    som = next(c for c in cands if c["section"] == "somatik")
+    assert som["notation"] == "kode ⊂ kald" and som["count"] >= 20
+
+
+def test_frozen_sections_not_candidates(isolated_runtime):
+    for _ in range(30):
+        pc.observe_composition("kode", sections_total=5, sections_included=1,
+                               included_labels=["pinned identity context"])
+    cands = pc.build_relevance_candidates(min_count=20)
+    # identitet må ALDRIG blive en udeladelses-kandidat
+    assert not any("identity" in c["section"].lower() for c in cands)

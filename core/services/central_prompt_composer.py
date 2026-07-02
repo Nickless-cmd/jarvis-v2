@@ -91,7 +91,9 @@ def should_include(turn_type: str, section: str, *, threshold: float = _INCLUDE_
     Shadow (default): ALTID True — intet skæres. Frosne sektioner: ALTID True. Live + lav vægt: udelad.
     Konservativ ved tvivl. Self-safe → True (inkludér)."""
     try:
-        if str(section or "").lower() in FROZEN_SECTIONS:
+        sl = str(section or "").lower()
+        # frossen hvis label INDEHOLDER et frossent nøgleord (labels er fraser: "pinned identity context")
+        if any(f in sl for f in FROZEN_SECTIONS):
             return True
         if not is_live_enabled():
             return True                         # shadow: intet skæres endnu
@@ -100,10 +102,15 @@ def should_include(turn_type: str, section: str, *, threshold: float = _INCLUDE_
         return True                             # fail-open på inklusion (aldrig skjul ved fejl)
 
 
+_FREQ_KEY = "prompt_section_freq"    # {"turn_type|section": count} — hyppigheds-substrat
+_FREQ_MAX_ENTRIES = 400
+
+
 def observe_composition(turn_type: str, *, sections_total: int, sections_included: int,
-                        outcome: str = "") -> None:
-    """Egress-frit substrat: hvad blev komponeret denne tur (til fremtidig relevans-hypotese-generering).
-    Kun skalarer/tur-type-navn — aldrig prompt-INDHOLD. Self-safe."""
+                        outcome: str = "", included_labels: list[str] | None = None) -> None:
+    """Egress-frit substrat: hvad blev komponeret denne tur. Opdaterer (a) egress-fri tidsserie (kun
+    skalarer) + (b) per-(tur-type, sektion) HYPPIGHEDS-map (til relevans-kandidat-identifikation).
+    Aldrig prompt-INDHOLD. Ét kv-op pr. tur (batchet). Self-safe."""
     try:
         from core.services.central_private_observe import record_private
         record_private("cognition", f"prompt_compose:{turn_type}",
@@ -112,6 +119,41 @@ def observe_composition(turn_type: str, *, sections_total: int, sections_include
                              "outcome": str(outcome)[:24]})
     except Exception:
         pass
+    if not included_labels:
+        return
+    try:
+        freq = _kv_get(_FREQ_KEY, {}) or {}
+        if not isinstance(freq, dict):
+            freq = {}
+        for lbl in included_labels:
+            k = f"{turn_type}|{lbl}"
+            freq[k] = int(freq.get(k, 0)) + 1
+        if len(freq) > _FREQ_MAX_ENTRIES:  # bounded — behold de hyppigste
+            freq = dict(sorted(freq.items(), key=lambda kv: kv[1], reverse=True)[:_FREQ_MAX_ENTRIES])
+        _kv_set(_FREQ_KEY, freq)
+    except Exception:
+        pass
+
+
+def build_relevance_candidates(*, min_count: int = 20, top: int = 15) -> list[dict[str, Any]]:
+    """Relevans-KANDIDATER: (tur-type, sektion)-par der optræder ofte nok til at være værd at teste
+    for load-bearing-hed. IKKE governed hypoteser endnu — ægte test kræver EKSPLORATIONS-ARMEN
+    (udelad occasionelt + sammenlign udfald), som er flagget (default OFF, næste skridt). Self-safe."""
+    out = []
+    try:
+        freq = _kv_get(_FREQ_KEY, {}) or {}
+        for k, cnt in (freq.items() if isinstance(freq, dict) else []):
+            if int(cnt) < int(min_count) or "|" not in k:
+                continue
+            tt, sec = k.split("|", 1)
+            if any(f in sec.lower() for f in FROZEN_SECTIONS):
+                continue   # frosne sektioner testes aldrig for udeladelse
+            out.append({"turn_type": tt, "section": sec, "count": int(cnt),
+                        "notation": f"{tt} ⊂ kald"})   # sektion er DEL AF kaldet (interlanguage)
+    except Exception:
+        pass
+    out.sort(key=lambda x: x["count"], reverse=True)
+    return out[:top]
 
 
 def build_central_prompt_composer_surface() -> dict[str, object]:
@@ -121,4 +163,5 @@ def build_central_prompt_composer_surface() -> dict[str, object]:
            if isinstance(v, (int, float)) and float(v) < _INCLUDE_THRESHOLD}
     return {"active": True, "live_enabled": is_live_enabled(),
             "threshold": _INCLUDE_THRESHOLD, "weight_count": len(w) if isinstance(w, dict) else 0,
-            "would_drop": low, "frozen_sections": sorted(FROZEN_SECTIONS)}
+            "would_drop": low, "frozen_sections": sorted(FROZEN_SECTIONS),
+            "relevance_candidates": build_relevance_candidates()}

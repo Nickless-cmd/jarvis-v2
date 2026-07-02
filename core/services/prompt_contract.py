@@ -875,6 +875,15 @@ def build_visible_chat_prompt_assembly(
         except Exception:
             pass
 
+    # Tråd 2 (Intelligent Central): tur-type til Centralens kontekst-komposition. Beregnes ÉN gang
+    # (user_message i scope). Sektionerne her ligger EFTER den cachede stabile prefix (hale) — sikkert.
+    try:
+        from core.services import central_prompt_composer as _cpc
+        _turn_type_l2 = _cpc.classify_turn_type(user_message)
+    except Exception:
+        _cpc = None
+        _turn_type_l2 = "samtale"
+
     def _awareness_add(priority: int, label: str, content: str | None) -> None:
         _now = _t_mod.monotonic()
         _elapsed_ms = int((_now - _last_awareness_t[0]) * 1000)
@@ -886,6 +895,15 @@ def build_visible_chat_prompt_assembly(
                 overrides=_section_overrides):
             _dropped_disabled.append(label)
             return
+        # Tråd 2: kontekst-komponisten gater pr. tur-type (shadow-default: inkluderer ALT; frosne
+        # sektioner aldrig; live+lav-vægt → udelad). Fail-open — skjuler aldrig ved fejl.
+        if _cpc is not None:
+            try:
+                if not _cpc.should_include(_turn_type_l2, label):
+                    _dropped_disabled.append(label)
+                    return
+            except Exception:
+                pass
         if not content:
             return
         _awareness.append((priority, label, content))
@@ -1703,6 +1721,16 @@ def build_visible_chat_prompt_assembly(
             x[0],
         )
     )
+    # Tråd 2: egress-frit substrat — hvor mange hale-sektioner blev komponeret denne tur (til
+    # fremtidig relevans-hypotese-generering). Kun skalarer/tur-type, aldrig prompt-indhold.
+    if _cpc is not None:
+        try:
+            _incl = len(_awareness)
+            _cpc.observe_composition(_turn_type_l2, sections_total=_incl + len(_dropped_disabled),
+                                     sections_included=_incl,
+                                     included_labels=[_lbl for _p, _lbl, _c in _awareness])
+        except Exception:
+            pass
     # Buffer awareness output instead of writing directly to parts (2026-05-07).
     # Awareness sections contain second-resolution timestamps and other rapidly
     # varying content — appending them mid-assembly broke Deepseek's prefix

@@ -3133,6 +3133,14 @@ from core.services.prompt_sections.memory_recall import (  # noqa: E402
     _visible_memory_recall_bundle_section,
 )
 
+# Rene memory-relevans-scorers — udskilt til prompt_sections/memory_scoring.py (Boy Scout, task_d6100d6e)
+from core.services.prompt_sections.memory_scoring import (  # noqa: E402,F401
+    _contains_any,
+    _heuristic_relevant_memory_entries,
+    _memory_line_relevance_score,
+    _merge_ordered_memory_entries,
+)
+
 
 def _workspace_memory_entries(path: Path) -> list[str]:
     from core.services.workspace_crypto import read_text_for_path
@@ -3218,48 +3226,6 @@ def _select_relevant_memory_entries(
     )
 
 
-def _merge_ordered_memory_entries(
-    primary: list[str],
-    secondary: list[str],
-    *,
-    max_lines: int,
-) -> list[str]:
-    merged: list[str] = []
-    seen: set[str] = set()
-    for entry in [*primary, *secondary]:
-        key = " ".join(str(entry or "").lower().split()).strip()
-        if not key or key in seen:
-            continue
-        seen.add(key)
-        merged.append(entry)
-        if len(merged) >= max(max_lines, 1):
-            break
-    return merged
-
-
-def _heuristic_relevant_memory_entries(
-    entries: list[str],
-    *,
-    user_message: str,
-    max_lines: int,
-) -> list[str]:
-    scored: list[tuple[int, int, str]] = []
-    for index, entry in enumerate(entries):
-        score = _memory_line_relevance_score(entry, user_message)
-        if score <= 0:
-            continue
-        scored.append((score, index, entry))
-
-    if scored:
-        chosen = sorted(scored, key=lambda item: (item[0], item[1]), reverse=True)[
-            : max(max_lines, 1)
-        ]
-        ordered = [item[2] for item in sorted(chosen, key=lambda item: item[1])]
-    else:
-        ordered = entries[-max(max_lines, 1) :]
-    return ordered
-
-
 def _bounded_nl_memory_selection(
     *,
     user_message: str,
@@ -3277,73 +3243,9 @@ def _bounded_nl_memory_selection(
     )
 
 
-def _memory_line_relevance_score(entry: str, user_message: str) -> int:
-    line = str(entry or "").lower()
-    query = str(user_message or "").lower()
-    score = 0
-
-    if _contains_any(
-        query, ("mit navn", "hvad hedder jeg", "name", "navn")
-    ) and _contains_any(
-        line,
-        ("name", "navn"),
-    ):
-        score += 8
-    if _contains_any(
-        query,
-        ("bygger vi", "build", "building", "projekt", "project", "arbejder vi på"),
-    ) and _contains_any(
-        line,
-        (
-            "project anchor",
-            "building jarvis together",
-            "jarvis together",
-            "shared project",
-        ),
-    ):
-        score += 8
-    if _contains_any(
-        query,
-        (
-            "repo",
-            "repoet",
-            "repository",
-            "arbejder vi i",
-            "working context",
-            "hvilket repo",
-        ),
-    ) and _contains_any(
-        line,
-        ("jarvis v2 repo", "working context", "repo context", "repo"),
-    ):
-        score += 8
-    if _contains_any(
-        query,
-        ("context", "continuity", "stable", "carry", "workspace"),
-    ) and _contains_any(
-        line,
-        ("stable context", "carry forward", "carried", "workspace continuity"),
-    ):
-        score += 5
-
-    for token in (
-        "jarvis",
-        "repo",
-        "project",
-        "context",
-        "name",
-        "working",
-        "build",
-        "stable",
-        "workspace",
-    ):
-        if token in query and token in line:
-            score += 1
-    return score
-
-
-def _contains_any(text: str, needles: tuple[str, ...]) -> bool:
-    return any(needle in text for needle in needles)
+# _memory_line_relevance_score, _contains_any, _heuristic_relevant_memory_entries,
+# _merge_ordered_memory_entries er udskilt til prompt_sections/memory_scoring.py (Boy Scout) —
+# re-importeret nedenfor for bagudkompatibilitet.
 
 
 def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:

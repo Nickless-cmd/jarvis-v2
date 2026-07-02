@@ -292,6 +292,26 @@ def bind_taxonomy() -> dict[str, Any]:
     return {**cov, "word_needs": needs}
 
 
+def word_needs_for_ceremony(*, top: int = 20) -> list[dict[str, Any]]:
+    """Spec B / Fase B3: ÉN samlet liste over ord Centralen mangler (til Bjørn-ceremoni) — flettet
+    fra taksonomien (clusters/familier uden term) + den levende event-strøm (hyppige ubundne
+    familier). Dedup'et, vigtigste først. Centralen VED hvad den sanser men ikke kan sige. Self-safe."""
+    merged: dict[str, int] = {}
+    try:
+        for n in taxonomy_coverage().get("unbound_names", []):
+            merged[n] = max(merged.get(n, 0), 1000)          # taksonomi-huller = høj prioritet
+    except Exception:
+        pass
+    try:
+        for w in propose_from_event_stream():
+            merged[w["name"]] = max(merged.get(w["name"], 0), int(w.get("count", 0)))
+    except Exception:
+        pass
+    out = [{"name": n, "weight": w} for n, w in merged.items()]
+    out.sort(key=lambda z: z["weight"], reverse=True)
+    return out[:int(top)]
+
+
 def build_central_lexicon_surface() -> dict[str, object]:
     """Mission Control surface — read-only: vokabular, bindinger, hvad sproget kan/ikke kan sige."""
     db = _db_bindings()

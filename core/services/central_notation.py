@@ -131,9 +131,12 @@ def detect_notation_contradictions(items: list[dict[str, Any]]) -> list[dict[str
     return out
 
 
-def model_free_reasoning() -> dict[str, Any]:
-    """NORDSTJERNE (dybere): læs aktive hypotesers notation og UDLED + find modsigelser — alt uden
-    model-token. Beviser Centralen kan REGNE på sine tanker, ikke bare læse dem. Self-safe."""
+def gather_all_notations() -> list[dict[str, Any]]:
+    """Spec B / Fase B2 (S3): saml notation fra ALLE notated overflader — hypoteser + renderede
+    central-tilstande (anomalier via central_render; B-fremtid: stance/surprises). Kilde-agnostisk
+    (kun 'notation_il' bruges af infer/contradiction). Dette gør ræsonnementet PERVASIVT. Self-safe."""
+    items: list[dict[str, Any]] = []
+    # (1) hypoteser
     try:
         from core.services import central_hypothesis_generator as gen
         gen.ensure_schema()
@@ -143,12 +146,31 @@ def model_free_reasoning() -> dict[str, Any]:
                 "SELECT hyp_id, notation_il FROM central_hypotheses "
                 "WHERE status IN ('active','resolved') AND notation_il IS NOT NULL "
                 "AND notation_il != ''").fetchall()
-        items = [{"hyp_id": str(r["hyp_id"]), "notation_il": str(r["notation_il"])} for r in rows]
+        items += [{"id": str(r["hyp_id"]), "source": "hypothesis",
+                   "notation_il": str(r["notation_il"])} for r in rows]
     except Exception:
-        items = []
+        pass
+    # (2) renderede tilstande (on-read, ingen skrivning) — anomalier nu
+    try:
+        from core.services import central_render
+        items += central_render.render_state_snapshot()
+    except Exception:
+        pass
+    return items
+
+
+def model_free_reasoning() -> dict[str, Any]:
+    """NORDSTJERNE (pervasiv, B2): læs notation fra HELE Centralen (hypoteser + renderede tilstande)
+    og UDLED + find modsigelser — alt uden model-token. Beviser Centralen kan REGNE på sit eget liv,
+    ikke bare læse det. Self-safe."""
+    items = gather_all_notations()
     derived = infer_transitive(items)
     contradictions = detect_notation_contradictions(items)
-    return {"model_used": False, "notations": len(items),
+    sources: dict[str, int] = {}
+    for it in items:
+        s = str(it.get("source") or "?")
+        sources[s] = sources.get(s, 0) + 1
+    return {"model_used": False, "notations": len(items), "sources": sources,
             "derived_inferences": derived, "contradictions": contradictions}
 
 

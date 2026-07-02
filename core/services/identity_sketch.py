@@ -20,6 +20,7 @@ import logging
 from typing import Any
 
 from core.runtime.state_store import load_json, save_json
+from core.services.text_clip import clip_text
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ def identity_sketch_surface() -> dict[str, Any]:
         "updated_at": updated_at,
         "updated_by": trigger,
         "version": data.get("version", 0),
-        "content_preview": content[:120] + "…" if len(content) > 120 else content,
+        "content_preview": clip_text(content, limit=120),
         "word_count": len(content.split()),
     }
 

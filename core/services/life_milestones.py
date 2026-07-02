@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from core.runtime.workspace_paths import shared_dir
+from core.services.text_clip import clip_text
 
 _MAX_CHARS = 1200
 
@@ -39,7 +40,7 @@ def get_milestones_for_prompt(max_chars: int = _MAX_CHARS) -> str | None:
 
     combined = "\n\n".join(parts).strip()
     if len(combined) > max_chars:
-        combined = combined[:max_chars - 1].rstrip() + "…"
+        combined = clip_text(combined, limit=max_chars)
     return combined
 
 
@@ -53,7 +54,7 @@ def get_manifest_excerpt(max_chars: int = 600) -> str | None:
         if not text:
             return None
         if len(text) > max_chars:
-            text = text[:max_chars].rstrip() + "…"
+            text = clip_text(text, limit=max_chars)
         return text
     except Exception:
         return None

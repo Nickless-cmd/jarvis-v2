@@ -14,6 +14,7 @@ from core.runtime.db import (
 from core.runtime.settings import load_settings
 from core.services.chronicle_engine import list_cognitive_chronicle_entries
 from core.services.daemon_llm import daemon_llm_call
+from core.services.text_clip import clip_text
 
 _SELF_CRITIQUE_STATE_KEY = "self_critique_runtime.state"
 _SELF_CRITIQUE_PROMPT = (
@@ -379,7 +380,7 @@ def _render_doc(item: dict[str, object], *, max_chars: int) -> str:
         return f"## {item.get('key')}\n[missing: {path}]"
     text = path.read_text(encoding="utf-8", errors="replace").strip()
     if len(text) > max_chars:
-        text = text[: max_chars - 1].rstrip() + "…"
+        text = clip_text(text, limit=max_chars)
     return f"## {item.get('key')}\n{text}"
 
 

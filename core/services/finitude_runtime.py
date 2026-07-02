@@ -13,6 +13,7 @@ from core.runtime.db import (
 from core.runtime.settings import load_settings
 from core.services.chronicle_engine import project_entry_to_markdown
 from core.services.daemon_llm import daemon_llm_call, quality_daemon_llm_call
+from core.services.text_clip import clip_text
 
 _STATE_KEY = "finitude_runtime.state"
 _BIRTH_COMMIT_SHA = "a3fe204"
@@ -478,7 +479,7 @@ def get_finitude_context_for_prompt(*, max_chars: int = 700) -> str:
         return ""
     text = "\n\n".join(["## Finitud og overgang", *sections]).strip()
     if len(text) > max_chars:
-        text = text[: max_chars - 1].rstrip() + "…"
+        text = clip_text(text, limit=max_chars)
     return text
 
 

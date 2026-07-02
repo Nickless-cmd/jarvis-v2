@@ -25,6 +25,7 @@ from datetime import UTC, datetime, timedelta
 from core.services.cognitive_state_narrativizer import (
     narrativize_line,
 )
+from core.services.text_clip import clip_text
 from core.services.associative_recall import (
     build_recall_prompt_section,
     recall_for_message,
@@ -975,7 +976,7 @@ def build_cognitive_state_for_prompt(*, compact: bool = False, force: bool = Fal
     # Enforce size limits
     max_chars = 400 if compact else 800
     if len(result) > max_chars:
-        result = result[:max_chars - 3] + "..."
+        result = clip_text(result, limit=max_chars)
 
     # Track for MC transparency
     _LAST_COGNITIVE_INJECTION = {

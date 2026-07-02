@@ -12,6 +12,7 @@ from core.runtime.db import (
     update_runtime_reflective_critic_status,
     upsert_runtime_reflective_critic,
 )
+from core.services.text_clip import clip_text
 
 _CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
 _SOURCE_KIND_RANKS = {
@@ -402,7 +403,7 @@ def _message_matches_focus_key(canonical_key: str, text: str) -> bool:
 def _quote(text: str) -> str:
     normalized = " ".join(str(text or "").split()).strip()
     if len(normalized) > 160:
-        normalized = normalized[:159].rstrip() + "…"
+        normalized = clip_text(normalized, limit=160)
     return f'"{normalized}"' if normalized else ""
 
 

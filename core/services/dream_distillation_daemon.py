@@ -13,6 +13,7 @@ from core.runtime.db import (
 from core.runtime.settings import load_settings
 from core.services.chronicle_engine import list_cognitive_chronicle_entries
 from core.services.daemon_llm import daemon_llm_call
+from core.services.text_clip import clip_text
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +147,7 @@ def get_dream_residue_for_prompt(*, max_chars: int = _MAX_RESIDUE_CHARS) -> str:
         return ""
     clipped = residue
     if len(clipped) > max_chars:
-        clipped = clipped[: max_chars - 1].rstrip() + "…"
+        clipped = clip_text(clipped, limit=max_chars)
     return "\n".join(
         [
             "## Drømmerest (lavmælt carry-over)",
@@ -353,7 +354,7 @@ def _sanitize_residue(raw: str) -> str:
     if len(words) > _MAX_RESIDUE_WORDS:
         text = " ".join(words[:_MAX_RESIDUE_WORDS]).rstrip(" ,;:-")
     if len(text) > _MAX_RESIDUE_CHARS:
-        text = text[:_MAX_RESIDUE_CHARS].rstrip(" ,;:-") + "…"
+        text = clip_text(text, limit=_MAX_RESIDUE_CHARS)
     return text.strip()
 
 

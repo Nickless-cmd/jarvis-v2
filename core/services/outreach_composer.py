@@ -39,6 +39,7 @@ from urllib import request as urllib_request
 
 from core.eventbus.bus import event_bus
 from core.services.identity_composer import identity_prompt_prefix
+from core.services.text_clip import clip_text
 
 logger = logging.getLogger(__name__)
 
@@ -338,7 +339,7 @@ def compose_and_send_outreach(
     if not message_text:
         return {"status": "skipped", "reason": "model returned empty"}
     if len(message_text) > 800:
-        message_text = message_text[:800].rstrip() + "…"
+        message_text = clip_text(message_text, limit=800)
 
     # Route through nudge ledger (2026-05-13). Outreach was Path 3 in the
     # spejlsal-audit: longing-pressure crossed threshold, daemon generated

@@ -13,6 +13,8 @@ from __future__ import annotations
 import json
 import logging
 
+from core.services.text_clip import clip_text
+
 logger = logging.getLogger(__name__)
 
 _CACHE_PREFIX = "session_milestones:"
@@ -47,7 +49,7 @@ def _user_turns(session_id: str) -> list[dict[str, str]]:
 
 def _short_title(text: str, n: int = 60) -> str:
     t = text.strip()
-    return (t[: n - 1].rstrip() + "…") if len(t) > n else t
+    return clip_text(t, limit=n)
 
 
 def _per_turn_milestones(turns: list[dict[str, str]]) -> list[dict[str, str]]:

@@ -12,6 +12,7 @@ from core.runtime.db import (
     update_runtime_remembered_fact_signal_status,
     upsert_runtime_remembered_fact_signal,
 )
+from core.services.text_clip import clip_text
 
 _CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
 _STALE_AFTER_DAYS = 14
@@ -434,7 +435,7 @@ def _quote(text: str, *, limit: int = 160) -> str:
         return ""
     if len(normalized) <= limit:
         return normalized
-    return normalized[: limit - 1].rstrip() + "…"
+    return clip_text(normalized, limit=limit)
 
 
 def _merge_fragments(*parts: str) -> str:

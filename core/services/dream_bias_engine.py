@@ -23,6 +23,7 @@ from core.runtime.db_dream_bias import (
     update_existing_bias,
 )
 from core.runtime.settings import load_settings
+from core.services.text_clip import clip_text
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +204,7 @@ def format_dream_bias_for_heartbeat(*, workspace_id: str = "default") -> str:
     text = str(bias.get("dream_text") or "").strip()
     if text:
         if len(text) > 150:
-            text = text[:147].rstrip() + "…"
+            text = clip_text(text, limit=150)
         lines.append(f'drøm: "{text}"')
 
     return "\n".join(lines)

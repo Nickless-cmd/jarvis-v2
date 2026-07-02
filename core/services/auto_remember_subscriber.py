@@ -35,6 +35,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from core.services.text_clip import clip_text
+
 logger = logging.getLogger(__name__)
 
 JARVIS_HOME = Path(os.environ.get("HOME", "/root")) / ".jarvis-v2"
@@ -236,9 +238,9 @@ def evaluate_turn_for_memory(
     if not title or not content:
         return None
     if len(title) > 120:
-        title = title[:117] + "..."
+        title = clip_text(title, limit=120, hard=True)
     if len(content) > 4000:
-        content = content[:3997] + "..."
+        content = clip_text(content, limit=4000, hard=True)
 
     importance_raw = data.get("importance")
     try:

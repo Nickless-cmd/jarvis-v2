@@ -24,6 +24,7 @@ from core.runtime.db import (
     recent_visible_runs,
 )
 from core.services.daemon_llm import daemon_llm_call
+from core.services.text_clip import clip_text
 
 logger = logging.getLogger(__name__)
 
@@ -280,7 +281,7 @@ def get_chronicle_context_for_prompt(n: int = 3, max_chars: int = 1500) -> str:
         kept.pop()
         text = "\n\n".join([header, *kept]).strip()
     if len(text) > max_chars:
-        text = text[: max_chars - 1].rstrip() + "…"
+        text = clip_text(text, limit=max_chars)
     return text
 
 

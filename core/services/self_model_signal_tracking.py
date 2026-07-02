@@ -11,6 +11,7 @@ from core.runtime.db import (
     update_runtime_self_model_signal_status,
     upsert_runtime_self_model_signal,
 )
+from core.services.text_clip import clip_text
 
 _CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
 _SOURCE_KIND_RANKS = {
@@ -534,5 +535,5 @@ def _rank(ranks: dict[str, int], value: str) -> int:
 def _quote(text: str) -> str:
     normalized = " ".join(str(text or "").split()).strip()
     if len(normalized) > 180:
-        normalized = normalized[:179].rstrip() + "…"
+        normalized = clip_text(normalized, limit=180)
     return f'"{normalized}"' if normalized else ""

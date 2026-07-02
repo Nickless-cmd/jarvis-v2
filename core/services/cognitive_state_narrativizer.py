@@ -28,6 +28,8 @@ from dataclasses import dataclass
 from typing import Callable
 from urllib import request as urllib_request
 
+from core.services.text_clip import clip_text
+
 logger = logging.getLogger(__name__)
 
 # Local-lane model used for narrative generation. This stays on the
@@ -106,7 +108,7 @@ def _generate_in_background(
                 return
             cleaned = " ".join(text.strip().split())
             if len(cleaned) > 240:
-                cleaned = cleaned[:239].rstrip() + "…"
+                cleaned = clip_text(cleaned, limit=240)
             _CACHE[line_key] = _CachedNarrative(
                 fingerprint=fingerprint,
                 narrative=cleaned,

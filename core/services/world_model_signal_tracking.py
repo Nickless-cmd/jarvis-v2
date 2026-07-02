@@ -13,6 +13,7 @@ from core.runtime.db import (
 from core.runtime.settings import load_settings
 from core.runtime.state_store import load_json, save_json
 from core.services.chat_sessions import get_chat_session, list_chat_sessions
+from core.services.text_clip import clip_text
 
 import re as _re
 
@@ -934,5 +935,5 @@ def _rank(ranks: dict[str, int], value: str) -> int:
 def _quote(text: str) -> str:
     normalized = " ".join(str(text or "").split()).strip()
     if len(normalized) > 180:
-        normalized = normalized[:179].rstrip() + "…"
+        normalized = clip_text(normalized, limit=180)
     return f'"{normalized}"' if normalized else ""

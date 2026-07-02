@@ -27,6 +27,7 @@ from core.identity.candidate_workflow import (
 )
 from core.runtime.db import list_runtime_contract_candidates
 from core.runtime.db import upsert_runtime_contract_candidate
+from core.services.text_clip import clip_text
 
 _CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
 _EVIDENCE_CLASS_RANKS = {
@@ -1203,7 +1204,7 @@ def _quote(message: str, *, limit: int = 140) -> str:
     normalized = " ".join(str(message or "").split()).strip()
     if len(normalized) <= limit:
         return normalized
-    return normalized[: limit - 1].rstrip() + "…"
+    return clip_text(normalized, limit=limit)
 
 
 def _now_iso() -> str:

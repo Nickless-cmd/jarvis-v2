@@ -18,6 +18,7 @@ from core.identity.candidate_workflow import (
 )
 from core.identity.workspace_bootstrap import workspace_memory_paths
 from core.runtime.db import upsert_runtime_contract_candidate
+from core.services.text_clip import clip_text
 
 _EXCERPT_MEMORY_CHARS = 2400
 _EXCERPT_USER_CHARS = 1800
@@ -538,4 +539,4 @@ def _daily_excerpt(value: str, *, limit: int) -> str:
     normalized = " ".join(str(value or "").split()).strip()
     if len(normalized) <= limit:
         return normalized
-    return normalized[: limit - 1].rstrip() + "…"
+    return clip_text(normalized, limit=limit)

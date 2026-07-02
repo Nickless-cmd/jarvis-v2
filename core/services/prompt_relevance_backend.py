@@ -11,6 +11,7 @@ from urllib import request as urllib_request
 from core.identity.workspace_bootstrap import TEMPLATE_DIR
 from core.runtime.provider_router import resolve_provider_router_target
 from core.runtime.settings import load_settings
+from core.services.text_clip import clip_text
 
 RELEVANCE_TIMEOUT_SECONDS = 3
 RELEVANCE_MAX_TEXT_CHARS = 240
@@ -681,7 +682,7 @@ def _build_relevance_prompt(
 ) -> str:
     normalized = " ".join(str(text or "").split())
     if len(normalized) > RELEVANCE_MAX_TEXT_CHARS:
-        normalized = normalized[: RELEVANCE_MAX_TEXT_CHARS - 1].rstrip() + "…"
+        normalized = clip_text(normalized, limit=RELEVANCE_MAX_TEXT_CHARS)
     return "\n".join(
         [
             instructions,
@@ -703,7 +704,7 @@ def _build_memory_selection_prompt(
 ) -> str:
     normalized = " ".join(str(user_message or "").split())
     if len(normalized) > RELEVANCE_MAX_TEXT_CHARS:
-        normalized = normalized[: RELEVANCE_MAX_TEXT_CHARS - 1].rstrip() + "…"
+        normalized = clip_text(normalized, limit=RELEVANCE_MAX_TEXT_CHARS)
     entry_lines = [f"{index}: {entry}" for index, entry in enumerate(entries)]
     return "\n".join(
         [
@@ -812,7 +813,7 @@ def _bounded_memory_candidates(entries: list[str]) -> list[str]:
     for entry in bounded:
         text = " ".join(str(entry or "").split())
         if len(text) > MEMORY_ENTRY_MAX_CHARS:
-            text = text[: MEMORY_ENTRY_MAX_CHARS - 1].rstrip() + "…"
+            text = clip_text(text, limit=MEMORY_ENTRY_MAX_CHARS)
         clipped.append(text)
     return clipped
 

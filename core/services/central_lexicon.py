@@ -109,6 +109,9 @@ SEED_BINDINGS: dict[str, str] = {
     "chronicle_consolidation_proposal": "kontinuitet", "chronicle_consolidation_brief": "kontinuitet",
     "chronicle_consolidation_signal": "kontinuitet", "session_distillation": "minde",
     "reflection_signal": "spejl", "world_model_signal": "mønster", "goal_signal": "mål",
+    # Bjørn-godkendte provisoriske bindinger (2. jul, "til vi ser hvordan det virker"):
+    "user_md_update_proposal": "relation", "diary_synthesis_signal": "spejl",
+    "cognitive_experiential": "lys",
 }
 
 # Central-relation → operator (hvordan en hypotese-type udtrykkes).

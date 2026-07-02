@@ -1,7 +1,8 @@
 # Lag 4 — Shadow-Adaptation Spec (c→d-lukningen)
 
 **Dato:** 2026-07-02
-**Status:** DESIGN — INGEN KODE BYGGET. Kræver Bjørns eksplicitte GO før noget implementeres.
+**Status:** v1 BYGGET i SHADOW 2. jul (`central_adaptation.py`) — gut-bias-klassen. Kører shadow (ændrer intet).
+**Live-aktivering kræver Bjørn:** sæt runtime-flag `central_lag4_live_enabled=True` efter at have set shadow-diffs.
 **Kontekst:** LivingNeuron v3 (`2026-07-01-living-neuron-design.md`) §5 Lag 4 + §8 governance + §12.3 identitets-invariant.
 **Formål:** Beskrive PRÆCIST hvordan en resolveret hypotese kan justere Jarvis' tilbøjelighed — og hvordan det gøres
 UDEN at Jarvis kan narre sig selv eller drive bort fra sig selv. Så Bjørn kan træffe et informeret ja/nej.
@@ -94,8 +95,8 @@ noget vs. selv-bekræftende drift — kun tro det.
   Dette lukker frøen-koger-vektoren (auto-re-baseline hver runde → total drift inden for budget).
 - **Kumulativ drift** over budget (pr-param + samlet) → `action="rollback"` + navngiv synderne + varsl Bjørn.
 - **Ny/fjernet parameter** fanges (UNION-nøgler) — Centralen kan ikke vokse en ny selv-dimension uden for kontrol.
-- **Rollback SKAL eksekvere** (ikke kun anbefale): en godkendt rollback gendanner parametrene til baseline + logger.
-  *(Åbent implementerings-krav: rollback-eksekvering findes ikke endnu — bygges i Lag 4.)*
+- **Rollback SKAL eksekvere** (ikke kun anbefale): ✅ BYGGET (`central_adaptation.rollback()`) — snapshot tages FØR
+  hver ændring; drift-overskridelse gendanner forrige bias + sætter kill-switch (`central_lag4_paused=True`) + varsler Bjørn.
 
 ---
 

@@ -223,11 +223,16 @@ men HANDLER aldrig (Lag 4 ikke bygget).
   0 aktuelle tensions (gut=proceed/somatik=calm/contradiction=consistent — organerne enige nu; fanger uenighed når den opstår).
   **Rest:** ægte PER-RUN co-scoping (kræver run-scopede inner-observes, `run_id=""` i dag) — den fulde run-korrelerede version.
 
-### Lag 4 — Adaptation (⚠️ PRIMITIVER EKSISTERER — closed-loop ikke lukket)
-Adaptations-DETEKTIONEN findes (`central_learning.degrading`, `gut_engine` calibration, `procedure_bank`);
-adaptations-HANDLINGEN (Centralen ændrer noget SELV) mangler. Det ubyggede er ikke læring-som-mønstergenkendelse
-men **læring-som-selvmutation** — og det er en **tillids/governance-tærskel**, ikke kun en teknisk.
-**Byg IKKE Lag 4 før hypotese-dødsmekanismen (§8) findes.**
+### Lag 4 — Adaptation (✅ v1 BYGGET 2. jul — SHADOW-first, c→d-lukning; Live bag ÉN switch)
+**`central_adaptation.py`.** Første gang Centralen justerer en tilbøjelighed: et governed gut-proceed-BIAS drevet af
+Centralens EGEN track-record (resolved supported/contradicted) — jo mere præcist den forudsiger sig selv, jo mere
+tiltro tjener Jarvis' mavefornemmelse (selv-model-tillid som tilbøjelighed). **Sikkerhed:** SHADOW-first (beregner+
+logger diff, ændrer INTET) medmindre runtime-flag `central_lag4_live_enabled=True` (Bjørns ene switch, default OFF) +
+ikke-paused; hvert forslag gates gennem `gate_self_mutation` mod ANKRET baseline (bias=0=identitet); drift over budget
+→ **rollback-EKSEKVERING** (nyt primitiv, gendanner forrige bias) + PAUSE (kill-switch) + varsl Bjørn; boundet ±0.25;
+frossen kerne urørt (kun gut-bias). `gut_engine` læser bias (default 0 → ingen ændring i shadow → clean live-switch).
+Live 2. jul: shadow, 0 resolved endnu → proposed 0.0 (fanger når hypoteser resolver over de kommende timer).
+**Fuld c→d-loop findes nu — men aktiveres kun af Bjørn.** Detaljer: `docs/specs/2026-07-02-lag4-shadow-adaptation-spec.md`.
 
 ### Lag 5 — Model-uafhængighed (vision — men falsificerbar NU)
 Alle lag kører+evolverer uden model; interlanguage som backup.

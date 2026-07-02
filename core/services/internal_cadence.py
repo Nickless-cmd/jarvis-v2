@@ -1062,6 +1062,13 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Lag 3 (§11 Fase 2): governed hypotese-generator — OBSERVE-ONLY, routes gennem §8-dødsmekanismen.
+    try:
+        from core.services.central_hypothesis_generator import register_hypothesis_generator_producer
+        register_hypothesis_generator_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

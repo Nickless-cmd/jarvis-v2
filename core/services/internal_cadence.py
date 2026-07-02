@@ -1121,6 +1121,14 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # DEN MODIGE DEL (Tråd 2 Fase 3-4): prompt-relevans eksplorations-arm (ægte kontrol-arm via
+    # ablation). SHADOW medmindre prompt_relevance_explore_live_enabled=True. Frosne aldrig rørt.
+    try:
+        from core.services.central_prompt_explore import register_prompt_explore_producer
+        register_prompt_explore_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

@@ -95,6 +95,14 @@ def should_include(turn_type: str, section: str, *, threshold: float = _INCLUDE_
         # frossen hvis label INDEHOLDER et frossent nøgleord (labels er fraser: "pinned identity context")
         if any(f in sl for f in FROZEN_SECTIONS):
             return True
+        # DEN MODIGE DEL (Tråd 2): eksplorations-armen kan UDELADE en ikke-frossen kandidat for at
+        # måle om den er load-bearing (kontrol-arm). Kun live bag eget flag; shadow/fejl → ingen effekt.
+        try:
+            from core.services import central_prompt_explore
+            if central_prompt_explore.should_omit(turn_type, section):
+                return False
+        except Exception:
+            pass
         if not is_live_enabled():
             return True                         # shadow: intet skæres endnu
         return get_weight(turn_type, section) >= float(threshold)
@@ -131,6 +139,12 @@ def observe_composition(turn_type: str, *, sections_total: int, sections_include
         if len(freq) > _FREQ_MAX_ENTRIES:  # bounded — behold de hyppigste
             freq = dict(sorted(freq.items(), key=lambda kv: kv[1], reverse=True)[:_FREQ_MAX_ENTRIES])
         _kv_set(_FREQ_KEY, freq)
+    except Exception:
+        pass
+    # DEN MODIGE DEL (Tråd 2): fodr eksplorations-armens A/B-forsøg med denne turs udfald (self-safe).
+    try:
+        from core.services import central_prompt_explore
+        central_prompt_explore.record_trial(turn_type, included_labels, outcome)
     except Exception:
         pass
 

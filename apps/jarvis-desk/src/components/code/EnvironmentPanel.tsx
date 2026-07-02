@@ -56,9 +56,10 @@ export function EnvironmentPanel({
   const [busy, setBusy] = useState<'' | 'commit' | 'pr'>('')
   const [note, setNote] = useState<{ text: string; url?: string; err?: boolean } | null>(null)
 
-  const canGit = !!git?.is_git && (
-    (isOwner && kind === 'container' && root === 'repo') || kind === 'workstation'
-  )
+  // Samlet funktion: git-handlinger tilgængelige når der BARE er et git-repo (git.is_git afgør det —
+  // ikke en root==='repo'-begrænsning). Server kræver owner; workstation altid. Så server- og
+  // computer-mode har samme funktion.
+  const canGit = !!git?.is_git && (kind === 'workstation' || isOwner)
   const target = { kind, root }
 
   const doCommit = async () => {
@@ -146,7 +147,7 @@ export function EnvironmentPanel({
               </li>
             )}
             <li className="env-row">
-              <span className="env-label">{kind === 'workstation' ? <Monitor size={13} /> : <Server size={13} />} {kind === 'workstation' ? 'Workstation' : 'Lokal'}</span>
+              <span className="env-label">{kind === 'workstation' ? <Monitor size={13} /> : <Server size={13} />} {kind === 'workstation' ? 'Workstation' : 'Server'}</span>
             </li>
             {git?.is_git && (
               <li className="env-row">

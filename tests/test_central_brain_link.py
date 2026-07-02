@@ -1,9 +1,21 @@
 """Tests for core/services/central_brain_link.py — Tråd 5: jarvis-brain dybt koblet (scope-hærdet)."""
 from __future__ import annotations
 
+import contextlib
+
 import pytest
 
 from core.services import central_brain_link as bl
+
+
+@pytest.fixture
+def _owner_ctx(monkeypatch):
+    """Giv recall en resolveret owner + en no-op user_context (users.json findes ikke i test)."""
+    monkeypatch.setattr(bl, "_owner_uid", lambda: "1246415163603816499")
+    @contextlib.contextmanager
+    def _fake_ctx(**kw):
+        yield None
+    monkeypatch.setattr("core.identity.workspace_context.user_context", _fake_ctx)
 
 
 def _seed_resolved(hyp_id="h1", outcome="supported", statement="memory forudsiger somatic"):
@@ -23,7 +35,7 @@ def _seed_resolved(hyp_id="h1", outcome="supported", statement="memory forudsige
 
 
 # ── M1: recall er scope-BUNDET (hård exit-gate) ──────────────────────────────────────
-def test_m1_scope_bounded(isolated_runtime, monkeypatch):
+def test_m1_scope_bounded(isolated_runtime, monkeypatch, _owner_ctx):
     """RÅDETS HÅRDE GRÆNSE: cadence-recall spørger ALDRIG private_brain — kun workspace+chronicle."""
     captured = {}
     def _fake_recall(*, query, sources, total_limit, with_mood):
@@ -35,7 +47,17 @@ def test_m1_scope_bounded(isolated_runtime, monkeypatch):
     assert set(captured["sources"]) == {"workspace", "chronicle"}
 
 
-def test_m1_defense_in_depth_filters_private_brain(isolated_runtime, monkeypatch):
+def test_m1_no_recall_without_owner(isolated_runtime, monkeypatch):
+    """SCOPE-GATE: uden resolveret owner sker INTET recall (aldrig ambient/ukendt kontekst)."""
+    monkeypatch.setattr(bl, "_owner_uid", lambda: "")
+    called = []
+    monkeypatch.setattr("core.services.memory_recall_engine.multi_signal_recall",
+                        lambda **k: called.append(1) or {"results": []})
+    assert bl.recall_context("q") == []
+    assert not called                             # recall-motoren blev end ikke kaldt
+
+
+def test_m1_defense_in_depth_filters_private_brain(isolated_runtime, monkeypatch, _owner_ctx):
     """Selv HVIS en private_brain-række slap igennem, filtrerer recall_context den bort (dobbelt-værn)."""
     def _leaky(*, query, sources, total_limit, with_mood):
         return {"results": [{"source": "private_brain", "text": "hemmelig"},

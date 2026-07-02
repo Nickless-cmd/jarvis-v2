@@ -40,14 +40,19 @@ def _owner_uid() -> str:
 
 def recall_context(query: str, *, limit: int = 3) -> list[dict[str, Any]]:
     """M1: scope-BUNDET selv-recall for en formodning — workspace + chronicle KUN. private_brain
-    røres ALDRIG her (cadence har tom scope_uid; privat-lag kræver eksplicit owner-uid). Read-only."""
+    røres ALDRIG her. Recall sker inde i EKSPLICIT owner-kontekst (så workspace_dir resolver til
+    ejerens EGNE kuraterede filer, ikke ambient/ukendt scope — rådets 'privat-lag kun med eksplicit
+    owner-uid'). Ingen owner → intet recall (scope-gate). Read-only, self-safe."""
     q = (query or "").strip()
-    if not q:
-        return []
+    owner = _owner_uid()
+    if not q or not owner:
+        return []                                 # SCOPE-GATE: aldrig recall i ambient/ukendt kontekst
     try:
+        from core.identity.workspace_context import user_context
         from core.services.memory_recall_engine import multi_signal_recall
-        res = multi_signal_recall(query=q, sources=list(_RECALL_SOURCES),
-                                  total_limit=int(limit), with_mood=False)
+        with user_context(discord_id=owner):      # eksplicit owner-attribution
+            res = multi_signal_recall(query=q, sources=list(_RECALL_SOURCES),
+                                      total_limit=int(limit), with_mood=False)
         out = []
         for r in (res.get("results") or [])[:int(limit)]:
             src = str(r.get("source") or "")

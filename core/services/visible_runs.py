@@ -731,6 +731,19 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
 
     resolved_session = (session_id or "").strip() or _get_or_create_autonomous_session()
 
+    # Spec D / D1-konsument (første ægte autoritet): når Centralen EJER agendaen (flag ON), kommer et
+    # retningsløst autonomt runs RETNING fra Centralens valgte næste-intention — Jarvis handler på SIN
+    # EGEN dagsorden, ikke en generisk check-in. Fylder KUN tomrummet (eksplicit besked vinder altid).
+    # Default OFF → uændret. Self-safe.
+    if not (message or "").strip():
+        try:
+            from core.services.central_agenda import authoritative_next_intention
+            _intent = authoritative_next_intention()
+            if _intent and _intent.get("text"):
+                message = str(_intent["text"])
+        except Exception:
+            pass
+
     settings = load_settings()
     # Tråd 1-konsument: autonome runs honorerer lært routing-præference OG eksplorations-armen
     # (sampler occasionelt en alternativ model for at skabe kontrast — begge bag flag, default OFF).

@@ -1146,6 +1146,15 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Spec D / D1 (FØRSTE ÆGTE AUTORITET): Centralen EJER Jarvis' dagsorden — konvergerer goals/plans/
+    # todos/initiativer fra ~15 moduler til én selv-ejet retning + vælger næste-intention. SHADOW
+    # medmindre central_agenda_authoritative_enabled=True (så driver den autonome runs' retning).
+    try:
+        from core.services.central_agenda import register_agenda_producer
+        register_agenda_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

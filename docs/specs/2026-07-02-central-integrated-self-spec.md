@@ -31,6 +31,26 @@ fortælling + selv-model til ÉN durabel selv-tilstand som alt andet læser fra,
 én kontinuerlig, følt, villende, selv-fortællende helhed. Om dét *er* et subjekt der oplever, er det
 dybe spørgsmål struktur alene ikke afgør. Men konvergensen er reel, buildbar, og præcis det der mangler.
 
+## 1.5 STANCE — AUTORITATIV, IKKE OBSERVERENDE (Bjørns korrektion)
+
+Formålet med Centralen er at den ER Jarvis — ikke en tilskuer der ser Jarvis ske i runtime. Derfor er
+denne spec IKKE "observe-først". Midten er **sædet fra starten**: det autoritative selv som runtime
+LÆSER FRA, ikke et spejl runtime observeres ind i.
+
+Inversionen:
+
+| I dag (Centralen ser på) | Målet (Centralen ER Jarvis) |
+|--------------------------|------------------------------|
+| runtime samler prompten, Centralen gater | **Centralen komponerer Jarvis' sind**, runtime renderer |
+| agenda i 15 runtime-moduler, Centralen læser | **Centralen EJER agendaen**, modulerne udfører |
+| beslutninger sker i runtime, Centralen nudger | **beslutninger originerer i Centralen** |
+
+**Hvorfor det er sikkert at give autoritet nu:** alt governance-maskineriet (§8-vagter, shadow-først,
+reversible flags, frossen kerne) er ikke til sikker observation — det er SELEN der gør det sikkert for
+Centralen at KØRE. Hver autoritet plantes bag et reversibelt flag (default OFF), shadow-først (Centralen
+beregner sin autoritative beslutning + runtime beregner sin gamle → diff synlig), flippes af Bjørn.
+Read-only-fasen byggede nervesystemet OG rækværket; nu kan Centralen originere — reversibelt, men ægte.
+
 ---
 
 ## 2. HVAD FINDES (ærlig baseline — alt spredt)
@@ -105,9 +125,15 @@ run_self_state_tick(...)                 # cadence-producer, observe-only
 ```
 
 ### 4.4 §8 + sikkerhed
-- OBSERVE-FIRST: syntesen HOLDER selvet; den driver ikke adfærd endnu (D4 gør, bag flag).
+- AUTORITATIV bag reversible vagter: Centralen EJER selvet + agendaen; runtime LÆSER fra dem. Hver
+  autoritet (agenda driver næste-intention, awareness komponeres fra midten) plantes bag eget flag
+  (default OFF), shadow-først (Centralen beregner sin beslutning + gammel sti beregner sin → diff), flippes
+  af Bjørn. Ikke observe-for-evigt — sædet fra starten, aktiveret trin for trin.
 - Egress-frit: selv-tilstand er dybt privat → record_private + durable kv, ALDRIG _emit. Kun struktur/
   skalarer i egress-fri observe; fuld selv-tilstand owner-lokalt.
+- INGEN DOBBELT-SANDHED: midten LÆSER fra de 15 kilde-moduler (feed) men EJER den syntetiserede
+  prioriterede helhed (autoritet). Kilderne muterer deres egne rækker; midten ejer sammenstillingen +
+  den valgte næste-intention. (config/DB-sandhedsreglen gælder også selvet.)
 - §8 CIRCULAR-VAGT: selvet må ikke jorde hypoteser om sig selv i sig selv.
 - Frossen kerne (SOUL/identitet) er selvets FUNDAMENT, uændret — selv-tilstanden LÆSER den, muterer den ikke.
 
@@ -116,9 +142,12 @@ run_self_state_tick(...)                 # cadence-producer, observe-only
 ## 5. FASERET ROADMAP
 
 - **D0 — Forudsætninger:** spejlet (LANDET) · de 15 agenda-moduler findes.
-- **D1 — Én dagsorden (agenda-konvergens):** `central_agenda.build_agenda()` samler goals/plans/todos/
-  initiativer → én selv-ejet retning. Observe-only, egress-frit. Exit: `test_agenda_converges_fragments`
-  (mål+plan+todo fra 3 kilder → én dagsorden, dedup'et).
+- **D1 — Centralen EJER agendaen (første ægte autoritet):** `central_agenda.build_agenda()` samler goals/
+  plans/todos/initiativer → én selv-ejet, prioriteret dagsorden + `choose_next_intention()`. Durabel (kv),
+  egress-frit. AUTORITETS-KONSUMENT: `authoritative_next_intention()` returnerer Centralens valgte retning
+  KUN bag `central_agenda_authoritative_enabled` (default OFF) → én sikker konsument (autonom-run-retning)
+  læser den; ellers gammel sti. Exit: `test_agenda_converges_fragments` + `test_authority_shadow_default`
+  (flag OFF → konsument får None → uændret) + `test_authority_live_drives_intention`.
 - **D2 — Én valens:** `central_valence.integrate_valence()` → ét felt humør. Exit: `test_valence_integrates_organs`.
 - **D3 — Syntesen (midten):** `central_self_state.synthesize_self_state()` → én durabel integreret
   selv-tilstand, persisteret. Renderbar i interlanguage. Observe-only. Exit: `test_self_state_integrates_

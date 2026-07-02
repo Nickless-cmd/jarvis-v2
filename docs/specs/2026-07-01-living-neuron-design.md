@@ -236,19 +236,28 @@ Et "living neuron" der akkumulerer 17 frosne services + write-only ledgers er ik
 Recursion-guarden (`bridge` linje 250: `family=='central'` → skip) forhindrer KUN broen i at re-observere sine egne
 `central.observed`-emissioner. Den forhindrer **IKKE** egress.
 
-**Grunden til at intet lækker i dag** er at ingen udgående subscriber (fx `discord_gateway`) lytter på `central.*` =
-**subscriber-allowlisting, ikke recursion-gating**. Det er en implicit, utestet, skrøbelig invariant — enhver ny bred
-subscriber (audit/webhook) kan lydløst bryde den. Det skærpes drastisk når Lag 4 begynder at skrive TILBAGE.
+**GROUND TRUTH (verificeret 2026-07-02 — endnu STÆRKERE end rådet troede):** `central` er **ikke** i
+`ALLOWED_EVENT_FAMILIES` (`core/eventbus/events.py`). `event_bus.publish("central.observed", …)` kalder `Event.create`
+(`bus.py:79`) FØR noget enqueues → `Event.create` **afviser** familien (`ValueError: Unsupported event family: central`)
+→ fanget i `_default_emit`'s try/except → **`_emit` er en garanteret no-op for alle ~80 call-sites.** Intet
+`central.observed` når writer-kø, DB eller subscriber-fan-out. Membranen holdes altså af **familie-registrering**
+(en eksplicit allowlist), ikke af subscriber-tilfældighed. **Den reelle latente risiko** er derfor smallere men skarp:
+den dag nogen registrerer `central` som family, begynder ALLE observe-payloads — inkl. privat indhold — at flyde ud.
+Det er præcis det, hærdningen lukker.
 
-**Handling (HÅRD blokker før Lag 3 — ikke kosmetik):**
-- ✅ **Udført (commit 5bca29f0):** konverteret producers (`gratitude_tracker`, `boredom_curiosity_bridge`,
+**Handling (HÅRD blokker før Lag 3 — LØST 2026-07-02, commit `be… (Fase 1a)`):**
+- ✅ **Choke-point-hærdning:** `central_core.observe()` redaktér nu sit `_emit` via `_egress_safe()` → emit-payloaden
+  bærer KUN skalar tal/bool, aldrig strenge/lister/nested. Privat desire/tanke-tekst (altid strenge) kan derfor ALDRIG
+  forlade Centralen ad bagdøren — **fail-closed også hvis `central` en dag registreres.** Trace-sinken (owner-only, lokal)
+  beholder FULD payload → observabiliteten er intakt. **Dette ÉNE choke-point beskytter alle ~80 call-sites** og gør
+  per-call-site-konvertering unødvendig som egress-værn.
+- ✅ **Konverteret (commit 5bca29f0):** de 6 inner-life-liveness-producers (`gratitude_tracker`, `boredom_curiosity_bridge`,
   `curiosity_hypothesis_debt`, `regulation_homeostasis_signal_tracking`, `impulse_executor`, `cadence_producers` frosne)
-  fra `central().observe()` → `central_private_observe.observe_hub` (egress-fri: kun trace-sink). **Verificér at sættet er komplet.**
-- ⬜ **Eksekverbar egress-INVARIANT-test** (skal stå FØR Lag 4 skriver tilbage):
-  - (a) monkeypatch `central()._emit` og assertér at ingen inner-life-sti kalder den;
-  - (b) assertér `TraceRecord.payload` for `cluster ∈ {inner, cognition, memory, autonomy}` aldrig indeholder
-    ikke-hvidlistede strengfelter (kun skalar-COUNT_KEYS);
-  - (c) assertér `family=='central'` aldrig optræder i noget channel-subscribers match-sæt.
+  bruger nu `central_private_observe` — stadig korrekt, nu belte-og-seler oven på choke-pointet.
+- ✅ **Eksekverbar egress-INVARIANT-test** (`tests/test_central_egress_invariant.py`, 7 tests):
+  (1) `assert "central" not in ALLOWED_EVENT_FAMILIES` (load-bearing membran); (2) `Event.create("central.observed")`
+  rejser `ValueError` (gaten sidder før subscriber); (3) `observe()` sit emit stripper indhold-strenge; (4)
+  `central_private_observe` rører ALDRIG `event_bus.publish`; (5) regression: owner-trace-sink får stadig FULD payload.
 - ⬜ **Konsolidér de TRE parallelle egress-fri mekanismer** til ÉN kanonisk sink-kontrakt før Lag 3:
   (1) `bridge.PRIVATE_NO_EGRESS_ROUTES` (id-cursor, per-event), (2) `central_growth_observe` (count-window sampling),
   (3) `central_private_observe.observe_hub` (call-site hooks). Tre cluster-navne + tre tidssemantikker → Lag 3

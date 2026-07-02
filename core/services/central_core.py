@@ -18,6 +18,21 @@ def _default_emit(kind: str, payload: dict) -> None:
         pass
 
 
+def _egress_safe(payload: dict) -> dict:
+    """§24.4 privatlags-membran. observe() skriver FULD payload til den lokale
+    (owner-only) trace-sink — men det der forlader Centralen via ``_emit`` må ALDRIG
+    bære indhold: private desire/tanke-tekst kan ligge i payload-STRENGE. Behold derfor
+    KUN skalar tal/bool i emit-payloaden; drop strenge, lister og nested dicts.
+
+    I dag er ``central.observed`` et uregistreret event-family (``central`` er ikke i
+    ALLOWED_EVENT_FAMILIES → afvist i Event.create), så ``_emit`` er reelt en no-op og
+    intet lækker. Denne redaktion gør membranen fail-closed OGSÅ hvis 'central' nogensinde
+    registreres eller en bred subscriber wires — så indhold aldrig kan slippe ud ad bagdøren."""
+    if not isinstance(payload, dict):
+        return {}
+    return {k: v for k, v in payload.items() if isinstance(v, (int, float, bool))}
+
+
 def _coerce_verdict(nerve: str, raw: Any, klass: GateClass) -> Verdict:
     """Normalisér en nerve-returværdi til Verdict (genbruger kernens parser)."""
     v = _normalize(_Gate(nerve, "", lambda c: raw, klass, 1000, ""), raw)
@@ -54,9 +69,12 @@ class Central:
                 payload={k: v for k, v in event.items() if k not in reserved},
             )
             self._sink.record(rec)
+            # Egress-membran (§24.4): trace-sinken fik FULD payload (owner-only, lokal).
+            # _emit må kun bære skalar-metadata — aldrig indhold. Se _egress_safe.
             self._emit("central.observed", {
                 "run_id": rec.run_id, "session_id": rec.session_id,
-                "cluster": rec.cluster, "nerve": rec.nerve, "payload": rec.payload,
+                "cluster": rec.cluster, "nerve": rec.nerve,
+                "payload": _egress_safe(rec.payload),
             })
         except Exception:
             pass

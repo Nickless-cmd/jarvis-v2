@@ -287,7 +287,16 @@ Det er præcis det, hærdningen lukker.
 **Rådets konsensus (skeptiker + videnskab + filosof):** Et system der genererer hypoteser OG bedømmer dem OG
 handler på dem OG fodrer resultatet tilbage er en **confirmation-bias-maskine** uden strukturelle værn.
 Specens egen påstand ("hver hypotese kan bevises/afvises fra data") er tom uden en mekanisme der **TVINGER** en
-falsk hypotese til at dø. **Byg dødsmekanismen FØR generatoren.** Krav:
+falsk hypotese til at dø. **Byg dødsmekanismen FØR generatoren.**
+
+> **✅ SUBSTRAT BYGGET 2. jul (`core/services/central_hypothesis_governance.py`, 18 tests):** alle 7 værn nedenfor
+> er implementeret som et RENT POLITIK-LAG (ingen egen DB → undgår dual-truth-kopi af `meta_learning_hypotheses`).
+> Den fremtidige Lag 3-generator SKAL route hypoteser gennem `evaluate()`, som håndhæver: pre-registrerings-validering
+> (afvis hypoteser uden falsifikations-forudsigelse/TTL/null/success/sample_size/provenance), TTL-død, circular-karantæne,
+> ekstern-grounding-gate (kun virkeligheds-signaler flytter confidence), Popper-asymmetrisk confidence-opdatering,
+> kontrol-arm-split, shadow-first-gate, og Bonferroni-tærskel. **Dette er `meta_learning_hypotheses`' manglende brød:**
+> det eksisterende organ har register→sample→auto-resolve, men INGEN af de 7 værn — governance-laget lukker det hul.
+> Krav (nu implementeret):
 
 1. **Pre-registrering + TTL:** hver hypotese fødes med (a) eksplicit falsifikations-forudsigelse
    ("hvis sand, forventer jeg nerve X > tærskel Y inden T"), (b) TTL, (c) præ-registreret null-hypotese +

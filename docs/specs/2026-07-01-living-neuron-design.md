@@ -155,11 +155,13 @@ Kanoniske detaljer: `docs/specs/2026-07-01-inner-life-to-central-wiring.md`. Rå
 
 **Dæknings-tal (RUNTIME-MÅLT, Fase 1c — `core/services/central_coverage.py`):** det gamle gæt "~85-90% synlig"
 er erstattet af to reproducerbare mål over et eksplicit event-vindue:
-- `volume_coverage` = routed-events / alle-events i vinduet. **Live-målt 2. jul: 0.43** (500-event vindue).
+- `volume_coverage` = routed-events / alle-events i vinduet. **Live-målt på containeren 2. jul: 0.675** (2000-event vindue).
 - `family_coverage_seen` = |routed ∩ seen| / |seen| = af de familier der FAKTISK publicerer, hvor mange router Centralen.
-  **Live-målt: 0.32.** (Ikke /alle-166-registrerede: 37 familier er bevidst mørke §24.4, mange publicerer sjældent → /166 understater groft.)
+  **Live-målt: 0.23** (48 familier publicerede i vinduet, 36 routet). (Ikke /alle-166-registrerede: 37 familier er bevidst mørke §24.4,
+  mange publicerer sjældent → /166 understater groft.)
 - 36 familier er routet (15 FAMILY_ROUTES + 21 PRIVATE_NO_EGRESS). Målingen skrives til tidsserien (cluster=system,
-  `coverage_*`) hver 30. min → plotbar over tid. **Det ærlige billede er altså lavere end de tidligere 85-90%** — men nu et TAL man kan følge.
+  `coverage_*`) hver 30. min → plotbar over tid. **Det ærlige billede: ~68% af signal-VOLUMEN er synlig (ikke 85-90%),
+  fordi de routede familier er høj-volumen; men kun ~23% af de aktive familie-TYPER.** Nu et tal man kan følge, ikke et gæt.
 
 **Surface-antal (RUNTIME-MÅLT):** `len(signal_surface_router._get_router())` = **74** (verificeret live 2. jul). Draft 3's
 74 var altså rigtigt; v2's 35 og rådets statiske 78 var begge forkerte — præcis derfor måles tallet nu i runtime

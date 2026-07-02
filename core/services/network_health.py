@@ -20,7 +20,9 @@ kontrakt som central().observe). Kører på Jarvis-containeren (loopback til ege
 """
 from __future__ import annotations
 
+import threading
 import time
+import urllib.error
 import urllib.request
 from typing import Any
 
@@ -40,6 +42,15 @@ _API_RED_MS = 800.0
 # Hosts vi betragter som KRITISKE for at Jarvis kan nås/fungere. Fald her → rødt.
 _CRITICAL_HOSTS = ("pve", "pfsense")
 
+# DEBOUNCE: en enkelt fejlet probe (fx under en api-genstart, ~få sek nedetid) må ALDRIG
+# rejse et vedvarende RØDT incident. Et ægte API-nedbrud varer ved → kræv N sammenhængende
+# fejl før rødt. Ét glimt = gult (transient), ikke et flag. (2. jul: genstart-vindue gav
+# falsk RØD.) Incident rejses KUN ved OVERGANG grøn/gul→rød, ikke hver tick mens rød.
+_RED_STREAK = 3  # ~6 min sammenhængende api-tavshed (cadence hver 2 min) før rødt flag
+_state_lock = threading.Lock()
+_consec_api_fail = 0
+_prev_status = "green"
+
 
 def measure_api_latency(url: str = _API_HEALTH_URL, timeout: float = _API_TIMEOUT) -> tuple[bool, float | None]:
     """(ok, latency_ms) for den lokale API. TCP+HTTP round-trip mod /health. Self-safe."""
@@ -48,8 +59,11 @@ def measure_api_latency(url: str = _API_HEALTH_URL, timeout: float = _API_TIMEOU
         req = urllib.request.Request(url, headers={"User-Agent": "jarvis-network-health"})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             resp.read(64)
-            ok = 200 <= resp.status < 500  # 4xx = auth-krav, men API'et SVARER = oppe
-        return ok, round((time.monotonic() - t0) * 1000.0, 1)
+        return True, round((time.monotonic() - t0) * 1000.0, 1)
+    except urllib.error.HTTPError:
+        # ENHVER HTTP-status (401 auth-gate, 500, …) betyder API'et SVARER = oppe.
+        # Kun manglende svar (connection refused / timeout) er "nede".
+        return True, round((time.monotonic() - t0) * 1000.0, 1)
     except Exception:
         return False, None
 
@@ -89,13 +103,21 @@ def run_network_health_tick(*, trigger: str = "cadence", last_visible_at: str = 
     ha_unavail = _latest("infra", "ha_unavailable")
     critical_down = [h for h in down if h in _CRITICAL_HOSTS]
 
-    # Verdikt: rødt hvis API ikke svarer / meget langsom, eller en kritisk host er nede.
-    # Gult ved forhøjet API-latens, ikke-kritisk host nede, eller provider-fejl.
-    if not api_ok or (api_ms is not None and api_ms >= _API_RED_MS) or critical_down:
+    # DEBOUNCE api-tavshed: én fejlet probe (genstart-vindue) må ikke blive rødt. Tæl
+    # sammenhængende fejl; rødt kræver _RED_STREAK i træk. Latens-spikes/kritisk-host er
+    # ægte-øjeblikkelige og debounces ikke (de er ikke genstart-artefakter).
+    global _consec_api_fail, _prev_status
+    with _state_lock:
+        _consec_api_fail = (_consec_api_fail + 1) if not api_ok else 0
+        api_down_confirmed = _consec_api_fail >= _RED_STREAK
+        api_fail_streak = _consec_api_fail
+
+    slow = api_ms is not None and api_ms >= _API_RED_MS
+    if api_down_confirmed or slow or critical_down:
         status = "red"
-    elif ((api_ms is not None and api_ms >= _API_YELLOW_MS) or down
+    elif ((not api_ok) or (api_ms is not None and api_ms >= _API_YELLOW_MS) or down
           or (provider is not None and provider < 1.0)):
-        status = "yellow"
+        status = "yellow"  # bl.a. ubekræftet api-tavshed (1-2 fejl) = transient → gult
     else:
         status = "green"
 
@@ -103,6 +125,7 @@ def run_network_health_tick(*, trigger: str = "cadence", last_visible_at: str = 
         "status": status,
         "api_ok": api_ok,
         "api_latency_ms": api_ms,
+        "api_fail_streak": api_fail_streak,
         "hosts_down": down,
         "critical_down": critical_down,
         "provider_ok": (None if provider is None else provider >= 1.0),
@@ -121,12 +144,16 @@ def run_network_health_tick(*, trigger: str = "cadence", last_visible_at: str = 
     except Exception:
         pass
 
-    # Kun ÆGTE forværring bliver et flag (Bjørns princip: kun afvigelser er signal).
-    if status == "red":
+    # Flag KUN ved OVERGANG ind i rødt (ikke hver tick mens rødt) — Bjørns princip: kun
+    # ægte, vedvarende forværring er signal. Et bekræftet api-nedbrud/kritisk-host/latens.
+    with _state_lock:
+        transitioned_to_red = status == "red" and _prev_status != "red"
+        _prev_status = status
+    if transitioned_to_red:
         try:
             from core.runtime.db_central_incidents import record_central_incident
-            reason = ("API svarer ikke" if not api_ok
-                      else f"API-latens {api_ms}ms ≥ {_API_RED_MS:.0f}ms" if api_ms and api_ms >= _API_RED_MS
+            reason = (f"API svarer ikke ({api_fail_streak} probes i træk)" if api_down_confirmed
+                      else f"API-latens {api_ms}ms ≥ {_API_RED_MS:.0f}ms" if slow
                       else f"kritisk host nede: {', '.join(critical_down)}")
             record_central_incident(
                 cluster="network", nerve="health", kind="network_degraded", severity="error",
@@ -136,7 +163,16 @@ def run_network_health_tick(*, trigger: str = "cadence", last_visible_at: str = 
             pass
 
     return {"status": status, "api_ok": api_ok, "api_latency_ms": api_ms,
-            "hosts_down": down, "provider_ok": meta["provider_ok"], "ha_unavailable": meta["ha_unavailable"]}
+            "api_fail_streak": api_fail_streak, "hosts_down": down,
+            "provider_ok": meta["provider_ok"], "ha_unavailable": meta["ha_unavailable"]}
+
+
+def _reset_for_tests() -> None:
+    """Testhjælper — nulstil debounce-state. Ikke til produktionsbrug."""
+    global _consec_api_fail, _prev_status
+    with _state_lock:
+        _consec_api_fail = 0
+        _prev_status = "green"
 
 
 def register_network_health_producer() -> None:

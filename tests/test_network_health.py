@@ -10,8 +10,10 @@ from core.services import network_health as nh
 @pytest.fixture(autouse=True)
 def _clean():
     central_timeseries._reset_for_tests()
+    nh._reset_for_tests()
     yield
     central_timeseries._reset_for_tests()
+    nh._reset_for_tests()
 
 
 def test_measure_api_latency_down_closed_port():
@@ -38,10 +40,27 @@ def test_tick_green_when_api_fast_and_all_up(monkeypatch):
     assert s and s[-1].value == 12.0 and s[-1].meta["status"] == "green"
 
 
-def test_tick_red_when_api_down(monkeypatch):
+def test_single_api_fail_is_yellow_not_red(monkeypatch):
+    # Én fejlet probe (fx api-genstart-vindue) → gult transient, IKKE rødt flag.
     monkeypatch.setattr(nh, "measure_api_latency", lambda *a, **k: (False, None))
     out = nh.run_network_health_tick()
-    assert out["status"] == "red" and out["api_ok"] is False
+    assert out["status"] == "yellow" and out["api_fail_streak"] == 1
+
+
+def test_api_down_red_only_after_streak(monkeypatch):
+    monkeypatch.setattr(nh, "measure_api_latency", lambda *a, **k: (False, None))
+    statuses = [nh.run_network_health_tick()["status"] for _ in range(nh._RED_STREAK)]
+    # Først gul, gul, … så rød ved _RED_STREAK sammenhængende fejl.
+    assert statuses[:-1] == ["yellow"] * (nh._RED_STREAK - 1)
+    assert statuses[-1] == "red"
+
+
+def test_api_recovers_resets_streak(monkeypatch):
+    monkeypatch.setattr(nh, "measure_api_latency", lambda *a, **k: (False, None))
+    nh.run_network_health_tick(); nh.run_network_health_tick()
+    monkeypatch.setattr(nh, "measure_api_latency", lambda *a, **k: (True, 10.0))
+    out = nh.run_network_health_tick()
+    assert out["status"] == "green" and out["api_fail_streak"] == 0
 
 
 def test_tick_red_when_critical_host_down(monkeypatch):

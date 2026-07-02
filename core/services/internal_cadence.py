@@ -1129,6 +1129,15 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # DEN MODIGE DEL (Tråd 1 Fase 3-4): routing-præference-lærer fra model_meta. SHADOW medmindre
+    # model_router_adapt_live_enabled=True. ALDRIG deep/reasoning-tier. Konsument-wire (visible_runs)
+    # er bevidst separat (hot-path Boy Scout) — denne producer lærer kun præferencen.
+    try:
+        from core.services.central_router_adapt import register_router_adapt_producer
+        register_router_adapt_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

@@ -1187,6 +1187,14 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # NETVÆRKS-HELBRED: fuser infra-reachability + provider + live API-latens til ÉT
+    # signal Centralen kan svare på (Bjørn 2. jul). Måler den API-latens klienten føler.
+    try:
+        from core.services.network_health import register_network_health_producer
+        register_network_health_producer()
+    except Exception:
+        pass
+
 
 def run_cadence_tick_with_bootstrap(
     *,

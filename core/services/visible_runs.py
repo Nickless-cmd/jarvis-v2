@@ -659,11 +659,17 @@ def start_visible_run(
     # member→ollama, owner→valg. Route-handleren har allerede rolle-tjekket og
     # clampet member til ollama+flash/pro:cloud, så her bruger vi bare override'en
     # hvis sat, ellers global config (daemons/heartbeat påvirkes ikke).
+    # Tråd 1-konsument: central_router_adapt anvender lært routing-præference bag flag (default OFF →
+    # uændret; rolle-clampet override vinder ALTID). Selektionen er nu centraliseret (var inline-dubleret).
+    from core.services.central_router_adapt import resolve_visible_model as _resolve_vm
+    _vis_provider, _vis_model = _resolve_vm(
+        provider_override=provider_override, model_override=model_override,
+        default_provider=settings.visible_model_provider, default_model=settings.visible_model_name)
     run = VisibleRun(
         run_id=f"visible-{uuid4().hex}",
         lane=settings.primary_model_lane,
-        provider=(provider_override.strip() or settings.visible_model_provider),
-        model=(model_override.strip() or settings.visible_model_name),
+        provider=_vis_provider,
+        model=_vis_model,
         user_message=(message or "").strip() or "Tom synlig forespoergsel",
         session_id=normalized_session_id,
         trust_all=(approval_mode == "trust"),
@@ -726,11 +732,16 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     resolved_session = (session_id or "").strip() or _get_or_create_autonomous_session()
 
     settings = load_settings()
+    # Tråd 1-konsument: autonome runs honorerer også lært routing-præference (bag flag, default OFF).
+    from core.services.central_router_adapt import resolve_visible_model as _resolve_vm
+    _auto_provider, _auto_model = _resolve_vm(
+        provider_override="", model_override="",
+        default_provider=settings.visible_model_provider, default_model=settings.visible_model_name)
     run = VisibleRun(
         run_id=f"autonomous-{uuid4().hex}",
         lane=settings.primary_model_lane,
-        provider=settings.visible_model_provider,
-        model=settings.visible_model_name,
+        provider=_auto_provider,
+        model=_auto_model,
         user_message=(message or "").strip() or "Autonomous heartbeat check-in",
         session_id=resolved_session,
         autonomous=True,

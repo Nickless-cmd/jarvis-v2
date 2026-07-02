@@ -100,3 +100,35 @@ def test_consumer_api_returns_none_in_shadow(isolated_runtime):
 def test_tick_self_safe_empty(isolated_runtime):
     out = ra.run_router_adapt_tick()
     assert out["status"] == "ok" and out["applied"] is False
+
+
+# ── KONSUMENTEN (resolve_visible_model) — Tråd 1 live-wire ────────────────────────────
+def test_resolver_shadow_returns_default(isolated_runtime):
+    """Default/shadow (flag OFF) → uændret: base = default (ingen præference anvendt)."""
+    ra._kv_set(ra._PREF_KEY, {"visible": {"model": "dsk/flash", "strength": 0.5}})  # men flag OFF
+    p, m = ra.resolve_visible_model(default_provider="glm", default_model="glm-5.2:cloud")
+    assert (p, m) == ("glm", "glm-5.2:cloud")
+
+
+def test_resolver_live_applies_preference(isolated_runtime):
+    ra._kv_set(ra._LIVE_FLAG, True)
+    ra._kv_set(ra._PREF_KEY, {"visible": {"model": "deepseek/flash", "strength": 0.6}})
+    p, m = ra.resolve_visible_model(default_provider="glm", default_model="glm-5.2:cloud")
+    assert (p, m) == ("deepseek", "flash")       # præference anvendt
+
+
+def test_resolver_explicit_override_always_wins(isolated_runtime):
+    """SIKKERHED: rolle-clampet override (fx member→ollama) må ALDRIG overrules af præferencen."""
+    ra._kv_set(ra._LIVE_FLAG, True)
+    ra._kv_set(ra._PREF_KEY, {"visible": {"model": "deepseek/flash", "strength": 0.9}})
+    p, m = ra.resolve_visible_model(provider_override="ollama", model_override="flash:cloud",
+                                    default_provider="glm", default_model="glm-5.2:cloud")
+    assert (p, m) == ("ollama", "flash:cloud")   # override ukrænkelig — præference rørte den IKKE
+
+
+def test_resolver_never_deep_tier(isolated_runtime):
+    """Selv live: en deep-tier præference ignoreres (get_live_preference-værn) → default bevares."""
+    ra._kv_set(ra._LIVE_FLAG, True)
+    ra._kv_set(ra._PREF_KEY, {"visible": {"model": "openai/o1-reasoning", "strength": 0.9}})
+    p, m = ra.resolve_visible_model(default_provider="glm", default_model="glm-5.2:cloud")
+    assert (p, m) == ("glm", "glm-5.2:cloud")

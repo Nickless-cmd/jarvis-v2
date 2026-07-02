@@ -29,7 +29,7 @@ _SHADOW_KEY = "model_router_preference_shadow"      # foreslået præference (sh
 _DOMAIN = "model_router"
 _MIN_SUPPORT = 3                 # ≥ så mange supporterede kontraster før en præference må dannes
 _STRENGTH_BUDGET = 1.0           # §8: præference-styrke ∈ [0,1]; drift mod anker 0
-_NEVER_TIERS = ("reasoning", "deep", "deep-tier", "thinking")
+_NEVER_TIERS = frozenset({"reasoning", "deep", "thinking", "think", "reason"})  # tier-TOKENS (ikke substrings)
 
 
 def _kv_get(key: str, default: Any) -> Any:
@@ -64,8 +64,11 @@ def _ensure_anchor() -> None:
 
 
 def _is_never_tier(model_key: str) -> bool:
-    s = str(model_key or "").lower()
-    return any(t in s for t in _NEVER_TIERS)
+    """True hvis model-nøglen betegner reasoning/deep-tier. TOKEN-match (split på ikke-alfanumerisk)
+    så 'deepseek' (brand) IKKE fejlagtigt fanges af 'deep' (tier). Self-safe."""
+    import re
+    tokens = set(re.split(r"[^a-z0-9]+", str(model_key or "").lower()))
+    return bool(tokens & _NEVER_TIERS)
 
 
 def _configured_models() -> set[str]:
@@ -177,6 +180,29 @@ def get_live_preference(lane: str = "visible") -> dict[str, Any] | None:
     except Exception:
         pass
     return None
+
+
+def resolve_visible_model(*, provider_override: str = "", model_override: str = "",
+                          default_provider: str, default_model: str) -> tuple[str, str]:
+    """KONSUMENTEN (Tråd 1 live-wire): afgør (provider, model) for et visible-run. Centraliserer den
+    tidligere inline-dublerede selektion + anvender den LÆRTE routing-præference — men KUN når:
+      * en eksplicit override IKKE er sat (rolle-clampet member-override vinder ALTID — sikkerhed), OG
+      * flaget er ON + præferencen er grounded/konfigureret/ikke-deep-tier (get_live_preference-værn).
+    Default/shadow → uændret adfærd (base). Kaster ALDRIG — fail-safe til base."""
+    base_provider = (str(provider_override or "").strip() or default_provider)
+    base_model = (str(model_override or "").strip() or default_model)
+    try:
+        # eksplicit override (fx member→ollama-clamp) er ukrænkelig — præference må ikke røre den
+        if str(provider_override or "").strip() or str(model_override or "").strip():
+            return base_provider, base_model
+        pref = get_live_preference("visible")     # None i shadow/uden flag
+        if pref and pref.get("model") and "/" in str(pref["model"]):
+            p, m = str(pref["model"]).split("/", 1)
+            if p and m:
+                return p, m
+    except Exception:
+        pass
+    return base_provider, base_model
 
 
 def register_router_adapt_producer() -> None:

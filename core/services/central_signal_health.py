@@ -24,7 +24,17 @@ _HUB_NERVES = (
     ("cognition", "signal_surface_router"),
     ("cognition", "visible_turn_tracking"),
 )
-_HUB_STALE_S = 7200  # hubs fyrer per-tur/hyppigt; >2t uden sample = mistænkeligt tavs.
+# KRITISK skel (undgå false-positive-flag-storm, jf. Centralen-rød-regression): en hub der er
+# TAVS fordi systemet er IDLE er IKKE en fejl. Kun HEARTBEAT-gatede hubs (fyrer uafhængigt af
+# bruger-aktivitet) er ægte blindzoner hvis de går tavse. TUR-gatede hubs fyrer kun på faktiske
+# ture/prompt-builds → "missing/stale når idle" er NORMALT og må ALDRIG flagge.
+_HUB_GATING = {
+    "cognitive_conductor": "heartbeat",       # bygger cognitive frame på heartbeat → bør altid være frisk
+    "cognitive_state_assembly": "turn",       # bygges ved prompt-build (kun ved ture)
+    "signal_surface_router": "turn",          # læses ved prompt-build
+    "visible_turn_tracking": "turn",          # kun på ægte visible-ture
+}
+_HUB_STALE_S = 7200  # heartbeat-hub: >2t uden sample = mistænkeligt tavs (heartbeat kører hvert par min).
 
 
 def _parse_ts(s: Any) -> datetime | None:
@@ -70,9 +80,15 @@ def hub_liveness(*, max_age_s: int = _HUB_STALE_S, merged: dict[str, Any] | None
                 state = "live"; live += 1
             else:
                 state = "stale"; stale += 1
-        hubs[nerve] = {"state": state, "age_s": (round(age) if age is not None else None)}
+        hubs[nerve] = {"state": state, "age_s": (round(age) if age is not None else None),
+                       "gated_by": _HUB_GATING.get(nerve, "turn")}
+    # Ægte blindzone = KUN en heartbeat-gatet hub der ikke er live (tur-gatede er idle-afhængige).
+    heartbeat_blind = [n for n, h in hubs.items()
+                       if h["gated_by"] == "heartbeat" and h["state"] != "live"]
     return {"hubs": hubs, "live": live, "stale": stale, "missing": missing,
-            "all_live": (live == len(_HUB_NERVES))}
+            "all_live": (live == len(_HUB_NERVES)),
+            "heartbeat_blind": heartbeat_blind,
+            "heartbeat_healthy": (len(heartbeat_blind) == 0)}
 
 
 def nerves_observed_xproc(*, merged: dict[str, Any] | None = None) -> int:
@@ -135,13 +151,14 @@ def record_signal_health() -> dict[str, Any]:
                       meta={"nerve": sc.get("nerve")})
     except Exception:
         pass
-    # Flag: en hub der ikke er live er en synligheds-blindzone → gør den SYNLIG (§24.3, ikke stille).
+    # Flag KUN ægte blindzoner (heartbeat-gatet hub tavs) — ALDRIG idle-tavse tur-gatede hubs
+    # (det ville være en false-positive-flag-storm der farvede Centralen rød uden grund).
     try:
-        if not r.get("all_live"):
+        blind = r.get("heartbeat_blind") or []
+        if blind:
             from core.services.central_core import central
-            silent = [n for n, h in (r.get("hubs") or {}).items() if h.get("state") != "live"]
             central().observe({"cluster": "system", "nerve": "hub_blindzone", "kind": "flag",
-                               "silent_hubs": ",".join(silent), "count": len(silent)})
+                               "silent_hubs": ",".join(blind), "count": len(blind)})
     except Exception:
         pass
     return r

@@ -43,11 +43,32 @@ def test_hub_liveness_classifies(monkeypatch):
     assert r["hubs"]["signal_surface_router"]["state"] == "stale"
 
 
+def test_idle_turn_hubs_do_not_flag_blindzone():
+    """KRITISK: tur-gatede hubs tavse på idle system er NORMALT → må ALDRIG flagge blindzone.
+    Kun heartbeat-gatet cognitive_conductor tavs er en ægte blindzone."""
+    # Idle: kun conductor live, de 3 tur-gatede missing.
+    m = _merged(fresh=("cognitive_conductor",), missing=("cognitive_state_assembly",
+                "signal_surface_router", "visible_turn_tracking"))
+    r = sh.hub_liveness(merged=m)
+    assert r["heartbeat_healthy"] is True      # conductor lever → sund
+    assert r["heartbeat_blind"] == []          # INGEN ægte blindzone trods 3 missing
+    assert r["all_live"] is False              # informationelt, men trigger IKKE flag
+
+
+def test_heartbeat_hub_silent_is_real_blindzone():
+    """Hvis heartbeat-gatet conductor går tavs = ægte blindzone (cognition-pipeline brudt)."""
+    m = _merged(fresh=("cognitive_state_assembly", "signal_surface_router"),
+                missing=("cognitive_conductor", "visible_turn_tracking"))
+    r = sh.hub_liveness(merged=m)
+    assert r["heartbeat_blind"] == ["cognitive_conductor"]
+    assert r["heartbeat_healthy"] is False
+
+
 def test_hub_all_live(monkeypatch):
     m = _merged(fresh=("cognitive_conductor", "cognitive_state_assembly",
                        "signal_surface_router", "visible_turn_tracking"), missing=())
     r = sh.hub_liveness(merged=m)
-    assert r["all_live"] is True and r["live"] == 4
+    assert r["all_live"] is True and r["live"] == 4 and r["heartbeat_healthy"] is True
 
 
 def test_nerves_observed_xproc(monkeypatch):

@@ -40,7 +40,7 @@ export function SetupScreen({ onSave }: { onSave: (cfg: { apiBaseUrl: string; au
         }
         if (res.status === 'error') {
           setGoogleMsg(res.error === 'no_account'
-            ? 'Ingen Jarvis-konto er knyttet til denne Google-konto.'
+            ? 'Ingen J.A.R.V.I.S.-konto er knyttet til denne Google-konto.'
             : 'Google-login mislykkedes.')
           setGoogleBusy(false); return
         }
@@ -53,7 +53,7 @@ export function SetupScreen({ onSave }: { onSave: (cfg: { apiBaseUrl: string; au
 
   return (
     <div className="setup">
-      <h1>Log ind på Jarvis</h1>
+      <h1>Log ind på J.A.R.V.I.S.</h1>
 
       <button type="button" className="setup-google" onClick={loginWithGoogle} disabled={googleBusy}>
         {googleBusy ? 'Forbinder…' : 'Log ind med Google'}

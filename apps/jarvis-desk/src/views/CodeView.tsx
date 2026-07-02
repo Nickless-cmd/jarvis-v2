@@ -501,7 +501,7 @@ export function CodeView({
   const trustBanner = trusted === false ? (
     <div className="trust-banner">
       <Lock size={14} />
-      <span><strong>{effRoot}</strong> er ikke betroet — Jarvis kan læse, men ikke skrive eller køre kommandoer her.</span>
+      <span><strong>{effRoot}</strong> er ikke betroet — J.A.R.V.I.S. kan læse, men ikke skrive eller køre kommandoer her.</span>
       <button type="button" className="trust-btn" onClick={trustFolder}>
         <ShieldCheck size={13} /> Stol på mappen
       </button>

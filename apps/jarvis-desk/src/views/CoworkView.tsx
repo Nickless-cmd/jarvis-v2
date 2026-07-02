@@ -21,6 +21,7 @@ import { TotpSetup } from '../components/settings/TotpSetup'
 import { PluginsPanel } from '../components/settings/PluginsPanel'
 import { ConnectionSection } from '../components/settings/ConnectionSection'
 import { LocationSection } from '../components/settings/LocationSection'
+import { PresenceSection } from '../components/settings/PresenceSection'
 import { NotificationsSection } from '../components/settings/NotificationsSection'
 import { DataPrivacyPanel } from '../components/DataPrivacyPanel'
 import { KeyboardHelpPanel } from '../components/KeyboardHelpPanel'
@@ -70,6 +71,7 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
       case 'appearance': return wrap(<ThemeSection />)
       case 'sprog': return wrap(<SprogSection config={config} />)
       case 'location': return wrap(<LocationSection />)
+      case 'presence': return wrap(<PresenceSection />)
 
       case 'memory': return wrap(<MemorySection config={config} />)
       case 'workspace': return wrap(<WorkspaceSection config={config} />)

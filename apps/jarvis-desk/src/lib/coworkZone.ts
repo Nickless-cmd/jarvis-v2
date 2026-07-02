@@ -8,7 +8,7 @@
 export type Zone =
   | 'mc' | 'marketplace'
   | 'konto' | 'privacy' | 'notifications'
-  | 'appearance' | 'sprog' | 'location'
+  | 'appearance' | 'sprog' | 'location' | 'presence'
   | 'memory' | 'workspace' | 'connections'
   | 'central' | 'jarvisMind' | 'jarvis'
   | 'about'
@@ -32,6 +32,7 @@ export const COWORK_ZONES: ReadonlyArray<{
   { id: 'appearance', label: 'Udseende', icon: 'Palette', group: 'Tilpasning' },
   { id: 'sprog', label: 'Sprog', icon: 'Languages', group: 'Tilpasning' },
   { id: 'location', label: 'Placering', icon: 'MapPin', group: 'Tilpasning' },
+  { id: 'presence', label: 'Tilstedeværelse', icon: 'Sparkles', group: 'Tilpasning', ownerOnly: true },
 
   { id: 'memory', label: 'Hukommelse', icon: 'Database', group: 'Data & værktøjer' },
   { id: 'workspace', label: 'Workspace', icon: 'Folder', group: 'Data & værktøjer' },

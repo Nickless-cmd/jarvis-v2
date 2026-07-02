@@ -192,11 +192,17 @@ Rå indtryk → meningsfulde data.
   emergence, contradiction.
 - **Krav før Lag 3:** causal-grafens tier-fordeling + precision skal måles — broen fra signal til hypotese går HERIGENNEM.
 
-### Lag 3 — Hypotese (⚠️ PRIMITIVER EKSISTERER — u-wired + Central-blinde)
-**Dette er IKKE greenfield.** Se §6 Organ-inventar. Lag 3-arbejdet = giv Centralen adgang til at generere/samle
-hypoteser PÅ TVÆRS af de nu-synlige Lag 1-2-signaler, under ÉN hypotese-tabel — og undgå en ny divergerende kopi
-(dual-truth-fælden, jf. `user_contradiction_tracker` vs `contradiction_engine`).
-**Bygges IKKE før governance-invarianten §8 står.**
+### Lag 3 — Hypotese (✅ GENERATOR BYGGET 2. jul — observe-only, governed)
+**`core/services/central_hypothesis_generator.py`.** Danner FALSIFICERBARE korrelations-hypoteser fra det målte
+substrat (causal-grafen, Tier-1/2 meningsfulde kanter — bygger på Fase 1d) og router ALT gennem §8-dødsmekanismen
+(`evaluate()` + `gate_learning_input()`). Konsoliderer under ÉN governed tabel (`central_hypotheses`) — kilde-organerne
+(§6) fodrer kandidater ind, ingen dual-truth-kopi. **OBSERVE-ONLY:** danner + sporer + resolver via grounded samples,
+men HANDLER aldrig (Lag 4 ikke bygget).
+- **FØRSTE LIVE-GENERERING 2. jul** på Jarvis' 86k-kant-graf → 3 hypoteser, bl.a. den tvær-modale
+  **`conflict → cognitive_counterfactual` (×11)**: konflikt forudsiger kontrafaktisk tænkning — præcis en korrelation
+  modellen ikke kan se per-tur, kun runtime over tid (rådets visionær-tese).
+- Trigger v1 = tilbagevendende (≥3) meningsfulde familie-par. **v2** (rådets dybeste): DIVERGENS (2 subsystemer i
+  modstrid) + GWT-convergens som trigger; vægt mod tvær-modale inner-life-par frem for høj-volumen operationelle.
 
 ### Lag 4 — Adaptation (⚠️ PRIMITIVER EKSISTERER — closed-loop ikke lukket)
 Adaptations-DETEKTIONEN findes (`central_learning.degrading`, `gut_engine` calibration, `procedure_bank`);

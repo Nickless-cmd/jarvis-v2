@@ -1,9 +1,9 @@
 {
   "name": "jarvis-desktop",
-  "productName": "Jarvis",
+  "productName": "J.A.R.V.I.S.",
   "private": true,
-  "version": "0.3.13",
-  "description": "Jarvis — Calm, robust desktop app for Jarvis. Built on /chat/stream/v2 Anthropic-style protocol.",
+  "version": "0.3.14",
+  "description": "J.A.R.V.I.S. — Calm, robust desktop app. Built on /chat/stream/v2 Anthropic-style protocol.",
   "homepage": "https://github.com/Nickless-cmd/jarvis-v2",
   "main": "dist-electron/main.js",
   "type": "module",
@@ -20,7 +20,7 @@
   },
   "build": {
     "appId": "dk.srvlab.jarvis",
-    "productName": "Jarvis",
+    "productName": "J.A.R.V.I.S.",
     "directories": {
       "output": "release"
     },

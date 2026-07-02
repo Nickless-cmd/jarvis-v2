@@ -16,7 +16,7 @@ export function AboutPanel({
       <h3>Om</h3>
       <table className="about-table">
         <tbody>
-          <tr><td>App</td><td>Jarvis Desktop</td></tr>
+          <tr><td>App</td><td>J.A.R.V.I.S. Desktop</td></tr>
           <tr><td>Version</td><td>{pkg.version}</td></tr>
           <tr><td>Server</td><td>{apiBaseUrl || '–'}</td></tr>
           <tr><td>Rolle</td><td>{role || '–'}</td></tr>

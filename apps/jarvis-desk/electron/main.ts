@@ -32,7 +32,7 @@ import { randomUUID } from 'node:crypto'
 import * as geo from './geo'
 
 const isDev = process.env.NODE_ENV === 'development'
-const APP_NAME = 'Jarvis'
+const APP_NAME = 'J.A.R.V.I.S.'
 
 // GPU-rendering: HW-acceleration er TIL (software-rendering gav glitchy grafik
 // ved view-skift på Linux). disable-gpu-sandbox + ignore-gpu-blocklist gør den
@@ -201,18 +201,18 @@ function refreshTrayState(): void {
   }
   applyTrayImage()
   tray.setToolTip(
-    trayAttention ? 'Jarvis vil dig noget' : trayState === 'working' ? 'Jarvis arbejder…' : 'Jarvis',
+    trayAttention ? 'J.A.R.V.I.S. vil dig noget' : trayState === 'working' ? 'J.A.R.V.I.S. arbejder…' : 'J.A.R.V.I.S.',
   )
 }
 
 function createTray(): void {
   try {
     tray = new Tray(trayAsset('idle'))
-    tray.setToolTip('Jarvis')
+    tray.setToolTip('J.A.R.V.I.S.')
 
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: 'Vis Jarvis',
+        label: 'Vis J.A.R.V.I.S.',
         click: () => showWindow(),
       },
       {
@@ -444,8 +444,8 @@ function showNativeNotification(title: string, body: string, opts?: { skipWhenFo
   if (!Notification.isSupported()) return
   if (opts?.skipWhenFocused && mainWindow?.isFocused()) return
   const n = new Notification({
-    title: title || 'Jarvis',
-    body: body || 'Jarvis vil dig noget.',
+    title: title || 'J.A.R.V.I.S.',
+    body: body || 'J.A.R.V.I.S. vil dig noget.',
     icon: trayAsset('bright'),
     silent: false,
   })

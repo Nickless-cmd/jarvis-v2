@@ -337,7 +337,7 @@ export function Composer({
       <ComposerTextArea
         inputRef={ref}
         value={text}
-        placeholder={compacting ? 'Komprimerer kontekst — din besked sendes når den er færdig…' : streaming ? 'Skriv en follow-up (sendes når Jarvis er færdig)…' : 'Spørg Jarvis om noget…'}
+        placeholder={compacting ? 'Komprimerer kontekst — din besked sendes når den er færdig…' : streaming ? 'Skriv en follow-up (sendes når J.A.R.V.I.S. er færdig)…' : 'Spørg J.A.R.V.I.S. om et eller andet?'}
         onChange={onInputChange}
         onKeyDown={onInputKeyDown}
       />
@@ -470,7 +470,7 @@ export function Composer({
               className="composer-send composer-stop"
               onClick={onStop}
               aria-label="Stop"
-              title="Stop Jarvis"
+              title="Stop J.A.R.V.I.S."
             >
               <Square size={12} strokeWidth={2.5} />
             </button>
@@ -499,7 +499,7 @@ export function Composer({
       </div>
     </div>
     <p className="composer-disclaimer">
-      Jarvis kan tage fejl — dobbelttjek vigtige svar.
+      J.A.R.V.I.S. kan tage fejl — dobbelttjek vigtige svar.
       {onOpenPrivacy && (
         <> · <button type="button" className="composer-privacy-link" onClick={onOpenPrivacy}>Privatliv &amp; cookies</button></>
       )}

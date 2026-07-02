@@ -5,7 +5,7 @@ import { AboutPanel } from './AboutPanel'
 describe('AboutPanel', () => {
   it('viser app-info + version', () => {
     render(<AboutPanel apiBaseUrl="https://api.srvlab.dk" role="owner" model="deepseek" />)
-    expect(screen.getByText('Jarvis Desktop')).toBeInTheDocument()
+    expect(screen.getByText('J.A.R.V.I.S. Desktop')).toBeInTheDocument()
     expect(screen.getByText('https://api.srvlab.dk')).toBeInTheDocument()
     expect(screen.getByText('owner')).toBeInTheDocument()
     expect(screen.getByText('deepseek')).toBeInTheDocument()

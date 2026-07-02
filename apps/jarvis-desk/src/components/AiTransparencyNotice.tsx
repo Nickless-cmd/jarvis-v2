@@ -38,7 +38,7 @@ export function AiTransparencyNotice() {
         <div className="ai-notice-badge">AI</div>
         <h2 id="ai-notice-title">Du taler med en AI</h2>
         <p>
-          Jarvis er en kunstig intelligens. Svar genereres af en sprogmodel og kan
+          J.A.R.V.I.S. er en kunstig intelligens. Svar genereres af en sprogmodel og kan
           indeholde fejl — vurdér selv vigtige beslutninger.
         </p>
         <ul className="ai-notice-points">

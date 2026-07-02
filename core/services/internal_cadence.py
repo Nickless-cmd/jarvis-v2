@@ -1076,6 +1076,13 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Lag 3 loop-lukning: test aktive hypoteser mod virkeligheden → grounded samples (OBSERVE-ONLY).
+    try:
+        from core.services.central_hypothesis_sampler import register_hypothesis_sampler_producer
+        register_hypothesis_sampler_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

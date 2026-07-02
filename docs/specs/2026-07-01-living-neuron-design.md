@@ -146,7 +146,9 @@ Kanoniske detaljer: `docs/specs/2026-07-01-inner-life-to-central-wiring.md`. Rå
   "Live" gælder liveness, men bufferen fanger i praksis en **smal** skive. Skal udvides til cognitive_state-subtyperne
   før den kan kaldes et ægte "bevidstheds-vindue".
 
-² `visible_turn_tracking` (HUB 4) fyrer kun på ægte visible-ture → **uverificeret i drift**. Kræver meta-liveness (§7).
+² `visible_turn_tracking` (HUB 4) fyrer kun på ægte visible-ture → **nu overvåget** af hub-meta-liveness (Fase 1e,
+  `central_signal_health`): på idle system er den korrekt "missing" (tur-gatet), mens heartbeat-gatet `cognitive_conductor`
+  altid skal være live (`heartbeat_healthy` = ægte sundheds-signal, live-verificeret true 2. jul).
 
 ³ **"36 edges/tick" er erstattet af tier-fordeling + precision (Fase 1d — `central_causal_quality.py`).**
   Rådet frygtede grafen var domineret af Tier-3 temporal-støj (conf 0.4, samme session ≤30s = ikke kausalitet).
@@ -375,7 +377,7 @@ ellers er den poesi — visionen forankres i §falsifikationskriterier, ikke ved
 | 2 | Gut → Centralen (egress-frit via PRIVATE_NO_EGRESS) | ✅ live |
 | 2 | Boredom → Centralen | ✅ (egress-fri efter 5bca29f0) |
 | 2 | causal_edges **precision** (ikke volumen): tier-fordeling + Tier-3-korroboration | ✅ MÅLT (Fase 1d): 99,5% explicit, Tier-3=2, meaningful=1.0 |
-| 2 | signal-KORREKTHED: produced-count ↔ faktisk DB-skrivning for ≥1 somatisk nerve | ⬜ |
+| 2 | signal-KORREKTHED: observeret ↔ faktisk DB (Sansernes Arkiv vs count_sensory) + hub meta-liveness | ✅ (Fase 1e): fanger sensor-fastlåst-på-0 + tavs heartbeat-hub |
 | 3 | hypotese fødes m. provenance + falsifikations-forudsigelse + TTL + null-hypotese | ⬜ Blueprint (§8 FØRST) |
 | 3 | H0: hypotese-genererede convergence-signaler forudsiger downstream-incidents IKKE bedre end shuffle-baseline (afvis hvis AUC > baseline, p<0.05 over ≥N resolved) | ⬜ ægte null-model |
 | 4 | Adaptation-loop lukket m. ekstern grounding + shadow-first-godkendt diff | ⬜ Blueprint (§8 FØRST) |
@@ -388,9 +390,11 @@ ellers er den poesi — visionen forankres i §falsifikationskriterier, ikke ved
 
 - **Fase 0 — Observabilitets-substrat (✅ FULDFØRT 2026-07-01):** Central-keystone, PRIVATE_NO_EGRESS, GWT + 4 hubs,
   causal/emergence/contradiction, felt-krop, hukommelse, governance, lange skygge. ~36 familier. **Cellen har sanser.**
-- **Fase 1 — Egress-hærdning + måling (kort, HÅRD blokker):** (a) verificér egress-oprydning komplet + eksekverbar
-  invariant-test (§7); (b) konsolidér de 3 egress-mekanismer + ret growth-gauge til delta; (c) gør surface-count/dækning
-  runtime-målt; (d) mål causal-graf tier-fordeling + precision; (e) signal-korrekthed for ≥1 somatisk nerve; (f) meta-liveness på 4 hubs.
+- **Fase 1 — Egress-hærdning + måling (✅ FULDFØRT 2. jul):** (a) egress-choke-point-hærdning + invariant-test (§7);
+  (b) kanonisk sink-kontrakt + growth-gauge til delta; (c) runtime-målt surface-count (74) + dækning (vol 0.68/fam 0.23);
+  (d) causal-graf tier-fordeling (99,5% explicit, Tier-3=2 — IKKE støjet); (e) signal-korrekthed (Sansernes Arkiv vs DB) +
+  hub meta-liveness (`central_signal_health`, cross-proces). **Nøgle-læring: hver måling afslørede virkeligheden bedre/anderledes
+  end antaget.** Hub-flag gates på heartbeat-hub (idle tur-hubs flagger aldrig → ingen false-positive-storm).
 - **Fase 2 — §8 governance-invariant FØRST, så Lag 3:** byg hypotese-dødsmekanismen (pre-registrering, Popper-asymmetri,
   circular-karantæne, ekstern grounding, multiple-comparisons, kontrol-arm) → DEREFTER hypotese-tabel + generator der
   KONSOLIDERER organ-inventaret (§6) under ét skema m. provenance. Trigger: latent-detekteret (causal_edges / central_correlate /

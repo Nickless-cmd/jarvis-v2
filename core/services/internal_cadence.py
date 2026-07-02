@@ -1155,6 +1155,14 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Spec D / D2: ÉN FØLT TILSTAND — integrér somatik+gut+valens-trajektorie+stance til ét {tone,
+    # intensitet}. Byggeklods til D3-syntesen. Egress-frit.
+    try:
+        from core.services.central_valence import register_valence_producer
+        register_valence_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

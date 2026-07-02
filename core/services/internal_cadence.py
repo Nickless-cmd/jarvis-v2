@@ -1055,6 +1055,13 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Fase 1e: signal-korrekthed + hub meta-liveness (Centralen må ikke blive blind for sin blindhed).
+    try:
+        from core.services.central_signal_health import register_signal_health_producer
+        register_signal_health_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

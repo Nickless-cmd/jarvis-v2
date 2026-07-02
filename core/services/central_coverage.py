@@ -35,11 +35,17 @@ def measure(*, window: int = _DEFAULT_WINDOW) -> dict[str, Any]:
         out["surfaces_registered"] = None
 
     # 2) Nerver Centralen FAKTISK har samples for (dens "øjne" — tæl dine egne øjne).
+    #    CROSS-PROCES (api:8080 + runtime:8011): en frisk probe-proces har tom in-memory
+    #    timeseries → brug xproc-merge (fixer 1c's misvisende 0), fald tilbage til lokal.
     try:
-        from core.services import central_timeseries
-        out["nerves_observed"] = len(central_timeseries.nerves())
+        from core.services.central_signal_health import nerves_observed_xproc
+        out["nerves_observed"] = nerves_observed_xproc()
     except Exception:
-        out["nerves_observed"] = None
+        try:
+            from core.services import central_timeseries
+            out["nerves_observed"] = len(central_timeseries.nerves())
+        except Exception:
+            out["nerves_observed"] = None
 
     # 3) Routing-tabeller (hvad Centralen ER wired til at se).
     routed: set[str] = set()

@@ -1083,6 +1083,13 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Lag 4 (§11 Fase 3): governed gut-bias-adaptation — SHADOW medmindre central_lag4_live_enabled=True.
+    try:
+        from core.services.central_adaptation import register_adaptation_producer
+        register_adaptation_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

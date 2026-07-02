@@ -46,6 +46,18 @@ def derive_gut_signal(
     # Weight by calibration — if gut has been wrong, reduce confidence
     adjusted_confidence = hunch_confidence * calibration
 
+    # Lag 4 (governed, shadow-gated): et lært proceed-bias justerer tilbøjeligheden. Default 0.0
+    # (shadow/ingen ændring); kun ≠0 når Centralen HAR lært + Bjørn har flippet live-switch.
+    try:
+        from core.services.central_adaptation import get_gut_bias
+        bias = get_gut_bias()
+        if hunch == "proceed":
+            adjusted_confidence = min(1.0, max(0.0, adjusted_confidence + max(0.0, bias)))
+        elif hunch == "caution":
+            adjusted_confidence = min(1.0, max(0.0, adjusted_confidence + max(0.0, -bias)))
+    except Exception:
+        pass
+
     return {
         "hunch": hunch,
         "confidence": round(adjusted_confidence, 2),

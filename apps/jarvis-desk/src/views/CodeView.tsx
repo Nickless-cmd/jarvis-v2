@@ -19,6 +19,7 @@ import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { CentralPanel } from '../components/code/CentralPanel'
+import { OperatorPanel } from '../components/code/OperatorPanel'
 import { MessageRail, railLabel } from '../components/chat/MessageRail'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
@@ -392,6 +393,29 @@ export function CodeView({
 
   useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 
+  // PERSISTENT storyboard (Bjørn 2. jul: "hver gang appen genstartes så nulstilles
+  // historikken"): chat lander bevidst på greeting-skærm ved opstart (activeId=null),
+  // men code mode er et vedvarende storyboard — det skal GENOPTAGE sidste kode-session.
+  // Vi husker sidste kode-sessions-id i sin EGEN nøgle (rører ikke chats greeting-
+  // adfærd) og gen-vælger den når session-listen er loaded ved mount. Stats/tool-
+  // historik hænger på sessionId, så det følger med tilbage.
+  const LAST_CODE_KEY = 'jarvis-desk:lastCodeSession'
+  useEffect(() => {
+    if (sessionId) { try { localStorage.setItem(LAST_CODE_KEY, sessionId) } catch { /* ignore */ } }
+  }, [sessionId])
+  const restoredCode = useRef(false)
+  useEffect(() => {
+    if (restoredCode.current || sessionId) return
+    if (sessions.sessions.length === 0) return // liste endnu ikke loaded
+    let last: string | null = null
+    try { last = localStorage.getItem(LAST_CODE_KEY) } catch { /* ignore */ }
+    if (last && sessions.sessions.some((s) => s.id === last)) {
+      restoredCode.current = true
+      sessions.select(last)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions.sessions, sessionId])
+
   // Reconcile assistant-svar ind i transcript når et run slutter (som chat).
   useEffect(() => {
     if (stream.status === 'done' && stream.blocks.length > 0
@@ -675,6 +699,7 @@ export function CodeView({
               installingTool={installingTool}
               onInstallTool={onInstallTool}
             />
+            {isOwner && <OperatorPanel config={config} />}
             {isOwner && <CentralPanel config={config} isOwner={isOwner} />}
           </div>
         )}

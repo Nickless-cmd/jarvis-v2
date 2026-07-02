@@ -48,3 +48,13 @@ def test_bind_rejects_non_vocabulary_term_without_ceremony(isolated_runtime):
 def test_unbound_names_lists_candidates():
     names = ["memory", "trading", "gut", "cost"]
     assert set(lex.unbound_names(names)) == {"trading", "cost"}
+
+
+def test_propose_word_needs():
+    # ubundne + hyppige familier → Centralen beder om ord; bundne udelades
+    counts = {"trading": 30, "cost": 12, "memory": 99, "reboot": 2}
+    needs = lex.propose_word_needs(counts, min_count=5)
+    names = {n["name"] for n in needs}
+    assert "trading" in names and "cost" in names   # ubundne + hyppige
+    assert "memory" not in names                    # bundet (kontinuitet) → udelades
+    assert "reboot" not in names                    # under tærskel

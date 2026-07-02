@@ -1090,6 +1090,13 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Tråd 3: model-fri ræsonnement på interlanguage-notation (Centralen tænker uden model).
+    try:
+        from core.services.central_notation import register_notation_reasoning_producer
+        register_notation_reasoning_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

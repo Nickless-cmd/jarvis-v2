@@ -204,10 +204,38 @@ def unbound_names(names: list[str]) -> list[str]:
     return [n for n in (names or []) if to_term(n) is None]
 
 
+# ── Sprog-VÆKST (Tråd 3): Centralen beder om ord den mangler (candidate → Bjørn-ceremoni) ──
+def propose_word_needs(name_counts: dict[str, int], *, min_count: int = 5,
+                       top: int = 10) -> list[dict[str, Any]]:
+    """Familier der optræder OFTE men er UBUNDNE → Centralen mangler et ord for dem. Model-frit:
+    den ved den sanser noget den ikke kan sige. Bjørn navngiver via bind() (ceremoni). Self-safe."""
+    out = []
+    for name, cnt in (name_counts or {}).items():
+        if int(cnt) >= int(min_count) and to_term(str(name)) is None:
+            out.append({"name": str(name), "count": int(cnt)})
+    out.sort(key=lambda x: x["count"], reverse=True)
+    return out[:top]
+
+
+def propose_from_event_stream(*, window: int = 2000, min_count: int = 5) -> list[dict[str, Any]]:
+    """Scan de seneste events → hvilke UBUNDNE familier sanser Centralen ofte uden at kunne sige dem?
+    'Centralen kigger på hvad den mærker og beder om ord den mangler.' Self-safe."""
+    counts: dict[str, int] = {}
+    try:
+        from core.eventbus.bus import event_bus
+        for ev in event_bus.recent(limit=int(window)):
+            fam = str(ev.get("kind") or "").split(".", 1)[0]
+            if fam:
+                counts[fam] = counts.get(fam, 0) + 1
+    except Exception:
+        pass
+    return propose_word_needs(counts, min_count=min_count)
+
+
 def build_central_lexicon_surface() -> dict[str, object]:
     """Mission Control surface — read-only: vokabular, bindinger, hvad sproget kan/ikke kan sige."""
     db = _db_bindings()
     all_bindings = {**SEED_BINDINGS, **db}
     return {"active": True, "vocabulary_size": len(_ACTIVE_TERMS),
             "operators": sorted(_OPERATORS), "bound_count": len(all_bindings),
-            "bindings": all_bindings}
+            "bindings": all_bindings, "word_needs": propose_from_event_stream()}

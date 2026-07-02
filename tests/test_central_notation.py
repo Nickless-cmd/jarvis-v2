@@ -29,6 +29,57 @@ def test_correlate_by_antecedent():
     assert {it["hyp_id"] for it in groups["ro"]} == {"c"}
 
 
+def test_transitive_inference_model_free():
+    """KRONJUVELEN: fra A→B og B→C udled A→C — en NY tanke, model-frit."""
+    items = [
+        {"hyp_id": "1", "notation_il": "strid → drøm"},
+        {"hyp_id": "2", "notation_il": "drøm → fokus"},
+    ]
+    derived = nt.infer_transitive(items)
+    notas = {d["notation"] for d in derived}
+    assert "strid → fokus" in notas            # udledt: konflikt → (drøm) → fokus
+    d = next(d for d in derived if d["notation"] == "strid → fokus")
+    assert d["via"] == "drøm" and d["chain"] == "strid → drøm → fokus"
+
+
+def test_transitive_skips_known_and_selfloops():
+    items = [
+        {"hyp_id": "1", "notation_il": "pres → fokus"},
+        {"hyp_id": "2", "notation_il": "fokus → pres"},   # ville give pres→pres (selv-løkke) — skip
+        {"hyp_id": "3", "notation_il": "pres → ro"},       # allerede kendt hvis fokus→ro? nej
+    ]
+    derived = nt.infer_transitive(items)
+    assert not any(d["notation"] == "pres → pres" for d in derived)
+
+
+def test_contradiction_detection():
+    items = [
+        {"hyp_id": "1", "notation_il": "pres → ro"},
+        {"hyp_id": "2", "notation_il": "pres → !ro"},      # samme antecedent, modsat
+    ]
+    con = nt.detect_notation_contradictions(items)
+    assert con and con[0]["antecedent"] == "pres" and con[0]["term"] == "ro"
+
+
+def test_model_free_reasoning_end_to_end(isolated_runtime):
+    from core.services import central_hypothesis_generator as gen
+    from core.runtime.db import connect
+    gen.ensure_schema()
+    # to kæde-hypoteser med notation → transitiv inferens
+    with connect() as c:
+        for i, nota in enumerate(["strid → drøm", "drøm → fokus"]):
+            c.execute(
+                "INSERT INTO central_hypotheses (hyp_id, source, statement, prediction, "
+                "null_hypothesis, success_criterion, sample_size, ttl_seconds, provenance_json, "
+                "confidence, status, grounded_samples, created_at, notation_il) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?, 'active', 0, '2026-07-02T00:00:00Z', ?)",
+                (f"h{i}", "causal_convergence", "s", "p", "n", "sc", 5, 3600, "{}", 0.3, nota))
+        c.commit()
+    r = nt.model_free_reasoning()
+    assert r["model_used"] is False
+    assert any(d["notation"] == "strid → fokus" for d in r["derived_inferences"])
+
+
 def test_model_free_analysis_end_to_end(isolated_runtime):
     """NORDSTJERNE: hypoteser med notation → dedup + korrelation UDEN model."""
     gen.ensure_schema()

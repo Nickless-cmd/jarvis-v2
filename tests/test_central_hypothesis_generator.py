@@ -119,6 +119,19 @@ def test_tick_registers_both_convergence_and_divergence(isolated_runtime):
     assert "skjult" in statements       # divergens-hypotesen er registreret
 
 
+def test_stance_divergence_becomes_hypothesis(isolated_runtime, monkeypatch):
+    """Lag 3 v3: gentagen tvær-modal uenighed → governed divergens-hypotese."""
+    monkeypatch.setattr(gen, "detect_causal_convergence_candidates", lambda **k: [])
+    monkeypatch.setattr(gen, "detect_outcome_divergence_candidates", lambda **k: [])
+    monkeypatch.setattr(gen, "detect_stance_divergence_candidates",
+                        lambda **k: [{"key": "gut:proceed|somatic:stress",
+                                      "count": 5, "desc": "gut vil frem, men kroppen bremser"}])
+    res = gen.run_hypothesis_generation_tick()
+    assert res["divergence"] >= 1 and res["registered"] >= 1
+    stmts = " ".join(h["statement"] for h in gen.list_active_hypotheses(limit=10))
+    assert "UENIGE" in stmts and "kroppen bremser" in stmts
+
+
 def test_awareness_surface_shows_generated_hypotheses(isolated_runtime):
     _seed_edges(isolated_runtime, [("memory.recall_fail", "somatic.stress", 4, "inferred-kind")])
     gen.run_hypothesis_generation_tick()

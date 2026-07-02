@@ -1062,6 +1062,13 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Lag 3 v3: tvær-modal stance-aflæsning ("organer uenige i nuet") → tension-tidsserie.
+    try:
+        from core.services.central_stance import register_stance_producer
+        register_stance_producer()
+    except Exception:
+        pass
+
     # Lag 3 (§11 Fase 2): governed hypotese-generator — OBSERVE-ONLY, routes gennem §8-dødsmekanismen.
     try:
         from core.services.central_hypothesis_generator import register_hypothesis_generator_producer

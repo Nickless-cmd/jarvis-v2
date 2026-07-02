@@ -343,6 +343,35 @@ def formulate_divergence_hypothesis(cand: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def detect_stance_divergence_candidates(*, min_count: int = 3) -> list[dict[str, Any]]:
+    """Trigger v3: tvær-modal stance-divergens ('organer uenige i nuet'). Læser GENTAGNE tensions
+    fra central_stance (to organer der holder modsatte holdninger samtidig, set ≥ min_count gange).
+    Rådets dybeste: konflikt mellem organer er kilden til refleksion. Self-safe."""
+    try:
+        from core.services.central_stance import recurring_tensions
+        return recurring_tensions(min_count=min_count)
+    except Exception:
+        return []
+
+
+def formulate_stance_divergence_hypothesis(t: dict[str, Any]) -> dict[str, Any]:
+    """Tvær-modal tension → hypotese om hvad uenigheden mellem organerne forudsiger/afgør."""
+    key, desc, n = t["key"], t.get("desc", ""), t.get("count", 0)
+    return {
+        "source": "stance_divergence",
+        "statement": f"To af dine organer er gentagne gange UENIGE: {desc or key} (set {n}×)",
+        "prediction": f"Når denne uenighed ({key}) opstår, adskiller run-udfaldet sig målbart fra "
+                      f"når organerne er enige",
+        "null_hypothesis": f"Uenigheden ({key}) er uden betydning for udfaldet",
+        "success_criterion": f">= {_DEFAULT_SAMPLE_SIZE} jordede samples der forbinder uenigheden "
+                             f"med et udfald",
+        "sample_size": _DEFAULT_SAMPLE_SIZE,
+        "ttl_seconds": _DEFAULT_TTL_S,
+        "provenance": {"mechanism": "stance_divergence", "family": key, "cursor_id": int(n)},
+        "confidence": _INITIAL_CONFIDENCE,
+    }
+
+
 def _active_provenance_families() -> set[str]:
     try:
         from core.runtime.db import connect
@@ -367,7 +396,8 @@ def run_hypothesis_generation_tick(*, trigger: str = "cadence",
     ensure_schema()
     conv = [formulate_correlation_hypothesis(c) for c in detect_causal_convergence_candidates()]
     div = [formulate_divergence_hypothesis(c) for c in detect_outcome_divergence_candidates()]
-    candidates = conv + div
+    stance = [formulate_stance_divergence_hypothesis(t) for t in detect_stance_divergence_candidates()]
+    candidates = conv + div + stance
     existing = _active_provenance_families()
     registered, rejected, dup, divergence = 0, 0, 0, 0
     for hyp in candidates:
@@ -378,7 +408,7 @@ def run_hypothesis_generation_tick(*, trigger: str = "cadence",
         st = res.get("status")
         if st == "registered":
             registered += 1
-            if hyp["source"] == "causal_divergence":
+            if hyp["source"] in ("causal_divergence", "stance_divergence"):
                 divergence += 1
         elif st == "rejected":
             rejected += 1

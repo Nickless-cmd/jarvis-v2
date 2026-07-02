@@ -86,6 +86,25 @@ interface AppConfig {
   channelPlugins: ChannelPluginConfig[]
 }
 
+// Ved app-navn-skift (fx 'Jarvis' → 'J.A.R.V.I.S.') flytter Electrons userData-mappe sig, så den
+// gamle config (server-URL + token) bliver forældreløs → brugeren logges ud + "kan ikke nå serveren".
+// Selv-heling: find en config med token i en søster-mappe (tidligere app-navn) og arv den.
+const LEGACY_DIR_NAMES = ['J.A.R.V.I.S.', 'Jarvis', 'jarvis-desktop', 'jarvis-desk']
+function migrateLegacyConfig(): Partial<AppConfig> | null {
+  try {
+    const parent = path.dirname(userDataDir)
+    const currentBase = path.basename(userDataDir)
+    for (const name of LEGACY_DIR_NAMES) {
+      if (name === currentBase) continue
+      const legacy = path.join(parent, name, 'config.json')
+      if (!fs.existsSync(legacy)) continue
+      const d = JSON.parse(fs.readFileSync(legacy, 'utf-8')) as Partial<AppConfig>
+      if (d.authToken) return d
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
 function loadConfig(): AppConfig {
   let parsed: Partial<AppConfig> = {}
   try {
@@ -93,14 +112,25 @@ function loadConfig(): AppConfig {
   } catch {
     parsed = {}
   }
+  // Selv-heling ved navne-skift: mangler token her, så arv URL+token fra den gamle app-mappe.
+  let migrated = false
+  if (!parsed.authToken) {
+    const legacy = migrateLegacyConfig()
+    if (legacy?.authToken) {
+      parsed.authToken = legacy.authToken
+      if (!parsed.apiBaseUrl || parsed.apiBaseUrl === 'http://10.0.0.39') parsed.apiBaseUrl = legacy.apiBaseUrl
+      if (!parsed.appId && legacy.appId) parsed.appId = legacy.appId
+      migrated = true
+    }
+  }
   const cfg: AppConfig = {
     apiBaseUrl: parsed.apiBaseUrl || 'http://10.0.0.39',
     authToken: parsed.authToken || null,
     appId: parsed.appId || randomUUID(),
     channelPlugins: Array.isArray(parsed.channelPlugins) ? parsed.channelPlugins : [],
   }
-  // Persistér et nygenereret app-ID med det samme, så det overlever genstart.
-  if (!parsed.appId) {
+  // Persistér nygenereret app-ID / migreret config med det samme, så det overlever genstart.
+  if (!parsed.appId || migrated) {
     try { saveConfig(cfg) } catch { /* non-fatal: regenereres næste gang */ }
   }
   return cfg

@@ -271,6 +271,78 @@ def formulate_correlation_hypothesis(cand: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# ── Trigger v2: OUTCOME-DIVERGENS (rådets dybeste indsigt: konflikt, ikke konvergens) ─
+# Samme årsag → MODSATTE udfald = en skjult faktor afgør. Det er dér refleksion/vækst opstår.
+# Kuraterede modsat-udfald-par (gode ↔ dårlige) — grounded i eksisterende event-kinds.
+_OPPOSING_OUTCOMES = (
+    ("tool.completed", "tool.error"),
+    ("behavioral_decision_review.kept", "behavioral_decision_review.broken"),
+)
+
+
+def detect_outcome_divergence_candidates(*, window: int = _EDGE_WINDOW,
+                                         min_each: int = 2) -> list[dict[str, Any]]:
+    """Find parent-familier der MENINGSFULDT fører til BEGGE sider af et modsat-udfald-par (≥ min_each
+    hver). Samme årsag, modsatte udfald = divergens → en skjult indre faktor afgør. Self-safe."""
+    try:
+        from core.runtime.db import connect
+        placeholders = ",".join("?" for _ in _MEANINGFUL_SOURCES)
+        with connect() as c:
+            rows = c.execute(
+                f"SELECT pe.kind AS pk, che.kind AS ck, ce.id AS eid "
+                f"FROM causal_edges ce "
+                f"JOIN events pe ON pe.id = ce.parent_event_id "
+                f"JOIN events che ON che.id = ce.child_event_id "
+                f"WHERE ce.source IN ({placeholders}) "
+                f"ORDER BY ce.id DESC LIMIT ?",
+                (*_MEANINGFUL_SOURCES, max(int(window), 1))).fetchall()
+    except Exception:
+        return []
+    # family → {child_kind: {count, cursor}}
+    fam_children: dict[str, dict[str, dict[str, int]]] = {}
+    for r in rows:
+        pf = str(r["pk"] or "").split(".", 1)[0]
+        ck = str(r["ck"] or "")
+        if not pf or not ck:
+            continue
+        d = fam_children.setdefault(pf, {}).setdefault(ck, {"count": 0, "cursor": 0})
+        d["count"] += 1
+        d["cursor"] = max(d["cursor"], int(r["eid"] or 0))
+    out = []
+    for fam, children in fam_children.items():
+        for good, bad in _OPPOSING_OUTCOMES:
+            g = children.get(good)
+            b = children.get(bad)
+            if g and b and g["count"] >= min_each and b["count"] >= min_each:
+                out.append({"parent_family": fam, "good": good, "bad": bad,
+                            "good_count": g["count"], "bad_count": b["count"],
+                            "cursor": max(g["cursor"], b["cursor"])})
+    out.sort(key=lambda x: (x["good_count"] + x["bad_count"]), reverse=True)
+    return out
+
+
+def formulate_divergence_hypothesis(cand: dict[str, Any]) -> dict[str, Any]:
+    """Divergens → hypotese om en SKJULT diskriminerende faktor. Rådet: 'konflikt mellem organer er
+    kilden til refleksion' — denne hypotese peger direkte på at finde den faktor der afgør udfaldet."""
+    fam, good, bad = cand["parent_family"], cand["good"], cand["bad"]
+    gc, bc = cand["good_count"], cand["bad_count"]
+    return {
+        "source": "causal_divergence",
+        "statement": f"'{fam}' fører nogle gange til '{good}' ({gc}×) og andre gange til '{bad}' ({bc}×) "
+                     f"— en skjult indre faktor afgør udfaldet",
+        "prediction": f"Der findes en målbar indre tilstand (somatik/affekt/kontekst) der adskiller "
+                      f"'{fam}'→'{good}' fra '{fam}'→'{bad}'",
+        "null_hypothesis": f"'{fam}'-udfaldet er uafhængigt af indre tilstand (ren tilfældighed)",
+        "success_criterion": f">= {_DEFAULT_SAMPLE_SIZE} jordede samples der forbinder en indre "
+                             f"tilstand med udfaldet",
+        "sample_size": _DEFAULT_SAMPLE_SIZE,
+        "ttl_seconds": _DEFAULT_TTL_S,
+        "provenance": {"mechanism": "causal_divergence", "family": f"{fam}:{good}|{bad}",
+                       "cursor_id": cand["cursor"]},
+        "confidence": _INITIAL_CONFIDENCE,
+    }
+
+
 def _active_provenance_families() -> set[str]:
     try:
         from core.runtime.db import connect
@@ -290,14 +362,15 @@ def _active_provenance_families() -> set[str]:
 
 def run_hypothesis_generation_tick(*, trigger: str = "cadence",
                                    last_visible_at: str = "") -> dict[str, object]:
-    """Cadence-producer: detektér korrelationer → formulér → governance-gated registrér.
-    OBSERVE-ONLY (handler aldrig). Dedup mod aktive hypoteser. Egress-fri observe. Self-safe."""
+    """Cadence-producer: detektér KONVERGENS (korrelation) + DIVERGENS (konflikt) → formulér →
+    governance-gated registrér. OBSERVE-ONLY (handler aldrig). Dedup mod aktive. Egress-fri. Self-safe."""
     ensure_schema()
-    candidates = detect_causal_convergence_candidates()
+    conv = [formulate_correlation_hypothesis(c) for c in detect_causal_convergence_candidates()]
+    div = [formulate_divergence_hypothesis(c) for c in detect_outcome_divergence_candidates()]
+    candidates = conv + div
     existing = _active_provenance_families()
-    registered, rejected, dup = 0, 0, 0
-    for cand in candidates:
-        hyp = formulate_correlation_hypothesis(cand)
+    registered, rejected, dup, divergence = 0, 0, 0, 0
+    for hyp in candidates:
         if hyp["provenance"]["family"] in existing:
             dup += 1
             continue
@@ -305,6 +378,8 @@ def run_hypothesis_generation_tick(*, trigger: str = "cadence",
         st = res.get("status")
         if st == "registered":
             registered += 1
+            if hyp["source"] == "causal_divergence":
+                divergence += 1
         elif st == "rejected":
             rejected += 1
         elif st == "duplicate":
@@ -315,11 +390,11 @@ def run_hypothesis_generation_tick(*, trigger: str = "cadence",
         record_private("cognition", "hypothesis_generation",
                        value=float(registered),
                        meta={"candidates": len(candidates), "registered": registered,
-                             "rejected": rejected, "duplicate": dup})
+                             "divergence": divergence, "rejected": rejected, "duplicate": dup})
     except Exception:
         pass
     return {"status": "ok", "candidates": len(candidates), "registered": registered,
-            "rejected": rejected, "duplicate": dup}
+            "divergence": divergence, "convergence": len(conv), "rejected": rejected, "duplicate": dup}
 
 
 def register_hypothesis_generator_producer() -> None:

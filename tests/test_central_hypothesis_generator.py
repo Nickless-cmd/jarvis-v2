@@ -88,6 +88,37 @@ def test_unverified_grounding_does_not_resolve(isolated_runtime):
     assert out["hyp_status"] == "active"
 
 
+def test_detect_outcome_divergence(isolated_runtime):
+    """Rådets dybeste: samme årsag → modsatte udfald = divergens (konflikt-trigger)."""
+    _seed_edges(isolated_runtime, [
+        ("decision.created", "behavioral_decision_review.kept", 3, "inferred-kind"),
+        ("decision.created", "behavioral_decision_review.broken", 2, "inferred-kind"),
+        ("tool.invoked", "tool.completed", 4, "inferred-id"),   # kun én side → ikke divergens
+    ])
+    cands = gen.detect_outcome_divergence_candidates(min_each=2)
+    fams = {c["parent_family"] for c in cands}
+    assert "decision" in fams            # fører til BEGGE kept+broken
+    assert "tool" not in fams            # kun completed, ingen error → ingen divergens
+    hyp = gen.formulate_divergence_hypothesis(cands[0])
+    from core.services import central_hypothesis_governance as gov
+    ok, _ = gov.validate_preregistration(hyp)
+    assert ok and hyp["source"] == "causal_divergence"
+    assert "skjult" in hyp["statement"]
+
+
+def test_tick_registers_both_convergence_and_divergence(isolated_runtime):
+    _seed_edges(isolated_runtime, [
+        ("memory.recall_fail", "somatic.stress", 4, "inferred-kind"),                  # konvergens
+        ("decision.created", "behavioral_decision_review.kept", 3, "inferred-kind"),   # divergens (kept
+        ("decision.created", "behavioral_decision_review.broken", 3, "inferred-kind"), #  + broken)
+    ])
+    res = gen.run_hypothesis_generation_tick()
+    assert res["status"] == "ok"
+    assert res["divergence"] >= 1 and res["registered"] >= 2
+    statements = " ".join(h["statement"] for h in gen.list_active_hypotheses(limit=10))
+    assert "skjult" in statements       # divergens-hypotesen er registreret
+
+
 def test_self_triggered_confirmation_quarantined(isolated_runtime):
     _seed_edges(isolated_runtime, [("memory.recall_fail", "somatic.stress", 4, "inferred-kind")])
     gen.run_hypothesis_generation_tick()

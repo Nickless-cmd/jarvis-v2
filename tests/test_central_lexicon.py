@@ -22,9 +22,10 @@ def test_seed_bindings_lookup():
 
 
 def test_unbound_returns_none_honestly():
-    # sproget dækker ikke al operationel/infra-VVS endnu — det indrømmer vi
+    # sproget dækker ikke al operationel/infra-VVS endnu — det indrømmer vi.
+    # NB: efter Fase B0 er 'cost'→vægt bundet; de genuint nye begreber står stadig ubundet.
     assert lex.to_term("trading") is None
-    assert lex.to_term("cost") is None
+    assert lex.to_term("council") is None
     assert lex.to_term("reboot") is None
 
 
@@ -32,7 +33,7 @@ def test_render_relation():
     assert lex.render_relation("memory", "somatic") == "kontinuitet → krop"
     assert lex.render_relation("conflict", "cognitive_counterfactual") == "strid → drøm"
     # ubundet led → None (kan ikke siges endnu)
-    assert lex.render_relation("trading", "cost") is None
+    assert lex.render_relation("trading", "council") is None
 
 
 def test_bind_rejects_non_vocabulary_term_without_ceremony(isolated_runtime):
@@ -46,15 +47,15 @@ def test_bind_rejects_non_vocabulary_term_without_ceremony(isolated_runtime):
 
 
 def test_unbound_names_lists_candidates():
-    names = ["memory", "trading", "gut", "cost"]
-    assert set(lex.unbound_names(names)) == {"trading", "cost"}
+    names = ["memory", "trading", "gut", "council"]
+    assert set(lex.unbound_names(names)) == {"trading", "council"}
 
 
 def test_propose_word_needs():
     # ubundne + hyppige familier → Centralen beder om ord; bundne udelades
-    counts = {"trading": 30, "cost": 12, "memory": 99, "reboot": 2}
+    counts = {"trading": 30, "council": 12, "memory": 99, "reboot": 2}
     needs = lex.propose_word_needs(counts, min_count=5)
     names = {n["name"] for n in needs}
-    assert "trading" in names and "cost" in names   # ubundne + hyppige
+    assert "trading" in names and "council" in names   # ubundne + hyppige
     assert "memory" not in names                    # bundet (kontinuitet) → udelades
     assert "reboot" not in names                    # under tærskel

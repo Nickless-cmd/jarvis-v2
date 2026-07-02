@@ -112,6 +112,17 @@ SEED_BINDINGS: dict[str, str] = {
     # Bjørn-godkendte provisoriske bindinger (2. jul, "til vi ser hvordan det virker"):
     "user_md_update_proposal": "relation", "diary_synthesis_signal": "spejl",
     "cognitive_experiential": "lys",
+    # ── Spec B / Fase B0: TAKSONOMI-binding (clusters + resterende operationelle familier) ──
+    # Kun ÆRLIGE match til eksisterende termer (ingen ceremoni). Genuint NYE begreber (truth/
+    # mutation/skill/council/self_repair/trading) står BEVIDST ubundet → ceremoni-kandidater.
+    # clusters (central_catalog.CLUSTER_PRIORITY):
+    "auth": "grænse", "privacy": "grænse", "execution": "handling", "tools": "handling",
+    "loop": "rytme", "review": "spejl", "proactivity": "agens", "autonomous": "agens",
+    "agents": "agens", "stream": "stemme", "system": "krop", "db": "kontinuitet",
+    "commit": "valg", "cost": "vægt",
+    # operationelle event-familier (FAMILY_ROUTES) uden binding endnu:
+    "approvals": "grænse", "anomaly": "stød", "channel": "relation", "discord": "relation",
+    "telegram": "relation", "experiment": "nysgerrighed",
 }
 
 # Central-relation → operator (hvordan en hypotese-type udtrykkes).
@@ -245,10 +256,47 @@ def propose_from_event_stream(*, window: int = 2000, min_count: int = 5) -> list
     return propose_word_needs(counts, min_count=min_count)
 
 
+# ── Spec B / Fase B0: TAKSONOMI-dækning (S1 — hele det operationelle vokabular sigeligt) ──
+def _taxonomy_names() -> list[str]:
+    """Alle navne Centralen SKAL kunne sige: clusters + operationelle event-familier. Privat-lag-
+    familier (PRIVATE_NO_EGRESS) medtages IKKE — de er inner-life, ikke operationel taksonomi. Self-safe."""
+    names: set[str] = set()
+    try:
+        from core.services.central_catalog import CLUSTER_PRIORITY
+        names |= set(CLUSTER_PRIORITY)
+    except Exception:
+        pass
+    try:
+        from core.services.eventbus_central_bridge import FAMILY_ROUTES
+        names |= set(FAMILY_ROUTES)
+    except Exception:
+        pass
+    return sorted(n for n in names if n)
+
+
+def taxonomy_coverage() -> dict[str, Any]:
+    """Hvor stor en del af taksonomien (clusters + familier) kan sproget sige? Plotbart (som Fase 1c).
+    Self-safe."""
+    names = _taxonomy_names()
+    unbound = [n for n in names if to_term(n) is None]
+    bound = len(names) - len(unbound)
+    return {"total": len(names), "bound": bound, "unbound": len(unbound),
+            "ratio": round(bound / len(names), 4) if names else 0.0, "unbound_names": unbound}
+
+
+def bind_taxonomy() -> dict[str, Any]:
+    """Rapportér taksonomi-dækning + de navne der mangler et ord (ceremoni-kandidater, nye ORD Bjørn
+    navngiver). Ingen mutation — ærlige seed-bindinger lever i kode; kun ægte nye begreber venter. Self-safe."""
+    cov = taxonomy_coverage()
+    needs = propose_word_needs({n: 999 for n in cov["unbound_names"]}, min_count=1, top=50)
+    return {**cov, "word_needs": needs}
+
+
 def build_central_lexicon_surface() -> dict[str, object]:
     """Mission Control surface — read-only: vokabular, bindinger, hvad sproget kan/ikke kan sige."""
     db = _db_bindings()
     all_bindings = {**SEED_BINDINGS, **db}
     return {"active": True, "vocabulary_size": len(_ACTIVE_TERMS),
             "operators": sorted(_OPERATORS), "bound_count": len(all_bindings),
-            "bindings": all_bindings, "word_needs": propose_from_event_stream()}
+            "bindings": all_bindings, "word_needs": propose_from_event_stream(),
+            "taxonomy": taxonomy_coverage()}

@@ -155,16 +155,24 @@ def model_free_reasoning() -> dict[str, Any]:
 def run_notation_reasoning_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
     """Cadence-producer: udfør model-fri ræsonnement + registrér tællere egress-frit. Self-safe."""
     r = model_free_reasoning()
+    # Spec B / Fase B0: mål taksonomi-dækning (S1) — hvor stor en del af Centralens vokabular er sigeligt.
+    try:
+        from core.services import central_lexicon
+        tax = central_lexicon.taxonomy_coverage()
+    except Exception:
+        tax = {}
     try:
         from core.services.central_private_observe import record_private
         record_private("cognition", "notation_reasoning",
                        value=float(len(r["derived_inferences"])),
                        meta={"notations": r["notations"], "derived": len(r["derived_inferences"]),
-                             "contradictions": len(r["contradictions"])})
+                             "contradictions": len(r["contradictions"]),
+                             "taxonomy_ratio": tax.get("ratio"), "taxonomy_unbound": tax.get("unbound")})
     except Exception:
         pass
     return {"status": "ok", "derived": len(r["derived_inferences"]),
-            "contradictions": len(r["contradictions"]), "notations": r["notations"]}
+            "contradictions": len(r["contradictions"]), "notations": r["notations"],
+            "taxonomy_ratio": tax.get("ratio"), "taxonomy_unbound": tax.get("unbound")}
 
 
 def register_notation_reasoning_producer() -> None:

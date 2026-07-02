@@ -71,6 +71,38 @@ def test_causal_hypothesis(x_fam: str, y_fam: str, *, window: int = _WINDOW,
             "x_events": len(x_events)}
 
 
+def test_divergence_persistence(family: str) -> dict[str, Any] | None:
+    """causal_divergence (§8.4): 'X → BÅDE godt og dårligt udfald'. Test PERSISTENS mod friske data —
+    er divergensen der stadig (X fører stadig til begge sider)? Ja → supports; nej (kollapset til én
+    side) → falsifies. family = 'parent:good|bad'. Self-safe."""
+    try:
+        parent, _, rest = str(family).partition(":")
+        good, _, bad = rest.partition("|")
+        if not (parent and good and bad):
+            return None
+        from core.services import central_hypothesis_generator as gen
+        cands = gen.detect_outcome_divergence_candidates()
+        match = next((c for c in cands if c["parent_family"] == parent
+                      and c["good"] == good and c["bad"] == bad), None)
+        cursor = match["cursor"] if match else 0
+        return {"supports": bool(match), "falsifies": not bool(match), "cursor": cursor}
+    except Exception:
+        return None
+
+
+def test_stance_persistence(tension_key: str) -> dict[str, Any] | None:
+    """stance_divergence (§8.4): 'to organer er gentagne gange uenige'. Test PERSISTENS — gentager
+    tension'en sig stadig? Ja → supports; nej (organerne enige nu) → falsifies. Self-safe."""
+    try:
+        from core.services.central_stance import recurring_tensions
+        rec = recurring_tensions(min_count=1)   # findes den overhovedet stadig i vinduet?
+        still = any(r.get("key") == str(tension_key) for r in rec)
+        cnt = next((r.get("count", 0) for r in rec if r.get("key") == str(tension_key)), 0)
+        return {"supports": bool(still), "falsifies": not bool(still), "cursor": int(cnt)}
+    except Exception:
+        return None
+
+
 def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
                                 last_visible_at: str = "") -> dict[str, object]:
     """Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded
@@ -88,20 +120,24 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
     except Exception:
         active = []
     for hyp_id, prov in active:
-        if prov.get("mechanism") != "causal_edges":
-            skipped += 1
-            continue
+        mech = prov.get("mechanism")
         fam = str(prov.get("family") or "")
-        if "->" not in fam:
-            skipped += 1
-            continue
-        x_fam, y_fam = fam.split("->", 1)
-        res = test_causal_hypothesis(x_fam, y_fam)
+        # §8.4: test causal-KORRELATION, causal-DIVERGENS OG stance-DIVERGENS (før: kun causal_edges).
+        if mech == "causal_edges" and "->" in fam:
+            x_fam, y_fam = fam.split("->", 1)
+            res = test_causal_hypothesis(x_fam, y_fam)
+        elif mech == "causal_divergence" and ":" in fam:
+            res = test_divergence_persistence(fam)
+        elif mech == "stance_divergence":
+            res = test_stance_persistence(fam)
+        else:
+            res = None
         if res is None:
             skipped += 1
             continue
         tested += 1
-        out = gen.record_governed_sample(
+        # triggered_by='world': frisk verdens-observation, IKKE selv-udløst (circular-korrekt, §8.5).
+        gen.record_governed_sample(
             hyp_id, supports=bool(res["supports"]), falsifies=bool(res["falsifies"]),
             source="world_consequence", ground_ref=str(res["cursor"]),
             triggered_by="world")

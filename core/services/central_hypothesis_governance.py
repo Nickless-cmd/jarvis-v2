@@ -266,40 +266,48 @@ class DriftVerdict:
 
 
 # Ankret baseline (rådet: kalderen MÅ IKKE levere sit eget nulpunkt → frøen-koger). Write-once pr.
-# version via ceremoni; drift-checket henter selv. Prod: persistér signeret mod SOUL/IDENTITY-hash.
-_ANCHORED_BASELINE: dict[str, Any] = {}
+# (DOMÆNE, version) via ceremoni; drift-checket henter selv. NAMESPACED pr. domæne (§8.1) så flere
+# Lag 4-tråde (gut-bias/prompt/model-router/sekvens) ikke kolliderer mod ét globalt anker. Prod:
+# persistér signeret mod SOUL/IDENTITY-hash. Default-domæne = bagudkompatibelt.
+_ANCHORED_BASELINES: dict[str, dict[str, Any]] = {}   # domain → {version, approved_by, params}
+_DEFAULT_DOMAIN = "default"
 
 
-def anchor_identity_baseline(params: dict[str, float], *, version: str, approved_by: str) -> bool:
-    """Forankr identitets-baseline i en Bjørn-godkendt CEREMONI (write-once pr. version). Auto-re-
-    baseline fra det muterende loop er umuligt: en ny version kræver eksplicit approved_by. Self-safe."""
+def anchor_identity_baseline(params: dict[str, float], *, version: str, approved_by: str,
+                             domain: str = _DEFAULT_DOMAIN) -> bool:
+    """Forankr en identitets-baseline for ÉT domæne i en Bjørn-godkendt CEREMONI (write-once pr.
+    (domæne, version)). Auto-re-baseline fra det muterende loop er umuligt. Domæner er isolerede:
+    et nyt Lag 4-domæne kolliderer ALDRIG med et andets anker. Self-safe."""
     try:
         if not version or not approved_by:
             return False
-        if _ANCHORED_BASELINE.get("version") == version:
-            return False  # write-once: samme version kan ikke overskrives stille
-        _ANCHORED_BASELINE.clear()
-        _ANCHORED_BASELINE.update({"version": str(version), "approved_by": str(approved_by),
-                                   "params": {str(k): float(v) for k, v in (params or {}).items()}})
+        d = str(domain or _DEFAULT_DOMAIN)
+        existing = _ANCHORED_BASELINES.get(d)
+        if existing and existing.get("version") == version:
+            return False  # write-once: samme (domæne, version) kan ikke overskrives stille
+        _ANCHORED_BASELINES[d] = {"version": str(version), "approved_by": str(approved_by),
+                                  "params": {str(k): float(v) for k, v in (params or {}).items()}}
         return True
     except Exception:
         return False
 
 
-def get_anchored_baseline() -> dict[str, float] | None:
-    p = _ANCHORED_BASELINE.get("params")
+def get_anchored_baseline(*, domain: str = _DEFAULT_DOMAIN) -> dict[str, float] | None:
+    e = _ANCHORED_BASELINES.get(str(domain or _DEFAULT_DOMAIN))
+    p = e.get("params") if isinstance(e, dict) else None
     return dict(p) if isinstance(p, dict) else None
 
 
 def drift_budget_check(current: dict[str, float], *, baseline: dict[str, float] | None = None,
                        budgets: dict[str, float] | None = None,
-                       total_budget: float | None = None) -> DriftVerdict:
-    """Mål drift af selv-muterede parametre fra en ANKRET baseline. Itererer UNION(baseline,current):
-    nye parametre (i current, ikke baseline) OG fjernede (i baseline, ikke current) tæller som drift +
-    synder. NaN/inf → rollback (fail-closed på netop den anomale værdi). Overskredet budget → rollback.
-    baseline=None → hent ankret; intet anker → rollback (ingen baseline = ingen identitet at måle mod)."""
+                       total_budget: float | None = None,
+                       domain: str = _DEFAULT_DOMAIN) -> DriftVerdict:
+    """Mål drift af selv-muterede parametre fra en ANKRET baseline (namespaced pr. domæne). Itererer
+    UNION(baseline,current): nye parametre (i current, ikke baseline) OG fjernede (i baseline, ikke
+    current) tæller som drift + synder. NaN/inf → rollback (fail-closed). Overskredet budget → rollback.
+    baseline=None → hent domænets anker; intet anker → rollback (ingen baseline = ingen identitet)."""
     try:
-        base = baseline if baseline is not None else get_anchored_baseline()
+        base = baseline if baseline is not None else get_anchored_baseline(domain=domain)
         if base is None:
             return DriftVerdict(False, 0.0, "rollback", ("<no-anchored-baseline>",))
         offenders: list[str] = []
@@ -341,10 +349,12 @@ def drift_budget_check(current: dict[str, float], *, baseline: dict[str, float] 
 
 
 def gate_self_mutation(current: dict[str, float], *, budgets: dict[str, float] | None = None,
-                       total_budget: float | None = None) -> DriftVerdict:
-    """OBLIGATORISK choke-point for enhver Lag 4-selvmutation: måler mod den ANKREDE baseline (kalderen
-    kan IKKE levere sit eget nulpunkt). action='rollback' → Lag 4 skal gendanne parametre + varsle Bjørn."""
-    return drift_budget_check(current, baseline=None, budgets=budgets, total_budget=total_budget)
+                       total_budget: float | None = None, domain: str = _DEFAULT_DOMAIN) -> DriftVerdict:
+    """OBLIGATORISK choke-point for enhver Lag 4-selvmutation: måler mod domænets ANKREDE baseline
+    (kalderen kan IKKE levere sit eget nulpunkt). Hver Lag 4-tråd bruger sit eget `domain` → ingen
+    kollision. action='rollback' → Lag 4 skal gendanne parametre + varsle Bjørn."""
+    return drift_budget_check(current, baseline=None, budgets=budgets,
+                              total_budget=total_budget, domain=domain)
 
 
 # ── Samlet dom: evaluate() orkestrerer nu ALLE hypotese-værn + eksekverer død ────────

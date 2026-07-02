@@ -70,6 +70,33 @@ def test_sampler_tick_records_grounded_samples(isolated_runtime, monkeypatch):
     assert active and active[0]["grounded_samples"] == 1
 
 
+def test_sampler_tests_stance_divergence(isolated_runtime, monkeypatch):
+    """§8.4: stance-divergens-hypoteser resolver nu (før: skippet permanent)."""
+    gen.ensure_schema()
+    gen.register_governed_hypothesis(gen.formulate_stance_divergence_hypothesis(
+        {"key": "gut:proceed|somatic:stress", "count": 5, "desc": "gut vil frem, kroppen bremser"}))
+    import core.services.central_stance as cs
+    # tension'en gentager sig stadig → persistens → supports
+    monkeypatch.setattr(cs, "recurring_tensions",
+                        lambda **k: [{"key": "gut:proceed|somatic:stress", "count": 5}])
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["tested"] >= 1 and res["supported"] >= 1
+
+
+def test_sampler_tests_causal_divergence(isolated_runtime, monkeypatch):
+    """§8.4: causal-divergens-hypoteser resolver nu (persistens-test)."""
+    gen.ensure_schema()
+    gen.register_governed_hypothesis(gen.formulate_divergence_hypothesis(
+        {"parent_family": "decision", "good": "kept", "bad": "broken",
+         "good_count": 3, "bad_count": 2, "cursor": 10}))
+    # divergensen er der stadig → supports
+    monkeypatch.setattr(gen, "detect_outcome_divergence_candidates",
+                        lambda **k: [{"parent_family": "decision", "good": "kept", "bad": "broken",
+                                      "good_count": 3, "bad_count": 2, "cursor": 11}])
+    res = smp.run_hypothesis_sampler_tick()
+    assert res["tested"] >= 1 and res["supported"] >= 1
+
+
 def test_five_supporting_samples_resolve(isolated_runtime, monkeypatch):
     gen.ensure_schema()
     gen.register_governed_hypothesis(gen.formulate_correlation_hypothesis(

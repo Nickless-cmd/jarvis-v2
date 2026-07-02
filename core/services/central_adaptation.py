@@ -32,6 +32,7 @@ _BIAS_CLAMP = 0.25
 _BIAS_BUDGET = 0.30
 _MIN_RESOLVED = 5
 _ANCHOR_VERSION = "gut-bias-v1"
+_DOMAIN = "gut_proceed_bias"   # §8.1: isoleret anker-domæne (kolliderer ikke m. andre Lag 4-tråde)
 
 
 def _kv_get(key: str, default: Any) -> Any:
@@ -70,21 +71,34 @@ def _ensure_anchor() -> None:
     """Ankr identitets-baseline: bias=0 ER identiteten (ingen tilbøjeligheds-forvrængning). In-memory
     pr. proces (0.0 er altid det korrekte nulpunkt → drift måles altid fra 'ingen bias')."""
     try:
-        if gov.get_anchored_baseline() is None:
+        if gov.get_anchored_baseline(domain=_DOMAIN) is None:
             gov.anchor_identity_baseline({_BIAS_KEY: 0.0}, version=_ANCHOR_VERSION,
-                                         approved_by="lag4-shadow")
+                                         approved_by="lag4-shadow", domain=_DOMAIN)
     except Exception:
         pass
 
 
-def resolved_track_record() -> dict[str, int]:
-    """Centralens egen præcision: hvor mange hypoteser om sig selv har holdt vs. fejlet."""
+# §8.3: gut-bias fodres KUN af Jarvis' SELV-FORSTÅELSES-hypoteser (adfærd/inner-life), IKKE af
+# fremtidige model/prompt/sekvens-tråde → ingen tvær-tråd-kontaminering af mavefornemmelsen.
+_GUT_SOURCES = ("causal_convergence", "causal_divergence", "stance_divergence")
+
+
+def resolved_track_record(*, sources: tuple[str, ...] | None = None) -> dict[str, int]:
+    """Centralens egen præcision: hvor mange hypoteser har holdt vs. fejlet. SOURCE-SCOPED (§8.3):
+    `sources` afgrænser til bestemte hypotese-kilder; None = alle. Self-safe."""
     out = {"supported": 0, "contradicted": 0}
     try:
         from core.runtime.db import connect
         with connect() as c:
-            for r in c.execute("SELECT outcome, COUNT(*) n FROM central_hypotheses "
-                               "WHERE status='resolved' GROUP BY outcome"):
+            if sources:
+                ph = ",".join("?" for _ in sources)
+                rows = c.execute(f"SELECT outcome, COUNT(*) n FROM central_hypotheses "
+                                 f"WHERE status='resolved' AND source IN ({ph}) GROUP BY outcome",
+                                 tuple(sources)).fetchall()
+            else:
+                rows = c.execute("SELECT outcome, COUNT(*) n FROM central_hypotheses "
+                                 "WHERE status='resolved' GROUP BY outcome").fetchall()
+            for r in rows:
                 o = str(r["outcome"] or "")
                 if o in out:
                     out[o] = int(r["n"])
@@ -96,8 +110,13 @@ def resolved_track_record() -> dict[str, int]:
 def compute_proposed_bias() -> dict[str, Any]:
     """Foreslå gut-bias fra track-record. accuracy=supported/(supported+contradicted). Højere præcision
     → mere proceed-tiltro; lavere → caution. Kræver ≥ _MIN_RESOLVED resolved (ellers ingen ændring)."""
-    tr = resolved_track_record()
+    tr = resolved_track_record(sources=_GUT_SOURCES)   # §8.3: kun selv-forståelses-kilder
     resolved = tr["supported"] + tr["contradicted"]
+    # §8.2: AL læring passerer læringsmembranen (kun aggregat-skalarer krydser §24.4). Første
+    # ægte kalder af gate_learning_input — gør membranen til et faktisk choke-point, ikke dekoration.
+    gated = gov.gate_learning_input({"supports": tr["supported"], "samples": resolved})
+    if not gated["ok"]:
+        return {"proposed": 0.0, "accuracy": None, "resolved": resolved, "enough": False}
     if resolved < _MIN_RESOLVED:
         return {"proposed": 0.0, "accuracy": None, "resolved": resolved, "enough": False}
     accuracy = tr["supported"] / resolved
@@ -127,7 +146,8 @@ def run_adaptation_tick(*, trigger: str = "cadence", last_visible_at: str = "") 
     prop = compute_proposed_bias()
     proposed = float(prop["proposed"])
     # Drift-budget-gate: hvad ville bias BLIVE, målt mod ankret baseline (bias=0)?
-    verdict = gov.gate_self_mutation({_BIAS_KEY: proposed}, budgets={_BIAS_KEY: _BIAS_BUDGET})
+    verdict = gov.gate_self_mutation({_BIAS_KEY: proposed}, budgets={_BIAS_KEY: _BIAS_BUDGET},
+                                     domain=_DOMAIN)
     live = is_live_enabled()
     applied = False
     if verdict.action == "rollback":

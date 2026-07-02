@@ -198,12 +198,29 @@ def test_drift_nan_fails_closed():
 
 
 def test_anchor_baseline_is_write_once_per_version():
-    g._ANCHORED_BASELINE.clear()
+    g._ANCHORED_BASELINES.clear()
     assert g.anchor_identity_baseline({"x": 1.0}, version="v1", approved_by="bjorn") is True
     # samme version kan ikke overskrives stille (ingen auto-re-baseline)
     assert g.anchor_identity_baseline({"x": 99.0}, version="v1", approved_by="bjorn") is False
     assert g.get_anchored_baseline() == {"x": 1.0}
-    g._ANCHORED_BASELINE.clear()
+    g._ANCHORED_BASELINES.clear()
+
+
+def test_multi_thread_anchor_isolation():
+    """§8.1: flere Lag 4-domæner har ISOLEREDE ankre — ingen kollision, ingen stille overskrivning."""
+    g._ANCHORED_BASELINES.clear()
+    assert g.anchor_identity_baseline({"gut_proceed_bias": 0.0}, version="v1",
+                                      approved_by="bjorn", domain="gut_proceed_bias") is True
+    assert g.anchor_identity_baseline({"prompt_weight": 0.0}, version="v1",
+                                      approved_by="bjorn", domain="prompt_relevance") is True
+    # hvert domæne henter KUN sit eget anker
+    assert g.get_anchored_baseline(domain="gut_proceed_bias") == {"gut_proceed_bias": 0.0}
+    assert g.get_anchored_baseline(domain="prompt_relevance") == {"prompt_weight": 0.0}
+    # en mutation i prompt-domænet måles mod prompt-ankeret, ikke gut — ingen 'undeclared'-rollback
+    v = g.gate_self_mutation({"prompt_weight": 0.05}, budgets={"prompt_weight": 0.2},
+                             domain="prompt_relevance")
+    assert v.action == "ok"
+    g._ANCHORED_BASELINES.clear()
 
 
 # ── Frossen kerne ────────────────────────────────────────────────────────────────

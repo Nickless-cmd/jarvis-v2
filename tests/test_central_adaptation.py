@@ -9,7 +9,7 @@ from core.services import central_hypothesis_governance as gov
 
 @pytest.fixture(autouse=True)
 def _reset(isolated_runtime):
-    gov._ANCHORED_BASELINE.clear()
+    gov._ANCHORED_BASELINES.clear()
     ad._kv_set(ad._BIAS_KEY, 0.0)
     ad._kv_set(ad._LIVE_FLAG, False)
     ad._kv_set(ad._PAUSE_KEY, False)
@@ -32,6 +32,37 @@ def _seed_resolved(supported: int, contradicted: int):
                     "VALUES (?,?,?,?,?,?,?,?,?,?, 'resolved', ?, 5, '2026-07-02T00:00:00Z')",
                     (f"h{i}", "causal_convergence", "s", "p", "n", "sc", 5, 3600, "{}", 0.5, outcome))
         c.commit()
+
+
+def test_track_record_source_scoped(isolated_runtime):
+    """§8.3: gut-bias fodres KUN af selv-forståelses-kilder — fremmede kilder forurener ikke."""
+    from core.runtime.db import connect
+    from core.services import central_hypothesis_generator as gen
+    gen.ensure_schema()
+    with connect() as c:
+        for i, src in enumerate(["causal_convergence"] * 3 + ["model_meta"] * 7):
+            c.execute(
+                "INSERT INTO central_hypotheses (hyp_id, source, statement, prediction, "
+                "null_hypothesis, success_criterion, sample_size, ttl_seconds, provenance_json, "
+                "confidence, status, outcome, grounded_samples, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?, 'resolved', 'supported', 5, '2026-07-02T00:00:00Z')",
+                (f"h{i}", src, "s", "p", "n", "sc", 5, 3600, "{}", 0.5))
+        c.commit()
+    assert ad.resolved_track_record(sources=ad._GUT_SOURCES)["supported"] == 3   # kun gut-kilder
+    assert ad.resolved_track_record()["supported"] == 10                          # alle kilder
+
+
+def test_learning_membrane_wired(isolated_runtime, monkeypatch):
+    """§8.2: lærings-stien SKAL faktisk kalde gate_learning_input (før: 0 kaldere = v3.0-fælde)."""
+    called = []
+    orig = gov.gate_learning_input
+    monkeypatch.setattr(gov, "gate_learning_input", lambda p: called.append(dict(p)) or orig(p))
+    _seed_resolved(supported=8, contradicted=2)
+    ad.compute_proposed_bias()
+    assert called, "gate_learning_input blev IKKE kaldt af lærings-stien"
+    # og membranen ville blokere ikke-aggregat (indhold) input
+    ok, blocked = gov.assert_learnable({"supported": 3, "note": "privat tekst"})
+    assert not ok and "note" in blocked
 
 
 def test_shadow_never_applies_without_live_flag():

@@ -1138,6 +1138,14 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # SPEJLET (LivingNeuron): Centralen kender sig selv — snapshotter runtime_self_model'ens STRUKTUR
+    # durabelt (overlever genstart), egress-frit + observe-only (§8-circular). Jarvis' audit #1.
+    try:
+        from core.services.central_self_model import register_self_model_mirror_producer
+        register_self_model_mirror_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

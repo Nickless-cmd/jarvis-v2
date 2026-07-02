@@ -137,6 +137,9 @@ PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
     "pushback": ("cognition", "pushback"),
     "prompt": ("cognition", "prompt"),
     "communication": ("channel", "communication"),  # kan bære besked-tekst → egress-frit (konservativt)
+    # SPEJLET (audit #1): selv-model-events → egress-frit (privat selv-erkendelse; komplementerer
+    # central_self_model-spejlets snapshot-producer). ALDRIG egress.
+    "runtime_self_model": ("cognition", "self_model"),
 }
 
 # Dokumenteret liste over families der BEVIDST holdes dark i M0 (privatlags-isolation,
@@ -162,7 +165,7 @@ PRIVATE_FAMILIES_EXCLUDED_M0: frozenset[str] = frozenset({
     "cognitive_morning_thread", "cognitive_shared_language", "cognitive_trade", "learning_pipeline",
     "learning_policy", "initiative_accumulator", "identity_composer", "valence_trajectory",
     "absence_awareness", "calm_anchor", "causal", "nudge", "promise", "pushback", "prompt",
-    "communication",
+    "communication", "runtime_self_model",
 })
 
 _BRIDGE_NERVE = "eventbus_bridge"

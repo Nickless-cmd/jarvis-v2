@@ -1105,6 +1105,14 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Tråd 1: Centralen KENDER SIT EGET HARDWARE — per-model latency/success/cost → tidsserie +
+    # governed model_meta-hypoteser ("X > Y"). OBSERVE-ONLY (ændrer ikke routing). §8-gated.
+    try:
+        from core.services.central_model_meta import register_model_meta_producer
+        register_model_meta_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

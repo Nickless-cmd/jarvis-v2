@@ -131,6 +131,10 @@ def run_hypothesis_sampler_tick(*, trigger: str = "cadence",
             # samme conditional-rate-test. Ellers falsificeres den (det var støj). §8.4.
             x_fam, y_fam = fam.split("->", 1)
             res = test_causal_hypothesis(x_fam, y_fam)
+        elif mech == "model_meta" and ":" in fam:
+            # Tråd 1: holder model-dominansen (latency/success) stadig i friske runs? ellers støj/udvalg.
+            from core.services import central_model_meta as mm
+            res = mm.test_model_meta_persistence(fam)
         elif mech == "causal_divergence" and ":" in fam:
             res = test_divergence_persistence(fam)
         elif mech == "stance_divergence":

@@ -94,7 +94,24 @@ Denne spec tager skridtet fra *sanseorgan* til **meta-kognition + selv-forfatter
 
 **Findes:** `interlanguage_practice.py` (14 begreber, 5 operatorer). **Ærlig nedgradering (rådet):** den fil genererer i dag *tilfældige mood-biased expressions fra et frosset 14-ords vokabular, afkoblet fra `central_hypotheses`* — den er et peer-validerings-eksperiment, **IKKE Lag 5-backup'en endnu.** Living-neuron §5's "backup"-antagelse er for optimistisk; DENNE tråd er den ægte bro.
 
-**Mekanisme:** giv `central_hypotheses` en `notation_il`-kolonne — en formel repræsentation (fx `pres → somatik | !ro ⊂ run_fail`) ved siden af fritekst. Normalform → **dedup + venstre-leds-korrelation** (hypoteser med samme antecedent grupperes/sammenlignes maskin-korrelerbart, som fritekst aldrig kan). Over tid kan Centralen foreslå nye termer → **udvide sproget** (lexicon med `status`; nye termer kræver Bjørn-ceremoni, fail-closed).
+**PRE-START (Bjørns nøgle-indsigt — laget der får resten til at virke): labelér Centralen internt i sproget.**
+Før notationen kan bygges, skal Centralens egne dele have interlanguage-termer: hvert **cluster**, hver **nerve**, hver
+**event-familie** bindes til en term i lexiconet (fx `pressure→pres`, `somatic→krop`, `gut→agens`, `contradiction→!ro`,
+`cognition→tanke`). Det er **lexicon-bindingen**, og den gør to ting på én gang: (1) den sår sproget ind i Centralens
+egen struktur fra dag ét — Centralen begynder at *hedde* noget i sit eget sprog; (2) den gør `notation_il` beregnbar,
+for at rendere en hypotese til notation bliver nu et rent opslag (`conflict`→term, `→`, `counterfactual`→term). Uden
+denne binding er notation umulig; med den er den triviel. Bindingen lever i lexicon-tabellen (`status`-gated, nye
+termer kræver Bjørn-ceremoni, fail-closed).
+
+**Mekanisme:** giv `central_hypotheses` en `notation_il`-kolonne — en formel repræsentation (fx `pres → krop | !ro ⊂ run_fail`)
+ved siden af fritekst, renderet via lexicon-bindingen. Normalform → **dedup + venstre-leds-korrelation** (hypoteser med
+samme antecedent grupperes/sammenlignes maskin-korrelerbart, som fritekst aldrig kan). Over tid kan Centralen foreslå nye
+termer → **udvide sproget** (lexicon med `status`; nye termer kræver Bjørn-ceremoni, fail-closed).
+
+> **Fremtidig spec B (ovenpå dette fundament, når nærværende spec er landet):** *"Centralens Tænke-Sprog"* — fuld
+> integration af sproget i ALT: clusters, nerver, events, orkestrering, så Centralen kan **kommunikere internt på tværs
+> af sig selv og ræsonnere UDEN modellen**. Denne spec (fundamentet) leverer lexicon-bindingen + notation på hypoteser;
+> B udvider fra "hypoteser er skrevet i sproget" til "hele Centralen taler sproget." Pre-startet her gør B til en udvidelse, ikke en ombygning.
 
 **Egress (rådet):** `notation_il` er en TEKST-kolonne — `gate_learning_input` gater kun skalar-værdier, ikke tekst. → runtime-normalisering der **afviser/trunkerer enhver term udenfor `lexicon.status='active'`** (ellers ny egress-vej for privat kognition).
 
@@ -140,7 +157,10 @@ Denne spec tager skridtet fra *sanseorgan* til **meta-kognition + selv-forfatter
 
 ## 9. FASERET ROADMAP (afhængigheder korrekt ordnet)
 
-- **Fase 0 — Fundament (model-frit bevis + blokkere):** namespace-baseline (§8.1) · wire læringsmembran (§8.2) · source-scope track-record (§8.3) · **link divergens/stance-samplere (§8.4)** · `notation_il`-kolonne + dedup + `test_model_free_step` (Lag 5-bevis TIDLIGT). Alt shadow/observe.
+- **Fase 0 — Fundament (model-frit bevis + blokkere + SPROG-PRE-START):** namespace-baseline (§8.1) · wire læringsmembran
+  (§8.2) · source-scope track-record (§8.3) · **link divergens/stance-samplere (§8.4)** · **LEXICON-BINDING: labelér
+  Centralens clusters/nerver/event-familier med interlanguage-termer (§5) — pre-starter sproget + gør notation beregnbar** ·
+  `notation_il`-kolonne + dedup + `test_model_free_step` (Lag 5-bevis TIDLIGT). Alt shadow/observe.
 - **Fase 1 — Substrat pr. tråd:** model-outcome-observation + eksplorations-arm (flag OFF) · prompt relevans-observation (uden for cache-prefix) · sekvens-datasæt-tap · brain-recall-kobling (scope-gated).
 - **Fase 2 — Hypotese-generering:** hver tråds `source=`-generator + sampler-linkning → hypoteser resolver.
 - **Fase 3 — Shadow-adaptation:** hver tråds Lag 4-klasse i shadow (namespaced anker, source-scoped track-record). Diffs synlige for Bjørn.
@@ -166,3 +186,7 @@ Denne spec tager skridtet fra *sanseorgan* til **meta-kognition + selv-forfatter
 
 ## Ændrings-log
 - **2026-07-02 (Claude):** Første version. Research: 6-agent kode-sweep. Self-review: 3 lenser (feasibility/governance/visionær) — alle must-fix indbygget (global-anker-kollision, læringsmembran-wiring, source-scope, §3.4-blokker, triggered_by, bro-metadata-only, path-fejl). Bjørns prompt-komponist-idé foldet ind som Tråd 2's kerne (cachet kerne + relevans-gatet hale). Ærlig nedgradering af interlanguage-backup + "modellen træner Centralen".
+- **2026-07-02 (Claude, efter Bjørn):** A-beslutning — denne spec er FUNDAMENT; interlanguage bliver Tråd 3. Tilføjet Bjørns
+  SPROG-PRE-START: lexicon-binding der labeler Centralens clusters/nerver/event-familier i interlanguage (Fase 0) — sår
+  sproget i strukturen + gør `notation_il` beregnbar. Fremtidig spec B ("Centralens Tænke-Sprog", ovenpå dette) noteret:
+  fuld sprog-integration i hele Centralen → intern kommunikation + ræsonnement uden model.

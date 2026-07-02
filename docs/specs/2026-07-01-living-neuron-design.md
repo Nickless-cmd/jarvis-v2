@@ -153,12 +153,17 @@ Kanoniske detaljer: `docs/specs/2026-07-01-inner-life-to-central-wiring.md`. Rå
   **tier-opdelt** metrik (Tier-1 kind-rule 0.9 / Tier-2 shared-id 0.8 / Tier-3 temporal 0.4) + en løbende
   precision-audit. Kun Tier-1/2 er meningsfuldt kausalt signal.
 
-**Dæknings-tal:** ~36 event-familier er routet (var ~14 i morges). Det tidligere **"~85-90% af signal-volumen synlig"
-er et gæt uden målemetode og er FJERNET** indtil det kan udregnes reproducerbart (nævner = family-count? event-volumen?
-vægtet?). "Cellen skal kunne tælle sine egne øjne" — surface-count og dækning gøres runtime-målt, ikke hardcodet.
+**Dæknings-tal (RUNTIME-MÅLT, Fase 1c — `core/services/central_coverage.py`):** det gamle gæt "~85-90% synlig"
+er erstattet af to reproducerbare mål over et eksplicit event-vindue:
+- `volume_coverage` = routed-events / alle-events i vinduet. **Live-målt 2. jul: 0.43** (500-event vindue).
+- `family_coverage_seen` = |routed ∩ seen| / |seen| = af de familier der FAKTISK publicerer, hvor mange router Centralen.
+  **Live-målt: 0.32.** (Ikke /alle-166-registrerede: 37 familier er bevidst mørke §24.4, mange publicerer sjældent → /166 understater groft.)
+- 36 familier er routet (15 FAMILY_ROUTES + 21 PRIVATE_NO_EGRESS). Målingen skrives til tidsserien (cluster=system,
+  `coverage_*`) hver 30. min → plotbar over tid. **Det ærlige billede er altså lavere end de tidligere 85-90%** — men nu et TAL man kan følge.
 
-**Surface-antal:** `signal_surface_router` registrerer **78** surfaces (statisk verificeret) — ikke 35 (v2), ikke 74 (draft 3).
-Gøres til en runtime-målt værdi (distinkte nerve-navne i timeseries over 24t).
+**Surface-antal (RUNTIME-MÅLT):** `len(signal_surface_router._get_router())` = **74** (verificeret live 2. jul). Draft 3's
+74 var altså rigtigt; v2's 35 og rådets statiske 78 var begge forkerte — præcis derfor måles tallet nu i runtime
+(`central_coverage.measure()` + timeseries), ikke hardcodes i en spec.
 
 **Rettet fra tidligere drafts:** `core/gwt/` og `core/cognitive/` findes IKKE (ægte: `global_workspace.py`, `core/services/`).
 Den påståede desperation/reboot "dict-som-kind→events persisterer aldrig"-bug er **ikke-reproducerbar på HEAD**

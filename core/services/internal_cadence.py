@@ -1041,6 +1041,13 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Fase 1c: dækning + surface-count RUNTIME-MÅLT (ikke hardcodet) → tidsserie, plotbart.
+    try:
+        from core.services.central_coverage import register_coverage_producer
+        register_coverage_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

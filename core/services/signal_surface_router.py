@@ -284,7 +284,8 @@ def list_all_surfaces() -> dict[str, Any]:
             result[name] = fn()
         except Exception as exc:
             result[name] = {"error": str(exc)}
-    # LivingNeuron HUB 3: signal-læse-planet (35 surfaces) synligt for Centralen egress-frit (kun tællere)
+    # LivingNeuron HUB 3: signal-læse-planet synligt for Centralen egress-frit (kun tællere).
+    # Surface-antal (len(result)) er RUNTIME-MÅLT — se central_coverage (ikke hardcodet i spec).
     try:
         from core.services.central_private_observe import observe_hub
         errs = sum(1 for v in result.values() if isinstance(v, dict) and "error" in v)

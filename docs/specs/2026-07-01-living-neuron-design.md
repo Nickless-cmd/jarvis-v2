@@ -201,8 +201,15 @@ men HANDLER aldrig (Lag 4 ikke bygget).
 - **FØRSTE LIVE-GENERERING 2. jul** på Jarvis' 86k-kant-graf → 3 hypoteser, bl.a. den tvær-modale
   **`conflict → cognitive_counterfactual` (×11)**: konflikt forudsiger kontrafaktisk tænkning — præcis en korrelation
   modellen ikke kan se per-tur, kun runtime over tid (rådets visionær-tese).
-- Trigger v1 = tilbagevendende (≥3) meningsfulde familie-par. **v2** (rådets dybeste): DIVERGENS (2 subsystemer i
-  modstrid) + GWT-convergens som trigger; vægt mod tvær-modale inner-life-par frem for høj-volumen operationelle.
+- **Trigger v1** (konvergens) = tilbagevendende (≥3) meningsfulde familie-par.
+- **Trigger v2 BYGGET 2. jul** (divergens — rådets dybeste): `detect_outcome_divergence_candidates` — samme parent-
+  familie fører MENINGSFULDT til BEGGE sider af et modsat-udfald-par (tool.completed↔error, review.kept↔broken) =
+  samme årsag, modsatte udfald → en skjult indre faktor afgør. Hypotesen peger direkte på at finde den diskriminerende
+  tilstand (somatik/affekt/kontekst). Live-målt 2. jul: 0 divergens-kandidater (ingen aktuel outcome-konflikt i
+  vinduet — et ærligt signal, ikke en fejl; fyrer når ægte tension opstår).
+- **Trigger v3** (udestår): tvær-MODAL stance-divergens (gut siger "fortsæt" mens somatik siger "stress" mens
+  contradiction siger "inkonsistent" for SAMME run_id) via `central_correlate.correlate(run_id)`. Den fulde
+  "organer der er uenige i nuet"-vision. Kræver stance-signaler i sammenligneligt format.
 
 ### Lag 4 — Adaptation (⚠️ PRIMITIVER EKSISTERER — closed-loop ikke lukket)
 Adaptations-DETEKTIONEN findes (`central_learning.degrading`, `gut_engine` calibration, `procedure_bank`);

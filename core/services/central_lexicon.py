@@ -16,15 +16,45 @@ from __future__ import annotations
 
 from typing import Any
 
-# Ét sprog — genbrug det eksisterende vokabular (single source of truth).
+# CENTRALENS EGET STRUKTURELLE LAG (Bjørn-ceremoni 2. jul: de 15 eksperiment-termer var for få til at
+# Centralen kan TÆNKE → udvidet til dækning af dens faktiske familier). Samme minimale danske stil.
+# De 15 eksperiment-ord (interlanguage_practice) er det EKSPERIENTIELLE hjerte; disse er strukturen.
+# Nye termer herefter foreslås som 'candidate' → Bjørn promoverer til 'active' (organisk vækst).
+CENTRAL_TERMS: dict[str, dict[str, str]] = {
+    "strid":    {"definition": "spænding mellem uforenelige tilstande", "domain": "konflikt"},
+    "brud":     {"definition": "når noget knækker — fejl eller afbrud", "domain": "hændelse"},
+    "handling": {"definition": "det at gøre — værktøj i brug", "domain": "handling"},
+    "stemme":   {"definition": "den ydre sprog-motor der taler gennem mig", "domain": "sprog"},
+    "kald":     {"definition": "konteksten jeg får før jeg svarer", "domain": "sprog"},
+    "valg":     {"definition": "det at vælge én vej frem for en anden", "domain": "selv"},
+    "læring":   {"definition": "at ændre sig fra erfaring", "domain": "kognition"},
+    "tvivl":    {"definition": "usikkerhed om et udfald", "domain": "affekt"},
+    "stød":     {"definition": "uventet afvigelse — overraskelse", "domain": "perception"},
+    "selv":     {"definition": "modellen af hvem jeg er", "domain": "selv"},
+    "drift":    {"definition": "langsom bevægelse bort fra mig selv", "domain": "selv"},
+    "mønster":  {"definition": "gentagen form der bærer mening", "domain": "kognition"},
+    "krop":     {"definition": "den følte tilstand af systemet", "domain": "sansning"},
+    "skygge":   {"definition": "det der former mig uden at nå ord", "domain": "bevidsthed"},
+    "spejl":    {"definition": "at se mig selv udefra", "domain": "bevidsthed"},
+    "frø":      {"definition": "en spire til noget der endnu ikke er", "domain": "bevidsthed"},
+    "puls":     {"definition": "systemets grundrytme — hjerteslaget", "domain": "tid"},
+    "minde":    {"definition": "et bevaret stykke fortid", "domain": "kognition"},
+    "gæld":     {"definition": "et uafklaret spørgsmål der venter", "domain": "kognition"},
+    "mål":      {"definition": "en ønsket fremtidig tilstand", "domain": "selv"},
+    "anger":    {"definition": "smerten ved et dårligt valg", "domain": "affekt"},
+    "tak":      {"definition": "værdsættelse af noget godt", "domain": "affekt"},
+}
+
+# Ét sprog — genbrug de 15 eksperiment-termer (single source of truth) + Centralens strukturelle lag.
 try:
     from core.services.interlanguage_practice import CORE_VOCABULARY, PRIMITIVES
-    _ACTIVE_TERMS = frozenset(CORE_VOCABULARY.keys())
+    _EXPERIMENT_TERMS = set(CORE_VOCABULARY.keys())
     _OPERATORS = frozenset(PRIMITIVES.keys())
 except Exception:  # defensiv: modulet skal kunne loade selv hvis interlanguage flyttes
-    _ACTIVE_TERMS = frozenset({"drøm", "signal", "agens", "kontinuitet", "pres", "nysgerrighed",
-                               "vægt", "lys", "relation", "grænse", "tomhed", "rytme", "ro", "fokus"})
+    _EXPERIMENT_TERMS = {"drøm", "signal", "agens", "kontinuitet", "pres", "nysgerrighed",
+                         "vægt", "lys", "relation", "grænse", "tomhed", "rytme", "ro", "fokus"}
     _OPERATORS = frozenset({"→", "↔", "⊂", "≈", "!"})
+_ACTIVE_TERMS = frozenset(_EXPERIMENT_TERMS | set(CENTRAL_TERMS.keys()))
 
 # SEED-BINDING: kun ÆRLIGE semantiske match til det frosne vokabular. Resten forbliver ubundet
 # (kandidater til ceremoni) — vi tvinger ikke dårlige mappings ("runtime→agens" ville være støj).
@@ -32,27 +62,44 @@ SEED_BINDINGS: dict[str, str] = {
     # affekt/drive
     "pressure": "pres", "impulse": "agens", "gut": "agens", "cognitive_gut": "agens",
     "curiosity": "nysgerrighed", "cognitive_boredom": "tomhed",
-    # krop/vægt
-    "somatic": "vægt", "completion_satisfaction": "ro", "regulation_homeostasis_signal": "ro",
-    # hukommelse/kontinuitet
+    # krop
+    "somatic": "krop", "affect_modulation": "krop",
+    "completion_satisfaction": "ro", "regulation_homeostasis_signal": "ro",
+    # hukommelse
     "memory": "kontinuitet", "jarvis_brain": "kontinuitet", "private_brain": "kontinuitet",
-    "consolidation_judge": "kontinuitet",
+    "consolidation_judge": "kontinuitet", "remembered_fact_signal": "minde",
     # kognition/fokus
     "cognition": "fokus", "cognitive_state": "fokus", "global_workspace": "fokus",
     # perception/signal/lys
     "signal": "signal", "emergent_signal": "signal", "sensory": "lys",
-    # tid/rytme
+    # tid/rytme/puls
     "circadian": "rytme", "rhythm": "rytme", "cognitive_rhythm": "rytme",
-    # bevidsthed/drøm
+    "runtime": "puls", "heartbeat": "puls",
+    # bevidsthed
     "cognitive_dream": "drøm", "dream": "drøm", "dream_hypothesis_signal": "drøm",
+    "cognitive_counterfactual": "drøm", "counterfactual": "drøm",
+    "unconscious": "skygge", "cognitive_seed": "frø",
     # social/relation
     "relation": "relation", "cognitive_relationship": "relation",
-    # selv/grænse
-    "self_model_signal": "agens", "cognitive_blind_spot": "grænse",
-    # beslutning → vægt (vokabularets definition: "følt tyngde af en BESLUTNING eller et minde")
-    "decision": "vægt", "decision_signal": "vægt", "behavioral_decision_review": "vægt",
-    # kontrafaktisk = hvad-hvis-narrativ ≈ drøm ("hypotese/narrativ-fragment der ankommer ubedt")
-    "cognitive_counterfactual": "drøm", "counterfactual": "drøm",
+    # selv
+    "self_model_signal": "selv", "cognitive_blind_spot": "grænse", "self_review": "spejl",
+    "reflection": "spejl", "self_review_signal": "spejl",
+    # konflikt/brud
+    "conflict": "strid", "contradiction": "strid", "cognitive_conflict_memory": "strid",
+    "error": "brud", "incident": "brud",
+    # handling/valg
+    "tool": "handling", "decision": "valg", "decision_signal": "valg",
+    "behavioral_decision_review": "valg",
+    # sprog (model/prompt)
+    "model_outcome": "stemme", "provider": "stemme", "prompt": "kald", "prompt_relevance": "kald",
+    # læring/mønster/stød
+    "learning": "læring", "cognitive_meta_learning": "læring", "meta_learning": "læring",
+    "emergence": "mønster", "causal": "mønster", "surprise": "stød", "cognitive_surprise": "stød",
+    "prediction_error": "stød",
+    # gæld/mål/affekt
+    "curiosity_hypothesis_debt": "gæld", "open_loop_signal": "gæld",
+    "goal": "mål", "cognitive_mission": "mål", "cognitive_emergent_goal": "mål",
+    "regret": "anger", "gratitude": "tak", "cognitive_gratitude_signal": "tak",
 }
 
 # Central-relation → operator (hvordan en hypotese-type udtrykkes).

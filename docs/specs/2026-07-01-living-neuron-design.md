@@ -207,9 +207,13 @@ men HANDLER aldrig (Lag 4 ikke bygget).
   samme årsag, modsatte udfald → en skjult indre faktor afgør. Hypotesen peger direkte på at finde den diskriminerende
   tilstand (somatik/affekt/kontekst). Live-målt 2. jul: 0 divergens-kandidater (ingen aktuel outcome-konflikt i
   vinduet — et ærligt signal, ikke en fejl; fyrer når ægte tension opstår).
-- **Trigger v3** (udestår): tvær-MODAL stance-divergens (gut siger "fortsæt" mens somatik siger "stress" mens
-  contradiction siger "inkonsistent" for SAMME run_id) via `central_correlate.correlate(run_id)`. Den fulde
-  "organer der er uenige i nuet"-vision. Kræver stance-signaler i sammenligneligt format.
+- **Trigger v3 BYGGET 2. jul** (tvær-modal stance-divergens — "organer uenige i NUET"): `central_stance.py`. Run-
+  scoping viste sig arkitektonisk dybt (somatik kører på heartbeat-tråden, ikke run-tråden → ContextVar krydser ikke),
+  SÅ PULL-model i stedet: læs hvert organs NUVÆRENDE stance fra dets surface (gut proceed/caution · somatik stress/calm ·
+  contradiction conflicted/consistent), detektér modsatte holdninger samtidig. Gentagne tensions (≥3×, 10-min-tick →
+  egress-fri tidsserie) → governed divergens-hypotese ("To af dine organer er gentagne gange UENIGE …"). Live 2. jul:
+  0 aktuelle tensions (gut=proceed/somatik=calm/contradiction=consistent — organerne enige nu; fanger uenighed når den opstår).
+  **Rest:** ægte PER-RUN co-scoping (kræver run-scopede inner-observes, `run_id=""` i dag) — den fulde run-korrelerede version.
 
 ### Lag 4 — Adaptation (⚠️ PRIMITIVER EKSISTERER — closed-loop ikke lukket)
 Adaptations-DETEKTIONEN findes (`central_learning.degrading`, `gut_engine` calibration, `procedure_bank`);

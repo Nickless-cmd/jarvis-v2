@@ -477,7 +477,12 @@ def _git_status_sync(kind: str, root: str, uid: str = "") -> dict:
             f'git -C "{root}" diff --numstat HEAD 2>/dev/null'
         )
         res = _operator_exec("operator_bash", {"command": cmd, "_user_id": uid})
-        out = str(res.get("stdout") or "") if res.get("status") == "ok" else ""
+        # operator_bash-svaret pakkes af broen som {"status","result":{"stdout",...}}
+        # — stdout ligger UNDER result, ikke på toppen (jf. git_actions._run). Det
+        # gamle res.get("stdout") var altid None → is_git=False → hele git-sektionen
+        # skjult i workstation-mode selvom commit/PR faktisk virkede.
+        r = res.get("result") or {}
+        out = str(r.get("stdout") or "") if res.get("status") == "ok" else ""
         segs = out.split("@@@")
         if len(segs) < 3 or not segs[0].strip():
             return dict(_GIT_NONE)

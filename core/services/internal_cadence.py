@@ -1113,6 +1113,14 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Tråd 5: jarvis-brain DYBT koblet — Centralen skriver sine resolverede læringer tilbage i egen
+    # hjerne (M2, owner-scopet) + selv-scopet recall-kontekst (M1, ALDRIG private_brain). OBSERVE-ONLY.
+    try:
+        from core.services.central_brain_link import register_brain_link_producer
+        register_brain_link_producer()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

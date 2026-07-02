@@ -61,6 +61,15 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     # egress-OK operationel sti). Jarvis' lemmer: self-reparation + trading (rigtige penge).
     "self_repair": ("system", "self_repair"),  # self_repair_engine.action_executed/failed (autonom reparation)
     "trading": ("system", "trading"),          # grid_bot cycle (BTC/ETH/SOL — rigtige penge)
+    # ── Dæknings-audit 2. jul (Niveau 1): OPERATIONELLE dark-families → egress-OK (ingen privat
+    # inner-life-indhold; governance-gates som approvals). Metadata via observe (skalar-strippet). ──
+    "incident": ("system", "incident"),        # incident-hændelser (som anomaly)
+    "tick_quality": ("system", "tick_quality"),# heartbeat-tick-kvalitet
+    "reboot": ("system", "reboot"),            # genstart-lifecycle
+    "diagnosis": ("system", "diagnosis"),      # selv-diagnostik
+    "tool_router": ("tools", "router"),        # tool-routing-beslutninger (operationel)
+    "decision_gate": ("commit", "decision_gate"),    # governance-gate (som approvals — pass/fail)
+    "veto_gate": ("review", "veto"),           # veto-governance-gate (pass/fail, ikke indhold)
 }
 
 # ── PRIVATE_NO_EGRESS (§24.4 keystone, 2026-07-01): privat inner-life observeres EGRESS-FRIT ──
@@ -96,6 +105,38 @@ PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
     "self_wakeup": ("cognition", "self_wakeup"),
     "consolidation_judge": ("memory", "consolidation_judge"),
     "cognitive_dream": ("cognition", "dream_signal"),
+    # ── Dæknings-audit 2. jul (Niveau 1): KOGNITIVE/AFFEKTIVE/SELV dark-families → EGRESS-FRIT
+    # (indre-liv-indhold; kun metadata/kind til trace+tidsserie, ALDRIG _emit). Konservativ default:
+    # alt tvivlsomt kognitivt lander HER, ikke i FAMILY_ROUTES. ──
+    "reasoning": ("cognition", "reasoning"),
+    "decision": ("cognition", "decision"),
+    "decision_signal": ("cognition", "decision_signal"),
+    "cognitive_decision": ("cognition", "cognitive_decision"),
+    "cognitive_self_review": ("cognition", "self_review"),
+    "counterfactual_predictions": ("cognition", "counterfactual_pred"),
+    "dreaming_session": ("cognition", "dreaming_session"),
+    "emotional": ("cognition", "emotional"),
+    "cognitive_epistemic": ("cognition", "epistemic"),
+    "cognitive_paradox": ("cognition", "paradox"),
+    "cognitive_aesthetic": ("cognition", "aesthetic"),
+    "cognitive_taste": ("cognition", "taste"),
+    "cognitive_silence": ("cognition", "silence"),
+    "cognitive_morning_thread": ("cognition", "morning_thread"),
+    "cognitive_shared_language": ("cognition", "shared_language"),
+    "cognitive_trade": ("cognition", "cognitive_trade"),
+    "learning_pipeline": ("cognition", "learning_pipeline"),
+    "learning_policy": ("cognition", "learning_policy"),
+    "initiative_accumulator": ("cognition", "initiative_accumulator"),
+    "identity_composer": ("cognition", "identity_composer"),
+    "valence_trajectory": ("cognition", "valence_trajectory"),
+    "absence_awareness": ("cognition", "absence_awareness"),
+    "calm_anchor": ("cognition", "calm_anchor"),
+    "causal": ("cognition", "causal"),
+    "nudge": ("cognition", "nudge"),
+    "promise": ("cognition", "promise"),
+    "pushback": ("cognition", "pushback"),
+    "prompt": ("cognition", "prompt"),
+    "communication": ("channel", "communication"),  # kan bære besked-tekst → egress-frit (konservativt)
 }
 
 # Dokumenteret liste over families der BEVIDST holdes dark i M0 (privatlags-isolation,
@@ -113,6 +154,15 @@ PRIVATE_FAMILIES_EXCLUDED_M0: frozenset[str] = frozenset({
     "cognitive_personal_project", "regret", "goal", "cognitive_reflective_plan", "cognitive_procedure",
     "cognitive_mission", "cognitive_habit", "cognitive_surprise", "cognitive_blind_spot",
     "living_executive", "self_wakeup", "consolidation_judge", "cognitive_dream",
+    # Dæknings-audit 2. jul (Niveau 1): kognitive/affektive dark-families nu routet EGRESS-FRIT
+    # (invariant: enhver PRIVATE_NO_EGRESS-family SKAL stå her).
+    "reasoning", "decision", "decision_signal", "cognitive_decision", "cognitive_self_review",
+    "counterfactual_predictions", "dreaming_session", "emotional", "cognitive_epistemic",
+    "cognitive_paradox", "cognitive_aesthetic", "cognitive_taste", "cognitive_silence",
+    "cognitive_morning_thread", "cognitive_shared_language", "cognitive_trade", "learning_pipeline",
+    "learning_policy", "initiative_accumulator", "identity_composer", "valence_trajectory",
+    "absence_awareness", "calm_anchor", "causal", "nudge", "promise", "pushback", "prompt",
+    "communication",
 })
 
 _BRIDGE_NERVE = "eventbus_bridge"

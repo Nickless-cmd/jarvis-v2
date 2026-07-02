@@ -122,3 +122,34 @@ async def presence_debug() -> dict:
         notification_router.reset_delivery()  # ryd dry-run pending
     snap["dryrun_delivers_to"] = delivered
     return snap
+
+
+@router.get("/presence/state")
+async def presence_state() -> dict:
+    """Spec E / E0 — TILSTANDS-KONTRAKTEN: Centralens ægte valens + selv-tilstand → jarvis-desk kan
+    drive tilstedeværelsen (orb/ansigt) fra hans FØLTE tilstand. OWNER-ONLY (privat inder-liv).
+    Tekst+skalarer; klienten renderer. Self-safe → tom-neutral ved fejl."""
+    uid = _current_user()
+    try:
+        from core.identity.owner_resolver import get_owner_discord_id
+        owner = (get_owner_discord_id() or "").strip()
+    except Exception:
+        owner = ""
+    if not uid or not owner or uid != owner:
+        raise HTTPException(status_code=403, detail="owner only")
+    try:
+        from core.services.central_valence import get_valence_state
+        from core.services.central_self_state import get_self_state, describe_self, render_self_state_il
+        val = get_valence_state() or {}
+        st = get_self_state() or {}
+        return {
+            "valence": {"tone": val.get("tone") or "neutral", "score": val.get("score") or 0.0,
+                        "intensity": val.get("intensity") or 0.0, "trend": val.get("trend")},
+            "self": {"describe": describe_self(), "il": render_self_state_il(),
+                     "attention": (st.get("attention") or {}).get("foreground"),
+                     "completeness": (st.get("self_model") or {}).get("completeness")},
+            "generation": (st.get("continuity") or {}).get("generation"),
+        }
+    except Exception:
+        return {"valence": {"tone": "neutral", "score": 0.0, "intensity": 0.0, "trend": None},
+                "self": {}, "generation": None}

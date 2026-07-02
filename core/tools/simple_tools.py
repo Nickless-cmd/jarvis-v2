@@ -587,6 +587,9 @@ MAX_FIND_RESULTS = 100
 MAX_BASH_OUTPUT_CHARS = 16000
 MAX_BASH_SECONDS = 15
 MAX_WEB_FETCH_CHARS = 24000
+# Ord/linje-sikker klipning (mod voldsom tool-trunkering): bevar HOVED+HALE så resultat/fejl/exit
+# i slutningen af output ikke smides væk. Se core/services/text_clip.py.
+from core.services.text_clip import clip_head_tail as _clip_head_tail, clip_text as _clip_text  # noqa: E402
 WORKSPACE_DIR = shared_dir()
 
 # Paths that can be written without user approval.
@@ -5544,7 +5547,7 @@ def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
 
     lines = result.stdout.strip().splitlines()[:MAX_SEARCH_RESULTS]
     bounded = [
-        line if len(line) <= MAX_SEARCH_LINE_CHARS else line[:MAX_SEARCH_LINE_CHARS - 1] + "…"
+        line if len(line) <= MAX_SEARCH_LINE_CHARS else _clip_text(line, limit=MAX_SEARCH_LINE_CHARS)
         for line in lines
     ]
     text = "\n".join(bounded) if bounded else "[no matches]"
@@ -5732,7 +5735,7 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
         if run_result.get("status") in ("ok", None) and "exit_code" in run_result:
             output = str(run_result.get("output") or "").strip()
             if len(output) > MAX_BASH_OUTPUT_CHARS:
-                output = output[:MAX_BASH_OUTPUT_CHARS - 1] + "…"
+                output = _clip_head_tail(output, limit=MAX_BASH_OUTPUT_CHARS)
             return {
                 "text": output or "[no output]",
                 "exit_code": run_result.get("exit_code"),
@@ -5759,7 +5762,7 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
         output += "\n[stderr] " + result.stderr.strip()
 
     if len(output) > MAX_BASH_OUTPUT_CHARS:
-        output = output[:MAX_BASH_OUTPUT_CHARS - 1] + "…"
+        output = _clip_head_tail(output, limit=MAX_BASH_OUTPUT_CHARS)
 
     return {
         "text": output or "[no output]",
@@ -5794,7 +5797,7 @@ def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
     text = re.sub(r"\s+", " ", text).strip()
 
     if len(text) > MAX_WEB_FETCH_CHARS:
-        text = text[:MAX_WEB_FETCH_CHARS - 1] + "…"
+        text = _clip_head_tail(text, limit=MAX_WEB_FETCH_CHARS)
 
     return {"text": text, "url": url, "chars": len(text), "status": "ok"}
 
@@ -9325,7 +9328,7 @@ def _force_bash(args: dict[str, Any]) -> dict[str, Any]:
     if result.stderr.strip():
         output = (output + "\n" + result.stderr.strip()).strip()
     if len(output) > MAX_BASH_OUTPUT_CHARS:
-        output = output[:MAX_BASH_OUTPUT_CHARS - 1] + "…"
+        output = _clip_head_tail(output, limit=MAX_BASH_OUTPUT_CHARS)
     return {"text": output or "[no output]", "exit_code": result.returncode, "status": "ok"}
 
 
@@ -9679,26 +9682,17 @@ def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
             # When still over limit, truncate gracefully — show the actual
             # partial content rather than a useless "truncated" placeholder.
             _MAX_FALLBACK_CHARS = 8000
-            _TRUNCATE_NOTICE = 120  # chars reserved for truncation notice
             _filtered = {k: v for k, v in result.items() if k != "status"}
             _dumped = json.dumps(_filtered, ensure_ascii=False, indent=2)
             if len(_dumped) <= _MAX_FALLBACK_CHARS:
                 text = _dumped
             else:
-                # Smart truncation: keep as much real content as fits,
-                # then append a brief notice with the total size + keys.
+                # Bevar HOVED+HALE (ikke kun head) ved linje-grænser — slutningen af et struktureret
+                # tool-resultat er ofte det vigtigste. Se text_clip.clip_head_tail.
                 _keys = ", ".join(sorted(_filtered.keys())) or "<none>"
-                _usable = _MAX_FALLBACK_CHARS - _TRUNCATE_NOTICE
-                _sliced = _dumped[:_usable].rsplit("\n", 1)[0]  # don't break mid-line
-                _truncated_count = len(_filtered)
-                # Count how many top-level items were fully shown vs cut
-                _shown_count = _sliced.count('": ')  # rough count of key-value pairs shown
                 text = (
-                    f"{_sliced}\n"
-                    f"... [truncated: {_truncated_count} keys, "
-                    f"showing first ~{_shown_count} — "
-                    f"keys: {_keys}. "
-                    f"Add a 'text' key in the tool's exec for a clean summary.]"
+                    _clip_head_tail(_dumped, limit=_MAX_FALLBACK_CHARS)
+                    + f"\n[keys: {_keys}. Tilføj en 'text'-nøgle i toolets exec for et rent resumé.]"
                 )
 
     # Phase 2 of verification-gate honesty (2026-05-14): attach a brief

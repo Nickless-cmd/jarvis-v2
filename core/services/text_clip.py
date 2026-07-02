@@ -50,6 +50,41 @@ def clip_text(value: object, *, limit: int, hard: bool = False) -> str:
         return ""
 
 
+def clip_head_tail(value: object, *, limit: int, tail_frac: float = 0.35) -> str:
+    """Bevar HOVED + HALE ved LINJE-grænser når tekst overskrider limit. Til tool-output (bash/read/
+    web): slutningen (exit-kode, fejl, resultat) er ofte det VIGTIGSTE — ren head-afskæring smider den
+    væk. Midten erstattes af en tydelig note. Self-safe.
+
+    Før: `output[:16000] + "…"` klippede halen (og midt i ordet). Nu bevares både start og slut.
+    """
+    try:
+        text = str(value or "")
+        n = len(text)
+        lim = max(int(limit), 200)
+        if n <= lim:
+            return text
+        tail_budget = min(max(int(lim * tail_frac), 1), lim // 2)   # halen aldrig > halvdelen → hovedet bevares
+        head_budget = lim - tail_budget
+        head_raw = text[:head_budget]
+        tail_raw = text[-tail_budget:]
+        # snap til linje-grænser så vi ikke klipper midt i en linje …
+        head = head_raw[: head_raw.rfind("\n")] if "\n" in head_raw else head_raw
+        tail = tail_raw[tail_raw.find("\n") + 1:] if "\n" in tail_raw else tail_raw
+        # … men hvis en KÆMPE linje (fx minificeret JSON) fik snap'et til at smide næsten alt væk,
+        # fald tilbage til rå tegn-slice (bedre at bevare indhold end at kollapse til intet).
+        if len(head) < head_budget * 0.4:
+            head = head_raw
+        if len(tail) < tail_budget * 0.4:
+            tail = tail_raw
+        omitted = n - len(head) - len(tail)
+        return f"{head}\n\n… [{omitted} tegn udeladt i midten — hoved+hale bevaret] …\n\n{tail}"
+    except Exception:
+        try:
+            return str(value or "")[: int(limit)]
+        except Exception:
+            return ""
+
+
 def clip_words(value: object, *, max_words: int) -> str:
     """Klip til et antal ORD (ikke tegn) — når ord er den meningsfulde enhed. Self-safe."""
     try:

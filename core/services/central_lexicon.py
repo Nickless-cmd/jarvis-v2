@@ -100,6 +100,15 @@ SEED_BINDINGS: dict[str, str] = {
     "curiosity_hypothesis_debt": "gæld", "open_loop_signal": "gæld",
     "goal": "mål", "cognitive_mission": "mål", "cognitive_emergent_goal": "mål",
     "regret": "anger", "gratitude": "tak", "cognitive_gratitude_signal": "tak",
+    # Centralen bad selv om ord for disse hyppige familier (2. jul) — bundet til EKSISTERENDE termer
+    # (ingen ceremoni; kun nye ORD kræver Bjørn). Ægte nye begreber står stadig i word_needs.
+    "runtime_awareness_signal": "selv", "credit_assignment": "læring", "learning_pipeline": "læring",
+    "metabolism_state_signal": "krop", "self_review_cadence_signal": "spejl",
+    "self_review_outcome": "spejl", "self_review_record": "spejl",
+    "memory_md_update_proposal": "kontinuitet", "consolidation_target_signal": "minde",
+    "chronicle_consolidation_proposal": "kontinuitet", "chronicle_consolidation_brief": "kontinuitet",
+    "chronicle_consolidation_signal": "kontinuitet", "session_distillation": "minde",
+    "reflection_signal": "spejl", "world_model_signal": "mønster", "goal_signal": "mål",
 }
 
 # Central-relation → operator (hvordan en hypotese-type udtrykkes).

@@ -448,8 +448,11 @@ ellers er den poesi — visionen forankres i §falsifikationskriterier, ikke ved
   circular-karantæne, ekstern grounding, multiple-comparisons, kontrol-arm) → DEREFTER hypotese-tabel + generator der
   KONSOLIDERER organ-inventaret (§6) under ét skema m. provenance. Trigger: latent-detekteret (causal_edges / central_correlate /
   GWT-buffer) men **explicit formuleret** (menneske-læsbar, evt. interlanguage-notation) — så cellen kan have URET synligt.
-- **Fase 3 — Lag 4 Adaptation-loop:** hypothesis-outcome → gut-calibration + procedure-bank, KUN shadow-first m. godkendt diff.
-  Løs §24.4-konflikten eksplicit (privilegeret adgang til private AGGREGATER, ikke indhold) + identitets-invariant FØRST.
+- **Fase 3 — Lag 4 Adaptation-loop (c→d-lukningen):** hypothesis-outcome → gut-calibration + procedure-bank, KUN shadow-
+  first m. godkendt diff. §24.4-konflikt + identitets-invariant er AFGJORT (§12.2/§12.3) og implementeret (§8 v3.1).
+  **Detaljeret plan: `docs/specs/2026-07-02-lag4-shadow-adaptation-spec.md`** (DESIGN, ingen kode — afventer Bjørns svar
+  på 5 åbne beslutninger: hvilken adaptations-klasse først, shadow-varighed, godkendelses-granularitet, kontrol-arm-andel,
+  rollback-kill-switch). **INTET aktiveres uden Bjørns eksplicitte GO.**
 - **Fase 4 — Lag 5 Model-uafhængighed:** interlanguage-backup; falsifikationstest ved model-blackout.
 
 ---

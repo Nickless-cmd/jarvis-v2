@@ -62,7 +62,8 @@ def ensure_schema() -> None:
                   outcome TEXT,
                   grounded_samples INTEGER NOT NULL DEFAULT 0,
                   created_at TEXT NOT NULL,
-                  resolved_at TEXT
+                  resolved_at TEXT,
+                  notation_il TEXT
                 );
                 CREATE INDEX IF NOT EXISTS idx_ch_status ON central_hypotheses(status);
                 CREATE INDEX IF NOT EXISTS idx_ch_provfam ON central_hypotheses(source, status);
@@ -79,9 +80,32 @@ def ensure_schema() -> None:
                 CREATE INDEX IF NOT EXISTS idx_chs_hyp ON central_hypothesis_samples(hyp_id);
                 """
             )
+            # Migration: notation_il på eksisterende tabeller (interlanguage-notation, Fase 0).
+            cols = [r[1] for r in c.execute("PRAGMA table_info(central_hypotheses)").fetchall()]
+            if "notation_il" not in cols:
+                c.execute("ALTER TABLE central_hypotheses ADD COLUMN notation_il TEXT")
             c.commit()
     except Exception:
         pass
+
+
+def _notation_for(source: str, provenance: dict[str, Any]) -> str | None:
+    """Rendér en hypotese til interlanguage-notation via lexicon-bindingen. None hvis leddene er
+    ubundne (sproget kan ikke sige det endnu). Self-safe."""
+    try:
+        from core.services import central_lexicon
+        fam = str(provenance.get("family") or "")
+        if source == "causal_convergence" and "->" in fam:
+            x, y = fam.split("->", 1)
+            return central_lexicon.render_relation(x, y, relation="causal_convergence")
+        if source == "causal_divergence" and ":" in fam:
+            # "parent:good|bad" → parent ↔ ! (spænding om udfald)
+            parent = fam.split(":", 1)[0]
+            t = central_lexicon.to_term(parent)
+            return f"{t} ↔ !udfald" if t else None
+    except Exception:
+        pass
+    return None
 
 
 def _stable_id(provenance: dict[str, Any], created_at: str) -> str:
@@ -116,15 +140,17 @@ def register_governed_hypothesis(candidate: dict[str, Any]) -> dict[str, Any]:
             exists = c.execute("SELECT 1 FROM central_hypotheses WHERE hyp_id=?", (hyp_id,)).fetchone()
             if exists:
                 return {"status": "duplicate", "hyp_id": hyp_id}
+            src = str(candidate.get("source") or "causal_convergence")
+            notation = _notation_for(src, prov)
             c.execute(
                 "INSERT INTO central_hypotheses (hyp_id, source, statement, prediction, null_hypothesis, "
                 "success_criterion, sample_size, ttl_seconds, provenance_json, confidence, status, "
-                "outcome, grounded_samples, created_at, resolved_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,'active',NULL,0,?,NULL)",
-                (hyp_id, str(candidate.get("source") or "causal_convergence"), hyp["statement"],
+                "outcome, grounded_samples, created_at, resolved_at, notation_il) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,'active',NULL,0,?,NULL,?)",
+                (hyp_id, src, hyp["statement"],
                  hyp["prediction"], hyp["null_hypothesis"], hyp["success_criterion"],
                  hyp["sample_size"], hyp["ttl_seconds"], json.dumps(prov),
-                 float(candidate.get("confidence") or _INITIAL_CONFIDENCE), created),
+                 float(candidate.get("confidence") or _INITIAL_CONFIDENCE), created, notation),
             )
             c.commit()
         return {"status": "registered", "hyp_id": hyp_id}

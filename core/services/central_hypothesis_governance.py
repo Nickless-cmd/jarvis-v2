@@ -137,6 +137,71 @@ def is_control_arm(hyp_id: str, *, fraction: float = 0.2) -> bool:
     return (h % 1000) < int(round(frac * 1000))
 
 
+# ── 8. §24.4-læringsmembran: mønstre må læres, INDHOLD aldrig (Bjørns valg 2026-07-02) ─
+# Løser den uadresserede spænding rådet fandt: §24.4 siger private lag må ALDRIG fodre learning,
+# men Lag 3-4 SKAL lære af det indre liv. Beslutning: learning får privilegeret adgang til private
+# AGGREGATER (skalar tal/bool + tal-serier = korrelationer over tid) men ALDRIG indhold (strenge =
+# tanker/desire/tekst). Membranen holder på indhold; mønstre må krydse.
+def is_learnable_aggregate(value: Any) -> bool:
+    """Er værdien et AGGREGAT (lærbart) eller INDHOLD (spærret)? Tal/bool + rene tal-lister =
+    aggregat. Strenge, dicts, blandede lister = indhold → må ALDRIG fodre learning."""
+    if isinstance(value, bool) or isinstance(value, (int, float)):
+        return True
+    if isinstance(value, (list, tuple)):
+        return len(value) > 0 and all(
+            (isinstance(v, (int, float)) and not isinstance(v, bool)) for v in value)
+    return False  # strenge, dicts, None, tomme lister
+
+
+def assert_learnable(payload: dict[str, Any]) -> tuple[bool, list[str]]:
+    """Alle værdier i et learning-input SKAL være aggregater. Returnerer (ok, spærrede_nøgler).
+    Én indholds-værdi → hele inputtet afvises som learning-kilde (fail-closed på §24.4)."""
+    if not isinstance(payload, dict):
+        return False, ["<not-a-dict>"]
+    blocked = [k for k, v in payload.items() if not is_learnable_aggregate(v)]
+    return (len(blocked) == 0), blocked
+
+
+# ── 9. Identitets-invariant: drift-budget + rollback (Bjørns valg 2026-07-02) ────────
+# Løser rådets bekymring: en selv-muterende Central kan drive bort fra sin historie ("udvikling"
+# → "opløsning"). Beslutning: tillad mutation, men mål KUMULATIV drift fra en baseline; overstiger
+# den budgettet → STOP + rollback + varsl Bjørn. Ikke en frossen kerne, men en overvåget periferi.
+@dataclass(slots=True)
+class DriftVerdict:
+    within_budget: bool
+    drift: float          # kumulativ |afvigelse| (normaliseret hvis budgets pr. param)
+    action: str           # "ok" | "rollback"
+    offenders: tuple[str, ...] = ()
+
+
+def drift_budget_check(baseline: dict[str, float], current: dict[str, float],
+                       *, budgets: dict[str, float] | None = None,
+                       total_budget: float | None = None) -> DriftVerdict:
+    """Mål kumulativ drift af selv-muterede parametre fra baseline. Pr-param-budget (budgets)
+    OG/ELLER samlet budget (total_budget). Overskredet → action='rollback' + navngiv synderne.
+    Self-safe. 'Udvikling' må ikke blive 'opløsning'."""
+    try:
+        offenders: list[str] = []
+        norm_total = 0.0
+        for k, base in (baseline or {}).items():
+            cur = current.get(k, base)
+            delta = abs(float(cur) - float(base))
+            b = (budgets or {}).get(k)
+            if b is not None and b > 0:
+                norm_total += delta / b
+                if delta > b:
+                    offenders.append(k)
+            else:
+                norm_total += delta
+        over_total = (total_budget is not None and norm_total > float(total_budget))
+        within = (not offenders) and (not over_total)
+        return DriftVerdict(within, round(norm_total, 4),
+                            "ok" if within else "rollback", tuple(offenders))
+    except Exception as exc:
+        # Fail-closed på identitet: ved tvivl → rollback.
+        return DriftVerdict(False, 0.0, "rollback", (f"drift-fejl:{exc}",))
+
+
 # ── Samlet dom ─────────────────────────────────────────────────────────────────────
 @dataclass(slots=True)
 class GovernanceVerdict:

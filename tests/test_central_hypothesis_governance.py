@@ -146,3 +146,51 @@ def test_evaluate_falsifying_evidence_kills_confidence():
     ev = [{"supports": False, "source": "run_outcome", "triggered_by": "world", "falsifies": True}]
     v = g.evaluate(_valid_hyp(confidence=0.8), confirming_evidence=ev)
     assert v.confidence <= 0.4
+
+
+# ── 8. §24.4 læringsmembran: aggregat ja, indhold nej ────────────────────────────
+def test_aggregates_are_learnable():
+    assert g.is_learnable_aggregate(5) is True
+    assert g.is_learnable_aggregate(0.42) is True
+    assert g.is_learnable_aggregate(True) is True
+    assert g.is_learnable_aggregate([1, 2, 3.5]) is True         # tal-serie = korrelation
+
+
+def test_content_is_not_learnable():
+    assert g.is_learnable_aggregate("privat tanke") is False     # streng = indhold
+    assert g.is_learnable_aggregate({"a": 1}) is False           # dict = struktur/indhold
+    assert g.is_learnable_aggregate(["a", "b"]) is False         # streng-liste
+    assert g.is_learnable_aggregate([]) is False                 # tom = intet aggregat
+
+
+def test_assert_learnable_blocks_content_fields():
+    ok, blocked = g.assert_learnable({"pressure": 0.7, "count": 3, "recent": [1, 2, 3]})
+    assert ok and blocked == []
+    ok2, blocked2 = g.assert_learnable({"pressure": 0.7, "desire_text": "jeg længes"})
+    assert not ok2 and blocked2 == ["desire_text"]               # indhold spærret
+
+
+# ── 9. Identitets-invariant: drift-budget + rollback ─────────────────────────────
+def test_drift_within_budget_ok():
+    v = g.drift_budget_check({"gut_bias": 0.5}, {"gut_bias": 0.55},
+                             budgets={"gut_bias": 0.2})
+    assert v.within_budget is True and v.action == "ok"
+
+
+def test_drift_over_param_budget_rollback():
+    v = g.drift_budget_check({"gut_bias": 0.5}, {"gut_bias": 0.9},
+                             budgets={"gut_bias": 0.2})
+    assert v.within_budget is False and v.action == "rollback" and "gut_bias" in v.offenders
+
+
+def test_drift_over_total_budget_rollback():
+    # hver param inden for sit budget, men SUMMEN driver for langt (opløsning)
+    v = g.drift_budget_check(
+        {"a": 0.0, "b": 0.0, "c": 0.0}, {"a": 0.15, "b": 0.15, "c": 0.15},
+        budgets={"a": 0.2, "b": 0.2, "c": 0.2}, total_budget=2.0)
+    assert v.action == "rollback" and v.within_budget is False
+
+
+def test_drift_fails_closed_on_error():
+    v = g.drift_budget_check({"a": 0.0}, {"a": "ikke-et-tal"}, budgets={"a": 0.2})
+    assert v.action == "rollback"                                # ved tvivl → beskyt identiteten

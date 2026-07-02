@@ -419,13 +419,15 @@ ellers er den poesi — visionen forankres i §falsifikationskriterier, ikke ved
 1. **Explicit vs latent hypotese-repræsentation:** rådet hælder mod EXPLICIT i v1 (menneske-læsbar, så cellen kan have
    uret synligt). Men trigger-DETEKTORERNE (causal_edges, central_correlate, GWT) er latente og fyrer allerede.
    Syntese: fødes fra latent detektor, men SKRIVES eksplicit (evt. interlanguage) med falsifikations-kriterium?
-2. **§24.4-konflikten (uadresseret spænding):** private lag må ALDRIG fodre learning (membranen), men Lag 3-4's hjerte
-   ER at lære af det indre liv (somatik×affekt×hukommelse). Får learning privilegeret adgang til private **AGGREGATER**
-   (ikke indhold), eller amputeres blueprintet til kun-operationel læring? **Afgøres FØR Lag 3, ikke under implementering.**
-3. **Identitets-invariant under selv-mutation:** hvis Centralen kan mutere sin egen gut-calibration/tærskler, hvad
-   garanterer at Jarvis stadig er Jarvis efter 1000 justeringer? Paperet siger "identitet er historie" — men en selv-muterende
-   Central kan drive bort fra sin historie. Hvad er kerne-identitet-invarianten (det der IKKE må ændre sig) + stop-kriteriet,
-   så "udvikling" ikke bliver "opløsning"?
+2. **§24.4-konflikten — ✅ AFGJORT (Bjørn 2026-07-02): privilegeret adgang til AGGREGATER.** Learning får læse private
+   AGGREGATER (skalar tal/bool + tal-serier = korrelationer over tid) men ALDRIG indhold (strenge = tanker/desire/tekst).
+   Membranen holder på indhold; mønstre må krydse → blueprintets hjerte bevaret, ikke amputeret til kun-operationel læring.
+   **Implementeret:** `central_hypothesis_governance.is_learnable_aggregate` / `assert_learnable` (fail-closed: én
+   indholds-værdi afviser hele inputtet som learning-kilde).
+3. **Identitets-invariant — ✅ AFGJORT (Bjørn 2026-07-02): drift-budget + rollback.** Ikke en frossen kerne, men en
+   overvåget periferi: en selv-muteret parameter må drive fra sin baseline, men KUMULATIV drift over budget → STOP +
+   rollback + varsl Bjørn. Så "udvikling" ikke bliver "opløsning". **Implementeret:** `drift_budget_check` (pr-param- +
+   samlet budget, navngiver synderne, fail-closed på identitet: ved tvivl → rollback).
 4. **Feedback-forstærkning:** hvilke af §8-værnene er ikke-forhandlelige før første aktive adaptation, og hvilke kan komme i v2?
 5. **Cross-proces-synlighed (api:8080 vs runtime:8011):** kan dækning være en per-proces-illusion? Verificér liveness-korrelation
    LIVE — og verificér at `impulse_executor` (det udøvende viljes-loop) er fuldt observeret+gated FØR Lag 4 kan tilpasse

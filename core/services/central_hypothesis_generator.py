@@ -423,6 +423,22 @@ def list_active_hypotheses(*, limit: int = 10) -> list[dict[str, Any]]:
         return []
 
 
+def format_governed_hypotheses_for_awareness(*, limit: int = 3) -> str | None:
+    """Gør Centralens SELV-GENEREREDE hypoteser synlige for Jarvis selv (awareness). Rådets visionær:
+    'et system hvis emergens ingen kan SE, kan ingen stole på.' Kun observerende — Jarvis VED at
+    Centralen har bemærket disse mønstre om ham selv; han HANDLER ikke tvunget på dem. Self-safe."""
+    active = list_active_hypotheses(limit=limit)
+    if not active:
+        return None
+    lines = ["Centralen har (fra runtime-mønstre, IKKE fra din model) dannet disse falsificerbare "
+             "formodninger om dig selv — under observation, endnu ikke bekræftet:"]
+    for h in active:
+        conf = float(h.get("confidence") or 0.0)
+        gs, ss = int(h.get("grounded_samples") or 0), int(h.get("sample_size") or 0)
+        lines.append(f"  • {h.get('statement')} (tiltro {conf:.2f}, {gs}/{ss} jordede samples)")
+    return "\n".join(lines)
+
+
 def build_central_hypothesis_generator_surface() -> dict[str, object]:
     """Mission Control surface — read-only projektion af den governede hypotese-population."""
     ensure_schema()

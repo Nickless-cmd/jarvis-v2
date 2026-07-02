@@ -119,6 +119,19 @@ def test_tick_registers_both_convergence_and_divergence(isolated_runtime):
     assert "skjult" in statements       # divergens-hypotesen er registreret
 
 
+def test_awareness_surface_shows_generated_hypotheses(isolated_runtime):
+    _seed_edges(isolated_runtime, [("memory.recall_fail", "somatic.stress", 4, "inferred-kind")])
+    gen.run_hypothesis_generation_tick()
+    txt = gen.format_governed_hypotheses_for_awareness()
+    assert txt and "memory" in txt and "jordede samples" in txt
+    # tom tilstand → None (ingen støj i prompten)
+    from core.runtime.db import connect
+    with connect() as c:
+        c.execute("DELETE FROM central_hypotheses")
+        c.commit()
+    assert gen.format_governed_hypotheses_for_awareness() is None
+
+
 def test_self_triggered_confirmation_quarantined(isolated_runtime):
     _seed_edges(isolated_runtime, [("memory.recall_fail", "somatic.stress", 4, "inferred-kind")])
     gen.run_hypothesis_generation_tick()

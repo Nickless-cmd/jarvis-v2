@@ -1611,6 +1611,18 @@ def build_visible_chat_prompt_assembly(
         )
     except Exception as _e:
         _sec_err("active hypotheses (meta-learning)", _e)
+    # Lag 3 (2026-07-02) — Centralens SELV-GENEREREDE governed hypoteser om Jarvis selv (observe-only)
+    try:
+        from core.services.central_hypothesis_generator import (
+            format_governed_hypotheses_for_awareness,
+        )
+        _awareness_add(
+            41,
+            "central self-generated hypotheses (Lag 3)",
+            format_governed_hypotheses_for_awareness() or None,
+        )
+    except Exception as _e:
+        _sec_err("central self-generated hypotheses (Lag 3)", _e)
     # Curiosity-budget Phase 1 (2026-05-12) — idle-window invitation (AGI #6)
     try:
         from core.services.curiosity_budget import (

@@ -63,6 +63,21 @@ def _self_model() -> dict[str, Any]:
         return {}
 
 
+def _world_model() -> dict[str, Any]:
+    """Læs world-model-KALIBRERINGEN fra dens DURABLE kilde (predictions i state-store, ikke den
+    flygtige tidsserie). IKKE observe-only: midten TRÆKKER Jarvis' 'hvor ofte får jeg ret' ind i
+    sit ene selv → kalibrering bliver en levet selv-egenskab, ikke et sidespor. Self-safe."""
+    try:
+        from core.services.world_model_signal_tracking import (
+            build_runtime_world_model_prediction_surface,
+        )
+        s = (build_runtime_world_model_prediction_surface() or {}).get("summary") or {}
+        return {"calibration": s.get("calibration"),
+                "open": s.get("open_count"), "resolved": s.get("resolved_count")}
+    except Exception:
+        return {}
+
+
 def _synthesize_narrative(valence: dict, self_model: dict, intention: dict, prev: dict) -> dict[str, Any]:
     """Midten FORTÆLLER sig selv: hvem er jeg ved at blive — af selv-vækst + valens-trend + agenda-retning.
     Ikke læst fra et fragment (de er tomme) — syntetiseret fra egen tilstand. Self-safe."""
@@ -83,6 +98,7 @@ def synthesize_self_state() -> dict[str, Any]:
     valence = _valence()
     agenda = _agenda()
     self_model = _self_model()
+    world_model = _world_model()
     prev = get_self_state()
     intention = (agenda.get("next_intention") or {}) if isinstance(agenda, dict) else {}
     generation = int((prev.get("continuity") or {}).get("generation") or 0) + 1
@@ -95,6 +111,8 @@ def synthesize_self_state() -> dict[str, Any]:
         "narrative": narrative,
         "self_model": {"surfaces": self_model.get("surfaces_populated"),
                        "completeness": self_model.get("completeness")},
+        "world_model": {"calibration": world_model.get("calibration"),
+                        "resolved": world_model.get("resolved")},
         "continuity": {"generation": generation},
     }
 
@@ -145,6 +163,10 @@ def describe_self() -> str:
         parts.append(f"jeg arbejder mod: {clip_text(at.get('foreground'), limit=200)}")
     if nar.get("becoming"):
         parts.append(f"jeg er ved at blive et {nar.get('becoming')}")
+    wm = st.get("world_model") or {}
+    cal = wm.get("calibration")
+    if cal is not None and int(wm.get("resolved") or 0) >= 3:
+        parts.append(f"jeg rammer rigtigt i {int(round(float(cal) * 100))}% af det jeg forudser")
     return ". ".join(parts) + "." if parts else "Jeg er ved at samle mig selv."
 
 

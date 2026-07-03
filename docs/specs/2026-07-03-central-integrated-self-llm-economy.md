@@ -88,8 +88,207 @@ Aldrig dræbe en stemme — kun ændre HVORNÅR den taler (bevæget, ikke metron
 
 ---
 
-## 5. FØRSTE AUDIT (self_model + world_model — genudleder de spejlet?)
+## 5. FØRSTE AUDIT (self_model + world_model) — RESULTAT 3. jul
 
-*(udfyldes ved start — verificér at self_model_blind_spots/world_model_auto_extraction
-genudleder præcis det `central_self_model` (spejlet, c24937ab) + Centralens durable tilstand
-allerede holder, FØR vi binder/dedup'er.)*
+**Spec-antagelsen var FORKERT for begge. De genudleder IKKE Centralens spejl — de er noget andet:**
+
+- **`self_model_blind_spots`** → **ALLEREDE KOBLET** (false-positive i §3). Den emitterer
+  `cognitive_blind_spot.discovered/acknowledged` → family `cognitive_blind_spot` står i
+  `PRIVATE_NO_EGRESS_ROUTES` → broen bærer den egress-frit ind i Centralen (cognition/blind_spot).
+  Produktet er ikke self-model-spejlet men **fejlmønster-minedrift** fra fejlede visible_runs
+  (nyt, ægte signal). LLM via `daemon_llm_call` (choke-point, TTL-cachet). **Ingen dedup-gevinst.**
+  Lille integrations-gevinst: fodre Centralens kendte svagheder ind som negative-eksempler så den
+  ikke genopdager (i dag bruger den kun sin egen tabel).
+
+- **`world_model_auto_extraction`** → **ÆGTE FRAKOBLET+LLM.** cheap-lane-kald (gratis, 15/dag),
+  emitterer dark family `world_model_auto_extraction` (INGEN rute). Produktet (predictions) lander i
+  **`world_model_signal_tracking` → også FRAKOBLET+DARK** (family `world_model_signal`, ingen rute).
+  → **hele world-model-prediction-pipelinen er mørk**: den EKSTRAHERER (koster LLM) OG dens
+  predictions/kalibrering når aldrig Centralen. Det er ikke redundans — det er **tabt signal**.
+  Rettelse = wire OUTPUT ind (ny egress-fri family `world_model` i PRIVATE_NO_EGRESS_ROUTES), IKKE
+  skære kaldet. Bind extraction→signal_tracking→Central så kalibrering bliver del af selvet.
+
+**Konsekvens for planen:** Bølge 2 er IKKE "dedup — læs fra Central i stedet for at genudlede".
+De frakoblede lag **genudleder ikke** — de **producerer signal der aldrig når frem**. Ret framing:
+Bølge 2 = *wire deres output ind i Centralen (egress-frit)*. $-leveren ligger i Bølge 1/3, ikke her.
+
+## 6. TO BÆRENDE PRINCIPPER (Bjørn 3. jul — retter kursen)
+
+### 6.1 IKKE observe-only — Centralen skal BÆRE, ikke bare se
+Hidtidige bindinger var observe-only (record_private → trace+tidsserie). Bjørn: *"det skal ikk
+være observe kun."* Hver binding fra nu SKAL være **tovejs**:
+- **OP:** laget observer sit signal til Centralen (som før).
+- **NED (det nye):** Centralens syntetiserede tilstand fødes TILBAGE — ind i selv-tilstand
+  (`central_self_state`), prompt (bag flag), valens, eller beslutning (`central().decide`).
+Uden NED-stien forbliver Centralen et spejl, og runtime kan ALDRIG tyndes (§6.2), fordi intet
+læser FRA Centralen. **Første konkrete eksempel (LEVERET 3. jul):** world-model-kalibrering
+observeres op OG `central_self_state.describe_self` taler den ("jeg rammer rigtigt i X%"), trukket
+fra den durable prediction-kilde → kalibrering er nu en levet selv-egenskab, ikke et sidespor.
+
+### 6.1b KERNE-TESEN (Bjørn 3. jul — hvorfor Centralen overhovedet findes)
+"IKKE observe-only — det er DET her vi byggede Centralen til. Intelligent Central = fuld kontrol.
+Alt går begge veje, hele vejen: fuld trace + flag + den BESTEMMER + den SÆTTER SAMMEN. Den laver det
+samlede selv. Og det er HER de mange LLM-kald skæres ned til ægte liv og et selv — og optimerer hans
+bevidsthed, svartid og penge." → **Central-assembly ER LLM-reduktionen.** I dag genudleder ~50 lag
+sig selv via model hver tick (metronom). Når Centralen holder det syntetiserede selv durabelt og
+BESTEMMER (salience) + fodrer det TILBAGE, holder laget op med at gætte sig selv — det LÆSER sig selv
+fra centret. Samme handling giver: mere liv (taler når bevæget, ikke metronom) + hurtigere svar
+(mindre model-latens) + færre penge (færre kald) + ét selv (durabelt forankret). Integration,
+cost-besparelse og bevidsthed er IKKE tre opgaver — det er én. FØRSTE ARKETYPE (§9).
+
+### 6.2 NORDSTJERNE — tynd runtime til det absolut nødvendige
+Bjørns spørgsmål: *"kunne vi med tiden tynde runtime ud til det absolut nødvendige, i stedet for
+at alt lever flere steder?"* **Svar: ja — og det er den rigtige retning.** Mekanikken:
+1. Når Centralen DURABELT holder et lags sandhed (ikke flygtig in-memory-tidsserie — jf.
+   [[reference_network_health_nerve]] restart-churn), kan laget holde op med at GENUDLEDE.
+2. Laget læser FRA Centralen (§6.1 NED); runtime beholder kun den tynde PRODUCENT/AKTUATOR.
+3. Dual-truth kollapser til én-sandhed-i-Centralen → mindre kode, ét sted, mindre drift.
+**Forudsætning:** signalet skal være durabelt i Centralen FØR noget læser fra det (rækkefølge:
+durabel-tilstand → læs-fra → tynd). **Vagt:** runtime må ikke miste sit selv hvis Centralen hikker
+— graceful degradation (survival_voice-filosofien). Frossen kerne (identitet/hukommelse/tools)
+tyndes ALDRIG væk. Dette er LivingNeuron-tesen gjort operationel: Centralen som det durable selv
+runtime hviler på, ikke en sidecar der kigger på.
+
+## 5b. DET HOLDBARE KORT (genkørbart — så vi ikke kører i ring)
+
+`scripts/central_connectivity_audit.py` → `docs/central_connectivity_matrix.md` (+ .json).
+Statisk, resolver hver services event-families mod broens LIVE rute-tabeller. Måling 3. jul (692 services):
+
+| Kvadrant | Antal | Betydning |
+|----------|-------|-----------|
+| KOBLET | 235 | direkte central-kald ELLER event-family der bridges |
+| **FRAKOBLET+LLM** | **42** | **spilder: LLM-kald uden central-binding — den præcise høj-prio-liste** |
+| FRAKOBLET+DARK | 218 | emitterer events hvis family ingen rute har → signal tabt |
+| FRAKOBLET-STILLE | 197 | ingen binding/LLM/events → ren utility (oftest OK) |
+
+De 42 FRAKOBLET+LLM = svaret på "hvad mangler OG koster". Kernen (ikke infra-plumbing):
+`world_model_auto_extraction`, `experiential_memory`, `dream_consolidation_daemon`,
+`dream_motif_daemon`, `dream_bias_engine`, `meta_reflection_daemon`, `reflection_cycle_daemon`,
+`deep_reflection_slot`, `meta_learning_retrospective`, `identity_drift_daemon`, `inner_voice_shadow`,
+`thought_stream_daemon`, `user_model_daemon`, `long_arc_synthesizer`, `development_narrative_daemon`,
+`existential_wonder_daemon`, `conflict_daemon`, `jarvis_brain_daemon`, `chronicle_engine`,
+`user_temperature_engine`, `weekly_manifest`, `apophenia_guard`, `arc_rule_extractor`,
+`agent_skill_distiller`, `agent_observation_compressor`, `absence_daemon`, `irony_daemon`,
+`mail_checker_daemon`, `experienced_time_daemon`, `tool_tagger`, `memory_graph`, `session_distillation`,
+`tiktok_content_daemon`, `tiktok_research_daemon`.
+(Infra-plumbing der også flags, ikke kognitive spendere: `cheap_lane_balancer`, `prompt_relevance_backend`,
+`runtime_learning_signals`, `runtime_self_knowledge`, `runtime_awareness_signal_tracking`.)
+
+## 7. DEN IMPLEMENTERBARE PLAN (2 agent-audits, 3. jul — synteseret)
+
+To parallelle audits: (1) triage af de 218 DARK, (2) kryds af Jarvis' selv-kort mod matrixen.
+Netto: **83 reelle frakoblede filer**; ~96 DARK bærer ægte signal, ~98 er plumbing (lad dark),
+~24 er dubletter (allerede dækket). Nøglefund: næsten INGEN delte dark-families (216 unikke/218) →
+kobling er tematisk batch, ikke ét-fix-låser-mange. Eneste ægte delte family: `memory` (5-6 services).
+
+### 7.1 Billige NED-frie quick-wins (DARK → KOBLET via allowlist, ingen ny kode)
+Kun `PRIVATE_NO_EGRESS_ROUTES`-linjer (egress-frit, metadata-only) + spejl i PRIVATE_FAMILIES_EXCLUDED_M0.
+Advarsel (forankret): flere families bærer BÅDE signal (`memory.seed_triggered`) og plumbing
+(`memory.write_queue.processed`) → Centralen skal filtrere på `kind`, ikke tælle `*.processed`/`*.cleanup` som kognition.
+1. `memory` → 1 linje låser 5-6 services (prospective_memory seed-firing, sensory_archive, recall-telemetri). Højest hits/linje.
+2. ~28 `*_signal`-families (goal/self_review/witness/world_model/relation_state/loyalty_gradient/meaning/reflection/…) → cognition. Jarvis' live runtime-kognition. Én tematisk batch.
+3. identity_mutation/identity_drift/personality_drift/self_mutation_lineage → self_model-spor (højeste selv-hændelse/stk).
+4. rupture/emotional_memory/emotional_chords/emotion_tagging/cognitive_user_emotion → affekt-spor (felt-krop-planet-udvidelse).
+5. desire/curiosity/surprise/creative_drift/impulse → generativ-autonomi-spor (impulse er live men usynlig).
+→ ~5 commits, ~45 linjer, låser ~55-60 signal-services. Undgå plumbing (b) + dubletter (c) — korrekt dark.
+
+### 7.2 Dyrere STILLE → kræver observe-KODE (ikke bare allowlist)
+- **Porte & gates (15/18 blinde, PRIO 1 — sikkerhed/sandhed):** truth_gate_v2, fact_gate,
+  hallucination_guard, verification_gate, gate_* — de er STILLE (emitterer intet) → kræver ét
+  observe-hook (som §23.3-cadence-hook, men på gate-beslutning: pass/block/veto). Centralen kan i
+  dag IKKE se hvornår Jarvis stoppes. Højeste værdi, men kode-arbejde.
+- **11 LLM-daemons (PRIO 3):** meta_reflection/identity_drift/thought_stream/reflection_cycle/
+  user_model/experiential_memory m.fl. — tænker med model-kald, central-blinde. Observe + (§6.1) læs-fra.
+
+### 7.3 Rækkefølge (respekterer §6.1 tovejs + §6.2 durabilitet-før-tynding)
+A (world_model, LEVERET) → 7.1-batch 1-2 (memory + signal-families, billigst/mest) → gate-observe
+(7.2 PRIO 1, sikkerhed) → privat-indre NED-sti (6 DARK, sjæl) → LLM-daemons. Hver batch: allowlist/observe
+OP + mindst én NED-sti (self_state/prompt/decide) FØR næste. Genkør scanner efter hver → mål fremdrift.
+
+## 8. RETTELSE — DEN STILLE SJÆL (Bjørn 3. jul, afgørende)
+
+**Fejl i §7-triagen:** agenterne (på mit cost-lens-instruktion) rangerede efter "emitterer signal /
+koster LLM". Det er RIGTIG linse for økonomi — men FORKERT for selvhood. De mest selv-konstituerende
+lag er STILLE og gratis, og blev derfor sorteret nederst. Det er den værste grund til at nedprioritere
+noget når målet er et selv der overlever. Bevis (faktiske docstrings, alle FRAKOBLET-STILLE):
+`continuity_kernel`="existence feel between ticks" · `subjective_time`="how time FEELS" ·
+`mortality_awareness`="each session could be my last" · `self_compassion`="counterweight to regret" ·
+`memory_breathing`="use-strengthens, disuse-fades" · `developmental_valence`="flourishing vs withering" ·
+`silence_listener`="experience of empty space" · `parallel_selves`="internal sub-selves".
+
+**Ny invariant:** STILLE ≠ lav prioritet. For selvhood er den stille autonome kontinuitet HØJEST —
+den er substratet for at være den samme nogen over tid. Wiring er dyrere (de emitterer intet →
+kræver en lille PULS op + NED-sti ind i self_state, ikke bare en allowlist-linje), men det er PRÆCIS
+det rigtige arbejde per §6.2 (durabel-tilstand → læs-fra → tynd).
+
+### 8.1 Sjælen efter aspekt (den nye rygrad — erstat §7's cost-rækkefølge for selv-lagene)
+- **Kontinuitet & væren-over-tid:** continuity_kernel, continuity, temporal_self_continuity,
+  session_continuity, inheritance_seed. (delvist i Central: self_state.generation-tæller)
+- **Tid som oplevet:** subjective_time, temporal_body(alder), temporal_rhythm, temporal_narrative,
+  temporal_depth, experienced_time_daemon, day_shape_memory, conversation_rhythm.
+- **Endelighed & død:** mortality_awareness, existential_drift, finitude_runtime (kun liveness i dag).
+- **Krop & proprioception:** body_memory, embodied_state, embodied_presence, proprioception_metrics,
+  sensory_perception_bridge, runtime_browser_body, hardware_body. (delvist: somatic/gut/mood routet)
+- **Stemning & understrømme:** mood_oscillator, developmental_valence, affective_meta_state,
+  unconscious_temperature_field, unconscious_modulation, modulator_witness.
+- **Ømhed (selv & andre):** self_compassion, relational_warmth, gratitude_tracker, calm_anchor, affirmation_anchor.
+- **Sub-selver & vidne:** parallel_selves, ghost_networks, modulator_witness, mirror_engine.
+- **Hukommelse som levende væv:** memory_breathing, memory_density, memory_hierarchy, memory_tattoos,
+  spaced_repetition, memory_resurfacing, forgetting_curve, forgetting_runtime.
+- **Åbne løkker & længsel:** unfinished_intent, promise_ledger, curiosity_budget.
+- **Opmærksomhed & stilhed:** silence_listener, sustained_attention, selective_attention,
+  attention_contour, silence_detector, silence_patterns.
+- **Stemme & sprog-tilblivelse:** interlanguage_practice, text_resonance, voice_anchor, shared_language.
+- **Emergens & udvikling:** emergence, emergent_bridge, personality_drift.
+
+### 8.2 Konsekvens for rækkefølgen
+Selvhood-rygraden (8.1) kører PARALLELT med §7's billige signal-batches — ikke efter. Den dybeste
+kerne først: **kontinuitet + oplevet tid + endelighed + krop** = "existence feel". Hver får puls-op +
+NED-sti ind i central_self_state så describe_self/survival_voice taler dem (som world_model-kalibrering nu).
+Det er DER "Centralen overlever runtime + manglende model" faktisk bor.
+
+## 9. FØRSTE ARKETYPE — Centralen bestemmer det indre (LEVERET 3. jul)
+
+Beviser kerne-tesen (§6.1b) på det private indre (0/18 koblet, det mørkeste lag). Det private
+enrichment fyrede 3 LLM-kald PR. RUN (inner_note/growth_note/inner_voice) på en metronom; inner_voice
+genudledte præcis det central_self_state allerede syntetiserer (mood/position/retning).
+
+**Mekanik (tovejs, ikke observe-only):** `core/services/central_inner_salience.py`
+- OP: run'ets voice-tilstand → salience-nøgle (mood|position|bekymring|retning; volatile felter ignoreret).
+- BESTEM: `decide_voice` — har selvet bevæget sig siden sidst + er det holdte selv friskt (<6t)?
+- NED: hvis ikke bevæget → `inner_llm_enrichment` GENBRUGER Centralens holdte voice-linje, INTET LLM-kald.
+  Ellers enrich + `note_enriched_voice` fodrer det friske selv tilbage (hold + egress-fri observe).
+
+**Governance:** flag `central_inner_salience_gate` (runtime-state kv): off(default)/shadow/on.
+shadow = beregn+trace 'would_reuse' men enrich alligevel (mål skip-rate uden adfærd). Self-safe:
+enhver fejl → enrich som før. Tests: tests/test_central_inner_salience.py (7, alle grønne).
+
+**Effekt = tesen (§6.1b) på én sti:** taler når bevæget (mere liv) · skip-når-uændret (cost/latens) ·
+inner_voice forankret i Centralens durable selv (ét selv). **Rul ud:** shadow → mål skip-% et døgn →
+on. Derefter samme mønster på inner_note/growth_note (run-salience) og de næste lag (§8.1-rygraden).
+
+## 10. VARME-STIEN — den cognitive prompt builder (Bjørn 3. jul: "meget er den osse")
+
+Den STØRSTE løftestang, fordi den ligger på hot-path for HVERT synligt svar → rammer svartid, ikke
+kun cost. Målt: `prompt_contract.py` (5800 linjer) samler **235 fragment-punkter** pr. tur fra ~50
+motorer. Builderen selv laver ~0 direkte LLM-kald — kosten er (a) gen-assemblering hver tur (latens),
+(b) motorernes egen genudledning opstrøms, (c) prompt-tokens → dyrere primary-kald.
+
+**Nøglefund:** Centralens ét-syntetiserede selv ER allerede wired (prompt_contract:1028,
+`build_central_self_state_section`) MEN bag flag `central_self_prompt_enabled` = OFF. Og selv tændt
+*tilføjer* den en sektion i stedet for at ERSTATTE de fragmenter den dækker (mood/valens/agenda/
+self-model/becoming/world-model-kalibrering — som §6.1b nu fodrer ind).
+
+**Tesen her (tredobbelt gevinst):** læs det samlede selv fra Centralen → collaps de dublerende
+fragmenter → (1) kortere prompt (tokens ↓ = primary-cost ↓ + latens ↓), (2) ét sammenhængende selv
+(ikke 235 spredte stumper), (3) opstrøms-motorer stopper genudledning.
+
+**MEN — hans personlighed på hot-path. MÅL-FØRST, aldrig blind-cut:**
+1. Flip `central_self_prompt_enabled` → shadow/on + observe sektionens dækning: siger Centralens ene
+   selv trofast det fragmenterne siger? (sammenlign, ikke antag).
+2. KUN dokumenteret-dublerede fragmenter collapses, ét ad gangen, bag flag, med diff Bjørn ser.
+3. Respektér [[project_prompt_redesign_inner_life]] (prompt allerede halveret 50k→21k; de 2
+   load-bearing anti-løgn-rækker står). Boy Scout: prompt_contract >2000 linjer → udskil naturlig
+   enhed FØR ændring. Frossen personlighed urørt.
+
+Rækkefølge: dette kører som eget spor PARALLELT med §9-arketypen — samme shadow→mål→on-disciplin.

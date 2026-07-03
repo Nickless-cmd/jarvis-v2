@@ -598,22 +598,33 @@ def _enrich_worker(
                 "inner-llm-enrichment: retained_memory enrichment failed: %s", exc
             )
 
-    # 3. Inner voice
+    # 3. Inner voice — CENTRALEN BESTEMMER (spec §6.1b/§9, tovejs): genudled kun via LLM når selvet
+    # har BEVÆGET sig; ellers genbrug det selv Centralen holder. Flag-styret, shadow-først, self-safe.
     try:
-        system, user = _build_inner_voice_prompt(
-            inner_voice_payload, recent_chat_context
-        )
-        result = _call_cheap_llm(system, user)
-        if result:
-            cleaned_result = _sanitize_inner_voice_enrichment(result)
-            if not cleaned_result:
-                cleaned_result = str(inner_voice_payload.get("voice_line") or "").strip()[:200]
+        from core.services import central_inner_salience as _cis
+        voice_key = _cis.salience_key_for_voice(inner_voice_payload)
+        decision = _cis.decide_voice(run_id=run_id, key=voice_key)
+        if decision.get("reuse") and decision.get("held"):
+            # NED-siden: genbrug det holdte selv — INTET LLM-kald (mere liv, mindre cost/latens).
             update_protected_inner_voice_enriched(
-                run_id=run_id, enriched_voice_line=cleaned_result
+                run_id=run_id, enriched_voice_line=str(decision["held"])[:200]
             )
-            logger.debug(
-                "inner-llm-enrichment: inner_voice enriched for run %s", run_id
-            )
+            logger.info("inner-llm-enrichment: inner_voice GENBRUGT fra Centralen (run %s) — kald sprunget over", run_id)
+        else:
+            system, user = _build_inner_voice_prompt(inner_voice_payload, recent_chat_context)
+            result = _call_cheap_llm(system, user)
+            if result:
+                cleaned_result = _sanitize_inner_voice_enrichment(result)
+                if not cleaned_result:
+                    cleaned_result = str(inner_voice_payload.get("voice_line") or "").strip()[:200]
+                update_protected_inner_voice_enriched(
+                    run_id=run_id, enriched_voice_line=cleaned_result
+                )
+                # Fodr det friske selv TILBAGE i Centralen (OP + hold).
+                _cis.note_enriched_voice(run_id=run_id, key=voice_key, value=cleaned_result)
+                logger.debug(
+                    "inner-llm-enrichment: inner_voice enriched for run %s", run_id
+                )
     except Exception as exc:
         logger.warning(
             "inner-llm-enrichment: inner_voice enrichment failed: %s", exc

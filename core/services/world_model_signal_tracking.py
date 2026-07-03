@@ -64,6 +64,25 @@ _PREDICTION_ALLOWED_EFFECTS = [
     "do_not_auto_act",
 ]
 
+_OUTCOME_VALUE = {"supported": 1.0, "contradicted": 0.0, "uncertain": 0.5}
+
+
+def _observe_world_model(nerve: str, *, value: float = 1.0, meta: dict[str, object] | None = None) -> None:
+    """EGRESS-FRI binding til Centralen (§24.4): world-model-livscyklus (prediction lavet,
+    resolved, kalibrerings-milestone) bliver del af Jarvis' durable selv UDEN at lække indhold.
+
+    Hidtil var HELE pipelinen mørk: extraction kostede LLM, og predictions/kalibrering nåede
+    aldrig Centralen (family world_model_signal stod ikke i broens ruter). Her observer vi via
+    den kanoniske egress-fri sink (record_private → trace + tidsserie, ALDRIG _emit) — kun
+    SKALARER/labels (confidence/outcome/kind), ALDRIG subject/expectation-tekst (kan bære
+    brugerindhold). Middelværdien af `world_model_calibration`-serien ER kalibreringsraten.
+    Kaster aldrig."""
+    try:
+        from core.services.central_private_observe import record_private
+        record_private("cognition", str(nerve), value=float(value), meta=meta or {})
+    except Exception:
+        pass
+
 
 def record_runtime_world_model_prediction(
     *,
@@ -121,6 +140,11 @@ def record_runtime_world_model_prediction(
         )
     except Exception:
         pass  # never block recording on event-bus errors
+    _observe_world_model(
+        "world_model",
+        value=float(_CONFIDENCE_RANKS.get(confidence, 1)) / 3.0,
+        meta={"event": "prediction_recorded", "confidence": confidence, "source": item["source"]},
+    )
     return {"status": "ok", "prediction": item}
 
 
@@ -163,6 +187,13 @@ def resolve_runtime_world_model_prediction(
             )
         except Exception:
             pass  # never block resolution on event-bus errors
+        # Kalibrerings-signal → Centralen (egress-frit): serie-middel = kalibreringsrate.
+        _observe_world_model(
+            "world_model_calibration",
+            value=_OUTCOME_VALUE.get(normalized_outcome, 0.5),
+            meta={"event": "prediction_resolved", "outcome": normalized_outcome,
+                  "resolved_via": str(resolved_via or "tool")},
+        )
         return {"status": "ok", "prediction": item}
     return {"status": "error", "error": f"prediction '{normalized_id}' not found"}
 
@@ -592,6 +623,8 @@ def _append_milestone(kind: str, value: object, message: str, now: datetime) -> 
     data = _load_milestones()
     data["history"].append(m)
     _save_milestones(data)
+    # Kalibrerings-milestone (tærskel krydset / trend / streak-brud) → Centralen egress-frit.
+    _observe_world_model("world_model", value=1.0, meta={"event": "milestone", "kind": str(kind)})
     return m
 
 

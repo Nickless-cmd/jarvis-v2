@@ -145,6 +145,14 @@ def auto_extract_and_record(
         return {"status": "error", "reason": f"record: {exc}"}
 
     _increment_rate()
+    # EGRESS-FRI binding: gør cheap-lane-extraction synlig for Centralen (volumen/liveness) UDEN
+    # at lække sætningen. Lukker mørket: laget kostede LLM men var usynligt for selvet.
+    try:
+        from core.services.central_private_observe import record_private
+        record_private("cognition", "world_model_extraction", value=1.0,
+                       meta={"event": "auto_extracted", "confidence": confidence})
+    except Exception:
+        pass
     return {
         "status": "ok",
         "prediction_id": pred.get("prediction_id"),

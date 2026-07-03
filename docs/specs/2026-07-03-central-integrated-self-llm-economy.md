@@ -337,3 +337,14 @@ TJEKKE påstandene. Resultat: 6 → **4 ægte**, 2 falske alarmer.
 3. #2 adaptation-forbruger (behavior — shadow-først, brug eksisterende rollback/drift/pause).
 4. #5 coverage→handling (før connectivity-bevidsthed ind i runtime + udløs hypotese/todo).
 Numre (to shadow-flag fra §9/§10) læses FØRST når #1+#2 giver Centralen ægte hænder.
+
+### 11b. LEVERET 3. jul (commit dce8ec28, deployet+verificeret, alle flag OFF = inert)
+De 4 ægte punkter bygget, testet (54 grønne), deployet til container 10.0.0.39 (begge processer):
+- #6 `central_layer_contract.py` (7 tests) — tovejs-kontrakt klar; migration af de 3 arketyper er Boy-Scout.
+- #1 `central_arbitration.observe_shadow` wired i visible_runs pre-exec (Trin 1). Måler nu til `review/arbitration_shadow`.
+- #2 `gut_gate` + flag `central_gut_consumer_mode` (off) — bias'en har nu ægte forbruger.
+- #5 `central_coverage.structural_coverage` (live: 243/811=0.30) + `central_coverage_action` + flag
+  `central_coverage_action_mode` (off) — Centralen kender sin blindhed + kan udløse dødelige hypoteser.
+**Flag der venter på bevidst aktivering (shadow→on):** central_gut_consumer_mode, central_coverage_action_mode,
+layer_mode:<navn> — PLUS de to fra §9/§10 (central_inner_salience_gate=shadow, central_self_prompt_enabled=on).
+NÆSTE: lad shadow-flagene måle et døgn → læs tallene (den samtale vi udskød) → flip bevidst.

@@ -1451,22 +1451,36 @@ async def _stream_visible_run(
                 # igen (verificeret på Bjørns council-spørgsmål, tomt 2×). Resend nu
                 # med den NON-thinking compat-alias (deepseek-chat) som ikke har
                 # #1453 → den formulerer svaret. Andre providere: uændret resend.
-                _rs_model = run.model
+                _rs_provider, _rs_model = run.provider, run.model
                 try:
-                    if (run.provider or "").strip().lower() == "deepseek":
+                    _rs_p = (run.provider or "").strip().lower()
+                    _rs_m = (run.model or "").strip().lower()
+                    # Thinking-modeller (deepseek-vX-flash, kimi, qwen3, glm-5, minimax,
+                    # gpt-oss, nemotron, *-code, r1/o1) deler den STICKY tom-completion-bug:
+                    # re-spørg SAMME thinking-model → tom igen. deepseek har en non-thinking
+                    # alias vi swapper til; ANDRE providere/modeller har ikke → de faldt før
+                    # tilbage til samme sticky model → cutoff (provider-agnostisk, 3. jul,
+                    # kimi-k2.7-code:cloud). Fald tilbage til en pålidelig non-thinking
+                    # formulator (deepseek-chat) så turen får et ÆGTE svar, ikke fallback-stub.
+                    _THINK_HINTS = ("kimi", "-code", "deepseek-v", "qwen3", "glm-5",
+                                    "minimax", "gpt-oss", "nemotron", "-r1", "o1-",
+                                    "think", "reason")
+                    if _rs_p == "deepseek":
                         from core.services.cheap_provider_runtime import (
                             deepseek_model_for_thinking_mode,
                         )
                         _rs_model = deepseek_model_for_thinking_mode(run.model, "fast")
+                    elif any(_t in _rs_m for _t in _THINK_HINTS):
+                        _rs_provider, _rs_model = "deepseek", "deepseek-chat"
                 except Exception:
-                    _rs_model = run.model
+                    _rs_provider, _rs_model = run.provider, run.model
                 _rs = await asyncio.to_thread(
-                    _exec_rs, message=run.user_message, provider=run.provider,
+                    _exec_rs, message=run.user_message, provider=_rs_provider,
                     model=_rs_model, session_id=run.session_id)
                 _rs_text = (getattr(_rs, "text", "") or "").strip()
                 try:
                     from core.services import followup_observer as _fo_rs
-                    _fo_rs.note_resend(run.run_id, provider=run.provider,
+                    _fo_rs.note_resend(run.run_id, provider=_rs_provider,
                                        model=_rs_model, recovered=bool(_rs_text))
                 except Exception:
                     pass

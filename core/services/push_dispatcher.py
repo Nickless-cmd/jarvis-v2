@@ -72,20 +72,20 @@ def _dispatch_run_done(run_id: str) -> None:
     owner = _owner_of_run(run_id)
     if not owner:
         return
-    # Hent det FAKTISKE svar så notifikationen VISER hvad Jarvis sagde (Bjørn 3. jul:
-    # "der står bar jarvis har svaret" + tap viser intet). SPRING pushet over hvis runnet
-    # ikke producerede et synligt assistant-svar (rent autonomt internt arbejde) → ingen
-    # tomme spam-notifikationer. Med title+preview bygger fcm_gateway en RIGTIG synlig
-    # notifikation (ikke en data-only push app'en renderer som generisk "Jarvis har svaret").
-    preview = _last_assistant_preview(sid)
-    if not preview:
+    # SPRING pushet over hvis runnet ikke producerede et synligt assistant-svar (rent
+    # autonomt internt arbejde) → ingen tomme spam-notifikationer (Bjørn 3. jul).
+    #
+    # VIGTIGT: answer_ready sendes DATA-ONLY (ingen title/preview) MED VILJE. Mobil-appen
+    # renderer den selv via notifee (henter svaret over HTTPS + Direct Reply + tap→åbn-
+    # session). Sætter vi title+preview, bygger fcm_gateway en 'notification'-blok →
+    # Android viser den via system-baren UDEN OM notifee → tap-navigation (notifee.
+    # getInitialNotification) + fetchLatest brydes = "tap viser intet". Hold den data-only.
+    if not _last_assistant_preview(sid):
         logger.warning("push: answer_ready SPRUNGET OVER (run %s uden svar-tekst)", run_id[:12])
         return
     logger.warning("push: answer_ready DISPATCH for run %s", run_id[:12])
-    _route_or_blast(owner, {
-        "kind": "answer_ready", "session_id": sid or "", "run_id": run_id,
-        "title": "Jarvis", "preview": preview,
-    }, "answer_ready")
+    _route_or_blast(owner, {"kind": "answer_ready", "session_id": sid or "", "run_id": run_id},
+                    "answer_ready")
 
 
 def on_run_done(run_id: str) -> None:

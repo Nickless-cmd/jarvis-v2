@@ -23,7 +23,7 @@ def test_suppressed_when_consumed(monkeypatch):
     assert sent == []  # undertrykt
 
 
-def test_pushes_with_preview_when_not_consumed(monkeypatch):
+def test_pushes_data_only_when_answer_exists(monkeypatch):
     sent = _setup(monkeypatch)
     dt.register("bjorn", "tok-A")
     rel.create("run-2", "sess-2")  # ingen subscriber, ikke consumed
@@ -35,9 +35,9 @@ def test_pushes_with_preview_when_not_consumed(monkeypatch):
     assert token == "tok-A"
     assert data["kind"] == "answer_ready"
     assert data["run_id"] == "run-2"
-    # Notifikationen bærer nu det faktiske svar + titel (så OS'et viser rigtig tekst).
-    assert data["title"] == "Jarvis"
-    assert data["preview"] == "Hej Bjørn, her er svaret"
+    assert data["session_id"] == "sess-2"
+    # DATA-ONLY med vilje (mobil-appen renderer selv via notifee → tap-nav + fetchLatest).
+    assert "title" not in data and "preview" not in data
 
 
 def test_skips_push_when_no_answer_text(monkeypatch):

@@ -7,9 +7,53 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import threading
 import time
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Bølge 0 (Bjørn 3. jul): gør daemon_llm-choke-pointet (69 daemons) SYNLIGT i
+# Centralen — mål cache-effektivitet pr. daemon. Lav hit-rate = prompten varierer
+# (volatil kontekst) → kaldet går igennem = gentagelses-spild. Grundlag for
+# saliens-cache (Bølge 1). Observe-only, self-safe, nul ekstra LLM-load.
+# ---------------------------------------------------------------------------
+_llm_stats: dict[str, dict] = {}   # daemon → {"calls": int, "hits": int}
+_llm_lock = threading.Lock()
+
+
+def _note_call(daemon_name: str, hit: bool) -> None:
+    """Registrér ét daemon_llm-kald + om det ramte cachen → central_timeseries. Self-safe."""
+    try:
+        name = (str(daemon_name or "").strip() or "ukendt")
+        with _llm_lock:
+            st = _llm_stats.setdefault(name, {"calls": 0, "hits": 0})
+            st["calls"] += 1
+            if hit:
+                st["hits"] += 1
+            calls, hits = st["calls"], st["hits"]
+        rate = round(hits / calls, 3) if calls else 0.0
+        try:
+            from core.services import central_timeseries as ts
+            ts.record("daemon_llm", name, value=rate,
+                      meta={"calls": calls, "hits": hits, "hit_rate": rate})
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
+def daemon_llm_cache_snapshot() -> dict:
+    """Read-only: pr. daemon kald + cache-hits + hit-rate. Lav hit-rate + højt kald =
+    saliens-cache-kandidat (genudleder uden at ændre sig). Til Mission Control/analyse."""
+    try:
+        with _llm_lock:
+            return {n: {"calls": s["calls"], "hits": s["hits"],
+                        "hit_rate": round(s["hits"] / max(s["calls"], 1), 3)}
+                    for n, s in sorted(_llm_stats.items(),
+                                       key=lambda kv: kv[1]["calls"], reverse=True)}
+    except Exception:
+        return {}
 
 # ---------------------------------------------------------------------------
 # Response cache — Layer A
@@ -230,8 +274,11 @@ def _daemon_llm_call_impl(
                     )
                 except Exception:
                     pass
+            _note_call(daemon_name, hit=True)
             return cached
 
+    # Cache-miss (eller ingen cache) → vi kalder LLM'en nu.
+    _note_call(daemon_name, hit=False)
     text = ""
     provider = ""
 

@@ -36,8 +36,10 @@ def test_pushes_data_only_when_answer_exists(monkeypatch):
     assert data["kind"] == "answer_ready"
     assert data["run_id"] == "run-2"
     assert data["session_id"] == "sess-2"
-    # DATA-ONLY med vilje (mobil-appen renderer selv via notifee → tap-nav + fetchLatest).
-    assert "title" not in data and "preview" not in data
+    # preview MEDsendes som fallback-tekst, men INGEN title → forbliver data-only (ingen
+    # notification-blok i fcm_gateway) → notifee tap-nav + Direct Reply bevaret.
+    assert data["preview"] == "Hej Bjørn, her er svaret"
+    assert "title" not in data
 
 
 def test_skips_push_when_no_answer_text(monkeypatch):

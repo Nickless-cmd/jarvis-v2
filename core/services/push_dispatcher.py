@@ -80,12 +80,17 @@ def _dispatch_run_done(run_id: str) -> None:
     # session). Sætter vi title+preview, bygger fcm_gateway en 'notification'-blok →
     # Android viser den via system-baren UDEN OM notifee → tap-navigation (notifee.
     # getInitialNotification) + fetchLatest brydes = "tap viser intet". Hold den data-only.
-    if not _last_assistant_preview(sid):
+    preview = _last_assistant_preview(sid)
+    if not preview:
         logger.warning("push: answer_ready SPRUNGET OVER (run %s uden svar-tekst)", run_id[:12])
         return
     logger.warning("push: answer_ready DISPATCH for run %s", run_id[:12])
-    _route_or_blast(owner, {"kind": "answer_ready", "session_id": sid or "", "run_id": run_id},
-                    "answer_ready")
+    # preview MEDsendes som FALLBACK-tekst (mobil-appen bruger den hvis dens egen fetchLatest
+    # fejler — fx udløbet baggrunds-token → ellers 'Nyt svar', Bjørn 3. jul). BEMÆRK: INGEN
+    # 'title' → fcm_gateway bygger IKKE en notification-blok → forbliver data-only → notifee
+    # tap-nav + Direct Reply bevaret. (title+preview = system-notifikation der bryder notifee.)
+    _route_or_blast(owner, {"kind": "answer_ready", "session_id": sid or "", "run_id": run_id,
+                            "preview": preview}, "answer_ready")
 
 
 def on_run_done(run_id: str) -> None:

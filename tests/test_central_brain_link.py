@@ -118,3 +118,20 @@ def test_tick_self_safe_without_owner(isolated_runtime, monkeypatch):
     _seed_resolved(hyp_id="hq")
     res = bl.run_brain_link_tick()
     assert res["status"] == "ok" and res["remembered"] == 0
+
+
+def test_tick_caps_writes_per_tick(isolated_runtime, monkeypatch):
+    """En batch nye resolutioner må ikke skrive mere end _MAX_WRITES_PER_TICK (timeout-værn)."""
+    monkeypatch.setattr(bl, "_owner_uid", lambda: "owner1")
+    monkeypatch.setattr(bl, "recall_context", lambda q, **k: [])
+    # gør write billig+tællende så vi tester CAP-logikken, ikke embedding-latens
+    writes: list = []
+    def _fake_write(hyp):
+        writes.append(hyp.get("hyp_id"))
+        return "id-" + str(hyp.get("hyp_id"))
+    monkeypatch.setattr(bl, "remember_resolved_hypothesis", _fake_write)
+    for i in range(5):
+        _seed_resolved(hyp_id=f"hc{i}")
+    res = bl.run_brain_link_tick()
+    assert res["remembered"] == bl._MAX_WRITES_PER_TICK   # cap'et
+    assert len(writes) == bl._MAX_WRITES_PER_TICK          # loopet brød ved cap

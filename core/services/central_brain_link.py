@@ -27,6 +27,9 @@ _VISIBILITY = "personal"                          # Jarvis' egen viden om sig se
 _RECALL_SOURCES = ("workspace", "chronicle")     # SELV-scopet — ALDRIG private_brain i cadence
 _MARK_TAG = "source:brain_memory"
 _CENTRAL_TAG = "central"                          # markerer central-læringer (surface tæller på denne)
+# write_entry (embedding) ~25s/kald i praksis → max writes pr. tick så en batch nye resolutioner
+# ikke sprænger cadencens 75s-timeout. 2×25s ≈ 50s < 75s. Backlog drænes over efterfølgende ticks.
+_MAX_WRITES_PER_TICK = 2
 
 
 def _owner_uid() -> str:
@@ -134,12 +137,17 @@ def run_brain_link_tick(*, trigger: str = "cadence", last_visible_at: str = "") 
     M1-recall (recall_context) er UDSKUDT ud af hot-path'en (3. jul): den er count-only /
     fremtidig-fase (beriger provenance SENERE, forbruges ingen steder nu), MEN multi_signal_recall
     tager ~31s/kald → 25 hyps × 31s ≈ 277s sprængte cadencens 75s-timeout HVER tick → nerven blev
-    fejl-flagget uafbrudt. M2-write (idempotent + billig) er det faktisk nyttige arbejde og beholdes.
-    Genindfør M1 når (a) en fase faktisk FORBRUGER provenance-konteksten OG (b) multi_signal_recall-
-    latensen er fikset (31s er selvstændigt patologisk — separat opgave). recall_context() består +
-    er stadig scope-testet (test_m1_scope_bounded)."""
+    fejl-flagget uafbrudt.
+
+    OGSÅ (3. jul): selve M2-write (write_entry → jarvis_brain embedding) tager ~25s/kald i praksis
+    (embedding-latens er selvstændigt patologisk — bør være ~30ms; SEPARAT opgave). En batch nye
+    resolutioner (fx 9 → 225s) kunne derfor STADIG timeoute. Derfor cap'es antal writes pr. tick til
+    _MAX_WRITES_PER_TICK (≈ under 75s); resten skrives på efterfølgende ticks — læring er ikke
+    tidskritisk. recall_context() består + er stadig scope-testet (test_m1_scope_bounded)."""
     remembered = 0
     for hyp in _recently_resolved():
+        if remembered >= _MAX_WRITES_PER_TICK:
+            break   # backlog-cap: beskyt cadencens 75s-timeout mod en batch langsomme embeddings
         # M2: owner-scopet skrivning tilbage til Jarvis' egen hjerne. Idempotent (already_remembered
         # = indekseret opslag) → allerede-huskede springes billigt over; kun nye resolutioner skrives.
         if remember_resolved_hypothesis(hyp):

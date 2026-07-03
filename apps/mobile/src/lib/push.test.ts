@@ -23,7 +23,12 @@ describe('buildNotification', () => {
     expect(n.data.session_id).toBe('s1')
   })
 
-  it('answer_ready uden hentet body -> fallback', () => {
+  it('answer_ready uden hentet body -> server-preview fallback', () => {
+    const n = buildNotification({ kind: 'answer_ready', preview: 'Serverens svar-tekst' }, null)
+    expect(n.body).toBe('Serverens svar-tekst')
+  })
+
+  it('answer_ready uden hentet body OG uden preview -> generisk fallback', () => {
     const n = buildNotification({ kind: 'answer_ready' }, null)
     expect(n.body).toBe('Nyt svar')
   })

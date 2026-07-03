@@ -22,8 +22,10 @@ export function buildNotification(data: PushData, fetchedBody: string | null) {
     // faldt team-invites igennem til "Jarvis svarede" (Mikkel-test 2026-06-20).
     return { title: data.title ?? 'Invitation til team', body: data.preview ?? 'Du er blevet inviteret til et team', data }
   }
-  // answer_ready
-  return { title: 'Jarvis svarede', body: fetchedBody ?? 'Nyt svar', data }
+  // answer_ready: vis appens egen HTTPS-hentede svar; fald tilbage til serverens
+  // medsendte preview hvis fetchLatest fejler (fx udløbet baggrunds-token) — så man
+  // ser DET FAKTISKE svar i stedet for et intetsigende "Nyt svar" (Bjørn 3. jul).
+  return { title: 'Jarvis svarede', body: fetchedBody ?? data.preview ?? 'Nyt svar', data }
 }
 
 async function fetchLatest(config: ApiConfig, sessionId: string): Promise<string | null> {

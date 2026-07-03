@@ -128,3 +128,56 @@ def test_tick_never_raises(monkeypatch):
         isense.run_infra_sense_tick()
     except Exception:
         pytest.fail("run_infra_sense_tick må ikke kaste")
+
+
+def _patch_syslog(monkeypatch, *, packets, last_packet_epoch, detections=None):
+    """Fælles opsætning: mock pfSense-syslog-modulet + central + notifikation."""
+    from core.services import pfsense_syslog
+    from core.runtime import db_central_incidents
+    monkeypatch.setattr(pfsense_syslog, "drain_detections", lambda: list(detections or []))
+    monkeypatch.setattr(pfsense_syslog, "syslog_stats",
+                        lambda: {"packets": packets, "blocks": 0, "detections": 0,
+                                 "last_packet_epoch": last_packet_epoch})
+    monkeypatch.setattr(isense, "central", lambda: _FakeCentral())
+    notes: list = []
+    monkeypatch.setattr(isense, "_notify_owner_security", lambda t, m: notes.append((t, m)))
+    incidents: list = []
+    monkeypatch.setattr(db_central_incidents, "record_central_incident",
+                        lambda **kw: incidents.append(kw))
+    isense._syslog_stale_flagged = False
+    return incidents, notes
+
+
+def test_syslog_stale_flags_when_stream_silent(monkeypatch):
+    # Strømmen HAR flydt (packets>0) men sidste pakke er langt ude over tærsklen → stale → flag.
+    import time
+    incidents, notes = _patch_syslog(
+        monkeypatch, packets=611,
+        last_packet_epoch=time.time() - (isense._SYSLOG_STALE_AFTER_S + 300))
+    isense.poll_syslog()
+    assert any(i.get("kind") == "syslog_stale" for i in incidents)
+    assert notes  # ejer notificeret
+    assert isense._syslog_stale_flagged is True
+
+
+def test_syslog_fresh_no_flag(monkeypatch):
+    import time
+    incidents, notes = _patch_syslog(monkeypatch, packets=611, last_packet_epoch=time.time() - 5)
+    isense.poll_syslog()
+    assert not any(i.get("kind") == "syslog_stale" for i in incidents)
+    assert isense._syslog_stale_flagged is False
+
+
+def test_syslog_never_received_no_stale_flag(monkeypatch):
+    # last_packet_epoch=0 (aldrig modtaget, fx efter genstart) → ikke stale, ingen falsk alarm.
+    incidents, _n = _patch_syslog(monkeypatch, packets=0, last_packet_epoch=0.0)
+    isense.poll_syslog()
+    assert not any(i.get("kind") == "syslog_stale" for i in incidents)
+
+
+def test_syslog_stale_flag_clears_on_resume(monkeypatch):
+    import time
+    incidents, _n = _patch_syslog(monkeypatch, packets=700, last_packet_epoch=time.time() - 5)
+    isense._syslog_stale_flagged = True  # var flagget → strømmen genoptager nu (frisk) → skal ryddes
+    isense.poll_syslog()
+    assert isense._syslog_stale_flagged is False  # genoptaget → ryddet

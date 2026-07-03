@@ -244,9 +244,18 @@ def _notify_owner_security(title: str, message: str) -> None:
         pass
 
 
+# Staleness-vagt for pfSense-syslog-strømmen: hvis logs HAR flydt men så stopper i N sek,
+# er syslogd sandsynligvis død igen (den var død 1.3 døgn 1.→2. jul UOPDAGET, fordi 0-tælling
+# lignede "aldrig konfigureret"). På et aktivt net er der altid baggrundsstøj (blokerede
+# WAN-scans/broadcasts på default-block-reglen) → 15 min TOTAL tavshed = ægte signal, ikke
+# et roligt øjeblik. Flag ÉN gang ved overgang→stale; ryd når pakker genoptager.
+_SYSLOG_STALE_AFTER_S = 900.0
+_syslog_stale_flagged = False
+
+
 def poll_syslog() -> dict[str, Any]:
     """Dræn pfSense-syslog-detektioner (port-scan/brute-force) → Centralen: observe + incident
-    + notifikation. Plus lytter-liveness. READ-ONLY detektion. Self-safe."""
+    + notifikation. Plus lytter-liveness + staleness-vagt (fang hvis syslogd dør). READ-ONLY. Self-safe."""
     out: dict[str, Any] = {}
     try:
         from core.services import pfsense_syslog
@@ -262,8 +271,32 @@ def poll_syslog() -> dict[str, Any]:
                                "detections_total": stats.get("detections")})
         except Exception:
             pass
+        # Staleness-vagt: har strømmen flydt (last_packet_epoch>0) men er nu tavs > tærskel?
+        # → syslogd nok død igen (pfSense). Flag ÉN gang ved overgang; ryd når den genoptager.
+        global _syslog_stale_flagged
+        last_pkt = float(stats.get("last_packet_epoch") or 0.0)
+        idle_s = (time.time() - last_pkt) if last_pkt > 0 else 0.0
+        is_stale = last_pkt > 0 and idle_s > _SYSLOG_STALE_AFTER_S
         central_timeseries.record("infra", "pfsense_syslog",
-                                  value=float(len(dets)), meta={"packets": stats.get("packets")})
+                                  value=float(len(dets)),
+                                  meta={"packets": stats.get("packets"), "stale": is_stale,
+                                        "idle_s": round(idle_s)})
+        if is_stale and not _syslog_stale_flagged:
+            _syslog_stale_flagged = True
+            mins = int(idle_s // 60)
+            try:
+                from core.runtime.db_central_incidents import record_central_incident
+                record_central_incident(
+                    cluster="infra", nerve="pfsense_syslog", kind="syslog_stale", severity="error",
+                    message=(f"pfSense syslog-strøm tavs i {mins} min (sidst {stats.get('packets')} pakker) "
+                             f"— syslogd nok død igen på pfSense (10.0.0.1). Fix: REST API "
+                             f"command_prompt → pfSsh.php playback svc restart syslogd."))
+            except Exception:
+                pass
+            _notify_owner_security("⚠️ pfSense syslog tavs",
+                                   f"Ingen firewall-logs i {mins} min — syslogd nok død igen på pfSense.")
+        elif not is_stale and _syslog_stale_flagged:
+            _syslog_stale_flagged = False  # strømmen genoptaget → nulstil vagt
         for d in dets:
             src = d.get("src"); kind = d.get("kind")
             msg = (f"{kind} fra {src}: {d.get('blocks')} blokke, "

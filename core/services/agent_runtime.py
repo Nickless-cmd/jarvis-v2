@@ -33,6 +33,190 @@ _TOOL_USING_ROLES: frozenset[str] = frozenset({
 
 def _role_needs_tools(role: str) -> bool:
     return str(role or "") in _TOOL_USING_ROLES
+
+
+# ── Axis 3: agent tool EXECUTION (guarded behind a reversible flag) ─────────
+# The flag gates whether a sub-agent's ``allowed_tools`` actually reach the
+# model AND whether returned tool calls are executed against the world. When
+# OFF (default) agents remain text-only exactly as before. When ON they get
+# hands — every tool call still passes through ``execute_tool`` which enforces
+# role/scope + approval gates, so an agent can never bypass approvals for
+# risky actions.
+AGENT_TOOLS_FLAG_KEY = "agent_tools_enabled"
+_AGENT_TOOL_LOOP_MAX_ROUNDS = 4  # tool round-trips per agent turn
+
+
+def agent_tools_enabled() -> bool:
+    """Read the reversible ``agent_tools_enabled`` runtime-state flag.
+
+    DEFAULT OFF. Self-safe: any read error → False (agents stay handless).
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        return bool(get_runtime_state_value(AGENT_TOOLS_FLAG_KEY, False))
+    except Exception:
+        return False
+
+
+def set_agent_tools_enabled(enabled: bool) -> bool:
+    """Flip the ``agent_tools_enabled`` flag. Returns the new value.
+
+    Reversible: pass False to return every agent to text-only behaviour.
+    """
+    try:
+        from core.runtime.db_core import set_runtime_state_value
+        set_runtime_state_value(AGENT_TOOLS_FLAG_KEY, bool(enabled))
+    except Exception:
+        pass
+    return bool(enabled)
+
+
+def _build_agent_tools_payload(allowed_tools: list[str] | None) -> list[dict]:
+    """Build an OpenAI-compat tools array from an agent's allowed_tools.
+
+    Reuses the SAME catalog the visible lane draws from
+    (``get_tool_definitions``) so agents and Jarvis share one source of
+    truth for tool schemas. Only the tools an agent is explicitly allowed
+    are exposed; an empty/blank allowlist yields no tools (text-only).
+    Self-safe: returns [] on any error.
+    """
+    names = {str(t).strip() for t in (allowed_tools or []) if str(t).strip()}
+    if not names:
+        return []
+    try:
+        from core.tools.simple_tools import get_tool_definitions
+        catalog = get_tool_definitions()
+    except Exception:
+        return []
+    out: list[dict] = []
+    for tool in catalog or []:
+        if not isinstance(tool, dict):
+            continue
+        fn = tool.get("function") if isinstance(tool.get("function"), dict) else {}
+        tool_name = str(fn.get("name") or tool.get("name") or "").strip()
+        if tool_name and tool_name in names:
+            out.append(tool)
+    return out
+
+
+def _execute_agent_tool_call(tool_call: dict, *, agent_id: str) -> str:
+    """Execute one model-issued tool call through the guarded dispatcher.
+
+    Routes through ``execute_tool`` so role/scope + approval gates apply —
+    an agent cannot bypass the approval path for risky actions. Returns a
+    string tool-result to feed back to the model. Self-safe: never raises.
+    """
+    fn = tool_call.get("function") if isinstance(tool_call.get("function"), dict) else {}
+    name = str(fn.get("name") or "").strip()
+    raw_args = fn.get("arguments")
+    if isinstance(raw_args, str):
+        try:
+            arguments = json.loads(raw_args) if raw_args.strip() else {}
+        except Exception:
+            arguments = {}
+    elif isinstance(raw_args, dict):
+        arguments = dict(raw_args)
+    else:
+        arguments = {}
+    if not name:
+        return json.dumps({"status": "error", "error": "missing tool name"})
+    try:
+        from core.tools.simple_tools import execute_tool
+        result = execute_tool(name, arguments)
+    except Exception as exc:
+        return json.dumps({"status": "error", "error": str(exc)[:400]})
+    try:
+        return json.dumps(result, ensure_ascii=False)[:4000]
+    except Exception:
+        return str(result)[:4000]
+
+
+def _run_agent_tool_loop(
+    *,
+    agent: dict[str, object],
+    prompt: str,
+    requires_tools: bool,
+) -> dict[str, object]:
+    """Run an agent turn WITH a real tools array + tool-execution loop.
+
+    Only called when ``agent_tools_enabled()`` is True and the agent has a
+    non-empty allowed_tools list that resolves to real schemas. Falls back
+    to plain text (via execute_with_role_or_fallback without tools) if the
+    allowlist resolves to nothing. Every tool call is executed through the
+    guarded ``execute_tool`` dispatcher. Self-safe at the call site.
+
+    Returns the same result-dict shape as execute_with_role_or_fallback,
+    with an added ``tool_rounds`` count for observability.
+    """
+    allowed = _json_loads(str(agent.get("allowed_tools_json") or "[]"), [])
+    tools_payload = _build_agent_tools_payload(allowed if isinstance(allowed, list) else [])
+    provider = str(agent.get("provider") or "")
+    model = str(agent.get("model") or "")
+    if not tools_payload:
+        # Nothing to expose → identical to legacy text-only path.
+        return execute_with_role_or_fallback(
+            message=prompt, provider=provider, model=model,
+            requires_tools=requires_tools,
+        )
+
+    messages: list[dict] = [{"role": "user", "content": prompt}]
+    total_input = 0
+    total_output = 0
+    total_cost = 0.0
+    final_text = ""
+    rounds = 0
+    for _ in range(_AGENT_TOOL_LOOP_MAX_ROUNDS):
+        rounds += 1
+        result = execute_with_role_or_fallback(
+            provider=provider, model=model,
+            requires_tools=requires_tools,
+            messages=messages, tools=tools_payload,
+        )
+        total_input += int(result.get("input_tokens") or 0)
+        total_output += int(result.get("output_tokens") or 0)
+        total_cost += float(result.get("cost_usd") or 0.0)
+        final_text = str(result.get("text") or "")
+        tool_calls = list(result.get("tool_calls") or [])
+        if not tool_calls:
+            break
+        # Record the assistant turn that requested the tools, then each
+        # tool result, so the next round has full context.
+        messages.append({
+            "role": "assistant",
+            "content": final_text,
+            "tool_calls": tool_calls,
+        })
+        for tc in tool_calls:
+            tool_out = _execute_agent_tool_call(tc, agent_id=str(agent.get("agent_id") or ""))
+            messages.append({
+                "role": "tool",
+                "tool_call_id": str(tc.get("id") or ""),
+                "content": tool_out,
+            })
+        try:
+            event_bus.publish("agent.tool_round", {
+                "agent_id": str(agent.get("agent_id") or ""),
+                "round": rounds,
+                "tool_calls": [
+                    str((tc.get("function") or {}).get("name") or "") for tc in tool_calls
+                ],
+            })
+        except Exception:
+            pass
+    return {
+        "lane": "cheap",
+        "provider": provider,
+        "model": model,
+        "status": "completed",
+        "execution_mode": "role-primary-tool-loop",
+        "source": "agent-tools",
+        "text": final_text,
+        "tool_calls": [],
+        "tool_rounds": rounds,
+        "input_tokens": total_input,
+        "output_tokens": total_output,
+        "cost_usd": total_cost,
+    }
 from core.runtime.db import (
     add_council_member,
     create_agent_schedule,
@@ -657,12 +841,29 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
     )
     try:
         update_agent_registry_entry(agent_id, status="active")
-        result = execute_with_role_or_fallback(
-            message=prompt,
-            provider=str(agent.get("provider") or ""),
-            model=str(agent.get("model") or ""),
-            requires_tools=_role_needs_tools(str(agent.get("role") or "")),
-        )
+        _needs_tools = _role_needs_tools(str(agent.get("role") or ""))
+        # Axis 3: give the agent hands only when the reversible flag is ON.
+        # OFF (default) → unchanged text-only path. Self-safe: any failure in
+        # the tool-loop dispatch degrades to the legacy call.
+        if agent_tools_enabled():
+            try:
+                result = _run_agent_tool_loop(
+                    agent=agent, prompt=prompt, requires_tools=_needs_tools,
+                )
+            except Exception:
+                result = execute_with_role_or_fallback(
+                    message=prompt,
+                    provider=str(agent.get("provider") or ""),
+                    model=str(agent.get("model") or ""),
+                    requires_tools=_needs_tools,
+                )
+        else:
+            result = execute_with_role_or_fallback(
+                message=prompt,
+                provider=str(agent.get("provider") or ""),
+                model=str(agent.get("model") or ""),
+                requires_tools=_needs_tools,
+            )
         text = str(result.get("text") or "").strip()
         output_tokens = int(result.get("output_tokens") or 0)
         input_tokens = int(result.get("input_tokens") or 0)
@@ -1232,7 +1433,73 @@ def post_council_message(
     return build_council_detail_surface(council_id) or session
 
 
+def _derive_initiative(synthesis: str, *, topic: str = "") -> str:
+    """Distil a short, actionable initiative string from a synthesis.
+
+    Axis 5: the council/swarm conclusion must be able to LAND. This turns
+    free-form synthesis prose into one compact action line a downstream
+    consumer can push as an initiative. Heuristic + self-safe (never
+    raises): prefer an explicit recommendation/next-step sentence; else
+    fall back to the first substantive sentence; else "".
+    """
+    text = " ".join(str(synthesis or "").split())
+    if not text:
+        return ""
+    import re as _re
+    # Split into sentences, keep non-trivial ones.
+    sentences = [s.strip() for s in _re.split(r"(?<=[.!?])\s+", text) if len(s.strip()) > 12]
+    if not sentences:
+        return ""
+    # Prefer a sentence that reads like an action / recommendation.
+    action_markers = (
+        "recommend", "should", "next step", "propose", "anbefal", "bør",
+        "næste skridt", "foreslå", "action", "initiativ", "vi kan", "let's",
+    )
+    lowered_pairs = [(s, s.lower()) for s in sentences]
+    for original, low in lowered_pairs:
+        if any(marker in low for marker in action_markers):
+            return original[:280]
+    # No explicit action → take the first substantive sentence as the seed.
+    return sentences[0][:280]
+
+
+def _augment_council_surface(
+    council_id: str, *, conclusion: str, initiative: str = "",
+) -> dict[str, object]:
+    """Build the collective-round return dict with conclusion + initiative.
+
+    Wraps ``build_council_detail_surface`` and stamps the Axis 5 contract
+    fields (``conclusion`` + ``initiative``) onto it. Self-safe: falls back
+    to a minimal dict if the surface build fails.
+    """
+    surface = build_council_detail_surface(council_id) or {}
+    if not isinstance(surface, dict):
+        surface = {}
+    surface["conclusion"] = str(conclusion or "")
+    surface["initiative"] = str(initiative or "")
+    return surface
+
+
 def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
+    """Run one collective (council or swarm) round to a conclusion.
+
+    RETURN CONTRACT (Axis 5 — synthese der lander):
+      Returns the council/swarm detail surface (from
+      ``build_council_detail_surface``) augmented with a top-level
+      ``initiative`` key:
+        {
+          ... surface fields (council_id, status, summary, members, ...),
+          "conclusion": <str>,   # the synthesis text (mirrors summary)
+          "initiative": <str>,   # a short, actionable next-step string
+                                 # derived from the synthesis, or "" when
+                                 # nothing actionable surfaced.
+        }
+      The ``initiative`` field replaces the old hardcoded None so a caller
+      (e.g. the autonomous council daemon) can turn a conclusion into a real
+      initiative (push_initiative / surface-to-owner) instead of a dead
+      summary row. It is a plain string (possibly empty) — never None — so
+      ``if result.get("initiative"):`` is the correct truthiness check.
+    """
     from core.services.council_deliberation_controller import (
         DeliberationController,
         DeliberationResult,
@@ -1423,7 +1690,11 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
             if conflicts["has_disagreement"]:
                 summary_with_meta += f" [conflicts: {json.dumps(conflicts['vote_split'])}]"
             update_council_session(council_id, status="reporting", summary=summary_with_meta)
-            return build_council_detail_surface(council_id) or {}
+            # Axis 5: swarm synthesis also lands as an initiative.
+            initiative = _derive_initiative(synthesis, topic=str(session.get("topic") or ""))
+            return _augment_council_surface(
+                council_id, conclusion=synthesis, initiative=initiative,
+            )
 
     # ── Council deliberation (controller-based) ────────────────────────
     if mode == "council":
@@ -1477,6 +1748,9 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
             role="assistant", kind="council-synthesis", content=synthesis,
         )
         update_council_session(council_id, status="reporting", summary=synthesis)
+        # Axis 5: derive an actionable initiative from the synthesis so the
+        # conclusion can LAND (no longer hardcoded None → dead output).
+        initiative = _derive_initiative(synthesis, topic=str(session.get("topic") or ""))
         # Persist to council memory
         try:
             from core.services.council_memory_service import append_council_conclusion
@@ -1487,11 +1761,11 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
                 signals=[],
                 transcript=dr.transcript[:1200],
                 conclusion=synthesis[:600],
-                initiative=None,
+                initiative=(initiative or None),
             )
         except Exception:
             pass
-        return build_council_detail_surface(council_id) or {}
+        return _augment_council_surface(council_id, conclusion=synthesis, initiative=initiative)
 
     # ── Council synthesis (fallback for non-council modes) ─────────────
     if round_outputs:
@@ -1505,9 +1779,10 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
             role="assistant", kind="council-synthesis", content=synthesis,
         )
         update_council_session(council_id, status="reporting", summary=synthesis)
-    else:
-        update_council_session(council_id, status="reporting", summary=f"No {mode} outputs produced.")
-    return build_council_detail_surface(council_id) or {}
+        initiative = _derive_initiative(synthesis, topic=str(session.get("topic") or ""))
+        return _augment_council_surface(council_id, conclusion=synthesis, initiative=initiative)
+    update_council_session(council_id, status="reporting", summary=f"No {mode} outputs produced.")
+    return _augment_council_surface(council_id, conclusion="", initiative="")
 
 
 def _close_council_agents(council_id: str) -> None:
@@ -1545,15 +1820,30 @@ def _build_council_role_prefixed_summary(members: list[dict[str, object]]) -> st
 
 
 def run_council_round(council_id: str) -> dict[str, object]:
-    result = _run_collective_round(council_id, mode="council")
-    _close_council_agents(council_id)
-    return result
+    """Run one council round and ALWAYS close the session afterwards.
+
+    Axis 5-lifecycle fix: the close was previously only reached on the happy
+    path — an exception in _run_collective_round left the session
+    'deliberating' forever and its member agents in 'waiting', accumulating
+    against MAX_CONCURRENT_AGENTS and blocking future councils. try/finally
+    guarantees _close_council_agents runs even on failure.
+    """
+    try:
+        return _run_collective_round(council_id, mode="council")
+    finally:
+        _close_council_agents(council_id)
 
 
 def run_swarm_round(council_id: str) -> dict[str, object]:
-    result = _run_collective_round(council_id, mode="swarm")
-    _close_council_agents(council_id)
-    return result
+    """Run one swarm round and ALWAYS close the session afterwards.
+
+    Same try/finally close guarantee as run_council_round — see its
+    docstring for the hang the Axis 5-lifecycle fix removes.
+    """
+    try:
+        return _run_collective_round(council_id, mode="swarm")
+    finally:
+        _close_council_agents(council_id)
 
 
 def _progress_label(*, agent: dict[str, object], latest_run: dict[str, object] | None) -> str:

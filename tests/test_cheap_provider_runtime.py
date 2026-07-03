@@ -658,3 +658,59 @@ def test_codex_genuinely_empty_still_raises(isolated_runtime, monkeypatch) -> No
         list(cheap._iter_openai_codex_chat_events(
             model="gpt-5.4-mini", auth_profile="codex", base_url="", message="hej", tools=None,
         ))
+
+
+# ── Axis 3: _execute_provider_chat forwards tools/messages ─────────────────
+
+
+def test_flatten_messages_to_text():
+    import core.services.cheap_provider_runtime as cheap
+    assert cheap._flatten_messages_to_text(None) == ""
+    assert cheap._flatten_messages_to_text([]) == ""
+    msgs = [
+        {"role": "user", "content": "hej"},
+        {"role": "assistant", "content": ""},
+        {"role": "tool", "content": "result"},
+        "junk",
+    ]
+    out = cheap._flatten_messages_to_text(msgs)
+    assert "[user] hej" in out
+    assert "[tool] result" in out
+    # Empty content dropped, junk ignored.
+    assert "assistant" not in out
+
+
+def test_execute_provider_chat_forwards_tools_to_openai_compat(monkeypatch):
+    import core.services.cheap_provider_runtime as cheap
+    seen = {}
+
+    def _fake(**kwargs):
+        seen.update(kwargs)
+        return {"text": "ok", "tool_calls": []}
+
+    monkeypatch.setattr(cheap, "_execute_openai_compatible_chat", _fake)
+    tools = [{"type": "function", "function": {"name": "read_file"}}]
+    msgs = [{"role": "user", "content": "x"}]
+    cheap._execute_provider_chat(
+        provider="deepseek", model="m", auth_profile="p", base_url="",
+        messages=msgs, tools=tools,
+    )
+    assert seen["tools"] == tools
+    assert seen["messages"] == msgs
+
+
+def test_execute_provider_chat_coerces_messages_for_text_only_provider(monkeypatch):
+    import core.services.cheap_provider_runtime as cheap
+    seen = {}
+
+    def _fake_ofa(*, model, message):
+        seen["message"] = message
+        return {"text": "ok"}
+
+    monkeypatch.setattr(cheap, "_execute_ollamafreeapi_chat", _fake_ofa)
+    # ollamafreeapi is text-only; messages must be flattened to a string.
+    cheap._execute_provider_chat(
+        provider="ollamafreeapi", model="m", auth_profile="", base_url="",
+        messages=[{"role": "user", "content": "hej"}], tools=[{"x": 1}],
+    )
+    assert "[user] hej" in seen["message"]

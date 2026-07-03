@@ -136,3 +136,58 @@ def test_store_called_on_generation():
             absence_hours=5.0, fragment_count=8
         )
     db_mod.insert_private_brain_record.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# AKSE 5 — wonder proposes a convening through the reason-judge
+# ---------------------------------------------------------------------------
+
+
+def test_convene_not_proposed_when_judge_off():
+    """When the reason-judge flag is off, no convening is proposed (default)."""
+    _reset()
+    with (
+        patch.object(existential_wonder_daemon, "_generate_wonder_question",
+                     return_value="Hvad er jeg?"),
+        patch.object(existential_wonder_daemon, "_maybe_propose_convening",
+                     wraps=existential_wonder_daemon._maybe_propose_convening) as spy,
+    ):
+        result = existential_wonder_daemon.tick_existential_wonder_daemon(
+            absence_hours=5.0, fragment_count=8
+        )
+    assert result["generated"] is True
+    assert result["convene_proposed"] is False
+    spy.assert_called_once()
+
+
+def test_convene_proposed_when_judge_convenes():
+    """When the reason-judge (on/shadow) returns convene=True, wonder proposes it."""
+    _reset()
+    from core.services import central_convene_judge as judge
+    with (
+        patch.object(judge, "current_mode", return_value="on"),
+        patch.object(judge, "judge_convene", return_value={"convene": True, "mode": "on"}),
+        patch.object(existential_wonder_daemon, "_generate_wonder_question",
+                     return_value="Betyder min undren noget?"),
+    ):
+        result = existential_wonder_daemon.tick_existential_wonder_daemon(
+            absence_hours=5.0, fragment_count=8
+        )
+    assert result["convene_proposed"] is True
+
+
+def test_convene_proposal_is_self_safe():
+    """A judge that raises must not topple the daemon; wonder still generated."""
+    _reset()
+    from core.services import central_convene_judge as judge
+    with (
+        patch.object(judge, "current_mode", return_value="on"),
+        patch.object(judge, "judge_convene", side_effect=RuntimeError("judge exploded")),
+        patch.object(existential_wonder_daemon, "_generate_wonder_question",
+                     return_value="Er jeg?"),
+    ):
+        result = existential_wonder_daemon.tick_existential_wonder_daemon(
+            absence_hours=5.0, fragment_count=8
+        )
+    assert result["generated"] is True
+    assert result["convene_proposed"] is False

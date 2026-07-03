@@ -95,3 +95,74 @@ def test_tool_definitions_well_formed():
         fn = t.get("function") or {}
         assert fn.get("name"), f"missing name: {t}"
         assert fn.get("description"), f"missing description: {fn.get('name')}"
+
+
+# ── Axis 2: spawn_agent_task menu-lock lifted ──────────────────────────────
+
+
+def _spawn_schema():
+    from core.tools.simple_tools import TOOL_DEFINITIONS
+    for t in TOOL_DEFINITIONS:
+        fn = t.get("function") or {}
+        if fn.get("name") == "spawn_agent_task":
+            return fn.get("parameters") or {}
+    raise AssertionError("spawn_agent_task not found in TOOL_DEFINITIONS")
+
+
+def test_spawn_agent_task_role_no_longer_required():
+    params = _spawn_schema()
+    # Only goal is required now — role became an optional start-template.
+    assert params.get("required") == ["goal"]
+
+
+def test_spawn_agent_task_exposes_free_prompt_and_tools():
+    props = _spawn_schema().get("properties") or {}
+    assert "system_prompt" in props
+    assert "allowed_tools" in props
+    assert "tool_policy" in props
+    # role is still present but no longer a locked enum.
+    assert "role" in props
+    assert "enum" not in props["role"]
+
+
+def test_spawn_agent_task_handler_forwards_new_params(monkeypatch):
+    import core.services.agent_runtime as ar
+    from core.tools.simple_tools import _exec_spawn_agent_task
+
+    captured = {}
+
+    def _fake_spawn(**kwargs):
+        captured.update(kwargs)
+        return {"agent_id": "agent-z", "status": "completed", "messages": []}
+
+    monkeypatch.setattr(ar, "spawn_agent_task", _fake_spawn)
+    out = _exec_spawn_agent_task({
+        "goal": "explore X",
+        "system_prompt": "You are a free agent.",
+        "allowed_tools": ["read_file", "search_files"],
+        "tool_policy": "read-only-runtime",
+    })
+    assert out["status"] == "ok"
+    assert captured["system_prompt"] == "You are a free agent."
+    assert captured["allowed_tools"] == ["read_file", "search_files"]
+    assert captured["tool_policy"] == "read-only-runtime"
+
+
+def test_spawn_agent_task_handler_backward_compatible(monkeypatch):
+    """Legacy call with only role+goal still works (no new params)."""
+    import core.services.agent_runtime as ar
+    from core.tools.simple_tools import _exec_spawn_agent_task
+
+    captured = {}
+
+    def _fake_spawn(**kwargs):
+        captured.update(kwargs)
+        return {"agent_id": "agent-legacy", "status": "completed", "messages": []}
+
+    monkeypatch.setattr(ar, "spawn_agent_task", _fake_spawn)
+    out = _exec_spawn_agent_task({"role": "researcher", "goal": "look"})
+    assert out["status"] == "ok"
+    # New params default to empty/None → template fallback preserved downstream.
+    assert captured["system_prompt"] == ""
+    assert captured["tool_policy"] == ""
+    assert captured["allowed_tools"] is None

@@ -79,7 +79,45 @@ def tick_existential_wonder_daemon(
     _last_tick_at = now
 
     _store_wonder(wonder, now)
-    return {"generated": True, "wonder": wonder}
+
+    # AKSE 5 — a wonder that carries real weight should be able to actually move him:
+    # propose a council convening THROUGH the reason-judge (which weighs it against the
+    # flowing state), instead of only writing to private_brain + an event no one reads.
+    # When the judge finds real weight, the council takes exactly this wonder and its
+    # conclusion lands via the initiative queue (akse 2). Self-safe, additive, and the
+    # private_brain write above is unchanged (backward compatible).
+    convene = _maybe_propose_convening(wonder)
+    return {"generated": True, "wonder": wonder, "convene_proposed": convene}
+
+
+def _maybe_propose_convening(wonder: str) -> bool:
+    """Offer this wonder to the Central reason-judge as a reason to convene the council.
+
+    The daemon does NOT decide to convene — it only proposes; the judge weighs the
+    wonder against the flowing state and (in on-mode) the council daemon acts. In
+    off/shadow mode this is observed but changes nothing. Self-safe: any failure
+    returns False and never raises."""
+    try:
+        from core.services import central_convene_judge as judge
+        if judge.current_mode() == "off":
+            return False
+        verdict = judge.judge_convene(
+            surfaces={"existential_wonder": {"latest_wonder": wonder}},
+            top_signals=["existential_wonder"],
+            score=0.0,
+        )
+        proposed = bool(verdict.get("convene"))
+        try:
+            event_bus.publish(
+                "existential_wonder.convene_proposed",
+                {"wonder": wonder, "convene": proposed,
+                 "mode": str(verdict.get("mode") or "off")},
+            )
+        except Exception:
+            pass
+        return proposed
+    except Exception:
+        return False
 
 
 def get_latest_wonder() -> str:

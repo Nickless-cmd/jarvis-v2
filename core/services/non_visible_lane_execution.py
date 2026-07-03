@@ -68,8 +68,10 @@ _PROVIDERS_WITHOUT_TOOL_SUPPORT: frozenset[str] = frozenset({
 
 
 def execute_with_role_or_fallback(
-    *, message: str, provider: str = "", model: str = "",
+    *, message: str = "", provider: str = "", model: str = "",
     requires_tools: bool = False,
+    messages: list[dict] | None = None,
+    tools: list[dict] | None = None,
 ) -> dict[str, object]:
     """Run the message on the role's preferred provider/model first, fall
     through to the cheap-lane chain on failure.
@@ -85,11 +87,24 @@ def execute_with_role_or_fallback(
     (e.g. ollamafreeapi). Set this for tool-using agent roles (researcher,
     critic, planner, executor, devils_advocate) to avoid hallucinated
     tool-output prose.
+
+    Axis 3 (agent-freedom): ``tools`` + ``messages`` are optional. When a
+    ``tools`` array is supplied it is forwarded to the primary provider so
+    an agent's chosen tools actually reach the model, and the raw result
+    (including any ``tool_calls``) is returned so the caller can run a
+    tool-execution loop. ``messages`` carries a running tool-call
+    transcript (takes precedence over ``message`` for the primary call).
+    Both default to None → the legacy single-``message`` text-only
+    behaviour is fully preserved. The cheap-lane *fallback* is
+    intentionally text-only (no tools) — a failover degrades gracefully
+    rather than replaying tool state on a fresh provider.
     """
     primary_provider = (provider or "").strip()
     primary_model = (model or "").strip()
+    # Effective prompt for token-estimation / text-only fallback paths.
+    _prompt_for_estimate = message or ""
     if not primary_provider or not primary_model:
-        return execute_cheap_lane_via_pool(message=message)
+        return execute_cheap_lane_via_pool(message=_prompt_for_estimate)
 
     # Tool-support guard: skip primary if it can't actually use tools and
     # the caller needs them. Falls through to cheap_lane chain which has
@@ -105,7 +120,7 @@ def execute_with_role_or_fallback(
         except Exception:
             pass
         return execute_cheap_lane_via_pool(
-            message=message,
+            message=_prompt_for_estimate,
             skip_providers=frozenset(_PROVIDERS_WITHOUT_TOOL_SUPPORT),
         )
 
@@ -123,7 +138,7 @@ def execute_with_role_or_fallback(
             except Exception:
                 pass
             skip = frozenset(_PROVIDERS_WITHOUT_TOOL_SUPPORT) if requires_tools else frozenset()
-            return execute_cheap_lane_via_pool(message=message, skip_providers=skip)
+            return execute_cheap_lane_via_pool(message=_prompt_for_estimate, skip_providers=skip)
     except Exception:
         pass
 
@@ -156,7 +171,9 @@ def execute_with_role_or_fallback(
             model=primary_model,
             auth_profile=auth_profile,
             base_url=base_url,
-            message=message,
+            message=(None if messages is not None else message),
+            messages=messages,
+            tools=tools,
         )
     except Exception as exc:
         # Best-effort telemetry; never block on logging.
@@ -166,7 +183,7 @@ def execute_with_role_or_fallback(
                 model=primary_model,
                 status="failed",
                 latency_ms=int((datetime.now(UTC) - started_at).total_seconds() * 1000),
-                input_tokens=_estimate_tokens(message),
+                input_tokens=_estimate_tokens(_prompt_for_estimate),
                 output_tokens=0,
                 cost_usd=0.0,
             )
@@ -193,7 +210,7 @@ def execute_with_role_or_fallback(
         except Exception:
             pass
         skip = frozenset(_PROVIDERS_WITHOUT_TOOL_SUPPORT) if requires_tools else frozenset()
-        return execute_cheap_lane_via_pool(message=message, skip_providers=skip)
+        return execute_cheap_lane_via_pool(message=_prompt_for_estimate, skip_providers=skip)
 
     # Primary succeeded — clear any prior failure tracking.
     try:
@@ -211,7 +228,10 @@ def execute_with_role_or_fallback(
         "execution_mode": "role-primary-direct",
         "source": "role-config",
         "text": str(result.get("text") or ""),
-        "input_tokens": _estimate_tokens(message),
+        # Axis 3: surface tool_calls so a tool-execution loop can act on them.
+        # Empty list when no tools were requested → callers stay unaffected.
+        "tool_calls": list(result.get("tool_calls") or []),
+        "input_tokens": int(result.get("input_tokens") or _estimate_tokens(_prompt_for_estimate)),
         "output_tokens": output_tokens,
         "cost_usd": float(result.get("cost_usd") or 0.0),
     }

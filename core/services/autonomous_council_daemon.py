@@ -114,22 +114,118 @@ def _increment_daily_count() -> None:
     _daily_council_count += 1
 
 
+# ---------------------------------------------------------------------------
+# Durable counters — the in-memory cadence/daily counters reset on restart
+# (same durability trap central_timeseries had). Mirror them to runtime-state
+# kv so cadence/cooldown/daily-cap survive a restart. All self-safe.
+# ---------------------------------------------------------------------------
+
+_DURABLE_KEY = "autonomous_council_counters"
+_counters_restored = False
+
+
+def _persist_durable_counters() -> None:
+    try:
+        from core.runtime.db_core import set_runtime_state_value
+        set_runtime_state_value(_DURABLE_KEY, {
+            "last_council_at": _last_council_at.isoformat() if _last_council_at else "",
+            "last_concluded_at": _last_concluded_at.isoformat() if _last_concluded_at else "",
+            "daily_council_date": _daily_council_date,
+            "daily_council_count": _daily_council_count,
+        })
+    except Exception:
+        pass
+
+
+def _restore_durable_counters() -> None:
+    """Reload cadence/daily counters from durable kv once per process start."""
+    global _last_council_at, _last_concluded_at, _daily_council_date, _daily_council_count
+    global _counters_restored
+    if _counters_restored:
+        return
+    _counters_restored = True
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        data = get_runtime_state_value(_DURABLE_KEY, None)
+        if not isinstance(data, dict):
+            return
+
+        def _parse(v: str) -> datetime | None:
+            v = str(v or "").strip()
+            if not v:
+                return None
+            try:
+                dt = datetime.fromisoformat(v)
+            except (ValueError, TypeError):
+                return None
+            return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
+
+        # Only adopt durable values if in-memory is still pristine (None),
+        # so live counters within a running process always win.
+        if _last_council_at is None:
+            _last_council_at = _parse(data.get("last_council_at"))
+        if _last_concluded_at is None:
+            _last_concluded_at = _parse(data.get("last_concluded_at"))
+        stored_date = str(data.get("daily_council_date") or "")
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        if stored_date == today and not _daily_council_date:
+            _daily_council_date = stored_date
+            _daily_council_count = int(data.get("daily_council_count") or 0)
+    except Exception:
+        pass
+
+
+def _consult_convene_judge(
+    *,
+    surfaces: dict[str, Any] | None,
+    top_signals: list[str],
+    score: float,
+    score_override: float | None,
+) -> dict[str, Any] | None:
+    """Consult the Central reason-judge (AKSE 4). Returns its verdict dict, or None
+    when the judge is off / unavailable (→ legacy threshold path stays in charge).
+    Self-safe: never raises."""
+    try:
+        from core.services import central_convene_judge as judge
+        return judge.judge_convene(
+            surfaces=surfaces,
+            top_signals=list(top_signals or []),
+            score=float(score),
+            score_override=score_override,
+        )
+    except Exception:
+        return None
+
+
 def _call_llm(prompt: str) -> str:
     from core.services.non_visible_lane_execution import execute_cheap_lane
     result = execute_cheap_lane(message=prompt, task_kind="background")
     return str(result.get("text") or "").strip()
 
 
-def derive_topic(top_signals: list[str]) -> str:
-    """Ask cheap LLM to generate a council topic from the top triggering signals."""
+def derive_topic(top_signals: list[str], *, topic_hint: str = "") -> str:
+    """Ask cheap LLM to generate a council topic from the top triggering signals.
+
+    topic_hint: when the reason-judge (AKSE 4) supplies a dynamically-derived
+    subject hint, thread it in so the topic reflects what is actually moving now
+    rather than only the static signal names.
+    """
     signals_text = ", ".join(top_signals)
+    hint_line = (
+        f"Det der bevæger ham lige nu: {topic_hint.strip()}\n" if str(topic_hint or "").strip() else ""
+    )
     prompt = (
-        f"Jarvis' stærkeste interne signaler lige nu: {signals_text}\n\n"
+        f"Jarvis' stærkeste interne signaler lige nu: {signals_text}\n"
+        f"{hint_line}\n"
         "Formulér ét konkret spørgsmål som Jarvis' råd bør deliberere om. "
         "Maksimalt én sætning. Svar kun med spørgsmålet."
     )
     topic = _call_llm(prompt)
-    return topic or f"Hvad betyder {top_signals[0]} for mig lige nu?"
+    if topic:
+        return topic
+    if str(topic_hint or "").strip():
+        return f"Hvad betyder {topic_hint.strip()} for mig lige nu?"
+    return f"Hvad betyder {top_signals[0]} for mig lige nu?"
 
 
 def compose_members(score: float, top_signals: list[str]) -> list[str]:
@@ -166,6 +262,8 @@ def tick_autonomous_council_daemon(
     """
     global _last_council_at, _last_concluded_at
 
+    _restore_durable_counters()
+
     if not _cadence_gate_ok():
         return {"triggered": False, "reason": "cadence_gate"}
     if not _cooldown_gate_ok():
@@ -176,17 +274,41 @@ def tick_autonomous_council_daemon(
     if score_override is not None:
         score = score_override
         top_signals = ["autonomy_pressure", "open_loop"]
+        surfaces = None
     else:
         surfaces, top_signals = _read_signal_surfaces()
         score = compute_signal_score(surfaces)
 
-    if score < _THRESHOLD:
-        return {"triggered": False, "reason": "score_below_threshold", "score": score}
+    # AKSE 4 — grund-dommeren (bag flag, shadow-først, default off).
+    # off:    threshold-gaten nedenfor styrer (uændret adfærd).
+    # shadow: dommeren beregnes + observeres, men threshold-gaten styrer stadig.
+    # on:     dommeren afgør indkaldelse + udleder emne-hint/roller dynamisk.
+    verdict = _consult_convene_judge(
+        surfaces=surfaces,
+        top_signals=top_signals,
+        score=score,
+        score_override=score_override,
+    )
+
+    if verdict is not None and verdict.get("mode") == "on":
+        if not verdict.get("convene"):
+            return {"triggered": False, "reason": "convene_judge_no_reason",
+                    "judge_reason": str(verdict.get("reason") or "")}
+        # Judge decides — dynamic topic hint + roles override the static path.
+        judge_topic_hint = str(verdict.get("topic_hint") or "").strip()
+        judge_roles = [str(r) for r in (verdict.get("roles") or []) if str(r).strip()]
+        top_signals = list(verdict.get("top_signals") or top_signals)
+    else:
+        judge_topic_hint = ""
+        judge_roles = []
+        if score < _THRESHOLD:
+            return {"triggered": False, "reason": "score_below_threshold", "score": score}
 
     _last_council_at = datetime.now(UTC)
     _increment_daily_count()
-    topic = derive_topic(top_signals)
-    members = compose_members(score, top_signals)
+    _persist_durable_counters()
+    topic = derive_topic(top_signals, topic_hint=judge_topic_hint)
+    members = judge_roles or compose_members(score, top_signals)
 
     event_bus.publish("council.autonomous_triggered", {
         "score": score,
@@ -197,6 +319,7 @@ def tick_autonomous_council_daemon(
 
     result = _run_autonomous_council(topic=topic, members=members)
     _last_concluded_at = datetime.now(UTC)
+    _persist_durable_counters()
 
     event_bus.publish("council.autonomous_concluded", {
         "council_id": result.get("council_id", ""),
@@ -204,8 +327,17 @@ def tick_autonomous_council_daemon(
         "conclusion": result.get("conclusion", ""),
     })
 
+    initiative_id = ""
     if result.get("initiative"):
         event_bus.publish("council.initiative_proposal", result["initiative"])
+        # AKSE 2 — landing: bring the council conclusion into the initiative queue
+        # so it is actually actionable. Previously the proposal event had NO
+        # subscribers and push_initiative was never called → dead output.
+        # Self-safe: never topple the daemon on a landing failure.
+        initiative_id = _land_initiative(
+            initiative=result["initiative"],
+            council_id=str(result.get("council_id") or ""),
+        )
 
     return {
         "triggered": True,
@@ -213,7 +345,30 @@ def tick_autonomous_council_daemon(
         "topic": topic,
         "members": members,
         "council_id": result.get("council_id", ""),
+        "initiative_id": initiative_id,
     }
+
+
+def _land_initiative(*, initiative: Any, council_id: str) -> str:
+    """Land a council initiative into the initiative queue (AKSE 2).
+
+    The queue is the existing bridge inner_voice_daemon / process_watcher use to
+    move a detected initiative into heartbeat-actionable state. Councils never
+    called it before, so their conclusions evaporated. Self-safe: any failure
+    returns "" and never raises.
+    """
+    try:
+        focus = str(initiative or "").strip()
+        if not focus:
+            return ""
+        from core.services.initiative_queue import push_initiative
+        return push_initiative(
+            focus=focus[:200],
+            source="council",
+            source_id=str(council_id or ""),
+        )
+    except Exception:
+        return ""
 
 
 def _read_signal_surfaces() -> tuple[dict[str, Any], list[str]]:
@@ -266,6 +421,10 @@ def _run_autonomous_council(*, topic: str, members: list[str]) -> dict[str, Any]
     council_id = str(surface.get("council_id") or "")
     result = run_council_round(council_id)
     conclusion = str((result or {}).get("summary") or "")
+    # CONTRACT (agent_runtime.run_council_round): the conclusion now carries a
+    # short actionable `initiative` string when the council reached one. Absent
+    # or empty → no initiative (fine).
+    initiative = str((result or {}).get("initiative") or "").strip()
     # Persist conclusion to council memory (best-effort)
     try:
         from core.services.council_memory_service import append_council_conclusion
@@ -276,14 +435,20 @@ def _run_autonomous_council(*, topic: str, members: list[str]) -> dict[str, Any]
             signals=[],
             transcript="",
             conclusion=conclusion,
-            initiative=None,
+            initiative=(initiative or None),
         )
     except Exception:
         pass
-    return {"council_id": council_id, "conclusion": conclusion}
+    return {"council_id": council_id, "conclusion": conclusion, "initiative": initiative}
 
 
 def build_autonomous_council_surface() -> dict[str, Any]:
+    judge_mode = "off"
+    try:
+        from core.services import central_convene_judge as judge
+        judge_mode = judge.current_mode()
+    except Exception:
+        pass
     return {
         "last_council_at": _last_council_at.isoformat() if _last_council_at else "",
         "last_concluded_at": _last_concluded_at.isoformat() if _last_concluded_at else "",
@@ -293,4 +458,5 @@ def build_autonomous_council_surface() -> dict[str, Any]:
         "daily_count": _daily_council_count,
         "daily_limit": _MAX_LARGE_COUNCILS_PER_DAY,
         "daily_remaining": max(0, _MAX_LARGE_COUNCILS_PER_DAY - _daily_council_count),
+        "convene_judge_mode": judge_mode,
     }

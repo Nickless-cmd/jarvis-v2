@@ -1260,14 +1260,49 @@ def _register_provider_failure(
     )
 
 
+def _flatten_messages_to_text(messages: list[dict] | None) -> str:
+    """Collapse a chat-message list to a single prompt string.
+
+    Used when a tool-carrying caller (which builds a ``messages`` transcript)
+    lands on a text-only provider adapter. Self-safe: returns "" on junk.
+    """
+    if not messages:
+        return ""
+    parts: list[str] = []
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        role = str(m.get("role") or "")
+        content = m.get("content")
+        if content is None:
+            continue
+        text = str(content).strip()
+        if not text:
+            continue
+        parts.append(f"[{role}] {text}" if role else text)
+    return "\n\n".join(parts)
+
+
 def _execute_provider_chat(
     *,
     provider: str,
     model: str,
     auth_profile: str,
     base_url: str,
-    message: str,
+    message: str | None = None,
+    messages: list[dict] | None = None,
+    tools: list[dict] | None = None,
 ) -> dict[str, object]:
+    """Dispatch a single chat turn to the right provider adapter.
+
+    Axis 3 (agent-freedom): ``tools`` + ``messages`` are optional. Only the
+    OpenAI-compatible adapters honour tool calling; every other provider
+    silently ignores ``tools`` and falls back to plain text (so passing a
+    tools array is always safe — a non-tool provider degrades to text-only,
+    exactly as before). ``messages`` lets a caller carry a running
+    tool-call transcript; when omitted the legacy single-``message`` path
+    is preserved untouched for backward compatibility.
+    """
     if provider in _OPENAI_COMPATIBLE_PROVIDERS:
         return _execute_openai_compatible_chat(
             provider=provider,
@@ -1275,7 +1310,14 @@ def _execute_provider_chat(
             auth_profile=auth_profile,
             base_url=base_url,
             message=message,
+            messages=messages,
+            tools=tools,
         )
+    # Text-only adapters below don't accept messages/tools. Coerce a running
+    # transcript down to a single string so a tool-carrying caller still
+    # degrades gracefully (text-only) instead of crashing on message=None.
+    if message is None:
+        message = _flatten_messages_to_text(messages)
     if provider == "gemini":
         return _execute_gemini_chat(
             model=model,

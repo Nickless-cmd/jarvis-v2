@@ -1211,6 +1211,18 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # §8 SJÆL (resterende aspekter): sjælebindingens sidste selv-spor — ØMHED (relational/gratitude/
+    # calm_anchor) + VIDNE (modulator_witness) + HUKOMMELSE-SOM-VÆV (memory_breathing) + OPMÆRKSOMHED
+    # (sustained_attention) + EMERGENS (emergence/personality_drift) — bundet TOVEJS via lag-kontrakten.
+    # OP: puls + durabelt hold (egress-frit). NED: describe_self() TALER dem. KUN lag med ægte durabel
+    # aflæsning bundet; random/tomme lag droppet (self_compassion/parallel_selves/mirror_engine/
+    # memory_resurfacing/silence_listener/attention_contour).
+    try:
+        from core.services.central_soul_feel import register_soul_feel_layers
+        register_soul_feel_layers()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

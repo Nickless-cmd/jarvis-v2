@@ -254,6 +254,10 @@ def _notify_owner_security(title: str, message: str) -> None:
 # 30. min. Flag ÉN gang når processen er BEKRÆFTET død; ryd ved genoplivning. Nul falsk-alarm.
 _SYSLOG_QUIET_S = 600.0          # ingen pakke i 10 min = "ikke aktivt flydende" → mistænkeligt
 _SYSLOGD_CHECK_EVERY = 10        # poll_syslog ~hvert 3. min → ~30 min stille før aktivt proces-tjek
+# AUTO-HEAL (Bjørn samtykke 3. jul): syslogd er FLAKY (døde 1.3 døgn + igen efter 611 pakker).
+# Når vagten ser processen bekræftet-død, GENSTARTER den selv syslogd via samme root-API i
+# stedet for kun at alarmere. Reversibelt: sæt False for at falde tilbage til kun-alarm.
+_SYSLOGD_AUTOHEAL = True
 _syslogd_check_counter = 0
 _syslog_stale_flagged = False
 
@@ -279,6 +283,23 @@ def _pfsense_syslogd_running() -> bool | None:
         return int(str(out).strip().splitlines()[0]) > 0
     except Exception:
         return None
+
+
+def _pfsense_restart_syslogd() -> bool:
+    """AUTO-HEAL: genstart syslogd på pfSense via REST-API command_prompt (root) og bekræft
+    at processen lever bagefter. True=genoplivet, False=fejlede. Self-safe. Firewall-MUTATION
+    (kun logging-daemon, ingen regel-ændring) — bag _SYSLOGD_AUTOHEAL-flag + Bjørns samtykke."""
+    try:
+        from core.runtime.secrets import read_runtime_key
+        key = read_runtime_key("pfsense_api_key")
+    except Exception:
+        key = None
+    if not key:
+        return False
+    _http_json("https://10.0.0.1/api/v2/diagnostics/command_prompt",
+               headers={"X-API-Key": key}, method="POST", timeout=25.0,
+               body={"command": "/usr/local/sbin/pfSsh.php playback svc restart syslogd"})
+    return _pfsense_syslogd_running() is True
 
 
 def poll_syslog() -> dict[str, Any]:
@@ -320,19 +341,27 @@ def poll_syslog() -> dict[str, Any]:
                 alive = _pfsense_syslogd_running()
                 if alive is False and not _syslog_stale_flagged:
                     _syslog_stale_flagged = True
+                    # AUTO-HEAL: genstart syslogd selv (flaky) i stedet for kun at alarmere.
+                    healed = _pfsense_restart_syslogd() if _SYSLOGD_AUTOHEAL else False
+                    if healed:
+                        _syslog_stale_flagged = False  # genoplivet → nulstil vagt
+                        msg = ("pfSense syslogd var død (10.0.0.1) — AUTO-HEALED (genstartet via "
+                               "API). Firewall-logning genoptaget. syslogd er flaky; overvåges.")
+                        sev, title = "warning", "🔧 pfSense syslogd genstartet (auto-heal)"
+                        note = "syslogd var død på pfSense — jeg genstartede den automatisk. Logning kører igen."
+                    else:
+                        msg = ("pfSense syslogd-PROCESSEN er død (10.0.0.1) — firewall-logning stoppet. "
+                               + ("AUTO-HEAL FEJLEDE — kræver manuel indgriben." if _SYSLOGD_AUTOHEAL
+                                  else "Auto-heal slået fra. Fix: API command_prompt → pfSsh.php playback svc restart syslogd."))
+                        sev, title = "error", "⚠️ pfSense syslogd død"
+                        note = "syslogd er død på pfSense og kunne ikke auto-genstartes — firewall-logning stoppet."
                     try:
                         from core.runtime.db_central_incidents import record_central_incident
-                        record_central_incident(
-                            cluster="infra", nerve="pfsense_syslog", kind="syslogd_dead",
-                            severity="error",
-                            message=("pfSense syslogd-PROCESSEN er død (10.0.0.1) — firewall-logning "
-                                     "stoppet lokalt+remote. Fix: REST API command_prompt → "
-                                     "pfSsh.php playback svc restart syslogd."))
+                        record_central_incident(cluster="infra", nerve="pfsense_syslog",
+                                                kind="syslogd_dead", severity=sev, message=msg)
                     except Exception:
                         pass
-                    _notify_owner_security(
-                        "⚠️ pfSense syslogd død",
-                        "syslogd-processen kører ikke på pfSense — firewall-logning stoppet.")
+                    _notify_owner_security(title, note)
                 elif alive is True and _syslog_stale_flagged:
                     _syslog_stale_flagged = False  # genoplivet → ryd
         for d in dets:

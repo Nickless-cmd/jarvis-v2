@@ -8,6 +8,7 @@ def test_dispatch_run_done_routes_when_enabled(monkeypatch):
     import core.services.run_event_log as rel
     monkeypatch.setattr(rel, "was_consumed_or_active", lambda rid: False)
     monkeypatch.setattr(rel, "session_for_run", lambda rid: "s1")
+    monkeypatch.setattr(pd, "_last_assistant_preview", lambda sid: "et svar")
     pd._dispatch_run_done("run-1")
     assert calls["route"] == [("bjorn", "answer_ready")]
 

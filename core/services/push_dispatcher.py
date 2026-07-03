@@ -45,17 +45,47 @@ def _route_or_blast(user_id: str, data: dict, kind: str) -> None:
     _push_to_user(user_id, data)
 
 
+def _last_assistant_preview(session_id: str, *, width: int = 160) -> str:
+    """Sidste assistant-beskeds tekst (trunkeret) til notifikations-preview. "" hvis ingen.
+    Bruges så pushet VISER hvad Jarvis sagde — ikke bare et tomt 'Jarvis har svaret'."""
+    try:
+        if not (session_id or "").strip():
+            return ""
+        from core.services.chat_sessions import recent_chat_session_messages
+        msgs = recent_chat_session_messages(session_id, limit=6) or []
+        for m in reversed(msgs):  # nyeste først → find seneste assistant-svar
+            if str(m.get("role") or "") == "assistant":
+                txt = " ".join(str(m.get("content") or "").split()).strip()
+                if txt:
+                    return txt[:width] + ("…" if len(txt) > width else "")
+        return ""
+    except Exception:
+        return ""
+
+
 def _dispatch_run_done(run_id: str) -> None:
     from core.services import run_event_log as rel
     if rel.was_consumed_or_active(run_id):
         logger.warning("push: answer_ready UNDERTRYKT (run %s set live)", run_id[:12])
         return  # nogen saa det live
-    logger.warning("push: answer_ready DISPATCH for run %s", run_id[:12])
     sid = rel.session_for_run(run_id)
     owner = _owner_of_run(run_id)
     if not owner:
         return
-    _route_or_blast(owner, {"kind": "answer_ready", "session_id": sid or "", "run_id": run_id}, "answer_ready")
+    # Hent det FAKTISKE svar så notifikationen VISER hvad Jarvis sagde (Bjørn 3. jul:
+    # "der står bar jarvis har svaret" + tap viser intet). SPRING pushet over hvis runnet
+    # ikke producerede et synligt assistant-svar (rent autonomt internt arbejde) → ingen
+    # tomme spam-notifikationer. Med title+preview bygger fcm_gateway en RIGTIG synlig
+    # notifikation (ikke en data-only push app'en renderer som generisk "Jarvis har svaret").
+    preview = _last_assistant_preview(sid)
+    if not preview:
+        logger.warning("push: answer_ready SPRUNGET OVER (run %s uden svar-tekst)", run_id[:12])
+        return
+    logger.warning("push: answer_ready DISPATCH for run %s", run_id[:12])
+    _route_or_blast(owner, {
+        "kind": "answer_ready", "session_id": sid or "", "run_id": run_id,
+        "title": "Jarvis", "preview": preview,
+    }, "answer_ready")
 
 
 def on_run_done(run_id: str) -> None:

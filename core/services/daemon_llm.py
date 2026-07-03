@@ -277,6 +277,20 @@ def _daemon_llm_call_impl(
             _note_call(daemon_name, hit=True)
             return cached
 
+    # Central FORM-ÆNDRINGS-DOMMER (§6.1c, Bjørn 3. jul): kald kun modellen når prompten ændrer
+    # FORM. Eksakt-cachen missede pga. volatil kontekst (tid/tal); form-nøglen ignorerer det.
+    # shadow måler gentagelses-raten, on genbruger. Self-safe → tvivl = kald som før. Respekterer
+    # ttl=0 (daemons der bevidst fravalgte cache, fx session_summary).
+    if _get_cache_ttl(daemon_name) > 0:
+        try:
+            from core.services import central_form_judge as _cfj
+            _fj = _cfj.judge(daemon_name or "daemon", prompt)
+            if _fj.get("reuse") and _fj.get("held") is not None:
+                _note_call(daemon_name, hit=True)   # uændret form = genbrug (som cache-hit)
+                return str(_fj["held"])[:max_len]
+        except Exception:
+            pass
+
     # Cache-miss (eller ingen cache) → vi kalder LLM'en nu.
     _note_call(daemon_name, hit=False)
     text = ""
@@ -353,6 +367,14 @@ def _daemon_llm_call_impl(
     # --- Layer A: store in cache (only successful responses) ---
     if cache_key and text:
         _store_cache(cache_key, final, daemon_name)
+    # Central form-dommer: gem resultatet under dets FORM-nøgle, så en uændret form kan genbruges
+    # (også i shadow → shadow måler korrekt). Kun daemons der bruger cache (ttl>0).
+    if text and _get_cache_ttl(daemon_name) > 0:
+        try:
+            from core.services import central_form_judge as _cfj
+            _cfj.note_result(daemon_name or "daemon", prompt, final)
+        except Exception:
+            pass
 
     # 4. Log output for debugging
     if daemon_name:

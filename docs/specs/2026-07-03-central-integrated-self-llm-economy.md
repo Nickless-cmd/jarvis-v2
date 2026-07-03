@@ -348,3 +348,17 @@ De 4 ægte punkter bygget, testet (54 grønne), deployet til container 10.0.0.39
 **Flag der venter på bevidst aktivering (shadow→on):** central_gut_consumer_mode, central_coverage_action_mode,
 layer_mode:<navn> — PLUS de to fra §9/§10 (central_inner_salience_gate=shadow, central_self_prompt_enabled=on).
 NÆSTE: lad shadow-flagene måle et døgn → læs tallene (den samtale vi udskød) → flip bevidst.
+
+## 6.1c FORM-ÆNDRINGS-DOMMEREN (Bjørn 3. jul: "kun når data ændrer form")
+
+Bjørn: "hele hans liv genopbygges på hver prompt... Centralen holder alt til at vurdere når der skal
+laves et par LLM-kald — kun når data ændrer FORM, ikke ved gentagelse. Det kunne klares i Centralen."
+
+`central_form_judge.py` — ÉN central dommer som alle LLM-brugende lag spørger FØR de bruger et kald:
+"har min input ændret FORM siden sidst?" FORM ≠ eksakt tekst: form-nøglen STRIPPER volatil kontekst
+(tal/timestamps/tider) → to prompts der kun adskiller sig i volatile detaljer får samme nøgle → gentagelse
+fanges. Løser præcis hvorfor daemon_llm's eksakt-SHA256-cache missede (§2). Flag `central_form_judge_mode`
+off|shadow|on (default off): shadow måler gentagelses-raten (cost/form_judge-serien = would-reuse-rate),
+on genbruger holdt resultat. Self-safe. WIRED i daemon_llm-choke-pointet (69 daemons), respekterer ttl=0.
+Genbrugelig af lag-kontrakten (#6) og alle andre LLM-lag. Tests: 8 grønne. LEVERET (shadow-klar).
+Dette er den ægte $-lever (Bölge 1) — ikke cache-warmeren. Tallene (would-reuse-rate) siger hvornår→on.

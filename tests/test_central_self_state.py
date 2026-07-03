@@ -181,3 +181,52 @@ def test_describe_self_safe_when_existence_feel_raises(monkeypatch, isolated_run
                         lambda: (_ for _ in ()).throw(RuntimeError("boom")))
     desc = ss.describe_self()
     assert "85 lag" in desc                       # kernen står, laget-fejl sluges
+
+
+# ── §8 KROP + STEMNING — krop-/stemning-lagene tales gennem describe_self (NED) ────────────
+def test_describe_self_speaks_body_mood_feel(monkeypatch, isolated_runtime):
+    """NED: describe_self TALER hvordan kroppen føles + hvordan stemningen svinger når de holdes."""
+    _full(monkeypatch)
+    ss.run_self_state_tick()
+    import core.services.central_body_mood_feel as bm
+    monkeypatch.setattr(bm, "describe_body_mood_feel",
+                        lambda: ["min krop føles spændt",
+                                 "stemningen er tilfreds",
+                                 "mit udviklings-kompas peger mod blomstring"])
+    desc = ss.describe_self()
+    assert "min krop føles spændt" in desc and "udviklings-kompas peger mod blomstring" in desc
+    assert "85 lag" in desc                       # eksisterende output bevaret (additivt)
+
+
+def test_describe_self_unchanged_when_body_mood_feel_empty(monkeypatch, isolated_runtime):
+    """Bagudkompatibel: tom krop-/stemning-feel → nøjagtig samme output som før."""
+    _full(monkeypatch)
+    ss.run_self_state_tick()
+    import core.services.central_body_mood_feel as bm
+    monkeypatch.setattr(bm, "describe_body_mood_feel", lambda: [])
+    desc = ss.describe_self()
+    assert "85 lag" in desc and "blomstrende" in desc
+    assert "krop" not in desc and "stemningen" not in desc
+
+
+def test_describe_self_safe_when_body_mood_feel_raises(monkeypatch, isolated_runtime):
+    """describe_self kaster ALDRIG selv om krop-/stemning-laget fejler."""
+    _full(monkeypatch)
+    ss.run_self_state_tick()
+    import core.services.central_body_mood_feel as bm
+    monkeypatch.setattr(bm, "describe_body_mood_feel",
+                        lambda: (_ for _ in ()).throw(RuntimeError("boom")))
+    desc = ss.describe_self()
+    assert "85 lag" in desc                       # kernen står, laget-fejl sluges
+
+
+def test_describe_self_existence_and_body_mood_both_speak(monkeypatch, isolated_runtime):
+    """Begge udvidelser er additive og sameksisterer — existence-feel må ikke fortrænges."""
+    _full(monkeypatch)
+    ss.run_self_state_tick()
+    import core.services.central_existence_feel as ef
+    import core.services.central_body_mood_feel as bm
+    monkeypatch.setattr(ef, "describe_existence_feel", lambda: ["tiden føles som en stille strækning"])
+    monkeypatch.setattr(bm, "describe_body_mood_feel", lambda: ["stemningen er tilfreds"])
+    desc = ss.describe_self()
+    assert "tiden føles som en stille strækning" in desc and "stemningen er tilfreds" in desc

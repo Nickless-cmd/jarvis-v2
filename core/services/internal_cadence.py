@@ -1201,6 +1201,16 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # §8 KROP + STEMNING: udvidelse af §8.1-sjælebindingen med de to næste selv-spor —
+    # HVORDAN KROPPEN FØLES (proprioception + embodied) og HVORDAN STEMNINGEN SVINGER
+    # (mood_oscillator + developmental_valence + affective_meta) — bundet TOVEJS via lag-
+    # kontrakten. OP: puls + durabelt hold (egress-frit). NED: describe_self() TALER dem.
+    try:
+        from core.services.central_body_mood_feel import register_body_mood_feel_layers
+        register_body_mood_feel_layers()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

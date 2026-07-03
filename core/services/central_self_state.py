@@ -174,6 +174,13 @@ def describe_self() -> str:
         parts.extend(describe_existence_feel())
     except Exception:
         pass
+    # §8 KROP + STEMNING (NED): hvordan kroppen føles + hvordan stemningen svinger — tales nøgternt
+    # når de holdte aflæsninger er meningsfulde. Additivt + guarded (tom → intet). Self-safe.
+    try:
+        from core.services.central_body_mood_feel import describe_body_mood_feel
+        parts.extend(describe_body_mood_feel())
+    except Exception:
+        pass
     return ". ".join(parts) + "." if parts else "Jeg er ved at samle mig selv."
 
 

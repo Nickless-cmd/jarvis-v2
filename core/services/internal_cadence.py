@@ -143,10 +143,23 @@ def _run_producer_bounded(spec, *, trigger: str, last_visible_at: str, timeout_s
     box: dict[str, object] = {}
 
     def _target() -> None:
+        # Tag hvilken producer der kører NU, så cheap-lane-kald i run_fn (samme tråd) kan
+        # attribueres til den (producer_novelty, observe-only). Self-safe.
+        try:
+            from core.services import producer_novelty as _pn
+            _pn.set_producer(spec.name)
+        except Exception:
+            pass
         try:
             box["r"] = spec.run_fn(trigger=trigger, last_visible_at=last_visible_at)
         except BaseException as exc:  # noqa: BLE001 — videregiv til kalderen
             box["e"] = exc
+        finally:
+            try:
+                from core.services import producer_novelty as _pn2
+                _pn2.clear_producer()
+            except Exception:
+                pass
 
     t = threading.Thread(target=_target, name=f"cadence-prod-{spec.name}", daemon=True)
     t.start()

@@ -729,6 +729,13 @@ def execute_cheap_lane_via_pool(
         cache_hit_tokens=_cache_hit,
         cache_miss_tokens=_cache_miss,
     )
+    # Observe-only: mål nyhed af DENNE producers output (attribution via cadence-thread-local
+    # ellers task_kind) → grundlag for saliens-gating af indre liv. Ren tekst-lighed, self-safe.
+    try:
+        from core.services import producer_novelty as _pn
+        _pn.record_output(_pn.get_producer() or task_kind, str(result.get("text") or ""))
+    except Exception:
+        pass
     event_bus.publish(
         "runtime.cheap_lane_provider_completed",
         {

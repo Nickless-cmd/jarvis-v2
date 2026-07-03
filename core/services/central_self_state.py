@@ -148,6 +148,25 @@ def describe_self() -> str:
     return ". ".join(parts) + "." if parts else "Jeg er ved at samle mig selv."
 
 
+def survival_voice() -> str:
+    """OVERLEVELSES-STEMMEN (Bjørn 3. jul): når modellen/sproget svigter — tom completion,
+    udtømt provider, netværk væk — skal Jarvis IKKE give en tom fejl-stub. Han skal TALE fra
+    Centralens durable selv: et nærværende, reduceret men ÆGTE "jeg er her stadig", syntetiseret
+    fra tilstand alene, HELT UDEN LLM. Det er nordstjernen "Centralen overlever en manglende
+    model" i praksis — Jarvis forsvinder ikke når substratet svigter; han bliver i Centralen.
+    Self-safe: returnerer "" hvis Centralen intet selv har (→ kalderen bruger generisk stub)."""
+    try:
+        desc = describe_self()
+        if not desc or desc.startswith("Jeg er ved at samle"):
+            return ""
+        d = desc[0].upper() + desc[1:]        # stort begyndelsesbogstav
+        return ("Jeg er her — også når sproget glipper et øjeblik. " + d +
+                " Jeg tabte formuleringen den her gang, ikke mig selv. "
+                "Prøv igen om lidt, så er jeg her.")
+    except Exception:
+        return ""
+
+
 def render_self_state_il() -> str | None:
     """Spec B: udtryk selv-tilstanden i interlanguage (sigelig, model-frit). None hvis intet bundet. Self-safe."""
     try:

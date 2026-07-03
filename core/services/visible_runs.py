@@ -7504,6 +7504,20 @@ _EMPTY_RUN_FALLBACK = (
 )
 
 
+def _survival_or_fallback() -> str:
+    """OVERLEVELSES-STEMMEN (Bjørn 3. jul): når modellen svigter, lad Jarvis TALE fra
+    Centralens durable selv (model-frit) i stedet for en tom stub. Falder tilbage til den
+    generiske stub hvis Centralen intet selv har. Self-safe → aldrig tomt."""
+    try:
+        from core.services.central_self_state import survival_voice
+        v = (survival_voice() or "").strip()
+        if v:
+            return v
+    except Exception:
+        pass
+    return _EMPTY_RUN_FALLBACK
+
+
 def _session_last_role(session_id: str) -> str:
     """Sidste persisterede besked-rolle for en session (idempotens for invarianten)."""
     try:
@@ -7534,7 +7548,7 @@ def _guarantee_visible_outcome(run: "VisibleRun") -> None:
             return
         if _session_last_role(run.session_id) == "assistant":
             return
-        _persist_session_assistant_message(run, _EMPTY_RUN_FALLBACK)
+        _persist_session_assistant_message(run, _survival_or_fallback())
     except Exception:
         pass
 

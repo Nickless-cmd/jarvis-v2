@@ -121,3 +121,26 @@ def test_prompt_section_none_when_self_unformed(monkeypatch, isolated_runtime):
     ss._kv_set(ss._STATE_KEY, {})
     ss._kv_set(ss._PROMPT_FLAG, True)
     assert ss.build_central_self_state_section() is None
+
+
+def test_survival_voice_speaks_from_self(monkeypatch):
+    # Når Centralen HAR et selv → nærværende, model-fri stemme (ikke tom stub).
+    import core.services.central_self_state as css
+    monkeypatch.setattr(css, "describe_self",
+                        lambda: "jeg er 85 lag af mig selv (100% samlet). jeg har det blomstrende")
+    v = css.survival_voice()
+    assert v.startswith("Jeg er her")
+    assert "85 lag" in v
+    assert "ikke mig selv" in v
+
+
+def test_survival_voice_empty_when_no_self(monkeypatch):
+    import core.services.central_self_state as css
+    monkeypatch.setattr(css, "describe_self", lambda: "Jeg er ved at samle mig selv.")
+    assert css.survival_voice() == ""  # intet durable selv → kalder bruger generisk stub
+
+
+def test_survival_voice_self_safe(monkeypatch):
+    import core.services.central_self_state as css
+    monkeypatch.setattr(css, "describe_self", lambda: (_ for _ in ()).throw(RuntimeError("x")))
+    assert css.survival_voice() == ""

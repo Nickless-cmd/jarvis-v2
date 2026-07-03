@@ -1061,6 +1061,13 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # §11 #5: strukturel blindhed → HANDLING (shadow-først, flag central_coverage_action_mode default off).
+    try:
+        from core.services.central_coverage_action import register_coverage_action_producer
+        register_coverage_action_producer()
+    except Exception:
+        pass
+
     # Fase 1d: causal-grafens tier-fordeling + precision (broen signal→hypotese) → tidsserie.
     try:
         from core.services.central_causal_quality import register_causal_quality_producer

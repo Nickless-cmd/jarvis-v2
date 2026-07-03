@@ -5944,6 +5944,7 @@ def _execute_simple_tool_calls(
         #    truth. COGNITIVE fail-open (gate-fejl → allow, paritet med gammelt inline except).
         _veto_blocked = False
         _veto_reason = None
+        _vv = None  # §11 Trin 1: bær verdiktet ud af try'en til arbitrage-shadow
         try:
             from core.services.central_core import central as _central_veto
             from core.services.gate_commit import veto_gate as _veto_gate_fn
@@ -5964,6 +5965,7 @@ def _execute_simple_tool_calls(
         _decision_blocked = False
         _decision_reason = None
         _decision_soft_warn = None  # YELLOW: blød grad — tool kører, advarsel surfaces
+        _cv = None  # §11 Trin 1: bær verdiktet ud af try'en til arbitrage-shadow
         # ── Commit-cluster GENNEM Den Intelligente Central (ÆGTE migration 2026-06-22) ──
         # decision_gate's enforcement ruttes nu GENNEM central().decide → ét eksekverings-
         # pas med boundary-capture (cognitiv→fail-open ved fejl) + circuit-breaker +
@@ -5988,6 +5990,16 @@ def _execute_simple_tool_calls(
                 _decision_soft_warn = _cv.reason  # blød grad → kør, men surfacer advarsel
         except Exception:
             pass  # central self-safe; gate-fejl → allow (fail-open)
+
+        # §11 Trin 1 (SHADOW, 0-risiko): observér den DEKLAREREDE arbitrage af de to commit-verdicts
+        # (veto + decision_gate) vs. det faktisk håndhævede sekventielle udfald. Ændrer INTET —
+        # central_arbitration var ellers uwired. Måler divergens FØR evt. Trin 2 håndhæver.
+        try:
+            from core.services.central_arbitration import observe_shadow as _arb_shadow
+            _arb_shadow([_vv, _cv], enforced_blocked=bool(_veto_blocked or _decision_blocked),
+                        run_id=run_id, where="pre_exec")
+        except Exception:
+            pass
 
         if _veto_blocked or _decision_blocked:
             _gate_reason = _veto_reason or _decision_reason or "Ukendt gate-blokering"

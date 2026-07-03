@@ -88,3 +88,32 @@ def test_explain_returns_winner_and_considered():
     e = explain([_v("loop", Decision.GREEN), _v("auth", Decision.RED, GateClass.SECURITY)])
     assert e["winner"]["cluster"] == "auth"
     assert len(e["considered"]) == 2
+
+
+# ── §11 Trin 1: observe_shadow (0-risiko måling, egress-frit) ──────────────
+def test_observe_shadow_agrees_when_arbitration_matches_enforced(monkeypatch):
+    import core.services.central_arbitration as ca
+    captured = {}
+    monkeypatch.setattr("core.services.central_private_observe.record_private",
+                        lambda cluster, nerve, **kw: captured.update({"nerve": nerve, **kw}) or True)
+    ca.observe_shadow([_v("commit", Decision.RED), _v("commit", Decision.GREEN)],
+                      enforced_blocked=True, where="pre_exec")
+    assert captured["nerve"] == "arbitration_shadow"
+    assert captured["meta"]["agree"] is True
+    assert captured["meta"]["arbitrated"] == Decision.RED.value
+
+
+def test_observe_shadow_flags_divergence(monkeypatch):
+    import core.services.central_arbitration as ca
+    captured = {}
+    monkeypatch.setattr("core.services.central_private_observe.record_private",
+                        lambda cluster, nerve, **kw: captured.update({**kw}) or True)
+    ca.observe_shadow([_v("commit", Decision.GREEN)], enforced_blocked=True)
+    assert captured["meta"]["agree"] is False
+    assert captured["value"] == 0.0
+
+
+def test_observe_shadow_self_safe_on_empty_and_none():
+    from core.services.central_arbitration import observe_shadow
+    observe_shadow([], enforced_blocked=False)
+    observe_shadow([None, None], enforced_blocked=True)  # ingen fejl

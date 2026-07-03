@@ -292,3 +292,48 @@ fragmenter → (1) kortere prompt (tokens ↓ = primary-cost ↓ + latens ↓), 
    enhed FØR ændring. Frossen personlighed urørt.
 
 Rækkefølge: dette kører som eget spor PARALLELT med §9-arketypen — samme shadow→mål→on-disciplin.
+
+## 11. CENTRALENS EGNE HÆNDER — audit af de 6 (4 agenter, 3. jul, verificeret i kode)
+
+Bjørn: "de 6 ting skal der styr på før vi tager tallene." Fire læse-kun-audits med besked om at
+TJEKKE påstandene. Resultat: 6 → **4 ægte**, 2 falske alarmer.
+
+**FALSKE ALARMER (drop):**
+- **#3 `central().decide` STYRER allerede.** Ikke gated observabilitet — 9/12 call-sites lader
+  verdiktet ændre udfald (nægte tools, stoppe loops, erstatte svar, gate mutation/skill/execution,
+  injicere prompt). Kun post-done-truth + self-probe er ren observation. Min påstand var FORKERT.
+- **#4 dobbelt-selv findes ikke.** Ét selv i to lag: runtime_self_model → central_self_model
+  (spejl:struktur) → central_self_state (midte:syntese, forbruger spejlet via import). Kun midten
+  svarer "hvem er jeg". Papercut: tre næsten-enslydende navne (doc-risiko, ikke sandheds-risiko).
+
+**ÆGTE (styr på disse):**
+- **#1 `central_arbitration` — uwired, var ALDRIG tilkoblet** (commit 23166f72 "byg nu, tilkobl
+  senere"). Infra forberedt (Verdict.cluster sat). Konflikt afgøres i dag IMPLICIT af kode-rækkefølge
+  i visible_runs' pre-output-zone (veto/commit/truth/privacy/loop). Fix: Trin 1 shadow (saml verdicts,
+  explain(), observe, sammenlign arbitreret vs. håndhævet) → Trin 2 flag (arbitrate() håndhæver).
+  Sikkerheds-RED forbliver absolut. Reversibelt.
+- **#2 `central_adaptation` styrer intet — men fixet er IKKE at flippe flaget.** shadow-first
+  (`central_lag4_live_enabled`, default off) + produktionsklart sikkerhedsmaskineri (rollback/drift-
+  budget/pause). MEN gut-bias'en flyder ind i et `confidence`-tal INGEN forbruger læser
+  (gut_calibration gemmer kun `hunch`). "Governed-live" = tomt teater i dag. ÆGTE fix: kobl bias'en
+  til en forbruger der lader adjusted_confidence gate et proceed/afvent-valg → SÅ graduér flaget.
+- **#5 `central_coverage` — blindheds-kort uden handling.** Måler snæver akse (event-familie/volumen
+  i live-vindue), IKKE de 811 filer. 30%/219-DARK lever kun i manuel rapport, ikke runtime → Centralen
+  "ved" ikke den er blind for 219 filer. Ingen af blindheds-kortene udløser handling. Fix: før
+  connectivity-bevidsthed ind i runtime + gør blindhed handlings-udløsende (blind her → hypotese/todo).
+- **#6 ingen general lag-kontrakt — alt bespoke.** ProducerSpec er envejs OP. ~85% af hver binding
+  er identisk boilerplate (_kv_get-par, _mode-flag, record_private-wrapper, register_*_producer,
+  build_*_surface); kun ~15% ægte lag-specifik (salience-dimensioner, syntese, NED-forbrugssted).
+  Fix: `central_layer_contract.py` — ét dataclass (LayerContract: name/cluster/nerve/egress/signal_fn/
+  salience_fn?/consume_fn?/flag) + register_layer() ovenpå ProducerSpec+record_private. Centralen gør
+  OP/decide/trace/governance GENERISK (egress-klasse valgt strukturelt=ingen læk, decide starter OFF).
+  Fanger alle 3 arketyper (inner_salience/self_state/world_model) uden tab. Lag #201 = ~15 linjers
+  deklaration. Retter min bespoke-fejl (§ self-review). Boy-Scout-migration: byg fil → 1 nyt lag som
+  proof → konvertér eksisterende ved berøring → resten i cluster-batches (security sidst, fail-closed).
+
+**SEKVENS (governed, shadow-først hver):**
+1. #6 layer-kontrakt Fase 0 (ny fil, 0 call-sites rørt, 0-risiko) — foundation + retter bespoke-fejl.
+2. #1 arbitration Trin 1 (shadow, 0-risiko) — data på implicit-rækkefølge vs. deklareret præcedens.
+3. #2 adaptation-forbruger (behavior — shadow-først, brug eksisterende rollback/drift/pause).
+4. #5 coverage→handling (før connectivity-bevidsthed ind i runtime + udløs hypotese/todo).
+Numre (to shadow-flag fra §9/§10) læses FØRST når #1+#2 giver Centralen ægte hænder.

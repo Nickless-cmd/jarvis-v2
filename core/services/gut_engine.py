@@ -67,6 +67,95 @@ def derive_gut_signal(
     }
 
 
+# ── Gut-gate: den FØRSTE ægte forbruger af adjusted_confidence (m. Centralens bias) ──
+#
+# Baggrund (audit 2026-07-03): derive_gut_signal() beregnede en `confidence`
+# (hunch_confidence * calibration + central_gut_proceed_bias), men INGEN læste tallet —
+# gut_calibration._on_started gemte kun `hunch`-strengen. Dermed var Centralens adaptive
+# læring (central_adaptation.get_gut_bias) uden ægte forbruger: "governed-live" var tomt
+# teater. gut_gate() lukker det hul minimalt og ærligt.
+#
+# Reversibelt runtime-flag `central_gut_consumer_mode` (default "off"):
+#   off    = nuværende adfærd — confidence ignoreres fuldstændig (returnerer altid True,
+#            observerer intet). NUL adfærdsændring. Dette er default.
+#   shadow = beregn HVAD gaten VILLE afgøre + observér egress-frit (record_private),
+#            men returnér stadig True (handl ikke). Til dataindsamling før live.
+#   on      = lad confidence faktisk gate: returnér confidence >= threshold.
+#
+# Tærsklen læses fra `central_gut_gate_threshold` (default 0.30) — bevidst lav, så kun
+# meget svage hunches (fx caution ved lav rå-confidence, eller bias trukket kraftigt ned)
+# gater. Bevar altid hunch-stien uændret; dette er et SEPARAT confidence-lag.
+
+_CONSUMER_MODE_KEY = "central_gut_consumer_mode"     # off | shadow | on (default off)
+_GATE_THRESHOLD_KEY = "central_gut_gate_threshold"   # float (default 0.30)
+_DEFAULT_THRESHOLD = 0.30
+
+
+def _consumer_mode() -> str:
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        v = get_runtime_state_value(_CONSUMER_MODE_KEY, "off")
+        mode = str(v or "off").strip().lower()
+        return mode if mode in ("off", "shadow", "on") else "off"
+    except Exception:
+        return "off"
+
+
+def _gate_threshold() -> float:
+    try:
+        from core.runtime.db_core import get_runtime_state_value
+        return float(get_runtime_state_value(_GATE_THRESHOLD_KEY, _DEFAULT_THRESHOLD))
+    except Exception:
+        return _DEFAULT_THRESHOLD
+
+
+def gut_gate(proceed_confidence: float, *, context: str = "") -> bool:
+    """Beslut om et proceed-valg må fortsætte, gated på gut-confidence.
+
+    Dette er det ægte forbrugs-punkt for `adjusted_confidence` (som bærer Centralens
+    lærte bias). Self-safe: kaster ALDRIG, fejler ALTID open (returnér True) — en fejl
+    her må aldrig blokere et autonomt run.
+
+    off    → True (confidence ignoreres, dagens adfærd)
+    shadow → beregn would-gate + observér, men returnér True (handl ikke)
+    on      → returnér (confidence >= threshold)
+    """
+    try:
+        conf = float(proceed_confidence)
+    except Exception:
+        return True  # kan ikke tolke → fail open
+
+    mode = _consumer_mode()
+    if mode == "off":
+        return True
+
+    threshold = _gate_threshold()
+    would_pass = conf >= threshold
+
+    # Egress-fri observation (shadow OG on) — kun skalarer, aldrig egress.
+    try:
+        from core.services.central_private_observe import record_private
+        record_private(
+            "cognition", "gut_gate",
+            value=float(conf),
+            meta={
+                "mode": mode,
+                "confidence": round(conf, 3),
+                "threshold": round(threshold, 3),
+                "would_pass": would_pass,
+                "context": str(context)[:40],
+            },
+            reason="gut_gate",
+        )
+    except Exception:
+        pass
+
+    if mode == "on":
+        return would_pass
+    # shadow → beregnet, observeret, men handler ikke
+    return True
+
+
 def record_gut_outcome(
     *,
     hunch: str,

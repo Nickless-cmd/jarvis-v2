@@ -37,6 +37,31 @@ def arbitrate(verdicts: list[Verdict]) -> Verdict:
     return min(pool, key=lambda v: (-_PRECEDENCE.get(v.decision, 0), cluster_rank(v.cluster)))
 
 
+def observe_shadow(verdicts: list[Verdict | None], *, enforced_blocked: bool,
+                   run_id: str = "", where: str = "") -> None:
+    """§11 Trin 1 (SHADOW, 0-risiko): sammenlign den DEKLAREREDE arbitrage mod det faktisk
+    håndhævede (sekventielle) udfald — egress-frit, ændrer INTET. Måler hvor tit kode-rækkefølge
+    afviger fra deklareret præcedens, så vi har data FØR arbitrate() eventuelt håndhæver (Trin 2).
+    Self-safe: kaster aldrig."""
+    try:
+        vs = [v for v in verdicts if v is not None]
+        if not vs:
+            return
+        winner = arbitrate(vs)
+        arbitrated_block = winner.decision is Decision.RED
+        agree = bool(arbitrated_block) == bool(enforced_blocked)
+        from core.services.central_private_observe import record_private
+        record_private("review", "arbitration_shadow",
+                       value=1.0 if agree else 0.0,
+                       meta={"arbitrated": winner.decision.value,
+                             "winner_cluster": str(winner.cluster or ""),
+                             "enforced_blocked": bool(enforced_blocked),
+                             "agree": bool(agree), "n": len(vs), "where": str(where)[:40]},
+                       reason="§4 arbitrage shadow")
+    except Exception:
+        pass
+
+
 def explain(verdicts: list[Verdict]) -> dict:
     """Read-only forklaring af en arbitrage (til debug/MC): hvem vandt og hvorfor."""
     winner = arbitrate(verdicts)

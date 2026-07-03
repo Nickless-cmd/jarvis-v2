@@ -57,6 +57,11 @@ def test_attribution_falls_back_when_no_producer():
     assert "task_kind_fallback" in pn.snapshot()
 
 
+def test_infer_caller_self_safe():
+    # Kaldt fra en test (ikke core.services/core.runtime) → "" og kaster ikke.
+    assert pn.infer_caller() == ""
+
+
 def test_self_safe_never_raises():
     try:
         pn.record_output(None, None)  # type: ignore[arg-type]

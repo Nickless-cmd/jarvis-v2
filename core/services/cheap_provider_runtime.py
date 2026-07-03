@@ -733,7 +733,8 @@ def execute_cheap_lane_via_pool(
     # ellers task_kind) → grundlag for saliens-gating af indre liv. Ren tekst-lighed, self-safe.
     try:
         from core.services import producer_novelty as _pn
-        _pn.record_output(_pn.get_producer() or task_kind, str(result.get("text") or ""))
+        _who = _pn.get_producer() or _pn.infer_caller() or task_kind
+        _pn.record_output(_who, str(result.get("text") or ""))
     except Exception:
         pass
     event_bus.publish(

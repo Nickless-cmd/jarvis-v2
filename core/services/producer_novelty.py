@@ -15,12 +15,40 @@ i samme tråd) læser den. Self-safe: kaster ALDRIG (samme kontrakt som central(
 """
 from __future__ import annotations
 
+import sys
 import threading
 from collections import deque
 from difflib import SequenceMatcher
 from typing import Any
 
 _current = threading.local()
+
+# Moduler der IKKE er den ægte inner-life-kalder (infrastruktur mellem kald og producer).
+_SKIP_CALLER = frozenset({
+    "producer_novelty", "cheap_provider_runtime", "internal_cadence", "central_core",
+    "central_timeseries", "event_bus", "provider_router", "cheap_provider", "visible_runs",
+    "heartbeat_runtime",
+})
+
+
+def infer_caller() -> str:
+    """Gæt den originerende service fra call-stacken når cadence-thread-local mangler (fx
+    cheap-lane-kald fra learning-pipeline/event-handlere, ikke cadence-tråden). Returnerer
+    kort modulnavn (fx 'inner_voice_daemon') eller ''. Self-safe."""
+    try:
+        f = sys._getframe(1)
+        depth = 0
+        while f is not None and depth < 30:
+            mod = str(f.f_globals.get("__name__", ""))
+            if mod.startswith("core.services.") or mod.startswith("core.runtime."):
+                short = mod.rsplit(".", 1)[-1]
+                if short not in _SKIP_CALLER:
+                    return short
+            f = f.f_back
+            depth += 1
+    except Exception:
+        pass
+    return ""
 _RECENT = 5                         # sammenlign mod de seneste N outputs pr. producer
 _lock = threading.Lock()
 _history: dict[str, deque] = {}     # producer → deque[str] (seneste normaliserede outputs)

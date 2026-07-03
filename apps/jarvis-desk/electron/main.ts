@@ -124,7 +124,11 @@ function loadConfig(): AppConfig {
     }
   }
   const cfg: AppConfig = {
-    apiBaseUrl: parsed.apiBaseUrl || 'http://10.0.0.39',
+    // Default = PROD-API'en (ikke den interne container-IP 10.0.0.39). Login-skærmen
+    // fetcher hardcodet mod api.srvlab.dk, og CSP/CORS bygges fra denne apiBaseUrl —
+    // med 10.0.0.39-default blev Google-login blokeret ("Kunne ikke nå serveren") på
+    // fresh install / logget ud (3. jul). Eksterne brugere når kun API'et via prod-URL.
+    apiBaseUrl: parsed.apiBaseUrl || 'https://api.srvlab.dk',
     authToken: parsed.authToken || null,
     appId: parsed.appId || randomUUID(),
     channelPlugins: Array.isArray(parsed.channelPlugins) ? parsed.channelPlugins : [],
@@ -595,6 +599,12 @@ app.whenReady().then(() => {
   const cfg = loadConfig()
   const apiOrigin = new URL(cfg.apiBaseUrl).origin
   const wsOrigin = apiOrigin.replace(/^http/, 'ws')
+  // Login-skærmen (SetupScreen) fetcher ALTID hardcodet mod prod-API'en — også når der
+  // endnu ikke findes en config (fresh install / logget ud → apiOrigin kan være 10.0.0.39).
+  // CSP connect-src + CORS-injektion SKAL derfor altid dække prod-API'en, ellers blokeres
+  // Google-login. Idempotent hvis apiOrigin allerede ER prod (dubletter i CSP er harmløse).
+  const LOGIN_API_ORIGIN = 'https://api.srvlab.dk'
+  const LOGIN_WS_ORIGIN = 'wss://api.srvlab.dk'
 
   // §22.5: auto-update via electron-updater + GitHub releases. autoDownload er
   // FRA — renderer viser UpdateCard og brugeren beslutter (download/genstart).
@@ -634,7 +644,7 @@ app.whenReady().then(() => {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
-        `connect-src 'self' ${apiOrigin} ${wsOrigin} http://localhost:5174 ws://localhost:5174`,
+        `connect-src 'self' ${apiOrigin} ${wsOrigin} ${LOGIN_API_ORIGIN} ${LOGIN_WS_ORIGIN} http://localhost:5174 ws://localhost:5174`,
       ]
     : [
         "default-src 'self'",
@@ -642,7 +652,7 @@ app.whenReady().then(() => {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
-        `connect-src 'self' ${apiOrigin} ${wsOrigin}`,
+        `connect-src 'self' ${apiOrigin} ${wsOrigin} ${LOGIN_API_ORIGIN} ${LOGIN_WS_ORIGIN}`,
       ]
 
   // Kombineret response-headers handler: CSP for vores egne HTML/JS,
@@ -658,7 +668,9 @@ app.whenReady().then(() => {
   // for native apps der konsumerer 3rd-party APIs.
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const isApiRequest = details.url.startsWith(apiOrigin) ||
-      details.url.startsWith(wsOrigin)
+      details.url.startsWith(wsOrigin) ||
+      details.url.startsWith(LOGIN_API_ORIGIN) ||
+      details.url.startsWith(LOGIN_WS_ORIGIN)
     const responseHeaders: Record<string, string[]> = {
       ...(details.responseHeaders as Record<string, string[]>),
     }

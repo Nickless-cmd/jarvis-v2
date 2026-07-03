@@ -66,6 +66,27 @@ def _parse_filterlog(line: str) -> dict | None:
     return {"action": action, "src": src, "dst": dst, "dport": dport}
 
 
+def _is_internal_src(src: str) -> bool:
+    """Er kilde-IP'en PRIVAT (RFC1918 = husets egne maskiner)? Ægte port-scan/brute-force kommer
+    UDEFRA (offentlig IP). En intern kilde der får blokke er husets egen maskine (fx CheifOne =
+    192.168.50.84) der laver normal spærret udgående trafik → FALSE-POSITIVE brute_force, ikke
+    angreb. (Exfil-detektion fra intern host kræver et andet, mere præcist signal — ikke '30
+    blokerede udgående'.) Ekskludér interne kilder fra scan/brute-detektionen."""
+    try:
+        a, b, *_ = (int(x) for x in src.split("."))
+        if a == 10:
+            return True
+        if a == 192 and b == 168:
+            return True
+        if a == 172 and 16 <= b <= 31:
+            return True
+        if a == 127:
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def _is_noise_dst(dst: str) -> bool:
     """Multicast/broadcast er normal netværks-støj (mDNS/SSDP/LLMNR/DHCP), IKKE angreb.
     Rigtige scans/brute-force rammer unicast-hosts. Ekskludér så vi ikke får false-positives."""
@@ -99,8 +120,11 @@ def _ingest(rec: dict, now: float) -> None:
             a["ports"].add(rec["dport"])
         scan = len(a["ports"]) >= _SCAN_PORTS
         brute = a["blocks"] >= _BRUTE_BLOCKS
+        # Kun EKSTERNE kilder detekteres som scan/brute — interne (husets egne maskiner) er
+        # false-positives (verificeret 3. jul: 192.168.50.84=CheifOne, .31=husenhed).
+        internal = _is_internal_src(src)
         last = _last_detect.get(src)  # None = aldrig detekteret (0.0 er en gyldig tid)
-        if (scan or brute) and (last is None or (now - last) > _DETECT_COOLDOWN_S):
+        if (scan or brute) and not internal and (last is None or (now - last) > _DETECT_COOLDOWN_S):
             _last_detect[src] = now
             _detections.append({
                 "src": src, "kind": "port_scan" if scan else "brute_force",

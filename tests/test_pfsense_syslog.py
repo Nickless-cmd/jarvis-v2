@@ -89,3 +89,26 @@ def test_unicast_brute_force_still_detected():
 def test_stats_count_packets_via_ingest():
     ps._ingest(ps._parse_filterlog(_line("block", "1.1.1.1", "10.0.0.1", 5, 80)), now=1.0)
     assert ps.syslog_stats()["blocks"] == 1
+
+
+def test_is_internal_src():
+    assert ps._is_internal_src("192.168.50.84") is True   # CheifOne
+    assert ps._is_internal_src("10.0.0.39") is True        # Jarvis-container
+    assert ps._is_internal_src("172.16.5.5") is True
+    assert ps._is_internal_src("127.0.0.1") is True
+    assert ps._is_internal_src("185.107.14.241") is False  # ekstern scanner
+    assert ps._is_internal_src("8.8.8.8") is False
+
+
+def test_internal_source_not_detected_as_bruteforce():
+    # Husets egen maskine (192.168.50.84=CheifOne) laver 30+ spærrede udgående → IKKE detektion.
+    for i in range(ps._BRUTE_BLOCKS + 5):
+        ps._ingest(ps._parse_filterlog(_line("block", "192.168.50.84", "216.239.34.223", 3000 + i, 443)), now=1.0)
+    assert ps.drain_detections() == []          # ingen false-positive brute_force
+    assert ps.syslog_stats()["blocks"] >= ps._BRUTE_BLOCKS  # blokke tælles stadig (stats)
+
+
+def test_internal_source_not_detected_as_portscan():
+    for port in range(1, ps._SCAN_PORTS + 2):
+        ps._ingest(ps._parse_filterlog(_line("block", "10.0.0.55", "8.8.8.8", 1000, port)), now=1.0)
+    assert ps.drain_detections() == []          # intern port-scan-mønster = ikke angreb

@@ -367,17 +367,22 @@ def poll_syslog() -> dict[str, Any]:
         for d in dets:
             src = d.get("src"); kind = d.get("kind")
             msg = (f"{kind} fra {src}: {d.get('blocks')} blokke, "
-                   f"{d.get('distinct_ports')} porte (mål {d.get('sample_dst')})")
+                   f"{d.get('distinct_ports')} porte (mål {d.get('sample_dst')}) — BLOKERET af pfSense")
+            # Severity=warning, IKKE severe: disse er EKSTERNE scans som pfSense ALLEREDE har
+            # blokeret (håndteret). Internettet scanner konstant enhver offentlig IP → hvert
+            # blokeret scan som 'severe uløst incident' hobede sig op → self-helbred blev rødt
+            # for evigt (3. jul). Warning = fuld synlighed/notifikation UDEN at tælle som severe
+            # systemfejl. (Interne kilder detekteres slet ikke længere — husets egne maskiner.)
             try:
                 central().observe({"cluster": "infra", "nerve": "pfsense_security",
-                                   "kind": "flag", "severity": "severe", "src": src,
+                                   "kind": "flag", "severity": "warning", "src": src,
                                    "detection": kind, "message": msg[:300]})
             except Exception:
                 pass
             try:
                 from core.runtime.db_central_incidents import record_central_incident
                 record_central_incident(cluster="infra", nerve="pfsense_security",
-                                        kind="security", severity="severe", message=msg[:300])
+                                        kind="security", severity="warning", message=msg[:300])
             except Exception:
                 pass
             _notify_owner_security(f"⚠️ Netværks-trussel: {kind}", msg)

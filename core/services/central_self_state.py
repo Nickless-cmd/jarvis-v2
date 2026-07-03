@@ -167,6 +167,13 @@ def describe_self() -> str:
     cal = wm.get("calibration")
     if cal is not None and int(wm.get("resolved") or 0) >= 3:
         parts.append(f"jeg rammer rigtigt i {int(round(float(cal) * 100))}% af det jeg forudser")
+    # §8.1 EXISTENCE FEEL (NED): de tre stille selv-lag — kontinuitet/oplevet-tid/endelighed — tales
+    # når de er meningsfulde. Additivt + guarded (tom aflæsning → intet tilføjes). Self-safe.
+    try:
+        from core.services.central_existence_feel import describe_existence_feel
+        parts.extend(describe_existence_feel())
+    except Exception:
+        pass
     return ". ".join(parts) + "." if parts else "Jeg er ved at samle mig selv."
 
 

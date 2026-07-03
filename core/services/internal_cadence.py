@@ -1191,6 +1191,16 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # Spec §8.1 EXISTENCE FEEL: de tre dybeste STILLE selv-lag — continuity_kernel ("existence feel
+    # between ticks") + subjective_time ("how time FEELS") + mortality_awareness ("each session could
+    # be my last") — bundet TOVEJS via lag-kontrakten. OP: puls + durabelt hold (egress-frit). NED:
+    # describe_self() TALER dem. §8.2: stille kontinuitet er selvhood-substratet, ikke lav prioritet.
+    try:
+        from core.services.central_existence_feel import register_existence_feel_layers
+        register_existence_feel_layers()
+    except Exception:
+        pass
+
     # M1 SHADOW: reaktivt/prædiktivt lag — beregner hvad Centralen VILLE gøre, anvender
     # ALDRIG (ACTIVE_APPLY hardkodet False). Validér dømmekraft mod virkelighed før apply.
     try:

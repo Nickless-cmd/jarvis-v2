@@ -140,6 +140,63 @@ PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
     # SPEJLET (audit #1): selv-model-events → egress-frit (privat selv-erkendelse; komplementerer
     # central_self_model-spejlets snapshot-producer). ALDRIG egress.
     "runtime_self_model": ("cognition", "self_model"),
+    # ── §7.1 quick-wins (3. jul, ingen ny logik — kun rute-linjer): FRAKOBLET+DARK signal-lag
+    # koblet EGRESS-FRIT (kun trace+tidsserie, ALDRIG _emit). Family-navne udtrukket fra
+    # docs/central_connectivity_matrix.json (dark_families for FRAKOBLET+DARK-services), IKKE gættet.
+    # Plumbing (write_queue/*.processed/gc/cleanup) BEVIDST udeladt — Centralen filtrerer på kind. ──
+    # §7.1 batch 1 — memory: låser prospective_memory (seed-firing), sensory_archive,
+    # memory_recall_telemetry, memory_maintenance_daemon, memory_write_queue (kun signal-kinds).
+    "memory": ("memory", "memory_signal"),
+    # §7.1 batch 2 — de mange *_signal-families: Jarvis' live runtime-kognition → cognition-spor.
+    "goal_signal": ("cognition", "goal_signal"),
+    "self_review_signal": ("cognition", "self_review_signal"),
+    "self_review_cadence_signal": ("cognition", "self_review_cadence_signal"),
+    "witness_signal": ("cognition", "witness_signal"),
+    "relation_state_signal": ("cognition", "relation_state_signal"),
+    "relation_continuity_signal": ("cognition", "relation_continuity_signal"),
+    "loyalty_gradient_signal": ("cognition", "loyalty_gradient_signal"),
+    "meaning_significance_signal": ("cognition", "meaning_significance_signal"),
+    "reflection_signal": ("cognition", "reflection_signal"),
+    "temperament_tendency_signal": ("cognition", "temperament_tendency_signal"),
+    "open_loop_signal": ("cognition", "open_loop_signal"),
+    "self_model_signal": ("cognition", "self_model_signal"),
+    "self_narrative_continuity_signal": ("cognition", "self_narrative_continuity_signal"),
+    "user_understanding_signal": ("cognition", "user_understanding_signal"),
+    "attachment_topology_signal": ("cognition", "attachment_topology_signal"),
+    "autonomy_pressure_signal": ("cognition", "autonomy_pressure_signal"),
+    "chronicle_consolidation_signal": ("cognition", "chronicle_consolidation_signal"),
+    "consolidation_target_signal": ("memory", "consolidation_target_signal"),
+    "diary_synthesis_signal": ("cognition", "diary_synthesis_signal"),
+    "dream_hypothesis_signal": ("cognition", "dream_hypothesis_signal"),
+    "executive_contradiction_signal": ("cognition", "executive_contradiction_signal"),
+    "inner_visible_support_signal": ("cognition", "inner_visible_support_signal"),
+    "internal_opposition_signal": ("cognition", "internal_opposition_signal"),
+    "metabolism_state_signal": ("cognition", "metabolism_state_signal"),
+    "private_initiative_tension_signal": ("cognition", "private_initiative_tension_signal"),
+    "private_inner_interplay_signal": ("cognition", "private_inner_interplay_signal"),
+    "private_inner_note_signal": ("cognition", "private_inner_note_signal"),
+    "private_temporal_promotion_signal": ("cognition", "private_temporal_promotion_signal"),
+    "release_marker_signal": ("cognition", "release_marker_signal"),
+    "remembered_fact_signal": ("memory", "remembered_fact_signal"),
+    "temporal_recurrence_signal": ("cognition", "temporal_recurrence_signal"),
+    # §7.1 batch 3 — identitets-mutation/drift: højeste selv-hændelse/stk → self_model-spor.
+    "identity_mutation": ("cognition", "identity_mutation"),
+    "identity_drift": ("cognition", "identity_drift"),
+    "personality_drift": ("cognition", "personality_drift"),
+    "self_mutation_lineage": ("cognition", "self_mutation_lineage"),
+    # §7.1 batch 4 — affekt/felt-krop-planet-udvidelse: brud, følelses-hukommelse, emotion-tagging.
+    "rupture": ("cognition", "rupture"),
+    "emotional_memory": ("cognition", "emotional_memory"),
+    "emotional_chords": ("cognition", "emotional_chords"),
+    "emotion_tagging": ("cognition", "emotion_tagging"),
+    "cognitive_user_emotion": ("cognition", "user_emotion"),
+    # §7.1 batch 5 — generativ-autonomi-spor: begær, nysgerrighed, overraskelse, kreativt drift,
+    # impulse (live men usynlig). Jarvis' generative motor → egress-frit.
+    "desire": ("cognition", "desire"),
+    "curiosity": ("cognition", "curiosity"),
+    "surprise": ("cognition", "surprise"),
+    "creative_drift": ("cognition", "creative_drift"),
+    "impulse": ("cognition", "impulse"),
 }
 
 # Dokumenteret liste over families der BEVIDST holdes dark i M0 (privatlags-isolation,
@@ -166,6 +223,25 @@ PRIVATE_FAMILIES_EXCLUDED_M0: frozenset[str] = frozenset({
     "learning_policy", "initiative_accumulator", "identity_composer", "valence_trajectory",
     "absence_awareness", "calm_anchor", "causal", "nudge", "promise", "pushback", "prompt",
     "communication", "runtime_self_model",
+    # ── §7.1 quick-wins (3. jul): spejl af de nye PRIVATE_NO_EGRESS_ROUTES (invariant: enhver
+    # PRIVATE_NO_EGRESS-family SKAL stå her). 'memory' + 'impulse' stod allerede ovenfor. ──
+    # batch 2 — *_signal-families:
+    "goal_signal", "self_review_signal", "self_review_cadence_signal", "witness_signal",
+    "relation_state_signal", "relation_continuity_signal", "loyalty_gradient_signal",
+    "meaning_significance_signal", "reflection_signal", "temperament_tendency_signal",
+    "open_loop_signal", "self_model_signal", "self_narrative_continuity_signal",
+    "user_understanding_signal", "attachment_topology_signal", "autonomy_pressure_signal",
+    "chronicle_consolidation_signal", "consolidation_target_signal", "diary_synthesis_signal",
+    "dream_hypothesis_signal", "executive_contradiction_signal", "inner_visible_support_signal",
+    "internal_opposition_signal", "metabolism_state_signal", "private_initiative_tension_signal",
+    "private_inner_interplay_signal", "private_inner_note_signal", "private_temporal_promotion_signal",
+    "release_marker_signal", "remembered_fact_signal", "temporal_recurrence_signal",
+    # batch 3 — identitets-mutation/drift:
+    "identity_mutation", "identity_drift", "personality_drift", "self_mutation_lineage",
+    # batch 4 — affekt:
+    "rupture", "emotional_memory", "emotional_chords", "emotion_tagging", "cognitive_user_emotion",
+    # batch 5 — generativ-autonomi:
+    "desire", "curiosity", "surprise", "creative_drift",
 })
 
 _BRIDGE_NERVE = "eventbus_bridge"

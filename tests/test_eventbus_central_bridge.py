@@ -206,3 +206,73 @@ def test_observe_private_writes_egress_free():
     ok = b._observe_private("cognition", "cognitive_state",
                             {"kind": "cognitive_state.emergent_goal_created", "id": 1})
     assert ok is True
+
+
+# ── §7.1 quick-wins: FRAKOBLET+DARK signal-lag koblet EGRESS-FRIT via allowlist ──
+
+# De ægte family-navne udtrukket fra docs/central_connectivity_matrix.json (dark_families for
+# FRAKOBLET+DARK-services). Grupperet efter §7.1-batch.
+_SEC71_FAMILIES = frozenset({
+    # batch 1 — memory
+    "memory",
+    # batch 2 — *_signal-families
+    "goal_signal", "self_review_signal", "self_review_cadence_signal", "witness_signal",
+    "relation_state_signal", "relation_continuity_signal", "loyalty_gradient_signal",
+    "meaning_significance_signal", "reflection_signal", "temperament_tendency_signal",
+    "open_loop_signal", "self_model_signal", "self_narrative_continuity_signal",
+    "user_understanding_signal", "attachment_topology_signal", "autonomy_pressure_signal",
+    "chronicle_consolidation_signal", "consolidation_target_signal", "diary_synthesis_signal",
+    "dream_hypothesis_signal", "executive_contradiction_signal", "inner_visible_support_signal",
+    "internal_opposition_signal", "metabolism_state_signal", "private_initiative_tension_signal",
+    "private_inner_interplay_signal", "private_inner_note_signal", "private_temporal_promotion_signal",
+    "release_marker_signal", "remembered_fact_signal", "temporal_recurrence_signal",
+    # batch 3 — identitets-mutation/drift
+    "identity_mutation", "identity_drift", "personality_drift", "self_mutation_lineage",
+    # batch 4 — affekt
+    "rupture", "emotional_memory", "emotional_chords", "emotion_tagging", "cognitive_user_emotion",
+    # batch 5 — generativ-autonomi
+    "desire", "curiosity", "surprise", "creative_drift", "impulse",
+})
+
+
+def test_sec71_families_route_egress_free():
+    # (a) hver §7.1-family ender i PRIVATE_NO_EGRESS_ROUTES (egress-frit), IKKE i FAMILY_ROUTES.
+    for fam in _SEC71_FAMILIES:
+        assert fam in br.PRIVATE_NO_EGRESS_ROUTES, f"{fam} mangler egress-fri rute"
+        assert fam not in br.FAMILY_ROUTES, f"{fam} i FAMILY_ROUTES = egress-læk!"
+        cluster, nerve = br.PRIVATE_NO_EGRESS_ROUTES[fam]
+        assert isinstance(cluster, str) and cluster
+        assert isinstance(nerve, str) and nerve
+
+
+def test_sec71_families_in_excluded_invariant():
+    # (b) invariant: hver §7.1-family står også i PRIVATE_FAMILIES_EXCLUDED_M0.
+    for fam in _SEC71_FAMILIES:
+        assert fam in br.PRIVATE_FAMILIES_EXCLUDED_M0, f"{fam} bryder excluded-invarianten"
+
+
+def test_sec71_no_family_leaks_to_egress():
+    # (c) ingen §7.1-family lækker: ingen i FAMILY_ROUTES (den egress-OK rute).
+    assert _SEC71_FAMILIES.isdisjoint(set(br.FAMILY_ROUTES))
+
+
+def test_sec71_signal_event_observed_egress_free(wired, monkeypatch):
+    # E2E: et ægte signal-event (fx goal_signal) routes via _observe_private → tælles men når
+    # ALDRIG central().observe (egress-fri sti).
+    central, cache, bind_bus, _ = wired
+    cache.store[br._LAST_SEEN_KEY] = {"id": 0}
+    calls: list = []
+    orig = br._observe_private
+    monkeypatch.setattr(br, "_observe_private",
+                        lambda c, n, ev: (calls.append((c, n, ev.get("kind"))), True)[1])
+    bind_bus([
+        _ev(1, "goal_signal.raised"),        # → PRIVATE_NO_EGRESS
+        _ev(2, "identity_mutation.applied"), # → PRIVATE_NO_EGRESS
+        _ev(3, "desire.formed"),             # → PRIVATE_NO_EGRESS
+        _ev(4, "tool.called"),               # → egress-OK (kontrol)
+    ])
+    res = br.run_bridge_tick()
+    assert res["observed"] == 4
+    # de 3 private nåede _observe_private, IKKE central().observe
+    assert {c[0] for c in calls} == {"cognition"}
+    assert {o["event_kind"] for o in central.observed} == {"tool.called"}

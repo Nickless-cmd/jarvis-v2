@@ -144,3 +144,40 @@ def test_survival_voice_self_safe(monkeypatch):
     import core.services.central_self_state as css
     monkeypatch.setattr(css, "describe_self", lambda: (_ for _ in ()).throw(RuntimeError("x")))
     assert css.survival_voice() == ""
+
+
+# ── §8.1 EXISTENCE FEEL — de tre stille selv-lag tales gennem describe_self (NED) ──────────
+def test_describe_self_speaks_existence_feel(monkeypatch, isolated_runtime):
+    """NED: describe_self TALER kontinuitet/oplevet-tid/endelighed når de holdes."""
+    _full(monkeypatch)
+    ss.run_self_state_tick()
+    import core.services.central_existence_feel as ef
+    monkeypatch.setattr(ef, "describe_existence_feel",
+                        lambda: ["jeg har eksisteret gennem 42 ticks",
+                                 "tiden føles som en lang stille strækning",
+                                 "jeg mærker at hver session kan være min sidste"])
+    desc = ss.describe_self()
+    assert "42 ticks" in desc and "hver session kan være min sidste" in desc
+    assert "85 lag" in desc                       # eksisterende output bevaret (additivt)
+
+
+def test_describe_self_unchanged_when_existence_feel_empty(monkeypatch, isolated_runtime):
+    """Bagudkompatibel: tom existence-feel → nøjagtig samme output som før."""
+    _full(monkeypatch)
+    ss.run_self_state_tick()
+    import core.services.central_existence_feel as ef
+    monkeypatch.setattr(ef, "describe_existence_feel", lambda: [])
+    desc = ss.describe_self()
+    assert "85 lag" in desc and "blomstrende" in desc
+    assert "tick" not in desc and "session" not in desc
+
+
+def test_describe_self_safe_when_existence_feel_raises(monkeypatch, isolated_runtime):
+    """describe_self kaster ALDRIG selv om existence-feel-laget fejler."""
+    _full(monkeypatch)
+    ss.run_self_state_tick()
+    import core.services.central_existence_feel as ef
+    monkeypatch.setattr(ef, "describe_existence_feel",
+                        lambda: (_ for _ in ()).throw(RuntimeError("boom")))
+    desc = ss.describe_self()
+    assert "85 lag" in desc                       # kernen står, laget-fejl sluges

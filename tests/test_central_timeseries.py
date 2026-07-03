@@ -7,7 +7,13 @@ from core.services import central_timeseries as ts
 
 
 @pytest.fixture(autouse=True)
-def _clean():
+def _clean(monkeypatch):
+    # Isolér durabiliteten: ingen test må røre den rigtige runtime-DB (kv i hukommelsen)
+    # og baggrunds-persist-tråden slås fra (ellers lækker nerver på tværs af tests).
+    _kv: dict = {}
+    monkeypatch.setattr(ts, "_kv_get", lambda k, d: _kv.get(k, d))
+    monkeypatch.setattr(ts, "_kv_set", lambda k, v: _kv.__setitem__(k, v))
+    monkeypatch.setattr(ts, "_maybe_persist", lambda: None)
     ts._reset_for_tests()
     yield
     ts._reset_for_tests()
@@ -75,3 +81,41 @@ def test_snapshot_compact_per_nerve():
 
 def test_snapshot_empty_and_safe():
     assert ts.snapshot() == {}  # ingen data → tom, ingen crash
+
+
+# ── DURABILITET: nervesystemet overlever genstart (Bjørn 3. jul) ──────────
+def test_durable_roundtrip_survives_restart(monkeypatch):
+    kv: dict = {}
+    monkeypatch.setattr(ts, "_kv_get", lambda k, d: kv.get(k, d))
+    monkeypatch.setattr(ts, "_kv_set", lambda k, v: kv.__setitem__(k, v))
+    monkeypatch.setattr(ts, "_maybe_persist", lambda: None)  # kun eksplicit persist (undgå tråd-race)
+    ts.record("cognition", "inner_salience", 1.0, meta={"would_reuse": True, "mode": "shadow"})
+    ts.record("cognition", "inner_salience", 0.0, meta={"would_reuse": False})
+    assert ts.persist_snapshot()["status"] == "ok"
+    assert _SEP_key(kv)  # blob skrevet til durabel kv
+    # simulér GENSTART: frisk proces → in-memory tomt, _restored=False, men kv (DB) består.
+    ts._reset_for_tests()
+    ts._maybe_restore()  # frisk proces genindlæser durabelt snapshot (hot-hook gated under pytest)
+    got = ts.recent("cognition", "inner_salience")
+    assert [s.value for s in got] == [1.0, 0.0]         # værdier overlevede genstart
+    assert got[0].meta.get("would_reuse") is True        # meta overlevede
+    assert got[1].meta.get("would_reuse") is False
+
+
+def _SEP_key(kv):
+    return any(ts._SEP in k for blob in kv.values() if isinstance(blob, dict) for k in blob)
+
+
+def test_restore_runs_once(monkeypatch):
+    calls = {"n": 0}
+    monkeypatch.setattr(ts, "_load_durable", lambda: calls.__setitem__("n", calls["n"] + 1))
+    ts._restored = False
+    ts._maybe_restore()
+    ts._maybe_restore()
+    assert calls["n"] == 1  # kun første adgang loader
+
+
+def test_persist_self_safe_on_kv_failure(monkeypatch):
+    monkeypatch.setattr(ts, "_kv_set", lambda k, v: (_ for _ in ()).throw(RuntimeError("boom")))
+    ts.record("x", "y", 1.0)
+    assert ts.persist_snapshot()["status"] == "error"  # fanget, kaster ikke

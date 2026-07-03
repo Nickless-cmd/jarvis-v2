@@ -244,13 +244,41 @@ def _notify_owner_security(title: str, message: str) -> None:
         pass
 
 
-# Staleness-vagt for pfSense-syslog-strømmen: hvis logs HAR flydt men så stopper i N sek,
-# er syslogd sandsynligvis død igen (den var død 1.3 døgn 1.→2. jul UOPDAGET, fordi 0-tælling
-# lignede "aldrig konfigureret"). På et aktivt net er der altid baggrundsstøj (blokerede
-# WAN-scans/broadcasts på default-block-reglen) → 15 min TOTAL tavshed = ægte signal, ikke
-# et roligt øjeblik. Flag ÉN gang ved overgang→stale; ryd når pakker genoptager.
-_SYSLOG_STALE_AFTER_S = 900.0
+# Liveness-vagt for pfSense-syslog. VIGTIGT (verificeret 3. jul): pfSense' WAN er bag CGNAT
+# (100.64.0.0/10, IP 100.75.x) → INTET internet-baggrundsstøj → stille perioder (nat, ingen
+# aktive enheder) har LEGITIMT nul firewall-logs i timevis. Så "tavshed = død" giver falsk
+# alarm. Og pfSense' service-status-endpoint LYVER (syslogd=False mens processen kører). Den
+# ENESTE pålidelige død-detektor er at tjekke selve PROCESSEN via REST-API command_prompt.
+# Design: mens pakker flyder er syslogd åbenlyst i live (vi MODTAGER dem) → intet tjek. KUN
+# ved mistænkelig tavshed (>_SYSLOG_QUIET_S) tjekkes processen aktivt, throttlet til ~hvert
+# 30. min. Flag ÉN gang når processen er BEKRÆFTET død; ryd ved genoplivning. Nul falsk-alarm.
+_SYSLOG_QUIET_S = 600.0          # ingen pakke i 10 min = "ikke aktivt flydende" → mistænkeligt
+_SYSLOGD_CHECK_EVERY = 10        # poll_syslog ~hvert 3. min → ~30 min stille før aktivt proces-tjek
+_syslogd_check_counter = 0
 _syslog_stale_flagged = False
+
+
+def _pfsense_syslogd_running() -> bool | None:
+    """Lever syslogd-PROCESSEN på pfSense? Via REST-API command_prompt (root-shell, read-only ps).
+    True=lever, False=død, None=kunne ikke afgøre (ingen nøgle / API nede). Self-safe.
+    (Service-status-endpointet er upålideligt — rapporterer False mens processen kører.)"""
+    try:
+        from core.runtime.secrets import read_runtime_key
+        key = read_runtime_key("pfsense_api_key")
+    except Exception:
+        key = None
+    if not key:
+        return None
+    d = _http_json("https://10.0.0.1/api/v2/diagnostics/command_prompt",
+                   headers={"X-API-Key": key}, method="POST",
+                   body={"command": "ps ax | grep -c '[s]yslogd'"})
+    out = ((d or {}).get("data") or {}).get("output")
+    if out is None:
+        return None
+    try:
+        return int(str(out).strip().splitlines()[0]) > 0
+    except Exception:
+        return None
 
 
 def poll_syslog() -> dict[str, Any]:
@@ -271,32 +299,42 @@ def poll_syslog() -> dict[str, Any]:
                                "detections_total": stats.get("detections")})
         except Exception:
             pass
-        # Staleness-vagt: har strømmen flydt (last_packet_epoch>0) men er nu tavs > tærskel?
-        # → syslogd nok død igen (pfSense). Flag ÉN gang ved overgang; ryd når den genoptager.
-        global _syslog_stale_flagged
+        # Liveness-vagt (se konstant-kommentar): pakker der flyder = syslogd åbenlyst i live →
+        # intet aktivt tjek. Kun ved vedvarende tavshed tjekkes PROCESSEN aktivt (throttlet),
+        # så vi ikke falsk-alarmerer på legitime stille CGNAT-perioder.
+        global _syslog_stale_flagged, _syslogd_check_counter
         last_pkt = float(stats.get("last_packet_epoch") or 0.0)
         idle_s = (time.time() - last_pkt) if last_pkt > 0 else 0.0
-        is_stale = last_pkt > 0 and idle_s > _SYSLOG_STALE_AFTER_S
+        flowing = last_pkt > 0 and idle_s < _SYSLOG_QUIET_S
         central_timeseries.record("infra", "pfsense_syslog",
                                   value=float(len(dets)),
-                                  meta={"packets": stats.get("packets"), "stale": is_stale,
+                                  meta={"packets": stats.get("packets"), "flowing": flowing,
                                         "idle_s": round(idle_s)})
-        if is_stale and not _syslog_stale_flagged:
-            _syslog_stale_flagged = True
-            mins = int(idle_s // 60)
-            try:
-                from core.runtime.db_central_incidents import record_central_incident
-                record_central_incident(
-                    cluster="infra", nerve="pfsense_syslog", kind="syslog_stale", severity="error",
-                    message=(f"pfSense syslog-strøm tavs i {mins} min (sidst {stats.get('packets')} pakker) "
-                             f"— syslogd nok død igen på pfSense (10.0.0.1). Fix: REST API "
-                             f"command_prompt → pfSsh.php playback svc restart syslogd."))
-            except Exception:
-                pass
-            _notify_owner_security("⚠️ pfSense syslog tavs",
-                                   f"Ingen firewall-logs i {mins} min — syslogd nok død igen på pfSense.")
-        elif not is_stale and _syslog_stale_flagged:
-            _syslog_stale_flagged = False  # strømmen genoptaget → nulstil vagt
+        if flowing:
+            _syslog_stale_flagged = False      # modtager pakker → syslogd lever; ryd evt. flag
+            _syslogd_check_counter = 0
+        else:
+            _syslogd_check_counter += 1
+            if _syslogd_check_counter >= _SYSLOGD_CHECK_EVERY:   # ~30 min stille → bekræft aktivt
+                _syslogd_check_counter = 0
+                alive = _pfsense_syslogd_running()
+                if alive is False and not _syslog_stale_flagged:
+                    _syslog_stale_flagged = True
+                    try:
+                        from core.runtime.db_central_incidents import record_central_incident
+                        record_central_incident(
+                            cluster="infra", nerve="pfsense_syslog", kind="syslogd_dead",
+                            severity="error",
+                            message=("pfSense syslogd-PROCESSEN er død (10.0.0.1) — firewall-logning "
+                                     "stoppet lokalt+remote. Fix: REST API command_prompt → "
+                                     "pfSsh.php playback svc restart syslogd."))
+                    except Exception:
+                        pass
+                    _notify_owner_security(
+                        "⚠️ pfSense syslogd død",
+                        "syslogd-processen kører ikke på pfSense — firewall-logning stoppet.")
+                elif alive is True and _syslog_stale_flagged:
+                    _syslog_stale_flagged = False  # genoplivet → ryd
         for d in dets:
             src = d.get("src"); kind = d.get("kind")
             msg = (f"{kind} fra {src}: {d.get('blocks')} blokke, "

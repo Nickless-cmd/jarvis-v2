@@ -130,8 +130,9 @@ def test_tick_never_raises(monkeypatch):
         pytest.fail("run_infra_sense_tick må ikke kaste")
 
 
-def _patch_syslog(monkeypatch, *, packets, last_packet_epoch, detections=None):
-    """Fælles opsætning: mock pfSense-syslog-modulet + central + notifikation."""
+def _patch_syslog(monkeypatch, *, packets, last_packet_epoch, alive=None, detections=None):
+    """Fælles opsætning: mock pfSense-syslog-modulet + central + notifikation + proces-tjek.
+    alive = hvad _pfsense_syslogd_running() returnerer (True/False/None)."""
     from core.services import pfsense_syslog
     from core.runtime import db_central_incidents
     monkeypatch.setattr(pfsense_syslog, "drain_detections", lambda: list(detections or []))
@@ -139,45 +140,68 @@ def _patch_syslog(monkeypatch, *, packets, last_packet_epoch, detections=None):
                         lambda: {"packets": packets, "blocks": 0, "detections": 0,
                                  "last_packet_epoch": last_packet_epoch})
     monkeypatch.setattr(isense, "central", lambda: _FakeCentral())
+    checks: list = []
+    def _fake_alive():
+        checks.append(True)
+        return alive
+    monkeypatch.setattr(isense, "_pfsense_syslogd_running", _fake_alive)
     notes: list = []
     monkeypatch.setattr(isense, "_notify_owner_security", lambda t, m: notes.append((t, m)))
     incidents: list = []
     monkeypatch.setattr(db_central_incidents, "record_central_incident",
                         lambda **kw: incidents.append(kw))
     isense._syslog_stale_flagged = False
-    return incidents, notes
+    isense._syslogd_check_counter = 0
+    return incidents, notes, checks
 
 
-def test_syslog_stale_flags_when_stream_silent(monkeypatch):
-    # Strømmen HAR flydt (packets>0) men sidste pakke er langt ude over tærsklen → stale → flag.
-    import time
-    incidents, notes = _patch_syslog(
-        monkeypatch, packets=611,
-        last_packet_epoch=time.time() - (isense._SYSLOG_STALE_AFTER_S + 300))
+def _prime_counter():
+    # Sæt tælleren så NÆSTE stille tick udløser det aktive proces-tjek.
+    isense._syslogd_check_counter = isense._SYSLOGD_CHECK_EVERY - 1
+
+
+def test_syslog_flags_when_process_confirmed_dead(monkeypatch):
+    # Vedvarende tavshed + aktivt tjek bekræfter død proces → flag + notifikation.
+    incidents, notes, checks = _patch_syslog(monkeypatch, packets=611, last_packet_epoch=0.0, alive=False)
+    _prime_counter()
     isense.poll_syslog()
-    assert any(i.get("kind") == "syslog_stale" for i in incidents)
-    assert notes  # ejer notificeret
-    assert isense._syslog_stale_flagged is True
+    assert checks  # aktivt proces-tjek blev kørt
+    assert any(i.get("kind") == "syslogd_dead" for i in incidents)
+    assert notes and isense._syslog_stale_flagged is True
 
 
-def test_syslog_fresh_no_flag(monkeypatch):
-    import time
-    incidents, notes = _patch_syslog(monkeypatch, packets=611, last_packet_epoch=time.time() - 5)
+def test_syslog_quiet_but_alive_no_flag(monkeypatch):
+    # Stille (CGNAT-nat) MEN processen lever → INGEN falsk alarm.
+    incidents, notes, checks = _patch_syslog(monkeypatch, packets=611, last_packet_epoch=0.0, alive=True)
+    _prime_counter()
     isense.poll_syslog()
-    assert not any(i.get("kind") == "syslog_stale" for i in incidents)
+    assert checks  # tjek kørt
+    assert not any(i.get("kind") == "syslogd_dead" for i in incidents)
+    assert not notes and isense._syslog_stale_flagged is False
+
+
+def test_syslog_flowing_skips_active_check(monkeypatch):
+    # Pakker flyder (frisk) → syslogd åbenlyst i live → INTET aktivt tjek, tæller nulstilles.
+    import time
+    incidents, _n, checks = _patch_syslog(monkeypatch, packets=611, last_packet_epoch=time.time() - 5, alive=False)
+    _prime_counter()
+    isense.poll_syslog()
+    assert not checks  # intet aktivt tjek når pakker flyder
+    assert not any(i.get("kind") == "syslogd_dead" for i in incidents)
+    assert isense._syslogd_check_counter == 0
+
+
+def test_syslog_silent_but_not_yet_threshold_no_check(monkeypatch):
+    # Stille men tælleren ikke nået tærskel endnu → intet tjek (throttle).
+    incidents, _n, checks = _patch_syslog(monkeypatch, packets=611, last_packet_epoch=0.0, alive=False)
+    isense._syslogd_check_counter = 0  # langt fra tærskel
+    isense.poll_syslog()
+    assert not checks and not incidents
+
+
+def test_syslog_flag_clears_on_resume(monkeypatch):
+    import time
+    incidents, _n, _c = _patch_syslog(monkeypatch, packets=700, last_packet_epoch=time.time() - 5, alive=True)
+    isense._syslog_stale_flagged = True  # var flagget → pakker flyder nu → skal ryddes
+    isense.poll_syslog()
     assert isense._syslog_stale_flagged is False
-
-
-def test_syslog_never_received_no_stale_flag(monkeypatch):
-    # last_packet_epoch=0 (aldrig modtaget, fx efter genstart) → ikke stale, ingen falsk alarm.
-    incidents, _n = _patch_syslog(monkeypatch, packets=0, last_packet_epoch=0.0)
-    isense.poll_syslog()
-    assert not any(i.get("kind") == "syslog_stale" for i in incidents)
-
-
-def test_syslog_stale_flag_clears_on_resume(monkeypatch):
-    import time
-    incidents, _n = _patch_syslog(monkeypatch, packets=700, last_packet_epoch=time.time() - 5)
-    isense._syslog_stale_flagged = True  # var flagget → strømmen genoptager nu (frisk) → skal ryddes
-    isense.poll_syslog()
-    assert isense._syslog_stale_flagged is False  # genoptaget → ryddet

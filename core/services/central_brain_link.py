@@ -128,25 +128,29 @@ def _recently_resolved(limit: int = 25) -> list[dict[str, Any]]:
 
 
 def run_brain_link_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
-    """Cadence-producer: skriv nyligt resolverede central-læringer til hjernen (M2, owner-scopet) +
-    berig med selv-scopet recall-kontekst (M1). OBSERVE-ONLY. Egress-fri observe. Self-safe."""
+    """Cadence-producer: skriv nyligt resolverede central-læringer til hjernen (M2, owner-scopet).
+    OBSERVE-ONLY. Egress-fri observe. Self-safe.
+
+    M1-recall (recall_context) er UDSKUDT ud af hot-path'en (3. jul): den er count-only /
+    fremtidig-fase (beriger provenance SENERE, forbruges ingen steder nu), MEN multi_signal_recall
+    tager ~31s/kald → 25 hyps × 31s ≈ 277s sprængte cadencens 75s-timeout HVER tick → nerven blev
+    fejl-flagget uafbrudt. M2-write (idempotent + billig) er det faktisk nyttige arbejde og beholdes.
+    Genindfør M1 når (a) en fase faktisk FORBRUGER provenance-konteksten OG (b) multi_signal_recall-
+    latensen er fikset (31s er selvstændigt patologisk — separat opgave). recall_context() består +
+    er stadig scope-testet (test_m1_scope_bounded)."""
     remembered = 0
-    context_hits = 0
     for hyp in _recently_resolved():
-        # M1: scope-bundet kontekst (kun tælles — beriger provenance i en senere fase)
-        ctx = recall_context(str(hyp.get("statement") or ""), limit=2)
-        context_hits += len(ctx)
-        # M2: owner-scopet skrivning tilbage til Jarvis' egen hjerne
+        # M2: owner-scopet skrivning tilbage til Jarvis' egen hjerne. Idempotent (already_remembered
+        # = indekseret opslag) → allerede-huskede springes billigt over; kun nye resolutioner skrives.
         if remember_resolved_hypothesis(hyp):
             remembered += 1
     try:
         from core.services.central_private_observe import record_private
         record_private("cognition", "brain_link", value=float(remembered),
-                       meta={"remembered": remembered, "context_hits": context_hits,
-                             "owner_scoped": bool(_owner_uid())})
+                       meta={"remembered": remembered, "owner_scoped": bool(_owner_uid())})
     except Exception:
         pass
-    return {"status": "ok", "remembered": remembered, "context_hits": context_hits}
+    return {"status": "ok", "remembered": remembered}
 
 
 def register_brain_link_producer() -> None:

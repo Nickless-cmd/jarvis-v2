@@ -1393,6 +1393,7 @@ async def _stream_visible_run(
             return
 
         if result is None:
+            _final_run_status = "failed"  # ellers overskriver _post_process (finally) med "completed"+tom → falsk survival
             stage_error = "first-pass-provider-error: Visible model stream completed without final result"
             _update_visible_execution_trace(
                 run,
@@ -4493,6 +4494,8 @@ async def _stream_visible_run(
             "visible-run unhandled exception: %s", _outer_exc, exc_info=True
         )
         _outer_error = str(_outer_exc) or "unexpected-run-error"
+        _final_run_status = "failed"  # ellers overskriver _post_process (finally) med "completed"+tom → falsk survival
+        _final_run_error = _outer_error
         set_last_visible_run_outcome(run, status="failed", error=_outer_error)
         for _fail_chunk in _fail_visible_run(run, _outer_error, partial_text=visible_output_text):
             yield _fail_chunk

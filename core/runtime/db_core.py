@@ -71,6 +71,15 @@ def connect() -> sqlite3.Connection:
     # → uden dette fejler skriv ved kortvarig kontention. 5s rider enhver normal lås af. (1. jul)
     try:
         conn.execute("PRAGMA busy_timeout = 5000")
+        # WAL (Bjørn 4. jul — survival-branden): default rollback-journal EKSKLUSIV-låser HELE
+        # DB-filen (1,16 GB) ved enhver writer → under producer-write-load (soul-lag + 117 bridge-
+        # families på tværs af 2 processer) blokerede visible-lanens persist/trace op til 5s →
+        # event-loop-sultning i api (--workers 1) → tomme svar → survival-fallback. WAL lader
+        # LÆSERE + én writer køre SAMTIDIGT → ingen fil-lås-blokering. synchronous=NORMAL er
+        # crash-sikkert under WAL (kun risiko: tab af sidste commit ved strømsvigt). Reversibelt:
+        # PRAGMA journal_mode=DELETE. Kræver samme filsystem (opfyldt — lokal disk i containeren).
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA synchronous = NORMAL")
     except Exception:
         pass
     global _DB_CONNECT_LOGGED

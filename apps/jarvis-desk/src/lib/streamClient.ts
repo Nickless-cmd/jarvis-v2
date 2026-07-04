@@ -63,6 +63,10 @@ export class StreamError extends Error {
   retryable: boolean
   statusCode: number | null
   context: Record<string, unknown>
+  /** Canonical ErrorKind (fx "network.timeout"). Additivt — legacy call-sites sætter den ikke. */
+  kind?: string
+  /** Hvor fejlen opstod: 'client' (denne stream-klient) eller 'stream' (backend-envelope). */
+  origin: 'client' | 'stream'
 
   constructor(
     category: ErrorCategory,
@@ -72,6 +76,8 @@ export class StreamError extends Error {
       statusCode?: number | null
       context?: Record<string, unknown>
       cause?: Error
+      kind?: string
+      origin?: 'client' | 'stream'
     } = {},
   ) {
     super(message)
@@ -80,7 +86,23 @@ export class StreamError extends Error {
     this.retryable = options.retryable ?? false
     this.statusCode = options.statusCode ?? null
     this.context = options.context ?? {}
+    this.kind = options.kind
+    this.origin = options.origin ?? 'client'
     if (options.cause) (this as Error & { cause?: Error }).cause = options.cause
+  }
+
+  /** Bedste-gæt canonical kind fra category, hvis ingen eksplicit kind. */
+  canonicalKind(): string {
+    if (this.kind) return this.kind
+    switch (this.category) {
+      case 'network': return 'network.unreachable'
+      case 'auth': return 'auth.token_expired'
+      case 'rate_limit': return 'model.rate_limited'
+      case 'server': return 'server.error'
+      case 'protocol': return 'protocol.malformed'
+      case 'cancelled': return 'ui.stream_disconnect'
+      default: return 'ui.unknown'
+    }
   }
 
   /** Bruger-venlig dansk besked. Sikker at vise i UI. */

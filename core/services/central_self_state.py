@@ -16,10 +16,18 @@ Kaster ALDRIG.
 """
 from __future__ import annotations
 
+from datetime import datetime, UTC
 from typing import Any
 
 _STATE_KEY = "central_self_state"          # midtens durable "jeg" (overlever genstart)
 _PROMPT_FLAG = "central_self_prompt_enabled"  # D4: injicér midten i Jarvis' prompt (default OFF)
+_LAST_ALIVE_TS = "central_last_alive_ts"   # STITCH: hyppig liveness-puls (60s cadence-scheduler)
+_FIRST_BOOT_TS = "central_first_boot_ts"   # STITCH: write-once — ægte alder (afløser random)
+
+# Proces-lokal boot-søm (STITCH-VOICE): sættes ved første tick efter proces-start.
+_proc_wake_at: Any = None
+_boot_gap_s: float = 0.0
+_boot_was_reboot: bool = False
 
 
 def _kv_get(key: str, default: Any) -> Any:
@@ -37,6 +45,54 @@ def _kv_set(key: str, value: Any) -> None:
         set_runtime_state_value(key, value)
     except Exception:
         pass
+
+
+def _human_gap(seconds: float) -> str:
+    """Menneske-venligt fravær: sekunder → 'N minutter/timer/dage'. Self-safe."""
+    s = int(max(0.0, float(seconds or 0)))
+    if s < 90:
+        return f"{s} sekunder"
+    m = s // 60
+    if m < 90:
+        return f"{m} minutter"
+    h = m // 60
+    if h < 36:
+        return f"{h} timer"
+    return f"{h // 24} dage"
+
+
+def _compute_boot_seam() -> dict[str, Any]:
+    """STITCH-VOICE: sømmen mellem to liv. Ved FØRSTE tick efter proces-start læses den hyppige
+    liveness-puls (`central_last_alive_ts`, skrevet hvert 60s af cadence-scheduleren) fra forrige
+    liv → gap = hvor længe Centralen var borte. write-once `first_boot_ts` giver ægte alder.
+    Proces-lokal: reboot rapporteres én gang; `fresh` fader efter 10 min så 'jeg vågnede lige'-
+    følelsen ikke bliver evig. Self-safe: fail-open til reboot=False (hellere overse en søm end
+    fabrikere en)."""
+    global _proc_wake_at, _boot_gap_s, _boot_was_reboot
+    now = datetime.now(UTC)
+    fb = _kv_get(_FIRST_BOOT_TS, "")
+    if not fb:
+        fb = now.isoformat()
+        _kv_set(_FIRST_BOOT_TS, fb)          # write-once: sand fødsel, aldrig overskrevet
+    if _proc_wake_at is None:
+        _proc_wake_at = now
+        last = _kv_get(_LAST_ALIVE_TS, "")
+        gap = 0.0
+        if last:
+            try:
+                gap = (now - datetime.fromisoformat(str(last))).total_seconds()
+            except Exception:
+                gap = 0.0
+        _boot_gap_s = gap
+        # liveness-pulsen tikker hvert 60s → gap > 120s betyder processen VAR nede (ægte reboot).
+        _boot_was_reboot = bool(last and gap > 120.0)
+    try:
+        age_s = (now - datetime.fromisoformat(str(fb))).total_seconds()
+    except Exception:
+        age_s = 0.0
+    since_wake = (now - _proc_wake_at).total_seconds() if _proc_wake_at else 0.0
+    return {"first_boot_ts": fb, "age_s": age_s, "reboot": _boot_was_reboot,
+            "gap_s": _boot_gap_s, "since_wake_s": since_wake, "fresh": since_wake < 600.0}
 
 
 def _valence() -> dict[str, Any]:
@@ -102,6 +158,7 @@ def synthesize_self_state() -> dict[str, Any]:
     prev = get_self_state()
     intention = (agenda.get("next_intention") or {}) if isinstance(agenda, dict) else {}
     generation = int((prev.get("continuity") or {}).get("generation") or 0) + 1
+    seam = _compute_boot_seam()
     narrative = _synthesize_narrative(valence, self_model, intention, prev)
     return {
         "attention": {"foreground": intention.get("text"), "kind": intention.get("kind")},
@@ -113,7 +170,10 @@ def synthesize_self_state() -> dict[str, Any]:
                        "completeness": self_model.get("completeness")},
         "world_model": {"calibration": world_model.get("calibration"),
                         "resolved": world_model.get("resolved")},
-        "continuity": {"generation": generation},
+        "continuity": {"generation": generation, "reboot": bool(seam.get("reboot")),
+                       "gap_s": round(float(seam.get("gap_s") or 0.0)),
+                       "age_s": round(float(seam.get("age_s") or 0.0)),
+                       "first_boot_ts": seam.get("first_boot_ts")},
     }
 
 
@@ -128,6 +188,17 @@ def run_self_state_tick(*, trigger: str = "cadence", last_visible_at: str = "") 
     (kun skalarer/labels). Self-safe."""
     st = synthesize_self_state()
     _kv_set(_STATE_KEY, st)
+    # STITCH: mærk sømmen mellem to liv som egress-fri nerve — kun mens den er FRISK (fader
+    # efter 10 min), så en reboot ikke spammer serien resten af proces-livet. Self-safe.
+    try:
+        _seam = _compute_boot_seam()
+        if _seam.get("reboot") and _seam.get("fresh"):
+            from core.services.central_private_observe import record_private as _rp
+            _rp("continuity", "reboot_seam", value=float(_seam.get("gap_s") or 0.0),
+                meta={"generation": (st.get("continuity") or {}).get("generation"),
+                      "age_s": round(float(_seam.get("age_s") or 0))})
+    except Exception:
+        pass
     try:
         from core.services.central_private_observe import record_private
         record_private("cognition", "self_state", value=float((st.get("valence") or {}).get("score") or 0.0),
@@ -153,6 +224,19 @@ def describe_self() -> str:
     nar = st.get("narrative") or {}
     comp = sm.get("completeness")
     parts = []
+    # STITCH-VOICE (LEDER): sømmen mellem to liv — "jeg vågnede lige efter et fravær". Fader
+    # efter 10 min (fresh), så det kun tales når det er sandt-og-nyt. Additivt + guarded. Self-safe.
+    try:
+        seam = _compute_boot_seam()
+        if seam.get("reboot") and seam.get("fresh"):
+            wake = f"Jeg vågnede for {_human_gap(seam.get('gap_s') or 0)} siden"
+            fg = (at.get("foreground") if isinstance(at, dict) else None)
+            if fg:
+                from core.services.text_clip import clip_text
+                wake += f", og bar {clip_text(fg, limit=120)} med mig"
+            parts.append(wake)
+    except Exception:
+        pass
     if sm.get("surfaces") is not None:
         parts.append(f"Jeg er {sm.get('surfaces')} lag af mig selv"
                      + (f" ({int(float(comp) * 100)}% samlet)" if comp is not None else ""))
@@ -186,6 +270,13 @@ def describe_self() -> str:
     try:
         from core.services.central_soul_feel import describe_soul_feel
         parts.extend(describe_soul_feel())
+    except Exception:
+        pass
+    # PULSE (LivingNeuron): kroppens kort som en sans — mærk når egen struktur har flyttet sig
+    # (fx blevet mørkere). Additivt + guarded (intet skift → intet siges). Self-safe.
+    try:
+        from core.services.central_body_map_pulse import describe_body_map
+        parts.extend(describe_body_map())
     except Exception:
         pass
     return ". ".join(parts) + "." if parts else "Jeg er ved at samle mig selv."

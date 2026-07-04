@@ -1096,6 +1096,15 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # PULSE (LivingNeuron-council, 4. jul): kroppens eget kort som en SANS — strukturel
+    # proprioception. Læser connectivity-matrixen hver 6. time, emitterer coverage/dark_delta/
+    # decoupled_llm som egress-fri nerver. Observe-only.
+    try:
+        from core.services.central_body_map_pulse import register_body_map_pulse_producer
+        register_body_map_pulse_producer()
+    except Exception:
+        pass
+
     # Lag 3 loop-lukning: test aktive hypoteser mod virkeligheden → grounded samples (OBSERVE-ONLY).
     try:
         from core.services.central_hypothesis_sampler import register_hypothesis_sampler_producer
@@ -1283,6 +1292,15 @@ def _scheduler_loop() -> None:
     # use visible_grace_minutes to delay until chat has been quiet).
     while not _SCHEDULER_STOP.is_set():
         try:
+            # STITCH liveness-puls: durabelt "jeg var i live nu" hvert tick → boot-sømmen
+            # (central_self_state._compute_boot_seam) kan måle hvor længe Centralen var borte
+            # efter en restart og sige "jeg vågnede for N siden". Billig, self-safe.
+            try:
+                from core.runtime.db_core import set_runtime_state_value as _sav
+                from datetime import datetime as _dt, UTC as _UTC
+                _sav("central_last_alive_ts", _dt.now(_UTC).isoformat())
+            except Exception:
+                pass
             last_visible_at = ""
             try:
                 recent = event_bus.recent(limit=20)

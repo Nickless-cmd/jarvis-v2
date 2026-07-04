@@ -7,12 +7,22 @@ import { replyToSession } from './replyToSession'
 /** id på notifikationens "Svar"-action (Direct Reply / RemoteInput). */
 export const REPLY_ACTION_ID = 'jarvis-reply'
 
-export type PushData = { kind: string; session_id?: string; run_id?: string; title?: string; preview?: string; notif_id?: string }
+export type PushData = { kind: string; session_id?: string; run_id?: string; title?: string; preview?: string; notif_id?: string; severity?: string; message?: string }
 
 /** Pure: byg notifikations-felter ud fra data + (evt.) hentet beskedtekst. Testbar. */
 export function buildNotification(data: PushData, fetchedBody: string | null) {
   if (data.kind === 'reminder') {
     return { title: 'Påmindelse', body: data.preview ?? '', data }
+  }
+  if (data.kind === 'error') {
+    // Kanonisk fejl (Canonical Error System): kun kritiske/høje fejl når frem hertil
+    // som push. Vis ærligt at noget gik galt, med serverens besked.
+    const critical = data.severity === 'critical'
+    return {
+      title: critical ? 'Jarvis: kritisk fejl' : 'Jarvis stødte på et problem',
+      body: data.message ?? data.preview ?? 'Der opstod en fejl.',
+      data
+    }
   }
   if (data.kind === 'initiative') {
     return { title: 'Jarvis', body: data.preview ?? 'Jarvis vil sige noget', data }

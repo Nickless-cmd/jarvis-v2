@@ -36,27 +36,43 @@ interface StreamContextValue {
   stopFollow: () => void
 }
 
+/** Hvordan runtime forsøger at rette fejlen (central_error_envelope.recoverable).
+ *  Styrer hvilken system-handlings-linje ErrorCard viser. */
+export type StreamErrorRecoverable = 'auto' | 'retry' | 'user_action' | 'degraded' | 'permanent' | ''
+
 /** Struktureret bruger-vendt fejl (unified fejl-system, central_error_envelope).
  *  Fra backendens `error`-system_event ELLER en terminal klient-fejl. */
 export interface StreamErrorInfo {
   code: string
+  /** Kanonisk fejl-kind (fx `stream.cutoff`, `provider.timeout`) — familie-taksonomi. */
+  kind: string
   severity: 'info' | 'warning' | 'error' | 'critical'
   message: string
   fixHint: string
   retryable: boolean
   correlationId: string
+  /** Runtime-selvhelbreds-status (auto/retry/…): driver system-handlings-linjen. */
+  recoverable: StreamErrorRecoverable
+  /** Fejlens omfang (fx `run`, `session`, `runtime`) — kontekst i transparens. */
+  scope: string
 }
+
+const RECOVERABLES: StreamErrorRecoverable[] = ['auto', 'retry', 'user_action', 'degraded', 'permanent']
 
 /** Backendens `error`-payload (central_error_envelope) → UI-form. */
 function eventToErrorInfo(payload: Record<string, unknown>): StreamErrorInfo {
   const sev = String(payload.severity ?? 'error')
+  const rec = String(payload.recoverable ?? '')
   return {
     code: String(payload.code ?? 'unknown'),
+    kind: String(payload.kind ?? payload.code ?? 'unknown'),
     severity: (['info', 'warning', 'error', 'critical'].includes(sev) ? sev : 'error') as StreamErrorInfo['severity'],
     message: String(payload.message ?? 'Der opstod en fejl.'),
     fixHint: String(payload.fix_hint ?? ''),
     retryable: Boolean(payload.retryable ?? true),
-    correlationId: String(payload.correlation_id ?? '')
+    correlationId: String(payload.correlation_id ?? ''),
+    recoverable: (RECOVERABLES.includes(rec as StreamErrorRecoverable) ? rec : '') as StreamErrorRecoverable,
+    scope: String(payload.scope ?? '')
   }
 }
 
@@ -64,11 +80,14 @@ function eventToErrorInfo(payload: Record<string, unknown>): StreamErrorInfo {
 function clientErrorToInfo(_err: Error | undefined): StreamErrorInfo {
   return {
     code: 'stream',
+    kind: 'stream.disconnected',
     severity: 'error',
     message: 'Forbindelsen til Jarvis blev afbrudt.',
     fixHint: 'Tjek din forbindelse og prøv igen.',
     retryable: true,
-    correlationId: ''
+    correlationId: '',
+    recoverable: 'retry',
+    scope: 'session'
   }
 }
 

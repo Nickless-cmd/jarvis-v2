@@ -8,6 +8,7 @@ import { Composer } from '../components/Composer'
 import { StreamIndicator } from '../components/StreamIndicator'
 import { ConnectionPill } from '../components/ConnectionPill'
 import { ErrorBanner } from '../components/ErrorBanner'
+import { ErrorCard } from '../components/ErrorCard'
 import { GreetingHero } from '../components/GreetingHero'
 import { LivenessRing } from '../components/LivenessRing'
 import { MessageList, type MessageListHandle } from '../components/MessageList'
@@ -357,30 +358,47 @@ export function ChatScreen() {
           />
         ) : null}
         {canRetry ? (
-          <ErrorBanner
-            title={
-              stream.streamError
-                ? stream.streamError.message
-                : stream.state.status === 'interrupted'
-                  ? 'Svar stoppet'
-                  : 'Stream fejlede'
-            }
-            detail={
-              stream.streamError?.fixHint
-                ? stream.streamError.fixHint
-                : 'Du kan prøve den seneste besked igen.'
-            }
-            actionLabel={!stream.streamError || stream.streamError.retryable ? 'Prøv igen' : undefined}
-            onAction={
-              !stream.streamError || stream.streamError.retryable
-                ? () => {
-                    stream.clearError()
-                    void ensureSessionAndSend(lastUserMessage.content)
-                  }
-                : undefined
-            }
-            onDismiss={stream.streamError ? () => stream.clearError() : undefined}
-          />
+          stream.streamError && stream.streamError.kind ? (
+            // Kanonisk fejl (Canonical Error System, Fase 2): rigt kort med titel,
+            // hvad-systemet-gjorde og fix_hint.
+            <ErrorCard
+              error={stream.streamError}
+              onRetry={
+                stream.streamError.retryable
+                  ? () => {
+                      stream.clearError()
+                      void ensureSessionAndSend(lastUserMessage.content)
+                    }
+                  : undefined
+              }
+              onDismiss={() => stream.clearError()}
+            />
+          ) : (
+            <ErrorBanner
+              title={
+                stream.streamError
+                  ? stream.streamError.message
+                  : stream.state.status === 'interrupted'
+                    ? 'Svar stoppet'
+                    : 'Stream fejlede'
+              }
+              detail={
+                stream.streamError?.fixHint
+                  ? stream.streamError.fixHint
+                  : 'Du kan prøve den seneste besked igen.'
+              }
+              actionLabel={!stream.streamError || stream.streamError.retryable ? 'Prøv igen' : undefined}
+              onAction={
+                !stream.streamError || stream.streamError.retryable
+                  ? () => {
+                      stream.clearError()
+                      void ensureSessionAndSend(lastUserMessage.content)
+                    }
+                  : undefined
+              }
+              onDismiss={stream.streamError ? () => stream.clearError() : undefined}
+            />
+          )
         ) : null}
         {stream.approval && config ? (
           <ApprovalCard

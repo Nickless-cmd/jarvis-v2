@@ -1,5 +1,6 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native'
 import { ChatScreen } from './ChatScreen'
+import type { StreamErrorInfo } from '../state/StreamContext'
 
 const config = {
   apiBaseUrl: 'https://api.srvlab.dk/',
@@ -24,6 +25,8 @@ type MockStream = {
     message: string
     detail?: string
   }
+  streamError: null | StreamErrorInfo
+  clearError: () => void
   approve: typeof mockApprove
   deny: typeof mockDeny
   send: typeof mockSend
@@ -52,6 +55,8 @@ let mockStream: MockStream = {
     blocks: []
   },
   approval: null,
+  streamError: null,
+  clearError: jest.fn(),
   approve: mockApprove,
   deny: mockDeny,
   send: mockSend,
@@ -126,6 +131,8 @@ beforeEach(() => {
       blocks: []
     },
     approval: null,
+    streamError: null,
+    clearError: jest.fn(),
     approve: mockApprove,
     deny: mockDeny,
     send: mockSend,
@@ -138,8 +145,8 @@ beforeEach(() => {
 it('shows retry after a failed stream and resends the last user message', async () => {
   const screen = await render(<ChatScreen />)
 
-  await waitFor(() => expect(screen.getByText('Retry')).toBeTruthy())
-  await fireEvent.press(screen.getByText('Retry'))
+  await waitFor(() => expect(screen.getByText('Prøv igen')).toBeTruthy())
+  await fireEvent.press(screen.getByText('Prøv igen'))
 
   expect(mockCreate).not.toHaveBeenCalled()
   // 4. arg (model-opts) ignoreres her — testen handler om retry-routing.
@@ -157,7 +164,7 @@ it('hides retry while the stream is working', async () => {
 
   const screen = await render(<ChatScreen />)
 
-  expect(screen.queryByText('Retry')).toBeNull()
+  expect(screen.queryByText('Prøv igen')).toBeNull()
 })
 
 it('renders approval requests and forwards explicit decisions', async () => {

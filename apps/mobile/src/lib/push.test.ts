@@ -53,4 +53,20 @@ describe('buildNotification', () => {
     const n = buildNotification({ kind: 'team_invite' }, null)
     expect(n.title).toBe('Invitation til team')
   })
+
+  it('error -> ærlig fejl-titel + serverens besked, IKKE "Jarvis svarede"', () => {
+    const n = buildNotification(
+      { kind: 'error', message: 'Model-udbyderen svarede ikke', severity: 'error' },
+      null,
+    )
+    expect(n.title).toMatch(/problem/i)
+    expect(n.title).not.toMatch(/svarede/)
+    expect(n.body).toContain('Model-udbyderen svarede ikke')
+  })
+
+  it('error kritisk -> kritisk titel', () => {
+    const n = buildNotification({ kind: 'error', severity: 'critical', message: 'Kerne-fejl' }, null)
+    expect(n.title).toMatch(/kritisk/i)
+    expect(n.body).toContain('Kerne-fejl')
+  })
 })

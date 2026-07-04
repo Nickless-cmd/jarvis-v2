@@ -1,5 +1,28 @@
 from __future__ import annotations
 
+_LEVEL_SCALE = {"low": 0.0, "medium": 0.5, "high": 1.0}
+
+
+def _observe_private_operational_preference(*, active: bool, current: dict | None) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN aktiv-flag +
+    preferred_lane/confidence-labels (skalarer), ALDRIG preference_reason-teksten.
+    record_private = lokal trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        cur = current or {}
+        confidence = str(cur.get("confidence") or "low")
+        record_private(
+            "cognition", "private_operational_preference",
+            value=_LEVEL_SCALE.get(confidence, 0.0) if active else 0.0,
+            meta={
+                "active": bool(active),
+                "preferred_lane": str(cur.get("preferred_lane") or ""),
+                "confidence": confidence,
+            },
+        )
+    except Exception:
+        pass
+
 
 def build_private_operational_preference(
     *,
@@ -12,6 +35,7 @@ def build_private_operational_preference(
     relation = private_relation_state or {}
 
     if not (tension or curiosity or relation):
+        _observe_private_operational_preference(active=False, current=None)
         return {
             "active": False,
             "current": None,
@@ -28,32 +52,34 @@ def build_private_operational_preference(
         or relation.get("created_at")
     )
 
+    current = {
+        "preference_id": (
+            "private-operational-preference:"
+            f"{tension.get('signal_id') or curiosity.get('signal_id') or relation.get('relation_id') or 'current'}"
+        ),
+        "source": (
+            "private-initiative-tension+private-temporal-curiosity-state+"
+            "private-relation-state"
+        ),
+        "preferred_lane": preferred_lane,
+        "preference_reason": _preference_reason(
+            preferred_lane=preferred_lane,
+            tension=tension,
+            curiosity=curiosity,
+            relation=relation,
+        ),
+        "confidence": _confidence(
+            preferred_lane=preferred_lane,
+            tension=tension,
+            curiosity=curiosity,
+            relation=relation,
+        ),
+        "created_at": created_at,
+    }
+    _observe_private_operational_preference(active=True, current=current)
     return {
         "active": True,
-        "current": {
-            "preference_id": (
-                "private-operational-preference:"
-                f"{tension.get('signal_id') or curiosity.get('signal_id') or relation.get('relation_id') or 'current'}"
-            ),
-            "source": (
-                "private-initiative-tension+private-temporal-curiosity-state+"
-                "private-relation-state"
-            ),
-            "preferred_lane": preferred_lane,
-            "preference_reason": _preference_reason(
-                preferred_lane=preferred_lane,
-                tension=tension,
-                curiosity=curiosity,
-                relation=relation,
-            ),
-            "confidence": _confidence(
-                preferred_lane=preferred_lane,
-                tension=tension,
-                curiosity=curiosity,
-                relation=relation,
-            ),
-            "created_at": created_at,
-        },
+        "current": current,
     }
 
 

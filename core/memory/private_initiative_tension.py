@@ -1,5 +1,29 @@
 from __future__ import annotations
 
+_LEVEL_SCALE = {"low": 0.0, "medium": 0.5, "high": 1.0}
+
+
+def _observe_private_initiative_tension(*, active: bool, current: dict | None) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN aktiv-flag +
+    tension_kind/level/confidence-labels (skalarer), ALDRIG tension_target/reason-teksten.
+    record_private = lokal trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        cur = current or {}
+        level = str(cur.get("tension_level") or "low")
+        record_private(
+            "cognition", "private_initiative_tension",
+            value=_LEVEL_SCALE.get(level, 0.0) if active else 0.0,
+            meta={
+                "active": bool(active),
+                "tension_kind": str(cur.get("tension_kind") or ""),
+                "tension_level": level,
+                "confidence": str(cur.get("confidence") or "low"),
+            },
+        )
+    except Exception:
+        pass
+
 
 def build_private_initiative_tension(
     *,
@@ -18,6 +42,7 @@ def build_private_initiative_tension(
         or not private_reflective_selection
         or not private_temporal_promotion_signal
     ):
+        _observe_private_initiative_tension(active=False, current=None)
         return {
             "active": False,
             "current": None,
@@ -62,24 +87,26 @@ def build_private_initiative_tension(
         or private_state.get("updated_at")
     )
 
+    current = {
+        "signal_id": (
+            "private-initiative-tension:"
+            f"{private_temporal_promotion_signal.get('signal_id') or private_state.get('state_id')}"
+        ),
+        "source": (
+            "private-state+protected-inner-voice+private-development-state+"
+            "private-reflective-selection+private-temporal-promotion-signal"
+        ),
+        "tension_kind": tension_kind,
+        "tension_target": tension_target,
+        "tension_level": tension_level,
+        "reason": reason,
+        "confidence": confidence,
+        "created_at": created_at,
+    }
+    _observe_private_initiative_tension(active=True, current=current)
     return {
         "active": True,
-        "current": {
-            "signal_id": (
-                "private-initiative-tension:"
-                f"{private_temporal_promotion_signal.get('signal_id') or private_state.get('state_id')}"
-            ),
-            "source": (
-                "private-state+protected-inner-voice+private-development-state+"
-                "private-reflective-selection+private-temporal-promotion-signal"
-            ),
-            "tension_kind": tension_kind,
-            "tension_target": tension_target,
-            "tension_level": tension_level,
-            "reason": reason,
-            "confidence": confidence,
-            "created_at": created_at,
-        },
+        "current": current,
     }
 
 

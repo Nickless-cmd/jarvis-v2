@@ -77,3 +77,15 @@ def test_llm_exception_falls_back_to_template(monkeypatch):
     )
     assert "roligt" in out  # template's "Jeg står nogenlunde roligt"
     assert len(out) <= 200
+
+
+
+# --- Bölge 2: egress-fri Central-puls ---
+def test_records_private_egress_free():
+    import inspect
+    import core.memory.protected_inner_voice as mod
+    src = inspect.getsource(mod)
+    assert "record_private" in src
+    assert "central().observe" not in src
+    assert "event_bus" not in src
+    assert "_emit(" not in src

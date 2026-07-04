@@ -602,3 +602,15 @@ def test_full_pipeline_enrichment_end_to_end() -> None:
 
     assert voice[0] == "Stille opmærksomhed, rettet mod det næste."
     assert voice[1] == 1
+
+
+
+# --- Bölge 2: egress-fri Central-puls ---
+def test_records_private_egress_free():
+    import inspect
+    import core.memory.inner_llm_enrichment as mod
+    src = inspect.getsource(mod)
+    assert "record_private" in src
+    assert "central().observe" not in src
+    assert "event_bus" not in src
+    assert "_emit(" not in src

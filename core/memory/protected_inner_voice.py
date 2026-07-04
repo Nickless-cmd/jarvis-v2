@@ -1,6 +1,25 @@
 from __future__ import annotations
 
 
+_MOOD_SCALE = {"quiet": 0.0, "steady": 0.4, "attentive": 0.6, "guarded": 1.0}
+
+
+def _observe_protected_inner_voice(*, mood_tone: str) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN mood_tone-label
+    (skalar), ALDRIG voice_line/self_position/current_pull/current_concern-teksten (Jarvis'
+    faktiske indre stemme). record_private = lokal trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        mood = str(mood_tone or "quiet")
+        record_private(
+            "cognition", "protected_inner_voice",
+            value=_MOOD_SCALE.get(mood, 0.0),
+            meta={"mood_tone": mood},
+        )
+    except Exception:
+        pass
+
+
 def build_protected_inner_voice_payload(
     *,
     run_id: str,
@@ -33,6 +52,7 @@ def build_protected_inner_voice_payload(
         current_concern=current_concern,
         current_pull=current_pull,
     )
+    _observe_protected_inner_voice(mood_tone=mood_tone)
     return {
         "voice_id": f"protected-inner-voice:{run_id}",
         "source": (

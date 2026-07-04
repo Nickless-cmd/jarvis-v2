@@ -529,6 +529,21 @@ def _call_ollama_chat(
 # ---------------------------------------------------------------------------
 
 
+def _observe_enrichment(*, enriched: int, reused: int, failed: int) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN antal lag
+    beriget/genbrugt/fejlet (skalarer), ALDRIG det berigede indhold (de faktiske indre
+    tanker). record_private = lokal trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        record_private(
+            "cognition", "inner_llm_enrichment",
+            value=float(enriched),
+            meta={"enriched": int(enriched), "reused": int(reused), "failed": int(failed)},
+        )
+    except Exception:
+        pass
+
+
 def _enrich_worker(
     *,
     run_id: str,
@@ -538,6 +553,9 @@ def _enrich_worker(
     recent_chat_context: str,
 ) -> None:
     """Sequentially enrich 3 layers via cheap LLM, updating DB in-place."""
+    _enriched = 0
+    _reused = 0
+    _failed = 0
 
     # 1. Inner note
     try:
@@ -550,10 +568,12 @@ def _enrich_worker(
             update_private_inner_note_enriched(
                 run_id=run_id, enriched_summary=cleaned_result
             )
+            _enriched += 1
             logger.debug(
                 "inner-llm-enrichment: inner_note enriched for run %s", run_id
             )
     except Exception as exc:
+        _failed += 1
         logger.warning("inner-llm-enrichment: inner_note enrichment failed: %s", exc)
 
     # 2. Growth note
@@ -576,10 +596,12 @@ def _enrich_worker(
                 enriched_lesson=lesson,
                 enriched_helpful_signal=helpful,
             )
+            _enriched += 1
             logger.debug(
                 "inner-llm-enrichment: growth_note enriched for run %s", run_id
             )
     except Exception as exc:
+        _failed += 1
         logger.warning(
             "inner-llm-enrichment: growth_note enrichment failed: %s", exc
         )
@@ -609,6 +631,7 @@ def _enrich_worker(
             update_protected_inner_voice_enriched(
                 run_id=run_id, enriched_voice_line=str(decision["held"])[:200]
             )
+            _reused += 1
             logger.info("inner-llm-enrichment: inner_voice GENBRUGT fra Centralen (run %s) — kald sprunget over", run_id)
         else:
             system, user = _build_inner_voice_prompt(inner_voice_payload, recent_chat_context)
@@ -620,15 +643,19 @@ def _enrich_worker(
                 update_protected_inner_voice_enriched(
                     run_id=run_id, enriched_voice_line=cleaned_result
                 )
+                _enriched += 1
                 # Fodr det friske selv TILBAGE i Centralen (OP + hold).
                 _cis.note_enriched_voice(run_id=run_id, key=voice_key, value=cleaned_result)
                 logger.debug(
                     "inner-llm-enrichment: inner_voice enriched for run %s", run_id
                 )
     except Exception as exc:
+        _failed += 1
         logger.warning(
             "inner-llm-enrichment: inner_voice enrichment failed: %s", exc
         )
+
+    _observe_enrichment(enriched=_enriched, reused=_reused, failed=_failed)
 
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,29 @@
 from __future__ import annotations
 
+_LEVEL_SCALE = {"low": 0.0, "medium": 0.5, "high": 1.0}
+
+
+def _observe_private_relation_state(*, active: bool, current: dict | None) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN aktiv-flag +
+    mode/confidence-labels (skalarer), ALDRIG user-preview/retained-focus-teksten.
+    record_private = lokal trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        cur = current or {}
+        confidence = str(cur.get("confidence") or "low")
+        record_private(
+            "cognition", "private_relation_state",
+            value=_LEVEL_SCALE.get(confidence, 0.0) if active else 0.0,
+            meta={
+                "active": bool(active),
+                "continuity_mode": str(cur.get("continuity_mode") or ""),
+                "interaction_mode": str(cur.get("interaction_mode") or ""),
+                "confidence": confidence,
+            },
+        )
+    except Exception:
+        pass
+
 
 def build_private_relation_state(
     *,
@@ -14,6 +38,7 @@ def build_private_relation_state(
     retained = private_retained_memory_projection or {}
 
     if not (session or continuity or work_item):
+        _observe_private_relation_state(active=False, current=None)
         return {
             "active": False,
             "current": None,
@@ -34,36 +59,38 @@ def build_private_relation_state(
         or work_item.get("selected_run_id")
     )
 
+    current = {
+        "relation_id": f"private-relation-state:{relation_id}",
+        "source": (
+            "visible-session-continuity+visible-continuity+"
+            "visible-selected-work-item+private-retained-memory-projection"
+        ),
+        "continuity_mode": _continuity_mode(
+            latest_status=latest_status,
+            session=session,
+            continuity=continuity,
+        ),
+        "interaction_mode": _interaction_mode(
+            latest_status=latest_status,
+            user_preview=user_preview,
+            work_item=work_item,
+        ),
+        "relation_pull": _relation_pull(
+            user_preview=user_preview,
+            retained_focus=retained_focus,
+            work_item=work_item,
+        ),
+        "confidence": _confidence(
+            session=session,
+            continuity=continuity,
+            user_preview=user_preview,
+        ),
+        "created_at": created_at,
+    }
+    _observe_private_relation_state(active=True, current=current)
     return {
         "active": True,
-        "current": {
-            "relation_id": f"private-relation-state:{relation_id}",
-            "source": (
-                "visible-session-continuity+visible-continuity+"
-                "visible-selected-work-item+private-retained-memory-projection"
-            ),
-            "continuity_mode": _continuity_mode(
-                latest_status=latest_status,
-                session=session,
-                continuity=continuity,
-            ),
-            "interaction_mode": _interaction_mode(
-                latest_status=latest_status,
-                user_preview=user_preview,
-                work_item=work_item,
-            ),
-            "relation_pull": _relation_pull(
-                user_preview=user_preview,
-                retained_focus=retained_focus,
-                work_item=work_item,
-            ),
-            "confidence": _confidence(
-                session=session,
-                continuity=continuity,
-                user_preview=user_preview,
-            ),
-            "created_at": created_at,
-        },
+        "current": current,
     }
 
 

@@ -106,13 +106,13 @@ def test_routes_only_whitelisted(wired):
     bind_bus([
         _ev(1, "tool.called"),          # → observes (tools/event)
         _ev(2, "central.observed"),     # → skip (rekursions-guard)
-        _ev(3, "inner_voice.spoke"),    # → skip (privat, hverken allowlist ELLER no-egress)
+        _ev(3, "dreams.woven"),         # → skip (privat, hverken allowlist ELLER no-egress)
         _ev(4, "runtime.run_ended"),    # → observes (loop/lifecycle)
         _ev(5, "cognitive_state.shift"),# → PRIVATE_NO_EGRESS: observeres EGRESS-FRIT (ikke i central.observed)
     ])
     res = br.run_bridge_tick()
     assert res["observed"] == 3   # cognitive_state tælles med, men egress-frit
-    assert res["skipped"] == 2    # central-guard + inner_voice
+    assert res["skipped"] == 2    # central-guard + dreams
     assert res["last_seen_id"] == 5
     # KRITISK egress-invariant: den private cognitive_state-event nåede ALDRIG central().observe
     kinds = {o["event_kind"] for o in central.observed}
@@ -275,4 +275,106 @@ def test_sec71_signal_event_observed_egress_free(wired, monkeypatch):
     assert res["observed"] == 4
     # de 3 private nåede _observe_private, IKKE central().observe
     assert {c[0] for c in calls} == {"cognition"}
+    assert {o["event_kind"] for o in central.observed} == {"tool.called"}
+
+
+# ── §7.1 batch 6: resterende FRAKOBLET+DARK signal-lag koblet EGRESS-FRIT via allowlist ──
+
+# Ægte family-navne udtrukket fra docs/central_connectivity_matrix.json (dark_families for
+# FRAKOBLET+DARK-services). 117 signal-bærende families, grupperet efter cluster.
+_SEC71_BATCH6_FAMILIES = frozenset({
+    # cognition (82)
+    "affective_state_renderer", "affirmation_anchor", "agency_cartographer",
+    "agentic_checkpoints", "agentic_working_conclusions", "agreement_streak",
+    "attention_budget", "auto_improvement", "autonomy_proposal", "avoidance_detector",
+    "causal_graph", "clarification_classifier", "cognitive_anticipation", "cognitive_compass",
+    "cognitive_experiment", "cognitive_mirror", "cognitive_negotiation", "cognitive_personality",
+    "cognitive_relationship", "cognitive_rhythm", "cognitive_skill_chain", "conflict_prompt_service",
+    "conflict_resolution", "contradiction", "counterfactual", "counterfactual_engine_runtime",
+    "counterfactual_triggers", "crisis_marker", "decision_signal_telemetry", "dream_adoption_candidate",
+    "dream_hypothesis_forced", "dream_influence_proposal", "embodied_presence",
+    "emotion_concepts_positive_triggers", "epistemic_pragmatic", "experience_correction_listener",
+    "inheritance_seed", "inner_voice", "layer_tension", "life_milestones", "life_projects",
+    "meta_learning_aggregator", "meta_learning_hypotheses", "metacognitive_integration", "mood_dialer",
+    "narrative", "open_loop_closure_proposal", "outcome_learning", "precision_bias", "pressure",
+    "priors_feedback", "private_state_snapshot", "private_temporal_curiosity_state",
+    "prompt_support_signals", "prompt_variant_tracker", "proposal_classifier", "reasoning_classifier",
+    "reasoning_escalation", "reflective_critic", "relation_map", "runtime_decision_engine",
+    "selective_attention", "self_authored_prompt_proposal", "self_deception_guard",
+    "self_model_predictive", "self_narrative_self_model_review_bridge", "self_review_outcome",
+    "self_review_record", "self_review_run", "selfhood_proposal", "social_labilizer",
+    "temporal_context", "temporal_depth", "thought_action_proposal", "thought_thread",
+    "tool_pattern_miner", "user_contradiction", "user_md_update_proposal", "user_temperature_runtime",
+    "user_theory_of_mind", "visible_self_state_summary", "workspace",
+    # memory (16)
+    "chronicle_consolidation_brief", "chronicle_consolidation_proposal", "cognitive_forgetting",
+    "concept_baseline", "council_memory", "cross_agent_memory", "day_shape_memory",
+    "experience_episodes", "experience_substrate", "memory_consolidation_nudge",
+    "memory_emotional_context", "memory_md_update_proposal", "memory_resurfacing",
+    "memory_write_policy", "selective_forgetting_candidate", "tool_outcome_memory",
+    # channel (7)
+    "cowork", "delegation_advisor", "inner_voice_notifier", "nudge_broend",
+    "proactive_outbound_substrate", "subagent_digest", "voice_curator",
+    # system (12)
+    "context", "development_sense", "good_enough_gate", "hardware_body",
+    "proactive_loop_lifecycle", "proactive_question_gate", "r2_5_blocking_gate", "r2_5_gate",
+    "read_before_write_guard", "self_monitor", "self_system_code_awareness", "signal_noise_guard",
+})
+
+
+def test_sec71_batch6_count():
+    # 117 signal-bærende families koblet i denne batch.
+    assert len(_SEC71_BATCH6_FAMILIES) == 117
+
+
+def test_sec71_batch6_families_route_egress_free():
+    # hver batch-6-family ender i PRIVATE_NO_EGRESS_ROUTES (egress-frit), IKKE i FAMILY_ROUTES.
+    for fam in _SEC71_BATCH6_FAMILIES:
+        assert fam in br.PRIVATE_NO_EGRESS_ROUTES, f"{fam} mangler egress-fri rute"
+        assert fam not in br.FAMILY_ROUTES, f"{fam} i FAMILY_ROUTES = egress-læk!"
+        cluster, nerve = br.PRIVATE_NO_EGRESS_ROUTES[fam]
+        assert cluster in {"cognition", "memory", "channel", "system"}
+        assert isinstance(nerve, str) and nerve
+
+
+def test_sec71_batch6_families_in_excluded_invariant():
+    # invariant: hver batch-6-family står også i PRIVATE_FAMILIES_EXCLUDED_M0.
+    for fam in _SEC71_BATCH6_FAMILIES:
+        assert fam in br.PRIVATE_FAMILIES_EXCLUDED_M0, f"{fam} bryder excluded-invarianten"
+
+
+def test_sec71_batch6_no_family_leaks_to_egress():
+    # ingen batch-6-family i FAMILY_ROUTES (den egress-OK rute).
+    assert _SEC71_BATCH6_FAMILIES.isdisjoint(set(br.FAMILY_ROUTES))
+
+
+def test_global_invariant_no_egress_subset_of_excluded():
+    # Global invariant efter batch 6: HELE PRIVATE_NO_EGRESS ⊆ EXCLUDED, disjunkt fra FAMILY_ROUTES.
+    pn = set(br.PRIVATE_NO_EGRESS_ROUTES)
+    fr = set(br.FAMILY_ROUTES)
+    ex = set(br.PRIVATE_FAMILIES_EXCLUDED_M0)
+    assert pn <= ex, f"PRIVATE_NO_EGRESS ikke ⊆ EXCLUDED: {pn - ex}"
+    assert pn.isdisjoint(fr), f"PRIVATE_NO_EGRESS overlapper FAMILY_ROUTES: {pn & fr}"
+    assert fr.isdisjoint(ex), f"FAMILY_ROUTES overlapper EXCLUDED: {fr & ex}"
+
+
+def test_sec71_batch6_signal_event_observed_egress_free(wired, monkeypatch):
+    # E2E: et batch-6 signal-event (crisis_marker) routes via _observe_private → tælles men når
+    # ALDRIG central().observe (egress-fri sti).
+    central, cache, bind_bus, _ = wired
+    cache.store[br._LAST_SEEN_KEY] = {"id": 0}
+    calls: list = []
+    monkeypatch.setattr(br, "_observe_private",
+                        lambda c, n, ev: (calls.append((c, n, ev.get("kind"))), True)[1])
+    bind_bus([
+        _ev(1, "crisis_marker.detected"),        # → PRIVATE_NO_EGRESS (cognition)
+        _ev(2, "hardware_body.metric_updated"),  # → PRIVATE_NO_EGRESS (system)
+        _ev(3, "council_memory.recorded"),       # → PRIVATE_NO_EGRESS (memory)
+        _ev(4, "cowork.dispatched"),             # → PRIVATE_NO_EGRESS (channel)
+        _ev(5, "tool.called"),                   # → egress-OK (kontrol)
+    ])
+    res = br.run_bridge_tick()
+    assert res["observed"] == 5
+    # de 4 private nåede _observe_private med korrekt cluster, IKKE central().observe
+    assert {c[0] for c in calls} == {"cognition", "system", "memory", "channel"}
     assert {o["event_kind"] for o in central.observed} == {"tool.called"}

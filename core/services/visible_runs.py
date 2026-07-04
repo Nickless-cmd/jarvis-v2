@@ -2105,6 +2105,11 @@ async def _stream_visible_run(
                 _SYNTH_PAUSE_AFTER = 8
                 _synth_pause_fired_at = -100  # runde hvor vi sidst tvang en pause
                 _agentic_loop_exit_reason = "completed"
+                # ── LAG 3 no-progress-detektor state (Bjørn 4. jul) ──
+                _force_finalize_next = False       # sat i bunden af en no-progress-runde
+                _prev_round_sig: frozenset | None = None  # forrige rundes (tool,args,result)-signatur
+                _no_progress_rounds = 0            # antal på hinanden følgende no-progress-runder
+                _MAX_NO_PROGRESS = 2               # 2 identiske runder → finalize
                 _prev_round_end_t: float | None = None  # for inter-round-gap metric
                 # Track most-recent assistant reasoning_content for persistence
                 # (Deepseek thinking-mode replay). Starter med first-pass-result.
@@ -2309,6 +2314,15 @@ async def _stream_visible_run(
                             or _consecutive_empty_text_rounds >= _MAX_EMPTY_TEXT_ROUNDS - 1
                             or _consecutive_tool_only_rounds >= _MAX_TOOL_ONLY_ROUNDS - 1
                         )
+                    # ── LAG 3: NO-PROGRESS-DETEKTOR (Bjørn 4. jul, research-baseret) ──
+                    # De eksisterende tællere fanger IKKE "narrerer >80 tegn men kalder
+                    # SAMME værktøj med samme args og får samme resultat runde efter runde"
+                    # (prosaen nulstiller tool-only-tælleren). Result-aware detektor:
+                    # gentages rundens (tool,args,resultat)-signatur → INTET nyt lært →
+                    # tving finalize NU i stedet for at brænde runder mod loftet. Sat i
+                    # bunden af forrige runde; her løftes den ind i _is_last_round.
+                    if _force_finalize_next:
+                        _is_last_round = True
                     # Var tools fjernet i DENNE runde KUN pga. synthese-pausen (ikke
                     # fordi det er sidste runde)? Så er en tom tool-liste en TVUNGET
                     # opsummering — ikke et naturligt "jeg er færdig". Vi må ikke
@@ -3438,6 +3452,48 @@ async def _stream_visible_run(
                         int((time.monotonic() - _a_exec_start) * 1000),
                         len(_a_results),
                     )
+                    # ── LAG 3: result-aware no-progress-detektor (Bjørn 4. jul) ──────
+                    # Byg rundens signatur = {(tool, args, result)} og sammenlign med
+                    # forrige runde. Identisk → INTET nyt lært (modellen spinner på samme
+                    # forespørgsel). Også: ALLE resultater duplicate_suppressed = ren
+                    # gentagelse. To sådanne runder i træk → tving finalize næste runde
+                    # (forskning: same tool+args+output ×N = stall; result-aware for ikke
+                    # at dræbe legitim polling der får SKIFTENDE svar). Nerve gør det synligt.
+                    try:
+                        import hashlib as _hp
+                        _sig_items = set()
+                        _all_dup = bool(_a_results)
+                        for _rr in (_a_results or []):
+                            _rn = str(_rr.get("tool_name") or "")
+                            _ra = json.dumps(_rr.get("arguments") or {}, sort_keys=True, ensure_ascii=False)
+                            _rt = str(_rr.get("result_text") or "")[:600]
+                            if str(_rr.get("status") or "") != "duplicate_suppressed":
+                                _all_dup = False
+                            _sig_items.add((_rn, _hp.sha1(_ra.encode()).hexdigest(),
+                                            _hp.sha1(_rt.encode()).hexdigest()))
+                        _round_sig = frozenset(_sig_items)
+                        _no_new = bool(_round_sig) and (
+                            _all_dup or _round_sig == _prev_round_sig)
+                        if _no_new:
+                            _no_progress_rounds += 1
+                        else:
+                            _no_progress_rounds = 0
+                        _prev_round_sig = _round_sig
+                        if _no_progress_rounds >= _MAX_NO_PROGRESS and not _force_finalize_next:
+                            _force_finalize_next = True
+                            try:
+                                from core.services.central_core import central as _central_np
+                                _central_np().observe({
+                                    "cluster": "loop", "nerve": "no_progress_finalize",
+                                    "run_id": str(run.run_id or ""), "provider": str(run.provider or ""),
+                                    "model": str(run.model or ""), "round": _agentic_round + 1,
+                                    "no_progress_rounds": _no_progress_rounds,
+                                    "all_duplicate": _all_dup,
+                                })
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
                     # 2026-06-11 (Bjørn frustration crisis fix B): hvis dette
                     # er en Discord-session, send live tool-progress til
                     # Discord-kanalen så brugeren ser hvad Jarvis arbejder på

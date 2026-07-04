@@ -196,6 +196,15 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
 
     pending_write_count = total_pending_runtime_candidates(pending_writes)
 
+    _observe_runtime_contract(
+        canonical_present=canonical_present,
+        canonical_expected=len(canonical_files),
+        pending_write_count=pending_write_count,
+        capabilities_available=int(capability_contract["available_now_count"]),
+        capabilities_gated=int(capability_contract["approval_required_count"]),
+        bootstrap_status=str(bootstrap["status"]),
+    )
+
     return {
         "workspace": str(workspace_dir),
         "contract_version": "jarvis-v2-runtime-contract-v1",
@@ -227,6 +236,40 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
             "reference-only": "Reference material retained for study and contract design, not runtime prompt input.",
         },
     }
+
+
+def _observe_runtime_contract(
+    *,
+    canonical_present: int,
+    canonical_expected: int,
+    pending_write_count: int,
+    capabilities_available: int,
+    capabilities_gated: int,
+    bootstrap_status: str,
+) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=identity. KUN present/expected/
+    pending/capability-tællinger + bootstrap-label (skalarer), ALDRIG fil-indhold.
+    record_private = lokal trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        completeness = (
+            float(canonical_present) / float(canonical_expected)
+            if canonical_expected else 0.0
+        )
+        record_private(
+            "identity", "runtime_contract",
+            value=completeness,
+            meta={
+                "canonical_present": int(canonical_present),
+                "canonical_expected": int(canonical_expected),
+                "pending_write_count": int(pending_write_count),
+                "capabilities_available": int(capabilities_available),
+                "capabilities_gated": int(capabilities_gated),
+                "bootstrap_status": str(bootstrap_status),
+            },
+        )
+    except Exception:
+        pass
 
 
 def _bootstrap_status(workspace_dir: Path) -> dict[str, object]:

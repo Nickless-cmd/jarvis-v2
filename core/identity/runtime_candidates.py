@@ -95,6 +95,33 @@ def _extract_proposal_types(
     return types
 
 
+def _observe_candidate_workflows(counts: dict[str, int]) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=identity. KUN antal foreslåede
+    selv-mutationer (skalarer, med vægt på SOUL/IDENTITY-tryk), ALDRIG draft-teksten.
+    record_private = lokal trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        self_proposed = int(counts.get("soul_update:proposed", 0)) + int(
+            counts.get("identity_update:proposed", 0)
+        )
+        total_proposed = sum(
+            int(v) for k, v in counts.items()
+            if isinstance(v, (int, float)) and str(k).endswith(":proposed")
+        )
+        record_private(
+            "identity", "runtime_candidate_workflows",
+            value=float(self_proposed),
+            meta={
+                "self_mutation_proposed": self_proposed,
+                "soul_proposed": int(counts.get("soul_update:proposed", 0)),
+                "identity_proposed": int(counts.get("identity_update:proposed", 0)),
+                "total_proposed": int(total_proposed),
+            },
+        )
+    except Exception:
+        pass
+
+
 def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
     counts = runtime_contract_candidate_counts()
     preference_items = list_runtime_contract_candidates(
@@ -139,6 +166,7 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
     soul_types = _extract_proposal_types(soul_items, "SOUL.md")
     identity_types = _extract_proposal_types(identity_items, "IDENTITY.md")
     chronicle_types = _extract_proposal_types(chronicle_items, "runtime/CHRONICLE.md")
+    _observe_candidate_workflows(counts)
     return {
         "preference_updates": _workflow_state(
             workflow_id="preference_updates",

@@ -56,7 +56,7 @@ def load_visible_identity_summary(name: str = "default") -> dict[str, object]:
         )
 
     prompt = load_visible_identity_prompt(name=name)
-    return {
+    summary = {
         "workspace": str(workspace_dir),
         "name": name,
         "active": bool(prompt),
@@ -66,6 +66,30 @@ def load_visible_identity_summary(name: str = "default") -> dict[str, object]:
         "prompt_chars": len(prompt or ""),
         "fingerprint": _fingerprint(prompt),
     }
+    _observe_visible_identity(summary)
+    return summary
+
+
+def _observe_visible_identity(summary: dict[str, object]) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=identity. KUN aktiv-flag + antal
+    linjer/tegn + present-tælling (skalarer), ALDRIG identitets-teksten selv (SOUL/IDENTITY/
+    USER-indhold). record_private = lokal trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        files = summary.get("files") or []
+        present = sum(1 for f in files if isinstance(f, dict) and f.get("present"))
+        record_private(
+            "identity", "visible_identity",
+            value=1.0 if summary.get("active") else 0.0,
+            meta={
+                "active": bool(summary.get("active")),
+                "present_files": int(present),
+                "extracted_lines": int(summary.get("extracted_line_count") or 0),
+                "prompt_chars": int(summary.get("prompt_chars") or 0),
+            },
+        )
+    except Exception:
+        pass
 
 
 def _identity_lines(path: Path) -> list[str]:

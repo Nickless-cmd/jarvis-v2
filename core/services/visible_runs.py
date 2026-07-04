@@ -1170,6 +1170,9 @@ async def _stream_visible_run(
     # FØR hvert done-yield; er det stadig False i finally = runnet blev afbrudt →
     # markér 'interrupted' (ikke completed) så survival ALDRIG fyrer på en halv run.
     _reached_finalization = False
+    # [CUTOFF-TRACE] Livscyklus-breadcrumb: opdateres ved hver fase så finally-downgrade
+    # kan vise HVOR CancelledError ramte (tool-exec / agentic-runde / finalisering).
+    _run_stage = "init"
     markup_buffer = _CapabilityMarkupBuffer()
     _collected_native_tool_calls: list[dict] = []
     _fp_deg_accum = ""              # akkumuleret first-pass-tekst (degenerations-guard)
@@ -1202,6 +1205,7 @@ async def _stream_visible_run(
                 finally:
                     loop.call_soon_threadsafe(queue.put_nowait, _sentinel)
 
+            _run_stage = "first_pass_streaming"
             thread_future = loop.run_in_executor(None, _pump_model_stream)
 
             _fp_first = False
@@ -1520,6 +1524,7 @@ async def _stream_visible_run(
         # merged into next-round tool_definitions inside the agentic loop.
         _round_extra_tools: list[str] = []
         if _collected_native_tool_calls:
+            _run_stage = "native_tool_exec"
             # Mark initial "thinking" step done so it moves to top of done list
             yield _sse("working_step", {
                 "type": "working_step",
@@ -2093,6 +2098,7 @@ async def _stream_visible_run(
                 except Exception:
                     _agentic_temp, _agentic_top_p = 0.3, 0.9
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
+                    _run_stage = f"agentic_round_{_agentic_round + 1}"
                     if not _provider_supports_followup:
                         logger.warning(
                             "agentic-loop-skip run_id=%s reason=provider-not-supported provider=%s",
@@ -3306,6 +3312,8 @@ async def _stream_visible_run(
                     # en concurrent.futures.Future — asyncio.create_task
                     # kræver en coroutine. Wrap derfor i en async helper
                     # så vi får en task vi kan await/wait_for på.
+                    _run_stage = f"agentic_tool_exec_r{_agentic_round + 1}"
+
                     async def _await_executor() -> list[dict]:
                         return await loop.run_in_executor(
                             None,
@@ -4077,6 +4085,7 @@ async def _stream_visible_run(
                 ).start()
                 return
 
+        _run_stage = "non_agentic_capability"
         # ── Legacy XML capability-call fallback ──
         _update_visible_execution_trace(
             run,
@@ -4595,7 +4604,8 @@ async def _stream_visible_run(
             _final_run_status = "interrupted"
             _final_run_error = _final_run_error or f"run-abandoned-before-finalization:{_abort_kind}"
             print(f"[CUTOFF-TRACE] FINALLY downgrade completed→interrupted (abandoned mid-flight) "
-                  f"run={run.run_id} prov={run.provider} model={run.model} abort={_abort_kind} vis_len={len(visible_output_text or '')}", flush=True)
+                  f"run={run.run_id} prov={run.provider} model={run.model} abort={_abort_kind} "
+                  f"stage={_run_stage} vis_len={len(visible_output_text or '')}", flush=True)
             # Ærlig, rolig besked til brugeren (IKKE survival-stemmen) — kun hvis han
             # ikke allerede fik et svar. Idempotent + self-safe. På reload ser han
             # dette i stedet for tavshed eller en dramatisk overlevelses-tekst.

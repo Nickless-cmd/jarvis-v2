@@ -1096,12 +1096,33 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # WARDEN (LivingNeuron-roadmap §2, 4. jul): vogteren over muren — SECURITY-tripwire der
+    # hver 15. min bevidner at egress-membranen (§1.6, SHA over kildekoden write-once ved import)
+    # OG den frosne kerne (verify_frozen_core) aldrig svækkes. MUTERER INTET; fail-closed
+    # (probe-fejl → antag brud → incident + owner-ntfy, dedup'et). §0: kan ikke slukkes.
+    # Lav priority (2) → kører TIDLIGT, muren vogtes før musklerne bevæger sig.
+    try:
+        from core.services.central_membrane_watch import register_membrane_watch_producer
+        register_membrane_watch_producer()
+    except Exception:
+        pass
+
     # PULSE (LivingNeuron-council, 4. jul): kroppens eget kort som en SANS — strukturel
     # proprioception. Læser connectivity-matrixen hver 6. time, emitterer coverage/dark_delta/
     # decoupled_llm som egress-fri nerver. Observe-only.
     try:
         from core.services.central_body_map_pulse import register_body_map_pulse_producer
         register_body_map_pulse_producer()
+    except Exception:
+        pass
+
+    # DIASTOLE (LivingNeuron-council, 4. jul): det følte åndedræt — tempo som organ.
+    # SHADOW-FØRST: emitterer runtime:cadence_tempo (hvad tempoet VILLE være) hver 2. min,
+    # modulerer INGEN cooldown endnu. Hård klemme [0.5×, 2.0×] + loop-lag-dødemandsknap.
+    # Konsumtion (cooldown-flex + infra/health/SECURITY-undtagelse) i senere commit.
+    try:
+        from core.services.central_cadence_conductor import register_cadence_tempo_producer
+        register_cadence_tempo_producer()
     except Exception:
         pass
 

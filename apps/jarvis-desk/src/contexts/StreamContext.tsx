@@ -3,6 +3,8 @@ import { startStream, type StreamControl, type StreamError } from '../lib/stream
 import { cancelRun, approveTool, denyTool, followRun } from '../lib/api'
 import { streamReducer, initialStreamState, type StreamStatus } from '../lib/streamReducer'
 import type { StreamEvent, ContentBlock } from '../lib/sseProtocol'
+import { useCanonicalError } from '../hooks/useCanonicalError'
+import type { CanonicalError } from '../lib/canonicalError'
 
 /** Struktureret bruger-vendt fejl (unified fejl-system, central_error_envelope).
  *  Kommer fra backendens `error`-system_event ELLER klient-side StreamError. */
@@ -103,6 +105,10 @@ export interface StreamContextValue {
   error: Error | null
   /** Struktureret bruger-vendt fejl (unified fejl-system). Render i ErrorBanner. */
   streamError: StreamErrorInfo | null
+  /** Kanonisk fejl-log (Fase 2) — til SystemHealth + transparens-log. */
+  canonicalErrors: CanonicalError[]
+  /** Nyeste ukvitterede kanoniske fejl (Fase 2) — til ErrorCard. */
+  canonicalError: CanonicalError | null
   /** Ryd fejlen (X-knap). FIX: tidligere var dismiss en no-op. */
   clearError: () => void
   needsAttention: boolean
@@ -137,6 +143,7 @@ export function StreamProvider({
   const [state, dispatch] = useReducer(streamReducer, undefined, initialStreamState)
   const [error, setError] = useState<Error | null>(null)
   const [streamError, setStreamError] = useState<StreamErrorInfo | null>(null)
+  const canonical = useCanonicalError()  // Fase 2: canonical fejl-lag (parallelt m. streamError)
   const controlRef = useRef<StreamControl | null>(null)
   const runIdRef = useRef<string | null>(null)
   const startedAtRef = useRef<number>(0)
@@ -179,7 +186,9 @@ export function StreamProvider({
             setOverride(null) // genforbundet og streamer igen
           }
           if (e.type === 'system_event' && e.kind === 'error') {
-            setStreamError(eventToErrorInfo((e.payload || {}) as Record<string, unknown>))
+            const payload = (e.payload || {}) as Record<string, unknown>
+            setStreamError(eventToErrorInfo(payload))
+            canonical.addFromEventPayload(payload)
             setOverride('error')
           }
           if (e.type === 'message_stop') sawStop = true
@@ -219,12 +228,14 @@ export function StreamProvider({
     reconnectAttemptRef.current = 0
     setError(null)
     setStreamError(null)
+    canonical.dismiss()
     setOverride((o) => (o === 'error' || o === 'reconnecting' ? null : o))
-  }, [])
+  }, [canonical.dismiss])
 
   const send = useCallback((message: string, opts: SendOpts) => {
     setError(null)
     setStreamError(null)
+    canonical.dismiss()
     sessionRef.current = opts.sessionId
     reconnectAttemptRef.current = 0
     setOverride(null)
@@ -276,7 +287,9 @@ export function StreamProvider({
             }
           } else if (e.type === 'system_event' && e.kind === 'error') {
             // Unified fejl-system: backendens envelope → struktureret bruger-fejl.
-            setStreamError(eventToErrorInfo((e.payload || {}) as Record<string, unknown>))
+            const payload = (e.payload || {}) as Record<string, unknown>
+            setStreamError(eventToErrorInfo(payload))
+            canonical.addFromEventPayload(payload)
             setOverride('error')
           } else if (e.type === 'message_stop') {
             // BEMÆRK: pendingAppAction ryddes IKKE her — kortet skal blive
@@ -297,6 +310,7 @@ export function StreamProvider({
           } else {
             setError(err)
             setStreamError(errorToInfo(err))
+            canonical.addFromStreamError(err)
             setOverride('error')
             deskRunBridge()?.setActiveRun?.(null)
           }
@@ -311,7 +325,7 @@ export function StreamProvider({
         },
       },
     )
-  }, [config, reattach])
+  }, [config, reattach, canonical.dismiss, canonical.addFromStreamError, canonical.addFromEventPayload])
 
   const abort = useCallback(async () => {
     const runId = controlRef.current?.getRunId() ?? runIdRef.current
@@ -401,6 +415,8 @@ export function StreamProvider({
       workingStep: state.workingStep,
       error,
       streamError,
+      canonicalErrors: canonical.errors,
+      canonicalError: canonical.current,
       clearError,
       needsAttention,
       send,
@@ -415,7 +431,7 @@ export function StreamProvider({
       armAutoContinue,
       consumeAutoContinue,
     }),
-    [status, state.model, state.provider, state.lane, state.blocks, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, streamError, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
+    [status, state.model, state.provider, state.lane, state.blocks, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
   )
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>
 }

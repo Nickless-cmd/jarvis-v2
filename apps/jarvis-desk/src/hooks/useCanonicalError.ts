@@ -45,16 +45,19 @@ export function useCanonicalError() {
   }, [])
 
   const addFromStreamError = useCallback((err: StreamError) => {
-    const kind = typeof err.canonicalKind === 'function' ? err.canonicalKind() : err.kind
+    // Defensiv mod ikke-fulde StreamError-objekter (fx i tests / fremmede fejl).
+    const kind = typeof err?.canonicalKind === 'function' ? err.canonicalKind() : err?.kind
+    const message = typeof err?.userMessage === 'function'
+      ? err.userMessage() : String(err?.message ?? 'Der opstod en fejl.')
     dispatch({
       type: 'add',
       error: parseCanonicalError(
         {
-          code: kind ?? err.category,
+          code: kind ?? err?.category ?? 'ui.unknown',
           kind,
-          severity: err.category === 'network' ? 'warning' : 'error',
-          message: err.userMessage(),
-          retryable: err.retryable,
+          severity: err?.category === 'network' ? 'warning' : 'error',
+          message,
+          retryable: Boolean(err?.retryable),
           correlation_id: '',
         },
         'client',

@@ -18,6 +18,7 @@ import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
+import { ErrorCard } from '../components/feedback/ErrorCard'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { MessageRail, railLabel } from '../components/chat/MessageRail'
 
@@ -551,7 +552,21 @@ export function ChatView({
               <button type="button" className="banner-dismiss" aria-label="afbryd" onClick={() => void stream.abort()}>×</button>
             </div>
           )}
-          {stream.status === 'error' && stream.streamError && (
+          {stream.status === 'error' && stream.canonicalError && stream.canonicalError.kind ? (
+            // Fase 2: rig ErrorCard når fejlen har en kanonisk kind; ellers fallback nedenfor.
+            <ErrorCard
+              error={stream.canonicalError}
+              onDismiss={() => stream.clearError()}
+              onRetry={stream.canonicalError.retryable ? () => {
+                const last = [...visibleMessages].reverse().find((m) => m.role === 'user')
+                const text = Array.isArray(last?.content)
+                  ? last!.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
+                  : ''
+                stream.clearError()
+                if (text.trim()) resend(text)
+              } : undefined}
+            />
+          ) : stream.status === 'error' && stream.streamError && (
             <ErrorBanner
               message={stream.streamError.message}
               severity={stream.streamError.severity}

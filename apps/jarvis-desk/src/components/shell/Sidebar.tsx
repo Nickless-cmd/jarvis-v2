@@ -13,6 +13,7 @@ import { searchSessions, getActiveRuns, type SessionSearchResult } from '../../l
 import { COWORK_ZONES, emitZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
 import { ModeSlider, type Mode } from './ModeSlider'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
+import { SystemHealth } from './SystemHealth'
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
@@ -33,7 +34,7 @@ export function Sidebar({
 }) {
   const { sessions, activeId, select, newChat } = useSessions()
   const { settings } = useSettings()
-  const { workingSessionId } = useStream()
+  const { workingSessionId, canonicalErrors } = useStream()
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SessionSearchResult[]>([])
@@ -158,6 +159,7 @@ export function Sidebar({
           <span className="avatar">{userName.charAt(0).toUpperCase()}</span>
           <span>{userName}</span>
         </div>
+        <SystemHealth errors={canonicalErrors} />
         <SecondaryNav active={surface} onSelect={(s) => onSurface(s)} />
       </div>
     </aside>

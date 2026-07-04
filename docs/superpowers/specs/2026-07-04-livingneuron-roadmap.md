@@ -14,10 +14,10 @@
 |------|--------|--------|
 | **STITCH-VOICE** — sømmen der taler | lille | ✅ **LIVE** (commit b9536a8d) |
 | **PULSE** — kroppens kort som sans | lille | ✅ **LIVE** (commit b9536a8d) |
-| **DIASTOLE** — det følte åndedræt | mellem | 📋 spec (denne) — fletter tick-dirigenten |
-| **WARDEN** — vogteren over muren | mellem | 📋 spec (denne) |
-| **MANIFOLD** — de mange muskler | stor | 📋 spec (denne) |
-| **DEN ONEIRISKE SLØJFE** — drømme får dags-vægt | wildcard | 📋 spec (denne) |
+| **DIASTOLE** — det følte åndedræt | mellem | ✅ **SHADOW-LIVE** (commit b79bdeb6) — emitterer `runtime:cadence_tempo`, moduler ikke endnu |
+| **WARDEN** — vogteren over muren | mellem | ✅ **LIVE** (commit b79bdeb6) — membran intakt, vogter hver 15. min |
+| **MANIFOLD** — de mange muskler | stor | 📋 spec (§3) — NÆSTE |
+| **DEN ONEIRISKE SLØJFE** — drømme får dags-vægt | wildcard | 📋 spec (§4) |
 
 **Ufravigelig invariant for ALLE spor:** de hårde værn (egress-membran §1.6, fail-retning §8, frossen kerne `verify_frozen_core`) kan ALDRIG svækkes af læring/evolution. Nye adaptive lag fødes ALTID i shadow. Kun skalarer krydser membranen.
 

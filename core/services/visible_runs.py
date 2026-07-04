@@ -3872,7 +3872,6 @@ async def _stream_visible_run(
                 _real_answer = str(followup_text or "").strip()
                 if _real_answer in ("[tool calls only]", "[Completed]", "[tool calls only]."):
                     _real_answer = ""
-                print(f"[CUTOFF-TRACE] agentic-final run={run.run_id} prov={run.provider} status={_final_run_status} answer_len={len(_real_answer)} all_parts={sum(len(p) for p in _all_followup_parts)} fp_accum={len(_fp_deg_accum)} result_text={len(str(getattr(result,'text','') or ''))} deg={_degenerated_reason}", flush=True)
                 if not _real_answer and _final_run_status == "completed":
                     _fu_ex = locals().get("_followup_exchanges") or []
                     _tools_ct = sum(len(getattr(_ex, "tool_calls", []) or [])
@@ -4562,7 +4561,6 @@ async def _stream_visible_run(
         _np_answer = str(visible_output_text or "").strip()
         if _np_answer in ("[tool calls only]", "[Completed]", "[tool calls only]."):
             _np_answer = ""
-        print(f"[CUTOFF-TRACE] non-agentic-final run={run.run_id} prov={run.provider} status={_final_run_status} vis_len={len(_np_answer)} fp_accum={len(_fp_deg_accum)} result_text={len(str(getattr(result,'text','') or '')) if result else -1} tools={len(_collected_native_tool_calls)} deg={_degenerated_reason}", flush=True)
         if not _np_answer and _final_run_status == "completed" and not run.autonomous:
             try:
                 from core.services import followup_observer as _fu_np
@@ -4656,9 +4654,18 @@ async def _stream_visible_run(
             _abort_kind = _abort_exc.__name__ if _abort_exc else "none-clean-exit"
             _final_run_status = "interrupted"
             _final_run_error = _final_run_error or f"run-abandoned-before-finalization:{_abort_kind}"
-            print(f"[CUTOFF-TRACE] FINALLY downgrade completed→interrupted (abandoned mid-flight) "
-                  f"run={run.run_id} prov={run.provider} model={run.model} abort={_abort_kind} "
-                  f"stage={_run_stage} vis_len={len(visible_output_text or '')}", flush=True)
+            # Central-nerve (loop-cluster): en afbrudt-midt-flugt run er nu synlig i jc —
+            # så vi ser hvis abort-raten stiger igen (fx nyt tavst await-vindue). Self-safe.
+            try:
+                from core.services.central_core import central as _central_ab
+                _central_ab().observe({
+                    "cluster": "loop", "nerve": "run_abandoned_midflight",
+                    "run_id": str(run.run_id or ""), "provider": str(run.provider or ""),
+                    "model": str(run.model or ""), "abort": _abort_kind,
+                    "stage": str(_run_stage), "vis_len": len(visible_output_text or ""),
+                })
+            except Exception:
+                pass
             # Ærlig, rolig besked til brugeren (IKKE survival-stemmen) — kun hvis han
             # ikke allerede fik et svar. Idempotent + self-safe. På reload ser han
             # dette i stedet for tavshed eller en dramatisk overlevelses-tekst.
@@ -7709,9 +7716,7 @@ def _guarantee_visible_outcome(run: "VisibleRun") -> None:
             return
         _last_role = _session_last_role(run.session_id)
         if _last_role == "assistant":
-            print(f"[CUTOFF-TRACE] guarantee_outcome SKIP (last=assistant) run={run.run_id} prov={run.provider}", flush=True)
             return
-        print(f"[CUTOFF-TRACE] guarantee_outcome FIRING survival run={run.run_id} prov={run.provider} model={run.model} last_role={_last_role!r} sess={run.session_id}", flush=True)
         _persist_session_assistant_message(run, _survival_or_fallback())
     except Exception:
         pass
@@ -7751,7 +7756,6 @@ def set_last_visible_run_outcome(
         if _ti_prev in ("[tool calls only]", "[Completed]", "[tool calls only]."):
             _ti_prev = ""
         if status == "completed" and not _ti_prev:
-            print(f"[CUTOFF-TRACE] set_outcome completed+EMPTY preview run={run.run_id} prov={run.provider} model={run.model} raw_preview={str(text_preview)[:40]!r}", flush=True)
             from core.services import followup_observer as _fo_ti
             _fo_ti.note_empty_completion(
                 run.run_id, provider=run.provider, model=run.model,

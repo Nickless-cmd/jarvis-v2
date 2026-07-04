@@ -303,6 +303,32 @@ def evaluate_verification_gate(*, minutes: int = _LOOKBACK_MINUTES) -> dict[str,
     }
 
 
+def _observe_verification_decision(*, passed: bool, failed: int, unverified: int) -> None:
+    """Egress-frit Central-observe af verifikations-gatens beslutning (§7.2).
+
+    Denne gate når kun Centralen INDIREKTE (via proactivity_gate → decide) i den
+    konsoliderede prompt-sti; men den har flere STANDALONE-konsumenter (heartbeat,
+    reasoning_escalation, r2_5_blocking_gate, verification_status-tool) hvor dens
+    egen pass/surface-beslutning ellers er usynlig. Ét observe HER gør hver
+    gate-beslutning synlig for Centralen uden at lække indhold.
+
+    value=1.0 = ren pass (intet at overflade) · 0.0 = gaten overfladede (uverificerede
+    mutationer/fejlede verifies). Kun skalarer i meta — aldrig tekst/tool-payloads.
+    Går via den kanoniske egress-fri sink-kontrakt (record_private) → cluster="review".
+    Self-safe: enhver observe-fejl sluges (må aldrig påvirke gaten)."""
+    try:
+        from core.services.central_private_observe import record_private
+        record_private(
+            "review", "verification_gate",
+            value=(1.0 if passed else 0.0),
+            meta={"decision": "pass" if passed else "surface",
+                  "failed": int(failed), "unverified": int(unverified)},
+            reason="clean" if passed else "unverified_mutations",
+        )
+    except Exception:
+        pass
+
+
 def verification_gate_section() -> str | None:
     """Format gate signals as a prompt-awareness section, or None.
 
@@ -317,7 +343,12 @@ def verification_gate_section() -> str | None:
     suggestions = result.get("suggestions") or []
 
     if not failed and unverified_effective <= 0:
+        _observe_verification_decision(passed=True, failed=0, unverified=0)
         return None
+
+    _observe_verification_decision(
+        passed=False, failed=len(failed), unverified=unverified_effective
+    )
 
     # Record this surface for R2 telemetry — we want to know whether this
     # warning gets heeded (followed by a strict OR light readback).

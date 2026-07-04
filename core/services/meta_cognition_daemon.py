@@ -148,17 +148,23 @@ def _gather_state() -> tuple[str, str]:
 def _call_meta_llm(prompt: str) -> str:
     """Call cheap lane (Groq/etc.) first, Ollama fallback. Timeout 15s."""
 
-    # ── Cheap lane (Groq etc.) — preferred, returns actual content ──
+    # ── Choke-point (Bölge 2): rut det primære kald gennem daemon_llm_call, så
+    # form-dommeren + TTL-cachen dækker meta-cognition. Identity-context = privat
+    # cheap-lane (IKKE public-safe). daemon_llm_call bruger samme cheap-lane som før
+    # (execute_cheap_lane er dens ikke-balancer fallback), returnerer fuld untrunkeret
+    # tekst (max_len rummeligt) og "" ved fejl → Ollama-fallback nedenfor. ──
     try:
-        from core.services.non_visible_lane_execution import (
-            execute_cheap_lane,
-        )
-        result = execute_cheap_lane(message=prompt, task_kind="background")
-        text = str(result.get("text") or result.get("content") or "").strip()
+        from core.services.daemon_llm import daemon_llm_call
+        text = str(
+            daemon_llm_call(
+                prompt, max_len=4000, fallback="", daemon_name="meta_cognition",
+            )
+            or ""
+        ).strip()
         if text:
             return text
     except Exception as exc:
-        logger.debug("meta_cognition: cheap lane failed: %s", exc)
+        logger.debug("meta_cognition: daemon_llm_call failed: %s", exc)
 
     # ── Ollama fallback with higher num_predict for thinking models ──
     try:

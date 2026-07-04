@@ -122,17 +122,22 @@ def _call_recurrence_llm(content: str) -> str:
         f"Svar i 2-3 sætninger."
     )
 
-    # ── Cheap lane (Groq etc.) — preferred, returns actual content ──
+    # ── Choke-point (Bölge 2): rut det primære kald gennem daemon_llm_call, så
+    # form-dommeren + TTL-cachen dækker recurrence-loopet (inner-voice-content =
+    # privat cheap-lane, IKKE public-safe). Samme lane/adfærd som før: fuld
+    # untrunkeret tekst, "" ved fejl → Ollama-fallback nedenfor. ──
     try:
-        from core.services.non_visible_lane_execution import (
-            execute_cheap_lane,
-        )
-        result = execute_cheap_lane(message=prompt, task_kind="background")
-        text = str(result.get("text") or result.get("content") or "").strip()
+        from core.services.daemon_llm import daemon_llm_call
+        text = str(
+            daemon_llm_call(
+                prompt, max_len=4000, fallback="", daemon_name="recurrence_loop",
+            )
+            or ""
+        ).strip()
         if text:
             return text
     except Exception as exc:
-        logger.debug("recurrence: cheap lane failed: %s", exc)
+        logger.debug("recurrence: daemon_llm_call failed: %s", exc)
 
     # ── Ollama fallback with higher num_predict for thinking models ──
     try:

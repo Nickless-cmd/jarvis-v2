@@ -338,8 +338,12 @@ def _generate_one_via_llm(trigger: TriggerEvent) -> dict | None:
     Returns the parsed dict on success, or None on any failure (caller
     falls back to the failed_generation_placeholder).
     """
+    # Choke-point (Bölge 2): rut den public-safe CF-generering gennem
+    # daemon_public_safe_llm_call (samme public-safe cheap-lane, men via choke-pointet
+    # så form-dommeren + TTL-cachen fanger gentagne triggers). Rå tekst → samme
+    # JSON-parse som før.
     try:
-        from core.services.cheap_provider_runtime import execute_public_safe_cheap_lane
+        from core.services.daemon_llm import daemon_public_safe_llm_call
     except Exception:
         return None
     prompt = _PHASE2_PROMPT_TEMPLATE.format(
@@ -347,11 +351,16 @@ def _generate_one_via_llm(trigger: TriggerEvent) -> dict | None:
         summary=(trigger.summary or "(no summary)")[:240],
     )
     try:
-        result = execute_public_safe_cheap_lane(message=prompt)
+        text = str(
+            daemon_public_safe_llm_call(
+                prompt, max_len=2000, fallback="",
+                daemon_name="counterfactual_engine",
+            )
+            or ""
+        )
     except Exception as exc:
         logger.debug("counterfactual_engine: cheap-lane call failed: %s", exc)
         return None
-    text = str((result or {}).get("text") or "")
     if not text:
         return None
     try:

@@ -313,12 +313,18 @@ def _call_scoring_llm(target: dict[str, object], prompt: str) -> str:
     they're safe for commercial APIs.
     """
     try:
-        from core.services.cheap_provider_runtime import execute_cheap_lane_via_pool
-        result = execute_cheap_lane_via_pool(
-            message=prompt,
-            task_kind="default",
-        )
-        text = str(result.get("text") or "").strip()
+        # Choke-point (Bölge 2): rut scoring gennem daemon_public_safe_llm_call
+        # (prompten er public-safe: 200-char snippets, ingen identity-context) så
+        # form-dommeren + TTL-cachen dækker de gentagne relevans-scoringer. Samme
+        # public-safe cheap-lane, samme output-kontrakt (rå JSON-tekst).
+        from core.services.daemon_llm import daemon_public_safe_llm_call
+        text = str(
+            daemon_public_safe_llm_call(
+                prompt, max_len=2000, fallback="",
+                daemon_name="experiential_memory",
+            )
+            or ""
+        ).strip()
         if text:
             return text
     except Exception:

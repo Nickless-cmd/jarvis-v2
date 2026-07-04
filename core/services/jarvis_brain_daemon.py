@@ -103,11 +103,20 @@ Modsiger de hinanden? Svar JSON: {{"contradicts": bool, "reason": str}}
 
 
 def _call_ollamafreeapi(prompt: str) -> dict | None:
-    """Free OllamaFreeAPI — public-safe job. Returns parsed JSON or None on fail."""
+    """Free OllamaFreeAPI — public-safe job. Returns parsed JSON or None on fail.
+
+    Choke-point (Bölge 2): kaldet går gennem daemon_public_safe_llm_call (samme
+    public-safe cheap-lane) så form-dommeren + TTL-cachen dækker de gentagne
+    kontradiktions-/summary-jobs. KUN den public-safe sti routes; den intime
+    _call_local_ollama-sti forbliver DIREKTE (må aldrig forlade huset)."""
     try:
-        from core.services.cheap_provider_runtime import execute_public_safe_cheap_lane
-        result = execute_public_safe_cheap_lane(message=prompt)
-        text = str(result.get("text") or "")
+        from core.services.daemon_llm import daemon_public_safe_llm_call
+        text = str(
+            daemon_public_safe_llm_call(
+                prompt, max_len=2000, fallback="", daemon_name="jarvis_brain",
+            )
+            or ""
+        )
         return _parse_json_loose(text)
     except Exception as exc:
         logger.warning("ollamafreeapi call failed: %s", exc)

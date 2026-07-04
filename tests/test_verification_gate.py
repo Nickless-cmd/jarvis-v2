@@ -155,3 +155,65 @@ def test_scan_legacy_bash_without_flag_counts():
          "payload": {"tool": "bash", "status": "ok"}},
     ]
     assert len(_scan(events)["mutations"]) == 1
+
+
+# ── §7.2: egress-frit Central-observe af gate-beslutningen ───────────────
+import core.services.verification_gate as _vg_mod
+
+
+def _capture_observe(monkeypatch):
+    """Fang record_private-kald via central_private_observe (som gaten importerer lokalt)."""
+    calls: list[dict] = []
+    import core.services.central_private_observe as cpo
+
+    def _fake(cluster, nerve, *, value=1.0, meta=None, reason=""):
+        calls.append({"cluster": cluster, "nerve": nerve, "value": value,
+                      "meta": meta or {}, "reason": reason})
+        return True
+
+    monkeypatch.setattr(cpo, "record_private", _fake)
+    return calls
+
+
+def test_section_observes_pass_when_clean(monkeypatch):
+    calls = _capture_observe(monkeypatch)
+    with patch("core.services.verification_gate._recent_events", return_value=[]):
+        assert verification_gate_section() is None
+    assert len(calls) == 1
+    c = calls[0]
+    assert c["cluster"] == "review"
+    assert c["nerve"] == "verification_gate"
+    assert c["value"] == 1.0
+    assert c["meta"]["decision"] == "pass"
+
+
+def test_section_observes_surface_when_unverified(monkeypatch):
+    calls = _capture_observe(monkeypatch)
+    events = [_evt("write_file"), _evt("write_file"), _evt("write_file")]
+    with patch("core.services.verification_gate._recent_events", return_value=events):
+        section = verification_gate_section()
+    assert section is not None
+    assert len(calls) == 1
+    c = calls[0]
+    assert c["value"] == 0.0
+    assert c["meta"]["decision"] == "surface"
+    assert c["meta"]["unverified"] == 3
+
+
+def test_observe_never_touches_eventbus(monkeypatch):
+    # Egress-frit: gate-observe må ALDRIG nå eventbus (§24.4).
+    published: list = []
+    import core.eventbus.bus as bus
+    monkeypatch.setattr(bus.event_bus, "publish", lambda *a, **k: published.append((a, k)))
+    with patch("core.services.verification_gate._recent_events", return_value=[]):
+        verification_gate_section()
+    assert published == []
+
+
+def test_observe_failure_does_not_break_gate(monkeypatch):
+    # Self-safe: observe-fejl må aldrig ændre gate-beslutningen.
+    import core.services.central_private_observe as cpo
+    monkeypatch.setattr(cpo, "record_private",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    with patch("core.services.verification_gate._recent_events", return_value=[]):
+        assert verification_gate_section() is None  # gaten fungerer stadig

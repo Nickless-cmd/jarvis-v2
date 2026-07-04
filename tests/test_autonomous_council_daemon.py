@@ -133,7 +133,7 @@ def test_tick_skips_when_score_below_threshold():
     from core.services import autonomous_council_daemon as acd
     acd._last_council_at = None
     acd._last_concluded_at = None
-    result = acd.tick_autonomous_council_daemon(score_override=0.30)
+    result = acd.tick_autonomous_council_daemon(score_override=0.10)  # < _THRESHOLD (0.25)
     assert result["triggered"] is False
     assert result["reason"] == "score_below_threshold"
 

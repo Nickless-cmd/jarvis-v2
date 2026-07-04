@@ -213,3 +213,75 @@ class TestNoUserContextFallback:
         from pathlib import Path
         assert isinstance(path, Path)
         assert path.name == "MEMORY.md"
+
+
+class TestGuardObserveDecision:
+    """§7.2: egress-frit Central-observe af guardens beslutning (aktiveret/passthrough)."""
+
+    @staticmethod
+    def _capture(monkeypatch):
+        calls: list[dict] = []
+        import core.services.central_private_observe as cpo
+
+        def _fake(cluster, nerve, *, value=1.0, meta=None, reason=""):
+            calls.append({"cluster": cluster, "nerve": nerve, "value": value,
+                          "meta": meta or {}, "reason": reason})
+            return True
+
+        monkeypatch.setattr(cpo, "record_private", _fake)
+        return calls
+
+    def test_observes_passthrough_on_casual(self, monkeypatch):
+        calls = self._capture(monkeypatch)
+        inject_memory_into_prompt("hej der", [{"role": "user", "content": "hi"}])
+        assert len(calls) == 1
+        c = calls[0]
+        assert c["cluster"] == "review"
+        assert c["nerve"] == "hallucination_guard"
+        assert c["value"] == 1.0
+        assert c["meta"]["decision"] == "passthrough"
+
+    def test_observes_injection_on_factual(self, monkeypatch, tmp_path):
+        calls = self._capture(monkeypatch)
+        mem = tmp_path / "MEMORY.md"
+        mem.write_text(
+            "# MEMORY\n## Infrastructure\n- Subdomains: jarvis.srvlab.dk\n",
+            encoding="utf-8",
+        )
+        inject_memory_into_prompt(
+            "hvad er mit subdomain?",
+            [{"role": "system", "content": "x"}],
+            memory_path=str(mem),
+        )
+        assert len(calls) == 1
+        assert calls[0]["value"] == 0.0
+        assert calls[0]["meta"]["decision"] == "injected"
+
+    def test_observes_passthrough_when_no_section(self, monkeypatch, tmp_path):
+        calls = self._capture(monkeypatch)
+        mem = tmp_path / "MEMORY.md"
+        mem.write_text("# MEMORY\nNothing relevant here.\n", encoding="utf-8")
+        inject_memory_into_prompt(
+            "hvad er mit subdomain?",
+            [{"role": "system", "content": "x"}],
+            memory_path=str(mem),
+        )
+        assert len(calls) == 1
+        assert calls[0]["value"] == 1.0
+        assert calls[0]["meta"]["decision"] == "passthrough"
+        assert calls[0]["meta"]["reason"] == "no_excerpts"
+
+    def test_observe_never_touches_eventbus(self, monkeypatch):
+        published: list = []
+        import core.eventbus.bus as bus
+        monkeypatch.setattr(bus.event_bus, "publish", lambda *a, **k: published.append((a, k)))
+        inject_memory_into_prompt("hej der", [{"role": "user", "content": "hi"}])
+        assert published == []
+
+    def test_observe_failure_does_not_break_guard(self, monkeypatch):
+        import core.services.central_private_observe as cpo
+        monkeypatch.setattr(cpo, "record_private",
+                            lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+        out = inject_memory_into_prompt("hej der", [{"role": "user", "content": "hi"}])
+        # Guarden fungerer stadig (returnerer beskeder uændret)
+        assert out == [{"role": "user", "content": "hi"}]

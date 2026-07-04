@@ -264,7 +264,18 @@ def tick_autonomous_council_daemon(
 
     _restore_durable_counters()
 
-    if not _cadence_gate_ok():
+    # AKSE 4 (Bjørn 4. jul): i 'on'-mode er GRUND-DOMMEREN den primære gate — den faste 30-min-CADENCE
+    # (metronomen vi erstatter) springes over, så dommeren faktisk når at blive konsulteret hver tick og
+    # kan indkalde når der er reel grund. Kun anti-spam-cooldown + daily-cap bevares som sikkerheds-lofter.
+    # off/shadow = uændret (cadence styrer). Self-safe: tvivl → behandl som ikke-on (behold cadence).
+    _judge_on = False
+    try:
+        from core.services.central_convene_judge import current_mode as _cj_mode
+        _judge_on = _cj_mode() == "on"
+    except Exception:
+        _judge_on = False
+
+    if not _judge_on and not _cadence_gate_ok():
         return {"triggered": False, "reason": "cadence_gate"}
     if not _cooldown_gate_ok():
         return {"triggered": False, "reason": "cooldown_gate"}

@@ -213,13 +213,17 @@ def extract_from_text(text: str, *, max_chars: int = 2000) -> list[tuple[str, st
         raw = str(result.get("message", {}).get("content") or "").strip()
     except Exception as exc:
         logger.debug("memory_graph: ollamafreeapi extraction failed: %s", exc)
-        # Fall through to daemon_llm_call as a backup if the free API hiccups
+        # Fall through to daemon_llm_call as a backup if the free API hiccups.
+        # Choke-point (Bölge 2): giv backup'en et daemon_name så form-dommeren +
+        # TTL-cachen dækker den. BEMÆRK: daemon_llm_call tager IKKE timeout= — det
+        # forkerte kwarg gav TypeError → backup'en var reelt død (fanget af except).
         try:
-            from core.services.daemon_llm import daemon_llm_call
-            raw = daemon_llm_call(
+            from core.services.daemon_llm import daemon_public_safe_llm_call
+            raw = daemon_public_safe_llm_call(
                 _EXTRACT_PROMPT.format(text=text),
-                timeout=20,
+                max_len=4000,
                 fallback="[]",
+                daemon_name="memory_graph",
             )
         except Exception:
             return []

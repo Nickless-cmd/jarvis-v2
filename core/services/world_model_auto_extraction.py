@@ -99,20 +99,28 @@ def auto_extract_and_record(
     if not _under_rate_limit():
         return {"status": "skipped", "reason": "daily-limit"}
 
+    # Choke-point (Bölge 2): rut public-safe extraction gennem daemon_public_safe_llm_call
+    # (samme public-safe cheap-lane, men via choke-pointet så form-dommeren + TTL-cachen
+    # fanger gentagne extractions). Returnerer rå tekst → samme JSON-parse som før.
     try:
-        from core.services.cheap_provider_runtime import execute_public_safe_cheap_lane
+        from core.services.daemon_llm import daemon_public_safe_llm_call
     except Exception as exc:
-        logger.debug("auto_extraction: cheap-lane import failed: %s", exc)
+        logger.debug("auto_extraction: daemon_llm import failed: %s", exc)
         return {"status": "error", "reason": "no-cheap-lane"}
 
     prompt = _build_prompt(context_excerpt, matched_phrase)
     try:
-        result = execute_public_safe_cheap_lane(message=prompt)
+        text = str(
+            daemon_public_safe_llm_call(
+                prompt, max_len=2000, fallback="",
+                daemon_name="world_model_auto_extraction",
+            )
+            or ""
+        )
     except Exception as exc:
         logger.debug("auto_extraction: cheap-lane invoke failed: %s", exc)
         return {"status": "error", "reason": f"cheap-lane: {exc}"}
 
-    text = str(result.get("text") or "")
     try:
         data = json.loads(_extract_json(text))
     except (json.JSONDecodeError, ValueError):

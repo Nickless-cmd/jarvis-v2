@@ -297,6 +297,30 @@ def _extract_relevant_sections(
     return "\n".join(result_parts)
 
 
+def _observe_guard_decision(*, activated: bool, reason: str) -> None:
+    """Egress-frit Central-observe af hallucination-guardens beslutning (§7.2).
+
+    Denne guard er en STANDALONE injektions-gate (visible_model → inject_memory_into_prompt)
+    der ALDRIG når central().decide → Centralen kan i dag ikke se hvornår den griber ind og
+    tvinger et hukommelses-tjek. Ét observe HER lukker hullet.
+
+    value=1.0 = ikke aktiveret (svaret passerer frit) · 0.0 = guarden greb ind (tvang
+    MEMORY-injektion). Kun skalar-navne i meta — ALDRIG besked-tekst, keywords eller
+    MEMORY-indhold (reason er et fast enum-navn, ikke bruger-input). Går via den kanoniske
+    egress-fri sink-kontrakt (record_private) → cluster="review". Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        record_private(
+            "review", "hallucination_guard",
+            value=(1.0 if not activated else 0.0),
+            meta={"decision": "injected" if activated else "passthrough",
+                  "reason": str(reason)[:32]},
+            reason=str(reason)[:32],
+        )
+    except Exception:
+        pass
+
+
 def inject_memory_into_prompt(
     message: str,
     chat_messages: list[dict[str, str]],
@@ -320,10 +344,12 @@ def inject_memory_into_prompt(
     """
     classification = classify_question(message)
     if classification != "factual":
+        _observe_guard_decision(activated=False, reason="not_factual")
         return chat_messages  # No guard needed
 
     keywords = _section_keywords_for_message(message)
     if not keywords:
+        _observe_guard_decision(activated=False, reason="no_keywords")
         return chat_messages
 
     # Read all curated sources and extract relevant sections per file.
@@ -353,6 +379,7 @@ def inject_memory_into_prompt(
             total_chars += len(excerpt)
 
     if not per_source_excerpts:
+        _observe_guard_decision(activated=False, reason="no_excerpts")
         return chat_messages
 
     # Combine all excerpts with clear labels so Jarvis can see which file
@@ -424,4 +451,5 @@ def inject_memory_into_prompt(
         "hallucination_guard injected for factual question "
         f"(keywords={keywords}, sections={section_count}, chars={len(relevant)})"
     )
+    _observe_guard_decision(activated=True, reason="injected")
     return chat_messages

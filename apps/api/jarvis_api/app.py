@@ -167,6 +167,14 @@ def create_app() -> FastAPI:
             install_asyncio_hook(_aio.get_running_loop())
         except Exception:
             pass
+        # "Uret" (Bjørn 4. jul): event-loop-lag-monitor. SKAL køre i API-processen
+        # (den serverer streams), uden for runtime-gaten. Måler den sultning der
+        # skærer en stream → korreleres mod cutoffs af conservation-laget.
+        try:
+            from core.services.central_loop_lag import start_loop_lag_monitor
+            start_loop_lag_monitor()
+        except Exception:
+            pass
         # Tools-cluster: snapshot registrerede ruter → dead-endpoint-detektion cross-proces.
         # UDENFOR runtime_services_enabled-gaten: skal køre i API-processen (den der serverer
         # de ~412 ruter), ikke kun runtime-processen. Begge skriver samme data — harmløst.

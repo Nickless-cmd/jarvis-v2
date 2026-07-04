@@ -3973,6 +3973,18 @@ async def _stream_visible_run(
                             session_id=run.session_id or "", path="agentic_block")
                     except Exception:
                         pass
+                    # KORRELATION: loop-lag ved cutoff (samme spørgsmål — sultning?).
+                    try:
+                        from core.services.central_loop_lag import recent_peak_ms as _lag_ag
+                        from core.services.central_core import central as _c_ag
+                        _c_ag().observe({
+                            "cluster": "stream", "nerve": "cutoff_at_loop_lag",
+                            "run_id": str(run.run_id or ""), "provider": str(run.provider or ""),
+                            "model": str(run.model or ""), "path": "agentic_block",
+                            "loop_lag_peak_ms": round(_lag_ag(10.0), 1),
+                        })
+                    except Exception:
+                        pass
                     if _tools_ct:
                         _empty_cutoff_note = (
                             "Jeg kørte værktøjerne, men nåede ikke at formulere et "
@@ -4657,6 +4669,18 @@ async def _stream_visible_run(
                     session_id=run.session_id or "", path="non_agentic_block")
             except Exception:
                 pass
+            # KORRELATION: tag tom-completion med loop-lag (klynger cutoffs ved sultning?).
+            try:
+                from core.services.central_loop_lag import recent_peak_ms as _lag_np
+                from core.services.central_core import central as _c_np
+                _c_np().observe({
+                    "cluster": "stream", "nerve": "cutoff_at_loop_lag",
+                    "run_id": str(run.run_id or ""), "provider": str(run.provider or ""),
+                    "model": str(run.model or ""), "path": "non_agentic_block",
+                    "loop_lag_peak_ms": round(_lag_np(10.0), 1),
+                })
+            except Exception:
+                pass
             _np_note = (
                 "Jeg fik ikke formuleret et svar den gang — spørg mig gerne igen.")
             yield _sse("delta", {
@@ -4745,12 +4769,21 @@ async def _stream_visible_run(
             # Central-nerve (loop-cluster): en afbrudt-midt-flugt run er nu synlig i jc —
             # så vi ser hvis abort-raten stiger igen (fx nyt tavst await-vindue). Self-safe.
             try:
+                # KORRELATION (Bjørn 4. jul): tag afbrydelsen med hvor sultent event-
+                # loopet var lige nu → Centralen kan svare om cutoffs klynger sig ved
+                # loop-lag-spikes (kontention) eller ej (uforklaret).
+                try:
+                    from core.services.central_loop_lag import recent_peak_ms as _lag_peak
+                    _cutoff_lag = round(_lag_peak(10.0), 1)
+                except Exception:
+                    _cutoff_lag = -1.0
                 from core.services.central_core import central as _central_ab
                 _central_ab().observe({
                     "cluster": "loop", "nerve": "run_abandoned_midflight",
                     "run_id": str(run.run_id or ""), "provider": str(run.provider or ""),
                     "model": str(run.model or ""), "abort": _abort_kind,
                     "stage": str(_run_stage), "vis_len": len(visible_output_text or ""),
+                    "loop_lag_peak_ms": _cutoff_lag,
                 })
             except Exception:
                 pass

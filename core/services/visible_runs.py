@@ -2119,6 +2119,7 @@ async def _stream_visible_run(
                 _MAX_TOOL_ONLY_ROUNDS = int(_agentic_budget.get("max_tool_only_rounds") or 4)
                 _TOOL_ONLY_TEXT_THRESHOLD = 80  # chars
                 _tool_pause_active = False  # set True after 5 tool-only rounds → withhold tools
+                _hollow_promise_nudged = False  # hollow-promise-guard: cap ÉT nudge pr. run
                 # Eskalerende synthese-pause (Bjørn 2026-06-17 "spinner→død"-roden):
                 # når Jarvis spiraler i tavse tool-runder (fx læser filer én-ad-gangen),
                 # tving ham til at OPSUMMERE efter N runder ved at fjerne tools i ÉN runde.
@@ -3197,6 +3198,45 @@ async def _stream_visible_run(
                             _consecutive_tool_only_rounds = 0
                             _consecutive_empty_text_rounds = 0
                             continue
+                        # ── HOLLOW-PROMISE-VAGT (4. jul, flag-gated, fail-open) ──
+                        # Modellen lovede imminent handling ("jeg kører nu") men kaldte NUL
+                        # værktøj hele runnet → giv ÉN nudge-runde ("gør det nu eller sig
+                        # hvorfor"), cap 1. Ved enhver tvivl/fejl → normal break (byte-identisk).
+                        try:
+                            from core.services.hollow_promise_guard import (
+                                hollow_promise_guard_enabled, is_hollow_promise,
+                                HOLLOW_PROMISE_NUDGE,
+                            )
+                            if (
+                                not _is_last_round
+                                and not _hollow_promise_nudged
+                                and hollow_promise_guard_enabled()
+                                and is_hollow_promise(
+                                    final_text="".join(_a_parts),
+                                    total_tool_calls=sum(
+                                        len(getattr(_ex, "tool_calls", []) or [])
+                                        for _ex in _followup_exchanges),
+                                    user_message=run.user_message,
+                                    nudged_already=_hollow_promise_nudged,
+                                )
+                            ):
+                                _hollow_promise_nudged = True
+                                _followup_exchanges.append(
+                                    _vf.ToolExchange(
+                                        text=_exchange_text(), tool_calls=[], results=[]))
+                                base_messages.append(
+                                    {"role": "user", "content": HOLLOW_PROMISE_NUDGE})
+                                try:
+                                    from core.services import followup_observer as _fu_hp
+                                    _fu_hp.note_hollow_promise(
+                                        run.run_id, provider=run.provider, model=run.model,
+                                        round_index=_agentic_round + 1,
+                                        session_id=run.session_id)
+                                except Exception:
+                                    pass
+                                continue  # tving ÉN mere runde med nudge'en
+                        except Exception:
+                            pass  # fail-open → normal break nedenfor
                         # No more tool calls — this round produced the final response.
                         break
 

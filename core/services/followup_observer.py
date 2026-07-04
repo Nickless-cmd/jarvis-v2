@@ -126,6 +126,19 @@ def note_empty_completion(run_id: str, *, provider: str = "", model: str = "",
         pass
 
 
+def note_hollow_promise(run_id: str, *, provider: str = "", model: str = "",
+                        round_index: int = 0, session_id: str = "",
+                        resolved: bool = True) -> None:
+    """TOM LØFTE (4. jul): modellen lovede imminent handling men kaldte NUL værktøj hele
+    runnet. Provider-agnostisk mønster (set på kimi-k2.7; deepseek gjorde det ikke). `resolved`
+    = True når nudge-runden fik den til at handle/forklare; False når den forblev tom løfte
+    efter nudge. Egress-frit — kun tællere/labels."""
+    _observe("hollow_promise", run_id, provider=str(provider or ""),
+             model=str(model or ""), rounds=int(round_index or 0),
+             session_id=str(session_id or ""),
+             path=("nudge_resolved" if resolved else "still_hollow"))
+
+
 def note_resend(run_id: str, *, provider: str = "", model: str = "",
                 recovered: bool = False) -> None:
     """RESEND-PÅ-TOM (Bjørn option 1): runtimen fangede en transient tom completion

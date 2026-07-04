@@ -1965,6 +1965,18 @@ async def _stream_visible_run(
                 # ellers falsk empty_completion → fallback wiper det streamede svar.
                 _all_followup_reasoning_parts: list[str] = []
                 _a_parts: list[str] = []
+                # Decision-signal EFEMER staging (2026-07-04 runaway-fix): fyrede
+                # decision-signals akkumulerede før i _a_parts → forurenede BÅDE det
+                # persisterede svar OG resolution-exit-tjekket (self-poisoning runaway,
+                # se core/services/decision_signal_staging.py). Nu holdes de her, dedup'et
+                # pr. decision-id, og injiceres KUN i exchange-teksten via _exchange_text().
+                _ds_active: dict[str, str] = {}
+                from core.services import decision_signal_staging as _dss
+
+                def _exchange_text() -> str:
+                    """Assistant-turen til modellen = rent svar (_a_parts) + efemere
+                    decision-noter. _a_parts forbliver ren (persist + resolution-tjek)."""
+                    return _dss.compose_exchange_text(_a_parts, _ds_active)
 
                 def _to_followup_results(
                     tool_calls: list[dict],
@@ -3047,7 +3059,7 @@ async def _stream_visible_run(
                         # leaked into the followup history).
                         _followup_exchanges.append(
                             _vf.ToolExchange(
-                                text="".join(_a_parts) or "",
+                                text=_exchange_text(),
                                 tool_calls=[], results=[],
                             )
                         )
@@ -3271,17 +3283,26 @@ async def _stream_visible_run(
                             })
                         except Exception:
                             pass
+                        # EFEMER (2026-07-04 runaway-fix): reset pr. runde, så kun DENNE
+                        # rundes fyringer injiceres i rundens exchange-tekst. Går ALDRIG
+                        # i _a_parts (persist + resolution-tjek læser den ren) → dræber
+                        # den self-poisoning løkke der bloatede svaret til 20k tegn.
+                        _ds_active.clear()
                         for _ds_f in _ds_fired:
-                            _ds_msg = (
-                                f"\n\n[decision-signal: {_ds_f.decision_id} "
-                                f"({_ds_f.trigger_name}: {_ds_f.context_summary})]\n\n"
+                            _ds_msg = _dss.compose_signal_note(
+                                _ds_f.decision_id, _ds_f.trigger_name, _ds_f.context_summary,
                             )
-                            yield _sse("delta", {
-                                "type": "delta",
+                            # dedup pr. decision-id + cap → aldrig akkumulering.
+                            _dss.stage_signal(_ds_active, _ds_f.decision_id, _ds_msg)
+                            # Ikke-content SSE-event: aldrig i den synlige besked-buffer;
+                            # ukendt event ignoreres harmløst af klienten (kan blive chip).
+                            yield _sse("decision_signal", {
+                                "type": "decision_signal",
                                 "run_id": run.run_id,
-                                "delta": _ds_msg,
+                                "decision_id": _ds_f.decision_id,
+                                "trigger": _ds_f.trigger_name,
+                                "summary": _ds_f.context_summary,
                             })
-                            _a_parts.append(_ds_msg)
                             logger.info(
                                 "decision_signal_emitted run_id=%s decision=%s trigger=%s",
                                 run.run_id, _ds_f.decision_id, _ds_f.trigger_name,
@@ -3720,7 +3741,7 @@ async def _stream_visible_run(
 
                     _followup_exchanges.append(
                         _vf.ToolExchange(
-                            text="".join(_a_parts) or "",
+                            text=_exchange_text(),
                             tool_calls=list(_a_tool_calls),
                             reasoning_content=_a_round_reasoning,
                             results=_to_followup_results(

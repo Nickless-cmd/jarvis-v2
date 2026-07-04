@@ -13,7 +13,11 @@ git_* calls are accepted by name alone — they're always in the current
 repo by definition. Tools without a path argument (e.g., bash without
 explicit cwd) also count as backend.
 
-Cooldown: 0 — incident-style nagging until streak breaks or resolution.
+Cooldown: cooldown_turns=3 (2026-07-04). Var 0 ("incident-style nagging until
+streak breaks or resolution"), men da signalet føjedes til den buffer exit-tjekket
+selv læste, kunne nag'en aldrig se en resolution → self-poisoning runaway (hundredvis
+af markører i ét svar, model-degeneration). Staging er nu efemer (se
+decision_signal_staging.py); cooldown_turns=3 er bælte-og-seler oveni.
 """
 from __future__ import annotations
 
@@ -77,4 +81,4 @@ def backend_unresolved_3_calls(ctx: TriggerContext) -> bool:
     return True
 
 
-register("backend_unresolved_3_calls", backend_unresolved_3_calls, cooldown_seconds=0)
+register("backend_unresolved_3_calls", backend_unresolved_3_calls, cooldown_turns=3)

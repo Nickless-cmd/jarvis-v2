@@ -250,6 +250,16 @@ def _poll_loop() -> None:
                 target=detect_breach_in_output, args=(text,), daemon=True,
             ).start()
         except Exception:
+            # A loop that fails every item still looks alive from outside; make
+            # persistent failure visible to the Central drift-monitor. Self-safe:
+            # observe errors never touch loop behaviour (still spins on).
+            try:
+                from core.services.central_private_observe import (
+                    observe_operational_liveness,
+                )
+                observe_operational_liveness("decision_enforcement", "error", None)
+            except Exception:
+                pass
             continue
 
 

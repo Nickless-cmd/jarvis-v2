@@ -301,6 +301,16 @@ def _poller_loop() -> None:
             _fire_due_tasks()
         except Exception as exc:
             logger.error("scheduled_tasks: poller error: %s", exc)
+            # A loop that fails every tick still looks alive from outside; make
+            # persistent failure visible to the Central drift-monitor. Self-safe:
+            # observe errors never touch loop behaviour (still logs + spins on).
+            try:
+                from core.services.central_private_observe import (
+                    observe_operational_liveness,
+                )
+                observe_operational_liveness("scheduled_tasks", "error", None)
+            except Exception:
+                pass
         _poller_stop.wait(_POLL_INTERVAL_SECONDS)
 
 

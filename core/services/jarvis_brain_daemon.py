@@ -40,6 +40,16 @@ def reindex_loop(stop_event: threading.Event) -> None:
             reindex_once()
         except Exception as exc:
             logger.warning("reindex_loop iteration failed: %s", exc)
+            # A loop that fails every tick still looks alive from outside; make
+            # persistent failure visible to the Central drift-monitor. Self-safe:
+            # observe errors never touch loop behaviour (still logs + spins on).
+            try:
+                from core.services.central_private_observe import (
+                    observe_operational_liveness,
+                )
+                observe_operational_liveness("jarvis_brain_reindex", "error", None)
+            except Exception:
+                pass
         stop_event.wait(_REINDEX_INTERVAL_SECONDS)
 
 

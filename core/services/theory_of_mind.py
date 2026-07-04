@@ -412,6 +412,16 @@ def _listener_loop() -> None:
                 )
         except Exception:
             logger.exception("theory_of_mind: poll cycle failed")
+            # A poll cycle that fails every tick still looks alive from outside;
+            # make persistent failure visible to the Central drift-monitor.
+            # Self-safe: observe errors never touch loop behaviour (spins on).
+            try:
+                from core.services.central_private_observe import (
+                    observe_operational_liveness,
+                )
+                observe_operational_liveness("theory_of_mind", "error", None)
+            except Exception:
+                pass
 
 
 def start_theory_of_mind_tracker() -> None:

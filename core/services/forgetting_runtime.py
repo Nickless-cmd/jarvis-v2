@@ -82,6 +82,16 @@ def _loop() -> None:
                 _run_one_cycle(ws)
         except Exception as exc:
             logger.warning("forgetting_runtime: outer loop error: %s", exc)
+            # A loop that fails every tick still looks alive from outside; make
+            # persistent failure visible to the Central drift-monitor. Self-safe:
+            # observe errors never touch loop behaviour (still logs + spins on).
+            try:
+                from core.services.central_private_observe import (
+                    observe_operational_liveness,
+                )
+                observe_operational_liveness("forgetting_runtime", "error", None)
+            except Exception:
+                pass
         _STOP.wait(_resolve_interval_seconds())
 
 

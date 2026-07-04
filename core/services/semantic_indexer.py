@@ -94,6 +94,16 @@ def _sweeper_loop() -> None:
                 )
         except Exception as exc:
             logger.debug("semantic_indexer: sweep failed: %s", exc)
+            # A sweep that fails every tick still looks alive from outside; make
+            # persistent failure visible to the Central drift-monitor. Self-safe:
+            # observe errors never touch loop behaviour (still logs + spins on).
+            try:
+                from core.services.central_private_observe import (
+                    observe_operational_liveness,
+                )
+                observe_operational_liveness("semantic_indexer_sweep", "error", None)
+            except Exception:
+                pass
 
 
 def _subscriber_loop(*, subscriber: queue.Queue[dict[str, Any] | None]) -> None:
@@ -115,6 +125,16 @@ def _subscriber_loop(*, subscriber: queue.Queue[dict[str, Any] | None]) -> None:
                 _handle_private_brain(payload)
         except Exception as exc:
             logger.debug("semantic_indexer: handler error: %s", exc)
+            # A handler that fails every event still looks alive from outside;
+            # make persistent failure visible to the Central drift-monitor.
+            # Self-safe: observe errors never touch loop behaviour (spins on).
+            try:
+                from core.services.central_private_observe import (
+                    observe_operational_liveness,
+                )
+                observe_operational_liveness("semantic_indexer_subscriber", "error", None)
+            except Exception:
+                pass
 
 
 def _handle_sensory(payload: dict[str, Any]) -> None:

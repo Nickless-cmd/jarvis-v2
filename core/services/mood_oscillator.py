@@ -237,6 +237,16 @@ def _listener_loop(q: "queue.Queue[dict[str, Any] | None]") -> None:
             continue
         except Exception as exc:
             logger.debug("mood_oscillator listener error: %s", exc)
+            # A listener that fails every event still looks alive from outside;
+            # make persistent failure visible to the Central drift-monitor.
+            # Self-safe: observe errors never touch loop behaviour (spins on).
+            try:
+                from core.services.central_private_observe import (
+                    observe_operational_liveness,
+                )
+                observe_operational_liveness("mood_oscillator_listener", "error", None)
+            except Exception:
+                pass
 
 
 def register_event_listeners() -> None:

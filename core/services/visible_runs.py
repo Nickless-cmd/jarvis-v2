@@ -2328,6 +2328,31 @@ async def _stream_visible_run(
                     _force_summary = _is_last_round or _tool_pause_active
                     _round_tool_definitions = _agentic_tools
                     _round_tool_choice = "none" if _force_summary else None
+                    # ── HARNESS-GARANTI: adapter-AGNOSTISK tvungen finalize (Bjørn 4. jul) ──
+                    # Roden til "modellen skipper tekst" er RUNTIME, ikke modellen:
+                    # tool_choice="none" er (a) KUN plumbet til openai-compat-adapteren
+                    # (visible_followup.py:1495) og (b) ignoreres af mange modeller. På
+                    # ollama/copilot/codex-lanes blev INGEN model nogensinde tvunget →
+                    # tool-glade modeller loopede uden prosa på tværs af ALLE providers.
+                    # På den ÆGTE finalize-runde (RED hard-stop — vi STOPPER alligevel)
+                    # FJERNER vi tools fysisk (tool_definitions=None → HVER adapter udelader
+                    # tools-arrayet, se visible_followup.py:549) + tilføjer en eksplicit
+                    # "skriv dit endelige svar nu"-instruktion. Så kan INGEN model på NOGEN
+                    # lane kalde et værktøj → den MÅ producere prosa. tool_choice="none"
+                    # beholdes som sekundært signal. Instruktionen er APPEND-ONLY (ét ekstra
+                    # trailing turn) → cache-prefixet (system+tools+historik) er allerede
+                    # brudt af tool-fjernelsen på præcis denne ene afsluttende runde (one-shot,
+                    # forskningsbekræftet acceptabelt). KUN _is_last_round — IKKE synthese-
+                    # pausen (den skal kunne opsummere OG fortsætte med at grave).
+                    if _is_last_round:
+                        _round_tool_definitions = None
+                        _round_base_messages = list(_round_base_messages) + [{
+                            "role": "user",
+                            "content": (
+                                "Skriv nu dit endelige svar til brugeren i prosa, baseret "
+                                "på værktøjs-resultaterne ovenfor. Kald IKKE flere værktøjer "
+                                "— opsummer hvad du fandt og svar direkte."),
+                        }]
                     # Merge in tools added by load_more_tools in previous rounds
                     if _round_tool_definitions is not None and _round_extra_tools:
                         _all_defs = _get_tool_defs() or []

@@ -3843,13 +3843,20 @@ async def _stream_visible_run(
                     # endte tomt EFTER tool-kald; værste fald er rescue også tom → vi
                     # falder igennem til de eksisterende fallbacks. Idempotent (ingen
                     # tools eksekveres). await via to_thread så event-loopet ikke blokeres.
+                    # HARNESS-FINALIZE lag 2b (Bjørn 4. jul): PROVIDER-AGNOSTISK. Var
+                    # der tool-kald men endte turen tom, kør ÉT tool-frit syntese-kald
+                    # der TVINGER prosa fra HVILKEN SOM HELST lane (fjerner tools fysisk +
+                    # eksplicit finalize-instruktion). synthesize_final_answer swapper
+                    # selv deepseek-thinking→chat (#1453). Var før KUN deepseek → ollama/
+                    # kimi/glm/copilot/codex fik aldrig et syntese-forsøg og faldt direkte
+                    # til en tom-note. Nu får alle lanes et ægte svar-forsøg her.
                     _fu_ex_r = locals().get("_followup_exchanges") or []
                     _had_tools_r = any(
                         getattr(_ex, "tool_calls", None) for _ex in _fu_ex_r)
-                    if _had_tools_r and run.provider == "deepseek":
+                    if _had_tools_r:
                         try:
                             _rescued = await asyncio.to_thread(
-                                _vf.synthesize_nonthinking_rescue,
+                                _vf.synthesize_final_answer,
                                 provider=run.provider, model=run.model,
                                 base_messages=locals().get("base_messages") or [],
                                 exchanges=_fu_ex_r,
@@ -3864,7 +3871,7 @@ async def _stream_visible_run(
                                     "delta": _rescued,
                                 })
                             _observe_streamed_text_recovered(
-                                run, chars=len(_rescued), source="nonthinking_rescue")
+                                run, chars=len(_rescued), source="finalize_synthesis")
 
                 if not followup_text:
                     # DAG-ÉT DIVERGENS-FIX (sidste udvej, agentisk gren): hvis

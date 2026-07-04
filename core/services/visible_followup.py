@@ -1584,6 +1584,85 @@ def synthesize_nonthinking_rescue(
         return ""
 
 
+def synthesize_final_answer(
+    *,
+    provider: str,
+    model: str,
+    base_messages: list[dict],
+    exchanges: list["ToolExchange"],
+) -> str:
+    """HARNESS-FINALIZE lag 2b (Bjørn 4. jul, provider-AGNOSTISK): ét tool-FRIT
+    syntese-kald der TVINGER prosa fra HVILKEN SOM HELST model/lane, når den
+    agentiske finalize-runde stadig endte tom.
+
+    Modsat synthesize_nonthinking_rescue (deepseek-#1453-specifik) virker denne på
+    ALLE providere: den fjerner tools fysisk (tool_definitions=None → hver adapter
+    udelader tools-arrayet) OG appender en eksplicit "skriv dit endelige svar nu"-
+    instruktion, så selv en model der ignorerer tool_choice MÅ producere prosa. For
+    deepseek-thinking-modeller swappes til non-thinking chat-aliaset (omgår #1453).
+
+    Rent additiv + idempotent (ingen tools eksekveres). Kaldes KUN når followup_text
+    allerede er tom → værste fald returnerer også tom, og den deterministiske
+    floor (genbrug streamede bytes / templated resume) tager over. Self-safe.
+    Synkron — kald via asyncio.to_thread fra async-stien."""
+    try:
+        _pid = (provider or "").strip().lower()
+        _use_model = model
+        # deepseek-thinking → swap til chat-alias (ellers re-trigger #1453).
+        if _pid == "deepseek" and model in (
+                "deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner"):
+            try:
+                from core.services.cheap_provider_runtime import deepseek_model_for_thinking_mode
+                _swap = deepseek_model_for_thinking_mode(model, "fast")
+                if _swap and _swap != model:
+                    _use_model = _swap
+            except Exception:
+                pass
+        _r_temp: float | None = 0.3
+        _r_top_p: float | None = 0.9
+        try:
+            from core.runtime.settings import load_settings as _ld_r
+            _st_r = _ld_r()
+            _r_temp = float(getattr(_st_r, "agentic_followup_temperature", 0.3))
+            _r_top_p = float(getattr(_st_r, "agentic_followup_top_p", 0.9))
+            if _r_temp < 0:
+                _r_temp = None
+            if _r_top_p < 0:
+                _r_top_p = None
+        except Exception:
+            pass
+        # Eksplicit finalize-instruktion (append-only → cache-prefix urørt).
+        _finalize_msgs = list(base_messages) + [{
+            "role": "user",
+            "content": (
+                "Skriv nu dit endelige svar til brugeren i prosa, baseret på "
+                "værktøjs-resultaterne ovenfor. Kald IKKE værktøjer — opsummer "
+                "hvad du fandt og svar direkte."),
+        }]
+        _delta_parts: list[str] = []
+        _done_text = ""
+        for _ev in stream_visible_followup(
+            provider=provider,
+            model=_use_model,
+            base_messages=_finalize_msgs,
+            exchanges=exchanges,
+            tool_definitions=None,   # force-prose: ingen tools på NOGEN adapter
+            round_index=901,         # finalize-synthese-marker
+            thinking_mode="fast",
+            temperature=_r_temp,
+            top_p=_r_top_p,
+        ):
+            if isinstance(_ev, FollowupDelta):
+                _delta_parts.append(_ev.delta)
+            elif isinstance(_ev, FollowupDone):
+                _done_text = str(_ev.text or "")
+            elif isinstance(_ev, FollowupFailed):
+                break
+        return (_done_text or "".join(_delta_parts)).strip()
+    except Exception:
+        return ""
+
+
 def build_visible_followup_surface() -> dict[str, object]:
     """Mission Control surface — read-only meta-projection.
 

@@ -1,5 +1,7 @@
 # Canonical Error System — Implementation Plan
 
+> ⚠️ **REVIDERET af [REVIEW](2026-07-04-canonical-error-system-REVIEW.md) §2+§6:** Fase 0 skal UDVIDE eksisterende `central_error_envelope` (ikke ny `CanonicalError`), adapter over `central_anomaly`+`observe` (ikke ny conductor), eskalér til `db_central_incidents` (ikke ny store), delegér Provider/Lane-healers til eksisterende visible_runs-failover. ~60-70% findes allerede. Ægte nyt = healer-registret + desk-UI + audit-oprydning.
+
 **Dato:** 2026-07-04
 **Forfatter:** Jarvis
 **Status:** Follow-up til spec + audit (commit 4677df93). Lukker 7 huller fra self-review.

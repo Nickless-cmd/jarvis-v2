@@ -1,5 +1,7 @@
 # Canonical Error System — hele stakken, én sandhed
 
+> ⚠️ **LÆS FØRST:** [2026-07-04-canonical-error-system-REVIEW.md](2026-07-04-canonical-error-system-REVIEW.md) er AUTORITATIV hvor den modsiger denne. Nøgle-korrektioner: byg PÅ eksisterende `central_error_envelope`/`central_anomaly`/`db_central_incidents` (undgå dobbelt-sandhed); ét endpoint `/internal/errors/report`; `Composer.tsx:186` er fejlkarakteriseret (fjern fra P0); reconcilerede enums/taxonomi.
+
 **Dato:** 2026-07-04  
 **Forfatter:** Jarvis (spec + audit) / Bjørn (retning)  
 **Scope:** jarvis-desk, API/runtime, Centralen, model-provider, host/infra.  

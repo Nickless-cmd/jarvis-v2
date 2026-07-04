@@ -1,5 +1,7 @@
 # Canonical Error System — Audit af nuværende fallback-tekster og gates
 
+> ⚠️ **TAL-KORREKTIONER i [REVIEW](2026-07-04-canonical-error-system-REVIEW.md) §3** (verificeret mod kode): `visible_runs.py` = **134** `except: pass` (ikke "35+"), `heartbeat` = 139, `central_private_observe` = 3 (ikke 6), desk = ~130+ (ikke ~70). Linjenumre ellers verificeret præcise. **`Composer.tsx:186` = FEJLKARAKTERISERET** (model-dropdown-default, ikke fejl-slugning — fjern fra P0).
+
 **Dato:** 2026-07-04  
 **Forfatter:** Jarvis  
 **Scope:** jarvis-desk, apps/api, core/services  

@@ -1161,6 +1161,15 @@ async def _stream_visible_run(
     visible_output_text = ""
     _final_run_status = "completed"
     _final_run_error: str | None = None
+    # RUNTIME-CUTOFF-ROD (Bjørn 4. jul): en run der når `finally` UDEN at have
+    # passeret et finaliserings-punkt (agentisk done / non-agentisk done) blev
+    # behandlet som 'completed' pga. default'en ovenfor → _post_process fyrede
+    # completed+tom → survival, provider-AGNOSTISK (kimi/deepseek tool-ture
+    # afbrydes midt-flugt: GeneratorExit ved klient-drop, CancelledError, eller en
+    # BaseException der ikke fanges af `except Exception`). Flaget sættes True LIGE
+    # FØR hvert done-yield; er det stadig False i finally = runnet blev afbrudt →
+    # markér 'interrupted' (ikke completed) så survival ALDRIG fyrer på en halv run.
+    _reached_finalization = False
     markup_buffer = _CapabilityMarkupBuffer()
     _collected_native_tool_calls: list[dict] = []
     _fp_deg_accum = ""              # akkumuleret first-pass-tekst (degenerations-guard)
@@ -1316,6 +1325,8 @@ async def _stream_visible_run(
                 },
             )
             _persist_session_assistant_message(run, "Generation cancelled.")
+            _final_run_status = "cancelled"
+            _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
             set_last_visible_run_outcome(
                 run,
                 status="cancelled",
@@ -1337,6 +1348,8 @@ async def _stream_visible_run(
                 },
             )
             _persist_session_assistant_message(run, bounded_message)
+            _final_run_status = "failed"
+            _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
             set_last_visible_run_outcome(
                 run,
                 status="failed",
@@ -1362,6 +1375,8 @@ async def _stream_visible_run(
                 },
             )
             _persist_session_assistant_message(run, user_message)
+            _final_run_status = "failed"
+            _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
             set_last_visible_run_outcome(
                 run,
                 status="failed",
@@ -1387,6 +1402,8 @@ async def _stream_visible_run(
                 },
             )
             _persist_session_assistant_message(run, _deg_user_msg)
+            _final_run_status = "failed"
+            _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
             set_last_visible_run_outcome(run, status="failed", error=stage_error)
             for failure_chunk in _fail_visible_run(run, stage_error):
                 yield failure_chunk
@@ -1394,6 +1411,7 @@ async def _stream_visible_run(
 
         if result is None:
             _final_run_status = "failed"  # ellers overskriver _post_process (finally) med "completed"+tom → falsk survival
+            _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
             stage_error = "first-pass-provider-error: Visible model stream completed without final result"
             _update_visible_execution_trace(
                 run,
@@ -3906,6 +3924,7 @@ async def _stream_visible_run(
                     })
                 except Exception:
                     pass
+                _reached_finalization = True
                 yield _sse("done", {
                     "type": "done",
                     "run_id": run.run_id,
@@ -4090,6 +4109,8 @@ async def _stream_visible_run(
                 )
             except Exception:
                 pass
+            _final_run_status = "cancelled"
+            _reached_finalization = True  # eksplicit terminal — immun mod finally-downgrade
             set_last_visible_run_outcome(
                 run,
                 status="cancelled",
@@ -4507,6 +4528,7 @@ async def _stream_visible_run(
             except Exception as _persist_exc2:
                 # H5: svaret er vist live, men gemmes ikke → væk ved reload.
                 _observe_persist_failed(run, _persist_exc2)
+        _reached_finalization = True
         yield _sse(
             "done",
             {
@@ -4557,6 +4579,31 @@ async def _stream_visible_run(
         # as "No response content returned". Guarantee: unregister happens
         # synchronously before we yield control to post-processing.
         unregister_visible_run(run.run_id)
+
+        # ── RUNTIME-CUTOFF-ROD-FIX (Bjørn 4. jul) ──────────────────────────────
+        # Nåede vi finally UDEN at have passeret et done-yield (_reached_finalization
+        # stadig False) MEN status er stadig default'en 'completed'? Så blev runnet
+        # AFBRUDT midt-flugt (GeneratorExit ved klient-drop, CancelledError, eller en
+        # BaseException `except Exception` ikke fanger). En sådan run er IKKE completed
+        # — den er interrupted. Ellers fyrer _post_process' completed+tom-checkpoint
+        # survival-stemmen på en halv run (provider-agnostisk rod: kimi/deepseek
+        # tool-ture). Downgrade FØR _post_process-tråden læser _final_run_status.
+        if (not _reached_finalization and _final_run_status == "completed"):
+            _final_run_status = "interrupted"
+            _final_run_error = _final_run_error or "run-abandoned-before-finalization"
+            print(f"[CUTOFF-TRACE] FINALLY downgrade completed→interrupted (abandoned mid-flight) "
+                  f"run={run.run_id} prov={run.provider} model={run.model} vis_len={len(visible_output_text or '')}", flush=True)
+            # Ærlig, rolig besked til brugeren (IKKE survival-stemmen) — kun hvis han
+            # ikke allerede fik et svar. Idempotent + self-safe. På reload ser han
+            # dette i stedet for tavshed eller en dramatisk overlevelses-tekst.
+            try:
+                if run.session_id and not run.autonomous and _session_last_role(run.session_id) != "assistant":
+                    _persist_session_assistant_message(
+                        run,
+                        "Jeg blev afbrudt midt i det — svaret nåede ikke helt ud. "
+                        "Skriv bare igen, så samler jeg tråden op.")
+            except Exception:
+                pass
 
         def _post_process() -> None:
             # KRITISK (2026-06-21): _post_process reassigner visible_output_text i

@@ -99,8 +99,10 @@ def test_low_accuracy_gives_caution_bias():
 
 def test_drift_over_budget_rolls_back_and_pauses(monkeypatch):
     # tving et forslag der overskrider drift-budgettet → rollback + pause
+    # MANIFOLD-refaktor: compute_proposed_bias tager nu en valgfri cls-arg (default gut).
+    # Læn stubben mod *args så den interne kald compute_proposed_bias(cls) består.
     monkeypatch.setattr(ad, "compute_proposed_bias",
-                        lambda: {"proposed": 0.9, "accuracy": 1.0, "resolved": 10, "enough": True})
+                        lambda *_a, **_k: {"proposed": 0.9, "accuracy": 1.0, "resolved": 10, "enough": True})
     ad._kv_set(ad._BIAS_KEY, 0.1)
     ad._kv_set(ad._LIVE_FLAG, True)
     res = ad.run_adaptation_tick()

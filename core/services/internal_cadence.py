@@ -1126,6 +1126,17 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # DEN ONEIRISKE SLØJFE (LivingNeuron-roadmap §4, 4. jul): drømme får dags-konsekvenser.
+    # RECORD-ONLY, egress-frit: hver drøm-biaseret dag med en loop_persistence-bias pre-
+    # registrerer en FALSIFICERBAR hypotese gennem §8-dødsmekanismen + markerer ~20% som
+    # KONTROL-arm (bias beregnet, IKKE anvendt) så drømmen skal BEVISE sig mod virkeligheden.
+    # Anvender/undertrykker IKKE selv biasen (den mutation er shadow-first-opfølgning).
+    try:
+        from core.services.central_oneiric_loop import register_oneiric_loop_producer
+        register_oneiric_loop_producer()
+    except Exception:
+        pass
+
     # Lag 3 loop-lukning: test aktive hypoteser mod virkeligheden → grounded samples (OBSERVE-ONLY).
     try:
         from core.services.central_hypothesis_sampler import register_hypothesis_sampler_producer

@@ -17,7 +17,12 @@
 | **DIASTOLE** — det følte åndedræt | mellem | ✅ **SHADOW-LIVE** (commit b79bdeb6) — emitterer `runtime:cadence_tempo`, moduler ikke endnu |
 | **WARDEN** — vogteren over muren | mellem | ✅ **LIVE** (commit b79bdeb6) — membran intakt, vogter hver 15. min |
 | **MANIFOLD** — de mange muskler | stor | ✅ **LIVE** (commit 5025878d) — registry m. gut-bias (uændret 0.02), hårdt værn; nye muskler i shadow senere |
-| **DEN ONEIRISKE SLØJFE** — drømme får dags-vægt | wildcard | ✅ **LIVE** (commit 5025878d) — record-only: falsificerbar hypotese + 20% kontrol-arm; grounding-sampler + arm-konsumtion = opfølgning |
+| **DEN ONEIRISKE SLØJFE** — drømme får dags-vægt | wildcard | ✅ **LIVE + KONSUMERENDE** (5025878d + f1f1e785) — falsificerbar hypotese + 20% kontrol-arm + grounding-sampler + arm-konsumtion (bias springes over på kontrol-dage) |
+
+**Mutations-skridt LIVE (commit f1f1e785, owner samtykkede):**
+- **DIASTOLE-konsumtion** — tempo ganger nu non-exempt cooldowns (flag `central_cadence_tempo_live`=on, reversibelt). 10 INFRA/HEALTH/SECURITY undtaget. Klemme [0.5×,2×] + loop-lag-dødemandsknap.
+- **ONEIRISK-konsumtion** — durable no_progress-rate (numerator+denominator i central_timeseries) + `central_oneiric_sampler` grounder hypoteser (aktiv vs kontrol) → §8-resolution; kontrol-dage springer bias-anvendelsen over (fail-open).
+- Opfølgnings-note: hypotese-arm bør migreres fra dag-baseret til hyp_id-baseret split (hold konsumtion + sampler i lockstep).
 
 **Ufravigelig invariant for ALLE spor:** de hårde værn (egress-membran §1.6, fail-retning §8, frossen kerne `verify_frozen_core`) kan ALDRIG svækkes af læring/evolution. Nye adaptive lag fødes ALTID i shadow. Kun skalarer krydser membranen.
 

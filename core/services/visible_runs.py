@@ -4462,6 +4462,37 @@ async def _stream_visible_run(
             logger.warning("TruthGate v2 hook fejlede run_id=%s: %s",
                            getattr(run, "run_id", "?"), _tv2_exc)
 
+        # ── Tavs cut-off-vagt (2026-07-04) — NON-AGENTISK/first-pass-gren ───────
+        # SURVIVAL-SPAM-RODEN (Bjørn: "survival besked KONSTANT uanset provider"):
+        # den agentiske gren har siden 23. jun haft en honest empty-cutoff-note
+        # (~linje 3796), men DENNE gren (single-pass / kun-tekst-svar UDEN native
+        # tool-calls) havde ingen. Når first-pass kom tom tilbage (kimi-k2 ~30%,
+        # deepseek-v4-flash ~20%, glm-5.2 ~50% — HTTP 200, 0 tokens, ingen
+        # streamede bytes at redde) faldt visible_output_text tom → ingen persist
+        # → 'completed'+tom preview → _guarantee_visible_outcome fyrede den
+        # dramatiske OVERLEVELSES-stemme på HVER ordinær tom tur. Survival-voicen
+        # er til ægte substrat-død, ikke en model-quirk. Her: samme rolige, ærlige
+        # note som den agentiske gren, persisteret som assistant → sidste besked ER
+        # assistant → _guarantee_visible_outcome springer over → survival reserveret
+        # til reel katastrofe. Nerven fyrer så vi ser den ægte tom-rate pr. provider.
+        _np_answer = str(visible_output_text or "").strip()
+        if _np_answer in ("[tool calls only]", "[Completed]", "[tool calls only]."):
+            _np_answer = ""
+        if not _np_answer and _final_run_status == "completed" and not run.autonomous:
+            try:
+                from core.services import followup_observer as _fu_np
+                _fu_np.note_empty_completion(
+                    run.run_id, provider=run.provider, model=run.model,
+                    session_id=run.session_id or "", path="non_agentic_block")
+            except Exception:
+                pass
+            _np_note = (
+                "Jeg fik ikke formuleret et svar den gang — spørg mig gerne igen.")
+            yield _sse("delta", {
+                "type": "delta", "run_id": run.run_id, "delta": _np_note,
+            })
+            visible_output_text = _np_note
+
         # Persist the assistant message BEFORE sending done so that the
         # frontend's loadSession() call immediately after done finds the
         # message in the DB (avoids the "message disappears" race condition).

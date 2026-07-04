@@ -2073,10 +2073,21 @@ async def _stream_visible_run(
                 _MAX_EMPTY_TEXT_ROUNDS = int(_agentic_budget.get("max_empty_text_rounds") or 3)
                 # Dream bias (Lag 2) — loop_persistence shifts how long he stays in loop.
                 # ±2 rounds at intensity=1.0; hard floor 4, cap 20.
+                #
+                # KONTROL-ARM-KONSUMTION (oneirisk sløjfe §4, owner samtykkede): på ~20% af
+                # dagene beregnes biasen men ANVENDES IKKE, så aktiv vs kontrol kan
+                # sammenlignes og drømmen må BEVISE sig i stedet for at selv-bekræfte.
+                # Kontrol-beslutningen er deterministisk pr. dag (is_control_day). FAIL-OPEN:
+                # enhver fejl i tjekket → normal anvendelse (nuværende adfærd bevaret).
+                try:
+                    from core.services import central_oneiric_loop as _oneiric
+                    _oneiric_control_day = bool(_oneiric.is_control_day(_oneiric._today()))
+                except Exception:
+                    _oneiric_control_day = False
                 try:
                     from core.services.dream_bias_engine import get_active_dream_bias
                     _bias = get_active_dream_bias(workspace_id="default")
-                    if _bias:
+                    if _bias and not _oneiric_control_day:
                         _persistence_mod = float(_bias["threshold_bias"].get("loop_persistence", 0.0))
                         _intensity = float(_bias.get("intensity") or 0.0)
                         if _persistence_mod != 0.0:
@@ -3513,6 +3524,18 @@ async def _stream_visible_run(
                                 })
                             except Exception:
                                 pass
+                            # DURABLE MIRROR (oneiric grounding): observe() ovenfor er
+                            # restart-flygtig (in-memory trace). Spejl NUMERATOREN til den
+                            # durable per-nerve tidsserie så central_oneiric_sampler kan
+                            # ground'e/falsificere oneiriske hypoteser før TTL. Additiv,
+                            # self-safe, ændrer ALDRIG loop-adfærd.
+                            try:
+                                from datetime import UTC as _UTC, datetime as _dt
+                                from core.services import central_timeseries as _cts
+                                _cts.record("loop", "no_progress_finalize", 1.0,
+                                            meta={"day": _dt.now(_UTC).date().isoformat()})
+                            except Exception:
+                                pass
                     except Exception:
                         pass
                     # 2026-06-11 (Bjørn frustration crisis fix B): hvis dette
@@ -3853,6 +3876,16 @@ async def _stream_visible_run(
                         run.run_id, rounds=locals().get("_agentic_round", -1) + 1,
                         exit_reason=str(_agentic_loop_exit_reason or ""),
                         provider=run.provider, model=run.model)
+                except Exception:
+                    pass
+                # DURABLE DENOMINATOR (oneiric grounding): ét tick pr. fuldført agentisk
+                # loop → daglig total som no_progress_finalize er en RATE imod. Additiv,
+                # self-safe, ændrer ALDRIG adfærd.
+                try:
+                    from datetime import UTC as _UTC2, datetime as _dt2
+                    from core.services import central_timeseries as _cts2
+                    _cts2.record("loop", "agentic_run_total", 1.0,
+                                 meta={"day": _dt2.now(_UTC2).date().isoformat()})
                 except Exception:
                     pass
                 # Causal graph: clear EventContext after the loop so

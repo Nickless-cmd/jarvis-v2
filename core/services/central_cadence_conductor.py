@@ -114,6 +114,76 @@ def sense_tempo() -> dict[str, Any]:
     }
 
 
+# ── KONSUMTION (§28, 4. jul — owner Bjørn samtykkede) ─────────────────────────
+# SHADOW→AKTIV: tempo-skalaren ganges nu på hver NON-exempt producers effektive
+# cooldown. Reversibelt via flag central_cadence_tempo_live (DB runtime-state).
+# INFRA/HEALTH/SECURITY undtages ALTID → fast kadence, aldrig moduleret.
+_TEMPO_LIVE_FLAG = "central_cadence_tempo_live"
+
+# De producers der ALDRIG må flexe — muren + husets sanser + self-helbred vogtes
+# på fast kadence uanset puls. Navnene er verificeret mod de faktisk registrerede
+# ProducerSpec.name-strenge (grep 4. jul), ikke gættet.
+CADENCE_TEMPO_EXEMPT: frozenset[str] = frozenset({
+    # SECURITY
+    "central_membrane_watch",   # WARDEN — egress-membran + frossen kerne
+    "central_watch",            # den aktive vagt
+    # INFRA
+    "infra_sense",
+    "network_health",
+    # HEALTH / drift / self-probe
+    "central_signal_health",
+    "provider_health_check",
+    "db_health_scan",
+    "config_drift_check",
+    "stream_stall_sweep",
+    "central_self_health",
+})
+
+
+def tempo_live_enabled() -> bool:
+    """Er konsumtionen tændt? Owner samtykkede → default ON, men flag'et gør den
+    ØJEBLIKKELIGT reversibel. OFF → nøjagtig nuværende adfærd (ingen modulation).
+    Self-safe: enhver fejl → False (fail-safe mod nuværende adfærd)."""
+    try:
+        return bool(_kv_get(_TEMPO_LIVE_FLAG, True))
+    except Exception:
+        return False
+
+
+def current_tick_tempo() -> float:
+    """Tempoet der skal bruges i DENNE cadence-tick. Kaldes ÉN gang øverst i
+    run_cadence_tick. Flag OFF eller tempo utilgængelig → 1.0 (= ingen modulation,
+    byte-identisk nuværende adfærd). Loop-lag-dødemandsknappen sidder allerede
+    inde i sense_tempo (throttled → 1.0), så konsumtionen bakker automatisk ud
+    under pres. Self-safe: kaster aldrig → 1.0."""
+    try:
+        if not tempo_live_enabled():
+            return _TEMPO_BASELINE
+        s = sense_tempo()
+        if not s.get("available"):
+            return _TEMPO_BASELINE
+        t = float(s.get("tempo") or _TEMPO_BASELINE)
+    except Exception:
+        return _TEMPO_BASELINE
+    # Dobbelt-klemme (forsvar i dybden): må ALDRIG forlade [0.5, 2.0].
+    return max(_TEMPO_MIN, min(_TEMPO_MAX, t))
+
+
+def effective_cooldown(name: str, base_cooldown_minutes: float, tempo: float) -> float:
+    """Effektiv cooldown for en producer i denne tick.
+
+    NON-exempt: base × tempo, med tempo ∈ [0.5, 2.0] → 0.5×..2× base (bundet,
+    aldrig 0, aldrig ∞). Exempt (infra/health/SECURITY): rå base, ALDRIG moduleret.
+    Self-safe: enhver fejl → rå base (fail-safe mod nuværende adfærd)."""
+    try:
+        if name in CADENCE_TEMPO_EXEMPT:
+            return base_cooldown_minutes
+        t = max(_TEMPO_MIN, min(_TEMPO_MAX, float(tempo)))
+        return base_cooldown_minutes * t
+    except Exception:
+        return base_cooldown_minutes
+
+
 def run_cadence_tempo_tick(*, trigger: str = "cadence", **_: Any) -> dict[str, object]:
     """Cadence (SHADOW): sans tempo, emit egress-fri nerve ``runtime:cadence_tempo``.
 

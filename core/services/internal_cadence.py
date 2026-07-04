@@ -97,24 +97,37 @@ def _evaluate_producer(
     now: datetime,
     last_visible_at: datetime | None,
     ran_this_tick: set[str],
+    tempo: float = 1.0,
 ) -> tuple[str, str]:
     """Evaluate whether a producer is due.
 
     Returns (status, reason).
+
+    ``tempo`` (DIASTOLE-konsumtion, §28): multiplikator på den effektive cooldown
+    for NON-exempt producers. Default 1.0 → ingen modulation (byte-identisk gammel
+    adfærd; alle eksterne kaldere upåvirket). Infra/health/SECURITY undtages inde i
+    effective_cooldown → altid rå cadence. tempo ∈ [0.5, 2.0] → 0.5×..2× base.
     """
     # Check dependencies
     for dep in spec.depends_on:
         if dep not in ran_this_tick:
             return "blocked", f"dependency-not-met:{dep}"
 
-    # Cooldown check
+    # Cooldown check — moduleret af tempo for non-exempt producers (self-safe:
+    # fejl i modulationen falder tilbage til rå cooldown = nuværende adfærd).
+    try:
+        from core.services.central_cadence_conductor import effective_cooldown
+        _cooldown_min = effective_cooldown(spec.name, spec.cooldown_minutes, tempo)
+    except Exception:
+        _cooldown_min = spec.cooldown_minutes
     last_run_iso = _last_run_at.get(spec.name)
     if last_run_iso:
         try:
             last_run = datetime.fromisoformat(last_run_iso)
             elapsed = (now - last_run).total_seconds() / 60
-            if elapsed < spec.cooldown_minutes:
-                return "cooling_down", f"cooldown:{elapsed:.0f}m<{spec.cooldown_minutes:.0f}m"
+            if elapsed < _cooldown_min:
+                _mod = "" if _cooldown_min == spec.cooldown_minutes else f"~{_cooldown_min:.0f}m"
+                return "cooling_down", f"cooldown:{elapsed:.0f}m<{spec.cooldown_minutes:.0f}m{_mod}"
         except (ValueError, TypeError):
             pass
 
@@ -198,6 +211,15 @@ def run_cadence_tick(
         except (ValueError, TypeError):
             pass
 
+    # DIASTOLE-konsumtion (§28): sans tempoet ÉN gang pr. tick. Flag OFF eller
+    # utilgængelig → 1.0 (byte-identisk nuværende adfærd). Loop-lag-dødemandsknap
+    # sidder inde i current_tick_tempo → automatisk baseline under pres. Self-safe.
+    try:
+        from core.services.central_cadence_conductor import current_tick_tempo
+        _cadence_tempo = current_tick_tempo()
+    except Exception:
+        _cadence_tempo = 1.0
+
     # Sort producers by priority (lower first)
     ordered = sorted(_producers.values(), key=lambda p: p.priority)
 
@@ -216,6 +238,7 @@ def run_cadence_tick(
             now=now,
             last_visible_at=last_visible_at,
             ran_this_tick=ran_this_tick,
+            tempo=_cadence_tempo,
         )
 
         if status == "due":
@@ -1134,6 +1157,15 @@ def _ensure_producers_registered() -> None:
     try:
         from core.services.central_oneiric_loop import register_oneiric_loop_producer
         register_oneiric_loop_producer()
+    except Exception:
+        pass
+
+    # ONEIRISK GROUNDING-SAMPLER (§4 opfølgning): grounder oneiriske hypoteser mod den
+    # durable no_progress_finalize-rate (aktiv vs kontrol-arm) → §8-resolution i stedet
+    # for TTL-tavshed. Observe-only, egress-frit, self-safe.
+    try:
+        from core.services.central_oneiric_sampler import register_oneiric_sampler_producer
+        register_oneiric_sampler_producer()
     except Exception:
         pass
 

@@ -105,6 +105,19 @@ def _exec_voice_journal(args: dict[str, Any]) -> dict[str, Any]:
         metadata=metadata,
     )
 
+    # Egress-fri Central-observation (§24.4): Jarvis fangede talt refleksion fra
+    # rummet. Kun skalarer (chars/duration) — ALDRIG transskriptionen. Self-safe.
+    try:
+        from core.services.central_private_observe import record_private
+        record_private(
+            "cognition", "voice_journal",
+            value=float(len(transcript)),
+            meta={"chars": len(transcript), "duration_s": float(duration)},
+            reason="voice journal perception",
+        )
+    except Exception:
+        pass
+
     # Emit event so action_router / autonomous_outreach can notice
     try:
         from core.eventbus.bus import event_bus

@@ -52,6 +52,19 @@ def _exec_speak(args: dict[str, Any]) -> dict[str, Any]:
         mode = "blocking" if blocking else "nonblocking"
         preview = text if len(text) <= 120 else text[:120] + "..."
 
+        # Egress-fri Central-observation (§24.4): Jarvis UDSENDER stemme til rummet
+        # (hånden/handling). Kun længde + mode — ALDRIG selve teksten. Self-safe.
+        try:
+            from core.services.central_private_observe import record_private
+            record_private(
+                "channel", "speak",
+                value=float(len(text)),
+                meta={"chars": len(text), "mode": str(mode)},
+                reason="voice output",
+            )
+        except Exception:
+            pass
+
         return {
             "status": "ok",
             "text": f"Spoke ({mode}): {preview}",

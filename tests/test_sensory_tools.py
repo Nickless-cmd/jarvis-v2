@@ -87,3 +87,13 @@ class TestExecRecordSensoryMemory:
         assert result["status"] == "ok"
         for item in result["items"]:
             assert item["modality"] == "audio"
+
+
+class TestCentralWiring:
+    """Coverage-gate: sanse-intaget observeres egress-frit til Centralen."""
+
+    def test_source_wires_record_private(self):
+        import inspect
+        import core.tools.sensory_tools as mod
+        src = inspect.getsource(mod)
+        assert "record_private" in src

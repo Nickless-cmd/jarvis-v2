@@ -46,6 +46,21 @@ def _exec_read_visual_memory(args: dict[str, Any]) -> dict[str, Any]:
                 "configured_model": surface.get("configured_model"),
             }
 
+        # Egress-fri Central-observation (§24.4): Jarvis bringer sit SYN (rum-
+        # fornemmelse fra webcam) ind i turen. Kun antal — ALDRIG beskrivelserne.
+        # Self-safe.
+        try:
+            from core.services.central_private_observe import record_private
+            record_private(
+                "cognition", "visual_memory_read",
+                value=float(len(memories)),
+                meta={"count": len(memories),
+                      "total_records": int(surface.get("record_count", 0) or 0)},
+                reason="visual perception",
+            )
+        except Exception:
+            pass
+
         return {
             "status": "ok",
             "count": len(memories),

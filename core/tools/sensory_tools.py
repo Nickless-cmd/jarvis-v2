@@ -30,6 +30,20 @@ def _exec_record_sensory_memory(args: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(metadata, dict):
         return {"status": "error", "error": "metadata must be an object"}
 
+    # Egress-fri Central-observation (§24.4): Jarvis fanger et SANSE-indtryk. Kun
+    # modalitet-label + længde — ALDRIG selve indholdet/sansningen. Self-safe.
+    try:
+        from core.services.central_private_observe import record_private
+        record_private(
+            "cognition", "sensory_record",
+            value=float(len(content)),
+            meta={"modality": str(modality), "chars": len(content),
+                  "has_mood": bool(mood_tone)},
+            reason="sensory intake",
+        )
+    except Exception:
+        pass
+
     # Queue the write for async processing — returns immediately.
     # The memory_write_queue daemon processes the write in background.
     from core.services.memory_write_queue import enqueue_write

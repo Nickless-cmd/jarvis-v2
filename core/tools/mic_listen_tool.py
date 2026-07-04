@@ -351,6 +351,27 @@ def listen_and_transcribe(
             "wav_path": saved_path,
         })
 
+    # Egress-fri Central-observation (§24.4): Jarvis SANSER lyd fra rummet. Kun
+    # skalarer (chars/duration/backend/trigger-flag) — ALDRIG transskriptionen.
+    # Self-safe: en observe-fejl må aldrig påvirke tool-logikken.
+    try:
+        from core.services.central_private_observe import record_private
+        record_private(
+            "cognition", "mic_listen",
+            value=float(len(transcript)),
+            meta={
+                "chars": len(transcript),
+                "duration_s": float(duration),
+                "backend": str(backend_used),
+                "capture": str(capture_path),
+                "trigger": bool(trigger_action),
+                "heard": bool(transcript),
+            },
+            reason="mic perception",
+        )
+    except Exception:
+        pass
+
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish({

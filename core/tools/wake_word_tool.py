@@ -37,6 +37,23 @@ def _on_wake(phrase: str) -> None:
     _detection_count += 1
     logger.info("wake_word: detected '%s' (#%d)", phrase, _detection_count)
 
+    # Egress-fri Central-observation (§24.4): Jarvis' auditive OPMÆRKSOMHED vakt —
+    # kun tælle-skalar/flag, ALDRIG selve frasen/lyden. Self-safe.
+    try:
+        from core.services.central_private_observe import record_private
+        record_private(
+            "cognition", "wake_word",
+            value=1.0,
+            meta={
+                "detected": True,
+                "detection_count": int(_detection_count),
+                "phrase_chars": len(str(phrase or "")),
+            },
+            reason="auditory attention",
+        )
+    except Exception:
+        pass
+
     # Speak an audible acknowledgment — non-blocking so it doesn't hold the listener
     try:
         from core.skills.voice.tts import say as _tts_say

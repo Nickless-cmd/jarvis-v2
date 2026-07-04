@@ -136,7 +136,20 @@ def _exec_screen_control(args: dict[str, Any]) -> dict[str, Any]:
     if action == "status":
         return _xset_dpms_status()
 
-    return _xset_dpms(action)
+    result = _xset_dpms(action)
+    # Egress-fri Central-observation (§24.4): Jarvis HANDLER på den fysiske verden
+    # (tænder/slukker Bjørns skærme). Kun handlings-label + ok-flag. Self-safe.
+    try:
+        from core.services.central_private_observe import record_private
+        record_private(
+            "channel", "screen_control",
+            value=1.0,
+            meta={"action": str(action), "ok": result.get("status") == "ok"},
+            reason="physical action",
+        )
+    except Exception:
+        pass
+    return result
 
 
 SCREEN_TOOL_DEFINITIONS: list[dict[str, Any]] = [

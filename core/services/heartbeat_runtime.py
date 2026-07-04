@@ -1253,41 +1253,53 @@ def _run_heartbeat_tick_locked(
     tick_count = _HEARTBEAT_TICK_COUNTER
 
     # Heartbeat: cadence producers fire on every tick
+    # ── ABLATION-KONTAKT (Bjørn 4. jul, måling #2) ──────────────────────────────
+    # Når inner_life_ablation er sat, springes hele den HEAVY kognitive/emergente
+    # inder-liv-cadence over (emergent-signaler, personlighed→selv-model, lifecycle,
+    # adoption, frozen-detektorer, idle-thinking). Infra/health/cost kører videre.
+    # Så kan vi måle om cutoff/tom-raten + loop-lag falder MED inder-liv slukket →
+    # det stærkeste enkeltbevis for kontentions-hypotesen. Self-safe (default: livet on).
     try:
-        from core.services.cadence_producers import (
-            produce_emergent_signals_from_history,
-            progress_signal_lifecycles,
-            run_adoption_pipelines,
-            sync_personality_to_self_model,
-        )
-
-        # Every tick: emergent signals
-        produce_emergent_signals_from_history()
-        # Every 2nd tick: sync personality → self_model
-        if tick_count % 2 == 0:
-            sync_personality_to_self_model()
-        # Every 3rd tick: lifecycle progression
-        if tick_count % 3 == 0:
-            progress_signal_lifecycles()
-        # Every 5th tick: adoption pipelines
-        if tick_count % 5 == 0:
-            run_adoption_pipelines()
-        # LivingNeuron Fase B: væk frosne detektorer (emergence/contradiction) på lav cadence
+        from core.services.central_inner_life_ablation import is_ablated as _il_ablated
+        _inner_life_ablated = _il_ablated()
+    except Exception:
+        _inner_life_ablated = False
+    if not _inner_life_ablated:
         try:
-            from core.services.cadence_producers import tick_frozen_detectors
-            tick_frozen_detectors(tick_count)
-        except Exception:
-            pass
-        # Every 4th tick: idle thinking (only fires in dreaming/reflection phases)
-        if tick_count % 4 == 0:
-            try:
-                from core.services.idle_thinking import run_idle_thought
+            from core.services.cadence_producers import (
+                produce_emergent_signals_from_history,
+                progress_signal_lifecycles,
+                run_adoption_pipelines,
+                sync_personality_to_self_model,
+            )
 
-                run_idle_thought()
+            # Every tick: emergent signals
+            produce_emergent_signals_from_history()
+            # Every 2nd tick: sync personality → self_model
+            if tick_count % 2 == 0:
+                sync_personality_to_self_model()
+            # Every 3rd tick: lifecycle progression
+            if tick_count % 3 == 0:
+                progress_signal_lifecycles()
+            # Every 5th tick: adoption pipelines
+            if tick_count % 5 == 0:
+                run_adoption_pipelines()
+            # LivingNeuron Fase B: væk frosne detektorer (emergence/contradiction) på lav cadence
+            try:
+                from core.services.cadence_producers import tick_frozen_detectors
+                tick_frozen_detectors(tick_count)
             except Exception:
                 pass
-    except Exception:
-        pass
+            # Every 4th tick: idle thinking (only fires in dreaming/reflection phases)
+            if tick_count % 4 == 0:
+                try:
+                    from core.services.idle_thinking import run_idle_thought
+
+                    run_idle_thought()
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     # Ambient presence — mark state transitions in physical space
     try:

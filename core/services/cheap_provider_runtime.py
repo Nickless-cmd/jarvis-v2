@@ -1638,6 +1638,10 @@ def _iter_openai_compatible_chat_events(
     # deltas. The structured tool_calls.tool_calls path is unaffected.
     _dsml_in_block = False
     _dsml_buffer = ""
+    # finish_reason-capture (Bjørn 4. jul, conservation-måling #3): provider-side
+    # længde-trunkering (finish_reason=="length") blev ALDRIG tjekket i nogen af de
+    # to kodebaser (agent-fund). Fanges nu → surface som conservation-nerve.
+    _finish_reason = ""
 
     try:
         with httpx.stream(
@@ -1688,6 +1692,9 @@ def _iter_openai_compatible_chat_events(
                 choices = event.get("choices") or []
                 if not choices:
                     continue
+                _fr = (choices[0] or {}).get("finish_reason")
+                if isinstance(_fr, str) and _fr.strip():
+                    _finish_reason = _fr.strip()
                 delta = (choices[0] or {}).get("delta") or {}
                 content = delta.get("content")
                 if content:
@@ -1759,6 +1766,21 @@ def _iter_openai_compatible_chat_events(
                 "cluster": "stream", "nerve": "dsml_tail_dropped",
                 "provider": str(provider or ""), "model": str(model or ""),
                 "residual_len": len(_dsml_buffer), "in_block": True,
+            })
+        except Exception:
+            pass
+    # CONSERVATION-MÅLING #3: provider skar svaret af pga. længde (finish_reason=="length").
+    # Ikke et tab i VORES lag — men det svar brugeren fik ER ufuldstændigt, og ingen af
+    # kodebaserne har nogensinde overfladet det. Gør det synligt så det ikke tælles som
+    # et rent "completed". Self-safe, egress-fri.
+    if _finish_reason == "length":
+        try:
+            from core.services.central_core import central as _central_len
+            _central_len().observe({
+                "cluster": "stream", "nerve": "provider_length_truncation",
+                "provider": str(provider or ""), "model": str(model or ""),
+                "emitted_chars": len("".join(text_parts)),
+                "finish_reason": "length",
             })
         except Exception:
             pass

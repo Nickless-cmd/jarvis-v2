@@ -96,6 +96,51 @@ def _api_port() -> int:
     return 8080
 
 
+def _runtime_port() -> int:
+    """Port for jarvis-runtime-procesen (autonome/wakeup-runs). Default 8011."""
+    raw = os.environ.get("JARVIS_RUNTIME_PORT", "").strip()
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            pass
+    return 8011
+
+
+def _port_for_process(role: str) -> int:
+    """Localhost-port for procesrollen. Begge processer kører SAMME uvicorn-app
+    (api:8080 / runtime:8011), så det interne dispatch-endpoint svarer på begge."""
+    return _runtime_port() if role == "runtime" else _api_port()
+
+
+def _looks_like_closed_ws(exc: BaseException) -> bool:
+    """Er dette en 'send over en allerede-lukket WebSocket'-fejl? Starlette/uvicorn
+    kaster en generisk RuntimeError med denne ASGI-tekst når WS er lukket men broen
+    endnu ikke er afregistreret (race mellem disconnect-oprydning og dispatch)."""
+    text = str(exc).lower()
+    return (
+        "websocket.send" in text and "websocket.close" in text
+    ) or "after sending 'websocket.close'" in text or "response already completed" in text
+
+
+def _ws_is_closed(ws: Any) -> bool:
+    """Bedste-effort: er WS'en allerede lukket? Self-safe → False når ukendt, så vi
+    aldrig fejl-evicter en levende bro pga. manglende state-attributter."""
+    if ws is None:
+        return True
+    try:
+        from starlette.websockets import WebSocketState
+
+        app_state = getattr(ws, "application_state", None)
+        client_state = getattr(ws, "client_state", None)
+        return (
+            app_state == WebSocketState.DISCONNECTED
+            or client_state == WebSocketState.DISCONNECTED
+        )
+    except Exception:
+        return False
+
+
 @dataclass
 class BridgeConnection:
     """One live bridge connection. WS object is platform-dependent."""
@@ -128,6 +173,10 @@ class BridgeConnection:
         """
         if self.ws is None:
             raise RuntimeError("bridge_no_transport")
+        # Pre-send: hvis WS'en allerede er lukket, undgå ASGI-crashet ('send efter
+        # close') og signalér en ren 'bridge_closed' så dispatch kan evicte + forwarde.
+        if _ws_is_closed(self.ws):
+            raise RuntimeError("bridge_closed")
         async with self._send_lock:
             try:
                 await asyncio.wait_for(
@@ -136,6 +185,13 @@ class BridgeConnection:
                 )
             except asyncio.TimeoutError:
                 raise RuntimeError("bridge_send_timeout")
+            except RuntimeError as exc:
+                # Post-send: WS lukkede i vinduet mellem tjek og send. Normalisér den
+                # generiske ASGI-tekst til 'bridge_closed' (ellers lækkede den rå ASGI-
+                # streng ud som bridge_send_failed og efterlod en zombie i registret).
+                if _looks_like_closed_ws(exc):
+                    raise RuntimeError("bridge_closed")
+                raise
 
     async def send_invoke(
         self,
@@ -256,6 +312,17 @@ class BridgeRegistry:
             logger.info("jarvisx_bridge: unregistered user=%s", conn.user_id)
             self._publish_presence()
 
+    def _evict_if_current(self, user_id: str, conn: "BridgeConnection", *, reason: str) -> None:
+        """Fjern en stale/død bro fra registret HVIS den stadig er den aktuelle for
+        user_id (samme guard som unregister — riv ikke en nyere bro ned). Kaldes når
+        et send afslører en lukket WS, så næste dispatch ikke rammer den samme zombie."""
+        current = self._by_user.get(user_id)
+        if current is conn:
+            conn.cancel_all_pending(reason=reason)
+            del self._by_user[user_id]
+            logger.warning("jarvisx_bridge: evicted stale bridge user=%s reason=%s", user_id, reason)
+            self._publish_presence()
+
     def _publish_presence(self) -> None:
         """Publicér dette registrys bro'er til shared_cache, så DEN ANDEN proces (og
         diagnosen) kan se hvilke user_id'er har en levende bro og hvor. Self-safe."""
@@ -344,34 +411,11 @@ class BridgeRegistry:
         """
         bridge = self.get_bridge(user_id)
         if bridge is None:
-            if allow_cross_process:
-                # Deterministisk forward MEN konservativ: spring KUN forward over hvis
-                # presence er populeret OG user_id definitivt fraværende (ægte mismatch/
-                # ingen bro). Er presence tom/utilgængelig → bevar gammel adfærd (forward
-                # til api), så den fungerende autonome-forward ikke brækkes.
-                try:
-                    from core.services import bridge_presence
-                    presence = bridge_presence.all_presence()
-                except Exception:
-                    presence = {}
-                if presence and user_id not in presence:
-                    diag = self._diagnose_no_bridge(user_id, stage="pre_forward")
-                    return {"status": "error", "result": None,
-                            "error": "bridge_not_connected", "diagnosis": diag}
-                return await self._forward_cross_process(
-                    user_id=user_id,
-                    tool=tool,
-                    args=args,
-                    timeout_s=timeout_s,
-                )
-            # api-siden (allow_cross_process=False): definitiv registry-opslag fejlede.
-            diag = self._diagnose_no_bridge(user_id, stage="api_lookup")
-            return {
-                "status": "error",
-                "result": None,
-                "error": "bridge_not_connected",
-                "diagnosis": diag,
-            }
+            return await self._dispatch_without_local_bridge(
+                user_id=user_id, tool=tool, args=args,
+                timeout_s=timeout_s, allow_cross_process=allow_cross_process,
+                stage="lookup",
+            )
 
         correlation_id = str(uuid.uuid4())
         loop = asyncio.get_event_loop()
@@ -395,6 +439,18 @@ class BridgeRegistry:
             logger.info("[bridge-dispatch] SENT corr=%s", correlation_id)
         except Exception as exc:
             bridge._pending.pop(correlation_id, None)
+            # Stale/lukket WS (race mellem disconnect-oprydning og dispatch): evict den
+            # døde bro og fald tilbage til presence/forward-stien i stedet for at lække
+            # den rå ASGI-fejl ud som bridge_send_failed (16× bridge_not_connected +
+            # 2× 'send efter close' i live-diagnosen 4. jul).
+            if "bridge_closed" in str(exc) or _looks_like_closed_ws(exc):
+                self._evict_if_current(user_id, bridge, reason="stale_ws_on_send")
+                logger.warning("[bridge-dispatch] STALE_WS_EVICTED corr=%s user=%s", correlation_id, user_id)
+                return await self._dispatch_without_local_bridge(
+                    user_id=user_id, tool=tool, args=args,
+                    timeout_s=timeout_s, allow_cross_process=allow_cross_process,
+                    stage="post_stale_evict",
+                )
             logger.error("[bridge-dispatch] SEND_FAIL corr=%s err=%s", correlation_id, exc)
             return {
                 "status": "error",
@@ -432,6 +488,61 @@ class BridgeRegistry:
                 "error": f"bridge_timeout after {timeout_s}s",
             }
 
+    async def _dispatch_without_local_bridge(
+        self,
+        *,
+        user_id: str,
+        tool: str,
+        args: dict[str, Any],
+        timeout_s: float,
+        allow_cross_process: bool,
+        stage: str,
+    ) -> dict[str, Any]:
+        """Ingen LEVENDE lokal bro for user_id (aldrig registreret, eller netop evictet
+        som stale). Afgør deterministisk hvad der sker via presence:
+
+        - Presence siger EN ANDEN proces holder broen → forward til DEN proces' port
+          (api:8080 / runtime:8011 kører samme app). Retter self-loop'et hvor forward
+          altid ramte api selv når broen sad i runtime.
+        - Presence populeret men user_id fraværende → ægte mismatch/ingen bro → diagnose.
+        - Presence tom/utilgængelig → bevar konservativ gammel adfærd (forward til api),
+          så den fungerende autonome-forward ikke brækkes ved cache-blip.
+        - allow_cross_process=False (vi ER forward-målet) → definitiv: diagnose.
+        """
+        if not allow_cross_process:
+            diag = self._diagnose_no_bridge(user_id, stage=f"{stage}_terminal")
+            return {"status": "error", "result": None,
+                    "error": "bridge_not_connected", "diagnosis": diag}
+
+        try:
+            from core.services import bridge_presence
+            from core.services.central_xproc import process_role
+            presence = bridge_presence.all_presence()
+            own_role = process_role()
+        except Exception:
+            presence, own_role = {}, ""
+
+        if presence and user_id not in presence:
+            diag = self._diagnose_no_bridge(user_id, stage=f"{stage}_pre_forward")
+            return {"status": "error", "result": None,
+                    "error": "bridge_not_connected", "diagnosis": diag}
+
+        # Deterministisk mål: den proces presence siger holder broen. Ukendt → api
+        # (konservativ). Peger presence på VORES egen proces men vi har ingen lokal
+        # bro → stale presence (bro døde, TTL ikke udløbet) → diagnose i stedet for
+        # at forwarde til os selv (self-loop).
+        target_role = str((presence.get(user_id) or {}).get("process") or "") if presence else ""
+        if target_role and own_role and target_role == own_role:
+            diag = self._diagnose_no_bridge(user_id, stage=f"{stage}_stale_presence")
+            return {"status": "error", "result": None,
+                    "error": "bridge_not_connected", "diagnosis": diag}
+
+        target_port = _port_for_process(target_role) if target_role else _api_port()
+        return await self._forward_cross_process(
+            user_id=user_id, tool=tool, args=args,
+            timeout_s=timeout_s, target_port=target_port,
+        )
+
     async def _forward_cross_process(
         self,
         *,
@@ -439,12 +550,15 @@ class BridgeRegistry:
         tool: str,
         args: dict[str, Any],
         timeout_s: float,
+        target_port: Optional[int] = None,
     ) -> dict[str, Any]:
-        """HTTP-forward dispatch til api-procesens interne endpoint.
+        """HTTP-forward dispatch til den proces der holder broen (dens interne endpoint).
 
-        Self-safe: fanger ALT og degraderer til bridge_not_connected, så en
-        forward-fejl (api nede, connection refused, timeout) aldrig hænger
-        den autonome løkke og bevarer uændret adfærd når broen reelt mangler.
+        ``target_port`` vælges af kalderen ud fra presence (api:8080 / runtime:8011);
+        None → api (konservativ default). Self-safe: fanger ALT og degraderer til
+        bridge_not_connected, så en forward-fejl (proces nede, connection refused,
+        timeout) aldrig hænger den autonome løkke og bevarer uændret adfærd når broen
+        reelt mangler.
         """
         token = internal_dispatch_token()
         if not token:
@@ -455,7 +569,8 @@ class BridgeRegistry:
             )
             return {"status": "error", "result": None, "error": "bridge_not_connected"}
 
-        url = f"http://127.0.0.1:{_api_port()}{_INTERNAL_DISPATCH_PATH}"
+        port = int(target_port) if target_port else _api_port()
+        url = f"http://127.0.0.1:{port}{_INTERNAL_DISPATCH_PATH}"
         # Læse-timeout en anelse længere end operator-timeouten, så bro-rundturen
         # i api-procesen kan nå at fuldføre før vores HTTP-klient giver op.
         read_timeout = float(timeout_s) + 10.0

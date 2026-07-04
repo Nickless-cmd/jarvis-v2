@@ -89,8 +89,12 @@ def test_no_local_bridge_forwards_http():
             return _FakeResp()
 
     import httpx
+    from core.services import bridge_presence
 
+    # Presence ukendt (tom) → konservativ forward til api (uændret gammel adfærd).
+    # Patch eksplicit så testen ikke afhænger af leaked shared_cache-presence.
     with patch.object(jb, "internal_dispatch_token", return_value="secret-token"), \
+            patch.object(bridge_presence, "all_presence", return_value={}), \
             patch.object(httpx, "AsyncClient", _FakeClient):
         res = _run(bridge_registry.dispatch(
             user_id="owner", tool="operator_read_file", args={"path": "/x"}, timeout_s=5.0,
@@ -100,6 +104,7 @@ def test_no_local_bridge_forwards_http():
     assert res["result"] == {"via": "api"}
     assert captured["url"].endswith("/api/internal/jarvisx-bridge/dispatch")
     assert "127.0.0.1" in captured["url"]
+    assert f":{jb._api_port()}" in captured["url"]
     assert captured["json"]["user_id"] == "owner"
     assert captured["json"]["tool"] == "operator_read_file"
     assert captured["headers"][jb._INTERNAL_TOKEN_HEADER] == "secret-token"
@@ -177,6 +182,162 @@ def test_http_forward_non_200_degrades_to_bridge_not_connected():
     assert res["status"] == "error"
     assert res["error"] == "bridge_not_connected"
     bridge_registry.clear()
+
+
+# ── (c2) presence-bevidst forward: rammer DEN proces der holder broen ──────
+
+
+def test_presence_routes_forward_to_holding_process_port():
+    """Presence siger owner's bro sidder i 'api', vi ER 'runtime' → forward til api-porten
+    (ikke self-loop). Retter det hårdkodede api-mål når broen sad i en anden proces."""
+    from core.services import jarvisx_bridge as jb
+    from core.services import bridge_presence
+    from core.services import central_xproc
+    from core.services.jarvisx_bridge import bridge_registry
+
+    bridge_registry.clear()
+    captured = {}
+
+    class _FakeResp:
+        status_code = 200
+
+        def json(self):
+            return {"status": "ok", "result": {"via": "api-proc"}, "error": None}
+
+    class _FakeClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, *, json, headers):
+            captured["url"] = url
+            return _FakeResp()
+
+    import httpx
+
+    with patch.object(jb, "internal_dispatch_token", return_value="secret-token"), \
+            patch.object(central_xproc, "process_role", return_value="runtime"), \
+            patch.object(bridge_presence, "all_presence",
+                         return_value={"owner": {"process": "api"}}), \
+            patch.object(httpx, "AsyncClient", _FakeClient):
+        res = _run(bridge_registry.dispatch(
+            user_id="owner", tool="operator_read_file", args={}, timeout_s=3.0,
+        ))
+
+    assert res["status"] == "ok"
+    assert res["result"] == {"via": "api-proc"}
+    assert f":{jb._api_port()}" in captured["url"]
+    bridge_registry.clear()
+
+
+def test_stale_presence_own_process_no_local_bridge_not_connected():
+    """Presence siger owner's bro sidder i VORES egen proces, men lokal registry er tom
+    → stale presence (bro død, TTL ikke udløbet) → bridge_not_connected, INGEN self-forward."""
+    from core.services import jarvisx_bridge as jb
+    from core.services import bridge_presence
+    from core.services import central_xproc
+    from core.services.jarvisx_bridge import bridge_registry
+
+    bridge_registry.clear()
+    forwarded = {"called": False}
+
+    async def fake_forward(**_kw):
+        forwarded["called"] = True
+        return {"status": "ok", "result": None, "error": None}
+
+    with patch.object(jb, "internal_dispatch_token", return_value="secret-token"), \
+            patch.object(central_xproc, "process_role", return_value="runtime"), \
+            patch.object(bridge_presence, "all_presence",
+                         return_value={"owner": {"process": "runtime"}}), \
+            patch.object(bridge_registry, "_forward_cross_process", side_effect=fake_forward):
+        res = _run(bridge_registry.dispatch(
+            user_id="owner", tool="operator_read_file", args={}, timeout_s=2.0,
+        ))
+
+    assert res["status"] == "error"
+    assert res["error"] == "bridge_not_connected"
+    assert forwarded["called"] is False
+    bridge_registry.clear()
+
+
+# ── (c3) stale/lukket WS ved send → evict + fald tilbage til no-bridge-stien ─
+
+
+def test_stale_ws_on_send_evicts_and_falls_through():
+    """En lokal bro hvis send afslører en lukket WS (bridge_closed) evictes, og dispatch
+    falder tilbage til presence/forward-stien i stedet for at lække ASGI-fejlen ud."""
+    from core.services import jarvisx_bridge as jb
+    from core.services import bridge_presence
+    from core.services.jarvisx_bridge import bridge_registry, BridgeConnection
+
+    bridge_registry.clear()
+    conn = BridgeConnection(user_id="owner", client="test")
+    bridge_registry.register(conn)
+
+    async def dead_send_invoke(**_kw):
+        raise RuntimeError("bridge_closed")
+
+    async def fake_forward(**_kw):
+        return {"status": "ok", "result": {"via": "forward-after-evict"}, "error": None}
+
+    with patch.object(conn, "send_invoke", side_effect=dead_send_invoke), \
+            patch.object(bridge_presence, "all_presence", return_value={}), \
+            patch.object(bridge_registry, "_forward_cross_process", side_effect=fake_forward):
+        res = _run(bridge_registry.dispatch(
+            user_id="owner", tool="operator_read_file", args={}, timeout_s=2.0,
+        ))
+
+    # Faldt igennem til forward (ikke bridge_send_failed) OG den døde bro er evictet.
+    assert res["status"] == "ok"
+    assert res["result"] == {"via": "forward-after-evict"}
+    assert bridge_registry.get_bridge("owner") is None
+    bridge_registry.clear()
+
+
+def test_send_raw_normalizes_asgi_close_error_to_bridge_closed():
+    """En rå ASGI 'send efter websocket.close'-RuntimeError normaliseres til 'bridge_closed'
+    (ellers lækkede den ud som bridge_send_failed og efterlod en zombie i registret)."""
+    from core.services.jarvisx_bridge import BridgeConnection
+
+    class _ClosedWs:
+        async def send_json(self, _data):
+            raise RuntimeError(
+                "Unexpected ASGI message 'websocket.send', after sending "
+                "'websocket.close' or response already completed."
+            )
+
+    conn = BridgeConnection(user_id="owner", client="test", ws=_ClosedWs())
+    with pytest.raises(RuntimeError, match="bridge_closed"):
+        _run(conn.send_raw({"type": "ping"}))
+
+
+def test_send_raw_detects_already_closed_ws_before_send():
+    """Er WS'en allerede i DISCONNECTED-state, undgå send'et helt → 'bridge_closed'."""
+    from core.services.jarvisx_bridge import BridgeConnection
+
+    try:
+        from starlette.websockets import WebSocketState
+    except Exception:  # pragma: no cover
+        pytest.skip("starlette ikke tilgængelig")
+
+    class _DeadWs:
+        application_state = WebSocketState.DISCONNECTED
+        client_state = WebSocketState.DISCONNECTED
+        sent = False
+
+        async def send_json(self, _data):
+            self.sent = True
+
+    ws = _DeadWs()
+    conn = BridgeConnection(user_id="owner", client="test", ws=ws)
+    with pytest.raises(RuntimeError, match="bridge_closed"):
+        _run(conn.send_raw({"type": "ping"}))
+    assert ws.sent is False  # sendte aldrig over en død WS
 
 
 # ── (d) allow_cross_process=False + ingen bro → bridge_not_connected, INGEN HTTP

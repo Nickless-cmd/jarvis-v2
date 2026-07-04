@@ -1601,17 +1601,48 @@ async def _stream_visible_run(
                 pass
             import contextvars as _ctxvars
             _ctx_for_exec = _ctxvars.copy_context()
-            simple_results = await loop.run_in_executor(
-                None,
-                lambda: _ctx_for_exec.run(
-                    _execute_simple_tool_calls,
-                    _collected_native_tool_calls,
-                    force=run.autonomous,
-                    run_id=run.run_id,
-                    session_id=run.session_id,
-                    user_message=run.user_message,
-                ),
-            )
+            # ── KEEPALIVE UNDER FIRST-PASS TOOL-EXEC (Bjørn 4. jul — CancelledError-roden) ──
+            # ROD (bevist via [CUTOFF-TRACE] stage=native_tool_exec): denne first-pass
+            # tool-eksekvering var det ENESTE lange await UDEN heartbeat (first-pass-stream
+            # + agentisk tool-exec har begge keepalive). Tool-kald + det efterfølgende
+            # _build_visible_input (6-33s) gav 6-40s TAVS SSE → klient/proxy/Starlette så
+            # forbindelsen som død → cancellede run-generatoren → CancelledError midt-flugt
+            # → runnet forladt (nu 'interrupted' i stedet for survival, men stadig et tabt
+            # svar). Fix: shield tool-tasken + emit heartbeat hvert 5s så streamen holdes
+            # i live gennem hele det tavse vindue. shield → en spuriøs cancel dræber ikke
+            # selve tool-arbejdet. Spejler den agentiske tool-exec-pumpe (~linje 3332).
+            async def _await_first_pass_tools() -> list[dict]:
+                return await loop.run_in_executor(
+                    None,
+                    lambda: _ctx_for_exec.run(
+                        _execute_simple_tool_calls,
+                        _collected_native_tool_calls,
+                        force=run.autonomous,
+                        run_id=run.run_id,
+                        session_id=run.session_id,
+                        user_message=run.user_message,
+                    ),
+                )
+            _fp_tool_task = asyncio.ensure_future(_await_first_pass_tools())
+            _fp_tool_start = time.monotonic()
+            _fp_tool_beats = 0
+            while not _fp_tool_task.done():
+                try:
+                    await asyncio.wait_for(asyncio.shield(_fp_tool_task), timeout=5.0)
+                except asyncio.TimeoutError:
+                    _fp_tool_beats += 1
+                    try:
+                        touch_active_visible_run(run.run_id)
+                    except Exception:
+                        pass
+                    yield _sse("heartbeat", {
+                        "type": "heartbeat",
+                        "run_id": run.run_id,
+                        "phase": "first_pass_tools",
+                        "elapsed_s": int(time.monotonic() - _fp_tool_start),
+                        "beat": _fp_tool_beats,
+                    })
+            simple_results = await _fp_tool_task
 
             # Detect first-pass load_more_tools so the agentic loop can include
             # the requested tools in its next round.
@@ -1652,13 +1683,35 @@ async def _stream_visible_run(
                 # tool calls stall (WORKER-SUBMITTED logged but no bridge
                 # START logged, then 60s WORKER-TIMEOUT). asyncio.to_thread
                 # offloads to a worker thread, keeping the loop free.
-                visible_input_pre = await asyncio.to_thread(
+                # KEEPALIVE OGSÅ HER (samme tavse-vindue-rod): _build_visible_input
+                # blokerer 6-33s i en tråd. Uden heartbeat gav dét den anden halvdel af
+                # det tavse vindue der fik forbindelsen cancellet. shield + 5s-beat.
+                _bvi_task = asyncio.ensure_future(asyncio.to_thread(
                     _build_visible_input,
                     run.user_message,
                     session_id=run.session_id,
                     provider=run.provider,
                     model=run.model,
-                )
+                ))
+                _bvi_start = time.monotonic()
+                _bvi_beats = 0
+                while not _bvi_task.done():
+                    try:
+                        await asyncio.wait_for(asyncio.shield(_bvi_task), timeout=5.0)
+                    except asyncio.TimeoutError:
+                        _bvi_beats += 1
+                        try:
+                            touch_active_visible_run(run.run_id)
+                        except Exception:
+                            pass
+                        yield _sse("heartbeat", {
+                            "type": "heartbeat",
+                            "run_id": run.run_id,
+                            "phase": "prompt_assembly_postool",
+                            "elapsed_s": int(time.monotonic() - _bvi_start),
+                            "beat": _bvi_beats,
+                        })
+                visible_input_pre = await _bvi_task
                 base_messages = serialize_ollama_chat_messages(visible_input_pre)
 
                 # Send tool results as SSE events.

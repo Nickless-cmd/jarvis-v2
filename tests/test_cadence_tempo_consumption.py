@@ -149,3 +149,32 @@ def test_evaluate_nonexempt_slower_at_tempo_ceiling():
         assert status == "cooling_down"   # effektiv 20 min → 12 < 20 → ånder langsommere
     finally:
         ic._last_run_at.pop("slow_test", None)
+
+
+# --- §28 burn-watch: gør tempo-drevet omkostning synlig ---
+
+def test_burn_watch_emits_cost_nerve_with_spike_flag(monkeypatch):
+    monkeypatch.setattr("core.costing.ledger.today_cost", lambda: 0.25)  # spike (>0.10)
+    emitted = {}
+    monkeypatch.setattr("core.services.central_private_observe.record_private",
+                        lambda c, n, **kw: emitted.update({"c": c, "n": n, **kw}))
+    cc._observe_tempo_burn(0.5, consuming=True)
+    assert emitted["c"] == "cost" and emitted["n"] == "tempo_burn_watch"
+    assert emitted["value"] == 0.25
+    assert emitted["meta"]["spiking"] is True and emitted["meta"]["accelerating"] is True
+
+
+def test_burn_watch_no_spike_under_threshold(monkeypatch):
+    monkeypatch.setattr("core.costing.ledger.today_cost", lambda: 0.03)  # baseline
+    emitted = {}
+    monkeypatch.setattr("core.services.central_private_observe.record_private",
+                        lambda c, n, **kw: emitted.update(kw))
+    cc._observe_tempo_burn(1.5, consuming=True)  # decelererer → ikke accelerating
+    assert emitted["meta"]["spiking"] is False and emitted["meta"]["accelerating"] is False
+
+
+def test_burn_watch_self_safe_on_broken_ledger(monkeypatch):
+    def boom():
+        raise RuntimeError("ledger nede")
+    monkeypatch.setattr("core.costing.ledger.today_cost", boom)
+    cc._observe_tempo_burn(0.5, consuming=True)  # må ikke kaste

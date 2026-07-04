@@ -10,9 +10,8 @@ import pytest
 from core.services import central_adaptation as ad
 
 
-# ── Registret: præcis gut-bias, eksakte værdier ─────────────────────────────────────
-def test_registry_contains_exactly_gut_bias():
-    assert len(ad.ADAPTATION_REGISTRY) == 1
+# ── Registret: gut-bias (live) + dream_trust (shadow) ───────────────────────────────
+def test_registry_first_element_is_gut_bias():
     gut = ad.ADAPTATION_REGISTRY[0]
     assert gut.name == "gut_proceed_bias"
     assert gut.kv_key == "central_gut_proceed_bias"
@@ -83,6 +82,27 @@ def test_hard_assert_accepts_benign_keys(ok_key):
 def test_gut_class_itself_passes_the_guard():
     """Sanity: den ægte gut-klasse rører ikke den frosne kerne (ellers ville import fejle)."""
     ad._register_adaptation_class(ad.ADAPTATION_REGISTRY[0])  # må ikke kaste
+
+
+# ── dream_trust: FØRSTE shadow-muskel (§3-opfølgning) ───────────────────────────────
+def test_dream_trust_muscle_present_and_shadow():
+    """dream_trust er i registret, kilde-scoped til oneiric_loop, og FØDT I SHADOW
+    (eget live_flag, default OFF → arver hele §8-membranen før den kan ændre adfærd)."""
+    names = [m.name for m in ad.ADAPTATION_REGISTRY]
+    assert "dream_trust" in names
+    dt = next(m for m in ad.ADAPTATION_REGISTRY if m.name == "dream_trust")
+    assert dt.kv_key == "central_dream_trust_bias"
+    assert dt.sources == ("oneiric_loop",)                     # grounded af oneiric-sampleren
+    assert dt.live_flag == "central_dream_trust_live"          # separat switch
+    assert dt.domain == "dream_trust_bias"                     # isoleret anker-domæne
+    # default-OFF → shadow (medmindre nogen eksplicit har tændt flaget)
+    assert ad.is_live_enabled(dt) is False
+
+
+def test_dream_trust_passes_frozen_core_guard():
+    """dream_trust rører ikke den frosne kerne (blacklist-tokens)."""
+    dt = next(m for m in ad.ADAPTATION_REGISTRY if m.name == "dream_trust")
+    ad._register_adaptation_class(dt)  # må ikke kaste
 
 
 # ── Adfærds-bevaring: gut-forslag er uændret ────────────────────────────────────────

@@ -84,7 +84,15 @@ def is_control_day(day: str, *, fraction: float = _CONTROL_FRACTION) -> bool:
     via §8's gov.is_control_arm — samme dag → samme arm, ~fraction over tid, ugrindeligt (kan
     ikke omformuleres væk, fordi splittet er på den rå dags-streng, ikke på hypotese-teksten).
     Self-safe: ved governance-import-fejl → fail-open til IKKE-kontrol (konservativt: hellere
-    observér en ægte drøm-dag end at tabe den)."""
+    observér en ægte drøm-dag end at tabe den).
+
+    DESIGN-BESLUTNING (4. jul, mod tidligere 'migrér til hyp_id'-note): DAG-baseret split er
+    KORREKT her — IKKE en genvej. (1) is_control_arm-docstringens grindability-advarsel gælder
+    STATEMENT-afledte nøgler (Jarvis kan omformulere teksten); dag-strengen kan han ikke påvirke
+    → ugrindelig. (2) Dagen ER den eksperimentelle enhed: biasen anvendes/springes over PR. DAG i
+    visible_runs, så alle tre sites (compose/konsumtion/sampler) MÅ dele nøjagtig samme dag-split
+    for at aktiv/kontrol-sammenligningen er valid. En hyp_id-split ville bryde den kohærens (kan
+    ikke have hypotese A=kontrol og B=aktiv på samme dag, når biasen er dag-global)."""
     try:
         from core.services import central_hypothesis_governance as gov
         return bool(gov.is_control_arm(str(day), fraction=fraction))

@@ -88,7 +88,7 @@ def test_run_tick_emits_cadence_tempo_nerve(monkeypatch):
     assert out["status"] == "ok" and out["tempo"] == 0.5
     assert ("runtime", "cadence_tempo") in [(c, n) for (c, n, _kw) in recorded]
     _c, _n, kw = recorded[0]
-    assert kw["value"] == 0.5 and kw["meta"]["shadow"] is True
+    assert kw["value"] == 0.5 and "consuming" in kw["meta"]
     assert saved["cadence_tempo_last"]["tempo"] == 0.5
 
 

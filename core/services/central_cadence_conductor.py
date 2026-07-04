@@ -194,6 +194,7 @@ def run_cadence_tempo_tick(*, trigger: str = "cadence", **_: Any) -> dict[str, o
     tempo = float(s.get("tempo") or _TEMPO_BASELINE)
     pulse = s.get("pulse_rate")
     throttled = bool(s.get("throttled_by_loop_lag"))
+    _live = tempo_live_enabled()
     try:
         from core.services.central_private_observe import record_private
         record_private(
@@ -201,15 +202,40 @@ def run_cadence_tempo_tick(*, trigger: str = "cadence", **_: Any) -> dict[str, o
             meta={
                 "pulse_rate": pulse if isinstance(pulse, (int, float)) else None,
                 "throttled_by_loop_lag": throttled,
-                "shadow": True,
+                "consuming": bool(_live),   # True = modulerer faktisk cooldowns nu
             },
         )
     except Exception:
         pass
-    # Sidste-observerede tempo til shadow-kurve-inspektion (kun skalarer).
-    _kv_set("cadence_tempo_last", {"tempo": tempo, "throttled": throttled})
+    # §28 BURN-WATCH: DIASTOLE kan 2×'e LLM-bærende producers → hold øje med om tempo-
+    # accelerationen driver dagens omkostning op. Egress-frit skalar; spike-flag.
+    _observe_tempo_burn(tempo, consuming=_live)
+    # Sidste-observerede tempo til kurve-inspektion (kun skalarer).
+    _kv_set("cadence_tempo_last", {"tempo": tempo, "throttled": throttled, "consuming": _live})
     return {"status": "ok", "tempo": tempo, "pulse_rate": pulse,
-            "throttled_by_loop_lag": throttled}
+            "throttled_by_loop_lag": throttled, "consuming": _live}
+
+
+def _observe_tempo_burn(tempo: float, *, consuming: bool) -> None:
+    """§28 burn-watch: gør tempo-drevet omkostning synlig. Da DIASTOLE kan fordoble LLM-
+    bærende producers ved acceleration (tempo<1.0), parrer vi dagens omkostning med tempoet
+    i én nerve (`cost:tempo_burn_watch`) + et spike-flag (>3× kendt baseline ~$0.03). Ren
+    observation via eksisterende cost-ledger — ingen redundant maskineri. Self-safe."""
+    try:
+        from core.costing.ledger import today_cost
+        cost = float(today_cost())
+        record_ok = True
+    except Exception:
+        cost, record_ok = 0.0, False
+    if not record_ok:
+        return
+    try:
+        from core.services.central_private_observe import record_private
+        record_private("cost", "tempo_burn_watch", value=cost,
+                       meta={"tempo": round(float(tempo), 3), "consuming": bool(consuming),
+                             "accelerating": bool(tempo < 1.0), "spiking": bool(cost > 0.10)})
+    except Exception:
+        pass
 
 
 def register_cadence_tempo_producer() -> None:

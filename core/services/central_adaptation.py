@@ -162,7 +162,28 @@ _GUT_CLASS = _register_adaptation_class(AdaptationClass(
     min_resolved=_MIN_RESOLVED,
 ))
 
-ADAPTATION_REGISTRY: list[AdaptationClass] = [_GUT_CLASS]
+# dream_trust — FØRSTE shadow-muskel (LivingNeuron §3-opfølgning). Måler hvor meget Jarvis'
+# drømme holder mod virkeligheden: track-record fra source='oneiric_loop' (pre-registrerede
+# oneiriske hypoteser grounded af central_oneiric_sampler → §8-resolution). Lukker
+# MANIFOLD↔ONEIRISK-loopet: sampleren afgør supported/contradicted → dream_trust proposerer en
+# tiltro-bias. SHADOW: live_flag default OFF → beregner + logger, ANVENDER ALDRIG (ingen forbruger
+# endnu; en senere forbruger kunne vægte dream_bias-intensitet i visible_runs). Arver HELE
+# §8-membranen (shadow-first, per-domæne anker, drift-budget → rollback+pause). Rører intet frossen.
+_DREAM_TRUST_CLASS = _register_adaptation_class(AdaptationClass(
+    name="dream_trust",
+    kv_key="central_dream_trust_bias",
+    prev_key="central_dream_trust_bias_prev",
+    sources=("oneiric_loop",),
+    budget=_BIAS_BUDGET,
+    clamp=_BIAS_CLAMP,
+    live_flag="central_dream_trust_live",      # default OFF → shadow
+    pause_flag="central_dream_trust_paused",
+    domain="dream_trust_bias",
+    anchor_version="dream-trust-v1",
+    min_resolved=_MIN_RESOLVED,
+))
+
+ADAPTATION_REGISTRY: list[AdaptationClass] = [_GUT_CLASS, _DREAM_TRUST_CLASS]
 
 
 def _default_class() -> AdaptationClass:

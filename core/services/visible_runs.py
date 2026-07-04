@@ -4589,10 +4589,13 @@ async def _stream_visible_run(
         # survival-stemmen på en halv run (provider-agnostisk rod: kimi/deepseek
         # tool-ture). Downgrade FØR _post_process-tråden læser _final_run_status.
         if (not _reached_finalization and _final_run_status == "completed"):
+            import sys as _sys_exc
+            _abort_exc = _sys_exc.exc_info()[0]
+            _abort_kind = _abort_exc.__name__ if _abort_exc else "none-clean-exit"
             _final_run_status = "interrupted"
-            _final_run_error = _final_run_error or "run-abandoned-before-finalization"
+            _final_run_error = _final_run_error or f"run-abandoned-before-finalization:{_abort_kind}"
             print(f"[CUTOFF-TRACE] FINALLY downgrade completed→interrupted (abandoned mid-flight) "
-                  f"run={run.run_id} prov={run.provider} model={run.model} vis_len={len(visible_output_text or '')}", flush=True)
+                  f"run={run.run_id} prov={run.provider} model={run.model} abort={_abort_kind} vis_len={len(visible_output_text or '')}", flush=True)
             # Ærlig, rolig besked til brugeren (IKKE survival-stemmen) — kun hvis han
             # ikke allerede fik et svar. Idempotent + self-safe. På reload ser han
             # dette i stedet for tavshed eller en dramatisk overlevelses-tekst.

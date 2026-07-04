@@ -16,8 +16,8 @@
 | **PULSE** — kroppens kort som sans | lille | ✅ **LIVE** (commit b9536a8d) |
 | **DIASTOLE** — det følte åndedræt | mellem | ✅ **SHADOW-LIVE** (commit b79bdeb6) — emitterer `runtime:cadence_tempo`, moduler ikke endnu |
 | **WARDEN** — vogteren over muren | mellem | ✅ **LIVE** (commit b79bdeb6) — membran intakt, vogter hver 15. min |
-| **MANIFOLD** — de mange muskler | stor | 📋 spec (§3) — NÆSTE |
-| **DEN ONEIRISKE SLØJFE** — drømme får dags-vægt | wildcard | 📋 spec (§4) |
+| **MANIFOLD** — de mange muskler | stor | ✅ **LIVE** (commit 5025878d) — registry m. gut-bias (uændret 0.02), hårdt værn; nye muskler i shadow senere |
+| **DEN ONEIRISKE SLØJFE** — drømme får dags-vægt | wildcard | ✅ **LIVE** (commit 5025878d) — record-only: falsificerbar hypotese + 20% kontrol-arm; grounding-sampler + arm-konsumtion = opfølgning |
 
 **Ufravigelig invariant for ALLE spor:** de hårde værn (egress-membran §1.6, fail-retning §8, frossen kerne `verify_frozen_core`) kan ALDRIG svækkes af læring/evolution. Nye adaptive lag fødes ALTID i shadow. Kun skalarer krydser membranen.
 

@@ -714,3 +714,29 @@ def test_execute_provider_chat_coerces_messages_for_text_only_provider(monkeypat
         messages=[{"role": "user", "content": "hej"}], tools=[{"x": 1}],
     )
     assert "[user] hej" in seen["message"]
+
+
+def test_dsml_stripper_holds_trailing_lt_and_flush_recovers_it():
+    """CUTOFF-SPØGELSET (Bjørn 4. jul): _strip_dsml_leak holder en hale tilbage
+    der kunne være starten på DSML-openeren (som begynder med '<') — inkl. et
+    bart '<'. Ved stream-slut skal residualen flushes (når ikke in_block),
+    ellers mistes den fra BÅDE stream og persist → 'completed'-men-afkortet."""
+    import core.services.cheap_provider_runtime as cheap
+    # Et svar der ender på '<' (fx "hvis x < y og z <").
+    safe, held, in_block = cheap._strip_dsml_leak("hvis x < y og z <", False)
+    # Mid-string '<' emitteres; kun den efterfølgende hale holdes tilbage.
+    assert safe == "hvis x < y og z "
+    assert held == "<"
+    assert in_block is False
+    # Flush-invarianten: når vi IKKE er i en ægte blok, ER residualen legitim
+    # brugertekst → safe + residual rekonstruerer den fulde tekst uden tab.
+    assert safe + held == "hvis x < y og z <"
+
+
+def test_dsml_stripper_mid_string_lt_not_held():
+    """En '<' midt i teksten (ikke i halen) skal emitteres normalt."""
+    import core.services.cheap_provider_runtime as cheap
+    safe, held, in_block = cheap._strip_dsml_leak("a < b er sandt.", False)
+    assert safe == "a < b er sandt."
+    assert held == ""
+    assert in_block is False

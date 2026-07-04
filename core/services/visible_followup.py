@@ -1274,6 +1274,32 @@ class OpenAICompatFollowupAdapter:
                 )
         except Exception:
             pass
+        # ── DSML-TAIL-FLUSH (Bjørn 4. jul — cutoff-spøgelset) ──────────────────
+        # _strip_dsml_leak holder en HALE tilbage der KUNNE være starten på DSML-
+        # openeren "<｜｜DSML…" — inkl. et BART "<" (den starter med "<"). Ved
+        # stream-slut blev _dsml_buffer ALDRIG flushet ind i teksten → ethvert svar
+        # hvis sidste chunk ender på "<" (fx "hvis x < y", en tag/kode-stump, en
+        # sammenligning) mistede halen fra BÅDE de streamede deltas OG den persisterede
+        # tekst → 'completed'-men-afkortet-midt-i-sætning, INGEN fejl, sporadisk. De
+        # streamede-vs-persisterede redningsnet fanger den IKKE (begge taber SAMME
+        # bytes). Fix: flush residualen når vi IKKE er i en ægte (uafsluttet) DSML-blok
+        # — en tilbageholdt prefix der aldrig blev en rigtig opener er legitim brugertekst.
+        if _dsml_buffer and not _dsml_in_block:
+            parts.append(_dsml_buffer)
+            yield FollowupDelta(delta=_dsml_buffer)
+            _dsml_buffer = ""
+        elif _dsml_buffer and _dsml_in_block:
+            # Uafsluttet ægte DSML-blok → behold undertrykkelsen, men gør tabet SYNLIGT.
+            try:
+                from core.services.central_core import central as _central_dsml
+                _central_dsml().observe({
+                    "cluster": "stream", "nerve": "dsml_tail_dropped",
+                    "run_id": str(run_id or ""), "provider": str(self.provider_id or ""),
+                    "model": str(model or ""), "residual_len": len(_dsml_buffer),
+                    "in_block": True,
+                })
+            except Exception:
+                pass
         if tool_calls:
             yield FollowupToolCalls(tool_calls=tool_calls)
         yield FollowupDone(

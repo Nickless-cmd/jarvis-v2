@@ -1742,6 +1742,26 @@ def _iter_openai_compatible_chat_events(
                 "arguments": slot.get("arguments") or "",
             }
 
+    # ── DSML-TAIL-FLUSH (Bjørn 4. jul — cutoff-spøgelset, first-pass gren) ─────
+    # _strip_dsml_leak holder en hale tilbage der KUNNE være starten på DSML-openeren
+    # (inkl. et bart "<") og flushede den ALDRIG ved stream-slut → svar der ender på
+    # "<" (fx "hvis x < y", en tag/kode-stump) mistede halen fra BÅDE stream og
+    # persist → completed-men-afkortet, ingen fejl. Flush residualen (delta + full_text)
+    # når vi IKKE er i en ægte uafsluttet DSML-blok. Spejler visible_followup.py-fixet.
+    if _dsml_buffer and not _dsml_in_block:
+        text_parts.append(_dsml_buffer)
+        yield {"kind": "delta", "text": _dsml_buffer}
+        _dsml_buffer = ""
+    elif _dsml_buffer and _dsml_in_block:
+        try:
+            from core.services.central_core import central as _central_dsml
+            _central_dsml().observe({
+                "cluster": "stream", "nerve": "dsml_tail_dropped",
+                "provider": str(provider or ""), "model": str(model or ""),
+                "residual_len": len(_dsml_buffer), "in_block": True,
+            })
+        except Exception:
+            pass
     full_text = "".join(text_parts)
     input_tokens = int(final_usage.get("prompt_tokens") or final_usage.get("input_tokens") or 0)
     output_tokens = int(final_usage.get("completion_tokens") or final_usage.get("output_tokens") or 0)

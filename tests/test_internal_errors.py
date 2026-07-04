@@ -106,3 +106,49 @@ def test_critical_maps_to_severe_incident(local_client, monkeypatch):
     r = local_client.post("/api/internal/errors/report",
                           json=_valid_payload(kind="infra.host_down", severity="critical"))
     assert r.status_code == 202 and recorded["severity"] == "severe"
+
+
+# ── Fase 1: healer-invokation (kun auto-recoverable kinds, fail-open) ────────
+
+def test_auto_recoverable_kind_triggers_heal(local_client, monkeypatch):
+    import core.services.error_healers as eh
+    calls = []
+    monkeypatch.setattr(eh, "healers_enabled", lambda: True)
+    monkeypatch.setattr(eh, "heal_error", lambda kind, **kw: calls.append(kind))
+    # central.daemon_dead → KIND_MAP recoverable == "auto"
+    r = local_client.post("/api/internal/errors/report",
+                          json=_valid_payload(kind="central.daemon_dead", severity="error"))
+    assert r.status_code == 202
+    assert calls == ["central.daemon_dead"]
+
+
+def test_non_auto_kind_does_not_trigger_heal(local_client, monkeypatch):
+    import core.services.error_healers as eh
+    calls = []
+    monkeypatch.setattr(eh, "healers_enabled", lambda: True)
+    monkeypatch.setattr(eh, "heal_error", lambda kind, **kw: calls.append(kind))
+    # network.timeout → recoverable == "retry" (ikke auto) → healer røres ikke
+    r = local_client.post("/api/internal/errors/report",
+                          json=_valid_payload(kind="network.timeout", severity="warning"))
+    assert r.status_code == 202 and calls == []
+
+
+def test_heal_raising_still_returns_202(local_client, monkeypatch):
+    import core.services.error_healers as eh
+    def _boom(*a, **k):
+        raise RuntimeError("healer blew up")
+    monkeypatch.setattr(eh, "healers_enabled", lambda: True)
+    monkeypatch.setattr(eh, "heal_error", _boom)
+    r = local_client.post("/api/internal/errors/report",
+                          json=_valid_payload(kind="central.daemon_dead", severity="error"))
+    assert r.status_code == 202  # fail-open: healing-fejl brækker aldrig ingest
+
+
+def test_healers_disabled_skips_heal(local_client, monkeypatch):
+    import core.services.error_healers as eh
+    calls = []
+    monkeypatch.setattr(eh, "healers_enabled", lambda: False)
+    monkeypatch.setattr(eh, "heal_error", lambda kind, **kw: calls.append(kind))
+    r = local_client.post("/api/internal/errors/report",
+                          json=_valid_payload(kind="central.daemon_dead", severity="error"))
+    assert r.status_code == 202 and calls == []

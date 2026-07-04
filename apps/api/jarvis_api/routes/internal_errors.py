@@ -92,6 +92,9 @@ def _route_into_central(report: ErrorReport) -> str:
     # Severity til eskalering: canonical KIND_MAP-udledt (fra envelopen); fald tilbage
     # til rapportens egen severity hvis envelope-build fejlede.
     escalate_severity = str(report.severity or "").lower()
+    # Recoverable: KANONISK (fra envelopens KIND_MAP-opslag), IKKE rapportens egen
+    # deklarerede felt. "" hvis envelope-build fejler → healing fyrer ikke (fail-safe).
+    canonical_recoverable = ""
 
     # 1) Byg bruger-vendt envelope (giver correlation_id + dansk form + kanonisk severity).
     try:
@@ -100,6 +103,7 @@ def _route_into_central(report: ErrorReport) -> str:
             run_id=run_id, detail=report.message, scope=str(report.scope or ""))
         correlation_id = str(getattr(env, "correlation_id", "") or run_id)
         escalate_severity = str(getattr(env, "severity", "") or escalate_severity).lower()
+        canonical_recoverable = str(getattr(env, "recoverable", "") or "").lower()
     except Exception:
         logger.debug("internal-errors: envelope build failed", exc_info=True)
 
@@ -140,6 +144,20 @@ def _route_into_central(report: ErrorReport) -> str:
                 run_id=run_id, session_id=session_id)
         except Exception:
             logger.debug("internal-errors: incident record failed", exc_info=True)
+
+    # 5) HEAL (best-effort, self-safe) — KUN når den KANONISKE recoverable er "auto"
+    #    OG healers er tændt (default OFF → skygge). Best-effort: enhver fejl her fanges
+    #    og påvirker ALDRIG 202'eren eller de øvrige trin (fail-open §9). Synkron men
+    #    guarded i Fase 1; async/cadence-drain for RETRY-resultater er Fase 1b.
+    if canonical_recoverable == "auto":
+        try:
+            from core.services import error_healers
+            if error_healers.healers_enabled():
+                error_healers.heal_error(
+                    str(report.kind or _UNKNOWN_KIND),
+                    origin=location, run_id=run_id, detail=str(report.message or ""))
+        except Exception:
+            logger.debug("internal-errors: heal_error failed (fail-open)", exc_info=True)
 
     return correlation_id
 

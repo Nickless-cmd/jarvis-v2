@@ -45,6 +45,20 @@ def record_cost(
             ),
         )
         conn.commit()
+    # ── SAMLET LLM-EGRESS-OBSERVATION (Bjørn 4. jul) ────────────────────────────
+    # record_cost er regnskabs-chokepointet for visible/primary/cheap. Rapportér
+    # HVERT af dem til det samlede egress-billede (nerve cost/llm_egress) med Bölge-3
+    # cheap-eligibility. Daemon-lanen + direkte-urlopen-sites rapporterer separat.
+    try:
+        from core.services.central_llm_egress import observe as _egress_observe
+        _egress_observe(
+            lane=lane, provider=provider, model=model,
+            purpose=("visible" if str(lane) in ("visible", "primary") else "internal"),
+            input_tokens=int(input_tokens), output_tokens=int(output_tokens),
+            cost_usd=float(cost_usd), autonomous=(str(lane) not in ("visible", "primary")),
+            source="record_cost")
+    except Exception:
+        pass
 
 
 def telemetry_summary() -> dict[str, int | float]:

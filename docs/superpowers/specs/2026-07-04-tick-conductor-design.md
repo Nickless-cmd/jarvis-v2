@@ -23,7 +23,7 @@ Dette er **wiring + safe-gating**, ikke et konceptuelt hul:
 
 - **decide-interfacet findes**: `central().decide(nerve, ctx, fn, cluster=, klass=GateClass)` → `Verdict` med `Decision{GREEN,YELLOW,RED,SKIP}` og `GateClass{COGNITIVE (fail-open), SECURITY (fail-closed)}` ([gate_kernel.py:23-47](../../../core/services/gate_kernel.py)).
 - **Live proof-of-concept**: `dream_bias` ([dream_bias_engine.py](../../../core/services/dream_bias_engine.py)) er ALLEREDE live (`dream_bias_enabled=True`) og beviser hele mønsteret: lært signal → bias → flyder ind i runtime-adfærd, med kill-switch. `loop_persistence` er en af dens tærskler.
-- **Lag-4-mønster**: [central_adaptation.py](../../../core/services/central_adaptation.py) viser skabelonen for at slukke/tænde et lært lag med drift-budget + auto-pause kill-switch (`central_lag4_live_enabled`). Vi genbruger governance-formen, ikke selve gut-bias-tallet.
+- **Lag-4-mønster**: [central_adaptation.py](../../../core/services/central_adaptation.py) viser skabelonen for et governed lært lag med drift-budget + auto-pause kill-switch (`central_lag4_live_enabled`). **Live-bevist (4. jul):** dette lag er faktisk TÆNDT på containeren (bias 0.0188, track-record 4737/454 ≈ 91%) — governance-formen kører allerede i produktion. Vi genbruger den form, ikke selve gut-bias-tallet.
 - **Sømmen er bevist**: ablation-flaget ([central_inner_life_ablation.py](../../../core/services/central_inner_life_ablation.py)) læser allerede DB-state og gater den tunge kognitive blok binært. Dirigenten er samme søm, bare gradueret pr. enhed.
 
 ## 3. Besluttede rammer (3 forks)

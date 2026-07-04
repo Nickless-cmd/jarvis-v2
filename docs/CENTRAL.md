@@ -10,7 +10,7 @@
 
 **ER:** en durable, observérbar rygrads-hub der (a) *ser* alt hvad runtime gør (nerver → trace + timeserier + incidents), (b) *beslutter* gradueret ved request-path-gates (GREEN/YELLOW/RED/SKIP), og (c) *komponerer selvet* fra midten. Rygraden er bygget til at overleve både runtime-genstart og en manglende model.
 
-**ER IKKE:** en anden sandhedskilde (den læser projektioner), en håndhævelses-monolit (kun 4 af 14 decide-sites håndhæver — de security-lukkede), eller et færdigt system (arbitration + Lag-4-adaptation er bevidst SHADOW/OFF).
+**ER IKKE:** en anden sandhedskilde (den læser projektioner), en håndhævelses-monolit (kun 4 af 14 decide-sites håndhæver — de security-lukkede), eller et færdigt system (`central_arbitration` arbitrerer IKKE — ægte shadow uden flag; layer-`decide()`-modes off). **RETTELSE 4. jul (ground-truth mod live container):** Lag-4-adaptation, gut-gate OG agenda-autoritet er derimod **LIVE** via runtime-state — se §17/§18. En tidligere version af dette dokument læste kode-defaults i stedet for live runtime-state og påstod fejlagtigt de var off.
 
 **To bærende invarianter (§6):**
 1. **Cluster = observabilitet, ikke merge.** Et cluster grupperer nerver til at *se* dem sammen — det slår dem ikke sammen til én beslutning.
@@ -121,7 +121,7 @@ Kæde: `runtime_self_model` → **spejl** (struktur) → **organer** (valens/age
 
 - **D-spejl `central_self_model.py`** — LIVE observe-only. Holder STRUKTUR af self_model (~40 lag), aldrig værdi-indhold. §8 cirkel-guard: spejlet fodrer IKKE hypotese-grundlag (Centralen må ikke bekræfte hypoteser om sig selv med sit eget selv-model som "eksternt" bevis).
 - **D2 `central_valence.py`** — LIVE egress-fri. Integrerer FIRE føle-organer → ét `{tone, score, intensity}` (valens-trajektorie base; gut/somatik/stance trækker fra).
-- **D1 `central_agenda.py`** — **SHADOW** (flag `central_agenda_authoritative_enabled` default OFF). Ejer Jarvis' ÉNE prioriterede agenda, konvergerer ~15 kilder; `authoritative_next_intention()` returnerer None → runtime bruger gammel sti.
+- **D1 `central_agenda.py`** — **AUTORITATIV (live)**: flag `central_agenda_authoritative_enabled` er **True** i runtime-state (kode-default OFF). Ejer Jarvis' ÉNE prioriterede agenda, konvergerer ~15 kilder; `authoritative_next_intention()` returnerer den næste intention → runtime bruger Centralens agenda, ikke den gamle sti.
 - **D3 midten `central_self_state.py`** — LIVE (syntese + stemme). `synthesize_self_state`: foreground = agendaens intention, valence = D2, self_model = spejl, world-model-kalibrering = "hvor ofte rammer jeg rigtigt". **`describe_self()` (`:144`) = nordstjernen**: "Jeg er N lag af mig selv (M% samlet). jeg har det {tone}. jeg arbejder mod: {foreground}. jeg er ved at blive et {becoming}" + eksistens-/krop-/sjæl-følelse. **`survival_voice()` (`:194`) = LIVE**: taler fra det durable selv UDEN LLM når sproget svigter (wired `visible_runs.py:7796`).
 - **D4 `build_central_self_state_section()`** — injicerer describe_self i prompten (prompt bæres FRA midten). Wired `prompt_contract.py:1026` bag flag `central_self_prompt_enabled`. **Kode-default OFF; men flippet ON via runtime-state 4. jul** (ADVARSEL: self-state var farvet af dagens `!`-narrativ → ekko-risiko; reversibelt).
 
@@ -253,25 +253,28 @@ Ensartet egress-mønster (§24.4): hvert lag har `_observe_*` → `record_privat
 
 - **Ikke en anden sandhedskilde.** Læser projektioner; `central_learning` nægter at persistere afledt degradering tilbage i incidents.
 - **Ikke en håndhævelses-monolit.** Af 14 decide-sites håndhæver **kun 4** (security-lukkede). Resten fail-open/observe.
-- **SHADOW / OFF-BY-DEFAULT** (kræver flag-flip for effekt): `central_arbitration` (arbitrerer IKKE — konflikt løses stadig af kode-rækkefølge; kun shadow-måling), `central_adaptation` Lag 4 (`central_lag4_live_enabled` off; "tomt teater"-hullet nu lukket via gut_gate, men dobbelt-gated off), `central_agenda` (autoritet shadow), layer-`decide()`-modes (off), `central_gut_consumer_mode` (off).
+- **Ægte SHADOW / OFF (live-verificeret 4. jul):** `central_arbitration` (arbitrerer IKKE — hårdkodet `observe_shadow`, intet flag; konflikt løses af kode-rækkefølge), layer-`decide()`-modes (`layer_mode:*` off).
+- **LIVE (ikke shadow — ground-truth mod container 4. jul, RETTELSE):** `central_adaptation` Lag 4 (`central_lag4_live_enabled`=**True**, ikke pauset; bias 0.0188, track-record 4737/454 ≈ 91%), `central_gut_consumer_mode`=**'on'** (gut-gate håndhæver reelt på lært confidence — ikke længere teater), `central_agenda` autoritet=**True** (bærer Jarvis' agenda).
 - **Rent observe-only (agerer aldrig):** coverage, causal_quality, learning (proposals), drift (flags), loop_lag, cache_telemetry.
 - **Defineret-men-inert:** `central_output_conservation` (0 callers), `central_llm_egress` (dækning langt smallere end docstring).
 - **Papercuts:** self-model-navne-sprawl (central_self_model / central_self_state / central_self_observe / runtime_self_model / self_model_blind_spots / … — let at gribe den forkerte); in-memory-tab ved restart (timeserier/drift-baselines/loop_lag-samples); `connections.unauthorized` (SECURITY) uden for CLUSTER_PRIORITY.
 
 ---
 
-## 18. Flag-reference (live-tilstand 4. jul)
+## 18. Flag-reference (live-tilstand — verificeret mod container 4. jul)
+
+> **Metode-note:** "Live nu"-kolonnen er læst direkte fra runtime-state på containeren (`get_runtime_state_value`), IKKE fra kode-defaults. En tidligere version læste defaults og fik tre rækker forkert (lag4/gut/agenda) — nu rettet.
 
 | Flag | Kode-default | Live nu | Effekt |
 |---|---|---|---|
-| `central_self_prompt_enabled` | OFF | **ON** (4. jul) | D4: prompt bæres fra midten |
-| `central_form_judge_mode` | off | **on** (4. jul) | spring redundante daemon-LLM-kald over |
+| `central_self_prompt_enabled` | OFF | **True** | D4: prompt bæres fra midten |
+| `central_form_judge_mode` | off | **'on'** | spring redundante daemon-LLM-kald over |
 | `central_inner_life_ablation` | False | False | (måle-kontakt, off = livet kører) |
-| `central_agenda_authoritative_enabled` | OFF | off | agenda-autoritet shadow |
-| `central_lag4_live_enabled` | False | off | adaptation-bias inert |
-| `central_gut_consumer_mode` | off | off | gut-gate no-op |
-| `dream_bias_enabled` | True | **ON** | drømme biaser loop_persistence m.m. |
-| `layer_mode:*` | off | off | føle-lag decide() inaktiv (observe kører) |
+| `central_agenda_authoritative_enabled` | OFF | **True** ⚠️RETTET | agenda-autoritet **LIVE** — Centralen bærer agendaen |
+| `central_lag4_live_enabled` | False | **True** ⚠️RETTET | adaptation-bias **LIVE** (0.0188, track-record ≈91%) |
+| `central_gut_consumer_mode` | off | **'on'** ⚠️RETTET | gut-gate håndhæver reelt på lært confidence |
+| `dream_bias_enabled` | True | **True** | drømme biaser loop_persistence m.m. |
+| `layer_mode:*` | off | off (None) | føle-lag decide() inaktiv (observe kører) |
 
 ---
 

@@ -158,3 +158,23 @@ describe('streamReducer — usage.input fra message_delta (context-ring #9)', ()
     }
   })
 })
+
+  it('preserves blocks on a second message_start for the SAME run (reconnect/replay)', () => {
+    // Byg en tur med en tool-blok + tekst, som brugeren allerede har set.
+    let s = streamReducer(initialStreamState(), { type: 'message_start', message: { id: 'visible-same', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } } as any)
+    s = streamReducer(s, { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 't1', name: 'db_query', input: {} } } as any)
+    s = streamReducer(s, { type: 'content_block_start', index: 1, content_block: { type: 'text', text: 'Første linje' } } as any)
+    expect(s.blocks.length).toBe(2)
+    // Reconnect/relay-replay sender message_start igen med SAMME run-id.
+    const s2 = streamReducer(s, { type: 'message_start', message: { id: 'visible-same', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } } as any)
+    // Tool-blok + tekst må IKKE forsvinde.
+    expect(s2.blocks.length).toBe(2)
+    expect(s2.blocks[0]).toMatchObject({ type: 'tool_use', id: 't1' })
+  })
+
+  it('resets blocks on a message_start for a DIFFERENT run', () => {
+    let s = streamReducer(initialStreamState(), { type: 'message_start', message: { id: 'run-a', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } } as any)
+    s = streamReducer(s, { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'gammelt' } } as any)
+    const s2 = streamReducer(s, { type: 'message_start', message: { id: 'run-b', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } } as any)
+    expect(s2.blocks.length).toBe(0)
+  })

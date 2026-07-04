@@ -40,9 +40,18 @@ function estimateOutputTokens(blocks: ContentBlock[]): number {
  */
 export function streamReducer(state: StreamState, event: StreamEvent): StreamState {
   switch (event.type) {
-    case 'message_start':
+    case 'message_start': {
       // Nyt run → output-tokens nulstilles. Live-estimat bygges op via
       // content_block_delta indtil message_delta lander med det rigtige tal.
+      // ── TOOL-BLOK-VANISH-FIX (Bjørn 4. jul) ──────────────────────────────
+      // FØR: blocks nulstilledes ALTID → et 2. message_start for SAMME run
+      // (reconnect / relay-replay fra offset 0 / server-autoritativ genudsendelse)
+      // wipede tool-blokkene + første tekst brugeren allerede så → "tool-results
+      // forsvinder, og svaret bang'er ind løsrevet bagefter". Nu: bevar blocks når
+      // det er SAMME run (activeRunId uændret) — replay'ens content_block_start
+      // SÆTTER hvert index på ny (linje ~65), så staten genopbygges rent uden
+      // dobling. Kun et ÆGTE nyt run (nyt id) nulstiller.
+      const _sameRun = state.activeRunId === event.message.id
       return {
         ...state,
         status: 'working',
@@ -50,14 +59,15 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         model: event.message.model || state.model,
         provider: event.message.provider || state.provider,
         lane: event.message.lane || state.lane,
-        blocks: [],
-        workingStep: null,
+        blocks: _sameRun ? state.blocks : [],
+        workingStep: _sameRun ? state.workingStep : null,
         usage: {
           ...state.usage,
           input: event.message.usage.input_tokens,
-          output: 0,
+          output: _sameRun ? state.usage.output : 0,
         },
       }
+    }
 
     case 'content_block_start': {
       const blocks = state.blocks.slice()

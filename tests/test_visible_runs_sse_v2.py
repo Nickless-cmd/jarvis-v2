@@ -408,6 +408,44 @@ async def test_terminal_guarantee_on_blocked_legacy_stream(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_live_run_survives_idle_gap_longer_than_tick(monkeypatch):
+    """IDLE-CANCEL-ROD (Bjørn 4. jul): FØR cancellerede wait_for() den awaitede
+    __anext__ ved hver _IDLE_TICK_S tavshed → CancelledError ind i den LEVENDE
+    run-generator midt i et langt tool-/model-kald → svaret gik tabt. Nu: en
+    tavs-men-LEVENDE generator (run stadig aktivt) må IKKE afbrydes — dens
+    post-gap-content + done SKAL nå igennem. Reproducerer det ægte cutoff:
+    et tavst vindue > tick MENS runnet kører."""
+    import core.services.visible_runs_sse_v2 as sse2
+    # Kort tick, men run RAPPORTERES stadig aktivt → må aldrig afbrydes af idle.
+    monkeypatch.setattr(sse2, "_IDLE_TICK_S", 0.05, raising=False)
+    monkeypatch.setattr(sse2, "_run_still_active", lambda rid: True, raising=False)
+
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("delta", {"type": "delta", "run_id": "visible-live", "delta": "Før "})
+        # Tavst vindue LÆNGERE end flere ticks (simulerer langt tool-/model-kald)
+        await asyncio.sleep(0.25)  # 5× _IDLE_TICK_S
+        yield _legacy_sse("delta", {"type": "delta", "run_id": "visible-live", "delta": "efter"})
+        yield _legacy_sse("done", {
+            "type": "done", "run_id": "visible-live", "status": "completed",
+            "input_tokens": 10, "output_tokens": 2,
+        })
+
+    output = await asyncio.wait_for(_collect(translate_to_v2(
+        legacy(), run_id="visible-live", model="m", provider="p", lane="l",
+        session_id="sess", ping_interval_s=999.0,
+    )), timeout=5)
+    events = _parse_v2_events(output)
+    # Den POST-gap tekst SKAL være der (blev tabt før fixet), og et rent stop.
+    text = "".join(
+        str(p.get("delta", {}).get("text", ""))
+        for k, p in events if k == "content_block_delta"
+    )
+    kinds = [e[0] for e in events]
+    assert "efter" in text, f"post-gap content tabt (cancelleret levende run): {text!r}"
+    assert "message_stop" in kinds, f"intet rent stop: {kinds}"
+
+
+@pytest.mark.asyncio
 async def test_underlying_generator_aclosed_after_done():
     """KRITISK regression (2026-06-21): translate_to_v2 BRYDER ud ved 'done' uden
     at udtømme legacy_iter. Uden eksplicit aclose kører _stream_visible_run's finally

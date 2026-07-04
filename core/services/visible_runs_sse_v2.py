@@ -369,24 +369,42 @@ async def translate_to_v2(
     async def _translation_loop() -> None:
         _aiter = legacy_iter.__aiter__()
         _idle_ticks = 0
+        # ── IDLE-CANCEL-ROD-FIX (Bjørn 4. jul) ──────────────────────────────────
+        # FØR: `await asyncio.wait_for(_aiter.__anext__(), timeout=_IDLE_TICK_S)`.
+        # wait_for CANCELLERER DESTRUKTIVT den awaitede coroutine ved timeout → hver
+        # 20s tavshed kastede CancelledError IND i den LEVENDE run-generator på dens
+        # aktuelle await (langt tool-kald, model-runde med lav TTFT som glm-5.2 44-102s,
+        # _build_visible_input 6-33s) → generatoren revet ned midt-flugt → run forladt
+        # → 'interrupted'/survival. Rammer enhver run med ét tavst vindue >20s (varieret
+        # varighed 27-112s, provider-agnostisk). Bevist: keepalive lukkede KUN
+        # native_tool_exec-vinduet; alle andre >20s-gaps overlevede stadig ikke.
+        # NU: driv __anext__ som en BEVARET task via asyncio.wait (som IKKE cancellerer
+        # ved timeout). En tavs-men-levende generator får lov at fortsætte sit lange
+        # await; vi bryder KUN når runnet er ægte dødt server-side (_run_still_active
+        # False) eller det hårde loft (_MAX_IDLE_TICKS × _IDLE_TICK_S ≈ 180s) — præcis
+        # den oprindelige hængende-kilde-sikkerhed, uden at dræbe levende runs.
+        _anext_task: "asyncio.Future | None" = None
         try:
             while True:
-                try:
-                    raw = await asyncio.wait_for(
-                        _aiter.__anext__(), timeout=_IDLE_TICK_S,
-                    )
-                except StopAsyncIteration:
-                    break  # kilden sluttede rent → finally fyrer terminal-garantien
-                except asyncio.TimeoutError:
-                    # Ingen legacy-event i _IDLE_TICK_S. Hvis runnet ikke længere er
-                    # aktivt server-side (fuldført/ryddet/afløst) → kilden er død;
-                    # bryd ud så finally-garantien fyrer message_stop. Hård loft som
-                    # sidste værn hvis active-state aldrig ryddes.
+                if _anext_task is None:
+                    _anext_task = asyncio.ensure_future(_aiter.__anext__())
+                _done, _pending = await asyncio.wait(
+                    {_anext_task}, timeout=_IDLE_TICK_S,
+                )
+                if not _done:
+                    # Timeout — tasken kører VIDERE (ikke cancelleret). Tjek liveness.
                     _idle_ticks += 1
                     _rid = str(_state.get("run_id") or "")
                     if (_rid and not _run_still_active(_rid)) or _idle_ticks >= _MAX_IDLE_TICKS:
+                        _anext_task.cancel()  # ægte død kilde → nu må vi rydde op
                         break
                     continue
+                try:
+                    raw = _anext_task.result()
+                except StopAsyncIteration:
+                    break  # kilden sluttede rent → finally fyrer terminal-garantien
+                finally:
+                    _anext_task = None
                 _idle_ticks = 0
                 parsed = _parse_legacy_sse(raw)
                 if parsed is None:
@@ -476,6 +494,13 @@ async def translate_to_v2(
                     ).to_sse_line())
         except asyncio.CancelledError:
             # Stream-cluster: lanen blev afbrudt (klient-disconnect / outer cancel).
+            # Ryd den bevarede __anext__-task så den ikke bliver en orphaned pending
+            # task ("Task was destroyed but it is pending"-anomalien).
+            try:
+                if _anext_task is not None and not _anext_task.done():
+                    _anext_task.cancel()
+            except Exception:
+                pass
             try:
                 from core.services import stream_sentinel
                 if _state["message_started"] and not _state["message_stopped"]:

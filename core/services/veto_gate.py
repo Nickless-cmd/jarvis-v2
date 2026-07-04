@@ -601,7 +601,21 @@ def check_veto(
     try:
         from core.services.pushback import affective_pushback_section
         section = affective_pushback_section(user_message)
-    except Exception:
+    except Exception as _exc:
+        # Fail-open synlighed (audit 2026-07-04): kaster pushback-beregningen tillader
+        # veto-gaten handlingen — men tavst, så et brud på Jarvis' egen modstand er
+        # usynligt. Flag fail-open FØR return. Self-safe: incident-loggen kaster aldrig;
+        # fail-open-adfærden (return True, None) er uændret.
+        try:
+            from core.runtime.db_central_incidents import record_central_incident
+            record_central_incident(
+                cluster="review", nerve="veto_gate", kind="fail_open",
+                severity="info",
+                message=f"check_veto pushback-beregning kastede → fail-OPEN (allow) for "
+                        f"tool={tool_name}: {type(_exc).__name__}: {_exc}"[:300],
+            )
+        except Exception:
+            pass
         return True, None
 
     if not section:

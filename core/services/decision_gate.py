@@ -47,7 +47,21 @@ def check_decision_gate(
     try:
         from core.services.behavioral_decisions import list_active_decisions
         decisions = list_active_decisions(limit=10) or []
-    except Exception:
+    except Exception as _exc:
+        # Fail-open synlighed (audit 2026-07-04): kan gaten ikke læse aktive beslutninger
+        # tillader den handlingen — men det MÅ ikke være tavst, ellers kan Jarvis bryde
+        # egne forpligtelser uden spor. Flag fail-open FØR return. Self-safe: incident-
+        # loggen kaster aldrig, og fail-open-adfærden (return True, None) er uændret.
+        try:
+            from core.runtime.db_central_incidents import record_central_incident
+            record_central_incident(
+                cluster="commit", nerve="decision_gate", kind="fail_open",
+                severity="error",
+                message=f"check_decision_gate kunne ikke læse beslutninger → fail-OPEN "
+                        f"for tool={tool_name}: {type(_exc).__name__}: {_exc}"[:300],
+            )
+        except Exception:
+            pass
         return True, None
 
     if not decisions:
@@ -113,7 +127,20 @@ def evaluate_decision_conflict(
     try:
         from core.services.behavioral_decisions import list_active_decisions
         decisions = list_active_decisions(limit=10) or []
-    except Exception:
+    except Exception as _exc:
+        # Fail-open synlighed (audit 2026-07-04): graderet-varianten fejler også STILLE til
+        # 'none' (GREEN) → Jarvis kan bryde en forpligtelse uden spor. Flag FØR return.
+        # Self-safe: incident-loggen kaster aldrig; fail-open-adfærden ('none', None) uændret.
+        try:
+            from core.runtime.db_central_incidents import record_central_incident
+            record_central_incident(
+                cluster="commit", nerve="decision_gate", kind="fail_open",
+                severity="error",
+                message=f"evaluate_decision_conflict kunne ikke læse beslutninger → "
+                        f"fail-OPEN for tool={tool_name}: {type(_exc).__name__}: {_exc}"[:300],
+            )
+        except Exception:
+            pass
         return "none", None
     if not decisions:
         return "none", None

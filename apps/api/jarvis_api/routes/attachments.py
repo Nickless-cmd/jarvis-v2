@@ -120,8 +120,23 @@ async def upload_attachment(
     try:
         from core.services.gate_execution import check_upload
         _scan = check_upload(str(dest_path))
-    except Exception:
+    except Exception as _scan_exc:
         _scan = None
+        # Fail-open synlighed (audit 2026-07-04): kaster scan-stien springes malware-scan
+        # OVER og uploaden tillades — det er en SECURITY fail-open og MÅ ikke være tavs.
+        # Flag incidenten, men bevar fail-open-adfærden (_scan=None → upload igennem).
+        # Self-safe: incident-loggen kaster aldrig.
+        try:
+            from core.runtime.db_central_incidents import record_central_incident
+            record_central_incident(
+                cluster="execution", nerve="upload_scan", kind="fail_open",
+                severity="error",
+                message=f"check_upload kastede → malware-scan SPRUNGET OVER (upload tilladt) "
+                        f"for {dest_path.name}: {type(_scan_exc).__name__}: {_scan_exc}"[:300],
+                session_id=str(session_id or ""),
+            )
+        except Exception:
+            pass
     if _scan is not None and not _scan.allowed:
         try:
             dest_path.unlink(missing_ok=True)

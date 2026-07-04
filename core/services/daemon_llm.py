@@ -357,6 +357,24 @@ def _daemon_llm_call_impl(
         except Exception:
             pass
 
+    # Fail-open synlighed (audit 2026-07-04): når BEGGE LLM-lanes (cheap + heartbeat)
+    # kom tomme tilbage returnerer daemonen stille sit fallback. Ved en provider-outage
+    # sker det for ALLE internal daemons SAMTIDIG — men uden observe ser Centralen intet
+    # korreleret fald. Observe et tørt-signal så drift-monitoren fanger klyngen. Self-safe:
+    # observe kaster aldrig og påvirker IKKE fallback-adfærden (final beregnes uændret).
+    if not text:
+        try:
+            from core.services.central_core import central
+            central().observe({
+                "cluster": "stream",
+                "nerve": "daemon_llm_dry",
+                "kind": "error",
+                "daemon": daemon_name or "daemon",
+                "public_safe": bool(public_safe),
+            })
+        except Exception:
+            pass
+
     # 3. Clean up quotes
     raw_text = text
     if text.startswith('"') and text.endswith('"'):

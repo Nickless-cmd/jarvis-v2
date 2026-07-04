@@ -42,3 +42,87 @@ def test_note_call_self_safe():
         dl._note_call(None, hit=True)  # type: ignore[arg-type]
     except Exception as e:  # pragma: no cover
         pytest.fail(f"_note_call kastede: {e}")
+
+
+# ── Fail-open synlighed: begge LLM-lanes tørre → observe daemon_llm_dry ──────
+def test_both_lanes_dry_observes_central(monkeypatch):
+    """Når BÅDE cheap- og heartbeat-lane fejler → returner fallback (uændret adfærd)
+    MEN observe et 'daemon_llm_dry'-signal så drift-monitoren fanger korrelerede fald."""
+    # Ingen cache-sti: form-judge/cache må ikke kortslutte kaldet.
+    monkeypatch.setattr(dl, "_get_cache_ttl", lambda name: 0)
+
+    # public_safe=True → cheap-lane går via execute_public_safe_cheap_lane; lad den kaste.
+    def _cheap_boom(*a, **k):
+        raise RuntimeError("provider outage")
+
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime.execute_public_safe_cheap_lane",
+        _cheap_boom)
+    # Heartbeat-fallback: lad target-valget kaste, så text forbliver tomt.
+    monkeypatch.setattr(
+        "core.services.heartbeat_runtime._select_heartbeat_target",
+        lambda: (_ for _ in ()).throw(RuntimeError("heartbeat nede")))
+
+    observed: list[dict] = []
+
+    class _FakeCentral:
+        def observe(self, event):
+            observed.append(event)
+
+    monkeypatch.setattr("core.services.central_core.central", lambda: _FakeCentral())
+
+    out = dl._daemon_llm_call_impl(
+        "prompt", max_len=100, fallback="FALLBACK",
+        daemon_name="somatic", public_safe=True)
+
+    assert out == "FALLBACK"  # adfærd uændret: fallback returneres
+    assert len(observed) == 1
+    ev = observed[0]
+    assert ev["cluster"] == "stream"
+    assert ev["nerve"] == "daemon_llm_dry"
+    assert ev["kind"] == "error"
+    assert ev["daemon"] == "somatic"
+
+
+def test_dry_observe_is_self_safe(monkeypatch):
+    """Self-safe: kaster central().observe påvirkes fallback-returen IKKE."""
+    monkeypatch.setattr(dl, "_get_cache_ttl", lambda name: 0)
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime.execute_public_safe_cheap_lane",
+        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("outage")))
+    monkeypatch.setattr(
+        "core.services.heartbeat_runtime._select_heartbeat_target",
+        lambda: (_ for _ in ()).throw(RuntimeError("down")))
+
+    class _BoomCentral:
+        def observe(self, event):
+            raise RuntimeError("observe nede")
+
+    monkeypatch.setattr("core.services.central_core.central", lambda: _BoomCentral())
+
+    out = dl._daemon_llm_call_impl(
+        "prompt", max_len=100, fallback="FALLBACK",
+        daemon_name="somatic", public_safe=True)
+    assert out == "FALLBACK"  # fail-safe holder trods observe-fejl
+
+
+def test_lane_success_does_not_observe_dry(monkeypatch):
+    """Regression: når en lane leverer tekst må dry-signalet IKKE fyre."""
+    monkeypatch.setattr(dl, "_get_cache_ttl", lambda name: 0)
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime.execute_public_safe_cheap_lane",
+        lambda *a, **k: {"text": "ægte svar", "provider": "public-safe"})
+
+    observed: list[dict] = []
+
+    class _FakeCentral:
+        def observe(self, event):
+            observed.append(event)
+
+    monkeypatch.setattr("core.services.central_core.central", lambda: _FakeCentral())
+
+    out = dl._daemon_llm_call_impl(
+        "prompt", max_len=100, fallback="FALLBACK",
+        daemon_name="somatic", public_safe=True)
+    assert out == "ægte svar"
+    assert not any(e.get("nerve") == "daemon_llm_dry" for e in observed)

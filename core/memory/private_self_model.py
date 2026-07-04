@@ -1,5 +1,28 @@
 from __future__ import annotations
 
+_LEVEL_SCALE = {"low": 0.0, "medium": 0.5, "high": 1.0}
+
+
+def _observe_private_self_model(payload: dict[str, str]) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN skalarer/labels,
+    ALDRIG privat tekst. record_private = lokal trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        confidence = str(payload.get("confidence") or "low")
+        record_private(
+            "cognition", "private_self_model",
+            value=_LEVEL_SCALE.get(confidence, 0.0),
+            meta={
+                "confidence": confidence,
+                "growth_direction": str(payload.get("growth_direction") or ""),
+                "has_tension": not str(
+                    payload.get("recurring_tension") or ""
+                ).startswith("stability:"),
+            },
+        )
+    except Exception:
+        pass
+
 
 def build_private_self_model_payload(
     *,
@@ -18,7 +41,7 @@ def build_private_self_model_payload(
     recurring_tension = _recurring_tension(private_growth_note, private_inner_note)
     growth_direction = _growth_direction(private_growth_note)
     confidence = str(private_growth_note.get("confidence") or "low")[:32]
-    return {
+    payload = {
         "model_id": "private-self-model:current",
         "source": "private-growth-note+private-inner-note",
         "identity_focus": identity_focus,
@@ -29,6 +52,8 @@ def build_private_self_model_payload(
         "created_at": created_at,
         "updated_at": updated_at,
     }
+    _observe_private_self_model(payload)
+    return payload
 
 
 def _preferred_work_mode(

@@ -1,5 +1,25 @@
 from __future__ import annotations
 
+_LEVEL_SCALE = {"low": 0.0, "medium": 0.5, "high": 1.0}
+
+
+def _observe_private_inner_note(*, status: str, uncertainty: str) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN status/uncertainty-
+    label (skalarer), ALDRIG focus/private_summary-teksten. record_private = lokal trace +
+    tidsserie, aldrig _emit. Self-safe: observe-fejl rører aldrig lagets logik."""
+    try:
+        from core.services.central_private_observe import record_private
+        record_private(
+            "cognition", "private_inner_note",
+            value=_LEVEL_SCALE.get(str(uncertainty or "medium"), 0.5),
+            meta={
+                "status": str(status or "unknown")[:32],
+                "uncertainty": str(uncertainty or "medium"),
+            },
+        )
+    except Exception:
+        pass
+
 
 def build_private_inner_note_payload(
     *,
@@ -16,6 +36,7 @@ def build_private_inner_note_payload(
     uncertainty = _uncertainty(status=status, work_preview=work_preview)
     identity_alignment = "subordinate-to-visible"
     work_signal = _work_signal(status=status, capability_id=capability_id)
+    _observe_private_inner_note(status=status, uncertainty=uncertainty)
     return {
         "note_id": f"private-inner-note:{run_id}",
         "source": "visible-selected-work-note",

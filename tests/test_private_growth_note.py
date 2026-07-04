@@ -116,3 +116,15 @@ def test_build_payload_produces_expected_shape():
     assert payload["learning_kind"] == "reinforce"
     assert "holde fast" in payload["helpful_signal"]
     assert payload["confidence"] in ("low", "medium", "high")
+
+
+
+# --- Bölge 2: egress-fri Central-puls ---
+def test_records_private_egress_free():
+    import inspect
+    import core.memory.private_growth_note as mod
+    src = inspect.getsource(mod)
+    assert "record_private" in src
+    assert "central().observe" not in src
+    assert "event_bus" not in src
+    assert "_emit(" not in src

@@ -1,5 +1,26 @@
 from __future__ import annotations
 
+_LEVEL_SCALE = {"low": 0.0, "medium": 0.5, "high": 1.0}
+
+
+def _observe_private_development_state(payload: dict[str, str]) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN confidence-label +
+    retning (skalarer), ALDRIG retained_pattern-teksten. record_private = lokal trace +
+    tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        confidence = str(payload.get("confidence") or "low")
+        record_private(
+            "cognition", "private_development_state",
+            value=_LEVEL_SCALE.get(confidence, 0.0),
+            meta={
+                "confidence": confidence,
+                "preferred_direction": str(payload.get("preferred_direction") or "")[:48],
+            },
+        )
+    except Exception:
+        pass
+
 
 def build_private_development_state_payload(
     *,
@@ -34,7 +55,7 @@ def build_private_development_state_payload(
         or private_growth_note.get("confidence")
         or "low"
     )[:32]
-    return {
+    payload = {
         "state_id": "private-development-state:current",
         "source": (
             "private-growth-note:private-runtime-grounded+"
@@ -48,6 +69,8 @@ def build_private_development_state_payload(
         "created_at": created_at,
         "updated_at": updated_at,
     }
+    _observe_private_development_state(payload)
+    return payload
 
 
 def _retained_pattern(

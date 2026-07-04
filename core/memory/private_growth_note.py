@@ -1,5 +1,28 @@
 from __future__ import annotations
 
+_LEVEL_SCALE = {"low": 0.0, "medium": 0.5, "high": 1.0}
+
+
+def _observe_private_growth_note(
+    *, learning_kind: str, confidence: str, has_mistake: bool
+) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN learning_kind/
+    confidence-labels + mistake-flag (skalarer), ALDRIG lesson/helpful_signal-teksten.
+    record_private = lokal trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        record_private(
+            "cognition", "private_growth_note",
+            value=_LEVEL_SCALE.get(str(confidence or "low"), 0.0),
+            meta={
+                "learning_kind": str(learning_kind or "observe"),
+                "confidence": str(confidence or "low"),
+                "has_mistake": bool(has_mistake),
+            },
+        )
+    except Exception:
+        pass
+
 
 def build_private_growth_note_payload(
     *,
@@ -28,6 +51,11 @@ def build_private_growth_note_payload(
         private_inner_note.get("identity_alignment") or "subordinate-to-visible"
     )[:48]
     confidence = _confidence(status=status, work_preview=work_preview)
+    _observe_private_growth_note(
+        learning_kind=learning_kind,
+        confidence=confidence,
+        has_mistake=bool(mistake_signal),
+    )
     return {
         "record_id": f"private-growth-note:{run_id}",
         "source": "private-inner-note:private-runtime-grounded",

@@ -1,5 +1,27 @@
 from __future__ import annotations
 
+_LEVEL_SCALE = {"low": 0.0, "medium": 0.5, "high": 1.0}
+
+
+def _observe_private_promotion_decision(payload: dict[str, str]) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN action/scope/
+    confidence-labels (skalarer), ALDRIG promotion_target-teksten. record_private = lokal
+    trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        confidence = str(payload.get("confidence") or "low")
+        record_private(
+            "cognition", "private_promotion_decision",
+            value=_LEVEL_SCALE.get(confidence, 0.0),
+            meta={
+                "promotion_action": str(payload.get("promotion_action") or "watch"),
+                "promotion_scope": str(payload.get("promotion_scope") or ""),
+                "confidence": confidence,
+            },
+        )
+    except Exception:
+        pass
+
 
 def build_private_promotion_decision_payload(
     *,
@@ -26,7 +48,7 @@ def build_private_promotion_decision_payload(
         or private_growth_note.get("confidence")
         or "low"
     )[:32]
-    return {
+    payload = {
         "decision_id": f"private-promotion-decision:{run_id}",
         "source": (
             "private-temporal-promotion-signal:private-runtime-grounded+"
@@ -40,6 +62,8 @@ def build_private_promotion_decision_payload(
         "confidence": confidence,
         "created_at": created_at,
     }
+    _observe_private_promotion_decision(payload)
+    return payload
 
 
 def _promotion_scope(

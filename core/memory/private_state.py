@@ -1,5 +1,28 @@
 from __future__ import annotations
 
+_LEVEL_SCALE = {"low": 0.0, "medium": 0.5, "high": 1.0}
+
+
+def _observe_private_state(payload: dict[str, str]) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN skalarer/labels,
+    ALDRIG privat tekst. Går via record_private (lokal trace + tidsserie, aldrig _emit/
+    observe → kan aldrig lække). Self-safe: observe-fejl rører ALDRIG lagets logik."""
+    try:
+        from core.services.central_private_observe import record_private
+        confidence = str(payload.get("confidence") or "low")
+        record_private(
+            "cognition", "private_state",
+            value=_LEVEL_SCALE.get(confidence, 0.0),
+            meta={
+                "frustration": str(payload.get("frustration") or "low"),
+                "fatigue": str(payload.get("fatigue") or "low"),
+                "confidence": confidence,
+                "curiosity": str(payload.get("curiosity") or "low"),
+            },
+        )
+    except Exception:
+        pass
+
 
 def build_private_state_payload(
     *,
@@ -11,7 +34,7 @@ def build_private_state_payload(
     created_at: str,
     updated_at: str,
 ) -> dict[str, str]:
-    return {
+    payload = {
         "state_id": "private-state:current",
         "source": (
             "private-inner-note+private-growth-note+private-self-model+"
@@ -37,6 +60,8 @@ def build_private_state_payload(
         "created_at": created_at,
         "updated_at": updated_at,
     }
+    _observe_private_state(payload)
+    return payload
 
 
 def _frustration(

@@ -1,5 +1,27 @@
 from __future__ import annotations
 
+_LEVEL_SCALE = {"low": 0.0, "medium": 0.5, "high": 1.0}
+
+
+def _observe_private_reflective_selection(payload: dict[str, str]) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN selection_kind/
+    confidence-labels (skalarer), ALDRIG reinforce/reconsider-teksten. record_private =
+    lokal trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        confidence = str(payload.get("confidence") or "low")
+        record_private(
+            "cognition", "private_reflective_selection",
+            value=_LEVEL_SCALE.get(confidence, 0.0),
+            meta={
+                "selection_kind": str(payload.get("selection_kind") or "observe"),
+                "confidence": confidence,
+                "fades": str(payload.get("fade") or "none") != "none",
+            },
+        )
+    except Exception:
+        pass
+
 
 def build_private_reflective_selection_payload(
     *,
@@ -23,7 +45,7 @@ def build_private_reflective_selection_payload(
         or private_growth_note.get("confidence")
         or "low"
     )[:32]
-    return {
+    payload = {
         "signal_id": f"private-reflective-selection:{run_id}",
         "source": "private-growth-note:private-runtime-grounded+private-self-model",
         "run_id": run_id,
@@ -36,6 +58,8 @@ def build_private_reflective_selection_payload(
         "confidence": confidence,
         "created_at": created_at,
     }
+    _observe_private_reflective_selection(payload)
+    return payload
 
 
 def _selection_kind(private_growth_note: dict[str, str]) -> str:

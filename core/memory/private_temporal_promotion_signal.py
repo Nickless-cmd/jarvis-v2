@@ -1,5 +1,28 @@
 from __future__ import annotations
 
+_LEVEL_SCALE = {"low": 0.0, "medium": 0.5, "high": 1.0}
+
+
+def _observe_private_temporal_promotion_signal(payload: dict[str, str]) -> None:
+    """Egress-fri puls til Centralen (§24.4) — cluster=cognition. KUN rhythm/action/
+    confidence-labels (skalarer), ALDRIG promotion_target-teksten. record_private = lokal
+    trace + tidsserie, aldrig _emit. Self-safe."""
+    try:
+        from core.services.central_private_observe import record_private
+        confidence = str(payload.get("promotion_confidence") or "low")
+        record_private(
+            "cognition", "private_temporal_promotion_signal",
+            value=_LEVEL_SCALE.get(confidence, 0.0),
+            meta={
+                "rhythm_state": str(payload.get("rhythm_state") or "steady"),
+                "rhythm_window": str(payload.get("rhythm_window") or "watch-now"),
+                "promotion_action": str(payload.get("promotion_action") or "watch"),
+                "confidence": confidence,
+            },
+        )
+    except Exception:
+        pass
+
 
 def build_private_temporal_promotion_signal_payload(
     *,
@@ -26,7 +49,7 @@ def build_private_temporal_promotion_signal_payload(
         or private_development_state.get("confidence")
         or "low"
     )[:32]
-    return {
+    payload = {
         "signal_id": f"private-temporal-promotion-signal:{run_id}",
         "source": (
             "private-state+private-reflective-selection+private-development-state:"
@@ -42,6 +65,8 @@ def build_private_temporal_promotion_signal_payload(
         "promotion_confidence": promotion_confidence,
         "created_at": created_at,
     }
+    _observe_private_temporal_promotion_signal(payload)
+    return payload
 
 
 def _rhythm_state(

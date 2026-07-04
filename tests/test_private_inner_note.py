@@ -57,3 +57,15 @@ def test_whitespace_collapsed():
     """Multiple whitespace chars get collapsed."""
     out = _derive_focus("test   with    spaces")
     assert out == "test with spaces"
+
+
+
+# --- Bölge 2: egress-fri Central-puls ---
+def test_records_private_egress_free():
+    import inspect
+    import core.memory.private_inner_note as mod
+    src = inspect.getsource(mod)
+    assert "record_private" in src
+    assert "central().observe" not in src
+    assert "event_bus" not in src
+    assert "_emit(" not in src

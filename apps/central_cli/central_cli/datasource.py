@@ -109,6 +109,56 @@ def nerves(client: Any) -> list:
     return rows
 
 
+def clusters(client: Any) -> list:
+    """Per-cluster summary rows.
+
+    ``/central/realtime`` ships a thin cluster grid (``{cluster, status,
+    security}``) with no per-state nerve counts, so we DERIVE the counts by
+    grouping ``nerves(client)`` by cluster. The realtime grid's ``status`` is
+    merged in when present (it reflects breaker/degrading truth the raw nerve
+    states don't capture); otherwise we fall back to a derived status.
+    """
+    # realtime status per cluster (thin grid), keyed by cluster name
+    rt = _realtime(client)
+    rt_status: dict = {}
+    for c in rt.get("clusters") or []:
+        if isinstance(c, dict) and c.get("cluster"):
+            rt_status[str(c.get("cluster"))] = str(c.get("status") or "")
+
+    # group nerves by cluster, tallying state buckets
+    buckets: dict = {}
+    for r in nerves(client):
+        cl = str(r.get("cluster", ""))
+        st = str(r.get("state", ""))
+        b = buckets.setdefault(cl, {"nerves": 0, "aktiv": 0, "idle": 0,
+                                    "degraded": 0, "død": 0})
+        b["nerves"] += 1
+        if st in b:
+            b[st] += 1
+
+    # ensure clusters that only exist in the realtime grid still show up
+    for cl in rt_status:
+        buckets.setdefault(cl, {"nerves": 0, "aktiv": 0, "idle": 0,
+                                "degraded": 0, "død": 0})
+
+    out = []
+    for cl, b in buckets.items():
+        status = rt_status.get(cl)
+        if not status:
+            # derived fallback from bucket contents
+            if b["degraded"] or b["død"]:
+                status = "yellow"
+            elif b["aktiv"]:
+                status = "green"
+            else:
+                status = "idle"
+        out.append({"cluster": cl, "status": status, **b})
+
+    _order = {"red": 0, "yellow": 1, "green": 2, "idle": 3}
+    out.sort(key=lambda x: (_order.get(x["status"], 9), x["cluster"]))
+    return out
+
+
 def incidents(client: Any) -> list:
     """Incident list from /central/realtime (as-is)."""
     rt = _realtime(client)

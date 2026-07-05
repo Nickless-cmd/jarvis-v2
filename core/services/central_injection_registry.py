@@ -100,3 +100,32 @@ def is_dirty(unit: InjectionUnit, now: float) -> bool:
         except Exception:
             return True
     return False
+
+
+def refresh_unit(unit: InjectionUnit, now: float) -> None:
+    """Genberegn ÉN enhed (det tunge LLM/subsystem-kald — OFF hot-path) og skriv durabelt."""
+    text = unit.compose_fn() or ""
+    snap = {}
+    for nerve in unit.source_nerves:
+        v = _nerve_latest(nerve)
+        if v is not None:
+            snap[nerve] = v
+    _kv_set(_CACHE_PREFIX + unit.key, {
+        "text": str(text), "composed_at": float(now), "source_snapshot": snap,
+    })
+
+
+def refresh_dirty(now: float | None = None) -> int:
+    """Kaldes fra Centralens cadence: refresh alle beskidte enheder. Self-safe pr. enhed.
+    Returnerer antal genberegnede (til observabilitet)."""
+    if now is None:
+        now = time.time()
+    n = 0
+    for unit in sorted(_REGISTRY.values(), key=lambda u: u.priority):
+        try:
+            if is_dirty(unit, now):
+                refresh_unit(unit, now)
+                n += 1
+        except Exception:
+            continue
+    return n

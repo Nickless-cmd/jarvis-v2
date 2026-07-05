@@ -47,3 +47,37 @@ def test_is_dirty_rules(monkeypatch):
     # (e) nerve flytter sig under tærskel → ren
     nerves["cognition:affect"] = 1.2   # delta 0.2 < 0.5
     assert reg.is_dirty(unit, now + 10) is False
+
+
+def test_refresh_composes_and_caches(monkeypatch):
+    store = _use_store(monkeypatch)
+    reg._REGISTRY.clear()
+    monkeypatch.setattr(reg, "_nerve_latest", lambda n: 2.0)
+    calls = {"n": 0}
+    def compose():
+        calls["n"] += 1
+        return f"tekst-{calls['n']}"
+    unit = reg.InjectionUnit(key="u", source_nerves=("cognition:affect",),
+                             threshold=0.5, max_age_s=100.0, compose_fn=compose)
+    reg.register(unit)
+
+    reg.refresh_dirty(now=1000.0)          # aldrig komponeret → komponér
+    assert calls["n"] == 1
+    assert reg.read_injection("u") == "tekst-1"
+    blob = store[reg._CACHE_PREFIX + "u"]
+    assert blob["source_snapshot"] == {"cognition:affect": 2.0}
+
+    reg.refresh_dirty(now=1005.0)          # intet ændret, inden for max-alder → INGEN re-compose
+    assert calls["n"] == 1
+
+
+def test_refresh_is_self_safe_on_compose_error(monkeypatch):
+    _use_store(monkeypatch)
+    reg._REGISTRY.clear()
+    monkeypatch.setattr(reg, "_nerve_latest", lambda n: None)
+    def boom():
+        raise RuntimeError("compose nede")
+    reg.register(reg.InjectionUnit(key="bad", source_nerves=(), threshold=0.1,
+                                   max_age_s=1.0, compose_fn=boom))
+    reg.refresh_dirty(now=1.0)             # må ALDRIG kaste
+    assert reg.read_injection("bad") == ""  # forblev tom

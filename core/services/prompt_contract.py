@@ -1296,7 +1296,12 @@ def build_visible_chat_prompt_assembly(
         from core.services.prompt_sections.rule_conclusions import (
             rule_conclusions_section,
         )
-        _awareness_add(28, "rule engine conclusions", rule_conclusions_section())
+        from core.services.central_injection_registry import injection_live, read_injection
+        if injection_live("rule_conclusions"):
+            _rule_text = read_injection("rule_conclusions")          # baggrunds-cached (~0ms)
+        else:
+            _rule_text = rule_conclusions_section()                  # gammel direkte build (rollback)
+        _awareness_add(28, "rule engine conclusions", _rule_text or None)
     except Exception as _e:
         _sec_err("rule engine conclusions", _e)
     try:

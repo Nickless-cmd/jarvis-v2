@@ -18,7 +18,7 @@ Målt via eksisterende instrumentering (`prompt-assembly-timing` + `prompt-assem
 
 Kerne-observationen: de tunge sektioner beskriver **Jarvis' egen tilstand** (mood, frame, fyrede regler, kausal-narrativ) — de afhænger IKKE af den aktuelle brugerbesked. Alligevel regenereres de fra bunden ved hvert samtale-hjerteslag, på den blokerende svar-sti, i kamp med den model der skal svare (kommentar i `prompt_contract.py:543`: futures "hver laver et ollama/LLM-kald der kø'er 28-91s når ollama er optaget af det synlige svar").
 
-Fuldt sektions-inventar (verificeret pr. builder): `docs/notes/` — se agent-inventaret 5. jul (alle ~50 sektioner klassificeret LLM_CALL / STATE_READ / DB_QUERY / SUBSYSTEM_COMPUTE / STATIC).
+Fuldt sektions-inventar (verificeret pr. builder, alle ~50 sektioner med linjenumre + arbejds-type): `docs/notes/2026-07-05-prompt-assembly-section-inventory.md`.
 
 ## 2. Mål og ikke-mål
 
@@ -77,7 +77,7 @@ Beskriver Jarvis' tilstand, ikke beskeden:
 - `frame` (~4s) — kilde: mode/salience-nerver.
 - `causal_narrative` / `causal_alerts` / `causal_patterns` / `pattern_counterfactuals` — kilde: event-graf-opdateringer.
 - `indre_liv` — kilde: inner-voice/self-model-surfaces.
-- **De ~30 serielle STATE_READ-surfaces konsolideres til ÉN baggrunds-enhed:** "runtime awareness digest" (self-report, world-model-nudges, goals, todos, drift, hypoteser, milestones osv.). Én cache-læsning i stedet for 30 serielle builds. Det fjerner størstedelen af `sync_seg_mid_done`.
+- **De ~30 serielle STATE_READ-surfaces konsolideres til ÉN baggrunds-enhed:** "runtime awareness digest" (self-report, world-model-nudges, goals, todos, drift, hypoteser, milestones osv.). Digestet komponeres ved at **læse+formatere** de 30 kilder (intet nyt LLM-kald — de er allerede state-reads); det flyttes til baggrund udelukkende for at hot-path'en laver ÉN læsning i stedet for 30 serielle builds. Det fjerner størstedelen af `sync_seg_mid_done` (~7s).
 
 ### 🔵 Bliver live (besked-afhængige) — men dedupliceres
 - Recall-klyngen: `multi-signal_recall`, `recall-before-act`, `memory_selection`, `recall_bundle`, `jarvis_brain_facts` = 4-5 overlappende recall-LLM-passes (~5-8s samlet). **Konsolidér til 1-2** friske passes. Bliver på hot-path (grounding til spørgsmålet skal være friskt).

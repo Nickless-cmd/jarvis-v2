@@ -195,6 +195,63 @@ async def get_scheduled() -> dict:
     return {"tasks": tasks, "count": len(tasks)}
 
 
+@router.get("/events")
+async def get_events(limit: int = 50, family: str | None = None) -> dict:
+    """Projicér eventbus-feedet (recent / recent_by_family) + absorbér en tæller.
+
+    Owner-gated. Self-safe: producent-fejl → tom liste, stadig 200. Kun en
+    kompakt tæller absorberes — aldrig event-payloads i nerve-værdien.
+    """
+    require_central_owner()
+
+    try:
+        from core.eventbus.bus import event_bus
+        if family:
+            items = event_bus.recent_by_family(family, limit=max(limit, 1))
+        else:
+            items = event_bus.recent(limit=max(limit, 1))
+    except Exception:
+        items = []
+    items = items or []
+
+    absorb("events", "feed", {"count": len(items), "family": family or "all"})
+
+    return {"items": items, "count": len(items), "family": family}
+
+
+@router.get("/memory-health")
+async def get_memory_health() -> dict:
+    """Projicér memory-pipeline-surfacen (genbrug ``mc_memory_pipeline``) + absorbér.
+
+    Owner-gated. Self-safe: producent-fejl → tomt surface, stadig 200. Flagger
+    hvis dagens journal endnu mangler.
+    """
+    require_central_owner()
+
+    try:
+        from apps.api.jarvis_api.routes.mission_control import mc_memory_pipeline
+        surface = mc_memory_pipeline(limit=10)
+    except Exception:
+        surface = {}
+    if not isinstance(surface, dict):
+        surface = {}
+
+    brain = surface.get("jarvis_brain") or {}
+    added_today = brain.get("added_today") or 0
+    journal = surface.get("daily_journal") or {}
+    journal_today = bool(journal.get("today_exists"))
+
+    absorb(
+        "memory",
+        "pipeline",
+        {"added_today": added_today, "journal_today": journal_today},
+        flag_if=lambda v: not v["journal_today"],
+        flag_reason="dagens journal mangler endnu",
+    )
+
+    return {"memory": surface, "added_today": added_today, "journal_today": journal_today}
+
+
 @router.get("/autonomy")
 async def get_autonomy() -> dict:
     """Projicér autonomi-forslags-køen + absorbér den som nerve.

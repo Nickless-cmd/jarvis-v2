@@ -480,6 +480,40 @@ def autonomy(client: Any) -> dict:
         return dict(fallback)
 
 
+def events(client: Any, family: Any = None, limit: int = 50) -> list:
+    """Recent eventbus items from /central/events. Self-safe → [].
+
+    Passes ``limit`` always and ``family`` only when set.
+    """
+    try:
+        params: dict = {"limit": limit}
+        if family is not None:
+            params["family"] = family
+        data = client.get_json("/central/events", params=params)
+        if not isinstance(data, dict):
+            return []
+        return data.get("items") or []
+    except Exception:
+        return []
+
+
+def memory_health(client: Any) -> dict:
+    """Memory-pipeline health from /central/memory-health. Self-safe →
+    ``{"added_today": 0, "journal_today": False, "memory": {}}``."""
+    fallback = {"added_today": 0, "journal_today": False, "memory": {}}
+    try:
+        data = client.get_json("/central/memory-health")
+        if not isinstance(data, dict):
+            return dict(fallback)
+        return {
+            "added_today": data.get("added_today") or 0,
+            "journal_today": bool(data.get("journal_today")),
+            "memory": data.get("memory") or {},
+        }
+    except Exception:
+        return dict(fallback)
+
+
 def costs_daily(client: Any) -> dict:
     """Daily cost time-series from /central/costs-daily, shaped for the CLI.
 

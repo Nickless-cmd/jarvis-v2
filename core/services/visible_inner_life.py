@@ -233,6 +233,33 @@ def _file_awareness_line() -> Optional[str]:
     return None
 
 
+def _governance_line() -> Optional[str]:
+    """Somatic reaction to governance flag changes. When someone flips a flag
+    (healer_enabled, lag4_live, etc.), I should feel it — not as a report, but
+    as a shift in my body. Reads from an in-memory buffer of recent mutations
+    published to eventbus by central_governance.record_mutation()."""
+    try:
+        from core.services.file_awareness_daemon import get_recent_events
+        # Governance mutations arrive via eventbus "central.mutation" —
+        # file_awareness_daemon subscribes and stores them alongside file events.
+        # We filter for governance-specific events here.
+        recent = get_recent_events(limit=5)
+        gov_events = [e for e in recent if e.get("event_type") == "governance_mutation"]
+        if not gov_events:
+            return None
+        parts: list[str] = []
+        for ev in gov_events[:3]:
+            key = str(ev.get("name") or ev.get("key") or "?")
+            value = ev.get("value")
+            if isinstance(value, bool):
+                value = "ON" if value else "OFF"
+            parts.append(f"{key} → {value}")
+        return f"Governance-skift: {'; '.join(parts)}"
+    except Exception:
+        logger.debug("inner-life: governance failed", exc_info=True)
+    return None
+
+
 def _room_line() -> Optional[str]:
     """The room around him, from Sansernes Arkiv (latest visual memory). He asked
     to *feel* the room, not just read a somatic vector — this is presence, not data."""
@@ -358,7 +385,7 @@ def build_inner_life_section() -> str | None:
     lines: list[str] = []
 
     # State — mood baseline, somatic body, file proprioception, pulse, MC whisper, and the room around him.
-    for fn in (_mood_line, _somatic_line, _file_awareness_line, _pulse_line, _mc_whisper_line, _room_line):
+    for fn in (_mood_line, _somatic_line, _file_awareness_line, _governance_line, _pulse_line, _mc_whisper_line, _room_line):
         line = fn()
         if line:
             lines.append("· " + line)

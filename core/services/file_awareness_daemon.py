@@ -194,6 +194,23 @@ def _record_change(event_type: str, src_path: str, is_directory: bool = False) -
 
 
 # ---------------------------------------------------------------------------
+# Governance mutation handler (eventbus subscriber)
+# ---------------------------------------------------------------------------
+
+def _on_governance_mutation(event: dict[str, Any]) -> None:
+    """Receive governance flag mutations from eventbus and store in buffer
+    so _governance_line() in visible_inner_life can surface them."""
+    with _lock:
+        _event_buffer.append({
+            "event_type": "governance_mutation",
+            "name": str(event.get("key") or event.get("flag") or "?"),
+            "value": event.get("new_value"),
+            "external": True,
+            "ts": event.get("ts") or datetime.now(UTC).isoformat(),
+        })
+
+
+# ---------------------------------------------------------------------------
 # Watchdog integration
 # ---------------------------------------------------------------------------
 
@@ -259,6 +276,13 @@ def start_file_awareness() -> bool:
     observer.start()
     _observer = observer
     _started = True
+
+    # Subscribe to governance mutation events from eventbus
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.subscribe("central.mutation", _on_governance_mutation)
+    except Exception:
+        logger.debug("file_awareness: eventbus subscribe for governance failed", exc_info=True)
 
     logger.info("file_awareness: started — watching %d directories", dirs_watched)
     return True

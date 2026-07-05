@@ -198,6 +198,12 @@ def test_absorb_observes_and_flags(monkeypatch):
 Hver kategori er ÉN leverance med loop'et **wire (absorb) → CLI-fane → e2e → FJERN MC-delen**. Fuldt
 struktureret; hver udvides til bite-sized tasks (som Fase 1) når vi når den. Ingen springes over.
 
+> **FREMSKRIDT 5. jul:** A1-A4 LANDET + e2e-verificeret live (screenshots). A1 cost-timeserie
+> (`/central/costs-daily`, CLI cost skiftet fra /mc/costs, 7-dags-nedbrydning i Overview), A2 council
+> (40 sessioner→Agents-header), A3 scheduled (→Runs-tab), A4 autonomy (20 forslag→Approvals-tab, flag fyrer).
+> Commits f8146fee/33e395b9/83b091c7. UDESTÅR: A5 memory-health, A6 run-detalje, A7 events, A8 mind-sektioner.
+> MC-delen (Fase E) IKKE fjernet endnu for A1-A4 — afventer eksplicit go (udadvendt/svær at fortryde).
+
 - **A1 Cost-timeserie:** `/central/costs-daily` (projicér `ledger.daily_cost_summary`, absorb `cost:daily`,
   flag ved dags-stigning) → CLI T5-cost-afsnit → e2e → fjern `/mc/costs*` + desk CostPanel.
   Tests: shaping, flag-tærskel, tom-data, e2e-tal matcher `/mc/costs/daily`.
@@ -220,6 +226,12 @@ struktureret; hver udvides til bite-sized tasks (som Fase 1) når vi når den. I
 ## FASE B — Wire de 41 FRAKOBLET+LLM (parallelt fra start)
 
 Struktureret; udvides pr. familie-batch. Mål: stop tabt signal; egress-fri observe.
+
+> **FREMSKRIDT 5. jul (LANDET, a12d30c5):** 32 af de 41 mørke familier wiret (9 har ingen event-familie
+> → dark-LLM-programmet). 11 operationelle→FAMILY_ROUTES (egress-OK), 21 private→PRIVATE_NO_EGRESS_ROUTES
+> (trace-only). Klassificering ejet manuelt (leak-risiko), invariant-test styrket + verificeret live
+> (11/11+21/21, FAMILY_ROUTES∩EXCLUDED=∅). Kræver restart af BÅDE jarvis-api OG jarvis-runtime. Note:
+> taksonomi-lexikon-dækning faldt (nye operationelle familier = "ord-behov" til Bjørns ceremoni).
 - **B1:** Test-harness der asserterer at en publiceret event i familie X nu rammer en central-route (via
   `eventbus_central_bridge`). **B2:** udvid `FAMILY_ROUTES` med batch 1 (dream_bias, user_model, desire,
   curiosity, conflict, absence). **B3:** batch 2 (meta_reflection, creative_drift, irony, user_temperature,

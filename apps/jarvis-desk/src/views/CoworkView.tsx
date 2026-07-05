@@ -5,7 +5,7 @@ import { useCoworkData } from '../hooks/useCoworkData'
 import { MissionControl } from '../components/cowork/missioncontrol/MissionControl'
 import { CoworkZones } from '../components/cowork/CoworkZones'
 import { JarvisMind } from '../components/cowork/JarvisMind'
-import { CentralHud } from '../components/cowork/CentralHud'
+import { CentralBadge } from '../components/shell/CentralBadge'
 import { MarketplacePane } from '../components/cowork/MarketplacePane'
 import { AccountSection } from '../components/settings/AccountSection'
 import { KvoteSection } from '../components/settings/KvoteSection'
@@ -81,7 +81,12 @@ export function CoworkView({ role = 'owner' }: { role?: 'owner' | 'member' | 'gu
         {ownerAuth && <PluginsPanel config={config} />}
       </>)
 
-      case 'central': return isOwner ? <CentralHud config={config} /> : missionControl
+      case 'central': return (
+        <div className="central-zone">
+          <CentralBadge config={config} isOwner={isOwner} />
+          <div className="central-zone-cap">Central-status — klik for fuld CLI (kun owner)</div>
+        </div>
+      )
       case 'jarvisMind': return isOwner ? <JarvisMind config={config} /> : missionControl
       case 'jarvis': return ownerAuth ? wrap(<JarvisSection config={config} />) : missionControl
 

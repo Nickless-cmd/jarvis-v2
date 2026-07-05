@@ -18,7 +18,7 @@ import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
-import { CentralPanel } from '../components/code/CentralPanel'
+import { CentralBadge } from '../components/shell/CentralBadge'
 import { OperatorPanel } from '../components/code/OperatorPanel'
 import { MessageRail, railLabel } from '../components/chat/MessageRail'
 import { GreetingHero } from '../components/chat/GreetingHero'
@@ -700,7 +700,7 @@ export function CodeView({
               onInstallTool={onInstallTool}
             />
             {isOwner && <OperatorPanel config={config} />}
-            {isOwner && <CentralPanel config={config} isOwner={isOwner} />}
+            <CentralBadge config={config} isOwner={isOwner} />
           </div>
         )}
         {trustBanner}

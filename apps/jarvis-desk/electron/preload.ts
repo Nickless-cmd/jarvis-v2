@@ -53,6 +53,10 @@ export interface JarvisDeskBridge {
     /** Abonnér på proces-exit. Returnerer unsubscribe. */
     onExit: (cb: (e: { id: string; code: number }) => void) => () => void
   }
+  /** Den Intelligente Central: åbn `central`-CLI'en i et rigtigt OS-terminalvindue (owner). */
+  central: {
+    openCli: () => Promise<{ ok: boolean; error?: string }>
+  }
   /** App auto-update (§22.5): lyt på tilgængelig/klar + styr download/install. */
   updates: {
     onAvailable: (cb: (info: { version?: string }) => void) => () => void
@@ -101,6 +105,9 @@ const bridge: JarvisDeskBridge = {
       ipcRenderer.on('terminal:exit', handler)
       return () => ipcRenderer.removeListener('terminal:exit', handler)
     },
+  },
+  central: {
+    openCli: () => ipcRenderer.invoke('central:openCli'),
   },
   updates: {
     onAvailable: (cb) => {

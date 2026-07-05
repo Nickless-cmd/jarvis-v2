@@ -579,6 +579,60 @@ ipcMain.handle('terminal:run', (_event, payload: { id: string; command: string; 
   return { ok: true }
 })
 
+// ─── Central CLI i et RIGTIGT terminalvindue (owner-only fra renderer) ────────
+// Åbner `central`-kommandoen i sit EGET OS-terminalvindue (ikke en embedded
+// stream). Detached + unref → vinduet lever videre uafhængigt af desk-appen.
+ipcMain.handle('central:openCli', () => {
+  const TITLE = '◈ CENTRAL — J.A.R.V.I.S CLI'
+  // holder terminalen åben hvis `central` fejler/afslutter, så outputtet kan læses.
+  const INNER = "central || (echo; echo '[central afsluttede]'; read -n1)"
+  try {
+    if (process.platform === 'darwin') {
+      // macOS: bed Terminal.app køre kommandoen i et nyt vindue.
+      const script = `tell application "Terminal" to do script "${INNER.replace(/"/g, '\\"')}"`
+      const child = spawn('osascript', ['-e', script], { detached: true, stdio: 'ignore' })
+      child.unref()
+      return { ok: true }
+    }
+    if (process.platform === 'win32') {
+      // Windows: foretræk Windows Terminal (wt), ellers `cmd /c start`.
+      const child = spawn(
+        'cmd.exe',
+        ['/c', 'start', '""', 'wt', '-w', '0', 'nt', '--title', TITLE, 'cmd', '/k', 'central'],
+        { detached: true, stdio: 'ignore', windowsHide: true },
+      )
+      child.unref()
+      return { ok: true }
+    }
+    // Linux: prøv de gængse terminal-emulatorer i rækkefølge.
+    const candidates: { cmd: string; args: string[] }[] = [
+      { cmd: 'x-terminal-emulator', args: ['-e', 'bash', '-lc', INNER] },
+      { cmd: 'gnome-terminal', args: [`--title=${TITLE}`, '--', 'bash', '-lc', INNER] },
+      { cmd: 'konsole', args: ['-p', `tabtitle=${TITLE}`, '-e', 'bash', '-lc', INNER] },
+      { cmd: 'xterm', args: ['-T', TITLE, '-e', 'bash', '-lc', INNER] },
+    ]
+    let lastErr = 'ingen terminal-emulator fundet'
+    for (const c of candidates) {
+      try {
+        const child = spawn(c.cmd, c.args, { detached: true, stdio: 'ignore' })
+        // spawn kaster ikke synkront for ukendt binær på alle platforme → fang async.
+        let failed = false
+        child.on('error', () => { failed = true })
+        child.unref()
+        // Hvis den ikke fejlede synkront, antag den startede (async ENOENT håndteres
+        // ved at prøve næste kun hvis vi kan se den døde straks — bedste indsats).
+        if (!failed) return { ok: true }
+        lastErr = `${c.cmd}: kunne ikke starte`
+      } catch (err) {
+        lastErr = err instanceof Error ? err.message : String(err)
+      }
+    }
+    return { ok: false, error: lastErr }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+})
+
 ipcMain.handle('terminal:signal', (_event, payload: { id: string; signal?: NodeJS.Signals }) => {
   const child = terminalProcs.get(payload?.id)
   if (!child) return { ok: false }

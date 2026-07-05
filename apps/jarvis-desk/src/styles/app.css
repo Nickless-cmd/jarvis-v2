@@ -828,6 +828,41 @@
 .connection-pill.offline .connection-dot { background: var(--error-fg); }
 .connection-host { color: var(--fg-2); }
 .connection-ping { color: var(--fg-3); }
+
+/* Central-status-mærke (kompakt pille — erstatter de tunge Central-paneler) */
+.central-badge {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 11.5px; font-family: "SF Mono", Menlo, monospace; color: var(--fg-2);
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+  user-select: none; transition: background 0.15s ease, border-color 0.15s ease;
+}
+.central-badge.owner { cursor: pointer; }
+.central-badge.owner:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
+.central-badge .cb-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-3); flex: 0 0 auto; }
+.central-badge.tone-green .cb-dot { background: #3ee08a; box-shadow: 0 0 6px rgba(62,224,138,0.5); }
+.central-badge.tone-yellow .cb-dot { background: #f5c451; box-shadow: 0 0 6px rgba(245,196,81,0.5); }
+.central-badge.tone-red .cb-dot { background: #ff5d5d; box-shadow: 0 0 6px rgba(255,93,93,0.5); }
+.central-badge.tone-unknown .cb-dot { background: var(--fg-3); opacity: 0.6; }
+.central-badge .cb-label { color: var(--fg-2); }
+.central-badge .cb-count {
+  min-width: 15px; text-align: center; padding: 0 5px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 600; color: #fff; background: #ff5d5d;
+}
+.central-badge .cb-opening { color: var(--fg-3); font-style: italic; }
+.central-zone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; height: 100%; padding: 32px;
+}
+.central-zone-cap { font-size: 12px; color: var(--fg-3); text-align: center; }
+.central-badge .cb-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 40;
+  white-space: nowrap; padding: 6px 9px; border-radius: 7px;
+  font-size: 11px; color: var(--fg-1);
+  background: rgba(20,22,26,0.97); border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
 /* transcript gror og scroller inde i chatview */
 .chatview .transcript { flex: 1 1 auto; min-height: 0; }
 /* composer bliver i bunden, altid synlig, centreret til samme 820px-kolonne

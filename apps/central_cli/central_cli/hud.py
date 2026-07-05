@@ -88,8 +88,8 @@ _SEVERITY = {
 }
 
 # tabs that render into the DataTable vs the panel
-_TABLE_TABS = {"nerves", "clusters", "incidents"}
-_PANEL_TABS = {"overview", "diagnostics", "healing", "governance"}
+_TABLE_TABS = {"nerves", "clusters", "incidents", "governance"}
+_PANEL_TABS = {"overview", "diagnostics", "healing"}
 
 
 class CentralHud(App):
@@ -159,6 +159,11 @@ class CentralHud(App):
         Binding("7", "show('governance')", "Governance", show=False),
         Binding("q", "quit", "Quit", show=False),
         Binding("question_mark", "help", "Hjælp", show=False),
+        Binding("space", "toggle", "Toggle", show=False),
+        Binding("t", "toggle", "Toggle", show=False),
+        Binding("y", "confirm_yes", "Bekræft", show=False),
+        Binding("n", "confirm_no", "Afbryd", show=False),
+        Binding("escape", "confirm_no", "Afbryd", show=False),
     ]
 
     def __init__(self, *, client: Any = None, live: bool = True) -> None:
@@ -170,6 +175,11 @@ class CentralHud(App):
         self._overview: dict = {}
         # cache incidents for drill-down (Incidents tab)
         self._incidents: list = []
+        # cache governance flags (rows) + healers payload for writes
+        self._gov_flags: list = []
+        self._healers: dict = {}
+        # pending confirm-guarded write: (kind, payload) or None
+        self._pending_write: tuple[str, dict] | None = None
 
     # -- layout ------------------------------------------------------------
     def compose(self) -> ComposeResult:
@@ -244,8 +254,11 @@ class CentralHud(App):
                 self._render_overview_panel()
             elif name == "diagnostics":
                 self._render_diagnostics_panel()
+            elif name == "governance":
+                self._populate_governance()
+            elif name == "healing":
+                self._render_healing_panel()
             else:
-                # healing/governance not yet implemented — keep placeholder
                 self._render_placeholder_panel(name)
         except Exception:
             # never crash the UI on a render error
@@ -446,13 +459,14 @@ class CentralHud(App):
         log.write(f"[{FG}]{message}[/]")
 
     def on_data_table_row_selected(self, event) -> None:  # noqa: ANN001
-        if self.active_tab != "incidents":
-            return
         try:
             index = int(getattr(event, "cursor_row", 0) or 0)
         except Exception:
             index = 0
-        self._drill_incident(index)
+        if self.active_tab == "incidents":
+            self._drill_incident(index)
+        elif self.active_tab == "governance":
+            self._toggle_governance_row(index)
 
     # -- Overview tab ------------------------------------------------------
     def _render_overview_panel(self) -> None:
@@ -539,7 +553,224 @@ class CentralHud(App):
             lines.append(f"  [{AMBER}]▸[/] [{FG}]{text}[/]")
         panel.update("\n".join(lines))
 
-    # -- placeholder panel (healing/governance not yet built) --------------
+    # -- Governance tab ----------------------------------------------------
+    def _populate_governance(self) -> None:
+        try:
+            table = self.query_one("#nerve-table", DataTable)
+        except Exception:
+            return
+        self._reset_columns(table, "flag", "værdi", "farlig")
+        if self._client is None:
+            return
+        try:
+            self._gov_flags = datasource.governance(self._client) or []
+        except Exception:
+            self._gov_flags = []
+        for f in self._gov_flags:
+            dangerous = bool(f.get("dangerous"))
+            label = str(f.get("label") or f.get("key") or "")
+            value = f.get("value")
+            val_text = Text(self._fmt_value(value),
+                            style=AMBER if dangerous else FG)
+            danger_cell = (Text("⚠", style=AMBER) if dangerous
+                           else Text("—", style=DIM))
+            table.add_row(label, val_text, danger_cell)
+
+    @staticmethod
+    def _fmt_value(value: Any) -> str:
+        if isinstance(value, bool):
+            return "on" if value else "off"
+        return str(value)
+
+    def _next_value(self, flag: dict) -> Any:
+        """Compute the toggled value: bool → flip, enum → cycle options."""
+        kind = str(flag.get("kind") or "")
+        value = flag.get("value")
+        if kind == "enum":
+            options = list(flag.get("options") or [])
+            if not options:
+                return value
+            try:
+                idx = options.index(value)
+            except ValueError:
+                idx = -1
+            return options[(idx + 1) % len(options)]
+        # bool (or unknown) → flip truthiness
+        return not bool(value)
+
+    def _toggle_governance_row(self, index: int) -> None:
+        flags = self._gov_flags or []
+        if index < 0 or index >= len(flags):
+            return
+        flag = flags[index]
+        key = flag.get("key")
+        if key is None:
+            return
+        self._set_governance(key, self._next_value(flag))
+
+    def _set_governance(self, key: Any, value: Any) -> None:
+        """Write a governance flag with confirm-guard on dangerous ones."""
+        payload = {"key": key, "value": value, "confirm": False}
+        try:
+            resp = self._client.post_json("/central/governance/set", payload)
+        except Exception as exc:
+            self._flash(f"[{RED}]✖ skrivefejl: {exc}[/]")
+            return
+        self._handle_write_response("governance", payload, resp)
+
+    # -- Healing tab -------------------------------------------------------
+    # map a healer kind → its settable live-flag name (None = not settable)
+    _HEALER_FLAG = {
+        "central.daemon_dead": "daemon_restart_live",
+        "central.syslog_flood": "syslog_restart_live",
+    }
+
+    def _healer_flag_name(self, healer: dict) -> str | None:
+        kind = str(healer.get("kind") or "")
+        return self._HEALER_FLAG.get(kind)
+
+    def _render_healing_panel(self) -> None:
+        try:
+            panel = self.query_one("#hud-panel", Static)
+        except Exception:
+            return
+        try:
+            self._healers = datasource.healers(self._client) if self._client else {}
+        except Exception:
+            self._healers = {}
+        reg = bool(self._healers.get("registry_enabled"))
+        reg_color, reg_label = (GREEN, "on") if reg else (DIM, "off")
+        healers = self._healers.get("healers") or []
+
+        lines = [
+            f"[{CYAN} b]◈ HEALING[/]",
+            "",
+            f"[{DIM}]registry[/]  [{reg_color} b]● {reg_label}[/]",
+            "",
+            f"[{CYAN}]healere[/]",
+        ]
+        if not healers:
+            lines.append(f"[{DIM}]— ingen healere registreret —[/]")
+        for i, h in enumerate(healers):
+            kind = str(h.get("kind") or "")
+            mode = str(h.get("mode") or "")
+            destructive = bool(h.get("destructive"))
+            live_on = bool(h.get("live_flag_on"))
+            d_mark = f"[{AMBER}]⚠[/]" if destructive else f"[{DIM}]—[/]"
+            live_color, live_label = (GREEN, "live") if live_on else (DIM, "shadow")
+            settable = self._healer_flag_name(h) is not None
+            note = "" if settable else f"  [{DIM}](ikke flag-styret)[/]"
+            lines.append(
+                f"  [{DIM}]{i}[/] [{FG}]{kind}[/]  [{DIM}]{mode}[/]  "
+                f"farlig {d_mark}  [{live_color} b]● {live_label}[/]{note}"
+            )
+        if self._pending_write is not None:
+            lines += ["", self._confirm_line()]
+        panel.update("\n".join(lines))
+
+    def _toggle_healer_row(self, index: int) -> None:
+        healers = (self._healers.get("healers") or []) if self._healers else []
+        if index < 0 or index >= len(healers):
+            return
+        healer = healers[index]
+        flag = self._healer_flag_name(healer)
+        if flag is None:
+            self._flash(f"[{DIM}]— healer er ikke flag-styret —[/]")
+            return
+        self._set_healer(flag, not bool(healer.get("live_flag_on")))
+
+    def _set_healer(self, name: Any, enabled: bool) -> None:
+        """Write a healer flag with confirm-guard on dangerous ones."""
+        payload = {"name": name, "enabled": enabled, "confirm": False}
+        try:
+            resp = self._client.post_json("/central/healers/flag", payload)
+        except Exception as exc:
+            self._flash(f"[{RED}]✖ skrivefejl: {exc}[/]")
+            return
+        self._handle_write_response("healer", payload, resp)
+
+    # -- shared write / confirm flow ---------------------------------------
+    def _write_path(self, kind: str) -> str:
+        return ("/central/governance/set" if kind == "governance"
+                else "/central/healers/flag")
+
+    def _write_desc(self, kind: str, payload: dict) -> str:
+        if kind == "governance":
+            return f"{payload.get('key')}={self._fmt_value(payload.get('value'))}"
+        return f"{payload.get('name')}={'on' if payload.get('enabled') else 'off'}"
+
+    def _handle_write_response(self, kind: str, payload: dict, resp: Any) -> None:
+        resp = resp if isinstance(resp, dict) else {}
+        if resp.get("needs_confirm"):
+            self._pending_write = (kind, payload)
+            self._flash(f"[{AMBER} b]⚠ bekræft {self._write_desc(kind, payload)}? y/n[/]")
+            return
+        if resp.get("ok"):
+            self._pending_write = None
+            self._flash(f"[{GREEN}]✓ sat: {self._write_desc(kind, payload)}[/]")
+            self.refresh_data()
+            return
+        err = resp.get("error") or "ukendt fejl"
+        self._flash(f"[{RED}]✖ {err}[/]")
+
+    def _confirm_line(self) -> str:
+        if self._pending_write is None:
+            return ""
+        kind, payload = self._pending_write
+        return f"[{AMBER} b]⚠ bekræft {self._write_desc(kind, payload)}? y/n[/]"
+
+    def action_toggle(self) -> None:
+        if self.active_tab not in ("governance", "healing"):
+            return
+        if self.active_tab == "governance":
+            try:
+                table = self.query_one("#nerve-table", DataTable)
+                index = int(table.cursor_row or 0)
+            except Exception:
+                index = 0
+            self._toggle_governance_row(index)
+
+    def action_confirm_yes(self) -> None:
+        if self._pending_write is None:
+            return
+        kind, payload = self._pending_write
+        confirmed = dict(payload)
+        confirmed["confirm"] = True
+        try:
+            resp = self._client.post_json(self._write_path(kind), confirmed)
+        except Exception as exc:
+            self._pending_write = None
+            self._flash(f"[{RED}]✖ skrivefejl: {exc}[/]")
+            return
+        resp = resp if isinstance(resp, dict) else {}
+        self._pending_write = None
+        if resp.get("ok"):
+            self._flash(f"[{GREEN}]✓ sat: {self._write_desc(kind, confirmed)}[/]")
+        else:
+            err = resp.get("error") or "afvist"
+            self._flash(f"[{RED}]✖ {err}[/]")
+        self.refresh_data()
+
+    def action_confirm_no(self) -> None:
+        if self._pending_write is None:
+            return
+        self._pending_write = None
+        self._flash(f"[{DIM}]— afbrudt —[/]")
+
+    def _flash(self, markup: str) -> None:
+        """Write a short status/confirm line into the feed or panel (guarded)."""
+        try:
+            if self.active_tab in _TABLE_TABS:
+                log = self.query_one("#hud-feed", RichLog)
+                log.write(markup)
+            else:
+                # panel tabs (healing): re-render so the confirm line shows
+                if self.active_tab == "healing":
+                    self._render_healing_panel()
+        except Exception:
+            return
+
+    # -- placeholder panel (unused tabs) -----------------------------------
     def _render_placeholder_panel(self, name: str) -> None:
         try:
             panel = self.query_one("#hud-panel", Static)

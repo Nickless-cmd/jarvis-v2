@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # Port where jarvis-runtime exposes its own HTTP server with live process state.
 # Matches mission_control_living_mind._RUNTIME_PORT.
 _RUNTIME_PORT = int(os.getenv("JARVIS_RUNTIME_PORT", "8011"))
-_RUNTIME_PROXY_TIMEOUT = 3  # seconds — fast fallback, never block the caller
+_RUNTIME_PROXY_TIMEOUT = 8  # seconds — fast fallback, never block the caller
 
 
 def _runtime_services_enabled() -> bool:

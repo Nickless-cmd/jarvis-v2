@@ -58,7 +58,7 @@ def _derive_liveness(raw: dict) -> bool:
 # are additionally blocklisted by reduce_for_owner.
 _SURFACES = (
     ("living_executive", _live_executive, ("liveness", "mode", "summary")),
-    ("self_model", _self_model, ("liveness", "summary", "built_at")),
+    ("self_model", _self_model, ("liveness", "summary")),
     ("world_model", _world_model, ("liveness", "summary")),
 )
 

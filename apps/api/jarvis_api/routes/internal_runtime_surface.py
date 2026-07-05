@@ -36,8 +36,21 @@ def _living_executive() -> dict:
 
 
 def _self_model() -> dict:
+    """LIGHT self-model: kun top-level tællere, ikke den 255KB nestede payload
+    (undgå at hamre 255KB pr. self-view). Bygger fuld surface men returnerer småt."""
     from core.services.runtime_self_model import build_runtime_self_model
-    return build_runtime_self_model()
+    full = build_runtime_self_model()
+    if not isinstance(full, dict):
+        return {}
+    layers = full.get("layers") or []
+    return {
+        "liveness": True,
+        "summary": {
+            "layer_count": len(layers) if hasattr(layers, "__len__") else 0,
+            "sections": len([k for k in full.keys() if k != "layers"]),
+            "built_at": str(full.get("built_at") or full.get("generated_at") or ""),
+        },
+    }
 
 
 def _world_model() -> dict:

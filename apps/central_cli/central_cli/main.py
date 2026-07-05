@@ -23,8 +23,8 @@ def main(argv: list[str] | None = None) -> int:
     if ns.script or ns.command:
         from central_cli.script_runner import run_script
         return run_script(ns)
-    from central_cli.tui import run_tui
-    return run_tui(ns)
+    from central_cli.hud import run_hud
+    return run_hud(ns)
 
 
 if __name__ == "__main__":

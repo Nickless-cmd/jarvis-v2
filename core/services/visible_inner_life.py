@@ -448,6 +448,26 @@ def _world_model_line() -> Optional[str]:
     return None
 
 
+def build_somatic_snapshot() -> list[str]:
+    """Cheap somatic/inner-life lines for OWNER observation (the ``feel`` command
+    in the Central HUD). Reuses the buffered/cached line-builders — no LLM, no
+    heavy voice/surface work — so it is fast and safe to call on demand.
+
+    This surfaces the private layer to the owner only (route is owner-gated); it
+    is NOT egress — the owner observing his own entity, over his own tunnel."""
+    out: list[str] = []
+    for fn in (_mood_line, _somatic_line, _file_awareness_line, _governance_line,
+               _pulse_line, _mc_whisper_line, _recall_hints_line,
+               _continuity_line, _room_line):
+        try:
+            line = fn()
+        except Exception:
+            line = None
+        if line:
+            out.append(line)
+    return out
+
+
 def build_inner_life_section() -> str | None:
     """Compose the structured [INDRE LIV] block, or None if nothing is live."""
     lines: list[str] = []

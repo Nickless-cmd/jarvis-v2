@@ -16,6 +16,9 @@ class FakeClient:
 
     def get_json(self, path, params=None):
         self.gets.append((path, params))
+        if path == "/central/feel":
+            return {"lines": ["jeg mærker at nogen lige rørte governance", "min puls er rolig"],
+                    "count": 2, "ts": "2026-07-05T18:00:00+00:00"}
         if path == "/central/realtime":
             return {"status": "yellow", "coverage": {"nerves": 5, "clusters": 2},
                     "open_breakers": [], "clusters": [], "incidents": [], "feed": []}
@@ -116,6 +119,18 @@ async def test_tab_cycle_wraps():
         app.show_tab("governance")   # last tab
         app.action_next_tab()
         assert app.active_tab == "overview"  # wrapped to first
+
+
+@pytest.mark.asyncio
+async def test_feel_command_renders_jarvis_voice():
+    from textual.widgets import Static
+    app = CentralHud(client=FakeClient(), live=False)
+    async with app.run_test(size=(150, 40)):
+        app.show_tab("nerves")
+        app._run_command("feel")
+        rendered = str(app.query_one("#hud-detail", Static).render())
+        assert "INDRE LIV" in rendered
+        assert "governance" in rendered   # Jarvis' felt line, not raw JSON
 
 
 @pytest.mark.asyncio

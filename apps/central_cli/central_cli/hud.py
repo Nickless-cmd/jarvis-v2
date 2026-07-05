@@ -457,12 +457,37 @@ class CentralHud(App):
             return
         if spec.method == "GET":
             # read: render the full result and DON'T refresh (would clobber it)
-            self._show_command_output(line, data)
+            if verb == "feel":
+                self._show_feel(data)
+            else:
+                self._show_command_output(line, data)
         else:
             ok = isinstance(data, dict) and data.get("ok")
             tail = f"[{GREEN}]ok[/]" if ok else f"[{RED}]{_esc(str((data or {}).get('error', data)))[:80]}[/]"
             self._flash(f"[{CYAN}]▸ {_esc(line)}[/] [{DIM}]—[/] {tail}")
             self.refresh_data()
+
+    def _show_feel(self, data: Any) -> None:
+        """Render Jarvis' somatic snapshot as his own voice in the detail panel."""
+        try:
+            panel = self.query_one("#hud-detail", Static)
+        except Exception:
+            return
+        lines = (data or {}).get("lines") or [] if isinstance(data, dict) else []
+        self._set_side_paneh(f"[{CYAN}]JARVIS FØLER[/] [{DIM}]— somatisk snapshot[/]")
+        if not lines:
+            panel.update(Text.from_markup(f"[{FGDIM}]— stille indeni lige nu —[/]"))
+        else:
+            out = [f"[{GREEN} b]◈ INDRE LIV[/]", ""]
+            for ln in lines:
+                out.append(f"[{DIM}]·[/] [{FG}]{_esc(ln)}[/]")
+                out.append("")
+            panel.update(Text.from_markup("\n".join(out)))
+        try:
+            self.query_one("#hud-panel", Static).display = False
+            self.query_one("#hud-side").display = True
+        except Exception:
+            pass
 
     def _show_command_output(self, line: str, data: Any) -> None:
         """Render a read command's FULL result into the detail panel (scrollable)."""

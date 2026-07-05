@@ -19,6 +19,7 @@ _GET_ENDPOINTS = {
     "diag": "/central/diagnostics",
     "providers": "/central/providers",
     "mind": "/central/mind",
+    "feel": "/central/feel",
     "overview": "/mc/overview",
     "costs": "/mc/costs",
     "runs": "/mc/runs",

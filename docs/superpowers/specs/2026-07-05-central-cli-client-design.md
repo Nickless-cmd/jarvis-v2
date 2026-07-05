@@ -2,7 +2,7 @@
 
 **Dato:** 5. juli 2026  
 **Forfatter:** Jarvis (med Bjørn)  
-**Status:** Byggeklar SOM READ-CLI. Review 5 (prod-audit) fandt at healing + governance kræver en NY backend-fase (Fase 0) for fuld skrive-adgang — afventer Bjørns bekræftelse af udvidet scope (CLI + backend).  
+**Status:** HUD-redesign godkendt (Bjørn 5. jul): 1:1 med mockup, alle 7 tabs live, fuld læse+skrive, sikker forbindelse. Kræver backend-Fase 0 (healer/governance-endpoints) + fuld HUD-genbygning. Plan udvides + bygges.  
 **Revisioner:** v2 — inkorporerer self-review fund + jarvis-desk nedgradering. Claude-review 3 (5. jul): verificeret mod kode; R1 lukket i doc; R2 BEKRÆFTET af Bjørn (streaming-load + 3-skærms terminal-workflow). Claude-review 4 (5. jul): eksisterende CLI-landskab kortlagt — B (let standalone, remote-først, genbrug jc-token + central_terminal, absorbér jc, rør ikke jarvis.py).
 
 ---
@@ -200,6 +200,25 @@ Backenden har **to forskellige `_require_owner()`-implementationer** med forskel
 
 ## 4. TUI Arkitektur
 
+> **HUD-REDESIGN (Bjørn godkendt 5. jul) — erstatter den gamle 3-panel-REPL.**
+> 1:1-mål: `docs/superpowers/mockups/central-hud-mockup.html`. Ikke en REPL — et **navigerbart HUD**
+> i k9s-stil (research: `2026-07-05-central-hud-research.md`). Krav fra Bjørn: **alle 7 tabs virker
+> med realtime data, fuld læse+skrive, sikker forbindelse — ingen død tab.**
+>
+> **7 tabs (tal skifter, `:` kommando-hop, Esc tilbage, `/` filtrer, ↑↓ naviger, ↵ drill):**
+> 1. **Overview** — dashboard: status-gauge (grøn/gul/rød puls), nerve/cluster/incident/breaker-tal, top-incidents, cost-glimt, heal-aktivitet. Live.
+> 2. **Clusters** — 21 clusters (DataTable): navn · farve-status · nerve-count · aktiv/idle/degraded/død-fordeling. ↵ → filtrér Nerves til den cluster.
+> 3. **Nerves** — alle 122 (DataTable): `cluster · nerve · ●aktiv/○idle/◆degraded/✖død · sidste · count · sparkline`. Sortér/filtrer. ↵ → nerve-detalje + toggle.
+> 4. **Incidents** — uløste (DataTable); ↵/klik → **drill til fuld detalje-pane**: hele beskeden, root-cause, relaterede nerver, heal-status, correlation, `r`=resolve.
+> 5. **Diagnostics** — `/central/diagnostics` struktureret (incidents/anomalier/root-causes/degrading).
+> 6. **Healing** (kræver L2-backend) — healer-registry + modes + ledger + heal-outcome-feed; enable/disable/live pr. healer (confirm).
+> 7. **Governance** (kræver L2-backend) — lag4/gut/agenda/self-prompt/generative-autonomy/injection/healer-flags: vis + toggle (confirm på farlige).
+>
+> **Altid-synlig:** header (brand + live-status-puls + tal + cost + connection + ur, scan-line-animation),
+> **deduperet live-feed** ("infra/pfsense_security ×30 · seneste 2m" IKKE 30 linjer), command-bar (`central>` + keybind-hints).
+> **Ingen afskåret tekst** (ellipsis/wrap). Fuld skrive-adgang bag confirm på det farlige. Textual: DataTable
+> (klikbar/virtuel-scroll) + Tabs + Tree + Sparkline + reaktiv live-opdatering.
+
 ### Tech stack
 - **Textual** (v4+) — async TUI framework, bygget på Rich
 - **Rich** (v13+) — farve, tabeller, panels, syntax highlighting, markdown rendering, animation
@@ -282,6 +301,12 @@ Backenden har **to forskellige `_require_owner()`-implementationer** med forskel
 ---
 
 ## 5. J.A.R.V.I.S Æstetik
+
+> **1:1-mål = mockup'et** (`docs/superpowers/mockups/central-hud-mockup.html`). Palet låst dertil:
+> bg `#0a0e14` · cyan `#00d4ff` (accent/rammer/prompt/aktivt-panel-glow) · amber `#ffb000` (warn/gul-status)
+> · rød `#ff4a4a` (error/død) · grøn `#00ff88` (ok/aktiv) · dim `#4a5568` (idle/sekundær) · fg `#c7d3e0`.
+> Animationer (subtile, ikke overdrevne): header-scan-sweep (~4s), status-dot-puls (gul/rød), valgt-række-glow
+> (~2.4s), ny-fyring-glide-in (~150ms), blink-caret. Tilstands-ikoner: ● ○ ◆ ✖ ◈. `--no-color`/`--theme light` bevares.
 
 ### Farvepalet (mørk baggrund, truecolor)
 

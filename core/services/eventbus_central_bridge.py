@@ -70,6 +70,18 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     "tool_router": ("tools", "router"),        # tool-routing-beslutninger (operationel)
     "decision_gate": ("commit", "decision_gate"),    # governance-gate (som approvals — pass/fail)
     "veto_gate": ("review", "veto"),           # veto-governance-gate (pass/fail, ikke indhold)
+    # ── Fase B (mørke FRAKOBLET+LLM-familier, 5. jul): operationelle → egress-OK ──
+    "mail_checker": ("channel", "mail"),
+    "tiktok_content_daemon": ("channel", "tiktok_content"),
+    "tiktok_research_daemon": ("channel", "tiktok_research"),
+    "tool_tagger": ("tools", "tagger"),
+    "coding_lane": ("tools", "coding_lane"),
+    "agent_skill_distiller": ("agents", "skill_distiller"),
+    "arc_rules": ("system", "arc_rules"),
+    "ambient_sound": ("system", "ambient_sound"),
+    "prompt_relevance_backend": ("system", "prompt_relevance"),
+    "weekly_manifest": ("system", "weekly_manifest"),
+    "session": ("system", "session"),
 }
 
 # ── PRIVATE_NO_EGRESS (§24.4 keystone, 2026-07-01): privat inner-life observeres EGRESS-FRIT ──
@@ -323,6 +335,28 @@ PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
     "self_monitor": ("system", "self_monitor"),
     "self_system_code_awareness": ("system", "self_system_code_awareness"),
     "signal_noise_guard": ("system", "signal_noise_guard"),
+    # ── Fase B (mørke FRAKOBLET+LLM-familier, 5. jul): inner-life → EGRESS-FRIT (trace-only) ──
+    "absence": ("cognition", "absence"),
+    "agent_observation": ("cognition", "agent_observation"),
+    "cognitive_chronicle": ("cognition", "chronicle"),
+    "conflict": ("cognition", "conflict"),
+    "decision_review_prompter": ("cognition", "decision_review"),
+    "development_narrative": ("cognition", "development_narrative"),
+    "cognitive_dream_bias": ("cognition", "dream_bias"),
+    "experienced_time_daemon": ("cognition", "experienced_time"),
+    "cognitive_experiential": ("cognition", "experiential"),
+    "identity": ("cognition", "identity"),
+    "irony": ("cognition", "irony"),
+    "long_arc": ("cognition", "long_arc"),
+    "memory_graph": ("memory", "graph"),
+    "meta_reflection": ("cognition", "meta_reflection"),
+    "reflection": ("cognition", "reflection"),
+    "runtime_awareness_signal": ("cognition", "runtime_awareness"),
+    "runtime_learning_signals": ("cognition", "runtime_learning"),
+    "runtime_self_knowledge": ("cognition", "self_knowledge"),
+    "session_distillation": ("memory", "session_distillation"),
+    "user_model": ("cognition", "user_model"),
+    "cognitive_temperature": ("cognition", "temperature"),
 }
 
 # Dokumenteret liste over families der BEVIDST holdes dark i M0 (privatlags-isolation,
@@ -415,6 +449,12 @@ PRIVATE_FAMILIES_EXCLUDED_M0: frozenset[str] = frozenset({
     "hardware_body", "proactive_loop_lifecycle", "proactive_question_gate",
     "r2_5_blocking_gate", "r2_5_gate", "read_before_write_guard",
     "self_monitor", "self_system_code_awareness", "signal_noise_guard",
+    # ── Fase B (5. jul): spejl af nye PRIVATE_NO_EGRESS_ROUTES (invariant: hver SKAL stå her) ──
+    "absence", "agent_observation", "cognitive_chronicle", "conflict", "decision_review_prompter",
+    "development_narrative", "cognitive_dream_bias", "experienced_time_daemon", "cognitive_experiential",
+    "identity", "irony", "long_arc", "memory_graph", "meta_reflection", "reflection",
+    "runtime_awareness_signal", "runtime_learning_signals", "runtime_self_knowledge",
+    "session_distillation", "user_model", "cognitive_temperature",
 })
 
 _BRIDGE_NERVE = "eventbus_bridge"

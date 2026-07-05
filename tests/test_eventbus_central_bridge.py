@@ -77,6 +77,35 @@ def test_allowlist_excludes_private_families():
     assert set(br.FAMILY_ROUTES).isdisjoint(br.PRIVATE_FAMILIES_EXCLUDED_M0)
 
 
+def test_private_routes_are_all_excluded():
+    """Invariant: enhver PRIVATE_NO_EGRESS_ROUTES-family SKAL stå i EXCLUDED_M0
+    (ellers kunne den ved en fejl senere flyttes til FAMILY_ROUTES og egress'e)."""
+    import core.services.eventbus_central_bridge as br
+    missing = set(br.PRIVATE_NO_EGRESS_ROUTES) - set(br.PRIVATE_FAMILIES_EXCLUDED_M0)
+    assert not missing, f"private ruter mangler i EXCLUDED_M0: {missing}"
+
+
+def test_fase_b_families_routed():
+    """Fase B: de nye familier er ikke længere dark (har en rute i én af de to maps)."""
+    import core.services.eventbus_central_bridge as br
+    all_routed = set(br.FAMILY_ROUTES) | set(br.PRIVATE_NO_EGRESS_ROUTES)
+    fase_b = {"mail_checker","tiktok_content_daemon","tiktok_research_daemon","tool_tagger",
+              "coding_lane","agent_skill_distiller","arc_rules","ambient_sound",
+              "prompt_relevance_backend","weekly_manifest","session","absence","agent_observation",
+              "cognitive_chronicle","conflict","decision_review_prompter","development_narrative",
+              "cognitive_dream_bias","experienced_time_daemon","cognitive_experiential","identity",
+              "irony","long_arc","memory_graph","meta_reflection","reflection","runtime_awareness_signal",
+              "runtime_learning_signals","runtime_self_knowledge","session_distillation","user_model",
+              "cognitive_temperature"}
+    assert fase_b <= all_routed, f"stadig dark: {fase_b - all_routed}"
+    # de 11 operationelle SKAL være egress-OK, ikke private:
+    operational = {"mail_checker","tiktok_content_daemon","tiktok_research_daemon","tool_tagger",
+                   "coding_lane","agent_skill_distiller","arc_rules","ambient_sound",
+                   "prompt_relevance_backend","weekly_manifest","session"}
+    assert operational <= set(br.FAMILY_ROUTES)
+    assert operational.isdisjoint(br.PRIVATE_FAMILIES_EXCLUDED_M0)
+
+
 def test_allowlist_routes_are_wellformed():
     for fam, route in br.FAMILY_ROUTES.items():
         assert isinstance(route, tuple) and len(route) == 2

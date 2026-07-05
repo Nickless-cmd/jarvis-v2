@@ -1,20 +1,22 @@
 """Central HUD — navigable J.A.R.V.I.S-style Textual UI.
 
-Replaces the bare REPL in ``tui.py``. This build ships the HUD shell
-(7-tab nav + dark theme + live header + command bar), the Nerves view
-(a DataTable driven by ``datasource.nerves``), and the deduped decision
-feed (``datasource.feed``). The other tab bodies are placeholders that
-later tasks fill in.
+Replaces the bare REPL in ``tui.py``. Ships the full HUD: rounded glowing
+frame, telemetry header (status · nerves/clusters/incidents/breakers ·
+connected · latency · clock), 7-tab nav, a left DataTable + a persistent
+right-side detail panel, a bottom live-feed band and a command bar with
+keyboard hints.
 
 Design invariants:
-- A fetch error must never crash the UI (``refresh_data`` is guarded).
-- Colors match ``docs/superpowers/mockups/central-hud-mockup.html``.
+- A fetch error must never crash the UI (every render/refresh is guarded).
+- Layout + colors match ``docs/superpowers/mockups/central-hud-mockup.html``.
 """
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
+from rich.table import Table
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -32,6 +34,7 @@ RED = "#ff4a4a"
 GREEN = "#00ff88"
 DIM = "#4a5568"
 FG = "#c7d3e0"
+SPARK = "#2f5566"  # muted sparkline
 
 # state -> (hex color, glyph label)
 _STATE = {
@@ -87,7 +90,7 @@ _SEVERITY = {
     "info": CYAN,
 }
 
-# tabs that render into the DataTable vs the panel
+# tabs that render into the DataTable (+ right detail panel) vs the full panel
 _TABLE_TABS = {"nerves", "clusters", "incidents", "governance"}
 _PANEL_TABS = {"overview", "diagnostics", "healing"}
 
@@ -100,52 +103,66 @@ class CentralHud(App):
         background: {BG};
         color: {FG};
     }}
+    #hud-frame {{
+        border: round {CYAN};
+        background: {BG};
+        padding: 0 1;
+        margin: 1 2 0 2;
+        height: 1fr;
+    }}
     #hud-head {{
         height: 1;
-        background: {PANEL};
+        background: {BG};
         color: {FG};
-        padding: 0 1;
+        margin-bottom: 1;
     }}
     #hud-tabs {{
         height: 1;
-        background: {PANEL};
+        background: {BG};
         color: {DIM};
-        padding: 0 1;
+        border-bottom: solid {DIM};
     }}
-    #hud-main {{
+    #hud-body {{
         height: 1fr;
     }}
     #nerve-table {{
-        width: 2fr;
-        border: solid {CYAN};
-        background: {PANEL};
+        width: 3fr;
+        background: {BG};
+        scrollbar-size-vertical: 1;
     }}
     #nerve-table > .datatable--header {{
-        background: {PANEL};
+        background: {BG};
         color: {CYAN};
         text-style: bold;
     }}
     #nerve-table > .datatable--cursor {{
-        background: {CYAN} 20%;
+        background: {CYAN} 25%;
     }}
-    #hud-feed {{
-        width: 1fr;
-        border: solid {CYAN};
+    #hud-detail {{
+        width: 2fr;
         background: {PANEL};
+        border-left: solid {DIM};
+        padding: 1 2;
+        overflow-y: auto;
     }}
     #hud-panel {{
         width: 1fr;
-        border: solid {CYAN};
-        background: {PANEL};
+        background: {BG};
         padding: 1 2;
         overflow-y: auto;
+    }}
+    #hud-feed {{
+        height: 9;
+        background: {PANEL};
+        border-top: solid {DIM};
+        padding: 0 1;
     }}
     #hud-cmd {{
         dock: bottom;
         height: 1;
-        background: {PANEL};
+        background: {BG};
         color: {DIM};
-        padding: 0 1;
+        padding: 0 3;
     }}
     """
 
@@ -180,28 +197,51 @@ class CentralHud(App):
         self._healers: dict = {}
         # pending confirm-guarded write: (kind, payload) or None
         self._pending_write: tuple[str, dict] | None = None
+        # header telemetry
+        self._latency_ms: int | None = None
+        self._connected: bool = False
+        # currently-highlighted incident row for the detail panel
+        self._sel_incident: int = 0
 
     # -- layout ------------------------------------------------------------
     def compose(self) -> ComposeResult:
-        yield Static(self._render_header(), id="hud-head")
-        yield Static(self._render_tabs(), id="hud-tabs")
-        with Horizontal(id="hud-main"):
-            yield DataTable(id="nerve-table", zebra_stripes=False)
-            yield Static("", id="hud-panel", markup=True)
+        with Vertical(id="hud-frame"):
+            yield Static(self._render_header(), id="hud-head")
+            yield Static(self._render_tabs(), id="hud-tabs")
+            with Horizontal(id="hud-body"):
+                yield DataTable(id="nerve-table", zebra_stripes=False)
+                yield Static("", id="hud-detail", markup=True)
+                yield Static("", id="hud-panel", markup=True)
             yield RichLog(id="hud-feed", markup=True, highlight=False)
         yield Static(self._render_cmd(), id="hud-cmd")
 
     def on_mount(self) -> None:
         table = self.query_one("#nerve-table", DataTable)
         table.cursor_type = "row"
+        try:
+            self.query_one("#hud-detail", Static).border_title = "DETALJE"
+            self.query_one("#hud-feed", RichLog).border_title = "LIVE FEED — dedupet"
+        except Exception:
+            pass
+        # prime data once so the header + views are live immediately
+        self._prime()
         self._sync_header()
         self._sync_tabs()
-        # nerves is the default tab: table + feed visible, panel hidden
         self._apply_tab_visibility()
         self._populate_nerves()
+        self._render_detail_panel()
         self._render_feed()
         if self._live:
             self.set_interval(3.0, self.refresh_data)
+
+    def _prime(self) -> None:
+        if self._client is None:
+            return
+        try:
+            self._overview = datasource.overview(self._client)
+            self._connected = True
+        except Exception:
+            self._connected = False
 
     # -- actions (bindings) ------------------------------------------------
     def action_show(self, name: str) -> None:
@@ -218,26 +258,23 @@ class CentralHud(App):
         self._populate_active_tab()
 
     def _apply_tab_visibility(self) -> None:
-        """Toggle which widget owns the content area for the active tab.
+        """Toggle which widgets own the body area for the active tab.
 
-        Tabular tabs (nerves/clusters/incidents) show the DataTable + feed;
-        panel tabs (overview/diagnostics/…) show the Static panel instead.
+        Tabular tabs (nerves/clusters/incidents/governance) show the
+        DataTable + the right detail panel; panel tabs (overview/…) show
+        the full-width Static panel instead. The feed band is always visible.
         """
         name = self.active_tab
         table_visible = name in _TABLE_TABS
-        try:
-            self.query_one("#nerve-table", DataTable).display = table_visible
-        except Exception:
-            pass
-        try:
-            # feed stays alongside the table for tabular tabs only
-            self.query_one("#hud-feed", RichLog).display = table_visible
-        except Exception:
-            pass
-        try:
-            self.query_one("#hud-panel", Static).display = not table_visible
-        except Exception:
-            pass
+        for wid, cls, vis in (
+            ("#nerve-table", DataTable, table_visible),
+            ("#hud-detail", Static, table_visible),
+            ("#hud-panel", Static, not table_visible),
+        ):
+            try:
+                self.query_one(wid, cls).display = vis
+            except Exception:
+                pass
 
     def _populate_active_tab(self) -> None:
         """Render real content for whichever tab is active (guarded)."""
@@ -245,17 +282,21 @@ class CentralHud(App):
             name = self.active_tab
             if name == "nerves":
                 self._populate_nerves()
+                self._render_detail_panel()
                 self._render_feed()
             elif name == "clusters":
                 self._populate_clusters()
+                self._render_detail_panel()
             elif name == "incidents":
                 self._populate_incidents()
+                self._render_detail_panel()
             elif name == "overview":
                 self._render_overview_panel()
             elif name == "diagnostics":
                 self._render_diagnostics_panel()
             elif name == "governance":
                 self._populate_governance()
+                self._render_detail_panel()
             elif name == "healing":
                 self._render_healing_panel()
             else:
@@ -269,16 +310,21 @@ class CentralHud(App):
         if self._client is None:
             return
         try:
+            start = datetime.now()
             self._overview = datasource.overview(self._client)
-            self._sync_header()
+            self._latency_ms = int((datetime.now() - start).total_seconds() * 1000)
+            self._connected = True
         except Exception:
-            # never crash the UI on a fetch error
+            self._connected = False
+            self._sync_header()
             return
-        # refresh whichever tab is active (+ always-visible header/feed)
+        self._sync_header()
+        # refresh whichever tab is active (+ header/detail/feed)
         self._populate_active_tab()
 
     # -- rendering helpers -------------------------------------------------
-    def _render_header(self) -> str:
+    def _render_header(self) -> Table:
+        """Two-column grid: identity + counts on the left, telemetry right."""
         ov = self._overview or {}
         status = str(ov.get("status", "unknown")).lower()
         color, label = _STATUS.get(status, (DIM, status.upper() or "UKENDT"))
@@ -287,30 +333,42 @@ class CentralHud(App):
         incidents = ov.get("incidents", 0)
         breakers = ov.get("breakers", 0)
         inc_color = RED if incidents else FG
-        return (
-            f"[{CYAN}]◈ CENTRAL[/] [{DIM}]· J.A.R.V.I.S CLI[/]   "
-            f"[{color}]● {label}[/]   "
-            f"[{DIM}]nerver[/] [{FG}]{nerves}[/] · "
-            f"[{DIM}]clusters[/] [{FG}]{clusters}[/] · "
-            f"[{DIM}]incidents[/] [{inc_color}]{incidents}[/] · "
-            f"[{DIM}]breakers[/] [{FG}]{breakers}[/]"
+        brk_color = RED if breakers else FG
+        left = (
+            f"[{CYAN} b]◈ CENTRAL[/] [{DIM}]· J.A.R.V.I.S CLI v1.0[/]   "
+            f"[{color} b]● {label}[/]    "
+            f"[{DIM}]nerver[/] [{FG} b]{nerves}[/] · "
+            f"[{DIM}]clusters[/] [{FG} b]{clusters}[/] · "
+            f"[{DIM}]incidents[/] [{inc_color} b]{incidents}[/] · "
+            f"[{DIM}]breakers[/] [{brk_color} b]{breakers}[/]"
         )
+        conn_color, conn_label = (
+            (GREEN, "CONNECTED") if self._connected else (RED, "OFFLINE")
+        )
+        lat = f"[{DIM}]{self._latency_ms}ms[/] · " if self._latency_ms is not None else ""
+        clock = datetime.now().strftime("%H:%M:%S")
+        right = f"{lat}[{conn_color}]● {conn_label}[/] [{DIM}]· {clock}[/]"
 
-    def _render_tabs(self) -> str:
+        grid = Table.grid(expand=True)
+        grid.add_column(justify="left", ratio=1)
+        grid.add_column(justify="right")
+        grid.add_row(Text.from_markup(left), Text.from_markup(right))
+        return grid
+
+    def _render_tabs(self) -> Text:
         parts = []
         for idx, (key, label) in enumerate(_TABS, start=1):
             if key == self.active_tab:
-                parts.append(f"[{DIM}]{idx}[/][{CYAN} b]{label}[/]")
+                parts.append(f"[{DIM}]{idx}[/] [{CYAN} b u]{label}[/]")
             else:
-                parts.append(f"[{DIM}]{idx}[/][{FG}]{label}[/]")
-        return "   ".join(parts)
+                parts.append(f"[{DIM}]{idx} {label}[/]")
+        return Text.from_markup("   ".join(parts))
 
-    def _render_cmd(self) -> str:
-        return (
+    def _render_cmd(self) -> Text:
+        return Text.from_markup(
             f"[{CYAN} b]1-7[/] views · [{CYAN} b]↑↓[/] naviger · "
-            f"[{CYAN} b]↵[/] drill · [{CYAN} b]/[/] filter · "
-            f"[{CYAN} b]:[/] kommando · [{CYAN} b]r[/] resolve · "
-            f"[{CYAN} b]?[/] hjælp · [{CYAN} b]q[/] quit"
+            f"[{CYAN} b]↵[/] drill · [{CYAN} b]t[/] toggle · "
+            f"[{CYAN} b]y/n[/] bekræft · [{CYAN} b]?[/] hjælp · [{CYAN} b]q[/] quit"
         )
 
     def _sync_header(self) -> None:
@@ -322,6 +380,12 @@ class CentralHud(App):
     def _sync_tabs(self) -> None:
         try:
             self.query_one("#hud-tabs", Static).update(self._render_tabs())
+        except Exception:
+            pass
+
+    def _set_table_title(self, title: str) -> None:
+        try:
+            self.query_one("#nerve-table", DataTable).border_title = title
         except Exception:
             pass
 
@@ -343,17 +407,17 @@ class CentralHud(App):
             rows = datasource.nerves(self._client)
         except Exception:
             return
+        self._set_table_title(f"NERVES · {len(rows)}")
         for r in rows:
             state = str(r.get("state", ""))
             color, glyph = _STATE.get(state, (FG, state))
-            state_cell = Text(glyph, style=color)
             table.add_row(
-                str(r.get("cluster", "")),
+                Text(str(r.get("cluster", "")), style=DIM),
                 str(r.get("nerve", "")),
-                state_cell,
-                str(r.get("last", "") or "—"),
-                str(r.get("count", 0)),
-                str(r.get("spark", "")),
+                Text(glyph, style=color),
+                Text(str(r.get("last", "") or "—"), style=DIM),
+                Text(str(r.get("count", 0)), justify="right"),
+                Text(str(r.get("spark", "")), style=SPARK),
             )
 
     def _render_feed(self) -> None:
@@ -376,10 +440,56 @@ class CentralHud(App):
             cluster = r.get("cluster", "")
             nerve = r.get("nerve", "")
             reason = r.get("reason", "")
+            sep = f" [{DIM}]—[/] " if reason else ""
             log.write(
                 f"[{color}]●[/] [{color}]{cluster}/{nerve}[/] "
-                f"[{DIM}]·[/] {decision} — {reason}{tag}"
+                f"[{DIM}]·[/] {decision}{sep}{reason}{tag}"
             )
+
+    # -- right-side detail panel (persistent on tabular tabs) --------------
+    def _detail_incident(self) -> dict | None:
+        """The incident the detail panel should show right now."""
+        if self.active_tab == "incidents" and self._incidents:
+            i = max(0, min(self._sel_incident, len(self._incidents) - 1))
+            return self._incidents[i]
+        top = (self._overview or {}).get("top_incidents") or []
+        return top[0] if top else None
+
+    def _render_detail_panel(self) -> None:
+        try:
+            panel = self.query_one("#hud-detail", Static)
+        except Exception:
+            return
+        inc = self._detail_incident()
+        if not inc:
+            panel.update(
+                f"[{GREEN} b]◈ ALT ROLIGT[/]\n\n"
+                f"[{DIM}]Ingen aktive incidents.[/]\n"
+                f"[{DIM}]Detaljer vises her når noget kræver opmærksomhed.[/]"
+            )
+            return
+        sev = str(inc.get("severity", "") or "—")
+        color = _SEVERITY.get(sev, FG)
+        cluster = inc.get("cluster", "")
+        nerve = inc.get("nerve", "")
+        kind = str(inc.get("kind", "") or "")
+        message = str(inc.get("message", "") or "")
+        lines = [
+            f"[{color} b]● {sev.upper()}[/] [{DIM}]· {cluster}[/]",
+            "",
+            f"[{FG} b]{nerve}[/]",
+            "",
+            f"[{FG}]{message}[/]",
+            "",
+            f"[{DIM}]cluster/nerve[/]  [{FG}]{cluster}/{nerve}[/]",
+        ]
+        if kind:
+            lines.append(f"[{DIM}]kind[/]           [{FG}]{kind}[/]")
+        lines += [
+            "",
+            f"[{CYAN}]↵ fuld diagnostik[/]   [{AMBER}]r resolve[/]",
+        ]
+        panel.update("\n".join(lines))
 
     # -- Clusters tab ------------------------------------------------------
     def _populate_clusters(self) -> None:
@@ -395,6 +505,7 @@ class CentralHud(App):
             rows = datasource.clusters(self._client)
         except Exception:
             return
+        self._set_table_title(f"CLUSTERS · {len(rows)}")
         for r in rows:
             status = str(r.get("status", ""))
             color = _CLUSTER_STATUS.get(status, FG)
@@ -422,41 +533,34 @@ class CentralHud(App):
             self._incidents = datasource.incidents(self._client)
         except Exception:
             self._incidents = []
+        self._set_table_title(f"INCIDENTS · {len(self._incidents)}")
         for inc in self._incidents:
             sev = str(inc.get("severity", ""))
             color = _SEVERITY.get(sev, FG)
             cluster = inc.get("cluster", "")
             nerve = inc.get("nerve", "")
             msg = str(inc.get("message", "") or "").replace("\n", " ")
-            # table cell is a preview; full text lives in the drill-down panel
+            # table cell is a preview; full text lives in the detail panel
             preview = msg if len(msg) <= 80 else msg[:79] + "…"
             table.add_row(
-                Text(sev or "—", style=color),
+                Text(f"● {sev}" if sev else "—", style=color),
                 f"{cluster}/{nerve}",
-                preview,
+                Text(preview, style=FG),
             )
 
     def _drill_incident(self, index: int) -> None:
-        """Render the FULL selected incident (no truncation) into the feed."""
-        incs = self._incidents or []
-        if index < 0 or index >= len(incs):
+        """Show the FULL selected incident (no truncation) in the detail panel."""
+        self._sel_incident = index
+        self._render_detail_panel()
+
+    def on_data_table_row_highlighted(self, event) -> None:  # noqa: ANN001
+        if self.active_tab != "incidents":
             return
-        inc = incs[index]
-        sev = str(inc.get("severity", "") or "—")
-        color = _SEVERITY.get(sev, FG)
-        cluster = inc.get("cluster", "")
-        nerve = inc.get("nerve", "")
-        message = str(inc.get("message", "") or "")
         try:
-            log = self.query_one("#hud-feed", RichLog)
+            self._sel_incident = int(getattr(event, "cursor_row", 0) or 0)
         except Exception:
-            return
-        log.clear()
-        log.write(f"[{CYAN} b]▸ INCIDENT[/]  [{color}]● {sev}[/]")
-        log.write(f"[{DIM}]cluster/nerve[/]  {cluster}/{nerve}")
-        log.write("")
-        # full message, no truncation
-        log.write(f"[{FG}]{message}[/]")
+            self._sel_incident = 0
+        self._render_detail_panel()
 
     def on_data_table_row_selected(self, event) -> None:  # noqa: ANN001
         try:
@@ -566,15 +670,17 @@ class CentralHud(App):
             self._gov_flags = datasource.governance(self._client) or []
         except Exception:
             self._gov_flags = []
+        self._set_table_title(f"GOVERNANCE · {len(self._gov_flags)}")
         for f in self._gov_flags:
             dangerous = bool(f.get("dangerous"))
             label = str(f.get("label") or f.get("key") or "")
             value = f.get("value")
+            on = bool(value) if isinstance(value, bool) else str(value) not in ("off", "")
             val_text = Text(self._fmt_value(value),
-                            style=AMBER if dangerous else FG)
-            danger_cell = (Text("⚠", style=AMBER) if dangerous
+                            style=(GREEN if on else DIM))
+            danger_cell = (Text("⚠ farlig", style=AMBER) if dangerous
                            else Text("—", style=DIM))
-            table.add_row(label, val_text, danger_cell)
+            table.add_row(Text(label, style=FG), val_text, danger_cell)
 
     @staticmethod
     def _fmt_value(value: Any) -> str:
@@ -786,4 +892,3 @@ def run_hud(ns) -> int:
 
     client = CentralClient(base_url=resolve_base_url(remote=ns.remote), token=resolve_token())
     CentralHud(client=client, live=True).run()
-    return 0

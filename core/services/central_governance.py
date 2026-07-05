@@ -77,6 +77,19 @@ def _write_healer(healer_name: str) -> Callable[[Any], None]:
     return _w
 
 
+def _write_settings(settings_key: str) -> Callable[[Any], None]:
+    """Skriver til runtime.json (settings-kilden) atomisk — IKKE runtime-state-DB.
+    Bruges til flag hvis håndhævelse læser load_settings() (fx generative_autonomy),
+    ellers ville write≠read≠håndhævelse (dual-truth)."""
+    def _w(value: Any) -> None:
+        try:
+            from core.runtime.runtime_json_io import write_runtime_merged
+            write_runtime_merged({settings_key: bool(value)})
+        except Exception:
+            pass
+    return _w
+
+
 # ---------------------------------------------------------------------------
 # Flag-register.
 #   kind:      "bool" | "enum"
@@ -144,9 +157,9 @@ _FLAGS: Dict[str, Dict[str, Any]] = {
         "label": "Generative autonomy",
         "kind": "bool",
         "dangerous": True,
-        "kv_key": "generative_autonomy_enabled",
+        "settings_key": "generative_autonomy_enabled",  # runtime.json — IKKE runtime-state-DB
         "default": False,
-        "writer": _write_kv("generative_autonomy_enabled"),
+        "writer": _write_settings("generative_autonomy_enabled"),
     },
     # --- healer-flags (skrives via set_healer_flag, læses via runtime-state) ---
     "healer_enabled": {
@@ -186,6 +199,16 @@ def _read_value(key: str, spec: Dict[str, Any]) -> Any:
                 return bool(injection_live(inj_key))
             except Exception:
                 return False
+        settings_key = spec.get("settings_key")
+        if settings_key is not None:
+            # Håndhævelsen læser load_settings()/runtime.json — læs SAMME kilde,
+            # ikke runtime-state-DB (ellers: HUD viser forkert + toggle effektløs).
+            try:
+                from core.runtime.settings import load_settings
+                return bool(getattr(load_settings(), settings_key,
+                                    spec.get("default", False)))
+            except Exception:
+                return spec.get("default", False)
         kv_key = spec.get("kv_key")
         default = spec.get("default", False)
         if kv_key is None:

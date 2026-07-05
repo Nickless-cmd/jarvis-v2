@@ -30,13 +30,15 @@ def test_set_nondangerous_flag_writes(monkeypatch):
 
 
 def test_set_dangerous_flag_requires_confirm(monkeypatch):
+    # lag4_live er dangerous OG runtime-state-backed (generative_autonomy skriver nu
+    # til runtime.json, ikke store'et — dækkes af egne settings-tests længere nede).
     store = _store(monkeypatch)
-    res = gov.set_flag("generative_autonomy", False, confirm=False)
+    res = gov.set_flag("lag4_live", False, confirm=False)
     assert res["ok"] is False and res.get("needs_confirm") is True
-    assert "generative_autonomy_enabled" not in store   # ikke skrevet
-    res2 = gov.set_flag("generative_autonomy", False, confirm=True)
+    assert "central_lag4_live_enabled" not in store   # ikke skrevet
+    res2 = gov.set_flag("lag4_live", False, confirm=True)
     assert res2["ok"] is True
-    assert store.get("generative_autonomy_enabled") is False
+    assert store.get("central_lag4_live_enabled") is False
 
 
 def test_set_unknown_flag_errors(monkeypatch):
@@ -96,3 +98,25 @@ def test_failed_write_does_not_record(monkeypatch):
     res = gov.set_flag("generative_autonomy", False, confirm=False)
     assert res["ok"] is False
     assert published == []
+
+
+def test_generative_autonomy_reads_from_settings(monkeypatch):
+    # runtime-state-DB tom → den GAMLE (buggede) sti ville give False.
+    _store(monkeypatch)
+    class _S:
+        generative_autonomy_enabled = True
+    monkeypatch.setattr("core.runtime.settings.load_settings", lambda: _S())
+    flags = {f["key"]: f["value"] for f in gov.list_flags()}
+    # Skal afspejle settings/runtime.json (håndhævelseskilden), ikke tom runtime-state.
+    assert flags["generative_autonomy"] is True
+
+
+def test_generative_autonomy_writes_to_runtime_json(monkeypatch):
+    _store(monkeypatch)
+    written = {}
+    monkeypatch.setattr("core.runtime.runtime_json_io.write_runtime_merged",
+                        lambda updates: written.update(updates) or updates)
+    res = gov.set_flag("generative_autonomy", True, confirm=True)
+    assert res["ok"] is True
+    # Toggle skal ramme settings-kilden (runtime.json), ikke runtime-state-DB.
+    assert written.get("generative_autonomy_enabled") is True

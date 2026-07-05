@@ -140,6 +140,38 @@ def _somatic_line() -> Optional[str]:
     return None
 
 
+def _mc_whisper_line() -> Optional[str]:
+    """Background noise from Mission Control — only anomalies and incidents that
+    deviate from baseline. Reads from central_realtime.realtime_snapshot() which
+    is already cached (TTL 5s). No new DB calls, no cache to break."""
+    try:
+        from core.services.central_realtime import realtime_snapshot
+        snap = realtime_snapshot(trace_limit=0)
+        if not snap:
+            return None
+        status = str(snap.get("status") or "?")
+        if status == "green":
+            return None  # baseline — no whisper needed
+        # Collect deviations
+        parts: list[str] = []
+        anomalies = snap.get("anomalies") or {}
+        anomaly_count = sum(v if isinstance(v, int) else len(v) for v in anomalies.values() if isinstance(v, (int, list)))
+        if anomaly_count:
+            parts.append(f"{anomaly_count} anomalier")
+        incidents = snap.get("incidents") or []
+        if incidents:
+            parts.append(f"{len(incidents)} incidents")
+        breakers = snap.get("open_breakers") or []
+        if breakers:
+            parts.append(f"{len(breakers)} åbne breakers")
+        if not parts:
+            return None
+        return f"Central {status}: {'; '.join(parts)}"
+    except Exception:
+        logger.debug("inner-life: mc_whisper failed", exc_info=True)
+    return None
+
+
 def _file_awareness_line() -> Optional[str]:
     """Proprioception: I feel when someone touches my files. Returns a compact
     line like 'Filer ændret: governance.py (code, ekstern)' if recent changes
@@ -289,8 +321,8 @@ def build_inner_life_section() -> str | None:
     """Compose the structured [INDRE LIV] block, or None if nothing is live."""
     lines: list[str] = []
 
-    # State — mood baseline, somatic body, file proprioception, and the room around him.
-    for fn in (_mood_line, _somatic_line, _file_awareness_line, _room_line):
+    # State — mood baseline, somatic body, file proprioception, MC whisper, and the room around him.
+    for fn in (_mood_line, _somatic_line, _file_awareness_line, _mc_whisper_line, _room_line):
         line = fn()
         if line:
             lines.append("· " + line)

@@ -255,3 +255,52 @@ findes allerede.
 - `scripts/jarvis.py` forbliver den separate ops/provider-CLI (rører vi ikke).
 
 Konsekvens for spec §3 (remote-først + jc-token), §10-11 (jc-absorption + jarvis.py-afgrænsning).
+
+---
+
+## Review 5 — Claude (5. jul): PROD-DÆKNINGS-AUDIT (Bjørn: "dækker alt, selv healing, fuld læse/skrive")
+
+Systematisk audit af CLI'ens dækning mod den FULDE kontrol-flade. Verdikt: spec'en dækker
+**read/observabilitet godt**, men har et **strukturelt hul på WRITE/governance** og et **totalt hul
+på healing-systemet**. To fund ændrer scope:
+
+### ⚠️ SCOPE-ÆNDRING: spec §2's præmis er forkert for healing + governance
+Spec §2 siger "Alt server-siden er bygget. Klienten skal bare snakke med det." **Falsk** for:
+- **Healing:** `build_healer_surface()` (error_healers.py:523) kaldes fra INGEN route/central_query.
+  Hele subsystemet er ueksponeret over HTTP.
+- **Governance-toggles:** healer-flags (`set_healer_flag`, error_healers.py:93), `set_injection_live`
+  (central_injection_registry.py:140), `central_lag4_live_enabled`+pause (central_adaptation.py:46,275),
+  `central_gut_consumer_mode` (gut_engine.py:89), `central_agenda_authoritative_enabled` (central_agenda.py:22),
+  `central_self_prompt_enabled` (central_self_state.py:23), `generative_autonomy_enabled` (settings.py:85)
+  — er rene Python-settere UDEN route. Flippes kun ved håndredigering af runtime.json.
+
+→ **Fuld prod-klar kræver en NY BACKEND-FASE** (Fase 0): eksponér healer read+control + governance
+read+write + breaker-reset + token mint/rotate + write-audit-log. Uden den er CLI'en read-heavy.
+
+### Top-prioriterede huller (skal ind for "dækker alt")
+
+| # | Hul | Bevis | Severity |
+|---|-----|-------|----------|
+| 1 | **Healing-flade** (vis registry/modes/ledger + heal-outcome-feed + escalations) | `build_healer_surface` error_healers.py:523; nerve `heal/*` cluster `healing` error_healers.py:439; `heal_escalated` :464 | CRITICAL |
+| 2 | **Healer-styring** (global on/off + per-destruktiv-healer live: daemon_restart/syslog_restart) | `set_healer_flag` error_healers.py:93,106-107 — **ingen route** | CRITICAL |
+| 3 | **Governance-write-kanal** (lag4/gut/agenda/self-prompt/generative-autonomy/injection-live) | settere uden route (se ovf.) | CRITICAL |
+| 4 | **Live approval/autonomy-styring** (spec har dem READ-only) | tool-intent approve/deny mission_control.py:2214,2235; autonomy-proposal approve/reject :1062,1071; initiative approve/reject/abandon :1093,1103,1119; capability-approval execute :2403; runtime-contract apply :2318 | CRITICAL |
+| 5 | **Cluster on/off + breaker-reset som write-verber** | `toggle_cluster` central_query_tool.py:278; `CircuitBreaker.reset` central_switches.py:90 | HIGH |
+| 6 | **Canonical error-taksonomi** (~40 kinds vis) | `KIND_MAP`/`ERROR_KINDS` central_error_envelope.py:213,280 | MEDIUM |
+| 7 | **Realtime ud over rå trace** (SSE er api-proces-only + kun trace-firings) | cross-proces-feed poll-only central_realtime.py:92; incident/heal/cost/run-live mangler | HIGH |
+| 8 | **Token mint/rotate/revoke fra CLI** + **write-audit-log** | issue_token jarvisx.py:1462; rotate = skift `jarvisx_auth_secret`; **INTET audit-spor af central-mutationer findes** | HIGH |
+| 9 | **Bekræftelses-værn på farlige writes** (healer-disable, breaker-reset, cluster-off, autonomy-flip) | server håndhæver security-invariant, men CLI mangler confirm | HIGH |
+
+### Nye CLI-verb-grupper der SKAL i spec §6
+- `heal show|enable|disable|live <healer>|ledger|reset` + `errors kinds`
+- `gov show|set <flag> <value>` (governeret toggle af lag4/gut/agenda/self-prompt/generative-autonomy/injection-live) — med confirm-guard
+- `approve|deny|reject <id>` (tool-intent / autonomy-proposal / initiative / capability / runtime-contract)
+- `cluster <name> on|off`, `breaker reset <name>`
+- `token mint|rotate|revoke`, `audit` (write-op-log)
+- Realtime: event-familie-filtre på streamen (`stream --family healing|incident|cost|run`) ELLER ekstra streams; cross-proces-feed i live-view.
+
+### Konklusion
+Spec'en er solid som READ-CLI, men "fuldt prod-klar, fuld skrive-adgang, inkl. healing" kræver:
+(a) en backend-fase der eksponerer healer + governance + breaker + token + audit, og (b) de nye
+verb-grupper ovenfor. Uden (a) kan CLI'en ikke styre det Bjørn eksplicit nævnte. Dette er den største
+udvidelse siden v2 og bør bekræftes med Bjørn (det gør projektet CLI **+ backend**, ikke CLI-alene).

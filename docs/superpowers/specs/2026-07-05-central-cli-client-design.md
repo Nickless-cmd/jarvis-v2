@@ -2,7 +2,7 @@
 
 **Dato:** 5. juli 2026  
 **Forfatter:** Jarvis (med Bjørn)  
-**Status:** Byggeklar. R1 (H1 afvist-med-grund) + R2 (desk-sletning bekræftet af Bjørn) + R3 (kosmetisk) afklaret.  
+**Status:** Byggeklar SOM READ-CLI. Review 5 (prod-audit) fandt at healing + governance kræver en NY backend-fase (Fase 0) for fuld skrive-adgang — afventer Bjørns bekræftelse af udvidet scope (CLI + backend).  
 **Revisioner:** v2 — inkorporerer self-review fund + jarvis-desk nedgradering. Claude-review 3 (5. jul): verificeret mod kode; R1 lukket i doc; R2 BEKRÆFTET af Bjørn (streaming-load + 3-skærms terminal-workflow). Claude-review 4 (5. jul): eksisterende CLI-landskab kortlagt — B (let standalone, remote-først, genbrug jc-token + central_terminal, absorbér jc, rør ikke jarvis.py).
 
 ---
@@ -41,7 +41,13 @@ giver den live-Central Bjørn vil have, FØR panelerne fjernes (Fase 4) — så 
 
 ## 2. Hvad backenden allerede har
 
-Alt server-siden er bygget. Klienten skal bare snakke med det.
+Det MESTE server-siden er bygget (read + mange writes). **MEN — korrektion (Review 5, prod-audit):
+healing-systemet og governance-toggles er IKKE eksponeret over HTTP.** `build_healer_surface()` har
+ingen route; governance-flags (healer/injection/lag4/gut/agenda/self-prompt/generative-autonomy) er
+rene Python-settere. Fuld prod-klar CLI kræver derfor en **backend-fase (Fase 0)** der eksponerer
+healer-control + governance read/write + breaker-reset + token mint/rotate + write-audit-log. Se
+Review 5 i self-review-doc'en for det fulde hul-katalog. Nedenstående tabeller = det der ALLEREDE
+findes.
 
 ### Central-routes (`/central/*`)
 | Endpoint | Metode | Beskrivelse |
@@ -558,6 +564,14 @@ apps/central_cli/
 ---
 
 ## 13. Implementationsfaser
+
+### Fase 0: Backend-eksponering (NY — Review 5, prod-dækning) — kræver Bjørns bekræftelse af udvidet scope
+Healing + governance har ingen HTTP i dag. Byg de manglende endpoints FØR CLI'en kan styre dem:
+- Healer-flade: read (`build_healer_surface`) + control (`set_healer_flag` global + per-destruktiv-healer live) + heal-outcome/escalation-feed.
+- Governance read/write: lag4 (+ pause/rollback), gut_consumer_mode, agenda_authoritative, self_prompt, generative_autonomy, injection_live — governeret + security-gated.
+- Breaker-reset, canonical error-taksonomi-read, token mint/rotate/revoke, write-audit-log.
+- Realtime-udvidelse: event-familie-filtre på `/central/stream` + cross-proces-feed i live.
+Alle owner-gated + confirm-guardede på farlige writes. (Godkendelses/autonomi-writes findes allerede — se Review 5 tabel.)
 
 ### Fase 1: Fundament (config + auth + HTTP + tema)
 - `config.py` — config læs/skriv, 0600 perms

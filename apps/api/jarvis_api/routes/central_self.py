@@ -99,13 +99,32 @@ async def get_inner_life() -> dict:
         digest = {}
     if not isinstance(digest, dict):
         digest = {}
-    sections = digest.get("sections") or {}
+    inner = digest.get("inner_life") or {}
+    exp = digest.get("experiment") or {}
     live_count = digest.get("live_count") or 0
+    total = digest.get("total") or 0
+
+    # Absorbér HVER sektion som sin egen levende nerve (trace+flag+læring), så
+    # Centralen sporer + lærer af hver enkelt. cluster="mind" for living-mind,
+    # cluster="experiment" for AGI/experiment-laget. Self-safe pr. sektion.
+    for name, sec in inner.items():
+        try:
+            absorb("mind", name, sec, learn_key=f"mind:{name}")
+        except Exception:
+            pass
+    for name, sec in exp.items():
+        try:
+            absorb("experiment", name, sec, learn_key=f"experiment:{name}")
+        except Exception:
+            pass
+
+    # Behold aggregat-absorb self:inner_life (live_count/total) + flag ved dødt sind.
     try:
-        absorb("self", "inner_life", {"live_count": live_count, "total": digest.get("total") or 0},
+        absorb("self", "inner_life", {"live_count": live_count, "total": total},
                flag_if=lambda v: v["total"] > 0 and v["live_count"] == 0,
                flag_reason="intet indre liv aktivt")
     except Exception:
         pass
-    return {"inner_life": {"sections": sections, "live_count": live_count, "total": digest.get("total") or 0},
+    return {"inner_life": {"inner_life": inner, "experiment": exp,
+                           "live_count": live_count, "total": total},
             "ts": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()}

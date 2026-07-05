@@ -6,16 +6,18 @@ def test_inner_life_path_and_shape():
         def get_json(self, p, params=None):
             seen["path"] = p
             return {"inner_life": {
-                "sections": {"thought_stream": {"liveness": True, "count": 5}},
-                "live_count": 1,
-                "total": 12,
+                "inner_life": {"thought_stream": {"liveness": True, "count": 5}},
+                "experiment": {"adaptive_learning": {"liveness": True, "count": 3}},
+                "live_count": 2,
+                "total": 37,
             }}
 
     out = datasource.inner_life(FC())
     assert seen["path"] == "/central/inner-life"
-    assert out["sections"] == {"thought_stream": {"liveness": True, "count": 5}}
-    assert out["live_count"] == 1
-    assert out["total"] == 12
+    assert out["inner_life"] == {"thought_stream": {"liveness": True, "count": 5}}
+    assert out["experiment"] == {"adaptive_learning": {"liveness": True, "count": 3}}
+    assert out["live_count"] == 2
+    assert out["total"] == 37
 
 
 def test_inner_life_missing_key_defaults():
@@ -26,7 +28,7 @@ def test_inner_life_missing_key_defaults():
             return {}
 
     out = datasource.inner_life(FC())
-    assert out == {"sections": {}, "live_count": 0, "total": 0}
+    assert out == {"inner_life": {}, "experiment": {}, "live_count": 0, "total": 0}
 
 
 def test_inner_life_non_dict_is_self_safe():
@@ -36,7 +38,8 @@ def test_inner_life_non_dict_is_self_safe():
         def get_json(self, p, params=None):
             return "nope"
 
-    assert datasource.inner_life(FC()) == {"sections": {}, "live_count": 0, "total": 0}
+    assert datasource.inner_life(FC()) == {
+        "inner_life": {}, "experiment": {}, "live_count": 0, "total": 0}
 
 
 def test_inner_life_self_safe_on_raise():
@@ -46,4 +49,5 @@ def test_inner_life_self_safe_on_raise():
         def get_json(self, p, params=None):
             raise RuntimeError("nej")
 
-    assert datasource.inner_life(FC()) == {"sections": {}, "live_count": 0, "total": 0}
+    assert datasource.inner_life(FC()) == {
+        "inner_life": {}, "experiment": {}, "live_count": 0, "total": 0}

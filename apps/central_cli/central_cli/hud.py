@@ -1555,13 +1555,28 @@ class CentralHud(App):
         il_total = int(il.get("total") or 0)
         lines += [
             "",
-            f"[{CYAN} b]◈ INDRE LIV[/]  [{FGDIM}]— {il_live}/{il_total} sektioner aktive[/]",
+            f"[{CYAN} b]◈ INDRE LIV — {il_live}/{il_total} sektioner[/]",
         ]
-        il_sections = il.get("sections") or {}
+        il_sections = il.get("inner_life") or {}
         if not il_sections:
             lines.append(f"  [{DIM}]— stille —[/]")
         else:
             for name, sec in sorted(il_sections.items()):
+                sec = sec or {}
+                dot = (f"[{GREEN}]●[/]" if sec.get("liveness") else f"[{DIM}]○[/]")
+                cnt = int(sec.get("count") or 0)
+                lines.append(f"  {dot} [{FGDIM}]{_esc(name)}[/] [{FG}]{cnt}[/]")
+
+        # -- experiment & læring — AGI/experiment-laget, samme dot+count-format --
+        exp_sections = il.get("experiment") or {}
+        lines += [
+            "",
+            f"[{CYAN} b]◈ EXPERIMENT & LÆRING[/]",
+        ]
+        if not exp_sections:
+            lines.append(f"  [{DIM}]— stille —[/]")
+        else:
+            for name, sec in sorted(exp_sections.items()):
                 sec = sec or {}
                 dot = (f"[{GREEN}]●[/]" if sec.get("liveness") else f"[{DIM}]○[/]")
                 cnt = int(sec.get("count") or 0)

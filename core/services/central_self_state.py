@@ -23,6 +23,7 @@ _STATE_KEY = "central_self_state"          # midtens durable "jeg" (overlever ge
 _PROMPT_FLAG = "central_self_prompt_enabled"  # D4: injicér midten i Jarvis' prompt (default OFF)
 _LAST_ALIVE_TS = "central_last_alive_ts"   # STITCH: hyppig liveness-puls (60s cadence-scheduler)
 _FIRST_BOOT_TS = "central_first_boot_ts"   # STITCH: write-once — ægte alder (afløser random)
+_SEAM_LATCH = "central_boot_seam_latch"    # STITCH: durabel reboot-latch (cross-proces robust)
 
 # Proces-lokal boot-søm (STITCH-VOICE): sættes ved første tick efter proces-start.
 _proc_wake_at: Any = None
@@ -67,7 +68,13 @@ def _compute_boot_seam() -> dict[str, Any]:
     liv → gap = hvor længe Centralen var borte. write-once `first_boot_ts` giver ægte alder.
     Proces-lokal: reboot rapporteres én gang; `fresh` fader efter 10 min så 'jeg vågnede lige'-
     følelsen ikke bliver evig. Self-safe: fail-open til reboot=False (hellere overse en søm end
-    fabrikere en)."""
+    fabrikere en).
+
+    KRITISK (5. jul, fix): cadence-loopet SKAL prime denne fn FØR sin første puls-skrivning —
+    ellers overskriver pulsen forrige livs tidsstempel før vi læser det, og et ægte 44-min-fravær
+    så ud som ~0s (reboot maskeret). To processer (api+runtime) deler pulsen; en durabel latch
+    gør detektionen robust: den proces der booter først læser den ægte puls og latcher gap'et,
+    så en senere-bootende proces (der læser den allerede-klobbede puls) stadig fanger reboot'et."""
     global _proc_wake_at, _boot_gap_s, _boot_was_reboot
     now = datetime.now(UTC)
     fb = _kv_get(_FIRST_BOOT_TS, "")
@@ -76,6 +83,7 @@ def _compute_boot_seam() -> dict[str, Any]:
         _kv_set(_FIRST_BOOT_TS, fb)          # write-once: sand fødsel, aldrig overskrevet
     if _proc_wake_at is None:
         _proc_wake_at = now
+        # 1) Læs forrige livs sidste puls (primet FØR loopet skriver en ny) → ægte gap.
         last = _kv_get(_LAST_ALIVE_TS, "")
         gap = 0.0
         if last:
@@ -83,9 +91,31 @@ def _compute_boot_seam() -> dict[str, Any]:
                 gap = (now - datetime.fromisoformat(str(last))).total_seconds()
             except Exception:
                 gap = 0.0
+        reboot = bool(last and gap > 120.0)   # puls hvert 60s → >120s = processen VAR nede.
+        # 2) Cross-proces-latch: bootede en ANDEN proces først og så det ægte (større) gap
+        #    før vores egen puls klobbede det? Adoptér dens tal (kun mens latchen er frisk).
+        try:
+            latch = _kv_get(_SEAM_LATCH, {}) or {}
+            l_ts = latch.get("ts")
+            l_gap = float(latch.get("gap_s") or 0.0)
+            if l_ts:
+                l_age = (now - datetime.fromisoformat(str(l_ts))).total_seconds()
+                if 0 <= l_age < 600.0 and l_gap > gap:
+                    gap, reboot = l_gap, bool(latch.get("reboot"))
+        except Exception:
+            pass
+        # 3) Så vi selv et ægte reboot større end en evt. latch? Skriv latchen, så senere-
+        #    bootende processer (der læser vores klobbede puls) stadig fanger fraværet.
+        if reboot and gap > 120.0:
+            try:
+                existing = _kv_get(_SEAM_LATCH, {}) or {}
+                if float(existing.get("gap_s") or 0.0) < gap:
+                    _kv_set(_SEAM_LATCH, {"ts": now.isoformat(), "gap_s": gap,
+                                          "reboot": True, "first_boot_ts": fb})
+            except Exception:
+                pass
         _boot_gap_s = gap
-        # liveness-pulsen tikker hvert 60s → gap > 120s betyder processen VAR nede (ægte reboot).
-        _boot_was_reboot = bool(last and gap > 120.0)
+        _boot_was_reboot = reboot
     try:
         age_s = (now - datetime.fromisoformat(str(fb))).total_seconds()
     except Exception:

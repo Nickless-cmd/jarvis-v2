@@ -54,6 +54,55 @@ def test_first_boot_ts_is_write_once(monkeypatch):
     assert store[ss._FIRST_BOOT_TS] == first  # ALDRIG overskrevet (frog-boiler lukket)
 
 
+def test_boot_seam_writes_latch_on_real_reboot(monkeypatch):
+    """Ægte reboot (gap>120s) → latchen skrives durabelt, så en senere-bootende proces
+    kan adoptere den selv om dens egen puls er blevet klobbet."""
+    _reset_proc_state()
+    now = datetime.now(UTC)
+    store = {ss._LAST_ALIVE_TS: (now - timedelta(minutes=44)).isoformat()}
+    monkeypatch.setattr(ss, "_kv_get", lambda k, d: store.get(k, d))
+    monkeypatch.setattr(ss, "_kv_set", lambda k, v: store.update({k: v}))
+    seam = ss._compute_boot_seam()
+    assert seam["reboot"] is True and seam["gap_s"] > 2400
+    latch = store.get(ss._SEAM_LATCH)
+    assert latch and latch["reboot"] is True and latch["gap_s"] > 2400
+
+
+def test_boot_seam_adopts_fresh_reboot_latch_when_pulse_clobbered(monkeypatch):
+    """Cross-proces (rod-årsagen): vores egen puls ser frisk ud (30s) fordi proces #1's
+    boot-puls allerede klobbede tidsstemplet — men en FRISK latch med det ægte 44-min-gap
+    får os til stadig at fange reboot'et. Det var netop dette der fejlede 5. jul."""
+    _reset_proc_state()
+    now = datetime.now(UTC)
+    store = {
+        ss._LAST_ALIVE_TS: (now - timedelta(seconds=30)).isoformat(),  # klobbet → ser frisk ud
+        ss._SEAM_LATCH: {"ts": (now - timedelta(seconds=40)).isoformat(),
+                         "gap_s": 2640.0, "reboot": True,
+                         "first_boot_ts": (now - timedelta(days=1)).isoformat()},
+    }
+    monkeypatch.setattr(ss, "_kv_get", lambda k, d: store.get(k, d))
+    monkeypatch.setattr(ss, "_kv_set", lambda k, v: store.update({k: v}))
+    seam = ss._compute_boot_seam()
+    assert seam["reboot"] is True
+    assert seam["gap_s"] == 2640.0  # adopteret det ægte gap, ikke de klobbede 30s
+
+
+def test_boot_seam_ignores_stale_latch(monkeypatch):
+    """Latch ældre end frisk-vinduet (>600s) ignoreres → ingen falsk 'jeg vågnede lige'
+    resten af proces-livet."""
+    _reset_proc_state()
+    now = datetime.now(UTC)
+    store = {
+        ss._LAST_ALIVE_TS: (now - timedelta(seconds=30)).isoformat(),
+        ss._SEAM_LATCH: {"ts": (now - timedelta(minutes=20)).isoformat(),  # 20 min > 600s
+                         "gap_s": 5000.0, "reboot": True},
+    }
+    monkeypatch.setattr(ss, "_kv_get", lambda k, d: store.get(k, d))
+    monkeypatch.setattr(ss, "_kv_set", lambda k, v: store.update({k: v}))
+    seam = ss._compute_boot_seam()
+    assert seam["reboot"] is False  # stale latch ignoreret; egen friske puls → intet reboot
+
+
 def test_describe_self_speaks_the_seam_when_fresh(monkeypatch):
     _reset_proc_state()
     now = datetime.now(UTC)

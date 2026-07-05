@@ -1354,8 +1354,20 @@ def _scheduler_loop() -> None:
     # Pull recent visible-chat timestamp on each tick from event_bus so
     # visible-grace logic still works (producers like curiosity_idle_window
     # use visible_grace_minutes to delay until chat has been quiet).
+    _seam_primed = False
     while not _SCHEDULER_STOP.is_set():
         try:
+            # STITCH prime (5. jul fix): mål boot-sømmen FØR vi skriver den første puls —
+            # ellers overskriver pulsen forrige livs tidsstempel før _compute_boot_seam når
+            # at læse det, og et ægte fravær maskeres til ~0s (reboot usynlig). Første-kald
+            # cacher gap'et proces-lokalt, så resten af loopet er upåvirket.
+            if not _seam_primed:
+                try:
+                    from core.services.central_self_state import _compute_boot_seam
+                    _compute_boot_seam()
+                except Exception:
+                    pass
+                _seam_primed = True
             # STITCH liveness-puls: durabelt "jeg var i live nu" hvert tick → boot-sømmen
             # (central_self_state._compute_boot_seam) kan måle hvor længe Centralen var borte
             # efter en restart og sige "jeg vågnede for N siden". Billig, self-safe.

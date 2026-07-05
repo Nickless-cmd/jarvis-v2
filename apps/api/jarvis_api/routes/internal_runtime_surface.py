@@ -64,7 +64,13 @@ async def get_runtime_surface(name: str, request: Request) -> dict:
         return {}
     try:
         out = builder()
-        return out if isinstance(out, dict) else {"value": out}
+        if not isinstance(out, dict):
+            out = {"value": out}
+        # JSON-safe: nogle self/world-flader indeholder ikke-serialiserbare værdier
+        # (datetimes, objekter) → FastAPI ville 500'e og proxyen få tomt. Round-trip
+        # med default=str gør ALT serialiserbart uden at tabe struktur.
+        import json
+        return json.loads(json.dumps(out, default=str))
     except Exception:
         logger.debug("runtime-surface builder failed: %s", name, exc_info=True)
         return {}

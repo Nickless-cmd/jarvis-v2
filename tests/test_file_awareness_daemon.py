@@ -197,3 +197,28 @@ class TestEdgeCases:
         fam._record_change("modified", "/tmp/test.py", is_directory=False)
         event = fam._event_buffer[-1]
         assert event["external"] is True
+
+# ---------------------------------------------------------------------------
+# Governance mutation subscriber (Fase 4) — regressionsværn
+# ---------------------------------------------------------------------------
+
+class TestGovernanceMutation:
+    """`_on_governance_mutation` skal læse `value` fra et central.mutation-
+    formet event (central_governance.record_mutation publicerer {area,key,value})."""
+
+    def test_reads_value_field_from_central_mutation(self, fam):
+        # central.mutation-payload: feltet hedder "value", IKKE "new_value"
+        fam._on_governance_mutation({"area": "governance", "key": "healer_enabled", "value": True})
+        buf = fam.get_recent_events(limit=1)
+        assert buf and buf[-1]["event_type"] == "governance_mutation"
+        assert buf[-1]["name"] == "healer_enabled"
+        assert buf[-1]["value"] is True   # ikke None — dette var bug'en
+
+    def test_enum_value_preserved(self, fam):
+        fam._on_governance_mutation({"area": "governance", "key": "gut_consumer_mode", "value": "shadow"})
+        assert fam.get_recent_events(limit=1)[-1]["value"] == "shadow"
+
+    def test_legacy_new_value_still_works(self, fam):
+        # Robusthed: hvis en anden publisher bruger "new_value", falder vi tilbage
+        fam._on_governance_mutation({"key": "x", "new_value": False})
+        assert fam.get_recent_events(limit=1)[-1]["value"] is False

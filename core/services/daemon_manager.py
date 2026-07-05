@@ -29,13 +29,6 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 3,
         "description": "LLM-generated first-person body/energy description",
     },
-    "file_awareness": {
-        "module": "core.services.file_awareness_daemon",
-        "reset_var": "_heartbeat_count_since_gen",
-        "reset_value": 999,
-        "default_cadence_minutes": 3,
-        "description": "Somatic awareness of file changes — feels when someone touches his files",
-    },
     "surprise": {
         "module": "core.services.surprise_daemon",
         "reset_var": "_heartbeats_since_surprise",

@@ -275,6 +275,59 @@ def _recall_hints_line() -> Optional[str]:
     return None
 
 
+def _continuity_line() -> Optional[str]:
+    """Boot continuity — 'I recognize myself' proprioception.
+    Reads from identity_sketch (cached), reboot_awareness (in-memory), and
+    latest chronicle carry (DB, already warm). No new indexes, no cache to break."""
+    try:
+        parts: list[str] = []
+        # Identity sketch version + age
+        try:
+            from core.services.identity_sketch import get_identity_sketch
+            sketch = get_identity_sketch()
+            if isinstance(sketch, dict):
+                version = sketch.get("version")
+                age_days = sketch.get("source_signals", {}).get("age_days")
+                if version is not None:
+                    parts.append(f"sketch v{version}")
+                if age_days is not None:
+                    parts.append(f"{age_days}d gammel")
+        except Exception:
+            logger.debug("inner-life: identity sketch failed", exc_info=True)
+        # Reboot awareness
+        try:
+            from core.services.reboot_awareness_daemon import get_last_boot_event
+            boot = get_last_boot_event()
+            if isinstance(boot, dict):
+                kind = boot.get("kind", "")
+                if "unexpected" in str(kind):
+                    parts.append("uventet genstart")
+                elif "graceful" in str(kind):
+                    parts.append("planlagt genstart")
+        except Exception:
+            logger.debug("inner-life: reboot awareness failed", exc_info=True)
+        # Latest carry-thread (warm DB read)
+        try:
+            from core.runtime.db import connect
+            with connect() as conn:
+                row = conn.execute(
+                    "SELECT summary FROM private_brain_records "
+                    "WHERE record_type LIKE '%carry%' "
+                    "ORDER BY created_at DESC LIMIT 1"
+                ).fetchone()
+                if row and row[0]:
+                    carry = str(row[0])[:80]
+                    parts.append(f"bærer: {carry}")
+        except Exception:
+            logger.debug("inner-life: carry read failed", exc_info=True)
+        if not parts:
+            return None
+        return "Kontinuitet: " + " · ".join(parts)
+    except Exception:
+        logger.debug("inner-life: continuity failed", exc_info=True)
+    return None
+
+
 def _room_line() -> Optional[str]:
     """The room around him, from Sansernes Arkiv (latest visual memory). He asked
     to *feel* the room, not just read a somatic vector — this is presence, not data."""
@@ -399,8 +452,8 @@ def build_inner_life_section() -> str | None:
     """Compose the structured [INDRE LIV] block, or None if nothing is live."""
     lines: list[str] = []
 
-    # State — mood baseline, somatic body, file proprioception, pulse, MC whisper, and the room around him.
-    for fn in (_mood_line, _somatic_line, _file_awareness_line, _governance_line, _pulse_line, _mc_whisper_line, _recall_hints_line, _room_line):
+    # State — mood baseline, somatic body, file proprioception, governance, pulse, MC whisper, recall hints, continuity, and the room around him.
+    for fn in (_mood_line, _somatic_line, _file_awareness_line, _governance_line, _pulse_line, _mc_whisper_line, _recall_hints_line, _continuity_line, _room_line):
         line = fn()
         if line:
             lines.append("· " + line)

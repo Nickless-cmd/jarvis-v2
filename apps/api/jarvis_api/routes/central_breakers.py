@@ -7,17 +7,8 @@ router = APIRouter(prefix="/central", tags=["central-breakers"])
 
 
 def _require_owner() -> None:
-    from core.identity.workspace_context import current_user_id
-    uid = current_user_id() or None
-    if uid is None:
-        return
-    try:
-        from core.identity.users import find_user_by_discord_id
-        if getattr(find_user_by_discord_id(str(uid)), "role", "") == "owner":
-            return
-    except Exception:
-        pass
-    raise HTTPException(status_code=403, detail="Centralen er kun for owner")
+    from apps.api.jarvis_api.routes.central_auth import require_central_owner
+    require_central_owner()
 
 
 def _reset_breaker(nerve: str) -> None:

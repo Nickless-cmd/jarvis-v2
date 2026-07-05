@@ -557,6 +557,26 @@ def inner_life(client: Any) -> dict:
         return dict(fallback)
 
 
+def soul(client: Any) -> dict:
+    """Jarvis' mørke sjæle-/tids-signaler fra /central/soul.
+    Self-safe → ``{"signals": {}, "live_count": 0, "total": 0}``.
+    Bærer kun liveness+count pr. signal (aldrig rå længsels-/drift-/model-tekst —
+    §24.4 reducér-ved-kilden)."""
+    fallback = {"signals": {}, "live_count": 0, "total": 0}
+    try:
+        data = client.get_json("/central/soul")
+        if not isinstance(data, dict):
+            return dict(fallback)
+        sig = data.get("signals")
+        return {
+            "signals": sig if isinstance(sig, dict) else {},
+            "live_count": data.get("live_count") or 0,
+            "total": data.get("total") or 0,
+        }
+    except Exception:
+        return dict(fallback)
+
+
 def costs_daily(client: Any) -> dict:
     """Daily cost time-series from /central/costs-daily, shaped for the CLI.
 

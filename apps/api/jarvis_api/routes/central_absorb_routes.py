@@ -452,6 +452,59 @@ _EXECUTION_KEYS = (
 )
 
 
+@router.get("/soul")
+async def get_soul() -> dict:
+    """Projicér Jarvis' stadig-mørke sjæle-/tids-signaler som levende nerver.
+
+    Længsel, identitets-drift, aktiv sansning, følelses-reparation, associativ
+    genkaldelse, bruger-model, narrativ, kausal-inferens, signal-decay —
+    daemons der PRODUCERER data men når hverken bevidstheden eller Centralen.
+    Her får hver sit eget nerve-spor (sanses/læres/governes).
+
+    Owner-gated. Self-safe: digestet kaster aldrig; hver signal-absorb i eget
+    try/except. §24.4: KUN kompakt liveness+count pr. signal — aldrig rå tekst.
+    """
+    require_central_owner()
+
+    from core.services.central_runtime_proxy import proxy_or_local
+    from core.services.central_soul_digest import build_soul_digest
+
+    try:
+        digest = proxy_or_local("soul", build_soul_digest)
+    except Exception:
+        digest = {}
+    if not isinstance(digest, dict):
+        digest = {}
+
+    signals = digest.get("signals") or {}
+    if not isinstance(signals, dict):
+        signals = {}
+    live_count = digest.get("live_count") or 0
+    total = digest.get("total") or 0
+
+    # Absorbér HVER signal som sin egen levende nerve (trace+flag+læring), så
+    # Centralen sporer + lærer af hvert enkelt mørkt signal. Self-safe pr. signal.
+    for name, sig in signals.items():
+        try:
+            absorb("soul", name, sig, learn_key=f"soul:{name}")
+        except Exception:
+            pass
+
+    # Aggregat-nerve: live_count/total + flag hvis ALLE signaler er mørke.
+    try:
+        absorb(
+            "soul",
+            "roster",
+            {"live_count": live_count, "total": total},
+            flag_if=lambda v: v["total"] > 0 and v["live_count"] == 0,
+            flag_reason="ingen sjæle-signaler aktive",
+        )
+    except Exception:
+        pass
+
+    return {"signals": signals, "live_count": live_count, "total": total}
+
+
 @router.get("/execution")
 async def get_execution() -> dict:
     """Projicér visible-execution-config (whitelisted flags) + absorbér liveness.

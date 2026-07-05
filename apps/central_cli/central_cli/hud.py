@@ -1560,6 +1560,30 @@ class CentralHud(App):
                                 )
                                 shown += 1
 
+        # -- sjæl — mørke sjæle-/tids-signaler nu i nervesystemet (efter AGENTUR).
+        # Reduceret: kun liveness+count pr. signal (aldrig rå tekst). Self-safe.
+        try:
+            soul = datasource.soul(self._client) if self._client else {}
+        except Exception:
+            soul = {}
+        soul = soul or {}
+        soul_live = int(soul.get("live_count") or 0)
+        soul_total = int(soul.get("total") or 0)
+        lines += [
+            "",
+            f"[{CYAN} b]◈ SJÆL — mørke signaler nu i nervesystemet[/]"
+            f"  [{FGDIM}]{soul_live}/{soul_total}[/]",
+        ]
+        soul_sections = soul.get("signals") or {}
+        if not soul_sections:
+            lines.append(f"  [{DIM}]— stille —[/]")
+        else:
+            for name, sec in sorted(soul_sections.items()):
+                sec = sec or {}
+                dot = (f"[{GREEN}]●[/]" if sec.get("liveness") else f"[{DIM}]○[/]")
+                cnt = int(sec.get("count") or 0)
+                lines.append(f"  {dot} [{FGDIM}]{_esc(name)}[/] [{FG}]{cnt}[/]")
+
         # -- memory-pipeline (A5) — always rendered, even if self is empty --
         try:
             mh = datasource.memory_health(self._client) if self._client else {}

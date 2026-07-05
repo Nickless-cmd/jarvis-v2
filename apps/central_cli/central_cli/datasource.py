@@ -173,6 +173,35 @@ def diagnostics(client: Any) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def anomalies(client: Any) -> list:
+    """Anomalies from /central/diagnostics, shaped for the Anomalies view.
+    Self-safe: any error → empty list. Sorted by importance then count."""
+    try:
+        diag = client.get_json("/central/diagnostics")
+    except Exception:
+        return []
+    if not isinstance(diag, dict):
+        return []
+    rank = {"high": 0, "critical": 0, "medium": 1, "low": 2}
+    out = []
+    for a in diag.get("anomalies") or []:
+        if not isinstance(a, dict):
+            continue
+        out.append({
+            "importance": str(a.get("importance", "") or ""),
+            "category": str(a.get("category", "") or ""),
+            "source": str(a.get("source", "") or ""),
+            "count": int(a.get("count", 0) or 0),
+            "signature": str(a.get("signature", "") or ""),
+            "sample": str(a.get("sample", "") or ""),
+            "location": str(a.get("location", "") or ""),
+            "first": str(a.get("first_seen", "") or ""),
+            "last": str(a.get("last_seen", "") or ""),
+        })
+    out.sort(key=lambda x: (rank.get(x["importance"], 3), -x["count"]))
+    return out
+
+
 def governance(client: Any) -> list:
     """Governance flags from /central/governance."""
     data = client.get_json("/central/governance")

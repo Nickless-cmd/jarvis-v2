@@ -16,12 +16,20 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from rich.markup import escape as _rescape
 from rich.table import Table
 from rich.text import Text
+
+
+def _esc(value: Any) -> str:
+    """Escape live/user data before it goes into a Rich-markup string, so a
+    value containing '[...]' (asyncio tasks, paths, log lines) can never be
+    mis-parsed as a style tag and crash the render."""
+    return _rescape(str(value if value is not None else ""))
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.binding import Binding
-from textual.widgets import DataTable, RichLog, Static
+from textual.widgets import DataTable, Input, RichLog, Static
 
 from central_cli import datasource
 
@@ -61,10 +69,17 @@ _TABS: list[tuple[str, str, bool]] = [
     ("clusters", "Clusters", False),
     ("nerves", "Nerves", False),
     ("incidents", "Incidents", False),
+    ("anomalies", "Anomalies", False),
     ("diagnostics", "Diagnostics", False),
     ("healing", "Healing", True),
     ("governance", "Governance", True),
 ]
+
+# anomaly importance -> color
+_IMPORTANCE = {
+    "high": RED, "critical": RED, "severe": RED,
+    "medium": AMBER, "low": DIM, "info": CYAN,
+}
 
 # status-word -> (color, label)
 _STATUS = {
@@ -78,7 +93,7 @@ _SEVERITY = {
     "warn": AMBER, "warning": AMBER, "info": CYAN,
 }
 
-_TABLE_TABS = {"nerves", "clusters", "incidents", "governance"}
+_TABLE_TABS = {"nerves", "clusters", "incidents", "anomalies", "governance"}
 _PANEL_TABS = {"overview", "diagnostics", "healing"}
 
 
@@ -179,6 +194,19 @@ class CentralHud(App):
         padding: 0 2;
         border-top: solid {LINE};
     }}
+    #hud-cmd-input {{
+        display: none;
+        dock: bottom;
+        height: 2;
+        background: {BAR};
+        color: {CYAN};
+        border: none;
+        border-top: solid {CYAN};
+        padding: 0 2;
+    }}
+    #hud-cmd-input:focus {{
+        border-top: solid {CYAN};
+    }}
     """
 
     BINDINGS = [
@@ -186,9 +214,11 @@ class CentralHud(App):
         Binding("2", "show('clusters')", "Clusters", show=False),
         Binding("3", "show('nerves')", "Nerves", show=False),
         Binding("4", "show('incidents')", "Incidents", show=False),
-        Binding("5", "show('diagnostics')", "Diagnostics", show=False),
-        Binding("6", "show('healing')", "Healing", show=False),
-        Binding("7", "show('governance')", "Governance", show=False),
+        Binding("5", "show('anomalies')", "Anomalies", show=False),
+        Binding("6", "show('diagnostics')", "Diagnostics", show=False),
+        Binding("7", "show('healing')", "Healing", show=False),
+        Binding("8", "show('governance')", "Governance", show=False),
+        Binding("colon", "command_mode", "Kommando", show=False),
         Binding("q", "quit", "Quit", show=False),
         Binding("question_mark", "help", "Hjælp", show=False),
         Binding("space", "toggle", "Toggle", show=False),
@@ -212,8 +242,11 @@ class CentralHud(App):
         self._connected: bool = False
         self._cost: float | None = None
         self._sel_incident: int = 0
+        self._sel_anomaly: int = 0
+        self._anomalies: list = []
         self._pulse_on: bool = True
         self._caret_on: bool = True
+        self._cmd_mode: bool = False
 
     # -- layout ------------------------------------------------------------
     def compose(self) -> ComposeResult:
@@ -234,6 +267,8 @@ class CentralHud(App):
                     yield Static("", id="hud-detail", markup=True)
                 yield Static("", id="hud-panel", markup=True)
             yield Static(self._render_cmd(), id="hud-cmd")
+            yield Input(placeholder="kommando…  (fx: toggle <nerve> off · resolve · status · nerve <n>)  —  Enter kør · Esc annullér",
+                        id="hud-cmd-input")
 
     def on_mount(self) -> None:
         table = self.query_one("#nerve-table", DataTable)
@@ -284,6 +319,73 @@ class CentralHud(App):
     def action_help(self) -> None:
         return
 
+    # -- command line (k9s-style ':' mode) ---------------------------------
+    def action_command_mode(self) -> None:
+        """Enter command mode: reveal + focus the input, hide the hint bar."""
+        try:
+            inp = self.query_one("#hud-cmd-input", Input)
+            self.query_one("#hud-cmd", Static).display = False
+            inp.display = True
+            inp.value = ""
+            self._cmd_mode = True
+            self.set_focus(inp)
+        except Exception:
+            self._cmd_mode = False
+
+    def _exit_command_mode(self) -> None:
+        self._cmd_mode = False
+        try:
+            self.query_one("#hud-cmd-input", Input).display = False
+            self.query_one("#hud-cmd", Static).display = True
+            self.set_focus(None)
+        except Exception:
+            pass
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:  # noqa: ANN001
+        line = event.value
+        self._exit_command_mode()
+        self._run_command(line)
+
+    def _run_command(self, line: str) -> None:
+        """Parse + execute a command via the shared resolve_command layer."""
+        line = (line or "").strip()
+        if not line:
+            return
+        parts = line.split()
+        verb, args = parts[0].lower(), parts[1:]
+        try:
+            from central_cli.commands import resolve_command
+            spec = resolve_command(verb, args)
+        except Exception as exc:
+            self._flash(f"[{RED}]✖ {verb}: {exc}[/]")
+            return
+        try:
+            if spec.method == "GET":
+                data = self._client.get_json(spec.path, spec.body)
+            else:
+                data = self._client.post_json(spec.path, spec.body or {})
+        except Exception as exc:
+            self._flash(f"[{RED}]✖ {line}: {exc}[/]")
+            return
+        self._flash(f"[{CYAN}]▸ {_esc(line)}[/] [{DIM}]—[/] {self._summarize(data)}")
+        self.refresh_data()
+
+    @staticmethod
+    def _summarize(data: Any) -> str:
+        if isinstance(data, dict):
+            if "ok" in data:
+                return f"[{GREEN}]ok[/]" if data.get("ok") else f"[{RED}]fejl: {_esc(data.get('error', ''))}[/]"
+            if "error" in data and data["error"]:
+                return f"[{RED}]{_esc(data['error'])}[/]"
+            if "status" in data:
+                return f"status={_esc(data['status'])}"
+            if "result" in data:
+                return _esc(str(data["result"])[:80])
+            return f"{len(data)} felter"
+        if isinstance(data, list):
+            return f"{len(data)} rækker"
+        return _esc(str(data)[:80]) if data else "ok"
+
     def show_tab(self, name: str) -> None:
         self.active_tab = name
         self._sync_tabs()
@@ -315,6 +417,9 @@ class CentralHud(App):
             elif name == "incidents":
                 self._populate_incidents()
                 self._render_detail_panel()
+            elif name == "anomalies":
+                self._populate_anomalies()
+                self._render_anomaly_detail()
             elif name == "governance":
                 self._populate_governance()
                 self._render_detail_panel()
@@ -398,10 +503,10 @@ class CentralHud(App):
     def _render_cmd(self) -> Text:
         caret = "█" if self._caret_on else " "
         keys = (
-            f"[{DIM}][/][{FGDIM} b]1-7[/] [{DIM}]views ·[/] [{FGDIM} b]↑↓[/] [{DIM}]naviger ·[/] "
-            f"[{FGDIM} b]↵[/] [{DIM}]drill ·[/] [{FGDIM} b]/[/] [{DIM}]filter ·[/] "
-            f"[{FGDIM} b]:[/] [{DIM}]kommando ·[/] [{FGDIM} b]r[/] [{DIM}]resolve ·[/] "
-            f"[{FGDIM} b]?[/] [{DIM}]hjælp[/]"
+            f"[{FGDIM} b]1-8[/] [{DIM}]views ·[/] [{FGDIM} b]↑↓[/] [{DIM}]naviger ·[/] "
+            f"[{FGDIM} b]↵[/] [{DIM}]drill ·[/] [{FGDIM} b]t[/] [{DIM}]toggle ·[/] "
+            f"[{FGDIM} b]:[/] [{DIM}]kommando ·[/] [{FGDIM} b]?[/] [{DIM}]hjælp ·[/] "
+            f"[{FGDIM} b]q[/] [{DIM}]quit[/]"
         )
         grid = Table.grid(expand=True)
         grid.add_column(justify="left", ratio=1)
@@ -490,13 +595,13 @@ class CentralHud(App):
             color = _DECISION.get(decision, DIM)
             count = int(r.get("count", 1) or 1)
             badge = f" [{FGDIM}]×{count} · seneste[/]" if count > 1 else ""
-            cluster = r.get("cluster", "")
-            nerve = r.get("nerve", "")
-            reason = r.get("reason", "")
+            cluster = _esc(r.get("cluster", ""))
+            nerve = _esc(r.get("nerve", ""))
+            reason = _esc(r.get("reason", ""))
             sep = f" [{DIM}]—[/] {reason}" if reason else ""
             log.write(
                 f"[{color}]●[/] [{color}]{cluster}/{nerve}[/] "
-                f"[{DIM}]·[/] {decision}{badge}{sep}"
+                f"[{DIM}]·[/] {_esc(decision)}{badge}{sep}"
             )
 
     # -- detail panel (side, full height) ----------------------------------
@@ -531,7 +636,7 @@ class CentralHud(App):
         cluster = d.get("cluster", "")
         nerve = d.get("nerve", "")
         self._set_side_paneh(
-            f"[{CYAN}]INCIDENT-DETALJE[/] [{DIM}]— {cluster}/{nerve}[/]"
+            f"[{CYAN}]INCIDENT-DETALJE[/] [{DIM}]— {_esc(cluster)}/{_esc(nerve)}[/]"
         )
 
         def _cap(text: Any, n: int) -> str:
@@ -541,21 +646,21 @@ class CentralHud(App):
         # bordered badge (terminal idiom: bg-tinted pill)
         badge_bg = "#1f0d0d" if color == RED else ("#241a05" if color == AMBER else "#06202e")
         lines = [
-            f"[{color} b on {badge_bg}] ● {sev.upper()} · {cluster} [/]",
+            f"[{color} b on {badge_bg}] ● {_esc(sev.upper())} · {_esc(cluster)} [/]",
             "",
-            f"[{FG} b]{d.get('title') or nerve}[/]",
-            f"[{FGDIM}]{_cap(d.get('message', ''), 130)}[/]",
+            f"[{FG} b]{_esc(d.get('title') or nerve)}[/]",
+            f"[{FGDIM}]{_esc(_cap(d.get('message', ''), 130))}[/]",
         ]
         rc = d.get("root_cause")
         if rc:
-            lines += ["", f"[{FGDIM} b]ROOT CAUSE[/]", f"[{FG}]{_cap(rc, 130)}[/]"]
+            lines += ["", f"[{FGDIM} b]ROOT CAUSE[/]", f"[{FG}]{_esc(_cap(rc, 130))}[/]"]
         related = d.get("related") or []
         if related:
-            chips = "".join(f"[{FGDIM} on #0f1824] {r} [/] " for r in related)
+            chips = "".join(f"[{FGDIM} on #0f1824] {_esc(r)} [/] " for r in related)
             lines += ["", f"[{FGDIM} b]RELATEREDE NERVER[/]", chips]
         heal = d.get("heal_status")
         if heal:
-            lines += ["", f"[{FGDIM} b]HEAL-STATUS[/]", f"[{GREEN}]◈ {_cap(heal, 130)}[/]"]
+            lines += ["", f"[{FGDIM} b]HEAL-STATUS[/]", f"[{GREEN}]◈ {_esc(_cap(heal, 130))}[/]"]
         corr = d.get("correlation") or {}
         if corr:
             first = str(corr.get("first", ""))[:10]
@@ -631,14 +736,88 @@ class CentralHud(App):
         self._sel_incident = index
         self._render_detail_panel()
 
-    def on_data_table_row_highlighted(self, event) -> None:  # noqa: ANN001
-        if self.active_tab != "incidents":
+    # -- Anomalies tab -----------------------------------------------------
+    def _populate_anomalies(self) -> None:
+        try:
+            table = self.query_one("#nerve-table", DataTable)
+        except Exception:
+            return
+        self._reset_columns(table, ("vigtighed", 11), ("kategori", 16),
+                            ("count", 6), ("signatur", 42))
+        if self._client is None:
             return
         try:
-            self._sel_incident = int(getattr(event, "cursor_row", 0) or 0)
+            self._anomalies = datasource.anomalies(self._client)
         except Exception:
-            self._sel_incident = 0
-        self._render_detail_panel()
+            self._anomalies = []
+        self._set_paneh(f"[{CYAN}]ANOMALIES[/] [{FGDIM}]— {len(self._anomalies)} fanget[/]")
+        for a in self._anomalies:
+            imp = str(a.get("importance", ""))
+            color = _IMPORTANCE.get(imp, FG)
+            sig = str(a.get("signature", "")).replace("\n", " ")
+            preview = sig if len(sig) <= 42 else sig[:41] + "…"
+            table.add_row(
+                Text(f"● {imp}" if imp else "—", style=color),
+                Text(str(a.get("category", "")), style=FGDIM),
+                Text(str(a.get("count", 0)), style=FGDIM, justify="right"),
+                Text(preview, style=FG),
+            )
+
+    def _render_anomaly_detail(self) -> None:
+        try:
+            panel = self.query_one("#hud-detail", Static)
+        except Exception:
+            return
+        anoms = self._anomalies or []
+        if not anoms:
+            self._set_side_paneh(f"[{CYAN}]ANOMALI-DETALJE[/] [{DIM}]— —[/]")
+            panel.update(Text.from_markup(f"[{GREEN} b]◈ INGEN ANOMALIER[/]"))
+            return
+        i = max(0, min(self._sel_anomaly, len(anoms) - 1))
+        a = anoms[i]
+        imp = str(a.get("importance", "") or "—")
+        color = _IMPORTANCE.get(imp, FG)
+        cat = a.get("category", "")
+        badge_bg = "#1f0d0d" if color == RED else ("#241a05" if color == AMBER else "#06202e")
+
+        def _cap(t: Any, n: int) -> str:
+            s = str(t or "").replace("\n", " ")
+            return s if len(s) <= n else s[: n - 1] + "…"
+
+        first = str(a.get("first", ""))[:16].replace("T", " ")
+        last = str(a.get("last", ""))[:16].replace("T", " ")
+        self._set_side_paneh(f"[{CYAN}]ANOMALI-DETALJE[/] [{DIM}]— {_esc(cat)}[/]")
+        lines = [
+            f"[{color} b on {badge_bg}] ● {_esc(imp.upper())} · {_esc(a.get('source', ''))} [/]",
+            "",
+            f"[{FG} b]{_esc(cat)}[/]  [{FGDIM}]×{a.get('count', 0)}[/]",
+            "",
+            f"[{FGDIM} b]SIGNATUR[/]",
+            f"[{FG}]{_esc(_cap(a.get('signature', ''), 160))}[/]",
+            "",
+            f"[{FGDIM} b]SAMPLE[/]",
+            f"[{FGDIM}]{_esc(_cap(a.get('sample', ''), 200))}[/]",
+        ]
+        if a.get("location"):
+            lines += ["", f"[{FGDIM} b]LOKATION[/]", f"[{FGDIM}]{_esc(_cap(a.get('location'), 90))}[/]"]
+        lines += [
+            "",
+            f"[{FGDIM} b]VINDUE[/]",
+            f"[{FGDIM}]{first}  →  {last}[/]",
+        ]
+        panel.update(Text.from_markup("\n".join(lines)))
+
+    def on_data_table_row_highlighted(self, event) -> None:  # noqa: ANN001
+        try:
+            row = int(getattr(event, "cursor_row", 0) or 0)
+        except Exception:
+            row = 0
+        if self.active_tab == "incidents":
+            self._sel_incident = row
+            self._render_detail_panel()
+        elif self.active_tab == "anomalies":
+            self._sel_anomaly = row
+            self._render_anomaly_detail()
 
     def on_data_table_row_selected(self, event) -> None:  # noqa: ANN001
         try:
@@ -688,7 +867,7 @@ class CentralHud(App):
             msg = str(inc.get("message", "") or "").replace("\n", " ")
             if len(msg) > 90:
                 msg = msg[:89] + "…"
-            lines.append(f"  [{color}]● {sev}[/] [{FGDIM}]{cluster}/{nerve}[/] — {msg}")
+            lines.append(f"  [{color}]● {_esc(sev)}[/] [{FGDIM}]{_esc(cluster)}/{_esc(nerve)}[/] — {_esc(msg)}")
         panel.update(Text.from_markup("\n".join(lines)))
 
     # -- Diagnostics -------------------------------------------------------
@@ -732,7 +911,7 @@ class CentralHud(App):
                 text, suffix = str(rc), ""
             if len(text) > 84:
                 text = text[:83] + "…"
-            lines.append(f"  [{AMBER}]▸[/] [{FG}]{text}[/]{suffix}")
+            lines.append(f"  [{AMBER}]▸[/] [{FG}]{_esc(text)}[/]{suffix}")
         panel.update(Text.from_markup("\n".join(lines)))
 
     # -- Governance --------------------------------------------------------
@@ -859,7 +1038,7 @@ class CentralHud(App):
             settable = self._healer_flag_name(h) is not None
             note = "" if settable else f"  [{DIM}](ikke flag-styret)[/]"
             lines.append(
-                f"  [{DIM}]{i}[/] [{FG}]{kind}[/]  [{FGDIM}]{mode}[/]  "
+                f"  [{DIM}]{i}[/] [{FG}]{_esc(kind)}[/]  [{FGDIM}]{_esc(mode)}[/]  "
                 f"farlig {d_mark}  [{live_color} b]● {live_label}[/]{note}"
             )
         if self._pending_write is not None:
@@ -946,6 +1125,9 @@ class CentralHud(App):
         self.refresh_data()
 
     def action_confirm_no(self) -> None:
+        if self._cmd_mode:
+            self._exit_command_mode()
+            return
         if self._pending_write is None:
             return
         self._pending_write = None

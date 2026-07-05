@@ -381,6 +381,49 @@ def incident_detail(client: Any, incident: dict) -> dict:
         }
 
 
+def agents(client: Any) -> list:
+    """Agent roster from /central/agents, shaped for the Agents view.
+
+    Self-safe: any error → empty list. Each row carries id/role/status/tokens
+    plus the raw agent dict passed through for the side-panel detail.
+    """
+    try:
+        data = client.get_json("/central/agents")
+    except Exception:
+        return []
+    if not isinstance(data, dict):
+        return []
+    out = []
+    for a in data.get("agents") or []:
+        if not isinstance(a, dict):
+            continue
+        out.append({
+            "agent_id": str(a.get("agent_id", "") or ""),
+            "role": str(a.get("role", "") or ""),
+            "status": str(a.get("status", "") or ""),
+            "tokens_burned": int(a.get("tokens_burned", 0) or 0),
+            "raw": a,
+        })
+    return out
+
+
+def self_snapshot(client: Any) -> dict:
+    """Jarvis' reduced self from /central/self, shaped for the Mind & Self view.
+
+    Self-safe: any error → empty dict. Returns the ``self`` sub-object holding
+    living_executive / self_model / world_model surfaces (already reduced by the
+    backend to liveness / counters / governance consequence — never raw content).
+    """
+    try:
+        data = client.get_json("/central/self")
+    except Exception:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    slf = data.get("self")
+    return slf if isinstance(slf, dict) else {}
+
+
 def cost_today(client: Any) -> float | None:
     """Today's total cost in USD from /mc/costs, or None if unavailable.
 

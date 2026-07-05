@@ -99,13 +99,23 @@ _SEVERITY = {
 # is no longer a top-level tab of its own, but its view stays fully reachable
 # (its populate/detail logic is unchanged) and folds into the incidents tab as a
 # sub-view — so no anomaly functionality is lost.
-_TABLE_TABS = {"nerves", "clusters", "incidents", "anomalies", "governance"}
+_TABLE_TABS = {"nerves", "clusters", "incidents", "anomalies", "governance",
+               "agents"}
 # Panel-backed tabs (single full-width panel). The not-yet-wired new tabs
-# (runs/approvals/agents/mind) render the "venter på wiring" placeholder here.
-# "healing" stays reachable as a panel sub-view (its render/toggle logic intact).
+# (runs/approvals) still render the "venter på wiring" placeholder here.
+# "mind" renders Jarvis' self as a panel. "healing" stays reachable as a panel
+# sub-view (its render/toggle logic intact).
 _PANEL_TABS = {
     "overview", "diagnostics", "healing",
-    "runs", "approvals", "agents", "mind",
+    "runs", "approvals", "mind",
+}
+
+# agent status -> color
+_AGENT_STATUS = {
+    "running": GREEN, "active": GREEN, "live": GREEN,
+    "idle": DIM, "pending": DIM, "queued": DIM,
+    "done": BLUE, "completed": BLUE, "finished": BLUE,
+    "error": RED, "failed": RED, "dead": RED,
 }
 
 
@@ -264,6 +274,7 @@ class CentralHud(App):
         self._anomalies: list = []
         self._nerve_rows: list = []
         self._cluster_rows: list = []
+        self._agent_rows: list = []
         self._pulse_on: bool = True
         self._caret_on: bool = True
         self._cmd_mode: bool = False
@@ -562,13 +573,18 @@ class CentralHud(App):
             elif name == "governance":
                 self._populate_governance()
                 self._refresh_detail_for_current()
+            elif name == "agents":
+                self._populate_agents()
+                self._refresh_detail_for_current()
             elif name == "overview":
                 self._render_overview_panel()
             elif name == "diagnostics":
                 self._render_diagnostics_panel()
             elif name == "healing":
                 self._render_healing_panel()
-            elif name in ("runs", "approvals", "agents", "mind"):
+            elif name == "mind":
+                self._render_mind_self_panel()
+            elif name in ("runs", "approvals"):
                 # Not-yet-wired tabs (Fase 0): render the placeholder.
                 self._render_placeholder_panel(name)
             else:
@@ -966,6 +982,8 @@ class CentralHud(App):
             self._render_cluster_detail(row)
         elif t == "governance":
             self._render_gov_detail(row)
+        elif t == "agents":
+            self._render_agent_detail(row)
 
     def _render_nerve_detail(self, row: int) -> None:
         try:
@@ -1191,6 +1209,130 @@ class CentralHud(App):
             danger_cell = (Text("⚠ farlig", style=AMBER) if dangerous
                            else Text("—", style=DIM))
             table.add_row(Text(label, style=FG), val_text, danger_cell)
+
+    # -- Agents ------------------------------------------------------------
+    def _populate_agents(self) -> None:
+        try:
+            table = self.query_one("#nerve-table", DataTable)
+        except Exception:
+            return
+        self._reset_columns(table, ("agent", 24), ("rolle", 18),
+                            ("status", 14), ("tokens", 10))
+        if self._client is None:
+            return
+        try:
+            rows = datasource.agents(self._client)
+        except Exception:
+            rows = []
+        self._agent_rows = rows
+        self._set_paneh(f"[{CYAN}]AGENTS[/] [{FGDIM}]— {len(rows)} agenter[/]")
+        for r in rows:
+            status = str(r.get("status", ""))
+            color = _AGENT_STATUS.get(status, FG)
+            table.add_row(
+                Text(str(r.get("agent_id", "")), style=FG),
+                Text(str(r.get("role", "")), style=FGDIM),
+                Text(f"● {status}" if status else "—", style=color),
+                Text(str(r.get("tokens_burned", 0)), style=FGDIM, justify="right"),
+            )
+
+    def _render_agent_detail(self, row: int) -> None:
+        try:
+            panel = self.query_one("#hud-detail", Static)
+        except Exception:
+            return
+        rows = self._agent_rows or []
+        if not (0 <= row < len(rows)):
+            self._set_side_paneh(f"[{CYAN}]AGENT-DETALJE[/] [{DIM}]— —[/]")
+            panel.update(Text.from_markup(f"[{GREEN} b]◈ INGEN AGENTER[/]"))
+            return
+        r = rows[row]
+        status = str(r.get("status", "") or "—")
+        color = _AGENT_STATUS.get(status, FG)
+        agent_id = r.get("agent_id", "")
+        role = r.get("role", "")
+        badge_bg = {GREEN: "#06251a", DIM: "#0f1824", BLUE: "#06202e",
+                    RED: "#1f0d0d"}.get(color, "#06202e")
+        self._set_side_paneh(f"[{CYAN}]AGENT-DETALJE[/] [{DIM}]— {_esc(agent_id)}[/]")
+        lines = [
+            f"[{color} b on {badge_bg}] ● {_esc(status.upper())} [/]",
+            "",
+            f"[{FG} b]{_esc(agent_id)}[/]",
+            f"[{FGDIM}]rolle[/]   [{FG}]{_esc(role)}[/]",
+            f"[{FGDIM}]tokens[/]  [{FG}]{_esc(r.get('tokens_burned', 0))}[/]",
+        ]
+        # any remaining fields on the raw agent dict (never fabricated)
+        raw = r.get("raw") or {}
+        extra = [k for k in raw
+                 if k not in ("agent_id", "role", "status", "tokens_burned")]
+        if extra:
+            lines += ["", f"[{FGDIM} b]FELTER[/]"]
+            for k in extra:
+                v = str(raw.get(k))
+                if len(v) > 60:
+                    v = v[:59] + "…"
+                lines.append(f"[{FGDIM}]{_esc(k)}[/]  [{FG}]{_esc(v)}[/]")
+        panel.update(Text.from_markup("\n".join(lines)))
+
+    # -- Mind & Self -------------------------------------------------------
+    def _render_mind_self_panel(self) -> None:
+        """Render Jarvis' reduced self as HIS presence in the Central — warm,
+        never raw content: living_executive / self_model / world_model."""
+        try:
+            panel = self.query_one("#hud-panel", Static)
+        except Exception:
+            return
+        try:
+            slf = datasource.self_snapshot(self._client) if self._client else {}
+        except Exception:
+            slf = {}
+
+        def _dot(surface: dict) -> str:
+            return (f"[{GREEN}]●[/]" if bool((surface or {}).get("liveness"))
+                    else f"[{DIM}]○[/]")
+
+        lines = [
+            f"[{CYAN} b]◈ MIND & SELF[/]  [{FGDIM}]— hans selv i Centralen[/]",
+        ]
+        if not slf:
+            lines += ["", f"[{FGDIM}]— selvet er stille lige nu —[/]"]
+            panel.update(Text.from_markup("\n".join(lines)))
+            return
+
+        le = slf.get("living_executive") or {}
+        le_sum = le.get("summary") or {}
+        lines += [
+            "",
+            f"{_dot(le)} [{GREEN} b]◈ living_executive[/]",
+            f"[{FGDIM}]mode[/]         [{FG}]{_esc(le.get('mode', '—'))}[/]",
+            f"[{FGDIM}]trace_count[/]  [{FG}]{_esc(le_sum.get('trace_count', 0))}[/]"
+            f"   [{FGDIM}]recent[/] [{FG}]{_esc(le_sum.get('recent_count', 0))}[/]",
+            f"[{FGDIM}]last_choice[/]  [{FG}]{_esc(le_sum.get('last_choice', '—'))}[/]",
+            f"[{FGDIM}]last_action[/]  [{FG}]{_esc(le_sum.get('last_action', '—'))}[/]",
+        ]
+
+        sm = slf.get("self_model") or {}
+        sm_sum = sm.get("summary") or {}
+        sections = sm_sum.get("sections") or []
+        if isinstance(sections, list):
+            sec_text = ", ".join(str(s) for s in sections)
+        else:
+            sec_text = str(sections)
+        lines += [
+            "",
+            f"{_dot(sm)} [{GREEN} b]◈ self_model[/]",
+            f"[{FGDIM}]layer_count[/]  [{FG}]{_esc(sm_sum.get('layer_count', 0))}[/]",
+            f"[{FGDIM}]sections[/]     [{FG}]{_esc(sec_text or '—')}[/]",
+        ]
+
+        wm = slf.get("world_model") or {}
+        wm_sum = wm.get("summary") or {}
+        lines += [
+            "",
+            f"{_dot(wm)} [{GREEN} b]◈ world_model[/]",
+            f"[{FGDIM}]active_count[/]  [{FG}]{_esc(wm_sum.get('active_count', 0))}[/]",
+        ]
+        panel.update(Text.from_markup("\n".join(lines)))
 
     @staticmethod
     def _rel_age(iso: str) -> str:

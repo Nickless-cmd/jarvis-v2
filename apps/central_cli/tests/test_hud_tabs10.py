@@ -32,8 +32,9 @@ async def test_all_ten_tabs_show_without_crash():
 
 @pytest.mark.asyncio
 async def test_new_tabs_render_placeholder_without_crash():
-    """The not-yet-wired tabs (runs/approvals/agents/mind) are PANEL tabs that
-    render a 'venter på wiring' placeholder without crashing."""
+    """The still-not-wired tabs (runs/approvals) are PANEL tabs that render a
+    'venter på wiring' placeholder without crashing. (agents/mind are wired in
+    Task 1.6 — see test_hud_self_agents.py.)"""
     class FC:
         def get_json(self, p, params=None):
             if "realtime" in p:
@@ -46,7 +47,7 @@ async def test_new_tabs_render_placeholder_without_crash():
 
     app = CentralHud(client=FC(), live=False)
     async with app.run_test(size=(150, 40)):
-        for tab in ("runs", "approvals", "agents", "mind"):
+        for tab in ("runs", "approvals"):
             app.show_tab(tab)
             assert app.active_tab == tab
             # placeholder tabs are panel tabs (not table tabs)

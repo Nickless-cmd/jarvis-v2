@@ -1482,6 +1482,29 @@ class CentralHud(App):
             f"  [{FGDIM}]tilføjet i dag[/] [{FG} b]{added}[/]  [{FGDIM}]·[/]  "
             f"[{FGDIM}]dagens journal[/] {journal_mark}",
         ]
+
+        # -- indre liv (A8) — reduceret: kun liveness+count pr. sektion --
+        try:
+            il = datasource.inner_life(self._client) if self._client else {}
+        except Exception:
+            il = {}
+        il = il or {}
+        il_live = int(il.get("live_count") or 0)
+        il_total = int(il.get("total") or 0)
+        lines += [
+            "",
+            f"[{CYAN} b]◈ INDRE LIV[/]  [{FGDIM}]— {il_live}/{il_total} sektioner aktive[/]",
+        ]
+        il_sections = il.get("sections") or {}
+        if not il_sections:
+            lines.append(f"  [{DIM}]— stille —[/]")
+        else:
+            for name, sec in sorted(il_sections.items()):
+                sec = sec or {}
+                dot = (f"[{GREEN}]●[/]" if sec.get("liveness") else f"[{DIM}]○[/]")
+                cnt = int(sec.get("count") or 0)
+                lines.append(f"  {dot} [{FGDIM}]{_esc(name)}[/] [{FG}]{cnt}[/]")
+
         panel.update(Text.from_markup("\n".join(lines)))
 
     @staticmethod

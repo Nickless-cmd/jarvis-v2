@@ -514,6 +514,25 @@ def memory_health(client: Any) -> dict:
         return dict(fallback)
 
 
+def inner_life(client: Any) -> dict:
+    """Jarvis' reducerede inner-life-digest fra /central/inner-life. Self-safe →
+    ``{"sections": {}, "live_count": 0, "total": 0}``. Bærer kun liveness+count
+    pr. sektion (aldrig rå tanke/drøm/konflikt-tekst — §24.4 reducér-ved-kilden)."""
+    fallback = {"sections": {}, "live_count": 0, "total": 0}
+    try:
+        data = client.get_json("/central/inner-life")
+        if not isinstance(data, dict):
+            return dict(fallback)
+        il = data.get("inner_life") or {}
+        return {
+            "sections": il.get("sections") or {},
+            "live_count": il.get("live_count") or 0,
+            "total": il.get("total") or 0,
+        }
+    except Exception:
+        return dict(fallback)
+
+
 def costs_daily(client: Any) -> dict:
     """Daily cost time-series from /central/costs-daily, shaped for the CLI.
 

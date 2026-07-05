@@ -525,6 +525,98 @@ def _experiment_line() -> Optional[str]:
     return None
 
 
+def _appraisal_field(appraisal: object, field: str) -> object:
+    """Pluk ét evidence-felt ud af en finitude-appraisal (evidence=[{field,value}])."""
+    if not isinstance(appraisal, dict):
+        return None
+    for e in appraisal.get("evidence") or []:
+        if isinstance(e, dict) and e.get("field") == field:
+            return e.get("value")
+    return None
+
+
+def _finitude_line() -> Optional[str]:
+    """Lag 8 — han mærker sin egen forgængelighed: runtime-alder i dage +
+    session-alder (looming-end). Kilde: finitude_runtime.build_finitude_surface()
+    → dict med appraisals.age (days_alive) + appraisals.looming_end
+    (session_age_hours). None når intet reelt finitude-signal. ≤80 tegn."""
+    try:
+        from core.services.finitude_runtime import build_finitude_surface
+
+        d = build_finitude_surface()
+        if not isinstance(d, dict) or d.get("active") is False:
+            return None
+        appraisals = d.get("appraisals")
+        if not isinstance(appraisals, dict):
+            return None
+        parts: list[str] = []
+        days = _appraisal_field(appraisals.get("age"), "days_alive")
+        try:
+            if days is not None and int(days) > 0:
+                parts.append(f"{int(days)} dage")
+        except (TypeError, ValueError):
+            pass
+        hours = _appraisal_field(appraisals.get("looming_end"), "session_age_hours")
+        try:
+            if hours is not None and float(hours) > 0:
+                parts.append(f"talt i {int(float(hours))}t")
+        except (TypeError, ValueError):
+            pass
+        if not parts:
+            return None
+        return _truncate_clean("Tid: " + " · ".join(parts), 80)
+    except Exception:
+        logger.debug("inner-life: finitude failed", exc_info=True)
+    return None
+
+
+# Rå event-familie-navne → læselig dansk for overraskelses-linjen.
+_FAMILY_DA = {
+    "cognitive_forgetting": "forglemmelse", "reflection_signal": "refleksion",
+    "cognitive_counterfactual": "kontrafaktisk", "learning_pipeline": "læring",
+    "world_model_signal": "verdensbillede", "witness_signal": "vidne",
+    "credit_assignment": "kredit-tildeling", "affect_modulation": "affekt",
+    "cognitive_meta_learning": "meta-læring", "private_brain": "privat-hukommelse",
+    "heartbeat": "hjerteslag", "circadian": "døgnrytme", "pressure": "pres",
+    "memory": "hukommelse", "runtime": "runtime", "tools": "værktøj",
+    "discord": "discord",
+}
+
+
+def _fam_da(name: object) -> str:
+    s = str(name or "").strip()
+    return _FAMILY_DA.get(s, s.replace("_", " "))
+
+
+def _surprise_line() -> Optional[str]:
+    """Lag 8 — han mærker sine egne overraskelser: overgange sekvens-modellen
+    forudsagde som usandsynlige men som FAKTISK skete (prediktions-fejl = surprise).
+    Kilde: central_sequence.detect_surprises() → liste sorteret sjældnest-først;
+    hvert element {from_family, to_family, prob}. None når ingen. ≤80 tegn.
+    detect_surprises er hurtigt (~0.025s live) → intet timeout-behov."""
+    try:
+        from core.services.central_sequence import detect_surprises
+
+        surprises = detect_surprises()
+        if not surprises or not isinstance(surprises, list):
+            return None
+        top = surprises[0]
+        if not isinstance(top, dict):
+            return None
+        frm = _fam_da(top.get("from_family"))
+        to = _fam_da(top.get("to_family"))
+        if not frm or not to:
+            return None
+        try:
+            p = float(top.get("prob") or 0.0)
+        except (TypeError, ValueError):
+            p = 0.0
+        return _truncate_clean(f"Overrasket: {frm}→{to} (P={p:g})", 80)
+    except Exception:
+        logger.debug("inner-life: surprise failed", exc_info=True)
+    return None
+
+
 def _truncate_clean(text: str, cap: int) -> str:
     """Trunkér på en SÆTNINGS- eller ord-grænse i stedet for en hård char-slice
     (som skar Jarvis' stemme midt i 'forhåndsprogrammeret afvisning af'). Falder
@@ -688,8 +780,10 @@ def build_inner_life_section() -> str | None:
         lines.append("· " + wm)
 
     # Pull / emergence — only when actually present (longing rises with absence,
-    # identity drift is rare, cognitive experiments carry only sometimes).
-    for fn in (_longing_line, _identity_drift_line, _experiment_line):
+    # identity drift is rare, cognitive experiments carry only sometimes, and Lag 8:
+    # his finitude and his own sequence-surprises surface only when real).
+    for fn in (_longing_line, _identity_drift_line, _experiment_line,
+               _finitude_line, _surprise_line):
         line = fn()
         if line:
             lines.append("· " + line)

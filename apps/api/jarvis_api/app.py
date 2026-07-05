@@ -564,6 +564,8 @@ def create_app() -> FastAPI:
     app.include_router(plugins_router)
     from apps.api.jarvis_api.routes.central import router as central_router
     app.include_router(central_router)
+    from apps.api.jarvis_api.routes import central_governance as _central_governance
+    app.include_router(_central_governance.router)
     from apps.api.jarvis_api.routes.oauth import router as oauth_router
     app.include_router(oauth_router)
     from apps.api.jarvis_api.routes.connectors import router as connectors_router

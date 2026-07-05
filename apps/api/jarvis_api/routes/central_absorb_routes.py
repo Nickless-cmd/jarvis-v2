@@ -346,3 +346,127 @@ async def get_autonomy() -> dict:
         "pending_count": len(pending),
         "count": len(proposals),
     }
+
+
+@router.get("/attention")
+async def get_attention() -> dict:
+    """Projicér attention-budget-surfacen + absorbér liveness.
+
+    Owner-gated. Self-safe: producent-fejl → tomt surface, stadig 200.
+    """
+    require_central_owner()
+    try:
+        from core.services.attention_budget import build_attention_budget_surface
+        s = build_attention_budget_surface()
+    except Exception:
+        s = {}
+    s = s if isinstance(s, dict) else {}
+    absorb("attention", "budget", {"active": bool(s)}, learn_key="attention:budget")
+    return {"attention": s}
+
+
+@router.get("/skills")
+async def get_skills() -> dict:
+    """Projicér skill-engine + skill-contract-registry + absorbér liveness.
+
+    Owner-gated. Self-safe: hver producent-fejl → tomt surface, stadig 200.
+    """
+    require_central_owner()
+    try:
+        from core.services.skill_engine import build_skill_engine_surface
+        eng = build_skill_engine_surface()
+    except Exception:
+        eng = {}
+    try:
+        from core.services.skill_contract_registry import (
+            build_skill_contract_registry_surface,
+        )
+        reg = build_skill_contract_registry_surface()
+    except Exception:
+        reg = {}
+    eng = eng if isinstance(eng, dict) else {}
+    reg = reg if isinstance(reg, dict) else {}
+    absorb("skill", "engine", {"active": bool(eng)}, learn_key="skill:engine")
+    absorb("skill", "contracts", {"active": bool(reg)}, learn_key="skill:contracts")
+    return {"engine": eng, "contracts": reg}
+
+
+@router.get("/integrity")
+async def get_integrity() -> dict:
+    """Projicér self-deception-guard-surfacen + absorbér liveness.
+
+    Owner-gated. Self-safe: producent-fejl → tomt surface, stadig 200.
+    """
+    require_central_owner()
+    try:
+        from core.services.self_deception_guard import (
+            build_self_deception_guard_surface,
+        )
+        s = build_self_deception_guard_surface()
+    except Exception:
+        s = {}
+    s = s if isinstance(s, dict) else {}
+    absorb(
+        "integrity",
+        "self_deception",
+        {"active": bool(s)},
+        learn_key="integrity:self_deception",
+    )
+    return {"integrity": s}
+
+
+@router.get("/experiments")
+async def get_experiments() -> dict:
+    """Projicér cognitive-core-experiments-surfacen + absorbér liveness.
+
+    Owner-gated. Self-safe: producent-fejl → tomt surface, stadig 200.
+    """
+    require_central_owner()
+    try:
+        from core.services.cognitive_core_experiments import (
+            build_cognitive_core_experiments_surface,
+        )
+        s = build_cognitive_core_experiments_surface()
+    except Exception:
+        s = {}
+    s = s if isinstance(s, dict) else {}
+    absorb("experiment", "runner", {"active": bool(s)}, learn_key="experiment:runner")
+    return {"experiments": s}
+
+
+# Kun visible-execution-relevante flags projiceres — aldrig hele settings-dict'en
+# (undgå secrets/støj). Whitelist dækker både de nominelle execution-flags og de
+# faktisk-eksisterende visible-lane-nøgler; ikke-eksisterende nøgler springes over.
+_EXECUTION_KEYS = (
+    "visible_execution_mode",
+    "generative_autonomy_enabled",
+    "cheap_lane_enabled",
+    "agenda_authoritative",
+    "gut_consumer_mode",
+    "lag4_adaptation",
+    "visible_model_provider",
+    "visible_model_name",
+    "visible_auth_profile",
+    "cheap_model_lane",
+    "primary_model_lane",
+)
+
+
+@router.get("/execution")
+async def get_execution() -> dict:
+    """Projicér visible-execution-config (whitelisted flags) + absorbér liveness.
+
+    Owner-gated. Self-safe: producent-fejl → tomt config, stadig 200. KUN
+    whitelistede execution-flags returneres — aldrig hele settings-dict'en.
+    """
+    require_central_owner()
+    try:
+        from core.runtime.settings import load_settings
+        st = load_settings()
+        raw = st.to_dict() if hasattr(st, "to_dict") else st
+    except Exception:
+        raw = {}
+    raw = raw if isinstance(raw, dict) else {}
+    cfg = {k: raw.get(k) for k in _EXECUTION_KEYS if k in raw}
+    absorb("execution", "config", cfg, learn_key="execution:config")
+    return {"execution": cfg}

@@ -572,6 +572,10 @@ def create_app() -> FastAPI:
     app.include_router(_central_breakers.router)
     from apps.api.jarvis_api.routes import central_feel as _central_feel
     app.include_router(_central_feel.router)
+    from apps.api.jarvis_api.routes import central_self as _central_self
+    app.include_router(_central_self.router)
+    from apps.api.jarvis_api.routes import central_absorb_routes as _central_absorb_routes
+    app.include_router(_central_absorb_routes.router)
     from apps.api.jarvis_api.routes.oauth import router as oauth_router
     app.include_router(oauth_router)
     from apps.api.jarvis_api.routes.connectors import router as connectors_router

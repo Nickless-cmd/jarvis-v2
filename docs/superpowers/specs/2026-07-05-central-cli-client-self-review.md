@@ -225,3 +225,33 @@ SSE-tunge Central-paneler (`CentralPanel` + `CentralHud`) er den reelle streamin
 har 3 skærme + terminal-workflow og vil have Centralen live i en dedikeret CLI så han kan se realtid
 mens Claude/Jarvis arbejder. Rækkefølge-værn: CLI bygges + verificeres FØR panelerne fjernes (Fase 4).
 Desk beholder et let `CentralBadge`. R1 lukket i design-doc. Spec er nu fuldt byggeklar.
+
+---
+
+## Review 4 — Claude (5. jul): eksisterende CLI-landskab (undgå at bygge et 4. CLI)
+
+Bjørn: "runtime har osse et cli system." Verificeret — der er **tre** eksisterende CLI-ting:
+
+1. **`scripts/jarvis.py` + `core/cli/`** — ops/provider-CLI (756 linjer, argparse, ~30 subcommands:
+   bootstrap/health/overview/configure-provider/copilot-auth/openai-oauth…). `core/cli/http_fallback.py`
+   har `request_json(...)` = HTTP-plumbing til API'en. Kører MED `core` importeret.
+2. **`jc`** (bash, `~/.local/bin/jc`, 91 linjer) — one-shot Central (`status/series/diag/nerve/resolve/
+   cmd/watch`) → `/central/*` via Cloudflare-tunnel + `~/.config/jarvis-owner-token`. Remote fra CheifOne.
+3. **`central_terminal.py`** — server-side kommando-parser (`/central/command` dispatcher hertil).
+
+**Duplikations-risiko:** spec'ens friske `apps/central_cli/` ville genimplementere `client.py`/`auth.py`/
+`config.py` — men HTTP-plumbing (http_fallback), token-håndtering (jc's fil) og parser (central_terminal)
+findes allerede.
+
+**BESLUTNING (Bjørn: B — let standalone, strip duplikation):**
+- Byg `central` som **let standalone** (httpx + Textual, pip-installerbar, portabel på 3-skærms-workstation) —
+  IKKE foldet ind i `scripts/jarvis.py` (andet formål: provider/ops; + tung core-import-kobling).
+- **Remote-først** (Bjørns terminal er på CheifOne = remote fra containeren). Local mode sekundær.
+- **Genbrug jc's token-setup**: læs `~/.config/jarvis-owner-token` (samme fil som jc) som primær auth-sti;
+  wizard-header-minting bliver fallback for førstegangs-setup, ikke default.
+- **Genbrug `central_terminal.py`-vokabular** (allerede H2) — ingen duplikeret kommando-logik.
+- **Absorbér jc's one-shot**: `central status --json` == `jc status`. `jc`-scriptet bliver tynd alias til
+  `central --script` og udfases gradvist (én kilde til sandhed).
+- `scripts/jarvis.py` forbliver den separate ops/provider-CLI (rører vi ikke).
+
+Konsekvens for spec §3 (remote-først + jc-token), §10-11 (jc-absorption + jarvis.py-afgrænsning).

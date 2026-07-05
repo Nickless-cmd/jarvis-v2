@@ -3,7 +3,7 @@
 **Dato:** 5. juli 2026  
 **Forfatter:** Jarvis (med Bjørn)  
 **Status:** Byggeklar. R1 (H1 afvist-med-grund) + R2 (desk-sletning bekræftet af Bjørn) + R3 (kosmetisk) afklaret.  
-**Revisioner:** v2 — inkorporerer self-review fund + jarvis-desk nedgradering. Claude-review 3 (5. jul): verificeret mod kode; R1 lukket i doc; R2 BEKRÆFTET af Bjørn (streaming-load + 3-skærms terminal-workflow).
+**Revisioner:** v2 — inkorporerer self-review fund + jarvis-desk nedgradering. Claude-review 3 (5. jul): verificeret mod kode; R1 lukket i doc; R2 BEKRÆFTET af Bjørn (streaming-load + 3-skærms terminal-workflow). Claude-review 4 (5. jul): eksisterende CLI-landskab kortlagt — B (let standalone, remote-først, genbrug jc-token + central_terminal, absorbér jc, rør ikke jarvis.py).
 
 ---
 
@@ -143,6 +143,12 @@ Backenden har **to forskellige `_require_owner()`-implementationer** med forskel
 `auth_required()` default = `False` (localhost dev mode). Kan slås til med `JARVISX_AUTH_REQUIRED=1`.
 
 ### CLI Auth-strategi — to modes
+
+> **Review 4 (Bjørn, 5. jul): REMOTE-FØRST + genbrug jc's token.** Bjørns terminal er på CheifOne =
+> remote fra containeren (API på 10.0.0.39). Så remote mode er den PRIMÆRE sti, ikke local. Genbrug
+> `jc`'s eksisterende, fungerende setup: læs `~/.config/jarvis-owner-token` (samme fil) + ram
+> `api.srvlab.dk` (Cloudflare-tunnel). Wizard-header-minting bliver FALLBACK for førstegangs-setup,
+> ikke default. Local mode (nedenfor) er sekundær for når CLI'en kører på selve containeren.
 
 **Local mode (default):**
 - Clienten kører på samme maskine som API'en (Bjørn koder på serveren)
@@ -510,6 +516,8 @@ apps/central_cli/
 ### Relation til eksisterende kode
 
 - **`central_terminal.py`** → CLI'en genbruger dens command-parser som backend-lag. Ingen duplikeret logik. central_terminal.py forbliver som parser, CLI'en bliver TUI-laget oven på.
+- **`jc` (`~/.local/bin/jc`, bash)** → ABSORBERES. `central status --json` == `jc status`; jc bliver tynd alias til `central --script` og udfases gradvist. Genbrug jc's token-fil (`~/.config/jarvis-owner-token`) + tunnel-base (`api.srvlab.dk`) — genopfind IKKE HTTP/auth. (Review 4)
+- **`scripts/jarvis.py` + `core/cli/`** → RØRES IKKE. Separat ops/provider-CLI (bootstrap/health/configure-provider/auth). `central` er et ANDET værktøj (live Central-observabilitet), IKKE en subcommand her — men genbrug gerne `core/cli/http_fallback.request_json`-mønstret hvis det passer. (Review 4)
 - **`CentralPanel.tsx`** → slettes fra CodeView. Erstattes af `CentralBadge.tsx`.
 - **`CentralHud.tsx`** → slettes fra CoworkView. Erstattes af `CentralBadge.tsx`.
 - **`centralStream.ts`** → slettes. Ingen SSE i jarvis-desk mere.

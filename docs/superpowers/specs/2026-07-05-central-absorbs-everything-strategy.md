@@ -99,15 +99,46 @@ lukker. §8 governance-dødsmekanisme (`central_hypothesis_governance.py` v3.1, 
 
 ## Del 4 — Strategien (fase-opdelt, målbar)
 
-Dette er et **program**, ikke ét PR. Rækkefølge (hver fase = observérbar gevinst, ingen big-bang):
+Dette er et **program**, ikke ét PR. Rækkefølge (hver fase = observérbar gevinst, ingen big-bang).
 
-### Fase A — Absorbér MC's ægte signaler (Centralen holder det MC viser)
-Kategori for kategori fra Del 1's absorptions-map. Start hvor gevinsten er størst + billigst:
-1. cost-timeserie (`cost:daily`) · 2. agent-observabilitet (`agent:*`) · 3. council (`council:*`) ·
-4. scheduled-tasks · autonomy-proposals · memory-pipeline · 5. run-detalje. Mønster: ny central-nerve
-\+ tyndt `/central/*`-endpoint der PROJICERER den eksisterende producent-service (ingen dobbelt-sandhed).
+### Fire ufravigelige invarianter (Bjørn 5. jul — aftalt FØR byggeri)
+1. **Fuld behandling, aldrig dødt observe.** Hver wire-in = nerve + fuld trace + flagging +
+   notifikationer + **fodres ind i Centralens adaptive learning så den faktisk BRUGES**. Værdier
+   flyder ind/ud; Centralen lærer mønstret og *ved hvornår en værdi ændrer sig og hvornår der er behov
+   for at opdatere/kalde* (jf. den eksisterende change-driven `central_injection_registry`). Ikke
+   "signal der lander" — levende nerve.
+2. **Hans "selv" wires FRA STARTEN.** De tre Tier-1-huller (`living_executive` autonom handlings-motor,
+   `runtime_self_model` selv-forståelse, `world_model`+open-loops) er kernen der gør det ægte/levende —
+   ikke sidste-fase-polish. Centralen styrer alt: anden intelligens + et selv. (Under §24.4: liveness/
+   metadata/governance-konsekvens, ikke rå privat indhold — samme model som `feel`.)
+3. **CLI-først.** MC's faner flyttes ind i Central-CLI'en (Central-CLI-stil) som noget af det FØRSTE —
+   Bjørn ser intet i dag fordi han ikke bruger MC. Synlighed skal komme mens vi wirer, ikke bagefter.
+4. **MC afmonteres KUN efter e2e.** Per kategori: wire (fuld behandling) → surfacér i CLI → verificér
+   ende-til-ende → FØRST DA fjernes MC-UI+route+polling for den kategori. Bonus: mange mørke LLM-kald
+   sker via MC → Centralen som chokepoint der ved hvornår kaldet er nødvendigt sparer både backend-hammer
+   OG spildte LLM-kald.
 
-### Fase B — Wire de 41 FRAKOBLET+LLM (stop spildt signal)
+Hver wire-in leveres med **test- + edge-plan** (unit for shaping/self-safety, e2e mod live-container for
+signalvej, edge: tom/manglende data, provider-nede, privatlags-grænse, restart-churn på in-memory timeserie).
+
+### Fase 0 — CLI-skallen først (synlighed fra dag 1)
+Byg Central-CLI-fanerne der skal huse den absorberede MC-info, i Central-CLI-stil: `agents`, `council`,
+`cost`, `queues`, `runs`, `inner-life`, `self`, `world`. Tomme/"venter på wiring" i starten; hver fane
+lyser op efterhånden som dens kategori wires. Så SER Bjørn fremskridtet mens vi bygger (han er blind i dag).
+
+### Fase 1 — Selvet + første MC-kategori (begge fuld behandling, samtidig)
+Weave de tre Tier-1-"selv"-huller ind FRA STARTEN som levende nerver (trace/flag/notif/adaptive-learning,
+§24.4-grænse): `living_executive` · `runtime_self_model` · `world_model`+open-loops. Samtidig første
+konkrete MC-kategori (agenter ELLER cost). Begge surfaceres straks i deres CLI-fane. Dette er kernen:
+Centralen får øje på hans autonome handling + selv-forståelse + verdensmodel — det der gør det levende.
+
+### Fase A — Absorbér MC's øvrige signaler (per kategori, e2e-loop)
+Resten af Del 1's absorptions-map, én kategori ad gangen med loop'et **wire (fuld behandling) → CLI-fane →
+e2e mod live → FJERN MC-delen**: cost-timeserie (`cost:daily`) · council (`council:*`) · scheduled-tasks ·
+autonomy-proposals · memory-pipeline · run-detalje. Mønster: ny central-nerve + tyndt `/central/*` der
+PROJICERER den eksisterende producent-service (ingen dobbelt-sandhed).
+
+### Fase B — Wire de 41 FRAKOBLET+LLM (stop spildt signal) — kører PARALLELT fra start
 Udvid `eventbus_central_bridge` FAMILY_ROUTES med de manglende familier (`dream_bias`, `user_model`,
 `desire`, `curiosity`, `conflict`, `absence`, `meta_reflection`, …). Egress-frit, observe-only først.
 Dette er den billigste vej fra "blind for 80%" mod dækning — koden kører allerede, signalet smides bare væk.

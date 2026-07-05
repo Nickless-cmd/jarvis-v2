@@ -578,7 +578,9 @@ def build_visible_chat_prompt_assembly(
         compact=compact,
         name=name,
     )
-    future_cognitive_state = _measured_submit(
+    from core.services.central_injection_registry import injection_live, read_injection
+    _cog_live = injection_live("cognitive_state")
+    future_cognitive_state = None if _cog_live else _measured_submit(
         "cognitive_state",
         _safe_build_cognitive_state_for_prompt, compact=compact,
     )
@@ -1296,7 +1298,12 @@ def build_visible_chat_prompt_assembly(
         from core.services.prompt_sections.rule_conclusions import (
             rule_conclusions_section,
         )
-        _awareness_add(28, "rule engine conclusions", rule_conclusions_section())
+        from core.services.central_injection_registry import injection_live, read_injection
+        if injection_live("rule_conclusions"):
+            _rule_text = read_injection("rule_conclusions")          # baggrunds-cached (~0ms)
+        else:
+            _rule_text = rule_conclusions_section()                  # gammel direkte build (rollback)
+        _awareness_add(28, "rule engine conclusions", _rule_text or None)
     except Exception as _e:
         _sec_err("rule engine conclusions", _e)
     try:
@@ -1601,12 +1608,8 @@ def build_visible_chat_prompt_assembly(
         _awareness_add(44, "plan-revision recurring patterns", plan_revision_patterns_section() or None)
     except Exception as _e:
         _sec_err("plan-revision recurring patterns", _e)
-    # Dead-skill detector (2026-05-13) — Tool Invention adoption tracking
-    try:
-        from core.services.prompt_sections.dead_skills import dead_skills_section
-        _awareness_add(43, "dead skills (never invoked)", dead_skills_section() or None)
-    except Exception as _e:
-        _sec_err("dead skills (never invoked)", _e)
+    # Dead-skill detector fjernet (spec 2026-07-05): dead_skills_section byggede
+    # prompt-tekst om skills der aldrig invokes — ren spild, ingen værdi.
     # Skill chain proposals (C3, 2026-06-09) — heartbeat-generated chain
     # suggestions. Claude 2026-06-09: format_chain_proposals() existed
     # but had zero callers — generated chains were never surfaced. Hooked
@@ -1886,14 +1889,8 @@ def build_visible_chat_prompt_assembly(
         if relevance.include_memory
         else None
     )
-    future_bridge_decision = _measured_submit(
-        "bridge_decision",
-        _build_inner_visible_prompt_bridge_decision,
-        user_message=user_message,
-        mode="visible_chat",
-        compact=compact,
-        relevance=relevance,
-    )
+    # Bridge-decision future fjernet (spec 2026-07-05): builderen yielder ALTID
+    # line=None på visible-lanen (full-support-mode) → submit+resolve var ren spild.
 
     if relevance.include_memory:
         memory_selection = _timed_result(future_memory_selection, "memory_selection")
@@ -1986,12 +1983,7 @@ def build_visible_chat_prompt_assembly(
     )
     support_content = "\n\n".join(support_raw) if support_raw else None
 
-    bridge_decision = _timed_result(future_bridge_decision, "bridge_decision")
-    bridge_content = (
-        bridge_decision.line
-        if bridge_decision.included and bridge_decision.line
-        else None
-    )
+    bridge_content = None  # spec 2026-07-05: altid None på visible-lane
 
     frame_content = _timed_result(future_frame, "frame")
 
@@ -2011,7 +2003,10 @@ def build_visible_chat_prompt_assembly(
     # --- Cognitive State (accumulated personality, bearing, taste, rhythm) ---
     # Submitted as a future at function entry; resolve here.
     _mark("before_heavy_resolves")
-    cognitive_state_content = _timed_result(future_cognitive_state, "cognitive_state")
+    if _cog_live:
+        cognitive_state_content = read_injection("cognitive_state") or None
+    else:
+        cognitive_state_content = _timed_result(future_cognitive_state, "cognitive_state")
     # Real-time self-state numbers (decision adherence, goal progress, tick
     # quality). Without this Jarvis confabulates pessimistic answers when
     # asked introspective questions in chat — claims 0% adherence when DB

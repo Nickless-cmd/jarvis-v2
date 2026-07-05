@@ -1344,6 +1344,21 @@ def run_cadence_tick_with_bootstrap(
 # Standalone cadence scheduler (decoupled from heartbeat)
 # ---------------------------------------------------------------------------
 
+def _run_injection_refresh_tick() -> None:
+    """Central-styret indre liv: refresh beskidte injektions-enheder i baggrunden (OFF hot-path).
+    Self-safe — en refresh-fejl må aldrig stoppe cadence-loopet."""
+    try:
+        from core.services import central_injection_units
+        central_injection_units.register_default_units()   # idempotent
+    except Exception:
+        pass
+    try:
+        from core.services.central_injection_registry import refresh_dirty
+        refresh_dirty()
+    except Exception:
+        pass
+
+
 def _scheduler_loop() -> None:
     """Background loop: tick cadence every _SCHEDULER_INTERVAL_S seconds.
 
@@ -1368,6 +1383,7 @@ def _scheduler_loop() -> None:
                 except Exception:
                     pass
                 _seam_primed = True
+            _run_injection_refresh_tick()
             # STITCH liveness-puls: durabelt "jeg var i live nu" hvert tick → boot-sømmen
             # (central_self_state._compute_boot_seam) kan måle hvor længe Centralen var borte
             # efter en restart og sige "jeg vågnede for N siden". Billig, self-safe.

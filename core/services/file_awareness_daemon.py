@@ -204,7 +204,9 @@ def _on_governance_mutation(event: dict[str, Any]) -> None:
         _event_buffer.append({
             "event_type": "governance_mutation",
             "name": str(event.get("key") or event.get("flag") or "?"),
-            "value": event.get("new_value"),
+            # central.mutation publicerer feltet "value" (central_governance.record_mutation);
+            # fald tilbage til "new_value" for evt. andre publishers.
+            "value": event.get("value", event.get("new_value")),
             "external": True,
             "ts": event.get("ts") or datetime.now(UTC).isoformat(),
         })

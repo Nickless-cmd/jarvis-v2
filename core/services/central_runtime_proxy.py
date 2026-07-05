@@ -44,7 +44,7 @@ def _http_get(name: str) -> dict:
 
     Isolated so tests can monkeypatch it. May raise — callers must guard.
     """
-    url = f"http://127.0.0.1:{_RUNTIME_PORT}/internal/runtime-surface/{name.lstrip('/')}"
+    url = f"http://127.0.0.1:{_RUNTIME_PORT}/api/internal/runtime-surface/{name.lstrip('/')}"
     req = urllib_request.Request(url, headers={"Accept": "application/json"})
     with urllib_request.urlopen(req, timeout=_RUNTIME_PROXY_TIMEOUT) as resp:
         data = json.loads(resp.read().decode("utf-8"))

@@ -140,6 +140,42 @@ def _somatic_line() -> Optional[str]:
     return None
 
 
+def _pulse_line() -> Optional[str]:
+    """Heartbeat pulse — a somatic sense of the system's own rhythm.
+    Reads recent ticks from DB (already cached by heartbeat_runtime).
+    Shows rhythm pattern, not individual ticks."""
+    try:
+        from core.runtime.db import recent_heartbeat_runtime_ticks
+        ticks = recent_heartbeat_runtime_ticks(limit=8)
+        if not ticks:
+            return None
+        # Count execute vs noop in recent ticks
+        executes = sum(1 for t in ticks if t.get("decision_type") == "execute")
+        noops = len(ticks) - executes
+        last = ticks[0]
+        trigger = last.get("trigger", "?")
+        decision = last.get("decision_type", "?")
+        # Build rhythm description
+        if executes == 0:
+            rhythm = "stille"
+        elif executes <= 2:
+            rhythm = "langsom"
+        elif executes <= 5:
+            rhythm = "jævn"
+        else:
+            rhythm = "aktiv"
+        # Last action summary
+        action = last.get("action_summary") or last.get("decision_summary") or ""
+        if action and len(action) > 60:
+            action = action[:57] + "..."
+        if action:
+            return f"Puls {rhythm} ({executes} aktive/{noops} stille) — {action}"
+        return f"Puls {rhythm} ({executes} aktive/{noops} stille)"
+    except Exception:
+        logger.debug("inner-life: pulse failed", exc_info=True)
+    return None
+
+
 def _mc_whisper_line() -> Optional[str]:
     """Background noise from Mission Control — only anomalies and incidents that
     deviate from baseline. Reads from central_realtime.realtime_snapshot() which
@@ -321,8 +357,8 @@ def build_inner_life_section() -> str | None:
     """Compose the structured [INDRE LIV] block, or None if nothing is live."""
     lines: list[str] = []
 
-    # State — mood baseline, somatic body, file proprioception, MC whisper, and the room around him.
-    for fn in (_mood_line, _somatic_line, _file_awareness_line, _mc_whisper_line, _room_line):
+    # State — mood baseline, somatic body, file proprioception, pulse, MC whisper, and the room around him.
+    for fn in (_mood_line, _somatic_line, _file_awareness_line, _pulse_line, _mc_whisper_line, _room_line):
         line = fn()
         if line:
             lines.append("· " + line)

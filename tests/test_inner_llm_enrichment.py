@@ -272,6 +272,10 @@ def test_call_cheap_llm_returns_none_when_no_cheap_model() -> None:
     ), patch(
         "core.memory.inner_llm_enrichment._resolve_ollama_fallback_target",
         return_value=None,
+    ), patch(
+        # Load-spredt heartbeat cheap-fallback (mellemlag) må ikke ramme rigtige providers.
+        "core.services.heartbeat_provider_fallback.try_heartbeat_cheap_fallback",
+        return_value=None,
     ):
         result = _call_cheap_llm("system", "user")
         assert result is None
@@ -335,6 +339,11 @@ def test_call_cheap_llm_falls_back_to_local_ollama() -> None:
     ), patch(
         "core.memory.inner_llm_enrichment._resolve_auth_header",
         return_value={"Content-Type": "application/json", "Authorization": "Bearer test"},
+    ), patch(
+        # Load-spredt heartbeat cheap-fallback (mellemlag mellem groq og ollama) skal
+        # springes over, så testen rammer den lokale ollama-fallback som tilsigtet.
+        "core.services.heartbeat_provider_fallback.try_heartbeat_cheap_fallback",
+        return_value=None,
     ):
         with patch(
             "core.memory.inner_llm_enrichment.urllib_request.urlopen"

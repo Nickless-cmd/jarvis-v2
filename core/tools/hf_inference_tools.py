@@ -127,6 +127,13 @@ def generate_video(
     body = json.dumps(payload).encode("utf-8")
 
     req = urllib.request.Request(url, data=body, headers=_auth_headers(), method="POST")
+    # SAMLET EGRESS: HF-inference-kald udenom cost-ledger → rapportér (shadow, egress-frit).
+    try:
+        from core.services.central_llm_egress import observe as _egress_observe
+        _egress_observe(lane="hf_inference", provider="huggingface", model=model,
+                        purpose="generate", autonomous=False, source="hf:text_to_video")
+    except Exception:
+        pass
     gen_id = f"hfvid-{uuid4().hex[:12]}"
     target_dir = save_dir or _video_dir()
     try:
@@ -330,6 +337,13 @@ def transcribe_audio(
     # but currently ignored by this provider.
 
     req = urllib.request.Request(url, data=audio_bytes, headers=headers, method="POST")
+    # SAMLET EGRESS: HF-ASR-kald udenom cost-ledger → rapportér (shadow, egress-frit).
+    try:
+        from core.services.central_llm_egress import observe as _egress_observe
+        _egress_observe(lane="hf_inference", provider="huggingface", model=model,
+                        purpose="extract", autonomous=False, source="hf:transcribe_audio")
+    except Exception:
+        pass
     try:
         with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT) as resp:
             raw = resp.read()
@@ -441,6 +455,13 @@ def semantic_similarity(
     }
     body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=body, headers=_auth_headers(), method="POST")
+    # SAMLET EGRESS: HF-embedding/similarity-kald udenom cost-ledger → rapportér (shadow).
+    try:
+        from core.services.central_llm_egress import observe as _egress_observe
+        _egress_observe(lane="hf_inference", provider="huggingface", model=model,
+                        purpose="embed", autonomous=False, source="hf:semantic_similarity")
+    except Exception:
+        pass
 
     try:
         with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT) as resp:

@@ -508,6 +508,13 @@ def _describe_via_ollama(
     with urllib.request.urlopen(req, timeout=_VISION_TIMEOUT) as resp:
         data = json.loads(resp.read().decode("utf-8"))
 
+    # SAMLET EGRESS: vision-model-kald udenom cost-ledger → rapportér (shadow, egress-frit).
+    try:
+        from core.services.central_llm_egress import observe as _egress_observe
+        _egress_observe(lane="vision", provider="ollama", model=model,
+                        purpose="extract", autonomous=True, source="visual_memory:describe")
+    except Exception:
+        pass
     text = str(data.get("response") or "").strip()
     if len(text) > _MAX_DESC_CHARS:
         text = text[:_MAX_DESC_CHARS].rstrip() + "…"

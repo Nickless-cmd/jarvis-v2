@@ -39,6 +39,18 @@ def _note_call(daemon_name: str, hit: bool) -> None:
                       meta={"calls": calls, "hits": hits, "hit_rate": rate})
         except Exception:
             pass
+        # SAMLET EGRESS: kun cache-MISS er et ægte udgående kald (hits/form-genbrug
+        # forlader ikke maskinen). Rapportér daemon-lanen til det unified egress-billede
+        # så 'styr på ALLE kald' faktisk holder (før: kun record_cost var wired). Shadow,
+        # egress-frit. Daemon = altid billig-egnet (intern, ingen bruger venter).
+        if not hit:
+            try:
+                from core.services.central_llm_egress import observe as _egress_observe
+                _egress_observe(lane="daemon", provider="", model="",
+                                purpose="internal", autonomous=True,
+                                source=f"daemon:{name}")
+            except Exception:
+                pass
     except Exception:
         pass
 
@@ -200,6 +212,15 @@ def quality_daemon_llm_call(
             if text:
                 if cache_key and _get_cache_ttl(daemon_name) > 0:
                     _store_cache(cache_key, text, daemon_name)
+                # SAMLET EGRESS: quality-lanen (inner_enrichment) forlader maskinen men
+                # går IKKE gennem _note_call → rapportér den separat, ellers usynlig.
+                try:
+                    from core.services.central_llm_egress import observe as _egress_observe
+                    _egress_observe(lane="inner_enrichment", provider=provider, model=model,
+                                    purpose="internal", autonomous=True,
+                                    source=f"quality_daemon:{daemon_name or 'ukendt'}")
+                except Exception:
+                    pass
                 try:
                     from core.runtime.db import daemon_output_log_insert
                     daemon_output_log_insert(

@@ -456,6 +456,15 @@ def _call_remote_chat(
         raise RuntimeError(f"http-error:{exc.code}:{detail}") from exc
     except Exception as exc:
         raise RuntimeError(str(exc) or type(exc).__name__) from exc
+    # SAMLET EGRESS: dette er et direkte urlopen-LLM-kald der IKKE rører cost-ledger
+    # eller daemon_llm_call → rapportér til det unified egress-billede (shadow, egress-frit).
+    try:
+        from core.services.central_llm_egress import observe as _egress_observe
+        _egress_observe(lane="inner_enrichment", provider=provider, model=model,
+                        purpose="internal", autonomous=True,
+                        source="inner_llm_enrichment:remote")
+    except Exception:
+        pass
     text = (
         data.get("choices", [{}])[0]
         .get("message", {})
@@ -499,6 +508,14 @@ def _call_ollama_chat(
         )
         with urllib_request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
+            # SAMLET EGRESS: direkte ollama-kald udenom cost-ledger → rapportér (shadow).
+            try:
+                from core.services.central_llm_egress import observe as _egress_observe
+                _egress_observe(lane="inner_enrichment", provider="ollama", model=model,
+                                purpose="internal", autonomous=True,
+                                source="inner_llm_enrichment:ollama")
+            except Exception:
+                pass
             message = data.get("message", {}) or {}
             text = str(message.get("content") or "").strip()
             if text:

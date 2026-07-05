@@ -76,8 +76,11 @@ def test_both_lanes_dry_observes_central(monkeypatch):
         daemon_name="somatic", public_safe=True)
 
     assert out == "FALLBACK"  # adfærd uændret: fallback returneres
-    assert len(observed) == 1
-    ev = observed[0]
+    # Filtrér til dry-signalet: cache-miss fyrer nu OGSÅ et cost/llm_egress-observe
+    # (samlet egress-billede), så tæl kun daemon_llm_dry-nerven.
+    dry = [e for e in observed if e.get("nerve") == "daemon_llm_dry"]
+    assert len(dry) == 1
+    ev = dry[0]
     assert ev["cluster"] == "stream"
     assert ev["nerve"] == "daemon_llm_dry"
     assert ev["kind"] == "error"
@@ -126,3 +129,27 @@ def test_lane_success_does_not_observe_dry(monkeypatch):
         daemon_name="somatic", public_safe=True)
     assert out == "ægte svar"
     assert not any(e.get("nerve") == "daemon_llm_dry" for e in observed)
+
+
+def test_note_call_miss_reports_egress(monkeypatch):
+    """SAMLET EGRESS: cache-MISS er ægte udgående kald → egress-observeren fyrer med lane=daemon."""
+    seen: list[dict] = []
+
+    def _fake_observe(**kw):
+        seen.append(kw)
+
+    monkeypatch.setattr("core.services.central_llm_egress.observe", _fake_observe)
+    dl._note_call("thought_stream", hit=False)
+
+    assert len(seen) == 1
+    assert seen[0]["lane"] == "daemon"
+    assert seen[0]["autonomous"] is True
+    assert seen[0]["source"] == "daemon:thought_stream"
+
+
+def test_note_call_hit_does_not_report_egress(monkeypatch):
+    """Cache-HIT / form-genbrug forlader ikke maskinen → INGEN egress-rapport."""
+    seen: list[dict] = []
+    monkeypatch.setattr("core.services.central_llm_egress.observe", lambda **kw: seen.append(kw))
+    dl._note_call("thought_stream", hit=True)
+    assert seen == []

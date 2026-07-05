@@ -155,8 +155,8 @@ def test_execution_only_whitelisted_keys():
         "visible_model_provider": "github-copilot",
         "generative_autonomy_enabled": True,
         "cheap_model_lane": "cheap",
-        "super_secret_api_key": "sk-should-never-leak",  # NON-whitelisted
-        "another_secret_token": "t0ken",
+        "super_secret_api_key": "sk-should-never-leak",  # NON-whitelisted  # pragma: allowlist secret
+        "another_secret_token": "t0ken",  # pragma: allowlist secret
     })
     with patch.object(m, "require_central_owner", lambda: None), \
          patch("core.runtime.settings.load_settings", lambda: fake), \

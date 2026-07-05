@@ -129,3 +129,13 @@ def refresh_dirty(now: float | None = None) -> int:
         except Exception:
             continue
     return n
+
+
+def injection_live(key: str) -> bool:
+    """Er denne enhed 'live' (hot-path læser cached) eller rullet tilbage (direkte build)?
+    Default FALSE → sikker: uændret adfærd indtil vi eksplicit flipper enheden live."""
+    return bool(_kv_get(_LIVE_PREFIX + key, False))
+
+
+def set_injection_live(key: str, live: bool) -> None:
+    _kv_set(_LIVE_PREFIX + key, bool(live))

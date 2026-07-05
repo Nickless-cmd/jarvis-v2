@@ -81,3 +81,14 @@ def test_refresh_is_self_safe_on_compose_error(monkeypatch):
                                    max_age_s=1.0, compose_fn=boom))
     reg.refresh_dirty(now=1.0)             # må ALDRIG kaste
     assert reg.read_injection("bad") == ""  # forblev tom
+
+
+def test_injection_live_flag_defaults_off(monkeypatch):
+    store = _use_store(monkeypatch)
+    # Default OFF = hot-path bruger direkte build (sikker under udrulning)
+    assert reg.injection_live("rule_conclusions") is False
+    reg.set_injection_live("rule_conclusions", True)
+    assert reg.injection_live("rule_conclusions") is True
+    assert store[reg._LIVE_PREFIX + "rule_conclusions"] is True
+    reg.set_injection_live("rule_conclusions", False)
+    assert reg.injection_live("rule_conclusions") is False

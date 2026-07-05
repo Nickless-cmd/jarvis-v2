@@ -1529,6 +1529,37 @@ class CentralHud(App):
                 f"[{FGDIM}]active_count[/]  [{FG}]{_esc(wm_sum.get('active_count', 0))}[/]",
             ]
 
+            # -- Fase C: AGENTUR — de private lag hvor emergent agentur bor.
+            # Kun light (liveness + tællere); aldrig råt indhold. Self-safe:
+            # manglende surface → springes over. Viser de vigtigste summary-
+            # tællere pr. surface (op til 3 for at holde panelet roligt).
+            agentur = (
+                ("open_loops", slf.get("open_loops") or {}),
+                ("runtime_awareness", slf.get("runtime_awareness") or {}),
+                ("runtime_self_knowledge", slf.get("runtime_self_knowledge") or {}),
+                ("counterfactual", slf.get("counterfactual") or {}),
+            )
+            if any(bool(s) for _, s in agentur):
+                lines += ["", f"[{CYAN} b]◈ AGENTUR[/]  [{FGDIM}]— hvor agentur bor[/]"]
+                for a_name, a_surf in agentur:
+                    if not a_surf:
+                        continue
+                    dot = (f"[{GREEN}]●[/]" if a_surf.get("liveness")
+                           else f"[{DIM}]○[/]")
+                    lines.append(f"  {dot} [{FGDIM}]{_esc(a_name)}[/]")
+                    a_sum = a_surf.get("summary") or {}
+                    if isinstance(a_sum, dict):
+                        shown = 0
+                        for sk, sv in a_sum.items():
+                            if shown >= 3:
+                                break
+                            if isinstance(sv, (str, int, float, bool)):
+                                lines.append(
+                                    f"      [{FGDIM}]{_esc(sk)}[/] "
+                                    f"[{FG}]{_esc(sv)}[/]"
+                                )
+                                shown += 1
+
         # -- memory-pipeline (A5) — always rendered, even if self is empty --
         try:
             mh = datasource.memory_health(self._client) if self._client else {}

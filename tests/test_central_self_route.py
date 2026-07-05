@@ -114,5 +114,81 @@ def test_absorb_called_for_each_surface(monkeypatch):
     _run(cs.get_self())
     clusters = [c for c, _ in calls]
     nerves = [n for _, n in calls]
-    assert clusters == ["self", "self", "self"]
-    assert set(nerves) == {"living_executive", "self_model", "world_model"}
+    assert clusters == ["self"] * 7
+    assert set(nerves) == {
+        "living_executive", "self_model", "world_model",
+        "open_loops", "runtime_awareness", "runtime_self_knowledge",
+        "counterfactual",
+    }
+
+
+def test_phase_c_surfaces_present_and_reduced(monkeypatch):
+    """Fase C: de 4 private agentur-lag er med i self-dict'en, KUN som
+    liveness/summary — intet råt tekst-/liste-indhold slipper igennem."""
+    monkeypatch.setattr(cs, "require_central_owner", lambda: None)
+
+    # Simulate the raw producer surfaces (as the light-builders would receive
+    # them BEFORE _light reduces). Include raw text/list content that must NEVER
+    # surface. proxy_or_local invokes the (light) builder, so we bypass the real
+    # producers by patching proxy_or_local to run the builder against fakes.
+    raw_producers = {
+        "open_loops": {
+            "active": True,
+            "open_loops": [{"goal": "RAW UNRESOLVED GOAL"}, {"goal": "x"}],
+            "top_signal": "RAW SIGNAL TEXT",
+            "count": 2,
+        },
+        "runtime_awareness": {
+            "active": True,
+            "signals": [{"note": "RAW AWARENESS NOTE"}],
+            "score": 0.5,
+        },
+        "runtime_self_knowledge": {
+            "active": False,
+            "facts": ["RAW SELF FACT"],
+            "map": {"a": 1, "b": 2},
+        },
+        "counterfactual": {
+            "active": True,
+            "predictions": [{"body": "RAW PREDICTION TEXT"}],
+            "horizon": 3,
+        },
+    }
+
+    def proxy(name, builder):
+        # For the phase-C names, feed the raw producer through the real builder
+        # by monkeypatching the underlying producer import is heavy; instead we
+        # apply _light directly (mirrors what the builder does).
+        if name in raw_producers:
+            from apps.api.jarvis_api.routes.internal_runtime_surface import _light
+            return _light(raw_producers[name])
+        return {"active": True, "summary": {"n": 1}}
+
+    monkeypatch.setattr(cs, "proxy_or_local", proxy)
+    monkeypatch.setattr(cs, "absorb", lambda *a, **k: None)
+
+    out = _run(cs.get_self())
+    body = out["self"]
+
+    for name in ("open_loops", "runtime_awareness",
+                 "runtime_self_knowledge", "counterfactual"):
+        assert name in body, f"phase-C surface {name} missing"
+        surf = body[name]
+        # ONLY liveness + summary kept
+        assert set(surf.keys()) <= {"liveness", "summary"}, \
+            f"{name} kept extra keys: {surf.keys()}"
+        assert "liveness" in surf
+        # summary holds ONLY scalars / counters — no raw text/list values
+        for sk, sv in (surf.get("summary") or {}).items():
+            assert isinstance(sv, (bool, int, float)), \
+                f"{name}.summary.{sk} is non-scalar: {sv!r}"
+
+    # liveness derived from `active`
+    assert body["open_loops"]["liveness"] is True
+    assert body["runtime_self_knowledge"]["liveness"] is False
+
+    # NO raw content string anywhere in the reduced output
+    flat = str(body)
+    for leak in ("RAW UNRESOLVED GOAL", "RAW SIGNAL TEXT", "RAW AWARENESS NOTE",
+                 "RAW SELF FACT", "RAW PREDICTION TEXT"):
+        assert leak not in flat, f"raw content leaked: {leak}"

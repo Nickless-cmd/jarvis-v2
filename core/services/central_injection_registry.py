@@ -62,3 +62,41 @@ def read_injection(key: str) -> str:
     if not isinstance(blob, dict):
         return ""
     return str(blob.get("text") or "")
+
+
+def _nerve_latest(nerve: str) -> float | None:
+    """Seneste værdi for 'cluster:nerve' fra central_timeseries. None hvis ukendt.
+    Kører i runtime-procesen hvor de kognitive nerver produceres."""
+    try:
+        from core.services import central_timeseries as ts
+        entry = ts.snapshot().get(nerve) or {}
+        v = entry.get("latest")
+        return float(v) if v is not None else None
+    except Exception:
+        return None
+
+
+def is_dirty(unit: InjectionUnit, now: float) -> bool:
+    """Beskidt hvis: aldrig komponeret, over max-alder, ELLER en kilde-nerve flyttet > tærskel."""
+    blob = _kv_get(_CACHE_PREFIX + unit.key, {})
+    if not isinstance(blob, dict) or not blob.get("composed_at"):
+        return True
+    try:
+        if now - float(blob["composed_at"]) > unit.max_age_s:
+            return True
+    except Exception:
+        return True
+    snap = blob.get("source_snapshot") or {}
+    for nerve in unit.source_nerves:
+        cur = _nerve_latest(nerve)
+        if cur is None:
+            continue
+        prev = snap.get(nerve)
+        if prev is None:
+            return True
+        try:
+            if abs(cur - float(prev)) > unit.threshold:
+                return True
+        except Exception:
+            return True
+    return False

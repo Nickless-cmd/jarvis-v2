@@ -9,6 +9,7 @@ partial or empty endpoint response never raises.
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 _BLOCKS = " ▁▂▃▄▅▆▇█"
@@ -210,3 +211,163 @@ def feed(client: Any) -> list:
         seen[key] = entry
         order.append(entry)
     return order
+
+
+def _short_sig(signature: str) -> str:
+    """Stable 8-hex-char id derived from a signature string."""
+    return hashlib.blake2s(str(signature).encode(), digest_size=4).hexdigest()
+
+
+def incident_detail(client: Any, incident: dict) -> dict:
+    """Enrich a realtime incident with joined root-cause / correlation / heal /
+    related data.
+
+    All fields are derived from real endpoints (never fabricated). Self-safe:
+    on any error every field falls back to a safe default and no exception
+    propagates.
+    """
+    try:
+        inc = incident if isinstance(incident, dict) else {}
+        severity = str(inc.get("severity") or "")
+        cluster = str(inc.get("cluster") or "")
+        nerve = str(inc.get("nerve") or "")
+        kind = str(inc.get("kind") or "")
+        message = str(inc.get("message") or "")
+
+        # human title: nerve, or first sentence of message when nerve is empty
+        if nerve:
+            title = nerve
+        else:
+            title = message.split(".")[0].strip() if message else ""
+
+        # --- join matching root_cause from /central/diagnostics ---
+        root_cause = None
+        correlation = None
+        rc_signature = ""
+        try:
+            diag = client.get_json("/central/diagnostics")
+            rcs = (diag or {}).get("root_causes") or []
+        except Exception:
+            rcs = []
+        matches = []
+        for rc in rcs:
+            if not isinstance(rc, dict):
+                continue
+            if (str(rc.get("cluster") or "") == cluster
+                    and str(rc.get("nerve") or "") == nerve):
+                matches.append(rc)
+        if matches:
+            # highest count wins
+            best = max(matches, key=lambda r: r.get("count") or 0)
+            rc_signature = str(best.get("signature") or "")
+            root_cause = rc_signature or None
+            correlation = {
+                "sig": _short_sig(rc_signature),
+                "count": int(best.get("count") or 0),
+                "first": str(best.get("first") or ""),
+                "last": str(best.get("last") or ""),
+            }
+
+        # --- related: OTHER same-cluster realtime incidents (exclude own nerve) ---
+        related: list = []
+        seen_rel: set = set()
+        try:
+            rt = _realtime(client)
+            rt_incidents = rt.get("incidents") or []
+        except Exception:
+            rt_incidents = []
+        for other in rt_incidents:
+            if not isinstance(other, dict):
+                continue
+            o_cluster = str(other.get("cluster") or "")
+            o_nerve = str(other.get("nerve") or "")
+            if o_cluster != cluster:
+                continue
+            if o_nerve == nerve:
+                continue
+            label = f"{o_cluster}/{o_nerve}"
+            if label in seen_rel:
+                continue
+            seen_rel.add(label)
+            related.append(label)
+            if len(related) >= 6:
+                break
+
+        # --- heal_status ---
+        heal_status = None
+        heal_source = ""
+        low_msg = message.lower()
+        low_sig = rc_signature.lower()
+        if "auto-healed" in low_sig or "healed" in low_sig:
+            heal_source = rc_signature
+        elif "auto-healed" in low_msg or "healed" in low_msg:
+            heal_source = message
+        if heal_source:
+            heal_status = f"heal-note: {heal_source.strip()[:120]}"
+        elif kind:
+            # else: a live healer whose kind relates to this incident's kind
+            try:
+                hz = client.get_json("/central/healers")
+                healer_list = (hz or {}).get("healers") or []
+            except Exception:
+                healer_list = []
+            for h in healer_list:
+                if not isinstance(h, dict):
+                    continue
+                h_kind = str(h.get("kind") or "")
+                if not h_kind:
+                    continue
+                related_kind = (kind in h_kind or h_kind in kind
+                                or kind == h_kind)
+                live = (str(h.get("mode") or "").upper() == "LIVE"
+                        or bool(h.get("live_flag_on")))
+                if related_kind and live:
+                    heal_status = f"healer {h_kind} ({h.get('mode') or ''})".strip()
+                    break
+
+        return {
+            "severity": severity,
+            "cluster": cluster,
+            "nerve": nerve,
+            "kind": kind,
+            "message": message,
+            "title": title,
+            "root_cause": root_cause,
+            "related": related,
+            "heal_status": heal_status,
+            "correlation": correlation,
+        }
+    except Exception:
+        return {
+            "severity": None,
+            "cluster": None,
+            "nerve": None,
+            "kind": None,
+            "message": None,
+            "title": None,
+            "root_cause": None,
+            "related": [],
+            "heal_status": None,
+            "correlation": None,
+        }
+
+
+def cost_today(client: Any) -> float | None:
+    """Today's total cost in USD from /mc/costs, or None if unavailable.
+
+    Uses ``summary.total_cost_usd``. Self-safe: any error / missing / non-numeric
+    field returns None.
+    """
+    try:
+        data = client.get_json("/mc/costs")
+        if not isinstance(data, dict):
+            return None
+        summary = data.get("summary")
+        if not isinstance(summary, dict):
+            return None
+        val = summary.get("total_cost_usd")
+        if val is None:
+            return None
+        return float(val)
+    except Exception:
+        return None

@@ -66,12 +66,14 @@ _DECISION = {
 # tab order: key, label, is_l2
 _TABS: list[tuple[str, str, bool]] = [
     ("overview", "Overview", False),
-    ("clusters", "Clusters", False),
     ("nerves", "Nerves", False),
+    ("clusters", "Clusters", False),
     ("incidents", "Incidents", False),
-    ("anomalies", "Anomalies", False),
+    ("runs", "Runs", False),
+    ("approvals", "Approvals", False),
+    ("agents", "Agents", False),
+    ("mind", "Mind", False),
     ("diagnostics", "Diagnostics", False),
-    ("healing", "Healing", True),
     ("governance", "Governance", True),
 ]
 
@@ -93,8 +95,18 @@ _SEVERITY = {
     "warn": AMBER, "warning": AMBER, "info": CYAN,
 }
 
+# Table-backed tabs (left main column + nerve-table + side detail). "anomalies"
+# is no longer a top-level tab of its own, but its view stays fully reachable
+# (its populate/detail logic is unchanged) and folds into the incidents tab as a
+# sub-view — so no anomaly functionality is lost.
 _TABLE_TABS = {"nerves", "clusters", "incidents", "anomalies", "governance"}
-_PANEL_TABS = {"overview", "diagnostics", "healing"}
+# Panel-backed tabs (single full-width panel). The not-yet-wired new tabs
+# (runs/approvals/agents/mind) render the "venter på wiring" placeholder here.
+# "healing" stays reachable as a panel sub-view (its render/toggle logic intact).
+_PANEL_TABS = {
+    "overview", "diagnostics", "healing",
+    "runs", "approvals", "agents", "mind",
+}
 
 
 class CentralHud(App):
@@ -221,14 +233,17 @@ class CentralHud(App):
         Binding("escape", "cancel", "Ryd/annullér", show=False, priority=True),
         Binding("ctrl+q", "quit", "Quit", show=False, priority=True),
         # Direct tab jumps via function keys (digits are free for typing).
+        # F1-F10 map 1:1 to the ten tabs in _TABS order.
         Binding("f1", "show('overview')", show=False, priority=True),
-        Binding("f2", "show('clusters')", show=False, priority=True),
-        Binding("f3", "show('nerves')", show=False, priority=True),
+        Binding("f2", "show('nerves')", show=False, priority=True),
+        Binding("f3", "show('clusters')", show=False, priority=True),
         Binding("f4", "show('incidents')", show=False, priority=True),
-        Binding("f5", "show('anomalies')", show=False, priority=True),
-        Binding("f6", "show('diagnostics')", show=False, priority=True),
-        Binding("f7", "show('healing')", show=False, priority=True),
-        Binding("f8", "show('governance')", show=False, priority=True),
+        Binding("f5", "show('runs')", show=False, priority=True),
+        Binding("f6", "show('approvals')", show=False, priority=True),
+        Binding("f7", "show('agents')", show=False, priority=True),
+        Binding("f8", "show('mind')", show=False, priority=True),
+        Binding("f9", "show('diagnostics')", show=False, priority=True),
+        Binding("f10", "show('governance')", show=False, priority=True),
     ]
 
     def __init__(self, *, client: Any = None, live: bool = True) -> None:
@@ -553,6 +568,9 @@ class CentralHud(App):
                 self._render_diagnostics_panel()
             elif name == "healing":
                 self._render_healing_panel()
+            elif name in ("runs", "approvals", "agents", "mind"):
+                # Not-yet-wired tabs (Fase 0): render the placeholder.
+                self._render_placeholder_panel(name)
             else:
                 self._render_placeholder_panel(name)
         except Exception:
@@ -627,7 +645,7 @@ class CentralHud(App):
     def _render_cmd(self) -> Text:
         caret = "█" if self._caret_on else " "
         keys = (
-            f"[{FGDIM} b]1-8[/] [{DIM}]views ·[/] [{FGDIM} b]↑↓[/] [{DIM}]naviger ·[/] "
+            f"[{FGDIM} b]F1-F10[/] [{DIM}]views ·[/] [{FGDIM} b]↑↓[/] [{DIM}]naviger ·[/] "
             f"[{FGDIM} b]↵[/] [{DIM}]drill ·[/] [{FGDIM} b]t[/] [{DIM}]toggle ·[/] "
             f"[{FGDIM} b]:[/] [{DIM}]kommando ·[/] [{FGDIM} b]?[/] [{DIM}]hjælp ·[/] "
             f"[{FGDIM} b]q[/] [{DIM}]quit[/]"
@@ -1380,7 +1398,7 @@ class CentralHud(App):
         except Exception:
             return
         label = {k: lbl for k, lbl, _ in _TABS}.get(name, name)
-        panel.update(Text.from_markup(f"[{DIM}]— {label}: kommer i næste build —[/]"))
+        panel.update(Text.from_markup(f"[{DIM}]— {label}: venter på wiring —[/]"))
 
 
 def run_hud(ns) -> int:

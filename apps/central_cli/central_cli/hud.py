@@ -117,6 +117,12 @@ _AGENT_STATUS = {
     "error": RED, "failed": RED, "dead": RED,
 }
 
+# run status -> color
+_RUN_STATUS = {
+    "completed": GREEN, "failed": RED, "cancelled": AMBER,
+    "active": BLUE, "running": BLUE,
+}
+
 
 class CentralHud(App):
     """The Central HUD app shell (mockup-faithful)."""
@@ -275,6 +281,7 @@ class CentralHud(App):
         self._nerve_rows: list = []
         self._cluster_rows: list = []
         self._agent_rows: list = []
+        self._run_rows: list = []
         self._scheduled: list = []
         self._autonomy: dict = {}
         self._memory_health: dict = {}
@@ -595,6 +602,7 @@ class CentralHud(App):
                 self._render_mind_self_panel()
             elif name == "runs":
                 self._populate_runs()
+                self._refresh_detail_for_current()
             elif name == "approvals":
                 self._populate_approvals()
             else:
@@ -998,6 +1006,8 @@ class CentralHud(App):
             self._render_gov_detail(row)
         elif t == "agents":
             self._render_agent_detail(row)
+        elif t == "runs":
+            self._render_run_detail(row)
 
     def _render_nerve_detail(self, row: int) -> None:
         try:
@@ -1272,37 +1282,89 @@ class CentralHud(App):
                            else Text("—", style=DIM))
             table.add_row(Text(label, style=FG), val_text, danger_cell)
 
-    # -- Runs (scheduled tasks) --------------------------------------------
+    # -- Runs (recent visible runs, drill-in detail) -----------------------
     def _populate_runs(self) -> None:
         try:
             table = self.query_one("#nerve-table", DataTable)
         except Exception:
             return
-        self._reset_columns(table, ("opgave", 34), ("hvornår", 20), ("status", 12))
+        self._reset_columns(
+            table, ("run", 20), ("lane", 12), ("status", 12), ("model", 20)
+        )
+        if self._client is None:
+            return
         try:
-            self._scheduled = datasource.scheduled(self._client) if self._client else []
+            self._run_rows = datasource.runs(self._client, limit=20)
+        except Exception:
+            self._run_rows = []
+        try:
+            self._scheduled = datasource.scheduled(self._client)
         except Exception:
             self._scheduled = []
-        tasks = self._scheduled or []
+        n_sched = len(self._scheduled)
         self._set_paneh(
-            f"[{CYAN}]PLANLAGT[/] [{FGDIM}]— {len(tasks)} ventende opgaver[/]"
+            f"[{CYAN}]RUNS[/] [{FGDIM}]— {len(self._run_rows)} seneste · "
+            f"{n_sched} planlagte[/]"
         )
-        if not tasks:
+        if not self._run_rows:
             table.add_row(
-                Text("— ingen planlagte opgaver —", style=DIM), Text(""), Text("")
+                Text("— ingen runs —", style=DIM), Text(""), Text(""), Text("")
             )
             return
-        for task in tasks:
-            title = (task.get("title") or task.get("name") or task.get("task")
-                     or task.get("kind") or "—")
-            when = (task.get("next_run") or task.get("scheduled_for")
-                    or task.get("when") or "—")
-            status = task.get("status") or "—"
+        for r in self._run_rows:
+            status = str(r.get("status", "") or "—")
+            color = _RUN_STATUS.get(status, FG)
+            rid = str(r.get("run_id", "") or "")[:18]
             table.add_row(
-                Text(_esc(str(title)), style=FG),
-                Text(_esc(str(when)), style=FGDIM),
-                Text(_esc(str(status)), style=FGDIM),
+                Text(_esc(rid), style=FG),
+                Text(_esc(str(r.get("lane", "") or "")), style=FGDIM),
+                Text(f"● {_esc(status)}", style=color),
+                Text(_esc(str(r.get("model", "") or "")), style=FGDIM),
             )
+
+    def _render_run_detail(self, row: int) -> None:
+        try:
+            panel = self.query_one("#hud-detail", Static)
+        except Exception:
+            return
+        rows = self._run_rows or []
+        if not (0 <= row < len(rows)):
+            self._set_side_paneh(f"[{CYAN}]RUN-DETALJE[/] [{DIM}]— —[/]")
+            panel.update(Text.from_markup(f"[{GREEN} b]◈ INGEN RUNS[/]"))
+            return
+        r = rows[row]
+        status = str(r.get("status", "") or "—")
+        color = _RUN_STATUS.get(status, FG)
+        run_id = r.get("run_id", "") or ""
+        badge_bg = {GREEN: "#06251a", AMBER: "#25200a", BLUE: "#06202e",
+                    RED: "#1f0d0d"}.get(color, "#06202e")
+        self._set_side_paneh(f"[{CYAN}]RUN-DETALJE[/] [{DIM}]— {_esc(str(run_id)[:18])}[/]")
+        provider = r.get("provider", "") or ""
+        model = r.get("model", "") or ""
+        lane = r.get("lane", "") or ""
+        started = r.get("started_at", "") or ""
+        finished = r.get("finished_at", "") or ""
+        lines = [
+            f"[{color} b on {badge_bg}] ● {_esc(status.upper())} [/]",
+            "",
+            f"[{FG} b]{_esc(run_id)}[/]",
+            f"[{FGDIM}]lane[/]     [{FG}]{_esc(lane)}[/]",
+            f"[{FGDIM}]provider[/] [{FG}]{_esc(provider)}[/]",
+            f"[{FGDIM}]model[/]    [{FG}]{_esc(model)}[/]",
+            f"[{FGDIM}]start[/]    [{FG}]{_esc(started)}[/]",
+            f"[{FGDIM}]slut[/]     [{FG}]{_esc(finished)}[/]",
+        ]
+        preview = str(r.get("text_preview", "") or "")
+        if preview:
+            if len(preview) > 200:
+                preview = preview[:199] + "…"
+            lines += ["", f"[{FGDIM} b]PREVIEW[/]", f"[{FG}]{_esc(preview)}[/]"]
+        error = str(r.get("error", "") or "")
+        if error:
+            if len(error) > 200:
+                error = error[:199] + "…"
+            lines += ["", f"[{RED} b]FEJL[/]", f"[{RED}]{_esc(error)}[/]"]
+        panel.update(Text.from_markup("\n".join(lines)))
 
     # -- Approvals (autonomy proposals) ------------------------------------
     def _populate_approvals(self) -> None:

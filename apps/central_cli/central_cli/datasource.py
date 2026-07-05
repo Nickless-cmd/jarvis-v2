@@ -464,6 +464,28 @@ def scheduled(client: Any) -> list:
         return []
 
 
+def runs(client: Any, limit: int = 20) -> list:
+    """Recent visible runs from /central/runs. Self-safe → []."""
+    try:
+        data = client.get_json("/central/runs", params={"limit": limit})
+        if not isinstance(data, dict):
+            return []
+        return data.get("runs") or []
+    except Exception:
+        return []
+
+
+def run_detail(client: Any, run_id: Any) -> dict:
+    """One run detail from /central/runs/{run_id}. Self-safe → {}."""
+    try:
+        data = client.get_json(f"/central/runs/{run_id}")
+        if not isinstance(data, dict):
+            return {}
+        return data.get("run") or {}
+    except Exception:
+        return {}
+
+
 def autonomy(client: Any) -> dict:
     """Autonomy proposal queue from /central/autonomy. Self-safe →
     ``{"proposals": [], "pending_count": 0}``."""

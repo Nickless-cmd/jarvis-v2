@@ -252,6 +252,61 @@ async def get_memory_health() -> dict:
     return {"memory": surface, "added_today": added_today, "journal_today": journal_today}
 
 
+@router.get("/runs")
+async def get_runs(limit: int = 20) -> dict:
+    """Projicér de seneste visible runs + absorbér en kompakt liveness-tæller.
+
+    Owner-gated. Self-safe: producent-fejl → tom liste, stadig 200. Flagger hvis
+    der er fejlede/afbrudte runs blandt de seneste.
+    """
+    require_central_owner()
+    try:
+        from core.runtime.db import recent_visible_runs
+        runs = recent_visible_runs(limit=max(limit, 1))
+    except Exception:
+        runs = []
+    runs = runs or []
+    failed = [
+        r for r in runs
+        if isinstance(r, dict) and str(r.get("status") or "") in ("failed", "cancelled")
+    ]
+    absorb(
+        "run",
+        "list",
+        {"count": len(runs), "failed": len(failed)},
+        flag_if=lambda v: v["failed"] > 0,
+        flag_reason="fejlede/afbrudte runs",
+    )
+    return {"runs": runs, "count": len(runs), "failed_count": len(failed)}
+
+
+@router.get("/runs/{run_id}")
+async def get_run_detail(run_id: str) -> dict:
+    """Projicér én run-detalje (opslag i de seneste 50) + absorbér fund/status.
+
+    Owner-gated. Self-safe: producent-fejl → ikke-fundet, stadig 200.
+    """
+    require_central_owner()
+    try:
+        from core.runtime.db import recent_visible_runs
+        runs = recent_visible_runs(limit=50)
+    except Exception:
+        runs = []
+    match = next(
+        (
+            r for r in (runs or [])
+            if isinstance(r, dict) and str(r.get("run_id") or "") == str(run_id)
+        ),
+        None,
+    )
+    absorb(
+        "run",
+        "detail",
+        {"found": bool(match), "status": (match or {}).get("status") if match else None},
+    )
+    return {"run": match, "found": bool(match)}
+
+
 @router.get("/autonomy")
 async def get_autonomy() -> dict:
     """Projicér autonomi-forslags-køen + absorbér den som nerve.

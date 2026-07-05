@@ -65,12 +65,26 @@ def test_successful_write_records_mutation(monkeypatch):
 
     res = gov.set_flag("self_prompt", False, confirm=False)
     assert res["ok"] is True
-    # eventbus-audit fyrede med family 'governance'
-    assert any(k.startswith("governance.") for k, _ in published)
-    kind, payload = next((k, p) for k, p in published if k.startswith("governance."))
+    # eventbus-audit fyrede som 'central.mutation' med area/key/value
+    assert any(k == "central.mutation" for k, _ in published)
+    kind, payload = next((k, p) for k, p in published if k == "central.mutation")
+    assert payload.get("area") == "governance"
     assert payload.get("key") == "self_prompt" and payload.get("value") is False
-    # central observe fyrede
+    # central observe fyrede for governance-området
     assert any(e.get("cluster") == "governance" for e in observed)
+
+
+def test_healer_flag_reads_from_healer_source(monkeypatch):
+    # Runtime-state-store forbliver tom → DB-default ville give False.
+    _store(monkeypatch)
+    # Men healer-registret er reelt tændt via SIN egen kilde (shared_cache).
+    import core.services.error_healers as eh
+    monkeypatch.setattr(eh, "_flag_on", lambda name, default=False: name == "enabled")
+    flags = {f["key"]: f["value"] for f in gov.list_flags()}
+    # Governance skal afspejle healer-kilden, ikke den tomme runtime-state-DB.
+    assert flags["healer_enabled"] is True
+    assert flags["healer_daemon_restart_live"] is False
+    assert flags["healer_syslog_restart_live"] is False
 
 
 def test_failed_write_does_not_record(monkeypatch):

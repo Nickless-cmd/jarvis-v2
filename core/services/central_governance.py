@@ -190,6 +190,15 @@ def _read_value(key: str, spec: Dict[str, Any]) -> Any:
         default = spec.get("default", False)
         if kv_key is None:
             return default
+        if kv_key.startswith("error_healer."):
+            # Healer-flags SKRIVES til shared_cache via set_healer_flag — læs fra
+            # SAMME kilde (ikke runtime-state-DB), ellers dual-truth: write≠read
+            # og en toggle i Governance-tab'en ville se effektløs ud.
+            try:
+                from core.services.error_healers import _flag_on
+                return bool(_flag_on(kv_key.split(".", 1)[1], default=bool(default)))
+            except Exception:
+                return default
         return _kv_get(kv_key, default)
     except Exception:
         return spec.get("default", False)
@@ -222,22 +231,6 @@ def list_flags() -> List[Dict[str, Any]]:
     except Exception:
         pass
     return out
-
-
-def record_mutation(area: str, key: str, value: Any) -> None:
-    """Audit et governance-write via eksisterende infra: eventbus-event + central observe.
-    Self-safe — audit-fejl må ALDRIG bryde selve write'et."""
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(f"{area}.flag_set", {"key": str(key), "value": value})
-    except Exception:
-        pass
-    try:
-        from core.services.central_core import central
-        central().observe({"cluster": area, "nerve": "flag_set", "kind": "observe",
-                           "key": str(key), "value": value})
-    except Exception:
-        pass
 
 
 def _coerce_bool(value: Any) -> Optional[bool]:

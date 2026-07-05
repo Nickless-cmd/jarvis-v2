@@ -578,7 +578,9 @@ def build_visible_chat_prompt_assembly(
         compact=compact,
         name=name,
     )
-    future_cognitive_state = _measured_submit(
+    from core.services.central_injection_registry import injection_live, read_injection
+    _cog_live = injection_live("cognitive_state")
+    future_cognitive_state = None if _cog_live else _measured_submit(
         "cognitive_state",
         _safe_build_cognitive_state_for_prompt, compact=compact,
     )
@@ -2001,7 +2003,10 @@ def build_visible_chat_prompt_assembly(
     # --- Cognitive State (accumulated personality, bearing, taste, rhythm) ---
     # Submitted as a future at function entry; resolve here.
     _mark("before_heavy_resolves")
-    cognitive_state_content = _timed_result(future_cognitive_state, "cognitive_state")
+    if _cog_live:
+        cognitive_state_content = read_injection("cognitive_state") or None
+    else:
+        cognitive_state_content = _timed_result(future_cognitive_state, "cognitive_state")
     # Real-time self-state numbers (decision adherence, goal progress, tick
     # quality). Without this Jarvis confabulates pessimistic answers when
     # asked introspective questions in chat — claims 0% adherence when DB

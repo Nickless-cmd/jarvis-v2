@@ -593,6 +593,7 @@ export function CodeView({
   const headerRight = (
     <div className="chatview-head-right">
       {config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
+      <CentralBadge config={config} isOwner={isOwner} />
       {config && <ConnectionPill config={config} />}
       <button
         type="button"
@@ -700,7 +701,6 @@ export function CodeView({
               onInstallTool={onInstallTool}
             />
             {isOwner && <OperatorPanel config={config} />}
-            <CentralBadge config={config} isOwner={isOwner} />
           </div>
         )}
         {trustBanner}

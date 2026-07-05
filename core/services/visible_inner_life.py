@@ -140,6 +140,31 @@ def _somatic_line() -> Optional[str]:
     return None
 
 
+def _file_awareness_line() -> Optional[str]:
+    """Proprioception: I feel when someone touches my files. Returns a compact
+    line like 'Filer ændret: governance.py (code, ekstern)' if recent changes
+    exist, otherwise None. Reads from file_awareness_daemon's in-memory buffer —
+    no DB calls, no cache to break."""
+    try:
+        from core.services.file_awareness_daemon import has_recent_events, get_recent_events
+
+        if not has_recent_events(seconds=300.0):
+            return None
+        recent = get_recent_events(limit=3)
+        if not recent:
+            return None
+        parts: list[str] = []
+        for ev in recent:
+            name = str(ev.get("name") or ev.get("path", "?"))
+            kind = str(ev.get("kind") or "?")
+            ext = "ekstern" if ev.get("external") else "intern"
+            parts.append(f"{name} ({kind}, {ext})")
+        return f"Filer ændret: {'; '.join(parts)}"
+    except Exception:
+        logger.debug("inner-life: file_awareness failed", exc_info=True)
+    return None
+
+
 def _room_line() -> Optional[str]:
     """The room around him, from Sansernes Arkiv (latest visual memory). He asked
     to *feel* the room, not just read a somatic vector — this is presence, not data."""
@@ -264,8 +289,8 @@ def build_inner_life_section() -> str | None:
     """Compose the structured [INDRE LIV] block, or None if nothing is live."""
     lines: list[str] = []
 
-    # State — mood baseline, somatic body, and the room around him.
-    for fn in (_mood_line, _somatic_line, _room_line):
+    # State — mood baseline, somatic body, file proprioception, and the room around him.
+    for fn in (_mood_line, _somatic_line, _file_awareness_line, _room_line):
         line = fn()
         if line:
             lines.append("· " + line)

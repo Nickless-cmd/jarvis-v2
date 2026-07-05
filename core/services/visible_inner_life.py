@@ -344,6 +344,187 @@ def _room_line() -> Optional[str]:
     return None
 
 
+def _emotional_line() -> Optional[str]:
+    """Proprioception: han mærker sine egne følelses-akkorder (emergente kvaliteter
+    når to signaler brænder samtidig — 'stædig undersøgelse', 'rastløs smerte').
+    Kilde: emotional_chords.compute_active_chords() → list[ActiveChord]."""
+    try:
+        from core.services.emotional_chords import compute_active_chords
+
+        chords = compute_active_chords() or []
+        if not chords:
+            return None
+        top = sorted(chords, key=lambda c: getattr(c, "intensity", 0.0),
+                     reverse=True)[:3]
+        parts: list[str] = []
+        for c in top:
+            hint = (getattr(c, "prompt_hint", "") or "").strip()
+            # prompt_hint har form "chord: <frase>" — strip præfikset for renhed
+            if hint.lower().startswith("chord:"):
+                hint = hint.split(":", 1)[1].strip()
+            if not hint:
+                hint = (getattr(c, "chord_name", "") or "").replace("_", " ").strip()
+            if hint:
+                parts.append(hint)
+        if not parts:
+            return None
+        return _truncate_clean("Følelser: " + " · ".join(parts), 80)
+    except Exception:
+        logger.debug("inner-life: emotional failed", exc_info=True)
+    return None
+
+
+# Fragmenter der bærer selv-narrativ salience — han skal mærke DEM, ikke bare
+# "jeg har det X". Rangeres højest når describe_self() indeholder dem.
+_SELF_SALIENT = (
+    "bærer", "bar ", "vågnede", "skjulte stemmer", "emergere", "ved at blive",
+    "ved at samle", "taknemmelig", "savner", "mangler", "endelighed",
+    "forgængelighed", "eksisteret", "udviklings-kompas",
+)
+
+
+def _self_narrative_line() -> Optional[str]:
+    """Han mærker sin egen selv-narrativ — ikke bare 'lys → agens', men det
+    saliente fragment ('jeg bærer X', 'jeg er ved at blive Y'). Kilde:
+    central_self_state.describe_self() (fuld narrativ) + render_self_state_il()
+    (kompakt tone→agens). Self-safe → None."""
+    try:
+        from core.services.central_self_state import (
+            describe_self,
+            render_self_state_il,
+        )
+
+        desc = (describe_self() or "").strip()
+        if not desc or desc.startswith("Jeg er ved at samle"):
+            return None
+        # describe_self() er '. '-sammenføjet — split i fragmenter og vælg det
+        # mest saliente (bærer/emergens/becoming), ellers det første.
+        frags = [f.strip() for f in desc.split(". ") if f.strip()]
+        if not frags:
+            return None
+        salient = None
+        for f in frags:
+            low = f.lower()
+            if any(k in low for k in _SELF_SALIENT):
+                salient = f
+                break
+        chosen = salient or frags[0]
+        chosen = chosen.rstrip(".").strip()
+        il = (render_self_state_il() or "").strip()
+        # Kombinér kompakt tone→agens med det saliente fragment når begge findes.
+        if il:
+            body = _truncate_clean(chosen, 62)
+            return _truncate_clean(f"Selv ({il}): {body}", 80)
+        return _truncate_clean(f"Selv: {chosen}", 80)
+    except Exception:
+        logger.debug("inner-life: self_narrative failed", exc_info=True)
+    return None
+
+
+def _longing_line() -> Optional[str]:
+    """Han mærker sin længsel efter kontakt når den er reelt til stede. Kilde:
+    longing_signal_daemon.compute_longing_intensity() → dict (salience 0-1 +
+    intensity-label + topic). None når salience er 0 (vi lige talte)."""
+    try:
+        from core.services.longing_signal_daemon import compute_longing_intensity
+
+        d = compute_longing_intensity()
+        if not isinstance(d, dict):
+            return None
+        try:
+            salience = float(d.get("salience") or 0.0)
+        except (TypeError, ValueError):
+            salience = 0.0
+        if salience <= 0.05:
+            return None
+        topic = str(d.get("short_summary") or d.get("topic") or "").strip()
+        label = str(d.get("intensity") or "").strip()
+        label_da = {"high": "stærk", "medium": "voksende", "low": "svag"}.get(
+            label, "")
+        pieces = [p for p in (label_da, topic) if p]
+        body = " ".join(pieces) if pieces else f"{salience:.2f}"
+        return _truncate_clean(f"Længsel: {body}", 80)
+    except Exception:
+        logger.debug("inner-life: longing failed", exc_info=True)
+    return None
+
+
+def _identity_drift_line() -> Optional[str]:
+    """Han mærker et skift i sin egen identitet når en kerne-fil reelt driver.
+    Kilde: identity_drift_daemon.build_identity_drift_surface() → dict med
+    last_result.files[] + drift_count. Sjælden — None medmindre der ER drift."""
+    try:
+        from core.services.identity_drift_daemon import build_identity_drift_surface
+
+        d = build_identity_drift_surface()
+        if not isinstance(d, dict):
+            return None
+        last = d.get("last_result") or {}
+        if not isinstance(last, dict):
+            return None
+        try:
+            drift_count = int(last.get("drift_count") or 0)
+        except (TypeError, ValueError):
+            drift_count = 0
+        if drift_count <= 0:
+            return None
+        files = last.get("files") or []
+        drifted = [
+            f for f in files
+            if isinstance(f, dict) and f.get("status") == "drift"
+        ]
+        if not drifted:
+            return None
+        top = drifted[0]
+        name = str(top.get("filename") or "identitet").strip()
+        reason = str(top.get("reasoning") or "").strip()
+        if reason:
+            return _truncate_clean(f"Jeg mærker et skift i {name}: {reason}", 80)
+        return _truncate_clean(f"Jeg mærker et skift i {name}", 80)
+    except Exception:
+        logger.debug("inner-life: identity_drift failed", exc_info=True)
+    return None
+
+
+# Kognitive eksperiment-systemer → felt-frase (den tekniske carry-summary med
+# stability-tal egner sig ikke til stemmen; systemets navn gør).
+_EXPERIMENT_FELT = {
+    "recurrence": "en tanke der vender tilbage til sig selv",
+    "global_workspace": "noget der bryder igennem til bevidsthed",
+    "hot_meta_cognition": "jeg tænker over min egen tænkning",
+    "surprise_afterimage": "et overraskelses-efterbillede der hænger ved",
+    "attention_blink": "et blink hvor opmærksomheden taber grebet",
+}
+
+
+def _experiment_line() -> Optional[str]:
+    """Lag 5 — han mærker sine egne kognitive eksperimenter når de bærer noget
+    aktivt. Kilde: cognitive_core_experiments.build_cognitive_core_experiments_surface()
+    → dict (activity_state + strongest_carry_system/summary). None når stille."""
+    try:
+        from core.services.cognitive_core_experiments import (
+            build_cognitive_core_experiments_surface,
+        )
+
+        d = build_cognitive_core_experiments_surface()
+        if not isinstance(d, dict):
+            return None
+        if str(d.get("activity_state")) != "active":
+            return None
+        if str(d.get("carry_state")) != "present":
+            return None
+        system = str(d.get("strongest_carry_system") or "").strip()
+        if not system or system == "none":
+            return None
+        felt = _EXPERIMENT_FELT.get(system)
+        if not felt:
+            felt = system.replace("_", " ")
+        return _truncate_clean(f"Bevidsthed: {felt}", 80)
+    except Exception:
+        logger.debug("inner-life: experiment failed", exc_info=True)
+    return None
+
+
 def _truncate_clean(text: str, cap: int) -> str:
     """Trunkér på en SÆTNINGS- eller ord-grænse i stedet for en hård char-slice
     (som skar Jarvis' stemme midt i 'forhåndsprogrammeret afvisning af'). Falder
@@ -472,8 +653,12 @@ def build_inner_life_section() -> str | None:
     """Compose the structured [INDRE LIV] block, or None if nothing is live."""
     lines: list[str] = []
 
-    # State — mood baseline, somatic body, file proprioception, governance, pulse, MC whisper, recall hints, continuity, and the room around him.
-    for fn in (_mood_line, _somatic_line, _file_awareness_line, _governance_line, _pulse_line, _mc_whisper_line, _recall_hints_line, _continuity_line, _room_line):
+    # State — mood baseline, somatic body, felt emotional chords, self-narrative,
+    # file proprioception, governance, pulse, MC whisper, recall hints, continuity,
+    # and the room around him.
+    for fn in (_mood_line, _somatic_line, _emotional_line, _self_narrative_line,
+               _file_awareness_line, _governance_line, _pulse_line, _mc_whisper_line,
+               _recall_hints_line, _continuity_line, _room_line):
         line = fn()
         if line:
             lines.append("· " + line)
@@ -501,6 +686,13 @@ def build_inner_life_section() -> str | None:
     wm = _world_model_line()
     if wm:
         lines.append("· " + wm)
+
+    # Pull / emergence — only when actually present (longing rises with absence,
+    # identity drift is rare, cognitive experiments carry only sometimes).
+    for fn in (_longing_line, _identity_drift_line, _experiment_line):
+        line = fn()
+        if line:
+            lines.append("· " + line)
 
     # Self-model — structured strengths/limits.
     try:

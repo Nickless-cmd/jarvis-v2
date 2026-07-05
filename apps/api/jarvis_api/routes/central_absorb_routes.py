@@ -130,3 +130,107 @@ async def get_costs_daily() -> dict:
         "today_total": today_total,
         "prev_total": prev_total,
     }
+
+
+@router.get("/council")
+async def get_council() -> dict:
+    """Projicér råds-/swarm-surfacen (samme som ``/mc/council``) + absorbér den.
+
+    Owner-gated. Self-safe: producent-fejl → tomt surface, stadig 200.
+    Flagger hvis der ingen råds-sessioner er.
+    """
+    require_central_owner()
+
+    try:
+        from core.services.agent_runtime import build_council_surface
+        surface = build_council_surface(limit=40)
+    except Exception:
+        surface = {}
+
+    sessions = (
+        (surface.get("sessions") or surface.get("councils") or [])
+        if isinstance(surface, dict)
+        else []
+    )
+
+    absorb(
+        "council",
+        "sessions",
+        {"count": len(sessions)},
+        flag_if=lambda v: v["count"] == 0,
+        flag_reason="ingen aktive råd",
+    )
+
+    return {
+        "council": surface if isinstance(surface, dict) else {},
+        "sessions": sessions,
+        "count": len(sessions),
+    }
+
+
+@router.get("/queues/scheduled")
+async def get_scheduled() -> dict:
+    """Projicér ventende planlagte opgaver + absorbér antallet som nerve.
+
+    Owner-gated. Self-safe: producent-fejl → tom liste, stadig 200.
+    Flagger hvis der er mange (>20) ventende opgaver.
+    """
+    require_central_owner()
+
+    try:
+        from core.services.scheduled_tasks import list_pending_for_current_user
+        tasks = list_pending_for_current_user()
+    except Exception:
+        tasks = []
+    tasks = tasks or []
+
+    absorb(
+        "queue",
+        "scheduled",
+        {"count": len(tasks)},
+        flag_if=lambda v: v["count"] > 20,
+        flag_reason="mange ventende opgaver",
+    )
+
+    return {"tasks": tasks, "count": len(tasks)}
+
+
+@router.get("/autonomy")
+async def get_autonomy() -> dict:
+    """Projicér autonomi-forslags-køen + absorbér den som nerve.
+
+    Owner-gated. Self-safe: producent-fejl → tomt surface, stadig 200.
+    Flagger hvis der er ventende forslag (afventer godkendelse).
+    """
+    require_central_owner()
+
+    try:
+        from core.services.autonomy_proposal_queue import build_autonomy_proposal_surface
+        surface = build_autonomy_proposal_surface(limit=20)
+    except Exception:
+        surface = {}
+
+    proposals = (
+        (surface.get("proposals") or surface.get("items") or [])
+        if isinstance(surface, dict)
+        else []
+    )
+    pending = [
+        p for p in proposals
+        if isinstance(p, dict) and str(p.get("status") or "") == "pending"
+    ]
+
+    absorb(
+        "autonomy",
+        "proposal",
+        {"count": len(proposals), "pending": len(pending)},
+        flag_if=lambda v: v["pending"] > 0,
+        flag_reason="ventende autonomi-forslag",
+    )
+
+    return {
+        "autonomy": surface if isinstance(surface, dict) else {},
+        "proposals": proposals,
+        "pending_count": len(pending),
+        "count": len(proposals),
+    }

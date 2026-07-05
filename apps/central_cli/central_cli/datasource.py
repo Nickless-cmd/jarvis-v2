@@ -442,6 +442,44 @@ def cost_today(client: Any) -> float | None:
         return None
 
 
+def council(client: Any) -> list:
+    """Council/swarm sessions from /central/council. Self-safe → []."""
+    try:
+        data = client.get_json("/central/council")
+        if not isinstance(data, dict):
+            return []
+        return data.get("sessions") or []
+    except Exception:
+        return []
+
+
+def scheduled(client: Any) -> list:
+    """Pending scheduled tasks from /central/queues/scheduled. Self-safe → []."""
+    try:
+        data = client.get_json("/central/queues/scheduled")
+        if not isinstance(data, dict):
+            return []
+        return data.get("tasks") or []
+    except Exception:
+        return []
+
+
+def autonomy(client: Any) -> dict:
+    """Autonomy proposal queue from /central/autonomy. Self-safe →
+    ``{"proposals": [], "pending_count": 0}``."""
+    fallback = {"proposals": [], "pending_count": 0}
+    try:
+        data = client.get_json("/central/autonomy")
+        if not isinstance(data, dict):
+            return dict(fallback)
+        return {
+            "proposals": data.get("proposals") or [],
+            "pending_count": data.get("pending_count") or 0,
+        }
+    except Exception:
+        return dict(fallback)
+
+
 def costs_daily(client: Any) -> dict:
     """Daily cost time-series from /central/costs-daily, shaped for the CLI.
 

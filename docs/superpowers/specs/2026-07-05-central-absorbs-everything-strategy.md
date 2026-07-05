@@ -114,9 +114,12 @@ Dette er et **program**, ikke ét PR. Rækkefølge (hver fase = observérbar gev
 3. **CLI-først.** MC's faner flyttes ind i Central-CLI'en (Central-CLI-stil) som noget af det FØRSTE —
    Bjørn ser intet i dag fordi han ikke bruger MC. Synlighed skal komme mens vi wirer, ikke bagefter.
 4. **MC afmonteres KUN efter e2e.** Per kategori: wire (fuld behandling) → surfacér i CLI → verificér
-   ende-til-ende → FØRST DA fjernes MC-UI+route+polling for den kategori. Bonus: mange mørke LLM-kald
-   sker via MC → Centralen som chokepoint der ved hvornår kaldet er nødvendigt sparer både backend-hammer
-   OG spildte LLM-kald.
+   ende-til-ende → FØRST DA fjernes MC-UI+route+polling for den kategori. **Præcisering (self-review):**
+   MC's GET-routes er READ-only projektioner — at fjerne MC dræber **poll-hammeren** (den reelle gevinst),
+   men stopper IKKE de mørke LLM-kald i sig selv (daemonerne kalder LLM på egen cadence uanset MC). LLM-
+   chokepoint-besparelsen er SEPARAT arbejde: route daemon-egress gennem Centralen (jf. eksisterende
+   `central_llm_egress` shadow-observer). Undtagelse: MC's *action*-POSTs (`/runtime/*/run-round`,
+   `/execute`) trigger reelt LLM — dem gater Centralen.
 
 Hver wire-in leveres med **test- + edge-plan** (unit for shaping/self-safety, e2e mod live-container for
 signalvej, edge: tom/manglende data, provider-nede, privatlags-grænse, restart-churn på in-memory timeserie).
@@ -163,11 +166,30 @@ justere på ægte data. §8-dødsmekanismen står. Dette er selve LivingNeuron-v
 
 ---
 
+## Self-review-fund (adversarisk gennemgang 5. jul — SKAL løses før byggeri)
+- **[KRITISK] Deployment-topologi:** `/central/mind` + selvet (`living_executive`, `runtime_self_model`)
+  er RUNTIME-proces-tilstand (port 8011). `central_hub._build_mind()` læser IN-PROCESS uden proxy, mens
+  living-mind-routes proxy'er til 8011. Når api kører api-only, er `/central/mind`-sektionerne TOMME.
+  FØR Fase 1: enten (a) de nye `/central/self`+`/central/inner-life`+`/central/mind`-buildere proxy'er til
+  8011 som living_mind gør, ELLER (b) dokumentér at CLI kun virker når api co-hoster runtime.
+- **[KRITISK] `/mc/runtime` (140KB) + `/mc/jarvis` (80KB)** er IKKE i inventarets 39 items (de renderes
+  ikke i UI). De er AGGREGATORER af de konstituerende surfaces (I32/I35/I36). Beslutning: gen-skab dem
+  ALDRIG som mega-bundles i CLI — CLI læser de konstituerende central-sektioner; de to aggregatorer
+  pensioneres. (Ellers gen-indfører vi 140KB-monstret.)
+- **[VIGTIG] §24.4-projektionen skal specificeres, ikke antages.** `living_executive` returnerer i dag
+  RÅ privat indhold (recent_traces/current_focus/tool_plan/memory_precedents). "Samme model som feel"
+  kræver en KONKRET reducer: hvilke felter overlever (liveness/tællere/governance-konsekvens), hvilke
+  droppes. Skriv den FØR Fase 1 — brug `feel`-reduceren som navngiven skabelon.
+- **[VIGTIG] T1 member-synlighed:** T1 kilder fra owner-only `/central/realtime` (403 for member). Member-
+  T1 skal bruge CentralBadge'ens member-sikre summary-kilde, ikke `/central/*`.
+- **[VIGTIG] T7 læse-vs-action:** `/mc/council*`+`/mc/agents/{id}/*` inkluderer POST-actions der TRIGGER
+  LLM (`run-round`/`execute`/`spawn`). T7 som observabilitet er read-only; action-routes gates eksplicit.
+- **[MINOR] Løse `/mc/`-forbrugere før fjernelse:** `api.ts:611` (`/mc/cognitive-architecture`) + `:618`
+  (`/mc/overview`) kaldes UDEN for MissionControl — gen-peg dem før route-fjernelse.
+
 ## Åbne beslutninger (Bjørns kald)
 - **Rækkefølge A vs B vs C først?** Anbefaling: A1-A3 (cost/agent/council — konkret MC-værdi) + B
   parallelt (billigt, stopper spild), så C (dybest, mest agentur).
-- **Privatlag:** Tier-1-huller (self-model/living-executive) er delvist private. Wire liveness/metadata
-  under §24.4, ikke rå indhold — samme model som `feel`.
 - **Hvor aggressivt fjerne MC?** Kan gøres kategori-for-kategori (sikkert) eller i ét snit til sidst.
 
 ## Kilde-artefakter (research-output, denne session)

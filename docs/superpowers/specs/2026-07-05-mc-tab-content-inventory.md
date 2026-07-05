@@ -196,23 +196,28 @@ redundante paneler/surfaces (Oversigt, dobbelt-feed, dobbelt-diagnostik, S4-hele
 
 ## DEL 3 — Konsolideret Central-CLI fane-sæt (Trin 4)
 
-Central-CLI-stil (som de eksisterende HUD-tabs Overview/Nerves/Clusters/Incidents/Anomalies/
-Diagnostics/Healing/Governance). **8 faner.** Hvert Del-1-element mapper til **præcis én** fane.
-Hvert endpoint kaldes fra **ét** sted (fanens hook); delt state fodrer tællere/genveje uden gen-kald.
+Central-CLI-stil. **10 faner** (Bjørn godkendt 5. jul — split af den overloadede "Mind & Diagnostics"
+så **selvet** får egen prominent plads + Healing/Governance bevares som egne skrive-flader). Hvert
+Del-1-element mapper til **præcis én** fane; hvert endpoint kaldes fra **ét** sted (fanens hook).
 
 | # | Central-CLI-fane | Holder (Del-1-elementer) | Endpoints (ét sted) | Absorberer gamle MC-flader |
 |---|------------------|--------------------------|---------------------|----------------------------|
-| **T1** | **Overview** | I1 status · I2 coverage · I3 decide/observe · I4 processer · I19 run-summary-tællere · I24 overblik-totaler · I39 ur · pinned tæller-bar m. klik-navigation (fra SummaryBar+metrics-fusion) · "afventer dig"-genvej (tæller → T5) | `/central/realtime`, `/mc/overview` | S1·Oversigt, S1·SummaryBar, S3·header+metrics, S2·overview, S4·puls, C1-metrics |
-| **T2** | **Nerves** | I6 live nerve-feed (ét SSE, filtre vigtige/fejl/alle, pause-på-hover) · I14 nerve-detalje/drill-in · I15 nerve tænd/sluk | `/central/stream`, `/central/realtime`.feed, `/central/nerve/{n}`, `/central/nerve/{n}/toggle` | S3·FeedPanel+NerveFocus, S4·feed+detalje, S2·pulse+observability-feed |
-| **T3** | **Clusters** | I5 cluster-status-grid (foldbar konstellation, sikkerhed markeret) | `/central/realtime`.clusters | S3·ClusterGrid, S4·grid, S2·overview-clusters |
-| **T4** | **Incidents & Anomalies** | I7 incidents · I8 anomalier · I9 open breakers · I10 config-drift · I37 kanonisk-fejl-log (correlation_id) | `/central/realtime`.{incidents,anomalies,open_breakers,config_drift}, `/central/diagnostics` (incidents/anomalier-del), klient `CanonicalError` | S3·flag+diagnostik(inc/anom), S4·flag+anomalier, C2·SystemHealth, C1-tæller |
-| **T5** | **Runs & Work** | I18 runs-liste · I20 run-detalje/trin · I22 planlagt (afsnit) · I23 cost pr. dag · I25 eventbus-hændelsesfeed (familie-filtre) | `/mc/runs`, `/mc/runs/{id}`, `/mc/scheduled-tasks`, `/mc/costs/daily`, `/mc/events` | S1·Runs+Planlagt+Cost+Hændelser |
+| **T1** | **Overview** | I1 status · I2 coverage · I3 decide/observe · I4 processer · I19 run-summary-tællere · I24 overblik-totaler · I39 ur · pinned tæller-bar · "afventer dig"-genvej (→ T6) | `/central/realtime`, `/mc/overview` | S1·Oversigt, S1·SummaryBar, S3·header+metrics, S2·overview, S4·puls, C1-metrics |
+| **T2** | **Nerves** | I6 live nerve-feed (ét SSE, filtre, pause-på-hover) · I14 nerve-detalje/drill-in · I15 nerve tænd/sluk | `/central/stream`, `/central/realtime`.feed, `/central/nerve/{n}`, `/central/nerve/{n}/toggle` | S3·FeedPanel+NerveFocus, S4·feed+detalje, S2·pulse+observability |
+| **T3** | **Clusters** | I5 cluster-status-grid (foldbar, sikkerhed markeret) | `/central/realtime`.clusters | S3·ClusterGrid, S4·grid, S2·overview-clusters |
+| **T4** | **Incidents & Anomalies** | I7 incidents · I8 anomalier · I9 open breakers · I10 config-drift · I37 kanonisk-fejl-log | `/central/realtime`.{incidents,anomalies,open_breakers,config_drift}, `/central/diagnostics` (inc/anom), klient `CanonicalError` | S3·flag+diagnostik(inc/anom), S4·flag+anomalier, C2·SystemHealth, C1-tæller |
+| **T5** | **Runs & Work** | I18 runs-liste · I20 run-detalje/trin · I22 planlagt · I23 cost pr. dag · I25 eventbus-hændelsesfeed (familie-filtre) | `/mc/runs`, `/mc/runs/{id}`, `/mc/scheduled-tasks`, `/mc/costs/daily`, `/mc/events` | S1·Runs+Planlagt+Cost+Hændelser |
 | **T6** | **Approvals** | I26 godkendelses-kø · I27 deling-guard · I28 todo/initiativer · I29 planer · I30 kanaler | useCoworkData (`/cowork/*`) | S1·Godkendelser+Opgaver |
-| **T7** | **Agents & Council** | I21 agenter (roster: status/rolle/mål/tokens/runs/tools) · I33 agency-map · council-runtime (I36-delmængde) | `/mc/agents`, `/mc/agents/{id}/*`, `/central/mind?section=agency`, `/mc/council*` | S1·Agenter, S2·agency+council |
-| **T8** | **Mind & Diagnostics** | I11 læring (autonomi/degraderer/rod-årsager) · I12 providers (helbred/latens/tørre lanes) · I13 fuld diagnostik (silent-failure-instrument-fund + rod-årsager + degrading) · I16 owner-kommando-linje (Terminal) · I17 betjenings-genveje · I32 Sind (~70 cognitive surfaces) · I34 skills-engine · I35 24 living-mind-surfaces · I36 ~155 indre-liv-projektioner (memory/council/reflection/lab/hardening) · I38 OS-CLI-åbning | `/central/command`, `/central/providers`, `/central/diagnostics`, `/central/mind?section=…` (mind/skills/memory/council/reflection/lab/hardening), `/mc/*` living-mind/indre-liv-routes | S3·Terminal+Diagnostik+providers+betjening, S2·mind/skills/memory/council/reflection/lab/hardening, S4·læring, C1-klik |
+| **T7** | **Agents & Council** | I21 agenter (roster) · I33 agency-map · council-runtime (I36-delmængde) | `/mc/agents`, `/mc/agents/{id}/*`, `/central/mind?section=agency`, `/mc/council*` | S1·Agenter, S2·agency+council |
+| **T8** ⭐ | **Mind & Self** | I32 Sind (~70 cognitive surfaces) · I34 skills-engine · I35 24 living-mind-surfaces · I36 ~155 indre-liv-projektioner (memory/reflection/lab/hardening) · **SELVET: `living_executive` (autonom handlings-motor) · `runtime_self_model` · `world_model`+open-loops** (levende nerver, §24.4-grænse) | `/central/mind?section=…`, `/central/self` (ny), `/central/inner-life` (ny, syndikeret), `/mc/*` living-mind-routes | S2·mind/skills/memory/reflection/lab/hardening, S3·sind-grid |
+| **T9** | **Diagnostics** | I11 læring (autonomi/degraderer/rod-årsager) · I12 providers (helbred/latens/tørre lanes) · I13 fuld diagnostik (silent-failure-instrument + rod-årsager + degrading) · **Healing** (healer-registry/modes/ledger) | `/central/diagnostics`, `/central/providers`, `/central/realtime`.learning, `/central/healers` | S3·Diagnostik+providers, S4·læring |
+| **T10** | **Governance** | flag-styring (skrive-flade m. confirm på farlige) | `/central/governance`, `/central/governance/set` | (central-native; ny i CLI) |
+
+**Rygrad (ikke fane):** Terminalen — I16 owner-kommando-linje + I17 betjenings-genveje — er den
+altid-aktive `central>` (findes allerede). I38 OS-CLI-åbning bor på CentralBadge-klik (shell).
 
 **Fra 8 MC-faner (S1) + 10 hub-sektioner (S2) + 2 hele HUD-surfaces (S3/S4) + 2 chips (C1/C2)** →
-**8 Central-CLI-faner** (T1–T8). Bemærk: **Terminalen (I16) er selve rygraden** — Central-CLI er en
+**10 Central-CLI-faner** (T1–T10) + terminal-rygrad. Bemærk: **Terminalen er selve rygraden** — Central-CLI er en
 terminal, så T8's kommando-linje er altid tilgængelig; fanerne er strukturerede visninger ovenpå.
 
 ### Bevarede shell-indgange (ikke faner — undgå at gen-vise fane-data)
@@ -227,7 +232,7 @@ terminal, så T8's kommando-linje er altid tilgængelig; fanerne er strukturered
 
 ## COVERAGE CHECK — 100 % dækning, nul dubletter
 
-**Hvert Del-1-element (I1–I39) → præcis én Central-CLI-fane:**
+**Hvert Del-1-element (I1–I39) → præcis én Central-CLI-fane** (rettet til 10-fane-designet + self-review):
 
 | Fane | Elementer |
 |------|-----------|
@@ -237,34 +242,44 @@ terminal, så T8's kommando-linje er altid tilgængelig; fanerne er strukturered
 | T4 Incidents & Anomalies | I7, I8, I9, I10, I37 |
 | T5 Runs & Work | I18, I20, I22, I23, I25 |
 | T6 Approvals | I26, I27, I28, I29, I30 |
-| T7 Agents & Council | I21, I33 (+ council-del af I36) |
-| T8 Mind & Diagnostics | I11, I12, I13, I16, I17, I32, I34, I35, I36, I38 |
-| tvær-gående (ikke fane-ejet) | I31 StatusChip (delt UI-primitiv, bruges i T1/T5/T7), C1/C2 shell-chips |
+| T7 Agents & Council | I21, I33, **I36a** (council-runtime-del) |
+| T8 Mind & Self ⭐ | I32, I34, I35, **I36b** (resten af indre-liv-projektionerne) + SELVET (living_executive/self_model/world_model) |
+| T9 Diagnostics | I11, I12, I13 + Healing (central-native `/central/healers`) |
+| T10 Governance | flag-governance (central-native `/central/governance`) |
+| Rygrad (ikke fane) | I16 kommando-linje · I17 betjenings-genveje (Terminal, altid-aktiv) · I38 OS-CLI-åbning (CentralBadge-klik) |
+| tvær-gående | I31 StatusChip (delt UI-primitiv), C1/C2 shell-chips |
 
-**Verifikation:** I1–I39 optræder alle præcis én gang i tabellen ovenfor (I31 er en delt
-farve-primitiv, ikke et data-element; C1/C2 er shell-indgange). **Ingen element optræder to gange →
-nul data-dublet.** Hvert endpoint har ét ejer-fane-hook (Del-3-kolonne 4); tidligere 5×`/central/realtime`
-og 4×`/central/stream` reduceres til ét kald hver, delt via state.
+**I36 splittes** (self-review-fund I-3): I36a = council-runtime → T7; I36b = resten (self-model/chronicle/
+gut/memory/reflection/lab/hardening m.fl.) → T8. Så holder "præcis én fane" bogstaveligt.
 
-**Ingen mistet indhold:** Alle 8 S1-faner, alle 10 S2-sektioner (inkl. de 5 endnu-ikke-projicerede →
-T8), begge HUD-surfaces (S3 fuldt, S4 som delmængde uden unikt tab), begge chips (C1/C2 → shell +
-T4/T1) er mappet. De ~181 `/mc/*`-backend-routes (I35/I36) er eksplicit hjemmehørende i **T8** (via
-`/central/mind`-hub'ens memory/council/reflection/lab/hardening-sektioner efterhånden som de projiceres).
+**Verifikation:** I1–I39 optræder alle præcis én gang (I16/I17/I38 = rygrad/shell, ikke T-fane; I31 delt
+primitiv). **Nul data-dublet.** Hvert endpoint har ét ejer-fane-hook; tidligere 5×`/central/realtime` og
+4×`/central/stream` → ét kald hver, delt via state.
+
+**Aggregatorer pensioneres, ikke foldes (self-review-fund C1):** `/mc/runtime` (140KB) + `/mc/jarvis`
+(80KB) er IKKE egne I-items — de er mega-bundles af de konstituerende surfaces (I32/I35/I36). CLI gen-skaber
+dem ALDRIG; den læser de konstituerende central-sektioner. De to aggregatorer fjernes med resten af MC.
 
 ### Owner-only vs. member-synligt
 
 | Central-CLI-fane | Synlighed |
 |------------------|-----------|
-| T1 Overview | **member** (status/coverage; run/cost-totaler for member skjules eller nulstilles) |
-| T2 Nerves | **owner-only** (`/central/*` = 403 for ikke-ejere) |
-| T3 Clusters | **owner-only** (`/central/realtime`) |
-| T4 Incidents & Anomalies | **blandet** — central-incidents owner-only; C2 kanonisk-fejl-log member-synlig |
-| T5 Runs & Work | **member** for egne runs/godkendelser; **Cost (I23) + Hændelser (I25) owner-only** (som i dag) |
-| T6 Approvals | **member** for egen kø; **Deling-guard (I27) + Kanaler (I30) owner-only** |
-| T7 Agents & Council | **owner-only** (S1·Agenter var owner-only; council owner-only) |
-| T8 Mind & Diagnostics | **owner-only** (Terminal/diagnostik/providers/mind = `/central/*` + owner-gated `/mc/*`) |
-| C1 CentralBadge | **alle roller** (member: kun status-ord; owner: metrics + CLI-klik) |
-| C2 SystemHealth | **alle roller** (kanoniske fejl, observabilitet) |
+| T1 Overview | **member** — MEN `/central/*` er owner-gated (403). Member-T1 SKAL bruge CentralBadge'ens member-sikre summary-kilde, ikke `/central/realtime` (self-review-fund I-4). |
+| T2 Nerves | **owner-only** (`/central/*`) |
+| T3 Clusters | **owner-only** |
+| T4 Incidents & Anomalies | **blandet** — central-incidents owner; C2 kanonisk-fejl-log member |
+| T5 Runs & Work | **member** for egne runs; Cost (I23)+Hændelser (I25) **owner** |
+| T6 Approvals | **member** for egen kø; Deling (I27)+Kanaler (I30) **owner** |
+| T7 Agents & Council | **owner-only**. NB: action-POSTs (`run-round`/`execute`/`spawn`) er LLM-triggende → gates eksplicit, ikke blind observabilitet (self-review-fund I-5). |
+| T8 Mind & Self | **owner-only** + **§24.4-projektion** (liveness/metadata, ikke rå privat indhold — konkret reducer defineres FØR Fase 1, jf. strategi-doc self-review) |
+| T9 Diagnostics | **owner-only** |
+| T10 Governance | **owner-only** (skrive-flade, confirm på farlige) |
+| C1 CentralBadge | **alle roller** (member: status-ord; owner: metrics + CLI-klik) |
+| C2 SystemHealth | **alle roller** |
+
+**Deployment-forbehold (self-review-fund C2):** `/central/mind` + selvet er runtime-proces-tilstand (8011);
+`central_hub` læser in-process uden proxy. CLI'en (remote via api) får TOMME mind/self-sektioner når api
+kører api-only → de nye buildere skal proxy'e til 8011 (som living_mind), ELLER CLI kræver api+runtime samme proces. Afklares FØR Fase 1.
 
 Owner-gating er allerede håndhævet backend-side: `/central/*` kalder `_require_owner()` (403), og
 S1's Agenter/Cost/Hændelser er `ownerOnly` i `TABS`. Konsolideringen bevarer disse grænser 1:1.

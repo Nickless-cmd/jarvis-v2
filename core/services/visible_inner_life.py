@@ -260,6 +260,21 @@ def _governance_line() -> Optional[str]:
     return None
 
 
+def _recall_hints_line() -> Optional[str]:
+    """Cross-memory awareness: which of the three memory systems hold something
+    about the current topic? Returns a compact hint like 'Emne X findes i brain + arkiv'.
+    Uses unified_recall (no new DB calls — reads from existing indexes)."""
+    try:
+        from core.services.unified_recall import get_unified_recall_hints
+        hints = get_unified_recall_hints(limit=3)
+        if not hints:
+            return None
+        return "Hukommelse: " + "; ".join(hints)
+    except Exception:
+        logger.debug("inner-life: recall hints failed", exc_info=True)
+    return None
+
+
 def _room_line() -> Optional[str]:
     """The room around him, from Sansernes Arkiv (latest visual memory). He asked
     to *feel* the room, not just read a somatic vector — this is presence, not data."""
@@ -385,7 +400,7 @@ def build_inner_life_section() -> str | None:
     lines: list[str] = []
 
     # State — mood baseline, somatic body, file proprioception, pulse, MC whisper, and the room around him.
-    for fn in (_mood_line, _somatic_line, _file_awareness_line, _governance_line, _pulse_line, _mc_whisper_line, _room_line):
+    for fn in (_mood_line, _somatic_line, _file_awareness_line, _governance_line, _pulse_line, _mc_whisper_line, _recall_hints_line, _room_line):
         line = fn()
         if line:
             lines.append("· " + line)

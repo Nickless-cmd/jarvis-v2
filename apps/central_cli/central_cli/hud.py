@@ -100,14 +100,13 @@ _SEVERITY = {
 # (its populate/detail logic is unchanged) and folds into the incidents tab as a
 # sub-view — so no anomaly functionality is lost.
 _TABLE_TABS = {"nerves", "clusters", "incidents", "anomalies", "governance",
-               "agents"}
-# Panel-backed tabs (single full-width panel). The not-yet-wired new tabs
-# (runs/approvals) still render the "venter på wiring" placeholder here.
+               "agents", "runs", "approvals"}
+# Panel-backed tabs (single full-width panel). "runs"/"approvals" are now wired
+# as real table-tabs (scheduled/autonomy), so they no longer live here.
 # "mind" renders Jarvis' self as a panel. "healing" stays reachable as a panel
 # sub-view (its render/toggle logic intact).
 _PANEL_TABS = {
-    "overview", "diagnostics", "healing",
-    "runs", "approvals", "mind",
+    "overview", "diagnostics", "healing", "mind",
 }
 
 # agent status -> color
@@ -276,6 +275,9 @@ class CentralHud(App):
         self._nerve_rows: list = []
         self._cluster_rows: list = []
         self._agent_rows: list = []
+        self._scheduled: list = []
+        self._autonomy: dict = {}
+        self._council: list = []
         self._pulse_on: bool = True
         self._caret_on: bool = True
         self._cmd_mode: bool = False
@@ -589,9 +591,10 @@ class CentralHud(App):
                 self._render_healing_panel()
             elif name == "mind":
                 self._render_mind_self_panel()
-            elif name in ("runs", "approvals"):
-                # Not-yet-wired tabs (Fase 0): render the placeholder.
-                self._render_placeholder_panel(name)
+            elif name == "runs":
+                self._populate_runs()
+            elif name == "approvals":
+                self._populate_approvals()
             else:
                 self._render_placeholder_panel(name)
         except Exception:
@@ -1250,6 +1253,73 @@ class CentralHud(App):
                            else Text("—", style=DIM))
             table.add_row(Text(label, style=FG), val_text, danger_cell)
 
+    # -- Runs (scheduled tasks) --------------------------------------------
+    def _populate_runs(self) -> None:
+        try:
+            table = self.query_one("#nerve-table", DataTable)
+        except Exception:
+            return
+        self._reset_columns(table, ("opgave", 34), ("hvornår", 20), ("status", 12))
+        try:
+            self._scheduled = datasource.scheduled(self._client) if self._client else []
+        except Exception:
+            self._scheduled = []
+        tasks = self._scheduled or []
+        self._set_paneh(
+            f"[{CYAN}]PLANLAGT[/] [{FGDIM}]— {len(tasks)} ventende opgaver[/]"
+        )
+        if not tasks:
+            table.add_row(
+                Text("— ingen planlagte opgaver —", style=DIM), Text(""), Text("")
+            )
+            return
+        for task in tasks:
+            title = (task.get("title") or task.get("name") or task.get("task")
+                     or task.get("kind") or "—")
+            when = (task.get("next_run") or task.get("scheduled_for")
+                    or task.get("when") or "—")
+            status = task.get("status") or "—"
+            table.add_row(
+                Text(_esc(str(title)), style=FG),
+                Text(_esc(str(when)), style=FGDIM),
+                Text(_esc(str(status)), style=FGDIM),
+            )
+
+    # -- Approvals (autonomy proposals) ------------------------------------
+    def _populate_approvals(self) -> None:
+        try:
+            table = self.query_one("#nerve-table", DataTable)
+        except Exception:
+            return
+        self._reset_columns(table, ("forslag", 40), ("art", 18), ("status", 12))
+        try:
+            self._autonomy = (datasource.autonomy(self._client) if self._client
+                              else {"proposals": [], "pending_count": 0})
+        except Exception:
+            self._autonomy = {"proposals": [], "pending_count": 0}
+        proposals = self._autonomy.get("proposals") or []
+        pending = self._autonomy.get("pending_count") or 0
+        pend_color = AMBER if pending > 0 else FGDIM
+        self._set_paneh(
+            f"[{CYAN}]AUTONOMI[/] [{FGDIM}]— [/]"
+            f"[{pend_color}]{pending} afventer[/]"
+        )
+        if not proposals:
+            table.add_row(
+                Text("— ingen afventende forslag —", style=DIM), Text(""), Text("")
+            )
+            return
+        for p in proposals:
+            title = (p.get("title") or p.get("summary") or p.get("description")
+                     or p.get("kind") or "—")
+            kind = p.get("kind") or p.get("type") or "—"
+            status = p.get("status") or "pending"
+            table.add_row(
+                Text(_esc(str(title)), style=FG),
+                Text(_esc(str(kind)), style=FGDIM),
+                Text(_esc(str(status)), style=FGDIM),
+            )
+
     # -- Agents ------------------------------------------------------------
     def _populate_agents(self) -> None:
         try:
@@ -1265,7 +1335,14 @@ class CentralHud(App):
         except Exception:
             rows = []
         self._agent_rows = rows
-        self._set_paneh(f"[{CYAN}]AGENTS[/] [{FGDIM}]— {len(rows)} agenter[/]")
+        try:
+            self._council = datasource.council(self._client)
+        except Exception:
+            self._council = []
+        self._set_paneh(
+            f"[{CYAN}]AGENTS[/] [{FGDIM}]— {len(rows)} agenter · "
+            f"{len(self._council)} råds-sessioner[/]"
+        )
         for r in rows:
             status = str(r.get("status", ""))
             color = _AGENT_STATUS.get(status, FG)

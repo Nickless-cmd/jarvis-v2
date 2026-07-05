@@ -31,10 +31,12 @@ async def test_all_ten_tabs_show_without_crash():
 
 
 @pytest.mark.asyncio
-async def test_new_tabs_render_placeholder_without_crash():
-    """The still-not-wired tabs (runs/approvals) are PANEL tabs that render a
-    'venter på wiring' placeholder without crashing. (agents/mind are wired in
-    Task 1.6 — see test_hud_self_agents.py.)"""
+async def test_runs_and_approvals_are_wired_table_tabs():
+    """runs (scheduled) and approvals (autonomy) are now wired TABLE tabs.
+    With empty payloads they render a single info row without crashing
+    (see test_hud_a234.py for the populated cases)."""
+    from textual.widgets import DataTable
+
     class FC:
         def get_json(self, p, params=None):
             if "realtime" in p:
@@ -50,7 +52,5 @@ async def test_new_tabs_render_placeholder_without_crash():
         for tab in ("runs", "approvals"):
             app.show_tab(tab)
             assert app.active_tab == tab
-            # placeholder tabs are panel tabs (not table tabs)
-            assert app.query_one("#hud-panel").display is True
-            rendered = str(app.query_one("#hud-panel").render())
-            assert "venter" in rendered
+            table = app.query_one("#nerve-table", DataTable)
+            assert table.row_count == 1  # single info row

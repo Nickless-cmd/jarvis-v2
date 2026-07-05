@@ -224,6 +224,22 @@ def list_flags() -> List[Dict[str, Any]]:
     return out
 
 
+def record_mutation(area: str, key: str, value: Any) -> None:
+    """Audit et governance-write via eksisterende infra: eventbus-event + central observe.
+    Self-safe — audit-fejl må ALDRIG bryde selve write'et."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(f"{area}.flag_set", {"key": str(key), "value": value})
+    except Exception:
+        pass
+    try:
+        from core.services.central_core import central
+        central().observe({"cluster": area, "nerve": "flag_set", "kind": "observe",
+                           "key": str(key), "value": value})
+    except Exception:
+        pass
+
+
 def _coerce_bool(value: Any) -> Optional[bool]:
     if isinstance(value, bool):
         return value
@@ -289,6 +305,9 @@ def set_flag(key: str, value: Any, confirm: bool = False) -> Dict[str, Any]:
             writer(coerced)
         except Exception as exc:  # pragma: no cover — writer er selv self-safe
             return {"ok": False, "error": f"skrivning fejlede: {exc}"}
+
+        # Audit KUN på success-stien (self-safe — bryder aldrig write'et).
+        record_mutation("governance", key, coerced)
 
         return {"ok": True, "key": key, "value": coerced}
     except Exception as exc:  # pragma: no cover

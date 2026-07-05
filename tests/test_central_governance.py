@@ -51,3 +51,34 @@ def test_enum_flag_validates_value(monkeypatch):
     assert ok["ok"] is True
     bad = gov.set_flag("gut_consumer_mode", "banana", confirm=True)
     assert bad["ok"] is False
+
+
+def test_successful_write_records_mutation(monkeypatch):
+    _store(monkeypatch)
+    published = []
+    monkeypatch.setattr("core.eventbus.bus.event_bus.publish",
+                        lambda kind, payload=None, **kw: published.append((kind, payload)))
+    observed = []
+    class _C:
+        def observe(self, ev): observed.append(ev)
+    monkeypatch.setattr("core.services.central_core.central", lambda: _C())
+
+    res = gov.set_flag("self_prompt", False, confirm=False)
+    assert res["ok"] is True
+    # eventbus-audit fyrede med family 'governance'
+    assert any(k.startswith("governance.") for k, _ in published)
+    kind, payload = next((k, p) for k, p in published if k.startswith("governance."))
+    assert payload.get("key") == "self_prompt" and payload.get("value") is False
+    # central observe fyrede
+    assert any(e.get("cluster") == "governance" for e in observed)
+
+
+def test_failed_write_does_not_record(monkeypatch):
+    _store(monkeypatch)
+    published = []
+    monkeypatch.setattr("core.eventbus.bus.event_bus.publish",
+                        lambda kind, payload=None, **kw: published.append((kind, payload)))
+    # dangerous uden confirm → ingen write, ingen audit
+    res = gov.set_flag("generative_autonomy", False, confirm=False)
+    assert res["ok"] is False
+    assert published == []

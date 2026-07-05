@@ -72,3 +72,129 @@ def test_governance_and_healers_passthrough():
 def test_diagnostics():
     d = ds.diagnostics(_client())
     assert d["root_causes"] == ["rc"]
+
+
+# --- incident_detail / cost_today -----------------------------------------
+
+class RaisingClient:
+    def get_json(self, path, params=None):
+        raise RuntimeError("boom")
+
+
+def _detail_client():
+    return FakeClient({
+        "/central/realtime": {
+            "incidents": [
+                {"cluster": "infra", "nerve": "pfsense_security", "kind": "security",
+                 "severity": "error", "message": "port_scan detected", "ts": 2},
+                {"cluster": "infra", "nerve": "webservice", "kind": "health",
+                 "severity": "error", "message": "5xx spike", "ts": 3},
+                {"cluster": "network", "nerve": "health", "kind": "latency",
+                 "severity": "error", "message": "latens høj", "ts": 1},
+            ],
+        },
+        "/central/diagnostics": {"root_causes": [
+            {"cluster": "infra", "nerve": "pfsense_security", "signature": "port_scan norm",
+             "count": 3, "severe": True, "first": "2026-07-05T10:00:00+00:00",
+             "last": "2026-07-05T15:00:00+00:00", "sample": "port_scan detected"},
+            {"cluster": "infra", "nerve": "pfsense_security", "signature": "other lower",
+             "count": 1, "severe": False, "first": "x", "last": "y", "sample": "z"},
+        ]},
+        "/central/healers": {"registry_enabled": True, "healers": [
+            {"kind": "security", "mode": "LIVE", "destructive": False, "live_flag_on": True},
+        ]},
+        "/mc/costs": {"summary": {"total_cost_usd": 25.4057, "cost_rows": 10}, "items": []},
+    })
+
+
+def test_incident_detail_joins_root_cause_and_correlation():
+    c = _detail_client()
+    inc = {"cluster": "infra", "nerve": "pfsense_security", "kind": "security",
+           "severity": "error", "message": "port_scan detected"}
+    d = ds.incident_detail(c, inc)
+    assert d["cluster"] == "infra" and d["nerve"] == "pfsense_security"
+    assert d["title"] == "pfsense_security"
+    # highest-count root_cause wins
+    assert d["root_cause"] == "port_scan norm"
+    assert d["correlation"] is not None
+    assert d["correlation"]["count"] == 3
+    assert d["correlation"]["first"] == "2026-07-05T10:00:00+00:00"
+    assert d["correlation"]["last"] == "2026-07-05T15:00:00+00:00"
+    # sig = blake2s digest_size=4 of the signature → 8 hex chars
+    import hashlib
+    assert d["correlation"]["sig"] == hashlib.blake2s(b"port_scan norm", digest_size=4).hexdigest()
+    assert len(d["correlation"]["sig"]) == 8
+
+
+def test_incident_detail_related_same_cluster_excludes_self():
+    c = _detail_client()
+    inc = {"cluster": "infra", "nerve": "pfsense_security", "kind": "security",
+           "severity": "error", "message": "port_scan detected"}
+    d = ds.incident_detail(c, inc)
+    # webservice is same cluster (infra) -> included; pfsense_security (self) excluded;
+    # network/health is a different cluster -> excluded
+    assert d["related"] == ["infra/webservice"]
+
+
+def test_incident_detail_heal_status_from_signature():
+    c = _detail_client()
+    inc = {"cluster": "infra", "nerve": "pfsense_security", "kind": "security",
+           "severity": "error", "message": "port_scan AUTO-HEALED by rule"}
+    d = ds.incident_detail(c, inc)
+    assert d["heal_status"] is not None
+    assert "AUTO-HEALED" in d["heal_status"]
+
+
+def test_incident_detail_heal_status_none_when_not_healed():
+    # incident whose kind matches no live healer and no HEALED text
+    c = FakeClient({
+        "/central/realtime": {"incidents": []},
+        "/central/diagnostics": {"root_causes": []},
+        "/central/healers": {"registry_enabled": True, "healers": []},
+        "/mc/costs": {"summary": {"total_cost_usd": 1.0}},
+    })
+    inc = {"cluster": "infra", "nerve": "x", "kind": "latency",
+           "severity": "error", "message": "just slow"}
+    d = ds.incident_detail(c, inc)
+    assert d["heal_status"] is None
+
+
+def test_incident_detail_no_root_cause_match():
+    c = _detail_client()
+    inc = {"cluster": "cognition", "nerve": "agenda", "kind": "drift",
+           "severity": "error", "message": "agenda drifted"}
+    d = ds.incident_detail(c, inc)
+    assert d["root_cause"] is None
+    assert d["correlation"] is None
+    # still copies core fields
+    assert d["severity"] == "error"
+    assert d["cluster"] == "cognition"
+    assert d["nerve"] == "agenda"
+    assert d["message"] == "agenda drifted"
+    # no same-cluster others in the realtime set
+    assert d["related"] == []
+
+
+def test_cost_today_returns_float():
+    c = _detail_client()
+    assert ds.cost_today(c) == 25.4057
+
+
+def test_cost_today_none_on_empty_or_garbage():
+    assert ds.cost_today(FakeClient({"/mc/costs": {}})) is None
+    assert ds.cost_today(FakeClient({"/mc/costs": {"summary": {}}})) is None
+    assert ds.cost_today(FakeClient({"/mc/costs": "garbage"})) is None
+    assert ds.cost_today(FakeClient({"/mc/costs": {"summary": {"total_cost_usd": None}}})) is None
+
+
+def test_incident_detail_self_safe_on_raising_client():
+    d = ds.incident_detail(RaisingClient(), {"cluster": "a", "nerve": "b"})
+    assert isinstance(d, dict)
+    assert d["root_cause"] is None
+    assert d["correlation"] is None
+    assert d["related"] == []
+    assert d["heal_status"] is None
+
+
+def test_cost_today_self_safe_on_raising_client():
+    assert ds.cost_today(RaisingClient()) is None

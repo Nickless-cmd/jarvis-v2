@@ -219,3 +219,9 @@ Uvicorn dræber keep-alive connections efter 120s. SSE-streamen kan blive afbrud
 **Mindre:** verificér `Textual>=4.0`/`Rich>=13.0`-pins eksisterer ved build (kan ikke tjekkes fra spec'en).
 
 **Samlet:** Spec'en er solid og ærligt selv-reviewet. To ting bør ind FØR Fase 4: (R1) korrigér H1 til afvist-med-grund, (R2) gør desk-sletningen betinget af Bjørns bekræftelse. R3 er kosmetisk.
+
+**Opdatering (Bjørn, 5. jul):** R2 **BEKRÆFTET** — desk-Central-panelerne skal væk. Begrundelse: to
+SSE-tunge Central-paneler (`CentralPanel` + `CentralHud`) er den reelle streaming-belastning; Bjørn
+har 3 skærme + terminal-workflow og vil have Centralen live i en dedikeret CLI så han kan se realtid
+mens Claude/Jarvis arbejder. Rækkefølge-værn: CLI bygges + verificeres FØR panelerne fjernes (Fase 4).
+Desk beholder et let `CentralBadge`. R1 lukket i design-doc. Spec er nu fuldt byggeklar.

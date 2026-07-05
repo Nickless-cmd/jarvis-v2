@@ -2,8 +2,8 @@
 
 **Dato:** 5. juli 2026  
 **Forfatter:** Jarvis (med Bjørn)  
-**Status:** Byggeklar (efter 2. gennemkørsel self-review) — 2 punkter afklares før Fase 4 (se review 3)  
-**Revisioner:** v2 — inkorporerer self-review fund + jarvis-desk nedgradering. Claude-review 3 (5. jul): verificeret mod kode + R1 (H1 afvist-med-grund) + R2 (desk-sletning betinget af bekræftelse)
+**Status:** Byggeklar. R1 (H1 afvist-med-grund) + R2 (desk-sletning bekræftet af Bjørn) + R3 (kosmetisk) afklaret.  
+**Revisioner:** v2 — inkorporerer self-review fund + jarvis-desk nedgradering. Claude-review 3 (5. jul): verificeret mod kode; R1 lukket i doc; R2 BEKRÆFTET af Bjørn (streaming-load + 3-skærms terminal-workflow).
 
 ---
 
@@ -21,15 +21,18 @@ En standalone CLI-klient der giver Bjørn fuld realtids-adgang til Den Intellige
 - **jarvis-desk** → nedgraderes til et let **CentralBadge** i header/miljøfelt. Poller `/central/realtime` hvert 10-15s. Viser status-farve + incident/anomaly count. Ingen SSE, ingen streaming, ingen kommando-input.
 - **CLI-klienten** → bliver den **primære Central-interface**. SSE-stream, alle kommandoer, fuld diagnostic, skrive-adgang, alt.
 
-**Hvad fjernes fra jarvis-desk** — ⚠️ **BETINGET af Bjørns eksplicitte bekræftelse (Claude-review 3, R2).**
-Self-reviewens K3 konkluderede "begge kan køre samtidig, IKKE sletning" — men denne §1 besluttede
-sletning. Det modsiger self-reviewen, og at fjerne Centralen fra desk-appen Bjørn bruger dagligt er
-en reel UX-beslutning. **Standard-sti indtil bekræftelse:** behold desk-panelerne på lav-frekvens-
-polling (K3's blødere vej); CLI'en får realtid. Sletningen nedenfor udføres KUN hvis Bjørn siger ja:
-- `CentralPanel.tsx` — slettes fra CodeView *(betinget)*
-- `CentralHud.tsx` — slettes fra CoworkView *(betinget)*
-- `centralStream.ts` — slettes *(betinget)*
-- `getCentralNerve`, `toggleCentralNerve`, `runCentralCommand` — fjernes fra api.ts *(betinget)*
+**Hvad fjernes fra jarvis-desk** — ✅ **BEKRÆFTET af Bjørn (5. jul).**
+Begrundelse: Centralen sidder to steder i desk (`CentralPanel` i code + `CentralHud` i cowork),
+begge med tung SSE — det er den reelle streaming-belastning. Bjørn har 3 skærme og bruger ofte sin
+Ubuntu-terminal; en fuld CLI direkte til Centralen kan stå live på en dedikeret skærm, så han kan
+SE hvad der sker i Centralen (mens Claude roder, mens Jarvis handler under samtaler) uden at belaste
+desk-appen. Terminalen er det naturlige hjem for realtids-Centralen. Desk beholder KUN et let
+`CentralBadge` (poll 10-15s, ingen SSE). Rækkefølge-værn: byg CLI'en (Fase 1-3) og verificér den
+giver den live-Central Bjørn vil have, FØR panelerne fjernes (Fase 4) — så han aldrig står uden view.
+- `CentralPanel.tsx` — slettes fra CodeView
+- `CentralHud.tsx` — slettes fra CoworkView
+- `centralStream.ts` — slettes
+- `getCentralNerve`, `toggleCentralNerve`, `runCentralCommand` — fjernes fra api.ts
 
 **Hvad tilføjes i jarvis-desk:**
 - `CentralBadge.tsx` — let komponent: poll `/central/realtime` hvert 10-15s, vis farve + count, klik = tooltip med seneste incidents. ~50 linjer React.

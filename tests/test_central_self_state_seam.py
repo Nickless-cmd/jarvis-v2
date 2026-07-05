@@ -87,6 +87,24 @@ def test_boot_seam_adopts_fresh_reboot_latch_when_pulse_clobbered(monkeypatch):
     assert seam["gap_s"] == 2640.0  # adopteret det ægte gap, ikke de klobbede 30s
 
 
+def test_boot_seam_converges_to_latch_on_next_call(monkeypatch):
+    """Konvergens-fix (2. forsøg 5. jul): en proces der cachede reboot=False FØR søster-
+    processen skrev latchen skal fange reboot'et på NÆSTE kald — adoption sker på HVERT kald,
+    ikke kun det første. Det var netop dette der stadig fejlede i live-test #1 (api gemte
+    reboot=false og overskrev runtimes reboot=true)."""
+    _reset_proc_state()
+    now = datetime.now(UTC)
+    store = {ss._LAST_ALIVE_TS: (now - timedelta(seconds=30)).isoformat()}  # frisk puls, ingen latch
+    monkeypatch.setattr(ss, "_kv_get", lambda k, d: store.get(k, d))
+    monkeypatch.setattr(ss, "_kv_set", lambda k, v: store.update({k: v}))
+    first = ss._compute_boot_seam()
+    assert first["reboot"] is False  # første kald: latchen findes ikke endnu
+    # søster-proces skriver latchen bagefter (den bootede først og så det ægte gap)
+    store[ss._SEAM_LATCH] = {"ts": now.isoformat(), "gap_s": 2640.0, "reboot": True}
+    second = ss._compute_boot_seam()
+    assert second["reboot"] is True and second["gap_s"] == 2640.0  # konvergeret på næste kald
+
+
 def test_boot_seam_ignores_stale_latch(monkeypatch):
     """Latch ældre end frisk-vinduet (>600s) ignoreres → ingen falsk 'jeg vågnede lige'
     resten af proces-livet."""

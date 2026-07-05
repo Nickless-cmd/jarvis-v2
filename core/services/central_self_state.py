@@ -82,8 +82,9 @@ def _compute_boot_seam() -> dict[str, Any]:
         fb = now.isoformat()
         _kv_set(_FIRST_BOOT_TS, fb)          # write-once: sand fødsel, aldrig overskrevet
     if _proc_wake_at is None:
+        # FØRSTE kald (primet af cadence-loopet FØR første puls-skrivning): mål vores egen
+        # proces-lokale gap mod forrige livs puls. Cach det — det ændrer sig ikke.
         _proc_wake_at = now
-        # 1) Læs forrige livs sidste puls (primet FØR loopet skriver en ny) → ægte gap.
         last = _kv_get(_LAST_ALIVE_TS, "")
         gap = 0.0
         if last:
@@ -91,22 +92,10 @@ def _compute_boot_seam() -> dict[str, Any]:
                 gap = (now - datetime.fromisoformat(str(last))).total_seconds()
             except Exception:
                 gap = 0.0
-        reboot = bool(last and gap > 120.0)   # puls hvert 60s → >120s = processen VAR nede.
-        # 2) Cross-proces-latch: bootede en ANDEN proces først og så det ægte (større) gap
-        #    før vores egen puls klobbede det? Adoptér dens tal (kun mens latchen er frisk).
-        try:
-            latch = _kv_get(_SEAM_LATCH, {}) or {}
-            l_ts = latch.get("ts")
-            l_gap = float(latch.get("gap_s") or 0.0)
-            if l_ts:
-                l_age = (now - datetime.fromisoformat(str(l_ts))).total_seconds()
-                if 0 <= l_age < 600.0 and l_gap > gap:
-                    gap, reboot = l_gap, bool(latch.get("reboot"))
-        except Exception:
-            pass
-        # 3) Så vi selv et ægte reboot større end en evt. latch? Skriv latchen, så senere-
-        #    bootende processer (der læser vores klobbede puls) stadig fanger fraværet.
-        if reboot and gap > 120.0:
+        _boot_gap_s = gap
+        _boot_was_reboot = bool(last and gap > 120.0)  # puls hvert 60s → >120s = VAR nede.
+        # Så vi selv et ægte reboot → skriv latchen straks, så andre processer kan adoptere.
+        if _boot_was_reboot and gap > 120.0:
             try:
                 existing = _kv_get(_SEAM_LATCH, {}) or {}
                 if float(existing.get("gap_s") or 0.0) < gap:
@@ -114,15 +103,31 @@ def _compute_boot_seam() -> dict[str, Any]:
                                           "reboot": True, "first_boot_ts": fb})
             except Exception:
                 pass
-        _boot_gap_s = gap
-        _boot_was_reboot = reboot
+    # HVERT kald: overlæg den durable cross-proces-latch (ikke kun første kald). Så en proces
+    # der cachede reboot=False FØR en søster-proces skrev latchen, konvergerer på NÆSTE tick —
+    # ellers vinder tilfældig proces-boot-rækkefølge (fejlen i første fix-forsøg 5. jul).
+    eff_gap, eff_reboot = _boot_gap_s, _boot_was_reboot
+    latch_fresh = False
+    try:
+        latch = _kv_get(_SEAM_LATCH, {}) or {}
+        l_ts = latch.get("ts")
+        l_gap = float(latch.get("gap_s") or 0.0)
+        if l_ts:
+            l_age = (now - datetime.fromisoformat(str(l_ts))).total_seconds()
+            if 0 <= l_age < 600.0 and l_gap > eff_gap:
+                eff_gap, eff_reboot, latch_fresh = l_gap, bool(latch.get("reboot")), True
+    except Exception:
+        pass
     try:
         age_s = (now - datetime.fromisoformat(str(fb))).total_seconds()
     except Exception:
         age_s = 0.0
     since_wake = (now - _proc_wake_at).total_seconds() if _proc_wake_at else 0.0
-    return {"first_boot_ts": fb, "age_s": age_s, "reboot": _boot_was_reboot,
-            "gap_s": _boot_gap_s, "since_wake_s": since_wake, "fresh": since_wake < 600.0}
+    # 'fresh' bindes til selve reboot-hændelsen: egen proces-vækning, eller (ved adoption) latchens
+    # alder — så wake-linjen tales i samme 10-min-vindue på tværs af processer.
+    fresh = (l_age < 600.0) if latch_fresh else (since_wake < 600.0)
+    return {"first_boot_ts": fb, "age_s": age_s, "reboot": eff_reboot,
+            "gap_s": eff_gap, "since_wake_s": since_wake, "fresh": fresh}
 
 
 def _valence() -> dict[str, Any]:

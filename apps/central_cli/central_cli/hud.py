@@ -188,44 +188,47 @@ class CentralHud(App):
         overflow-y: auto;
     }}
 
-    #hud-cmd {{
+    #hud-cmdbar {{
         height: 2;
         background: {BAR};
-        padding: 0 2;
         border-top: solid {LINE};
+        padding: 0 2;
+    }}
+    #hud-prompt {{
+        width: 9;
+        height: 1;
+        color: {CYAN};
+        background: {BAR};
     }}
     #hud-cmd-input {{
-        display: none;
-        dock: bottom;
-        height: 2;
-        background: {BAR};
-        color: {CYAN};
+        width: 1fr;
+        height: 1;
         border: none;
-        border-top: solid {CYAN};
-        padding: 0 2;
-    }}
-    #hud-cmd-input:focus {{
-        border-top: solid {CYAN};
+        background: {BAR};
+        color: {FG};
+        padding: 0;
     }}
     """
 
     BINDINGS = [
-        Binding("1", "show('overview')", "Overview", show=False),
-        Binding("2", "show('clusters')", "Clusters", show=False),
-        Binding("3", "show('nerves')", "Nerves", show=False),
-        Binding("4", "show('incidents')", "Incidents", show=False),
-        Binding("5", "show('anomalies')", "Anomalies", show=False),
-        Binding("6", "show('diagnostics')", "Diagnostics", show=False),
-        Binding("7", "show('healing')", "Healing", show=False),
-        Binding("8", "show('governance')", "Governance", show=False),
-        Binding("colon", "command_mode", "Kommando", show=False),
-        Binding("q", "quit", "Quit", show=False),
-        Binding("question_mark", "help", "Hjælp", show=False),
-        Binding("space", "toggle", "Toggle", show=False),
-        Binding("t", "toggle", "Toggle", show=False),
-        Binding("y", "confirm_yes", "Bekræft", show=False),
-        Binding("n", "confirm_no", "Afbryd", show=False),
-        Binding("escape", "confirm_no", "Afbryd", show=False),
+        # Navigation works while the command input stays focused (priority).
+        Binding("up", "nav_up", "Op", show=False, priority=True),
+        Binding("down", "nav_down", "Ned", show=False, priority=True),
+        Binding("pageup", "nav_pageup", show=False, priority=True),
+        Binding("pagedown", "nav_pagedown", show=False, priority=True),
+        Binding("tab", "next_tab", "Næste fane", show=False, priority=True),
+        Binding("shift+tab", "prev_tab", "Forrige fane", show=False, priority=True),
+        Binding("escape", "cancel", "Ryd/annullér", show=False, priority=True),
+        Binding("ctrl+q", "quit", "Quit", show=False, priority=True),
+        # Direct tab jumps via function keys (digits are free for typing).
+        Binding("f1", "show('overview')", show=False, priority=True),
+        Binding("f2", "show('clusters')", show=False, priority=True),
+        Binding("f3", "show('nerves')", show=False, priority=True),
+        Binding("f4", "show('incidents')", show=False, priority=True),
+        Binding("f5", "show('anomalies')", show=False, priority=True),
+        Binding("f6", "show('diagnostics')", show=False, priority=True),
+        Binding("f7", "show('healing')", show=False, priority=True),
+        Binding("f8", "show('governance')", show=False, priority=True),
     ]
 
     def __init__(self, *, client: Any = None, live: bool = True) -> None:
@@ -244,6 +247,8 @@ class CentralHud(App):
         self._sel_incident: int = 0
         self._sel_anomaly: int = 0
         self._anomalies: list = []
+        self._nerve_rows: list = []
+        self._cluster_rows: list = []
         self._pulse_on: bool = True
         self._caret_on: bool = True
         self._cmd_mode: bool = False
@@ -266,9 +271,12 @@ class CentralHud(App):
                     yield Static("", id="side-paneh")
                     yield Static("", id="hud-detail", markup=True)
                 yield Static("", id="hud-panel", markup=True)
-            yield Static(self._render_cmd(), id="hud-cmd")
-            yield Input(placeholder="kommando…  (fx: toggle <nerve> off · resolve · status · nerve <n>)  —  Enter kør · Esc annullér",
-                        id="hud-cmd-input")
+            with Horizontal(id="hud-cmdbar"):
+                yield Static(Text.from_markup(f"[{CYAN} b]central>[/]"), id="hud-prompt")
+                yield Input(
+                    id="hud-cmd-input",
+                    placeholder="skriv kommando · ↑↓ vælg · ↵ drill/kør · ⇥ skift fane · Esc ryd",
+                )
 
     def on_mount(self) -> None:
         table = self.query_one("#nerve-table", DataTable)
@@ -281,9 +289,12 @@ class CentralHud(App):
         self._render_feed()
         if self._live:
             self.set_interval(3.0, self.refresh_data)
-        # animation timers (pulse status dot + blink caret) — always on
+        # pulse the status dot; keep the command input focused (terminal feel)
         self.set_interval(0.8, self._tick_pulse)
-        self.set_interval(0.53, self._tick_caret)
+        try:
+            self.query_one("#hud-cmd-input", Input).focus()
+        except Exception:
+            pass
 
     def _prime(self) -> None:
         if self._client is None:
@@ -305,10 +316,11 @@ class CentralHud(App):
         self._pulse_on = not self._pulse_on
         self._sync_header()
 
-    def _tick_caret(self) -> None:
-        self._caret_on = not self._caret_on
+    def _keep_focus(self) -> None:
         try:
-            self.query_one("#hud-cmd", Static).update(self._render_cmd())
+            inp = self.query_one("#hud-cmd-input", Input)
+            if self.focused is not inp:
+                inp.focus()
         except Exception:
             pass
 
@@ -319,45 +331,121 @@ class CentralHud(App):
     def action_help(self) -> None:
         return
 
-    # -- command line (k9s-style ':' mode) ---------------------------------
-    def action_command_mode(self) -> None:
-        """Enter command mode: reveal + focus the input, hide the hint bar."""
+    # -- navigation (works while the input stays focused) ------------------
+    def _table(self) -> DataTable | None:
+        if self.active_tab not in _TABLE_TABS:
+            return None
         try:
-            inp = self.query_one("#hud-cmd-input", Input)
-            self.query_one("#hud-cmd", Static).display = False
-            inp.display = True
-            inp.value = ""
-            self._cmd_mode = True
-            self.set_focus(inp)
+            return self.query_one("#nerve-table", DataTable)
         except Exception:
-            self._cmd_mode = False
+            return None
 
-    def _exit_command_mode(self) -> None:
-        self._cmd_mode = False
+    def _refresh_detail_for_current(self) -> None:
+        """Render the detail panel for whichever row the cursor is on (used after
+        a populate/refresh so the side panel reflects the selection, not incidents)."""
+        t = self._table()
+        row = 0
+        if t is not None:
+            try:
+                row = int(t.cursor_row or 0)
+            except Exception:
+                row = 0
+        self._render_row_detail(row)
+
+    def _after_cursor_move(self, t: DataTable) -> None:
+        """Refresh the detail panel for the newly-selected row (robust — does not
+        rely on the RowHighlighted event firing from a programmatic cursor move)."""
         try:
-            self.query_one("#hud-cmd-input", Input).display = False
-            self.query_one("#hud-cmd", Static).display = True
-            self.set_focus(None)
+            self._render_row_detail(int(t.cursor_row or 0))
         except Exception:
             pass
 
+    def action_nav_up(self) -> None:
+        t = self._table()
+        if t is not None:
+            t.action_cursor_up()
+            self._after_cursor_move(t)
+
+    def action_nav_down(self) -> None:
+        t = self._table()
+        if t is not None:
+            t.action_cursor_down()
+            self._after_cursor_move(t)
+
+    def action_nav_pageup(self) -> None:
+        t = self._table()
+        if t is not None:
+            t.action_page_up()
+            self._after_cursor_move(t)
+
+    def action_nav_pagedown(self) -> None:
+        t = self._table()
+        if t is not None:
+            t.action_page_down()
+            self._after_cursor_move(t)
+
+    def _cycle_tab(self, step: int) -> None:
+        keys = [k for k, _, _ in _TABS]
+        try:
+            i = keys.index(self.active_tab)
+        except ValueError:
+            i = 0
+        self.show_tab(keys[(i + step) % len(keys)])
+
+    def action_next_tab(self) -> None:
+        self._cycle_tab(1)
+
+    def action_prev_tab(self) -> None:
+        self._cycle_tab(-1)
+
+    def action_cancel(self) -> None:
+        """Esc: clear a half-typed command, else cancel a pending confirm."""
+        try:
+            inp = self.query_one("#hud-cmd-input", Input)
+        except Exception:
+            inp = None
+        if inp is not None and inp.value:
+            inp.value = ""
+            return
+        if self._pending_write is not None:
+            self.action_confirm_no()
+
+    # -- command line (always-on terminal prompt) --------------------------
     def on_input_submitted(self, event: Input.Submitted) -> None:  # noqa: ANN001
-        line = event.value
-        self._exit_command_mode()
-        self._run_command(line)
+        val = (event.value or "").strip()
+        try:
+            self.query_one("#hud-cmd-input", Input).value = ""
+        except Exception:
+            pass
+        # A pending dangerous confirm: y/yes/enter = confirm, n/no = cancel.
+        if self._pending_write is not None:
+            low = val.lower()
+            if val == "" or low in ("y", "yes", "j", "ja"):
+                self.action_confirm_yes()
+            elif low in ("n", "no", "nej"):
+                self.action_confirm_no()
+            self._keep_focus()
+            return
+        if val == "":
+            # Empty Enter = drill/select the current row.
+            t = self._table()
+            if t is not None:
+                self._drill_row(int(t.cursor_row or 0))
+            self._keep_focus()
+            return
+        self._run_command(val)
+        self._keep_focus()
 
     def _run_command(self, line: str) -> None:
-        """Parse + execute a command via the shared resolve_command layer."""
-        line = (line or "").strip()
-        if not line:
-            return
+        """Parse + execute a command via the shared resolve_command layer.
+        Read results render FULLY into the detail panel; writes flash in the feed."""
         parts = line.split()
         verb, args = parts[0].lower(), parts[1:]
         try:
             from central_cli.commands import resolve_command
             spec = resolve_command(verb, args)
         except Exception as exc:
-            self._flash(f"[{RED}]✖ {verb}: {exc}[/]")
+            self._flash(f"[{RED}]✖ {verb}: {_esc(str(exc))}[/]")
             return
         try:
             if spec.method == "GET":
@@ -365,26 +453,37 @@ class CentralHud(App):
             else:
                 data = self._client.post_json(spec.path, spec.body or {})
         except Exception as exc:
-            self._flash(f"[{RED}]✖ {line}: {exc}[/]")
+            self._flash(f"[{RED}]✖ {_esc(line)}: {_esc(str(exc))}[/]")
             return
-        self._flash(f"[{CYAN}]▸ {_esc(line)}[/] [{DIM}]—[/] {self._summarize(data)}")
-        self.refresh_data()
+        if spec.method == "GET":
+            # read: render the full result and DON'T refresh (would clobber it)
+            self._show_command_output(line, data)
+        else:
+            ok = isinstance(data, dict) and data.get("ok")
+            tail = f"[{GREEN}]ok[/]" if ok else f"[{RED}]{_esc(str((data or {}).get('error', data)))[:80]}[/]"
+            self._flash(f"[{CYAN}]▸ {_esc(line)}[/] [{DIM}]—[/] {tail}")
+            self.refresh_data()
 
-    @staticmethod
-    def _summarize(data: Any) -> str:
-        if isinstance(data, dict):
-            if "ok" in data:
-                return f"[{GREEN}]ok[/]" if data.get("ok") else f"[{RED}]fejl: {_esc(data.get('error', ''))}[/]"
-            if "error" in data and data["error"]:
-                return f"[{RED}]{_esc(data['error'])}[/]"
-            if "status" in data:
-                return f"status={_esc(data['status'])}"
-            if "result" in data:
-                return _esc(str(data["result"])[:80])
-            return f"{len(data)} felter"
-        if isinstance(data, list):
-            return f"{len(data)} rækker"
-        return _esc(str(data)[:80]) if data else "ok"
+    def _show_command_output(self, line: str, data: Any) -> None:
+        """Render a read command's FULL result into the detail panel (scrollable)."""
+        import json
+        try:
+            panel = self.query_one("#hud-detail", Static)
+        except Exception:
+            return
+        self._set_side_paneh(f"[{CYAN}]KOMMANDO[/] [{DIM}]— {_esc(line)}[/]")
+        try:
+            pretty = json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True)
+        except Exception:
+            pretty = str(data)
+        body = "\n".join(_esc(ln) for ln in pretty.splitlines()[:400])
+        panel.update(Text.from_markup(f"[{FG}]{body}[/]"))
+        # ensure the detail panel is the visible one
+        try:
+            self.query_one("#hud-panel", Static).display = False
+            self.query_one("#hud-side").display = True
+        except Exception:
+            pass
 
     def show_tab(self, name: str) -> None:
         self.active_tab = name
@@ -409,20 +508,20 @@ class CentralHud(App):
             name = self.active_tab
             if name == "nerves":
                 self._populate_nerves()
-                self._render_detail_panel()
+                self._refresh_detail_for_current()
                 self._render_feed()
             elif name == "clusters":
                 self._populate_clusters()
-                self._render_detail_panel()
+                self._refresh_detail_for_current()
             elif name == "incidents":
                 self._populate_incidents()
-                self._render_detail_panel()
+                self._refresh_detail_for_current()
             elif name == "anomalies":
                 self._populate_anomalies()
-                self._render_anomaly_detail()
+                self._refresh_detail_for_current()
             elif name == "governance":
                 self._populate_governance()
-                self._render_detail_panel()
+                self._refresh_detail_for_current()
             elif name == "overview":
                 self._render_overview_panel()
             elif name == "diagnostics":
@@ -560,6 +659,7 @@ class CentralHud(App):
             rows = datasource.nerves(self._client)
         except Exception:
             return
+        self._nerve_rows = rows
         self._set_paneh(
             f"[{CYAN}]NERVES[/] [{FGDIM}]— {len(rows)} i alt · filter: [/]"
             f"[{CYAN}]/[/] [{FGDIM}]· sortér: state[/]"
@@ -691,6 +791,7 @@ class CentralHud(App):
             rows = datasource.clusters(self._client)
         except Exception:
             return
+        self._cluster_rows = rows
         self._set_paneh(f"[{CYAN}]CLUSTERS[/] [{FGDIM}]— {len(rows)} i alt[/]")
         for r in rows:
             status = str(r.get("status", ""))
@@ -807,27 +908,136 @@ class CentralHud(App):
         ]
         panel.update(Text.from_markup("\n".join(lines)))
 
+    # -- detail dispatch (every table tab shows full detail of selected row) --
+    def _render_row_detail(self, row: int) -> None:
+        t = self.active_tab
+        if t == "incidents":
+            self._sel_incident = row
+            self._render_detail_panel()
+        elif t == "anomalies":
+            self._sel_anomaly = row
+            self._render_anomaly_detail()
+        elif t == "nerves":
+            self._render_nerve_detail(row)
+        elif t == "clusters":
+            self._render_cluster_detail(row)
+        elif t == "governance":
+            self._render_gov_detail(row)
+
+    def _render_nerve_detail(self, row: int) -> None:
+        try:
+            panel = self.query_one("#hud-detail", Static)
+        except Exception:
+            return
+        rows = self._nerve_rows or []
+        if not (0 <= row < len(rows)):
+            return
+        r = rows[row]
+        state = str(r.get("state", ""))
+        color, glyph = _STATE.get(state, (FG, state))
+        cluster = r.get("cluster", "")
+        nerve = r.get("nerve", "")
+        self._set_side_paneh(f"[{CYAN}]NERVE-DETALJE[/] [{DIM}]— {_esc(cluster)}/{_esc(nerve)}[/]")
+        badge_bg = {GREEN: "#06251a", AMBER: "#241a05", RED: "#1f0d0d", DIM: "#0f1824"}.get(color, "#06202e")
+        lines = [
+            f"[{color} b on {badge_bg}] {_esc(glyph)} [/]",
+            "",
+            f"[{FG} b]{_esc(nerve)}[/]",
+            f"[{FGDIM}]cluster[/]  [{FG}]{_esc(cluster)}[/]",
+            "",
+            f"[{FGDIM}]sidste fyring[/]  [{FG}]{_esc(self._rel_age(r.get('last', '')))}[/]",
+            f"[{FGDIM}]antal (count)[/]  [{FG}]{r.get('count', 0)}[/]",
+            "",
+            f"[{FGDIM} b]AKTIVITET[/]",
+            f"[{SPARK}]{_esc(r.get('spark', '') or '—')}[/]",
+        ]
+        if r.get("reason"):
+            lines += ["", f"[{FGDIM} b]SENESTE[/]", f"[{FGDIM}]{_esc(r.get('reason'))}[/]"]
+        lines += ["", f"[{DIM}]↵ vælg · skriv 'toggle {_esc(nerve)} off' for at slå fra[/]"]
+        panel.update(Text.from_markup("\n".join(lines)))
+
+    def _render_cluster_detail(self, row: int) -> None:
+        try:
+            panel = self.query_one("#hud-detail", Static)
+        except Exception:
+            return
+        rows = self._cluster_rows or []
+        if not (0 <= row < len(rows)):
+            return
+        r = rows[row]
+        status = str(r.get("status", ""))
+        color = _CLUSTER_STATUS.get(status, FG)
+        name = r.get("cluster", "")
+        self._set_side_paneh(f"[{CYAN}]CLUSTER-DETALJE[/] [{DIM}]— {_esc(name)}[/]")
+        badge_bg = {GREEN: "#06251a", AMBER: "#241a05", RED: "#1f0d0d", DIM: "#0f1824"}.get(color, "#06202e")
+        lines = [
+            f"[{color} b on {badge_bg}] ● {_esc(status.upper())} [/]",
+            "",
+            f"[{FG} b]{_esc(name)}[/]",
+            f"[{FGDIM}]nerver i alt[/]  [{FG} b]{r.get('nerves', 0)}[/]",
+            "",
+            f"[{GREEN}]● aktiv[/]      [{FG}]{r.get('aktiv', 0)}[/]",
+            f"[{DIM}]○ idle[/]       [{FG}]{r.get('idle', 0)}[/]",
+            f"[{AMBER}]◆ degraded[/]   [{FG}]{r.get('degraded', 0)}[/]",
+            f"[{RED}]✖ død[/]        [{FG}]{r.get('død', 0)}[/]",
+            "",
+            f"[{CYAN}]↵ filtrér Nerves til denne cluster[/]",
+        ]
+        panel.update(Text.from_markup("\n".join(lines)))
+
+    def _render_gov_detail(self, row: int) -> None:
+        try:
+            panel = self.query_one("#hud-detail", Static)
+        except Exception:
+            return
+        flags = self._gov_flags or []
+        if not (0 <= row < len(flags)):
+            return
+        f = flags[row]
+        dangerous = bool(f.get("dangerous"))
+        value = f.get("value")
+        on = bool(value) if isinstance(value, bool) else str(value) not in ("off", "")
+        vcolor = GREEN if on else DIM
+        label = f.get("label") or f.get("key") or ""
+        self._set_side_paneh(f"[{CYAN}]FLAG-DETALJE[/] [{DIM}]— {_esc(f.get('key', ''))}[/]")
+        lines = [
+            f"[{vcolor} b on #06251a] {_esc(self._fmt_value(value))} [/]"
+            if on else f"[{DIM} b on #12161d] {_esc(self._fmt_value(value))} [/]",
+            "",
+            f"[{FG} b]{_esc(label)}[/]",
+            f"[{FGDIM}]nøgle[/]  [{FG}]{_esc(f.get('key', ''))}[/]",
+            f"[{FGDIM}]type[/]   [{FG}]{_esc(f.get('kind', 'bool'))}[/]",
+        ]
+        opts = f.get("options")
+        if opts:
+            lines.append(f"[{FGDIM}]valg[/]   [{FG}]{_esc(', '.join(map(str, opts)))}[/]")
+        if dangerous:
+            lines += ["", f"[{AMBER}]⚠ farligt flag — kræver bekræftelse (y) ved ændring[/]"]
+        else:
+            lines += ["", f"[{DIM}]— ufarligt —[/]"]
+        lines += ["", f"[{CYAN} on #06202e] ↵ skift værdi [/]"]
+        panel.update(Text.from_markup("\n".join(lines)))
+
     def on_data_table_row_highlighted(self, event) -> None:  # noqa: ANN001
         try:
             row = int(getattr(event, "cursor_row", 0) or 0)
         except Exception:
             row = 0
-        if self.active_tab == "incidents":
-            self._sel_incident = row
-            self._render_detail_panel()
-        elif self.active_tab == "anomalies":
-            self._sel_anomaly = row
-            self._render_anomaly_detail()
+        self._render_row_detail(row)
 
     def on_data_table_row_selected(self, event) -> None:  # noqa: ANN001
         try:
             index = int(getattr(event, "cursor_row", 0) or 0)
         except Exception:
             index = 0
-        if self.active_tab == "incidents":
-            self._drill_incident(index)
-        elif self.active_tab == "governance":
+        self._drill_row(index)
+
+    def _drill_row(self, index: int) -> None:
+        """Enter/select on a row: governance toggles, others (re)show detail."""
+        if self.active_tab == "governance":
             self._toggle_governance_row(index)
+        else:
+            self._render_row_detail(index)
 
     # -- Overview ----------------------------------------------------------
     def _render_overview_panel(self) -> None:
@@ -1125,9 +1335,6 @@ class CentralHud(App):
         self.refresh_data()
 
     def action_confirm_no(self) -> None:
-        if self._cmd_mode:
-            self._exit_command_mode()
-            return
         if self._pending_write is None:
             return
         self._pending_write = None

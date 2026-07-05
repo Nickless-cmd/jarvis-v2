@@ -277,6 +277,8 @@ class CentralHud(App):
         self._agent_rows: list = []
         self._scheduled: list = []
         self._autonomy: dict = {}
+        self._memory_health: dict = {}
+        self._events: list = []
         self._council: list = []
         self._pulse_on: bool = True
         self._caret_on: bool = True
@@ -1226,6 +1228,23 @@ class CentralHud(App):
             if len(text) > 84:
                 text = text[:83] + "…"
             lines.append(f"  [{AMBER}]▸[/] [{FG}]{_esc(text)}[/]{suffix}")
+
+        # -- seneste hændelser (A7) — rå eventbus-feed --
+        try:
+            evs = datasource.events(self._client, limit=12) if self._client else []
+        except Exception:
+            evs = []
+        self._events = evs or []
+        lines += [
+            "",
+            f"[{CYAN} b]◈ SENESTE HÆNDELSER[/]  [{FGDIM}]— eventbus ({len(evs)})[/]",
+        ]
+        if not evs:
+            lines.append(f"  [{DIM}]— ingen hændelser —[/]")
+        for ev in evs[:12]:
+            fam = str(ev.get("family") or "?")
+            kind = str(ev.get("kind") or "")
+            lines.append(f"  [{DIM}]▸[/] [{FGDIM}]{_esc(fam)}[/] [{FG}]{_esc(kind)}[/]")
         panel.update(Text.from_markup("\n".join(lines)))
 
     # -- Governance --------------------------------------------------------
@@ -1413,42 +1432,79 @@ class CentralHud(App):
         ]
         if not slf:
             lines += ["", f"[{FGDIM}]— selvet er stille lige nu —[/]"]
-            panel.update(Text.from_markup("\n".join(lines)))
-            return
-
-        le = slf.get("living_executive") or {}
-        le_sum = le.get("summary") or {}
-        lines += [
-            "",
-            f"{_dot(le)} [{GREEN} b]◈ living_executive[/]",
-            f"[{FGDIM}]mode[/]         [{FG}]{_esc(le.get('mode', '—'))}[/]",
-            f"[{FGDIM}]trace_count[/]  [{FG}]{_esc(le_sum.get('trace_count', 0))}[/]"
-            f"   [{FGDIM}]recent[/] [{FG}]{_esc(le_sum.get('recent_count', 0))}[/]",
-            f"[{FGDIM}]last_choice[/]  [{FG}]{_esc(le_sum.get('last_choice', '—'))}[/]",
-            f"[{FGDIM}]last_action[/]  [{FG}]{_esc(le_sum.get('last_action', '—'))}[/]",
-        ]
-
-        sm = slf.get("self_model") or {}
-        sm_sum = sm.get("summary") or {}
-        sections = sm_sum.get("sections") or []
-        if isinstance(sections, list):
-            sec_text = ", ".join(str(s) for s in sections)
         else:
-            sec_text = str(sections)
+            le = slf.get("living_executive") or {}
+            le_sum = le.get("summary") or {}
+            lines += [
+                "",
+                f"{_dot(le)} [{GREEN} b]◈ living_executive[/]",
+                f"[{FGDIM}]mode[/]         [{FG}]{_esc(le.get('mode', '—'))}[/]",
+                f"[{FGDIM}]trace_count[/]  [{FG}]{_esc(le_sum.get('trace_count', 0))}[/]"
+                f"   [{FGDIM}]recent[/] [{FG}]{_esc(le_sum.get('recent_count', 0))}[/]",
+                f"[{FGDIM}]last_choice[/]  [{FG}]{_esc(le_sum.get('last_choice', '—'))}[/]",
+                f"[{FGDIM}]last_action[/]  [{FG}]{_esc(le_sum.get('last_action', '—'))}[/]",
+            ]
+
+            sm = slf.get("self_model") or {}
+            sm_sum = sm.get("summary") or {}
+            sections = sm_sum.get("sections") or []
+            if isinstance(sections, list):
+                sec_text = ", ".join(str(s) for s in sections)
+            else:
+                sec_text = str(sections)
+            lines += [
+                "",
+                f"{_dot(sm)} [{GREEN} b]◈ self_model[/]",
+                f"[{FGDIM}]layer_count[/]  [{FG}]{_esc(sm_sum.get('layer_count', 0))}[/]",
+                f"[{FGDIM}]sections[/]     [{FG}]{_esc(sec_text or '—')}[/]",
+            ]
+
+            wm = slf.get("world_model") or {}
+            wm_sum = wm.get("summary") or {}
+            lines += [
+                "",
+                f"{_dot(wm)} [{GREEN} b]◈ world_model[/]",
+                f"[{FGDIM}]active_count[/]  [{FG}]{_esc(wm_sum.get('active_count', 0))}[/]",
+            ]
+
+        # -- memory-pipeline (A5) — always rendered, even if self is empty --
+        try:
+            mh = datasource.memory_health(self._client) if self._client else {}
+        except Exception:
+            mh = {}
+        self._memory_health = mh or {}
+        added = int(mh.get("added_today") or 0)
+        journal_mark = (f"[{GREEN}]✓[/]" if mh.get("journal_today")
+                        else f"[{AMBER}]mangler[/]")
         lines += [
             "",
-            f"{_dot(sm)} [{GREEN} b]◈ self_model[/]",
-            f"[{FGDIM}]layer_count[/]  [{FG}]{_esc(sm_sum.get('layer_count', 0))}[/]",
-            f"[{FGDIM}]sections[/]     [{FG}]{_esc(sec_text or '—')}[/]",
+            f"[{CYAN} b]◈ HUKOMMELSE[/]  [{FGDIM}]— memory-pipeline[/]",
+            f"  [{FGDIM}]tilføjet i dag[/] [{FG} b]{added}[/]  [{FGDIM}]·[/]  "
+            f"[{FGDIM}]dagens journal[/] {journal_mark}",
         ]
 
-        wm = slf.get("world_model") or {}
-        wm_sum = wm.get("summary") or {}
+        # -- indre liv (A8) — reduceret: kun liveness+count pr. sektion --
+        try:
+            il = datasource.inner_life(self._client) if self._client else {}
+        except Exception:
+            il = {}
+        il = il or {}
+        il_live = int(il.get("live_count") or 0)
+        il_total = int(il.get("total") or 0)
         lines += [
             "",
-            f"{_dot(wm)} [{GREEN} b]◈ world_model[/]",
-            f"[{FGDIM}]active_count[/]  [{FG}]{_esc(wm_sum.get('active_count', 0))}[/]",
+            f"[{CYAN} b]◈ INDRE LIV[/]  [{FGDIM}]— {il_live}/{il_total} sektioner aktive[/]",
         ]
+        il_sections = il.get("sections") or {}
+        if not il_sections:
+            lines.append(f"  [{DIM}]— stille —[/]")
+        else:
+            for name, sec in sorted(il_sections.items()):
+                sec = sec or {}
+                dot = (f"[{GREEN}]●[/]" if sec.get("liveness") else f"[{DIM}]○[/]")
+                cnt = int(sec.get("count") or 0)
+                lines.append(f"  {dot} [{FGDIM}]{_esc(name)}[/] [{FG}]{cnt}[/]")
+
         panel.update(Text.from_markup("\n".join(lines)))
 
     @staticmethod

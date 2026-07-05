@@ -85,3 +85,27 @@ async def get_self() -> dict:
         except Exception:
             pass
     return {"self": out, "ts": datetime.now(timezone.utc).isoformat()}
+
+
+@router.get("/inner-life")
+async def get_inner_life() -> dict:
+    """Jarvis' reducerede inner-life-digest (owner-only, liveness+count, self-safe)."""
+    require_central_owner()
+    from core.services.central_runtime_proxy import proxy_or_local
+    from core.services.central_inner_life_digest import build_inner_life_digest
+    try:
+        digest = proxy_or_local("inner_life", build_inner_life_digest)
+    except Exception:
+        digest = {}
+    if not isinstance(digest, dict):
+        digest = {}
+    sections = digest.get("sections") or {}
+    live_count = digest.get("live_count") or 0
+    try:
+        absorb("self", "inner_life", {"live_count": live_count, "total": digest.get("total") or 0},
+               flag_if=lambda v: v["total"] > 0 and v["live_count"] == 0,
+               flag_reason="intet indre liv aktivt")
+    except Exception:
+        pass
+    return {"inner_life": {"sections": sections, "live_count": live_count, "total": digest.get("total") or 0},
+            "ts": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()}

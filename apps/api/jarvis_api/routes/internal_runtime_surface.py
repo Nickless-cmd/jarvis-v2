@@ -60,11 +60,17 @@ def _world_model() -> dict:
     return build_runtime_world_model_signal_surface()
 
 
+def _inner_life() -> dict:
+    from core.services.central_inner_life_digest import build_inner_life_digest
+    return build_inner_life_digest()
+
+
 # Navn → builder. Udvides efterhånden som flere runtime-flader absorberes (mind-sektioner).
 _BUILDERS: dict[str, Callable[[], dict]] = {
     "living_executive": _living_executive,
     "self_model": _self_model,
     "world_model": _world_model,
+    "inner_life": _inner_life,
 }
 
 

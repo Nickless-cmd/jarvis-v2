@@ -312,3 +312,37 @@ def set_flag(key: str, value: Any, confirm: bool = False) -> Dict[str, Any]:
         return {"ok": True, "key": key, "value": coerced}
     except Exception as exc:  # pragma: no cover
         return {"ok": False, "error": f"uventet fejl: {exc}"}
+
+
+# ---------------------------------------------------------------------------
+# Audit-hook for governerede mutationer (eventbus + Central-observe).
+# Kaldes af HTTP-routes EFTER en vellykket skrivning (governance/healers/…).
+# Self-safe: kaster ALDRIG — audit må aldrig vælte en ellers vellykket write.
+# ---------------------------------------------------------------------------
+
+def record_mutation(area: str, key: str, value: Any) -> None:
+    """Registrér en governeret mutation som eventbus-event + Central-nerve.
+
+    ``area`` = domænet (fx "governance", "healing"); ``key`` = flag-navn;
+    ``value`` = ny værdi. Self-safe.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(
+            "central.mutation",
+            {"area": area, "key": key, "value": value},
+        )
+    except Exception:
+        pass
+    try:
+        from core.services.central_core import central
+        central().observe({
+            "cluster": area,
+            "nerve": f"mutation/{key}",
+            "kind": "mutation",
+            "area": area,
+            "key": key,
+            "value": value,
+        })
+    except Exception:
+        pass

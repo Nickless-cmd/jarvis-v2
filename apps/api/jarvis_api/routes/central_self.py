@@ -44,8 +44,51 @@ def _world_model() -> dict:
     return build_runtime_world_model_signal_surface()
 
 
+# -- Fase C: de PRIVATE lag hvor emergent agentur bor (§24.4). Hver builder
+# kører producenten og reducerer STRAKS til light (liveness + tællere) via den
+# samme _light-helper som internal-ruten. Så både proxy-stien (api-only, henter
+# allerede-light fra 8011) OG den lokale sti (runtime-proces) giver en `summary`,
+# og reduce_for_owner(keep=("liveness","summary")) kan aldrig slippe råt indhold
+# igennem. Rå selv-indhold (uløste mål, forudsigelses-tekst, selv-forståelse)
+# forlader ALDRIG processen.
+def _open_loops() -> dict:
+    from apps.api.jarvis_api.routes.internal_runtime_surface import _light
+    from core.services.open_loop_signal_tracking import (
+        build_runtime_open_loop_signal_surface,
+    )
+    return _light(build_runtime_open_loop_signal_surface())
+
+
+def _runtime_awareness() -> dict:
+    from apps.api.jarvis_api.routes.internal_runtime_surface import _light
+    from core.services.runtime_awareness_signal_tracking import (
+        build_runtime_awareness_signal_surface,
+    )
+    return _light(build_runtime_awareness_signal_surface())
+
+
+def _runtime_self_knowledge() -> dict:
+    from apps.api.jarvis_api.routes.internal_runtime_surface import _light
+    from core.services.runtime_self_knowledge import (
+        build_runtime_self_knowledge_surface,
+    )
+    return _light(build_runtime_self_knowledge_surface())
+
+
+def _counterfactual() -> dict:
+    from apps.api.jarvis_api.routes.internal_runtime_surface import _light
+    from core.services.counterfactual_predictions import (
+        build_counterfactual_predictions_surface,
+    )
+    return _light(build_counterfactual_predictions_surface())
+
+
 def _derive_liveness(raw: dict) -> bool:
-    """Owner-safe liveness: prefer an explicit ``active`` flag, else non-empty."""
+    """Owner-safe liveness: prefer a builder-provided ``liveness`` flag (the
+    light Fase C-builders already compute it), then an explicit ``active`` flag,
+    else non-empty."""
+    if "liveness" in raw:
+        return bool(raw.get("liveness"))
     if "active" in raw:
         return bool(raw.get("active"))
     return bool(raw)
@@ -60,6 +103,11 @@ _SURFACES = (
     ("living_executive", _live_executive, ("liveness", "mode", "summary")),
     ("self_model", _self_model, ("liveness", "summary")),
     ("world_model", _world_model, ("liveness", "summary")),
+    # Fase C — de private agentur-lag (allerede light fra builderen):
+    ("open_loops", _open_loops, ("liveness", "summary")),
+    ("runtime_awareness", _runtime_awareness, ("liveness", "summary")),
+    ("runtime_self_knowledge", _runtime_self_knowledge, ("liveness", "summary")),
+    ("counterfactual", _counterfactual, ("liveness", "summary")),
 )
 
 

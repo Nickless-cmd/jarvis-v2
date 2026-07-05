@@ -142,6 +142,48 @@ async def test_mind_tab_renders_self_panel():
 
 
 @pytest.mark.asyncio
+async def test_mind_tab_renders_phase_c_agentur():
+    """Fase C: de 4 private agentur-lag renderes i AGENTUR-undersektionen
+    uden crash — light (liveness + tællere), aldrig råt indhold."""
+    slf = {
+        "self": {
+            "living_executive": {"liveness": True, "mode": "attentive",
+                                 "summary": {"trace_count": 1}},
+            "self_model": {"liveness": True, "summary": {"layer_count": 2}},
+            "world_model": {"liveness": False, "summary": {"active_count": 1}},
+            "open_loops": {"liveness": True,
+                           "summary": {"open_loops_count": 3, "count": 3}},
+            "runtime_awareness": {"liveness": True,
+                                  "summary": {"signals_count": 2, "score": 0.5}},
+            "runtime_self_knowledge": {"liveness": False,
+                                       "summary": {"facts_count": 4}},
+            "counterfactual": {"liveness": True,
+                               "summary": {"predictions_count": 5, "horizon": 3}},
+        },
+        "ts": 1,
+    }
+    app = CentralHud(client=FakeClient(slf=slf), live=False)
+    async with app.run_test(size=(150, 40)):
+        app.show_tab("mind")
+        rendered = str(app.query_one("#hud-panel").render())
+        assert "AGENTUR" in rendered
+        for name in ("open_loops", "runtime_awareness",
+                     "runtime_self_knowledge", "counterfactual"):
+            assert name in rendered, f"phase-C surface {name} not rendered"
+
+
+@pytest.mark.asyncio
+async def test_mind_tab_no_agentur_when_absent():
+    """Uden Fase C-nøgler vises AGENTUR-sektionen ikke (self-safe skip)."""
+    app = CentralHud(client=FakeClient(), live=False)
+    async with app.run_test(size=(150, 40)):
+        app.show_tab("mind")
+        rendered = str(app.query_one("#hud-panel").render())
+        assert "MIND & SELF" in rendered
+        assert "AGENTUR" not in rendered
+
+
+@pytest.mark.asyncio
 async def test_agents_and_mind_markup_injection_safe():
     """A field containing '[' must not crash the render."""
     agents = {

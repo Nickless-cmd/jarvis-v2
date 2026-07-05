@@ -65,12 +65,70 @@ def _inner_life() -> dict:
     return build_inner_life_digest()
 
 
+def _light(surface: dict) -> dict:
+    """§24.4-reduktion: udled KUN skalarer + længder fra en fuld surface.
+
+    Producerer aldrig tekst-/liste-/dict-INDHOLD — kun bool/tal-værdier og
+    `_count`/`_keys`-tællere. Dermed kan intet råt selv-indhold (uløste mål,
+    forudsigelses-tekst, selv-forståelse) lække via denne flade. Fase C-lagene
+    (open_loops/runtime_awareness/runtime_self_knowledge/counterfactual) er
+    PRIVATE — kun deres form (liveness + tællere) egner sig til owner-visning.
+    """
+    if not isinstance(surface, dict) or not surface:
+        return {"liveness": False, "summary": {}}
+    summary: dict = {}
+    for k, v in surface.items():
+        if isinstance(v, bool):
+            summary[k] = v
+        elif isinstance(v, (int, float)):
+            summary[k] = v
+        elif isinstance(v, (list, tuple)):
+            summary[f"{k}_count"] = len(v)
+        elif isinstance(v, dict):
+            summary[f"{k}_keys"] = len(v)
+    active = surface.get("active")
+    return {"liveness": bool(active) if active is not None else True,
+            "summary": summary}
+
+
+def _open_loops() -> dict:
+    from core.services.open_loop_signal_tracking import (
+        build_runtime_open_loop_signal_surface,
+    )
+    return _light(build_runtime_open_loop_signal_surface())
+
+
+def _runtime_awareness() -> dict:
+    from core.services.runtime_awareness_signal_tracking import (
+        build_runtime_awareness_signal_surface,
+    )
+    return _light(build_runtime_awareness_signal_surface())
+
+
+def _runtime_self_knowledge() -> dict:
+    from core.services.runtime_self_knowledge import (
+        build_runtime_self_knowledge_surface,
+    )
+    return _light(build_runtime_self_knowledge_surface())
+
+
+def _counterfactual() -> dict:
+    from core.services.counterfactual_predictions import (
+        build_counterfactual_predictions_surface,
+    )
+    return _light(build_counterfactual_predictions_surface())
+
+
 # Navn → builder. Udvides efterhånden som flere runtime-flader absorberes (mind-sektioner).
 _BUILDERS: dict[str, Callable[[], dict]] = {
     "living_executive": _living_executive,
     "self_model": _self_model,
     "world_model": _world_model,
     "inner_life": _inner_life,
+    "open_loops": _open_loops,
+    "runtime_awareness": _runtime_awareness,
+    "runtime_self_knowledge": _runtime_self_knowledge,
+    "counterfactual": _counterfactual,
 }
 
 

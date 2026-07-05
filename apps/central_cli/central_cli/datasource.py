@@ -587,3 +587,70 @@ def costs_daily(client: Any) -> dict:
         }
     except Exception:
         return dict(fallback)
+
+
+def attention(client: Any) -> dict:
+    """Attention-budget-surface fra /central/attention. Self-safe → {}."""
+    try:
+        data = client.get_json("/central/attention")
+        if not isinstance(data, dict):
+            return {}
+        s = data.get("attention")
+        return s if isinstance(s, dict) else {}
+    except Exception:
+        return {}
+
+
+def skills(client: Any) -> dict:
+    """Skill-engine + skill-contract-registry fra /central/skills. Self-safe →
+    ``{"engine": {}, "contracts": {}}``."""
+    fallback = {"engine": {}, "contracts": {}}
+    try:
+        data = client.get_json("/central/skills")
+        if not isinstance(data, dict):
+            return dict(fallback)
+        eng = data.get("engine")
+        reg = data.get("contracts")
+        return {
+            "engine": eng if isinstance(eng, dict) else {},
+            "contracts": reg if isinstance(reg, dict) else {},
+        }
+    except Exception:
+        return dict(fallback)
+
+
+def integrity(client: Any) -> dict:
+    """Self-deception-guard-surface fra /central/integrity. Self-safe → {}."""
+    try:
+        data = client.get_json("/central/integrity")
+        if not isinstance(data, dict):
+            return {}
+        s = data.get("integrity")
+        return s if isinstance(s, dict) else {}
+    except Exception:
+        return {}
+
+
+def experiments(client: Any) -> dict:
+    """Cognitive-core-experiments-surface fra /central/experiments. Self-safe → {}."""
+    try:
+        data = client.get_json("/central/experiments")
+        if not isinstance(data, dict):
+            return {}
+        s = data.get("experiments")
+        return s if isinstance(s, dict) else {}
+    except Exception:
+        return {}
+
+
+def execution(client: Any) -> dict:
+    """Visible-execution-config (whitelisted flags) fra /central/execution.
+    Self-safe → {}."""
+    try:
+        data = client.get_json("/central/execution")
+        if not isinstance(data, dict):
+            return {}
+        s = data.get("execution")
+        return s if isinstance(s, dict) else {}
+    except Exception:
+        return {}

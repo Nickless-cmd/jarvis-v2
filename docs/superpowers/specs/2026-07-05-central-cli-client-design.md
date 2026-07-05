@@ -2,8 +2,8 @@
 
 **Dato:** 5. juli 2026  
 **Forfatter:** Jarvis (med Bjørn)  
-**Status:** Byggeklar (efter 2. gennemkørsel self-review)  
-**Revisioner:** v2 — inkorporerer self-review fund + jarvis-desk nedgradering
+**Status:** Byggeklar (efter 2. gennemkørsel self-review) — 2 punkter afklares før Fase 4 (se review 3)  
+**Revisioner:** v2 — inkorporerer self-review fund + jarvis-desk nedgradering. Claude-review 3 (5. jul): verificeret mod kode + R1 (H1 afvist-med-grund) + R2 (desk-sletning betinget af bekræftelse)
 
 ---
 
@@ -21,11 +21,15 @@ En standalone CLI-klient der giver Bjørn fuld realtids-adgang til Den Intellige
 - **jarvis-desk** → nedgraderes til et let **CentralBadge** i header/miljøfelt. Poller `/central/realtime` hvert 10-15s. Viser status-farve + incident/anomaly count. Ingen SSE, ingen streaming, ingen kommando-input.
 - **CLI-klienten** → bliver den **primære Central-interface**. SSE-stream, alle kommandoer, fuld diagnostic, skrive-adgang, alt.
 
-**Hvad fjernes fra jarvis-desk:**
-- `CentralPanel.tsx` — slettes fra CodeView
-- `CentralHud.tsx` — slettes fra CoworkView
-- `centralStream.ts` — slettes (ingen SSE i desk mere)
-- `getCentralNerve`, `toggleCentralNerve`, `runCentralCommand` — fjernes fra api.ts (ikke længere brugt af desk)
+**Hvad fjernes fra jarvis-desk** — ⚠️ **BETINGET af Bjørns eksplicitte bekræftelse (Claude-review 3, R2).**
+Self-reviewens K3 konkluderede "begge kan køre samtidig, IKKE sletning" — men denne §1 besluttede
+sletning. Det modsiger self-reviewen, og at fjerne Centralen fra desk-appen Bjørn bruger dagligt er
+en reel UX-beslutning. **Standard-sti indtil bekræftelse:** behold desk-panelerne på lav-frekvens-
+polling (K3's blødere vej); CLI'en får realtid. Sletningen nedenfor udføres KUN hvis Bjørn siger ja:
+- `CentralPanel.tsx` — slettes fra CodeView *(betinget)*
+- `CentralHud.tsx` — slettes fra CoworkView *(betinget)*
+- `centralStream.ts` — slettes *(betinget)*
+- `getCentralNerve`, `toggleCentralNerve`, `runCentralCommand` — fjernes fra api.ts *(betinget)*
 
 **Hvad tilføjes i jarvis-desk:**
 - `CentralBadge.tsx` — let komponent: poll `/central/realtime` hvert 10-15s, vis farve + count, klik = tooltip med seneste incidents. ~50 linjer React.
@@ -143,6 +147,14 @@ Backenden har **to forskellige `_require_owner()`-implementationer** med forskel
 - Bootstrap: send `X-JarvisX-User: <owner_discord_id>` header → kald `/api/auth/issue` → mint token
 - Efterfølgende: brug `Authorization: Bearer <token>` for alle kald
 - Token gemmes i `~/.jarvis-v2/config/central_cli.json` med 0600 perms
+
+> **AFVIST alternativ (Claude-review 3, R1): "importér `central_query` direkte, ingen HTTP".**
+> Self-reviewens H1 foreslog dette. Det virker IKKE: CLI'en er en SEPARAT proces fra api/runtime.
+> Den LIVE nerve-fire-feed (`/central/stream`, `jc nerve`-recent) lever i den kørende proces'
+> IN-MEMORY trace — en frisk CLI-proces har sin egen TOMME trace. Kun durable snapshots
+> (status/incidents/tidsserie) er cross-proces via shared_cache/DB; live-feeden er det ikke.
+> Derfor SKAL CLI'en gå via HTTP til den kørende api-proces for headline-featuren (live feed).
+> Local mode = HTTP mod localhost (som ovenfor), IKKE direct-import.
 
 **Remote mode (`--remote http://10.0.0.39:8080`):**
 - Kræver pre-minted token (overføres out-of-band)

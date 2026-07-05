@@ -198,3 +198,24 @@ Uvicorn dræber keep-alive connections efter 120s. SSE-streamen kan blive afbrud
 | Fejlhåndtering | 🟢 God start | Udvid med N2/N3 |
 
 **Dom:** Spec'en er **byggeklar efter revidering af C1-C3 + H1-H2**. Resten kan løses under implementeringen. Revidering tager 30 min, så er vi i gang med Fase 1.
+
+---
+
+## Review 3 — Claude (5. jul, på Bjørns anmodning)
+
+**Metode:** Verificerede spec'ens load-bearing påstande mod den faktiske kode (ikke bare læst).
+
+**Verificeret KORREKT (Jarvis' krydstjek holdt):**
+- Alle stikprøve-endpoints findes: `/central/realtime|diagnostics|command|stream` (central.py, `prefix="/central"`), `/mc/overview` (mission_control.py:783), `/mc/body-state` (mission_control_living_mind.py:66), `/api/auth/issue` (jarvisx.py:1462).
+- `core/services/central_terminal.py` findes. Begge `_require_owner()` findes (central.py:36, jarvisx.py:1120). De tre desk-komponenter der foreslås slettet findes alle.
+→ "Endpoint-oversigten er komplet og korrekt" er en ægte, verificeret påstand. Godt arbejde.
+
+**R1 (kritisk korrektion — H1 er teknisk usund):** Self-reviewens H1 anbefaler "local mode = importér `central_query` direkte, ingen HTTP" for at eliminere C2. **Det virker IKKE for live data.** CLI'en er en SEPARAT proces fra api/runtime. Den LIVE nerve-fire-feed (`/central/stream`) og `jc nerve`-recent lever i den kørende proces' IN-MEMORY trace — en frisk proces har sin egen TOMME trace. (Bevist gentagne gange 5. jul: throwaway-python læser durable shared_cache-tidsserie men får tom in-memory recent.) Kun durable snapshots (status/incidents/tidsserie) er cross-proces via shared_cache/DB; live-feeden er ikke. **Konklusion:** v2-designets valg (HTTP selv lokalt) er KORREKT — direct-import ville dræbe headline-feature (live feed). Marker H1 som **afvist-med-grund**, så ingen "fikser" det senere ved at adoptere direct-import. Opdater H1 i design-doc'en.
+
+**R2 (beslutnings-inkonsistens — desk-sletning):** Self-reviewens K3 konkluderede "begge kan køre samtidig... config-ændring i desk, IKKE sletning". Men v2-designet (§1) BESLUTTER at SLETTE `CentralPanel.tsx` + `CentralHud.tsx` + `centralStream.ts`. Designet modsiger sin egen self-reviews anbefaling. At fjerne Centralen fra desk-appen (som Bjørn bruger dagligt) til fordel for en CLI er en reel UX-beslutning — ikke oplagt rigtig. **Anbefaling:** bak desk-sletningen ud af Fase 4 indtil Bjørn eksplicit bekræfter. Standard-sti bør være K3's blødere: behold desk-panelerne på lav-frekvens-polling, CLI'en får realtid. Sletning er en separat, bekræftet beslutning.
+
+**R3 (mindre smell):** Hardcoded owner Discord ID i wizard (§3, linje 154). Bedre: prompt ved første kørsel eller læs fra en config-kilde. Ikke en blocker, men undgå hardcoded identitet.
+
+**Mindre:** verificér `Textual>=4.0`/`Rich>=13.0`-pins eksisterer ved build (kan ikke tjekkes fra spec'en).
+
+**Samlet:** Spec'en er solid og ærligt selv-reviewet. To ting bør ind FØR Fase 4: (R1) korrigér H1 til afvist-med-grund, (R2) gør desk-sletningen betinget af Bjørns bekræftelse. R3 er kosmetisk.

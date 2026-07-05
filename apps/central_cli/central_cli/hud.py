@@ -269,6 +269,7 @@ class CentralHud(App):
         self._latency_ms: int | None = None
         self._connected: bool = False
         self._cost: float | None = None
+        self._costs_daily: dict = {}
         self._sel_incident: int = 0
         self._sel_anomaly: int = 0
         self._anomalies: list = []
@@ -336,6 +337,10 @@ class CentralHud(App):
             self._cost = datasource.cost_today(self._client)
         except Exception:
             self._cost = None
+        try:
+            self._costs_daily = datasource.costs_daily(self._client)
+        except Exception:
+            self._costs_daily = {}
 
     # -- animation ticks ---------------------------------------------------
     def _tick_pulse(self) -> None:
@@ -607,6 +612,10 @@ class CentralHud(App):
             return
         try:
             self._cost = datasource.cost_today(self._client)
+        except Exception:
+            pass
+        try:
+            self._costs_daily = datasource.costs_daily(self._client)
         except Exception:
             pass
         self._sync_header()
@@ -1139,6 +1148,37 @@ class CentralHud(App):
             if len(msg) > 90:
                 msg = msg[:89] + "…"
             lines.append(f"  [{color}]● {_esc(sev)}[/] [{FGDIM}]{_esc(cluster)}/{_esc(nerve)}[/] — {_esc(msg)}")
+
+        # -- cost sidste 7 dage (self-safe; skjules ved tom data) ----------
+        try:
+            cd = self._costs_daily or {}
+            raw_days = cd.get("days") or []
+            per_day: dict[str, float] = {}
+            day_order: list[str] = []
+            for row in raw_days:
+                if not isinstance(row, dict):
+                    continue
+                day = row.get("day")
+                if not isinstance(day, str):
+                    continue
+                try:
+                    c = float(row.get("total_cost") or 0.0)
+                except Exception:
+                    c = 0.0
+                if day not in per_day:
+                    per_day[day] = 0.0
+                    day_order.append(day)
+                per_day[day] += c
+            if day_order:
+                lines.append("")
+                lines.append(f"[{CYAN}]cost sidste 7 dage[/]")
+                for day in day_order[:7]:
+                    lines.append(
+                        f"  [{FGDIM}]{_esc(day)}[/]  [{FG}]${per_day[day]:.2f}[/]"
+                    )
+        except Exception:
+            pass
+
         panel.update(Text.from_markup("\n".join(lines)))
 
     # -- Diagnostics -------------------------------------------------------

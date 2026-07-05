@@ -54,3 +54,79 @@ async def get_agents() -> dict:
     )
 
     return {"agents": agents, "count": len(agents)}
+
+
+@router.get("/costs-daily")
+async def get_costs_daily() -> dict:
+    """Projicér cost-timeserien (samme data som ``/mc/costs``) + absorbér den.
+
+    Owner-gated. Self-safe: hver producent-fejl → tom/nul-fallback, stadig 200.
+    Absorberer en kompakt dags-omkostnings-værdi som en levende central-nerve og
+    flagger hvis i dag > 150% af i går.
+    """
+    require_central_owner()
+
+    from core.costing import ledger
+
+    try:
+        days = ledger.daily_cost_summary()
+    except Exception:
+        days = []
+    if not isinstance(days, list):
+        days = []
+
+    try:
+        today = float(ledger.today_cost())
+    except Exception:
+        today = 0.0
+
+    try:
+        week = float(ledger.this_week_cost())
+    except Exception:
+        week = 0.0
+
+    try:
+        summary = ledger.telemetry_summary()
+    except Exception:
+        summary = {}
+    if not isinstance(summary, dict):
+        summary = {}
+
+    # Dag-over-dag: aggregér total_cost pr. dag (sum over lanes). ──────────────
+    per_day: dict[str, float] = {}
+    order: list[str] = []
+    for row in days:
+        if not isinstance(row, dict):
+            continue
+        day = row.get("day")
+        if not isinstance(day, str):
+            continue
+        try:
+            cost = float(row.get("total_cost") or 0.0)
+        except Exception:
+            cost = 0.0
+        if day not in per_day:
+            per_day[day] = 0.0
+            order.append(day)
+        per_day[day] += cost
+
+    today_total = per_day[order[0]] if len(order) >= 1 else 0.0
+    prev_total = per_day[order[1]] if len(order) >= 2 else 0.0
+
+    absorb(
+        "cost",
+        "daily",
+        {"today": today_total, "prev": prev_total, "usd_today": today},
+        flag_if=lambda v: v["prev"] > 0 and v["today"] > v["prev"] * 1.5,
+        flag_reason="dags-omkostning >150% af går",
+        learn_key="cost_daily",
+    )
+
+    return {
+        "days": days,
+        "today_cost": today,
+        "week_cost": week,
+        "summary": summary,
+        "today_total": today_total,
+        "prev_total": prev_total,
+    }

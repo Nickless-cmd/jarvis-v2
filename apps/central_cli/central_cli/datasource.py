@@ -425,21 +425,50 @@ def self_snapshot(client: Any) -> dict:
 
 
 def cost_today(client: Any) -> float | None:
-    """Today's total cost in USD from /mc/costs, or None if unavailable.
+    """Today's total cost in USD from /central/costs-daily, or None if unavailable.
 
-    Uses ``summary.total_cost_usd``. Self-safe: any error / missing / non-numeric
+    Uses the ``today_cost`` field. Self-safe: any error / missing / non-numeric
     field returns None.
     """
     try:
-        data = client.get_json("/mc/costs")
+        data = client.get_json("/central/costs-daily")
         if not isinstance(data, dict):
             return None
-        summary = data.get("summary")
-        if not isinstance(summary, dict):
-            return None
-        val = summary.get("total_cost_usd")
+        val = data.get("today_cost")
         if val is None:
             return None
         return float(val)
     except Exception:
         return None
+
+
+def costs_daily(client: Any) -> dict:
+    """Daily cost time-series from /central/costs-daily, shaped for the CLI.
+
+    Returns ``{"days": [...], "today_cost": float|None, "week_cost": float|None}``.
+    Self-safe: any error → ``{"days": [], "today_cost": None, "week_cost": None}``.
+    """
+    fallback = {"days": [], "today_cost": None, "week_cost": None}
+    try:
+        data = client.get_json("/central/costs-daily")
+        if not isinstance(data, dict):
+            return dict(fallback)
+        days = data.get("days")
+        if not isinstance(days, list):
+            days = []
+
+        def _num(v: Any) -> float | None:
+            if v is None:
+                return None
+            try:
+                return float(v)
+            except Exception:
+                return None
+
+        return {
+            "days": days,
+            "today_cost": _num(data.get("today_cost")),
+            "week_cost": _num(data.get("week_cost")),
+        }
+    except Exception:
+        return dict(fallback)

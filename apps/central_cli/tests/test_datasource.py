@@ -103,7 +103,7 @@ def _detail_client():
         "/central/healers": {"registry_enabled": True, "healers": [
             {"kind": "security", "mode": "LIVE", "destructive": False, "live_flag_on": True},
         ]},
-        "/mc/costs": {"summary": {"total_cost_usd": 25.4057, "cost_rows": 10}, "items": []},
+        "/central/costs-daily": {"today_cost": 25.4057, "week_cost": 100.0, "days": []},
     })
 
 
@@ -151,7 +151,7 @@ def test_incident_detail_heal_status_none_when_not_healed():
         "/central/realtime": {"incidents": []},
         "/central/diagnostics": {"root_causes": []},
         "/central/healers": {"registry_enabled": True, "healers": []},
-        "/mc/costs": {"summary": {"total_cost_usd": 1.0}},
+        "/central/costs-daily": {"today_cost": 1.0, "week_cost": 1.0, "days": []},
     })
     inc = {"cluster": "infra", "nerve": "x", "kind": "latency",
            "severity": "error", "message": "just slow"}
@@ -181,10 +181,9 @@ def test_cost_today_returns_float():
 
 
 def test_cost_today_none_on_empty_or_garbage():
-    assert ds.cost_today(FakeClient({"/mc/costs": {}})) is None
-    assert ds.cost_today(FakeClient({"/mc/costs": {"summary": {}}})) is None
-    assert ds.cost_today(FakeClient({"/mc/costs": "garbage"})) is None
-    assert ds.cost_today(FakeClient({"/mc/costs": {"summary": {"total_cost_usd": None}}})) is None
+    assert ds.cost_today(FakeClient({"/central/costs-daily": {}})) is None
+    assert ds.cost_today(FakeClient({"/central/costs-daily": "garbage"})) is None
+    assert ds.cost_today(FakeClient({"/central/costs-daily": {"today_cost": None}})) is None
 
 
 def test_incident_detail_self_safe_on_raising_client():

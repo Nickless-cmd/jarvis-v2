@@ -3,19 +3,8 @@ import { backend } from '../lib/adapters'
 import { appendMessagesToSession, insertMessageBeforePending, updateSessionMessage, upsertSessionMessage } from '../lib/sessionState'
 
 const ACTIVE_SESSION_KEY = 'jarvis-ui-active-session'
-const ACTIVE_VIEW_KEY = 'jarvis-ui-active-view'
 const HEALTH_POLL_MS = 30_000
 const JARVIS_POLL_MS = 60_000
-
-function preferredView() {
-  if (typeof window === 'undefined') return 'chat'
-  return window.localStorage.getItem(ACTIVE_VIEW_KEY) || 'chat'
-}
-
-function rememberActiveView(view) {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(ACTIVE_VIEW_KEY, view)
-}
 
 function nowLabel() {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -32,7 +21,6 @@ function preferredSessionId() {
 }
 
 export function useUnifiedShell() {
-  const [activeView, setActiveView] = useState(preferredView)
   const [shell, setShell] = useState(null)
   const [sessions, setSessions] = useState([])
   const [activeSessionId, setActiveSessionId] = useState(null)
@@ -472,14 +460,7 @@ export function useUnifiedShell() {
     }
   }
 
-  function setActiveViewPersisted(view) {
-    rememberActiveView(view)
-    setActiveView(view)
-  }
-
   return {
-    activeView,
-    setActiveView: setActiveViewPersisted,
     shell,
     sessions,
     activeSession: activeSession || activeSessionSummary,

@@ -1,6 +1,6 @@
-import { Bot, LayoutDashboard, MessageSquare, Brain, Layers, Plus } from 'lucide-react'
+import { Bot, MessageSquare, Plus } from 'lucide-react'
 
-export function AppShell({ activeView, onChangeView, sidebarContent, systemHealth, onNewChat, children }) {
+export function AppShell({ sidebarContent, systemHealth, onNewChat, children }) {
   const health = systemHealth || { cpu_pct: 0, ram_pct: 0, disk_free_mb: 0 }
 
   return (
@@ -14,8 +14,7 @@ export function AppShell({ activeView, onChangeView, sidebarContent, systemHealt
 
         <nav className="global-nav">
           <button
-            className={activeView === 'chat' ? 'nav-item active' : 'nav-item'}
-            onClick={() => onChangeView('chat')}
+            className="nav-item active"
             title="Chat"
           >
             <MessageSquare size={13} />
@@ -29,33 +28,6 @@ export function AppShell({ activeView, onChangeView, sidebarContent, systemHealt
           >
             <Plus size={13} />
             <span>Ny chat</span>
-          </button>
-
-          <button
-            className={activeView === 'memory' ? 'nav-item active' : 'nav-item'}
-            onClick={() => onChangeView('memory')}
-            title="Memory"
-          >
-            <Brain size={13} />
-            <span>Memory</span>
-          </button>
-
-          <button
-            className={activeView === 'skills' ? 'nav-item active' : 'nav-item'}
-            onClick={() => onChangeView('skills')}
-            title="Skills"
-          >
-            <Layers size={13} />
-            <span>Skills</span>
-          </button>
-
-          <button
-            className={activeView === 'mission-control' ? 'nav-item active' : 'nav-item'}
-            onClick={() => onChangeView('mission-control')}
-            title="Mission Control"
-          >
-            <LayoutDashboard size={13} />
-            <span>Mission Control</span>
           </button>
         </nav>
 

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Volume2, VolumeX } from 'lucide-react'
 
 const PREFS_KEY = 'jarvis_ambient_prefs'
-const POLL_INTERVAL_MS = 30_000
 
 const ENERGY_MAP = {
   høj:      { freq: 80, gain: 0.04, filterType: 'peaking',  filterFreq: 200, filterGain: 2 },
@@ -34,7 +33,6 @@ export function AmbientPresence() {
   const filterRef = useRef(null)
   const gainRef = useRef(null)
   const surpriseTimerRef = useRef(null)
-  const abortRef = useRef(null)
   const currentEnergyRef = useRef('default')
 
   // ── Audio lifecycle ──────────────────────────────────────────────
@@ -84,67 +82,16 @@ export function AmbientPresence() {
     }
   }
 
-  function triggerSurpriseSilence(vol, isMuted) {
-    const ctx = audioCtxRef.current
-    const gain = gainRef.current
-    if (!ctx || !gain) return
-    if (surpriseTimerRef.current) return
-
-    const now = ctx.currentTime
-    gain.gain.setTargetAtTime(0, now, 0.3)
-
-    surpriseTimerRef.current = setTimeout(() => {
-      surpriseTimerRef.current = null
-      if (!gainRef.current || !audioCtxRef.current) return
-      if (isMuted) return
-      const energy = currentEnergyRef.current
-      const params = ENERGY_MAP[energy] || ENERGY_MAP.default
-      gainRef.current.gain.setTargetAtTime(vol * params.gain, audioCtxRef.current.currentTime, 1.5)
-    }, 4000)
-  }
-
-  // ── Data polling ─────────────────────────────────────────────────
+  // ── Audio lifecycle ──────────────────────────────────────────────
+  // Mission Control was removed (Fase E): the ambient body/surprise state
+  // used to be polled from /mc/*. Live presence now lives in the Central /
+  // Central-CLI, so the web ambience simply holds a steady default hum.
   useEffect(() => {
     ensureAudioContext()
-
-    let lastSurpriseAt = ''
-
-    async function poll(vol, isMuted) {
-      const ctrl = new AbortController()
-      abortRef.current = ctrl
-      try {
-        const [bodyRes, surpriseRes] = await Promise.all([
-          fetch('/mc/body-state', { signal: ctrl.signal }).then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/mc/surprise-state', { signal: ctrl.signal }).then(r => r.ok ? r.json() : null).catch(() => null),
-        ])
-
-        const energyLevel = bodyRes?.energy_level || 'default'
-        currentEnergyRef.current = energyLevel
-        applyEnergyState(energyLevel, vol, isMuted)
-
-        const surpriseAt = surpriseRes?.generated_at || ''
-        if (surpriseAt && surpriseAt !== lastSurpriseAt) {
-          try {
-            const then = new Date(surpriseAt).getTime()
-            if (Date.now() - then < 30_000) {
-              triggerSurpriseSilence(vol, isMuted)
-              lastSurpriseAt = surpriseAt
-            }
-          } catch (_) {}
-        }
-      } catch (_) {}
-    }
-
-    // Capture current values for the closure
-    const vol = volume
-    const isMuted = muted
-
-    poll(vol, isMuted)
-    const interval = setInterval(() => poll(vol, isMuted), POLL_INTERVAL_MS)
+    currentEnergyRef.current = 'default'
+    applyEnergyState('default', volume, muted)
 
     return () => {
-      clearInterval(interval)
-      if (abortRef.current) abortRef.current.abort()
       if (surpriseTimerRef.current) { clearTimeout(surpriseTimerRef.current); surpriseTimerRef.current = null }
       if (oscRef.current) { try { oscRef.current.stop() } catch (_) {} }
       if (audioCtxRef.current) { try { audioCtxRef.current.close() } catch (_) {} }

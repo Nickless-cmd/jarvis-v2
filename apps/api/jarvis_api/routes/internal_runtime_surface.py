@@ -65,6 +65,20 @@ def _inner_life() -> dict:
     return build_inner_life_digest()
 
 
+def _affect() -> dict:
+    """Nervesystemets affektive fordeling — læses i RUNTIME-processen hvor
+    affekt-meta faktisk lever i central_timeseries (cross-proces-snapshot taber meta)."""
+    from core.services.central_affect import build_affect_surface
+    return build_affect_surface()
+
+
+def _hardware_body() -> dict:
+    """Live hardware-krop (CPU/temp/disk/RAM/GPU) — læses i runtime hvor psutil-samlingen sker."""
+    from core.services.hardware_body import get_hardware_state
+    out = get_hardware_state()
+    return out if isinstance(out, dict) else {}
+
+
 def _soul() -> dict:
     from core.services.central_soul_digest import build_soul_digest
     return build_soul_digest()
@@ -135,6 +149,8 @@ _BUILDERS: dict[str, Callable[[], dict]] = {
     "self_model": _self_model,
     "world_model": _world_model,
     "inner_life": _inner_life,
+    "affect": _affect,
+    "hardware_body": _hardware_body,
     "soul": _soul,
     "dark_products": _dark_products,
     "open_loops": _open_loops,

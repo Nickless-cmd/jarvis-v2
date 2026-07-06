@@ -120,31 +120,3 @@ def enrich_headings_with_mood(text: str) -> str:
     return re.sub(r"^(#{1,4}\s+)(.+)$", _annotate, text, flags=re.MULTILINE)
 
 
-def build_memory_emotional_context_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push (system_cartographer dark-edge
-    closure). Reports module presence so the cartographer registers it as
-    observed. Specific state-readers added as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "memory_emotional_context",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_memory_emotional_context_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a scoped event — defensive, never blocks caller.
-    Cartographer scans for event_bus.publish() text.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"memory_emotional_context.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

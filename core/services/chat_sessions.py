@@ -808,35 +808,6 @@ def parse_channel_from_session_title(title: str | None) -> tuple[str, str | None
     return ("unknown", None)
 
 
-def build_chat_sessions_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push (system_cartographer dark-edge
-    closure). Reports module presence so the cartographer registers it as
-    observed. Specific state-readers added as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "chat_sessions",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_chat_sessions_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a scoped event — defensive, never blocks caller.
-    Cartographer scans for event_bus.publish() text.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"chat_sessions.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-
-
 def get_session_owner(session_id: str) -> str | None:
     """Ejeren = user_id paa den seneste besked i sessionen der HAR et stempel.
     Returnerer None for ustemplede (legacy) sessioner."""

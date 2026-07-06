@@ -1689,35 +1689,6 @@ def synthesize_final_answer(
         return ""
 
 
-def build_visible_followup_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push (system_cartographer dark-edge
-    closure). Reports module presence so the cartographer registers it as
-    observed. Specific state-readers added as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "visible_followup",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_visible_followup_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a scoped event — defensive, never blocks caller.
-    Cartographer scans for event_bus.publish() text.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"visible_followup.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-
-
 # ── Kill-switch: AGENTIC_ROUND_RETRY_ENABLED (Fase 0, P1) ────────────────────
 #
 # Den ENE sandhedskilde for om rund-niveau stream-retry (§4.1, Fase 1) er aktiv.

@@ -1,0 +1,3 @@
+httpx>=0.27
+textual>=0.60
+rich>=13.0

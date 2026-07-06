@@ -140,33 +140,3 @@ class AnthropicSSEEmitter:
         self._message_ended = True
 
 
-def build_anthropic_sse_emitter_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push. Reports module presence + mode
-    so the cartographer registers it as observed. Specific state-readers
-    can be added later as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "anthropic-sse-emitter",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_anthropic_sse_emitter_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a anthropic_sse_emitter-scoped event. Defensive — never blocks caller.
-
-    Cartographer scans for event_bus.publish() text. This wrapper keeps
-    publishes consistent across the module.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"anthropic_sse_emitter.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

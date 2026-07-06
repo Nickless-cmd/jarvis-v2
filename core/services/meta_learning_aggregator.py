@@ -413,31 +413,3 @@ def aggregate_tool_invention(*, since: datetime, until: datetime) -> dict[str, A
     }
 
 
-def build_meta_learning_aggregator_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push (system_cartographer dark-edge
-    closure). Reports module presence so the cartographer registers it as
-    observed. Specific state-readers added as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "meta_learning_aggregator",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_meta_learning_aggregator_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a scoped event — defensive, never blocks caller.
-    Cartographer scans for event_bus.publish() text.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"meta_learning_aggregator.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

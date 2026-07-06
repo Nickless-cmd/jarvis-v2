@@ -373,16 +373,3 @@ def build_attention_budget_surface() -> dict[str, object]:
     }
 
 
-def _emit_attention_budget_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a scoped event — defensive, never blocks caller.
-    Cartographer scans for event_bus.publish() text.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"attention_budget.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

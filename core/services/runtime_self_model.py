@@ -5992,31 +5992,3 @@ def _physical_presence_surface() -> dict[str, object]:
         return {"pressure": "unknown", "active": False, "summary": "hardware unreachable"}
 
 
-def build_runtime_self_model_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push (system_cartographer dark-edge
-    closure). Reports module presence so the cartographer registers it as
-    observed. Specific state-readers added as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "runtime_self_model",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_runtime_self_model_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a scoped event — defensive, never blocks caller.
-    Cartographer scans for event_bus.publish() text.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"runtime_self_model.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

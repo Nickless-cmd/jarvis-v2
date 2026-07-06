@@ -1367,21 +1367,6 @@ def full_rebuild(
     }
 
 
-def build_jarvis_brain_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push (system_cartographer dark-edge
-    closure). Reports module presence so the cartographer registers it as
-    observed. Specific state-readers added as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "jarvis_brain",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
 def _emit_jarvis_brain_event(kind: str, payload: dict[str, object] | None = None) -> None:
     """Emit a scoped event — defensive, never blocks caller.
     Cartographer scans for event_bus.publish() text.

@@ -653,22 +653,6 @@ def build_associative_recall_surface() -> dict[str, object]:
     }
 
 
-def _emit_associative_recall_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a associative_recall-scoped event. Defensive — never blocks caller.
-
-    Cartographer scans for event_bus.publish() text. This wrapper keeps
-    publishes consistent across the module.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"associative_recall.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-
-
 # ---------------------------------------------------------------------------
 # Heartbeat daemon tick
 # ---------------------------------------------------------------------------

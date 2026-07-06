@@ -235,33 +235,3 @@ def build_non_streaming_response(
     }
 
 
-def build_anthropic_translator_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push. Reports module presence + mode
-    so the cartographer registers it as observed. Specific state-readers
-    can be added later as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "anthropic-translator",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_anthropic_translator_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a anthropic_translator-scoped event. Defensive — never blocks caller.
-
-    Cartographer scans for event_bus.publish() text. This wrapper keeps
-    publishes consistent across the module.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"anthropic_translator.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

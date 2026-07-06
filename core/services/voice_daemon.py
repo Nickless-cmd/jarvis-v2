@@ -96,16 +96,3 @@ def build_voice_daemon_surface() -> dict[str, object]:
     }
 
 
-def _emit_voice_daemon_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a scoped event — defensive, never blocks caller.
-    Cartographer scans for event_bus.publish() text.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"voice_daemon.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

@@ -317,33 +317,3 @@ def generate_learning_digest(summary: dict[str, Any]) -> str:
         return ""
 
 
-def build_runtime_learning_signals_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push. Reports module presence + mode
-    so the cartographer registers it as observed. Specific state-readers
-    can be added later as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "runtime-learning-signals",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_runtime_learning_signals_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a runtime_learning_signals-scoped event. Defensive — never blocks caller.
-
-    Cartographer scans for event_bus.publish() text. This wrapper keeps
-    publishes consistent across the module.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"runtime_learning_signals.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

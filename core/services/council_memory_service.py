@@ -141,18 +141,3 @@ def build_council_memory_surface() -> dict[str, object]:
     }
 
 
-def _emit_council_memory_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a council_memory-scoped event. Defensive — never blocks caller.
-
-    Cartographer scans for event_bus.publish() text. This wrapper keeps
-    publishes consistent across the module.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"council_memory.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

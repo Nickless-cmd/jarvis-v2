@@ -513,33 +513,3 @@ def _candidate_learning_domain(candidate: RuntimeActionCandidate) -> str:
     )
 
 
-def build_runtime_decision_engine_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push. Reports module presence + mode
-    so the cartographer registers it as observed. Specific state-readers
-    can be added later as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "runtime-decision-engine",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_runtime_decision_engine_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a runtime_decision_engine-scoped event. Defensive — never blocks caller.
-
-    Cartographer scans for event_bus.publish() text. This wrapper keeps
-    publishes consistent across the module.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"runtime_decision_engine.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

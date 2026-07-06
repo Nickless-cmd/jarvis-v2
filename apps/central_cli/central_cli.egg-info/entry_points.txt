@@ -1,0 +1,2 @@
+[console_scripts]
+central = central_cli.main:main

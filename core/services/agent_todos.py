@@ -428,33 +428,3 @@ def todos_prompt_section(session_id: str | None) -> str | None:
     return header + "\n" + "\n".join(lines)
 
 
-def build_agent_todos_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push. Reports module presence + mode
-    so the cartographer registers it as observed. Specific state-readers
-    can be added later as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "agent-todo-tracker",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_agent_todos_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a agent_todos-scoped event. Defensive — never blocks caller.
-
-    Cartographer scans for event_bus.publish() text. This wrapper keeps
-    publishes consistent across the module.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"agent_todos.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

@@ -1,0 +1,1626 @@
+[
+ {
+  "file": "core/services/affirmation_anchor.py",
+  "name": "build_affirmation_anchor_surface",
+  "kind": "surface",
+  "start": 157,
+  "end": 169,
+  "source": "def build_affirmation_anchor_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"affirmation-anchor\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/affirmation_anchor.py",
+  "name": "_emit_affirmation_anchor_event",
+  "kind": "emit",
+  "start": 172,
+  "end": 185,
+  "source": "def _emit_affirmation_anchor_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a affirmation_anchor-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"affirmation_anchor.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/agent_skill_distiller.py",
+  "name": "build_agent_skill_distiller_surface",
+  "kind": "surface",
+  "start": 154,
+  "end": 166,
+  "source": "def build_agent_skill_distiller_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"agent_skill_distiller\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/agent_skill_distiller.py",
+  "name": "_emit_agent_skill_distiller_event",
+  "kind": "emit",
+  "start": 169,
+  "end": 180,
+  "source": "def _emit_agent_skill_distiller_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"agent_skill_distiller.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/agent_todos.py",
+  "name": "build_agent_todos_surface",
+  "kind": "surface",
+  "start": 431,
+  "end": 443,
+  "source": "def build_agent_todos_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"agent-todo-tracker\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/agent_todos.py",
+  "name": "_emit_agent_todos_event",
+  "kind": "emit",
+  "start": 446,
+  "end": 459,
+  "source": "def _emit_agent_todos_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a agent_todos-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"agent_todos.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/agentic_checkpoints.py",
+  "name": "build_agentic_checkpoints_surface",
+  "kind": "surface",
+  "start": 175,
+  "end": 187,
+  "source": "def build_agentic_checkpoints_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"agentic-checkpoints\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/agentic_checkpoints.py",
+  "name": "_emit_agentic_checkpoints_event",
+  "kind": "emit",
+  "start": 190,
+  "end": 203,
+  "source": "def _emit_agentic_checkpoints_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a agentic_checkpoints-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"agentic_checkpoints.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/agentic_tool_cache.py",
+  "name": "build_agentic_tool_cache_surface",
+  "kind": "surface",
+  "start": 102,
+  "end": 114,
+  "source": "def build_agentic_tool_cache_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"agentic-tool-cache\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/agentic_tool_cache.py",
+  "name": "_emit_agentic_tool_cache_event",
+  "kind": "emit",
+  "start": 117,
+  "end": 130,
+  "source": "def _emit_agentic_tool_cache_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a agentic_tool_cache-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"agentic_tool_cache.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/agentic_working_conclusions.py",
+  "name": "build_agentic_working_conclusions_surface",
+  "kind": "surface",
+  "start": 102,
+  "end": 114,
+  "source": "def build_agentic_working_conclusions_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"agentic-working-conclusions\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/agentic_working_conclusions.py",
+  "name": "_emit_agentic_working_conclusions_event",
+  "kind": "emit",
+  "start": 117,
+  "end": 130,
+  "source": "def _emit_agentic_working_conclusions_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a agentic_working_conclusions-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"agentic_working_conclusions.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/agreement_streak.py",
+  "name": "build_agreement_streak_surface",
+  "kind": "surface",
+  "start": 144,
+  "end": 156,
+  "source": "def build_agreement_streak_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"agreement-streak-tracker\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/agreement_streak.py",
+  "name": "_emit_agreement_streak_event",
+  "kind": "emit",
+  "start": 159,
+  "end": 172,
+  "source": "def _emit_agreement_streak_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a agreement_streak-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"agreement_streak.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/ambient_presence.py",
+  "name": "build_ambient_presence_surface",
+  "kind": "surface",
+  "start": 160,
+  "end": 172,
+  "source": "def build_ambient_presence_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"ambient_presence\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/ambient_presence.py",
+  "name": "_emit_ambient_presence_event",
+  "kind": "emit",
+  "start": 175,
+  "end": 186,
+  "source": "def _emit_ambient_presence_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"ambient_presence.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/anthropic_sse_emitter.py",
+  "name": "build_anthropic_sse_emitter_surface",
+  "kind": "surface",
+  "start": 143,
+  "end": 155,
+  "source": "def build_anthropic_sse_emitter_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"anthropic-sse-emitter\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/anthropic_sse_emitter.py",
+  "name": "_emit_anthropic_sse_emitter_event",
+  "kind": "emit",
+  "start": 158,
+  "end": 171,
+  "source": "def _emit_anthropic_sse_emitter_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a anthropic_sse_emitter-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"anthropic_sse_emitter.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/anthropic_translator.py",
+  "name": "build_anthropic_translator_surface",
+  "kind": "surface",
+  "start": 238,
+  "end": 250,
+  "source": "def build_anthropic_translator_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"anthropic-translator\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/anthropic_translator.py",
+  "name": "_emit_anthropic_translator_event",
+  "kind": "emit",
+  "start": 253,
+  "end": 266,
+  "source": "def _emit_anthropic_translator_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a anthropic_translator-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"anthropic_translator.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/associative_recall.py",
+  "name": "_emit_associative_recall_event",
+  "kind": "emit",
+  "start": 656,
+  "end": 669,
+  "source": "def _emit_associative_recall_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a associative_recall-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"associative_recall.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/attachment_service.py",
+  "name": "build_attachment_service_surface",
+  "kind": "surface",
+  "start": 393,
+  "end": 405,
+  "source": "def build_attachment_service_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"attachment_service\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/attachment_service.py",
+  "name": "_emit_attachment_service_event",
+  "kind": "emit",
+  "start": 408,
+  "end": 419,
+  "source": "def _emit_attachment_service_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"attachment_service.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/attention_budget.py",
+  "name": "_emit_attention_budget_event",
+  "kind": "emit",
+  "start": 376,
+  "end": 387,
+  "source": "def _emit_attention_budget_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"attention_budget.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/avoidance_detector.py",
+  "name": "build_avoidance_detector_surface",
+  "kind": "surface",
+  "start": 198,
+  "end": 210,
+  "source": "def build_avoidance_detector_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"avoidance_detector\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/avoidance_detector.py",
+  "name": "_emit_avoidance_detector_event",
+  "kind": "emit",
+  "start": 213,
+  "end": 224,
+  "source": "def _emit_avoidance_detector_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"avoidance_detector.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/bounded_mutation_intent_runtime.py",
+  "name": "build_bounded_mutation_intent_runtime_surface",
+  "kind": "surface",
+  "start": 414,
+  "end": 426,
+  "source": "def build_bounded_mutation_intent_runtime_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"bounded_mutation_intent_runtime\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/bounded_mutation_intent_runtime.py",
+  "name": "_emit_bounded_mutation_intent_runtime_event",
+  "kind": "emit",
+  "start": 429,
+  "end": 440,
+  "source": "def _emit_bounded_mutation_intent_runtime_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"bounded_mutation_intent_runtime.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/bounded_repo_tools_runtime.py",
+  "name": "build_bounded_repo_tools_runtime_surface",
+  "kind": "surface",
+  "start": 411,
+  "end": 423,
+  "source": "def build_bounded_repo_tools_runtime_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"bounded_repo_tools_runtime\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/bounded_repo_tools_runtime.py",
+  "name": "_emit_bounded_repo_tools_runtime_event",
+  "kind": "emit",
+  "start": 426,
+  "end": 437,
+  "source": "def _emit_bounded_repo_tools_runtime_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"bounded_repo_tools_runtime.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/causal_graph.py",
+  "name": "_emit_causal_graph_event",
+  "kind": "emit",
+  "start": 194,
+  "end": 205,
+  "source": "def _emit_causal_graph_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"causal_graph.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/chat_sessions.py",
+  "name": "build_chat_sessions_surface",
+  "kind": "surface",
+  "start": 811,
+  "end": 823,
+  "source": "def build_chat_sessions_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"chat_sessions\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/chat_sessions.py",
+  "name": "_emit_chat_sessions_event",
+  "kind": "emit",
+  "start": 826,
+  "end": 837,
+  "source": "def _emit_chat_sessions_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"chat_sessions.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/cognitive_state_assembly.py",
+  "name": "build_cognitive_state_assembly_surface",
+  "kind": "surface",
+  "start": 1369,
+  "end": 1381,
+  "source": "def build_cognitive_state_assembly_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"cognitive_state_assembly\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/cognitive_state_assembly.py",
+  "name": "_emit_cognitive_state_assembly_event",
+  "kind": "emit",
+  "start": 1384,
+  "end": 1395,
+  "source": "def _emit_cognitive_state_assembly_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"cognitive_state_assembly.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/conflict_prompt_service.py",
+  "name": "build_conflict_prompt_service_surface",
+  "kind": "surface",
+  "start": 54,
+  "end": 66,
+  "source": "def build_conflict_prompt_service_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"conflict_prompt_service\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/conflict_prompt_service.py",
+  "name": "_emit_conflict_prompt_service_event",
+  "kind": "emit",
+  "start": 69,
+  "end": 80,
+  "source": "def _emit_conflict_prompt_service_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"conflict_prompt_service.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/context_window_manager.py",
+  "name": "build_context_window_manager_surface",
+  "kind": "surface",
+  "start": 306,
+  "end": 318,
+  "source": "def build_context_window_manager_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"context_window_manager\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/context_window_manager.py",
+  "name": "_emit_context_window_manager_event",
+  "kind": "emit",
+  "start": 321,
+  "end": 332,
+  "source": "def _emit_context_window_manager_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"context_window_manager.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/council_memory_service.py",
+  "name": "_emit_council_memory_event",
+  "kind": "emit",
+  "start": 144,
+  "end": 157,
+  "source": "def _emit_council_memory_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a council_memory-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"council_memory.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/counterfactual_engine_runtime.py",
+  "name": "build_counterfactual_engine_runtime_surface",
+  "kind": "surface",
+  "start": 98,
+  "end": 110,
+  "source": "def build_counterfactual_engine_runtime_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"counterfactual_engine_runtime\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/counterfactual_engine_runtime.py",
+  "name": "_emit_counterfactual_engine_runtime_event",
+  "kind": "emit",
+  "start": 113,
+  "end": 124,
+  "source": "def _emit_counterfactual_engine_runtime_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"counterfactual_engine_runtime.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/counterfactual_triggers.py",
+  "name": "build_counterfactual_triggers_surface",
+  "kind": "surface",
+  "start": 215,
+  "end": 227,
+  "source": "def build_counterfactual_triggers_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"counterfactual_triggers\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/counterfactual_triggers.py",
+  "name": "_emit_counterfactual_triggers_event",
+  "kind": "emit",
+  "start": 230,
+  "end": 241,
+  "source": "def _emit_counterfactual_triggers_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"counterfactual_triggers.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/cross_agent_memory.py",
+  "name": "build_cross_agent_memory_surface",
+  "kind": "surface",
+  "start": 189,
+  "end": 201,
+  "source": "def build_cross_agent_memory_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"cross_agent_memory\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/cross_agent_memory.py",
+  "name": "_emit_cross_agent_memory_event",
+  "kind": "emit",
+  "start": 204,
+  "end": 215,
+  "source": "def _emit_cross_agent_memory_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"cross_agent_memory.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/daemon_llm.py",
+  "name": "build_daemon_llm_surface",
+  "kind": "surface",
+  "start": 436,
+  "end": 448,
+  "source": "def build_daemon_llm_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"daemon_llm\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/daemon_llm.py",
+  "name": "_emit_daemon_llm_event",
+  "kind": "emit",
+  "start": 451,
+  "end": 462,
+  "source": "def _emit_daemon_llm_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"daemon_llm.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/daemon_manager.py",
+  "name": "build_daemon_manager_surface",
+  "kind": "surface",
+  "start": 588,
+  "end": 600,
+  "source": "def build_daemon_manager_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"daemon_manager\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/daemon_manager.py",
+  "name": "_emit_daemon_manager_event",
+  "kind": "emit",
+  "start": 603,
+  "end": 614,
+  "source": "def _emit_daemon_manager_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"daemon_manager.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/day_shape_memory.py",
+  "name": "build_day_shape_memory_surface",
+  "kind": "surface",
+  "start": 301,
+  "end": 313,
+  "source": "def build_day_shape_memory_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"day_shape_memory\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/day_shape_memory.py",
+  "name": "_emit_day_shape_memory_event",
+  "kind": "emit",
+  "start": 316,
+  "end": 327,
+  "source": "def _emit_day_shape_memory_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"day_shape_memory.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/decision_review_prompter.py",
+  "name": "build_decision_review_prompter_surface",
+  "kind": "surface",
+  "start": 154,
+  "end": 166,
+  "source": "def build_decision_review_prompter_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"decision_review_prompter\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/decision_review_prompter.py",
+  "name": "_emit_decision_review_prompter_event",
+  "kind": "emit",
+  "start": 169,
+  "end": 180,
+  "source": "def _emit_decision_review_prompter_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"decision_review_prompter.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/delegation_advisor.py",
+  "name": "build_delegation_advisor_surface",
+  "kind": "surface",
+  "start": 141,
+  "end": 153,
+  "source": "def build_delegation_advisor_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"delegation_advisor\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/delegation_advisor.py",
+  "name": "_emit_delegation_advisor_event",
+  "kind": "emit",
+  "start": 156,
+  "end": 167,
+  "source": "def _emit_delegation_advisor_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"delegation_advisor.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/development_sense.py",
+  "name": "build_development_sense_surface",
+  "kind": "surface",
+  "start": 326,
+  "end": 338,
+  "source": "def build_development_sense_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"development_sense\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/development_sense.py",
+  "name": "_emit_development_sense_event",
+  "kind": "emit",
+  "start": 341,
+  "end": 352,
+  "source": "def _emit_development_sense_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"development_sense.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/dream_hypothesis_forced.py",
+  "name": "build_dream_hypothesis_forced_surface",
+  "kind": "surface",
+  "start": 77,
+  "end": 89,
+  "source": "def build_dream_hypothesis_forced_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"dream_hypothesis_forced\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/dream_hypothesis_forced.py",
+  "name": "_emit_dream_hypothesis_forced_event",
+  "kind": "emit",
+  "start": 92,
+  "end": 103,
+  "source": "def _emit_dream_hypothesis_forced_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"dream_hypothesis_forced.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/emotion_concepts_positive_triggers.py",
+  "name": "build_emotion_concepts_positive_triggers_surface",
+  "kind": "surface",
+  "start": 110,
+  "end": 122,
+  "source": "def build_emotion_concepts_positive_triggers_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"positive-trigger-detector\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/emotion_concepts_positive_triggers.py",
+  "name": "_emit_emotion_concepts_positive_triggers_event",
+  "kind": "emit",
+  "start": 125,
+  "end": 138,
+  "source": "def _emit_emotion_concepts_positive_triggers_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a emotion_concepts_positive_triggers-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"emotion_concepts_positive_triggers.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/emotional_chords.py",
+  "name": "build_emotional_chords_surface",
+  "kind": "surface",
+  "start": 313,
+  "end": 325,
+  "source": "def build_emotional_chords_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"emotional-chord-tracker\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/emotional_chords.py",
+  "name": "_emit_emotional_chords_event",
+  "kind": "emit",
+  "start": 328,
+  "end": 341,
+  "source": "def _emit_emotional_chords_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a emotional_chords-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"emotional_chords.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/epistemic_pragmatic.py",
+  "name": "build_epistemic_pragmatic_surface",
+  "kind": "surface",
+  "start": 267,
+  "end": 279,
+  "source": "def build_epistemic_pragmatic_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"epistemic_pragmatic\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/epistemic_pragmatic.py",
+  "name": "_emit_epistemic_pragmatic_event",
+  "kind": "emit",
+  "start": 282,
+  "end": 293,
+  "source": "def _emit_epistemic_pragmatic_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"epistemic_pragmatic.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/experience_correction_listener.py",
+  "name": "build_experience_correction_listener_surface",
+  "kind": "surface",
+  "start": 220,
+  "end": 232,
+  "source": "def build_experience_correction_listener_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"experience_correction_listener\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/experience_correction_listener.py",
+  "name": "_emit_experience_correction_listener_event",
+  "kind": "emit",
+  "start": 235,
+  "end": 246,
+  "source": "def _emit_experience_correction_listener_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"experience_correction_listener.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/experience_episodes.py",
+  "name": "build_experience_episodes_surface",
+  "kind": "surface",
+  "start": 378,
+  "end": 390,
+  "source": "def build_experience_episodes_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"experience_episodes\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/experience_episodes.py",
+  "name": "_emit_experience_episodes_event",
+  "kind": "emit",
+  "start": 393,
+  "end": 404,
+  "source": "def _emit_experience_episodes_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"experience_episodes.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/experience_substrate.py",
+  "name": "build_experience_substrate_surface",
+  "kind": "surface",
+  "start": 316,
+  "end": 328,
+  "source": "def build_experience_substrate_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"experience_substrate\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/experience_substrate.py",
+  "name": "_emit_experience_substrate_event",
+  "kind": "emit",
+  "start": 331,
+  "end": 342,
+  "source": "def _emit_experience_substrate_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"experience_substrate.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/experienced_time_daemon.py",
+  "name": "build_experienced_time_daemon_surface",
+  "kind": "surface",
+  "start": 124,
+  "end": 136,
+  "source": "def build_experienced_time_daemon_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"experienced_time_daemon\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/experienced_time_daemon.py",
+  "name": "_emit_experienced_time_daemon_event",
+  "kind": "emit",
+  "start": 139,
+  "end": 150,
+  "source": "def _emit_experienced_time_daemon_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"experienced_time_daemon.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/experiment_runner.py",
+  "name": "build_experiment_runner_surface",
+  "kind": "surface",
+  "start": 256,
+  "end": 268,
+  "source": "def build_experiment_runner_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"experiment_runner\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/experiment_runner.py",
+  "name": "_emit_experiment_runner_event",
+  "kind": "emit",
+  "start": 271,
+  "end": 282,
+  "source": "def _emit_experiment_runner_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"experiment_runner.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/forgetting_runtime.py",
+  "name": "build_forgetting_runtime_surface",
+  "kind": "surface",
+  "start": 116,
+  "end": 128,
+  "source": "def build_forgetting_runtime_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"forgetting_runtime\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/forgetting_runtime.py",
+  "name": "_emit_forgetting_runtime_event",
+  "kind": "emit",
+  "start": 131,
+  "end": 142,
+  "source": "def _emit_forgetting_runtime_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"forgetting_runtime.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/global_workspace.py",
+  "name": "build_global_workspace_surface",
+  "kind": "surface",
+  "start": 147,
+  "end": 159,
+  "source": "def build_global_workspace_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"global_workspace\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/global_workspace.py",
+  "name": "_emit_global_workspace_event",
+  "kind": "emit",
+  "start": 162,
+  "end": 173,
+  "source": "def _emit_global_workspace_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"global_workspace.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/good_enough_gate.py",
+  "name": "build_good_enough_gate_surface",
+  "kind": "surface",
+  "start": 187,
+  "end": 199,
+  "source": "def build_good_enough_gate_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"good_enough_gate\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/good_enough_gate.py",
+  "name": "_emit_good_enough_gate_event",
+  "kind": "emit",
+  "start": 202,
+  "end": 213,
+  "source": "def _emit_good_enough_gate_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"good_enough_gate.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/identity_drift_proposer.py",
+  "name": "build_identity_drift_proposer_surface",
+  "kind": "surface",
+  "start": 197,
+  "end": 209,
+  "source": "def build_identity_drift_proposer_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"identity_drift_proposer\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/identity_drift_proposer.py",
+  "name": "_emit_identity_drift_proposer_event",
+  "kind": "emit",
+  "start": 212,
+  "end": 223,
+  "source": "def _emit_identity_drift_proposer_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"identity_drift_proposer.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/in_flight_runs.py",
+  "name": "build_in_flight_runs_surface",
+  "kind": "surface",
+  "start": 243,
+  "end": 255,
+  "source": "def build_in_flight_runs_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"in_flight_runs\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/in_flight_runs.py",
+  "name": "_emit_in_flight_runs_event",
+  "kind": "emit",
+  "start": 258,
+  "end": 269,
+  "source": "def _emit_in_flight_runs_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"in_flight_runs.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/inheritance_seed.py",
+  "name": "build_inheritance_seed_surface",
+  "kind": "surface",
+  "start": 145,
+  "end": 157,
+  "source": "def build_inheritance_seed_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"inheritance_seed\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/inheritance_seed.py",
+  "name": "_emit_inheritance_seed_event",
+  "kind": "emit",
+  "start": 160,
+  "end": 171,
+  "source": "def _emit_inheritance_seed_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"inheritance_seed.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/jarvis_brain.py",
+  "name": "build_jarvis_brain_surface",
+  "kind": "surface",
+  "start": 1370,
+  "end": 1382,
+  "source": "def build_jarvis_brain_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"jarvis_brain\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/longing_signal_daemon.py",
+  "name": "_emit_longing_signal_daemon_event",
+  "kind": "emit",
+  "start": 282,
+  "end": 293,
+  "source": "def _emit_longing_signal_daemon_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"longing_signal_daemon.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/memory_consolidation_nudge.py",
+  "name": "build_memory_consolidation_nudge_surface",
+  "kind": "surface",
+  "start": 22,
+  "end": 34,
+  "source": "def build_memory_consolidation_nudge_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"memory_consolidation_nudge\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/memory_consolidation_nudge.py",
+  "name": "_emit_memory_consolidation_nudge_event",
+  "kind": "emit",
+  "start": 37,
+  "end": 48,
+  "source": "def _emit_memory_consolidation_nudge_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"memory_consolidation_nudge.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/memory_emotional_context.py",
+  "name": "build_memory_emotional_context_surface",
+  "kind": "surface",
+  "start": 123,
+  "end": 135,
+  "source": "def build_memory_emotional_context_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"memory_emotional_context\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/memory_emotional_context.py",
+  "name": "_emit_memory_emotional_context_event",
+  "kind": "emit",
+  "start": 138,
+  "end": 149,
+  "source": "def _emit_memory_emotional_context_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"memory_emotional_context.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/memory_graph.py",
+  "name": "build_memory_graph_surface",
+  "kind": "surface",
+  "start": 344,
+  "end": 356,
+  "source": "def build_memory_graph_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"memory_graph\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/memory_graph.py",
+  "name": "_emit_memory_graph_event",
+  "kind": "emit",
+  "start": 359,
+  "end": 370,
+  "source": "def _emit_memory_graph_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"memory_graph.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/memory_resurfacing.py",
+  "name": "build_memory_resurfacing_surface",
+  "kind": "surface",
+  "start": 221,
+  "end": 233,
+  "source": "def build_memory_resurfacing_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"memory_resurfacing\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/memory_resurfacing.py",
+  "name": "_emit_memory_resurfacing_event",
+  "kind": "emit",
+  "start": 236,
+  "end": 247,
+  "source": "def _emit_memory_resurfacing_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"memory_resurfacing.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/meta_learning_aggregator.py",
+  "name": "build_meta_learning_aggregator_surface",
+  "kind": "surface",
+  "start": 416,
+  "end": 428,
+  "source": "def build_meta_learning_aggregator_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"meta_learning_aggregator\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/meta_learning_aggregator.py",
+  "name": "_emit_meta_learning_aggregator_event",
+  "kind": "emit",
+  "start": 431,
+  "end": 442,
+  "source": "def _emit_meta_learning_aggregator_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"meta_learning_aggregator.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/meta_learning_hypotheses.py",
+  "name": "build_meta_learning_hypotheses_surface",
+  "kind": "surface",
+  "start": 239,
+  "end": 251,
+  "source": "def build_meta_learning_hypotheses_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"meta_learning_hypotheses\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/meta_learning_hypotheses.py",
+  "name": "_emit_meta_learning_hypotheses_event",
+  "kind": "emit",
+  "start": 254,
+  "end": 265,
+  "source": "def _emit_meta_learning_hypotheses_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"meta_learning_hypotheses.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/non_visible_lane_execution.py",
+  "name": "build_non_visible_lane_execution_surface",
+  "kind": "surface",
+  "start": 1210,
+  "end": 1222,
+  "source": "def build_non_visible_lane_execution_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"non_visible_lane_execution\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/non_visible_lane_execution.py",
+  "name": "_emit_non_visible_lane_execution_event",
+  "kind": "emit",
+  "start": 1225,
+  "end": 1236,
+  "source": "def _emit_non_visible_lane_execution_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"non_visible_lane_execution.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/nudge_broend.py",
+  "name": "build_nudge_broend_surface",
+  "kind": "surface",
+  "start": 169,
+  "end": 181,
+  "source": "def build_nudge_broend_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"nudge_broend\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/nudge_broend.py",
+  "name": "_emit_nudge_broend_event",
+  "kind": "emit",
+  "start": 184,
+  "end": 195,
+  "source": "def _emit_nudge_broend_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"nudge_broend.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/personality_drift.py",
+  "name": "build_personality_drift_surface",
+  "kind": "surface",
+  "start": 199,
+  "end": 211,
+  "source": "def build_personality_drift_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"personality_drift\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/personality_drift.py",
+  "name": "_emit_personality_drift_event",
+  "kind": "emit",
+  "start": 214,
+  "end": 225,
+  "source": "def _emit_personality_drift_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"personality_drift.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/priors_feedback.py",
+  "name": "build_priors_feedback_surface",
+  "kind": "surface",
+  "start": 125,
+  "end": 137,
+  "source": "def build_priors_feedback_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"priors_feedback\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/priors_feedback.py",
+  "name": "_emit_priors_feedback_event",
+  "kind": "emit",
+  "start": 140,
+  "end": 151,
+  "source": "def _emit_priors_feedback_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"priors_feedback.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/proactive_outbound_substrate.py",
+  "name": "build_proactive_outbound_substrate_surface",
+  "kind": "surface",
+  "start": 130,
+  "end": 142,
+  "source": "def build_proactive_outbound_substrate_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"proactive_outbound_substrate\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/proactive_outbound_substrate.py",
+  "name": "_emit_proactive_outbound_substrate_event",
+  "kind": "emit",
+  "start": 145,
+  "end": 156,
+  "source": "def _emit_proactive_outbound_substrate_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"proactive_outbound_substrate.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/prompt_relevance_backend.py",
+  "name": "build_prompt_relevance_backend_surface",
+  "kind": "surface",
+  "start": 831,
+  "end": 843,
+  "source": "def build_prompt_relevance_backend_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"prompt_relevance_backend\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/prompt_relevance_backend.py",
+  "name": "_emit_prompt_relevance_backend_event",
+  "kind": "emit",
+  "start": 846,
+  "end": 857,
+  "source": "def _emit_prompt_relevance_backend_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"prompt_relevance_backend.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/prompt_support_signals.py",
+  "name": "build_prompt_support_signals_surface",
+  "kind": "surface",
+  "start": 415,
+  "end": 427,
+  "source": "def build_prompt_support_signals_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"prompt_support_signals\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/prompt_support_signals.py",
+  "name": "_emit_prompt_support_signals_event",
+  "kind": "emit",
+  "start": 430,
+  "end": 441,
+  "source": "def _emit_prompt_support_signals_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"prompt_support_signals.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/prompt_variant_tracker.py",
+  "name": "build_prompt_variant_tracker_surface",
+  "kind": "surface",
+  "start": 183,
+  "end": 195,
+  "source": "def build_prompt_variant_tracker_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"prompt_variant_tracker\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/prompt_variant_tracker.py",
+  "name": "_emit_prompt_variant_tracker_event",
+  "kind": "emit",
+  "start": 198,
+  "end": 209,
+  "source": "def _emit_prompt_variant_tracker_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"prompt_variant_tracker.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/proposal_classifier.py",
+  "name": "build_proposal_classifier_surface",
+  "kind": "surface",
+  "start": 115,
+  "end": 127,
+  "source": "def build_proposal_classifier_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"proposal-classifier\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/proposal_classifier.py",
+  "name": "_emit_proposal_classifier_event",
+  "kind": "emit",
+  "start": 130,
+  "end": 143,
+  "source": "def _emit_proposal_classifier_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a proposal_classifier-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"proposal_classifier.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/provider_retry_policy.py",
+  "name": "build_provider_retry_policy_surface",
+  "kind": "surface",
+  "start": 144,
+  "end": 156,
+  "source": "def build_provider_retry_policy_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"provider_retry_policy\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/provider_retry_policy.py",
+  "name": "_emit_provider_retry_policy_event",
+  "kind": "emit",
+  "start": 159,
+  "end": 170,
+  "source": "def _emit_provider_retry_policy_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"provider_retry_policy.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/r2_5_blocking_gate.py",
+  "name": "build_r2_5_blocking_gate_surface",
+  "kind": "surface",
+  "start": 232,
+  "end": 244,
+  "source": "def build_r2_5_blocking_gate_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"r2_5_blocking_gate\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/r2_5_blocking_gate.py",
+  "name": "_emit_r2_5_blocking_gate_event",
+  "kind": "emit",
+  "start": 247,
+  "end": 258,
+  "source": "def _emit_r2_5_blocking_gate_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"r2_5_blocking_gate.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/recurring_tasks.py",
+  "name": "build_recurring_tasks_surface",
+  "kind": "surface",
+  "start": 350,
+  "end": 362,
+  "source": "def build_recurring_tasks_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"recurring_tasks\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/recurring_tasks.py",
+  "name": "_emit_recurring_tasks_event",
+  "kind": "emit",
+  "start": 365,
+  "end": 376,
+  "source": "def _emit_recurring_tasks_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"recurring_tasks.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/role_registry.py",
+  "name": "build_role_registry_surface",
+  "kind": "surface",
+  "start": 186,
+  "end": 198,
+  "source": "def build_role_registry_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"role_registry\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/role_registry.py",
+  "name": "_emit_role_registry_event",
+  "kind": "emit",
+  "start": 201,
+  "end": 212,
+  "source": "def _emit_role_registry_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"role_registry.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/rule_definitions.py",
+  "name": "build_rule_definitions_surface",
+  "kind": "surface",
+  "start": 695,
+  "end": 707,
+  "source": "def build_rule_definitions_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"rule-definitions-registry\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/rule_definitions.py",
+  "name": "_emit_rule_definitions_event",
+  "kind": "emit",
+  "start": 710,
+  "end": 723,
+  "source": "def _emit_rule_definitions_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a rule_definitions-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"rule_definitions.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/runtime_decision_engine.py",
+  "name": "build_runtime_decision_engine_surface",
+  "kind": "surface",
+  "start": 516,
+  "end": 528,
+  "source": "def build_runtime_decision_engine_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"runtime-decision-engine\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/runtime_decision_engine.py",
+  "name": "_emit_runtime_decision_engine_event",
+  "kind": "emit",
+  "start": 531,
+  "end": 544,
+  "source": "def _emit_runtime_decision_engine_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a runtime_decision_engine-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"runtime_decision_engine.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/runtime_flows.py",
+  "name": "build_runtime_flows_surface",
+  "kind": "surface",
+  "start": 113,
+  "end": 125,
+  "source": "def build_runtime_flows_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"runtime_flows\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/runtime_flows.py",
+  "name": "_emit_runtime_flows_event",
+  "kind": "emit",
+  "start": 128,
+  "end": 139,
+  "source": "def _emit_runtime_flows_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"runtime_flows.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/runtime_hook_runtime.py",
+  "name": "build_runtime_hook_runtime_surface",
+  "kind": "surface",
+  "start": 65,
+  "end": 77,
+  "source": "def build_runtime_hook_runtime_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"runtime_hook_runtime\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/runtime_hook_runtime.py",
+  "name": "_emit_runtime_hook_runtime_event",
+  "kind": "emit",
+  "start": 80,
+  "end": 91,
+  "source": "def _emit_runtime_hook_runtime_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"runtime_hook_runtime.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/runtime_hooks.py",
+  "name": "build_runtime_hooks_surface",
+  "kind": "surface",
+  "start": 181,
+  "end": 193,
+  "source": "def build_runtime_hooks_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"runtime_hooks\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/runtime_hooks.py",
+  "name": "_emit_runtime_hooks_event",
+  "kind": "emit",
+  "start": 196,
+  "end": 207,
+  "source": "def _emit_runtime_hooks_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"runtime_hooks.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/runtime_learning_signals.py",
+  "name": "build_runtime_learning_signals_surface",
+  "kind": "surface",
+  "start": 320,
+  "end": 332,
+  "source": "def build_runtime_learning_signals_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"runtime-learning-signals\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/runtime_learning_signals.py",
+  "name": "_emit_runtime_learning_signals_event",
+  "kind": "emit",
+  "start": 335,
+  "end": 348,
+  "source": "def _emit_runtime_learning_signals_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a runtime_learning_signals-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"runtime_learning_signals.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/runtime_operational_memory.py",
+  "name": "build_runtime_operational_memory_surface",
+  "kind": "surface",
+  "start": 538,
+  "end": 550,
+  "source": "def build_runtime_operational_memory_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"runtime_operational_memory\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/runtime_operational_memory.py",
+  "name": "_emit_runtime_operational_memory_event",
+  "kind": "emit",
+  "start": 553,
+  "end": 564,
+  "source": "def _emit_runtime_operational_memory_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"runtime_operational_memory.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/runtime_self_knowledge.py",
+  "name": "_emit_runtime_self_knowledge_event",
+  "kind": "emit",
+  "start": 735,
+  "end": 746,
+  "source": "def _emit_runtime_self_knowledge_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"runtime_self_knowledge.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/runtime_self_model.py",
+  "name": "build_runtime_self_model_surface",
+  "kind": "surface",
+  "start": 5995,
+  "end": 6007,
+  "source": "def build_runtime_self_model_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"runtime_self_model\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/runtime_self_model.py",
+  "name": "_emit_runtime_self_model_event",
+  "kind": "emit",
+  "start": 6010,
+  "end": 6021,
+  "source": "def _emit_runtime_self_model_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"runtime_self_model.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/scheduled_tasks.py",
+  "name": "build_scheduled_tasks_surface",
+  "kind": "surface",
+  "start": 332,
+  "end": 344,
+  "source": "def build_scheduled_tasks_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"scheduled_tasks\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/scheduled_tasks.py",
+  "name": "_emit_scheduled_tasks_event",
+  "kind": "emit",
+  "start": 347,
+  "end": 358,
+  "source": "def _emit_scheduled_tasks_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"scheduled_tasks.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/self_deception_guard.py",
+  "name": "_emit_self_deception_guard_event",
+  "kind": "emit",
+  "start": 296,
+  "end": 307,
+  "source": "def _emit_self_deception_guard_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"self_deception_guard.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/self_model_predictive.py",
+  "name": "build_self_model_predictive_surface",
+  "kind": "surface",
+  "start": 400,
+  "end": 440,
+  "source": "def build_self_model_predictive_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n\n    2026-07-06: lukker forudsigelses-loopet (rådets #2). Lazy scoring ved\n    læsning (enkleste der virker — ingen ny cadence-registrering nødvendig):\n    scorer modne prediktioner, eksponerer ``prediction_accuracy`` og\n    absorberer den som central-nerve, så Centralen VED hvor god den er til at\n    forudsige sig selv — og lærer. Self-safe: fejl → neutral.\n    \"\"\"\n    surface: dict[str, object] = {\n        \"active\": True,\n        \"mode\": \"self_model_predictive\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n    try:\n        acc = score_predictions()\n    except Exception:\n        acc = {\"scored\": 0, \"accuracy\": None, \"n\": 0}\n    surface[\"prediction_accuracy\"] = acc\n\n    # Absorbér som levende central-nerve — Centralen lærer sin egen præcision.\n    try:\n        n = int(acc.get(\"n\") or 0)\n        accuracy = acc.get(\"accuracy\")\n        _absorb(\n            \"self\",\n            \"prediction_accuracy\",\n            {\"accuracy\": accuracy, \"n\": n},\n            learn_key=\"self:prediction_accuracy\",\n            flag_if=lambda v: (v.get(\"n\", 0) >= 5) and (v.get(\"accuracy\") is not None) and (v[\"accuracy\"] < 0.4),\n            flag_reason=\"lav forudsigelses-præcision\",\n        )\n    except Exception:\n        pass\n\n    return surface\n"
+ },
+ {
+  "file": "core/services/self_model_predictive.py",
+  "name": "_emit_self_model_predictive_event",
+  "kind": "emit",
+  "start": 443,
+  "end": 454,
+  "source": "def _emit_self_model_predictive_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"self_model_predictive.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/self_monitor.py",
+  "name": "build_self_monitor_surface",
+  "kind": "surface",
+  "start": 114,
+  "end": 126,
+  "source": "def build_self_monitor_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"self_monitor\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/self_monitor.py",
+  "name": "_emit_self_monitor_event",
+  "kind": "emit",
+  "start": 129,
+  "end": 140,
+  "source": "def _emit_self_monitor_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"self_monitor.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/self_narrative_self_model_review_bridge.py",
+  "name": "build_self_narrative_self_model_review_bridge_surface",
+  "kind": "surface",
+  "start": 760,
+  "end": 772,
+  "source": "def build_self_narrative_self_model_review_bridge_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"self_narrative_self_model_review_bridge\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/self_narrative_self_model_review_bridge.py",
+  "name": "_emit_self_narrative_self_model_review_bridge_event",
+  "kind": "emit",
+  "start": 775,
+  "end": 786,
+  "source": "def _emit_self_narrative_self_model_review_bridge_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"self_narrative_self_model_review_bridge.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/semantic_indexer.py",
+  "name": "_emit_semantic_indexer_event",
+  "kind": "emit",
+  "start": 201,
+  "end": 212,
+  "source": "def _emit_semantic_indexer_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"semantic_indexer.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/semantic_memory.py",
+  "name": "_emit_semantic_memory_event",
+  "kind": "emit",
+  "start": 383,
+  "end": 394,
+  "source": "def _emit_semantic_memory_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"semantic_memory.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/session_wakeup.py",
+  "name": "build_session_wakeup_surface",
+  "kind": "surface",
+  "start": 177,
+  "end": 189,
+  "source": "def build_session_wakeup_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"session_wakeup\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/session_wakeup.py",
+  "name": "_emit_session_wakeup_event",
+  "kind": "emit",
+  "start": 192,
+  "end": 203,
+  "source": "def _emit_session_wakeup_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"session_wakeup.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/side_tasks.py",
+  "name": "build_side_tasks_surface",
+  "kind": "surface",
+  "start": 187,
+  "end": 199,
+  "source": "def build_side_tasks_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"side_tasks\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/side_tasks.py",
+  "name": "_emit_side_tasks_event",
+  "kind": "emit",
+  "start": 202,
+  "end": 213,
+  "source": "def _emit_side_tasks_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"side_tasks.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/signal_noise_guard.py",
+  "name": "build_signal_noise_guard_surface",
+  "kind": "surface",
+  "start": 193,
+  "end": 205,
+  "source": "def build_signal_noise_guard_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"signal_noise_guard\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/signal_noise_guard.py",
+  "name": "_emit_signal_noise_guard_event",
+  "kind": "emit",
+  "start": 208,
+  "end": 219,
+  "source": "def _emit_signal_noise_guard_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"signal_noise_guard.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/signal_surface_gc.py",
+  "name": "build_signal_surface_gc_surface",
+  "kind": "surface",
+  "start": 192,
+  "end": 204,
+  "source": "def build_signal_surface_gc_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"signal_surface_gc\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/signal_surface_gc.py",
+  "name": "_emit_signal_surface_gc_event",
+  "kind": "emit",
+  "start": 207,
+  "end": 218,
+  "source": "def _emit_signal_surface_gc_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"signal_surface_gc.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/signal_surface_router.py",
+  "name": "build_signal_surface_router_surface",
+  "kind": "surface",
+  "start": 298,
+  "end": 310,
+  "source": "def build_signal_surface_router_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"signal-surface-router\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/signal_surface_router.py",
+  "name": "_emit_signal_surface_router_event",
+  "kind": "emit",
+  "start": 313,
+  "end": 326,
+  "source": "def _emit_signal_surface_router_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a signal_surface_router-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"signal_surface_router.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/social_labilizer.py",
+  "name": "build_social_labilizer_surface",
+  "kind": "surface",
+  "start": 265,
+  "end": 277,
+  "source": "def build_social_labilizer_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"social_labilizer\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/social_labilizer.py",
+  "name": "_emit_social_labilizer_event",
+  "kind": "emit",
+  "start": 280,
+  "end": 291,
+  "source": "def _emit_social_labilizer_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"social_labilizer.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/staged_edits.py",
+  "name": "build_staged_edits_surface",
+  "kind": "surface",
+  "start": 440,
+  "end": 452,
+  "source": "def build_staged_edits_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"staged_edits\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/staged_edits.py",
+  "name": "_emit_staged_edits_event",
+  "kind": "emit",
+  "start": 455,
+  "end": 466,
+  "source": "def _emit_staged_edits_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"staged_edits.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/subagent_digest.py",
+  "name": "build_subagent_digest_surface",
+  "kind": "surface",
+  "start": 112,
+  "end": 124,
+  "source": "def build_subagent_digest_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"subagent_digest\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/subagent_digest.py",
+  "name": "_emit_subagent_digest_event",
+  "kind": "emit",
+  "start": 127,
+  "end": 138,
+  "source": "def _emit_subagent_digest_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"subagent_digest.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/task_worker.py",
+  "name": "build_task_worker_surface",
+  "kind": "surface",
+  "start": 415,
+  "end": 427,
+  "source": "def build_task_worker_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"task_worker\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/task_worker.py",
+  "name": "_emit_task_worker_event",
+  "kind": "emit",
+  "start": 430,
+  "end": 441,
+  "source": "def _emit_task_worker_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"task_worker.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/temporal_depth.py",
+  "name": "build_temporal_depth_surface",
+  "kind": "surface",
+  "start": 187,
+  "end": 199,
+  "source": "def build_temporal_depth_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"temporal-depth-tracker\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/temporal_depth.py",
+  "name": "_emit_temporal_depth_event",
+  "kind": "emit",
+  "start": 202,
+  "end": 215,
+  "source": "def _emit_temporal_depth_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a temporal_depth-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"temporal_depth.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/tiktok_content_daemon.py",
+  "name": "build_tiktok_content_daemon_surface",
+  "kind": "surface",
+  "start": 611,
+  "end": 623,
+  "source": "def build_tiktok_content_daemon_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"tiktok_content_daemon\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/tiktok_content_daemon.py",
+  "name": "_emit_tiktok_content_daemon_event",
+  "kind": "emit",
+  "start": 626,
+  "end": 637,
+  "source": "def _emit_tiktok_content_daemon_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"tiktok_content_daemon.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/tiktok_research_daemon.py",
+  "name": "build_tiktok_research_daemon_surface",
+  "kind": "surface",
+  "start": 239,
+  "end": 251,
+  "source": "def build_tiktok_research_daemon_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"tiktok_research_daemon\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/tiktok_research_daemon.py",
+  "name": "_emit_tiktok_research_daemon_event",
+  "kind": "emit",
+  "start": 254,
+  "end": 265,
+  "source": "def _emit_tiktok_research_daemon_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"tiktok_research_daemon.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/tool_embeddings.py",
+  "name": "build_tool_embeddings_surface",
+  "kind": "surface",
+  "start": 140,
+  "end": 152,
+  "source": "def build_tool_embeddings_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"tool_embeddings\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/tool_embeddings.py",
+  "name": "_emit_tool_embeddings_event",
+  "kind": "emit",
+  "start": 155,
+  "end": 166,
+  "source": "def _emit_tool_embeddings_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"tool_embeddings.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/tool_outcome_memory.py",
+  "name": "build_tool_outcome_memory_surface",
+  "kind": "surface",
+  "start": 106,
+  "end": 118,
+  "source": "def build_tool_outcome_memory_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push. Reports module presence + mode\n    so the cartographer registers it as observed. Specific state-readers\n    can be added later as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"tool-outcome-memory\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/tool_outcome_memory.py",
+  "name": "_emit_tool_outcome_memory_event",
+  "kind": "emit",
+  "start": 121,
+  "end": 134,
+  "source": "def _emit_tool_outcome_memory_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a tool_outcome_memory-scoped event. Defensive — never blocks caller.\n\n    Cartographer scans for event_bus.publish() text. This wrapper keeps\n    publishes consistent across the module.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"tool_outcome_memory.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/tool_pattern_miner.py",
+  "name": "build_tool_pattern_miner_surface",
+  "kind": "surface",
+  "start": 171,
+  "end": 183,
+  "source": "def build_tool_pattern_miner_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"tool_pattern_miner\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/tool_pattern_miner.py",
+  "name": "_emit_tool_pattern_miner_event",
+  "kind": "emit",
+  "start": 186,
+  "end": 197,
+  "source": "def _emit_tool_pattern_miner_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"tool_pattern_miner.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/tool_result_store.py",
+  "name": "build_tool_result_store_surface",
+  "kind": "surface",
+  "start": 163,
+  "end": 175,
+  "source": "def build_tool_result_store_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"tool_result_store\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/tool_result_store.py",
+  "name": "_emit_tool_result_store_event",
+  "kind": "emit",
+  "start": 178,
+  "end": 189,
+  "source": "def _emit_tool_result_store_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"tool_result_store.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/tool_tagger.py",
+  "name": "build_tool_tagger_surface",
+  "kind": "surface",
+  "start": 148,
+  "end": 160,
+  "source": "def build_tool_tagger_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"tool_tagger\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/tool_tagger.py",
+  "name": "_emit_tool_tagger_event",
+  "kind": "emit",
+  "start": 163,
+  "end": 174,
+  "source": "def _emit_tool_tagger_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"tool_tagger.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/user_temperature_runtime.py",
+  "name": "build_user_temperature_runtime_surface",
+  "kind": "surface",
+  "start": 105,
+  "end": 117,
+  "source": "def build_user_temperature_runtime_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"user_temperature_runtime\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/user_temperature_runtime.py",
+  "name": "_emit_user_temperature_runtime_event",
+  "kind": "emit",
+  "start": 120,
+  "end": 131,
+  "source": "def _emit_user_temperature_runtime_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"user_temperature_runtime.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/verification_gate.py",
+  "name": "build_verification_gate_surface",
+  "kind": "surface",
+  "start": 430,
+  "end": 442,
+  "source": "def build_verification_gate_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"verification_gate\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/verification_gate.py",
+  "name": "_emit_verification_gate_event",
+  "kind": "emit",
+  "start": 445,
+  "end": 456,
+  "source": "def _emit_verification_gate_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"verification_gate.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/visible_followup.py",
+  "name": "build_visible_followup_surface",
+  "kind": "surface",
+  "start": 1692,
+  "end": 1704,
+  "source": "def build_visible_followup_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"visible_followup\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/visible_followup.py",
+  "name": "_emit_visible_followup_event",
+  "kind": "emit",
+  "start": 1707,
+  "end": 1718,
+  "source": "def _emit_visible_followup_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"visible_followup.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/visible_model.py",
+  "name": "build_visible_model_surface",
+  "kind": "surface",
+  "start": 3031,
+  "end": 3043,
+  "source": "def build_visible_model_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"visible_model\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/visible_model.py",
+  "name": "_emit_visible_model_event",
+  "kind": "emit",
+  "start": 3046,
+  "end": 3057,
+  "source": "def _emit_visible_model_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"visible_model.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/visible_self_state_summary.py",
+  "name": "build_visible_self_state_summary_surface",
+  "kind": "surface",
+  "start": 158,
+  "end": 170,
+  "source": "def build_visible_self_state_summary_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"visible_self_state_summary\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/visible_self_state_summary.py",
+  "name": "_emit_visible_self_state_summary_event",
+  "kind": "emit",
+  "start": 173,
+  "end": 184,
+  "source": "def _emit_visible_self_state_summary_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"visible_self_state_summary.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/voice_curator.py",
+  "name": "build_voice_curator_surface",
+  "kind": "surface",
+  "start": 213,
+  "end": 225,
+  "source": "def build_voice_curator_surface() -> dict[str, object]:\n    \"\"\"Mission Control surface — read-only meta-projection.\n\n    Added during 2026-05-13 coverage push (system_cartographer dark-edge\n    closure). Reports module presence so the cartographer registers it as\n    observed. Specific state-readers added as the module evolves.\n    \"\"\"\n    return {\n        \"active\": True,\n        \"mode\": \"voice_curator\",\n        \"summary\": \"Module loaded; entry points available.\",\n        \"authority\": \"derived-read-only\",\n    }\n"
+ },
+ {
+  "file": "core/services/voice_curator.py",
+  "name": "_emit_voice_curator_event",
+  "kind": "emit",
+  "start": 228,
+  "end": 239,
+  "source": "def _emit_voice_curator_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"voice_curator.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ },
+ {
+  "file": "core/services/voice_daemon.py",
+  "name": "_emit_voice_daemon_event",
+  "kind": "emit",
+  "start": 99,
+  "end": 110,
+  "source": "def _emit_voice_daemon_event(kind: str, payload: dict[str, object] | None = None) -> None:\n    \"\"\"Emit a scoped event — defensive, never blocks caller.\n    Cartographer scans for event_bus.publish() text.\n    \"\"\"\n    try:\n        from core.eventbus.bus import event_bus\n        event_bus.publish(\n            f\"voice_daemon.{kind}\",\n            payload or {},\n        )\n    except Exception:\n        pass\n"
+ }
+]

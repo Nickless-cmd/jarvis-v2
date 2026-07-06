@@ -191,16 +191,3 @@ def build_causal_graph_surface() -> dict[str, object]:
     }
 
 
-def _emit_causal_graph_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a scoped event — defensive, never blocks caller.
-    Cartographer scans for event_bus.publish() text.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"causal_graph.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

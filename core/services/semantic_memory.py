@@ -380,16 +380,3 @@ def build_semantic_memory_surface() -> dict[str, object]:
     }
 
 
-def _emit_semantic_memory_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a scoped event — defensive, never blocks caller.
-    Cartographer scans for event_bus.publish() text.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"semantic_memory.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

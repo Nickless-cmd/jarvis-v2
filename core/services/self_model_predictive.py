@@ -440,16 +440,3 @@ def build_self_model_predictive_surface() -> dict[str, object]:
     return surface
 
 
-def _emit_self_model_predictive_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a scoped event — defensive, never blocks caller.
-    Cartographer scans for event_bus.publish() text.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"self_model_predictive.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

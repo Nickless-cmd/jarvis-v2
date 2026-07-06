@@ -692,33 +692,3 @@ ALL_RULES: list[Rule] = (
 __all__ = ["ALL_RULES"]
 
 
-def build_rule_definitions_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push. Reports module presence + mode
-    so the cartographer registers it as observed. Specific state-readers
-    can be added later as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "rule-definitions-registry",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_rule_definitions_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a rule_definitions-scoped event. Defensive — never blocks caller.
-
-    Cartographer scans for event_bus.publish() text. This wrapper keeps
-    publishes consistent across the module.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"rule_definitions.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

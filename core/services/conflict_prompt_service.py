@@ -51,31 +51,3 @@ def build_conflict_memory_surface(limit: int = 10) -> dict[str, object]:
     }
 
 
-def build_conflict_prompt_service_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push (system_cartographer dark-edge
-    closure). Reports module presence so the cartographer registers it as
-    observed. Specific state-readers added as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "conflict_prompt_service",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_conflict_prompt_service_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a scoped event — defensive, never blocks caller.
-    Cartographer scans for event_bus.publish() text.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"conflict_prompt_service.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
-

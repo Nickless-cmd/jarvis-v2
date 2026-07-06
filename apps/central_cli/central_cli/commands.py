@@ -29,6 +29,7 @@ _GET_ENDPOINTS = {
     "users": "/central/users",
     "excess": "/central/excess",
     "decentral": "/central/decentralization",
+    "keys": "/central/keys",
 }
 
 # Verber der routes til central_terminal-parseren via POST /central/command
@@ -71,6 +72,10 @@ def resolve_command(verb: str, args: list[str]) -> CommandSpec:
         }.get(kind, "/mc/tool-intent/deny")
         body = {"id": ident} if kind == "tool" else {}
         return CommandSpec("POST", path, body, True)
+
+    # The Keymaker: godkend en optjent nøgle → flip flag ON i TTL (owner-write).
+    if verb == "unlock" and len(args) >= 1:
+        return CommandSpec("POST", f"/central/keys/{args[0]}/approve", {}, True)
 
     # Alt andet → central_terminal-parser via /central/command.
     line = " ".join([verb, *args]).strip()

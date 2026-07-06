@@ -590,6 +590,8 @@ def create_app() -> FastAPI:
     app.include_router(_central_excess.router)
     from apps.api.jarvis_api.routes import central_decentralization as _central_decentral
     app.include_router(_central_decentral.router)
+    from apps.api.jarvis_api.routes import central_keys as _central_keys
+    app.include_router(_central_keys.router)
     from apps.api.jarvis_api.routes import internal_runtime_surface as _irs
     app.include_router(_irs.router)
     from apps.api.jarvis_api.routes import central_self as _central_self

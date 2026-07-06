@@ -503,6 +503,24 @@ def _ensure_producers_registered() -> None:
         priority=4,
     ))
 
+    # The Keymaker (6. jul, tema #4): optjent/udløbende autonomi. Hver cyklus tjekker (1) om en
+    # dimension har OPTJENT en nøgle (track-record over tærskel → PENDING, venter på owner-ja) og
+    # (2) om godkendte nøgler er UDLØBET → reverter deres flag (tilladelse mistes hvis ikke fornyet,
+    # ingen permanent privilege-crawl). Genererer ALDRIG adgang selv — kun pending + auto-expire.
+    def _run_keymaker(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_keymaker import evaluate_keys, expire_due
+        ev = evaluate_keys()
+        ex = expire_due()
+        return {"issued": len(ev.get("issued", [])), "expired": ex.get("expired", 0)}
+
+    register_producer(ProducerSpec(
+        name="keymaker",
+        cooldown_minutes=30,
+        visible_grace_minutes=0,
+        run_fn=_run_keymaker,
+        priority=4,
+    ))
+
     def _run_sleep_consolidation(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.idle_consolidation import (
             run_idle_consolidation,

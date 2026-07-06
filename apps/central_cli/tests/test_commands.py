@@ -33,3 +33,13 @@ def test_approval_write():
     assert spec.path == "/mc/tool-intent/approve"
     assert spec.write is True
     assert spec.body == {"id": "abc123"}
+
+
+def test_keys_read_and_unlock_write():
+    assert resolve_command("keys", []) == CommandSpec(
+        method="GET", path="/central/keys", body=None, write=False)
+    spec = resolve_command("unlock", ["7"])
+    assert spec.method == "POST"
+    assert spec.path == "/central/keys/7/approve"
+    assert spec.write is True
+    assert spec.body == {}

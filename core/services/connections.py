@@ -43,20 +43,30 @@ def note_connection_error(client: str, reason: str, **meta: Any) -> None:
     _observe("connection_error", {"client": str(client or ""), "reason": str(reason or "")[:160]})
 
 
-def note_unauthorized(user_id: str, session_id: str, resource: str, reason: str) -> None:
+def note_unauthorized(user_id: str, session_id: str, resource: str, reason: str,
+                      *, role: str = "", run_id: str = "") -> None:
     """UAUTORISERET adgang (tool-deny / identity-spoof / rate-limit) på en forbindelse →
-    observe + SEVERE incident (sikkerheds-relevant: skal fanges + flagges, ikke kun logges).
-    Self-safe."""
+    observe + incident. Self-safe.
+
+    SEVERITY (6. jul): en FORVENTET rolle-deny (``tool_not_permitted``) er gaten der VIRKER —
+    fx en member-scoped run hvor modellen over-rækker efter et owner-tool og korrekt blokeres.
+    Det er observerbart (gult=error), IKKE et system-brud (severe-rødt). Ægte anomalier (identity-
+    spoof, rate-abuse, ukendt reason) forbliver SEVERE. Signalet bærer nu ægte user_id + role
+    + run_id, så "hvem/hvor" er besvarbart (før stod kun rollen "member" → uhandlingsbart)."""
     _observe("unauthorized", {
         "user_id": str(user_id or ""), "session_id": str(session_id or ""),
         "resource": str(resource or ""), "reason": str(reason or "")[:120],
+        "role": str(role or ""), "run_id": str(run_id or ""),
     })
     try:
         from core.runtime.db_central_incidents import record_central_incident
+        _sev = "error" if reason == "tool_not_permitted" else "severe"
+        _who = user_id or (f"role:{role}" if role else "?")
         record_central_incident(
-            cluster="connections", nerve="unauthorized", kind="access", severity="severe",
-            message=f"uautoriseret adgang: {resource} ({reason}) user={user_id}",
-            session_id=str(session_id or ""),
+            cluster="connections", nerve="unauthorized", kind="access", severity=_sev,
+            message=(f"tool-deny: {resource} ({reason}) user={_who} role={role or '-'} "
+                     f"run={run_id or '-'}"),
+            run_id=str(run_id or ""), session_id=str(session_id or ""),
         )
     except Exception:
         pass

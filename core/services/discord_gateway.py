@@ -34,6 +34,7 @@ _client: Any = None          # discord.Client instance
 _loop: asyncio.AbstractEventLoop | None = None
 _thread: threading.Thread | None = None
 _thread_running: bool = False
+_outbound_task: Any = None   # strong ref til _send_outbound_loop-task (må ikke GC'es → "Task destroyed but pending")
 
 _outbound_queue: queue.Queue = queue.Queue()  # (channel_id: int, text: str)
 
@@ -870,8 +871,14 @@ async def _run_client(config: dict) -> None:
             except Exception:
                 pass
 
-    # Run outbound loop alongside the client
-    asyncio.ensure_future(_send_outbound_loop())
+    # Run outbound loop alongside the client. HOLD en stærk modul-reference (6. jul): uden
+    # den kan Python GC'e den ventende task → "Task was destroyed but it is pending" (fyrede
+    # 20×/dag). Cancel en evt. tidligere loop (reconnect kalder _run_client igen) så vi ikke
+    # ophober forældreløse outbound-loops.
+    global _outbound_task
+    if _outbound_task is not None and not _outbound_task.done():
+        _outbound_task.cancel()
+    _outbound_task = asyncio.ensure_future(_send_outbound_loop())
     try:
         await _client.start(bot_token)
     except Exception as exc:

@@ -83,9 +83,11 @@ def test_note_unauthorized_flags_incident(monkeypatch):
     flagged = {}
     monkeypatch.setattr("core.runtime.db_central_incidents.record_central_incident",
                         lambda **k: flagged.update(k))
-    cn.note_unauthorized("member", "s9", "tool:operator_bash", "tool_not_permitted")
+    cn.note_unauthorized("uid-7", "s9", "tool:operator_bash", "tool_not_permitted", role="member")
     assert obs[0]["nerve"] == "unauthorized" and obs[0]["resource"] == "tool:operator_bash"
-    assert flagged["severity"] == "severe" and flagged["nerve"] == "unauthorized"
+    # 6. jul: en forventet rolle-deny (tool_not_permitted) = error (gult), IKKE severe (rødt).
+    # Gaten der virker skal ikke farve Centralen rød. Ægte anomalier forbliver severe.
+    assert flagged["severity"] == "error" and flagged["nerve"] == "unauthorized"
 
 
 def test_session_activity_combines_tools_and_unauthorized(monkeypatch):

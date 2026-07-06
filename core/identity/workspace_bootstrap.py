@@ -318,23 +318,33 @@ def _check_workspace_file_health(
         return warnings
 
     current_size = dest.stat().st_size
+    last_known = known_sizes.get(filename)
 
-    # Check 1: absolute minimum for identity-critical files → STUB-kollaps = CRITICAL
-    if filename in _IDENTITY_CRITICAL_FILES and current_size < _MIN_EXPECTED_SIZE:
+    # Check 1: STUB-kollaps = CRITICAL. VIGTIGT (6. jul, false-alarm-fix): fyr KUN når filen
+    # engang VAR substantiel (last_known ≥ minimum) og nu er kollapset. En aldrig-udfyldt
+    # template/tom-bruger-workspace (default/public/nye members — baseline ~136B) er IKKE en
+    # overwrite; intet indhold gik tabt, det var aldrig der. Uden dette farvede hver tom
+    # bruger-workspace Centralen rød med falske "stub overwrite" på owner-identitetsfiler.
+    if (filename in _IDENTITY_CRITICAL_FILES and current_size < _MIN_EXPECTED_SIZE
+            and last_known and last_known >= _MIN_EXPECTED_SIZE):
         warnings.append((
             "critical",
-            f"⚠ {filename} is only {current_size}B — below minimum "
-            f"{_MIN_EXPECTED_SIZE}B for identity-critical files. "
-            f"Likely a stub overwrite. Investigate before restart.",
+            f"⚠ {filename} kollapsede fra {last_known}B til {current_size}B — under minimum "
+            f"{_MIN_EXPECTED_SIZE}B for identitets-kritiske filer. "
+            f"Sandsynlig stub overwrite. Undersøg før genstart.",
         ))
 
     # Check 2: relativ formindskelse fra last-known-good. Stadig substantiel (≥ min) → WARNING;
     # under min (allerede fanget som stub af Check 1) → CRITICAL.
-    last_known = known_sizes.get(filename)
     if last_known and last_known > 0:
         ratio = current_size / last_known
         if ratio < _SHRINK_ALARM_THRESHOLD:
-            level = "warning" if current_size >= _MIN_EXPECTED_SIZE else "critical"
+            # CRITICAL kun hvis filen VAR substantiel og nu er kollapset under minimum (ægte
+            # identitets-tab). En lille fil der bliver mindre (aldrig-substantiel baseline) er
+            # højst en WARNING — ikke "data loss" der farver Centralen rød. (6. jul false-alarm-fix)
+            _substantial_before = last_known >= _MIN_EXPECTED_SIZE
+            level = ("critical" if (current_size < _MIN_EXPECTED_SIZE and _substantial_before)
+                     else "warning")
             warnings.append((
                 level,
                 f"🚨 {filename} shrank from {last_known}B to {current_size}B "

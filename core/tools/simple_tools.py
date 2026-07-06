@@ -4085,7 +4085,16 @@ def _execute_tool_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
                 from core.services.connections import note_unauthorized
                 _ua_sid = str(arguments.get("_runtime_session_id")
                               or arguments.get("_session_id") or "")
-                note_unauthorized(_role, _ua_sid, f"tool:{name}", "tool_not_permitted")
+                _ua_rid = str(arguments.get("_runtime_run_id")
+                              or arguments.get("_run_id") or "")
+                # Fang den ÆGTE bruger (ikke bare rollen "member") så signalet er handlingsbart.
+                try:
+                    from core.identity.workspace_context import current_user_id as _cuid
+                    _ua_uid = _cuid() or ""
+                except Exception:
+                    _ua_uid = ""
+                note_unauthorized(_ua_uid, _ua_sid, f"tool:{name}", "tool_not_permitted",
+                                  role=_role, run_id=_ua_rid)
             except Exception:
                 pass
             _record_tool_outcome_memory(name, arguments, result, mode="tool")

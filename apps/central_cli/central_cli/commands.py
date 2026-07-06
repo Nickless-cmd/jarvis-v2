@@ -26,6 +26,7 @@ _GET_ENDPOINTS = {
     "approvals": "/mc/approvals",
     "autonomous": "/central/autonomous",
     "connections": "/central/connections",
+    "users": "/central/users",
 }
 
 # Verber der routes til central_terminal-parseren via POST /central/command

@@ -72,6 +72,18 @@ async def get_echo_breaker() -> dict:
     return _stamp(surf)
 
 
+@router.get("/continuity")
+async def get_continuity() -> dict:
+    """Continuity-fidelity: hvor meget af Jarvis kom igennem sidste genstart + hvad gik tabt. Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_continuity_healer import build_continuity_surface
+        surf = build_continuity_surface()
+    except Exception:
+        surf = {}
+    return _stamp(surf)
+
+
 @router.get("/glitch")
 async def get_glitch() -> dict:
     """Glitches i selvbilledet: altid-shadow policies + frosne nerver + anbefalet handling. Owner-only."""

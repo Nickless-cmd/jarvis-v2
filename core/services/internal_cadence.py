@@ -581,6 +581,23 @@ def _ensure_producers_registered() -> None:
         priority=5,
     ))
 
+    # Continuity Healer (6. jul, Jarvis' P0): reboot re-synthetiserer selv-tilstanden fra TOMME
+    # live-kilder og flader det rige durable selv ud. Healeren måler continuity_fidelity + bærer
+    # tomme dimensioner frem fra sidste hele snapshot (aldrig opfundet) → han vågner som SIG.
+    # Kører EFTER central_self_state (så den heler efter selv-tilstanden er skrevet), høj prioritet.
+    def _run_continuity_healer(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_continuity_healer import run_continuity_healer
+        return run_continuity_healer(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="continuity_healer",
+        cooldown_minutes=5,
+        visible_grace_minutes=0,
+        run_fn=_run_continuity_healer,
+        priority=2,
+        depends_on=["central_self_state"],
+    ))
+
     # The One's Anomaly Detector (6. jul, gartner #3): glitches i selvbilledet — altid-shadow
     # policies + frosne nerver. Markér som bevidst handling (enforce/retire/investigate). Propose-only.
     def _run_glitch(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:

@@ -36,6 +36,11 @@ from core.runtime.config import STATE_DIR
 # der lever der. Flytning vil ske i senere fase når _ensure_* også flyttes.
 DB_PATH = Path(STATE_DIR) / "jarvis.db"
 _DB_CONNECT_LOGGED: bool = False
+# WAL-init + mkdir er PERSISTENTE/idempotente → kun nødvendige ÉN gang pr. proces.
+# Sat pr. connect var 78%-CPU-hotspot (py-spy 6. jul): `PRAGMA journal_mode=WAL` alene = 178/3415
+# samples. WAL er persistent i DB-headeren, så re-sætning hver query er ren spild. Race på flaget
+# er harmløs (værste tilfælde: WAL sættes få ekstra gange — idempotent).
+_DB_WAL_INITIALIZED: bool = False
 _core_logger = _logging.getLogger("uvicorn.error")
 _CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
 _EVIDENCE_CLASS_RANKS = {
@@ -63,22 +68,28 @@ class ClosingConnection(sqlite3.Connection):
 
 
 def connect() -> sqlite3.Connection:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    global _DB_WAL_INITIALIZED
+    if not _DB_WAL_INITIALIZED:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH, factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
     # Vent på DB-lås i stedet for at fejle ØJEBLIKKELIGT (OperationalError: database is locked).
     # Rygraden (eventbus-writer-tråd) + mange samtidige læsere/skrivere på tværs af to processer
     # → uden dette fejler skriv ved kortvarig kontention. 5s rider enhver normal lås af. (1. jul)
     try:
-        conn.execute("PRAGMA busy_timeout = 5000")
-        # WAL (Bjørn 4. jul — survival-branden): default rollback-journal EKSKLUSIV-låser HELE
-        # DB-filen (1,16 GB) ved enhver writer → under producer-write-load (soul-lag + 117 bridge-
-        # families på tværs af 2 processer) blokerede visible-lanens persist/trace op til 5s →
-        # event-loop-sultning i api (--workers 1) → tomme svar → survival-fallback. WAL lader
-        # LÆSERE + én writer køre SAMTIDIGT → ingen fil-lås-blokering. synchronous=NORMAL er
-        # crash-sikkert under WAL (kun risiko: tab af sidste commit ved strømsvigt). Reversibelt:
-        # PRAGMA journal_mode=DELETE. Kræver samme filsystem (opfyldt — lokal disk i containeren).
-        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA busy_timeout = 5000")   # per-forbindelse — altid
+        if not _DB_WAL_INITIALIZED:
+            # WAL (Bjørn 4. jul — survival-branden): default rollback-journal EKSKLUSIV-låser HELE
+            # DB-filen (1,16 GB) ved enhver writer → under producer-write-load (soul-lag + 117 bridge-
+            # families på tværs af 2 processer) blokerede visible-lanens persist/trace op til 5s →
+            # event-loop-sultning i api (--workers 1) → tomme svar → survival-fallback. WAL lader
+            # LÆSERE + én writer køre SAMTIDIGT → ingen fil-lås-blokering. Reversibelt:
+            # PRAGMA journal_mode=DELETE. Kræver samme filsystem (opfyldt — lokal disk i containeren).
+            # PERSISTENT i DB-headeren → kun sat ÉN gang pr. proces (6. jul CPU-fix), IKKE pr. query.
+            conn.execute("PRAGMA journal_mode = WAL")
+            _DB_WAL_INITIALIZED = True
+        # synchronous=NORMAL er per-forbindelse (nulstilles pr. connect) → skal sættes hver gang.
+        # Crash-sikkert under WAL (kun risiko: tab af sidste commit ved strømsvigt). Billig (ingen I/O).
         conn.execute("PRAGMA synchronous = NORMAL")
     except Exception:
         pass

@@ -1,4 +1,7 @@
-/** Mission Control datalag — fetchers mod de eksisterende /mc/*-endpoints (+ de 3 nye).
+/** Mission Control datalag — fetchers mod Centralen (/central/*).
+ *  Desk-MC beholdes, men henter nu fra Centralen i stedet for /mc/*. Interfacene er
+ *  uændrede: /central-svarene mappes ind i de eksisterende former så de forbrugende
+ *  komponenter (RunsTable/AgentRoster/CostPanel/EventStream) er urørte.
  *  Eget modul (ikke i api.ts) så det store api.ts ikke vokser. Løse defensive typer:
  *  backend-formerne er kendt, men UI'et skal aldrig vælte på et manglende felt. */
 import { apiFetch, type ApiConfig } from './api'
@@ -24,16 +27,33 @@ export interface McRunsResponse {
 }
 
 export async function getMcRuns(config: ApiConfig, limit = 20): Promise<McRunsResponse> {
-  const r = await apiFetch<McRunsResponse>(config, `/mc/runs?limit=${limit}`)
-  return { ...r, recent_runs: r.recent_runs ?? [] }
+  const r = await apiFetch<{ runs?: McRun[]; count?: number; failed_count?: number }>(
+    config,
+    `/central/runs?limit=${limit}`,
+  )
+  const recent = r.runs ?? []
+  return {
+    active_run: null,
+    last_outcome: null,
+    recent_runs: recent,
+    summary: {
+      active: false,
+      recent_count: r.count ?? recent.length,
+      failed_count: r.failed_count ?? 0,
+    },
+  }
 }
 
 export interface McRunStep { kind: string; at?: string; summary?: string; tool?: string }
 export interface McRunDetail { run: McRun | null; found: boolean; steps: McRunStep[] }
 
 export async function getMcRunDetail(config: ApiConfig, runId: string): Promise<McRunDetail> {
-  const r = await apiFetch<McRunDetail>(config, `/mc/runs/${encodeURIComponent(runId)}`)
-  return { ...r, run: r.run ?? null, found: r.found ?? false, steps: r.steps ?? [] }
+  const r = await apiFetch<{ run?: McRun | null; found?: boolean }>(
+    config,
+    `/central/runs/${encodeURIComponent(runId)}`,
+  )
+  // /central leverer ingen steps — hold komponenterne robuste med tom liste.
+  return { run: r.run ?? null, found: r.found ?? false, steps: [] }
 }
 
 export interface McAgent {
@@ -62,8 +82,28 @@ export interface McAgentsResponse {
 }
 
 export async function getMcAgents(config: ApiConfig, limit = 100): Promise<McAgentsResponse> {
-  const r = await apiFetch<McAgentsResponse>(config, `/mc/agents?limit=${limit}`)
-  return { ...r, agents: r.agents ?? [] }
+  const r = await apiFetch<{ agents?: McAgent[]; count?: number }>(
+    config,
+    `/central/agents?limit=${limit}`,
+  )
+  const agents = r.agents ?? []
+  // /central leverer ingen summary — beregn den defensivt fra agents-arrayet.
+  const active_count = agents.filter((a) => a.status === 'active').length
+  const completed_count = agents.filter((a) => a.status === 'completed').length
+  const failed_count = agents.filter(
+    (a) => a.status === 'failed' || a.status === 'cancelled',
+  ).length
+  const token_burn_total = agents.reduce((sum, a) => sum + (a.tokens_burned ?? 0), 0)
+  return {
+    agents,
+    summary: {
+      agent_count: r.count ?? agents.length,
+      active_count,
+      completed_count,
+      failed_count,
+      token_burn_total,
+    },
+  }
 }
 
 export interface McScheduledTask {
@@ -75,8 +115,11 @@ export interface McScheduledTask {
 }
 
 export async function getMcScheduledTasks(config: ApiConfig, limit = 20): Promise<McScheduledTask[]> {
-  const r = await apiFetch<{ items?: McScheduledTask[] }>(config, `/mc/scheduled-tasks?limit=${limit}`)
-  return r.items ?? []
+  const r = await apiFetch<{ tasks?: McScheduledTask[] }>(
+    config,
+    `/central/queues/scheduled?limit=${limit}`,
+  )
+  return r.tasks ?? []
 }
 
 /** Faktisk form fra ledger.daily_cost_summary: én række pr. dag PR. lane. */
@@ -88,8 +131,8 @@ export interface McDailyCost {
   total_cost?: number
 }
 
-export async function getMcCostsDaily(config: ApiConfig, days = 30): Promise<McDailyCost[]> {
-  const r = await apiFetch<{ days?: McDailyCost[] }>(config, `/mc/costs/daily?days=${days}`)
+export async function getMcCostsDaily(config: ApiConfig, _days = 30): Promise<McDailyCost[]> {
+  const r = await apiFetch<{ days?: McDailyCost[] }>(config, `/central/costs-daily`)
   return r.days ?? []
 }
 
@@ -103,7 +146,7 @@ export interface McEvent {
 
 export async function getMcEvents(config: ApiConfig, limit = 50, family?: string): Promise<McEvent[]> {
   const q = family ? `?limit=${limit}&family=${encodeURIComponent(family)}` : `?limit=${limit}`
-  const r = await apiFetch<{ items?: McEvent[] }>(config, `/mc/events${q}`)
+  const r = await apiFetch<{ items?: McEvent[] }>(config, `/central/events${q}`)
   return r.items ?? []
 }
 
@@ -115,5 +158,13 @@ export interface McOverview {
 }
 
 export async function getMcOverviewSafe(config: ApiConfig): Promise<McOverview> {
-  return apiFetch<McOverview>(config, '/mc/overview')
+  // /central/overview findes ikke — byg et blødt overblik fra costs-daily.
+  // Kaldet er wrappet i catch hos forbrugeren; hold det minimalt og robust.
+  const r = await apiFetch<{ today_cost?: number }>(config, '/central/costs-daily')
+  return {
+    ok: true,
+    events: 0,
+    total_cost_usd: r.today_cost ?? 0,
+    visible_execution: undefined,
+  }
 }

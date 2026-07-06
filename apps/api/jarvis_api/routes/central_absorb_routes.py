@@ -562,6 +562,34 @@ async def get_dark_products() -> dict:
     return {"signals": signals, "live_count": live_count, "total": total}
 
 
+@router.get("/initiative")
+async def get_initiative() -> dict:
+    """Projicér den gatede initiativ-stige + absorbér den som levende nerve.
+
+    Rådets #3: initiativ stiger observe→propose→execute→learn med en gate før
+    hvert løft. evaluate_ladder læser eksisterende tilstand (wants + forslag +
+    seneste udfald) og afleder trin + gate — den UDFØRER intet.
+
+    Owner-gated. Self-safe: producent-fejl → OBSERVE/lukket-gate-fallback,
+    stadig 200. §24.4: KUN skalarer/labels returneres (aldrig rå want-tekst).
+    """
+    require_central_owner()
+    try:
+        from core.services.central_initiative_ladder import absorb_ladder
+        result = absorb_ladder()
+    except Exception:
+        result = {
+            "stage": "observe",
+            "gate_open": False,
+            "gate_reason": "utilgængelig",
+            "top_initiative": "—",
+            "counts": {"observe": 0, "propose": 0, "execute": 0, "learn": 0},
+        }
+    if not isinstance(result, dict):
+        result = {}
+    return {"initiative": result}
+
+
 @router.get("/execution")
 async def get_execution() -> dict:
     """Projicér visible-execution-config (whitelisted flags) + absorbér liveness.
@@ -580,3 +608,25 @@ async def get_execution() -> dict:
     cfg = {k: raw.get(k) for k in _EXECUTION_KEYS if k in raw}
     absorb("execution", "config", cfg, learn_key="execution:config")
     return {"execution": cfg}
+
+
+@router.get("/tone")
+async def get_tone() -> dict:
+    """Projicér Centralens sproglige TONE-PROFIL (rådets #5) + absorbér den.
+
+    J.A.R.V.I.S-kernen (præcis, køligt-varm, human, kortfattet) er konstant;
+    system-/valens-tilstanden modulerer registeret (skarp ved uro/incidents,
+    varm ved varme, vågen ved tryk). ``build_tone_profile`` absorb'er selv
+    profilen som en levende nerve ("tone/profile").
+
+    Owner-gated. Self-safe: producent-fejl → neutral profil, stadig 200.
+    """
+    require_central_owner()
+    try:
+        from core.services.central_tone import build_tone_profile
+        profile = build_tone_profile()
+    except Exception:
+        profile = {}
+    if not isinstance(profile, dict):
+        profile = {}
+    return {"tone": profile}

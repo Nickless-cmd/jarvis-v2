@@ -275,6 +275,7 @@ class CentralHud(App):
         self.active_tab = "nerves"
         self._overview: dict = {}
         self._affect: dict = {}
+        self._tone: dict = {}
         self._incidents: list = []
         self._gov_flags: list = []
         self._healers: dict = {}
@@ -364,6 +365,10 @@ class CentralHud(App):
             self._affect = datasource.affect(self._client)
         except Exception:
             self._affect = {}
+        try:
+            self._tone = datasource.tone(self._client)
+        except Exception:
+            self._tone = {}
 
     # -- animation ticks ---------------------------------------------------
     def _tick_pulse(self) -> None:
@@ -641,6 +646,14 @@ class CentralHud(App):
             pass
         try:
             self._costs_daily = datasource.costs_daily(self._client)
+        except Exception:
+            pass
+        try:
+            self._affect = datasource.affect(self._client)
+        except Exception:
+            pass
+        try:
+            self._tone = datasource.tone(self._client)
         except Exception:
             pass
         self._sync_header()
@@ -1582,6 +1595,39 @@ class CentralHud(App):
                                     f"[{FG}]{_esc(sv)}[/]"
                                 )
                                 shown += 1
+
+        # -- initiativ-stige (rådets #3) — hans initiativ observe→propose→
+        # execute→learn med en gate før hvert løft. Kun skalarer/labels (§24.4).
+        try:
+            ini = datasource.initiative(self._client) if self._client else {}
+        except Exception:
+            ini = {}
+        ini = ini or {}
+        _stage = str(ini.get("stage") or "observe")
+        _gate_open = bool(ini.get("gate_open"))
+        _gate_reason = str(ini.get("gate_reason") or "")
+        _top = str(ini.get("top_initiative") or "—")
+        _icounts = ini.get("counts") or {}
+        _stage_labels = {
+            "observe": "OBSERVE",
+            "propose": "PROPOSE",
+            "execute": "EXECUTE",
+            "learn": "LEARN",
+        }
+        _stage_txt = _stage_labels.get(_stage, _stage.upper())
+        _gate_txt = (f"[{GREEN}]åben[/]" if _gate_open
+                     else f"[{AMBER}]lukket[/]")
+        lines += [
+            "",
+            f"[{CYAN} b]◈ INITIATIV[/]  [{FGDIM}]— trin: [/][{FG} b]{_stage_txt}[/]"
+            f"  [{FGDIM}]· gate: [/]{_gate_txt}",
+            f"  [{FGDIM}]{_esc(_gate_reason)}[/]",
+            f"  [{FGDIM}]top[/] [{FG}]{_esc(_top)}[/]   "
+            f"[{FGDIM}]obs[/] [{FG}]{_esc(_icounts.get('observe', 0))}[/] "
+            f"[{FGDIM}]pro[/] [{FG}]{_esc(_icounts.get('propose', 0))}[/] "
+            f"[{FGDIM}]exe[/] [{FG}]{_esc(_icounts.get('execute', 0))}[/] "
+            f"[{FGDIM}]lrn[/] [{FG}]{_esc(_icounts.get('learn', 0))}[/]",
+        ]
 
         # -- sjæl — mørke sjæle-/tids-signaler nu i nervesystemet (efter AGENTUR).
         # Reduceret: kun liveness+count pr. signal (aldrig rå tekst). Self-safe.

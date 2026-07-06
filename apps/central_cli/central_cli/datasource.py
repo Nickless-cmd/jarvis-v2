@@ -65,6 +65,31 @@ def affect(client: Any) -> dict:
     }
 
 
+def tone(client: Any) -> dict:
+    """Centralens sproglige tone-profil fra /central/tone (rådets #5). Self-safe.
+
+    Returns ``{"register","descriptors","guidance","dominant_affect",
+    "valence_tone","intensity"}`` — register er den sproglige STIL Centralen
+    formulerer sig i lige nu (fx "rolig-præcis"/"skarp-komprimeret"/"varm-nær").
+    J.A.R.V.I.S-kernen (præcis / køligt-varm) er konstant i descriptors.
+    """
+    data = client.get_json("/central/tone")
+    prof = data.get("tone") if isinstance(data, dict) else None
+    if not isinstance(prof, dict):
+        prof = {}
+    descriptors = prof.get("descriptors")
+    if not isinstance(descriptors, list):
+        descriptors = []
+    return {
+        "register": str(prof.get("register", "rolig-præcis") or "rolig-præcis"),
+        "descriptors": [str(d) for d in descriptors],
+        "guidance": str(prof.get("guidance", "") or ""),
+        "dominant_affect": str(prof.get("dominant_affect", "ro") or "ro"),
+        "valence_tone": str(prof.get("valence_tone", "neutral") or "neutral"),
+        "intensity": prof.get("intensity", 0.0),
+    }
+
+
 def _incident_set(client: Any) -> set:
     """(cluster, nerve) pairs with error/critical severity."""
     rt = _realtime(client)
@@ -516,6 +541,37 @@ def autonomy(client: Any) -> dict:
         return {
             "proposals": data.get("proposals") or [],
             "pending_count": data.get("pending_count") or 0,
+        }
+    except Exception:
+        return dict(fallback)
+
+
+def initiative(client: Any) -> dict:
+    """Gated initiativ-stige fra /central/initiative. Self-safe →
+    ``{"stage": "observe", "gate_open": False, ...}``.
+
+    Bærer kun skalarer/labels (§24.4 — aldrig rå want-tekst)."""
+    fallback = {
+        "stage": "observe",
+        "gate_open": False,
+        "gate_reason": "",
+        "top_initiative": "—",
+        "counts": {"observe": 0, "propose": 0, "execute": 0, "learn": 0},
+    }
+    try:
+        data = client.get_json("/central/initiative")
+        if not isinstance(data, dict):
+            return dict(fallback)
+        inner = data.get("initiative")
+        if not isinstance(inner, dict):
+            return dict(fallback)
+        counts = inner.get("counts")
+        return {
+            "stage": str(inner.get("stage") or "observe"),
+            "gate_open": bool(inner.get("gate_open")),
+            "gate_reason": str(inner.get("gate_reason") or ""),
+            "top_initiative": str(inner.get("top_initiative") or "—"),
+            "counts": counts if isinstance(counts, dict) else dict(fallback["counts"]),
         }
     except Exception:
         return dict(fallback)

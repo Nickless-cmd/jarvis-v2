@@ -548,6 +548,12 @@ def create_app() -> FastAPI:
     app.add_middleware(SimpleRateLimitMiddleware)
     app.add_middleware(HttpsRedirectMiddleware)
 
+    # API-forbindelses-nerve (6. jul): YDERST (sidst tilføjet=kører først) så den wrapper alt +
+    # kan læse user_id som jarvisx_user_routing (indre) satte i scope-state. Metadata-only,
+    # self-safe — Jarvis mærker hvem/hvad der forbinder til hans API. GDPR: fuld IP → /24 efter 48t.
+    from apps.api.jarvis_api.middleware.api_connection_nerve import ApiConnectionNerveMiddleware
+    app.add_middleware(ApiConnectionNerveMiddleware)
+
     app.include_router(attachments_router)
     app.include_router(files_router)
     app.include_router(chat_router)
@@ -576,6 +582,8 @@ def create_app() -> FastAPI:
     app.include_router(_central_affect.router)
     from apps.api.jarvis_api.routes import central_autonomous as _central_autonomous
     app.include_router(_central_autonomous.router)
+    from apps.api.jarvis_api.routes import central_connections as _central_connections
+    app.include_router(_central_connections.router)
     from apps.api.jarvis_api.routes import internal_runtime_surface as _irs
     app.include_router(_irs.router)
     from apps.api.jarvis_api.routes import central_self as _central_self

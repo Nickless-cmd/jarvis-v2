@@ -471,6 +471,22 @@ def _ensure_producers_registered() -> None:
         priority=2,
     ))
 
+    # API-forbindelses-nerve GDPR-retention (6. jul): backstop der anonymiserer fuld IP → /24
+    # efter 48t + sletter gammel log + pruner presence. Proces-agnostisk DB-arbejde (virker uanset
+    # at bufferen ejes af api-processen — retention rammer den delte DB). ~hvert 30. min.
+    def _run_api_conn_retention(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.api_connection_nerve import flush, retention_sweep
+        flush()
+        return {"retention": retention_sweep()}
+
+    register_producer(ProducerSpec(
+        name="api_conn_retention",
+        cooldown_minutes=30,
+        visible_grace_minutes=0,
+        run_fn=_run_api_conn_retention,
+        priority=3,
+    ))
+
     def _run_sleep_consolidation(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.idle_consolidation import (
             run_idle_consolidation,

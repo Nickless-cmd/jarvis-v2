@@ -152,6 +152,13 @@ async def jarvisx_user_routing_middleware(
     else:
         user_id = legacy_user_id
 
+    # Stash resolvet identitet i scope-state så API-forbindelses-nerven (ydre middleware) kan se
+    # HVEM der forbandt uden at gen-verificere tokenet. Metadata-only, self-safe. (6. jul)
+    try:
+        request.state.jarvis_user_id = user_id
+    except Exception:
+        pass
+
     if not user_id and not project_root:
         # No identity at all + no project anchor → default context, fast path.
         return await call_next(request)

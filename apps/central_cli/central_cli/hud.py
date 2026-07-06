@@ -1185,6 +1185,16 @@ class CentralHud(App):
             f"[{FGDIM}]varme[/] [{FG}]{af.get('varme', 0)}[/] "
             f"[{FGDIM}]ro[/] [{FG}]{af.get('ro', 0)}[/]"
         )
+        # -- tone (rådets #5): den sproglige STIL Centralen taler i lige nu ----
+        tn = self._tone or {}
+        register = str(tn.get("register", "") or "")
+        if register:
+            descriptors = tn.get("descriptors") or []
+            desc = " · ".join(str(d) for d in descriptors[:3])
+            lines.append(
+                f"[{FGDIM}]tone[/]    [{CYAN} b]◈ {register}[/]"
+                + (f"  [{FGDIM}]{_esc(desc)}[/]" if desc else "")
+            )
         lines.append("")
         lines.append(f"[{CYAN}]top incidents[/]")
         top = ov.get("top_incidents") or []

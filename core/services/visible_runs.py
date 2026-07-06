@@ -5024,6 +5024,18 @@ async def _stream_visible_run(
             except Exception:
                 pass
 
+            # Persistér denne runs governance-verdicts NU (6. jul). KRITISK: visible runs
+            # eksekverer i api-processen (JARVIS_ENABLE_RUNTIME_SERVICES=0) hvor cadence-
+            # flushen IKKE kører → truth/shadow-verdicts ville ellers sidde fast i api'ens
+            # in-memory _ACC og aldrig lande i DB. Flush ved run-slut = 1 batchet DB-skriv
+            # pr. run (~negligibelt), uafhængigt af hvilken proces der kørte turen. Cadence-
+            # flushen i runtime forbliver backstop for runtime-lokale decides. Selv-sikker.
+            try:
+                from core.services import gate_verdict_ledger as _gvl
+                _gvl.flush()
+            except Exception:
+                pass
+
             # C4 (2026-06-22): de gamle post-done effekt-gates (fact_gate +
             # diagnosis + claim-block) er FJERNET her — enforcement gøres pre-done
             # af TruthGate v2. Detektorerne lever videre via central().decide ovenfor.

@@ -507,7 +507,17 @@ def _observe_one(cluster: str, nerve: str, ev: dict[str, Any]) -> bool:
             "event_kind": ev.get("kind"),
             "family": ev.get("family"),
         })
-        central_timeseries.record(cluster, nerve, value=1.0, meta={"kind": ev.get("kind")})
+        meta = {"kind": ev.get("kind")}
+        # Rådets #4: affektiv farve i tidsserie-meta, så build_affect_surface kan læse den.
+        # Egen try/except — affekt må aldrig kunne vælte bridge-observe (§24.3 hot-path).
+        try:
+            from core.services.central_affect import classify_affect
+            aff = classify_affect(cluster, nerve, str(ev.get("kind") or "observe"), 1.0)
+            meta["affect"] = aff["affect"]
+            meta["affect_intensity"] = aff["intensity"]
+        except Exception:
+            pass
+        central_timeseries.record(cluster, nerve, value=1.0, meta=meta)
         return True
     except Exception:
         return False

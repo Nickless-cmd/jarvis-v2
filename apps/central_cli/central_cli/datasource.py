@@ -46,6 +46,25 @@ def overview(client: Any) -> dict:
     }
 
 
+def affect(client: Any) -> dict:
+    """Affektiv fordeling fra /central/affect (rådets #4). Self-safe.
+
+    Returns ``{"tryk","varme","uro","ro","dominant","total"}`` — dominant er den
+    affekt nervesystemet føles mest af lige nu ("uro"/"tryk"/"varme"/"ro").
+    """
+    data = client.get_json("/central/affect")
+    if not isinstance(data, dict):
+        data = {}
+    return {
+        "tryk": data.get("tryk", 0),
+        "varme": data.get("varme", 0),
+        "uro": data.get("uro", 0),
+        "ro": data.get("ro", 0),
+        "dominant": str(data.get("dominant", "ro") or "ro"),
+        "total": data.get("total", 0),
+    }
+
+
 def _incident_set(client: Any) -> set:
     """(cluster, nerve) pairs with error/critical severity."""
     rt = _realtime(client)

@@ -94,6 +94,13 @@ _SEVERITY = {
     "severe": RED, "critical": RED, "error": RED,
     "warn": AMBER, "warning": AMBER, "info": CYAN,
 }
+# Rådets #4: affekt-farver. uro=rød, tryk=gul, varme=grøn, ro=dæmpet blå-grå.
+_AFFECT = {
+    "uro": (RED, "●"),
+    "tryk": (AMBER, "▲"),
+    "varme": (GREEN, "♥"),
+    "ro": (BLUE, "●"),
+}
 
 # Table-backed tabs (left main column + nerve-table + side detail). "anomalies"
 # is no longer a top-level tab of its own, but its view stays fully reachable
@@ -267,6 +274,7 @@ class CentralHud(App):
         self._live = live
         self.active_tab = "nerves"
         self._overview: dict = {}
+        self._affect: dict = {}
         self._incidents: list = []
         self._gov_flags: list = []
         self._healers: dict = {}
@@ -352,6 +360,10 @@ class CentralHud(App):
             self._costs_daily = datasource.costs_daily(self._client)
         except Exception:
             self._costs_daily = {}
+        try:
+            self._affect = datasource.affect(self._client)
+        except Exception:
+            self._affect = {}
 
     # -- animation ticks ---------------------------------------------------
     def _tick_pulse(self) -> None:
@@ -1148,9 +1160,20 @@ class CentralHud(App):
             f"[{FGDIM}]clusters[/] [{FG} b]{clusters}[/]    "
             f"[{FGDIM}]incidents[/] [{inc_color} b]{incidents}[/]    "
             f"[{FGDIM}]breakers[/] [{brk_color} b]{breakers}[/]",
-            "",
-            f"[{CYAN}]top incidents[/]",
         ]
+        # -- affekt (rådets #4): hvordan nervesystemet føles lige nu ----------
+        af = self._affect or {}
+        dominant = str(af.get("dominant", "ro") or "ro")
+        a_color, a_glyph = _AFFECT.get(dominant, (FG, "●"))
+        lines.append(
+            f"[{FGDIM}]affekt[/]  [{a_color} b]{a_glyph} {dominant}[/]  "
+            f"[{FGDIM}]uro[/] [{FG}]{af.get('uro', 0)}[/] "
+            f"[{FGDIM}]tryk[/] [{FG}]{af.get('tryk', 0)}[/] "
+            f"[{FGDIM}]varme[/] [{FG}]{af.get('varme', 0)}[/] "
+            f"[{FGDIM}]ro[/] [{FG}]{af.get('ro', 0)}[/]"
+        )
+        lines.append("")
+        lines.append(f"[{CYAN}]top incidents[/]")
         top = ov.get("top_incidents") or []
         if not top:
             lines.append(f"[{DIM}]— ingen aktive incidents —[/]")

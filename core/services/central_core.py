@@ -68,6 +68,23 @@ class Central:
                 kind="observe",
                 payload={k: v for k, v in event.items() if k not in reserved},
             )
+            # Rådets #4: affektiv farve pr. nerve (tryk/varme/uro/ro). EGEN try/except —
+            # affekt-beregningen må ALDRIG kunne påvirke resten af observe (hot-path).
+            # Vi lægger affekten i den owner-lokale trace-payload FØR record, så den følger
+            # med i tidsserien-meta. affect (streng) er trace-only; affect_intensity (float)
+            # er en harmløs skalar der også må passere egress-membranen som metadata.
+            try:
+                from core.services.central_affect import classify_affect
+                aff = classify_affect(
+                    rec.cluster, rec.nerve,
+                    str(event.get("kind") or "observe"),
+                    event.get("value"),
+                    flagged=bool(event.get("flagged")),
+                )
+                rec.payload["affect"] = aff["affect"]
+                rec.payload["affect_intensity"] = aff["intensity"]
+            except Exception:
+                pass
             self._sink.record(rec)
             # Egress-membran (§24.4): trace-sinken fik FULD payload (owner-only, lokal).
             # _emit må kun bære skalar-metadata — aldrig indhold. Se _egress_safe.

@@ -37,6 +37,9 @@ _GET_ENDPOINTS = {
     "glitch": "/central/glitch",
     "continuity": "/central/continuity",
     "surgery": "/central/surgery",
+    "dream": "/central/dream-action",
+    "rca": "/central/rca",
+    "relational": "/central/relational",
 }
 
 # Verber der routes til central_terminal-parseren via POST /central/command

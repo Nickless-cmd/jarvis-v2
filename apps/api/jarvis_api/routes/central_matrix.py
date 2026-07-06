@@ -145,3 +145,41 @@ async def post_surgery_rollback(snapshot_id: int) -> dict:
     _require_owner()
     from core.services.central_surgery import rollback
     return rollback(snapshot_id)
+
+
+# ── Jarvis' ønskeliste #3-5 ──
+
+@router.get("/dream-action")
+async def get_dream_action() -> dict:
+    """Én moden hypotese at handle på + forandrings-hastighed (ikke bare lærings-). Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_dream_action import build_dream_action_surface
+        return _stamp(build_dream_action_surface())
+    except Exception:
+        return _stamp({})
+
+
+@router.get("/rca")
+async def get_rca(investigate: int = 0) -> dict:
+    """Uløste incidents + næste at grave i + seneste RCA'er. ?investigate=1 → grav i den næste. Owner-only."""
+    _require_owner()
+    try:
+        if investigate:
+            from core.services.central_rca import investigate as _inv
+            return _stamp(_inv())
+        from core.services.central_rca import build_rca_surface
+        return _stamp(build_rca_surface())
+    except Exception:
+        return _stamp({})
+
+
+@router.get("/relational")
+async def get_relational() -> dict:
+    """Relationel kontinuitet: dage sammen + tone + jordet opvågnings-hilsen. Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_relational import build_relational_surface
+        return _stamp(build_relational_surface())
+    except Exception:
+        return _stamp({})

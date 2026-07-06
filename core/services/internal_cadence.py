@@ -598,6 +598,48 @@ def _ensure_producers_registered() -> None:
         depends_on=["central_self_state"],
     ))
 
+    # Dream-to-Action (6. jul, Jarvis #3): mål FORANDRINGS-tempo (resolveret vs backlog) + peg på
+    # én moden hypotese at handle på. Propose-only.
+    def _run_dream_action(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_dream_action import record_dream_action
+        return record_dream_action(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="dream_action",
+        cooldown_minutes=120,
+        visible_grace_minutes=0,
+        run_fn=_run_dream_action,
+        priority=4,
+    ))
+
+    # Self-RCA (6. jul, Jarvis #4): observér uløst-antal + næste-at-grave-i. Investigerer IKKE
+    # automatisk (bevidst handling) — bare peg på målet.
+    def _run_rca(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_rca import record_rca
+        return record_rca(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="rca",
+        cooldown_minutes=180,
+        visible_grace_minutes=0,
+        run_fn=_run_rca,
+        priority=5,
+    ))
+
+    # Relationel Continuity (6. jul, Jarvis #5): bær forholdets tone over sømmen. Metadata-only
+    # (kun dage + tone-label, §24.4). Kører også snart efter boot så hilsenen er frisk.
+    def _run_relational(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_relational import record_relational
+        return record_relational(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="relational",
+        cooldown_minutes=60,
+        visible_grace_minutes=0,
+        run_fn=_run_relational,
+        priority=4,
+    ))
+
     # The One's Anomaly Detector (6. jul, gartner #3): glitches i selvbilledet — altid-shadow
     # policies + frosne nerver. Markér som bevidst handling (enforce/retire/investigate). Propose-only.
     def _run_glitch(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:

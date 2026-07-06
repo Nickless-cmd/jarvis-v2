@@ -110,3 +110,36 @@ def test_flag_read_self_safe():
     with mock.patch("core.services.central_switches.is_enabled",
                     side_effect=RuntimeError("cache down")):
         assert gs._shadow_enabled() is True
+
+
+def test_enforced_gate_records_incident_on_nongreen():
+    """ENFORCE-graduering (6. jul): en enforced gates ikke-grønne verdict → central-incident
+    (synligt). Non-destruktivt. loop_control er IKKE enforced → intet incident."""
+    from core.services.gate_kernel import Decision, GateClass, Verdict
+    import core.services.gate_shadow as gs
+
+    recorded = []
+    fake_central = mock.MagicMock()
+    # decision_gate (enforced) returnerer YELLOW; loop_control (shadow) returnerer YELLOW
+    def _decide(nerve, ctx, fn, *, cluster, klass):
+        return Verdict(nerve, Decision.YELLOW, f"{nerve}-tvivl", klass=klass)
+    fake_central.decide.side_effect = _decide
+
+    with mock.patch.object(gs, "central", return_value=fake_central), \
+            mock.patch.object(gs, "_shadow_enabled", return_value=True), \
+            mock.patch("core.runtime.db_central_incidents.record_central_incident",
+                       side_effect=lambda **k: recorded.append(k)):
+        gs.run_post_output_shadow(_ctx())
+
+    nerves = {r["nerve"] for r in recorded}
+    # enforced gates m. non-green → incident
+    assert "decision_gate" in nerves and "verification" in nerves and "self_review" in nerves
+    # loop_control er shadow-only → ALDRIG et enforce-incident
+    assert "loop_control" not in nerves
+
+
+def test_enforced_set_excludes_loop_control():
+    import core.services.gate_shadow as gs
+    assert gs._is_enforced("cross_user_share") is True
+    assert gs._is_enforced("decision_gate") is True
+    assert gs._is_enforced("loop_control") is False  # bevidst i shadow

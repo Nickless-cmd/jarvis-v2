@@ -45,6 +45,45 @@ _GATES: tuple[tuple[str, str, str, str, GateClass], ...] = (
 _FLAG_SCOPE = "gate_kernel"
 _FLAG_NAME = "shadow"
 
+# ── ENFORCE-GRADUERING (6. jul): flippet fra shadow→enforce på ~1 døgns rene verdicts ──
+# Disse 5 havde 0-6% ikke-grøn UDEN false-positives → sikre at håndhæve. loop_control holdes i
+# shadow (dens gule = ægte "blød brems" der ville PAUSE runs = adfærdsændring, samler mere data).
+# ENFORCEMENT for POST-OUTPUT-gates (kører i _post_process EFTER streaming → kan ikke real-tids-
+# blokere/footnote det brugeren allerede så): gør ikke-grønne verdicts SYNLIGE som central-incident
+# (privacy-læk RED→severe, kognitiv→error) i stedet for tavs shadow-trace. NON-DESTRUKTIVT — beskeden
+# røres aldrig; enforcement = synlighed+governance. Kill-switch pr. gate: flag gate_enforce.<nerve>.
+_ENFORCED: frozenset[str] = frozenset({
+    "decision_gate", "self_review", "fact_gate", "verification", "cross_user_share",
+})
+
+
+def _is_enforced(nerve: str) -> bool:
+    """True hvis gaten er graduated til enforce (i _ENFORCED) OG ikke kill-switchet fra."""
+    if nerve not in _ENFORCED:
+        return False
+    try:
+        from core.services import central_switches
+        return bool(central_switches.is_enabled("gate_enforce", nerve))  # default ON
+    except Exception:
+        return True
+
+
+def _enforce_verdict(nerve: str, cluster: str, klass: GateClass, verdict) -> None:
+    """Håndhæv en enforced gates ikke-grønne verdict = gør det SYNLIGT som central-incident.
+    Non-destruktivt (beskeden røres ikke). Self-safe."""
+    try:
+        from core.services.gate_kernel import Decision
+        if verdict is None or verdict.decision in (Decision.GREEN, Decision.SKIP):
+            return
+        sev = "severe" if (klass is GateClass.SECURITY and verdict.decision is Decision.RED) else "error"
+        from core.runtime.db_central_incidents import record_central_incident
+        record_central_incident(
+            cluster=cluster, nerve=nerve, kind="gate_enforce", severity=sev,
+            message=f"gate håndhævet: {nerve} → {verdict.decision.value}: {verdict.reason}"[:300],
+        )
+    except Exception:
+        pass
+
 
 def POST_OUTPUT_GATES_CLUSTERS() -> list[tuple[str, str]]:
     """(nerve, cluster) i kald-rækkefølge — til test/introspektion."""
@@ -83,9 +122,12 @@ def run_post_output_shadow(ctx: dict[str, Any]) -> None:
     for nerve, mod_path, fn_attr, cluster, klass in _GATES:
         try:
             fn = _resolve(mod_path, fn_attr)
-            # decide: cluster-tag + trace + drift + circuit-breaker. SHADOW: resultatet
-            # bruges ALDRIG til kontrol-flow — klass styrer kun fail-mode i trace'et.
-            central().decide(nerve, ctx, fn, cluster=cluster, klass=klass)
+            # decide: cluster-tag + trace + drift + circuit-breaker.
+            verdict = central().decide(nerve, ctx, fn, cluster=cluster, klass=klass)
+            # ENFORCE-graduerede gates: gør ikke-grønne verdicts synlige (incident). Shadow-gates
+            # (fx loop_control) discarder stadig verdict'et = ren observabilitet.
+            if _is_enforced(nerve):
+                _enforce_verdict(nerve, cluster, klass, verdict)
         except Exception:
             # én gates fejl (import/decide/central) må ikke stoppe de andre eller turen
             continue

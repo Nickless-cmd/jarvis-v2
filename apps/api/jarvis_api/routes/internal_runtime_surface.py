@@ -143,6 +143,14 @@ def _counterfactual() -> dict:
     return _light(build_counterfactual_predictions_surface())
 
 
+def _gate_verdicts() -> dict:
+    """Persistent verdict-fordeling pr. governet gate (survives restart). DB-backed →
+    reelt cross-proces; til flip-beslutningen shadow→enforce. Ren governance-statistik
+    (nerve/decision/count), intet privat indhold."""
+    from core.services import gate_verdict_ledger
+    return {"gates": gate_verdict_ledger.summary()}
+
+
 # Navn → builder. Udvides efterhånden som flere runtime-flader absorberes (mind-sektioner).
 _BUILDERS: dict[str, Callable[[], dict]] = {
     "living_executive": _living_executive,
@@ -157,6 +165,7 @@ _BUILDERS: dict[str, Callable[[], dict]] = {
     "runtime_awareness": _runtime_awareness,
     "runtime_self_knowledge": _runtime_self_knowledge,
     "counterfactual": _counterfactual,
+    "gate_verdicts": _gate_verdicts,
 }
 
 

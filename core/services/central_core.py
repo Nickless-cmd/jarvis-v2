@@ -190,6 +190,14 @@ class Central:
                 decision=v.decision.value, reason=v.reason, latency_ms=v.latency_ms))
         except Exception:
             pass
+        # Persistent verdict-ledger (billig in-memory increment; batchet flush på cadence).
+        # Ground-truth til flip-beslutning (shadow→enforce) der OVERLEVER genstart, i modsætning
+        # til den per-proces in-memory tidsserie. Selv-sikker — må aldrig påvirke governance.
+        try:
+            from core.services import gate_verdict_ledger
+            gate_verdict_ledger.record(nerve, cluster, v.decision.value, v.reason)
+        except Exception:
+            pass
         self._maybe_flag_drift(nerve, cluster, is_error=False, is_red=(v.decision is Decision.RED))
         return v
 

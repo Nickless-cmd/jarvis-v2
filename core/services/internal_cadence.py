@@ -455,6 +455,22 @@ def _ensure_producers_registered() -> None:
         priority=2,
     ))
 
+    # Gate-verdict-ledger flush (6. jul): central().decide akkumulerer verdicts in-memory pr.
+    # kald; her batch-flushes de til den persistente gate_verdict_counts-tabel ~hvert minut, så
+    # verdict-fordelingen (ground-truth til shadow→enforce-flip) OVERLEVER genstart. Ren lokal
+    # DB-skriv — ingen LLM, kører uanset visible. Selv-sikker (flush sluger egne fejl).
+    def _run_gate_verdict_flush(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services import gate_verdict_ledger
+        return {"flushed": gate_verdict_ledger.flush()}
+
+    register_producer(ProducerSpec(
+        name="gate_verdict_flush",
+        cooldown_minutes=1,
+        visible_grace_minutes=0,
+        run_fn=_run_gate_verdict_flush,
+        priority=2,
+    ))
+
     def _run_sleep_consolidation(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.idle_consolidation import (
             run_idle_consolidation,

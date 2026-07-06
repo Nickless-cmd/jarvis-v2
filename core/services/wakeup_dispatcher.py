@@ -156,6 +156,7 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                     start_autonomous_run(
                         self_directive,
                         session_id=target_session or None,
+                        origin="wakeup",
                     )
                 except Exception as exc:
                     logger.warning("wakeup autonomous run trigger failed: %s", exc)

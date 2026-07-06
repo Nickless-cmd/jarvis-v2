@@ -7011,7 +7011,7 @@ def _execute_heartbeat_internal_action(
                         start_autonomous_run,
                     )
 
-                    start_autonomous_run(focus)
+                    start_autonomous_run(focus, origin="heartbeat")
                 except Exception:
                     pass
                 return {

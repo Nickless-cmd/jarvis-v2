@@ -361,7 +361,7 @@ def trigger_dream_session() -> dict[str, Any]:
         def _fire() -> None:
             try:
                 from core.services.visible_runs import start_autonomous_run
-                start_autonomous_run(message=prompt, session_id=None)
+                start_autonomous_run(message=prompt, session_id=None, origin="dream")
             except Exception as exc:
                 logger.error("dreaming_session: background fire failed: %s", exc)
 

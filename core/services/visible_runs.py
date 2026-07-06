@@ -703,7 +703,8 @@ def _observe_autonomous_run(*, run, session_id: str, outcome: str,
         pass
 
 
-def start_autonomous_run(message: str, session_id: str | None = None, follow: bool = False) -> None:
+def start_autonomous_run(message: str, session_id: str | None = None, follow: bool = False,
+                         origin: str | None = None) -> None:
     """Trigger an autonomous (heartbeat-initiated) visible run in a background thread.
 
     The run executes the visible model with tools available, persists results to
@@ -718,18 +719,26 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     """
     import threading
 
-    from core.services.chat_sessions import (
-        create_chat_session,
-        list_chat_sessions,
-    )
-
-    def _get_or_create_autonomous_session() -> str:
-        for s in list_chat_sessions():
-            if s.get("title") == "Autonomous":
-                return s["id"]
-        return create_chat_session(title="Autonomous")["id"]
-
-    resolved_session = (session_id or "").strip() or _get_or_create_autonomous_session()
+    # Rotér pr. oprindelse+dag (2026-07-06): et autonomt run uden eksplicit session
+    # lander IKKE længere i den ene udødelige "Autonomous"-silo (8373 beskeder, kontekst-
+    # fejl, usynlig), men i en afgrænset, kategoriseret `auto-{origin}-{dato}`-session.
+    # Eksplicit session_id (discord/telegram/continuation) vinder altid — uændret.
+    _origin = None
+    if not (session_id or "").strip():
+        try:
+            from core.services.autonomous_sessions import (
+                normalize_origin,
+                resolve_autonomous_session,
+            )
+            _origin = normalize_origin(origin)
+            resolved_session = resolve_autonomous_session(_origin)
+        except Exception:
+            # fail-safe: hvis rotationen svigter, brug et dato-stemplet fallback frem for
+            # at genoplive den udødelige silo.
+            from core.services.chat_sessions import create_chat_session
+            resolved_session = create_chat_session(title="Autonomous")["id"]
+    else:
+        resolved_session = session_id.strip()
 
     # Spec D / D1-konsument (første ægte autoritet): når Centralen EJER agendaen (flag ON), kommer et
     # retningsløst autonomt runs RETNING fra Centralens valgte næste-intention — Jarvis handler på SIN
@@ -768,8 +777,20 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
             "provider": run.provider,
             "model": run.model,
             "focus": run.user_message[:200],
+            "origin": _origin or "autonomous",
         },
     )
+    # Lag 2 — gør den autonome historie synlig for Centralen (og dermed Jarvis' egen
+    # proprioception + Central-CLI). Egress-frit: kun oprindelse + liveness, intet indhold.
+    try:
+        from core.services.central_core import central as _central_auto
+        _central_auto().observe({
+            "cluster": "autonomous", "nerve": "autonomous_history",
+            "kind": "run_started", "origin": _origin or "autonomous",
+            "session_id": resolved_session, "run_id": run.run_id,
+        })
+    except Exception:
+        pass
 
     def _in_thread() -> None:
         import asyncio as _asyncio

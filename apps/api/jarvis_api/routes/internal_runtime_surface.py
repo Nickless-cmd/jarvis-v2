@@ -143,6 +143,14 @@ def _counterfactual() -> dict:
     return _light(build_counterfactual_predictions_surface())
 
 
+def _autonomous_history() -> dict:
+    """Jarvis' autonome historie grupperet pr. oprindelse (drøm/råd/arbejde/…): antal
+    sessioner, beskeder, seneste aktivitet, kontekst-fejl. §24.4-sikker (tællere+titler,
+    intet råt indhold). Gør den før-usynlige autonome silo synlig for owner + Central."""
+    from core.services.autonomous_sessions import build_autonomous_history_surface
+    return build_autonomous_history_surface()
+
+
 def _gate_verdicts() -> dict:
     """Persistent verdict-fordeling pr. governet gate (survives restart). DB-backed →
     reelt cross-proces; til flip-beslutningen shadow→enforce. Ren governance-statistik
@@ -166,6 +174,7 @@ _BUILDERS: dict[str, Callable[[], dict]] = {
     "runtime_self_knowledge": _runtime_self_knowledge,
     "counterfactual": _counterfactual,
     "gate_verdicts": _gate_verdicts,
+    "autonomous_history": _autonomous_history,
 }
 
 

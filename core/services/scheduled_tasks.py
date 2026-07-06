@@ -239,6 +239,7 @@ def _fire_due_tasks() -> None:
                                 start_autonomous_run(
                                     self_directive,
                                     session_id=target_session or None,
+                                    origin="scheduled",
                                 )
                                 logger.info("scheduled_tasks: dispatched %s as autonomous run", task_id)
                                 # B6: påmindelse fyrede OG blev dispatchet — synligt i Centralen.

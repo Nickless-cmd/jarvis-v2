@@ -278,7 +278,7 @@ def _fire_due() -> None:
             # Use autonomous run as the PRIMARY execution path.
             # Push to initiative queue only as a fallback signal — but do NOT
             # let both paths produce a user-visible message independently.
-            start_autonomous_run(message=focus, session_id=None)
+            start_autonomous_run(message=focus, session_id=None, origin="recurring")
             _advance(task_id, interval_minutes, now)
             logger.info(
                 "recurring_tasks: fired %s as autonomous run (every %dm) user=%s",

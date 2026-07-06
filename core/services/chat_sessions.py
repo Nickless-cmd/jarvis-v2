@@ -46,6 +46,37 @@ def create_chat_session(
     }
 
 
+def get_or_create_named_session(session_id: str, title: str) -> str:
+    """Idempotent: sikr at en session med EKSPLICIT id findes (opret hvis ny).
+
+    Bruges til deterministiske, roterende autonome sessioner (`auto-{origin}-{dato}`)
+    så autonome runs ikke længere funneler ind i én udødelig "Autonomous"-silo. INSERT
+    OR IGNORE → race-fri på tværs af api+runtime-processer. Returnerer session_id.
+    Self-safe: ved fejl returneres id'et alligevel (kalder bruger det som session).
+    """
+    from core.runtime.db import (
+        _ensure_chat_session_team_column,
+        _ensure_chat_session_workspace_columns,
+    )
+    now = datetime.now(UTC).isoformat()
+    normalized_title = _normalize_title(title) or "Autonomous"
+    try:
+        with connect() as conn:
+            _ensure_chat_session_workspace_columns(conn)
+            _ensure_chat_session_team_column(conn)
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO chat_sessions
+                    (session_id, title, created_at, updated_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (session_id, normalized_title, now, now),
+            )
+    except Exception:
+        pass
+    return session_id
+
+
 def _teams():
     """Lazy-import af teams-modulet (undgår import-cyklus ved opstart)."""
     import core.services.teams as teams

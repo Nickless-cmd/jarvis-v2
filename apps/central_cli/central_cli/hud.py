@@ -264,9 +264,11 @@ class CentralHud(App):
         Binding("f5", "show('runs')", show=False, priority=True),
         Binding("f6", "show('approvals')", show=False, priority=True),
         Binding("f7", "show('agents')", show=False, priority=True),
-        Binding("f8", "show('mind')", show=False, priority=True),
-        Binding("f9", "show('diagnostics')", show=False, priority=True),
-        Binding("f10", "show('governance')", show=False, priority=True),
+        # 6. jul: Connections indsat som 8. fane → F-taster genjusteret så de matcher nav-numrene.
+        Binding("f8", "show('connections')", show=False, priority=True),
+        Binding("f9", "show('mind')", show=False, priority=True),
+        Binding("f10", "show('diagnostics')", show=False, priority=True),
+        Binding("f11", "show('governance')", show=False, priority=True),
     ]
 
     def __init__(self, *, client: Any = None, live: bool = True) -> None:

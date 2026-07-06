@@ -144,11 +144,14 @@ def test_execute_cheap_lane_fails_over_to_next_provider(
 
     calls: list[tuple[str, str]] = []
 
+    # Phase A re-prioritization (2026-04-26): groq was demoted (priority 60);
+    # mistral (priority 40) is now tried FIRST. So to exercise failover we make
+    # the higher-priority provider (mistral) fail and expect fallover to groq.
     def _execute_provider_chat(*, provider, model, auth_profile, base_url, message):
         calls.append((provider, model))
-        if provider == "groq":
+        if provider == "mistral":
             raise cheap.CheapProviderError(
-                provider="groq",
+                provider="mistral",
                 code="rate-limited",
                 message="too many requests",
                 retry_after_seconds=600,
@@ -160,11 +163,11 @@ def test_execute_cheap_lane_fails_over_to_next_provider(
 
     result = lanes.execute_cheap_lane(message="ping")
 
-    assert result["provider"] == "mistral"
+    assert result["provider"] == "groq"
     assert result["text"] == "cheap-lane-ok"
     assert calls == [
-        ("groq", "llama-3.1-8b-instant"),
         ("mistral", "mistral-small-latest"),
+        ("groq", "llama-3.1-8b-instant"),
     ]
 
 
@@ -296,13 +299,23 @@ def test_smoke_cheap_lane_returns_mixed_results(
 
     result = cheap.smoke_cheap_lane(message="Return exactly: cheap-lane-ok")
 
-    assert result["provider_count"] == 2
+    # Phase D (2026-05-14): smoke_cheap_lane also probes providers with
+    # static_models declared in CHEAP_PROVIDER_DEFAULTS (deepseek, opencode,
+    # openai-codex, …), so provider_count is no longer just the 2 explicitly
+    # configured entries. Those extra providers have no saved credentials →
+    # they short-circuit as "auth-not-ready" and never reach the mocked call.
+    # Assert on the two providers actually under test instead of exact counts.
+    by_provider = {item["provider"]: item for item in result["results"]}
+    assert by_provider["gemini"]["status"] == "ready"
+    assert by_provider["gemini"]["ok"] is True
+    assert by_provider["openrouter"]["status"] == "rate-limited"
+    assert by_provider["openrouter"]["ok"] is False
+    # The credentialed providers produced exactly one success + one failure.
     assert result["success_count"] == 1
-    assert result["failure_count"] == 1
-    assert [item["status"] for item in result["results"]] == ["ready", "rate-limited"]
+    assert by_provider["openrouter"] in result["results"]
 
 
-def test_selector_prefers_better_adaptive_score(isolated_runtime) -> None:
+def test_selector_uses_base_priority_order_with_adaptive_penalty(isolated_runtime) -> None:
     auth_profiles = isolated_runtime.auth_profiles
     provider_router = isolated_runtime.provider_router
     cheap = isolated_runtime.cheap_provider_runtime
@@ -375,11 +388,29 @@ def test_selector_prefers_better_adaptive_score(isolated_runtime) -> None:
 
     target = cheap.select_cheap_lane_target()
 
-    assert target["provider"] == "gemini"
-    assert target["effective_priority"] < 30
+    # The selector returns the first HEALTHY candidate in base-priority order
+    # (nvidia-nim base=10 < gemini base=50). Adaptive score is not a re-sorter
+    # in the current design — penalties only raise effective_priority (they
+    # never reward below base), and poor providers are shed via quota/cooldown
+    # blocking rather than adaptive re-ranking. So nvidia-nim is picked despite
+    # its worse track record; gemini would only win once nvidia is blocked.
+    assert target["provider"] == "nvidia-nim"
+    # nvidia-nim's poor metadata (50% success, high latency, quality 0.7) raises
+    # its effective_priority above the base 10 via the adaptive penalty.
+    assert target["adaptive_penalty"] > 0
+    assert target["effective_priority"] == int(target["priority"]) + target["adaptive_penalty"]
 
 
-def test_generic_cheap_lane_skips_ollamafreeapi(isolated_runtime) -> None:
+def test_important_cheap_lane_skips_ollamafreeapi(isolated_runtime) -> None:
+    """Public proxies (ollamafreeapi) are last-resort, not for 'important' work.
+
+    Phase B (2026-04-26): public proxies are kept in the default candidate list
+    so generic callers fall through gracefully to them instead of collapsing —
+    so a default-kind selection with ONLY ollamafreeapi configured now returns
+    it as an active last resort. Phase C (2026-04-28): task_kind="important"
+    drops public proxies entirely, so an important call with only ollamafreeapi
+    yields no-healthy-provider.
+    """
     provider_router = isolated_runtime.provider_router
     cheap = isolated_runtime.cheap_provider_runtime
 
@@ -394,10 +425,17 @@ def test_generic_cheap_lane_skips_ollamafreeapi(isolated_runtime) -> None:
         set_visible=False,
     )
 
-    target = cheap.select_cheap_lane_target()
+    # Default kind: a public proxy (ollamafreeapi, or arko if it happens to be
+    # configured via runtime state) is an acceptable graceful last resort.
+    default_target = cheap.select_cheap_lane_target()
+    assert default_target["active"] is True
+    assert cheap._is_public_proxy(default_target["provider"])
 
-    assert target["active"] is False
-    assert target["status"] == "no-healthy-provider"
+    # Important kind: public proxies are excluded. With only public proxies
+    # available, that means no healthy provider.
+    important_target = cheap.select_cheap_lane_target(task_kind="important")
+    assert important_target["active"] is False
+    assert important_target["status"] == "no-healthy-provider"
 
 
 def test_public_safe_lane_prefers_local_ollama_then_ollamafreeapi(

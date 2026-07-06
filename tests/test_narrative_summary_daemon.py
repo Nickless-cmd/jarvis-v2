@@ -103,6 +103,11 @@ def test_persists_summary_event_when_llm_returns_text(monkeypatch):
     assert result["chain_depth"] == 1
     assert result["summary_chars"] > 0
 
+    # event_bus.publish() is async (writes via a background writer thread) —
+    # flush so the narrative.summary row is committed before we query it.
+    from core.eventbus.bus import event_bus
+    event_bus.flush()
+
     # Verify event exists with correct payload
     with connect() as c:
         row = c.execute(

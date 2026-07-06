@@ -73,8 +73,8 @@ def test_decision_adherence_gate_escalates_low_scores(monkeypatch):
     section = gate.decision_adherence_section()
 
     assert section.startswith("\n[DECISION-ADHERENCE-GATE]")
-    assert "KRITISK" in section
-    assert "Husk" in section
+    assert "kritisk band" in section
+    assert "revokes decision automatisk" in section
 
 
 def test_predictive_self_model_uses_internal_signals(monkeypatch):
@@ -129,4 +129,4 @@ def test_self_monitor_flags_repeated_tool_errors(monkeypatch):
     section = monitor.self_monitor_section()
 
     assert section is not None
-    assert "kaldt **search** 3 gange" in section
+    assert "search: 3 konsekutive fejlede kald" in section

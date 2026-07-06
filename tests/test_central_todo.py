@@ -8,8 +8,10 @@ from core.services import central_todo as ct
 
 @pytest.fixture
 def mocked_sources(monkeypatch):
+    # list_central_incidents now takes unresolved_only — accept **kwargs so the
+    # mock stays compatible with the current call signature.
     monkeypatch.setattr("core.runtime.db_central_incidents.list_central_incidents",
-                        lambda limit=30, min_severity=None: [
+                        lambda limit=30, min_severity=None, **kwargs: [
                             {"id": 1, "cluster": "auth", "nerve": "tool_access", "message": "uautoriseret"}])
     monkeypatch.setattr("core.services.central_correlate.recent_broken_runs",
                         lambda window=500: [{"run_id": "r1", "cluster": "truth", "nerve": "truth",
@@ -22,6 +24,10 @@ def mocked_sources(monkeypatch):
                         lambda: ["empty_a", "empty_b"])
     monkeypatch.setattr("core.services.endpoint_usage_store.dead_endpoints",
                         lambda: ["GET /unused"])
+    # New §6 learning-suggestion source — mock to empty so the fixed set of
+    # sources under test stays deterministic.
+    monkeypatch.setattr("core.services.central_learning.propose_adjustments",
+                        lambda *a, **k: [])
 
 
 def test_build_todo_aggregates_and_prioritizes(mocked_sources):
@@ -47,7 +53,8 @@ def test_self_safe_when_sources_fail(monkeypatch):
                  "core.services.config_drift.check_port_drift",
                  "core.services.daemon_health.daemon_health_summary",
                  "core.services.db_sentinel.dead_table_candidates",
-                 "core.services.endpoint_usage_store.dead_endpoints"):
+                 "core.services.endpoint_usage_store.dead_endpoints",
+                 "core.services.central_learning.propose_adjustments"):
         monkeypatch.setattr(path, lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))
     assert ct.build_todo() == []
 

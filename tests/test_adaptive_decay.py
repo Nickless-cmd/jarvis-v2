@@ -108,8 +108,11 @@ def test_domain_decay_applies_higher_rate_to_debug_context():
     fake_conn.__enter__ = lambda s: fake_conn
     fake_conn.__exit__ = MagicMock(return_value=False)
 
-    with patch("core.runtime.db.connect", return_value=fake_conn), \
-         patch("core.runtime.db._ensure_private_brain_records_table"):
+    # Phase 0 db split (commit 41dc5016): the implementation moved to
+    # core.runtime.db_private_brain and binds connect/_ensure there. Patch the
+    # real definition site, not the re-export in core.runtime.db.
+    with patch("core.runtime.db_private_brain.connect", return_value=fake_conn), \
+         patch("core.runtime.db_private_brain._ensure_private_brain_records_table"):
         counts = decay_private_brain_records_by_domain(rates, default_rate=0.05)
 
     # identity → 1 record, debug_context → 1 record
@@ -150,8 +153,8 @@ def test_domain_decay_uses_default_rate_for_unknown_domain():
     fake_conn.__enter__ = lambda s: fake_conn
     fake_conn.__exit__ = MagicMock(return_value=False)
 
-    with patch("core.runtime.db.connect", return_value=fake_conn), \
-         patch("core.runtime.db._ensure_private_brain_records_table"):
+    with patch("core.runtime.db_private_brain.connect", return_value=fake_conn), \
+         patch("core.runtime.db_private_brain._ensure_private_brain_records_table"):
         counts = decay_private_brain_records_by_domain({}, default_rate=default_rate)
 
     assert counts.get("default", 0) == 1

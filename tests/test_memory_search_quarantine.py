@@ -7,6 +7,8 @@ audit but cannot resurface as evidence.
 """
 from __future__ import annotations
 
+import pytest
+
 from core.services.memory_search import _is_quarantined
 
 
@@ -52,13 +54,27 @@ class TestCandidatePenalty:
         text = "- [CANDIDATE→MEMORY.md] some proposed fact"
         assert _is_quarantined(text) is False
 
+    @pytest.mark.integration
     def test_candidate_penalty_applied(self):
         """A candidate entry with high raw similarity must rank below
-        non-candidate entries with comparable similarity."""
+        non-candidate entries with comparable similarity.
+
+        Integration: search_memory resolves the workspace via workspace_dir(),
+        which now requires a *registered* user (scope-gating, no silent default)
+        AND a built embedding index over the real memory corpus. Needs the live
+        runtime home — not a unit-testable path.
+        """
         # Behavioral test: query something that matches both candidate and
         # curated entries; verify the top result is not a candidate.
         from core.services.memory_search import search_memory
-        results = search_memory("ChiefOne hardware", limit=5)
+        from core.identity.workspace_context import set_context, reset_context
+
+        # Owner uid (registered in the live runtime home).
+        token = set_context(workspace_name="bjorn", user_id="1246415163603816499")
+        try:
+            results = search_memory("ChiefOne hardware", limit=5)
+        finally:
+            reset_context(token)
         if not results:
             return  # nothing to verify (empty corpus)
         # Top result should not be a candidate when curated content exists

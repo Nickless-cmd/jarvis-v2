@@ -122,6 +122,11 @@ def test_remember_this_per_turn_rate_limit(isolated_brain):
 
 def test_remember_this_per_day_rate_limit(isolated_brain, monkeypatch):
     from core.tools import jarvis_brain_tools
+    # Caps are runtime-tunable via settings (live env sets per_day=40). Pin them
+    # so this test's "20 writes then overflow" logic is hermetic. Also reset the
+    # module-level day counter for the simulated day.
+    monkeypatch.setattr(jarvis_brain_tools, "_get_caps", lambda: (5, 20))
+    jarvis_brain_tools._day_counts.clear()
     base = datetime(2026, 5, 2, 10, 0, tzinfo=timezone.utc)
     # Simulate 4 turns same day, 5 each = 20 total
     for turn in range(4):

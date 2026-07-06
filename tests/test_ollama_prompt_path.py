@@ -4,6 +4,8 @@ import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
+
 
 def _insert_inner_visible_support_signal(
     db,
@@ -124,7 +126,11 @@ def test_visible_prompt_relevance_interface_keeps_generic_compact_chat_bounded(
     assert decision.include_continuity is True
     assert decision.include_support_signals is False
     assert decision.fallback_used is True
-    assert decision.backend_status in {"backend-unavailable", "request-failed", "parse-failed", "prompt-missing"}
+    # backend_status may carry a ":<ExceptionName>" diagnostic suffix on failure
+    # (e.g. "request-failed:CheapProviderError") — match on the base status.
+    assert decision.backend_status.split(":")[0] in {
+        "backend-unavailable", "request-failed", "parse-failed", "prompt-missing"
+    }
 
 
 def test_visible_prompt_relevance_interface_keeps_recall_queries_memory_aware(
@@ -280,7 +286,7 @@ def test_bounded_nl_relevance_backend_uses_runtime_selected_model_and_parses_jso
     monkeypatch.setattr(
         backend,
         "load_settings",
-        lambda: type("Settings", (), {"relevance_model_name": "llama3.1:8b-instruct"})(),
+        lambda: type("Settings", (), {"relevance_model_name": "llama3.1:8b-instruct", "relevance_backend_primary": "ollama"})(),
     )
 
     class _FakeResponse:
@@ -356,7 +362,7 @@ def test_bounded_nl_relevance_smoke_reports_fallback_status_when_backend_is_unav
     monkeypatch.setattr(
         backend,
         "load_settings",
-        lambda: type("Settings", (), {"relevance_model_name": "llama3.1:8b-instruct"})(),
+        lambda: type("Settings", (), {"relevance_model_name": "llama3.1:8b-instruct", "relevance_backend_primary": "ollama"})(),
     )
 
     smoke = backend.bounded_nl_prompt_relevance_smoke(
@@ -364,7 +370,10 @@ def test_bounded_nl_relevance_smoke_reports_fallback_status_when_backend_is_unav
         workspace_dir=workspace_dir,
     )
 
-    assert smoke["attempted"] is False
+    # Multi-backend refactor: the runtime now builds the prompt and enters the
+    # backend multiplexer before discovering the local target is unavailable, so
+    # attempted=True with status "backend-unavailable" (was attempted=False).
+    assert smoke["attempted"] is True
     assert smoke["success"] is False
     assert smoke["fallback_used"] is True
     assert smoke["model"] == "llama3.1:8b-instruct"
@@ -405,7 +414,7 @@ def test_bounded_nl_memory_selector_uses_workspace_prompt_and_parses_indexes(
     monkeypatch.setattr(
         backend,
         "load_settings",
-        lambda: type("Settings", (), {"relevance_model_name": "llama3.1:8b-instruct"})(),
+        lambda: type("Settings", (), {"relevance_model_name": "llama3.1:8b-instruct", "relevance_backend_primary": "ollama"})(),
     )
 
     class _FakeResponse:
@@ -500,9 +509,14 @@ def test_ollama_prompt_marks_contract_text_as_internal_not_user_visible(
     )
 
 
+@pytest.mark.integration
 def test_ollama_prompt_keeps_local_behavior_rules_but_stays_contract_led(
     isolated_runtime,
 ) -> None:
+    # Integration: build_visible_chat_prompt_assembly enriches the prompt via
+    # ollama-bound phase futures (frame/cognitive_state/recall/relevance). Without
+    # a reachable local ollama they hit the hard deadline and the assembly falls
+    # back to a compact prompt that omits the asserted enrichment sections.
     assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
         provider="ollama",
         model="qwen3.5:9b",
@@ -522,9 +536,12 @@ def test_ollama_prompt_keeps_local_behavior_rules_but_stays_contract_led(
     assert "VISIBLE_CHAT_RULES.md" in assembly.conditional_files
 
 
+@pytest.mark.integration
 def test_ollama_visible_prompt_includes_recent_transcript_slice_for_session_recall(
     isolated_runtime,
 ) -> None:
+    # Integration: needs live ollama for the full (non-degraded) prompt assembly
+    # (see test_ollama_prompt_keeps_local_behavior_rules_but_stays_contract_led).
     from core.services.chat_sessions import (
         append_chat_message,
         create_chat_session,
@@ -682,10 +699,12 @@ def test_ollama_visible_prompt_can_include_relevant_applied_project_anchor_memor
     assert "Stable context: review style still matters across turns." not in assembly.text
 
 
+@pytest.mark.integration
 def test_ollama_visible_prompt_can_use_bounded_nl_memory_selector_for_paraphrase(
     isolated_runtime,
     monkeypatch,
 ) -> None:
+    # Integration: needs live ollama for the full (non-degraded) prompt assembly.
     _apply_memory_candidate(
         isolated_runtime,
         canonical_key="workspace-memory:remembered-fact:repo-context",
@@ -790,9 +809,13 @@ def test_ollama_visible_prompt_can_include_relevant_applied_repo_context_memory(
     assert "Project anchor: Jarvis and the user are building Jarvis together." not in assembly.text
 
 
+@pytest.mark.integration
 def test_ollama_visible_prompt_does_not_include_inner_visible_bridge_without_active_support(
     isolated_runtime,
 ) -> None:
+    # Integration: the inner-visible bridge decision is only recorded when the
+    # full prompt assembly runs (its bridge history is empty in the degraded
+    # no-ollama fallback → mc_runtime summary is a string, not a dict).
     assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
         provider="ollama",
         model="qwen3.5:9b",
@@ -807,9 +830,12 @@ def test_ollama_visible_prompt_does_not_include_inner_visible_bridge_without_act
     assert bridge_surface["summary"]["current_status"] == "skipped"
 
 
+@pytest.mark.integration
 def test_ollama_visible_prompt_can_include_tiny_inner_visible_bridge_line(
     isolated_runtime,
 ) -> None:
+    # Integration: needs live ollama for the full prompt assembly (the bridge
+    # history that this test reads is only populated on the non-degraded path).
     _insert_inner_visible_support_signal(isolated_runtime.db)
 
     assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
@@ -833,9 +859,12 @@ def test_ollama_visible_prompt_can_include_tiny_inner_visible_bridge_line(
     assert item["subordinate"] is True
 
 
+@pytest.mark.integration
 def test_ollama_visible_prompt_skips_inner_visible_bridge_for_memory_heavy_query(
     isolated_runtime,
 ) -> None:
+    # Integration: needs live ollama for the full prompt assembly (bridge history
+    # is empty in the degraded no-ollama fallback → summary is a string).
     _insert_inner_visible_support_signal(isolated_runtime.db)
 
     assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
@@ -906,6 +935,7 @@ def test_visible_session_continuity_instruction_carries_multiple_recent_runs(
     text = isolated_runtime.prompt_contract._visible_session_continuity_instruction()
 
     assert "Visible session continuity:" in str(text)
-    assert "Recent visible carry-over:" in str(text)
-    assert "capability=tool:read-repository-readme" in str(text)
-    assert "preview=previous preview" in str(text)
+    # Per-run carry-over format changed: header gained "(newest first)", the
+    # capability field is now "cap=", and per-run text previews were dropped.
+    assert "Recent visible carry-over (newest first):" in str(text)
+    assert "cap=tool:read-repository-readme" in str(text)

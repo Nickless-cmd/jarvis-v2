@@ -11,6 +11,10 @@ def test_token_utilization_pct_computes_from_estimate(monkeypatch):
 
     monkeypatch.setattr(finitude_runtime, "_estimate_session_tokens",
                         lambda: 140_000)
+    # Phase 2 (2026-05-14): budget is runtime-tunable via _context_budget_tokens()
+    # rather than a fixed 200k constant. Pin it so the percentage is deterministic.
+    monkeypatch.setattr(finitude_runtime, "_context_budget_tokens",
+                        lambda: 200_000)
     assert finitude_runtime._token_utilization_pct() == 70
 
 

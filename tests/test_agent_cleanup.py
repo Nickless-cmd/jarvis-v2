@@ -114,22 +114,50 @@ def test_cleanup_preserves_recent_failed(isolated_runtime):
     assert updated["status"] == "failed"
 
 
-def test_cleanup_ignores_active_running_agents(isolated_runtime):
-    """Agenter i active/starting/queued er urørte uanset alder."""
+def test_cleanup_preserves_recent_active_running_agents(isolated_runtime):
+    """Nyligt-aktive agenter (under deres timeout) er urørte af enhver lane.
+
+    2026-04-29: cleanup_stale_agents blev udvidet til også at cancelle
+    active/starting/blocked agenter der har hængt forbi deres timeout
+    (silent-crash recovery). En FRISK aktiv agent skal stadig ikke røres.
+    """
     from core.services.agent_runtime import cleanup_stale_agents
     from core.runtime.db import get_agent_registry_entry
 
     active = _make_agent("active_agent")
-    _backdate_agent(active, status="active", minutes_ago=600)  # 10 timer
+    _backdate_agent(active, status="active", minutes_ago=5)  # frisk, under 90 min
     starting = _make_agent("starting_agent")
-    _backdate_agent(starting, status="starting", minutes_ago=600)
+    _backdate_agent(starting, status="starting", minutes_ago=2)  # under 15 min
 
     result = cleanup_stale_agents()
 
-    assert active not in result["cancelled_waiting_ids"]
-    assert active not in result["cancelled_failed_ids"]
+    assert active not in result["cancelled_active_ids"]
+    assert starting not in result["cancelled_starting_ids"]
     assert get_agent_registry_entry(active)["status"] == "active"
     assert get_agent_registry_entry(starting)["status"] == "starting"
+
+
+def test_cleanup_cancels_stale_active_agents(isolated_runtime):
+    """Aktiv agent der har hængt forbi active_timeout cancelles (crash-recovery).
+
+    2026-04-29-udvidelse: en agent der crashede stille midt i kørsel bliver
+    ellers ved med at tælle mod MAX_CONCURRENT_AGENTS til proces-restart.
+    """
+    from core.services.agent_runtime import cleanup_stale_agents
+    from core.runtime.db import get_agent_registry_entry
+
+    active = _make_agent("stale_active_agent")
+    _backdate_agent(active, status="active", minutes_ago=600)  # 10 timer > 90 min
+
+    result = cleanup_stale_agents()
+
+    # Cancelles via active-lanen, ikke waiting/failed-lanerne.
+    assert active in result["cancelled_active_ids"]
+    assert active not in result["cancelled_waiting_ids"]
+    assert active not in result["cancelled_failed_ids"]
+    updated = get_agent_registry_entry(active)
+    assert updated["status"] == "cancelled"
+    assert "auto_cleanup_stale_active" in str(updated.get("last_error") or "")
 
 
 def test_cleanup_returns_summary(isolated_runtime):

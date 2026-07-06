@@ -51,10 +51,15 @@ def test_observe_emit_strips_content_strings():
     })
     assert emitted and emitted[0][0] == "central.observed"
     payload = emitted[0][1]["payload"]
-    # Skalarer beholdt:
-    assert payload == {"produced": 3, "starved": True, "ratio": 0.42}
-    # Indhold-strenge STRIPPET:
+    # Skalarer beholdt (observe() tilføjer nu også en affect_intensity-skalar,
+    # Rådets #4 — den passerer egress-membranen som harmløs metadata; affect-
+    # STRENGEN gør IKKE):
+    assert payload["produced"] == 3
+    assert payload["starved"] is True
+    assert payload["ratio"] == 0.42
+    # Indhold-strenge STRIPPET — dette er selve egress-invarianten:
     assert "desire_text" not in payload and "note" not in payload
+    assert "affect" not in payload  # affect-strengen er trace-only, aldrig egress
     assert all(not isinstance(v, str) for v in payload.values())
 
 
@@ -88,5 +93,9 @@ def test_owner_trace_sink_keeps_full_payload():
                "desire_text": "privat", "produced": 3})
     recs = sink.records_for_run("r1")
     assert len(recs) == 1
-    # Owner ser ALT lokalt — kun egress-stien er redigeret.
-    assert recs[0].payload == {"desire_text": "privat", "produced": 3}
+    # Owner ser ALT lokalt — kun egress-stien er redigeret. Trace-payloaden
+    # beriges nu også med affect-metadata (Rådets #4), men det private indhold
+    # er stadig fuldt bevaret i owner-sinken.
+    assert recs[0].payload["desire_text"] == "privat"
+    assert recs[0].payload["produced"] == 3
+    assert "affect" in recs[0].payload

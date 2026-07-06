@@ -52,7 +52,9 @@ def test_end_of_run_memory_consolidation_can_auto_apply_explicit_user_preference
     assert result["user_updated"] is True
     assert result["daily_memory_logged"] is True
     assert "- Language preference: replies in Danish by default." in user_md
-    assert "[USER.md] Language preference: replies in Danish by default." in daily_text
+    # 2026-05-22 provenance fix: carried lines are prefixed [CANDIDATE→<target>]
+    # (a proposal), never [<target>] (a fabricated citation).
+    assert "[CANDIDATE→USER.md] Language preference: replies in Danish by default." in daily_text
 
 
 def test_end_of_run_memory_consolidation_reruns_with_full_context_when_model_requests_it(
@@ -112,7 +114,8 @@ def test_end_of_run_memory_consolidation_reruns_with_full_context_when_model_req
     assert len(prompts) == 2
     assert "FULL FILE CONTEXT" in prompts[1]
     assert "- Repo context: current collaboration happens in /media/projects/jarvis-v2." in memory_md
-    assert "[MEMORY.md] Repo context: current collaboration happens in /media/projects/jarvis-v2." in daily_text
+    # 2026-05-22 provenance fix: carried lines are prefixed [CANDIDATE→<target>].
+    assert "[CANDIDATE→MEMORY.md] Repo context: current collaboration happens in /media/projects/jarvis-v2." in daily_text
 
 
 def test_end_of_run_memory_consolidation_audits_skipped_runs(
@@ -133,6 +136,8 @@ def test_end_of_run_memory_consolidation_audits_skipped_runs(
         assistant_response="Dette er et længere svar som udløser consolidation.",
     )
 
+    # publish() is async — flush so the audit event is committed before we read.
+    event_bus.flush()
     latest = event_bus.recent(limit=4)[0]
     assert result["skipped_reason"] == "model-unavailable"
     assert latest["kind"] == "memory.end_of_run_consolidation"

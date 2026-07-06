@@ -6,4 +6,6 @@ def test_visible_prompt_includes_tool_catalog():
         provider="ollama", model="glm-5.1:cloud",
         user_message="hej", session_id=None,
     )
-    assert "TOOL CATALOG" in (a.text or "")
+    # 2026-06-22/23 redesign: the full "TOOL CATALOG" was replaced by the
+    # compact grouped "KERNE-VÆRKTØJER" core catalog (+ load_more_tools pointer).
+    assert "KERNE-VÆRKTØJER" in (a.text or "")

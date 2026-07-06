@@ -4,8 +4,25 @@ from __future__ import annotations
 def test_emotion_concept_tone_section_includes_active_hint(
     isolated_runtime, monkeypatch,
 ) -> None:
+    from core.runtime import settings as settings_mod
     from core.services import emotion_concepts as ec
     from core.services.prompt_contract import _emotion_concept_tone_section
+
+    # 2026-05-07 redesign ("Giv mig dataen, ikke dommen"): tone-hint injection
+    # was replaced by an affect SUBSTRATE. The legacy tone-hint path is now
+    # gated behind prompt_affect_tone_hints_enabled (default False) and, when
+    # enabled, renders under "## Aktive emotion concepts" with bare signal-name
+    # hints (commit 1e538f31 — "wonder", not "Wonder er aktiv"). Enable the
+    # legacy path here since this test drives it via get_active_emotion_concepts.
+    _orig = settings_mod.load_settings
+
+    def _patched():
+        s = _orig()
+        s.prompt_affect_substrate_enabled = False
+        s.prompt_affect_tone_hints_enabled = True
+        return s
+
+    monkeypatch.setattr(settings_mod, "load_settings", _patched)
 
     ec._last_trigger_at.clear()
     monkeypatch.setattr(
@@ -15,8 +32,8 @@ def test_emotion_concept_tone_section_includes_active_hint(
 
     section = _emotion_concept_tone_section()
     assert section is not None
-    assert "Tone right now" in section
-    assert "Wonder er aktiv" in section
+    assert "## Aktive emotion concepts" in section
+    assert "wonder" in section
 
 
 def test_emotion_concept_tone_section_returns_none_when_no_active(

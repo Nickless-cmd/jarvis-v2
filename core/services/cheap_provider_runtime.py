@@ -1095,7 +1095,15 @@ def _candidate_quota_snapshot(candidate: dict[str, object]) -> dict[str, object]
 
 
 def _fallback_after_failure(*, failed_provider: str, failed_model: str) -> dict[str, object] | None:
-    target = select_cheap_lane_target()
+    # Explicitly exclude the just-failed provider from the fallback query. The
+    # failed provider gets a cooldown via _register_provider_failure, but the
+    # quota snapshot is TTL-cached (2s, added 2026-05-13 dafb5535). Without the
+    # skip, a re-selection inside that cache window still sees the failed
+    # provider as "ready", re-picks it, and this function wrongly returns None
+    # → failover is defeated and the caller raises instead of falling over.
+    # Skipping by provider makes the "is there ANOTHER provider" query correct
+    # regardless of cache freshness.
+    target = select_cheap_lane_target(skip_providers=frozenset({failed_provider}))
     provider = str(target.get("provider") or "")
     model = str(target.get("model") or "")
     if provider and model and (provider, model) != (failed_provider, failed_model):

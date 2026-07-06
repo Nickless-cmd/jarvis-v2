@@ -21,8 +21,12 @@ def stub_db(monkeypatch, tmp_path):
     from core.services import reasoning_store
 
     # Fake connection: execute/commit are no-ops, close is a no-op.
+    # execute() returns a cursor whose rowcount is 1 (row inserted) so the
+    # store's post-insert `cur.rowcount > 0` dedup check works.
+    fake_cur = MagicMock()
+    fake_cur.rowcount = 1
     fake_conn = MagicMock()
-    fake_conn.execute = MagicMock()
+    fake_conn.execute = MagicMock(return_value=fake_cur)
     fake_conn.commit = MagicMock()
     fake_conn.close = MagicMock()
 

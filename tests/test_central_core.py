@@ -21,7 +21,11 @@ def test_observe_records_trace_and_emits():
     c.observe({"run_id": "r1", "session_id": "s1", "cluster": "loop", "nerve": "budget", "rounds": 5})
     recs = sink.records_for_run("r1")
     assert len(recs) == 1 and recs[0].kind == "observe" and recs[0].nerve == "budget"
-    assert recs[0].payload == {"rounds": 5}
+    # observe() now enriches the trace payload with affect metadata (Rådets #4 —
+    # central_affect.classify_affect). The non-reserved event keys still pass
+    # through verbatim; affect/affect_intensity are added alongside.
+    assert recs[0].payload["rounds"] == 5
+    assert "affect" in recs[0].payload
     assert emitted and emitted[0][0] == "central.observed"
 
 

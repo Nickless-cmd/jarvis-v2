@@ -102,7 +102,13 @@ def test_heartbeat_self_knowledge_section_includes_council_runtime(isolated_runt
     section = prompt_contract._heartbeat_self_knowledge_section()
 
     assert section is not None
-    assert "Council runtime light (derived runtime truth, internal-only):" in section
+    # 2026-04-29 split: heartbeat self-knowledge now renders a two-tier
+    # foreground/background layout. Council is a BACKGROUND entry, so its
+    # section is compacted to a single "- <title>: <first detail>" line —
+    # the full "(derived runtime truth, internal-only):" header no longer
+    # appears verbatim. The bounded-check recommendation still survives.
+    assert "Background runtime truths:" in section
+    assert "- Council runtime light:" in section
     assert "recommendation=bounded-check" in section
 
 

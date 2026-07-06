@@ -558,6 +558,10 @@ def test_counterfactual_publish_event_with_explicit_caused_by():
         status="open",
         caused_by_trigger_id=trigger_id,
     )
+    # event_bus.publish() is async — the causal edge is written by the writer
+    # thread. Flush before querying (same pattern as the other tests here).
+    from core.eventbus.bus import event_bus
+    event_bus.flush()
     with connect() as c:
         rows = c.execute(
             "SELECT * FROM causal_edges WHERE parent_event_id = ?",

@@ -21,8 +21,10 @@ def test_recurring_tasks_create_fire_cancel_and_state(tmp_path, monkeypatch):
 
     emitted: list[tuple[str, object]] = []
     visible_runs = ModuleType("core.services.visible_runs")
+    # start_autonomous_run now takes origin= (per-origin autonomous-history
+    # rotation) — the stub must accept it.
     visible_runs.start_autonomous_run = (
-        lambda *, message, session_id=None: emitted.append((message, session_id))
+        lambda *, message, session_id=None, origin=None: emitted.append((message, session_id))
     )
     monkeypatch.setitem(sys.modules, "core.services.visible_runs", visible_runs)
 

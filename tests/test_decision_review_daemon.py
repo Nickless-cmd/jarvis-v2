@@ -131,7 +131,12 @@ class TestDecisionReviewDaemonRegistry:
         entry = _REGISTRY["decision_review"]
         assert entry["module"] == "core.services.decision_review_daemon"
         assert entry["default_cadence_minutes"] == 360
-        assert entry["default_enabled"] is True
+        # 2026-06-11 (Bjørn frustration crisis fix C1): DEAKTIVERET. The daemon
+        # let Jarvis self-grade adherence to his own behavioral decisions →
+        # positive-bias self-validation loop (1.0 adherence while hallucinating
+        # tool-work). It stays registered but default-disabled until replaced by
+        # external-truth review (git-log + tool-history).
+        assert entry["default_enabled"] is False
 
     def test_alias_tick_exists(self):
         """The module exposes a 'tick' alias for consistent import pattern."""

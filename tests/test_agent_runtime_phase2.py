@@ -11,10 +11,14 @@ def _load_agent_runtime():
 def test_agent_runtime_continues_dialog_and_records_result(isolated_runtime, monkeypatch) -> None:
     agent_runtime = _load_agent_runtime()
 
+    # agent_runtime now drives its LLM calls through execute_with_role_or_fallback
+    # (role-based primary + cheap-lane fallback), not the old execute_cheap_lane.
+    # Patch the actually-called symbol; it's invoked with keyword args
+    # (message=/provider=/model=/requires_tools=...), so accept **kwargs.
     monkeypatch.setattr(
         agent_runtime,
-        "execute_cheap_lane",
-        lambda message: {
+        "execute_with_role_or_fallback",
+        lambda **kwargs: {
             "text": "summary: follow-up handled\nfindings: task refined\nrecommendation: continue\nconfidence: high\nblockers: none",
             "status": "completed",
             "input_tokens": 12,
@@ -44,8 +48,8 @@ def test_agent_runtime_schedules_and_runs_due_agents(isolated_runtime, monkeypat
 
     monkeypatch.setattr(
         agent_runtime,
-        "execute_cheap_lane",
-        lambda message: {
+        "execute_with_role_or_fallback",
+        lambda **kwargs: {
             "text": "summary: watcher fired\nfindings: state changed\nrecommendation: notify Jarvis\nconfidence: medium\nblockers: none",
             "status": "completed",
             "input_tokens": 9,
@@ -86,7 +90,7 @@ def test_agent_runtime_schedules_and_runs_due_agents(isolated_runtime, monkeypat
 def test_council_round_records_positions_and_synthesis(isolated_runtime, monkeypatch) -> None:
     agent_runtime = _load_agent_runtime()
 
-    def fake_execute(message: str) -> dict[str, object]:
+    def fake_execute(*, message: str = "", **kwargs) -> dict[str, object]:
         if "critic" in message.lower():
             text = "summary: risk spotted\nrecommendation: revise\nconfidence: high\nvote: revise"
         else:
@@ -99,7 +103,7 @@ def test_council_round_records_positions_and_synthesis(isolated_runtime, monkeyp
             "cost_usd": 0.0,
         }
 
-    monkeypatch.setattr(agent_runtime, "execute_cheap_lane", fake_execute)
+    monkeypatch.setattr(agent_runtime, "execute_with_role_or_fallback", fake_execute)
 
     council = agent_runtime.create_council_session_runtime(
         topic="Should Jarvis spawn a watcher for memory drift?",
@@ -116,7 +120,7 @@ def test_council_round_records_positions_and_synthesis(isolated_runtime, monkeyp
 def test_swarm_round_records_peer_handoffs_and_synthesis(isolated_runtime, monkeypatch) -> None:
     agent_runtime = _load_agent_runtime()
 
-    def fake_execute(message: str) -> dict[str, object]:
+    def fake_execute(*, message: str = "", **kwargs) -> dict[str, object]:
         lowered = message.lower()
         if "swarm coordinator / synthesizer" in lowered:
             text = "summary: merged swarm view\nfindings: workers aligned\nrecommendation: proceed\nconfidence: high\nblockers: none"
@@ -132,7 +136,7 @@ def test_swarm_round_records_peer_handoffs_and_synthesis(isolated_runtime, monke
             "cost_usd": 0.0,
         }
 
-    monkeypatch.setattr(agent_runtime, "execute_cheap_lane", fake_execute)
+    monkeypatch.setattr(agent_runtime, "execute_with_role_or_fallback", fake_execute)
 
     swarm = agent_runtime.create_swarm_session_runtime(
         topic="Split repository inspection into parallel shards",

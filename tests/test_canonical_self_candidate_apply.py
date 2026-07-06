@@ -101,7 +101,11 @@ def test_explicitly_approved_soul_candidate_can_apply_to_soul_md(isolated_runtim
     contract = mission_control.mc_runtime_contract()
 
     assert approved["status"] == "approved"
-    assert "explicit user approval" in str(approved["status_reason"]).lower()
+    # Commit e6ee4fa8 ("Self-authorization for SOUL.md and IDENTITY.md changes
+    # — per user directive"): the approval status_reason wording changed from
+    # "explicit user approval" to "self-authorized per user directive". The
+    # approval step itself is unchanged (approve → apply is still invoked).
+    assert "self-authorized per user directive" in str(approved["status_reason"]).lower()
     assert applied["candidate"]["status"] == "applied"
     assert "canonical self file" in str(applied["candidate"]["status_reason"]).lower()
     assert applied["write"]["target_file"] == "SOUL.md"

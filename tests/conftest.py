@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
 import sys
 from pathlib import Path
@@ -15,6 +16,35 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
+
+
+@pytest.fixture(autouse=True)
+def _ensure_current_event_loop():
+    """Guarantee ``asyncio.get_event_loop()`` works in every (sync) test.
+
+    pytest-asyncio (strict mode) creates a fresh function-scoped event loop
+    for each ``@pytest.mark.asyncio`` test and, on teardown, closes it and
+    leaves the thread-local current-loop set to None/closed. A *sync* test
+    that runs afterwards and calls ``asyncio.get_event_loop()`` (e.g. the
+    ``_run`` helpers in tests/test_central_*_route.py) then blows up with
+    ``RuntimeError: There is no current event loop in thread 'MainThread'``.
+
+    That is pure cross-test global-state leakage: the affected tests pass in
+    isolation and only fail when an async test ran before them in the same
+    process. This autouse fixture repairs the invariant before each test by
+    ensuring a live, open current event loop exists — creating and installing
+    a fresh one if the current loop is missing or was closed. It does not run
+    or own the loop; it only restores the default-loop contract that
+    ``get_event_loop()``-style call sites rely on.
+    """
+    try:
+        loop = asyncio.get_event_loop_policy().get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("closed")
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    yield
 
 
 @pytest.fixture(autouse=True)
@@ -50,11 +80,16 @@ def _reset_ensure_once_cache():
 @pytest.fixture()
 def isolated_runtime(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> SimpleNamespace:
+):
+    import os
+
     repo_root = Path(__file__).resolve().parents[1]
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
     monkeypatch.chdir(repo_root)
+
+    _prev_home = os.environ.get("HOME")
+    _prev_ws = os.environ.get("JARVIS_WORKSPACES_DIR")
 
     home = tmp_path / "home"
     home.mkdir(parents=True, exist_ok=True)
@@ -64,6 +99,12 @@ def isolated_runtime(
     module_names = [
         "core.runtime.config",
         "core.runtime.settings",
+        # runtime_json_io binds SETTINGS_FILE/CONFIG_DIR at import time. If it is
+        # not reloaded after HOME is repointed at tmp_path, its writer targets the
+        # REAL ~/.jarvis-v2/config/runtime.json while load_settings() reads the tmp
+        # copy — settings writes silently escape isolation (and pollute the real
+        # config). Reload it right after config so writes land in the tmp config.
+        "core.runtime.runtime_json_io",
         # db_core skal reloades FØR db, fordi db re-eksporterer fra db_core
         # og _ENSURED_TABLES cache lever i db_core (efter 2026-05-15 split).
         # Uden dette overlever cache-entries mellem tests og forurener
@@ -180,7 +221,7 @@ def isolated_runtime(
     runtime_db.init_db()
     workspace_bootstrap.ensure_default_workspace()
 
-    return SimpleNamespace(
+    _ns = SimpleNamespace(
         config=modules["core.runtime.config"],
         settings=modules["core.runtime.settings"],
         db=runtime_db,
@@ -441,3 +482,43 @@ def isolated_runtime(
         ],
         mission_control=modules["apps.api.jarvis_api.routes.mission_control"],
     )
+
+    try:
+        yield _ns
+    finally:
+        # Restore the DB path binding to the REAL runtime home.
+        #
+        # This fixture reloads core.runtime.{config,db_core,db} under the tmp
+        # HOME so DB_PATH/connect() point at tmp_path. Previously it used
+        # `return` (no teardown), so after any isolated_runtime test the reloaded
+        # db_core.DB_PATH stayed bound to the now-deleted tmp DB. Any *later* test
+        # that used the raw core.runtime.db.connect() without its own isolation
+        # (e.g. tests/test_credit_assignment.py, device_tokens/push tests) then hit
+        # a fresh/empty tmp DB → "sqlite3.OperationalError: no such table: ..."
+        # or missing rows. monkeypatch reverts HOME only *after* fixture teardown,
+        # so restore it explicitly here, then reload the path-binding modules back
+        # onto the real paths. Reloading just this chain (not all ~130 modules) is
+        # enough: connect()/DB_PATH and STATE_DIR are what leak.
+        if _prev_home is not None:
+            os.environ["HOME"] = _prev_home
+        else:
+            os.environ.pop("HOME", None)
+        if _prev_ws is not None:
+            os.environ["JARVIS_WORKSPACES_DIR"] = _prev_ws
+        else:
+            os.environ.pop("JARVIS_WORKSPACES_DIR", None)
+        # NB: intentionally does NOT reload core.runtime.state_store here.
+        # Reloading it rebinds load_json/save_json, which desynchronises modules
+        # (e.g. core.services.agentic_tool_cache) that imported those functions by
+        # name — turning a benign JSON-cache state into a cross-test failure. The
+        # sqlite path binding (db_core.DB_PATH/connect) is the one that produces
+        # the OperationalError cluster, so restore only the config→db chain.
+        for _name in (
+            "core.runtime.config",
+            "core.runtime.runtime_json_io",
+            "core.runtime.db_core",
+            "core.runtime.db",
+        ):
+            _m = sys.modules.get(_name)
+            if _m is not None:
+                importlib.reload(_m)

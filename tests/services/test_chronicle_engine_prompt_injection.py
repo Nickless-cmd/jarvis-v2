@@ -286,7 +286,7 @@ def test_visible_prompt_assembly_places_dream_residue_after_chronicle(
     assert chronicle_pos < residue_pos < memory_pos
 
 
-def test_visible_prompt_assembly_places_temperature_hint_before_chronicle(
+def test_visible_prompt_assembly_places_temperature_hint_in_dynamic_tail(
     monkeypatch,
     tmp_path,
 ) -> None:
@@ -395,4 +395,11 @@ def test_visible_prompt_assembly_places_temperature_hint_before_chronicle(
     user_pos = assembly.text.index("USER.md:")
     field_pos = assembly.text.index("Implicit user temperature field")
     chronicle_pos = assembly.text.index("## Mine seneste chronicle-entries")
-    assert user_pos < field_pos < chronicle_pos
+    # The temperature field is per-turn dynamic and is deliberately routed
+    # through the awareness buffer so it flushes at the prompt tail (2026-05-22
+    # DeepSeek prefix-cache fix, commit 805b5bc2). Chronicle is inlined mid-prompt.
+    # So the expected order is: USER.md → chronicle (inline) → temperature field
+    # (dynamic tail). The field must be present (regression guard: it was silently
+    # dropped from every prompt until the 2026-07-06 ordering fix in
+    # build_visible_chat_prompt_assembly).
+    assert user_pos < chronicle_pos < field_pos

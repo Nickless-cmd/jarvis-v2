@@ -33,8 +33,8 @@ def test_life_milestones_reads_workspace_files(tmp_path, monkeypatch):
     manifest_file = tmp_path / "MANIFEST.md"
     manifest_file.write_text("Manifest text", encoding="utf-8")
 
-    monkeypatch.setattr(milestones, "_MILESTONES_FILE", milestones_file)
-    monkeypatch.setattr(milestones, "_MANIFEST_FILE", manifest_file)
+    monkeypatch.setattr(milestones, "_milestones_file", lambda: milestones_file)
+    monkeypatch.setattr(milestones, "_manifest_file", lambda: manifest_file)
 
     section = milestones.build_life_history_prompt_section()
     surface = milestones.build_life_milestones_surface()
@@ -110,4 +110,4 @@ def test_clarification_classifier_scores_vague_requests():
     assert result["verdict"] == "ask_first"
     assert result["score"] >= 50
     assert prompt is not None
-    assert "Tvetydig brugerbesked" in prompt
+    assert "Ambiguity-classifier: brugerbesked scored" in prompt

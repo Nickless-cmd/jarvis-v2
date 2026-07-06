@@ -173,7 +173,8 @@ def test_syslog_dead_autoheals_and_clears(monkeypatch):
     isense.poll_syslog()
     assert checks and heals  # både tjek OG heal kørt
     dead = [i for i in incidents if i.get("kind") == "syslogd_dead"]
-    assert dead and dead[0].get("severity") == "warning"
+    # 6. jul: auto-heal-succes = info (ikke "warning", som ikke var i _SEVERITIES → coercede til error/gul)
+    assert dead and dead[0].get("severity") == "info"
     assert isense._syslog_stale_flagged is False  # genoplivet → ryddet
     assert notes
 

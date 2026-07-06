@@ -31,6 +31,15 @@ def test_families_are_publishable():
     Event.create("process_watcher.match", {"watch_id": "w"})
 
 
+def test_every_routed_family_is_publishable():
+    """INVARIANT (6. jul): FAMILY_ROUTES ⊆ ALLOWED_EVENT_FAMILIES. En route hvis familie ikke er
+    tilladt er DØD (publish raiser) — det var roden til at 17 routes aldrig kunne fyre. Denne test
+    forhindrer regression: enhver ny FAMILY_ROUTES-entry SKAL registreres i ALLOWED."""
+    from core.eventbus.events import ALLOWED_EVENT_FAMILIES
+    dead = sorted(f for f in bridge.FAMILY_ROUTES if f not in ALLOWED_EVENT_FAMILIES)
+    assert not dead, f"døde routes (familie mangler i ALLOWED_EVENT_FAMILIES → publish raiser): {dead}"
+
+
 def test_validation_failure_emits_metadata_only():
     """_log_validation_failure emitter compaction.validation_failed UDEN rå claim-tekst."""
     import core.context.compact_ground_truth as cgt

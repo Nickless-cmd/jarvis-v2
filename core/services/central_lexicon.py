@@ -123,6 +123,16 @@ SEED_BINDINGS: dict[str, str] = {
     # operationelle event-familier (FAMILY_ROUTES) uden binding endnu:
     "approvals": "grænse", "anomaly": "stød", "channel": "relation", "discord": "relation",
     "telegram": "relation", "experiment": "nysgerrighed",
+    # ── 6. jul: bind resterende OPERATIONELLE families til EKSISTERENDE termer (ingen ceremoni;
+    # familien arver sit koncept/cluster-ord). FAMILY_ROUTES var vokset uden binding → dækning faldt
+    # under 0.7. De 6 genuint nye begreber (truth/mutation/skill/council/self_repair/trading) +
+    # process_watcher (intet ærligt eksisterende ord) forbliver BEVIDST ubundne = ærlige huller. ──
+    "decision_gate": "valg", "veto_gate": "spejl", "tool_router": "handling", "tool_tagger": "handling",
+    "coding_lane": "handling", "mail_checker": "relation", "tiktok_content_daemon": "relation",
+    "tiktok_research_daemon": "relation", "prompt_relevance_backend": "kald",
+    "agent_skill_distiller": "læring", "tick_quality": "rytme", "reboot": "puls",
+    "diagnosis": "krop", "compaction": "kontinuitet", "ambient_sound": "lys",
+    "session": "kontinuitet", "arc_rules": "mønster", "weekly_manifest": "spejl",
 }
 
 # Central-relation → operator (hvordan en hypotese-type udtrykkes).

@@ -28,6 +28,19 @@ def _compose_cognitive_state() -> str:
         return ""
 
 
+def _compose_tone_guidance() -> str:
+    """Centralens sproglige stil-hint (rådets #5): én kort linje der kan injiceres
+    som tone-styring. J.A.R.V.I.S-kernen moduleret af tilstanden. Self-safe → "".
+    """
+    try:
+        from core.services.central_tone import build_tone_profile
+        prof = build_tone_profile() or {}
+        guidance = str(prof.get("guidance") or "")
+        return f"[STIL] {guidance}" if guidance else ""
+    except Exception:
+        return ""
+
+
 def register_default_units() -> None:
     global _REGISTERED
     if _REGISTERED:
@@ -39,4 +52,12 @@ def register_default_units() -> None:
         key="cognitive_state",
         source_nerves=("cognition:affect", "cognition:agenda", "cognition:affective_meta"),
         threshold=0.5, max_age_s=180.0, compose_fn=_compose_cognitive_state, priority=20))
+    # Tone-stil-hint (rådets #5): baggrunds-komponeret, off hot-path. Gated bag
+    # injection_live("tone") (default False = no-op) OG kræver et read-site i
+    # prompt-assembly for at nå prompten — det read-site er BEVIDST IKKE tilføjet
+    # (ville røre hot-path). Enheden gør stil-hintet komponerbart+observerbart nu.
+    register(InjectionUnit(
+        key="tone",
+        source_nerves=("cognition:valence_integrated",),
+        threshold=0.5, max_age_s=180.0, compose_fn=_compose_tone_guidance, priority=30))
     _REGISTERED = True

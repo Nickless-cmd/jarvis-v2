@@ -72,7 +72,8 @@ def _read_todos() -> list[dict[str, Any]]:
     try:
         from core.services.central_todo import build_todo
         items = build_todo(max_items=30) or []
-        return [{"text": str(t.get("text") or t.get("title") or t.get("what") or "")[:160], "source": "todo"}
+        return [{"text": str(t.get("text") or t.get("title") or t.get("what") or "")[:160], "source": "todo",
+                 "priority": t.get("priority", 99)}
                 for t in items if isinstance(t, dict)][:10]
     except Exception:
         return []
@@ -136,6 +137,11 @@ def choose_next_intention(agenda: dict[str, Any]) -> dict[str, Any] | None:
                         "source": "plan", "plan_id": ap.get("plan_id")}
         if agenda.get("top_want"):
             return {"kind": "want", "text": agenda["top_want"].get("text", ""), "source": "want"}
+        # Priority-1 todos (incidents, severe) win over generic initiatives
+        urgent_todos = [t for t in (agenda.get("todos") or []) if t.get("priority", 99) == 1]
+        if urgent_todos:
+            return {"kind": "todo", "text": urgent_todos[0].get("text", ""), "source": "todo",
+                    "priority": 1}
         for key, kind in (("initiatives", "initiative"), ("goals", "goal"), ("todos", "todo")):
             items = agenda.get(key) or []
             if items:

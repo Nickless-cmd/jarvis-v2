@@ -5000,6 +5000,24 @@ async def _stream_visible_run(
             except Exception:
                 pass
 
+            # Track 2 SHADOW (2026-07-06): de 5 sovende post_output-gates
+            # (commit/loop/proactivity/review + fact_gate_adapter) vækkes i SKYGGE.
+            # SAMME ctx som truth-decide ovenfor. HÅRDT INVARIANT: ren observabilitet —
+            # decide traced/observer'er, resultatet BRUGES ALDRIG til at blokere turen.
+            # Helper er self-safe (returnerer None, kaster aldrig); wrappet i try/except
+            # så det umuligt kan påvirke run-loopet. Bag flag gate_kernel.shadow (default ON).
+            try:
+                from core.services.gate_shadow import run_post_output_shadow as _run_shadow_gates
+                _run_shadow_gates({
+                    "text": visible_output_text,
+                    "tool_names": list(_executed_tool_names or []),
+                    "tools_used": list(_executed_tool_names or []),
+                    "run_id": run.run_id,
+                    "session_id": getattr(run, "session_id", "") or "",
+                })
+            except Exception:
+                pass
+
             # C4 (2026-06-22): de gamle post-done effekt-gates (fact_gate +
             # diagnosis + claim-block) er FJERNET her — enforcement gøres pre-done
             # af TruthGate v2. Detektorerne lever videre via central().decide ovenfor.

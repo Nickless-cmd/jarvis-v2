@@ -16,6 +16,7 @@ from core.runtime.settings import load_settings
 from core.services import skill_engine
 from core.services.skill_security_scanner import (
     scan_skill_directory,
+    scan_skill_directory_gated,
     scan_skill_file,
 )
 logger = logging.getLogger(__name__)
@@ -441,7 +442,7 @@ def _exec_skill_import(args: dict[str, Any]) -> dict[str, Any]:
             return {"status": "error", "error": f"no SKILL.md in {skill_dir}"}
 
         # ── Security scan ──────────────────────────────────────────
-        scan_result = scan_skill_directory(skill_dir)
+        scan_result = scan_skill_directory_gated(skill_dir)
         if scan_result.get("status") == "error":
             if temp_dir:
                 shutil.rmtree(temp_dir, ignore_errors=True)

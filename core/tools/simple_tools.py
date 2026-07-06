@@ -6681,8 +6681,8 @@ def _exec_propose_git_commit(args: dict[str, Any]) -> dict[str, Any]:
     # proposal payload so MC reviewers see it without an extra click.
     review: dict[str, Any] = {}
     try:
-        from core.services.auto_code_review import review_pending_commit
-        review = review_pending_commit(
+        from core.services.auto_code_review import review_pending_commit_gated
+        review = review_pending_commit_gated(
             repo_root=PROJECT_ROOT,
             files=list(files),
             message=message,

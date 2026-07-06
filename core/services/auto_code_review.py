@@ -163,3 +163,36 @@ def review_pending_commit(
         "flags": flags,
         "summary": f"{verdict}: {len(flags)} flag(s) across {file_count} files",
     }
+
+
+def review_pending_commit_gated(**kwargs: Any) -> dict[str, Any]:
+    """Som review_pending_commit, men GOVERNET af Centralen (COGNITIVE, cluster='commit')
+    for trace/drift. Rådgivende — commit må ALDRIG blokeres af central-fejl (COGNITIVE
+    fail-open). Returnerer det UÆNDREDE review-dict; central-kollaps → rå review."""
+    review = None
+    try:
+        from core.services.central_core import central
+        from core.services.gate_kernel import Verdict, Decision, GateClass
+
+        def _fn(ctx):
+            r = review_pending_commit(**kwargs)
+            ctx["_review"] = r   # bær review ud via ctx (dict er mutabelt)
+            has_block = any(
+                str((f or {}).get("severity") or "") == "block"
+                for f in (r or {}).get("flags") or []
+            )
+            if has_block:
+                return Verdict("auto_code_review", Decision.YELLOW, "review-block-flag",
+                               action="warn", klass=GateClass.COGNITIVE)
+            return Verdict("auto_code_review", Decision.GREEN, "review-ok",
+                           klass=GateClass.COGNITIVE)
+
+        ctx: dict[str, Any] = {}
+        central().decide("auto_code_review", ctx, _fn, cluster="commit",
+                         klass=GateClass.COGNITIVE)
+        review = ctx.get("_review")
+    except Exception:
+        review = None
+    if review is None:             # central-sti kollapsede → rå review (rådgivende)
+        review = review_pending_commit(**kwargs)
+    return review

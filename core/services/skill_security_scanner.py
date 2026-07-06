@@ -555,6 +555,42 @@ def scan_skill_directory(path) -> dict[str, Any]:
     }
 
 
+def scan_skill_directory_gated(path) -> dict[str, Any]:
+    """Som scan_skill_directory, men beslutningen GOVERNES af Centralen (SECURITY,
+    cluster='skill'): trace + drift-flag + fail-closed ved crash. Returnerer det
+    UÆNDREDE scan-dict — enforcement-logikken på kald-site er identisk. Defense-in-
+    depth: central-kollaps → rå scan (aldrig svækket)."""
+    scan = None
+    try:
+        from core.services.central_core import central
+        from core.services.gate_kernel import Verdict, Decision, GateClass
+
+        def _fn(ctx):
+            s = scan_skill_directory(path)
+            ctx["_scan"] = s   # bær scannet ud via ctx (dict er mutabelt)
+            risk = str((s or {}).get("risk") or "")
+            if (s or {}).get("status") == "error":
+                return Verdict("skill_security_scan", Decision.YELLOW, "scanner-error",
+                               action="warn", klass=GateClass.SECURITY,
+                               evidence={"risk": risk})
+            if risk == "critical":
+                return Verdict("skill_security_scan", Decision.RED, "critical-risk",
+                               action="block", klass=GateClass.SECURITY,
+                               evidence={"risk": risk})
+            return Verdict("skill_security_scan", Decision.GREEN, risk or "clean",
+                           klass=GateClass.SECURITY, evidence={"risk": risk})
+
+        ctx = {"path": str(path)}
+        central().decide("skill_security_scan", ctx, _fn, cluster="skill",
+                         klass=GateClass.SECURITY)
+        scan = ctx.get("_scan")
+    except Exception:
+        scan = None
+    if scan is None:               # central-sti kollapsede → rå scan, ALDRIG svækket
+        scan = scan_skill_directory(path)
+    return scan
+
+
 def scan_skill_content(content: str, name: str = "unknown") -> dict[str, Any]:
     """Scan raw SKILL.md content (e.g. fetched from URL) before writing to disk."""
     import shutil

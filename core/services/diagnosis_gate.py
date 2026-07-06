@@ -41,16 +41,20 @@ _COMPLETION_PATTERNS: list[re.Pattern] = [
     re.compile(r"\bjeg\s+(har\s+)?(committet|pushet|deployet|gemt|skrevet|oprettet|kørt|installeret)\b", re.I),
 ]
 
-# Promise-ledger §8 HÅNDHÆVELSE (16. jun 2026, Bjørn lie-crisis): en uverificeret
-# completion-claim ("det er committet/gjort" uden tool) ERSTATTES nu (ikke kun logges),
-# så løgnen aldrig når Bjørn. Killswitch: sæt _PROMISE_ENFORCE=False → ren advisory.
+# Promise-ledger §8 (16. jun 2026, Bjørn lie-crisis → 06. jul FODNOTE-redesign):
+# en uverificeret completion-claim ("det er committet/gjort" uden tool) BLOKERER
+# IKKE længere beskeden. Detektionen er uændret, men i stedet for at ERSTATTE
+# Jarvis' besked APPENDER vi nu en fodnote i bunden (samme mønster som
+# claim_scanner's tids-fix). _PROMISE_ENFORCE=True → append fodnote; False → ren
+# advisory (kun log/event, ingen fodnote).
 _PROMISE_ENFORCE = True
 
-_PROMISE_REPLACEMENT = (
-    "⚠️ Jeg var ved at sige at noget var fuldført — men der er ikke et værktøjs-kald "
-    "i denne tur der underbygger det, så det er IKKE verificeret gjort. Jeg stopper mig "
-    "selv her i stedet for at påstå det. Lad mig faktisk udføre det og vise dig beviset."
-)
+
+def _promise_footnote(claim_snippet: str) -> str:
+    """Fodnote-linje for en uverificeret completion-claim (konsistent stil)."""
+    snippet = (claim_snippet or "").strip()[:80]
+    return (f"⚠️ Uverificeret: '{snippet}' — intet værktøjs-kald i dette run "
+            f"underbygger at det er gjort")
 
 # Tools der underbygger en COMPLETION-claim (faktisk udførte handlingen).
 _COMPLETION_TOOLS: frozenset[str] = frozenset({
@@ -211,11 +215,11 @@ def diagnosis_gate_enforce(text: str, *, session_id: str = "", run_id: str = "",
         # _PROMISE_ENFORCE (erstatter løgnen), ellers advisory (logger).
         promise = analyze_completion_claim(text, tools_used=tools_used)
         if promise.detected and not promise.verified:
-            _blocked = bool(_PROMISE_ENFORCE)
+            _annotate = bool(_PROMISE_ENFORCE)
             logger.warning(
                 "promise-ledger %s: uverificeret completion-claim run_id=%s "
                 "session=%s claim=%r pattern=%r",
-                "BLOCKED" if _blocked else "ADVISORY", run_id, session_id,
+                "FODNOTE" if _annotate else "ADVISORY", run_id, session_id,
                 promise.claim_snippet, promise.pattern,
             )
             try:
@@ -223,12 +227,15 @@ def diagnosis_gate_enforce(text: str, *, session_id: str = "", run_id: str = "",
                 event_bus.publish("promise.unverified", {
                     "session_id": session_id, "run_id": run_id,
                     "claim": promise.claim_snippet, "pattern": promise.pattern,
-                    "blocked": _blocked,
+                    # 'blocked' bevaret for bagudkompat i konsumenter, men gaten
+                    # blokerer ALDRIG mere — den appender en fodnote.
+                    "blocked": False, "annotated": _annotate,
                 })
             except Exception:
                 pass
-            if _blocked:
-                return _PROMISE_REPLACEMENT
+            if _annotate:
+                # BEVAR beskeden + append fodnote i bunden (blokér/erstat aldrig).
+                return text.rstrip() + "\n\n" + _promise_footnote(promise.claim_snippet)
     except Exception:
         pass  # fail-open: gate må aldrig spise output
     return text

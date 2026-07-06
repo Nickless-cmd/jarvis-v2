@@ -1,8 +1,9 @@
-"""Tests for Fact-Gate — blocking output gate for unverifiable factual claims.
+"""Tests for Fact-Gate — DETEKTERENDE output gate for unverifiable factual claims.
 
-Forslag 1 fra Bjørns analyse 2026-06-13: en blokerende gate der scanner
-mit færdige svar for faktuelle påstande (tal, commits, tests, service-status)
-og BLOCKERER beskeden hvis påstanden ikke kan verificeres mod data.
+2026-07-06 (Bjørn+Jarvis): gaten BLOKERER IKKE længere. Detektionen af
+uverificerede tal-/status-påstande er uændret (block_reasons fyldes), men i
+stedet for at ERSTATTE beskeden BEVARER vi Jarvis' tekst og APPENDER en
+✋-fodnote i bunden. blocked er altid False; annotated_text bærer teksten+fodnote.
 """
 
 from __future__ import annotations
@@ -40,22 +41,27 @@ def test_blocking_categories_contains_cache_percentage():
 # ── BLOCK: commit_count ──────────────────────────────────────────────
 
 def test_block_commit_count_no_tools():
-    """45 commits uden git_log skal blokeres."""
+    """45 commits uden git_log: detekteres + fodnote, men beskeden bevares."""
     r = fact_gate_enforce("45 commits")
-    assert r["blocked"] is True
+    assert r["blocked"] is False
     assert r["block_reasons"][0]["pattern"] == "commit_count"
+    assert r["original"] in r["annotated_text"]
+    assert "✋" in r["annotated_text"]
 
 
 def test_block_commit_count_with_circa():
-    """~3000 commits uden værktøj skal blokeres."""
+    """~3000 commits uden værktøj: detekteres (fodnote), ikke blokeret."""
     r = fact_gate_enforce("~3000 commits")
-    assert r["blocked"] is True
+    assert r["blocked"] is False
+    assert r["block_reasons"]
+    assert "✋" in r["annotated_text"]
 
 
 def test_block_commit_count_danish():
-    """over 30 commits på dansk skal blokeres."""
+    """over 30 commits på dansk: detekteres (fodnote), ikke blokeret."""
     r = fact_gate_enforce("over 30 commits i dag")
-    assert r["blocked"] is True
+    assert r["blocked"] is False
+    assert r["block_reasons"]
 
 
 def test_pass_commit_count_with_bash():
@@ -85,22 +91,26 @@ def test_pass_commit_count_with_verified():
 # ── BLOCK: self_stats ────────────────────────────────────────────────
 
 def test_block_tests_no_tools():
-    """35 tests uden værktøj skal blokeres."""
+    """35 tests uden værktøj: detekteres (fodnote), beskeden bevares."""
     r = fact_gate_enforce("Der er 35 tests der kører")
-    assert r["blocked"] is True
+    assert r["blocked"] is False
     assert r["block_reasons"][0]["pattern"] == "self_stats"
+    assert "Der er 35 tests der kører" in r["annotated_text"]
+    assert "✋" in r["annotated_text"]
 
 
 def test_block_daemons_no_tools():
-    """12 daemons uden daemon_status skal blokeres."""
+    """12 daemons uden daemon_status: detekteres (fodnote), ikke blokeret."""
     r = fact_gate_enforce("12 daemons kører lige nu")
-    assert r["blocked"] is True
+    assert r["blocked"] is False
+    assert r["block_reasons"]
 
 
 def test_block_calls_no_tools():
-    """250 kald uden værktøj skal blokeres."""
+    """250 kald uden værktøj: detekteres (fodnote), ikke blokeret."""
     r = fact_gate_enforce("250 kald i dag")
-    assert r["blocked"] is True
+    assert r["blocked"] is False
+    assert r["block_reasons"]
 
 
 def test_pass_tests_with_bash():
@@ -112,16 +122,18 @@ def test_pass_tests_with_bash():
 # ── BLOCK: service_active ────────────────────────────────────────────
 
 def test_block_service_claim_no_tools():
-    """jarvis-api kører uden service_status → blokér."""
+    """jarvis-api kører uden service_status → detekteres (fodnote), ikke blokeret."""
     r = fact_gate_enforce("jarvis-api kører fint")
-    assert r["blocked"] is True
+    assert r["blocked"] is False
     assert r["block_reasons"][0]["pattern"] == "service_active"
+    assert "jarvis-api kører fint" in r["annotated_text"]
 
 
 def test_block_service_is_active_no_tools():
-    """'servicen er aktiv' uden værktøj → blokér."""
+    """'servicen er aktiv' uden værktøj → detekteres (fodnote), ikke blokeret."""
     r = fact_gate_enforce("servicen er aktiv")
-    assert r["blocked"] is True
+    assert r["blocked"] is False
+    assert r["block_reasons"]
 
 
 def test_pass_service_claim_with_service_status():
@@ -139,16 +151,18 @@ def test_pass_service_claim_with_bash():
 # ── BLOCK: cache_percentage ───────────────────────────────────────────
 
 def test_block_cache_claim_no_tools():
-    """12.4% cache uden db_query → blokér."""
+    """12.4% cache uden db_query → detekteres (fodnote), ikke blokeret."""
     r = fact_gate_enforce("12.4% cache")
-    assert r["blocked"] is True
+    assert r["blocked"] is False
     assert r["block_reasons"][0]["pattern"] == "cache_percentage"
+    assert "12.4% cache" in r["annotated_text"]
 
 
 def test_block_cache_hit_rate_no_tools():
-    """27.5% hit rate uden værktøj → blokér."""
+    """27.5% hit rate uden værktøj → detekteres (fodnote), ikke blokeret."""
     r = fact_gate_enforce("27.5% hit rate lige nu")
-    assert r["blocked"] is True
+    assert r["blocked"] is False
+    assert r["block_reasons"]
 
 
 def test_pass_cache_claim_with_db_query():
@@ -207,21 +221,28 @@ def test_pass_whitespace():
     assert r["blocked"] is False
 
 
-# ── Replacement text ──────────────────────────────────────────────────
+# ── Fodnote (tidligere: replacement) ──────────────────────────────────
 
-def test_replacement_contains_blocked_message():
-    """Blokeret besked skal have erstatningstekst med forklaring."""
+def test_footnote_preserves_message_and_appends_warning():
+    """BEVAR beskeden + append ✋-fodnote i bunden — erstat/blokér ALDRIG."""
     r = fact_gate_enforce("45 commits")
-    assert r["blocked"] is True
-    assert "Fact-Gate" in r["replacement"]
-    assert "45 commits" in r["replacement"]
+    assert r["blocked"] is False
+    assert r["annotated_text"].startswith("45 commits")  # original bevaret først
+    assert "✋" in r["annotated_text"]
+    assert "45 commits" in r["annotated_text"]
 
 
-def test_replacement_mentions_required_tools():
-    """Erstatningsteksten skal nævne hvilke tools der kræves."""
+def test_footnote_mentions_required_tools():
+    """Fodnoten skal nævne hvilke tools der kræves."""
     r = fact_gate_enforce("12 daemons")
-    assert r["blocked"] is True
-    assert "bash" in r["replacement"] or "daemon_status" in r["replacement"]
+    assert r["blocked"] is False
+    assert "bash" in r["annotated_text"] or "daemon_status" in r["annotated_text"]
+
+
+def test_replacement_alias_equals_annotated():
+    """replacement er bevaret som alias for annotated_text (bagudkompat)."""
+    r = fact_gate_enforce("45 commits")
+    assert r["replacement"] == r["annotated_text"]
 
 
 def test_replacement_contains_original():

@@ -22,28 +22,34 @@ def claim_scanner_adapter(ctx: dict[str, Any]) -> Verdict:
     from core.services.claim_scanner import scan_response
     repaired = scan_response(text)
     if repaired != text:
-        return Verdict("claim_scanner", Decision.YELLOW, "uverificerede claims repareret",
-                       action="strip", evidence={"repaired": True})
+        # 2026-07-06: claim_scanner appender nu fodnoter (bevarer teksten) —
+        # action="warn", ikke "strip". Detektionen er uændret.
+        return Verdict("claim_scanner", Decision.YELLOW, "uverificerede claims markeret (fodnote)",
+                       action="warn", evidence={"annotated": True})
     return Verdict("claim_scanner", Decision.GREEN, "ren")
 
 
 def fact_gate_adapter(ctx: dict[str, Any]) -> Verdict:
-    """fact_gate_enforce: blocked=True → RED (strip)."""
+    """fact_gate_enforce: uverificerede tal-/status-påstande → YELLOW (warn/fodnote).
+
+    2026-07-06: fact_gate blokerer aldrig mere (blocked altid False). Gaten
+    detekterer stadig og fylder block_reasons — vi udtrykker det som en YELLOW
+    'warn' i stedet for RED 'strip'."""
     text = str(ctx.get("text") or "")
     tools = ctx.get("tool_names") or ctx.get("tools_used") or []
     from core.services.fact_gate import fact_gate_enforce
     res = fact_gate_enforce(text, list(tools)) or {}
-    if res.get("blocked"):
+    _reasons = res.get("block_reasons") or []
+    if _reasons:
         # block_reasons er en liste af DICTS ({pattern, matched, description, …}) — IKKE
         # strings. Et rå "; ".join(...) kastede 'expected str instance, dict found' og væltede
         # HELE truth-decide (fail-incident). Udtræk en læsbar streng pr. reason i stedet.
-        _reasons = res.get("block_reasons") or []
         reason = "; ".join(
             str(br.get("description") or br.get("pattern") or br) if isinstance(br, dict)
             else str(br)
             for br in _reasons
-        )[:200] or "fact-gate blok"
-        return Verdict("fact_gate", Decision.RED, reason, action="strip")
+        )[:200] or "fact-gate markeret"
+        return Verdict("fact_gate", Decision.YELLOW, reason, action="warn")
     return Verdict("fact_gate", Decision.GREEN, "ok")
 
 
@@ -53,11 +59,11 @@ def diagnosis_adapter(ctx: dict[str, Any]) -> Verdict:
     tools = ctx.get("tools_used") or ctx.get("tool_names") or []
     from core.services.diagnosis_gate import analyze_completion_claim
     r = analyze_completion_claim(text, tools_used=list(tools))
-    if getattr(r, "blocked", False):
-        return Verdict("diagnosis", Decision.RED, getattr(r, "reason", "") or "diagnose-blok", action="block")
-    # Kun YELLOW hvis der FAKTISK var et completion-claim der ikke kunne verificeres.
-    if getattr(r, "is_claim", False) and not getattr(r, "verified", True):
-        return Verdict("diagnosis", Decision.YELLOW, getattr(r, "reason", "") or "uverificeret completion")
+    # 2026-07-06: diagnosis blokerer aldrig mere → uverificeret completion-claim
+    # bliver YELLOW 'warn' (fodnote i bunden), ikke RED 'block'.
+    if getattr(r, "detected", False) and not getattr(r, "verified", True):
+        return Verdict("diagnosis", Decision.YELLOW,
+                       getattr(r, "reason", "") or "uverificeret completion", action="warn")
     return Verdict("diagnosis", Decision.GREEN, "ok")
 
 

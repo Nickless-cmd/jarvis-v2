@@ -287,6 +287,22 @@ def _repair_claim(line: str, category: str, matched_text: str) -> str:
     )
 
 
+def _system_footnote(matched_text: str) -> str:
+    """2026-07-06: byg en fodnote for en ⚙️ system-claim (IP/host/path) i den
+    konsistente stil, i stedet for inline `[{correct}]`/`[usikker]`. Bevar altid
+    Jarvis' tekst. Fail-open: registry-fejl → generisk 'usikker'-fodnote."""
+    try:
+        from core.services.ground_truth_registry import verify_system_claim
+        _verified, correct = verify_system_claim(matched_text)
+        if correct:
+            return f"✋ Uverificeret: '{matched_text}' — korrekt: {correct}"
+    except ImportError:
+        pass
+    except Exception:
+        pass
+    return f"✋ Uverificeret: '{matched_text}' — kunne ikke bekræftes mod ground truth"
+
+
 def _extract_number(text: str) -> str:
     """Extract the first number from a string for replacement."""
     import re
@@ -335,7 +351,12 @@ def _commit_exists(h: str) -> bool:
 
 def flag_unknown_commit_hashes(text: str, *, max_check: int = 20) -> str:
     """Markér backtick-wrappede commit-hashes der ikke findes i hovedrepoet.
-    Flag-only, aldrig sletning. Kun i git/commit-kontekst."""
+    Flag-only, aldrig sletning. Kun i git/commit-kontekst.
+
+    LEGACY (bevaret for bagudkompat): denne indsætter stadig inline `[⚠ ikke i
+    repo]`. scan_response() bruger nu i stedet _collect_unknown_commit_hash_footnotes
+    så flaget bliver en fodnote i bunden i stedet for inline. Kald denne kun hvis
+    du bevidst vil have inline-markering."""
     if "`" not in text:
         return text
     low = text.lower()
@@ -359,6 +380,34 @@ def flag_unknown_commit_hashes(text: str, *, max_check: int = 20) -> str:
     return _COMMIT_HASH_RE.sub(_repl, text)
 
 
+def _collect_unknown_commit_hash_footnotes(text: str, *, max_check: int = 20) -> list[str]:
+    """2026-07-06: samme detektion som flag_unknown_commit_hashes, men i stedet
+    for at indsætte inline `[⚠ ikke i repo]` returnerer den én fodnote-linje pr.
+    ukendt hash. BEVARER Jarvis' tekst. Flag-only, fail-open (aldrig sletning)."""
+    notes: list[str] = []
+    if "`" not in text:
+        return notes
+    low = text.lower()
+    if "git" not in low and "commit" not in low:
+        return notes
+    checked = 0
+    seen: set[str] = set()
+    for m in _COMMIT_HASH_RE.finditer(text):
+        if checked >= max_check:
+            break
+        h = m.group(1)
+        if h.isdigit():  # rent tal i backticks = ID/nummer, ikke en hash-claim
+            continue
+        if h in seen:
+            continue
+        seen.add(h)
+        checked += 1
+        if _commit_exists(h):
+            continue
+        notes.append(f"✋ Uverificeret: commit '{h}' — findes ikke i hovedrepoet")
+    return notes
+
+
 def scan_response(text: str) -> str:
     """Scan a response text for unverified factual claims and repair them.
 
@@ -375,6 +424,7 @@ def scan_response(text: str) -> str:
     lines = text.split("\n")
     repaired_lines: list[str] = []
     time_corrections: list[str] = []  # 2026-07-06: samle tidskorrektioner til fodnote
+    system_corrections: list[str] = []  # 2026-07-06: ⚙️ system-claims → fodnote
     total_scans = 0
     total_repairs = 0
 
@@ -411,6 +461,11 @@ def scan_response(text: str) -> str:
                             f"✋ Tidsangivelse uverificeret: '{matched_text}'"
                         )
                     total_repairs += 1
+                elif category == "⚙️ system":
+                    # 2026-07-06 (Bjørn+Jarvis): ⚙️ system-claims IKKE inline
+                    # ([{correct}]/[usikker]) — bevar teksten, saml en fodnote.
+                    system_corrections.append(_system_footnote(matched_text))
+                    total_repairs += 1
                 else:
                     line = _repair_claim(line, category, matched_text)
                     total_repairs += 1
@@ -419,12 +474,13 @@ def scan_response(text: str) -> str:
 
     result = "\n".join(repaired_lines)
 
-    # 2026-07-06 (Bjørn): appendér tidskorrektioner som fodnote i bunden
-    if time_corrections:
-        result = result.rstrip() + "\n\n" + "\n".join(time_corrections)
-
-    # 🔗 Commit-hash-flag (flag-only) over hele teksten til sidst.
-    result = flag_unknown_commit_hashes(result)
+    # 2026-07-06 (Bjørn): appendér korrektioner som fodnote(r) i bunden — ét pr.
+    # linje, adskilt fra teksten. BEVAR altid Jarvis' oprindelige tekst.
+    _footnotes: list[str] = list(time_corrections) + list(system_corrections)
+    # 🔗 Commit-hash-flag → nu som fodnote (ikke inline "[⚠ ikke i repo]").
+    _footnotes.extend(_collect_unknown_commit_hash_footnotes(result))
+    if _footnotes:
+        result = result.rstrip() + "\n\n" + "\n".join(_footnotes)
 
     _elapsed_ms = int((_time.monotonic() - _t_start) * 1000)
     if total_scans > 0 or total_repairs > 0:

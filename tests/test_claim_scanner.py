@@ -349,6 +349,43 @@ def test_flag_only_never_deletes():
     assert "[⚠ ikke i repo]" in out
 
 
+# ── 2026-07-06: scan_response → FODNOTE (system-claims + commit-hash) ────────
+# GATE 4+5: ⚙️ system og 🔗 commit-hash indsættes ikke længere inline — de
+# samles som fodnote(r) i bunden. BEVAR altid Jarvis' oprindelige tekst.
+
+def test_scan_response_system_claim_footnote_preserves_text():
+    from core.services.claim_scanner import scan_response
+    text = "Serveren er 10.99.99.99 lige nu."
+    out = scan_response(text)
+    # Original tekst BEVARET (ingen inline [{...}]/[usikker] i selve linjen)
+    assert "Serveren er 10.99.99.99 lige nu." in out
+    assert "10.99.99.99 [usikker]" not in out
+    assert "10.99.99.99 [" not in out  # ingen inline-markering
+    # Fodnote i bunden med den konsistente ✋-stil
+    assert "✋" in out
+    assert out.index("✋") > out.index("Serveren")
+
+
+def test_scan_response_fake_commit_hash_footnote_not_inline():
+    from core.services.claim_scanner import scan_response
+    text = "Jeg lavede commit `604874ff` — output scanner."
+    out = scan_response(text)
+    # Hashen bevares ordret i teksten, INGEN inline [⚠ ikke i repo]
+    assert "`604874ff`" in out
+    assert "`604874ff` [⚠ ikke i repo]" not in out
+    # I stedet: fodnote i bunden
+    assert "✋ Uverificeret: commit '604874ff'" in out
+    assert out.index("✋") > out.index("Jeg lavede commit")
+
+
+def test_scan_response_real_commit_hash_no_footnote():
+    from core.services.claim_scanner import scan_response
+    # e7ab2772 findes i repoet → ingen fodnote, tekst uændret.
+    text = "Se commit `e7ab2772` for time pin fix."
+    out = scan_response(text)
+    assert "commit 'e7ab2772'" not in out  # ingen ✋-fodnote for ægte hash
+
+
 # ── Shadow-mode tool-before-claim gate (måling, Bjørn 2026-06-13) ────────
 from core.services.claim_scanner import detect_shadow_claims
 

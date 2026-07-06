@@ -105,7 +105,12 @@ def fact_gate_enforce(
     text: str | None,
     tool_names: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Blokerende gate — kald FØR append_chat_message.
+    """Detekterende gate — kald FØR append_chat_message.
+
+    2026-07-06 (Bjørn+Jarvis): gaten BLOKERER IKKE længere. Detektionen af
+    uverificerede tal-/status-påstande er uændret, men i stedet for at ERSTATTE
+    beskeden BEVARER vi Jarvis' tekst og APPENDER en fodnote i bunden (én pr.
+    fund). `blocked` er nu altid False; brug `annotated_text`.
 
     Args:
         text: Den færdige assistant-tekst
@@ -113,15 +118,17 @@ def fact_gate_enforce(
 
     Returns:
         {
-            "blocked": bool,         # True hvis beskeden blev blokeret
-            "original": str,         # Original tekst (for logning)
-            "replacement": str,      # Erstatningstekst hvis blocked=True
-            "block_reasons": list,   # Hvorfor den blev blokeret
+            "blocked": bool,          # ALTID False — gaten blokerer aldrig mere
+            "original": str,          # Original tekst
+            "annotated_text": str,    # Original tekst + fodnote(r) i bunden
+            "replacement": str,       # = annotated_text (bagudkompat)
+            "block_reasons": list,    # Detekterede uverificerede påstande (bevaret)
         }
     """
     clean = {
         "blocked": False,
         "original": text or "",
+        "annotated_text": text or "",
         "replacement": text or "",
         "block_reasons": [],
     }
@@ -136,13 +143,12 @@ def fact_gate_enforce(
             logger.debug("fact_gate: passed '%s' (has evidence)", name)
             continue
 
-        # Block!
+        # Detektion bevaret — men vi flagger (fodnote), blokerer ikke.
         matched = match.group(0)[:100]
         logger.warning(
-            "fact_gate: BLOCKED '%s' — matched='%s' required=%s tools=%s",
+            "fact_gate: FLAGGED '%s' — matched='%s' required=%s tools=%s",
             name, matched, required, tool_names or [],
         )
-        clean["blocked"] = True
         clean["block_reasons"].append({
             "pattern": name,
             "matched": matched,
@@ -151,18 +157,16 @@ def fact_gate_enforce(
             "actual_tools": tool_names or [],
         })
 
-    if clean["blocked"]:
-        reason_text = clean["block_reasons"][0]
-        clean["replacement"] = (
-            f"*[Besked blokeret af Fact-Gate]*\n\n"
-            f"Min besked indeholdt en påstand om **{reason_text['description']}** "
-            f"(_{reason_text['matched']}_) som jeg ikke kunne verificere "
-            f"i dette run. Jeg har ikke kaldt et værktøj der bekræfter det.\n\n"
-            f"Krævede tools (mindst ét): `{'`, `'.join(reason_text['required_tools'])}`\n"
-            f"Mine tools i dette run: `{'`, `'.join(reason_text['actual_tools']) or 'ingen'}`\n\n"
-            f"Jeg bør verificere før jeg taler. "
-            f"Jeg prøver igen — med data."
-        )
+    # Byg fodnote(r) i den konsistente stil: én ✋-linje pr. uverificeret påstand.
+    if clean["block_reasons"]:
+        notes = []
+        for reason in clean["block_reasons"]:
+            req = ", ".join(reason["required_tools"]) or "tool-evidens"
+            notes.append(
+                f"✋ Uverificeret: '{reason['matched']}' — kræver {req}"
+            )
+        clean["annotated_text"] = text.rstrip() + "\n\n" + "\n".join(notes)
+        clean["replacement"] = clean["annotated_text"]
 
     return clean
 

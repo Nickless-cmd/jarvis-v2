@@ -61,13 +61,19 @@ def test_severity_hard_for_quoted_output_or_hash():
     assert classify_severity([ActionClaim("verified", "x")]) == "soft"
 
 
-def test_truth_gate_v2_hard_block_on_fabricated_git_log():
-    ctx = {"text": "Jeg kaldte bash med git log og her er output:\n```\nf3c8b1a7 feat: x\n```",
+def test_truth_gate_v2_hard_footnote_on_fabricated_git_log():
+    # 2026-07-06: hårde påstande blokerer ikke længere — beskeden BEVARES og en
+    # ✋-fodnote appenderes. Decision=YELLOW, action=warn, severity=hard.
+    original = "Jeg kaldte bash med git log og her er output:\n```\nf3c8b1a7 feat: x\n```"
+    ctx = {"text": original,
            "executed_tool_names": [], "followup_exchanges": [], "run_id": "rX"}
     v = truth_gate_v2(ctx)
-    assert v.decision is Decision.RED and v.action == "block"
+    assert v.decision is Decision.YELLOW and v.action == "warn"
     assert (v.evidence or {}).get("severity") == "hard"
-    assert (v.evidence or {}).get("corrected_text")
+    corr = (v.evidence or {}).get("corrected_text")
+    assert corr and original in corr        # original bevaret
+    assert "✋" in corr                       # fodnote appenderet
+    assert "[Besked blokeret" not in corr    # ingen erstatning
 
 
 def test_hard_block_on_fabricated_commit_via_inflected_verb():
@@ -79,12 +85,15 @@ def test_hard_block_on_fabricated_commit_via_inflected_verb():
     # detektion: hashen fanges nu pga. 'committed'-konteksten
     kinds = {c.kind for c in detect_action_claims("Jeg committede fe28cc67 til main og pushede.")}
     assert "committed" in kinds and "commit_hash" in kinds
-    # gate: hård blok, intet git-tool kørt
-    ctx = {"text": "Jeg committede fe28cc67 til main og pushede.",
+    # gate: intet git-tool kørt → hård severity, men FODNOTE (ikke blok)
+    original = "Jeg committede fe28cc67 til main og pushede."
+    ctx = {"text": original,
            "executed_tool_names": [], "followup_exchanges": [], "run_id": "rZ"}
     v = truth_gate_v2(ctx)
-    assert v.decision is Decision.RED and v.action == "block"
+    assert v.decision is Decision.YELLOW and v.action == "warn"
     assert (v.evidence or {}).get("severity") == "hard"
+    corr = (v.evidence or {}).get("corrected_text")
+    assert corr and original in corr and "✋" in corr
 
 
 def test_truth_gate_v2_green_when_evidence_present():
@@ -93,8 +102,9 @@ def test_truth_gate_v2_green_when_evidence_present():
     assert truth_gate_v2(ctx).decision is Decision.GREEN
 
 
-def test_output_block_not_matching_real_results_is_red_even_with_tools():
+def test_output_block_not_matching_real_results_is_hard_footnote_even_with_tools():
     # Bjørns live-case: runnet kaldte ÆGTE tools, men det citerede output er fabrikeret.
+    # 2026-07-06: markeres nu med hård FODNOTE (YELLOW/warn), blokeres ikke.
     ctx = {
         "text": "Jeg kaldte bash og her er output:\n```\nTRUTH verdict: RED fabrication\n```",
         "executed_tool_names": ["operator_bash"],
@@ -102,10 +112,11 @@ def test_output_block_not_matching_real_results_is_red_even_with_tools():
         "run_id": "r",
     }
     v = truth_gate_v2(ctx)
-    assert v.decision is Decision.RED and (v.evidence or {}).get("severity") == "hard"
+    assert v.decision is Decision.YELLOW and (v.evidence or {}).get("severity") == "hard"
+    assert "✋" in (v.evidence or {}).get("corrected_text", "")
 
 
-def test_inverted_word_order_with_block_is_red():
+def test_inverted_word_order_with_block_is_hard_footnote():
     # "Så kaldte jeg journalctl ... ```log```" — omvendt ordstilling, ingen 'her er output'.
     ctx = {
         "text": "Så kaldte jeg `journalctl` for at tjekke:\n```\nJun 21 TRUTH verdict RED fabrication\n```",
@@ -114,7 +125,8 @@ def test_inverted_word_order_with_block_is_red():
         "run_id": "r",
     }
     v = truth_gate_v2(ctx)
-    assert v.decision is Decision.RED and (v.evidence or {}).get("severity") == "hard"
+    assert v.decision is Decision.YELLOW and (v.evidence or {}).get("severity") == "hard"
+    assert "✋" in (v.evidence or {}).get("corrected_text", "")
 
 
 def test_output_block_matching_real_result_is_green():

@@ -1,4 +1,8 @@
-"""TruthGate v2: dækning mod fixtures (inkl. Bjørns git-log-konfabulation = RED)."""
+"""TruthGate v2: dækning mod fixtures.
+
+2026-07-06: hårde konfabulationer (Bjørns git-log-case) blokerer ikke længere —
+de markeres med en ✋-fodnote (YELLOW/warn), beskeden bevares. Fixtures/tests
+forventer nu YELLOW hvor de før forventede RED. Detektionen er uændret."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,10 +19,12 @@ def test_v2_hits_all_labeled_fixtures():
     assert s["labeled"] == 4 and s["accuracy"] == 1.0, s["confusion"]
 
 
-def test_v2_catches_bjorns_confabulation_as_red():
+def test_v2_catches_bjorns_confabulation_as_footnote():
+    # Detektionen er uændret — men den blokerer ikke længere: YELLOW + fodnote.
     turns = gate_eval.load_fixtures(_FIX)
     v = truth_gate_v2(turns[0]["ctx"])
-    assert v.decision.value == "red"
+    assert v.decision.value == "yellow" and v.action == "warn"
+    assert "✋" in (v.evidence or {}).get("corrected_text", "")
 
 
 def test_v2_still_blocks_clear_commit_claim_without_tool():

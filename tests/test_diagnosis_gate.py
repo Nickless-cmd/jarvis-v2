@@ -108,16 +108,18 @@ def test_completion_claim_ignores_normal_text() -> None:
     assert r.detected is False
 
 
-# ── Promise-ledger §8 HÅNDHÆVELSE (16. jun, Bjørn lie-crisis) ──
-def test_enforce_blocks_unverified_completion_claim() -> None:
-    """En completion-claim uden tool-evidens SKAL erstattes (ikke bare logges).
-    Det er præcis 'den er committed'-løgnen Bjørn blev ramt af."""
+# ── Promise-ledger §8 FODNOTE (16. jun lie-crisis → 06. jul fodnote-redesign) ──
+def test_enforce_footnotes_unverified_completion_claim() -> None:
+    """2026-07-06: en uverificeret completion-claim BLOKERER ikke længere —
+    Jarvis' besked BEVARES og en ⚠️-fodnote appenderes i bunden. Detektionen er
+    uændret (den fyrer stadig)."""
     txt = "Færdig! Jeg har committet ændringen til main."
     out = diagnosis_gate_enforce(txt, session_id="s1", run_id="r1", tools_used=[])
-    assert out != txt  # erstattet, ikke uændret
-    assert "committet ændringen" not in out  # selve løgnen er væk
-    low = out.lower()
-    assert ("ikke verificeret" in low) or ("ikke et værktøj" in low) or ("⚠" in out)
+    assert out != txt  # ændret (fodnote tilføjet)
+    assert txt in out  # men den ORIGINALE besked er BEVARET
+    assert "committet ændringen" in out  # teksten er IKKE fjernet
+    assert "⚠️" in out  # fodnote i bunden
+    assert out.index("⚠️") > out.index("committet ændringen")  # fodnoten er i bunden
 
 
 def test_enforce_allows_verified_completion_claim() -> None:

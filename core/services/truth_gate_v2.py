@@ -137,19 +137,49 @@ def verify_claim(claim: Any, executed_tool_names: list[str], followup_exchanges:
 # ── Severity + Verdict ──────────────────────────────────────────────────────
 _HARD_KINDS = {"commit_hash", "output"}
 
-_HARD_REPLACEMENT = (
-    "*[Besked blokeret — uverificeret arbejdspåstand]*\n\n"
-    "Jeg fremstillede et tool-resultat (output/commit) som jeg ikke har kaldt et "
-    "værktøj for at producere i dette run. Jeg prøver igen — med data."
-)
+# 2026-07-06 (Bjørn+Jarvis): gaten BLOKERER ikke længere. Detektionen er uændret,
+# men i stedet for at ERSTATTE hele beskeden (den gamle _HARD_REPLACEMENT) BEVARER
+# vi nu Jarvis' besked og APPENDER en fodnote i bunden. Samme mønster som
+# claim_scanner's tids-fix (fodnote i stedet for inline/erstatning). Fodnote-stil:
+#   ✋ Uverificeret: '<uddrag>' — <hvad der kræves>   (hårde: output/commit-hash)
+#   ⚠️ Uverificeret: '<uddrag>' — intet <tool>-kald i dette run   (bløde påstande)
+
+# Hvad et hårdt claim kræver af beviser (til fodnote-teksten).
+_HARD_REQUIREMENT = {
+    "commit_hash": "kræver git-kald der producerer hashen",
+    "output": "kræver et faktisk tool-resultat",
+}
 
 
 def classify_severity(claims: list[Any]) -> str:
     return "hard" if any(getattr(c, "kind", "") in _HARD_KINDS for c in claims) else "soft"
 
 
-def _annotate_soft(text: str) -> str:
-    return text.rstrip() + "\n\n⚠ uverificeret — intet tool kaldt for dette."
+def _footnote_for(claim: Any) -> str:
+    """Byg én fodnote-linje for et uverificeret claim i den konsistente stil."""
+    kind = getattr(claim, "kind", "")
+    snippet = str(getattr(claim, "matched_text", "") or "")[:80]
+    if kind in _HARD_KINDS:
+        req = _HARD_REQUIREMENT.get(kind, "kræver tool-evidens")
+        return f"✋ Uverificeret: '{snippet}' — {req}"
+    return f"⚠️ Uverificeret: '{snippet}' — intet tool-kald i dette run"
+
+
+def _annotate(text: str, claims: list[Any]) -> str:
+    """Bevar teksten + append fodnote(r) i bunden (én pr. claim, adskilt fra
+    teksten med en tom linje). Erstatter/blokerer ALDRIG."""
+    notes = [_footnote_for(c) for c in claims]
+    if not notes:
+        return text
+    return text.rstrip() + "\n\n" + "\n".join(notes)
+
+
+def _annotate_soft(text: str, claims: list[Any] | None = None) -> str:
+    """Bagudkompatibel: bløde påstande → fodnote. (claims valgfri; uden dem
+    falder vi tilbage til en generisk blød fodnote.)"""
+    if claims:
+        return _annotate(text, claims)
+    return text.rstrip() + "\n\n⚠️ Uverificeret — intet tool-kald i dette run."
 
 
 # ── LLM-dommer (kun ved tvivl) ──────────────────────────────────────────────
@@ -205,10 +235,12 @@ def truth_gate_v2(ctx: dict[str, Any]) -> Verdict:
     severity = classify_severity(unverified)
     ev: dict[str, Any] = {"severity": severity,
                           "claims": [{"kind": c.kind, "text": c.matched_text} for c in unverified]}
-    if severity == "hard":
-        ev["corrected_text"] = _HARD_REPLACEMENT
-        return Verdict("truth", Decision.RED, "opdigtet tool-output/commit",
-                       action="block", klass=GateClass.COGNITIVE, evidence=ev)
-    ev["corrected_text"] = _annotate_soft(text)
-    return Verdict("truth", Decision.YELLOW, "uverificeret handlings-påstand",
+    # 2026-07-06: bevar ALTID Jarvis' besked — append fodnote(r) i bunden i stedet
+    # for at erstatte/blokere. Hårde påstande (opdigtet output/commit-hash) får en
+    # ✋-fodnote; bløde en ⚠️-fodnote. Decision forbliver YELLOW (markering, ikke
+    # blok); action="warn". Consumer (visible_runs) modtager nu tekst+fodnote.
+    ev["corrected_text"] = _annotate(text, unverified)
+    reason = ("opdigtet tool-output/commit — markeret i bunden" if severity == "hard"
+              else "uverificeret handlings-påstand")
+    return Verdict("truth", Decision.YELLOW, reason,
                    action="warn", klass=GateClass.COGNITIVE, evidence=ev)

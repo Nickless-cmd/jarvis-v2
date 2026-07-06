@@ -8,31 +8,33 @@ from core.services.gate_kernel import Decision, GateKernel
 
 
 def test_claim_scanner_adapter(monkeypatch):
+    # 2026-07-06: claim_scanner appender fodnoter (bevarer teksten) → action="warn".
     import core.services.claim_scanner as cs
     monkeypatch.setattr(cs, "scan_response", lambda t: t)  # uændret → ren
     assert ga.claim_scanner_adapter({"text": "alt fint"}).decision is Decision.GREEN
-    monkeypatch.setattr(cs, "scan_response", lambda t: t + " [repareret]")  # ændret → fanget
+    monkeypatch.setattr(cs, "scan_response", lambda t: t + "\n\n✋ fodnote")  # ændret → fanget
     v = ga.claim_scanner_adapter({"text": "påstand"})
-    assert v.decision is Decision.YELLOW and v.action == "strip"
+    assert v.decision is Decision.YELLOW and v.action == "warn"
 
 
 def test_fact_gate_adapter(monkeypatch):
+    # 2026-07-06: fact_gate blokerer ikke længere — detekterede påstande → YELLOW/warn.
     import core.services.fact_gate as fg
-    monkeypatch.setattr(fg, "fact_gate_enforce", lambda t, n=None: {"blocked": False})
+    monkeypatch.setattr(fg, "fact_gate_enforce", lambda t, n=None: {"blocked": False, "block_reasons": []})
     assert ga.fact_gate_adapter({"text": "x"}).decision is Decision.GREEN
     monkeypatch.setattr(fg, "fact_gate_enforce",
-                        lambda t, n=None: {"blocked": True, "block_reasons": ["fabricated"]})
+                        lambda t, n=None: {"blocked": False, "block_reasons": ["fabricated"]})
     v = ga.fact_gate_adapter({"text": "x"})
-    assert v.decision is Decision.RED and "fabricated" in v.reason
+    assert v.decision is Decision.YELLOW and v.action == "warn" and "fabricated" in v.reason
 
 
 def test_fact_gate_adapter_block_reasons_are_dicts(monkeypatch):
     # REGRESSION (2026-06-23): fact_gate.block_reasons er DICTS, ikke strings. Et rå join
     # kastede 'expected str instance, dict found' og væltede hele truth-decide. Adapteren
-    # skal nu udtrække en læsbar streng UDEN at kaste.
+    # skal udtrække en læsbar streng UDEN at kaste. (2026-07-06: nu YELLOW, ikke RED.)
     import core.services.fact_gate as fg
     monkeypatch.setattr(fg, "fact_gate_enforce", lambda t, n=None: {
-        "blocked": True,
+        "blocked": False,
         "block_reasons": [{
             "pattern": "claimed_file_write",
             "matched": "jeg har oprettet filen",
@@ -42,20 +44,22 @@ def test_fact_gate_adapter_block_reasons_are_dicts(monkeypatch):
         }],
     })
     v = ga.fact_gate_adapter({"text": "x", "tool_names": ["foo"]})
-    assert v.decision is Decision.RED
+    assert v.decision is Decision.YELLOW
     assert "fil-skrivning" in v.reason  # description udtrukket, ingen TypeError
 
 
 def test_diagnosis_adapter(monkeypatch):
+    # 2026-07-06: diagnosis blokerer ikke længere — uverificeret completion → YELLOW/warn.
     import core.services.diagnosis_gate as dg
     monkeypatch.setattr(dg, "analyze_completion_claim",
-                        lambda t, tools_used=None: SimpleNamespace(blocked=True, reason="ingen evidens"))
-    assert ga.diagnosis_adapter({"text": "done"}).decision is Decision.RED
+                        lambda t, tools_used=None: SimpleNamespace(detected=True, verified=False, reason="u"))
+    v = ga.diagnosis_adapter({"text": "done"})
+    assert v.decision is Decision.YELLOW and v.action == "warn"
     monkeypatch.setattr(dg, "analyze_completion_claim",
-                        lambda t, tools_used=None: SimpleNamespace(blocked=False, is_claim=True, verified=False, reason="u"))
-    assert ga.diagnosis_adapter({"text": "done"}).decision is Decision.YELLOW
+                        lambda t, tools_used=None: SimpleNamespace(detected=True, verified=True, reason=""))
+    assert ga.diagnosis_adapter({"text": "done"}).decision is Decision.GREEN
     monkeypatch.setattr(dg, "analyze_completion_claim",
-                        lambda t, tools_used=None: SimpleNamespace(blocked=False, is_claim=True, verified=True, reason=""))
+                        lambda t, tools_used=None: SimpleNamespace(detected=False, verified=True, reason=""))
     assert ga.diagnosis_adapter({"text": "done"}).decision is Decision.GREEN
 
 

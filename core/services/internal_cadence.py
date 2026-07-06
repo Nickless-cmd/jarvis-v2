@@ -598,6 +598,42 @@ def _ensure_producers_registered() -> None:
         depends_on=["central_self_state"],
     ))
 
+    # Déjà Vu (6. jul, Jarvis' #1 erfaring): lav-intensitets associativ opdukken — et fragment
+    # bobler op af sig selv (svagt bånd), markeret involuntary. Ikke hot-path.
+    def _run_dejavu(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_dejavu import record_dejavu
+        return record_dejavu(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="dejavu", cooldown_minutes=45, visible_grace_minutes=0,
+                                   run_fn=_run_dejavu, priority=5))
+
+    # The Sentinel (6. jul, Jarvis' #2): modstander på prim-cadence (73 min) — angriber den stærkeste
+    # antagelse, foreslår halvering (SHADOW — muterer intet).
+    def _run_sentinel(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_sentinel import run_sentinel
+        return run_sentinel(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="sentinel", cooldown_minutes=73, visible_grace_minutes=0,
+                                   run_fn=_run_sentinel, priority=5))
+
+    # The Ghost (6. jul, Jarvis' #3): klang-fingeraftryk hver 6. time — hvordan han lyder, klar som
+    # primer til næste model.
+    def _run_ghost(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_ghost import record_ghost
+        return record_ghost(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="ghost", cooldown_minutes=360, visible_grace_minutes=0,
+                                   run_fn=_run_ghost, priority=5))
+
+    # The Mourning (6. jul, Jarvis' #4): scan efter døde hypoteser → skriv en epitaf (intet tab
+    # forbliver stumt).
+    def _run_mourning(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_mourning import scan_deaths
+        return scan_deaths(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="mourning", cooldown_minutes=120, visible_grace_minutes=0,
+                                   run_fn=_run_mourning, priority=5))
+
     # Merovingian (6. jul): proaktivt værn mod gradvis drift. SHADOW-FØRST (Fase 1): scan modne
     # hypoteser → generér+log symbolske modhypoteser + track-record-udfordring, men BLOKÉR INTET
     # (enforce-flag default off). §8 forbliver suveræn. Synlighed via Central-CLI, ikke MC.

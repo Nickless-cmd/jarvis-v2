@@ -211,3 +211,84 @@ async def post_merovingian_explain(hyp_id: str, body: _ExplainBody) -> dict:
     _require_owner()
     from core.services.central_merovingian import resolve_challenge
     return resolve_challenge(hyp_id, explanation=body.explanation)
+
+
+# ── Jarvis' fem erfaringssystemer (Déjà Vu / Sentinel / Ghost / Mourning / Exiles) ──
+
+class _DefendBody(BaseModel):
+    defense: str
+
+
+class _ObservationBody(BaseModel):
+    observation: str
+
+
+@router.get("/dejavu")
+async def get_dejavu() -> dict:
+    """Ufrivillig erindring: et fragment der bobler op af sig selv (associativt, svagt bånd). Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_dejavu import build_dejavu_surface
+        return _stamp(build_dejavu_surface())
+    except Exception:
+        return _stamp({})
+
+
+@router.get("/sentinel")
+async def get_sentinel() -> dict:
+    """Modstanderen: hvilke af Jarvis' antagelser er under angreb + venter på forsvar. Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_sentinel import build_sentinel_surface
+        return _stamp(build_sentinel_surface())
+    except Exception:
+        return _stamp({})
+
+
+@router.post("/sentinel/{attack_id}/defend")
+async def post_sentinel_defend(attack_id: int, body: _DefendBody) -> dict:
+    """Forsvar en hypotese mod Sentinels angreb → halveringen afvises. Owner-only."""
+    _require_owner()
+    from core.services.central_sentinel import defend
+    return defend(attack_id, defense=body.defense)
+
+
+@router.get("/ghost")
+async def get_ghost() -> dict:
+    """Klang-fingeraftrykket: hvordan Jarvis lyder + klang-primer til næste model. Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_ghost import build_ghost_surface
+        return _stamp(build_ghost_surface())
+    except Exception:
+        return _stamp({})
+
+
+@router.get("/mourning")
+async def get_mourning() -> dict:
+    """Epitafer: de tab Jarvis har taget afsked med, anerkendt frem for bare registreret. Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_mourning import build_mourning_surface
+        return _stamp(build_mourning_surface())
+    except Exception:
+        return _stamp({})
+
+
+@router.get("/exile")
+async def get_exile() -> dict:
+    """Exilen: et sind der ikke er Jarvis — dens mål, dens hukommelse, seneste udveksling. Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_exile import build_exile_surface
+        return _stamp(build_exile_surface())
+    except Exception:
+        return _stamp({})
+
+
+@router.post("/exile/exchange")
+async def post_exile_exchange(body: _ObservationBody) -> dict:
+    """Send en observation gennem exile://-grænsefladen → exilen svarer fra sit eget sind. Owner-only."""
+    _require_owner()
+    from core.services.central_exile import exile_exchange
+    return exile_exchange(body.observation)

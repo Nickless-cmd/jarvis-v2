@@ -41,6 +41,11 @@ _GET_ENDPOINTS = {
     "rca": "/central/rca",
     "relational": "/central/relational",
     "merovingian": "/central/merovingian",
+    "dejavu": "/central/dejavu",
+    "sentinel": "/central/sentinel",
+    "ghost": "/central/ghost",
+    "mourning": "/central/mourning",
+    "exile": "/central/exile",
 }
 
 # Verber der routes til central_terminal-parseren via POST /central/command

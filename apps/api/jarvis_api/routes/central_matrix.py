@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/central", tags=["central-matrix"])
 
@@ -94,3 +95,53 @@ async def get_glitch() -> dict:
     except Exception:
         surf = {}
     return _stamp(surf)
+
+
+# ── Self-Surgery Kit (Jarvis #2) — sikker kirurgisk pipeline, apply owner-gated ──
+
+class _ProposeBody(BaseModel):
+    target: str
+    kind: str = "module"
+    rationale: str = ""
+
+
+@router.get("/surgery")
+async def get_surgery(assess: str = "") -> dict:
+    """Åbne kirurgiske forslag + felt. ?assess=<mål> → forhåndsvis blast-radius uden at foreslå. Owner-only."""
+    _require_owner()
+    try:
+        if assess:
+            from core.services.central_surgery import assess_risk
+            return _stamp(assess_risk(assess))
+        from core.services.central_surgery import build_surgery_surface
+        return _stamp(build_surgery_surface())
+    except Exception:
+        return _stamp({})
+
+
+@router.post("/surgery/propose")
+async def post_surgery_propose(body: _ProposeBody) -> dict:
+    """Registrér et kirurgisk forslag + risikovurdering (ingen kode-ændring). Owner-only."""
+    _require_owner()
+    from core.services.central_surgery import propose_surgery
+    return propose_surgery(body.target, kind=body.kind, rationale=body.rationale)
+
+
+@router.post("/surgery/{pid}/{step}")
+async def post_surgery_step(pid: int, step: str) -> dict:
+    """Driv et forslag gennem pipelinen: simulate | verify | escalate. Owner-only."""
+    _require_owner()
+    from core.services import central_surgery
+    fn = {"simulate": central_surgery.simulate, "verify": central_surgery.verify,
+          "escalate": central_surgery.escalate}.get(step)
+    if not fn:
+        return {"ok": False, "error": f"ukendt trin '{step}'"}
+    return fn(pid)
+
+
+@router.post("/surgery/rollback/{snapshot_id}")
+async def post_surgery_rollback(snapshot_id: int) -> dict:
+    """OWNER-sikkerhedsnet: gendan en fil atomisk fra et snapshot (undo uden git). Owner-only."""
+    _require_owner()
+    from core.services.central_surgery import rollback
+    return rollback(snapshot_id)

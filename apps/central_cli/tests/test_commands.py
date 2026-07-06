@@ -42,7 +42,8 @@ def test_matrix_read_verbs():
     assert resolve_command("echo", []).path == "/central/echo-breaker"
     assert resolve_command("glitch", []).path == "/central/glitch"
     assert resolve_command("continuity", []).path == "/central/continuity"
-    for v in ("construct", "oracle", "architect", "echo", "glitch", "continuity"):
+    assert resolve_command("surgery", []).path == "/central/surgery"
+    for v in ("construct", "oracle", "architect", "echo", "glitch", "continuity", "surgery"):
         assert resolve_command(v, []).write is False
 
 

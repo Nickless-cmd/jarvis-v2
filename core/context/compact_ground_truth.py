@@ -399,7 +399,28 @@ def _log_validation_failure(
                     datetime.now(UTC).isoformat(),
                 ),
             )
-            return _conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            row_id = _conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        # Blind-spot #1 (6. jul): FØR landede fabrikeret-hukommelse-detektion KUN i denne
+        # private tabel + logger.warning (som ikke engang rammer container-journalen) → Centralen
+        # var blind for stille komprimerings-brud (roden til at auto-komprimering stoppede
+        # ubemærket ~23. juni). Emit nu et METADATA-ONLY signal (§24.4: ingen rå claim/kontekst-
+        # tekst — kun tællere) så Centralen ser når komprimering hallucinerer eller brydes.
+        try:
+            from core.eventbus.bus import event_bus
+            _high = sum(1 for f in (failures or []) if (f or {}).get("confidence") == "high")
+            event_bus.publish(
+                "compaction.validation_failed",
+                {
+                    "session_id": session_id,
+                    "marker_id": marker_id,
+                    "failure_count": len(failures or []),
+                    "high_confidence": _high,
+                    "row_id": row_id,
+                },
+            )
+        except Exception:
+            pass
+        return row_id
     except Exception as exc:
         logger.warning("compact_ground_truth: failed to log validation failure: %s", exc)
         return None

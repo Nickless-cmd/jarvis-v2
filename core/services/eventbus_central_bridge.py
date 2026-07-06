@@ -82,6 +82,14 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     "prompt_relevance_backend": ("system", "prompt_relevance"),
     "weekly_manifest": ("system", "weekly_manifest"),
     "session": ("system", "session"),
+    # ── Blinde vinkler lukket 6. jul (multi-agent audit) ──
+    # #1: compaction-validering fanger fabrikeret hukommelse (hallucinerede claims der modsiger
+    # git/DB ground-truth) — routes til truth-clusteret (det er en sandheds-krænkelse). Metadata-
+    # only (tællere, ingen rå claim-tekst). Lukker at auto-komprimering kunne stoppe ubemærket.
+    "compaction": ("truth", "validation"),
+    # #2: process_watcher.match — bruger/Jarvis-erklærede runtime-watches der tripper. Metadata-
+    # only (watch_id/label/reason/fire_count). Var usynlig fordi familien ikke var routed.
+    "process_watcher": ("system", "watch_match"),
 }
 
 # ── PRIVATE_NO_EGRESS (§24.4 keystone, 2026-07-01): privat inner-life observeres EGRESS-FRIT ──

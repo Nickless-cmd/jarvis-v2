@@ -34,6 +34,7 @@ _GET_ENDPOINTS = {
     "oracle": "/central/oracle",
     "architect": "/central/architect",
     "echo": "/central/echo-breaker",
+    "glitch": "/central/glitch",
 }
 
 # Verber der routes til central_terminal-parseren via POST /central/command

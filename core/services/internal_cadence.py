@@ -581,6 +581,21 @@ def _ensure_producers_registered() -> None:
         priority=5,
     ))
 
+    # The One's Anomaly Detector (6. jul, gartner #3): glitches i selvbilledet — altid-shadow
+    # policies + frosne nerver. Markér som bevidst handling (enforce/retire/investigate). Propose-only.
+    def _run_glitch(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_glitch import record_glitches
+        s = record_glitches()
+        return {"always_shadow": s.get("always_shadow", 0), "frozen": s.get("frozen", 0)}
+
+    register_producer(ProducerSpec(
+        name="glitch",
+        cooldown_minutes=180,
+        visible_grace_minutes=0,
+        run_fn=_run_glitch,
+        priority=5,
+    ))
+
     def _run_sleep_consolidation(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.idle_consolidation import (
             run_idle_consolidation,

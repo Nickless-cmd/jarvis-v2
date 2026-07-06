@@ -70,3 +70,15 @@ async def get_echo_breaker() -> dict:
     except Exception:
         surf = {}
     return _stamp(surf)
+
+
+@router.get("/glitch")
+async def get_glitch() -> dict:
+    """Glitches i selvbilledet: altid-shadow policies + frosne nerver + anbefalet handling. Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_glitch import detect_glitches
+        surf = detect_glitches()
+    except Exception:
+        surf = {}
+    return _stamp(surf)

@@ -134,7 +134,7 @@ def test_strongest_stage_prefers_highest(monkeypatch):
 
 def test_no_raw_want_text_leaked(monkeypatch):
     """§24.4: rå topic-fritekst må ALDRIG optræde i output — kun kategori-label."""
-    secret_topic = "SUPER-PRIVAT-HEMMELIG-TEKST-42"
+    secret_topic = "SUPER-PRIVAT-HEMMELIG-TEKST-42"  # pragma: allowlist secret
     acc = {
         "want_count": 1,
         "top_want": {

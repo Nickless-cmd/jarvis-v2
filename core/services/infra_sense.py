@@ -347,7 +347,10 @@ def poll_syslog() -> dict[str, Any]:
                         _syslog_stale_flagged = False  # genoplivet → nulstil vagt
                         msg = ("pfSense syslogd var død (10.0.0.1) — AUTO-HEALED (genstartet via "
                                "API). Firewall-logning genoptaget. syslogd er flaky; overvåges.")
-                        sev, title = "warning", "🔧 pfSense syslogd genstartet (auto-heal)"
+                        # info (6. jul): en GENNEMFØRT auto-heal er en succes, ikke en fejl. "warning"
+                        # var ikke i _SEVERITIES → coercede til "error" (gult). syslogd er flaky+selv-
+                        # helende → info holder den synlig i feed'et uden at farve infra gul.
+                        sev, title = "info", "🔧 pfSense syslogd genstartet (auto-heal)"
                         note = "syslogd var død på pfSense — jeg genstartede den automatisk. Logning kører igen."
                     else:
                         msg = ("pfSense syslogd-PROCESSEN er død (10.0.0.1) — firewall-logning stoppet. "
@@ -373,16 +376,21 @@ def poll_syslog() -> dict[str, Any]:
             # blokeret scan som 'severe uløst incident' hobede sig op → self-helbred blev rødt
             # for evigt (3. jul). Warning = fuld synlighed/notifikation UDEN at tælle som severe
             # systemfejl. (Interne kilder detekteres slet ikke længere — husets egne maskiner.)
+            # Severity=INFO (6. jul-rettelse): disse er EKSTERNE scans som pfSense ALLEREDE har
+            # blokeret. Koden brugte "warning" FOR at undgå severe-rødt — men "warning" er IKKE i
+            # _SEVERITIES ("info"/"error"/"severe") → record_central_incident coercede den til
+            # "error" (gult) → hobede sig op og farvede infra gul for evigt. "info" er det korrekte
+            # gyldige lavniveau: fuld synlighed + owner-notifikation UDEN at tælle som system-fejl.
             try:
                 central().observe({"cluster": "infra", "nerve": "pfsense_security",
-                                   "kind": "flag", "severity": "warning", "src": src,
+                                   "kind": "flag", "severity": "info", "src": src,
                                    "detection": kind, "message": msg[:300]})
             except Exception:
                 pass
             try:
                 from core.runtime.db_central_incidents import record_central_incident
                 record_central_incident(cluster="infra", nerve="pfsense_security",
-                                        kind="security", severity="warning", message=msg[:300])
+                                        kind="security", severity="info", message=msg[:300])
             except Exception:
                 pass
             _notify_owner_security(f"⚠️ Netværks-trussel: {kind}", msg)

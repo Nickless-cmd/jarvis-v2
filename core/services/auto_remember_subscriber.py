@@ -39,6 +39,11 @@ from core.services.text_clip import clip_text
 
 logger = logging.getLogger(__name__)
 
+
+class _SkipMemoryShadow(Exception):
+    """Sentinel: spring den valgfrie memory_write_policy-shadow over (ingen brugerkontekst).
+    Fanges af shadow-blokkens ``except`` → remember_this fortsætter uændret."""
+
 JARVIS_HOME = Path(os.environ.get("HOME", "/root")) / ".jarvis-v2"
 DB_PATH = JARVIS_HOME / "state" / "jarvis.db"
 
@@ -331,6 +336,16 @@ def _process_visible_assistant_turn(payload: dict) -> None:
         from core.services.central_core import central
         from core.services.gate_kernel import Decision, GateClass, Verdict
         from core.services.memory_write_policy import evaluate_write
+
+        # 6. jul: evaluate_write læser PER-BRUGER workspace_dir(); denne subscriber kører UDEN
+        # brugerkontekst → NoUserContextError, som central().decide fanger + registrerer som
+        # memory-cluster-fejl (støj der farvede Centralen gul). Uden bruger er verdict'et
+        # alligevel meningsløst (rate/cooldown er per-bruger). Skip shadow når ingen kontekst;
+        # remember_this nedenfor (den rigtige store-sti) kører uændret. (memory_write_policy er
+        # pensionér-kandidat — se reference_gate_governance_map.)
+        from core.identity.workspace_context import current_user_id as _cuid_shadow
+        if not _cuid_shadow():
+            raise _SkipMemoryShadow()
 
         _mem_key = f"{result.get('domain') or 'general'}:{turn_id}"
         _mem_content = f"{result.get('title') or ''}\n{result.get('content') or ''}".strip()

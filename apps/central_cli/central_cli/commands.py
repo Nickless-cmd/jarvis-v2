@@ -28,6 +28,7 @@ _GET_ENDPOINTS = {
     "connections": "/central/connections",
     "users": "/central/users",
     "excess": "/central/excess",
+    "decentral": "/central/decentralization",
 }
 
 # Verber der routes til central_terminal-parseren via POST /central/command

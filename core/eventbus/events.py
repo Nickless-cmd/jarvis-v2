@@ -27,6 +27,9 @@ ALLOWED_EVENT_FAMILIES = {
     "affect_modulation", # affekt-modulator (affect_modulation.active) — ændrer max_tool_calls/pause, var uregistreret
     "completion_satisfaction",  # belønnings-signal (completion_satisfaction.detected) — var uregistreret
     "trading",           # governance: grid_bot (rigtige penge) — var uregistreret + emitterede intet
+    # ── Blinde vinkler lukket 6. jul (multi-agent audit) — var latent afvist ──
+    "compaction",        # compact_ground_truth.validation_failed — fabrikeret-hukommelse-detektion (metadata-only)
+    "process_watcher",   # process_watcher.match — publish RAISEDE FØR (familie ikke registreret) → watches aldrig set
     # LivingNeuron "lange skygge" (2026-07-01): resterende inner-life-familier der publicerede men var
     # uregistrerede (droppet) → nu persisterer + routes egress-frit nedenfor.
     "cognitive_personal_project", "regret", "cognitive_reflective_plan", "cognitive_mission",

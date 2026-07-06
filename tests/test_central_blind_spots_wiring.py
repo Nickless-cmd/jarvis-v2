@@ -20,6 +20,17 @@ def test_new_families_in_routes_and_not_private():
     assert "process_watcher" not in bridge.PRIVATE_FAMILIES_EXCLUDED_M0
 
 
+def test_families_are_publishable():
+    """KRITISK: en route er død hvis familien ikke er i ALLOWED_EVENT_FAMILIES (publish RAISER).
+    process_watcher.match kunne aldrig publiceres FØR fordi familien manglede her."""
+    from core.eventbus.events import ALLOWED_EVENT_FAMILIES, Event
+    assert "compaction" in ALLOWED_EVENT_FAMILIES
+    assert "process_watcher" in ALLOWED_EVENT_FAMILIES
+    # og en faktisk publish-validering går igennem (ville ellers raise ValueError)
+    Event.create("compaction.validation_failed", {"failure_count": 1})
+    Event.create("process_watcher.match", {"watch_id": "w"})
+
+
 def test_validation_failure_emits_metadata_only():
     """_log_validation_failure emitter compaction.validation_failed UDEN rå claim-tekst."""
     import core.context.compact_ground_truth as cgt

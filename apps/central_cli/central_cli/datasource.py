@@ -217,6 +217,13 @@ def diagnostics(client: Any) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def connections(client: Any) -> dict:
+    """API-forbindelses-presence fra /central/connections (hvem/hvad rammer API'et).
+    Metadata-only (ip/user/endpoint/status/tællere) — intet samtaleindhold. Self-safe."""
+    data = client.get_json("/central/connections")
+    return data if isinstance(data, dict) else {}
+
+
 def anomalies(client: Any) -> list:
     """Anomalies from /central/diagnostics, shaped for the Anomalies view.
     Self-safe: any error → empty list. Sorted by importance then count."""

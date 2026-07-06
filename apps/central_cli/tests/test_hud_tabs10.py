@@ -7,8 +7,9 @@ from central_cli.hud import CentralHud, _TABS
 
 def test_ten_tabs_in_order():
     keys = [k for k, _, _ in _TABS]
+    # 6. jul: Connections-fane tilføjet (API-forbindelses-presence, owner-only)
     assert keys == ["overview", "nerves", "clusters", "incidents", "runs",
-                    "approvals", "agents", "mind", "diagnostics", "governance"]
+                    "approvals", "agents", "connections", "mind", "diagnostics", "governance"]
 
 
 @pytest.mark.asyncio

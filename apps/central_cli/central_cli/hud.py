@@ -72,6 +72,7 @@ _TABS: list[tuple[str, str, bool]] = [
     ("runs", "Runs", False),
     ("approvals", "Approvals", False),
     ("agents", "Agents", False),
+    ("connections", "Connections", True),
     ("mind", "Mind", False),
     ("diagnostics", "Diagnostics", False),
     ("governance", "Governance", True),
@@ -609,6 +610,8 @@ class CentralHud(App):
             elif name == "agents":
                 self._populate_agents()
                 self._refresh_detail_for_current()
+            elif name == "connections":
+                self._populate_connections()
             elif name == "overview":
                 self._render_overview_panel()
             elif name == "diagnostics":
@@ -942,6 +945,52 @@ class CentralHud(App):
     def _drill_incident(self, index: int) -> None:
         self._sel_incident = index
         self._render_detail_panel()
+
+    # -- Connections tab (API-forbindelses-presence) -----------------------
+    def _populate_connections(self) -> None:
+        """Hvem/hvad er forbundet til API'et: ip · user · endpoint · antal · fejl · aktiv.
+        Metadata-only (intet samtaleindhold). GDPR: fuld IP → /24 efter 48t."""
+        try:
+            table = self.query_one("#nerve-table", DataTable)
+        except Exception:
+            return
+        self._reset_columns(table, ("", 2), ("ip", 20), ("user", 16),
+                            ("endpoint", 30), ("req", 6), ("err", 5))
+        if self._client is None:
+            return
+        try:
+            data = datasource.connections(self._client)
+        except Exception:
+            data = {}
+        conns = data.get("connections") or []
+        active = int(data.get("active_count") or 0)
+        errs = int(data.get("error_count") or 0)
+        self._set_paneh(
+            f"[{CYAN}]CONNECTIONS[/] [{FGDIM}]— {active} aktive · {len(conns)} total · "
+            f"{errs} fejl[/]  [{FGDIM}](metadata-only · IP→/24 efter 48t)[/]"
+        )
+        for c in conns:
+            is_active = bool(c.get("active"))
+            dot = Text("●", style=GREEN if is_active else FGDIM)
+            ip = str(c.get("ip", "") or "?")
+            user = str(c.get("user_id", "") or "—")
+            if len(user) > 15:
+                user = user[:6] + "…" + user[-6:]
+            method = str(c.get("last_method", "") or "")
+            path = str(c.get("last_path", "") or "")
+            endpoint = f"{method} {path}"
+            if len(endpoint) > 29:
+                endpoint = endpoint[:28] + "…"
+            rc = int(c.get("request_count") or 0)
+            ec = int(c.get("error_count") or 0)
+            table.add_row(
+                dot,
+                Text(ip, style=FG if is_active else FGDIM),
+                Text(user, style=FG),
+                Text(endpoint, style=FGDIM),
+                Text(str(rc), style=FG),
+                Text(str(ec), style=(_SEVERITY.get("error", FG) if ec else FGDIM)),
+            )
 
     # -- Anomalies tab -----------------------------------------------------
     def _populate_anomalies(self) -> None:

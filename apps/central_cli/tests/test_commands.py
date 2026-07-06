@@ -35,6 +35,15 @@ def test_approval_write():
     assert spec.body == {"id": "abc123"}
 
 
+def test_matrix_read_verbs():
+    assert resolve_command("construct", []).path == "/central/construct"
+    assert resolve_command("oracle", []).path == "/central/oracle"
+    assert resolve_command("architect", []).path == "/central/architect"
+    assert resolve_command("echo", []).path == "/central/echo-breaker"
+    for v in ("construct", "oracle", "architect", "echo"):
+        assert resolve_command(v, []).write is False
+
+
 def test_keys_read_and_unlock_write():
     assert resolve_command("keys", []) == CommandSpec(
         method="GET", path="/central/keys", body=None, write=False)

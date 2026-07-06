@@ -30,6 +30,10 @@ _GET_ENDPOINTS = {
     "excess": "/central/excess",
     "decentral": "/central/decentralization",
     "keys": "/central/keys",
+    "construct": "/central/construct",
+    "oracle": "/central/oracle",
+    "architect": "/central/architect",
+    "echo": "/central/echo-breaker",
 }
 
 # Verber der routes til central_terminal-parseren via POST /central/command

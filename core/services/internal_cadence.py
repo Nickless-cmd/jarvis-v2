@@ -521,6 +521,66 @@ def _ensure_producers_registered() -> None:
         priority=4,
     ))
 
+    # The Construct (6. jul, Matrix-tema #1 / gartner #2): sandbox der projicerer hvilke nerver
+    # kunne slukkes uden tab — modstemme-input, ren observation.
+    def _run_construct(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_construct import record_construct
+        s = record_construct()
+        return {"safe": s.get("safe_count", 0), "risky": s.get("risky_count", 0)}
+
+    register_producer(ProducerSpec(
+        name="construct",
+        cooldown_minutes=60,
+        visible_grace_minutes=0,
+        run_fn=_run_construct,
+        priority=4,
+    ))
+
+    # The Oracle (6. jul, Matrix-tema #2): forudseende tidsserie-projektion på PRIM-cadence (17 min)
+    # → ude af fase med de andre producers (60/30/15), ser systemet på skæve tidspunkter.
+    def _run_oracle(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_oracle import record_oracle
+        s = record_oracle()
+        return {"approaching": len(s.get("approaching", [])), "crossed": len(s.get("crossed", []))}
+
+    register_producer(ProducerSpec(
+        name="oracle",
+        cooldown_minutes=17,
+        visible_grace_minutes=0,
+        run_fn=_run_oracle,
+        priority=4,
+    ))
+
+    # The Architect (6. jul, Matrix-tema #5 / gartner #1): lav-frekvens (månedlig) hele-system-syn
+    # → ét tungt strukturelt snit-forslag. Propose-only.
+    def _run_architect(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_architect import record_architect
+        s = record_architect()
+        return {"pressure": s.get("pressure", 0), "target": s.get("target", "")}
+
+    register_producer(ProducerSpec(
+        name="architect",
+        cooldown_minutes=30 * 24 * 60,   # ~månedlig
+        visible_grace_minutes=0,
+        run_fn=_run_architect,
+        priority=5,
+    ))
+
+    # Echo Chamber Breaker (6. jul, gartner #5): tvungen modstemme mod monokultur — konkrete
+    # simplere alternativer til altid-grønne central-processer. Propose-only.
+    def _run_echo_breaker(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_echo_breaker import record_echo_breaker
+        s = record_echo_breaker()
+        return {"count": s.get("count", 0)}
+
+    register_producer(ProducerSpec(
+        name="echo_breaker",
+        cooldown_minutes=120,
+        visible_grace_minutes=0,
+        run_fn=_run_echo_breaker,
+        priority=5,
+    ))
+
     def _run_sleep_consolidation(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.idle_consolidation import (
             run_idle_consolidation,

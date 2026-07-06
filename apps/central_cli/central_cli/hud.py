@@ -73,6 +73,9 @@ _TABS: list[tuple[str, str, bool]] = [
     ("approvals", "Approvals", False),
     ("agents", "Agents", False),
     ("connections", "Connections", True),
+    ("users", "Users", True),
+    ("excess", "Excess", True),
+    ("decentral", "Decentral", True),
     ("mind", "Mind", False),
     ("diagnostics", "Diagnostics", False),
     ("governance", "Governance", True),
@@ -264,11 +267,12 @@ class CentralHud(App):
         Binding("f5", "show('runs')", show=False, priority=True),
         Binding("f6", "show('approvals')", show=False, priority=True),
         Binding("f7", "show('agents')", show=False, priority=True),
-        # 6. jul: Connections indsat som 8. fane → F-taster genjusteret så de matcher nav-numrene.
+        # 6. jul: F-taster matcher nav-numrene (14 faner nu; F1-F12 = de første 12, resten via Tab).
         Binding("f8", "show('connections')", show=False, priority=True),
-        Binding("f9", "show('mind')", show=False, priority=True),
-        Binding("f10", "show('diagnostics')", show=False, priority=True),
-        Binding("f11", "show('governance')", show=False, priority=True),
+        Binding("f9", "show('users')", show=False, priority=True),
+        Binding("f10", "show('excess')", show=False, priority=True),
+        Binding("f11", "show('decentral')", show=False, priority=True),
+        Binding("f12", "show('mind')", show=False, priority=True),
     ]
 
     def __init__(self, *, client: Any = None, live: bool = True) -> None:
@@ -614,6 +618,12 @@ class CentralHud(App):
                 self._refresh_detail_for_current()
             elif name == "connections":
                 self._populate_connections()
+            elif name == "users":
+                self._populate_users()
+            elif name == "excess":
+                self._populate_excess()
+            elif name == "decentral":
+                self._populate_decentral()
             elif name == "overview":
                 self._render_overview_panel()
             elif name == "diagnostics":
@@ -992,6 +1002,89 @@ class CentralHud(App):
                 Text(endpoint, style=FGDIM),
                 Text(str(rc), style=FG),
                 Text(str(ec), style=(_SEVERITY.get("error", FG) if ec else FGDIM)),
+            )
+
+    # -- Users tab (bruger-aktivitet: sidst aktiv pr. bruger) ---------------
+    def _populate_users(self) -> None:
+        try:
+            table = self.query_one("#nerve-table", DataTable)
+        except Exception:
+            return
+        self._reset_columns(table, ("", 2), ("navn", 12), ("rolle", 8),
+                            ("sidst aktiv", 18), ("via", 8), ("besk.", 7), ("est.tok", 9))
+        if self._client is None:
+            return
+        try:
+            data = datasource.users(self._client)
+        except Exception:
+            data = {}
+        rows = data.get("users") or []
+        self._set_paneh(f"[{CYAN}]USERS[/] [{FGDIM}]— {data.get('active_count',0)} aktive · "
+                        f"{data.get('total_users',0)} brugere[/]")
+        for u in rows:
+            act = bool(u.get("active"))
+            la = str(u.get("last_active", "") or "")[:16].replace("T", " ")
+            table.add_row(
+                Text("●", style=GREEN if act else FGDIM),
+                Text(str(u.get("name", "?")), style=FG if act else FGDIM),
+                Text(str(u.get("role", "")), style=FGDIM),
+                Text(la, style=FG), Text(str(u.get("via", "")), style=FGDIM),
+                Text(str(u.get("messages", 0)), style=FG),
+                Text(f"{int(u.get('est_tokens',0)):,}", style=FGDIM),
+            )
+
+    # -- Excess tab (gartner-sans: Centralens egen vægt) -------------------
+    def _populate_excess(self) -> None:
+        try:
+            table = self.query_one("#nerve-table", DataTable)
+        except Exception:
+            return
+        self._reset_columns(table, ("linjer", 9), ("fil", 52))
+        if self._client is None:
+            return
+        try:
+            data = datasource.excess(self._client)
+        except Exception:
+            data = {}
+        pres = int(data.get("pressure", 0))
+        pcol = _SEVERITY.get("error", FG) if pres >= 70 else (GREEN if pres < 40 else FG)
+        self._set_paneh(
+            f"[{CYAN}]EXCESS[/] [{pcol}]pres {pres}/100[/] [{FGDIM}]— "
+            f"{data.get('over_hard_count',0)} filer >2000 · {data.get('service_count',0)} services · "
+            f"{int(data.get('total_lines',0)):,} linjer[/]\n[{FGDIM}]{data.get('felt','')}[/]"
+        )
+        for f in data.get("worst_files", []):
+            over = f.get("over_hard")
+            table.add_row(
+                Text(f"{int(f.get('lines',0)):,}", style=_SEVERITY.get("error", FG) if over else FG),
+                Text(str(f.get("file", "")), style=FG if over else FGDIM),
+            )
+
+    # -- Decentral tab (chokepoint-skat) -----------------------------------
+    def _populate_decentral(self) -> None:
+        try:
+            table = self.query_one("#nerve-table", DataTable)
+        except Exception:
+            return
+        self._reset_columns(table, ("", 2), ("beslutning", 22), ("total", 8), ("handling", 40))
+        if self._client is None:
+            return
+        try:
+            data = datasource.decentralization(self._client)
+        except Exception:
+            data = {}
+        tax = data.get("chokepoint_tax_pct", 0.0)
+        self._set_paneh(
+            f"[{CYAN}]DECENTRAL[/] [{FGDIM}]— chokepoint-skat [/][{FG}]{tax}%[/] [{FGDIM}]"
+            f"({data.get('overhead_decisions',0)}/{data.get('total_decisions',0)} overhead)[/]\n"
+            f"[{FGDIM}]{data.get('felt','')}[/]"
+        )
+        for c in data.get("candidates", []):
+            table.add_row(
+                Text("✂", style=GREEN),
+                Text(str(c.get("nerve", "")), style=FG),
+                Text(str(c.get("total", 0)), style=FGDIM),
+                Text("kandidat: resolve lokalt, eskalér ikke-grøn", style=FGDIM),
             )
 
     # -- Anomalies tab -----------------------------------------------------

@@ -224,6 +224,24 @@ def connections(client: Any) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def excess(client: Any) -> dict:
+    """Gartner-sans fra /central/excess (Centralens egen vægt/bloat). Self-safe."""
+    data = client.get_json("/central/excess")
+    return data if isinstance(data, dict) else {}
+
+
+def decentralization(client: Any) -> dict:
+    """Chokepoint-skat fra /central/decentralization (hvor meget er unødvendig flaskehals). Self-safe."""
+    data = client.get_json("/central/decentralization")
+    return data if isinstance(data, dict) else {}
+
+
+def users(client: Any) -> dict:
+    """Bruger-aktivitet fra /central/users (hvem sidst aktiv, via hvad). Self-safe."""
+    data = client.get_json("/central/users")
+    return data if isinstance(data, dict) else {}
+
+
 def anomalies(client: Any) -> list:
     """Anomalies from /central/diagnostics, shaped for the Anomalies view.
     Self-safe: any error → empty list. Sorted by importance then count."""

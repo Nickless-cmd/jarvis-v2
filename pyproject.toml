@@ -30,7 +30,13 @@ include = ["apps*", "core*"]
 # importerer pr. basename → "import file mismatch" → hele suiten afbrydes ved
 # collection (5 kollisioner pr. 2026-06-30). importlib er den anbefalede mode og
 # kræver ingen __init__.py i tests/. Ingen sibling-bare-name-imports i suiten.
-addopts = "--import-mode=importlib"
+# --timeout=45 --timeout-method=signal (6. jul): INTET per-test-deadline før nu → ét
+# blokerende kald (subprocess/socket/sleep uden timeout) hang HELE suiten for evigt =
+# nul signal. signal-metoden afbryder den skyldige test og FORTSÆTTER → hver hænger
+# fejler individuelt i stedet for at fryse alt. Gør suiten færdig-kørbar = forudsætning
+# for troværdig baseline (db.py-refaktor-net).
+addopts = "--import-mode=importlib --timeout=45 --timeout-method=signal"
 markers = [
     "dirty_state: test muterer delt tilstand; isolér ved behov",
+    "integration: kræver kørende infra (container/DB/net/subprocess); ekskl. fra default unit-kørsel",
 ]

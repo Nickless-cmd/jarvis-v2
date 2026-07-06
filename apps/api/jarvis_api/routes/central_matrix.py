@@ -183,3 +183,31 @@ async def get_relational() -> dict:
         return _stamp(build_relational_surface())
     except Exception:
         return _stamp({})
+
+
+# ── Merovingian — proaktiv modhypotese + cooling-off (den nye MC = Central-CLI, ikke MC) ──
+
+class _ExplainBody(BaseModel):
+    explanation: str
+
+
+@router.get("/merovingian")
+async def get_merovingian(history: int = 0) -> dict:
+    """Aktive udfordringer + cooling-offs mod foreslåede selv-ændringer. ?history=1 → alle. Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_merovingian import build_merovingian_surface, list_challenges
+        surf = build_merovingian_surface()
+        if history:
+            surf["all"] = list_challenges(active_only=False)
+        return _stamp(surf)
+    except Exception:
+        return _stamp({})
+
+
+@router.post("/merovingian/{hyp_id}/explain")
+async def post_merovingian_explain(hyp_id: str, body: _ExplainBody) -> dict:
+    """Centralen forsvarer sig: skriv HVORFOR modhypotesen er forkert → adoption kan fortsætte. Owner-only."""
+    _require_owner()
+    from core.services.central_merovingian import resolve_challenge
+    return resolve_challenge(hyp_id, explanation=body.explanation)

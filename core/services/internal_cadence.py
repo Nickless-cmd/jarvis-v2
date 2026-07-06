@@ -598,6 +598,21 @@ def _ensure_producers_registered() -> None:
         depends_on=["central_self_state"],
     ))
 
+    # Merovingian (6. jul): proaktivt værn mod gradvis drift. SHADOW-FØRST (Fase 1): scan modne
+    # hypoteser → generér+log symbolske modhypoteser + track-record-udfordring, men BLOKÉR INTET
+    # (enforce-flag default off). §8 forbliver suveræn. Synlighed via Central-CLI, ikke MC.
+    def _run_merovingian(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_merovingian import scan_and_challenge
+        return scan_and_challenge(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="merovingian",
+        cooldown_minutes=60,
+        visible_grace_minutes=0,
+        run_fn=_run_merovingian,
+        priority=4,
+    ))
+
     # Dream-to-Action (6. jul, Jarvis #3): mål FORANDRINGS-tempo (resolveret vs backlog) + peg på
     # én moden hypotese at handle på. Propose-only.
     def _run_dream_action(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:

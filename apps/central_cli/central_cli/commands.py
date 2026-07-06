@@ -40,6 +40,7 @@ _GET_ENDPOINTS = {
     "dream": "/central/dream-action",
     "rca": "/central/rca",
     "relational": "/central/relational",
+    "merovingian": "/central/merovingian",
 }
 
 # Verber der routes til central_terminal-parseren via POST /central/command

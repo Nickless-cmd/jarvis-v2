@@ -40,7 +40,7 @@ def test_calls_decide_5_times_with_clusters():
         result = gs.run_post_output_shadow(_ctx())
 
     assert result is None
-    assert fake_central.decide.call_count == 5
+    assert fake_central.decide.call_count == 6  # 5 cognitive + privacy (SECURITY)
 
     seen_clusters = []
     seen_nerves = []
@@ -50,7 +50,7 @@ def test_calls_decide_5_times_with_clusters():
         klass = call.kwargs.get("klass")
         seen_nerves.append(nerve)
         seen_clusters.append(cluster)
-        assert klass is GateClass.COGNITIVE
+        assert klass is (GateClass.SECURITY if nerve == "cross_user_share" else GateClass.COGNITIVE)
     assert seen_clusters == [c for (_n, c) in gs.POST_OUTPUT_GATES_CLUSTERS()]
     assert seen_nerves == [n for (n, _c) in gs.POST_OUTPUT_GATES_CLUSTERS()]
 
@@ -74,7 +74,7 @@ def test_one_gate_import_failure_does_not_stop_others():
 
     assert result is None
     # alle 5 forsøgt trods én der kastede
-    assert calls["n"] == 5
+    assert calls["n"] == 6  # 5 cognitive + privacy
 
 
 def test_flag_off_skips_all():

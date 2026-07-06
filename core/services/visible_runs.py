@@ -5008,12 +5008,18 @@ async def _stream_visible_run(
             # så det umuligt kan påvirke run-loopet. Bag flag gate_kernel.shadow (default ON).
             try:
                 from core.services.gate_shadow import run_post_output_shadow as _run_shadow_gates
+                try:
+                    from core.identity.workspace_context import current_user_id as _cuid
+                    _shadow_uid = _cuid() or ""
+                except Exception:
+                    _shadow_uid = ""
                 _run_shadow_gates({
                     "text": visible_output_text,
                     "tool_names": list(_executed_tool_names or []),
                     "tools_used": list(_executed_tool_names or []),
                     "run_id": run.run_id,
                     "session_id": getattr(run, "session_id", "") or "",
+                    "current_user_id": _shadow_uid,   # privacy_gate: cross-user-lækage-tjek
                 })
             except Exception:
                 pass

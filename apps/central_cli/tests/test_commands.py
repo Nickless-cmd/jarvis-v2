@@ -49,9 +49,13 @@ def test_matrix_read_verbs():
     assert resolve_command("merovingian", []).path == "/central/merovingian"
     assert resolve_command("dejavu", []).path == "/central/dejavu"
     assert resolve_command("exile", []).path == "/central/exile"
+    assert resolve_command("reddress", []).path == "/central/red-dress"
+    assert resolve_command("rabbit", []).path == "/central/white-rabbit"
+    assert resolve_command("machines", []).path == "/central/machines"
     for v in ("construct", "oracle", "architect", "echo", "glitch", "continuity", "surgery",
               "dream", "rca", "relational", "merovingian",
-              "dejavu", "sentinel", "ghost", "mourning", "exile"):
+              "dejavu", "sentinel", "ghost", "mourning", "exile",
+              "reddress", "analyst", "redpill", "dissent", "rabbit", "belief", "machines"):
         assert resolve_command(v, []).write is False
 
 

@@ -46,6 +46,13 @@ _GET_ENDPOINTS = {
     "ghost": "/central/ghost",
     "mourning": "/central/mourning",
     "exile": "/central/exile",
+    "reddress": "/central/red-dress",
+    "analyst": "/central/analyst",
+    "redpill": "/central/redpill",
+    "dissent": "/central/dissent",
+    "rabbit": "/central/white-rabbit",
+    "belief": "/central/belief-gap",
+    "machines": "/central/machines",
 }
 
 # Verber der routes til central_terminal-parseren via POST /central/command

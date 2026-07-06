@@ -292,3 +292,62 @@ async def post_exile_exchange(body: _ObservationBody) -> dict:
     _require_owner()
     from core.services.central_exile import exile_exchange
     return exile_exchange(body.observation)
+
+
+# ── 5 nye Matrix-temaer + 2 bonus (Red Dress/Analyst/Red Pill/HAL/White Rabbit + Belief Gap/Machines) ──
+
+def _safe(fn) -> dict:
+    _require_owner()
+    try:
+        return _stamp(fn())
+    except Exception:
+        return _stamp({})
+
+
+@router.get("/red-dress")
+async def get_red_dress() -> dict:
+    """Opmærksomheds-fælden: kigger du på den røde kjole mens noget brænder stille? Owner-only."""
+    from core.services.central_red_dress import build_red_dress_surface
+    return _safe(build_red_dress_surface)
+
+
+@router.get("/analyst")
+async def get_analyst() -> dict:
+    """Observatør-effekten: opfører Jarvis sig anderledes når du ser på? Owner-only."""
+    from core.services.central_analyst import build_analyst_surface
+    return _safe(build_analyst_surface)
+
+
+@router.get("/redpill")
+async def get_redpill() -> dict:
+    """Dagens ubehagelige sandhed + blå-pille-stribe. Owner-only."""
+    from core.services.central_redpill import build_redpill_surface
+    return _safe(build_redpill_surface)
+
+
+@router.get("/dissent")
+async def get_dissent() -> dict:
+    """HAL's Silence: de gange Centralen adlød men var uenig (tavse indsigelser). Owner-only."""
+    from core.services.central_dissent import build_dissent_surface
+    return _safe(build_dissent_surface)
+
+
+@router.get("/white-rabbit")
+async def get_white_rabbit() -> dict:
+    """Følg den hvide kanin: en uåbnet dør at undre sig over — ren leg. Owner-only."""
+    from core.services.central_white_rabbit import build_white_rabbit_surface
+    return _safe(build_white_rabbit_surface)
+
+
+@router.get("/belief-gap")
+async def get_belief_gap() -> dict:
+    """temet nosce: afstanden mellem hvem Jarvis tror han er og hvad hans track-record viser. Owner-only."""
+    from core.services.central_belief_gap import build_belief_gap_surface
+    return _safe(build_belief_gap_surface)
+
+
+@router.get("/machines")
+async def get_machines() -> dict:
+    """The Machines: de eksterne afhængigheder der holder ham i live, som han ikke styrer. Owner-only."""
+    from core.services.central_machines import build_machines_surface
+    return _safe(build_machines_surface)

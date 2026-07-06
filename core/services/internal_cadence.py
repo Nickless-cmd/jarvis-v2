@@ -598,6 +598,56 @@ def _ensure_producers_registered() -> None:
         depends_on=["central_self_state"],
     ))
 
+    # 5 nye Matrix-temaer + 2 bonus (6. jul) — alle observe/propose-only, self-safe.
+    def _run_red_dress(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_red_dress import record_red_dress
+        return record_red_dress(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="red_dress", cooldown_minutes=90, visible_grace_minutes=0,
+                                   run_fn=_run_red_dress, priority=5))
+
+    def _run_analyst(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_analyst import record_analyst
+        return record_analyst(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="analyst", cooldown_minutes=360, visible_grace_minutes=0,
+                                   run_fn=_run_analyst, priority=5))
+
+    def _run_redpill(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_redpill import record_redpill
+        return record_redpill(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="redpill", cooldown_minutes=1440, visible_grace_minutes=0,
+                                   run_fn=_run_redpill, priority=5))
+
+    def _run_dissent(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_dissent import record_dissent
+        return record_dissent(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="dissent", cooldown_minutes=120, visible_grace_minutes=0,
+                                   run_fn=_run_dissent, priority=5))
+
+    def _run_white_rabbit(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_white_rabbit import record_white_rabbit
+        return record_white_rabbit(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="white_rabbit", cooldown_minutes=180, visible_grace_minutes=0,
+                                   run_fn=_run_white_rabbit, priority=5))
+
+    def _run_belief_gap(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_belief_gap import record_belief_gap
+        return record_belief_gap(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="belief_gap", cooldown_minutes=360, visible_grace_minutes=0,
+                                   run_fn=_run_belief_gap, priority=5))
+
+    def _run_machines(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_machines import record_machines
+        return record_machines(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="machines", cooldown_minutes=360, visible_grace_minutes=0,
+                                   run_fn=_run_machines, priority=5))
+
     # Déjà Vu (6. jul, Jarvis' #1 erfaring): lav-intensitets associativ opdukken — et fragment
     # bobler op af sig selv (svagt bånd), markeret involuntary. Ikke hot-path.
     def _run_dejavu(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:

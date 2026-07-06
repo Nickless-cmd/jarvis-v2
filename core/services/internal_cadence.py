@@ -487,6 +487,22 @@ def _ensure_producers_registered() -> None:
         priority=3,
     ))
 
+    # Excess-sans / gartner-muskel (6. jul): Centralen MÆRKER sin egen vægt (bloat) → observerer
+    # pres til nerve system/excess så tyngden bliver FØLT over tid. Kun den billige fil-scan i
+    # cadence (dead-function-scan er on-demand via /central/excess?propose=1). ~hvert 60. min.
+    def _run_excess_sense(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_excess import record_excess_pressure
+        s = record_excess_pressure()
+        return {"pressure": s.get("pressure", 0)}
+
+    register_producer(ProducerSpec(
+        name="excess_sense",
+        cooldown_minutes=60,
+        visible_grace_minutes=0,
+        run_fn=_run_excess_sense,
+        priority=4,
+    ))
+
     def _run_sleep_consolidation(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.idle_consolidation import (
             run_idle_consolidation,

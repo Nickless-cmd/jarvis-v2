@@ -586,6 +586,8 @@ def create_app() -> FastAPI:
     app.include_router(_central_connections.router)
     from apps.api.jarvis_api.routes import central_users as _central_users
     app.include_router(_central_users.router)
+    from apps.api.jarvis_api.routes import central_excess as _central_excess
+    app.include_router(_central_excess.router)
     from apps.api.jarvis_api.routes import internal_runtime_surface as _irs
     app.include_router(_irs.router)
     from apps.api.jarvis_api.routes import central_self as _central_self

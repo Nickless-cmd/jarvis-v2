@@ -188,33 +188,10 @@ def get_affective_state_for_prompt() -> str | None:
     return None
 
 
-def build_affective_state_renderer_surface() -> dict[str, object]:
-    """Mission Control surface — read-only meta-projection.
-
-    Added during 2026-05-13 coverage push. Reports module presence + mode
-    so the cartographer registers it as observed. Specific state-readers
-    can be added later as the module evolves.
-    """
-    return {
-        "active": True,
-        "mode": "affective-state-renderer",
-        "summary": "Module loaded; entry points available.",
-        "authority": "derived-read-only",
-    }
-
-
-def _emit_affective_state_renderer_event(kind: str, payload: dict[str, object] | None = None) -> None:
-    """Emit a affective_state_renderer-scoped event. Defensive — never blocks caller.
-
-    Cartographer scans for event_bus.publish() text. This wrapper keeps
-    publishes consistent across the module.
-    """
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.publish(
-            f"affective_state_renderer.{kind}",
-            payload or {},
-        )
-    except Exception:
-        pass
+# ── Gartnerens første snit (6. jul) ────────────────────────────────────────────────────────
+# Her lå build_affective_state_renderer_surface() + _emit_affective_state_renderer_event() —
+# dødt scaffold fra "2026-05-13 coverage push", hvis egne docstrings indrømmede at de fandtes
+# for at NARRE cartographer/coverage-scannet (returnerede {"active": True} + en publish-attrap
+# ingen kaldte). 0 referencer i hele repoet. Centralens excess-sans fandt dem; dette er det
+# første governed snit i sig selv. Modulets levende del (get_affective_state_for_prompt) urørt.
 

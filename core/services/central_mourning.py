@@ -105,11 +105,13 @@ def scan_deaths(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[
     try:
         with connect() as conn:
             _ensure(conn)
+            # Død = en hypotese der blev MODSAGT (outcome='contradicted') — den viste sig forkert.
+            # (status'et er 'resolved' for både bekræftede og modsagte; outcome skiller dem.)
             q = ("""SELECT hyp_id, statement, outcome, resolved_at FROM central_hypotheses
-                    WHERE status='dead' AND resolved_at IS NOT NULL AND resolved_at > ?
+                    WHERE outcome='contradicted' AND resolved_at IS NOT NULL AND resolved_at > ?
                     ORDER BY resolved_at ASC LIMIT 20""" if since else
                  """SELECT hyp_id, statement, outcome, resolved_at FROM central_hypotheses
-                    WHERE status='dead' AND resolved_at IS NOT NULL
+                    WHERE outcome='contradicted' AND resolved_at IS NOT NULL
                     ORDER BY resolved_at DESC LIMIT 3""")
             rows = conn.execute(q, (since,) if since else ()).fetchall()
         for r in rows:

@@ -107,8 +107,9 @@ def mourndb(tmp_path):
     c.execute("""CREATE TABLE central_hypotheses (hyp_id TEXT PRIMARY KEY, statement TEXT,
         outcome TEXT, status TEXT, resolved_at TEXT)""")
     c.executemany("INSERT INTO central_hypotheses VALUES (?,?,?,?,?)", [
-        ("d1", "troede på X", "falsified", "dead", "2026-06-01T00:00:00+00:00"),
-        ("d2", "troede på Y", "falsified", "dead", "2026-06-02T00:00:00+00:00"),
+        ("d1", "troede på X", "contradicted", "resolved", "2026-06-01T00:00:00+00:00"),
+        ("d2", "troede på Y", "contradicted", "resolved", "2026-06-02T00:00:00+00:00"),
+        ("s1", "viste sig sand", "supported", "resolved", "2026-06-03T00:00:00+00:00"),
         ("a1", "stadig aktiv", None, "active", None),
     ])
     c.commit(); c.close()

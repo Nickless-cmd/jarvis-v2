@@ -113,15 +113,14 @@ def klang_primer() -> str:
 
 
 def _recent_texts(limit: int = 40) -> list[str]:
-    """Bedst-mulige kilde til hans seneste svar (visible runs). Self-safe → [] ved fejl."""
+    """Hans seneste svar fra chat_messages (role=assistant). Self-safe → [] ved fejl."""
     try:
-        from core.services.visible_runs import recent_visible_answers
-        return [str(t) for t in (recent_visible_answers(limit=limit) or []) if t]
-    except Exception:
-        pass
-    try:
-        from core.runtime.db import get_recent_assistant_texts
-        return [str(t) for t in (get_recent_assistant_texts(limit=limit) or []) if t]
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT content FROM chat_messages WHERE role='assistant' ORDER BY id DESC LIMIT ?",
+                (int(limit),)).fetchall()
+        return [str(r["content"]) for r in rows if r and r["content"]]
     except Exception:
         return []
 

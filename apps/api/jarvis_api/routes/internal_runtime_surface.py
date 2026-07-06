@@ -70,6 +70,11 @@ def _soul() -> dict:
     return build_soul_digest()
 
 
+def _dark_products() -> dict:
+    from core.services.central_dark_products_digest import build_dark_products_digest
+    return build_dark_products_digest()
+
+
 def _light(surface: dict) -> dict:
     """§24.4-reduktion: udled KUN skalarer + længder fra en fuld surface.
 
@@ -131,6 +136,7 @@ _BUILDERS: dict[str, Callable[[], dict]] = {
     "world_model": _world_model,
     "inner_life": _inner_life,
     "soul": _soul,
+    "dark_products": _dark_products,
     "open_loops": _open_loops,
     "runtime_awareness": _runtime_awareness,
     "runtime_self_knowledge": _runtime_self_knowledge,

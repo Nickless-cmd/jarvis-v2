@@ -505,6 +505,63 @@ async def get_soul() -> dict:
     return {"signals": signals, "live_count": live_count, "total": total}
 
 
+# Dark-products: mørkt daemon-PRODUKT → dets NATURLIGE cluster. Deres LLM-egress
+# er allerede observeret (daemon_llm → central_llm_egress), men produktet selv
+# har aldrig nået Centralen. (signal-navn → (cluster, nerve, learn_key)).
+_DARK_ROUTES: dict[str, tuple[str, str, str]] = {
+    "apophenia": ("integrity", "apophenia", "integrity:apophenia"),
+    "dream_consolidation": ("cognition", "dream_consolidation", "cognition:dream_consolidation"),
+    "deep_reflection": ("cognition", "deep_reflection", "cognition:deep_reflection"),
+    "semantic_memory": ("memory", "semantic", "memory:semantic"),
+    "rule_engine": ("governance", "rule_engine", "governance:rule_engine"),
+    "voice_daemon": ("channel", "voice", "channel:voice"),
+}
+
+
+@router.get("/dark-products")
+async def get_dark_products() -> dict:
+    """Projicér mørke daemon-PRODUKTER ind i Centralen som nerver.
+
+    Mønster-skepsis (apophenia), drøm-konsolidering, dyb refleksion, semantisk
+    hukommelse, regel-motor, stemme — daemons hvis LLM-egress allerede er
+    observeret, men hvis faktiske produkt aldrig nåede Centralen. Hver absorbes
+    i sin NATURLIGE cluster (integrity/cognition/memory/governance/channel).
+
+    Owner-gated. Self-safe: digestet kaster aldrig; hver signal-absorb i eget
+    try/except. §24.4: KUN kompakt liveness+count pr. signal — aldrig rå tekst.
+    """
+    require_central_owner()
+
+    from core.services.central_runtime_proxy import proxy_or_local
+    from core.services.central_dark_products_digest import build_dark_products_digest
+
+    try:
+        digest = proxy_or_local("dark_products", build_dark_products_digest)
+    except Exception:
+        digest = {}
+    if not isinstance(digest, dict):
+        digest = {}
+
+    signals = digest.get("signals") or {}
+    if not isinstance(signals, dict):
+        signals = {}
+    live_count = digest.get("live_count") or 0
+    total = digest.get("total") or 0
+
+    # Absorbér HVER signal i sin naturlige cluster (trace+flag+læring). Self-safe.
+    for name, sig in signals.items():
+        route = _DARK_ROUTES.get(name)
+        if route is None:
+            continue
+        cluster, nerve, learn_key = route
+        try:
+            absorb(cluster, nerve, sig, learn_key=learn_key)
+        except Exception:
+            pass
+
+    return {"signals": signals, "live_count": live_count, "total": total}
+
+
 @router.get("/execution")
 async def get_execution() -> dict:
     """Projicér visible-execution-config (whitelisted flags) + absorbér liveness.

@@ -1584,6 +1584,30 @@ class CentralHud(App):
                 cnt = int(sec.get("count") or 0)
                 lines.append(f"  {dot} [{FGDIM}]{_esc(name)}[/] [{FG}]{cnt}[/]")
 
+        # -- mørke produkter — daemon-PRODUKTER (ikke bare egress) nu i nerve-
+        # systemet, hver i sin naturlige cluster. Reduceret: liveness+count.
+        try:
+            dark = datasource.dark_products(self._client) if self._client else {}
+        except Exception:
+            dark = {}
+        dark = dark or {}
+        dark_live = int(dark.get("live_count") or 0)
+        dark_total = int(dark.get("total") or 0)
+        lines += [
+            "",
+            f"[{CYAN} b]◈ MØRKE PRODUKTER — nu i nervesystemet[/]"
+            f"  [{FGDIM}]{dark_live}/{dark_total}[/]",
+        ]
+        dark_sections = dark.get("signals") or {}
+        if not dark_sections:
+            lines.append(f"  [{DIM}]— stille —[/]")
+        else:
+            for name, sec in sorted(dark_sections.items()):
+                sec = sec or {}
+                dot = (f"[{GREEN}]●[/]" if sec.get("liveness") else f"[{DIM}]○[/]")
+                cnt = int(sec.get("count") or 0)
+                lines.append(f"  {dot} [{FGDIM}]{_esc(name)}[/] [{FG}]{cnt}[/]")
+
         # -- memory-pipeline (A5) — always rendered, even if self is empty --
         try:
             mh = datasource.memory_health(self._client) if self._client else {}

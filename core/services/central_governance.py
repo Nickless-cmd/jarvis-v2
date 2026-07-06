@@ -337,9 +337,9 @@ def set_flag(key: str, value: Any, confirm: bool = False) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def record_mutation(area: str, key: str, value: Any) -> None:
-    """Registrér en governeret mutation som eventbus-event + Central-nerve.
+    """Registrér en governeret mutation som eventbus-event + Central-nerve + persistent ledger.
 
-    ``area`` = domænet (fx "governance", "healing"); ``key`` = flag-navn;
+    ``area`` = domænet (fx "governance", "healing", "breaker"); ``key`` = flag-navn;
     ``value`` = ny værdi. Self-safe.
     """
     try:
@@ -360,5 +360,11 @@ def record_mutation(area: str, key: str, value: Any) -> None:
             "key": key,
             "value": value,
         })
+    except Exception:
+        pass
+    # Persistent ledger (api-processens DB — overlever genstart, synlig på tværs).
+    try:
+        from core.runtime import db_governance_ledger
+        db_governance_ledger.record_mutation(area, key, value)
     except Exception:
         pass

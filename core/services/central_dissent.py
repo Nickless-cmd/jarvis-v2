@@ -15,7 +15,12 @@ from __future__ import annotations
 from typing import Any
 
 # Sikkerheds/håndhævede gates blokerer FAKTISK → deres ikke-grønne er ikke "tavse indsigelser".
-_ENFORCED = frozenset({"decision_gate", "self_review", "fact_gate", "verification", "cross_user_share"})
+# memory_promotion: YELLOW = "kø til review" (skriver IKKE auto) → blokerer faktisk, ligesom
+# de andre. At den ikke stod her var en overcounting bug (800 falske dissents, 6. jul 2026).
+_ENFORCED = frozenset({
+    "decision_gate", "self_review", "fact_gate", "verification", "cross_user_share",
+    "memory_promotion",
+})
 
 
 def _rows() -> list[dict[str, Any]]:

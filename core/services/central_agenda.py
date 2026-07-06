@@ -72,7 +72,7 @@ def _read_todos() -> list[dict[str, Any]]:
     try:
         from core.services.central_todo import build_todo
         items = build_todo(max_items=30) or []
-        return [{"text": str(t.get("text") or t.get("title") or "")[:160], "source": "todo"}
+        return [{"text": str(t.get("text") or t.get("title") or t.get("what") or "")[:160], "source": "todo"}
                 for t in items if isinstance(t, dict)][:10]
     except Exception:
         return []

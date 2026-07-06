@@ -474,5 +474,40 @@ async def account_erase(payload: dict = Body(default={})) -> dict[str, Any]:
     if not email or confirm != email:
         raise HTTPException(status_code=400, detail="Skriv din egen email for at bekræfte sletning")
     mode = str((payload or {}).get("mode") or "soft")
+
+    # SHADOW-observe (§28): route slette-beslutningen gennem delete_policy →
+    # cluster="mutation" (SECURITY-shadow) for cluster-tag + trace + fail-safe.
+    # HÅRDT INVARIANT: resultatet BRUGES IKKE — erase_user kører præcis som før,
+    # uanset verdict. Alt i try/except så observabiliteten aldrig kan kaste ind i
+    # den beskyttede slette-sti.
+    try:
+        from core.services.central_core import central
+        from core.services.delete_policy import resolve_delete_action
+        from core.services.gate_kernel import Decision, GateClass, Verdict
+
+        def _delete_shadow_fn(ctx: dict) -> Verdict:
+            action = resolve_delete_action(
+                role=str(ctx.get("role") or "owner"),
+                is_own_workspace=True,
+                gdpr_erasure=(str(ctx.get("mode")) == "hard"),
+            )
+            m = str(action.get("mode"))
+            dec = Decision.RED if m == "deny" else Decision.GREEN
+            return Verdict(
+                "delete_policy", dec,
+                str(action.get("reason") or ""),
+                action=("block" if m == "deny" else "none"),
+                klass=GateClass.SECURITY,
+                evidence={"mode": m, "confirmations": action.get("confirmations")},
+            )
+
+        central().decide(
+            "delete_policy",
+            {"role": str(row.get("role") or "owner"), "is_own_workspace": True, "mode": mode},
+            _delete_shadow_fn, cluster="mutation", klass=GateClass.SECURITY,
+        )
+    except Exception:
+        pass  # ren observabilitet — må ALDRIG påvirke slette-stien
+
     from core.services.data_erasure import erase_user
     return await asyncio.to_thread(erase_user, uid, mode=mode, actor="self")

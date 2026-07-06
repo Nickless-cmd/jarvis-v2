@@ -323,6 +323,42 @@ def _process_visible_assistant_turn(payload: dict) -> None:
     # Synthetic turn_id stable for this assistant message
     turn_id = f"auto-{message_id or datetime.now(UTC).strftime('%Y%m%dT%H%M%S')}"
 
+    # SHADOW-observe (§28): route den inferred memory-write gennem
+    # memory_write_policy → cluster="memory" (COGNITIVE-shadow) for cluster-tag +
+    # trace + fail-safe. HÅRDT INVARIANT: resultatet BRUGES IKKE — remember_this
+    # nedenfor lagrer præcis som før, uanset verdict. Alt i try/except.
+    try:
+        from core.services.central_core import central
+        from core.services.gate_kernel import Decision, GateClass, Verdict
+        from core.services.memory_write_policy import evaluate_write
+
+        _mem_key = f"{result.get('domain') or 'general'}:{turn_id}"
+        _mem_content = f"{result.get('title') or ''}\n{result.get('content') or ''}".strip()
+        _mem_conf = float(result.get("importance", 50)) / 100.0
+
+        def _memory_shadow_fn(ctx: dict) -> Verdict:
+            pd = evaluate_write(
+                key=str(ctx.get("key") or ""),
+                content=str(ctx.get("content") or ""),
+                confidence=ctx.get("confidence"),
+                write_reason="inferred",
+            )
+            dec = Decision.GREEN if pd.decision == "allowed" else Decision.YELLOW
+            return Verdict(
+                "memory_write_policy", dec, str(pd.reason or ""),
+                action=("none" if pd.decision == "allowed" else "warn"),
+                klass=GateClass.COGNITIVE,
+                evidence={"decision": pd.decision, "queue_id": pd.queue_id},
+            )
+
+        central().decide(
+            "memory_write_policy",
+            {"key": _mem_key, "content": _mem_content, "confidence": _mem_conf},
+            _memory_shadow_fn, cluster="memory", klass=GateClass.COGNITIVE,
+        )
+    except Exception:
+        pass  # ren observabilitet — må ALDRIG påvirke memory-store-stien
+
     try:
         from core.tools.jarvis_brain_tools import remember_this
         outcome = remember_this(

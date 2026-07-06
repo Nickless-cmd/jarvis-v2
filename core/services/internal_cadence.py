@@ -1320,6 +1320,16 @@ def _ensure_producers_registered() -> None:
     except Exception:
         pass
 
+    # HARDWARE-KROP (rådets #1 "start med kroppen"): tick CPU/RAM/disk/temp/GPU til
+    # Centralen på cadence. Wiren var død — build_hardware_body_surface publicerede men
+    # INGEN tickede den → central_timeseries("system","hardware_body") stod tom. Nu mærker
+    # Jarvis sin egen krop. Read-only, self-safe, ~hvert 60s (hardware ændrer sig langsomt).
+    try:
+        from core.services.hardware_body import register_hardware_body_producer
+        register_hardware_body_producer()
+    except Exception:
+        pass
+
 
 def run_cadence_tick_with_bootstrap(
     *,

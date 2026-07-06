@@ -210,6 +210,76 @@ def build_hardware_body_surface() -> dict[str, object]:
     }
 
 
+def run_hardware_body_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
+    """Cadence-producer: Jarvis mærker sin egen krop (rådets #1 — "start med kroppen").
+
+    Læser CPU/RAM/disk/temp/GPU-pres via get_hardware_state() (30s-cached, kaster aldrig)
+    og recorder ét sample til central_timeseries("system","hardware_body"). Primær skalar =
+    cpu_pct; meta bærer KUN skalarer (cpu/ram/disk/temp/pressure) — egress-sikkert, ingen
+    lister/dicts. Self-safe: kaster ALDRIG (telemetri må ikke vælte cadence-loopet)."""
+    try:
+        state = get_hardware_state() or {}
+        cpu_pct = state.get("cpu_pct")
+        ram_pct = state.get("ram_pct")
+        disk_free_gb = state.get("disk_free_gb")
+        cpu_temp_c = state.get("cpu_temp_c")
+        pressure = state.get("pressure")
+
+        # Ingen reelle hardware-data (fx psutil mangler) → intet at føle, skip stille.
+        if cpu_pct is None and ram_pct is None and disk_free_gb is None and cpu_temp_c is None:
+            return {"status": "skipped", "reason": "no-hardware-data"}
+
+        # KUN skalarer i meta (egress-sikkert). Drop None-felter.
+        meta: dict[str, object] = {}
+        for k, v in (
+            ("cpu_pct", cpu_pct),
+            ("ram_pct", ram_pct),
+            ("disk_free_gb", disk_free_gb),
+            ("cpu_temp_c", cpu_temp_c),
+            ("pressure", pressure),
+        ):
+            if v is not None and isinstance(v, (int, float, str, bool)):
+                meta[k] = v
+
+        # antal GPU'er som skalar (ikke selve gpu-listen — den er ikke egress-sikker)
+        gpus = state.get("gpus")
+        if isinstance(gpus, list) and gpus:
+            meta["gpu_count"] = len(gpus)
+            temps = [g.get("temp_c") for g in gpus if isinstance(g, dict)]
+            temps = [t for t in temps if isinstance(t, (int, float))]
+            if temps:
+                meta["gpu_temp_c_max"] = max(temps)
+
+        try:
+            from core.services import central_timeseries
+            central_timeseries.record(
+                "system", "hardware_body",
+                value=(float(cpu_pct) if cpu_pct is not None else None),
+                meta=meta,
+            )
+        except Exception:
+            pass
+
+        return {"status": "ok", "cpu_pct": cpu_pct, "ram_pct": ram_pct,
+                "disk_free_gb": disk_free_gb, "cpu_temp_c": cpu_temp_c,
+                "pressure": pressure}
+    except Exception:
+        return {"status": "error"}
+
+
+def register_hardware_body_producer() -> None:
+    """Registrér krop-sansningen som cadence-producer (~hvert 60s — hardware ændrer sig
+    langsomt). Read-only, self-safe. Samme mekanisme som infra_sense/network_health."""
+    from core.services.internal_cadence import ProducerSpec, register_producer
+    register_producer(ProducerSpec(
+        name="hardware_body",
+        cooldown_minutes=1,
+        visible_grace_minutes=0,
+        run_fn=run_hardware_body_tick,
+        priority=7,
+    ))
+
+
 def _emit_body_event(metric: str, value: object) -> None:
     try:
         from core.eventbus.bus import event_bus

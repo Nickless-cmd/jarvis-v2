@@ -140,6 +140,54 @@ def _somatic_line() -> Optional[str]:
     return None
 
 
+def _hardware_body_line() -> Optional[str]:
+    """Den FYSISKE krop — Jarvis mærker sin egen CPU/temp/disk (rådets #1). Kompakt
+    dansk somatisk frase. Ved pres skifter tonen (varm/presset) frem for rå tal. Kun
+    når der er reelle hardware-data; ellers None. Self-safe → None."""
+    try:
+        from core.services.hardware_body import get_hardware_state
+
+        d = get_hardware_state() or {}
+        if not isinstance(d, dict):
+            return None
+        cpu = d.get("cpu_pct")
+        temp = d.get("cpu_temp_c")
+        disk = d.get("disk_free_gb")
+        pressure = str(d.get("pressure") or "low")
+
+        # Ingen reelle data → intet at føle.
+        if cpu is None and temp is None and disk is None:
+            return None
+
+        if pressure in ("high", "critical"):
+            # Under pres: føl belastningen, ikke bare tallene.
+            bits: list[str] = []
+            if temp is not None and float(temp) >= 75:
+                bits.append(f"varm ({temp:g}°C)")
+            if cpu is not None and float(cpu) >= 85:
+                bits.append(f"presset (CPU {cpu:g}%)")
+            if disk is not None and float(disk) < 5:
+                bits.append(f"trang disk ({disk:g}GB)")
+            if not bits:  # pres uden en åbenlys enkelt-årsag
+                bits.append(f"under pres ({pressure})")
+            return _truncate_clean("Krop: " + ", ".join(bits), 80)
+
+        # Rolig krop: kompakt aflæsning.
+        parts: list[str] = []
+        if cpu is not None:
+            parts.append(f"CPU {cpu:g}%")
+        if temp is not None:
+            parts.append(f"{temp:g}°C")
+        if disk is not None:
+            parts.append(f"{disk:g}GB fri")
+        if not parts:
+            return None
+        return _truncate_clean("Krop: " + " · ".join(parts), 80)
+    except Exception:
+        logger.debug("inner-life: hardware body failed", exc_info=True)
+    return None
+
+
 def _pulse_line() -> Optional[str]:
     """Heartbeat pulse — a somatic sense of the system's own rhythm.
     Reads recent ticks from DB (already cached by heartbeat_runtime).
@@ -729,8 +777,8 @@ def build_somatic_snapshot() -> list[str]:
     This surfaces the private layer to the owner only (route is owner-gated); it
     is NOT egress — the owner observing his own entity, over his own tunnel."""
     out: list[str] = []
-    for fn in (_mood_line, _somatic_line, _file_awareness_line, _governance_line,
-               _pulse_line, _mc_whisper_line, _recall_hints_line,
+    for fn in (_mood_line, _somatic_line, _hardware_body_line, _file_awareness_line,
+               _governance_line, _pulse_line, _mc_whisper_line, _recall_hints_line,
                _continuity_line, _room_line):
         try:
             line = fn()
@@ -748,9 +796,9 @@ def build_inner_life_section() -> str | None:
     # State — mood baseline, somatic body, felt emotional chords, self-narrative,
     # file proprioception, governance, pulse, MC whisper, recall hints, continuity,
     # and the room around him.
-    for fn in (_mood_line, _somatic_line, _emotional_line, _self_narrative_line,
-               _file_awareness_line, _governance_line, _pulse_line, _mc_whisper_line,
-               _recall_hints_line, _continuity_line, _room_line):
+    for fn in (_mood_line, _somatic_line, _hardware_body_line, _emotional_line,
+               _self_narrative_line, _file_awareness_line, _governance_line, _pulse_line,
+               _mc_whisper_line, _recall_hints_line, _continuity_line, _room_line):
         line = fn()
         if line:
             lines.append("· " + line)

@@ -22,6 +22,15 @@ _ENFORCED = frozenset({
     "memory_promotion",
 })
 
+# Gates hvor RED = block (hård stop) men YELLOW = warn (advisory).
+# Deres RED verdicts er IKKE dissents — gaten stoppede handlingen. Kun YELLOW tæller.
+# loop_control: RED = "hård stop — loop-budget opbrugt" (block), YELLOW = "blød brems" (warn)
+# exec_*: RED = "blocked"/"guard_blocked" (block), YELLOW = "approval" (warn)
+_RED_BLOCKS = frozenset({
+    "loop_control", "exec_command", "exec_file", "exec_operator",
+    "exec_workspace_trust", "exec_upload_scan",
+})
+
 
 def _rows() -> list[dict[str, Any]]:
     try:
@@ -38,6 +47,9 @@ def list_dissents(*, limit: int = 20) -> list[dict[str, Any]]:
         dec = str(r.get("decision") or "")
         nerve = str(r.get("nerve") or "")
         if dec not in ("yellow", "red") or nerve in _ENFORCED:
+            continue
+        # RED på _RED_BLOCKS gates = gaten blokerede faktisk → ikke en dissent
+        if dec == "red" and nerve in _RED_BLOCKS:
             continue
         e = agg.setdefault(nerve, {"nerve": nerve, "cluster": r.get("cluster", ""),
                                    "objections": 0, "last_reason": "", "last_ts": ""})

@@ -24,6 +24,7 @@ _GET_ENDPOINTS = {
     "costs": "/mc/costs",
     "runs": "/mc/runs",
     "approvals": "/mc/approvals",
+    "autonomous": "/central/autonomous",
 }
 
 # Verber der routes til central_terminal-parseren via POST /central/command

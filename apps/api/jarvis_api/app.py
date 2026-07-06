@@ -574,6 +574,8 @@ def create_app() -> FastAPI:
     app.include_router(_central_feel.router)
     from apps.api.jarvis_api.routes import central_affect as _central_affect
     app.include_router(_central_affect.router)
+    from apps.api.jarvis_api.routes import central_autonomous as _central_autonomous
+    app.include_router(_central_autonomous.router)
     from apps.api.jarvis_api.routes import internal_runtime_surface as _irs
     app.include_router(_irs.router)
     from apps.api.jarvis_api.routes import central_self as _central_self

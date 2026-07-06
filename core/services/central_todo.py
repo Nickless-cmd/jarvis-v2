@@ -30,7 +30,7 @@ def build_todo(*, max_items: int = 60) -> list[dict[str, Any]]:
     # 1. Severe uløste incidents (KRITISK)
     try:
         from core.runtime.db_central_incidents import list_central_incidents
-        for inc in list_central_incidents(limit=30, min_severity="severe"):
+        for inc in list_central_incidents(limit=30, min_severity="severe", unresolved_only=True):
             items.append(_item(_P_CRITICAL, "incident",
                                f"{inc.get('cluster')}/{inc.get('nerve')}: {inc.get('message')}",
                                cluster=inc.get("cluster"), incident_id=inc.get("id")))

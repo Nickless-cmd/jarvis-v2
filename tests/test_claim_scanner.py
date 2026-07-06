@@ -187,11 +187,12 @@ def test_extract_number_no_number():
 
 # ── _repair_claim ────────────────────────────────────────────────────
 
-def test_repair_time_adds_pin_reference():
-    """Repairing a time claim should reference the Time Pin."""
+def test_repair_time_returns_unchanged():
+    """2026-07-06: time repair no longer modifies inline — returns line unchanged.
+    Corrections are collected by scan_response() and appended as footnotes."""
     result = _repair_claim("klokken 14:32", "⏰ tid", "klokken 14:32")
-    # Should contain reference to the pin
-    assert "Time Pin" in result or "kl." in result or "se" in result
+    # Time category now returns the line unchanged (no inline replacement)
+    assert result == "klokken 14:32"
 
 
 def test_repair_system_marks_uncertain():

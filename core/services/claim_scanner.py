@@ -216,28 +216,42 @@ def _repair_time_claim(line: str, matched_text: str) -> str:
     return line.replace(matched_text, f"det aktuelle klokkeslæt")
 
 
+# 2026-07-06 (Bjørn): time corrections skal IKKE indsættes inline i teksten.
+# Det skaber støj og kommunikations-ledgeren tæller det som gentagelser (×47).
+# I stedet: saml korrektioner og appendér dem som en fodnote i bunden.
+# Desuden: spring planlagte/fremtidige tidspunkter over ("kl. 10" i en
+# reminder-kontekst er ikke et krav om hvad klokken er nu).
+
+# Kontekst-ord der indikerer planlagt tid, ikke "hvad er klokken"
+_PLANNED_TIME_CONTEXT = re.compile(
+    r'\b(fyrer|reminder|planlagt|kommende|i morgen|senere|schedule|'
+    r'wakeup|væk|vågn|kl\.?\s+\d{2}:\d{2}\s+(dk|dansk)|'
+    r'dansk tid|om\s+\d+|timer|minutter)',
+    re.IGNORECASE,
+)
+
+
+def _is_planned_time_context(line: str, matched_text: str) -> bool:
+    """True hvis linjen indeholder ord der indikerer at tidspunktet er
+    planlagt/fremtidigt — ikke et krav om hvad klokken er lige nu."""
+    # Først check: er der "lige nu" / "aktuelle" i linjen? → aktuel tid, ikke planlagt
+    _NOW_CONTEXT = re.compile(r'\b(lige nu|aktuelle?|current|right now)\b', re.IGNORECASE)
+    if _NOW_CONTEXT.search(line):
+        return False  # det er et krav om aktuel tid → korriger
+    # Derefter: check for planlagt-tid kontekst-ord
+    if _PLANNED_TIME_CONTEXT.search(line):
+        return True
+    return False
+
+
 def _repair_claim(line: str, category: str, matched_text: str) -> str:
     """Apply category-specific repair to a line."""
     if category == "⏰ tid":
-        # 2026-05-22 (Claude): repair now writes the actual correct local
-        # time from the Time Pin, not a "???" placeholder. The pin section
-        # already shows it; here we materialise it inline so the repaired
-        # response is immediately readable without scrolling.
-        from datetime import UTC, datetime as _dt
-        from zoneinfo import ZoneInfo
-        try:
-            local = _dt.now(UTC).astimezone(ZoneInfo("Europe/Copenhagen"))
-            corrected = local.strftime("%H:%M")
-            return line.replace(
-                matched_text,
-                f"[kl. {corrected} — korrigeret fra hallucineret '{matched_text}']",
-            )
-        except Exception:
-            now_str = _now_as_pin_string()
-            return line.replace(
-                matched_text,
-                f"[kl. ??? — se ⏰ Time Pin: {now_str}]",
-            )
+        # 2026-07-06 (Bjørn): IKKE inline replacement. Returnér linjen uændret.
+        # Korrektionen samles af scan_response() og appenderes som fodnote.
+        # Kun aktuelle-tid-påstande ("klokken er 14:32") korrigeres —
+        # planlagte tidspunkter ("kl. 10 dansk tid") springes over.
+        return line
 
     if category == "⚙️ system":
         # 2026-05-22 (Claude): drop double "host:" prefix. The verifier
@@ -360,6 +374,7 @@ def scan_response(text: str) -> str:
     # Flatten — process the whole text as one block, line by line
     lines = text.split("\n")
     repaired_lines: list[str] = []
+    time_corrections: list[str] = []  # 2026-07-06: samle tidskorrektioner til fodnote
     total_scans = 0
     total_repairs = 0
 
@@ -378,12 +393,36 @@ def scan_response(text: str) -> str:
             verifier = _VERIFIERS.get(category)
             verified = verifier(matched_text) if verifier else True
             if not verified:
-                line = _repair_claim(line, category, matched_text)
-                total_repairs += 1
+                if category == "⏰ tid":
+                    # 2026-07-06 (Bjørn): spring planlagte tidspunkter over
+                    if _is_planned_time_context(line, matched_text):
+                        continue
+                    # Saml korrektion til fodnote — ingen inline replacement
+                    from datetime import UTC, datetime as _dt
+                    from zoneinfo import ZoneInfo
+                    try:
+                        local = _dt.now(UTC).astimezone(ZoneInfo("Europe/Copenhagen"))
+                        corrected = local.strftime("%H:%M")
+                        time_corrections.append(
+                            f"✋ Tidsangivelse uverificeret: '{matched_text}' → kl. {corrected}"
+                        )
+                    except Exception:
+                        time_corrections.append(
+                            f"✋ Tidsangivelse uverificeret: '{matched_text}'"
+                        )
+                    total_repairs += 1
+                else:
+                    line = _repair_claim(line, category, matched_text)
+                    total_repairs += 1
 
         repaired_lines.append(line)
 
     result = "\n".join(repaired_lines)
+
+    # 2026-07-06 (Bjørn): appendér tidskorrektioner som fodnote i bunden
+    if time_corrections:
+        result = result.rstrip() + "\n\n" + "\n".join(time_corrections)
+
     # 🔗 Commit-hash-flag (flag-only) over hele teksten til sidst.
     result = flag_unknown_commit_hashes(result)
 

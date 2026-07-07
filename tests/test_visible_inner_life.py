@@ -55,3 +55,27 @@ def test_truncate_clean_cuts_on_boundary_not_mid_word():
     # sætnings-grænse foretrækkes
     s = _truncate_clean("Første sætning her. Anden sætning som ryger.", 25)
     assert s == "Første sætning her."
+
+
+# --- 2026-07-07: change-driven mc_whisper (repetition-source fix) ---
+
+
+def test_mc_whisper_change_driven(monkeypatch):
+    """Central-status skal surface KUN når den ændrer sig — ikke hver tur (workspace-støj)."""
+    import core.services.visible_inner_life as vil
+    vil._LAST_MC_WHISPER = None
+    snaps = {"s": {"status": "yellow", "incidents": [1] * 12, "open_breakers": [], "anomalies": {}}}
+    monkeypatch.setattr("core.services.central_realtime.realtime_snapshot",
+                        lambda **k: snaps["s"])
+    first = vil._mc_whisper_line()
+    assert first and "12 incidents" in first          # første gang: surface
+    assert vil._mc_whisper_line() is None              # uændret: tavs
+    # ændret tal → surface igen
+    snaps["s"] = {"status": "yellow", "incidents": [1] * 5, "open_breakers": [], "anomalies": {}}
+    third = vil._mc_whisper_line()
+    assert third and "5 incidents" in third
+    # green nulstiller → næste afvigelse er frisk
+    snaps["s"] = {"status": "green"}
+    assert vil._mc_whisper_line() is None
+    snaps["s"] = {"status": "yellow", "incidents": [1] * 5, "open_breakers": [], "anomalies": {}}
+    assert vil._mc_whisper_line() is not None          # frisk efter green-reset

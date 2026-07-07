@@ -224,18 +224,29 @@ def _pulse_line() -> Optional[str]:
     return None
 
 
+# Sidst-surfacede central-status-streng (change-driven whisper, 2026-07-07). Per-proces.
+_LAST_MC_WHISPER: Optional[str] = None
+
+
 def _mc_whisper_line() -> Optional[str]:
     """Background noise from Mission Control — only anomalies and incidents that
     deviate from baseline. Reads from central_realtime.realtime_snapshot() which
-    is already cached (TTL 5s). No new DB calls, no cache to break."""
+    is already cached (TTL 5s). No new DB calls, no cache to break.
+
+    CHANGE-DRIVEN (2026-07-07, Bjørn): surface KUN når central-status-strengen ÆNDRER
+    sig — ikke hver tur. Uændrede tal ('12 incidents') hver tur fodrer workspacet med
+    lav-ordens støj → Jarvis papegøjede dem (kommunikations-ledger ×12). Jf. Anthropics
+    global-workspace: hubben bær høj-ordens ræsonnement, ikke gentagne rå-tal."""
+    global _LAST_MC_WHISPER
     try:
         from core.services.central_realtime import realtime_snapshot
         snap = realtime_snapshot(trace_limit=0)
         if not snap:
-            return None
+            return None  # transient — behold sidste whisper-state
         status = str(snap.get("status") or "?")
         if status == "green":
-            return None  # baseline — no whisper needed
+            _LAST_MC_WHISPER = None  # baseline — nulstil så næste afvigelse er frisk
+            return None
         # Collect deviations
         parts: list[str] = []
         anomalies = snap.get("anomalies") or {}
@@ -249,8 +260,13 @@ def _mc_whisper_line() -> Optional[str]:
         if breakers:
             parts.append(f"{len(breakers)} åbne breakers")
         if not parts:
+            _LAST_MC_WHISPER = None
             return None
-        return f"Central {status}: {'; '.join(parts)}"
+        whisper = f"Central {status}: {'; '.join(parts)}"
+        if whisper == _LAST_MC_WHISPER:
+            return None  # uændret siden sidst — fyld ikke workspacet med gentaget tal
+        _LAST_MC_WHISPER = whisper
+        return whisper
     except Exception:
         logger.debug("inner-life: mc_whisper failed", exc_info=True)
     return None

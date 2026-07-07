@@ -353,6 +353,20 @@ def isolated_runtime(
         # this must be reloaded AFTER core.runtime.db and BEFORE prompt_contract.
         "core.services.prompt_support_signals",
         "core.services.prompt_contract",
+        # Boy-scout split (2026-07-07): visible_model was split into a facade +
+        # sibling submodules. Mutable module-level state that HEAD kept in the
+        # single module now lives in _adapters (_GITHUB_VISIBLE_COOLDOWN_UNTIL /
+        # _READINESS_PROBE_CACHE). HEAD's isolated_runtime reset that state every
+        # test by reloading visible_model (its `X = {}` re-ran). After the split
+        # those dicts live in the never-reloaded _adapters module → cross-test
+        # cooldown/probe pollution (test_github_visible_execution_readiness_shows_
+        # cooldown flips flaky by order). Reload _adapters FIRST so its state
+        # resets; the facade reload below then re-imports the fresh objects.
+        # IMPORTANT: do NOT reload visible_model_types — its @dataclass value
+        # classes are the process-global isinstance anchor (see top of file); a
+        # fresh _adapters re-imports the SAME (unreloaded) value classes, so
+        # class identity stays stable across the module boundary.
+        "core.services.visible_model_adapters",
         "core.services.visible_model",
         "core.services.cheap_provider_runtime",
         "core.services.heartbeat_runtime",

@@ -12,7 +12,6 @@ Flyttes når de tilhørende _ensure_*-funcs flyttes til submoduler.
 """
 from __future__ import annotations
 
-import json as _json
 import logging as _logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
@@ -437,86 +436,14 @@ def init_db() -> None:
             )
             """
         )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS runtime_action_outcomes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                outcome_id TEXT NOT NULL UNIQUE,
-                action_id TEXT NOT NULL,
-                decision_mode TEXT NOT NULL,
-                decision_reason TEXT NOT NULL DEFAULT '',
-                decision_score REAL NOT NULL DEFAULT 0,
-                payload_json TEXT NOT NULL DEFAULT '{}',
-                result_status TEXT NOT NULL,
-                result_summary TEXT NOT NULL DEFAULT '',
-                result_json TEXT NOT NULL DEFAULT '{}',
-                recorded_at TEXT NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_runtime_action_outcomes_lookup
-            ON runtime_action_outcomes(action_id, recorded_at DESC)
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS runtime_learning_signals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                signal_id TEXT NOT NULL UNIQUE,
-                outcome_id TEXT NOT NULL,
-                source_action_id TEXT NOT NULL,
-                target_action_id TEXT NOT NULL DEFAULT '',
-                target_family TEXT NOT NULL DEFAULT '',
-                target_domain TEXT NOT NULL DEFAULT '',
-                signal_key TEXT NOT NULL,
-                signal_weight REAL NOT NULL DEFAULT 0,
-                signal_count INTEGER NOT NULL DEFAULT 1,
-                metadata_json TEXT NOT NULL DEFAULT '{}',
-                recorded_at TEXT NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_runtime_learning_signals_lookup
-            ON runtime_learning_signals(signal_key, target_family, target_action_id, recorded_at DESC)
-            """
-        )
-        try:
-            conn.execute(
-                """
-                ALTER TABLE runtime_learning_signals
-                ADD COLUMN target_domain TEXT NOT NULL DEFAULT ''
-                """
-            )
-        except sqlite3.OperationalError:
-            pass
+        from core.runtime.db_runtime_signals import ensure_runtime_signals_tables
+        ensure_runtime_signals_tables(conn)
         from core.runtime.db_runtime_tasks import ensure_runtime_tasks_tables
         ensure_runtime_tasks_tables(conn)
         from core.runtime.db_runtime_flows import ensure_runtime_flows_tables
         ensure_runtime_flows_tables(conn)
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS runtime_hook_dispatches (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                event_id INTEGER NOT NULL UNIQUE,
-                event_kind TEXT NOT NULL,
-                status TEXT NOT NULL,
-                task_id TEXT NOT NULL DEFAULT '',
-                flow_id TEXT NOT NULL DEFAULT '',
-                summary TEXT NOT NULL DEFAULT '',
-                created_at TEXT NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_runtime_hook_dispatches_status
-            ON runtime_hook_dispatches(status, id DESC)
-            """
-        )
+        from core.runtime.db_runtime_hooks import ensure_runtime_hooks_tables
+        ensure_runtime_hooks_tables(conn)
         from core.runtime.db_runtime_browser import ensure_runtime_browser_tables
         ensure_runtime_browser_tables(conn)
         conn.execute(
@@ -865,40 +792,8 @@ def init_db() -> None:
             )
             """
         )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS private_reflective_selections (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                signal_id TEXT NOT NULL UNIQUE,
-                source TEXT NOT NULL,
-                run_id TEXT NOT NULL UNIQUE,
-                work_id TEXT NOT NULL,
-                selection_kind TEXT NOT NULL,
-                reinforce TEXT NOT NULL DEFAULT '',
-                reconsider TEXT NOT NULL DEFAULT '',
-                fade TEXT NOT NULL DEFAULT '',
-                identity_relevance TEXT NOT NULL DEFAULT '',
-                confidence TEXT NOT NULL DEFAULT '',
-                created_at TEXT NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS private_development_states (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                state_id TEXT NOT NULL UNIQUE,
-                source TEXT NOT NULL,
-                retained_pattern TEXT NOT NULL,
-                preferred_direction TEXT NOT NULL,
-                recurring_tension TEXT NOT NULL,
-                identity_thread TEXT NOT NULL,
-                confidence TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
+        from core.runtime.db_private_signals import ensure_private_signals_tables
+        ensure_private_signals_tables(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS private_states (
@@ -916,23 +811,6 @@ def init_db() -> None:
         )
         conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS private_temporal_promotion_signals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                signal_id TEXT NOT NULL UNIQUE,
-                source TEXT NOT NULL,
-                run_id TEXT NOT NULL UNIQUE,
-                work_id TEXT NOT NULL,
-                rhythm_state TEXT NOT NULL,
-                rhythm_window TEXT NOT NULL,
-                promotion_target TEXT NOT NULL,
-                promotion_action TEXT NOT NULL,
-                promotion_confidence TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
             CREATE TABLE IF NOT EXISTS private_promotion_decisions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 decision_id TEXT NOT NULL UNIQUE,
@@ -942,23 +820,6 @@ def init_db() -> None:
                 promotion_target TEXT NOT NULL,
                 promotion_action TEXT NOT NULL,
                 promotion_scope TEXT NOT NULL,
-                confidence TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS private_retained_memory_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                record_id TEXT NOT NULL UNIQUE,
-                source TEXT NOT NULL,
-                run_id TEXT NOT NULL UNIQUE,
-                work_id TEXT NOT NULL,
-                retained_value TEXT NOT NULL,
-                retained_kind TEXT NOT NULL,
-                retention_scope TEXT NOT NULL,
-                retention_horizon TEXT NOT NULL DEFAULT 'short-term',
                 confidence TEXT NOT NULL,
                 created_at TEXT NOT NULL
             )
@@ -1066,37 +927,17 @@ def init_db() -> None:
             ON approval_feedback_log(recorded_at DESC)
             """
         )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS bounded_action_continuity_state (
-                id INTEGER PRIMARY KEY CHECK (id = 1),
-                continuity_id TEXT NOT NULL,
-                action_continuity_state TEXT NOT NULL,
-                last_action_type TEXT NOT NULL,
-                last_action_target TEXT NOT NULL,
-                last_action_summary TEXT NOT NULL,
-                last_action_outcome TEXT NOT NULL,
-                last_action_at TEXT NOT NULL,
-                action_mode TEXT NOT NULL,
-                read_only INTEGER NOT NULL DEFAULT 1,
-                mutation_permitted INTEGER NOT NULL DEFAULT 0,
-                followup_state TEXT NOT NULL,
-                followup_hint TEXT NOT NULL,
-                post_action_understanding TEXT NOT NULL,
-                post_action_concern TEXT NOT NULL,
-                confidence TEXT NOT NULL,
-                source_contributors TEXT NOT NULL DEFAULT '',
-                boundary TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
+        from core.runtime.db_bounded_action import ensure_bounded_action_tables
+        ensure_bounded_action_tables(conn)
         from core.runtime.db_private_notes import (
             _ensure_private_inner_note_columns,
             _ensure_enriched_columns,
         )
         _ensure_private_inner_note_columns(conn)
         _ensure_enriched_columns(conn)
+        from core.runtime.db_private_signals import (
+            _ensure_private_retained_memory_record_columns,
+        )
         _ensure_private_retained_memory_record_columns(conn)
         _ensure_capability_invocation_approval_columns(conn)
         _ensure_capability_approval_request_columns(conn)
@@ -1995,142 +1836,6 @@ def reject_runtime_initiative(
 # udskilt til db_autonomy.py (Boy Scout-reglen) og re-eksporteres i bunden.
 
 
-def _ensure_private_retained_memory_record_columns(conn: sqlite3.Connection) -> None:
-    columns = {
-        row["name"]
-        for row in conn.execute("PRAGMA table_info(private_retained_memory_records)")
-    }
-    if "retention_horizon" not in columns:
-        conn.execute(
-            """
-            ALTER TABLE private_retained_memory_records
-            ADD COLUMN retention_horizon TEXT NOT NULL DEFAULT 'short-term'
-            """
-        )
-
-
-def record_runtime_hook_dispatch(
-    *,
-    event_id: int,
-    event_kind: str,
-    status: str,
-    task_id: str = "",
-    flow_id: str = "",
-    summary: str = "",
-    created_at: str,
-) -> dict[str, object]:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO runtime_hook_dispatches (
-                event_id,
-                event_kind,
-                status,
-                task_id,
-                flow_id,
-                summary,
-                created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(event_id) DO UPDATE SET
-                event_kind = excluded.event_kind,
-                status = excluded.status,
-                task_id = excluded.task_id,
-                flow_id = excluded.flow_id,
-                summary = excluded.summary,
-                created_at = excluded.created_at
-            """,
-            (
-                int(event_id),
-                event_kind,
-                status,
-                task_id,
-                flow_id,
-                summary,
-                created_at,
-            ),
-        )
-        conn.commit()
-    dispatch = get_runtime_hook_dispatch(event_id)
-    if dispatch is None:
-        raise RuntimeError("runtime hook dispatch was not persisted")
-    return dispatch
-
-
-def get_runtime_hook_dispatch(event_id: int) -> dict[str, object] | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                event_id,
-                event_kind,
-                status,
-                task_id,
-                flow_id,
-                summary,
-                created_at
-            FROM runtime_hook_dispatches
-            WHERE event_id = ?
-            LIMIT 1
-            """,
-            (int(event_id),),
-        ).fetchone()
-    if row is None:
-        return None
-    return {
-        "event_id": int(row["event_id"]),
-        "event_kind": row["event_kind"],
-        "status": row["status"],
-        "task_id": row["task_id"],
-        "flow_id": row["flow_id"],
-        "summary": row["summary"],
-        "created_at": row["created_at"],
-    }
-
-
-def list_runtime_hook_dispatches(
-    *,
-    status: str | None = None,
-    limit: int = 20,
-) -> list[dict[str, object]]:
-    clauses: list[str] = []
-    params: list[object] = []
-    if status:
-        clauses.append("status = ?")
-        params.append(status)
-    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-    with connect() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT
-                event_id,
-                event_kind,
-                status,
-                task_id,
-                flow_id,
-                summary,
-                created_at
-            FROM runtime_hook_dispatches
-            {where_sql}
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (*params, max(limit, 1)),
-        ).fetchall()
-    return [
-        {
-            "event_id": int(row["event_id"]),
-            "event_kind": row["event_kind"],
-            "status": row["status"],
-            "task_id": row["task_id"],
-            "flow_id": row["flow_id"],
-            "summary": row["summary"],
-            "created_at": row["created_at"],
-        }
-        for row in rows
-    ]
-
-
 def recent_visible_work_units(limit: int = 5) -> list[dict[str, object]]:
     with connect() as conn:
         rows = conn.execute(
@@ -2169,67 +1874,6 @@ def recent_visible_work_units(limit: int = 5) -> list[dict[str, object]]:
         }
         for row in rows
     ]
-
-
-def recent_runtime_action_outcomes(limit: int = 10) -> list[dict[str, object]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                outcome_id,
-                action_id,
-                decision_mode,
-                decision_reason,
-                decision_score,
-                payload_json,
-                result_status,
-                result_summary,
-                result_json,
-                recorded_at
-            FROM runtime_action_outcomes
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (max(limit, 1),),
-        ).fetchall()
-    return [_runtime_action_outcome_from_row(row) for row in rows]
-
-
-def recent_runtime_learning_signals(limit: int = 25) -> list[dict[str, object]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                signal_id,
-                outcome_id,
-                source_action_id,
-                target_action_id,
-                target_family,
-                target_domain,
-                signal_key,
-                signal_weight,
-                signal_count,
-                metadata_json,
-                recorded_at
-            FROM runtime_learning_signals
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (max(limit, 1),),
-        ).fetchall()
-    return [_runtime_learning_signal_from_row(row) for row in rows]
-
-
-def update_private_retained_memory_record_enriched(
-    *, run_id: str, enriched_value: str
-) -> None:
-    """Replace template retained_value with LLM-enriched lesson text."""
-    with connect() as conn:
-        conn.execute(
-            "UPDATE private_retained_memory_records SET retained_value = ? WHERE run_id = ?",
-            (enriched_value[:200], run_id),
-        )
-        conn.commit()
 
 
 def record_private_self_model(
@@ -2311,214 +1955,6 @@ def get_private_self_model() -> dict[str, object] | None:
     }
 
 
-def record_private_reflective_selection(
-    *,
-    signal_id: str,
-    source: str,
-    run_id: str,
-    work_id: str,
-    selection_kind: str,
-    reinforce: str,
-    reconsider: str,
-    fade: str,
-    identity_relevance: str,
-    confidence: str,
-    created_at: str,
-) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO private_reflective_selections (
-                signal_id, source, run_id, work_id, selection_kind,
-                reinforce, reconsider, fade, identity_relevance, confidence, created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(run_id) DO UPDATE SET
-                signal_id=excluded.signal_id,
-                source=excluded.source,
-                work_id=excluded.work_id,
-                selection_kind=excluded.selection_kind,
-                reinforce=excluded.reinforce,
-                reconsider=excluded.reconsider,
-                fade=excluded.fade,
-                identity_relevance=excluded.identity_relevance,
-                confidence=excluded.confidence,
-                created_at=excluded.created_at
-            """,
-            (
-                signal_id,
-                source,
-                run_id,
-                work_id,
-                selection_kind,
-                reinforce,
-                reconsider,
-                fade,
-                identity_relevance,
-                confidence,
-                created_at,
-            ),
-        )
-        conn.commit()
-
-
-def recent_private_reflective_selections(limit: int = 5) -> list[dict[str, object]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                signal_id,
-                source,
-                run_id,
-                work_id,
-                selection_kind,
-                reinforce,
-                reconsider,
-                fade,
-                identity_relevance,
-                confidence,
-                created_at
-            FROM private_reflective_selections
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (max(limit, 1),),
-        ).fetchall()
-    return [
-        {
-            "signal_id": row["signal_id"],
-            "source": row["source"],
-            "run_id": row["run_id"],
-            "work_id": row["work_id"],
-            "selection_kind": row["selection_kind"],
-            "reinforce": row["reinforce"],
-            "reconsider": row["reconsider"],
-            "fade": row["fade"],
-            "identity_relevance": row["identity_relevance"],
-            "confidence": row["confidence"],
-            "created_at": row["created_at"],
-        }
-        for row in rows
-    ]
-
-
-def record_private_development_state(
-    *,
-    state_id: str,
-    source: str,
-    retained_pattern: str,
-    preferred_direction: str,
-    recurring_tension: str,
-    identity_thread: str,
-    confidence: str,
-    created_at: str,
-    updated_at: str,
-) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO private_development_states (
-                state_id, source, retained_pattern, preferred_direction,
-                recurring_tension, identity_thread, confidence, created_at, updated_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(state_id) DO UPDATE SET
-                source=excluded.source,
-                retained_pattern=excluded.retained_pattern,
-                preferred_direction=excluded.preferred_direction,
-                recurring_tension=excluded.recurring_tension,
-                identity_thread=excluded.identity_thread,
-                confidence=excluded.confidence,
-                created_at=excluded.created_at,
-                updated_at=excluded.updated_at
-            """,
-            (
-                state_id,
-                source,
-                retained_pattern,
-                preferred_direction,
-                recurring_tension,
-                identity_thread,
-                confidence,
-                created_at,
-                updated_at,
-            ),
-        )
-        conn.commit()
-
-
-def get_private_development_state() -> dict[str, object] | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                state_id,
-                source,
-                retained_pattern,
-                preferred_direction,
-                recurring_tension,
-                identity_thread,
-                confidence,
-                created_at,
-                updated_at
-            FROM private_development_states
-            ORDER BY id DESC
-            LIMIT 1
-            """
-        ).fetchone()
-    if row is None:
-        return None
-    return {
-        "state_id": row["state_id"],
-        "source": row["source"],
-        "retained_pattern": row["retained_pattern"],
-        "preferred_direction": row["preferred_direction"],
-        "recurring_tension": row["recurring_tension"],
-        "identity_thread": row["identity_thread"],
-        "confidence": row["confidence"],
-        "created_at": row["created_at"],
-        "updated_at": row["updated_at"],
-    }
-
-
-def get_private_reflective_selection() -> dict[str, object] | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                signal_id,
-                source,
-                run_id,
-                work_id,
-                selection_kind,
-                reinforce,
-                reconsider,
-                fade,
-                identity_relevance,
-                confidence,
-                created_at
-            FROM private_reflective_selections
-            ORDER BY id DESC
-            LIMIT 1
-            """
-        ).fetchone()
-    if row is None:
-        return None
-    return {
-        "signal_id": row["signal_id"],
-        "source": row["source"],
-        "run_id": row["run_id"],
-        "work_id": row["work_id"],
-        "selection_kind": row["selection_kind"],
-        "reinforce": row["reinforce"],
-        "reconsider": row["reconsider"],
-        "fade": row["fade"],
-        "identity_relevance": row["identity_relevance"],
-        "confidence": row["confidence"],
-        "created_at": row["created_at"],
-    }
-
-
 def record_private_state(
     *,
     state_id: str,
@@ -2590,90 +2026,6 @@ def get_private_state() -> dict[str, object] | None:
         "curiosity": row["curiosity"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
-    }
-
-
-def record_private_temporal_promotion_signal(
-    *,
-    signal_id: str,
-    source: str,
-    run_id: str,
-    work_id: str,
-    rhythm_state: str,
-    rhythm_window: str,
-    promotion_target: str,
-    promotion_action: str,
-    promotion_confidence: str,
-    created_at: str,
-) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO private_temporal_promotion_signals (
-                signal_id, source, run_id, work_id, rhythm_state, rhythm_window,
-                promotion_target, promotion_action, promotion_confidence, created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(run_id) DO UPDATE SET
-                signal_id=excluded.signal_id,
-                source=excluded.source,
-                work_id=excluded.work_id,
-                rhythm_state=excluded.rhythm_state,
-                rhythm_window=excluded.rhythm_window,
-                promotion_target=excluded.promotion_target,
-                promotion_action=excluded.promotion_action,
-                promotion_confidence=excluded.promotion_confidence,
-                created_at=excluded.created_at
-            """,
-            (
-                signal_id,
-                source,
-                run_id,
-                work_id,
-                rhythm_state,
-                rhythm_window,
-                promotion_target,
-                promotion_action,
-                promotion_confidence,
-                created_at,
-            ),
-        )
-        conn.commit()
-
-
-def get_private_temporal_promotion_signal() -> dict[str, object] | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                signal_id,
-                source,
-                run_id,
-                work_id,
-                rhythm_state,
-                rhythm_window,
-                promotion_target,
-                promotion_action,
-                promotion_confidence,
-                created_at
-            FROM private_temporal_promotion_signals
-            ORDER BY id DESC
-            LIMIT 1
-            """
-        ).fetchone()
-    if row is None:
-        return None
-    return {
-        "signal_id": row["signal_id"],
-        "source": row["source"],
-        "run_id": row["run_id"],
-        "work_id": row["work_id"],
-        "rhythm_state": row["rhythm_state"],
-        "rhythm_window": row["rhythm_window"],
-        "promotion_target": row["promotion_target"],
-        "promotion_action": row["promotion_action"],
-        "promotion_confidence": row["promotion_confidence"],
-        "created_at": row["created_at"],
     }
 
 
@@ -2754,128 +2106,6 @@ def get_private_promotion_decision() -> dict[str, object] | None:
         "confidence": row["confidence"],
         "created_at": row["created_at"],
     }
-
-
-def record_private_retained_memory_record(
-    *,
-    record_id: str,
-    source: str,
-    run_id: str,
-    work_id: str,
-    retained_value: str,
-    retained_kind: str,
-    retention_scope: str,
-    retention_horizon: str,
-    confidence: str,
-    created_at: str,
-) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO private_retained_memory_records (
-                record_id, source, run_id, work_id, retained_value,
-                retained_kind, retention_scope, retention_horizon, confidence, created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(run_id) DO UPDATE SET
-                record_id=excluded.record_id,
-                source=excluded.source,
-                work_id=excluded.work_id,
-                retained_value=excluded.retained_value,
-                retained_kind=excluded.retained_kind,
-                retention_scope=excluded.retention_scope,
-                retention_horizon=excluded.retention_horizon,
-                confidence=excluded.confidence,
-                created_at=excluded.created_at
-            """,
-            (
-                record_id,
-                source,
-                run_id,
-                work_id,
-                retained_value,
-                retained_kind,
-                retention_scope,
-                retention_horizon,
-                confidence,
-                created_at,
-            ),
-        )
-        conn.commit()
-
-
-def get_private_retained_memory_record() -> dict[str, object] | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                record_id,
-                source,
-                run_id,
-                work_id,
-                retained_value,
-                retained_kind,
-                retention_scope,
-                retention_horizon,
-                confidence,
-                created_at
-            FROM private_retained_memory_records
-            ORDER BY id DESC
-            LIMIT 1
-            """
-        ).fetchone()
-    if row is None:
-        return None
-    return {
-        "record_id": row["record_id"],
-        "source": row["source"],
-        "run_id": row["run_id"],
-        "work_id": row["work_id"],
-        "retained_value": row["retained_value"],
-        "retained_kind": row["retained_kind"],
-        "retention_scope": row["retention_scope"],
-        "retention_horizon": row["retention_horizon"],
-        "confidence": row["confidence"],
-        "created_at": row["created_at"],
-    }
-
-
-def recent_private_retained_memory_records(limit: int = 5) -> list[dict[str, object]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                record_id,
-                source,
-                run_id,
-                work_id,
-                retained_value,
-                retained_kind,
-                retention_scope,
-                retention_horizon,
-                confidence,
-                created_at
-            FROM private_retained_memory_records
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (max(limit, 1),),
-        ).fetchall()
-    return [
-        {
-            "record_id": row["record_id"],
-            "source": row["source"],
-            "run_id": row["run_id"],
-            "work_id": row["work_id"],
-            "retained_value": row["retained_value"],
-            "retained_kind": row["retained_kind"],
-            "retention_scope": row["retention_scope"],
-            "retention_horizon": row["retention_horizon"],
-            "confidence": row["confidence"],
-            "created_at": row["created_at"],
-        }
-        for row in rows
-    ]
 
 
 def recent_capability_invocations(limit: int = 5) -> list[dict[str, object]]:
@@ -3147,172 +2377,6 @@ def _tool_intent_approval_request_from_row(
 
 
 
-
-
-def get_bounded_action_continuity_state() -> dict[str, object] | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                continuity_id,
-                action_continuity_state,
-                last_action_type,
-                last_action_target,
-                last_action_summary,
-                last_action_outcome,
-                last_action_at,
-                action_mode,
-                read_only,
-                mutation_permitted,
-                followup_state,
-                followup_hint,
-                post_action_understanding,
-                post_action_concern,
-                confidence,
-                source_contributors,
-                boundary,
-                updated_at
-            FROM bounded_action_continuity_state
-            WHERE id = 1
-            LIMIT 1
-            """
-        ).fetchone()
-    if row is None:
-        return None
-    return _bounded_action_continuity_state_from_row(row)
-
-
-def upsert_bounded_action_continuity_state(
-    *,
-    active: bool,
-    kind: str,
-    continuity_id: str,
-    action_continuity_state: str,
-    last_action_type: str,
-    last_action_target: str,
-    last_action_summary: str,
-    last_action_outcome: str,
-    last_action_at: str,
-    action_mode: str,
-    read_only: bool,
-    mutation_permitted: bool,
-    followup_state: str,
-    followup_hint: str,
-    post_action_understanding: str,
-    post_action_concern: str,
-    confidence: str,
-    source_contributors: list[str],
-    boundary: str,
-    updated_at: str,
-    source: str,
-) -> dict[str, object]:
-    del active, kind, source
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO bounded_action_continuity_state (
-                id,
-                continuity_id,
-                action_continuity_state,
-                last_action_type,
-                last_action_target,
-                last_action_summary,
-                last_action_outcome,
-                last_action_at,
-                action_mode,
-                read_only,
-                mutation_permitted,
-                followup_state,
-                followup_hint,
-                post_action_understanding,
-                post_action_concern,
-                confidence,
-                source_contributors,
-                boundary,
-                updated_at
-            )
-            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                continuity_id = excluded.continuity_id,
-                action_continuity_state = excluded.action_continuity_state,
-                last_action_type = excluded.last_action_type,
-                last_action_target = excluded.last_action_target,
-                last_action_summary = excluded.last_action_summary,
-                last_action_outcome = excluded.last_action_outcome,
-                last_action_at = excluded.last_action_at,
-                action_mode = excluded.action_mode,
-                read_only = excluded.read_only,
-                mutation_permitted = excluded.mutation_permitted,
-                followup_state = excluded.followup_state,
-                followup_hint = excluded.followup_hint,
-                post_action_understanding = excluded.post_action_understanding,
-                post_action_concern = excluded.post_action_concern,
-                confidence = excluded.confidence,
-                source_contributors = excluded.source_contributors,
-                boundary = excluded.boundary,
-                updated_at = excluded.updated_at
-            """,
-            (
-                continuity_id,
-                action_continuity_state,
-                last_action_type,
-                last_action_target,
-                last_action_summary,
-                last_action_outcome,
-                last_action_at,
-                action_mode,
-                1 if read_only else 0,
-                1 if mutation_permitted else 0,
-                followup_state,
-                followup_hint,
-                post_action_understanding,
-                post_action_concern,
-                confidence,
-                "|".join(
-                    str(item or "").strip()
-                    for item in source_contributors
-                    if str(item or "").strip()
-                ),
-                boundary,
-                updated_at,
-            ),
-        )
-        conn.commit()
-    state = get_bounded_action_continuity_state()
-    if state is None:
-        raise RuntimeError("bounded action continuity state was not persisted")
-    return state
-
-
-def _bounded_action_continuity_state_from_row(
-    row: sqlite3.Row,
-) -> dict[str, object]:
-    source_contributors = [
-        item for item in str(row["source_contributors"] or "").split("|") if item
-    ]
-    return {
-        "active": bool(row["last_action_at"]),
-        "kind": "bounded-read-only-action-continuity-light",
-        "continuity_id": str(row["continuity_id"] or ""),
-        "action_continuity_state": str(row["action_continuity_state"] or "idle"),
-        "last_action_type": str(row["last_action_type"] or ""),
-        "last_action_target": str(row["last_action_target"] or ""),
-        "last_action_summary": str(row["last_action_summary"] or ""),
-        "last_action_outcome": str(row["last_action_outcome"] or "none"),
-        "last_action_at": str(row["last_action_at"] or ""),
-        "action_mode": str(row["action_mode"] or "read-only"),
-        "read_only": bool(row["read_only"]),
-        "mutation_permitted": bool(row["mutation_permitted"]),
-        "followup_state": str(row["followup_state"] or "none"),
-        "followup_hint": str(row["followup_hint"] or ""),
-        "post_action_understanding": str(row["post_action_understanding"] or ""),
-        "post_action_concern": str(row["post_action_concern"] or "stable"),
-        "confidence": str(row["confidence"] or "low"),
-        "source_contributors": source_contributors,
-        "boundary": str(row["boundary"] or ""),
-        "updated_at": str(row["updated_at"] or ""),
-        "source": "/runtime/bounded-action-continuity",
-    }
 
 
 def _ensure_tool_intent_approval_request_columns(conn: sqlite3.Connection) -> None:
@@ -23035,192 +22099,6 @@ def supersede_runtime_selfhood_proposals_for_domain(
         return int(cursor.rowcount or 0)
 
 
-def record_runtime_action_outcome(
-    *,
-    action_id: str,
-    decision_mode: str,
-    decision_reason: str,
-    decision_score: float,
-    payload_json: dict[str, object] | None,
-    result_status: str,
-    result_summary: str,
-    result_json: dict[str, object] | None,
-    recorded_at: str,
-) -> dict[str, object]:
-    outcome_id = f"rao-{uuid4().hex[:12]}"
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO runtime_action_outcomes (
-                outcome_id,
-                action_id,
-                decision_mode,
-                decision_reason,
-                decision_score,
-                payload_json,
-                result_status,
-                result_summary,
-                result_json,
-                recorded_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                outcome_id,
-                action_id,
-                decision_mode,
-                decision_reason,
-                float(decision_score or 0.0),
-                _json.dumps(payload_json or {}, ensure_ascii=False, sort_keys=True),
-                result_status,
-                result_summary,
-                _json.dumps(result_json or {}, ensure_ascii=False, sort_keys=True),
-                recorded_at,
-            ),
-        )
-        conn.commit()
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                outcome_id,
-                action_id,
-                decision_mode,
-                decision_reason,
-                decision_score,
-                payload_json,
-                result_status,
-                result_summary,
-                result_json,
-                recorded_at
-            FROM runtime_action_outcomes
-            WHERE outcome_id = ?
-            """,
-            (outcome_id,),
-        ).fetchone()
-    if row is None:
-        raise RuntimeError("runtime action outcome was not persisted")
-    return _runtime_action_outcome_from_row(row)
-
-
-def record_runtime_learning_signal(
-    *,
-    outcome_id: str,
-    source_action_id: str,
-    target_action_id: str,
-    target_family: str,
-    target_domain: str,
-    signal_key: str,
-    signal_weight: float,
-    signal_count: int,
-    metadata_json: dict[str, object] | None,
-    recorded_at: str,
-) -> dict[str, object]:
-    signal_id = f"rls-{uuid4().hex[:12]}"
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO runtime_learning_signals (
-                signal_id,
-                outcome_id,
-                source_action_id,
-                target_action_id,
-                target_family,
-                target_domain,
-                signal_key,
-                signal_weight,
-                signal_count,
-                metadata_json,
-                recorded_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                signal_id,
-                outcome_id,
-                source_action_id,
-                target_action_id,
-                target_family,
-                target_domain,
-                signal_key,
-                float(signal_weight or 0.0),
-                int(signal_count or 1),
-                _json.dumps(metadata_json or {}, ensure_ascii=False, sort_keys=True),
-                recorded_at,
-            ),
-        )
-        conn.commit()
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                signal_id,
-                outcome_id,
-                source_action_id,
-                target_action_id,
-                target_family,
-                target_domain,
-                signal_key,
-                signal_weight,
-                signal_count,
-                metadata_json,
-                recorded_at
-            FROM runtime_learning_signals
-            WHERE signal_id = ?
-            """,
-            (signal_id,),
-        ).fetchone()
-    if row is None:
-        raise RuntimeError("runtime learning signal was not persisted")
-    return _runtime_learning_signal_from_row(row)
-
-
-def _runtime_action_outcome_from_row(row: sqlite3.Row) -> dict[str, object]:
-    payload_raw = str(row["payload_json"] or "{}")
-    result_raw = str(row["result_json"] or "{}")
-    try:
-        payload = _json.loads(payload_raw)
-    except Exception:
-        payload = {}
-    try:
-        result = _json.loads(result_raw)
-    except Exception:
-        result = {}
-    return {
-        "outcome_id": row["outcome_id"],
-        "action_id": row["action_id"],
-        "decision_mode": row["decision_mode"],
-        "decision_reason": row["decision_reason"],
-        "decision_score": float(row["decision_score"] or 0.0),
-        "payload": payload if isinstance(payload, dict) else {},
-        "result_status": row["result_status"],
-        "result_summary": row["result_summary"],
-        "result": result if isinstance(result, dict) else {},
-        "recorded_at": row["recorded_at"],
-    }
-
-
-def _runtime_learning_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
-    metadata_raw = str(row["metadata_json"] or "{}")
-    try:
-        metadata = _json.loads(metadata_raw)
-    except Exception:
-        metadata = {}
-    return {
-        "signal_id": row["signal_id"],
-        "outcome_id": row["outcome_id"],
-        "source_action_id": row["source_action_id"],
-        "target_action_id": row["target_action_id"],
-        "target_family": row["target_family"],
-        "target_domain": row["target_domain"],
-        "signal_key": row["signal_key"],
-        "signal_weight": float(row["signal_weight"] or 0.0),
-        "signal_count": int(row["signal_count"] or 1),
-        "metadata": metadata if isinstance(metadata, dict) else {},
-        "recorded_at": row["recorded_at"],
-    }
-
-
 def _runtime_contract_candidate_from_row(row: sqlite3.Row) -> dict[str, object]:
     return {
         "candidate_id": row["candidate_id"],
@@ -30417,6 +29295,51 @@ from core.runtime.db_private_notes import (  # noqa: E402,F401
     update_protected_inner_voice_enriched,
     get_protected_inner_voice,
     list_recent_protected_inner_voices,
+)
+
+
+# --- Private inner-life signal tables (split into db_private_signals.py per boy scout rule) ---
+from core.runtime.db_private_signals import (  # noqa: E402,F401
+    ensure_private_signals_tables,
+    _ensure_private_retained_memory_record_columns,
+    record_private_reflective_selection,
+    recent_private_reflective_selections,
+    get_private_reflective_selection,
+    record_private_development_state,
+    get_private_development_state,
+    record_private_temporal_promotion_signal,
+    get_private_temporal_promotion_signal,
+    record_private_retained_memory_record,
+    update_private_retained_memory_record_enriched,
+    get_private_retained_memory_record,
+    recent_private_retained_memory_records,
+)
+
+
+# --- Runtime learning/outcome signal tables (split into db_runtime_signals.py per boy scout rule) ---
+from core.runtime.db_runtime_signals import (  # noqa: E402,F401
+    ensure_runtime_signals_tables,
+    recent_runtime_action_outcomes,
+    recent_runtime_learning_signals,
+    record_runtime_action_outcome,
+    record_runtime_learning_signal,
+)
+
+
+# --- Runtime hook dispatch table (split into db_runtime_hooks.py per boy scout rule) ---
+from core.runtime.db_runtime_hooks import (  # noqa: E402,F401
+    ensure_runtime_hooks_tables,
+    record_runtime_hook_dispatch,
+    get_runtime_hook_dispatch,
+    list_runtime_hook_dispatches,
+)
+
+
+# --- Bounded action continuity table (split into db_bounded_action.py per boy scout rule) ---
+from core.runtime.db_bounded_action import (  # noqa: E402,F401
+    ensure_bounded_action_tables,
+    get_bounded_action_continuity_state,
+    upsert_bounded_action_continuity_state,
 )
 
 

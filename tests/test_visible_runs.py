@@ -315,14 +315,13 @@ class TestTrackerCascadeFix:
     logger + central-trace og FORTSÆTTER. Review/Memory/Proactivity fælles fejl-catcher."""
 
     def _fn_source(self):
-        # KUN _track_runtime_candidates' egen krop (bind til næste top-level def), så vi ikke
-        # fanger legitime early-returns i urelaterede helper-funktioner senere i filen.
+        # KUN _track_runtime_candidates' egen krop. Funktionen bor efter Boy Scout-
+        # udtrækningen (2026-07-07) i core/services/visible_runs_cognitive.py men
+        # re-eksporteres på visible_runs — hent kildekoden via funktions-objektet så
+        # testen er robust mod hvilket modul den fysisk bor i.
         import inspect
         from core.services import visible_runs as vr
-        src = inspect.getsource(vr)
-        start = src.index("def _track_runtime_candidates(")
-        nxt = src.index("\ndef ", start + 1)
-        return src[start:nxt]
+        return inspect.getsource(vr._track_runtime_candidates)
 
     def test_no_cascade_return_remains(self):
         body = self._fn_source()

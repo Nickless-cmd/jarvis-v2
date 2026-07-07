@@ -116,9 +116,11 @@ def test_generates_concepts_for_all_types(tmp_path):
 
     pool = json.loads(pool_file.read_text())
     types_in_pool = {c["type"] for c in pool["concepts"]}
-    assert "motivation" in types_in_pool
-    assert "dark_humor" in types_in_pool
-    assert "cosmic" in types_in_pool
+    # Slot types were redefined to jarvis_work / facts / agi_journey
+    # (was motivation / dark_humor / cosmic). See _SLOT_TYPES.
+    assert "jarvis_work" in types_in_pool
+    assert "facts" in types_in_pool
+    assert "agi_journey" in types_in_pool
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +221,6 @@ def test_generate_concepts_uses_public_safe_llm_path() -> None:
             )
         )
     }):
-        result = mod._generate_concepts_for_type("motivation")
+        result = mod._generate_concepts_for_type("jarvis_work")
 
     assert result == ["One", "Two", "Three"]

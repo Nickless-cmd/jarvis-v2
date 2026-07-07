@@ -86,6 +86,10 @@ def test_discord_channel_send_file_queued(monkeypatch, tmp_path):
     import core.services.discord_gateway as gw
     f = tmp_path / "img.png"
     f.write_bytes(b"data")
+    # send_discord_file only takes the local queue path in the gateway-owner
+    # process; otherwise it dispatches cross-process (→ error in tests). Force
+    # the owner path so this exercises validate + enqueue as intended.
+    monkeypatch.setattr(gw, "_is_gateway_owner", lambda: True)
     monkeypatch.setattr(gw, "_validate_send_path", lambda path: (True, ""))
     queued = []
     monkeypatch.setattr(gw._outbound_queue, "put_nowait", lambda item: queued.append(item))

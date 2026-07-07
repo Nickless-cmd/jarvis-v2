@@ -1,8 +1,6 @@
 """Tests for absence_daemon.py — TDD first pass."""
 from __future__ import annotations
 
-import sys
-import types
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -18,43 +16,39 @@ BUS_MOD = None
 DB_MOD = None
 
 
-def _stub_modules():
-    global BUS_MOD, DB_MOD
-    for name in [
-        "core",
-        "core.eventbus",
-        "core.eventbus.bus",
-        "core.runtime",
-        "core.runtime.db",
-    ]:
-        if name not in sys.modules:
-            sys.modules[name] = types.ModuleType(name)
-
-    repo_root = Path(__file__).resolve().parents[1]
-    sys.modules["core"].__path__ = [str(repo_root / "core")]
-    sys.modules["core.eventbus"].__path__ = [str(repo_root / "core" / "eventbus")]
-    sys.modules["core.runtime"].__path__ = [str(repo_root / "core" / "runtime")]
-
-    BUS_MOD = sys.modules["core.eventbus.bus"]
-    if not hasattr(BUS_MOD, "event_bus"):
-        mock_bus = MagicMock()
-        mock_bus.publish = MagicMock()
-        BUS_MOD.event_bus = mock_bus
-
-    DB_MOD = sys.modules["core.runtime.db"]
-    if not hasattr(DB_MOD, "insert_private_brain_record"):
-        DB_MOD.insert_private_brain_record = MagicMock()
-
-
-_stub_modules()
-
 import importlib
 
 absence_daemon = importlib.import_module(
     "core.services.absence_daemon"
 )
-for _name in ("core.eventbus.bus", "core.runtime.db", "core.eventbus", "core.runtime"):
-    sys.modules.pop(_name, None)
+
+
+def _stub_modules():
+    """Isolate the daemon's dependency bindings without touching shared
+    ``core.*`` modules.
+
+    The daemon binds ``event_bus`` and ``insert_private_brain_record`` as
+    module-level names (``from core.eventbus.bus import event_bus`` etc.).
+    Patching those names *on the daemon module* fully isolates the test —
+    no real publish/DB write occurs — while leaving the shared
+    ``core.eventbus.bus`` and ``core.runtime.db`` modules untouched.
+
+    Previously this stubbed/popped real modules in ``sys.modules``, which
+    leaked global state and poisoned unrelated tests in the full suite
+    (AttributeError / sqlite3.OperationalError). See tests/conftest note.
+    """
+    global BUS_MOD, DB_MOD
+    mock_bus = MagicMock()
+    mock_bus.publish = MagicMock()
+    absence_daemon.event_bus = mock_bus
+    absence_daemon.insert_private_brain_record = MagicMock()
+    # BUS_MOD/DB_MOD historically pointed at the module holding these names;
+    # that is now the daemon module itself.
+    BUS_MOD = absence_daemon
+    DB_MOD = absence_daemon
+
+
+_stub_modules()
 
 
 def _reset():

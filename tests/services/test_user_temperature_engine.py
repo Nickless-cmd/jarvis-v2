@@ -156,14 +156,20 @@ def test_combine_streams_agreement_averages_valens_arousal():
     assert out["field_conflict"] is False
 
 
-def test_combine_streams_conflict_keeps_struct_primary():
+def test_combine_streams_conflict_weighted_average_favours_higher_confidence():
+    # 2026-06-11 (commit 1669f17b): on conflict the merge no longer keeps the
+    # structural stream primary — it takes a confidence-weighted average of
+    # valens/arousal and adopts the texture of whichever stream has the higher
+    # confidence weight. Here llm confidence (0.7) > struct (0.5), so llm wins
+    # the texture and pulls the weighted valens negative.
     from core.services.user_temperature_engine import combine_streams
     struct = {"valens": 0.3, "arousal": 0.4, "texture": "warm", "confidence": 0.5}
     llm = {"valens": -0.5, "arousal": 0.4, "texture": "frustrated",
            "confidence": 0.7, "rationale": "x"}
     out = combine_streams(struct=struct, llm=llm)
-    assert out["field_valens"] == 0.3
-    assert out["field_texture"] == "warm"
+    # w_s = 0.5/1.2, w_l = 0.7/1.2 → fv = 0.3*w_s + (-0.5)*w_l
+    assert out["field_valens"] == pytest.approx(-0.1667, abs=0.001)
+    assert out["field_texture"] == "frustrated"  # llm has higher confidence weight
     assert out["field_conflict"] is True
 
 
@@ -174,7 +180,9 @@ def test_combine_streams_texture_mismatch_is_conflict():
            "confidence": 0.7, "rationale": "x"}
     out = combine_streams(struct=struct, llm=llm)
     assert out["field_conflict"] is True
-    assert out["field_texture"] == "warm"
+    # Texture mismatch is a conflict; texture follows the higher-confidence
+    # stream (llm at 0.7 > struct at 0.5) per the 2026-06-11 weighted merge.
+    assert out["field_texture"] == "playful"
 
 
 # ── Shift detection ────────────────────────────────────────────────────

@@ -14,17 +14,19 @@ def test_dispatch_no_fired_returns_zero():
 
 
 def test_dispatch_fires_webchat_and_marks_dispatched():
+    # Notification now routes through the nudge system when nudge_system_enabled
+    # (the default); send_session_notification is only the disabled-nudge fallback.
     fired = [{"wakeup_id": "w1", "prompt": "check confidence", "reason": "test"}]
     state = [{"wakeup_id": "w1", "prompt": "check confidence", "reason": "test", "status": "fired"}]
     with patch("core.services.self_wakeup.due_wakeups", return_value=fired), \
          patch("core.services.self_wakeup._load", return_value=state), \
          patch("core.services.self_wakeup._save") as fake_save, \
-         patch("core.services.notification_bridge.send_session_notification") as fake_send, \
+         patch("core.services.outbound_nudges.push_nudge") as fake_push, \
          patch("core.services.heartbeat_phases.tick_with_phases") as fake_tick:
         result = dispatch_due_wakeups()
     assert result["dispatched"] == 1
     assert "w1" in result["dispatched_ids"]
-    fake_send.assert_called_once()
+    fake_push.assert_called_once()
     fake_tick.assert_called_once()
     # Should have set dispatched=True and saved
     assert state[0].get("dispatched") is True

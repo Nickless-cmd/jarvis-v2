@@ -62,7 +62,7 @@ def test_side_tasks_flag_list_and_resolve(monkeypatch):
 
     assert created["status"] == "ok"
     assert prompt is not None
-    assert "Side-tasks" in prompt
+    assert "side-tasks" in prompt  # header: "Flaggede side-tasks (deferred):"
     assert resolved["new_status"] == "dismissed"
 
 
@@ -97,6 +97,8 @@ def test_nudge_broend_persists_pending_nudges(tmp_path, monkeypatch):
 
 
 def test_signal_surface_gc_force_archives_old_items():
+    from datetime import UTC, datetime, timedelta
+
     from core.services import signal_surface_gc as gc
 
     archived: list[tuple[str, dict[str, object]]] = []
@@ -104,9 +106,15 @@ def test_signal_surface_gc_force_archives_old_items():
     def update_fn(item_id, **kwargs):
         archived.append((item_id, kwargs))
 
+    # _force_archive uses a cutoff of now - _FORCE_ARCHIVE_AFTER_DAYS (14d), so
+    # timestamps must be relative to now — hardcoded calendar dates eventually
+    # fall on the same side of the cutoff and both get archived.
+    now = datetime.now(UTC)
+    old_dt = (now - timedelta(days=gc._FORCE_ARCHIVE_AFTER_DAYS + 5)).isoformat()
+    new_dt = (now - timedelta(days=1)).isoformat()
     items = [
-        {"snapshot_id": "old-1", "status": "active", "created_at": "2026-04-01T00:00:00+00:00"},
-        {"snapshot_id": "new-1", "status": "active", "created_at": "2026-05-11T00:00:00+00:00"},
+        {"snapshot_id": "old-1", "status": "active", "created_at": old_dt},
+        {"snapshot_id": "new-1", "status": "active", "created_at": new_dt},
     ]
 
     count = gc._force_archive(items=items, id_field="snapshot_id", update_fn=update_fn, label="private_state")

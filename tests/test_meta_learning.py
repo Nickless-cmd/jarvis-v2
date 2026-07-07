@@ -13,24 +13,53 @@ import pytest
 
 
 @pytest.fixture()
-def clean_state(tmp_path, monkeypatch):
-    """Isolated workspace + DB so meta-learning data doesn't pollute tests."""
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("JARVIS_WORKSPACES_DIR", str(tmp_path / "workspaces"))
-    import core.runtime.config as cfg
-    monkeypatch.setattr(cfg, "STATE_DIR", str(tmp_path / "state"))
+def clean_state(tmp_path):
+    """Isolated workspace + DB so meta-learning data doesn't pollute tests.
+
+    STATE_DIR (and thus DB_PATH) derive from Path.home() at import time. After
+    the 2026-05-15 db→db_core split, DB_PATH + connect() live in db_core, so we
+    reload config → db_core → db (in that order) with the tmp HOME set so the DB
+    path recomputes into tmp_path instead of the real ~/.jarvis-v2 DB.
+
+    IMPORTANT: these reloads rebind module-global state (connect(), DB_PATH). If
+    not undone, the tmp-DB binding leaks into later test files whose modules
+    still reference the reloaded connect() → "no such table" once tmp_path is
+    deleted. So we restore HOME and reload the same chain again on teardown,
+    rebinding everything back to the real runtime paths.
+    """
+    import os
     import importlib
-    import core.runtime.db as db
-    importlib.reload(db)
-    import core.runtime.state_store as ss
-    importlib.reload(ss)
-    # Reload modules that cache _SCHEMA_INITIALIZED globals so they re-create
-    # tables in the tmp_path DB instead of pointing at a stale prior DB.
-    import core.services.curiosity_budget as cb
-    importlib.reload(cb)
-    import core.services.meta_learning_retrospective as mlr
-    importlib.reload(mlr)
-    return None
+
+    def _reload_chain() -> None:
+        for name in (
+            "core.runtime.config",
+            "core.runtime.db_core",
+            "core.runtime.db",
+            "core.runtime.state_store",
+            "core.services.curiosity_budget",
+            "core.services.meta_learning_retrospective",
+        ):
+            importlib.reload(importlib.import_module(name))
+
+    prev_home = os.environ.get("HOME")
+    prev_ws = os.environ.get("JARVIS_WORKSPACES_DIR")
+    os.environ["HOME"] = str(tmp_path)
+    os.environ["JARVIS_WORKSPACES_DIR"] = str(tmp_path / "workspaces")
+    _reload_chain()
+    try:
+        yield None
+    finally:
+        # Restore env, then reload the chain again so connect()/DB_PATH rebind to
+        # the real runtime paths — otherwise the tmp binding leaks cross-file.
+        if prev_home is None:
+            os.environ.pop("HOME", None)
+        else:
+            os.environ["HOME"] = prev_home
+        if prev_ws is None:
+            os.environ.pop("JARVIS_WORKSPACES_DIR", None)
+        else:
+            os.environ["JARVIS_WORKSPACES_DIR"] = prev_ws
+        _reload_chain()
 
 
 def test_schema_bootstrap_creates_table(clean_state):
@@ -764,13 +793,10 @@ def test_awareness_shows_teaser_with_memo(clean_state):
         aggregator_snapshot={}, model_used="m",
     )
     out = format_latest_unacknowledged_memo_for_awareness()
-    assert "📓" in out
+    # Emoji prefix was dropped from the awareness formatter — assert the header.
+    assert "Ugentligt meta-læringsmemo" in out
     assert "memo-teaser" in out
-    assert (
-        "2 hypothesis" in out.lower()
-        or "2 hypotheses" in out.lower()
-        or "2 hypothesis-kandidater" in out.lower()
-    )
+    assert "hypothesis-kandidater: 2" in out.lower()
     assert "read_learning_memo" in out
     assert "Det har været en interessant uge" in out
 

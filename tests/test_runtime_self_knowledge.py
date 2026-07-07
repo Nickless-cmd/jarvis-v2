@@ -99,6 +99,8 @@ def test_each_item_has_mutability_field() -> None:
             assert item["mutability"] in {
                 "usable", "approval-gated", "influential-not-mutable",
                 "not-mutable", "not-currently-available",
+                # passive inner forces evolve over time — richer descriptors
+                "accumulating", "temporal", "weekly-updated", "weekly-generated",
             }, f"Bad mutability value in {key}: {item}"
 
 

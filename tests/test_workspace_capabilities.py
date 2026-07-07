@@ -11,8 +11,14 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
 
     capabilities = caps_mod.load_workspace_capabilities()
 
+    # load_workspace_capabilities("default") resolves "default" to the workspace
+    # bound in the current per-user context (#154) — under isolated_runtime that
+    # is the owner's workspace, not the literal "default" dir.
+    from core.identity.workspace_context import current_workspace_name
+    expected_ws = current_workspace_name() or "default"
+
     workspace = Path(str(capabilities.get("workspace") or ""))
-    assert workspace.name == "default"
+    assert workspace.name == expected_ws
     assert workspace.parent.name == "workspaces"
 
     authority = capabilities.get("authority") or {}
@@ -507,13 +513,13 @@ def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability()
         encoding="utf-8"
     )
 
-    # New TOOLS.md uses native tool calling descriptions instead of XML
-    assert "run_command" in default_tools
-    assert "native tool calling" in default_tools
-    assert "grep_project" in default_tools
-    assert "read_multiple_files" in default_tools
-    assert "project_outline" in default_tools
-    # Template should also be updated
+    # default/TOOLS.md was rewritten to a native-function-calling table format
+    # (Danish) — the exec tool is now `bash`, and the file instructs the model to
+    # call tools directly via the API instead of emitting XML/pseudo-markup.
+    assert "native function calling" in default_tools
+    assert "`bash`" in default_tools
+    assert "Never emit XML" in default_tools
+    # Template still describes the bounded exec capability.
     assert "run_command" in template_tools or "EXEC_COMMAND" in template_tools
 
 

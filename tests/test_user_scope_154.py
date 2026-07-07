@@ -73,7 +73,7 @@ def test_recurring_fires_in_owner_context(isolated_runtime, monkeypatch):
         rt._create(task_id="t1", focus="gør det", source="x", interval_minutes=60,
                    next_fire_at="2000-01-01T00:00:00", now="2026-01-01T00:00:00")
     captured = {}
-    def fake_run(*, message, session_id=None):
+    def fake_run(*, message, session_id=None, origin=None, **kwargs):
         captured["uid"] = current_user_id()
         captured["msg"] = message
     monkeypatch.setattr(vr, "start_autonomous_run", fake_run)

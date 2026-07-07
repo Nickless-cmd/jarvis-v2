@@ -226,10 +226,13 @@ class TestInfrastructureFacts:
         assert ok is True
 
     def test_lookup_infrastructure_fact_ip(self):
+        # 2026-05-25: Ollama moved onto the runtime host (localhost:11434),
+        # so it is no longer a distinct host IP. Assert a live host fact
+        # that IS in the registry instead.
         from core.services.ground_truth_registry import lookup_infrastructure_fact
-        desc = lookup_infrastructure_fact("10.0.0.25")
+        desc = lookup_infrastructure_fact("10.0.0.34")
         assert desc is not None
-        assert "Ollama" in desc
+        assert "Home Assistant" in desc
 
     def test_lookup_infrastructure_fact_path(self):
         from core.services.ground_truth_registry import lookup_infrastructure_fact
@@ -250,10 +253,13 @@ class TestJarvisQuickFactsCoverage:
     """
 
     def test_proxmox_cluster_nodes(self):
+        # 2026-05-25: infra corrected — 10.0.0.2 is the Proxmox host `pve`
+        # (not a labelled pve-01), 10.0.0.36 is pve-02, and 10.0.0.39 is the
+        # Jarvis runtime host (LXC-105), not a pve-03 cluster node.
         from core.services.ground_truth_registry import lookup_infrastructure_fact
-        assert "pve-01" in (lookup_infrastructure_fact("10.0.0.2") or "")
+        assert "pve" in (lookup_infrastructure_fact("10.0.0.2") or "")
         assert "pve-02" in (lookup_infrastructure_fact("10.0.0.36") or "")
-        assert "pve-03" in (lookup_infrastructure_fact("10.0.0.39") or "")
+        assert "runtime host" in (lookup_infrastructure_fact("10.0.0.39") or "")
 
     def test_side_server_and_workstation_ips(self):
         from core.services.ground_truth_registry import lookup_infrastructure_fact

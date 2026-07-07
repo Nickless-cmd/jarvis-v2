@@ -133,14 +133,19 @@ def test_private_brain_below_one():
 
 def test_compute_recall_score_perfect_match():
     """Identical query and record → score near maximum."""
+    from datetime import datetime, timezone
     from core.services.memory_recall_engine import compute_recall_score
     emb = [0.1] * 768
+    # Pin `now` to the record's date so recency≈1.0 is deterministic (otherwise
+    # the fixed 2026-06-08 date decays as wall-clock advances).
+    now = datetime(2026, 6, 8, tzinfo=timezone.utc)
     score = compute_recall_score(
         query_embedding=emb,
         record_embedding=emb,
         created_at="2026-06-08T00:00:00+00:00",
         importance=1.0,
         recall_freq=5,
+        now=now,
     )
     # embedding_sim=1.0 * 0.4 + recency~1.0 * 0.3 + freq=1.0 * 0.2 + importance=1.0 * 0.1
     assert score > 0.95
@@ -148,16 +153,18 @@ def test_compute_recall_score_perfect_match():
 
 def test_compute_recall_score_no_match():
     """Orthogonal vectors → score near minimum (only recency + importance)."""
+    from datetime import datetime, timezone
     from core.services.memory_recall_engine import compute_recall_score
-    import math
     q = [1.0] + [0.0] * 767
     r = [0.0] * 767 + [1.0]
+    now = datetime(2026, 6, 8, tzinfo=timezone.utc)
     score = compute_recall_score(
         query_embedding=q,
         record_embedding=r,
         created_at="2026-06-08T00:00:00+00:00",
         importance=0.1,
         recall_freq=0,
+        now=now,
     )
     # embedding_sim=0.0 * 0.4 + recency~1.0 * 0.3 + freq=0.0 * 0.2 + importance=0.1 * 0.1
     # = 0 + 0.3 + 0 + 0.01 = 0.31
@@ -166,13 +173,16 @@ def test_compute_recall_score_no_match():
 
 def test_compute_recall_score_zero_vectors():
     """Zero vectors → emb_sim=0, rest still contributes."""
+    from datetime import datetime, timezone
     from core.services.memory_recall_engine import compute_recall_score
+    now = datetime(2026, 6, 8, tzinfo=timezone.utc)
     score = compute_recall_score(
         query_embedding=[0.0] * 768,
         record_embedding=[0.0] * 768,
         created_at="2026-06-08T00:00:00+00:00",
         importance=0.5,
         recall_freq=0,
+        now=now,
     )
     # emb=0, recency~1.0 * 0.3, freq=0, imp=0.5*0.1=0.05
     assert 0.3 <= score <= 0.4
@@ -215,13 +225,16 @@ def test_compute_recall_score_string_datetime():
 
 def test_compute_recall_score_without_timezone():
     """Naive datetime gets treated as UTC."""
+    from datetime import datetime, timezone
     from core.services.memory_recall_engine import compute_recall_score
+    now = datetime(2026, 6, 8, tzinfo=timezone.utc)
     score = compute_recall_score(
         query_embedding=[0.1] * 768,
         record_embedding=[0.1] * 768,
         created_at="2026-06-08T00:00:00",  # no tz
         importance=0.5,
         recall_freq=0,
+        now=now,
     )
     assert 0.7 <= score <= 1.0
 
@@ -414,7 +427,7 @@ def test_gather_private_brain_scores_real_records():
          "record_type": "insight"},
         {"focus": "weather", "summary": "it is sunny", "detail": "", "record_type": "note"},
     ]
-    with patch("core.runtime.db_private_brain.list_private_brain_records",
+    with patch("core.runtime.db_private_brain.search_private_brain_records",
                return_value=fake):
         hits = mre._gather_private_brain("tool truncation problem", 4)
     assert hits and hits[0]["source"] == "private_brain"
@@ -432,7 +445,7 @@ def test_gather_failed_is_fail_soft():
 def test_gather_private_brain_dead_store_returns_empty_not_raise():
     from unittest.mock import patch
     from core.services import memory_recall_engine as mre
-    with patch("core.runtime.db_private_brain.list_private_brain_records",
+    with patch("core.runtime.db_private_brain.search_private_brain_records",
                side_effect=RuntimeError("db down")):
         assert mre._gather_private_brain("noget", 4) == []  # fail-soft via _gather_failed
 

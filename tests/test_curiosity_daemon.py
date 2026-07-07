@@ -84,15 +84,16 @@ def test_build_surface_structure():
     assert "last_generated_at" in surface
 
 
-def test_generate_curiosity_signal_uses_public_safe_llm_path():
+def test_generate_curiosity_signal_returns_structured_cue():
+    """Teater-pass 2026-05-13: _generate_curiosity_signal no longer asks the
+    cheap-lane LLM to write a first-person curiosity sentence (that was
+    curiosity-on-command / confabulation). It now composes a deterministic
+    structured cue label from the detected gap — no LLM call at all.
+    """
     _reset()
-    with patch.dict("sys.modules", {
-        "core.services.daemon_llm": type(
-            "_FakeDaemonLLMModule",
-            (),
-            {"daemon_public_safe_llm_call": staticmethod(lambda *args, **kwargs: "Et åbent spørgsmål står tilbage.")}
-        )()
-    }):
-        result = cd._generate_curiosity_signal("Hvad sker der egentlig?", "question")
+    result = cd._generate_curiosity_signal("Hvad sker der egentlig?", "question")
 
-    assert result == "Et åbent spørgsmål står tilbage."
+    # Structured label: gap_type + topic + cue. A trailing "?" → open-question.
+    assert result.startswith("gap_type=question;")
+    assert "topic=Hvad sker der egentlig?" in result
+    assert "cue=open-question" in result

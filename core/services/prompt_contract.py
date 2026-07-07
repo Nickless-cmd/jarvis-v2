@@ -1716,6 +1716,22 @@ def build_visible_chat_prompt_assembly(
     except Exception as _e:
         _sec_err("flagged side-tasks", _e)
 
+    # 2026-05-22 (Claude, Step 2 cache optimisation): temperature field +
+    # response-style modifier are per-chat dynamic (they update every turn from
+    # user_temperature_engine signals). Inlining them mid-prompt broke DeepSeek's
+    # cache at ~7500 chars, so they route through the awareness buffer to flush
+    # at the tail. NB: they MUST be _awareness_add'ed BEFORE the flush loop below
+    # (2026-07-06 fix) — previously they were added after the loop had already
+    # consumed _awareness, so they silently never reached _awareness_buffer and
+    # were dropped from every visible prompt.
+    temperature_hint = _visible_unconscious_temperature_field_section()
+    if temperature_hint:
+        _awareness_add(4, "implicit user temperature field", temperature_hint)
+
+    response_style_hint = _visible_response_style_hint_section()
+    if response_style_hint:
+        _awareness_add(5, "response style modifier from temperature", response_style_hint)
+
     # Apply the budget cap. Highest-priority sections always survive (even
     # if alone they exceed the budget); later/lower-priority entries are
     # dropped to make room. Dropped labels logged via derived_inputs so MC
@@ -1799,19 +1815,9 @@ def build_visible_chat_prompt_assembly(
     # to fix Deepseek prefix-caching. See block above the awareness budget
     # for the new injection point.
 
-    # 2026-05-22 (Claude, Step 2 cache optimisation): both of these
-    # are per-chat dynamic — temperature field updates every turn from
-    # user_temperature_engine signals. Inlining them mid-prompt was
-    # breaking DeepSeek's cache at position ~7500 chars. Route through
-    # the awareness buffer so they flush at the tail (right before
-    # Time Pin) along with the other dynamic-context signals.
-    temperature_hint = _visible_unconscious_temperature_field_section()
-    if temperature_hint:
-        _awareness_add(4, "implicit user temperature field", temperature_hint)
-
-    response_style_hint = _visible_response_style_hint_section()
-    if response_style_hint:
-        _awareness_add(5, "response style modifier from temperature", response_style_hint)
+    # (temperature field + response-style modifier moved above the awareness
+    # flush loop on 2026-07-06 — see note there. They were previously here,
+    # after the flush, and were silently dropped.)
 
     chronicle_section = _visible_chronicle_context_section()
     if chronicle_section:

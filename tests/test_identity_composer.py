@@ -16,7 +16,7 @@ def test_get_entity_name_reads_identity_md(tmp_path):
     identity.write_text("# IDENTITY\n\nName: TestEntity\nMode: test\n")
     _reset_cache()
     import core.services.identity_composer as ic
-    with patch.object(ic, "_IDENTITY_FILE", identity):
+    with patch.object(ic, "_identity_file", return_value=identity):
         name = ic.get_entity_name()
     assert name == "TestEntity"
 
@@ -26,7 +26,7 @@ def test_get_entity_name_caches_result(tmp_path):
     identity.write_text("Name: CachedName\n")
     _reset_cache()
     import core.services.identity_composer as ic
-    with patch.object(ic, "_IDENTITY_FILE", identity):
+    with patch.object(ic, "_identity_file", return_value=identity):
         name1 = ic.get_entity_name()
         # Delete the file — second call must use cache
         identity.unlink()
@@ -38,7 +38,7 @@ def test_get_entity_name_caches_result(tmp_path):
 def test_get_entity_name_fallback_on_missing_file(tmp_path):
     _reset_cache()
     import core.services.identity_composer as ic
-    with patch.object(ic, "_IDENTITY_FILE", tmp_path / "NONEXISTENT.md"):
+    with patch.object(ic, "_identity_file", return_value=tmp_path / "NONEXISTENT.md"):
         name = ic.get_entity_name()
     assert name == "the entity"
 
@@ -48,7 +48,7 @@ def test_get_entity_name_fallback_when_name_line_absent(tmp_path):
     identity.write_text("# IDENTITY\n\nMode: persistent\n")
     _reset_cache()
     import core.services.identity_composer as ic
-    with patch.object(ic, "_IDENTITY_FILE", identity):
+    with patch.object(ic, "_identity_file", return_value=identity):
         name = ic.get_entity_name()
     assert name == "the entity"
 
@@ -58,7 +58,7 @@ def test_build_identity_preamble_contains_name(tmp_path):
     identity.write_text("Name: Jarvis\n")
     _reset_cache()
     import core.services.identity_composer as ic
-    with patch.object(ic, "_IDENTITY_FILE", identity):
+    with patch.object(ic, "_identity_file", return_value=identity):
         with patch("core.services.identity_composer._read_bearing", return_value="Analytisk"):
             with patch("core.services.identity_composer._read_energy", return_value="middel"):
                 preamble = ic.build_identity_preamble()
@@ -72,7 +72,7 @@ def test_build_identity_preamble_works_without_signals(tmp_path):
     identity.write_text("Name: Jarvis\n")
     _reset_cache()
     import core.services.identity_composer as ic
-    with patch.object(ic, "_IDENTITY_FILE", identity):
+    with patch.object(ic, "_identity_file", return_value=identity):
         with patch("core.services.identity_composer._read_bearing", return_value=""):
             with patch("core.services.identity_composer._read_energy", return_value=""):
                 preamble = ic.build_identity_preamble()
@@ -84,7 +84,7 @@ def test_build_identity_composer_surface_exposes_derived_state(tmp_path):
     identity.write_text("Name: Jarvis\n")
     _reset_cache()
     import core.services.identity_composer as ic
-    with patch.object(ic, "_IDENTITY_FILE", identity):
+    with patch.object(ic, "_identity_file", return_value=identity):
         with patch("core.services.identity_composer._read_bearing", return_value="Rolig"):
             with patch("core.services.identity_composer._read_energy", return_value="høj"):
                 surface = ic.build_identity_composer_surface()

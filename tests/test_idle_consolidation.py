@@ -133,7 +133,9 @@ def test_idle_consolidation_creates_internal_only_private_brain_artifact_and_sur
     assert result["consolidation_created"] is True
     assert len(records) == 1
     assert records[0]["layer"] == "private_brain"
-    assert records[0]["session_id"] == ""
+    # Idle consolidation is heartbeat-originated — the record is attributed to
+    # the "heartbeat" session (not blank).
+    assert records[0]["session_id"] == "heartbeat"
     assert surface["visibility"] == "internal-only"
     assert surface["boundary"] == "not-memory-not-identity-not-action"
     assert surface["summary"]["latest_record_id"] == records[0]["record_id"]

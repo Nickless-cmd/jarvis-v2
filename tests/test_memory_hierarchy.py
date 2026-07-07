@@ -48,8 +48,10 @@ def test_cold_tier_skips_short_query():
     assert snap["results"] == []
 
 
-def test_cold_tier_uses_unified_recall():
-    with patch("core.services.memory_recall_engine.unified_recall", return_value={
+def test_cold_tier_uses_cold_tier_recall():
+    # 2026-06-08 Memory Fix Phase 1: _cold_tier_search now calls
+    # cold_tier_recall() (quality-scored) rather than unified_recall() directly.
+    with patch("core.services.memory_recall_engine.cold_tier_recall", return_value={
         "results": [
             {"source": "private_brain", "text": "deep memory note", "weighted_score": 0.8},
         ],
@@ -112,24 +114,27 @@ def test_summary_lists_cold_tier_results():
     assert "found this in cold storage" in out
 
 
-# ─── 2026-05-22: Cold-tier scope reduction tests ───
+# ─── 2026-06-08: Cold-tier quality-gate tests ───
+# The 2026-05-22 hard exclusion of private_brain was deliberately replaced by a
+# quality gate (Memory Fix Phase 1): good self-generated content surfaces,
+# hallucinations are filtered by compute_recall_score(). _cold_tier_search now
+# delegates to cold_tier_recall() which applies the gate.
 
-def test_cold_tier_excludes_private_brain():
-    """Cold-tier factual recall must not include private_brain (self-gen)."""
+def test_cold_tier_quality_gates_private_brain():
+    """Cold-tier delegates to cold_tier_recall() with an explicit quality
+    threshold and include_private_brain flag (quality gate, not hard exclusion)."""
     from unittest.mock import patch
     from core.services.memory_hierarchy import _cold_tier_search
 
-    with patch("core.services.memory_recall_engine.unified_recall") as mock_recall:
+    with patch("core.services.memory_recall_engine.cold_tier_recall") as mock_recall:
         mock_recall.return_value = {"results": [], "mood_boosted": False}
         _cold_tier_search(query="test query")
-        # Verify unified_recall was called with explicit sources=["workspace", "chronicle"]
         assert mock_recall.called
         call_kwargs = mock_recall.call_args.kwargs
-        sources = call_kwargs.get("sources")
-        assert sources is not None, "sources kwarg must be explicit (truth-bearing only)"
-        assert "private_brain" not in sources
-        assert "workspace" in sources
-        assert "chronicle" in sources
+        # Quality threshold is passed through (default 0.25) — this is the gate
+        # that replaced the old hard private_brain exclusion.
+        assert "quality_threshold" in call_kwargs
+        assert "include_private_brain" in call_kwargs
 
 
 def test_cold_tier_skips_short_query():

@@ -55,6 +55,7 @@ def test_engine_classifies_runtime_event_unchanged(isolated_runtime) -> None:
 def test_observe_recent_changes_persists_sensory_perception(isolated_runtime) -> None:
     """End-to-end: sensory_archive.record_atmosphere → eventbus →
     observe_recent_changes → state has sensory perceptual event."""
+    from core.eventbus.bus import event_bus
     from core.runtime.db_sensory import insert_sensory_memory
     from core.services import sensory_archive
     from core.services.perceptual_event_engine import (
@@ -73,6 +74,9 @@ def test_observe_recent_changes_persists_sensory_perception(isolated_runtime) ->
         "rolige toner og varmt lys i rummet",
         mood_tone="kaotisk",
     )
+    # eventbus writes are async — flush so the published event is committed
+    # before observe_recent_changes() scans the bus (else a race drops it).
+    event_bus.flush()
 
     result = observe_recent_changes()
     assert result["observed_count"] >= 1
@@ -92,6 +96,7 @@ def test_sensory_perception_creates_emotional_memory_anchor(
 ) -> None:
     """Sensory perception flows through record_perceptual_event, which calls
     capture_emotional_anchor — verify an anchor is created."""
+    from core.eventbus.bus import event_bus
     from core.runtime.db import list_emotional_memory_anchors
     from core.runtime.db_sensory import insert_sensory_memory
     from core.services import emotional_memory_engine as em
@@ -110,6 +115,8 @@ def test_sensory_perception_creates_emotional_memory_anchor(
     sensory_archive.record_atmosphere(
         "rolige toner og varmt lys", mood_tone="kaotisk",
     )
+    # eventbus writes are async — flush before observe scans the bus.
+    event_bus.flush()
     observe_recent_changes()
 
     anchors = list_emotional_memory_anchors(anchor_type="perceptual_event")
@@ -119,6 +126,7 @@ def test_sensory_perception_creates_emotional_memory_anchor(
 def test_disabled_bridge_passes_through_engine_without_perceptions(
     isolated_runtime, monkeypatch
 ) -> None:
+    from core.eventbus.bus import event_bus
     from core.runtime.db_sensory import insert_sensory_memory
     from core.runtime import settings as settings_mod
     from core.services import sensory_archive
@@ -139,6 +147,7 @@ def test_disabled_bridge_passes_through_engine_without_perceptions(
             modality="atmosphere", content="x", mood_tone="rolig", metadata={},
         )
     sensory_archive.record_atmosphere("x", mood_tone="kaotisk")
+    event_bus.flush()
     observe_recent_changes()
 
     surface = build_perception_surface(scan=False)

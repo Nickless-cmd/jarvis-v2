@@ -50,7 +50,7 @@ def test_build_brain_facts_section_includes_matching_fakta(isolated_brain):
         threshold=0.0,
     )
     assert "Alpha thing" in out
-    assert out.startswith("## Relevante fakta fra min hjerne")
+    assert out.startswith("## Min hjerne — mest relevant for denne samtale")
 
 
 def test_build_brain_facts_section_intimate_ceiling_for_jarvisx_native(isolated_brain, monkeypatch):

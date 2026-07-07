@@ -38,9 +38,12 @@ class TestComputeTemporalConfidence:
 
     def test_chain_boost(self):
         from core.services.jarvis_brain import _compute_temporal_confidence
-        # Medium signals + chain boost
-        c_no_chain = _compute_temporal_confidence(temporal=0.5, semantic=0.5, entity=0.5, is_chain=False)
-        c_chain = _compute_temporal_confidence(temporal=0.5, semantic=0.5, entity=0.5, is_chain=True)
+        # Chain boost is now scored (0.15×chain_score), not a flat is_chain
+        # bonus — is_chain=True alone contributes nothing without a chain_score.
+        c_no_chain = _compute_temporal_confidence(
+            temporal=0.5, semantic=0.5, entity=0.5, is_chain=False)
+        c_chain = _compute_temporal_confidence(
+            temporal=0.5, semantic=0.5, entity=0.5, is_chain=True, chain_score=1.0)
         assert c_chain == pytest.approx(c_no_chain + 0.15, abs=0.01)
 
     def test_caps_at_098(self):

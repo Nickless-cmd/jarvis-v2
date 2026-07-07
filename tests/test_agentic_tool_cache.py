@@ -7,8 +7,20 @@ def test_read_only_tool_result_cache_reuses_result_across_runs(
     isolated_runtime,
     monkeypatch,
 ) -> None:
+    # The read-only tool cache persists to the shared state_store JSON
+    # (~/.jarvis-v2/state/agentic_tool_result_cache.json). isolated_runtime does
+    # not reload state_store, so earlier tests that stored a "read_file" result
+    # leak an entry here → the first call below hits the cache and never invokes
+    # fake_execute (calls == [] instead of ["read_file"]). Start from an empty
+    # cache so this test asserts its own behaviour, not accumulated state.
+    from core.services import agentic_tool_cache
+    agentic_tool_cache._save({})
+
+    # NB: do NOT importlib.reload(visible_runs) here — isolated_runtime
+    # already reloaded it, and a second in-test reload re-executes the module
+    # body mid-suite, leaving accumulator state that poisons later non-
+    # isolated tests (test_streaming_fault_injection breaker/stall tests).
     visible_runs = importlib.import_module("core.services.visible_runs")
-    visible_runs = importlib.reload(visible_runs)
     simple_tools = importlib.import_module("core.tools.simple_tools")
 
     calls: list[str] = []

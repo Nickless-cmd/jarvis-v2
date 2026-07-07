@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import sys
-import types
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch, call
@@ -18,47 +17,32 @@ BUS_MOD = None
 DB_MOD = None
 
 
-def _stub_modules():
-    global BUS_MOD, DB_MOD
-    for name in [
-        "core",
-        "core.eventbus",
-        "core.eventbus.bus",
-        "core.runtime",
-        "core.runtime.db",
-    ]:
-        if name not in sys.modules:
-            sys.modules[name] = types.ModuleType(name)
-
-    repo_root = Path(__file__).resolve().parents[1]
-    sys.modules["core"].__path__ = [str(repo_root / "core")]
-    sys.modules["core.eventbus"].__path__ = [str(repo_root / "core" / "eventbus")]
-    sys.modules["core.runtime"].__path__ = [str(repo_root / "core" / "runtime")]
-
-    BUS_MOD = sys.modules["core.eventbus.bus"]
-    if not hasattr(BUS_MOD, "event_bus"):
-        mock_bus = MagicMock()
-        mock_bus.publish = MagicMock()
-        BUS_MOD.event_bus = mock_bus
-
-    DB_MOD = sys.modules["core.runtime.db"]
-    DB_MOD.decay_private_brain_records = MagicMock(return_value=5)
-    # Returnerer dict[domain, count] efter 2026-05-x refactor (var int før)
-    DB_MOD.decay_private_brain_records_by_domain = MagicMock(return_value={"general": 5})
-    DB_MOD.get_salient_private_brain_records = MagicMock(return_value=[])
-    DB_MOD.update_private_brain_record_salience = MagicMock()
-    DB_MOD.list_private_brain_records = MagicMock(return_value=[])
-
-
-_stub_modules()
-
 import importlib
-
 memory_decay_daemon = importlib.import_module(
     "core.services.memory_decay_daemon"
 )
-for _name in ("core.eventbus.bus", "core.runtime.db", "core.eventbus", "core.runtime"):
-    sys.modules.pop(_name, None)
+
+
+def _stub_modules():
+    """Isolate the daemon's dependency bindings without touching shared
+    ``core.*`` modules. See tests/test_absence_daemon.py for rationale — the
+    old sys.modules stub/pop dance leaked global state and poisoned unrelated
+    tests in the full suite (AttributeError / sqlite3.OperationalError).
+    """
+    global BUS_MOD, DB_MOD
+    mock_bus = MagicMock()
+    mock_bus.publish = MagicMock()
+    memory_decay_daemon.event_bus = mock_bus
+    memory_decay_daemon.decay_private_brain_records = MagicMock(return_value=5)
+    memory_decay_daemon.decay_private_brain_records_by_domain = MagicMock(return_value={"general": 5})
+    memory_decay_daemon.get_salient_private_brain_records = MagicMock(return_value=[])
+    memory_decay_daemon.update_private_brain_record_salience = MagicMock()
+    memory_decay_daemon.list_private_brain_records = MagicMock(return_value=[])
+    BUS_MOD = memory_decay_daemon
+    DB_MOD = memory_decay_daemon
+
+
+_stub_modules()
 
 
 def _reset():

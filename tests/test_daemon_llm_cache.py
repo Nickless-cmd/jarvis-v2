@@ -6,6 +6,36 @@ import time
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _direct_cheap_lane_path(monkeypatch: pytest.MonkeyPatch):
+    """Force _daemon_llm_call_impl down the direct execute_cheap_lane path.
+
+    Since these tests were written the daemon LLM path gained two layers that
+    otherwise intercept the call before execute_cheap_lane:
+      1. A per-daemon cheap-lane *balancer* (daemon_balancer_enabled, default
+         True) → routes through cheap_lane_balancer.call_balanced instead.
+      2. A central *form judge* (§6.1c) that reuses a held response when the
+         prompt's FORM is unchanged, short-circuiting the LLM call.
+    These tests target the response CACHE specifically, so we disable the
+    balancer and neutralise the form judge to exercise the execute_cheap_lane +
+    cache path the tests describe.
+    """
+    from core.runtime import settings as _settings_mod
+
+    _orig_load = _settings_mod.load_settings
+
+    def _patched_load():
+        s = _orig_load()
+        s.daemon_balancer_enabled = False
+        return s
+
+    monkeypatch.setattr(_settings_mod, "load_settings", _patched_load)
+    # Also patch the name imported inside daemon_llm (it does a local import of
+    # load_settings as _ls, resolved from core.runtime.settings at call time).
+    import core.services.central_form_judge as _cfj
+    monkeypatch.setattr(_cfj, "judge", lambda namespace, prompt: {"reuse": False, "held": None})
+
+
 class TestResponseCacheHit:
     def test_second_call_returns_cached(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import core.services.daemon_llm as mod
@@ -13,7 +43,7 @@ class TestResponseCacheHit:
         mod._response_cache.clear()
         call_count = 0
 
-        def fake_cheap_lane(message: str) -> dict:
+        def fake_cheap_lane(*, message: str, **kwargs) -> dict:
             nonlocal call_count
             call_count += 1
             return {"text": "LLM result", "provider": "groq"}
@@ -35,7 +65,7 @@ class TestResponseCacheHit:
         mod._response_cache.clear()
         call_count = 0
 
-        def fake_cheap_lane(message: str) -> dict:
+        def fake_cheap_lane(*, message: str, **kwargs) -> dict:
             nonlocal call_count
             call_count += 1
             return {"text": f"Result {call_count}", "provider": "groq"}
@@ -59,7 +89,7 @@ class TestResponseCacheTTL:
         mod._response_cache.clear()
         call_count = 0
 
-        def fake_cheap_lane(message: str) -> dict:
+        def fake_cheap_lane(*, message: str, **kwargs) -> dict:
             nonlocal call_count
             call_count += 1
             return {"text": f"Result {call_count}", "provider": "groq"}
@@ -98,7 +128,7 @@ class TestResponseCacheRules:
 
         mod._response_cache.clear()
 
-        def fake_cheap_lane(message: str) -> dict:
+        def fake_cheap_lane(*, message: str, **kwargs) -> dict:
             return {"text": "", "provider": "groq"}
 
         def fake_heartbeat_model(**kwargs: object) -> dict:
@@ -121,7 +151,7 @@ class TestResponseCacheRules:
 
         mod._response_cache.clear()
 
-        def fake_cheap_lane(message: str) -> dict:
+        def fake_cheap_lane(*, message: str, **kwargs) -> dict:
             return {"text": "Result", "provider": "groq"}
 
         monkeypatch.setattr(
@@ -137,7 +167,7 @@ class TestResponseCacheRules:
 
         mod._response_cache.clear()
 
-        def fake_cheap_lane(message: str) -> dict:
+        def fake_cheap_lane(*, message: str, **kwargs) -> dict:
             return {"text": "Summary text", "provider": "groq"}
 
         monkeypatch.setattr(
@@ -156,7 +186,7 @@ class TestCacheHitLogging:
         mod._response_cache.clear()
         logged: list[dict] = []
 
-        def fake_cheap_lane(message: str) -> dict:
+        def fake_cheap_lane(*, message: str, **kwargs) -> dict:
             return {"text": "Result", "provider": "groq"}
 
         def fake_log(**kwargs: object) -> None:

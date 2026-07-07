@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
 import sys
 from pathlib import Path
@@ -15,6 +16,35 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
+
+
+@pytest.fixture(autouse=True)
+def _ensure_current_event_loop():
+    """Guarantee ``asyncio.get_event_loop()`` works in every (sync) test.
+
+    pytest-asyncio (strict mode) creates a fresh function-scoped event loop
+    for each ``@pytest.mark.asyncio`` test and, on teardown, closes it and
+    leaves the thread-local current-loop set to None/closed. A *sync* test
+    that runs afterwards and calls ``asyncio.get_event_loop()`` (e.g. the
+    ``_run`` helpers in tests/test_central_*_route.py) then blows up with
+    ``RuntimeError: There is no current event loop in thread 'MainThread'``.
+
+    That is pure cross-test global-state leakage: the affected tests pass in
+    isolation and only fail when an async test ran before them in the same
+    process. This autouse fixture repairs the invariant before each test by
+    ensuring a live, open current event loop exists — creating and installing
+    a fresh one if the current loop is missing or was closed. It does not run
+    or own the loop; it only restores the default-loop contract that
+    ``get_event_loop()``-style call sites rely on.
+    """
+    try:
+        loop = asyncio.get_event_loop_policy().get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("closed")
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    yield
 
 
 @pytest.fixture(autouse=True)
@@ -46,15 +76,47 @@ def _reset_ensure_once_cache():
     except ImportError:
         pass
 
+    # 2026-07-07: core.services.emotion_concepts holder ÉT proces-globalt
+    # register af aktive emotion-koncepter (_active) + akkumuleret residue
+    # (_expired_residue) + trigger-throttle (_last_trigger_at). Modulet
+    # reloades ALDRIG af isolated_runtime, så koncepter som én test aktiverer
+    # (direkte via activate/trigger, eller indirekte via approval_feedback-
+    # subscriber, cognitive-episode-triggers, osv.) overlever ind i næste test.
+    #
+    # get_lag1_influence_deltas() blander disse aktive koncepter ind i Lag-1-
+    # akserne (confidence/curiosity/frustration/fatigue). En efterfølgende test
+    # der forventer sin egen rene emotional_baseline (fx
+    # test_affective_meta_state: fatigue skal være 0.1) får i stedet baseline +
+    # lækket delta (fatigue → 0.07 pga. et lækket 'warmth'-koncept med
+    # fatigue -0.03). Rammer også de tunge DB-tests længere nede i suiten via
+    # samme delte modul-state. Nulstil registret før hver test.
+    try:
+        from core.services import emotion_concepts as _ec
+        if hasattr(_ec, "_lock"):
+            with _ec._lock:  # type: ignore[attr-defined]
+                _ec._active.clear()  # type: ignore[attr-defined]
+                for _ax in _ec._expired_residue:  # type: ignore[attr-defined]
+                    _ec._expired_residue[_ax] = 0.0  # type: ignore[attr-defined]
+                _ec._last_trigger_at.clear()  # type: ignore[attr-defined]
+        else:
+            _ec._active.clear()  # type: ignore[attr-defined]
+    except (ImportError, AttributeError):
+        pass
+
 
 @pytest.fixture()
 def isolated_runtime(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> SimpleNamespace:
+):
+    import os
+
     repo_root = Path(__file__).resolve().parents[1]
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
     monkeypatch.chdir(repo_root)
+
+    _prev_home = os.environ.get("HOME")
+    _prev_ws = os.environ.get("JARVIS_WORKSPACES_DIR")
 
     home = tmp_path / "home"
     home.mkdir(parents=True, exist_ok=True)
@@ -64,6 +126,12 @@ def isolated_runtime(
     module_names = [
         "core.runtime.config",
         "core.runtime.settings",
+        # runtime_json_io binds SETTINGS_FILE/CONFIG_DIR at import time. If it is
+        # not reloaded after HOME is repointed at tmp_path, its writer targets the
+        # REAL ~/.jarvis-v2/config/runtime.json while load_settings() reads the tmp
+        # copy — settings writes silently escape isolation (and pollute the real
+        # config). Reload it right after config so writes land in the tmp config.
+        "core.runtime.runtime_json_io",
         # db_core skal reloades FØR db, fordi db re-eksporterer fra db_core
         # og _ENSURED_TABLES cache lever i db_core (efter 2026-05-15 split).
         # Uden dette overlever cache-entries mellem tests og forurener
@@ -78,6 +146,18 @@ def isolated_runtime(
         "core.identity.workspace_bootstrap",
         "core.identity.visible_identity",
         "core.tools.workspace_capabilities",
+        # prompt_support_signals does `from core.runtime.db import
+        # list_runtime_goal_signals, list_runtime_world_model_signals, ...` AT
+        # MODULE LEVEL. When isolated_runtime reloads core.runtime.db under the
+        # tmp HOME, prompt_support_signals keeps its STALE db-func references
+        # bound to whatever db module a *previous* test reloaded — so its
+        # list_runtime_goal_signals() reads an earlier tmp/real DB, not the one
+        # the test inserted its goal signal into. The "Goal support signal:"
+        # block then never appears (test_world_model_prompt_bridge:
+        # test_visible_input_includes_small_subordinate_goal_support_block).
+        # prompt_contract re-imports these names FROM prompt_support_signals, so
+        # this must be reloaded AFTER core.runtime.db and BEFORE prompt_contract.
+        "core.services.prompt_support_signals",
         "core.services.prompt_contract",
         "core.services.visible_model",
         "core.services.cheap_provider_runtime",
@@ -162,6 +242,27 @@ def isolated_runtime(
         "core.services.dream_distillation_daemon",
         "core.services.unconscious_temperature_field",
         "core.services.runtime_self_model",
+        # runtime_candidates imports list_runtime_contract_candidates &
+        # friends BY NAME from core.runtime.db at module import. When
+        # isolated_runtime reloads core.runtime.db under the tmp HOME,
+        # runtime_candidates keeps its STALE references bound to whatever db
+        # module a *previous* test reloaded — so its connect()/DB_PATH point
+        # at an earlier tmp DB with leftover candidate rows. The freshly
+        # inserted candidate then never surfaces (list returns stale rows,
+        # workflow["items"] is empty → IndexError in
+        # test_candidate_apply_readiness). Reload both contract modules so
+        # they rebind to the just-reloaded db. Must come AFTER core.runtime.db
+        # and BEFORE mission_control (which imports build_runtime_contract_state).
+        "core.identity.runtime_candidates",
+        "core.identity.runtime_contract",
+        # candidate_workflow gør `from core.runtime.db import
+        # get_runtime_contract_candidate, ...` PÅ MODUL-NIVEAU. Uden reload
+        # holder den STALE db-referencer bundet til en tidligere test's
+        # db-reload → apply/approve_runtime_contract_candidate læser en anden
+        # DB end testens insert (via db) → "Runtime contract candidate not
+        # found" i test_canonical_self_candidate_apply i fuld suite. Samme
+        # stale-binding-familie som runtime_candidates ovenfor. Reload EFTER db.
+        "core.identity.candidate_workflow",
         "apps.api.jarvis_api.routes.mission_control",
         "core.identity.users",
         "core.identity.workspace_context",
@@ -172,6 +273,69 @@ def isolated_runtime(
         module = importlib.import_module(name)
         modules[name] = importlib.reload(module)
 
+    # 2026-07-07: STALE db-submodule connect() binding (den store DB-læk).
+    #
+    # core/runtime/db.py er splittet (boy scout) i mange db_*-submoduler
+    # (db_emotional_memory, db_self_repair, db_users, …). HVER af dem gør
+    # `from core.runtime.db import connect, _now_iso` PÅ MODUL-NIVEAU og
+    # db.py re-eksporterer deres funktioner (list_emotional_memory_anchors
+    # osv.) tilbage.
+    #
+    # isolated_runtime reloader db_core + db, så connect()/DB_PATH peger på
+    # tmp-DB'en. MEN submodulerne reloades IKKE: når db reloades, RE-IMPORTERER
+    # den blot de allerede-cachede submodul-objekter, hvis modul-globale
+    # `connect` stadig peger på et TIDLIGERE db_core-modul (fx efter at en
+    # anden test kørte sin egen db-reload-harness). Resultat: db.py's
+    # re-eksporterede list_emotional_memory_anchors() åbner den ÆGTE
+    # ~/.jarvis-v2/state/jarvis.db, mens testens egne insert/prune (frisk
+    # `from core.runtime.db import connect`) rammer tmp-DB'en → "list ser 50
+    # rækker fra ægte DB" + "prune: no such table" i samme test. Rammer de
+    # tunge DB-tests (emotional_memory_engine, self_repair_engine, user_db,
+    # canonical_self_candidate_apply, causal_graph, …) i fuld suite, aldrig
+    # alene. BEVIST: dbe.connect is dbc.connect == False; connect-path ==
+    # /home/bs/.jarvis-v2/state/jarvis.db mens dbc.DB_PATH == tmp.
+    #
+    # Fix: reload db_*-submodulerne EFTER db (så deres `connect` rebinder til
+    # den friske db.connect), og reload derefter db ÉN gang til så dens
+    # re-eksporter peger på de friske submodul-funktioner. Målrettet — kun de
+    # submoduler der binder connect/_now_iso ved import.
+    _db_submodules = [
+        "core.runtime.db_capability_approval",
+        "core.runtime.db_users",
+        "core.runtime.db_autonomy",
+        "core.runtime.db_scheduled_tasks",
+        "core.runtime.db_private_brain",
+        "core.runtime.db_emotional_memory",
+        "core.runtime.db_self_repair",
+        "core.runtime.db_user_contradiction",
+        "core.runtime.db_concept_baseline",
+        "core.runtime.db_anomalies",
+        "core.runtime.db_absence_traces",
+        "core.runtime.db_api_connections",
+        "core.runtime.db_central_incidents",
+        "core.runtime.db_composites",
+        "core.runtime.db_credit_assignment",
+        "core.runtime.db_decisions",
+        "core.runtime.db_dream_bias",
+        "core.runtime.db_embeddings",
+        "core.runtime.db_gate_verdicts",
+        "core.runtime.db_goals",
+        "core.runtime.db_instrument",
+        "core.runtime.db_interlanguage_blind",
+        "core.runtime.db_sensory",
+        "core.runtime.db_user_temperature",
+    ]
+    for _sub in _db_submodules:
+        try:
+            _m = sys.modules.get(_sub) or importlib.import_module(_sub)
+            importlib.reload(_m)
+        except Exception:
+            pass
+    # Re-reload db so its re-exported names bind to the fresh submodule funcs.
+    modules["core.runtime.db"] = importlib.reload(
+        sys.modules["core.runtime.db"]
+    )
+
     runtime_bootstrap = modules["core.runtime.bootstrap"]
     runtime_db = modules["core.runtime.db"]
     workspace_bootstrap = modules["core.identity.workspace_bootstrap"]
@@ -180,7 +344,7 @@ def isolated_runtime(
     runtime_db.init_db()
     workspace_bootstrap.ensure_default_workspace()
 
-    return SimpleNamespace(
+    _ns = SimpleNamespace(
         config=modules["core.runtime.config"],
         settings=modules["core.runtime.settings"],
         db=runtime_db,
@@ -441,3 +605,53 @@ def isolated_runtime(
         ],
         mission_control=modules["apps.api.jarvis_api.routes.mission_control"],
     )
+
+    try:
+        yield _ns
+    finally:
+        # Restore the DB path binding to the REAL runtime home.
+        #
+        # This fixture reloads core.runtime.{config,db_core,db} under the tmp
+        # HOME so DB_PATH/connect() point at tmp_path. Previously it used
+        # `return` (no teardown), so after any isolated_runtime test the reloaded
+        # db_core.DB_PATH stayed bound to the now-deleted tmp DB. Any *later* test
+        # that used the raw core.runtime.db.connect() without its own isolation
+        # (e.g. tests/test_credit_assignment.py, device_tokens/push tests) then hit
+        # a fresh/empty tmp DB → "sqlite3.OperationalError: no such table: ..."
+        # or missing rows. monkeypatch reverts HOME only *after* fixture teardown,
+        # so restore it explicitly here, then reload the path-binding modules back
+        # onto the real paths. Reloading just this chain (not all ~130 modules) is
+        # enough: connect()/DB_PATH and STATE_DIR are what leak.
+        if _prev_home is not None:
+            os.environ["HOME"] = _prev_home
+        else:
+            os.environ.pop("HOME", None)
+        if _prev_ws is not None:
+            os.environ["JARVIS_WORKSPACES_DIR"] = _prev_ws
+        else:
+            os.environ.pop("JARVIS_WORKSPACES_DIR", None)
+        # NB: intentionally does NOT reload core.runtime.state_store here.
+        # Reloading it rebinds load_json/save_json, which desynchronises modules
+        # (e.g. core.services.agentic_tool_cache) that imported those functions by
+        # name — turning a benign JSON-cache state into a cross-test failure. The
+        # sqlite path binding (db_core.DB_PATH/connect) is the one that produces
+        # the OperationalError cluster, so restore only the config→db chain.
+        for _name in (
+            "core.runtime.config",
+            "core.runtime.runtime_json_io",
+            # core.runtime.settings binds SETTINGS_FILE BY VALUE at import
+            # (`from core.runtime.config import CONFIG_DIR, SETTINGS_FILE`).
+            # This fixture reloads settings (line ~127) under the tmp HOME, so
+            # its SETTINGS_FILE points into tmp_path. Without reloading it here,
+            # settings.SETTINGS_FILE stays bound to the now-deleted tmp path →
+            # load_settings() finds no file and silently returns DEFAULTS for
+            # every later test (e.g. context_compact_threshold_tokens 200000 →
+            # 130000), which breaks tests/test_settings.py that read the real
+            # config. Reload settings AFTER config so it rebinds to the real path.
+            "core.runtime.settings",
+            "core.runtime.db_core",
+            "core.runtime.db",
+        ):
+            _m = sys.modules.get(_name)
+            if _m is not None:
+                importlib.reload(_m)

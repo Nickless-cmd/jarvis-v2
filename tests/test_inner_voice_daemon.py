@@ -49,6 +49,13 @@ def test_daemon_insufficient_grounding_when_no_stronger_stream_exists(
         "_gather_grounding",
         lambda: {"source_count": 0, "sources": [], "fragments": {}},
     )
+    # Play mode (dreaming phase) deliberately bypasses the grounding requirement,
+    # so the insufficient-grounding path is only reachable outside play mode. The
+    # phase is wall-clock dependent — pin it off so this test is deterministic.
+    monkeypatch.setattr(
+        "core.services.living_heartbeat_cycle.determine_life_phase",
+        lambda: {"play_mode": False},
+    )
     result = run_inner_voice_daemon(trigger="test")
     assert result["daemon_ran"] is True
     assert result["daemon_cadence_state"] == "ran-insufficient-grounding"
@@ -294,7 +301,9 @@ def test_workspace_inner_voice_template_exists() -> None:
     template = Path("workspace/templates/INNER_VOICE.md")
     assert template.exists(), "INNER_VOICE.md template missing from workspace/templates/"
     content = template.read_text()
-    assert "thinking to yourself" in content.lower()
+    # Template was rewritten in Danish — "du tænker for dig selv" is the
+    # equivalent of the old English "thinking to yourself".
+    assert "du tænker for dig selv" in content.lower()
     assert "JSON" in content or "json" in content
 
 

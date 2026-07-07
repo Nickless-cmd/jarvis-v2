@@ -2,6 +2,43 @@
 from __future__ import annotations
 
 
+def _quiet_carry_surfaces(monkeypatch, conductor) -> None:
+    """Neutralize the newer carry/salient surfaces to their inactive shape.
+
+    These surfaces (cognitive episode, theory-of-mind, learning policy,
+    perception, emotional memory, experiment carry) were added after several
+    isolation tests were written. Left live, they read real runtime state and
+    (a) pre-empt the mode decision, (b) flood the 900-char prompt-section
+    budget, and (c) fill the 5-slot salient list — crowding out the single
+    signal a given test is trying to assert. Tests that only care about one
+    surface call this to silence the rest.
+    """
+    monkeypatch.setattr(
+        conductor, "_safe_cognitive_episode_surface",
+        lambda: {"active": False, "items": [], "summary": "", "directives": {}},
+    )
+    monkeypatch.setattr(
+        conductor, "_safe_theory_of_mind_surface",
+        lambda: {"active": False, "summary": "", "hypotheses": [], "response_policy": {}},
+    )
+    monkeypatch.setattr(
+        conductor, "_safe_learning_policy_surface",
+        lambda: {"active": False, "summary": "", "rules": [], "directive": ""},
+    )
+    monkeypatch.setattr(
+        conductor, "_safe_perception_surface",
+        lambda: {"active": False, "summary": "", "events": [], "directive": ""},
+    )
+    monkeypatch.setattr(
+        conductor, "_safe_emotional_memory_surface",
+        lambda **kwargs: {"active": False, "summary": "", "items": [], "match_count": 0},
+    )
+    monkeypatch.setattr(
+        conductor, "_safe_cognitive_core_experiments",
+        lambda: {"activity_state": "quiet", "carry_state": "absent", "systems": {}},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Cognitive frame structure
 # ---------------------------------------------------------------------------
@@ -354,6 +391,11 @@ def test_experiment_carry_derivation_keeps_blink_observational() -> None:
 def test_build_cognitive_frame_includes_experiment_carry(monkeypatch) -> None:
     from core.services import runtime_cognitive_conductor as conductor
 
+    # Silence other carry surfaces so this test's experiment carry drives the
+    # mode (a live cognitive episode otherwise pre-empts it → "clarify").
+    # The test re-sets _safe_cognitive_core_experiments below, overriding the
+    # helper's quiet for experiments.
+    _quiet_carry_surfaces(monkeypatch, conductor)
     monkeypatch.setattr(conductor, "_safe_brain_context", lambda: {"record_count": 0, "excerpts": [], "by_type": {}})
     monkeypatch.setattr(
         conductor,
@@ -522,6 +564,10 @@ def test_cognitive_frame_exposes_learning_policy_carry(monkeypatch) -> None:
 def test_cognitive_frame_exposes_perception_carry(monkeypatch) -> None:
     from core.services import runtime_cognitive_conductor as conductor
 
+    # Silence other carries so the Perception line fits inside the 900-char
+    # section budget (live carries otherwise push it past the cap). The test's
+    # own _safe_perception_surface below overrides the helper's quiet.
+    _quiet_carry_surfaces(monkeypatch, conductor)
     monkeypatch.setattr(
         conductor,
         "_safe_perception_surface",
@@ -604,6 +650,10 @@ def test_cognitive_frame_integrates_living_signal_inputs(monkeypatch) -> None:
 def test_cognitive_frame_elevates_private_signal_pressure(monkeypatch) -> None:
     from core.services import runtime_cognitive_conductor as conductor
 
+    # Silence live carry surfaces so the mocked private signals (initiative
+    # tension / private state) reach the 5-slot salient list instead of being
+    # crowded out by real cognitive-episode/perception/etc. carries.
+    _quiet_carry_surfaces(monkeypatch, conductor)
     monkeypatch.setattr(conductor, "_safe_brain_context", lambda: {"record_count": 0, "excerpts": [], "by_type": {}})
     monkeypatch.setattr(
         conductor,

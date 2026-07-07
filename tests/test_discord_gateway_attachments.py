@@ -55,6 +55,10 @@ def test_build_attachment_prefix_empty_list():
 
 def test_send_discord_file_validates_path(monkeypatch):
     import core.services.discord_gateway as gw
+    # send_discord_file only validates + queues locally in the gateway-owner
+    # process; otherwise it HTTP-dispatches the intent to the runtime (cross-
+    # process). Force the owner path so we exercise the local validate/queue.
+    monkeypatch.setattr(gw, "_is_gateway_owner", lambda: True)
     monkeypatch.setattr(gw, "_validate_send_path", lambda path: (False, "not-allowed"))
     result = gw.send_discord_file(channel_id=123, text="hi", file_path="/etc/passwd")
     assert result["status"] == "error"
@@ -65,6 +69,7 @@ def test_send_discord_file_queues_on_valid_path(monkeypatch, tmp_path):
     import core.services.discord_gateway as gw
     f = tmp_path / "file.jpg"
     f.write_bytes(b"data")
+    monkeypatch.setattr(gw, "_is_gateway_owner", lambda: True)
     monkeypatch.setattr(gw, "_validate_send_path", lambda path: (True, ""))
     queued = []
     monkeypatch.setattr(gw._outbound_queue, "put_nowait", lambda item: queued.append(item))

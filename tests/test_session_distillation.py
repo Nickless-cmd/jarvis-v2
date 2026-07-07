@@ -647,8 +647,16 @@ def test_update_private_brain_record_status(_ensure_tables) -> None:
 # ---------------------------------------------------------------------------
 # Heartbeat influence trace
 # ---------------------------------------------------------------------------
+# NOTE: _build_influence_trace is no longer a pure input-categoriser. It has
+# grown into the heartbeat tick body (~1300 lines) that runs every enabled
+# daemon (somatic/desire/council_memory/tiktok/…) via _daemon_tick_with_deadline,
+# hits live LLM providers and DB tables, and takes minutes. The present/absent
+# input counts are now non-deterministic (extra council/circadian/optional-layer
+# entries). These two cases therefore require live infra — marked integration
+# so they leave the default unit run. (Pure-function assertions no longer apply.)
 
 
+@pytest.mark.integration
 def test_influence_trace_structure() -> None:
     """The influence trace should have the correct structure."""
     from core.services.heartbeat_runtime import _build_influence_trace
@@ -666,6 +674,7 @@ def test_influence_trace_structure() -> None:
     assert "Cognitive inputs:" in trace["summary"]
 
 
+@pytest.mark.integration
 def test_influence_trace_absent_when_empty() -> None:
     """When nothing is active, influence trace should show absent inputs."""
     from core.services.heartbeat_runtime import _build_influence_trace

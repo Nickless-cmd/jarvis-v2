@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import sys
-import types
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -18,43 +17,28 @@ BUS_MOD = None
 DB_MOD = None
 
 
-def _stub_modules():
-    global BUS_MOD, DB_MOD
-    for name in [
-        "core",
-        "core.eventbus",
-        "core.eventbus.bus",
-        "core.runtime",
-        "core.runtime.db",
-    ]:
-        if name not in sys.modules:
-            sys.modules[name] = types.ModuleType(name)
-
-    repo_root = Path(__file__).resolve().parents[1]
-    sys.modules["core"].__path__ = [str(repo_root / "core")]
-    sys.modules["core.eventbus"].__path__ = [str(repo_root / "core" / "eventbus")]
-    sys.modules["core.runtime"].__path__ = [str(repo_root / "core" / "runtime")]
-
-    BUS_MOD = sys.modules["core.eventbus.bus"]
-    if not hasattr(BUS_MOD, "event_bus"):
-        mock_bus = MagicMock()
-        mock_bus.publish = MagicMock()
-        BUS_MOD.event_bus = mock_bus
-
-    DB_MOD = sys.modules["core.runtime.db"]
-    if not hasattr(DB_MOD, "insert_private_brain_record"):
-        DB_MOD.insert_private_brain_record = MagicMock()
-
-
-_stub_modules()
-
 import importlib
-
 desire_daemon = importlib.import_module(
     "core.services.desire_daemon"
 )
-for _name in ("core.eventbus.bus", "core.runtime.db", "core.eventbus", "core.runtime"):
-    sys.modules.pop(_name, None)
+
+
+def _stub_modules():
+    """Isolate the daemon's dependency bindings without touching shared
+    ``core.*`` modules. See tests/test_absence_daemon.py for rationale — the
+    old sys.modules stub/pop dance leaked global state and poisoned unrelated
+    tests in the full suite (AttributeError / sqlite3.OperationalError).
+    """
+    global BUS_MOD, DB_MOD
+    mock_bus = MagicMock()
+    mock_bus.publish = MagicMock()
+    desire_daemon.event_bus = mock_bus
+    desire_daemon.insert_private_brain_record = MagicMock()
+    BUS_MOD = desire_daemon
+    DB_MOD = desire_daemon
+
+
+_stub_modules()
 
 
 def _reset():

@@ -38,7 +38,7 @@ def test_structured_transcript_user_assistant_roles() -> None:
         {"role": "assistant", "content": "Hej! Hvad kan jeg hjælpe med?", "created_at": "2026-01-01T00:00:01"},
     ]
     with mock.patch(
-        "core.services.prompt_contract.recent_chat_session_messages_by_user_turns",
+        "core.services.prompt_contract.chat_session_messages_since_last_compact",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -62,7 +62,7 @@ def test_structured_transcript_tool_compressed_into_assistant() -> None:
         {"role": "assistant", "content": "Klokken er 14:30.", "created_at": "2026-01-01T00:00:03"},
     ]
     with mock.patch(
-        "core.services.prompt_contract.recent_chat_session_messages_by_user_turns",
+        "core.services.prompt_contract.chat_session_messages_since_last_compact",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -87,7 +87,7 @@ def test_structured_transcript_tool_without_preceding_assistant() -> None:
         {"role": "tool", "content": "[bash]: output here", "created_at": "2026-01-01T00:00:01"},
     ]
     with mock.patch(
-        "core.services.prompt_contract.recent_chat_session_messages_by_user_turns",
+        "core.services.prompt_contract.chat_session_messages_since_last_compact",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -107,7 +107,7 @@ def test_structured_transcript_truncation() -> None:
         {"role": "user", "content": long_content, "created_at": "2026-01-01T00:00:00"},
     ]
     with mock.patch(
-        "core.services.prompt_contract.recent_chat_session_messages_by_user_turns",
+        "core.services.prompt_contract.chat_session_messages_since_last_compact",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -133,7 +133,7 @@ def test_structured_transcript_no_tool_slot_waste() -> None:
         {"role": "assistant", "content": "All done.", "created_at": "2026-01-01T00:00:05"},
     ]
     with mock.patch(
-        "core.services.prompt_contract.recent_chat_session_messages_by_user_turns",
+        "core.services.prompt_contract.chat_session_messages_since_last_compact",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -181,7 +181,8 @@ def test_prompt_assembly_transcript_messages_default_none() -> None:
 def test_done_replacement_not_in_visible_runs() -> None:
     """visible_runs.py should no longer contain bare 'Done.' fallback."""
     from pathlib import Path
-    source = Path("apps/api/jarvis_api/services/visible_runs.py").read_text()
+    # services/ moved from apps/api/jarvis_api/ to core/ (refactor dfcb0e12).
+    source = Path("core/services/visible_runs.py").read_text()
     # Check that the old "Done." pattern is gone
     assert 'followup_text = "Done."' not in source, \
         "bare 'Done.' fallback should be replaced with meaningful summary"
@@ -195,6 +196,7 @@ def test_done_replacement_not_in_visible_runs() -> None:
 def test_transcript_limit_raised_above_20() -> None:
     """Compact transcript limit should be > 20 (was 20, now 50)."""
     from pathlib import Path
-    source = Path("apps/api/jarvis_api/services/prompt_contract.py").read_text()
+    # services/ moved from apps/api/jarvis_api/ to core/ (refactor dfcb0e12).
+    source = Path("core/services/prompt_contract.py").read_text()
     # Should contain limit=50 for compact (not 20)
     assert "limit=50" in source, "Compact transcript limit should be raised to 50"

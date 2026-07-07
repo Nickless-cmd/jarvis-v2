@@ -1,52 +1,56 @@
 from __future__ import annotations
 
 
-def test_temperature_field_derives_frustrated_from_recent_user_messages(
+# NOTE: the keyword-based implementation that used to live in
+# unconscious_temperature_field was retired — the module is now a
+# backwards-compat wrapper that delegates to user_temperature_engine (the
+# two-stream engine, covered by tests/services/test_user_temperature_engine.py).
+# These two cases therefore verify the wrapper's delegation contract rather than
+# the removed keyword/cache internals (_recent_user_messages, the DB state key).
+
+
+def test_temperature_field_surface_delegates_to_engine(
     isolated_runtime,
     monkeypatch,
 ) -> None:
     field = isolated_runtime.unconscious_temperature_field
-    # Monkeypatch _recent_user_messages direkte på modulet for at undgå
-    # db-isolation-problemet (chat_sessions bruger den globale db, ikke tmp db)
+
+    engine_surface = {
+        "active": True,
+        "enabled": True,
+        "current_field": "frustrated",
+        "valens": -0.6,
+        "arousal": 0.4,
+        "intensity": 0.7,
+        "conflict": 0.1,
+        "rationale": "irritation markers dominate",
+        "summary": "frustrated field",
+    }
     monkeypatch.setattr(
-        field,
-        "_recent_user_messages",
-        lambda days, limit: [
-            "Det virker ikke stadig, du har misforstået det.",
-            "Nej, stadig broken. Kom nu.",
-        ],
+        "core.services.user_temperature_engine.get_active_field_surface",
+        lambda *, workspace_id="default", force_refresh=False: engine_surface,
     )
 
     surface = field.build_unconscious_temperature_field_surface(force_refresh=True)
-    hint = field.build_unconscious_temperature_hint()
 
     assert surface["active"] is True
     assert surface["current_field"] == "frustrated"
-    assert "irritation" in surface["hint"]
-    assert hint is not None
-    assert "current_field=frustrated" in hint
 
 
-def test_temperature_field_uses_cached_state_when_fresh(
+def test_temperature_hint_delegates_to_engine(
     isolated_runtime,
+    monkeypatch,
 ) -> None:
     field = isolated_runtime.unconscious_temperature_field
-    isolated_runtime.db.set_runtime_state_value(
-        "unconscious_temperature_field.state",
-        {
-            "current_field": "playful",
-            "scores": {"playful": 3.0},
-            "message_count": 4,
-            "confidence_band": "medium",
-            "hint": "Tillad lidt leg og lethed, men uden at miste retning.",
-            "rebuilt_at": "2099-01-01T00:00:00+00:00",
-        },
+    monkeypatch.setattr(
+        "core.services.user_temperature_engine.format_temperature_field_for_heartbeat",
+        lambda *, workspace_id="default": "temperature: current_field=frustrated",
     )
 
-    surface = field.build_unconscious_temperature_field_surface()
+    hint = field.build_unconscious_temperature_hint()
 
-    assert surface["current_field"] == "playful"
-    assert surface["message_count"] == 4
+    assert hint is not None
+    assert "current_field=frustrated" in hint
 
 
 def test_mission_control_runtime_and_endpoint_expose_temperature_field(

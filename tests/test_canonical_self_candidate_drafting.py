@@ -63,7 +63,12 @@ def test_selfhood_proposal_can_draft_governed_canonical_self_candidate(isolated_
     assert candidates[0]["target_file"] == "SOUL.md"
     assert candidates[0]["candidate_type"] == "soul_update"
     assert candidates[0]["source_mode"] == "runtime_selfhood_proposal"
-    assert "Explicit user approval is required" in str(candidates[0]["status_reason"])
+    # Commit e6ee4fa8 ("Self-authorization … per user directive"): the drafting
+    # status_reason wording changed. The candidate is still drafted as
+    # "proposed" (not auto-applied) — the apply gate remains
+    # needs-user-confirmation, verified in the dedicated apply/does-not-auto-apply
+    # tests below.
+    assert "Self-authorized per user directive" in str(candidates[0]["status_reason"])
 
 
 def test_canonical_self_candidate_drafting_does_not_auto_apply(isolated_runtime) -> None:
@@ -126,8 +131,12 @@ def test_canonical_self_candidate_drafting_is_visible_and_requires_explicit_appr
     assert identity_workflow["target_file"] == "IDENTITY.md"
     assert soul_workflow["pending_count"] >= 1
     assert identity_workflow["pending_count"] >= 1
+    # The ENFORCED apply gate is unchanged: drafted candidates stay
+    # apply_readiness=low / apply_reason=needs-user-confirmation. Only the
+    # human-readable support_summary wording changed (commit e6ee4fa8).
     assert soul_workflow["items"][0]["apply_readiness"] == "low"
     assert soul_workflow["items"][0]["apply_reason"] == "needs-user-confirmation"
     assert identity_workflow["items"][0]["apply_readiness"] == "low"
-    assert "Explicit user approval is required" in str(soul_workflow["items"][0]["support_summary"])
-    assert "Explicit user approval is required" in str(identity_workflow["items"][0]["support_summary"])
+    assert identity_workflow["items"][0]["apply_reason"] == "needs-user-confirmation"
+    assert "Self-authored canonical-self draft" in str(soul_workflow["items"][0]["support_summary"])
+    assert "Self-authored canonical-self draft" in str(identity_workflow["items"][0]["support_summary"])

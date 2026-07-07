@@ -195,6 +195,14 @@ def test_cognitive_state_assembly_injects_experiment_state_as_bounded_source() -
 
     enabled_settings = RuntimeSettings(cognitive_state_assembly_enabled=True)
 
+    # The cognitive-state cache is SQLite-backed (shared_cache → real
+    # ~/.jarvis-v2 DB). A leftover `cognitive_state:visible_compact` row from a
+    # prior run/prod makes build_cognitive_state_for_prompt return a cache HIT
+    # (sources=['cache_hit']) instead of assembling fresh — so the experiment
+    # source never lands in last_injection. Invalidate first to guarantee the
+    # real assembly path runs (restores this test's fresh-cache precondition).
+    csa.invalidate_cognitive_state_cache()
+
     with mock.patch("core.runtime.settings.load_settings", return_value=enabled_settings):
         csa._build_cognitive_core_experiment_state_line = (
             lambda *, compact: "experiments: spotlight=high(workspace) | assay=blink-observational"

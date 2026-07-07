@@ -382,9 +382,23 @@ def test_proactive_question_gate_surface_is_exposed_in_mission_control_runtime(
 
 def test_proactive_question_gate_accepts_carried_bonded_continuity_without_relation_meaning(
     isolated_runtime,
+    monkeypatch,
 ) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.proactive_question_gate_tracking
+
+    # The awareness surface synthesises a "constrained" signal from the isolated
+    # runtime's local-fallback provider — which correctly short-circuits the gate
+    # reason to "runtime-constrained". This test isolates the carried-continuity
+    # path, so neutralise the awareness surface to an unconstrained state.
+    monkeypatch.setattr(
+        tracking, "build_runtime_awareness_signal_surface",
+        lambda *a, **k: {
+            "active": True,
+            "items": [],
+            "summary": {"active_count": 1, "constrained_count": 0, "recovered_count": 0},
+        },
+    )
 
     _insert_autonomy_question_pressure(db)
     _insert_question_loop(db)
@@ -406,9 +420,23 @@ def test_proactive_question_gate_accepts_carried_bonded_continuity_without_relat
 
 def test_proactive_question_gate_accepts_initiative_loop_continuity_without_relation_meaning(
     isolated_runtime,
+    monkeypatch,
 ) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.proactive_question_gate_tracking
+
+    # The initiative-loop continuity path requires awareness to be *present* but
+    # not *constrained*. The isolated runtime's local-fallback provider synthesises
+    # a "constrained" signal that would short-circuit the gate reason, so replace
+    # the awareness surface with a present-but-ready (unconstrained) state.
+    monkeypatch.setattr(
+        tracking, "build_runtime_awareness_signal_surface",
+        lambda *a, **k: {
+            "active": True,
+            "items": [],
+            "summary": {"active_count": 1, "constrained_count": 0, "recovered_count": 0},
+        },
+    )
 
     now = datetime.now(UTC).isoformat()
     db.upsert_runtime_autonomy_pressure_signal(

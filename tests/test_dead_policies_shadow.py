@@ -96,9 +96,17 @@ def _payload():
 def test_memory_shadow_calls_decide_with_memory_cluster(_remember_env):
     ars, remember_mock = _remember_env
     decide_mock = MagicMock()
-    with patch("core.services.central_core.central") as central_mock:
-        central_mock.return_value.decide = decide_mock
-        ars._process_visible_assistant_turn(_payload())
+    # 6. jul: the memory_write_policy shadow is skipped when there is NO user
+    # context (evaluate_write reads a per-user workspace_dir → NoUserContextError
+    # noise). So we must run inside a user context for the shadow decide to fire.
+    from core.identity import workspace_context as _wc
+    token = _wc.set_context(workspace_name="bjorn", user_id="test-owner")
+    try:
+        with patch("core.services.central_core.central") as central_mock:
+            central_mock.return_value.decide = decide_mock
+            ars._process_visible_assistant_turn(_payload())
+    finally:
+        _wc.reset_context(token)
     assert decide_mock.called, "decide skal kaldes på store-stien"
     _, kwargs = decide_mock.call_args
     assert kwargs.get("cluster") == "memory"

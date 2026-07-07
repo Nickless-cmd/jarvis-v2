@@ -53,7 +53,12 @@ def test_visible_memory_postprocess_consolidates_even_when_distillation_fails(
 
     assert calls
     assert calls[0]["internal_context"] == "[bash]: internal tool result"
-    recent = event_bus.recent(limit=4)
+    # Events are written by an async writer thread — flush before reading so the
+    # postprocess-completed event (published last, after several intervening
+    # events) is committed and visible. Widen the window past those intervening
+    # events too.
+    event_bus.flush()
+    recent = event_bus.recent(limit=100)
     kinds = [item["kind"] for item in recent]
     assert "memory.session_distillation_failed" in kinds
     assert "memory.visible_run_postprocess_completed" in kinds

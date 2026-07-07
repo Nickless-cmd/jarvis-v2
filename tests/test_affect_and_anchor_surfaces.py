@@ -63,7 +63,11 @@ def test_temporal_rhythm_surfaces_racing_tempo(monkeypatch):
     assert surface["active"] is True
     assert surface["summary"].startswith("Puls=")
     assert prompt is not None
-    assert "jager" in prompt
+    # Wording changed to sober English prose in commit 1471da77
+    # ("teater-runde 3"): "jager … presset" → "racing … high subjective
+    # pressure band".
+    assert "racing" in prompt
+    assert "high subjective pressure band" in prompt
 
 
 def test_valence_trajectory_flourishes_from_window(monkeypatch):

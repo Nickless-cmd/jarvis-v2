@@ -1,41 +1,45 @@
 from __future__ import annotations
 
+import pytest
 
-def _req(rid="p1", panel="preview"):
+
+def _req(panel="preview"):
     from core.services.ui_panel_store import request_panel
-    return request_panel(request_id=rid, panel=panel, session_id="s1",
-                         detail="vis fil", created_at="2026-06-14T12:00:00Z")
+    return request_panel(panel=panel, session_id="s1", detail="vis fil")
 
 
 def test_request_and_list(isolated_runtime) -> None:
     from core.services.ui_panel_store import list_pending
 
-    _req("p1", "preview")
-    _req("p2", "right")
+    r1 = _req("preview")
+    r2 = _req("right")
     pend = list_pending()
-    assert {p["id"] for p in pend} == {"p1", "p2"}
+    assert {p["id"] for p in pend} == {r1["id"], r2["id"]}
     assert {p["panel"] for p in pend} == {"preview", "right"}
 
 
-def test_unknown_panel_clamps_to_preview(isolated_runtime) -> None:
-    from core.services.ui_panel_store import list_pending
+def test_unknown_panel_raises(isolated_runtime) -> None:
+    # Runtime now rejects unknown panels with ValueError instead of clamping
+    # to preview (ui_panel_store.request_panel validates against VALID_PANELS).
+    from core.services.ui_panel_store import request_panel, list_pending
 
-    _req("p1", "evil-panel")
-    assert list_pending()[0]["panel"] == "preview"
+    with pytest.raises(ValueError):
+        request_panel(panel="evil-panel", session_id="s1")
+    assert list_pending() == []
 
 
 def test_ack_removes_from_pending(isolated_runtime) -> None:
-    from core.services.ui_panel_store import ack, list_pending
+    from core.services.ui_panel_store import ack_panel, list_pending
 
-    _req("p1")
-    assert ack("p1") is True
+    rec = _req()
+    assert ack_panel(rec["id"]) is True
     assert list_pending() == []
 
 
 def test_ack_unknown_false(isolated_runtime) -> None:
-    from core.services.ui_panel_store import ack
+    from core.services.ui_panel_store import ack_panel
 
-    assert ack("nope") is False
+    assert ack_panel("nope") is False
 
 
 def test_tool_registered_and_callable(isolated_runtime) -> None:
@@ -49,16 +53,15 @@ def test_tool_registered_and_callable(isolated_runtime) -> None:
     assert res["status"] == "ok" and res["panel"] == "preview"
 
 
-def test_request_panel_carries_action_close(isolated_runtime) -> None:
+def test_request_panel_records_scope(isolated_runtime) -> None:
     from core.services.ui_panel_store import request_panel, list_pending
-    rec = request_panel(request_id="p-close-1", panel="preview", session_id="s",
-                        detail="", created_at="t", action="close")
-    assert rec["action"] == "close"
-    assert any(r["id"] == "p-close-1" and r.get("action") == "close" for r in list_pending())
+    rec = request_panel(panel="preview", session_id="s", detail="", scope="workstation")
+    assert rec["scope"] == "workstation"
+    assert any(r["id"] == rec["id"] and r.get("scope") == "workstation"
+               for r in list_pending())
 
 
-def test_request_panel_defaults_action_open(isolated_runtime) -> None:
+def test_request_panel_defaults_scope_repo(isolated_runtime) -> None:
     from core.services.ui_panel_store import request_panel
-    rec = request_panel(request_id="p-open-1", panel="preview", session_id="s",
-                        detail="", created_at="t")
-    assert rec["action"] == "open"
+    rec = request_panel(panel="preview", session_id="s", detail="")
+    assert rec["scope"] == "repo"

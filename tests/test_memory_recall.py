@@ -30,7 +30,9 @@ class TestClipLine:
     def test_long_line_clipped(self) -> None:
         long_text = "a" * 200
         result = _module()._clip_line(long_text, limit=100)
-        assert len(result) == 100
+        # clip_text (default hard=False) keeps `limit` content chars and appends
+        # the ellipsis on top — total may exceed limit by one char.
+        assert len(result) == 101
         assert result.endswith("…")
 
     def test_exact_fit(self) -> None:
@@ -49,7 +51,8 @@ class TestClipLine:
 
     def test_custom_limit(self) -> None:
         result = _module()._clip_line("hello world", limit=5)
-        assert len(result) == 5
+        # 5 content chars ("hello") + ellipsis = 6 (default hard=False).
+        assert len(result) == 6
         assert result.endswith("…")
 
 

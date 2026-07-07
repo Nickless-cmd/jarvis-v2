@@ -62,19 +62,28 @@ def test_append_chat_message_externalizes_tool_result(isolated_runtime) -> None:
     assert stored["tool_name"] == "bash"
 
 
-def test_build_visible_input_expands_recent_tool_result_reference(isolated_runtime) -> None:
-    session = create_chat_session(title="Expanded tools")
+def test_build_visible_input_carries_recent_tool_result_reference(isolated_runtime) -> None:
+    # Inline expansion of the most-recent tool result was removed for prompt-cache
+    # stability (2026-06-30 cache-fix): historical tool results now render as a
+    # stable bounded summary with a [tool_result:<id>] reference, and the model
+    # pulls the full output on demand via read_tool_result. So the transcript
+    # carries the reference/summary — not the raw tail — and the full content
+    # stays retrievable from the store (see test_read_tool_result_tool_...).
+    session = create_chat_session(title="Referenced tools")
     session_id = str(session["id"])
     full_result = "prefix " + ("detail " * 120) + "TAIL_MARKER_FOR_EXPANSION"
 
     append_chat_message(session_id=session_id, role="user", content="check the runtime")
-    append_chat_message(
+    tool_msg = append_chat_message(
         session_id=session_id,
         role="tool",
         content=full_result,
         tool_name="bash",
         tool_arguments={"command": "journalctl -u jarvis-api"},
     )
+
+    ref = parse_tool_result_reference(tool_msg["content"])
+    assert ref is not None
 
     items = _build_visible_input(
         "what did the tool find?",
@@ -90,7 +99,12 @@ def test_build_visible_input_expands_recent_tool_result_reference(isolated_runti
         if isinstance(part, dict) and "text" in part
     ]
 
-    assert any("TAIL_MARKER_FOR_EXPANSION" in text for text in texts)
+    # The transcript surfaces the tool output (as a bounded summary line), and the
+    # full result — including the tail marker — remains available from the store.
+    assert any("bash" in text for text in texts)
+    stored = get_tool_result(ref["result_id"])
+    assert stored is not None
+    assert "TAIL_MARKER_FOR_EXPANSION" in stored["result"]
 
 
 def test_read_tool_result_tool_returns_full_result(isolated_runtime) -> None:

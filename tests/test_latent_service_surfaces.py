@@ -8,23 +8,52 @@ import pytest
 
 @pytest.fixture()
 def clean_runtime_state(tmp_path, monkeypatch):
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("JARVIS_WORKSPACES_DIR", str(tmp_path / "workspaces"))
+    import os
+
     import core.runtime.config as config
+    import core.runtime.db_core as db_core
     import core.runtime.db as db
     import core.runtime.state_store as state_store
 
-    importlib.reload(config)
-    importlib.reload(db)
-    importlib.reload(state_store)
-    for module_name in (
+    engine_mods = (
         "core.services.contradiction_engine",
         "core.services.emergence",
         "core.services.prospective_memory",
-    ):
-        if module_name in sys.modules:
-            importlib.reload(sys.modules[module_name])
-    return None
+    )
+
+    def _reload_chain():
+        # db_core owns DB_PATH + connect() (after the 2026-05-15 db→db_core split).
+        # Reloading only `db` left connect() bound to the REAL ~/.jarvis-v2 DB, so
+        # this "isolated" fixture actually read/wrote the shared DB — patterns from
+        # earlier tests leaked in (candidate count 3 instead of 1). db_core must be
+        # reloaded so DB_PATH recomputes from the current HOME.
+        importlib.reload(config)
+        importlib.reload(db_core)
+        importlib.reload(db)
+        importlib.reload(state_store)
+        for module_name in engine_mods:
+            if module_name in sys.modules:
+                importlib.reload(sys.modules[module_name])
+
+    prev_home = os.environ.get("HOME")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("JARVIS_WORKSPACES_DIR", str(tmp_path / "workspaces"))
+    _reload_chain()
+    db.init_db()
+    try:
+        yield None
+    finally:
+        # CRITICAL: reloading db_core rebinds DB_PATH/connect() to tmp. If not
+        # undone, the tmp-DB binding leaks into later test files whose modules
+        # keep referencing this connect() → "no such table" once tmp_path is gone
+        # (this exact leak previously broke test_credit_assignment). Restore the
+        # real HOME (fixture teardown runs before monkeypatch reverts env) and
+        # reload the chain back onto the real runtime paths.
+        if prev_home is not None:
+            os.environ["HOME"] = prev_home
+        else:
+            os.environ.pop("HOME", None)
+        _reload_chain()
 
 
 def test_contradiction_engine_surface_is_side_effect_free(clean_runtime_state):

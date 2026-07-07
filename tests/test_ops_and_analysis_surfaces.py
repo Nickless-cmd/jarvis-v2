@@ -92,7 +92,8 @@ def test_read_before_write_guard_blocks_until_read(tmp_path):
 def test_agent_outcomes_log_roundtrips_recent_entries(tmp_path, monkeypatch):
     from core.services import agent_outcomes_log as log
 
-    monkeypatch.setattr(log, "_LOG_FILE", tmp_path / "AGENT_OUTCOMES.md")
+    outcomes_file = tmp_path / "AGENT_OUTCOMES.md"
+    monkeypatch.setattr(log, "_log_file", lambda: outcomes_file)
 
     log.append_agent_outcome(
         agent_id="agent-1",

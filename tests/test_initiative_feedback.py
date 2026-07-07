@@ -121,9 +121,9 @@ def test_approve_runtime_initiative_sets_outcome():
     fake_conn.execute.return_value.fetchone.return_value = {"initiative_id": "i1"}
     fake_conn.commit = MagicMock()
 
-    with patch("core.runtime.db.connect", return_value=fake_conn), \
-         patch("core.runtime.db._ensure_runtime_initiatives_table"), \
-         patch("core.runtime.db.get_runtime_initiative", return_value={
+    with patch("core.runtime.db_runtime_initiatives.connect", return_value=fake_conn), \
+         patch("core.runtime.db_runtime_initiatives._ensure_runtime_initiatives_table"), \
+         patch("core.runtime.db_runtime_initiatives.get_runtime_initiative", return_value={
              "initiative_id": "i1", "outcome": "approved", "outcome_note": "ok",
              "user_approved_at": "2026-01-01T00:00:00+00:00",
          }):
@@ -144,9 +144,9 @@ def test_reject_runtime_initiative_sets_outcome_and_expires():
     fake_conn.execute.return_value.fetchone.return_value = {"initiative_id": "i2"}
     fake_conn.commit = MagicMock()
 
-    with patch("core.runtime.db.connect", return_value=fake_conn), \
-         patch("core.runtime.db._ensure_runtime_initiatives_table"), \
-         patch("core.runtime.db.get_runtime_initiative", return_value={
+    with patch("core.runtime.db_runtime_initiatives.connect", return_value=fake_conn), \
+         patch("core.runtime.db_runtime_initiatives._ensure_runtime_initiatives_table"), \
+         patch("core.runtime.db_runtime_initiatives.get_runtime_initiative", return_value={
              "initiative_id": "i2", "outcome": "rejected", "status": "expired",
          }):
         result = reject_runtime_initiative(

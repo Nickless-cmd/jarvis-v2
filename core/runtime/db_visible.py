@@ -50,6 +50,24 @@ def ensure_visible_tables(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS visible_work_units (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            work_id TEXT NOT NULL UNIQUE,
+            run_id TEXT NOT NULL UNIQUE,
+            status TEXT NOT NULL,
+            lane TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL,
+            started_at TEXT,
+            finished_at TEXT NOT NULL,
+            user_message_preview TEXT,
+            capability_id TEXT,
+            work_preview TEXT
+        )
+        """
+    )
 
 
 def recent_visible_runs(limit: int = 5) -> list[dict[str, object]]:
@@ -129,6 +147,46 @@ def recent_visible_work_notes(limit: int = 5) -> list[dict[str, object]]:
             "projection_source": row["projection_source"],
             "created_at": row["created_at"],
             "finished_at": row["finished_at"],
+        }
+        for row in rows
+    ]
+
+
+def recent_visible_work_units(limit: int = 5) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                work_id,
+                run_id,
+                status,
+                lane,
+                provider,
+                model,
+                started_at,
+                finished_at,
+                user_message_preview,
+                capability_id,
+                work_preview
+            FROM visible_work_units
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [
+        {
+            "work_id": row["work_id"],
+            "run_id": row["run_id"],
+            "status": row["status"],
+            "lane": row["lane"],
+            "provider": row["provider"],
+            "model": row["model"],
+            "started_at": row["started_at"],
+            "finished_at": row["finished_at"],
+            "user_message_preview": row["user_message_preview"],
+            "capability_id": row["capability_id"],
+            "work_preview": row["work_preview"],
         }
         for row in rows
     ]

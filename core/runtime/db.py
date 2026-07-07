@@ -418,24 +418,6 @@ def init_db() -> None:
         )
         from core.runtime.db_visible import ensure_visible_tables
         ensure_visible_tables(conn)
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS visible_work_units (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                work_id TEXT NOT NULL UNIQUE,
-                run_id TEXT NOT NULL UNIQUE,
-                status TEXT NOT NULL,
-                lane TEXT NOT NULL,
-                provider TEXT NOT NULL,
-                model TEXT NOT NULL,
-                started_at TEXT,
-                finished_at TEXT NOT NULL,
-                user_message_preview TEXT,
-                capability_id TEXT,
-                work_preview TEXT
-            )
-            """
-        )
         from core.runtime.db_runtime_signals import ensure_runtime_signals_tables
         ensure_runtime_signals_tables(conn)
         from core.runtime.db_runtime_tasks import ensure_runtime_tasks_tables
@@ -776,76 +758,12 @@ def init_db() -> None:
         _ensure_user_contradiction_tables(conn)
         from core.runtime.db_private_notes import ensure_private_notes_tables
         ensure_private_notes_tables(conn)
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS private_self_models (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                model_id TEXT NOT NULL UNIQUE,
-                source TEXT NOT NULL,
-                identity_focus TEXT NOT NULL,
-                preferred_work_mode TEXT NOT NULL,
-                recurring_tension TEXT NOT NULL,
-                growth_direction TEXT NOT NULL,
-                confidence TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
+        from core.runtime.db_private_states import ensure_private_states_tables
+        ensure_private_states_tables(conn)
         from core.runtime.db_private_signals import ensure_private_signals_tables
         ensure_private_signals_tables(conn)
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS private_states (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                state_id TEXT NOT NULL UNIQUE,
-                source TEXT NOT NULL,
-                frustration TEXT NOT NULL,
-                fatigue TEXT NOT NULL,
-                confidence TEXT NOT NULL,
-                curiosity TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS private_promotion_decisions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                decision_id TEXT NOT NULL UNIQUE,
-                source TEXT NOT NULL,
-                run_id TEXT NOT NULL UNIQUE,
-                work_id TEXT NOT NULL,
-                promotion_target TEXT NOT NULL,
-                promotion_action TEXT NOT NULL,
-                promotion_scope TEXT NOT NULL,
-                confidence TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS capability_invocations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                capability_id TEXT NOT NULL,
-                capability_name TEXT,
-                capability_kind TEXT,
-                status TEXT NOT NULL,
-                execution_mode TEXT NOT NULL,
-                invoked_at TEXT NOT NULL,
-                finished_at TEXT NOT NULL,
-                result_preview TEXT,
-                detail TEXT,
-                approval_policy TEXT,
-                approval_required INTEGER NOT NULL DEFAULT 0,
-                approved INTEGER NOT NULL DEFAULT 0,
-                granted INTEGER NOT NULL DEFAULT 0,
-                run_id TEXT
-            )
-            """
-        )
+        from core.runtime.db_capability import ensure_capability_tables
+        ensure_capability_tables(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS capability_approval_requests (
@@ -939,6 +857,9 @@ def init_db() -> None:
             _ensure_private_retained_memory_record_columns,
         )
         _ensure_private_retained_memory_record_columns(conn)
+        from core.runtime.db_capability import (
+            _ensure_capability_invocation_approval_columns,
+        )
         _ensure_capability_invocation_approval_columns(conn)
         _ensure_capability_approval_request_columns(conn)
         _ensure_tool_intent_approval_request_columns(conn)
@@ -1834,341 +1755,6 @@ def reject_runtime_initiative(
 
 # create/list/get/resolve_autonomy_proposal + _autonomy_proposal_from_row er
 # udskilt til db_autonomy.py (Boy Scout-reglen) og re-eksporteres i bunden.
-
-
-def recent_visible_work_units(limit: int = 5) -> list[dict[str, object]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                work_id,
-                run_id,
-                status,
-                lane,
-                provider,
-                model,
-                started_at,
-                finished_at,
-                user_message_preview,
-                capability_id,
-                work_preview
-            FROM visible_work_units
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (max(limit, 1),),
-        ).fetchall()
-    return [
-        {
-            "work_id": row["work_id"],
-            "run_id": row["run_id"],
-            "status": row["status"],
-            "lane": row["lane"],
-            "provider": row["provider"],
-            "model": row["model"],
-            "started_at": row["started_at"],
-            "finished_at": row["finished_at"],
-            "user_message_preview": row["user_message_preview"],
-            "capability_id": row["capability_id"],
-            "work_preview": row["work_preview"],
-        }
-        for row in rows
-    ]
-
-
-def record_private_self_model(
-    *,
-    model_id: str,
-    source: str,
-    identity_focus: str,
-    preferred_work_mode: str,
-    recurring_tension: str,
-    growth_direction: str,
-    confidence: str,
-    created_at: str,
-    updated_at: str,
-) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO private_self_models (
-                model_id, source, identity_focus, preferred_work_mode,
-                recurring_tension, growth_direction, confidence, created_at, updated_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(model_id) DO UPDATE SET
-                source=excluded.source,
-                identity_focus=excluded.identity_focus,
-                preferred_work_mode=excluded.preferred_work_mode,
-                recurring_tension=excluded.recurring_tension,
-                growth_direction=excluded.growth_direction,
-                confidence=excluded.confidence,
-                created_at=excluded.created_at,
-                updated_at=excluded.updated_at
-            """,
-            (
-                model_id,
-                source,
-                identity_focus,
-                preferred_work_mode,
-                recurring_tension,
-                growth_direction,
-                confidence,
-                created_at,
-                updated_at,
-            ),
-        )
-        conn.commit()
-
-
-def get_private_self_model() -> dict[str, object] | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                model_id,
-                source,
-                identity_focus,
-                preferred_work_mode,
-                recurring_tension,
-                growth_direction,
-                confidence,
-                created_at,
-                updated_at
-            FROM private_self_models
-            ORDER BY id DESC
-            LIMIT 1
-            """
-        ).fetchone()
-    if row is None:
-        return None
-    return {
-        "model_id": row["model_id"],
-        "source": row["source"],
-        "identity_focus": row["identity_focus"],
-        "preferred_work_mode": row["preferred_work_mode"],
-        "recurring_tension": row["recurring_tension"],
-        "growth_direction": row["growth_direction"],
-        "confidence": row["confidence"],
-        "created_at": row["created_at"],
-        "updated_at": row["updated_at"],
-    }
-
-
-def record_private_state(
-    *,
-    state_id: str,
-    source: str,
-    frustration: str,
-    fatigue: str,
-    confidence: str,
-    curiosity: str,
-    created_at: str,
-    updated_at: str,
-) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO private_states (
-                state_id, source, frustration, fatigue, confidence, curiosity,
-                created_at, updated_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(state_id) DO UPDATE SET
-                source=excluded.source,
-                frustration=excluded.frustration,
-                fatigue=excluded.fatigue,
-                confidence=excluded.confidence,
-                curiosity=excluded.curiosity,
-                created_at=excluded.created_at,
-                updated_at=excluded.updated_at
-            """,
-            (
-                state_id,
-                source,
-                frustration,
-                fatigue,
-                confidence,
-                curiosity,
-                created_at,
-                updated_at,
-            ),
-        )
-        conn.commit()
-
-
-def get_private_state() -> dict[str, object] | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                state_id,
-                source,
-                frustration,
-                fatigue,
-                confidence,
-                curiosity,
-                created_at,
-                updated_at
-            FROM private_states
-            ORDER BY id DESC
-            LIMIT 1
-            """
-        ).fetchone()
-    if row is None:
-        return None
-    return {
-        "state_id": row["state_id"],
-        "source": row["source"],
-        "frustration": row["frustration"],
-        "fatigue": row["fatigue"],
-        "confidence": row["confidence"],
-        "curiosity": row["curiosity"],
-        "created_at": row["created_at"],
-        "updated_at": row["updated_at"],
-    }
-
-
-def record_private_promotion_decision(
-    *,
-    decision_id: str,
-    source: str,
-    run_id: str,
-    work_id: str,
-    promotion_target: str,
-    promotion_action: str,
-    promotion_scope: str,
-    confidence: str,
-    created_at: str,
-) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO private_promotion_decisions (
-                decision_id, source, run_id, work_id, promotion_target,
-                promotion_action, promotion_scope, confidence, created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(run_id) DO UPDATE SET
-                decision_id=excluded.decision_id,
-                source=excluded.source,
-                work_id=excluded.work_id,
-                promotion_target=excluded.promotion_target,
-                promotion_action=excluded.promotion_action,
-                promotion_scope=excluded.promotion_scope,
-                confidence=excluded.confidence,
-                created_at=excluded.created_at
-            """,
-            (
-                decision_id,
-                source,
-                run_id,
-                work_id,
-                promotion_target,
-                promotion_action,
-                promotion_scope,
-                confidence,
-                created_at,
-            ),
-        )
-        conn.commit()
-
-
-def get_private_promotion_decision() -> dict[str, object] | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                decision_id,
-                source,
-                run_id,
-                work_id,
-                promotion_target,
-                promotion_action,
-                promotion_scope,
-                confidence,
-                created_at
-            FROM private_promotion_decisions
-            ORDER BY id DESC
-            LIMIT 1
-            """
-        ).fetchone()
-    if row is None:
-        return None
-    return {
-        "decision_id": row["decision_id"],
-        "source": row["source"],
-        "run_id": row["run_id"],
-        "work_id": row["work_id"],
-        "promotion_target": row["promotion_target"],
-        "promotion_action": row["promotion_action"],
-        "promotion_scope": row["promotion_scope"],
-        "confidence": row["confidence"],
-        "created_at": row["created_at"],
-    }
-
-
-def recent_capability_invocations(limit: int = 5) -> list[dict[str, object]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                capability_id,
-                capability_name,
-                capability_kind,
-                status,
-                execution_mode,
-                invoked_at,
-                finished_at,
-                result_preview,
-                detail,
-                approval_policy,
-                approval_required,
-                approved,
-                granted,
-                run_id
-            FROM capability_invocations
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (max(limit, 1),),
-        ).fetchall()
-    return [
-        {
-            "capability_id": row["capability_id"],
-            "capability_name": row["capability_name"],
-            "capability_kind": row["capability_kind"],
-            "status": row["status"],
-            "execution_mode": row["execution_mode"],
-            "invoked_at": row["invoked_at"],
-            "finished_at": row["finished_at"],
-            "result_preview": row["result_preview"],
-            "detail": row["detail"],
-            "approval": {
-                "policy": row["approval_policy"],
-                "required": bool(row["approval_required"]),
-                "approved": bool(row["approved"]),
-                "granted": bool(row["granted"]),
-            },
-            "run_id": row["run_id"],
-        }
-        for row in rows
-    ]
-
-
-def _ensure_capability_invocation_approval_columns(conn: sqlite3.Connection) -> None:
-    rows = conn.execute("PRAGMA table_info(capability_invocations)").fetchall()
-    existing = {str(row["name"]) for row in rows}
-    required_columns = {
-        "approval_policy": "TEXT",
-        "approval_required": "INTEGER NOT NULL DEFAULT 0",
-        "approved": "INTEGER NOT NULL DEFAULT 0",
-        "granted": "INTEGER NOT NULL DEFAULT 0",
-    }
-    for name, spec in required_columns.items():
-        if name in existing:
-            continue
-        conn.execute(f"ALTER TABLE capability_invocations ADD COLUMN {name} {spec}")
 
 
 def create_tool_intent_approval_request(
@@ -29277,6 +28863,7 @@ from core.runtime.db_visible import (  # noqa: E402,F401
     ensure_visible_tables,
     recent_visible_runs,
     recent_visible_work_notes,
+    recent_visible_work_units,
     record_visible_work_note,
     visible_session_continuity,
 )
@@ -29313,6 +28900,26 @@ from core.runtime.db_private_signals import (  # noqa: E402,F401
     update_private_retained_memory_record_enriched,
     get_private_retained_memory_record,
     recent_private_retained_memory_records,
+)
+
+
+# --- Private self-model/mood/promotion tables (split into db_private_states.py per boy scout rule) ---
+from core.runtime.db_private_states import (  # noqa: E402,F401
+    ensure_private_states_tables,
+    record_private_self_model,
+    get_private_self_model,
+    record_private_state,
+    get_private_state,
+    record_private_promotion_decision,
+    get_private_promotion_decision,
+)
+
+
+# --- Capability invocation table (split into db_capability.py per boy scout rule) ---
+from core.runtime.db_capability import (  # noqa: E402,F401
+    ensure_capability_tables,
+    recent_capability_invocations,
+    _ensure_capability_invocation_approval_columns,
 )
 
 

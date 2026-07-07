@@ -147,16 +147,13 @@ def _run_memory_postprocess(run: "_vr.VisibleRun", assistant_text: str) -> None:
     try:
         from core.services.continuity import live_update_after_turn
 
-        # Gather mood approximation from available signals
+        # Gather mood from mood_oscillator via continuity sync
         mood = {}
         try:
-            from core.services.mood_oscillator import get_current_mood as _gcm, get_mood_intensity as _gmi
-            mood_name = _gcm()
-            mood_intensity = _gmi()
-            if mood_name:
-                mood["bearing"] = str(mood_name)
-            if mood_intensity is not None:
-                mood["curiosity"] = float(mood_intensity) * 0.8 + 0.2
+            from core.services.continuity import sync_capsule_mood
+            synced = sync_capsule_mood()
+            if synced:
+                mood = synced
         except Exception:
             pass
 

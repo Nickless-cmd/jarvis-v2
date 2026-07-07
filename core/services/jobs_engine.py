@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -36,18 +35,30 @@ _HANDLERS: dict[str, Callable[[dict[str, Any]], "JobResult | dict[str, Any]"]] =
 # N terminale (ok/error) og dropper resten. Bounder filen.
 _TERMINAL_STATUSES = ("ok", "error", "completed", "failed")
 _KEEP_TERMINAL = 2000
+# Runaway-guard (2026-07-07): pending/non-terminal jobs var UBUNDET. Governance
+# enqueuede personality_snapshot/provider_health_check/wakeup_dispatch/… hvert vindue
+# UDEN at de nogensinde drænede (started_at=None siden 22. jun) → 202.672 pending →
+# jobs_queue.json 102 MB → json.dump(indent=2) i heartbeat-hot-pathen wedgede GIL'en
+# 13 timer og frøs HELE det indre liv. Hard-cap non-terminal så det aldrig kan gentages.
+_KEEP_PENDING = 2000
 
 
 def _prune_completed_jobs(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     terminal = [j for j in items if str(j.get("status") or "") in _TERMINAL_STATUSES]
-    if len(terminal) <= _KEEP_TERMINAL:
-        return items
     non_terminal = [j for j in items if str(j.get("status") or "") not in _TERMINAL_STATUSES]
-    terminal.sort(
-        key=lambda j: str(j.get("finished_at") or j.get("enqueued_at") or ""),
-        reverse=True,
-    )
-    return non_terminal + terminal[:_KEEP_TERMINAL]
+    if len(terminal) <= _KEEP_TERMINAL and len(non_terminal) <= _KEEP_PENDING:
+        return items
+    if len(terminal) > _KEEP_TERMINAL:
+        terminal.sort(
+            key=lambda j: str(j.get("finished_at") or j.get("enqueued_at") or ""),
+            reverse=True,
+        )
+        terminal = terminal[:_KEEP_TERMINAL]
+    if len(non_terminal) > _KEEP_PENDING:
+        # Behold de NYESTE pending — drop den ældste hale (runaway-akkumulering).
+        non_terminal.sort(key=lambda j: str(j.get("enqueued_at") or ""), reverse=True)
+        non_terminal = non_terminal[:_KEEP_PENDING]
+    return non_terminal + terminal
 
 # 2026-05-17 perf cache: jobs_queue.json er ~16 MB. Uden cache koster hver
 # _load() ~235ms JSON-parse. Vi cacher det parsede resultat keyed på
@@ -115,7 +126,9 @@ def _save(items: list[dict[str, Any]]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(".tmp")
         with tmp.open("w", encoding="utf-8") as f:
-            json.dump(items, f, ensure_ascii=False, indent=2)
+            # Kompakt (ingen indent): halverer fil-størrelse + json.dump-tid. indent=2
+            # på en stor kø var en del af 2026-07-07 GIL-wedgen (heartbeat-hot-path).
+            json.dump(items, f, ensure_ascii=False)
         tmp.replace(path)
         # Opdater cache med det netop skrevne — undgår re-parse ved næste _load
         try:
@@ -153,6 +166,17 @@ def enqueue_job(
 ) -> str:
     """Create a new pending job. Returns job_id."""
     items = _load()
+    # Dedup (2026-07-07): undgå runaway-akkumulering af identiske pending jobs.
+    # Governance enqueuede fx personality_snapshot UDEN window_key/scheduled_job_id hvert
+    # vindue → 18k identiske pending. Findes en identisk pending allerede, genbrug dens id.
+    _wk = str(window_key or "")
+    _sj = str(scheduled_job_id or "")
+    for _j in items:
+        if (str(_j.get("status") or "") == "pending"
+                and str(_j.get("job_type") or "") == str(job_type)
+                and str(_j.get("window_key") or "") == _wk
+                and str(_j.get("scheduled_job_id") or "") == _sj):
+            return str(_j.get("job_id") or "")
     job_id = f"job-{uuid4().hex[:12]}"
     items.append({
         "job_id": job_id,

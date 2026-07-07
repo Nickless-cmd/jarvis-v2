@@ -6,7 +6,7 @@ order by ``internal_cadence._ensure_producers_registered``.
 This group: the Matrix-themed observe/propose-only producers (construct,
 oracle, architect, echo_breaker, continuity_healer, red_dress, analyst,
 redpill, dissent, white_rabbit, belief_gap, machines, dejavu, sentinel,
-ghost, mourning, merovingian, dream_action, rca, relational, glitch).
+ghost, mourning, merovingian, dream_action, rca, relational, glitch, trainman).
 """
 from __future__ import annotations
 
@@ -252,3 +252,56 @@ def register_matrix_producers(register_producer: Callable[[ProducerSpec], None])
         run_fn=_run_glitch,
         priority=5,
     ))
+
+    # Trainman (7. jul, Spec F §4 — prioriteten): drømme → narrative erindringer. Kaldes EFTER
+    # dream_distillation (samme 30-min cadence), FØR dream_bias. Væver hver ny drøm til et narrativ +
+    # interlanguage + connected_to i private_brain (source='dream'); 3+ samme-tema på 7 dage →
+    # lav-prio Agenda-signal (blokerer aldrig); 24h-refleksion + 14d-tavsheds-note. SHADOW-FØRST:
+    # skriver til private_brain men ændrer INTET i live-prompt/-flow. Metadata-only observe (§24.4).
+    def _run_trainman(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_trainman import transform_dreams
+        return transform_dreams(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="trainman",
+        cooldown_minutes=30,
+        visible_grace_minutes=0,
+        run_fn=_run_trainman,
+        priority=5,
+        depends_on=["dream_distillation_daemon"],
+    ))
+
+    # Seraph (7. jul, Spec F §1): portvagt for hypotese-MODENHED. Sidder mellem Sentinel (angriber)
+    # og synlighed: tester hver aktiv hypotese — nok jordede samples + overlevet Sentinel + har en
+    # interlanguage-notation? GREEN = klar til at blive vist for Bjørn | RED = tilbage til drøm. INGEN
+    # blok, kun udsættelse. SHADOW-FØRST: læser + observerer sin dom, muterer/blokerer INTET.
+    # Metadata-only observe (§24.4). Cadence 30 min.
+    def _run_seraph(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_seraph import record_seraph
+        return record_seraph(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="seraph", cooldown_minutes=30, visible_grace_minutes=0,
+                                   run_fn=_run_seraph, priority=5))
+
+    # Persephone (7. jul, Spec F §2): længsels-detektor — er Jarvis ved at miste kontakten til det
+    # menneskelige (for systemisk/teknisk vs relationel over seneste svar)? Modvægt til Merovingian.
+    # Producerer ÉT persephone://-nudge pr. vagt hvis for systemisk ("Du har ikke spurgt Bjørn hvordan
+    # han har det i dag."). INGEN blok — observe/surface only. Metadata-only observe (§24.4). Cadence 240 min.
+    def _run_persephone(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_persephone import record_persephone
+        return record_persephone(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="persephone", cooldown_minutes=240, visible_grace_minutes=0,
+                                   run_fn=_run_persephone, priority=5))
+
+    # The Twins (7. jul, Spec F §3): gentagelses-detektor på tværs af tid — ikke anomalier (det gør
+    # Centralen), men MØNSTRE i gentagne fejl. Scanner central_incidents (samme nerve+fejl / samme
+    # tidspunkt), gate_verdict_counts (gentagne yellow/red) og central_dissent (uhørte indsigelser).
+    # 3+ på 7 dage → twins://-signal. Læser ALENE — ingen egne tabeller. Metadata-only observe (§24.4).
+    # Cadence 240 min.
+    def _run_twins(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.central_twins import record_twins
+        return record_twins(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(name="twins", cooldown_minutes=240, visible_grace_minutes=0,
+                                   run_fn=_run_twins, priority=5))

@@ -97,6 +97,54 @@ async def get_glitch() -> dict:
     return _stamp(surf)
 
 
+@router.get("/trainman")
+async def get_trainman() -> dict:
+    """Trainman: drømme vævet til narrative erindringer + tema-fordeling (shadow). Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_trainman import build_trainman_surface
+        surf = build_trainman_surface()
+    except Exception:
+        surf = {}
+    return _stamp(surf)
+
+
+@router.get("/seraph")
+async def get_seraph() -> dict:
+    """Seraph: hvilke hypoteser er modne nok til synlighed (GREEN) vs sendt tilbage til drøm (RED). Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_seraph import build_seraph_surface
+        surf = build_seraph_surface()
+    except Exception:
+        surf = {}
+    return _stamp(surf)
+
+
+@router.get("/persephone")
+async def get_persephone() -> dict:
+    """Persephone: længsel efter ægte kontakt — er Jarvis for systemisk + seneste nudge. Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_persephone import build_persephone_surface
+        surf = build_persephone_surface()
+    except Exception:
+        surf = {}
+    return _stamp(surf)
+
+
+@router.get("/twins")
+async def get_twins() -> dict:
+    """The Twins: mønstre der gentager sig 3+ gange på 7 dage (incidents/gates/dissent). Owner-only."""
+    _require_owner()
+    try:
+        from core.services.central_twins import build_twins_surface
+        surf = build_twins_surface()
+    except Exception:
+        surf = {}
+    return _stamp(surf)
+
+
 # ── Self-Surgery Kit (Jarvis #2) — sikker kirurgisk pipeline, apply owner-gated ──
 
 class _ProposeBody(BaseModel):

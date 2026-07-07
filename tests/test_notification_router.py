@@ -138,6 +138,7 @@ def test_escalate_then_ack_stops(monkeypatch):
 # ── Proaktiv indhold-levering (deliver_message) — Bjørn 2026-06-21 ──────────────
 def test_deliver_message_auto_picks_app_when_online(tmp_path, monkeypatch):
     _fresh_db(tmp_path, monkeypatch)
+    monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)  # deterministisk, ikke ur-afhængig
     monkeypatch.setattr(nr, "_app_device_live", lambda uid: True)
     posted = {}
     monkeypatch.setattr(nr, "_deliver_content", lambda uid, ch, text: posted.update(ch=ch, text=text) or {"sent": True, "channel": ch})
@@ -148,6 +149,7 @@ def test_deliver_message_auto_picks_app_when_online(tmp_path, monkeypatch):
 
 def test_deliver_message_auto_falls_back_to_discord(tmp_path, monkeypatch):
     _fresh_db(tmp_path, monkeypatch)
+    monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)  # deterministisk, ikke ur-afhængig
     monkeypatch.setattr(nr, "_app_device_live", lambda uid: False)   # ikke på app
     monkeypatch.setattr(nr, "_discord_connected", lambda: True)
     posted = {}
@@ -159,6 +161,7 @@ def test_deliver_message_auto_falls_back_to_discord(tmp_path, monkeypatch):
 def test_deliver_message_explicit_pref_overrides_auto(tmp_path, monkeypatch):
     _fresh_db(tmp_path, monkeypatch)
     nr.set_preferences("bjorn", **{"reach_out": "discord"})  # eksplicit valg
+    monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)  # deterministisk, ikke ur-afhængig
     monkeypatch.setattr(nr, "_app_device_live", lambda uid: True)  # selvom online på app
     posted = {}
     monkeypatch.setattr(nr, "_deliver_content", lambda uid, ch, text: posted.update(ch=ch) or {"sent": True, "channel": ch})

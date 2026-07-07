@@ -68,9 +68,20 @@ def test_affective_pushback_omits_when_no_affective_pressure(monkeypatch):
     assert pushback.affective_pushback_section("deploy nu") is None
 
 
-def test_conflict_with_decisions_detects_conflict():
+def test_conflict_with_decisions_detects_conflict(tmp_path, monkeypatch):
     """Integration test: _conflict_with_decisions should find conflicts
-    against active behavioral decisions without being mocked away."""
+    against active behavioral decisions without being mocked away.
+
+    Uses an isolated DB so the created decision falls inside the runtime's
+    top-N active-decision window (list_active_decisions(limit=5)); against the
+    shared live DB, pre-existing active decisions crowd it out and the test is
+    order-dependent."""
+    import core.runtime.db as db
+    import core.runtime.db_core as db_core
+    monkeypatch.setattr(db_core, "DB_PATH", tmp_path / "t.db")
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    db.init_db()
+
     from core.services import pushback
     from core.runtime.db_decisions import create_decision, set_status
 

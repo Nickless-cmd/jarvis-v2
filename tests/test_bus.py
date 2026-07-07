@@ -23,34 +23,62 @@ from pathlib import Path
 
 @pytest.fixture
 def event_bus(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, request) -> Any:
-    """Return a fresh EventBus with isolated DB + home dir.
+    """Return a fresh EventBus backed by an isolated tmp SQLite DB.
 
-    Cleans up (stops the writer thread) after the test via finalizer.
+    ISOLATION WITHOUT SINGLETON POLLUTION
+    -------------------------------------
+    An earlier version of this fixture popped ``core.runtime.db*`` and
+    ``core.eventbus.*`` from ``sys.modules`` and re-imported them so they
+    would pick up a fresh HOME.  That had a nasty side effect: re-importing
+    ``core.eventbus.bus`` re-executed its module body, which builds a NEW
+    module-level ``event_bus = EventBus()`` singleton (with its own writer
+    thread).  The finalizer only stopped the fixture's LOCAL bus, never the
+    freshly-minted module singleton — so every invocation leaked one
+    writer thread AND left ``core.eventbus.bus.event_bus`` pointing at a
+    different object id than the one other test modules had bound at
+    collection time (``from core.eventbus.bus import event_bus``).  Those
+    victims then published/subscribed on a different bus than the code under
+    test, or their bus's writer targeted a since-deleted tmp DB → "event not
+    published" / empty ``causal_edges``.
+
+    This version avoids all module churn:
+
+    * ``connect()`` (in ``core.runtime.db_core``) reads its ``DB_PATH``
+      module global at call time.  We ``monkeypatch.setattr`` that single
+      global to a tmp DB.  Because ``core.runtime.db`` and
+      ``core.eventbus.bus`` both call the *same* ``db_core.connect`` object,
+      the fixture bus's writer, this test's read-backs, and any runtime code
+      all hit the same isolated DB — no reload required.
+
+    * The ``EventBus`` class is imported from the already-loaded module (no
+      pop/reimport), so the shared ``core.eventbus.bus`` module object and
+      its ``event_bus`` singleton are never rebound by import machinery.
+
+    * The module singleton is repointed at the fixture's local bus via
+      ``monkeypatch.setattr`` (auto-restored on teardown), so its object id
+      is IDENTICAL before and after the test.
+
+    * The local bus's writer thread is joined in the finalizer, so no
+      writer threads leak.
     """
     repo_root = Path(__file__).resolve().parents[1]
     monkeypatch.chdir(repo_root)
-    if str(repo_root) not in __import__("sys").path:
-        __import__("sys").path.insert(0, str(repo_root))
-
-    home = tmp_path / "home"
-    home.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("HOME", str(home))
-
-    # Reload config + db modules so they pick up the new HOME.
     import sys
 
-    for mod_name in (
-        "core.runtime.config",
-        "core.runtime.db_core",
-        "core.runtime.db",
-        "core.eventbus",
-        "core.eventbus.bus",
-        "core.eventbus.events",
-        "core.eventbus.context",
-    ):
-        sys.modules.pop(mod_name, None)
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
 
-    # Ensure tables exist in the isolated DB
+    # Isolated on-disk DB for this test. We point db_core.DB_PATH at it via
+    # monkeypatch (auto-restored) rather than reloading the module under a
+    # fresh HOME. connect() reads DB_PATH lazily, so this reroutes every
+    # caller (bus writer + test read-backs) to the same tmp file.
+    tmp_db = tmp_path / "jarvis.db"
+
+    import core.runtime.db_core as db_core
+
+    monkeypatch.setattr(db_core, "DB_PATH", tmp_db)
+
+    # Ensure tables exist in the isolated DB.
     from core.runtime.db import connect, _ensure_causal_edges_table
 
     with connect() as c:
@@ -67,12 +95,18 @@ def event_bus(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, request) -> Any:
         _ensure_causal_edges_table(c)
         c.commit()
 
-    from core.eventbus.bus import EventBus
+    import core.eventbus.bus as bus_mod
     from core.eventbus.events import ALLOWED_EVENT_FAMILIES
 
     ALLOWED_EVENT_FAMILIES.update({"alpha", "beta", "gamma"})
 
-    bus = EventBus()
+    bus = bus_mod.EventBus()
+
+    # Make the module singleton resolve to our local bus for any code under
+    # test that binds `core.eventbus.bus.event_bus` at call time. monkeypatch
+    # restores the ORIGINAL singleton object on teardown → object id unchanged.
+    monkeypatch.setattr(bus_mod, "event_bus", bus)
+
     request.addfinalizer(lambda b=bus: b.stop())
     return bus
 

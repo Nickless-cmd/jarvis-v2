@@ -150,9 +150,10 @@ class TestHeartbeatWiring:
     """Test that the daemon is wired in heartbeat_runtime."""
 
     def test_decision_review_wired_after_consolidation_judge(self):
-        """The wiring block appears after consolidation_judge in heartbeat_runtime."""
+        """The wiring block appears after consolidation_judge in the heartbeat
+        influence-trace module (extracted from heartbeat_runtime, Boy-Scout split)."""
         with open(
-            "/media/projects/jarvis-v2/core/services/heartbeat_runtime.py",
+            "/media/projects/jarvis-v2/core/services/heartbeat_runtime_influence.py",
             "r",
             encoding="utf-8",
         ) as f:

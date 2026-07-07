@@ -225,6 +225,56 @@ def write_capsule(capsule: dict[str, Any]) -> None:
     CAPSULE_CURRENT.write_text(serialized, encoding="utf-8")
 
 
+def sync_capsule_mood() -> dict[str, Any] | None:
+    """Sync capsule mood from mood_oscillator's live state.
+
+    Reads bearing + intensity from the oscillator and updates the capsule
+    on disk. Called after visible turns (via live_update_after_turn) and
+    can be called independently to refresh a stale capsule.
+
+    Returns the updated mood dict, or None if sync failed.
+    """
+    try:
+        from core.services.mood_oscillator import (
+            get_current_mood as _gcm,
+            get_mood_intensity as _gmi,
+        )
+
+        mood_name = _gcm()
+        intensity = _gmi()
+
+        mood_update: dict[str, Any] = {}
+        if mood_name:
+            mood_update["bearing"] = str(mood_name)
+        if intensity is not None:
+            # Map intensity (0-1) to valence (0-1) based on mood polarity
+            if mood_name in ("euphoric", "content"):
+                mood_update["valence"] = float(intensity)
+            elif mood_name == "neutral":
+                mood_update["valence"] = 0.5
+            else:  # melancholic, distressed
+                mood_update["valence"] = 1.0 - float(intensity)
+            mood_update["curiosity"] = float(intensity) * 0.8 + 0.2
+
+        if not mood_update:
+            return None
+
+        capsule = read_capsule()
+        if capsule is None:
+            capsule = dict(_EMPTY_CAPSULE)
+
+        merged_mood = dict(capsule.get("mood", {}))
+        merged_mood.update(mood_update)
+        capsule["mood"] = merged_mood
+        capsule["captured_at"] = _now_iso()
+
+        write_capsule(capsule)
+        return merged_mood
+    except Exception as exc:
+        logger.warning("sync_capsule_mood failed: %s", exc)
+        return None
+
+
 def read_capsule() -> dict[str, Any] | None:
     """Read the latest capsule from disk.
 

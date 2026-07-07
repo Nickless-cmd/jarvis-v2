@@ -146,6 +146,18 @@ def isolated_runtime(
         "core.identity.workspace_bootstrap",
         "core.identity.visible_identity",
         "core.tools.workspace_capabilities",
+        # prompt_support_signals does `from core.runtime.db import
+        # list_runtime_goal_signals, list_runtime_world_model_signals, ...` AT
+        # MODULE LEVEL. When isolated_runtime reloads core.runtime.db under the
+        # tmp HOME, prompt_support_signals keeps its STALE db-func references
+        # bound to whatever db module a *previous* test reloaded — so its
+        # list_runtime_goal_signals() reads an earlier tmp/real DB, not the one
+        # the test inserted its goal signal into. The "Goal support signal:"
+        # block then never appears (test_world_model_prompt_bridge:
+        # test_visible_input_includes_small_subordinate_goal_support_block).
+        # prompt_contract re-imports these names FROM prompt_support_signals, so
+        # this must be reloaded AFTER core.runtime.db and BEFORE prompt_contract.
+        "core.services.prompt_support_signals",
         "core.services.prompt_contract",
         "core.services.visible_model",
         "core.services.cheap_provider_runtime",
@@ -627,6 +639,16 @@ def isolated_runtime(
         for _name in (
             "core.runtime.config",
             "core.runtime.runtime_json_io",
+            # core.runtime.settings binds SETTINGS_FILE BY VALUE at import
+            # (`from core.runtime.config import CONFIG_DIR, SETTINGS_FILE`).
+            # This fixture reloads settings (line ~127) under the tmp HOME, so
+            # its SETTINGS_FILE points into tmp_path. Without reloading it here,
+            # settings.SETTINGS_FILE stays bound to the now-deleted tmp path →
+            # load_settings() finds no file and silently returns DEFAULTS for
+            # every later test (e.g. context_compact_threshold_tokens 200000 →
+            # 130000), which breaks tests/test_settings.py that read the real
+            # config. Reload settings AFTER config so it rebinds to the real path.
+            "core.runtime.settings",
             "core.runtime.db_core",
             "core.runtime.db",
         ):

@@ -115,10 +115,27 @@ def _count_events(db_cursor) -> int:
     return db_cursor.execute("SELECT COUNT(*) FROM events").fetchone()[0]
 
 
-def _last_event(db_cursor) -> dict[str, Any] | None:
-    row = db_cursor.execute(
-        "SELECT id, kind, payload_json, created_at FROM events ORDER BY id DESC LIMIT 1"
-    ).fetchone()
+def _last_event(db_cursor, kind: str | None = None) -> dict[str, Any] | None:
+    # 2026-07-07: ORDRE-AFHÆNGIG FLAKY. event_bus-fixturen monkeypatcher
+    # db_core.DB_PATH → en isoleret tmp-DB. connect() læser DB_PATH ved kald-tid,
+    # så ENHVER baggrunds-tråd (en daemon varmet af en tidligere test, fx det
+    # ægte _stream_visible_run i test_visible_runs_loop_not_blocked) der kalder
+    # event_bus.publish(...) skriver sin event ind i NETOP denne tmp-DB. Læser vi
+    # "nyeste event uden filter", kan en sådan baggrunds-event (set:
+    # cognitive_relationship.texture_updated) lande EFTER testens egen publish og
+    # klobbere assertion'en (kind == runtime.test_no_payload). Testen fejler da
+    # ikke-deterministisk alt efter timing. Filtrér på den forventede kind, så
+    # baggrundsstøj ikke kan overtage read-back'en. Uden filter = uændret.
+    if kind is not None:
+        row = db_cursor.execute(
+            "SELECT id, kind, payload_json, created_at FROM events "
+            "WHERE kind = ? ORDER BY id DESC LIMIT 1",
+            (kind,),
+        ).fetchone()
+    else:
+        row = db_cursor.execute(
+            "SELECT id, kind, payload_json, created_at FROM events ORDER BY id DESC LIMIT 1"
+        ).fetchone()
     if row is None:
         return None
     return {
@@ -145,7 +162,7 @@ class TestPublishAndFlush:
         from core.runtime.db import connect
 
         with connect() as c:
-            ev = _last_event(c)
+            ev = _last_event(c, kind="runtime.test_ping")
         assert ev is not None
         assert ev["kind"] == "runtime.test_ping"
         assert ev["payload"] == {"msg": "hello"}
@@ -158,7 +175,7 @@ class TestPublishAndFlush:
         from core.runtime.db import connect
 
         with connect() as c:
-            ev = _last_event(c)
+            ev = _last_event(c, kind="runtime.test_no_payload")
         assert ev is not None
         assert ev["kind"] == "runtime.test_no_payload"
         assert ev["payload"] == {}
@@ -172,9 +189,16 @@ class TestPublishAndFlush:
 
         from core.runtime.db import connect
 
+        # 2026-07-07: filtrér til denne tests egne kinds. Baggrunds-daemons kan
+        # publicere ind i den delte tmp-DB via connect() → et fremmed event ville
+        # bryde den eksakte liste (og payload["n"] ville KeyError'e). Vi tester
+        # ordningen på vores egne events, ikke fravær af baggrundsstøj.
+        _own = ("runtime.test_a", "runtime.test_b", "runtime.test_c")
         with connect() as c:
             rows = c.execute(
-                "SELECT kind, payload_json FROM events ORDER BY id ASC"
+                "SELECT kind, payload_json FROM events "
+                "WHERE kind IN (?, ?, ?) ORDER BY id ASC",
+                _own,
             ).fetchall()
         kinds = [r["kind"] for r in rows]
         payloads = [json.loads(r["payload_json"])["n"] for r in rows]
@@ -348,8 +372,13 @@ class TestRecentQueries:
         bus.publish("runtime.test_second")
         bus.publish("runtime.test_third")
         bus.flush()
-        recent = bus.recent(limit=10)
-        kinds = [e["kind"] for e in recent]
+        recent = bus.recent(limit=50)
+        # 2026-07-07: filtrér til denne tests egne kinds. En baggrunds-daemon
+        # (varmet af en tidligere test) kan publicere ind i den delte tmp-DB via
+        # connect() → et fremmed event ville bryde en eksakt liste-lighed. Vi
+        # tester ordningen på vores egne events, ikke fravær af baggrundsstøj.
+        _own = {"runtime.test_first", "runtime.test_second", "runtime.test_third"}
+        kinds = [e["kind"] for e in recent if e["kind"] in _own]
         assert kinds == ["runtime.test_third", "runtime.test_second", "runtime.test_first"]
 
     def test_recent_by_family(self, event_bus, monkeypatch, tmp_path):
@@ -385,8 +414,15 @@ class TestRecentQueries:
         bus.publish("runtime.post_b")
         bus.flush()
         since = bus.recent_since_id(after)
-        assert len(since) == 2
-        assert [e["kind"] for e in since] == ["runtime.post_a", "runtime.post_b"]
+        # 2026-07-07: filtrér til denne tests egne post-kinds. En baggrunds-daemon
+        # (varmet af en tidligere test) kan publicere ind i den delte tmp-DB via
+        # connect() mellem 'runtime.pre' og læsningen → et fremmed event med
+        # id > after ville bryde len==2/eksakt-listen. Vi tester ordningen på
+        # vores egne events efter 'after', ikke fravær af baggrundsstøj.
+        _own = {"runtime.post_a", "runtime.post_b"}
+        since_own = [e for e in since if e["kind"] in _own]
+        assert len(since_own) == 2
+        assert [e["kind"] for e in since_own] == ["runtime.post_a", "runtime.post_b"]
 
     def test_recent_since_id_zero_returns_all(self, event_bus, monkeypatch, tmp_path):
         bus = event_bus
@@ -418,7 +454,7 @@ class TestEdgeCases:
         bus.publish("runtime.test_after_overflow")
         bus.flush()
         with connect() as c:
-            ev = _last_event(c)
+            ev = _last_event(c, kind="runtime.test_after_overflow")
         assert ev is not None and ev["kind"] == "runtime.test_after_overflow"
 
     def test_publish_after_stop_is_safe(self, event_bus, monkeypatch, tmp_path):

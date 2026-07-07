@@ -18,6 +18,97 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 
+# ── Klasse-identitets-anker for core.services.visible_model ──────────────────
+# isolated_runtime reloader core.services.visible_model. importlib.reload()
+# re-eksekverer modulet → dets @dataclass-værdiklasser (VisibleModelStreamDone,
+# VisibleModelResult, …) bliver NYE klasse-objekter. De tunge konsumenter der
+# holder dem — core.services.visible_runs frem for alt (`from
+# core.services.visible_model import VisibleModelStreamDone` på modul-niveau) —
+# reloades ALDRIG. Efter reload'et bliver visible_runs' interne
+# `isinstance(item, VisibleModelStreamDone)` False for en frisk-konstrueret
+# stream-done → et gyldigt svar behandles som "intet endeligt resultat" →
+# first-pass-provider-error FØR persist-stien → persist_failed-nerven fyrer
+# aldrig (test_h5) og visible_runs-adfærdstests bliver ordre-afhængigt flaky.
+#
+# Vi snapshotter ANKER-klasserne ÉN gang her (ved conftest-load, FØR nogen
+# reload) — det er præcis A0, klasserne som de aldrig-reloadede konsumenter
+# holder. isolated_runtime gen-installerer dem i det reloadede modul, så
+# klasse-identiteten er stabil proces-globalt og isinstance holder.
+_VISIBLE_MODEL_ANCHOR_CLASSES: dict[str, type] = {}
+try:
+    import core.services.visible_model as _anchor_vm  # noqa: E402
+
+    for _anchor_name in (
+        "VisibleModelResult",
+        "VisibleModelDelta",
+        "VisibleModelStreamDone",
+        "VisibleModelToolCalls",
+        "VisibleModelStreamCancelled",
+        "VisibleModelRateLimited",
+    ):
+        _anchor_obj = getattr(_anchor_vm, _anchor_name, None)
+        if isinstance(_anchor_obj, type):
+            _VISIBLE_MODEL_ANCHOR_CLASSES[_anchor_name] = _anchor_obj
+except Exception:
+    _VISIBLE_MODEL_ANCHOR_CLASSES = {}
+
+
+# ── Klasse-identitets-anker for core.services.visible_runs ───────────────────
+# test_visible_runs.py::test_module_imports gør `importlib.reload(visible_runs)`
+# (bevidst, for at overflade import-fejl). reload() re-eksekverer modulet ind i
+# SAMME modul-__dict__ → dets klasser (PresentationInvariantError, VisibleRun,
+# VisibleRunController) bliver NYE objekter, OG modulets funktioner rebindes.
+# Downstream-tests der importerede symboler ved collection (fx
+# test_visible_runs_presentation_invariant: `from core.services.visible_runs
+# import PresentationInvariantError, _assert_presentation_invariant`) holder den
+# GAMLE funktion — men funktionen slår `PresentationInvariantError` op i modulets
+# __dict__ (func.__globals__), som reload'et netop har erstattet med den NYE
+# klasse. `_assert_presentation_invariant` raiser da NEW-klassen mens testen
+# `pytest.raises(OLD)` ikke fanger den → ustabile reject-tests alt efter om
+# test_visible_runs kørte før dem. BEVIST: test_visible_runs → presentation
+# fejler; test_autonomous → presentation passer.
+#
+# Fix: snapshot ANKER-klasserne (fra første import, FØR nogen reload) og
+# gen-installér dem i modul-__dict__ efter HVER test (autouse-fixture nedenfor).
+# Idempotent + billig; holder func.__globals__-opslaget stabilt proces-globalt.
+_VISIBLE_RUNS_ANCHOR_CLASSES: dict[str, type] = {}
+try:
+    import core.services.visible_runs as _anchor_vr  # noqa: E402
+
+    for _anchor_name in (
+        "PresentationInvariantError",
+        "VisibleRun",
+        "VisibleRunController",
+    ):
+        _anchor_obj = getattr(_anchor_vr, _anchor_name, None)
+        if isinstance(_anchor_obj, type):
+            _VISIBLE_RUNS_ANCHOR_CLASSES[_anchor_name] = _anchor_obj
+except Exception:
+    _VISIBLE_RUNS_ANCHOR_CLASSES = {}
+
+
+@pytest.fixture(autouse=True)
+def _restore_visible_runs_anchor_classes():
+    """Gen-installér visible_runs' ANKER-klasser efter hver test (se blok ovenfor).
+
+    Fanger den destruktive `importlib.reload(visible_runs)` i test_visible_runs.py,
+    så en efterfølgende test der holder GAMLE symboler (PresentationInvariantError
+    m.fl.) igen ser samme klasse-objekt som modulets funktioner raiser.
+    """
+    yield
+    if not _VISIBLE_RUNS_ANCHOR_CLASSES:
+        return
+    _vr_mod = sys.modules.get("core.services.visible_runs")
+    if _vr_mod is None:
+        return
+    for _cls_name, _obj in _VISIBLE_RUNS_ANCHOR_CLASSES.items():
+        try:
+            if getattr(_vr_mod, _cls_name, None) is not _obj:
+                setattr(_vr_mod, _cls_name, _obj)
+        except Exception:
+            pass
+
+
 @pytest.fixture(autouse=True)
 def _ensure_current_event_loop():
     """Guarantee ``asyncio.get_event_loop()`` works in every (sync) test.
@@ -102,6 +193,109 @@ def _reset_ensure_once_cache():
             _ec._active.clear()  # type: ignore[attr-defined]
     except (ImportError, AttributeError):
         pass
+
+
+@pytest.fixture(autouse=True)
+def _bypass_timed_surface_cache(request, monkeypatch):
+    """Omgå den proces-globale timed-surface-cache i tests (undtagen dens egen test).
+
+    2026-07-07: ORDRE-AFHÆNGIG FLAKY
+    (test_visible_runs_open_loop_materialization::…downstream_tracking).
+    `build_runtime_open_loop_signal_surface` m.fl. cacher deres resultat i
+    core.services.runtime_surface_cache._TIMED_CACHE (60s TTL, key=(navn,limit),
+    UDEN DB-identitet). Baggrunds-daemons der er varmet af en TIDLIGERE test (fx
+    test_visible_runs_loop_not_blocked's ægte _stream_visible_run) BLIVER ved med
+    at køre og skrive TOMME surfaces (bygget mod deres egen tomme DB) ind i
+    _TIMED_CACHE — også EFTER test-start-clear'en OG efter isolated_runtime's
+    pre-yield-clear, MENS denne tests krop kører. Den efterfølgende surface-læsning
+    rammer da den cachede tomme surface → open-loop-signalet er usynligt →
+    lifecycle-extractoren giver 0 → `assert len(lifecycle) == 2` fejler. Ren
+    test-start-clear kan ikke vinde løbet mod en levende baggrunds-tråd.
+
+    Fix: gør `get_timed_runtime_surface(key, ttl, builder)` til en ren
+    passthrough (`builder()`) under tests → cachen konsulteres aldrig, så en
+    forurenet cache-post kan ikke lække ind. Produktions-adfærd er uændret; kun
+    test-processen påvirkes. `test_runtime_surface_cache.py` tester cachen
+    eksplicit og springes over her, så dens kontrakt-tests består.
+
+    Rent test-side; ingen runtime-fil røres.
+    """
+    # Tests der bevidst VERIFICERER at den tidsbegrænsede cache collapser gentagne
+    # builds må IKKE få cachen no-op'et (ellers bygger de N gange og fejler assert).
+    _fspath = str(getattr(request.node, "fspath", ""))
+    if ("test_runtime_surface_cache" in _fspath
+            or "test_cognitive_architecture_surface" in _fspath):
+        yield
+        return
+    try:
+        import core.services.runtime_surface_cache as _rsc
+
+        # get_timed_runtime_surface læser/skriver modulets _TIMED_CACHE-dict via
+        # `.get()`/`[]=`. Alle surface-builder-moduler importerer FUNKTIONEN ved
+        # navn (`from … import get_timed_runtime_surface`), så det er upålideligt
+        # at monkeypatche selve funktionen (den er kopieret ind i N moduler).
+        # I stedet erstatter vi _TIMED_CACHE med en dict hvis reads ALTID misser
+        # og writes er no-ops → funktionen kalder altid builder() (frisk DB-læs),
+        # uanset hvilken baggrunds-tråd der forsøger at forurene cachen. Samme
+        # _TIMED_CACHE-objekt bruges af funktionen (modul-global lookup), så
+        # dette rammer alle call-sites. Genskabes efter testen (monkeypatch).
+        class _NoTimedCache(dict):
+            def get(self, *_a, **_k):  # noqa: ANN001, ANN002, ANN003
+                return None
+
+            def __getitem__(self, _k):  # noqa: ANN001
+                raise KeyError(_k)
+
+            def __setitem__(self, _k, _v):  # noqa: ANN001
+                return None
+
+        monkeypatch.setattr(_rsc, "_TIMED_CACHE", _NoTimedCache(), raising=False)
+    except Exception:
+        pass
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _neutralize_inner_voice_shadow_llm(monkeypatch):
+    """Gør inner_voice_shadow's LLM-kald fail-fast i tests (ingen ægte netværk).
+
+    2026-07-07: ORDRE-AFHÆNGIG FLAKY (test_autonomous_visible_runs
+    ::…_interrupted…): den autonome run's fake `_stream_visible_run` kalder det
+    ÆGTE `set_last_visible_run_outcome` → `write_private_terminal_layers` →
+    `private_inner_note._private_summary` → `inner_voice_shadow.
+    generate_private_summary_via_llm`. Den spawner en tråd der kører det ÆGTE
+    `_call_llm` (→ `execute_cheap_lane_via_pool`, RIGTIGT provider-HTTP-kald) og
+    `thread.join(timeout=5s)`. Kørt ALENE fejler cheap-lane-poolen hurtigt
+    (ingen varm provider) → summary falder straks tilbage. Men efter en test der
+    har VARMET provider-poolen (fx test_visible_runs_loop_not_blocked, der driver
+    det ægte _stream_visible_run) laver `_call_llm` et RIGTIGT netværkskald der
+    tager de fulde ~5s pr. kald × flere private-lag-summaries → runnet passerer
+    ALDRIG sit finally (interrupted-publish) inden testens 2s-deadline → nerven
+    mangler. BEVIST via faulthandler: den autonome tråd stod i
+    inner_voice_shadow.generate_appraisal → threading.join → _wait_for_tstate_lock.
+
+    Fix: stub `_call_llm` til et øjeblikkeligt fejl-svar. Modulets egen kontrakt
+    (fail → template_fallback) er intakt, og de dedikerede inner_voice_shadow-
+    tests (test_inner_voice_shadow.py m.fl.) sætter deres EGEN `_call_llm` i
+    test-kroppen, der kører EFTER denne autouse-fixture → deres patch vinder.
+    Rent test-side; ingen runtime-fil røres.
+    """
+    try:
+        import core.services.inner_voice_shadow as _ivs
+
+        def _fast_fail_llm(prompt):  # noqa: ANN001
+            return {
+                "output": None,
+                "provider": None,
+                "model": None,
+                "latency_ms": 0,
+                "error": "test-neutralized",
+            }
+
+        monkeypatch.setattr(_ivs, "_call_llm", _fast_fail_llm, raising=False)
+    except Exception:
+        pass
+    yield
 
 
 @pytest.fixture()
@@ -268,10 +462,62 @@ def isolated_runtime(
         "core.identity.workspace_context",
         "core.identity.user_attribution_migrations",
     ]
+    # 2026-07-07: CLASS-IDENTITY-LÆK fra reload af core.services.visible_model
+    # (den flaky "Visible model stream completed without final result"-familie).
+    #
+    # Reload-listen indeholder core.services.visible_model. importlib.reload()
+    # RE-EKSEKVERER modulet → dets @dataclass-værdiklasser (VisibleModelStreamDone,
+    # VisibleModelResult, VisibleModelToolCalls, …) bliver NYE klasse-objekter.
+    # Men de tunge konsumenter der holder dem — core.services.visible_runs frem for
+    # alt (`from core.services.visible_model import VisibleModelStreamDone` på
+    # modul-niveau, linje 193-204) — reloades ALDRIG. Efter reload'et peger
+    # visible_runs' `VisibleModelStreamDone` på DEN GAMLE klasse, mens en test der
+    # importerer klassen frisk (fx test_streaming_observability_nerves,
+    # test_visible_runs_loop_not_blocked) får DEN NYE. visible_runs' interne
+    # `isinstance(item, VisibleModelStreamDone)` (visible_runs.py:1316) bliver da
+    # False for en frisk-konstrueret stream-done → runnet behandler et gyldigt
+    # svar som "intet endeligt resultat" → first-pass-provider-error FØR persist-
+    # stien → persist_failed-nerven fyrer aldrig (test_h5) og de øvrige
+    # visible_runs-adfærdstests bliver ustabile alt efter om en isolated_runtime-
+    # test kørte før dem. BEVIST: vr.VisibleModelStreamDone is (frisk import) →
+    # True alene, False efter en isolated_runtime-test.
+    #
+    # Fix: bevar KLASSE-IDENTITETEN på tværs af reload'et. Klasserne er rene
+    # data-containere (ingen HOME-afhængig tilstand), så det er sikkert at gen-
+    # installere de ORIGINALE klasse-objekter i det reloadede modul. Så ser ALLE
+    # moduler (reloadede som ej) samme klasse-objekt, og isinstance holder.
+    # ANKER: de ORIGINALE klasse-objekter fra FØRSTE import (conftest-load, FØR
+    # nogen reload). Det er PRÆCIS de klasser som de aldrig-reloadede konsumenter
+    # (visible_runs m.fl.) holder. Vi må IKKE gen-snapshotte pr. fixture-entry: har
+    # en tidligere isolated_runtime-test allerede reloadet visible_model, er
+    # sys.modules-klassen da en NYERE klasse (A1) end den visible_runs stadig
+    # holder (A0) → et re-snapshot ville fastfryse A1 og aldrig hele identiteten.
+    # _VISIBLE_MODEL_ANCHOR_CLASSES (module-level, taget én gang) er den sande A0.
+    def _restore_visible_model_anchor() -> None:
+        # Re-installér ANKER-værdiklasserne i det netop-reloadede visible_model,
+        # så klasse-identiteten er stabil proces-globalt (se blok ovenfor).
+        # KRITISK-TIMING: dette SKAL køre lige efter visible_model reloades og
+        # IGEN til sidst. Ellers importerer et SENERE modul i reload-listen (fx
+        # heartbeat_runtime/runtime_self_model/cheap_provider_runtime) —
+        # eller visible_runs via deres import-kæde — visible_model MENS den
+        # bærer de NYE reload-klasser, og binder da den nye klasse for evigt
+        # (visible_runs reloades aldrig). Restore lige efter reload'et af
+        # visible_model gør at alle downstream-importer ser ANKER-klassen.
+        _vm_mod = sys.modules.get("core.services.visible_model")
+        if _vm_mod is not None and _VISIBLE_MODEL_ANCHOR_CLASSES:
+            for _cls_name, _obj in _VISIBLE_MODEL_ANCHOR_CLASSES.items():
+                setattr(_vm_mod, _cls_name, _obj)
+
     modules: dict[str, object] = {}
     for name in module_names:
         module = importlib.import_module(name)
         modules[name] = importlib.reload(module)
+        if name == "core.services.visible_model":
+            _restore_visible_model_anchor()
+
+    # Sikkerheds-restore til sidst (idempotent) hvis en senere reload alligevel
+    # re-eksekverede visible_model.
+    _restore_visible_model_anchor()
 
     # 2026-07-07: STALE db-submodule connect() binding (den store DB-læk).
     #
@@ -343,6 +589,33 @@ def isolated_runtime(
     runtime_bootstrap.ensure_runtime_dirs()
     runtime_db.init_db()
     workspace_bootstrap.ensure_default_workspace()
+
+    # 2026-07-07: STALE TIMED-SURFACE-CACHE-LÆK (den flaky
+    # test_visible_runs_open_loop_materialization::…downstream_tracking).
+    #
+    # `build_runtime_open_loop_signal_surface` (og søster-surfaces) cacher
+    # resultatet i core.services.runtime_surface_cache._TIMED_CACHE med 60s TTL,
+    # keyed (surface_name, limit) — UDEN DB-identitet i nøglen. En tidligere test
+    # der driver det ægte _stream_visible_run (fx test_visible_runs_loop_not_blocked)
+    # varmer baggrunds-daemons der bygger disse surfaces mod DERES DB (tom for
+    # denne tests open-loop-signal) → cacher en TOM open-loop-surface. autouse-
+    # clear'en (_reset_ensure_once_cache) tømmer cachen ved test-START, men de
+    # lækkede daemon-tråde kører videre OG re-populerer _TIMED_CACHE bagefter.
+    # Når så DENNE test materialiserer sit open-loop-signal i DB'en og læser via
+    # surface-builderen, får den den CACHEDE tomme surface (TTL ikke udløbet) →
+    # `open items: 0` → lifecycle-extractoren returnerer [] → 0 proaktive-loop-
+    # lifecycle-rækker → `assert len(lifecycle) == 2` fejler (0 == 2). BEVIST:
+    # _TIMED_CACHE.clear() lige før læsningen giver open items: 1, extractor: 2.
+    #
+    # Cachen kan ikke afskaffes globalt (test_runtime_surface_cache tester den),
+    # men vi kan tømme den lige FØR testkroppen kører (efter init_db), så et
+    # isolated_runtime-baseret run altid starter fra en frisk surface-cache — ud
+    # over autouse-clear'en, der kan være blevet re-forurenet af lækkede daemons.
+    try:
+        from core.services.runtime_surface_cache import _TIMED_CACHE as _tsc
+        _tsc.clear()
+    except Exception:
+        pass
 
     _ns = SimpleNamespace(
         config=modules["core.runtime.config"],

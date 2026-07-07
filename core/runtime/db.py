@@ -417,23 +417,8 @@ def init_db() -> None:
             ON cheap_provider_invocations(provider, lane, created_at DESC)
             """
         )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS visible_runs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id TEXT NOT NULL UNIQUE,
-                lane TEXT NOT NULL,
-                provider TEXT NOT NULL,
-                model TEXT NOT NULL,
-                status TEXT NOT NULL,
-                started_at TEXT,
-                finished_at TEXT NOT NULL,
-                text_preview TEXT,
-                error TEXT,
-                capability_id TEXT
-            )
-            """
-        )
+        from core.runtime.db_visible import ensure_visible_tables
+        ensure_visible_tables(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS visible_work_units (
@@ -449,26 +434,6 @@ def init_db() -> None:
                 user_message_preview TEXT,
                 capability_id TEXT,
                 work_preview TEXT
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS visible_work_notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                note_id TEXT NOT NULL UNIQUE,
-                work_id TEXT NOT NULL,
-                run_id TEXT NOT NULL UNIQUE,
-                status TEXT NOT NULL,
-                lane TEXT NOT NULL,
-                provider TEXT NOT NULL,
-                model TEXT NOT NULL,
-                user_message_preview TEXT,
-                capability_id TEXT,
-                work_preview TEXT,
-                projection_source TEXT,
-                created_at TEXT NOT NULL,
-                finished_at TEXT NOT NULL
             )
             """
         )
@@ -842,88 +807,12 @@ def init_db() -> None:
             ON runtime_development_focuses(canonical_key, id DESC)
             """
         )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS heartbeat_runtime_state (
-                id INTEGER PRIMARY KEY CHECK (id = 1),
-                state_id TEXT NOT NULL UNIQUE,
-                last_tick_id TEXT NOT NULL DEFAULT '',
-                last_tick_at TEXT NOT NULL DEFAULT '',
-                next_tick_at TEXT NOT NULL DEFAULT '',
-                schedule_state TEXT NOT NULL DEFAULT '',
-                due INTEGER NOT NULL DEFAULT 0,
-                last_decision_type TEXT NOT NULL DEFAULT '',
-                last_result TEXT NOT NULL DEFAULT '',
-                blocked_reason TEXT NOT NULL DEFAULT '',
-                currently_ticking INTEGER NOT NULL DEFAULT 0,
-                last_trigger_source TEXT NOT NULL DEFAULT '',
-                scheduler_active INTEGER NOT NULL DEFAULT 0,
-                scheduler_started_at TEXT NOT NULL DEFAULT '',
-                scheduler_stopped_at TEXT NOT NULL DEFAULT '',
-                scheduler_health TEXT NOT NULL DEFAULT '',
-                recovery_status TEXT NOT NULL DEFAULT '',
-                last_recovery_at TEXT NOT NULL DEFAULT '',
-                provider TEXT NOT NULL DEFAULT '',
-                model TEXT NOT NULL DEFAULT '',
-                lane TEXT NOT NULL DEFAULT '',
-                model_source TEXT NOT NULL DEFAULT '',
-                resolution_status TEXT NOT NULL DEFAULT '',
-                fallback_used INTEGER NOT NULL DEFAULT 0,
-                execution_status TEXT NOT NULL DEFAULT '',
-                parse_status TEXT NOT NULL DEFAULT '',
-                budget_status TEXT NOT NULL DEFAULT '',
-                last_ping_eligible INTEGER NOT NULL DEFAULT 0,
-                last_ping_result TEXT NOT NULL DEFAULT '',
-                last_successful_ping_at TEXT NOT NULL DEFAULT '',
-                last_action_type TEXT NOT NULL DEFAULT '',
-                last_action_status TEXT NOT NULL DEFAULT '',
-                last_action_summary TEXT NOT NULL DEFAULT '',
-                last_action_artifact TEXT NOT NULL DEFAULT '',
-                updated_at TEXT NOT NULL
-            )
-            """
+        from core.runtime.db_heartbeat import (
+            ensure_heartbeat_tables,
+            _ensure_heartbeat_runtime_state_columns,
+            _ensure_heartbeat_runtime_tick_columns,
         )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS heartbeat_runtime_ticks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tick_id TEXT NOT NULL UNIQUE,
-                trigger TEXT NOT NULL,
-                tick_status TEXT NOT NULL,
-                decision_type TEXT NOT NULL DEFAULT '',
-                decision_summary TEXT NOT NULL DEFAULT '',
-                decision_reason TEXT NOT NULL DEFAULT '',
-                blocked_reason TEXT NOT NULL DEFAULT '',
-                provider TEXT NOT NULL DEFAULT '',
-                model TEXT NOT NULL DEFAULT '',
-                lane TEXT NOT NULL DEFAULT '',
-                model_source TEXT NOT NULL DEFAULT '',
-                resolution_status TEXT NOT NULL DEFAULT '',
-                fallback_used INTEGER NOT NULL DEFAULT 0,
-                execution_status TEXT NOT NULL DEFAULT '',
-                parse_status TEXT NOT NULL DEFAULT '',
-                budget_status TEXT NOT NULL DEFAULT '',
-                ping_eligible INTEGER NOT NULL DEFAULT 0,
-                ping_result TEXT NOT NULL DEFAULT '',
-                action_status TEXT NOT NULL DEFAULT '',
-                action_summary TEXT NOT NULL DEFAULT '',
-                action_type TEXT NOT NULL DEFAULT '',
-                action_artifact TEXT NOT NULL DEFAULT '',
-                raw_response TEXT NOT NULL DEFAULT '',
-                input_tokens INTEGER NOT NULL DEFAULT 0,
-                output_tokens INTEGER NOT NULL DEFAULT 0,
-                cost_usd REAL NOT NULL DEFAULT 0,
-                started_at TEXT NOT NULL,
-                finished_at TEXT NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_heartbeat_runtime_ticks_finished
-            ON heartbeat_runtime_ticks(id DESC)
-            """
-        )
+        ensure_heartbeat_tables(conn)
         # chat_messages table already has all columns from CREATE TABLE above
         _ensure_heartbeat_runtime_state_columns(conn)
         _ensure_heartbeat_runtime_tick_columns(conn)
@@ -958,45 +847,8 @@ def init_db() -> None:
         _ensure_runtime_chronicle_consolidation_brief_table(conn)
         _ensure_runtime_chronicle_consolidation_proposal_table(conn)
         _ensure_user_contradiction_tables(conn)
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS private_inner_notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                note_id TEXT NOT NULL UNIQUE,
-                source TEXT NOT NULL,
-                run_id TEXT NOT NULL UNIQUE,
-                work_id TEXT NOT NULL,
-                status TEXT NOT NULL,
-                note_kind TEXT NOT NULL DEFAULT '',
-                focus TEXT NOT NULL DEFAULT '',
-                uncertainty TEXT NOT NULL DEFAULT '',
-                identity_alignment TEXT NOT NULL DEFAULT '',
-                work_signal TEXT NOT NULL DEFAULT '',
-                private_summary TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                enriched INTEGER NOT NULL DEFAULT 0
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS private_growth_notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                record_id TEXT NOT NULL UNIQUE,
-                source TEXT NOT NULL,
-                run_id TEXT NOT NULL UNIQUE,
-                work_id TEXT NOT NULL,
-                learning_kind TEXT NOT NULL,
-                lesson TEXT NOT NULL,
-                mistake_signal TEXT NOT NULL DEFAULT '',
-                helpful_signal TEXT NOT NULL DEFAULT '',
-                identity_signal TEXT NOT NULL DEFAULT '',
-                confidence TEXT NOT NULL DEFAULT '',
-                created_at TEXT NOT NULL,
-                enriched INTEGER NOT NULL DEFAULT 0
-            )
-            """
-        )
+        from core.runtime.db_private_notes import ensure_private_notes_tables
+        ensure_private_notes_tables(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS private_self_models (
@@ -1059,24 +911,6 @@ def init_db() -> None:
                 curiosity TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS protected_inner_voices (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                voice_id TEXT NOT NULL UNIQUE,
-                source TEXT NOT NULL,
-                run_id TEXT NOT NULL UNIQUE,
-                work_id TEXT NOT NULL,
-                mood_tone TEXT NOT NULL,
-                self_position TEXT NOT NULL,
-                current_concern TEXT NOT NULL,
-                current_pull TEXT NOT NULL,
-                voice_line TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                enriched INTEGER NOT NULL DEFAULT 0
             )
             """
         )
@@ -1256,6 +1090,10 @@ def init_db() -> None:
                 updated_at TEXT NOT NULL
             )
             """
+        )
+        from core.runtime.db_private_notes import (
+            _ensure_private_inner_note_columns,
+            _ensure_enriched_columns,
         )
         _ensure_private_inner_note_columns(conn)
         _ensure_enriched_columns(conn)
@@ -2171,44 +2009,6 @@ def _ensure_private_retained_memory_record_columns(conn: sqlite3.Connection) -> 
         )
 
 
-def recent_visible_runs(limit: int = 5) -> list[dict[str, object]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                run_id,
-                lane,
-                provider,
-                model,
-                status,
-                started_at,
-                finished_at,
-                text_preview,
-                error,
-                capability_id
-            FROM visible_runs
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (max(limit, 1),),
-        ).fetchall()
-    return [
-        {
-            "run_id": row["run_id"],
-            "lane": row["lane"],
-            "provider": row["provider"],
-            "model": row["model"],
-            "status": row["status"],
-            "started_at": row["started_at"],
-            "finished_at": row["finished_at"],
-            "text_preview": row["text_preview"],
-            "error": row["error"],
-            "capability_id": row["capability_id"],
-        }
-        for row in rows
-    ]
-
-
 def record_runtime_hook_dispatch(
     *,
     event_id: int,
@@ -2371,158 +2171,6 @@ def recent_visible_work_units(limit: int = 5) -> list[dict[str, object]]:
     ]
 
 
-def recent_visible_work_notes(limit: int = 5) -> list[dict[str, object]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                note_id,
-                work_id,
-                run_id,
-                status,
-                lane,
-                provider,
-                model,
-                user_message_preview,
-                capability_id,
-                work_preview,
-                projection_source,
-                created_at,
-                finished_at
-            FROM visible_work_notes
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (max(limit, 1),),
-        ).fetchall()
-    return [
-        {
-            "note_id": row["note_id"],
-            "work_id": row["work_id"],
-            "run_id": row["run_id"],
-            "status": row["status"],
-            "lane": row["lane"],
-            "provider": row["provider"],
-            "model": row["model"],
-            "user_message_preview": row["user_message_preview"],
-            "capability_id": row["capability_id"],
-            "work_preview": row["work_preview"],
-            "projection_source": row["projection_source"],
-            "created_at": row["created_at"],
-            "finished_at": row["finished_at"],
-        }
-        for row in rows
-    ]
-
-
-def record_visible_work_note(
-    *,
-    note_id: str,
-    work_id: str,
-    run_id: str,
-    status: str,
-    lane: str,
-    provider: str,
-    model: str,
-    user_message_preview: str = "",
-    capability_id: str = "",
-    work_preview: str = "",
-    projection_source: str = "",
-    created_at: str,
-    finished_at: str,
-) -> dict[str, object]:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO visible_work_notes (
-                note_id,
-                work_id,
-                run_id,
-                status,
-                lane,
-                provider,
-                model,
-                user_message_preview,
-                capability_id,
-                work_preview,
-                projection_source,
-                created_at,
-                finished_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(run_id) DO UPDATE SET
-                note_id=excluded.note_id,
-                work_id=excluded.work_id,
-                status=excluded.status,
-                lane=excluded.lane,
-                provider=excluded.provider,
-                model=excluded.model,
-                user_message_preview=excluded.user_message_preview,
-                capability_id=excluded.capability_id,
-                work_preview=excluded.work_preview,
-                projection_source=excluded.projection_source,
-                created_at=excluded.created_at,
-                finished_at=excluded.finished_at
-            """,
-            (
-                note_id,
-                work_id,
-                run_id,
-                status,
-                lane,
-                provider,
-                model,
-                user_message_preview,
-                capability_id,
-                work_preview,
-                projection_source,
-                created_at,
-                finished_at,
-            ),
-        )
-        conn.commit()
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                note_id,
-                work_id,
-                run_id,
-                status,
-                lane,
-                provider,
-                model,
-                user_message_preview,
-                capability_id,
-                work_preview,
-                projection_source,
-                created_at,
-                finished_at
-            FROM visible_work_notes
-            WHERE run_id = ?
-            LIMIT 1
-            """,
-            (run_id,),
-        ).fetchone()
-    if row is None:
-        raise RuntimeError("visible work note was not persisted")
-    return {
-        "note_id": row["note_id"],
-        "work_id": row["work_id"],
-        "run_id": row["run_id"],
-        "status": row["status"],
-        "lane": row["lane"],
-        "provider": row["provider"],
-        "model": row["model"],
-        "user_message_preview": row["user_message_preview"],
-        "capability_id": row["capability_id"],
-        "work_preview": row["work_preview"],
-        "projection_source": row["projection_source"],
-        "created_at": row["created_at"],
-        "finished_at": row["finished_at"],
-    }
-
-
 def recent_runtime_action_outcomes(limit: int = 10) -> list[dict[str, object]]:
     with connect() as conn:
         rows = conn.execute(
@@ -2572,175 +2220,6 @@ def recent_runtime_learning_signals(limit: int = 25) -> list[dict[str, object]]:
     return [_runtime_learning_signal_from_row(row) for row in rows]
 
 
-def record_private_inner_note(
-    *,
-    note_id: str,
-    source: str,
-    run_id: str,
-    work_id: str,
-    status: str,
-    note_kind: str,
-    focus: str,
-    uncertainty: str,
-    identity_alignment: str,
-    work_signal: str,
-    private_summary: str,
-    created_at: str,
-) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO private_inner_notes (
-                note_id, source, run_id, work_id, status, note_kind, focus,
-                uncertainty, identity_alignment, work_signal, private_summary, created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(run_id) DO UPDATE SET
-                note_id=excluded.note_id,
-                source=excluded.source,
-                work_id=excluded.work_id,
-                status=excluded.status,
-                note_kind=excluded.note_kind,
-                focus=excluded.focus,
-                uncertainty=excluded.uncertainty,
-                identity_alignment=excluded.identity_alignment,
-                work_signal=excluded.work_signal,
-                private_summary=excluded.private_summary,
-                created_at=excluded.created_at
-            """,
-            (
-                note_id,
-                source,
-                run_id,
-                work_id,
-                status,
-                note_kind,
-                focus,
-                uncertainty,
-                identity_alignment,
-                work_signal,
-                private_summary,
-                created_at,
-            ),
-        )
-        conn.commit()
-
-
-def update_private_inner_note_enriched(*, run_id: str, enriched_summary: str) -> None:
-    """Replace template summary with LLM-enriched text."""
-    with connect() as conn:
-        conn.execute(
-            "UPDATE private_inner_notes SET private_summary = ?, enriched = 1 WHERE run_id = ?",
-            (enriched_summary, run_id),
-        )
-        conn.commit()
-
-
-def recent_private_inner_notes(limit: int = 5) -> list[dict[str, object]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                note_id,
-                source,
-                run_id,
-                work_id,
-                status,
-                note_kind,
-                focus,
-                uncertainty,
-                identity_alignment,
-                work_signal,
-                private_summary,
-                created_at
-            FROM private_inner_notes
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (max(limit, 1),),
-        ).fetchall()
-    return [
-        {
-            "note_id": row["note_id"],
-            "source": row["source"],
-            "run_id": row["run_id"],
-            "work_id": row["work_id"],
-            "status": row["status"],
-            "note_kind": row["note_kind"],
-            "focus": row["focus"],
-            "uncertainty": row["uncertainty"],
-            "identity_alignment": row["identity_alignment"],
-            "work_signal": row["work_signal"],
-            "private_summary": row["private_summary"],
-            "created_at": row["created_at"],
-        }
-        for row in rows
-    ]
-
-
-def record_private_growth_note(
-    *,
-    record_id: str,
-    source: str,
-    run_id: str,
-    work_id: str,
-    learning_kind: str,
-    lesson: str,
-    mistake_signal: str,
-    helpful_signal: str,
-    identity_signal: str,
-    confidence: str,
-    created_at: str,
-) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO private_growth_notes (
-                record_id, source, run_id, work_id, learning_kind, lesson,
-                mistake_signal, helpful_signal, identity_signal, confidence, created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(run_id) DO UPDATE SET
-                record_id=excluded.record_id,
-                source=excluded.source,
-                work_id=excluded.work_id,
-                learning_kind=excluded.learning_kind,
-                lesson=excluded.lesson,
-                mistake_signal=excluded.mistake_signal,
-                helpful_signal=excluded.helpful_signal,
-                identity_signal=excluded.identity_signal,
-                confidence=excluded.confidence,
-                created_at=excluded.created_at
-            """,
-            (
-                record_id,
-                source,
-                run_id,
-                work_id,
-                learning_kind,
-                lesson,
-                mistake_signal,
-                helpful_signal,
-                identity_signal,
-                confidence,
-                created_at,
-            ),
-        )
-        conn.commit()
-
-
-def update_private_growth_note_enriched(
-    *, run_id: str, enriched_lesson: str, enriched_helpful_signal: str
-) -> None:
-    """Replace template lesson and helpful_signal with LLM-enriched text."""
-    with connect() as conn:
-        conn.execute(
-            "UPDATE private_growth_notes SET lesson = ?, helpful_signal = ?, enriched = 1 WHERE run_id = ?",
-            (enriched_lesson, enriched_helpful_signal, run_id),
-        )
-        conn.commit()
-
-
 def update_private_retained_memory_record_enriched(
     *, run_id: str, enriched_value: str
 ) -> None:
@@ -2751,46 +2230,6 @@ def update_private_retained_memory_record_enriched(
             (enriched_value[:200], run_id),
         )
         conn.commit()
-
-
-def recent_private_growth_notes(limit: int = 5) -> list[dict[str, object]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                record_id,
-                source,
-                run_id,
-                work_id,
-                learning_kind,
-                lesson,
-                mistake_signal,
-                helpful_signal,
-                identity_signal,
-                confidence,
-                created_at
-            FROM private_growth_notes
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (max(limit, 1),),
-        ).fetchall()
-    return [
-        {
-            "record_id": row["record_id"],
-            "source": row["source"],
-            "run_id": row["run_id"],
-            "work_id": row["work_id"],
-            "learning_kind": row["learning_kind"],
-            "lesson": row["lesson"],
-            "mistake_signal": row["mistake_signal"],
-            "helpful_signal": row["helpful_signal"],
-            "identity_signal": row["identity_signal"],
-            "confidence": row["confidence"],
-            "created_at": row["created_at"],
-        }
-        for row in rows
-    ]
 
 
 def record_private_self_model(
@@ -3154,144 +2593,6 @@ def get_private_state() -> dict[str, object] | None:
     }
 
 
-def record_protected_inner_voice(
-    *,
-    voice_id: str,
-    source: str,
-    run_id: str,
-    work_id: str,
-    mood_tone: str,
-    self_position: str,
-    current_concern: str,
-    current_pull: str,
-    voice_line: str,
-    created_at: str,
-) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO protected_inner_voices (
-                voice_id, source, run_id, work_id, mood_tone, self_position,
-                current_concern, current_pull, voice_line, created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(run_id) DO UPDATE SET
-                voice_id=excluded.voice_id,
-                source=excluded.source,
-                work_id=excluded.work_id,
-                mood_tone=excluded.mood_tone,
-                self_position=excluded.self_position,
-                current_concern=excluded.current_concern,
-                current_pull=excluded.current_pull,
-                voice_line=excluded.voice_line,
-                created_at=excluded.created_at
-            """,
-            (
-                voice_id,
-                source,
-                run_id,
-                work_id,
-                mood_tone,
-                self_position,
-                current_concern,
-                current_pull,
-                voice_line,
-                created_at,
-            ),
-        )
-        conn.commit()
-
-
-def update_protected_inner_voice_enriched(*, run_id: str, enriched_voice_line: str) -> None:
-    """Replace template voice_line with LLM-enriched text."""
-    with connect() as conn:
-        conn.execute(
-            "UPDATE protected_inner_voices SET voice_line = ?, enriched = 1 WHERE run_id = ?",
-            (enriched_voice_line, run_id),
-        )
-        conn.commit()
-
-
-def get_protected_inner_voice() -> dict[str, object] | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                voice_id,
-                source,
-                run_id,
-                work_id,
-                mood_tone,
-                self_position,
-                current_concern,
-                current_pull,
-                voice_line,
-                created_at
-            FROM protected_inner_voices
-            ORDER BY id DESC
-            LIMIT 1
-            """
-        ).fetchone()
-    if row is None:
-        return None
-    return {
-        "voice_id": row["voice_id"],
-        "source": row["source"],
-        "run_id": row["run_id"],
-        "work_id": row["work_id"],
-        "mood_tone": row["mood_tone"],
-        "self_position": row["self_position"],
-        "current_concern": row["current_concern"],
-        "current_pull": row["current_pull"],
-        "voice_line": row["voice_line"],
-        "created_at": row["created_at"],
-    }
-
-
-def list_recent_protected_inner_voices(*, limit: int = 8) -> list[dict[str, object]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                id,
-                voice_id,
-                source,
-                run_id,
-                work_id,
-                mood_tone,
-                self_position,
-                current_concern,
-                current_pull,
-                voice_line,
-                created_at,
-                enriched
-            FROM protected_inner_voices
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (max(int(limit), 1),),
-        ).fetchall()
-    items: list[dict[str, object]] = []
-    for row in rows:
-        items.append(
-            {
-                "id": row["id"],
-                "voice_id": row["voice_id"],
-                "source": row["source"],
-                "run_id": row["run_id"],
-                "work_id": row["work_id"],
-                "mood_tone": row["mood_tone"],
-                "self_position": row["self_position"],
-                "current_concern": row["current_concern"],
-                "current_pull": row["current_pull"],
-                "voice_line": row["voice_line"],
-                "created_at": row["created_at"],
-                "enriched": bool(row["enriched"]),
-            }
-        )
-    return items
-
-
 def record_private_temporal_promotion_signal(
     *,
     signal_id: str,
@@ -3638,104 +2939,6 @@ def _ensure_capability_invocation_approval_columns(conn: sqlite3.Connection) -> 
         if name in existing:
             continue
         conn.execute(f"ALTER TABLE capability_invocations ADD COLUMN {name} {spec}")
-
-
-def _ensure_enriched_columns(conn: sqlite3.Connection) -> None:
-    """Add enriched column to private layer tables if missing."""
-    for table in ("private_inner_notes", "private_growth_notes", "protected_inner_voices"):
-        rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
-        existing = {str(row["name"]) for row in rows}
-        if "enriched" not in existing:
-            conn.execute(f"ALTER TABLE {table} ADD COLUMN enriched INTEGER NOT NULL DEFAULT 0")
-
-
-def _ensure_private_inner_note_columns(conn: sqlite3.Connection) -> None:
-    rows = conn.execute("PRAGMA table_info(private_inner_notes)").fetchall()
-    existing = {str(row["name"]) for row in rows}
-    required_columns = {
-        "note_kind": "TEXT NOT NULL DEFAULT ''",
-        "focus": "TEXT NOT NULL DEFAULT ''",
-        "uncertainty": "TEXT NOT NULL DEFAULT ''",
-        "identity_alignment": "TEXT NOT NULL DEFAULT ''",
-        "work_signal": "TEXT NOT NULL DEFAULT ''",
-    }
-    for name, spec in required_columns.items():
-        if name in existing:
-            continue
-        conn.execute(f"ALTER TABLE private_inner_notes ADD COLUMN {name} {spec}")
-
-
-def visible_session_continuity() -> dict[str, object]:
-    # Use visible_work_notes (which carry both user_message_preview AND
-    # work_preview) instead of plain visible_runs (which only have the
-    # assistant text). This makes the recent_run_summaries actually
-    # carry the dialog context between sessions instead of being a
-    # one-sided assistant log.
-    recent_notes = recent_visible_work_notes(limit=3)
-    recent_runs = recent_visible_runs(limit=3) if not recent_notes else []
-    recent_invocations = recent_capability_invocations(limit=2)
-    latest_note = recent_notes[0] if recent_notes else {}
-    latest_run = recent_runs[0] if recent_runs else {}
-    recent_capability_ids = [
-        capability_id
-        for item in recent_invocations
-        if (capability_id := str(item.get("capability_id") or "").strip())
-    ]
-    recent_run_summaries = [
-        {
-            "run_id": item.get("run_id"),
-            "status": item.get("status"),
-            "finished_at": item.get("finished_at"),
-            "capability_id": item.get("capability_id"),
-            "user_message_preview": item.get("user_message_preview"),
-            "text_preview": item.get("work_preview"),
-        }
-        for item in recent_notes
-    ] or [
-        {
-            "run_id": item.get("run_id"),
-            "status": item.get("status"),
-            "finished_at": item.get("finished_at"),
-            "capability_id": item.get("capability_id"),
-            "user_message_preview": None,
-            "text_preview": item.get("text_preview"),
-        }
-        for item in recent_runs
-    ]
-    latest_payload = latest_note or latest_run or {}
-    return {
-        "active": bool(latest_payload or recent_invocations),
-        "source": "persisted-visible-work-notes+capability-invocations"
-        if recent_notes
-        else "persisted-visible-runs+capability-invocations",
-        "latest_run_id": latest_payload.get("run_id"),
-        "latest_status": latest_payload.get("status"),
-        "latest_finished_at": latest_payload.get("finished_at"),
-        "latest_text_preview": latest_payload.get("work_preview")
-        or latest_payload.get("text_preview"),
-        "latest_user_message_preview": latest_payload.get("user_message_preview"),
-        "latest_capability_id": latest_payload.get("capability_id"),
-        "recent_capability_ids": recent_capability_ids,
-        "recent_run_summaries": recent_run_summaries,
-        "included_run_rows": len(recent_notes) or len(recent_runs),
-        "included_capability_rows": len(recent_invocations),
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def create_tool_intent_approval_request(
@@ -23832,231 +23035,6 @@ def supersede_runtime_selfhood_proposals_for_domain(
         return int(cursor.rowcount or 0)
 
 
-def get_heartbeat_runtime_state() -> dict[str, object] | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                state_id,
-                last_tick_id,
-                last_tick_at,
-                next_tick_at,
-                schedule_state,
-                due,
-                last_decision_type,
-                last_result,
-                blocked_reason,
-                currently_ticking,
-                last_trigger_source,
-                scheduler_active,
-                scheduler_started_at,
-                scheduler_stopped_at,
-                scheduler_health,
-                recovery_status,
-                last_recovery_at,
-                provider,
-                model,
-                lane,
-                model_source,
-                resolution_status,
-                fallback_used,
-                execution_status,
-                parse_status,
-                budget_status,
-                last_ping_eligible,
-                last_ping_result,
-                last_action_type,
-                last_action_status,
-                last_action_summary,
-                last_action_artifact,
-                updated_at
-            FROM heartbeat_runtime_state
-            WHERE id = 1
-            LIMIT 1
-            """
-        ).fetchone()
-    if row is None:
-        return None
-    return _heartbeat_runtime_state_from_row(row)
-
-
-def upsert_heartbeat_runtime_state(
-    *,
-    state_id: str,
-    last_tick_id: str,
-    last_tick_at: str,
-    next_tick_at: str,
-    schedule_state: str,
-    due: bool,
-    last_decision_type: str,
-    last_result: str,
-    blocked_reason: str,
-    currently_ticking: bool,
-    last_trigger_source: str,
-    scheduler_active: bool,
-    scheduler_started_at: str,
-    scheduler_stopped_at: str,
-    scheduler_health: str,
-    recovery_status: str,
-    last_recovery_at: str,
-    provider: str,
-    model: str,
-    lane: str,
-    model_source: str,
-    resolution_status: str,
-    fallback_used: bool,
-    execution_status: str,
-    parse_status: str,
-    budget_status: str,
-    last_ping_eligible: bool,
-    last_ping_result: str,
-    last_action_type: str,
-    last_action_status: str,
-    last_action_summary: str,
-    last_action_artifact: str,
-    updated_at: str,
-    last_successful_ping_at: str = "",
-) -> dict[str, object]:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO heartbeat_runtime_state (
-                id,
-                state_id,
-                last_tick_id,
-                last_tick_at,
-                next_tick_at,
-                schedule_state,
-                due,
-                last_decision_type,
-                last_result,
-                blocked_reason,
-                currently_ticking,
-                last_trigger_source,
-                scheduler_active,
-                scheduler_started_at,
-                scheduler_stopped_at,
-                scheduler_health,
-                recovery_status,
-                last_recovery_at,
-                provider,
-                model,
-                lane,
-                model_source,
-                resolution_status,
-                fallback_used,
-                execution_status,
-                parse_status,
-                budget_status,
-                last_ping_eligible,
-                last_ping_result,
-                last_successful_ping_at,
-                last_action_type,
-                last_action_status,
-                last_action_summary,
-                last_action_artifact,
-                updated_at
-            )
-            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                state_id = excluded.state_id,
-                last_tick_id = excluded.last_tick_id,
-                last_tick_at = excluded.last_tick_at,
-                next_tick_at = excluded.next_tick_at,
-                schedule_state = excluded.schedule_state,
-                due = excluded.due,
-                last_decision_type = excluded.last_decision_type,
-                last_result = excluded.last_result,
-                blocked_reason = excluded.blocked_reason,
-                currently_ticking = excluded.currently_ticking,
-                last_trigger_source = excluded.last_trigger_source,
-                scheduler_active = excluded.scheduler_active,
-                scheduler_started_at = excluded.scheduler_started_at,
-                scheduler_stopped_at = excluded.scheduler_stopped_at,
-                scheduler_health = excluded.scheduler_health,
-                recovery_status = excluded.recovery_status,
-                last_recovery_at = excluded.last_recovery_at,
-                provider = excluded.provider,
-                model = excluded.model,
-                lane = excluded.lane,
-                model_source = excluded.model_source,
-                resolution_status = excluded.resolution_status,
-                fallback_used = excluded.fallback_used,
-                execution_status = excluded.execution_status,
-                parse_status = excluded.parse_status,
-                budget_status = excluded.budget_status,
-                last_ping_eligible = excluded.last_ping_eligible,
-                last_ping_result = excluded.last_ping_result,
-                last_successful_ping_at = excluded.last_successful_ping_at,
-                last_action_type = excluded.last_action_type,
-                last_action_status = excluded.last_action_status,
-                last_action_summary = excluded.last_action_summary,
-                last_action_artifact = excluded.last_action_artifact,
-                updated_at = excluded.updated_at
-            """,
-            (
-                state_id,
-                last_tick_id,
-                last_tick_at,
-                next_tick_at,
-                schedule_state,
-                1 if due else 0,
-                last_decision_type,
-                last_result,
-                blocked_reason,
-                1 if currently_ticking else 0,
-                last_trigger_source,
-                1 if scheduler_active else 0,
-                scheduler_started_at,
-                scheduler_stopped_at,
-                scheduler_health,
-                recovery_status,
-                last_recovery_at,
-                provider,
-                model,
-                lane,
-                model_source,
-                resolution_status,
-                1 if fallback_used else 0,
-                execution_status,
-                parse_status,
-                budget_status,
-                1 if last_ping_eligible else 0,
-                last_ping_result,
-                last_successful_ping_at,
-                last_action_type,
-                last_action_status,
-                last_action_summary,
-                last_action_artifact,
-                updated_at,
-            ),
-        )
-        _logger.info(
-            "HEARTBEAT-UPSERT-BEFORE-COMMIT: schedule_state=%s due=%s updated_at=%s state_id=%s in_transaction=%s",
-            schedule_state, due, updated_at, state_id, conn.in_transaction,
-        )
-        try:
-            conn.commit()
-        except Exception:
-            _logger.error(
-                "HEARTBEAT-UPSERT-COMMIT-FAILED: schedule_state=%s due=%s updated_at=%s state_id=%s",
-                schedule_state, due, updated_at, state_id,
-            )
-            raise
-    state = get_heartbeat_runtime_state()
-    if state is None:
-        _logger.error(
-            "HEARTBEAT-UPSERT-NOT-PERSISTED: schedule_state=%s due=%s updated_at=%s state_id=%s",
-            schedule_state, due, updated_at, state_id,
-        )
-        raise RuntimeError("heartbeat runtime state was not persisted")
-    _logger.info(
-        "HEARTBEAT-UPSERT-PERSISTED-OK: schedule_state=%s state_id=%s",
-        state.get("schedule_state"), state.get("state_id"),
-    )
-    return state
-
-
 def record_runtime_action_outcome(
     *,
     action_id: str,
@@ -24197,154 +23175,6 @@ def record_runtime_learning_signal(
     return _runtime_learning_signal_from_row(row)
 
 
-def record_heartbeat_runtime_tick(
-    *,
-    tick_id: str,
-    trigger: str,
-    tick_status: str,
-    decision_type: str,
-    decision_summary: str,
-    decision_reason: str,
-    blocked_reason: str,
-    provider: str,
-    model: str,
-    lane: str,
-    model_source: str,
-    resolution_status: str,
-    fallback_used: bool,
-    execution_status: str,
-    parse_status: str,
-    budget_status: str,
-    ping_eligible: bool,
-    ping_result: str,
-    action_status: str,
-    action_summary: str,
-    action_type: str,
-    action_artifact: str,
-    raw_response: str,
-    input_tokens: int,
-    output_tokens: int,
-    cost_usd: float,
-    started_at: str,
-    finished_at: str,
-) -> dict[str, object]:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO heartbeat_runtime_ticks (
-                tick_id,
-                trigger,
-                tick_status,
-                decision_type,
-                decision_summary,
-                decision_reason,
-                blocked_reason,
-                provider,
-                model,
-                lane,
-                model_source,
-                resolution_status,
-                fallback_used,
-                execution_status,
-                parse_status,
-                budget_status,
-                ping_eligible,
-                ping_result,
-                action_status,
-                action_summary,
-                action_type,
-                action_artifact,
-                raw_response,
-                input_tokens,
-                output_tokens,
-                cost_usd,
-                started_at,
-                finished_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                tick_id,
-                trigger,
-                tick_status,
-                decision_type,
-                decision_summary,
-                decision_reason,
-                blocked_reason,
-                provider,
-                model,
-                lane,
-                model_source,
-                resolution_status,
-                1 if fallback_used else 0,
-                execution_status,
-                parse_status,
-                budget_status,
-                1 if ping_eligible else 0,
-                ping_result,
-                action_status,
-                action_summary,
-                action_type,
-                action_artifact,
-                raw_response,
-                int(input_tokens or 0),
-                int(output_tokens or 0),
-                float(cost_usd or 0.0),
-                started_at,
-                finished_at,
-            ),
-        )
-        conn.commit()
-    tick = get_heartbeat_runtime_tick(tick_id)
-    if tick is None:
-        raise RuntimeError("heartbeat runtime tick was not persisted")
-    return tick
-
-
-def get_heartbeat_runtime_tick(tick_id: str) -> dict[str, object] | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                tick_id,
-                trigger,
-                tick_status,
-                decision_type,
-                decision_summary,
-                decision_reason,
-                blocked_reason,
-                provider,
-                model,
-                lane,
-                model_source,
-                resolution_status,
-                fallback_used,
-                execution_status,
-                parse_status,
-                budget_status,
-                ping_eligible,
-                ping_result,
-                action_status,
-                action_summary,
-                action_type,
-                action_artifact,
-                raw_response,
-                input_tokens,
-                output_tokens,
-                cost_usd,
-                started_at,
-                finished_at
-            FROM heartbeat_runtime_ticks
-            WHERE tick_id = ?
-            LIMIT 1
-            """,
-            (tick_id,),
-        ).fetchone()
-    if row is None:
-        return None
-    return _heartbeat_runtime_tick_from_row(row)
-
-
 def _runtime_action_outcome_from_row(row: sqlite3.Row) -> dict[str, object]:
     payload_raw = str(row["payload_json"] or "{}")
     result_raw = str(row["result_json"] or "{}")
@@ -24391,48 +23221,6 @@ def _runtime_learning_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
     }
 
 
-def recent_heartbeat_runtime_ticks(limit: int = 10) -> list[dict[str, object]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                tick_id,
-                trigger,
-                tick_status,
-                decision_type,
-                decision_summary,
-                decision_reason,
-                blocked_reason,
-                provider,
-                model,
-                lane,
-                model_source,
-                resolution_status,
-                fallback_used,
-                execution_status,
-                parse_status,
-                budget_status,
-                ping_eligible,
-                ping_result,
-                action_status,
-                action_summary,
-                action_type,
-                action_artifact,
-                raw_response,
-                input_tokens,
-                output_tokens,
-                cost_usd,
-                started_at,
-                finished_at
-            FROM heartbeat_runtime_ticks
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (max(limit, 1),),
-        ).fetchall()
-    return [_heartbeat_runtime_tick_from_row(row) for row in rows]
-
-
 def _runtime_contract_candidate_from_row(row: sqlite3.Row) -> dict[str, object]:
     return {
         "candidate_id": row["candidate_id"],
@@ -24460,277 +23248,6 @@ def _runtime_contract_candidate_from_row(row: sqlite3.Row) -> dict[str, object]:
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
-
-
-def _heartbeat_runtime_state_from_row(row: sqlite3.Row) -> dict[str, object]:
-    return {
-        "state_id": row["state_id"],
-        "last_tick_id": row["last_tick_id"],
-        "last_tick_at": row["last_tick_at"],
-        "next_tick_at": row["next_tick_at"],
-        "schedule_state": row["schedule_state"],
-        "due": bool(row["due"]),
-        "last_decision_type": row["last_decision_type"],
-        "last_result": row["last_result"],
-        "blocked_reason": row["blocked_reason"],
-        "currently_ticking": bool(row["currently_ticking"]),
-        "last_trigger_source": row["last_trigger_source"],
-        "scheduler_active": bool(row["scheduler_active"]),
-        "scheduler_started_at": row["scheduler_started_at"],
-        "scheduler_stopped_at": row["scheduler_stopped_at"],
-        "scheduler_health": row["scheduler_health"],
-        "recovery_status": row["recovery_status"],
-        "last_recovery_at": row["last_recovery_at"],
-        "provider": row["provider"],
-        "model": row["model"],
-        "lane": row["lane"],
-        "model_source": row["model_source"],
-        "resolution_status": row["resolution_status"],
-        "fallback_used": bool(row["fallback_used"]),
-        "execution_status": row["execution_status"],
-        "parse_status": row["parse_status"],
-        "budget_status": row["budget_status"],
-        "last_ping_eligible": bool(row["last_ping_eligible"]),
-        "last_ping_result": row["last_ping_result"],
-        "last_successful_ping_at": row["last_successful_ping_at"] if "last_successful_ping_at" in row.keys() else "",
-        "last_action_type": row["last_action_type"],
-        "last_action_status": row["last_action_status"],
-        "last_action_summary": row["last_action_summary"],
-        "last_action_artifact": row["last_action_artifact"],
-        "updated_at": row["updated_at"],
-    }
-
-
-def _heartbeat_runtime_tick_from_row(row: sqlite3.Row) -> dict[str, object]:
-    return {
-        "tick_id": row["tick_id"],
-        "trigger": row["trigger"],
-        "tick_status": row["tick_status"],
-        "decision_type": row["decision_type"],
-        "decision_summary": row["decision_summary"],
-        "decision_reason": row["decision_reason"],
-        "blocked_reason": row["blocked_reason"],
-        "provider": row["provider"],
-        "model": row["model"],
-        "lane": row["lane"],
-        "model_source": row["model_source"],
-        "resolution_status": row["resolution_status"],
-        "fallback_used": bool(row["fallback_used"]),
-        "execution_status": row["execution_status"],
-        "parse_status": row["parse_status"],
-        "budget_status": row["budget_status"],
-        "ping_eligible": bool(row["ping_eligible"]),
-        "ping_result": row["ping_result"],
-        "action_status": row["action_status"],
-        "action_summary": row["action_summary"],
-        "action_type": row["action_type"],
-        "action_artifact": row["action_artifact"],
-        "raw_response": row["raw_response"],
-        "input_tokens": int(row["input_tokens"] or 0),
-        "output_tokens": int(row["output_tokens"] or 0),
-        "cost_usd": float(row["cost_usd"] or 0.0),
-        "started_at": row["started_at"],
-        "finished_at": row["finished_at"],
-    }
-
-
-def _ensure_heartbeat_runtime_state_columns(conn: sqlite3.Connection) -> None:
-    rows = conn.execute("PRAGMA table_info(heartbeat_runtime_state)").fetchall()
-    existing = {str(row["name"]) for row in rows}
-    if "currently_ticking" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN currently_ticking INTEGER NOT NULL DEFAULT 0
-            """
-        )
-    if "last_trigger_source" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN last_trigger_source TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "schedule_state" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN schedule_state TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "due" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN due INTEGER NOT NULL DEFAULT 0
-            """
-        )
-    if "scheduler_active" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN scheduler_active INTEGER NOT NULL DEFAULT 0
-            """
-        )
-    if "scheduler_started_at" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN scheduler_started_at TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "scheduler_stopped_at" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN scheduler_stopped_at TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "scheduler_health" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN scheduler_health TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "recovery_status" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN recovery_status TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "last_recovery_at" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN last_recovery_at TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "last_action_type" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN last_action_type TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "last_action_status" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN last_action_status TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "last_action_summary" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN last_action_summary TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "last_action_artifact" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN last_action_artifact TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "model_source" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN model_source TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "resolution_status" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN resolution_status TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "fallback_used" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN fallback_used INTEGER NOT NULL DEFAULT 0
-            """
-        )
-    if "execution_status" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN execution_status TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "parse_status" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN parse_status TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "last_successful_ping_at" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_state
-            ADD COLUMN last_successful_ping_at TEXT NOT NULL DEFAULT ''
-            """
-        )
-
-
-def _ensure_heartbeat_runtime_tick_columns(conn: sqlite3.Connection) -> None:
-    rows = conn.execute("PRAGMA table_info(heartbeat_runtime_ticks)").fetchall()
-    existing = {str(row["name"]) for row in rows}
-    if "action_type" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_ticks
-            ADD COLUMN action_type TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "action_artifact" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_ticks
-            ADD COLUMN action_artifact TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "model_source" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_ticks
-            ADD COLUMN model_source TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "resolution_status" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_ticks
-            ADD COLUMN resolution_status TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "fallback_used" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_ticks
-            ADD COLUMN fallback_used INTEGER NOT NULL DEFAULT 0
-            """
-        )
-    if "execution_status" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_ticks
-            ADD COLUMN execution_status TEXT NOT NULL DEFAULT ''
-            """
-        )
-    if "parse_status" not in existing:
-        conn.execute(
-            """
-            ALTER TABLE heartbeat_runtime_ticks
-            ADD COLUMN parse_status TEXT NOT NULL DEFAULT ''
-            """
-        )
 
 
 def _ensure_runtime_contract_candidate_table(conn: sqlite3.Connection) -> None:
@@ -32848,6 +31365,43 @@ from core.runtime.db_runtime_browser import (  # noqa: E402,F401
     get_runtime_browser_body,
     upsert_runtime_browser_body,
     list_runtime_browser_bodies,
+)
+
+
+# --- Heartbeat runtime tables (split into db_heartbeat.py per boy scout rule) ---
+from core.runtime.db_heartbeat import (  # noqa: E402,F401
+    ensure_heartbeat_tables,
+    get_heartbeat_runtime_state,
+    upsert_heartbeat_runtime_state,
+    record_heartbeat_runtime_tick,
+    get_heartbeat_runtime_tick,
+    recent_heartbeat_runtime_ticks,
+)
+
+
+# --- Visible-lane projection tables (split into db_visible.py per boy scout rule) ---
+from core.runtime.db_visible import (  # noqa: E402,F401
+    ensure_visible_tables,
+    recent_visible_runs,
+    recent_visible_work_notes,
+    record_visible_work_note,
+    visible_session_continuity,
+)
+
+
+# --- Private/protected inner-layer note tables (split into db_private_notes.py per boy scout rule) ---
+from core.runtime.db_private_notes import (  # noqa: E402,F401
+    ensure_private_notes_tables,
+    record_private_growth_note,
+    update_private_growth_note_enriched,
+    recent_private_growth_notes,
+    record_private_inner_note,
+    update_private_inner_note_enriched,
+    recent_private_inner_notes,
+    record_protected_inner_voice,
+    update_protected_inner_voice_enriched,
+    get_protected_inner_voice,
+    list_recent_protected_inner_voices,
 )
 
 

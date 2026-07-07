@@ -2339,7 +2339,10 @@ def _exec_compact_context_session(session_id: str | None) -> Any:
 
 
 def _exec_compact_context(args: dict[str, Any]) -> dict[str, Any]:
-    cr = _exec_compact_context_session(None)
+    # Facade-søm: slå _exec_compact_context_session op via simple_tools, så
+    # test-patch (monkeypatch på facaden) honoreres — som før split levede
+    # begge funktioner i samme modul-globals.
+    cr = _st()._exec_compact_context_session(None)
     if cr is None:
         return {
             "status": "ok",

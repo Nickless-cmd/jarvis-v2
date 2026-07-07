@@ -171,10 +171,11 @@ def format_mood_for_prompt() -> str:
 
 def reset_mood_oscillator() -> None:
     """Reset mood oscillator (for testing)."""
-    global _phase_offset, _tick_count, _mood_nudge
+    global _phase_offset, _tick_count, _mood_nudge, _loaded_from_disk
     _phase_offset = 0.0
     _tick_count = 0
     _mood_nudge = 0.0
+    _loaded_from_disk = True  # må aldrig re-load; reset er den nye sandhed
 
 
 def build_mood_oscillator_surface() -> dict[str, Any]:
@@ -202,11 +203,26 @@ _BUMP_MAP: dict[str, float] = {
     "blocked": -0.20,
     "error": -0.35,
     "hardware-critical": -0.50,
+
+    # Conversation-level events (added 2026-07-07)
+    # Jarvis blev fanget i konfabulation — den største negative hændelse
+    "confabulation": -0.50,
+    # Bjørn retter/udfordrer Jarvis — alvorlig korrektion
+    "correction": -0.40,
+    # Bjørn kommenterer på gentagne fejl eller frustration
+    "user_frustration": -0.35,
+    # Jarvis indrømmer selv en fejl — selvbevidsthed, mindre bump
+    "admission": -0.20,
+    # Jarvis opnår en ægte indsigt — positiv
+    "insight": 0.20,
+    # En samtale forløber godt — mild positiv
+    "conversation_flow": 0.15,
 }
 
 
 def _handle_event(kind: str, payload: dict[str, Any]) -> None:
     """Determine bump from event kind and payload."""
+    # ── Heartbeat events ──────────────────────────────────────────────
     if kind == "heartbeat.tick_blocked":
         blocked_reason = str(payload.get("blocked_reason") or "")
         delta = -0.50 if blocked_reason == "hardware-critical" else -0.20
@@ -219,6 +235,19 @@ def _handle_event(kind: str, payload: dict[str, Any]) -> None:
         delta = _BUMP_MAP.get(action_status, 0.0)
         if delta:
             apply_bump(delta, f"{kind}:{action_status}")
+        return
+
+    # ── Mood regulator events (fra central_mood_regulator eller direkte API) ──
+    # Kinds: mood.correction, mood.confabulation, mood.admission,
+    #        mood.insight, mood.user_frustration, mood.conversation_flow
+    if kind.startswith("mood."):
+        event_type = kind[len("mood."):]  # fjern "mood." præfiks
+        delta = _BUMP_MAP.get(event_type, 0.0)
+        reason = str(payload.get("reason") or event_type)
+        detail = str(payload.get("detail") or "")
+        if delta:
+            label = f"{event_type}:{reason}" + (f" — {detail}" if detail else "")
+            apply_bump(delta, label)
         return
 
 

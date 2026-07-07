@@ -529,6 +529,11 @@ def test_tool_intent_verbal_approval_becomes_runtime_truth(
         role="user",
         content="approve repo read tool intent",
     )
+    # build_tool_intent_runtime_surface is TTL-cached (60s) — the production MC
+    # resolve path invalidates it after a verbal decision. A raw chat append
+    # bypasses that, so invalidate explicitly to force a fresh re-scan.
+    from core.services.runtime_surface_cache import invalidate_timed_runtime_surface
+    invalidate_timed_runtime_surface("tool_intent_runtime_surface")
 
     approved = tool_intent_mod.build_tool_intent_runtime_surface()
 
@@ -571,6 +576,8 @@ def test_tool_intent_verbal_denial_is_bounded_runtime_truth(
         role="user",
         content="afvis repo read tool intent",
     )
+    from core.services.runtime_surface_cache import invalidate_timed_runtime_surface
+    invalidate_timed_runtime_surface("tool_intent_runtime_surface")
 
     denied = tool_intent_mod.build_tool_intent_runtime_surface()
 
@@ -724,6 +731,8 @@ def test_approved_read_only_tool_intent_executes_bounded_repo_inspection(
         role="user",
         content="approve inspect working tree tool intent",
     )
+    from core.services.runtime_surface_cache import invalidate_timed_runtime_surface
+    invalidate_timed_runtime_surface("tool_intent_runtime_surface")
 
     approved = tool_intent_mod.build_tool_intent_runtime_surface()
 

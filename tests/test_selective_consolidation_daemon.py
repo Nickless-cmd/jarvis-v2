@@ -23,16 +23,18 @@ def isolated_db(monkeypatch, tmp_path):
 
 def _insert_sensory(conn, content: str, mood_tone: str | None = None, days_ago: int = 0):
     """Insert a sensory memory row directly."""
-    from core.runtime.db_sensory import _ensure_sensory_memories_table
+    from core.runtime.db_sensory import _ensure_sensory_memories_table, _scope
     _ensure_sensory_memories_table(conn)
     ts = datetime.now(UTC).isoformat()
     if days_ago > 0:
         # For testing with "today" timestamps
         pass
+    # Per-user scope (#154): count_sensory_memories() filters by scope_uid(),
+    # so rows must carry the scoped user_id or they are invisible to the count.
     conn.execute(
-        "INSERT INTO sensory_memories (id, timestamp, modality, content, mood_tone, metadata_json) "
-        "VALUES (?, ?, ?, ?, ?, '{}')",
-        (uuid4().hex, ts, "visual", content, mood_tone),
+        "INSERT INTO sensory_memories (id, timestamp, modality, content, mood_tone, metadata_json, user_id) "
+        "VALUES (?, ?, ?, ?, ?, '{}', ?)",
+        (uuid4().hex, ts, "visual", content, mood_tone, _scope()),
     )
     conn.commit()
 
@@ -197,9 +199,15 @@ def test_tick_no_data_returns_empty(isolated_db):
 
 def test_tick_respects_cadence(isolated_db):
     """Running tick twice rapidly must skip second run."""
+    import core.services.selective_consolidation_daemon as scd
     from core.services.selective_consolidation_daemon import (
         tick_selective_consolidation_daemon,
     )
+
+    # Cadence state lives in a module-level global, not the DB — reset it so a
+    # prior tick (e.g. from another test/file) doesn't make the first run here
+    # return cadence_not_reached.
+    scd._last_tick_at = None
 
     first = tick_selective_consolidation_daemon()
     assert first["consolidated"] is True

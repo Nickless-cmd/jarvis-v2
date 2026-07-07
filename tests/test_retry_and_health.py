@@ -111,14 +111,19 @@ def test_ping_host_treats_401_as_reachable():
 
 
 def test_health_check_aggregates_results():
+    # ollamafreeapi was removed from the ping rotation (2026-06-13, dead
+    # provider). Assert aggregation against a currently-registered endpoint.
+    from core.services.provider_health_check import _PING_ENDPOINTS
+    down_provider = "groq"
+    down_url = _PING_ENDPOINTS[down_provider]
     fake_responses = {
-        "https://ollamafreeapi.com/": {"reachable": False, "error": "down"},
+        down_url: {"reachable": False, "error": "down"},
     }
     def fake_ping(url):
         return fake_responses.get(url, {"reachable": True, "http_code": 200, "latency_ms": 50})
     with patch("core.services.provider_health_check._ping_host", side_effect=fake_ping):
         snap = health_check_all_providers()
-    assert "ollamafreeapi" in snap["unreachable"]
+    assert down_provider in snap["unreachable"]
     assert snap["reachable_count"] == snap["total_count"] - 1
 
 

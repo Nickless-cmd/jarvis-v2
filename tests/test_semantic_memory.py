@@ -25,6 +25,7 @@ import pytest
 
 from core.runtime import config as cfg
 from core.runtime import db as rdb
+from core.runtime import db_core as rdb_core
 from core.services.semantic_memory import (
     _content_hash_unchanged,
     _decode_vector,
@@ -82,6 +83,7 @@ def fresh_db():
 
     old_state = cfg.STATE_DIR
     old_db = rdb.DB_PATH
+    old_db_core = rdb_core.DB_PATH
     old_resolvers = dict(_RESOLVERS)
     old_listers = dict(_LISTERS)
     _RESOLVERS.clear()
@@ -94,6 +96,9 @@ def fresh_db():
 
     cfg.STATE_DIR = str(state_dir)  # some code expects str, some Path
     rdb.DB_PATH = Path(db_path)
+    # connect() in db_core uses the db_core.DB_PATH global — patching only the
+    # facade (rdb.DB_PATH) leaves reads/writes pointing at the real prod DB.
+    rdb_core.DB_PATH = Path(db_path)
 
     rdb.init_db()
 
@@ -101,6 +106,7 @@ def fresh_db():
 
     cfg.STATE_DIR = old_state
     rdb.DB_PATH = old_db
+    rdb_core.DB_PATH = old_db_core
     _RESOLVERS.clear()
     _RESOLVERS.update(old_resolvers)
     _LISTERS.clear()

@@ -16,8 +16,11 @@ def test_read_only_tool_result_cache_reuses_result_across_runs(
     from core.services import agentic_tool_cache
     agentic_tool_cache._save({})
 
+    # NB: do NOT importlib.reload(visible_runs) here — isolated_runtime
+    # already reloaded it, and a second in-test reload re-executes the module
+    # body mid-suite, leaving accumulator state that poisons later non-
+    # isolated tests (test_streaming_fault_injection breaker/stall tests).
     visible_runs = importlib.import_module("core.services.visible_runs")
-    visible_runs = importlib.reload(visible_runs)
     simple_tools = importlib.import_module("core.tools.simple_tools")
 
     calls: list[str] = []

@@ -42,6 +42,28 @@ from core.services.visible_model import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _reset_provider_circuit_breaker():
+    """Start every test with a clean provider circuit breaker.
+
+    ``core.services.provider_circuit_breaker`` keeps its breaker state in
+    module-level globals (``_FAILURES``, ``_OPENED_AT`` and the ``_PP``
+    per-provider breaker). Other tests in the suite open/trip the breaker for
+    a provider and don't reset it, so a leaked OPEN state leaks in and diverts
+    the ``_drive`` streaming path — the followup nerves never fire and
+    ``persisted_text`` comes back empty (the widespread nerve_names/persisted
+    assertion failures in the full suite). Only the Fase-3 tests requested
+    ``_breaker_clean`` explicitly; the baseline drive tests had no guard.
+    Reset before AND after each test so this file neither inherits nor exports
+    breaker pollution.
+    """
+    import core.services.provider_circuit_breaker as _cb
+
+    _cb.reset_all()
+    yield
+    _cb.reset_all()
+
+
 # ── Test-harness: driv det ÆGTE _stream_visible_run-spor hermetisk ───────────
 
 

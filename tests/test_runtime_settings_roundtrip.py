@@ -24,6 +24,11 @@ def test_load_save_preserves_unknown_keys(
         encoding="utf-8",
     )
     monkeypatch.setattr(runtime_settings, "SETTINGS_FILE", settings_file)
+    # The merge-write path moved into runtime_json_io, which resolves
+    # SETTINGS_FILE from its own module global — patch it there too so the
+    # read (load_settings) and the atomic write target the same file.
+    from core.runtime import runtime_json_io
+    monkeypatch.setattr(runtime_json_io, "SETTINGS_FILE", settings_file)
 
     runtime_settings.update_visible_execution_settings(
         visible_model_name="new-model",

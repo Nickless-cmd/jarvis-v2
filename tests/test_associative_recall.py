@@ -4,6 +4,34 @@ from __future__ import annotations
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _clear_recall_persistence():
+    """Stop the non-isolated recall tests leaking into the REAL runtime DB.
+
+    Several tests in this file (e.g. test_cap_enforcement_at_five_memories)
+    exercise the coordinator via ``_fresh_ar()`` WITHOUT ``isolated_runtime``,
+    so ``_add_to_active`` persists rows into ``recall_active_memories`` in the
+    developer's/container's real ``~/.jarvis-v2/state/jarvis.db``. Those rows
+    survive the process and later make ``build_recall_prompt_section()`` return
+    stale content — test_build_recall_prompt_section_empty then fails when a
+    prior run (or a prior test here) left "mem-strong" behind. Clear the table
+    before and after each test so recall state starts and ends empty. The
+    module reload on import restores active memories from this table, so clear
+    the in-memory dict too.
+    """
+    def _wipe():
+        try:
+            import core.services.associative_recall as ar
+            ar._clear_persisted_memories()
+            ar._active_memories.clear()
+        except Exception:
+            pass
+
+    _wipe()
+    yield
+    _wipe()
+
+
 # ---------------------------------------------------------------------------
 # Task 1: DB layer tests
 # ---------------------------------------------------------------------------

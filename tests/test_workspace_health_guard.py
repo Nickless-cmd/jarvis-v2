@@ -18,7 +18,7 @@ def test_stub_file_warns(tmp_path: Path) -> None:
     f.write_text("stub")
     warnings = _check_workspace_file_health(tmp_path, "SOUL.md", {"SOUL.md": 5000})
     assert len(warnings) == 2  # both min-size and shrinkage
-    assert warnings[0][0] == "critical" and "below minimum" in warnings[0][1]
+    assert warnings[0][0] == "critical" and "under minimum" in warnings[0][1]
     # shrinkage under minimum → OGSÅ critical
     assert all(lvl == "critical" for lvl, _ in warnings)
 

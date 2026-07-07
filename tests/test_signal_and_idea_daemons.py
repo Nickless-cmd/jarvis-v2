@@ -5,12 +5,18 @@ from types import ModuleType
 
 
 def test_agent_skill_distiller_appends_principles(monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
     from core.services import agent_skill_distiller as distiller
 
+    # Distiller filters observations to the last `days` window (default 7), so
+    # timestamps must be recent relative to now — hardcoded calendar dates go
+    # stale and get filtered out, yielding "skipped" instead of "ok".
+    recent = (datetime.now(UTC) - timedelta(days=1)).isoformat()
     observations = [
-        {"role": "planner", "kind": "run", "summary": "ship small tests", "success": True, "recorded_at": "2026-05-12T10:00:00+00:00"},
-        {"role": "planner", "kind": "run", "summary": "ship small tests", "success": True, "recorded_at": "2026-05-12T10:30:00+00:00"},
-        {"role": "planner", "kind": "run", "summary": "split large diffs", "success": False, "recorded_at": "2026-05-12T11:00:00+00:00"},
+        {"role": "planner", "kind": "run", "summary": "ship small tests", "success": True, "recorded_at": recent},
+        {"role": "planner", "kind": "run", "summary": "ship small tests", "success": True, "recorded_at": recent},
+        {"role": "planner", "kind": "run", "summary": "split large diffs", "success": False, "recorded_at": recent},
     ]
 
     state_store = ModuleType("core.runtime.state_store")

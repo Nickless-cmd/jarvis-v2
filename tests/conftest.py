@@ -203,6 +203,19 @@ def isolated_runtime(
         "core.services.dream_distillation_daemon",
         "core.services.unconscious_temperature_field",
         "core.services.runtime_self_model",
+        # runtime_candidates imports list_runtime_contract_candidates &
+        # friends BY NAME from core.runtime.db at module import. When
+        # isolated_runtime reloads core.runtime.db under the tmp HOME,
+        # runtime_candidates keeps its STALE references bound to whatever db
+        # module a *previous* test reloaded — so its connect()/DB_PATH point
+        # at an earlier tmp DB with leftover candidate rows. The freshly
+        # inserted candidate then never surfaces (list returns stale rows,
+        # workflow["items"] is empty → IndexError in
+        # test_candidate_apply_readiness). Reload both contract modules so
+        # they rebind to the just-reloaded db. Must come AFTER core.runtime.db
+        # and BEFORE mission_control (which imports build_runtime_contract_state).
+        "core.identity.runtime_candidates",
+        "core.identity.runtime_contract",
         "apps.api.jarvis_api.routes.mission_control",
         "core.identity.users",
         "core.identity.workspace_context",

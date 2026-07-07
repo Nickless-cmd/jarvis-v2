@@ -24,6 +24,10 @@ from core.runtime.db_core import connect
 
 RETENTION_HOURS = 48       # fuld IP → /24 efter dette
 LOG_DELETE_DAYS = 14       # rå log-rækker slettes efter dette
+# Hard row-cap (2026-07-07): alder-baseret retention (14d) kan IKKE bounde tabellen når
+# ingest'en er ~4/sek intern trafik (318k→673k på en formiddag). Uden et loft vokser
+# api_request_log ubundet (samme klasse fejl som jobs_queue-GIL-wedgen). Behold nyeste N.
+_MAX_LOG_ROWS = 100_000
 
 
 def _ensure_tables(conn: sqlite3.Connection) -> None:
@@ -141,6 +145,14 @@ def anonymize_and_prune(*, retention_hours: int = RETENTION_HOURS,
             out["anonymized"] = len(rows)
             cur = conn.execute("DELETE FROM api_request_log WHERE ts < ?", (cutoff_del_iso,))
             out["deleted"] = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+            # Hard row-cap: behold KUN de nyeste _MAX_LOG_ROWS (id er monotont) — bounder
+            # tabellen selv når intern ingest overhaler den alder-baserede sletning.
+            cur = conn.execute(
+                "DELETE FROM api_request_log WHERE id < "
+                "(SELECT MIN(id) FROM (SELECT id FROM api_request_log ORDER BY id DESC LIMIT ?))",
+                (_MAX_LOG_ROWS,),
+            )
+            out["capped"] = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
             cur = conn.execute("DELETE FROM api_connection_presence WHERE last_seen < ?", (cutoff_anon_iso,))
             out["pruned"] = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
             conn.commit()

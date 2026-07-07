@@ -26,6 +26,22 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Mapper eventbus event-kind → intern mood-kind. Denne tabel er den ENESTE
+# sandhed om hvilke eventbus-hændelser der regulerer humøret, så både
+# ``regulate_auto`` og mood_regulator_subscriber kan konsultere den.
+AUTO_EVENT_MAPPING: dict[str, str] = {
+    # Truth-gate confabulation/correction-detektion (diagnosis_gate.py):
+    # en uverificeret diagnose = Jarvis påstod noget usandt (konfabulation),
+    # en uverificeret/ubrudt løfte = en mildere correction-klasse.
+    "diagnosis.unverified": "confabulation",
+    "promise.unverified": "correction",
+    # Dissent/redpill-signaler (bevaret — bagudkompat med tidligere producenter).
+    "dissent.detected": "admission",
+    "dissent.persistent": "correction",
+    "redpill.avoided": "user_frustration",
+    "redpill.taken": "insight",
+}
+
 # Mapper kind → delta (samme værdier som mood_oscillator._BUMP_MAP)
 _BUMP_VALUES: dict[str, float] = {
     "confabulation": -0.50,
@@ -105,13 +121,7 @@ def regulate_auto(*, event_kind: str, payload: dict[str, Any] | None = None) -> 
     Returns:
         True hvis en regulering blev anvendt, False hvis event_kind var ukendt.
     """
-    mapping: dict[str, str] = {
-        "dissent.detected": "admission",
-        "dissent.persistent": "correction",
-        "redpill.avoided": "user_frustration",
-        "redpill.taken": "insight",
-    }
-    mood_kind = mapping.get(event_kind)
+    mood_kind = AUTO_EVENT_MAPPING.get(event_kind)
     if not mood_kind:
         return False
 

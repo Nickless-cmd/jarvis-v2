@@ -32,6 +32,10 @@ from core.services.inner_voice_notifier import (
     start_inner_voice_notifier,
     stop_inner_voice_notifier,
 )
+from core.services.mood_regulator_subscriber import (
+    start_mood_regulator_subscriber,
+    stop_mood_regulator_subscriber,
+)
 from core.services.semantic_indexer import (
     start_semantic_indexer,
     stop_semantic_indexer,
@@ -195,6 +199,7 @@ def create_app() -> FastAPI:
             start_runtime_hook_runtime()
             start_approval_feedback_subscriber()
             start_inner_voice_notifier()
+            start_mood_regulator_subscriber()
             start_semantic_indexer()
             start_heartbeat_scheduler()
             start_notification_bridge()
@@ -454,6 +459,7 @@ def create_app() -> FastAPI:
             stop_emotion_concept_listener()
             stop_mood_listener()
             stop_semantic_indexer()
+            stop_mood_regulator_subscriber()
             stop_inner_voice_notifier()
             stop_approval_feedback_subscriber()
             stop_runtime_hook_runtime()

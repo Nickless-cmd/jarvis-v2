@@ -1,9 +1,10 @@
 """Tests for central_mood_regulator.py — mood bumps from conversation events."""
-import pytest
 from core.services.mood_oscillator import (
     reset_mood_oscillator, tick, get_mood_intensity,
     get_current_mood, get_mood_description, apply_bump,
 )
+from core.services import central_mood_regulator as cmr
+from core.services import mood_regulator_subscriber as mrs
 
 
 def setup_function():
@@ -55,7 +56,6 @@ def test_admission_has_smaller_effect():
 
 def test_disengagement_tiny_effect():
     """disengagement (-0.15) giver en mærkbar men lille ændring."""
-    before = get_current_mood()
     apply_bump(-0.15, "disengagement")
     tick(30.0)
     after = get_current_mood()
@@ -83,7 +83,6 @@ def test_honest_check_small_boost():
     """honest_check (+0.10) giver en svag positiv effekt."""
     apply_bump(-0.50, "confabulation")
     tick(30.0)
-    intensity_before = get_mood_intensity()
     apply_bump(0.10, "honest_check")
     tick(30.0)
     # Bør ikke være markant anderledes — lille bump
@@ -130,11 +129,131 @@ def test_recovery_over_time():
     tick(30.0)
     apply_bump(-0.50, "confabulation")
     tick(30.0)
-    low_desc = get_mood_description()
     # Simuler positive events over tid
     for _ in range(6):
         apply_bump(0.25, "heartbeat_success")
         tick(30.0)
-    high_desc = get_mood_description()
     # Burde være forbedret — eller i det mindste ikke værre
     assert True  # recovery er sandsynlig men ikke garanteret med sinus-svingning
+
+
+# ── regulate_auto: mapping fra eventbus-hændelse til mood-bump ─────────
+
+
+def test_regulate_auto_diagnosis_unverified_applies_negative_bump(monkeypatch):
+    """diagnosis.unverified → confabulation (-0.50), apply_bump kaldes negativt."""
+    calls: list[tuple[float, str]] = []
+    monkeypatch.setattr(
+        "core.services.mood_oscillator.apply_bump",
+        lambda delta, label: calls.append((delta, label)),
+    )
+    result = cmr.regulate_auto(
+        event_kind="diagnosis.unverified",
+        payload={"reason": "falsk commit hash"},
+    )
+    assert result is True
+    assert len(calls) == 1
+    delta, _label = calls[0]
+    assert delta == cmr._BUMP_VALUES["confabulation"]
+    assert delta < 0
+
+
+def test_regulate_auto_promise_unverified_maps_to_correction(monkeypatch):
+    """promise.unverified → correction (-0.40)."""
+    calls: list[tuple[float, str]] = []
+    monkeypatch.setattr(
+        "core.services.mood_oscillator.apply_bump",
+        lambda delta, label: calls.append((delta, label)),
+    )
+    result = cmr.regulate_auto(event_kind="promise.unverified", payload={})
+    assert result is True
+    assert calls and calls[0][0] == cmr._BUMP_VALUES["correction"]
+
+
+def test_regulate_auto_unknown_kind_returns_false_no_bump(monkeypatch):
+    """Ukendt event_kind → False, ingen bump."""
+    calls: list[tuple[float, str]] = []
+    monkeypatch.setattr(
+        "core.services.mood_oscillator.apply_bump",
+        lambda delta, label: calls.append((delta, label)),
+    )
+    result = cmr.regulate_auto(event_kind="totally.unknown", payload={})
+    assert result is False
+    assert calls == []
+
+
+# ── mood_regulator_subscriber: routing ────────────────────────────────
+
+
+def test_subscriber_routes_diagnosis_event_to_regulate_auto(monkeypatch):
+    """En syntetisk diagnosis.unverified-hændelse ruter til regulate_auto."""
+    seen: list[dict] = []
+
+    def _fake_regulate_auto(*, event_kind, payload=None):
+        seen.append({"event_kind": event_kind, "payload": payload})
+        return True
+
+    monkeypatch.setattr(mrs, "regulate_auto", _fake_regulate_auto)
+
+    applied = mrs._route_event({
+        "kind": "diagnosis.unverified",
+        "payload": {"claim": "x", "pattern": "y"},
+    })
+    assert applied is True
+    assert len(seen) == 1
+    assert seen[0]["event_kind"] == "diagnosis.unverified"
+    assert seen[0]["payload"] == {"claim": "x", "pattern": "y"}
+
+
+def test_subscriber_ignores_unmapped_event(monkeypatch):
+    """En hændelse uden for mappingen rører ikke regulate_auto."""
+    called = {"n": 0}
+
+    def _fake_regulate_auto(*, event_kind, payload=None):
+        called["n"] += 1
+        return True
+
+    monkeypatch.setattr(mrs, "regulate_auto", _fake_regulate_auto)
+    applied = mrs._route_event({"kind": "some.other.event", "payload": {}})
+    assert applied is False
+    assert called["n"] == 0
+
+
+def test_subscriber_is_self_safe_when_regulate_raises(monkeypatch):
+    """En fejlende regulate_auto må ALDRIG boble op af routeren."""
+    def _boom(*, event_kind, payload=None):
+        raise RuntimeError("mood explosion")
+
+    monkeypatch.setattr(mrs, "regulate_auto", _boom)
+    # Må ikke kaste — routeren sluger fejlen og returnerer False.
+    applied = mrs._route_event({"kind": "diagnosis.unverified", "payload": {}})
+    assert applied is False
+
+
+def test_subscriber_end_to_end_moves_mood_via_flush(monkeypatch):
+    """Start subscriber, publish diagnosis.unverified, flush → apply_bump kaldt.
+
+    Bruger event_bus.flush() (test_bus.py-mønstret) i stedet for at race tråden
+    med sleeps. Vi patcher apply_bump for at fange bump'et deterministisk.
+    """
+    calls: list[float] = []
+    monkeypatch.setattr(
+        "core.services.mood_oscillator.apply_bump",
+        lambda delta, label: calls.append(delta),
+    )
+    from core.eventbus.bus import event_bus
+
+    mrs.start_mood_regulator_subscriber()
+    try:
+        event_bus.publish("diagnosis.unverified", {"claim": "c", "pattern": "p"})
+        event_bus.flush(timeout=5.0)
+        # Giv daemon-tråden et øjeblik til at dræne sin kø.
+        import time
+        deadline = time.time() + 5.0
+        while not calls and time.time() < deadline:
+            time.sleep(0.05)
+    finally:
+        mrs.stop_mood_regulator_subscriber()
+
+    assert calls, "forventede at subscriber ruterede eventet til et mood-bump"
+    assert calls[0] == cmr._BUMP_VALUES["confabulation"]

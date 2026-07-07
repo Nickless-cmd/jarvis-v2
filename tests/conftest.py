@@ -76,6 +76,33 @@ def _reset_ensure_once_cache():
     except ImportError:
         pass
 
+    # 2026-07-07: core.services.emotion_concepts holder ÉT proces-globalt
+    # register af aktive emotion-koncepter (_active) + akkumuleret residue
+    # (_expired_residue) + trigger-throttle (_last_trigger_at). Modulet
+    # reloades ALDRIG af isolated_runtime, så koncepter som én test aktiverer
+    # (direkte via activate/trigger, eller indirekte via approval_feedback-
+    # subscriber, cognitive-episode-triggers, osv.) overlever ind i næste test.
+    #
+    # get_lag1_influence_deltas() blander disse aktive koncepter ind i Lag-1-
+    # akserne (confidence/curiosity/frustration/fatigue). En efterfølgende test
+    # der forventer sin egen rene emotional_baseline (fx
+    # test_affective_meta_state: fatigue skal være 0.1) får i stedet baseline +
+    # lækket delta (fatigue → 0.07 pga. et lækket 'warmth'-koncept med
+    # fatigue -0.03). Rammer også de tunge DB-tests længere nede i suiten via
+    # samme delte modul-state. Nulstil registret før hver test.
+    try:
+        from core.services import emotion_concepts as _ec
+        if hasattr(_ec, "_lock"):
+            with _ec._lock:  # type: ignore[attr-defined]
+                _ec._active.clear()  # type: ignore[attr-defined]
+                for _ax in _ec._expired_residue:  # type: ignore[attr-defined]
+                    _ec._expired_residue[_ax] = 0.0  # type: ignore[attr-defined]
+                _ec._last_trigger_at.clear()  # type: ignore[attr-defined]
+        else:
+            _ec._active.clear()  # type: ignore[attr-defined]
+    except (ImportError, AttributeError):
+        pass
+
 
 @pytest.fixture()
 def isolated_runtime(
@@ -216,6 +243,14 @@ def isolated_runtime(
         # and BEFORE mission_control (which imports build_runtime_contract_state).
         "core.identity.runtime_candidates",
         "core.identity.runtime_contract",
+        # candidate_workflow gør `from core.runtime.db import
+        # get_runtime_contract_candidate, ...` PÅ MODUL-NIVEAU. Uden reload
+        # holder den STALE db-referencer bundet til en tidligere test's
+        # db-reload → apply/approve_runtime_contract_candidate læser en anden
+        # DB end testens insert (via db) → "Runtime contract candidate not
+        # found" i test_canonical_self_candidate_apply i fuld suite. Samme
+        # stale-binding-familie som runtime_candidates ovenfor. Reload EFTER db.
+        "core.identity.candidate_workflow",
         "apps.api.jarvis_api.routes.mission_control",
         "core.identity.users",
         "core.identity.workspace_context",
@@ -225,6 +260,69 @@ def isolated_runtime(
     for name in module_names:
         module = importlib.import_module(name)
         modules[name] = importlib.reload(module)
+
+    # 2026-07-07: STALE db-submodule connect() binding (den store DB-læk).
+    #
+    # core/runtime/db.py er splittet (boy scout) i mange db_*-submoduler
+    # (db_emotional_memory, db_self_repair, db_users, …). HVER af dem gør
+    # `from core.runtime.db import connect, _now_iso` PÅ MODUL-NIVEAU og
+    # db.py re-eksporterer deres funktioner (list_emotional_memory_anchors
+    # osv.) tilbage.
+    #
+    # isolated_runtime reloader db_core + db, så connect()/DB_PATH peger på
+    # tmp-DB'en. MEN submodulerne reloades IKKE: når db reloades, RE-IMPORTERER
+    # den blot de allerede-cachede submodul-objekter, hvis modul-globale
+    # `connect` stadig peger på et TIDLIGERE db_core-modul (fx efter at en
+    # anden test kørte sin egen db-reload-harness). Resultat: db.py's
+    # re-eksporterede list_emotional_memory_anchors() åbner den ÆGTE
+    # ~/.jarvis-v2/state/jarvis.db, mens testens egne insert/prune (frisk
+    # `from core.runtime.db import connect`) rammer tmp-DB'en → "list ser 50
+    # rækker fra ægte DB" + "prune: no such table" i samme test. Rammer de
+    # tunge DB-tests (emotional_memory_engine, self_repair_engine, user_db,
+    # canonical_self_candidate_apply, causal_graph, …) i fuld suite, aldrig
+    # alene. BEVIST: dbe.connect is dbc.connect == False; connect-path ==
+    # /home/bs/.jarvis-v2/state/jarvis.db mens dbc.DB_PATH == tmp.
+    #
+    # Fix: reload db_*-submodulerne EFTER db (så deres `connect` rebinder til
+    # den friske db.connect), og reload derefter db ÉN gang til så dens
+    # re-eksporter peger på de friske submodul-funktioner. Målrettet — kun de
+    # submoduler der binder connect/_now_iso ved import.
+    _db_submodules = [
+        "core.runtime.db_capability_approval",
+        "core.runtime.db_users",
+        "core.runtime.db_autonomy",
+        "core.runtime.db_scheduled_tasks",
+        "core.runtime.db_private_brain",
+        "core.runtime.db_emotional_memory",
+        "core.runtime.db_self_repair",
+        "core.runtime.db_user_contradiction",
+        "core.runtime.db_concept_baseline",
+        "core.runtime.db_anomalies",
+        "core.runtime.db_absence_traces",
+        "core.runtime.db_api_connections",
+        "core.runtime.db_central_incidents",
+        "core.runtime.db_composites",
+        "core.runtime.db_credit_assignment",
+        "core.runtime.db_decisions",
+        "core.runtime.db_dream_bias",
+        "core.runtime.db_embeddings",
+        "core.runtime.db_gate_verdicts",
+        "core.runtime.db_goals",
+        "core.runtime.db_instrument",
+        "core.runtime.db_interlanguage_blind",
+        "core.runtime.db_sensory",
+        "core.runtime.db_user_temperature",
+    ]
+    for _sub in _db_submodules:
+        try:
+            _m = sys.modules.get(_sub) or importlib.import_module(_sub)
+            importlib.reload(_m)
+        except Exception:
+            pass
+    # Re-reload db so its re-exported names bind to the fresh submodule funcs.
+    modules["core.runtime.db"] = importlib.reload(
+        sys.modules["core.runtime.db"]
+    )
 
     runtime_bootstrap = modules["core.runtime.bootstrap"]
     runtime_db = modules["core.runtime.db"]

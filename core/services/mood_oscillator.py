@@ -171,10 +171,11 @@ def format_mood_for_prompt() -> str:
 
 def reset_mood_oscillator() -> None:
     """Reset mood oscillator (for testing)."""
-    global _phase_offset, _tick_count, _mood_nudge
+    global _phase_offset, _tick_count, _mood_nudge, _loaded_from_disk
     _phase_offset = 0.0
     _tick_count = 0
     _mood_nudge = 0.0
+    _loaded_from_disk = True  # må aldrig re-load; reset er den nye sandhed
 
 
 def build_mood_oscillator_surface() -> dict[str, Any]:

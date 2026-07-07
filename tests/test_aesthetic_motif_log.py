@@ -17,8 +17,9 @@ def _make_in_memory_db():
 class TestAestheticMotifLogTable:
     def test_insert_creates_row(self) -> None:
         from core.runtime import db
+        from core.runtime import db_runtime_misc
         conn = _make_in_memory_db()
-        with patch.object(db, "connect") as mock_connect:
+        with patch.object(db_runtime_misc, "connect") as mock_connect:
             mock_connect.return_value.__enter__ = lambda s: conn
             mock_connect.return_value.__exit__ = MagicMock(return_value=False)
             db.aesthetic_motif_log_insert(source="somatic", motif="clarity", confidence=0.6)
@@ -30,8 +31,9 @@ class TestAestheticMotifLogTable:
 
     def test_unique_motifs_returns_distinct(self) -> None:
         from core.runtime import db
+        from core.runtime import db_runtime_misc
         conn = _make_in_memory_db()
-        with patch.object(db, "connect") as mock_connect:
+        with patch.object(db_runtime_misc, "connect") as mock_connect:
             mock_connect.return_value.__enter__ = lambda s: conn
             mock_connect.return_value.__exit__ = MagicMock(return_value=False)
             db.aesthetic_motif_log_insert(source="somatic", motif="clarity", confidence=0.6)
@@ -42,8 +44,9 @@ class TestAestheticMotifLogTable:
 
     def test_unique_motifs_empty_when_no_data(self) -> None:
         from core.runtime import db
+        from core.runtime import db_runtime_misc
         conn = _make_in_memory_db()
-        with patch.object(db, "connect") as mock_connect:
+        with patch.object(db_runtime_misc, "connect") as mock_connect:
             mock_connect.return_value.__enter__ = lambda s: conn
             mock_connect.return_value.__exit__ = MagicMock(return_value=False)
             # Force table creation
@@ -53,8 +56,9 @@ class TestAestheticMotifLogTable:
 
     def test_summary_groups_by_motif(self) -> None:
         from core.runtime import db
+        from core.runtime import db_runtime_misc
         conn = _make_in_memory_db()
-        with patch.object(db, "connect") as mock_connect:
+        with patch.object(db_runtime_misc, "connect") as mock_connect:
             mock_connect.return_value.__enter__ = lambda s: conn
             mock_connect.return_value.__exit__ = MagicMock(return_value=False)
             db.aesthetic_motif_log_insert(source="somatic", motif="clarity", confidence=0.6)
@@ -68,8 +72,9 @@ class TestAestheticMotifLogTable:
 
     def test_summary_ordered_by_count_desc(self) -> None:
         from core.runtime import db
+        from core.runtime import db_runtime_misc
         conn = _make_in_memory_db()
-        with patch.object(db, "connect") as mock_connect:
+        with patch.object(db_runtime_misc, "connect") as mock_connect:
             mock_connect.return_value.__enter__ = lambda s: conn
             mock_connect.return_value.__exit__ = MagicMock(return_value=False)
             db.aesthetic_motif_log_insert(source="a", motif="craft", confidence=0.5)

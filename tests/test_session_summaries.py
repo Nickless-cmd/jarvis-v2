@@ -43,6 +43,7 @@ class TestSessionSummariesTable:
 class TestSessionSummaryInsert:
     def test_inserts_summary(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
 
@@ -52,7 +53,7 @@ class TestSessionSummaryInsert:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "connect", fake_connect)
 
         db_mod.session_summary_insert(
             session_id="chat-abc123",
@@ -70,6 +71,7 @@ class TestSessionSummaryInsert:
 
     def test_truncates_long_summary(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
 
@@ -79,7 +81,7 @@ class TestSessionSummaryInsert:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "connect", fake_connect)
 
         db_mod.session_summary_insert(
             session_id="chat-abc",
@@ -98,6 +100,7 @@ class TestSessionSummaryInsert:
 class TestSessionSummaryRecent:
     def test_returns_recent_entries(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
 
@@ -107,7 +110,7 @@ class TestSessionSummaryRecent:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "connect", fake_connect)
 
         for i in range(5):
             db_mod.session_summary_insert(
@@ -122,6 +125,7 @@ class TestSessionSummaryRecent:
 
     def test_empty_when_no_summaries(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
 
@@ -131,7 +135,7 @@ class TestSessionSummaryRecent:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "connect", fake_connect)
 
         results = db_mod.session_summary_recent(limit=3)
         assert results == []
@@ -145,6 +149,7 @@ class TestSessionSummaryRecent:
 class TestSessionSummaryForSession:
     def test_returns_latest_for_session(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
 
@@ -154,7 +159,7 @@ class TestSessionSummaryForSession:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "connect", fake_connect)
 
         db_mod.session_summary_insert(session_id="chat-1", summary="First")
         db_mod.session_summary_insert(session_id="chat-1", summary="Second")
@@ -165,6 +170,7 @@ class TestSessionSummaryForSession:
 
     def test_returns_none_for_missing_session(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
 
@@ -174,7 +180,7 @@ class TestSessionSummaryForSession:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "connect", fake_connect)
 
         result = db_mod.session_summary_for_session("nonexistent")
         assert result is None
@@ -188,6 +194,7 @@ class TestSessionSummaryForSession:
 class TestSessionSummaryCleanup:
     def test_removes_old_summaries(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
         db_mod._ensure_session_summaries_table(conn)
@@ -210,7 +217,7 @@ class TestSessionSummaryCleanup:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "connect", fake_connect)
 
         deleted = db_mod.session_summary_cleanup(max_age_days=90)
         assert deleted == 1

@@ -82,6 +82,7 @@ class TestSignalArchiveTable:
 class TestSignalDecayArchiveAndDelete:
     def test_archives_stale_signals_older_than_threshold(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
         table = "runtime_goal_signals"
@@ -100,8 +101,8 @@ class TestSignalDecayArchiveAndDelete:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
-        monkeypatch.setattr(db_mod, "_SIGNAL_TABLES_WITH_STATUS", [table])
+        monkeypatch.setattr(_misc, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "_SIGNAL_TABLES_WITH_STATUS", [table])
 
         result = db_mod.signal_decay_archive_and_delete(stale_hours=24)
 
@@ -122,6 +123,7 @@ class TestSignalDecayArchiveAndDelete:
 
     def test_ignores_recently_stale_signals(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
         table = "runtime_goal_signals"
@@ -137,8 +139,8 @@ class TestSignalDecayArchiveAndDelete:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
-        monkeypatch.setattr(db_mod, "_SIGNAL_TABLES_WITH_STATUS", [table])
+        monkeypatch.setattr(_misc, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "_SIGNAL_TABLES_WITH_STATUS", [table])
 
         result = db_mod.signal_decay_archive_and_delete(stale_hours=24)
         assert result["archived"] == 0
@@ -148,6 +150,7 @@ class TestSignalDecayArchiveAndDelete:
 
     def test_handles_missing_table_gracefully(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
         db_mod._ensure_signal_archive_table(conn)
@@ -158,8 +161,8 @@ class TestSignalDecayArchiveAndDelete:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
-        monkeypatch.setattr(db_mod, "_SIGNAL_TABLES_WITH_STATUS", ["nonexistent_table"])
+        monkeypatch.setattr(_misc, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "_SIGNAL_TABLES_WITH_STATUS", ["nonexistent_table"])
 
         result = db_mod.signal_decay_archive_and_delete(stale_hours=24)
         assert result["archived"] == 0
@@ -167,6 +170,7 @@ class TestSignalDecayArchiveAndDelete:
 
     def test_multiple_tables(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
         tables = ["runtime_goal_signals", "runtime_awareness_signals"]
@@ -185,8 +189,8 @@ class TestSignalDecayArchiveAndDelete:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
-        monkeypatch.setattr(db_mod, "_SIGNAL_TABLES_WITH_STATUS", tables)
+        monkeypatch.setattr(_misc, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "_SIGNAL_TABLES_WITH_STATUS", tables)
 
         result = db_mod.signal_decay_archive_and_delete(stale_hours=24)
         assert result["archived"] == 3
@@ -202,6 +206,7 @@ class TestSignalDecayArchiveAndDelete:
 class TestSignalArchiveCleanup:
     def test_removes_old_archives(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
         db_mod._ensure_signal_archive_table(conn)
@@ -224,7 +229,7 @@ class TestSignalArchiveCleanup:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "connect", fake_connect)
 
         deleted = db_mod.signal_archive_cleanup(max_age_days=30)
         assert deleted == 1
@@ -242,6 +247,7 @@ class TestSignalArchiveCleanup:
 class TestSignalArchiveRecent:
     def test_returns_recent_entries(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core.runtime import db as db_mod
+        from core.runtime import db_runtime_misc as _misc
 
         conn = _memory_conn()
         db_mod._ensure_signal_archive_table(conn)
@@ -260,7 +266,7 @@ class TestSignalArchiveRecent:
         def fake_connect():
             yield conn
 
-        monkeypatch.setattr(db_mod, "connect", fake_connect)
+        monkeypatch.setattr(_misc, "connect", fake_connect)
 
         results = db_mod.signal_archive_recent(limit=3)
         assert len(results) == 3

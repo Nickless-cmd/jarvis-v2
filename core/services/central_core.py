@@ -54,8 +54,13 @@ class Central:
         self._drift = NerveDriftMonitor()
 
     # ── observe (asynkront-agtigt telemetri-ansigt) ─────────────────────
-    def observe(self, event: Any) -> None:
-        """Best-effort telemetri. Kaster ALDRIG (§10.3)."""
+    def observe(self, event: Any, *, emit: bool = True) -> None:
+        """Best-effort telemetri. Kaster ALDRIG (§10.3).
+
+        emit=False: registrér KUN til den owner-lokale trace-sink, spring egress-
+        _emit over. Bruges af interne liveness-prober (fx central_self_probe i
+        self_diagnose) der ellers ville egress'e til bussen på en egress-fri sti
+        (§24.4) — record_private → trace-sink → xproc.maybe_publish → self_diagnose."""
         try:
             if not isinstance(event, dict):
                 return
@@ -88,11 +93,12 @@ class Central:
             self._sink.record(rec)
             # Egress-membran (§24.4): trace-sinken fik FULD payload (owner-only, lokal).
             # _emit må kun bære skalar-metadata — aldrig indhold. Se _egress_safe.
-            self._emit("central.observed", {
-                "run_id": rec.run_id, "session_id": rec.session_id,
-                "cluster": rec.cluster, "nerve": rec.nerve,
-                "payload": _egress_safe(rec.payload),
-            })
+            if emit:
+                self._emit("central.observed", {
+                    "run_id": rec.run_id, "session_id": rec.session_id,
+                    "cluster": rec.cluster, "nerve": rec.nerve,
+                    "payload": _egress_safe(rec.payload),
+                })
         except Exception:
             pass
 
@@ -234,7 +240,9 @@ class Central:
         except Exception:
             pass
         try:
-            self.observe({"cluster": "system", "nerve": "central_self_probe", "kind": "health"})
+            # emit=False: liveness-probe må ALDRIG egress'e (§24.4) — den kan nås fra en
+            # egress-fri sti (record_private → trace-sink → xproc.maybe_publish → self_diagnose).
+            self.observe({"cluster": "system", "nerve": "central_self_probe", "kind": "health"}, emit=False)
             out["observe_ok"] = True
         except Exception:
             pass

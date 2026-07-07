@@ -182,6 +182,9 @@ def test_tick_publishes_eventbus_on_trigger():
         patch("core.services.autonomous_council_daemon._run_autonomous_council", return_value={"council_id": "c-xyz", "conclusion": "done"}),
     ):
         acd.tick_autonomous_council_daemon(score_override=0.75)
+    # Subscriber delivery is async (writer thread) — flush so published events
+    # land in the subscriber queue before we drain (jf. test_bus.py / test_daemon_tools.py).
+    event_bus.flush()
     # Drain queue and check for autonomous_triggered event
     events = []
     while not q.empty():

@@ -22,10 +22,12 @@ Three parts: (A) hybrid reorganization, (B) two new code-grounded generators, (C
 
 ### A. Hybrid reorganization (git mv — reversible)
 
-- **`docs/generated/`** ← move the machine-generated outputs (`capability_matrix.md`, `capability_partial_triage.md`, `central_connectivity_matrix.md`, `central_connectivity_matrix.json`, `god_file_map.md`, `DOCS_MANIFEST.md` + `.json`, `docs_audit_raw.json`). **Update each generator's output path** so re-runs write to the new location: `scripts/capability_audit.py`, `scripts/central_connectivity_audit.py` (or wherever god_file_map/connectivity write), `scripts/docs_audit.py`. A grep confirms no code/test reads the old paths before moving.
-- **`docs/design-history/`** ← move the stale dated snapshots listed above. Valid history, out of the main nav; keep their SP1 frontmatter.
-- **`docs/superpowers/` stays put** — it is already a contained design-history subdir, and the brainstorming/writing-plans skills write there; moving it would break them. INDEX labels it "design history" and links it.
-- Everything else (the surviving canonical top-level docs, `specs/`, `notes/`, `guides`) stays flat for now; the INDEX groups them logically.
+**Safety correction (found during planning):** `docs/central_connectivity_matrix.json` is **runtime-load-bearing** — read at a fixed path by `core/services/central_coverage.py` (`_MATRIX_REL`) and `central_white_rabbit.py`. Moving it breaks runtime. And relocating the *other* generated docs would force edits to generator output paths (`capability_audit.py`, `docs_audit.py`, god-file gen) + `CLAUDE.md`'s `docs/capability_matrix.md` reference — churn + risk for no navigation benefit an INDEX can't give. So SP2 does **NOT** create `docs/generated/` by moving files. Generated docs stay in place; the INDEX categorizes them as "generated (regenerable)".
+
+- **`docs/design-history/`** ← move ONLY the stale dated snapshots (`DOCS_AUDIT_2026-04-21.md`, `TASK_daemon_fix_DIAGNOSIS_2026-04-21.md`, `PREDECESSOR_COGNITION_AUDIT_2026-04-22.md`, `CURRENT_STATUS.md`) via `git mv`. Verified NOT runtime/test-read (grep clean). Keep their SP1 frontmatter.
+- **Generated docs stay put** (`capability_matrix.md`, `capability_partial_triage.md`, `central_connectivity_matrix.{md,json}`, `god_file_map.md`, `DOCS_MANIFEST.{md,json}`, `docs_audit_raw.json`) — INDEX links them under a "Generated" group. No generator-path edits, no runtime risk.
+- **`docs/superpowers/` stays put** — already a contained design-history subdir; the brainstorming/writing-plans skills write there. INDEX labels it "design history".
+- Everything else (surviving canonical top-level docs, `specs/`, `notes/`, guides) stays flat; the INDEX groups them logically. Physical folder tree beyond `design-history/` is deferred — the strong INDEX carries navigation without path churn (aligns with the hybrid choice: move the obvious clumps, index the rest).
 
 ### B. Two new generators (breadth reference, auto — can't re-stale)
 
@@ -42,7 +44,7 @@ Generating (not hand-writing) these is the core trust move: they were stale prec
   - Reference → `reference/API_REFERENCE.md`, `reference/CAPABILITIES.md`, `generated/capability_matrix.md`
   - Operations → `DEPLOYMENT` (SP3), `MODEL_STRATEGY.md`, `TRANSPORTS.md`, `CHANNELS.md`, `CLI_SPEC.md`
   - Design history → `superpowers/`, `design-history/`
-  - Generated (regenerable) → `generated/`
+  - Generated (regenerable, in place) → `capability_matrix.md`, `central_connectivity_matrix.md`, `god_file_map.md`, `DOCS_MANIFEST.md`
 - **`docs/architecture/OVERVIEW.md`** — a **thin** top-level map (grounded in code + capability_matrix + CLAUDE.md): the directory structure and each subsystem's one-paragraph responsibility (`core/runtime`, `core/services`, `core/tools`, `core/context`, `apps/api`, `apps/ui`, `scripts`), how requests flow (chat → visible_runs → tools/Central), the Central nervous-system (→ CENTRAL.md), and the four sources of truth (config / DB / workspace files / Central, per CLAUDE.md). **Not exhaustive** — it points to reference/generated for depth. This is the SP2/SP4 boundary: SP2 = the map, SP4 = the territory (per-file/function).
 
 ## Scope boundary SP2 ↔ SP4
@@ -60,8 +62,8 @@ SP2 = structure + navigation + a thin architecture map + **generated breadth ref
 - **New:** `scripts/api_reference_gen.py` + `tests/test_api_reference_gen.py`; `scripts/capabilities_gen.py` + `tests/test_capabilities_gen.py`.
 - **New (generated):** `docs/reference/API_REFERENCE.md`, `docs/reference/CAPABILITIES.md`.
 - **New (hand-written):** `docs/README.md`, `docs/architecture/OVERVIEW.md`.
-- **Move (git mv):** generated outputs → `docs/generated/`; stale snapshots → `docs/design-history/`.
-- **Modify:** generator scripts' output paths (`capability_audit.py`, `docs_audit.py`, connectivity/god-file generators) to the new `docs/generated/` location; `docs/DOCS_MANIFEST.*` regenerated/relocated accordingly.
+- **Move (git mv):** ONLY the 4 stale snapshots → `docs/design-history/`. (Generated docs stay in place — runtime reads `central_connectivity_matrix.json`; no generator-path edits.)
+- **Modify:** none of the generators or runtime — SP2 adds docs + 2 new scripts, moves 4 inert snapshots. Zero runtime risk.
 
 ## Deploy / scope
 

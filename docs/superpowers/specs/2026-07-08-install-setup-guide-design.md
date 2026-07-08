@@ -20,6 +20,10 @@ Make it possible for **someone else** to stand up their own Jarvis. SP1 archived
 - CLI: `scripts/jarvis.py`. Pre-commit hooks: detect-secrets, coverage (core/→tests/), kitchen-sink, jvs-keys — need `pre-commit install`.
 - Source material: `docs/_archive/{DEPLOYMENT,SECURITY,CONTRIBUTING}.md` (stale, but structural starting points).
 
+## Blocking finding: no complete dependency manifest
+
+`pyproject.toml` declares only **6** dependencies (fastapi, uvicorn, pydantic, ollamafreeapi, bcrypt, pypdf), but the running system needs far more (the env has torch, chromadb, webrtcvad, psutil, httpx, …). There is **no requirements.txt / environment.yml** in the repo — so a fresh installer following the repo alone cannot reproduce the environment. This directly blocks "others can set up their own Jarvis." **SP3 therefore curates a real `requirements.txt`**: a new `scripts/requirements_gen.py` AST-scans `core/`+`apps/`+`scripts/` for third-party top-level imports (filtering stdlib + first-party `core`/`apps`/`scripts`), producing candidate packages; those are curated (import-name → PyPI-name mapping for the tricky ones, each verified importable in the `ai` env) into a clean `requirements.txt`. INSTALL.md then installs from it.
+
 ## Deliverables (in the SP2 information architecture)
 
 1. **`docs/INSTALL.md`** (getting-started) — empty machine → running Jarvis, locally:
@@ -38,6 +42,7 @@ Every concrete claim is **fact-verified against reality**, not asserted:
 
 ## Files
 
+- **New:** `scripts/requirements_gen.py` (+ `tests/test_requirements_gen.py`) — third-party import scanner; `requirements.txt` (curated, at repo root).
 - **New:** `docs/INSTALL.md`, `docs/DEPLOYMENT.md`, `docs/SECURITY.md`, `docs/CONTRIBUTING.md`, `docs/reference/CONFIG.md`.
 - **Update:** `docs/README.md` — link the new getting-started/operations/security docs (the "install guide coming (SP3)" placeholder becomes real links).
 - No runtime code, no generators, no container deploy. Prose grounded in verified facts.

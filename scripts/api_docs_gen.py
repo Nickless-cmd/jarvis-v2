@@ -80,7 +80,9 @@ def page_id(pkg: str, module_name: str, sorted_names: list, chunk: int = CHUNK) 
     for i in range(0, len(sorted_names), chunk):
         grp = sorted_names[i:i + chunk]
         if module_name in grp:
-            return f"{pkg}.{grp[0][0].lower()}-{grp[-1][0].lower()}"
+            # numeric ordinal — collision-free (letter ranges collapse when one
+            # letter dominates a flat dir, e.g. core/services' 100+ central_* modules)
+            return f"{pkg}.{i // chunk + 1:02d}"
     return pkg
 
 
@@ -129,7 +131,10 @@ def render_package_md(page: str, entries: list) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_index_md(pages: list, cov: dict) -> str:
+def render_index_md(pages, cov: dict) -> str:
+    # pages: dict page_id -> entries (preferred, lets us show the module range for
+    # numeric-chunked pages); a bare list of ids is still accepted.
+    as_dict = pages if isinstance(pages, dict) else {p: [] for p in pages}
     pct = 100 * cov["total_documented"] // max(1, cov["total_functions"])
     lines = ["# Codebase API reference", "",
              f"Generated per-package reference for `core/`+`apps/`+`scripts/`. "
@@ -138,8 +143,13 @@ def render_index_md(pages: list, cov: dict) -> str:
              "**Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its "
              "package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \\`<pkg>/<mod>.py\\``. "
              "Each entry links back to the source at `file#Lline`.", "", "## Pages", ""]
-    for p in sorted(pages):
-        lines.append(f"- [`{p}`]({p}.md)")
+    for p in sorted(as_dict):
+        es = as_dict[p]
+        rng = ""
+        if es and p != package_of(es[0]["module"]):
+            mods = sorted(Path(e["module"]).stem for e in es)
+            rng = f" — `{mods[0]}` … `{mods[-1]}`"
+        lines.append(f"- [`{p}`]({p}.md){rng}")
     return "\n".join(lines) + "\n"
 
 
@@ -181,7 +191,7 @@ def main() -> int:
     API_DIR.mkdir(parents=True, exist_ok=True)
     for pid, es in pages.items():
         (API_DIR / f"{pid}.md").write_text(render_package_md(pid, es))
-    (API_DIR / "README.md").write_text(render_index_md(list(pages), cov))
+    (API_DIR / "README.md").write_text(render_index_md(pages, cov))
     COV_OUT.write_text(render_coverage_md(cov))
     pct = 100 * cov["total_documented"] // max(1, cov["total_functions"])
     print(f"api_docs_gen: {len(pages)} pages, {cov['total_functions']} functions ({pct}% documented), "

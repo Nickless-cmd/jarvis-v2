@@ -7,8 +7,15 @@ This is the documentation index. Every doc has been classified against **git + r
 > **Freshness policy:** files under `reference/` and "Generated" are produced from code — **regenerate, don't hand-edit**. Anything under `design-history/`, `superpowers/`, or `_archive/` is historical record, not current truth.
 
 ## Getting started
+- [`INSTALL.md`](INSTALL.md) — **from an empty machine to a running Jarvis** (deps, config, run the two processes, verify)
 - [`USER_GUIDE.md`](USER_GUIDE.md) — using Jarvis
-- **Install / setup guide** — *coming (docs programme SP3)*. The old `DEPLOYMENT.md` was archived as stale ([`_archive/`](_archive/)); SP3 rewrites it fresh.
+- `requirements.txt` (repo root) — the curated runtime dependencies
+
+## Operations & security
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) — production: systemd units, HTTPS, encryption, upgrade flow
+- [`SECURITY.md`](SECURITY.md) — secrets, auth/roles/gates, egress/privacy tiers
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — dev workflow, tests, the four gates, code rules, Boy-Scout rule
+- [`reference/CONFIG.md`](reference/CONFIG.md) — the `runtime.json` schema (28 keys, placeholders only)
 
 ## Architecture
 - [`architecture/OVERVIEW.md`](architecture/OVERVIEW.md) — **start here**: directory structure, subsystems, request flow, the four sources of truth

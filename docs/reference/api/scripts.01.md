@@ -151,21 +151,21 @@ _SP5 docs-drift checker — catch when docs/ diverges from git+runtime truth._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `find_docs` | `(root=…)` | — | [src](../../../scripts/docs_drift_check.py#L29) |
-| function | `_norm` | `(text)` | Neutralize volatile 'Generated <date>' stamps so regeneration diffs are content-only. | [src](../../../scripts/docs_drift_check.py#L33) |
-| function | `broken_links` | `(docs_root=…)` | — | [src](../../../scripts/docs_drift_check.py#L39) |
-| function | `_load_script` | `(name)` | — | [src](../../../scripts/docs_drift_check.py#L76) |
-| function | `_expected_api_docs` | `()` | — | [src](../../../scripts/docs_drift_check.py#L83) |
-| function | `_expected_api_reference` | `()` | — | [src](../../../scripts/docs_drift_check.py#L93) |
-| function | `_expected_capabilities` | `()` | — | [src](../../../scripts/docs_drift_check.py#L99) |
-| function | `_staged_under` | `(source_dirs, staged)` | — | [src](../../../scripts/docs_drift_check.py#L112) |
-| function | `stale_generated` | `(only_dirs=…, repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L116) |
-| function | `prose_drift` | `(docs_root=…, repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L135) |
-| function | `requirements_drift` | `(repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L150) |
-| function | `staged_paths` | `(repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L168) |
-| function | `hard_drift` | `(staged=…, repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L177) |
-| function | `run_check` | `(repo=…, staged=…)` | — | [src](../../../scripts/docs_drift_check.py#L182) |
-| function | `main` | `()` | — | [src](../../../scripts/docs_drift_check.py#L193) |
+| function | `find_docs` | `(root=…)` | — | [src](../../../scripts/docs_drift_check.py#L31) |
+| function | `_norm` | `(text)` | Neutralize volatile 'Generated <date>' stamps so regeneration diffs are content-only. | [src](../../../scripts/docs_drift_check.py#L35) |
+| function | `broken_links` | `(docs_root=…)` | — | [src](../../../scripts/docs_drift_check.py#L41) |
+| function | `_load_script` | `(name)` | — | [src](../../../scripts/docs_drift_check.py#L57) |
+| function | `_expected_api_docs` | `()` | — | [src](../../../scripts/docs_drift_check.py#L64) |
+| function | `_expected_api_reference` | `()` | — | [src](../../../scripts/docs_drift_check.py#L74) |
+| function | `_expected_capabilities` | `()` | — | [src](../../../scripts/docs_drift_check.py#L80) |
+| function | `_staged_under` | `(source_dirs, staged)` | — | [src](../../../scripts/docs_drift_check.py#L93) |
+| function | `stale_generated` | `(only_dirs=…, repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L97) |
+| function | `prose_drift` | `(docs_root=…, repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L116) |
+| function | `requirements_drift` | `(repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L131) |
+| function | `staged_paths` | `(repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L149) |
+| function | `hard_drift` | `(staged=…, repo=…)` | — | [src](../../../scripts/docs_drift_check.py#L158) |
+| function | `run_check` | `(repo=…, staged=…)` | — | [src](../../../scripts/docs_drift_check.py#L163) |
+| function | `main` | `()` | — | [src](../../../scripts/docs_drift_check.py#L174) |
 
 ## `scripts/enforce_commit_hygiene.py`
 _Pre-commit hook: catch kitchen-sink commits._

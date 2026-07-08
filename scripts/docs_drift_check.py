@@ -23,7 +23,9 @@ REPORT_OUT = DOCS / "drift_report.json"
 _PATH_RE = re.compile(r"(?:core|apps|scripts)/[\w./-]+\.(?:py|ts|tsx|md|json)")
 _MDLINK_RE = re.compile(r"\]\(([^)]+)\)")
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
-_SKIP_DOC_PARTS = {"_archive"}
+# Historical-record trees (docs/README freshness policy): "not current truth" — their
+# docs cite aspirational/example paths by design, so they are excluded from drift checking.
+_SKIP_DOC_PARTS = {"_archive", "superpowers", "design-history"}
 
 
 def find_docs(root: Path = DOCS) -> list[Path]:
@@ -38,33 +40,12 @@ def _norm(text: str) -> str:
 # ---- HARD: broken markdown links ----
 def broken_links(docs_root: Path = DOCS) -> list[dict]:
     out: list[dict] = []
-    # Patterns that are placeholders/templates/examples, not real file paths
-    _PLACEHOLDER_PATTERNS = {
-        r"^\{.*\}$",  # {var}, {p}, {rel}
-        r"^\[.*\]$",  # [^/]+/[^/]+, ["'\]+, [...] regex
-        r"^<.*>$",  # <relative path>, <file>
-        r".*\…$",  # paths with ellipsis
-        r"^\.\.\.$",  # ...
-        r"^url$",  # placeholder
-        r"^rel$",  # placeholder
-        r"^javascript:",  # incomplete javascript: URI
-    }
-    placeholder_re = re.compile("|".join(_PLACEHOLDER_PATTERNS))
-    # Skip planning docs (superpowers/specs, superpowers/plans) — they have aspirational/example links
-    _SKIP_LINK_CHECK = {"superpowers/specs", "superpowers/plans"}
-
     for doc in find_docs(docs_root):
-        # Skip planning directories
-        rel_path = "/".join(doc.parts[doc.parts.index("docs"):])
-        if any(skip in rel_path for skip in _SKIP_LINK_CHECK):
-            continue
         text = doc.read_text(errors="ignore")
         rel_doc = str(doc.relative_to(docs_root.parent)) if docs_root.parent in doc.parents else doc.name
         for href in _MDLINK_RE.findall(text):
             href = href.split("#")[0].strip()
             if not href or href.startswith(("http://", "https://", "mailto:", "#")):
-                continue
-            if placeholder_re.match(href):
                 continue
             target = (doc.parent / href)
             if not target.exists():

@@ -1,0 +1,80 @@
+# Jarvis V2 — curated runtime dependencies
+#
+# Derived from the third-party imports actually used across core/ + apps/ + scripts/
+# (regenerate the candidate list: `python scripts/requirements_gen.py`), then curated:
+# import names mapped to PyPI package names, build/desktop/mac-only and local modules
+# dropped. pyproject.toml holds the minimal packaging deps; THIS file is the practical
+# install for a running Jarvis. Versions are floored where pyproject pins them; others
+# are left unpinned deliberately (pin to your working env with `pip freeze` if you need
+# byte-reproducibility). Some features need extra optional packages — see the bottom.
+
+# ── Web / API core ────────────────────────────────────────────────
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+starlette
+pydantic>=2.8.0
+httpx
+requests
+
+# ── Auth / crypto ─────────────────────────────────────────────────
+bcrypt>=5.0
+cryptography
+PyJWT            # import: jwt
+keyring
+
+# ── LLM / ML / data ───────────────────────────────────────────────
+ollamafreeapi>=0.1.4
+tiktoken
+numpy
+scipy
+scikit-learn     # import: sklearn
+sympy
+chromadb
+sentence-transformers
+faster-whisper   # import: faster_whisper
+openwakeword
+
+# ── Media / voice ─────────────────────────────────────────────────
+Pillow           # import: PIL
+opencv-python    # import: cv2
+moviepy
+fonttools        # import: fontTools
+edge-tts         # import: edge_tts
+elevenlabs
+sounddevice
+webrtcvad
+
+# ── Web scraping / parsing / docs ─────────────────────────────────
+beautifulsoup4   # import: bs4
+readability-lxml # import: readability
+pypdf>=6.0
+python-dateutil  # import: dateutil
+PyYAML           # import: yaml
+playwright
+
+# ── Integrations / channels ───────────────────────────────────────
+discord.py                    # import: discord
+google-api-python-client      # import: googleapiclient / google
+google-auth-oauthlib          # import: google_auth_oauthlib
+stripe
+python-binance                # import: binance
+fastmcp
+
+# ── System / CLI / utils ──────────────────────────────────────────
+psutil
+rich
+textual
+
+# ── Dev / test (needed to run the suite) ──────────────────────────
+pytest
+pre-commit
+detect-secrets
+
+# ── Optional (present in some deployments, not required to boot) ───
+# These are real PyPI packages used by specific features but not installed in the
+# reference env — add if you enable the feature:
+#   icalendar        # calendar import
+#   watchdog         # filesystem watching
+#   rarfile          # rar attachment handling
+#   ulid-py          # import: ulid
+# Desktop app (apps/jarvis-desk) has its own toolchain (PyQt5 / packaging) — see that dir.

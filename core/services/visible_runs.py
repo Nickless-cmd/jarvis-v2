@@ -1960,6 +1960,10 @@ async def _stream_visible_run(
                 except Exception:
                     _agentic_budget = {}
                 _AGENTIC_MAX_ROUNDS = int(_agentic_budget.get("max_rounds") or 100)
+                # Harness Part 1 (earned model-trust): set True if this run shows any degeneration
+                # (no-progress spin / hollow promise / and — at finalize — failed/interrupted status).
+                # Read at run finalize by record_run_outcome. Additive; changes no control flow.
+                _run_degenerated = False
                 _agentic_tools = _get_tool_defs()
                 # ── Tool router: scope tool defs to a relevant subset ──
                 # Falls back to the full list silently if anything goes wrong.
@@ -3256,6 +3260,7 @@ async def _stream_visible_run(
                                 )
                             ):
                                 _hollow_promise_nudged = True
+                                _run_degenerated = True  # harness model-trust: hollow promise
                                 _followup_exchanges.append(
                                     _vf.ToolExchange(
                                         text=_exchange_text(), tool_calls=[], results=[]))
@@ -3622,6 +3627,7 @@ async def _stream_visible_run(
                         _prev_round_sig = _round_sig
                         if _no_progress_rounds >= _MAX_NO_PROGRESS and not _force_finalize_next:
                             _force_finalize_next = True
+                            _run_degenerated = True  # harness model-trust: no-progress spin
                             try:
                                 from core.services.central_core import central as _central_np
                                 _central_np().observe({
@@ -4977,6 +4983,17 @@ async def _stream_visible_run(
                     error=_final_run_error,
                     text_preview=_preview_text(visible_output_text),
                 )
+                # Harness Part 1 (earned model-trust): record this run's outcome. Degeneration =
+                # a loop-spin flag OR a failed/interrupted/cancelled terminal status (which covers
+                # empty-completion/cutoff). Self-safe; NEVER affects the run. A clean streak earns the
+                # model 'strong'; one degeneration reverts it to 'weak'.
+                try:
+                    from core.services.model_trust import record_run_outcome as _rec_mt
+                    _mt_deg = bool(_run_degenerated) or _final_run_status in (
+                        "failed", "interrupted", "cancelled")
+                    _rec_mt(getattr(run, "model", "") or "", degenerated=_mt_deg)
+                except Exception:
+                    pass
                 _track_runtime_candidates(run, visible_output_text)
                 # ── Lag 1: record response_style choice ─────
                 # Only record for runs with a user present — autonomous

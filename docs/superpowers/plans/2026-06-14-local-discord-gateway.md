@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Lokal Discord-gateway (full robust) — Implementerings-plan
 
 > TOTP Fase 5, Task 5.2. Spec: 2026-06-14-totp-override-security-design.md §5.2.

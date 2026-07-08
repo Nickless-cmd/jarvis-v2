@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified implementation against live codebase: (1) Matching git commit 043f03dd 2026-06-30; (2) Database schema: known_anomaly_signals table + known_signal column in central_anomalies, both confirmed via sqlite3 PRAGMA; (3) All 8 db_anomalies functions exist and importable: promo"
+---
 # Intelligent Anomaly Capture — spec
 
 **Dato:** 2026-06-30

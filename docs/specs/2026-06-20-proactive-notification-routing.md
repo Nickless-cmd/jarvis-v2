@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 17d old
+---
 # Spec: Unified Proactive Notification Routing with Device Awareness
 
 **Status:** Draft

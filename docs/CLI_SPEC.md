@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 77d old
+---
 # CLI_SPEC — `scripts/jarvis.py`
 
 CLI til Jarvis v2. Alle kommandoer kører mod live runtime (`~/.jarvis-v2/`).

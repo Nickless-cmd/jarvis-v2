@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Steadier Inner Architecture — Design
 
 **Dato:** 2026-06-14

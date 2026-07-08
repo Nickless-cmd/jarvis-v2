@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified against shipped code: (1) central_adaptation.py exists with ADAPTATION_REGISTRY, AdaptationClass, rollback() func, shadow-first default (central_lag4_live_enabled=False); (2) all governance functions exist: may_apply_adaptation, gate_self_mutation, gate_learning_input, a"
+---
 # Lag 4 — Shadow-Adaptation Spec (c→d-lukningen)
 
 **Dato:** 2026-07-02

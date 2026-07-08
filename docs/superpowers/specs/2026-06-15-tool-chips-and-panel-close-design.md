@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Tool-chips berigelse + pæne navne + luk-panel — jarvis-desk
 
 **Dato:** 2026-06-15

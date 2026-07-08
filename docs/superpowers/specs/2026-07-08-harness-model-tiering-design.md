@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Spec — Harness Refactor, Part 1: Central-Governed Earned Model-Trust + Instruction/Config
 
 **Date:** 2026-07-08

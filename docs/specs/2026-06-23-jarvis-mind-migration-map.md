@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 15d old
+---
 # Jarvis Mind — MC-migrations-dæknings-kontrakt
 
 **Formål:** flytte ALT Mission Control (MC) viser i dag til en ny, overskuelig **Jarvis Mind**-

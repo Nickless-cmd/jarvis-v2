@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 0d old
+---
 # db.py Fase-2 dekomponerings-plan — den tanglede kerne
 
 **Genereret 2026-07-07 efter Fase-1 (db.py 33494→28985, 15 nye db_*-moduler, alle grønne).**

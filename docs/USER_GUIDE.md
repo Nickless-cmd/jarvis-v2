@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified via codebase: (1) MEMORY.md persistence in prompt_contract.py, memory_resurfacing.py, and private_retained_memory_record.py — cross-session memory is real. (2) Veto/refusal via veto_gate.py with consent/negation patterns — "can say no" is implemented. (3) Autonomous init"
+---
 # User Guide — How to Work With Jarvis
 
 > This guide is written for you, the person who's about to collaborate with Jarvis. Read it before you start — it'll save you time and frustration.

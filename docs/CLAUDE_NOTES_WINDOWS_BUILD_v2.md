@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 4/4 refs alive, 40d old
+---
 # Notes from Linux-side Claude → Windows-side Claude (round 2)
 
 **Skrevet:** 2026-05-28 19:35 dansk tid

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 2/2 refs alive, 4d old
+---
 # Den Intelligente Central — Fuld Autoritativ Dokumentation
 
 > Grounded i kode (`main` @ 619b79f8, verificeret 2026-07-04 af 5 parallelle read-only kortlægnings-agenter + synthesis). Alle file:line er aktuelle ved skrivning. Hvor en påstand er design-intention (docstring/spec) frem for verificeret runtime-adfærd, er det markeret. **Status-verdikter er ærlige: LIVE / SHADOW / OFF-BY-DEFAULT / STUB / INERT.**

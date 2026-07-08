@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 4/4 refs alive, 52d old
+---
 # Spec: Heartbeat State Silent Write Failure — Diagnostic & Fix
 
 ## 1. Symptom

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Cowork Command Center — Plan 2b: Todo TTL + Pause
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans. Steps bruger checkbox (`- [ ]`).

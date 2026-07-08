@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 9/9 refs alive, 17d old
+---
 # Spec: Identity Verification Guard & Abuse Monitoring
 
 **Status:** Draft

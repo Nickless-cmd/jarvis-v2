@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified against commit c73cba52 (2026-05-29-07:11) which created both this document and the full Phase 3 final report (2026-05-28-phase3-report.md). Confirmed: (1) database layer exists in core/runtime/db_interlanguage_blind.py storing interlanguage_blind_trials table in jarvis."
+---
 # Bjørns blind test — resultater
 
 **Session:** "blind test" — 50 α-trials + 25 δ-trials  

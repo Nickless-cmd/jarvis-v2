@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Canonical Error System — én kilde-sandhed for hele stakken
 
 **Dato:** 2026-07-04

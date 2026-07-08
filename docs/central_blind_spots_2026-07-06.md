@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 2d old
+---
 # Centralens resterende blinde vinkler (2026-07-06)
 
 > Fundet af 8-bøtte multi-agent investigation (137 services) + adversarisk verifikation.

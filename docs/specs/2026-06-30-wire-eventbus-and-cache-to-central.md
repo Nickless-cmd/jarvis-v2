@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified against live code: (1) core/services/eventbus_central_bridge.py exists (654 lines) with full FAMILY_ROUTES allowlist implementation; (2) core/services/cache_telemetry.py lines 83-96 publish to eventbus and call central().observe(); (3) core/services/central_anomaly.py li"
+---
 # Wire Event Bus + Cache Telemetry til Centralen
 
 **Dato:** 2026-06-30  

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Fuld member-workspace-kryptering — resterende reader/writer-migration (§16 Task 3.2)
 
 > **Status 14. juni:** Strukturel foundation LANDET (runtime/-eksklusion + bootstrap

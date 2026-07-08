@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 2/2 refs alive, 40d old
+---
 # Interlanguage Phase 3 — Final Report
 
 **Pre-registered:** 2026-05-16

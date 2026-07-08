@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Forgetting Phase 1 — Day 1 baseline
 
 **Date:** 2026-05-10

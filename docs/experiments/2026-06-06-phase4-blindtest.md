@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: Verified against corresponding HTML UI (apps/api/jarvis_api/routes/interlanguage_blind_phase4_ui.html, commit fc9c9063), answer key file (2026-06-06-phase4-blindtest-key.md, commit c466dbb5), and Phase 4 report (commit a93fb8e9). Expressions are consistent across all three; answe
+---
 # 🎯 Blindtest — Phase 4: Runtime vs Bare
 
 10 fra **full runtime (Jarvis)**, 10 fra **bare (strippet)**.

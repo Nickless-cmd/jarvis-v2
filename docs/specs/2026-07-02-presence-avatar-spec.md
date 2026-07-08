@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "E0 endpoint /presence/state (889eff7e, 2026-07-02 20:47) reads live central_valence (D2) + central_self_state (D3), owner-only. E1 PresenceOrb (ef35ee8f, 2026-07-02 20:52) renders 4 WebGL styles (reactor/hud/core/wave) client-side, opt-in via PresenceSection. Prototype docs/notes"
+---
 # Spec E — TILSTEDEVÆRELSE: midten får en krop (avatar/presence)
 
 **Status:** Solo-udkast 2026-07-02 (Claude), på Bjørns design. Efter Spec D (midten) — dette giver midten

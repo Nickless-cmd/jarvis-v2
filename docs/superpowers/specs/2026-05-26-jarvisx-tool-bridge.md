@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # JarvisX Tool-Bridge — Design Spec
 
 **Status**: MVP design, 2026-05-26

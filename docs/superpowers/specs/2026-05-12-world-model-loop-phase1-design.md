@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # World Model Phase 1 — Closing the Loop Design
 
 **Date:** 2026-05-12

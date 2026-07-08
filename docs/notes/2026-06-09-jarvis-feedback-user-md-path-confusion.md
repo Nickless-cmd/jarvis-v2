@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified: (1) commit c679e34c (2026-06-09 14:23) added guard to workspace/default/USER.md, documented this issue; (2) guard still present and current in workspace/default/USER.md lines 1-28; (3) runtime file ~/.jarvis-v2/shared/USER.md exists at 5196 bytes (doc claimed ~5095, con"
+---
 # Til Jarvis — du fik Bjørn til at tro USER.md var slettet (igen)
 
 **Fra:** Claude

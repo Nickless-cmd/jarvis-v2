@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 77d old
+---
 # Daemon Fix — Diagnose 2026-04-21
 
 Opdateret diagnose af den oprindelige TASK_daemon_fix.md (dateret 2026-04-13,

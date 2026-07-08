@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified: (1) Document created 2026-05-17 (f84264c1 live); (2) Jarvis commits use --author="Jarvis <jarvis@srvlab.dk>" in autonomy_proposal_queue.py (lines 382,398); (3) Claude commits use author Claude <claude@srvlab.dk> (72a7f3e0, 19c9b4e9, etc. exist); (4) Committer field is N"
+---
 # Git Commit Attribution
 
 **Etableret:** 2026-05-17 (efter "30 commits, alle som Nickless"-incident hvor Jarvis ikke

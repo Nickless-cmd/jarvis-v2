@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 5/5 refs alive, 71d old
+---
 # Backend Overview — Jarvis V2
 
 > **Sidst opdateret:** 2026-04-28  

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # TruthGate Fase 2 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans (eller subagent-driven-development). Steps bruger checkbox (`- [ ]`). Følger spec `docs/superpowers/specs/2026-06-21-truthgate-phase2-design.md`.

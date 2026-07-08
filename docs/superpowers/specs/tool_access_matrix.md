@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Tool Access Matrix — kanonisk kilde for permission_engine
 
 > Genereret 2026-06-14 mod live registry (`get_tool_definitions`, 397 tools).

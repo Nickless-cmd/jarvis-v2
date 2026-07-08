@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Interlanguage Validation — Phase 3+4 Analyse Design
 
 **Dato:** 2026-05-16 (pre-registration FØR data eksisterer)

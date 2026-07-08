@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 2/2 refs alive, 1d old
+---
 # db.py dekomponerings-plan (snit-liste)
 
 **Genereret read-only af `scripts/db_decomposition_map.py` (6. jul). Re-kør efter hvert snit.**

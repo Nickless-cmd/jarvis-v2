@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 3/3 refs alive, 8d old
+---
 # Production-Grade Streaming Spec
 
 **Status:** Draft 2 — 2026-06-29 (adversarisk valideret, §11 blokerende tilføjelser foldet ind). Owner: Bjørn.

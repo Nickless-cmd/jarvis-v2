@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Forgetting — Table Audit (Lag 11 Phase 1)
 
 **Date:** 2026-05-10

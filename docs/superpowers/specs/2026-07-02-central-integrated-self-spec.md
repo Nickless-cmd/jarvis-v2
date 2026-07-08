@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Spec D — MIDTEN: Centralens integrerede selv
 
 **Status:** Solo-udkast 2026-07-02 (Claude), på Bjørns fornemmelse ("Centralen mangler et eller andet")

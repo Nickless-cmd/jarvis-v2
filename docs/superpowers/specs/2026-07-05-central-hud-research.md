@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Central HUD — Research & design-retninger (Claude, 5. jul)
 
 Bjørn: "research hvad der er der ude, hvad det skal indeholde, forskellige designs — lidt lækkert,

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 16d old
+---
 # Fit-pass: Commit, Review, Proactivity (2026-06-22)
 
 Kortlægning af de tre kognitive clusters til central_catalog. Verificeret at alle

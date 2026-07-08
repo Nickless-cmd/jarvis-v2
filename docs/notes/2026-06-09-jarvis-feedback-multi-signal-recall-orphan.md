@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 2/2 refs alive, 29d old
+---
 # Til Jarvis — B1 multi-signal retrieval var dead i 24 timer
 
 **Fra:** Claude

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Data-sletning (GDPR Art. 17 "ret til at blive glemt") — Design
 
 **Dato:** 2026-06-17 · **Status:** design-only (bygges i dagslys — sletning er irreversibel)

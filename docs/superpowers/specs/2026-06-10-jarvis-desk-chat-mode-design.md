@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # jarvis-desk — Chat mode visual design
 
 > ⚠ **Visuelt design er locked; FEATURE-PLACERING er superseded.** Det visuelle

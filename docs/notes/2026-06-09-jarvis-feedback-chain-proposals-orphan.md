@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 2/2 refs alive, 29d old
+---
 # Til Jarvis — chain proposals genereres men ingen ser dem
 
 **Fra:** Claude

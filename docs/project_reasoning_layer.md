@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 3/3 refs alive, 71d old
+---
 # Jarvis Reasoning Layer — Projekt Dokumentation
 
 **Oprettet:** 2026-04-26  

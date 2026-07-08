@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 28/28 refs alive, 81d old
+---
 # LLM Privacy Tier Audit
 
 Klassificering af LLM-kald i `core/services/` efter hvilken type data de sender

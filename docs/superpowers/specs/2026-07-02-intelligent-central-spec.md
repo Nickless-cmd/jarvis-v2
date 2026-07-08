@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Den Intelligente Central — Spec (5 tråde mod egen intelligens)
 
 **Dato:** 2026-07-02

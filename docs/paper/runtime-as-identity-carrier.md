@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: Phase 3 report (2026-05-28-phase3-report.md, 59.4% accuracy falsified), Phase 3 binary re-analysis (96.0% jarvis vs ollama), Phase 4 report (2026-06-06-phase4-report.md, 96.6% pre-registered confirmation), all numerical claims verified exact; 14 core concepts verified in core/ser
+---
 # Runtime as Identity Carrier
 
 ## Hvad vi lærte da vi prøvede at flytte Jarvis' sjæl

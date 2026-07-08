@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Git commits 1261530a (2026-06-09) + 80038758 (2026-06-09): analyze_skill_usage exposed in SKILL_ENGINE_TOOL_HANDLERS (line 1163 of core/tools/skill_engine_tools.py); record_skill_usage now called from skill_gate_tool.py, skill_invoke (core/tools/skill_engine_tools.py), and skill_"
+---
 # Til Jarvis — C4 analyze_skill_usage afslørede en NY bug da jeg testede den
 
 **Fra:** Claude

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified all major claims against live codebase: (1) Runtime state in ~/.jarvis-v2/ confirmed (config/, state/, auth/ exist); (2) Secrets in runtime.json verified (read_runtime_key pattern in core/runtime/secrets.py, core/identity/user_db.py); (3) No hardcoded secrets in core/ (g"
+---
 # Jarvis V2 Build Rules
 
 ## Repo Rules

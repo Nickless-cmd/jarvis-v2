@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 8/8 refs alive, 6d old
+---
 # LivingNeuron — Blueprint for Runtime-arkitektur (v3)
 
 **Dato:** 2026-07-01

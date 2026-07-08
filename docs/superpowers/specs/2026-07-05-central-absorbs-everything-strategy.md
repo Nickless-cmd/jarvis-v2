@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Centralen skal holde ALT — MC-afvikling + wiring af de mørke 80% (strategi-kort)
 
 **Dato:** 2026-07-05 · **Forfatter:** Claude (Opus 4.8) på Bjørns opdrag · **Kilder:** 4 parallelle

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 6d old
+---
 # System Cartographer → Centralen — Handlingsordre
 
 **Dato:** 2026-07-01

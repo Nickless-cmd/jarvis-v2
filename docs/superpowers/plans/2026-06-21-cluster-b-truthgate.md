@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Cluster B — TruthGate Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans. Følger afviklings-kontrakten i `docs/superpowers/specs/2026-06-21-intelligent-central-design.md` §13 step 3.

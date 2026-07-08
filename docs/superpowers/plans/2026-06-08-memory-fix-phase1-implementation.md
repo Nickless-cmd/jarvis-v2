@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Memory Fix — Phase 1 Implementation Plan
 
 **Based on spec:** `docs/superpowers/specs/2026-06-08-memory-fix-phase1-design.md`

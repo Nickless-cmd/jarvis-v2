@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 2/2 refs alive, 40d old
+---
 # Phase 3 Addendum — Binary Re-analysis: jarvis vs ollama_local
 
 **Exploratory post-hoc analysis.** Not pre-registered. Not confirmatory.

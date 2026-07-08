@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 77d old
+---
 # docs/ — dokumentations-index
 
 Velkommen til Jarvis v2's dokumentation. Denne mappe er reorganiseret 2026-04-21

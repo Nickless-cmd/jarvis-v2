@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Den Intelligente Central — designspec
 
 > **Status:** Design godkendt mundtligt af Bjørn 2026-06-21. Erstatter/omframer

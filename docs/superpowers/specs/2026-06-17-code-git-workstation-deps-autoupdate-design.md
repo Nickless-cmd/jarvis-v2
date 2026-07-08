@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Code-mode Git + Workstation + Dependency-Doctor + Auto-Update — Design
 
 **Dato:** 2026-06-17

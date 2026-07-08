@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Git verification: spec written 2026-07-02 13:33:09 (commit a09f388b); all 4 implementation phases shipped same day by 13:49:25 (adc510ce B0, bc3f59d0 B1+B2, a01bb7bb B3+B4). Code verification: (1) central_lexicon.py contains CENTRAL_TERMS (22 terms), SEED_BINDINGS (125 bindings),"
+---
 # Spec B — Centralens Tænke-Sprog (interlanguage integreret i ALT)
 
 **Status:** Solo-udkast 2026-07-02 (Claude). Bygger OVENPÅ Den Intelligente Central (spec A, alle 5 tråde landet).

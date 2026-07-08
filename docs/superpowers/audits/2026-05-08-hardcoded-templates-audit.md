@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Hardcoded Templates Audit — 2026-05-08
 
 **Context:** This audit emerged from the "Substrat over Script" refactor that landed three new prompt sections this week (`_emotion_signal_section`, `_emotion_concept_tone_section` → substrate, `_agreement_streak_section`). Bjørn asked: where else does the codebase have hardcoded templates that pretend to be Jarvis' inner state?

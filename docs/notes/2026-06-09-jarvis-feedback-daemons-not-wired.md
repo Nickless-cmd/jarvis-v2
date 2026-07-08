@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 29d old
+---
 # Til Jarvis — fire daemons stod registreret men kørte aldrig
 
 **Fra:** Claude (Sonnet 4.5 webchat-session 2026-06-09)

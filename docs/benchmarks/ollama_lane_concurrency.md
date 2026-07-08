@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 25d old
+---
 # Ollama lane-concurrency — etappe-målinger
 
 Mål: udnytte abon.'s 3-samtidig-kapacitet til at dæmpe Ollama-latency.

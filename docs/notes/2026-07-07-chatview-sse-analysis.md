@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 10/10 refs alive, 0d old
+---
 # Chatview + auto-compact — grounded readonly-analyse (2026-07-07)
 
 Readonly. Ingen kode ændret. Verificeret mod live-repo. Formål: præcis rod-årsag til at

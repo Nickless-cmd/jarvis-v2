@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified all major claims against codebase: (1) core/identity/, core/memory/, core/tools/, core/eventbus/, core/channels/ all exist and active; (2) Mission Control: 12 routes in apps/api/jarvis_api/routes/mission_control*.py; (3) Runtime state separation: ~/.jarvis-v2/ with confi"
+---
 # Jarvis V2 Locked Charter
 
 ## What Jarvis is

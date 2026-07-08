@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # TruthGate Fase 2 — evidens-baseret konfabulations-gate (designspec)
 
 > **Status:** Design godkendt af Bjørn 2026-06-21. Sub-spec under

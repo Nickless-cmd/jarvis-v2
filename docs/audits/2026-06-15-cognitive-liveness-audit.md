@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 22d old
+---
 # Kognitiv Liveness-Audit — 15. juni 2026
 
 **Anledning:** Codex-audit (delt af Bjørn) flagede mange tomme/stale "livs"-tabeller i Jarvis' aktive runtime og konkluderede at hans indre liv var ved at splitte mellem "det der producerer" og "det der lyder som hans kerne men ikke længere får input". Bjørn: *"det er alt hans liv."*

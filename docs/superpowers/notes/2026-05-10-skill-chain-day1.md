@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified against live codebase: skill_chain tool implementation (core/tools/skill_chain_tool.py) shows atomic pre-validation, C-format builder, and exact behavior from doc examples. skill_gate tool (core/tools/skill_gate_tool.py) confirms chain_candidates and chain_hint logic wor"
+---
 # Skill Chain Phase 1 — Day 1 baseline
 
 **Date:** 2026-05-10

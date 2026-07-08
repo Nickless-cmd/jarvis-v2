@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Code audit vs actual implementation. Verified: (1) spawn_agent_task accepts system_prompt/tool_policy/allowed_tools in tool definition (simple_tools_definitions.py:2504-2548); (2) _build_agent_tools_payload wires tools through (agent_runtime_base.py:121-146); (3) _land_initiative"
+---
 # Spec — Frihed i agentur, råd og swarm (byg det som Claude-modellen)
 
 **Status:** Udkast 2026-07-03 (Claude, på Bjørns retning).

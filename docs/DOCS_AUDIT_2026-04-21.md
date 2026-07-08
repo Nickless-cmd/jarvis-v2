@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 2/2 refs alive, 77d old
+---
 # Docs Audit — 2026-04-21
 
 Samlet gennemgang af alle markdown-dokumenter i `docs/` og repo-roden.

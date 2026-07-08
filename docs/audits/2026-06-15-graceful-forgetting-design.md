@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified deployed fixes: (1) jobs_queue.json pruning via _prune_completed_jobs in core/services/jobs_engine.py (commit 7db00213, June 15 21:52) with _KEEP_TERMINAL=2000 and _KEEP_PENDING=2000; (2) retention module (core/services/retention.py) added June 15 21:47 via e0a567f6 impl"
+---
 # Nådig Glemsel & Lærings-modning — Design
 
 **Anledning:** Liveness-audit + Codex' health-check (15. jun). Spørgsmål fra Bjørn:

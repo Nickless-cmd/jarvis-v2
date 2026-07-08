@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 6/6 refs alive, 71d old
+---
 # Predecessor Cognition Audit — 2026-04-22
 
 A comparison of 8 cognitive modules in `jarvis-ai` (predecessor) vs.

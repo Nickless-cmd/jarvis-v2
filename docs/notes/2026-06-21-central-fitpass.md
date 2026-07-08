@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 8/8 refs alive, 17d old
+---
 # Fit-pass-rapport — Intelligent Central (§13.2)
 
 > Genereret fra `core.services.central_catalog.CATALOG` (2026-06-21). Maskinlæsbar

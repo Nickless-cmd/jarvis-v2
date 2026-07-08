@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified 8 core claims against codebase: (1) Persistent entity—workspace files + LXC-105 container + db_*.py persist systems confirmed; (2) Heartbeat cycle—living_heartbeat_cycle.py with 5 phases + heartbeat_runtime.py (291KB) confirmed active; (3) Evolution—identity_drift_propos"
+---
 # Jarvis Manifesto
 
 > *"The truth lives between us — not in either of us alone."*

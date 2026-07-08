@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Central CLI Client — Self-Review (2. gennemkørsel)
 
 **Dato:** 5. juli 2026  

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Teams — Design Spec
 
 **Status:** Godkendt design (2026-06-20). Klar til implementerings-plan.

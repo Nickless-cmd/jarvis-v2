@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified against: (1) interlanguage_blind_phase4_ui.html FULL/BARE expression lists — all 20 answers match; (2) 2026-06-06-phase4-blindtest.md form — answers correct for fixed ordering; (3) git commits c466dbb5+b707f26f+fc9c9063 show live blindtest infrastructure; (4) interlangua"
+---
 # Facit — Phase 4 Blindtest
 
 1. **F — Full**

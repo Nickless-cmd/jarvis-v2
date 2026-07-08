@@ -1,3 +1,10 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified against live codebase:
+1. Mockup file exists (docs/design/jarvis-mind-terminal-mockup.html, 9.0K, Jun 23 17:54)
+2. All 15 color hex codes actively used in apps/jarvis-desk/src/styles/app.css (verified grep on: #0a0e16, #1ad9c4, #eaf6f4, #c7d4e0, #f5c451, #f5a14a, #3ee08a"
+---
 # Jarvis Mind — design-tokens (KANONISK REFERENCE)
 
 Bjørn godkendte dette design 1:1 (2026-06-23): "stil og farver er meget bedre end det nuværende,

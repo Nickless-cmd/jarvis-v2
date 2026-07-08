@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 2/2 refs alive, 40d old
+---
 # Interlanguage Phase 4 — Runtime as Identity Carrier (Pre-registered Design)
 
 **Pre-registered:** 2026-05-29 (before any data collection or analysis)

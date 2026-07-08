@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 6d old
+---
 # Den Intelligente Central — Spec (5 tråde mod egen intelligens)
 
 **Dato:** 2026-07-02

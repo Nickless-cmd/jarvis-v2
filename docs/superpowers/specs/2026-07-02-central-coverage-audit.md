@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Centralen — Dæknings-audit (2026-07-02, v3 — self-reviewet)
 
 **Metode:** Automatiseret grep-scan af alle .py filer i core/ for central-wiring signaturer + manuel verificering af `central_private_observe.py` liveness-dækning + `central_stance.py` signal-dækning + `eventbus_central_bridge.py` family-allowlist.

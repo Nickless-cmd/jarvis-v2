@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # §16 Kryptering — encrypt-on-write migration (Lag 3, DATA-TOUCHING)
 
 > Spec §16. **ADVARSEL:** denne fase rører ægte bruger-data. En key-management- eller

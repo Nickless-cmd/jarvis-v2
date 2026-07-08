@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Tick-dirigenten — Centralen bærer heartbeat-rytmen (ikke kun observe)
 
 **Dato:** 2026-07-04

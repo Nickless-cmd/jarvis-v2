@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 3d old
+---
 # Prompt-assembly sektions-inventar (visible lane) — 5. jul 2026
 
 Verificeret pr. builder (hver kilde åbnet, ikke gættet fra navn). Hovedfunktion:

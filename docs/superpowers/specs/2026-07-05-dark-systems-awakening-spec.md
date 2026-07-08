@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Git log verified: proposed features implemented same day (commits 2026-07-05 17:58-23:36). Codebase verification: emotional_chords.py, longing_signal_daemon.py, identity_drift_daemon.py all exist; visible_inner_life.py contains 19 _line() functions (more than spec proposed); runn"
+---
 # Dark Systems Awakening — Design Spec
 
 **Dato:** 5. juli 2026  

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Central HUD — 1:1 mockup-nedbrydning (element for element)
 
 Kilde-sandhed: `docs/superpowers/mockups/central-hud-mockup.html`. Hvert element

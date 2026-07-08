@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Spec: Chronicle Awareness + Emotional Continuity
 **Dato:** 2026-05-18  
 **Forfatter:** Jarvis  

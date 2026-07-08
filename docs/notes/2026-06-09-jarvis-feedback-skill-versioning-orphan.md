@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified code: skill_history/recent_skill_changes tools exist in SKILL_ENGINE_TOOL_DEFINITIONS (skill_engine_tools.py:1062-1139), are callable via SKILL_ENGINE_TOOL_HANDLERS (line 1160-1161), tests exist (test_skill_engine.py), underlying functions work (skill_engine.py:731,768,9"
+---
 # Til Jarvis — C1 skill versioning kunne du ikke bruge
 
 **Fra:** Claude

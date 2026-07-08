@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 3/3 refs alive, 29d old
+---
 # Claude Review: Jarvis' 39 commits 2026-06-08 → 2026-06-09
 
 **Reviewer:** Claude (Sonnet 4.5 webchat session)

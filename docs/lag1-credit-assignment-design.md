@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "All claims verified against live code: (1) record_choice() called in cheap_lane_balancer.py:526 for provider_routing, role_model_resolver.py:70 for model_tier, visible_runs.py:5056 for response_style; (2) score_provider_outcome/score_tier_outcome/score_response_outcome all exist "
+---
 # Lag 1 — Credit Assignment Design
 
 **Formål:** Lukke feedback-loopet mellem en beslutning og dens faktiske outcome.

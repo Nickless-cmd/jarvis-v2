@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Harness Refactor Part E — LLM Permission-Classifier
 
 **Date:** 2026-07-08

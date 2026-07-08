@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: "Verified against live code: (1) workspace_paths.py module exists with shared_dir(), workspace_dir(), NoUserContextError matching claims exactly; (2) database schema has scheduled_for_user_id, initiated_by, relevant_to_users columns on declared tables (schema audit via db_schema.p"
+---
 # Multi-User Workspace Layout
 
 One-page reference for what lives where in `~/.jarvis-v2/`. See spec

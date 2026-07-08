@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 8d old
+---
 # Spec: `central_query` tool + medium-push notices
 
 ## Krav fra Bjørn

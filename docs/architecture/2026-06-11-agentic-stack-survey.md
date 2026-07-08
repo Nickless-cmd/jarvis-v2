@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 4/4 refs alive, 27d old
+---
 # Jarvis V2 Agentic Stack — Grundig systemgennemgang
 
 **Dato:** 2026-06-11

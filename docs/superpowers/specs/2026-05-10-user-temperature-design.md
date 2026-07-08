@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Lag 10 — User Temperature Field: Design Specification
 
 **Status:** Approved (brainstorm complete 2026-05-10)

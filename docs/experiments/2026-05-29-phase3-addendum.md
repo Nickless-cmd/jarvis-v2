@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 40d old
+---
 # Phase 3 Addendum — Binary Jarvis vs Ollama (Exploratory Pilot)
 
 **Date:** 2026-05-29

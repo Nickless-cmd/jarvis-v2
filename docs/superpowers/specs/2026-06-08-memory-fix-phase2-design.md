@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Memory Fix — Phase 2 Design: Persistent Identity Sketch
 
 **Dato:** 2026-06-08

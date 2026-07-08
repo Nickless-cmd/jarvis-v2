@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 16/16 refs alive, 1d old
+---
 # God-fil-kort — det fulde overblik
 
 **Genereret read-only af `scripts/god_file_map.py` (7. jul). Re-kør efter hvert snit.**

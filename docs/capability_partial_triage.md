@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 56d old
+---
 # Capability PARTIAL Triage
 
 Date: 2026-05-12

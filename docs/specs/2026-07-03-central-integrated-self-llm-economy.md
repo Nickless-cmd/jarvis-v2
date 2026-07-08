@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 2/2 refs alive, 4d old
+---
 # Spec — Centralens integrerede selv + LLM-økonomi
 
 **Status:** Udkast 2026-07-03 (Claude, på Bjørns retning). Grundet i live-målinger.

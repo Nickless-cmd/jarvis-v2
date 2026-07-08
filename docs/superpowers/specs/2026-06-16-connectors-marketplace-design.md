@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Connectors / Marketplace — Jarvis Desktop
 
 **Dato:** 2026-06-16 · **Forfatter:** Bjørn + Claude · **Status:** design (godkendt visuelt)

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Central-styret indre liv — ændrings-drevet injektion
 
 **Dato:** 2026-07-05

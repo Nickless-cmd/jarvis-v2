@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Intelligent Device Awareness — Design (V2 delprojekt 3)
 
 **Dato:** 2026-06-19

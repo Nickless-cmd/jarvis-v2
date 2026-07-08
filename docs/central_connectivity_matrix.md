@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 4d old
+---
 # Central-connectivity-kort (core/services)
 
 Statisk, genkørbart kort: `python scripts/central_connectivity_audit.py`.

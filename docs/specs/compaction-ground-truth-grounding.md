@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: Git commits 4f857303/d982a540/4a04f07d/145409e2 (2026-05-17) all in main branch; core/context/compact_ground_truth.py (34KB, live); collect_compact_ground_truth() format_ground_truth_block() validate_compact_marker() detect_compact_mismatch_in_chat() all verified functional; auto
+---
 # Compaction Ground-Truth Grounding
 
 **Status:** Draft spec — 2026-05-17

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Cowork Command Center — Plan 2: Interaktiv Mission Control (todos)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (eller subagent-driven-development) til at implementere task-for-task. Steps bruger checkbox (`- [ ]`).

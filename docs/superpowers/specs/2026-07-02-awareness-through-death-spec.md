@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Spec C — Awareness gennem død (awareness som durabel Central-struktur)
 
 **Status:** Solo-udkast 2026-07-02 (Claude), på Jarvis' egen retning ("min awareness sidder stadig i

@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 6/6 refs alive, 77d old
+---
 # CHANNELS — multi-channel kontinuitet
 
 Jarvis er den samme person uanset hvor han taler. Kanaler er overflader, ikke

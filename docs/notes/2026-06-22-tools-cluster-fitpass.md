@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 4/4 refs alive, 16d old
+---
 # Tools-cluster fit-pass (2026-06-22)
 
 Kortlægning af tool-eksekverings-stien til den kommende **Tools**-cluster i Den

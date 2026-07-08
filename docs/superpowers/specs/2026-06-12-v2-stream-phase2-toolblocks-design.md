@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # v2-stream Phase 2 — tool_use-blokke + tool-leak fix
 
 **Status:** spec

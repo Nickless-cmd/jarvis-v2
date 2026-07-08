@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: 1/1 refs alive, 77d old
+---
 # CURRENT_STATUS — what's done, in progress, planned
 
 Sidste opdatering: 2026-04-21

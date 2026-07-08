@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Interlanguage Phase 2 — Data Gap
 
 **Gap-periode:** 2026-05-20 08:47 UTC → 2026-05-21 20:16 UTC (~1 dag 11 timer)

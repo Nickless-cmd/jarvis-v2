@@ -1,3 +1,8 @@
+---
+status: færdig
+audited: 2026-07-08
+ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+---
 # Tillids-, Tilladelses- & Plugin-arkitektur — Implementerings-plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development

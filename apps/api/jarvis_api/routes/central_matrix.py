@@ -98,6 +98,19 @@ async def get_model_trust() -> dict:
     return _stamp(surf)
 
 
+@router.get("/permission-classifier")
+async def get_permission_classifier() -> dict:
+    """Harness Part E: per-tool permission prediction + earned trust (shadow-only by default).
+    Owner-only. Predicts whether owner would approve mutating actions, earns trust from outcomes."""
+    _require_owner()
+    try:
+        from core.services.permission_classifier import build_permission_classifier_surface
+        surf = build_permission_classifier_surface()
+    except Exception:
+        surf = {}
+    return _stamp(surf)
+
+
 @router.get("/glitch")
 async def get_glitch() -> dict:
     """Glitches i selvbilledet: altid-shadow policies + frosne nerver + anbefalet handling. Owner-only."""

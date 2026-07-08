@@ -3511,6 +3511,27 @@ async def _stream_visible_run(
                     # en concurrent.futures.Future — asyncio.create_task
                     # kræver en coroutine. Wrap derfor i en async helper
                     # så vi får en task vi kan await/wait_for på.
+                    # ── Reasoning interceptor (SHADOW): observe this round's reasoning between the
+                    #    model's thought and its tool execution — the pre-action moment. Bounded
+                    #    (800ms) + fail-open → can never block or break the loop; the result is
+                    #    DISCARDED in shadow (nothing injected). The tool-exec heartbeat below
+                    #    provides SSE keepalive. Only runs on rounds that call tools (the moment an
+                    #    action is about to fire), which is exactly the seam the design targets.
+                    try:
+                        from core.services.reasoning_interceptor import intercept_round_async
+                        _ri_reasoning = "".join(_all_followup_reasoning_parts)[-4000:]
+                        if _ri_reasoning.strip():
+                            await intercept_round_async(
+                                run_id=run.run_id, round_num=_agentic_round + 1,
+                                reasoning_text=_ri_reasoning,
+                                tool_calls_this_run=(_a_tool_calls if isinstance(_a_tool_calls, list) else []),
+                                ctx={"session_id": getattr(run, "session_id", "") or "",
+                                     "reasoning_tier": getattr(run, "thinking_mode", "fast") or "fast"},
+                                budget_ms=800,
+                            )
+                    except Exception:
+                        pass
+
                     _run_stage = f"agentic_tool_exec_r{_agentic_round + 1}"
 
                     async def _await_executor() -> list[dict]:

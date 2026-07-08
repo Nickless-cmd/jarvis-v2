@@ -38,6 +38,27 @@ def test_toggle_security_nerve_refused():
     assert r["status"] == "error" and "sikkerheds-nerve" in r["error"]
 
 
+def test_toggle_gate_enforce_cognitive_ok():
+    # veto er en COGNITIVE-gate → håndhævelsen kan governed-slås fra og til igen.
+    off = q({"action": "toggle_gate_enforce", "nerve": "veto", "enabled": False})
+    try:
+        assert off["status"] == "ok" and off["data"]["enabled"] is False
+    finally:
+        on = q({"action": "toggle_gate_enforce", "nerve": "veto", "enabled": True})
+        assert on["status"] == "ok" and on["data"]["enabled"] is True
+
+
+def test_toggle_gate_enforce_security_refused():
+    # exec_workspace_trust er en SECURITY-gate → håndhævelsen kan ALDRIG slås fra (§11.3).
+    r = q({"action": "toggle_gate_enforce", "nerve": "exec_workspace_trust", "enabled": False})
+    assert r["status"] == "error" and "sikkerheds-nerve" in r["error"]
+
+
+def test_toggle_gate_enforce_requires_nerve():
+    r = q({"action": "toggle_gate_enforce", "enabled": False})
+    assert r["status"] == "error"
+
+
 def test_pagination_sets_meta():
     r = q({"action": "incidents", "limit": 1})
     _assert_envelope(r)

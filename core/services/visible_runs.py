@@ -2352,7 +2352,21 @@ async def _stream_visible_run(
                             "tool_pause": _tool_pause_active,
                             "run_id": run.run_id,
                         }, _loop_gate_fn, cluster="loop", klass=_LGK.COGNITIVE)
-                        _is_last_round = _lv.decision in (_LDec.RED, _LDec.SKIP)
+                        # Governed håndhævelse: SKIP (gate-fejl) → altid hård stop (fail-safe,
+                        # aldrig uendeligt). RED (bevidst loop-brems) → hård stop KUN hvis
+                        # loop_control er enforce-enabled (default ON). Slås den fra, fortsætter
+                        # loopet — stadig bounded af range(_AGENTIC_MAX_ROUNDS) ovenfor.
+                        if _lv.decision is _LDec.SKIP:
+                            _is_last_round = True
+                        elif _lv.decision is _LDec.RED:
+                            from core.services import gate_enforcement as _ge
+                            if _ge.is_enforced("loop_control", _LGK.COGNITIVE):
+                                _is_last_round = True
+                            else:
+                                _ge.note_suppressed_block("loop_control", "loop", _lv.reason)
+                                _is_last_round = False
+                        else:
+                            _is_last_round = False
                     except Exception:
                         _is_last_round = (
                             _agentic_round == _AGENTIC_MAX_ROUNDS - 1
@@ -5315,73 +5329,20 @@ def _execute_simple_tool_calls(
             })
             continue
 
-        # ── Pre-execution gates ──────────────────────────────────────
-        # 1. Veto gate: affective pushback with evidence blocks execution
-        #    → Commit-cluster GENNEM Den Intelligente Central (trace + breaker + incident).
-        #    Veto hører til commit (pre-execution-disciplin ved siden af decision_gate), ikke
-        #    truth. COGNITIVE fail-open (gate-fejl → allow, paritet med gammelt inline except).
-        _veto_blocked = False
-        _veto_reason = None
-        _vv = None  # §11 Trin 1: bær verdiktet ud af try'en til arbitrage-shadow
-        try:
-            from core.services.central_core import central as _central_veto
-            from core.services.gate_commit import veto_gate as _veto_gate_fn
-            from core.services.gate_kernel import Decision as _VDec, GateClass as _VGK
-            _vv = _central_veto().decide(
-                "veto",
-                {"tool_name": name, "user_message": user_message,
-                 "session_id": session_id, "run_id": run_id},
-                _veto_gate_fn, cluster="commit", klass=_VGK.COGNITIVE,
-            )
-            if _vv.decision is _VDec.RED:
-                _veto_blocked = True
-                _veto_reason = (_vv.evidence or {}).get("reason") or _vv.reason
-        except Exception:
-            pass  # central self-safe; gate-fejl → allow (fail-open)
+        # ── Pre-execution commit-gates (veto + decision_gate) ────────
+        # Arbitrage udskilt til commit_gate_arbiter (Boy Scout, 2026-07-08). Håndhævelsen er nu
+        # GOVERNED pr. gate (gate_enforcement): et RED-verdikt der er kill-switchet fra
+        # degraderer til observe-only. Self-safe/fail-open (gate-fejl → allow).
+        from core.services.commit_gate_arbiter import evaluate_commit_gates
+        _cg = evaluate_commit_gates(
+            name=name, arguments=arguments, user_message=user_message,
+            session_id=session_id or "", run_id=run_id or "",
+        )
+        _decision_soft_warn = _cg.soft_warn  # YELLOW: blød grad — tool kører, advarsel surfaces
 
-        # 2. Decision gate: active decisions conflict blocks execution
-        _decision_blocked = False
-        _decision_reason = None
-        _decision_soft_warn = None  # YELLOW: blød grad — tool kører, advarsel surfaces
-        _cv = None  # §11 Trin 1: bær verdiktet ud af try'en til arbitrage-shadow
-        # ── Commit-cluster GENNEM Den Intelligente Central (ÆGTE migration 2026-06-22) ──
-        # decision_gate's enforcement ruttes nu GENNEM central().decide → ét eksekverings-
-        # pas med boundary-capture (cognitiv→fail-open ved fejl) + circuit-breaker +
-        # incident-log+notifikation + trace. Erstatter det gamle inline check_decision_gate-
-        # kald (intet dobbelt-run — gaten kører ÉN gang, inde i commit_gate). central er
-        # selv-sikker; enhver fejl → allow (fail-open), som det gamle inline-except.
-        try:
-            from core.services.central_core import central as _central_commit
-            from core.services.gate_commit import commit_gate as _commit_gate_fn
-            from core.services.gate_kernel import Decision as _Dec, GateClass as _GK
-            _cv = _central_commit().decide(
-                "decision_gate",
-                {"tool_name": name, "tool_args": arguments,
-                 "user_message": user_message, "run_id": run_id,
-                 "session_id": getattr(run, "session_id", "") or ""},
-                _commit_gate_fn, cluster="commit", klass=_GK.COGNITIVE,
-            )
-            if _cv.decision is _Dec.RED:
-                _decision_blocked = True          # hård grad → blokér (tool kører ikke)
-                _decision_reason = _cv.reason
-            elif _cv.decision is _Dec.YELLOW:
-                _decision_soft_warn = _cv.reason  # blød grad → kør, men surfacer advarsel
-        except Exception:
-            pass  # central self-safe; gate-fejl → allow (fail-open)
-
-        # §11 Trin 1 (SHADOW, 0-risiko): observér den DEKLAREREDE arbitrage af de to commit-verdicts
-        # (veto + decision_gate) vs. det faktisk håndhævede sekventielle udfald. Ændrer INTET —
-        # central_arbitration var ellers uwired. Måler divergens FØR evt. Trin 2 håndhæver.
-        try:
-            from core.services.central_arbitration import observe_shadow as _arb_shadow
-            _arb_shadow([_vv, _cv], enforced_blocked=bool(_veto_blocked or _decision_blocked),
-                        run_id=run_id, where="pre_exec")
-        except Exception:
-            pass
-
-        if _veto_blocked or _decision_blocked:
-            _gate_reason = _veto_reason or _decision_reason or "Ukendt gate-blokering"
-            _gate_type = "veto_gate" if _veto_blocked else "decision_gate"
+        if _cg.blocked:
+            _gate_reason = _cg.reason or "Ukendt gate-blokering"
+            _gate_type = _cg.gate_type or "decision_gate"
             results.append({
                 "tool_name": name,
                 "arguments": arguments,

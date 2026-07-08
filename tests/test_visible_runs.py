@@ -284,7 +284,13 @@ class TestTruthGateC4Removal:
 class TestCommitClusterMigration:
     """Commit-cluster ÆGTE migration (2026-06-22): decision_gate's enforcement ruttes
     GENNEM central().decide → fuld catch+flag+notify+trace i ÉT pas (erstatter det inline
-    check_decision_gate-kald, intet dobbelt-run). Ikke længere en tynd observe-spore."""
+    check_decision_gate-kald, intet dobbelt-run). Arbitragen blev udskilt til
+    commit_gate_arbiter (Boy Scout, 2026-07-08) + governed pr. gate (gate_enforcement)."""
+
+    def _arbiter_source(self):
+        import inspect
+        from core.services import commit_gate_arbiter as cga
+        return inspect.getsource(cga)
 
     def _vr_source(self):
         import inspect
@@ -292,20 +298,21 @@ class TestCommitClusterMigration:
         return inspect.getsource(vr)
 
     def test_decision_gate_routed_through_central_decide(self):
-        src = self._vr_source()
+        # Arbitragen (nu i commit_gate_arbiter) ruter decision_gate gennem central().decide.
+        src = self._arbiter_source()
         assert "from core.services.gate_commit import commit_gate" in src
         assert 'cluster="commit"' in src
         # det gamle inline check_decision_gate-kald er VÆK (kører nu kun inde i commit_gate)
         assert "_decision_allowed, _decision_reason = check_decision_gate" not in src
 
     def test_call_site_honors_graded_degrees(self):
-        # Gaten håndhæver med GRADER (som Truth), ikke binært: kald-stedet skal
+        # Gaten håndhæver med GRADER (som Truth), ikke binært: arbiteren skal
         # honorere RED (hård blok), YELLOW (blød — kør men advar) og GREEN.
-        src = self._vr_source()
-        assert "_Dec.RED" in src and "_decision_blocked = True" in src  # hård
-        assert "_Dec.YELLOW" in src and "_decision_soft_warn" in src     # blød
-        # blød advarsel surfaces i tool-resultatet (tool KØRER)
-        assert "if _decision_soft_warn:" in src
+        arb = self._arbiter_source()
+        assert "Decision.RED" in arb and "_decision_blocked = True" in arb  # hård
+        assert "Decision.YELLOW" in arb and "_decision_soft_warn" in arb     # blød
+        # kald-stedet i visible_runs surfacer den bløde advarsel i tool-resultatet (tool KØRER)
+        assert "if _decision_soft_warn:" in self._vr_source()
 
 
 class TestTrackerCascadeFix:

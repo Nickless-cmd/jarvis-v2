@@ -20,7 +20,7 @@ _MAX_LIMIT = 100
 
 _READ_ACTIONS = {"status", "incidents", "trace", "cluster_health", "nerve_detail",
                  "autonomy", "learning", "drift", "breakers", "instrument", "known_signals"}
-_TOGGLE_ACTIONS = {"toggle_nerve", "toggle_cluster"}
+_TOGGLE_ACTIONS = {"toggle_nerve", "toggle_cluster", "toggle_gate_enforce"}
 # Muterende skrive-actions — Jarvis' skrive-kanal til Centralen (§10). ALLE owner-gatet
 # (R2): kun ejeren (eller unbound legacy) må mutere control-planet. member/guest fail-closer.
 _WRITE_ACTIONS = {"resolve_and_route", "depromote", "resolve_incident",
@@ -280,6 +280,22 @@ def central_query(args: dict[str, Any]) -> dict[str, Any]:
                 return _envelope("error", action, None, "manglende 'cluster'", "central_query", t0)
             from core.services import central_switches
             res = central_switches.set_cluster_enabled(cluster, enabled)
+            if not res.get("ok"):
+                return _envelope("error", action, res, str(res.get("reason") or "afvist"),
+                                 "central_switches", t0)
+            return _envelope("ok", action, res, None, "central_switches", t0)
+
+        # ── toggle_gate_enforce (owner-only): per-gate håndhævelses-kill-switch ──
+        # Slår en gates HÅNDHÆVELSE on/off (scope "gate_enforce", default ON) — bruges af
+        # både pre-exec-gates (veto/decision_gate/loop_control) og post-output-gates
+        # (self_review/fact_gate/...). SECURITY-gates (exec_workspace_trust/cross_user_share)
+        # afvises ved enabled=False (§11.3 via _nerve_klass) → kan aldrig slås fra.
+        if action == "toggle_gate_enforce":
+            if not nerve:
+                return _envelope("error", action, None, "manglende 'nerve'", "central_query", t0)
+            from core.services import central_switches
+            res = central_switches.set_enabled("gate_enforce", nerve, enabled,
+                                               klass=_nerve_klass(nerve))
             if not res.get("ok"):
                 return _envelope("error", action, res, str(res.get("reason") or "afvist"),
                                  "central_switches", t0)

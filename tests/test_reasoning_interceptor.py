@@ -55,3 +55,30 @@ def test_run_detectors_aggregates_worst_via_central(monkeypatch):
     out = ri.intercept_round(run_id="r", round_num=1, reasoning_text="The DB has 4231 rows.",
                              tool_calls_this_run=[], ctx={})
     assert out.grade is _D.YELLOW and "fact_gate" in out.triggers
+
+
+def test_is_active_default_off_shadow():
+    from core.services.gate_kernel import Decision as _D
+    assert ri._is_active(_D.YELLOW) is False
+    assert ri._is_active(_D.RED) is False
+    assert ri._is_active(_D.GREEN) is False
+
+
+def test_is_active_reads_flipped_flag():
+    from core.services.gate_kernel import Decision as _D
+    from core.services import shared_cache
+    shared_cache.set("flag:central.switch.gate_enforce.reasoning_interceptor_yellow",
+                     {"enabled": True}, ttl_seconds=60)
+    try:
+        assert ri._is_active(_D.YELLOW) is True
+        assert ri._is_active(_D.RED) is False
+    finally:
+        shared_cache.set("flag:central.switch.gate_enforce.reasoning_interceptor_yellow",
+                         {"enabled": False}, ttl_seconds=60)
+
+
+def test_should_hold_tool_call_only_active_red():
+    from core.services.gate_kernel import Decision as _D
+    assert ri.should_hold_tool_call(ri.InterceptOutcome(grade=_D.RED, shadow=False)) is True
+    assert ri.should_hold_tool_call(ri.InterceptOutcome(grade=_D.RED, shadow=True)) is False
+    assert ri.should_hold_tool_call(ri.InterceptOutcome(grade=_D.YELLOW, shadow=False)) is False

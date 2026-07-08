@@ -21,8 +21,30 @@ class InterceptOutcome:
 
 
 def _is_active(grade: Decision) -> bool:
-    """Active only if the kill-switch is flipped ON for this grade. Phase 0 stub — always shadow."""
-    return False
+    """Active only if the per-grade kill-switch is EXPLICITLY flipped ON. DEFAULT OFF (shadow) —
+    note this is the OPPOSITE of the gate default: the interceptor stays in shadow until the owner
+    explicitly flips it after the shadow-proving period. YELLOW → gate_enforce.reasoning_interceptor_yellow;
+    RED → gate_enforce.reasoning_interceptor_red. Read raw (default False), so unset = shadow."""
+    name = {Decision.YELLOW: "reasoning_interceptor_yellow",
+            Decision.RED: "reasoning_interceptor_red"}.get(grade)
+    if not name:
+        return False
+    try:
+        from core.services import shared_cache
+        val = shared_cache.get(f"flag:central.switch.gate_enforce.{name}")
+        if isinstance(val, dict) and "enabled" in val:
+            return bool(val["enabled"])
+        if isinstance(val, bool):
+            return val
+        return False  # unset → shadow (default OFF)
+    except Exception:
+        return False
+
+
+def should_hold_tool_call(outcome: "InterceptOutcome") -> bool:
+    """True only for an ACTIVE RED outcome — the seam then holds the pending tool-call (via the
+    existing gate_blocked path) and forces a correction round. Shadow or non-RED → False."""
+    return outcome.grade is Decision.RED and not outcome.shadow
 
 
 def _run_detectors(ctx: dict[str, Any]) -> Verdict:

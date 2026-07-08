@@ -3511,17 +3511,23 @@ async def _stream_visible_run(
                     # en concurrent.futures.Future — asyncio.create_task
                     # kræver en coroutine. Wrap derfor i en async helper
                     # så vi får en task vi kan await/wait_for på.
-                    # ── Reasoning interceptor (SHADOW): observe this round's reasoning between the
-                    #    model's thought and its tool execution — the pre-action moment. Bounded
-                    #    (800ms) + fail-open → can never block or break the loop; the result is
-                    #    DISCARDED in shadow (nothing injected). The tool-exec heartbeat below
-                    #    provides SSE keepalive. Only runs on rounds that call tools (the moment an
-                    #    action is about to fire), which is exactly the seam the design targets.
+                    # ── Reasoning interceptor: observe this round's reasoning between the model's
+                    #    thought and its tool execution — the pre-action moment. Bounded (800ms) +
+                    #    fail-open → can never block or break the loop. Only runs on rounds that call
+                    #    tools. DEFAULT SHADOW: the correction is only surfaced when the owner has
+                    #    EXPLICITLY flipped the per-grade gate_enforce flag (default OFF), so until
+                    #    then the result changes nothing. Active correction injects ONLY into the
+                    #    ephemeral _ds_active (→ next round's exchange-text via _exchange_text()),
+                    #    never _a_parts and never the cached prefix. Active RED additionally holds the
+                    #    pending tool-calls (empties the list → executor runs zero tools) so the model
+                    #    re-reasons with the correction — never cancels/finalizes the run.
                     try:
-                        from core.services.reasoning_interceptor import intercept_round_async
+                        from core.services.reasoning_interceptor import (
+                            intercept_round_async, should_hold_tool_call,
+                        )
                         _ri_reasoning = "".join(_all_followup_reasoning_parts)[-4000:]
                         if _ri_reasoning.strip():
-                            await intercept_round_async(
+                            _ri_out = await intercept_round_async(
                                 run_id=run.run_id, round_num=_agentic_round + 1,
                                 reasoning_text=_ri_reasoning,
                                 tool_calls_this_run=(_a_tool_calls if isinstance(_a_tool_calls, list) else []),
@@ -3529,6 +3535,13 @@ async def _stream_visible_run(
                                      "reasoning_tier": getattr(run, "thinking_mode", "fast") or "fast"},
                                 budget_ms=800,
                             )
+                            if _ri_out is not None and not _ri_out.shadow and _ri_out.correction:
+                                _ri_trig = _ri_out.triggers[0] if _ri_out.triggers else "reasoning"
+                                _dss.stage_signal(
+                                    _ds_active, f"interceptor:{_agentic_round + 1}",
+                                    _dss.compose_signal_note("interceptor", _ri_trig, _ri_out.correction))
+                                if should_hold_tool_call(_ri_out):
+                                    _a_tool_calls = []  # physical hold: executor runs zero tools
                     except Exception:
                         pass
 

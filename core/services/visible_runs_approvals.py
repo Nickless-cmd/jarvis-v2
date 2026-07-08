@@ -43,6 +43,22 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
     if str(pending.get("status") or "pending") not in {"", "pending"}:
         return {"error": "Approval already resolved", "status": "error"}
 
+    # ── Permission-classifier GOLD outcome (harness Part E) ──
+    # The owner just approved/denied a surfaced mutating action → the real signal.
+    # Compare against the earlier stashed prediction. Fail-open, never blocks.
+    try:
+        from core.services import permission_classifier as _pc
+        _pc_stashed = _pc.pop_prediction(approval_id)
+        if _pc_stashed:
+            _pc.record_prediction_outcome(
+                _pc_stashed["tool"],
+                predicted=_pc_stashed["predicted"],
+                actual="approve" if approved else "deny",
+                is_owner_gold=True,
+            )
+    except Exception:
+        pass
+
     if not approved:
         _vr._set_visible_approval_state(
             approval_id,

@@ -878,6 +878,35 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
                    ok=_ok)
     except Exception:
         pass
+    # ── Permission-classifier shadow observe (harness Part E) ──────────────
+    # Non-blocking: predict owner-approval for mutating tools + record the outcome
+    # (bootstrap: ok→approve, blocked→deny; approval_needed→stash for gold at resolve).
+    # Fail-open, never changes the returned status. Default mode shadow.
+    try:
+        from core.services import permission_classifier as _pc
+        if (isinstance(result, dict) and _pc.permission_classifier_mode() != "off"
+                and _pc.is_mutating(name)):
+            _pc_status = str(result.get("status") or "")
+            _pc_approval_id = str(result.get("approval_id") or "")
+            _pc_args = dict(arguments)
+
+            def _pc_shadow() -> None:
+                try:
+                    pred = _pc.classify_action(name, _pc_args, {"status": _pc_status})
+                    if _pc_status == "approval_needed" and _pc_approval_id:
+                        _pc.stash_prediction(_pc_approval_id, name, pred.verdict)
+                    else:
+                        _actual = ("approve" if _pc_status == "ok"
+                                   else ("deny" if _pc_status in ("blocked", "gate_blocked") else ""))
+                        if _actual:
+                            _pc.record_prediction_outcome(name, predicted=pred.verdict,
+                                                          actual=_actual, is_owner_gold=False)
+                except Exception:
+                    pass
+            import threading as _pc_th
+            _pc_th.Thread(target=_pc_shadow, daemon=True).start()
+    except Exception:
+        pass
     return result
 
 

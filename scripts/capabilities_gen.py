@@ -2,10 +2,13 @@
 Reuses permission_classifier._MUTATING_TOOLS for the mutating flag. Stdlib only."""
 from __future__ import annotations
 
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
+if str(REPO) not in sys.path:  # allow `python scripts/capabilities_gen.py` standalone
+    sys.path.insert(0, str(REPO))
 OUT = REPO / "docs" / "reference" / "CAPABILITIES.md"
 
 

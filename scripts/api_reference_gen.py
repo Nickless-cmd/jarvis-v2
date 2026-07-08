@@ -5,10 +5,13 @@ from __future__ import annotations
 
 import ast
 import re
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
+if str(REPO) not in sys.path:  # allow `python scripts/api_reference_gen.py` standalone
+    sys.path.insert(0, str(REPO))
 ROUTES_DIR = REPO / "apps" / "api" / "jarvis_api" / "routes"
 OUT = REPO / "docs" / "reference" / "API_REFERENCE.md"
 

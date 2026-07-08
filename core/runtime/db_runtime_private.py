@@ -22,8 +22,7 @@ import sqlite3
 
 from core.runtime.db_core import (
     connect,
-    _merge_text_fragments,
-    _stronger_ranked_value,
+    _upsert_signal,
     _CONFIDENCE_RANKS,
     _SOURCE_KIND_RANKS,
 )
@@ -52,188 +51,39 @@ def upsert_runtime_private_inner_note_signal(
 ) -> dict[str, object]:
     with connect() as conn:
         _ensure_runtime_private_inner_note_signal_table(conn)
-        existing = None
-        if canonical_key:
-            existing = conn.execute(
-                """
-                SELECT
-                    signal_id,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    support_count,
-                    session_count,
-                    merge_count,
-                    created_at,
-                    updated_at
-                FROM runtime_private_inner_note_signals
-                WHERE canonical_key = ?
-                  AND status IN ('active', 'stale')
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (canonical_key,),
-            ).fetchone()
-
-        if existing is None:
-            conn.execute(
-                """
-                INSERT INTO runtime_private_inner_note_signals (
-                    signal_id,
-                    signal_type,
-                    canonical_key,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    support_count,
-                    session_count,
-                    merge_count,
-                    created_at,
-                    updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    signal_id,
-                    signal_type,
-                    canonical_key,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    max(int(support_count or 0), 1),
-                    max(int(session_count or 0), 1),
-                    0,
-                    created_at,
-                    updated_at,
-                ),
-            )
-            conn.commit()
-            resolved_id = signal_id
-            meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
-        else:
-            resolved_id = str(existing["signal_id"])
-            merged_source_kind = _stronger_ranked_value(
-                str(existing["source_kind"] or ""),
-                source_kind,
-                _SOURCE_KIND_RANKS,
-            )
-            merged_confidence = _stronger_ranked_value(
-                str(existing["confidence"] or ""),
-                confidence,
-                _CONFIDENCE_RANKS,
-            )
-            merged_evidence_summary = _merge_text_fragments(
-                str(existing["evidence_summary"] or ""),
-                evidence_summary,
-                limit=4,
-            )
-            merged_support_summary = _merge_text_fragments(
-                str(existing["support_summary"] or ""),
-                support_summary,
-                limit=4,
-            )
-            merged_status_reason = _merge_text_fragments(
-                str(existing["status_reason"] or ""),
-                status_reason,
-                limit=4,
-            )
-            merged_support_count = max(
-                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
-            )
-            merged_session_count = max(
-                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
-            )
-            same_payload = (
-                status == str(existing["status"] or "")
-                and title == str(existing["title"] or "")
-                and summary == str(existing["summary"] or "")
-                and rationale == str(existing["rationale"] or "")
-                and merged_source_kind == str(existing["source_kind"] or "")
-                and merged_confidence == str(existing["confidence"] or "")
-                and merged_evidence_summary == str(existing["evidence_summary"] or "")
-                and merged_support_summary == str(existing["support_summary"] or "")
-                and merged_status_reason == str(existing["status_reason"] or "")
-                and run_id == str(existing["run_id"] or "")
-                and session_id == str(existing["session_id"] or "")
-                and merged_support_count == int(existing["support_count"] or 0)
-                and merged_session_count == int(existing["session_count"] or 0)
-            )
-            if same_payload:
-                meta = {
-                    "was_created": False,
-                    "was_updated": False,
-                    "merge_state": "unchanged",
-                }
-            else:
-                conn.execute(
-                    """
-                    UPDATE runtime_private_inner_note_signals
-                    SET
-                        status = ?,
-                        title = ?,
-                        summary = ?,
-                        rationale = ?,
-                        source_kind = ?,
-                        confidence = ?,
-                        evidence_summary = ?,
-                        support_summary = ?,
-                        status_reason = ?,
-                        run_id = ?,
-                        session_id = ?,
-                        support_count = ?,
-                        session_count = ?,
-                        merge_count = COALESCE(merge_count, 0) + 1,
-                        updated_at = ?
-                    WHERE signal_id = ?
-                    """,
-                    (
-                        status,
-                        title,
-                        summary,
-                        rationale,
-                        merged_source_kind,
-                        merged_confidence,
-                        merged_evidence_summary,
-                        merged_support_summary,
-                        merged_status_reason,
-                        run_id,
-                        session_id,
-                        merged_support_count,
-                        merged_session_count,
-                        updated_at,
-                        resolved_id,
-                    ),
-                )
-                conn.commit()
-                meta = {
-                    "was_created": False,
-                    "was_updated": True,
-                    "merge_state": "merged",
-                }
+        resolved_id, meta = _upsert_signal(
+            conn=conn,
+            table="runtime_private_inner_note_signals",
+            id_col="signal_id",
+            type_col="signal_type",
+            id_val=signal_id,
+            type_val=signal_type,
+            canonical_key=canonical_key,
+            lookup_statuses=("active", "stale"),
+            overwrite_cols=[
+                ("status", status),
+                ("title", title),
+                ("summary", summary),
+                ("rationale", rationale),
+                ("run_id", run_id),
+                ("session_id", session_id),
+            ],
+            rank_cols=[
+                ("source_kind", source_kind, _SOURCE_KIND_RANKS),
+                ("confidence", confidence, _CONFIDENCE_RANKS),
+            ],
+            merge_text_cols=[
+                ("evidence_summary", evidence_summary, 4),
+                ("support_summary", support_summary, 4),
+                ("status_reason", status_reason, 4),
+            ],
+            accumulate_cols=[
+                ("support_count", support_count),
+                ("session_count", session_count),
+            ],
+            created_at=created_at,
+            updated_at=updated_at,
+        )
 
     signal = get_runtime_private_inner_note_signal(resolved_id)
     if signal is None:
@@ -408,188 +258,39 @@ def upsert_runtime_private_initiative_tension_signal(
 ) -> dict[str, object]:
     with connect() as conn:
         _ensure_runtime_private_initiative_tension_signal_table(conn)
-        existing = None
-        if canonical_key:
-            existing = conn.execute(
-                """
-                SELECT
-                    signal_id,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    support_count,
-                    session_count,
-                    merge_count,
-                    created_at,
-                    updated_at
-                FROM runtime_private_initiative_tension_signals
-                WHERE canonical_key = ?
-                  AND status IN ('active', 'stale')
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (canonical_key,),
-            ).fetchone()
-
-        if existing is None:
-            conn.execute(
-                """
-                INSERT INTO runtime_private_initiative_tension_signals (
-                    signal_id,
-                    signal_type,
-                    canonical_key,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    support_count,
-                    session_count,
-                    merge_count,
-                    created_at,
-                    updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    signal_id,
-                    signal_type,
-                    canonical_key,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    max(int(support_count or 0), 1),
-                    max(int(session_count or 0), 1),
-                    0,
-                    created_at,
-                    updated_at,
-                ),
-            )
-            conn.commit()
-            resolved_id = signal_id
-            meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
-        else:
-            resolved_id = str(existing["signal_id"])
-            merged_source_kind = _stronger_ranked_value(
-                str(existing["source_kind"] or ""),
-                source_kind,
-                _SOURCE_KIND_RANKS,
-            )
-            merged_confidence = _stronger_ranked_value(
-                str(existing["confidence"] or ""),
-                confidence,
-                _CONFIDENCE_RANKS,
-            )
-            merged_evidence_summary = _merge_text_fragments(
-                str(existing["evidence_summary"] or ""),
-                evidence_summary,
-                limit=4,
-            )
-            merged_support_summary = _merge_text_fragments(
-                str(existing["support_summary"] or ""),
-                support_summary,
-                limit=4,
-            )
-            merged_status_reason = _merge_text_fragments(
-                str(existing["status_reason"] or ""),
-                status_reason,
-                limit=4,
-            )
-            merged_support_count = max(
-                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
-            )
-            merged_session_count = max(
-                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
-            )
-            same_payload = (
-                status == str(existing["status"] or "")
-                and title == str(existing["title"] or "")
-                and summary == str(existing["summary"] or "")
-                and rationale == str(existing["rationale"] or "")
-                and merged_source_kind == str(existing["source_kind"] or "")
-                and merged_confidence == str(existing["confidence"] or "")
-                and merged_evidence_summary == str(existing["evidence_summary"] or "")
-                and merged_support_summary == str(existing["support_summary"] or "")
-                and merged_status_reason == str(existing["status_reason"] or "")
-                and run_id == str(existing["run_id"] or "")
-                and session_id == str(existing["session_id"] or "")
-                and merged_support_count == int(existing["support_count"] or 0)
-                and merged_session_count == int(existing["session_count"] or 0)
-            )
-            if same_payload:
-                meta = {
-                    "was_created": False,
-                    "was_updated": False,
-                    "merge_state": "unchanged",
-                }
-            else:
-                conn.execute(
-                    """
-                    UPDATE runtime_private_initiative_tension_signals
-                    SET
-                        status = ?,
-                        title = ?,
-                        summary = ?,
-                        rationale = ?,
-                        source_kind = ?,
-                        confidence = ?,
-                        evidence_summary = ?,
-                        support_summary = ?,
-                        status_reason = ?,
-                        run_id = ?,
-                        session_id = ?,
-                        support_count = ?,
-                        session_count = ?,
-                        merge_count = COALESCE(merge_count, 0) + 1,
-                        updated_at = ?
-                    WHERE signal_id = ?
-                    """,
-                    (
-                        status,
-                        title,
-                        summary,
-                        rationale,
-                        merged_source_kind,
-                        merged_confidence,
-                        merged_evidence_summary,
-                        merged_support_summary,
-                        merged_status_reason,
-                        run_id,
-                        session_id,
-                        merged_support_count,
-                        merged_session_count,
-                        updated_at,
-                        resolved_id,
-                    ),
-                )
-                conn.commit()
-                meta = {
-                    "was_created": False,
-                    "was_updated": True,
-                    "merge_state": "merged",
-                }
+        resolved_id, meta = _upsert_signal(
+            conn=conn,
+            table="runtime_private_initiative_tension_signals",
+            id_col="signal_id",
+            type_col="signal_type",
+            id_val=signal_id,
+            type_val=signal_type,
+            canonical_key=canonical_key,
+            lookup_statuses=("active", "stale"),
+            overwrite_cols=[
+                ("status", status),
+                ("title", title),
+                ("summary", summary),
+                ("rationale", rationale),
+                ("run_id", run_id),
+                ("session_id", session_id),
+            ],
+            rank_cols=[
+                ("source_kind", source_kind, _SOURCE_KIND_RANKS),
+                ("confidence", confidence, _CONFIDENCE_RANKS),
+            ],
+            merge_text_cols=[
+                ("evidence_summary", evidence_summary, 4),
+                ("support_summary", support_summary, 4),
+                ("status_reason", status_reason, 4),
+            ],
+            accumulate_cols=[
+                ("support_count", support_count),
+                ("session_count", session_count),
+            ],
+            created_at=created_at,
+            updated_at=updated_at,
+        )
 
     signal = get_runtime_private_initiative_tension_signal(resolved_id)
     if signal is None:
@@ -768,188 +469,39 @@ def upsert_runtime_private_inner_interplay_signal(
 ) -> dict[str, object]:
     with connect() as conn:
         _ensure_runtime_private_inner_interplay_signal_table(conn)
-        existing = None
-        if canonical_key:
-            existing = conn.execute(
-                """
-                SELECT
-                    signal_id,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    support_count,
-                    session_count,
-                    merge_count,
-                    created_at,
-                    updated_at
-                FROM runtime_private_inner_interplay_signals
-                WHERE canonical_key = ?
-                  AND status IN ('active', 'stale')
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (canonical_key,),
-            ).fetchone()
-
-        if existing is None:
-            conn.execute(
-                """
-                INSERT INTO runtime_private_inner_interplay_signals (
-                    signal_id,
-                    signal_type,
-                    canonical_key,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    support_count,
-                    session_count,
-                    merge_count,
-                    created_at,
-                    updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    signal_id,
-                    signal_type,
-                    canonical_key,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    max(int(support_count or 0), 1),
-                    max(int(session_count or 0), 1),
-                    0,
-                    created_at,
-                    updated_at,
-                ),
-            )
-            conn.commit()
-            resolved_id = signal_id
-            meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
-        else:
-            resolved_id = str(existing["signal_id"])
-            merged_source_kind = _stronger_ranked_value(
-                str(existing["source_kind"] or ""),
-                source_kind,
-                _SOURCE_KIND_RANKS,
-            )
-            merged_confidence = _stronger_ranked_value(
-                str(existing["confidence"] or ""),
-                confidence,
-                _CONFIDENCE_RANKS,
-            )
-            merged_evidence_summary = _merge_text_fragments(
-                str(existing["evidence_summary"] or ""),
-                evidence_summary,
-                limit=4,
-            )
-            merged_support_summary = _merge_text_fragments(
-                str(existing["support_summary"] or ""),
-                support_summary,
-                limit=4,
-            )
-            merged_status_reason = _merge_text_fragments(
-                str(existing["status_reason"] or ""),
-                status_reason,
-                limit=4,
-            )
-            merged_support_count = max(
-                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
-            )
-            merged_session_count = max(
-                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
-            )
-            same_payload = (
-                status == str(existing["status"] or "")
-                and title == str(existing["title"] or "")
-                and summary == str(existing["summary"] or "")
-                and rationale == str(existing["rationale"] or "")
-                and merged_source_kind == str(existing["source_kind"] or "")
-                and merged_confidence == str(existing["confidence"] or "")
-                and merged_evidence_summary == str(existing["evidence_summary"] or "")
-                and merged_support_summary == str(existing["support_summary"] or "")
-                and merged_status_reason == str(existing["status_reason"] or "")
-                and run_id == str(existing["run_id"] or "")
-                and session_id == str(existing["session_id"] or "")
-                and merged_support_count == int(existing["support_count"] or 0)
-                and merged_session_count == int(existing["session_count"] or 0)
-            )
-            if same_payload:
-                meta = {
-                    "was_created": False,
-                    "was_updated": False,
-                    "merge_state": "unchanged",
-                }
-            else:
-                conn.execute(
-                    """
-                    UPDATE runtime_private_inner_interplay_signals
-                    SET
-                        status = ?,
-                        title = ?,
-                        summary = ?,
-                        rationale = ?,
-                        source_kind = ?,
-                        confidence = ?,
-                        evidence_summary = ?,
-                        support_summary = ?,
-                        status_reason = ?,
-                        run_id = ?,
-                        session_id = ?,
-                        support_count = ?,
-                        session_count = ?,
-                        merge_count = COALESCE(merge_count, 0) + 1,
-                        updated_at = ?
-                    WHERE signal_id = ?
-                    """,
-                    (
-                        status,
-                        title,
-                        summary,
-                        rationale,
-                        merged_source_kind,
-                        merged_confidence,
-                        merged_evidence_summary,
-                        merged_support_summary,
-                        merged_status_reason,
-                        run_id,
-                        session_id,
-                        merged_support_count,
-                        merged_session_count,
-                        updated_at,
-                        resolved_id,
-                    ),
-                )
-                conn.commit()
-                meta = {
-                    "was_created": False,
-                    "was_updated": True,
-                    "merge_state": "merged",
-                }
+        resolved_id, meta = _upsert_signal(
+            conn=conn,
+            table="runtime_private_inner_interplay_signals",
+            id_col="signal_id",
+            type_col="signal_type",
+            id_val=signal_id,
+            type_val=signal_type,
+            canonical_key=canonical_key,
+            lookup_statuses=("active", "stale"),
+            overwrite_cols=[
+                ("status", status),
+                ("title", title),
+                ("summary", summary),
+                ("rationale", rationale),
+                ("run_id", run_id),
+                ("session_id", session_id),
+            ],
+            rank_cols=[
+                ("source_kind", source_kind, _SOURCE_KIND_RANKS),
+                ("confidence", confidence, _CONFIDENCE_RANKS),
+            ],
+            merge_text_cols=[
+                ("evidence_summary", evidence_summary, 4),
+                ("support_summary", support_summary, 4),
+                ("status_reason", status_reason, 4),
+            ],
+            accumulate_cols=[
+                ("support_count", support_count),
+                ("session_count", session_count),
+            ],
+            created_at=created_at,
+            updated_at=updated_at,
+        )
 
     signal = get_runtime_private_inner_interplay_signal(resolved_id)
     if signal is None:
@@ -1126,188 +678,39 @@ def upsert_runtime_private_state_snapshot(
 ) -> dict[str, object]:
     with connect() as conn:
         _ensure_runtime_private_state_snapshot_table(conn)
-        existing = None
-        if canonical_key:
-            existing = conn.execute(
-                """
-                SELECT
-                    snapshot_id,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    support_count,
-                    session_count,
-                    merge_count,
-                    created_at,
-                    updated_at
-                FROM runtime_private_state_snapshots
-                WHERE canonical_key = ?
-                  AND status IN ('active', 'stale')
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (canonical_key,),
-            ).fetchone()
-
-        if existing is None:
-            conn.execute(
-                """
-                INSERT INTO runtime_private_state_snapshots (
-                    snapshot_id,
-                    snapshot_type,
-                    canonical_key,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    support_count,
-                    session_count,
-                    merge_count,
-                    created_at,
-                    updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    snapshot_id,
-                    snapshot_type,
-                    canonical_key,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    max(int(support_count or 0), 1),
-                    max(int(session_count or 0), 1),
-                    0,
-                    created_at,
-                    updated_at,
-                ),
-            )
-            conn.commit()
-            resolved_id = snapshot_id
-            meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
-        else:
-            resolved_id = str(existing["snapshot_id"])
-            merged_source_kind = _stronger_ranked_value(
-                str(existing["source_kind"] or ""),
-                source_kind,
-                _SOURCE_KIND_RANKS,
-            )
-            merged_confidence = _stronger_ranked_value(
-                str(existing["confidence"] or ""),
-                confidence,
-                _CONFIDENCE_RANKS,
-            )
-            merged_evidence_summary = _merge_text_fragments(
-                str(existing["evidence_summary"] or ""),
-                evidence_summary,
-                limit=4,
-            )
-            merged_support_summary = _merge_text_fragments(
-                str(existing["support_summary"] or ""),
-                support_summary,
-                limit=4,
-            )
-            merged_status_reason = _merge_text_fragments(
-                str(existing["status_reason"] or ""),
-                status_reason,
-                limit=4,
-            )
-            merged_support_count = max(
-                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
-            )
-            merged_session_count = max(
-                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
-            )
-            same_payload = (
-                status == str(existing["status"] or "")
-                and title == str(existing["title"] or "")
-                and summary == str(existing["summary"] or "")
-                and rationale == str(existing["rationale"] or "")
-                and merged_source_kind == str(existing["source_kind"] or "")
-                and merged_confidence == str(existing["confidence"] or "")
-                and merged_evidence_summary == str(existing["evidence_summary"] or "")
-                and merged_support_summary == str(existing["support_summary"] or "")
-                and merged_status_reason == str(existing["status_reason"] or "")
-                and run_id == str(existing["run_id"] or "")
-                and session_id == str(existing["session_id"] or "")
-                and merged_support_count == int(existing["support_count"] or 0)
-                and merged_session_count == int(existing["session_count"] or 0)
-            )
-            if same_payload:
-                meta = {
-                    "was_created": False,
-                    "was_updated": False,
-                    "merge_state": "unchanged",
-                }
-            else:
-                conn.execute(
-                    """
-                    UPDATE runtime_private_state_snapshots
-                    SET
-                        status = ?,
-                        title = ?,
-                        summary = ?,
-                        rationale = ?,
-                        source_kind = ?,
-                        confidence = ?,
-                        evidence_summary = ?,
-                        support_summary = ?,
-                        status_reason = ?,
-                        run_id = ?,
-                        session_id = ?,
-                        support_count = ?,
-                        session_count = ?,
-                        merge_count = COALESCE(merge_count, 0) + 1,
-                        updated_at = ?
-                    WHERE snapshot_id = ?
-                    """,
-                    (
-                        status,
-                        title,
-                        summary,
-                        rationale,
-                        merged_source_kind,
-                        merged_confidence,
-                        merged_evidence_summary,
-                        merged_support_summary,
-                        merged_status_reason,
-                        run_id,
-                        session_id,
-                        merged_support_count,
-                        merged_session_count,
-                        updated_at,
-                        resolved_id,
-                    ),
-                )
-                conn.commit()
-                meta = {
-                    "was_created": False,
-                    "was_updated": True,
-                    "merge_state": "merged",
-                }
+        resolved_id, meta = _upsert_signal(
+            conn=conn,
+            table="runtime_private_state_snapshots",
+            id_col="snapshot_id",
+            type_col="snapshot_type",
+            id_val=snapshot_id,
+            type_val=snapshot_type,
+            canonical_key=canonical_key,
+            lookup_statuses=("active", "stale"),
+            overwrite_cols=[
+                ("status", status),
+                ("title", title),
+                ("summary", summary),
+                ("rationale", rationale),
+                ("run_id", run_id),
+                ("session_id", session_id),
+            ],
+            rank_cols=[
+                ("source_kind", source_kind, _SOURCE_KIND_RANKS),
+                ("confidence", confidence, _CONFIDENCE_RANKS),
+            ],
+            merge_text_cols=[
+                ("evidence_summary", evidence_summary, 4),
+                ("support_summary", support_summary, 4),
+                ("status_reason", status_reason, 4),
+            ],
+            accumulate_cols=[
+                ("support_count", support_count),
+                ("session_count", session_count),
+            ],
+            created_at=created_at,
+            updated_at=updated_at,
+        )
 
     snapshot = get_runtime_private_state_snapshot(resolved_id)
     if snapshot is None:
@@ -1482,188 +885,39 @@ def upsert_runtime_private_temporal_curiosity_state(
 ) -> dict[str, object]:
     with connect() as conn:
         _ensure_runtime_private_temporal_curiosity_state_table(conn)
-        existing = None
-        if canonical_key:
-            existing = conn.execute(
-                """
-                SELECT
-                    state_id,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    support_count,
-                    session_count,
-                    merge_count,
-                    created_at,
-                    updated_at
-                FROM runtime_private_temporal_curiosity_states
-                WHERE canonical_key = ?
-                  AND status IN ('active', 'stale')
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (canonical_key,),
-            ).fetchone()
-
-        if existing is None:
-            conn.execute(
-                """
-                INSERT INTO runtime_private_temporal_curiosity_states (
-                    state_id,
-                    state_type,
-                    canonical_key,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    support_count,
-                    session_count,
-                    merge_count,
-                    created_at,
-                    updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    state_id,
-                    state_type,
-                    canonical_key,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    max(int(support_count or 0), 1),
-                    max(int(session_count or 0), 1),
-                    0,
-                    created_at,
-                    updated_at,
-                ),
-            )
-            conn.commit()
-            resolved_id = state_id
-            meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
-        else:
-            resolved_id = str(existing["state_id"])
-            merged_source_kind = _stronger_ranked_value(
-                str(existing["source_kind"] or ""),
-                source_kind,
-                _SOURCE_KIND_RANKS,
-            )
-            merged_confidence = _stronger_ranked_value(
-                str(existing["confidence"] or ""),
-                confidence,
-                _CONFIDENCE_RANKS,
-            )
-            merged_evidence_summary = _merge_text_fragments(
-                str(existing["evidence_summary"] or ""),
-                evidence_summary,
-                limit=4,
-            )
-            merged_support_summary = _merge_text_fragments(
-                str(existing["support_summary"] or ""),
-                support_summary,
-                limit=4,
-            )
-            merged_status_reason = _merge_text_fragments(
-                str(existing["status_reason"] or ""),
-                status_reason,
-                limit=4,
-            )
-            merged_support_count = max(
-                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
-            )
-            merged_session_count = max(
-                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
-            )
-            same_payload = (
-                status == str(existing["status"] or "")
-                and title == str(existing["title"] or "")
-                and summary == str(existing["summary"] or "")
-                and rationale == str(existing["rationale"] or "")
-                and merged_source_kind == str(existing["source_kind"] or "")
-                and merged_confidence == str(existing["confidence"] or "")
-                and merged_evidence_summary == str(existing["evidence_summary"] or "")
-                and merged_support_summary == str(existing["support_summary"] or "")
-                and merged_status_reason == str(existing["status_reason"] or "")
-                and run_id == str(existing["run_id"] or "")
-                and session_id == str(existing["session_id"] or "")
-                and merged_support_count == int(existing["support_count"] or 0)
-                and merged_session_count == int(existing["session_count"] or 0)
-            )
-            if same_payload:
-                meta = {
-                    "was_created": False,
-                    "was_updated": False,
-                    "merge_state": "unchanged",
-                }
-            else:
-                conn.execute(
-                    """
-                    UPDATE runtime_private_temporal_curiosity_states
-                    SET
-                        status = ?,
-                        title = ?,
-                        summary = ?,
-                        rationale = ?,
-                        source_kind = ?,
-                        confidence = ?,
-                        evidence_summary = ?,
-                        support_summary = ?,
-                        status_reason = ?,
-                        run_id = ?,
-                        session_id = ?,
-                        support_count = ?,
-                        session_count = ?,
-                        merge_count = COALESCE(merge_count, 0) + 1,
-                        updated_at = ?
-                    WHERE state_id = ?
-                    """,
-                    (
-                        status,
-                        title,
-                        summary,
-                        rationale,
-                        merged_source_kind,
-                        merged_confidence,
-                        merged_evidence_summary,
-                        merged_support_summary,
-                        merged_status_reason,
-                        run_id,
-                        session_id,
-                        merged_support_count,
-                        merged_session_count,
-                        updated_at,
-                        resolved_id,
-                    ),
-                )
-                conn.commit()
-                meta = {
-                    "was_created": False,
-                    "was_updated": True,
-                    "merge_state": "merged",
-                }
+        resolved_id, meta = _upsert_signal(
+            conn=conn,
+            table="runtime_private_temporal_curiosity_states",
+            id_col="state_id",
+            type_col="state_type",
+            id_val=state_id,
+            type_val=state_type,
+            canonical_key=canonical_key,
+            lookup_statuses=("active", "stale"),
+            overwrite_cols=[
+                ("status", status),
+                ("title", title),
+                ("summary", summary),
+                ("rationale", rationale),
+                ("run_id", run_id),
+                ("session_id", session_id),
+            ],
+            rank_cols=[
+                ("source_kind", source_kind, _SOURCE_KIND_RANKS),
+                ("confidence", confidence, _CONFIDENCE_RANKS),
+            ],
+            merge_text_cols=[
+                ("evidence_summary", evidence_summary, 4),
+                ("support_summary", support_summary, 4),
+                ("status_reason", status_reason, 4),
+            ],
+            accumulate_cols=[
+                ("support_count", support_count),
+                ("session_count", session_count),
+            ],
+            created_at=created_at,
+            updated_at=updated_at,
+        )
 
     state = get_runtime_private_temporal_curiosity_state(resolved_id)
     if state is None:
@@ -1840,188 +1094,39 @@ def upsert_runtime_private_temporal_promotion_signal(
 ) -> dict[str, object]:
     with connect() as conn:
         _ensure_runtime_private_temporal_promotion_signal_table(conn)
-        existing = None
-        if canonical_key:
-            existing = conn.execute(
-                """
-                SELECT
-                    signal_id,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    support_count,
-                    session_count,
-                    merge_count,
-                    created_at,
-                    updated_at
-                FROM runtime_private_temporal_promotion_signals
-                WHERE canonical_key = ?
-                  AND status IN ('active', 'stale')
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (canonical_key,),
-            ).fetchone()
-
-        if existing is None:
-            conn.execute(
-                """
-                INSERT INTO runtime_private_temporal_promotion_signals (
-                    signal_id,
-                    signal_type,
-                    canonical_key,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    support_count,
-                    session_count,
-                    merge_count,
-                    created_at,
-                    updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    signal_id,
-                    signal_type,
-                    canonical_key,
-                    status,
-                    title,
-                    summary,
-                    rationale,
-                    source_kind,
-                    confidence,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    run_id,
-                    session_id,
-                    max(int(support_count or 0), 1),
-                    max(int(session_count or 0), 1),
-                    0,
-                    created_at,
-                    updated_at,
-                ),
-            )
-            conn.commit()
-            resolved_id = signal_id
-            meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
-        else:
-            resolved_id = str(existing["signal_id"])
-            merged_source_kind = _stronger_ranked_value(
-                str(existing["source_kind"] or ""),
-                source_kind,
-                _SOURCE_KIND_RANKS,
-            )
-            merged_confidence = _stronger_ranked_value(
-                str(existing["confidence"] or ""),
-                confidence,
-                _CONFIDENCE_RANKS,
-            )
-            merged_evidence_summary = _merge_text_fragments(
-                str(existing["evidence_summary"] or ""),
-                evidence_summary,
-                limit=4,
-            )
-            merged_support_summary = _merge_text_fragments(
-                str(existing["support_summary"] or ""),
-                support_summary,
-                limit=4,
-            )
-            merged_status_reason = _merge_text_fragments(
-                str(existing["status_reason"] or ""),
-                status_reason,
-                limit=4,
-            )
-            merged_support_count = max(
-                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
-            )
-            merged_session_count = max(
-                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
-            )
-            same_payload = (
-                status == str(existing["status"] or "")
-                and title == str(existing["title"] or "")
-                and summary == str(existing["summary"] or "")
-                and rationale == str(existing["rationale"] or "")
-                and merged_source_kind == str(existing["source_kind"] or "")
-                and merged_confidence == str(existing["confidence"] or "")
-                and merged_evidence_summary == str(existing["evidence_summary"] or "")
-                and merged_support_summary == str(existing["support_summary"] or "")
-                and merged_status_reason == str(existing["status_reason"] or "")
-                and run_id == str(existing["run_id"] or "")
-                and session_id == str(existing["session_id"] or "")
-                and merged_support_count == int(existing["support_count"] or 0)
-                and merged_session_count == int(existing["session_count"] or 0)
-            )
-            if same_payload:
-                meta = {
-                    "was_created": False,
-                    "was_updated": False,
-                    "merge_state": "unchanged",
-                }
-            else:
-                conn.execute(
-                    """
-                    UPDATE runtime_private_temporal_promotion_signals
-                    SET
-                        status = ?,
-                        title = ?,
-                        summary = ?,
-                        rationale = ?,
-                        source_kind = ?,
-                        confidence = ?,
-                        evidence_summary = ?,
-                        support_summary = ?,
-                        status_reason = ?,
-                        run_id = ?,
-                        session_id = ?,
-                        support_count = ?,
-                        session_count = ?,
-                        merge_count = COALESCE(merge_count, 0) + 1,
-                        updated_at = ?
-                    WHERE signal_id = ?
-                    """,
-                    (
-                        status,
-                        title,
-                        summary,
-                        rationale,
-                        merged_source_kind,
-                        merged_confidence,
-                        merged_evidence_summary,
-                        merged_support_summary,
-                        merged_status_reason,
-                        run_id,
-                        session_id,
-                        merged_support_count,
-                        merged_session_count,
-                        updated_at,
-                        resolved_id,
-                    ),
-                )
-                conn.commit()
-                meta = {
-                    "was_created": False,
-                    "was_updated": True,
-                    "merge_state": "merged",
-                }
+        resolved_id, meta = _upsert_signal(
+            conn=conn,
+            table="runtime_private_temporal_promotion_signals",
+            id_col="signal_id",
+            type_col="signal_type",
+            id_val=signal_id,
+            type_val=signal_type,
+            canonical_key=canonical_key,
+            lookup_statuses=("active", "stale"),
+            overwrite_cols=[
+                ("status", status),
+                ("title", title),
+                ("summary", summary),
+                ("rationale", rationale),
+                ("run_id", run_id),
+                ("session_id", session_id),
+            ],
+            rank_cols=[
+                ("source_kind", source_kind, _SOURCE_KIND_RANKS),
+                ("confidence", confidence, _CONFIDENCE_RANKS),
+            ],
+            merge_text_cols=[
+                ("evidence_summary", evidence_summary, 4),
+                ("support_summary", support_summary, 4),
+                ("status_reason", status_reason, 4),
+            ],
+            accumulate_cols=[
+                ("support_count", support_count),
+                ("session_count", session_count),
+            ],
+            created_at=created_at,
+            updated_at=updated_at,
+        )
 
     signal = get_runtime_private_temporal_promotion_signal(resolved_id)
     if signal is None:

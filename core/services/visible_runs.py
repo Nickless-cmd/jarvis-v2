@@ -3987,6 +3987,40 @@ async def _stream_visible_run(
                                 break
                         if _agentic_loop_exit_reason == "user-steer-stop":
                             break
+
+                    # ── Tool-result aging (harness Part B, Mechanism B) ──────────
+                    # Age older tool-result content ONCE per round, forward-carried
+                    # (outside the retry fence at ~2305 → D11 byte-identical retries
+                    # hold). Strong-lane + round gated inside age_tool_results;
+                    # default shadow (observe, mutate nothing). Reassigning
+                    # _followup_exchanges is a no-op in shadow (same object).
+                    try:
+                        from core.services.tool_result_aging import (
+                            age_tool_results, tool_result_aging_mode)
+                        from core.services.model_trust import model_strength
+                        _age_mode = tool_result_aging_mode()
+                        if _age_mode != "off":
+                            _aged_ex, _age_metrics = age_tool_results(
+                                _followup_exchanges,
+                                mode=_age_mode,
+                                strength=model_strength(getattr(run, "model", "") or ""),
+                                round_index=_agentic_round,
+                                compress_fn=_compact_llm_for_run,
+                            )
+                            _followup_exchanges = _aged_ex
+                            if _age_metrics.get("aged_exchanges"):
+                                try:
+                                    from core.services import central_timeseries as _cts_age
+                                    _cts_age.record(
+                                        "context", "tool_result_aging",
+                                        float(_age_metrics.get("would_free_tokens") or 0),
+                                        meta={**_age_metrics, "run_id": run.run_id,
+                                              "round": _agentic_round + 1,
+                                              "active": _age_mode == "active"})
+                                except Exception:
+                                    pass
+                    except Exception:
+                        pass
                 logger.info(
                     "agentic-loop-exit run_id=%s reason=%s rounds_done=%d",
                     run.run_id, _agentic_loop_exit_reason,
